@@ -1,10 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import { useAppState } from "~/state/AppContext";
 import type { WH } from "../types";
 
-export function useTree(ref: React.RefObject<HTMLDivElement | null>) {
-  const state = useAppState();
-
+export function useElementSize(ref: React.RefObject<HTMLDivElement | null>) {
   const [size, setSize] = useState<WH | null>(null);
 
   useLayoutEffect(() => {
@@ -28,11 +25,5 @@ export function useTree(ref: React.RefObject<HTMLDivElement | null>) {
     return () => resizeObserver.disconnect();
   }, [ref.current]);
 
-  useEffect(() => {
-    if (size) {
-      state.changeAppSize(size);
-    }
-  }, [state, size]);
-
-  return { size };
+  return size;
 }

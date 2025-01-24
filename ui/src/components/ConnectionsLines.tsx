@@ -105,14 +105,6 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
     return state.onRedrawConnectionsLines(draw);
   }, [state, draw]);
 
-  useEffect(() => {
-    return state.onEndpointHighlight(draw);
-  }, [state, draw]);
-
-  useEffect(() => {
-    return state.onProcHighlight(draw);
-  }, [state, draw]);
-
   return <canvas ref={ref} />;
 });
 

@@ -1,28 +1,26 @@
-import { memo } from "react";
-import { useTree } from "~/hooks/useTree";
+import { memo, useRef } from "react";
+import { useElementSize } from "~/hooks/useElementSize";
 import css from "./App.module.css";
 import { ConnectionsLines } from "./ConnectionsLines";
 import { Endpoints } from "./Endpoints";
 import { Tree } from "./Tree";
 
-export interface Props {
-  appRef: React.RefObject<HTMLDivElement | null>;
-}
+export const App = memo(function App() {
+  const ref = useRef<HTMLDivElement>(null);
 
-export const App = memo(function App(props: Props) {
-  const tree = useTree(props.appRef);
+  const size = useElementSize(ref);
 
   return (
-    <div ref={props.appRef} className={css.app}>
+    <div ref={ref} className={css.app}>
       <div className={css.tree}>
         <Tree />
       </div>
       <div className={css.endpoints}>
         <Endpoints />
       </div>
-      {tree.size && (
+      {size && (
         <div className={css.connectionsLines}>
-          <ConnectionsLines size={tree.size} />
+          <ConnectionsLines size={size} />
         </div>
       )}
     </div>

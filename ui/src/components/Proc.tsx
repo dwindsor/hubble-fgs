@@ -1,6 +1,6 @@
 import clsx from "clsx";
-import debounce from "lodash/debounce";
-import { memo, useCallback, useEffect, useMemo } from "react";
+import { memo, useCallback, useEffect } from "react";
+import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationProcess } from "~/proto";
 import { useAppState } from "~/state/AppContext";
@@ -19,33 +19,45 @@ export interface ProcProps {
 export const Proc = memo(function Proc(props: ProcProps) {
   const state = useAppState();
 
-  const procInfo = state.processesMap.get(props.proc) ?? null;
-
   const entry = useTreeEntry({
     statInfo: state.stat.processesMap.get(props.proc),
   });
 
   const update = useCallback(
     (visible = true) => {
+      const info = state.processesMap.get(props.proc) ?? null;
+
       const xy = entry.connector.getXY();
 
-      if (
-        procInfo &&
-        procInfo.visible === visible &&
-        procInfo.xy?.x === xy?.x &&
-        procInfo.xy?.y === xy?.y
-      ) {
+      if (info && info.visible === visible && info.xy?.x === xy?.x && info.xy?.y === xy?.y) {
         return;
       }
 
       state.updateProcess(props.proc, visible, xy);
     },
-    [state, props.proc, procInfo, entry],
+    [state, props.proc, entry],
   );
 
-  const debouncedUpdate = useMemo(() => {
-    return debounce(update);
-  }, [update]);
+  useEffect(() => {
+    update(true);
+    return () => {
+      state.updateProcess(props.proc, false, undefined);
+    };
+  }, [state, props.proc, update]);
+
+  const debouncedUpdate = useDebouncedCallback(update);
+
+  useEffect(() => {
+    return state.onTreeChanged(() => {
+      debouncedUpdate();
+    });
+  }, [state, debouncedUpdate]);
+
+  useEffect(() => {
+    return state.onEndpointUpdated(() => {
+      debouncedUpdate();
+    });
+  }, [state, debouncedUpdate]);
 
   const highlight = useCallback(() => {
     state.highlightProc(props.proc, true);
@@ -56,21 +68,6 @@ export const Proc = memo(function Proc(props: ProcProps) {
   }, [state, props.proc]);
 
   const children = props.proc.children ?? [];
-
-  useEffect(() => {
-    update(true);
-    return () => {
-      state.updateProcess(props.proc, false, undefined);
-    };
-  }, [state, props.proc, update]);
-
-  useEffect(() => {
-    return state.onAppSizeChanged(() => debouncedUpdate());
-  }, [state, debouncedUpdate]);
-
-  useEffect(() => {
-    return debouncedUpdate();
-  }, [debouncedUpdate]);
 
   useEffect(() => {
     return state.onProcHighlight((proc, value) => {

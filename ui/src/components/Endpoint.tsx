@@ -1,10 +1,10 @@
-import debounce from "lodash/debounce";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useAppState } from "~/state/AppContext";
 
 import clsx from "clsx";
 import React from "react";
 import { useConnector } from "~/hooks/useConnector";
+import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
 import type { ApplicationProcess } from "~/proto";
 import { type EndpointStat, getEndpointHash } from "~/state/utils";
 import { EndpointKind } from "~/types";
@@ -20,7 +20,7 @@ import { Statistic } from "./Statistic";
 
 export interface Props {
   endpoint: string;
-  ephimeral?: boolean;
+  onSelect?: () => void;
 }
 
 export const Endpoint = memo(function Endpoint(props: Props) {
@@ -72,23 +72,18 @@ export const Endpoint = memo(function Endpoint(props: Props) {
 
   const update = useCallback(
     (visible = true) => {
-      const cur = state.endpointsMap.get(props.endpoint);
+      const info = state.endpointsMap.get(props.endpoint);
+
       const xy = connector.getXY();
 
-      if (cur && cur.visible === visible && cur.xy?.x === xy?.x && cur.xy?.y === xy?.y) {
+      if (info && info.visible === visible && info.xy?.x === xy?.x && info.xy?.y === xy?.y) {
         return;
       }
 
-      if (!props.ephimeral) {
-        state.updateEndpoint(props.endpoint, visible, xy);
-      }
+      state.updateEndpoint(props.endpoint, visible, xy);
     },
-    [state, connector, props.endpoint, props.ephimeral],
+    [state, connector, props.endpoint],
   );
-
-  const debouncedUpdate = useMemo(() => {
-    return debounce(update);
-  }, [update]);
 
   useEffect(() => {
     update(true);
@@ -97,8 +92,12 @@ export const Endpoint = memo(function Endpoint(props: Props) {
     };
   }, [state, props.endpoint, update]);
 
+  const debouncedUpdate = useDebouncedCallback(update);
+
   useEffect(() => {
-    return state.onAppSizeChanged(() => debouncedUpdate());
+    return state.onEndpointsListChanged(() => {
+      debouncedUpdate();
+    });
   }, [state, debouncedUpdate]);
 
   useEffect(() => {
@@ -129,13 +128,14 @@ export const Endpoint = memo(function Endpoint(props: Props) {
   }, [state, props.endpoint]);
 
   const onClick = useCallback(() => {
+    props.onSelect?.();
     const modes = state.highlightedEndpointsMap.get(props.endpoint);
     if (modes?.has(EndpointMode.Pinned)) {
       state.highlightEndpoint(props.endpoint, false, EndpointMode.Pinned);
       return;
     }
     state.highlightEndpoint(props.endpoint, true, EndpointMode.Pinned);
-  }, [state, props.endpoint]);
+  }, [state, props.endpoint, props.onSelect]);
 
   const className = clsx(css.endpoint, classNameFromEndpointKind(kind), {
     [css.highlighted]: highlightedProc,

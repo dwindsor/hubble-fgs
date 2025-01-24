@@ -3,7 +3,7 @@ import { timestampNow } from "@bufbuild/protobuf/wkt";
 import { ApplicationModelEventSchema } from "@ipa/application_model/v1alpha/application_model_pb";
 import { createContext, useContext } from "react";
 import type { ApplicationModelEvent, ApplicationProcess } from "~/proto";
-import type { WH, XY } from "~/types";
+import type { XY } from "~/types";
 import { assert } from "~/utils/assert";
 import type { EndpointModeType } from "~/utils/endpoints";
 import { AppEmitter, EmitterEventKind } from "./AppEmitter";
@@ -48,17 +48,17 @@ export function createAppContext({
       return state.stat;
     },
 
-    changeAppSize(size: WH) {
-      emitter.emitter.emit(EmitterEventKind.AppSizeChanged, size);
-    },
-
-    onAppSizeChanged: emitter.createSubscriber(EmitterEventKind.AppSizeChanged),
-
     changeTree() {
       emitter.emitter.emit(EmitterEventKind.TreeChanged);
     },
 
     onTreeChanged: emitter.createSubscriber(EmitterEventKind.TreeChanged),
+
+    changeEndpointsList() {
+      emitter.emitter.emit(EmitterEventKind.EndpointsListChanged);
+    },
+
+    onEndpointsListChanged: emitter.createSubscriber(EmitterEventKind.EndpointsListChanged),
 
     redrawConnectionLines() {
       emitter.emitter.emit(EmitterEventKind.RedrawConnectionsLines);
@@ -75,9 +75,10 @@ export function createAppContext({
       assert(cur, "All processes expected to be available in processes map");
       state.processesMap.set(proc, cur);
       emitter.emitter.emit(EmitterEventKind.ProcUpdated, proc);
-      that.changeTree();
       that.redrawConnectionLines();
     },
+
+    onProcUpdated: emitter.createSubscriber(EmitterEventKind.ProcUpdated),
 
     updateEndpoint(endpoint: string, visible: boolean | undefined, xy: XY | undefined) {
       const cur = state.endpointsMap.get(endpoint);
@@ -109,6 +110,7 @@ export function createAppContext({
         inner.highlightedEndpointsMap.set(endpoint, modes);
       }
       emitter.emitter.emit(EmitterEventKind.HighlightEndpoint, endpoint, state, mode);
+      that.redrawConnectionLines();
     },
 
     onEndpointHighlight: emitter.createSubscriber(EmitterEventKind.HighlightEndpoint),
@@ -120,6 +122,7 @@ export function createAppContext({
     highlightProc(proc: ApplicationProcess, state: boolean) {
       inner.highlightedProc = state ? proc : null;
       emitter.emitter.emit(EmitterEventKind.HighlightProc, proc, state);
+      that.redrawConnectionLines();
     },
 
     onProcHighlight: emitter.createSubscriber(EmitterEventKind.HighlightProc),

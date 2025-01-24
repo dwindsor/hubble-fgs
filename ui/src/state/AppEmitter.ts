@@ -1,13 +1,14 @@
+// biome-ignore lint/style/useNodejsImportProtocol: events it's an actual npm package
 import Emitter from "events";
 import type TypedEmitter from "typed-emitter";
 import type { ApplicationProcess } from "~/proto";
-import type { PropertyValues, WH } from "~/types";
+import type { PropertyValues } from "~/types";
 import type { EndpointModeType } from "~/utils/endpoints";
 
 export const EmitterEventKind = {
   __proto__: null,
-  AppSizeChanged: "app-size-changed",
   TreeChanged: "tree-changed",
+  EndpointsListChanged: "endpoints-list-changed",
   RedrawConnectionsLines: "redraw-connections-lines",
   EndpointUpdated: "endpoint-updated",
   ProcUpdated: "proc-updated",
@@ -18,8 +19,8 @@ export const EmitterEventKind = {
 export type EmitterEventKind = PropertyValues<typeof EmitterEventKind>;
 
 export type EmitterHandlers = {
-  [EmitterEventKind.AppSizeChanged]: (wh: WH) => void;
   [EmitterEventKind.TreeChanged]: () => void;
+  [EmitterEventKind.EndpointsListChanged]: () => void;
   [EmitterEventKind.RedrawConnectionsLines]: () => void;
   [EmitterEventKind.ProcUpdated]: (proc: ApplicationProcess) => void;
   [EmitterEventKind.EndpointUpdated]: (endpoint: string) => void;

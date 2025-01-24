@@ -14,11 +14,20 @@
   }
 }
 
-.searchResults {
-  margin-bottom: 20px;
+.endpointsList hr {
+  display: block;
+  width: 100%;
+  height: 1px;
+  border: 0;
+  background: #ccc;
+  margin: 10px 0;
 }
 
-.searchResults + .endpointsList {
-  padding-top: 20px;
-  border-top: 1px solid #ccc;
+.emptySearch .emptySearchTitle {
+  margin-left: 5px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 14px;
+  font-weight: 500;
+  cursor: default;
 }
