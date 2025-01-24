@@ -57,6 +57,12 @@ func loadDNSTestCollection(t *testing.T) *ebpf.Collection {
 		}
 		t.Fatal(err)
 	}
+
+	// Resizing map (to an overkill size because it's LRU_HASH)
+	collSpec.Maps[DNSEndpointIDMapName].MaxEntries = 1024
+	collSpec.Maps[DomainToIDMapName].MaxEntries = 1024
+	collSpec.Maps[IDToDomainMapName].MaxEntries = 1024
+
 	collOpts := ebpf.CollectionOptions{}
 	if verifierLogs != nil && *verifierLogs {
 		collOpts.Programs = ebpf.ProgramOptions{

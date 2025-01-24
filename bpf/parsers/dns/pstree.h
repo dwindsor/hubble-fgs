@@ -30,7 +30,7 @@ struct dns_endpoint_id_value {
 // read-write from BPF and read-only from userspace.
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__uint(max_entries, 32); // will be resized by user space
+	__uint(max_entries, 1); // will be resized by user space
 	__type(key, struct endpoint_id_key);
 	__type(value, struct dns_endpoint_id_value);
 } tg_dns_endpoint_id_map SEC(".maps");
@@ -38,16 +38,16 @@ struct {
 // domain_string -> ID, this is read-write from BPF and userspace. From the BPF
 // DNS parser and the quota policy parser.
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 32); // will be resized by user space
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, 1); // will be resized by user space
 	__type(key, char[DNS_MAX_NAME_SIZE + 1]);
 	__type(value, struct dns_endpoint_id_value);
 } tg_bpf_domain_map SEC(".maps");
 
 // ID -> domain_string, same as the above map but for debugging and printing purposes.
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 32); // will be resized by user space
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, 1); // will be resized by user space
 	__type(key, struct dns_endpoint_id_value);
 	__type(value, char[DNS_MAX_NAME_SIZE + 1]);
 } tg_bpf_domain_rev_map SEC(".maps");

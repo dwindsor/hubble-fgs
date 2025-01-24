@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
@@ -198,12 +199,14 @@ var (
 	EndpointIdIngressMap            = program.MapUser("tg_endpoint_id_map", IngressDispatcher)
 
 	// DNS Parser maps
-	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcher)
-	DNSParserIPMap    = program.MapBuilder(dnsparser.IPToDomainMapName, IngressDispatcher)
-	DNSEndpointIDMap  = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcher)
-	DNSDomainMap      = program.MapBuilder(dnsparser.DomainToIDMapName, IngressDispatcher)
-	DNSDomainMapRev   = program.MapBuilder(dnsparser.IDToDomainMapName, IngressDispatcher)
-	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcher)
+	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.15
+	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcher, EgressDispatcher)
+	DNSParserIPMap    = program.MapBuilder(dnsparser.IPToDomainMapName, IngressDispatcher, EgressDispatcher)
+	DNSDomainMap      = program.MapBuilder(dnsparser.DomainToIDMapName, IngressDispatcher, EgressDispatcher)
+	DNSDomainMapRev   = program.MapBuilder(dnsparser.IDToDomainMapName, IngressDispatcher, EgressDispatcher)
+	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcher, EgressDispatcher)
+	// This map is shared between the DNS parser and the process tree: the fdlookup and tcpsockops progs
+	DNSEndpointIDMap = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcher, EgressDispatcher, ip.FdLookupFentry_5_15, ip.FdLookupKprobe_5_15, tcp.TcpSockops515)
 
 	// Dispatcher all maps
 	dispatcherMaps = append(udpMaps,
@@ -266,6 +269,12 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 		needDispatcher = true
 	}
 	if dnsEnabled {
+		if enterpriseOption.Config.EnableProcessTree && enterpriseOption.Config.EnableBPFDNSParser {
+			DNSEndpointIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			DNSDomainMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			DNSDomainMapRev.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+		}
+
 		maps = append(maps, DNSParserErrorMap)
 		maps = append(maps, DNSParserIPMap)
 		maps = append(maps, DNSEndpointIDMap)
