@@ -128,6 +128,7 @@ var (
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 
 	/* In BPF memory aggregated data */
+	PidDataMap               = program.MapBuilder("tg_ee_pid_data", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	ProcessTreeId            = program.MapBuilder("tg_tree_id", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
@@ -227,6 +228,7 @@ func GetDefaultMaps() []*program.Map {
 		MatchBinariesSetMap,
 		TetragonConfMap,
 		TCPMonMap,
+		PidDataMap,
 		ProcessTreeId,
 		ProcessTreeMap,
 		ProcessTreeBinaryUUIDMap,
@@ -280,6 +282,7 @@ func ConfigureMapSizes() {
 
 	EndpointIdMap.SetMaxEntries(enterpriseOption.Config.EndpointCacheSize)
 	BpfEndpointIdMap.SetMaxEntries(enterpriseOption.Config.BpfEndpointCacheSize)
+	PidDataMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	ProcessTreeBinaryUUIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	ProcessTreeUUIDBinaryMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	ProcessTreeMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)

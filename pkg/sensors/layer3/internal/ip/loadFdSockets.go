@@ -234,6 +234,7 @@ func getFdLookupMaps() []*program.Map {
 				program.MapUserFrom(base.ProcessTreeUUIDBinaryMap),
 				program.MapUserFrom(base.DestinationEndpointMap),
 				program.MapUserFrom(base.ListenEndpointMap),
+				program.MapUserFrom(base.PidDataMap),
 			}...)
 			if utils.SupportFentry() {
 				maps = append(maps, []*program.Map{ProcessTreeIdMapFentry}...)

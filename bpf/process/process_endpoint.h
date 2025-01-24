@@ -129,7 +129,7 @@ struct {
  */
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__uint(max_entries, 32000);
+	__uint(max_entries, 1); // will be resized by user space
 	__type(key, uint32_t);
 	__type(value, struct process_tree_key);
 } tg_ee_pid_data SEC(".maps");
