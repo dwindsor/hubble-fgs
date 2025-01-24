@@ -82,6 +82,14 @@ function useEndpoints(searchQuery: string) {
     });
   }, [state, debouncedUpdate]);
 
+  useEffect(() => {
+    return state.onEndpointHighlight((_endpoint, _state, mode) => {
+      if (mode === EndpointMode.Pinned) {
+        debouncedUpdate();
+      }
+    });
+  }, [state, debouncedUpdate]);
+
   return endpoints;
 }
 
