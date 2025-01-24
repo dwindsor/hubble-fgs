@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useAppState } from "~/state/AppContext";
 import { type ConnectionLine, EndpointKind, type WH } from "~/types";
+import { EndpointMode } from "~/utils/endpoints";
 
 export interface Props {
   size: WH;
@@ -53,7 +54,24 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
       const baseLineColor = BASE_LINE_COLOR[endpointInfo.kind];
       const highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
 
-      let color = state.highlightedEndpointsMap.size
+      let color: string = baseLineColor;
+      if (state.highlightedEndpointsMap.size) {
+        const modes = state.highlightedEndpointsMap.get(endpoint);
+        if (!modes) {
+          color = MUTED_LINE_COLOR;
+        } else {
+          let noHighlihts = true;
+          state.highlightedEndpointsMap.forEach((modes) => {
+            noHighlihts &&= !modes.has(EndpointMode.Hovered);
+          });
+          if (noHighlihts || modes.has(EndpointMode.Hovered)) {
+            color = highlightedLineColor;
+          } else {
+            color = MUTED_LINE_COLOR;
+          }
+        }
+      }
+      state.highlightedEndpointsMap.size
         ? state.highlightedEndpointsMap.has(endpoint)
           ? highlightedLineColor
           : MUTED_LINE_COLOR
