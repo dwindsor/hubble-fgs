@@ -188,18 +188,6 @@ var (
 	udpMapsSkbLoad   = []*program.Map{udpMapSkbLoad, udpMapStatsSkbLoad, udpConfigSkbLoadMap, udpPayloadSkbLoadMap, latencyConfigSkbLoadMap}
 	udpMapsSkbLoad54 = []*program.Map{udpMapSkbLoad54, udpMapStatsSkbLoad54, udpConfigSkbLoad54Map, udpPayloadSkbLoad54Map, latencyConfigSkbLoadMap}
 
-	// Process Tree maps
-	DestinationEndpointEgressMap    = program.MapUser("destination_endpoint_map", EgressDispatcher)
-	DestinationEndpointIngressMap   = program.MapUser("destination_endpoint_map", IngressDispatcher)
-	ListenEndpointEgressMap         = program.MapUser("listen_endpoint_map", EgressDispatcher)
-	ListenEndpointIngressMap        = program.MapUser("listen_endpoint_map", IngressDispatcher)
-	ProcessTreeBinaryUUIDEgressMap  = program.MapUser("process_tree_binary_uid_map", EgressDispatcher)
-	ProcessTreeBinaryUUIDIngressMap = program.MapUser("process_tree_binary_uid_map", IngressDispatcher)
-	BpfEndpointIdEgressMap          = program.MapUser("tg_bpf_endpoint_id_map", EgressDispatcher)
-	BpfEndpointIdIngressMap         = program.MapUser("tg_bpf_endpoint_id_map", IngressDispatcher)
-	EndpointIdEgressMap             = program.MapUser("tg_endpoint_id_map", EgressDispatcher)
-	EndpointIdIngressMap            = program.MapUser("tg_endpoint_id_map", IngressDispatcher)
-
 	// DNS Parser maps
 	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.15
 	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcher, EgressDispatcher)
@@ -212,16 +200,12 @@ var (
 	// Dispatcher all maps
 	dispatcherMaps = append(udpMaps,
 		[]*program.Map{protoCfgMap,
-			DestinationEndpointIngressMap,
-			DestinationEndpointEgressMap,
-			ListenEndpointIngressMap,
-			ListenEndpointEgressMap,
-			ProcessTreeBinaryUUIDEgressMap,
-			ProcessTreeBinaryUUIDIngressMap,
-			BpfEndpointIdEgressMap,
-			BpfEndpointIdIngressMap,
-			EndpointIdEgressMap,
-			EndpointIdIngressMap,
+			// Process Tree maps
+			program.MapUserFrom(base.DestinationEndpointMap),
+			program.MapUserFrom(base.ListenEndpointMap),
+			program.MapUserFrom(base.ProcessTreeBinaryUUIDMap),
+			program.MapUserFrom(base.BpfEndpointIdMap),
+			program.MapUserFrom(base.EndpointIdMap),
 		}...)
 	dispatcherSkbLoadMaps   = append(udpMapsSkbLoad, protoCfgSkbLoadMap)
 	dispatcherSkbLoad54Maps = append(udpMapsSkbLoad54, protoCfgSkbLoad54Map)

@@ -30,6 +30,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -92,22 +93,8 @@ var (
 	FdLookupConfigMapFentry = program.MapBuilder(FdLookupConfigMapName, FdLookupFentry)
 
 	// Endpoint Models
-	EndpointIdMapKprobe            = program.MapUser("tg_endpoint_id_map", FdLookupKprobe_5_15)
-	BpfEndpointIdMapKprobe         = program.MapUser("tg_bpf_endpoint_id_map", FdLookupKprobe_5_15)
-	ProcessTreeIdMapKprobe         = program.MapBuilder("tg_tree_id", FdLookupKprobe_5_15)
-	ProcessTreeMapKprobe           = program.MapUser("process_tree_map", FdLookupKprobe_5_15)
-	ProcessTreeBinaryUUIDMapKprobe = program.MapUser("process_tree_binary_uid_map", FdLookupKprobe_5_15)
-	ProcessTreeUUIDBinaryMapKprobe = program.MapUser("process_tree_uid_binary_map", FdLookupKprobe_5_15)
-	DestinationEndpointMapKprobe   = program.MapUser("destination_endpoint_map", FdLookupKprobe_5_15)
-	ListenEndpointMapKprobe        = program.MapUser("listen_endpoint_map", FdLookupKprobe_5_15)
-	EndpointIdMapFentry            = program.MapUser("tg_endpoint_id_map", FdLookupFentry_5_15)
-	BpfEndpointIdMapFentry         = program.MapUser("tg_bpf_endpoint_id_map", FdLookupFentry_5_15)
-	ProcessTreeIdMapFentry         = program.MapBuilder("tg_tree_id", FdLookupFentry_5_15)
-	ProcessTreeMapFentry           = program.MapUser("process_tree_map", FdLookupFentry_5_15)
-	ProcessTreeBinaryUUIDMapFentry = program.MapUser("process_tree_binary_uid_map", FdLookupFentry_5_15)
-	ProcessTreeUUIDBinaryMapFentry = program.MapUser("process_tree_uid_binary_map", FdLookupFentry_5_15)
-	DestinationEndpointMapFentry   = program.MapUser("destination_endpoint_map", FdLookupFentry_5_15)
-	ListenEndpointMapFentry        = program.MapUser("listen_endpoint_map", FdLookupFentry_5_15)
+	ProcessTreeIdMapKprobe = program.MapBuilder("tg_tree_id", FdLookupKprobe_5_15)
+	ProcessTreeIdMapFentry = program.MapBuilder("tg_tree_id", FdLookupFentry_5_15)
 
 	// Shared socket cookie infrastructure
 	SocketCookieMapKprobe     = program.MapBuilder(SocketMapName, FdLookupKprobe, FdLookupKprobe_5_15)
@@ -239,28 +226,19 @@ func getFdLookupMaps() []*program.Map {
 	}
 	if kernels.MinKernelVersion("5.14.0") {
 		if runtime.GOARCH == "amd64" {
+			maps = append(maps, []*program.Map{
+				program.MapUserFrom(base.EndpointIdMap),
+				program.MapUserFrom(base.BpfEndpointIdMap),
+				program.MapUserFrom(base.ProcessTreeMap),
+				program.MapUserFrom(base.ProcessTreeBinaryUUIDMap),
+				program.MapUserFrom(base.ProcessTreeUUIDBinaryMap),
+				program.MapUserFrom(base.DestinationEndpointMap),
+				program.MapUserFrom(base.ListenEndpointMap),
+			}...)
 			if utils.SupportFentry() {
-				maps = append(maps, []*program.Map{
-					EndpointIdMapFentry,
-					BpfEndpointIdMapFentry,
-					ProcessTreeIdMapFentry,
-					ProcessTreeMapFentry,
-					ProcessTreeBinaryUUIDMapFentry,
-					ProcessTreeUUIDBinaryMapFentry,
-					DestinationEndpointMapFentry,
-					ListenEndpointMapFentry,
-				}...)
+				maps = append(maps, []*program.Map{ProcessTreeIdMapFentry}...)
 			} else {
-				maps = append(maps, []*program.Map{
-					EndpointIdMapKprobe,
-					BpfEndpointIdMapKprobe,
-					ProcessTreeIdMapKprobe,
-					ProcessTreeMapKprobe,
-					ProcessTreeBinaryUUIDMapKprobe,
-					ProcessTreeUUIDBinaryMapKprobe,
-					DestinationEndpointMapKprobe,
-					ListenEndpointMapKprobe,
-				}...)
+				maps = append(maps, []*program.Map{ProcessTreeIdMapKprobe}...)
 			}
 		}
 	}

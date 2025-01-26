@@ -221,16 +221,6 @@ var (
 
 	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
 
-	// Endpoint Models
-	EndpointIdMap            = program.MapUser("tg_endpoint_id_map", TcpSockops515)
-	BpfEndpointIdMap         = program.MapUser("tg_bpf_endpoint_id_map", TcpSockops515)
-	ProcessTreeMapId         = program.MapUser("process_tree_id", TcpSockops515)
-	ProcessTreeMap           = program.MapUser("process_tree_map", TcpSockops515)
-	ProcessTreeBinaryUUIDMap = program.MapUser("process_tree_binary_uid_map", TcpSockops515)
-	ProcessTreeUUIDBinaryMap = program.MapUser("process_tree_uid_binary_map", TcpSockops515)
-	DestinationEndpointMap   = program.MapUser("destination_endpoint_map", TcpSockops515)
-	ListenEndpointMap        = program.MapUser("listen_endpoint_map", TcpSockops515)
-
 	// TCP Runtime maps
 	CfgMapKprobe       = program.MapBuilder("tg_cfg_map", ConnectKprobe)
 	CfgMapFentry       = program.MapBuilder("tg_cfg_map", ConnectFentry)
@@ -318,13 +308,13 @@ func UnloadSensor() error {
 
 func processModelMapsEnable() []*program.Map {
 	maps := []*program.Map{
-		EndpointIdMap,
-		BpfEndpointIdMap,
-		ProcessTreeMap,
-		ProcessTreeBinaryUUIDMap,
-		ProcessTreeUUIDBinaryMap,
-		DestinationEndpointMap,
-		ListenEndpointMap,
+		program.MapUserFrom(base.EndpointIdMap),
+		program.MapUserFrom(base.BpfEndpointIdMap),
+		program.MapUserFrom(base.ProcessTreeMap),
+		program.MapUserFrom(base.ProcessTreeBinaryUUIDMap),
+		program.MapUserFrom(base.ProcessTreeUUIDBinaryMap),
+		program.MapUserFrom(base.DestinationEndpointMap),
+		program.MapUserFrom(base.ListenEndpointMap),
 	}
 	return maps
 }
