@@ -950,9 +950,9 @@ func printProcessDebug() error {
 	return nil
 }
 
-func NewProcessDebug() *cobra.Command {
+func NewDebugProcess() *cobra.Command {
 	ret := &cobra.Command{
-		Use:          "debug-process",
+		Use:          "process",
 		Short:        "Debug the process state internal to the agent",
 		Hidden:       false,
 		SilenceUsage: false,
@@ -993,9 +993,9 @@ func printDestinationDebug() error {
 
 }
 
-func NewDestinationDebug() *cobra.Command {
+func NewDebugDestination() *cobra.Command {
 	ret := &cobra.Command{
-		Use:          "debug-destination-keys",
+		Use:          "destination",
 		Short:        "Debug the destination key state internal to the agent",
 		Hidden:       false,
 		SilenceUsage: false,
@@ -1080,7 +1080,7 @@ func printDebugCompact(res *tetragon.GetEndpointMapResponse) error {
 	return nil
 }
 
-func printDebug() error {
+func printEndpointDebug() error {
 	res, err := getDebug()
 	if err != nil {
 		return err
@@ -1103,20 +1103,45 @@ func printDebug() error {
 	}
 }
 
-func NewDebug() *cobra.Command {
+func NewDebugEndpoint() *cobra.Command {
 	ret := &cobra.Command{
-		Use:          "debug",
-		Short:        "Debug the application model state internal to the agent",
+		Use:          "endpoint",
+		Short:        "Debug the endpoint key state internal to the agent",
 		Hidden:       false,
 		SilenceUsage: false,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return printDebug()
+			return printEndpointDebug()
 		},
 	}
 
 	flags := ret.Flags()
 	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model")
 	viper.BindPFlags(flags)
+
+	return ret
+}
+
+func NewDebug() *cobra.Command {
+	ret := &cobra.Command{
+		Use:          "debug",
+		Short:        "Debug Tetragon process tree",
+		Hidden:       false,
+		SilenceUsage: false,
+		Run: func(cmd *cobra.Command, _ []string) {
+			cmd.Help()
+		},
+	}
+
+	ret.AddCommand(NewDebugProcess())
+	ret.AddCommand(NewDebugDestination())
+	ret.AddCommand(NewDebugEndpoint())
+
+	pflags := ret.PersistentFlags()
+	pflags.StringSliceVarP(&namespaces, "namespaces", "n", nil,
+		"Get processes in specific namespaces. Specify '<host-namespace>' to list host processes.")
+	pflags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
+	pflags.BoolVar(&host, "host", false, "Include the tree for host")
+	viper.BindPFlags(pflags)
 
 	return ret
 }
@@ -1174,8 +1199,6 @@ func New() *cobra.Command {
 	ret.AddCommand(NewShow())
 	ret.AddCommand(NewCheck())
 	ret.AddCommand(NewDebug())
-	ret.AddCommand(NewProcessDebug())
-	ret.AddCommand(NewDestinationDebug())
 	ret.AddCommand(NewSquash())
 	ret.AddCommand(NewDiff())
 
