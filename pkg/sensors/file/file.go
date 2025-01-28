@@ -34,6 +34,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	ossBTF "github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/cgtracker"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -1711,6 +1712,10 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 
 			// add this map to the list of maps
 			maps = append(maps, m)
+		}
+
+		if option.Config.EnableCgTrackerID {
+			maps = append(maps, program.MapUser(cgtracker.MapName, load))
 		}
 	}
 
