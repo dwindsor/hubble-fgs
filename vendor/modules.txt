@@ -505,6 +505,7 @@ github.com/cilium/tetragon/pkg/mountinfo
 github.com/cilium/tetragon/pkg/multiplexer
 github.com/cilium/tetragon/pkg/observer
 github.com/cilium/tetragon/pkg/observer/observertesthelper
+github.com/cilium/tetragon/pkg/observer/observertesthelper/docker
 github.com/cilium/tetragon/pkg/option
 github.com/cilium/tetragon/pkg/pidfile
 github.com/cilium/tetragon/pkg/podhelpers

@@ -11,16 +11,11 @@
 package process
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/defaults"
-	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
 	metrics "github.com/isovalent/hubble-fgs/pkg/metrics/processcacheclean"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -47,52 +42,13 @@ func addFakeProcess(pid uint32) {
 	process.AddExecEvent(proc)
 }
 
-func createFakeExecveMap(t *testing.T) *ebpf.Map {
-	pinPath := filepath.Join(defaults.DefaultMapRoot, defaults.DefaultMapPrefix)
-	// ensure Tetragon pin directory exists
-	os.MkdirAll(pinPath, os.ModePerm)
-	execveMap, err := ebpf.NewMapWithOptions(&ebpf.MapSpec{
-		Name:       "execve_map",
-		Type:       ebpf.Hash,
-		KeySize:    16,
-		ValueSize:  16,
-		MaxEntries: 1,
-		Pinning:    ebpf.PinByName,
-	}, ebpf.MapOptions{
-		PinPath: pinPath,
-	})
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("NewMapWithOptions failed")
-		t.FailNow()
-	}
-	return execveMap
-}
-
-func removeFakeExecveMap(execveMap *ebpf.Map) {
-	err := execveMap.Unpin()
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Map unpin failed")
-	}
-	err = execveMap.Close()
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Map close failed")
-	}
-	os.Remove(filepath.Join(defaults.DefaultMapRoot, defaults.DefaultMapPrefix))
-}
-
 func TestProcessCacheAddAndRemove(t *testing.T) {
-	// create a fake execve_map to keep DumpProcessCacheReqArgs happy
-	execveMap := createFakeExecveMap(t)
-	defer removeFakeExecveMap(execveMap)
 	// create the process cache
 	err := process.InitCache(nil, 10, defaults.DefaultProcessCacheGCInterval)
 	require.NoError(t, err)
 	// add a process to the cache.
 	addFakeProcess(1234)
-	processes := process.DumpProcessCache(&tetragon.DumpProcessCacheReqArgs{
-		SkipZeroRefcnt:            false,
-		ExcludeExecveMapProcesses: false,
-	})
+	processes := process.GetCacheEntries()
 	require.Equal(t, 1, len(processes))
 
 	execId := process.GetProcessID(1234, 0)
@@ -108,25 +64,16 @@ func TestProcessCacheAddAndRemove(t *testing.T) {
 	myExitingProcess, err := process.Get(execId)
 	require.NoError(t, err)
 	require.Equal(t, uint32(0), myExitingProcess.RefGet())
-
-	// make use of the map to prevent it being garbage collected
-	logger.GetLogger().WithField("MapFlags", execveMap.Flags()).Info("End of test")
 }
 
 func TestProcessCacheProcessAndChildrenHaveExited(t *testing.T) {
-	// create a fake execve_map to keep DumpProcessCacheReqArgs happy
-	execveMap := createFakeExecveMap(t)
-	defer removeFakeExecveMap(execveMap)
 	// create the process cache
 	err := process.InitCache(nil, 10, defaults.DefaultProcessCacheGCInterval)
 	require.NoError(t, err)
 
 	addFakeProcess(123)
 	// active process has not exited
-	processes := process.DumpProcessCache(&tetragon.DumpProcessCacheReqArgs{
-		SkipZeroRefcnt:            false,
-		ExcludeExecveMapProcesses: false,
-	})
+	processes := process.GetCacheEntries()
 	require.Equal(t, 1, len(processes))
 	require.False(t, processAndChildrenHaveExited(processes[0]))
 	pInt, err := process.Get(process.GetProcessID(123, 0))
@@ -149,15 +96,9 @@ func TestProcessCacheProcessAndChildrenHaveExited(t *testing.T) {
 	pInt.RefDec("process")
 	// completed process with exited child has exited
 	require.True(t, processAndChildrenHaveExited(processes[0]))
-
-	// make use of the map to prevent it being garbage collected
-	logger.GetLogger().WithField("MapFlags", execveMap.Flags()).Info("End of test")
 }
 
 func TestProcessCacheRemoveStale(t *testing.T) {
-	// create a fake execve_map to keep DumpProcessCacheReqArgs happy
-	execveMap := createFakeExecveMap(t)
-	defer removeFakeExecveMap(execveMap)
 	// create the process cache
 	err := process.InitCache(nil, 10, defaults.DefaultProcessCacheGCInterval)
 	require.NoError(t, err)
@@ -166,10 +107,7 @@ func TestProcessCacheRemoveStale(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		addFakeProcess(uint32(1234 + i))
 	}
-	processes := process.DumpProcessCache(&tetragon.DumpProcessCacheReqArgs{
-		SkipZeroRefcnt:            false,
-		ExcludeExecveMapProcesses: false,
-	})
+	processes := process.GetCacheEntries()
 	require.Equal(t, 8, len(processes))
 
 	var p []*process.ProcessInternal
@@ -219,10 +157,7 @@ func TestProcessCacheRemoveStale(t *testing.T) {
 
 	// No entries should have been removed yet, but two entries should now have ref count = 0
 	// (In real operation, these will later be removed by the process cache.)
-	processes = process.DumpProcessCache(&tetragon.DumpProcessCacheReqArgs{
-		SkipZeroRefcnt:            false,
-		ExcludeExecveMapProcesses: false,
-	})
+	processes = process.GetCacheEntries()
 	require.Equal(t, 8, len(processes))
 
 	// Two entries should have been reported as cleaned.
@@ -260,7 +195,4 @@ func TestProcessCacheRemoveStale(t *testing.T) {
 			require.Equal(t, uint32(0), pInt.RefGet())
 		}
 	}
-
-	// Make use of the map to prevent it being garbage collected
-	logger.GetLogger().WithField("MapFlags", execveMap.Flags()).Info("End of test")
 }

@@ -37,6 +37,7 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/observer/observertesthelper/docker"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	"github.com/sirupsen/logrus"
@@ -681,7 +682,7 @@ func TestDockerExistingListenEvent4(t *testing.T) {
 	// Try removing container first as an existing one will cause the following line to fail.
 	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
 	/* Start server before creating obs */
-	observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "0.0.0.0")
+	docker.Run(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "0.0.0.0")
 	observertesthelper.WaitForProcess("nc -nvlp 8087 -s 0.0.0.0")
 	time.Sleep(2 * time.Second)
 
@@ -741,9 +742,9 @@ func TestDockerListenConnect4(t *testing.T) {
 	readyWG.Wait()
 	// Try removing container first as an existing one will cause the following line to fail.
 	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
-	serverDockerID := observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8088", "-s", "0.0.0.0")
+	serverDockerID := docker.Run(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8088", "-s", "0.0.0.0")
 	time.Sleep(1 * time.Second)
-	clientDockerID := observertesthelper.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8088")
+	clientDockerID := docker.Run(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8088")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
@@ -1816,7 +1817,7 @@ func TestDockerExistingListenEvent6(t *testing.T) {
 	// Try removing container first as an existing one will cause the following line to fail.
 	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
 	/* Start server before creating obs */
-	observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8086", "-s", "[::]")
+	docker.Run(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8086", "-s", "[::]")
 	observertesthelper.WaitForProcess("nc -nvlp 8086 -s [::]")
 	time.Sleep(2 * time.Second)
 
@@ -1876,9 +1877,9 @@ func TestDockerListenConnect6(t *testing.T) {
 	readyWG.Wait()
 	// Try removing container first as an existing one will cause the following line to fail.
 	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
-	serverDockerID := observertesthelper.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "[::]")
+	serverDockerID := docker.Run(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "[::]")
 	time.Sleep(1 * time.Second)
-	clientDockerID := observertesthelper.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8087")
+	clientDockerID := docker.Run(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8087")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
