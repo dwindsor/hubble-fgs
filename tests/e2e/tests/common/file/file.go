@@ -73,7 +73,7 @@ func Test(t *testing.T, runner *runners.Runner, supportEnforcement bool) {
 			if !assert.NoError(t, err, "unable to get kube client") {
 				return ctx
 			}
-			pod, err := getUbuntuPod(ctx, client, Namespace)
+			pod, err := GetUbuntuPod(ctx, client, Namespace)
 			if !assert.NoError(t, err, "unable to get ubuntu pod") {
 				return ctx
 			}
@@ -439,7 +439,7 @@ func TestFileEnforcement(ctx context.Context, client klient.Client) (bool, error
 	return true, nil
 }
 
-func getUbuntuPod(ctx context.Context, client klient.Client, ns string) (*corev1.Pod, error) {
+func GetUbuntuPod(ctx context.Context, client klient.Client, ns string) (*corev1.Pod, error) {
 	r := client.Resources(ns)
 
 	podList := &corev1.PodList{}

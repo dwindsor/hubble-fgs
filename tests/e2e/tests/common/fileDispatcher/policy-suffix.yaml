@@ -1,0 +1,16 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "fim-suffix"
+spec:
+  podSelector:
+    matchLabels:
+      suffix: "enabled"
+  file:
+    file_paths_patterns:
+    - type: AllFileOps
+    selectors:
+    - matchFilename:
+      - operator: "InPattern"
+        values:
+        - "/pizza.*"

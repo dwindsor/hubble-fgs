@@ -135,6 +135,7 @@ jobs:
           cd hubble-fgs
           export HOST_PROC=/proc
           export FLAKY_HTTP=1
+          export RUN_FIM_DISPATCHER=1
           make e2e-test                                          \
             E2E_BUILD_IMAGES=0                                   \
             E2E_EXTRA_GOTEST_FLAGS="-failfast"                   \

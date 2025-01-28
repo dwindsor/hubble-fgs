@@ -201,6 +201,15 @@ jobs:
             if [[ "${{ matrix.kernel }}" == bpf-next-* ]]; then
               export FLAKY_HTTP=1
             fi
+            if [[ "${{ matrix.kernel }}" == bpf-next-* ]]; then
+              export RUN_FIM_DISPATCHER=1
+            fi
+            if [[ "${{ matrix.kernel }}" == 6.6-*  ]]; then
+              export RUN_FIM_DISPATCHER=1
+            fi
+            if [[ "${{ matrix.kernel }}" == 6.1-* ]]; then
+              export RUN_FIM_DISPATCHER=1
+            fi
             make e2e-test                                          \
               E2E_BUILD_IMAGES=0                                   \
               E2E_EXTRA_GOTEST_FLAGS="-failfast"                   \
