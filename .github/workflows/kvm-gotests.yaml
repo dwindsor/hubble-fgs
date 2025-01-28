@@ -98,7 +98,7 @@ jobs:
           fi
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@97c89f004bd0ab4caeacfe92ebc956e13e362e6b # v0.0.19
+        uses: cilium/little-vm-helper@7976bb91330b82248bc296b53f0e45fdd147d551 # v0.0.20
         with:
           install-dependencies: ${{ steps.vars.outputs.lvh_install_deps }}
           test-name: tetragon-unit-tests
@@ -148,7 +148,7 @@ jobs:
             service ssh restart
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@97c89f004bd0ab4caeacfe92ebc956e13e362e6b # v0.0.19
+        uses: cilium/little-vm-helper@7976bb91330b82248bc296b53f0e45fdd147d551 # v0.0.20
         with:
           provision: 'false'
           ssh-port: ${{ steps.vars.outputs.ssh_port }}
