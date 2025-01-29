@@ -42,11 +42,11 @@
   background-color: #e8f4fb;
 }
 
-.k8sEntityName {
+.k8sEntity .title {
   background: linear-gradient(to right, #cbe7fa, #fff 50%);
 }
 
-.outerDns .title {
+.outerEntity .title {
   background: linear-gradient(to right, #e2d6ff, #fff 50%);
 }
 
@@ -71,11 +71,11 @@
     background: linear-gradient(to right, #d8d8d8, #fff 50%);
   }
 
-  &.outerDns .title {
+  &.outerEntity .title {
     background: linear-gradient(to right, #c7b2f8, #fff 50%);
   }
 
-  .k8sEntityName {
+  &.k8sEntity .title {
     background: linear-gradient(to right, #afdcfa, #fff 50%);
   }
 
@@ -93,7 +93,7 @@
   color: #666;
 }
 
-.endpoint.outerDns {
+.endpoint.outerEntity {
   .pin {
     color: #8a66e0;
   }
@@ -111,7 +111,7 @@
   }
 }
 
-.endpoint.outerDns.highlighted {
+.endpoint.outerEntity.highlighted {
   :global(.process-tree-item-statistic) {
     color: #7748e4 !important;
   }

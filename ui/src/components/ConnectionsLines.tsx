@@ -9,19 +9,21 @@ export interface Props {
 
 const BASE_LINE_COLOR = {
   [EndpointKind.OuterDns]: "#9e83df",
+  [EndpointKind.OuterIp]: "#9e83df",
+  [EndpointKind.HostMetadataService]: "#78bbe8",
   [EndpointKind.K8s]: "#78bbe8",
-  [EndpointKind.HostMetadataService]: "#ccc",
-  [EndpointKind.Ip]: "#ccc",
   [EndpointKind.InnerDns]: "#ccc",
+  [EndpointKind.InnerIp]: "#ccc",
   [EndpointKind.Other]: "#ccc",
 } as const;
 
 const HIGHLIGHTED_LINE_COLOR = {
   [EndpointKind.OuterDns]: "#7748e4",
+  [EndpointKind.OuterIp]: "#7748e4",
+  [EndpointKind.HostMetadataService]: "#0b81d0",
   [EndpointKind.K8s]: "#0b81d0",
-  [EndpointKind.HostMetadataService]: "#888",
-  [EndpointKind.Ip]: "#888",
   [EndpointKind.InnerDns]: "#888",
+  [EndpointKind.InnerIp]: "#888",
   [EndpointKind.Other]: "#888",
 } as const;
 

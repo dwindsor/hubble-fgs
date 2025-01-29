@@ -7,7 +7,7 @@ import { useConnector } from "~/hooks/useConnector";
 import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
 import type { ApplicationProcess } from "~/proto";
 import { type EndpointStat, getEndpointHash } from "~/state/utils";
-import { EndpointKind } from "~/types";
+import { EndpointKind, type EndpointKindType } from "~/types";
 import {
   EndpointMode,
   getEndpointPort,
@@ -158,7 +158,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
 });
 
 function renderEndpoint(
-  kind: EndpointKind,
+  kind: EndpointKindType,
   title: string,
   port: string | null,
   stat: EndpointStat | null,
@@ -179,7 +179,7 @@ function renderEndpoint(
       );
     case EndpointKind.OuterDns:
       return (
-        <span className={clsx(css.title)}>
+        <span className={css.title}>
           {isPinned && <Pin />}
           {title}
           {port && <Port port={port} />}
@@ -191,11 +191,12 @@ function renderEndpoint(
           )}
         </span>
       );
-    case EndpointKind.Ip:
+    case EndpointKind.OuterIp:
+    case EndpointKind.InnerIp:
     case EndpointKind.HostMetadataService:
       return (
         <>
-          <IpEndpoint ip={title} port={port} isPinned={isPinned} />
+          <IpEndpoint kind={kind} ip={title} port={port} isPinned={isPinned} />
           {stat && (
             <>
               {" "}
@@ -221,18 +222,25 @@ function renderEndpoint(
   }
 }
 
-function classNameFromEndpointKind(kind: EndpointKind): string | null {
+function classNameFromEndpointKind(kind: EndpointKindType): string | null {
   switch (kind) {
+    case EndpointKind.OuterIp:
     case EndpointKind.OuterDns:
-      return css.outerDns;
+      return css.outerEntity;
     case EndpointKind.K8s:
+    case EndpointKind.HostMetadataService:
       return css.k8sEntity;
     default:
       return null;
   }
 }
 
-function IpEndpoint(props: { ip: string; port: string | null; isPinned: boolean }) {
+function IpEndpoint(props: {
+  kind: EndpointKindType;
+  ip: string;
+  port: string | null;
+  isPinned: boolean;
+}) {
   const { parts, separator } = useMemo(() => {
     const separator = props.ip.includes(".") ? "." : ":";
     return {
@@ -272,7 +280,7 @@ function K8sEndpoint(props: { str: string; port: string | null; isPinned: boolea
 
   return (
     <span className={css.k8sParts}>
-      <span className={clsx(css.title, css.k8sEntityName)}>
+      <span className={css.title}>
         {props.isPinned && <Pin />}
         {title}
         {props.port && <Port port={props.port} />}

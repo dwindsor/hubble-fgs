@@ -43,14 +43,15 @@ export type ProcessInfo = {
 export type EndpointsMap = Map<string, EndpointInfo>;
 
 export type EndpointInfo = {
-  kind: EndpointKind;
+  kind: EndpointKindType;
   visible?: boolean | undefined;
   xy?: XY | undefined;
 };
 
 export const EndpointKind = {
   __proto__: null,
-  Ip: "inner-ip",
+  OuterIp: "Outer-ip",
+  InnerIp: "inner-ip",
   OuterDns: "outer-dns",
   InnerDns: "inner-dns",
   K8s: "k8s",
@@ -58,7 +59,7 @@ export const EndpointKind = {
   Other: "other",
 } as const;
 
-export type EndpointKind = PropertyValues<typeof EndpointKind>;
+export type EndpointKindType = PropertyValues<typeof EndpointKind>;
 
 export type ConnectionsMap = Map<string /* endpoint */, Set<ApplicationProcess>>;
 

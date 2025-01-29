@@ -1,4 +1,6 @@
-import { EndpointKind, type PropertyValues } from "~/types";
+import ipaddr from "ipaddr.js";
+import { EndpointKind, type EndpointKindType, type PropertyValues } from "~/types";
+import { specialIps } from "./ips";
 
 export const EndpointMode = {
   __proto__: null,
@@ -10,19 +12,20 @@ export type EndpointModeType = PropertyValues<typeof EndpointMode>;
 
 export const endpointsKindOrder = [
   EndpointKind.OuterDns,
-  EndpointKind.K8s,
+  EndpointKind.OuterIp,
   EndpointKind.HostMetadataService,
-  EndpointKind.Ip,
+  EndpointKind.K8s,
   EndpointKind.InnerDns,
+  EndpointKind.InnerIp,
 ].reduce(
   (acc, item, idx) => {
     acc[item] = idx;
     return acc;
   },
-  {} as { [key in EndpointKind]: number },
+  {} as { [key in EndpointKindType]: number },
 );
 
-export function inferEndpointKind(endpoint: string): EndpointKind {
+export function inferEndpointKind(endpoint: string): EndpointKindType {
   const endpointWithoutPort = trimEndpointPort(endpoint);
 
   if (endpoint === "169.254.169.254:80") {
@@ -32,7 +35,11 @@ export function inferEndpointKind(endpoint: string): EndpointKind {
     return EndpointKind.K8s;
   }
   if (checkIpAddress(endpointWithoutPort)) {
-    return EndpointKind.Ip;
+    const ranges = {
+      inner: specialIps,
+    };
+    const type = ipaddr.subnetMatch(ipaddr.parse(endpointWithoutPort), ranges, "outer");
+    return type === "inner" ? EndpointKind.InnerIp : EndpointKind.OuterIp;
   }
   if (
     (endpointWithoutPort.startsWith("ip-") && endpointWithoutPort.endsWith(".internal")) ||

@@ -24,7 +24,7 @@
     border-radius: 3px;
   }
 
-  &.outerDns {
+  &.outerEntity {
     background: #ded0ff;
   }
 
@@ -37,7 +37,7 @@
   background: #ccc;
 }
 
-:global(.ipt-highlighted) .outerDns {
+:global(.ipt-highlighted) .outerEntity {
   background: #a289de;
 }
 
@@ -49,7 +49,7 @@
   background: #eee;
 }
 
-:global(.ipt-muted) .outerDns {
+:global(.ipt-muted) .outerEntity {
   background: #eee;
 }
 
