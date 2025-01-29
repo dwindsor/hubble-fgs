@@ -105,6 +105,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.extraEnv | list | `[]` |  |
 | tetragon.extraVolumeMounts | list | `[]` |  |
 | tetragon.fieldFilters | string | `""` | Filters to include or exclude fields from Tetragon events. Without any filters, all fields are included by default. The presence of at least one inclusion filter implies default-exclude (i.e. any fields that don't match an inclusion filter will be excluded). Field paths are expressed using dot notation like "a.b.c" and multiple field paths can be separated by commas like "a.b.c,d,e.f". An optional "event_set" may be specified to apply the field filter to a specific set of events.  For example, to exclude the "parent" field from all events and include the "process" field in PROCESS_KPROBE events while excluding all others:  fieldFilters: |   {"fields": "parent", "action": "EXCLUDE"}   {"event_set": ["PROCESS_KPROBE"], "fields": "process", "action": "INCLUDE"}  |
+| tetragon.fimDispatcher.enabled | bool | `false` |  |
 | tetragon.fimRuntimeEndpoint | string | `""` |  |
 | tetragon.flowExportFileCompress | bool | `false` |  |
 | tetragon.flowExportFileMaxBackups | int | `5` |  |

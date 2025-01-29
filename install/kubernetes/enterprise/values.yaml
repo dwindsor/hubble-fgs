@@ -42,6 +42,9 @@ tetragon:
   enableCiliumAPI: false
   # fimRuntimeEndpoint provides a custom container runtime endpoint for FIM (can be used only for containerd or cri-o)
   fimRuntimeEndpoint: ""
+  # fimDispatcher provides the option to enable FIM dispatcher when supported (only path-based for now)
+  fimDispatcher:
+    enabled: false
   # Set --btf option to explicitly specify an absolute path to the metadata file. For advanced users only.
   btf: ""
   # -- Enable sandboxpolicies.

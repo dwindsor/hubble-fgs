@@ -97,6 +97,10 @@ var fsScannerCmd *exec.Cmd
 var fsScannerCancelFn context.CancelFunc
 var fsScannerCancelFnMtx sync.Mutex
 
+var policyIdToTailId = map[uint32]uint32{}
+
+const maxTailId = uint32(1024)
+
 type MapType uint32
 
 const (
@@ -334,6 +338,12 @@ var (
 		{"tg_stats_map", BaseMap},
 	}
 
+	PathBasedTailCallMaps = []MapInfo{
+		{"fim_tail_calls", SharedMap},
+		{"dis_ctx_heap", SharedMap},
+		{"policy_id_to_tail_index", SharedMap},
+	}
+
 	// These programs are based on bpf_d_path helper to get the file path. bpf_d_path is introduced in kernel 5.10 (https://github.com/torvalds/linux/commit/6e22ab9da79343532cd3cde39df25e5a5478c692).
 	// On the other hand, support for bpf_d_path helper is not introduced in 5.10 for all the following programs. We try to use bpf_d_path when it is available otherwise, we use our d_path_local helper.
 	// For now we only support path-based hooks in kernels >= 5.17 (where bpf_loop helper is available https://github.com/torvalds/linux/commit/e6f2dd0f80674e9d5960337b3e9c2a242441b326) as in older kernels
@@ -343,27 +353,44 @@ var (
 		// This means that this is the only program where bpf_d_path helper is not supported in lsm. For this reason we use fmod_ret progs (and not fentry to provide enforcement).
 		// security_file_permission is part of the btf_allowlist_d_path since kernel 5.10 (https://github.com/torvalds/linux/commit/a8a717963fe5ecfd274eb93dd1285ee9428ffca7).
 		// Use probeDpathSecurityFilePermission to check support for that.
-		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "fmod_security_file_permission.o", "security_file_permission", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "fmod_security_file_permission.o", "security_file_permission", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		// security_kernel_read_file is part of sleepable_lsm_hooks since kernel 5.18 (https://github.com/torvalds/linux/commit/df6b3039fa112e17555776213cab7f07c0a8d98d).
 		// Use probeDpathSecurityKernelReadFile to check support for that.
-		{"lsm", "security_kernel_read_file", []FimFunc{{"security_kernel_read_file(struct file*, enum kernel_read_file_id, bool)", "lsm_security_kernel_read_file.o", "kernel_read_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"lsm", "security_kernel_read_file", []FimFunc{{"security_kernel_read_file(struct file*, enum kernel_read_file_id, bool)", "lsm_security_kernel_read_file.o", "kernel_read_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		// security_file_open, security_mmap_file, and security_bprm_check are part of sleepable_lsm_hooks since kernel 5.11 (https://github.com/torvalds/linux/commit/423f16108c9d832bd96059d5c882c8ef6d76eb96).
 		// Use probeDpathSecurityFileOpen to check support for that.
-		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "lsm_security_file_open.o", "file_open", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
-		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "lsm_security_mmap_file.o", "mmap_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "lsm_security_file_open.o", "file_open", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "lsm_security_mmap_file.o", "mmap_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		// security_path_* became part of sleepable_lsm_hooks in kernel 6.8 (https://github.com/torvalds/linux/commit/b13cddf633562b9b2c34fd63471d377019704ebe).
 		// Use probeDpathSecurityPathTruncate to check support for that.
-		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
-		{"lsm", "security_path_mkdir", []FimFunc{{"security_path_mkdir(const struct path*, struct dentry*, umode_t)", "lsm_security_path_mkdir.o", "path_mkdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
-		{"lsm", "security_path_rmdir", []FimFunc{{"security_path_rmdir(const struct path*, struct dentry*)", "lsm_security_path_rmdir.o", "path_rmdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
-		{"lsm", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "lsm_security_path_unlink.o", "path_unlink", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
-		{"lsm", "security_path_truncate", []FimFunc{{"security_path_truncate(const struct path*)", "lsm_security_path_truncate.o", "path_truncate", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
-		{"lsm", "security_path_chmod", []FimFunc{{"security_path_chmod(const struct path*, umode_t)", "lsm_security_path_chmod.o", "path_chmod", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
-		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_chown.o", "path_chown", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}},
-		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], {{"file_rename_heap_map", PrivateMap}}, {{"rename_path_heap", PrivateMap}}}}}},
+		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_path_mkdir", []FimFunc{{"security_path_mkdir(const struct path*, struct dentry*, umode_t)", "lsm_security_path_mkdir.o", "path_mkdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_path_rmdir", []FimFunc{{"security_path_rmdir(const struct path*, struct dentry*)", "lsm_security_path_rmdir.o", "path_rmdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "lsm_security_path_unlink.o", "path_unlink", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_path_truncate", []FimFunc{{"security_path_truncate(const struct path*)", "lsm_security_path_truncate.o", "path_truncate", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_path_chmod", []FimFunc{{"security_path_chmod(const struct path*, umode_t)", "lsm_security_path_chmod.o", "path_chmod", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_chown.o", "path_chown", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], {{"file_rename_heap_map", PrivateMap}}, {{"rename_path_heap", PrivateMap}}, PathBasedTailCallMaps[:]}}}},
 	}
 
-	FimPathBasedHooksExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:]}}}}
+	FimPathBasedTailCallHooks = [...]FimHook{
+		{"fmod_ret", "tail_call", []FimFunc{{"", "fmod_security_file_permission.o", "security_file_permission", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_kernel_read_file.o", "kernel_read_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_file_open.o", "file_open", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_mmap_file.o", "mmap_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_link.o", "path_link", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_mkdir.o", "path_mkdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_rmdir.o", "path_rmdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_unlink.o", "path_unlink", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_truncate.o", "path_truncate", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_chmod.o", "path_chmod", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_chown.o", "path_chown", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_rename.o", "path_rename", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], {{"file_rename_heap_map", PrivateMap}}, {{"rename_path_heap", PrivateMap}}, PathBasedTailCallMaps[:]}}}},
+	}
+
+	FimPathBasedHooksExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}}
+
+	FimPathBasedTailCallHooksExec = FimHook{"lsm", "tail_call", []FimFunc{{"", "lsm_security_bprm_check.o", "bprm_check_security", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}}
 
 	FimPathBasedHooksExecDigests = [...]FimHook{
 		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "bprm_check_security",
@@ -1232,9 +1259,30 @@ func addFilters(handle *ebpf.Map, str string, val fileapi.LPMMapValue) error {
 	}
 }
 
+func allocNewTailId(policyId uint32) (uint32, error) {
+	for i := uint32(1); i < maxTailId; i++ {
+		if _, ok := policyIdToTailId[i]; !ok {
+			policyIdToTailId[i] = policyId
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("allocNewTailId: Cannot allocate tail id for policy id %d", policyId)
+}
+
+func clearTailId(tailId uint32) {
+	delete(policyIdToTailId, tailId)
+}
+
+type TailCallIndex struct {
+	valid bool
+	index uint32
+}
+
 type FimLoaderData struct {
-	s  *fm.KernelSelectorState
-	tp string // type of program (i.e. kprobe, kretprobe, lsm, fmod_ret, etc.)
+	tp         string // type of program (i.e. kprobe, kretprobe, lsm, fmod_ret, etc.)
+	progBpfDir string
+	tail       TailCallIndex
+	tailId     uint32
 }
 
 func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState, tpConf *configFileSensorOptions, pathMatcher PathBasedMatcher, mode TpMode) (*sensors.Sensor, error) {
@@ -1260,6 +1308,29 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	pol.FileMonitoringTable.AddFIM(config.TpId, e)
 
 	l := logger.GetLogger()
+
+	var tailId uint32
+	if eeOption.Config.EnableFimDispatcher && config.PolicyId != 0 {
+		var err error
+		tailId, err = allocNewTailId(config.PolicyId)
+		if err != nil {
+			return nil, fmt.Errorf("addFileMonitoringSensor: %v", err)
+		}
+
+		var policyMap *ebpf.Map
+		policyMapPinPath := path.Join(option.Config.BpfDir, baseFIMPolicy, "policy_id_to_tail_index")
+		policyMap, err = ebpf.LoadPinnedMap(policyMapPinPath, nil)
+		if err != nil {
+			return nil, fmt.Errorf("addFileMonitoringSensor: ebpf.LoadPinnedMap fails for %s", policyMapPinPath)
+		}
+		defer policyMap.Close()
+
+		// add a new entry into tail calls map
+		err = policyMap.Update(config.PolicyId, tailId, ebpf.UpdateAny)
+		if err != nil {
+			return nil, fmt.Errorf("addFileMonitoringSensor: policyMap.Update fails for policy_id %d and tail_id %d: %v", config.PolicyId, tailId, err)
+		}
+	}
 
 	exactFilePathMatch := make(map[string]uint32)
 	config.NumPatterns = uint32(len(kprobes.PathsPatterns))
@@ -1414,11 +1485,20 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	// adding extra unique number in case of conflict.
 	pinMap := make(map[string]int)
 	pinName := func(h FimProg) string {
-		pin := fmt.Sprintf("%s_%s", h.tp, h.name)
+		var pin string
+		if h.name == "tail_call" {
+			pin = fmt.Sprintf("%s_%s", h.tp, h.progSection)
+		} else {
+			pin = fmt.Sprintf("%s_%s", h.tp, h.name)
+		}
 		extra, _ := pinMap[pin]
 		pinMap[pin] = extra + 1
 		if extra > 0 {
-			pin = fmt.Sprintf("%s_%s_%d", h.tp, h.name, extra)
+			if h.name == "tail_call" {
+				pin = fmt.Sprintf("%s_%s_%d", h.tp, h.progSection, extra)
+			} else {
+				pin = fmt.Sprintf("%s_%s_%d", h.tp, h.name, extra)
+			}
 		}
 		return pin
 	}
@@ -1436,8 +1516,9 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			load = load.SetRetProbe(true)
 		}
 		load.SetLoaderData(FimLoaderData{
-			s:  sel,
-			tp: h.tp,
+			tp:         h.tp,
+			progBpfDir: strings.Join([]string{h.tp, h.progSection}, "_"),
+			tailId:     tailId,
 		})
 		if ovlSpec != nil {
 			load.KernelTypes = ovlSpec
@@ -1471,6 +1552,26 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		for _, m := range h.maps {
 			if m.tp == SkipMap || m.tp == PrivateMap || m.tp == BaseMap {
 				// nothing to do on those type of maps
+				continue
+			}
+
+			if m.name == "fim_tail_calls" || m.name == "policy_id_to_tail_index" || m.name == "dis_ctx_heap" {
+				// we are not in a tail call program so just ignore those
+				if h.name != "tail_call" {
+					continue
+				}
+
+				if m.name == "policy_id_to_tail_index" {
+					load.PinMap[m.name] = PolicyIdToTailIndexMap
+				} else if m.name == "dis_ctx_heap" {
+					load.PinMap[m.name] = DisCtxHeapMap
+				} else if m.name == "fim_tail_calls" {
+					mp, ok := DisCallsMaps[fmt.Sprintf("%s/%s", h.tp, h.progSection)]
+					if !ok {
+						return nil, fmt.Errorf("addFileMonitoringSensor: Failed to find fim_tail_calls map for program %s", h.name)
+					}
+					load.PinMap[m.name] = mp
+				}
 				continue
 			}
 
@@ -1746,6 +1847,9 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			return nil
 		},
 		PreUnloadHook: func() error {
+			if eeOption.Config.EnableFimDispatcher && config.PolicyId != 0 {
+				clearTailId(tailId)
+			}
 			pol.FileMonitoringTable.RmFIM(config.TpId)
 			return nil
 		},
@@ -1848,15 +1952,24 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 	var hooks []FimHook
 	m := ""
 	if mode == PathBased {
-		hooks = FimPathBasedHooks[:]
-		m = "path-based"
-		if digestSupport {
-			for _, h := range FimPathBasedHooksExecDigests {
-				hooks = append(hooks, h)
+		if eeOption.Config.EnableFimDispatcher {
+			hooks = FimPathBasedTailCallHooks[:]
+			m = "path-based-with-dispatcher"
+			if digestSupport {
+				return nil, fmt.Errorf("exec digests are not supported yet with FIM dispatcher")
 			}
-			m += " with exec digests"
+			hooks = append(hooks, FimPathBasedTailCallHooksExec)
 		} else {
-			hooks = append(hooks, FimPathBasedHooksExec)
+			hooks = FimPathBasedHooks[:]
+			m = "path-based"
+			if digestSupport {
+				for _, h := range FimPathBasedHooksExecDigests {
+					hooks = append(hooks, h)
+				}
+				m += " with exec digests"
+			} else {
+				hooks = append(hooks, FimPathBasedHooksExec)
+			}
 		}
 		hooks = getIoUringHooks(spec, ioUringSupport, hooks)
 	} else if mode == Observe {
@@ -1912,6 +2025,17 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 		// to attach that hook, fim will fail to load. The prototype of io_issue_sqe
 		// seems to be stable along all kernels that have this function.
 		if h.name == "io_issue_sqe" {
+			// generate the maps
+			maps := []MapInfo{}
+			for _, m := range h.prog[0].maps {
+				maps = append(maps, m...)
+			}
+
+			fimProgs = append(fimProgs, FimProg{h.tp, h.name, h.prog[0].progName, h.prog[0].progSection, maps})
+			continue
+		}
+
+		if h.name == "tail_call" {
 			// generate the maps
 			maps := []MapInfo{}
 			for _, m := range h.prog[0].maps {
@@ -2104,6 +2228,179 @@ func GetTpMode(s *v1alpha1.FileSpec) (TpMode, PathBasedMatcher, error) {
 	return modeNum, pathMatcher, nil
 }
 
+var (
+	baseFIMPolicy = "__base_file__"
+
+	SecurityFilePermission = program.Builder(
+		"fmod_ret_dispatcher.o",
+		"security_file_permission",
+		"fmod_ret/security_file_permission",
+		"fmod_ret_security_file_permission",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "fmod_ret", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityKernelReadFile = program.Builder(
+		"lsm_dispatcher_kernel_read_file.o",
+		"kernel_read_file",
+		"lsm/kernel_read_file",
+		"lsm_kernel_read_file",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityFileOpen = program.Builder(
+		"lsm_dispatcher_file_open.o",
+		"file_open",
+		"lsm/file_open",
+		"lsm_file_open",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityMmapFile = program.Builder(
+		"lsm_dispatcher_mmap_file.o",
+		"mmap_file",
+		"lsm/mmap_file",
+		"lsm_mmap_file",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityPathLink = program.Builder(
+		"lsm_dispatcher_path_link.o",
+		"path_link",
+		"lsm/path_link",
+		"lsm_path_link",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityPathMkdir = program.Builder(
+		"lsm_dispatcher_path_mkdir.o",
+		"path_mkdir",
+		"lsm/path_mkdir",
+		"lsm_path_mkdir",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityPathRmdir = program.Builder(
+		"lsm_dispatcher_path_rmdir.o",
+		"path_rmdir",
+		"lsm/path_rmdir",
+		"lsm_path_rmdir",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityPathUnlink = program.Builder(
+		"lsm_dispatcher_path_unlink.o",
+		"path_unlink",
+		"lsm/path_unlink",
+		"lsm_path_unlink",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityPathTruncate = program.Builder(
+		"lsm_dispatcher_path_truncate.o",
+		"path_truncate",
+		"lsm/path_truncate",
+		"lsm_path_truncate",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityPathChmod = program.Builder(
+		"lsm_dispatcher_path_chmod.o",
+		"path_chmod",
+		"lsm/path_chmod",
+		"lsm_path_chmod",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityPathChown = program.Builder(
+		"lsm_dispatcher_path_chown.o",
+		"path_chown",
+		"lsm/path_chown",
+		"lsm_path_chown",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityPathRename = program.Builder(
+		"lsm_dispatcher_path_rename.o",
+		"path_rename",
+		"lsm/path_rename",
+		"lsm_path_rename",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	SecurityBprmCheck = program.Builder(
+		"lsm_dispatcher_bprm_check_security.o",
+		"bprm_check_security",
+		"lsm/bprm_check_security",
+		"lsm_bprm_check_security",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
+	baseFIMPrograms = []*program.Program{
+		SecurityFilePermission,
+		SecurityKernelReadFile,
+		SecurityFileOpen,
+		SecurityMmapFile,
+		SecurityPathLink,
+		SecurityPathMkdir,
+		SecurityPathRmdir,
+		SecurityPathUnlink,
+		SecurityPathTruncate,
+		SecurityPathChmod,
+		SecurityPathChown,
+		SecurityPathRename,
+		SecurityBprmCheck,
+	}
+
+	PolicyFilterReverseMaps = program.MapBuilder("policy_filter_cgroup_maps", baseFIMPrograms...)
+	TgConfMap               = program.MapBuilder("tg_conf_map", baseFIMPrograms...)
+	PolicyIdToTailIndexMap  = program.MapBuilderSensor("policy_id_to_tail_index", baseFIMPrograms...)
+	DisCtxHeapMap           = program.MapBuilderSensor("dis_ctx_heap", baseFIMPrograms...)
+
+	DisCallsMaps = map[string]*program.Map{
+		SecurityFilePermission.Label: program.MapBuilderProgram("fim_tail_calls", SecurityFilePermission),
+		SecurityKernelReadFile.Label: program.MapBuilderProgram("fim_tail_calls", SecurityKernelReadFile),
+		SecurityFileOpen.Label:       program.MapBuilderProgram("fim_tail_calls", SecurityFileOpen),
+		SecurityMmapFile.Label:       program.MapBuilderProgram("fim_tail_calls", SecurityMmapFile),
+		SecurityPathLink.Label:       program.MapBuilderProgram("fim_tail_calls", SecurityPathLink),
+		SecurityPathMkdir.Label:      program.MapBuilderProgram("fim_tail_calls", SecurityPathMkdir),
+		SecurityPathRmdir.Label:      program.MapBuilderProgram("fim_tail_calls", SecurityPathRmdir),
+		SecurityPathUnlink.Label:     program.MapBuilderProgram("fim_tail_calls", SecurityPathUnlink),
+		SecurityPathTruncate.Label:   program.MapBuilderProgram("fim_tail_calls", SecurityPathTruncate),
+		SecurityPathChmod.Label:      program.MapBuilderProgram("fim_tail_calls", SecurityPathChmod),
+		SecurityPathChown.Label:      program.MapBuilderProgram("fim_tail_calls", SecurityPathChown),
+		SecurityPathRename.Label:     program.MapBuilderProgram("fim_tail_calls", SecurityPathRename),
+		SecurityBprmCheck.Label:      program.MapBuilderProgram("fim_tail_calls", SecurityBprmCheck),
+	}
+)
+
+func LoadFIMInitialSensor(ctx context.Context) error {
+	if eeOption.Config.EnableFimDispatcher && !option.Config.EnablePolicyFilterCgroupMap {
+		return fmt.Errorf("enabling FIM dispatcher requires enabling policy filter cgroup map as well")
+	}
+	if !eeOption.Config.EnableFimDispatcher {
+		logger.GetLogger().Info("FIM dispatcher is not enabled")
+		return nil
+	}
+	mgr := observer.GetSensorManager()
+	initialFIMSensor := &sensors.Sensor{
+		Name:  baseFIMPolicy,
+		Progs: baseFIMPrograms,
+		Maps: []*program.Map{
+			PolicyFilterReverseMaps,
+			TgConfMap,
+			PolicyIdToTailIndexMap,
+			DisCtxHeapMap,
+		},
+	}
+	for _, v := range DisCallsMaps {
+		initialFIMSensor.Maps = append(initialFIMSensor.Maps, v)
+	}
+	if err := mgr.AddSensor(ctx, initialFIMSensor.Name, initialFIMSensor); err != nil {
+		return err
+	}
+	return mgr.EnableSensor(ctx, initialFIMSensor.Name)
+}
+
 func (k *observerFileSensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
@@ -2190,6 +2487,28 @@ func (k *observerFileSensor) PolicyHandler(
 	return addFileMonitoringSensor(policy, *newFileSpec, progs, config, selState, tpConf, pathMatcher, mode)
 }
 
+func setTailCallIfNeeded(args sensors.LoadProbeArgs, v FimLoaderData) error {
+	if !v.tail.valid {
+		return nil
+	}
+
+	// open the map with tail calls
+	tailPinPath := path.Join(args.BPFDir, args.Load.PinPath, "fim_tail_calls")
+	tailCallsMap, err := ebpf.LoadPinnedMap(tailPinPath, nil)
+	if err != nil {
+		return fmt.Errorf("loadProbe: ebpf.LoadPinnedMap fails for %s", tailPinPath)
+	}
+	defer tailCallsMap.Close()
+
+	// add a new entry into tail calls map
+	err = tailCallsMap.Update(uint32(v.tail.index), uint32(args.Load.Prog.FD()), 0)
+	if err != nil {
+		return fmt.Errorf("loadProbe: tailCallsMap.Update fails for index %d and prog %s map %s: %v", v.tail.index, args.Load.Prog, tailCallsMap, err)
+	}
+
+	return nil
+}
+
 func loadProbe(args sensors.LoadProbeArgs) error {
 	v, ok := args.Load.LoaderData.(FimLoaderData)
 	if !ok {
@@ -2200,10 +2519,39 @@ func loadProbe(args sensors.LoadProbeArgs) error {
 	switch v.tp {
 	case "kprobe", "kretprobe":
 		err = program.LoadKprobeProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
+		if err == nil {
+			err = setTailCallIfNeeded(args, v)
+		}
 	case "fentry", "fexit", "fmod_ret":
 		err = program.LoadTracingProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
+		if err == nil {
+			err = setTailCallIfNeeded(args, v)
+		}
 	case "lsm", "lsm.s":
 		err = program.LoadLSMProgramSimple(args.BPFDir, args.Load, args.Maps, args.Verbose)
+		if err == nil {
+			err = setTailCallIfNeeded(args, v)
+		}
+	case "tail_call":
+		err = program.LoadProgram(args.BPFDir, args.Load, args.Maps, program.NoAttach(), args.Verbose)
+		if err != nil {
+			return err
+		}
+
+		// open the map with tail calls
+		var tailCallsMap *ebpf.Map
+		tailPinPath := path.Join(args.BPFDir, baseFIMPolicy, v.progBpfDir, "fim_tail_calls")
+		tailCallsMap, err = ebpf.LoadPinnedMap(tailPinPath, nil)
+		if err != nil {
+			return fmt.Errorf("loadProbe: ebpf.LoadPinnedMap fails for %s", tailPinPath)
+		}
+		defer tailCallsMap.Close()
+
+		// add a new entry into tail calls map
+		err = tailCallsMap.Update(uint32(v.tailId), uint32(args.Load.Prog.FD()), 0)
+		if err != nil {
+			return fmt.Errorf("loadProbe: tailCallsMap.Update fails for index %d and prog %s map %s: %v", v.tailId, args.Load.Prog, tailCallsMap, err)
+		}
 	default:
 		err = fmt.Errorf("file: %s programs are not supported", v.tp)
 	}

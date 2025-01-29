@@ -46,7 +46,10 @@ type config struct {
 	EnableIcmpTracking bool
 	EnableDnsDebug     bool
 	EnableBPFDNSParser bool
-	DNSStatsPerSocket  bool
+
+	DNSStatsPerSocket bool
+
+	EnableFimDispatcher bool
 }
 
 var (
@@ -69,5 +72,6 @@ var (
 		EnableIcmpTracking:        false,
 		EnableCilium:              false,
 		ProcessCacheStaleInterval: time.Duration(60 * time.Minute),
+		EnableFimDispatcher:       false,
 	}
 )

@@ -1,6 +1,7 @@
 #define __V61_BPF_PROG
 #define __ENABLE_GLOB_SUPPORT
 #include "bpf_file.h"
+#include "dispatcher.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
@@ -64,5 +65,5 @@ int BPF_PROG(lsm_security_file_open, struct file *file)
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_tail_call(ctx, err & FILE_OP_BLOCK ? -EPERM : 0);
 }

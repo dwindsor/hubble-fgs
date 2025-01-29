@@ -109,7 +109,6 @@ func (k *observerFileExecSensor) PolicyHandler(
 			fmt.Sprintf("%s_%s", strings.Replace(h.tp, ".", "_", -1), h.name),
 			"file_exec_monitoring")
 		load.SetLoaderData(FimLoaderData{
-			s:  selState,
 			tp: h.tp,
 		})
 

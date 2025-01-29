@@ -3352,7 +3352,7 @@ func TestFileLinkOnTmpFile(t *testing.T) {
 }
 
 func TestBPFFilesExist(t *testing.T) {
-	for _, hks := range [][]FimHook{FimPathBasedHooks[:], {FimPathBasedHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
+	for _, hks := range [][]FimHook{FimPathBasedHooks[:], FimPathBasedTailCallHooks[:], {FimPathBasedHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
 		for _, hk := range hks {
 			for _, of := range hk.prog {
 				objFile := filepath.Join(runner.Conf().TetragonLib, of.progName)
@@ -3363,7 +3363,7 @@ func TestBPFFilesExist(t *testing.T) {
 }
 
 func TestBPFProgsMaps(t *testing.T) {
-	for _, hks := range [][]FimHook{FimPathBasedHooks[:], {FimPathBasedHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
+	for _, hks := range [][]FimHook{FimPathBasedHooks[:], FimPathBasedTailCallHooks[:], {FimPathBasedHooksExec}, {FimPathBasedTailCallHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
 		for _, hk := range hks {
 			for _, of := range hk.prog {
 				objFile := filepath.Join(runner.Conf().TetragonLib, of.progName)
@@ -3373,7 +3373,7 @@ func TestBPFProgsMaps(t *testing.T) {
 				for _, oo := range spec.Programs {
 					// there may be multiple eBPF programs into a single object file
 					// skip for those that we don't care in that iteration
-					if oo.SectionName != strings.Join([]string{hk.tp, of.progSection}, "/") {
+					if (oo.SectionName != strings.Join([]string{hk.tp, of.progSection}, "/")) && (hk.tp != "tail_call") {
 						continue
 					}
 

@@ -2,7 +2,7 @@
 #define __ENABLE_GLOB_SUPPORT
 #include "bpf_file.h"
 #include "path_setattr.h"
-#include "dispacher.h"
+#include "dispatcher.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
@@ -19,5 +19,5 @@ int BPF_PROG(lsm_security_path_truncate, const struct path *path)
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_tail_call(ctx, err & FILE_OP_BLOCK ? -EPERM : 0);
 }

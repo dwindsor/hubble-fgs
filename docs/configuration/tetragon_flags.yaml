@@ -204,6 +204,9 @@ options:
       usage: Expose real linear addresses in events stack traces
     - name: field-filters
       usage: Field filters for event exports
+    - name: fim-enable-dispatcher
+      default_value: "false"
+      usage: Enable FIM dispatcher when supported
     - name: fim-fifo-path
       default_value: /var/run/tetragon/
       usage: |

@@ -55,6 +55,7 @@ const (
 	KeyProcessCacheStaleInterval = "process-cache-stale-interval"
 	keyEnableBPFDNSParser        = "enable-bpf-dns-parser"
 	keyDNSStatsPerSocket         = "dns-stats-per-socket"
+	KeyEnableFimDispatcher       = "fim-enable-dispatcher"
 )
 
 func FixUpOSSFlags(flags *pflag.FlagSet) {
@@ -115,6 +116,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyEnableCiliumAPI, false, "Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache")
 	flags.Bool(keyEnableBPFDNSParser, false, "Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.")
 	flags.Bool(keyDNSStatsPerSocket, false, "If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported")
+	flags.Bool(KeyEnableFimDispatcher, false, "Enable FIM dispatcher when supported")
 }
 
 func ReadAndSetEnterpriseFlags() {
@@ -158,4 +160,5 @@ func ReadAndSetEnterpriseFlags() {
 	Config.ProcessCacheStaleInterval = viper.GetDuration(KeyProcessCacheStaleInterval)
 	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser) && kernels.MinKernelVersion("5.15.0")
 	Config.DNSStatsPerSocket = viper.GetBool(keyDNSStatsPerSocket)
+	Config.EnableFimDispatcher = viper.GetBool(KeyEnableFimDispatcher)
 }

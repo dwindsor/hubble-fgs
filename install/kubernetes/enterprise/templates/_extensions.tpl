@@ -1,6 +1,9 @@
 {{- define "configmap.extra" -}}
 fim-runtime-endpoint: {{ .Values.tetragon.fimRuntimeEndpoint | quote }}
 fim-fifo-path: {{ .Values.exportDirectory | quote }}
+{{- if .Values.tetragon.fimDispatcher.enabled }}
+fim-enable-dispatcher: "true"
+{{- end }}
 {{- if .Values.tetragon.flowExportFilename }}
 flow-export-filename: {{ .Values.exportDirectory}}/{{ .Values.tetragon.flowExportFilename }}
 flow-export-file-max-size-mb: {{ .Values.tetragon.flowExportFileMaxSizeMB | quote }}
