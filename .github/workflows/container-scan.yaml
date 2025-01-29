@@ -17,8 +17,17 @@ jobs:
       scan_result: ${{ steps.failure-flag.outputs.scan_result }}
     strategy:
       matrix:
-        image: [hubble-enterprise-ci, hubble-enterprise-operator-ci, tetragon-ci, tetragon-operator-ci]
+        image: [tetragon-ci, tetragon-operator-ci]
         branch: [v1.13, v1.14, v1.15]
+        include:
+          - image: hubble-enterprise-ci
+            branch: v1.13
+          - image: hubble-enterprise-ci
+            branch: v1.14
+          - image: hubble-enterprise-operator-ci
+            branch: v1.13
+          - image: hubble-enterprise-operator-ci
+            branch: v1.14
     steps:
       - name: Pull Docker image
         run: docker pull quay.io/isovalent-dev/${{ matrix.image }}:${{ matrix.branch }}-latest
