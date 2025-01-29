@@ -88,7 +88,7 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 	  bpf_security_inode_link.o bpf_security_inode_link_v419.o bpf_security_inode_link_enforce_lsm.o bpf_security_inode_link_enforce_fmod.o \
 	  bpf_security_file_open.o bpf_security_file_open_v419.o bpf_security_file_open_enforce_lsm.o bpf_security_file_open_enforce_fmod.o \
 	  fmod_security_file_permission.o lsm_security_kernel_read_file.o lsm_security_file_open.o lsm_security_mmap_file.o lsm_security_path_link.o \
-	  lsm_security_path_mkdir.o lsm_security_path_rmdir.o lsm_security_path_unlink.o lsm_security_bprm_check.o lsm_security_path_setattr.o lsm_security_path_rename.o \
+	  lsm_security_path_mkdir.o lsm_security_path_rmdir.o lsm_security_path_unlink.o lsm_security_bprm_check.o lsm_security_path_truncate.o lsm_security_path_chmod.o lsm_security_path_chown.o lsm_security_path_rename.o \
 	  probe_security_file_permission.o probe_security_path_truncate.o probe_security_file_open.o probe_security_kernel_read_file.o probe_bpf_loop.o probe_for_each_map_elem.o lsm_test_glob.o \
 	  lsm_security_bprm_check_digests.o probe_bpf_ima_file_hash.o
 
