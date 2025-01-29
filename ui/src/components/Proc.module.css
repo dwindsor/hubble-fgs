@@ -6,10 +6,9 @@
   }
 }
 
-.proc:has(> div)::before {
+.proc:has(> div.inner)::before {
   border-style: solid;
   border-image-slice: 1;
-  /* border-image-source: linear-gradient(to left, #fff, var(--branch-color)); */
   border-image-source: linear-gradient(to right, var(--branch-color), var(--branch-color) 50%, #fff);
   border-width: 0 0 2px 2px;
 }

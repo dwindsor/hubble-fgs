@@ -1,5 +1,5 @@
 import hashsum from "hash-sum";
-import { type ReactNode, memo, useCallback, useMemo, useState } from "react";
+import { type ReactNode, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useAppState } from "~/state/AppContext";
 import type { TreePath } from "~/types";
 
@@ -18,14 +18,23 @@ export const Collapsible = memo(function Collapsible(props: Props) {
 
   const pathHash = useMemo(() => hashsum(props.path), [props.path]);
 
-  const [open, setOpen] = useState(state.getTreePathState(pathHash) ?? props.initialOpen ?? false);
+  const [expanded, setExpanded] = useState(
+    state.getTreePathStatus(pathHash)?.expanded ?? props.initialOpen ?? false,
+  );
+
+  useEffect(() => {
+    state.setTreePathStatus(pathHash, { visible: true });
+    return () => {
+      state.setTreePathStatus(pathHash, { visible: false });
+    };
+  }, [state, pathHash]);
 
   const onClick = useCallback(
     (event: React.MouseEvent) => {
       event.preventDefault();
-      setOpen((prev) => {
+      setExpanded((prev) => {
         const next = !prev;
-        state.setTreePathState(pathHash, next);
+        state.setTreePathStatus(pathHash, { expanded: next });
         return next;
       });
     },
@@ -33,9 +42,9 @@ export const Collapsible = memo(function Collapsible(props: Props) {
   );
 
   return (
-    <details open={open}>
-      {props.summary({ opened: open, onClick })}
-      {open && props.children}
+    <details open={expanded}>
+      {props.summary({ opened: expanded, onClick })}
+      {expanded && props.children}
     </details>
   );
 });

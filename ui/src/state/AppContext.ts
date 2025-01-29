@@ -3,7 +3,7 @@ import { timestampNow } from "@bufbuild/protobuf/wkt";
 import { ApplicationModelEventSchema } from "@ipa/application_model/v1alpha/application_model_pb";
 import { createContext, useContext } from "react";
 import type { ApplicationModelEvent, ApplicationProcess } from "~/proto";
-import type { XY } from "~/types";
+import type { TreePathStatus, XY } from "~/types";
 import { assert } from "~/utils/assert";
 import { EndpointMode, type EndpointModeType } from "~/utils/endpoints";
 import { UrlParams, type UrlParamsType, setQueryParam } from "~/utils/url";
@@ -24,7 +24,7 @@ export function createAppContext({
   const state = createAppState(model);
 
   const inner = {
-    treePathsMap: new Map<string, boolean>(),
+    treePathsMap: new Map<string, TreePathStatus>(),
     highlightedEndpointsMap: new Map<string, Set<EndpointModeType>>(),
     highlightedProc: null as ApplicationProcess | null,
   };
@@ -34,7 +34,7 @@ export function createAppContext({
     new URLSearchParams(window.location.search).forEach((value, param) => {
       if (param === "expanded") {
         value.split(",").forEach((hash) => {
-          inner.treePathsMap.set(hash, true);
+          inner.treePathsMap.set(hash, { expanded: true });
         });
       } else if (param === "pinned") {
         value.split(",").forEach((endpoint) => {
@@ -60,16 +60,16 @@ export function createAppContext({
       setQueryParam(key, value);
     },
 
-    getTreePathState(hash: string) {
+    getTreePathStatus(hash: string) {
       return inner.treePathsMap.get(hash);
     },
 
-    setTreePathState(hash: string, value: boolean) {
-      inner.treePathsMap.set(hash, value);
+    setTreePathStatus(hash: string, status: TreePathStatus) {
+      inner.treePathsMap.set(hash, Object.assign(inner.treePathsMap.get(hash) ?? {}, status));
 
       const expanded: string[] = [];
       inner.treePathsMap.forEach((value, hash) => {
-        if (!value) return;
+        if (!value.expanded || !value.visible) return;
         expanded.push(hash);
       });
       if (expanded.length) {

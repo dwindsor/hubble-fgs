@@ -20,5 +20,5 @@ export function setQueryParam(key: string, value?: string | undefined | null) {
   if (params.size) {
     url += `?${params}`;
   }
-  window.history.pushState({}, "", decodeURIComponent(url));
+  window.history.replaceState({}, "", decodeURIComponent(url));
 }

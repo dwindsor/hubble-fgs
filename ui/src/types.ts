@@ -32,6 +32,11 @@ export type TreePath =
   | TreeWorkloadPath
   | TreeWorkloadProcPath;
 
+export type TreePathStatus = {
+  expanded?: boolean;
+  visible?: boolean;
+};
+
 export type PropertyValues<Obj> = Obj[Exclude<keyof Obj, "__proto__">];
 
 export type ProcessInfo = {

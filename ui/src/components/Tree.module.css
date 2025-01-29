@@ -63,7 +63,8 @@
       display: none;
     }
 
-    &:hover > span:nth-child(2) {
+    &:hover > div > span:nth-child(2) {
+      border-radius: 3px;
       background-color: var(--clickable-hover-bg-color);
     }
 
