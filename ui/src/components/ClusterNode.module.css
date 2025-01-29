@@ -1,3 +1,8 @@
+.inner {
+  display: flex;
+  align-items: center;
+}
+
 .nodeIcon {
   position: absolute;
   top: 4px;

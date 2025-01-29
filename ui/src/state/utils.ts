@@ -12,14 +12,14 @@ import { isSuspiciousProc } from "~/utils/procs";
 export type Stat = {
   totalBytesSent: number;
   totalBytesReceived: number;
-  hasSuspiciousEvents: boolean;
+  hasSuspiciousProcs: boolean;
 };
 
 export type EndpointStat = Stat;
 
 export type TreeEntryStat = Stat & {
   endpointsMap: Map<string, EndpointStat>;
-  hasSuspiciousEvents: boolean;
+  hasSuspiciousProcs: boolean;
 };
 
 export type Stats = ReturnType<typeof createEmptyStat>;
@@ -64,7 +64,7 @@ export function createAppState(model?: ApplicationModelEvent): {
   ) => {
     let recTotalBytesSent = 0;
     let recTotalBytesReceived = 0;
-    let recHasSuspiciousEvents = false;
+    let recHasSuspiciousProcs = false;
     const recEndpointsMap = new Map<string, EndpointStat>();
 
     recProcs?.forEach((proc) => {
@@ -77,9 +77,9 @@ export function createAppState(model?: ApplicationModelEvent): {
 
       let procTotalBytesSent = 0;
       let procTotalBytesReceived = 0;
-      const procHasSuspiciousEvents = isSuspiciousProc(proc);
+      const procHasSuspiciousProcs = isSuspiciousProc(proc);
 
-      recHasSuspiciousEvents ||= procHasSuspiciousEvents;
+      recHasSuspiciousProcs ||= procHasSuspiciousProcs;
 
       const procEndpointsMap = new Map<string, EndpointStat>();
 
@@ -91,28 +91,23 @@ export function createAppState(model?: ApplicationModelEvent): {
         procEndpointsMap.set(endpoint, {
           totalBytesSent: connBytesSent,
           totalBytesReceived: connBytesReceived,
-          hasSuspiciousEvents: procHasSuspiciousEvents,
+          hasSuspiciousProcs: procHasSuspiciousProcs,
         });
 
         procTotalBytesSent += connBytesSent;
         procTotalBytesReceived += connBytesReceived;
 
-        const endpointStat: EndpointStat = stat.endpointsMap.get(endpoint) ?? {
-          totalBytesSent: 0,
-          totalBytesReceived: 0,
-          hasSuspiciousEvents: false,
-        };
-        stat.endpointsMap.set(endpoint, {
-          totalBytesSent: endpointStat.totalBytesSent + connBytesSent,
-          totalBytesReceived: endpointStat.totalBytesReceived + connBytesReceived,
-          hasSuspiciousEvents: endpointStat.hasSuspiciousEvents || procHasSuspiciousEvents,
+        mergeEndpointStat(stat.endpointsMap, endpoint, {
+          totalBytesSent: connBytesSent,
+          totalBytesReceived: connBytesReceived,
+          hasSuspiciousProcs: procHasSuspiciousProcs,
         });
       });
 
       stat.processesMap.set(proc, {
         totalBytesSent: procTotalBytesSent,
         totalBytesReceived: procTotalBytesReceived,
-        hasSuspiciousEvents: procHasSuspiciousEvents,
+        hasSuspiciousProcs: procHasSuspiciousProcs,
         endpointsMap: procEndpointsMap,
       });
 
@@ -120,15 +115,7 @@ export function createAppState(model?: ApplicationModelEvent): {
       recTotalBytesReceived += procTotalBytesReceived;
 
       procEndpointsMap.forEach((procEndpointStat, procEndpoint) => {
-        const subEndpointStat: EndpointStat = recEndpointsMap.get(procEndpoint) ?? {
-          totalBytesSent: 0,
-          totalBytesReceived: 0,
-          hasSuspiciousEvents: false,
-        };
-        subEndpointStat.totalBytesSent += procEndpointStat.totalBytesSent;
-        subEndpointStat.totalBytesReceived += procEndpointStat.totalBytesReceived;
-        subEndpointStat.hasSuspiciousEvents ||= procEndpointStat.hasSuspiciousEvents;
-        recEndpointsMap.set(procEndpoint, subEndpointStat);
+        mergeEndpointStat(recEndpointsMap, procEndpoint, procEndpointStat);
 
         const endpointKind = inferEndpointKind(procEndpoint);
         endpointsMap.set(procEndpoint, { kind: endpointKind });
@@ -142,25 +129,15 @@ export function createAppState(model?: ApplicationModelEvent): {
       const subResult = rec(procPath, proc.children);
       recTotalBytesSent += subResult.totalBytesSent;
       recTotalBytesReceived += subResult.totalBytesReceived;
-      recHasSuspiciousEvents ||= subResult.hasSuspiciousEvents;
+      recHasSuspiciousProcs ||= subResult.hasSuspiciousProcs;
 
-      subResult.endpointsMap.forEach((endpointStat, endpoint) => {
-        const subEndpointStat: EndpointStat = recEndpointsMap.get(endpoint) ?? {
-          totalBytesSent: 0,
-          totalBytesReceived: 0,
-          hasSuspiciousEvents: false,
-        };
-        subEndpointStat.totalBytesSent += endpointStat.totalBytesSent;
-        subEndpointStat.totalBytesReceived += endpointStat.totalBytesReceived;
-        subEndpointStat.hasSuspiciousEvents ||= endpointStat.hasSuspiciousEvents;
-        recEndpointsMap.set(endpoint, subEndpointStat);
-      });
+      mergeEndpointStatMaps(subResult.endpointsMap, recEndpointsMap);
     });
 
     return {
       totalBytesSent: recTotalBytesSent,
       totalBytesReceived: recTotalBytesReceived,
-      hasSuspiciousEvents: recHasSuspiciousEvents,
+      hasSuspiciousProcs: recHasSuspiciousProcs,
       endpointsMap: recEndpointsMap,
     };
   };
@@ -169,7 +146,7 @@ export function createAppState(model?: ApplicationModelEvent): {
 
   let namespacesTotalBytesSent = 0;
   let namespacesTotalBytesReceived = 0;
-  let namespacesHasSuspiciousEvents = false;
+  let namespacesHasSuspiciousProcs = false;
   const namespacesEndpointsMap = new Map<string, EndpointStat>();
 
   model.applicationModel?.namespaces?.forEach((namespace) => {
@@ -178,7 +155,7 @@ export function createAppState(model?: ApplicationModelEvent): {
     let namespaceTotalBytesSent = 0;
     let namespaceTotalBytesReceived = 0;
     const namespaceEndpointsMap = new Map<string, EndpointStat>();
-    let namespaceHasSuspiciousEvent = false;
+    let namespaceHasSuspiciousProc = false;
 
     namespace.workloads?.forEach((workload) => {
       if (!workload.name) return;
@@ -191,62 +168,48 @@ export function createAppState(model?: ApplicationModelEvent): {
       stat.workloadsMap.set(getWorkloadHash(namespace.name, workload.name), {
         totalBytesSent: workloadResult.totalBytesSent,
         totalBytesReceived: workloadResult.totalBytesReceived,
-        hasSuspiciousEvents: workloadResult.hasSuspiciousEvents,
+        hasSuspiciousProcs: workloadResult.hasSuspiciousProcs,
         endpointsMap: workloadResult.endpointsMap,
       });
 
       namespaceTotalBytesSent += workloadResult.totalBytesSent;
       namespaceTotalBytesReceived += workloadResult.totalBytesReceived;
-      namespaceHasSuspiciousEvent ||= workloadResult.hasSuspiciousEvents;
+      namespaceHasSuspiciousProc ||= workloadResult.hasSuspiciousProcs;
 
-      workloadResult.endpointsMap.forEach((endpointStat, endpoint) => {
-        const namespaceEndpointStat: EndpointStat = namespaceEndpointsMap.get(endpoint) ?? {
-          totalBytesSent: 0,
-          totalBytesReceived: 0,
-          hasSuspiciousEvents: false,
-        };
-        namespaceEndpointStat.totalBytesSent += endpointStat.totalBytesSent;
-        namespaceEndpointStat.totalBytesReceived += endpointStat.totalBytesReceived;
-        namespaceEndpointStat.hasSuspiciousEvents ||= endpointStat.hasSuspiciousEvents;
-        namespaceEndpointsMap.set(endpoint, namespaceEndpointStat);
-
-        const namespacesEndpointStat: EndpointStat = namespacesEndpointsMap.get(endpoint) ?? {
-          totalBytesSent: 0,
-          totalBytesReceived: 0,
-          hasSuspiciousEvents: false,
-        };
-        namespacesEndpointStat.totalBytesSent += endpointStat.totalBytesSent;
-        namespacesEndpointStat.totalBytesReceived += endpointStat.totalBytesReceived;
-        namespacesEndpointStat.hasSuspiciousEvents ||= endpointStat.hasSuspiciousEvents;
-        namespacesEndpointsMap.set(endpoint, namespacesEndpointStat);
+      [namespaceEndpointsMap, namespacesEndpointsMap].forEach((endpointsMap) => {
+        mergeEndpointStatMaps(workloadResult.endpointsMap, endpointsMap);
       });
     });
 
     namespacesTotalBytesSent += namespaceTotalBytesSent;
     namespacesTotalBytesReceived += namespaceTotalBytesReceived;
-    namespacesHasSuspiciousEvents ||= namespaceHasSuspiciousEvent;
+    namespacesHasSuspiciousProcs ||= namespaceHasSuspiciousProc;
 
     stat.namespacesMap.set(namespace.name, {
       totalBytesSent: namespaceTotalBytesSent,
       totalBytesReceived: namespaceTotalBytesReceived,
-      hasSuspiciousEvents: namespaceHasSuspiciousEvent,
+      hasSuspiciousProcs: namespaceHasSuspiciousProc,
       endpointsMap: namespaceEndpointsMap,
     });
   });
 
-  stat.node.totalBytesSent = hostResult.totalBytesSent + namespacesTotalBytesSent;
-  stat.node.totalBytesReceived = hostResult.totalBytesReceived + namespacesTotalBytesReceived;
-  stat.node.hasSuspiciousEvents = hostResult.hasSuspiciousEvents || namespacesHasSuspiciousEvents;
-
   stat.host.totalBytesSent = hostResult.totalBytesSent;
   stat.host.totalBytesReceived = hostResult.totalBytesSent;
   stat.host.endpointsMap = hostResult.endpointsMap;
-  stat.host.hasSuspiciousEvents = hostResult.hasSuspiciousEvents;
+  stat.host.hasSuspiciousProcs = hostResult.hasSuspiciousProcs;
 
   stat.namespaces.totalBytesSent = namespacesTotalBytesSent;
   stat.namespaces.totalBytesReceived = namespacesTotalBytesReceived;
   stat.namespaces.endpointsMap = namespacesEndpointsMap;
-  stat.namespaces.hasSuspiciousEvents = namespacesHasSuspiciousEvents;
+  stat.namespaces.hasSuspiciousProcs = namespacesHasSuspiciousProcs;
+
+  stat.node.totalBytesSent = stat.host.totalBytesSent + stat.namespaces.totalBytesSent;
+  stat.node.totalBytesReceived = stat.host.totalBytesReceived + stat.namespaces.totalBytesReceived;
+  stat.node.endpointsMap = new Map();
+  [stat.host.endpointsMap, stat.namespaces.endpointsMap].forEach((endpointsMap) => {
+    mergeEndpointStatMaps(endpointsMap, stat.node.endpointsMap);
+  });
+  stat.node.hasSuspiciousProcs = stat.host.hasSuspiciousProcs || stat.namespaces.hasSuspiciousProcs;
 
   return {
     processesMap,
@@ -261,23 +224,49 @@ export function createEmptyStat() {
     node: {
       totalBytesSent: 0,
       totalBytesReceived: 0,
-      hasSuspiciousEvents: false,
-    } as Stat,
+      endpointsMap: new Map(),
+      hasSuspiciousProcs: false,
+    } as TreeEntryStat,
     host: {
       totalBytesSent: 0,
       totalBytesReceived: 0,
       endpointsMap: new Map(),
-      hasSuspiciousEvents: false,
+      hasSuspiciousProcs: false,
     } as TreeEntryStat,
     namespaces: {
       totalBytesSent: 0,
       totalBytesReceived: 0,
       endpointsMap: new Map(),
-      hasSuspiciousEvents: false,
+      hasSuspiciousProcs: false,
     } as TreeEntryStat,
     namespacesMap: new Map<string, TreeEntryStat>(),
     workloadsMap: new Map<string, TreeEntryStat>(),
     processesMap: new WeakMap<ApplicationProcess, TreeEntryStat>(),
     endpointsMap: new Map<string, EndpointStat>(),
   };
+}
+
+function mergeEndpointStat(
+  endpointsMap: Map<string, EndpointStat>,
+  endpoint: string,
+  endpointStat: EndpointStat,
+) {
+  const namespaceEndpointStat: EndpointStat = endpointsMap.get(endpoint) ?? {
+    totalBytesSent: 0,
+    totalBytesReceived: 0,
+    hasSuspiciousProcs: false,
+  };
+  namespaceEndpointStat.totalBytesSent += endpointStat.totalBytesSent;
+  namespaceEndpointStat.totalBytesReceived += endpointStat.totalBytesReceived;
+  namespaceEndpointStat.hasSuspiciousProcs ||= endpointStat.hasSuspiciousProcs;
+  endpointsMap.set(endpoint, namespaceEndpointStat);
+}
+
+function mergeEndpointStatMaps(
+  withEndpointsMap: Map<string, EndpointStat>,
+  targetEndpointsMap: Map<string, EndpointStat>,
+) {
+  withEndpointsMap.forEach((endpointStat, endpoint) => {
+    mergeEndpointStat(targetEndpointsMap, endpoint, endpointStat);
+  });
 }

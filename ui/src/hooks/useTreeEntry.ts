@@ -71,14 +71,14 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
       endpointsMap.set(selectedEndpoint, endpointStat);
       return {
         ...endpointStat,
-        hasSuspiciousEvents: args.statInfo.hasSuspiciousEvents,
+        hasSuspiciousProcs: args.statInfo.hasSuspiciousProcs,
         endpointsMap,
       };
     }
     const stat: TreeEntryStat = {
       totalBytesSent: 0,
       totalBytesReceived: 0,
-      hasSuspiciousEvents: args.statInfo.hasSuspiciousEvents,
+      hasSuspiciousProcs: args.statInfo.hasSuspiciousProcs,
       endpointsMap: new Map(),
     };
     args.statInfo.endpointsMap.forEach((endpointStat, endpoint) => {

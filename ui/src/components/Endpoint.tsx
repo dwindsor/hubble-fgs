@@ -53,7 +53,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
     const stat: EndpointStat = {
       totalBytesSent: 0,
       totalBytesReceived: 0,
-      hasSuspiciousEvents: false,
+      hasSuspiciousProcs: false,
     };
     let was = false;
     highlightedProc.connections?.forEach((conn) => {
@@ -61,7 +61,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
         was = true;
         stat.totalBytesSent += Number(conn.bytesSent || 0);
         stat.totalBytesReceived += Number(conn.bytesReceived || 0);
-        stat.hasSuspiciousEvents ||= isSuspiciousProc(highlightedProc);
+        stat.hasSuspiciousProcs ||= isSuspiciousProc(highlightedProc);
       }
     });
     if (!was) {

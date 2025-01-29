@@ -19,7 +19,7 @@ export const Statistic = memo(function Statistic(props: Props) {
           <Traffic dir="sent" bytes={props.stat.totalBytesSent} />
         </>
       )}
-      {props.showSuspiciousMarker && props.stat.hasSuspiciousEvents && (
+      {props.showSuspiciousMarker && props.stat.hasSuspiciousProcs && (
         <span className={css.suspiciousMarker}>
           <WarningIcon color={"#dda02f"} size={14} />
         </span>

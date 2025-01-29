@@ -30,7 +30,7 @@ export const Host = memo(function Host(props: HostProps) {
             <HostIcon
               className={css.hostIcon}
               size={14}
-              color={entry.stat?.hasSuspiciousEvents ? "#d59011" : "#b8b8b8"}
+              color={entry.stat?.hasSuspiciousProcs ? "#d59011" : "#b8b8b8"}
             />
             <span>Host</span>
             {entry.stat && <Statistic stat={entry.stat} />}

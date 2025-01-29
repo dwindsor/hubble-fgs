@@ -49,7 +49,7 @@ export const Workload = memo(function Workload(props: WorkloadProps) {
               <WorkloadIcon
                 className={css.workloadIcon}
                 size={14}
-                color={entry.stat?.hasSuspiciousEvents ? "#d59011" : "#b8b8b8"}
+                color={entry.stat?.hasSuspiciousProcs ? "#d59011" : "#b8b8b8"}
               />
               <span>{props.workload.name}</span>
               {entry.stat && <Statistic stat={entry.stat} />}
