@@ -7,6 +7,7 @@ import { App } from "./App";
 export interface Props {
   model: ApplicationModelEvent;
   getTreeOffset: () => { x?: number; y?: number };
+  persistStateInUrl?: boolean | undefined;
 }
 
 export const Root = memo(function Root(props: Props) {
@@ -18,8 +19,9 @@ export const Root = memo(function Root(props: Props) {
     return createAppContext({
       model,
       getTreeOffset: props.getTreeOffset,
+      persistInUrl: props.persistStateInUrl,
     });
-  }, [model, props.getTreeOffset]);
+  }, [model, props.getTreeOffset, props.persistStateInUrl]);
 
   return (
     <AppContext.Provider value={appContext}>

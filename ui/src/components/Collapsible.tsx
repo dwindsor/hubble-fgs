@@ -18,18 +18,18 @@ export const Collapsible = memo(function Collapsible(props: Props) {
 
   const pathHash = useMemo(() => hashsum(props.path), [props.path]);
 
-  const [open, setOpen] = useState(state.treePathsMap.get(pathHash) ?? props.initialOpen ?? false);
+  const [open, setOpen] = useState(state.getTreePathState(pathHash) ?? props.initialOpen ?? false);
 
   const onClick = useCallback(
     (event: React.MouseEvent) => {
       event.preventDefault();
       setOpen((prev) => {
         const next = !prev;
-        state.treePathsMap.set(pathHash, next);
+        state.setTreePathState(pathHash, next);
         return next;
       });
     },
-    [state.treePathsMap, pathHash],
+    [state, pathHash],
   );
 
   return (

@@ -5,7 +5,8 @@ import { createContext, useContext } from "react";
 import type { ApplicationModelEvent, ApplicationProcess } from "~/proto";
 import type { XY } from "~/types";
 import { assert } from "~/utils/assert";
-import type { EndpointModeType } from "~/utils/endpoints";
+import { EndpointMode, type EndpointModeType } from "~/utils/endpoints";
+import { UrlParams, type UrlParamsType, setQueryParam } from "~/utils/url";
 import { AppEmitter, EmitterEventKind } from "./AppEmitter";
 import { createAppState } from "./utils";
 
@@ -14,9 +15,11 @@ export type AppState = ReturnType<typeof useAppState>;
 export function createAppContext({
   model,
   getTreeOffset,
+  persistInUrl,
 }: {
   model: ApplicationModelEvent;
   getTreeOffset: () => { x?: number; y?: number };
+  persistInUrl?: boolean | undefined;
 }) {
   const state = createAppState(model);
 
@@ -26,6 +29,23 @@ export function createAppContext({
     highlightedProc: null as ApplicationProcess | null,
   };
 
+  if (persistInUrl) {
+    // Restore state from url params
+    new URLSearchParams(window.location.search).forEach((value, param) => {
+      if (param === "expanded") {
+        value.split(",").forEach((hash) => {
+          inner.treePathsMap.set(hash, true);
+        });
+      } else if (param === "pinned") {
+        value.split(",").forEach((endpoint) => {
+          const modes = new Set<EndpointModeType>();
+          modes.add(EndpointMode.Pinned);
+          inner.highlightedEndpointsMap.set(endpoint, modes);
+        });
+      }
+    });
+  }
+
   const emitter = new AppEmitter();
 
   const that = {
@@ -33,8 +53,30 @@ export function createAppContext({
 
     getTreeOffset,
 
-    get treePathsMap() {
-      return inner.treePathsMap;
+    setQueryParam(key: UrlParamsType, value?: string | undefined | null) {
+      if (!persistInUrl) {
+        return;
+      }
+      setQueryParam(key, value);
+    },
+
+    getTreePathState(hash: string) {
+      return inner.treePathsMap.get(hash);
+    },
+
+    setTreePathState(hash: string, value: boolean) {
+      inner.treePathsMap.set(hash, value);
+
+      const expanded: string[] = [];
+      inner.treePathsMap.forEach((value, hash) => {
+        if (!value) return;
+        expanded.push(hash);
+      });
+      if (expanded.length) {
+        that.setQueryParam(UrlParams.Expanded, expanded.sort().join(","));
+      } else {
+        that.setQueryParam(UrlParams.Expanded, undefined);
+      }
     },
 
     get connectionsMap() {
@@ -114,6 +156,18 @@ export function createAppContext({
         modes.add(mode);
         inner.highlightedEndpointsMap.set(endpoint, modes);
       }
+
+      const pinned: string[] = [];
+      inner.highlightedEndpointsMap.forEach((modes, endpoint) => {
+        if (!modes.has(EndpointMode.Pinned)) return;
+        pinned.push(endpoint);
+      });
+      if (pinned.length) {
+        that.setQueryParam(UrlParams.Pinned, pinned.sort().join(","));
+      } else {
+        that.setQueryParam(UrlParams.Pinned, undefined);
+      }
+
       emitter.emitter.emit(EmitterEventKind.HighlightEndpoint, endpoint, state, mode);
       that.redrawConnectionLines();
     },
