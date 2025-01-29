@@ -21,6 +21,7 @@ export function createAppContext({
   const state = createAppState(model);
 
   const inner = {
+    treePathsMap: new Map<string, boolean>(),
     highlightedEndpointsMap: new Map<string, Set<EndpointModeType>>(),
     highlightedProc: null as ApplicationProcess | null,
   };
@@ -31,6 +32,10 @@ export function createAppContext({
     model,
 
     getTreeOffset,
+
+    get treePathsMap() {
+      return inner.treePathsMap;
+    },
 
     get connectionsMap() {
       return state.connectionsMap;

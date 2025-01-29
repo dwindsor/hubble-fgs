@@ -1,7 +1,9 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationNamespace, ApplicationWorkload } from "~/proto";
 import { useAppState } from "~/state/AppContext";
+import { getWorkloadHash } from "~/state/utils";
+import type { TreeWorkloadPath } from "~/types";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
 import { WorkloadIcon } from "./Icons/WorkloadIcon";
@@ -17,18 +19,30 @@ export interface WorkloadProps {
 export const Workload = memo(function Workload(props: WorkloadProps) {
   const state = useAppState();
 
+  const procs = props.workload.processes ?? [];
+
   const entry = useTreeEntry({
     statInfo:
       props.namespace.name && props.workload.name
-        ? state.stat.workloadsMap.get(`${props.namespace.name}/${props.workload.name}`)
+        ? state.stat.workloadsMap.get(getWorkloadHash(props.namespace.name, props.workload.name))
         : undefined,
   });
 
-  const procs = props.workload.processes ?? [];
+  const path = useMemo((): TreeWorkloadPath | null => {
+    if (!props.namespace.name || !props.workload.name) {
+      return null;
+    }
+    return { namespace: props.namespace.name, workload: props.workload.name };
+  }, [props.namespace.name, props.workload.name]);
+
+  if (!path) {
+    return null;
+  }
 
   return (
     <li>
       <Collapsible
+        path={path}
         summary={({ onClick }) => (
           <summary className={entry.className} onClick={onClick}>
             <div className={css.inner}>

@@ -1,8 +1,9 @@
 import clsx from "clsx";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationNamespace } from "~/proto";
 import { useAppState } from "~/state/AppContext";
+import type { TreeNamespacePath } from "~/types";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
 import { NamespaceIcon } from "./Icons/NamespaceIcon";
@@ -18,15 +19,27 @@ export interface NamespaceProps {
 export const Namespace = memo(function Namespace(props: NamespaceProps) {
   const state = useAppState();
 
+  const workloads = props.namespace.workloads ?? [];
+
   const entry = useTreeEntry({
     statInfo: props.namespace.name ? state.stat.namespacesMap.get(props.namespace.name) : undefined,
   });
 
-  const workloads = props.namespace.workloads ?? [];
+  const path = useMemo((): TreeNamespacePath | null => {
+    if (!props.namespace.name) {
+      return null;
+    }
+    return { namespace: props.namespace.name };
+  }, [props.namespace.name]);
+
+  if (!path) {
+    return null;
+  }
 
   return (
     <li>
       <Collapsible
+        path={path}
         summary={({ onClick }) => (
           <summary className={entry.className} onClick={onClick}>
             <div className={css.inner}>
@@ -61,7 +74,8 @@ export const NamespacesList = memo(function NamespacesList(props: NamespacesList
 
   return (
     <Collapsible
-      initialOpened={true}
+      path={{ namespaces: true }}
+      initialOpen={true}
       summary={({ onClick }) => (
         <summary className={clsx(entry.className, css.namespacesTitle)} onClick={onClick}>
           <div className={css.inner}>

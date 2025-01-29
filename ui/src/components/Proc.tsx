@@ -4,6 +4,7 @@ import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationProcess } from "~/proto";
 import { useAppState } from "~/state/AppContext";
+import { getProcHash } from "~/state/utils";
 import { isSuspiciousProc } from "~/utils/procs";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
@@ -18,6 +19,8 @@ export interface ProcProps {
 
 export const Proc = memo(function Proc(props: ProcProps) {
   const state = useAppState();
+
+  const info = state.processesMap.get(props.proc);
 
   const entry = useTreeEntry({
     statInfo: state.stat.processesMap.get(props.proc),
@@ -38,12 +41,13 @@ export const Proc = memo(function Proc(props: ProcProps) {
     [state, props.proc, entry],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: don't do unnecessary unmounts
   useEffect(() => {
     update(true);
     return () => {
       state.updateProcess(props.proc, false, undefined);
     };
-  }, [state, props.proc, update]);
+  }, [state, props.proc]);
 
   const debouncedUpdate = useDebouncedCallback(update);
 
@@ -90,10 +94,15 @@ export const Proc = memo(function Proc(props: ProcProps) {
 
   const innerClassName = clsx(css.inner, entry.className);
 
+  if (!info) {
+    return null;
+  }
+
   return (
     <li className={className} onMouseEnter={highlight} onMouseLeave={unhighlight}>
       {children.length ? (
         <Collapsible
+          path={info.path}
           summary={({ onClick }) => (
             <summary className={innerClassName} onClick={onClick}>
               <div>
@@ -141,10 +150,9 @@ export const ProcsList = memo(function ProcsList(props: ProcsListProps) {
   return (
     <ul className={clsx(css.list, props.className)}>
       {props.procs.map((proc) => {
-        const key = `${proc.name}:[${proc.arguments}]`;
         return (
           <Proc
-            key={key}
+            key={getProcHash(proc)}
             proc={proc}
             className={clsx(props.procItemClassName)}
             childrenProcsListClassName={props.className}

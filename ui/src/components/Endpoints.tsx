@@ -14,7 +14,7 @@ export const Endpoints = memo(function Endpoints() {
 
   const size = useElementSize(ref);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: notify geometry change because size was changed
+  // biome-ignore lint/correctness/useExhaustiveDependencies: notify endpoints list change because it's size was changed
   useEffect(() => {
     state.changeEndpointsList();
   }, [state, size]);
@@ -31,7 +31,7 @@ export const Endpoints = memo(function Endpoints() {
     setSearchQuery("");
   }, []);
 
-  const isEmptySearch = useMemo(() => {
+  const isEmptySearchResult = useMemo(() => {
     return searchQuery.length >= 3 && endpoints[0]?.kind !== EndpointItemKind.Search;
   }, [searchQuery, endpoints]);
 
@@ -41,7 +41,7 @@ export const Endpoints = memo(function Endpoints() {
         <input value={searchQuery} onChange={onSearch} placeholder="Search endpoint..." />
       </div>
       <div ref={ref} className={css.endpointsList}>
-        {isEmptySearch && (
+        {isEmptySearchResult && (
           <div className={css.emptySearch}>
             <div className={css.emptySearchTitle}>Endpoints not found</div>
             <hr />

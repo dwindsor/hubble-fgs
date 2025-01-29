@@ -18,7 +18,8 @@ export const ClusterNode = memo(function ClusterNode() {
   return (
     <li className={css.nodeItem}>
       <Collapsible
-        initialOpened={true}
+        path={{ node: true }}
+        initialOpen={true}
         summary={({ onClick }) => (
           <summary className={css.nodeName} onClick={onClick}>
             <div>

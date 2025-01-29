@@ -85,12 +85,13 @@ export const Endpoint = memo(function Endpoint(props: Props) {
     [state, connector, props.endpoint],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: don't do unnecessary unmounts
   useEffect(() => {
     update(true);
     return () => {
       return state.updateEndpoint(props.endpoint, false, undefined);
     };
-  }, [state, props.endpoint, update]);
+  }, [state, props.endpoint]);
 
   const debouncedUpdate = useDebouncedCallback(update);
 

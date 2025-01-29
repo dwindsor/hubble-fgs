@@ -14,9 +14,28 @@ export type XYWH = XY & WH;
 
 export type ProcessesMap = WeakMap<ApplicationProcess, ProcessInfo>;
 
+export type TreeClusterPath = { cluster: true };
+export type TreeNodePath = { node: true };
+export type TreeHostPath = { host: true };
+export type TreeHostProcPath = { path: string[] };
+export type TreeNamespacesPath = { namespaces: true };
+export type TreeNamespacePath = { namespace: string };
+export type TreeWorkloadPath = TreeNamespacePath & { workload: string };
+export type TreeWorkloadProcPath = TreeWorkloadPath & { path: string[] };
+export type TreePath =
+  | TreeClusterPath
+  | TreeNodePath
+  | TreeHostPath
+  | TreeHostProcPath
+  | TreeNamespacesPath
+  | TreeNamespacePath
+  | TreeWorkloadPath
+  | TreeWorkloadProcPath;
+
 export type PropertyValues<Obj> = Obj[Exclude<keyof Obj, "__proto__">];
 
 export type ProcessInfo = {
+  path: TreePath;
   visible?: boolean | undefined;
   xy?: XY | undefined;
 };

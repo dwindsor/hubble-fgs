@@ -23,7 +23,7 @@ export const Host = memo(function Host(props: HostProps) {
 
   return (
     <Collapsible
-      initialOpened={false}
+      path={{ host: true }}
       summary={({ onClick }) => (
         <summary className={clsx(css.hostTitle, entry.className)} onClick={onClick}>
           <div className={css.inner}>

@@ -1,11 +1,9 @@
 import { memo } from "react";
-import { ApplicationModelEvent } from "~/proto";
 import { useAppState } from "~/state/AppContext";
 import css from "./Cluster.module.css";
 import { ClusterNode } from "./ClusterNode";
 import { Collapsible } from "./Collapsible";
 import { ClusterIcon } from "./Icons/ClusterIcon";
-import { Statistic } from "./Statistic";
 
 export const Cluster = memo(function Cluster() {
   const state = useAppState();
@@ -13,7 +11,8 @@ export const Cluster = memo(function Cluster() {
   return (
     <li className={css.clusterItem}>
       <Collapsible
-        initialOpened={true}
+        path={{ cluster: true }}
+        initialOpen={true}
         summary={({ onClick }) => (
           <summary className={css.clusterName} onClick={onClick}>
             <div>

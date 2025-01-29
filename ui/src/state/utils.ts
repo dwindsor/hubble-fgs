@@ -1,5 +1,11 @@
 import type { ApplicationConnection, ApplicationModelEvent, ApplicationProcess } from "~/proto";
-import type { ConnectionsMap, EndpointsMap, ProcessesMap } from "~/types";
+import type {
+  ConnectionsMap,
+  EndpointsMap,
+  ProcessesMap,
+  TreeHostProcPath,
+  TreeWorkloadProcPath,
+} from "~/types";
 import { inferEndpointKind } from "~/utils/endpoints";
 import { isSuspiciousProc } from "~/utils/procs";
 
@@ -15,10 +21,19 @@ export type TreeEntryStat = Stat & {
   endpointsMap: Map<string, EndpointStat>;
   hasSuspiciousEvents: boolean;
 };
+
 export type Stats = ReturnType<typeof createEmptyStat>;
 
 export function getEndpointHash(conn: ApplicationConnection) {
   return `${conn.destinationName}:${conn.destinationPort}`;
+}
+
+export function getWorkloadHash(namespace: string, workload: string) {
+  return `${namespace}/${workload}`;
+}
+
+export function getProcHash(proc: ApplicationProcess) {
+  return `${proc.name}:[${proc.arguments}]`;
 }
 
 export type AppState = ReturnType<typeof createAppState>;
@@ -43,14 +58,22 @@ export function createAppState(model?: ApplicationModelEvent): {
     };
   }
 
-  const rec = (processes?: ApplicationProcess[]) => {
+  const rec = (
+    recProcPath: TreeHostProcPath | TreeWorkloadProcPath,
+    recProcs?: ApplicationProcess[],
+  ) => {
     let recTotalBytesSent = 0;
     let recTotalBytesReceived = 0;
     let recHasSuspiciousEvents = false;
     const recEndpointsMap = new Map<string, EndpointStat>();
 
-    processes?.forEach((proc) => {
-      processesMap.set(proc, {});
+    recProcs?.forEach((proc) => {
+      const procHash = getProcHash(proc);
+      const procPath: TreeHostProcPath | TreeWorkloadProcPath = {
+        ...recProcPath,
+        path: [...recProcPath.path, procHash],
+      };
+      processesMap.set(proc, { path: procPath });
 
       let procTotalBytesSent = 0;
       let procTotalBytesReceived = 0;
@@ -116,7 +139,7 @@ export function createAppState(model?: ApplicationModelEvent): {
         connectionsMap.set(procEndpoint, endpointConnections);
       });
 
-      const subResult = rec(proc.children);
+      const subResult = rec(procPath, proc.children);
       recTotalBytesSent += subResult.totalBytesSent;
       recTotalBytesReceived += subResult.totalBytesReceived;
       recHasSuspiciousEvents ||= subResult.hasSuspiciousEvents;
@@ -142,7 +165,7 @@ export function createAppState(model?: ApplicationModelEvent): {
     };
   };
 
-  const hostResult = rec(model.applicationModel?.host?.processes ?? []);
+  const hostResult = rec({ path: [] }, model.applicationModel?.host?.processes ?? []);
 
   let namespacesTotalBytesSent = 0;
   let namespacesTotalBytesReceived = 0;
@@ -160,9 +183,12 @@ export function createAppState(model?: ApplicationModelEvent): {
     namespace.workloads?.forEach((workload) => {
       if (!workload.name) return;
 
-      const workloadResult = rec(workload.processes);
+      const workloadResult = rec(
+        { namespace: namespace.name, workload: workload.name, path: [] },
+        workload.processes,
+      );
 
-      stat.workloadsMap.set(`${namespace.name}/${workload.name}`, {
+      stat.workloadsMap.set(getWorkloadHash(namespace.name, workload.name), {
         totalBytesSent: workloadResult.totalBytesSent,
         totalBytesReceived: workloadResult.totalBytesReceived,
         hasSuspiciousEvents: workloadResult.hasSuspiciousEvents,
