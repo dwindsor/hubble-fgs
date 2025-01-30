@@ -11,14 +11,19 @@
 package dnsparser
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -41,6 +46,20 @@ func NewDNSParserErrorCollector() prometheus.Collector {
 }
 
 func collect(ch chan<- prometheus.Metric) {
+	sensorList, err := observer.GetSensorManager().ListSensors(context.Background())
+	if err != nil {
+		logger.GetLogger().WithError(err).Error("Failed to list sensors")
+		return
+	}
+
+	// Checking if the layer3 sensors is loaded otherwise we generate error
+	// log messages while the sensor is loading and we fetch the metrics
+	if sensorList == nil || !slices.ContainsFunc(*sensorList, func(s sensors.SensorStatus) bool {
+		return s.Name == api.Layer3SensorName && s.Enabled
+	}) {
+		return
+	}
+
 	mapFile := filepath.Join(bpf.MapPrefixPath(), ErrorMapName)
 	m, err := ebpf.LoadPinnedMap(mapFile, nil)
 	if err != nil {
