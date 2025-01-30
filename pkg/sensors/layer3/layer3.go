@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -327,7 +328,7 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 		}
 	}
 
-	l3Sensor := sensors.SensorBuilder(policy, "layer3_sensors", append(progsInitSock, progsCollectStats...), maps)
+	l3Sensor := sensors.SensorBuilder(policy, api.Layer3SensorName, append(progsInitSock, progsCollectStats...), maps)
 	l3Sensor.PreUnloadHook = unloadLayer3Sensor
 	return l3Sensor
 }
