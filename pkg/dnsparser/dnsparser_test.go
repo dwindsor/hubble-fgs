@@ -13,6 +13,7 @@ package dnsparser
 import (
 	"errors"
 	"flag"
+	"io"
 	"io/fs"
 	"maps"
 	"net/netip"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/google/gopacket/pcapgo"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
@@ -34,6 +36,7 @@ const (
 )
 
 var verifierLogs = flag.Bool("verlogs", false, "Write the full verifier logs in the ./verifier.log file")
+var pcapFile = flag.String("pcap", "", "Pcap file to load for the DNS parser test")
 
 func parseIPs(ips ...string) []netip.Addr {
 	netIPs := []netip.Addr{}
@@ -699,4 +702,68 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_DNSParser_FromPcap(t *testing.T) {
+	if pcapFile == nil || *pcapFile == "" {
+		t.Skip("No pcap file")
+	}
+
+	f, err := os.Open(*pcapFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	handle, err := pcapgo.NewReader(f)
+
+	if err != nil {
+		t.Fatalf("failed to open pcap file %s: %s", *pcapFile, err)
+	}
+
+	coll := loadDNSTestCollection(t)
+	prog, ok := coll.Programs[programName]
+	if !ok {
+		t.Fatalf("%s not found", programName)
+	}
+	rawErrMap, ok := coll.Maps[ErrorMapName]
+	if !ok {
+		t.Fatalf("map %s not found", ErrorMapName)
+	}
+	errMap := NewErrorMap(rawErrMap)
+
+	for {
+		packet, _, err := handle.ReadPacketData()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			t.Fatal(err)
+		}
+
+		t.Run("packet", func(t *testing.T) {
+			t.Cleanup(func() {
+				errMap.Clear()
+			})
+
+			code, err := prog.Run(&ebpf.RunOptions{
+				Data: packet,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if code != 1 {
+				t.Errorf("returned code is != 1: %d", code)
+			}
+
+			errValue, err := errMap.ReadUnique()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if errValue != 0 {
+				t.Errorf("got error %d and want no error", errValue)
+			}
+		})
+	}
+
 }

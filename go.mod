@@ -25,6 +25,7 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/cel-go v0.22.1
 	github.com/google/go-cmp v0.6.0
+	github.com/google/gopacket v1.1.19
 	github.com/google/gops v0.3.28
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
