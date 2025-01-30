@@ -12,12 +12,9 @@ type Stepper interface {
 	Step(ctx *testcontext.TestContext) TestStepError
 }
 
-type ProveStep struct{}
+type TapOutputStep struct{}
 
-func (step *ProveStep) Step(ctx *testcontext.TestContext) TestStepError {
-	// Wait for container to exit
-	util.WaitForContainer(ctx)
-
+func (step *TapOutputStep) Step(ctx *testcontext.TestContext) TestStepError {
 	parser := testparser.TapParser{}
 	results := parser.Parse(ctx.ContainerLogs)
 	if results != nil {
@@ -26,6 +23,24 @@ func (step *ProveStep) Step(ctx *testcontext.TestContext) TestStepError {
 			ctx.T.Logf("Failed Tests Summary:\n%s", results.DumpFailures())
 			return fmt.Errorf("prove step failure: not all tests ok")
 		}
+	}
+
+	return nil
+}
+
+type WaitContainerStep struct{}
+
+func (step *WaitContainerStep) Step(ctx *testcontext.TestContext) TestStepError {
+	// Wait for container to exit
+	res, err := util.WaitForContainer(ctx)
+	if err != nil {
+		return fmt.Errorf("error waiting for container: %w", err)
+	}
+	if res.Error != nil {
+		return fmt.Errorf("container error: %s", res.Error.Message)
+	}
+	if res.StatusCode != 0 {
+		return fmt.Errorf("non-zero exit code from container: %d", res.StatusCode)
 	}
 
 	return nil

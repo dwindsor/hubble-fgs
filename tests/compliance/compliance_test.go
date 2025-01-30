@@ -64,7 +64,8 @@ func testCases() []compliance.Test {
 				},
 			},
 			Steps: []compliance.Stepper{
-				&compliance.ProveStep{},
+				&compliance.WaitContainerStep{},
+				&compliance.TapOutputStep{},
 			},
 		},
 	}

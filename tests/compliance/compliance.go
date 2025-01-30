@@ -12,6 +12,7 @@ import (
 	"path"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
@@ -47,7 +48,8 @@ type Test struct {
 
 // Build and run the compliance test.
 func (ct *Test) BuildAndRun(t *testing.T) error {
-	ctx := context.Background()
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
 
 	// Build the compliance test using its Dockerfile.
 	if err := ct.Build(t, ctx); err != nil {
@@ -73,11 +75,10 @@ func (ct *Test) Run(t *testing.T, ctx context.Context) error {
 		}
 	}()
 
-	doneWG, err := ct.maybeListenForEvents(t, testCtx)
+	_, err = ct.maybeListenForEvents(t, testCtx)
 	if err != nil {
 		return err
 	}
-	defer doneWG.Wait()
 
 	err = ct.startTestContainer(t, testCtx)
 	if err != nil {
@@ -88,7 +89,8 @@ func (ct *Test) Run(t *testing.T, ctx context.Context) error {
 		assert.NoError(t, step.Step(testCtx))
 	}
 
-	doneWG.Done()
+	time.Sleep(10 * time.Second)
+
 	return nil
 }
 
