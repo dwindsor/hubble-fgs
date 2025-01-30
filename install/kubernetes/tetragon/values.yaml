@@ -489,6 +489,13 @@ integratedGrafana:
   # Tetragon without setting up a custom data pipeline.
   enabled: false
   prometheus:
+    # -- Prometheus image
+    image:
+      registry: quay.io
+      repository: prometheus/prometheus
+      tag: v2.55.0
+      sha: ~
+      pullPolicy: IfNotPresent
     # -- Resources for the Prometheus container.
     resources:
       limits:

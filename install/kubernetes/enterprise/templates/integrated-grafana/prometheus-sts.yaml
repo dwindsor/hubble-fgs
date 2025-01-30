@@ -37,7 +37,10 @@ spec:
       terminationGracePeriodSeconds: 600
       containers:
       - name: prometheus
-        image: quay.io/prometheus/prometheus:v2.55.0@sha256:378f4e03703557d1c6419e6caccf922f96e6d88a530f7431d66a4c4f4b1000fe
+        {{- with .Values.integratedGrafana.prometheus.image }}
+        image: "{{ .registry }}/{{ .repository }}:{{ .tag }}{{ if .sha }}@sha256:{{ .sha }}{{ end }}"
+        imagePullPolicy: {{ .pullPolicy | quote }}
+        {{- end }}
         args:
         - --config.file=/etc/prometheus/prometheus.yaml # config file from ConfigMap
         - --web.console.templates=/etc/prometheus/consoles
