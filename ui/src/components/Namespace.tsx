@@ -10,6 +10,7 @@ import { NamespaceIcon } from "./Icons/NamespaceIcon";
 import { NamespacesIcon } from "./Icons/NamespacesIcon";
 import css from "./Namespace.module.css";
 import { Statistic } from "./Statistic";
+import { TextOverflow } from "./TextOverflow";
 import { WorkloadsList } from "./Workload";
 
 export interface NamespaceProps {
@@ -19,7 +20,9 @@ export interface NamespaceProps {
 export const Namespace = memo(function Namespace(props: NamespaceProps) {
   const state = useAppState();
 
-  const workloads = props.namespace.workloads ?? [];
+  const workloads = useMemo(() => {
+    return props.namespace.workloads ?? [];
+  }, [props.namespace.workloads]);
 
   const entry = useTreeEntry({
     statInfo: props.namespace.name ? state.stat.namespacesMap.get(props.namespace.name) : undefined,
@@ -48,7 +51,7 @@ export const Namespace = memo(function Namespace(props: NamespaceProps) {
                 size={14}
                 color={entry.stat?.hasSuspiciousProcs ? "#d59011" : "#b8b8b8"}
               />
-              <span>{props.namespace.name}</span>
+              <TextOverflow text={props.namespace.name ?? ""} trimSide="right" />
               {entry.stat && <Statistic stat={entry.stat} />}
               {entry.hasConnections && <Connector endpoints={entry.connectorEndpoints} />}
             </div>

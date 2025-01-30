@@ -55,6 +55,7 @@
   }
 
   summary {
+    width: 100%;
     display: inline-block;
     cursor: pointer;
 

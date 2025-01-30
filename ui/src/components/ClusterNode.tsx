@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import { useAppState } from "~/state/AppContext";
 import css from "./ClusterNode.module.css";
@@ -8,6 +8,7 @@ import { Host } from "./Host";
 import { NodeIcon } from "./Icons/NodeIcon";
 import { NamespacesList } from "./Namespace";
 import { Statistic } from "./Statistic";
+import { TextOverflow } from "./TextOverflow";
 
 export const ClusterNode = memo(function ClusterNode() {
   const state = useAppState();
@@ -18,7 +19,9 @@ export const ClusterNode = memo(function ClusterNode() {
 
   const host = state.model.applicationModel?.host;
 
-  const namespaces = state.model.applicationModel?.namespaces ?? [];
+  const namespaces = useMemo(() => {
+    return state.model.applicationModel?.namespaces ?? [];
+  }, [state.model.applicationModel?.namespaces]);
 
   return (
     <li className={css.nodeItem}>
@@ -29,7 +32,7 @@ export const ClusterNode = memo(function ClusterNode() {
           <summary className={entry.className} onClick={onClick}>
             <div className={css.inner}>
               <NodeIcon className={css.nodeIcon} size={14} color={"#b8b8b8"} />
-              <span>{state.model.nodeName}</span>
+              <TextOverflow text={state.model.nodeName ?? ""} trimSide="center" />
               {entry.stat && <Statistic stat={entry.stat} />}
               {entry.hasConnections && <Connector endpoints={entry.connectorEndpoints} />}
             </div>

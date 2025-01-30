@@ -9,6 +9,7 @@ import { Connector } from "./Connector";
 import { WorkloadIcon } from "./Icons/WorkloadIcon";
 import { ProcsList } from "./Proc";
 import { Statistic } from "./Statistic";
+import { TextOverflow } from "./TextOverflow";
 import css from "./Workload.module.css";
 
 export interface WorkloadProps {
@@ -19,7 +20,9 @@ export interface WorkloadProps {
 export const Workload = memo(function Workload(props: WorkloadProps) {
   const state = useAppState();
 
-  const procs = props.workload.processes ?? [];
+  const procs = useMemo(() => {
+    return props.workload.processes ?? [];
+  }, [props.workload.processes]);
 
   const entry = useTreeEntry({
     statInfo:
@@ -51,7 +54,7 @@ export const Workload = memo(function Workload(props: WorkloadProps) {
                 size={14}
                 color={entry.stat?.hasSuspiciousProcs ? "#d59011" : "#b8b8b8"}
               />
-              <span>{props.workload.name}</span>
+              <TextOverflow text={props.workload.name ?? ""} trimSide="right" />
               {entry.stat && <Statistic stat={entry.stat} />}
               {entry.hasConnections && <Connector endpoints={entry.connectorEndpoints} />}
             </div>

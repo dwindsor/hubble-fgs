@@ -16,15 +16,7 @@
 .inner {
   display: flex;
   align-items: center;
-}
-
-.binary {
-  max-width: 50%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  direction: rtl;
-  text-align: left;
+  max-width: 100%;
 }
 
 .arguments {

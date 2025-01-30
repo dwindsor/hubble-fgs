@@ -1,0 +1,42 @@
+.text {
+  display: block;
+  text-align: left;
+
+  &.trim-left {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    direction: rtl;
+  }
+
+  &.trim-center {
+    & {
+      white-space: nowrap;
+      overflow: hidden;
+      vertical-align: middle;
+    }
+
+    .ellipsis,
+    .indent {
+      display: inline-block;
+      vertical-align: bottom;
+      width: 100%;
+      max-width: 50%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .indent {
+      text-overflow: "";
+      direction: rtl;
+    }
+  }
+
+  &.trim-right {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}

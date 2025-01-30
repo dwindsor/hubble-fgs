@@ -10,6 +10,7 @@ import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
 import css from "./Proc.module.css";
 import { Statistic } from "./Statistic";
+import { TextOverflow } from "./TextOverflow";
 
 export interface ProcProps {
   proc: ApplicationProcess;
@@ -92,8 +93,6 @@ export const Proc = memo(function Proc(props: ProcProps) {
     [css.suspicious]: isSuspiciousProc(props.proc),
   });
 
-  const innerClassName = clsx(css.inner, entry.className);
-
   if (!info) {
     return null;
   }
@@ -104,8 +103,8 @@ export const Proc = memo(function Proc(props: ProcProps) {
         <Collapsible
           path={info.path}
           summary={({ onClick }) => (
-            <summary className={innerClassName} onClick={onClick}>
-              <div>
+            <summary className={entry.className} onClick={onClick}>
+              <div className={css.inner}>
                 <Binary name={props.proc.name} />{" "}
                 <span className={css.arguments} title={props.proc.arguments}>
                   {props.proc.arguments}
@@ -125,7 +124,7 @@ export const Proc = memo(function Proc(props: ProcProps) {
           />
         </Collapsible>
       ) : (
-        <div className={innerClassName}>
+        <div className={clsx(css.inner, entry.className)}>
           <Binary name={props.proc.name} />{" "}
           <span className={css.arguments} title={props.proc.arguments}>
             {props.proc.arguments}
@@ -164,13 +163,5 @@ export const ProcsList = memo(function ProcsList(props: ProcsListProps) {
 });
 
 function Binary(props: { name?: string | undefined }) {
-  return (
-    <span className={css.binary}>
-      &lrm;
-      {/* needed to fix text-overflow */}
-      {props.name ?? "-"}
-      &lrm;
-      {/* needed to fix text-overflow */}
-    </span>
-  );
+  return <TextOverflow text={props.name ?? "-"} trimSide="left" />;
 }
