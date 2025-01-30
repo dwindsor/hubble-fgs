@@ -53,6 +53,8 @@ tetragon:
     enabled: false
     region: ""
   dnsStatsPerSocket: false
+  # -- Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.
+  enableBPFDNSParser: false
 tetragonOperator:
   image:
     repository: quay.io/isovalent/tetragon-operator

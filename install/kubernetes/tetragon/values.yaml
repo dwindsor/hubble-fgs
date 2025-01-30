@@ -278,6 +278,8 @@ tetragon:
     enabled: false
     region: ""
   dnsStatsPerSocket: false
+  # -- Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.
+  enableBPFDNSParser: false
 # Tetragon Operator settings
 tetragonOperator:
   # -- Enables the Tetragon Operator.

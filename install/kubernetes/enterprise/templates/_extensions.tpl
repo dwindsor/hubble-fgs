@@ -17,6 +17,7 @@ enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}
 {{- end }}
 dns-stats-per-socket: {{ .Values.tetragon.dnsStatsPerSocket | quote }}
+enable-bpf-dns-parser: {{ .Values.tetragon.enableBPFDNSParser | quote }}
 {{- end }}
 
 {{- define "volumes.extra" -}}
