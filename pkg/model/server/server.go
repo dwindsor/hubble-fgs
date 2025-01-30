@@ -14,10 +14,12 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
+	"github.com/cilium/tetragon/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
@@ -97,6 +99,9 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 		selfStr := fmt.Sprintf("%s", value.Binary[:n])
 		m := bytes.Index(value.Args[:], []byte{0x00, 0x00})
 		selfArgs := fmt.Sprintf("%s", value.Args[:m])
+		// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
+		// since args in process tree binary map does not contain CWD.
+		selfArgs, _ = process.ArgsDecoder(selfArgs, api.EventNoCWDSupport)
 
 		t := tetragon.ProcessUUID{
 			Binary: selfStr,
@@ -492,6 +497,9 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 		selfStr := fmt.Sprintf("%s", uidValue.Binary[:n])
 		m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
 		selfArgs := fmt.Sprintf("%s", uidValue.Args[:m])
+		// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
+		// since args in process tree binary map does not contain CWD.
+		selfArgs, _ = process.ArgsDecoder(selfArgs, api.EventNoCWDSupport)
 
 		parentPath := ""
 		parentArgs := ""
@@ -503,6 +511,9 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 				parentPath = fmt.Sprintf("%s", uidValue.Binary[:n])
 				m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
 				parentArgs = fmt.Sprintf("%s", uidValue.Args[:m])
+				// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
+				// since args in process tree binary map does not contain CWD.
+				parentArgs, _ = process.ArgsDecoder(parentArgs, api.EventNoCWDSupport)
 			}
 		}
 
