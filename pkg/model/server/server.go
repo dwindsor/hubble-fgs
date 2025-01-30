@@ -244,15 +244,11 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	return resp, nil
 }
 
-func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
-	if !option.Config.EnableProcessTree {
-		return nil, fmt.Errorf("process tree must be enabled with the --enable-process-tree flag or the tetragon.enableProcessTree Helm value")
-	}
+func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModelResponse, error) {
 	processModel := make([]*tetragon.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
 	binaryFile := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
-	namespaces := req.GetNamespaces()
 
 	endpt, err := ebpf.LoadPinnedMap(endptMap, nil)
 	if err != nil {
@@ -293,7 +289,7 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 				if !ok {
 					continue
 				}
-				if ep.Type == endpoint.DnsType && req.GetDebug() {
+				if ep.Type == endpoint.DnsType && debug {
 					ep.Dns = ep.Dns + "<promoted>"
 				}
 
@@ -542,6 +538,14 @@ func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessMode
 	return &tetragon.GetProcessModelResponse{
 		Processes: processModel,
 	}, nil
+}
+
+func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
+	if !option.Config.EnableProcessTree {
+		return nil, fmt.Errorf("process tree must be enabled with the --enable-process-tree flag or the tetragon.enableProcessTree Helm value")
+	}
+	namespaces := req.GetNamespaces()
+	return GetProcessModel(namespaces, req.GetDebug())
 }
 
 func (s *Server) GetProcesses(req *tetragon.GetProcessModelRequest, stream tetragon.ProcessModelService_GetProcessesServer) error {
