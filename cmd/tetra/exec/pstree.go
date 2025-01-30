@@ -300,6 +300,9 @@ func printModel(res *tetragon.GetProcessModelResponse) error {
 func addProcessNodes(node *tview.TreeNode, processes []*appModelV1.ApplicationProcess) {
 	for _, ps := range processes {
 		childName := ps.GetName()
+		if ps.GetArguments() != "" {
+			childName += fmt.Sprintf(" %s", ps.GetArguments())
+		}
 		if len(ps.GetConnections()) == 1 {
 			childName += " (1 connection)"
 		} else if len(ps.GetConnections()) > 0 {
