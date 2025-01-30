@@ -1409,6 +1409,19 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		maxSelectors = fm.MaxFimGlobSelectors
 	}
 
+	// Make sure we have unique pinName in case some programs share the same hook,
+	// adding extra unique number in case of conflict.
+	pinMap := make(map[string]int)
+	pinName := func(h FimProg) string {
+		pin := fmt.Sprintf("%s_%s", h.tp, h.name)
+		extra, _ := pinMap[pin]
+		pinMap[pin] = extra + 1
+		if extra > 0 {
+			pin = fmt.Sprintf("%s_%s_%d", h.tp, h.name, extra)
+		}
+		return pin
+	}
+
 	ovlSpec := probeOverlayModule()
 	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
 	for _, h := range fimProgs {
@@ -1416,7 +1429,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			path.Join(option.Config.HubbleLib, h.progName),
 			h.name,
 			fmt.Sprintf("%s/%s", h.tp, h.progSection),
-			fmt.Sprintf("%s_%s", h.tp, h.name),
+			pinName(h),
 			"file_monitoring")
 		if h.tp == "kretprobe" {
 			load = load.SetRetProbe(true)
