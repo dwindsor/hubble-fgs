@@ -2,5 +2,5 @@
   position: absolute;
   top: 4px;
   margin-left: -14px;
-  z-index: 2;
+  z-index: var(--ipt-z-index-tree);
 }

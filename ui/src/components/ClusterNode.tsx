@@ -33,7 +33,7 @@ export const ClusterNode = memo(function ClusterNode() {
         summary={({ onClick }) => (
           <summary className={entry.className} onClick={onClick}>
             <div className={css.inner}>
-              <NodeIcon className={css.nodeIcon} size={14} color={colors.treeBranch} />
+              <NodeIcon className={css.icon} size={14} color={colors.treeBranch} />
               <TextOverflow text={state.model.nodeName ?? ""} trimSide="center" />
               {entry.stat && <Statistic stat={entry.stat} />}
               {entry.hasConnections && <Connector endpoints={entry.connectorEndpoints} />}

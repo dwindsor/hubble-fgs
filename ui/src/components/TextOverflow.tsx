@@ -20,10 +20,6 @@ export const TextOverflow = memo((props: Props) => {
     const leftText = props.text.substring(0, pivot);
     const rightText = props.text.substring(pivot);
 
-    if (props.text === "/usr/bin/cilium-agent") {
-      console.log("text", leftText, rightText);
-    }
-
     return (
       <>
         <span className={css.ellipsis}>{leftText}</span>
