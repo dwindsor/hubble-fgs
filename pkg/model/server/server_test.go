@@ -36,7 +36,7 @@ spec:
     tcp:
       enable: true
     udp:
-      enable: false
+      enable: true
     dns:
       enable: false
 `
@@ -57,6 +57,7 @@ func setupProcessTreeEnable(ctx context.Context, t *testing.T) {
 	}
 
 	option.Config.EnableProcessTree = true
+	option.Config.EnableBPFDNSParser = true
 
 	base := base.GetInitialSensor()
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, sensors.ConfigDefaults.TetragonLib, observertesthelper.WithMyPid())
@@ -86,6 +87,12 @@ var tests = []processTree{
 		Cmd:   "bash",
 		Args:  []string{"-c", "uname -r"},
 		Check: `model.host.processes.exists(p, p.name.matches("/usr/bin/bash") && p.arguments.matches("-c.*uname.*-r.*"))`,
+	},
+	processTree{
+		Name:  "testBasicCurl",
+		Cmd:   "curl",
+		Args:  []string{"ebpf.io"},
+		Check: `model.host.processes.exists(p, p.name.matches(".*curl") && p.connections.exists(c, c.destination_name.matches("ebpf.io")))`,
 	},
 }
 
