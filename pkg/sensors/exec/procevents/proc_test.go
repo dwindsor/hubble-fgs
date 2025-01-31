@@ -176,4 +176,9 @@ func TestProcsFindContainerId(t *testing.T) {
 	d, i = procsFindDockerId(p)
 	assert.Equal(t, d, "", "Expect output '' empty string")
 	assert.Equal(t, i, 0, "Expect ContainerId offset should be zero")
+
+	p = "11:pids:/actions_job/ec5fd62ba68d0b75a3cbdb7f7f78b526440b7969e22b2b362fb6f429ded42fdc"
+	d, i = procsFindDockerId(p)
+	assert.Equal(t, i, 20, "ContainerId offset wrong")
+	assert.Equal(t, d, "ec5fd62ba68d0b75a3cbdb7f7f78b52", "ContainerId wrong")
 }
