@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -392,7 +393,10 @@ func printInteractiveTree() error {
 			return err
 		}
 	} else {
-		res, err := getProcessTreeGrpc()
+		c := NewConnectedModelClient()
+		defer c.Close()
+
+		res, err := getProcessTreeGrpc(&c)
 		if err != nil {
 			return err
 		}
@@ -411,10 +415,41 @@ func printInteractiveTree() error {
 //go:embed ui
 var uiDir embed.FS
 
-func getTreeHtml(w http.ResponseWriter, _ *http.Request, appModel *appModelV1.ApplicationModelEvent) {
+type treeGetter interface {
+	GetTree() (*appModelV1.ApplicationModelEvent, error)
+}
+
+type wrappedEvent struct {
+	*appModelV1.ApplicationModelEvent
+}
+
+func (model *wrappedEvent) GetTree() (*appModelV1.ApplicationModelEvent, error) {
+	return model.ApplicationModelEvent, nil
+}
+
+type wrappedGrpc struct {
+	*ConnectedModelClient
+}
+
+func (client *wrappedGrpc) GetTree() (*appModelV1.ApplicationModelEvent, error) {
+	res, err := getProcessTreeGrpc(client.ConnectedModelClient)
+	if err != nil {
+		return nil, err
+	}
+
+	appModel := model.ProcessModelToApplicationModel(res)
+	return appModel, nil
+}
+
+func getTreeHtml(w http.ResponseWriter, _ *http.Request, getter treeGetter) {
 	tmpl, err := template.ParseFS(uiDir, "ui/index.html")
 	if err != nil {
 		io.WriteString(w, "couldn't read ui index.html")
+		return
+	}
+	appModel, err := getter.GetTree()
+	if err != nil {
+		io.WriteString(w, "failed getting model")
 		return
 	}
 	appModelJson, err := json.Marshal(appModel)
@@ -430,6 +465,8 @@ func getTreeHtml(w http.ResponseWriter, _ *http.Request, appModel *appModelV1.Ap
 
 func runBrowserTree() error {
 	appModel := &appModelV1.ApplicationModelEvent{}
+	var getter treeGetter
+	ctx := context.Background()
 
 	fi, _ := os.Stdin.Stat()
 	if fi.Mode()&os.ModeNamedPipe != 0 {
@@ -438,20 +475,32 @@ func runBrowserTree() error {
 		if err != nil && !errors.Is(err, io.EOF) {
 			return err
 		}
+		getter = &wrappedEvent{ApplicationModelEvent: appModel}
 	} else {
-		res, err := getProcessTreeGrpc()
-		if err != nil {
-			return err
-		}
-		appModel = model.ProcessModelToApplicationModel(res)
+		c := NewConnectedModelClient()
+		ctx = c.Ctx
+		getter = &wrappedGrpc{ConnectedModelClient: &c}
+	}
+
+	srv := &http.Server{
+		Addr:        ":3333",
+		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		getTreeHtml(w, r, appModel)
+		getTreeHtml(w, r, getter)
 	})
 
-	fmt.Printf("pstree web ui is running on http://localhost:3333")
-	return http.ListenAndServe(":3333", nil)
+	fmt.Println("pstree web ui is running on http://localhost:3333")
+	errChan := make(chan error)
+	go func() {
+		errChan <- srv.ListenAndServe()
+	}()
+	select {
+	case <-ctx.Done():
+		srv.Shutdown(ctx)
+	}
+	return <-errChan
 }
 
 // NewConnectedClient return a connected client to a tetragon server, caller
@@ -486,10 +535,7 @@ func NewConnectedModelClient() ConnectedModelClient {
 	return c
 }
 
-func getProcessTreeGrpc() (*tetragon.GetProcessModelResponse, error) {
-	c := NewConnectedModelClient()
-	defer c.Close()
-
+func getProcessTreeGrpc(c *ConnectedModelClient) (*tetragon.GetProcessModelResponse, error) {
 	if host {
 		namespaces = append(namespaces, model.HostNamespace)
 	}
@@ -506,7 +552,10 @@ func getProcessTreeGrpc() (*tetragon.GetProcessModelResponse, error) {
 }
 
 func printGrpcTree() error {
-	res, err := getProcessTreeGrpc()
+	c := NewConnectedModelClient()
+	defer c.Close()
+
+	res, err := getProcessTreeGrpc(&c)
 	if err != nil {
 		return err
 	}
@@ -523,7 +572,7 @@ func printGrpcTree() error {
 	}
 }
 
-func getProcessModel(c ConnectedModelClient, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
+func getProcessModel(c *ConnectedModelClient, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
 	processModel := tetragon.GetProcessModelResponse{}
 	res, err := c.Client.GetProcesses(c.Ctx, req)
 	if err != nil || res == nil {
@@ -548,7 +597,7 @@ func checkProcessTreeGrpc(ctx context.Context, chk *checker.ApplicationModelChec
 	if host {
 		namespaces = append(namespaces, model.HostNamespace)
 	}
-	processModel, err := getProcessModel(c, &tetragon.GetProcessModelRequest{
+	processModel, err := getProcessModel(&c, &tetragon.GetProcessModelRequest{
 		Namespaces: namespaces,
 		Debug:      common.Debug,
 	})
@@ -879,7 +928,13 @@ func NewShow() *cobra.Command {
 			if output == "interactive" {
 				return printInteractiveTree()
 			} else if output == "web" {
-				return runBrowserTree()
+				switch err := runBrowserTree(); err {
+				case http.ErrServerClosed:
+					fmt.Println("server closed")
+					return nil
+				default:
+					return err
+				}
 			}
 			return printGrpcTree()
 		},
