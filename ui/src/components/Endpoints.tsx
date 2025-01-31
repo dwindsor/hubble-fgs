@@ -2,9 +2,9 @@ import debounce from "lodash/debounce";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useElementSize } from "~/hooks/useElementSize";
 import { type AppState, useAppState } from "~/state/AppContext";
-import type { PropertyValues } from "~/types";
-import { EndpointMode, endpointsKindOrder } from "~/utils/endpoints";
-import { Endpoint } from "./Endpoint";
+import { type Endpoint, EndpointMode, endpointsKindOrder } from "~/utils/endpoints";
+import { Enum, type EnumType } from "~/utils/enum";
+import { EndpointItem } from "./Endpoint";
 import css from "./Endpoints.module.css";
 
 export const Endpoints = memo(function Endpoints() {
@@ -52,7 +52,7 @@ export const Endpoints = memo(function Endpoints() {
           return (
             <React.Fragment key={endpoint}>
               {prev && prev.kind !== kind && <hr />}
-              <Endpoint endpoint={endpoint} onSelect={onEndpointSelect} />
+              <EndpointItem endpoint={endpoint} onSelect={onEndpointSelect} />
             </React.Fragment>
           );
         })}
@@ -93,19 +93,18 @@ function useEndpoints(searchQuery: string) {
   return endpoints;
 }
 
-const EndpointItemKind = {
-  __proto__: null,
+const EndpointItemKind = Enum({
   Search: "search",
   Visible: "visible",
-} as const;
+});
 
-type EndpointItemKindType = PropertyValues<typeof EndpointItemKind>;
+type EndpointItemKind = EnumType<typeof EndpointItemKind>;
 
-type EndpointsList = Array<{ kind: EndpointItemKindType; endpoint: string }>;
+type EndpointsList = Array<{ kind: EndpointItemKind; endpoint: Endpoint }>;
 
 function createEndpoints(state: AppState, searchQuery: string): EndpointsList {
-  const visibleEndpoint = new Set<string>();
-  const searchEndpoints = new Set<string>();
+  const visibleEndpoint = new Set<Endpoint>();
+  const searchEndpoints = new Set<Endpoint>();
 
   state.highlightedEndpointsMap.forEach((modes, endpoint) => {
     if (modes.has(EndpointMode.Pinned)) {
@@ -153,7 +152,7 @@ function createEndpoints(state: AppState, searchQuery: string): EndpointsList {
   return list;
 }
 
-function sortEndpoints(state: AppState, endpoints: Set<string>): string[] {
+function sortEndpoints(state: AppState, endpoints: Set<Endpoint>): Endpoint[] {
   return Array.from(endpoints).sort((a, b) => {
     const x = state.endpointsMap.get(a);
     const y = state.endpointsMap.get(b);

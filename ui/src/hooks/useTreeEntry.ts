@@ -1,34 +1,34 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppState } from "~/state/AppContext";
-import type { EndpointStat, TreeEntryStat } from "~/state/utils";
-import { EndpointKind, type PropertyValues } from "~/types";
+import { type Endpoint, EndpointKind } from "~/utils/endpoints";
+import { Enum, type EnumType } from "~/utils/enum";
+import { type Stat, type TreeEntryStat, advanceStat, createTreeEntryStat } from "~/utils/stat";
 import { useConnector } from "./useConnector";
 
-export const VisualState = {
-  __proto__: null,
+export const VisualStateKind = Enum({
   Base: "base",
   Highlighted: "highlighted",
   Muted: "muted",
-} as const;
+});
 
-export type VisualStateType = PropertyValues<typeof VisualState>;
+export type VisualStateKind = EnumType<typeof VisualStateKind>;
 
 export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
   const state = useAppState();
 
   const connector = useConnector();
 
-  const [selectedEndpoint, setSelectedEndpoint] = useState<string | null>(null);
+  const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null);
 
-  const [visualState, setVisualState] = useState<VisualStateType>(VisualState.Base);
+  const [visualState, setVisualState] = useState<VisualStateKind>(VisualStateKind.Base);
 
   const getVisibleEndpoints = useCallback(() => {
     const entryEndpoints = new Set(args.statInfo?.endpointsMap.keys());
     if (entryEndpoints.size === 0) {
       return undefined;
     }
-    const visibleEndpoints = new Set<string>();
+    const visibleEndpoints = new Set<Endpoint>();
     let hasVisibleEndpoints = false;
     state.endpointsMap.forEach((endpointInfo, endpoint) => {
       hasVisibleEndpoints ||= !!endpointInfo.visible;
@@ -67,7 +67,7 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
       if (!endpointStat) {
         return null;
       }
-      const endpointsMap = new Map<string, EndpointStat>();
+      const endpointsMap = new Map<Endpoint, Stat>();
       endpointsMap.set(selectedEndpoint, endpointStat);
       return {
         ...endpointStat,
@@ -75,16 +75,12 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
         endpointsMap,
       };
     }
-    const stat: TreeEntryStat = {
-      totalBytesSent: 0,
-      totalBytesReceived: 0,
+    const stat = createTreeEntryStat({
       hasSuspiciousProcs: args.statInfo.hasSuspiciousProcs,
-      endpointsMap: new Map(),
-    };
+    });
     args.statInfo.endpointsMap.forEach((endpointStat, endpoint) => {
       if (visibleEndpoints?.has(endpoint)) {
-        stat.totalBytesSent += endpointStat.totalBytesSent;
-        stat.totalBytesReceived += endpointStat.totalBytesReceived;
+        advanceStat(stat, endpointStat);
         stat.endpointsMap.set(endpoint, endpointStat);
       }
     });
@@ -93,7 +89,7 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
 
   const connectorEndpoints = useMemo(() => {
     if (selectedEndpoint) {
-      const set = new Set<string>();
+      const set = new Set<Endpoint>();
       set.add(selectedEndpoint);
       return set;
     }
@@ -102,8 +98,8 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
 
   const className = useMemo(() => {
     return clsx("ipt-interactive", {
-      "ipt-highlighted": visualState === VisualState.Highlighted || selectedEndpoint,
-      "ipt-muted": visualState === VisualState.Muted,
+      "ipt-highlighted": visualState === VisualStateKind.Highlighted || selectedEndpoint,
+      "ipt-muted": visualState === VisualStateKind.Muted,
       "ipt-endpoint-outer-dns": endpointKind === EndpointKind.OuterDns,
       "ipt-endpoint-k8s": endpointKind === EndpointKind.K8s,
     });
@@ -113,16 +109,16 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
     return state.onEndpointHighlight((endpoint, value) => {
       if (!value) {
         setSelectedEndpoint(null);
-        setVisualState(VisualState.Base);
+        setVisualState(VisualStateKind.Base);
         return;
       }
       if (!visibleEndpoints?.has(endpoint)) {
         setSelectedEndpoint(null);
-        setVisualState(VisualState.Muted);
+        setVisualState(VisualStateKind.Muted);
         return;
       }
       setSelectedEndpoint(endpoint);
-      setVisualState(VisualState.Highlighted);
+      setVisualState(VisualStateKind.Highlighted);
     });
   }, [state, visibleEndpoints]);
 

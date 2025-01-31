@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { useAppState } from "~/state/AppContext";
+import { TREE_CLUSTER_PATH } from "~/utils/tree";
 import css from "./Cluster.module.css";
 import { ClusterNode } from "./ClusterNode";
 import { Collapsible } from "./Collapsible";
@@ -11,7 +12,7 @@ export const Cluster = memo(function Cluster() {
   return (
     <li className={css.clusterItem}>
       <Collapsible
-        path={{ cluster: true }}
+        path={TREE_CLUSTER_PATH}
         initialOpen={true}
         summary={({ onClick }) => (
           <summary className={css.clusterName} onClick={onClick}>

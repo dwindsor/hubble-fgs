@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { memo, useMemo } from "react";
-import type { Stat } from "~/state/utils";
+import type { Stat } from "~/utils/stat";
 import { WarningIcon } from "./Icons/WarningIcon";
 import css from "./Statistic.module.css";
 
@@ -12,11 +12,11 @@ export interface Props {
 export const Statistic = memo(function Statistic(props: Props) {
   return (
     <span className={clsx(css.wrapper, "process-tree-item-statistic")}>
-      {props.stat.totalBytesSent > 0 && (
+      {props.stat.bytesSent > 0 && (
         <>
-          <Traffic dir="received" bytes={props.stat.totalBytesReceived} />
+          <Traffic dir="received" bytes={props.stat.bytesReceived} />
           {"/"}
-          <Traffic dir="sent" bytes={props.stat.totalBytesSent} />
+          <Traffic dir="sent" bytes={props.stat.bytesSent} />
         </>
       )}
       {props.showSuspiciousMarker && props.stat.hasSuspiciousProcs && (

@@ -1,10 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { useAppState } from "~/state/AppContext";
 
-export interface Props {
-  endpoint: string;
-}
-
 export function useConnector() {
   const ref = useRef<HTMLDivElement>(null);
 

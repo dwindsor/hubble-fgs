@@ -3,6 +3,7 @@ import { memo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationHost } from "~/proto";
 import { useAppState } from "~/state/AppContext";
+import { TREE_HOST_PATH } from "~/utils/tree";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
 import css from "./Host.module.css";
@@ -23,7 +24,7 @@ export const Host = memo(function Host(props: HostProps) {
 
   return (
     <Collapsible
-      path={{ host: true }}
+      path={TREE_HOST_PATH}
       summary={({ onClick }) => (
         <summary className={clsx(css.hostTitle, entry.className)} onClick={onClick}>
           <div className={css.inner}>

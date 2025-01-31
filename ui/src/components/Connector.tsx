@@ -2,12 +2,11 @@ import clsx from "clsx";
 import { memo, useMemo } from "react";
 import type { useConnector } from "~/hooks/useConnector";
 import { useAppState } from "~/state/AppContext";
-import { EndpointKind } from "~/types";
-import { endpointsKindOrder } from "~/utils/endpoints";
+import { type Endpoint, EndpointKind, endpointsKindOrder } from "~/utils/endpoints";
 import css from "./Connector.module.css";
 
 export interface Props {
-  endpoints: Set<string> | undefined;
+  endpoints: Set<Endpoint> | undefined;
   connector?: ReturnType<typeof useConnector>;
 }
 

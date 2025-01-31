@@ -6,24 +6,26 @@ import React from "react";
 import { useConnector } from "~/hooks/useConnector";
 import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
 import type { ApplicationProcessGroup } from "~/proto";
-import { type EndpointStat, getEndpointHash } from "~/state/utils";
-import { EndpointKind, type EndpointKindType } from "~/types";
 import {
+  type Endpoint,
+  EndpointKind,
   EndpointMode,
+  constructEndpoint,
   getEndpointPort,
   inferEndpointKind,
   trimEndpointPort,
 } from "~/utils/endpoints";
 import { isSuspiciousProc } from "~/utils/procs";
+import { type Stat, advanceStat, createStat } from "~/utils/stat";
 import css from "./Endpoint.module.css";
 import { Statistic } from "./Statistic";
 
 export interface Props {
-  endpoint: string;
+  endpoint: Endpoint;
   onSelect?: () => void;
 }
 
-export const Endpoint = memo(function Endpoint(props: Props) {
+export const EndpointItem = memo(function Endpoint(props: Props) {
   const state = useAppState();
 
   const connector = useConnector();
@@ -50,18 +52,16 @@ export const Endpoint = memo(function Endpoint(props: Props) {
     if (!highlightedProc) {
       return state.stat.endpointsMap.get(props.endpoint) ?? null;
     }
-    const stat: EndpointStat = {
-      totalBytesSent: 0,
-      totalBytesReceived: 0,
-      hasSuspiciousProcs: false,
-    };
+    const stat = createStat();
     let was = false;
     highlightedProc.connections?.forEach((conn) => {
-      if (props.endpoint === getEndpointHash(conn)) {
+      if (props.endpoint === constructEndpoint(conn)) {
         was = true;
-        stat.totalBytesSent += Number(conn.bytesSent || 0);
-        stat.totalBytesReceived += Number(conn.bytesReceived || 0);
-        stat.hasSuspiciousProcs ||= isSuspiciousProc(highlightedProc);
+        advanceStat(stat, {
+          bytesSent: Number(conn.bytesSent || 0),
+          bytesReceived: Number(conn.bytesReceived || 0),
+          hasSuspiciousProcs: isSuspiciousProc(highlightedProc),
+        });
       }
     });
     if (!was) {
@@ -158,17 +158,17 @@ export const Endpoint = memo(function Endpoint(props: Props) {
 });
 
 function renderEndpoint(
-  kind: EndpointKindType,
+  kind: EndpointKind,
   title: string,
   port: string | null,
-  stat: EndpointStat | null,
+  stat: Stat | null,
   isPinned: boolean,
 ) {
   switch (kind) {
     case EndpointKind.K8s:
       return (
         <>
-          <K8sEndpoint str={title} port={port} isPinned={isPinned} />
+          <K8sEndpoint title={title} port={port} isPinned={isPinned} />
           {stat && (
             <>
               {" "}
@@ -222,7 +222,7 @@ function renderEndpoint(
   }
 }
 
-function classNameFromEndpointKind(kind: EndpointKindType): string | null {
+function classNameFromEndpointKind(kind: EndpointKind): string | null {
   switch (kind) {
     case EndpointKind.OuterIp:
     case EndpointKind.OuterDns:
@@ -236,7 +236,7 @@ function classNameFromEndpointKind(kind: EndpointKindType): string | null {
 }
 
 function IpEndpoint(props: {
-  kind: EndpointKindType;
+  kind: EndpointKind;
   ip: string;
   port: string | null;
   isPinned: boolean;
@@ -268,15 +268,15 @@ function IpEndpoint(props: {
   );
 }
 
-function K8sEndpoint(props: { str: string; port: string | null; isPinned: boolean }) {
+function K8sEndpoint(props: { title: string; port: string | null; isPinned: boolean }) {
   const { title, type, namespace } = useMemo(() => {
-    const parts = props.str.split(/[\/:]/);
+    const parts = props.title.split(/[\/:]/);
     return {
       title: parts[2],
       type: parts[1],
       namespace: parts[0],
     };
-  }, [props.str]);
+  }, [props.title]);
 
   return (
     <span className={css.k8sParts}>
@@ -285,7 +285,8 @@ function K8sEndpoint(props: { str: string; port: string | null; isPinned: boolea
         {title}
         {props.port && <Port port={props.port} />}
       </span>{" "}
-      <Namespace namespace={namespace} /> <K8sEntityType type={type} />
+      <span className={css.namespace}>{namespace}</span>{" "}
+      <span className={css.k8sEntityType}>{type}</span>
     </span>
   );
 }
@@ -297,14 +298,6 @@ function Port(props: { port: string }) {
       {props.port}
     </span>
   );
-}
-
-function Namespace(props: { namespace: string }) {
-  return <span className={css.namespace}>{props.namespace}</span>;
-}
-
-function K8sEntityType(props: { type: string }) {
-  return <span className={css.k8sEntityType}>{props.type}</span>;
 }
 
 function Pin() {

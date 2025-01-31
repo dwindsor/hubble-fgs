@@ -1,7 +1,8 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useAppState } from "~/state/AppContext";
-import { type ConnectionLine, EndpointKind, type WH } from "~/types";
-import { EndpointMode } from "~/utils/endpoints";
+import type { ConnectionLine } from "~/utils/connections";
+import { EndpointKind, EndpointMode } from "~/utils/endpoints";
+import type { WH } from "~/utils/geometry";
 
 export interface Props {
   size: WH;

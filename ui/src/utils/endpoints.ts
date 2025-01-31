@@ -1,14 +1,37 @@
 import ipaddr from "ipaddr.js";
-import { EndpointKind, type EndpointKindType, type PropertyValues } from "~/types";
-import { specialIps } from "./ips";
+import type { ApplicationConnection } from "~/proto";
+import { Enum, type EnumType } from "./enum";
+import type { XY } from "./geometry";
+import { checkIpAddress, specialIps } from "./ips";
 
-export const EndpointMode = {
-  __proto__: null,
+export type Endpoint = string;
+
+export const EndpointMode = Enum({
   Hovered: "hovered",
   Pinned: "pinned",
-} as const;
+});
 
-export type EndpointModeType = PropertyValues<typeof EndpointMode>;
+export type EndpointMode = EnumType<typeof EndpointMode>;
+
+export type EndpointsMap = Map<Endpoint, EndpointInfo>;
+
+export type EndpointInfo = {
+  kind: EndpointKind;
+  visible?: boolean | undefined;
+  xy?: XY | undefined;
+};
+
+export const EndpointKind = Enum({
+  OuterIp: "Outer-ip",
+  InnerIp: "inner-ip",
+  OuterDns: "outer-dns",
+  InnerDns: "inner-dns",
+  K8s: "k8s",
+  HostMetadataService: "host-metadata-service",
+  Other: "other",
+});
+
+export type EndpointKind = EnumType<typeof EndpointKind>;
 
 export const endpointsKindOrder = [
   EndpointKind.OuterDns,
@@ -22,10 +45,10 @@ export const endpointsKindOrder = [
     acc[item] = idx;
     return acc;
   },
-  {} as { [key in EndpointKindType]: number },
+  {} as { [key in EndpointKind]: number },
 );
 
-export function inferEndpointKind(endpoint: string): EndpointKindType {
+export function inferEndpointKind(endpoint: Endpoint): EndpointKind {
   const endpointWithoutPort = trimEndpointPort(endpoint);
 
   if (endpoint === "169.254.169.254:80") {
@@ -50,7 +73,7 @@ export function inferEndpointKind(endpoint: string): EndpointKindType {
   return EndpointKind.OuterDns;
 }
 
-export function getEndpointPort(endpoint: string): string | null {
+export function getEndpointPort(endpoint: Endpoint): string | null {
   let port = "";
   for (let i = endpoint.length - 1; i >= 0; i--) {
     const ch = endpoint[i];
@@ -62,13 +85,11 @@ export function getEndpointPort(endpoint: string): string | null {
   return null;
 }
 
-export function trimEndpointPort(endpoint: string): string {
+export function trimEndpointPort(endpoint: Endpoint): string {
   const port = getEndpointPort(endpoint);
   return endpoint.slice(0, endpoint.length - (port ? port.length + 1 : 0));
 }
 
-export function checkIpAddress(value: string): boolean {
-  const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
-  const ipv6Pattern = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}/;
-  return ipv4Pattern.test(value) || ipv6Pattern.test(value);
+export function constructEndpoint(conn: ApplicationConnection): Endpoint {
+  return `${conn.destinationName}:${conn.destinationPort}`;
 }

@@ -1,7 +1,7 @@
 import hashsum from "hash-sum";
 import { type ReactNode, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useAppState } from "~/state/AppContext";
-import type { TreePath } from "~/types";
+import type { TreePath } from "~/utils/tree";
 
 export interface Props {
   path: TreePath;

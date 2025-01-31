@@ -3,12 +3,13 @@ import { timestampNow } from "@bufbuild/protobuf/wkt";
 import { ApplicationModelEventSchema } from "@ipa/application_model/v1alpha/application_model_pb";
 import { createContext, useContext } from "react";
 import type { ApplicationModelEvent, ApplicationProcessGroup } from "~/proto";
-import type { TreePathStatus, XY } from "~/types";
 import { assert } from "~/utils/assert";
-import { EndpointMode, type EndpointModeType } from "~/utils/endpoints";
-import { UrlParams, type UrlParamsType, setQueryParam } from "~/utils/url";
+import { type Endpoint, EndpointMode } from "~/utils/endpoints";
+import type { XY } from "~/utils/geometry";
+import type { TreePathHash, TreePathStatus } from "~/utils/tree";
+import { UrlParams, setQueryParam } from "~/utils/url";
 import { AppEmitter, EmitterEventKind } from "./AppEmitter";
-import { createAppState } from "./utils";
+import { createAppState } from "./AppState";
 
 export type AppState = ReturnType<typeof useAppState>;
 
@@ -24,8 +25,8 @@ export function createAppContext({
   const state = createAppState(model);
 
   const inner = {
-    treePathsMap: new Map<string, TreePathStatus>(),
-    highlightedEndpointsMap: new Map<string, Set<EndpointModeType>>(),
+    treePathsMap: new Map<TreePathHash, TreePathStatus>(),
+    highlightedEndpointsMap: new Map<Endpoint, Set<EndpointMode>>(),
     highlightedProc: null as ApplicationProcessGroup | null,
   };
 
@@ -38,7 +39,7 @@ export function createAppContext({
         });
       } else if (param === "pinned") {
         value.split(",").forEach((endpoint) => {
-          const modes = new Set<EndpointModeType>();
+          const modes = new Set<EndpointMode>();
           modes.add(EndpointMode.Pinned);
           inner.highlightedEndpointsMap.set(endpoint, modes);
         });
@@ -53,21 +54,21 @@ export function createAppContext({
 
     getTreeOffset,
 
-    setQueryParam(key: UrlParamsType, value?: string | undefined | null) {
+    setQueryParam(key: UrlParams, value?: string | undefined | null) {
       if (!persistInUrl) {
         return;
       }
       setQueryParam(key, value);
     },
 
-    getTreePathStatus(hash: string) {
+    getTreePathStatus(hash: TreePathHash) {
       return inner.treePathsMap.get(hash);
     },
 
-    setTreePathStatus(hash: string, status: TreePathStatus) {
+    setTreePathStatus(hash: TreePathHash, status: TreePathStatus) {
       inner.treePathsMap.set(hash, Object.assign(inner.treePathsMap.get(hash) ?? {}, status));
 
-      const expanded: string[] = [];
+      const expanded: TreePathHash[] = [];
       inner.treePathsMap.forEach((value, hash) => {
         if (!value.expanded || !value.visible) return;
         expanded.push(hash);
@@ -127,7 +128,7 @@ export function createAppContext({
 
     onProcUpdated: emitter.createSubscriber(EmitterEventKind.ProcUpdated),
 
-    updateEndpoint(endpoint: string, visible: boolean | undefined, xy: XY | undefined) {
+    updateEndpoint(endpoint: Endpoint, visible: boolean | undefined, xy: XY | undefined) {
       const cur = state.endpointsMap.get(endpoint);
       if (cur) {
         cur.visible = visible;
@@ -145,7 +146,7 @@ export function createAppContext({
       return inner.highlightedEndpointsMap;
     },
 
-    highlightEndpoint(endpoint: string, state: boolean, mode: EndpointModeType) {
+    highlightEndpoint(endpoint: Endpoint, state: boolean, mode: EndpointMode) {
       const modes = inner.highlightedEndpointsMap.get(endpoint) ?? new Set();
       if (!state) {
         modes.delete(mode);
@@ -157,7 +158,7 @@ export function createAppContext({
         inner.highlightedEndpointsMap.set(endpoint, modes);
       }
 
-      const pinned: string[] = [];
+      const pinned: Endpoint[] = [];
       inner.highlightedEndpointsMap.forEach((modes, endpoint) => {
         if (!modes.has(EndpointMode.Pinned)) return;
         pinned.push(endpoint);

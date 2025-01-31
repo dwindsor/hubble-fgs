@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import type { WH } from "../types";
+import type { WH } from "~/utils/geometry";
 
 export function useElementSize(ref: React.RefObject<HTMLDivElement | null>) {
   const [size, setSize] = useState<WH | null>(null);

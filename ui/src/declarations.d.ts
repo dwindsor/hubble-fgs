@@ -1,6 +1,3 @@
-declare let showTooltip: (event: Event | undefined, text: string) => void;
-declare let hideTooltip: () => void;
-
 declare namespace Splunk {
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   export let SearchManager: any;

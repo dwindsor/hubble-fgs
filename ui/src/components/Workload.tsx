@@ -2,8 +2,8 @@ import { memo, useMemo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationNamespace, ApplicationWorkload } from "~/proto";
 import { useAppState } from "~/state/AppContext";
-import { getWorkloadHash } from "~/state/utils";
-import type { TreeWorkloadPath } from "~/types";
+import type { TreeWorkloadPath } from "~/utils/tree";
+import { getWorkloadHash } from "~/utils/workloads";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
 import { WorkloadIcon } from "./Icons/WorkloadIcon";
@@ -17,7 +17,7 @@ export interface WorkloadProps {
   workload: ApplicationWorkload;
 }
 
-export const Workload = memo(function Workload(props: WorkloadProps) {
+export const WorkloadItem = memo(function Workload(props: WorkloadProps) {
   const state = useAppState();
 
   const procs = useMemo(() => {
@@ -76,7 +76,7 @@ export const WorkloadsList = memo(function WorkloadsList(props: WorkloadsListPro
   return (
     <ul className={css.workloadsList}>
       {props.workloads.map((workload) => {
-        return <Workload key={workload.name} namespace={props.namespace} workload={workload} />;
+        return <WorkloadItem key={workload.name} namespace={props.namespace} workload={workload} />;
       })}
     </ul>
   );

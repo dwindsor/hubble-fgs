@@ -4,8 +4,7 @@ import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationProcessGroup } from "~/proto";
 import { useAppState } from "~/state/AppContext";
-import { getProcHash } from "~/state/utils";
-import { isSuspiciousProc } from "~/utils/procs";
+import { getProcHash, isSuspiciousProc } from "~/utils/procs";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
 import css from "./Proc.module.css";
@@ -18,7 +17,7 @@ export interface ProcProps {
   childrenProcsListClassName?: string | undefined;
 }
 
-export const Proc = memo(function Proc(props: ProcProps) {
+export const ProcItem = memo(function Proc(props: ProcProps) {
   const state = useAppState();
 
   const info = state.processesMap.get(props.proc);
@@ -150,7 +149,7 @@ export const ProcsList = memo(function ProcsList(props: ProcsListProps) {
     <ul className={clsx(css.list, props.className)}>
       {props.procs.map((proc) => {
         return (
-          <Proc
+          <ProcItem
             key={getProcHash(proc)}
             proc={proc}
             className={clsx(props.procItemClassName)}

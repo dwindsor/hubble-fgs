@@ -3,7 +3,7 @@ import { memo, useMemo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationNamespace } from "~/proto";
 import { useAppState } from "~/state/AppContext";
-import type { TreeNamespacePath } from "~/types";
+import { TREE_NAMESPACES_PATH, type TreeNamespacePath } from "~/utils/tree";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
 import { NamespaceIcon } from "./Icons/NamespaceIcon";
@@ -17,7 +17,7 @@ export interface NamespaceProps {
   namespace: ApplicationNamespace;
 }
 
-export const Namespace = memo(function Namespace(props: NamespaceProps) {
+export const NamespaceItem = memo(function Namespace(props: NamespaceProps) {
   const state = useAppState();
 
   const workloads = useMemo(() => {
@@ -77,7 +77,7 @@ export const NamespacesList = memo(function NamespacesList(props: NamespacesList
 
   return (
     <Collapsible
-      path={{ namespaces: true }}
+      path={TREE_NAMESPACES_PATH}
       initialOpen={true}
       summary={({ onClick }) => (
         <summary className={clsx(entry.className, css.namespacesTitle)} onClick={onClick}>
@@ -92,7 +92,7 @@ export const NamespacesList = memo(function NamespacesList(props: NamespacesList
     >
       <ul className={css.namespacesList}>
         {props.namespaces.map((namespace) => {
-          return <Namespace key={namespace.name} namespace={namespace} />;
+          return <NamespaceItem key={namespace.name} namespace={namespace} />;
         })}
       </ul>
     </Collapsible>

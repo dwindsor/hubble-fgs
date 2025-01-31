@@ -1,12 +1,11 @@
-// biome-ignore lint/style/useNodejsImportProtocol: events it's an actual npm package
+// biome-ignore lint/style/useNodejsImportProtocol: events it's the actual npm package
 import Emitter from "events";
 import type TypedEmitter from "typed-emitter";
 import type { ApplicationProcessGroup } from "~/proto";
-import type { PropertyValues } from "~/types";
-import type { EndpointModeType } from "~/utils/endpoints";
+import type { Endpoint, EndpointMode } from "~/utils/endpoints";
+import { Enum, type EnumType } from "~/utils/enum";
 
-export const EmitterEventKind = {
-  __proto__: null,
+export const EmitterEventKind = Enum({
   TreeChanged: "tree-changed",
   EndpointsListChanged: "endpoints-list-changed",
   RedrawConnectionsLines: "redraw-connections-lines",
@@ -14,20 +13,20 @@ export const EmitterEventKind = {
   ProcUpdated: "proc-updated",
   HighlightEndpoint: "highlight-endpoint",
   HighlightProc: "highlight-proc",
-} as const;
+});
 
-export type EmitterEventKind = PropertyValues<typeof EmitterEventKind>;
+export type EmitterEventKind = EnumType<typeof EmitterEventKind>;
 
 export type EmitterHandlers = {
   [EmitterEventKind.TreeChanged]: () => void;
   [EmitterEventKind.EndpointsListChanged]: () => void;
   [EmitterEventKind.RedrawConnectionsLines]: () => void;
   [EmitterEventKind.ProcUpdated]: (proc: ApplicationProcessGroup) => void;
-  [EmitterEventKind.EndpointUpdated]: (endpoint: string) => void;
+  [EmitterEventKind.EndpointUpdated]: (endpoint: Endpoint) => void;
   [EmitterEventKind.HighlightEndpoint]: (
-    endpoint: string,
+    endpoint: Endpoint,
     state: boolean,
-    mode: EndpointModeType,
+    mode: EndpointMode,
   ) => void;
   [EmitterEventKind.HighlightProc]: (proc: ApplicationProcessGroup, state: boolean) => void;
 };

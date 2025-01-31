@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import { useAppState } from "~/state/AppContext";
+import { TREE_NODE_PATH } from "~/utils/tree";
 import css from "./ClusterNode.module.css";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
@@ -26,7 +27,7 @@ export const ClusterNode = memo(function ClusterNode() {
   return (
     <li className={css.nodeItem}>
       <Collapsible
-        path={{ node: true }}
+        path={TREE_NODE_PATH}
         initialOpen={true}
         summary={({ onClick }) => (
           <summary className={entry.className} onClick={onClick}>

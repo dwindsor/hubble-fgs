@@ -1,5 +1,5 @@
 import type * as AppModel from "@ipa/application_model/v1alpha/application_model_pb";
-import type { DeepPartial } from "~/types";
+import type { DeepPartial } from "~/utils/types";
 
 export type ApplicationModelEvent = DeepPartial<AppModel.ApplicationModelEvent>;
 
