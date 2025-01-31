@@ -91,20 +91,60 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start)
 	return label_length + 1;
 }
 
+// parse_dns_name is an inlined function looping to read the dns name labels
+// called by the parsing of the DNS question and the parsing of the DNS answers
+// in the case the packet doesn't use message compression. It returns the length
+// of the parsed name or an error.
+FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_start)
+{
+	int8_t ret;
+	uint16_t init_offset = offset_start;
+	char *data_end;
+
+	data_end = (char *)(long)skb->data_end;
+	// Note that data could be recomputed from skb->data + offset but that
+	// generates slightly more complexity
+	ret = 1;
+
+	// Even though we NULL byte end the string, it will be used as a key so it needs to be cleared
+	char *name = map_lookup_elem(&name_heap_map, &zero);
+	if (!name)
+		return -25;
+	memset((uint64_t *)name, 0, DNS_MAX_NAME_SIZE + 1);
+
+	// Conditions: maximum of 127 labels plus the last zero: 128 iterations. The
+	// data should have at least 3 remaning bytes at anytime, one for the
+	// length, one for the char for the last zero. Total length will remain
+	// under 255 chars.
+	//
+	// writing 'if (ret == 0 ) break;' inside the loop increases the complexity
+	for (int i = 0; i < (MAX_NUMBER_LABEL + 1) && data + sizeof(u8) * 3 <= data_end && ret > 0; i++) {
+		ret = parse_dns_name_label(skb, offset_start, data);
+		if (ret < 0) {
+			return ret;
+		}
+		offset_start += ret;
+	}
+	// Skip the null byte at the end of the name
+	return offset_start + 1 - init_offset;
+	;
+}
+
 // parse_dns_answer parses a DNS query answer, it skips any non A-type answer,
 // parses the IPv4 given along an A-type answer and writes it into the domain
 // name to IP map. It returns the offset needed to advance into the data to skip
 // the answer on success and < 0 on failure.
 __attribute__((noinline)) int8_t
-parse_dns_answer(struct __sk_buff *skb, __u16 off)
+parse_dns_answer(struct __sk_buff *skb, int16_t off)
 {
 	__u8 first_byte, offset;
 	__u16 type, data_len;
+	int16_t name_len;
 	struct ip_addr ip = { 0 };
 	char *data, *data_end, *name;
 
 	data_end = (void *)(long)skb->data_end;
-	if (off > SKB_DATA_MAX_SIZE) {
+	if (off < 0 || off > SKB_DATA_MAX_SIZE) {
 		return -30;
 	}
 	data = (void *)(long)skb->data + off;
@@ -129,17 +169,33 @@ parse_dns_answer(struct __sk_buff *skb, __u16 off)
 		return -32;
 
 	first_byte = *((__u8 *)data);
-	if ((first_byte & COMPRESSED_MSG_MASK) != COMPRESSED_MSG_MASK)
-		return -33;
+	if ((first_byte & COMPRESSED_MSG_MASK) == COMPRESSED_MSG_MASK) {
+		// Potential TODO: verify the pointer is correct or give up
+		// Skip the pointer byte
+		offset = sizeof(u8) * 2;
+		data += offset;
+	} else {
+		// Might be not using message compression
+		name_len = parse_dns_name(skb, data, off);
+		if (name_len < 0)
+			return -33;
 
-	// Potential TODO: verify the pointer is correct or give up
-	// Skip the pointer byte
-	offset = sizeof(u8) * 2;
-	data += offset;
+		// This next instruction is perfectly useless but the compiler
+		// seems to optimize things without this and then the verifier
+		// forgets about off >= 0. Remove that if you can!
+		asm volatile("%[name_len] &= 0x3FF;\n"
+			     : [name_len] "+r"(name_len));
+
+		if (name_len > SKB_DATA_MAX_SIZE)
+			return -34;
+
+		offset = name_len;
+		data += offset;
+	}
 
 	// The answer should contain type, class, TTL and data_len
 	if (data + (sizeof(u16) * 2 + sizeof(u32) + sizeof(u16)) > data_end)
-		return -34;
+		return -35;
 
 	type = bpf_ntohs(*(__u16 *)data);
 	data_len = bpf_ntohs(*(__u16 *)(data + sizeof(u16) * 2 + sizeof(u32)));
@@ -154,7 +210,7 @@ parse_dns_answer(struct __sk_buff *skb, __u16 off)
 
 	name = map_lookup_elem(&name_heap_map, &zero);
 	if (!name)
-		return -35;
+		return -36;
 
 	if (data_len == sizeof(u32) && type == (A_RECORD)) {
 		if (data + sizeof(u32) > data_end)
@@ -209,7 +265,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 {
 	struct dnshdr *dns;
 	void *data, *data_end;
-	char *data_start;
+	int16_t name_len;
 	int8_t error, ret;
 	uint32_t error_idx, *counter;
 
@@ -238,38 +294,27 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 		goto give_up;
 	}
 
-	// Even though we NULL byte end the string, it will be used as a key so it needs to be cleared
-	char *name = map_lookup_elem(&name_heap_map, &zero);
-	if (!name)
-		return 0;
-	memset((uint64_t *)name, 0, DNS_MAX_NAME_SIZE + 1);
-
 	// Parse Question Section
-	// Parse QName (domain name)
-	data_start = data;
-	// writing 'if (ret == 0 ) break;' inside the loop increases the complexity
-	ret = 1;
-	// Conditions: maximum of 127 labels plus the last zero: 128 iterations. The
-	// data should have at least 3 remaning bytes at anytime, one for the
-	// length, one for the char for the last zero. Total length will remain
-	// under 255 chars.
-	for (int i = 0; i < (MAX_NUMBER_LABEL + 1) && data + sizeof(u8) * 3 <= data_end && ret > 0; i++) {
-		ret = parse_dns_name_label(skb, (size_t)(data - skb->data), data_start);
-		if (ret < 0) {
-			error = ret;
-			goto give_up;
-		}
-		// Skip the parsed label
-		if (data + ret > data_end) {
-			error = -12;
-			goto give_up;
-		}
-		data += ret;
+	name_len = parse_dns_name(skb, data, (size_t)(data - skb->data));
+	if (name_len < 0) {
+		error = name_len;
+		goto give_up;
 	}
-	// Skip the null byte at the end of the name
-	data += 1;
+
+	// This next instruction is perfectly useless but the compiler
+	// seems to optimize things without this and then the verifier
+	// forgets about off >= 0. Remove that if you can!
+	asm volatile("%[name_len] &= 0x3FF;\n"
+		     : [name_len] "+r"(name_len));
+
+	if (name_len > SKB_DATA_MAX_SIZE) {
+		error = -11;
+		goto give_up;
+	}
+	data += name_len;
 
 #ifdef TETRAGON_BPF_DEBUG
+	char *name = map_lookup_elem(&name_heap_map, &zero);
 	if (name) {
 		DEBUG("domain: %s", name);
 	}
