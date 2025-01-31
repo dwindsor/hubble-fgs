@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import { type ReactNode, memo } from "react";
 
+import { colors } from "~/theme/colors";
 import css from "./Icon.module.css";
 
 export interface Props {
@@ -11,7 +12,7 @@ export interface Props {
 }
 
 export const Icon = memo(function Icon(props: Props) {
-  const { size = 24, color = "#000" } = props;
+  const { size = 24, color = colors.text } = props;
 
   return (
     <svg

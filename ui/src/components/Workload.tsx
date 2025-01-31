@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationNamespace, ApplicationWorkload } from "~/proto";
 import { useAppState } from "~/state/AppContext";
+import { colors } from "~/theme/colors";
 import type { TreeWorkloadPath } from "~/utils/tree";
 import { getWorkloadHash } from "~/utils/workloads";
 import { Collapsible } from "./Collapsible";
@@ -52,7 +53,7 @@ export const WorkloadItem = memo(function Workload(props: WorkloadProps) {
               <WorkloadIcon
                 className={css.workloadIcon}
                 size={14}
-                color={entry.stat?.hasSuspiciousProcs ? "#d59011" : "#b8b8b8"}
+                color={entry.stat?.hasSuspiciousProcs ? colors.suspicious : colors.treeBranch}
               />
               <TextOverflow text={props.workload.name ?? ""} trimSide="right" />
               {entry.stat && <Statistic stat={entry.stat} />}

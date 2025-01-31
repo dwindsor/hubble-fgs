@@ -165,10 +165,10 @@ function renderEndpoint(
   isPinned: boolean,
 ) {
   switch (kind) {
-    case EndpointKind.K8s:
+    case EndpointKind.Kube:
       return (
         <>
-          <K8sEndpoint title={title} port={port} isPinned={isPinned} />
+          <KubeEndpoint title={title} port={port} isPinned={isPinned} />
           {stat && (
             <>
               {" "}
@@ -226,10 +226,10 @@ function classNameFromEndpointKind(kind: EndpointKind): string | null {
   switch (kind) {
     case EndpointKind.OuterIp:
     case EndpointKind.OuterDns:
-      return css.outerEntity;
-    case EndpointKind.K8s:
+      return css.entityOuter;
+    case EndpointKind.Kube:
     case EndpointKind.HostMetadataService:
-      return css.k8sEntity;
+      return css.entityKube;
     default:
       return null;
   }
@@ -268,7 +268,7 @@ function IpEndpoint(props: {
   );
 }
 
-function K8sEndpoint(props: { title: string; port: string | null; isPinned: boolean }) {
+function KubeEndpoint(props: { title: string; port: string | null; isPinned: boolean }) {
   const { title, type, namespace } = useMemo(() => {
     const parts = props.title.split(/[\/:]/);
     return {
@@ -279,14 +279,14 @@ function K8sEndpoint(props: { title: string; port: string | null; isPinned: bool
   }, [props.title]);
 
   return (
-    <span className={css.k8sParts}>
+    <span>
       <span className={css.title}>
         {props.isPinned && <Pin />}
         {title}
         {props.port && <Port port={props.port} />}
       </span>{" "}
-      <span className={css.namespace}>{namespace}</span>{" "}
-      <span className={css.k8sEntityType}>{type}</span>
+      <span className={css.kubeNamespace}>{namespace}</span>{" "}
+      <span className={css.entityKubeType}>{type}</span>
     </span>
   );
 }

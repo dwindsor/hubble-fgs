@@ -1,4 +1,6 @@
 .connector {
+  position: relative;
+  top: 1px;
   display: flex;
   flex-wrap: nowrap;
   margin-left: 10px;
@@ -10,7 +12,7 @@
 .part {
   width: 7px;
   height: 100%;
-  background: #eeed;
+  background: hsl(from var(--ipt-color-entity-inner) h s calc(l + 10));
 
   &:first-child {
     border-radius: 3px 0 0 3px;
@@ -24,35 +26,29 @@
     border-radius: 3px;
   }
 
-  &.outerEntity {
-    background: #ded0ff;
+  &.entityOuter {
+    background: hsl(from var(--ipt-color-entity-outer) h s calc(l + 10));
   }
 
-  &.k8sEntity {
-    background: #c0e6ff;
+  &.entityKube {
+    background: hsl(from var(--ipt-color-entity-kube) h s calc(l + 10));
   }
 }
 
 :global(.ipt-highlighted) .part {
-  background: #ccc;
+  background: var(--ipt-color-entity-inner);
 }
 
-:global(.ipt-highlighted) .outerEntity {
-  background: #a289de;
+:global(.ipt-highlighted) .entityOuter {
+  background: var(--ipt-color-entity-outer);
 }
 
-:global(.ipt-highlighted) .k8sEntity {
-  background: #84bbe0;
+:global(.ipt-highlighted) .entityKube {
+  background: var(--ipt-color-entity-kube);
 }
 
-:global(.ipt-muted) .part {
-  background: #eee;
-}
-
-:global(.ipt-muted) .outerEntity {
-  background: #eee;
-}
-
-:global(.ipt-muted) .k8sEntity {
-  background: #eee;
+:global(.ipt-muted) .part,
+:global(.ipt-muted) .entityOuter,
+:global(.ipt-muted) .entityKube {
+  background: var(--ipt-color-entity-muted);
 }

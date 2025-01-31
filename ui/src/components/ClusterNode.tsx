@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import { useAppState } from "~/state/AppContext";
+import { colors } from "~/theme/colors";
 import { TREE_NODE_PATH } from "~/utils/tree";
 import css from "./ClusterNode.module.css";
 import { Collapsible } from "./Collapsible";
@@ -32,7 +33,7 @@ export const ClusterNode = memo(function ClusterNode() {
         summary={({ onClick }) => (
           <summary className={entry.className} onClick={onClick}>
             <div className={css.inner}>
-              <NodeIcon className={css.nodeIcon} size={14} color={"#b8b8b8"} />
+              <NodeIcon className={css.nodeIcon} size={14} color={colors.treeBranch} />
               <TextOverflow text={state.model.nodeName ?? ""} trimSide="center" />
               {entry.stat && <Statistic stat={entry.stat} />}
               {entry.hasConnections && <Connector endpoints={entry.connectorEndpoints} />}

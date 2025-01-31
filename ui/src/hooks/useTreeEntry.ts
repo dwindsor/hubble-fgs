@@ -100,8 +100,8 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
     return clsx("ipt-interactive", {
       "ipt-highlighted": visualState === VisualStateKind.Highlighted || selectedEndpoint,
       "ipt-muted": visualState === VisualStateKind.Muted,
-      "ipt-endpoint-outer-dns": endpointKind === EndpointKind.OuterDns,
-      "ipt-endpoint-k8s": endpointKind === EndpointKind.K8s,
+      "ipt-endpoint-outer": endpointKind === EndpointKind.OuterDns,
+      "ipt-endpoint-kube": endpointKind === EndpointKind.Kube,
     });
   }, [visualState, selectedEndpoint, endpointKind]);
 

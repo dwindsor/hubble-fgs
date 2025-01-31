@@ -1,8 +1,8 @@
-import clsx from "clsx";
 import { memo, useMemo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationNamespace } from "~/proto";
 import { useAppState } from "~/state/AppContext";
+import { colors } from "~/theme/colors";
 import { TREE_NAMESPACES_PATH, type TreeNamespacePath } from "~/utils/tree";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
@@ -47,9 +47,9 @@ export const NamespaceItem = memo(function Namespace(props: NamespaceProps) {
           <summary className={entry.className} onClick={onClick}>
             <div className={css.inner}>
               <NamespaceIcon
-                className={css.namespaceIcon}
+                className={css.icon}
                 size={14}
-                color={entry.stat?.hasSuspiciousProcs ? "#d59011" : "#b8b8b8"}
+                color={entry.stat?.hasSuspiciousProcs ? colors.suspicious : colors.treeBranch}
               />
               <TextOverflow text={props.namespace.name ?? ""} trimSide="right" />
               {entry.stat && <Statistic stat={entry.stat} />}
@@ -80,9 +80,9 @@ export const NamespacesList = memo(function NamespacesList(props: NamespacesList
       path={TREE_NAMESPACES_PATH}
       initialOpen={true}
       summary={({ onClick }) => (
-        <summary className={clsx(entry.className, css.namespacesTitle)} onClick={onClick}>
+        <summary className={entry.className} onClick={onClick}>
           <div className={css.inner}>
-            <NamespacesIcon className={css.namespacesIcon} size={14} color="#b8b8b8" />
+            <NamespacesIcon className={css.icon} size={14} color={colors.treeBranch} />
             <span>Namespaces</span>
             {entry.stat && <Statistic stat={entry.stat} />}
             {entry.hasConnections && <Connector endpoints={entry.connectorEndpoints} />}

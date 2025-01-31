@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { useAppState } from "~/state/AppContext";
+import { colors } from "~/theme/colors";
 import { TREE_CLUSTER_PATH } from "~/utils/tree";
 import css from "./Cluster.module.css";
 import { ClusterNode } from "./ClusterNode";
@@ -17,7 +18,7 @@ export const Cluster = memo(function Cluster() {
         summary={({ onClick }) => (
           <summary className={css.clusterName} onClick={onClick}>
             <div>
-              <ClusterIcon className={css.clusterIcon} size={14} color="#b8b8b8" />
+              <ClusterIcon className={css.clusterIcon} size={14} color={colors.treeBranch} />
               <span>{state.model.clusterName}</span>
             </div>
           </summary>

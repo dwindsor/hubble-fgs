@@ -11,10 +11,10 @@ export interface Props {
 }
 
 const CLASS_NAMES = {
-  [EndpointKind.OuterIp]: css.outerEntity,
-  [EndpointKind.OuterDns]: css.outerEntity,
-  [EndpointKind.K8s]: css.k8sEntity,
-  [EndpointKind.HostMetadataService]: css.k8sEntity,
+  [EndpointKind.OuterIp]: css.entityOuter,
+  [EndpointKind.OuterDns]: css.entityOuter,
+  [EndpointKind.Kube]: css.entityKube,
+  [EndpointKind.HostMetadataService]: css.entityKube,
 } as { [key: string]: string };
 
 export const Connector = memo(function Connector(props: Props) {

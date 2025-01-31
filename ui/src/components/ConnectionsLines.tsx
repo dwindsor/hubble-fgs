@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useAppState } from "~/state/AppContext";
+import { colors } from "~/theme/colors";
 import type { ConnectionLine } from "~/utils/connections";
 import { EndpointKind, EndpointMode } from "~/utils/endpoints";
 import type { WH } from "~/utils/geometry";
@@ -9,26 +10,26 @@ export interface Props {
 }
 
 const BASE_LINE_COLOR = {
-  [EndpointKind.OuterDns]: "#9e83df",
-  [EndpointKind.OuterIp]: "#9e83df",
-  [EndpointKind.HostMetadataService]: "#78bbe8",
-  [EndpointKind.K8s]: "#78bbe8",
-  [EndpointKind.InnerDns]: "#ccc",
-  [EndpointKind.InnerIp]: "#ccc",
-  [EndpointKind.Other]: "#ccc",
+  [EndpointKind.OuterDns]: colors.entityOuter,
+  [EndpointKind.OuterIp]: colors.entityOuter,
+  [EndpointKind.HostMetadataService]: colors.entityKube,
+  [EndpointKind.Kube]: colors.entityKube,
+  [EndpointKind.InnerDns]: colors.entityInner,
+  [EndpointKind.InnerIp]: colors.entityInner,
+  [EndpointKind.Other]: colors.entityInner,
 } as const;
 
 const HIGHLIGHTED_LINE_COLOR = {
-  [EndpointKind.OuterDns]: "#7748e4",
-  [EndpointKind.OuterIp]: "#7748e4",
-  [EndpointKind.HostMetadataService]: "#0b81d0",
-  [EndpointKind.K8s]: "#0b81d0",
-  [EndpointKind.InnerDns]: "#888",
-  [EndpointKind.InnerIp]: "#888",
-  [EndpointKind.Other]: "#888",
+  [EndpointKind.OuterDns]: colors.entityOuterHighlighted,
+  [EndpointKind.OuterIp]: colors.entityOuterHighlighted,
+  [EndpointKind.HostMetadataService]: colors.entityKubeHighlighted,
+  [EndpointKind.Kube]: colors.entityKubeHighlighted,
+  [EndpointKind.InnerDns]: colors.entityInnerHighlighted,
+  [EndpointKind.InnerIp]: colors.entityInnerHighlighted,
+  [EndpointKind.Other]: colors.entityInnerHighlighted,
 } as const;
 
-const MUTED_LINE_COLOR = "#eee";
+const MUTED_LINE_COLOR = colors.entityMuted;
 
 export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
   const state = useAppState();

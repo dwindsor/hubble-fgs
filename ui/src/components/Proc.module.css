@@ -2,14 +2,19 @@
   cursor: default;
 
   &.suspicious {
-    color: #d59011;
+    color: var(--ipt-color-suspicious);
   }
 }
 
 .proc:has(> div.inner)::before {
   border-style: solid;
   border-image-slice: 1;
-  border-image-source: linear-gradient(to right, var(--branch-color), var(--branch-color) 50%, #fff);
+  border-image-source: linear-gradient(
+    to right,
+    var(--ipt-color-tree-branch),
+    var(--ipt-color-tree-branch) 50%,
+    var(--ipt-color-page)
+  );
   border-width: 0 0 2px 2px;
 }
 
@@ -26,7 +31,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-left: 7px;
-  color: #999;
+  color: var(--ipt-color-text-muted);
 }
 
 .proc:hover,

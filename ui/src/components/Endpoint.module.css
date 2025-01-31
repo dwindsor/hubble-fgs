@@ -11,6 +11,10 @@
   &:last-child {
     padding-bottom: 0;
   }
+
+  :global(.ipt-tree-item-stat) {
+    top: -1px;
+  }
 }
 
 .icon {
@@ -26,99 +30,121 @@
 
 .title {
   display: inline-block;
-  padding: 0 0 2px 5px;
+  padding-left: 5px;
   border-radius: 3px 0 0 3px;
-  background: linear-gradient(to right, #ebebeb, #fff 50%);
+  background: linear-gradient(
+    to right,
+    hsl(from var(--ipt-color-entity-inner) h s calc(l + 10)),
+    var(--ipt-color-page) 50%
+  );
 }
 
 .port {
   padding: 0 5px 2px 0;
 }
 
-.namespace {
+.entityOuter .title {
+  background: linear-gradient(
+    to right,
+    hsl(from var(--ipt-color-entity-outer) h s calc(l + 20)),
+    var(--ipt-color-page) 50%
+  );
+}
+
+.entityKube .title {
+  background: linear-gradient(
+    to right,
+    hsl(from var(--ipt-color-entity-kube) h s calc(l + 20)),
+    var(--ipt-color-page) 50%
+  );
+}
+
+.kubeNamespace {
   margin-left: 5px;
   padding: 0 5px;
   border-radius: 3px;
-  background-color: #e8f4fb;
+  background-color: hsl(from var(--ipt-color-entity-kube) h s calc(l + 25));
 }
 
-.k8sEntity .title {
-  background: linear-gradient(to right, #cbe7fa, #fff 50%);
-}
-
-.outerEntity .title {
-  background: linear-gradient(to right, #e2d6ff, #fff 50%);
-}
-
-.k8sEntityType {
+.entityKubeType {
   margin-left: 5px;
   font-size: 0.8em;
-  color: #999;
+  color: var(--ipt-color-text-muted);
 }
 
 .separator {
-  color: #999;
+  color: hsl(from var(--ipt-color-separator) h s calc(l - 20));
 }
 
 .endpoint:hover,
 .endpoint.highlighted {
   font-weight: 700;
-  :global(.process-tree-item-statistic) {
-    color: #555;
+  :global(.ipt-tree-item-stat) {
+    color: hsl(from var(--ipt-color-entity-inner) h s calc(l - 30));
   }
 
   .title {
-    background: linear-gradient(to right, #d8d8d8, #fff 50%);
+    background: linear-gradient(
+      to right,
+      hsl(from var(--ipt-color-entity-inner) h s calc(l + 5)),
+      var(--ipt-color-page) 50%
+    );
   }
 
-  &.outerEntity .title {
-    background: linear-gradient(to right, #c7b2f8, #fff 50%);
+  &.entityOuter .title {
+    background: linear-gradient(
+      to right,
+      hsl(from var(--ipt-color-entity-outer) h s calc(l + 5)),
+      var(--ipt-color-page) 50%
+    );
   }
 
-  &.k8sEntity .title {
-    background: linear-gradient(to right, #afdcfa, #fff 50%);
+  &.entityKube .title {
+    background: linear-gradient(
+      to right,
+      hsl(from var(--ipt-color-entity-kube) h s calc(l + 5)),
+      var(--ipt-color-page) 50%
+    );
   }
 
-  .k8sEntityType {
-    color: #666;
+  .entityKubeType {
+    color: hsl(from var(--ipt-color-text-muted) h s calc(l - 10));
   }
 
-  .namespace {
-    background-color: #cae7f9;
+  .kubeNamespace {
+    background-color: hsl(from var(--ipt-color-entity-kube) h s calc(l + 20));
   }
 }
 
 .pin {
-  margin-right: 3px;
-  color: #666;
+  position: relative;
+  top: -1px;
+  margin-right: 5px;
+  color: hsl(from var(--ipt-color-text-muted) h s calc(l - 5));
 }
 
-.endpoint.outerEntity {
-  .pin {
-    color: #8a66e0;
-  }
-  :global(.process-tree-item-statistic) {
-    color: #8a66e0 !important;
-  }
-}
-
-.endpoint.k8sEntity {
-  .pin {
-    color: #58abe2;
-  }
-  :global(.process-tree-item-statistic) {
-    color: #58abe2 !important;
+.endpoint.entityOuter {
+  .pin,
+  :global(.ipt-tree-item-stat) {
+    color: hsl(from var(--ipt-color-entity-outer) h s calc(l - 10)) !important;
   }
 }
 
-.endpoint.outerEntity.highlighted {
-  :global(.process-tree-item-statistic) {
-    color: #7748e4 !important;
+.endpoint.entityKube {
+  .pin,
+  :global(.ipt-tree-item-stat) {
+    color: hsl(from var(--ipt-color-entity-kube) h s calc(l - 10)) !important;
   }
 }
 
-.endpoint.k8sEntity.highlighted {
-  :global(.process-tree-item-statistic) {
-    color: #0b81d0 !important;
+.endpoint.entityOuter.highlighted {
+  :global(.ipt-tree-item-stat) {
+    color: var(--ipt-color-entity-outer) !important;
+  }
+}
+
+.endpoint.entityKube.highlighted {
+  :global(.ipt-tree-item-stat) {
+    color: var(--ipt-color-entity-kube) !important;
   }
 }

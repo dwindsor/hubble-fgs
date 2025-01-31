@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { memo, useMemo } from "react";
+import { colors } from "~/theme/colors";
 import type { Stat } from "~/utils/stat";
 import { WarningIcon } from "./Icons/WarningIcon";
 import css from "./Statistic.module.css";
@@ -11,7 +12,7 @@ export interface Props {
 
 export const Statistic = memo(function Statistic(props: Props) {
   return (
-    <span className={clsx(css.wrapper, "process-tree-item-statistic")}>
+    <span className={clsx(css.wrapper, "ipt-tree-item-stat")}>
       {props.stat.bytesSent > 0 && (
         <>
           <Traffic dir="received" bytes={props.stat.bytesReceived} />
@@ -21,7 +22,7 @@ export const Statistic = memo(function Statistic(props: Props) {
       )}
       {props.showSuspiciousMarker && props.stat.hasSuspiciousProcs && (
         <span className={css.suspiciousMarker}>
-          <WarningIcon color={"#dda02f"} size={14} />
+          <WarningIcon color={colors.suspicious} size={14} />
         </span>
       )}
     </span>

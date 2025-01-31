@@ -26,7 +26,7 @@ export const EndpointKind = Enum({
   InnerIp: "inner-ip",
   OuterDns: "outer-dns",
   InnerDns: "inner-dns",
-  K8s: "k8s",
+  Kube: "kube",
   HostMetadataService: "host-metadata-service",
   Other: "other",
 });
@@ -37,7 +37,7 @@ export const endpointsKindOrder = [
   EndpointKind.OuterDns,
   EndpointKind.OuterIp,
   EndpointKind.HostMetadataService,
-  EndpointKind.K8s,
+  EndpointKind.Kube,
   EndpointKind.InnerDns,
   EndpointKind.InnerIp,
 ].reduce(
@@ -55,7 +55,7 @@ export function inferEndpointKind(endpoint: Endpoint): EndpointKind {
     return EndpointKind.HostMetadataService;
   }
   if (endpointWithoutPort.includes("/")) {
-    return EndpointKind.K8s;
+    return EndpointKind.Kube;
   }
   if (checkIpAddress(endpointWithoutPort)) {
     const ranges = {

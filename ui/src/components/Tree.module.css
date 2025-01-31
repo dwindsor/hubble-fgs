@@ -1,10 +1,8 @@
 .tree {
   --padding: 1.5rem;
   --radius: 4px;
-  --branch-color: #b8b8b8;
-  --clickable-hover-bg-color: #e9e9e9;
 
-  font-size: 14px;
+  color: var(--ipt-color-text);
 
   ul {
     margin-left: calc(var(--radius) - var(--padding));
@@ -23,7 +21,7 @@
     left: calc(var(--padding) - var(--radius) - 1px);
     width: calc(2 * var(--radius));
     height: calc(2 * var(--radius));
-    background-color: var(--branch-color);
+    background-color: var(--ipt-color-tree-branch);
     border-radius: 50%;
   }
 
@@ -31,7 +29,7 @@
     display: block;
     position: relative;
     padding-left: calc(2 * var(--padding) - var(--radius) - 2px);
-    border-left: 2px solid var(--branch-color);
+    border-left: 2px solid var(--ipt-color-tree-branch);
 
     &::before {
       content: "";
@@ -41,12 +39,12 @@
       left: -2px;
       width: calc(var(--padding) + 2px);
       height: calc(var(--padding) - 1px);
-      border: solid var(--branch-color);
+      border: solid var(--ipt-color-tree-branch);
       border-width: 0 0 2px 2px;
     }
 
     &::after {
-      background: var(--branch-color);
+      background: var(--ipt-color-tree-branch);
     }
 
     &:last-child {
@@ -66,15 +64,11 @@
 
     &:hover > div > span:nth-child(2) {
       border-radius: 3px;
-      background-color: var(--clickable-hover-bg-color);
+      background-color: hsl(from var(--ipt-color-tree-branch) h s calc(l + 20));
     }
 
     &:focus {
       outline: none;
-    }
-
-    &:focus-visible {
-      outline: 1px dotted #000;
     }
   }
 
@@ -92,22 +86,22 @@
   li details > summary:hover,
   li > div:hover,
   :global(.ipt-interactive.ipt-highlighted) {
-    :global(.process-tree-item-statistic) {
-      color: #555;
+    :global(.ipt-tree-item-stat) {
+      color: hsl(from var(--ipt-color-entity-inner) h s calc(l - 30));
     }
 
-    &:global(.ipt-endpoint-outer-dns) :global(.process-tree-item-statistic) {
-      color: #7748e4;
+    &:global(.ipt-endpoint-outer) :global(.ipt-tree-item-stat) {
+      color: hsl(from var(--ipt-color-entity-outer) h s calc(l - 10));
     }
 
-    &:global(.ipt-endpoint-k8s) :global(.process-tree-item-statistic) {
-      color: #0b81d0;
+    &:global(.ipt-endpoint-kube) :global(.ipt-tree-item-stat) {
+      color: hsl(from var(--ipt-color-entity-kube) h s calc(l - 10));
     }
   }
 
   li details > summary > div > span,
   li > div > span {
-    line-height: 22px;
-    background-color: rgba(255, 255, 255, 0.75);
+    line-height: 1.5;
+    background-color: rgb(from var(--ipt-color-page) r g b / 75%);
   }
 }

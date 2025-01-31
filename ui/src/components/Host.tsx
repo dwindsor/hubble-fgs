@@ -1,8 +1,8 @@
-import clsx from "clsx";
 import { memo } from "react";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationHost } from "~/proto";
 import { useAppState } from "~/state/AppContext";
+import { colors } from "~/theme/colors";
 import { TREE_HOST_PATH } from "~/utils/tree";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
@@ -26,12 +26,12 @@ export const Host = memo(function Host(props: HostProps) {
     <Collapsible
       path={TREE_HOST_PATH}
       summary={({ onClick }) => (
-        <summary className={clsx(css.hostTitle, entry.className)} onClick={onClick}>
+        <summary className={entry.className} onClick={onClick}>
           <div className={css.inner}>
             <HostIcon
-              className={css.hostIcon}
+              className={css.icon}
               size={14}
-              color={entry.stat?.hasSuspiciousProcs ? "#d59011" : "#b8b8b8"}
+              color={entry.stat?.hasSuspiciousProcs ? colors.suspicious : colors.treeBranch}
             />
             <span>Host</span>
             {entry.stat && <Statistic stat={entry.stat} />}

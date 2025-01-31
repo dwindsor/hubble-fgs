@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { objectToCamel } from "ts-case-convert";
 import type { ApplicationModelEvent } from "~/proto";
 import { AppContext, createAppContext } from "~/state/AppContext";
+import { injectCSSVars } from "~/theme";
 import { App } from "./App";
 
 export interface Props {
@@ -9,6 +10,8 @@ export interface Props {
   getTreeOffset: () => { x?: number; y?: number };
   persistStateInUrl?: boolean | undefined;
 }
+
+injectCSSVars();
 
 export const Root = memo(function Root(props: Props) {
   const model = useMemo(() => {
