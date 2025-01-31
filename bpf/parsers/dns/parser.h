@@ -145,12 +145,12 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 
 	data_end = (void *)(long)skb->data_end;
 	if (off < 0 || off > SKB_DATA_MAX_SIZE) {
-		return -30;
+		return -28;
 	}
 	data = (void *)(long)skb->data + off;
 
 	if (!data) {
-		return -31;
+		return -29;
 	}
 
 	// Light parse the compressed DNS name: do not actually retrieve the offset
@@ -166,7 +166,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 	// | 1  1|                OFFSET                   |
 	// +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 	if (data + sizeof(u8) * 2 > data_end)
-		return -32;
+		return -30;
 
 	first_byte = *((__u8 *)data);
 	if ((first_byte & COMPRESSED_MSG_MASK) == COMPRESSED_MSG_MASK) {
@@ -178,7 +178,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		// Might be not using message compression
 		name_len = parse_dns_name(skb, data, off);
 		if (name_len < 0)
-			return -33;
+			return -31;
 
 		// This next instruction is perfectly useless but the compiler
 		// seems to optimize things without this and then the verifier
@@ -187,7 +187,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 			     : [name_len] "+r"(name_len));
 
 		if (name_len > SKB_DATA_MAX_SIZE)
-			return -34;
+			return -32;
 
 		offset = name_len;
 		data += offset;
@@ -195,7 +195,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 
 	// The answer should contain type, class, TTL and data_len
 	if (data + (sizeof(u16) * 2 + sizeof(u32) + sizeof(u16)) > data_end)
-		return -35;
+		return -33;
 
 	type = bpf_ntohs(*(__u16 *)data);
 	data_len = bpf_ntohs(*(__u16 *)(data + sizeof(u16) * 2 + sizeof(u32)));
@@ -210,11 +210,11 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 
 	name = map_lookup_elem(&name_heap_map, &zero);
 	if (!name)
-		return -36;
+		return -34;
 
 	if (data_len == sizeof(u32) && type == (A_RECORD)) {
 		if (data + sizeof(u32) > data_end)
-			return -36;
+			return -35;
 
 		ip.addr[0] = *(__u32 *)data;
 		ip.addr[1] = 0;
@@ -222,14 +222,14 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		DEBUG("A Record: %d.%d.%d.%d", ip.addr[0] & 0xFF, (ip.addr[0] >> 8) & 0xFF, (ip.addr[0] >> 16) & 0xFF, ip.addr[0] >> 24);
 
 		if (map_update_elem(&tg_dns_ip_map, &ip, name, BPF_ANY) < 0)
-			return -37;
+			return -36;
 
 		assign_dns_id_mapping((struct endpoint_id_key *)&ip, name);
 
 		return offset + sizeof(u32);
 	} else if (data_len == sizeof(u128) && type == (AAAA_RECORD)) {
 		if (data + sizeof(u128) > data_end)
-			return -38;
+			return -37;
 
 		ip.addr[0] = *(__u64 *)data;
 		ip.addr[1] = *(__u64 *)(data + sizeof(u64));
@@ -248,7 +248,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 #endif
 
 		if (map_update_elem(&tg_dns_ip_map, &ip, name, BPF_ANY) < 0)
-			return -37;
+			return -38;
 
 		return offset + sizeof(u128);
 	}
