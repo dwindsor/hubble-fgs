@@ -9,7 +9,7 @@
     - [ApplicationModel](#application_model-v1alpha-ApplicationModel)
     - [ApplicationModelEvent](#application_model-v1alpha-ApplicationModelEvent)
     - [ApplicationNamespace](#application_model-v1alpha-ApplicationNamespace)
-    - [ApplicationProcess](#application_model-v1alpha-ApplicationProcess)
+    - [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup)
     - [ApplicationWorkload](#application_model-v1alpha-ApplicationWorkload)
   
 - [Scalar Value Types](#scalar-value-types)
@@ -49,7 +49,7 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| processes | [ApplicationProcess](#application_model-v1alpha-ApplicationProcess) | repeated |  |
+| processes | [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup) | repeated | A list of process groups in the host namespace. See ApplicationProcessGroup for the definition of a process group. |
 
 
 
@@ -106,20 +106,31 @@
 
 
 
-<a name="application_model-v1alpha-ApplicationProcess"></a>
+<a name="application_model-v1alpha-ApplicationProcessGroup"></a>
 
-### ApplicationProcess
+### ApplicationProcessGroup
+ApplicationProcessGroup represents a set of processes that are grouped by
+the following criteria:
 
+- They got spawned by processes that belong to a same process group.
+- They have the same command name.
+- They have the same command line arguments.
+- For processes running in a Kubernetes workload, they belong to the same
+  Kubernetes workload.
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| hash | [string](#string) |  | Hash to identify this process in the process tree. |
+| hash | [string](#string) |  | Hash to identify this process group in the process group tree. |
 | name | [string](#string) |  |  |
 | arguments | [string](#string) |  | Arguments passed to this process. |
-| children | [ApplicationProcess](#application_model-v1alpha-ApplicationProcess) | repeated | Child processes of this process. |
+| children | [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup) | repeated | Child process groups of this process. |
 | connections | [ApplicationConnection](#application_model-v1alpha-ApplicationConnection) | repeated |  |
 | in_init_tree | [google.protobuf.BoolValue](#google-protobuf-BoolValue) |  | Indicates if this process is containerized and is a member of the process tree rooted at pid=1 in its PID namespace. |
+| syscalls | [string](#string) | repeated | System calls used by this process. |
+| process_count | [uint64](#uint64) |  | Number of processes that are currently running in this process group. Implementations of this API may remove the process group from the application model if this count and the counts of all the descendant process groups are zero. |
+| latest_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The latest time at which a process in this process group was observed to start. |
+| latest_exit_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The latest time at which a process in this process group was observed to exit. |
 
 
 
@@ -136,7 +147,7 @@
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | kind | [string](#string) |  |  |
-| processes | [ApplicationProcess](#application_model-v1alpha-ApplicationProcess) | repeated |  |
+| processes | [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup) | repeated | A list of process groups in the workload. See ApplicationProcessGroup for the definition of a process group. |
 
 
 

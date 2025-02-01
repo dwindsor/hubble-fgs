@@ -69,7 +69,7 @@ func TestDiffComplex(t *testing.T) {
 				{
 					Name: "workload1",
 					Kind: "DaemonSet",
-					Processes: []*v1alpha.ApplicationProcess{
+					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/bash",
 						},
@@ -81,7 +81,7 @@ func TestDiffComplex(t *testing.T) {
 				{
 					Name: "workload2",
 					Kind: "DaemonSet",
-					Processes: []*v1alpha.ApplicationProcess{
+					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/foo",
 						},
@@ -99,7 +99,7 @@ func TestDiffComplex(t *testing.T) {
 				{
 					Name: "workload2",
 					Kind: "DaemonSet",
-					Processes: []*v1alpha.ApplicationProcess{
+					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/foo",
 						},
@@ -111,7 +111,7 @@ func TestDiffComplex(t *testing.T) {
 				{
 					Name: "workload1",
 					Kind: "DaemonSet",
-					Processes: []*v1alpha.ApplicationProcess{
+					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/fish",
 						},
@@ -162,7 +162,7 @@ func TestDiffIgnoreBytesSent(t *testing.T) {
 			{
 				Workloads: []*v1alpha.ApplicationWorkload{
 					{
-						Processes: []*v1alpha.ApplicationProcess{
+						Processes: []*v1alpha.ApplicationProcessGroup{
 							{
 								Connections: []*v1alpha.ApplicationConnection{
 									{
@@ -181,7 +181,7 @@ func TestDiffIgnoreBytesSent(t *testing.T) {
 			{
 				Workloads: []*v1alpha.ApplicationWorkload{
 					{
-						Processes: []*v1alpha.ApplicationProcess{
+						Processes: []*v1alpha.ApplicationProcessGroup{
 							{
 								Connections: []*v1alpha.ApplicationConnection{
 									{

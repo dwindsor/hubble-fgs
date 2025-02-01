@@ -57,7 +57,7 @@ func TestCheckApplicationEventModelJSON(t *testing.T) {
 
 	chk, err = checker.NewApplicationModelChecker([]string{
 		`node_name == "ip-10-3-8-195.us-west-2.compute.internal"`,
-		`model.namespaces.exists_one(n, n.name == "hubble-enterprise" && n.workloads.exists_one(w, w.name == "hubble-enterprise" && w.kind == "DaemonSet" && w.processes == [ApplicationProcess{name: "/usr/local/bin/ruby"}]))`,
+		`model.namespaces.exists_one(n, n.name == "hubble-enterprise" && n.workloads.exists_one(w, w.name == "hubble-enterprise" && w.kind == "DaemonSet" && w.processes == [ApplicationProcessGroup{name: "/usr/local/bin/ruby"}]))`,
 		`model.host.processes.exists_one(p, p.name.matches("/aws$") && p.connections.size() > 0)`,
 	})
 	require.NoError(t, err)

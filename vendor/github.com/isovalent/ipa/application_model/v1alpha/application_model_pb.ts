@@ -22,7 +22,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file application_model/v1alpha/application_model.proto.
  */
 export const file_application_model_v1alpha_application_model: GenFile = /*@__PURE__*/
-  fileDesc("CjFhcHBsaWNhdGlvbl9tb2RlbC92MWFscGhhL2FwcGxpY2F0aW9uX21vZGVsLnByb3RvEhlhcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhIrIBChVBcHBsaWNhdGlvbk1vZGVsRXZlbnQSFAoMY2x1c3Rlcl9uYW1lGAEgASgJEhEKCW5vZGVfbmFtZRgCIAEoCRIoCgR0aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBJGChFhcHBsaWNhdGlvbl9tb2RlbBgEIAEoCzIrLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Nb2RlbCKRAQoQQXBwbGljYXRpb25Nb2RlbBJDCgpuYW1lc3BhY2VzGAEgAygLMi8uYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvbk5hbWVzcGFjZRI4CgRob3N0GAIgASgLMiouYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvbkhvc3QiUwoPQXBwbGljYXRpb25Ib3N0EkAKCXByb2Nlc3NlcxgBIAMoCzItLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Qcm9jZXNzImcKFEFwcGxpY2F0aW9uTmFtZXNwYWNlEgwKBG5hbWUYASABKAkSQQoJd29ya2xvYWRzGAIgAygLMi4uYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvbldvcmtsb2FkInMKE0FwcGxpY2F0aW9uV29ya2xvYWQSDAoEbmFtZRgBIAEoCRIMCgRraW5kGAIgASgJEkAKCXByb2Nlc3NlcxgDIAMoCzItLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Qcm9jZXNzIv0BChJBcHBsaWNhdGlvblByb2Nlc3MSDAoEaGFzaBgBIAEoCRIMCgRuYW1lGAIgASgJEhEKCWFyZ3VtZW50cxgDIAEoCRI/CghjaGlsZHJlbhgEIAMoCzItLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Qcm9jZXNzEkUKC2Nvbm5lY3Rpb25zGAUgAygLMjAuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvbkNvbm5lY3Rpb24SMAoMaW5faW5pdF90cmVlGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLkJvb2xWYWx1ZSJ3ChVBcHBsaWNhdGlvbkNvbm5lY3Rpb24SGAoQZGVzdGluYXRpb25fbmFtZRgBIAEoCRIYChBkZXN0aW5hdGlvbl9wb3J0GAIgASgEEhIKCmJ5dGVzX3NlbnQYAyABKAQSFgoOYnl0ZXNfcmVjZWl2ZWQYBCABKARCNFoyZ2l0aHViLmNvbS9pc292YWxlbnQvaXBhL2FwcGxpY2F0aW9uX21vZGVsL3YxYWxwaGFiBnByb3RvMw", [file_google_protobuf_timestamp, file_google_protobuf_wrappers]);
+  fileDesc("CjFhcHBsaWNhdGlvbl9tb2RlbC92MWFscGhhL2FwcGxpY2F0aW9uX21vZGVsLnByb3RvEhlhcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhIrIBChVBcHBsaWNhdGlvbk1vZGVsRXZlbnQSFAoMY2x1c3Rlcl9uYW1lGAEgASgJEhEKCW5vZGVfbmFtZRgCIAEoCRIoCgR0aW1lGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBJGChFhcHBsaWNhdGlvbl9tb2RlbBgEIAEoCzIrLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Nb2RlbCKRAQoQQXBwbGljYXRpb25Nb2RlbBJDCgpuYW1lc3BhY2VzGAEgAygLMi8uYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvbk5hbWVzcGFjZRI4CgRob3N0GAIgASgLMiouYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvbkhvc3QiWAoPQXBwbGljYXRpb25Ib3N0EkUKCXByb2Nlc3NlcxgBIAMoCzIyLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Qcm9jZXNzR3JvdXAiZwoUQXBwbGljYXRpb25OYW1lc3BhY2USDAoEbmFtZRgBIAEoCRJBCgl3b3JrbG9hZHMYAiADKAsyLi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkFwcGxpY2F0aW9uV29ya2xvYWQieAoTQXBwbGljYXRpb25Xb3JrbG9hZBIMCgRuYW1lGAEgASgJEgwKBGtpbmQYAiABKAkSRQoJcHJvY2Vzc2VzGAMgAygLMjIuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvblByb2Nlc3NHcm91cCKdAwoXQXBwbGljYXRpb25Qcm9jZXNzR3JvdXASDAoEaGFzaBgBIAEoCRIMCgRuYW1lGAIgASgJEhEKCWFyZ3VtZW50cxgDIAEoCRJECghjaGlsZHJlbhgEIAMoCzIyLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Qcm9jZXNzR3JvdXASRQoLY29ubmVjdGlvbnMYBSADKAsyMC5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkFwcGxpY2F0aW9uQ29ubmVjdGlvbhIwCgxpbl9pbml0X3RyZWUYBiABKAsyGi5nb29nbGUucHJvdG9idWYuQm9vbFZhbHVlEhAKCHN5c2NhbGxzGAcgAygJEhUKDXByb2Nlc3NfY291bnQYCCABKAQSNQoRbGF0ZXN0X3N0YXJ0X3RpbWUYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjQKEGxhdGVzdF9leGl0X3RpbWUYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIncKFUFwcGxpY2F0aW9uQ29ubmVjdGlvbhIYChBkZXN0aW5hdGlvbl9uYW1lGAEgASgJEhgKEGRlc3RpbmF0aW9uX3BvcnQYAiABKAQSEgoKYnl0ZXNfc2VudBgDIAEoBBIWCg5ieXRlc19yZWNlaXZlZBgEIAEoBEI0WjJnaXRodWIuY29tL2lzb3ZhbGVudC9pcGEvYXBwbGljYXRpb25fbW9kZWwvdjFhbHBoYWIGcHJvdG8z", [file_google_protobuf_timestamp, file_google_protobuf_wrappers]);
 
 /**
  * @generated from message application_model.v1alpha.ApplicationModelEvent
@@ -83,9 +83,12 @@ export const ApplicationModelSchema: GenMessage<ApplicationModel> = /*@__PURE__*
  */
 export type ApplicationHost = Message<"application_model.v1alpha.ApplicationHost"> & {
   /**
-   * @generated from field: repeated application_model.v1alpha.ApplicationProcess processes = 1;
+   * A list of process groups in the host namespace. See ApplicationProcessGroup
+   * for the definition of a process group.
+   *
+   * @generated from field: repeated application_model.v1alpha.ApplicationProcessGroup processes = 1;
    */
-  processes: ApplicationProcess[];
+  processes: ApplicationProcessGroup[];
 };
 
 /**
@@ -132,9 +135,12 @@ export type ApplicationWorkload = Message<"application_model.v1alpha.Application
   kind: string;
 
   /**
-   * @generated from field: repeated application_model.v1alpha.ApplicationProcess processes = 3;
+   * A list of process groups in the workload. See ApplicationProcessGroup for
+   * the definition of a process group.
+   *
+   * @generated from field: repeated application_model.v1alpha.ApplicationProcessGroup processes = 3;
    */
-  processes: ApplicationProcess[];
+  processes: ApplicationProcessGroup[];
 };
 
 /**
@@ -145,11 +151,20 @@ export const ApplicationWorkloadSchema: GenMessage<ApplicationWorkload> = /*@__P
   messageDesc(file_application_model_v1alpha_application_model, 4);
 
 /**
- * @generated from message application_model.v1alpha.ApplicationProcess
+ * ApplicationProcessGroup represents a set of processes that are grouped by
+ * the following criteria:
+ *
+ * - They got spawned by processes that belong to a same process group.
+ * - They have the same command name.
+ * - They have the same command line arguments.
+ * - For processes running in a Kubernetes workload, they belong to the same
+ *   Kubernetes workload.
+ *
+ * @generated from message application_model.v1alpha.ApplicationProcessGroup
  */
-export type ApplicationProcess = Message<"application_model.v1alpha.ApplicationProcess"> & {
+export type ApplicationProcessGroup = Message<"application_model.v1alpha.ApplicationProcessGroup"> & {
   /**
-   * Hash to identify this process in the process tree.
+   * Hash to identify this process group in the process group tree.
    *
    * @generated from field: string hash = 1;
    */
@@ -168,11 +183,11 @@ export type ApplicationProcess = Message<"application_model.v1alpha.ApplicationP
   arguments: string;
 
   /**
-   * Child processes of this process.
+   * Child process groups of this process.
    *
-   * @generated from field: repeated application_model.v1alpha.ApplicationProcess children = 4;
+   * @generated from field: repeated application_model.v1alpha.ApplicationProcessGroup children = 4;
    */
-  children: ApplicationProcess[];
+  children: ApplicationProcessGroup[];
 
   /**
    * @generated from field: repeated application_model.v1alpha.ApplicationConnection connections = 5;
@@ -186,13 +201,46 @@ export type ApplicationProcess = Message<"application_model.v1alpha.ApplicationP
    * @generated from field: google.protobuf.BoolValue in_init_tree = 6;
    */
   inInitTree?: boolean;
+
+  /**
+   * System calls used by this process.
+   *
+   * @generated from field: repeated string syscalls = 7;
+   */
+  syscalls: string[];
+
+  /**
+   * Number of processes that are currently running in this process group.
+   * Implementations of this API may remove the process group from the
+   * application model if this count and the counts of all the descendant
+   * process groups are zero.
+   *
+   * @generated from field: uint64 process_count = 8;
+   */
+  processCount: bigint;
+
+  /**
+   * The latest time at which a process in this process group was observed to
+   * start.
+   *
+   * @generated from field: google.protobuf.Timestamp latest_start_time = 9;
+   */
+  latestStartTime?: Timestamp;
+
+  /**
+   * The latest time at which a process in this process group was observed to
+   * exit.
+   *
+   * @generated from field: google.protobuf.Timestamp latest_exit_time = 10;
+   */
+  latestExitTime?: Timestamp;
 };
 
 /**
- * Describes the message application_model.v1alpha.ApplicationProcess.
- * Use `create(ApplicationProcessSchema)` to create a new message.
+ * Describes the message application_model.v1alpha.ApplicationProcessGroup.
+ * Use `create(ApplicationProcessGroupSchema)` to create a new message.
  */
-export const ApplicationProcessSchema: GenMessage<ApplicationProcess> = /*@__PURE__*/
+export const ApplicationProcessGroupSchema: GenMessage<ApplicationProcessGroup> = /*@__PURE__*/
   messageDesc(file_application_model_v1alpha_application_model, 5);
 
 /**

@@ -36,7 +36,7 @@ func TestGenerate(t *testing.T) {
 		},
 		ApplicationModel: &appModelV1.ApplicationModel{
 			Host: &appModelV1.ApplicationHost{
-				Processes: []*appModelV1.ApplicationProcess{
+				Processes: []*appModelV1.ApplicationProcessGroup{
 					{
 						Name: "/bin/foobar",
 					},
@@ -64,7 +64,7 @@ func TestGenerate(t *testing.T) {
 						{
 							Name: "quxbaz",
 							Kind: "DaemonSet",
-							Processes: []*appModelV1.ApplicationProcess{
+							Processes: []*appModelV1.ApplicationProcessGroup{
 								{
 									Name: "/bin/bash",
 									Connections: []*appModelV1.ApplicationConnection{

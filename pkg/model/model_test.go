@@ -21,13 +21,13 @@ func TestMerge(t *testing.T) {
 	m1 := appModelV1.ApplicationModel{
 		Namespaces: nil,
 		Host: &appModelV1.ApplicationHost{
-			Processes: []*appModelV1.ApplicationProcess{{Name: "curl"}},
+			Processes: []*appModelV1.ApplicationProcessGroup{{Name: "curl"}},
 		},
 	}
 	m2 := appModelV1.ApplicationModel{
 		Namespaces: nil,
 		Host: &appModelV1.ApplicationHost{
-			Processes: []*appModelV1.ApplicationProcess{{Name: "curl"}, {Name: "wget"}},
+			Processes: []*appModelV1.ApplicationProcessGroup{{Name: "curl"}, {Name: "wget"}},
 		},
 	}
 	res := Merge(&m1, &m2)
@@ -41,7 +41,7 @@ func TestMergeArgs(t *testing.T) {
 	m1 := appModelV1.ApplicationModel{
 		Namespaces: nil,
 		Host: &appModelV1.ApplicationHost{
-			Processes: []*appModelV1.ApplicationProcess{
+			Processes: []*appModelV1.ApplicationProcessGroup{
 				{Name: "curl", Arguments: "-v ebpf.io"},
 				{Name: "curl", Arguments: "-v tetragon.io"},
 			},
@@ -50,7 +50,7 @@ func TestMergeArgs(t *testing.T) {
 	m2 := appModelV1.ApplicationModel{
 		Namespaces: nil,
 		Host: &appModelV1.ApplicationHost{
-			Processes: []*appModelV1.ApplicationProcess{
+			Processes: []*appModelV1.ApplicationProcessGroup{
 				{Name: "curl", Arguments: "-v ebpf.io"},
 				{Name: "wget"},
 			},

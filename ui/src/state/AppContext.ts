@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { timestampNow } from "@bufbuild/protobuf/wkt";
 import { ApplicationModelEventSchema } from "@ipa/application_model/v1alpha/application_model_pb";
 import { createContext, useContext } from "react";
-import type { ApplicationModelEvent, ApplicationProcess } from "~/proto";
+import type { ApplicationModelEvent, ApplicationProcessGroup } from "~/proto";
 import type { TreePathStatus, XY } from "~/types";
 import { assert } from "~/utils/assert";
 import { EndpointMode, type EndpointModeType } from "~/utils/endpoints";
@@ -26,7 +26,7 @@ export function createAppContext({
   const inner = {
     treePathsMap: new Map<string, TreePathStatus>(),
     highlightedEndpointsMap: new Map<string, Set<EndpointModeType>>(),
-    highlightedProc: null as ApplicationProcess | null,
+    highlightedProc: null as ApplicationProcessGroup | null,
   };
 
   if (persistInUrl) {
@@ -113,7 +113,7 @@ export function createAppContext({
 
     onRedrawConnectionsLines: emitter.createSubscriber(EmitterEventKind.RedrawConnectionsLines),
 
-    updateProcess(proc: ApplicationProcess, visible: boolean | undefined, xy: XY | undefined) {
+    updateProcess(proc: ApplicationProcessGroup, visible: boolean | undefined, xy: XY | undefined) {
       const cur = state.processesMap.get(proc);
       if (cur) {
         cur.visible = visible;
@@ -178,7 +178,7 @@ export function createAppContext({
       return inner.highlightedProc;
     },
 
-    highlightProc(proc: ApplicationProcess, state: boolean) {
+    highlightProc(proc: ApplicationProcessGroup, state: boolean) {
       inner.highlightedProc = state ? proc : null;
       emitter.emitter.emit(EmitterEventKind.HighlightProc, proc, state);
       that.redrawConnectionLines();

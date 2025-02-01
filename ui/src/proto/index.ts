@@ -3,7 +3,7 @@ import type { DeepPartial } from "~/types";
 
 export type ApplicationModelEvent = DeepPartial<AppModel.ApplicationModelEvent>;
 
-export type ApplicationProcess = DeepPartial<AppModel.ApplicationProcess>;
+export type ApplicationProcessGroup = DeepPartial<AppModel.ApplicationProcessGroup>;
 
 export type ApplicationConnection = DeepPartial<AppModel.ApplicationConnection>;
 

@@ -30,7 +30,9 @@ message ApplicationModel {
 }
 
 message ApplicationHost {
-  repeated ApplicationProcess processes = 1;
+  // A list of process groups in the host namespace. See ApplicationProcessGroup
+  // for the definition of a process group.
+  repeated ApplicationProcessGroup processes = 1;
 }
 
 message ApplicationNamespace {
@@ -41,21 +43,44 @@ message ApplicationNamespace {
 message ApplicationWorkload {
   string name = 1;
   string kind = 2;
-  repeated ApplicationProcess processes = 3;
+  // A list of process groups in the workload. See ApplicationProcessGroup for
+  // the definition of a process group.
+  repeated ApplicationProcessGroup processes = 3;
 }
 
-message ApplicationProcess {
-  // Hash to identify this process in the process tree.
+// ApplicationProcessGroup represents a set of processes that are grouped by
+// the following criteria:
+//
+// - They got spawned by processes that belong to a same process group.
+// - They have the same command name.
+// - They have the same command line arguments.
+// - For processes running in a Kubernetes workload, they belong to the same
+//   Kubernetes workload.
+message ApplicationProcessGroup {
+  // Hash to identify this process group in the process group tree.
   string hash = 1;
   string name = 2;
   // Arguments passed to this process.
   string arguments = 3;
-  // Child processes of this process.
-  repeated ApplicationProcess children = 4;
+  // Child process groups of this process.
+  repeated ApplicationProcessGroup children = 4;
   repeated ApplicationConnection connections = 5;
   // Indicates if this process is containerized and is a member of the process
   // tree rooted at pid=1 in its PID namespace.
   google.protobuf.BoolValue in_init_tree = 6;
+  // System calls used by this process.
+  repeated string syscalls = 7;
+  // Number of processes that are currently running in this process group.
+  // Implementations of this API may remove the process group from the
+  // application model if this count and the counts of all the descendant
+  // process groups are zero.
+  uint64 process_count = 8;
+  // The latest time at which a process in this process group was observed to
+  // start.
+  google.protobuf.Timestamp latest_start_time = 9;
+  // The latest time at which a process in this process group was observed to
+  // exit.
+  google.protobuf.Timestamp latest_exit_time = 10;
 }
 
 message ApplicationConnection {

@@ -1082,7 +1082,7 @@ github.com/inconshreveable/mousetrap
 ## explicit; go 1.23.0
 github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned
 github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions
-# github.com/isovalent/ipa v0.0.0-20250123152339-ddcb0d7c578a
+# github.com/isovalent/ipa v0.0.0-20250201002826-a89fd7e69961
 ## explicit; go 1.23
 github.com/isovalent/ipa/application_model/v1alpha
 # github.com/isovalent/metricstool v0.1.2

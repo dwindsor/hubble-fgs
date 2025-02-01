@@ -77,8 +77,8 @@ func EnsureSorted(model *appModelV1.ApplicationModel) {
 					slices.SortStableFunc(*ptr, func(aVal, bVal protoreflect.Value) (res int) {
 						b := bVal.Message().Interface()
 						switch a := aVal.Message().Interface().(type) {
-						case *appModelV1.ApplicationProcess:
-							b := b.(*appModelV1.ApplicationProcess)
+						case *appModelV1.ApplicationProcessGroup:
+							b := b.(*appModelV1.ApplicationProcessGroup)
 							res = cmp.Compare(a.Name, b.Name)
 							if res != 0 {
 								return res

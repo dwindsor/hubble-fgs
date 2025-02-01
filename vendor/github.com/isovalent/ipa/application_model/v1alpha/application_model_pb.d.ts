@@ -78,9 +78,12 @@ export declare const ApplicationModelSchema: GenMessage<ApplicationModel>;
  */
 export declare type ApplicationHost = Message<"application_model.v1alpha.ApplicationHost"> & {
   /**
-   * @generated from field: repeated application_model.v1alpha.ApplicationProcess processes = 1;
+   * A list of process groups in the host namespace. See ApplicationProcessGroup
+   * for the definition of a process group.
+   *
+   * @generated from field: repeated application_model.v1alpha.ApplicationProcessGroup processes = 1;
    */
-  processes: ApplicationProcess[];
+  processes: ApplicationProcessGroup[];
 };
 
 /**
@@ -125,9 +128,12 @@ export declare type ApplicationWorkload = Message<"application_model.v1alpha.App
   kind: string;
 
   /**
-   * @generated from field: repeated application_model.v1alpha.ApplicationProcess processes = 3;
+   * A list of process groups in the workload. See ApplicationProcessGroup for
+   * the definition of a process group.
+   *
+   * @generated from field: repeated application_model.v1alpha.ApplicationProcessGroup processes = 3;
    */
-  processes: ApplicationProcess[];
+  processes: ApplicationProcessGroup[];
 };
 
 /**
@@ -137,11 +143,20 @@ export declare type ApplicationWorkload = Message<"application_model.v1alpha.App
 export declare const ApplicationWorkloadSchema: GenMessage<ApplicationWorkload>;
 
 /**
- * @generated from message application_model.v1alpha.ApplicationProcess
+ * ApplicationProcessGroup represents a set of processes that are grouped by
+ * the following criteria:
+ *
+ * - They got spawned by processes that belong to a same process group.
+ * - They have the same command name.
+ * - They have the same command line arguments.
+ * - For processes running in a Kubernetes workload, they belong to the same
+ *   Kubernetes workload.
+ *
+ * @generated from message application_model.v1alpha.ApplicationProcessGroup
  */
-export declare type ApplicationProcess = Message<"application_model.v1alpha.ApplicationProcess"> & {
+export declare type ApplicationProcessGroup = Message<"application_model.v1alpha.ApplicationProcessGroup"> & {
   /**
-   * Hash to identify this process in the process tree.
+   * Hash to identify this process group in the process group tree.
    *
    * @generated from field: string hash = 1;
    */
@@ -160,11 +175,11 @@ export declare type ApplicationProcess = Message<"application_model.v1alpha.Appl
   arguments: string;
 
   /**
-   * Child processes of this process.
+   * Child process groups of this process.
    *
-   * @generated from field: repeated application_model.v1alpha.ApplicationProcess children = 4;
+   * @generated from field: repeated application_model.v1alpha.ApplicationProcessGroup children = 4;
    */
-  children: ApplicationProcess[];
+  children: ApplicationProcessGroup[];
 
   /**
    * @generated from field: repeated application_model.v1alpha.ApplicationConnection connections = 5;
@@ -178,13 +193,46 @@ export declare type ApplicationProcess = Message<"application_model.v1alpha.Appl
    * @generated from field: google.protobuf.BoolValue in_init_tree = 6;
    */
   inInitTree?: boolean;
+
+  /**
+   * System calls used by this process.
+   *
+   * @generated from field: repeated string syscalls = 7;
+   */
+  syscalls: string[];
+
+  /**
+   * Number of processes that are currently running in this process group.
+   * Implementations of this API may remove the process group from the
+   * application model if this count and the counts of all the descendant
+   * process groups are zero.
+   *
+   * @generated from field: uint64 process_count = 8;
+   */
+  processCount: bigint;
+
+  /**
+   * The latest time at which a process in this process group was observed to
+   * start.
+   *
+   * @generated from field: google.protobuf.Timestamp latest_start_time = 9;
+   */
+  latestStartTime?: Timestamp;
+
+  /**
+   * The latest time at which a process in this process group was observed to
+   * exit.
+   *
+   * @generated from field: google.protobuf.Timestamp latest_exit_time = 10;
+   */
+  latestExitTime?: Timestamp;
 };
 
 /**
- * Describes the message application_model.v1alpha.ApplicationProcess.
- * Use `create(ApplicationProcessSchema)` to create a new message.
+ * Describes the message application_model.v1alpha.ApplicationProcessGroup.
+ * Use `create(ApplicationProcessGroupSchema)` to create a new message.
  */
-export declare const ApplicationProcessSchema: GenMessage<ApplicationProcess>;
+export declare const ApplicationProcessGroupSchema: GenMessage<ApplicationProcessGroup>;
 
 /**
  * @generated from message application_model.v1alpha.ApplicationConnection

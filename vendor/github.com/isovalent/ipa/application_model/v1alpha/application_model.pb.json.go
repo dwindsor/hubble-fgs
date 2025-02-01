@@ -78,14 +78,14 @@ func (msg *ApplicationWorkload) UnmarshalJSON(b []byte) error {
 }
 
 // MarshalJSON implements json.Marshaler
-func (msg *ApplicationProcess) MarshalJSON() ([]byte, error) {
+func (msg *ApplicationProcessGroup) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{
 		UseProtoNames: true,
 	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
-func (msg *ApplicationProcess) UnmarshalJSON(b []byte) error {
+func (msg *ApplicationProcessGroup) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }
 

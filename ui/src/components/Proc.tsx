@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { memo, useCallback, useEffect } from "react";
 import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
-import type { ApplicationProcess } from "~/proto";
+import type { ApplicationProcessGroup } from "~/proto";
 import { useAppState } from "~/state/AppContext";
 import { getProcHash } from "~/state/utils";
 import { isSuspiciousProc } from "~/utils/procs";
@@ -13,7 +13,7 @@ import { Statistic } from "./Statistic";
 import { TextOverflow } from "./TextOverflow";
 
 export interface ProcProps {
-  proc: ApplicationProcess;
+  proc: ApplicationProcessGroup;
   className?: string | undefined;
   childrenProcsListClassName?: string | undefined;
 }
@@ -140,7 +140,7 @@ export const Proc = memo(function Proc(props: ProcProps) {
 });
 
 export interface ProcsListProps {
-  procs: ApplicationProcess[];
+  procs: ApplicationProcessGroup[];
   className?: string | undefined;
   procItemClassName?: string | undefined;
 }

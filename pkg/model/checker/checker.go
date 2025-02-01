@@ -82,7 +82,7 @@ func NewApplicationModelChecker(exprs []string) (*ApplicationModelChecker, error
 			&appModelV1.ApplicationModelEvent{},
 			&appModelV1.ApplicationModel{},
 			&appModelV1.ApplicationConnection{},
-			&appModelV1.ApplicationProcess{},
+			&appModelV1.ApplicationProcessGroup{},
 			&appModelV1.ApplicationHost{},
 			&appModelV1.ApplicationNamespace{},
 			&appModelV1.ApplicationWorkload{},

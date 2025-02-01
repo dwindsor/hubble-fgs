@@ -298,7 +298,7 @@ func printModel(res *tetragon.GetProcessModelResponse) error {
 	return nil
 }
 
-func addProcessNodes(node *tview.TreeNode, processes []*appModelV1.ApplicationProcess) {
+func addProcessNodes(node *tview.TreeNode, processes []*appModelV1.ApplicationProcessGroup) {
 	for _, ps := range processes {
 		childName := ps.GetName()
 		if ps.GetArguments() != "" {
@@ -371,7 +371,7 @@ func selected(node *tview.TreeNode) {
 		addProcessNodes(node, val.GetProcesses())
 	case *appModelV1.ApplicationWorkload:
 		addProcessNodes(node, val.GetProcesses())
-	case *appModelV1.ApplicationProcess:
+	case *appModelV1.ApplicationProcessGroup:
 		for _, conn := range val.GetConnections() {
 			childName := fmt.Sprintf("%s:%d", conn.GetDestinationName(), conn.GetDestinationPort())
 			child := tview.NewTreeNode(childName).

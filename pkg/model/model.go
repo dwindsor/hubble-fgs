@@ -110,7 +110,7 @@ func sortNamespace(a, b *appModelV1.ApplicationNamespace) int {
 	return strings.Compare(a.Name, b.Name)
 }
 
-func sortProcess(a, b *appModelV1.ApplicationProcess) int {
+func sortProcess(a, b *appModelV1.ApplicationProcessGroup) int {
 	return strings.Compare(a.Name+a.Arguments, b.Name+b.Arguments)
 }
 
@@ -144,7 +144,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 			// There is no workload info for host processes.
 			for _, wlval := range val {
 				for pskey, psval := range wlval {
-					ps := &appModelV1.ApplicationProcess{
+					ps := &appModelV1.ApplicationProcessGroup{
 						Name:        pskey.name,
 						Arguments:   pskey.arguments,
 						Connections: slices.Collect(maps.Values(psval.connections)),
@@ -163,7 +163,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 					Kind: wlkey.kind,
 				}
 				for pskey, psval := range wlval {
-					ps := &appModelV1.ApplicationProcess{
+					ps := &appModelV1.ApplicationProcessGroup{
 						Name:        pskey.name,
 						Arguments:   pskey.arguments,
 						Connections: slices.Collect(maps.Values(psval.connections)),

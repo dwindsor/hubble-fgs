@@ -1,4 +1,4 @@
-import type { ApplicationProcess } from "./proto";
+import type { ApplicationProcessGroup } from "./proto";
 
 export type XY = { x: number; y: number };
 
@@ -12,7 +12,7 @@ export type Connector = XY & { color: string };
 
 export type XYWH = XY & WH;
 
-export type ProcessesMap = WeakMap<ApplicationProcess, ProcessInfo>;
+export type ProcessesMap = WeakMap<ApplicationProcessGroup, ProcessInfo>;
 
 export type TreeClusterPath = { cluster: true };
 export type TreeNodePath = { node: true };
@@ -66,7 +66,7 @@ export const EndpointKind = {
 
 export type EndpointKindType = PropertyValues<typeof EndpointKind>;
 
-export type ConnectionsMap = Map<string /* endpoint */, Set<ApplicationProcess>>;
+export type ConnectionsMap = Map<string /* endpoint */, Set<ApplicationProcessGroup>>;
 
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export type Builtin = Date | ((...rest: any[]) => any) | Uint8Array | string | number | boolean;

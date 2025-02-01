@@ -1,4 +1,4 @@
-import type { ApplicationConnection, ApplicationModelEvent, ApplicationProcess } from "~/proto";
+import type { ApplicationConnection, ApplicationModelEvent, ApplicationProcessGroup } from "~/proto";
 import type {
   ConnectionsMap,
   EndpointsMap,
@@ -32,7 +32,7 @@ export function getWorkloadHash(namespace: string, workload: string) {
   return `${namespace}/${workload}`;
 }
 
-export function getProcHash(proc: ApplicationProcess) {
+export function getProcHash(proc: ApplicationProcessGroup) {
   return `${proc.name}:[${proc.arguments}]`;
 }
 
@@ -60,7 +60,7 @@ export function createAppState(model?: ApplicationModelEvent): {
 
   const rec = (
     recProcPath: TreeHostProcPath | TreeWorkloadProcPath,
-    recProcs?: ApplicationProcess[],
+    recProcs?: ApplicationProcessGroup[],
   ) => {
     let recTotalBytesSent = 0;
     let recTotalBytesReceived = 0;
@@ -241,7 +241,7 @@ export function createEmptyStat() {
     } as TreeEntryStat,
     namespacesMap: new Map<string, TreeEntryStat>(),
     workloadsMap: new Map<string, TreeEntryStat>(),
-    processesMap: new WeakMap<ApplicationProcess, TreeEntryStat>(),
+    processesMap: new WeakMap<ApplicationProcessGroup, TreeEntryStat>(),
     endpointsMap: new Map<string, EndpointStat>(),
   };
 }

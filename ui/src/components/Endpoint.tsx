@@ -5,7 +5,7 @@ import clsx from "clsx";
 import React from "react";
 import { useConnector } from "~/hooks/useConnector";
 import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
-import type { ApplicationProcess } from "~/proto";
+import type { ApplicationProcessGroup } from "~/proto";
 import { type EndpointStat, getEndpointHash } from "~/state/utils";
 import { EndpointKind, type EndpointKindType } from "~/types";
 import {
@@ -28,7 +28,7 @@ export const Endpoint = memo(function Endpoint(props: Props) {
 
   const connector = useConnector();
 
-  const [highlightedProc, setHighlightedProc] = useState<ApplicationProcess | null>(null);
+  const [highlightedProc, setHighlightedProc] = useState<ApplicationProcessGroup | null>(null);
 
   const [isPinned, setIsPinned] = useState<boolean>(
     !!state.highlightedEndpointsMap.get(props.endpoint)?.has(EndpointMode.Pinned),

@@ -14,7 +14,7 @@ func TestEnsureSorted(t *testing.T) {
 	model := &v1alpha.ApplicationModel{
 		Namespaces: []*v1alpha.ApplicationNamespace{{Name: "b"}, {Name: "a"}, {Name: "c"}},
 		Host: &v1alpha.ApplicationHost{
-			Processes: []*v1alpha.ApplicationProcess{
+			Processes: []*v1alpha.ApplicationProcessGroup{
 				{
 					Name: "b",
 				},
@@ -38,7 +38,7 @@ func TestEnsureSorted(t *testing.T) {
 	sortedModel := &v1alpha.ApplicationModel{
 		Namespaces: []*v1alpha.ApplicationNamespace{{Name: "a"}, {Name: "b"}, {Name: "c"}},
 		Host: &v1alpha.ApplicationHost{
-			Processes: []*v1alpha.ApplicationProcess{
+			Processes: []*v1alpha.ApplicationProcessGroup{
 				{
 					Name: "a",
 					Connections: []*v1alpha.ApplicationConnection{
