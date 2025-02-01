@@ -27,9 +27,6 @@
 .arguments {
   display: block;
   max-width: 30%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   margin-left: 7px;
   color: var(--ipt-color-text-muted);
 }

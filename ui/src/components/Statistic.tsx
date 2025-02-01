@@ -37,13 +37,13 @@ const Traffic = memo(function Traffic(props: { dir: "sent" | "received"; bytes: 
     }
     const mb = kb / 1024;
     if (mb < 1) {
-      return `${+kb.toFixed(1)} KB`;
+      return `${Math.round(kb)} KB`;
     }
     const gb = mb / 1024;
     if (gb < 1) {
-      return `${+mb.toFixed(1)} MB`;
+      return `${Math.round(mb)} MB`;
     }
-    return `${+gb.toFixed(1)} GB`;
+    return `${Math.round(gb)} GB`;
   }, [props.bytes]);
 
   if (props.dir === "sent") {

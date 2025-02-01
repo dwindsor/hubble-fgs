@@ -104,10 +104,7 @@ export const ProcItem = memo(function Proc(props: ProcProps) {
           summary={({ onClick }) => (
             <summary className={entry.className} onClick={onClick}>
               <div className={css.inner}>
-                <Binary name={props.proc.name} />{" "}
-                <span className={css.arguments} title={props.proc.arguments}>
-                  {props.proc.arguments}
-                </span>
+                <Binary name={props.proc.name} /> <Arguments arguments={props.proc.arguments} />
                 {entry.stat && <Statistic stat={entry.stat} />}
                 {entry.hasConnections && (
                   <Connector connector={entry.connector} endpoints={entry.connectorEndpoints} />
@@ -124,10 +121,7 @@ export const ProcItem = memo(function Proc(props: ProcProps) {
         </Collapsible>
       ) : (
         <div className={clsx(css.inner, entry.className)}>
-          <Binary name={props.proc.name} />{" "}
-          <span className={css.arguments} title={props.proc.arguments}>
-            {props.proc.arguments}
-          </span>
+          <Binary name={props.proc.name} /> <Arguments arguments={props.proc.arguments} />
           {entry.stat && <Statistic stat={entry.stat} />}
           {entry.hasConnections && (
             <Connector connector={entry.connector} endpoints={entry.connectorEndpoints} />
@@ -162,5 +156,16 @@ export const ProcsList = memo(function ProcsList(props: ProcsListProps) {
 });
 
 function Binary(props: { name?: string | undefined }) {
-  return <TextOverflow text={props.name ?? "-"} trimSide="left" />;
+  return <TextOverflow text={props.name ?? "-"} trimSide="left" title={props.name} />;
+}
+
+function Arguments(props: { arguments?: string | undefined }) {
+  return (
+    <TextOverflow
+      text={props.arguments ?? ""}
+      trimSide="right"
+      title={props.arguments}
+      className={css.arguments}
+    />
+  );
 }

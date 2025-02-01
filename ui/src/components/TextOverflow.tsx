@@ -4,13 +4,15 @@ import css from "./TextOverflow.module.css";
 
 export interface Props {
   text: string;
+  title?: string | undefined;
+  className?: string | undefined;
   trimSide?: "left" | "center" | "right";
 }
 
 export const TextOverflow = memo((props: Props) => {
   const { trimSide = "right" } = props;
 
-  const className = clsx(css.text, css[`trim-${trimSide}`]);
+  const className = clsx(css.text, css[`trim-${trimSide}`], props.className);
 
   const text = useMemo(() => {
     if (props.trimSide !== "center" || props.text.length < 8) {
@@ -29,7 +31,7 @@ export const TextOverflow = memo((props: Props) => {
   }, [props.text, props.trimSide]);
 
   return (
-    <span className={className}>
+    <span className={className} title={props.title}>
       &lrm;
       {/* needed to fix text-overflow */}
       {text}
