@@ -127,7 +127,6 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 	}
 	// Skip the null byte at the end of the name
 	return offset_start + 1 - init_offset;
-	;
 }
 
 // parse_dns_answer parses a DNS query answer, it skips any non A-type answer,
@@ -139,7 +138,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 {
 	__u8 first_byte, offset;
 	__u16 type, data_len;
-	int16_t name_len;
+	int name_len;
 	struct ip_addr ip = { 0 };
 	char *data, *data_end, *name;
 
@@ -179,12 +178,6 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		name_len = parse_dns_name(skb, data, off);
 		if (name_len < 0)
 			return -31;
-
-		// This next instruction is perfectly useless but the compiler
-		// seems to optimize things without this and then the verifier
-		// forgets about off >= 0. Remove that if you can!
-		asm volatile("%[name_len] &= 0x3FF;\n"
-			     : [name_len] "+r"(name_len));
 
 		if (name_len > SKB_DATA_MAX_SIZE)
 			return -32;
@@ -265,7 +258,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 {
 	struct dnshdr *dns;
 	void *data, *data_end;
-	int16_t name_len;
+	int name_len;
 	int8_t error, ret;
 	uint32_t error_idx, *counter;
 
@@ -300,12 +293,6 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 		error = name_len;
 		goto give_up;
 	}
-
-	// This next instruction is perfectly useless but the compiler
-	// seems to optimize things without this and then the verifier
-	// forgets about off >= 0. Remove that if you can!
-	asm volatile("%[name_len] &= 0x3FF;\n"
-		     : [name_len] "+r"(name_len));
 
 	if (name_len > SKB_DATA_MAX_SIZE) {
 		error = -11;
