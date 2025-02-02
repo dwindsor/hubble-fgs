@@ -287,18 +287,24 @@ type TcpValue struct {
 	Closed         uint8                   `align:"closed"`
 	FinSent        uint8                   `align:"fin_sent"`
 	LastSentWasFin uint8                   `align:"last_sent_was_fin"`
-	Pad            [6]uint8                `align:"pad"`
+	Deny           uint8                   `align:"deny"`
+	Pad            [5]uint8                `align:"pad"`
 	Stats          MsgSocketStats          `align:"stats"`
 }
 
 func (t *TcpValue) String() string {
-	return fmt.Sprintf("Pid: %d CreateTime %d Last %d Sent (%d:%d) Recv (%d:%d) Zero %d Retransmit (%d:%d) Drops %d Srtt %d",
+	policy := "Allow"
+	if t.Deny > 0 {
+		policy = "Deny"
+	}
+	return fmt.Sprintf("Pid: %d CreateTime %d Last %d Sent (%d:%d) Recv (%d:%d) Zero %d Retransmit (%d:%d) Drops %d Srtt %d Policy: %s",
 		t.Key.Pid,
 		t.Stats.CreateTime, t.Stats.Ktime,
 		t.Stats.BytesSent, t.Stats.SegsOut, t.Stats.BytesReceived, t.Stats.SegsIn,
 		t.Stats.ZeroWindow,
 		t.Stats.RetransmitBytes, t.Stats.RetransmitSegs,
-		t.Stats.SkDrops, t.Stats.Srtt)
+		t.Stats.SkDrops, t.Stats.Srtt,
+		policy)
 }
 
 type UdpInfoKey struct {

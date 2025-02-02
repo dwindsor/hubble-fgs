@@ -63,6 +63,7 @@ func addSingleDnsQuota(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap 
 		TxQuota:        0,
 		TxLimit:        quota,
 		TxDrops:        0,
+		TxDeny:         0,
 		KtimeLastReset: 0,
 		KtimeTxReset:   reset,
 		TxBytes:        0,

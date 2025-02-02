@@ -32,7 +32,8 @@ struct tcpsocketmap_value {
 	__u8 closed;
 	__u8 fin_sent;
 	__u8 last_sent_was_fin;
-	__u8 pad[6];
+	__u8 deny;
+	__u8 pad[5];
 	struct msg_socket_stats stats;
 };
 

@@ -168,7 +168,7 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 	if (!v)
 		return 0;
 #ifdef KERNEL_5_15
-	process_socketmap_add(v, &(val->tuple));
+	v->deny = process_socketmap_add(v, &(val->tuple));
 #endif
 	add_tcpsocketmap(&cookie, v, &val->tuple, true);
 	return 0;

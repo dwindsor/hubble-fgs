@@ -380,6 +380,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 		destvalue->addr_create[1] = tuple->daddr[1];
 		destvalue->ipv6 = tuple->ipv6;
 		destvalue->port = tuple->dport;
+		destvalue->deny = 0;
 		destvalue->tx_quota = destvalue->tx_limit = 0;
 		destvalue->tx_bytes = destvalue->rx_bytes = 0;
 		map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
@@ -392,12 +393,28 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 		if (!dest)
 			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
+		else if (dest->deny == 1) {
+			// fixup process entry
+			destkey.port = tuple->dport;
+			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
+			return 1;
+		}
 
 		destkey.local_id.uid = 0;
 		destkey.local_id.cpu = 0;
 		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
 		if (!dest)
 			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
+		else if (dest->deny == 1) {
+			// fixup local state this is dumb
+			destkey.local_id = *self_uid;
+			destkey.port = tuple->dport;
+			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
+			return 1;
+		}
+	} else {
+		if (dest->deny)
+			return 1;
 	}
 
 	return 0;
