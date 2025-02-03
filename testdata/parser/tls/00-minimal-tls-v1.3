@@ -96,12 +96,14 @@ END
 
 EVENT tls
   $ 06 00 00 00             # op + pad
-  h4 512                    # size
+  h4 552                    # size
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
 
   ## socket cookie
   ? 8                       # socket cookie
   ? 8                       # version and pad
+
+  TUPLE CLI SRV
 
   ### Client hello
 

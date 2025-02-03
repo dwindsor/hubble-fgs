@@ -272,6 +272,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 		post->execve = socket->key;
 		post->socket_cookie = cookie;
 		post->socket_version = socket->version;
+		post->tuple = socket->tuple;
 
 		perf_event_output_metric(skb, ISO_MSG_OP_TLS, &tcpmon_map, BPF_F_CURRENT_CPU, post,
 					 sizeof(struct msg_tls_event));

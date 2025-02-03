@@ -29,7 +29,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpCache"
 )
 
 var (
@@ -76,8 +75,6 @@ func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errSt
 	} else {
 		unix.ServerCert.Certificates = certs
 	}
-
-	unix.Tuple = tcpCache.GetTuple(m.SocketCookie, m.SocketVersion)
 
 	return unix
 }
