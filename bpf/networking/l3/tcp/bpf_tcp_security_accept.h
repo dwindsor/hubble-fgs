@@ -33,6 +33,13 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
+	__type(value, struct tcpsocketmap_value);
+	__uint(max_entries, 1);
+} tg_accept_socket SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
 	__type(value, struct socketmap_value);
 	__uint(max_entries, 1);
 } tg_listen_process SEC(".maps");
@@ -69,11 +76,10 @@ __security_socket_accept(struct sock *sk, struct socket *newsocket)
 static inline __attribute__((always_inline)) int
 __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 {
-	struct tcp_event_disable_config *event_cfg;
 	struct tcpsocketmap_value *listen_socket = 0;
-	struct tcpsocketmap_value *accept_socket = 0;
 	struct socketmap_value *listen_process = 0;
-	struct msg_ip_tuple tuple = { 0 };
+	struct tcp_event_disable_config *event_cfg;
+	struct tcpsocketmap_value *accept_socket;
 	struct msg_ip_event *event;
 	u64 now = ktime_get_ns();
 	u16 family, protocol;
@@ -131,31 +137,36 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	 */
 	if (unlikely(!listen_socket)) {
 		listen_socket = (struct tcpsocketmap_value *)map_lookup_elem(&tg_listen_socket, &zero);
-		if (!listen_socket) {
+		if (!listen_socket)
 			return 0;
-		}
 
 		listen_socket->key = listen_process->key;
 	}
 
+	cookie_version = cookie_inc_version();
+	accept_socket = init_tcpsocketmap_value(&listen_process->key, family, SOCKFLAGS_TYPE_ACCEPT, now, cookie_version, 0);
+	if (!accept_socket)
+		return 0;
+
 	if (family == AF_INET6) {
-		tuple.ipv6 = 1;
-		probe_read_kernel(tuple.saddr, sizeof(tuple.saddr), _(&(sk->__sk_common.skc_v6_rcv_saddr)));
-		probe_read_kernel(tuple.daddr, sizeof(tuple.daddr), _(&(sk->__sk_common.skc_v6_daddr)));
+		accept_socket->tuple.ipv6 = 1;
+		probe_read_kernel(accept_socket->tuple.saddr, sizeof(accept_socket->tuple.saddr), _(&(sk->__sk_common.skc_v6_rcv_saddr)));
+		probe_read_kernel(accept_socket->tuple.daddr, sizeof(accept_socket->tuple.daddr), _(&(sk->__sk_common.skc_v6_daddr)));
 	} else {
-		probe_read_kernel(&tuple.saddr[0], sizeof(__u32), _(&(sk->__sk_common.skc_rcv_saddr)));
-		probe_read_kernel(&tuple.daddr[0], sizeof(__u32), _(&(sk->__sk_common.skc_daddr)));
+		accept_socket->tuple.ipv6 = 0;
+		probe_read_kernel(&accept_socket->tuple.saddr[0], sizeof(__u32), _(&(sk->__sk_common.skc_rcv_saddr)));
+		accept_socket->tuple.saddr[1] = 0;
+		probe_read_kernel(&accept_socket->tuple.daddr[0], sizeof(__u32), _(&(sk->__sk_common.skc_daddr)));
+		accept_socket->tuple.daddr[1] = 0;
 	}
 	probe_read_kernel(&protocol, sizeof(protocol), _(&(sk->sk_protocol)));
 	if (bpf_core_field_size(sk->sk_protocol) == sizeof(u32)) {
 		protocol >>= 8;
 	}
-	tuple.proto = protocol;
-	probe_read_kernel(&tuple.sport, sizeof(tuple.sport), _(&(sk->__sk_common.skc_num)));
-	probe_read_kernel(&tuple.dport, sizeof(tuple.dport), _(&(sk->__sk_common.skc_dport)));
-	tuple.dport = bpf_ntohs(tuple.dport);
-
-	cookie_version = cookie_inc_version();
+	accept_socket->tuple.proto = protocol;
+	probe_read_kernel(&accept_socket->tuple.sport, sizeof(accept_socket->tuple.sport), _(&(sk->__sk_common.skc_num)));
+	probe_read_kernel(&accept_socket->tuple.dport, sizeof(accept_socket->tuple.dport), _(&(sk->__sk_common.skc_dport)));
+	accept_socket->tuple.dport = bpf_ntohs(accept_socket->tuple.dport);
 
 	// This if (1) block is here to help compiler with stack allocation
 	// this is enough to keep stack limit below 512.
@@ -164,13 +175,11 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 
 		accept_process.version = cookie_version;
 		accept_process.create_time = now;
-		add_socketmap(&newcookie, &accept_process, &tuple, true);
+		add_socketmap(&newcookie, &accept_process, &accept_socket->tuple, true);
 	}
 
-	accept_socket = init_tcpsocketmap_value(&listen_process->key, family, SOCKFLAGS_TYPE_ACCEPT, now, cookie_version, &tuple);
-	if (!accept_socket)
-		return 0;
-	add_tcpsocketmap(&newcookie, accept_socket, true);
+	// Don't need to add the tuple because add_socketmap() will already have done so.
+	add_tcpsocketmap(&newcookie, accept_socket, false);
 
 	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(&tg_event_disable_config, &zero);
 	if (!event_cfg)
@@ -193,7 +202,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 		event->create_time = now;
 		event->close_time = 0;
 
-		event->tuple = tuple;
+		event->tuple = accept_socket->tuple;
 		event->key = listen_process->key;
 
 		perf_event_output_metric(ctx, ISO_MSG_OP_TCPACCEPT, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);

@@ -64,7 +64,8 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 		v->stats.rtt_buckets[i] = 0;
 		v->stats.latency_buckets[i] = 0;
 	}
-	v->tuple = *tuple;
+	if (tuple)
+		v->tuple = *tuple;
 
 	return v;
 }
