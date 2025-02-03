@@ -37,30 +37,19 @@ const (
 )
 
 type MsgIPTuple struct {
-	SAddr       [2]uint64
-	DAddr       [2]uint64
-	DPort       uint16
-	SPort       uint16
-	Proto       uint8
-	Send        uint8
-	VersionByte uint8
-	IPv6        uint8
-	// define as uint8 otherwise padding in struct breaks
-	PostData [6]uint8
-	Pad      uint16
+	SAddr       [2]uint64 `align:"saddr"`
+	DAddr       [2]uint64 `align:"daddr"`
+	DPort       uint16    `align:"dport"`
+	SPort       uint16    `align:"sport"`
+	Proto       uint8     `align:"proto"`
+	Send        uint8     `align:"send"`
+	VersionByte uint8     `align:"version_byte"`
+	IPv6        uint8     `align:"ipv6"`
 }
 
 type MsgSocketId struct {
 	Cookie  uint64
 	Version uint64
-}
-
-func (m *MsgIPTuple) GetPostDAddr() uint32 {
-	return binary.LittleEndian.Uint32(m.PostData[0:4])
-}
-
-func (m *MsgIPTuple) GetPostDPort() uint16 {
-	return binary.LittleEndian.Uint16(m.PostData[4:6])
 }
 
 func GetIPv4(i uint32, op uint8) net.IP {

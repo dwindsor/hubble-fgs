@@ -32,9 +32,6 @@ struct msg_ip_tuple {
 	__u8 send;
 	__u8 version_byte;
 	__u8 ipv6;
-	__u32 post_daddr;
-	__u16 post_dport;
-	__u16 pad;
 }; // All fields aligned so no 'packed' attribute.
 
 struct msg_socket_stats {

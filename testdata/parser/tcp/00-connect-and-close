@@ -13,7 +13,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 136        # size
+  h4 128        # size
   ? 8           # ktime
 
   ## tuple
@@ -54,7 +54,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 136        # size
+  h4 128        # size
   ? 8           # ktime
 
   ## tuple
@@ -95,7 +95,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 344        # size
+  h4 336        # size
   ? 8           # ktime
 
   ## tuple
@@ -167,7 +167,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 344        # size
+  h4 336        # size
   ? 8           # ktime
 
   ## tuple
@@ -238,7 +238,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 344        # size
+  h4 336        # size
   ? 8           # ktime
 
   ## tuple

@@ -8,7 +8,7 @@ EVENTS
     EVENT UDPCONNECT
       ## common
       $ 12 00 00 00 # op + pad
-      h4 136        # size
+      h4 128        # size
       ? 8           # ktime
 
       ## tuple
@@ -41,7 +41,7 @@ EVENTS
     EVENT UDPCONNECT
       ## common
       $ 12 00 00 00 # op + pad
-      h4 136        # size
+      h4 128        # size
       ? 8           # ktime
 
       ## tuple
