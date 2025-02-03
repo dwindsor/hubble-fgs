@@ -1,6 +1,7 @@
 .endpoint {
   display: flex;
   cursor: pointer;
+  align-items: flex-start;
   padding-top: 5px;
   padding-bottom: 5px;
 
@@ -26,6 +27,7 @@
 
 .connector {
   position: relative;
+  top: 10px;
 }
 
 .title {

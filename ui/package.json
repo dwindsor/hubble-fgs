@@ -8,9 +8,7 @@
   "directories": {
     "lib": "lib"
   },
-  "files": [
-    "lib"
-  ],
+  "files": ["lib"],
   "scripts": {
     "start": "npm run dev",
     "build": "run-p build:*",

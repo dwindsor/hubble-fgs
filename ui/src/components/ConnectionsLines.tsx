@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { useAppState } from "~/state/AppContext";
 import { colors } from "~/theme/colors";
 import type { ConnectionLine } from "~/utils/connections";
@@ -35,6 +35,15 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
   const state = useAppState();
 
   const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dpi = window.devicePixelRatio;
+    ctx.scale(dpi, dpi);
+  }, []);
 
   const draw = useCallback(() => {
     const canvas = ref.current;
@@ -81,8 +90,8 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
           : MUTED_LINE_COLOR
         : baseLineColor;
 
-      const x2 = endpointInfo.xy.x;
-      const y2 = endpointInfo.xy.y;
+      const x2 = endpointInfo.xy.x * 2;
+      const y2 = endpointInfo.xy.y * 2;
 
       procs.forEach((proc) => {
         const procInfo = state.processesMap.get(proc);
@@ -97,8 +106,8 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
             : MUTED_LINE_COLOR
           : color;
 
-        const x1 = procInfo.xy.x;
-        const y1 = procInfo.xy.y;
+        const x1 = procInfo.xy.x * 2;
+        const y1 = procInfo.xy.y * 2;
 
         const line = { from: { x: x1, y: y1 }, to: { x: x2, y: y2 }, color };
 
@@ -117,17 +126,24 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
   useEffect(() => {
     if (!ref.current) return;
 
-    ref.current.width = props.size.width;
-    ref.current.height = props.size.height;
+    ref.current.width = props.size.width * 2;
+    ref.current.height = props.size.height * 2;
 
     draw();
   }, [draw, props.size]);
+
+  const style = useMemo(() => {
+    return {
+      width: `${props.size.width}px`,
+      height: `${props.size.height}px`,
+    };
+  }, [props.size]);
 
   useEffect(() => {
     return state.onRedrawConnectionsLines(draw);
   }, [state, draw]);
 
-  return <canvas ref={ref} />;
+  return <canvas style={style} ref={ref} />;
 });
 
 function drawLine(ctx: CanvasRenderingContext2D, line: ConnectionLine) {
