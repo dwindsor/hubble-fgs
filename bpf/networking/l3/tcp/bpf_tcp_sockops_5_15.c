@@ -125,7 +125,7 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	v = init_tcpsocketmap_value(&val->key, skops->family, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version, &val->tuple);
 	if (!v)
 		return 0;
-	add_tcpsocketmap(&cookie, v, &val->tuple, true);
+	add_tcpsocketmap(&cookie, v, true);
 
 	return 0;
 }
@@ -169,7 +169,7 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 #ifdef KERNEL_5_15
 	v->deny = process_socketmap_add(v, &(val->tuple));
 #endif
-	add_tcpsocketmap(&cookie, v, &val->tuple, true);
+	add_tcpsocketmap(&cookie, v, true);
 	return 0;
 }
 

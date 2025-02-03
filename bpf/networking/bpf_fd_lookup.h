@@ -267,7 +267,7 @@ __proc_task_name(void *ctx, struct task_struct *p)
 			check_process_socketmap_add(tcp_stats, &config->tuple, config->cgrpid);
 		}
 #endif
-		add_tcpsocketmap(&cookie, tcp_stats, &config->tuple, false);
+		add_tcpsocketmap(&cookie, tcp_stats, false);
 	}
 
 	return 0;

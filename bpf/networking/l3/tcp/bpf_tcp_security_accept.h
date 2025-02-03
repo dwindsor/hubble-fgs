@@ -170,7 +170,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	accept_socket = init_tcpsocketmap_value(&listen_process->key, family, SOCKFLAGS_TYPE_ACCEPT, now, cookie_version, &tuple);
 	if (!accept_socket)
 		return 0;
-	add_tcpsocketmap(&newcookie, accept_socket, &tuple, true);
+	add_tcpsocketmap(&newcookie, accept_socket, true);
 
 	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(&tg_event_disable_config, &zero);
 	if (!event_cfg)

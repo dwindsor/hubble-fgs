@@ -153,7 +153,7 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 #ifdef KERNEL_5_15
 		process_socketmap_add(v, &(val->tuple));
 #endif
-		add_tcpsocketmap(&cookie, v, &val->tuple, true);
+		add_tcpsocketmap(&cookie, v, true);
 	}
 	return 1;
 }
