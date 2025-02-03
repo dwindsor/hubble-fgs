@@ -74,7 +74,7 @@ func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	tcp.Msg.Tuple.DAddr[1] = socket.Tuple.DAddr[1]
 	tcp.Msg.Tuple.DPort = socket.Tuple.DPort
 	tcp.Msg.Tuple.SPort = socket.Tuple.SPort
-	tcp.Msg.Tuple.Proto = 2
+	tcp.Msg.Tuple.Proto = syscall.IPPROTO_TCP
 	tcp.Msg.SockCookie = socket.Sockaddr
 	tcp.Msg.Version = socket.SockVersion
 
