@@ -48,6 +48,7 @@ type MsgHttpEvent struct {
 	Common        processapi.MsgCommon    `align:"common"`
 	SocketCookie  uint64                  `align:"socket_cookie"`
 	SocketVersion uint64                  `align:"socket_version"`
+	Tuple         networkapi.MsgIPTuple   `align:"tuple"`
 	ProcessKey    processapi.MsgExecveKey `align:"execve"`
 	Request       MsgHttp                 `align:"request"`
 }

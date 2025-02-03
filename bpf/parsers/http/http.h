@@ -136,6 +136,7 @@ struct msg_http_event {
 	struct msg_common common;
 	__u64 socket_cookie;
 	__u64 socket_version;
+	struct msg_ip_tuple tuple;
 	struct msg_execve_key execve;
 	struct msg_http request;
 } __attribute__((packed));
@@ -144,6 +145,7 @@ struct __msg_http_event {
 	struct msg_common common;
 	__u64 socket_cookie;
 	__u64 socket_version;
+	struct msg_ip_tuple tuple;
 	struct msg_execve_key execve;
 	struct __msg_http request;
 } __attribute__((packed));

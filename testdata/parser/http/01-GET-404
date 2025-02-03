@@ -12,12 +12,14 @@ END
 # Event from the client socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 127        # size
+  h4 167        # size
   ? 8           # ktime
 
   ## socket cookie
   ? 8                       # socket cookie
   ? 8                       # version and pad
+
+  TUPLE CLI SRV
 
   ## process
   NZ 4          # pid should be set.
@@ -50,12 +52,14 @@ END
 # Event from the server socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 127        # size
+  h4 167        # size
   ? 8           # ktime
 
   ## socket cookie
   ? 8                       # socket cookie
   ? 8                       # version and pad
+
+  TUPLE SRV CLI
 
   ## process
   NZ 4          # pid should be set.
@@ -95,12 +99,14 @@ END
 
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 160        # size
+  h4 200        # size
   ? 8           # ktime
 
   ## socket cookie
   ? 8                       # socket cookie
   ? 8                       # version and pad
+
+  TUPLE SRV CLI
 
   ## process
   NZ 4          # pid should be set.
@@ -140,12 +146,14 @@ END
 
 EVENT http
   $ 10 00 00 00 # op + pad
-  h4 160        # size
+  h4 200        # size
   ? 8           # ktime
 
   ## socket cookie
   ? 8                       # socket cookie
   ? 8                       # version and pad
+
+  TUPLE CLI SRV
 
   ## process
   NZ 4          # pid should be set.

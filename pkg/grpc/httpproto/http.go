@@ -42,7 +42,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 		proc = processInt.UnsafeGetProcess()
 
 	}
-	fgsTuple := sockinfo.GetTuple(event.Tuple, 0, event.Msg.Common.Op)
+	fgsTuple := sockinfo.GetTuple(&event.Msg.Tuple, 0, event.Msg.Common.Op)
 
 	if len(event.Request.Code) != 0 {
 		code, err = GetHttpCode(event.Request.Code)
@@ -118,7 +118,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if proc != nil {
-		destinationIP := networkapi.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
+		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, ops.MSG_OP_HTTP, event.Msg.Tuple.IPv6 != 0)
 		// We want to continue populating this deprecated field for now
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP) //nolint:staticcheck
 	}
@@ -134,7 +134,6 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 type MsgHttpEventUnix struct {
 	Msg     *httpapi.MsgHttpEvent
 	Request httpapi.MsgHttpUnix
-	Tuple   *networkapi.MsgIPTuple
 }
 
 func (msg *MsgHttpEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
