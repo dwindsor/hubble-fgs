@@ -91,8 +91,8 @@ func roundTripsTotal(rtt *tetragon.Histogram) float64 {
 	return total
 }
 
-func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) {
-	event := socketStatsToIPWithStatsEventUnix(k, v, tuple, stats)
+func addTCPMetricsForSocket(k *networkapi.TcpKey, v *networkapi.TcpValue, stats *networkapi.MsgSocketStats) {
+	event := socketStatsToIPWithStatsEventUnix(k, v, stats)
 
 	// see also pkg/grpc/layer3/layer3.go:CreateProcessSockStats
 	var fgsProcess *tetragon.Process

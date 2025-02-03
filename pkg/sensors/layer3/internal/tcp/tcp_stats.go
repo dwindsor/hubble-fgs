@@ -26,7 +26,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpCache"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,7 +36,7 @@ const (
 
 type collectFn func()
 type collectKeyFn func(*networkapi.TcpBpfKey, *networkapi.TcpValue)
-type emitStatsFn func(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats)
+type emitStatsFn func(k *networkapi.TcpKey, v *networkapi.TcpValue, stats *networkapi.MsgSocketStats)
 
 type statsManager struct {
 	// getCollect returns a function that will be executed on a timer,
@@ -105,7 +104,7 @@ func (v *SockStatValue) String() string {
 		v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
 }
 
-func socketStatsToIPWithStatsEventUnix(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) *grpc.MsgIPWithStatsEventUnix {
+func socketStatsToIPWithStatsEventUnix(k *networkapi.TcpKey, v *networkapi.TcpValue, stats *networkapi.MsgSocketStats) *grpc.MsgIPWithStatsEventUnix {
 	unix := grpc.MsgIPWithStatsEventUnix{}
 	unix.Msg = &networkapi.MsgIPWithStatsEvent{}
 
@@ -114,7 +113,7 @@ func socketStatsToIPWithStatsEventUnix(k *networkapi.TcpKey, v *networkapi.TcpVa
 		Size:  1,
 		Ktime: stats.Ktime,
 	}
-	unix.Msg.Tuple = *tuple
+	unix.Msg.Tuple = v.Tuple
 	unix.Msg.SockCookie = k.SockCookie
 	unix.Msg.Return = 0
 	unix.Msg.ProcessKey = processapi.MsgExecveKey{
@@ -128,8 +127,8 @@ func socketStatsToIPWithStatsEventUnix(k *networkapi.TcpKey, v *networkapi.TcpVa
 	return &unix
 }
 
-func emitSocketStatsEvent(k *networkapi.TcpKey, v *networkapi.TcpValue, tuple *networkapi.MsgIPTuple, stats *networkapi.MsgSocketStats) {
-	observer.AllListeners(socketStatsToIPWithStatsEventUnix(k, v, tuple, stats))
+func emitSocketStatsEvent(k *networkapi.TcpKey, v *networkapi.TcpValue, stats *networkapi.MsgSocketStats) {
+	observer.AllListeners(socketStatsToIPWithStatsEventUnix(k, v, stats))
 }
 
 func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey, networkapi.MsgSocketStats]) collectKeyFn {
@@ -138,7 +137,6 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 		if value.Closed != 0 {
 			return
 		}
-		tuple := tcpCache.GetTuple(key.SockCookie, value.Version)
 		tcpStats := ToMsgSocketStatsUnix(value)
 		statsKey := networkapi.TcpKey{SockCookie: key.SockCookie, CreateTime: value.Stats.CreateTime}
 
@@ -147,7 +145,6 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 		// Explicit check for underflowed bytes_received < 0
 		if int64(tcpStats.BytesReceived) < 0 {
 			logger.GetLogger().WithFields(logrus.Fields{
-				"tuple":         tuple,
 				"curr":          tcpStats,
 				"last":          last,
 				"cookie":        key.SockCookie,
@@ -167,10 +164,9 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 				// Store the stats from the BPF map into the cache
 				cache.Add(statsKey, *tcpStats)
 				if err == nil {
-					emitStats(&statsKey, value, tuple, &diffValue)
+					emitStats(&statsKey, value, &diffValue)
 				} else {
 					logger.GetLogger().WithError(err).WithFields(logrus.Fields{
-						"tuple":       tuple,
 						"curr":        tcpStats,
 						"last":        last,
 						"cookie":      key.SockCookie,
@@ -180,7 +176,7 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 				}
 			}
 		} else {
-			emitStats(&statsKey, value, tuple, tcpStats)
+			emitStats(&statsKey, value, tcpStats)
 			cache.Add(statsKey, *tcpStats)
 		}
 	}
