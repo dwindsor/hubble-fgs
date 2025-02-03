@@ -167,7 +167,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 		add_socketmap(&newcookie, &accept_process, &tuple, true);
 	}
 
-	accept_socket = init_tcpsocketmap_value(&listen_process->key, family, SOCKFLAGS_TYPE_ACCEPT, now, cookie_version);
+	accept_socket = init_tcpsocketmap_value(&listen_process->key, family, SOCKFLAGS_TYPE_ACCEPT, now, cookie_version, &tuple);
 	if (!accept_socket)
 		return 0;
 	add_tcpsocketmap(&newcookie, accept_socket, &tuple, true);

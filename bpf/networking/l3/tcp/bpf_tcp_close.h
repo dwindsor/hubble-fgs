@@ -78,13 +78,14 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	val->create_time = socket->stats.create_time;
 	val->close_time = ktime_get_ns();
 	val->socket_flags = socket->socket_flags;
+	val->tuple.proto = IPPROTO_TCP;
 	probe_read_kernel(&val->tuple.sport, sizeof(val->tuple.sport),
 			  _(&(skp->__sk_common.skc_num)));
 	probe_read_kernel(&val->tuple.dport, sizeof(val->tuple.dport),
 			  _(&(skp->__sk_common.skc_dport)));
 	val->tuple.dport = bpf_ntohs(val->tuple.dport);
 
-	if (!socket->ipv6) {
+	if (!socket->tuple.ipv6) {
 		val->tuple.ipv6 = false;
 		probe_read_kernel(&val->tuple.saddr[0], sizeof(u32),
 				  _(&(skp->__sk_common.skc_rcv_saddr)));
@@ -114,7 +115,7 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 					 size);
 	}
 
-	if (!socket->ipv6) {
+	if (!socket->tuple.ipv6) {
 		del_tlsmap(&cookie);
 		map_delete_elem(&tg_http_map, &cookie);
 		bottle_drop(&cookie);

@@ -33,7 +33,7 @@ struct {
 } tg_sockops_tcpsocket_map SEC(".maps");
 
 static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcpsocketmap_value(
-	struct msg_execve_key *key, u16 family, u32 flags, u64 create_time, u64 version)
+	struct msg_execve_key *key, u16 family, u32 flags, u64 create_time, u64 version, struct msg_ip_tuple *tuple)
 {
 	struct tcpsocketmap_value *v;
 	int zero = 0;
@@ -53,9 +53,7 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 	v->stats.segs_in = 0;
 	v->stats.sk_drops = 0;
 	v->stats.zero_window = 0;
-	v->ipv6 = (family == AF_INET6);
 	v->version = version;
-	v->protocol = IPPROTO_TCP;
 	v->closed = 0;
 	v->stats.retransbytes = 0;
 	v->stats.rtt_sum = 0;
@@ -66,6 +64,7 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 		v->stats.rtt_buckets[i] = 0;
 		v->stats.latency_buckets[i] = 0;
 	}
+	v->tuple = *tuple;
 
 	return v;
 }

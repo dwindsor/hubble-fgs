@@ -113,7 +113,7 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
 	process.create_time = socket->stats.create_time;
 	process.key = socket->key;
-	process.protocol = socket->protocol;
+	process.protocol = socket->tuple.proto;
 	process.version = socket->version;
 	if (cfg && cfg->watermarksEnable && socket->key.pid != 0) {
 		struct process_network_watermarks_config c = {

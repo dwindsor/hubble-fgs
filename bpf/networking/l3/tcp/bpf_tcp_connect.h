@@ -120,6 +120,7 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 	if (socket)
 		val->version = socket->version;
 
+	val->tuple.proto = IPPROTO_TCP;
 	probe_read_kernel(&val->tuple.sport, sizeof(val->tuple.sport),
 			  _(&(skp->__sk_common.skc_num)));
 	probe_read_kernel(&val->tuple.dport, sizeof(val->tuple.dport),
@@ -147,7 +148,7 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 	event_post_connect(ctx, val);
 
 	if (key && socket)
-		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version);
+		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
 	if (v) {
 #ifdef KERNEL_5_15
 		process_socketmap_add(v, &(val->tuple));

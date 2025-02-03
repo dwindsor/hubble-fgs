@@ -122,11 +122,9 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 					 sizeof(struct msg_ip_event));
 	}
 
-	v = init_tcpsocketmap_value(&val->key, skops->family, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version);
-
+	v = init_tcpsocketmap_value(&val->key, skops->family, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version, &val->tuple);
 	if (!v)
 		return 0;
-
 	add_tcpsocketmap(&cookie, v, &val->tuple, true);
 
 	return 0;
@@ -161,10 +159,11 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 	val->common.op = ISO_MSG_OP_TCPCONNECTRET;
 	skops_socket(cookie, val, socket);
 	skops_tuple(cookie, val, skops);
+	val->tuple.proto = IPPROTO_TCP;
 
 	event_post_connect(skops, val);
 
-	struct tcpsocketmap_value *v = init_tcpsocketmap_value(key, skops->family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version);
+	struct tcpsocketmap_value *v = init_tcpsocketmap_value(key, skops->family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
 	if (!v)
 		return 0;
 #ifdef KERNEL_5_15
@@ -227,7 +226,7 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 					 BPF_F_CURRENT_CPU, val, size);
 	}
 
-	if (!socket->ipv6) {
+	if (!socket->tuple.ipv6) {
 		del_tlsmap(&cookie);
 		map_delete_elem(&tg_http_map, &cookie);
 		bottle_drop(&cookie);

@@ -25,11 +25,11 @@ struct tcpsocketmap_value {
 	struct msg_execve_key key;
 	struct destination_endpoint_key dst_key;
 	__u64 version;
+	struct msg_ip_tuple tuple;
 	__u32 socket_flags;
-	__u8 ipv6;
-	__u8 protocol;
 	__u8 closed;
 	__u8 deny;
+	__u16 pad;
 	struct msg_socket_stats stats;
 };
 

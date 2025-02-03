@@ -86,6 +86,7 @@ __event_sys_listen(void *ctx, struct sock *skp)
 		.tuple.daddr[0] = 0,
 		.tuple.daddr[1] = 0,
 		.tuple.dport = 0,
+		.tuple.proto = IPPROTO_TCP,
 		.common.op = ISO_MSG_OP_LISTEN,
 		.common.ktime = ktime_get_ns(),
 		.common.size = sizeof(struct msg_ip_event),
@@ -109,6 +110,7 @@ __event_sys_listen(void *ctx, struct sock *skp)
 		val->tuple.ipv6 = false;
 		probe_read_kernel(&val->tuple.saddr[0], sizeof(__u32),
 				  _(&(skp->__sk_common.skc_rcv_saddr)));
+		val->tuple.saddr[1] = 0;
 	} else {
 		val->tuple.ipv6 = true;
 		probe_read_kernel(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
@@ -125,7 +127,7 @@ __event_sys_listen(void *ctx, struct sock *skp)
 	}
 
 	if (key && socket)
-		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version);
+		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version, &val->tuple);
 	if (v)
 		add_tcpsocketmap(&cookie, v, &val->tuple, true);
 

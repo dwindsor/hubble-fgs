@@ -251,9 +251,10 @@ __proc_task_name(void *ctx, struct task_struct *p)
 			return 0;
 		}
 
-		tcp_stats = init_tcpsocketmap_value(&value->key, family, flags, socket->create_time, socket->version);
+		tcp_stats = init_tcpsocketmap_value(&value->key, family, flags, socket->create_time, socket->version, &config->tuple);
 		if (!tcp_stats)
 			return 0;
+		tcp_stats->tuple.proto = required_protocol;
 
 		tcp_socketmap_stats(sk, tcp_stats);
 

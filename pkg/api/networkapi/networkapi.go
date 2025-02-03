@@ -269,11 +269,11 @@ type TcpValue struct {
 	Key         processapi.MsgExecveKey `align:"key"`
 	DstKey      DestinationEndpointKey  `align:"dst_key"`
 	Version     uint64                  `align:"version"`
+	Tuple       MsgIPTuple              `align:"tuple"`
 	SocketFlags uint32                  `align:"socket_flags"`
-	Ipv6        uint8                   `align:"ipv6"`
-	Protocol    uint8                   `align:"protocol"`
 	Closed      uint8                   `align:"closed"`
 	Deny        uint8                   `align:"deny"`
+	Pad         uint16                  `align:"pad"`
 	Stats       MsgSocketStats          `align:"stats"`
 }
 
