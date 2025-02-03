@@ -13,6 +13,7 @@ export const EmitterEventKind = Enum({
   ProcUpdated: "proc-updated",
   HighlightEndpoint: "highlight-endpoint",
   HighlightProc: "highlight-proc",
+  Scrolled: "scrolled",
 });
 
 export type EmitterEventKind = EnumType<typeof EmitterEventKind>;
@@ -29,6 +30,7 @@ export type EmitterHandlers = {
     mode: EndpointMode,
   ) => void;
   [EmitterEventKind.HighlightProc]: (proc: ApplicationProcessGroup, state: boolean) => void;
+  [EmitterEventKind.Scrolled]: () => void;
 };
 
 export class AppEmitter {

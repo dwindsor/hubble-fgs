@@ -114,6 +114,12 @@ export function createAppContext({
 
     onRedrawConnectionsLines: emitter.createSubscriber(EmitterEventKind.RedrawConnectionsLines),
 
+    scroll() {
+      emitter.emitter.emit(EmitterEventKind.Scrolled);
+    },
+
+    onScrolled: emitter.createSubscriber(EmitterEventKind.Scrolled),
+
     updateProcess(proc: ApplicationProcessGroup, visible: boolean | undefined, xy: XY | undefined) {
       const cur = state.processesMap.get(proc);
       if (cur) {

@@ -102,6 +102,12 @@ export const EndpointItem = memo(function Endpoint(props: Props) {
   }, [state, debouncedUpdate]);
 
   useEffect(() => {
+    return state.onScrolled(() => {
+      debouncedUpdate();
+    });
+  }, [state, debouncedUpdate]);
+
+  useEffect(() => {
     return state.onEndpointHighlight((endpoint) => {
       if (props.endpoint !== endpoint) {
         return;

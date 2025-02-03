@@ -1,7 +1,11 @@
 .app {
   position: relative;
   display: flex;
+  width: calc(100% - 40px);
+  height: calc(100% - 40px);
+  overflow: hidden;
   font-size: 0.9em;
+  padding: 20px;
 
   ::before,
   ::after,
@@ -20,6 +24,11 @@
 .tree {
   position: relative;
   max-width: 50%;
+  max-height: 100%;
+  padding-left: 2px;
+  overflow: auto;
+  scrollbar-width: none;
+  overscroll-behavior-y: none;
   flex: 2;
   z-index: var(--ipt-z-index-tree);
 }
@@ -27,6 +36,10 @@
 .endpoints {
   position: relative;
   max-width: 50%;
+  max-height: 100%;
+  overflow: auto;
+  scrollbar-width: none;
+  overscroll-behavior-y: none;
   flex: 1;
   z-index: var(--ipt-z-index-tree);
 }
@@ -37,4 +50,5 @@
   left: 0;
   z-index: var(--ipt-z-index-connections-canvas);
   width: 100%;
+  max-height: 100%;
 }

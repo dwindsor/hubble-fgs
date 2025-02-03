@@ -1,12 +1,9 @@
 import { createRoot } from "react-dom/client";
 import { Root } from "./components/Root";
+import "./global.css";
 import type { ApplicationModelEvent } from "./proto";
-import { assert } from "./utils/assert";
 
-const dom = document.getElementById("container");
-assert(dom, "dom node doesn't exist");
-
-const root = createRoot(dom);
+const root = createRoot(window.document.body);
 
 declare global {
   interface Window {
@@ -34,7 +31,7 @@ promise
       <Root
         persistStateInUrl
         model={model}
-        getTreeOffset={() => ({ x: -7.5, y: -7.5 + window.scrollY })}
+        getTreeOffset={() => ({ x: 0, y: 0 + window.scrollY })}
       />,
     );
   })

@@ -90,8 +90,8 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
           : MUTED_LINE_COLOR
         : baseLineColor;
 
-      const x2 = endpointInfo.xy.x * 2;
-      const y2 = endpointInfo.xy.y * 2;
+      const x2 = endpointInfo.xy.x * window.devicePixelRatio;
+      const y2 = endpointInfo.xy.y * window.devicePixelRatio;
 
       procs.forEach((proc) => {
         const procInfo = state.processesMap.get(proc);
@@ -106,8 +106,8 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
             : MUTED_LINE_COLOR
           : color;
 
-        const x1 = procInfo.xy.x * 2;
-        const y1 = procInfo.xy.y * 2;
+        const x1 = procInfo.xy.x * window.devicePixelRatio;
+        const y1 = procInfo.xy.y * window.devicePixelRatio;
 
         const line = { from: { x: x1, y: y1 }, to: { x: x2, y: y2 }, color };
 

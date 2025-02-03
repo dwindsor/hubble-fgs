@@ -63,6 +63,12 @@ export const ProcItem = memo(function Proc(props: ProcProps) {
     });
   }, [state, debouncedUpdate]);
 
+  useEffect(() => {
+    return state.onScrolled(() => {
+      debouncedUpdate();
+    });
+  }, [state, debouncedUpdate]);
+
   const highlight = useCallback(() => {
     state.highlightProc(props.proc, true);
   }, [state, props.proc]);
