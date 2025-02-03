@@ -458,7 +458,7 @@ func configureQos(qos *v1alpha1.QosPolicySpec) error {
 			err := policy.AddDnsQuotaPolicy(p.Namespace,
 				p.Workload, p.WorkloadKind,
 				p.Destination.Dns,
-				p.Quota, qos.QuotaResetLimits,
+				p.Quota, qos.QuotaResetLimits, false,
 			)
 			if err != nil {
 				return err

@@ -18,20 +18,20 @@ const (
 	destinationEndpointMap = "destination_endpoint_map"
 )
 
-func AddDnsQuotaPolicy(namespace, wl, kind string, names []string, quota, reset string) error {
+func AddDnsQuotaPolicy(namespace, wl, kind string, names []string, quota, reset string, deny bool) error {
 	// There are a few possibilities for possible scope.
 	// 1. fully specified namespace:workload:kind
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
 	if wl != "" && kind != "" {
-		return dns.AddDnsQuota(namespace, wl, kind, names, quota, reset)
+		return dns.AddDnsQuota(namespace, wl, kind, names, quota, reset, deny)
 	}
 	if (wl == "" && kind != "") || (kind == "" && wl != "") {
 		return fmt.Errorf("qosPolicySpec violation requires workload:kind fully specified")
 	}
 
 	if namespace == "" {
-		return dns.AddDnsQuota(namespace, wl, kind, names, quota, reset)
+		return dns.AddDnsQuota(namespace, wl, kind, names, quota, reset, deny)
 	}
 
 	// Namespaced policy handler
@@ -40,7 +40,7 @@ func AddDnsQuotaPolicy(namespace, wl, kind string, names []string, quota, reset 
 		Workload:  wl,
 		Kind:      kind,
 	}
-	dns.QueueWorkloadQuotaPolicy(nsidWL, names, reset, quota)
+	dns.QueueWorkloadQuotaPolicy(nsidWL, names, reset, quota, deny)
 	allPods, err := podinfo.GetPodInfoOfNS(namespace)
 	if err != nil {
 		return err
@@ -51,8 +51,7 @@ func AddDnsQuotaPolicy(namespace, wl, kind string, names []string, quota, reset 
 			pod.WorkloadObject.Name,
 			pod.WorkloadType.Kind,
 			names,
-			quota,
-			reset)
+			quota, reset, deny)
 	}
 
 	return nil

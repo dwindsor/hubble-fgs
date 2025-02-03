@@ -24,6 +24,7 @@ type quotaPolicy struct {
 	dns   []string
 	quota string
 	reset string
+	deny  bool
 }
 
 var (
@@ -39,7 +40,7 @@ const (
 	destinationEndpointMap = "destination_endpoint_map"
 )
 
-func addSingleDnsQuota(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset uint64) error {
+func addSingleDnsQuota(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset, deny uint64) error {
 	var addr [2]uint64
 
 	c := endpoint.Get()
@@ -63,7 +64,7 @@ func addSingleDnsQuota(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap 
 		TxQuota:        0,
 		TxLimit:        quota,
 		TxDrops:        0,
-		TxDeny:         0,
+		TxDeny:         deny,
 		KtimeLastReset: 0,
 		KtimeTxReset:   reset,
 		TxBytes:        0,
@@ -82,11 +83,12 @@ func addSingleDnsQuota(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap 
 	return nil
 }
 
-func QueueWorkloadQuotaPolicy(wl policyfilter.NSID, dns []string, reset, quota string) {
+func QueueWorkloadQuotaPolicy(wl policyfilter.NSID, dns []string, reset, quota string, deny bool) {
 	qp := quotaPolicy{
 		dns:   dns,
 		quota: quota,
 		reset: reset,
+		deny: deny,
 	}
 
 	queueWlLock.Lock()
@@ -119,7 +121,7 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 		delete(queueWl, wl)
 	}
 	queueWlLock.Unlock()
-	return AddDnsQuota(wl.Namespace, wl.Workload, wl.Kind, qp.dns, qp.quota, qp.reset)
+	return AddDnsQuota(wl.Namespace, wl.Workload, wl.Kind, qp.dns, qp.quota, qp.reset, qp.deny)
 }
 
 func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
@@ -181,7 +183,7 @@ func quotaToNs(reset string) (uint64, error) {
 	return resetNS, nil
 }
 
-func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) error {
+func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string, deny bool) error {
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	dstMap, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
@@ -204,7 +206,7 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) 
 			Workload:  wl,
 			Kind:      kind,
 		}
-		QueueWorkloadQuotaPolicy(workload, dns, reset, quota)
+		QueueWorkloadQuotaPolicy(workload, dns, reset, quota, deny)
 		return nil
 	}
 
@@ -225,12 +227,17 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string) 
 			Dns:  entry,
 		}
 
-		if err := addSingleDnsQuota(src, ep, dstMap, quotaBytes, resetNS); err != nil {
+		denyVal := uint64(0)
+		if deny {
+			denyVal = 1
+		}
+		if err := addSingleDnsQuota(src, ep, dstMap, quotaBytes, resetNS, denyVal); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"namespace": namespace,
 				"workload":  wl,
 				"quota":     quotaBytes,
 				"reset":     reset,
+				"deny":      deny,
 				"dest":      entry,
 			}).WithError(err).Error("TCP quota entry Failed")
 		}
