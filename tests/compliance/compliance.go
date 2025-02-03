@@ -12,7 +12,6 @@ import (
 	"path"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
@@ -88,8 +87,6 @@ func (ct *Test) Run(t *testing.T, ctx context.Context) error {
 	for _, step := range ct.Steps {
 		assert.NoError(t, step.Step(testCtx))
 	}
-
-	time.Sleep(10 * time.Second)
 
 	return nil
 }
