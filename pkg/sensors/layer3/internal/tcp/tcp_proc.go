@@ -24,7 +24,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpCache"
 	"github.com/sirupsen/logrus"
 )
 
@@ -82,20 +81,6 @@ func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 		tcp.Msg.Common.Op = ops.MSG_OP_LISTEN
 	} else {
 		tcp.Msg.Common.Op = ops.MSG_OP_TCPCONNECTRET
-	}
-
-	// Entries populated through proc must populate the tcpCache. This is
-	// used by model code and TCP events to map sockets={cookie,version} to
-	// human readable IPs.
-	tcpTuples, err := tcpCache.GetCache()
-	if err == nil {
-		socketId := networkapi.MsgSocketId{
-			Cookie:  tcp.Msg.SockCookie,
-			Version: tcp.Msg.Version,
-		}
-		tcpTuples.Add(socketId, &tcp.Msg.Tuple)
-	} else {
-		logger.GetLogger().WithError(err).Warn("fdCallback: GetCache failed")
 	}
 
 	if _pushEvents {
