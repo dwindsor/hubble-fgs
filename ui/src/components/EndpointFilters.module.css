@@ -1,0 +1,107 @@
+.wrapper {
+  display: flex;
+  list-style: none outside;
+
+  &,
+  li {
+    margin: 0;
+    padding: 0;
+  }
+
+  li {
+    button {
+      color: #fff;
+      padding: 0 5px;
+      border: none;
+      height: 1.5em;
+      font-size: 1em;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial,
+        sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    &:first-child {
+      button {
+        border-radius: 3px 0 0 3px;
+      }
+    }
+
+    &:last-child {
+      button {
+        border-radius: 0 3px 3px 0;
+      }
+    }
+
+    &.entity-outer {
+      button {
+        border: 1px solid var(--ipt-color-entity-outer);
+        background: var(--ipt-color-entity-outer);
+
+        &:hover {
+          border-color: hsl(from var(--ipt-color-entity-outer) h s calc(l - 10));
+          box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-outer) h s calc(l - 10));
+        }
+      }
+
+      &.selected {
+        button {
+          border-color: hsl(from var(--ipt-color-entity-outer) h s calc(l - 20));
+          box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-outer) h s calc(l - 20));
+
+          &:hover {
+            border-color: hsl(from var(--ipt-color-entity-outer) h s calc(l - 30));
+            box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-outer) h s calc(l - 30));
+          }
+        }
+      }
+    }
+
+    &.entity-kube {
+      button {
+        border: 1px solid var(--ipt-color-entity-kube);
+        background: var(--ipt-color-entity-kube);
+
+        &:hover {
+          border-color: hsl(from var(--ipt-color-entity-kube) h s calc(l - 15));
+          box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-kube) h s calc(l - 15));
+        }
+      }
+
+      &.selected {
+        button {
+          border-color: hsl(from var(--ipt-color-entity-kube) h s calc(l - 30));
+          box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-kube) h s calc(l - 30));
+
+          &:hover {
+            border-color: hsl(from var(--ipt-color-entity-kube) h s calc(l - 45));
+            box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-kube) h s calc(l - 45));
+          }
+        }
+      }
+    }
+
+    &.entity-inner {
+      button {
+        border: 1px solid hsl(from var(--ipt-color-entity-inner) h s calc(l - 10));
+        background: hsl(from var(--ipt-color-entity-inner) h s calc(l - 10));
+
+        &:hover {
+          border: 1px solid hsl(from var(--ipt-color-entity-inner) h s calc(l - 20));
+          background: hsl(from var(--ipt-color-entity-inner) h s calc(l - 20));
+        }
+      }
+
+      &.selected {
+        button {
+          border-color: hsl(from var(--ipt-color-entity-inner) h s calc(l - 30));
+          box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-inner) h s calc(l - 30));
+
+          &:hover {
+            border-color: hsl(from var(--ipt-color-entity-inner) h s calc(l - 45));
+            box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-inner) h s calc(l - 45));
+          }
+        }
+      }
+    }
+  }
+}

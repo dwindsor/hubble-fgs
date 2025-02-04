@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
-import { useAppState } from "~/state/AppContext";
+import { type AppState, useAppState } from "~/state/AppContext";
 import { colors } from "~/theme/colors";
 import type { ConnectionLine } from "~/utils/connections";
-import { EndpointKind, EndpointMode } from "~/utils/endpoints";
+import { type Endpoint, EndpointKind, EndpointModeKind } from "~/utils/endpoints";
 import type { WH } from "~/utils/geometry";
 
 export interface Props {
@@ -64,34 +64,8 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
         return;
       }
 
-      const baseLineColor = BASE_LINE_COLOR[endpointInfo.kind];
-      const highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
-
-      let color: string = baseLineColor;
-      if (state.highlightedEndpointsMap.size) {
-        const modes = state.highlightedEndpointsMap.get(endpoint);
-        if (!modes) {
-          color = MUTED_LINE_COLOR;
-        } else {
-          let noHighlihts = true;
-          state.highlightedEndpointsMap.forEach((modes) => {
-            noHighlihts &&= !modes.has(EndpointMode.Hovered);
-          });
-          if (noHighlihts || modes.has(EndpointMode.Hovered)) {
-            color = highlightedLineColor;
-          } else {
-            color = MUTED_LINE_COLOR;
-          }
-        }
-      }
-      state.highlightedEndpointsMap.size
-        ? state.highlightedEndpointsMap.has(endpoint)
-          ? highlightedLineColor
-          : MUTED_LINE_COLOR
-        : baseLineColor;
-
-      const x2 = endpointInfo.xy.x * window.devicePixelRatio;
-      const y2 = endpointInfo.xy.y * window.devicePixelRatio;
+      const endpointX = endpointInfo.xy.x * window.devicePixelRatio;
+      const endpointY = endpointInfo.xy.y * window.devicePixelRatio;
 
       procs.forEach((proc) => {
         const procInfo = state.processesMap.get(proc);
@@ -100,16 +74,21 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
           return;
         }
 
-        color = state.highlightedProc
+        const highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
+        const color = state.highlightedProc
           ? proc === state.highlightedProc
             ? highlightedLineColor
             : MUTED_LINE_COLOR
-          : color;
+          : getLineColor(state, endpoint);
 
-        const x1 = procInfo.xy.x * window.devicePixelRatio;
-        const y1 = procInfo.xy.y * window.devicePixelRatio;
+        const procX = procInfo.xy.x * window.devicePixelRatio;
+        const procY = procInfo.xy.y * window.devicePixelRatio;
 
-        const line = { from: { x: x1, y: y1 }, to: { x: x2, y: y2 }, color };
+        const line: ConnectionLine = {
+          from: { x: procX, y: procY },
+          to: { x: endpointX, y: endpointY },
+          color,
+        };
 
         if (color === highlightedLineColor) {
           foregroundLines.push(line);
@@ -119,8 +98,9 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
       });
     });
 
-    backgroundLines.forEach((line) => drawLine(ctx, line));
-    foregroundLines.forEach((line) => drawLine(ctx, line));
+    [backgroundLines, foregroundLines].forEach((lines) => {
+      lines.forEach((line) => drawLine(ctx, line));
+    });
   }, [state]);
 
   useEffect(() => {
@@ -161,4 +141,35 @@ function drawLine(ctx: CanvasRenderingContext2D, line: ConnectionLine) {
   );
   ctx.stroke();
   ctx.closePath();
+}
+
+function getLineColor(state: AppState, endpoint: Endpoint): string {
+  const endpointInfo = state.endpointsMap.get(endpoint);
+
+  if (!endpointInfo) {
+    return "";
+  }
+
+  const baseLineColor = BASE_LINE_COLOR[endpointInfo.kind];
+  const highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
+
+  let color: string = baseLineColor;
+  if (state.highlightedEndpointsMap.size) {
+    const modes = state.highlightedEndpointsMap.get(endpoint);
+    if (!modes) {
+      color = MUTED_LINE_COLOR;
+    } else {
+      let noHighlihts = true;
+      state.highlightedEndpointsMap.forEach((modes) => {
+        noHighlihts &&= !modes.has(EndpointModeKind.Hovered);
+      });
+      if (noHighlihts || modes.has(EndpointModeKind.Hovered)) {
+        color = highlightedLineColor;
+      } else {
+        color = MUTED_LINE_COLOR;
+      }
+    }
+  }
+
+  return color;
 }

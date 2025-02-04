@@ -9,7 +9,7 @@ import type { ApplicationProcessGroup } from "~/proto";
 import {
   type Endpoint,
   EndpointKind,
-  EndpointMode,
+  EndpointModeKind,
   constructEndpoint,
   getEndpointPort,
   inferEndpointKind,
@@ -33,7 +33,7 @@ export const EndpointItem = memo(function Endpoint(props: Props) {
   const [highlightedProc, setHighlightedProc] = useState<ApplicationProcessGroup | null>(null);
 
   const [isPinned, setIsPinned] = useState<boolean>(
-    !!state.highlightedEndpointsMap.get(props.endpoint)?.has(EndpointMode.Pinned),
+    !!state.highlightedEndpointsMap.get(props.endpoint)?.has(EndpointModeKind.Pinned),
   );
 
   const kind = useMemo(() => {
@@ -112,7 +112,9 @@ export const EndpointItem = memo(function Endpoint(props: Props) {
       if (props.endpoint !== endpoint) {
         return;
       }
-      setIsPinned(!!state.highlightedEndpointsMap.get(props.endpoint)?.has(EndpointMode.Pinned));
+      setIsPinned(
+        !!state.highlightedEndpointsMap.get(props.endpoint)?.has(EndpointModeKind.Pinned),
+      );
     });
   }, [state, props.endpoint]);
 
@@ -127,21 +129,21 @@ export const EndpointItem = memo(function Endpoint(props: Props) {
   }, [state, props.endpoint]);
 
   const onMouseEnter = useCallback(() => {
-    state.highlightEndpoint(props.endpoint, true, EndpointMode.Hovered);
+    state.highlightEndpoint(props.endpoint, true, EndpointModeKind.Hovered);
   }, [state, props.endpoint]);
 
   const onMouseLeave = useCallback(() => {
-    state.highlightEndpoint(props.endpoint, false, EndpointMode.Hovered);
+    state.highlightEndpoint(props.endpoint, false, EndpointModeKind.Hovered);
   }, [state, props.endpoint]);
 
   const onClick = useCallback(() => {
     props.onSelect?.();
     const modes = state.highlightedEndpointsMap.get(props.endpoint);
-    if (modes?.has(EndpointMode.Pinned)) {
-      state.highlightEndpoint(props.endpoint, false, EndpointMode.Pinned);
+    if (modes?.has(EndpointModeKind.Pinned)) {
+      state.highlightEndpoint(props.endpoint, false, EndpointModeKind.Pinned);
       return;
     }
-    state.highlightEndpoint(props.endpoint, true, EndpointMode.Pinned);
+    state.highlightEndpoint(props.endpoint, true, EndpointModeKind.Pinned);
   }, [state, props.endpoint, props.onSelect]);
 
   const className = clsx(css.endpoint, classNameFromEndpointKind(kind), {
@@ -291,7 +293,7 @@ function KubeEndpoint(props: { title: string; port: string | null; isPinned: boo
         {title}
         {props.port && <Port port={props.port} />}
       </span>{" "}
-      <span className={css.kubeNamespace}>{namespace}</span>{" "}
+      <span className={css.entityKubeNamespace}>{namespace}</span>{" "}
       <span className={css.entityKubeType}>{type}</span>
     </span>
   );

@@ -2,7 +2,7 @@
 import Emitter from "events";
 import type TypedEmitter from "typed-emitter";
 import type { ApplicationProcessGroup } from "~/proto";
-import type { Endpoint, EndpointMode } from "~/utils/endpoints";
+import type { Endpoint, EndpointModeKind } from "~/utils/endpoints";
 import { Enum, type EnumType } from "~/utils/enum";
 
 export const EmitterEventKind = Enum({
@@ -27,7 +27,7 @@ export type EmitterHandlers = {
   [EmitterEventKind.HighlightEndpoint]: (
     endpoint: Endpoint,
     state: boolean,
-    mode: EndpointMode,
+    mode: EndpointModeKind,
   ) => void;
   [EmitterEventKind.HighlightProc]: (proc: ApplicationProcessGroup, state: boolean) => void;
   [EmitterEventKind.Scrolled]: () => void;

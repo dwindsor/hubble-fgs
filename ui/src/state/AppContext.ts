@@ -4,7 +4,7 @@ import { ApplicationModelEventSchema } from "@ipa/application_model/v1alpha/appl
 import { createContext, useContext } from "react";
 import type { ApplicationModelEvent, ApplicationProcessGroup } from "~/proto";
 import { assert } from "~/utils/assert";
-import { type Endpoint, EndpointMode } from "~/utils/endpoints";
+import { type Endpoint, EndpointModeKind } from "~/utils/endpoints";
 import type { XY } from "~/utils/geometry";
 import type { TreePathHash, TreePathStatus } from "~/utils/tree";
 import { UrlParams, setQueryParam } from "~/utils/url";
@@ -26,7 +26,7 @@ export function createAppContext({
 
   const inner = {
     treePathsMap: new Map<TreePathHash, TreePathStatus>(),
-    highlightedEndpointsMap: new Map<Endpoint, Set<EndpointMode>>(),
+    highlightedEndpointsMap: new Map<Endpoint, Set<EndpointModeKind>>(),
     highlightedProc: null as ApplicationProcessGroup | null,
   };
 
@@ -39,8 +39,8 @@ export function createAppContext({
         });
       } else if (param === "pinned") {
         value.split(",").forEach((endpoint) => {
-          const modes = new Set<EndpointMode>();
-          modes.add(EndpointMode.Pinned);
+          const modes = new Set<EndpointModeKind>();
+          modes.add(EndpointModeKind.Pinned);
           inner.highlightedEndpointsMap.set(endpoint, modes);
         });
       }
@@ -152,7 +152,7 @@ export function createAppContext({
       return inner.highlightedEndpointsMap;
     },
 
-    highlightEndpoint(endpoint: Endpoint, state: boolean, mode: EndpointMode) {
+    highlightEndpoint(endpoint: Endpoint, state: boolean, mode: EndpointModeKind) {
       const modes = inner.highlightedEndpointsMap.get(endpoint) ?? new Set();
       if (!state) {
         modes.delete(mode);
@@ -166,7 +166,7 @@ export function createAppContext({
 
       const pinned: Endpoint[] = [];
       inner.highlightedEndpointsMap.forEach((modes, endpoint) => {
-        if (!modes.has(EndpointMode.Pinned)) return;
+        if (!modes.has(EndpointModeKind.Pinned)) return;
         pinned.push(endpoint);
       });
       if (pinned.length) {

@@ -1,10 +1,12 @@
 import debounce from "lodash/debounce";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useElementSize } from "~/hooks/useElementSize";
+import { type EndpointFiltersState, useEndpointFilters } from "~/hooks/useEndpointFilters";
 import { type AppState, useAppState } from "~/state/AppContext";
-import { type Endpoint, EndpointMode, endpointsKindOrder } from "~/utils/endpoints";
+import { type Endpoint, EndpointModeKind, endpointsKindOrder } from "~/utils/endpoints";
 import { Enum, type EnumType } from "~/utils/enum";
 import { EndpointItem } from "./Endpoint";
+import { EndpointFilters } from "./EndpointFilters";
 import css from "./Endpoints.module.css";
 
 export const Endpoints = memo(function Endpoints() {
@@ -14,14 +16,16 @@ export const Endpoints = memo(function Endpoints() {
 
   const size = useElementSize(ref);
 
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const endpointFilters = useEndpointFilters();
+
+  const endpoints = useEndpoints(searchQuery, endpointFilters);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: notify endpoints list change because it's size was changed
   useEffect(() => {
     state.changeEndpointsList();
   }, [state, size]);
-
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const endpoints = useEndpoints(searchQuery);
 
   const onSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -32,13 +36,21 @@ export const Endpoints = memo(function Endpoints() {
   }, []);
 
   const isEmptySearchResult = useMemo(() => {
-    return searchQuery.length >= 3 && endpoints[0]?.kind !== EndpointItemKind.Search;
-  }, [searchQuery, endpoints]);
+    return (
+      (searchQuery.length >= 3 && endpoints[0]?.kind !== EndpointItemKind.Search) ||
+      (endpointFilters.value.size > 0 && endpoints.length === 0)
+    );
+  }, [searchQuery, endpoints, endpointFilters]);
 
   return (
     <div>
-      <div className={css.search}>
-        <input value={searchQuery} onChange={onSearch} placeholder="Search endpoint..." />
+      <div className={css.header}>
+        <div className={css.search}>
+          <input value={searchQuery} onChange={onSearch} placeholder="Search endpoint..." />
+        </div>
+        <div className={css.filters}>
+          <EndpointFilters filters={endpointFilters} />
+        </div>
       </div>
       <div ref={ref} className={css.endpointsList}>
         {isEmptySearchResult && (
@@ -61,16 +73,18 @@ export const Endpoints = memo(function Endpoints() {
   );
 });
 
-function useEndpoints(searchQuery: string) {
+function useEndpoints(searchQuery: string, endpointFilters: EndpointFiltersState) {
   const state = useAppState();
 
-  const [endpoints, setEndpoints] = useState<EndpointsList>(createEndpoints(state, searchQuery));
+  const [endpoints, setEndpoints] = useState<EndpointsList>(
+    createEndpoints(state, searchQuery, endpointFilters),
+  );
 
   const debouncedUpdate = useMemo(() => {
     return debounce(() => {
-      setEndpoints(createEndpoints(state, searchQuery));
+      setEndpoints(createEndpoints(state, searchQuery, endpointFilters));
     });
-  }, [state, searchQuery]);
+  }, [state, searchQuery, endpointFilters]);
 
   useEffect(() => {
     return debouncedUpdate();
@@ -84,7 +98,7 @@ function useEndpoints(searchQuery: string) {
 
   useEffect(() => {
     return state.onEndpointHighlight((_endpoint, _state, mode) => {
-      if (mode === EndpointMode.Pinned) {
+      if (mode === EndpointModeKind.Pinned) {
         debouncedUpdate();
       }
     });
@@ -102,35 +116,45 @@ type EndpointItemKind = EnumType<typeof EndpointItemKind>;
 
 type EndpointsList = Array<{ kind: EndpointItemKind; endpoint: Endpoint }>;
 
-function createEndpoints(state: AppState, searchQuery: string): EndpointsList {
-  const visibleEndpoint = new Set<Endpoint>();
+function createEndpoints(
+  state: AppState,
+  searchQuery: string,
+  endpointFilters: EndpointFiltersState,
+): EndpointsList {
+  const visibleEndpoints = new Set<Endpoint>();
   const searchEndpoints = new Set<Endpoint>();
 
+  const addEndpoint = (target: Set<Endpoint>, endpoint: Endpoint) => {
+    if (endpointFilters.checkEndpointPassesFilters(endpoint)) {
+      target.add(endpoint);
+    }
+  };
+
   state.highlightedEndpointsMap.forEach((modes, endpoint) => {
-    if (modes.has(EndpointMode.Pinned)) {
-      visibleEndpoint.add(endpoint);
+    if (modes.has(EndpointModeKind.Pinned)) {
+      addEndpoint(visibleEndpoints, endpoint);
     }
   });
 
   for (const endpoint of state.endpointsMap.keys()) {
     if (searchQuery.length >= 3 && endpoint.includes(searchQuery)) {
-      searchEndpoints.add(endpoint);
+      addEndpoint(searchEndpoints, endpoint);
     }
 
     const procs = state.connectionsMap.get(endpoint);
     procs?.forEach((proc) => {
       const procInfo = state.processesMap.get(proc);
       if (procInfo?.visible) {
-        visibleEndpoint.add(endpoint);
+        addEndpoint(visibleEndpoints, endpoint);
       }
     });
   }
 
-  visibleEndpoint.forEach((endpoint) => {
+  visibleEndpoints.forEach((endpoint) => {
     searchEndpoints.delete(endpoint);
   });
 
-  const sortedUVisibleEndpoints = sortEndpoints(state, visibleEndpoint);
+  const sortedUVisibleEndpoints = sortEndpoints(state, visibleEndpoints);
   const sortedSearchEndpoints = sortEndpoints(state, searchEndpoints);
 
   const list: EndpointsList = [];

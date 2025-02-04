@@ -33,5 +33,6 @@
 
 .proc:hover,
 .proc:global(.ipt-highlighted) {
-  font-weight: 700;
+  text-shadow: -0.25px 0px 0 currentColor, 0.25px 0px 0 currentColor;
+  transition: text-shadow ease-in 1s;
 }

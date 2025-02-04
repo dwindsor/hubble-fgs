@@ -6,12 +6,21 @@ import { checkIpAddress, specialIps } from "./ips";
 
 export type Endpoint = string;
 
-export const EndpointMode = Enum({
+export const EndpointModeKind = Enum({
   Hovered: "hovered",
   Pinned: "pinned",
 });
 
-export type EndpointMode = EnumType<typeof EndpointMode>;
+export type EndpointModeKind = EnumType<typeof EndpointModeKind>;
+
+export const EndpointFilterKind = Enum({
+  Inner: "inner",
+  Outer: "outer",
+  Kube: "kube",
+  Other: "other",
+});
+
+export type EndpointFilterKind = EnumType<typeof EndpointFilterKind>;
 
 export type EndpointsMap = Map<Endpoint, EndpointInfo>;
 

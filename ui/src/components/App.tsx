@@ -14,7 +14,7 @@ export const App = memo(function App() {
   const treeRef = useRef<HTMLDivElement>(null);
   const endpointsRef = useRef<HTMLDivElement>(null);
 
-  const size = useElementSize(appRef);
+  const appSize = useElementSize(appRef);
 
   const onScroll = useCallback(() => {
     const animationFrameId = requestAnimationFrame(state.scroll);
@@ -34,9 +34,9 @@ export const App = memo(function App() {
       <div ref={endpointsRef} className={css.endpoints}>
         <Endpoints />
       </div>
-      {size && (
+      {appSize && (
         <div className={css.connectionsLines}>
-          <ConnectionsLines size={size} />
+          <ConnectionsLines size={appSize} />
         </div>
       )}
     </div>
