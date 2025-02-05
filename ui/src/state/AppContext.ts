@@ -7,7 +7,7 @@ import { assert } from "~/utils/assert";
 import { type Endpoint, EndpointModeKind } from "~/utils/endpoints";
 import type { XY } from "~/utils/geometry";
 import type { TreePathHash, TreePathStatus } from "~/utils/tree";
-import { UrlParams, setQueryParam } from "~/utils/url";
+import { UrlParams, getQueryParam, setQueryParam } from "~/utils/url";
 import { AppEmitter, EmitterEventKind } from "./AppEmitter";
 import { createAppState } from "./AppState";
 
@@ -32,25 +32,25 @@ export function createAppContext({
 
   if (persistInUrl) {
     // Restore state from url params
-    new URLSearchParams(window.location.search).forEach((value, param) => {
-      if (param === "expanded") {
-        value.split(",").forEach((hash) => {
-          inner.treePathsMap.set(hash, { expanded: true });
-        });
-      } else if (param === "pinned") {
-        value.split(",").forEach((endpoint) => {
-          const modes = new Set<EndpointModeKind>();
-          modes.add(EndpointModeKind.Pinned);
-          inner.highlightedEndpointsMap.set(endpoint, modes);
-        });
-      }
-    });
+    getQueryParam(UrlParams.Expanded)
+      ?.split(",")
+      .forEach((hash) => {
+        inner.treePathsMap.set(hash, { expanded: true });
+      });
+    getQueryParam(UrlParams.Pinned)
+      ?.split(",")
+      .forEach((endpoint) => {
+        const modes = new Set<EndpointModeKind>();
+        modes.add(EndpointModeKind.Pinned);
+        inner.highlightedEndpointsMap.set(endpoint, modes);
+      });
   }
 
   const emitter = new AppEmitter();
 
   const that = {
     model,
+    persistInUrl,
 
     getTreeOffset,
 

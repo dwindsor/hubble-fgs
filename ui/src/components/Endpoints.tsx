@@ -5,6 +5,7 @@ import { type EndpointFiltersState, useEndpointFilters } from "~/hooks/useEndpoi
 import { type AppState, useAppState } from "~/state/AppContext";
 import { type Endpoint, EndpointModeKind, endpointsKindOrder } from "~/utils/endpoints";
 import { Enum, type EnumType } from "~/utils/enum";
+import { UrlParams, getQueryParam, setQueryParam } from "~/utils/url";
 import { EndpointItem } from "./Endpoint";
 import { EndpointFilters } from "./EndpointFilters";
 import css from "./Endpoints.module.css";
@@ -16,7 +17,7 @@ export const Endpoints = memo(function Endpoints() {
 
   const size = useElementSize(ref);
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(getQueryParam(UrlParams.SearchQuery) ?? "");
 
   const endpointFilters = useEndpointFilters();
 
@@ -27,17 +28,19 @@ export const Endpoints = memo(function Endpoints() {
     state.changeEndpointsList();
   }, [state, size]);
 
-  const onSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  }, []);
-
-  const onEndpointSelect = useCallback(() => {
-    setSearchQuery("");
-  }, []);
+  const onSearch = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(e.target.value);
+      if (state.persistInUrl) {
+        setQueryParam(UrlParams.SearchQuery, e.target.value);
+      }
+    },
+    [state.persistInUrl],
+  );
 
   const isEmptySearchResult = useMemo(() => {
     return (
-      (searchQuery.length >= 3 && endpoints[0]?.kind !== EndpointItemKind.Search) ||
+      (searchQuery.length > 0 && endpoints[0]?.kind !== EndpointItemKind.Search) ||
       (endpointFilters.value.size > 0 && endpoints.length === 0)
     );
   }, [searchQuery, endpoints, endpointFilters]);
@@ -45,11 +48,16 @@ export const Endpoints = memo(function Endpoints() {
   return (
     <div>
       <div className={css.header}>
-        <div className={css.search}>
-          <input value={searchQuery} onChange={onSearch} placeholder="Search endpoint..." />
-        </div>
         <div className={css.filters}>
           <EndpointFilters filters={endpointFilters} />
+        </div>
+        <div className={css.search}>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={onSearch}
+            placeholder="Search endpoint..."
+          />
         </div>
       </div>
       <div ref={ref} className={css.endpointsList}>
@@ -64,7 +72,7 @@ export const Endpoints = memo(function Endpoints() {
           return (
             <React.Fragment key={endpoint}>
               {prev && prev.kind !== kind && <hr />}
-              <EndpointItem endpoint={endpoint} onSelect={onEndpointSelect} />
+              <EndpointItem endpoint={endpoint} />
             </React.Fragment>
           );
         })}
@@ -137,15 +145,19 @@ function createEndpoints(
   });
 
   for (const endpoint of state.endpointsMap.keys()) {
-    if (searchQuery.length >= 3 && endpoint.includes(searchQuery)) {
+    if (searchQuery.length > 0 && endpoint.includes(searchQuery)) {
       addEndpoint(searchEndpoints, endpoint);
     }
 
     const procs = state.connectionsMap.get(endpoint);
     procs?.forEach((proc) => {
       const procInfo = state.processesMap.get(proc);
-      if (procInfo?.visible) {
-        addEndpoint(visibleEndpoints, endpoint);
+      if (searchQuery.length === 0 || (searchQuery.length > 0 && endpoint.includes(searchQuery))) {
+        if (procInfo?.visible) {
+          addEndpoint(visibleEndpoints, endpoint);
+        } else if (endpointFilters.value.size > 0) {
+          addEndpoint(searchEndpoints, endpoint);
+        }
       }
     });
   }

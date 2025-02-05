@@ -5,8 +5,7 @@
 }
 
 .search {
-  margin-right: 20px;
-  padding: 3px;
+  padding-top: 3px;
 
   input {
     width: 240px;
@@ -23,7 +22,8 @@
 }
 
 .filters {
-  padding: 3px;
+  padding-top: 3px;
+  margin-right: 20px;
 }
 
 .endpointsList hr {

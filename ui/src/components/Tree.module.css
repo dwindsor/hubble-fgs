@@ -55,7 +55,7 @@
   summary {
     width: 100%;
     display: inline-block;
-    cursor: pointer;
+    cursor: default;
 
     &::marker,
     &::-webkit-details-marker {

@@ -1,10 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
+import { useAppState } from "~/state/AppContext";
 import {
   type Endpoint,
   EndpointFilterKind,
   EndpointKind,
   inferEndpointKind,
 } from "~/utils/endpoints";
+import { UrlParams, getQueryParam, setQueryParam } from "~/utils/url";
 
 export interface EndpointFiltersState {
   value: Set<EndpointFilterKind>;
@@ -13,19 +15,45 @@ export interface EndpointFiltersState {
 }
 
 export function useEndpointFilters() {
-  const [endpointFilters, setEndpointFilters] = useState(new Set<EndpointFilterKind>());
+  const state = useAppState();
 
-  const toggle = useCallback((kind: EndpointFilterKind) => {
-    setEndpointFilters((prev) => {
-      const cloned = new Set(prev);
-      if (cloned.has(kind)) {
-        cloned.delete(kind);
-      } else {
-        cloned.add(kind);
-      }
-      return cloned;
-    });
-  }, []);
+  const initialValue = state.persistInUrl
+    ? (() => {
+        const filters = new Set<EndpointFilterKind>();
+        getQueryParam(UrlParams.EndpointFilters)
+          ?.split(",")
+          .forEach((filter) => {
+            filters.add(filter as EndpointFilterKind);
+          });
+        return filters;
+      })()
+    : new Set<EndpointFilterKind>();
+
+  const [endpointFilters, setEndpointFilters] = useState(initialValue);
+
+  const toggle = useCallback(
+    (kind: EndpointFilterKind) => {
+      setEndpointFilters((prev) => {
+        const cloned = new Set(prev);
+        if (cloned.has(kind)) {
+          cloned.delete(kind);
+        } else {
+          cloned.add(kind);
+        }
+
+        if (state.persistInUrl) {
+          const value = [...cloned].sort().join(",");
+          if (value) {
+            setQueryParam(UrlParams.EndpointFilters, value);
+          } else {
+            setQueryParam(UrlParams.EndpointFilters, undefined);
+          }
+        }
+        return cloned;
+      });
+    },
+    [state.persistInUrl],
+  );
 
   return useMemo((): EndpointFiltersState => {
     return {

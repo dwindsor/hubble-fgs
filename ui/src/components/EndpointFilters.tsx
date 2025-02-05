@@ -60,7 +60,7 @@ const EndpointFilter = memo(function EndpointFilter(props: EndpointFilterProps) 
   return (
     <li className={className}>
       <button type="button" onClick={props.onClick}>
-        {title}
+        <input type="checkbox" checked={props.status} /> {title}
       </button>
     </li>
   );

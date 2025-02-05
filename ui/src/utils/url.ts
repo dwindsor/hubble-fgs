@@ -3,6 +3,8 @@ import { Enum, type EnumType } from "./enum";
 export const UrlParams = Enum({
   Expanded: "expanded",
   Pinned: "pinned",
+  SearchQuery: "search-query",
+  EndpointFilters: "endpoint-filters",
 });
 
 export type UrlParams = EnumType<typeof UrlParams>;
@@ -19,4 +21,14 @@ export function setQueryParam(key: UrlParams, value?: string | undefined | null)
     url += `?${params}`;
   }
   window.history.replaceState({}, "", decodeURIComponent(url));
+}
+
+export function getQueryParam(key: UrlParams): string | null {
+  let result: string | null = null;
+  new URLSearchParams(window.location.search).forEach((value, param) => {
+    if (param === key) {
+      result = value;
+    }
+  });
+  return result;
 }

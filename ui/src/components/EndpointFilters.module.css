@@ -33,73 +33,71 @@
     }
 
     &.entity-outer {
+      --color: var(--ipt-color-entity-outer);
+
       button {
-        border: 1px solid var(--ipt-color-entity-outer);
-        background: var(--ipt-color-entity-outer);
+        border: 1px solid var(--color);
+        background: var(--color);
 
         &:hover {
-          border-color: hsl(from var(--ipt-color-entity-outer) h s calc(l - 10));
-          box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-outer) h s calc(l - 10));
+          border-color: hsl(from var(--color) h s calc(l - 10));
+          box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 10));
         }
-      }
 
-      &.selected {
-        button {
-          border-color: hsl(from var(--ipt-color-entity-outer) h s calc(l - 20));
-          box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-outer) h s calc(l - 20));
+        &:active {
+          border-color: hsl(from var(--color) h s calc(l - 20));
+          box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 20));
+        }
 
-          &:hover {
-            border-color: hsl(from var(--ipt-color-entity-outer) h s calc(l - 30));
-            box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-outer) h s calc(l - 30));
-          }
+        input,
+        input:hover {
+          accent-color: hsl(from var(--color) h s calc(l - 40));
         }
       }
     }
 
     &.entity-kube {
+      --color: var(--ipt-color-entity-kube);
+
       button {
-        border: 1px solid var(--ipt-color-entity-kube);
-        background: var(--ipt-color-entity-kube);
+        border: 1px solid var(--color);
+        background: var(--color);
 
         &:hover {
-          border-color: hsl(from var(--ipt-color-entity-kube) h s calc(l - 15));
-          box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-kube) h s calc(l - 15));
+          border-color: hsl(from var(--color) h s calc(l - 15));
+          box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 15));
         }
-      }
 
-      &.selected {
-        button {
-          border-color: hsl(from var(--ipt-color-entity-kube) h s calc(l - 30));
-          box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-kube) h s calc(l - 30));
+        &:active {
+          border-color: hsl(from var(--color) h s calc(l - 25));
+          box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 25));
+        }
 
-          &:hover {
-            border-color: hsl(from var(--ipt-color-entity-kube) h s calc(l - 45));
-            box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-kube) h s calc(l - 45));
-          }
+        input {
+          accent-color: hsl(from var(--color) h s calc(l - 40));
         }
       }
     }
 
     &.entity-inner {
+      --color: var(--ipt-color-entity-inner);
+
       button {
-        border: 1px solid hsl(from var(--ipt-color-entity-inner) h s calc(l - 10));
-        background: hsl(from var(--ipt-color-entity-inner) h s calc(l - 10));
+        border: 1px solid hsl(from var(--color) h s calc(l - 10));
+        background: hsl(from var(--color) h s calc(l - 10));
 
         &:hover {
-          border: 1px solid hsl(from var(--ipt-color-entity-inner) h s calc(l - 20));
-          background: hsl(from var(--ipt-color-entity-inner) h s calc(l - 20));
+          border: 1px solid hsl(from var(--color) h s calc(l - 20));
+          background: hsl(from var(--color) h s calc(l - 20));
         }
-      }
 
-      &.selected {
-        button {
-          border-color: hsl(from var(--ipt-color-entity-inner) h s calc(l - 30));
-          box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-inner) h s calc(l - 30));
+        &:active {
+          border: 1px solid hsl(from var(--color) h s calc(l - 30));
+          background: hsl(from var(--color) h s calc(l - 30));
+        }
 
-          &:hover {
-            border-color: hsl(from var(--ipt-color-entity-inner) h s calc(l - 45));
-            box-shadow: inset 0 0 6px hsl(from var(--ipt-color-entity-inner) h s calc(l - 45));
-          }
+        input {
+          accent-color: hsl(from var(--color) h s calc(l - 40));
         }
       }
     }

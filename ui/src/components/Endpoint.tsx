@@ -22,7 +22,6 @@ import { Statistic } from "./Statistic";
 
 export interface Props {
   endpoint: Endpoint;
-  onSelect?: () => void;
 }
 
 export const EndpointItem = memo(function Endpoint(props: Props) {
@@ -137,14 +136,13 @@ export const EndpointItem = memo(function Endpoint(props: Props) {
   }, [state, props.endpoint]);
 
   const onClick = useCallback(() => {
-    props.onSelect?.();
     const modes = state.highlightedEndpointsMap.get(props.endpoint);
     if (modes?.has(EndpointModeKind.Pinned)) {
       state.highlightEndpoint(props.endpoint, false, EndpointModeKind.Pinned);
       return;
     }
     state.highlightEndpoint(props.endpoint, true, EndpointModeKind.Pinned);
-  }, [state, props.endpoint, props.onSelect]);
+  }, [state, props.endpoint]);
 
   const className = clsx(css.endpoint, classNameFromEndpointKind(kind), {
     [css.highlighted]: highlightedProc,
