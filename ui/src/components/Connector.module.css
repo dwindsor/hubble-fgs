@@ -1,6 +1,6 @@
 .connector {
   position: relative;
-  top: 1px;
+  top: 0.5px;
   display: flex;
   flex-wrap: nowrap;
   margin-left: 10px;

@@ -19,9 +19,7 @@ export const Endpoints = memo(function Endpoints() {
 
   const [searchQuery, setSearchQuery] = useState(getQueryParam(UrlParams.SearchQuery) ?? "");
 
-  const endpointFilters = useEndpointFilters();
-
-  const endpoints = useEndpoints(searchQuery, endpointFilters);
+  const endpoints = useEndpoints(searchQuery);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: notify endpoints list change because it's size was changed
   useEffect(() => {
@@ -32,7 +30,11 @@ export const Endpoints = memo(function Endpoints() {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(e.target.value);
       if (state.persistInUrl) {
-        setQueryParam(UrlParams.SearchQuery, e.target.value);
+        if (e.target.value.length) {
+          setQueryParam(UrlParams.SearchQuery, e.target.value);
+        } else {
+          setQueryParam(UrlParams.SearchQuery, undefined);
+        }
       }
     },
     [state.persistInUrl],
@@ -40,16 +42,22 @@ export const Endpoints = memo(function Endpoints() {
 
   const isEmptySearchResult = useMemo(() => {
     return (
-      (searchQuery.length > 0 && endpoints[0]?.kind !== EndpointItemKind.Search) ||
-      (endpointFilters.value.size > 0 && endpoints.length === 0)
+      (searchQuery.length > 0 && endpoints.list[0]?.kind !== EndpointItemKind.Search) ||
+      (endpoints.filters.value.size > 0 && endpoints.list.length === 0)
     );
-  }, [searchQuery, endpoints, endpointFilters]);
+  }, [searchQuery, endpoints]);
+
+  const isNotShowingEndpoints = useMemo(() => {
+    return (
+      endpoints.list.length === 0 && endpoints.filters.value.size === 0 && searchQuery.length === 0
+    );
+  }, [searchQuery, endpoints]);
 
   return (
     <div>
       <div className={css.header}>
         <div className={css.filters}>
-          <EndpointFilters filters={endpointFilters} />
+          <EndpointFilters filters={endpoints.filters} />
         </div>
         <div className={css.search}>
           <input
@@ -67,8 +75,15 @@ export const Endpoints = memo(function Endpoints() {
             <hr />
           </div>
         )}
-        {endpoints.map(({ kind, endpoint }, idx) => {
-          const prev = endpoints[idx - 1];
+        {isNotShowingEndpoints && (
+          <div className={css.noEndpoints}>
+            <div className={css.noEndpointsTitle}>
+              Open the processes tree or use filters/search to see endpoints
+            </div>
+          </div>
+        )}
+        {endpoints.list.map(({ kind, endpoint }, idx) => {
+          const prev = endpoints.list[idx - 1];
           return (
             <React.Fragment key={endpoint}>
               {prev && prev.kind !== kind && <hr />}
@@ -81,18 +96,18 @@ export const Endpoints = memo(function Endpoints() {
   );
 });
 
-function useEndpoints(searchQuery: string, endpointFilters: EndpointFiltersState) {
+function useEndpoints(searchQuery: string) {
   const state = useAppState();
 
-  const [endpoints, setEndpoints] = useState<EndpointsList>(
-    createEndpoints(state, searchQuery, endpointFilters),
-  );
+  const filters = useEndpointFilters();
+
+  const [list, setList] = useState<EndpointsList>(createEndpointsList(state, searchQuery, filters));
 
   const debouncedUpdate = useMemo(() => {
     return debounce(() => {
-      setEndpoints(createEndpoints(state, searchQuery, endpointFilters));
+      setList(createEndpointsList(state, searchQuery, filters));
     });
-  }, [state, searchQuery, endpointFilters]);
+  }, [state, searchQuery, filters]);
 
   useEffect(() => {
     return debouncedUpdate();
@@ -112,7 +127,7 @@ function useEndpoints(searchQuery: string, endpointFilters: EndpointFiltersState
     });
   }, [state, debouncedUpdate]);
 
-  return endpoints;
+  return useMemo(() => ({ list, filters }), [list, filters]);
 }
 
 const EndpointItemKind = Enum({
@@ -124,16 +139,16 @@ type EndpointItemKind = EnumType<typeof EndpointItemKind>;
 
 type EndpointsList = Array<{ kind: EndpointItemKind; endpoint: Endpoint }>;
 
-function createEndpoints(
+function createEndpointsList(
   state: AppState,
   searchQuery: string,
-  endpointFilters: EndpointFiltersState,
+  filters: EndpointFiltersState,
 ): EndpointsList {
   const visibleEndpoints = new Set<Endpoint>();
   const searchEndpoints = new Set<Endpoint>();
 
   const addEndpoint = (target: Set<Endpoint>, endpoint: Endpoint) => {
-    if (endpointFilters.checkEndpointPassesFilters(endpoint)) {
+    if (filters.checkEndpointPassesFilters(endpoint)) {
       target.add(endpoint);
     }
   };
@@ -155,7 +170,7 @@ function createEndpoints(
       if (searchQuery.length === 0 || (searchQuery.length > 0 && endpoint.includes(searchQuery))) {
         if (procInfo?.visible) {
           addEndpoint(visibleEndpoints, endpoint);
-        } else if (endpointFilters.value.size > 0) {
+        } else if (filters.value.size > 0) {
           addEndpoint(searchEndpoints, endpoint);
         }
       }

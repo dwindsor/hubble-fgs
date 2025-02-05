@@ -1,6 +1,6 @@
 .wrapper {
   position: relative;
-  top: 2px;
+  top: 1px;
   color: var(--ipt-color-entity-inner);
   font-size: 0.8em;
   white-space: pre;

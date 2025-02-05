@@ -7,7 +7,7 @@ const root = createRoot(window.document.body);
 
 declare global {
   interface Window {
-    APP_MODEL_JSON?: ApplicationModelEvent;
+    IPT_APP_MODEL_JSON?: ApplicationModelEvent;
   }
 }
 
@@ -18,9 +18,9 @@ const promise = new Promise<ApplicationModelEvent>((resolve, reject) => {
       .catch(reject);
     return;
   }
-  const model = window.APP_MODEL_JSON;
+  const model = window.IPT_APP_MODEL_JSON;
   if (!model) {
-    return reject(new Error("window.APP_MODEL_JSON should be in HTML"));
+    return reject(new Error("window.IPT_APP_MODEL_JSON should be in HTML"));
   }
   resolve(model);
 });
@@ -32,7 +32,7 @@ promise
         persistStateInUrl
         model={model}
         getTreeOffset={() => ({ x: 0, y: 0 + window.scrollY })}
-      />,
+      />
     );
   })
   .catch((error) => {

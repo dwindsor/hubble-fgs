@@ -458,7 +458,9 @@ func getTreeHtml(w http.ResponseWriter, _ *http.Request, getter treeGetter) {
 		return
 	}
 	values := map[string]interface{}{
-		"APP_MODEL_JSON": string(appModelJson),
+		"IPT_APP_MODEL_SCRIPT": fmt.Sprintf(
+			"<script>window.IPT_APP_MODEL_JSON = %s</script>", string(appModelJson),
+		),
 	}
 	tmpl.Execute(w, values)
 }

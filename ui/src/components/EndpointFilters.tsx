@@ -1,7 +1,6 @@
 import clsx from "clsx";
 import { memo, useMemo } from "react";
 import type { EndpointFiltersState } from "~/hooks/useEndpointFilters";
-import { useAppState } from "~/state/AppContext";
 import { EndpointFilterKind } from "~/utils/endpoints";
 import css from "./EndpointFilters.module.css";
 
@@ -10,8 +9,6 @@ export interface Props {
 }
 
 export const EndpointFilters = memo(function EndpointFilters(props: Props) {
-  const state = useAppState();
-
   return (
     <ul className={css.wrapper}>
       <EndpointFilter
@@ -60,7 +57,7 @@ const EndpointFilter = memo(function EndpointFilter(props: EndpointFilterProps) 
   return (
     <li className={className}>
       <button type="button" onClick={props.onClick}>
-        <input type="checkbox" checked={props.status} /> {title}
+        <input type="checkbox" readOnly checked={props.status} /> {title}
       </button>
     </li>
   );

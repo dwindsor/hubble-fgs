@@ -3,12 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <title>Tetragon Process Tree</title>
-    <script>
-      window.APP_MODEL_JSON = {{ .APP_MODEL_JSON }}
-    </script>
   </head>
   <body>
-    <div id="container"></div>
+    <div hidden>{{ .IPT_APP_MODEL_SCRIPT }}</div>
     <script type="module" src="./app.tsx"></script>
   </body>
 </html>

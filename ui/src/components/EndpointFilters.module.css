@@ -16,8 +16,7 @@
       height: 1.5em;
       font-size: 1em;
       line-height: 1;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial,
-        sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+      font-family: var(--ipt-font-sans-serif);
     }
 
     &:first-child {
