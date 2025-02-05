@@ -101,7 +101,6 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	}
 
 	get_socket_stats(skp, socket, &val->stats);
-	val->stats.bytes_received -= socket->fin_rx;
 	socket->closed = 1;
 
 	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(

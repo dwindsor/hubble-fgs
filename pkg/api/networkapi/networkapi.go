@@ -295,7 +295,7 @@ func (t *TcpValue) String() string {
 	return fmt.Sprintf("Pid: %d CreateTime %d Last %d Sent (%d:%d) Recv (%d:%d) Zero %d Retransmit (%d:%d) Drops %d Srtt %d",
 		t.Key.Pid,
 		t.Stats.CreateTime, t.Stats.Ktime,
-		t.Stats.BytesSent, t.Stats.SegsOut, t.Stats.BytesReceived-uint64(t.FinRx), t.Stats.SegsIn,
+		t.Stats.BytesSent, t.Stats.SegsOut, t.Stats.BytesReceived, t.Stats.SegsIn,
 		t.Stats.ZeroWindow,
 		t.Stats.RetransmitBytes, t.Stats.RetransmitSegs,
 		t.Stats.SkDrops, t.Stats.Srtt)

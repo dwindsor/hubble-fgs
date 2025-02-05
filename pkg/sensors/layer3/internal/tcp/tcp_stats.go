@@ -198,7 +198,7 @@ func ToMsgSocketStatsUnix(t *networkapi.TcpValue) *networkapi.MsgSocketStats {
 	s.Ktime = t.Stats.Ktime
 	s.CreateTime = t.Stats.CreateTime
 	s.BytesSent = t.Stats.BytesSent
-	s.BytesReceived = t.Stats.BytesReceived - uint64(t.FinRx)
+	s.BytesReceived = t.Stats.BytesReceived
 	s.SegsIn = t.Stats.SegsIn
 	s.SegsOut = t.Stats.SegsOut
 	s.Srtt = t.Stats.Srtt

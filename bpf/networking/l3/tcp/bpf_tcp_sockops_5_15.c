@@ -231,7 +231,6 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	skops_tuple_with_stats(cookie, val, skops);
 	get_socket_stats((struct sock *)cookie, socket, &val->stats);
 	val->close_time = ktime_get_ns();
-	val->stats.bytes_received -= socket->fin_rx;
 	socket->closed = 1;
 
 	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
