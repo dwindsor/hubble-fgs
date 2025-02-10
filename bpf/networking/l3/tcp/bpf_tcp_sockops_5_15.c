@@ -90,8 +90,8 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	struct socketmap_value *socket = 0;
 	struct tcpsocketmap_value *v;
 	struct msg_ip_event *val;
-	u64 cookie, now;
 	u32 zero = 0;
+	u64 cookie;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
 	cookie = (u64)skops->sk;
@@ -122,27 +122,10 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 					 sizeof(struct msg_ip_event));
 	}
 
-	v = map_lookup_elem(&tg_sockops_tcpsocket_map, &zero);
+	v = init_tcpsocketmap_value(&val->key, skops->family, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version);
+
 	if (!v)
 		return 0;
-
-	now = ktime_get_ns();
-
-	v->key.pid = val->key.pid;
-	v->key.ktime = val->key.ktime;
-	v->stats.create_time = now;
-	v->stats.ktime = now;
-	v->stats.zero_window = 0;
-	v->socket_flags = SOCKFLAGS_TYPE_LISTEN;
-	v->stats.bytes_sent = 0;
-	v->stats.bytes_received = 0;
-	v->stats.segs_out = 0;
-	v->stats.segs_in = 0;
-	v->stats.sk_drops = 0;
-	v->fin_rx = 0;
-	v->ipv6 = (skops->family == AF_INET6);
-	v->version = val->version;
-	v->fin_rx = 0;
 
 	add_tcpsocketmap(&cookie, v, &val->tuple, true);
 

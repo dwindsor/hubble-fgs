@@ -26,6 +26,7 @@
 #include "lib/address_family.h"
 #include "bpf_tcp_info.h"
 #include "bpf_network_helpers.h"
+#include "bpf_tcp_state.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -47,6 +48,7 @@ __event_sys_listen(void *ctx, struct sock *skp)
 	struct tcp_event_disable_config *event_cfg;
 	struct execve_map_value *process = 0;
 	struct socketmap_value *socket = 0;
+	struct tcpsocketmap_value *v = 0;
 	struct msg_execve_key *key = 0;
 	__u32 pid, ppid = 0, zero = 0;
 	struct msg_ip_event *val;
@@ -122,24 +124,10 @@ __event_sys_listen(void *ctx, struct sock *skp)
 					 sizeof(struct msg_ip_event));
 	}
 
-	struct tcpsocketmap_value v = { 0 };
-
-	v.key.pid = key->pid;
-	v.key.ktime = key->ktime;
-	v.stats.create_time = val->common.ktime;
-	v.stats.ktime = v.stats.create_time;
-	v.stats.zero_window = 0;
-	v.socket_flags |= SOCKFLAGS_TYPE_LISTEN;
-	v.stats.bytes_sent = 0;
-	v.stats.bytes_received = 0;
-	v.stats.segs_out = 0;
-	v.stats.segs_in = 0;
-	v.stats.sk_drops = 0;
-	v.fin_rx = 0;
-	v.ipv6 = (family == AF_INET6);
-	v.version = val->version;
-
-	add_tcpsocketmap(&cookie, &v, &val->tuple, true);
+	if (key && socket)
+		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version);
+	if (v)
+		add_tcpsocketmap(&cookie, v, &val->tuple, true);
 
 	return 0;
 }

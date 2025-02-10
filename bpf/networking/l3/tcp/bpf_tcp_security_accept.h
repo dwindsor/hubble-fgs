@@ -71,6 +71,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 {
 	struct tcp_event_disable_config *event_cfg;
 	struct tcpsocketmap_value *listen_socket = 0;
+	struct tcpsocketmap_value *accept_socket = 0;
 	struct socketmap_value *listen_process = 0;
 	struct msg_ip_tuple tuple = { 0 };
 	struct msg_ip_event *event;
@@ -156,7 +157,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 
 	cookie_version = cookie_inc_version();
 
-	// These if (1) blocks are here to help compiler with stack allocation
+	// This if (1) block is here to help compiler with stack allocation
 	// this is enough to keep stack limit below 512.
 	if (1) {
 		struct socketmap_value accept_process = *listen_process;
@@ -166,16 +167,10 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 		add_socketmap(&newcookie, &accept_process, &tuple, true);
 	}
 
-	if (1) {
-		struct tcpsocketmap_value accept_socket = *listen_socket;
-
-		accept_socket.version = cookie_version;
-		accept_socket.stats.create_time = now;
-		accept_socket.socket_flags = SOCKFLAGS_TYPE_ACCEPT;
-		accept_socket.stats.sk_drops = 0;
-		accept_socket.fin_rx = 0;
-		add_tcpsocketmap(&newcookie, &accept_socket, &tuple, true);
-	}
+	accept_socket = init_tcpsocketmap_value(&listen_process->key, family, SOCKFLAGS_TYPE_ACCEPT, now, cookie_version);
+	if (!accept_socket)
+		return 0;
+	add_tcpsocketmap(&newcookie, accept_socket, &tuple, true);
 
 	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(&tg_event_disable_config, &zero);
 	if (!event_cfg)
