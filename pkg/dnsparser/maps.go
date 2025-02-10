@@ -12,7 +12,6 @@ package dnsparser
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -26,8 +25,7 @@ import (
 )
 
 const (
-	IPToDomainMapName = "tg_dns_ip_map"
-	ErrorMapName      = "tg_dns_error_map"
+	ErrorMapName = "tg_dns_error_map"
 
 	// Process tree related maps
 	DomainToIDMapName    = "tg_bpf_domain_map"
@@ -113,38 +111,6 @@ func (m ErrorMap) Clear() error {
 	return nil
 }
 
-func NewIPMap(m *ebpf.Map) IpMap {
-	return IpMap{
-		ipMap: m,
-	}
-}
-
-func Clear[K any](m *ebpf.Map) error {
-	entries := m.Iterate()
-
-	keys := []K{}
-	var key K
-	value := make([]byte, dnsMaxNameSize+1)
-
-	for entries.Next(&key, value) {
-		keys = append(keys, key)
-	}
-
-	if err := entries.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over entries: %w", err)
-	}
-
-	if _, err := m.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
-		return fmt.Errorf("failed to batch delete keys %v: %w", keys, err)
-	}
-
-	return nil
-}
-
-func (m IpMap) Clear() error {
-	return Clear[dnsapi.IPAddr](m.ipMap)
-}
-
 func Values[K comparable](m *ebpf.Map) (map[K]string, error) {
 	entries := m.Iterate()
 
@@ -184,7 +150,25 @@ func (m IDToDomainMap) Values() (map[DNSID]string, error) {
 }
 
 func (m IDToDomainMap) Clear() error {
-	return Clear[DNSID](m.idToDomainMap)
+	entries := m.idToDomainMap.Iterate()
+
+	keys := []DNSID{}
+	var key DNSID
+	value := make([]byte, dnsMaxNameSize+1)
+
+	for entries.Next(&key, value) {
+		keys = append(keys, key)
+	}
+
+	if err := entries.Err(); err != nil {
+		return fmt.Errorf("failed to iterate over entries: %w", err)
+	}
+
+	if _, err := m.idToDomainMap.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
+		return fmt.Errorf("failed to batch delete keys %v: %w", keys, err)
+	}
+
+	return nil
 }
 
 type DomainToIDMap struct {
@@ -254,18 +238,13 @@ func NewDNSEndpointIDMap(dnsEndpointIDMap *ebpf.Map) DNSEndpointIDMap {
 func (m DNSEndpointIDMap) Values() (map[netip.Addr]DNSID, error) {
 	entries := m.dnsEndpointIDMap.Iterate()
 
-	var key types.EndpointIdKey
+	var key dnsapi.IPAddr
 	var value DNSID
 
 	actualMap := map[netip.Addr]DNSID{}
 
 	for entries.Next(&key, &value) {
-		// TODO, this only support IPv4 for now, see and use
-		// pkg/api/dnsapi/IPAddr for IPv6 support in pstree
-		b := [4]byte{}
-		binary.LittleEndian.PutUint32(b[:], uint32(key.Addr[0]))
-		ip := netip.AddrFrom4(b)
-		actualMap[ip] = value
+		actualMap[key.Get()] = value
 	}
 
 	if err := entries.Err(); err != nil {
@@ -278,8 +257,8 @@ func (m DNSEndpointIDMap) Values() (map[netip.Addr]DNSID, error) {
 func (m DNSEndpointIDMap) Clear() error {
 	entries := m.dnsEndpointIDMap.Iterate()
 
-	keys := []types.EndpointIdKey{}
-	var key types.EndpointIdKey
+	keys := []dnsapi.IPAddr{}
+	var key dnsapi.IPAddr
 	var value DNSID
 
 	for entries.Next(&key, &value) {
@@ -414,6 +393,42 @@ func (m *DomainMap) Domain(id uint64) (string, error) {
 	}
 	domain, _, _ = bytes.Cut(domain, []byte("\x00"))
 	return string(domain), nil
+}
+
+type IPToDomainMap struct {
+	ipToIDMap     DNSEndpointIDMap
+	idToDomainMap IDToDomainMap
+}
+
+func NewIPToDomainMap(ipToIDMap, idToDomainMap *ebpf.Map) IPToDomainMap {
+	return IPToDomainMap{
+		ipToIDMap:     NewDNSEndpointIDMap(ipToIDMap),
+		idToDomainMap: NewIDToDomainMap(idToDomainMap),
+	}
+}
+
+func (m IPToDomainMap) Clear() error {
+	err1 := m.ipToIDMap.Clear()
+	err2 := m.idToDomainMap.Clear()
+	return errors.Join(err1, err2)
+}
+
+func (m IPToDomainMap) Values() (map[netip.Addr]string, error) {
+	ipToID, err := m.ipToIDMap.Values()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve values of ip to ID map: %w", err)
+	}
+
+	idToDomain, err := m.idToDomainMap.Values()
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve values of id to domain map: %w", err)
+	}
+
+	ipToDomain := map[netip.Addr]string{}
+	for ip, id := range ipToID {
+		ipToDomain[ip] = idToDomain[id]
+	}
+	return ipToDomain, nil
 }
 
 type GlobalDNSIDMap struct {

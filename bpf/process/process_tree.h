@@ -277,6 +277,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	__u64 *nsid;
 
 	struct endpoint_id_key key;
+	struct ip_addr dns_key = {};
 	struct endpoint_id_value *value;
 	struct dns_endpoint_id_value *dns_value;
 
@@ -311,8 +312,14 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	key.addr[0] = tuple->daddr[0];
 	key.addr[1] = tuple->daddr[1];
 
+	// dns_key contains .af_inet6 boolean, when the process tree supports
+	// IPv6, we could replace struct endpoint_id_key in each map with struct
+	// ip_addr and avoid doing this twice.
+	dns_key.addr[0] = tuple->daddr[0];
+	dns_key.addr[1] = tuple->daddr[1];
+
 	// destination precedence DNS, Userspace (service, pods), BPF generated ID.
-	dns_value = map_lookup_elem(&tg_dns_endpoint_id_map, &key);
+	dns_value = map_lookup_elem(&tg_dns_endpoint_id_map, &dns_key);
 	if (dns_value) {
 		destkey.destination_id = dns_value->id;
 		destkey.source = dns_value->source;

@@ -202,7 +202,6 @@ var (
 	// DNS Parser maps
 	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.15
 	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcher, EgressDispatcher)
-	DNSParserIPMap    = program.MapBuilder(dnsparser.IPToDomainMapName, IngressDispatcher, EgressDispatcher)
 	DNSDomainMap      = program.MapBuilder(dnsparser.DomainToIDMapName, IngressDispatcher, EgressDispatcher)
 	DNSDomainMapRev   = program.MapBuilder(dnsparser.IDToDomainMapName, IngressDispatcher, EgressDispatcher)
 	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcher, EgressDispatcher)
@@ -270,14 +269,15 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 		needDispatcher = true
 	}
 	if dnsEnabled {
-		if enterpriseOption.Config.EnableProcessTree && enterpriseOption.Config.EnableBPFDNSParser {
+		if enterpriseOption.Config.EnableBPFDNSParser {
 			DNSEndpointIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			DNSDomainMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 			DNSDomainMapRev.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			if enterpriseOption.Config.EnableProcessTree {
+				DNSDomainMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			}
 		}
 
 		maps = append(maps, DNSParserErrorMap)
-		maps = append(maps, DNSParserIPMap)
 		maps = append(maps, DNSEndpointIDMap)
 		maps = append(maps, DNSDomainMap)
 		maps = append(maps, DNSDomainMapRev)

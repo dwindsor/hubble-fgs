@@ -26,7 +26,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/google/gopacket/pcapgo"
-	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
@@ -126,11 +125,15 @@ func Test_DNSParser(t *testing.T) {
 	}
 	errMap := NewErrorMap(rawErrMap)
 
-	rawIPMap, ok := coll.Maps[IPToDomainMapName]
+	rawIPToIDMap, ok := coll.Maps[DNSEndpointIDMapName]
 	if !ok {
-		t.Fatalf("map %s not found", IPToDomainMapName)
+		t.Fatalf("map %s not found", DNSEndpointIDMapName)
 	}
-	ipMap := NewIPMap(rawIPMap)
+	rawIDToDomainMap, ok := coll.Maps[IDToDomainMapName]
+	if !ok {
+		t.Fatalf("map %s not found", IDToDomainMapName)
+	}
+	ipToDomainMap := NewIPToDomainMap(rawIPToIDMap, rawIDToDomainMap)
 
 	type testQuery struct {
 		name       string
@@ -254,8 +257,14 @@ func Test_DNSParser(t *testing.T) {
 		}
 		t.Run(tq.name, func(t *testing.T) {
 			t.Cleanup(func() {
-				ipMap.Clear()
-				errMap.Clear()
+				err := ipToDomainMap.Clear()
+				if err != nil {
+					t.Error(err)
+				}
+				err = errMap.Clear()
+				if err != nil {
+					t.Error(err)
+				}
 			})
 
 			code, err := prog.Run(&ebpf.RunOptions{
@@ -283,13 +292,12 @@ func Test_DNSParser(t *testing.T) {
 				}
 			}
 
-			wantIPMaps := map[dnsapi.IPAddr]string{}
+			wantIPMaps := map[netip.Addr]string{}
 			for _, ip := range tq.wantIPs {
-				wantIPAddr := dnsapi.NewIPAddr(ip)
-				wantIPMaps[wantIPAddr] = tq.wantDomain
+				wantIPMaps[ip] = tq.wantDomain
 			}
 
-			actualIP, err := ipMap.Values()
+			actualIP, err := ipToDomainMap.Values()
 			if err != nil {
 				t.Fatalf("failed to retrieve values out of IP map: %s", err)
 			}

@@ -90,13 +90,6 @@ struct {
 } name_heap_map SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__uint(max_entries, 56); // This is an arbitrary number for testing, TBD
-	__type(key, struct ip_addr);
-	__type(value, char[DNS_MAX_NAME_SIZE + 1]); // + 1 is for 8 bytes alignement for easy zeroing
-} tg_dns_ip_map SEC(".maps");
-
-struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, MAX_ERROR_CODE);
 	__type(key, __u32);

@@ -214,10 +214,8 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		ip.af_inet6 = 0;
 		DEBUG("A Record: %d.%d.%d.%d", ip.addr[0] & 0xFF, (ip.addr[0] >> 8) & 0xFF, (ip.addr[0] >> 16) & 0xFF, ip.addr[0] >> 24);
 
-		if (map_update_elem(&tg_dns_ip_map, &ip, name, BPF_ANY) < 0)
+		if (assign_dns_id_mapping(&ip, name) < 0)
 			return -36;
-
-		assign_dns_id_mapping((struct endpoint_id_key *)&ip, name);
 
 		return offset + sizeof(u32);
 	} else if (data_len == sizeof(u128) && type == (AAAA_RECORD)) {
@@ -240,7 +238,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		      bpf_htons(addr[7]));
 #endif
 
-		if (map_update_elem(&tg_dns_ip_map, &ip, name, BPF_ANY) < 0)
+		if (assign_dns_id_mapping(&ip, name) < 0)
 			return -38;
 
 		return offset + sizeof(u128);
