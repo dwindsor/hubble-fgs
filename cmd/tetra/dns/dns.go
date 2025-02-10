@@ -26,14 +26,21 @@ func NewDNSCmd() *cobra.Command {
 		Use:   "dns",
 		Short: "Debug the DNS BPF parser IP to domain map.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			mapFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.IPToDomainMapName)
-			m, err := ebpf.LoadPinnedMap(mapFile, nil)
+			ipToIDMapFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.DNSEndpointIDMapName)
+			ipToIDMap, err := ebpf.LoadPinnedMap(ipToIDMapFile, nil)
 			if err != nil {
-				return fmt.Errorf("fail to load pinned map %s: %w", mapFile, err)
+				return fmt.Errorf("fail to load pinned map %s: %w", ipToIDMapFile, err)
 			}
-			defer m.Close()
+			defer ipToIDMap.Close()
 
-			ipMap := dnsparser.NewIPMap(m)
+			idToDomainMapFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.IDToDomainMapName)
+			idToDomainMap, err := ebpf.LoadPinnedMap(idToDomainMapFile, nil)
+			if err != nil {
+				return fmt.Errorf("fail to load pinned map %s: %w", idToDomainMapFile, err)
+			}
+			defer idToDomainMap.Close()
+
+			ipMap := dnsparser.NewIPToDomainMap(ipToIDMap, idToDomainMap)
 
 			values, err := ipMap.Values()
 			if err != nil {
