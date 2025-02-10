@@ -3,6 +3,7 @@ lib/*
 /release
 /tetragon
 /tetra
+/tetragon-aggregator
 /tetragon-operator
 /fgs-bench
 /alignchecker

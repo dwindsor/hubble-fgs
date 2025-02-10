@@ -109,7 +109,7 @@ all: tetragon-bpf tetragon tetra fgs-bench test-compile tester-progs
 clean: tarball-clean
 	$(MAKE) -C ./bpf clean
 	$(MAKE) -C $(TESTER_PROGS_DIR) clean
-	rm -f go-tests/*.test ./ksyms ./tetra ./tetragon-operator ./tetragon ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN) $(FS_SCANNER_RUNNER)
+	rm -f go-tests/*.test ./ksyms ./tetra ./tetragon-aggregator ./tetragon-operator ./tetragon ./fgs-alignchecker ./fgs-bench $(FS_SCANNER_BIN) $(FS_SCANNER_RUNNER)
 	rm -fr ./release
 
 ##@ Build and install
@@ -117,6 +117,10 @@ clean: tarball-clean
 .PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
 	$(GO_BUILD) ./cmd/tetragon
+
+.PHONY: tetragon-aggregator
+tetragon-aggregator: ## Compile the Tetragon aggregator
+	$(GO_BUILD) -o $@ ./aggregator
 
 .PHONY: tetragon-operator
 tetragon-operator: ## Compile the Tetragon operator.
