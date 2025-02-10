@@ -81,6 +81,8 @@ jobs:
           git checkout -b pr/release-wf/${{ steps.tag.outputs.tag }}
           tetragon_img="$(cat digests/tetragon.txt | grep isovalent)"
           echo "tetragon image: ${tetragon_img}"
+          tetragon_aggregator_img="$(cat digests/tetragon-aggregator.txt | grep isovalent)"
+          echo "tetragon-aggregator image: ${tetragon_aggregator_img}"
           tetragon_operator_img="$(cat digests/tetragon-operator.txt | grep isovalent)"
           echo "tetragon-operator image: ${tetragon_operator_img}"
           hubble_enterprise_metadata_digest=$(docker run quay.io/skopeo/stable:v1.15 inspect docker://quay.io/isovalent/hubble-enterprise-metadata:current | jq -r '.Digest')
@@ -88,6 +90,8 @@ jobs:
           # sed commands seem fragile. Templating or yq may be better.
           sed -i "s/quay.io\/isovalent\/tetragon[:@].*\"$/${tetragon_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           sed -i "s/quay.io\/isovalent\/tetragon[:@].*[^\"]$/${tetragon_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/quay.io\/isovalent\/tetragon-aggregator[:@].*\"$/${tetragon_aggregator_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
+          sed -i "s/quay.io\/isovalent\/tetragon-aggregator[:@].*[^\"]$/${tetragon_aggregator_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           sed -i "s/quay.io\/isovalent\/tetragon-operator[:@].*\"$/${tetragon_operator_img//\//\\/}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           sed -i "s/quay.io\/isovalent\/tetragon-operator[:@].*[^\"]$/${tetragon_operator_img//\//\\/}/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
           sed -i "s/quay.io\/cilium\/tetragon-rthooks[:@].*\"$/quay.io\/cilium\/tetragon-rthooks:${rthooks_tag}@${tetragon_rthooks_image_digest}\"/g" ./install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml

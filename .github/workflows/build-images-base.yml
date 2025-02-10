@@ -37,6 +37,9 @@ jobs:
             legacy-name: hubble-enterprise
             dockerfile: ./Dockerfile
 
+          - name: tetragon-aggregator
+            dockerfile: ./Dockerfile.aggregator
+
           - name: tetragon-operator
             legacy-name: hubble-enterprise-operator
             dockerfile: ./Dockerfile.operator

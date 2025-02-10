@@ -1,0 +1,16 @@
+ARG GOLANG_IMAGE=docker.io/library/golang:1.23.6@sha256:927112936d6b496ed95f55f362cc09da6e3e624ef868814c56d55bd7323e0959
+
+FROM --platform=${BUILDPLATFORM} ${GOLANG_IMAGE} AS builder
+ARG TARGETOS
+ARG TARGETARCH
+
+WORKDIR /go/src/github.com/isovalent/hubble-fgs
+RUN --mount=type=bind,readwrite,target=/go/src/github.com/isovalent/hubble-fgs --mount=target=/root/.cache,type=cache --mount=target=/go/pkg/mod,type=cache \
+    make GOARCH=${TARGETARCH} tetragon-aggregator \
+    && mkdir -p /out/${TARGETOS}/${TARGETARCH}/usr/bin && mv tetragon-aggregator /out/${TARGETOS}/${TARGETARCH}/usr/bin
+
+FROM gcr.io/distroless/static-debian12
+ARG TARGETOS
+ARG TARGETARCH
+COPY --from=builder /out/${TARGETOS}/${TARGETARCH}/usr/bin/tetragon-aggregator /usr/bin/tetragon-aggregator
+CMD ["/usr/bin/tetragon-aggregator"]
