@@ -32,7 +32,8 @@ struct {
 	__uint(max_entries, 1);
 } tg_sockops_tcpsocket_map SEC(".maps");
 
-static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcpsocketmap_value(struct msg_ip_event *val, struct msg_execve_key *key, u16 family)
+static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcpsocketmap_value(
+	struct msg_execve_key *key, u16 family, u32 flags, u64 create_time, u64 version)
 {
 	struct tcpsocketmap_value *v;
 	int zero = 0;
@@ -43,19 +44,31 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 
 	v->key.pid = key->pid;
 	v->key.ktime = key->ktime;
-	v->stats.create_time = val->common.ktime;
-	v->stats.ktime = v->stats.create_time;
-	v->socket_flags = SOCKFLAGS_TYPE_CONNECT;
+	v->stats.create_time = create_time;
+	v->stats.ktime = create_time;
+	v->socket_flags = flags;
 	v->stats.bytes_sent = 0;
 	v->stats.bytes_received = 0;
 	v->stats.segs_out = 0;
 	v->stats.segs_in = 0;
 	v->stats.sk_drops = 0;
 	v->stats.zero_window = 0;
-	v->fin_rx = 0;
 	v->ipv6 = (family == AF_INET6);
-	v->version = val->version;
+	v->version = version;
 	v->fin_rx = 0;
+	v->fin_sent = 0;
+	v->last_sent_was_fin = 0;
+	v->protocol = IPPROTO_TCP;
+	v->closed = 0;
+	v->stats.retransbytes = 0;
+	v->stats.rtt_sum = 0;
+	v->stats.latency_sum = 0;
+
+#pragma unroll
+	for (int i = 0; i < 8; i++) {
+		v->stats.rtt_buckets[i] = 0;
+		v->stats.latency_buckets[i] = 0;
+	}
 
 	return v;
 }

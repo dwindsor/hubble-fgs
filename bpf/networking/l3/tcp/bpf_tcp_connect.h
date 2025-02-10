@@ -25,7 +25,9 @@
 #include "bpf_network_helpers.h"
 #include "bpf_tcp_state.h"
 
+#ifdef KERNEL_5_15
 #include "process/process_tree.h"
+#endif
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -81,6 +83,7 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 {
 	struct execve_map_value *process = 0;
 	struct socketmap_value *socket = 0;
+	struct tcpsocketmap_value *v = 0;
 	struct msg_execve_key *key;
 	struct msg_ip_event *val;
 	__u32 ppid = 0, zero = 0;
@@ -143,11 +146,13 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 
 	event_post_connect(ctx, val);
 
-	struct tcpsocketmap_value *v = init_tcpsocketmap_value(val, key, family);
+	if (key && socket)
+		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version);
+	if (v) {
 #ifdef KERNEL_5_15
-	process_socketmap_add(v, &(val->tuple));
+		process_socketmap_add(v, &(val->tuple));
 #endif
-	if (v)
 		add_tcpsocketmap(&cookie, v, &val->tuple, true);
+	}
 	return 1;
 }

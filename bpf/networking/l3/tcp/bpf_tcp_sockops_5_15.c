@@ -89,8 +89,8 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	struct tcp_event_disable_config *event_cfg;
 	struct socketmap_value *socket = 0;
 	struct tcpsocketmap_value *v;
-	u64 cookie, now;
 	struct msg_ip_event *val;
+	u64 cookie, now;
 	u32 zero = 0;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
@@ -181,7 +181,7 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 
 	event_post_connect(skops, val);
 
-	struct tcpsocketmap_value *v = init_tcpsocketmap_value(val, key, skops->family);
+	struct tcpsocketmap_value *v = init_tcpsocketmap_value(key, skops->family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version);
 	if (!v)
 		return 0;
 #ifdef KERNEL_5_15

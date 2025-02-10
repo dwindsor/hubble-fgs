@@ -19,6 +19,7 @@
 #include "bpf_tracing.h"
 #include "bpf_network_helpers.h"
 #include "process/process_tree.h"
+#include "l3/tcp/bpf_tcp_state.h"
 
 #define S_IFMT	 00170000
 #define S_IFSOCK 0140000
@@ -82,6 +83,7 @@ __proc_task_name(void *ctx, struct task_struct *p)
 	struct sock *sk;
 	u16 family = 0;
 	int sk_err = 0;
+	u32 flags = 0;
 	int zero = 0;
 	u16 protocol;
 	uint32_t pid;
@@ -238,49 +240,24 @@ __proc_task_name(void *ctx, struct task_struct *p)
 	}
 
 	if (required_protocol == IPPROTO_TCP) {
-		tcp_stats = map_lookup_elem(&tg_tcpsocket_map_heap, &zero);
-		if (!tcp_stats)
-			return 0;
-
 		if ((1 << config->state) & TCPF_LISTEN) {
 			if (config->hint == TCP_LEARN_CONNECT_SOCKETS)
 				return 0;
-			tcp_stats->socket_flags = SOCKFLAGS_TYPE_LISTEN;
+			flags = SOCKFLAGS_TYPE_LISTEN;
 		} else if ((1 << config->state) & TCPF_ESTABLISHED) {
 			if (config->hint == TCP_LEARN_LISTEN_SOCKETS)
 				return 0;
-			tcp_stats->socket_flags = 0;
 		} else {
 			return 0;
 		}
 
-		tcp_stats->stats.bytes_sent = 0;
-		tcp_stats->stats.bytes_received = 0;
-		tcp_stats->stats.segs_out = 0;
-		tcp_stats->stats.segs_in = 0;
-		tcp_stats->stats.retransbytes = 0;
-		tcp_stats->stats.sk_drops = 0;
-		tcp_stats->stats.zero_window = 0;
-		tcp_stats->stats.rtt_sum = 0;
-		tcp_stats->stats.latency_sum = 0;
-		tcp_stats->fin_rx = 0;
-		tcp_stats->protocol = 0;
-
-#pragma unroll
-		for (int i = 0; i < 8; i++) {
-			tcp_stats->stats.rtt_buckets[i] = 0;
-			tcp_stats->stats.latency_buckets[i] = 0;
-		}
+		tcp_stats = init_tcpsocketmap_value(&value->key, family, flags, socket->create_time, socket->version);
+		if (!tcp_stats)
+			return 0;
 
 		tcp_socketmap_stats(sk, tcp_stats);
 
 		memset(&tcp_stats->dst_key, 0, sizeof(tcp_stats->dst_key));
-
-		tcp_stats->key = value->key;
-		tcp_stats->stats.create_time = socket->create_time;
-		tcp_stats->stats.ktime = socket->create_time;
-		tcp_stats->ipv6 = (family == AF_INET6);
-		tcp_stats->version = socket->version;
 #ifdef KERNEL_5_15
 		__insert_process_tree(value->key.pid, config->cgrpid);
 		if (tcp_stats->socket_flags == SOCKFLAGS_TYPE_LISTEN) {
