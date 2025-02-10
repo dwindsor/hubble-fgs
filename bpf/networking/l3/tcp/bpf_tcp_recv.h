@@ -79,6 +79,11 @@ tcp_check_fin_rx(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cooki
 	if (!socket)
 		return SK_PASS;
 
+	// We don't track FIN state for listening sockets as they do not transmit
+	// or receive data.
+	if (socket->socket_flags & SOCKFLAGS_TYPE_LISTEN)
+		return SK_PASS;
+
 	// If we've received a FIN and either we haven't yet sent a FIN, or
 	// the last datagram we sent was a FIN, set fin_rx to indicate that
 	// the received_bytes metric is off-by-one.
@@ -101,6 +106,11 @@ tcp_check_fin_tx(struct __sk_buff *skb, void *ip, __u16 tcp_offset, __u64 *cooki
 	c = *cookie;
 	socket = lookup_tcpsocketmap(&c);
 	if (!socket)
+		return SK_PASS;
+
+	// We don't track FIN state for listening sockets as they do not transmit
+	// or receive data.
+	if (socket->socket_flags & SOCKFLAGS_TYPE_LISTEN)
 		return SK_PASS;
 
 	// If we're sending a FIN, record that this datagram is a FIN
