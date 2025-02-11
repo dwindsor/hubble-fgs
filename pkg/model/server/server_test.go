@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -75,24 +76,27 @@ func setupProcessTreeEnable(ctx context.Context, t *testing.T) {
 }
 
 type processTree struct {
-	Name  string
-	Cmd   string
-	Args  []string
-	Check string
+	Name       string
+	Cmd        string
+	Args       []string
+	Check      string
+	ArmSupport bool
 }
 
 var tests = []processTree{
 	processTree{
-		Name:  "testBasicExecArgs",
-		Cmd:   "bash",
-		Args:  []string{"-c", "uname -r"},
-		Check: `model.host.processes.exists(p, p.name.matches("/usr/bin/bash") && p.arguments.matches("-c.*uname.*-r.*"))`,
+		Name:       "testBasicExecArgs",
+		Cmd:        "bash",
+		Args:       []string{"-c", "uname -r"},
+		Check:      `model.host.processes.exists(p, p.name.matches("/usr/bin/bash") && p.arguments.matches("-c.*uname.*-r.*"))`,
+		ArmSupport: true,
 	},
 	processTree{
-		Name:  "testBasicCurl",
-		Cmd:   "curl",
-		Args:  []string{"ebpf.io"},
-		Check: `model.host.processes.exists(p, p.name.matches(".*curl") && p.connections.exists(c, c.destination_name.matches("ebpf.io")))`,
+		Name:       "testBasicCurl",
+		Cmd:        "curl",
+		Args:       []string{"ebpf.io"},
+		Check:      `model.host.processes.exists(p, p.name.matches(".*curl") && p.connections.exists(c, c.destination_name.matches("ebpf.io")))`,
+		ArmSupport: false,
 	},
 }
 
@@ -116,6 +120,10 @@ func TestProcessTree(t *testing.T) {
 
 	for _, e := range tests {
 		t.Run(e.Name, func(t *testing.T) {
+			if runtime.GOARCH != "amd64" && !e.ArmSupport {
+				t.Skipf("ARM not supported for test %s, skipping", e.Name)
+			}
+
 			execTest(t, e)
 
 			res, err := server.GetProcessModel([]string{}, false)
