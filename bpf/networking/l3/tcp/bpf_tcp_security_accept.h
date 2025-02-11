@@ -24,14 +24,14 @@
 #include "bpf_tcp_listen.h"
 
 struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct tcpsocketmap_value);
 	__uint(max_entries, 1);
 } tg_listen_socket SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct socketmap_value);
 	__uint(max_entries, 1);
