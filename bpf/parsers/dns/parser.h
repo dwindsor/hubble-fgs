@@ -270,7 +270,9 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 	int8_t error, ret;
 	uint32_t error_idx, *counter;
 
-	offset &= UDP_MAX_SIZE - 1;
+	if (offset > UDP_MAX_SIZE)
+		offset = UDP_MAX_SIZE;
+
 	dns = (void *)(long)skb->data + offset;
 	// Verify that there's something next to the DNS header.
 	if (dns + 1 > (void *)(long)skb->data_end)

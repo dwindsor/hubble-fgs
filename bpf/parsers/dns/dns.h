@@ -22,8 +22,13 @@
 #define DNS_MAX_NAME_SIZE  255
 #define DNS_MAX_LABEL_SIZE 63
 
+// RFC1035 defines the size limit of the UDP packet to be 512
 // https://datatracker.ietf.org/doc/html/rfc1035#section-2.3.4
-#define UDP_MAX_SIZE 512
+//
+// However EDNS(0) specified in RFC6891 increases the maximum possible size.
+// For now let's use 1232 for the EDNS buffer size since it's the maximum size
+// it will avoid fragmentation on most networks. See https://www.dnsflagday.net/2020/.
+#define UDP_MAX_SIZE 1232
 
 // Ethernet header (14 bytes) are already parsed in skb and the IP headers size
 // can be from 20 to 60 bytes.
@@ -52,9 +57,9 @@
 // Name (compressed) + Type + Class + TTL + Length + IPv4 Addresss
 // 2                 + 2    + 2     + 4   + 2      + 4             = 16 bytes
 // ---
-// UDP_MAX_SIZE(512) - (20 + 7) = 485
-// 485 / 16 = 30,3125
-#define MAX_DNS_ANSWERS_UDP 30
+// UDP_MAX_SIZE(1232) - (20 + 7) = 1205
+// 1205 / 16 = 75,3125
+#define MAX_DNS_ANSWERS_UDP 75
 
 // The first two bits of a compressed message are ones. This allows a pointer to
 // be distinguished from a label, since the label must begin with two zero bits
