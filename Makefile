@@ -16,6 +16,7 @@ METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 EXTRA_TESTFLAGS ?=
 SUDO ?= sudo
 GO_TEST_TIMEOUT ?= 20m
+GO_TEST_PACKAGES ?= ./pkg/... ./cmd/... ./operator/...
 
 # Architecture, use TARGET_ARCH=amd64 or TARGET_ARCH=arm64
 # or let uname detect the appropriate arch for native build
@@ -266,7 +267,7 @@ endif
 
 .PHONY: test
 test: tester-progs tetragon-bpf tetragon-bpf-test ## Run Go tests.
-	$(GO) test -exec "$(SUDO)" -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover ./pkg/... ./cmd/... ./operator/... ${EXTRA_TESTFLAGS}
+	$(GO) test -exec "$(SUDO)" -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover $(GO_TEST_PACKAGES) ${EXTRA_TESTFLAGS}
 
 .PHONY: tester-progs
 tester-progs:
