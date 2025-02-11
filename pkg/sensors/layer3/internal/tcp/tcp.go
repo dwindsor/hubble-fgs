@@ -303,7 +303,7 @@ func UnloadSensor() error {
 		StatsInterval = 0
 	}
 	tcpCache.StopGc()
-	return policy.ClearDnsQuota()
+	return policy.ClearDnsPolicy()
 }
 
 func processModelMapsEnable() []*program.Map {
@@ -455,7 +455,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 func configureQos(qos *v1alpha1.QosPolicySpec) error {
 	for _, p := range qos.QuotaPolicySpec {
 		if len(p.Destination.Dns) > 0 {
-			err := policy.AddDnsQuotaPolicy(p.Namespace,
+			err := policy.AddDnsPolicy(p.Namespace,
 				p.Workload, p.WorkloadKind,
 				p.Destination.Dns,
 				p.Quota, qos.QuotaResetLimits, false,

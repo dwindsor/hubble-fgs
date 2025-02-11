@@ -18,20 +18,20 @@ const (
 	destinationEndpointMap = "destination_endpoint_map"
 )
 
-func AddDnsQuotaPolicy(namespace, wl, kind string, names []string, quota, reset string, deny bool) error {
+func AddDnsPolicy(namespace, wl, kind string, names []string, quota, reset string, deny bool) error {
 	// There are a few possibilities for possible scope.
 	// 1. fully specified namespace:workload:kind
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
 	if wl != "" && kind != "" {
-		return dns.AddDnsQuota(namespace, wl, kind, names, quota, reset, deny)
+		return dns.AddDns(namespace, wl, kind, names, quota, reset, deny)
 	}
 	if (wl == "" && kind != "") || (kind == "" && wl != "") {
 		return fmt.Errorf("qosPolicySpec violation requires workload:kind fully specified")
 	}
 
 	if namespace == "" {
-		return dns.AddDnsQuota(namespace, wl, kind, names, quota, reset, deny)
+		return dns.AddDns(namespace, wl, kind, names, quota, reset, deny)
 	}
 
 	// Namespaced policy handler
@@ -46,7 +46,7 @@ func AddDnsQuotaPolicy(namespace, wl, kind string, names []string, quota, reset 
 		return err
 	}
 	for _, pod := range allPods {
-		dns.AddDnsQuota(
+		dns.AddDns(
 			pod.WorkloadObject.Namespace,
 			pod.WorkloadObject.Name,
 			pod.WorkloadType.Kind,
@@ -60,7 +60,7 @@ func AddDnsQuotaPolicy(namespace, wl, kind string, names []string, quota, reset 
 // This is a somewhat lossy operation the BPF side may lose some stats during
 // the update. However, this is a heavy operation to remove a quotas so we
 // accept it.
-func ClearDnsQuota() error {
+func ClearDnsPolicy() error {
 	var dstVal types.DestinationEndpointValue
 	var dstKey types.DestinationEndpointKey
 

@@ -40,7 +40,7 @@ const (
 	destinationEndpointMap = "destination_endpoint_map"
 )
 
-func addSingleDnsQuota(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset, deny uint64) error {
+func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset, deny uint64) error {
 	var addr [2]uint64
 
 	c := endpoint.Get()
@@ -121,7 +121,7 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 		delete(queueWl, wl)
 	}
 	queueWlLock.Unlock()
-	return AddDnsQuota(wl.Namespace, wl.Workload, wl.Kind, qp.dns, qp.quota, qp.reset, qp.deny)
+	return AddDns(wl.Namespace, wl.Workload, wl.Kind, qp.dns, qp.quota, qp.reset, qp.deny)
 }
 
 func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
@@ -183,7 +183,7 @@ func quotaToNs(reset string) (uint64, error) {
 	return resetNS, nil
 }
 
-func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string, deny bool) error {
+func AddDns(namespace, wl, kind string, dns []string, quota, reset string, deny bool) error {
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	dstMap, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
@@ -231,7 +231,7 @@ func AddDnsQuota(namespace, wl, kind string, dns []string, quota, reset string, 
 		if deny {
 			denyVal = 1
 		}
-		if err := addSingleDnsQuota(src, ep, dstMap, quotaBytes, resetNS, denyVal); err != nil {
+		if err := addSingleDnsPolicy(src, ep, dstMap, quotaBytes, resetNS, denyVal); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"namespace": namespace,
 				"workload":  wl,
