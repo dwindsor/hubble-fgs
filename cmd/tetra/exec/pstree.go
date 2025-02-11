@@ -773,7 +773,7 @@ func NewCheck() *cobra.Command {
 				os.Exit(-1)
 				panic("unreachable")
 			case *checker.ResultPass:
-				fmt.Printf("✅ application model checks passed!")
+				fmt.Printf("✅ application model checks passed!\n")
 				return nil
 			default:
 				panic("unhandled result")
