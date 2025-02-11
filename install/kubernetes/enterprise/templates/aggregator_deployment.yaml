@@ -1,0 +1,83 @@
+{{- if .Values.tetragonAggregator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{- with .Values.tetragonAggregator.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "tetragon-aggregator.labels" . | nindent 4 }}
+    {{- with .Values.tetragonAggregator.extraLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  name: {{ .Release.Name }}-aggregator
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "tetragon-aggregator.selectorLabels" . | nindent 6 }}
+  replicas: 1
+  template:
+    metadata:
+      {{- with .Values.tetragonAggregator.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "tetragon-aggregator.labels" . | nindent 8 }}
+        {{- with .Values.tetragonAggregator.extraPodLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-aggregator
+        command:
+          - /usr/bin/tetragon-aggregator
+        image: "{{ if .Values.tetragonAggregator.image.override }}{{ .Values.tetragonAggregator.image.override }}{{ else }}{{ .Values.tetragonAggregator.image.repository }}:{{ .Values.tetragonAggregator.image.tag }}{{ end }}"
+        imagePullPolicy: {{ .Values.tetragonAggregator.image.pullPolicy }}
+        {{- with .Values.tetragonAggregator.extraVolumeMounts }}
+        volumeMounts:
+            {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.tetragonAggregator.podSecurityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.tetragonAggregator.resources }}
+        resources:
+          {{- toYaml . | trim | nindent 10 }}
+        {{- end }}
+      {{- with .Values.tetragonAggregator.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tetragonAggregator.priorityClassName }}
+      priorityClassName: "{{ . }}"
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tetragonAggregator.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tetragonAggregator.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tetragonAggregator.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 10
+      {{- with .Values.tetragonAggregator.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- with .Values.tetragonAggregator.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- end }}

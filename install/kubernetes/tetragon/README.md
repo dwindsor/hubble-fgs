@@ -151,6 +151,22 @@ Helm chart for Tetragon Enterprise
 | tetragon.redactionFilters | string | `""` | Filters to redact secrets from the args fields in Tetragon events. To perform redactions, redaction filters define RE2 regular expressions in the `redact` field. Any capture groups in these RE2 regular expressions are redacted and replaced with "*****".  For more control, you can select which binary or binaries should have their arguments redacted with the `binary_regex` field.  NOTE: This feature uses RE2 as its regular expression library. Make sure that you follow RE2 regular expression guidelines as you may observe unexpected results otherwise. More information on RE2 syntax can be found [here](https://github.com/google/re2/wiki/Syntax).  NOTE: When writing regular expressions in JSON, it is important to escape backslash characters. For instance `\Wpasswd\W?` would be written as `{"redact": "\\Wpasswd\\W?"}`.  As a concrete example, the following will redact all passwords passed to processes with the "--password" argument:    {"redact": ["--password(?:\\s+|=)(\\S*)"]}  Now, an event which contains the string "--password=foo" would have that string replaced with "--password=*****".  Suppose we also see some passwords passed via the -p shorthand for a specific binary, foo. We can also redact these as follows:    {"binary_regex": ["(?:^|/)foo$"], "redact": ["-p(?:\\s+|=)(\\S*)"]}  With both of the above redaction filters in place, we are now redacting all password arguments. |
 | tetragon.resources | object | `{}` |  |
 | tetragon.securityContext.privileged | bool | `true` |  |
+| tetragonAggregator.affinity | object | `{}` |  |
+| tetragonAggregator.annotations | object | `{}` | Annotations for the Tetragon Aggregator Deployment. |
+| tetragonAggregator.enabled | bool | `false` | Enables the Tetragon Aggregator. |
+| tetragonAggregator.extraLabels | object | `{}` | Extra labels to be added on the Tetragon Aggregator Deployment. |
+| tetragonAggregator.extraPodLabels | object | `{}` | Extra labels to be added on the Tetragon Aggregator Deployment Pods. |
+| tetragonAggregator.extraVolumeMounts | list | `[]` |  |
+| tetragonAggregator.extraVolumes | list | `[]` | Extra volumes for the Tetragon Aggregator Deployment. |
+| tetragonAggregator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-aggregator","tag":"v1.15.0-pre.2"}` | tetragon-aggregator image. |
+| tetragonAggregator.nodeSelector | object | `{}` | Steer the Tetragon Aggregator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
+| tetragonAggregator.podAnnotations | object | `{}` | Annotations for the Tetragon Aggregator Deployment Pods. |
+| tetragonAggregator.podSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}` | securityContext for the Tetragon Aggregator Deployment Pod container. |
+| tetragonAggregator.priorityClassName | string | `""` | priorityClassName for the Tetragon Aggregator Deployment Pods. |
+| tetragonAggregator.resources | object | `{}` | resources for the Tetragon Operator Deployment Pod container. |
+| tetragonAggregator.securityContext | object | `{}` | securityContext for the Tetragon Aggregator Deployment Pods. |
+| tetragonAggregator.strategy | object | `{}` | resources for the Tetragon Aggregator Deployment update strategy |
+| tetragonAggregator.tolerations | list | `[]` |  |
 | tetragonOperator.affinity | object | `{}` |  |
 | tetragonOperator.annotations | object | `{}` | Annotations for the Tetragon Operator Deployment. |
 | tetragonOperator.enabled | bool | `true` | Enables the Tetragon Operator. |

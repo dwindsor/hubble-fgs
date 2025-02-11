@@ -73,3 +73,14 @@ enable-bpf-dns-parser: {{ .Values.tetragon.enableBPFDNSParser | quote }}
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{- define "tetragon-aggregator.selectorLabels" -}}
+app.kubernetes.io/name: "tetragon-aggregator"
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- define "tetragon-aggregator.labels" -}}
+{{ include "tetragon-aggregator.selectorLabels" . }}
+{{ include "commonLabels" . }}
+app.kubernetes.io/component: aggregator
+{{- end }}

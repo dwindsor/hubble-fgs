@@ -1,0 +1,13 @@
+{{- if .Values.tetragonAggregator.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Release.Name }}-aggregator
+  labels:
+    {{- include "tetragon-aggregator.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "tetragon-aggregator.selectorLabels" . | nindent 4 }}
+  type: ClusterIP
+{{- end }}

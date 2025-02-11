@@ -437,6 +437,51 @@ rthooks:
   # -- rthooks service account.
   serviceAccount:
     name: ""
+# Tetragon Aggregator settings
+tetragonAggregator:
+  # -- Enables the Tetragon Aggregator.
+  enabled: false
+  # -- Annotations for the Tetragon Aggregator Deployment.
+  annotations: {}
+  # -- Annotations for the Tetragon Aggregator Deployment Pods.
+  podAnnotations: {}
+  # -- Extra labels to be added on the Tetragon Aggregator Deployment.
+  extraLabels: {}
+  # -- Extra labels to be added on the Tetragon Aggregator Deployment Pods.
+  extraPodLabels: {}
+  # -- priorityClassName for the Tetragon Aggregator Deployment Pods.
+  priorityClassName: ""
+  # -- securityContext for the Tetragon Aggregator Deployment Pods.
+  securityContext: {}
+  # -- securityContext for the Tetragon Aggregator Deployment Pod container.
+  podSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - "ALL"
+  # -- resources for the Tetragon Operator Deployment Pod container.
+  resources: {}
+  #limits:
+  #  cpu: 500m
+  #  memory: 128Mi
+  #requests:
+  #  cpu: 10m
+  #  memory: 64Mi
+  # -- resources for the Tetragon Aggregator Deployment update strategy
+  strategy: {}
+  # -- Steer the Tetragon Aggregator Deployment Pod placement via nodeSelector, tolerations and affinity rules.
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # -- tetragon-aggregator image.
+  image:
+    override: ~
+    repository: quay.io/isovalent/tetragon-aggregator
+    tag: v1.15.0-pre.2
+    pullPolicy: IfNotPresent
+  # -- Extra volumes for the Tetragon Aggregator Deployment.
+  extraVolumes: []
+  extraVolumeMounts: []
 # -- Install tracing policies.
 # These options require the TracingPolicy CRD to be present in the cluster. Normally Tetragon CRDs are installed by
 # either the Tetragon operator (which is installed by the same Helm chart) or by the same Helm chart
