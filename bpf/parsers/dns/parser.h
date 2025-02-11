@@ -29,12 +29,13 @@ FUNC_INLINE bool bpf_dns_parser_enabled()
 }
 
 // parse_dns_name_label parses a label in a uncompressed DNS name and write it
-// into the name heap map. It returns the offset needed to advance into the data
-// to skip the label on success. You need to add one to skip the last zero byte.
-// The length of the label is equal to the returned offset minus one, because of
-// the first length byte. On failure, it returns < 0.
+// into the name heap map. If skip is true, nothing is written in the domain
+// name buffer. It returns the offset needed to advance into the data to skip
+// the label on success. You need to add one to skip the last zero byte.  The
+// length of the label is equal to the returned offset minus one, because of the
+// first length byte. On failure, it returns < 0.
 __attribute__((noinline)) int
-parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start)
+parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start, int skip)
 {
 	__u8 name_offset, label_length;
 	char *data, *data_end, *name;
@@ -58,9 +59,11 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start)
 	label_length = *((__u8 *)data) & DNS_MAX_LABEL_SIZE; // Max length is 63
 	data += 1; // Move past length byte
 
-	name = map_lookup_elem(&name_heap_map, &zero);
-	if (!name)
-		return -23;
+	if (!skip) {
+		name = map_lookup_elem(&name_heap_map, &zero);
+		if (!name)
+			return -23;
+	}
 
 	if (name_offset > 0) {
 		// Move one byte too much because of label length. On newer kernels, we
@@ -68,24 +71,28 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start)
 		// instructions but it doesn't work on older ones.
 		name_offset--;
 		if (label_length == 0) {
-			name[name_offset] = '\0';
+			if (!skip)
+				name[name_offset] = '\0';
 			// Remember that caller should add the last zero byte to the offset
 			return 0;
 		}
 		// Adding the dot after the label
-		name[name_offset++] = '.';
+		if (!skip)
+			name[name_offset++] = '.';
 	}
 
 	// Copy one byte at a time
-	for (size_t i = 0; i < label_length; ++i) {
-		// We can't do the check globally on the pointer because the verifier can't
-		// track that data is "similar" to data[i] later on, so that we need to do
-		// the check every iteration. It's not optimal to read one byte at a time
-		// but it's still better than doing probe_read_kernel.
-		if (data + (i + 1) > data_end)
-			return -24;
+	if (!skip) {
+		for (size_t i = 0; i < label_length; ++i) {
+			// We can't do the check globally on the pointer because the verifier can't
+			// track that data is "similar" to data[i] later on, so that we need to do
+			// the check every iteration. It's not optimal to read one byte at a time
+			// but it's still better than doing probe_read_kernel.
+			if (data + (i + 1) > data_end)
+				return -24;
 
-		name[name_offset + i] = data[i];
+			name[name_offset + i] = data[i];
+		}
 	}
 
 	return label_length + 1;
@@ -93,9 +100,10 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start)
 
 // parse_dns_name is an inlined function looping to read the dns name labels
 // called by the parsing of the DNS question and the parsing of the DNS answers
-// in the case the packet doesn't use message compression. It returns the length
-// of the parsed name or an error.
-FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_start)
+// in the case the packet doesn't use message compression. If skip is true,
+// nothing is written in the domain name buffer It returns the length of the
+// parsed name or an error.
+FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_start, int skip)
 {
 	int8_t ret;
 	uint16_t init_offset = offset_start;
@@ -107,10 +115,12 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 	ret = 1;
 
 	// Even though we NULL byte end the string, it will be used as a key so it needs to be cleared
-	char *name = map_lookup_elem(&name_heap_map, &zero);
-	if (!name)
-		return -25;
-	memset((uint64_t *)name, 0, DNS_MAX_NAME_SIZE + 1);
+	if (!skip) {
+		char *name = map_lookup_elem(&name_heap_map, &zero);
+		if (!name)
+			return -25;
+		memset((uint64_t *)name, 0, DNS_MAX_NAME_SIZE + 1);
+	}
 
 	// Conditions: maximum of 127 labels plus the last zero: 128 iterations. The
 	// data should have at least 3 remaning bytes at anytime, one for the
@@ -119,7 +129,7 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 	//
 	// writing 'if (ret == 0 ) break;' inside the loop increases the complexity
 	for (int i = 0; i < (MAX_NUMBER_LABEL + 1) && data + sizeof(u8) * 3 <= data_end && ret > 0; i++) {
-		ret = parse_dns_name_label(skb, offset_start, data);
+		ret = parse_dns_name_label(skb, offset_start, data, skip);
 		if (ret < 0) {
 			return ret;
 		}
@@ -175,7 +185,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		data += offset;
 	} else {
 		// Might be not using message compression
-		name_len = parse_dns_name(skb, data, off);
+		name_len = parse_dns_name(skb, data, off, true);
 		if (name_len < 0)
 			return -31;
 
@@ -286,7 +296,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 	}
 
 	// Parse Question Section
-	name_len = parse_dns_name(skb, data, (size_t)(data - skb->data));
+	name_len = parse_dns_name(skb, data, (size_t)(data - skb->data), false);
 	if (name_len < 0) {
 		error = name_len;
 		goto give_up;
