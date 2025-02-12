@@ -740,9 +740,8 @@ func WalkPathRenameAdd(path string, store InodeStore, actionFn func(string, fs.F
 
 			if err := store.AddInode(key, val); err != nil {
 				return fmt.Errorf("failed to call AddInode: %w", err)
-			} else {
-				num++
 			}
+			num++
 		}
 
 		return nil
