@@ -241,7 +241,7 @@ func getArg(r *bytes.Reader, a argPrinter) api.MsgGenericKprobeArg {
 		arg.SecPathOLen = skb.SecPathOLen
 		arg.Label = a.label
 		return arg
-	case gt.GenericSockType:
+	case gt.GenericSockType, gt.GenericSocketType:
 		var sock api.MsgGenericKprobeSock
 		var arg api.MsgGenericKprobeArgSock
 
@@ -263,6 +263,20 @@ func getArg(r *bytes.Reader, a argPrinter) api.MsgGenericKprobeArg {
 		arg.Dport = uint32(sock.Tuple.Dport)
 		arg.Sockaddr = sock.Sockaddr
 		arg.Label = a.label
+		return arg
+	case gt.GenericSockaddrType:
+		var address api.MsgGenericKprobeSockaddr
+		var arg api.MsgGenericKprobeArgSockaddr
+
+		err := binary.Read(r, binary.LittleEndian, &address)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("sockaddr type err")
+		}
+
+		arg.Index = uint64(a.index)
+		arg.SinFamily = address.SinFamily
+		arg.SinAddr = network.GetIP(address.SinAddr, address.SinFamily).String()
+		arg.SinPort = uint32(address.SinPort)
 		return arg
 	case gt.GenericS64Type:
 		var output int64

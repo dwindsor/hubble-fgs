@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/network"
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/syscallinfo"
 	"github.com/cilium/tetragon/pkg/tracepoint"
@@ -583,6 +584,8 @@ func createGenericTracepointSensor(
 		maps = append(maps, selMatchBinariesMap)
 	}
 
+	maps = append(maps, program.MapUserFrom(base.ExecveMap))
+
 	ret.Progs = progs
 	ret.Maps = maps
 	return ret, nil
@@ -672,7 +675,7 @@ func (tp *genericTracepoint) EventConfig() (api.EventConfig, error) {
 	return config, nil
 }
 
-func LoadGenericTracepointSensor(bpfDir string, load *program.Program, verbose int) error {
+func LoadGenericTracepointSensor(bpfDir string, load *program.Program, maps []*program.Map, verbose int) error {
 
 	tracepointLog = logger.GetLogger()
 
@@ -703,7 +706,7 @@ func LoadGenericTracepointSensor(bpfDir string, load *program.Program, verbose i
 	}
 	load.MapLoad = append(load.MapLoad, cfg)
 
-	if err := program.LoadTracepointProgram(bpfDir, load, verbose); err == nil {
+	if err := program.LoadTracepointProgram(bpfDir, load, maps, verbose); err == nil {
 		logger.GetLogger().Infof("Loaded generic tracepoint program: %s -> %s", load.Name, load.Attach)
 	} else {
 		return err
@@ -879,7 +882,7 @@ func handleMsgGenericTracepoint(
 			arg.SecPathLen = skb.SecPathLen
 			arg.SecPathOLen = skb.SecPathOLen
 			unix.Args = append(unix.Args, arg)
-		case gt.GenericSockType:
+		case gt.GenericSockType, gt.GenericSocketType:
 			var sock api.MsgGenericKprobeSock
 			var arg api.MsgGenericKprobeArgSock
 
@@ -899,6 +902,20 @@ func handleMsgGenericTracepoint(
 			arg.Sport = uint32(sock.Tuple.Sport)
 			arg.Dport = uint32(sock.Tuple.Dport)
 			arg.Sockaddr = sock.Sockaddr
+			unix.Args = append(unix.Args, arg)
+
+		case gt.GenericSockaddrType:
+			var address api.MsgGenericKprobeSockaddr
+			var arg api.MsgGenericKprobeArgSockaddr
+
+			err := binary.Read(r, binary.LittleEndian, &address)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("sockaddr type err")
+			}
+
+			arg.SinFamily = address.SinFamily
+			arg.SinAddr = network.GetIP(address.SinAddr, address.SinFamily).String()
+			arg.SinPort = uint32(address.SinPort)
 			unix.Args = append(unix.Args, arg)
 
 		case gt.GenericSyscall64:
@@ -924,5 +941,5 @@ func handleMsgGenericTracepoint(
 }
 
 func (t *observerTracepointSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	return LoadGenericTracepointSensor(args.BPFDir, args.Load, args.Verbose)
+	return LoadGenericTracepointSensor(args.BPFDir, args.Load, args.Maps, args.Verbose)
 }
