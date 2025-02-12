@@ -143,6 +143,23 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 		statsKey := networkapi.TcpKey{SockCookie: key.SockCookie, CreateTime: value.Stats.CreateTime}
 
 		last, ok := cache.Get(statsKey)
+
+		// Explicit check for underflowed bytes_received < 0
+		if int64(tcpStats.BytesReceived) < 0 {
+			logger.GetLogger().WithFields(logrus.Fields{
+				"tuple":         tuple,
+				"curr":          tcpStats,
+				"last":          last,
+				"cookie":        key.SockCookie,
+				"version":       value.Version,
+				"socketFlags":   value.SocketFlags,
+				"bytesReceived": int64(tcpStats.BytesReceived),
+			}).Warn("TCP stats underflow in bytesReceived in stats GC")
+			// Correct it to make stats/metrics more sane (but beware that the bug still needs fixing
+			// as it likely affects sockets where bytes_received wasn't 0 before the decrement)
+			tcpStats.BytesReceived = 0
+		}
+
 		if ok {
 			// If Ktime is the same as last read then nothing has changed.
 			if tcpStats.Ktime != last.Ktime {

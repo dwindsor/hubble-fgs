@@ -565,6 +565,22 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	events := []observer.Event{tcp}
 	if StatsEnabled() || enterpriseOption.Config.EnableAWSSonar {
 		var c layer3.MsgIPWithStatsEventUnix
+
+		// Explicit check for underflowed bytes_received < 0
+		if int64(m.SocketStats.BytesReceived) < 0 {
+			logger.GetLogger().WithFields(logrus.Fields{
+				"tuple":         m.Tuple,
+				"stats":         m.SocketStats,
+				"cookie":        m.SockCookie,
+				"version":       m.Version,
+				"socketFlags":   m.SocketFlags,
+				"bytesReceived": int64(m.SocketStats.BytesReceived),
+			}).Warn("TCP stats underflow in bytesReceived in Close")
+			// Correct it to make stats/metrics more sane (but beware that the bug still needs fixing
+			// as it likely affects sockets where bytes_received wasn't 0 before the decrement)
+			tcp.Msg.SocketStats.BytesReceived = 0
+		}
+
 		c, err = stats.correctedStatsEvent(*tcp)
 		if err == nil {
 			// Convert to a TCPStats event by simply setting op code
@@ -577,6 +593,15 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 				sonarStats.cache.Remove(statsKey)
 			}
 			events = append(events, &c)
+		} else {
+			logger.GetLogger().WithError(err).WithFields(logrus.Fields{
+				"tuple":         m.Tuple,
+				"curr":          m.SocketStats,
+				"cookie":        m.SockCookie,
+				"version":       m.Version,
+				"socketFlags":   m.SocketFlags,
+				"bytesReceived": int64(m.SocketStats.BytesReceived),
+			}).Warn("Failed to compute diff for TCP stats in Close")
 		}
 	}
 
