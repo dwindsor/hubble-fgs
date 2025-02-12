@@ -29,7 +29,7 @@ jobs:
       uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
       with:
         # renovate: datasource=golang-version depName=go
-        go-version: '1.23.6'
+        go-version: '1.24.0'
 
     - name: Check if build works for every commit
       run: |
@@ -65,7 +65,7 @@ jobs:
         uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           # renovate: datasource=golang-version depName=go
-          go-version: '1.23.6'
+          go-version: '1.24.0'
           # using golangci-lint cache instead
           cache: false
 
@@ -86,7 +86,7 @@ jobs:
         uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           # renovate: datasource=golang-version depName=go
-          go-version: '1.23.6'
+          go-version: '1.24.0'
 
       - name: Check gofmt formatting
         run: |
@@ -120,7 +120,7 @@ jobs:
         uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
         with:
           # renovate: datasource=golang-version depName=go
-          go-version: '1.23.6'
+          go-version: '1.24.0'
 
       - name: Check module vendoring
         run: |

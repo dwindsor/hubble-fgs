@@ -2,7 +2,7 @@ module github.com/isovalent/hubble-fgs/api
 
 go 1.23.0
 
-toolchain go1.23.1
+toolchain go1.24.0
 
 replace (
 	github.com/cilium/tetragon => ../modules/tetragon-oss

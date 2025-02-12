@@ -2,7 +2,7 @@ module github.com/isovalent/hubble-fgs/pkg/k8s
 
 go 1.23.0
 
-toolchain go1.23.1
+toolchain go1.24.0
 
 // This can be removed once we have k8s code that contains those fixes:
 // - https://github.com/kubernetes-sigs/controller-tools/pull/1061
