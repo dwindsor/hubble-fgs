@@ -76,9 +76,13 @@ func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap
 	return nil
 }
 
+func queueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
+	queueWl[policy.Subject] = policy
+}
+
 func QueueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
 	queueWlLock.Lock()
-	queueWl[policy.Subject] = policy
+	queueWorkloadNetworkPolicy(policy)
 	queueWlLock.Unlock()
 }
 
@@ -108,6 +112,26 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 	}
 	queueWlLock.Unlock()
 	return AddNetworkPolicy(policy)
+}
+
+func createSrcPolicy(policy *types.TetragonNetworkPolicy) (*types.ProcessTreeKey, error) {
+	queueWlLock.Lock()
+	defer queueWlLock.Unlock()
+
+	s := &policy.Subject
+
+	src, err := createSrcKey(s.Namespace, s.Workload, s.Kind)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the src does not yet exist we watch for it and create the policy
+	// once an ID has been generated.
+	if src == nil {
+		queueWorkloadNetworkPolicy(policy)
+		return nil, nil
+	}
+	return src, nil
 }
 
 func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
@@ -184,15 +208,11 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
 	a := &policy.Action
 
 	// The wl="",kind="" case will fall throuh to queueWorkloadQuotaPolicy
-	src, err := createSrcKey(s.Namespace, s.Workload, s.Kind)
+	src, err := createSrcPolicy(policy)
 	if err != nil {
 		return err
 	}
-
-	// If the src does not yet exist we watch for it and create the policy
-	// once an ID has been generated.
 	if src == nil {
-		QueueWorkloadNetworkPolicy(policy)
 		return nil
 	}
 
