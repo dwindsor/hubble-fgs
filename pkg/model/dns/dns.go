@@ -20,15 +20,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
-type quotaPolicy struct {
-	dns   []string
-	quota string
-	reset string
-	deny  bool
-}
-
 var (
-	queueWl     = make(map[policyfilter.NSID]quotaPolicy)
+	queueWl     = make(map[types.TetragonNetworkSubject]*types.TetragonNetworkPolicy)
 	queueWlLock = sync.Mutex{}
 
 	// QuotasDNSDomainMappings stores the mappings between the domain and
@@ -83,45 +76,38 @@ func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap
 	return nil
 }
 
-func QueueWorkloadQuotaPolicy(wl policyfilter.NSID, dns []string, reset, quota string, deny bool) {
-	qp := quotaPolicy{
-		dns:   dns,
-		quota: quota,
-		reset: reset,
-		deny: deny,
-	}
-
+func QueueWorkloadQuotaPolicy(policy *types.TetragonNetworkPolicy) {
 	queueWlLock.Lock()
-	queueWl[wl] = qp
+	queueWl[policy.Subject] = policy
 	queueWlLock.Unlock()
 }
 
 func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
-	wl := policyfilter.NSID{
-		Kind:      epPod.WorkloadType.Kind,
+	subject := types.TetragonNetworkSubject{
 		Namespace: epPod.WorkloadObject.Namespace,
 		Workload:  epPod.WorkloadObject.Name,
+		Kind:      epPod.WorkloadType.Kind,
 	}
 
 	queueWlLock.Lock()
-	qp, ok := queueWl[wl]
+	policy, ok := queueWl[subject]
 	if !ok {
 		/* Check for Namespace policy */
-		nswl := policyfilter.NSID{
-			Namespace: wl.Namespace,
+		namespaceSubject := types.TetragonNetworkSubject{
+			Namespace: subject.Namespace,
 			Kind:      "",
 			Workload:  "",
 		}
-		qp, ok = queueWl[nswl]
+		policy, ok = queueWl[namespaceSubject]
 		if !ok {
 			queueWlLock.Unlock()
 			return nil
 		}
 	} else {
-		delete(queueWl, wl)
+		delete(queueWl, subject)
 	}
 	queueWlLock.Unlock()
-	return AddDns(wl.Namespace, wl.Workload, wl.Kind, qp.dns, qp.quota, qp.reset, qp.deny)
+	return AddDns(policy)
 }
 
 func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
@@ -183,7 +169,7 @@ func quotaToNs(reset string) (uint64, error) {
 	return resetNS, nil
 }
 
-func AddDns(namespace, wl, kind string, dns []string, quota, reset string, deny bool) error {
+func AddDns(policy *types.TetragonNetworkPolicy) error {
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	dstMap, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
@@ -192,8 +178,13 @@ func AddDns(namespace, wl, kind string, dns []string, quota, reset string, deny 
 	}
 
 	defer dstMap.Close()
+
+	s := &policy.Subject
+	d := &policy.Destination
+	a := &policy.Action
+
 	// The wl="",kind="" case will fall throuh to queueWorkloadQuotaPolicy
-	src, err := createSrcKey(namespace, wl, kind)
+	src, err := createSrcKey(s.Namespace, s.Workload, s.Kind)
 	if err != nil {
 		return err
 	}
@@ -201,53 +192,53 @@ func AddDns(namespace, wl, kind string, dns []string, quota, reset string, deny 
 	// If the src does not yet exist we watch for it and create the policy
 	// once an ID has been generated.
 	if src == nil {
-		workload := policyfilter.NSID{
-			Namespace: namespace,
-			Workload:  wl,
-			Kind:      kind,
-		}
-		QueueWorkloadQuotaPolicy(workload, dns, reset, quota, deny)
+		QueueWorkloadQuotaPolicy(policy)
 		return nil
 	}
 
-	resetNS, err := quotaToNs(reset)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("failed to conver reset time")
-		return err
+	resetNS := uint64(0)
+	quotaBytes := uint64(0)
+
+	if a.QuotaAction != nil {
+		resetNS, err = quotaToNs(a.QuotaAction.Reset)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("failed to conver reset time")
+			return err
+		}
+
+		quotaBytes, err = strconv.ParseUint(a.QuotaAction.Quota, 10, 64)
+		if err != nil {
+			return err
+		}
 	}
 
-	quotaBytes, err := strconv.ParseUint(quota, 10, 64)
-	if err != nil {
-		return err
+	denyVal := uint64(0)
+	if a.EnforceAction != nil && a.EnforceAction.Deny {
+		denyVal = uint64(1)
 	}
 
-	for _, entry := range dns {
+	for _, entry := range d.Names {
 		ep := &endpoint.Endpoint{
 			Type: endpoint.DnsType,
 			Dns:  entry,
 		}
-
-		denyVal := uint64(0)
-		if deny {
-			denyVal = 1
-		}
 		if err := addSingleDnsPolicy(src, ep, dstMap, quotaBytes, resetNS, denyVal); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
-				"namespace": namespace,
-				"workload":  wl,
+				"namespace": s.Namespace,
+				"workload":  s.Workload,
 				"quota":     quotaBytes,
-				"reset":     reset,
-				"deny":      deny,
+				"reset":     a.QuotaAction,
+				"deny":      denyVal,
 				"dest":      entry,
 			}).WithError(err).Error("TCP quota entry Failed")
 		}
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
-		"namespace": namespace,
-		"workload":  wl,
+		"namespace": s.Namespace,
+		"workload":  s.Workload,
 		"quota":     quotaBytes,
-		"reset":     reset,
-		"dest":      strings.Join(dns, " "),
+		"reset":     a.QuotaAction,
+		"dest":      strings.Join(d.Names, " "),
 	}).Info("TCP quota added")
 	return nil
 }

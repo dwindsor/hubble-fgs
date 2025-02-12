@@ -97,3 +97,34 @@ type ProcessTreeBinaryUUIDValue struct {
 	Binary [256]byte
 	Args   [256]byte
 }
+
+type TetragonNetworkSubject struct {
+	Namespace string
+	Workload  string
+	Kind      string
+}
+
+type TetragonNetworkDestination struct {
+	Names []string
+}
+
+type TetragonQuotaAction struct {
+	Quota string
+	Reset string
+}
+
+type TetragonEnforceAction struct {
+	Deny  bool
+	Allow bool
+}
+
+type TetragonNetworkAction struct {
+	QuotaAction   *TetragonQuotaAction
+	EnforceAction *TetragonEnforceAction
+}
+
+type TetragonNetworkPolicy struct {
+	Subject     TetragonNetworkSubject
+	Destination TetragonNetworkDestination
+	Action      TetragonNetworkAction
+}

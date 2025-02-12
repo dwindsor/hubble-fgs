@@ -7,7 +7,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/policyfilter"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -18,40 +17,34 @@ const (
 	destinationEndpointMap = "destination_endpoint_map"
 )
 
-func AddDnsPolicy(namespace, wl, kind string, names []string, quota, reset string, deny bool) error {
+func AddDnsPolicy(policy *types.TetragonNetworkPolicy) error {
+	//	namespace, wl, kind string, names []string, quota, reset string, deny bool) error {
 	// There are a few possibilities for possible scope.
 	// 1. fully specified namespace:workload:kind
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
-	if wl != "" && kind != "" {
-		return dns.AddDns(namespace, wl, kind, names, quota, reset, deny)
+	if policy.Subject.Workload != "" && policy.Subject.Kind != "" {
+		return dns.AddDns(policy)
 	}
-	if (wl == "" && kind != "") || (kind == "" && wl != "") {
+	if (policy.Subject.Workload == "" && policy.Subject.Kind != "") ||
+		(policy.Subject.Kind == "" && policy.Subject.Workload != "") {
 		return fmt.Errorf("qosPolicySpec violation requires workload:kind fully specified")
 	}
 
-	if namespace == "" {
-		return dns.AddDns(namespace, wl, kind, names, quota, reset, deny)
+	if policy.Subject.Namespace == "" {
+		return dns.AddDns(policy)
 	}
 
 	// Namespaced policy handler
-	nsidWL := policyfilter.NSID{
-		Namespace: namespace,
-		Workload:  wl,
-		Kind:      kind,
-	}
-	dns.QueueWorkloadQuotaPolicy(nsidWL, names, reset, quota, deny)
-	allPods, err := podinfo.GetPodInfoOfNS(namespace)
+	dns.QueueWorkloadQuotaPolicy(policy)
+	allPods, err := podinfo.GetPodInfoOfNS(policy.Subject.Namespace)
 	if err != nil {
 		return err
 	}
 	for _, pod := range allPods {
-		dns.AddDns(
-			pod.WorkloadObject.Namespace,
-			pod.WorkloadObject.Name,
-			pod.WorkloadType.Kind,
-			names,
-			quota, reset, deny)
+		policy.Subject.Kind = pod.WorkloadType.Kind
+		policy.Subject.Workload = pod.WorkloadObject.Name
+		dns.AddDns(policy)
 	}
 
 	return nil
