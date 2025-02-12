@@ -11,6 +11,8 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"runtime"
+	"runtime/pprof"
 	"strings"
 	"sync"
 	"syscall"
@@ -164,6 +166,26 @@ func saveInitInfo() error {
 	return bugtool.SaveInitInfo(&info)
 }
 
+func stopProfile() {
+	if option.Config.MemProfile != "" {
+		log.WithField("file", option.Config.MemProfile).Info("Stopping mem profiling")
+		f, err := os.Create(option.Config.MemProfile)
+		if err != nil {
+			log.WithField("file", option.Config.MemProfile).Fatal("Could not create memory profile: ", err)
+		}
+		defer f.Close()
+		// get up-to-date statistics
+		runtime.GC()
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
+	}
+	if option.Config.CpuProfile != "" {
+		log.WithField("file", option.Config.CpuProfile).Info("Stopping cpu profiling")
+		pprof.StopCPUProfile()
+	}
+}
+
 func getOldBpfDir(path string) (string, error) {
 	// bpffs directory will be removed, so we don't care
 	if option.Config.ReleasePinned {
@@ -296,6 +318,26 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			}
 		}()
 	}
+
+	// Start profilers first as we have to capture them in signal handling
+	if option.Config.MemProfile != "" {
+		log.WithField("file", option.Config.MemProfile).Info("Starting mem profiling")
+	}
+
+	if option.Config.CpuProfile != "" {
+		f, err := os.Create(option.Config.CpuProfile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close()
+
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		log.WithField("file", option.Config.CpuProfile).Info("Starting cpu profiling")
+	}
+
+	defer stopProfile()
 
 	// We try to detect previous instance, which might be there for legitimate
 	// reasons (--keep-sensors-on-exit) and rename to 'tetragon_old'.
