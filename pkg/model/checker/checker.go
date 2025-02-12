@@ -41,6 +41,14 @@ func (r *ResultFail) Ok() bool {
 	return false
 }
 
+// Expression represents a single CEL expression along with a description
+// of the expression. "tetra pstree check" command unmarshals the YAML file
+// specified by the --yaml flag into a slice of Expression structs.
+type Expression struct {
+	Description string `yaml:"description"`
+	Expression  string `yaml:"expression"`
+}
+
 func compile(env *cel.Env, expr string) (*cel.Ast, error) {
 	ast, iss := env.Compile(expr)
 	if iss.Err() != nil {

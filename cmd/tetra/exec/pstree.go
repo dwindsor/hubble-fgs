@@ -48,6 +48,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -57,6 +58,7 @@ var (
 	output           string
 	celFiles         []string
 	celExprs         []string
+	celYAML          string
 	appModelFilename string
 	verboseDiff      bool
 	patch            bool
@@ -626,10 +628,6 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 		return nil, err
 	}
 
-	if len(celFiles) > 0 && len(celExprs) > 0 {
-		return nil, fmt.Errorf("provide one of --files or --expressions but not both")
-	}
-
 	if len(celFiles) > 0 {
 		for _, file := range celFiles {
 			b, err := os.ReadFile(file)
@@ -641,10 +639,41 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 
 	} else if len(celExprs) > 0 {
 		exprs = celExprs
+	} else if len(celYAML) > 0 {
+		return checkYAML(ctx, chk, appModel)
 	} else {
-		return nil, fmt.Errorf("provide one of --files or --expressions")
+		return nil, fmt.Errorf("provide one of --expressions, --files, or --yaml")
 	}
 	return chk.CheckApplicationModelEvent(ctx, appModel, exprs)
+}
+
+func checkYAML(ctx context.Context, chk *checker.ApplicationModelChecker, appModel *appModelV1.ApplicationModelEvent) (checker.ApplicationCheckerResult, error) {
+	fail := &checker.ResultFail{}
+	b, err := os.ReadFile(celYAML)
+	if err != nil {
+		return fail, err
+	}
+	var exprs []checker.Expression
+	err = yaml.Unmarshal(b, &exprs)
+	if err != nil {
+		return fail, err
+	}
+	for _, expr := range exprs {
+		res, err := chk.CheckApplicationModelEvent(ctx, appModel, []string{expr.Expression})
+		if err != nil {
+			fmt.Printf("❌ %s: %s: '%s'\n", expr.Description, expr.Expression, err)
+			fail.Failed = append(fail.Failed, expr.Expression)
+		} else if res.Ok() {
+			fmt.Printf("✅ %s: '%s'\n", expr.Description, expr.Expression)
+		} else {
+			fmt.Printf("❌ %s: '%s'\n", expr.Description, expr.Expression)
+			fail.Failed = append(fail.Failed, expr.Expression)
+		}
+	}
+	if len(fail.Failed) > 0 {
+		return fail, nil
+	}
+	return &checker.ResultPass{}, nil
 }
 
 func generateChecker() (string, error) {
@@ -769,6 +798,7 @@ func NewCheck() *cobra.Command {
 	flags := ret.Flags()
 	flags.StringArrayVarP(&celFiles, "files", "f", celFiles, "CEL source file(s)")
 	flags.StringArrayVarP(&celExprs, "expressions", "e", celFiles, "CEL expression(s)")
+	flags.StringVarP(&celYAML, "yaml", "y", "", "CEL expression(s) in YAML format")
 	viper.BindPFlags(flags)
 
 	pflags := ret.PersistentFlags()
