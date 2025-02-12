@@ -10,4 +10,9 @@ spec:
   selector:
     {{- include "tetragon-aggregator.selectorLabels" . | nindent 4 }}
   type: ClusterIP
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
 {{- end }}
