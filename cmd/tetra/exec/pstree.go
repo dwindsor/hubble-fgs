@@ -592,41 +592,39 @@ func getProcessModel(c *ConnectedModelClient, req *tetragon.GetProcessModelReque
 	return &processModel, nil
 }
 
-func checkProcessTreeGrpc(ctx context.Context, chk *checker.ApplicationModelChecker, exprs []string) (checker.ApplicationCheckerResult, error) {
-	c := NewConnectedModelClient()
-	defer c.Close()
+func getAppModel() (*appModelV1.ApplicationModelEvent, error) {
+	if appModelFilename == "" {
+		c := NewConnectedModelClient()
+		defer c.Close()
 
-	if host {
-		namespaces = append(namespaces, model.HostNamespace)
+		if host {
+			namespaces = append(namespaces, model.HostNamespace)
+		}
+		processModel, err := getProcessModel(&c, &tetragon.GetProcessModelRequest{
+			Namespaces: namespaces,
+			Debug:      common.Debug,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return model.ProcessModelToApplicationModel(processModel), nil
 	}
-	processModel, err := getProcessModel(&c, &tetragon.GetProcessModelRequest{
-		Namespaces: namespaces,
-		Debug:      common.Debug,
-	})
-	if err != nil {
-		return nil, err
-	}
-	appModel := model.ProcessModelToApplicationModel(processModel)
-
-	return chk.CheckApplicationModelEvent(ctx, appModel, exprs)
-}
-
-func checkProcessTreeReader(ctx context.Context, reader io.Reader, chk *checker.ApplicationModelChecker, exprs []string) (checker.ApplicationCheckerResult, error) {
-	b, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read application model: %w", err)
-	}
-
-	return chk.CheckApplicationModelEventJSON(ctx, string(b), exprs)
+	return readAppModelFromFile(appModelFilename)
 }
 
 func checkProcessTree() (checker.ApplicationCheckerResult, error) {
-	var appModelReader io.Reader
 	var err error
-	var chk *checker.ApplicationModelChecker
 	var exprs []string
 
 	ctx := context.Background()
+	chk, err := checker.NewApplicationModelChecker()
+	if err != nil {
+		return nil, err
+	}
+	appModel, err := getAppModel()
+	if err != nil {
+		return nil, err
+	}
 
 	if len(celFiles) > 0 && len(celExprs) > 0 {
 		return nil, fmt.Errorf("provide one of --files or --expressions but not both")
@@ -640,35 +638,13 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 			}
 			exprs = append(exprs, string(b))
 		}
-		chk, err = checker.NewApplicationModelChecker()
-		if err != nil {
-			return nil, err
-		}
+
 	} else if len(celExprs) > 0 {
 		exprs = celExprs
-		chk, err = checker.NewApplicationModelChecker()
-		if err != nil {
-			return nil, err
-		}
 	} else {
 		return nil, fmt.Errorf("provide one of --files or --expressions")
 	}
-
-	if appModelFilename == "" {
-		return checkProcessTreeGrpc(ctx, chk, exprs)
-	}
-
-	if appModelFilename == "-" {
-		appModelReader = os.Stdin
-	} else {
-		fr, err := os.Open(appModelFilename)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open app model file: %w", err)
-		}
-		appModelReader = fr
-	}
-
-	return checkProcessTreeReader(ctx, appModelReader, chk, exprs)
+	return chk.CheckApplicationModelEvent(ctx, appModel, exprs)
 }
 
 func generateChecker() (string, error) {
@@ -726,12 +702,18 @@ func generateCheckerReader(reader io.Reader) (string, error) {
 }
 
 func readAppModelFromFile(filename string) (*appModelV1.ApplicationModelEvent, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
+	var r io.Reader
+	var err error
+	if filename == "-" {
+		r = os.Stdin
+	} else {
+		r, err = os.Open(filename)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	b, err := io.ReadAll(f)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
