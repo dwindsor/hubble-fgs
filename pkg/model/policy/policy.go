@@ -17,14 +17,14 @@ const (
 	destinationEndpointMap = "destination_endpoint_map"
 )
 
-func AddDnsPolicy(policy *types.TetragonNetworkPolicy) error {
+func AddUnsafeNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
 	//	namespace, wl, kind string, names []string, quota, reset string, deny bool) error {
 	// There are a few possibilities for possible scope.
 	// 1. fully specified namespace:workload:kind
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
 	if policy.Subject.Workload != "" && policy.Subject.Kind != "" {
-		return dns.AddDns(policy)
+		return dns.AddNetworkPolicy(policy)
 	}
 	if (policy.Subject.Workload == "" && policy.Subject.Kind != "") ||
 		(policy.Subject.Kind == "" && policy.Subject.Workload != "") {
@@ -32,11 +32,11 @@ func AddDnsPolicy(policy *types.TetragonNetworkPolicy) error {
 	}
 
 	if policy.Subject.Namespace == "" {
-		return dns.AddDns(policy)
+		return dns.AddNetworkPolicy(policy)
 	}
 
 	// Namespaced policy handler
-	dns.QueueWorkloadQuotaPolicy(policy)
+	dns.QueueWorkloadNetworkPolicy(policy)
 	allPods, err := podinfo.GetPodInfoOfNS(policy.Subject.Namespace)
 	if err != nil {
 		return err
@@ -44,7 +44,7 @@ func AddDnsPolicy(policy *types.TetragonNetworkPolicy) error {
 	for _, pod := range allPods {
 		policy.Subject.Kind = pod.WorkloadType.Kind
 		policy.Subject.Workload = pod.WorkloadObject.Name
-		dns.AddDns(policy)
+		dns.AddNetworkPolicy(policy)
 	}
 
 	return nil

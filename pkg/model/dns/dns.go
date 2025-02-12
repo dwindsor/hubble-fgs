@@ -76,7 +76,7 @@ func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap
 	return nil
 }
 
-func QueueWorkloadQuotaPolicy(policy *types.TetragonNetworkPolicy) {
+func QueueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
 	queueWlLock.Lock()
 	queueWl[policy.Subject] = policy
 	queueWlLock.Unlock()
@@ -107,7 +107,7 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 		delete(queueWl, subject)
 	}
 	queueWlLock.Unlock()
-	return AddDns(policy)
+	return AddNetworkPolicy(policy)
 }
 
 func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
@@ -169,7 +169,7 @@ func quotaToNs(reset string) (uint64, error) {
 	return resetNS, nil
 }
 
-func AddDns(policy *types.TetragonNetworkPolicy) error {
+func AddNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	dstMap, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
@@ -192,7 +192,7 @@ func AddDns(policy *types.TetragonNetworkPolicy) error {
 	// If the src does not yet exist we watch for it and create the policy
 	// once an ID has been generated.
 	if src == nil {
-		QueueWorkloadQuotaPolicy(policy)
+		QueueWorkloadNetworkPolicy(policy)
 		return nil
 	}
 

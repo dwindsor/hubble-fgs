@@ -480,7 +480,7 @@ func configureQos(qos *v1alpha1.QosPolicySpec) error {
 	for _, p := range qos.QuotaPolicySpec {
 		if len(p.Destination.Dns) > 0 {
 			networkPolicy := qosSpecToPolicy(&p, qos.QuotaResetLimits)
-			err := policy.AddDnsPolicy(networkPolicy)
+			err := policy.AddUnsafeNetworkPolicy(networkPolicy)
 			if err != nil {
 				return err
 			}
