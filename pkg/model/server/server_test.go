@@ -131,11 +131,11 @@ func TestProcessTree(t *testing.T) {
 				t.Fatalf("getProcessModel error: %s", err)
 			}
 			appModelEvent := model.ProcessModelToApplicationModel(res)
-			modelChk, err := checker.NewApplicationModelChecker([]string{e.Check})
+			modelChk, err := checker.NewApplicationModelChecker()
 			if err != nil {
 				t.Fatalf("NewApplicationModelChecker error: %s: %s", err, e.Check)
 			}
-			resModel, errModel := modelChk.CheckApplicationModelEvent(ctx, appModelEvent)
+			resModel, errModel := modelChk.CheckApplicationModelEvent(ctx, appModelEvent, []string{e.Check})
 			if errModel != nil {
 				t.Fatalf("CheckApplicationModel error: %s: %s", errModel, appModelEvent)
 			}

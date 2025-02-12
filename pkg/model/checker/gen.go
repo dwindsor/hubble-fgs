@@ -285,13 +285,14 @@ func (gen *codegen) DoPop(p protopath.Values) error {
 }
 
 // GenerateChecker generates a new ApplicationModelChecker based on an input ApplicationModelEvent.
-func GenerateChecker(model *appModelV1.ApplicationModelEvent) (*ApplicationModelChecker, error) {
+func GenerateChecker(model *appModelV1.ApplicationModelEvent) (*ApplicationModelChecker, []string, error) {
 	celSource, err := GenerateCheckerCEL(model)
 	if err != nil {
-		return nil, fmt.Errorf("error generating checker: %w", err)
+		return nil, nil, fmt.Errorf("error generating checker: %w", err)
 	}
 
-	return NewApplicationModelChecker([]string{celSource})
+	checker, err := NewApplicationModelChecker()
+	return checker, []string{celSource}, err
 }
 
 // GenerateCheckerCEL generates CEL checker source based on an input ApplicationModelEvent.

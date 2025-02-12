@@ -63,11 +63,10 @@ func compile(env *cel.Env, expr string) (*cel.Ast, error) {
 
 // ApplicationModelChecker checks an application model using CEL expressions.
 type ApplicationModelChecker struct {
-	env   *cel.Env
-	exprs []string
+	env *cel.Env
 }
 
-func NewApplicationModelChecker(exprs []string) (*ApplicationModelChecker, error) {
+func NewApplicationModelChecker() (*ApplicationModelChecker, error) {
 	applicationModelEventName := string((&appModelV1.ApplicationModelEvent{}).ProtoReflect().Descriptor().FullName())
 	applicationModelName := string((&appModelV1.ApplicationModel{}).ProtoReflect().Descriptor().FullName())
 	options := []cel.EnvOption{
@@ -98,16 +97,15 @@ func NewApplicationModelChecker(exprs []string) (*ApplicationModelChecker, error
 	}
 
 	return &ApplicationModelChecker{
-		env:   celEnv,
-		exprs: exprs,
+		env: celEnv,
 	}, nil
 }
 
 // CheckApplicationModelEvent checks an application model.
-func (checker *ApplicationModelChecker) CheckApplicationModelEvent(ctx context.Context, appModelEvent *appModelV1.ApplicationModelEvent) (ApplicationCheckerResult, error) {
+func (checker *ApplicationModelChecker) CheckApplicationModelEvent(ctx context.Context, appModelEvent *appModelV1.ApplicationModelEvent, exprs []string) (ApplicationCheckerResult, error) {
 	failed := []string{}
 
-	for _, expr := range checker.exprs {
+	for _, expr := range exprs {
 		ast, err := compile(checker.env, expr)
 		if err != nil {
 			return nil, fmt.Errorf("error compiling CEL expression: %w", err)
@@ -151,11 +149,11 @@ func (checker *ApplicationModelChecker) CheckApplicationModelEvent(ctx context.C
 }
 
 // CheckApplicationModelEventJSON checks an application model's JSON representation.
-func (checker *ApplicationModelChecker) CheckApplicationModelEventJSON(ctx context.Context, appModelEventJSON string) (ApplicationCheckerResult, error) {
+func (checker *ApplicationModelChecker) CheckApplicationModelEventJSON(ctx context.Context, appModelEventJSON string, exprs []string) (ApplicationCheckerResult, error) {
 	appModel := &appModelV1.ApplicationModelEvent{}
 	if err := protojson.Unmarshal([]byte(appModelEventJSON), appModel); err != nil {
 		return nil, err
 	}
 
-	return checker.CheckApplicationModelEvent(ctx, appModel)
+	return checker.CheckApplicationModelEvent(ctx, appModel, exprs)
 }

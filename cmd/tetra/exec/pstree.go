@@ -592,7 +592,7 @@ func getProcessModel(c *ConnectedModelClient, req *tetragon.GetProcessModelReque
 	return &processModel, nil
 }
 
-func checkProcessTreeGrpc(ctx context.Context, chk *checker.ApplicationModelChecker) (checker.ApplicationCheckerResult, error) {
+func checkProcessTreeGrpc(ctx context.Context, chk *checker.ApplicationModelChecker, exprs []string) (checker.ApplicationCheckerResult, error) {
 	c := NewConnectedModelClient()
 	defer c.Close()
 
@@ -608,22 +608,23 @@ func checkProcessTreeGrpc(ctx context.Context, chk *checker.ApplicationModelChec
 	}
 	appModel := model.ProcessModelToApplicationModel(processModel)
 
-	return chk.CheckApplicationModelEvent(ctx, appModel)
+	return chk.CheckApplicationModelEvent(ctx, appModel, exprs)
 }
 
-func checkProcessTreeReader(ctx context.Context, reader io.Reader, chk *checker.ApplicationModelChecker) (checker.ApplicationCheckerResult, error) {
+func checkProcessTreeReader(ctx context.Context, reader io.Reader, chk *checker.ApplicationModelChecker, exprs []string) (checker.ApplicationCheckerResult, error) {
 	b, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read application model: %w", err)
 	}
 
-	return chk.CheckApplicationModelEventJSON(ctx, string(b))
+	return chk.CheckApplicationModelEventJSON(ctx, string(b), exprs)
 }
 
 func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 	var appModelReader io.Reader
 	var err error
 	var chk *checker.ApplicationModelChecker
+	var exprs []string
 
 	ctx := context.Background()
 
@@ -632,7 +633,6 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 	}
 
 	if len(celFiles) > 0 {
-		exprs := []string{}
 		for _, file := range celFiles {
 			b, err := os.ReadFile(file)
 			if err != nil {
@@ -640,12 +640,13 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 			}
 			exprs = append(exprs, string(b))
 		}
-		chk, err = checker.NewApplicationModelChecker(exprs)
+		chk, err = checker.NewApplicationModelChecker()
 		if err != nil {
 			return nil, err
 		}
 	} else if len(celExprs) > 0 {
-		chk, err = checker.NewApplicationModelChecker(celExprs)
+		exprs = celExprs
+		chk, err = checker.NewApplicationModelChecker()
 		if err != nil {
 			return nil, err
 		}
@@ -654,7 +655,7 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 	}
 
 	if appModelFilename == "" {
-		return checkProcessTreeGrpc(ctx, chk)
+		return checkProcessTreeGrpc(ctx, chk, exprs)
 	}
 
 	if appModelFilename == "-" {
@@ -667,7 +668,7 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 		appModelReader = fr
 	}
 
-	return checkProcessTreeReader(ctx, appModelReader, chk)
+	return checkProcessTreeReader(ctx, appModelReader, chk, exprs)
 }
 
 func generateChecker() (string, error) {

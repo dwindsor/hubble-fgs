@@ -84,10 +84,10 @@ func TestGenerate(t *testing.T) {
 		},
 	}
 
-	chk, err := checker.GenerateChecker(model)
+	chk, exprs, err := checker.GenerateChecker(model)
 	require.NoError(t, err)
 
-	res, err := chk.CheckApplicationModelEvent(context.Background(), model)
+	res, err := chk.CheckApplicationModelEvent(context.Background(), model, exprs)
 	require.NoError(t, err)
 	assert.True(t, res.Ok())
 }
@@ -97,10 +97,10 @@ func TestGenerateComplex(t *testing.T) {
 	err := protojson.Unmarshal(testModelJSON, model)
 	require.NoError(t, err)
 
-	chk, err := checker.GenerateChecker(model)
+	chk, exprs, err := checker.GenerateChecker(model)
 	require.NoError(t, err)
 
-	res, err := chk.CheckApplicationModelEvent(context.Background(), model)
+	res, err := chk.CheckApplicationModelEvent(context.Background(), model, exprs)
 	require.NoError(t, err)
 	assert.True(t, res.Ok())
 }
