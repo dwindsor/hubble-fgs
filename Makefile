@@ -261,7 +261,7 @@ package-fgs-bench: tetragon-bpf-local fgs-bench
 ##@ Test
 
 # renovate: datasource=docker
-GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v1.64.2@sha256:546861d15e4988a8616065faa35e5e20fbb5de6e7ea13133cbfb4d7e9d51f425
+GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v1.64.4@sha256:e83b903d722c12402c9d88948a6cac42ea0e34bf336fc6a170ade9adeecb2d0e
 GOLANGCILINT_WANT_VERSION := $(subst @sha256,,$(patsubst v%,%,$(word 2,$(subst :, ,$(lastword $(subst /, ,$(GOLANGCILINT_IMAGE)))))))
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
