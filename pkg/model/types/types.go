@@ -98,10 +98,15 @@ type ProcessTreeBinaryUUIDValue struct {
 	Args   [256]byte
 }
 
-type TetragonNetworkSubject struct {
+type TetragonWorkloadNetworkSubject struct {
 	Namespace string
-	Workload  string
+	Name      string
 	Kind      string
+}
+
+type TetragonNetworkSubject struct {
+	MatchLabelsEqual map[string]string
+	Workload         TetragonWorkloadNetworkSubject
 }
 
 type TetragonNetworkDestination struct {
@@ -124,6 +129,7 @@ type TetragonNetworkAction struct {
 }
 
 type TetragonNetworkPolicy struct {
+	Name        string
 	Subject     TetragonNetworkSubject
 	Destination TetragonNetworkDestination
 	Action      TetragonNetworkAction

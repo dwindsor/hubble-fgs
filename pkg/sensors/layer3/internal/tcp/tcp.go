@@ -457,10 +457,13 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 }
 
 func qosSpecToPolicy(p *v1alpha1.QuotaPolicySpec, resetLimits string) *types.TetragonNetworkPolicy {
-	subject := types.TetragonNetworkSubject{
+	workload := types.TetragonWorkloadNetworkSubject{
 		Namespace: p.Namespace,
-		Workload:  p.Workload,
+		Name:      p.Workload,
 		Kind:      p.WorkloadKind,
+	}
+	subject := types.TetragonNetworkSubject{
+		Workload: workload,
 	}
 	dest := types.TetragonNetworkDestination{
 		Names: p.Destination.Dns,

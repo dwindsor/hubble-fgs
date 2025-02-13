@@ -23,27 +23,27 @@ func AddUnsafeNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
 	// 1. fully specified namespace:workload:kind
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
-	if policy.Subject.Workload != "" && policy.Subject.Kind != "" {
+	if policy.Subject.Workload.Name != "" && policy.Subject.Workload.Kind != "" {
 		return dns.AddNetworkPolicy(policy, false)
 	}
-	if (policy.Subject.Workload == "" && policy.Subject.Kind != "") ||
-		(policy.Subject.Kind == "" && policy.Subject.Workload != "") {
+	if (policy.Subject.Workload.Name == "" && policy.Subject.Workload.Kind != "") ||
+		(policy.Subject.Workload.Kind == "" && policy.Subject.Workload.Name != "") {
 		return fmt.Errorf("qosPolicySpec violation requires workload:kind fully specified")
 	}
 
-	if policy.Subject.Namespace == "" {
+	if policy.Subject.Workload.Namespace == "" {
 		return dns.AddNetworkPolicy(policy, false)
 	}
 
 	// Namespaced policy handler
 	dns.QueueWorkloadNetworkPolicy(policy)
-	allPods, err := podinfo.GetPodInfoOfNS(policy.Subject.Namespace)
+	allPods, err := podinfo.GetPodInfoOfNS(policy.Subject.Workload.Namespace)
 	if err != nil {
 		return err
 	}
 	for _, pod := range allPods {
-		policy.Subject.Kind = pod.WorkloadType.Kind
-		policy.Subject.Workload = pod.WorkloadObject.Name
+		policy.Subject.Workload.Kind = pod.WorkloadType.Kind
+		policy.Subject.Workload.Name = pod.WorkloadObject.Name
 		dns.AddNetworkPolicy(policy, false)
 	}
 

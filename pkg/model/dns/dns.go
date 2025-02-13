@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	queueWl     = make(map[types.TetragonNetworkSubject]*types.TetragonNetworkPolicy)
+	queueWl     = make(map[types.TetragonWorkloadNetworkSubject]*types.TetragonNetworkPolicy)
 	queueWlLock = sync.Mutex{}
 
 	// QuotasDNSDomainMappings stores the mappings between the domain and
@@ -95,7 +95,7 @@ func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap
 }
 
 func queueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
-	queueWl[policy.Subject] = policy
+	queueWl[policy.Subject.Workload] = policy
 }
 
 func QueueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
@@ -105,9 +105,9 @@ func QueueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
 }
 
 func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
-	subject := types.TetragonNetworkSubject{
+	subject := types.TetragonWorkloadNetworkSubject{
 		Namespace: epPod.WorkloadObject.Namespace,
-		Workload:  epPod.WorkloadObject.Name,
+		Name:      epPod.WorkloadObject.Name,
 		Kind:      epPod.WorkloadType.Kind,
 	}
 
@@ -115,10 +115,10 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 	policy, ok := queueWl[subject]
 	if !ok {
 		/* Check for Namespace policy */
-		namespaceSubject := types.TetragonNetworkSubject{
+		namespaceSubject := types.TetragonWorkloadNetworkSubject{
 			Namespace: subject.Namespace,
 			Kind:      "",
-			Workload:  "",
+			Name:      "",
 		}
 		policy, ok = queueWl[namespaceSubject]
 		if !ok {
@@ -136,9 +136,9 @@ func createSrcPolicy(policy *types.TetragonNetworkPolicy) (*types.ProcessTreeKey
 	queueWlLock.Lock()
 	defer queueWlLock.Unlock()
 
-	s := &policy.Subject
+	s := &policy.Subject.Workload
 
-	src, err := createSrcKey(s.Namespace, s.Workload, s.Kind)
+	src, err := createSrcKey(s.Namespace, s.Name, s.Kind)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
 
 	defer dstMap.Close()
 
-	s := &policy.Subject
+	s := &policy.Subject.Workload
 	d := &policy.Destination
 	a := &policy.Action
 
@@ -263,7 +263,7 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
 		if err := addSingleDnsPolicy(src, ep, dstMap, quotaBytes, resetNS, denyVal, init); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"namespace": s.Namespace,
-				"workload":  s.Workload,
+				"workload":  s.Name,
 				"quota":     quotaBytes,
 				"reset":     a.QuotaAction,
 				"deny":      denyVal,
@@ -273,7 +273,7 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
 		"namespace": s.Namespace,
-		"workload":  s.Workload,
+		"workload":  s.Name,
 		"quota":     quotaBytes,
 		"reset":     a.QuotaAction,
 		"dest":      strings.Join(d.Names, " "),
