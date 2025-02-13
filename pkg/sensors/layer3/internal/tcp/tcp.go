@@ -30,6 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
+	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
 	"github.com/isovalent/hubble-fgs/pkg/model/policy"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -457,13 +458,21 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 }
 
 func qosSpecToPolicy(p *v1alpha1.QuotaPolicySpec, resetLimits string) *types.TetragonNetworkPolicy {
+	mlEqual := matchLabels.LabelSet{
+		Label: make(map[string]string),
+	}
+	if len(p.MatchLabels) > 0 {
+		mlEqual.ParseEquals(p.MatchLabels)
+	}
+
 	workload := types.TetragonWorkloadNetworkSubject{
 		Namespace: p.Namespace,
 		Name:      p.Workload,
 		Kind:      p.WorkloadKind,
 	}
 	subject := types.TetragonNetworkSubject{
-		Workload: workload,
+		MatchLabelsEqual: mlEqual.GetLabels(),
+		Workload:         workload,
 	}
 	dest := types.TetragonNetworkDestination{
 		Names: p.Destination.Dns,
@@ -486,7 +495,7 @@ func configureQos(qos *v1alpha1.QosPolicySpec) error {
 	for _, p := range qos.QuotaPolicySpec {
 		if len(p.Destination.Dns) > 0 {
 			networkPolicy := qosSpecToPolicy(&p, qos.QuotaResetLimits)
-			err := policy.AddUnsafeNetworkPolicy(networkPolicy)
+			err := policy.AddUnsafeNetworkPolicy("", networkPolicy)
 			if err != nil {
 				return err
 			}

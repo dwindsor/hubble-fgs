@@ -17,12 +17,15 @@ const (
 	destinationEndpointMap = "destination_endpoint_map"
 )
 
-func AddUnsafeNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
-	//	namespace, wl, kind string, names []string, quota, reset string, deny bool) error {
+func AddUnsafeNetworkPolicy(policyUID string, policy *types.TetragonNetworkPolicy) error {
 	// There are a few possibilities for possible scope.
+	// 0. MatchLabels is set then we use this otherwise,
 	// 1. fully specified namespace:workload:kind
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
+	if len(policy.Subject.MatchLabelsEqual) > 0 {
+		return dns.AddMatchLabelNetworkPolicy(policyUID, policy)
+	}
 	if policy.Subject.Workload.Name != "" && policy.Subject.Workload.Kind != "" {
 		return dns.AddNetworkPolicy(policy, false)
 	}

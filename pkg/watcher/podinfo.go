@@ -74,7 +74,7 @@ func AddPodInfoInformer(w oss.Watcher) error {
 					c := endpoint.Get()
 					logger.GetLogger().Debug("Add Pod: %v", t)
 					c.AddIpPodMap(t)
-					dns.CheckWorkloadQuotaPolicy(t)
+					dns.CheckPodAdd(t)
 				}
 			},
 			UpdateFunc: func(old interface{}, _ interface{}) {

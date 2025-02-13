@@ -18,12 +18,17 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 
+	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 var (
 	queueWl     = make(map[types.TetragonWorkloadNetworkSubject]*types.TetragonNetworkPolicy)
 	queueWlLock = sync.Mutex{}
+
+	// Global Match Label policy
+	matchLabelPolicy     matchLabels.PolicyList = make(map[string]*matchLabels.LabelSet)
+	queueMatchLabelsLock                        = sync.Mutex{}
 
 	// QuotasDNSDomainMappings stores the mappings between the domain and
 	// their ID generated after parsing a quota policy. So that we can
@@ -104,7 +109,7 @@ func QueueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
 	queueWlLock.Unlock()
 }
 
-func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
+func checkWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 	subject := types.TetragonWorkloadNetworkSubject{
 		Namespace: epPod.WorkloadObject.Namespace,
 		Name:      epPod.WorkloadObject.Name,
@@ -130,6 +135,52 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 	}
 	queueWlLock.Unlock()
 	return AddNetworkPolicy(policy, true)
+}
+
+func checkMatchLabelsPolicy(epPod *v1alpha1.PodInfo) error {
+	ml := &matchLabels.LabelSet{
+		Label: epPod.ObjectMeta.Labels,
+	}
+
+	set := matchLabelPolicy.Collection(ml)
+
+	ns := epPod.WorkloadObject.Namespace
+	name := epPod.WorkloadObject.Name
+	kind := epPod.WorkloadType.Kind
+
+	for _, s := range set {
+		src, err := createSrcKey(ns, name, kind)
+		if err != nil {
+			return err
+		}
+		if err := addNetworkPolicy(src, &s.Policy.Action, &s.Policy.Destination, true); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func CheckPodAdd(epPod *v1alpha1.PodInfo) error {
+	if err := checkWorkloadQuotaPolicy(epPod); err != nil {
+		return err
+	}
+	if err := checkMatchLabelsPolicy(epPod); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+	queueMatchLabelsLock.Lock()
+	defer queueMatchLabelsLock.Unlock()
+
+	ls := &matchLabels.LabelSet{
+		Label:  policy.Subject.MatchLabelsEqual,
+		Policy: policy,
+	}
+
+	matchLabelPolicy.Add(uid, ls)
+	return nil
 }
 
 func createSrcPolicy(policy *types.TetragonNetworkPolicy) (*types.ProcessTreeKey, error) {
@@ -211,7 +262,18 @@ func quotaToNs(reset string) (uint64, error) {
 	return resetNS, nil
 }
 
-func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
+func AddMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+	return createMatchLabelsPolicy(uid, policy)
+}
+
+func addNetworkPolicy(src *types.ProcessTreeKey,
+	a *types.TetragonNetworkAction,
+	d *types.TetragonNetworkDestination,
+	init bool) error {
+	quotaBytes := uint64(0)
+	resetNS := uint64(0)
+	var err error
+
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	dstMap, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
@@ -220,22 +282,6 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
 	}
 
 	defer dstMap.Close()
-
-	s := &policy.Subject.Workload
-	d := &policy.Destination
-	a := &policy.Action
-
-	// The wl="",kind="" case will fall throuh to queueWorkloadQuotaPolicy
-	src, err := createSrcPolicy(policy)
-	if err != nil {
-		return err
-	}
-	if src == nil {
-		return nil
-	}
-
-	resetNS := uint64(0)
-	quotaBytes := uint64(0)
 
 	if a.QuotaAction != nil {
 		resetNS, err = quotaToNs(a.QuotaAction.Reset)
@@ -262,21 +308,37 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
 		}
 		if err := addSingleDnsPolicy(src, ep, dstMap, quotaBytes, resetNS, denyVal, init); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
-				"namespace": s.Namespace,
-				"workload":  s.Name,
-				"quota":     quotaBytes,
-				"reset":     a.QuotaAction,
-				"deny":      denyVal,
-				"dest":      entry,
+				"cgid":  src.CgroupId,
+				"self":  src.Self,
+				"quota": quotaBytes,
+				"reset": a.QuotaAction,
+				"deny":  denyVal,
+				"dest":  entry,
 			}).WithError(err).Error("TCP quota entry Failed")
 		}
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
-		"namespace": s.Namespace,
-		"workload":  s.Name,
-		"quota":     quotaBytes,
-		"reset":     a.QuotaAction,
-		"dest":      strings.Join(d.Names, " "),
+		"cgid":  src.CgroupId,
+		"self":  src.Self,
+		"quota": quotaBytes,
+		"reset": a.QuotaAction,
+		"dest":  strings.Join(d.Names, " "),
 	}).Info("TCP quota added")
 	return nil
+}
+
+func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
+
+	d := &policy.Destination
+	a := &policy.Action
+	// The matchLabels case and wl="",kind="" case will fall throuh to queueWorkloadQuotaPolicy
+	src, err := createSrcPolicy(policy)
+	if err != nil {
+		return err
+	}
+	if src == nil {
+		return nil
+	}
+
+	return addNetworkPolicy(src, a, d, init)
 }
