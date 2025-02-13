@@ -47,11 +47,10 @@ func TestMain(m *testing.M) {
 	os.Exit(ec)
 }
 
-func setupProcessTreeEnable(ctx context.Context, t *testing.T) {
+func setupProcessTreeEnable(ctx context.Context, doneWG *sync.WaitGroup, t *testing.T) {
 	bpf.CheckOrMountCgroup2()
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
+	var readyWG sync.WaitGroup
 
 	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
@@ -71,7 +70,7 @@ func setupProcessTreeEnable(ctx context.Context, t *testing.T) {
 		t.Fatalf("Default NewServer  error: %s", err)
 	}
 
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observertesthelper.LoopEvents(ctx, t, doneWG, &readyWG, obs)
 	readyWG.Wait()
 }
 
@@ -113,10 +112,13 @@ func TestProcessTree(t *testing.T) {
 		return
 	}
 
+	var doneWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), sensors.ConfigDefaults.CmdWaitTime)
 	defer cancel()
 
-	setupProcessTreeEnable(ctx, t)
+	setupProcessTreeEnable(ctx, &doneWG, t)
 
 	for _, e := range tests {
 		t.Run(e.Name, func(t *testing.T) {
