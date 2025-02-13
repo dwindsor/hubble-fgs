@@ -2465,6 +2465,10 @@ spec:
                                   required:
                                   - dns
                                   type: object
+                                matchLabels:
+                                  items:
+                                    type: string
+                                  type: array
                                 namespace:
                                   type: string
                                 quota:
@@ -2473,12 +2477,6 @@ spec:
                                   type: string
                                 workloadKind:
                                   type: string
-                              required:
-                              - destination
-                              - namespace
-                              - quota
-                              - workload
-                              - workloadKind
                               type: object
                             type: array
                           quotaReset:

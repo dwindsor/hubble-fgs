@@ -718,15 +718,17 @@ type QuotaDestination struct {
 }
 
 type QuotaPolicySpec struct {
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
+        MatchLabels []string `json:"matchLabels,omitempty"`
+	// +kubebuilder:validation:Optional
 	Namespace string `json:"namespace"`
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	Workload string `json:"workload"`
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	WorkloadKind string `json:"workloadKind"`
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	Destination QuotaDestination `json:"destination"`
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	Quota string `json:"quota"`
 }
 
@@ -734,7 +736,7 @@ type QosPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	QuotaResetLimits string `json:"quotaReset"`
 	// +kubebuilder:validation:Optional
-	QuotaPolicySpec []QuotaPolicySpec `json:"quotaLimits", omitempty"`
+	QuotaPolicySpec []QuotaPolicySpec `json:"quotaLimits,omitempty"`
 }
 
 type LatencyPolicySpec struct {
