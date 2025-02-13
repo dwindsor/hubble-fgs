@@ -27,6 +27,7 @@ import (
 	"os/signal"
 	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"text/template"
 	"time"
@@ -647,6 +648,15 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 	return chk.CheckApplicationModelEvent(ctx, appModel, exprs)
 }
 
+func indentString(s string) string {
+	var indentedLines []string
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	for _, line := range lines {
+		indentedLines = append(indentedLines, "   "+line)
+	}
+	return strings.Join(indentedLines, "\n")
+}
+
 func checkYAML(ctx context.Context, chk *checker.ApplicationModelChecker, appModel *appModelV1.ApplicationModelEvent) (checker.ApplicationCheckerResult, error) {
 	fail := &checker.ResultFail{}
 	b, err := os.ReadFile(celYAML)
@@ -659,14 +669,16 @@ func checkYAML(ctx context.Context, chk *checker.ApplicationModelChecker, appMod
 		return fail, err
 	}
 	for _, expr := range exprs {
+		indentedExpr := indentString(expr.Expression)
 		res, err := chk.CheckApplicationModelEvent(ctx, appModel, []string{expr.Expression})
 		if err != nil {
-			fmt.Printf("❌ %s: %s: '%s'\n", expr.Description, expr.Expression, err)
+			indentedError := indentString(err.Error())
+			fmt.Printf("❌ %s\n%s\n%s\n", expr.Description, indentedError, indentedExpr)
 			fail.Failed = append(fail.Failed, expr.Expression)
 		} else if res.Ok() {
-			fmt.Printf("✅ %s: '%s'\n", expr.Description, expr.Expression)
+			fmt.Printf("✅ %s\n%s\n", expr.Description, indentedExpr)
 		} else {
-			fmt.Printf("❌ %s: '%s'\n", expr.Description, expr.Expression)
+			fmt.Printf("❌ %s\n%s\n", expr.Description, indentedExpr)
 			fail.Failed = append(fail.Failed, expr.Expression)
 		}
 	}
