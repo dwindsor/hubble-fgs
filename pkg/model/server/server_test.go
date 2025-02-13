@@ -75,14 +75,14 @@ type processTree struct {
 }
 
 var tests = []processTree{
-	processTree{
+	{
 		Name:       "testBasicExecArgs",
 		Cmd:        "bash",
 		Args:       []string{"-c", "uname -r"},
 		Check:      `model.host.processes.exists(p, p.name.matches("/usr/bin/bash") && p.arguments.matches("-c.*uname.*-r.*"))`,
 		ArmSupport: true,
 	},
-	processTree{
+	{
 		Name:       "testBasicCurl",
 		Cmd:        "curl",
 		Args:       []string{"ebpf.io"},
