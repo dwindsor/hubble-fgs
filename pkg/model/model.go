@@ -208,21 +208,18 @@ func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) *appM
 	return namespaceMapToApplicationModel(nsMap)
 }
 
-func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModelV1.ApplicationModel) {
+func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModelV1.ApplicationModel) {
 	for _, ns := range app.GetNamespaces() {
 		for _, wl := range ns.GetWorkloads() {
 			for _, ps := range wl.GetProcesses() {
-				if len(ps.GetConnections()) == 0 {
-					pmk := ProcessKey{
-						Namespace:    ns.GetName(),
-						WorkloadKind: wl.GetKind(),
-						WorkloadName: wl.GetName(),
-						Name:         ps.GetName(),
-						Args:         ps.GetArguments(),
-					}
-					pmd[pmk] = ProcessValue{}
-					continue
+				pmk := ProcessKey{
+					Namespace:    ns.GetName(),
+					WorkloadKind: wl.GetKind(),
+					WorkloadName: wl.GetName(),
+					Name:         ps.GetName(),
+					Args:         ps.GetArguments(),
 				}
+				pmd[pmk] = ProcessValue{}
 				for _, conn := range ps.GetConnections() {
 					nmk := NetworkKey{
 						SourceNamespace:    ns.GetName(),
@@ -233,31 +230,23 @@ func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *app
 						DestinationName:    conn.GetDestinationName(),
 						DestinationPort:    conn.GetDestinationPort(),
 					}
-					if val, ok := nmd[nmk]; ok {
-						val.TXBytes += conn.BytesSent
-						val.RXBytes += conn.BytesSent
-					} else {
-						nmd[nmk] = NetworkMonitorValue{
-							TXBytes: conn.GetBytesSent(),
-							RXBytes: conn.GetBytesReceived(),
-						}
+					nmd[nmk] = NetworkMonitorValue{
+						TXBytes: conn.GetBytesSent(),
+						RXBytes: conn.GetBytesReceived(),
 					}
 				}
 			}
 		}
 	}
 	for _, ps := range app.GetHost().GetProcesses() {
-		if len(ps.GetConnections()) == 0 {
-			pmk := ProcessKey{
-				Namespace:    HostNamespace,
-				WorkloadKind: HostKind,
-				WorkloadName: HostWorkload,
-				Name:         ps.GetName(),
-				Args:         ps.GetArguments(),
-			}
-			pmd[pmk] = ProcessValue{}
-			continue
+		pmk := ProcessKey{
+			Namespace:    HostNamespace,
+			WorkloadKind: HostKind,
+			WorkloadName: HostWorkload,
+			Name:         ps.GetName(),
+			Args:         ps.GetArguments(),
 		}
+		pmd[pmk] = ProcessValue{}
 		for _, conn := range ps.GetConnections() {
 			nmk := NetworkKey{
 				SourceNamespace:    HostNamespace,
@@ -268,14 +257,9 @@ func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *app
 				DestinationName:    conn.GetDestinationName(),
 				DestinationPort:    conn.GetDestinationPort(),
 			}
-			if val, ok := nmd[nmk]; ok {
-				val.TXBytes += conn.BytesSent
-				val.RXBytes += conn.BytesSent
-			} else {
-				nmd[nmk] = NetworkMonitorValue{
-					TXBytes: conn.GetBytesSent(),
-					RXBytes: conn.GetBytesReceived(),
-				}
+			nmd[nmk] = NetworkMonitorValue{
+				TXBytes: conn.GetBytesSent(),
+				RXBytes: conn.GetBytesReceived(),
 			}
 		}
 	}
@@ -284,8 +268,8 @@ func modelToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *app
 func Merge(m1, m2 *appModelV1.ApplicationModel) *appModelV1.ApplicationModel {
 	nmd := NetworkMonitorData{}
 	pmd := ProcessMonitorData{}
-	modelToMonitorData(nmd, pmd, m1)
-	modelToMonitorData(nmd, pmd, m2)
+	ToMonitorData(nmd, pmd, m1)
+	ToMonitorData(nmd, pmd, m2)
 	nsMap := make(namespaceMap)
 	for key, val := range nmd {
 		handleNetworkEvent(nsMap, key, val)
