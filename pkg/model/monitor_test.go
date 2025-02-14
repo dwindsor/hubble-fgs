@@ -323,3 +323,65 @@ func Test_sortNetworkKeys(t *testing.T) {
 	assert.Greater(t, SortNetworkKeys(a, b), 0)
 	b.DestinationPort = a.DestinationPort
 }
+
+func TestProcessKey_String(t *testing.T) {
+	key := ProcessKey{
+		Namespace: HostNamespace,
+		Name:      "bash",
+		Args:      "-c ls",
+	}
+	assert.Equal(t, "host bash -c ls", key.String())
+
+	key.Namespace = "default"
+	key.WorkloadKind = "Deployment"
+	key.WorkloadName = "my-app"
+	assert.Equal(t, "default/Deployment:my-app bash -c ls", key.String())
+}
+
+func Test_sortProcessKeys(t *testing.T) {
+	a := ProcessKey{
+		Namespace:    "a",
+		WorkloadKind: "a",
+		WorkloadName: "a",
+		Name:         "a",
+		Args:         "a",
+	}
+	b := a
+	// namespace
+	assert.Zero(t, SortProcessKeys(a, b))
+	b.Namespace = "b"
+	assert.Less(t, SortProcessKeys(a, b), 0)
+	b.Namespace = "A"
+	assert.Greater(t, SortProcessKeys(a, b), 0)
+	b.Namespace = HostNamespace
+	assert.Greater(t, SortProcessKeys(a, b), 0)
+	b.Namespace = a.Namespace
+
+	// workload kind
+	b.WorkloadKind = "b"
+	assert.Less(t, SortProcessKeys(a, b), 0)
+	b.WorkloadKind = "A"
+	assert.Greater(t, SortProcessKeys(a, b), 0)
+	b.WorkloadKind = a.WorkloadKind
+
+	// workload name
+	b.WorkloadName = "b"
+	assert.Less(t, SortProcessKeys(a, b), 0)
+	b.WorkloadName = "A"
+	assert.Greater(t, SortProcessKeys(a, b), 0)
+	b.WorkloadName = a.WorkloadName
+
+	// name
+	b.Name = "b"
+	assert.Less(t, SortProcessKeys(a, b), 0)
+	b.Name = "A"
+	assert.Greater(t, SortProcessKeys(a, b), 0)
+	b.Name = a.Name
+
+	// args
+	b.Args = "b"
+	assert.Less(t, SortProcessKeys(a, b), 0)
+	b.Args = "A"
+	assert.Greater(t, SortProcessKeys(a, b), 0)
+	b.Args = a.Args
+}

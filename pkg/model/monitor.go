@@ -165,6 +165,29 @@ func SortNetworkKeys(a, b NetworkKey) int {
 	return -1
 }
 
+func (pk ProcessKey) String() string {
+	if pk.Namespace == HostNamespace {
+		return fmt.Sprintf("host %s %s", pk.Name, pk.Args)
+	}
+	return fmt.Sprintf("%s/%s:%s %s %s", pk.Namespace, pk.WorkloadKind, pk.WorkloadName, pk.Name, pk.Args)
+}
+
+func SortProcessKeys(a, b ProcessKey) int {
+	if result := strings.Compare(a.Namespace, b.Namespace); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.WorkloadKind, b.WorkloadKind); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.WorkloadName, b.WorkloadName); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.Name, b.Name); result != 0 {
+		return result
+	}
+	return strings.Compare(a.Args, b.Args)
+}
+
 func (nmd NetworkMonitorData) Print() {
 	keys := slices.Collect(maps.Keys(nmd))
 	slices.SortFunc(keys, SortNetworkKeys)
