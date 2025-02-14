@@ -1106,6 +1106,7 @@ found.
 | signal | [string](#string) |  | Signal that the process received when it exited, for example SIGKILL or SIGTERM (list all signal names with `kill -l`). If there is no signal handler implemented for a specific process, we report the exit status code that can be found in the status field. |
 | status | [uint32](#uint32) |  | Status code on process exit. For example, the status code can indicate if an error was encountered or the program exited successfully. |
 | time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Date and time of the event. |
+| ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
 
 
 
@@ -1132,6 +1133,7 @@ found.
 | message | [string](#string) |  | Short message of the Tracing Policy to inform users what is going on. |
 | tags | [string](#string) | repeated | Tags of the Tracing Policy to categorize the event. |
 | user_stack_trace | [StackTraceEntry](#tetragon-StackTraceEntry) | repeated | User-mode stack trace to the call. |
+| ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
 
 
 
@@ -1171,6 +1173,7 @@ loader sensor event triggered for loaded binary/library
 | args | [KprobeArgument](#tetragon-KprobeArgument) | repeated | Arguments definition of the observed LSM hook. |
 | action | [KprobeAction](#tetragon-KprobeAction) |  | Action performed when the LSM hook matched. |
 | tags | [string](#string) | repeated | Tags of the Tracing Policy to categorize the event. |
+| ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
 | ima_hash | [string](#string) |  | IMA file hash. Format algorithm:value. |
 
 
@@ -1195,6 +1198,7 @@ loader sensor event triggered for loaded binary/library
 | action | [KprobeAction](#tetragon-KprobeAction) |  | Action performed when the tracepoint matched. |
 | message | [string](#string) |  | Short message of the Tracing Policy to inform users what is going on. |
 | tags | [string](#string) | repeated | Tags of the Tracing Policy to categorize the event. |
+| ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
 
 
 
@@ -1217,6 +1221,7 @@ loader sensor event triggered for loaded binary/library
 | message | [string](#string) |  | Short message of the Tracing Policy to inform users what is going on. |
 | args | [KprobeArgument](#tetragon-KprobeArgument) | repeated | Arguments definition of the observed uprobe. |
 | tags | [string](#string) | repeated | Tags of the Tracing Policy to categorize the event. |
+| ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
 
 
 
@@ -1833,7 +1838,7 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 | process | [Process](#tetragon-Process) |  |  |
 | color | [string](#string) |  |  |
 | refcnt | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
-| refcnt_ops | [ProcessInternal.RefcntOpsEntry](#tetragon-ProcessInternal-RefcntOpsEntry) | repeated | refcnt_ops is a map of operations to refcnt change keys can be: - &#34;process&#43;&#43;&#34;: process increased refcnt (i.e. this process starts) - &#34;process--&#34;: process decreased refcnt (i.e. this process exits) - &#34;parent&#43;&#43;&#34;: parent increased refcnt (i.e. a process starts that has this process as a parent) - &#34;parent--&#34;: parent decreased refcnt (i.e. a process exits that has this process as a parent) |
+| refcnt_ops | [ProcessInternal.RefcntOpsEntry](#tetragon-ProcessInternal-RefcntOpsEntry) | repeated | refcnt_ops is a map of operations to refcnt change keys can be: - &#34;process&#43;&#43;&#34;: process increased refcnt (i.e. this process starts) - &#34;process--&#34;: process decreased refcnt (i.e. this process exits) - &#34;parent&#43;&#43;&#34;: parent increased refcnt (i.e. a process starts that has this process as a parent) - &#34;parent--&#34;: parent decreased refcnt (i.e. a process exits that has this process as a parent) - &#34;ancestor&#43;&#43;&#34;: ancestor increased refcnt (i.e. a process starts that has this process as an ancestor) - &#34;ancestor--&#34;: ancestor decreased refcnt (i.e. a process exits that has this process as an ancestor) |
 
 
 
@@ -2152,6 +2157,7 @@ Capability set to filter over. NOTE: you may specify only ONE set here.
 | parent_arguments_regex | [string](#string) | repeated | Filter by process.parent.arguments field using RE2 regular expression syntax: https://github.com/google/re2/wiki/Syntax |
 | container_id | [string](#string) | repeated | Filter by the container ID in the process.docker field using RE2 regular expression syntax: https://github.com/google/re2/wiki/Syntax |
 | in_init_tree | [google.protobuf.BoolValue](#google-protobuf-BoolValue) |  | Filter containerized processes based on whether they are descendants of the container&#39;s init process. This can be used, for example, to watch for processes injected into a container via docker exec, kubectl exec, or similar mechanisms. |
+| ancestor_binary_regex | [string](#string) | repeated | Filter ancestor processes&#39; binaries using RE2 regular expression syntax. |
 | source_ip_cidr | [string](#string) | repeated | Filter by source_ip field using an address range specified using CIDR notation.
 
 Example: {&#34;event_set&#34;: [&#34;PROCESS_ACCEPT&#34;], &#34;source_ip_cidr&#34;: [&#34;127.0.0.0/16&#34;]} |
@@ -2728,6 +2734,7 @@ HTTP PARSER
 | destination_pod | [Pod](#tetragon-Pod) |  |  |
 | protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
 | destination_service | [Service](#tetragon-Service) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2756,6 +2763,7 @@ HTTP PARSER
 | socket_type | [string](#string) |  |  |
 | duration | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
 | destination_service | [Service](#tetragon-Service) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2781,6 +2789,7 @@ HTTP PARSER
 | destination_pod | [Pod](#tetragon-Pod) |  |  |
 | protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
 | destination_service | [Service](#tetragon-Service) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2807,6 +2816,7 @@ HTTP PARSER
 | operation | [FileOperation](#tetragon-FileOperation) | repeated |  |
 | tracing_policy | [string](#string) |  |  |
 | rule_matched | [string](#string) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2827,6 +2837,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | file | [FileDetails](#tetragon-FileDetails) |  |  |
 | digest | [FileDigest](#tetragon-FileDigest) |  |  |
 | operations | [FileOperation](#tetragon-FileOperation) | repeated |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2847,6 +2858,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | destination_names | [string](#string) | repeated | **Deprecated.** deprecated in favor of socket.destination_names. |
 | destination_pod | [Pod](#tetragon-Pod) |  | **Deprecated.** deprecated in favor of socket.destination_pod |
 | parent | [Process](#tetragon-Process) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2883,6 +2895,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | icmp_ip_pointer | [uint32](#uint32) |  |  |
 | icmp_ip_gateway | [string](#string) |  |  |
 | destination_service | [Service](#tetragon-Service) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2909,6 +2922,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | version_byte | [uint64](#uint64) |  |  |
 | data | [uint64](#uint64) |  |  |
 | destination_service | [Service](#tetragon-Service) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2929,6 +2943,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
 | sock_cookie | [uint64](#uint64) |  |  |
 | protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2952,6 +2967,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | hist_avg | [uint64](#uint64) |  |  |
 | hist_trigger | [uint64](#uint64) |  |  |
 | window_avg | [uint64](#uint64) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2977,6 +2993,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | hist_burst_trigger | [uint64](#uint64) |  |  |
 | hist_dip_trigger | [uint64](#uint64) |  |  |
 | window_avg | [uint64](#uint64) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -2995,6 +3012,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | parent | [Process](#tetragon-Process) |  |  |
 | sock_cookie | [uint64](#uint64) |  |  |
 | duration | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -3012,6 +3030,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | process | [Process](#tetragon-Process) |  |  |
 | parent | [Process](#tetragon-Process) |  |  |
 | sock_cookie | [uint64](#uint64) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -3030,6 +3049,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | parent | [Process](#tetragon-Process) |  |  |
 | socket | [SockInfo](#tetragon-SockInfo) |  |  |
 | stats | [SocketStats](#tetragon-SocketStats) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -3051,6 +3071,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | app_specific_id | [uint64](#uint64) |  |  |
 | seq_num_expected | [uint64](#uint64) |  |  |
 | seq_num_received | [uint64](#uint64) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -3193,6 +3214,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | parser_state_skblen | [uint32](#uint32) |  | **Deprecated.**  |
 | parser_internal_state | [string](#string) |  |  |
 | parent | [Process](#tetragon-Process) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -3378,6 +3400,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | destination_names | [string](#string) | repeated | **Deprecated.** deprecated in favor of socket.destination_names. |
 | destination_pod | [Pod](#tetragon-Pod) |  | **Deprecated.** deprecated in favor of socket.destination_pod |
 | parent | [Process](#tetragon-Process) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 
@@ -3438,6 +3461,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | parent | [Process](#tetragon-Process) |  |  |
 | name | [string](#string) |  | syscall name |
 | policy | [string](#string) |  | policy name |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
 

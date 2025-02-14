@@ -103,6 +103,7 @@ message ProcessConnect {
     tetragon.Pod destination_pod = 9;
     SocketProtocol protocol = 10;
     Service destination_service = 11;
+    repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessClose {
@@ -120,6 +121,7 @@ message ProcessClose {
     string socket_type = 12;
     google.protobuf.Duration duration = 13;
     Service destination_service = 14;
+    repeated Process ancestors = 15; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessListen {
@@ -129,6 +131,7 @@ message ProcessListen {
     google.protobuf.UInt32Value port = 4;
     uint64 sock_cookie = 5;
     SocketProtocol protocol = 6;
+    repeated Process ancestors = 7; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessAccept {
@@ -143,12 +146,14 @@ message ProcessAccept {
     tetragon.Pod destination_pod = 9;
     SocketProtocol protocol = 10;
     Service destination_service = 11;
+    repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessRawsockCreate {
     tetragon.Process process = 1;
     tetragon.Process parent = 2;
     uint64 sock_cookie = 3;
+    repeated Process ancestors = 4; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessRawsockClose {
@@ -156,6 +161,7 @@ message ProcessRawsockClose {
     tetragon.Process parent = 2;
     uint64 sock_cookie = 3;
     google.protobuf.Duration duration = 4;
+    repeated Process ancestors = 5; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessIcmp {
@@ -181,6 +187,7 @@ message ProcessIcmp {
     uint32 icmp_ip_pointer = 20;
     string icmp_ip_gateway = 21;
     Service destination_service = 22;
+    repeated Process ancestors = 23; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessIpError {
@@ -196,6 +203,7 @@ message ProcessIpError {
     uint64 version_byte = 10;
     uint64 data = 11;
     Service destination_service = 12;
+    repeated Process ancestors = 13; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 enum FileAction {
@@ -350,6 +358,7 @@ message ProcessFile {
     repeated FileOperation operation = 10;
     string tracing_policy = 11;
     string rule_matched = 12;
+    repeated Process ancestors = 13; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 // ProcessFileExec events provide (additional to ProcessExec) information about files being executed.
@@ -360,6 +369,7 @@ message ProcessFileExec {
     FileDetails file = 3;
     FileDigest digest = 4;
     repeated FileOperation operations = 5;
+    repeated Process ancestors = 6; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message SockInfo {
@@ -378,6 +388,7 @@ message ProcessSockStats {
     tetragon.Process parent = 2;
     SockInfo socket = 3;
     SocketStats stats = 4;
+    repeated Process ancestors = 5; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 enum TlsCertificateError {
@@ -428,6 +439,7 @@ message Tls {
     uint32 parser_state_skblen = 24 [deprecated=true];
     string parser_internal_state = 25;
     tetragon.Process parent = 26;
+    repeated Process ancestors = 27; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 /*
@@ -475,6 +487,7 @@ message ProcessHttp {
     repeated string destination_names = 4 [deprecated=true]; // deprecated in favor of socket.destination_names.
     tetragon.Pod destination_pod = 5 [deprecated=true]; // deprecated in favor of socket.destination_pod
     tetragon.Process parent = 6;
+    repeated Process ancestors = 7; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessNetworkBurst {
@@ -487,6 +500,7 @@ message ProcessNetworkBurst {
     uint64 hist_avg = 7;
     uint64 hist_trigger = 8;
     uint64 window_avg = 9;
+    repeated Process ancestors = 10; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessNetworkWatermark {
@@ -501,6 +515,7 @@ message ProcessNetworkWatermark {
     uint64 hist_burst_trigger = 9;
     uint64 hist_dip_trigger = 10;
     uint64 window_avg = 11;
+    repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessUdpSeqCheckError {
@@ -511,4 +526,5 @@ message ProcessUdpSeqCheckError {
     uint64 app_specific_id = 5;
     uint64 seq_num_expected = 6;
     uint64 seq_num_received = 7;
+    repeated Process ancestors = 8; // Not in use for now. Please rely on ancestors in ProcessExec.
 }

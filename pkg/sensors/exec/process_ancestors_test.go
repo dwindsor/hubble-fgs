@@ -21,13 +21,13 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/stretchr/testify/assert"
 
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
@@ -95,10 +95,10 @@ func testAncestorsN(t *testing.T, numAncestors int) {
 	checker := ec.NewUnorderedEventChecker(checkers...)
 
 	// Enable process ancestors
-	oldEnableProcessAncestorsValue := enterpriseOption.Config.EnableProcessAncestors
-	enterpriseOption.Config.EnableProcessAncestors = true
+	oldEnableProcessAncestorsValue := option.Config.EnableProcessAncestors
+	option.Config.EnableProcessAncestors = true
 	t.Cleanup(func() {
-		enterpriseOption.Config.EnableProcessAncestors = oldEnableProcessAncestorsValue
+		option.Config.EnableProcessAncestors = oldEnableProcessAncestorsValue
 	})
 
 	// Use short process cache GC interval to speed up test

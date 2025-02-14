@@ -59,5 +59,6 @@ message ProcessDns {
     repeated string destination_names = 4 [deprecated=true]; // deprecated in favor of socket.destination_names.
     Pod destination_pod = 5 [deprecated=true]; // deprecated in favor of socket.destination_pod
     Process parent = 6;
+    repeated Process ancestors = 7; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 

@@ -237,6 +237,76 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 	return nil
 }
 
+// ResponseGetAncestors returns a GetEventsResponse's ancestors processes if they exists
+func ResponseGetAncestors(response *tetragon.GetEventsResponse) []*tetragon.Process {
+	if response == nil {
+		return nil
+	}
+
+	event := response.Event
+	if event == nil {
+		return nil
+	}
+
+	return ResponseInnerGetAncestors(event)
+}
+
+// ResponseInnerGetAncestors returns a GetEventsResponse inner event's ancestors processes if they exists
+func ResponseInnerGetAncestors(event tetragon.IsGetEventsResponse_Event) []*tetragon.Process {
+	switch ev := event.(type) {
+	case *tetragon.GetEventsResponse_ProcessExec:
+		return ev.ProcessExec.Ancestors
+	case *tetragon.GetEventsResponse_ProcessExit:
+		return ev.ProcessExit.Ancestors
+	case *tetragon.GetEventsResponse_ProcessKprobe:
+		return ev.ProcessKprobe.Ancestors
+	case *tetragon.GetEventsResponse_ProcessTracepoint:
+		return ev.ProcessTracepoint.Ancestors
+	case *tetragon.GetEventsResponse_ProcessUprobe:
+		return ev.ProcessUprobe.Ancestors
+	case *tetragon.GetEventsResponse_ProcessLsm:
+		return ev.ProcessLsm.Ancestors
+	case *tetragon.GetEventsResponse_ProcessConnect:
+		return ev.ProcessConnect.Ancestors
+	case *tetragon.GetEventsResponse_ProcessClose:
+		return ev.ProcessClose.Ancestors
+	case *tetragon.GetEventsResponse_ProcessListen:
+		return ev.ProcessListen.Ancestors
+	case *tetragon.GetEventsResponse_ProcessAccept:
+		return ev.ProcessAccept.Ancestors
+	case *tetragon.GetEventsResponse_ProcessRawsockCreate:
+		return ev.ProcessRawsockCreate.Ancestors
+	case *tetragon.GetEventsResponse_ProcessRawsockClose:
+		return ev.ProcessRawsockClose.Ancestors
+	case *tetragon.GetEventsResponse_ProcessIcmp:
+		return ev.ProcessIcmp.Ancestors
+	case *tetragon.GetEventsResponse_ProcessIpError:
+		return ev.ProcessIpError.Ancestors
+	case *tetragon.GetEventsResponse_ProcessFile:
+		return ev.ProcessFile.Ancestors
+	case *tetragon.GetEventsResponse_ProcessFileExec:
+		return ev.ProcessFileExec.Ancestors
+	case *tetragon.GetEventsResponse_ProcessSockStats:
+		return ev.ProcessSockStats.Ancestors
+	case *tetragon.GetEventsResponse_Tls:
+		return ev.Tls.Ancestors
+	case *tetragon.GetEventsResponse_ProcessHttp:
+		return ev.ProcessHttp.Ancestors
+	case *tetragon.GetEventsResponse_ProcessNetworkBurst:
+		return ev.ProcessNetworkBurst.Ancestors
+	case *tetragon.GetEventsResponse_ProcessNetworkWatermark:
+		return ev.ProcessNetworkWatermark.Ancestors
+	case *tetragon.GetEventsResponse_ProcessUdpSeqCheckError:
+		return ev.ProcessUdpSeqCheckError.Ancestors
+	case *tetragon.GetEventsResponse_ProcessDns:
+		return ev.ProcessDns.Ancestors
+	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
+		return ev.ProcessSandboxSyscall.Ancestors
+
+	}
+	return nil
+}
+
 // ResponseTypeMap returns a map from event field names (e.g. "process_exec") to corresponding
 // protobuf messages (e.g. &tetragon.ProcessExec{}).
 func ResponseTypeMap() map[string]proto.Message {

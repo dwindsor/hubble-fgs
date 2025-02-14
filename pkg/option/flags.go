@@ -40,7 +40,6 @@ const (
 	KeyTcpCacheSize              = "tcp-cache-size"
 	KeyNetNsCacheSize            = "net-ns-cache-size"
 	KeyDetatchOldBPF             = "detach-old-bpf"
-	KeyEnableProcessAncestors    = "enable-process-ancestors"
 	KeyEnableProcessTree         = "enable-process-tree"
 	KeyProcessTreeExportInterval = "process-tree-export-interval"
 	KeyProcessTreeExportFilename = "process-tree-export-filename"
@@ -61,6 +60,15 @@ const (
 func FixUpOSSFlags(flags *pflag.FlagSet) {
 	flags.Lookup(option.KeyCompatibilitySyscall64SizeType).Usage =
 		"syscall64 type will produce output of type size (compatibility flag, will be removed in v1.16)"
+
+	// some fixes to defaults related to https://github.com/cilium/tetragon/pull/2938
+	flags.Lookup(option.KeyEnableProcessAncestors).Usage = "Include ancestors in process exec events"
+	flags.Lookup(option.KeyEnableProcessAncestors).Value = newBoolValue(true, &option.Config.EnableProcessAncestors)
+	flags.Lookup(option.KeyEnableProcessAncestors).DefValue = "true"
+	flags.Lookup(option.KeyEnableProcessKprobeAncestors).Hidden = true
+	flags.Lookup(option.KeyEnableProcessTracepointAncestors).Hidden = true
+	flags.Lookup(option.KeyEnableProcessUprobeAncestors).Hidden = true
+	flags.Lookup(option.KeyEnableProcessLsmAncestors).Hidden = true
 }
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
@@ -71,7 +79,6 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Int(KeyFlowExportFileMaxSizeMB, 10, "Size in MB for rotating flow JSON export files")
 	flags.Int(KeyFlowExportFileMaxBackups, 5, "Number of rotated flow JSON export files to retain")
 	flags.Bool(KeyFlowExportFileCompress, false, "Compress rotated flow JSON export files")
-	flags.Bool(KeyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.Bool(KeyEnableProcessTree, false, "Include BPF process tree in memory")
 	// Experimental flags to periodically export process model to export JSON file.
 	flags.Duration(KeyProcessTreeExportInterval, 0, "Interval at which to export process tree as JSON.")
@@ -111,7 +118,6 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 }
 
 func ReadAndSetEnterpriseFlags() {
-	Config.EnableProcessAncestors = viper.GetBool(KeyEnableProcessAncestors)
 	Config.EnableProcessTree = viper.GetBool(KeyEnableProcessTree)
 	Config.ProcessTreeExportInterval = viper.GetDuration(KeyProcessTreeExportInterval)
 	Config.ProcessTreeExportFilename = viper.GetString(KeyProcessTreeExportFilename)

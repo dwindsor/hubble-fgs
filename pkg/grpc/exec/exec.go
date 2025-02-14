@@ -15,7 +15,6 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -78,7 +77,7 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 
 	// Populate fgsAncestors by walking backwards through the parentId links. Some small
 	// optimization to push Pod info up if its missing.
-	if enterpriseOption.Config.EnableProcessAncestors && fgsParent != nil {
+	if option.Config.EnableProcessAncestors && fgsParent != nil {
 		for _, a := range getAncestors(fgsParent) {
 			// If we have a docker link, but the pod info lookup
 			// failed then this is a nested docker environment. In
@@ -186,7 +185,7 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 		// setup ancestors, we missed parent in the original event so now we can do that
 		if e, ok := ev.(*tetragon.ProcessExec); ok {
 			var fgsAncestors []*tetragon.Process
-			if enterpriseOption.Config.EnableProcessAncestors && parent != nil {
+			if option.Config.EnableProcessAncestors && parent != nil {
 				for _, a := range getAncestors(parent.UnsafeGetProcess()) {
 					fgsAncestors = append(fgsAncestors, a.UnsafeGetProcess())
 				}

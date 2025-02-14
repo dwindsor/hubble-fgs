@@ -115,13 +115,29 @@ options:
     - name: enable-process-cred
       default_value: "false"
       usage: Enable process_cred events
+    - name: enable-process-kprobe-ancestors
+      default_value: "false"
+      usage: |
+        Include ancestors in process_kprobe events. Only used if 'enable-process-ancestors' is set to 'true'
+    - name: enable-process-lsm-ancestors
+      default_value: "false"
+      usage: |
+        Include ancestors in process_lsm events. Only used if 'enable-process-ancestors' is set to 'true'
     - name: enable-process-ns
       default_value: "false"
       usage: |
         Enable namespace information in process_exec and process_kprobe events
+    - name: enable-process-tracepoint-ancestors
+      default_value: "false"
+      usage: |
+        Include ancestors in process_tracepoint events. Only used if 'enable-process-ancestors' is set to 'true'
     - name: enable-process-tree
       default_value: "false"
       usage: Include BPF process tree in memory
+    - name: enable-process-uprobe-ancestors
+      default_value: "false"
+      usage: |
+        Include ancestors in process_uprobe events. Only used if 'enable-process-ancestors' is set to 'true'
     - name: enable-sandboxpolicies
       default_value: "true"
       usage: Enable sandboxpolicies

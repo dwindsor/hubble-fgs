@@ -6,7 +6,6 @@ package option
 import "time"
 
 type config struct {
-	EnableProcessAncestors    bool
 	EnableProcessTree         bool
 	ProcessTreeExportInterval time.Duration
 	ProcessTreeExportFilename string
@@ -53,7 +52,6 @@ type config struct {
 var (
 	// Config contains all the configuration used by Tetragon.
 	Config = config{
-		EnableProcessAncestors:    false,
 		EnableProcessTree:         false,
 		ProcessTreeExportInterval: 0,
 		DnsCacheSize:              1024,
