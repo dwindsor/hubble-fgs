@@ -11,13 +11,20 @@
 package exec
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
+	"io"
+	"maps"
+	"os"
+	"slices"
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/model"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -57,6 +64,48 @@ func monitor(interval time.Duration, namespaces []string) error {
 	}
 }
 
+func monitorStdin() error {
+	currentModel := &appModelV1.ApplicationModelEvent{}
+	decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
+	if err := decoder.Decode(currentModel); err != nil {
+		return err
+	}
+	for {
+		newModel := &appModelV1.ApplicationModelEvent{}
+		err := decoder.Decode(newModel)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		currentnmd := model.NetworkMonitorData{}
+		currentpmd := model.ProcessMonitorData{}
+		newnmd := model.NetworkMonitorData{}
+		newpmd := model.ProcessMonitorData{}
+		model.ToMonitorData(currentnmd, currentpmd, currentModel.GetApplicationModel())
+		model.ToMonitorData(newnmd, newpmd, newModel.GetApplicationModel())
+
+		processKeys := slices.Collect(maps.Keys(newpmd))
+		slices.SortFunc(processKeys, model.SortProcessKeys)
+		for _, key := range processKeys {
+			if _, ok := currentpmd[key]; !ok {
+				fmt.Println("🚀", key)
+			}
+		}
+
+		networkKeys := slices.Collect(maps.Keys(newnmd))
+		slices.SortFunc(networkKeys, model.SortNetworkKeys)
+		for _, key := range networkKeys {
+			if _, ok := currentnmd[key]; !ok {
+				fmt.Println("🔌", key)
+			}
+		}
+		currentModel = newModel
+	}
+	return nil
+}
+
 func NewMonitor() *cobra.Command {
 	ret := &cobra.Command{
 		Use:    "monitor",
@@ -67,6 +116,12 @@ func NewMonitor() *cobra.Command {
 			namespaces := viper.GetStringSlice("namespaces")
 			if viper.GetBool("host") {
 				namespaces = append(namespaces, model.HostNamespace)
+			}
+			// Check if stdin is being piped, if so, monitor application models
+			// from stdin instead of connecting to Tetragon gRPC endpoint.
+			fi, _ := os.Stdin.Stat()
+			if fi.Mode()&os.ModeNamedPipe != 0 {
+				return monitorStdin()
 			}
 			return monitor(interval, namespaces)
 		},

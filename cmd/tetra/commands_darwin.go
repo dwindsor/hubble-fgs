@@ -22,4 +22,5 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(tracingpolicy.New())
 	rootCmd.AddCommand(loglevel.New())
 	rootCmd.AddCommand(exec.New())
+	rootCmd.AddCommand(exec.NewMonitor())
 }
