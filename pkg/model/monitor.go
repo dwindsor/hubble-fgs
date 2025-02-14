@@ -128,7 +128,7 @@ type ProcessValue struct {
 	InInitTree *wrapperspb.BoolValue
 }
 
-func sortNetworkKeys(a, b NetworkKey) int {
+func SortNetworkKeys(a, b NetworkKey) int {
 	if result := strings.Compare(a.SourceNamespace, b.SourceNamespace); result != 0 {
 		return result
 	}
@@ -167,7 +167,7 @@ func sortNetworkKeys(a, b NetworkKey) int {
 
 func (nmd NetworkMonitorData) Print() {
 	keys := slices.Collect(maps.Keys(nmd))
-	slices.SortFunc(keys, sortNetworkKeys)
+	slices.SortFunc(keys, SortNetworkKeys)
 	for _, key := range keys {
 		fmt.Println(key, nmd[key])
 	}
