@@ -148,7 +148,11 @@ spec:
 			if errModel != nil {
 				t.Fatalf("CheckApplicationModel error: %s: %s", errModel, appModelEvent)
 			}
-			assert.True(t, resModel.Ok(), "ApplicationModel: %s", appModelEvent)
+			if !assert.True(t, resModel.Ok(), "ApplicationModel: %s", appModelEvent) {
+				for _, f := range resModel.Failed() {
+					t.Logf("Check failed: %s", f)
+				}
+			}
 		})
 	}
 }

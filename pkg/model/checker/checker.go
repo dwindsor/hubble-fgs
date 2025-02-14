@@ -26,6 +26,7 @@ import (
 
 type ApplicationCheckerResult interface {
 	Ok() bool
+	Failed() []string
 }
 
 // ResultPass represents a passing checker result.
@@ -35,13 +36,21 @@ func (r *ResultPass) Ok() bool {
 	return true
 }
 
+func (r *ResultPass) Failed() []string {
+	return []string{}
+}
+
 // ResultFail represents a failing checker result.
 type ResultFail struct {
-	Failed []string
+	failed []string
 }
 
 func (r *ResultFail) Ok() bool {
 	return false
+}
+
+func (r *ResultFail) Failed() []string {
+	return r.failed
 }
 
 // Expression represents a single CEL expression along with a description
@@ -195,15 +204,15 @@ func (checker *ApplicationModelChecker) CheckApplicationModelYAML(ctx context.Co
 		if err != nil {
 			indentedError := indentString(err.Error())
 			fmt.Printf("❌ %s\n%s\n%s\n", expr.Description, indentedError, indentedExpr)
-			fail.Failed = append(fail.Failed, expr.Expression)
+			fail.failed = append(fail.failed, expr.Expression)
 		} else if res.Ok() {
 			fmt.Printf("✅ %s\n%s\n", expr.Description, indentedExpr)
 		} else {
 			fmt.Printf("❌ %s\n%s\n", expr.Description, indentedExpr)
-			fail.Failed = append(fail.Failed, expr.Expression)
+			fail.failed = append(fail.failed, expr.Expression)
 		}
 	}
-	if len(fail.Failed) > 0 {
+	if len(fail.failed) > 0 {
 		return fail, nil
 	}
 	return &ResultPass{}, nil

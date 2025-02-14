@@ -749,7 +749,7 @@ func NewCheck() *cobra.Command {
 			switch v := res.(type) {
 			case *checker.ResultFail:
 				fmt.Printf("❌ application model checks failed:\n")
-				for i, failed := range v.Failed {
+				for i, failed := range v.Failed() {
 					fmt.Printf("\tCheck %d: %q\n", i+1, failed)
 				}
 				os.Exit(-1)
