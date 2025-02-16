@@ -18,12 +18,14 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/cmd/tetra/common"
-	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"sigs.k8s.io/yaml"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/cmd/tetra/common"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 )
 
 func listCmd() *cobra.Command {
@@ -142,23 +144,24 @@ func convertCmd() *cobra.Command {
 				log.Fatalf("failed to read %s: %v", fname, err)
 			}
 
-			spCW, spNS, err := sandboxpolicy.FromYAML(string(data))
+			pol, err := sandboxpolicy.FromYAML(string(data))
 			if err != nil {
 				log.Fatalf("failed to parse %s: %v", fname, err)
 			}
 
 			var tp interface{}
-			if spCW != nil {
-				tp, err = sandboxpolicy.ToTracingPolicy(spCW)
+			switch sp := pol.(type) {
+			case *v1alpha1.SandboxPolicy:
+				tp, err = sandboxpolicy.ToTracingPolicy(sp)
 				if err != nil {
 					log.Fatalf("failed to convert %s: %v", fname, err)
 				}
-			} else if spNS != nil {
-				tp, err = sandboxpolicy.ToTracingPolicyNamespaced(spNS)
+			case *v1alpha1.SandboxPolicyNamespaced:
+				tp, err = sandboxpolicy.ToTracingPolicyNamespaced(sp)
 				if err != nil {
 					log.Fatalf("failed to convert %s: %v", fname, err)
 				}
-			} else {
+			default:
 				log.Fatalf("unexpected parsing result of %s", fname)
 			}
 

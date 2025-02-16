@@ -34,6 +34,12 @@ type SandboxPolicy struct {
 	Spec SandboxSpec `json:"spec"`
 }
 
+// Implement crdutils.CRDObject interface, required for working with CRDs
+// outside of Kubernetes context.
+func (sp *SandboxPolicy) GetObjectMetaStruct() *metav1.ObjectMeta {
+	return &sp.ObjectMeta
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type SandboxPolicyNamespacedList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -50,6 +56,12 @@ type SandboxPolicyNamespaced struct {
 	metav1.ObjectMeta `json:"metadata"`
 	// Tracing policy specification.
 	Spec SandboxSpec `json:"spec"`
+}
+
+// Implement crdutils.CRDObject interface, required for working with CRDs
+// outside of Kubernetes context.
+func (spn *SandboxPolicyNamespaced) GetObjectMetaStruct() *metav1.ObjectMeta {
+	return &spn.ObjectMeta
 }
 
 type SandboxAction struct {

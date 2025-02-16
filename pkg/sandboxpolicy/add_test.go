@@ -34,7 +34,7 @@ spec:
        - type: "Block"
        - type: "Block"
 `
-	_, _, err := FromYAML(p)
+	_, err := FromYAML(p)
 	require.Error(t, err)
 }
 
@@ -51,7 +51,7 @@ spec:
       - name: "sys_dup2"
 `
 
-	pol, _, err := FromYAML(p)
+	pol, err := FromYAML(p)
 	require.Nil(t, err)
 	_, err = yaml.Marshal(pol)
 	require.Nil(t, err)
@@ -59,8 +59,9 @@ spec:
 		{Type: "Post"},
 		{Type: "Block"},
 	}
-	require.Equal(t, "In", pol.Spec.Syscalls[0].Op)
-	require.ElementsMatch(t, defaultActions, pol.Spec.Syscalls[0].Actions)
+	sp := pol.(*v1alpha1.SandboxPolicy)
+	require.Equal(t, "In", sp.Spec.Syscalls[0].Op)
+	require.ElementsMatch(t, defaultActions, sp.Spec.Syscalls[0].Actions)
 }
 
 func TestValidationNamespaced(t *testing.T) {
@@ -79,7 +80,7 @@ spec:
       actions:
        - type: "Post"
 `
-	_, pol, err := FromYAML(p)
+	pol, err := FromYAML(p)
 	require.NotNil(t, pol)
 	require.Nil(t, err)
 }
@@ -99,8 +100,8 @@ spec:
       actions:
        - type: "Post"
 `
-	_, pol, err := FromYAML(p)
+	pol, err := FromYAML(p)
 	require.NotNil(t, pol)
 	require.Nil(t, err)
-	require.Equal(t, pol.ObjectMeta.Name, "syscalls")
+	require.Equal(t, pol.GetObjectMetaStruct().Name, "syscalls")
 }
