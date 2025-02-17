@@ -122,13 +122,21 @@ make_tuple_key_from_sk(struct msg_ip_tuple *tuple, struct sock *sk)
 {
 	struct socket_tuple_key *key;
 	int zero = 0;
+	struct sock *__sk = 0;
 
 	key = (struct socket_tuple_key *)map_lookup_elem(&tg_socket_tuple_heap, &zero);
 	if (!key)
 		return 0;
 
+	/* Verifier on 6.14 need this to confuse the verifier into dropping the
+	 * type info on __sk. The result is then we can walk into it as much as
+	 * necessary. Otherwise clang likes to do things such as sk+=32 to find
+	 * types and verifier disapproves of modifying its type sock var.
+	 */
+	probe_read_kernel(&__sk, sizeof(__sk), &sk);
+
 	if (icmp_net_match() && bpf_core_field_size(sk->__sk_common.skc_net) > 0) {
-		probe_read_kernel(&key->net, sizeof(key->net), _(&(sk->__sk_common.skc_net)));
+		probe_read_kernel(&key->net, sizeof(key->net), _(&(__sk->__sk_common.skc_net)));
 	} else {
 		key->net = 0;
 	}
@@ -140,7 +148,7 @@ make_tuple_key_from_sk(struct msg_ip_tuple *tuple, struct sock *sk)
 	key->saddr[1] = tuple->saddr[1];
 	key->daddr[0] = tuple->daddr[0];
 	key->daddr[1] = tuple->daddr[1];
-	probe_read_kernel(&key->bound_dev_if, sizeof(key->bound_dev_if), _(&(sk->__sk_common.skc_bound_dev_if)));
+	probe_read_kernel(&key->bound_dev_if, sizeof(key->bound_dev_if), _(&(__sk->__sk_common.skc_bound_dev_if)));
 	key->protocol = tuple->proto;
 	key->sport = tuple->sport;
 	return key;

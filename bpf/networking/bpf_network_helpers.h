@@ -85,10 +85,18 @@ struct {
 } ip_error_event_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) void
-get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk, struct tcp_sock *tcp)
+get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk)
 {
+	struct tcp_sock *tcp = 0;
 	__u64 *fin_bytes_recv_ptr;
 	__u64 cookie = (__u64)sk;
+
+	/* Verifier on 6.14 need this to confuse the verifier into dropping the
+	 * type info on tcp. The result is then we can walk into it as much as
+	 * necessary. Otherwise clang likes to do things such as sk+=32 to find
+	 * types and verifier disapproves of modifying its type sock var.
+	 */
+	probe_read_kernel(&tcp, sizeof(tcp), &sk);
 
 	/* Set the time the stats were obtained to allow checking of event ordering */
 	stats->ktime = ktime_get_ns();
@@ -102,8 +110,8 @@ get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk, struct tcp_sock *
 		probe_read_kernel(&stats->segs_out, sizeof(__u32), _(&(tcp->segs_out)));
 	if (bpf_core_field_exists(tcp->bytes_retrans))
 		probe_read_kernel(&stats->retransbytes, sizeof(__u64), _(&(tcp->bytes_retrans)));
-	if (bpf_core_field_exists(sk->sk_drops))
-		probe_read_kernel(&stats->sk_drops, sizeof(__u32), _(&(sk->sk_drops)));
+	if (bpf_core_field_exists(((struct sock *)tcp)->sk_drops))
+		probe_read_kernel(&stats->sk_drops, sizeof(__u32), _(&(((struct sock *)tcp)->sk_drops)));
 
 	/* These statistics are known to exist back to 4.12 kernels. */
 	probe_read_kernel(&stats->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
@@ -129,16 +137,12 @@ get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk, struct tcp_sock *
 
 static inline __attribute__((always_inline)) int cgrp_tcp_socketmap_stats(struct sock *sk, struct tcpsocketmap_value *v)
 {
-	struct tcp_sock *tcp;
-
 	if (!sk)
 		return SK_PASS;
 	if (!v)
 		return SK_PASS;
 
-	tcp = (struct tcp_sock *)sk;
-
-	get_tcp_stats(&v->stats, sk, tcp);
+	get_tcp_stats(&v->stats, sk);
 
 	return SK_PASS;
 }
@@ -146,9 +150,7 @@ static inline __attribute__((always_inline)) int cgrp_tcp_socketmap_stats(struct
 static inline __attribute__((always_inline)) void
 tcp_socketmap_stats(struct sock *sk, struct tcpsocketmap_value *v)
 {
-	struct tcp_sock *tcp = (struct tcp_sock *)sk;
-
-	get_tcp_stats(&v->stats, sk, tcp);
+	get_tcp_stats(&v->stats, sk);
 }
 
 static inline __attribute__((always_inline)) void
@@ -156,10 +158,9 @@ get_socket_stats(struct sock *sk,
 		 struct tcpsocketmap_value *socket,
 		 struct msg_socket_stats *stats)
 {
-	struct tcp_sock *tcp = (struct tcp_sock *)sk;
 	int i;
 
-	get_tcp_stats(stats, sk, tcp);
+	get_tcp_stats(stats, sk);
 
 	/* Copy the create time so that user space can match up the stats. */
 	stats->create_time = socket->stats.create_time;

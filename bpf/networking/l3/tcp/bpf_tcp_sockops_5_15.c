@@ -54,12 +54,21 @@ int skops_socket_with_stats(u64 cookie, struct msg_ip_with_stats_event *val, str
 
 int skops_tuple(u64 cookie, struct msg_ip_event *val, struct bpf_sock_ops *skops)
 {
+	u64 __cookie;
+
 	if (!val)
 		return 0;
 
+	/* Verifier on 6.14 need this to confuse the verifier into dropping the
+	 * type info on __sk. The result is then we can walk into it as much as
+	 * necessary. Otherwise clang likes to do things such as sk+=32 to find
+	 * types and verifier disapproves of modifying its type sock var.
+	 */
+	probe_read_kernel(&__cookie, sizeof(__cookie), &cookie);
+
 	val->tuple.sport = skops->local_port;
 	probe_read_kernel(&val->tuple.dport, sizeof(val->tuple.dport),
-			  _(&(((struct sock *)cookie)->__sk_common.skc_dport)));
+			  _(&(((struct sock *)__cookie)->__sk_common.skc_dport)));
 	val->tuple.dport = bpf_ntohs(val->tuple.dport);
 
 	if (skops->family != AF_INET6) {
@@ -71,9 +80,9 @@ int skops_tuple(u64 cookie, struct msg_ip_event *val, struct bpf_sock_ops *skops
 	} else {
 		val->tuple.ipv6 = true;
 		probe_read_kernel(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
-				  _(&(((struct sock *)cookie)->__sk_common.skc_v6_rcv_saddr)));
+				  _(&(((struct sock *)__cookie)->__sk_common.skc_v6_rcv_saddr)));
 		probe_read_kernel(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
-				  _(&(((struct sock *)cookie)->__sk_common.skc_v6_daddr)));
+				  _(&(((struct sock *)__cookie)->__sk_common.skc_v6_daddr)));
 	}
 
 	return 0;
