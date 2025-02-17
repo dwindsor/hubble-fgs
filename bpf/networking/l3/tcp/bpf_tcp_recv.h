@@ -46,7 +46,7 @@ get_tcp_fin(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bo
 	if (data + (tcp_offset & 0x0fff) + sizeof(struct tcphdr) > data_end) {
 		if (skb_load_bytes(skb, tcp_offset, &stor, sizeof(struct tcphdr)) < 0) {
 			emit_ip_error_event(skb, ip, cookie, ipv6, 0, 1, 0, IP_ERROR_INET_READ_TCP);
-			return SK_PASS;
+			return false;
 		}
 		tcp = &stor;
 	} else {
@@ -56,7 +56,7 @@ get_tcp_fin(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bo
 	{
 		if (skb_load_bytes(skb, tcp_offset, &stor, sizeof(struct tcphdr)) < 0) {
 			emit_ip_error_event(skb, ip, cookie, ipv6, 0, 1, 0, IP_ERROR_INET_READ_TCP);
-			return SK_PASS;
+			return false;
 		}
 		tcp = &stor;
 	}
