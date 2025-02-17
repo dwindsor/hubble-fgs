@@ -6,7 +6,6 @@ run:
 output:
   formats:
     - format: tab
-  unique-by-line: false
   sort-results: true
 
 linters:
@@ -22,6 +21,7 @@ linters:
     - unused
 
 issues:
+  uniq-by-line: false
   max-issues-per-linter: 0
   max-same-issues: 0
   exclude-rules:
