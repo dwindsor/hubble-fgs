@@ -139,7 +139,7 @@ func testFinRx(t *testing.T, port uint32, serverIterations, clientIterations int
 	// unreliable. Note, the technology should work from kernel v5.4; it's just
 	// flaky to test on kernels <v5.14. We specify v5.15 here because that is the
 	// next LTS kernel.
-	if v := "5.15.0"; !kernels.MinKernelVersion(v) {
+	if v := "5.5.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
@@ -211,7 +211,7 @@ func testFinRx(t *testing.T, port uint32, serverIterations, clientIterations int
 				WithBytesReceived(clientBytes)),
 	)
 
-	obs := getBasicTcpObserver(t, ctx, true)
+	obs := getBasicTcpObserver(t, ctx, false)
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -557,4 +557,72 @@ func TestFinRxRecvSendExitServerTermClient(t *testing.T) {
 
 func TestFinRxRecvSendExitServerExitClient(t *testing.T) {
 	testFinRx(t, 3551, 1, 1, "SR", "RS", 0, 0, 5, 5, time.Second)
+}
+
+// SilentKillServer
+func TestFinRxSilentKillServerKillClient(t *testing.T) {
+	testFinRx(t, 3551, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGKILL, 0, 0, time.Second)
+}
+
+func TestFinRxSilentKillServerHupClient(t *testing.T) {
+	testFinRx(t, 3551, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGHUP, 0, 0, time.Second)
+}
+
+func TestFinRxSilentKillServerTermClient(t *testing.T) {
+	testFinRx(t, 3551, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGTERM, 0, 0, time.Second)
+}
+
+func TestFinRxSilentKillServerExitClient(t *testing.T) {
+	testFinRx(t, 3551, -1, 0, "W", "", syscall.SIGKILL, 0, 0, 0, time.Second)
+}
+
+// SilentHupServer
+func TestFinRxSilentHupServerKillClient(t *testing.T) {
+	testFinRx(t, 3551, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGKILL, 0, 0, time.Second)
+}
+
+func TestFinRxSilentHupServerHupClient(t *testing.T) {
+	testFinRx(t, 3551, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGHUP, 0, 0, time.Second)
+}
+
+func TestFinRxSilentHupServerTermClient(t *testing.T) {
+	testFinRx(t, 3551, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGTERM, 0, 0, time.Second)
+}
+
+func TestFinRxSilentHupServerExitClient(t *testing.T) {
+	testFinRx(t, 3551, -1, 0, "W", "", syscall.SIGHUP, 0, 0, 0, time.Second)
+}
+
+// SilentTermServer
+func TestFinRxSilentTermServerKillClient(t *testing.T) {
+	testFinRx(t, 3551, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGKILL, 0, 0, time.Second)
+}
+
+func TestFinRxSilentTermServerHupClient(t *testing.T) {
+	testFinRx(t, 3551, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGHUP, 0, 0, time.Second)
+}
+
+func TestFinRxSilentTermServerTermClient(t *testing.T) {
+	testFinRx(t, 3551, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGTERM, 0, 0, time.Second)
+}
+
+func TestFinRxSilentTermServerExitClient(t *testing.T) {
+	testFinRx(t, 3551, -1, 0, "W", "", syscall.SIGTERM, 0, 0, 0, time.Second)
+}
+
+// SilentKillServer
+func TestFinRxSilentExitServerKillClient(t *testing.T) {
+	testFinRx(t, 3551, 0, -1, "", "W", 0, syscall.SIGKILL, 0, 0, time.Second)
+}
+
+func TestFinRxSilentExitServerHupClient(t *testing.T) {
+	testFinRx(t, 3551, 0, -1, "", "W", 0, syscall.SIGHUP, 0, 0, time.Second)
+}
+
+func TestFinRxSilentExitServerTermClient(t *testing.T) {
+	testFinRx(t, 3551, 0, -1, "", "W", 0, syscall.SIGTERM, 0, 0, time.Second)
+}
+
+func TestFinRxSilentExitServerExitClient(t *testing.T) {
+	testFinRx(t, 3551, 0, 0, "", "", 0, 0, 0, 0, time.Second)
 }
