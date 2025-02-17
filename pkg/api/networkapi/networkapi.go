@@ -277,19 +277,15 @@ type DestinationEndpointKey struct {
 }
 
 type TcpValue struct {
-	Key            processapi.MsgExecveKey `align:"key"`
-	DstKey         DestinationEndpointKey  `align:"dst_key"`
-	Version        uint64                  `align:"version"`
-	SocketFlags    uint32                  `align:"socket_flags"`
-	Ipv6           uint8                   `align:"ipv6"`
-	FinRx          uint8                   `align:"fin_rx"`
-	Protocol       uint8                   `align:"protocol"`
-	Closed         uint8                   `align:"closed"`
-	FinSent        uint8                   `align:"fin_sent"`
-	LastSentWasFin uint8                   `align:"last_sent_was_fin"`
-	Deny           uint8                   `align:"deny"`
-	Pad            [5]uint8                `align:"pad"`
-	Stats          MsgSocketStats          `align:"stats"`
+	Key         processapi.MsgExecveKey `align:"key"`
+	DstKey      DestinationEndpointKey  `align:"dst_key"`
+	Version     uint64                  `align:"version"`
+	SocketFlags uint32                  `align:"socket_flags"`
+	Ipv6        uint8                   `align:"ipv6"`
+	Protocol    uint8                   `align:"protocol"`
+	Closed      uint8                   `align:"closed"`
+	Deny        uint8                   `align:"deny"`
+	Stats       MsgSocketStats          `align:"stats"`
 }
 
 func (t *TcpValue) String() string {

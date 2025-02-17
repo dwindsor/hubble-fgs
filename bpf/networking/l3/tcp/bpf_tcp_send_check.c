@@ -11,6 +11,8 @@
 #include "bpf_tcp_send_check.h"
 #include "bpf_tracing.h"
 
+#define STATS_KPROBE
+
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =

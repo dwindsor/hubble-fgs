@@ -55,9 +55,6 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 	v->stats.zero_window = 0;
 	v->ipv6 = (family == AF_INET6);
 	v->version = version;
-	v->fin_rx = 0;
-	v->fin_sent = 0;
-	v->last_sent_was_fin = 0;
 	v->protocol = IPPROTO_TCP;
 	v->closed = 0;
 	v->stats.retransbytes = 0;

@@ -68,60 +68,35 @@ static inline int
 tcp_check_fin_rx(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bool ipv6)
 {
 	bool tcpfin = get_tcp_fin(skb, ip, tcp_offset, cookie, ipv6);
-	struct tcpsocketmap_value *socket;
+	struct tcp_sock *tcp;
+	__u64 bytes_received;
+	__u64 *exists;
 	__u64 c;
+
+	// Only handle FIN datagrams.
+	if (!tcpfin)
+		return SK_PASS;
 
 	if (!cookie)
 		return SK_PASS;
 
 	c = *cookie;
-	socket = lookup_tcpsocketmap(&c);
-	if (!socket)
+	tcp = (struct tcp_sock *)c;
+
+	// If we've received a FIN, then we can assume no more data from the
+	// remote. So let's store the bytes_received for this socket. Future
+	// stats collection for this socket will use this value instead of
+	// the one in the TCP stack. This avoids counting an extra byte for
+	// an ACK of a FIN.
+
+	// First check if we've already received a FIN for this socket (we delete
+	// them on socket destruction).
+	exists = map_lookup_elem(&tg_tcp_finrx_map, &c);
+	if (exists)
 		return SK_PASS;
-
-	// We don't track FIN state for listening sockets as they do not transmit
-	// or receive data.
-	if (socket->socket_flags & SOCKFLAGS_TYPE_LISTEN)
-		return SK_PASS;
-
-	// If we've received a FIN and either we haven't yet sent a FIN, or
-	// the last datagram we sent was a FIN, set fin_rx to indicate that
-	// the received_bytes metric is off-by-one.
-	if (tcpfin && (!socket->fin_sent || socket->last_sent_was_fin))
-		socket->fin_rx = 1;
-
-	return SK_PASS;
-}
-
-static inline int
-tcp_check_fin_tx(struct __sk_buff *skb, void *ip, __u16 tcp_offset, __u64 *cookie, bool ipv6)
-{
-	bool tcpfin = get_tcp_fin(skb, ip, tcp_offset, cookie, ipv6);
-	struct tcpsocketmap_value *socket;
-	__u64 c;
-
-	if (!cookie)
-		return SK_PASS;
-
-	c = *cookie;
-	socket = lookup_tcpsocketmap(&c);
-	if (!socket)
-		return SK_PASS;
-
-	// We don't track FIN state for listening sockets as they do not transmit
-	// or receive data.
-	if (socket->socket_flags & SOCKFLAGS_TYPE_LISTEN)
-		return SK_PASS;
-
-	// If we're sending a FIN, record that this datagram is a FIN
-	// and also that we've sent a FIN at some point (both are needed
-	// to understand the state correctly).
-	if (tcpfin) {
-		socket->fin_sent = 1;
-		socket->last_sent_was_fin = 1;
-	} else {
-		socket->last_sent_was_fin = 0;
-	}
+	// Otherwise, store the current bytes_received.
+	probe_read_kernel(&bytes_received, sizeof(bytes_received), _(&tcp->bytes_received));
+	map_update_elem(&tg_tcp_finrx_map, &c, &bytes_received, 0);
 
 	return SK_PASS;
 }
@@ -257,18 +232,17 @@ tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
 	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
 
-	if (send) {
-		if (ip)
-			tcp_check_fin_tx(skb, ip, ip->ihl * sizeof(__u32), cookie, false);
+	if (send)
 #ifndef NO_CGROUP_PROBE_READ
 		return tcp_handler_send(skb, cookie);
 #else
 		return SK_PASS;
 #endif
-	}
 
+#ifndef NO_CGROUP_PROBE_READ
 	if (ip)
 		tcp_check_fin_rx(skb, ip, ip->ihl * sizeof(__u32), cookie, false);
+#endif
 
 	if (!cookie) {
 		emit_ip_error_event(skb, ip, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_COOKIE);
@@ -303,16 +277,16 @@ tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 static inline __attribute__((always_inline)) int
 tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 payload_off, int send)
 {
-	if (send) {
-		tcp_check_fin_tx(skb, ip6, payload_off, cookie, true);
+	if (send)
 #ifndef NO_CGROUP_PROBE_READ
 		return tcp_handler_send(skb, cookie);
 #else
 		return SK_PASS;
 #endif
-	}
 
+#ifndef NO_CGROUP_PROBE_READ
 	tcp_check_fin_rx(skb, ip6, payload_off, cookie, true);
+#endif
 	return SK_PASS;
 }
 
@@ -369,11 +343,8 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 
 int tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
-	if (send) {
-		if (ip)
-			tcp_check_fin_tx(skb, ip, ip->ihl * sizeof(__u32), cookie, false);
+	if (send)
 		return tcp_handler_send(skb, cookie);
-	}
 
 	if (ip)
 		tcp_check_fin_rx(skb, ip, ip->ihl * sizeof(__u32), cookie, false);
@@ -382,10 +353,8 @@ int tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int se
 
 int tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 payload_off, int send)
 {
-	if (send) {
-		tcp_check_fin_tx(skb, ip6, payload_off, cookie, true);
+	if (send)
 		return tcp_handler_send(skb, cookie);
-	}
 
 	tcp_check_fin_rx(skb, ip6, payload_off, cookie, true);
 	return SK_PASS;

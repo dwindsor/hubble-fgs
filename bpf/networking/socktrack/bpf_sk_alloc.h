@@ -140,6 +140,7 @@ destroy_socket(void *ctx, u64 cookie)
 			break;
 		case IPPROTO_TCP:
 			del_tcpsocketmap(&cookie);
+			map_delete_elem(&tg_tcp_finrx_map, &cookie);
 			break;
 		}
 	}

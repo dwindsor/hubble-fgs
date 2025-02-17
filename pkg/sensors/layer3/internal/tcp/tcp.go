@@ -207,11 +207,13 @@ var (
 	SocketTupleStatsKprobe   = program.MapBuilder(base.SocketTupleStats.Name, ConnectKprobe)
 	SocketTupleRevMapKprobe  = program.MapBuilder(base.SocketTupleRevMap.Name, ConnectKprobe)
 	SocketTupleHintMapKprobe = program.MapBuilder(base.SocketTupleHintMap.Name, ConnectKprobe)
+	FinRxMapKprobe           = program.MapBuilder("tg_tcp_finrx_map", CloseKprobe)
 	SocketMapFentry          = program.MapBuilder(base.SocketMap.Name, ConnectFentry)
 	SocketTupleMapFentry     = program.MapBuilder(base.SocketTupleMap.Name, ConnectFentry)
 	SocketTupleStatsFentry   = program.MapBuilder(base.SocketTupleStats.Name, ConnectFentry)
 	SocketTupleRevMapFentry  = program.MapBuilder(base.SocketTupleRevMap.Name, ConnectFentry)
 	SocketTupleHintMapFentry = program.MapBuilder(base.SocketTupleHintMap.Name, ConnectFentry)
+	FinRxMapFentry           = program.MapBuilder("tg_tcp_finrx_map", CloseFentry)
 
 	// Maps for TCP Sockets on Sockops
 	SocketOpsMap          = program.MapBuilder(base.SocketMap.Name, TcpSockops515)
@@ -219,6 +221,7 @@ var (
 	SocketOpsTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, TcpSockops515)
 	SocketOpsTupleRevMap  = program.MapBuilder(base.SocketTupleRevMap.Name, TcpSockops515)
 	SocketOpsTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, TcpSockops515)
+	SocketOpsFinRxMap     = program.MapBuilder("tg_tcp_finrx_map", TcpSockops515)
 
 	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
 
@@ -332,6 +335,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		SocketOpsTupleStats,
 		SocketOpsTupleRevMap,
 		SocketOpsTupleHintMap,
+		SocketOpsFinRxMap,
 		CfgOpsMap,
 		TcpOpsSocketMap,
 		VerOpsMap,
@@ -345,6 +349,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		SocketTupleStatsKprobe,
 		SocketTupleRevMapKprobe,
 		SocketTupleHintMapKprobe,
+		FinRxMapKprobe,
 		CfgMapKprobe,
 		TcpSocketMapKprobe,
 		VerMapKprobe,
@@ -358,6 +363,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		SocketTupleStatsFentry,
 		SocketTupleRevMapFentry,
 		SocketTupleHintMapFentry,
+		FinRxMapFentry,
 		CfgMapFentry,
 		TcpSocketMapFentry,
 		VerMapFentry,

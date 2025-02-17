@@ -27,13 +27,9 @@ struct tcpsocketmap_value {
 	__u64 version;
 	__u32 socket_flags;
 	__u8 ipv6;
-	__u8 fin_rx;
 	__u8 protocol;
 	__u8 closed;
-	__u8 fin_sent;
-	__u8 last_sent_was_fin;
 	__u8 deny;
-	__u8 pad[5];
 	struct msg_socket_stats stats;
 };
 
@@ -50,6 +46,21 @@ struct {
 	__type(value, __s64);
 	__uint(max_entries, 1);
 } tg_tcpsocket_map_stats SEC(".maps");
+
+/* Separate map to hold the bytes_received at the time a FIN was received.
+ * This allows us to avoid including the potential extra byte that appears
+ * in the stack's bytes_received counter if it ACKs a FIN.
+ * By storing this value in a separate map, we avoid the race between
+ * the accept (sock graft) program adding an entry, and the FIN arriving
+ * at a similar time. Once written, we will use this value for the
+ * bytes_received every time we collect stats.
+ */
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__type(key, u64);
+	__type(value, u64);
+	__uint(max_entries, 32768);
+} tg_tcp_finrx_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);

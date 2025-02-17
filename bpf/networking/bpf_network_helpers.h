@@ -85,9 +85,10 @@ struct {
 } ip_error_event_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) void
-get_tcp_stats(struct msg_socket_stats *stats, __u8 fin_rx, struct sock *sk, struct tcp_sock *tcp)
+get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk, struct tcp_sock *tcp)
 {
-	__u64 bytes_received;
+	__u64 *fin_bytes_recv_ptr;
+	__u64 cookie = (__u64)sk;
 
 	/* Set the time the stats were obtained to allow checking of event ordering */
 	stats->ktime = ktime_get_ns();
@@ -105,13 +106,25 @@ get_tcp_stats(struct msg_socket_stats *stats, __u8 fin_rx, struct sock *sk, stru
 		probe_read_kernel(&stats->sk_drops, sizeof(__u32), _(&(sk->sk_drops)));
 
 	/* These statistics are known to exist back to 4.12 kernels. */
-	probe_read_kernel(&bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
-	bytes_received -= fin_rx;
-	WRITE_ONCE(stats->bytes_received, bytes_received);
 	probe_read_kernel(&stats->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
 	probe_read_kernel(&stats->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
 	stats->srtt = stats->srtt / 8; // SRTT is reported <<3 in us.
 	probe_read_kernel(&stats->retranssegs, sizeof(__u32), _(&(tcp->total_retrans)));
+
+#ifndef STATS_KPROBE
+	/* If we've received a FIN, then use the value of bytes_received at that point and
+	 * not the current value as it might include an extra byte for ACKing the FIN.
+	 */
+	fin_bytes_recv_ptr = (__u64 *)map_lookup_elem(&tg_tcp_finrx_map, &cookie);
+	if (fin_bytes_recv_ptr) {
+		WRITE_ONCE(stats->bytes_received, *fin_bytes_recv_ptr);
+	} else {
+		probe_read_kernel(&stats->bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
+	}
+#else
+	/* We don't currently support FIN tracking on kernels <=v5.5. */
+	probe_read_kernel(&stats->bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
+#endif
 }
 
 static inline __attribute__((always_inline)) int cgrp_tcp_socketmap_stats(struct sock *sk, struct tcpsocketmap_value *v)
@@ -125,7 +138,7 @@ static inline __attribute__((always_inline)) int cgrp_tcp_socketmap_stats(struct
 
 	tcp = (struct tcp_sock *)sk;
 
-	get_tcp_stats(&v->stats, v->fin_rx, sk, tcp);
+	get_tcp_stats(&v->stats, sk, tcp);
 
 	return SK_PASS;
 }
@@ -135,7 +148,7 @@ tcp_socketmap_stats(struct sock *sk, struct tcpsocketmap_value *v)
 {
 	struct tcp_sock *tcp = (struct tcp_sock *)sk;
 
-	get_tcp_stats(&v->stats, v->fin_rx, sk, tcp);
+	get_tcp_stats(&v->stats, sk, tcp);
 }
 
 static inline __attribute__((always_inline)) void
@@ -146,7 +159,7 @@ get_socket_stats(struct sock *sk,
 	struct tcp_sock *tcp = (struct tcp_sock *)sk;
 	int i;
 
-	get_tcp_stats(stats, socket->fin_rx, sk, tcp);
+	get_tcp_stats(stats, sk, tcp);
 
 	/* Copy the create time so that user space can match up the stats. */
 	stats->create_time = socket->stats.create_time;
