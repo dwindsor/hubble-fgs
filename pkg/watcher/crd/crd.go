@@ -14,17 +14,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sirupsen/logrus"
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors"
-	k8sconf "github.com/cilium/tetragon/pkg/watcher/conf"
-	"github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned"
-	"github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions"
+	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
-
-	"github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/tools/cache"
 )
 
 func addSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Manager, obj interface{}) {
@@ -67,18 +64,18 @@ func deleteSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors
 	}
 }
 
-func WatchSandboxPolicy(ctx context.Context, s *sensors.Manager) {
-	log := logger.GetLogger()
-	log.Info("Starting to watch for sandbox policies")
-	conf, err := k8sconf.K8sConfig()
-	if err != nil {
-		log.WithError(err).Fatal("couldn't get cluster config")
+func AddSandboxPolicyInformer(ctx context.Context, w watcher.Watcher, s *sensors.Manager) error {
+	log := logger.GetLogger().WithField("crd-watcher", true)
+	if w == nil {
+		return fmt.Errorf("k8s watcher not initialized")
 	}
-	log = log.WithField("crd-watcher", true)
-	client := versioned.NewForConfigOrDie(conf)
-	factory := externalversions.NewSharedInformerFactory(client, 0)
+	factory := w.GetCRDInformerFactory()
+	if factory == nil {
+		return fmt.Errorf("CRD informer factory not initialized")
+	}
 
-	factory.Cilium().V1alpha1().SandboxPolicies().Informer().AddEventHandler(
+	spInformer := factory.Cilium().V1alpha1().SandboxPolicies().Informer()
+	spInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				addSandboxPolicy(ctx, log, s, obj)
@@ -90,8 +87,13 @@ func WatchSandboxPolicy(ctx context.Context, s *sensors.Manager) {
 				deleteSandboxPolicy(ctx, log, s, oldObj)
 				addSandboxPolicy(ctx, log, s, newObj)
 			}})
+	err := w.AddInformer("SandboxPolicy", spInformer, nil)
+	if err != nil {
+		return fmt.Errorf("failed to add SandboxPolicy informer: %w", err)
+	}
 
-	factory.Cilium().V1alpha1().SandboxPoliciesNamespaced().Informer().AddEventHandler(
+	spnInformer := factory.Cilium().V1alpha1().SandboxPoliciesNamespaced().Informer()
+	spnInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				addSandboxPolicy(ctx, log, s, obj)
@@ -103,8 +105,10 @@ func WatchSandboxPolicy(ctx context.Context, s *sensors.Manager) {
 				deleteSandboxPolicy(ctx, log, s, oldObj)
 				addSandboxPolicy(ctx, log, s, newObj)
 			}})
+	err = w.AddInformer("SandboxPolicyNamespaced", spnInformer, nil)
+	if err != nil {
+		return fmt.Errorf("failed to add SandboxPolicyNamespaced informer: %w", err)
+	}
 
-	go factory.Start(wait.NeverStop)
-	factory.WaitForCacheSync(wait.NeverStop)
-	log.Info("Started watching sandbox policies")
+	return nil
 }

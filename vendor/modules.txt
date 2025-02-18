@@ -1086,7 +1086,6 @@ github.com/inconshreveable/mousetrap
 # github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 => ./pkg/k8s-enterprise
 ## explicit; go 1.24.0
 github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned
-github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions
 # github.com/isovalent/ipa v0.0.0-20250201002826-a89fd7e69961
 ## explicit; go 1.23
 github.com/isovalent/ipa/application_model/v1alpha

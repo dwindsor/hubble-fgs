@@ -493,6 +493,12 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 				return err
 			}
 		}
+		if enterpriseOption.Config.EnableSandboxPolicies && enterpriseOption.Config.EnableSandboxPoliciesCRD {
+			err = crd.AddSandboxPolicyInformer(ctx, k8sWatcher, observer.GetSensorManager())
+			if err != nil {
+				return err
+			}
+		}
 	} else {
 		log.Info("Disabling Kubernetes API")
 		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
@@ -584,11 +590,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 
 	obs.AddListener(pm)
 	saveInitInfo()
-	if option.Config.EnableK8s {
-		if enterpriseOption.Config.EnableSandboxPolicies && enterpriseOption.Config.EnableSandboxPoliciesCRD {
-			go crd.WatchSandboxPolicy(ctx, observer.GetSensorManager())
-		}
-	}
 
 	obs.LogPinnedBpf(observerDir)
 
