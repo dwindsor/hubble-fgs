@@ -13,11 +13,14 @@ package checker
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
+	"strings"
 
 	"github.com/google/cel-go/cel"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/encoding/protojson"
+	"gopkg.in/yaml.v3"
 	celk8s "k8s.io/apiserver/pkg/cel/library"
 )
 
@@ -164,4 +167,44 @@ func (checker *ApplicationModelChecker) CheckApplicationModelEventJSON(ctx conte
 	}
 
 	return checker.CheckApplicationModelEvent(ctx, appModel, exprs)
+}
+
+func indentString(s string) string {
+	var indentedLines []string
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	for _, line := range lines {
+		indentedLines = append(indentedLines, "   "+line)
+	}
+	return strings.Join(indentedLines, "\n")
+}
+
+func (checker *ApplicationModelChecker) CheckApplicationModelYAML(ctx context.Context, appModel *appModelV1.ApplicationModelEvent, celYAML string) (ApplicationCheckerResult, error) {
+	fail := &ResultFail{}
+	b, err := os.ReadFile(celYAML)
+	if err != nil {
+		return fail, err
+	}
+	var exprs []Expression
+	err = yaml.Unmarshal(b, &exprs)
+	if err != nil {
+		return fail, err
+	}
+	for _, expr := range exprs {
+		indentedExpr := indentString(expr.Expression)
+		res, err := checker.CheckApplicationModelEvent(ctx, appModel, []string{expr.Expression})
+		if err != nil {
+			indentedError := indentString(err.Error())
+			fmt.Printf("❌ %s\n%s\n%s\n", expr.Description, indentedError, indentedExpr)
+			fail.Failed = append(fail.Failed, expr.Expression)
+		} else if res.Ok() {
+			fmt.Printf("✅ %s\n%s\n", expr.Description, indentedExpr)
+		} else {
+			fmt.Printf("❌ %s\n%s\n", expr.Description, indentedExpr)
+			fail.Failed = append(fail.Failed, expr.Expression)
+		}
+	}
+	if len(fail.Failed) > 0 {
+		return fail, nil
+	}
+	return &ResultPass{}, nil
 }

@@ -27,7 +27,6 @@ import (
 	"os/signal"
 	"sort"
 	"strconv"
-	"strings"
 	"syscall"
 	"text/template"
 	"time"
@@ -49,7 +48,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/encoding/protojson"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -641,51 +639,11 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 	} else if len(celExprs) > 0 {
 		exprs = celExprs
 	} else if len(celYAML) > 0 {
-		return checkYAML(ctx, chk, appModel)
+		return chk.CheckApplicationModelYAML(ctx, appModel, celYAML)
 	} else {
 		return nil, fmt.Errorf("provide one of --expressions, --files, or --yaml")
 	}
 	return chk.CheckApplicationModelEvent(ctx, appModel, exprs)
-}
-
-func indentString(s string) string {
-	var indentedLines []string
-	lines := strings.Split(strings.TrimSpace(s), "\n")
-	for _, line := range lines {
-		indentedLines = append(indentedLines, "   "+line)
-	}
-	return strings.Join(indentedLines, "\n")
-}
-
-func checkYAML(ctx context.Context, chk *checker.ApplicationModelChecker, appModel *appModelV1.ApplicationModelEvent) (checker.ApplicationCheckerResult, error) {
-	fail := &checker.ResultFail{}
-	b, err := os.ReadFile(celYAML)
-	if err != nil {
-		return fail, err
-	}
-	var exprs []checker.Expression
-	err = yaml.Unmarshal(b, &exprs)
-	if err != nil {
-		return fail, err
-	}
-	for _, expr := range exprs {
-		indentedExpr := indentString(expr.Expression)
-		res, err := chk.CheckApplicationModelEvent(ctx, appModel, []string{expr.Expression})
-		if err != nil {
-			indentedError := indentString(err.Error())
-			fmt.Printf("❌ %s\n%s\n%s\n", expr.Description, indentedError, indentedExpr)
-			fail.Failed = append(fail.Failed, expr.Expression)
-		} else if res.Ok() {
-			fmt.Printf("✅ %s\n%s\n", expr.Description, indentedExpr)
-		} else {
-			fmt.Printf("❌ %s\n%s\n", expr.Description, indentedExpr)
-			fail.Failed = append(fail.Failed, expr.Expression)
-		}
-	}
-	if len(fail.Failed) > 0 {
-		return fail, nil
-	}
-	return &checker.ResultPass{}, nil
 }
 
 func generateChecker() (string, error) {
