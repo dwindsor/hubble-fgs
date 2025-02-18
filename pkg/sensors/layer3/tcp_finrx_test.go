@@ -131,10 +131,6 @@ func testFinRx(t *testing.T, port uint32, serverIterations, clientIterations int
 	serverPattern, clientPattern string, serverSignal, clientSignal syscall.Signal,
 	serverBytes, clientBytes uint64, delay time.Duration) {
 
-	// While investigating the flakes in the tests, let's disable them temporarily
-	// to avoid making CI difficult for people.
-	t.Skip("test is disabled")
-
 	// For reliability, we really need the sockops handlers as the kprobes can be
 	// unreliable. Note, the technology should work from kernel v5.4; it's just
 	// flaky to test on kernels <v5.14. We specify v5.15 here because that is the
