@@ -762,6 +762,10 @@ spec:
                               will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
                               supports fetching up to 327360 bytes if this flag is turned on
                             type: boolean
+                          resolve:
+                            default: ""
+                            description: Resolve the path to a specific attribute
+                            type: string
                           returnCopy:
                             default: false
                             description: |-
@@ -862,6 +866,10 @@ spec:
                             will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
                             supports fetching up to 327360 bytes if this flag is turned on
                           type: boolean
+                        resolve:
+                          default: ""
+                          description: Resolve the path to a specific attribute
+                          type: string
                         returnCopy:
                           default: false
                           description: |-
@@ -1477,6 +1485,10 @@ spec:
                               will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
                               supports fetching up to 327360 bytes if this flag is turned on
                             type: boolean
+                          resolve:
+                            default: ""
+                            description: Resolve the path to a specific attribute
+                            type: string
                           returnCopy:
                             default: false
                             description: |-
@@ -2836,6 +2848,10 @@ spec:
                               will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
                               supports fetching up to 327360 bytes if this flag is turned on
                             type: boolean
+                          resolve:
+                            default: ""
+                            description: Resolve the path to a specific attribute
+                            type: string
                           returnCopy:
                             default: false
                             description: |-
@@ -3423,6 +3439,10 @@ spec:
                               will fetch at most 4096 bytes. In later kernels (>=5.4) tetragon
                               supports fetching up to 327360 bytes if this flag is turned on
                             type: boolean
+                          resolve:
+                            default: ""
+                            description: Resolve the path to a specific attribute
+                            type: string
                           returnCopy:
                             default: false
                             description: |-

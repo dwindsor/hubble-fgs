@@ -455,6 +455,7 @@ github.com/cilium/tetragon/pkg/cgroups
 github.com/cilium/tetragon/pkg/cgroups/fsscan
 github.com/cilium/tetragon/pkg/cgtracker
 github.com/cilium/tetragon/pkg/cmdref
+github.com/cilium/tetragon/pkg/crdutils
 github.com/cilium/tetragon/pkg/cri
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/encoder
@@ -489,6 +490,7 @@ github.com/cilium/tetragon/pkg/mbset
 github.com/cilium/tetragon/pkg/metrics
 github.com/cilium/tetragon/pkg/metrics/cgroupratemetrics
 github.com/cilium/tetragon/pkg/metrics/consts
+github.com/cilium/tetragon/pkg/metrics/crimetrics
 github.com/cilium/tetragon/pkg/metrics/enforcermetrics
 github.com/cilium/tetragon/pkg/metrics/errormetrics
 github.com/cilium/tetragon/pkg/metrics/eventmetrics

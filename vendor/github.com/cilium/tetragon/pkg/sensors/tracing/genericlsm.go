@@ -210,6 +210,7 @@ type addLsmIn struct {
 func addLsm(f *v1alpha1.LsmHookSpec, in *addLsmIn) (id idtable.EntryID, err error) {
 	var argSigPrinters []argPrinter
 	var argsBTFSet [api.MaxArgsSupported]bool
+	var allBtfArgs [api.EventConfigMaxArgs][api.MaxBtfArgDepth]api.ConfigBtfArg
 
 	errFn := func(err error) (idtable.EntryID, error) {
 		return idtable.UninitializedEntryID, err
@@ -237,9 +238,29 @@ func addLsm(f *v1alpha1.LsmHookSpec, in *addLsmIn) (id idtable.EntryID, err erro
 	// Parse Arguments
 	for j, a := range f.Args {
 		argType := gt.GenericTypeFromString(a.Type)
+
+		if a.Resolve != "" && j < api.EventConfigMaxArgs {
+			if !bpf.HasProgramLargeSize() {
+				return errFn(fmt.Errorf("Error: Resolve flag can't be used for your kernel version. Please update to version 5.4 or higher or disable Resolve flag"))
+			}
+			if !kernels.MinKernelVersion("5.7.0") {
+				// bpf_lsm_<hook_name> does not exist in BTF file before 5.7
+				// https://lore.kernel.org/bpf/20200329004356.27286-4-kpsingh@chromium.org/
+				return errFn(fmt.Errorf("Error: LSM programs can not use Resolve flag for your kernel version." +
+					"Please use Kprobe instead or update your kernel to version 5.7 or higher"))
+			}
+			lastBtfType, btfArg, err := resolveBtfArg("bpf_lsm_"+f.Hook, a)
+			if err != nil {
+				return errFn(fmt.Errorf("Error on hook %q for index %d : %v", f.Hook, a.Index, err))
+			}
+			allBtfArgs[j] = btfArg
+			argType = findTypeFromBtfType(a, lastBtfType)
+		}
+
 		if argType == gt.GenericInvalidType {
 			return errFn(fmt.Errorf("Arg(%d) type '%s' unsupported", j, a.Type))
 		}
+
 		if a.MaxData {
 			if argType != gt.GenericCharBuffer {
 				logger.GetLogger().Warnf("maxData flag is ignored (supported for char_buf type)")
@@ -264,6 +285,7 @@ func addLsm(f *v1alpha1.LsmHookSpec, in *addLsmIn) (id idtable.EntryID, err erro
 		argSigPrinters = append(argSigPrinters, argP)
 	}
 
+	config.BtfArg = allBtfArgs
 	config.ArgReturn = int32(0)
 	config.ArgReturnCopy = int32(0)
 

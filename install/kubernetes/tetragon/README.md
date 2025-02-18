@@ -74,8 +74,11 @@ Helm chart for Tetragon Enterprise
 | serviceLabelsOverride | object | `{}` |  |
 | tetragon.argsOverride | list | `[]` | Override the arguments. For advanced users only. |
 | tetragon.btf | string | `""` |  |
+| tetragon.cgidmap | object | `{"enabled":false}` | Enabling cgidmap instructs the Tetragon agent to use cgroup ids (instead of cgroup names) for pod association. This feature depends on cri being enabled. |
 | tetragon.clusterName | string | `""` | Name of the cluster where Tetragon is installed. Tetragon uses this value to set the cluster_name field in GetEventsResponse messages. |
 | tetragon.commandOverride | list | `[]` | Override the command. For advanced users only. |
+| tetragon.cri | object | `{"enabled":false,"socketHostPath":""}` | Configure tetragon pod so that it can contact the CRI running on the host |
+| tetragon.cri.socketHostPath | string | `""` | path of the CRI socket on the host. This will typically be "/run/containerd/containerd.sock" for containerd or "/var/run/crio/crio.sock"  for crio. |
 | tetragon.debug | bool | `false` | If you want to run Tetragon in debug mode change this value to true |
 | tetragon.dnsStatsPerSocket | bool | `false` |  |
 | tetragon.enableBPFDNSParser | bool | `false` | Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required. |
