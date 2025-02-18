@@ -540,7 +540,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		atomic_xchg(&dest->ktime_last_reset, now);
 	}
 
-	quota = __sync_fetch_and_add(&dest->tx_quota, len);
+	quota = __sync_add_and_fetch(&dest->tx_quota, len);
 	if (dest->tx_limit && quota > dest->tx_limit) {
 		__sync_fetch_and_add(&dest->tx_drops, len);
 		return SK_DROP;
