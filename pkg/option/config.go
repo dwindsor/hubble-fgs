@@ -63,6 +63,15 @@ type config struct {
 	EnableFimDispatcher bool
 
 	MandateConf mandateconf.ManagerConf
+
+	EnableTCP       bool
+	EnableTCPRTT    bool
+	EnableUDP       bool
+	EnableLatency   bool
+	EnableICMP      bool
+	EnableRawsock   bool
+	EnableDNS       bool
+	Layer3CLIEnable bool
 }
 
 var (

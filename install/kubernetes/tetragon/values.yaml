@@ -301,6 +301,23 @@ tetragon:
   enableProcessTree: false
   # -- Enable system call tracking in the process tree.
   enableSyscallTracking: false
+  # Layer3
+  layer3:
+    tcp:
+      enabled: false
+      rtt:
+        enabled: false
+    udp:
+      enabled: false
+    icmp:
+      enabled: false
+    rawsock:
+      enabled: false
+    latency:
+      enabled: false
+  # DNS
+  dns:
+    enabled: false
   # EXPERIMENTAL: Publish metrics to AWS Sonar.
   # @ignored
   awsSonar:

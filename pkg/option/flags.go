@@ -63,6 +63,13 @@ const (
 	KeyEnableFimDispatcher            = "fim-enable-dispatcher"
 	KeyMandateURL                     = "mandate-url"
 	KeyMandateRefreshPeriod           = "mandate-refresh-period"
+	keyEnableTCP                      = "enable-tcp"
+	keyEnableTCPRTT                   = "enable-tcp-rtt"
+	keyEnableUDP                      = "enable-udp"
+	keyEnableLatency                  = "enable-latency"
+	keyEnableICMP                     = "enable-icmp"
+	keyEnableRawsock                  = "enable-rawsock"
+	keyEnableDNS                      = "enable-dns"
 )
 
 func FixUpOSSFlags(flags *pflag.FlagSet) {
@@ -133,6 +140,13 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyEnableFimDispatcher, false, "Enable FIM dispatcher when supported")
 	flags.String(KeyMandateURL, "", "Set a URL for a Tetragon Mandate file")
 	flags.Duration(KeyMandateRefreshPeriod, 1*time.Minute, "Refresh period for the Mandate file")
+	flags.Bool(keyEnableTCP, false, "Enable TCP observability")
+	flags.Bool(keyEnableTCPRTT, false, "Enable TCP RTT observability")
+	flags.Bool(keyEnableUDP, false, "Enable UDP observability")
+	flags.Bool(keyEnableLatency, false, fmt.Sprintf("Enable TCP and/or UDP latency observability (requires %s and/or %s)", keyEnableTCP, keyEnableUDP))
+	flags.Bool(keyEnableICMP, false, "Enable ICMP observability")
+	flags.Bool(keyEnableRawsock, false, "Enable raw socket observability")
+	flags.Bool(keyEnableDNS, false, "Enable DNS observability")
 }
 
 func ReadAndSetEnterpriseFlags() {
@@ -189,4 +203,16 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnableFimDispatcher = viper.GetBool(KeyEnableFimDispatcher)
 	Config.MandateConf.URL = viper.GetString(KeyMandateURL)
 	Config.MandateConf.RefreshPeriod = viper.GetDuration(KeyMandateRefreshPeriod)
+	Config.EnableTCP = viper.GetBool(keyEnableTCP)
+	Config.EnableTCPRTT = viper.GetBool(keyEnableTCPRTT)
+	Config.EnableUDP = viper.GetBool(keyEnableUDP)
+	Config.EnableLatency = viper.GetBool(keyEnableLatency)
+	Config.EnableICMP = viper.GetBool(keyEnableICMP)
+	Config.EnableRawsock = viper.GetBool(keyEnableRawsock)
+	Config.EnableDNS = viper.GetBool(keyEnableDNS)
+	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
+	// then we ignore enable/disable in policies.
+	if Config.EnableTCP || Config.EnableUDP || Config.EnableICMP || Config.EnableRawsock || Config.EnableDNS {
+		Config.Layer3CLIEnable = true
+	}
 }

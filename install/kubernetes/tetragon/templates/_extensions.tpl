@@ -30,6 +30,13 @@ enable-syscall-tracking: "true"
 {{- else }}
 enable-syscall-tracking: "false"
 {{- end }}
+enable-tcp: {{ .Values.tetragon.layer3.tcp.enabled | quote }}
+enable-tcp-rtt: {{ .Values.tetragon.layer3.tcp.rtt.enabled | quote }}
+enable-udp: {{ .Values.tetragon.layer3.udp.enabled | quote }}
+enable-latency: {{ .Values.tetragon.layer3.latency.enabled | quote }}
+enable-icmp: {{ .Values.tetragon.layer3.icmp.enabled | quote }}
+enable-rawsock: {{ .Values.tetragon.layer3.rawsock.enabled | quote }}
+enable-dns: {{ .Values.tetragon.dns.enabled | quote }}
 {{- if .Values.tetragon.awsSonar.enabled }}
 enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}

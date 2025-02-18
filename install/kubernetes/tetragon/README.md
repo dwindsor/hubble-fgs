@@ -85,6 +85,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.cri | object | `{"enabled":false,"socketHostPath":""}` | Configure tetragon pod so that it can contact the CRI running on the host |
 | tetragon.cri.socketHostPath | string | `""` | path of the CRI socket on the host. This will typically be "/run/containerd/containerd.sock" for containerd or "/var/run/crio/crio.sock"  for crio. |
 | tetragon.debug | bool | `false` | If you want to run Tetragon in debug mode change this value to true |
+| tetragon.dns.enabled | bool | `false` |  |
 | tetragon.dnsStatsPerSocket | bool | `false` |  |
 | tetragon.enableApplicationModel | bool | `false` | Enable application model. |
 | tetragon.enableBPFDNSParser | bool | `false` | Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required. |
@@ -134,6 +135,12 @@ Helm chart for Tetragon Enterprise
 | tetragon.image.repository | string | `"quay.io/isovalent/tetragon"` |  |
 | tetragon.image.tag | string | `"v1.16.0-rc.1"` |  |
 | tetragon.k8sWatcher.policy.enabled | bool | `true` | Enable watching Kubernetes API server for policy resources. If true, Tetragon watches all supported policy resources: TracingPolicy(Namespaced), SandboxPolicy(Namespaced), AlertRule and TetragonNetworkPolicy(Namespaced), unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely. |
+| tetragon.layer3.icmp.enabled | bool | `false` |  |
+| tetragon.layer3.latency.enabled | bool | `false` |  |
+| tetragon.layer3.rawsock.enabled | bool | `false` |  |
+| tetragon.layer3.tcp.enabled | bool | `false` |  |
+| tetragon.layer3.tcp.rtt.enabled | bool | `false` |  |
+| tetragon.layer3.udp.enabled | bool | `false` |  |
 | tetragon.livenessProbe | object | `{}` | Overrides the default livenessProbe for the tetragon container. |
 | tetragon.metadata.enabled | bool | `false` |  |
 | tetragon.metadata.image.imagePullPolicy | string | `"Always"` |  |

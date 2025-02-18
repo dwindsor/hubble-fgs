@@ -96,12 +96,18 @@ options:
     - name: enable-cri
       default_value: "false"
       usage: enable CRI client for tetragon
+    - name: enable-dns
+      default_value: "false"
+      usage: Enable DNS observability
     - name: enable-dns-debug
       default_value: "false"
       usage: Enable DNS debug messages
     - name: enable-export-aggregation
       default_value: "false"
       usage: Enable JSON export aggregation
+    - name: enable-icmp
+      default_value: "false"
+      usage: Enable ICMP observability
     - name: enable-icmp-tracking
       default_value: "true"
       usage: Enable additional socket tracking for ICMP
@@ -109,6 +115,10 @@ options:
       default_value: "false"
       usage: |
         Access Kubernetes API to associate Tetragon events with Kubernetes pods
+    - name: enable-latency
+      default_value: "false"
+      usage: |
+        Enable TCP and/or UDP latency observability (requires enable-tcp and/or enable-udp)
     - name: enable-msg-handling-latency
       default_value: "false"
       usage: Enable metrics for message handling latency
@@ -158,6 +168,9 @@ options:
       default_value: "false"
       usage: |
         Include ancestors in process_uprobe events. Only used if 'enable-process-ancestors' is set to 'true'
+    - name: enable-rawsock
+      default_value: "false"
+      usage: Enable raw socket observability
     - name: enable-sandboxpolicies
       default_value: "true"
       usage: Enable sandboxpolicies
@@ -165,10 +178,19 @@ options:
       default_value: "false"
       usage: |
         Track system calls in the application model. Application model must be enabled for this to work
+    - name: enable-tcp
+      default_value: "false"
+      usage: Enable TCP observability
+    - name: enable-tcp-rtt
+      default_value: "false"
+      usage: Enable TCP RTT observability
     - name: enable-tracing-policy-crd
       default_value: "true"
       usage: |
         Enable TracingPolicy and TracingPolicyNamespaced custom resources
+    - name: enable-udp
+      default_value: "false"
+      usage: Enable UDP observability
     - name: endpoint-cache-size
       default_value: "65536"
       usage: |
