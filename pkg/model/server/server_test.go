@@ -10,13 +10,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/observer/observertesthelper/docker"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/model"
@@ -39,6 +42,44 @@ var testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 func TestMain(m *testing.M) {
 	ec := runner.TestSensorsRun(m, "ModelServer")
 	os.Exit(ec)
+}
+
+var tests = []processTree{
+	{
+		Name: "testBasicExecArgs",
+		Steps: []testStep{
+			newCmdStep("bash", "-c", "uname -r"),
+		},
+		Checks: []string{
+			`model.host.processes.exists(p, p.name.matches("/usr/bin/bash") && p.arguments.matches("-c.*uname.*-r.*"))`,
+		},
+		ArmSupport: true,
+	},
+	{
+		Name: "testBasicCurl",
+		Steps: []testStep{
+			newCmdStep("curl", "ebpf.io"),
+		},
+		// FIXME: For some reason, bytes_received is always 0 here, so we omit the check. This should be investigated at some point.
+		Checks: []string{
+			`model.host.processes.exists(p, p.name.matches(".*curl") && p.connections.exists(c, c.destination_name.matches("ebpf.io") && c.bytes_sent > 0))`,
+		},
+		ArmSupport: false,
+	},
+	{
+		Name: "testInInitTree",
+		Steps: []testStep{
+			newDockerCreateStep("test-in-init-tree", "bash:5.2.37", "bash", "-c", "sleep infinity"),
+			newDockerStartStep("test-in-init-tree"),
+			newSleepStep(1 * time.Second),
+			newDockerExecStep("test-in-init-tree", "bash", "-c", "echo testificate"),
+		},
+		Checks: []string{
+			`model.host.processes.exists(p, p.name.matches("bash") && p.arguments.matches("-c \"sleep infinity\"") && p.in_init_tree)`,
+			`model.host.processes.exists(p, p.name.matches("bash") && p.arguments.matches("-c \"echo testificate\"") && !p.in_init_tree)`,
+		},
+		ArmSupport: false,
+	},
 }
 
 type appModelPrinter struct {
@@ -77,38 +118,99 @@ func setupProcessTreeEnable(t *testing.T, ctx context.Context, doneWG *sync.Wait
 	readyWG.Wait()
 }
 
-type processTree struct {
-	Name       string
-	Cmd        string
-	Args       []string
-	Check      string
-	ArmSupport bool
+type testStep interface {
+	Step(testing.TB)
 }
 
-var tests = []processTree{
-	{
-		Name:       "testBasicExecArgs",
-		Cmd:        "bash",
-		Args:       []string{"-c", "uname -r"},
-		Check:      `model.host.processes.exists(p, p.name.matches("/usr/bin/bash") && p.arguments.matches("-c.*uname.*-r.*"))`,
-		ArmSupport: true,
-	},
-	{
-		Name: "testBasicCurl",
-		Cmd:  "curl",
-		Args: []string{"ebpf.io"},
-		// FIXME: For some reason, bytes_received is always 0 here, so we omit the check. This should be investigated at some point.
-		Check:      `model.host.processes.exists(p, p.name.matches(".*curl") && p.connections.exists(c, c.destination_name.matches("ebpf.io") && c.bytes_sent > 0))`,
-		ArmSupport: false,
-	},
+type cmdStep struct {
+	cmd  string
+	args []string
 }
 
-func execTest(t *testing.T, e processTree) {
-	cmd := exec.Command(e.Cmd, e.Args...)
+func (step *cmdStep) Step(tb testing.TB) {
+	cmd := exec.Command(step.cmd, step.args...)
 	err := cmd.Run()
 	if err != nil {
-		t.Fatalf("exec input pattern failed: %s: %s\n", e.Cmd, err)
+		tb.Fatalf("failed to run command `%s %s`: %s", step.cmd, strings.Join(step.args, " "), err)
 	}
+}
+
+func newCmdStep(cmd string, args ...string) *cmdStep {
+	return &cmdStep{
+		cmd,
+		args,
+	}
+}
+
+type dockerCreateStep struct {
+	containerName string
+	imageTag      string
+	args          []string
+}
+
+func (step *dockerCreateStep) Step(tb testing.TB) {
+	dockerArgs := []string{"--name", step.containerName, step.imageTag}
+	dockerArgs = append(dockerArgs, step.args...)
+	docker.Create(tb, dockerArgs...)
+}
+
+func newDockerCreateStep(containerName string, imageTag string, args ...string) *dockerCreateStep {
+	return &dockerCreateStep{
+		containerName,
+		imageTag,
+		args,
+	}
+}
+
+type dockerStartStep struct {
+	containerName string
+}
+
+func (step *dockerStartStep) Step(tb testing.TB) {
+	docker.Start(tb, step.containerName)
+}
+
+func newDockerStartStep(containerName string) *dockerStartStep {
+	return &dockerStartStep{
+		containerName,
+	}
+}
+
+type dockerExecStep struct {
+	containerName string
+	args          []string
+}
+
+func (step *dockerExecStep) Step(tb testing.TB) {
+	docker.Exec(tb, step.containerName, step.args...)
+}
+
+func newDockerExecStep(containerName string, args ...string) *dockerExecStep {
+	return &dockerExecStep{
+		containerName,
+		args,
+	}
+}
+
+type sleepStep struct {
+	duration time.Duration
+}
+
+func (step *sleepStep) Step(_ testing.TB) {
+	time.Sleep(step.duration)
+}
+
+func newSleepStep(duration time.Duration) *sleepStep {
+	return &sleepStep{
+		duration,
+	}
+}
+
+type processTree struct {
+	Name       string
+	Steps      []testStep
+	Checks     []string
+	ArmSupport bool
 }
 
 func TestProcessTree(t *testing.T) {
@@ -145,7 +247,9 @@ spec:
 				t.Skipf("ARM not supported for test %s, skipping", e.Name)
 			}
 
-			execTest(t, e)
+			for _, step := range e.Steps {
+				step.Step(t)
+			}
 
 			res, err := server.GetProcessModel([]string{}, false)
 			if err != nil {
@@ -154,9 +258,9 @@ spec:
 			appModelEvent := model.ProcessModelToApplicationModel(res)
 			modelChk, err := checker.NewApplicationModelChecker()
 			if err != nil {
-				t.Fatalf("NewApplicationModelChecker error: %s: %s", err, e.Check)
+				t.Fatalf("NewApplicationModelChecker error: %s", err)
 			}
-			resModel, errModel := modelChk.CheckApplicationModelEvent(ctx, appModelEvent, []string{e.Check})
+			resModel, errModel := modelChk.CheckApplicationModelEvent(ctx, appModelEvent, e.Checks)
 			if errModel != nil {
 				t.Fatalf("CheckApplicationModel error: %s: %s", errModel, appModelPrinter{model: appModelEvent})
 			}
