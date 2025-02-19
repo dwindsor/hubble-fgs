@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/netip"
@@ -24,6 +25,7 @@ import (
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+	"github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -37,6 +39,15 @@ var testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 func TestMain(m *testing.M) {
 	ec := runner.TestSensorsRun(m, "ModelServer")
 	os.Exit(ec)
+}
+
+type appModelPrinter struct {
+	model *v1alpha.ApplicationModelEvent
+}
+
+func (printer appModelPrinter) String() string {
+	b, _ := json.MarshalIndent(printer.model, "", "    ")
+	return string(b)
 }
 
 func setupProcessTreeEnable(t *testing.T, ctx context.Context, doneWG *sync.WaitGroup, policy string) { //nolint:revive
@@ -147,9 +158,9 @@ spec:
 			}
 			resModel, errModel := modelChk.CheckApplicationModelEvent(ctx, appModelEvent, []string{e.Check})
 			if errModel != nil {
-				t.Fatalf("CheckApplicationModel error: %s: %s", errModel, appModelEvent)
+				t.Fatalf("CheckApplicationModel error: %s: %s", errModel, appModelPrinter{model: appModelEvent})
 			}
-			if !assert.True(t, resModel.Ok(), "ApplicationModel: %s", appModelEvent) {
+			if !assert.True(t, resModel.Ok(), "ApplicationModel: %s", appModelPrinter{model: appModelEvent}) {
 				for _, f := range resModel.Failed() {
 					t.Logf("Check failed: %s", f)
 				}
