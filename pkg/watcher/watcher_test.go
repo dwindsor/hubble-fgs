@@ -15,21 +15,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	fakeTetragon "github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/fake"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	fakeTetragon "github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/fake"
+	"github.com/cilium/tetragon/pkg/watcher"
 )
 
 func TestFindServiceByIP(t *testing.T) {
 	ctx := context.Background()
 	k8sClient := fake.NewSimpleClientset()
-	watcher, err := NewK8sWatcher(k8sClient, 60*time.Second)
-	require.NoError(t, err)
-	watcher.Start()
+	k8sWatcher := watcher.NewK8sWatcher(k8sClient, nil, 60*time.Second)
+	err := AddServiceInformer(k8sWatcher)
+	assert.NoError(t, err)
+	k8sWatcher.Start()
 	svc1 := v1.Service{
 		ObjectMeta: metav1.ObjectMeta{Name: "svc1"},
 		Spec:       v1.ServiceSpec{ClusterIPs: []string{"1.1.1.1"}},
@@ -49,13 +51,13 @@ func TestFindServiceByIP(t *testing.T) {
 	_, err = k8sClient.CoreV1().Services("my-ns").Create(ctx, &svc3, metav1.CreateOptions{})
 	assert.NoError(t, err)
 	assert.Eventually(t, func() bool {
-		return len(watcher.GetInformer(serviceInformerName).GetStore().List()) == 3
+		return len(k8sWatcher.GetInformer(serviceInformerName).GetStore().List()) == 3
 	}, 10*time.Second, 1*time.Second)
-	res, err := FindServiceByIP(watcher, "1.1.1.1")
+	res, err := FindServiceByIP(k8sWatcher, "1.1.1.1")
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
 	assert.Equal(t, "svc1", res[0].Name)
-	res, err = FindServiceByIP(watcher, "4.4.4.4")
+	res, err = FindServiceByIP(k8sWatcher, "4.4.4.4")
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
 	assert.Equal(t, "svc3", res[0].Name)
@@ -63,11 +65,11 @@ func TestFindServiceByIP(t *testing.T) {
 
 func TestPodInfoByIP(t *testing.T) {
 	ctx := context.Background()
-	k8sClient := fake.NewSimpleClientset()
 	tetragonClient := fakeTetragon.NewSimpleClientset()
-	watcher, err := NewK8sWatcherWithTetragonClient(k8sClient, tetragonClient, 0)
-	require.NoError(t, err)
-	watcher.Start()
+	k8sWatcher := watcher.NewK8sWatcher(nil, tetragonClient, 60*time.Second)
+	err := AddPodInfoInformer(k8sWatcher)
+	assert.NoError(t, err)
+	k8sWatcher.Start()
 	pod1 := v1alpha1.PodInfo{
 		ObjectMeta: metav1.ObjectMeta{Name: "pod1"},
 		Status:     v1alpha1.PodInfoStatus{PodIPs: []v1alpha1.PodIP{{IP: "1.1.1.1"}}},
@@ -87,16 +89,16 @@ func TestPodInfoByIP(t *testing.T) {
 	_, err = tetragonClient.CiliumV1alpha1().PodInfo("my-ns").Create(ctx, &pod3, metav1.CreateOptions{})
 	assert.NoError(t, err)
 	assert.Eventually(t, func() bool {
-		return len(watcher.GetInformer(podInfoInformerName).GetStore().List()) == 3
+		return len(k8sWatcher.GetInformer(podInfoInformerName).GetStore().List()) == 3
 	}, 10*time.Second, 1*time.Second)
-	res, err := FindPodInfoByIP(watcher, "1.1.1.1")
+	res, err := FindPodInfoByIP(k8sWatcher, "1.1.1.1")
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
 	assert.Equal(t, "pod1", res[0].Name)
-	res, err = FindPodInfoByIP(watcher, "4.4.4.4")
+	res, err = FindPodInfoByIP(k8sWatcher, "4.4.4.4")
 	assert.NoError(t, err)
 	assert.Len(t, res, 1)
 	assert.Equal(t, "pod3", res[0].Name)
-	_, err = FindPodInfoByIP(watcher, "5.5.5.5")
+	_, err = FindPodInfoByIP(k8sWatcher, "5.5.5.5")
 	assert.Error(t, err)
 }

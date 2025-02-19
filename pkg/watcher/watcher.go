@@ -13,17 +13,11 @@ package watcher
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
-	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/fake"
-	"github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions"
 	"github.com/cilium/tetragon/pkg/logger"
 	oss "github.com/cilium/tetragon/pkg/watcher"
 
@@ -65,39 +59,28 @@ func podInfoIPIndexFunc(obj interface{}) ([]string, error) {
 	return nil, fmt.Errorf("%w - found %T", errNoPodInfo, obj)
 }
 
-// NewK8sWatcher returns a pointer to an initialized K8sWatcher struct.
-func NewK8sWatcher(k8sClient kubernetes.Interface, stateSyncIntervalSec time.Duration) (*oss.K8sWatcher, error) {
-	return NewK8sWatcherWithTetragonClient(k8sClient, fake.NewSimpleClientset(), stateSyncIntervalSec)
-}
-
-// NewK8sWatcherWithTetragonClient returns a pointer to an initialized K8sWatcher struct.
-func NewK8sWatcherWithTetragonClient(k8sClient kubernetes.Interface, tetragonClient versioned.Interface, stateSyncIntervalSec time.Duration) (*oss.K8sWatcher, error) {
-	k8sWatcher, err := oss.NewK8sWatcher(k8sClient, stateSyncIntervalSec)
-	if err != nil {
-		return nil, err
+func AddServiceInformer(w oss.Watcher) error {
+	if w == nil {
+		return fmt.Errorf("k8s watcher not initialized")
+	}
+	factory := w.GetK8sInformerFactory()
+	if factory == nil {
+		return fmt.Errorf("k8s informer factory not initialized")
 	}
 
-	serviceInformerFactory := informers.NewSharedInformerFactory(k8sClient, stateSyncIntervalSec)
-	serviceInformer := serviceInformerFactory.Core().V1().Services().Informer()
-	k8sWatcher.AddInformers(serviceInformerFactory, &oss.InternalInformer{
-		Name:     serviceInformerName,
-		Informer: serviceInformer,
-		Indexers: map[string]cache.IndexFunc{
-			serviceIPsIdx: serviceIPIndexFunc,
-		},
+	// add informer to the watcher
+	informer := factory.Core().V1().Services().Informer()
+	w.AddInformer(serviceInformerName, informer, map[string]cache.IndexFunc{
+		serviceIPsIdx: serviceIPIndexFunc,
 	})
 
-	podInfoInformerFactory := externalversions.NewSharedInformerFactory(tetragonClient, stateSyncIntervalSec)
-	podInfoInformer := podInfoInformerFactory.Cilium().V1alpha1().PodInfo().Informer()
-
-	// Init endpoint outside event handler to ensure we have maps and
-	// caches configured. But, more importantly avoid racing with sensor
-	// coming online. Because NewK8sWatcher is serialized with Sensor
-	// loads we avoid having to consider a Mutex. Get() may return nil
-	// if feature is not enabled.
+	// The endpoint cache will be initialized here if it wasn't before. This
+	// has to happen before the event handler is started and sensors are
+	// loaded, to ensure we have maps and caches configured, and avoid racing
+	// with sensor coming online. Get() returns nil if feature is not enabled.
 	c := endpoint.Get()
 	if c != nil {
-		serviceInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				switch s := obj.(type) {
 				case *corev1.Service:
@@ -119,8 +102,33 @@ func NewK8sWatcherWithTetragonClient(k8sClient kubernetes.Interface, tetragonCli
 				}
 			},
 		})
+	}
 
-		podInfoInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	return nil
+}
+
+func AddPodInfoInformer(w oss.Watcher) error {
+	if w == nil {
+		return fmt.Errorf("k8s watcher not initialized")
+	}
+	factory := w.GetCRDInformerFactory()
+	if factory == nil {
+		return fmt.Errorf("CRD informer factory not initialized")
+	}
+
+	// add informer to the watcher
+	informer := factory.Cilium().V1alpha1().PodInfo().Informer()
+	w.AddInformer(podInfoInformerName, informer, map[string]cache.IndexFunc{
+		podInfoIPsIdx: podInfoIPIndexFunc,
+	})
+
+	// The endpoint cache will be initialized here if it wasn't before. This
+	// has to happen before the event handler is started and sensors are
+	// loaded, to ensure we have maps and caches configured, and avoid racing
+	// with sensor coming online. Get() returns nil if feature is not enabled.
+	c := endpoint.Get()
+	if c != nil {
+		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				switch t := obj.(type) {
 				case *v1alpha1.PodInfo:
@@ -145,15 +153,7 @@ func NewK8sWatcherWithTetragonClient(k8sClient kubernetes.Interface, tetragonCli
 		})
 	}
 
-	k8sWatcher.AddInformers(podInfoInformerFactory, &oss.InternalInformer{
-		Name:     podInfoInformerName,
-		Informer: podInfoInformer,
-		Indexers: map[string]cache.IndexFunc{
-			podInfoIPsIdx: podInfoIPIndexFunc,
-		},
-	})
-
-	return k8sWatcher, nil
+	return nil
 }
 
 func FindServiceByIP(watcher oss.K8sResourceWatcher, ip string) ([]*corev1.Service, error) {

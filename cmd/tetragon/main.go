@@ -29,6 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
+	"github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
@@ -53,7 +54,6 @@ import (
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metricsconfig"
@@ -450,31 +450,56 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Probe runtime configuration and do not fail on errors
 	obs.UpdateRuntimeConf(option.Config.BpfDir)
 
+	// Initialize K8s watcher
 	var k8sWatcher watcher.K8sResourceWatcher
 	if option.Config.EnableK8s {
 		log.Info("Enabling Kubernetes API")
+		// retrieve k8s clients
 		config, err := k8sconf.K8sConfig()
 		if err != nil {
 			return err
 		}
-
 		if err = waitCRDs(config); err != nil {
 			return err
 		}
 		k8sClient := kubernetes.NewForConfigOrDie(config)
-		if option.Config.EnablePodInfo {
-			k8sWatcher, err = enterpriseWatcher.NewK8sWatcherWithTetragonClient(k8sClient, versioned.NewForConfigOrDie(config), 60*time.Second)
-		} else {
-			k8sWatcher, err = enterpriseWatcher.NewK8sWatcher(k8sClient, 60*time.Second)
-		}
+		crdClient := versioned.NewForConfigOrDie(config)
+
+		// create k8s watcher
+		k8sWatcher = watcher.NewK8sWatcher(k8sClient, crdClient, 60*time.Second)
+
+		// add informers for all resources
+		realK8sWatcher := k8sWatcher.(*watcher.K8sWatcher)
+		err = watcher.AddPodInformer(realK8sWatcher, true)
 		if err != nil {
 			return err
+		}
+		if option.Config.EnableTracingPolicyCRD {
+			err = crdwatcher.AddTracingPolicyInformer(ctx, k8sWatcher, observer.GetSensorManager())
+			if err != nil {
+				return err
+			}
+		}
+		if option.Config.EnablePodInfo {
+			// NB(anna): Service and PodInfo informers also provide metadata
+			// for the process tree. Should we tie it to the podinfo flag?
+			// Should we check the process tree flag here?
+			err = enterpriseWatcher.AddServiceInformer(k8sWatcher)
+			if err != nil {
+				return err
+			}
+			err = enterpriseWatcher.AddPodInfoInformer(k8sWatcher)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		log.Info("Disabling Kubernetes API")
 		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
 	}
+	// start k8s watcher
 	k8sWatcher.Start()
+
 	_, err = cilium.InitCiliumState(ctx, enterpriseOption.Config.EnableCilium)
 	if err != nil {
 		return fmt.Errorf("failed to init cilium state: %w", err)
@@ -560,9 +585,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	obs.AddListener(pm)
 	saveInitInfo()
 	if option.Config.EnableK8s {
-		if option.Config.EnableTracingPolicyCRD {
-			go crdwatcher.WatchTracePolicy(ctx, observer.GetSensorManager())
-		}
 		if enterpriseOption.Config.EnableSandboxPolicies && enterpriseOption.Config.EnableSandboxPoliciesCRD {
 			go crd.WatchSandboxPolicy(ctx, observer.GetSensorManager())
 		}
