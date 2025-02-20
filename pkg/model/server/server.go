@@ -459,6 +459,19 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		})
 	}
 
+	// Build process independent destination totals for host; these use
+	// the defined id 0. If the model is qualified by namespace ignore
+	// these host destinations.
+	if len(dstList[0]) != 0 && len(namespaces) == 0 {
+		processModel = append(processModel, &tetragon.ProcessModel{
+			Binary:    "",
+			Parent:    "",
+			Namespace: "",
+			Dest:      dstList[0],
+			Workload:  &tetragon.Workload{},
+		})
+	}
+
 	iter = m.Iterate()
 	for iter.Next(&key, &val) {
 		var ns, wl, kind string
