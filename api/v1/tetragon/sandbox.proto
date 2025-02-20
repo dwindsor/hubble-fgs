@@ -18,6 +18,8 @@ package tetragon;
 
 import "tetragon/tetragon.proto";
 
+option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
+
 message ProcessSandboxSyscall {
         tetragon.Process process = 1;
         tetragon.Process parent = 2;

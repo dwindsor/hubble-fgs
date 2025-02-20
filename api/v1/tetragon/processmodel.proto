@@ -21,6 +21,8 @@ import "tetragon/fgs.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
+option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
+
 message GetProcessModelRequest {
 	// Namespaces to list processes from. Specify "<host-namespace>" to list
 	// host processes. Leave it empty to list all processes.

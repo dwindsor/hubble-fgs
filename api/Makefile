@@ -3,15 +3,10 @@
 
 include ../Makefile.defs
 
-# renovate: datasource=docker
-BUILDER_IMAGE=quay.io/cilium/cilium-builder@sha256:a2036a3f6420647e6702695dabd2ffa4d2832db45157042d0255bdc707b8e1f2
-GO ?= go
+EXTRA_BUF_FLAGS ?=
 
 .PHONY: all
-all: proto
-
-.PHONY: proto
-proto: v1
+all: 
 
 .PHONY: copy_oss_files
 copy_oss_files:
@@ -27,13 +22,43 @@ copy_oss_files:
 		cat $$oss_file >> $$dst_file; \
 	done
 
-.PHONY: v1
-v1: copy_oss_files
-	$(CONTAINER_ENGINE) container run --rm \
+# FIXME: re-enable lint on the all target once we have a chance to fix the lints
+.PHONY: __all_local
+__all_local: __format_local __check-breaking_local __proto_local #__lint_local 
+
+.PHONY: __proto_local
+__proto_local: 
+	$(BUF) generate $(EXTRA_BUF_FLAGS)
+
+.PHONY: __lint_local
+__lint_local:
+	$(BUF) lint $(EXTRA_BUF_FLAGS)
+
+.PHONY: __format_local
+__format_local:
+	$(BUF) format -w $(EXTRA_BUF_FLAGS)
+
+.PHONY: __check-breaking_local
+__check-breaking_local:
+	$(BUF) breaking /src/api --against "$(CURDIR)/../.git#branch=$(BUF_BREAKING_AGAINST_BRANCH),subdir=api/v1" $(EXTRA_BUF_FLAGS)
+
+.PHONY: proto lint format check-breaking
+all proto lint format check-breaking: copy_oss_files
+	../contrib/scripts/repo-docker-run.sh --rm \
 		--volume $(CURDIR)/..:/src \
+		--workdir /src/api \
 		--user "$(shell id -u):$(shell id -g)" \
 		$(BUILDER_IMAGE) \
-		make -C /src/api/v1 -f Makefile.protoc
+		make -C /src/api __$@_local BUF_BREAKING_AGAINST_BRANCH=$(BUF_BREAKING_AGAINST_BRANCH) 
+
+.PHONY: debug
+debug:
+	@echo ../contrib/scripts/repo-docker-run.sh --rm \
+		--volume $(CURDIR)/..:/src \
+		--workdir /src/api \
+		--user "$(shell id -u):$(shell id -g)" \
+		$(BUILDER_IMAGE) \
+		buf $(EXTRA_BUF_FLAGS)
 
 .PHONY: vendor
 vendor:

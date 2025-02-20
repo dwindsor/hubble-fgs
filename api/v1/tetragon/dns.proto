@@ -20,6 +20,8 @@ import "tetragon/tetragon.proto";
 import "tetragon/fgs.proto";
 import "google/protobuf/wrappers.proto";
 
+option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
+
 enum DnsType {
     DNS_TYPE_UNDEF = 0;
     A     = 1;

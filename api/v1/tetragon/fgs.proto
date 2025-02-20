@@ -22,6 +22,8 @@ import "google/protobuf/wrappers.proto";
 
 package tetragon;
 
+option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
+
 message HistogramBucket {
 	uint32 percentile = 1;
 	uint32 size = 2;

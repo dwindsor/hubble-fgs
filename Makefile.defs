@@ -1,3 +1,11 @@
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 OSS_DIR := $(ROOT_DIR)/modules/tetragon-oss
 CONTAINER_ENGINE ?= docker
+
+GO ?= go
+CONTAINER_ENGINE ?= docker
+
+BUF ?= buf
+BUF_BREAKING_AGAINST_BRANCH ?= origin/master
+# renovate: datasource=docker
+BUILDER_IMAGE=quay.io/isovalent-dev/hubble-timescape-builder:2025-03-05@sha256:443a68a3b2e74fb1eb1386c68f4db2d140331e44b5f3e4e72532ff4b759f42af

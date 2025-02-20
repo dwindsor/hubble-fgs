@@ -26,6 +26,8 @@ import "google/protobuf/wrappers.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/field_mask.proto";
 
+option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
+
 // Represents the type of a Tetragon event.
 //
 // NOTE: EventType constants must be in sync with the numbers used in the
