@@ -39,12 +39,10 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"github.com/cilium/tetragon/pkg/watcher"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/cilium/tetragon/pkg/sensors"
@@ -104,15 +102,6 @@ func (r *raceK8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
 func (r *raceK8sWatcher) FindMirrorPod(_ string) (*corev1.Pod, error) {
 	return nil, fmt.Errorf("raceK8sWatcher does not support Mirror pods")
 }
-
-func (r *raceK8sWatcher) AddInformers(_ watcher.InternalSharedInformerFactory, _ ...*watcher.InternalInformer) {
-}
-
-func (r *raceK8sWatcher) GetInformer(_ string) cache.SharedIndexInformer {
-	return nil
-}
-
-func (r *raceK8sWatcher) Start() {}
 
 type raceEncoder struct {
 	count int
