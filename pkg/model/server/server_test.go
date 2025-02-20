@@ -58,7 +58,7 @@ var tests = []processTree{
 	{
 		Name: "testBasicCurl",
 		Steps: []testStep{
-			newCmdStep("curl", "ebpf.io"),
+			newCmdStep("curl", "-4", "ebpf.io"),
 		},
 		// FIXME: For some reason, bytes_received is always 0 here, so we omit the check. This should be investigated at some point.
 		Checks: []string{
