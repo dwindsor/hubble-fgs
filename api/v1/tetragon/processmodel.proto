@@ -16,136 +16,133 @@ syntax = "proto3";
 
 package tetragon;
 
-import "tetragon/tetragon.proto";
-import "tetragon/fgs.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+import "tetragon/fgs.proto";
+import "tetragon/tetragon.proto";
 
 option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
 
 message GetProcessModelRequest {
-	// Namespaces to list processes from. Specify "<host-namespace>" to list
-	// host processes. Leave it empty to list all processes.
-	repeated string namespaces = 1;
-	bool debug = 2;
+  // Namespaces to list processes from. Specify "<host-namespace>" to list
+  // host processes. Leave it empty to list all processes.
+  repeated string namespaces = 1;
+  bool debug = 2;
 }
 
 message Workload {
-	string name = 1;
-	string kind = 2;
+  string name = 1;
+  string kind = 2;
 }
 
 message DestinationStats {
-	uint64 TxBytes = 1;
-	uint64 RxBytes = 2;
-	uint64 TxDrops = 3;
-	uint64 TxLimit = 4;
-	uint64 TxQuota = 5;
-	google.protobuf.Timestamp KtimeLastReset = 6;
-	google.protobuf.Timestamp KtimeTxReset = 7;
+  uint64 TxBytes = 1;
+  uint64 RxBytes = 2;
+  uint64 TxDrops = 3;
+  uint64 TxLimit = 4;
+  uint64 TxQuota = 5;
+  google.protobuf.Timestamp KtimeLastReset = 6;
+  google.protobuf.Timestamp KtimeTxReset = 7;
 }
 
 message Destination {
-	repeated string destination_names = 1;
-	tetragon.Pod destination_pod = 2;
-	uint64 Port = 3;
-	DestinationStats stats = 4;
-	tetragon.Service destination_service = 5;
+  repeated string destination_names = 1;
+  tetragon.Pod destination_pod = 2;
+  uint64 Port = 3;
+  DestinationStats stats = 4;
+  tetragon.Service destination_service = 5;
 }
 
 message ProcessModel {
-	string binary = 1;
-	string binary_args = 2;
-	string parent = 3;
-	string parent_args = 4;
-	string namespace = 5;
-	Workload workload = 6;
-	repeated Destination dest = 7;
-	// If set to true, this process is containerized and is a member of the
-	// process tree rooted at pid=1 in its PID namespace. This is useful if,
-	// for example, you wish to discern whether a process was spawned using a
-	// tool like nsenter or kubectl exec.
-	google.protobuf.BoolValue in_init_tree = 8;
+  string binary = 1;
+  string binary_args = 2;
+  string parent = 3;
+  string parent_args = 4;
+  string namespace = 5;
+  Workload workload = 6;
+  repeated Destination dest = 7;
+  // If set to true, this process is containerized and is a member of the
+  // process tree rooted at pid=1 in its PID namespace. This is useful if,
+  // for example, you wish to discern whether a process was spawned using a
+  // tool like nsenter or kubectl exec.
+  google.protobuf.BoolValue in_init_tree = 8;
 }
 
 message GetProcessModelResponse {
-        repeated ProcessModel processes = 1;
+  repeated ProcessModel processes = 1;
 }
 
 service ProcessModelService {
-rpc GetProcessModel(GetProcessModelRequest) returns (GetProcessModelResponse) {}
-rpc GetEndpointMap(GetEndpointMapRequest) returns (GetEndpointMapResponse) {}
-rpc GetDestinationMap(GetDestinationMapRequest) returns (GetDestinationMapResponse) {}
-rpc GetProcesses(GetProcessModelRequest) returns (stream ProcessModel) {}
-rpc GetProcessMap(GetProcessMapRequest) returns(GetProcessMapResponse) {}
+  rpc GetProcessModel(GetProcessModelRequest) returns (GetProcessModelResponse) {}
+  rpc GetEndpointMap(GetEndpointMapRequest) returns (GetEndpointMapResponse) {}
+  rpc GetDestinationMap(GetDestinationMapRequest) returns (GetDestinationMapResponse) {}
+  rpc GetProcesses(GetProcessModelRequest) returns (stream ProcessModel) {}
+  rpc GetProcessMap(GetProcessMapRequest) returns (GetProcessMapResponse) {}
 }
 
 enum EndpointType {
-	Unknown = 0;
-	Dnstype = 1;
-	PodType = 2;
-	IpType = 3;
-	ServiceType = 4;
-	ListenType = 5;
+  Unknown = 0;
+  Dnstype = 1;
+  PodType = 2;
+  IpType = 3;
+  ServiceType = 4;
+  ListenType = 5;
 }
 
 message Endpoint {
-	string srcIP = 1;
-	uint64 key = 2;
-	EndpointType type = 3;
-	string dns = 4;
-	string kind = 5;
-	string namespace = 6;
-	string name = 7;
-	string ip = 8;
-	string port = 9;
+  string srcIP = 1;
+  uint64 key = 2;
+  EndpointType type = 3;
+  string dns = 4;
+  string kind = 5;
+  string namespace = 6;
+  string name = 7;
+  string ip = 8;
+  string port = 9;
 }
 
 message EndpointMap {
-	repeated Endpoint endpoints = 1;
+  repeated Endpoint endpoints = 1;
 }
 
 message GetEndpointMapResponse {
-        EndpointMap map = 1;
+  EndpointMap map = 1;
 }
 
-message GetEndpointMapRequest {
-}
+message GetEndpointMapRequest {}
 
 message ProcessUUID {
-	string Binary = 1;
-	string Args = 2;
-	uint64 id = 3;
-	uint32 Depth = 4;
-	repeated ProcessUUID children = 5;
+  string Binary = 1;
+  string Args = 2;
+  uint64 id = 3;
+  uint32 Depth = 4;
+  repeated ProcessUUID children = 5;
 }
 
 message ProcessMap {
-	repeated ProcessUUID process = 1;
+  repeated ProcessUUID process = 1;
 }
 
 message GetProcessMapResponse {
-	ProcessMap map = 1;
+  ProcessMap map = 1;
 }
 
-message GetProcessMapRequest {
-}
+message GetProcessMapRequest {}
 
 message DestinationEndpointDebug {
-	uint64 local_id = 1;
-	uint64 local_ns_id = 2;
-	uint64 destination_id = 3;
-	uint64 destination_source = 4;
-	uint64 destination_port = 5;
+  uint64 local_id = 1;
+  uint64 local_ns_id = 2;
+  uint64 destination_id = 3;
+  uint64 destination_source = 4;
+  uint64 destination_port = 5;
 }
 
 message GetDestinationMapResponse {
-	repeated DestinationEndpointDebug destinations = 1;
+  repeated DestinationEndpointDebug destinations = 1;
 }
 
-message GetDestinationMapRequest {
-}
+message GetDestinationMapRequest {}
 
 service EndpointMapService {
-rpc GetEndpointMap(GetEndpointMapRequest) returns (GetEndpointMapResponse) {}
+  rpc GetEndpointMap(GetEndpointMapRequest) returns (GetEndpointMapResponse) {}
 }

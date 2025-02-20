@@ -40,6 +40,7 @@ const (
 )
 
 type Server struct {
+	tetragon.UnimplementedProcessModelServiceServer
 }
 
 func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestinationMapRequest) (*tetragon.GetDestinationMapResponse, error) {

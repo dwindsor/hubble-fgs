@@ -21,12 +21,11 @@ import "tetragon/tetragon.proto";
 option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
 
 message ProcessSandboxSyscall {
-        tetragon.Process process = 1;
-        tetragon.Process parent = 2;
-        // syscall name
-        string name = 3;
-	// policy name
-	string policy = 4;
-	repeated Process ancestors = 5; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  // syscall name
+  string name = 3;
+  // policy name
+  string policy = 4;
+  repeated Process ancestors = 5; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
-

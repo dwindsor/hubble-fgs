@@ -14,517 +14,519 @@
 
 syntax = "proto3";
 
-// Extend OSS protobuf with Enterprise extensions
-import "tetragon/tetragon.proto";
+package tetragon;
+
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
+// Extend OSS protobuf with Enterprise extensions
+import "tetragon/tetragon.proto";
 
-package tetragon;
+option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
 
 message HistogramBucket {
-	uint32 percentile = 1;
-	uint32 size = 2;
-	uint64 count = 3;
+  uint32 percentile = 1;
+  uint32 size = 2;
+  uint64 count = 3;
 }
 
 message Histogram {
-    repeated HistogramBucket buckets = 1;
-    uint64 sum = 2;
+  repeated HistogramBucket buckets = 1;
+  uint64 sum = 2;
 }
 
 message InterfaceStats {
-    string interface_name = 1;
-    uint32 interface_ifindex = 2;
-    uint64 bytes_sent = 3;
-    uint64 bytes_received = 4;
-    uint64 packets_sent = 5;
-    uint64 packets_received = 6;
-    uint64 tx_errors = 7;
-    uint64 rx_errors = 8;
-    uint64 tx_drops = 9;
-    uint64 rx_drops = 10;
-    tetragon.Pod    pod = 11;
-    string netns = 12;
-    string container_name = 13;
-    Histogram qlen = 14;
+  string interface_name = 1;
+  uint32 interface_ifindex = 2;
+  uint64 bytes_sent = 3;
+  uint64 bytes_received = 4;
+  uint64 packets_sent = 5;
+  uint64 packets_received = 6;
+  uint64 tx_errors = 7;
+  uint64 rx_errors = 8;
+  uint64 tx_drops = 9;
+  uint64 rx_drops = 10;
+  tetragon.Pod pod = 11;
+  string netns = 12;
+  string container_name = 13;
+  Histogram qlen = 14;
 }
 
 message SocketStats {
-    uint64 bytes_sent = 1;
-    uint64 bytes_received = 2;
-    uint32 segs_in = 3;
-    uint32 segs_out = 4;
+  uint64 bytes_sent = 1;
+  uint64 bytes_received = 2;
+  uint32 segs_in = 3;
+  uint32 segs_out = 4;
 
-    // TCP specific:
-    uint32 srtt = 5;
-    uint64 retransmits_bytes = 6;
-    uint32 retransmits_segs = 7;
-    uint32 to_zero_window = 8;
+  // TCP specific:
+  uint32 srtt = 5;
+  uint64 retransmits_bytes = 6;
+  uint32 retransmits_segs = 7;
+  uint32 to_zero_window = 8;
 
-    uint32 sk_drop = 9;
+  uint32 sk_drop = 9;
 
-    // UDP specific:
-    uint64 bytes_consumed = 10;
-    uint64 bytes_submitted = 11;
-    uint32 segs_consumed = 12;
-    uint32 segs_submitted = 13;
-    uint32 skb_consume_misses = 14;
+  // UDP specific:
+  uint64 bytes_consumed = 10;
+  uint64 bytes_submitted = 11;
+  uint32 segs_consumed = 12;
+  uint32 segs_submitted = 13;
+  uint32 skb_consume_misses = 14;
 
-    // TCP RTT Histogram:
-    Histogram rtt = 15;
+  // TCP RTT Histogram:
+  Histogram rtt = 15;
 
-    // TCP/UDP Latency Histogram:
-    Histogram latency = 16;
+  // TCP/UDP Latency Histogram:
+  Histogram latency = 16;
 }
 
 enum SocketProtocol {
-    UNKNOWN = 0;
-    ICMP = 1;
-    TCP = 6;
-    UDP = 17;
-    ICMPV6 = 58;
+  UNKNOWN = 0;
+  ICMP = 1;
+  TCP = 6;
+  UDP = 17;
+  ICMPV6 = 58;
 }
 
 message Service {
-	string Name = 1;
-	string Namespace = 2;
+  string Name = 1;
+  string Namespace = 2;
 }
 
 message ProcessConnect {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    string source_ip = 3;
-    google.protobuf.UInt32Value source_port = 4;
-    string destination_ip = 5;
-    google.protobuf.UInt32Value destination_port = 6;
-    repeated string destination_names = 7;
-    uint64 sock_cookie = 8;
-    tetragon.Pod destination_pod = 9;
-    SocketProtocol protocol = 10;
-    Service destination_service = 11;
-    repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string source_ip = 3;
+  google.protobuf.UInt32Value source_port = 4;
+  string destination_ip = 5;
+  google.protobuf.UInt32Value destination_port = 6;
+  repeated string destination_names = 7;
+  uint64 sock_cookie = 8;
+  tetragon.Pod destination_pod = 9;
+  SocketProtocol protocol = 10;
+  Service destination_service = 11;
+  repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessClose {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    string source_ip = 3;
-    google.protobuf.UInt32Value source_port = 4;
-    string destination_ip = 5;
-    google.protobuf.UInt32Value destination_port = 6;
-    repeated string destination_names = 7;
-    uint64 sock_cookie = 8;
-    SocketStats stats = 9;
-    tetragon.Pod destination_pod = 10;
-    SocketProtocol protocol = 11;
-    string socket_type = 12;
-    google.protobuf.Duration duration = 13;
-    Service destination_service = 14;
-    repeated Process ancestors = 15; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string source_ip = 3;
+  google.protobuf.UInt32Value source_port = 4;
+  string destination_ip = 5;
+  google.protobuf.UInt32Value destination_port = 6;
+  repeated string destination_names = 7;
+  uint64 sock_cookie = 8;
+  SocketStats stats = 9;
+  tetragon.Pod destination_pod = 10;
+  SocketProtocol protocol = 11;
+  string socket_type = 12;
+  google.protobuf.Duration duration = 13;
+  Service destination_service = 14;
+  repeated Process ancestors = 15; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessListen {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    string ip = 3;
-    google.protobuf.UInt32Value port = 4;
-    uint64 sock_cookie = 5;
-    SocketProtocol protocol = 6;
-    repeated Process ancestors = 7; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string ip = 3;
+  google.protobuf.UInt32Value port = 4;
+  uint64 sock_cookie = 5;
+  SocketProtocol protocol = 6;
+  repeated Process ancestors = 7; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessAccept {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    string source_ip = 3;
-    google.protobuf.UInt32Value source_port = 4;
-    string destination_ip = 5;
-    google.protobuf.UInt32Value destination_port = 6;
-    repeated string destination_names = 7;
-    uint64 sock_cookie = 8;
-    tetragon.Pod destination_pod = 9;
-    SocketProtocol protocol = 10;
-    Service destination_service = 11;
-    repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string source_ip = 3;
+  google.protobuf.UInt32Value source_port = 4;
+  string destination_ip = 5;
+  google.protobuf.UInt32Value destination_port = 6;
+  repeated string destination_names = 7;
+  uint64 sock_cookie = 8;
+  tetragon.Pod destination_pod = 9;
+  SocketProtocol protocol = 10;
+  Service destination_service = 11;
+  repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessRawsockCreate {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    uint64 sock_cookie = 3;
-    repeated Process ancestors = 4; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  uint64 sock_cookie = 3;
+  repeated Process ancestors = 4; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessRawsockClose {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    uint64 sock_cookie = 3;
-    google.protobuf.Duration duration = 4;
-    repeated Process ancestors = 5; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  uint64 sock_cookie = 3;
+  google.protobuf.Duration duration = 4;
+  repeated Process ancestors = 5; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessIcmp {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    string source_ip = 3;
-    string destination_ip = 4;
-    repeated string destination_names = 5;
-    uint64 sock_cookie = 6;
-    tetragon.Pod destination_pod = 7;
-    SocketProtocol protocol = 8;
-    string icmp_type = 9;
-    string icmp_code = 10;
-    uint32 icmp_type_value = 11;
-    uint32 icmp_code_value = 12;
-    uint32 identifier = 13;
-    uint32 sequence_number = 14;
-    uint32 icmp_data_len = 15;
-    string direction = 16;
-    SocketProtocol icmp_ip_protocol = 17;
-    uint32 icmp_ip_port = 18;
-    uint32 icmp_ip_ttl = 19;
-    uint32 icmp_ip_pointer = 20;
-    string icmp_ip_gateway = 21;
-    Service destination_service = 22;
-    repeated Process ancestors = 23; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string source_ip = 3;
+  string destination_ip = 4;
+  repeated string destination_names = 5;
+  uint64 sock_cookie = 6;
+  tetragon.Pod destination_pod = 7;
+  SocketProtocol protocol = 8;
+  string icmp_type = 9;
+  string icmp_code = 10;
+  uint32 icmp_type_value = 11;
+  uint32 icmp_code_value = 12;
+  uint32 identifier = 13;
+  uint32 sequence_number = 14;
+  uint32 icmp_data_len = 15;
+  string direction = 16;
+  SocketProtocol icmp_ip_protocol = 17;
+  uint32 icmp_ip_port = 18;
+  uint32 icmp_ip_ttl = 19;
+  uint32 icmp_ip_pointer = 20;
+  string icmp_ip_gateway = 21;
+  Service destination_service = 22;
+  repeated Process ancestors = 23; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessIpError {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    string source_ip = 3;
-    string destination_ip = 4;
-    string version = 5;
-    uint64 sock_cookie = 6;
-    tetragon.Pod destination_pod = 7;
-    string details = 8;
-    string send = 9;
-    uint64 version_byte = 10;
-    uint64 data = 11;
-    Service destination_service = 12;
-    repeated Process ancestors = 13; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string source_ip = 3;
+  string destination_ip = 4;
+  string version = 5;
+  uint64 sock_cookie = 6;
+  tetragon.Pod destination_pod = 7;
+  string details = 8;
+  string send = 9;
+  uint64 version_byte = 10;
+  uint64 data = 11;
+  Service destination_service = 12;
+  repeated Process ancestors = 13; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 enum FileAction {
-    FILE_INVALID = 0;
-    FILE_WRITE = 1;
-    FILE_READ = 2;
-    FILE_DELETE = 3;
-    FILE_CREATE = 4;
-    FILE_RMDIR = 5;
-    FILE_MKDIR = 6;
-    FILE_RENAME = 7;
-    FILE_READDIR = 8;
-    FILE_CHATTR = 9;
-    FILE_EXEC = 10;
-    FILE_LINK = 11;
-    FILE_OPEN = 12;
+  FILE_INVALID = 0;
+  FILE_WRITE = 1;
+  FILE_READ = 2;
+  FILE_DELETE = 3;
+  FILE_CREATE = 4;
+  FILE_RMDIR = 5;
+  FILE_MKDIR = 6;
+  FILE_RENAME = 7;
+  FILE_READDIR = 8;
+  FILE_CHATTR = 9;
+  FILE_EXEC = 10;
+  FILE_LINK = 11;
+  FILE_OPEN = 12;
 }
 
 message FileSystem {
-    string name = 1;
-    string dev = 2;
-    string id = 3;
-    string uuid = 4;
+  string name = 1;
+  string dev = 2;
+  string id = 3;
+  string uuid = 4;
 }
 
 message Inode {
-    uint64 number = 1;
-    FileSystem fs = 2;
+  uint64 number = 1;
+  FileSystem fs = 2;
 }
 
 enum FileScope {
-    UNKNOWN_FILE = 0;
-    HOST_FILE = 1; // HOST_FILE means that the file is monitored as a host file, and the access happened from a container or the host
-    CONTAINER_FILE_LOCAL = 2; // CONTAINER_FILE_LOCAL means that the file is monitored as a container file, and the access happened from the same container
-    CONTAINER_FILE_REMOTE = 3; // CONTAINER_FILE_REMOTE means that the file is monitored as a container file, and the access happened from a different container or the host
+  UNKNOWN_FILE = 0;
+  HOST_FILE = 1; // HOST_FILE means that the file is monitored as a host file, and the access happened from a container or the host
+  CONTAINER_FILE_LOCAL = 2; // CONTAINER_FILE_LOCAL means that the file is monitored as a container file, and the access happened from the same container
+  CONTAINER_FILE_REMOTE = 3; // CONTAINER_FILE_REMOTE means that the file is monitored as a container file, and the access happened from a different container or the host
 }
 
 message FileLocation {
-    FileScope type = 1;
-    string container_id = 2; // only valid if type == CONTAINER_FILE_{LOCAL, REMOTE}
-    tetragon.Pod pod =  3; // only valid if type == CONTAINER_FILE_REMOTE
+  FileScope type = 1;
+  string container_id = 2; // only valid if type == CONTAINER_FILE_{LOCAL, REMOTE}
+  tetragon.Pod pod = 3; // only valid if type == CONTAINER_FILE_REMOTE
 }
 
 message FileDetails {
-    oneof filename {
-        string str = 1;
-    }
-    Inode inode = 2;
-    Inode parent_inode = 3;
-    FileLocation location = 4;
-    repeated string open_flags = 5;
+  oneof filename {
+    string str = 1;
+  }
+  Inode inode = 2;
+  Inode parent_inode = 3;
+  FileLocation location = 4;
+  repeated string open_flags = 5;
 }
 
 message FileIO {
-    string offset = 1;
-    string size = 2;
+  string offset = 1;
+  string size = 2;
 }
 
 // from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_info.h
 enum DigestAlgo {
-    HASH_ALGO_MD4 = 0;
-    HASH_ALGO_MD5 = 1;
-    HASH_ALGO_SHA1 = 2;
-    HASH_ALGO_RIPE_MD_160 = 3;
-    HASH_ALGO_SHA256 = 4;
-    HASH_ALGO_SHA384 = 5;
-    HASH_ALGO_SHA512 = 6;
-    HASH_ALGO_SHA224 = 7;
-    HASH_ALGO_RIPE_MD_128 = 8;
-    HASH_ALGO_RIPE_MD_256 = 9;
-    HASH_ALGO_RIPE_MD_320 = 10;
-    HASH_ALGO_WP_256 = 11;
-    HASH_ALGO_WP_384 = 12;
-    HASH_ALGO_WP_512 = 13;
-    HASH_ALGO_TGR_128 = 14;
-    HASH_ALGO_TGR_160 = 15;
-    HASH_ALGO_TGR_192 = 16;
-    HASH_ALGO_SM3_256 = 17;
-    HASH_ALGO_STREEBOG_256 = 18;
-    HASH_ALGO_STREEBOG_512 = 19;
-    HASH_ALGO__LAST = 20;
+  HASH_ALGO_MD4 = 0;
+  HASH_ALGO_MD5 = 1;
+  HASH_ALGO_SHA1 = 2;
+  HASH_ALGO_RIPE_MD_160 = 3;
+  HASH_ALGO_SHA256 = 4;
+  HASH_ALGO_SHA384 = 5;
+  HASH_ALGO_SHA512 = 6;
+  HASH_ALGO_SHA224 = 7;
+  HASH_ALGO_RIPE_MD_128 = 8;
+  HASH_ALGO_RIPE_MD_256 = 9;
+  HASH_ALGO_RIPE_MD_320 = 10;
+  HASH_ALGO_WP_256 = 11;
+  HASH_ALGO_WP_384 = 12;
+  HASH_ALGO_WP_512 = 13;
+  HASH_ALGO_TGR_128 = 14;
+  HASH_ALGO_TGR_160 = 15;
+  HASH_ALGO_TGR_192 = 16;
+  HASH_ALGO_SM3_256 = 17;
+  HASH_ALGO_STREEBOG_256 = 18;
+  HASH_ALGO_STREEBOG_512 = 19;
+  HASH_ALGO__LAST = 20;
 }
 
 message FileDigest {
-    DigestAlgo algo = 1;
-    string hash = 2;
-    int64 error = 3;
+  DigestAlgo algo = 1;
+  string hash = 2;
+  int64 error = 3;
 }
 
 message GenericFileArg {
-    FileDetails file = 1;
-    FileIO io = 2 [deprecated=true];
-    tetragon.Namespace mnt_ns = 3;
-    FileDigest digest = 4;
+  FileDetails file = 1;
+  FileIO io = 2 [deprecated = true];
+  tetragon.Namespace mnt_ns = 3;
+  FileDigest digest = 4;
 }
 
 message RenameFileArg {
-    FileDetails src = 1;
-    FileDetails dst = 2;
-    tetragon.Namespace mnt_ns = 3;
-    repeated string flags = 4;
+  FileDetails src = 1;
+  FileDetails dst = 2;
+  tetragon.Namespace mnt_ns = 3;
+  repeated string flags = 4;
 }
 
 message ReadDirArg {
-    FileDetails file = 1;
-    tetragon.Namespace mnt_ns = 2;
+  FileDetails file = 1;
+  tetragon.Namespace mnt_ns = 2;
 }
 
 message AttrChange {
-    string new = 1;
-    string old = 2;
+  string new = 1;
+  string old = 2;
 }
 
 message FileAttr {
-    AttrChange permissions = 1;
-    AttrChange uid = 2;
-    AttrChange gid = 3;
+  AttrChange permissions = 1;
+  AttrChange uid = 2;
+  AttrChange gid = 3;
 }
 
 message AttrArg {
-    FileDetails file = 1;
-    FileAttr attr = 2;
-    tetragon.Namespace mnt_ns = 3;
+  FileDetails file = 1;
+  FileAttr attr = 2;
+  tetragon.Namespace mnt_ns = 3;
 }
 
 message FileArgument {
-    oneof arg {
-        GenericFileArg generic_arg = 1;
-        RenameFileArg rename_arg = 2;
-        ReadDirArg readdir_arg = 3;
-        AttrArg attr_arg = 4;
-    }
+  oneof arg {
+    GenericFileArg generic_arg = 1;
+    RenameFileArg rename_arg = 2;
+    ReadDirArg readdir_arg = 3;
+    AttrArg attr_arg = 4;
+  }
 }
 
 enum FileOperation {
-    FILE_OP_UNKNOWN = 0x00;
-    FILE_OP_POST = 0x01;
-    FILE_OP_BLOCK = 0x02;
-    FILE_OP_NOPOST = 0x04;
+  FILE_OP_UNKNOWN = 0x00;
+  FILE_OP_POST = 0x01;
+  FILE_OP_BLOCK = 0x02;
+  FILE_OP_NOPOST = 0x04;
 }
 
 message ProcessFile {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    FileAction action = 3;
-    FileArgument args = 4;
-    string permissions = 5;
-    string uid = 6;
-    string gid = 7;
-    google.protobuf.Timestamp time = 8;
-    string hook = 9;
-    repeated FileOperation operation = 10;
-    string tracing_policy = 11;
-    string rule_matched = 12;
-    repeated Process ancestors = 13; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  FileAction action = 3;
+  FileArgument args = 4;
+  string permissions = 5;
+  string uid = 6;
+  string gid = 7;
+  google.protobuf.Timestamp time = 8;
+  string hook = 9;
+  repeated FileOperation operation = 10;
+  string tracing_policy = 11;
+  string rule_matched = 12;
+  repeated Process ancestors = 13; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 // ProcessFileExec events provide (additional to ProcessExec) information about files being executed.
 // They are configured in the "exec:" section of the TracingPolicy.
 message ProcessFileExec {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    FileDetails file = 3;
-    FileDigest digest = 4;
-    repeated FileOperation operations = 5;
-    repeated Process ancestors = 6; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  FileDetails file = 3;
+  FileDigest digest = 4;
+  repeated FileOperation operations = 5;
+  repeated Process ancestors = 6; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message SockInfo {
-    string source_ip = 1;
-    google.protobuf.UInt32Value source_port = 2;
-    string destination_ip = 3;
-    google.protobuf.UInt32Value destination_port = 4;
-    uint64 sock_cookie = 5;
-    SocketProtocol protocol = 6;
-    repeated string destination_names = 7;
-    tetragon.Pod destination_pod = 8;
-  }
+  string source_ip = 1;
+  google.protobuf.UInt32Value source_port = 2;
+  string destination_ip = 3;
+  google.protobuf.UInt32Value destination_port = 4;
+  uint64 sock_cookie = 5;
+  SocketProtocol protocol = 6;
+  repeated string destination_names = 7;
+  tetragon.Pod destination_pod = 8;
+}
 
 message ProcessSockStats {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    SockInfo socket = 3;
-    SocketStats stats = 4;
-    repeated Process ancestors = 5; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  SockInfo socket = 3;
+  SocketStats stats = 4;
+  repeated Process ancestors = 5; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 enum TlsCertificateError {
-    TLS_CERT_ERROR_UNDEF             = 0;
-    TLS_CERT_ERROR_UNKNOWN           = 1;
-    TLS_CERT_ERROR_TOO_LARGE         = 2 [deprecated=true];
-    TLS_CERT_ERROR_GET_DATA_HDR      = 3 [deprecated=true];
-    TLS_CERT_ERROR_NO_BUFFER         = 4 [deprecated=true];
-    TLS_CERT_ERROR_COPY              = 5 [deprecated=true];
-    TLS_CERT_ERROR_LENGTH_READ       = 6;
-    TLS_CERT_ERROR_CERT_READ         = 7;
-    TLS_CERT_ERROR_CERT_PARTIAL      = 8;
-    TLS_CERT_ERROR_PARSE_X509        = 9;
-    TLS_CERT_ERROR_MISSING_CODE      = 10 [deprecated=true];
-    TLS_CERT_ERROR_GET_DATA_CERT     = 11 [deprecated=true];
-    TLS_CERT_ERROR_GET_DATA_MORECERT = 12 [deprecated=true];
-    TLS_CERT_ERROR_COPY_CERT         = 13 [deprecated=true];
-    TLS_CERT_ERROR_COPY_MORE_CERT    = 14 [deprecated=true];
-    TLS_CERT_ERROR_BAD_HEADER        = 15;
-    TLS_CERT_ERROR_MISSING_ERROR     = 16;
-    TLS_CERT_ERROR_SPURIOUS_CERTS    = 17;
+  TLS_CERT_ERROR_UNDEF = 0;
+  TLS_CERT_ERROR_UNKNOWN = 1;
+  TLS_CERT_ERROR_TOO_LARGE = 2 [deprecated = true];
+  TLS_CERT_ERROR_GET_DATA_HDR = 3 [deprecated = true];
+  TLS_CERT_ERROR_NO_BUFFER = 4 [deprecated = true];
+  TLS_CERT_ERROR_COPY = 5 [deprecated = true];
+  TLS_CERT_ERROR_LENGTH_READ = 6;
+  TLS_CERT_ERROR_CERT_READ = 7;
+  TLS_CERT_ERROR_CERT_PARTIAL = 8;
+  TLS_CERT_ERROR_PARSE_X509 = 9;
+  TLS_CERT_ERROR_MISSING_CODE = 10 [deprecated = true];
+  TLS_CERT_ERROR_GET_DATA_CERT = 11 [deprecated = true];
+  TLS_CERT_ERROR_GET_DATA_MORECERT = 12 [deprecated = true];
+  TLS_CERT_ERROR_COPY_CERT = 13 [deprecated = true];
+  TLS_CERT_ERROR_COPY_MORE_CERT = 14 [deprecated = true];
+  TLS_CERT_ERROR_BAD_HEADER = 15;
+  TLS_CERT_ERROR_MISSING_ERROR = 16;
+  TLS_CERT_ERROR_SPURIOUS_CERTS = 17;
 }
 
 message Tls {
-    tetragon.Process process = 1;
-    string source_ip = 2;
-    google.protobuf.UInt32Value source_port = 3;
-    string destination_ip = 4;
-    google.protobuf.UInt32Value destination_port = 5;
-    string negotiated_version = 6;
-    string supported_versions = 7;
-    string sni_type = 8;
-    string sni_name = 9;
-    string cipher = 10;
-    string client_flags = 11;
-    string server_flags = 12;
-    string client_version = 13;
-    string server_version = 14;
-    string client_alert = 15;
-    string server_alert = 16;
-    string client_session = 17;
-    string server_session = 18;
-    repeated string certificates = 19;
-    TlsCertificateError certificate_error = 20;
-    uint32 parser_state_next = 21 [deprecated=true];
-    uint32 parser_state_needed = 22 [deprecated=true];
-    uint32 parser_state_csize = 23 [deprecated=true];
-    uint32 parser_state_skblen = 24 [deprecated=true];
-    string parser_internal_state = 25;
-    tetragon.Process parent = 26;
-    repeated Process ancestors = 27; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  string source_ip = 2;
+  google.protobuf.UInt32Value source_port = 3;
+  string destination_ip = 4;
+  google.protobuf.UInt32Value destination_port = 5;
+  string negotiated_version = 6;
+  string supported_versions = 7;
+  string sni_type = 8;
+  string sni_name = 9;
+  string cipher = 10;
+  string client_flags = 11;
+  string server_flags = 12;
+  string client_version = 13;
+  string server_version = 14;
+  string client_alert = 15;
+  string server_alert = 16;
+  string client_session = 17;
+  string server_session = 18;
+  repeated string certificates = 19;
+  TlsCertificateError certificate_error = 20;
+  uint32 parser_state_next = 21 [deprecated = true];
+  uint32 parser_state_needed = 22 [deprecated = true];
+  uint32 parser_state_csize = 23 [deprecated = true];
+  uint32 parser_state_skblen = 24 [deprecated = true];
+  string parser_internal_state = 25;
+  tetragon.Process parent = 26;
+  repeated Process ancestors = 27; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 /*
  * HTTP PARSER
  */
 message HttpHeader {
-   string name  = 1;
-   string value = 2;
+  string name = 1;
+  string value = 2;
 }
 
 message HttpRequest {
-   google.protobuf.Timestamp timestamp = 1;
-   string method               = 2;
-   string uri                  = 3;
-   string version              = 4;
-   string host                 = 5;
-   string agent                = 6;
-   google.protobuf.UInt32Value content_length = 7;
-   repeated HttpHeader headers = 8;
-   string flags                = 9;
-   string transfer_encoding    = 10;
+  google.protobuf.Timestamp timestamp = 1;
+  string method = 2;
+  string uri = 3;
+  string version = 4;
+  string host = 5;
+  string agent = 6;
+  google.protobuf.UInt32Value content_length = 7;
+  repeated HttpHeader headers = 8;
+  string flags = 9;
+  string transfer_encoding = 10;
 }
 
 message HttpResponse {
-   google.protobuf.Timestamp timestamp = 1;
-   string version               = 2;
-   uint32 code                  = 3;
-   string reason                = 4;
-   google.protobuf.UInt32Value content_length = 5;
-   repeated HttpHeader headers  = 6;
-   string flags                 = 7;
-   string transfer_encoding     = 8;
+  google.protobuf.Timestamp timestamp = 1;
+  string version = 2;
+  uint32 code = 3;
+  string reason = 4;
+  google.protobuf.UInt32Value content_length = 5;
+  repeated HttpHeader headers = 6;
+  string flags = 7;
+  string transfer_encoding = 8;
 }
 
 message HttpInfo {
-   HttpRequest request              = 1;
-   HttpResponse response            = 2;
-   google.protobuf.Duration latency = 3;
+  HttpRequest request = 1;
+  HttpResponse response = 2;
+  google.protobuf.Duration latency = 3;
 }
 
 message ProcessHttp {
-    tetragon.Process process = 1;
-    SockInfo socket = 2;
-    HttpInfo http   = 3;
-    repeated string destination_names = 4 [deprecated=true]; // deprecated in favor of socket.destination_names.
-    tetragon.Pod destination_pod = 5 [deprecated=true]; // deprecated in favor of socket.destination_pod
-    tetragon.Process parent = 6;
-    repeated Process ancestors = 7; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  SockInfo socket = 2;
+  HttpInfo http = 3;
+  repeated string destination_names = 4 [deprecated = true]; // deprecated in favor of socket.destination_names.
+  tetragon.Pod destination_pod = 5 [deprecated = true]; // deprecated in favor of socket.destination_pod
+  tetragon.Process parent = 6;
+  repeated Process ancestors = 7; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessNetworkBurst {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    string protocol = 3;
-    string direction = 4;
-    string burst_state = 5;
-    uint64 window_size = 6;
-    uint64 hist_avg = 7;
-    uint64 hist_trigger = 8;
-    uint64 window_avg = 9;
-    repeated Process ancestors = 10; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string protocol = 3;
+  string direction = 4;
+  string burst_state = 5;
+  uint64 window_size = 6;
+  uint64 hist_avg = 7;
+  uint64 hist_trigger = 8;
+  uint64 window_avg = 9;
+  repeated Process ancestors = 10; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessNetworkWatermark {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    string protocol = 3;
-    string direction = 4;
-    string watermarks_state = 5;
-    string watermarks_type = 6;
-    uint64 window_size = 7;
-    uint64 hist_avg = 8;
-    uint64 hist_burst_trigger = 9;
-    uint64 hist_dip_trigger = 10;
-    uint64 window_avg = 11;
-    repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string protocol = 3;
+  string direction = 4;
+  string watermarks_state = 5;
+  string watermarks_type = 6;
+  uint64 window_size = 7;
+  uint64 hist_avg = 8;
+  uint64 hist_burst_trigger = 9;
+  uint64 hist_dip_trigger = 10;
+  uint64 window_avg = 11;
+  repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
 message ProcessUdpSeqCheckError {
-    tetragon.Process process = 1;
-    tetragon.Process parent = 2;
-    tetragon.SockInfo socket = 3;
-    uint64 application_id = 4;
-    uint64 app_specific_id = 5;
-    uint64 seq_num_expected = 6;
-    uint64 seq_num_received = 7;
-    repeated Process ancestors = 8; // Not in use for now. Please rely on ancestors in ProcessExec.
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  tetragon.SockInfo socket = 3;
+  uint64 application_id = 4;
+  uint64 app_specific_id = 5;
+  uint64 seq_num_expected = 6;
+  uint64 seq_num_received = 7;
+  repeated Process ancestors = 8; // Not in use for now. Please rely on ancestors in ProcessExec.
 }

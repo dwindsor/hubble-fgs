@@ -16,15 +16,15 @@ syntax = "proto3";
 
 package tetragon;
 
-import "tetragon/tetragon.proto";
-import "tetragon/capabilities.proto";
-import "tetragon/fgs.proto";
-import "tetragon/dns.proto";
-import "tetragon/sandbox.proto";
 import "google/protobuf/duration.proto";
-import "google/protobuf/wrappers.proto";
-import "google/protobuf/timestamp.proto";
 import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "tetragon/capabilities.proto";
+import "tetragon/dns.proto";
+import "tetragon/fgs.proto";
+import "tetragon/sandbox.proto";
+import "tetragon/tetragon.proto";
 
 option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
 
@@ -33,280 +33,278 @@ option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
 // NOTE: EventType constants must be in sync with the numbers used in the
 // GetEventsResponse event oneof.
 enum EventType {
-    option allow_alias = true;
-	UNDEF = 0;
-	PROCESS_EXEC = 1;
-	PROCESS_CONNECT = 2;
-	PROCESS_LISTEN = 3;
-	PROCESS_TLS = 4;
-	// TLS is an alias for PROCESS_TLS
-	TLS = 4;
-	PROCESS_EXIT = 5;
-	PROCESS_CLOSE = 6;
-	PROCESS_ACCEPT = 7;
-	PROCESS_KPROBE = 9;
-	PROCESS_TRACEPOINT = 10;
-	PROCESS_SOCKSTATS = 11;
-	// PROCESS_SOCK_STATS is an alias for PROCESS_SOCKSTATS
-	PROCESS_SOCK_STATS = 11;
-	PROCESS_HTTP = 12;
-	INTERFACE_STATS = 13;
-	PROCESS_DNS = 14;
-	PROCESS_NETWORK_BURST = 15;
-	PROCESS_FILE = 16;
-	PROCESS_IP_ERROR = 17;
-	PROCESS_LOADER = 18;
-	PROCESS_NETWORK_WATERMARK = 19;
-	PROCESS_UPROBE = 20;
-	PROCESS_UDP_SEQ_CHECK_ERROR = 21;
-	PROCESS_FILE_EXEC = 22;
-	PROCESS_ICMP = 23;
-	PROCESS_RAWSOCK_CREATE = 24;
-	PROCESS_RAWSOCK_CLOSE = 25;
-	PROCESS_SANDBOX_SYSCALL = 26;
-	PROCESS_THROTTLE = 27;
-    PROCESS_LSM = 28;
+  option allow_alias = true;
+  UNDEF = 0;
+  PROCESS_EXEC = 1;
+  PROCESS_CONNECT = 2;
+  PROCESS_LISTEN = 3;
+  PROCESS_TLS = 4;
+  // TLS is an alias for PROCESS_TLS
+  TLS = 4;
+  PROCESS_EXIT = 5;
+  PROCESS_CLOSE = 6;
+  PROCESS_ACCEPT = 7;
+  PROCESS_KPROBE = 9;
+  PROCESS_TRACEPOINT = 10;
+  PROCESS_SOCKSTATS = 11;
+  // PROCESS_SOCK_STATS is an alias for PROCESS_SOCKSTATS
+  PROCESS_SOCK_STATS = 11;
+  PROCESS_HTTP = 12;
+  INTERFACE_STATS = 13;
+  PROCESS_DNS = 14;
+  PROCESS_NETWORK_BURST = 15;
+  PROCESS_FILE = 16;
+  PROCESS_IP_ERROR = 17;
+  PROCESS_LOADER = 18;
+  PROCESS_NETWORK_WATERMARK = 19;
+  PROCESS_UPROBE = 20;
+  PROCESS_UDP_SEQ_CHECK_ERROR = 21;
+  PROCESS_FILE_EXEC = 22;
+  PROCESS_ICMP = 23;
+  PROCESS_RAWSOCK_CREATE = 24;
+  PROCESS_RAWSOCK_CLOSE = 25;
+  PROCESS_SANDBOX_SYSCALL = 26;
+  PROCESS_THROTTLE = 27;
+  PROCESS_LSM = 28;
 
-	TEST = 40000;
-    RATE_LIMIT_INFO = 40001;
+  TEST = 40000;
+  RATE_LIMIT_INFO = 40001;
 }
 
 message Filter {
-    repeated string binary_regex = 1;
-    repeated string namespace = 2;
-    google.protobuf.BoolValue health_check = 3;
-    repeated uint32 pid = 4;
-    repeated uint32 pid_set = 5;
-    repeated EventType event_set = 6;
-    // A series of regexes for filtering over pod name
-    repeated string pod_regex = 7;
-    // Filter by process.arguments field using RE2 regular expression syntax:
-    // https://github.com/google/re2/wiki/Syntax
-    repeated string arguments_regex = 8;
-    // Filter events by pod labels using Kubernetes label selector syntax:
-    // https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
-    // Note that this filter never matches events without the pod field (i.e.
-    // host process events).
-    repeated string labels = 9;
-    // Filter events by tracing policy names
-    repeated string policy_names = 10;
-    // Filter events by Linux process capability
-    CapFilter capabilities = 11;
-    // Filter parent process' binary using RE2 regular expression syntax.
-    repeated string parent_binary_regex = 12;
-    // Filter using CEL expressions.
-    repeated string cel_expression = 13;
-    // Filter by process.parent.arguments field using RE2 regular expression syntax:
-    // https://github.com/google/re2/wiki/Syntax
-    repeated string parent_arguments_regex = 14;
-    // Filter by the container ID in the process.docker field using RE2 regular expression syntax:
-    // https://github.com/google/re2/wiki/Syntax
-    repeated string container_id = 15;
-    // Filter containerized processes based on whether they are descendants of
-    // the container's init process. This can be used, for example, to watch
-    // for processes injected into a container via docker exec, kubectl exec, or
-    // similar mechanisms.
-    google.protobuf.BoolValue in_init_tree = 16;
-    // Filter ancestor processes' binaries using RE2 regular expression syntax.
-    repeated string ancestor_binary_regex = 17;
-    // Filter by source_ip field using an address range specified using CIDR notation.
-    //
-    // Example: {"event_set": ["PROCESS_ACCEPT"], "source_ip_cidr": ["127.0.0.0/16"]}
-    repeated string source_ip_cidr = 1000;
-    // Filter by destination_ip field using an address range specified using CIDR notation.
-    //
-    // Example: {"event_set": ["PROCESS_CLOSE"], "destination_ip_cidr": ["8.8.0.0/16"]}
-    repeated string destination_ip_cidr = 1001;
-    // Filter by IP field using an address range specified using CIDR notation.
-    // This includes source_ip, destination_ip, and ProcessListen's ip field.
-    //
-    // Example 1: {"event_set": ["PROCESS_ACCEPT"], ip_cidr": ["127.0.0.1", "8.8.0.0/16"]}
-    // Example 2: {"event_set": ["PROCESS_LISTEN"], ip_cidr": ["127.0.0.0/16"]}
-    repeated string ip_cidr = 1002;
-    // Filter by http.request.uri field using RE2 regular expression syntax:
-    // https://github.com/google/re2/wiki/Syntax
-    repeated string uri_regex = 1003;
-    // Filter by tls.sni_name field using RE2 regular expression syntax:
-    // https://github.com/google/re2/wiki/Syntax
-    repeated string sni_regex = 1004;
-    // Filter by destination_names field using RE2 regular expression syntax:
-    // https://github.com/google/re2/wiki/Syntax
-    repeated string destination_names_regex = 1005;
-    // Filter by destination_pod.name field using RE2 regular expression syntax:
-    // https://github.com/google/re2/wiki/Syntax
-    repeated string destination_pod_regex = 1006;
-    // Filter by process_dns.dns.names field using RE2 regular expression syntax:
-    // https://github.com/google/re2/wiki/Syntax
-    repeated string dns_names_regex = 1007;
-    // Filter by process_http.http.request.host field using RE2 regular expression syntax:
-    // https://github.com/google/re2/wiki/Syntax
-    repeated string host_regex = 1008;
-    // Filter by socket protocol. An event matches if its socket protocol
-    // matches any of the protocols listed here. Note that events without a
-    // protocol field will never match.
-    repeated SocketProtocol protocol = 1009;
-    // Filter by destination k8s namespace using RE2 regular expression syntax:
-    // https://github.com/google/re2/wiki/Syntax
-    repeated string destination_namespace_regex = 1010;
+  repeated string binary_regex = 1;
+  repeated string namespace = 2;
+  google.protobuf.BoolValue health_check = 3;
+  repeated uint32 pid = 4;
+  repeated uint32 pid_set = 5;
+  repeated EventType event_set = 6;
+  // A series of regexes for filtering over pod name
+  repeated string pod_regex = 7;
+  // Filter by process.arguments field using RE2 regular expression syntax:
+  // https://github.com/google/re2/wiki/Syntax
+  repeated string arguments_regex = 8;
+  // Filter events by pod labels using Kubernetes label selector syntax:
+  // https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
+  // Note that this filter never matches events without the pod field (i.e.
+  // host process events).
+  repeated string labels = 9;
+  // Filter events by tracing policy names
+  repeated string policy_names = 10;
+  // Filter events by Linux process capability
+  CapFilter capabilities = 11;
+  // Filter parent process' binary using RE2 regular expression syntax.
+  repeated string parent_binary_regex = 12;
+  // Filter using CEL expressions.
+  repeated string cel_expression = 13;
+  // Filter by process.parent.arguments field using RE2 regular expression syntax:
+  // https://github.com/google/re2/wiki/Syntax
+  repeated string parent_arguments_regex = 14;
+  // Filter by the container ID in the process.docker field using RE2 regular expression syntax:
+  // https://github.com/google/re2/wiki/Syntax
+  repeated string container_id = 15;
+  // Filter containerized processes based on whether they are descendants of
+  // the container's init process. This can be used, for example, to watch
+  // for processes injected into a container via docker exec, kubectl exec, or
+  // similar mechanisms.
+  google.protobuf.BoolValue in_init_tree = 16;
+  // Filter ancestor processes' binaries using RE2 regular expression syntax.
+  repeated string ancestor_binary_regex = 17;
+  // Filter by source_ip field using an address range specified using CIDR notation.
+  //
+  // Example: {"event_set": ["PROCESS_ACCEPT"], "source_ip_cidr": ["127.0.0.0/16"]}
+  repeated string source_ip_cidr = 1000;
+  // Filter by destination_ip field using an address range specified using CIDR notation.
+  //
+  // Example: {"event_set": ["PROCESS_CLOSE"], "destination_ip_cidr": ["8.8.0.0/16"]}
+  repeated string destination_ip_cidr = 1001;
+  // Filter by IP field using an address range specified using CIDR notation.
+  // This includes source_ip, destination_ip, and ProcessListen's ip field.
+  //
+  // Example 1: {"event_set": ["PROCESS_ACCEPT"], ip_cidr": ["127.0.0.1", "8.8.0.0/16"]}
+  // Example 2: {"event_set": ["PROCESS_LISTEN"], ip_cidr": ["127.0.0.0/16"]}
+  repeated string ip_cidr = 1002;
+  // Filter by http.request.uri field using RE2 regular expression syntax:
+  // https://github.com/google/re2/wiki/Syntax
+  repeated string uri_regex = 1003;
+  // Filter by tls.sni_name field using RE2 regular expression syntax:
+  // https://github.com/google/re2/wiki/Syntax
+  repeated string sni_regex = 1004;
+  // Filter by destination_names field using RE2 regular expression syntax:
+  // https://github.com/google/re2/wiki/Syntax
+  repeated string destination_names_regex = 1005;
+  // Filter by destination_pod.name field using RE2 regular expression syntax:
+  // https://github.com/google/re2/wiki/Syntax
+  repeated string destination_pod_regex = 1006;
+  // Filter by process_dns.dns.names field using RE2 regular expression syntax:
+  // https://github.com/google/re2/wiki/Syntax
+  repeated string dns_names_regex = 1007;
+  // Filter by process_http.http.request.host field using RE2 regular expression syntax:
+  // https://github.com/google/re2/wiki/Syntax
+  repeated string host_regex = 1008;
+  // Filter by socket protocol. An event matches if its socket protocol
+  // matches any of the protocols listed here. Note that events without a
+  // protocol field will never match.
+  repeated SocketProtocol protocol = 1009;
+  // Filter by destination k8s namespace using RE2 regular expression syntax:
+  // https://github.com/google/re2/wiki/Syntax
+  repeated string destination_namespace_regex = 1010;
 }
- 
- // Filter over a set of Linux process capabilities. See `message Capabilities`
- // for more info.  WARNING: Multiple sets are ANDed. For example, if the
- // permitted filter matches, but the effective filter does not, the filter will
- // NOT match.
- message CapFilter {
-        // Filter over the set of permitted capabilities.
-        CapFilterSet permitted = 1;
-        // Filter over the set of effective capabilities.
-        CapFilterSet effective = 2;
-        // Filter over the set of inheritable capabilities.
-        CapFilterSet inheritable = 3;
- }
- 
- // Capability set to filter over. NOTE: you may specify only ONE set here.
- message CapFilterSet {
-        // Match if the capability set contains any of the capabilities defined in this filter.
-        repeated CapabilitiesType any = 1;
-        // Match if the capability set contains all of the capabilities defined in this filter.
-        repeated CapabilitiesType all = 2;
-        // Match if the capability set exactly matches all of the capabilities defined in this filter.
-        repeated CapabilitiesType exactly = 3;
-        // Match if the capability set contains none of the capabilities defined in this filter.
-        repeated CapabilitiesType none = 4;
- }
+
+// Filter over a set of Linux process capabilities. See `message Capabilities`
+// for more info.  WARNING: Multiple sets are ANDed. For example, if the
+// permitted filter matches, but the effective filter does not, the filter will
+// NOT match.
+message CapFilter {
+  // Filter over the set of permitted capabilities.
+  CapFilterSet permitted = 1;
+  // Filter over the set of effective capabilities.
+  CapFilterSet effective = 2;
+  // Filter over the set of inheritable capabilities.
+  CapFilterSet inheritable = 3;
+}
+
+// Capability set to filter over. NOTE: you may specify only ONE set here.
+message CapFilterSet {
+  // Match if the capability set contains any of the capabilities defined in this filter.
+  repeated CapabilitiesType any = 1;
+  // Match if the capability set contains all of the capabilities defined in this filter.
+  repeated CapabilitiesType all = 2;
+  // Match if the capability set exactly matches all of the capabilities defined in this filter.
+  repeated CapabilitiesType exactly = 3;
+  // Match if the capability set contains none of the capabilities defined in this filter.
+  repeated CapabilitiesType none = 4;
+}
 
 message RedactionFilter {
-    // Deprecated, do not use.
-    repeated Filter match = 1 [deprecated=true];
-    // Regular expressions to use for redaction. Strings inside capture groups are redacted.
-    repeated string redact = 2;
-    // Regular expression to match binary name. If supplied, redactions will only be applied to matching processes.
-    repeated string binary_regex = 3;
+  // Deprecated, do not use.
+  repeated Filter match = 1 [deprecated = true];
+  // Regular expressions to use for redaction. Strings inside capture groups are redacted.
+  repeated string redact = 2;
+  // Regular expression to match binary name. If supplied, redactions will only be applied to matching processes.
+  repeated string binary_regex = 3;
 }
 
 message RateLimitInfo {
-    uint64 number_of_dropped_process_events = 1;
+  uint64 number_of_dropped_process_events = 1;
 }
 
 enum ThrottleType {
-    THROTTLE_UNKNOWN = 0;
-    THROTTLE_START = 1;
-    THROTTLE_STOP = 2;
+  THROTTLE_UNKNOWN = 0;
+  THROTTLE_START = 1;
+  THROTTLE_STOP = 2;
 }
 
 message ProcessThrottle {
-    // Throttle type
-    ThrottleType type = 1;
-    // Cgroup name
-    string cgroup = 2;
+  // Throttle type
+  ThrottleType type = 1;
+  // Cgroup name
+  string cgroup = 2;
 }
 
 // Determins the behaviour of a field filter
 enum FieldFilterAction {
-    INCLUDE = 0;
-    EXCLUDE = 1;
+  INCLUDE = 0;
+  EXCLUDE = 1;
 }
 
 message FieldFilter {
-    // Event types to filter or undefined to filter over all event types.
-    repeated EventType event_set = 1;
-    // Fields to include or exclude.
-    google.protobuf.FieldMask fields = 2;
-    // Whether to include or exclude fields.
-    FieldFilterAction action = 3;
-    // Whether or not the event set filter should be inverted.
-    google.protobuf.BoolValue invert_event_set = 4;
+  // Event types to filter or undefined to filter over all event types.
+  repeated EventType event_set = 1;
+  // Fields to include or exclude.
+  google.protobuf.FieldMask fields = 2;
+  // Whether to include or exclude fields.
+  FieldFilterAction action = 3;
+  // Whether or not the event set filter should be inverted.
+  google.protobuf.BoolValue invert_event_set = 4;
 }
 
 // AggregationOptions defines configuration options for aggregating events.
 message AggregationOptions {
-    // Aggregation window size. Defaults to 15 seconds if this field is not set.
-    google.protobuf.Duration window_size = 1;
-    // Size of the buffer for the aggregator to receive incoming events. If the
-    // buffer becomes full, the aggregator will log a warning and start dropping
-    // incoming events.
-    uint64 channel_buffer_size = 2;
+  // Aggregation window size. Defaults to 15 seconds if this field is not set.
+  google.protobuf.Duration window_size = 1;
+  // Size of the buffer for the aggregator to receive incoming events. If the
+  // buffer becomes full, the aggregator will log a warning and start dropping
+  // incoming events.
+  uint64 channel_buffer_size = 2;
 }
 
 message GetEventsRequest {
-    // allow_list specifies a list of filters to apply to only return certain
-    // events. If multiple filters are specified, at least one of them has to
-    // match for an event to be included in the results.
-    repeated Filter allow_list = 1;
-    // deny_list specifies a list of filters to apply to exclude certain events
-    // from the results. If multiple filters are specified, at least one of
-    // them has to match for an event to be excluded.
-    //
-    // If both allow_list and deny_list are specified, the results contain the
-    // set difference allow_list - deny_list.
-    repeated Filter deny_list = 2;
-    // aggregation_options configures aggregation options for this request.
-    // If this field is not set, responses will not be aggregated.
-    //
-    // Note that currently only process_accept and process_connect events are
-    // aggregated. Other events remain unaggregated.
-    AggregationOptions aggregation_options = 3;
-    // Fields to include or exclude for events in the GetEventsResponse. Omitting this
-    // field implies that all fields will be included. Exclusion always takes precedence
-    // over inclusion in the case of conflicts.
-    repeated FieldFilter field_filters = 4;
+  // allow_list specifies a list of filters to apply to only return certain
+  // events. If multiple filters are specified, at least one of them has to
+  // match for an event to be included in the results.
+  repeated Filter allow_list = 1;
+  // deny_list specifies a list of filters to apply to exclude certain events
+  // from the results. If multiple filters are specified, at least one of
+  // them has to match for an event to be excluded.
+  //
+  // If both allow_list and deny_list are specified, the results contain the
+  // set difference allow_list - deny_list.
+  repeated Filter deny_list = 2;
+  // aggregation_options configures aggregation options for this request.
+  // If this field is not set, responses will not be aggregated.
+  //
+  // Note that currently only process_accept and process_connect events are
+  // aggregated. Other events remain unaggregated.
+  AggregationOptions aggregation_options = 3;
+  // Fields to include or exclude for events in the GetEventsResponse. Omitting this
+  // field implies that all fields will be included. Exclusion always takes precedence
+  // over inclusion in the case of conflicts.
+  repeated FieldFilter field_filters = 4;
 }
 
 // AggregationInfo contains information about aggregation results.
 message AggregationInfo {
-    // Total count of events in this aggregation time window.
-    uint64 count = 1;
+  // Total count of events in this aggregation time window.
+  uint64 count = 1;
 }
 
 message GetEventsResponse {
-    // The type-specific fields of an event.
-    //
-    // NOTE: Numbers must stay in sync with enum EventType.
-    oneof event {
-        ProcessExec process_exec = 1;
-        ProcessConnect process_connect = 2;
-        ProcessListen process_listen = 3;
-        Tls tls = 4;
-        ProcessExit process_exit = 5;
-        ProcessClose process_close = 6;
-        ProcessAccept process_accept = 7;
-        ProcessKprobe process_kprobe = 9;
-        ProcessTracepoint process_tracepoint = 10;
-        ProcessSockStats process_sock_stats = 11;
-        ProcessHttp process_http = 12;
-        InterfaceStats interface_stats = 13;
-        ProcessDns process_dns = 14;
-        ProcessNetworkBurst process_network_burst = 15;
-        ProcessFile process_file = 16;
-        ProcessIpError process_ip_error = 17;
-        ProcessLoader process_loader = 18;
-        ProcessNetworkWatermark process_network_watermark = 19;
-        ProcessUprobe process_uprobe = 20;
-        ProcessUdpSeqCheckError process_udp_seq_check_error = 21;
-        ProcessFileExec process_file_exec = 22;
-        ProcessIcmp process_icmp = 23;
-        ProcessRawsockCreate process_rawsock_create = 24;
-        ProcessRawsockClose process_rawsock_close = 25;
-        ProcessSandboxSyscall process_sandbox_syscall = 26;
-        ProcessThrottle process_throttle = 27;
-        ProcessLsm process_lsm = 28;
+  // The type-specific fields of an event.
+  //
+  // NOTE: Numbers must stay in sync with enum EventType.
+  oneof event {
+    ProcessExec process_exec = 1;
+    ProcessConnect process_connect = 2;
+    ProcessListen process_listen = 3;
+    Tls tls = 4;
+    ProcessExit process_exit = 5;
+    ProcessClose process_close = 6;
+    ProcessAccept process_accept = 7;
+    ProcessKprobe process_kprobe = 9;
+    ProcessTracepoint process_tracepoint = 10;
+    ProcessSockStats process_sock_stats = 11;
+    ProcessHttp process_http = 12;
+    InterfaceStats interface_stats = 13;
+    ProcessDns process_dns = 14;
+    ProcessNetworkBurst process_network_burst = 15;
+    ProcessFile process_file = 16;
+    ProcessIpError process_ip_error = 17;
+    ProcessLoader process_loader = 18;
+    ProcessNetworkWatermark process_network_watermark = 19;
+    ProcessUprobe process_uprobe = 20;
+    ProcessUdpSeqCheckError process_udp_seq_check_error = 21;
+    ProcessFileExec process_file_exec = 22;
+    ProcessIcmp process_icmp = 23;
+    ProcessRawsockCreate process_rawsock_create = 24;
+    ProcessRawsockClose process_rawsock_close = 25;
+    ProcessSandboxSyscall process_sandbox_syscall = 26;
+    ProcessThrottle process_throttle = 27;
+    ProcessLsm process_lsm = 28;
 
-        Test test = 40000;
-        RateLimitInfo rate_limit_info = 40001;
-    }
-    // Name of the node where this event was observed.
-    string node_name = 1000;
-    // Timestamp at which this event was observed.
-    //
-    // For an aggregated response, this field to set to the timestamp at which
-    // the event was observed for the first time in a given aggregation time window.
-    google.protobuf.Timestamp time = 1001;
+    Test test = 40000;
+    RateLimitInfo rate_limit_info = 40001;
+  }
+  // Name of the node where this event was observed.
+  string node_name = 1000;
+  // Timestamp at which this event was observed.
+  //
+  // For an aggregated response, this field to set to the timestamp at which
+  // the event was observed for the first time in a given aggregation time window.
+  google.protobuf.Timestamp time = 1001;
 
-    // aggregation_info contains information about aggregation results. This field
-    // is set only for aggregated responses.
-    AggregationInfo aggregation_info = 1002;
-    // Name of the cluster where this event was observed.
-    string cluster_name = 1003;
+  // aggregation_info contains information about aggregation results. This field
+  // is set only for aggregated responses.
+  AggregationInfo aggregation_info = 1002;
+  // Name of the cluster where this event was observed.
+  string cluster_name = 1003;
 }
-
-
