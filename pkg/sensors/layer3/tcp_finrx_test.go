@@ -132,9 +132,8 @@ func testFinRx(t *testing.T, port uint32, serverIterations, clientIterations int
 	serverBytes, clientBytes uint64, delay time.Duration) {
 
 	// For reliability, we really need the sockops handlers as the kprobes can be
-	// unreliable. Note, the technology should work from kernel v5.4; it's just
-	// flaky to test on kernels <v5.14. We specify v5.15 here because that is the
-	// next LTS kernel.
+	// unreliable. Note, the technology should work from kernel v5.5 (it needs
+	// probe_read_kernel in Cgroup/SKB programs).
 	if v := "5.5.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
