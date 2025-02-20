@@ -48,6 +48,7 @@ func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap
 
 	key := &types.DestinationEndpointKey{
 		LocalId:           src.Self,
+		LocalNSId:         src.CgroupId,
 		DestinationId:     dst,
 		DestinationSource: types.DestinationSourceUser,
 		DestinationPort:   0,
