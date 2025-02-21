@@ -68,7 +68,7 @@ import (
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/cilium/tetragon/pkg/watcher"
 	k8sconf "github.com/cilium/tetragon/pkg/watcher/conf"
-	osscrd "github.com/cilium/tetragon/pkg/watcher/crd"
+	"github.com/cilium/tetragon/pkg/watcher/crdwatcher"
 
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -561,7 +561,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	saveInitInfo()
 	if option.Config.EnableK8s {
 		if option.Config.EnableTracingPolicyCRD {
-			go osscrd.WatchTracePolicy(ctx, observer.GetSensorManager())
+			go crdwatcher.WatchTracePolicy(ctx, observer.GetSensorManager())
 		}
 		if enterpriseOption.Config.EnableSandboxPolicies && enterpriseOption.Config.EnableSandboxPoliciesCRD {
 			go crd.WatchSandboxPolicy(ctx, observer.GetSensorManager())

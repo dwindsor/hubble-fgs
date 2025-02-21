@@ -412,7 +412,7 @@ github.com/cilium/statedb/reconciler
 ## explicit; go 1.21.0
 github.com/cilium/stream
 # github.com/cilium/tetragon v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss
-## explicit; go 1.23.0
+## explicit; go 1.24.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
 github.com/cilium/tetragon/cmd/tetra/common
@@ -564,7 +564,7 @@ github.com/cilium/tetragon/pkg/unixlisten
 github.com/cilium/tetragon/pkg/version
 github.com/cilium/tetragon/pkg/watcher
 github.com/cilium/tetragon/pkg/watcher/conf
-github.com/cilium/tetragon/pkg/watcher/crd
+github.com/cilium/tetragon/pkg/watcher/crdwatcher
 github.com/cilium/tetragon/tests/e2e/checker
 github.com/cilium/tetragon/tests/e2e/flags
 github.com/cilium/tetragon/tests/e2e/helpers
@@ -581,16 +581,16 @@ github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/helpers
 github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/imports
 github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/types
 # github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss/pkg/k8s
-## explicit; go 1.23.0
+## explicit; go 1.24.0
 github.com/cilium/tetragon-oss/pkg/k8s/crdutils
 # github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000 => ./api
-## explicit; go 1.23.0
+## explicit; go 1.24.0
 github.com/cilium/tetragon/api/v1/tetragon
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml
 github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers
 # github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f => ./pkg/k8s
-## explicit; go 1.23.0
+## explicit; go 1.24.0
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
@@ -1084,7 +1084,7 @@ github.com/iceber/iouring-go/syscall
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
 # github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 => ./pkg/k8s-enterprise
-## explicit; go 1.23.0
+## explicit; go 1.24.0
 github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned
 github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions
 # github.com/isovalent/ipa v0.0.0-20250201002826-a89fd7e69961
@@ -1257,8 +1257,8 @@ github.com/pmezard/go-difflib/difflib
 ## explicit; go 1.23.0
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1
-# github.com/prometheus/client_golang v1.20.5
-## explicit; go 1.20
+# github.com/prometheus/client_golang v1.21.0
+## explicit; go 1.21
 github.com/prometheus/client_golang/internal/github.com/golang/gddo/httputil
 github.com/prometheus/client_golang/internal/github.com/golang/gddo/httputil/header
 github.com/prometheus/client_golang/prometheus
@@ -1371,13 +1371,15 @@ github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.5
 ## explicit; go 1.17
 github.com/vishvananda/netns
-# github.com/vladimirvivien/gexe v0.2.0
-## explicit; go 1.16
+# github.com/vladimirvivien/gexe v0.4.1
+## explicit; go 1.23
 github.com/vladimirvivien/gexe
 github.com/vladimirvivien/gexe/exec
 github.com/vladimirvivien/gexe/fs
 github.com/vladimirvivien/gexe/http
+github.com/vladimirvivien/gexe/net
 github.com/vladimirvivien/gexe/prog
+github.com/vladimirvivien/gexe/str
 github.com/vladimirvivien/gexe/vars
 # github.com/wI2L/jsondiff v0.6.1
 ## explicit; go 1.21
@@ -2454,8 +2456,8 @@ sigs.k8s.io/controller-tools/pkg/schemapatcher
 sigs.k8s.io/controller-tools/pkg/schemapatcher/internal/yaml
 sigs.k8s.io/controller-tools/pkg/version
 sigs.k8s.io/controller-tools/pkg/webhook
-# sigs.k8s.io/e2e-framework v0.2.0
-## explicit; go 1.19
+# sigs.k8s.io/e2e-framework v0.6.0
+## explicit; go 1.23.0
 sigs.k8s.io/e2e-framework/klient
 sigs.k8s.io/e2e-framework/klient/conf
 sigs.k8s.io/e2e-framework/klient/decoder
@@ -2467,11 +2469,15 @@ sigs.k8s.io/e2e-framework/klient/wait/conditions
 sigs.k8s.io/e2e-framework/pkg/env
 sigs.k8s.io/e2e-framework/pkg/envconf
 sigs.k8s.io/e2e-framework/pkg/envfuncs
+sigs.k8s.io/e2e-framework/pkg/featuregate
 sigs.k8s.io/e2e-framework/pkg/features
 sigs.k8s.io/e2e-framework/pkg/flags
-sigs.k8s.io/e2e-framework/pkg/internal/types
+sigs.k8s.io/e2e-framework/pkg/types
+sigs.k8s.io/e2e-framework/pkg/utils
+sigs.k8s.io/e2e-framework/support
 sigs.k8s.io/e2e-framework/support/kind
 sigs.k8s.io/e2e-framework/third_party/helm
+sigs.k8s.io/e2e-framework/third_party/kind
 # sigs.k8s.io/gateway-api v1.2.1
 ## explicit; go 1.22.0
 sigs.k8s.io/gateway-api/apis/v1

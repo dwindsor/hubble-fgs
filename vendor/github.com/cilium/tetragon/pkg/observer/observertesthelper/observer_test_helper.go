@@ -19,23 +19,28 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cilium/tetragon/pkg/cgrouprate"
-	"github.com/cilium/tetragon/pkg/defaults"
-	"github.com/cilium/tetragon/pkg/encoder"
-	"github.com/cilium/tetragon/pkg/metricsconfig"
-	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/policyfilter"
-	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/bugtool"
+	"github.com/cilium/tetragon/pkg/cgrouprate"
+	"github.com/cilium/tetragon/pkg/defaults"
+	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/exporter"
 	tetragonGrpc "github.com/cilium/tetragon/pkg/grpc"
+	"github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metricsconfig"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/rthooks"
@@ -43,13 +48,9 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/sensors/exec/procevents"
 	"github.com/cilium/tetragon/pkg/testutils"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/cilium/tetragon/pkg/watcher"
-	"github.com/cilium/tetragon/pkg/watcher/crd"
-
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8stypes "k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/cache"
+	"github.com/cilium/tetragon/pkg/watcher/crdwatcher"
 )
 
 var (
@@ -298,7 +299,7 @@ func GetDefaultObserverWithFile(tb testing.TB, ctx context.Context, file, lib st
 	opts = append(opts, WithConfig(file))
 	opts = append(opts, WithLib(lib))
 
-	b := base.GetInitialSensor()
+	b := base.GetInitialSensorTest(tb)
 	return GetDefaultObserverWithWatchers(tb, ctx, b, opts...)
 }
 
@@ -313,7 +314,7 @@ func GetDefaultSensorsWithFile(tb testing.TB, file, lib string, opts ...TestOpti
 	opts = append(opts, WithConfig(file))
 	opts = append(opts, WithLib(lib))
 
-	b := base.GetInitialSensor()
+	b := base.GetInitialSensorTest(tb)
 	return getDefaultSensors(tb, b, opts...)
 }
 
@@ -372,7 +373,7 @@ func getDefaultSensors(tb testing.TB, initialSensor *sensors.Sensor, opts ...Tes
 }
 
 func loadExporter(tb testing.TB, ctx context.Context, obs *observer.Observer, opts *testExporterOptions, oo *testObserverOptions) error {
-	watcher := opts.watcher
+	k8sWatcher := opts.watcher
 	processCacheSize := 32768
 	dataCacheSize := 1024
 	procCacheGCInterval := defaults.DefaultProcessCacheGCInterval
@@ -389,7 +390,7 @@ func loadExporter(tb testing.TB, ctx context.Context, obs *observer.Observer, op
 	})
 
 	if oo.crd {
-		crd.WatchTracePolicy(ctx, sensorManager)
+		crdwatcher.AddTracingPolicyInformer(ctx, k8sWatcher, sensorManager)
 	}
 
 	if err := btf.InitCachedBTF(option.Config.HubbleLib, ""); err != nil {
@@ -400,7 +401,7 @@ func loadExporter(tb testing.TB, ctx context.Context, obs *observer.Observer, op
 		procCacheGCInterval = oo.procCacheGCInterval
 	}
 
-	if err := process.InitCache(watcher, processCacheSize, procCacheGCInterval); err != nil {
+	if err := process.InitCache(k8sWatcher, processCacheSize, procCacheGCInterval); err != nil {
 		return err
 	}
 
@@ -411,7 +412,7 @@ func loadExporter(tb testing.TB, ctx context.Context, obs *observer.Observer, op
 	var cancelWg sync.WaitGroup
 
 	// use an empty hooks runner
-	hookRunner := (&rthooks.Runner{}).WithWatcher(watcher)
+	hookRunner := (&rthooks.Runner{}).WithWatcher(k8sWatcher)
 
 	// For testing we disable the eventcache and cilium cache by default. If we
 	// enable these then every tests would need to wait for the 1.5 mimutes needed
@@ -576,7 +577,8 @@ func (f *fakeK8sWatcher) FindContainer(containerID string) (*corev1.Pod, *corev1
 	return &pod, &container, true
 }
 
-func (f *fakeK8sWatcher) AddInformers(_ watcher.InternalSharedInformerFactory, _ ...*watcher.InternalInformer) {
+func (f *fakeK8sWatcher) AddInformer(_ string, _ cache.SharedIndexInformer, _ cache.Indexers) error {
+	return nil
 }
 
 func (f *fakeK8sWatcher) GetInformer(_ string) cache.SharedIndexInformer {
@@ -584,6 +586,18 @@ func (f *fakeK8sWatcher) GetInformer(_ string) cache.SharedIndexInformer {
 }
 
 func (f *fakeK8sWatcher) Start() {}
+
+func (f *fakeK8sWatcher) GetK8sInformerFactory() informers.SharedInformerFactory {
+	return nil
+}
+
+func (f *fakeK8sWatcher) GetLocalK8sInformerFactory() informers.SharedInformerFactory {
+	return nil
+}
+
+func (f *fakeK8sWatcher) GetCRDInformerFactory() externalversions.SharedInformerFactory {
+	return nil
+}
 
 // Used to wait for a process to start, we do a lookup on PROCFS because this
 // may be called before obs is created.
@@ -634,7 +648,7 @@ func GetDefaultObserver(tb testing.TB, ctx context.Context, lib string, opts ...
 }
 
 func GetDefaultObserverWithConfig(tb testing.TB, ctx context.Context, config, lib string, opts ...TestOption) (*observer.Observer, error) {
-	b := base.GetInitialSensor()
+	b := base.GetInitialSensorTest(tb)
 
 	opts = append(opts, WithConfig(config))
 	opts = append(opts, WithLib(lib))

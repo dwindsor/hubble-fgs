@@ -1,8 +1,6 @@
 module github.com/isovalent/hubble-fgs
 
-go 1.23.2
-
-toolchain go1.24.0
+go 1.24.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.36.2
@@ -35,7 +33,7 @@ require (
 	github.com/miekg/dns v1.1.63
 	github.com/operator-framework/api v0.29.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.80.1
-	github.com/prometheus/client_golang v1.20.5
+	github.com/prometheus/client_golang v1.21.0
 	github.com/prometheus/client_model v0.6.1
 	github.com/rivo/tview v0.0.0-20241227133733-17b7edb88c57
 	github.com/sirupsen/logrus v1.9.3
@@ -67,7 +65,7 @@ require (
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
 	sigs.k8s.io/controller-runtime v0.20.2
 	sigs.k8s.io/controller-tools v0.16.5
-	sigs.k8s.io/e2e-framework v0.2.0
+	sigs.k8s.io/e2e-framework v0.6.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -254,7 +252,7 @@ require (
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/vladimirvivien/gexe v0.2.0 // indirect
+	github.com/vladimirvivien/gexe v0.4.1 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.33.0 // indirect

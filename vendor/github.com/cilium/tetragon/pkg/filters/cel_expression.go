@@ -42,19 +42,28 @@ func compile(env *cel.Env, expr string, celType *cel.Type) (*cel.Ast, error) {
 	return ast, nil
 }
 
-func (t *CELExpressionFilter) filterByCELExpression(ctx context.Context, log logrus.FieldLogger, exprs []string) (hubbleFilters.FilterFunc, error) {
+func EvalCEL(ctx context.Context, program cel.Program, event *tetragon.GetEventsResponse) (bool, error) {
+	out, _, err := program.ContextEval(ctx, helpers.ProcessEventMap(event))
+	if err != nil {
+		return false, fmt.Errorf("error running CEL program: %w", err)
+	}
+	v, err := out.ConvertToNative(reflect.TypeOf(false))
+	if err != nil {
+		return false, fmt.Errorf("invalid conversion in CEL program: %w", err)
+	}
+	b, ok := v.(bool)
+	if ok && b {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (c *CELExpressionFilter) filterByCELExpression(ctx context.Context, log logrus.FieldLogger, exprs []string) (hubbleFilters.FilterFunc, error) {
 	var programs []cel.Program
 	for _, expr := range exprs {
-		// we want filters to be boolean expressions, so check the type of the
-		// expression before proceeding
-		ast, err := compile(t.celEnv, expr, cel.BoolType)
+		prg, err := c.CompileCEL(expr)
 		if err != nil {
-			return nil, fmt.Errorf("error compiling CEL expression: %w", err)
-		}
-
-		prg, err := t.celEnv.Program(ast)
-		if err != nil {
-			return nil, fmt.Errorf("error building CEL program: %w", err)
+			return nil, err
 		}
 		programs = append(programs, prg)
 	}
@@ -68,19 +77,12 @@ func (t *CELExpressionFilter) filterByCELExpression(ctx context.Context, log log
 			return false
 		}
 		for _, prg := range programs {
-			out, _, err := prg.ContextEval(ctx, helpers.ProcessEventMap(response))
+			match, err := EvalCEL(ctx, prg, response)
 			if err != nil {
-				log.Errorf("error running CEL program %s", err)
+				log.Error(err)
 				return false
 			}
-
-			v, err := out.ConvertToNative(t.boolType)
-			if err != nil {
-				log.Errorf("invalid conversion in CEL program: %s", err)
-				return false
-			}
-			b, ok := v.(bool)
-			if ok && b {
+			if match {
 				return true
 			}
 		}
@@ -91,9 +93,8 @@ func (t *CELExpressionFilter) filterByCELExpression(ctx context.Context, log log
 // CELExpressionFilter implements filtering based on CEL (common expression
 // language) expressions
 type CELExpressionFilter struct {
-	log      logrus.FieldLogger
-	celEnv   *cel.Env
-	boolType reflect.Type
+	log    logrus.FieldLogger
+	celEnv *cel.Env
 }
 
 func NewCELExpressionFilter(log logrus.FieldLogger) *CELExpressionFilter {
@@ -114,16 +115,30 @@ func NewCELExpressionFilter(log logrus.FieldLogger) *CELExpressionFilter {
 		panic(fmt.Sprintf("error creating CEL env %s", err))
 	}
 	return &CELExpressionFilter{
-		log:      log,
-		celEnv:   celEnv,
-		boolType: reflect.TypeOf(false),
+		log:    log,
+		celEnv: celEnv,
 	}
 }
 
+func (c *CELExpressionFilter) CompileCEL(expr string) (cel.Program, error) {
+	// we want filters to be boolean expressions, so check the type of the
+	// expression before proceeding
+	ast, err := compile(c.celEnv, expr, cel.BoolType)
+	if err != nil {
+		return nil, fmt.Errorf("error compiling CEL expression: %w", err)
+	}
+
+	prg, err := c.celEnv.Program(ast)
+	if err != nil {
+		return nil, fmt.Errorf("error building CEL program: %w", err)
+	}
+	return prg, nil
+}
+
 // OnBuildFilter builds a CEL expression filter.
-func (t *CELExpressionFilter) OnBuildFilter(ctx context.Context, f *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
+func (c *CELExpressionFilter) OnBuildFilter(ctx context.Context, f *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
 	if exprs := f.GetCelExpression(); exprs != nil {
-		filter, err := t.filterByCELExpression(ctx, t.log, exprs)
+		filter, err := c.filterByCELExpression(ctx, c.log, exprs)
 		if err != nil {
 			return nil, err
 		}

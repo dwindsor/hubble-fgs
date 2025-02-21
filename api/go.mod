@@ -1,8 +1,6 @@
 module github.com/isovalent/hubble-fgs/api
 
-go 1.23.0
-
-toolchain go1.24.0
+go 1.24.0
 
 replace (
 	github.com/cilium/tetragon => ../modules/tetragon-oss
@@ -23,7 +21,7 @@ require (
 require (
 	github.com/kr/pretty v0.3.1 // indirect
 	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
 )

@@ -8,17 +8,20 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions"
 )
 
-// FakeK8sWatcher is used as an "empty" K8sResourceWatcher when --enable-k8s-api flag is not set.
+// FakeK8sWatcher is used as an "empty" PodAccessor when --enable-k8s-api flag is not set.
 // It is also used for testing, allowing users to specify a static list of pods.
 type FakeK8sWatcher struct {
 	pods     []interface{}
 	services []interface{}
 }
 
-// NewK8sWatcher returns a pointer to an initialized FakeK8sWatcher struct.
+// NewFakeK8sWatcher returns a pointer to an initialized FakeK8sWatcher struct.
 func NewFakeK8sWatcher(pods []interface{}) *FakeK8sWatcher {
 	return NewFakeK8sWatcherWithPodsAndServices(pods, nil)
 }
@@ -28,7 +31,7 @@ func NewFakeK8sWatcherWithPodsAndServices(pods []interface{}, services []interfa
 	return &FakeK8sWatcher{pods, services}
 }
 
-// FindContainer implements K8sResourceWatcher.FindContainer
+// FindContainer implements PodAccessor.FindContainer
 func (watcher *FakeK8sWatcher) FindContainer(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
 	return findContainer(containerID, watcher.pods)
 }
@@ -64,7 +67,8 @@ func (watcher *FakeK8sWatcher) ClearAllServices() {
 	watcher.services = nil
 }
 
-func (watcher *FakeK8sWatcher) AddInformers(_ InternalSharedInformerFactory, _ ...*InternalInformer) {
+func (watcher *FakeK8sWatcher) AddInformer(_ string, _ cache.SharedIndexInformer, _ cache.Indexers) error {
+	return nil
 }
 
 func (watcher *FakeK8sWatcher) GetInformer(_ string) cache.SharedIndexInformer {
@@ -72,3 +76,15 @@ func (watcher *FakeK8sWatcher) GetInformer(_ string) cache.SharedIndexInformer {
 }
 
 func (watcher *FakeK8sWatcher) Start() {}
+
+func (watcher *FakeK8sWatcher) GetK8sInformerFactory() informers.SharedInformerFactory {
+	return nil
+}
+
+func (watcher *FakeK8sWatcher) GetLocalK8sInformerFactory() informers.SharedInformerFactory {
+	return nil
+}
+
+func (watcher *FakeK8sWatcher) GetCRDInformerFactory() externalversions.SharedInformerFactory {
+	return nil
+}
