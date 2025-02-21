@@ -325,7 +325,7 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 				},
 			}
 			err = wait.For(
-				func() (done bool, err error) {
+				func(_ context.Context) (done bool, err error) {
 					if err := tetragonRes.Get(ctx, ds.GetName(), ds.GetNamespace(), &ds); err != nil {
 						if apierrors.IsNotFound(err) {
 							return false, nil
