@@ -14,6 +14,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/sirupsen/logrus"
 
@@ -25,15 +26,19 @@ var (
 	queueWlLock = sync.Mutex{}
 
 	// QuotasDNSDomainMappings stores the mappings between the domain and
-	// their ID generated after parsing a quota policy.
-	QuotasDNSDomainMappings = map[endpoint.Endpoint]uint64{}
+	// their ID generated after parsing a quota policy. So that we can
+	// initialize them once the TCP, UDP, and DNS sensors are online.
+	QuotasInitDNSDomainMappings = map[endpoint.Endpoint]uint64{}
+
+	// dnsDomainMap is used to bring DNS/ID mappings up to date at runtime.
+	dnsDomainMap = dnsparser.DomainMap{}
 )
 
 const (
 	destinationEndpointMap = "destination_endpoint_map"
 )
 
-func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset, deny uint64) error {
+func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset, deny uint64, init bool) error {
 	var addr [2]uint64
 
 	c := endpoint.Get()
@@ -43,8 +48,20 @@ func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap
 		return err
 	}
 
-	// This configuration for the DNS domain maps will be written at load time
-	QuotasDNSDomainMappings[*ep] = dst
+	// A rather annoying ordering problem occurs where we are consuming
+	// quota DNS policy through TCP policy and that may or may not have
+	// initialized the DNS/UDP sensors yet. If DNS is not yet initialized
+	// we need to wait until it comes up. So we check init state. And
+	// if this update is through a path already fully initialized we
+	// add it directly to the map otherwise we do a bulk update in init
+	// path.
+	if init {
+		if err := dnsDomainMap.Update(ep.Dns, dst); err != nil {
+			return fmt.Errorf("failed to write BPF domain maps: %w", err)
+		}
+	} else {
+		QuotasInitDNSDomainMappings[*ep] = dst
+	}
 
 	key := &types.DestinationEndpointKey{
 		LocalId:           src.Self,
@@ -112,7 +129,7 @@ func CheckWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 		delete(queueWl, subject)
 	}
 	queueWlLock.Unlock()
-	return AddNetworkPolicy(policy)
+	return AddNetworkPolicy(policy, true)
 }
 
 func createSrcPolicy(policy *types.TetragonNetworkPolicy) (*types.ProcessTreeKey, error) {
@@ -194,7 +211,7 @@ func quotaToNs(reset string) (uint64, error) {
 	return resetNS, nil
 }
 
-func AddNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
+func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	dstMap, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
@@ -243,7 +260,7 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
 			Type: endpoint.DnsType,
 			Dns:  entry,
 		}
-		if err := addSingleDnsPolicy(src, ep, dstMap, quotaBytes, resetNS, denyVal); err != nil {
+		if err := addSingleDnsPolicy(src, ep, dstMap, quotaBytes, resetNS, denyVal, init); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"namespace": s.Namespace,
 				"workload":  s.Workload,

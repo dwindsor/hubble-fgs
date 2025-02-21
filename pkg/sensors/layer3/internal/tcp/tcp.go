@@ -257,7 +257,7 @@ var (
 
 func ConfigureMaps() error {
 	ConfigureTCPDisableEvents(DisableConnect, DisableClose, DisableAccept, DisableListen)
-	err := configureQuotasDNSMaps(dns.QuotasDNSDomainMappings)
+	err := configureQuotasDNSMaps(dns.QuotasInitDNSDomainMappings)
 	if err != nil {
 		return fmt.Errorf("failed to configure quotas DNS maps: %w", err)
 	}

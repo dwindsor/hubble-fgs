@@ -24,7 +24,7 @@ func AddUnsafeNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
 	if policy.Subject.Workload != "" && policy.Subject.Kind != "" {
-		return dns.AddNetworkPolicy(policy)
+		return dns.AddNetworkPolicy(policy, false)
 	}
 	if (policy.Subject.Workload == "" && policy.Subject.Kind != "") ||
 		(policy.Subject.Kind == "" && policy.Subject.Workload != "") {
@@ -32,7 +32,7 @@ func AddUnsafeNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
 	}
 
 	if policy.Subject.Namespace == "" {
-		return dns.AddNetworkPolicy(policy)
+		return dns.AddNetworkPolicy(policy, false)
 	}
 
 	// Namespaced policy handler
@@ -44,7 +44,7 @@ func AddUnsafeNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
 	for _, pod := range allPods {
 		policy.Subject.Kind = pod.WorkloadType.Kind
 		policy.Subject.Workload = pod.WorkloadObject.Name
-		dns.AddNetworkPolicy(policy)
+		dns.AddNetworkPolicy(policy, false)
 	}
 
 	return nil
