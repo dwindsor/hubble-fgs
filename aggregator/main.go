@@ -11,7 +11,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/isovalent/hubble-fgs/aggregator/cmd"
@@ -20,7 +19,6 @@ import (
 func main() {
 	rootCmd := cmd.New()
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }

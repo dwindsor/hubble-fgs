@@ -12,13 +12,16 @@ package cmd
 
 import (
 	"github.com/isovalent/hubble-fgs/aggregator/cmd/aggregate"
+	"github.com/isovalent/hubble-fgs/aggregator/cmd/validate"
 	"github.com/spf13/cobra"
 )
 
 func New() *cobra.Command {
 	var rootCmd = &cobra.Command{
-		Use: "tetragon-aggregator",
+		Use:          "tetragon-aggregator",
+		SilenceUsage: true,
 	}
 	rootCmd.AddCommand(aggregate.New())
+	rootCmd.AddCommand(validate.New())
 	return rootCmd
 }
