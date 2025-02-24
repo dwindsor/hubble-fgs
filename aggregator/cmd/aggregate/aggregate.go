@@ -17,6 +17,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/model"
@@ -25,21 +26,34 @@ import (
 )
 
 var queue = make(chan *v1alpha.ApplicationModelEvent, 100)
+var mergedModel = &v1alpha.ApplicationModel{}
+var mergedModelMutex sync.Mutex
+
+func getCurrentModelJSON() ([]byte, error) {
+	mergedModelMutex.Lock()
+	defer mergedModelMutex.Unlock()
+	mergedModelEvent := &v1alpha.ApplicationModelEvent{
+		ApplicationModel: mergedModel,
+	}
+	b, err := mergedModelEvent.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
 
 func squash() {
 	timer := time.NewTicker(10 * time.Second)
-	mergedModel := &v1alpha.ApplicationModel{}
 	for {
 		select {
 		case <-timer.C:
-			mergedModelEvent := &v1alpha.ApplicationModelEvent{
-				ApplicationModel: mergedModel,
-			}
-			if b, err := mergedModelEvent.MarshalJSON(); err == nil {
+			if b, err := getCurrentModelJSON(); err == nil {
 				fmt.Println(string(b))
 			}
 		case m := <-queue:
+			mergedModelMutex.Lock()
 			mergedModel = model.Merge(mergedModel, m.GetApplicationModel())
+			mergedModelMutex.Unlock()
 		}
 	}
 }
@@ -63,10 +77,21 @@ func handleJSONLines(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleGet(w http.ResponseWriter, _ *http.Request) {
+	modelJSON, err := getCurrentModelJSON()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get current model: %s", err), http.StatusInternalServerError)
+		return
+	}
+	w.Write(modelJSON)
+}
+
 func aggregate(_ *cobra.Command, _ []string) {
-	http.HandleFunc("/", handleJSONLines)
+	handler := http.NewServeMux()
+	handler.HandleFunc("POST /", handleJSONLines)
+	handler.HandleFunc("GET /", handleGet)
 	go squash()
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }
 
 func New() *cobra.Command {
