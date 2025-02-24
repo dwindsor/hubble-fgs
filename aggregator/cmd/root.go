@@ -8,19 +8,17 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package main
+package cmd
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/isovalent/hubble-fgs/aggregator/cmd"
+	"github.com/isovalent/hubble-fgs/aggregator/cmd/aggregate"
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	rootCmd := cmd.New()
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+func New() *cobra.Command {
+	var rootCmd = &cobra.Command{
+		Use: "tetragon-aggregator",
 	}
+	rootCmd.AddCommand(aggregate.New())
+	return rootCmd
 }

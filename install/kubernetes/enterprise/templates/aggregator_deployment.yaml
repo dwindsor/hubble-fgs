@@ -34,6 +34,8 @@ spec:
       - name: {{ .Release.Name }}-aggregator
         command:
           - /usr/bin/tetragon-aggregator
+        args:
+          - aggregate
         image: "{{ if .Values.tetragonAggregator.image.override }}{{ .Values.tetragonAggregator.image.override }}{{ else }}{{ .Values.tetragonAggregator.image.repository }}:{{ .Values.tetragonAggregator.image.tag }}{{ end }}"
         imagePullPolicy: {{ .Values.tetragonAggregator.image.pullPolicy }}
         {{- with .Values.tetragonAggregator.extraVolumeMounts }}

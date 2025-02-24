@@ -13,4 +13,4 @@ FROM gcr.io/distroless/static-debian12@sha256:3f2b64ef97bd285e36132c684e6b2ae8f2
 ARG TARGETOS
 ARG TARGETARCH
 COPY --from=builder /out/${TARGETOS}/${TARGETARCH}/usr/bin/tetragon-aggregator /usr/bin/tetragon-aggregator
-CMD ["/usr/bin/tetragon-aggregator"]
+CMD ["/usr/bin/tetragon-aggregator", "aggregate"]
