@@ -157,6 +157,9 @@ jobs:
             set -eux
             cd /host/hubble-fgs
 
+            mkdir /build
+            export GOTMPDIR=/build
+            
             export KVM_CI=true
             export SUDO=
             # FIXME: TestCGTLS13 test fails bpf-next kernels

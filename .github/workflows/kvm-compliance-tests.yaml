@@ -98,6 +98,10 @@ jobs:
           cmd: |
             set -eux
             cd /host/hubble-fgs
+            
+            mkdir /build
+            export GOTMPDIR=/build
+            export DOCKER_API_VERSION=1.47
 
             export KVM_CI=true
             export SUDO=
