@@ -538,6 +538,7 @@ int udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16
 	struct udphdr *udp, cpy;
 	unsigned long err;
 	u16 udp_off;
+	bool dns_send_userspace = true;
 
 	if (!skb)
 		return SK_PASS;
@@ -566,9 +567,11 @@ int udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16
 	}
 	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
+	if (udp->source == bpf_htons(DNS_PORT) && bpf_dns_parser_enabled())
+		dns_send_userspace = !!parse_dns(skb, payload_off);
 	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, udp, cookie,
 		 payload_off,
-		 payload_sz, send, true);
+		 payload_sz, send, dns_send_userspace);
 	udp_watermarks(skb, cookie, (struct iphdr *)ip6, payload_sz, true, send);
 	return SK_PASS;
 }
