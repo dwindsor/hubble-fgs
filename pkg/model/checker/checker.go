@@ -122,6 +122,12 @@ func NewApplicationModelChecker() (*ApplicationModelChecker, error) {
 
 	options = append(options, cel.Declarations(exportConsts(appModelV1.WorkloadKind_value)...))
 
+	// Convenience aliases for system calls.
+	options = append(options, cel.Declarations(exportConsts(appModelV1.Sys_value)...))
+
+	// Convenience aliases for ABIs.
+	options = append(options, cel.Declarations(exportConsts(appModelV1.Abi_value)...))
+
 	celEnv, err := cel.NewEnv(options...)
 	if err != nil {
 		return nil, err
