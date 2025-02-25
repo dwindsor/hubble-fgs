@@ -142,20 +142,21 @@ func checkMatchLabelsPolicy(epPod *v1alpha1.PodInfo) error {
 		Label: epPod.ObjectMeta.Labels,
 	}
 
-	set := matchLabelPolicy.Collection(ml)
+	s := matchLabelPolicy.MergedCollection(ml)
+	if s == nil {
+		return fmt.Errorf("no merged policy applies")
+	}
 
 	ns := epPod.WorkloadObject.Namespace
 	name := epPod.WorkloadObject.Name
 	kind := epPod.WorkloadType.Kind
 
-	for _, s := range set {
-		src, err := createSrcKey(ns, name, kind)
-		if err != nil {
-			return err
-		}
-		if err := addNetworkPolicy(src, &s.Policy.Action, &s.Policy.Destination, true); err != nil {
-			return err
-		}
+	src, err := createSrcKey(ns, name, kind)
+	if err != nil {
+		return err
+	}
+	if err := addNetworkPolicy(src, &s.Policy.Action, &s.Policy.Destination, true); err != nil {
+		return err
 	}
 	return nil
 }
