@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/ext"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -118,6 +119,7 @@ func NewApplicationModelChecker() (*ApplicationModelChecker, error) {
 		celk8s.IP(),
 		celk8s.CIDR(),
 		celk8s.Lists(),
+		ext.Sets(),
 	}
 
 	options = append(options, cel.Declarations(exportConsts(appModelV1.WorkloadKind_value)...))

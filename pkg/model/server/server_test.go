@@ -27,6 +27,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/server"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
@@ -80,6 +81,35 @@ var tests = []processTree{
 		},
 		ArmSupport: false,
 	},
+	{
+		Name: "testSyscallsRead",
+		Steps: []testStep{
+			newEnsureFileStep(testutils.RepoRootPath("contrib/tester-progs/read_write/read")),
+			newCmdStep(testutils.RepoRootPath("contrib/tester-progs/read_write/read"), testutils.RepoRootPath("testdata/dummy_files/lorem.txt")),
+		},
+		Checks: []string{
+			`model.host.processes.exists(p,
+				p.name.matches("tester-progs/read_write/read") &&
+				p.arguments.matches("testdata/dummy_files/lorem.txt") &&
+				sets.contains(p.syscall_info.syscalls, [
+					SYS_BRK,
+					SYS_ACCESS,
+					SYS_OPENAT,
+					SYS_CLOSE,
+					SYS_MMAP,
+					SYS_PREAD64,
+					SYS_ARCH_PRCTL,
+					SYS_SET_TID_ADDRESS,
+					SYS_SET_ROBUST_LIST,
+					SYS_RSEQ,
+					SYS_MPROTECT,
+					SYS_MUNMAP,
+					SYS_READ,
+					SYS_PRLIMIT64,
+				]))`,
+		},
+		ArmSupport: false,
+	},
 }
 
 type appModelPrinter struct {
@@ -101,6 +131,7 @@ func setupProcessTreeEnable(t *testing.T, ctx context.Context, doneWG *sync.Wait
 	}
 
 	option.Config.EnableProcessTree = true
+	option.Config.EnableSyscallTracking = true
 	option.Config.EnableBPFDNSParser = true
 
 	base := base.GetInitialSensor()
@@ -139,6 +170,26 @@ func newCmdStep(cmd string, args ...string) *cmdStep {
 	return &cmdStep{
 		cmd,
 		args,
+	}
+}
+
+type ensureFileStep struct {
+	path string
+}
+
+func (step *ensureFileStep) Step(tb testing.TB) {
+	info, err := os.Stat(step.path)
+	if errors.Is(err, os.ErrNotExist) {
+		tb.Skipf("file %q does not exist", step.path)
+	}
+	if info.IsDir() {
+		tb.Skipf("expected %q to be a file, found a directory", step.path)
+	}
+}
+
+func newEnsureFileStep(path string) *ensureFileStep {
+	return &ensureFileStep{
+		path,
 	}
 }
 
@@ -264,7 +315,8 @@ spec:
 			if errModel != nil {
 				t.Fatalf("CheckApplicationModel error: %s: %s", errModel, appModelPrinter{model: appModelEvent})
 			}
-			if !assert.True(t, resModel.Ok(), "ApplicationModel: %s", appModelPrinter{model: appModelEvent}) {
+			if !assert.True(t, resModel.Ok()) {
+				t.Logf("ApplicationModel: %s", appModelPrinter{model: appModelEvent})
 				for _, f := range resModel.Failed() {
 					t.Logf("Check failed: %s", f)
 				}
