@@ -14,7 +14,12 @@ flow-export-file-compress: {{ .Values.tetragon.flowExportFileCompress | quote }}
 enable-cilium-api: "true"
 {{- end }}
 enable-sandboxpolicies: {{ .Values.tetragon.enableSandboxpolicies | quote }}
-enable-process-tree: {{ .Values.tetragon.enableProcessTree | quote }}
+enable-application-model: {{ .Values.tetragon.enableApplicationModel | quote }}
+application-model-cache-size: {{ .Values.tetragon.applicationModelCacheSize | quote }}
+{{- if .Values.tetragon.applicationModelExportFilename }}
+application-model-export-filename: {{ .Values.exportDirectory }}/{{ .Values.tetragon.applicationModelExportFilename }}
+application-model-export-interval: {{ .Values.tetragon.applicationModelExportInterval | quote }}
+{{- end }}
 {{- if .Values.tetragon.awsSonar.enabled }}
 enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}

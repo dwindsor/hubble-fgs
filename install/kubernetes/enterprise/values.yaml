@@ -61,6 +61,15 @@ tetragon:
   dnsStatsPerSocket: false
   # -- Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.
   enableBPFDNSParser: false
+  # -- Enable application model.
+  enableApplicationModel: false
+  # -- Cache size for application model.
+  applicationModelCacheSize: 65536
+  # -- Export filename for application model (e.g "application-model.log"). Set to empty
+  # to disable exporting the application model.
+  applicationModelExportFilename: ""
+  # -- Interval at which to export application model.
+  applicationModelExportInterval: 60s
 # Tetragon Aggregator settings
 tetragonAggregator:
   # -- Enables the Tetragon Aggregator.

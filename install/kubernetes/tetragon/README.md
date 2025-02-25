@@ -72,6 +72,9 @@ Helm chart for Tetragon Enterprise
 | serviceAccount.create | bool | `true` |  |
 | serviceAccount.name | string | `""` |  |
 | serviceLabelsOverride | object | `{}` |  |
+| tetragon.applicationModelCacheSize | int | `65536` | Cache size for application model. |
+| tetragon.applicationModelExportFilename | string | `""` | Export filename for application model (e.g "application-model.log"). Set to empty to disable exporting the application model. |
+| tetragon.applicationModelExportInterval | string | `"60s"` | Interval at which to export application model. |
 | tetragon.argsOverride | list | `[]` | Override the arguments. For advanced users only. |
 | tetragon.btf | string | `""` |  |
 | tetragon.cgidmap | object | `{"enabled":false}` | Enabling cgidmap instructs the Tetragon agent to use cgroup ids (instead of cgroup names) for pod association. This feature depends on cri being enabled. |
@@ -81,6 +84,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.cri.socketHostPath | string | `""` | path of the CRI socket on the host. This will typically be "/run/containerd/containerd.sock" for containerd or "/var/run/crio/crio.sock"  for crio. |
 | tetragon.debug | bool | `false` | If you want to run Tetragon in debug mode change this value to true |
 | tetragon.dnsStatsPerSocket | bool | `false` |  |
+| tetragon.enableApplicationModel | bool | `false` | Enable application model. |
 | tetragon.enableBPFDNSParser | bool | `false` | Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required. |
 | tetragon.enableCiliumAPI | bool | `false` | Access Cilium API to associate Tetragon events with Cilium DNS cache. |
 | tetragon.enableK8sAPI | bool | `true` | Access Kubernetes API to associate Tetragon events with Kubernetes pods. |

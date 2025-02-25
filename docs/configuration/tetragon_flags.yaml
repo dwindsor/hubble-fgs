@@ -3,6 +3,16 @@ synopsis: |
     Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement
 usage: tetragon [flags]
 options:
+    - name: application-model-cache-size
+      default_value: "65536"
+      usage: |
+        Set the size of the BPF data structure to store application model and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones
+    - name: application-model-export-filename
+      usage: |
+        Filename for application model JSON export. Set to "" to disable.
+    - name: application-model-export-interval
+      default_value: 0s
+      usage: Interval at which to export application model as JSON.
     - name: bpf-dir
       default_value: tetragon
       usage: Set tetragon bpf directory (default 'tetragon')
@@ -52,6 +62,9 @@ options:
       default_value: "false"
       usage: |
         If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported
+    - name: enable-application-model
+      default_value: "false"
+      usage: Enable application model in memory
     - name: enable-bpf-dns-parser
       default_value: "false"
       usage: |
@@ -131,9 +144,6 @@ options:
       default_value: "false"
       usage: |
         Include ancestors in process_tracepoint events. Only used if 'enable-process-ancestors' is set to 'true'
-    - name: enable-process-tree
-      default_value: "false"
-      usage: Include BPF process tree in memory
     - name: enable-process-uprobe-ancestors
       default_value: "false"
       usage: |
@@ -300,15 +310,6 @@ options:
     - name: process-cache-stale-interval
       default_value: 1h0m0s
       usage: Interval between stale process cache checks
-    - name: process-tree-cache-size
-      default_value: "65536"
-      usage: |
-        Set the size of the BPF data structure to store process tree and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones
-    - name: process-tree-export-filename
-      usage: Filename for application model JSON export.
-    - name: process-tree-export-interval
-      default_value: 0s
-      usage: Interval at which to export process tree as JSON.
     - name: procfs
       default_value: /proc/
       usage: Location of procfs to consume existing PIDs

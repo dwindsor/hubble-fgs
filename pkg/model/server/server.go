@@ -555,7 +555,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 
 func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
 	if !option.Config.EnableProcessTree {
-		return nil, fmt.Errorf("process tree must be enabled with the --enable-process-tree flag or the tetragon.enableProcessTree Helm value")
+		return nil, fmt.Errorf("application model must be enabled with the --enable-application-model flag or the tetragon.enableApplicationModel Helm value")
 	}
 	namespaces := req.GetNamespaces()
 	return GetProcessModel(namespaces, req.GetDebug())
