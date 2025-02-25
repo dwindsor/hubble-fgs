@@ -10,39 +10,61 @@ char _license[] __attribute__((section("license"), used)) = "Dual BSD/GPL";
 __attribute__((section("cgroup_skb/egress"), used)) int
 test_dns_parser(struct __sk_buff *skb)
 {
-	struct iphdr *ip;
+	void *ip;
+	struct iphdr *ip4;
+	struct ipv6hdr *ip6;
 	struct udphdr *udp;
 	struct dnshdr *dns;
 	int8_t error;
 	uint32_t error_idx, *counter;
 
-	// Verify if the frame contains an IP packet.
-	if (skb->protocol != bpf_htons(ETH_P_IP)) {
+	switch (bpf_ntohs(skb->protocol)) {
+	case ETH_P_IP:
+		ip4 = (struct iphdr *)(long)skb->data;
+		if (ip4 + 1 > (void *)(long)skb->data_end) {
+			error = -2;
+			goto test_give_up;
+		}
+
+		if (ip4->protocol != IPPROTO_UDP) {
+			// Skip non-UDP packets.
+			error = -3;
+			goto test_give_up;
+		}
+
+		udp = (void *)ip4 + (ip4->ihl * sizeof(u32)); // ihl is in 32 bits words.
+		if (udp + 1 > (void *)(long)skb->data_end) {
+			error = -4;
+			goto test_give_up;
+		}
+		ip = ip4;
+		break;
+	case ETH_P_IPV6:
+		ip6 = (struct ipv6hdr *)(long)skb->data;
+		if (ip6 + 1 > (void *)(long)skb->data_end) {
+			error = -2;
+			goto test_give_up;
+		}
+
+		// TODO: there could extension headers, so far that's okay
+		// because this is just the testing framework and I don't have
+		// test cases for this
+		if (ip6->nexthdr != IPPROTO_UDP) {
+			// Skip non-UDP packets.
+			error = -3;
+			goto test_give_up;
+		}
+
+		udp = (void *)ip6 + sizeof(struct ipv6hdr); // ihl is in 32 bits words.
+		if (udp + 1 > (void *)(long)skb->data_end) {
+			error = -4;
+			goto test_give_up;
+		}
+		ip = ip6;
+		break;
+	default:
 		// skip non IP packets.
 		error = -1;
-		goto test_give_up;
-	}
-
-	// Parse IP header.
-	ip = (struct iphdr *)(long)skb->data;
-	// Verify that there's something next to the IP header.
-	if (ip + 1 > (void *)(long)skb->data_end) {
-		error = -2;
-		goto test_give_up;
-	}
-
-	// Verify if protocol is UDP.
-	if (ip->protocol != IPPROTO_UDP) {
-		// Skip non-UDP packets.
-		error = -3;
-		goto test_give_up;
-	}
-
-	// Parse UDP header.
-	udp = (void *)ip + (ip->ihl * sizeof(u32)); // ihl is in 32 bits words.
-	// Verify that there's something next to the UDP header.
-	if (udp + 1 > (void *)(long)skb->data_end) {
-		error = -4;
 		goto test_give_up;
 	}
 
