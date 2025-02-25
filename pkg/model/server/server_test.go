@@ -87,7 +87,7 @@ type appModelPrinter struct {
 }
 
 func (printer appModelPrinter) String() string {
-	b, _ := json.MarshalIndent(printer.model, "", "    ")
+	b, _ := json.Marshal(printer.model)
 	return string(b)
 }
 
