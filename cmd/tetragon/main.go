@@ -546,6 +546,9 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if err = file.LoadFIMInitialSensor(ctx); err != nil {
 		return err
 	}
+	if err = layer3.StartLayer3Progs(ctx); err != nil {
+		return err
+	}
 	observer.GetSensorManager().LogSensorsAndProbes(ctx)
 	defer func() {
 		observer.RemoveSensors(ctx)

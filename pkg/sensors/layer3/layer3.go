@@ -11,6 +11,7 @@
 package layer3
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -55,12 +56,14 @@ var (
 	dnsEnabled              = false
 	icmpEnabled             = false
 	rawEnabled              = false
+	reportRawClose          = false
 
 	lastInitProg   *program.Program
 	firstStatsProg *program.Program
 )
 
 var (
+	baseLayer3Policy            = "__base_layer3__"
 	CgroupProtocolConfigMapName = "tg_cgroup_protocol_cfg_map"
 )
 
@@ -211,12 +214,7 @@ var (
 	dispatcherSkbLoad54Maps = append(udpMapsSkbLoad54, protoCfgSkbLoad54Map)
 )
 
-func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup, udpTimestampEnable bool,
-	udpInterval time.Duration, reportRawClose bool) *sensors.Sensor {
-	// We want to make sure we stand configuration up when loading/unloading the sensor.
-	cgrp_ingress_configured = false
-	cgrp_egress_configured = false
-	configured = false
+func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*program.Program, []*program.Map) {
 	needDispatcher := false
 
 	progsInitSock, maps := socktrack.EnableSocktrack()
@@ -233,7 +231,7 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 		needDispatcher = true
 	}
 	if udpEnabled {
-		udpProgsInit, udpProgsStats, udpMaps := udp.EnableUdp(cgroup, udpTimestampEnable, udpInterval)
+		udpProgsInit, udpProgsStats, udpMaps := udp.EnableUdp(cgroup, udpTimestampEnable)
 		progsInitSock = append(progsInitSock, udpProgsInit...)
 		progsCollectStats = append(progsCollectStats, udpProgsStats...)
 		maps = append(maps, udpMaps...)
@@ -290,8 +288,6 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 			logger.GetLogger().Info("Cgroup hooks requires 5.4+ kernels using Kprobes")
 		}
 	}
-	// If UDP is enabled then we need close events reported to maintain our maps.
-	configureSettings(rawEnabled, reportRawClose, udpEnabled)
 
 	// We want progsInitSock to load first, then socket discovery, then progsCollectStats. This will ensure that
 	// we don't miss a socket, but we might see the same socket in both an init prog and in socket discovery. We
@@ -315,7 +311,30 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 
 	maps = append(maps, program.MapUserFrom(base.ExecveMap))
 
-	l3Sensor := sensors.SensorBuilder(policy, api.Layer3SensorName, append(progsInitSock, progsCollectStats...), maps)
+	return append(progsInitSock, progsCollectStats...), maps
+}
+
+func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup, udpTimestampEnable bool,
+	udpInterval time.Duration) *sensors.Sensor {
+	// We want to make sure we stand configuration up when loading/unloading the sensor.
+	cgrp_ingress_configured = false
+	cgrp_egress_configured = false
+	configured = false
+	var progs []*program.Program
+	var maps []*program.Map
+
+	if !enterpriseOption.Config.Layer3CLIEnable {
+		progs, maps = ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable)
+	} else {
+		// If we are loading programs (!Layer3CLIEnable) then the sensor will be configured at the
+		// appropriate point. As we're not, configure the sensor now.
+		l3.configureMaps()
+		l3.configureSensor()
+	}
+
+	udp.SetGcInterval(udpInterval)
+
+	l3Sensor := sensors.SensorBuilder(policy, api.Layer3SensorName, progs, maps)
 	l3Sensor.PreUnloadHook = func() error {
 		unloadLayer3Sensor(policy)
 		return nil
@@ -327,12 +346,17 @@ type l3Sensor struct {
 	name string
 }
 
+func hasCgroup() bool {
+	return kernels.MinKernelVersion("5.4.0")
+}
+
 func (l3 *l3Sensor) PolicyHandler(
 	policy tracingpolicy.TracingPolicy,
 	fid policyfilter.PolicyID,
 ) (sensors.SensorIface, error) {
 	spec := policy.TpSpec()
-	if !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable && !spec.Parser.Dns.Enable && !spec.Parser.Icmp.Enable && !spec.Parser.Rawsock.Enable {
+
+	if !enterpriseOption.Config.Layer3CLIEnable && !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable && !spec.Parser.Dns.Enable && !spec.Parser.Icmp.Enable && !spec.Parser.Rawsock.Enable {
 		return nil, nil
 	}
 
@@ -340,26 +364,34 @@ func (l3 *l3Sensor) PolicyHandler(
 		return nil, fmt.Errorf("layer3 sensor does not implement policy filtering")
 	}
 
-	tcpEnabled = spec.Parser.Tcp.Enable
-	udpEnabled = spec.Parser.Udp.Enable
-	dnsEnabled = spec.Parser.Dns.Enable
-	icmpEnabled = spec.Parser.Icmp.Enable
-	rawEnabled = spec.Parser.Rawsock.Enable
-	udpCgroup := spec.Parser.Udp.Cgroup
-	// If TCP or UDP then turn on DNS as nobody wants L4 without DNS.
-	if tcpEnabled || udpEnabled {
-		dnsEnabled = true
-		// DNS requires cgroup programs.
-		udpCgroup = true
+	// Check if a protocol enable has been set in policy and warn that this is deprecated.
+	if spec.Parser.Tcp.Enable || spec.Parser.Udp.Enable || spec.Parser.Dns.Enable || spec.Parser.Icmp.Enable || spec.Parser.Rawsock.Enable {
+		logger.GetLogger().Info("CLI switches (--enable-tcp, --enable-udp, etc) are preferred over protocol enabling in policies. We recommend using CLI switches and removing protocol enabling in policies.")
 	}
-	// If DNS then turn on UDP otherwise DNS doesn't work.
-	if dnsEnabled {
-		udpEnabled = true
-		// DNS requires cgroup programs.
-		udpCgroup = true
+
+	udpCgroup := true
+	if !enterpriseOption.Config.Layer3CLIEnable {
+		tcpEnabled = spec.Parser.Tcp.Enable
+		udpEnabled = spec.Parser.Udp.Enable
+		dnsEnabled = spec.Parser.Dns.Enable
+		icmpEnabled = spec.Parser.Icmp.Enable
+		rawEnabled = spec.Parser.Rawsock.Enable
+		udpCgroup = spec.Parser.Udp.Cgroup
+		// If TCP or UDP then turn on DNS as nobody wants L4 without DNS.
+		if tcpEnabled || udpEnabled {
+			dnsEnabled = true
+			// DNS requires cgroup programs.
+			udpCgroup = true
+		}
+		if dnsEnabled {
+			udpEnabled = true
+			// DNS requires cgroup programs.
+			udpCgroup = true
+		}
 	}
-	// However, disable cgroup and therefore DNS if the kernel is too old
-	if !kernels.MinKernelVersion("5.4.0") {
+	// However, disable cgroup and therefore DNS if unavailable.
+	if !hasCgroup() {
+		logger.GetLogger().Warn("Kernel does not provide suitable CGroup/SKB support. Falling back to kprobes and disabling DNS.")
 		udpCgroup = false
 		dnsEnabled = false
 	}
@@ -386,11 +418,8 @@ func (l3 *l3Sensor) PolicyHandler(
 		if err != nil {
 			return nil, fmt.Errorf("icmp.PolicyHandler error: %w", err)
 		}
-		// ICMP partially relies on raw socket tracking.
-		rawEnabled = true
 	}
 
-	reportRawClose := false
 	if rawEnabled {
 		reportRawClose, err = rawsock.PolicyHandler(spec)
 		if err != nil {
@@ -398,8 +427,8 @@ func (l3 *l3Sensor) PolicyHandler(
 		}
 	}
 
-	return EnableLayer3(policy, tcpTimestampEnable,
-		udpCgroup, udpTimestampEnable, udpInterval, reportRawClose), nil
+	return l3.enableLayer3(policy, tcpTimestampEnable,
+		udpCgroup, udpTimestampEnable, udpInterval), nil
 }
 
 type CgroupProtocolConfigValue struct {
@@ -468,6 +497,9 @@ func (l3 *l3Sensor) createCgroupProtocolCfgMap(l3cfg CgroupProtocolConfigValue) 
 func (l3 *l3Sensor) configureMaps() error {
 	l3cfg := CgroupProtocolConfigValue{}
 
+	// If UDP is enabled then we need close events reported to maintain our maps.
+	configureSettings(rawEnabled, reportRawClose, udpEnabled)
+
 	if tcpEnabled {
 		tcp.ConfigureMaps()
 		l3cfg.tcp4Enabled = 1
@@ -498,12 +530,12 @@ func (l3 *l3Sensor) configureMaps() error {
 	return nil
 }
 
-func configureSensor(args sensors.LoadProbeArgs) error {
+func (l3 *l3Sensor) configureSensor() error {
 	if tcpEnabled {
 		tcp.ConfigureSensor()
 		logger.GetLogger().WithField("timestampEnabled", udp.TimestampEnabled).Debug("TCP Loader")
 		if tcp.TimestampEnabled {
-			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
+			if err := networklatency.ConfigureLatency(unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
 				logger.GetLogger().WithError(err).Warn("ConfigureLatency TCP")
 				return err
 			}
@@ -514,7 +546,7 @@ func configureSensor(args sensors.LoadProbeArgs) error {
 		udp.ConfigureSensor()
 		logger.GetLogger().WithField("timestampEnabled", udp.TimestampEnabled).Debug("UDP Loader")
 		if udp.TimestampEnabled {
-			if err := networklatency.ConfigureLatency(args.BPFDir, unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
+			if err := networklatency.ConfigureLatency(unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
 				return err
 			}
 			networklatency.Start()
@@ -540,7 +572,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	// If this is the first of the collect stats programs, discover sockets.
 	if args.Load == firstStatsProg {
 		firstStatsProg = nil
-		err := configureSensor(args)
+		err := l3.configureSensor()
 		if err != nil {
 			return err
 		}
@@ -604,7 +636,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	// If this is the last of the init progs, discover sockets.
 	if args.Load == lastInitProg {
 		lastInitProg = nil
-		err := configureSensor(args)
+		err := l3.configureSensor()
 		if err != nil {
 			return err
 		}
@@ -662,6 +694,47 @@ func AddLayer3() {
 	sensors.RegisterProbeType("socktrack_fentry", l3)
 
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
+}
+
+func StartLayer3Progs(ctx context.Context) error {
+	if !enterpriseOption.Config.Layer3CLIEnable {
+		return nil
+	}
+	if enterpriseOption.Config.EnableTCP {
+		tcpEnabled = true
+	}
+	if enterpriseOption.Config.EnableUDP {
+		udpEnabled = true
+	}
+	if enterpriseOption.Config.EnableICMP {
+		icmpEnabled = true
+	}
+	if enterpriseOption.Config.EnableRawsock {
+		rawEnabled = true
+	}
+	if enterpriseOption.Config.EnableDNS {
+		dnsEnabled = true
+	}
+	udpCgroup := true
+	if !hasCgroup() {
+		udpCgroup = false
+		if dnsEnabled {
+			return fmt.Errorf("enabling DNS requires CGroup support")
+		}
+	}
+
+	// By default, enable CGroup/SKB.
+	progs, maps := ProgsAndMaps(enterpriseOption.Config.EnableLatency, udpCgroup, enterpriseOption.Config.EnableLatency)
+	mgr := observer.GetSensorManager()
+	initialLayer3Sensor := &sensors.Sensor{
+		Name:  baseLayer3Policy,
+		Progs: progs,
+		Maps:  maps,
+	}
+	if err := mgr.AddSensor(ctx, initialLayer3Sensor.Name, initialLayer3Sensor); err != nil {
+		return err
+	}
+	return mgr.EnableSensor(ctx, initialLayer3Sensor.Name)
 }
 
 func HTTPContext() *program.Map {

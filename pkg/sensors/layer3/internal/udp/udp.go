@@ -280,7 +280,7 @@ func bindProg() *program.Program {
 	return SkUdpBind_5_15Kprobe
 }
 
-func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program.Program, []*program.Program, []*program.Map) {
+func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Program, []*program.Map) {
 	var progsInitSock []*program.Program
 	var progsCollectStats []*program.Program
 	var maps []*program.Map
@@ -333,15 +333,18 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		progsInitSock = append(progsInitSock, networklatency.Timestamp)
 	}
 
-	udpGcInterval = interval
 	logger.GetLogger().WithFields(logrus.Fields{
 		"sensorName":     versionStr,
-		"statsInterval":  interval,
 		"deleteInterval": UdpDeleteInterval,
 		"metrics":        udpconfig.MetricsEnabled,
 		"cgroup":         cgroup,
 	}).Infof("Enable UDP")
 	return progsInitSock, progsCollectStats, maps
+}
+
+func SetGcInterval(interval time.Duration) {
+	udpGcInterval = interval
+	logger.GetLogger().WithField("statsInterval", interval).Info("UDP configured")
 }
 
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error) {

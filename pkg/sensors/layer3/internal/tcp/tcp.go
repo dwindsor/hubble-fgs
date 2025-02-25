@@ -258,6 +258,15 @@ var (
 )
 
 func ConfigureMaps() error {
+	if StatsEnabled() {
+		ConfigureSockStatSampler(StatsInterval,
+			WatermarksEnable,
+			WatermarksWindowSize,
+			WatermarksBurstTriggerMult,
+			WatermarksDipTriggerMult,
+			tcpconfig.RttHistogramMax,
+			tcpconfig.RttHistogramMin)
+	}
 	ConfigureTCPDisableEvents(DisableConnect, DisableClose, DisableAccept, DisableListen)
 	err := configureQuotasDNSMaps(datapath.QuotasInitDNSDomainMappings)
 	if err != nil {
@@ -282,15 +291,6 @@ func configureQuotasDNSMaps(mappings map[endpoint.Endpoint]uint64) error {
 
 func ConfigureSensor() error {
 	getRunningSockets(true, true)
-	if StatsEnabled() {
-		ConfigureSockStatSampler(StatsInterval,
-			WatermarksEnable,
-			WatermarksWindowSize,
-			WatermarksBurstTriggerMult,
-			WatermarksDipTriggerMult,
-			tcpconfig.RttHistogramMax,
-			tcpconfig.RttHistogramMin)
-	}
 	return nil
 }
 
@@ -435,7 +435,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		}
 	}
 
-	if tcpconfig.RttHistogramMax != 0 {
+	if tcpconfig.RttHistogramMax != 0 || enterpriseOption.Config.EnableTCPRTT {
 		if utils.SupportFentry() {
 			progsCollectStats = append(progsCollectStats, RttTracerFentry)
 		} else {

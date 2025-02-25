@@ -322,8 +322,8 @@ func AttachTc(args sensors.LoadProbeArgs) error {
 	return nil
 }
 
-func ConfigureLatency(mapDir string, protocol uint16, config ProtocolConfig) error {
-	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, ConfigMapName), nil)
+func ConfigureLatency(protocol uint16, config ProtocolConfig) error {
+	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), ConfigMapName), nil)
 	if err != nil {
 		return err
 	}
