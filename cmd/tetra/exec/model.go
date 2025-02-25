@@ -494,7 +494,7 @@ func runBrowserTree() error {
 		getTreeHtml(w, r, getter)
 	})
 
-	fmt.Println("pstree web ui is running on http://localhost:3333")
+	fmt.Println("application model web ui is running on http://localhost:3333")
 	errChan := make(chan error)
 	go func() {
 		errChan <- srv.ListenAndServe()
@@ -547,7 +547,7 @@ func getProcessTreeGrpc(c *ConnectedModelClient) (*tetragon.GetProcessModelRespo
 		Debug:      common.Debug,
 	})
 	if err != nil || res == nil {
-		logger.GetLogger().WithError(err).Warn("failed to get process tree")
+		logger.GetLogger().WithError(err).Warn("failed to get application model")
 		return nil, err
 	}
 
@@ -729,15 +729,15 @@ func readAppModelFromFile(filename string) (*appModelV1.ApplicationModelEvent, e
 func NewCheck() *cobra.Command {
 	ret := &cobra.Command{
 		Use:   "check [application model file]",
-		Short: "Check the process tree application model using CEL expressions",
+		Short: "Check the application model using CEL expressions",
 		Example: `  # Check model.json using CEL checkers defined in source.cel
-  tetra pstree check -f source.cel -m  model.json
+  tetra model check -f source.cel -m  model.json
 
   # Check an application model provided over gRPC for the node name "foo" and a bash process in namepsace "bar"
-  tetra pstree check -e 'node_name == "foo" && model.namespaces.exists_one(n, n.name == "bar" && n.processes.exists_one(p, p.name.matches("/bash$")))'
+  tetra model check -e 'node_name == "foo" && model.namespaces.exists_one(n, n.name == "bar" && n.processes.exists_one(p, p.name.matches("/bash$")))'
 
   # Check an application model provided via stdin for a host process with 1337 bytes sent to a specific IP
-  tetra pstree check -m - -e 'model.host.processes.exists_one(p, p.connections.exists(c, c.destination_name == "10.0.2.1" && c.bytes_sent == uint(1337)))'
+  tetra model check -m - -e 'model.host.processes.exists_one(p, p.connections.exists(c, c.destination_name == "10.0.2.1" && c.bytes_sent == uint(1337)))'
 		`,
 		Hidden:       false,
 		SilenceUsage: false,
@@ -783,9 +783,9 @@ func NewGenerate() *cobra.Command {
 		Use:   "generate",
 		Short: "Generate an application model checker from application model JSON",
 		Example: `  # Generate from a JSON file model.json
-  tetra pstree check generate -m model.json
+  tetra model check generate -m model.json
   # Generate from stdin
-  tetra pstree check generate -m -
+  tetra model check generate -m -
 		`,
 		Hidden:       false,
 		SilenceUsage: false,
@@ -809,13 +809,13 @@ func NewDiff() *cobra.Command {
 		Use:   "diff <model file> <model file>",
 		Short: "Take the diff between two application model JSON files",
 		Example: `  # Take the diff between two application models
-  tetra pstree diff model-a.json model-b.json
+  tetra model diff model-a.json model-b.json
 
   # Take the diff between two application models and print it as a JSON patch
-  tetra pstree diff model-a.json model-b.json --patch
+  tetra model diff model-a.json model-b.json --patch
 
   # Check whether two models match
-  tetra pstree diff model-a.json model-b.json --check
+  tetra model diff model-a.json model-b.json --check
 		`,
 		Hidden:       false,
 		SilenceUsage: false,
@@ -906,7 +906,7 @@ func NewDiff() *cobra.Command {
 func NewShow() *cobra.Command {
 	ret := &cobra.Command{
 		Use:          "show",
-		Short:        "Show the process tree using a gRPC connection or application model JSON",
+		Short:        "Show application model using a gRPC connection or JSON",
 		Hidden:       false,
 		SilenceUsage: false,
 		RunE: func(_ *cobra.Command, _ []string) error {
@@ -1060,7 +1060,7 @@ func getDebug() (*tetragon.GetEndpointMapResponse, error) {
 
 	res, err := c.Client.GetEndpointMap(c.Ctx, &tetragon.GetEndpointMapRequest{})
 	if err != nil || res == nil {
-		logger.GetLogger().WithError(err).Warn("failed to get process tree")
+		logger.GetLogger().WithError(err).Warn("failed to get application model")
 		return nil, err
 	}
 
@@ -1167,7 +1167,7 @@ func NewDebugEndpoint() *cobra.Command {
 func NewDebug() *cobra.Command {
 	ret := &cobra.Command{
 		Use:          "debug",
-		Short:        "Debug Tetragon process tree",
+		Short:        "Debug Tetragon application model",
 		Hidden:       false,
 		SilenceUsage: false,
 		Run: func(cmd *cobra.Command, _ []string) {
@@ -1230,8 +1230,8 @@ func squash() error {
 
 func New() *cobra.Command {
 	ret := &cobra.Command{
-		Use:          "pstree",
-		Short:        "Tetragon process tree",
+		Use:          "model",
+		Short:        "Tetragon application model",
 		Hidden:       false,
 		SilenceUsage: false,
 		Run: func(cmd *cobra.Command, _ []string) {
