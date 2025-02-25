@@ -179,6 +179,8 @@ jobs:
             {
               "tetragon.image.repository": "quay.io/isovalent-dev/tetragon-ci",
               "tetragon.image.tag": "${{ inputs.sha }}",
+              "tetragonAggregator.image.repository": "quay.io/isovalent-dev/tetragon-aggregator-ci",
+              "tetragonAggregator.image.tag": "${{ inputs.sha }}",
               "tetragonOperator.image.repository": "quay.io/isovalent-dev/tetragon-operator-ci",
               "tetragonOperator.image.tag": "${{ inputs.sha }}",
             }
