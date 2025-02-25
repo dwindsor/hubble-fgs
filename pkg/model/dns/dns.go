@@ -205,6 +205,7 @@ func checkMatchLabelsPolicy(epPod *v1alpha1.PodInfo) error {
 	if err := addNetworkPolicy(src, &s.Policy.Action, &s.Policy.Destination, true); err != nil {
 		return err
 	}
+	matchLabelPolicy.AddPod(s.Name, epPod)
 	return nil
 }
 
@@ -409,16 +410,16 @@ func removeNetworkPolicy(src *types.ProcessTreeKey, d *types.TetragonNetworkDest
 		}
 		if err := delSingleDnsPolicy(src, ep, dstMap); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
-				"cgid":  src.CgroupId,
-				"self":  src.Self,
-				"dest":  entry,
+				"cgid": src.CgroupId,
+				"self": src.Self,
+				"dest": entry,
 			}).WithError(err).Error("TCP quota remove Failed")
 		}
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
-		"cgid":  src.CgroupId,
-		"self":  src.Self,
-		"dest":  strings.Join(d.Names, " "),
+		"cgid": src.CgroupId,
+		"self": src.Self,
+		"dest": strings.Join(d.Names, " "),
 	}).Info("TCP quota removed")
 	return nil
 
@@ -446,5 +447,32 @@ func RemoveNetworkPolicy(_ string, policy *types.TetragonNetworkPolicy) error {
 }
 
 func RemoveMatchLabelNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) error {
+	queueMatchLabelsLock.Lock()
+	defer queueMatchLabelsLock.Unlock()
+
+	p, ok := matchLabelPolicy[name]
+	if !ok {
+		return fmt.Errorf("Could not find policy %s", name)
+	}
+	matchLabelPolicy.Remove(name)
+
+	for _, epPod := range p.EPPods {
+		// This is going to try and update the pod to the next
+		// highest priority matching policy. If no such policy
+		// exists we drop all policy from the pod.
+		if err := checkMatchLabelsPolicy(epPod); err != nil {
+			ns := epPod.WorkloadObject.Namespace
+			podName := epPod.WorkloadObject.Name
+			podKind := epPod.WorkloadType.Kind
+
+			src, err := createSrcKey(ns, podName, podKind)
+			if err != nil {
+				continue
+			}
+
+			removeNetworkPolicy(src, &policy.Destination)
+			continue
+		}
+	}
 	return nil
 }
