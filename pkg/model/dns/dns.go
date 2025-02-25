@@ -99,6 +99,53 @@ func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap
 	return nil
 }
 
+func delSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map) error {
+	var addr [2]uint64
+
+	c := endpoint.Get()
+	dst, err := c.AddEndpoint(*ep)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
+		return err
+	}
+
+	// On delete leave dnsDomainMap!
+
+	// Ideally we would keep all the values here and just update the TxDeny, TxQuota and
+	// TxLimit fields. Unfortunately its hard to do a partial update without doing multiple
+	// reads. So for now zero entry, but keep the key/value in the map its not obvious
+	// to me that we need to move it given the connection is likely still around.
+	key := &types.DestinationEndpointKey{
+		LocalId:           src.Self,
+		LocalNSId:         src.CgroupId,
+		DestinationId:     dst,
+		DestinationSource: types.DestinationSourceUser,
+		DestinationPort:   0,
+	}
+
+	value := &types.DestinationEndpointValue{
+		TxQuota:        0,
+		TxLimit:        0,
+		TxDrops:        0,
+		TxDeny:         0,
+		KtimeLastReset: 0,
+		KtimeTxReset:   0,
+		TxBytes:        0,
+		RxBytes:        0,
+		Pad0:           0,
+		IPv6:           0,
+		KtimeCreate:    0,
+		AddrCreate:     addr,
+		Port:           0,
+	}
+
+	if err := dstMap.Update(key, value, 0); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func queueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
 	queueWl[policy.Subject.Workload] = policy
 }
@@ -342,4 +389,62 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
 	}
 
 	return addNetworkPolicy(src, a, d, init)
+}
+
+func removeNetworkPolicy(src *types.ProcessTreeKey, d *types.TetragonNetworkDestination) error {
+	var err error
+
+	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
+	dstMap, err := ebpf.LoadPinnedMap(file, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", file).Warn("Could not open map")
+		return err
+	}
+	defer dstMap.Close()
+
+	for _, entry := range d.Names {
+		ep := &endpoint.Endpoint{
+			Type: endpoint.DnsType,
+			Dns:  entry,
+		}
+		if err := delSingleDnsPolicy(src, ep, dstMap); err != nil {
+			logger.GetLogger().WithFields(logrus.Fields{
+				"cgid":  src.CgroupId,
+				"self":  src.Self,
+				"dest":  entry,
+			}).WithError(err).Error("TCP quota remove Failed")
+		}
+	}
+	logger.GetLogger().WithFields(logrus.Fields{
+		"cgid":  src.CgroupId,
+		"self":  src.Self,
+		"dest":  strings.Join(d.Names, " "),
+	}).Info("TCP quota removed")
+	return nil
+
+}
+
+func RemoveNetworkPolicy(_ string, policy *types.TetragonNetworkPolicy) error {
+	queueWlLock.Lock()
+	defer queueWlLock.Unlock()
+
+	s := &policy.Subject.Workload
+	d := &policy.Destination
+
+	delete(queueWl, policy.Subject.Workload)
+
+	src, err := createSrcKey(s.Namespace, s.Name, s.Kind)
+	if err != nil {
+		// Remove should not throw an error if the policy doesn't exist
+		return nil
+	}
+	if src == nil {
+		return nil
+	}
+
+	return removeNetworkPolicy(src, d)
+}
+
+func RemoveMatchLabelNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) error {
+	return nil
 }

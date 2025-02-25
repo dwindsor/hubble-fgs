@@ -64,13 +64,13 @@ var (
 	CgroupProtocolConfigMapName = "tg_cgroup_protocol_cfg_map"
 )
 
-func unloadLayer3Sensor() error {
+func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
 	cgrp_ingress_configured = false
 	cgrp_egress_configured = false
 	configured = false
 	if tcpEnabled {
-		err := tcp.UnloadSensor()
+		err := tcp.UnloadSensor(policy)
 		if err != nil {
 			return err
 		}
@@ -316,7 +316,10 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 	maps = append(maps, program.MapUserFrom(base.ExecveMap))
 
 	l3Sensor := sensors.SensorBuilder(policy, api.Layer3SensorName, append(progsInitSock, progsCollectStats...), maps)
-	l3Sensor.PreUnloadHook = unloadLayer3Sensor
+	l3Sensor.PreUnloadHook = func() error {
+		unloadLayer3Sensor(policy)
+		return nil
+	}
 	return l3Sensor
 }
 

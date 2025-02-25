@@ -2,19 +2,10 @@ package policy
 
 import (
 	"fmt"
-	"path/filepath"
-
-	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
-)
-
-const (
-	destinationEndpointMap = "destination_endpoint_map"
 )
 
 func AddUnsafeNetworkPolicy(policyUID string, policy *types.TetragonNetworkPolicy) error {
@@ -56,29 +47,9 @@ func AddUnsafeNetworkPolicy(policyUID string, policy *types.TetragonNetworkPolic
 // This is a somewhat lossy operation the BPF side may lose some stats during
 // the update. However, this is a heavy operation to remove a quotas so we
 // accept it.
-func ClearDnsPolicy() error {
-	var dstVal types.DestinationEndpointValue
-	var dstKey types.DestinationEndpointKey
-
-	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
-	dstMap, err := ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", file).Warn("Could not open destination endpoint map")
-		return err
+func ClearDnsPolicy(policyUID string, policy *types.TetragonNetworkPolicy) error {
+	if len(policy.Subject.MatchLabelsEqual) > 0 {
+		return dns.RemoveMatchLabelNetworkPolicy(policyUID, policy)
 	}
-	defer dstMap.Close()
-
-	iter := dstMap.Iterate()
-	for iter.Next(&dstKey, &dstVal) {
-		if dstVal.TxLimit == 0 {
-			continue
-		}
-
-		dstVal.TxLimit = 0
-
-		if err := dstMap.Update(dstKey, dstVal, 0); err != nil {
-			return err
-		}
-	}
-	return nil
+	return dns.RemoveNetworkPolicy(policyUID, policy)
 }

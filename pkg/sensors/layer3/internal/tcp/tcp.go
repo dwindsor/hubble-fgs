@@ -23,6 +23,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -293,8 +294,9 @@ func ConfigureSensor() error {
 	return nil
 }
 
-func UnloadSensor() error {
+func UnloadSensor(tp tracingpolicy.TracingPolicy) error {
 	TimestampEnabled = false
+	var err error
 
 	networklatency.Stop(unix.IPPROTO_TCP)
 	if WatermarksEnabled {
@@ -305,7 +307,19 @@ func UnloadSensor() error {
 		stats.disable()
 		StatsInterval = 0
 	}
-	return policy.ClearDnsPolicy()
+
+	spec := tp.TpSpec()
+	name := tp.TpName()
+
+	if spec.Parser.Tcp.Qos != nil {
+		qos := spec.Parser.Tcp.Qos
+
+		for _, p := range qos.QuotaPolicySpec {
+			networkPolicy := qosSpecToPolicy(&p, qos.QuotaResetLimits)
+			err = policy.ClearDnsPolicy(name, networkPolicy)
+		}
+	}
+	return err
 }
 
 func processModelMapsEnable() []*program.Map {
