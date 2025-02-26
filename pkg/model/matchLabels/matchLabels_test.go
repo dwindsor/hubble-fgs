@@ -4,12 +4,32 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestMain(m *testing.M) {
 	m.Run()
+}
+
+func TestGetLabels(t *testing.T) {
+	netpol := &types.TetragonNetworkPolicy{}
+	s1 := &LabelSet{
+		Name:   "netpol",
+		Label:  make(map[string]string),
+		Policy: netpol,
+	}
+
+	s1.Label["A"] = "a"
+	s1.Label["B"] = "b"
+	s1.Label["C"] = "c"
+	s1.Label["D"] = "d"
+	s1.Label["E"] = "e"
+
+	s2 := s1.GetLabels()
+	assert.Equal(t, s1.Label, s2)
 }
 
 func TestSinglePolicy(t *testing.T) {
@@ -107,6 +127,7 @@ func TestDeletePolicy(t *testing.T) {
 	assert.False(t, match, "keyset should have been removed")
 	p.Flush()
 }
+
 func TestManySimplePolicy(t *testing.T) {
 	netpol := &types.TetragonNetworkPolicy{}
 	p := &PolicyList{}
@@ -208,6 +229,63 @@ func TestCollectionPolicy(t *testing.T) {
 	search.Label["A"] = "A"
 	collection = p.Collection(search)
 	assert.Equal(t, 0, len(collection))
+	p.Flush()
+}
+
+func TestPodAdd(t *testing.T) {
+	name := "netpol"
+	netpol := &types.TetragonNetworkPolicy{}
+	p := PolicyList{}
+
+	s := &LabelSet{
+		Name:   name,
+		Label:  make(map[string]string),
+		Policy: netpol,
+	}
+	s.Label["A"] = "a"
+	s.Label["B"] = "b"
+	s.Label["C"] = "c"
+	s.Label["D"] = "d"
+	s.Label["E"] = "e"
+
+	p.Add(name, s)
+	match := p.Exists(s)
+	assert.True(t, match, "keyset should exist")
+
+	obj := v1alpha1.WorkloadObjectMeta{
+		Name:      "workloadTest",
+		Namespace: "workloadNamespace",
+	}
+	ty := metav1.TypeMeta{
+		Kind: "kindTest",
+	}
+
+	epPod1 := &v1alpha1.PodInfo{
+		WorkloadType:   ty,
+		WorkloadObject: obj,
+	}
+
+	epPod2 := &v1alpha1.PodInfo{
+		WorkloadType:   ty,
+		WorkloadObject: obj,
+	}
+
+	err := p.AddPod(name, epPod1)
+	assert.NoError(t, err)
+	ls, ok := p[name]
+	assert.True(t, ok)
+	assert.Equal(t, ls.Name, name)
+	assert.Equal(t, ls.Policy, netpol)
+	assert.Equal(t, 1, len(ls.EPPods))
+
+	err = p.AddPod(name, epPod2)
+	ls, ok = p[name]
+	assert.True(t, ok)
+	assert.NoError(t, err)
+	assert.Equal(t, ls.Name, name)
+	assert.Equal(t, ls.Policy, netpol)
+	assert.Equal(t, 2, len(ls.EPPods))
+
 	p.Flush()
 }
 
