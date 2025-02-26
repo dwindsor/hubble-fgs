@@ -38,6 +38,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/checker"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/rivo/tview"
 	"github.com/sirupsen/logrus"
@@ -1019,17 +1020,41 @@ func getDestinationDebug() (*tetragon.GetDestinationMapResponse, error) {
 
 	return res, nil
 }
+
 func printDestinationDebug() error {
 	res, err := getDestinationDebug()
 	if err != nil {
 		return err
 	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "LocalNSID\tLocalID\tDest ID:Src(Port)[Src]")
+
+	// Implementing a full Stringer on a proper type is more annoying that helpful
+	// for this simple uint64, let's just use a custom local stringer for this
+	// specific use case.
+	destinationSourceStringer := func(source uint64) string {
+		switch source {
+		case types.DestinationSourceBPF:
+			return "bpf"
+		case types.DestinationSourceUser:
+			return "user"
+		case types.DestinationSourceDNS:
+			return "dns"
+		}
+		return "unknown"
+	}
 
 	for _, d := range res.Destinations {
-		fmt.Printf("%d.%d -> %d:%d(%d)\n", d.LocalNsId, d.LocalId, d.DestinationId, d.DestinationSource, d.DestinationPort)
+		fmt.Fprintf(w, "%d\t%d\t%d:%d(%d)[%s]\n",
+			d.LocalNsId,
+			d.LocalId,
+			d.DestinationId,
+			d.DestinationSource,
+			d.DestinationPort,
+			destinationSourceStringer(d.DestinationSource),
+		)
 	}
-	return nil
-
+	return w.Flush()
 }
 
 func NewDebugDestination() *cobra.Command {
