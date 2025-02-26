@@ -1,14 +1,18 @@
 package matchLabels
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 type LabelSet struct {
+	Name   string
 	Label  map[string]string
 	Policy *types.TetragonNetworkPolicy
+	EPPods []*v1alpha1.PodInfo
 }
 
 func (l LabelSet) GetLabels() map[string]string {
@@ -58,6 +62,15 @@ func (policy PolicyList) Exists(l *LabelSet) bool {
 	return false
 }
 
+func (policy PolicyList) AddPod(name string, epPod *v1alpha1.PodInfo) error {
+	p, ok := policy[name]
+	if !ok {
+		return fmt.Errorf("Policy name (%s) does not exist", name)
+	}
+	p.EPPods = append(p.EPPods, epPod)
+	return nil
+}
+
 func (policy PolicyList) Collection(l *LabelSet) []*LabelSet {
 	col := []*LabelSet{}
 
@@ -92,6 +105,7 @@ func (policy PolicyList) MergedCollection(l *LabelSet) *LabelSet {
 // Careful this is not a copy() so you can't reuse
 // l after this.
 func (policy PolicyList) Add(name string, l *LabelSet) {
+	l.Name = name
 	policy[name] = l
 }
 
