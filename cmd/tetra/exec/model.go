@@ -26,8 +26,8 @@ import (
 	"os"
 	"os/signal"
 	"sort"
-	"strconv"
 	"syscall"
+	"text/tabwriter"
 	"text/template"
 	"time"
 
@@ -1091,31 +1091,25 @@ func printDebugJSON(res *tetragon.GetEndpointMapResponse) error {
 }
 
 func printDebugCompact(res *tetragon.GetEndpointMapResponse) error {
-	fmt.Printf("LocalIP %14s EndpointId %12s EndpointValue\n", "", "")
-	fmt.Printf("-------------------------------------------------------------\n")
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "LocalIP\tEndpointID\tEndpointValue")
 	for _, e := range res.Map.Endpoints {
-		ipLen := int(len(e.SrcIP))
-		spaces := 15 - ipLen + 14
-		keyStr := strconv.FormatUint(e.Key, 10)
-		idSpaces := 2 - len(keyStr) + 14
 		switch e.Type {
 		case tetragon.EndpointType_BpfDnsType:
-			fmt.Printf("%s%*c %d:bpf %*c %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces-4, ' ', e.Dns)
+			fmt.Fprintf(w, "%s\t%d:bpf\t%s\n", e.SrcIP, e.Key, e.Dns)
 		case tetragon.EndpointType_Dnstype:
-			fmt.Printf("%s%*c %d %*c %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Dns)
-		case tetragon.EndpointType_PodType:
-			fmt.Printf("%s%*c %d %*c %s:%s %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Namespace, e.Name, e.Kind)
+			fmt.Fprintf(w, "%s\t%d\t%s\n", e.SrcIP, e.Key, e.Dns)
+		case tetragon.EndpointType_PodType, tetragon.EndpointType_ServiceType:
+			fmt.Fprintf(w, "%s\t%d\t%s:%s %s\n", e.SrcIP, e.Key, e.Namespace, e.Name, e.Kind)
 		case tetragon.EndpointType_IpType:
-			fmt.Printf("%s%*c %d %*c %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Ip)
-		case tetragon.EndpointType_ServiceType:
-			fmt.Printf("%s%*c %d %*c %s:%s %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Namespace, e.Name, e.Kind)
+			fmt.Fprintf(w, "%s\t%d\t%s\n", e.SrcIP, e.Key, e.Ip)
 		case tetragon.EndpointType_ListenType:
-			fmt.Printf("%s%*c %d %*c %s:%s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Ip, e.Port)
+			fmt.Fprintf(w, "%s\t%d\t%s:%s\n", e.SrcIP, e.Key, e.Ip, e.Port)
 		default:
-			fmt.Printf("%s %14s %d unknownType\n", e.SrcIP, "", e.Key)
+			fmt.Fprintf(w, "%s\t%d\tunknownType\n", e.SrcIP, e.Key)
 		}
 	}
-	return nil
+	return w.Flush()
 }
 
 func printEndpointDebug() error {
