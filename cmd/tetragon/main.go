@@ -40,7 +40,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/svcinfo"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
-	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ossAlignchecker "github.com/cilium/tetragon/pkg/alignchecker"
@@ -494,7 +493,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			}
 		}
 		if enterpriseOption.Config.EnableSandboxPolicies && enterpriseOption.Config.EnableSandboxPoliciesCRD {
-			err = crd.AddSandboxPolicyInformer(ctx, k8sWatcher, observer.GetSensorManager())
+			err = enterpriseWatcher.AddSandboxPolicyInformer(ctx, k8sWatcher, observer.GetSensorManager())
 			if err != nil {
 				return err
 			}
