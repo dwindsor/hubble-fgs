@@ -47,7 +47,7 @@ import (
 )
 
 const (
-	sonarService = "networksonar"
+	sonarService = "networkflowmonitor"
 )
 
 var (
@@ -560,7 +560,7 @@ func postMetrics(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal ExportMetricsServiceRequest: %w", err)
 	}
-	sonarEndpoint := fmt.Sprintf("https://ingestion.%s.dataplane.sonar.networking.aws.dev/publish", option.Config.AWSSonarRegion)
+	sonarEndpoint := fmt.Sprintf("https://networkflowmonitorreports.%s.api.aws/publish", option.Config.AWSSonarRegion)
 	req, err := http.NewRequest("POST", sonarEndpoint, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("failed to create a request: %w", err)
