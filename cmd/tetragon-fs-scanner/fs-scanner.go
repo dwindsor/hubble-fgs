@@ -341,11 +341,6 @@ func newReaderCtx(ctx context.Context, rdr io.Reader) io.Reader {
 }
 
 func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]string) error {
-	h, err := fm.GetHashAlgo(args.Algo)
-	if err != nil {
-		return fmt.Errorf("tracingPolicyFileDigests: fm.GetHashAlgo: %w", err)
-	}
-
 	for _, path := range args.Files {
 		f, err := os.Open(path)
 		if err != nil {
@@ -375,6 +370,11 @@ func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]strin
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(maxTimeoutDigestSeconds)*time.Second)
 		defer cancel()
 
+		h, err := fm.GetHashAlgo(args.Algo)
+		if err != nil {
+			return fmt.Errorf("tracingPolicyFileDigests: fm.GetHashAlgo: %w", err)
+		}
+
 		if _, err := io.Copy(h, newReaderCtx(ctx, f)); err != nil {
 			return fmt.Errorf("tracingPolicyFileDigests: io.Copy: %w", err)
 		}
@@ -387,11 +387,6 @@ func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]strin
 }
 
 func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply *map[string]string) error {
-	h, err := fm.GetHashAlgo(args.Algo)
-	if err != nil {
-		return err
-	}
-
 	for _, tp := range args.Tp {
 		// check if we care about this namespace
 		if !fm.MatchPodSelector(tp.Spec.PodSelector, args.PodNs, args.PodName) {
@@ -400,6 +395,7 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 
 		logger.GetLogger().WithField("ns", args.PodNs).WithField("app", args.PodName).WithField("cid", args.ContainerID).Debug("fim: Adding digests for files")
 
+		var err error
 		rootDir := args.RootDir
 		if rootDir == "" {
 			rootDir, err = fm.ContainerIdToRootFs(args.ContainerID, containerRuntimeEndpoint)
@@ -445,6 +441,11 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 				// this means that the file is very large so return an error in that case
 				ctx, cancel := context.WithTimeout(context.Background(), time.Duration(maxTimeoutDigestSeconds)*time.Second)
 				defer cancel()
+
+				h, err := fm.GetHashAlgo(args.Algo)
+				if err != nil {
+					return fmt.Errorf("tracingPolicyContainerFileDigests: fm.GetHashAlgo: %w", err)
+				}
 
 				if _, err := io.Copy(h, newReaderCtx(ctx, f)); err != nil {
 					return fmt.Errorf("tracingPolicyContainerFileDigests: io.Copy: %w", err)
