@@ -69,6 +69,9 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 			DestinationId:     k.DestinationId,
 			DestinationSource: k.DestinationSource,
 			DestinationPort:   k.DestinationPort,
+			TxQuota:           v.TxQuota,
+			TxLimit:           v.TxLimit,
+			TxDrops:           v.TxDrops,
 		}
 		dests = append(dests, d)
 	}

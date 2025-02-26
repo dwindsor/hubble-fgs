@@ -3370,6 +3370,9 @@ Determins the behaviour of a field filter
 | destination_id | [uint64](#uint64) |  |  |
 | destination_source | [uint64](#uint64) |  |  |
 | destination_port | [uint64](#uint64) |  |  |
+| tx_quota | [uint64](#uint64) |  |  |
+| tx_limit | [uint64](#uint64) |  |  |
+| tx_drops | [uint64](#uint64) |  |  |
 
 
 

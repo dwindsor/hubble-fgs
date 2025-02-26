@@ -1027,7 +1027,7 @@ func printDestinationDebug() error {
 		return err
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "LocalNSID\tLocalID\tDest ID:Src(Port)[Src]")
+	fmt.Fprintln(w, "LocalNSID\tLocalID\tDest ID:Src(Port)[Src]\tTxQuota\tTxLimit\tTxDrop")
 
 	// Implementing a full Stringer on a proper type is more annoying that helpful
 	// for this simple uint64, let's just use a custom local stringer for this
@@ -1045,13 +1045,16 @@ func printDestinationDebug() error {
 	}
 
 	for _, d := range res.Destinations {
-		fmt.Fprintf(w, "%d\t%d\t%d:%d(%d)[%s]\n",
+		fmt.Fprintf(w, "%d\t%d\t%d:%d(%d)[%s]\t%d\t%d\t%d\n",
 			d.LocalNsId,
 			d.LocalId,
 			d.DestinationId,
 			d.DestinationSource,
 			d.DestinationPort,
 			destinationSourceStringer(d.DestinationSource),
+			d.TxQuota,
+			d.TxLimit,
+			d.TxDrops,
 		)
 	}
 	return w.Flush()
