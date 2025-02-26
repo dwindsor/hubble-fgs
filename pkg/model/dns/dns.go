@@ -169,7 +169,7 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 		// support this.
 		nsId, ok = state.GetIdNs(workload)
 		if !ok {
-			logger.GetLogger().WithField("namespace", namespace).WithField("workload", wl).Info("workload info does not exist yet, queuing for workload updates.")
+			logger.GetLogger().WithField("namespace", namespace).WithField("workload", wl).Debug("workload info does not exist yet, queuing for workload updates.")
 			return nil, nil
 		}
 	} else {
