@@ -317,6 +317,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	// ip_addr and avoid doing this twice.
 	dns_key.addr[0] = tuple->daddr[0];
 	dns_key.addr[1] = tuple->daddr[1];
+	dns_key.af_inet6 = tuple->ipv6;
 
 	// destination precedence DNS, Userspace (service, pods), BPF generated ID.
 	dns_value = map_lookup_elem(&tg_dns_endpoint_id_map, &dns_key);
