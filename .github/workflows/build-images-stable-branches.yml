@@ -11,7 +11,6 @@ jobs:
     with:
       sha: "${{ github.sha }}"
       tag: "${{ github.ref_name }}-latest"
-      is_legacy: ${{ github.ref_name == 'v1.11' || github.ref_name == 'v1.12' }}
     secrets:
       QUAY_USERNAME: ${{ secrets.QUAY_ISOVALENT_DEV_USERNAME }}
       QUAY_PASSWORD: ${{ secrets.QUAY_ISOVALENT_DEV_PASSWORD }}

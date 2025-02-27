@@ -22,10 +22,6 @@ on:
       # Release images are pushed to isovalent Quay org, non-release to isovalent-dev.
       is_release:
         type: boolean
-      # Whether to push hubble-enterprise images in addition to tetragon ones. Should be true only
-      # for branches/releases < v1.13.
-      is_legacy:
-        type: boolean
 
 jobs:
   build-and-push:
@@ -34,14 +30,12 @@ jobs:
       matrix:
         include:
           - name: tetragon
-            legacy-name: hubble-enterprise
             dockerfile: ./Dockerfile
 
           - name: tetragon-aggregator
             dockerfile: ./Dockerfile.aggregator
 
           - name: tetragon-operator
-            legacy-name: hubble-enterprise-operator
             dockerfile: ./Dockerfile.operator
 
     steps:
@@ -77,11 +71,9 @@ jobs:
         run: |
           org="${{ github.repository_owner }}"
           repo="${{ matrix.name }}"
-          legacy_repo="${{ matrix.legacy-name }}"
           if ! ${{ inputs.is_release }}; then
             org="$org-dev"
             repo="$repo-ci"
-            legacy_repo="$legacy_repo-ci"
           fi
 
           echo "tags<<EOF" >> $GITHUB_OUTPUT
@@ -90,14 +82,6 @@ jobs:
           fi
           if [ -n "${{ inputs.tag }}" ]; then
             echo "quay.io/$org/$repo:${{ inputs.tag }}" >> $GITHUB_OUTPUT
-          fi
-          if ${{ inputs.is_legacy }}; then
-            if ! ${{ inputs.is_release }}; then
-              echo "quay.io/$org/$legacy_repo:${{ inputs.sha }}" >> $GITHUB_OUTPUT
-            fi
-            if [ -n "${{ inputs.tag }}" ]; then
-              echo "quay.io/$org/$legacy_repo:${{ inputs.tag }}" >> $GITHUB_OUTPUT
-            fi
           fi
           echo "EOF" >> $GITHUB_OUTPUT
 

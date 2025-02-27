@@ -18,7 +18,6 @@ jobs:
       sha: "${{ github.sha }}"
       tag: "${{ github.ref_name }}"
       is_release: true
-      is_legacy: ${{ startsWith(github.ref_name, 'v1.11') || startsWith(github.ref_name, 'v1.12') }}
     secrets:
       QUAY_USERNAME: ${{ secrets.QUAY_USER }}
       QUAY_PASSWORD: ${{ secrets.QUAY_TOKEN }}
