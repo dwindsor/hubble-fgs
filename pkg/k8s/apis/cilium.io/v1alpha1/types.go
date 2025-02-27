@@ -714,7 +714,7 @@ type QuotaDestination struct {
 	// +kubebuilder:validation:Required
 	Dns []string `json:"dns"`
 	// +kubebuilder:validation:Optional
-	Port []uint32 `json:"port"`
+	Port []uint32 `json:"port,omitempty"`
 }
 
 type QuotaPolicySpec struct {
