@@ -22,7 +22,7 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/golang/protobuf v1.5.4
 	github.com/google/cel-go v0.22.1
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/gopacket v1.1.19
 	github.com/google/gops v0.3.28
 	github.com/google/uuid v1.6.0
@@ -42,7 +42,7 @@ require (
 	github.com/spf13/viper v1.19.0
 	github.com/sryoya/protorand v0.0.0-20250114120907-8c1a8e3138f2
 	github.com/stretchr/testify v1.10.0
-	github.com/vishvananda/netlink v1.3.1-0.20250209162617-655392bc778a
+	github.com/vishvananda/netlink v1.3.1-0.20250221194427-0af32151e72b
 	github.com/vishvananda/netns v0.0.5
 	github.com/wI2L/jsondiff v0.6.1
 	github.com/xlab/treeprint v1.2.0
