@@ -386,6 +386,12 @@ func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]strin
 	return nil
 }
 
+type digestEntry struct {
+	selIdx  uint32
+	pathIdx uint32
+	digest  string
+}
+
 func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply *map[string]string) error {
 	for _, tp := range args.Tp {
 		// check if we care about this namespace
@@ -404,15 +410,7 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 			}
 		}
 
-		var handle *ebpf.Map
-		if args.AddToMaps {
-			handle, err = ebpf.LoadPinnedMap(program.PolicyMapPath(args.MapDir, tp.PolicyName, fm.FilenameDigestMapName), nil)
-			if err != nil {
-				return err
-			}
-			defer handle.Close()
-		}
-
+		digestEntries := []digestEntry{}
 		walkFn := func() error {
 			for _, path := range tp.DigestPaths {
 				f, err := os.Open(path)
@@ -459,19 +457,11 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 					}
 
 					for _, m := range meta {
-						var innerMapID ebpf.MapID
-						if err := handle.Lookup(m.SelIdx, &innerMapID); err != nil {
-							continue
-						}
-
-						var innerMap *ebpf.Map
-						if innerMap, err = ebpf.NewMapFromID(innerMapID); err != nil {
-							return fmt.Errorf("tracingPolicyContainerFileDigests: ebpf.NewMapFromID: %w", err)
-						}
-
-						if err := innerMap.Put(fm.CreateDigestKey(digest, args.Algo), m.PathIdx); err != nil {
-							return fmt.Errorf("tracingPolicyContainerFileDigests: innerMap.Put: %w", err)
-						}
+						digestEntries = append(digestEntries, digestEntry{
+							selIdx:  m.SelIdx,
+							pathIdx: m.PathIdx,
+							digest:  digest,
+						})
 					}
 				} else {
 					(*reply)[path] = digest
@@ -495,6 +485,31 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 
 		if walkErr != nil {
 			return walkErr
+		}
+
+		if args.AddToMaps {
+			handle, err := ebpf.LoadPinnedMap(program.PolicyMapPath(args.MapDir, tp.PolicyName, fm.FilenameDigestMapName), nil)
+			if err != nil {
+				return fmt.Errorf("tracingPolicyContainerFileDigests: ebpf.LoadPinnedMap: %w", err)
+			}
+			defer handle.Close()
+
+			for _, k := range digestEntries {
+				var innerMapID ebpf.MapID
+				err := handle.Lookup(k.selIdx, &innerMapID)
+				if err != nil {
+					return fmt.Errorf("tracingPolicyContainerFileDigests: handle.Lookup: %w", err)
+				}
+
+				var innerMap *ebpf.Map
+				if innerMap, err = ebpf.NewMapFromID(innerMapID); err != nil {
+					return fmt.Errorf("tracingPolicyContainerFileDigests: ebpf.NewMapFromID: %w", err)
+				}
+
+				if err := innerMap.Put(fm.CreateDigestKey(k.digest, args.Algo), k.pathIdx); err != nil {
+					return fmt.Errorf("tracingPolicyContainerFileDigests: innerMap.Put: %w", err)
+				}
+			}
 		}
 	}
 
