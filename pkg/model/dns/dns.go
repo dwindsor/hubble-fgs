@@ -32,6 +32,9 @@ var (
 
 	// dnsDomainMap is used to bring DNS/ID mappings up to date at runtime.
 	dnsDomainMap = dnsparser.DomainMap{}
+
+	// Programmer for BPF dataplane
+	prog DatapathInterface = &BpfProgrammer{}
 )
 
 const (
@@ -94,7 +97,7 @@ func checkMatchLabelsPolicy(epPod *v1alpha1.PodInfo) error {
 	if err != nil {
 		return err
 	}
-	if err := addNetworkPolicy(src, &s.Policy.Action, &s.Policy.Destination, true); err != nil {
+	if err := prog.AddNetworkPolicy(src, &s.Policy.Action, &s.Policy.Destination, true); err != nil {
 		return err
 	}
 	matchLabelPolicy.AddPod(s.Name, epPod)
@@ -220,7 +223,7 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
 		return nil
 	}
 
-	return addNetworkPolicy(src, a, d, init)
+	return prog.AddNetworkPolicy(src, a, d, init)
 }
 
 func RemoveNetworkPolicy(_ string, policy *types.TetragonNetworkPolicy) error {
@@ -241,7 +244,7 @@ func RemoveNetworkPolicy(_ string, policy *types.TetragonNetworkPolicy) error {
 		return nil
 	}
 
-	return removeNetworkPolicy(src, d)
+	return prog.RemoveNetworkPolicy(src, d)
 }
 
 func RemoveMatchLabelNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) error {
@@ -268,7 +271,7 @@ func RemoveMatchLabelNetworkPolicy(name string, policy *types.TetragonNetworkPol
 				continue
 			}
 
-			removeNetworkPolicy(src, &policy.Destination)
+			prog.RemoveNetworkPolicy(src, &policy.Destination)
 			continue
 		}
 	}

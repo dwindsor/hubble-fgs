@@ -144,6 +144,7 @@ func testPod(ns, name, kind, matchLabels string) *v1alpha1.PodInfo {
 func TestMain(m *testing.M) {
 	bpf.CheckOrMountCgroup2()
 	option.Config.EnablePolicyFilter = true
+	prog = &DummyBpfProgrammer{}
 	ec := runner.TestSensorsRun(m, "ModelDns")
 	os.Exit(ec)
 }

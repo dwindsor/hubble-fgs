@@ -1,6 +1,3 @@
-//go:build !ebpfStub
-// +build !ebpfStub
-
 package dns
 
 import (
@@ -17,7 +14,46 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func addNetworkPolicy(src *types.ProcessTreeKey,
+type DatapathInterface interface {
+	// Add network policy to BPF datapath, network policy is three parts
+	// three parts: Subject, Destination and Action. The init bool is a
+	// slightly unpleasant artifact of the API that is needed to tell
+	// BPF programming side if this is part of the init flow. In init not
+	// all BPF maps may be online yet.
+	AddNetworkPolicy(src *types.ProcessTreeKey,
+		a *types.TetragonNetworkAction,
+		d *types.TetragonNetworkDestination,
+		init bool) error
+
+	// Add single dns policy. Raw interface to program a specific rule in
+	// the datapath when necessary and may or may not be part of a full
+	// network policy. The subject and destination (EP is raw form of
+	// destination) give the location. The bpf Map is included to allow
+	// reuse without open/close ops. And finllay quota, reset, deny give
+	// the action in open coded form.
+	AddSinglePolicy(src *types.ProcessTreeKey,
+		ep *endpoint.Endpoint,
+		dstMap *ebpf.Map,
+		quota, reset, deny uint64, init bool) error
+
+	// Remopve Network Policy, will lookup the key/destination and remove
+	// it from the BPF datapath.
+	RemoveNetworkPolicy(src *types.ProcessTreeKey,
+		d *types.TetragonNetworkDestination) error
+
+	RemoveSinglePolicy(src *types.ProcessTreeKey,
+		ep *endpoint.Endpoint,
+		dstMap *ebpf.Map) error
+}
+
+type BpfProgrammer struct {
+	Add      uint64
+	AddError uint64
+	Del      uint64
+	DelError uint64
+}
+
+func (p *BpfProgrammer) AddNetworkPolicy(src *types.ProcessTreeKey,
 	a *types.TetragonNetworkAction,
 	d *types.TetragonNetworkDestination,
 	init bool) error {
@@ -28,6 +64,7 @@ func addNetworkPolicy(src *types.ProcessTreeKey,
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	dstMap, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
+		p.AddError++
 		logger.GetLogger().WithError(err).WithField("file", file).Warn("Could not open map")
 		return err
 	}
@@ -37,12 +74,14 @@ func addNetworkPolicy(src *types.ProcessTreeKey,
 	if a.QuotaAction != nil {
 		resetNS, err = quotaToNs(a.QuotaAction.Reset)
 		if err != nil {
+			p.AddError++
 			logger.GetLogger().WithError(err).Warn("failed to conver reset time")
 			return err
 		}
 
 		quotaBytes, err = strconv.ParseUint(a.QuotaAction.Quota, 10, 64)
 		if err != nil {
+			p.AddError++
 			return err
 		}
 	}
@@ -57,33 +96,37 @@ func addNetworkPolicy(src *types.ProcessTreeKey,
 			Type: endpoint.DnsType,
 			Dns:  entry,
 		}
-		if err := addSingleDnsPolicy(src, ep, dstMap, quotaBytes, resetNS, denyVal, init); err != nil {
+		if err := p.AddSinglePolicy(src, ep, dstMap, quotaBytes, resetNS, denyVal, init); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
-				"cgid":  src.CgroupId,
-				"self":  src.Self,
-				"quota": quotaBytes,
-				"reset": a.QuotaAction,
-				"deny":  denyVal,
-				"dest":  entry,
+				"Errors": p.AddError,
+				"Policy": p.Add + 1,
+				"cgid":   src.CgroupId,
+				"self":   src.Self,
+				"quota":  quotaBytes,
+				"reset":  a.QuotaAction,
+				"deny":   denyVal,
+				"dest":   entry,
 			}).WithError(err).Error("TCP quota entry Failed")
 		}
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
-		"cgid":  src.CgroupId,
-		"self":  src.Self,
-		"quota": quotaBytes,
-		"reset": a.QuotaAction,
-		"dest":  strings.Join(d.Names, " "),
+		"Policy": p.Add,
+		"cgid":   src.CgroupId,
+		"self":   src.Self,
+		"quota":  quotaBytes,
+		"reset":  a.QuotaAction,
+		"dest":   strings.Join(d.Names, " "),
 	}).Info("TCP quota added")
 	return nil
 }
 
-func removeNetworkPolicy(src *types.ProcessTreeKey, d *types.TetragonNetworkDestination) error {
+func (p *BpfProgrammer) RemoveNetworkPolicy(src *types.ProcessTreeKey, d *types.TetragonNetworkDestination) error {
 	var err error
 
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	dstMap, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
+		p.DelError++
 		logger.GetLogger().WithError(err).WithField("file", file).Warn("Could not open map")
 		return err
 	}
@@ -94,29 +137,33 @@ func removeNetworkPolicy(src *types.ProcessTreeKey, d *types.TetragonNetworkDest
 			Type: endpoint.DnsType,
 			Dns:  entry,
 		}
-		if err := delSingleDnsPolicy(src, ep, dstMap); err != nil {
+		if err := p.RemoveSinglePolicy(src, ep, dstMap); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
-				"cgid": src.CgroupId,
-				"self": src.Self,
-				"dest": entry,
+				"Errors": p.DelError,
+				"Policy": p.Del,
+				"cgid":   src.CgroupId,
+				"self":   src.Self,
+				"dest":   entry,
 			}).WithError(err).Error("TCP quota remove Failed")
 		}
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
-		"cgid": src.CgroupId,
-		"self": src.Self,
-		"dest": strings.Join(d.Names, " "),
+		"Policy": p.Del,
+		"cgid":   src.CgroupId,
+		"self":   src.Self,
+		"dest":   strings.Join(d.Names, " "),
 	}).Info("TCP quota removed")
 	return nil
 
 }
 
-func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset, deny uint64, init bool) error {
+func (p *BpfProgrammer) AddSinglePolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map, quota, reset, deny uint64, init bool) error {
 	var addr [2]uint64
 
 	c := endpoint.Get()
 	dst, err := c.AddEndpoint(*ep)
 	if err != nil {
+		p.AddError++
 		logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
 		return err
 	}
@@ -130,6 +177,7 @@ func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap
 	// path.
 	if init {
 		if err := dnsDomainMap.Update(ep.Dns, dst); err != nil {
+			p.AddError++
 			return fmt.Errorf("failed to write BPF domain maps: %w", err)
 		}
 	} else {
@@ -161,18 +209,21 @@ func addSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap
 	}
 
 	if err := dstMap.Update(key, value, 0); err != nil {
+		p.AddError++
 		return err
 	}
 
+	p.Add++
 	return nil
 }
 
-func delSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map) error {
+func (p *BpfProgrammer) RemoveSinglePolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap *ebpf.Map) error {
 	var addr [2]uint64
 
 	c := endpoint.Get()
 	dst, err := c.AddEndpoint(*ep)
 	if err != nil {
+		p.DelError++
 		logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
 		return err
 	}
@@ -208,8 +259,10 @@ func delSingleDnsPolicy(src *types.ProcessTreeKey, ep *endpoint.Endpoint, dstMap
 	}
 
 	if err := dstMap.Update(key, value, 0); err != nil {
+		p.DelError++
 		return err
 	}
 
+	p.Del++
 	return nil
 }

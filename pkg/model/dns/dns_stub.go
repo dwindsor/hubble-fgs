@@ -1,6 +1,3 @@
-//go:build ebpfStub
-// +build ebpfStub
-
 package dns
 
 import (
@@ -9,21 +6,25 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
-func addNetworkPolicy(src *types.ProcessTreeKey,
-	a *types.TetragonNetworkAction,
-	d *types.TetragonNetworkDestination,
-	init bool) error {
+type DummyBpfProgrammer struct {
+	Add      uint64
+	AddError uint64
+	Del      uint64
+	DelError uint64
+}
+
+func (p *DummyBpfProgrammer) AddNetworkPolicy(_ *types.ProcessTreeKey, _ *types.TetragonNetworkAction, _ *types.TetragonNetworkDestination, _ bool) error {
 	return nil
 }
 
-func removeNetworkPolicy(src *types.ProcessTreeKey, d *types.TetragonNetworkDestination) error {
+func (p *DummyBpfProgrammer) AddSinglePolicy(_ *types.ProcessTreeKey, _ *endpoint.Endpoint, _ *ebpf.Map, _, _, _ uint64, _ bool) error {
 	return nil
 }
 
-func addSingleDnsPolicy(_ *types.ProcessTreeKey, _ *endpoint.Endpoint, _ *ebpf.Map, _, _, _ uint64, _ bool) error {
+func (p *DummyBpfProgrammer) RemoveNetworkPolicy(_ *types.ProcessTreeKey, _ *types.TetragonNetworkDestination) error {
 	return nil
 }
 
-func delSingleDnsPolicy(_ *types.ProcessTreeKey, _ *endpoint.Endpoint, _ *ebpf.Map) error {
+func (p *DummyBpfProgrammer) RemoveSinglePolicy(_ *types.ProcessTreeKey, _ *endpoint.Endpoint, _ *ebpf.Map) error {
 	return nil
 }
