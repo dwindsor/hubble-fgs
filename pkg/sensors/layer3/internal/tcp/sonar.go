@@ -16,6 +16,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"os"
@@ -586,6 +587,11 @@ func postMetrics(ctx context.Context) error {
 		return fmt.Errorf("failed to make a request: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected response: %d %q", resp.StatusCode, body)
+	}
 	logger.GetLogger().WithField("scopes-count", len(exportRequest.ResourceMetrics[0].ScopeMetrics)).Debug("Successfully posted metrics to Sonar.")
 
 	return nil
