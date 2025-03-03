@@ -58,6 +58,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&SandboxPolicyList{},
 		&SandboxPolicyNamespaced{},
 		&SandboxPolicyNamespacedList{},
+		&TetragonNetworkPolicy{},
+		&TetragonNetworkPolicyList{},
+		&TetragonNetworkPolicyNamespaced{},
+		&TetragonNetworkPolicyNamespacedList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

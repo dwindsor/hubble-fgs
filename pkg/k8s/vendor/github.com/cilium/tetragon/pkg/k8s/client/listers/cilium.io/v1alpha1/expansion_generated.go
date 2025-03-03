@@ -25,6 +25,18 @@ type SandboxPolicyNamespacedListerExpansion interface{}
 // SandboxPolicyNamespacedNamespaceLister.
 type SandboxPolicyNamespacedNamespaceListerExpansion interface{}
 
+// TetragonNetworkPolicyListerExpansion allows custom methods to be added to
+// TetragonNetworkPolicyLister.
+type TetragonNetworkPolicyListerExpansion interface{}
+
+// TetragonNetworkPolicyNamespacedListerExpansion allows custom methods to be added to
+// TetragonNetworkPolicyNamespacedLister.
+type TetragonNetworkPolicyNamespacedListerExpansion interface{}
+
+// TetragonNetworkPolicyNamespacedNamespaceListerExpansion allows custom methods to be added to
+// TetragonNetworkPolicyNamespacedNamespaceLister.
+type TetragonNetworkPolicyNamespacedNamespaceListerExpansion interface{}
+
 // TracingPolicyListerExpansion allows custom methods to be added to
 // TracingPolicyLister.
 type TracingPolicyListerExpansion interface{}

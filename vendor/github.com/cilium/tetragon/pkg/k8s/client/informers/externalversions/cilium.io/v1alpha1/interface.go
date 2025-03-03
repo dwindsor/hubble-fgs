@@ -17,6 +17,10 @@ type Interface interface {
 	SandboxPolicies() SandboxPolicyInformer
 	// SandboxPoliciesNamespaced returns a SandboxPolicyNamespacedInformer.
 	SandboxPoliciesNamespaced() SandboxPolicyNamespacedInformer
+	// TetragonNetworkPolicies returns a TetragonNetworkPolicyInformer.
+	TetragonNetworkPolicies() TetragonNetworkPolicyInformer
+	// TetragonNetworkPolicyNamespaceds returns a TetragonNetworkPolicyNamespacedInformer.
+	TetragonNetworkPolicyNamespaceds() TetragonNetworkPolicyNamespacedInformer
 	// TracingPolicies returns a TracingPolicyInformer.
 	TracingPolicies() TracingPolicyInformer
 	// TracingPoliciesNamespaced returns a TracingPolicyNamespacedInformer.
@@ -47,6 +51,16 @@ func (v *version) SandboxPolicies() SandboxPolicyInformer {
 // SandboxPoliciesNamespaced returns a SandboxPolicyNamespacedInformer.
 func (v *version) SandboxPoliciesNamespaced() SandboxPolicyNamespacedInformer {
 	return &sandboxPolicyNamespacedInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TetragonNetworkPolicies returns a TetragonNetworkPolicyInformer.
+func (v *version) TetragonNetworkPolicies() TetragonNetworkPolicyInformer {
+	return &tetragonNetworkPolicyInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// TetragonNetworkPolicyNamespaceds returns a TetragonNetworkPolicyNamespacedInformer.
+func (v *version) TetragonNetworkPolicyNamespaceds() TetragonNetworkPolicyNamespacedInformer {
+	return &tetragonNetworkPolicyNamespacedInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // TracingPolicies returns a TracingPolicyInformer.

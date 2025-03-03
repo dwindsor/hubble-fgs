@@ -18,6 +18,8 @@ type CiliumV1alpha1Interface interface {
 	PodInfoGetter
 	SandboxPoliciesGetter
 	SandboxPoliciesNamespacedGetter
+	TetragonNetworkPoliciesGetter
+	TetragonNetworkPolicyNamespacedsGetter
 	TracingPoliciesGetter
 	TracingPoliciesNamespacedGetter
 }
@@ -37,6 +39,14 @@ func (c *CiliumV1alpha1Client) SandboxPolicies() SandboxPolicyInterface {
 
 func (c *CiliumV1alpha1Client) SandboxPoliciesNamespaced(namespace string) SandboxPolicyNamespacedInterface {
 	return newSandboxPoliciesNamespaced(c, namespace)
+}
+
+func (c *CiliumV1alpha1Client) TetragonNetworkPolicies() TetragonNetworkPolicyInterface {
+	return newTetragonNetworkPolicies(c)
+}
+
+func (c *CiliumV1alpha1Client) TetragonNetworkPolicyNamespaceds(namespace string) TetragonNetworkPolicyNamespacedInterface {
+	return newTetragonNetworkPolicyNamespaceds(c, namespace)
 }
 
 func (c *CiliumV1alpha1Client) TracingPolicies() TracingPolicyInterface {

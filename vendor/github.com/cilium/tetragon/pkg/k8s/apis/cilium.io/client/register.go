@@ -62,12 +62,33 @@ var (
 		crdsv1Alpha1SandboxPolicyNamespaced,
 	)
 
+	//go:embed crds/v1alpha1/cilium.io_tetragonnetworkpolicies.yaml
+	crdsv1Alpha1TetragonNetworkPolicy []byte
+
+	TetragonNetworkPolicyCRD = osscrdutils.NewCRDBytes(
+		"TetragonNetworkPolicy/v1alpha1",
+		"tetragonnetworkpolicies.cilium.io",
+		crdsv1Alpha1TetragonNetworkPolicy,
+	)
+
+	//go:embed crds/v1alpha1/cilium.io_tetragonnetworkpoliciesnamespaced.yaml
+	crdsv1Alpha1TetragonNetworkPolicyNamespaced []byte
+
+	TetragonNetworkPolicyNamespacedCRD = osscrdutils.NewCRDBytes(
+		"TetragonNetworkPolicyNamespaced/v1alpha1",
+		"tetragonnetworkpoliciesnamespaced.cilium.io",
+		crdsv1Alpha1TetragonNetworkPolicyNamespaced,
+	)
+
+
 	AllCRDs = []crdutils.CRD{
 		TracingPolicyCRD,
 		TracingPolicyNamespacedCRD,
 		PodInfoCRD,
 		SandboxPolicyCRD,
 		SandboxPolicyNamespacedCRD,
+		TetragonNetworkPolicyCRD,
+		TetragonNetworkPolicyNamespacedCRD,
 	}
 )
 

@@ -11,6 +11,10 @@ type SandboxPolicyExpansion interface{}
 
 type SandboxPolicyNamespacedExpansion interface{}
 
+type TetragonNetworkPolicyExpansion interface{}
+
+type TetragonNetworkPolicyNamespacedExpansion interface{}
+
 type TracingPolicyExpansion interface{}
 
 type TracingPolicyNamespacedExpansion interface{}

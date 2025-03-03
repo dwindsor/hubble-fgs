@@ -27,6 +27,14 @@ func (c *FakeCiliumV1alpha1) SandboxPoliciesNamespaced(namespace string) v1alpha
 	return newFakeSandboxPoliciesNamespaced(c, namespace)
 }
 
+func (c *FakeCiliumV1alpha1) TetragonNetworkPolicies() v1alpha1.TetragonNetworkPolicyInterface {
+	return newFakeTetragonNetworkPolicies(c)
+}
+
+func (c *FakeCiliumV1alpha1) TetragonNetworkPolicyNamespaceds(namespace string) v1alpha1.TetragonNetworkPolicyNamespacedInterface {
+	return newFakeTetragonNetworkPolicyNamespaceds(c, namespace)
+}
+
 func (c *FakeCiliumV1alpha1) TracingPolicies() v1alpha1.TracingPolicyInterface {
 	return newFakeTracingPolicies(c)
 }
