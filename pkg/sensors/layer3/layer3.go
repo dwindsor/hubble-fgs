@@ -56,6 +56,7 @@ var (
 	icmpEnabled             = false
 	rawEnabled              = false
 	reportRawClose          = false
+	udpCGroup               = false
 
 	lastInitProg   *program.Program
 	firstStatsProg *program.Program
@@ -702,7 +703,7 @@ func AddLayer3() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
 }
 
-func StartLayer3Progs(ctx context.Context) error {
+func EnableLayer3Progs() error {
 	if !enterpriseOption.Config.Layer3CLIEnable {
 		return nil
 	}
@@ -721,16 +722,19 @@ func StartLayer3Progs(ctx context.Context) error {
 	if enterpriseOption.Config.EnableDNS {
 		dnsEnabled = true
 	}
-	udpCgroup := true
+	udpCGroup = true
 	if !hasCgroup() {
-		udpCgroup = false
+		udpCGroup = false
 		if dnsEnabled {
 			return fmt.Errorf("enabling DNS requires CGroup support")
 		}
 	}
+	return nil
+}
 
+func RunLayer3Progs(ctx context.Context) error {
 	// By default, enable CGroup/SKB.
-	progs, maps := ProgsAndMaps(enterpriseOption.Config.EnableLatency, udpCgroup, enterpriseOption.Config.EnableLatency)
+	progs, maps := ProgsAndMaps(enterpriseOption.Config.EnableLatency, udpCGroup, enterpriseOption.Config.EnableLatency)
 	mgr := observer.GetSensorManager()
 	initialLayer3Sensor := &sensors.Sensor{
 		Name:  baseLayer3Policy,
@@ -741,6 +745,14 @@ func StartLayer3Progs(ctx context.Context) error {
 		return err
 	}
 	return mgr.EnableSensor(ctx, initialLayer3Sensor.Name)
+}
+
+func StartLayer3Progs(ctx context.Context) error {
+	err := EnableLayer3Progs()
+	if err != nil {
+		return err
+	}
+	return RunLayer3Progs(ctx)
 }
 
 func HTTPContext() *program.Map {

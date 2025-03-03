@@ -28,10 +28,9 @@ import (
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/stretchr/testify/assert"
 
-	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -64,31 +63,12 @@ spec:
 // thing to do here even if revive complains.
 //
 //revive:disable:context-as-argument
-func getIcmpObserver(t *testing.T, ctx context.Context, config string, filtered bool) *observer.Observer {
-	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	base := base.GetInitialSensor()
-	var obs *observer.Observer
-	var err error
-	if filtered {
-		obs, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	} else {
-		obs, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
-	}
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-	return obs
-}
-
 func getBasicIcmpObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer {
-	return getIcmpObserver(t, ctx, icmpBasicConfig, filtered)
+	return getLayer3Observer(t, ctx, icmpBasicConfig, filtered)
 }
 
 func getIcmpAndUdpObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer {
-	return getIcmpObserver(t, ctx, icmpAndUdpBasicConfig, filtered)
+	return getLayer3Observer(t, ctx, icmpAndUdpBasicConfig, filtered)
 }
 
 func TestPingOutbound4(t *testing.T) {
@@ -141,6 +121,77 @@ func TestPingOutbound4(t *testing.T) {
 	)
 
 	obs := getBasicIcmpObserver(t, ctx, true)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestPingCLISwitch(t *testing.T) {
+	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	oldEnableICMPValue := enterpriseOption.Config.EnableICMP
+	enterpriseOption.Config.EnableICMP = true
+	oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
+	enterpriseOption.Config.Layer3CLIEnable = true
+	t.Cleanup(func() {
+		enterpriseOption.Config.EnableICMP = oldEnableICMPValue
+		enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
+	})
+
+	cmd := "ping"
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	pingChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(cmd)).
+		WithArguments(sm.Full("-c1 127.0.0.1"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("pingExec").
+			WithProcess(pingChecker).
+			WithParent(selfChecker),
+		ec.NewProcessIcmpChecker("pingEcho").
+			WithProcess(pingChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_ICMP).
+			WithIcmpType(sm.Full("Echo")).
+			WithSequenceNumber(1).
+			WithIcmpDataLen(56).
+			WithDirection(sm.Full("egress")),
+		ec.NewProcessIcmpChecker("pingEchoReply").
+			WithProcess(pingChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_ICMP).
+			WithIcmpType(sm.Full("Echo Reply")).
+			WithSequenceNumber(1).
+			WithIcmpDataLen(56).
+			WithDirection(sm.Full("ingress")),
+	)
+
+	obs := getNoConfigObserver(t, ctx, true)
+	layer3.StartLayer3Progs(ctx)
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()

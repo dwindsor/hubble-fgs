@@ -39,14 +39,15 @@ import (
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper/docker"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
-	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -116,6 +117,16 @@ spec:
       enable: true
 `
 
+const tcpBasicConfigWOEnable = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "tcp"
+spec:
+  parser:
+    tcp:
+`
+
 // Setting TCP RTT max to 1,000,000 means 1% equates to
 // 10ms, which a packet across loopback should easily be
 // quicker than.
@@ -158,43 +169,19 @@ spec:
 // thing to do here even if revive complains.
 //
 //revive:disable:context-as-argument
-func getTcpObserver(t *testing.T, ctx context.Context, config string, docker bool) *observer.Observer {
-	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-	var obs *observer.Observer
-	var err error
-
-	base := base.GetInitialSensor()
-
-	if docker {
-		obs, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
-	} else {
-		obs, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	}
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-	err = confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-	return obs
-}
-
 func getBasicTcpObserver(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
-	return getTcpObserver(t, ctx, tcpBasicConfig, docker)
+	return getLayer3Observer(t, ctx, tcpBasicConfig, !docker)
 }
 
 func getTcpObserverWithRTTDetection(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
-	return getTcpObserver(t, ctx, tcpBasicConfigWithRTTDetection, docker)
+	return getLayer3Observer(t, ctx, tcpBasicConfigWithRTTDetection, !docker)
 }
 
 func getTcpObserverWithLatencyDetection(t *testing.T, ctx context.Context, docker bool) *observer.Observer {
-	return getTcpObserver(t, ctx, tcpBasicConfigWithLatencyDetection, docker)
+	return getLayer3Observer(t, ctx, tcpBasicConfigWithLatencyDetection, !docker)
 }
 
-func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool, disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) *observer.Observer {
+func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool, CLISwitches bool, disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) *observer.Observer {
 	eventDisableConfig := `
       disableEvents:
 `
@@ -203,8 +190,13 @@ func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool,
 	eventDisableConfig += "\n        disableAccept: " + strconv.FormatBool(disableAccept)
 	eventDisableConfig += "\n        disableListen: " + strconv.FormatBool(disableListen)
 
-	tcpDisableEventsConfig := tcpBasicConfig + eventDisableConfig
-	return getTcpObserver(t, ctx, tcpDisableEventsConfig, docker)
+	var tcpDisableEventsConfig string
+	if CLISwitches {
+		tcpDisableEventsConfig = tcpBasicConfigWOEnable + eventDisableConfig
+	} else {
+		tcpDisableEventsConfig = tcpBasicConfig + eventDisableConfig
+	}
+	return getLayer3Observer(t, ctx, tcpDisableEventsConfig, !docker)
 }
 
 func TestConnectEvent4(t *testing.T) {
@@ -250,12 +242,24 @@ func TestConnectEvent4(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func testDisableConfigConnect4(t *testing.T, disableConnect bool) {
+func testDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect bool) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
+
+	if CLISwitches {
+		oldEnableTCPValue := enterpriseOption.Config.EnableTCP
+		enterpriseOption.Config.EnableTCP = true
+		oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
+		enterpriseOption.Config.Layer3CLIEnable = true
+		t.Cleanup(func() {
+			enterpriseOption.Config.EnableTCP = oldEnableTCPValue
+			enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
+		})
+		layer3.EnableLayer3Progs()
+	}
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -264,7 +268,16 @@ func testDisableConfigConnect4(t *testing.T, disableConnect bool) {
 		WithBinary(sm.Suffix("curl")).
 		WithArguments(sm.Full("127.0.0.1"))
 
-	checker := ec.NewUnorderedEventChecker(
+	execChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("curlExec").
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+	)
+
+	connectChecker := ec.NewUnorderedEventChecker(
 		ec.NewProcessConnectChecker("curlConnect").
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
@@ -273,21 +286,36 @@ func testDisableConfigConnect4(t *testing.T, disableConnect bool) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	obs := getTcpObserverDisableEvents(t, ctx, false, disableConnect, true, true, true)
+	obs := getTcpObserverDisableEvents(t, ctx, false, CLISwitches, disableConnect, true, true, true)
+	if CLISwitches {
+		layer3.RunLayer3Progs(ctx)
+	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "127.0.0.1")
 
+	// Regardless of enabled/disabled network events, we should exepct the exec events
+	err := jsonchecker.JsonTestCheck(t, execChecker)
+	assert.NoError(t, err)
+
 	// If connect events are disabled then expect checker failure
-	err := jsonchecker.JsonTestCheckExpect(t, checker, disableConnect)
+	err = jsonchecker.JsonTestCheckExpect(t, connectChecker, disableConnect)
 	assert.NoError(t, err)
 }
 
-func TestDisableConnectEvent4(t *testing.T) {
-	testDisableConfigConnect4(t, true)
+func TestDisableConnectEvent4CLI(t *testing.T) {
+	testDisableConfigConnect4(t, true, true)
 }
 
-func TestNoDisableConnectEvent4(t *testing.T) {
-	testDisableConfigConnect4(t, false)
+func TestNoDisableConnectEvent4CLI(t *testing.T) {
+	testDisableConfigConnect4(t, true, false)
+}
+
+func TestDisableConnectEvent4NoCLI(t *testing.T) {
+	testDisableConfigConnect4(t, false, true)
+}
+
+func TestNoDisableConnectEvent4NoCLI(t *testing.T) {
+	testDisableConfigConnect4(t, false, false)
 }
 
 func TestExecEventClone4(t *testing.T) {
@@ -593,12 +621,24 @@ func TestListenAcceptClose4(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disableAccept bool, disableClose bool) {
+func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disableListen bool, disableAccept bool, disableClose bool) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
+
+	if CLISwitches {
+		oldEnableTCPValue := enterpriseOption.Config.EnableTCP
+		enterpriseOption.Config.EnableTCP = true
+		oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
+		enterpriseOption.Config.Layer3CLIEnable = true
+		t.Cleanup(func() {
+			enterpriseOption.Config.EnableTCP = oldEnableTCPValue
+			enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
+		})
+		layer3.EnableLayer3Progs()
+	}
 
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
@@ -608,6 +648,15 @@ func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disab
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
 		WithArguments(sm.Full("-nvlp 8086"))
+
+	execChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("ncExec").
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+	)
 
 	listenChecker := ec.NewUnorderedEventChecker(
 		ec.NewProcessListenChecker("ncListen").
@@ -635,7 +684,10 @@ func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disab
 			WithSocketType(sm.Full("accept")),
 	)
 
-	obs := getTcpObserverDisableEvents(t, ctx, false, true, disableClose, disableAccept, disableListen)
+	obs := getTcpObserverDisableEvents(t, ctx, false, CLISwitches, true, disableClose, disableAccept, disableListen)
+	if CLISwitches {
+		layer3.RunLayer3Progs(ctx)
+	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -650,6 +702,10 @@ func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disab
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 
+	// Regardless of enabled/disabled network events, we should exepct the exec events
+	err := jsonchecker.JsonTestCheck(t, execChecker)
+	assert.NoError(t, err)
+
 	listenErr := jsonchecker.JsonTestCheckExpect(t, listenChecker, disableListen)
 	assert.NoError(t, listenErr)
 
@@ -660,12 +716,20 @@ func testDisableConfigListenAcceptClose4(t *testing.T, disableListen bool, disab
 	assert.NoError(t, closeErr)
 }
 
-func TestDisableListenAcceptClose4(t *testing.T) {
-	testDisableConfigListenAcceptClose4(t, true, true, true)
+func TestDisableListenAcceptClose4CLI(t *testing.T) {
+	testDisableConfigListenAcceptClose4(t, true, true, true, true)
 }
 
-func TestNoDisableListenAcceptClose4(t *testing.T) {
-	testDisableConfigListenAcceptClose4(t, false, false, false)
+func TestNoDisableListenAcceptClose4CLI(t *testing.T) {
+	testDisableConfigListenAcceptClose4(t, true, false, false, false)
+}
+
+func TestDisableListenAcceptClose4NoCLI(t *testing.T) {
+	testDisableConfigListenAcceptClose4(t, false, true, true, true)
+}
+
+func TestNoDisableListenAcceptClose4NoCLI(t *testing.T) {
+	testDisableConfigListenAcceptClose4(t, false, false, false, false)
 }
 
 func TestDockerExistingListenEvent4(t *testing.T) {

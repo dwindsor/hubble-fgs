@@ -43,7 +43,9 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -743,6 +745,23 @@ spec:
         max: 10000
 `
 
+const udpBasicConfigWOEnable = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    udp:
+      cgroup: true
+      statsInterval: 2
+      latency:
+        enable: true
+        matchSubnets: [20.0.0.0/8]
+        min: 0
+        max: 10000
+`
+
 // Setting UDP latency max to 1,000,000 means 1% equates to
 // 10ms, which a packet across loopback should easily be
 // quicker than.
@@ -769,28 +788,15 @@ spec:
 // thing to do here even if revive complains.
 //
 //revive:disable:context-as-argument
-func getUdpObserver(t *testing.T, ctx context.Context, config string) *observer.Observer {
-	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	base := base.GetInitialSensor()
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-	return obs
-}
-
 func getBasicUdpObserver(t *testing.T, ctx context.Context) *observer.Observer {
-	return getUdpObserver(t, ctx, udpBasicConfig)
+	return getLayer3Observer(t, ctx, udpBasicConfig, true)
 }
 
 func getUdpObserverWithLatencyDetection(t *testing.T, ctx context.Context) *observer.Observer {
-	return getUdpObserver(t, ctx, udpConfigWithLatencyDetection)
+	return getLayer3Observer(t, ctx, udpConfigWithLatencyDetection, true)
 }
 
-func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, disableConnect bool, disableListen bool, disableClose bool, disableStats bool) *observer.Observer {
+func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, CLISwitches bool, disableConnect bool, disableListen bool, disableClose bool, disableStats bool) *observer.Observer {
 	eventDisableConfig := `
       disableEvents:
 `
@@ -799,8 +805,13 @@ func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, disableConne
 	eventDisableConfig += "\n        disableClose: " + strconv.FormatBool(disableClose)
 	eventDisableConfig += "\n        disableStats: " + strconv.FormatBool(disableStats)
 
-	udpDisableEventsConfig := udpBasicConfig + eventDisableConfig
-	return getUdpObserver(t, ctx, udpDisableEventsConfig)
+	var udpDisableEventsConfig string
+	if CLISwitches {
+		udpDisableEventsConfig = udpBasicConfigWOEnable + eventDisableConfig
+	} else {
+		udpDisableEventsConfig = udpBasicConfig + eventDisableConfig
+	}
+	return getLayer3Observer(t, ctx, udpDisableEventsConfig, true)
 }
 
 func TestUdpConnectEvent4(t *testing.T) {
@@ -993,15 +1004,104 @@ func TestListenEvent4(t *testing.T) {
 	killAndWaitCommand(t, cmdServer)
 }
 
-func testDisableConnectStatsConfig4(t *testing.T, disableConnect bool, disableStats bool) {
+func TestUDPCLISwitch(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
+	oldEnableUDPValue := enterpriseOption.Config.EnableUDP
+	enterpriseOption.Config.EnableUDP = true
+	oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
+	enterpriseOption.Config.Layer3CLIEnable = true
+	t.Cleanup(func() {
+		enterpriseOption.Config.EnableICMP = oldEnableUDPValue
+		enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
+	})
+
+	server := getNCCommand(t, "nc.openbsd")
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-unvlp 8081"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("serverExec").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker("serverListen").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8081).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+	)
+
+	obs := getNoConfigObserver(t, ctx, true)
+	layer3.StartLayer3Progs(ctx)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-unvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+}
+
+func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConnect bool, disableStats bool) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	if CLISwitches {
+		oldEnableUDPValue := enterpriseOption.Config.EnableUDP
+		enterpriseOption.Config.EnableUDP = true
+		oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
+		enterpriseOption.Config.Layer3CLIEnable = true
+		t.Cleanup(func() {
+			enterpriseOption.Config.EnableICMP = oldEnableUDPValue
+			enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
+		})
+		layer3.EnableLayer3Progs()
+	}
+
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-unvlp 8081"))
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("-u 127.0.0.1 8081"))
+
+	execChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker("selfExec").
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("serverExec").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessExecChecker("clientExec").
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker),
+	)
 
 	connectChecker := ec.NewUnorderedEventChecker(
 		ec.NewProcessConnectChecker("serverConnect").
@@ -1019,7 +1119,10 @@ func testDisableConnectStatsConfig4(t *testing.T, disableConnect bool, disableSt
 				WithSourcePort(8081)),
 	)
 
-	obs := getUdpObserverDisableEvents(t, ctx, disableConnect, true, true, disableStats)
+	obs := getUdpObserverDisableEvents(t, ctx, CLISwitches, disableConnect, true, true, disableStats)
+	if CLISwitches {
+		layer3.RunLayer3Progs(ctx)
+	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -1034,6 +1137,10 @@ func testDisableConnectStatsConfig4(t *testing.T, disableConnect bool, disableSt
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
 
+	// Regardless of enabled/disabled network events, we should exepct the exec events
+	err = jsonchecker.JsonTestCheck(t, execChecker)
+	assert.NoError(t, err)
+
 	connectErr := jsonchecker.JsonTestCheckExpect(t, connectChecker, disableConnect)
 	assert.NoError(t, connectErr)
 
@@ -1044,12 +1151,20 @@ func testDisableConnectStatsConfig4(t *testing.T, disableConnect bool, disableSt
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestDisableConnectStats4(t *testing.T) {
-	testDisableConnectStatsConfig4(t, true, true)
+func TestDisableConnectStats4CLI(t *testing.T) {
+	testDisableConnectStatsConfig4(t, true, true, true)
 }
 
-func TestNoDisableConnectStats4(t *testing.T) {
-	testDisableConnectStatsConfig4(t, false, false)
+func TestNoDisableConnectStats4CLI(t *testing.T) {
+	testDisableConnectStatsConfig4(t, true, false, false)
+}
+
+func TestDisableConnectStats4NoCLI(t *testing.T) {
+	testDisableConnectStatsConfig4(t, false, true, true)
+}
+
+func TestNoDisableConnectStats4NoCLI(t *testing.T) {
+	testDisableConnectStatsConfig4(t, false, false, false)
 }
 
 func TestConnectAfterStartEvent4(t *testing.T) {

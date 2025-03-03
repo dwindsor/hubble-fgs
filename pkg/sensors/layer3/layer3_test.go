@@ -11,6 +11,7 @@
 package layer3_test
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -21,8 +22,11 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
+	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -184,6 +188,44 @@ const layer3IcmpRawConfig = layer3Config + `
       enable: true
       reportClose: true
 `
+
+const noConfig = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "noconfig"
+`
+
+// NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
+// thing to do here even if revive complains.
+//
+//revive:disable:context-as-argument
+func getLayer3Observer(t *testing.T, ctx context.Context, config string, filtered bool) *observer.Observer {
+	if err := observertesthelper.WriteConfigFile(testConfigFile, config); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	base := base.GetInitialSensor()
+	var obs *observer.Observer
+	var err error
+	if filtered {
+		obs, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	} else {
+		obs, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
+	}
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	err = confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	return obs
+}
+
+func getNoConfigObserver(t *testing.T, ctx context.Context, filtered bool) *observer.Observer {
+	return getLayer3Observer(t, ctx, noConfig, filtered)
+}
 
 func TestLoadLayer3Sensor(t *testing.T) {
 	var l3Config string
