@@ -302,7 +302,7 @@ func UnloadSensor(tp tracingpolicy.TracingPolicy) error {
 	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
 	}
-	tcpconfig.MetricsEnabled = false
+	tcpconfig.ClearConfig()
 	if StatsEnabled() {
 		stats.disable()
 		StatsInterval = 0

@@ -40,3 +40,11 @@ func DefaultLabelFilter() metrics.LabelFilter {
 		"dstip":        false,
 	}
 }
+
+func ClearConfig() {
+	MetricsEnabled = false
+	LatencyConfig.Enable = 0
+	RttHistogramMax = 0
+	RttHistogramMin = 0
+	CurrentLabels = DefaultLabelFilter()
+}
