@@ -1,0 +1,40 @@
+//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+//  NOTICE: All information contained herein is, and remains the property of
+//  Isovalent Inc and its suppliers, if any. The intellectual and technical
+//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+//  and may be covered by U.S. and Foreign Patents, patents in process, and are
+//  protected by trade secret or copyright law.  Dissemination of this information
+//  or reproduction of this material is strictly forbidden unless prior written
+//  permission is obtained from Isovalent Inc.
+
+syntax = "proto3";
+
+package tetragon;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
+
+message Mandate {
+	string version = 1;
+	google.protobuf.Timestamp loaded_at = 2;
+	string checksum = 3;
+}
+
+message MandateConf {
+	string url = 1;
+	google.protobuf.Duration refresh_period = 2;
+}
+
+message GetMandateStatusReq{}
+message GetMandateStatusRes {
+	MandateConf conf = 1;
+	bool running = 2;
+	Mandate loaded_mandate = 3;
+}
+
+service MandateService {
+	rpc GetMandateStatus(GetMandateStatusReq) returns (GetMandateStatusRes) {}
+}
