@@ -33,6 +33,11 @@ __tcp_ack_update_rtt(void *ctx, struct tcp_sock *skp, u32 flag, s64 seq_rtt_us, 
 	int zero = 0;
 	u64 cookie;
 
+	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(
+		&tg_tcp_send_check_sampler, &zero);
+	if (!cfg || !cfg->rttEnable)
+		return 0;
+
 	/* In TCP we use the struct sock address as the socket cookie. */
 	cookie = (u64)skp;
 
@@ -41,11 +46,6 @@ __tcp_ack_update_rtt(void *ctx, struct tcp_sock *skp, u32 flag, s64 seq_rtt_us, 
 		emit_ip_error_event(ctx, 0, &cookie, false, 0, 2, 0, IP_ERROR_TCP_RTT_NO_SOCKET);
 		return 0;
 	}
-
-	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(
-		&tg_tcp_send_check_sampler, &zero);
-	if (!cfg)
-		return 0;
 
 	/* Implement logic from tcp_ack_update_rtt()
 	 * This has been reworked to avoid the probe_read if unnecessary,

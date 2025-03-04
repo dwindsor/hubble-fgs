@@ -69,6 +69,31 @@ struct {
 	__uint(max_entries, 1);
 } tg_tcpsocket_map_heap SEC(".maps");
 
+struct tcp_send_check_sample_cfg {
+	__u8 watermarksEnable;
+	__u8 rttEnable;
+	__u8 pad[6];
+	__u64 watermarksAvgWindowSize;
+	__u64 watermarksWindowSizeNs;
+	__u64 watermarksBurstTriggerMult;
+	__u64 watermarksDipTriggerMult;
+	__u32 bucket00;
+	__u32 bucket01;
+	__u32 bucket10;
+	__u32 bucket25;
+	__u32 bucket50;
+	__u32 bucket75;
+	__u32 bucket90;
+	__u32 bucket99;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, __u32);
+	__type(value, struct tcp_send_check_sample_cfg);
+	__uint(max_entries, 1);
+} tg_tcp_send_check_sampler SEC(".maps");
+
 /* Handle the case where an entry already exists for this cookie. This could
  * be the correct entry (so do nothing) or an incorrect entry (correct it).
  * Neither of these affect the count of entries. The duplicate existing entry

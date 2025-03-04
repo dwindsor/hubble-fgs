@@ -158,6 +158,8 @@ get_socket_stats(struct sock *sk,
 		 struct tcpsocketmap_value *socket,
 		 struct msg_socket_stats *stats)
 {
+	struct tcp_send_check_sample_cfg *cfg;
+	__u32 zero = 0;
 	int i;
 
 	get_tcp_stats(stats, sk);
@@ -167,12 +169,25 @@ get_socket_stats(struct sock *sk,
 
 	//stats->tozerowin populated in-band TCP hook watching for zero window
 	stats->zero_window = socket->stats.zero_window;
+
+	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
+	if (cfg && cfg->rttEnable) {
+#pragma unroll
+		for (i = 0; i < 8; i++) {
+			stats->rtt_buckets[i] = socket->stats.rtt_buckets[i];
+		}
+		stats->rtt_sum = socket->stats.rtt_sum;
+	} else {
+#pragma unroll
+		for (i = 0; i < 8; i++) {
+			stats->rtt_buckets[i] = 0;
+		}
+		stats->rtt_sum = 0;
+	}
 #pragma unroll
 	for (i = 0; i < 8; i++) {
-		stats->rtt_buckets[i] = socket->stats.rtt_buckets[i];
 		stats->latency_buckets[i] = socket->stats.latency_buckets[i];
 	}
-	stats->rtt_sum = socket->stats.rtt_sum;
 	stats->latency_sum = socket->stats.latency_sum;
 }
 

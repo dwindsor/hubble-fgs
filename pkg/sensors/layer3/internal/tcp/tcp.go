@@ -567,11 +567,12 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 		WatermarksBurstTriggerMult = 0
 		WatermarksDipTriggerMult = 0
 	}
-	if spec.Parser.Tcp.RttHistogram.Enable {
+	if spec.Parser.Tcp.RttHistogram.Enable || enterpriseOption.Config.EnableTCPRTT {
 		tcpconfig.RttHistogramMax = spec.Parser.Tcp.RttHistogram.Max
 		tcpconfig.RttHistogramMin = spec.Parser.Tcp.RttHistogram.Min
 
 		if tcpconfig.RttHistogramMax < tcpconfig.RttHistogramMin {
+			tcpconfig.RttHistogramMax = 0
 			return false, fmt.Errorf("misconfigured Rtt Histogram: Min value must be less than Max")
 		}
 	} else {

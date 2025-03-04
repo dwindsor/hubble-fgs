@@ -27,6 +27,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/sirupsen/logrus"
 )
 
@@ -80,7 +81,9 @@ type SockStatKey struct {
 func (k *SockStatKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
 
 type SockStatValue struct {
-	WatermarksEnable           uint64
+	WatermarksEnable           uint8
+	RTTEnable                  uint8
+	Pad                        [6]uint8
 	WatermarksAvgWindowSize    uint64
 	WatermarksWindowSizeNs     uint64
 	WatermarksBurstTriggerMult uint64
@@ -222,7 +225,9 @@ func ToMsgSocketStatsUnix(t *networkapi.TcpValue) *networkapi.MsgSocketStats {
 	s.ZeroWindow = t.Stats.ZeroWindow
 	s.SkDrops = t.Stats.SkDrops
 
-	s.Rtt = t.Stats.Rtt
+	if tcpconfig.RttHistogramMax > 0 {
+		s.Rtt = t.Stats.Rtt
+	}
 	s.Latency = t.Stats.Latency
 
 	return s
@@ -271,9 +276,13 @@ func tcpDiffValues(last, curr *networkapi.MsgSocketStats) (networkapi.MsgSocketS
 		joinedErr = errors.Join(joinedErr, fmt.Errorf("current SkDrops < last"))
 	}
 
-	rttHist, err := tcpDiffHistogram(&last.Rtt, &curr.Rtt, "RTT")
-	if err != nil {
-		joinedErr = errors.Join(joinedErr, err)
+	var rttHist networkapi.Histogram
+	var err error
+	if tcpconfig.RttHistogramMax > 0 {
+		rttHist, err = tcpDiffHistogram(&last.Rtt, &curr.Rtt, "RTT")
+		if err != nil {
+			joinedErr = errors.Join(joinedErr, err)
+		}
 	}
 	latencyHist, err := tcpDiffHistogram(&last.Latency, &curr.Latency, "Latency")
 	if err != nil {
@@ -355,7 +364,7 @@ func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 	key := &SockStatKey{
 		Zero: uint32(0),
 	}
-	watermarksEnableVar := uint64(0)
+	watermarksEnableVar := uint8(0)
 	if watermarksEnable {
 		watermarksEnableVar = 1
 	}
@@ -363,8 +372,14 @@ func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 	rttRange := float64(rttMax - rttMin)
 	fRttMin := float64(rttMin)
 
+	rttEnable := uint8(0)
+	if rttMax != 0 {
+		rttEnable = 1
+	}
+
 	value := &SockStatValue{
 		WatermarksEnable:           watermarksEnableVar,
+		RTTEnable:                  rttEnable,
 		WatermarksAvgWindowSize:    watermarksAvgWindowSize,
 		WatermarksWindowSizeNs:     (watermarksAvgWindowSize * 2 * 1000000) / 3,
 		WatermarksBurstTriggerMult: burstTriggerMult + 100,

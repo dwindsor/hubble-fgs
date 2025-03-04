@@ -23,29 +23,6 @@
 #include "bpf_tracing.h"
 #include "bpf_tcp_info.h"
 
-struct tcp_send_check_sample_cfg {
-	__u64 watermarksEnable;
-	__u64 watermarksAvgWindowSize;
-	__u64 watermarksWindowSizeNs;
-	__u64 watermarksBurstTriggerMult;
-	__u64 watermarksDipTriggerMult;
-	__u32 bucket00;
-	__u32 bucket01;
-	__u32 bucket10;
-	__u32 bucket25;
-	__u32 bucket50;
-	__u32 bucket75;
-	__u32 bucket90;
-	__u32 bucket99;
-};
-
-struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, __u32);
-	__type(value, struct tcp_send_check_sample_cfg);
-	__uint(max_entries, 1);
-} tg_tcp_send_check_sampler SEC(".maps");
-
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __u32);
