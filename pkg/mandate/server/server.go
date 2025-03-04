@@ -49,6 +49,7 @@ func (s *Server) GetMandateStatus(_ context.Context, _ *api.GetMandateStatusReq)
 			RefreshPeriod: durationpb.New(status.Conf.RefreshPeriod),
 		},
 		Running: status.Running,
+		Log:     status.Log.ToProto(),
 	}
 	if status.Mandate != nil {
 		ret.LoadedMandate = &api.Mandate{
