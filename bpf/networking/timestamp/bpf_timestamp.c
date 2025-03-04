@@ -19,9 +19,15 @@ __attribute__((section("classifier/egress_timestamp"), used)) int
 tg_egress_timestamp(struct __sk_buff *skb)
 {
 	void *data_end = (void *)(long)skb->data_end;
+	struct latency_config *latency_config;
 	void *data = (void *)(long)skb->data;
 	struct ethhdr *eth = data;
 	struct iphdr *iph;
+	int zero = 0;
+
+	latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
+	if (!latency_config || (!latency_config->tcp.enable && !latency_config->udp.enable))
+		return TC_ACT_PIPE;
 
 	if (data + sizeof(*eth) > data_end) {
 		return TC_ACT_PIPE;

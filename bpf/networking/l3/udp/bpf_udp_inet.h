@@ -171,12 +171,13 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
 		if (!latency_config)
 			return 1;
-
-		if (ts_opt) {
-			latency = calc_latency(latency_config->boot_ns,
-					       bpf_ntohl(ts_opt->timestamp_low),
-					       bpf_ntohl(ts_opt->timestamp_high));
-			udp_latency = &latency_config->udp;
+		if (latency_config->udp.enable) {
+			if (ts_opt) {
+				latency = calc_latency(latency_config->boot_ns,
+						       bpf_ntohl(ts_opt->timestamp_low),
+						       bpf_ntohl(ts_opt->timestamp_high));
+				udp_latency = &latency_config->udp;
+			}
 		}
 	}
 
