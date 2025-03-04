@@ -283,6 +283,11 @@ options:
     - name: log-level
       default_value: info
       usage: Set log level
+    - name: mandate-refresh-period
+      default_value: 1m0s
+      usage: Refresh period for the Mandate file
+    - name: mandate-url
+      usage: Set a URL for a Tetragon Mandate file
     - name: memprofile
       usage: Store MEM profile into provided file
     - name: metrics-label-filter

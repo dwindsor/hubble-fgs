@@ -30,6 +30,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned"
+	"github.com/isovalent/hubble-fgs/pkg/mandate"
+	mandatesrv "github.com/isovalent/hubble-fgs/pkg/mandate/server"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
@@ -561,6 +563,20 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		observer.RemoveSensors(ctx)
 	}()
 
+	// now that the base sensor is loaded, we can start the mandate goroutine
+	var mandateMgr mandate.Manager
+	mandateConf := enterpriseOption.Config.MandateConf
+	if mandateConf.URL != "" {
+		var err error
+		mandateMgr, err = mandate.NewManager(mandateConf, observer.GetSensorManager())
+		if err != nil {
+			return err
+		}
+		if err = mandateMgr.Start(); err != nil {
+			return err
+		}
+	}
+
 	pm, err := fgsGrpc.NewProcessManager(
 		ctx,
 		&cleanupWg,
@@ -569,7 +585,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if err != nil {
 		return fmt.Errorf("failed to create process manager: %w", err)
 	}
-	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer); err != nil {
+	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer, mandatesrv.New(mandateMgr)); err != nil {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 	if option.Config.ExportFilename != "" {
@@ -959,10 +975,11 @@ func startProcessTreeExporter(ctx context.Context, modelServer *model.Server) er
 	return nil
 }
 
-func Serve(ctx context.Context, listenAddr string, srv *server.Server, model *model.Server) error {
+func Serve(ctx context.Context, listenAddr string, srv *server.Server, model *model.Server, mandate *mandatesrv.Server) error {
 	grpcServer := grpc.NewServer()
 	tetragon.RegisterFineGuidanceSensorsServer(grpcServer, srv)
 	tetragon.RegisterProcessModelServiceServer(grpcServer, model)
+	tetragon.RegisterMandateServiceServer(grpcServer, mandate)
 	proto, addr, err := server.SplitListenAddr(listenAddr)
 	if err != nil {
 		return fmt.Errorf("failed to parse listen address: %w", err)

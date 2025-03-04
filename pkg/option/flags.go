@@ -56,6 +56,8 @@ const (
 	keyEnableBPFDNSParser             = "enable-bpf-dns-parser"
 	keyDNSStatsPerSocket              = "dns-stats-per-socket"
 	KeyEnableFimDispatcher            = "fim-enable-dispatcher"
+	KeyMandateURL                     = "mandate-url"
+	KeyMandateRefreshPeriod           = "mandate-refresh-period"
 )
 
 func FixUpOSSFlags(flags *pflag.FlagSet) {
@@ -117,6 +119,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableBPFDNSParser, false, "Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.")
 	flags.Bool(keyDNSStatsPerSocket, false, "If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported")
 	flags.Bool(KeyEnableFimDispatcher, false, "Enable FIM dispatcher when supported")
+	flags.String(KeyMandateURL, "", "Set a URL for a Tetragon Mandate file")
+	flags.Duration(KeyMandateRefreshPeriod, 1*time.Minute, "Refresh period for the Mandate file")
 }
 
 func ReadAndSetEnterpriseFlags() {
@@ -161,4 +165,6 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser) && kernels.MinKernelVersion("5.15.0")
 	Config.DNSStatsPerSocket = viper.GetBool(keyDNSStatsPerSocket)
 	Config.EnableFimDispatcher = viper.GetBool(KeyEnableFimDispatcher)
+	Config.MandateConf.URL = viper.GetString(KeyMandateURL)
+	Config.MandateConf.RefreshPeriod = viper.GetDuration(KeyMandateRefreshPeriod)
 }

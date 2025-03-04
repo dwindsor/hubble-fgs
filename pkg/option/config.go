@@ -3,7 +3,11 @@
 
 package option
 
-import "time"
+import (
+	"time"
+
+	"github.com/isovalent/hubble-fgs/pkg/mandate"
+)
 
 type config struct {
 	EnableProcessTree         bool
@@ -50,6 +54,8 @@ type config struct {
 	DNSStatsPerSocket bool
 
 	EnableFimDispatcher bool
+
+	MandateConf mandate.ManagerConf
 }
 
 var (
