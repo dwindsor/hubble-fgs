@@ -31,6 +31,7 @@ func CheckStructAlignments(pathToObj string) error {
 		"tcpsocketmap_value":      {networkapi.TcpValue{}},
 		"udp_info_key":            {networkapi.UdpInfoKey{}},
 		"udp_info_value":          {networkapi.UdpInfoValue{}},
+		"udp_sensor_config":       {networkapi.UdpConfigValue{}},
 		"msg_socket_stats":        {networkapi.MsgSocketStats{}},
 
 		// Layer 7

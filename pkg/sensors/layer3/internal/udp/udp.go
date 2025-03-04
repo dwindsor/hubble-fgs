@@ -54,7 +54,7 @@ const (
 )
 
 var (
-	Config            ConfigValue
+	Config            networkapi.UdpConfigValue
 	udpGcInterval     time.Duration
 	WatermarksEnabled = false
 	TimestampEnabled  = false
@@ -151,37 +151,6 @@ var (
 	LatencyConfigMapLazyKprobe = program.MapBuilder(networklatency.ConfigMapName, InetSendRecvLazy)
 )
 
-type udpSensorConfigKey struct {
-	Zero uint32
-}
-
-type ConfigValue struct {
-	dnsPorts                      [maxDnsPorts]uint16
-	dnsStatsPerSocket             uint8
-	dnsReportQuestions            uint8
-	watermarksEnable              uint8
-	Pad                           [5]uint8
-	watermarksAvgWindowSizeMs     uint64
-	watermarksWindowSize          uint64
-	watermarksBurstTriggerPercent uint64
-	watermarksDipTriggerPercent   uint64
-	seqCheckAppId                 uint64
-	seqCheckPorts                 [maxSeqCheckPorts]uint16
-}
-
-func (v *ConfigValue) String() string {
-	return fmt.Sprintf("dnsPorts: %d, "+
-		"dnsStatsPerSocket: %d, "+
-		"dnsReportQuestions: %d, "+
-		"watermarkEnable: %d, "+
-		"watermarkAvgWindowSizeMs: %d, "+
-		"watermarkWindowSize: %d, "+
-		"watermarkBurstTriggerPercent: %d, "+
-		"watermarkDipTriggerPercent: %d",
-		v.dnsPorts, v.dnsStatsPerSocket, v.dnsReportQuestions, v.watermarksEnable, v.watermarksAvgWindowSizeMs, v.watermarksWindowSize, v.watermarksBurstTriggerPercent,
-		v.watermarksDipTriggerPercent)
-}
-
 func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	saddr := networkapi.GetIP(socket.Tuple.SAddr, 0, socket.Tuple.IPv6 != 0)
 	daddr := networkapi.GetIP(socket.Tuple.DAddr, 0, socket.Tuple.IPv6 != 0)
@@ -233,14 +202,14 @@ func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	observer.AllListeners(&udp)
 }
 
-func ConfigureMaps(mapDir string, mapName string, config ConfigValue) error {
+func ConfigureMaps(mapDir string, mapName string, config networkapi.UdpConfigValue) error {
 	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
 	if err != nil {
 		return err
 	}
 	defer m.Close()
 
-	key := &udpSensorConfigKey{
+	key := &networkapi.UdpConfigKey{
 		Zero: uint32(0),
 	}
 	m.Put(key, &config)

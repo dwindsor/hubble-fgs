@@ -292,6 +292,42 @@ func (t *TcpValue) String() string {
 		policy)
 }
 
+type UdpConfigKey struct {
+	Zero uint32
+}
+
+const (
+	UdpMaxDnsPorts      = 4
+	UdpMaxSeqCheckPorts = 8
+)
+
+type UdpConfigValue struct {
+	DnsPorts                      [UdpMaxDnsPorts]uint16      `align:"dns_ports"`
+	DnsStatsPerSocket             uint8                       `align:"dns_stats_per_socket"`
+	DnsReportQuestions            uint8                       `align:"dns_report_questions"`
+	WatermarksEnable              uint8                       `align:"watermarks_enable"`
+	Pad                           [5]uint8                    `align:"pad"`
+	WatermarksAvgWindowSizeMs     uint64                      `align:"watermarks_avg_window_size_ms"`
+	WatermarksWindowSize          uint64                      `align:"watermarks_window_size"`
+	WatermarksBurstTriggerPercent uint64                      `align:"watermarks_burst_trigger_percent"`
+	WatermarksDipTriggerPercent   uint64                      `align:"watermarks_dip_trigger_percent"`
+	SeqCheckAppId                 uint64                      `align:"seq_check_app_id"`
+	SeqCheckPorts                 [UdpMaxSeqCheckPorts]uint16 `align:"seq_check_ports"`
+}
+
+func (v *UdpConfigValue) String() string {
+	return fmt.Sprintf("dnsPorts: %d, "+
+		"dnsStatsPerSocket: %d, "+
+		"dnsReportQuestions: %d, "+
+		"watermarkEnable: %d, "+
+		"watermarkAvgWindowSizeMs: %d, "+
+		"watermarkWindowSize: %d, "+
+		"watermarkBurstTriggerPercent: %d, "+
+		"watermarkDipTriggerPercent: %d",
+		v.DnsPorts, v.DnsStatsPerSocket, v.DnsReportQuestions, v.WatermarksEnable, v.WatermarksAvgWindowSizeMs, v.WatermarksWindowSize, v.WatermarksBurstTriggerPercent,
+		v.WatermarksDipTriggerPercent)
+}
+
 type UdpInfoKey struct {
 	Cookie  uint64     `align:"cookie"`
 	Tuple   MsgIPTuple `align:"tuple"`
