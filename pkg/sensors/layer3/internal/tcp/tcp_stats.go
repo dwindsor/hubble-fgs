@@ -46,7 +46,7 @@ type statsManager struct {
 	timer      *timer.PeriodicTimer
 }
 
-func (s statsManager) enable(interval time.Duration) error {
+func (s *statsManager) enable(interval time.Duration) error {
 	if interval <= 0 {
 		return fmt.Errorf("interval must be > 0, got %v", interval)
 	}
@@ -63,7 +63,7 @@ func (s statsManager) enable(interval time.Duration) error {
 	return nil
 }
 
-func (s statsManager) disable() {
+func (s *statsManager) disable() {
 	if s.timer != nil {
 		s.timer.Stop()
 	}
@@ -310,7 +310,7 @@ func copyMsgIpWithStatsEvent(tcp *grpc.MsgIPWithStatsEventUnix) grpc.MsgIPWithSt
 // events out of order. Specifically it means when we diff the events the 'last'
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
-func (s statsManager) correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grpc.MsgIPWithStatsEventUnix, error) {
+func (s *statsManager) correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (grpc.MsgIPWithStatsEventUnix, error) {
 	newTcp := copyMsgIpWithStatsEvent(&tcp)
 	if s.cache == nil {
 		return newTcp, nil
