@@ -11,7 +11,7 @@ metadata:
   annotations:
     author: "Isovalent"
   labels:
-    app.kubernetes.io/version: 1.15.0-pre.2
+    app.kubernetes.io/version: 1.16.0-rc.1
 spec:
   kprobes:
     # Monitor changing root directory
