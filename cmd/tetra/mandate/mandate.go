@@ -13,9 +13,11 @@ package mandate
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
+	"github.com/isovalent/hubble-fgs/pkg/mandate/cli"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -23,7 +25,8 @@ import (
 )
 
 func statusCmd() *cobra.Command {
-	return &cobra.Command{
+	var output string
+	ret := &cobra.Command{
 		Use:          "status",
 		Short:        "mandate status",
 		Long:         "retrieve mandate status from the tetragon agent",
@@ -48,14 +51,24 @@ func statusCmd() *cobra.Command {
 				return fmt.Errorf("failed to retrieve mandate status: %w", err)
 			}
 
-			b, err := res.MarshalJSON()
-			if err != nil {
-				return fmt.Errorf("failed to generate json: %w", err)
+			switch output {
+			case "json":
+				b, err := res.MarshalJSON()
+				if err != nil {
+					return fmt.Errorf("failed to generate json: %w", err)
+				}
+				cmd.Println(string(b))
+
+			case "text":
+				cli.Print(os.Stdout, res)
 			}
-			cmd.Println(string(b))
 			return nil
 		},
 	}
+
+	flags := ret.Flags()
+	flags.StringVarP(&output, "output", "o", "text", "Specify the output format: text|json")
+	return ret
 
 }
 
