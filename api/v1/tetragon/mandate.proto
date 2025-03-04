@@ -14,6 +14,7 @@ package tetragon;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
+import "tetragon/attempt.proto";
 
 option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
 
@@ -33,6 +34,7 @@ message GetMandateStatusRes {
   MandateConf conf = 1;
   bool running = 2;
   Mandate loaded_mandate = 3;
+  AttemptLog log = 4;
 }
 
 service MandateService {
