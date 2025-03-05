@@ -137,7 +137,7 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (networkapi.UdpConfigValue, 
 	ParseUdpWatermarksSpec(&config, spec)
 	latencyConfig, _ := networklatency.ParseLatencySpec(spec.Parser.Udp.Latency, unix.IPPROTO_UDP)
 	ParseSeqCheckSpec(&config, spec)
-	ParseDisableSpec(spec)
+	ParseDisableSpec(&config, spec)
 
 	return config, latencyConfig
 }
@@ -251,11 +251,15 @@ func ParseSeqCheckSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tracing
 	}
 }
 
-func ParseDisableSpec(spec *v1alpha1.TracingPolicySpec) {
+func ParseDisableSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	DisableConnectEvents = spec.Parser.Udp.DisableEvents.DisableConnect
 	DisableListenEvents = spec.Parser.Udp.DisableEvents.DisableListen
 	DisableCloseEvents = spec.Parser.Udp.DisableEvents.DisableClose
 	DisableStatsEvents = spec.Parser.Udp.DisableEvents.DisableStats
+	config.DisableListenEvents = 0
+	if DisableListenEvents {
+		config.DisableListenEvents = 1
+	}
 	logger.GetLogger().WithFields(logrus.Fields{"disableConnect": DisableCloseEvents, "disableListen": DisableListenEvents,
 		"disableClose": DisableCloseEvents, "disableStats": DisableStatsEvents}).Info("UDP event types")
 }

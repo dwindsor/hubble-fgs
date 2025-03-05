@@ -160,7 +160,7 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 			cgroupEgressProg, cgroupIngressProg,
 		}),
 		SensorMapByProgName(sensorProgs, "tg_udp_config_map", []string{
-			cgroupEgressProg, cgroupIngressProg,
+			cgroupEgressProg, cgroupIngressProg, udpBindProg,
 		}),
 	}...)
 
@@ -401,7 +401,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 				udpInetLazySendProg,
 			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_config_map", []string{
-				udpInetLazySendProg,
+				udpInetLazySendProg, udpBindProg,
 			}),
 		}...)
 
@@ -426,7 +426,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 				cgroupEgressProg, cgroupIngressProg,
 			}),
 			SensorMapByProgName(sensorProgs, "tg_udp_config_map", []string{
-				cgroupEgressProg, cgroupIngressProg,
+				cgroupEgressProg, cgroupIngressProg, udpBindProg,
 			}),
 		}...)
 

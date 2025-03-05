@@ -29,12 +29,17 @@ struct {
 static inline __attribute__((always_inline)) int
 __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
 {
+	struct udp_sensor_config *config;
 	struct socketmap_value *process;
 	struct msg_ip_event *event;
 	struct sock *sk;
 	u16 protocol;
 	int zero = 0;
 	size_t size;
+
+	config = get_udp_config();
+	if (!config || config->disable_listen_events)
+		return 0;
 
 	sk = (struct sock *)cookie;
 	probe_read_kernel(&protocol, sizeof(protocol), _(&(sk->sk_protocol)));

@@ -306,7 +306,8 @@ type UdpConfigValue struct {
 	DnsStatsPerSocket             uint8                       `align:"dns_stats_per_socket"`
 	DnsReportQuestions            uint8                       `align:"dns_report_questions"`
 	WatermarksEnable              uint8                       `align:"watermarks_enable"`
-	Pad                           [5]uint8                    `align:"pad"`
+	DisableListenEvents           uint8                       `align:"disable_listen_events"`
+	Pad                           [4]uint8                    `align:"pad"`
 	WatermarksAvgWindowSizeMs     uint64                      `align:"watermarks_avg_window_size_ms"`
 	WatermarksWindowSize          uint64                      `align:"watermarks_window_size"`
 	WatermarksBurstTriggerPercent uint64                      `align:"watermarks_burst_trigger_percent"`

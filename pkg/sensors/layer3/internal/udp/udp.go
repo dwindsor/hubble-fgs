@@ -266,9 +266,7 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 		progsCollectStats = []*program.Program{
 			InetSendRecvLazy,
 		}
-		if !DisableListenEvents {
-			progsInitSock = append(progsInitSock, bindProg())
-		}
+		progsInitSock = append(progsInitSock, bindProg())
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
 			UdpMapStatsLazyKprobe,
@@ -279,11 +277,9 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 			PsVerMap,
 		}
 	} else {
-		if !DisableListenEvents {
-			progsInitSock = append(progsInitSock, bindProg())
-			if kernels.MinKernelVersion("5.14.0") {
-				progsInitSock = append(progsInitSock, []*program.Program{SkUdpBindDummy4, SkUdpBindDummy6}...)
-			}
+		progsInitSock = append(progsInitSock, bindProg())
+		if kernels.MinKernelVersion("5.14.0") {
+			progsInitSock = append(progsInitSock, []*program.Program{SkUdpBindDummy4, SkUdpBindDummy6}...)
 		}
 		maps = []*program.Map{
 			SocketCookieMap,

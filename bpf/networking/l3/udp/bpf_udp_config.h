@@ -16,7 +16,8 @@ struct udp_sensor_config {
 	u8 dns_stats_per_socket;
 	u8 dns_report_questions;
 	u8 watermarks_enable;
-	u8 pad[5];
+	u8 disable_listen_events;
+	u8 pad[4];
 	u64 watermarks_avg_window_size_ms;
 	u64 watermarks_window_size;
 	u64 watermarks_burst_trigger_percent;
