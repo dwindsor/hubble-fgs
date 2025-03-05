@@ -140,6 +140,14 @@
     - [FieldFilterAction](#tetragon-FieldFilterAction)
     - [ThrottleType](#tetragon-ThrottleType)
   
+- [tetragon/mandate.proto](#tetragon_mandate-proto)
+    - [GetMandateStatusReq](#tetragon-GetMandateStatusReq)
+    - [GetMandateStatusRes](#tetragon-GetMandateStatusRes)
+    - [Mandate](#tetragon-Mandate)
+    - [MandateConf](#tetragon-MandateConf)
+  
+    - [MandateService](#tetragon-MandateService)
+  
 - [tetragon/processmodel.proto](#tetragon_processmodel-proto)
     - [Destination](#tetragon-Destination)
     - [DestinationEndpointDebug](#tetragon-DestinationEndpointDebug)
@@ -2853,6 +2861,92 @@ Determins the behaviour of a field filter
  
 
  
+
+ 
+
+
+
+<a name="tetragon_mandate-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/mandate.proto
+
+
+
+<a name="tetragon-GetMandateStatusReq"></a>
+
+### GetMandateStatusReq
+
+
+
+
+
+
+
+<a name="tetragon-GetMandateStatusRes"></a>
+
+### GetMandateStatusRes
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| conf | [MandateConf](#tetragon-MandateConf) |  |  |
+| running | [bool](#bool) |  |  |
+| loaded_mandate | [Mandate](#tetragon-Mandate) |  |  |
+
+
+
+
+
+
+<a name="tetragon-Mandate"></a>
+
+### Mandate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| version | [string](#string) |  |  |
+| loaded_at | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| checksum | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-MandateConf"></a>
+
+### MandateConf
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  |  |
+| refresh_period | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+
+<a name="tetragon-MandateService"></a>
+
+### MandateService
+
+
+| Method Name | Request Type | Response Type | Description |
+| ----------- | ------------ | ------------- | ------------|
+| GetMandateStatus | [GetMandateStatusReq](#tetragon-GetMandateStatusReq) | [GetMandateStatusRes](#tetragon-GetMandateStatusRes) |  |
 
  
 
