@@ -221,6 +221,11 @@
   
     - [FineGuidanceSensors](#tetragon-FineGuidanceSensors)
   
+- [tetragon/attempt.proto](#tetragon_attempt-proto)
+    - [Attempt](#tetragon-Attempt)
+    - [AttemptInfo](#tetragon-AttemptInfo)
+    - [AttemptResult](#tetragon-AttemptResult)
+  
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -3943,6 +3948,73 @@ For now, we only want to support debug-related config flags to be configurable.
 | RuntimeHook | [RuntimeHookRequest](#tetragon-RuntimeHookRequest) | [RuntimeHookResponse](#tetragon-RuntimeHookResponse) |  |
 | GetDebug | [GetDebugRequest](#tetragon-GetDebugRequest) | [GetDebugResponse](#tetragon-GetDebugResponse) |  |
 | SetDebug | [SetDebugRequest](#tetragon-SetDebugRequest) | [SetDebugResponse](#tetragon-SetDebugResponse) |  |
+
+ 
+
+
+
+<a name="tetragon_attempt-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/attempt.proto
+
+
+
+<a name="tetragon-Attempt"></a>
+
+### Attempt
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| op | [string](#string) |  |  |
+| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| duration | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
+| res | [AttemptResult](#tetragon-AttemptResult) |  |  |
+| info | [AttemptInfo](#tetragon-AttemptInfo) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-AttemptInfo"></a>
+
+### AttemptInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| val | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-AttemptResult"></a>
+
+### AttemptResult
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| success | [bool](#bool) |  |  |
+| error | [string](#string) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 
