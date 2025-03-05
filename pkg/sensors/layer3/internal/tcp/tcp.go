@@ -310,7 +310,7 @@ func UnloadSensor(tp tracingpolicy.TracingPolicy) error {
 	spec := tp.TpSpec()
 	name := tp.TpName()
 
-	if spec.Parser.Tcp.Qos != nil {
+	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Qos != nil {
 		qos := spec.Parser.Tcp.Qos
 
 		for _, p := range qos.QuotaPolicySpec {
@@ -531,7 +531,7 @@ func configureQos(qos *v1alpha1.QosPolicySpec) error {
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 	model.DefaultNewServer()
 
-	if spec.Parser.Tcp.Qos != nil {
+	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Qos != nil {
 		if !enterpriseOption.Config.EnableProcessTree {
 			return false, fmt.Errorf("failed to load quota policy. Requires enable process tree")
 		}
@@ -541,7 +541,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 		}
 	}
 
-	if spec.Parser.Tcp.Metrics != nil {
+	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Metrics != nil {
 		tcpconfig.MetricsEnabled = spec.Parser.Tcp.Metrics.Enable
 		tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Tcp.Metrics.LabelFilter)
 	} else {
@@ -549,20 +549,20 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 		tcpconfig.CurrentLabels = tcpconfig.DefaultLabelFilter()
 	}
 
-	if spec.Parser.Tcp.StatsInterval > 0 {
+	if spec.Parser.Tcp != nil && spec.Parser.Tcp.StatsInterval > 0 {
 		StatsInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
 	} else {
 		stats.disable()
 		StatsInterval = 0
 	}
-	if spec.Parser.Tcp.Watermarks.Enable && spec.Parser.Tcp.Watermarks.WindowSize > 0 && spec.Parser.Tcp.Watermarks.BurstTriggerPercent > 0 {
+	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Watermarks.Enable && spec.Parser.Tcp.Watermarks.WindowSize > 0 && spec.Parser.Tcp.Watermarks.BurstTriggerPercent > 0 {
 		WatermarksEnabled = true
 		WatermarksEnable = true
 		WatermarksWindowSize = uint64(spec.Parser.Tcp.Watermarks.WindowSize)
 		WatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Watermarks.BurstTriggerPercent)
 		WatermarksDipTriggerMult = uint64(spec.Parser.Tcp.Watermarks.DipTriggerPercent)
 		go networkWatermarksEvents.Start(spec, syscall.IPPROTO_TCP, false)
-	} else if spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
+	} else if spec.Parser.Tcp != nil && spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
 		WatermarksEnabled = true
 		WatermarksEnable = true
 		WatermarksWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
@@ -574,7 +574,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 		WatermarksBurstTriggerMult = 0
 		WatermarksDipTriggerMult = 0
 	}
-	if spec.Parser.Tcp.RttHistogram.Enable || enterpriseOption.Config.EnableTCPRTT {
+	if spec.Parser.Tcp != nil && spec.Parser.Tcp.RttHistogram.Enable || enterpriseOption.Config.EnableTCPRTT {
 		tcpconfig.RttHistogramMax = spec.Parser.Tcp.RttHistogram.Max
 		tcpconfig.RttHistogramMin = spec.Parser.Tcp.RttHistogram.Min
 
@@ -587,11 +587,17 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 	}
 	tcpconfig.LatencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Tcp.Latency, unix.IPPROTO_TCP)
 
-	DisableConnect = spec.Parser.Tcp.DisableEvents.DisableConnect
-	DisableClose = spec.Parser.Tcp.DisableEvents.DisableClose
-	DisableAccept = spec.Parser.Tcp.DisableEvents.DisableAccept
-	DisableListen = spec.Parser.Tcp.DisableEvents.DisableListen
-	return spec.Parser.Tcp.Latency.Enable, nil
+	if spec.Parser.Tcp != nil {
+		DisableConnect = spec.Parser.Tcp.DisableEvents.DisableConnect
+		DisableClose = spec.Parser.Tcp.DisableEvents.DisableClose
+		DisableAccept = spec.Parser.Tcp.DisableEvents.DisableAccept
+		DisableListen = spec.Parser.Tcp.DisableEvents.DisableListen
+	}
+	tcpLatencyEnable := false
+	if spec.Parser.Tcp != nil {
+		tcpLatencyEnable = spec.Parser.Tcp.Latency.Enable
+	}
+	return tcpLatencyEnable, nil
 }
 
 func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {

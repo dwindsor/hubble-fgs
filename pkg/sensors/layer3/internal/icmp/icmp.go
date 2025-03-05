@@ -219,7 +219,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 		return fmt.Errorf("icmp requires kernel v5.4 or later")
 	}
 
-	if spec.Parser.Icmp.V6Info {
+	if spec.Parser.Icmp != nil && spec.Parser.Icmp.V6Info {
 		Config.v6info = 1
 	} else {
 		Config.v6info = 0

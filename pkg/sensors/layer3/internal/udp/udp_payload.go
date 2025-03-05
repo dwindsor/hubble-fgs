@@ -135,7 +135,10 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (networkapi.UdpConfigValue, 
 	ParseOptions(&config)
 	ParseDnsSpec(&config, spec)
 	ParseUdpWatermarksSpec(&config, spec)
-	latencyConfig, _ := networklatency.ParseLatencySpec(spec.Parser.Udp.Latency, unix.IPPROTO_UDP)
+	latencyConfig := networklatency.ProtocolConfig{}
+	if spec.Parser.Udp != nil {
+		latencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Udp.Latency, unix.IPPROTO_UDP)
+	}
 	ParseSeqCheckSpec(&config, spec)
 	ParseDisableSpec(&config, spec)
 
@@ -193,7 +196,7 @@ func ParseDnsSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingPolic
 // ParseUdpWatermarksSpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify UDP watermarks and run the monitor on it.
 func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingPolicySpec) {
-	if spec.Parser.Udp.Watermarks.Enable && spec.Parser.Udp.Watermarks.WindowSize > 0 && spec.Parser.Udp.Watermarks.BurstTriggerPercent > 0 {
+	if spec.Parser.Udp != nil && spec.Parser.Udp.Watermarks.Enable && spec.Parser.Udp.Watermarks.WindowSize > 0 && spec.Parser.Udp.Watermarks.BurstTriggerPercent > 0 {
 		WatermarksEnabled = true
 		config.WatermarksEnable = 1
 		// WindowSize is in milliseconds
@@ -208,7 +211,7 @@ func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tr
 		// DipTriggerPercent is the percent below the average; we supply it as a percentage multiplier.
 		config.WatermarksDipTriggerPercent = 100 - uint64(spec.Parser.Udp.Watermarks.DipTriggerPercent)
 		go networkWatermarksEvents.Start(spec, unix.IPPROTO_UDP, false)
-	} else if spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
+	} else if spec.Parser.Udp != nil && spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
 		WatermarksEnabled = true
 		config.WatermarksEnable = 1
 		// WindowSize is in milliseconds
@@ -237,7 +240,7 @@ func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tr
 // The maximum number of ports is fixed to maxSeqCheckPorts. Changing this requires changing
 // the map in bpf_inet.h.
 func ParseSeqCheckSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingPolicySpec) {
-	if spec.Parser.Udp.SeqCheck.Enable && spec.Parser.Udp.SeqCheck.AppId > 0 && len(spec.Parser.Udp.SeqCheck.Ports) > 0 {
+	if spec.Parser.Udp != nil && spec.Parser.Udp.SeqCheck.Enable && spec.Parser.Udp.SeqCheck.AppId > 0 && len(spec.Parser.Udp.SeqCheck.Ports) > 0 {
 		// Only consider the first maxSeqCheckPorts ports that are specified
 		if len(spec.Parser.Udp.SeqCheck.Ports) <= networkapi.UdpMaxSeqCheckPorts {
 			copy(config.SeqCheckPorts[:], spec.Parser.Udp.SeqCheck.Ports)
@@ -252,10 +255,12 @@ func ParseSeqCheckSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tracing
 }
 
 func ParseDisableSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingPolicySpec) {
-	DisableConnectEvents = spec.Parser.Udp.DisableEvents.DisableConnect
-	DisableListenEvents = spec.Parser.Udp.DisableEvents.DisableListen
-	DisableCloseEvents = spec.Parser.Udp.DisableEvents.DisableClose
-	DisableStatsEvents = spec.Parser.Udp.DisableEvents.DisableStats
+	if spec.Parser.Udp != nil {
+		DisableConnectEvents = spec.Parser.Udp.DisableEvents.DisableConnect
+		DisableListenEvents = spec.Parser.Udp.DisableEvents.DisableListen
+		DisableCloseEvents = spec.Parser.Udp.DisableEvents.DisableClose
+		DisableStatsEvents = spec.Parser.Udp.DisableEvents.DisableStats
+	}
 	config.DisableListenEvents = 0
 	if DisableListenEvents {
 		config.DisableListenEvents = 1

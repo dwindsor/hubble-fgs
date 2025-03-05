@@ -57,7 +57,7 @@ func testCases() []compliance.Test {
 								}},
 							},
 						},
-						Tcp: v1alpha1.TcpPolicySpec{
+						Tcp: &v1alpha1.TcpPolicySpec{
 							Enable: true,
 						},
 					},

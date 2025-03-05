@@ -2248,6 +2248,7 @@ spec:
                     type: object
                   icmp:
                     description: ICMP policy specification
+                    nullable: true
                     properties:
                       enable:
                         default: false
@@ -2312,6 +2313,7 @@ spec:
                     type: object
                   rawsock:
                     description: Raw socket policy specification
+                    nullable: true
                     properties:
                       enable:
                         default: false
@@ -2344,6 +2346,7 @@ spec:
                     type: object
                   tcp:
                     description: TCP policy specification
+                    nullable: true
                     properties:
                       burst:
                         description: Network policy specification
@@ -2613,6 +2616,7 @@ spec:
                     type: object
                   udp:
                     description: UDP policy specification
+                    nullable: true
                     properties:
                       burst:
                         description: |-

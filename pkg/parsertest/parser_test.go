@@ -142,14 +142,14 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 					{MatchPorts: []uint32{8888}},
 				},
 			},
-			Udp: v1alpha1.UdpPolicySpec{
+			Udp: &v1alpha1.UdpPolicySpec{
 				Enable:                   true,
 				Cgroup:                   true,
 				StatsInterval:            0,
 				DeleteIdleSocketInterval: 0,
 				Watermarks:               v1alpha1.UdpWatermarksPolicySpec{},
 			},
-			Tcp: v1alpha1.TcpPolicySpec{
+			Tcp: &v1alpha1.TcpPolicySpec{
 				Enable:        true,
 				StatsInterval: 0,
 				Watermarks:    v1alpha1.TcpWatermarksPolicySpec{},
@@ -163,14 +163,14 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 					{MatchPorts: []uint32{8888}},
 				},
 			},
-			Udp: v1alpha1.UdpPolicySpec{
+			Udp: &v1alpha1.UdpPolicySpec{
 				Enable:                   true,
 				Cgroup:                   true,
 				StatsInterval:            0,
 				DeleteIdleSocketInterval: 0,
 				Watermarks:               v1alpha1.UdpWatermarksPolicySpec{},
 			},
-			Tcp: v1alpha1.TcpPolicySpec{
+			Tcp: &v1alpha1.TcpPolicySpec{
 				Enable:        true,
 				StatsInterval: 0,
 				Watermarks:    v1alpha1.TcpWatermarksPolicySpec{},
@@ -178,11 +178,11 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 		}
 	case SENS_NOP:
 		spec = v1alpha1.ParserPolicySpec{
-			Tcp: v1alpha1.TcpPolicySpec{
+			Tcp: &v1alpha1.TcpPolicySpec{
 				Enable:        true,
 				StatsInterval: 0,
 			},
-			Udp: v1alpha1.UdpPolicySpec{
+			Udp: &v1alpha1.UdpPolicySpec{
 				Enable:                   true,
 				Cgroup:                   true,
 				StatsInterval:            0,
@@ -198,11 +198,11 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 		}
 	case SENS_INITIAL:
 		spec = v1alpha1.ParserPolicySpec{
-			Tcp: v1alpha1.TcpPolicySpec{
+			Tcp: &v1alpha1.TcpPolicySpec{
 				Enable:        true,
 				StatsInterval: 0,
 			},
-			Udp: v1alpha1.UdpPolicySpec{
+			Udp: &v1alpha1.UdpPolicySpec{
 				Enable:                   true,
 				Cgroup:                   true,
 				StatsInterval:            0,

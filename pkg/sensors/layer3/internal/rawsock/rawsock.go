@@ -87,7 +87,7 @@ const (
 )
 
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
-	if spec.Parser.Rawsock.Metrics != nil {
+	if spec.Parser.Rawsock != nil && spec.Parser.Rawsock.Metrics != nil {
 		rawsockconfig.MetricsEnabled = spec.Parser.Rawsock.Metrics.Enable
 		rawsockconfig.CurrentLabels = rawsockconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Rawsock.Metrics.LabelFilter)
 	} else {
@@ -95,7 +95,11 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 		rawsockconfig.CurrentLabels = rawsockconfig.DefaultLabelFilter()
 	}
 
-	return spec.Parser.Rawsock.ReportClose, nil
+	rawReportClose := false
+	if spec.Parser.Rawsock != nil {
+		rawReportClose = spec.Parser.Rawsock.ReportClose
+	}
+	return rawReportClose, nil
 }
 
 func EnableRawsock() ([]*program.Program, []*program.Program, []*program.Map) {

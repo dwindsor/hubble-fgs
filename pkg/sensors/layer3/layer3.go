@@ -19,6 +19,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -312,6 +313,8 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 
 func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup, udpTimestampEnable bool,
 	udpInterval time.Duration) *sensors.Sensor {
+	spec := policy.TpSpec()
+
 	// We want to make sure we stand configuration up when loading/unloading the sensor.
 	cgrp_ingress_configured = false
 	cgrp_egress_configured = false
@@ -324,8 +327,7 @@ func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestam
 	} else {
 		// If we are loading programs (!Layer3CLIEnable) then the sensor will be configured at the
 		// appropriate point. As we're not, configure the sensor now.
-		l3.configureMaps()
-		l3.configureSensor()
+		l3.configureMaps(spec)
 	}
 
 	udp.SetGcInterval(udpInterval)
@@ -352,7 +354,7 @@ func (l3 *l3Sensor) PolicyHandler(
 ) (sensors.SensorIface, error) {
 	spec := policy.TpSpec()
 
-	if !enterpriseOption.Config.Layer3CLIEnable && !spec.Parser.Tcp.Enable && !spec.Parser.Udp.Enable && !spec.Parser.Dns.Enable && !spec.Parser.Icmp.Enable && !spec.Parser.Rawsock.Enable {
+	if spec.Parser.Tcp == nil && spec.Parser.Udp == nil && spec.Parser.Icmp == nil && spec.Parser.Rawsock == nil {
 		return nil, nil
 	}
 
@@ -361,18 +363,26 @@ func (l3 *l3Sensor) PolicyHandler(
 	}
 
 	// Check if a protocol enable has been set in policy and warn that this is deprecated.
-	if spec.Parser.Tcp.Enable || spec.Parser.Udp.Enable || spec.Parser.Dns.Enable || spec.Parser.Icmp.Enable || spec.Parser.Rawsock.Enable {
+	if (spec.Parser.Tcp != nil && spec.Parser.Tcp.Enable) || (spec.Parser.Udp != nil && spec.Parser.Udp.Enable) || spec.Parser.Dns.Enable ||
+		(spec.Parser.Icmp != nil && spec.Parser.Icmp.Enable) || (spec.Parser.Rawsock != nil && spec.Parser.Rawsock.Enable) {
 		logger.GetLogger().Info("CLI switches (--enable-tcp, --enable-udp, etc) are preferred over protocol enabling in policies. We recommend using CLI switches and removing protocol enabling in policies.")
 	}
 
 	udpCgroup := true
 	if !enterpriseOption.Config.Layer3CLIEnable {
-		tcpEnabled = spec.Parser.Tcp.Enable
-		udpEnabled = spec.Parser.Udp.Enable
+		if spec.Parser.Tcp != nil {
+			tcpEnabled = spec.Parser.Tcp.Enable
+		}
+		if spec.Parser.Udp != nil {
+			udpEnabled = spec.Parser.Udp.Enable
+		}
+		if spec.Parser.Icmp != nil {
+			icmpEnabled = spec.Parser.Icmp.Enable
+		}
+		if spec.Parser.Rawsock != nil {
+			rawEnabled = spec.Parser.Rawsock.Enable
+		}
 		dnsEnabled = spec.Parser.Dns.Enable
-		icmpEnabled = spec.Parser.Icmp.Enable
-		rawEnabled = spec.Parser.Rawsock.Enable
-		udpCgroup = spec.Parser.Udp.Cgroup
 		// If TCP or UDP then turn on DNS as nobody wants L4 without DNS.
 		if tcpEnabled || udpEnabled {
 			dnsEnabled = true
@@ -393,7 +403,7 @@ func (l3 *l3Sensor) PolicyHandler(
 	}
 	tcpTimestampEnable := false
 	var err error
-	if tcpEnabled {
+	if spec.Parser.Tcp != nil && tcpEnabled {
 		tcpTimestampEnable, err = tcp.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("tcp.PolicyHandler error: %w", err)
@@ -402,21 +412,21 @@ func (l3 *l3Sensor) PolicyHandler(
 
 	udpTimestampEnable := false
 	var udpInterval time.Duration
-	if udpEnabled {
+	if spec.Parser.Udp != nil && udpEnabled {
 		udpTimestampEnable, udpInterval, err = udp.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("udp.PolicyHandler error: %w", err)
 		}
 	}
 
-	if icmpEnabled {
+	if spec.Parser.Icmp != nil && icmpEnabled {
 		err = icmp.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("icmp.PolicyHandler error: %w", err)
 		}
 	}
 
-	if rawEnabled {
+	if spec.Parser.Rawsock != nil && rawEnabled {
 		reportRawClose, err = rawsock.PolicyHandler(spec)
 		if err != nil {
 			return nil, fmt.Errorf("rawsock.PolicyHandler error: %w", err)
@@ -490,25 +500,25 @@ func (l3 *l3Sensor) createCgroupProtocolCfgMap(l3cfg CgroupProtocolConfigValue) 
 	return nil
 }
 
-func (l3 *l3Sensor) configureMaps() error {
+func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	l3cfg := CgroupProtocolConfigValue{}
 
 	// If UDP is enabled then we need close events reported to maintain our maps.
 	configureSettings(rawEnabled, reportRawClose, udpEnabled)
 
-	if tcpEnabled {
+	if tcpEnabled && (spec == nil || spec.Parser.Tcp != nil) {
 		tcp.ConfigureMaps()
 		l3cfg.tcp4Enabled = 1
 		l3cfg.tcp6Enabled = 1
 	}
-	if udpEnabled {
+	if udpEnabled && (spec == nil || spec.Parser.Udp != nil) {
 		if err := udp.ConfigureMaps(bpf.MapPrefixPath(), udp.ConfigMapName, udp.Config); err != nil {
 			return err
 		}
 		l3cfg.udp4Enabled = 1
 		l3cfg.udp6Enabled = 1
 	}
-	if icmpEnabled {
+	if icmpEnabled && (spec == nil || spec.Parser.Icmp != nil) {
 		if err := icmp.ConfigureMaps(bpf.MapPrefixPath(), icmp.ConfigMapName, icmp.Config); err != nil {
 			return err
 		}
@@ -561,7 +571,7 @@ func (l3 *l3Sensor) configureSensor() error {
 func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	// Configure maps when the first program is loaded.
 	if !configured {
-		l3.configureMaps()
+		l3.configureMaps(nil)
 		configured = true
 	}
 

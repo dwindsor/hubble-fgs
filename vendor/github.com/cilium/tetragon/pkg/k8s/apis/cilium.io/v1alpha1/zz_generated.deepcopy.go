@@ -1377,13 +1377,29 @@ func (in *ParserPolicySpec) DeepCopyInto(out *ParserPolicySpec) {
 	in.Tls.DeepCopyInto(&out.Tls)
 	in.Https.DeepCopyInto(&out.Https)
 	in.Http.DeepCopyInto(&out.Http)
-	out.Icmp = in.Icmp
-	in.Rawsock.DeepCopyInto(&out.Rawsock)
-	in.Udp.DeepCopyInto(&out.Udp)
+	if in.Icmp != nil {
+		in, out := &in.Icmp, &out.Icmp
+		*out = new(IcmpPolicySpec)
+		**out = **in
+	}
+	if in.Rawsock != nil {
+		in, out := &in.Rawsock, &out.Rawsock
+		*out = new(RawsockPolicySpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Udp != nil {
+		in, out := &in.Udp, &out.Udp
+		*out = new(UdpPolicySpec)
+		(*in).DeepCopyInto(*out)
+	}
 	out.Interface = in.Interface
 	in.Dns.DeepCopyInto(&out.Dns)
 	in.Nop.DeepCopyInto(&out.Nop)
-	in.Tcp.DeepCopyInto(&out.Tcp)
+	if in.Tcp != nil {
+		in, out := &in.Tcp, &out.Tcp
+		*out = new(TcpPolicySpec)
+		(*in).DeepCopyInto(*out)
+	}
 	out.BurstExitGen = in.BurstExitGen
 	out.NetworkWatermarksExitGen = in.NetworkWatermarksExitGen
 	out.Heartbeat = in.Heartbeat

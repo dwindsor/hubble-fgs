@@ -537,14 +537,17 @@ type ParserPolicySpec struct {
 	// A Http spec.
 	Http HttpSpec `json:"http"`
 	// +kubebuilder:validation:Optional
+	// +nullable
 	// ICMP policy specification
-	Icmp IcmpPolicySpec `json:"icmp"`
+	Icmp *IcmpPolicySpec `json:"icmp"`
 	// +kubebuilder:validation:Optional
+	// +nullable
 	// Raw socket policy specification
-	Rawsock RawsockPolicySpec `json:"rawsock"`
+	Rawsock *RawsockPolicySpec `json:"rawsock"`
 	// +kubebuilder:validation:Optional
+	// +nullable
 	// UDP policy specification
-	Udp UdpPolicySpec `json:"udp"`
+	Udp *UdpPolicySpec `json:"udp"`
 	// +kubebuilder:validation:Optional
 	// Network policy specification
 	Interface InterfacePolicySpec `json:"interface"`
@@ -555,8 +558,9 @@ type ParserPolicySpec struct {
 	// Network policy specification
 	Nop NopSpec `json:"nop"`
 	// +kubebuilder:validation:Optional
+	// +nullable
 	// TCP policy specification
-	Tcp TcpPolicySpec `json:"tcp"`
+	Tcp *TcpPolicySpec `json:"tcp"`
 	// +kubebuilder:validation:Optional
 	// UDP and TCP burst exit checking policy specification
 	// +kubebuilder:deprecatedversion:warning="burstExitGen is deprecated. Use networkWatermarksExitGen instead"

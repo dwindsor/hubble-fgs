@@ -320,7 +320,7 @@ func SetGcInterval(interval time.Duration) {
 }
 
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error) {
-	if spec.Parser.Udp.Metrics != nil {
+	if spec.Parser.Udp != nil && spec.Parser.Udp.Metrics != nil {
 		udpconfig.MetricsEnabled = spec.Parser.Udp.Metrics.Enable
 		udpconfig.CurrentLabels = udpconfig.DefaultLabelFilter().WithEnabledLabels(spec.Parser.Udp.Metrics.LabelFilter)
 	} else {
@@ -336,22 +336,23 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error
 	 * cleaned up and clarrified in docs at some point.
 	 */
 	var interval = time.Duration(UdpGCIntervalDefault)
-	if spec.Parser.Udp.StatsInterval > 0 {
+	if spec.Parser.Udp != nil && spec.Parser.Udp.StatsInterval > 0 {
 		interval = time.Duration(spec.Parser.Udp.StatsInterval) * time.Second
 		udpStatsEnable = true
 	} else {
 		udpStatsEnable = false
 	}
 
-	if spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
+	if spec.Parser.Udp != nil && spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
 		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
 		if !udpStatsEnable {
 			interval = UdpDeleteInterval
 		}
 	}
 	Config, udpconfig.LatencyConfig = ParseUdpSpec(spec)
-	logger.GetLogger().WithField("enable", spec.Parser.Udp.Latency.Enable).Debug("UDP Latency config")
-	return spec.Parser.Udp.Latency.Enable, interval, nil
+	udpLatencyEnable := spec.Parser.Udp != nil && spec.Parser.Udp.Latency.Enable
+	logger.GetLogger().WithField("enable", udpLatencyEnable).Debug("UDP Latency config")
+	return udpLatencyEnable, interval, nil
 }
 
 func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
