@@ -512,6 +512,7 @@ github.com/cilium/tetragon/pkg/option
 github.com/cilium/tetragon/pkg/pidfile
 github.com/cilium/tetragon/pkg/podhelpers
 github.com/cilium/tetragon/pkg/podhooks
+github.com/cilium/tetragon/pkg/policyconf
 github.com/cilium/tetragon/pkg/policyfilter
 github.com/cilium/tetragon/pkg/policyfilter/rthooks
 github.com/cilium/tetragon/pkg/process

@@ -144,24 +144,21 @@ func (h *Manager) DeleteTracingPolicy(ctx context.Context, name string, namespac
 	return h.handler.deleteTracingPolicy(op)
 }
 
-func (h *Manager) EnableTracingPolicy(ctx context.Context, name, namespace string) error {
+func (h *Manager) EnableTracingPolicy(_ context.Context, name, namespace string) error {
 	ck := collectionKey{name, namespace}
-	op := &tracingPolicyEnable{
-		ctx: ctx,
-		ck:  ck,
-	}
-
-	return h.handler.enableTracingPolicy(op)
+	var enable = true
+	return h.handler.configureTracingPolicy(ck, nil, &enable)
 }
 
-func (h *Manager) DisableTracingPolicy(ctx context.Context, name, namespace string) error {
+func (h *Manager) DisableTracingPolicy(_ context.Context, name, namespace string) error {
 	ck := collectionKey{name, namespace}
-	op := &tracingPolicyDisable{
-		ctx: ctx,
-		ck:  ck,
-	}
+	var enable = false
+	return h.handler.configureTracingPolicy(ck, nil, &enable)
+}
 
-	return h.handler.disableTracingPolicy(op)
+func (h *Manager) ConfigureTracingPolicy(_ context.Context, conf *tetragon.ConfigureTracingPolicyRequest) error {
+	ck := collectionKey{conf.GetName(), conf.GetNamespace()}
+	return h.handler.configureTracingPolicy(ck, conf.Mode, conf.Enable)
 }
 
 // ListTracingPolicies returns a list of the active tracing policies
@@ -228,14 +225,6 @@ type Manager struct {
 	handler *handler
 }
 
-// There are 6 commands that can be passed to the controller goroutine:
-// - tracingPolicyAdd
-// - tracingPolicyDel
-// - sensorList
-// - sensorEnable
-// - sensorDisable
-// - sensorRemove
-
 // tracingPolicyAdd adds a sensor based on a the provided tracing policy
 type tracingPolicyAdd struct {
 	ctx context.Context
@@ -244,16 +233,6 @@ type tracingPolicyAdd struct {
 }
 
 type tracingPolicyDelete struct {
-	ctx context.Context
-	ck  collectionKey
-}
-
-type tracingPolicyDisable struct {
-	ctx context.Context
-	ck  collectionKey
-}
-
-type tracingPolicyEnable struct {
 	ctx context.Context
 	ck  collectionKey
 }

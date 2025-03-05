@@ -200,7 +200,7 @@ Helm chart for Tetragon Enterprise
 | tetragonOperator.securityContext | object | `{}` | securityContext for the Tetragon Operator Deployment Pods. |
 | tetragonOperator.serviceAccount | object | `{"annotations":{},"create":true,"name":""}` | tetragon-operator service account. |
 | tetragonOperator.strategy | object | `{}` | resources for the Tetragon Operator Deployment update strategy |
-| tetragonOperator.tolerations[0].operator | string | `"Exists"` |  |
+| tetragonOperator.tolerations | list | `[]` |  |
 | tetragonOperator.tracingPolicy.enabled | bool | `true` | Enables the TracingPolicy and TracingPolicyNamespaced CRD creation. |
 | tolerations[0].operator | string | `"Exists"` |  |
 | tracingPolicies | object | `{"default":{"enabled":false,"fim":{"enabled":false},"mount":{"enabled":false},"network":{"enabled":false},"osi":{"enabled":false},"privileges":{"enabled":false}}}` | Install tracing policies. These options require the TracingPolicy CRD to be present in the cluster. Normally Tetragon CRDs are installed by either the Tetragon operator (which is installed by the same Helm chart) or by the same Helm chart (see crds.installMethod). This means we have a chicken-and-egg situation here. To avoid races, most users should disable tracing policies when first installing Tetragon Helm chart and enable them after CRDs are created. |
