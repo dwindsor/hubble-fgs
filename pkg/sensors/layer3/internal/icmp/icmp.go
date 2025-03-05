@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -29,6 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -204,6 +206,10 @@ func ConfigureSensor() error {
 }
 
 func UnloadSensor() error {
+	Config.v6info = 0
+	if enterpriseOption.Config.Layer3CLIEnable {
+		ConfigureMaps(bpf.MapPrefixPath(), ConfigMapName, Config)
+	}
 	return nil
 }
 

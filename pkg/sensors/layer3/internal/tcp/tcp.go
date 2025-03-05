@@ -258,15 +258,13 @@ var (
 )
 
 func ConfigureMaps() error {
-	if StatsEnabled() {
-		ConfigureSockStatSampler(StatsInterval,
-			WatermarksEnable,
-			WatermarksWindowSize,
-			WatermarksBurstTriggerMult,
-			WatermarksDipTriggerMult,
-			tcpconfig.RttHistogramMax,
-			tcpconfig.RttHistogramMin)
-	}
+	ConfigureSockStatSampler(StatsInterval,
+		WatermarksEnable,
+		WatermarksWindowSize,
+		WatermarksBurstTriggerMult,
+		WatermarksDipTriggerMult,
+		tcpconfig.RttHistogramMax,
+		tcpconfig.RttHistogramMin)
 	ConfigureTCPDisableEvents(DisableConnect, DisableClose, DisableAccept, DisableListen)
 	err := configureQuotasDNSMaps(datapath.QuotasInitDNSDomainMappings)
 	if err != nil {
@@ -301,6 +299,7 @@ func UnloadSensor(tp tracingpolicy.TracingPolicy) error {
 	networklatency.Stop(unix.IPPROTO_TCP)
 	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(syscall.IPPROTO_TCP)
+		WatermarksEnabled = false
 	}
 	tcpconfig.ClearConfig()
 	if StatsEnabled() {
@@ -318,6 +317,14 @@ func UnloadSensor(tp tracingpolicy.TracingPolicy) error {
 			networkPolicy := qosSpecToPolicy(&p, qos.QuotaResetLimits)
 			err = policy.ClearDnsPolicy(name, networkPolicy)
 		}
+	}
+
+	DisableConnect = false
+	DisableClose = false
+	DisableAccept = false
+	DisableListen = false
+	if enterpriseOption.Config.Layer3CLIEnable {
+		ConfigureMaps()
 	}
 	return err
 }

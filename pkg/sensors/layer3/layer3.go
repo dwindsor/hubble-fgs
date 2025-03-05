@@ -13,8 +13,6 @@ package layer3
 import (
 	"context"
 	"fmt"
-	"os"
-	"path"
 	"runtime"
 	"time"
 	"unsafe"
@@ -68,10 +66,12 @@ var (
 )
 
 func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
-	// We want to make sure we stand configuration up when loading/unloading the sensor.
-	cgrp_ingress_configured = false
-	cgrp_egress_configured = false
-	configured = false
+	// We want to make sure we stand configuration up when loading/unloading the programs.
+	if !enterpriseOption.Config.Layer3CLIEnable {
+		cgrp_ingress_configured = false
+		cgrp_egress_configured = false
+		configured = false
+	}
 	if tcpEnabled {
 		err := tcp.UnloadSensor(policy)
 		if err != nil {
@@ -100,10 +100,6 @@ func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
 		}
 		rawEnabled = false
 	}
-
-	mapDir := bpf.MapPrefixPath()
-	cfgMapName := path.Join(path.Dir(mapDir), CgroupProtocolConfigMapName)
-	os.Remove(cfgMapName)
 
 	return nil
 }

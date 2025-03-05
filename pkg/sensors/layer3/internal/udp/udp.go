@@ -37,6 +37,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
@@ -228,11 +229,17 @@ func ConfigureSensor() error {
 
 func UnloadSensor() error {
 	gcTimer.Stop()
+	TimestampEnabled = false
 	networklatency.Stop(unix.IPPROTO_UDP)
 	if WatermarksEnabled {
 		networkWatermarksEvents.Stop(unix.IPPROTO_UDP)
+		WatermarksEnabled = false
 	}
 	udpconfig.MetricsEnabled = false
+	Config = networkapi.UdpConfigValue{}
+	if enterpriseOption.Config.Layer3CLIEnable {
+		ConfigureMaps(bpf.MapPrefixPath(), ConfigMapName, Config)
+	}
 	return nil
 }
 
