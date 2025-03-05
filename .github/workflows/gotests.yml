@@ -67,7 +67,7 @@ jobs:
 
     - name: Upload FGS logs
       if: failure()
-      uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+      uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
       with:
         name: hubble-fgs-json
         path: /tmp/tetragon.gotest*
@@ -75,7 +75,7 @@ jobs:
 
     - name: Upload bugtool dumps
       if: failure()
-      uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+      uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
       with:
         name: tetragon-bugtool
         path: /tmp/tetragon-bugtool*
