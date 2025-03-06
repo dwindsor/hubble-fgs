@@ -1,0 +1,7 @@
+tetragonMandate:
+  info:                     # info allows for arbitry key-values to describe this policy
+    version: "2.0.0"
+  policies:                 # list of policies
+    - url: "policies/1.yaml"
+    - url: "policies/2.yaml"
+    - url: "policies/3.yaml"

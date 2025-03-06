@@ -19,6 +19,8 @@ SUDO ?= sudo
 GO_TEST_TIMEOUT ?= 20m
 GO_TEST_PACKAGES ?= ./pkg/... ./cmd/... ./operator/...
 
+export GOEXPERIMENT=synctest
+
 # Architecture, use TARGET_ARCH=amd64 or TARGET_ARCH=arm64
 # or let uname detect the appropriate arch for native build
 UNAME_M := $(shell uname -m)
