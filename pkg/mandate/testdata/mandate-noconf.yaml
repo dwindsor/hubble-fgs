@@ -1,0 +1,4 @@
+tetragonMandate:
+  policies:                 # list of policies
+  - url: "policies/1.yaml"
+  - url: "policies/monitor.yaml"

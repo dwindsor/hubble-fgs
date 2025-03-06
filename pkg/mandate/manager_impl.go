@@ -169,9 +169,13 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 	// second pass, attempt to load them
 	loadedPolicies := make([]policy, 0, len(obj.Mandate.Policies))
 	for i := range obj.Mandate.Policies {
-		mp, err := m.attemptLoadMandatePolicy(ctx, refrAtt.NewAttempt("load policy"), policyData[i])
+		pol := &obj.Mandate.Policies[i]
+		data := policyData[i]
+
+		loadAtt := refrAtt.NewAttempt("load policy")
+		mp, err := m.attemptLoadMandatePolicy(ctx, loadAtt, data, pol.mode_)
 		if err != nil {
-			return loadedPolicies, fmt.Errorf("failed to load policy %q: %w", obj.Mandate.Policies[i].url_, err)
+			return loadedPolicies, fmt.Errorf("failed to load policy %q: %w", pol.url_, err)
 		}
 
 		loadedPolicies = append(loadedPolicies, newPolicy(mp))
@@ -185,10 +189,20 @@ func (m *manager) attemptLoadMandatePolicy(
 	ctx context.Context,
 	att *attempt.InprAttempt,
 	data []byte,
+	mode string,
 ) (tracingpolicy.TracingPolicy, error) {
 	var ret tracingpolicy.TracingPolicy
 	var err error
 	defer att.Complete(err)
+
+	// apply mode if it is set
+	if mode != "" {
+		data, err = tracingpolicy.PolicyYAMLSetMode(data, mode)
+		if err != nil {
+			return nil, err
+		}
+		att = att.WithInfo("mode", mode)
+	}
 
 	ret, err = tracingpolicy.FromYAML(string(data))
 	if err != nil {

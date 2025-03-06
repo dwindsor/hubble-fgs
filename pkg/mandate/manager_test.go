@@ -17,6 +17,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/policyconf"
+	"github.com/cilium/tetragon/pkg/testutils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -99,5 +101,59 @@ func TestManager(t *testing.T) {
 		require.Equal(t, "2.0.0", status.Mandate.Version)
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures)
+	})
+}
+
+func TestManagerConf(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
+	t.Cleanup(func() {
+		// os.RemoveAll(tmpDir)
+	})
+	require.NoError(t, err)
+	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
+	require.NoError(t, err)
+	tmpPath := func(s string) string {
+		return filepath.Join(tmpDir, s)
+	}
+
+	tsm := NewTestSensorManager()
+	myMandate := tmpPath("mymandate.yaml")
+	require.NoError(t, err)
+	cnf := ManagerConf{
+		URL:           myMandate,
+		RefreshPeriod: 1 * time.Second,
+	}
+
+	synctest.Run(func() {
+		mgr, err := NewManager(cnf, tsm)
+		require.NoError(t, err)
+		mgr.Start()
+		defer mgr.stop()
+
+		// mandate-noconf has no mode configuration, policies should maintain their mode
+		err = testutils.CopyFile(myMandate, tmpPath("mandate-noconf.yaml"), 0644)
+		require.NoError(t, err)
+		mgr.Refresh()
+		synctest.Wait()
+		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "monitor"))
+
+		// mandate conf has a global monitor configuration, so policy-1 should be also in
+		// monitor mode
+		err = testutils.CopyFile(myMandate, tmpPath("mandate-conf.yaml"), 0644)
+		require.NoError(t, err)
+		mgr.Refresh()
+		synctest.Wait()
+		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "monitor"))
+		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "policy-1"))
+
+		// mandate conf has a global enforce configuration and policy-1 has a monitor
+		// configuration.
+		err = testutils.CopyFile(myMandate, tmpPath("mandate-policy-conf.yaml"), 0644)
+		require.NoError(t, err)
+		mgr.Refresh()
+		synctest.Wait()
+		require.Equal(t, policyconf.EnforceMode, tsm.policyMode(t, "monitor"))
+		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "policy-1"))
+
 	})
 }

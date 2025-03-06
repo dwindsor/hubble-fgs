@@ -24,10 +24,11 @@ type Conf struct {
 }
 
 type Policy struct {
-	URL string `json:"url"`
-	*Conf
+	URL   string `json:"url"`
+	*Conf `json:"conf,omitempty"`
 
-	url_ *url.URL
+	url_  *url.URL
+	mode_ string
 }
 
 func inheritURL(u *url.URL, p *url.URL) {
@@ -46,9 +47,19 @@ func (p *Policy) init(m *Mandate) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse policy URL %q: %s", p.URL, err)
 	}
-
 	inheritURL(p.url_, m.url_)
+
+	// if there is a mode set either in either the mandate or the poicy conf section, save it to
+	// the policy
+	p.mode_ = policyMode(m, p)
 	return nil
+}
+
+func policyMode(m *Mandate, p *Policy) string {
+	if p.Conf != nil && p.Conf.Mode != "" {
+		return p.Conf.Mode
+	}
+	return m.Conf.Mode
 }
 
 type policyData = []byte

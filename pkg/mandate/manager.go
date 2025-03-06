@@ -18,6 +18,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/attempt"
 )
@@ -28,6 +29,7 @@ import (
 type SensorManager interface {
 	AddTracingPolicy(ctx context.Context, tp tracingpolicy.TracingPolicy) error
 	DeleteTracingPolicy(ctx context.Context, name string, namespace string) error
+	ConfigureTracingPolicy(_ context.Context, conf *tetragon.ConfigureTracingPolicyRequest) error
 }
 
 // ManagerConf configures the mandate manager
