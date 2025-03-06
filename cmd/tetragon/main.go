@@ -500,6 +500,13 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 				return err
 			}
 		}
+		// TODO(anna): Add an option to load AlertRules from a file and disable watching CRD.
+		if enterpriseOption.Config.EnableAlerts {
+			err = enterpriseWatcher.AddAlertRuleInformer(k8sWatcher)
+			if err != nil {
+				return err
+			}
+		}
 	} else {
 		log.Info("Disabling Kubernetes API")
 		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
@@ -680,6 +687,8 @@ func waitCRDs(config *rest.Config) error {
 		crds[client.SandboxPolicyCRD.ResName] = struct{}{}
 		crds[client.SandboxPolicyNamespacedCRD.ResName] = struct{}{}
 	}
+
+	crds[client.AlertRuleCRD.ResName] = struct{}{}
 
 	if len(crds) == 0 {
 		log.Info("No CRDs are enabled")
