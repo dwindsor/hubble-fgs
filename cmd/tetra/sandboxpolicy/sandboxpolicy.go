@@ -15,16 +15,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"sigs.k8s.io/yaml"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	eecommon "github.com/isovalent/hubble-fgs/cmd/tetra/common"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 )
 
@@ -43,85 +41,14 @@ func listCmd() *cobra.Command {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, err := common.NewClientWithDefaultContextAndAddress()
-			if err != nil {
-				return fmt.Errorf("failed to create gRPC client: %w", err)
-			}
-			defer c.Close()
-
-			res, err := c.Client.ListTracingPolicies(c.Ctx, &tetragon.ListTracingPoliciesRequest{})
-			if err != nil || res == nil {
-				return fmt.Errorf("failed to list tracing policies: %w", err)
-			}
-
-			// keep only sandbox policies in the list
-			for i := 0; i < len(res.Policies); i++ {
-				pol := res.Policies[i]
-				name := sandboxpolicy.NameFromTPName(pol.Name)
-				if name == "" {
-					res.Policies = append(res.Policies[:i], res.Policies[i+1:]...)
-					i--
-				}
-				pol.Name = name
-			}
-
-			switch spListOutputFlag {
-			case "json":
-				b, err := res.MarshalJSON()
-				if err != nil {
-					return fmt.Errorf("failed to generate json: %w", err)
-				}
-				cmd.Println(string(b))
-			case "text":
-				// tabwriter config imitates kubectl default output, i.e. 3 spaces padding
-				w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-				fmt.Fprintln(w, "ID\tNAME\tSTATE\tFILTERID\tNAMESPACE\tSENSORS")
-
-				for _, pol := range res.Policies {
-					namespace := pol.Namespace
-					if namespace == "" {
-						namespace = "(global)"
-					}
-
-					sensors := strings.Join(pol.Sensors, ",")
-
-					// From v0.11 and before, enabled, filterID and error were
-					// bundled in a string. To have a retro-compatible tetra
-					// command, we scan the string. If the scan fails, it means
-					// something else might be in Info and we print it.
-					//
-					// we can drop the following block (and comment) when we
-					// feel tetra should support only version after v0.11
-					if pol.Info != "" {
-						var parsedEnabled bool
-						var parsedFilterID uint64
-						var parsedError string
-						var parsedName string
-						str := strings.NewReader(pol.Info)
-						_, err := fmt.Fscanf(str, "%253s enabled:%t filterID:%d error:%512s", &parsedName, &parsedEnabled, &parsedFilterID, &parsedError)
-						if err == nil {
-							if parsedEnabled {
-								pol.State = tetragon.TracingPolicyState_TP_STATE_ENABLED
-							}
-							pol.FilterId = parsedFilterID
-							pol.Error = parsedError
-							pol.Info = ""
-						}
-					}
-
-					fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\t%s\t\n",
-						pol.Id,
-						pol.Name,
-						strings.TrimPrefix(strings.ToLower(pol.State.String()), "tp_state_"),
-						pol.FilterId,
-						namespace,
-						sensors,
-					)
-				}
-				w.Flush()
-			}
-
-			return nil
+			return eecommon.ListPolicies(
+				cmd,
+				spListOutputFlag,
+				func(name string) (string, bool) {
+					ret := sandboxpolicy.NameFromTPName(name)
+					return ret, ret != ""
+				},
+			)
 		},
 	}
 	flags := cmd.Flags()
