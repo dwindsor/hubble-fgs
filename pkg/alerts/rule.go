@@ -11,13 +11,20 @@
 package alerts
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/google/cel-go/cel"
 
+	"github.com/cilium/tetragon/pkg/fileutils"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/option"
+
+	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 var (
@@ -32,6 +39,8 @@ type rule struct {
 	message  string
 	tags     []string
 	severity string
+
+	jsonEncoder *jsonEncoder
 }
 
 func AddAlertRule(ar *v1alpha1.AlertRule) error {
@@ -44,13 +53,26 @@ func AddAlertRule(ar *v1alpha1.AlertRule) error {
 		return err
 	}
 
+	name := ar.GetName()
+	var encoder *jsonEncoder
+	if eeOption.Config.AlertsExportDir != "" {
+		perms, _ := fileutils.RegularFilePerms(option.Config.ExportFilePerm)
+		filename := filepath.Join(eeOption.Config.AlertsExportDir, name+".log")
+		fh, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, perms)
+		if err != nil {
+			return fmt.Errorf("failed to open a file: %w", err)
+		}
+		encoder = &jsonEncoder{fh}
+	}
+
 	rulesMutex.Lock()
-	rules[ar.GetName()] = &rule{
-		cel:      celProgram,
-		name:     ar.GetName(),
-		message:  ar.Spec.Message,
-		tags:     ar.Spec.Tags,
-		severity: ar.Spec.Severity,
+	rules[name] = &rule{
+		cel:         celProgram,
+		name:        name,
+		message:     ar.Spec.Message,
+		tags:        ar.Spec.Tags,
+		severity:    ar.Spec.Severity,
+		jsonEncoder: encoder,
 	}
 	rulesMutex.Unlock()
 	return nil
