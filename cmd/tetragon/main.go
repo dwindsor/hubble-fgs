@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/alerts"
 	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
@@ -604,6 +605,13 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		if err = startProcessTreeExporter(ctx, modelServer); err != nil {
 			return fmt.Errorf("failed to start json application model exporter: %w", err)
 		}
+	}
+
+	if enterpriseOption.Config.EnableAlerts {
+		if err = alerts.StartAlerting(ctx, pm.Server); err != nil {
+			return fmt.Errorf("failed to start alerting: %w", err)
+		}
+		log.Info("Started alerting.")
 	}
 
 	if option.Config.HealthServerAddress != "" {
