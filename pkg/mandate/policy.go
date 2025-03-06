@@ -12,6 +12,7 @@ package mandate
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -31,10 +32,25 @@ type MandatePolicy struct {
 	name string
 }
 
+var polNameRegex = regexp.MustCompile(`^mandate\+pol-\d+-(.*)$`)
+
+func OrigPolName(n string) (string, bool) {
+	match := polNameRegex.FindStringSubmatch(n)
+	if len(match) < 2 {
+		return "", false
+	}
+	return match[1], true
+}
+
+func mandatePolName(n string, id uint) string {
+	return fmt.Sprintf("mandate+pol-%d-%s", id, n)
+
+}
+
 func (m *manager) NewMandatePolicy(tp tracingpolicy.TracingPolicy) tracingpolicy.TracingPolicy {
 	ret := MandatePolicy{
 		tp:   tp,
-		name: fmt.Sprintf("mandate+pol-%d-%s", m.polNextID, tp.TpName()),
+		name: mandatePolName(tp.TpName(), m.polNextID),
 	}
 	m.polNextID++
 	if _, ok := tp.(tracingpolicy.TracingPolicyNamespaced); ok {
