@@ -14,17 +14,13 @@ export interface Props {
 injectCSSVars();
 
 export const Root = memo(function Root(props: Props) {
-  const model = useMemo(() => {
-    return objectToCamel(props.model) as ApplicationModelEvent;
-  }, [props.model]);
-
   const appContext = useMemo(() => {
     return createAppContext({
-      model,
+      model: objectToCamel(props.model) as ApplicationModelEvent,
       getTreeOffset: props.getTreeOffset,
       persistInUrl: props.persistStateInUrl,
     });
-  }, [model, props.getTreeOffset, props.persistStateInUrl]);
+  }, [props]);
 
   return (
     <AppContext.Provider value={appContext}>

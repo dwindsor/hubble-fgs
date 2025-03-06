@@ -2,12 +2,21 @@ export const model = {
   application_model: {
     host: {
       processes: [
-        { arguments: "/etc/update-motd.d/10-nvidia-eula", name: "/usr/bin/bash" },
-        { arguments: "/etc/update-motd.d/70-available-updates", name: "/usr/bin/bash" },
+        {
+          arguments: "/etc/update-motd.d/10-nvidia-eula",
+          name: "/usr/bin/bash",
+        },
+        {
+          arguments: "/etc/update-motd.d/70-available-updates",
+          name: "/usr/bin/bash",
+        },
         { arguments: "/usr/sbin/update-motd", name: "/usr/bin/bash" },
         { arguments: "/tmp/motd.part9jRcA", name: "/usr/bin/cat" },
         { arguments: "/tmp/motd.partJ9Hri", name: "/usr/bin/cat" },
-        { arguments: "go+r\u0000/var/lib/update-motd/tmp.d2fwXjkimL", name: "/usr/bin/chmod" },
+        {
+          arguments: "go+r\u0000/var/lib/update-motd/tmp.d2fwXjkimL",
+          name: "/usr/bin/chmod",
+        },
         { name: "/usr/bin/containerd" },
         {
           arguments:
@@ -33,13 +42,15 @@ export const model = {
               destination_port: "9879",
             },
             {
-              destination_name: "3BE81FD965B44E29EE37641B4D0F95CD.gr7.us-west-2.eks.amazonaws.com",
+              destination_name:
+                "3BE81FD965B44E29EE37641B4D0F95CD.gr7.us-west-2.eks.amazonaws.com",
               destination_port: "443",
             },
             {
               bytes_received: "5361996",
               bytes_sent: "5516148",
-              destination_name: "argocd/StatefulSet:argo-cd-argocd-application-controller",
+              destination_name:
+                "argocd/StatefulSet:argo-cd-argocd-application-controller",
               destination_port: "8082",
             },
             {
@@ -82,12 +93,19 @@ export const model = {
           name: "/usr/bin/kubelet",
         },
         { arguments: "--tmpdir\u0000motd.partXXXXX", name: "/usr/bin/mktemp" },
-        { arguments: "--tmpdir=/var/lib/update-motd/", name: "/usr/bin/mktemp" },
         {
-          arguments: "/var/lib/update-motd/tmp.d2fwXjkimL\u0000/var/lib/update-motd/motd",
+          arguments: "--tmpdir=/var/lib/update-motd/",
+          name: "/usr/bin/mktemp",
+        },
+        {
+          arguments:
+            "/var/lib/update-motd/tmp.d2fwXjkimL\u0000/var/lib/update-motd/motd",
           name: "/usr/bin/mv",
         },
-        { arguments: "-e\u0000-o\u0000pid,ppid,state,command", name: "/usr/bin/ps" },
+        {
+          arguments: "-e\u0000-o\u0000pid,ppid,state,command",
+          name: "/usr/bin/ps",
+        },
         {
           arguments: "/usr/bin/dnf\u0000--debuglevel\u00002\u0000updateinfo",
           connections: [
@@ -116,7 +134,10 @@ export const model = {
         },
         { arguments: "-f\u0000/tmp/motd.part9jRcA", name: "/usr/bin/rm" },
         { arguments: "-f\u0000/tmp/motd.partJ9Hri", name: "/usr/bin/rm" },
-        { arguments: "-q\u0000--quiet\u0000dnf-plugin-release-notification", name: "/usr/bin/rpm" },
+        {
+          arguments: "-q\u0000--quiet\u0000dnf-plugin-release-notification",
+          name: "/usr/bin/rpm",
+        },
         { arguments: "-qa", name: "/usr/bin/rpm" },
         {
           connections: [
@@ -147,13 +168,23 @@ export const model = {
           ],
           name: "/usr/bin/ssm-agent-worker",
         },
-        { arguments: "30s\u0000/etc/update-motd.d/10-nvidia-eula", name: "/usr/bin/timeout" },
-        { arguments: "30s\u0000/etc/update-motd.d/70-available-updates", name: "/usr/bin/timeout" },
         {
-          arguments: "30s\u0000/usr/bin/dnf\u0000--debuglevel\u00002\u0000updateinfo",
+          arguments: "30s\u0000/etc/update-motd.d/10-nvidia-eula",
           name: "/usr/bin/timeout",
         },
-        { arguments: "30s\u0000/usr/bin/dnf\u0000check-release-update", name: "/usr/bin/timeout" },
+        {
+          arguments: "30s\u0000/etc/update-motd.d/70-available-updates",
+          name: "/usr/bin/timeout",
+        },
+        {
+          arguments:
+            "30s\u0000/usr/bin/dnf\u0000--debuglevel\u00002\u0000updateinfo",
+          name: "/usr/bin/timeout",
+        },
+        {
+          arguments: "30s\u0000/usr/bin/dnf\u0000check-release-update",
+          name: "/usr/bin/timeout",
+        },
         { arguments: "-rs", name: "/usr/bin/uname" },
         {
           arguments:
@@ -206,13 +237,15 @@ export const model = {
                     destination_port: "6379",
                   },
                   {
-                    destination_name: "argo-cd-argocd-redis.argocd.svc.cluster.local",
+                    destination_name:
+                      "argo-cd-argocd-redis.argocd.svc.cluster.local",
                     destination_port: "6379",
                   },
                   {
                     bytes_received: "4101813801",
                     bytes_sent: "300587517",
-                    destination_name: "argo-cd-argocd-repo-server.argocd.svc.cluster.local",
+                    destination_name:
+                      "argo-cd-argocd-repo-server.argocd.svc.cluster.local",
                     destination_port: "8081",
                   },
                   {
@@ -253,7 +286,8 @@ export const model = {
                   {
                     bytes_received: "945660",
                     bytes_sent: "18648840",
-                    destination_name: "df-tetragon-dev-ce-01-logs.s3.us-west-2.amazonaws.com",
+                    destination_name:
+                      "df-tetragon-dev-ce-01-logs.s3.us-west-2.amazonaws.com",
                     destination_port: "443",
                   },
                   {
@@ -402,7 +436,8 @@ export const model = {
                     destination_port: "443",
                   },
                   {
-                    destination_name: "ip-10-3-7-199.us-west-2.compute.internal",
+                    destination_name:
+                      "ip-10-3-7-199.us-west-2.compute.internal",
                     destination_port: "4240",
                   },
                 ],
@@ -413,19 +448,25 @@ export const model = {
                   {
                     bytes_received: "4752",
                     bytes_sent: "15616",
-                    destination_name: "monitoring/Deployment:kube-prometheus-stack-grafana",
+                    destination_name:
+                      "monitoring/Deployment:kube-prometheus-stack-grafana",
                     destination_port: "3000",
                   },
                   {
                     bytes_received: "78548",
                     bytes_sent: "1556",
-                    destination_name: "otel-demo/Deployment:otel-demo-frontendproxy",
+                    destination_name:
+                      "otel-demo/Deployment:otel-demo-frontendproxy",
                     destination_port: "8080",
                   },
                 ],
                 name: "/usr/bin/cilium-envoy",
               },
-              { arguments: "--version", in_init_tree: false, name: "/usr/bin/cilium-envoy" },
+              {
+                arguments: "--version",
+                in_init_tree: false,
+                name: "/usr/bin/cilium-envoy",
+              },
               { in_init_tree: false, name: "/usr/bin/cilium-health-responder" },
               {
                 arguments: "-j\u0000map\u0000show",
@@ -459,7 +500,11 @@ export const model = {
                 in_init_tree: false,
                 name: "/usr/sbin/ipset",
               },
-              { arguments: "restore", in_init_tree: false, name: "/usr/sbin/ipset" },
+              {
+                arguments: "restore",
+                in_init_tree: false,
+                name: "/usr/sbin/ipset",
+              },
             ],
           },
           {
@@ -473,7 +518,8 @@ export const model = {
                 name: "/usr/bin/nsenter",
               },
               {
-                arguments: "/tmp/startup-script.kubernetes.io_81dc8a581b97e85076f03766446d2136",
+                arguments:
+                  "/tmp/startup-script.kubernetes.io_81dc8a581b97e85076f03766446d2136",
                 name: "/usr/bin/stat",
               },
             ],
@@ -517,7 +563,8 @@ export const model = {
                 name: "/usr/sbin/xtables-nft-multi",
               },
               {
-                arguments: "-w\u00005\u0000-W\u0000100000\u0000--noflush\u0000--counters",
+                arguments:
+                  "-w\u00005\u0000-W\u0000100000\u0000--noflush\u0000--counters",
                 in_init_tree: false,
                 name: "/usr/sbin/xtables-nft-multi",
               },
@@ -552,9 +599,13 @@ export const model = {
                     destination_name: "172.20.189.207",
                     destination_port: "80",
                   },
-                  { destination_name: "default/Service:kubernetes", destination_port: "443" },
                   {
-                    destination_name: "kubeshark-hub.kubeshark.svc.cluster.local",
+                    destination_name: "default/Service:kubernetes",
+                    destination_port: "443",
+                  },
+                  {
+                    destination_name:
+                      "kubeshark-hub.kubeshark.svc.cluster.local",
                     destination_port: "80",
                   },
                 ],
@@ -580,9 +631,13 @@ export const model = {
                     destination_name: "api.kubeshark.co",
                     destination_port: "443",
                   },
-                  { destination_name: "default/Service:kubernetes", destination_port: "443" },
                   {
-                    destination_name: "kubeshark-hub.kubeshark.svc.cluster.local",
+                    destination_name: "default/Service:kubernetes",
+                    destination_port: "443",
+                  },
+                  {
+                    destination_name:
+                      "kubeshark-hub.kubeshark.svc.cluster.local",
                     destination_port: "80",
                   },
                 ],
@@ -619,8 +674,14 @@ export const model = {
                     destination_name: "34.120.86.103",
                     destination_port: "443",
                   },
-                  { destination_name: "default/Service:kubernetes", destination_port: "443" },
-                  { destination_name: "logs-prod3.grafana.net", destination_port: "443" },
+                  {
+                    destination_name: "default/Service:kubernetes",
+                    destination_port: "443",
+                  },
+                  {
+                    destination_name: "logs-prod3.grafana.net",
+                    destination_port: "443",
+                  },
                   {
                     bytes_received: "17638566",
                     bytes_sent: "835311618",
@@ -702,19 +763,23 @@ export const model = {
                     destination_port: "443",
                   },
                   {
-                    destination_name: "ip-10-3-7-199.us-west-2.compute.internal",
+                    destination_name:
+                      "ip-10-3-7-199.us-west-2.compute.internal",
                     destination_port: "2112",
                   },
                   {
-                    destination_name: "ip-10-3-7-199.us-west-2.compute.internal",
+                    destination_name:
+                      "ip-10-3-7-199.us-west-2.compute.internal",
                     destination_port: "10250",
                   },
                   {
-                    destination_name: "otel-collector/Service:otel-targetallocator",
+                    destination_name:
+                      "otel-collector/Service:otel-targetallocator",
                     destination_port: "80",
                   },
                   {
-                    destination_name: "otlp-gateway-prod-us-central-0.grafana.net",
+                    destination_name:
+                      "otlp-gateway-prod-us-central-0.grafana.net",
                     destination_port: "443",
                   },
                   {
@@ -745,7 +810,10 @@ export const model = {
                     destination_name: "10.3.7.199",
                     destination_port: "4318",
                   },
-                  { destination_name: "172.20.149.213", destination_port: "9092" },
+                  {
+                    destination_name: "172.20.149.213",
+                    destination_port: "9092",
+                  },
                   {
                     bytes_received: "37979854",
                     bytes_sent: "34423714",
@@ -784,7 +852,8 @@ export const model = {
                   {
                     bytes_received: "5887146",
                     bytes_sent: "1750758",
-                    destination_name: "df-tetragon-dev-ce-01-logs.s3.us-west-2.amazonaws.com",
+                    destination_name:
+                      "df-tetragon-dev-ce-01-logs.s3.us-west-2.amazonaws.com",
                     destination_port: "443",
                   },
                   {
@@ -827,7 +896,10 @@ export const model = {
                 ],
                 name: "/usr/bin/curl",
               },
-              { in_init_tree: false, name: "/usr/share/elasticsearch/jdk/bin/java" },
+              {
+                in_init_tree: false,
+                name: "/usr/share/elasticsearch/jdk/bin/java",
+              },
             ],
           },
         ],
@@ -848,7 +920,10 @@ export const model = {
                     destination_name: "172.20.0.1",
                     destination_port: "443",
                   },
-                  { destination_name: "default/Service:kubernetes", destination_port: "443" },
+                  {
+                    destination_name: "default/Service:kubernetes",
+                    destination_port: "443",
+                  },
                 ],
                 name: "/usr/bin/tetragon",
               },

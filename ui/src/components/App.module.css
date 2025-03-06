@@ -21,9 +21,11 @@
 }
 
 .tree {
-  position: relative;
-  max-width: 50%;
-  max-height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
   padding-left: 2px;
   overflow: auto;
   scrollbar-width: none;
@@ -33,9 +35,11 @@
 }
 
 .endpoints {
-  position: relative;
-  max-width: 50%;
-  max-height: 100%;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 100%;
   overflow: auto;
   scrollbar-width: none;
   overscroll-behavior-y: none;

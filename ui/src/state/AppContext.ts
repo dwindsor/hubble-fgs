@@ -13,6 +13,8 @@ import { createAppState } from "./AppState";
 
 export type AppState = ReturnType<typeof useAppState>;
 
+export type AppContextType = ReturnType<typeof createAppContext>;
+
 export function createAppContext({
   model,
   getTreeOffset,

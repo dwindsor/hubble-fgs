@@ -1,9 +1,23 @@
 import debounce from "lodash/debounce";
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useElementSize } from "~/hooks/useElementSize";
-import { type EndpointFiltersState, useEndpointFilters } from "~/hooks/useEndpointFilters";
+import {
+  type EndpointFiltersState,
+  useEndpointFilters,
+} from "~/hooks/useEndpointFilters";
 import { type AppState, useAppState } from "~/state/AppContext";
-import { type Endpoint, EndpointModeKind, endpointsKindOrder } from "~/utils/endpoints";
+import {
+  type Endpoint,
+  EndpointModeKind,
+  endpointsKindOrder,
+} from "~/utils/endpoints";
 import { Enum, type EnumType } from "~/utils/enum";
 import { UrlParams, getQueryParam, setQueryParam } from "~/utils/url";
 import { EndpointItem } from "./Endpoint";
@@ -17,7 +31,9 @@ export const Endpoints = memo(function Endpoints() {
 
   const size = useElementSize(ref);
 
-  const [searchQuery, setSearchQuery] = useState(getQueryParam(UrlParams.SearchQuery) ?? "");
+  const [searchQuery, setSearchQuery] = useState(
+    getQueryParam(UrlParams.SearchQuery) ?? ""
+  );
 
   const endpoints = useEndpoints(searchQuery);
 
@@ -37,19 +53,22 @@ export const Endpoints = memo(function Endpoints() {
         }
       }
     },
-    [state.persistInUrl],
+    [state.persistInUrl]
   );
 
   const isEmptySearchResult = useMemo(() => {
     return (
-      (searchQuery.length > 0 && endpoints.list[0]?.kind !== EndpointItemKind.Search) ||
+      (searchQuery.length > 0 &&
+        endpoints.list[0]?.kind !== EndpointItemKind.Search) ||
       (endpoints.filters.value.size > 0 && endpoints.list.length === 0)
     );
   }, [searchQuery, endpoints]);
 
   const isNotShowingEndpoints = useMemo(() => {
     return (
-      endpoints.list.length === 0 && endpoints.filters.value.size === 0 && searchQuery.length === 0
+      endpoints.list.length === 0 &&
+      endpoints.filters.value.size === 0 &&
+      searchQuery.length === 0
     );
   }, [searchQuery, endpoints]);
 
@@ -101,7 +120,9 @@ function useEndpoints(searchQuery: string) {
 
   const filters = useEndpointFilters();
 
-  const [list, setList] = useState<EndpointsList>(createEndpointsList(state, searchQuery, filters));
+  const [list, setList] = useState<EndpointsList>(
+    createEndpointsList(state, searchQuery, filters)
+  );
 
   const debouncedUpdate = useMemo(() => {
     return debounce(() => {
@@ -142,7 +163,7 @@ type EndpointsList = Array<{ kind: EndpointItemKind; endpoint: Endpoint }>;
 function createEndpointsList(
   state: AppState,
   searchQuery: string,
-  filters: EndpointFiltersState,
+  filters: EndpointFiltersState
 ): EndpointsList {
   const visibleEndpoints = new Set<Endpoint>();
   const searchEndpoints = new Set<Endpoint>();
@@ -167,7 +188,10 @@ function createEndpointsList(
     const procs = state.connectionsMap.get(endpoint);
     procs?.forEach((proc) => {
       const procInfo = state.processesMap.get(proc);
-      if (searchQuery.length === 0 || (searchQuery.length > 0 && endpoint.includes(searchQuery))) {
+      if (
+        searchQuery.length === 0 ||
+        (searchQuery.length > 0 && endpoint.includes(searchQuery))
+      ) {
         if (procInfo?.visible) {
           addEndpoint(visibleEndpoints, endpoint);
         } else if (filters.value.size > 0) {
@@ -190,14 +214,14 @@ function createEndpointsList(
     ...sortedSearchEndpoints.map((endpoint) => ({
       kind: EndpointItemKind.Search,
       endpoint,
-    })),
+    }))
   );
 
   list.push(
     ...sortedUVisibleEndpoints.map((endpoint) => ({
       kind: EndpointItemKind.Visible,
       endpoint,
-    })),
+    }))
   );
 
   return list;

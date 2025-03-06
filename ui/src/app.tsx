@@ -32,7 +32,7 @@ promise
         persistStateInUrl
         model={model}
         getTreeOffset={() => ({ x: 0, y: 0 + window.scrollY })}
-      />
+      />,
     );
   })
   .catch((error) => {
