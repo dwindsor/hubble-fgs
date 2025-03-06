@@ -3,12 +3,6 @@
 
 ## Table of Contents
 
-- [tetragon/attempt.proto](#tetragon_attempt-proto)
-    - [Attempt](#tetragon-Attempt)
-    - [AttemptInfo](#tetragon-AttemptInfo)
-    - [AttemptLog](#tetragon-AttemptLog)
-    - [AttemptResult](#tetragon-AttemptResult)
-  
 - [tetragon/bpf.proto](#tetragon_bpf-proto)
     - [BpfCmd](#tetragon-BpfCmd)
     - [BpfProgramType](#tetragon-BpfProgramType)
@@ -146,6 +140,18 @@
     - [FieldFilterAction](#tetragon-FieldFilterAction)
     - [ThrottleType](#tetragon-ThrottleType)
   
+- [tetragon/alert.proto](#tetragon_alert-proto)
+    - [Alert](#tetragon-Alert)
+    - [AlertRule](#tetragon-AlertRule)
+  
+    - [AlertRule.Severity](#tetragon-AlertRule-Severity)
+  
+- [tetragon/attempt.proto](#tetragon_attempt-proto)
+    - [Attempt](#tetragon-Attempt)
+    - [AttemptInfo](#tetragon-AttemptInfo)
+    - [AttemptLog](#tetragon-AttemptLog)
+    - [AttemptResult](#tetragon-AttemptResult)
+  
 - [tetragon/mandate.proto](#tetragon_mandate-proto)
     - [GetMandateStatusReq](#tetragon-GetMandateStatusReq)
     - [GetMandateStatusRes](#tetragon-GetMandateStatusRes)
@@ -230,91 +236,6 @@
     - [FineGuidanceSensors](#tetragon-FineGuidanceSensors)
   
 - [Scalar Value Types](#scalar-value-types)
-
-
-
-<a name="tetragon_attempt-proto"></a>
-<p align="right"><a href="#top">Top</a></p>
-
-## tetragon/attempt.proto
-
-
-
-<a name="tetragon-Attempt"></a>
-
-### Attempt
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| op | [string](#string) |  |  |
-| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
-| duration | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
-| res | [AttemptResult](#tetragon-AttemptResult) |  |  |
-| info | [AttemptInfo](#tetragon-AttemptInfo) | repeated |  |
-| entries | [Attempt](#tetragon-Attempt) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon-AttemptInfo"></a>
-
-### AttemptInfo
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| val | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon-AttemptLog"></a>
-
-### AttemptLog
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| total | [int32](#int32) |  |  |
-| failures | [int32](#int32) |  |  |
-| entries | [Attempt](#tetragon-Attempt) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon-AttemptResult"></a>
-
-### AttemptResult
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| success | [bool](#bool) |  |  |
-| error | [string](#string) |  |  |
-
-
-
-
-
- 
-
- 
-
- 
-
- 
 
 
 
@@ -2950,6 +2871,155 @@ Determins the behaviour of a field filter
 | THROTTLE_START | 1 |  |
 | THROTTLE_STOP | 2 |  |
 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="tetragon_alert-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/alert.proto
+
+
+
+<a name="tetragon-Alert"></a>
+
+### Alert
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| event | [GetEventsResponse](#tetragon-GetEventsResponse) | optional |  |
+| rule | [AlertRule](#tetragon-AlertRule) |  |  |
+
+
+
+
+
+
+<a name="tetragon-AlertRule"></a>
+
+### AlertRule
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| severity | [AlertRule.Severity](#tetragon-AlertRule-Severity) |  |  |
+| message | [string](#string) |  |  |
+| tags | [string](#string) | repeated |  |
+
+
+
+
+
+ 
+
+
+<a name="tetragon-AlertRule-Severity"></a>
+
+### AlertRule.Severity
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| UNSPECIFIED | 0 |  |
+| INFO | 1 |  |
+| WARNING | 2 |  |
+| CRITICAL | 3 |  |
+
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="tetragon_attempt-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/attempt.proto
+
+
+
+<a name="tetragon-Attempt"></a>
+
+### Attempt
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| op | [string](#string) |  |  |
+| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| duration | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
+| res | [AttemptResult](#tetragon-AttemptResult) |  |  |
+| info | [AttemptInfo](#tetragon-AttemptInfo) | repeated |  |
+| entries | [Attempt](#tetragon-Attempt) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-AttemptInfo"></a>
+
+### AttemptInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| val | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-AttemptLog"></a>
+
+### AttemptLog
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| total | [int32](#int32) |  |  |
+| failures | [int32](#int32) |  |  |
+| entries | [Attempt](#tetragon-Attempt) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-AttemptResult"></a>
+
+### AttemptResult
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| success | [bool](#bool) |  |  |
+| error | [string](#string) |  |  |
+
+
+
+
+
+ 
 
  
 
