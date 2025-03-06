@@ -464,6 +464,7 @@ type InterfacePolicySpec struct {
 	// Interface interval in seconds
 	StatsInterval uint32 `json:"statsInterval"`
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:deprecatedversion:warning="interface packet option is deprecated."
 	// Interface packet level BPF
 	Packet bool `json:"packet"`
 }
@@ -719,7 +720,7 @@ type QuotaDestination struct {
 
 type QuotaPolicySpec struct {
 	// +kubebuilder:validation:Optional
-        MatchLabels []string `json:"matchLabels,omitempty"`
+	MatchLabels []string `json:"matchLabels,omitempty"`
 	// +kubebuilder:validation:Optional
 	Namespace string `json:"namespace"`
 	// +kubebuilder:validation:Optional
