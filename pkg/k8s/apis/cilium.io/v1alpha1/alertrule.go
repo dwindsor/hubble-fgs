@@ -32,6 +32,12 @@ type AlertRule struct {
 	Spec              AlertRuleSpec `json:"spec"`
 }
 
+// Implement crdutils.CRDObject interface, required for working with CRDs
+// outside of Kubernetes context.
+func (ar *AlertRule) GetObjectMetaStruct() *metav1.ObjectMeta {
+	return &ar.ObjectMeta
+}
+
 type AlertRuleSpec struct {
 	// CEL expression
 	// +kubebuilder:validation:Required
