@@ -11,11 +11,51 @@
 package alerts
 
 import (
+	"sync"
+
+	"github.com/google/cel-go/cel"
+
+	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/logger"
 )
 
-func AddAlertRule(rule *v1alpha1.AlertRule) error {
+var (
+	cef        = filters.NewCELExpressionFilter(logger.GetLogger())
+	rules      = map[string]*rule{}
+	rulesMutex sync.RWMutex
+)
+
+type rule struct {
+	cel      cel.Program
+	name     string
+	message  string
+	tags     []string
+	severity string
+}
+
+func AddAlertRule(ar *v1alpha1.AlertRule) error {
+	if ar == nil {
+		return nil
+	}
+
+	celProgram, err := cef.CompileCEL(ar.Spec.Expression)
+	if err != nil {
+		return err
+	}
+
+	rulesMutex.Lock()
+	rules[ar.GetName()] = &rule{
+		cel:      celProgram,
+		name:     ar.GetName(),
+		message:  ar.Spec.Message,
+		tags:     ar.Spec.Tags,
+		severity: ar.Spec.Severity,
+	}
+	rulesMutex.Unlock()
 	return nil
 }
 
-func DeleteAlertRule(name string) {}
+func DeleteAlertRule(name string) {
+	delete(rules, name)
+}
