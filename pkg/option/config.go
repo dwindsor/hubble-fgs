@@ -41,6 +41,9 @@ type config struct {
 	EnableCilium             bool
 	EnableCiliumDNSCache     bool
 
+	EnableAlerts    bool
+	AlertsExportDir string
+
 	DebugX []string
 
 	ProcessCacheStaleInterval time.Duration

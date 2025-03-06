@@ -47,6 +47,8 @@ const (
 	keyEnableSandboxPolicies          = "enable-sandboxpolicies"
 	keyEnableSandboxPoliciesCRD       = "enable-sandboxpolicies-crd"
 	keySandboxPolicy                  = "sandbox-policy"
+	keyEnableAlerts                   = "enable-alerts"
+	keyAlertsExportDir                = "alerts-export-dir"
 	keyDebugX                         = "debugx"
 	keyEnableAWSSonar                 = "enable-aws-sonar"
 	keyAWSSonarRegion                 = "aws-sonar-region"
@@ -113,6 +115,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableSandboxPolicies, true, "Enable sandboxpolicies")
 	flags.Bool(keyEnableSandboxPoliciesCRD, true, "Enable SandboxPolicy and SanboxPolicyNamespaced custom resources")
 	flags.StringSlice(keySandboxPolicy, []string{}, "Sandbox policy file to load at startup")
+	flags.Bool(keyEnableAlerts, true, "Enable alerts.")
+	flags.String(keyAlertsExportDir, "", "Directory for alert JSON export (filenames will be retrieved from alert rule names). Disabled by default.")
 	flags.StringSlice(keyDebugX, []string{}, "Extended debug to enable (e.g. \"tcp,udp+\"). Choose from: tcp, udp, icmp, rawsock. Tetragon defaults to maintaining metrics for program errors. Specifying the protocol/sub-system here causes events to be dispatched as well; adding a '+' will also get console messages")
 	flags.Bool(KeyEnableDnsDebug, false, "Enable DNS debug messages")
 	flags.Duration(KeyProcessCacheStaleInterval, time.Duration(60*time.Minute), "Interval between stale process cache checks")
@@ -158,6 +162,8 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnableSandboxPolicies = viper.GetBool(keyEnableSandboxPolicies)
 	Config.EnableSandboxPoliciesCRD = viper.GetBool(keyEnableSandboxPoliciesCRD)
 	Config.SandboxPolicies = viper.GetStringSlice(keySandboxPolicy)
+	Config.EnableAlerts = viper.GetBool(keyEnableAlerts)
+	Config.AlertsExportDir = viper.GetString(keyAlertsExportDir)
 	Config.DebugX = viper.GetStringSlice(keyDebugX)
 	Config.EnableAWSSonar = viper.GetBool(keyEnableAWSSonar)
 	Config.AWSSonarRegion = viper.GetString(keyAWSSonarRegion)

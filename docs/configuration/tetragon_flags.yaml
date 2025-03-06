@@ -3,6 +3,9 @@ synopsis: |
     Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement
 usage: tetragon [flags]
 options:
+    - name: alerts-export-dir
+      usage: |
+        Directory for alert JSON export (filenames will be retrieved from alert rule names). Disabled by default.
     - name: application-model-cache-size
       default_value: "65536"
       usage: |
@@ -62,6 +65,9 @@ options:
       default_value: "false"
       usage: |
         If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported
+    - name: enable-alerts
+      default_value: "true"
+      usage: Enable alerts.
     - name: enable-application-model
       default_value: "false"
       usage: Enable application model in memory
