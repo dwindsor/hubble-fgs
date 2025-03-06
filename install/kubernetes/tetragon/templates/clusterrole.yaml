@@ -23,6 +23,7 @@ rules:
       - tracingpoliciesnamespaced
       - sandboxpolicies
       - sandboxpoliciesnamespaced
+      - alertrules
     verbs:
       - get
       - list
