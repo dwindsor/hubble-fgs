@@ -11,6 +11,10 @@
 package alerts
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -96,4 +100,27 @@ spec:
 	_, err := FromYAML(a)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "validation failed: spec.severity in body should be one of [critical warning info]")
+}
+
+func TestExamplesSmoke(t *testing.T) {
+	_, filename, _, _ := runtime.Caller(0)
+	examplesDir := filepath.Join(filepath.Dir(filename), "../../examples/alertrule")
+	err := filepath.Walk(examplesDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip non-directories and non-yaml files
+		if info.IsDir() || !strings.HasSuffix(info.Name(), "yaml") || strings.HasSuffix(info.Name(), "yml") {
+			return nil
+		}
+
+		// Attempt to parse the file
+		_, err = FromFile(path)
+		assert.NoError(t, err, "example %s must parse correctly: %s", info.Name(), err)
+
+		return nil
+	})
+
+	assert.NoError(t, err, "failed to walk examples directory")
 }

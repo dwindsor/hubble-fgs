@@ -12,6 +12,7 @@ package alerts
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -47,6 +48,14 @@ func FromYAML(data string) (crdutils.CRDObject, error) {
 	default:
 		return nil, fmt.Errorf("unknown CRD kind: %s", unstr.GetKind())
 	}
+}
+
+func FromFile(path string) (crdutils.CRDObject, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return FromYAML(string(data))
 }
 
 func getARContext() (*crdutils.CRDContext[*v1alpha1.AlertRule], error) {
