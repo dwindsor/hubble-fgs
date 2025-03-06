@@ -80,6 +80,14 @@ var (
 		crdsv1Alpha1TetragonNetworkPolicyNamespaced,
 	)
 
+	//go:embed crds/v1alpha1/cilium.io_alertrules.yaml
+	crdsv1Alpha1AlertRule []byte
+
+	AlertRuleCRD = osscrdutils.NewCRDBytes(
+		"AlertRule/v1alpha1",
+		"alertrules.cilium.io",
+		crdsv1Alpha1AlertRule,
+	)
 
 	AllCRDs = []crdutils.CRD{
 		TracingPolicyCRD,
@@ -89,6 +97,7 @@ var (
 		SandboxPolicyNamespacedCRD,
 		TetragonNetworkPolicyCRD,
 		TetragonNetworkPolicyNamespacedCRD,
+		AlertRuleCRD,
 	}
 )
 

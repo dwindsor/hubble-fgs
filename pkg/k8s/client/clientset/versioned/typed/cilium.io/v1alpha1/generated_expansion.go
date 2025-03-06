@@ -5,6 +5,8 @@
 
 package v1alpha1
 
+type AlertRuleExpansion interface{}
+
 type PodInfoExpansion interface{}
 
 type SandboxPolicyExpansion interface{}

@@ -15,6 +15,10 @@ type FakeCiliumV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeCiliumV1alpha1) AlertRules() v1alpha1.AlertRuleInterface {
+	return newFakeAlertRules(c)
+}
+
 func (c *FakeCiliumV1alpha1) PodInfo(namespace string) v1alpha1.PodInfoInterface {
 	return newFakePodInfo(c, namespace)
 }

@@ -15,6 +15,7 @@ import (
 
 type CiliumV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	AlertRulesGetter
 	PodInfoGetter
 	SandboxPoliciesGetter
 	SandboxPoliciesNamespacedGetter
@@ -27,6 +28,10 @@ type CiliumV1alpha1Interface interface {
 // CiliumV1alpha1Client is used to interact with features provided by the cilium.io group.
 type CiliumV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *CiliumV1alpha1Client) AlertRules() AlertRuleInterface {
+	return newAlertRules(c)
 }
 
 func (c *CiliumV1alpha1Client) PodInfo(namespace string) PodInfoInterface {

@@ -62,6 +62,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&TetragonNetworkPolicyList{},
 		&TetragonNetworkPolicyNamespaced{},
 		&TetragonNetworkPolicyNamespacedList{},
+		&AlertRule{},
+		&AlertRuleList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

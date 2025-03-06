@@ -5,6 +5,10 @@
 
 package v1alpha1
 
+// AlertRuleListerExpansion allows custom methods to be added to
+// AlertRuleLister.
+type AlertRuleListerExpansion interface{}
+
 // PodInfoListerExpansion allows custom methods to be added to
 // PodInfoLister.
 type PodInfoListerExpansion interface{}
