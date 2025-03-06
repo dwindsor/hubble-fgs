@@ -272,6 +272,14 @@ check:
 	docker run --rm -v `pwd`:/app -w /app --env GOTOOLCHAIN=auto $(GOLANGCILINT_IMAGE) golangci-lint run
 endif
 
+.PHONY: copy-golangci-lint
+copy-golangci-lint:
+	mkdir -p bin/
+	$(eval xid=$(shell $(CONTAINER_ENGINE) create $(GOLANGCILINT_IMAGE)))
+	echo ${xid}
+	docker cp ${xid}:/usr/bin/golangci-lint bin/golangci-lint
+	docker rm ${xid}
+
 .PHONY: test
 test: tester-progs tetragon-bpf tetragon-bpf-test ## Run Go tests.
 	$(GO) test -exec "$(SUDO)" -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover $(GO_TEST_PACKAGES) ${EXTRA_TESTFLAGS}
