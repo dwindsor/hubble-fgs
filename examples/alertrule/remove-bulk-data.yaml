@@ -1,0 +1,10 @@
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: remove-bulk-data
+spec:
+  expression: |
+    process_exec.process.binary.contains("shred") || process_exec.process.binary.contains("mkfs") ||
+    process_exec.process.binary.contains("mke2fs"))
+  message: Bulk data has been removed from disk.
+  tags: [filesystem, mitre_impact, T1485]

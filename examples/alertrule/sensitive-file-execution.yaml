@@ -1,0 +1,18 @@
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: sensitive-file-execution
+spec:
+  expression: |
+    process_exec.process.binary.contains("shadowconfig") || process_exec.process.binary.contains("grpck") ||
+    process_exec.process.binary.contains("pwck") || process_exec.process.binary.contains("grpconv") ||
+    process_exec.process.binary.contains("groupmod") || process_exec.process.binary.contains("vipw") ||
+    process_exec.process.binary.contains("pwconv") || process_exec.process.binary.contains("useradd") ||
+    process_exec.process.binary.contains("newusers") || process_exec.process.binary.contains("cppw") ||
+    process_exec.process.binary.contains("chpasswd") || process_exec.process.binary.contains("usermod") ||
+    process_exec.process.binary.contains("groupadd") || process_exec.process.binary.contains("groupdel") ||
+    process_exec.process.binary.contains("passwd") || process_exec.process.binary.contains("deluser") ||
+    process_exec.process.binary.contains("addgroup") || process_exec.process.binary.contains("adduser") ||
+    process_exec.process.binary.contains("delgroup") || process_exec.process.binary.contains("gpasswd")
+  message: Detected sensitive binary execution.
+  tags: [shell]

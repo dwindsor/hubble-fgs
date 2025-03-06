@@ -1,0 +1,11 @@
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: shell-execution
+spec:
+  expression: |
+    process_exec.process.binary.contains("bash") || process_exec.process.binary.contains("ash") ||
+    process_exec.process.binary.contains("csh") || process_exec.process.binary.contains("ksh") ||
+    process_exec.process.binary.contains("dash") || process_exec.process.binary.contains("zsh")
+  message: Detected shell execution.
+  tags: [shell]
