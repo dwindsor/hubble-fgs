@@ -48,9 +48,9 @@ require (
 	github.com/xlab/treeprint v1.2.0
 	github.com/yalue/native_endian v1.0.2
 	go.opentelemetry.io/proto/otlp v1.5.0
-	golang.org/x/net v0.36.0
-	golang.org/x/sys v0.30.0
-	golang.org/x/time v0.10.0
+	golang.org/x/net v0.37.0
+	golang.org/x/sys v0.31.0
+	golang.org/x/time v0.11.0
 	google.golang.org/api v0.223.0
 	google.golang.org/grpc v1.71.0
 	google.golang.org/protobuf v1.36.5
@@ -251,12 +251,12 @@ require (
 	github.com/vladimirvivien/gexe v0.4.1 // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/term v0.29.0
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/term v0.30.0
+	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
 	google.golang.org/genproto v0.0.0-20241104194629-dd2ea8efbc28 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
