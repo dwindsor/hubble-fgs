@@ -106,8 +106,8 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
   useEffect(() => {
     if (!ref.current) return;
 
-    ref.current.width = props.size.width * 2;
-    ref.current.height = props.size.height * 2;
+    ref.current.width = props.size.width;
+    ref.current.height = props.size.height;
 
     draw();
   }, [draw, props.size]);
