@@ -37,6 +37,14 @@ message GetMandateStatusRes {
   AttemptLog log = 4;
 }
 
+message MandateConfigureReq {
+  optional string url = 1;
+  optional google.protobuf.Duration refresh_period = 2;
+  bool refresh = 3;
+}
+message MandateConfigureRes {}
+
 service MandateService {
   rpc GetMandateStatus(GetMandateStatusReq) returns (GetMandateStatusRes) {}
+  rpc MandateConfigure(MandateConfigureReq) returns (MandateConfigureRes) {}
 }
