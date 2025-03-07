@@ -13,6 +13,7 @@ package mandate
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -40,6 +41,7 @@ const (
 	refreshCmdID cmdID = iota
 	stopCmdID
 	statusCmdID
+	configureCmdID
 )
 
 type statusRet struct {
@@ -50,6 +52,8 @@ type cmd struct {
 	id cmdID
 	// only set if id == statusCmdID
 	status *statusRet
+	// only set if id = configureCmdID
+	confArg *ConfArg
 }
 
 var (
@@ -242,6 +246,8 @@ func (m *manager) start() {
 			m.refresh(ctx)
 		case statusCmdID:
 			cmd.status.ret <- m.status()
+		case configureCmdID:
+			m.configure(ctx, cmd.confArg)
 		case stopCmdID:
 			return
 		}
@@ -311,4 +317,30 @@ func (m *manager) Status() *Status {
 	}
 	m.c <- statusCmd
 	return <-statusCmd.status.ret
+}
+
+func (m *manager) Configure(arg ConfArg) error {
+	if m.c == nil {
+		return errors.New("mandate manager not running")
+	}
+	confCmd := cmd{
+		id:      configureCmdID,
+		confArg: &arg,
+	}
+	m.c <- confCmd
+	return nil
+}
+
+func (m *manager) configure(ctx context.Context, arg *ConfArg) {
+	if arg.URL != nil {
+		m.cnf.URL = *arg.URL
+	}
+
+	if arg.RefreshPeriod != nil {
+		m.cnf.RefreshPeriod = *arg.RefreshPeriod
+	}
+
+	if arg.Refresh {
+		m.refresh(ctx)
+	}
 }

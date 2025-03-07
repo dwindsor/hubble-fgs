@@ -53,11 +53,18 @@ type Status struct {
 	Log attempt.Attempts `json:"log,omitempty"`
 }
 
+type ConfArg struct {
+	URL           *string
+	RefreshPeriod *time.Duration
+	Refresh       bool
+}
+
 // Manager is the external interface to the mandate manager
 type Manager interface {
 	// Start the manager goroutine that monitors the mandate file
 	Start() error
 	Stop() error
 	Refresh()
+	Configure(arg ConfArg) error
 	Status() *Status
 }

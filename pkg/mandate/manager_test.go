@@ -104,6 +104,7 @@ func TestManager(t *testing.T) {
 	})
 }
 
+// tests the "conf:" sections in mandate files
 func TestManagerConf(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
 	t.Cleanup(func() {
@@ -155,5 +156,71 @@ func TestManagerConf(t *testing.T) {
 		require.Equal(t, policyconf.EnforceMode, tsm.policyMode(t, "monitor"))
 		require.Equal(t, policyconf.MonitorMode, tsm.policyMode(t, "policy-1"))
 
+	})
+}
+
+// tests the configure command
+func TestManagerConfigure(t *testing.T) {
+	var m1 = "pizza.yaml"
+	var m2 = "burger.yaml"
+	var t1 = 1 * time.Second
+	var t2 = 7 * time.Second
+
+	tsm := NewTestSensorManager()
+	cnf := ManagerConf{
+		URL:           m1,
+		RefreshPeriod: t1,
+	}
+
+	synctest.Run(func() {
+		mgr, err := NewManager(cnf, tsm)
+		require.NoError(t, err)
+		mgr.Start()
+		defer mgr.Stop()
+
+		status := mgr.Status()
+		require.Equal(t, m1, status.Conf.URL)
+		require.Equal(t, t1, status.Conf.RefreshPeriod)
+
+		err = mgr.Configure(ConfArg{
+			URL: &m2,
+		})
+		require.NoError(t, err)
+		synctest.Wait()
+		status = mgr.Status()
+		require.Equal(t, m2, status.Conf.URL)
+		require.Equal(t, t1, status.Conf.RefreshPeriod)
+
+		err = mgr.Configure(ConfArg{
+			RefreshPeriod: &t2,
+		})
+		require.NoError(t, err)
+		synctest.Wait()
+		status = mgr.Status()
+		require.Equal(t, m2, status.Conf.URL)
+		require.Equal(t, t2, status.Conf.RefreshPeriod)
+		require.Equal(t, 1, status.Log.Total)
+
+		err = mgr.Configure(ConfArg{
+			URL:           &m1,
+			RefreshPeriod: &t1,
+			Refresh:       true,
+		})
+		require.NoError(t, err)
+		synctest.Wait()
+		status = mgr.Status()
+		require.Equal(t, m1, status.Conf.URL)
+		require.Equal(t, t1, status.Conf.RefreshPeriod)
+		require.Equal(t, 2, status.Log.Total)
+
+		err = mgr.Configure(ConfArg{
+			Refresh: true,
+		})
+		synctest.Wait()
+		require.NoError(t, err)
+		status = mgr.Status()
+		require.Equal(t, m1, status.Conf.URL)
+		require.Equal(t, t1, status.Conf.RefreshPeriod)
+		require.Equal(t, 3, status.Log.Total)
 	})
 }

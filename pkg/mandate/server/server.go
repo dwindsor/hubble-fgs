@@ -12,7 +12,7 @@ package server
 
 import (
 	"context"
-	"errors"
+	"time"
 
 	api "github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/pkg/mandate"
@@ -63,6 +63,25 @@ func (s *Server) GetMandateStatus(_ context.Context, _ *api.GetMandateStatusReq)
 	return &ret, nil
 }
 
-func (s *Server) MandateConfigure(_ context.Context, _ *api.MandateConfigureReq) (*api.MandateConfigureRes, error) {
-	return nil, errors.New("not implemented")
+func (s *Server) MandateConfigure(_ context.Context, cfg *api.MandateConfigureReq) (*api.MandateConfigureRes, error) {
+	if s.mgr == nil {
+		return nil, disabledErr
+	}
+
+	var duration *time.Duration
+	if cfg.RefreshPeriod != nil {
+		v := cfg.RefreshPeriod.AsDuration()
+		duration = &v
+	}
+
+	err := s.mgr.Configure(mandate.ConfArg{
+		URL:           cfg.Url,
+		RefreshPeriod: duration,
+		Refresh:       cfg.Refresh,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.MandateConfigureRes{}, nil
 }
