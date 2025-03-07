@@ -12,6 +12,7 @@ package server
 
 import (
 	"context"
+	"errors"
 
 	api "github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/pkg/mandate"
@@ -60,4 +61,8 @@ func (s *Server) GetMandateStatus(_ context.Context, _ *api.GetMandateStatusReq)
 	}
 
 	return &ret, nil
+}
+
+func (s *Server) MandateConfigure(_ context.Context, _ *api.MandateConfigureReq) (*api.MandateConfigureRes, error) {
+	return nil, errors.New("not implemented")
 }

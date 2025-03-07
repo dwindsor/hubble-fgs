@@ -30,6 +30,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	MandateService_GetMandateStatus_FullMethodName = "/tetragon.MandateService/GetMandateStatus"
+	MandateService_MandateConfigure_FullMethodName = "/tetragon.MandateService/MandateConfigure"
 )
 
 // MandateServiceClient is the client API for MandateService service.
@@ -37,6 +38,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MandateServiceClient interface {
 	GetMandateStatus(ctx context.Context, in *GetMandateStatusReq, opts ...grpc.CallOption) (*GetMandateStatusRes, error)
+	MandateConfigure(ctx context.Context, in *MandateConfigureReq, opts ...grpc.CallOption) (*MandateConfigureRes, error)
 }
 
 type mandateServiceClient struct {
@@ -57,11 +59,22 @@ func (c *mandateServiceClient) GetMandateStatus(ctx context.Context, in *GetMand
 	return out, nil
 }
 
+func (c *mandateServiceClient) MandateConfigure(ctx context.Context, in *MandateConfigureReq, opts ...grpc.CallOption) (*MandateConfigureRes, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MandateConfigureRes)
+	err := c.cc.Invoke(ctx, MandateService_MandateConfigure_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MandateServiceServer is the server API for MandateService service.
 // All implementations must embed UnimplementedMandateServiceServer
 // for forward compatibility.
 type MandateServiceServer interface {
 	GetMandateStatus(context.Context, *GetMandateStatusReq) (*GetMandateStatusRes, error)
+	MandateConfigure(context.Context, *MandateConfigureReq) (*MandateConfigureRes, error)
 	mustEmbedUnimplementedMandateServiceServer()
 }
 
@@ -74,6 +87,9 @@ type UnimplementedMandateServiceServer struct{}
 
 func (UnimplementedMandateServiceServer) GetMandateStatus(context.Context, *GetMandateStatusReq) (*GetMandateStatusRes, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMandateStatus not implemented")
+}
+func (UnimplementedMandateServiceServer) MandateConfigure(context.Context, *MandateConfigureReq) (*MandateConfigureRes, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MandateConfigure not implemented")
 }
 func (UnimplementedMandateServiceServer) mustEmbedUnimplementedMandateServiceServer() {}
 func (UnimplementedMandateServiceServer) testEmbeddedByValue()                        {}
@@ -114,6 +130,24 @@ func _MandateService_GetMandateStatus_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MandateService_MandateConfigure_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MandateConfigureReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MandateServiceServer).MandateConfigure(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MandateService_MandateConfigure_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MandateServiceServer).MandateConfigure(ctx, req.(*MandateConfigureReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MandateService_ServiceDesc is the grpc.ServiceDesc for MandateService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -124,6 +158,10 @@ var MandateService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMandateStatus",
 			Handler:    _MandateService_GetMandateStatus_Handler,
+		},
+		{
+			MethodName: "MandateConfigure",
+			Handler:    _MandateService_MandateConfigure_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -151,6 +151,8 @@
     - [GetMandateStatusRes](#tetragon-GetMandateStatusRes)
     - [Mandate](#tetragon-Mandate)
     - [MandateConf](#tetragon-MandateConf)
+    - [MandateConfigureReq](#tetragon-MandateConfigureReq)
+    - [MandateConfigureRes](#tetragon-MandateConfigureRes)
   
     - [MandateService](#tetragon-MandateService)
   
@@ -251,6 +253,7 @@
 | duration | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
 | res | [AttemptResult](#tetragon-AttemptResult) |  |  |
 | info | [AttemptInfo](#tetragon-AttemptInfo) | repeated |  |
+| entries | [Attempt](#tetragon-Attempt) | repeated |  |
 
 
 
@@ -3023,6 +3026,33 @@ Determins the behaviour of a field filter
 
 
 
+
+<a name="tetragon-MandateConfigureReq"></a>
+
+### MandateConfigureReq
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) | optional |  |
+| refresh_period | [google.protobuf.Duration](#google-protobuf-Duration) | optional |  |
+| refresh | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="tetragon-MandateConfigureRes"></a>
+
+### MandateConfigureRes
+
+
+
+
+
+
  
 
  
@@ -3038,6 +3068,7 @@ Determins the behaviour of a field filter
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
 | GetMandateStatus | [GetMandateStatusReq](#tetragon-GetMandateStatusReq) | [GetMandateStatusRes](#tetragon-GetMandateStatusRes) |  |
+| MandateConfigure | [MandateConfigureReq](#tetragon-MandateConfigureReq) | [MandateConfigureRes](#tetragon-MandateConfigureRes) |  |
 
  
 
