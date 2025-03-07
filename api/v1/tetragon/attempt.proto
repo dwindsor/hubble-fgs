@@ -33,6 +33,7 @@ message Attempt {
   google.protobuf.Duration duration = 3;
   AttemptResult res = 4;
   repeated AttemptInfo info = 5;
+  repeated Attempt entries = 6;
 }
 
 message AttemptLog {
