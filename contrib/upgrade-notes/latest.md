@@ -33,9 +33,9 @@ Depending on your setup, changes listed here might require a manual intervention
 
 * TBD
 
-### TracingPolicy (k8s CRD)
+### Kubernetes CRDs
 
-* New option dns-&gt;reportQuestions specifies that the DNS parser should report DNS
+* TracingPolicy new option dns-&gt;reportQuestions specifies that the DNS parser should report DNS
   questions as well as DNS answers. The default is now to not report questions unless
   this option is specified.
 

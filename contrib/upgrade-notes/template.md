@@ -17,7 +17,7 @@ Depending on your setup, changes listed here might require a manual intervention
 
 * TBD
 
-### TracingPolicy (k8s CRD)
+### Kubernetes CRDs
 
 * TBD
 
