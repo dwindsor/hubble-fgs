@@ -19,6 +19,7 @@ semver="${version:1}"
 # Update image tags
 yq -i ".tetragon.image.tag = \"$version\"" install/kubernetes/enterprise/values.yaml
 yq -i ".tetragonOperator.image.tag = \"$version\"" install/kubernetes/enterprise/values.yaml
+yq -i ".tetragonAggregator.image.tag = \"$version\"" install/kubernetes/enterprise/values.yaml
 # Update version label in default policies
 find "install/kubernetes/enterprise/default-policies" -type f -name "*.yaml" -exec \
   yq ".metadata.labels.\"app.kubernetes.io/version\" = \"$semver\"" -i {} \;

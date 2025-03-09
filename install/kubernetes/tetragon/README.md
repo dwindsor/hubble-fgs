@@ -169,7 +169,7 @@ Helm chart for Tetragon Enterprise
 | tetragonAggregator.extraPodLabels | object | `{}` | Extra labels to be added on the Tetragon Aggregator Deployment Pods. |
 | tetragonAggregator.extraVolumeMounts | list | `[]` |  |
 | tetragonAggregator.extraVolumes | list | `[]` | Extra volumes for the Tetragon Aggregator Deployment. |
-| tetragonAggregator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-aggregator","tag":"v1.15.0-pre.2"}` | tetragon-aggregator image. |
+| tetragonAggregator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-aggregator","tag":"v1.16.0-rc.1"}` | tetragon-aggregator image. |
 | tetragonAggregator.nodeSelector | object | `{}` | Steer the Tetragon Aggregator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
 | tetragonAggregator.podAnnotations | object | `{}` | Annotations for the Tetragon Aggregator Deployment Pods. |
 | tetragonAggregator.podSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}` | securityContext for the Tetragon Aggregator Deployment Pod container. |
