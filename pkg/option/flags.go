@@ -44,8 +44,8 @@ const (
 	KeyApplicationModelExportInterval = "application-model-export-interval"
 	KeyApplicationModelExportFilename = "application-model-export-filename"
 	keyEnableIcmpTracking             = "enable-icmp-tracking"
+	keyEnablePolicyK8sWatcher         = "enable-policy-k8swatcher"
 	keyEnableSandboxPolicies          = "enable-sandboxpolicies"
-	keyEnableSandboxPoliciesCRD       = "enable-sandboxpolicies-crd"
 	keySandboxPolicy                  = "sandbox-policy"
 	keyEnableAlerts                   = "enable-alerts"
 	keyAlertsExportDir                = "alerts-export-dir"
@@ -75,6 +75,7 @@ func FixUpOSSFlags(flags *pflag.FlagSet) {
 	flags.Lookup(option.KeyEnableProcessTracepointAncestors).Hidden = true
 	flags.Lookup(option.KeyEnableProcessUprobeAncestors).Hidden = true
 	flags.Lookup(option.KeyEnableProcessLsmAncestors).Hidden = true
+	flags.Lookup(option.KeyEnableTracingPolicyCRD).Hidden = true
 }
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
@@ -112,8 +113,9 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 
 	// Provide option to enable extra socket tracking for ICMP matching.
 	flags.Bool(keyEnableIcmpTracking, true, "Enable additional socket tracking for ICMP")
+
+	flags.Bool(keyEnablePolicyK8sWatcher, true, "Enable watching Kubernetes API server for all supported policy resources, unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely by `--enable-k8s-api=false`.")
 	flags.Bool(keyEnableSandboxPolicies, true, "Enable sandboxpolicies")
-	flags.Bool(keyEnableSandboxPoliciesCRD, true, "Enable SandboxPolicy and SanboxPolicyNamespaced custom resources")
 	flags.StringSlice(keySandboxPolicy, []string{}, "Sandbox policy file to load at startup")
 	flags.Bool(keyEnableAlerts, true, "Enable alerts.")
 	flags.String(keyAlertsExportDir, "", "Directory for alert JSON export (filenames will be retrieved from alert rule names). Disabled by default.")
@@ -159,8 +161,8 @@ func ReadAndSetEnterpriseFlags() {
 			option.Config.HubbleLib = viper.GetString(KeyHubbleLib)
 		}
 	}
+	Config.EnablePolicyK8sWatcher = viper.GetBool(keyEnablePolicyK8sWatcher)
 	Config.EnableSandboxPolicies = viper.GetBool(keyEnableSandboxPolicies)
-	Config.EnableSandboxPoliciesCRD = viper.GetBool(keyEnableSandboxPoliciesCRD)
 	Config.SandboxPolicies = viper.GetStringSlice(keySandboxPolicy)
 	Config.EnableAlerts = viper.GetBool(keyEnableAlerts)
 	Config.AlertsExportDir = viper.GetString(keyAlertsExportDir)

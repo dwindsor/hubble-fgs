@@ -131,6 +131,10 @@ options:
     - name: enable-policy-filter-debug
       default_value: "false"
       usage: Enable policy filter debug messages
+    - name: enable-policy-k8swatcher
+      default_value: "true"
+      usage: |
+        Enable watching Kubernetes API server for all supported policy resources, unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely by `--enable-k8s-api=false`.
     - name: enable-process-ancestors
       default_value: "true"
       usage: Include ancestors in process exec events
@@ -160,10 +164,6 @@ options:
     - name: enable-sandboxpolicies
       default_value: "true"
       usage: Enable sandboxpolicies
-    - name: enable-sandboxpolicies-crd
-      default_value: "true"
-      usage: |
-        Enable SandboxPolicy and SanboxPolicyNamespaced custom resources
     - name: enable-tracing-policy-crd
       default_value: "true"
       usage: |

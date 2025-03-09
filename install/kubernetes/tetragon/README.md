@@ -133,6 +133,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.image.override | string | `nil` |  |
 | tetragon.image.repository | string | `"quay.io/isovalent/tetragon"` |  |
 | tetragon.image.tag | string | `"v1.16.0-rc.1"` |  |
+| tetragon.k8sWatcher.policy.enabled | bool | `true` | Enable watching Kubernetes API server for policy resources. If true, Tetragon watches all supported policy resources: TracingPolicy(Namespaced), SandboxPolicy(Namespaced), AlertRule and TetragonNetworkPolicy(Namespaced), unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely. |
 | tetragon.livenessProbe | object | `{}` | Overrides the default livenessProbe for the tetragon container. |
 | tetragon.metadata.enabled | bool | `false` |  |
 | tetragon.metadata.image.imagePullPolicy | string | `"Always"` |  |

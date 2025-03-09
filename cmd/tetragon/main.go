@@ -483,12 +483,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		if err != nil {
 			return err
 		}
-		if option.Config.EnableTracingPolicyCRD {
-			err = crdwatcher.AddTracingPolicyInformer(ctx, k8sWatcher, observer.GetSensorManager())
-			if err != nil {
-				return err
-			}
-		}
 		if option.Config.EnablePodInfo {
 			// NB(anna): Service and PodInfo informers also provide metadata
 			// for the process tree. Should we tie it to the podinfo flag?
@@ -502,10 +496,22 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 				return err
 			}
 		}
-		if enterpriseOption.Config.EnableSandboxPolicies && enterpriseOption.Config.EnableSandboxPoliciesCRD {
-			err = enterpriseWatcher.AddSandboxPolicyInformer(ctx, k8sWatcher, observer.GetSensorManager())
-			if err != nil {
-				return err
+		// add informers for all supported policy resources
+		if enterpriseOption.Config.EnablePolicyK8sWatcher {
+			// NB(anna): Check this option for OSS compatibility, but it's not
+			// recommended to use it to disable watching TracingPolicy in EE.
+			// Use --enable-policy-k8swatcher=false instead.
+			if option.Config.EnableTracingPolicyCRD {
+				err = crdwatcher.AddTracingPolicyInformer(ctx, k8sWatcher, observer.GetSensorManager())
+				if err != nil {
+					return err
+				}
+			}
+			if enterpriseOption.Config.EnableSandboxPolicies {
+				err = enterpriseWatcher.AddSandboxPolicyInformer(ctx, k8sWatcher, observer.GetSensorManager())
+				if err != nil {
+					return err
+				}
 			}
 		}
 		// TODO(anna): Add an option to load AlertRules from a file and disable watching CRD.
@@ -703,18 +709,22 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 func waitCRDs(config *rest.Config) error {
 	crds := make(map[string]struct{})
 
-	if option.Config.EnableTracingPolicyCRD {
-		crds[v1alpha1.TPName] = struct{}{}
-		crds[v1alpha1.TPNamespacedName] = struct{}{}
-	}
-
 	if option.Config.EnablePodInfo {
 		crds[v1alpha1.PIName] = struct{}{}
 	}
 
-	if enterpriseOption.Config.EnableSandboxPolicies && enterpriseOption.Config.EnableSandboxPoliciesCRD {
-		crds[client.SandboxPolicyCRD.ResName] = struct{}{}
-		crds[client.SandboxPolicyNamespacedCRD.ResName] = struct{}{}
+	if enterpriseOption.Config.EnablePolicyK8sWatcher {
+		// NB(anna): Check this option for OSS compatibility, but it's not
+		// recommended to use it to disable watching TracingPolicy in EE.
+		// Use --enable-policy-k8swatcher=false instead.
+		if option.Config.EnableTracingPolicyCRD {
+			crds[v1alpha1.TPName] = struct{}{}
+			crds[v1alpha1.TPNamespacedName] = struct{}{}
+		}
+		if enterpriseOption.Config.EnableSandboxPolicies {
+			crds[client.SandboxPolicyCRD.ResName] = struct{}{}
+			crds[client.SandboxPolicyNamespacedCRD.ResName] = struct{}{}
+		}
 	}
 
 	crds[client.AlertRuleCRD.ResName] = struct{}{}

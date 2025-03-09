@@ -295,6 +295,15 @@ tetragon:
   # fimDispatcher provides the option to enable FIM dispatcher when supported (only path-based for now)
   fimDispatcher:
     enabled: false
+  k8sWatcher:
+    policy:
+      # -- Enable watching Kubernetes API server for policy resources.
+      # If true, Tetragon watches all supported policy resources:
+      # TracingPolicy(Namespaced), SandboxPolicy(Namespaced), AlertRule and
+      # TetragonNetworkPolicy(Namespaced), unless some of the features are
+      # disabled by other options, or Kubernetes API server is disabled
+      # entirely.
+      enabled: true
   # -- Enable sandboxpolicies.
   enableSandboxpolicies: true
   # -- Enable process tree.

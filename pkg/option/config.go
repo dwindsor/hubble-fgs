@@ -35,11 +35,11 @@ type config struct {
 	FlowExportFileMaxBackups int
 	FlowExportFileCompress   bool
 
-	EnableSandboxPolicies    bool
-	EnableSandboxPoliciesCRD bool
-	SandboxPolicies          []string
-	EnableCilium             bool
-	EnableCiliumDNSCache     bool
+	EnablePolicyK8sWatcher bool
+	EnableSandboxPolicies  bool
+	SandboxPolicies        []string
+	EnableCilium           bool
+	EnableCiliumDNSCache   bool
 
 	EnableAlerts    bool
 	AlertsExportDir string

@@ -61,6 +61,15 @@ tetragon:
     enabled: false
   # Set --btf option to explicitly specify an absolute path to the metadata file. For advanced users only.
   btf: ""
+  k8sWatcher:
+    policy:
+      # -- Enable watching Kubernetes API server for policy resources.
+      # If true, Tetragon watches all supported policy resources:
+      # TracingPolicy(Namespaced), SandboxPolicy(Namespaced), AlertRule and
+      # TetragonNetworkPolicy(Namespaced), unless some of the features are
+      # disabled by other options, or Kubernetes API server is disabled
+      # entirely.
+      enabled: true
   # -- Enable sandboxpolicies.
   enableSandboxpolicies: true
   # -- Enable process tree.
