@@ -121,6 +121,44 @@ func refreshCmd() *cobra.Command {
 	return ret
 }
 
+func setURLCmd() *cobra.Command {
+	var refresh bool
+	ret := &cobra.Command{
+		Use:          "set-url",
+		Short:        "set the mandate URL",
+		Long:         "modify the mandate URL in the Tetragon agent",
+		Args:         cobra.ExactArgs(1),
+		SilenceUsage: true,
+		RunE: func(_ *cobra.Command, args []string) error {
+			ctx, cancel := context.WithTimeout(context.Background(), common.Timeout)
+			defer cancel()
+
+			conn, err := grpc.NewClient(common.ResolveServerAddress(),
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+				grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
+			)
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+
+			url := args[0]
+			client := tetragon.NewMandateServiceClient(conn)
+			res, err := client.MandateConfigure(ctx, &tetragon.MandateConfigureReq{
+				Url:     &url,
+				Refresh: refresh,
+			})
+			if err != nil || res == nil {
+				return fmt.Errorf("failed to set URL: %w", err)
+			}
+			return nil
+		},
+	}
+	flags := ret.Flags()
+	flags.BoolVarP(&refresh, "refresh", "r", true, "refresh after setting new mandate URL")
+	return ret
+}
+
 func New() *cobra.Command {
 	ret := &cobra.Command{
 		Use:   "mandate",
@@ -130,6 +168,7 @@ func New() *cobra.Command {
 	ret.AddCommand(
 		statusCmd(),
 		refreshCmd(),
+		setURLCmd(),
 	)
 
 	return ret
