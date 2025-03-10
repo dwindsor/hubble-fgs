@@ -24,14 +24,19 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 )
 
+type InfoEntry struct {
+	Key string `json:"key"`
+	Val string `json:"val"`
+}
+
 // An attempt to perform an operation
 type Attempt struct {
-	Op       string            `json:"op"`
-	Info     map[string]string `json:"info,omitempty"`
-	Time     time.Time         `json:"time"`
-	Duration time.Duration     `json:"duration"`
-	Result   Result            `json:"result,omitempty"`
-	Attempts []Attempt         `json:"attempts,omitempty"`
+	Op       string        `json:"op"`
+	Info     []InfoEntry   `json:"info,omitempty"`
+	Time     time.Time     `json:"time"`
+	Duration time.Duration `json:"duration"`
+	Result   Result        `json:"result,omitempty"`
+	Attempts []Attempt     `json:"attempts,omitempty"`
 }
 
 // Attempts is a log of attempts
@@ -55,7 +60,7 @@ type InprAttempt struct {
 	op   string
 	time time.Time
 
-	info   map[string]string
+	info   []InfoEntry
 	logger Logger
 
 	inProgress int
@@ -65,10 +70,7 @@ type InprAttempt struct {
 }
 
 func (a *InprAttempt) WithInfo(k, v string) *InprAttempt {
-	if a.info == nil {
-		a.info = make(map[string]string)
-	}
-	a.info[k] = v
+	a.info = append(a.info, InfoEntry{Key: k, Val: v})
 	return a
 }
 

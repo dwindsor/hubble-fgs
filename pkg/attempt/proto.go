@@ -36,10 +36,10 @@ func (a *Attempt) protoInfo() []*api.AttemptInfo {
 	}
 
 	ret := make([]*api.AttemptInfo, 0, len(a.Info))
-	for k, v := range a.Info {
+	for _, ie := range a.Info {
 		ret = append(ret, &api.AttemptInfo{
-			Key: k,
-			Val: v,
+			Key: ie.Key,
+			Val: ie.Val,
 		})
 	}
 
