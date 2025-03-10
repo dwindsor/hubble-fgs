@@ -64,13 +64,22 @@ var (
 type policy struct {
 	namespace string
 	name      string
+	origName  string
+	url       string
 }
 
-func newPolicy(tp tracingpolicy.TracingPolicy) policy {
-	return policy{
+func newPolicy(url string, tp tracingpolicy.TracingPolicy) policy {
+	ret := policy{
+		url:       url,
 		namespace: tpNs(tp),
 		name:      tp.TpName(),
 	}
+
+	ret.origName = ret.name
+	if oname, ok := OrigPolName(ret.name); ok {
+		ret.origName = oname
+	}
+	return ret
 }
 
 // NewManager creates a new manager
@@ -140,7 +149,7 @@ func (m *manager) refresh(ctx context.Context) {
 
 	for _, pol := range unloadPolicies {
 		attempt.RunAttempt(
-			refrAtt.NewAttempt("unload policy").WithInfo("policy", pol.name).WithInfo("mandate", unloadMandateID),
+			refrAtt.NewAttempt("unload policy").WithInfo("policy", pol.origName).WithInfo("mandate", unloadMandateID),
 			func() error {
 				err := m.sensorMgr.DeleteTracingPolicy(ctx, pol.name, pol.namespace)
 				if err != nil {
@@ -176,13 +185,13 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 		pol := &obj.Mandate.Policies[i]
 		data := policyData[i]
 
-		loadAtt := refrAtt.NewAttempt("load policy")
+		loadAtt := refrAtt.NewAttempt("load policy").WithInfo("url", pol.url_.String())
 		mp, err := m.attemptLoadMandatePolicy(ctx, loadAtt, data, pol.mode_)
 		if err != nil {
 			return loadedPolicies, fmt.Errorf("failed to load policy %q: %w", pol.url_, err)
 		}
 
-		loadedPolicies = append(loadedPolicies, newPolicy(mp))
+		loadedPolicies = append(loadedPolicies, newPolicy(pol.url_.String(), mp))
 	}
 
 	return loadedPolicies, nil
