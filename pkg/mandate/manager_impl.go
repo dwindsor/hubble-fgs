@@ -193,7 +193,9 @@ func (m *manager) attemptLoadMandatePolicy(
 ) (tracingpolicy.TracingPolicy, error) {
 	var ret tracingpolicy.TracingPolicy
 	var err error
-	defer att.Complete(err)
+	defer func() {
+		att.Complete(err)
+	}()
 
 	// apply mode if it is set
 	if mode != "" {
