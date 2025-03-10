@@ -88,6 +88,39 @@ func statusCmd() *cobra.Command {
 
 }
 
+func refreshCmd() *cobra.Command {
+	ret := &cobra.Command{
+		Use:          "refresh",
+		Short:        "refresh mandate",
+		Long:         "instruct tetragon agent to refresh the mandate URL",
+		Args:         cobra.ExactArgs(0),
+		SilenceUsage: true,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			ctx, cancel := context.WithTimeout(context.Background(), common.Timeout)
+			defer cancel()
+
+			conn, err := grpc.NewClient(common.ResolveServerAddress(),
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+				grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
+			)
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+
+			client := tetragon.NewMandateServiceClient(conn)
+			res, err := client.MandateConfigure(ctx, &tetragon.MandateConfigureReq{
+				Refresh: true,
+			})
+			if err != nil || res == nil {
+				return fmt.Errorf("failed to refresh: %w", err)
+			}
+			return nil
+		},
+	}
+	return ret
+}
+
 func New() *cobra.Command {
 	ret := &cobra.Command{
 		Use:   "mandate",
@@ -96,6 +129,7 @@ func New() *cobra.Command {
 
 	ret.AddCommand(
 		statusCmd(),
+		refreshCmd(),
 	)
 
 	return ret
