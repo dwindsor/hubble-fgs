@@ -21,7 +21,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/attempt"
 )
 
-func Print(o io.Writer, res *api.GetMandateStatusRes) {
+type PrintConfig struct {
+	AttemptsLog bool
+	PrintAll    bool
+}
+
+func Print(o io.Writer, res *api.GetMandateStatusRes, cfg PrintConfig) {
 	warnColor := color.New(color.FgYellow)
 	noteColor := color.New(color.FgCyan)
 
@@ -32,6 +37,30 @@ func Print(o io.Writer, res *api.GetMandateStatusRes) {
 	fmt.Fprintf(o, "loaded mandate: ")
 	if ldMandate := res.GetLoadedMandate(); ldMandate == nil {
 		warnColor.Fprintf(o, "none\n")
+	} else {
+		fmt.Printf("%s:%q %s:%q %s:%q\n",
+			noteColor.Sprintf("version"), ldMandate.Version,
+			noteColor.Sprintf("loaded-at"), ldMandate.LoadedAt.AsTime(),
+			noteColor.Sprintf("checksum"), ldMandate.Checksum)
 	}
-	attempt.Print(o, res.Log)
+
+	log := res.GetLog()
+	if log == nil {
+		return
+	}
+	if cfg.AttemptsLog {
+		attempt.Print(o, res.Log, attempt.PrintCfg{PrintAll: cfg.PrintAll})
+	} else if len(log.Entries) > 0 {
+		// by default, just print the latest entry if there was an error
+		e0 := log.Entries[len(log.Entries)-1]
+		res0 := e0.GetRes()
+		if res0 != nil && !res0.Success {
+			minLog := &api.AttemptLog{
+				Total:    log.Total,
+				Failures: log.Failures,
+				Entries:  log.Entries[len(log.Entries)-1:],
+			}
+			attempt.Print(o, minLog, attempt.PrintCfg{PrintAll: false})
+		}
+	}
 }

@@ -28,6 +28,8 @@ import (
 
 func statusCmd() *cobra.Command {
 	var output string
+	var attemptsLog bool
+	var printAll bool
 	ret := &cobra.Command{
 		Use:          "status",
 		Short:        "mandate status",
@@ -62,10 +64,15 @@ func statusCmd() *cobra.Command {
 				cmd.Println(string(b))
 
 			case "text":
-				cli.Print(os.Stdout, res)
+				cnf := cli.PrintConfig{
+					AttemptsLog: attemptsLog,
+					PrintAll:    printAll,
+				}
+				cli.Print(os.Stdout, res, cnf)
 			}
 
 			if res.LoadedMandate != nil {
+				fmt.Printf("policies:\n")
 				eecommon.ListPolicies(cmd, output, mandate.OrigPolName)
 			}
 
@@ -75,6 +82,8 @@ func statusCmd() *cobra.Command {
 
 	flags := ret.Flags()
 	flags.StringVarP(&output, "output", "o", "text", "Specify the output format: text|json")
+	flags.BoolVar(&attemptsLog, "attempts-log", false, "Print attempts log")
+	flags.BoolVar(&printAll, "print-all", false, "Print all entries in the attempts log")
 	return ret
 
 }

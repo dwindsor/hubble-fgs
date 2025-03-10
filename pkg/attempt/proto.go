@@ -47,13 +47,19 @@ func (a *Attempt) protoInfo() []*api.AttemptInfo {
 }
 
 func (a *Attempt) ToProto() *api.Attempt {
-	return &api.Attempt{
+	ret := &api.Attempt{
 		Op:       a.Op,
 		Time:     timestamppb.New(a.Time),
 		Duration: durationpb.New(a.Duration),
 		Res:      a.protoResult(),
 		Info:     a.protoInfo(),
 	}
+
+	for _, at := range a.Attempts {
+		ret.Entries = append(ret.Entries, at.ToProto())
+	}
+
+	return ret
 }
 
 func (l *Attempts) protoEntries() []*api.Attempt {
