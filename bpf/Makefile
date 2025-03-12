@@ -41,7 +41,7 @@ TCP = bpf_tcp_close.o bpf_tcp_close_fentry.o \
       bpf_tcp_send_check.o \
       bpf_tcp_sockops_5_15.o
 
-L2 = bpf_dev_queue_xmit.o
+L2 = bpf_net_ns_net_exit.o
 
 ICMP = bpf_icmp_rcv.o bpf_icmp_rcv_fentry.o
 PING = bpf_pingsock_create.o bpf_pingsock_create_fentry.o

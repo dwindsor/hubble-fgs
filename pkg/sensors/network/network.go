@@ -130,7 +130,7 @@ func unloadNetworkSensor() error {
 
 var (
 	ExitNs = program.Builder(
-		"bpf_dev_queue_xmit.o",
+		"bpf_net_ns_net_exit.o",
 		"net_ns_net_exit",
 		"kprobe/net_ns_net_exit",
 		"tg_net_ns_net_exit",
