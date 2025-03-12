@@ -180,6 +180,7 @@ spec:
           - podinfo.cilium.io
           - sandboxpolicies.cilium.io
           - sandboxpoliciesnamespaced.cilium.io
+          - alertrules.cilium.io
           verbs:
           - update
           - get
@@ -204,6 +205,7 @@ spec:
           - podinfo
           - sandboxpolicies
           - sandboxpoliciesnamespaced
+          - alertrules
           verbs:
           - get
           - list
