@@ -144,17 +144,17 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 		}
 		extraArgs := "\n    procfs: /procRootReal"
 		if clusterName := helpers.GetTempKindClusterName(ctx); clusterName != "" {
-			v := o.HelmValues[tetragon.OperatorImageKey]
-			if v != "" {
-				klog.InfoS("Loading image into kind cluster", "cluster", clusterName, "image", v, "helm", tetragon.OperatorImageKey)
-				var err error
-				if ctx, err = envfuncs.LoadDockerImageToCluster(clusterName, v)(ctx, cfg); err != nil {
-					// If the image is not present locally, don't worry about it but
-					// log a message
-					if strings.Contains(err.Error(), "not present locally") {
-						klog.InfoS("Image is not present locally, attempting to install Tetragon regardless", "cluster", clusterName, "image", v, "helm", tetragon.OperatorImageKey)
+			for _, key := range []string{tetragon.OperatorImageKey, tetragon.AgentImageKey} {
+				if v := o.HelmValues[key]; v != "" {
+					klog.InfoS("Loading image into kind cluster", "cluster", clusterName, "image", v, "helm", key)
+					var err error
+					if ctx, err = envfuncs.LoadDockerImageToCluster(clusterName, v)(ctx, cfg); err != nil {
+						// If the image is not present locally, don't worry about it but log a message
+						if strings.Contains(err.Error(), "not present locally") {
+							klog.InfoS("Image is not present locally, attempting to install Tetragon regardless", "cluster", clusterName, "image", v, "helm", key)
+						}
+						return ctx, fmt.Errorf("failed to load image %s into cluster %s: %w", v, clusterName, err)
 					}
-					return ctx, fmt.Errorf("failed to load image %s into cluster %s: %w", v, clusterName, err)
 				}
 			}
 		}
