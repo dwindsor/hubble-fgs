@@ -18,19 +18,25 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
 
 message AttemptResult {
-	bool success = 1;
-	string error = 2;
+  bool success = 1;
+  string error = 2;
 }
 
 message AttemptInfo {
-	string key = 1;
-	string val = 2;
+  string key = 1;
+  string val = 2;
 }
 
 message Attempt {
-	string op = 1;
-	google.protobuf.Timestamp time = 2;
-	google.protobuf.Duration duration = 3;
-	AttemptResult res = 4;
-	repeated AttemptInfo info = 5;
+  string op = 1;
+  google.protobuf.Timestamp time = 2;
+  google.protobuf.Duration duration = 3;
+  AttemptResult res = 4;
+  repeated AttemptInfo info = 5;
+}
+
+message AttemptLog {
+  int32 total = 1;
+  int32 failures = 2;
+  repeated Attempt entries = 3;
 }
