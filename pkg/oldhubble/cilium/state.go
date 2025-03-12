@@ -36,6 +36,8 @@ type State struct {
 
 	// epAdd is a channel used to exchange endpoint events from Cilium
 	endpointEvents chan monitorAPI.AgentNotify
+
+	enableDNSCache bool
 }
 
 // NewCiliumState returns a pointer to an initialized State struct.
@@ -45,6 +47,7 @@ func NewCiliumState(
 	ipCache *ipcache.IPCache,
 	fqdnCache FqdnCache,
 	logger *logrus.Entry,
+	enableDNSCache bool,
 ) *State {
 	return &State{
 		ciliumClient:   ciliumClient,
@@ -54,16 +57,19 @@ func NewCiliumState(
 		logRecord:      make(chan monitor.LogRecordNotify, 100),
 		endpointEvents: make(chan monitorAPI.AgentNotify, 100),
 		log:            logger,
+		enableDNSCache: enableDNSCache,
 	}
 }
 
 // Start starts the server to handle the events sent to the events channel as
 // well as handle events to the EpAdd and EpDel channels.
 func (s *State) Start() {
-	go s.syncEndpoints()
-	go s.syncFQDNCache()
-	go s.consumeEndpointEvents()
-	go s.consumeLogRecordNotifyChannel()
+	if s.IsDNSCacheEnabled() {
+		go s.syncEndpoints()
+		go s.syncFQDNCache()
+		go s.consumeEndpointEvents()
+		go s.consumeLogRecordNotifyChannel()
+	}
 }
 
 // StartMirroringIPCache will obtain an initial IPCache snapshot from Cilium
@@ -108,4 +114,8 @@ func (s *State) GetFQDNCache() FqdnCache {
 // GetIPCache returns ipcache.
 func (s *State) GetIPCache() *ipcache.IPCache {
 	return s.ipcache
+}
+
+func (s *State) IsDNSCacheEnabled() bool {
+	return s.enableDNSCache
 }

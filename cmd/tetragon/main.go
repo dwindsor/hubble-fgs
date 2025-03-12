@@ -507,7 +507,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// start k8s watcher
 	k8sWatcher.Start()
 
-	_, err = cilium.InitCiliumState(ctx, enterpriseOption.Config.EnableCilium)
+	_, err = cilium.InitCiliumState(ctx, enterpriseOption.Config.EnableCilium, enterpriseOption.Config.EnableCiliumDNSCache)
 	if err != nil {
 		return fmt.Errorf("failed to init cilium state: %w", err)
 	}

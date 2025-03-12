@@ -236,7 +236,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	option.Config.EnableK8s = false
 	//todo; enableProcessAncestors := true
 
-	if _, err := cilium.InitCiliumState(ctx, false); err != nil {
+	if _, err := cilium.InitCiliumState(ctx, false, false); err != nil {
 		return err
 	}
 

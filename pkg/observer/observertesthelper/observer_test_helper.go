@@ -32,7 +32,7 @@ var (
 func enterpriseInit() {
 	enterpriseOnce.Do(func() {
 		enterpriseMetricsConfig.InitAllEEMetrics(metricsconfig.GetRegistry())
-		cilium.InitCiliumState(context.Background(), false)
+		cilium.InitCiliumState(context.Background(), false, false)
 	})
 }
 

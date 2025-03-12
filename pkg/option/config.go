@@ -39,6 +39,7 @@ type config struct {
 	EnableSandboxPoliciesCRD bool
 	SandboxPolicies          []string
 	EnableCilium             bool
+	EnableCiliumDNSCache     bool
 
 	DebugX []string
 
@@ -77,6 +78,7 @@ var (
 		EnableDnsDebug:            false,
 		EnableIcmpTracking:        false,
 		EnableCilium:              false,
+		EnableCiliumDNSCache:      false,
 		ProcessCacheStaleInterval: time.Duration(60 * time.Minute),
 		EnableFimDispatcher:       false,
 	}

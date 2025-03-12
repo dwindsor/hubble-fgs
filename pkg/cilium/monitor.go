@@ -83,12 +83,17 @@ func consumeMonitorEvents(ctx context.Context, conn net.Conn, ciliumState *ciliu
 			case monitorAPI.AgentNotifyEndpointCreated,
 				monitorAPI.AgentNotifyEndpointRegenerateSuccess,
 				monitorAPI.AgentNotifyEndpointDeleted:
-				endpointEvents <- an
+				if ciliumState.IsDNSCacheEnabled() {
+					endpointEvents <- an
+				}
 			case monitorAPI.AgentNotifyIPCacheUpserted,
 				monitorAPI.AgentNotifyIPCacheDeleted:
 				ipCacheEvents <- an
 			}
 		case monitorAPI.MessageTypeAccessLog:
+			if !ciliumState.IsDNSCacheEnabled() {
+				continue
+			}
 			// TODO re-think the way this is being done. We are dissecting/
 			//      TypeAccessLog messages here *and* when we are dumping
 			//      them into JSON.

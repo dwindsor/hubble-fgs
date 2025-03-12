@@ -82,7 +82,10 @@ options:
     - name: enable-cilium-api
       default_value: "false"
       usage: |
-        Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache
+        Access Cilium API to associate Tetragon events with Cilium endpoints, DNS cache, and IP cache
+    - name: enable-cilium-dns-cache
+      default_value: "true"
+      usage: Cache Cilium endpoints and DNS cache
     - name: enable-compatibility-syscall64-size-type
       default_value: "false"
       usage: |

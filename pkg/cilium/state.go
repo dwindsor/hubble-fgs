@@ -24,7 +24,7 @@ func GetCiliumState() *cilium.State {
 	return ciliumState
 }
 
-func InitCiliumState(ctx context.Context, enableCiliumAPI bool) (*cilium.State, error) {
+func InitCiliumState(ctx context.Context, enableCiliumAPI bool, enableCiliumDNSCache bool) (*cilium.State, error) {
 	if ciliumState != nil {
 		return ciliumState, nil
 	}
@@ -32,7 +32,9 @@ func InitCiliumState(ctx context.Context, enableCiliumAPI bool) (*cilium.State, 
 		logger.GetLogger().Info("Disabling Cilium API")
 		ciliumState = GetFakeCiliumState()
 	} else {
-		logger.GetLogger().Info("Enabling Cilium API")
+		logger.GetLogger().
+			WithField("Cilium DNS cache enabled", enableCiliumDNSCache).
+			Info("Enabling Cilium API")
 		ciliumClient, err := client.NewClient()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Cilium client: %v", err)
@@ -42,7 +44,9 @@ func InitCiliumState(ctx context.Context, enableCiliumAPI bool) (*cilium.State, 
 			v1.NewEndpoints(),
 			ipcache.New(),
 			fqdncache.New(),
-			logger.GetLogger().WithField("subsystem", "cilium"))
+			logger.GetLogger().WithField("subsystem", "cilium"),
+			enableCiliumDNSCache,
+		)
 		go ciliumState.Start()
 		go HandleMonitorSocket(ctx, ciliumState)
 	}
@@ -55,7 +59,9 @@ func GetFakeCiliumState() *cilium.State {
 		v1.NewEndpoints(),
 		ipcache.New(),
 		fqdncache.New(),
-		logger.GetLogger().WithField("subsystem", "cilium"))
+		logger.GetLogger().WithField("subsystem", "cilium"),
+		false,
+	)
 }
 
 type fakeCiliumClient struct{}

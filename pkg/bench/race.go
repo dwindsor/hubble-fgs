@@ -138,7 +138,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	option.Config.EnableProcessNs = false
 	// todo enableProcessAncestors := false
 
-	if _, err := cilium.InitCiliumState(ctx, false); err != nil {
+	if _, err := cilium.InitCiliumState(ctx, false, false); err != nil {
 		return err
 	}
 

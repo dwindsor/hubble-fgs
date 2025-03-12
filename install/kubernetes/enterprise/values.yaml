@@ -40,6 +40,15 @@ tetragon:
     {"namespace":["", "cilium", "tetragon", "kube-system", "hubble-timescape"]}
   # -- Access Cilium API to associate Tetragon events with Cilium DNS cache.
   enableCiliumAPI: false
+  # -- When tetragon.enableCiliumAPI is set to true, Tetragon accesses Cilium
+  # APIs to miror Cilium endpoints, FQDN cache, and IP cache. Tetragon uses
+  # Cilium endpoints and FQDN cache to associate destination IPs with DNS names,
+  # and IP cache to associate process IPs with pod names. Setting this value to
+  # false disables the mirroring of Cilium endpoints and FQDN cache. You can set
+  # this value to false if you are using Tetragon DNS parser, as Tetragon
+  # maintains its own DNS cache.
+  # This setting has no effect if tetragon.enableCiliumAPI is set to false.
+  enableCiliumDNSCache: true
   # fimRuntimeEndpoint provides a custom container runtime endpoint for FIM (can be used only for containerd or cri-o)
   fimRuntimeEndpoint: ""
   # fimDispatcher provides the option to enable FIM dispatcher when supported (only path-based for now)
