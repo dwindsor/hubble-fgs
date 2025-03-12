@@ -22,7 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 )
 
-func addAlertRule(obj any) {
+func addAlertRule(obj any, rm alerts.RuleManager) {
 	ar := convertToAlertRule(obj)
 
 	if ar == nil {
@@ -30,7 +30,7 @@ func addAlertRule(obj any) {
 		return
 	}
 
-	err := alerts.AddAlertRule(ar)
+	err := rm.AddAlertRule(ar)
 
 	if err != nil {
 		logger.GetLogger().WithError(err).WithFields(logrus.Fields{
@@ -43,7 +43,7 @@ func addAlertRule(obj any) {
 	}
 }
 
-func updateAlertRule(oldObj any, newObj any) {
+func updateAlertRule(oldObj any, newObj any, rm alerts.RuleManager) {
 	oldAr := convertToAlertRule(oldObj)
 	newAr := convertToAlertRule(newObj)
 
@@ -61,7 +61,7 @@ func updateAlertRule(oldObj any, newObj any) {
 
 	// Alert rules are indexed by name, so adding the new alert rule will
 	// overwrite the old one.
-	err := alerts.AddAlertRule(newAr)
+	err := rm.AddAlertRule(newAr)
 
 	if err != nil {
 		logger.GetLogger().WithError(err).WithFields(logrus.Fields{
@@ -74,7 +74,7 @@ func updateAlertRule(oldObj any, newObj any) {
 	}
 }
 
-func deleteAlertRule(obj any) {
+func deleteAlertRule(obj any, rm alerts.RuleManager) {
 	ar := convertToAlertRule(obj)
 
 	if ar == nil {
@@ -82,7 +82,7 @@ func deleteAlertRule(obj any) {
 		return
 	}
 
-	alerts.DeleteAlertRule(ar.GetName())
+	rm.DeleteAlertRule(ar.GetName())
 
 	logger.GetLogger().WithFields(logrus.Fields{
 		"name": ar.GetName(),
@@ -107,7 +107,7 @@ func convertToAlertRule(obj any) *v1alpha1.AlertRule {
 	return nil
 }
 
-func AddAlertRuleInformer(w watcher.Watcher) error {
+func AddAlertRuleInformer(w watcher.Watcher, rm alerts.RuleManager) error {
 	if w == nil {
 		return fmt.Errorf("k8s watcher not initialized")
 	}
@@ -120,13 +120,13 @@ func AddAlertRuleInformer(w watcher.Watcher) error {
 	informer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj any) {
-				addAlertRule(obj)
+				addAlertRule(obj, rm)
 			},
 			UpdateFunc: func(oldObj any, newObj any) {
-				updateAlertRule(oldObj, newObj)
+				updateAlertRule(oldObj, newObj, rm)
 			},
 			DeleteFunc: func(obj any) {
-				deleteAlertRule(obj)
+				deleteAlertRule(obj, rm)
 			}})
 	err := w.AddInformer("AlertRule", informer, nil)
 	if err != nil {

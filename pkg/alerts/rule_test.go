@@ -56,17 +56,15 @@ var anotherAR = &v1alpha1.AlertRule{
 }
 
 func TestAddAlertRule(t *testing.T) {
-	t.Cleanup(func() {
-		rules = map[string]*rule{}
-	})
+	rm := newRuleManager()
 	for i, ar := range []*v1alpha1.AlertRule{exampleAR, anotherAR} {
 		// Add a rule
-		err := AddAlertRule(ar)
+		err := rm.AddAlertRule(ar)
 		assert.NoError(t, err)
-		assert.Len(t, rules, i+1)
+		assert.Len(t, rm.rules, i+1)
 
 		// Check the rule got added correctly
-		rule, ok := rules[ar.GetName()]
+		rule, ok := rm.rules[ar.GetName()]
 		assert.True(t, ok)
 		assert.NotNil(t, rule)
 		assert.NotNil(t, rule.cel)
@@ -77,21 +75,19 @@ func TestAddAlertRule(t *testing.T) {
 }
 
 func TestUpdateAlertRule(t *testing.T) {
-	t.Cleanup(func() {
-		rules = map[string]*rule{}
-	})
+	rm := newRuleManager()
 	// Add a rule
-	AddAlertRule(exampleAR)
-	assert.Len(t, rules, 1)
-	ogCEL := rules[exampleAR.GetName()].cel
+	rm.AddAlertRule(exampleAR)
+	assert.Len(t, rm.rules, 1)
+	ogCEL := rm.rules[exampleAR.GetName()].cel
 
 	// Update the rule
-	err := AddAlertRule(updatedAR)
+	err := rm.AddAlertRule(updatedAR)
 	assert.NoError(t, err)
-	assert.Len(t, rules, 1) // replaced
+	assert.Len(t, rm.rules, 1) // replaced
 
 	// Check the rule got added correctly
-	rule, ok := rules[updatedAR.GetName()]
+	rule, ok := rm.rules[updatedAR.GetName()]
 	assert.True(t, ok)
 	assert.NotNil(t, rule)
 	assert.NotEqual(t, ogCEL, rule.cel)
@@ -102,23 +98,19 @@ func TestUpdateAlertRule(t *testing.T) {
 }
 
 func TestAddNil(t *testing.T) {
-	t.Cleanup(func() {
-		rules = map[string]*rule{}
-	})
-	err := AddAlertRule(nil)
+	rm := newRuleManager()
+	err := rm.AddAlertRule(nil)
 	assert.NoError(t, err)
-	assert.Len(t, rules, 0)
+	assert.Len(t, rm.rules, 0)
 }
 
 func TestDeleteAlertRule(t *testing.T) {
-	t.Cleanup(func() {
-		rules = map[string]*rule{}
-	})
+	rm := newRuleManager()
 	// Add a rule
-	AddAlertRule(exampleAR)
-	assert.Len(t, rules, 1)
+	rm.AddAlertRule(exampleAR)
+	assert.Len(t, rm.rules, 1)
 
 	// Delete the rule
-	DeleteAlertRule(exampleAR.GetName())
-	assert.Len(t, rules, 0)
+	rm.DeleteAlertRule(exampleAR.GetName())
+	assert.Len(t, rm.rules, 0)
 }

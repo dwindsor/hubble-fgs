@@ -22,26 +22,26 @@ import (
 
 func TestEvaluateRules(t *testing.T) {
 	t.Cleanup(func() {
-		rules = map[string]*rule{}
 		option.Config.AlertsExportDir = ""
 	})
+	a := newAlerter(t.Context())
 
 	// Add two alert rules, no JSON export
-	AddAlertRule(exampleAR)
-	AddAlertRule(anotherAR)
+	a.ruleManager.AddAlertRule(exampleAR)
+	a.ruleManager.AddAlertRule(anotherAR)
 	// Set export directory
 	option.Config.AlertsExportDir = t.TempDir()
 	// Add same two alert rules, but with JSON export enabled
 	exampleCopy := exampleAR.DeepCopy()
 	exampleCopy.ObjectMeta.Name = "curl2"
-	AddAlertRule(exampleCopy)
+	a.ruleManager.AddAlertRule(exampleCopy)
 	anotherCopy := anotherAR.DeepCopy()
 	anotherCopy.ObjectMeta.Name = "shell2"
-	AddAlertRule(anotherCopy)
-	assert.Len(t, rules, 4)
+	a.ruleManager.AddAlertRule(anotherCopy)
+	assert.Len(t, a.ruleManager.rules, 4)
 
 	// Evaluate example event against rules - curls should match, shells not
-	err := evaluateRules(t.Context(), exampleEvent)
+	err := a.evaluateRules(t.Context(), exampleEvent)
 	assert.NoError(t, err)
 
 	// Check if alerts JSON files are correctly written

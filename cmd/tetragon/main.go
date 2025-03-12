@@ -452,6 +452,12 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Probe runtime configuration and do not fail on errors
 	obs.UpdateRuntimeConf(option.Config.BpfDir)
 
+	// Initialize alert rule manager
+	var alertsManager alerts.RuleManager
+	if enterpriseOption.Config.EnableAlerts {
+		alertsManager = alerts.NewRuleManager()
+	}
+
 	// Initialize K8s watcher
 	var k8sWatcher watcher.K8sResourceWatcher
 	if option.Config.EnableK8s {
@@ -503,7 +509,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		}
 		// TODO(anna): Add an option to load AlertRules from a file and disable watching CRD.
 		if enterpriseOption.Config.EnableAlerts {
-			err = enterpriseWatcher.AddAlertRuleInformer(k8sWatcher)
+			err = enterpriseWatcher.AddAlertRuleInformer(k8sWatcher, alertsManager)
 			if err != nil {
 				return err
 			}

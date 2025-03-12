@@ -32,11 +32,19 @@ import (
 // server.GetEventsWG is quite tied to the events stream, so reusing it for
 // alerting might be sub-optimal. Refactor if needed.
 type alerter struct {
-	ctx context.Context
+	ruleManager *ruleManager
+	ctx         context.Context
+}
+
+func newAlerter(ctx context.Context) *alerter {
+	return &alerter{
+		ruleManager: newRuleManager(),
+		ctx:         ctx,
+	}
 }
 
 func (a *alerter) Send(event *tetragon.GetEventsResponse) error {
-	err := evaluateRules(a.Context(), event)
+	err := a.evaluateRules(a.Context(), event)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warning("Errors while evaluating event against alert rules.")
 	}
@@ -68,7 +76,7 @@ func (a *alerter) RecvMsg(any) error {
 
 func (a *alerter) Close() error {
 	var errs error
-	for _, r := range rules {
+	for _, r := range a.ruleManager.rules {
 		if r.jsonEncoder != nil {
 			err := r.jsonEncoder.writer.Close()
 			if err != nil {
@@ -81,9 +89,9 @@ func (a *alerter) Close() error {
 
 // This is a very inefficient implementation, as we evaluate every single event
 // against every single rule, regardless of the event type. Optimize as needed.
-func evaluateRules(ctx context.Context, event *tetragon.GetEventsResponse) error {
+func (a *alerter) evaluateRules(ctx context.Context, event *tetragon.GetEventsResponse) error {
 	var errs error
-	for _, r := range rules {
+	for _, r := range a.ruleManager.rules {
 		match, err := filters.EvalCEL(ctx, r.cel, event)
 		if err != nil {
 			errs = errors.Join(errs, fmt.Errorf("failed to evaluate rule CEL expression: %w", err))
@@ -116,7 +124,7 @@ func eventToAlert(event *tetragon.GetEventsResponse, r *rule) *tetragon.Alert {
 }
 
 func StartAlerting(ctx context.Context, server *server.Server) error {
-	a := &alerter{ctx}
+	a := newAlerter(ctx)
 
 	var readyWG sync.WaitGroup
 	var startErr error

@@ -28,9 +28,7 @@ import (
 )
 
 var (
-	cef        = filters.NewCELExpressionFilter(logger.GetLogger())
-	rules      = map[string]*rule{}
-	rulesMutex sync.RWMutex
+	cef = filters.NewCELExpressionFilter(logger.GetLogger())
 )
 
 type rule struct {
@@ -43,7 +41,27 @@ type rule struct {
 	jsonEncoder *jsonEncoder
 }
 
-func AddAlertRule(ar *v1alpha1.AlertRule) error {
+type RuleManager interface {
+	AddAlertRule(ar *v1alpha1.AlertRule) error
+	DeleteAlertRule(name string)
+}
+
+type ruleManager struct {
+	rules map[string]*rule
+	mutex sync.RWMutex
+}
+
+func NewRuleManager() RuleManager {
+	return newRuleManager()
+}
+
+func newRuleManager() *ruleManager {
+	return &ruleManager{
+		rules: make(map[string]*rule),
+	}
+}
+
+func (r *ruleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 	if ar == nil {
 		return nil
 	}
@@ -65,8 +83,8 @@ func AddAlertRule(ar *v1alpha1.AlertRule) error {
 		encoder = &jsonEncoder{fh}
 	}
 
-	rulesMutex.Lock()
-	rules[name] = &rule{
+	r.mutex.Lock()
+	r.rules[name] = &rule{
 		cel:         celProgram,
 		name:        name,
 		message:     ar.Spec.Message,
@@ -74,10 +92,12 @@ func AddAlertRule(ar *v1alpha1.AlertRule) error {
 		severity:    ar.Spec.Severity,
 		jsonEncoder: encoder,
 	}
-	rulesMutex.Unlock()
+	r.mutex.Unlock()
 	return nil
 }
 
-func DeleteAlertRule(name string) {
-	delete(rules, name)
+func (r *ruleManager) DeleteAlertRule(name string) {
+	r.mutex.Lock()
+	delete(r.rules, name)
+	r.mutex.Unlock()
 }
