@@ -171,9 +171,6 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 		if v, ok := o.HelmValues["tetragon.enableSandboxpolicies"]; ok {
 			agentCMMap["enable-sandboxpolicies"] = v
 		}
-		if v, ok := o.HelmValues["tetragon.enableSandboxpolicies"]; ok {
-			agentCMMap["enable-tracing-policy-crd"] = v
-		}
 		if v, ok := o.HelmValues["tetragon.extraArgs.fim-fifo-path"]; ok {
 			extraArgs += "\n    fim-fifo-path: " + v
 		}
