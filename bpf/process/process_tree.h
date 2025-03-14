@@ -547,6 +547,11 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		return SK_DROP;
 	}
 
+	if (dest->deny) {
+		__sync_fetch_and_add(&dest->tx_drops, len);
+		return SK_DROP;
+	}
+
 	return SK_PASS;
 }
 
@@ -581,6 +586,11 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	if (!dest)
 		return SK_PASS;
 	__sync_fetch_and_add(&dest->rx_bytes, len);
+
+	if (dest->deny) {
+		__sync_fetch_and_add(&dest->tx_drops, len);
+		return SK_DROP;
+	}
 
 	return SK_PASS;
 }

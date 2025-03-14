@@ -177,9 +177,6 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 		return SK_PASS;
 	}
 
-	if (socket->deny)
-		return SK_DROP;
-
 	probe_read_kernel(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	probe_read_kernel(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 	probe_read_kernel(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
@@ -310,9 +307,9 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 	c = *cookie;
 	socket = lookup_tcpsocketmap(&c);
 	if (socket) {
+		process_socketmap_recv(socket, skb);
 		if (socket->deny)
 			return SK_DROP;
-		process_socketmap_recv(socket, skb);
 	}
 
 	/* Packet has at least enough space for the Timestamp IP Option,
