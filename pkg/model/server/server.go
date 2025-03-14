@@ -325,10 +325,10 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		stats := &tetragon.DestinationStats{
 			TxBytes: dstVal.TxBytes,
 			RxBytes: dstVal.RxBytes,
+			TxDrops: dstVal.TxDrops,
 		}
 		// Report quota-related stats if TxLimit is set.
 		if dstVal.TxLimit != 0 {
-			stats.TxDrops = dstVal.TxDrops
 			stats.TxLimit = dstVal.TxLimit
 			stats.TxQuota = dstVal.TxQuota
 			stats.KtimeLastReset = ktime.ToProto(dstVal.KtimeLastReset)
