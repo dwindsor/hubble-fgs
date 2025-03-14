@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -95,6 +96,17 @@ func RemoveNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) error
 	}
 
 	return progRemoveNetworkPolicy(name, src, d)
+}
+
+func RemoveNetworkPolicySet(uid string, policy []*types.TetragonNetworkPolicy) error {
+	for i, p := range policy {
+		uidName := fmt.Sprintf("%s_%d", uid, i)
+		err := RemoveNetworkPolicy(uidName, p)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func __RemoveMatchLabelNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, error) {
@@ -335,6 +347,17 @@ func CreateMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) er
 	// 3. host scope, no namespace
 	if len(policy.Subject.MatchLabelsEqual) > 0 {
 		return CreateSrcMatchLabelsPolicy(uid, policy)
+	}
+	return nil
+}
+
+func CreateMatchLabelsPolicySet(uid string, policy []*types.TetragonNetworkPolicy) error {
+	for i, p := range policy {
+		uidName := fmt.Sprintf("%s_%d", uid, i)
+		err := CreateMatchLabelsPolicy(uidName, p)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
