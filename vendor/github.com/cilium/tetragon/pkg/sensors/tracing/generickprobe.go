@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Tetragon
 
+//go:build !windows
+
 package tracing
 
 import (
@@ -23,6 +25,8 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cgtracker"
+	"github.com/cilium/tetragon/pkg/config"
+	conf "github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/eventhandler"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/idtable"
@@ -54,33 +58,6 @@ func init() {
 	}
 	sensors.RegisterProbeType("generic_kprobe", kprobe)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_GENERIC_KPROBE, handleGenericKprobe)
-}
-
-const (
-	CharBufErrorENOMEM      = -1
-	CharBufErrorPageFault   = -2
-	CharBufErrorTooLarge    = -3
-	CharBufSavedForRetprobe = -4
-
-	// The following values could be fine tuned if either those feature use too
-	// much kernel memory when enabled.
-	stackTraceMapMaxEntries = 32768
-	ratelimitMapMaxEntries  = 32768
-	fdInstallMapMaxEntries  = 32000
-	enforcerMapMaxEntries   = 32768
-	overrideMapMaxEntries   = 32768
-)
-
-func kprobeCharBufErrorToString(e int32) string {
-	switch e {
-	case CharBufErrorENOMEM:
-		return "CharBufErrorENOMEM"
-	case CharBufErrorTooLarge:
-		return "CharBufErrorBufTooLarge"
-	case CharBufErrorPageFault:
-		return "CharBufErrorPageFault"
-	}
-	return "CharBufErrorUnknown"
 }
 
 type kprobeSelectors struct {
@@ -296,7 +273,7 @@ func createMultiKprobeSensor(polInfo *policyInfo, multiIDs []idtable.EntryID, ha
 
 	loadProgName := "bpf_multi_kprobe_v53.o"
 	loadProgRetName := "bpf_multi_retkprobe_v53.o"
-	if kernels.EnableV61Progs() {
+	if conf.EnableV61Progs() {
 		loadProgName = "bpf_multi_kprobe_v61.o"
 		loadProgRetName = "bpf_multi_retkprobe_v61.o"
 	} else if kernels.MinKernelVersion("5.11") {
@@ -351,12 +328,12 @@ func createMultiKprobeSensor(polInfo *policyInfo, multiIDs []idtable.EntryID, ha
 	maps = append(maps, stackTraceMap)
 	data.stackTraceMap = stackTraceMap
 
-	if kernels.EnableLargeProgs() {
+	if conf.EnableLargeProgs() {
 		socktrack := program.MapBuilderSensor("socktrack_map", load)
 		maps = append(maps, socktrack)
 	}
 
-	if kernels.EnableLargeProgs() {
+	if conf.EnableLargeProgs() {
 		ratelimitMap := program.MapBuilderSensor("ratelimit_map", load)
 		if has.rateLimit {
 			ratelimitMap.SetMaxEntries(ratelimitMapMaxEntries)
@@ -511,7 +488,7 @@ func preValidateKprobes(name string, kprobes []v1alpha1.KProbeSpec, lists []v1al
 			}
 		}
 
-		if selectors.HasSigkillAction(f) && !kernels.EnableLargeProgs() {
+		if selectors.HasSigkillAction(f) && !conf.EnableLargeProgs() {
 			return fmt.Errorf("sigkill action requires kernel >= 5.3.0")
 		}
 
@@ -711,7 +688,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 	config := &api.EventConfig{}
 	config.PolicyID = uint32(in.policyID)
 	if len(f.ReturnArgAction) > 0 {
-		if !kernels.EnableLargeProgs() {
+		if !conf.EnableLargeProgs() {
 			return errFn(fmt.Errorf("ReturnArgAction requires kernel >=5.3"))
 		}
 		config.ArgReturnAction = selectors.ActionTypeFromString(f.ReturnArgAction)
@@ -785,7 +762,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 			if argType != gt.GenericCharBuffer {
 				logger.GetLogger().Warnf("maxData flag is ignored (supported for char_buf type)")
 			}
-			if !kernels.EnableLargeProgs() {
+			if !conf.EnableLargeProgs() {
 				logger.GetLogger().Warnf("maxData flag is ignored (supported from large programs)")
 			}
 		}
@@ -929,7 +906,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 func createKprobeSensorFromEntry(polInfo *policyInfo, kprobeEntry *genericKprobe,
 	progs []*program.Program, maps []*program.Map, has hasMaps) ([]*program.Program, []*program.Map) {
 
-	loadProgName, loadProgRetName := kernels.GenericKprobeObjs()
+	loadProgName, loadProgRetName := config.GenericKprobeObjs()
 	isSecurityFunc := strings.HasPrefix(kprobeEntry.funcName, "security_")
 
 	pinProg := kprobeEntry.funcName
@@ -997,12 +974,12 @@ func createKprobeSensorFromEntry(polInfo *policyInfo, kprobeEntry *genericKprobe
 	maps = append(maps, stackTraceMap)
 	kprobeEntry.data.stackTraceMap = stackTraceMap
 
-	if kernels.EnableLargeProgs() {
+	if conf.EnableLargeProgs() {
 		socktrack := program.MapBuilderSensor("socktrack_map", load)
 		maps = append(maps, socktrack)
 	}
 
-	if kernels.EnableLargeProgs() {
+	if conf.EnableLargeProgs() {
 		ratelimitMap := program.MapBuilderSensor("ratelimit_map", load)
 		if has.rateLimit {
 			// similarly as for stacktrace, we expand the max size only if
@@ -1068,7 +1045,7 @@ func createKprobeSensorFromEntry(polInfo *policyInfo, kprobeEntry *genericKprobe
 		}
 		maps = append(maps, fdinstall)
 
-		if kernels.EnableLargeProgs() {
+		if conf.EnableLargeProgs() {
 			socktrack := program.MapBuilderSensor("socktrack_map", loadret)
 			maps = append(maps, socktrack)
 		}
@@ -1191,11 +1168,6 @@ func loadGenericKprobeSensor(bpfDir string, load *program.Program, maps []*progr
 	return fmt.Errorf("invalid loadData type: expecting idtable.EntryID/[] and got: %T (%v)",
 		load.LoaderData, load.LoaderData)
 }
-
-var errParseStringSize = errors.New("error parsing string size from binary")
-
-// this is from bpf/process/types/basic.h 'MAX_STRING'
-const maxStringSize = 4096
 
 func getUrl(url string) {
 	// We fire and forget URLs, and we don't care if they hit or not.

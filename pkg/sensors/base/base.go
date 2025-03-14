@@ -16,6 +16,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/errmetrics"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ksyms"
@@ -193,11 +194,11 @@ func GetDefaultPrograms() []*program.Program {
 	}
 	if EnableV611Progs() {
 		progs = append(progs, ExecveV611)
-	} else if kernels.EnableV61Progs() {
+	} else if config.EnableV61Progs() {
 		progs = append(progs, ExecveV61)
 	} else if utils.EnableV511Progs() {
 		progs = append(progs, ExecveV511)
-	} else if kernels.EnableLargeProgs() {
+	} else if config.EnableLargeProgs() {
 		progs = append(progs, ExecveV53)
 	} else {
 		progs = append(progs, Execve)
