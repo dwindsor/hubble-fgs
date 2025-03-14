@@ -488,8 +488,11 @@ func qosSpecToPolicy(p *v1alpha1.QuotaPolicySpec, resetLimits string) *types.Tet
 		MatchLabelsEqual: mlEqual.GetLabels(),
 		Workload:         workload,
 	}
-	dest := types.TetragonNetworkDestination{
+	fqdn := &types.TetragonNetworkFQDN{
 		Names: p.Destination.Dns,
+	}
+	dest := types.TetragonNetworkDestination{
+		FQDN: fqdn,
 	}
 	quota := &types.TetragonQuotaAction{
 		Quota: p.Quota,

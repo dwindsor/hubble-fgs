@@ -91,7 +91,7 @@ func (p *BpfProgrammer) AddNetworkPolicy(src *types.ProcessTreeKey,
 		denyVal = uint64(1)
 	}
 
-	for _, entry := range d.Names {
+	for _, entry := range d.FQDN.Names {
 		ep := &endpoint.Endpoint{
 			Type: endpoint.DnsType,
 			Dns:  entry,
@@ -115,7 +115,7 @@ func (p *BpfProgrammer) AddNetworkPolicy(src *types.ProcessTreeKey,
 		"self":   src.Self,
 		"quota":  quotaBytes,
 		"reset":  a.QuotaAction,
-		"dest":   strings.Join(d.Names, " "),
+		"dest":   strings.Join(d.FQDN.Names, " "),
 	}).Info("TCP quota added")
 	return nil
 }
@@ -132,7 +132,7 @@ func (p *BpfProgrammer) RemoveNetworkPolicy(src *types.ProcessTreeKey, d *types.
 	}
 	defer dstMap.Close()
 
-	for _, entry := range d.Names {
+	for _, entry := range d.FQDN.Names {
 		ep := &endpoint.Endpoint{
 			Type: endpoint.DnsType,
 			Dns:  entry,
@@ -151,7 +151,7 @@ func (p *BpfProgrammer) RemoveNetworkPolicy(src *types.ProcessTreeKey, d *types.
 		"Policy": p.Del,
 		"cgid":   src.CgroupId,
 		"self":   src.Self,
-		"dest":   strings.Join(d.Names, " "),
+		"dest":   strings.Join(d.FQDN.Names, " "),
 	}).Info("TCP quota removed")
 	return nil
 

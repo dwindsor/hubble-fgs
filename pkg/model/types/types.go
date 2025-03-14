@@ -109,8 +109,17 @@ type TetragonNetworkSubject struct {
 	Workload         TetragonWorkloadNetworkSubject
 }
 
-type TetragonNetworkDestination struct {
+type TetragonNetworkFQDN struct {
 	Names []string
+}
+
+type TetragonNetworkLabels struct {
+	Equal map[string]string
+}
+
+type TetragonNetworkDestination struct {
+	FQDN   *TetragonNetworkFQDN
+	Labels TetragonNetworkLabels
 }
 
 type TetragonQuotaAction struct {
