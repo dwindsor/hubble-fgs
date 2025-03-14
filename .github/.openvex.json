@@ -1,35 +1,50 @@
 {
   "@context": "https://openvex.dev/ns/v0.2.0",
-  "author": "Isovalent Security Team",
-  "role": "vendor",
-  "timestamp": "2023-11-03T14:14:12.004221+00:00",
+  "@id": "merged-vex-29507518cb95701ee44ca2d1a6a29928ee93ab7c9ca46dbecb8be84795459065",
+  "author": "Unknown Author",
+  "timestamp": "2025-03-14T18:59:58.0380209+01:00",
   "version": 1,
   "statements": [
-     {
-       "vulnerability": {
-         "name": "GHSA-7p9f-6x8j-gxxp"
-       },
-       "products": [
-         {
-           "@id": "pkg:oci/tetragon-ci",
-           "subcomponents": [
-             {
-                "@id": "pkg:golang/github.com/cri-o/cri-o"
-             }
-           ]
-         },
-         {
-           "@id": "pkg:oci/hubble-enterprise-ci",
-           "subcomponents": [
-             {
-                "@id": "pkg:golang/github.com/cri-o/cri-o"
-             }
-           ]
-         }
-       ],
-       "status": "not_affected",
-       "justification": "vulnerable_code_not_in_execute_path",
-       "status_notes": "Tetragon does not use the affected functionality"
-     }
+    {
+      "vulnerability": {
+        "name": "GHSA-7p9f-6x8j-gxxp"
+      },
+      "timestamp": "2023-11-03T14:14:12.004221Z",
+      "products": [
+        {
+          "@id": "pkg:oci/tetragon-ci",
+          "subcomponents": [
+            {
+              "@id": "pkg:golang/github.com/cri-o/cri-o"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:oci/hubble-enterprise-ci",
+          "subcomponents": [
+            {
+              "@id": "pkg:golang/github.com/cri-o/cri-o"
+            }
+          ]
+        }
+      ],
+      "status": "not_affected",
+      "status_notes": "Tetragon does not use the affected functionality",
+      "justification": "vulnerable_code_not_in_execute_path"
+    },
+    {
+      "vulnerability": {
+        "name": "GHSA-hp5j-2585-qx6g"
+      },
+      "timestamp": "2025-03-14T18:58:57.819664714+01:00",
+      "products": [
+        {
+          "@id": "pkg:oci/tetragon-ci"
+        }
+      ],
+      "status": "not_affected",
+      "status_notes": "Tetragon does not use the affected functionality",
+      "justification": "vulnerable_code_not_in_execute_path"
+    }
   ]
 }
