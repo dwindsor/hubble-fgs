@@ -4,7 +4,6 @@ package dns
 
 import (
 	"fmt"
-	"strconv"
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -182,28 +181,6 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 		Self:     0,
 		Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 	}, nil
-}
-
-func quotaToNs(reset string) (uint64, error) {
-	var mult uint64
-
-	specifier := reset[len(reset)-1:]
-	if specifier == "m" {
-		mult = 60000000000
-	} else if specifier == "h" {
-		mult = 3600000000000
-	} else if specifier == "s" {
-		mult = 1000000000
-	} else {
-		return 0, fmt.Errorf("unknown reset specifier %s", specifier)
-	}
-	time := reset[0 : len(reset)-1]
-	resetNS, err := strconv.ParseUint(time, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	resetNS *= mult
-	return resetNS, nil
 }
 
 func AddMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
