@@ -39,6 +39,11 @@ popd
 # get the new sha of OSS
 new_sha=$(git submodule status modules/tetragon-oss | awk '{ print $1 }' | sed -e 's/^\+//')
 
+if [ "$old_sha" = "$new_sha" ]; then
+	echo "OSS in sync, nothing to do"
+	exit 0
+fi
+
 # create a temp file for the log message
 outf=$(mktemp oss-update.log.XXXXX)
 trap 'rm -f -- "$outf"' EXIT
