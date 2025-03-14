@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
@@ -12,22 +12,24 @@ type LabelSet struct {
 	Name   string
 	Label  map[string]string
 	Policy *types.TetragonNetworkPolicy
-	EPPods []*v1alpha1.PodInfo
+	// union?
+	Endpoints []*endpoint.Endpoint
+	Subjects  []*types.ProcessTreeKey
 }
 
-func (l LabelSet) GetLabels() map[string]string {
+func (l *LabelSet) GetLabels() map[string]string {
 	return l.Label
 }
 
-func (l LabelSet) GetPolicy() *types.TetragonNetworkPolicy {
+func (l *LabelSet) GetPolicy() *types.TetragonNetworkPolicy {
 	return l.Policy
 }
 
-func (l LabelSet) Size() int {
+func (l *LabelSet) Size() int {
 	return len(l.Label)
 }
 
-func (l LabelSet) Subset(set map[string]string) bool {
+func (l *LabelSet) Subset(set map[string]string) bool {
 	for k, v := range l.Label {
 		value, ok := set[k]
 		if !ok {
@@ -41,7 +43,7 @@ func (l LabelSet) Subset(set map[string]string) bool {
 	return true
 }
 
-func (l LabelSet) ParseEquals(ml []string) {
+func (l *LabelSet) ParseEquals(ml []string) {
 	for _, s := range ml {
 		e := strings.Split(s, "=")
 		if len(e) != 2 {
@@ -49,6 +51,14 @@ func (l LabelSet) ParseEquals(ml []string) {
 		}
 		l.Label[e[0]] = e[1]
 	}
+}
+
+func (l *LabelSet) AddEndpoint(ep *endpoint.Endpoint) {
+	l.Endpoints = append(l.Endpoints, ep)
+}
+
+func (l *LabelSet) AddSubject(s *types.ProcessTreeKey) {
+	l.Subjects = append(l.Subjects, s)
 }
 
 type PolicyList map[string]*LabelSet
@@ -62,12 +72,12 @@ func (policy PolicyList) Exists(l *LabelSet) bool {
 	return false
 }
 
-func (policy PolicyList) AddPod(name string, epPod *v1alpha1.PodInfo) error {
+func (policy PolicyList) AddPod(name string, ep *endpoint.Endpoint) error {
 	p, ok := policy[name]
 	if !ok {
 		return fmt.Errorf("Policy name (%s) does not exist", name)
 	}
-	p.EPPods = append(p.EPPods, epPod)
+	p.Endpoints = append(p.Endpoints, ep)
 	return nil
 }
 
@@ -83,7 +93,7 @@ func (policy PolicyList) Collection(l *LabelSet) []*LabelSet {
 }
 
 // Rule for merging quota: Consume policy with smallest bandwidth
-func (policy PolicyList) MergedCollection(l *LabelSet) *LabelSet {
+func (policy *PolicyList) MergedCollection(l *LabelSet) *LabelSet {
 	var selectedQOS *LabelSet
 	set := policy.Collection(l)
 

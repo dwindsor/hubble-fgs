@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestMain(m *testing.M) {
@@ -252,22 +251,18 @@ func TestPodAdd(t *testing.T) {
 	match := p.Exists(s)
 	assert.True(t, match, "keyset should exist")
 
-	obj := v1alpha1.WorkloadObjectMeta{
-		Name:      "workloadTest",
+	epPod1 := &endpoint.Endpoint{
+		Type:      endpoint.PodType,
+		Kind:      "kindTest",
 		Namespace: "workloadNamespace",
-	}
-	ty := metav1.TypeMeta{
-		Kind: "kindTest",
+		Name:      "workloadTest1",
 	}
 
-	epPod1 := &v1alpha1.PodInfo{
-		WorkloadType:   ty,
-		WorkloadObject: obj,
-	}
-
-	epPod2 := &v1alpha1.PodInfo{
-		WorkloadType:   ty,
-		WorkloadObject: obj,
+	epPod2 := &endpoint.Endpoint{
+		Type:      endpoint.PodType,
+		Kind:      "kindTest",
+		Namespace: "workloadNamespace",
+		Name:      "workloadTest2",
 	}
 
 	err := p.AddPod(name, epPod1)
@@ -276,7 +271,7 @@ func TestPodAdd(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, ls.Name, name)
 	assert.Equal(t, ls.Policy, netpol)
-	assert.Equal(t, 1, len(ls.EPPods))
+	assert.Equal(t, 1, len(ls.Endpoints))
 
 	err = p.AddPod(name, epPod2)
 	ls, ok = p[name]
@@ -284,7 +279,7 @@ func TestPodAdd(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, ls.Name, name)
 	assert.Equal(t, ls.Policy, netpol)
-	assert.Equal(t, 2, len(ls.EPPods))
+	assert.Equal(t, 2, len(ls.Endpoints))
 
 	p.Flush()
 }

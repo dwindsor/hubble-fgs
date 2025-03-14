@@ -47,20 +47,21 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 		x := strings.Split(p, ":")
 		assert.Equal(t, len(x), 4)
 
-		parsedPolicy := testMatchLabelsPolicy(x[0], x[1])
+		parsedPolicy := testMatchSrcLabelsPolicy(x[0], x[1])
 		assert.NotNil(t, parsedPolicy)
 
 		policyMap[x[0]] = parsedPolicy
 
-		createMatchLabelsPolicy(x[0], parsedPolicy)
+		CreateSrcMatchLabelsPolicy(x[0], parsedPolicy)
+		CreateDstMatchLabelsPolicy(x[0], parsedPolicy)
 	}
 
 	for _, pod := range podML {
 		x := strings.Split(pod, ":")
 		assert.Equal(t, len(x), 2)
 
-		p := testPod("testNamespace", x[0], "Pod", x[1])
-		CheckPodAdd(p)
+		p := testPod(t, "100", "testNamespace", x[0], "testKind", x[1])
+		PodAdd(p, true)
 	}
 
 	for _, c := range check {
@@ -69,8 +70,8 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 
 		policy := matchLabelPolicy[x[0]]
 		found := false
-		for _, pod := range policy.EPPods {
-			if pod.WorkloadObject.Name == x[1] {
+		for _, s := range policy.Subjects {
+			if s.CgroupId == 0x1 {
 				found = true
 				break
 			}
