@@ -8,7 +8,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
@@ -29,20 +28,8 @@ var (
 	matchLabelPolicy     matchLabels.PolicyList = make(map[string]*matchLabels.LabelSet)
 	queueMatchLabelsLock                        = sync.Mutex{}
 
-	// QuotasDNSDomainMappings stores the mappings between the domain and
-	// their ID generated after parsing a quota policy. So that we can
-	// initialize them once the TCP, UDP, and DNS sensors are online.
-	QuotasInitDNSDomainMappings = map[endpoint.Endpoint]uint64{}
-
-	// dnsDomainMap is used to bring DNS/ID mappings up to date at runtime.
-	dnsDomainMap = dnsparser.DomainMap{}
-
 	// Programmer for BPF dataplane
 	prog datapath.Interface = &datapath.BpfProgrammer{}
-)
-
-const (
-	destinationEndpointMap = "destination_endpoint_map"
 )
 
 func createPodEndpoint(pod *v1alpha1.PodInfo) *endpoint.Endpoint {

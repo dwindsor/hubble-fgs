@@ -30,7 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/model/dns"
+	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
 	"github.com/isovalent/hubble-fgs/pkg/model/policy"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
@@ -259,7 +259,7 @@ var (
 
 func ConfigureMaps() error {
 	ConfigureTCPDisableEvents(DisableConnect, DisableClose, DisableAccept, DisableListen)
-	err := configureQuotasDNSMaps(dns.QuotasInitDNSDomainMappings)
+	err := configureQuotasDNSMaps(datapath.QuotasInitDNSDomainMappings)
 	if err != nil {
 		return fmt.Errorf("failed to configure quotas DNS maps: %w", err)
 	}
