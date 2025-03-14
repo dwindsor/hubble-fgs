@@ -53,7 +53,7 @@ func createPodSrcKey(pod *v1alpha1.PodInfo) (*types.ProcessTreeKey, error) {
 //
 // So we are scaling with the hash operation and (2 * # policy * avg(label length)
 // roughly. Run ./go test --test.bench -test.run BenchPodRemove to get a real idea.
-func PodRemove(pod *v1alpha1.PodInfo) (int, error) {
+func PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
 	var records []*record.DatapathRecord
 
 	ml := &matchLabels.LabelSet{
@@ -83,6 +83,10 @@ func PodRemove(pod *v1alpha1.PodInfo) (int, error) {
 				}
 			}
 		}
+	}
+
+	if !local {
+		return prog.RemoveRecords(records)
 	}
 
 	// Remove datapath entries with pod -> dsts. This requires two steps.
@@ -178,7 +182,7 @@ func SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet) []*record.Datap
 	return records
 }
 
-func __PodAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
+func __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*record.DatapathRecord, error) {
 	ml := &matchLabels.LabelSet{
 		Label: epPod.ObjectMeta.Labels,
 	}
@@ -191,6 +195,10 @@ func __PodAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 	}
 
 	epRecords := EndpointAdd(ep, ml)
+
+	if !local {
+		return epRecords, nil
+	}
 
 	// tbd fold this into policy xlate layer
 	if err := checkWorkloadQuotaPolicy(epPod); err != nil {
@@ -212,8 +220,8 @@ func __PodAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 }
 
 // Top level handler to add pod and calculate tetragon network policy
-func PodAdd(epPod *v1alpha1.PodInfo) error {
-	records, err := __PodAdd(epPod)
+func PodAdd(epPod *v1alpha1.PodInfo, local bool) error {
+	records, err := __PodAdd(epPod, local)
 	if err != nil {
 		return err
 	}

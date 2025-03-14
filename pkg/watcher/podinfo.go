@@ -47,7 +47,8 @@ func podInfoIPIndexFunc(obj interface{}) ([]string, error) {
 }
 
 func AddPodInfoInformer(w oss.Watcher) error {
-	if w == nil {
+	realK8sWatcher := w.(*oss.K8sWatcher)
+	if realK8sWatcher == nil {
 		return fmt.Errorf("k8s watcher not initialized")
 	}
 	factory := w.GetCRDInformerFactory()
@@ -73,8 +74,12 @@ func AddPodInfoInformer(w oss.Watcher) error {
 				case *v1alpha1.PodInfo:
 					c := endpoint.Get()
 					logger.GetLogger().Debug("Add Pod: %v", t)
+					isLocal := false
+					if _, err := realK8sWatcher.FindPod(string(t.UID)); err != nil {
+						isLocal = true
+					}
 					c.AddIpPodMap(t)
-					dns.PodAdd(t)
+					dns.PodAdd(t, isLocal)
 				}
 			},
 			UpdateFunc: func(old interface{}, _ interface{}) {
