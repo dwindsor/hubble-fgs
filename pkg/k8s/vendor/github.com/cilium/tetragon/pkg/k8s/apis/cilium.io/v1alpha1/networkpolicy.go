@@ -12,7 +12,30 @@ package v1alpha1
 
 import (
 	slimv1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/meta/v1"
+	ciliumio "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	// Tetragon Network Policy (TNP)
+
+	// TNPPluralName is the plural name of Cilium Tracing Policy
+	TNPPluralName = "tetragonnetworkpolicies"
+
+	// TPKindDefinition is the kind name of Cilium Tracing Policy
+	TNPKindDefinition = "TetragonNetworkPolicy"
+
+	// TPName is the full name of Cilium Egress NAT Policy
+	TNPName = TPPluralName + "." + ciliumio.GroupName
+
+	// TPNamespacedPluralName is the plural name of Cilium Tracing Policy
+	TNPNamespacedPluralName = "tetragonnetworkpoliciesnamespaced"
+
+	// TPNamespacedName
+	TNPNamespacedName = TPNamespacedPluralName + "." + ciliumio.GroupName
+
+	// TPKindDefinition is the kind name of Cilium Tracing Policy
+	TNPNamespacedKindDefinition = "TetragonNetworkPolicyNamespaced"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -89,8 +112,10 @@ type NetworkDestinationWorkload struct {
 }
 
 type NetworkDestinationPorts struct {
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=TCP;UDP
-	Protocol []string `json:"protocol"`
+	// +kubebuilder:default=TCP
+	Protocol string `json:"protocol"`
 	// +kubebuilder:validation:Optional
 	Ports []uint32 `json:"ports,omitempty"`
 }

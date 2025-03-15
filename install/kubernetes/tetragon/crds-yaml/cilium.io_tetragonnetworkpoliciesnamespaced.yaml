@@ -147,14 +147,11 @@ spec:
                                   type: integer
                                 type: array
                               protocol:
+                                default: TCP
                                 enum:
                                 - TCP
                                 - UDP
-                                items:
-                                  type: string
-                                type: array
-                            required:
-                            - protocol
+                                type: string
                             type: object
                           workload:
                             properties:
