@@ -45,14 +45,14 @@ rules:
     resources:
       - customresourcedefinitions
     resourceNames:
-      - tetragonnetworkpolicies.cilium.io
-      - tetragonnetworkpoliciesnamespaced.cilium.io
       - tracingpolicies.cilium.io
       - tracingpoliciesnamespaced.cilium.io
       - podinfo.cilium.io
       - sandboxpolicies.cilium.io
       - sandboxpoliciesnamespaced.cilium.io
       - alertrules.cilium.io
+      - tetragonnetworkpolicies.cilium.io
+      - tetragonnetworkpoliciesnamespaced.cilium.io
     verbs:
       - update
       - get

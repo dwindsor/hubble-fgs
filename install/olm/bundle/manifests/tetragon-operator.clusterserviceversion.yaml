@@ -181,6 +181,8 @@ spec:
           - sandboxpolicies.cilium.io
           - sandboxpoliciesnamespaced.cilium.io
           - alertrules.cilium.io
+          - tetragonnetworkpolicies.cilium.io
+          - tetragonnetworkpoliciesnamespaced.cilium.io
           verbs:
           - update
           - get
@@ -206,6 +208,8 @@ spec:
           - sandboxpolicies
           - sandboxpoliciesnamespaced
           - alertrules
+          - tetragonnetworkpolicies
+          - tetragonnetworkpoliciesnamespaced
           verbs:
           - get
           - list
