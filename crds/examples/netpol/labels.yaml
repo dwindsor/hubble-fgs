@@ -1,0 +1,19 @@
+apiVersion: cilium.io/v1alpha1
+kind: TetragonNetworkPolicy
+metadata:
+  name: "example-label-segmentation"
+  annotations:
+    author: "IsovalentQATeam"
+spec:
+  podSelector:
+    matchLabels:
+      class: "xwing"
+  rules:
+  - hook: "connect"
+    action: "allow"
+    destination:
+    - labels:
+        matchLabels: ["org=empire"]
+      action: "deny"
+      ports:
+        protocol: ["TCP","UDP"]
