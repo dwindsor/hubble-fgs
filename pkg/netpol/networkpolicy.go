@@ -34,7 +34,7 @@ func addTetragonNetworkPolicy(obj any) {
 	case *v1alpha1.TetragonNetworkPolicy:
 		name = np.ObjectMeta.Name
 		crd = np
-		err, policy = ToTetragonNetworkPolicy(np)
+		policy, err = ToTetragonNetworkPolicy(np)
 		if err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"network-policy-name": np.ObjectMeta.Name,
@@ -45,7 +45,7 @@ func addTetragonNetworkPolicy(obj any) {
 	case *v1alpha1.TetragonNetworkPolicyNamespaced:
 		name = np.ObjectMeta.Name
 		crdNS = np
-		err, policy = ToTetragonNetworkPolicyNamespaced(np)
+		policy, err = ToTetragonNetworkPolicyNamespaced(np)
 		if err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"network-policy-name":      np.ObjectMeta.Name,

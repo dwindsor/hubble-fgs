@@ -36,6 +36,7 @@ import (
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
+	"github.com/isovalent/hubble-fgs/pkg/netpol"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
@@ -514,6 +515,10 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 				return err
 			}
 		}
+		err = netpol.AddTetragonNetworkPolicyInformer(ctx, k8sWatcher)
+		if err != nil {
+			return err
+		}
 	} else {
 		log.Info("Disabling Kubernetes API")
 		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
@@ -653,6 +658,16 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if len(option.Config.TracingPolicy) > 0 {
 		err = addTracingPolicy(ctx, option.Config.TracingPolicy)
 		if err != nil {
+			return fmt.Errorf("add TracingPolicy failed: %w", err)
+		}
+
+		err = netpol.LoadTNPFromFile(ctx, option.Config.TracingPolicy)
+		if err != nil {
+			return fmt.Errorf("add TetragonNetworkPolicy failed: %w", err)
+		}
+
+		err = netpol.LoadTNPFromDir(ctx, option.Config.TracingPolicy)
+		if err != nil {
 			return err
 		}
 	}
@@ -703,6 +718,8 @@ func waitCRDs(config *rest.Config) error {
 	}
 
 	crds[client.AlertRuleCRD.ResName] = struct{}{}
+	crds[client.TetragonNetworkPolicyCRD.ResName] = struct{}{}
+	crds[client.TetragonNetworkPolicyNamespacedCRD.ResName] = struct{}{}
 
 	if len(crds) == 0 {
 		log.Info("No CRDs are enabled")
