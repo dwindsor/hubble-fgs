@@ -89,8 +89,10 @@ type NetworkDestinationWorkload struct {
 }
 
 type NetworkDestinationPorts struct {
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=TCP;UDP
-	Protocol []string `json:"protocol"`
+	// +kubebuilder:default=TCP
+	Protocol string `json:"protocol"`
 	// +kubebuilder:validation:Optional
 	Ports []uint32 `json:"ports,omitempty"`
 }
