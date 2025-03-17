@@ -239,6 +239,15 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 func AddSrcPolicy(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]*record.DatapathRecord, error) {
 	records := []*record.DatapathRecord{}
 
+	dfltAction, err := calculateAction(&policy.Default)
+	if err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"name":   policy.Name,
+			"action": policy.Action,
+		}).WithError(err).Error("policy has unsupported or invalid default action")
+		return records, err
+	}
+
 	action, err := calculateAction(&policy.Action)
 	if err != nil {
 		logger.GetLogger().WithFields(logrus.Fields{
@@ -274,6 +283,15 @@ func AddSrcPolicy(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy
 			})
 		}
 	}
+
+	// Append the default record for the Pod layer
+	dfltRecord := &record.DatapathRecord{
+		Src:    src,
+		EP:     nil,
+		Action: dfltAction,
+		Init:   init,
+	}
+	records = append(records, dfltRecord)
 
 	return records, nil
 }

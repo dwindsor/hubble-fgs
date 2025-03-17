@@ -119,6 +119,14 @@ func PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
 				break
 			}
 		}
+		if s.Policy.Default.EnforceAction != nil {
+			// Action is not part of the default action key so we just need Src field
+			records = append(records, &record.DatapathRecord{
+				Src: subject,
+				EP:  nil,
+			})
+		}
+
 		if s.Policy.Destination.FQDN == nil {
 			continue
 		}

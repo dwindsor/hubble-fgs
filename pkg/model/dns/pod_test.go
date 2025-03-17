@@ -215,7 +215,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
 	r1, err := __PodAdd(srcPod, true)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(r1))
+	assert.Equal(t, 3, len(r1))
 	assert.NotZero(t, r1[0].Src.CgroupId)
 	assert.Equal(t, endpoint.DnsType, r1[0].EP.Type)
 	assert.Equal(t, "test.io", r1[0].EP.Dns)
