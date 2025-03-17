@@ -494,11 +494,38 @@ static inline __attribute__((always_inline)) int process_socketmap_rekey(struct 
 	return 0;
 }
 
+static inline __attribute__((always_inline)) bool policy_drop(__u64 sum)
+{
+	if (sum & TNP_POLICY_ALLOW)
+		return false;
+	return (sum & TNP_POLICY_DENY);
+}
+
+static inline __attribute__((always_inline)) void dest_policy(__u64 *p, __u64 len, struct destination_endpoint_value *v)
+{
+	__sync_fetch_and_add(&v->rx_bytes, len);
+	*p |= v->deny;
+	if (policy_drop(*p))
+		__sync_fetch_and_add(&v->tx_drops, len);
+}
+
+/* Stats and deny/allow decisions are made in a sequence each step
+ * loosens the key searching for a higher level rule. The order of
+ * this search is important and is done in the following order.
+ *
+ * Order of operations:
+ *
+ * local_id + nsid + l3(destination_id) + l4(port)
+ * local_id + nsid + l3(destination_id)
+ *            nsid + l3(destination_id)
+ *            nsid
+ */
 static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
 	struct destination_endpoint_value *dest;
 	struct destination_endpoint_key key;
-	__u64 len, quota, now;
+	__u64 policy = 0, quota, now;
+	__u64 len = skb->len;
 
 	/* These are incomplete keys the result of process and sessions taht
 	 * existed before Tetragon started. We may add support for these flows
@@ -510,8 +537,8 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	process_socketmap_rekey(&v->dst_key, skb);
 	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
 	if (!dest)
-		return SK_PASS;
-	len = skb->len;
+		goto out;
+	dest_policy(&policy, len, dest);
 	__sync_fetch_and_add(&dest->tx_bytes, len);
 
 	/* Also update the per dst entry */
@@ -519,15 +546,17 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	key.port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
-		return SK_PASS;
+		goto out;
 	__sync_fetch_and_add(&dest->tx_bytes, len);
+	dest_policy(&policy, len, dest);
 
 	key.local_id.uid = 0;
 	key.local_id.cpu = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
-		return SK_PASS;
+		goto out;
 	__sync_fetch_and_add(&dest->tx_bytes, len);
+	dest_policy(&policy, len, dest);
 
 	/* This is all a bit racy, but if you are surfing on the edge of a
 	 * time window the observer can't tell order of operations between
@@ -546,20 +575,30 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		__sync_fetch_and_add(&dest->tx_drops, len);
 		return SK_DROP;
 	}
-
-	if (dest->deny) {
-		__sync_fetch_and_add(&dest->tx_drops, len);
+out:
+	if (policy_drop(policy))
 		return SK_DROP;
-	}
 
 	return SK_PASS;
 }
 
+/* Stats and deny/allow decisions are made in a sequence each step
+ * loosens the key searching for a higher level rule. The order of
+ * this search is important and is done in the following order.
+ *
+ * Order of operations:
+ *
+ * local_id + nsid + l3(destination_id) + l4(port)
+ * local_id + nsid + l3(destination_id)
+ *            nsid + l3(destination_id)
+ *            nsid
+ */
 static inline __attribute__((always_inline)) int process_socketmap_recv(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
 	struct destination_endpoint_value *dest;
 	struct destination_endpoint_key key;
-	__u64 len;
+	__u64 len = skb->len;
+	__u64 policy = 0;
 
 	/* Same as above see note in _send. */
 	if (!v->dst_key.source)
@@ -568,29 +607,26 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	process_socketmap_rekey(&v->dst_key, skb);
 	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
 	if (!dest)
-		return SK_PASS;
-	len = skb->len;
-	__sync_fetch_and_add(&dest->rx_bytes, len);
+		goto out;
+	dest_policy(&policy, len, dest);
 
 	/* Also update the per dst entry */
 	key = v->dst_key;
 	key.port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
-		return SK_PASS;
-	__sync_fetch_and_add(&dest->rx_bytes, len);
+		goto out;
+	dest_policy(&policy, len, dest);
 
 	key.local_id.uid = 0;
 	key.local_id.cpu = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
-		return SK_PASS;
-	__sync_fetch_and_add(&dest->rx_bytes, len);
-
-	if (dest->deny) {
-		__sync_fetch_and_add(&dest->tx_drops, len);
+		goto out;
+	dest_policy(&policy, len, dest);
+out:
+	if (policy_drop(policy))
 		return SK_DROP;
-	}
 
 	return SK_PASS;
 }

@@ -159,6 +159,9 @@ struct {
 #define DESTINATION_SOURCE_USERSPACE 2
 #define DESTINATION_SOURCE_DNS	     3
 
+#define TNP_POLICY_ALLOW 0x01
+#define TNP_POLICY_DENY	 0x02
+
 /* Somewhat counter-intuitively destinations are scoped by local
  * id and/or local ns_id. This ensures that if two processes in
  * the same network namespace sending to a destination will have
