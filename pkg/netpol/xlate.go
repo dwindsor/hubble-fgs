@@ -19,9 +19,31 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 		Workload:         types.TetragonWorkloadNetworkSubject{},
 	}
 
+	dfltEnforce := &types.TetragonEnforceAction{}
+	if strings.Compare(np.Spec.DefaultAction, "deny") == 0 {
+		dfltEnforce.Deny = true
+	}
+	if strings.Compare(np.Spec.DefaultAction, "allow") == 0 {
+		dfltEnforce.Allow = true
+	}
+	dfltAction := types.TetragonNetworkAction{
+		EnforceAction: dfltEnforce,
+	}
+
 	for _, r := range np.Spec.Rules {
 		if r.Hook != "connect" {
 			return nil, fmt.Errorf("unsupporte hook type (%s)", r.Hook)
+		}
+
+		enforce := &types.TetragonEnforceAction{}
+		if strings.Compare(r.Action, "deny") == 0 {
+			enforce.Deny = true
+		}
+		if strings.Compare(r.Action, "allow") == 0 {
+			enforce.Allow = true
+		}
+		act := types.TetragonNetworkAction{
+			EnforceAction: enforce,
 		}
 
 		for _, d := range r.Destination {
@@ -56,19 +78,12 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 				Labels: labels,
 			}
 
-			enforce := &types.TetragonEnforceAction{
-				Deny: true,
-			}
-
-			act := types.TetragonNetworkAction{
-				EnforceAction: enforce,
-			}
-
 			policy = append(policy, &types.TetragonNetworkPolicy{
 				Name:        name,
 				Subject:     subj,
 				Destination: dest,
 				Action:      act,
+				Default:     dfltAction,
 			})
 		}
 	}

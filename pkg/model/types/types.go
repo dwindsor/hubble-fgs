@@ -142,4 +142,5 @@ type TetragonNetworkPolicy struct {
 	Subject     TetragonNetworkSubject
 	Destination TetragonNetworkDestination
 	Action      TetragonNetworkAction
+	Default     TetragonNetworkAction
 }
