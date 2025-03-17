@@ -47,7 +47,9 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 		key := recordKey{
 			CgroupId: r.Src.CgroupId,
 			Self:     r.Src.Self,
-			EP:       *r.EP,
+		}
+		if r.EP != nil {
+			key.EP = *r.EP
 		}
 		bMap[key] = r
 	}
@@ -56,7 +58,9 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 		key := recordKey{
 			CgroupId: r.Src.CgroupId,
 			Self:     r.Src.Self,
-			EP:       *r.EP,
+		}
+		if r.EP != nil {
+			key.EP = *r.EP
 		}
 		_, ok := bMap[key]
 		if !ok {

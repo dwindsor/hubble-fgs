@@ -54,15 +54,21 @@ func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord) error {
 // what was init for again?
 func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 	var addr [2]uint64
+	var dst uint64
+	var err error
 
 	initProgrammerOnce.Do(func() { initMap() })
 
-	c := endpoint.Get()
-	dst, err := c.AddEndpoint(*r.EP)
-	if err != nil {
-		p.AddError++
-		logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
-		return err
+	if r.EP != nil {
+		c := endpoint.Get()
+		dst, err = c.AddEndpoint(*r.EP)
+		if err != nil {
+			p.AddError++
+			logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
+			return err
+		}
+	} else {
+		dst = 0
 	}
 
 	// A rather annoying ordering problem occurs where we are consuming
@@ -73,12 +79,16 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 	// add it directly to the map otherwise we do a bulk update in init
 	// path.
 	if r.Init {
-		if err := dnsDomainMap.Update(r.EP.Dns, dst); err != nil {
-			p.AddError++
-			return fmt.Errorf("failed to write BPF domain maps: %w", err)
+		if r.EP != nil {
+			if err := dnsDomainMap.Update(r.EP.Dns, dst); err != nil {
+				p.AddError++
+				return fmt.Errorf("failed to write BPF domain maps: %w", err)
+			}
 		}
 	} else {
-		QuotasInitDNSDomainMappings[*r.EP] = dst
+		if r.EP != nil {
+			QuotasInitDNSDomainMappings[*r.EP] = dst
+		}
 	}
 
 	key := &types.DestinationEndpointKey{
@@ -121,12 +131,17 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 
 	initProgrammerOnce.Do(func() { initMap() })
 
-	c := endpoint.Get()
-	dst, err := c.AddEndpoint(*ep)
-	if err != nil {
-		p.DelError++
-		logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
-		return err
+	dst := uint64(0)
+	if ep != nil {
+		var err error
+
+		c := endpoint.Get()
+		dst, err = c.AddEndpoint(*ep)
+		if err != nil {
+			p.DelError++
+			logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
+			return err
+		}
 	}
 
 	// On delete leave dnsDomainMap, it should be managed as its own object!
