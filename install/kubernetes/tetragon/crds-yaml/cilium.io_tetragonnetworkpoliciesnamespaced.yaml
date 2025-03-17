@@ -42,6 +42,11 @@ spec:
           spec:
             description: Tracing policy specification.
             properties:
+              defaultAction:
+                enum:
+                - allow
+                - deny
+                type: string
               podSelector:
                 description: PodSelector selects pods that this policy applies to
                 properties:
@@ -128,8 +133,6 @@ spec:
                             required:
                             - fqdn
                             type: object
-                          action:
-                            type: string
                           labels:
                             properties:
                               matchLabels:
@@ -163,7 +166,6 @@ spec:
                                 type: string
                             type: object
                         required:
-                        - action
                         - ports
                         type: object
                       type: array
@@ -177,6 +179,8 @@ spec:
                   - hook
                   type: object
                 type: array
+            required:
+            - defaultAction
             type: object
         required:
         - metadata

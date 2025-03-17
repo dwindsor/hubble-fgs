@@ -131,15 +131,13 @@ type NetworkDestination struct {
 	Workload NetworkDestinationWorkload `json:"workload,omitempty"`
 	// +kubebuilder:validation:Required
 	Ports NetworkDestinationPorts `json:"ports"`
-	// +kubebuilder:validation:Required
-	Action string `json:"action"`
 }
 
 type NetworkPolicyRule struct {
 	// +kubebuilder:validation:Enum=connect;listen
 	Hook string `json:"hook"`
 	// +kubebuilder:validation:Enum=allow;deny
-	DefaultAction string `json:"action"`
+	Action string `json:"action"`
 	// +kubebuilder:validation:Optional
 	Destination []NetworkDestination `json:"destination,omitempty"`
 }
@@ -148,7 +146,8 @@ type NetworkPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// PodSelector selects pods that this policy applies to
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
-
+	// +kubebuilder:validation:Enum=allow;deny
+	DefaultAction string `json:"defaultAction"`
 	// Network Policy Spec defines a set of actions for network operations
 	Rules []NetworkPolicyRule `json:"rules,omitempty"`
 }

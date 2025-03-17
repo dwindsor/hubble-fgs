@@ -23,16 +23,15 @@ spec:
     matchLabels:
       A: "a"
       B: "b"
+  defaultAction: "deny"
   rules:
   - hook: "connect"
-    action: "deny"
+    action: "allow"
     destination:
     - labels:
         matchLabels: ["C=c", "D=d"]
-      action: "allow"
     - fqdn:
         fqdn: ["ebpf.io", "tetragon.io"]
-      action: "allow"
 `
 	_, err := fromYAML(policy)
 	assert.NoError(t, err)
