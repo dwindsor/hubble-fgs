@@ -35,7 +35,6 @@ func calculateAction(a *types.TetragonNetworkAction) (*record.DatapathAction, er
 	var err error
 	quota := uint64(0)
 	reset := uint64(0)
-	deny := uint64(0)
 
 	if a.QuotaAction != nil {
 		reset, err = quotaToNs(a.QuotaAction.Reset)
@@ -50,9 +49,16 @@ func calculateAction(a *types.TetragonNetworkAction) (*record.DatapathAction, er
 		}
 	}
 
-	if a.EnforceAction != nil && a.EnforceAction.Deny {
-		deny = uint64(1)
+	deny := record.PolicyNone
+	if a.EnforceAction != nil {
+		if a.EnforceAction.Deny {
+			deny |= record.PolicyDeny
+		}
+		if a.EnforceAction.Allow {
+			deny |= record.PolicyAllow
+		}
 	}
+
 	return &record.DatapathAction{
 		Quota: quota,
 		Reset: reset,

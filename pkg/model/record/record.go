@@ -5,6 +5,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
+const (
+	PolicyNone  = uint64(0x00)
+	PolicyAllow = uint64(0x01)
+	PolicyDeny  = uint64(0x02)
+)
+
 // For initial landing lets ignore process hierarchy in this unrolled
 // key. In general its possible that you could build policy by Path and
 // args, but mark that TBD.
