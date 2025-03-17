@@ -78,11 +78,11 @@ jobs:
           lower_tag="${lower_tag,,}"
           git checkout ${{ steps.tag.outputs.minor }}
           git checkout -b pr/release-wf/${{ steps.tag.outputs.tag }}
-          tetragon_img="$(cat digests/tetragon.txt | grep isovalent)"
+          tetragon_img="$(cat digests/digest-tetragon.txt | grep isovalent)"
           echo "tetragon image: ${tetragon_img}"
-          tetragon_aggregator_img="$(cat digests/tetragon-aggregator.txt | grep isovalent)"
+          tetragon_aggregator_img="$(cat digests/digest-tetragon-aggregator.txt | grep isovalent)"
           echo "tetragon-aggregator image: ${tetragon_aggregator_img}"
-          tetragon_operator_img="$(cat digests/tetragon-operator.txt | grep isovalent)"
+          tetragon_operator_img="$(cat digests/digest-tetragon-operator.txt | grep isovalent)"
           echo "tetragon-operator image: ${tetragon_operator_img}"
           hubble_enterprise_metadata_digest=$(docker run quay.io/skopeo/stable:v1.15 inspect docker://quay.io/isovalent/hubble-enterprise-metadata:current | jq -r '.Digest')
           tetragon_rthooks_image_digest=$(docker run quay.io/skopeo/stable:v1.15 inspect docker://quay.io/cilium/tetragon-rthooks:${rthooks_tag} | jq -r '.Digest')

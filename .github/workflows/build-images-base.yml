@@ -132,7 +132,11 @@ jobs:
       - name: Image Digests Output
         shell: bash
         run: |
-          find digests/ -type f | sort | xargs -d '\n' cat
+          for file in digests/*; do
+            echo "$file"
+            cat "$file"
+            echo ""
+          done
 
   helm-chart:
     if: ${{ success() }}
