@@ -575,6 +575,15 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		__sync_fetch_and_add(&dest->tx_drops, len);
 		return SK_DROP;
 	}
+	/* We put this below the quota support because legacy quota policy
+	 * does not push a a default rule and we hit the !dest case.
+	 */
+	key.destination_id = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, &key);
+	if (!dest)
+		goto out;
+	__sync_fetch_and_add(&dest->tx_bytes, len);
+	dest_policy(&policy, len, dest);
 out:
 	if (policy_drop(policy))
 		return SK_DROP;
@@ -620,6 +629,12 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 
 	key.local_id.uid = 0;
 	key.local_id.cpu = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, &key);
+	if (!dest)
+		goto out;
+	dest_policy(&policy, len, dest);
+
+	key.destination_id = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
 		goto out;
