@@ -26,7 +26,7 @@ tetragon:
       imagePullPolicy: Always
   alerts:
     # -- Enable alerts.
-    enabled: true
+    enabled: false
     # -- Directory for alert JSON export (filenames will be retrieved from alert rule names).
     exportDirectory: "/var/run/cilium/tetragon"
   # -- EXPERIMENTAL: Enable Hubble flow export. When this value is not empty, Tetragon exports

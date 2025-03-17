@@ -66,7 +66,7 @@ options:
       usage: |
         If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported
     - name: enable-alerts
-      default_value: "true"
+      default_value: "false"
       usage: Enable alerts.
     - name: enable-application-model
       default_value: "false"

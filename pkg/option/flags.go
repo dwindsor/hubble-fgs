@@ -116,7 +116,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnablePolicyK8sWatcher, true, "Enable watching Kubernetes API server for all supported policy resources, unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely by `--enable-k8s-api=false`.")
 	flags.Bool(keyEnableSandboxPolicies, true, "Enable sandboxpolicies")
 	flags.StringSlice(keySandboxPolicy, []string{}, "Sandbox policy file to load at startup")
-	flags.Bool(keyEnableAlerts, true, "Enable alerts.")
+	flags.Bool(keyEnableAlerts, false, "Enable alerts.")
 	flags.String(keyAlertsExportDir, "", "Directory for alert JSON export (filenames will be retrieved from alert rule names). Disabled by default.")
 	flags.StringSlice(keyDebugX, []string{}, "Extended debug to enable (e.g. \"tcp,udp+\"). Choose from: tcp, udp, icmp, rawsock. Tetragon defaults to maintaining metrics for program errors. Specifying the protocol/sub-system here causes events to be dispatched as well; adding a '+' will also get console messages")
 	flags.Bool(KeyEnableDnsDebug, false, "Enable DNS debug messages")
