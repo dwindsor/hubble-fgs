@@ -75,6 +75,31 @@ func testMatchDstLabelsPolicy(name, src, dst string) *types.TetragonNetworkPolic
 	return p
 }
 
+func testMatchDstLabelsDenyPolicy(name, src, dst, action string) *types.TetragonNetworkPolicy {
+	denyAction := &types.TetragonEnforceAction{
+		Deny:  true,
+		Allow: false,
+	}
+	allowAction := &types.TetragonEnforceAction{
+		Deny:  false,
+		Allow: true,
+	}
+
+	netpol := testMatchDstLabelsPolicy(name, src, dst)
+	if strings.Compare(action, "deny") == 0 {
+		netpol.Action.EnforceAction = denyAction
+		netpol.Default.EnforceAction = allowAction
+	} else {
+		netpol.Action.EnforceAction = allowAction
+		netpol.Default.EnforceAction = denyAction
+	}
+
+	netpol.Action.QuotaAction = nil
+	netpol.Default.QuotaAction = nil
+
+	return netpol
+}
+
 func TestQueueWorkloadPolicy(t *testing.T) {
 	name := "test"
 	policy := testFQDNPolicy(name)
@@ -248,4 +273,30 @@ func TestAddNetworkPolicy(t *testing.T) {
 	assert.Equal(t, "a", s.Label["A"])
 	assert.Equal(t, "b", s.Label["B"])
 	assert.Equal(t, 0, len(s.Subjects)) // no pods yet so no subjects either
+}
+
+func testAddNetworkActionPolicy(t *testing.T, action string) {
+	name := "testPol"
+	netpol := testMatchDstLabelsDenyPolicy(name, "A=a,B=b", "D1=d1,D2=d2", action)
+	err := CreateMatchLabelsPolicy(name, netpol)
+	assert.NoError(t, err)
+	d := matchLabelDstPolicy[name]
+	assert.NotNil(t, d)
+	assert.Equal(t, "d1", d.Label["D1"])
+	assert.Equal(t, "d2", d.Label["D2"])
+	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
+	s := matchLabelPolicy[name]
+	assert.NotNil(t, s)
+	assert.Equal(t, "a", s.Label["A"])
+	assert.Equal(t, "b", s.Label["B"])
+	assert.Equal(t, 0, len(s.Subjects)) // no pods yet so no subjects either
+
+}
+
+func TestAddNetworkAllowPolicy(t *testing.T) {
+	testAddNetworkActionPolicy(t, "allow")
+}
+
+func TestAddNetworkDenyPolicy(t *testing.T) {
+	testAddNetworkActionPolicy(t, "deny")
 }
