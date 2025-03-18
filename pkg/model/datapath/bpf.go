@@ -120,6 +120,23 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 		return err
 	}
 
+	// If the EP is wildcarded we need to capture all destinations from
+	// any source (EPBF, Userspace, DNS) so we need some extra records.
+	// The normal path captures Userspace sources.
+	if dst == uint64(0) {
+		key.DestinationSource = types.DestinationSourceBPF
+		if err := dstMap.Update(key, value, 0); err != nil {
+			p.AddError++
+			return err
+		}
+
+		key.DestinationSource = types.DestinationSourceDNS
+		if err := dstMap.Update(key, value, 0); err != nil {
+			p.AddError++
+			return err
+		}
+	}
+
 	p.Add++
 	return nil
 }
@@ -180,6 +197,21 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 		return err
 	}
 
+	// If the EP is wildcarded we need to remove all destinations from
+	// any source (EPBF, Userspace, DNS) so we need some extra records.
+	if dst == uint64(0) {
+		key.DestinationSource = types.DestinationSourceBPF
+		if err := dstMap.Update(key, value, 0); err != nil {
+			p.DelError++
+			return err
+		}
+
+		key.DestinationSource = types.DestinationSourceDNS
+		if err := dstMap.Update(key, value, 0); err != nil {
+			p.DelError++
+			return err
+		}
+	}
 	p.Del++
 	return nil
 }
