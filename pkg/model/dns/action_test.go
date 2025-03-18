@@ -3,6 +3,7 @@ package dns
 import (
 	"testing"
 
+	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,7 +21,7 @@ func TestCalculateDeny(t *testing.T) {
 	}
 	da, err := calculateAction(a)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(1), da.Deny)
+	assert.Equal(t, record.PolicyDeny, da.Deny)
 }
 
 func TestCalculateNoDeny(t *testing.T) {
@@ -34,5 +35,19 @@ func TestCalculateNoDeny(t *testing.T) {
 	}
 	da, err := calculateAction(a)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(0), da.Deny)
+	assert.Equal(t, record.PolicyNone, da.Deny)
+}
+
+func TestCalculateAllow(t *testing.T) {
+	enforce := &types.TetragonEnforceAction{
+		Deny:  false,
+		Allow: true,
+	}
+	a := &types.TetragonNetworkAction{
+		QuotaAction:   nil,
+		EnforceAction: enforce,
+	}
+	da, err := calculateAction(a)
+	assert.NoError(t, err)
+	assert.Equal(t, record.PolicyAllow, da.Deny)
 }
