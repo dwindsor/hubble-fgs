@@ -137,7 +137,7 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 		if value.Closed != 0 {
 			return
 		}
-		tcpStats := ToMsgSocketStatsUnix(value)
+		tcpStats := &value.Stats
 		statsKey := networkapi.TcpKey{SockCookie: key.SockCookie, CreateTime: value.Stats.CreateTime}
 
 		last, ok := cache.Get(statsKey)
