@@ -64,6 +64,44 @@ func deleteSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors
 	}
 }
 
+func sandboxPolicyNeedsUpdate(
+	oldObj interface{}, newObj interface{},
+) (bool, error) {
+	switch oldSp := oldObj.(type) {
+	case *v1alpha1.SandboxPolicy:
+		newSp, ok := newObj.(*v1alpha1.SandboxPolicy)
+		if !ok {
+			return false, fmt.Errorf("sandboxpolicy update type mismatch: old:%T new:%T", oldSp, newSp)
+		}
+		return oldSp.ResourceVersion != newSp.ResourceVersion, nil
+	case *v1alpha1.SandboxPolicyNamespaced:
+		newSp, ok := newObj.(*v1alpha1.SandboxPolicyNamespaced)
+		if !ok {
+			return false, fmt.Errorf("sandboxpolicy update type mismatch: old:%T new:%T", oldSp, newSp)
+		}
+		return oldSp.ResourceVersion != newSp.ResourceVersion, nil
+	default:
+		return false, fmt.Errorf("sandboxpolicy update unexpected types: old:%T new:%T", oldObj, newObj)
+	}
+}
+
+func updateSandboxPolicy(
+	ctx context.Context, log logrus.FieldLogger,
+	s *sensors.Manager, oldObj interface{}, newObj interface{},
+) {
+	upd, err := sandboxPolicyNeedsUpdate(oldObj, newObj)
+	if err != nil {
+		log.Warn("error in updating sandbox policy: %s", err)
+		return
+	}
+
+	if upd {
+		log := log.WithField("watcher-event", "update")
+		deleteSandboxPolicy(ctx, log, s, oldObj)
+		addSandboxPolicy(ctx, log, s, newObj)
+	}
+}
+
 func AddSandboxPolicyInformer(ctx context.Context, w watcher.Watcher, s *sensors.Manager) error {
 	log := logger.GetLogger().WithField("crd-watcher", true)
 	if w == nil {
@@ -84,8 +122,7 @@ func AddSandboxPolicyInformer(ctx context.Context, w watcher.Watcher, s *sensors
 				deleteSandboxPolicy(ctx, log, s, obj)
 			},
 			UpdateFunc: func(oldObj interface{}, newObj interface{}) {
-				deleteSandboxPolicy(ctx, log, s, oldObj)
-				addSandboxPolicy(ctx, log, s, newObj)
+				updateSandboxPolicy(ctx, log, s, oldObj, newObj)
 			}})
 	err := w.AddInformer("SandboxPolicy", spInformer, nil)
 	if err != nil {
@@ -102,8 +139,7 @@ func AddSandboxPolicyInformer(ctx context.Context, w watcher.Watcher, s *sensors
 				deleteSandboxPolicy(ctx, log, s, obj)
 			},
 			UpdateFunc: func(oldObj interface{}, newObj interface{}) {
-				deleteSandboxPolicy(ctx, log, s, oldObj)
-				addSandboxPolicy(ctx, log, s, newObj)
+				updateSandboxPolicy(ctx, log, s, oldObj, newObj)
 			}})
 	err = w.AddInformer("SandboxPolicyNamespaced", spnInformer, nil)
 	if err != nil {
