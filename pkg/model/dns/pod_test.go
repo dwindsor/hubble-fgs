@@ -7,6 +7,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
+	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -287,6 +288,52 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, 0, len(dst.Endpoints))
 	assert.Equal(t, 0, len(src.Subjects))
 	assert.Equal(t, 2, deleted)
+
+	zombieSet, err := __RemoveMatchLabelNetworkPolicy(name, netpol)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(zombieSet))
+}
+
+func TestSrcPolicyAddsDefaultAction(t *testing.T) {
+	name := "netpol"
+	srcId := nextId()
+
+	srcPodName := "testNamePodSrc"
+	srcPodLabels := "A=a,B=b"
+	dstPodLabels := "D1=d1,D2=d2,D3=d3"
+
+	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "deny")
+	err := CreateMatchLabelsPolicy(name, netpol)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(matchLabelPolicy))
+	assert.Equal(t, 1, len(matchLabelDstPolicy))
+
+	// srcPod matches subject labels so will be granted to records one for default action
+	addPod(t, srcId, srcPodName, srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	r1, err := __PodAdd(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(r1))
+
+	assert.NotZero(t, r1[0].Src.CgroupId)
+	assert.Equal(t, endpoint.DnsType, r1[0].EP.Type)
+	assert.Equal(t, "test.io", r1[0].EP.Dns)
+	assert.Equal(t, r1[0].Action.Deny, record.PolicyDeny)
+
+	assert.NotZero(t, r1[1].Src.CgroupId)
+	assert.Equal(t, endpoint.DnsType, r1[1].EP.Type)
+	assert.Equal(t, "test.com", r1[1].EP.Dns)
+	assert.Equal(t, r1[1].Action.Deny, record.PolicyDeny)
+
+	assert.NotZero(t, r1[2].Src.CgroupId)
+	assert.Nil(t, r1[2].EP)
+	assert.Equal(t, r1[2].Action.Deny, record.PolicyAllow)
+
+	// Remove pod and policy
+	delPod(t, srcId)
+	deleted, err := PodRemove(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, deleted)
 
 	zombieSet, err := __RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
