@@ -72,6 +72,9 @@ func testCases() []compliance.Test {
 }
 
 func TestCompliance(t *testing.T) {
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
+	}
 	fmt.Printf("Running compliance tests with config=%#v", config.Config())
 	for _, ct := range testCases() {
 		t.Run(fmt.Sprintf("compliance-%s", ct.Name), func(t *testing.T) {

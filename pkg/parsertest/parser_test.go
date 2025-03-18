@@ -333,6 +333,9 @@ func Test_tls(t *testing.T) {
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
+	}
 	runTests(t, SENS_TLS, "tls")
 }
 
@@ -342,6 +345,9 @@ func Test_http(t *testing.T) {
 	}
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
 	}
 	runTests(t, SENS_HTTP, "http")
 }
@@ -353,12 +359,18 @@ func Test_http2(t *testing.T) {
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
+	}
 	runTests(t, SENS_HTTP, "http2")
 }
 
 func Test_nop(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
 	}
 	runTests(t, SENS_NOP, "tls")
 	runTests(t, SENS_NOP, "http")

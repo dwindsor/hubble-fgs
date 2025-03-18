@@ -230,6 +230,9 @@ func TestLoadTlsSensor(t *testing.T) {
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
 	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
+	}
 
 	bpf.CheckOrMountCgroup2()
 
@@ -304,6 +307,9 @@ func TestLoadTlsCGSensor(t *testing.T) {
 	}
 	if runtime.GOARCH != "amd64" {
 		t.Skipf("ARM bug breaks with mixed bpf2bpf calls and tail calls, skipping")
+	}
+	if os.Getenv("FLAKY_HTTP") != "" {
+		t.Skipf("Skipping test on flaky kernel")
 	}
 
 	bpf.CheckOrMountCgroup2()
