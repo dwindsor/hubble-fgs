@@ -35,7 +35,7 @@ func fromYAML(data string) (*v1alpha1.TetragonNetworkPolicy, error) {
 	case v1alpha1.TNPNamespacedKindDefinition:
 		return nil, fmt.Errorf("namespaced network policy not supported")
 	default:
-		return nil, fmt.Errorf("unknown CRD kind: %s", kind)
+		return nil, nil
 	}
 }
 
@@ -57,6 +57,9 @@ func addNetworkPolicy(_ context.Context, file string) error {
 	np, err := fromFile(f)
 	if err != nil {
 		return fmt.Errorf("failed to read tracing policy: %w", err)
+	}
+	if np == nil {
+		return nil
 	}
 
 	logger.GetLogger().WithFields(logrus.Fields{
