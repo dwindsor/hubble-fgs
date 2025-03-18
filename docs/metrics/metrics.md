@@ -680,6 +680,10 @@ UDP socket retrieval stats. For internal use only.
 | ----- | ------ |
 | `count` | `Close event missing socket, Delete Key Failed, DiffValues Failure, DiffValues GC Failure, Failed To Open Map, NanoTimeSince Failure, Pid Is Zero, Ticker, Total Retrieved` |
 
+### `tetragon_tcp_cache_entries`
+
+The total number of in-use entries in the TCP socket cache
+
 ### `tetragon_udp_stats_cache_capacity`
 
 The capacity of the UDP stats cache. Expected to be constant.

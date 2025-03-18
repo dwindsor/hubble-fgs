@@ -26,6 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -203,6 +204,7 @@ func getRunTcpGC(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey, netw
 		for iter.Next(&key, &val) {
 			callback(&key, &val)
 		}
+		socketmetrics.TcpCacheEntries.Set(float64(cache.Len()))
 	}
 }
 

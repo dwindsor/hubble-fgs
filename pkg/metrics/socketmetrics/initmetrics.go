@@ -90,7 +90,7 @@ func InitTCPEventsMetricsForDocs(registry *prometheus.Registry) {
 	TcpLatencySum.WithLabelValues(socketLabels).Add(0)
 }
 
-func InitUDPHealthMetrics(registry *prometheus.Registry) {
+func InitHealthMetrics(registry *prometheus.Registry) {
 	// UDP metrics collection errors
 	registry.MustRegister(SocketStatsUDPGC)
 
@@ -103,6 +103,9 @@ func InitUDPHealthMetrics(registry *prometheus.Registry) {
 
 	// Register tg_udp_map entries metric
 	registry.MustRegister(NewUdpBPFCollector())
+
+	// TCP Cache LRU
+	registry.MustRegister(TcpCacheEntries)
 }
 
 func InitUDPEventsMetrics(registry *prometheus.Registry) {

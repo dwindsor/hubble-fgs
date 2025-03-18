@@ -136,3 +136,12 @@ var (
 		Help:      "Histogram sum for TCP socket latency in microseconds",
 	}, nil)
 )
+
+// TCP LRU Cache size
+var (
+	TcpCacheEntries = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name:      "tcp_cache_entries",
+		Namespace: consts.MetricsNamespace,
+		Help:      "The total number of in-use entries in the TCP socket cache",
+	})
+)

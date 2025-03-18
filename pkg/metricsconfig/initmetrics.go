@@ -95,13 +95,13 @@ func InitInterfaceEventsMetricsForDocs(registry *prometheus.Registry) {
 func initAllNetworkHealthMetrics(registry *prometheus.Registry) {
 	iperrormetrics.InitMetrics(registry)
 	layer3.InitUDPHealthMetrics(registry)
-	socketmetrics.InitUDPHealthMetrics(registry)
+	socketmetrics.InitHealthMetrics(registry)
 }
 
 func InitNetworkHealthMetricsForDocs(registry *prometheus.Registry) {
 	iperrormetrics.InitMetrics(registry)
 	layer3.InitUDPHealthMetrics(registry)
-	socketmetrics.InitUDPHealthMetrics(registry)
+	socketmetrics.InitHealthMetrics(registry)
 }
 
 func initAllTCPEventsMetrics(registry *prometheus.Registry) {
