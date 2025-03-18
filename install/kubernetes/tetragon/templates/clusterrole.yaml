@@ -21,11 +21,6 @@ rules:
       - podinfo
       - tracingpolicies
       - tracingpoliciesnamespaced
-      - sandboxpolicies
-      - sandboxpoliciesnamespaced
-      - alertrules
-      - tetragonnetworkpolicies
-      - tetragonnetworkpoliciesnamespaced
     verbs:
       - get
       - list
@@ -40,4 +35,5 @@ rules:
       - get
       - list
       - watch
+  {{- include "clusterrole.extra" . | nindent 2 }}
 {{- end }}

@@ -14,5 +14,6 @@ data:
   {{- end }}
   skip-pod-info-crd: {{ not .Values.tetragonOperator.podInfo.enabled | quote }}
   skip-tracing-policy-crd: {{ not .Values.tetragonOperator.tracingPolicy.enabled | quote }}
-  skip-policysandbox-crd: {{ not .Values.tetragon.enableSandboxpolicies | quote }}
+  force-update-crds: {{ .Values.tetragonOperator.forceUpdateCRDs | quote }}
+  {{- include "operatorconfigmap.extra" . | nindent 2 }}
 {{- end }}

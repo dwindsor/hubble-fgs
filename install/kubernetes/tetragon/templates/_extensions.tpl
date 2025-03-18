@@ -96,3 +96,48 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{ include "commonLabels" . }}
 app.kubernetes.io/component: aggregator
 {{- end }}
+
+{{- define "clusterrole.extra" -}}
+- apiGroups:
+    - cilium.io
+  resources:
+    - sandboxpolicies
+    - sandboxpoliciesnamespaced
+    - alertrules
+    - tetragonnetworkpolicies
+    - tetragonnetworkpoliciesnamespaced
+  verbs:
+    - get
+    - list
+    - watch
+{{- end }}
+
+{{- define "operatorconfigmap.extra" -}}
+skip-policysandbox-crd: {{ not .Values.tetragon.enableSandboxpolicies | quote }}
+{{- end }}
+
+{{- define "operatorclusterrole.extra" -}}
+- apiGroups:
+    - ""
+  resources:
+    - pods/finalizers
+  verbs:
+    - create
+    - delete
+    - update
+- apiGroups:
+    - apiextensions.k8s.io
+  resources:
+    - customresourcedefinitions
+  resourceNames:
+    - sandboxpolicies.cilium.io
+    - sandboxpoliciesnamespaced.cilium.io
+    - alertrules.cilium.io
+    - tetragonnetworkpolicies.cilium.io
+    - tetragonnetworkpoliciesnamespaced.cilium.io
+  verbs:
+    - update
+    - get
+    - list
+    - watch
+{{- end }}
