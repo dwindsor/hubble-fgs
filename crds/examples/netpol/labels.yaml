@@ -8,12 +8,12 @@ spec:
   podSelector:
     matchLabels:
       class: "xwing"
+  defaultAction: "deny"
   rules:
   - hook: "connect"
     action: "allow"
     destination:
     - labels:
         matchLabels: ["org=empire"]
-      action: "deny"
       ports:
         protocol: ["TCP","UDP"]
