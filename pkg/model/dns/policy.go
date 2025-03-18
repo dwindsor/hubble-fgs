@@ -105,6 +105,10 @@ func RemoveNetworkPolicySet(uid string, policy []*types.TetragonNetworkPolicy) e
 		if err != nil {
 			return err
 		}
+		err = RemoveMatchLabelNetworkPolicy(uidName, p)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -159,14 +163,14 @@ func __RemoveMatchLabelNetworkPolicy(name string, policy *types.TetragonNetworkP
 	}
 
 	beforeJoin := append(beforeSubjs, beforeDests...)
-	AfterJoin := append(afterSubjs, afterDests...)
+	afterJoin := append(afterSubjs, afterDests...)
 
 	// A key that exists only in the beforeJoin can be deleted because
 	// nothing is referencing that key anymore. To unwind this we will
 	// do the following: first find set of rules that can be deleted
-	// called ZombieSet here, update the existing rules in AfterJoin,
+	// called ZombieSet here, update the existing rules in afterJoin,
 	// and finally remove the ZombieSet.
-	zombieSet := record.Diff(beforeJoin, AfterJoin)
+	zombieSet := record.Diff(beforeJoin, afterJoin)
 	return zombieSet, nil
 }
 

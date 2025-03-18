@@ -97,12 +97,16 @@ func deleteNetworkPolicy(obj any) {
 		logger.GetLogger().WithFields(logrus.Fields{
 			"obj":      obj,
 			"obj-type": fmt.Sprintf("%T", obj),
-		}).Warn("addNetworkPolicy: invalid type")
+		}).Warn("deleteNetworkPolicy: invalid type")
 		return
 	}
 
 	story := policyLibrary[name]
-	dns.RemoveNetworkPolicySet(name, story.irPolicy)
+	if err := dns.RemoveNetworkPolicySet(name, story.irPolicy); err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"name": name,
+		}).WithError(err).Warn("remove from policyLibrary failed")
+	}
 }
 
 func AddTetragonNetworkPolicyInformer(_ context.Context, w watcher.Watcher) error {

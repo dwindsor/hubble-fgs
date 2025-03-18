@@ -16,4 +16,4 @@ spec:
     - labels:
         matchLabels: ["org=empire"]
       ports:
-        protocol: ["TCP","UDP"]
+        protocol: "TCP"
