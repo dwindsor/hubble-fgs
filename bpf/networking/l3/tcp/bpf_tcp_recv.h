@@ -307,8 +307,9 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 	c = *cookie;
 	socket = lookup_tcpsocketmap(&c);
 	if (socket) {
-		process_socketmap_recv(socket, skb);
-		if (socket->deny)
+		int verdict = process_socketmap_recv(socket, skb);
+
+		if (verdict == SK_DROP)
 			return SK_DROP;
 	}
 
