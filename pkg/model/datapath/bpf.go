@@ -1,7 +1,6 @@
 package datapath
 
 import (
-	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -79,14 +78,11 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 	// add it directly to the map otherwise we do a bulk update in init
 	// path.
 	if r.Init {
-		if r.EP != nil {
-			if err := dnsDomainMap.Update(r.EP.Dns, dst); err != nil {
-				p.AddError++
-				return fmt.Errorf("failed to write BPF domain maps: %w", err)
-			}
+		if r.EP != nil && r.EP.Dns != "" {
+			dnsDomainMap.Update(r.EP.Dns, dst)
 		}
 	} else {
-		if r.EP != nil {
+		if r.EP != nil && r.EP.Dns != "" {
 			QuotasInitDNSDomainMappings[*r.EP] = dst
 		}
 	}
