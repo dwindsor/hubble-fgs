@@ -271,7 +271,7 @@ check: ## Run Go linters.
 	golangci-lint run
 else
 check:
-	docker run --rm -v `pwd`:/app -w /app --env GOTOOLCHAIN=auto $(GOLANGCILINT_IMAGE) golangci-lint run
+	docker run --rm -v `pwd`:/app -w /app --env GOTOOLCHAIN=auto --env GOEXPERIMENT=synctest $(GOLANGCILINT_IMAGE) golangci-lint run
 endif
 
 .PHONY: copy-golangci-lint
