@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	oss "github.com/cilium/tetragon/pkg/watcher"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
@@ -92,6 +93,13 @@ func AddPodInfoInformer(w oss.Watcher) error {
 				switch t := old.(type) {
 				case *v1alpha1.PodInfo:
 					logger.GetLogger().Debug("Delete Pod: %v", t)
+					if enterpriseOption.Config.EnableProcessTree {
+						isLocal := false
+						if _, err := realK8sWatcher.FindPod(string(t.UID)); err != nil {
+							isLocal = true
+						}
+						dns.PodRemove(t, isLocal)
+					}
 				}
 			},
 		})
