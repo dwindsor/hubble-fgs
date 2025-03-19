@@ -89,7 +89,6 @@ Helm chart for Tetragon Enterprise
 | tetragon.enableApplicationModel | bool | `false` | Enable application model. |
 | tetragon.enableBPFDNSParser | bool | `false` | Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required. |
 | tetragon.enableCiliumAPI | bool | `false` | Access Cilium API to associate Tetragon events with Cilium DNS cache. |
-| tetragon.enableCiliumDNSCache | bool | `true` | When tetragon.enableCiliumAPI is set to true, Tetragon accesses Cilium APIs to miror Cilium endpoints, FQDN cache, and IP cache. Tetragon uses Cilium endpoints and FQDN cache to associate destination IPs with DNS names, and IP cache to associate process IPs with pod names. Setting this value to false disables the mirroring of Cilium endpoints and FQDN cache. You can set this value to false if you are using Tetragon DNS parser, as Tetragon maintains its own DNS cache. This setting has no effect if tetragon.enableCiliumAPI is set to false. |
 | tetragon.enableK8sAPI | bool | `true` | Access Kubernetes API to associate Tetragon events with Kubernetes pods. |
 | tetragon.enableKeepSensorsOnExit | bool | `false` | Persistent enforcement to allow the enforcement policy to continue running even when its Tetragon process is gone. |
 | tetragon.enableMsgHandlingLatency | bool | `false` | Enable latency monitoring in message handling |

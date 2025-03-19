@@ -39,7 +39,6 @@ type config struct {
 	EnableSandboxPolicies  bool
 	SandboxPolicies        []string
 	EnableCilium           bool
-	EnableCiliumDNSCache   bool
 
 	EnableAlerts    bool
 	AlertsExportDir string
@@ -81,7 +80,6 @@ var (
 		EnableDnsDebug:            false,
 		EnableIcmpTracking:        false,
 		EnableCilium:              false,
-		EnableCiliumDNSCache:      false,
 		ProcessCacheStaleInterval: time.Duration(60 * time.Minute),
 		EnableFimDispatcher:       false,
 	}

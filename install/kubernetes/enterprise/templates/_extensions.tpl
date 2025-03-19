@@ -12,7 +12,6 @@ flow-export-file-compress: {{ .Values.tetragon.flowExportFileCompress | quote }}
 {{- end }}
 {{- if .Values.tetragon.enableCiliumAPI }}
 enable-cilium-api: "true"
-enable-cilium-dns-cache: {{ .Values.tetragon.enableCiliumDNSCache | quote }}
 {{- end }}
 enable-policy-k8swatcher: {{ .Values.tetragon.k8sWatcher.policy.enabled | quote }}
 enable-sandboxpolicies: {{ .Values.tetragon.enableSandboxpolicies | quote }}

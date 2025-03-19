@@ -53,7 +53,6 @@ const (
 	keyEnableAWSSonar                 = "enable-aws-sonar"
 	keyAWSSonarRegion                 = "aws-sonar-region"
 	KeyEnableCiliumAPI                = "enable-cilium-api"
-	KeyEnableCiliumDNSCache           = "enable-cilium-dns-cache"
 	KeyEnableDnsDebug                 = "enable-dns-debug"
 	KeyProcessCacheStaleInterval      = "process-cache-stale-interval"
 	keyEnableBPFDNSParser             = "enable-bpf-dns-parser"
@@ -122,8 +121,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.StringSlice(keyDebugX, []string{}, "Extended debug to enable (e.g. \"tcp,udp+\"). Choose from: tcp, udp, icmp, rawsock. Tetragon defaults to maintaining metrics for program errors. Specifying the protocol/sub-system here causes events to be dispatched as well; adding a '+' will also get console messages")
 	flags.Bool(KeyEnableDnsDebug, false, "Enable DNS debug messages")
 	flags.Duration(KeyProcessCacheStaleInterval, time.Duration(60*time.Minute), "Interval between stale process cache checks")
-	flags.Bool(KeyEnableCiliumAPI, false, "Access Cilium API to associate Tetragon events with Cilium endpoints, DNS cache, and IP cache")
-	flags.Bool(KeyEnableCiliumDNSCache, true, "Cache Cilium endpoints and DNS cache")
+	flags.Bool(KeyEnableCiliumAPI, false, "Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache")
 	flags.Bool(keyEnableBPFDNSParser, false, "Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.")
 	flags.Bool(keyDNSStatsPerSocket, false, "If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported")
 	flags.Bool(KeyEnableFimDispatcher, false, "Enable FIM dispatcher when supported")
@@ -171,7 +169,6 @@ func ReadAndSetEnterpriseFlags() {
 	Config.AWSSonarRegion = viper.GetString(keyAWSSonarRegion)
 	Config.EnableDnsDebug = viper.GetBool(KeyEnableDnsDebug)
 	Config.EnableCilium = viper.GetBool(KeyEnableCiliumAPI)
-	Config.EnableCiliumDNSCache = viper.GetBool(KeyEnableCiliumDNSCache)
 	Config.ProcessCacheStaleInterval = viper.GetDuration(KeyProcessCacheStaleInterval)
 	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser) && kernels.MinKernelVersion("5.15.0")
 	Config.DNSStatsPerSocket = viper.GetBool(keyDNSStatsPerSocket)
