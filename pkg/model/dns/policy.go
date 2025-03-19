@@ -98,10 +98,10 @@ func RemoveNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) error
 	return progRemoveNetworkPolicy(name, src, d)
 }
 
-func RemoveNetworkPolicySet(uid string, policy []*types.TetragonNetworkPolicy) error {
+func RemoveNetworkPolicySet(name string, policy []*types.TetragonNetworkPolicy) error {
 	for i, p := range policy {
-		uidName := fmt.Sprintf("%s_%d", uid, i)
-		err := RemoveNetworkPolicy(uidName, p)
+		uid := fmt.Sprintf("%s_%d", name, i)
+		err := RemoveNetworkPolicy(uid, p)
 		if err != nil {
 			return err
 		}
@@ -377,10 +377,10 @@ func CreateMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) er
 	return nil
 }
 
-func CreateMatchLabelsPolicySet(uid string, policy []*types.TetragonNetworkPolicy) error {
+func CreateMatchLabelsPolicySet(name string, policy []*types.TetragonNetworkPolicy) error {
 	for i, p := range policy {
-		uidName := fmt.Sprintf("%s_%d", uid, i)
-		err := CreateMatchLabelsPolicy(uidName, p)
+		uid := fmt.Sprintf("%s_%d", name, i)
+		err := CreateMatchLabelsPolicy(uid, p)
 		if err != nil {
 			return err
 		}
