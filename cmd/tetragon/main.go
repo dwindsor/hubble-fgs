@@ -638,9 +638,11 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 					return err
 				}
 			}
-			err = netpol.AddTetragonNetworkPolicyInformer(ctx, policyWatcher)
-			if err != nil {
-				return err
+			if enterpriseOption.Config.EnableProcessTree {
+				err = netpol.AddTetragonNetworkPolicyInformer(ctx, policyWatcher)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		policyWatcher.Start()
