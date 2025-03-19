@@ -320,6 +320,8 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 }
 
 func Get() *Cache {
+	// This check pairs with ./pkg/podinfo/podinfo.go so if its dropped
+	// fix the deleteFunc there as well.
 	if !option.Config.EnableProcessTree {
 		return nil
 	}
