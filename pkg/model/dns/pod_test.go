@@ -8,6 +8,7 @@ import (
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -405,4 +406,47 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	zombieSet, err := __RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
+}
+
+func TestPolicySetAdd(t *testing.T) {
+	name := "netpol"
+	srcId := nextId()
+	dstId := nextId()
+
+	srcPodName := "testNamePodSrc"
+	srcPodLabels := "A=a,B=b"
+
+	dstPodName := "testNamePodDst"
+	dstPodLabels := "D1=d1,D2=d2,D3=d3"
+
+	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
+	netpolSet := []*types.TetragonNetworkPolicy{netpol}
+	CreateMatchLabelsPolicySet(name, netpolSet)
+	// add dst pod first which does not match a subject for any policy8
+	addPod(t, dstId, dstPodName, dstPodLabels)
+	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	rDst, err := __PodAdd(dstPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(rDst))
+
+	addPod(t, srcId, srcPodName, srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	r1, err := __PodAdd(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
+
+	// Remove pod and policy
+	delPod(t, dstId)
+	deleted, err := PodRemove(dstPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, deleted)
+
+	// Remove pod and policy
+	delPod(t, srcId)
+	deleted, err = PodRemove(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, deleted)
+
+	err = RemoveNetworkPolicySet(name, netpolSet)
+	assert.NoError(t, err)
 }
