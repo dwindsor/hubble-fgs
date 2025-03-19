@@ -30,7 +30,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
-	"github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned"
 	"github.com/isovalent/hubble-fgs/pkg/mandate"
 	mandatesrv "github.com/isovalent/hubble-fgs/pkg/mandate/server"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
@@ -57,6 +56,7 @@ import (
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metricsconfig"
@@ -70,7 +70,6 @@ import (
 	"github.com/cilium/tetragon/pkg/unixlisten"
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/cilium/tetragon/pkg/watcher"
-	k8sconf "github.com/cilium/tetragon/pkg/watcher/conf"
 	"github.com/cilium/tetragon/pkg/watcher/crdwatcher"
 
 	// Imported to allow sensors to be initialized inside init().
@@ -459,20 +458,19 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		alertsManager = alerts.NewRuleManager()
 	}
 
-	// Initialize K8s watcher
+	// Initialize a k8s watcher used to retrieve process metadata. This should
+	// happen before the sensors are loaded, otherwise events will be stuck
+	// waiting for metadata.
+	var k8sClient *kubernetes.Clientset
+	var crdClient *versioned.Clientset
 	var k8sWatcher watcher.K8sResourceWatcher
 	if option.Config.EnableK8s {
 		log.Info("Enabling Kubernetes API")
 		// retrieve k8s clients
-		config, err := k8sconf.K8sConfig()
+		k8sClient, crdClient, err = watcher.GetK8sClients(waitCRDs)
 		if err != nil {
 			return err
 		}
-		if err = waitCRDs(config); err != nil {
-			return err
-		}
-		k8sClient := kubernetes.NewForConfigOrDie(config)
-		crdClient := versioned.NewForConfigOrDie(config)
 
 		// create k8s watcher
 		k8sWatcher = watcher.NewK8sWatcher(k8sClient, crdClient, 60*time.Second)
@@ -495,35 +493,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			if err != nil {
 				return err
 			}
-		}
-		// add informers for all supported policy resources
-		if enterpriseOption.Config.EnablePolicyK8sWatcher {
-			// NB(anna): Check this option for OSS compatibility, but it's not
-			// recommended to use it to disable watching TracingPolicy in EE.
-			// Use --enable-policy-k8swatcher=false instead.
-			if option.Config.EnableTracingPolicyCRD {
-				err = crdwatcher.AddTracingPolicyInformer(ctx, k8sWatcher, observer.GetSensorManager())
-				if err != nil {
-					return err
-				}
-			}
-			if enterpriseOption.Config.EnableSandboxPolicies {
-				err = enterpriseWatcher.AddSandboxPolicyInformer(ctx, k8sWatcher, observer.GetSensorManager())
-				if err != nil {
-					return err
-				}
-			}
-		}
-		// TODO(anna): Add an option to load AlertRules from a file and disable watching CRD.
-		if enterpriseOption.Config.EnableAlerts {
-			err = enterpriseWatcher.AddAlertRuleInformer(k8sWatcher, alertsManager)
-			if err != nil {
-				return err
-			}
-		}
-		err = netpol.AddTetragonNetworkPolicyInformer(ctx, k8sWatcher)
-		if err != nil {
-			return err
 		}
 	} else {
 		log.Info("Disabling Kubernetes API")
@@ -637,6 +606,45 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 
 	obs.AddListener(pm)
 	saveInitInfo()
+
+	// Initialize a k8s watcher used to manage policies. This should happen
+	// after the sensors are loaded, otherwise existing policies will fail to
+	// load on the first attempt.
+	if option.Config.EnableK8s {
+		log.Info("Enabling policy watcher")
+		// create k8s watcher
+		policyWatcher := watcher.NewK8sWatcher(nil, crdClient, 60*time.Second)
+
+		// add informers for all resources
+		if enterpriseOption.Config.EnablePolicyK8sWatcher {
+			// NB(anna): Check this option for OSS compatibility, but it's not
+			// recommended to use it to disable watching TracingPolicy in EE.
+			// Use --enable-policy-k8swatcher=false instead.
+			if option.Config.EnableTracingPolicyCRD {
+				err = crdwatcher.AddTracingPolicyInformer(ctx, policyWatcher, observer.GetSensorManager())
+				if err != nil {
+					return err
+				}
+			}
+			if enterpriseOption.Config.EnableSandboxPolicies {
+				err = enterpriseWatcher.AddSandboxPolicyInformer(ctx, policyWatcher, observer.GetSensorManager())
+				if err != nil {
+					return err
+				}
+			}
+			if enterpriseOption.Config.EnableAlerts {
+				err = enterpriseWatcher.AddAlertRuleInformer(policyWatcher, alertsManager)
+				if err != nil {
+					return err
+				}
+			}
+			err = netpol.AddTetragonNetworkPolicyInformer(ctx, policyWatcher)
+			if err != nil {
+				return err
+			}
+		}
+		policyWatcher.Start()
+	}
 
 	obs.LogPinnedBpf(observerDir)
 
