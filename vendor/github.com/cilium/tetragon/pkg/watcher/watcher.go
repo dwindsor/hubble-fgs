@@ -12,12 +12,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	"github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/watcher/conf"
 )
 
 type Watcher interface {
@@ -29,6 +31,10 @@ type Watcher interface {
 	GetCRDInformerFactory() externalversions.SharedInformerFactory
 }
 
+// NB(anna): localK8sInformerFactory and deletedPodCache are relevant only when
+// watching pods. If a K8sWatcher instance is e.g. watching only policies, they
+// are unused. If needed, they can be factored out to make the K8sWatcher
+// struct more generic.
 type K8sWatcher struct {
 	k8sInformerFactory      informers.SharedInformerFactory        // for k8s built-in resources
 	localK8sInformerFactory informers.SharedInformerFactory        // for k8s built-in resources local to the node
@@ -39,22 +45,22 @@ type K8sWatcher struct {
 
 // NewK8sWatcher creates a new K8sWatcher with initialized informer factories.
 func NewK8sWatcher(
-	k8sClient kubernetes.Interface, crdClient versioned.Interface, stateSyncIntervalSec time.Duration,
+	k8sClient kubernetes.Interface, crdClient versioned.Interface, stateSyncInterval time.Duration,
 ) *K8sWatcher {
 	var k8sInformerFactory, localK8sInformerFactory informers.SharedInformerFactory
 	var crdInformerFactory externalversions.SharedInformerFactory
 
 	if k8sClient != nil {
-		k8sInformerFactory = informers.NewSharedInformerFactory(k8sClient, stateSyncIntervalSec)
+		k8sInformerFactory = informers.NewSharedInformerFactory(k8sClient, stateSyncInterval)
 		localK8sInformerFactory = informers.NewSharedInformerFactoryWithOptions(
-			k8sClient, stateSyncIntervalSec, informers.WithTweakListOptions(
+			k8sClient, stateSyncInterval, informers.WithTweakListOptions(
 				func(options *metav1.ListOptions) {
 					// watch local pods only
 					options.FieldSelector = "spec.nodeName=" + node.GetNodeNameForExport()
 				}))
 	}
 	if crdClient != nil {
-		crdInformerFactory = externalversions.NewSharedInformerFactory(crdClient, stateSyncIntervalSec)
+		crdInformerFactory = externalversions.NewSharedInformerFactory(crdClient, stateSyncInterval)
 	}
 
 	return &K8sWatcher{
@@ -111,4 +117,16 @@ func (w *K8sWatcher) GetLocalK8sInformerFactory() informers.SharedInformerFactor
 
 func (w *K8sWatcher) GetCRDInformerFactory() externalversions.SharedInformerFactory {
 	return w.crdInformerFactory
+}
+
+func GetK8sClients(waitCRDs func(*rest.Config) error) (*kubernetes.Clientset, *versioned.Clientset, error) {
+	config, err := conf.K8sConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+	err = waitCRDs(config)
+	if err != nil {
+		return nil, nil, err
+	}
+	return kubernetes.NewForConfigOrDie(config), versioned.NewForConfigOrDie(config), nil
 }
