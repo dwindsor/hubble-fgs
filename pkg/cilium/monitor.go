@@ -39,8 +39,6 @@ func handleMonitorSocket(ctx context.Context, log logrus.FieldLogger, ciliumStat
 
 // HandleMonitorSocket connects to the monitor socket and consumes monitor events.
 func HandleMonitorSocket(ctx context.Context, ciliumState *cilium.State) {
-	timer, timerDone := New()
-	defer timerDone()
 	t := 10 * time.Second
 	log := logger.GetLogger()
 	for {
@@ -53,7 +51,7 @@ func HandleMonitorSocket(ctx context.Context, ciliumState *cilium.State) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-timer.After(t):
+		case <-time.After(t):
 		}
 	}
 }
