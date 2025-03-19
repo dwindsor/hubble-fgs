@@ -51,6 +51,11 @@ func updateAlertRule(oldObj any, newObj any, rm alerts.RuleManager) {
 		logger.GetLogger().Info("Can't update an alert rule: it's nil.")
 		return
 	}
+	// We might get a bunch of update events from periodic re-syncs. If the
+	// resource version hasn't changed, ignore the event.
+	if oldAr.ResourceVersion == newAr.ResourceVersion {
+		return
+	}
 	if oldAr.GetName() != newAr.GetName() {
 		logger.GetLogger().WithFields(logrus.Fields{
 			"old-name": oldAr.GetName(),
