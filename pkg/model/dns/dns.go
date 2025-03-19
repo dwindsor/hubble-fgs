@@ -180,7 +180,7 @@ func SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet) []*record.Datap
 	for _, s := range subjects {
 		s.AddSubject(src)
 		// Merge step for cases where s -> {D1->A1} and s -> {D1->A2}
-		sRecords, err := AddSrcPolicy(src, s.Policy, true)
+		sRecords, err := AddSrcPolicy(s.Name, src, s.Policy, true)
 		if err != nil {
 			logger.GetLogger().WithField("src", src).WithError(err).Warn("ProgAddNetwork failed")
 		}

@@ -105,7 +105,7 @@ func RemoveNetworkPolicySet(uid string, policy []*types.TetragonNetworkPolicy) e
 		if err != nil {
 			return err
 		}
-		err = RemoveMatchLabelNetworkPolicy(uidName, p)
+		err = RemoveMatchLabelNetworkPolicy(uid, p)
 		if err != nil {
 			return err
 		}
@@ -113,12 +113,12 @@ func RemoveNetworkPolicySet(uid string, policy []*types.TetragonNetworkPolicy) e
 	return nil
 }
 
-func __RemoveMatchLabelNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, error) {
+func __RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, error) {
 	queueMatchLabelsLock.Lock()
 	defer queueMatchLabelsLock.Unlock()
 
-	subject := matchLabelPolicy[name]
-	dest := matchLabelDstPolicy[name]
+	subject := matchLabelPolicy[uid]
+	dest := matchLabelDstPolicy[uid]
 
 	var beforeSubjs []*record.DatapathRecord
 	var beforeDests []*record.DatapathRecord
@@ -147,8 +147,8 @@ func __RemoveMatchLabelNetworkPolicy(name string, policy *types.TetragonNetworkP
 		}
 	}
 
-	matchLabelPolicy.Remove(name)
-	matchLabelDstPolicy.Remove(name)
+	matchLabelPolicy.Remove(uid)
+	matchLabelDstPolicy.Remove(uid)
 
 	if subject != nil {
 		for _, s := range subject.Subjects {
@@ -174,8 +174,8 @@ func __RemoveMatchLabelNetworkPolicy(name string, policy *types.TetragonNetworkP
 	return zombieSet, nil
 }
 
-func RemoveMatchLabelNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) error {
-	zombieSet, err := __RemoveMatchLabelNetworkPolicy(name, policy)
+func RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+	zombieSet, err := __RemoveMatchLabelNetworkPolicy(uid, policy)
 	if err != nil {
 		return err
 	}
@@ -240,12 +240,13 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 	}, nil
 }
 
-func AddSrcPolicy(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]*record.DatapathRecord, error) {
+func AddSrcPolicy(uid string, src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]*record.DatapathRecord, error) {
 	records := []*record.DatapathRecord{}
 
 	dfltAction, err := calculateAction(&policy.Default)
 	if err != nil {
 		logger.GetLogger().WithFields(logrus.Fields{
+			"uid":    uid,
 			"name":   policy.Name,
 			"action": policy.Action,
 		}).WithError(err).Error("policy has unsupported or invalid default action")
@@ -255,6 +256,7 @@ func AddSrcPolicy(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy
 	action, err := calculateAction(&policy.Action)
 	if err != nil {
 		logger.GetLogger().WithFields(logrus.Fields{
+			"uid":    uid,
 			"name":   policy.Name,
 			"action": policy.Action,
 		}).WithError(err).Error("policy has unsupported or invalid action")
@@ -276,7 +278,7 @@ func AddSrcPolicy(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy
 		}
 	}
 
-	ls := matchLabelDstPolicy[policy.Name]
+	ls := matchLabelDstPolicy[uid]
 	if ls != nil {
 		for _, ep := range ls.Endpoints {
 			records = append(records, &record.DatapathRecord{
@@ -311,7 +313,7 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
 		return nil
 	}
 
-	records, err := AddSrcPolicy(src, policy, init)
+	records, err := AddSrcPolicy(policy.Name, src, policy, init)
 	if err != nil {
 		return err
 	}
@@ -332,6 +334,7 @@ func CreateDstMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy)
 	}
 
 	ls := &matchLabels.LabelSet{
+		Name:   uid,
 		Label:  policy.Destination.Labels.Equal,
 		Policy: policy,
 	}
@@ -346,6 +349,7 @@ func CreateSrcMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy)
 	defer queueMatchLabelsLock.Unlock()
 
 	ls := &matchLabels.LabelSet{
+		Name:   uid,
 		Label:  policy.Subject.MatchLabelsEqual,
 		Policy: policy,
 	}
