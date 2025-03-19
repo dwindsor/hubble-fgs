@@ -22,9 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
-	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
@@ -433,8 +431,7 @@ func GetProcessIcmp(
 	}
 
 	dnsCache := dns.Get()
-	state := cilium.GetCiliumState()
-	fgsEvent.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, fgsEvent.DestinationIp, dnsCache, state)
+	fgsEvent.DestinationNames, _ = dnsCache.GetIp(fgsEvent.DestinationIp)
 	fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIp)
 
 	switch event.Msg.IcmpData.IcmpIpProto {

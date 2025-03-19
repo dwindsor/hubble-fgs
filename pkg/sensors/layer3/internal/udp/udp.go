@@ -34,7 +34,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
@@ -292,7 +291,6 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 		cgroup = false
 	}
 
-	dns.LazyDns = false
 	versionStr = "__udp_sensor_probe__"
 
 	if !cgroup {
@@ -311,7 +309,6 @@ func EnableUdp(cgroup, timestampEnable bool, interval time.Duration) ([]*program
 			LatencyConfigMapLazyKprobe,
 			PsVerMap,
 		}
-		dns.LazyDns = true
 	} else {
 		if !DisableListenEvents {
 			progsInitSock = append(progsInitSock, bindProg())

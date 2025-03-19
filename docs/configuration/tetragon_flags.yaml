@@ -88,7 +88,7 @@ options:
     - name: enable-cilium-api
       default_value: "false"
       usage: |
-        Access Cilium API to associate Tetragon events with Cilium endpoints and DNS cache
+        Associate IP addresses in Tetragon's networking events with Kubernetes pods using Cilium's IP cache
     - name: enable-compatibility-syscall64-size-type
       default_value: "false"
       usage: |

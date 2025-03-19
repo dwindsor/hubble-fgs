@@ -16,6 +16,13 @@ Depending on your setup, changes listed here might require a manual intervention
   AlertRule and TetragonNetworkPolicy(Namespaced), unless some of the features
   are disabled by other options, or Kubernetes API server is disabled
   entirely by `--enable-k8s-api=false`.
+* `--enable-cilium-dns-cache` flag and its corresponding `tetragon.enableCiliumDNSCache`
+  Helm value have been removed. Tetragon no longer mirrors Cilium endpoints or
+  FQDN cache. Enable [Tetragon's DNS parser](https://docs.isovalent.com/operations-guide/tetragon/networking/l7-visibility/dns.html)
+  to associate IP addresses to DNS names in Tetragon networking events. Note that
+  Tetragon still supports `--enable-cilium-api` flag and `tetragon.enableCiliumAPI`
+  Helm value to mirror Cilium's IP cache to associate IP addresses with Kubernetes
+  pods.
 
 ### Helm Values
 

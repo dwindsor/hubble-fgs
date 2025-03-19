@@ -13,7 +13,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
@@ -108,11 +107,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 		Http:    fgsHttp,
 	}
 
-	fgsEvent.Socket.DestinationNames, _ =
-		sockinfo.GetProcessIp(proc,
-			fgsEvent.Socket.DestinationIp,
-			dns.Get(),
-			cilium.GetCiliumState())
+	fgsEvent.Socket.DestinationNames, _ = dns.Get().GetIp(fgsEvent.Socket.DestinationIp)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the

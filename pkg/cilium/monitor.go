@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/cilium/cilium/pkg/defaults"
-	"github.com/cilium/cilium/pkg/monitor"
 	monitorAPI "github.com/cilium/cilium/pkg/monitor/api"
 	"github.com/cilium/cilium/pkg/monitor/payload"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -60,8 +59,6 @@ func consumeMonitorEvents(ctx context.Context, conn net.Conn, ciliumState *ciliu
 	defer conn.Close()
 	var pl payload.Payload
 	dec := gob.NewDecoder(conn)
-	endpointEvents := ciliumState.GetEndpointEventsChannel()
-	dnsAdd := ciliumState.GetLogRecordNotifyChannel()
 	ipCacheEvents := make(chan monitorAPI.AgentNotify, 100)
 	ciliumState.StartMirroringIPCache(ipCacheEvents)
 	for {
@@ -78,27 +75,9 @@ func consumeMonitorEvents(ctx context.Context, conn net.Conn, ciliumState *ciliu
 				continue
 			}
 			switch an.Type {
-			case monitorAPI.AgentNotifyEndpointCreated,
-				monitorAPI.AgentNotifyEndpointRegenerateSuccess,
-				monitorAPI.AgentNotifyEndpointDeleted:
-				endpointEvents <- an
 			case monitorAPI.AgentNotifyIPCacheUpserted,
 				monitorAPI.AgentNotifyIPCacheDeleted:
 				ipCacheEvents <- an
-			}
-		case monitorAPI.MessageTypeAccessLog:
-			// TODO re-think the way this is being done. We are dissecting/
-			//      TypeAccessLog messages here *and* when we are dumping
-			//      them into JSON.
-			buf := bytes.NewBuffer(pl.Data[1:])
-			payloadDecoder := gob.NewDecoder(buf)
-			lr := monitor.LogRecordNotify{}
-			if err := payloadDecoder.Decode(&lr); err != nil {
-				logger.GetLogger().WithError(err).Warning("failed to decode access log message type")
-				continue
-			}
-			if lr.DNS != nil {
-				dnsAdd <- lr
 			}
 		}
 		select {

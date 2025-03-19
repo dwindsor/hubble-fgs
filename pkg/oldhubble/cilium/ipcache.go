@@ -5,14 +5,10 @@ package cilium
 
 import (
 	"encoding/json"
-	"net"
 	"time"
 
 	"github.com/cilium/cilium/pkg/identity"
 	monitorAPI "github.com/cilium/cilium/pkg/monitor/api"
-	"github.com/isovalent/hubble-fgs/pkg/oldhubble/cilium/client"
-	"github.com/isovalent/hubble-fgs/pkg/oldhubble/ipcache"
-	"github.com/isovalent/hubble-fgs/pkg/oldhubble/parser/getters"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,31 +16,6 @@ const (
 	ipcacheInitRetryInterval = 5 * time.Second
 	ipcacheRefreshInterval   = 5 * time.Minute
 )
-
-// LegacyPodGetter implements GetIPIdentity based on the IPCache-backed
-// IPGetter, but falls back on obtaining the pod information from the list
-// of endpoints. This is intended to support Cilium 1.6 and older.
-type LegacyPodGetter struct {
-	PodGetter      getters.IPGetter
-	EndpointGetter getters.EndpointGetter
-}
-
-// GetIPIdentity fetches IP-related information.
-func (l *LegacyPodGetter) GetIPIdentity(ip net.IP) (identity ipcache.IPIdentity, ok bool) {
-	if id, ok := l.PodGetter.GetIPIdentity(ip); ok {
-		return id, true
-	}
-
-	// fallback on local endpoints
-	if ep, ok := l.EndpointGetter.GetEndpointInfo(ip); ok {
-		return ipcache.IPIdentity{
-			Namespace: ep.GetK8sNamespace(),
-			PodName:   ep.GetK8sPodName(),
-		}, true
-	}
-
-	return ipcache.IPIdentity{}, false
-}
 
 // fetchIPCache copies over the IP cache from cilium agent
 func (s *State) fetchIPCache() error {
@@ -99,13 +70,6 @@ func (s *State) syncIPCache(ipcacheEvents <-chan monitorAPI.AgentNotify) {
 	for {
 		err := s.fetchIPCache()
 		if err != nil {
-			// This is expected to fail on older versions of cilium, therefore
-			// we emit a warning and will not try to synchronize the ipcache.
-			if client.IsIPCacheNotFoundErr(err) {
-				s.log.Warn("Failed to obtain IPCache from Cilium. If you are using Cilium 1.6 or older, " +
-					"this is expected. Pod names of endpoints running on remote nodes will not be resolved.")
-				return
-			}
 			s.log.WithError(err).Error("Failed to fetch IPCache from Cilium")
 			time.Sleep(ipcacheInitRetryInterval)
 			continue

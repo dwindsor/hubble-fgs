@@ -15,8 +15,7 @@ type Cache struct {
 }
 
 var (
-	LazyDns = false
-	cache   *Cache
+	cache *Cache
 )
 
 func init() {
@@ -68,10 +67,6 @@ func (c *Cache) AddIp(dns *tetragon.DnsInfo) {
 			dnsmetrics.DnsCacheEvictions().Inc()
 		}
 	}
-}
-
-func CiliumDnsEnabled() bool {
-	return LazyDns
 }
 
 func Get() *Cache {

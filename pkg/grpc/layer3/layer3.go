@@ -28,7 +28,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
@@ -127,7 +126,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	}
 
 	ec := eventcache.Get()
-	fgsEvent.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dns.Get(), cilium.GetCiliumState())
+	fgsEvent.DestinationNames, _ = dns.Get().GetIp(destinationIP.String())
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -212,8 +211,7 @@ func GetProcessClose(event *MsgIPWithStatsEventUnix) *tetragon.ProcessClose {
 
 	dnsCache := dns.Get()
 	ec := eventcache.Get()
-	state := cilium.GetCiliumState()
-	fgsEvent.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dnsCache, state)
+	fgsEvent.DestinationNames, _ = dnsCache.GetIp(destinationIP.String())
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -346,8 +344,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 
 	dnsCache := dns.Get()
 	ec := eventcache.Get()
-	state := cilium.GetCiliumState()
-	fgsEvent.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dnsCache, state)
+	fgsEvent.DestinationNames, _ = dnsCache.GetIp(destinationIP.String())
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -492,8 +489,7 @@ func CreateProcessSockStats(event *MsgIPWithStatsEventUnix, cache bool) *tetrago
 	// now I'll skip bouncing these through DNS entries when missing DNS
 	dnsCache := dns.Get()
 	ec := eventcache.Get()
-	state := cilium.GetCiliumState()
-	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, fgsTuple.DestinationIp, dnsCache, state)
+	fgsEvent.Socket.DestinationNames, _ = dnsCache.GetIp(fgsTuple.DestinationIp)
 
 	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)

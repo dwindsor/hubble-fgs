@@ -1,18 +1,9 @@
 package sockinfo
 
 import (
-	"fmt"
-	"net"
-
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	ciliumState "github.com/isovalent/hubble-fgs/pkg/cilium"
-	"github.com/isovalent/hubble-fgs/pkg/dns"
-	hubblev1 "github.com/isovalent/hubble-fgs/pkg/oldhubble/api/v1"
-	"github.com/isovalent/hubble-fgs/pkg/oldhubble/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -82,37 +73,4 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo
 	sockInfo.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 
 	return sockInfo
-}
-
-func GetProcessIp(proc *tetragon.Process, ip string, cache *dns.Cache, cs *cilium.State) ([]string, error) {
-	var entry []string
-
-	if dns.CiliumDnsEnabled() {
-		endpoint := getProcessEndpoint(proc)
-		if endpoint == nil {
-			return nil, fmt.Errorf("no endpoint found for GetIp")
-		}
-		entry = cs.GetFQDNCache().GetNamesOf(endpoint.ID, net.ParseIP(ip))
-		if len(entry) == 0 {
-			return nil, fmt.Errorf("no dns entry found through FQDN Cache")
-		}
-		return entry, nil
-	}
-	return cache.GetIp(ip)
-}
-
-func getProcessEndpoint(p *tetragon.Process) *hubblev1.Endpoint {
-	if p == nil {
-		return nil
-	}
-	if p.Docker == "" {
-		return nil
-	}
-	pod, _, ok := process.GetK8s().FindContainer(p.Docker)
-	if !ok {
-		logger.GetLogger().WithField("container id", p.Docker).Trace("failed to get pod")
-		return nil
-	}
-	endpoint, _ := ciliumState.GetCiliumState().GetEndpointsHandler().GetEndpointByPodName(pod.Namespace, pod.Name)
-	return endpoint
 }
