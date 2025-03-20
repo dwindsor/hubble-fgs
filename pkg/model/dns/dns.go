@@ -14,6 +14,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+
+	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -89,6 +91,9 @@ type PolicyState struct {
 	Dst matchLabels.PolicyList
 	Src matchLabels.PolicyList
 
+	localPods  map[k8stypes.UID]*v1alpha1.PodInfo
+	remotePods map[k8stypes.UID]*v1alpha1.PodInfo
+
 	DstLock sync.Mutex
 	SrcLock sync.Mutex
 }
@@ -97,6 +102,9 @@ func New() *PolicyState {
 	s := &PolicyState{}
 	s.Dst = make(map[string]*matchLabels.LabelSet)
 	s.Src = make(map[string]*matchLabels.LabelSet)
+
+	s.localPods = make(map[k8stypes.UID]*v1alpha1.PodInfo)
+	s.remotePods = make(map[k8stypes.UID]*v1alpha1.PodInfo)
 
 	s.DstLock = sync.Mutex{}
 	s.SrcLock = sync.Mutex{}
@@ -148,6 +156,7 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) (int, e
 	}
 
 	if !local {
+		state.remotePods[pod.ObjectMeta.UID] = nil
 		return prog.RemoveRecords(records)
 	}
 
@@ -204,6 +213,7 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) (int, e
 			})
 		}
 	}
+	state.localPods[pod.ObjectMeta.UID] = nil
 	return prog.RemoveRecords(records)
 }
 
@@ -272,6 +282,7 @@ func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*reco
 	epRecords := state.EndpointAdd(ep, ml)
 
 	if !local {
+		state.remotePods[epPod.ObjectMeta.UID] = epPod
 		return epRecords, nil
 	}
 
@@ -291,6 +302,7 @@ func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*reco
 	}
 
 	srcRecords := state.SrcAdd(src, ml)
+	state.localPods[epPod.ObjectMeta.UID] = epPod
 	return append(epRecords, srcRecords...), nil
 }
 
