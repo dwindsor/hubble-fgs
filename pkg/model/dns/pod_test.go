@@ -417,7 +417,7 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	assert.Equal(t, 0, len(zombieSet))
 }
 
-func TestPolicySetAdd(t *testing.T) {
+func TestPolicySet(t *testing.T) {
 	s := New()
 	SetRealizedState(s)
 	name := "netpol"
@@ -456,6 +456,61 @@ func TestPolicySetAdd(t *testing.T) {
 	// Remove pod and policy
 	delPod(t, srcId)
 	deleted, err = s.__PodRemove(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(deleted))
+
+	err = RemoveNetworkPolicySet(name, netpolSet)
+	assert.NoError(t, err)
+}
+
+func TestPolicySetWithPods(t *testing.T) {
+	s := New()
+	SetRealizedState(s)
+	name := "netpol"
+	srcId := nextId()
+	dstId := nextId()
+
+	srcPodName := "testNamePodSrc"
+	srcPodLabels := "A=a,B=b"
+
+	dstPodName := "testNamePodDst"
+	dstPodLabels := "D1=d1,D2=d2,D3=d3"
+
+	// Add src pod and dest pod while no policy is in play
+	addPod(t, dstId, dstPodName, dstPodLabels)
+	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	s = GetRealizedState()
+	rDst, err := s.__PodAdd(dstPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(rDst))
+
+	addPod(t, srcId, srcPodName, srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	r1, err := s.__PodAdd(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(r1))
+
+	// Add policy and ensure we generate rules
+	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
+	netpolSet := []*types.TetragonNetworkPolicy{netpol}
+	newState, addSet, removeSet, errSet := __CreateMatchLabelsPolicySet(netpolSet)
+	assert.NoError(t, errSet)
+	assert.Equal(t, 4, len(addSet))
+	assert.Equal(t, addSet[0].EP.Type, endpoint.DnsType)
+	assert.Equal(t, addSet[1].EP.Type, endpoint.DnsType)
+	assert.Equal(t, addSet[2].EP.Type, endpoint.PodType)
+	assert.Nil(t, addSet[3].EP)
+	assert.Zero(t, len(removeSet))
+
+	// Remove pod and policy
+	delPod(t, dstId)
+	deleted, err := newState.__PodRemove(dstPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(deleted))
+
+	// Remove pod and policy
+	delPod(t, srcId)
+	deleted, err = newState.__PodRemove(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
