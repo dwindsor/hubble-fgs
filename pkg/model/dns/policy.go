@@ -362,21 +362,113 @@ func (state *PolicyState) CreateMatchLabelsPolicy(uid string, policy *types.Tetr
 	return nil
 }
 
-// Entry point to Policy state create
-func CreateMatchLabelsPolicySet(name string, policy []*types.TetragonNetworkPolicy) error {
-	s := GetRealizedState()
+func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy {
+	uniquePolicyMap := make(map[string]*types.TetragonNetworkPolicy)
+	allPolicy := make([]*types.TetragonNetworkPolicy, 0)
 
-	for i, p := range policy {
-		uid := fmt.Sprintf("%s_%d", name, i)
-		err := s.CreateMatchLabelsPolicy(uid, p)
-		if err != nil {
-			return err
+	for _, p := range state.Src {
+		if _, ok := uniquePolicyMap[p.Name]; !ok {
+			uniquePolicyMap[p.Name] = p.Policy
+			allPolicy = append(allPolicy, p.Policy)
 		}
 	}
+	for _, p := range state.Dst {
+		if _, ok := uniquePolicyMap[p.Name]; !ok {
+			uniquePolicyMap[p.Name] = p.Policy
+			allPolicy = append(allPolicy, p.Policy)
+		}
+	}
+	return allPolicy
+}
+
+func __CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
+	// Entry point to Policy state create
+	// Collect existing policy set
+	currentState := GetRealizedState()
+	currentPolicy := currentState.getAllExistingPolicy()
+
+	calculatorRecords := []*record.DatapathRecord{}
+	calculatorState := New()
+
+	for _, p := range currentState.localPods {
+		r, err := calculatorState.__PodAdd(p, true)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		calculatorRecords = append(calculatorRecords, r...)
+	}
+
+	for _, p := range currentState.remotePods {
+		r, err := calculatorState.__PodAdd(p, false)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		calculatorRecords = append(calculatorRecords, r...)
+	}
+
+	// Building new state with extended policy set
+	s := New()
+	allPolicy := append(currentPolicy, policy...)
+	uidGenerator := make(map[string]int, len(allPolicy))
+
+	for _, p := range allPolicy {
+		id, ok := uidGenerator[p.Name]
+		if !ok {
+			id = 0
+			uidGenerator[p.Name] = 0
+		} else {
+			id++
+			uidGenerator[p.Name] = id
+		}
+
+		uid := fmt.Sprintf("%s_%d", p.Name, id)
+		err := s.CreateMatchLabelsPolicy(uid, p)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	// Walk existing pods and create new []record from new policy
+	addSet := []*record.DatapathRecord{}
+	for _, p := range currentState.localPods {
+		r, err := s.__PodAdd(p, true)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		addSet = append(addSet, r...)
+	}
+	for _, p := range currentState.remotePods {
+		r, err := s.__PodAdd(p, true)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		addSet = append(addSet, r...)
+	}
+
+	// If the record no longer exists remove it.
+	removeSet := record.Diff(calculatorRecords, addSet)
+	return s, addSet, removeSet, nil
+}
+
+func CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) error {
+	newState, addSet, removeSet, err := __CreateMatchLabelsPolicySet(policy)
+	if err != nil {
+		return err
+	}
+
+	// Order matters lets add the new set of recrods, notice this
+	// might duplicate existing records its fine we just update
+	// them regardless. Then second remove any old records that
+	// are no longer valid.
+	prog.AddRecords(addSet)
+	prog.RemoveRecords(removeSet)
+
+	// Setnew state
+	SetRealizedState(newState)
 	return nil
 }
 
-// Entry point to Policy state remove 
+// Entry point to Policy state remove
 func RemoveNetworkPolicySet(name string, policy []*types.TetragonNetworkPolicy) error {
 	s := GetRealizedState()
 

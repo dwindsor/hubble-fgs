@@ -11,6 +11,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stype "k8s.io/apimachinery/pkg/types"
 )
 
 // One thing that is odd about these tests is we are working over the NSID
@@ -92,6 +93,7 @@ func testPod(t *testing.T, id, ns, name, kind, matchLabels string) *v1alpha1.Pod
 	}
 	meta := metav1.ObjectMeta{
 		Labels: ml,
+		UID:    k8stype.UID(name),
 	}
 	podInfo := &v1alpha1.PodInfo{
 		WorkloadType:   ty,
@@ -430,10 +432,11 @@ func TestPolicySetAdd(t *testing.T) {
 
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
 	netpolSet := []*types.TetragonNetworkPolicy{netpol}
-	CreateMatchLabelsPolicySet(name, netpolSet)
+	CreateMatchLabelsPolicySet(netpolSet)
 	// add dst pod first which does not match a subject for any policy8
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	s = GetRealizedState()
 	rDst, err := s.__PodAdd(dstPod, true)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
