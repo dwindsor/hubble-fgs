@@ -24,12 +24,16 @@ var tests = []policyCalcTest{
 }
 
 func TestMatchLabelsTable(t *testing.T) {
+	s := New()
+	SetRealizedState(s)
+
 	for _, test := range tests {
 		testPolicyCalculator(t, test.PodML, test.Policy, test.Check)
 	}
 }
 
 func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
+	s := GetRealizedState()
 
 	policyMap := make(map[string]*types.TetragonNetworkPolicy)
 	podMap := []policyfilter.PodID{}
@@ -52,8 +56,8 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 
 		policyMap[x[0]] = parsedPolicy
 
-		CreateSrcMatchLabelsPolicy(x[0], parsedPolicy)
-		CreateDstMatchLabelsPolicy(x[0], parsedPolicy)
+		s.CreateSrcMatchLabelsPolicy(x[0], parsedPolicy)
+		s.CreateDstMatchLabelsPolicy(x[0], parsedPolicy)
 	}
 
 	for _, pod := range podML {
@@ -68,7 +72,7 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 		x := strings.Split(c, ":")
 		assert.Equal(t, len(x), 2)
 
-		policy := matchLabelPolicy[x[0]]
+		policy := s.Src[x[0]]
 		found := false
 		for _, s := range policy.Subjects {
 			if s.CgroupId == 0x1 {
@@ -80,7 +84,7 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 	}
 
 	for i, p := range policyMap {
-		err := RemoveMatchLabelNetworkPolicy(i, p)
+		err := s.RemoveMatchLabelNetworkPolicy(i, p)
 		assert.NoError(t, err)
 	}
 

@@ -9,7 +9,10 @@ import (
 )
 
 func AddUnsafeNetworkPolicy(policyUID string, policy *types.TetragonNetworkPolicy) error {
-	dns.CreateMatchLabelsPolicy(policyUID, policy)
+	s := dns.New()
+	dns.SetRealizedState(s)
+
+	s.CreateMatchLabelsPolicy(policyUID, policy)
 
 	if policy.Subject.Workload.Name != "" && policy.Subject.Workload.Kind != "" {
 		return dns.AddNetworkPolicy(policy, false)
@@ -42,8 +45,10 @@ func AddUnsafeNetworkPolicy(policyUID string, policy *types.TetragonNetworkPolic
 // the update. However, this is a heavy operation to remove a quotas so we
 // accept it.
 func ClearDnsPolicy(policyUID string, policy *types.TetragonNetworkPolicy) error {
+	s := dns.New()
+
 	if len(policy.Subject.MatchLabelsEqual) > 0 {
-		return dns.RemoveMatchLabelNetworkPolicy(policyUID, policy)
+		return s.RemoveMatchLabelNetworkPolicy(policyUID, policy)
 	}
-	return dns.RemoveNetworkPolicy(policyUID, policy)
+	return s.RemoveNetworkPolicy(policyUID, policy)
 }

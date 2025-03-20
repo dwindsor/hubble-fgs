@@ -101,28 +101,31 @@ func testMatchDstLabelsDenyPolicy(name, src, dst, action string) *types.Tetragon
 }
 
 func TestQueueWorkloadPolicy(t *testing.T) {
+	s := New()
 	name := "test"
 	policy := testFQDNPolicy(name)
 
 	QueueWorkloadNetworkPolicy(policy)
 	assert.Equal(t, 1, len(queueWl))
 
-	err := RemoveNetworkPolicy(name, policy)
+	err := s.RemoveNetworkPolicy(name, policy)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(queueWl))
 }
 
 func TestCreateSrcKeyNoState(t *testing.T) {
+	s := New()
 	name := "test"
 	policy := testFQDNPolicy(name)
 	_, err := createSrcPolicy(policy)
 	assert.NoError(t, err)
-	err = RemoveNetworkPolicy(name, policy)
+	err = s.RemoveNetworkPolicy(name, policy)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(queueWl))
 }
 
 func TestCreateSrcKeyNamespaceNoState(t *testing.T) {
+	s := New()
 	name := "test"
 	policy := testFQDNPolicy(name)
 	policy.Subject.Workload.Name = ""
@@ -131,12 +134,13 @@ func TestCreateSrcKeyNamespaceNoState(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, key)
 
-	err = RemoveNetworkPolicy(name, policy)
+	err = s.RemoveNetworkPolicy(name, policy)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(queueWl))
 }
 
-func TestCreateSrcKeyGlobal(t *testing.T) {
+func TestCreatSrcKeyGlobal(t *testing.T) {
+	s := New()
 	name := "test"
 	policy := testFQDNPolicy(name)
 	policy.Subject.Workload.Namespace = ""
@@ -148,46 +152,50 @@ func TestCreateSrcKeyGlobal(t *testing.T) {
 	assert.Equal(t, uint64(0), key.Depth)
 	assert.Equal(t, uint64(0), key.Self)
 
-	err = RemoveNetworkPolicy(name, policy)
+	err = s.RemoveNetworkPolicy(name, policy)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(queueWl))
 }
 
 func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
+	s := New()
 	name := "testName"
 	uid := "testName"
 
 	policy := testMatchSrcLabelsPolicy(name, "A=a,B=b")
-	err := CreateSrcMatchLabelsPolicy(uid, policy)
+	err := s.CreateSrcMatchLabelsPolicy(uid, policy)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(matchLabelPolicy))
+	assert.Equal(t, 1, len(s.Src))
 
-	err = RemoveMatchLabelNetworkPolicy(uid, policy)
+	err = s.RemoveMatchLabelNetworkPolicy(uid, policy)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 0, len(matchLabelPolicy))
+	assert.Equal(t, 0, len(s.Src))
 }
 
 func TestCreateDstMatchLabelsPolicy(t *testing.T) {
+	s := New()
 	name := "testName"
 	uid := "testName"
 
 	nextId()
 
 	policy := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	err := CreateDstMatchLabelsPolicy(uid, policy)
+	err := s.CreateDstMatchLabelsPolicy(uid, policy)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(matchLabelDstPolicy))
+	assert.Equal(t, 1, len(s.Dst))
 
-	err = RemoveMatchLabelNetworkPolicy(uid, policy)
+	err = s.RemoveMatchLabelNetworkPolicy(uid, policy)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 0, len(matchLabelDstPolicy))
+	assert.Equal(t, 0, len(s.Dst))
 }
 
 func TestCreateSrcKey(t *testing.T) {
+	s := New()
+
 	ml := make(map[string]string)
 	ml["A"] = "a"
 	ml["B"] = "b"
@@ -230,66 +238,70 @@ func TestCreateSrcKey(t *testing.T) {
 		Action:      action,
 	}
 
-	err := CreateSrcMatchLabelsPolicy("testUID", netpol)
+	err := s.CreateSrcMatchLabelsPolicy("testUID", netpol)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(matchLabelPolicy))
+	assert.Equal(t, 1, len(s.Src))
 }
 
 func CreateDstMatchLabels(t *testing.T) {
+	s := New()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	err := CreateDstMatchLabelsPolicy(name, netpol)
+	err := s.CreateDstMatchLabelsPolicy(name, netpol)
 	assert.NoError(t, err)
-	d := matchLabelDstPolicy[name]
+	d := s.Dst[name]
 	assert.Equal(t, "d1", d.Label["D1"])
 	assert.Equal(t, "d2", d.Label["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
 }
 
 func CreateSrcMatchLabels(t *testing.T) {
+	s := New()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	err := CreateSrcMatchLabelsPolicy(name, netpol)
+	err := s.CreateSrcMatchLabelsPolicy(name, netpol)
 	assert.NoError(t, err)
-	s := matchLabelPolicy[name]
-	assert.NotNil(t, s)
-	assert.Equal(t, "a", s.Label["A"])
-	assert.Equal(t, "b", s.Label["B"])
-	assert.Equal(t, 0, len(s.Subjects)) // no pods yet so no subjects either
+	src := s.Src[name]
+	assert.NotNil(t, src)
+	assert.Equal(t, "a", src.Label["A"])
+	assert.Equal(t, "b", src.Label["B"])
+	assert.Equal(t, 0, len(src.Subjects)) // no pods yet so no subjects either
 }
 
 func TestAddNetworkPolicy(t *testing.T) {
+	s := New()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	err := CreateMatchLabelsPolicy(name, netpol)
+	err := s.CreateMatchLabelsPolicy(name, netpol)
 	assert.NoError(t, err)
-	d := matchLabelDstPolicy[name]
+	d := s.Dst[name]
 	assert.NotNil(t, d)
 	assert.Equal(t, "d1", d.Label["D1"])
 	assert.Equal(t, "d2", d.Label["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
-	s := matchLabelPolicy[name]
-	assert.NotNil(t, s)
-	assert.Equal(t, "a", s.Label["A"])
-	assert.Equal(t, "b", s.Label["B"])
-	assert.Equal(t, 0, len(s.Subjects)) // no pods yet so no subjects either
+	src := s.Src[name]
+	assert.NotNil(t, src)
+	assert.Equal(t, "a", src.Label["A"])
+	assert.Equal(t, "b", src.Label["B"])
+	assert.Equal(t, 0, len(src.Subjects)) // no pods yet so no subjects either
 }
 
 func testAddNetworkActionPolicy(t *testing.T, action string) {
+	s := New()
 	name := "testPol"
 	netpol := testMatchDstLabelsDenyPolicy(name, "A=a,B=b", "D1=d1,D2=d2", action)
-	err := CreateMatchLabelsPolicy(name, netpol)
+	err := s.CreateMatchLabelsPolicy(name, netpol)
 	assert.NoError(t, err)
-	d := matchLabelDstPolicy[name]
+	d := s.Dst[name]
 	assert.NotNil(t, d)
 	assert.Equal(t, "d1", d.Label["D1"])
 	assert.Equal(t, "d2", d.Label["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
-	s := matchLabelPolicy[name]
-	assert.NotNil(t, s)
-	assert.Equal(t, "a", s.Label["A"])
-	assert.Equal(t, "b", s.Label["B"])
-	assert.Equal(t, 0, len(s.Subjects)) // no pods yet so no subjects either
+	src := s.Src[name]
+	assert.NotNil(t, src)
+	assert.Equal(t, "a", src.Label["A"])
+	assert.Equal(t, "b", src.Label["B"])
+	assert.Equal(t, 0, len(src.Subjects)) // no pods yet so no subjects either
 
 }
 

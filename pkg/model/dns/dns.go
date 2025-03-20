@@ -17,20 +17,52 @@ import (
 )
 
 var (
-	queueWl     = make(map[types.TetragonWorkloadNetworkSubject]*types.TetragonNetworkPolicy)
-	queueWlLock = sync.Mutex{}
-
-	// Destination match labels
-	matchLabelDstPolicy     matchLabels.PolicyList = make(map[string]*matchLabels.LabelSet)
-	queueMatchLabelsDstLock                        = sync.Mutex{}
-
-	// Global Match Label policy
-	matchLabelPolicy     matchLabels.PolicyList = make(map[string]*matchLabels.LabelSet)
-	queueMatchLabelsLock                        = sync.Mutex{}
-
+	RealizedState *PolicyState
+	DesiredState  *PolicyState
 	// Programmer for BPF dataplane
 	prog datapath.Interface = &datapath.BpfProgrammer{}
 )
+
+// Legacy policy is handled as global state
+var (
+	queueWl     = make(map[types.TetragonWorkloadNetworkSubject]*types.TetragonNetworkPolicy)
+	queueWlLock = sync.Mutex{}
+)
+
+// At init we build an empty realized state
+func init() {
+	s := New()
+	SetRealizedState(s)
+}
+
+// Legacy policy add for quotas
+func checkWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
+	subject := types.TetragonWorkloadNetworkSubject{
+		Namespace: epPod.WorkloadObject.Namespace,
+		Name:      epPod.WorkloadObject.Name,
+		Kind:      epPod.WorkloadType.Kind,
+	}
+
+	queueWlLock.Lock()
+	policy, ok := queueWl[subject]
+	if !ok {
+		/* Check for Namespace policy */
+		namespaceSubject := types.TetragonWorkloadNetworkSubject{
+			Namespace: subject.Namespace,
+			Kind:      "",
+			Name:      "",
+		}
+		policy, ok = queueWl[namespaceSubject]
+		if !ok {
+			queueWlLock.Unlock()
+			return nil
+		}
+	} else {
+		delete(queueWl, subject)
+	}
+	queueWlLock.Unlock()
+	return AddNetworkPolicy(policy, true)
+}
 
 func createPodEndpoint(pod *v1alpha1.PodInfo) *endpoint.Endpoint {
 	return &endpoint.Endpoint{
@@ -45,15 +77,45 @@ func createPodSrcKey(pod *v1alpha1.PodInfo) (*types.ProcessTreeKey, error) {
 	return createSrcKey(pod.WorkloadObject.Namespace, pod.WorkloadObject.Name, pod.WorkloadType.Kind)
 }
 
+func GetRealizedState() *PolicyState {
+	return RealizedState
+}
+
+func GetDesiredState() *PolicyState {
+	return DesiredState
+}
+
+type PolicyState struct {
+	Dst matchLabels.PolicyList
+	Src matchLabels.PolicyList
+
+	DstLock sync.Mutex
+	SrcLock sync.Mutex
+}
+
+func New() *PolicyState {
+	s := &PolicyState{}
+	s.Dst = make(map[string]*matchLabels.LabelSet)
+	s.Src = make(map[string]*matchLabels.LabelSet)
+
+	s.DstLock = sync.Mutex{}
+	s.SrcLock = sync.Mutex{}
+	return s
+}
+
+func SetRealizedState(s *PolicyState) {
+	RealizedState = s
+}
+
 // Top level handler to remove pod: performance bouns, this op requires 2 matchLabel
 // policy collections. So we have:
 //
-//	len(matchLabelPolicy) * [ hash lookup per label ] +
-//	len(matchDstLabelPolicy) * [ hash lookup per label ]
+//	len(state.Src) * [ hash lookup per label ] +
+//	len(state.Dst) * [ hash lookup per label ]
 //
 // So we are scaling with the hash operation and (2 * # policy * avg(label length)
 // roughly. Run ./go test --test.bench -test.run BenchPodRemove to get a real idea.
-func PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
+func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
 	var records []*record.DatapathRecord
 
 	ml := &matchLabels.LabelSet{
@@ -65,11 +127,11 @@ func PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
 	// endpoint match labels with the pod as an endpoint. In this case we have
 	// singleton endpoint to a set of subjects, endpoint -> {collectionSubjects}.
 	// To clear datapath walk the collection of subjects and remove s_i -> endpoint.
-	dests := matchLabelDstPolicy.Collection(ml)
+	dests := state.Dst.Collection(ml)
 	if dests != nil {
 		podEP := createPodEndpoint(pod)
 		for _, d := range dests {
-			s := matchLabelPolicy[d.Name]
+			s := state.Src[d.Name]
 			for _, subject := range s.Subjects {
 				records = append(records, &record.DatapathRecord{
 					Src: subject,
@@ -96,7 +158,7 @@ func PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
 	// collection of eps and remove the s->ep_i entry. We can remove the
 	// entire instances of the matchLabelSet because the subject is being
 	// removed.
-	coll := matchLabelPolicy.Collection(ml)
+	coll := state.Src.Collection(ml)
 	if coll == nil {
 		return prog.RemoveRecords(records)
 	}
@@ -106,7 +168,7 @@ func PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
 	}
 
 	for _, s := range coll {
-		d := matchLabelDstPolicy[s.Name]
+		d := state.Dst[s.Name]
 		for _, ep := range d.Endpoints {
 			records = append(records, &record.DatapathRecord{
 				Src: subject,
@@ -145,9 +207,14 @@ func PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
 	return prog.RemoveRecords(records)
 }
 
-func EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet) []*record.DatapathRecord {
+func PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
+	state := GetRealizedState()
+	return state.__PodRemove(pod, local)
+}
+
+func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet) []*record.DatapathRecord {
 	records := []*record.DatapathRecord{}
-	dests := matchLabelDstPolicy.Collection(ml)
+	dests := state.Dst.Collection(ml)
 
 	for _, d := range dests {
 		// Add endpoint of pod to list of destinations for this label selector
@@ -156,7 +223,7 @@ func EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet) []*record.Data
 		// For dest dest label selector we need to create src->dst binding
 		// to do this walk all subjects and add the new dst. Merge conflicts
 		// are resolved by BPF datapath.
-		for _, subject := range matchLabelPolicy[d.Name].Subjects {
+		for _, subject := range state.Src[d.Name].Subjects {
 			// TBD cache this in subject
 			action, err := calculateAction(&d.Policy.Action)
 			if err != nil {
@@ -173,14 +240,14 @@ func EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet) []*record.Data
 	return records
 }
 
-func SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet) []*record.DatapathRecord {
+func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet) []*record.DatapathRecord {
 	records := []*record.DatapathRecord{}
-	subjects := matchLabelPolicy.Collection(ml)
+	subjects := state.Src.Collection(ml)
 
 	for _, s := range subjects {
 		s.AddSubject(src)
 		// Merge step for cases where s -> {D1->A1} and s -> {D1->A2}
-		sRecords, err := AddSrcPolicy(s.Name, src, s.Policy, true)
+		sRecords, err := state.AddSrcPolicy(s.Name, src, s.Policy, true)
 		if err != nil {
 			logger.GetLogger().WithField("src", src).WithError(err).Warn("ProgAddNetwork failed")
 		}
@@ -190,7 +257,7 @@ func SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet) []*record.Datap
 	return records
 }
 
-func __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*record.DatapathRecord, error) {
 	ml := &matchLabels.LabelSet{
 		Label: epPod.ObjectMeta.Labels,
 	}
@@ -202,7 +269,7 @@ func __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*record.DatapathRecord, er
 		Kind:      epPod.WorkloadType.Kind,
 	}
 
-	epRecords := EndpointAdd(ep, ml)
+	epRecords := state.EndpointAdd(ep, ml)
 
 	if !local {
 		return epRecords, nil
@@ -223,43 +290,17 @@ func __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*record.DatapathRecord, er
 		return epRecords, fmt.Errorf("unknown or corrupt state, pod has unresolved src identity")
 	}
 
-	srcRecords := SrcAdd(src, ml)
+	srcRecords := state.SrcAdd(src, ml)
 	return append(epRecords, srcRecords...), nil
 }
 
 // Top level handler to add pod and calculate tetragon network policy
 func PodAdd(epPod *v1alpha1.PodInfo, local bool) error {
-	records, err := __PodAdd(epPod, local)
+	state := GetRealizedState()
+
+	records, err := state.__PodAdd(epPod, local)
 	if err != nil {
 		return err
 	}
 	return prog.AddRecords(records)
-}
-
-func checkWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
-	subject := types.TetragonWorkloadNetworkSubject{
-		Namespace: epPod.WorkloadObject.Namespace,
-		Name:      epPod.WorkloadObject.Name,
-		Kind:      epPod.WorkloadType.Kind,
-	}
-
-	queueWlLock.Lock()
-	policy, ok := queueWl[subject]
-	if !ok {
-		/* Check for Namespace policy */
-		namespaceSubject := types.TetragonWorkloadNetworkSubject{
-			Namespace: subject.Namespace,
-			Kind:      "",
-			Name:      "",
-		}
-		policy, ok = queueWl[namespaceSubject]
-		if !ok {
-			queueWlLock.Unlock()
-			return nil
-		}
-	} else {
-		delete(queueWl, subject)
-	}
-	queueWlLock.Unlock()
-	return AddNetworkPolicy(policy, true)
 }

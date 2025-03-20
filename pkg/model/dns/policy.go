@@ -13,6 +13,28 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Legacy workload add for FQDN quota policy soon to be removed
+func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
+	// The matchLabels case and wl="",kind="" case will fall throuh to queueWorkloadQuotaPolicy
+	src, err := createSrcPolicy(policy)
+	if err != nil {
+		return err
+	}
+	if src == nil {
+		return nil
+	}
+
+	records, err := GetRealizedState().AddSrcPolicy(policy.Name, src, policy, init)
+	if err != nil {
+		return err
+	}
+	if err := prog.AddRecords(records); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func queueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
 	queueWl[policy.Subject.Workload] = policy
 }
@@ -23,7 +45,7 @@ func QueueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
 	queueWlLock.Unlock()
 }
 
-func progRemoveNetworkPolicy(name string, src *types.ProcessTreeKey, d *types.TetragonNetworkDestination) error {
+func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.ProcessTreeKey, d *types.TetragonNetworkDestination) error {
 	var err error
 
 	if d.FQDN != nil {
@@ -51,7 +73,7 @@ func progRemoveNetworkPolicy(name string, src *types.ProcessTreeKey, d *types.Te
 		}).Info("TCP quota removed")
 	}
 
-	ls, ok := matchLabelDstPolicy[name]
+	ls, ok := state.Dst[name]
 	if !ok {
 		return nil
 	}
@@ -77,7 +99,7 @@ func progRemoveNetworkPolicy(name string, src *types.ProcessTreeKey, d *types.Te
 	return nil
 }
 
-func RemoveNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) error {
+func (state *PolicyState) RemoveNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) error {
 	queueWlLock.Lock()
 	defer queueWlLock.Unlock()
 
@@ -95,30 +117,15 @@ func RemoveNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) error
 		return nil
 	}
 
-	return progRemoveNetworkPolicy(name, src, d)
+	return state.progRemoveNetworkPolicy(name, src, d)
 }
 
-func RemoveNetworkPolicySet(name string, policy []*types.TetragonNetworkPolicy) error {
-	for i, p := range policy {
-		uid := fmt.Sprintf("%s_%d", name, i)
-		err := RemoveNetworkPolicy(uid, p)
-		if err != nil {
-			return err
-		}
-		err = RemoveMatchLabelNetworkPolicy(uid, p)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
+func (state *PolicyState) __RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, error) {
+	state.SrcLock.Lock()
+	defer state.SrcLock.Unlock()
 
-func __RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, error) {
-	queueMatchLabelsLock.Lock()
-	defer queueMatchLabelsLock.Unlock()
-
-	subject := matchLabelPolicy[uid]
-	dest := matchLabelDstPolicy[uid]
+	subject := state.Src[uid]
+	dest := state.Dst[uid]
 
 	var beforeSubjs []*record.DatapathRecord
 	var beforeDests []*record.DatapathRecord
@@ -137,28 +144,28 @@ func __RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPo
 
 	if subject != nil {
 		for _, s := range subject.Subjects {
-			beforeSubjs = SrcAdd(s, subjectLabels)
+			beforeSubjs = state.SrcAdd(s, subjectLabels)
 		}
 	}
 
 	if dest != nil {
 		for _, ep := range dest.Endpoints {
-			beforeDests = EndpointAdd(ep, dstLabels)
+			beforeDests = state.EndpointAdd(ep, dstLabels)
 		}
 	}
 
-	matchLabelPolicy.Remove(uid)
-	matchLabelDstPolicy.Remove(uid)
+	state.Src.Remove(uid)
+	state.Dst.Remove(uid)
 
 	if subject != nil {
 		for _, s := range subject.Subjects {
-			afterSubjs = SrcAdd(s, subjectLabels)
+			afterSubjs = state.SrcAdd(s, subjectLabels)
 		}
 	}
 
 	if dest != nil {
 		for _, ep := range dest.Endpoints {
-			afterDests = EndpointAdd(ep, dstLabels)
+			afterDests = state.EndpointAdd(ep, dstLabels)
 		}
 	}
 
@@ -174,8 +181,8 @@ func __RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPo
 	return zombieSet, nil
 }
 
-func RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
-	zombieSet, err := __RemoveMatchLabelNetworkPolicy(uid, policy)
+func (state *PolicyState) RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+	zombieSet, err := state.__RemoveMatchLabelNetworkPolicy(uid, policy)
 	if err != nil {
 		return err
 	}
@@ -240,7 +247,7 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 	}, nil
 }
 
-func AddSrcPolicy(uid string, src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]*record.DatapathRecord, error) {
 	records := []*record.DatapathRecord{}
 
 	dfltAction, err := calculateAction(&policy.Default)
@@ -278,7 +285,7 @@ func AddSrcPolicy(uid string, src *types.ProcessTreeKey, policy *types.TetragonN
 		}
 	}
 
-	ls := matchLabelDstPolicy[uid]
+	ls := state.Dst[uid]
 	if ls != nil {
 		for _, ep := range ls.Endpoints {
 			records = append(records, &record.DatapathRecord{
@@ -302,32 +309,10 @@ func AddSrcPolicy(uid string, src *types.ProcessTreeKey, policy *types.TetragonN
 	return records, nil
 }
 
-// Legacy workload add for FQDN quota policy soon to be removed
-func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
-	// The matchLabels case and wl="",kind="" case will fall throuh to queueWorkloadQuotaPolicy
-	src, err := createSrcPolicy(policy)
-	if err != nil {
-		return err
-	}
-	if src == nil {
-		return nil
-	}
-
-	records, err := AddSrcPolicy(policy.Name, src, policy, init)
-	if err != nil {
-		return err
-	}
-	if err := prog.AddRecords(records); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Create DstMatchLAbelsPolicy to add new Network Policy
-func CreateDstMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
-	queueMatchLabelsDstLock.Lock()
-	defer queueMatchLabelsDstLock.Unlock()
+func (state *PolicyState) CreateDstMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+	state.DstLock.Lock()
+	defer state.DstLock.Unlock()
 
 	if len(policy.Destination.Labels.Equal) < 1 {
 		return nil
@@ -339,14 +324,14 @@ func CreateDstMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy)
 		Policy: policy,
 	}
 
-	matchLabelDstPolicy.Add(uid, ls)
+	state.Dst.Add(uid, ls)
 	return nil
 }
 
 // Create SrcMatchLAbelsPolicy to add new Network Policy
-func CreateSrcMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
-	queueMatchLabelsLock.Lock()
-	defer queueMatchLabelsLock.Unlock()
+func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+	state.SrcLock.Lock()
+	defer state.SrcLock.Unlock()
 
 	ls := &matchLabels.LabelSet{
 		Name:   uid,
@@ -354,13 +339,13 @@ func CreateSrcMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy)
 		Policy: policy,
 	}
 
-	matchLabelPolicy.Add(uid, ls)
+	state.Src.Add(uid, ls)
 	return nil
 }
 
-func CreateMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+func (state *PolicyState) CreateMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
 	if len(policy.Destination.Labels.Equal) > 0 {
-		err := CreateDstMatchLabelsPolicy(uid, policy)
+		err := state.CreateDstMatchLabelsPolicy(uid, policy)
 		if err != nil {
 			return err
 		}
@@ -372,15 +357,36 @@ func CreateMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) er
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
 	if len(policy.Subject.MatchLabelsEqual) > 0 {
-		return CreateSrcMatchLabelsPolicy(uid, policy)
+		return state.CreateSrcMatchLabelsPolicy(uid, policy)
 	}
 	return nil
 }
 
+// Entry point to Policy state create
 func CreateMatchLabelsPolicySet(name string, policy []*types.TetragonNetworkPolicy) error {
+	s := GetRealizedState()
+
 	for i, p := range policy {
 		uid := fmt.Sprintf("%s_%d", name, i)
-		err := CreateMatchLabelsPolicy(uid, p)
+		err := s.CreateMatchLabelsPolicy(uid, p)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Entry point to Policy state remove 
+func RemoveNetworkPolicySet(name string, policy []*types.TetragonNetworkPolicy) error {
+	s := GetRealizedState()
+
+	for i, p := range policy {
+		uid := fmt.Sprintf("%s_%d", name, i)
+		err := s.RemoveNetworkPolicy(uid, p)
+		if err != nil {
+			return err
+		}
+		err = s.RemoveMatchLabelNetworkPolicy(uid, p)
 		if err != nil {
 			return err
 		}

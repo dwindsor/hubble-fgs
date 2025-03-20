@@ -109,6 +109,8 @@ func testPod(t *testing.T, id, ns, name, kind, matchLabels string) *v1alpha1.Pod
 func TestCheckWorkloadExists(t *testing.T) {
 	name := "testName"
 
+	s := New()
+
 	test1Id := nextId()
 	addPod(t, test1Id, name, "A=a")
 
@@ -123,7 +125,7 @@ func TestCheckWorkloadExists(t *testing.T) {
 	err = checkWorkloadQuotaPolicy(pod)
 	assert.NoError(t, err)
 
-	err = RemoveNetworkPolicy(name, policy)
+	err = s.RemoveNetworkPolicy(name, policy)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(queueWl))
 
@@ -155,6 +157,8 @@ func TestSrcKeyLookup(t *testing.T) {
 }
 
 func TestSrcPolicyLookup(t *testing.T) {
+	s := New()
+
 	name1 := "testName1"
 	name2 := "testName2"
 
@@ -180,11 +184,11 @@ func TestSrcPolicyLookup(t *testing.T) {
 	assert.NotZero(t, key.CgroupId)
 	assert.Equal(t, 0, len(queueWl))
 
-	err = RemoveNetworkPolicy(name1, policy1)
+	err = s.RemoveNetworkPolicy(name1, policy1)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(queueWl))
 
-	err = RemoveNetworkPolicy(name2, policy2)
+	err = s.RemoveNetworkPolicy(name2, policy2)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(queueWl))
 
@@ -193,6 +197,7 @@ func TestSrcPolicyLookup(t *testing.T) {
 }
 
 func TestCheckMatchLabelsPolicy(t *testing.T) {
+	s := New()
 	name := "netpol"
 	srcId := nextId()
 	dstId := nextId()
@@ -207,15 +212,15 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	dstPodNameKeep := "testNamePodDstKeep"
 
 	netpol := testMatchDstLabelsPolicy(name, srcPodLabels, dstPodLabels)
-	err := CreateMatchLabelsPolicy(name, netpol)
+	err := s.CreateMatchLabelsPolicy(name, netpol)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(matchLabelPolicy))
-	assert.Equal(t, 1, len(matchLabelDstPolicy))
+	assert.Equal(t, 1, len(s.Src))
+	assert.Equal(t, 1, len(s.Dst))
 
 	// srcPod matches subject labels so will be granted to records one for FQDN name.
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := __PodAdd(srcPod, true)
+	r1, err := s.__PodAdd(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
 	assert.NotZero(t, r1[0].Src.CgroupId)
@@ -228,7 +233,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	// labels and srcPod needs to be given a record for the srcPod->dstPod pair.
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
-	r2, err := __PodAdd(dstPod, true)
+	r2, err := s.__PodAdd(dstPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r2))
 	assert.Equal(t, r1[0].Src.CgroupId, r2[0].Src.CgroupId)
@@ -237,7 +242,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 
 	addPod(t, dstIdKeep, dstPodNameKeep, dstPodLabels)
 	dstPodKeep := testPod(t, "4", "testNamespace", dstPodNameKeep, "testPod", dstPodLabels)
-	r3, err := __PodAdd(dstPodKeep, true)
+	r3, err := s.__PodAdd(dstPodKeep, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r3))
 	assert.Equal(t, r1[0].Src.CgroupId, r3[0].Src.CgroupId)
@@ -245,13 +250,13 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, dstPodNameKeep, r3[0].EP.Name)
 
 	// Test matchLabels keys are tracking the subjects
-	src, _ := matchLabelPolicy[name]
+	src, _ := s.Src[name]
 	assert.NotNil(t, src)
 	assert.Equal(t, 1, len(src.Subjects))
 	assert.Equal(t, r1[0].Src.CgroupId, src.Subjects[0].CgroupId)
 
 	// Test matchLAbelsDstPolicy is tracking endpoints
-	dst := matchLabelDstPolicy[name]
+	dst := s.Dst[name]
 	assert.NotNil(t, dst)
 	assert.Equal(t, 2, len(dst.Endpoints))
 	assert.Equal(t, endpoint.PodType, dst.Endpoints[0].Type)
@@ -262,7 +267,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	// Deleting dstId pod will remove the Endpoints but because
 	// its a subjects no change that will not change.
 	delPod(t, dstId)
-	deleted, err := PodRemove(dstPod, true)
+	deleted, err := s.__PodRemove(dstPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(dst.Endpoints))
 	assert.Equal(t, 1, len(src.Subjects))
@@ -270,32 +275,33 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 
 	// Interesting artifact is deleting duplicate twice
 	// will build same endpoint recordSet.
-	deleted, err = PodRemove(dstPod, true)
+	deleted, err = s.__PodRemove(dstPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(dst.Endpoints))
 	assert.Equal(t, 1, len(src.Subjects))
 	assert.Equal(t, 1, deleted)
 
 	delPod(t, dstIdKeep)
-	deleted, err = PodRemove(dstPodKeep, true)
+	deleted, err = s.__PodRemove(dstPodKeep, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(dst.Endpoints))
 	assert.Equal(t, 1, len(src.Subjects))
 	assert.Equal(t, 1, deleted)
 
 	delPod(t, srcId)
-	deleted, err = PodRemove(srcPod, true)
+	deleted, err = s.__PodRemove(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(dst.Endpoints))
 	assert.Equal(t, 0, len(src.Subjects))
 	assert.Equal(t, 2, deleted)
 
-	zombieSet, err := __RemoveMatchLabelNetworkPolicy(name, netpol)
+	zombieSet, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 }
 
 func TestSrcPolicyAddsDefaultAction(t *testing.T) {
+	s := New()
 	name := "netpol"
 	srcId := nextId()
 
@@ -304,15 +310,15 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	dstPodLabels := "D1=d1,D2=d2,D3=d3"
 
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "deny")
-	err := CreateMatchLabelsPolicy(name, netpol)
+	err := s.CreateMatchLabelsPolicy(name, netpol)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(matchLabelPolicy))
-	assert.Equal(t, 1, len(matchLabelDstPolicy))
+	assert.Equal(t, 1, len(s.Src))
+	assert.Equal(t, 1, len(s.Dst))
 
 	// srcPod matches subject labels so will be granted to records one for default action
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := __PodAdd(srcPod, true)
+	r1, err := s.__PodAdd(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
 
@@ -332,17 +338,18 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 
 	// Remove pod and policy
 	delPod(t, srcId)
-	deleted, err := PodRemove(srcPod, true)
+	deleted, err := s.__PodRemove(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, deleted)
 
-	zombieSet, err := __RemoveMatchLabelNetworkPolicy(name, netpol)
+	zombieSet, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 }
 
 // Test addPod again, but bring up subject after destinations are already loaded
 func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
+	s := New()
 	name := "netpol"
 	srcId := nextId()
 	dstId := nextId()
@@ -354,22 +361,22 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	dstPodLabels := "D1=d1,D2=d2,D3=d3"
 
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
-	err := CreateMatchLabelsPolicy(name, netpol)
+	err := s.CreateMatchLabelsPolicy(name, netpol)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(matchLabelPolicy))
-	assert.Equal(t, 1, len(matchLabelDstPolicy))
+	assert.Equal(t, 1, len(s.Src))
+	assert.Equal(t, 1, len(s.Dst))
 
 	// add dst pod first which does not match a subject for any policy8
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
-	rDst, err := __PodAdd(dstPod, true)
+	rDst, err := s.__PodAdd(dstPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(rDst)) // no records to program datapath bc not a subject
 
 	// add src pod next and ensure we build correct policy
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := __PodAdd(srcPod, true)
+	r1, err := s.__PodAdd(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
 
@@ -393,22 +400,24 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 
 	// Remove pod and policy
 	delPod(t, dstId)
-	deleted, err := PodRemove(dstPod, true)
+	deleted, err := s.__PodRemove(dstPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, deleted)
 
 	// Remove pod and policy
 	delPod(t, srcId)
-	deleted, err = PodRemove(srcPod, true)
+	deleted, err = s.__PodRemove(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, deleted)
 
-	zombieSet, err := __RemoveMatchLabelNetworkPolicy(name, netpol)
+	zombieSet, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 }
 
 func TestPolicySetAdd(t *testing.T) {
+	s := New()
+	SetRealizedState(s)
 	name := "netpol"
 	srcId := nextId()
 	dstId := nextId()
@@ -425,25 +434,25 @@ func TestPolicySetAdd(t *testing.T) {
 	// add dst pod first which does not match a subject for any policy8
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
-	rDst, err := __PodAdd(dstPod, true)
+	rDst, err := s.__PodAdd(dstPod, true)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := __PodAdd(srcPod, true)
+	r1, err := s.__PodAdd(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
 
 	// Remove pod and policy
 	delPod(t, dstId)
-	deleted, err := PodRemove(dstPod, true)
+	deleted, err := s.__PodRemove(dstPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, deleted)
 
 	// Remove pod and policy
 	delPod(t, srcId)
-	deleted, err = PodRemove(srcPod, true)
+	deleted, err = s.__PodRemove(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, deleted)
 
