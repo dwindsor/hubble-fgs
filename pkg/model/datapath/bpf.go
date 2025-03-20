@@ -212,9 +212,9 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	return nil
 }
 
-func (p *BpfProgrammer) RemoveRecords(records []*record.DatapathRecord) (int, error) {
+func (p *BpfProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
 	for _, r := range records {
 		p.RemoveSingleRecord(r)
 	}
-	return len(records), nil
+	return nil
 }

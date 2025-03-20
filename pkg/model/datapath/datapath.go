@@ -15,7 +15,7 @@ type Interface interface {
 	RemoveSingleRecord(record *record.DatapathRecord) error
 
 	// Remove a set of records to the datapath.
-	RemoveRecords(record []*record.DatapathRecord) (int, error)
+	RemoveRecords(record []*record.DatapathRecord) error
 }
 
 type BpfProgrammer struct {

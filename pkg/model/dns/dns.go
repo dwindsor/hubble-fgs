@@ -123,7 +123,7 @@ func SetRealizedState(s *PolicyState) {
 //
 // So we are scaling with the hash operation and (2 * # policy * avg(label length)
 // roughly. Run ./go test --test.bench -test.run BenchPodRemove to get a real idea.
-func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
+func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*record.DatapathRecord, error) {
 	var records []*record.DatapathRecord
 
 	ml := &matchLabels.LabelSet{
@@ -157,7 +157,7 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) (int, e
 
 	if !local {
 		state.remotePods[pod.ObjectMeta.UID] = nil
-		return prog.RemoveRecords(records)
+		return records, nil
 	}
 
 	// Remove datapath entries with pod -> dsts. This requires two steps.
@@ -169,11 +169,11 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) (int, e
 	// removed.
 	coll := state.Src.Collection(ml)
 	if coll == nil {
-		return prog.RemoveRecords(records)
+		return records, nil
 	}
 	subject, err := createPodSrcKey(pod)
 	if err != nil {
-		return prog.RemoveRecords(records)
+		return records, nil
 	}
 
 	for _, s := range coll {
@@ -214,12 +214,16 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) (int, e
 		}
 	}
 	state.localPods[pod.ObjectMeta.UID] = nil
-	return prog.RemoveRecords(records)
+	return records, nil
 }
 
-func PodRemove(pod *v1alpha1.PodInfo, local bool) (int, error) {
+func PodRemove(pod *v1alpha1.PodInfo, local bool) error {
 	state := GetRealizedState()
-	return state.__PodRemove(pod, local)
+	records, err := state.__PodRemove(pod, local)
+	if err != nil {
+		return err
+	}
+	return prog.RemoveRecords(records)
 }
 
 func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet) []*record.DatapathRecord {

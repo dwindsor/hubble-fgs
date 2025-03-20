@@ -25,6 +25,6 @@ func (p *DummyBpfProgrammer) RemoveSingleRecord(_ *record.DatapathRecord) error 
 	return nil
 }
 
-func (p *DummyBpfProgrammer) RemoveRecords(r []*record.DatapathRecord) (int, error) {
-	return len(r), nil
+func (p *DummyBpfProgrammer) RemoveRecords(_ []*record.DatapathRecord) error {
+	return nil
 }

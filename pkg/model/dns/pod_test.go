@@ -271,7 +271,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(dst.Endpoints))
 	assert.Equal(t, 1, len(src.Subjects))
-	assert.Equal(t, 1, deleted)
+	assert.Equal(t, 1, len(deleted))
 
 	// Interesting artifact is deleting duplicate twice
 	// will build same endpoint recordSet.
@@ -279,21 +279,21 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(dst.Endpoints))
 	assert.Equal(t, 1, len(src.Subjects))
-	assert.Equal(t, 1, deleted)
+	assert.Equal(t, 1, len(deleted))
 
 	delPod(t, dstIdKeep)
 	deleted, err = s.__PodRemove(dstPodKeep, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(dst.Endpoints))
 	assert.Equal(t, 1, len(src.Subjects))
-	assert.Equal(t, 1, deleted)
+	assert.Equal(t, 1, len(deleted))
 
 	delPod(t, srcId)
 	deleted, err = s.__PodRemove(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(dst.Endpoints))
 	assert.Equal(t, 0, len(src.Subjects))
-	assert.Equal(t, 2, deleted)
+	assert.Equal(t, 2, len(deleted))
 
 	zombieSet, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
@@ -340,7 +340,7 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	delPod(t, srcId)
 	deleted, err := s.__PodRemove(srcPod, true)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, deleted)
+	assert.Equal(t, 3, len(deleted))
 
 	zombieSet, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
@@ -402,13 +402,13 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	delPod(t, dstId)
 	deleted, err := s.__PodRemove(dstPod, true)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, deleted)
+	assert.Equal(t, 1, len(deleted))
 
 	// Remove pod and policy
 	delPod(t, srcId)
 	deleted, err = s.__PodRemove(srcPod, true)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, deleted)
+	assert.Equal(t, 3, len(deleted))
 
 	zombieSet, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
@@ -448,13 +448,13 @@ func TestPolicySetAdd(t *testing.T) {
 	delPod(t, dstId)
 	deleted, err := s.__PodRemove(dstPod, true)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, deleted)
+	assert.Equal(t, 1, len(deleted))
 
 	// Remove pod and policy
 	delPod(t, srcId)
 	deleted, err = s.__PodRemove(srcPod, true)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, deleted)
+	assert.Equal(t, 3, len(deleted))
 
 	err = RemoveNetworkPolicySet(name, netpolSet)
 	assert.NoError(t, err)
