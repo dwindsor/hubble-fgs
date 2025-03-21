@@ -297,7 +297,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, 0, len(src.Subjects))
 	assert.Equal(t, 2, len(deleted))
 
-	zombieSet, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
+	zombieSet, _, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 }
@@ -344,7 +344,7 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
-	zombieSet, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
+	zombieSet, _, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 }
@@ -412,7 +412,7 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
-	zombieSet, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
+	zombieSet, _, err := s.__RemoveMatchLabelNetworkPolicy(name, netpol)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 }

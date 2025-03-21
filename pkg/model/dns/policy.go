@@ -120,22 +120,14 @@ func (state *PolicyState) RemoveNetworkPolicy(name string, policy *types.Tetrago
 	return state.progRemoveNetworkPolicy(name, src, d)
 }
 
-func (state *PolicyState) __RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) __RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, []*record.DatapathRecord, error) {
 	state.SrcLock.Lock()
 	defer state.SrcLock.Unlock()
 
 	subject := state.Src[uid]
-	dest := state.Dst[uid]
 
 	var beforeSubjs []*record.DatapathRecord
-	var beforeDests []*record.DatapathRecord
 	var afterSubjs []*record.DatapathRecord
-	var afterDests []*record.DatapathRecord
-
-	dstLabels := &matchLabels.LabelSet{
-		Label:  policy.Destination.Labels.Equal,
-		Policy: policy,
-	}
 
 	subjectLabels := &matchLabels.LabelSet{
 		Label:  policy.Subject.MatchLabelsEqual,
@@ -144,48 +136,43 @@ func (state *PolicyState) __RemoveMatchLabelNetworkPolicy(uid string, policy *ty
 
 	if subject != nil {
 		for _, s := range subject.Subjects {
-			beforeSubjs = state.SrcAdd(s, subjectLabels, false)
-		}
-	}
-
-	if dest != nil {
-		for _, ep := range dest.Endpoints {
-			beforeDests = state.EndpointAdd(ep, dstLabels, false)
+			records := state.SrcAdd(s, subjectLabels, false)
+			beforeSubjs = append(beforeSubjs, records...)
 		}
 	}
 
 	state.Src.Remove(uid)
 	state.Dst.Remove(uid)
 
-	if subject != nil {
-		for _, s := range subject.Subjects {
-			afterSubjs = state.SrcAdd(s, subjectLabels, false)
+	for _, v := range state.Src {
+		if v == nil {
+			continue
+		}
+		for _, src := range v.Subjects {
+			sRecords, err := state.AddSrcPolicy(v.Name, src, v.Policy, true)
+			if err != nil {
+				logger.GetLogger().WithField("src", src).WithError(err).Warn("AddSrcPolicy error")
+				continue
+			}
+			afterSubjs = append(afterSubjs, sRecords...)
 		}
 	}
 
-	if dest != nil {
-		for _, ep := range dest.Endpoints {
-			afterDests = state.EndpointAdd(ep, dstLabels, false)
-		}
-	}
-
-	beforeJoin := append(beforeSubjs, beforeDests...)
-	afterJoin := append(afterSubjs, afterDests...)
-
-	// A key that exists only in the beforeJoin can be deleted because
-	// nothing is referencing that key anymore. To unwind this we will
-	// do the following: first find set of rules that can be deleted
-	// called ZombieSet here, update the existing rules in afterJoin,
-	// and finally remove the ZombieSet.
-	zombieSet := record.Diff(beforeJoin, afterJoin)
-	return zombieSet, nil
+	// A key that exists only in the before list can be deleted because
+	// nothing is referencing that key anymore. And the after list can
+	// be used to update existing rules to their new state.
+	zombieSet := record.Diff(beforeSubjs, afterSubjs)
+	return zombieSet, afterSubjs, nil
 }
 
 func (state *PolicyState) RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
-	zombieSet, err := state.__RemoveMatchLabelNetworkPolicy(uid, policy)
+	zombieSet, updateSet, err := state.__RemoveMatchLabelNetworkPolicy(uid, policy)
 	if err != nil {
 		return err
 	}
+	// Necessary order to ensure any updates to records are in place before we
+	// remove stale records.
+	prog.AddRecords(updateSet)
 	prog.RemoveRecords(zombieSet)
 	return nil
 }
