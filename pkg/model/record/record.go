@@ -1,6 +1,8 @@
 package record
 
 import (
+	"fmt"
+
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
@@ -26,11 +28,41 @@ type DatapathAction struct {
 	Deny  uint64
 }
 
+func (a *DatapathAction) String() string {
+	policy := ""
+	switch a.Deny {
+	case PolicyNone:
+		policy = "none"
+	case PolicyAllow:
+		policy = "allow"
+	case PolicyDeny:
+		policy = "deny"
+	}
+	return fmt.Sprintf("Quota %d Reset %d Policy %s", a.Quota, a.Reset, policy)
+}
+
 type DatapathRecord struct {
 	Src    *types.ProcessTreeKey
 	EP     *endpoint.Endpoint
 	Action *DatapathAction
 	Init   bool // temporary field until we fix order-of-ops on DNS, UDP, TCP sensors
+}
+
+func (r *DatapathRecord) String() string {
+	src := ""
+	ep := ""
+	action := ""
+
+	if r.Src != nil {
+		src = fmt.Sprintf("%d:%d", r.Src.CgroupId, r.Src.Self)
+	}
+	if r.EP != nil {
+		ep = fmt.Sprintf("%s", r.EP.String())
+	}
+	if r.Action != nil {
+		action = fmt.Sprintf("%s", r.Action)
+	}
+	return fmt.Sprintf("Src %s EP %s Action %s", src, ep, action)
 }
 
 // Set difference operator, A - B. We burn some memory and have to
