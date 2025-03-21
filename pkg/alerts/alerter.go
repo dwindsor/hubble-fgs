@@ -21,19 +21,25 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/filters"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/server"
 )
 
-// alerter implements FineGuidanceSensors_GetEventsServer interface from the
-// tetragon API, like exporter.Exporter, with the Send method evaluating an
-// event against alert rules. It also implements Closer interface. Both are
-// necessary to pass it to the server.GetEventsWG method. Arguably
-// server.GetEventsWG is quite tied to the events stream, so reusing it for
-// alerting might be sub-optimal. Refactor if needed.
+// alerter implements a few interfaces:
+// - AlertServiceServer from tetragon API
+// - FineGuidanceSensors_GetEventsServer from tetragon API
+// - Closer
+//
+// The two latter are necessary to pass alerter to the server.GetEventsWG
+// method. This follows a similar flow as exporter.Exporter, but the Send
+// method evaluates events against alert rules. Arguably server.GetEventsWG is
+// quite tied to the events stream, so reusing it for alerting might be
+// sub-optimal. Refactor if needed.
 type alerter struct {
-	ruleManager *ruleManager
 	ctx         context.Context
+	ruleManager *ruleManager
+	tetragon.UnimplementedAlertServiceServer
 }
 
 func newAlerter(ctx context.Context, r RuleManager) *alerter {
@@ -115,13 +121,69 @@ func (a *alerter) evaluateRules(ctx context.Context, event *tetragon.GetEventsRe
 func eventToAlert(event *tetragon.GetEventsResponse, r *rule) *tetragon.Alert {
 	return &tetragon.Alert{
 		Event: event,
-		Rule: &tetragon.AlertRuleMeta{
-			Name:     r.name,
-			Severity: tetragon.AlertRuleMeta_Severity(tetragon.AlertRuleMeta_Severity_value[strings.ToUpper(r.severity)]),
-			Message:  r.message,
-			Tags:     r.tags,
-		},
+		Rule:  ruleToMeta(r),
 	}
+}
+
+func ruleToMeta(r *rule) *tetragon.AlertRuleMeta {
+	return &tetragon.AlertRuleMeta{
+		Name:     r.name,
+		Severity: tetragon.AlertRuleMeta_Severity(tetragon.AlertRuleMeta_Severity_value[strings.ToUpper(r.severity)]),
+		Message:  r.message,
+		Tags:     r.tags,
+	}
+}
+
+func ruleToProto(r *rule) *tetragon.AlertRule {
+	return &tetragon.AlertRule{
+		Meta: ruleToMeta(r),
+	}
+}
+
+func (a *alerter) AddAlertRuleFromYAML(_ context.Context, req *tetragon.AddAlertRuleFromYAMLRequest) (*tetragon.AddAlertRuleResponse, error) {
+	obj, err := FromYAML(req.Yaml)
+	if err != nil {
+		return nil, err
+	}
+	ar, ok := obj.(*v1alpha1.AlertRule)
+	if !ok {
+		return nil, fmt.Errorf("unexpected object type: %T", obj)
+	}
+	err = a.ruleManager.AddAlertRule(ar)
+	if err != nil {
+		return nil, err
+	}
+	return &tetragon.AddAlertRuleResponse{
+		Rule: &tetragon.AlertRule{
+			Meta: &tetragon.AlertRuleMeta{
+				Name:     ar.Name,
+				Severity: tetragon.AlertRuleMeta_Severity(tetragon.AlertRuleMeta_Severity_value[strings.ToUpper(ar.Spec.Severity)]),
+				Message:  ar.Spec.Message,
+				Tags:     ar.Spec.Tags,
+			},
+		},
+	}, nil
+}
+
+func (a *alerter) DeleteAlertRule(_ context.Context, req *tetragon.DeleteAlertRuleRequest) (*tetragon.DeleteAlertRuleResponse, error) {
+	a.ruleManager.DeleteAlertRule(req.Name)
+	return &tetragon.DeleteAlertRuleResponse{}, nil
+}
+
+func (a *alerter) ListAlertRules(_ context.Context, _ *tetragon.ListAlertRulesRequest) (*tetragon.ListAlertRulesResponse, error) {
+	rules := make([]*tetragon.AlertRule, 0, len(a.ruleManager.rules))
+	for _, r := range a.ruleManager.rules {
+		rules = append(rules, ruleToProto(r))
+	}
+	return &tetragon.ListAlertRulesResponse{Rules: rules}, nil
+}
+
+func (a *alerter) GetAlertRule(_ context.Context, req *tetragon.GetAlertRuleRequest) (*tetragon.GetAlertRuleResponse, error) {
+	r, ok := a.ruleManager.rules[req.Name]
+	if !ok {
+		return nil, fmt.Errorf("rule not found: %s", req.Name)
+	}
+	return &tetragon.GetAlertRuleResponse{Rule: ruleToProto(r)}, nil
 }
 
 func StartAlerting(ctx context.Context, r RuleManager, server *server.Server) error {

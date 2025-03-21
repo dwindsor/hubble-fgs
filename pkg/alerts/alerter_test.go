@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/option"
@@ -62,4 +63,193 @@ func TestEvaluateRules(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, expectedContent, normalizeJSON(string(content)))
 	}
+}
+
+var exampleYAML = `
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: curl
+spec:
+  expression: process_exec.process.binary.contains("curl")
+  message: Curl is curling.
+  severity: critical
+  tags: [network]
+`
+
+var updatedYAML = `
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: curl
+spec:
+  expression: process_exec.process.binary == "/usr/bin/curl"
+  message: Curl is curling in /usr/bin.
+  severity: info
+  tags: [http]
+`
+
+var anotherYAML = `
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: shell
+spec:
+  expression: process_exec.process.binary.contains("sh")
+  message: Looks like shell.
+  severity: warning
+  tags: [shell]
+`
+
+func TestRPCAddAlertRuleFromYAML(t *testing.T) {
+	a := newAlerter(t.Context(), newRuleManager())
+
+	expectedProtos := []*tetragon.AlertRule{
+		{
+			Meta: &tetragon.AlertRuleMeta{
+				Name:     "curl",
+				Severity: tetragon.AlertRuleMeta_CRITICAL,
+				Message:  "Curl is curling.",
+				Tags:     []string{"network"},
+			},
+		}, {
+			Meta: &tetragon.AlertRuleMeta{
+				Name:     "shell",
+				Severity: tetragon.AlertRuleMeta_WARNING,
+				Message:  "Looks like shell.",
+				Tags:     []string{"shell"},
+			},
+		},
+	}
+
+	for i, yaml := range []string{exampleYAML, anotherYAML} {
+		// Add a rule
+		req := &tetragon.AddAlertRuleFromYAMLRequest{Yaml: yaml}
+		resp, err := a.AddAlertRuleFromYAML(t.Context(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		// Check the rule got added and the response is correct
+		assert.Len(t, a.ruleManager.rules, i+1)
+		assert.Equal(t, expectedProtos[i], resp.Rule)
+	}
+}
+
+func TestRPCAddAlertRuleFromYAMLUpdate(t *testing.T) {
+	a := newAlerter(t.Context(), newRuleManager())
+
+	// Add two rules
+	a.ruleManager.AddAlertRule(exampleAR)
+	a.ruleManager.AddAlertRule(anotherAR)
+
+	// Update a rule
+	req := &tetragon.AddAlertRuleFromYAMLRequest{Yaml: updatedYAML}
+	resp, err := a.AddAlertRuleFromYAML(t.Context(), req)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	// Check the rule got updated and the response is correct
+	assert.Len(t, a.ruleManager.rules, 2)
+	assert.Equal(t, &tetragon.AlertRule{
+		Meta: &tetragon.AlertRuleMeta{
+			Name:     "curl",
+			Severity: tetragon.AlertRuleMeta_INFO,
+			Message:  "Curl is curling in /usr/bin.",
+			Tags:     []string{"http"},
+		},
+	}, resp.Rule)
+}
+
+func TestRPCAddAlertRuleFromYAMLInvalid(t *testing.T) {
+	a := newAlerter(t.Context(), newRuleManager())
+
+	for _, yaml := range []string{
+		"not a valid yaml",
+		"",
+	} {
+		req := &tetragon.AddAlertRuleFromYAMLRequest{Yaml: yaml}
+		resp, err := a.AddAlertRuleFromYAML(t.Context(), req)
+		assert.Error(t, err)
+		assert.Nil(t, resp)
+		assert.Len(t, a.ruleManager.rules, 0)
+	}
+}
+
+func TestRPCDeleteAlertRule(t *testing.T) {
+	a := newAlerter(t.Context(), newRuleManager())
+
+	// Add two rules
+	a.ruleManager.AddAlertRule(exampleAR)
+	a.ruleManager.AddAlertRule(anotherAR)
+
+	// Delete a rule
+	req := &tetragon.DeleteAlertRuleRequest{Name: "shell"}
+	resp, err := a.DeleteAlertRule(t.Context(), req)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	// Check the rule got deleted
+	assert.Len(t, a.ruleManager.rules, 1)
+	_, exists := a.ruleManager.rules["shell"]
+	assert.False(t, exists)
+}
+
+func TestRPCListAlertRules(t *testing.T) {
+	a := newAlerter(t.Context(), newRuleManager())
+
+	// Add two rules
+	a.ruleManager.AddAlertRule(exampleAR)
+	a.ruleManager.AddAlertRule(anotherAR)
+
+	// List rules
+	req := &tetragon.ListAlertRulesRequest{}
+	resp, err := a.ListAlertRules(t.Context(), req)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	// Check the response is correct
+	assert.Len(t, resp.Rules, 2)
+	assert.ElementsMatch(t, []*tetragon.AlertRule{
+		{
+			Meta: &tetragon.AlertRuleMeta{
+				Name:     "curl",
+				Severity: tetragon.AlertRuleMeta_CRITICAL,
+				Message:  "Curl is curling.",
+				Tags:     []string{"network"},
+			},
+		}, {
+			Meta: &tetragon.AlertRuleMeta{
+				Name:     "shell",
+				Severity: tetragon.AlertRuleMeta_WARNING,
+				Message:  "Looks like shell.",
+				Tags:     []string{"shell"},
+			},
+		},
+	}, resp.Rules)
+}
+
+func TestRPCGetAlertRule(t *testing.T) {
+	a := newAlerter(t.Context(), newRuleManager())
+
+	// Add two rules
+	a.ruleManager.AddAlertRule(exampleAR)
+	a.ruleManager.AddAlertRule(anotherAR)
+
+	// Get a rule
+	req := &tetragon.GetAlertRuleRequest{Name: "shell"}
+	resp, err := a.GetAlertRule(t.Context(), req)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	// Check the response is correct
+	assert.Equal(t, &tetragon.GetAlertRuleResponse{
+		Rule: &tetragon.AlertRule{
+			Meta: &tetragon.AlertRuleMeta{
+				Name:     "shell",
+				Severity: tetragon.AlertRuleMeta_WARNING,
+				Message:  "Looks like shell.",
+				Tags:     []string{"shell"},
+			},
+		},
+	}, resp)
 }
