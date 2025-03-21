@@ -2,6 +2,7 @@ package endpoint
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net"
 	"strings"
 	"sync"
@@ -37,6 +38,10 @@ type Endpoint struct {
 	Namespace string
 	Name      string
 	Ip        string
+}
+
+func (e *Endpoint) String() string {
+	return fmt.Sprintf("wl(%s:%s:%s) dns(%s) ip(%s)", e.Kind, e.Namespace, e.Name, e.Dns, e.Ip)
 }
 
 type Cache struct {
