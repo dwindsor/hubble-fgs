@@ -97,9 +97,17 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	tree_key = map_lookup_elem(&process_tree_binary_uid_key_map, &zero);
 	if (!tree_key)
 		return 0;
+
+	// Process UID is done in the following order. First check if there
+	// is a binary key with empty args. This is needed for policy that
+	// does not specify args. Next lookup the fully qualified process
+	// with args key. And finally generate an ID.
 	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
-	probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
 	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
+	if (!self_uid) {
+		probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
+		self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
+	}
 
 	if (self_uid) {
 		id = *self_uid;
@@ -300,10 +308,13 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	if (!tree_key)
 		return 0;
 	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
-	probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
 	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
-	if (!self_uid)
-		return 0;
+	if (!self_uid) {
+		probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
+		self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
+		if (!self_uid)
+			return 0;
+	}
 
 	zero_uid.pid = 0;
 	memset(&zero_uid.pad, 0, sizeof(zero_uid.pad));
