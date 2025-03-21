@@ -26,8 +26,13 @@ import (
 	"github.com/cilium/tetragon/pkg/server"
 )
 
+type Alerter interface {
+	tetragon.AlertServiceServer
+	Start(*server.Server) error
+}
+
 // alerter implements a few interfaces:
-// - AlertServiceServer from tetragon API
+// - Alerter, including AlertServiceServer from tetragon API
 // - FineGuidanceSensors_GetEventsServer from tetragon API
 // - Closer
 //
@@ -40,6 +45,10 @@ type alerter struct {
 	ctx         context.Context
 	ruleManager *ruleManager
 	tetragon.UnimplementedAlertServiceServer
+}
+
+func NewAlerter(ctx context.Context, r RuleManager) Alerter {
+	return newAlerter(ctx, r)
 }
 
 func newAlerter(ctx context.Context, r RuleManager) *alerter {
@@ -186,9 +195,7 @@ func (a *alerter) GetAlertRule(_ context.Context, req *tetragon.GetAlertRuleRequ
 	return &tetragon.GetAlertRuleResponse{Rule: ruleToProto(r)}, nil
 }
 
-func StartAlerting(ctx context.Context, r RuleManager, server *server.Server) error {
-	a := newAlerter(ctx, r)
-
+func (a *alerter) Start(server *server.Server) error {
 	var readyWG sync.WaitGroup
 	var startErr error
 	readyWG.Add(1)

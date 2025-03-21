@@ -453,10 +453,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	obs.UpdateRuntimeConf(option.Config.BpfDir)
 
 	// Initialize alert rule manager
-	var alertsManager alerts.RuleManager
-	if enterpriseOption.Config.EnableAlerts {
-		alertsManager = alerts.NewRuleManager()
-	}
+	alertsManager := alerts.NewRuleManager()
 
 	// Initialize a k8s watcher used to retrieve process metadata. This should
 	// happen before the sensors are loaded, otherwise events will be stuck
@@ -579,9 +576,14 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if err != nil {
 		return fmt.Errorf("failed to create process manager: %w", err)
 	}
-	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer, mandatesrv.New(mandateMgr)); err != nil {
+	alerter := alerts.NewAlerter(ctx, alertsManager)
+
+	// Start gRPC server
+	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer, mandatesrv.New(mandateMgr), alerter); err != nil {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
+
+	// Start data exporters
 	if option.Config.ExportFilename != "" {
 		if err = startExporter(ctx, pm.Server); err != nil {
 			return fmt.Errorf("failed to start json exporter: %w", err)
@@ -592,9 +594,8 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			return fmt.Errorf("failed to start json application model exporter: %w", err)
 		}
 	}
-
 	if enterpriseOption.Config.EnableAlerts {
-		if err = alerts.StartAlerting(ctx, alertsManager, pm.Server); err != nil {
+		if err = alerter.Start(pm.Server); err != nil {
 			return fmt.Errorf("failed to start alerting: %w", err)
 		}
 		log.Info("Started alerting.")
@@ -1036,11 +1037,15 @@ func startProcessTreeExporter(ctx context.Context, modelServer *model.Server) er
 	return nil
 }
 
-func Serve(ctx context.Context, listenAddr string, srv *server.Server, model *model.Server, mandate *mandatesrv.Server) error {
+func Serve(
+	ctx context.Context, listenAddr string,
+	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer,
+) error {
 	grpcServer := grpc.NewServer()
 	tetragon.RegisterFineGuidanceSensorsServer(grpcServer, srv)
 	tetragon.RegisterProcessModelServiceServer(grpcServer, model)
 	tetragon.RegisterMandateServiceServer(grpcServer, mandate)
+	tetragon.RegisterAlertServiceServer(grpcServer, alerter)
 	proto, addr, err := server.SplitListenAddr(listenAddr)
 	if err != nil {
 		return fmt.Errorf("failed to parse listen address: %w", err)
