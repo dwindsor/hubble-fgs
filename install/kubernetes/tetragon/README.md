@@ -178,13 +178,21 @@ Helm chart for Tetragon Enterprise
 | tetragonAggregator.securityContext | object | `{}` | securityContext for the Tetragon Aggregator Deployment Pods. |
 | tetragonAggregator.strategy | object | `{}` | resources for the Tetragon Aggregator Deployment update strategy |
 | tetragonAggregator.tolerations | list | `[]` |  |
-| tetragonOperator.affinity | object | `{}` |  |
+| tetragonOperator.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchLabels."app.kubernetes.io/name" | string | `"tetragon-operator"` |  |
+| tetragonOperator.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey | string | `"kubernetes.io/hostname"` |  |
+| tetragonOperator.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight | int | `100` |  |
 | tetragonOperator.annotations | object | `{}` | Annotations for the Tetragon Operator Deployment. |
 | tetragonOperator.enabled | bool | `true` | Enables the Tetragon Operator. |
 | tetragonOperator.extraLabels | object | `{}` | Extra labels to be added on the Tetragon Operator Deployment. |
 | tetragonOperator.extraPodLabels | object | `{}` | Extra labels to be added on the Tetragon Operator Deployment Pods. |
 | tetragonOperator.extraVolumeMounts | list | `[]` |  |
 | tetragonOperator.extraVolumes | list | `[]` | Extra volumes for the Tetragon Operator Deployment. |
+| tetragonOperator.failoverLease | object | `{"enabled":false,"leaseDuration":"15s","leaseRenewDeadline":"5s","leaseRetryPeriod":"2s","namespace":""}` | Lease handling for an automated failover when running multiple replicas |
+| tetragonOperator.failoverLease.enabled | bool | `false` | Enable lease failover functionality |
+| tetragonOperator.failoverLease.leaseDuration | string | `"15s"` | If a lease is not renewed for X duration, the current leader is considered dead, a new leader is picked |
+| tetragonOperator.failoverLease.leaseRenewDeadline | string | `"5s"` | The interval at which the leader will renew the lease |
+| tetragonOperator.failoverLease.leaseRetryPeriod | string | `"2s"` | The timeout between retries if renewal fails |
+| tetragonOperator.failoverLease.namespace | string | `""` | Kubernetes Namespace in which the Lease resource is created. Defaults to the namespace where Tetragon is deployed in, if it's empty. |
 | tetragonOperator.forceUpdateCRDs | bool | `false` |  |
 | tetragonOperator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.16.0-rc.1"}` | tetragon-operator image. |
 | tetragonOperator.nodeSelector | object | `{}` | Steer the Tetragon Operator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
@@ -199,10 +207,11 @@ Helm chart for Tetragon Enterprise
 | tetragonOperator.prometheus.serviceMonitor.extraLabels | object | `{}` | Extra labels to be added on the Tetragon Operator ServiceMonitor. |
 | tetragonOperator.prometheus.serviceMonitor.labelsOverride | object | `{}` | The set of labels to place on the 'ServiceMonitor' resource. |
 | tetragonOperator.prometheus.serviceMonitor.scrapeInterval | string | `"10s"` | Interval at which metrics should be scraped. If not specified, Prometheus' global scrape interval is used. |
+| tetragonOperator.replicas | int | `1` | Number of replicas to run for the tetragon-operator deployment |
 | tetragonOperator.resources | object | `{"limits":{"cpu":"500m","memory":"128Mi"},"requests":{"cpu":"10m","memory":"64Mi"}}` | resources for the Tetragon Operator Deployment Pod container. |
 | tetragonOperator.securityContext | object | `{}` | securityContext for the Tetragon Operator Deployment Pods. |
 | tetragonOperator.serviceAccount | object | `{"annotations":{},"create":true,"name":""}` | tetragon-operator service account. |
-| tetragonOperator.strategy | object | `{}` | resources for the Tetragon Operator Deployment update strategy |
+| tetragonOperator.strategy | object | `{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0},"type":"RollingUpdate"}` | resources for the Tetragon Operator Deployment update strategy |
 | tetragonOperator.tolerations | list | `[]` |  |
 | tetragonOperator.tracingPolicy.enabled | bool | `true` | Enables the TracingPolicy and TracingPolicyNamespaced CRD creation. |
 | tolerations[0].operator | string | `"Exists"` |  |
