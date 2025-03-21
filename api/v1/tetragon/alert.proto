@@ -34,6 +34,10 @@ message AlertRuleMeta {
   repeated string tags = 4;
 }
 
+message AlertRule {
+  AlertRuleMeta meta = 1;
+}
+
 message Alert {
   optional GetEventsResponse event = 1;
   AlertRuleMeta rule = 2;

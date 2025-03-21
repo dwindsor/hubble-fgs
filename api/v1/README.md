@@ -142,9 +142,22 @@
   
 - [tetragon/alert.proto](#tetragon_alert-proto)
     - [Alert](#tetragon-Alert)
+    - [AlertRule](#tetragon-AlertRule)
     - [AlertRuleMeta](#tetragon-AlertRuleMeta)
   
     - [AlertRuleMeta.Severity](#tetragon-AlertRuleMeta-Severity)
+  
+- [tetragon/alertservice.proto](#tetragon_alertservice-proto)
+    - [AddAlertRuleFromYAMLRequest](#tetragon-AddAlertRuleFromYAMLRequest)
+    - [AddAlertRuleResponse](#tetragon-AddAlertRuleResponse)
+    - [DeleteAlertRuleRequest](#tetragon-DeleteAlertRuleRequest)
+    - [DeleteAlertRuleResponse](#tetragon-DeleteAlertRuleResponse)
+    - [GetAlertRuleRequest](#tetragon-GetAlertRuleRequest)
+    - [GetAlertRuleResponse](#tetragon-GetAlertRuleResponse)
+    - [ListAlertRulesRequest](#tetragon-ListAlertRulesRequest)
+    - [ListAlertRulesResponse](#tetragon-ListAlertRulesResponse)
+  
+    - [AlertService](#tetragon-AlertService)
   
 - [tetragon/attempt.proto](#tetragon_attempt-proto)
     - [Attempt](#tetragon-Attempt)
@@ -2903,6 +2916,21 @@ Determins the behaviour of a field filter
 
 
 
+<a name="tetragon-AlertRule"></a>
+
+### AlertRule
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| meta | [AlertRuleMeta](#tetragon-AlertRuleMeta) |  |  |
+
+
+
+
+
+
 <a name="tetragon-AlertRuleMeta"></a>
 
 ### AlertRuleMeta
@@ -2939,6 +2967,145 @@ Determins the behaviour of a field filter
  
 
  
+
+ 
+
+
+
+<a name="tetragon_alertservice-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/alertservice.proto
+
+
+
+<a name="tetragon-AddAlertRuleFromYAMLRequest"></a>
+
+### AddAlertRuleFromYAMLRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| yaml | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-AddAlertRuleResponse"></a>
+
+### AddAlertRuleResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rule | [AlertRule](#tetragon-AlertRule) |  |  |
+
+
+
+
+
+
+<a name="tetragon-DeleteAlertRuleRequest"></a>
+
+### DeleteAlertRuleRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-DeleteAlertRuleResponse"></a>
+
+### DeleteAlertRuleResponse
+
+
+
+
+
+
+
+<a name="tetragon-GetAlertRuleRequest"></a>
+
+### GetAlertRuleRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-GetAlertRuleResponse"></a>
+
+### GetAlertRuleResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rule | [AlertRule](#tetragon-AlertRule) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ListAlertRulesRequest"></a>
+
+### ListAlertRulesRequest
+
+
+
+
+
+
+
+<a name="tetragon-ListAlertRulesResponse"></a>
+
+### ListAlertRulesResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rules | [AlertRule](#tetragon-AlertRule) | repeated |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+
+<a name="tetragon-AlertService"></a>
+
+### AlertService
+
+
+| Method Name | Request Type | Response Type | Description |
+| ----------- | ------------ | ------------- | ------------|
+| AddAlertRuleFromYAML | [AddAlertRuleFromYAMLRequest](#tetragon-AddAlertRuleFromYAMLRequest) | [AddAlertRuleResponse](#tetragon-AddAlertRuleResponse) |  |
+| DeleteAlertRule | [DeleteAlertRuleRequest](#tetragon-DeleteAlertRuleRequest) | [DeleteAlertRuleResponse](#tetragon-DeleteAlertRuleResponse) |  |
+| ListAlertRules | [ListAlertRulesRequest](#tetragon-ListAlertRulesRequest) | [ListAlertRulesResponse](#tetragon-ListAlertRulesResponse) |  |
+| GetAlertRule | [GetAlertRuleRequest](#tetragon-GetAlertRuleRequest) | [GetAlertRuleResponse](#tetragon-GetAlertRuleResponse) |  |
 
  
 

@@ -1,0 +1,52 @@
+//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+//  NOTICE: All information contained herein is, and remains the property of
+//  Isovalent Inc and its suppliers, if any. The intellectual and technical
+//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+//  and may be covered by U.S. and Foreign Patents, patents in process, and are
+//  protected by trade secret or copyright law.  Dissemination of this information
+//  or reproduction of this material is strictly forbidden unless prior written
+//  permission is obtained from Isovalent Inc.
+
+syntax = "proto3";
+
+package tetragon;
+
+import "tetragon/alert.proto";
+
+option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
+
+service AlertService {
+  rpc AddAlertRuleFromYAML(AddAlertRuleFromYAMLRequest) returns (AddAlertRuleResponse) {}
+  rpc DeleteAlertRule(DeleteAlertRuleRequest) returns (DeleteAlertRuleResponse) {}
+  rpc ListAlertRules(ListAlertRulesRequest) returns (ListAlertRulesResponse) {}
+  rpc GetAlertRule(GetAlertRuleRequest) returns (GetAlertRuleResponse) {}
+}
+
+message AddAlertRuleFromYAMLRequest {
+  string yaml = 1;
+}
+
+message AddAlertRuleResponse {
+  AlertRule rule = 1;
+}
+
+message DeleteAlertRuleRequest {
+  string name = 1;
+}
+
+message DeleteAlertRuleResponse {}
+
+message ListAlertRulesRequest {}
+
+message ListAlertRulesResponse {
+  repeated AlertRule rules = 1;
+}
+
+message GetAlertRuleRequest {
+  string name = 1;
+}
+
+message GetAlertRuleResponse {
+  AlertRule rule = 1;
+}
