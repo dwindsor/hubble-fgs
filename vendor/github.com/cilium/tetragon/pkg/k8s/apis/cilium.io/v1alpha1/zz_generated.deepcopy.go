@@ -1218,6 +1218,11 @@ func (in *NetworkPolicySpec) DeepCopyInto(out *NetworkPolicySpec) {
 		*out = new(v1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ProcessSelector != nil {
+		in, out := &in.ProcessSelector, &out.ProcessSelector
+		*out = new(BinarySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Rules != nil {
 		in, out := &in.Rules, &out.Rules
 		*out = make([]NetworkPolicyRule, len(*in))

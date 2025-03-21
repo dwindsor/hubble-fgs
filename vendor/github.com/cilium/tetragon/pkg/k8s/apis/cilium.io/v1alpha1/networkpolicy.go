@@ -146,6 +146,9 @@ type NetworkPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// PodSelector selects pods that this policy applies to
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
+	// +kubebuilder:validation:Optional
+	// ProcessSelector selects process that this policy applies to
+	ProcessSelector *BinarySelector `json:"processSelector,omitempty"`
 	// +kubebuilder:validation:Enum=allow;deny
 	DefaultAction string `json:"defaultAction"`
 	// Network Policy Spec defines a set of actions for network operations

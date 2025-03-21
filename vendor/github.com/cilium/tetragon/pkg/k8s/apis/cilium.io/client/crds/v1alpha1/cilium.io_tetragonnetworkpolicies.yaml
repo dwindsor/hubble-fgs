@@ -102,6 +102,34 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
+              processSelector:
+                description: ProcessSelector selects process that this policy applies
+                  to
+                properties:
+                  followChildren:
+                    default: false
+                    description: In addition to binaries, match children processes
+                      of specified binaries.
+                    type: boolean
+                  operator:
+                    description: Filter operation.
+                    enum:
+                    - In
+                    - NotIn
+                    - Prefix
+                    - NotPrefix
+                    - Postfix
+                    - NotPostfix
+                    type: string
+                  values:
+                    description: Value to compare the argument against.
+                    items:
+                      type: string
+                    type: array
+                required:
+                - operator
+                - values
+                type: object
               rules:
                 description: Network Policy Spec defines a set of actions for network
                   operations
