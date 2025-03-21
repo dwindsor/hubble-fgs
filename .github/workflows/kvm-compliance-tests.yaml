@@ -105,9 +105,6 @@ jobs:
 
             export KVM_CI=true
             export SUDO=
-            if [[ "${{ matrix.kernel }}" == bpf-next-* ]]; then
-              export FLAKY_HTTP=1
-            fi
             make tetragon-bpf
             go test ./tests/compliance -print-stdout
 
