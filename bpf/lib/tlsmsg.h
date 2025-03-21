@@ -87,13 +87,14 @@ struct msg_tls_event {
 	struct msg_tls clienthello;
 	struct msg_tls serverhello;
 	struct msg_execve_key execve;
-} __attribute__((packed));
+};
 
 struct msg_tls_cont_event {
 	__u8 op;
+	__u8 pad[7];
 	__u64 socket_cookie;
 	__u64 socket_version;
 	__u32 payload_size; /* Payload size, or if zero an error follows */
 	__u8 payload[0];
-} __attribute__((packed));
+};
 #endif

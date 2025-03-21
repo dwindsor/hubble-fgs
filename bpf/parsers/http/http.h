@@ -139,7 +139,7 @@ struct msg_http_event {
 	struct msg_ip_tuple tuple;
 	struct msg_execve_key execve;
 	struct msg_http request;
-} __attribute__((packed));
+};
 
 struct __msg_http_event {
 	struct msg_common common;
@@ -148,7 +148,7 @@ struct __msg_http_event {
 	struct msg_ip_tuple tuple;
 	struct msg_execve_key execve;
 	struct __msg_http request;
-} __attribute__((packed));
+};
 
 struct __http_state_stats {
 	__u64 cnt[__http_state_max];
