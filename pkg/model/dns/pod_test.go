@@ -562,21 +562,21 @@ func TestPolicyOverlapping(t *testing.T) {
 
 	// Add src pod and dest pod while no policy is in play
 	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testKind", dstPodLabels)
 	s = GetRealizedState()
 	rDst, err := s.__PodAdd(dstPod, true)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testKind", srcPodLabels)
 	r1, err := s.__PodAdd(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
 	addPod(t, indId, indPodName, indPodLabels)
-	indPod := testPod(t, "2", "testNamespace", indPodName, "testPod", indPodLabels)
-	rind, err := s.__PodAdd(srcPod, true)
+	indPod := testPod(t, "4", "testNamespace", indPodName, "testKind", indPodLabels)
+	rind, err := s.__PodAdd(indPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(rind))
 
