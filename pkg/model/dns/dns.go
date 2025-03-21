@@ -234,13 +234,15 @@ func PodRemove(pod *v1alpha1.PodInfo, local bool) error {
 	return prog.RemoveRecords(records)
 }
 
-func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet) []*record.DatapathRecord {
+func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet, newEP bool) []*record.DatapathRecord {
 	records := []*record.DatapathRecord{}
 	dests := state.Dst.Collection(ml)
 
 	for _, d := range dests {
 		// Add endpoint of pod to list of destinations for this label selector
-		d.AddEndpoint(ep)
+		if newEP {
+			d.AddEndpoint(ep)
+		}
 
 		// For dest dest label selector we need to create src->dst binding
 		// to do this walk all subjects and add the new dst. Merge conflicts
@@ -262,12 +264,14 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 	return records
 }
 
-func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet) []*record.DatapathRecord {
+func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet, newSrc bool) []*record.DatapathRecord {
 	records := []*record.DatapathRecord{}
 	subjects := state.Src.Collection(ml)
 
 	for _, s := range subjects {
-		s.AddSubject(src)
+		if newSrc {
+			s.AddSubject(src)
+		}
 		// Merge step for cases where s -> {D1->A1} and s -> {D1->A2}
 		sRecords, err := state.AddSrcPolicy(s.Name, src, s.Policy, true)
 		if err != nil {
@@ -291,7 +295,7 @@ func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*reco
 		Kind:      epPod.WorkloadType.Kind,
 	}
 
-	epRecords := state.EndpointAdd(ep, ml)
+	epRecords := state.EndpointAdd(ep, ml, true)
 
 	if !local {
 		state.remotePods[epPod.ObjectMeta.UID] = epPod
@@ -313,7 +317,7 @@ func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*reco
 		return epRecords, fmt.Errorf("unknown or corrupt state, pod has unresolved src identity")
 	}
 
-	srcRecords := state.SrcAdd(src, ml)
+	srcRecords := state.SrcAdd(src, ml, true)
 	state.localPods[epPod.ObjectMeta.UID] = epPod
 	return append(epRecords, srcRecords...), nil
 }

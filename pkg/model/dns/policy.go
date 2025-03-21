@@ -144,13 +144,13 @@ func (state *PolicyState) __RemoveMatchLabelNetworkPolicy(uid string, policy *ty
 
 	if subject != nil {
 		for _, s := range subject.Subjects {
-			beforeSubjs = state.SrcAdd(s, subjectLabels)
+			beforeSubjs = state.SrcAdd(s, subjectLabels, false)
 		}
 	}
 
 	if dest != nil {
 		for _, ep := range dest.Endpoints {
-			beforeDests = state.EndpointAdd(ep, dstLabels)
+			beforeDests = state.EndpointAdd(ep, dstLabels, false)
 		}
 	}
 
@@ -159,13 +159,13 @@ func (state *PolicyState) __RemoveMatchLabelNetworkPolicy(uid string, policy *ty
 
 	if subject != nil {
 		for _, s := range subject.Subjects {
-			afterSubjs = state.SrcAdd(s, subjectLabels)
+			afterSubjs = state.SrcAdd(s, subjectLabels, false)
 		}
 	}
 
 	if dest != nil {
 		for _, ep := range dest.Endpoints {
-			afterDests = state.EndpointAdd(ep, dstLabels)
+			afterDests = state.EndpointAdd(ep, dstLabels, false)
 		}
 	}
 
