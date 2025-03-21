@@ -463,6 +463,28 @@ func TestPolicySet(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func cntRecordsEPTypes(records []*record.DatapathRecord) (int, int, int) {
+	cntDnsType := 0
+	cntPodType := 0
+	cntNilType := 0
+	for _, r := range records {
+		if r.EP == nil {
+			cntNilType++
+			continue
+		}
+		if r.EP.Type == endpoint.DnsType {
+			cntDnsType++
+			continue
+		}
+		if r.EP.Type == endpoint.PodType {
+			cntPodType++
+			continue
+		}
+	}
+
+	return cntDnsType, cntPodType, cntNilType
+}
+
 func TestPolicySetWithPods(t *testing.T) {
 	s := New()
 	SetRealizedState(s)
@@ -496,11 +518,11 @@ func TestPolicySetWithPods(t *testing.T) {
 	newState, addSet, removeSet, errSet := __CreateMatchLabelsPolicySet(netpolSet)
 	assert.NoError(t, errSet)
 	assert.Equal(t, 4, len(addSet))
-	assert.Equal(t, addSet[0].EP.Type, endpoint.DnsType)
-	assert.Equal(t, addSet[1].EP.Type, endpoint.DnsType)
-	assert.Equal(t, addSet[2].EP.Type, endpoint.PodType)
-	assert.Nil(t, addSet[3].EP)
 	assert.Zero(t, len(removeSet))
+	cntDnsType, cntPodType, cntNilType := cntRecordsEPTypes(addSet)
+	assert.Equal(t, cntDnsType, 2)
+	assert.Equal(t, cntPodType, 1)
+	assert.Equal(t, cntNilType, 1)
 
 	// Remove pod and policy
 	delPod(t, dstId)
@@ -515,5 +537,95 @@ func TestPolicySetWithPods(t *testing.T) {
 	assert.Equal(t, 3, len(deleted))
 
 	err = RemoveNetworkPolicySet(name, netpolSet)
+	assert.NoError(t, err)
+}
+
+func TestPolicyOverlapping(t *testing.T) {
+	s := New()
+	SetRealizedState(s)
+
+	srcId := nextId()
+	dstId := nextId()
+	indId := nextId()
+
+	srcPodName := "testNamePodSrc"
+	srcPodLabels := "A=a,B=b"
+
+	dstPodName := "testNamePodDst"
+	dstPodLabels := "D1=d1,D2=d2,D3=d3"
+
+	indPodName := "testNamePodIndependent"
+	indPodLabels := "C=c"
+
+	// Add src pod and dest pod while no policy is in play
+	addPod(t, dstId, dstPodName, dstPodLabels)
+	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	s = GetRealizedState()
+	rDst, err := s.__PodAdd(dstPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(rDst))
+
+	addPod(t, srcId, srcPodName, srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	r1, err := s.__PodAdd(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(r1))
+
+	addPod(t, indId, indPodName, indPodLabels)
+	indPod := testPod(t, "2", "testNamespace", indPodName, "testPod", indPodLabels)
+	rind, err := s.__PodAdd(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(rind))
+
+	// Add policy and ensure we generate rules
+	netpolA := testMatchDstLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
+	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
+	aState, addASet, removeASet, errSet := __CreateMatchLabelsPolicySet(netpolASet)
+	assert.NoError(t, errSet)
+	assert.Equal(t, 4, len(addASet))
+	assert.Zero(t, len(removeASet))
+
+	dns, pod, n := cntRecordsEPTypes(addASet)
+	assert.Equal(t, dns, 2)
+	assert.Equal(t, pod, 1)
+	assert.Equal(t, n, 1)
+	SetRealizedState(aState)
+
+	// netpol B overlaps with netpol A except actoins are reversed.
+	netpolB := testMatchDstLabelsDenyPolicy("netpolB", "B=b", dstPodLabels, "deny")
+	netpolBSet := []*types.TetragonNetworkPolicy{netpolB}
+	bState, addBSet, removeBSet, errSet := __CreateMatchLabelsPolicySet(netpolBSet)
+	assert.NoError(t, errSet)
+	assert.Zero(t, len(removeBSet))
+	assert.Equal(t, 8, len(addBSet))
+
+	dns, pod, n = cntRecordsEPTypes(addBSet)
+	assert.Equal(t, 4, dns)
+	assert.Equal(t, 2, pod)
+	assert.Equal(t, 2, n)
+	SetRealizedState(bState)
+
+	// Remove independent pod there should be no rules associated with this pod
+	delPod(t, indId)
+	deleted, err := bState.__PodRemove(indPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(deleted))
+
+	// Remove destinatoin pod, should delete records from source->destination
+	delPod(t, dstId)
+	deleted, err = bState.__PodRemove(dstPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(deleted))
+
+	// Remove source pod should delete remaining records for FQDN and defaults
+	delPod(t, srcId)
+	deleted, err = bState.__PodRemove(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 6, len(deleted)) // delete entries from both policy sources
+
+	netpolSet := []*types.TetragonNetworkPolicy{netpolB, netpolA}
+	err = RemoveNetworkPolicySet("netpolA", netpolSet)
+	assert.NoError(t, err)
+	err = RemoveNetworkPolicySet("netpolB", netpolSet)
 	assert.NoError(t, err)
 }
