@@ -19,6 +19,17 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 		Workload:         types.TetragonWorkloadNetworkSubject{},
 	}
 
+	if np.Spec.ProcessSelector != nil {
+		sel := np.Spec.ProcessSelector
+
+		if sel.Operator != "In" {
+			return nil, fmt.Errorf("unsupported process selector op, only 'In' is currently supported")
+		}
+		for _, v := range sel.Values {
+			subj.InProcessName = append(subj.InProcessName, v)
+		}
+	}
+
 	dfltEnforce := &types.TetragonEnforceAction{}
 	if strings.Compare(np.Spec.DefaultAction, "deny") == 0 {
 		dfltEnforce.Deny = true
