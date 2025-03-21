@@ -142,9 +142,9 @@
   
 - [tetragon/alert.proto](#tetragon_alert-proto)
     - [Alert](#tetragon-Alert)
-    - [AlertRule](#tetragon-AlertRule)
+    - [AlertRuleMeta](#tetragon-AlertRuleMeta)
   
-    - [AlertRule.Severity](#tetragon-AlertRule-Severity)
+    - [AlertRuleMeta.Severity](#tetragon-AlertRuleMeta-Severity)
   
 - [tetragon/attempt.proto](#tetragon_attempt-proto)
     - [Attempt](#tetragon-Attempt)
@@ -2896,23 +2896,23 @@ Determins the behaviour of a field filter
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | event | [GetEventsResponse](#tetragon-GetEventsResponse) | optional |  |
-| rule | [AlertRule](#tetragon-AlertRule) |  |  |
+| rule | [AlertRuleMeta](#tetragon-AlertRuleMeta) |  |  |
 
 
 
 
 
 
-<a name="tetragon-AlertRule"></a>
+<a name="tetragon-AlertRuleMeta"></a>
 
-### AlertRule
+### AlertRuleMeta
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
-| severity | [AlertRule.Severity](#tetragon-AlertRule-Severity) |  |  |
+| severity | [AlertRuleMeta.Severity](#tetragon-AlertRuleMeta-Severity) |  |  |
 | message | [string](#string) |  |  |
 | tags | [string](#string) | repeated |  |
 
@@ -2923,9 +2923,9 @@ Determins the behaviour of a field filter
  
 
 
-<a name="tetragon-AlertRule-Severity"></a>
+<a name="tetragon-AlertRuleMeta-Severity"></a>
 
-### AlertRule.Severity
+### AlertRuleMeta.Severity
 
 
 | Name | Number | Description |

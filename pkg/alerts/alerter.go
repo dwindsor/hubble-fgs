@@ -114,9 +114,9 @@ func (a *alerter) evaluateRules(ctx context.Context, event *tetragon.GetEventsRe
 func eventToAlert(event *tetragon.GetEventsResponse, r *rule) *tetragon.Alert {
 	return &tetragon.Alert{
 		Event: event,
-		Rule: &tetragon.AlertRule{
+		Rule: &tetragon.AlertRuleMeta{
 			Name:     r.name,
-			Severity: tetragon.AlertRule_Severity(tetragon.AlertRule_Severity_value[strings.ToUpper(r.severity)]),
+			Severity: tetragon.AlertRuleMeta_Severity(tetragon.AlertRuleMeta_Severity_value[strings.ToUpper(r.severity)]),
 			Message:  r.message,
 			Tags:     r.tags,
 		},

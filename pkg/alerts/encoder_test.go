@@ -35,11 +35,11 @@ var exampleEvent = &tetragon.GetEventsResponse{
 	Time: &timestamppb.Timestamp{},
 }
 
-var exampleRule = &tetragon.AlertRule{
+var exampleRule = &tetragon.AlertRuleMeta{
 	Name:     "curl",
 	Message:  "Curl is curling.",
 	Tags:     []string{"network"},
-	Severity: tetragon.AlertRule_CRITICAL,
+	Severity: tetragon.AlertRuleMeta_CRITICAL,
 }
 
 var exampleAlert = &tetragon.Alert{

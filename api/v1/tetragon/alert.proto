@@ -21,7 +21,7 @@ import "tetragon/tetragon.proto";
 
 option go_package = "github.com/cilium/tetragon/api/v1/tetragon";
 
-message AlertRule {
+message AlertRuleMeta {
   enum Severity {
     UNSPECIFIED = 0;
     INFO = 1;
@@ -36,5 +36,5 @@ message AlertRule {
 
 message Alert {
   optional GetEventsResponse event = 1;
-  AlertRule rule = 2;
+  AlertRuleMeta rule = 2;
 }
