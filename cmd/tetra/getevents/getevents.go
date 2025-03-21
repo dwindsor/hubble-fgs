@@ -104,6 +104,13 @@ var GetFilter = func() *tetragon.Filter {
 		}
 	}
 
+	if len(ossGetevents.Options.PolicyNames) > 0 {
+		filter.PolicyNames = ossGetevents.Options.PolicyNames
+	}
+	if len(ossGetevents.Options.CelExpression) > 0 {
+		filter.CelExpression = ossGetevents.Options.CelExpression
+	}
+
 	return &filter
 }
 
