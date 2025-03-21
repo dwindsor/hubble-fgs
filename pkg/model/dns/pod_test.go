@@ -639,6 +639,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 
 	srcId := nextId()
 	dstId := nextId()
+	indId := nextId()
 
 	srcPodName := "testNamePodSrc"
 	srcPodLabels := "A=a,B=b"
@@ -646,16 +647,25 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	dstPodName := "testNamePodDst"
 	dstPodLabels := "D1=d1,D2=d2,D3=d3"
 
-	// Add src pod and dest pod while no policy is in play
+	indPodName := "testNamePodIndependent"
+	indPodLabels := "C=c"
+
+	// Add src, dst, and ind pods while no policy is in play
+	addPod(t, indId, indPodName, indPodLabels)
+	indPod := testPod(t, "4", "testNamespace", indPodName, "testKind", indPodLabels)
+	rind, err := s.__PodAdd(indPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(rind))
+
 	addPod(t, dstId, dstPodName, dstPodLabels)
-	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testKind", dstPodLabels)
 	s = GetRealizedState()
 	rDst, err := s.__PodAdd(dstPod, true)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
-	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testKind", srcPodLabels)
 	r1, err := s.__PodAdd(srcPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
@@ -689,8 +699,30 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Equal(t, 2, n)
 	SetRealizedState(bState)
 
+	// netpol C does not overlap with A or B subjects.
+	netpolC := testMatchDstLabelsDenyPolicy("netpolC", "C=c", dstPodLabels, "deny")
+	netpolCSet := []*types.TetragonNetworkPolicy{netpolC}
+	cState, addCSet, removeCSet, err := __CreateMatchLabelsPolicySet(netpolCSet)
+	assert.NoError(t, err)
+	assert.Zero(t, len(removeCSet))
+	assert.Equal(t, 12, len(addCSet))
+
+	dns, pod, n = cntRecordsEPTypes(addCSet)
+	assert.Equal(t, 6, dns)
+	assert.Equal(t, 3, pod)
+	assert.Equal(t, 3, n)
+	SetRealizedState(cState)
+
+	// netpol C does not overlap with netpol A remove it.
+	cRemove, cUpdate, err := cState.__RemoveMatchLabelNetworkPolicy("netpolC_0", netpolC)
+	assert.NoError(t, err)
+	// because these are entirely masked by policy A we do not remove anything
+	assert.Equal(t, 4, len(cRemove))
+	// however we need to update the rules to the new state.
+	assert.Equal(t, 8, len(cUpdate))
+
 	// netpol B overlaps with netpol A remove it.
-	bRemove, bUpdate, err := bState.__RemoveMatchLabelNetworkPolicy("netpolB_0", netpolB)
+	bRemove, bUpdate, err := cState.__RemoveMatchLabelNetworkPolicy("netpolB_0", netpolB)
 	assert.NoError(t, err)
 	// because these are entirely masked by policy A we do not remove anything
 	assert.Equal(t, 0, len(bRemove))
@@ -698,20 +730,26 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Equal(t, 4, len(bUpdate))
 
 	// netpol A remains, remove it.
-	aRemove, aUpdate, err := bState.__RemoveMatchLabelNetworkPolicy("netpolA_0", netpolA)
+	aRemove, aUpdate, err := cState.__RemoveMatchLabelNetworkPolicy("netpolA_0", netpolA)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(aRemove))
 	assert.Equal(t, 0, len(aUpdate))
 
 	// Remove source pod there should be no more records
 	delPod(t, srcId)
-	deleted, err := bState.__PodRemove(srcPod, true)
+	deleted, err := cState.__PodRemove(srcPod, true)
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 
 	// Remove destination pod, should not be any records remaining
 	delPod(t, dstId)
-	deleted, err = bState.__PodRemove(dstPod, true)
+	deleted, err = cState.__PodRemove(dstPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(deleted))
+
+	// Remove other pod, should not be any records remaining
+	delPod(t, indId)
+	deleted, err = cState.__PodRemove(indPod, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 }
