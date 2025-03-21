@@ -115,6 +115,14 @@ func SetRealizedState(s *PolicyState) {
 	RealizedState = s
 }
 
+func (state *PolicyState) DestroyState() {
+	state.Dst = nil
+	state.Src = nil
+
+	state.localPods = nil
+	state.remotePods = nil
+}
+
 // Top level handler to remove pod: performance bouns, this op requires 2 matchLabel
 // policy collections. So we have:
 //
