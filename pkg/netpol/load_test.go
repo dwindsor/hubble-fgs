@@ -23,6 +23,11 @@ spec:
     matchLabels:
       A: "a"
       B: "b"
+  processSelector:
+    operator: "In"
+    values:
+    - "/usr/bin/curl"
+    - "/usr/local/bin/curl"
   defaultAction: "deny"
   rules:
   - hook: "connect"
