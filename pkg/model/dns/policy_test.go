@@ -100,6 +100,14 @@ func testMatchDstLabelsDenyPolicy(name, src, dst, action string) *types.Tetragon
 	return netpol
 }
 
+func testMatchDstProcessLabelsDenyPolicy(name, src, dst, action string) *types.TetragonNetworkPolicy {
+	process := []string{"/usr/bin/curl", "/usr/sbin/curl"}
+	netpol := testMatchDstLabelsDenyPolicy(name, src, dst, action)
+	netpol.Subject.InProcessName = process
+
+	return netpol
+}
+
 func TestQueueWorkloadPolicy(t *testing.T) {
 	s := New()
 	name := "test"

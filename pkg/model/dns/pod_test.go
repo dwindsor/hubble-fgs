@@ -753,3 +753,135 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(deleted))
 }
+
+func TestPolicySubjectProcess(t *testing.T) {
+	s := New()
+	SetRealizedState(s)
+
+	srcId := nextId()
+	dstId := nextId()
+
+	srcPodName := "testNamePodSrc"
+	srcPodLabels := "A=a,B=b"
+
+	dstPodName := "testNamePodDst"
+	dstPodLabels := "D1=d1,D2=d2,D3=d3"
+
+	// Add src pod and dest pod while no policy is in play
+	addPod(t, dstId, dstPodName, dstPodLabels)
+	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+
+	s = GetRealizedState()
+	rDst, err := s.__PodAdd(dstPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(rDst))
+
+	addPod(t, srcId, srcPodName, srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	r1, err := s.__PodAdd(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(r1))
+
+	// Add policy and ensure we generate rules
+	netpolA := testMatchDstProcessLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
+	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
+	aState, addASet, removeASet, errSet := __CreateMatchLabelsPolicySet(netpolASet)
+
+	assert.NoError(t, errSet)
+	// 3 records for /usr/bin/curl
+	// 3 records for /usr/sbin/curl
+	// 1 record for default pod
+	assert.Equal(t, 7, len(addASet))
+	assert.Zero(t, len(removeASet))
+
+	dns, pod, n := cntRecordsEPTypes(addASet)
+	// record entry for /usr/bin/curl -> {fqdn1, fqdn2}
+	// record entry for /usr/sbin/curl -> {fqdn1, fqdn2}
+	assert.Equal(t, dns, 4)
+	// record entry for /usr/bin/curl  -> ep
+	// record entry for /usr/sbin/curl -> ep
+	assert.Equal(t, pod, 2)
+	assert.Equal(t, n, 1)
+	SetRealizedState(aState)
+
+	// netpol A remains, remove it.
+	aRemove, aUpdate, err := aState.__RemoveMatchLabelNetworkPolicy("netpolA_0", netpolA)
+	assert.NoError(t, err)
+	assert.Equal(t, 7, len(aRemove))
+	assert.Zero(t, len(aUpdate))
+
+	// Remove source pod there should be no more records
+	delPod(t, srcId)
+	deleted, err := aState.__PodRemove(srcPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(deleted))
+
+	// Remove destination pod, should not be any records remaining
+	delPod(t, dstId)
+	deleted, err = aState.__PodRemove(dstPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(deleted))
+
+}
+
+func TestPolicyLateStartSubjectProcess(t *testing.T) {
+	s := New()
+	SetRealizedState(s)
+
+	srcId := nextId()
+	dstId := nextId()
+
+	srcPodName := "testNamePodSrc"
+	srcPodLabels := "A=a,B=b"
+
+	dstPodName := "testNamePodDst"
+	dstPodLabels := "D1=d1,D2=d2,D3=d3"
+
+	// Add policy and ensure we generate rules
+	netpolA := testMatchDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
+	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
+	aState, addASet, removeASet, errSet := __CreateMatchLabelsPolicySet(netpolASet)
+
+	assert.NoError(t, errSet)
+	assert.Zero(t, len(addASet))
+	assert.Zero(t, len(removeASet))
+
+	// Add src pod and dest pod while no policy is in play
+	addPod(t, dstId, dstPodName, dstPodLabels)
+	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	SetRealizedState(aState)
+
+	s = GetRealizedState()
+	rDst, err := s.__PodAdd(dstPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(rDst))
+
+	addPod(t, srcId, srcPodName, srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	r1, err := s.__PodAdd(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 7, len(r1))
+
+	dns, pod, n := cntRecordsEPTypes(r1)
+	assert.Equal(t, 4, dns)
+	assert.Equal(t, 2, pod)
+	assert.Equal(t, 1, n)
+
+	// netpol A remains, remove it.
+	aRemove, aUpdate, err := aState.__RemoveMatchLabelNetworkPolicy("netpolZ_0", netpolA)
+	assert.NoError(t, err)
+	assert.Equal(t, 7, len(aRemove))
+	assert.Zero(t, len(aUpdate))
+
+	// Remove source pod there should be no more records
+	delPod(t, srcId)
+	deleted, err := aState.__PodRemove(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(deleted))
+
+	// Remove destination pod, should not be any records remaining
+	delPod(t, dstId)
+	deleted, err = aState.__PodRemove(dstPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(deleted))
+}
