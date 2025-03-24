@@ -8,9 +8,9 @@
   ],
   "baseBranches": [
     "master",
+    "v1.16",
     "v1.15",
     "v1.14",
-    "v1.13",
   ],
   "cloneSubmodules": true,
   "packageRules": [
@@ -19,6 +19,7 @@
       "enabled": false,
       "matchPackagePatterns": ["*"],
       "matchBaseBranches": [
+        "v1.16",
         "v1.15",
         "v1.14",
         "v1.13",
@@ -29,9 +30,21 @@
       "enabled": true,
       "matchPackageNames": ["docker.io/library/alpine"],
       "matchBaseBranches": [
+        "v1.16",
         "v1.15",
         "v1.14",
-        "v1.13",
+      ]
+    },
+    {
+      "enabled": true,
+      "groupName": "Go",
+      "matchPackageNames": [
+        "docker.io/library/golang",
+        "go"
+      ],
+      "allowedVersions": "/^1\\.24\\.[0-9]+-?(alpine)?$/",
+      "matchBaseBranches": [
+        "v1.16",
       ]
     },
     {
@@ -56,7 +69,6 @@
       "allowedVersions": "/^1\\.22\\.[0-9]+-?(alpine)?$/",
       "matchBaseBranches": [
         "v1.14",
-        "v1.13",
       ]
     },
     // This rule is just a reapply from the more global ignore on docker digest updates from OSS:
