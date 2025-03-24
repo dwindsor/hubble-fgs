@@ -8,6 +8,11 @@ spec:
   podSelector:
     matchLabels:
       class: "xwing"
+  processSelector:
+    operator: "In"
+    values:
+      - "/usr/bin/curl"
+      - "/usr/sbin/curl"
   defaultAction: "deny"
   rules:
   - hook: "connect"
