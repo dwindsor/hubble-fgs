@@ -36,9 +36,10 @@ type alerter struct {
 	ctx         context.Context
 }
 
-func newAlerter(ctx context.Context) *alerter {
+func newAlerter(ctx context.Context, r RuleManager) *alerter {
+	rm := r.(*ruleManager)
 	return &alerter{
-		ruleManager: newRuleManager(),
+		ruleManager: rm,
 		ctx:         ctx,
 	}
 }
@@ -123,8 +124,8 @@ func eventToAlert(event *tetragon.GetEventsResponse, r *rule) *tetragon.Alert {
 	}
 }
 
-func StartAlerting(ctx context.Context, server *server.Server) error {
-	a := newAlerter(ctx)
+func StartAlerting(ctx context.Context, r RuleManager, server *server.Server) error {
+	a := newAlerter(ctx, r)
 
 	var readyWG sync.WaitGroup
 	var startErr error

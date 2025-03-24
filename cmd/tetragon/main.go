@@ -594,7 +594,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	}
 
 	if enterpriseOption.Config.EnableAlerts {
-		if err = alerts.StartAlerting(ctx, pm.Server); err != nil {
+		if err = alerts.StartAlerting(ctx, alertsManager, pm.Server); err != nil {
 			return fmt.Errorf("failed to start alerting: %w", err)
 		}
 		log.Info("Started alerting.")

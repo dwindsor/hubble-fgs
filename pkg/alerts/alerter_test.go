@@ -24,7 +24,7 @@ func TestEvaluateRules(t *testing.T) {
 	t.Cleanup(func() {
 		option.Config.AlertsExportDir = ""
 	})
-	a := newAlerter(t.Context())
+	a := newAlerter(t.Context(), newRuleManager())
 
 	// Add two alert rules, no JSON export
 	a.ruleManager.AddAlertRule(exampleAR)
