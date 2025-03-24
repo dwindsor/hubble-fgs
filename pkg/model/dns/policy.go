@@ -472,6 +472,10 @@ func __CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*Polic
 }
 
 func CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) error {
+	state := GetRealizedState()
+	state.Reader.Lock()
+	defer state.Reader.Unlock()
+
 	newState, addSet, removeSet, err := __CreateMatchLabelsPolicySet(policy)
 	if err != nil {
 		return err

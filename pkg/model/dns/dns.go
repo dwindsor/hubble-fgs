@@ -96,6 +96,8 @@ type PolicyState struct {
 
 	DstLock sync.Mutex
 	SrcLock sync.Mutex
+
+	Reader sync.RWMutex
 }
 
 func New() *PolicyState {
@@ -108,6 +110,8 @@ func New() *PolicyState {
 
 	s.DstLock = sync.Mutex{}
 	s.SrcLock = sync.Mutex{}
+
+	s.Reader = sync.RWMutex{}
 	return s
 }
 
@@ -278,6 +282,10 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 
 func PodRemove(pod *v1alpha1.PodInfo, local bool) error {
 	state := GetRealizedState()
+
+	state.Reader.RLock()
+	defer state.Reader.RUnlock()
+
 	records, err := state.__PodRemove(pod, local)
 	if err != nil {
 		return err
@@ -394,6 +402,9 @@ func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*reco
 // Top level handler to add pod and calculate tetragon network policy
 func PodAdd(epPod *v1alpha1.PodInfo, local bool) error {
 	state := GetRealizedState()
+
+	state.Reader.RLock()
+	defer state.Reader.RUnlock()
 
 	records, err := state.__PodAdd(epPod, local)
 	if err != nil {
