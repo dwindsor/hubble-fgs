@@ -152,6 +152,11 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 		podEP := createPodEndpoint(pod)
 		for _, d := range dests {
 			s := state.Src[d.Name]
+			action, err := calculateAction(&s.Policy.Action)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warn("calculate action failed")
+				continue
+			}
 			for _, subject := range s.Subjects {
 				for _, process := range s.Policy.Subject.InProcessName {
 					self, err := prog.GetBinaryId(process)
@@ -159,17 +164,24 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 						logger.GetLogger().WithError(err).Warn("process policy remove error")
 						continue
 					}
-					subject.Self = self
+
+					processSrc := &types.ProcessTreeKey{
+						CgroupId: subject.CgroupId,
+						Depth:    0,
+						Self:     self,
+						Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+					}
 					records = append(records, &record.DatapathRecord{
-						Src: subject,
-						EP:  podEP,
+						Src:    processSrc,
+						EP:     podEP,
+						Action: action,
 					})
-					subject.Self = 0
 				}
 				if len(s.Policy.Subject.InProcessName) == 0 {
 					records = append(records, &record.DatapathRecord{
-						Src: subject,
-						EP:  podEP,
+						Src:    subject,
+						EP:     podEP,
+						Action: action,
 					})
 				}
 			}
@@ -204,12 +216,18 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 	}
 
 	for _, s := range coll {
+		action, err := calculateAction(&s.Policy.Action)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("calculate action failed")
+			continue
+		}
 		d := state.Dst[s.Name]
 		for _, ep := range d.Endpoints {
 			if len(s.Policy.Subject.InProcessName) == 0 {
 				records = append(records, &record.DatapathRecord{
-					Src: subject,
-					EP:  ep,
+					Src:    subject,
+					EP:     ep,
+					Action: action,
 				})
 			}
 			for _, process := range s.Policy.Subject.InProcessName {
@@ -218,12 +236,17 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 					logger.GetLogger().WithError(err).Warn("pod remove endpoint binary id error")
 					continue
 				}
-				subject.Self = self
+				processSrc := &types.ProcessTreeKey{
+					CgroupId: subject.CgroupId,
+					Depth:    0,
+					Self:     self,
+					Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+				}
 				records = append(records, &record.DatapathRecord{
-					Src: subject,
-					EP:  ep,
+					Src:    processSrc,
+					EP:     ep,
+					Action: action,
 				})
-				subject.Self = 0
 			}
 		}
 		for i, subj := range s.Subjects {
@@ -246,23 +269,32 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 		}
 
 		for _, entry := range s.Policy.Destination.FQDN.Names {
+			action, err := calculateAction(&s.Policy.Action)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warn("calculate action failed")
+				continue
+			}
 			for _, process := range s.Policy.Subject.InProcessName {
 				self, err := prog.GetBinaryId(process)
 				if err != nil {
 					logger.GetLogger().WithError(err).Warn("pod remove FQDN binary id error")
 					continue
 				}
-				subject.Self = self
-
+				processSrc := &types.ProcessTreeKey{
+					CgroupId: subject.CgroupId,
+					Depth:    0,
+					Self:     self,
+					Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+				}
 				ep := &endpoint.Endpoint{
 					Type: endpoint.DnsType,
 					Dns:  entry,
 				}
 				records = append(records, &record.DatapathRecord{
-					Src: subject,
-					EP:  ep,
+					Src:    processSrc,
+					EP:     ep,
+					Action: action,
 				})
-				subject.Self = 0
 			}
 			if len(s.Policy.Subject.InProcessName) == 0 {
 				ep := &endpoint.Endpoint{
@@ -270,8 +302,9 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 					Dns:  entry,
 				}
 				records = append(records, &record.DatapathRecord{
-					Src: subject,
-					EP:  ep,
+					Src:    subject,
+					EP:     ep,
+					Action: action,
 				})
 			}
 		}
@@ -308,10 +341,9 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 		// are resolved by BPF datapath.
 		policyList := state.Src[d.Name]
 		for _, subject := range policyList.Subjects {
-			action, err := calculateAction(&d.Policy.Action)
+			action, err := calculateAction(&policyList.Policy.Action)
 			if err != nil {
 				logger.GetLogger().WithError(err).WithField("policyName", d.Name).WithField("action", d.Policy.Action).Warn("could not calcluate actions, skipping action")
-				subject.Self = 0
 				continue
 			}
 
@@ -322,13 +354,17 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 						logger.GetLogger().WithError(err).Warn("process policy remove error")
 						continue
 					}
-					subject.Self = self
+					processSrc := &types.ProcessTreeKey{
+						CgroupId: subject.CgroupId,
+						Depth:    0,
+						Self:     self,
+						Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+					}
 					records = append(records, &record.DatapathRecord{
-						Src:    subject,
+						Src:    processSrc,
 						EP:     ep,
 						Action: action,
 					})
-					subject.Self = 0
 				}
 			} else {
 				records = append(records, &record.DatapathRecord{

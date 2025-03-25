@@ -70,7 +70,7 @@ func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.Proces
 			"cgid": src.CgroupId,
 			"self": src.Self,
 			"dest": strings.Join(d.FQDN.Names, " "),
-		}).Info("TCP quota removed")
+		}).Debug("TCP quota removed")
 	}
 
 	ls, ok := state.Dst[name]
