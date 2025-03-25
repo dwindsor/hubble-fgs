@@ -102,6 +102,7 @@ type TetragonWorkloadNetworkSubject struct {
 	Namespace string
 	Name      string
 	Kind      string
+	Binary    string
 }
 
 const TetragonBinaryPathMaxLen = 256

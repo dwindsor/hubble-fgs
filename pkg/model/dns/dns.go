@@ -149,10 +149,25 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 		for _, d := range dests {
 			s := state.Src[d.Name]
 			for _, subject := range s.Subjects {
-				records = append(records, &record.DatapathRecord{
-					Src: subject,
-					EP:  podEP,
-				})
+				for _, process := range s.Policy.Subject.InProcessName {
+					self, err := prog.GetBinaryId(process)
+					if err != nil {
+						logger.GetLogger().WithError(err).Warn("process policy remove error")
+						continue
+					}
+					subject.Self = self
+					records = append(records, &record.DatapathRecord{
+						Src: subject,
+						EP:  podEP,
+					})
+					subject.Self = 0
+				}
+				if len(s.Policy.Subject.InProcessName) == 0 {
+					records = append(records, &record.DatapathRecord{
+						Src: subject,
+						EP:  podEP,
+					})
+				}
 			}
 			for i, ep := range d.Endpoints {
 				if *ep == *podEP {
@@ -187,10 +202,25 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 	for _, s := range coll {
 		d := state.Dst[s.Name]
 		for _, ep := range d.Endpoints {
-			records = append(records, &record.DatapathRecord{
-				Src: subject,
-				EP:  ep,
-			})
+			if len(s.Policy.Subject.InProcessName) == 0 {
+				records = append(records, &record.DatapathRecord{
+					Src: subject,
+					EP:  ep,
+				})
+			}
+			for _, process := range s.Policy.Subject.InProcessName {
+				self, err := prog.GetBinaryId(process)
+				if err != nil {
+					logger.GetLogger().WithError(err).Warn("pod remove endpoint binary id error")
+					continue
+				}
+				subject.Self = self
+				records = append(records, &record.DatapathRecord{
+					Src: subject,
+					EP:  ep,
+				})
+				subject.Self = 0
+			}
 		}
 		for i, subj := range s.Subjects {
 			if *subj == *subject {
@@ -198,6 +228,7 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 				break
 			}
 		}
+
 		if s.Policy.Default.EnforceAction != nil {
 			// Action is not part of the default action key so we just need Src field
 			records = append(records, &record.DatapathRecord{
@@ -211,14 +242,34 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 		}
 
 		for _, entry := range s.Policy.Destination.FQDN.Names {
-			ep := &endpoint.Endpoint{
-				Type: endpoint.DnsType,
-				Dns:  entry,
+			for _, process := range s.Policy.Subject.InProcessName {
+				self, err := prog.GetBinaryId(process)
+				if err != nil {
+					logger.GetLogger().WithError(err).Warn("pod remove FQDN binary id error")
+					continue
+				}
+				subject.Self = self
+
+				ep := &endpoint.Endpoint{
+					Type: endpoint.DnsType,
+					Dns:  entry,
+				}
+				records = append(records, &record.DatapathRecord{
+					Src: subject,
+					EP:  ep,
+				})
+				subject.Self = 0
 			}
-			records = append(records, &record.DatapathRecord{
-				Src: subject,
-				EP:  ep,
-			})
+			if len(s.Policy.Subject.InProcessName) == 0 {
+				ep := &endpoint.Endpoint{
+					Type: endpoint.DnsType,
+					Dns:  entry,
+				}
+				records = append(records, &record.DatapathRecord{
+					Src: subject,
+					EP:  ep,
+				})
+			}
 		}
 	}
 	state.localPods[pod.ObjectMeta.UID] = nil
@@ -247,18 +298,37 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 		// For dest dest label selector we need to create src->dst binding
 		// to do this walk all subjects and add the new dst. Merge conflicts
 		// are resolved by BPF datapath.
-		for _, subject := range state.Src[d.Name].Subjects {
-			// TBD cache this in subject
+		policyList := state.Src[d.Name]
+		for _, subject := range policyList.Subjects {
 			action, err := calculateAction(&d.Policy.Action)
 			if err != nil {
 				logger.GetLogger().WithError(err).WithField("policyName", d.Name).WithField("action", d.Policy.Action).Warn("could not calcluate actions, skipping action")
+				subject.Self = 0
 				continue
 			}
-			records = append(records, &record.DatapathRecord{
-				Src:    subject,
-				EP:     ep,
-				Action: action,
-			})
+
+			if len(policyList.Policy.Subject.InProcessName) > 0 {
+				for _, process := range policyList.Policy.Subject.InProcessName {
+					self, err := prog.GetBinaryId(process)
+					if err != nil {
+						logger.GetLogger().WithError(err).Warn("process policy remove error")
+						continue
+					}
+					subject.Self = self
+					records = append(records, &record.DatapathRecord{
+						Src:    subject,
+						EP:     ep,
+						Action: action,
+					})
+					subject.Self = 0
+				}
+			} else {
+				records = append(records, &record.DatapathRecord{
+					Src:    subject,
+					EP:     ep,
+					Action: action,
+				})
+			}
 		}
 	}
 	return records
@@ -272,7 +342,6 @@ func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.Labe
 		if newSrc {
 			s.AddSubject(src)
 		}
-		// Merge step for cases where s -> {D1->A1} and s -> {D1->A2}
 		sRecords, err := state.AddSrcPolicy(s.Name, src, s.Policy, true)
 		if err != nil {
 			logger.GetLogger().WithField("src", src).WithError(err).Warn("ProgAddNetwork failed")

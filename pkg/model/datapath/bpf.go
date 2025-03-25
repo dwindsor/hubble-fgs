@@ -1,6 +1,7 @@
 package datapath
 
 import (
+	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -15,7 +16,16 @@ import (
 
 var (
 	dstMap             *ebpf.Map
+	binaryMap          *ebpf.Map
 	initProgrammerOnce sync.Once
+)
+
+var (
+	processLock              = sync.Mutex{}
+	processTreeBinaryUUIDMap = "process_tree_binary_uid_map"
+	userUID                  = uint32(0)
+	userCPU                  = uint32(0xffffffff)
+	uidMap                   = make(map[string]uint64)
 )
 
 const (
@@ -39,6 +49,12 @@ func initMap() {
 	dstMap, err = ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
 		logger.GetLogger().Errorf("failed to pin DestinationMap (%s): %v", file, err)
+	}
+
+	file = filepath.Join(bpf.MapPrefixPath(), processTreeBinaryUUIDMap)
+	binaryMap, err = ebpf.LoadPinnedMap(file, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", file).Warn("failed to open file")
 	}
 }
 
@@ -217,4 +233,48 @@ func (p *BpfProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
 		p.RemoveSingleRecord(r)
 	}
 	return nil
+}
+
+type processTreeBinaryUIDKey struct {
+	binary [256]byte
+	args   [256]byte
+}
+
+type processTreeID struct {
+	uid uint32
+	cpu uint32
+}
+
+func (p *BpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
+	var process = [256]byte{0}
+	var zero = [256]byte{0}
+
+	copy(process[:], binaryName)
+
+	initProgrammerOnce.Do(func() { initMap() })
+
+	uidKey := &processTreeBinaryUIDKey{
+		binary: process,
+		args:   zero,
+	}
+
+	processLock.Lock()
+	defer processLock.Unlock()
+
+	id, ok := uidMap[binaryName]
+	if ok {
+		return id, nil
+	}
+
+	userUID++
+	processID := &processTreeID{}
+	processID.uid = userUID
+	processID.cpu = userCPU
+	if err := binaryMap.Update(uidKey, processID, ebpf.UpdateAny); err != nil {
+		return uint64(0), fmt.Errorf("failed to update the bpf process tree map: %w", err)
+	}
+
+	id = uint64(uint64(userUID) | (uint64(userCPU) << 32))
+	uidMap[binaryName] = id
+	return id, nil
 }

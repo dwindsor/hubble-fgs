@@ -234,28 +234,8 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 	}, nil
 }
 
-func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKey, action *record.DatapathAction, policy *types.TetragonNetworkPolicy, init bool) []*record.DatapathRecord {
 	records := []*record.DatapathRecord{}
-
-	dfltAction, err := calculateAction(&policy.Default)
-	if err != nil {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"uid":    uid,
-			"name":   policy.Name,
-			"action": policy.Action,
-		}).WithError(err).Error("policy has unsupported or invalid default action")
-		return records, err
-	}
-
-	action, err := calculateAction(&policy.Action)
-	if err != nil {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"uid":    uid,
-			"name":   policy.Name,
-			"action": policy.Action,
-		}).WithError(err).Error("policy has unsupported or invalid action")
-		return records, err
-	}
 
 	if policy.Destination.FQDN != nil {
 		for _, entry := range policy.Destination.FQDN.Names {
@@ -282,6 +262,60 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 				Init:   init,
 			})
 		}
+	}
+	return records
+}
+
+func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]*record.DatapathRecord, error) {
+	records := []*record.DatapathRecord{}
+
+	dfltAction, err := calculateAction(&policy.Default)
+	if err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"uid":    uid,
+			"name":   policy.Name,
+			"action": policy.Action,
+		}).WithError(err).Error("policy has unsupported or invalid default action")
+		return records, err
+	}
+
+	action, err := calculateAction(&policy.Action)
+	if err != nil {
+		logger.GetLogger().WithFields(logrus.Fields{
+			"uid":    uid,
+			"name":   policy.Name,
+			"action": policy.Action,
+		}).WithError(err).Error("policy has unsupported or invalid action")
+		return records, err
+	}
+
+	// Records are mapped to the datapath. We need a distinct record
+	// for each process or lack of processSelector simply apply to
+	// the entire pod.
+	if len(policy.Subject.InProcessName) > 0 {
+		for _, process := range policy.Subject.InProcessName {
+			self, err := prog.GetBinaryId(process)
+			if err != nil {
+				logger.GetLogger().WithFields(logrus.Fields{
+					"uid":     uid,
+					"process": process,
+				}).WithError(err).Warn("Failed to create record")
+				return records, err
+			}
+
+			processSrc := &types.ProcessTreeKey{
+				CgroupId: src.CgroupId,
+				Depth:    0,
+				Self:     self,
+				Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+			}
+
+			r := state.policyDestRecords(uid, processSrc, action, policy, init)
+			records = append(records, r...)
+		}
+	} else {
+		r := state.policyDestRecords(uid, src, action, policy, init)
+		records = append(records, r...)
 	}
 
 	// Append the default record for the Pod layer

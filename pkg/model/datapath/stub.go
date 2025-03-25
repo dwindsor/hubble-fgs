@@ -28,3 +28,7 @@ func (p *DummyBpfProgrammer) RemoveSingleRecord(_ *record.DatapathRecord) error 
 func (p *DummyBpfProgrammer) RemoveRecords(_ []*record.DatapathRecord) error {
 	return nil
 }
+
+func (p *DummyBpfProgrammer) GetBinaryId(_ string) (uint64, error) {
+	return uint64(0xffffffff), nil
+}
