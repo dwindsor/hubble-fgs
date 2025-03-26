@@ -139,7 +139,6 @@ var (
 		{"file_msg_ns_heap", PrivateMap},     // for matchLinuxNamespaces
 		{"digest_heap_map", PrivateMap},      // for matchFilename InFileWithDigest operator
 		{"filename_heap_map", PrivateMap},    // for matchFilename InFileWithDigest operator
-		{"file_digests_maps", SharedMap},     // for matchDigests
 		{"file_ops_maps", SharedMap},         // for matchOperations
 		{"file_actions_map", SharedMap},      // for matchActions
 		{"file_capabilities_map", SharedMap}, // for matchLinuxCapabilities
@@ -404,6 +403,7 @@ var (
 				{{"tg_conf_map", BaseMap}},
 				{{"tg_cgtracker_map", BaseMap}},
 				{{"exec_retprobe_map", SharedMap}},
+				{{"file_digests_maps", SharedMap}},
 			},
 		}}},
 		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "security_bprm_check",

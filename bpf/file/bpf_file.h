@@ -938,8 +938,10 @@ __eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *di
 	if (!check_match_operations(sel_idx, action))
 		return 0;
 #ifdef __LARGE_BPF_PROG
+#ifdef __FILE_DIGEST_LSM
 	if (!check_match_digests(sel_idx, digest, action))
 		return 0;
+#endif
 	if (!check_match_namespaces(sel_idx))
 		return 0;
 	if (!check_match_capabilities(sel_idx))
