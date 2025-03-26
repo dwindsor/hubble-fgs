@@ -181,6 +181,8 @@ func (a *alerter) DeleteAlertRule(_ context.Context, req *tetragon.DeleteAlertRu
 
 func (a *alerter) ListAlertRules(_ context.Context, _ *tetragon.ListAlertRulesRequest) (*tetragon.ListAlertRulesResponse, error) {
 	rules := make([]*tetragon.AlertRule, 0, len(a.ruleManager.rules))
+	a.ruleManager.mutex.RLock()
+	defer a.ruleManager.mutex.RUnlock()
 	for _, r := range a.ruleManager.rules {
 		rules = append(rules, ruleToProto(r))
 	}
