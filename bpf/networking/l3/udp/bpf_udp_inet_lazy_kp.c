@@ -26,10 +26,7 @@ tg_inet_lazy_send_kp(struct pt_regs *ctx)
 	int bpf_attach_type = (int)PT_REGS_PARM3(ctx);
 	struct sock *sk = (void *)PT_REGS_PARM1(ctx);
 
-	if (bpf_attach_type == BPF_CGROUP_INET_EGRESS) {
-		inet_handler_lazy_kp(ctx, sk, skb, 1);
-	} else {
-		inet_handler_lazy_kp(ctx, sk, skb, 0);
-	}
+	inet_handler_lazy_kp(ctx, sk, skb, (bpf_attach_type == BPF_CGROUP_INET_EGRESS));
+
 	return 0;
 }
