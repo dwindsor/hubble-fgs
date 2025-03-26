@@ -1214,16 +1214,11 @@ filter_match(struct bpf_lpm_trie_key *key, __u32 *rule_id)
 	return FILTER_NOTFOUND;
 }
 
-static inline __attribute__((always_inline)) void get_mnt_ns(__u32 *mnt_ns)
+static inline __attribute__((always_inline)) __u32 get_mnt_ns()
 {
-	struct task_struct *task;
-	struct nsproxy *nsproxy;
-	struct nsproxy nsp;
+	struct task_struct *task = (struct task_struct *)get_current_task();
 
-	task = (struct task_struct *)get_current_task();
-	probe_read_kernel(&nsproxy, sizeof(nsproxy), _(&task->nsproxy));
-	probe_read_kernel(&nsp, sizeof(nsp), _(nsproxy));
-	probe_read_kernel(mnt_ns, sizeof(*mnt_ns), _(&nsp.mnt_ns->ns.inum));
+	return BPF_CORE_READ(task, nsproxy, mnt_ns, ns.inum);
 }
 
 /*
@@ -1534,7 +1529,7 @@ complete_msg(struct msg_file_ops *msg, __u32 action, __u32 hook, __u32 operation
 	msg->action = action;
 	msg->hook = hook;
 	msg->ktime = ktime_get_ns();
-	get_mnt_ns(&msg->mnt_ns);
+	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;

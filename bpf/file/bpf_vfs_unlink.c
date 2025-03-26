@@ -81,7 +81,7 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 	msg->action = action_delete;
 	msg->hook = hook;
 	msg->ktime = ktime_get_ns();
-	get_mnt_ns(&msg->mnt_ns);
+	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;

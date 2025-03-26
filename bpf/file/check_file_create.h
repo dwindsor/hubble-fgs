@@ -102,7 +102,7 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	msg->action = action_create;
 	msg->hook = hook;
 	msg->ktime = ktime_get_ns();
-	get_mnt_ns(&msg->mnt_ns);
+	msg->mnt_ns = get_mnt_ns();
 	msg->operation = FILE_OP_POST;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;

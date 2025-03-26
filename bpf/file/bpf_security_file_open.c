@@ -119,7 +119,7 @@ generate_message:
 	msg->action = action_open;
 	msg->hook = hook_security_file_open;
 	msg->ktime = ktime_get_ns();
-	get_mnt_ns(&msg->mnt_ns);
+	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;

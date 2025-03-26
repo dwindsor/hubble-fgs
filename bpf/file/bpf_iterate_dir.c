@@ -78,7 +78,7 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 	msg->action = action_readdir;
 	msg->hook = hook_iterate_dir;
 	msg->ktime = ktime_get_ns();
-	get_mnt_ns(&msg->mnt_ns);
+	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;

@@ -53,7 +53,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 	msg->gid[OLDVAL] = msg->gid[NEWVAL] = 0xFFFFFFFF; // UINT32_MAX
 
 	msg->ktime = ktime_get_ns();
-	get_mnt_ns(&msg->mnt_ns);
+	msg->mnt_ns = get_mnt_ns();
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;
 	msg->tid = (__u32)get_current_pid_tgid();

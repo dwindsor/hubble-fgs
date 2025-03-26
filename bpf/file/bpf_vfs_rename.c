@@ -221,7 +221,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	v->msg.action = action_rename;
 	v->msg.hook = hook_vfs_rename;
 	v->msg.ktime = ktime_get_ns();
-	get_mnt_ns(&v->msg.mnt_ns);
+	v->msg.mnt_ns = get_mnt_ns();
 	v->msg.tid = (__u32)get_current_pid_tgid();
 
 	// resolve any paths (if needed) for items outside of watched path
