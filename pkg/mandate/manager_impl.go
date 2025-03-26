@@ -21,6 +21,9 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/attempt"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/yaml"
 )
 
 // manager implements the Manager interface
@@ -61,18 +64,31 @@ var (
 	stopCmd    = cmd{id: stopCmdID}
 )
 
+type polTy int
+
+const (
+	invalidPolTy polTy = iota
+	tracingPolTy
+)
+
 type policy struct {
 	namespace string
 	name      string
 	origName  string
 	url       string
+	ty        polTy
 }
 
-func newPolicy(url string, tp tracingpolicy.TracingPolicy) policy {
+func invalidPolicy() policy {
+	return policy{ty: invalidPolTy}
+}
+
+func newTracingPolicy(url string, tp tracingpolicy.TracingPolicy) policy {
 	ret := policy{
 		url:       url,
 		namespace: tpNs(tp),
 		name:      tp.TpName(),
+		ty:        tracingPolTy,
 	}
 
 	ret.origName = ret.name
@@ -92,6 +108,41 @@ func NewManager(cnf ManagerConf, sensorMgr SensorManager) (*manager, error) {
 		polNextID: 1,
 	}
 	return mgr, nil
+}
+
+func (m *manager) unloadPolicy(ctx context.Context, pol policy) error {
+	switch pol.ty {
+	case tracingPolTy:
+		return m.sensorMgr.DeleteTracingPolicy(ctx, pol.name, pol.namespace)
+	default:
+		return fmt.Errorf("unknown tracing polilcy type: %d", pol.ty)
+	}
+}
+
+func (m *manager) attemptLoadPolicy(
+	ctx context.Context,
+	att *attempt.InprAttempt,
+	pol *Policy,
+	data []byte,
+) (policy, error) {
+	var unstr unstructured.Unstructured
+	if err := yaml.UnmarshalStrict([]byte(data), &unstr); err != nil {
+		return invalidPolicy(), fmt.Errorf("failed to unmarshal YAML: %w", err)
+	}
+
+	switch unstr.GetKind() {
+	case "TracingPolicy":
+		mp, err := m.attemptLoadMandateTracingPolicy(ctx, att, data, pol.mode_)
+		if err != nil {
+			return invalidPolicy(), err
+		}
+		return newTracingPolicy(pol.url_.String(), mp), nil
+	case "TracingPolicyNamespaced":
+		return invalidPolicy(), errors.New("namespaced tracing policies are not supported")
+	default:
+		return invalidPolicy(), errors.New("unknown policy")
+
+	}
 }
 
 func (m *manager) refresh(ctx context.Context) {
@@ -154,9 +205,9 @@ func (m *manager) refresh(ctx context.Context) {
 		attempt.RunAttempt(
 			refrAtt.NewAttempt("unload policy").WithInfo("policy", pol.origName).WithInfo("mandate", unloadMandateID),
 			func() error {
-				err := m.sensorMgr.DeleteTracingPolicy(ctx, pol.name, pol.namespace)
+				err := m.unloadPolicy(ctx, pol)
 				if err != nil {
-					logger.GetLogger().WithField("policy", pol.name).Warn("failed to unload mandate policy")
+					logger.GetLogger().WithError(err).WithField("policy", pol.name).Warn("failed to unload mandate policy")
 				}
 				return err
 			})
@@ -187,21 +238,19 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 	for i := range obj.Mandate.Policies {
 		pol := &obj.Mandate.Policies[i]
 		data := policyData[i]
-
 		loadAtt := refrAtt.NewAttempt("load policy").WithInfo("url", pol.url_.String())
-		mp, err := m.attemptLoadMandatePolicy(ctx, loadAtt, data, pol.mode_)
+		loadedPol, err := m.attemptLoadPolicy(ctx, loadAtt, pol, data)
 		if err != nil {
 			return loadedPolicies, fmt.Errorf("failed to load policy %q: %w", pol.url_, err)
 		}
-
-		loadedPolicies = append(loadedPolicies, newPolicy(pol.url_.String(), mp))
+		loadedPolicies = append(loadedPolicies, loadedPol)
 	}
 
 	return loadedPolicies, nil
 }
 
-// attemptLoadMandatePolicy attempts to load a mandate policy
-func (m *manager) attemptLoadMandatePolicy(
+// attemptLoadMandateTracingPolicy attempts to load a mandate policy
+func (m *manager) attemptLoadMandateTracingPolicy(
 	ctx context.Context,
 	att *attempt.InprAttempt,
 	data []byte,
@@ -222,7 +271,7 @@ func (m *manager) attemptLoadMandatePolicy(
 		att = att.WithInfo("mode", mode)
 	}
 
-	ret, err = tracingpolicy.FromYAML(string(data))
+	ret, err = tracingpolicy.TPContext.FromYAML(string(data))
 	if err != nil {
 		return nil, err
 	}
