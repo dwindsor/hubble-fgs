@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -65,6 +66,24 @@ func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord) error {
 	return nil
 }
 
+func scheduleDomainMapFlush() {
+	var err error
+	retries := 10
+
+	for i := 0; i < retries; i++ {
+		for endpoint, id := range QuotasInitDNSDomainMappings {
+			if err = dnsDomainMap.Update(endpoint.Dns, id); err != nil {
+				break
+			}
+		}
+		if err == nil {
+			return
+		}
+		time.Sleep(time.Duration(i) * time.Second)
+	}
+	logger.GetLogger().Warn("failed to program domain map policy incomplete")
+}
+
 // src *types.ProcessTreeKey, ep *endpoint.Endpoint, quota, reset, deny uint64, init bool) error {
 // what was init for again?
 func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
@@ -89,17 +108,21 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 	// A rather annoying ordering problem occurs where we are consuming
 	// quota DNS policy through TCP policy and that may or may not have
 	// initialized the DNS/UDP sensors yet. If DNS is not yet initialized
-	// we need to wait until it comes up. So we check init state. And
-	// if this update is through a path already fully initialized we
-	// add it directly to the map otherwise we do a bulk update in init
-	// path.
+	// we need to wait until it comes up to instantiate the domain map
+	// entry. Rather than try to sync modules and this code add a retry
+	// logic and backoff to do the map update later. This backoffs with
+	// x2 each iteration.
 	if r.Init {
 		if r.EP != nil && r.EP.Dns != "" {
-			dnsDomainMap.Update(r.EP.Dns, dst)
+			if err := dnsDomainMap.Update(r.EP.Dns, dst); err != nil {
+				QuotasInitDNSDomainMappings[*r.EP] = dst
+				go scheduleDomainMapFlush()
+			}
 		}
 	} else {
 		if r.EP != nil && r.EP.Dns != "" {
 			QuotasInitDNSDomainMappings[*r.EP] = dst
+			go scheduleDomainMapFlush()
 		}
 	}
 
