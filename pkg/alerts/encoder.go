@@ -12,6 +12,7 @@ package alerts
 
 import (
 	"io"
+	"sync"
 
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -20,6 +21,21 @@ import (
 
 type jsonEncoder struct {
 	writer io.WriteCloser
+	mu     sync.Mutex
+	closed bool
+}
+
+func newJsonEncoder(w io.WriteCloser) *jsonEncoder {
+	return &jsonEncoder{
+		writer: w,
+	}
+}
+
+func (e *jsonEncoder) Close() error {
+	e.mu.Lock()
+	e.closed = true
+	e.mu.Unlock()
+	return e.writer.Close()
 }
 
 func (e *jsonEncoder) encode(alert *tetragon.Alert) error {
@@ -27,11 +43,19 @@ func (e *jsonEncoder) encode(alert *tetragon.Alert) error {
 	if err != nil {
 		return err
 	}
+
+	// let's take a lock, this will ensure that writes are atomic
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	// encoder is closed, nothing to do
+	if e.closed {
+		return nil
+	}
 	out = append(out, '\n')
 	_, err = e.writer.Write(out)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }

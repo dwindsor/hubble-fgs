@@ -70,19 +70,28 @@ func (r *ruleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 	if err != nil {
 		return err
 	}
-
 	name := ar.GetName()
 	var encoder *jsonEncoder
-	if eeOption.Config.AlertsExportDir != "" {
+	r.mutex.Lock()
+	if rule, ok := r.rules[name]; ok {
+		// we have the same rule, we can re-use the jsonEncoder to guarantee
+		// that JSON records are written atomically to the file.
+		encoder = rule.jsonEncoder
+	}
+	r.mutex.Unlock()
+
+	// otherwise, let's open a new file
+	if eeOption.Config.AlertsExportDir != "" && encoder == nil {
 		perms, _ := fileutils.RegularFilePerms(option.Config.ExportFilePerm)
 		filename := filepath.Join(eeOption.Config.AlertsExportDir, name+".log")
 		fh, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, perms)
 		if err != nil {
 			return fmt.Errorf("failed to open a file: %w", err)
 		}
-		encoder = &jsonEncoder{fh}
+		encoder = newJsonEncoder(fh)
 	}
 
+	// now we can replace the rule
 	r.mutex.Lock()
 	r.rules[name] = &rule{
 		cel:         celProgram,
@@ -98,6 +107,11 @@ func (r *ruleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 
 func (r *ruleManager) DeleteAlertRule(name string) {
 	r.mutex.Lock()
-	delete(r.rules, name)
+	if rule, ok := r.rules[name]; ok {
+		if rule.jsonEncoder != nil {
+			rule.jsonEncoder.Close()
+		}
+		delete(r.rules, name)
+	}
 	r.mutex.Unlock()
 }
