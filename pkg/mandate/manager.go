@@ -8,10 +8,6 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-// TODO:
-//  - class field for policies: grpc, static_file, k8s, sandboxpolicy(grpc), mandate,
-//  - UpdateTracingPolicy()
-
 package mandate
 
 import (
