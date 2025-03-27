@@ -63,6 +63,9 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0);
 
+	msg->is_exe_from_memfd = is_memfd(file);
+	msg->is_exe_upper_layer = is_dentry_upper(file);
+
 	// Getting a file digest requires a sleepable LSM program.
 	// Sleepable programs can only use array, hash, ringbuf and local storage maps.
 	// To overcome this limitation we use an fexit program to call perf_event_output

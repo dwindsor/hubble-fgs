@@ -135,6 +135,8 @@
 #define FS_CREATE 0x00000100 /* Subfile was created */
 
 #define OVERLAYFS_SUPER_MAGIC 0x794c7630
+#define TMPFS_MAGIC	      0x01021994
+#define HUGETLBFS_MAGIC	      0x958458f6
 
 #define OLDVAL 0
 #define NEWVAL 1
@@ -1787,4 +1789,35 @@ static inline __attribute__((always_inline)) void mod_inode_map_stats(__s64 diff
 	cnt = map_lookup_elem(&hash_map_inode_alloc_stats, &zero);
 	if (cnt)
 		*cnt = *cnt + diff;
+}
+
+static inline __attribute__((always_inline)) bool is_memfd(struct file *file)
+{
+	unsigned long s_magic = BPF_CORE_READ(file, f_inode, i_sb, s_magic);
+	unsigned int i_nlink = BPF_CORE_READ(file, f_inode, i_nlink);
+
+	return ((s_magic == TMPFS_MAGIC) || (s_magic == HUGETLBFS_MAGIC)) && (i_nlink == 0);
+}
+
+static inline __attribute__((always_inline)) bool is_dentry_upper(struct file *file)
+{
+#ifdef __LARGE_BPF_PROG
+	enum ovl_path_type type;
+	struct dentry *dentry;
+	unsigned long s_magic;
+
+	if (!bpf_core_type_exists(struct ovl_entry))
+		return 0;
+
+	s_magic = BPF_CORE_READ(file, f_inode, i_sb, s_magic);
+	if (s_magic != OVERLAYFS_SUPER_MAGIC)
+		return false;
+
+	dentry = BPF_CORE_READ(file, f_path.dentry);
+	type = ovl_path_type(dentry);
+
+	return OVL_TYPE_UPPER(type) != 0;
+#else
+	return 0;
+#endif
 }

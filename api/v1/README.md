@@ -1629,6 +1629,8 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 | io | [FileIO](#tetragon-FileIO) |  | **Deprecated.**  |
 | mnt_ns | [Namespace](#tetragon-Namespace) |  |  |
 | digest | [FileDigest](#tetragon-FileDigest) |  |  |
+| is_exe_from_memfd | [bool](#bool) |  |  |
+| is_exe_upper_layer | [bool](#bool) |  |  |
 
 
 

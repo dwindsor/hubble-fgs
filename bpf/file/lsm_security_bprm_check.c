@@ -38,6 +38,9 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
+	msg->is_exe_from_memfd = is_memfd(file);
+	msg->is_exe_upper_layer = is_dentry_upper(file);
+
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));

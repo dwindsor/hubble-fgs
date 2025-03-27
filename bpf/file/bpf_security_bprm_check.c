@@ -94,6 +94,8 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;
 	msg->tid = (__u32)get_current_pid_tgid();
+	msg->is_exe_from_memfd = is_memfd(file);
+	msg->is_exe_upper_layer = is_dentry_upper(file);
 
 	// Getting a file digest requires a sleepable LSM program.
 	// Sleepable programs can only use array, hash, ringbuf and local storage maps.

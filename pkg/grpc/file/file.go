@@ -201,6 +201,10 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 			Error: int64(event.Digest.Error),
 		}
 	}
+	if tetragon.FileAction(event.Msg.Action) == tetragon.FileAction_FILE_EXEC {
+		args.IsExeFromMemfd = event.Msg.IsExeFromMemfd == 1
+		args.IsExeUpperLayer = event.Msg.IsExeUpperLayer == 1
+	}
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_GenericArg{GenericArg: args}}
 }
 

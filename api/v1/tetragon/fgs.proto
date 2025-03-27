@@ -300,6 +300,8 @@ message GenericFileArg {
   FileIO io = 2 [deprecated = true];
   tetragon.Namespace mnt_ns = 3;
   FileDigest digest = 4;
+  bool is_exe_from_memfd = 5;
+  bool is_exe_upper_layer = 6;
 }
 
 message RenameFileArg {

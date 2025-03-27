@@ -249,7 +249,9 @@ struct msg_file_ops {
 	__u32 tid;
 	struct digest_key digest;
 	__u32 open_flags;
-	__u32 pad;
+	__u8 is_exe_upper_layer;
+	__u8 is_exe_from_memfd;
+	__u8 pad[2];
 };
 
 struct vfs_mkdir_info {
