@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/attempt"
+	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 )
 
 // SensorManager defines the sensor manager operations used by the mandate manager
@@ -28,12 +29,6 @@ type SensorManager interface {
 	ConfigureTracingPolicy(_ context.Context, conf *tetragon.ConfigureTracingPolicyRequest) error
 }
 
-// ManagerConf configures the mandate manager
-type ManagerConf struct {
-	URL           string        `json:"url"`
-	RefreshPeriod time.Duration `json:"refresh_period"`
-}
-
 type LoadedMandate struct {
 	Version  string    `json:"version,omitempty"`
 	LoadedAt time.Time `json:"loaded_at"`
@@ -42,9 +37,9 @@ type LoadedMandate struct {
 
 // Status is the status of the mandate manager
 type Status struct {
-	Conf    ManagerConf    `json:"conf"`
-	Running bool           `json:"running"`
-	Mandate *LoadedMandate `json:"mandate,omitempty"`
+	Conf    mandateconf.ManagerConf `json:"conf"`
+	Running bool                    `json:"running"`
+	Mandate *LoadedMandate          `json:"mandate,omitempty"`
 
 	Log attempt.Attempts `json:"log,omitempty"`
 }

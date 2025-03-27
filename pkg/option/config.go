@@ -6,7 +6,7 @@ package option
 import (
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/mandate"
+	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 )
 
 type config struct {
@@ -58,7 +58,7 @@ type config struct {
 
 	EnableFimDispatcher bool
 
-	MandateConf mandate.ManagerConf
+	MandateConf mandateconf.ManagerConf
 }
 
 var (

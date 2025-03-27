@@ -19,6 +19,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/policyconf"
 	"github.com/cilium/tetragon/pkg/testutils"
+	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +31,7 @@ func TestManager(t *testing.T) {
 	})
 	require.NoError(t, err)
 	tsm := NewTestSensorManager()
-	cnf := ManagerConf{
+	cnf := mandateconf.ManagerConf{
 		URL:           filepath.Join(tmpDir, "mandate.yaml"),
 		RefreshPeriod: 1 * time.Second,
 	}
@@ -120,7 +121,7 @@ func TestManagerConf(t *testing.T) {
 	tsm := NewTestSensorManager()
 	myMandate := tmpPath("mymandate.yaml")
 	require.NoError(t, err)
-	cnf := ManagerConf{
+	cnf := mandateconf.ManagerConf{
 		URL:           myMandate,
 		RefreshPeriod: 1 * time.Second,
 	}
@@ -167,7 +168,7 @@ func TestManagerConfigure(t *testing.T) {
 	var t2 = 7 * time.Second
 
 	tsm := NewTestSensorManager()
-	cnf := ManagerConf{
+	cnf := mandateconf.ManagerConf{
 		URL:           m1,
 		RefreshPeriod: t1,
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/attempt"
+	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/yaml"
@@ -29,7 +30,7 @@ import (
 // manager implements the Manager interface
 type manager struct {
 	obj            *Obj
-	cnf            ManagerConf
+	cnf            mandateconf.ManagerConf
 	sensorMgr      SensorManager
 	c              chan cmd
 	wg             sync.WaitGroup
@@ -101,7 +102,7 @@ func newTracingPolicy(url string, tp tracingpolicy.TracingPolicy) policy {
 // NewManager creates a new manager
 //
 //revive:disable:unexported-return
-func NewManager(cnf ManagerConf, sensorMgr SensorManager) (*manager, error) {
+func NewManager(cnf mandateconf.ManagerConf, sensorMgr SensorManager) (*manager, error) {
 	mgr := &manager{
 		cnf:       cnf,
 		sensorMgr: sensorMgr,
