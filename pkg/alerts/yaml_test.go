@@ -11,6 +11,7 @@
 package alerts
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -123,4 +124,24 @@ func TestExamplesSmoke(t *testing.T) {
 	})
 
 	assert.NoError(t, err, "failed to walk examples directory")
+}
+
+// We want to avoid file system escapes, since we are using the name as a filename. This is
+// currently ensured by k8s validation which ensures that the name is a DNS subdomain name.
+// This test is left as a reminder in case we ever change the FromYAML implementation.
+func TestRejectSuspiciousNames(t *testing.T) {
+	format := `
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: %s
+spec:
+  expression: "true"
+  severity: "critical"
+`
+	for _, name := range []string{"/foo", "../", "foo/lala"} {
+		_, err := FromYAML(fmt.Sprintf(format, name))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "validation failed: metadata.name: Invalid value")
+	}
 }
