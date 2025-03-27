@@ -12,7 +12,9 @@ package alertrule
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -81,22 +83,10 @@ func New() *cobra.Command {
 		Short: "list loaded alert rules",
 		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			c, err := newClient()
-			if err != nil {
-				return fmt.Errorf("failed to create client: %w", err)
-			}
-			defer c.close()
-
-			res, err := c.client.ListAlertRules(c.ctx, &tetragon.ListAlertRulesRequest{})
-			if err != nil || res == nil {
-				return fmt.Errorf("failed to list alert rules: %w", err)
-			}
-
-			for _, rule := range res.Rules {
-				cmd.Printf("%s\n", rule.Meta.GetName())
-			}
-
-			return nil
+			return ListAlertRules(
+				cmd, "text",
+				func(n string) (string, bool) { return n, true },
+			)
 		},
 	}
 
@@ -132,4 +122,61 @@ func New() *cobra.Command {
 	)
 
 	return cmd
+}
+
+func PrintAlertRules(
+	output io.Writer,
+	rules []*tetragon.AlertRule,
+) {
+	w := tabwriter.NewWriter(output, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "NAME\tSEVERITY\tTAGS\tMESSAGE")
+	for _, rule := range rules {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+			rule.Meta.Name,
+			rule.Meta.Severity,
+			rule.Meta.Tags,
+			rule.Meta.Message)
+	}
+	w.Flush()
+}
+
+// ListAlerts is a helper to list a subset of the alert rules
+func ListAlertRules(
+	cmd *cobra.Command,
+	output string,
+	mapName func(name string) (string, bool), // mapName filters and renames policies
+) error {
+	c, err := newClient()
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC client: %w", err)
+	}
+	defer c.close()
+
+	res, err := c.client.ListAlertRules(c.ctx, &tetragon.ListAlertRulesRequest{})
+	if err != nil || res == nil {
+		return fmt.Errorf("failed to list alert rules: %w", err)
+	}
+
+	// keep only the rules we want in the list, and change their name
+	for i := 0; i < len(res.Rules); i++ {
+		rule := res.Rules[i]
+		name, ok := mapName(rule.Meta.Name)
+		if !ok {
+			res.Rules = append(res.Rules[:i], res.Rules[i+1:]...)
+			i--
+		}
+		rule.Meta.Name = name
+	}
+
+	switch output {
+	case "json":
+		b, err := res.MarshalJSON()
+		if err != nil {
+			return fmt.Errorf("failed to generate json: %w", err)
+		}
+		cmd.Println(string(b))
+	case "text":
+		PrintAlertRules(cmd.OutOrStdout(), res.Rules)
+	}
+	return nil
 }
