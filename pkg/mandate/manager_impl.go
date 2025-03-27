@@ -100,7 +100,10 @@ func (m *manager) refresh(ctx context.Context) {
 	var obj *Obj
 	var data []byte
 	defer func() {
-		refrAtt.Complete(err)
+		err := refrAtt.Complete(err)
+		if err != nil {
+			logger.GetLogger().Warnf("mandate: attempt did not properly completed: %s", err)
+		}
 	}()
 
 	refrAtt = refrAtt.WithInfo("url", m.cnf.URL)
