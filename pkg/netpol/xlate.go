@@ -84,9 +84,15 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 				Equal: destEqual,
 			}
 
+			ports := make([]uint32, 0, len(d.Ports.Ports))
+			for _, p := range d.Ports.Ports {
+				ports = append(ports, p)
+			}
+
 			dest := types.TetragonNetworkDestination{
 				FQDN:   f,
 				Labels: labels,
+				Ports:  ports,
 			}
 
 			policy = append(policy, &types.TetragonNetworkPolicy{

@@ -247,37 +247,71 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 
 	if policy.Destination.FQDN != nil {
 		for _, entry := range policy.Destination.FQDN.Names {
-			ep := &endpoint.Endpoint{
-				Type: endpoint.DnsType,
-				Dns:  entry,
+			if len(policy.Destination.Ports) == 0 {
+				ep := &endpoint.Endpoint{
+					Type: endpoint.DnsType,
+					Dns:  entry,
+				}
+				endpoint := record.DatapathEndpoint{
+					EP:   ep,
+					Port: 0,
+				}
+				records = append(records, &record.DatapathRecord{
+					Src:      src,
+					Endpoint: endpoint,
+					Action:   action,
+					Init:     init,
+				})
 			}
-			endpoint := record.DatapathEndpoint{
-				EP:   ep,
-				Port: 0,
+
+			for _, port := range policy.Destination.Ports {
+				ep := &endpoint.Endpoint{
+					Type: endpoint.DnsType,
+					Dns:  entry,
+				}
+				endpoint := record.DatapathEndpoint{
+					EP:   ep,
+					Port: port,
+				}
+				records = append(records, &record.DatapathRecord{
+					Src:      src,
+					Endpoint: endpoint,
+					Action:   action,
+					Init:     init,
+				})
 			}
-			records = append(records, &record.DatapathRecord{
-				Src:      src,
-				Endpoint: endpoint,
-				Action:   action,
-				Init:     init,
-			})
 		}
 	}
 
 	ls := state.Dst[uid]
 	if ls != nil {
 		for _, ep := range ls.Endpoints {
-			endpoint := record.DatapathEndpoint{
-				EP:   ep,
-				Port: 0,
-			}
+			if len(ls.Policy.Destination.Ports) == 0 {
+				endpoint := record.DatapathEndpoint{
+					EP:   ep,
+					Port: 0,
+				}
 
-			records = append(records, &record.DatapathRecord{
-				Src:      src,
-				Endpoint: endpoint,
-				Action:   action,
-				Init:     init,
-			})
+				records = append(records, &record.DatapathRecord{
+					Src:      src,
+					Endpoint: endpoint,
+					Action:   action,
+					Init:     init,
+				})
+			}
+			for _, port := range ls.Policy.Destination.Ports {
+				endpoint := record.DatapathEndpoint{
+					EP:   ep,
+					Port: port,
+				}
+
+				records = append(records, &record.DatapathRecord{
+					Src:      src,
+					Endpoint: endpoint,
+					Action:   action,
+					Init:     init,
+				})
+			}
 		}
 	}
 	return records
@@ -364,6 +398,7 @@ func (state *PolicyState) CreateDstMatchLabelsPolicy(uid string, policy *types.T
 		Name:   uid,
 		Label:  policy.Destination.Labels.Equal,
 		Policy: policy,
+		Ports:  policy.Destination.Ports,
 	}
 
 	state.Dst.Add(uid, ls)
@@ -379,6 +414,7 @@ func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.T
 		Name:   uid,
 		Label:  policy.Subject.MatchLabelsEqual,
 		Policy: policy,
+		Ports:  policy.Destination.Ports,
 	}
 
 	state.Src.Add(uid, ls)

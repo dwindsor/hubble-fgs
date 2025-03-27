@@ -124,6 +124,7 @@ type TetragonNetworkLabels struct {
 type TetragonNetworkDestination struct {
 	FQDN   *TetragonNetworkFQDN
 	Labels TetragonNetworkLabels
+	Ports  []uint32
 }
 
 type TetragonQuotaAction struct {

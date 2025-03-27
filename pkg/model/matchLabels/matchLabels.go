@@ -9,12 +9,12 @@ import (
 )
 
 type LabelSet struct {
-	Name   string
-	Label  map[string]string
-	Policy *types.TetragonNetworkPolicy
-	// union?
+	Name      string
+	Label     map[string]string
+	Policy    *types.TetragonNetworkPolicy
 	Endpoints []*endpoint.Endpoint
 	Subjects  []*types.ProcessTreeKey
+	Ports     []uint32
 }
 
 func (l *LabelSet) GetLabels() map[string]string {

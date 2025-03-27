@@ -164,7 +164,6 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 			}
 
 			for _, subject := range s.Subjects {
-
 				for _, process := range s.Policy.Subject.InProcessName {
 					self, err := prog.GetBinaryId(process)
 					if err != nil {
@@ -231,8 +230,7 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 		d := state.Dst[s.Name]
 		for _, ep := range d.Endpoints {
 			dpEndpoint := record.DatapathEndpoint{
-				EP:   ep,
-				Port: 0,
+				EP: ep,
 			}
 
 			if len(s.Policy.Subject.InProcessName) == 0 {
@@ -352,11 +350,6 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 			d.AddEndpoint(ep)
 		}
 
-		endpoint := record.DatapathEndpoint{
-			EP:   ep,
-			Port: 0,
-		}
-
 		// For dest dest label selector we need to create src->dst binding
 		// to do this walk all subjects and add the new dst. Merge conflicts
 		// are resolved by BPF datapath.
@@ -375,19 +368,47 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 						logger.GetLogger().WithError(err).Warn("process policy remove error")
 						continue
 					}
-					processSrc := &types.ProcessTreeKey{
-						CgroupId: subject.CgroupId,
-						Depth:    0,
-						Self:     self,
-						Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+					if len(policyList.Policy.Destination.Ports) == 0 {
+						endpoint := record.DatapathEndpoint{
+							EP:   ep,
+							Port: 0,
+						}
+						processSrc := &types.ProcessTreeKey{
+							CgroupId: subject.CgroupId,
+							Depth:    0,
+							Self:     self,
+							Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+						}
+						records = append(records, &record.DatapathRecord{
+							Src:      processSrc,
+							Endpoint: endpoint,
+							Action:   action,
+						})
 					}
-					records = append(records, &record.DatapathRecord{
-						Src:      processSrc,
-						Endpoint: endpoint,
-						Action:   action,
-					})
+					for _, port := range policyList.Policy.Destination.Ports {
+						endpoint := record.DatapathEndpoint{
+							EP:   ep,
+							Port: port,
+						}
+						processSrc := &types.ProcessTreeKey{
+							CgroupId: subject.CgroupId,
+							Depth:    0,
+							Self:     self,
+							Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+						}
+						records = append(records, &record.DatapathRecord{
+							Src:      processSrc,
+							Endpoint: endpoint,
+							Action:   action,
+						})
+					}
 				}
 			} else {
+				endpoint := record.DatapathEndpoint{
+					EP:   ep,
+					Port: 0,
+				}
+
 				records = append(records, &record.DatapathRecord{
 					Src:      subject,
 					Endpoint: endpoint,

@@ -19,6 +19,7 @@ const (
 type recordKey struct {
 	CgroupId uint64
 	Self     uint64
+	Port     uint32
 	EP       endpoint.Endpoint
 }
 
@@ -43,10 +44,14 @@ func (a *DatapathAction) String() string {
 
 type DatapathEndpoint struct {
 	EP   *endpoint.Endpoint
-	Port uint64
+	Port uint32
 }
 
 func (r DatapathEndpoint) String() string {
+	if r.EP == nil {
+		return "nil"
+	}
+
 	if r.Port != 0 {
 		return fmt.Sprintf("%s : %d", r.EP, r.Port)
 	}
@@ -62,15 +67,14 @@ type DatapathRecord struct {
 
 func (r *DatapathRecord) String() string {
 	src := ""
-	ep := ""
 	action := ""
 
 	if r.Src != nil {
 		src = fmt.Sprintf("%d:%d", r.Src.CgroupId, r.Src.Self)
 	}
-	if r.Endpoint.EP != nil {
-		ep = fmt.Sprint(r.Endpoint.EP.String())
-	}
+
+	ep := fmt.Sprint(r.Endpoint.String())
+
 	if r.Action != nil {
 		action = fmt.Sprintf("%s", r.Action)
 	}
@@ -100,6 +104,7 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 		}
 		if r.Endpoint.EP != nil {
 			key.EP = *r.Endpoint.EP
+			key.Port = r.Endpoint.Port
 		}
 		bMap[key] = r
 	}
@@ -111,6 +116,7 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 		}
 		if r.Endpoint.EP != nil {
 			key.EP = *r.Endpoint.EP
+			key.Port = r.Endpoint.Port
 		}
 		_, ok := bMap[key]
 		if !ok {

@@ -131,7 +131,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 		LocalNSId:         r.Src.CgroupId,
 		DestinationId:     dst,
 		DestinationSource: types.DestinationSourceUser,
-		DestinationPort:   r.Endpoint.Port,
+		DestinationPort:   uint64(r.Endpoint.Port),
 	}
 
 	value := &types.DestinationEndpointValue{
@@ -207,7 +207,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 		LocalNSId:         src.CgroupId,
 		DestinationId:     dst,
 		DestinationSource: types.DestinationSourceUser,
-		DestinationPort:   0,
+		DestinationPort:   uint64(r.Endpoint.Port),
 	}
 
 	value := &types.DestinationEndpointValue{
