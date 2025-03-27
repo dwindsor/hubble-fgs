@@ -11,9 +11,11 @@
 package model
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/option"
@@ -36,7 +38,7 @@ type namespaceKey struct {
 
 type workloadKey struct {
 	name string
-	kind string
+	kind appModelV1.WorkloadKind
 }
 
 type processKey struct {
@@ -45,8 +47,7 @@ type processKey struct {
 }
 
 type connectionKey struct {
-	destinationName string
-	destinationPort uint64
+	destination *appModelV1.Destination
 }
 
 type processValue struct {
@@ -68,7 +69,7 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	nsKey := namespaceKey{name: nk.SourceNamespace}
 	wlkey := workloadKey{name: nk.SourceWorkloadName, kind: nk.SourceWorkloadKind}
 	pskey := processKey{name: nk.SourceProcessName, arguments: nk.SourceProcessArgs}
-	connKey := connectionKey{destinationName: nk.DestinationName, destinationPort: nk.DestinationPort}
+	connKey := connectionKey{destination: nwKeyToDestination(&nk)}
 	if _, ok := nsMap[nsKey]; !ok {
 		nsMap[nsKey] = make(workloadMap)
 	}
@@ -81,11 +82,24 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 		}
 	}
 	nsMap[nsKey][wlkey][pskey].connections[connKey] = &appModelV1.ApplicationConnection{
-		DestinationName: connKey.destinationName,
-		DestinationPort: connKey.destinationPort,
-		BytesSent:       bc.BytesSent(),
-		BytesReceived:   bc.BytesReceived(),
+		Destination: nwKeyToDestination(&nk),
+		Stats: &appModelV1.ConnectionStats{
+			TxBytes:        bc.GetTxBytes(),
+			RxBytes:        bc.GetRxBytes(),
+			TxDrops:        bc.GetTxDrops(),
+			TxQuota:        bc.GetTxQuota(),
+			TxQuotaUsage:   bc.GetTxUsage(),
+			LastQuotaReset: maybeTimeToTimestamp(bc.GetLastReset()),
+			NextQuotaReset: maybeTimeToTimestamp(bc.GetNextReset()),
+		},
 	}
+}
+
+func maybeTimeToTimestamp(t *time.Time) *timestamppb.Timestamp {
+	if t == nil {
+		return nil
+	}
+	return timestamppb.New(*t)
 }
 
 func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
@@ -106,30 +120,16 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 	}
 }
 
-func sortNamespace(a, b *appModelV1.ApplicationNamespace) int {
-	return strings.Compare(a.Name, b.Name)
-}
-
-func sortProcess(a, b *appModelV1.ApplicationProcessGroup) int {
-	return strings.Compare(a.Name+a.Arguments, b.Name+b.Arguments)
-}
-
-func sortWorkload(a, b *appModelV1.ApplicationWorkload) int {
-	if kindComp := strings.Compare(a.Kind, b.Kind); kindComp != 0 {
-		return kindComp
+// translateWorkloadKind translates the process model workload kind into an app
+// model workload kind enum.
+func translateWorkloadKind(kind string) appModelV1.WorkloadKind {
+	key := fmt.Sprintf("WORKLOAD_KIND_%s", strings.ToUpper(kind))
+	val, ok := appModelV1.WorkloadKind_value[key]
+	if ok {
+		return appModelV1.WorkloadKind(val)
 	}
-	return strings.Compare(a.Name, b.Name)
-}
-
-func sortConnection(a, b *appModelV1.ApplicationConnection) int {
-	if nameComp := strings.Compare(a.DestinationName, b.DestinationName); nameComp != 0 {
-		return nameComp
-	}
-	if a.DestinationPort >= b.DestinationPort {
-		return int(a.DestinationPort - b.DestinationPort)
-
-	}
-	return -1
+	// <host-kind> will fall through to here
+	return appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
 }
 
 func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationModelEvent {
@@ -177,21 +177,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 		}
 	}
 	// TODO(michi): Not very efficient. Optimize if anybody complains.
-	slices.SortFunc(result.ApplicationModel.Namespaces, sortNamespace)
-	for _, ns := range result.ApplicationModel.Namespaces {
-		slices.SortFunc(ns.Workloads, sortWorkload)
-		for _, wl := range ns.Workloads {
-			slices.SortFunc(wl.Processes, sortProcess)
-			for _, ps := range wl.Processes {
-				slices.SortFunc(ps.Connections, sortConnection)
-				slices.SortFunc(ps.Connections, sortConnection)
-			}
-		}
-	}
-	slices.SortFunc(result.ApplicationModel.Host.Processes, sortProcess)
-	for _, ps := range result.ApplicationModel.Host.Processes {
-		slices.SortFunc(ps.Connections, sortConnection)
-	}
+	EnsureSorted(result.ApplicationModel)
 	return result
 }
 
@@ -206,6 +192,29 @@ func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) *appM
 		handleProcessEvent(nsMap, key, val)
 	}
 	return namespaceMapToApplicationModel(nsMap)
+}
+
+func DestinationNameAppModel(dst *appModelV1.Destination) string {
+	var name string
+
+	// Preamble
+	switch dt := dst.Type.(type) {
+	case *appModelV1.Destination_Dns:
+		name = strings.Join(dt.Dns.DestinationNames, ",")
+	case *appModelV1.Destination_Ip:
+		name = dt.Ip.Ip
+	case *appModelV1.Destination_Workload:
+		name = fmt.Sprintf("%s/%s:%s", dt.Workload.Namespace, prettyWorkloadKind(dt.Workload.Kind), dt.Workload.Name)
+	default:
+		panic(fmt.Sprintf("unexpected v1alpha.isDestination_Type: %#v", dt))
+	}
+
+	// Port
+	if dst.Port != 0 {
+		name = fmt.Sprintf("%s:%d", name, dst.Port)
+	}
+
+	return name
 }
 
 func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModelV1.ApplicationModel) {
@@ -227,12 +236,11 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 						SourceWorkloadName: wl.GetName(),
 						SourceProcessName:  ps.GetName(),
 						SourceProcessArgs:  ps.GetArguments(),
-						DestinationName:    conn.GetDestinationName(),
-						DestinationPort:    conn.GetDestinationPort(),
 					}
+					addDestinationInfoAppModel(conn.Destination, &nmk)
 					nmd[nmk] = NetworkMonitorValue{
-						TXBytes: conn.GetBytesSent(),
-						RXBytes: conn.GetBytesReceived(),
+						TXBytes: conn.Stats.TxBytes,
+						RXBytes: conn.Stats.RxBytes,
 					}
 				}
 			}
@@ -241,7 +249,7 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 	for _, ps := range app.GetHost().GetProcesses() {
 		pmk := ProcessKey{
 			Namespace:    HostNamespace,
-			WorkloadKind: HostKind,
+			WorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			WorkloadName: HostWorkload,
 			Name:         ps.GetName(),
 			Args:         ps.GetArguments(),
@@ -250,16 +258,15 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 		for _, conn := range ps.GetConnections() {
 			nmk := NetworkKey{
 				SourceNamespace:    HostNamespace,
-				SourceWorkloadKind: HostKind,
+				SourceWorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 				SourceWorkloadName: HostWorkload,
 				SourceProcessName:  ps.GetName(),
 				SourceProcessArgs:  ps.GetArguments(),
-				DestinationName:    conn.GetDestinationName(),
-				DestinationPort:    conn.GetDestinationPort(),
 			}
+			addDestinationInfoAppModel(conn.Destination, &nmk)
 			nmd[nmk] = NetworkMonitorValue{
-				TXBytes: conn.GetBytesSent(),
-				RXBytes: conn.GetBytesReceived(),
+				TXBytes: conn.Stats.TxBytes,
+				RXBytes: conn.Stats.RxBytes,
 			}
 		}
 	}

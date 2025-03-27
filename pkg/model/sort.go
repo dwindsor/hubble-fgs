@@ -6,7 +6,9 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"net/netip"
 	"slices"
+	"strings"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/reflect/protopath"
@@ -45,6 +47,7 @@ func (stack *stack[T]) peek() (v T, err error) {
 	return stack.s[l-1], nil
 }
 
+// EnsureSorted recursively sorts all "repeated" fields of an [appModelV1.ApplicationModel].
 func EnsureSorted(model *appModelV1.ApplicationModel) {
 	toSort := stack[*[]protoreflect.Value]{}
 	protorange.Options{}.Range(
@@ -109,22 +112,7 @@ func EnsureSorted(model *appModelV1.ApplicationModel) {
 							}
 						case *appModelV1.ApplicationConnection:
 							b := b.(*appModelV1.ApplicationConnection)
-							res = cmp.Compare(a.DestinationName, b.DestinationName)
-							if res != 0 {
-								return res
-							}
-							res = cmp.Compare(a.DestinationPort, b.DestinationPort)
-							if res != 0 {
-								return res
-							}
-							res = cmp.Compare(a.BytesSent, b.BytesSent)
-							if res != 0 {
-								return res
-							}
-							res = cmp.Compare(a.BytesReceived, b.BytesReceived)
-							if res != 0 {
-								return res
-							}
+							return CompareDestination(a.Destination, b.Destination)
 						default:
 							unhandledErr = fmt.Errorf("%w: %T", ErrUnhandledMessageType, a)
 							return 0
@@ -150,4 +138,129 @@ func EnsureSorted(model *appModelV1.ApplicationModel) {
 			}
 			return nil
 		})
+}
+
+// CompareDestination compares two [appModelV1.Destination].
+func CompareDestination(a, b *appModelV1.Destination) int {
+	res := cmp.Compare(fmt.Sprintf("%T", a.Type), fmt.Sprintf("%T", b.Type))
+	if res != 0 {
+		return res
+	}
+	// NB: It's impossible to have a.Type.(type) != b.Type.(Type) due to the check above
+	switch at := a.Type.(type) {
+	case *appModelV1.Destination_Dns:
+		bt := b.Type.(*appModelV1.Destination_Dns)
+		aNames := at.Dns.DestinationNames
+		slices.Sort(aNames)
+		bNames := bt.Dns.DestinationNames
+		slices.Sort(bNames)
+		res = cmp.Compare(strings.Join(aNames, ""), strings.Join(bNames, ""))
+		if res != 0 {
+			return res
+		}
+	case *appModelV1.Destination_Ip:
+		bt := b.Type.(*appModelV1.Destination_Ip)
+		ipA, errA := netip.ParseAddr(at.Ip.Ip)
+		ipB, errB := netip.ParseAddr(bt.Ip.Ip)
+		if errA != nil {
+			if errB != nil {
+				return 0
+			}
+			return -1
+		}
+		if errB != nil {
+			return 1
+		}
+		res = ipA.Compare(ipB)
+		if res != 0 {
+			return res
+		}
+	case *appModelV1.Destination_Workload:
+		bt := b.Type.(*appModelV1.Destination_Workload)
+		res = cmp.Compare(at.Workload.Namespace, bt.Workload.Namespace)
+		if res != 0 {
+			return res
+		}
+		res = cmp.Compare(at.Workload.Name, bt.Workload.Name)
+		if res != 0 {
+			return res
+		}
+		res = cmp.Compare(at.Workload.Kind.String(), bt.Workload.Kind.String())
+		if res != 0 {
+			return res
+		}
+	default:
+		panic(fmt.Sprintf("unexpected v1alpha.isDestination_Type: %#v", a.Type))
+	}
+	res = cmp.Compare(a.Port, b.Port)
+	if res != 0 {
+		return res
+	}
+	return 0
+}
+
+// CompareNetworkKeys compares two [NetworkKey].
+func CompareNetworkKeys(a, b NetworkKey) int {
+	if result := strings.Compare(a.SourceNamespace, b.SourceNamespace); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.SourceWorkloadKind.String(), b.SourceWorkloadKind.String()); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.SourceWorkloadName, b.SourceWorkloadName); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.SourceProcessName, b.SourceProcessName); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.SourceProcessArgs, b.SourceProcessArgs); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.DestinationNames, b.DestinationNames); result != 0 {
+		return result
+	}
+	ipA, errA := netip.ParseAddr(a.DestinationIP)
+	ipB, errB := netip.ParseAddr(b.DestinationIP)
+	if errA != nil && errB == nil {
+		return -1
+	}
+	if errB != nil && errA == nil {
+		return 1
+	}
+	if errA == nil && errB == nil {
+		result := ipA.Compare(ipB)
+		if result != 0 {
+			return result
+		}
+	}
+	if result := strings.Compare(a.DestinationWorkloadNamespace, b.DestinationWorkloadNamespace); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.DestinationWorkloadName, b.DestinationWorkloadName); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.DestinationWorkloadKind.String(), b.DestinationWorkloadKind.String()); result != 0 {
+		return result
+	}
+	if result := cmp.Compare(a.DestinationPort, b.DestinationPort); result != 0 {
+		return result
+	}
+	return 0
+}
+
+// CompareProcessKeys compares two [ProcessKey].
+func CompareProcessKeys(a, b ProcessKey) int {
+	if result := strings.Compare(a.Namespace, b.Namespace); result != 0 {
+		return result
+	}
+	if result := cmp.Compare(a.WorkloadKind.String(), b.WorkloadKind.String()); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.WorkloadName, b.WorkloadName); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.Name, b.Name); result != 0 {
+		return result
+	}
+	return strings.Compare(a.Args, b.Args)
 }

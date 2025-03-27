@@ -62,7 +62,7 @@ var tests = []processTree{
 		},
 		// FIXME: For some reason, bytes_received is always 0 here, so we omit the check. This should be investigated at some point.
 		Checks: []string{
-			`model.host.processes.exists(p, p.name.matches(".*curl") && p.connections.exists(c, c.destination_name.matches("ebpf.io") && c.bytes_sent > 0))`,
+			`model.host.processes.exists(p, p.name.matches(".*curl") && p.connections.exists(c, c.destination.dns.destination_names.exists(n, n.matches("ebpf.io")) && c.stats.tx_bytes > 0))`,
 		},
 		ArmSupport: false,
 	},

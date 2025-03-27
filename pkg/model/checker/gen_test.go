@@ -44,10 +44,18 @@ func TestGenerate(t *testing.T) {
 						Name: "/bin/baz",
 						Connections: []*appModelV1.ApplicationConnection{
 							{
-								DestinationName: "isovalent.com",
-								DestinationPort: 443,
-								BytesSent:       1337,
-								BytesReceived:   1337,
+								Destination: &appModelV1.Destination{
+									Type: &appModelV1.Destination_Dns{
+										Dns: &appModelV1.DestinationDns{
+											DestinationNames: []string{"isovalent.com"},
+										},
+									},
+									Port: 443,
+								},
+								Stats: &appModelV1.ConnectionStats{
+									TxBytes: 1337,
+									RxBytes: 1337,
+								},
 							},
 						},
 					},
@@ -63,16 +71,24 @@ func TestGenerate(t *testing.T) {
 					Workloads: []*appModelV1.ApplicationWorkload{
 						{
 							Name: "quxbaz",
-							Kind: "DaemonSet",
+							Kind: appModelV1.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
 							Processes: []*appModelV1.ApplicationProcessGroup{
 								{
 									Name: "/bin/bash",
 									Connections: []*appModelV1.ApplicationConnection{
 										{
-											DestinationName: "google.ca",
-											DestinationPort: 443,
-											BytesSent:       167424,
-											BytesReceived:   184273,
+											Destination: &appModelV1.Destination{
+												Type: &appModelV1.Destination_Dns{
+													Dns: &appModelV1.DestinationDns{
+														DestinationNames: []string{"isovalent.com"},
+													},
+												},
+												Port: 443,
+											},
+											Stats: &appModelV1.ConnectionStats{
+												TxBytes: 1337,
+												RxBytes: 1337,
+											},
 										},
 									},
 								},

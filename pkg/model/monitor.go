@@ -13,24 +13,59 @@ package model
 import (
 	"fmt"
 	"maps"
-	"net/netip"
 	"slices"
 	"strings"
 	"time"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/google/go-cmp/cmp"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+func prettyWorkloadKind(kind appModelV1.WorkloadKind) string {
+	caser := cases.Title(language.English)
+	return caser.String(strings.TrimPrefix(kind.String(), "WORKLOAD_KIND_"))
+}
+
 type NetworkKey struct {
 	SourceNamespace    string
-	SourceWorkloadKind string
+	SourceWorkloadKind appModelV1.WorkloadKind
 	SourceWorkloadName string
 	SourceProcessName  string
 	SourceProcessArgs  string
-	DestinationName    string
 	DestinationPort    uint64
+	// DNS
+	DestinationNames string
+	// IP
+	DestinationIP string
+	// Workload
+	DestinationWorkloadName      string
+	DestinationWorkloadNamespace string
+	DestinationWorkloadKind      appModelV1.WorkloadKind
+}
+
+func DestinationName(nk *NetworkKey) string {
+	var name string
+
+	// Preamble
+	if nk.DestinationNames != "" {
+		name = nk.DestinationNames
+	} else if nk.DestinationIP != "" {
+		name = nk.DestinationIP
+	} else if nk.DestinationWorkloadName != "" {
+		name = fmt.Sprintf("%s/%s:%s", nk.DestinationWorkloadNamespace, prettyWorkloadKind(nk.DestinationWorkloadKind), nk.DestinationWorkloadName)
+	}
+
+	// Port
+	if nk.DestinationPort != 0 {
+		name = fmt.Sprintf("%s:%d", name, nk.DestinationPort)
+	}
+
+	return name
 }
 
 func (nk NetworkKey) String() string {
@@ -38,13 +73,9 @@ func (nk NetworkKey) String() string {
 	if nk.SourceNamespace == HostNamespace {
 		source = "host"
 	} else {
-		source = fmt.Sprintf("%s/%s:%s", nk.SourceNamespace, nk.SourceWorkloadKind, nk.SourceWorkloadName)
+		source = fmt.Sprintf("%s/%s:%s", nk.SourceNamespace, prettyWorkloadKind(nk.SourceWorkloadKind), nk.SourceWorkloadName)
 	}
-	if nk.DestinationPort == 0 {
-		destination = nk.DestinationName
-	} else {
-		destination = fmt.Sprintf("%s:%d", nk.DestinationName, nk.DestinationPort)
-	}
+	destination = DestinationName(&nk)
 	return fmt.Sprintf("%s > %s", source, destination)
 }
 
@@ -68,40 +99,88 @@ func (nmv NetworkMonitorValue) String() string {
 }
 
 type NetworkQuotaValue struct {
-	TXBytes uint64
-	RXBytes uint64
-	TXDrops uint64
-	TXQuota uint64
-	TXUsage uint64
-	Reset   time.Time
+	TXBytes   uint64
+	RXBytes   uint64
+	TXDrops   uint64
+	TXQuota   uint64
+	TXUsage   uint64
+	LastReset time.Time
+	NextReset time.Time
 }
 
 type byteCounter interface {
-	BytesSent() uint64
-	BytesReceived() uint64
+	GetTxBytes() uint64
+	GetRxBytes() uint64
+	GetTxDrops() uint64
+	GetTxQuota() uint64
+	GetTxUsage() uint64
+	GetLastReset() *time.Time
+	GetNextReset() *time.Time
 }
 
-func (nmv NetworkMonitorValue) BytesSent() uint64 {
+func (nmv NetworkMonitorValue) GetTxBytes() uint64 {
 	return nmv.TXBytes
 }
 
-func (nmv NetworkMonitorValue) BytesReceived() uint64 {
+func (nmv NetworkMonitorValue) GetRxBytes() uint64 {
 	return nmv.RXBytes
 }
 
-func (nqv NetworkQuotaValue) BytesSent() uint64 {
+func (NetworkMonitorValue) GetTxDrops() uint64 {
+	return 0
+}
+
+func (NetworkMonitorValue) GetTxQuota() uint64 {
+	return 0
+}
+
+func (NetworkMonitorValue) GetTxUsage() uint64 {
+	return 0
+}
+
+func (NetworkMonitorValue) GetLastReset() *time.Time {
+	return nil
+}
+
+func (NetworkMonitorValue) GetNextReset() *time.Time {
+	return nil
+}
+
+func (nqv NetworkQuotaValue) GetTxBytes() uint64 {
 	return nqv.TXBytes
 }
 
-func (nqv NetworkQuotaValue) BytesReceived() uint64 {
+func (nqv NetworkQuotaValue) GetRxBytes() uint64 {
 	return nqv.RXBytes
+}
+
+func (nqv NetworkQuotaValue) GetTxDrops() uint64 {
+	return nqv.TXDrops
+}
+
+func (nqv NetworkQuotaValue) GetTxQuota() uint64 {
+	return nqv.TXQuota
+}
+
+func (nqv NetworkQuotaValue) GetTxUsage() uint64 {
+	return nqv.TXUsage
+}
+
+func (nqv NetworkQuotaValue) GetLastReset() *time.Time {
+	x := nqv.LastReset
+	return &x
+}
+
+func (nqv NetworkQuotaValue) GetNextReset() *time.Time {
+	x := nqv.NextReset
+	return &x
 }
 
 func (nqv NetworkQuotaValue) String() string {
 	now := time.Now()
 	var reset string
-	if now.Before(nqv.Reset) {
-		reset = fmt.Sprintf("reset in %s", nqv.Reset.Sub(now).Truncate(time.Second))
+	if now.Before(nqv.NextReset) {
+		reset = fmt.Sprintf("reset in %s", nqv.NextReset.Sub(now).Truncate(time.Second))
 	} else {
 		reset = "reset on next send"
 	}
@@ -118,7 +197,7 @@ type ProcessMonitorData map[ProcessKey]ProcessValue
 
 type ProcessKey struct {
 	Namespace    string
-	WorkloadKind string
+	WorkloadKind appModelV1.WorkloadKind
 	WorkloadName string
 	Name         string
 	Args         string
@@ -128,69 +207,16 @@ type ProcessValue struct {
 	InInitTree *wrapperspb.BoolValue
 }
 
-func SortNetworkKeys(a, b NetworkKey) int {
-	if result := strings.Compare(a.SourceNamespace, b.SourceNamespace); result != 0 {
-		return result
-	}
-	if result := strings.Compare(a.SourceWorkloadKind, b.SourceWorkloadKind); result != 0 {
-		return result
-	}
-	if result := strings.Compare(a.SourceWorkloadName, b.SourceWorkloadName); result != 0 {
-		return result
-	}
-	if result := strings.Compare(a.SourceProcessName, b.SourceProcessName); result != 0 {
-		return result
-	}
-	if result := strings.Compare(a.SourceProcessArgs, b.SourceProcessArgs); result != 0 {
-		return result
-	}
-	ipA, errA := netip.ParseAddr(a.DestinationName)
-	ipB, errB := netip.ParseAddr(b.DestinationName)
-	if errA == nil && errB == nil {
-		if result := ipA.Compare(ipB); result != 0 {
-			return result
-		}
-	} else if errA != nil && errB == nil {
-		return -1
-	} else if errA == nil {
-		return 1
-	} else {
-		if result := strings.Compare(a.DestinationName, b.DestinationName); result != 0 {
-			return result
-		}
-	}
-	if a.DestinationPort >= b.DestinationPort {
-		return int(a.DestinationPort - b.DestinationPort)
-	}
-	return -1
-}
-
 func (pk ProcessKey) String() string {
 	if pk.Namespace == HostNamespace {
 		return fmt.Sprintf("host %s %s", pk.Name, pk.Args)
 	}
-	return fmt.Sprintf("%s/%s:%s %s %s", pk.Namespace, pk.WorkloadKind, pk.WorkloadName, pk.Name, pk.Args)
-}
-
-func SortProcessKeys(a, b ProcessKey) int {
-	if result := strings.Compare(a.Namespace, b.Namespace); result != 0 {
-		return result
-	}
-	if result := strings.Compare(a.WorkloadKind, b.WorkloadKind); result != 0 {
-		return result
-	}
-	if result := strings.Compare(a.WorkloadName, b.WorkloadName); result != 0 {
-		return result
-	}
-	if result := strings.Compare(a.Name, b.Name); result != 0 {
-		return result
-	}
-	return strings.Compare(a.Args, b.Args)
+	return fmt.Sprintf("%s/%s:%s %s %s", pk.Namespace, prettyWorkloadKind(pk.WorkloadKind), pk.WorkloadName, pk.Name, pk.Args)
 }
 
 func (nmd NetworkMonitorData) Print() {
 	keys := slices.Collect(maps.Keys(nmd))
-	slices.SortFunc(keys, SortNetworkKeys)
+	slices.SortFunc(keys, CompareNetworkKeys)
 	for _, key := range keys {
 		fmt.Println(key, nmd[key])
 	}
@@ -202,44 +228,95 @@ func (nqd NetworkQuotaData) Print() {
 	}
 }
 
-func getDestinationName(dst *tetragon.Destination) string {
-	dstName := "unknown"
-	if len(dst.GetDestinationNames()) > 0 {
-		dstName = strings.TrimSuffix(dst.GetDestinationNames()[0], ".")
-	} else if dst.GetDestinationPod() != nil {
-		dstName = fmt.Sprintf("%s/%s:%s",
-			dst.GetDestinationPod().GetNamespace(),
-			dst.GetDestinationPod().GetWorkloadKind(),
-			dst.GetDestinationPod().GetWorkload())
-	} else if dst.GetDestinationService() != nil {
-		dstName = fmt.Sprintf("%s/Service:%s",
-			dst.GetDestinationService().GetNamespace(),
-			dst.GetDestinationService().GetName())
-	}
-	return dstName
-}
-
 func getNetworkMonitorKey(process *tetragon.ProcessModel, dst *tetragon.Destination, includeProcess bool) NetworkKey {
-	dstName := getDestinationName(dst)
 	nwKey := NetworkKey{
 		SourceNamespace:    process.GetNamespace(),
 		SourceWorkloadName: process.GetWorkload().GetName(),
-		SourceWorkloadKind: process.GetWorkload().GetKind(),
-		DestinationName:    dstName,
-		DestinationPort:    dst.GetPort(),
+		SourceWorkloadKind: translateWorkloadKind(process.GetWorkload().GetKind()),
 	}
 	if includeProcess {
 		nwKey.SourceProcessName = process.GetBinary()
 		nwKey.SourceProcessArgs = process.GetBinaryArgs()
 	}
+	addDestinationInfo(dst, &nwKey)
 	return nwKey
+}
+
+// addDestinationInfo adds destination information from a [tetragon.Destination] to a [NetworkKey].
+func addDestinationInfo(dst *tetragon.Destination, nwKey *NetworkKey) {
+	if len(dst.DestinationNames) > 0 {
+		if len(dst.DestinationNames) == 1 {
+			nwKey.DestinationNames = dst.DestinationNames[0]
+		} else {
+			nwKey.DestinationNames = strings.Join(dst.DestinationNames, ",")
+		}
+	} else if dst.DestinationPod != nil {
+		nwKey.DestinationWorkloadName = dst.DestinationPod.Workload
+		nwKey.DestinationWorkloadNamespace = dst.DestinationPod.Namespace
+		nwKey.DestinationWorkloadKind = translateWorkloadKind(dst.DestinationPod.WorkloadKind)
+	} else if dst.DestinationService != nil {
+		nwKey.DestinationWorkloadName = dst.DestinationService.Name
+		nwKey.DestinationWorkloadNamespace = dst.DestinationService.Namespace
+		nwKey.DestinationWorkloadKind = appModelV1.WorkloadKind_WORKLOAD_KIND_SERVICE
+	}
+
+	nwKey.DestinationPort = dst.Port
+}
+
+// addDestinationInfoAppModel adds destination information from a [appModelV1.Destination] to a [NetworkKey].
+func addDestinationInfoAppModel(dst *appModelV1.Destination, nwKey *NetworkKey) {
+	switch dt := dst.Type.(type) {
+	case *appModelV1.Destination_Dns:
+		nwKey.DestinationNames = strings.Join(dt.Dns.DestinationNames, ",")
+	case *appModelV1.Destination_Ip:
+		nwKey.DestinationIP = dt.Ip.Ip
+	case *appModelV1.Destination_Workload:
+		nwKey.DestinationWorkloadName = dt.Workload.Name
+		nwKey.DestinationWorkloadNamespace = dt.Workload.Namespace
+		nwKey.DestinationWorkloadKind = dt.Workload.Kind
+	default:
+		panic(fmt.Sprintf("unexpected v1alpha.isDestination_Type: %#v", dt))
+	}
+
+	nwKey.DestinationPort = dst.Port
+}
+
+// nwKeyToDestination creates an [appModelV1.Destination] corresponding to a [NetworkKey].
+func nwKeyToDestination(nwKey *NetworkKey) *appModelV1.Destination {
+	res := &appModelV1.Destination{
+		Port: nwKey.DestinationPort,
+	}
+
+	if nwKey.DestinationNames != "" {
+		res.Type = &appModelV1.Destination_Dns{
+			Dns: &appModelV1.DestinationDns{
+				DestinationNames: strings.Split(nwKey.DestinationNames, ","),
+			},
+		}
+	} else if nwKey.DestinationIP != "" {
+		res.Type = &appModelV1.Destination_Ip{
+			Ip: &appModelV1.DestinationIP{
+				Ip: nwKey.DestinationIP,
+			},
+		}
+	} else if nwKey.DestinationWorkloadName != "" {
+		res.Type = &appModelV1.Destination_Workload{
+			Workload: &appModelV1.DestinationWorkload{
+				Name:      nwKey.DestinationWorkloadName,
+				Namespace: nwKey.DestinationWorkloadNamespace,
+				Kind:      nwKey.DestinationWorkloadKind,
+			},
+		}
+	}
+
+	return res
 }
 
 func getProcessMonitorKey(process *tetragon.ProcessModel) ProcessKey {
 	return ProcessKey{
 		Namespace:    process.GetNamespace(),
 		WorkloadName: process.GetWorkload().GetName(),
-		WorkloadKind: process.GetWorkload().GetKind(),
+		WorkloadKind: translateWorkloadKind(process.GetWorkload().GetKind()),
 		Name:         process.GetBinary(),
 		Args:         process.GetBinaryArgs(),
 	}
@@ -247,12 +324,13 @@ func getProcessMonitorKey(process *tetragon.ProcessModel) ProcessKey {
 
 func getNetworkQuotaValue(dst *tetragon.Destination) NetworkQuotaValue {
 	return NetworkQuotaValue{
-		TXBytes: dst.GetStats().GetTxBytes(),
-		RXBytes: dst.GetStats().GetRxBytes(),
-		TXDrops: dst.GetStats().GetTxDrops(),
-		TXQuota: dst.GetStats().GetTxLimit(),
-		TXUsage: dst.GetStats().GetTxQuota(),
-		Reset:   dst.GetStats().GetKtimeTxReset().AsTime(),
+		TXBytes:   dst.GetStats().GetTxBytes(),
+		RXBytes:   dst.GetStats().GetRxBytes(),
+		TXDrops:   dst.GetStats().GetTxDrops(),
+		TXQuota:   dst.GetStats().GetTxLimit(),
+		TXUsage:   dst.GetStats().GetTxQuota(),
+		NextReset: dst.GetStats().GetKtimeTxReset().AsTime(),
+		LastReset: dst.GetStats().GetKtimeLastReset().AsTime(),
 	}
 }
 

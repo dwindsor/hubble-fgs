@@ -223,8 +223,10 @@ func (gen *codegen) DoPush(p protopath.Values) error {
 		// No maps in ApplicationModel yet so let's worry about this when it becomes an issue.
 		panic("map support is TODO")
 	case protoreflect.EnumNumber:
-		// No enums in ApplicationModel yet so let's worry about this when it becomes an issue.
-		panic("enum support is TODO")
+		gen.maybeEmitAnd()
+		path.Push(string(fd.Name()))
+		gen.out.WriteString(fmt.Sprintf("%s == %s", gen.formatPath(), appModelV1.WorkloadKind_name[int32(v)]))
+		path.Pop()
 	case string, []byte:
 		gen.maybeEmitAnd()
 		path.Push(string(fd.Name()))
@@ -277,8 +279,7 @@ func (gen *codegen) DoPop(p protopath.Values) error {
 		// No maps in ApplicationModel yet so let's worry about this when it becomes an issue.
 		panic("map support is TODO")
 	case protoreflect.EnumNumber:
-		// No enums in ApplicationModel yet so let's worry about this when it becomes an issue.
-		panic("enum support is TODO")
+		// Do nothing
 	}
 
 	return nil

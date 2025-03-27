@@ -68,7 +68,7 @@ func TestDiffComplex(t *testing.T) {
 			{Name: "foo", Workloads: []*v1alpha.ApplicationWorkload{
 				{
 					Name: "workload1",
-					Kind: "DaemonSet",
+					Kind: v1alpha.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
 					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/bash",
@@ -80,7 +80,7 @@ func TestDiffComplex(t *testing.T) {
 				},
 				{
 					Name: "workload2",
-					Kind: "DaemonSet",
+					Kind: v1alpha.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
 					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/foo",
@@ -98,7 +98,7 @@ func TestDiffComplex(t *testing.T) {
 			{Name: "foo", Workloads: []*v1alpha.ApplicationWorkload{
 				{
 					Name: "workload2",
-					Kind: "DaemonSet",
+					Kind: v1alpha.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
 					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/foo",
@@ -110,7 +110,7 @@ func TestDiffComplex(t *testing.T) {
 				},
 				{
 					Name: "workload1",
-					Kind: "DaemonSet",
+					Kind: v1alpha.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
 					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/fish",
@@ -166,9 +166,17 @@ func TestDiffIgnoreBytesSent(t *testing.T) {
 							{
 								Connections: []*v1alpha.ApplicationConnection{
 									{
-										DestinationName: "google.ca",
-										BytesSent:       1337,
-										BytesReceived:   1337,
+										Destination: &v1alpha.Destination{
+											Type: &v1alpha.Destination_Dns{
+												Dns: &v1alpha.DestinationDns{
+													DestinationNames: []string{"google.ca"},
+												},
+											},
+											Port: 80,
+										},
+										Stats: &v1alpha.ConnectionStats{
+											TxBytes: 1337,
+										},
 									},
 								},
 							},
@@ -185,9 +193,17 @@ func TestDiffIgnoreBytesSent(t *testing.T) {
 							{
 								Connections: []*v1alpha.ApplicationConnection{
 									{
-										DestinationName: "google.ca",
-										BytesSent:       1338,
-										BytesReceived:   1338,
+										Destination: &v1alpha.Destination{
+											Type: &v1alpha.Destination_Dns{
+												Dns: &v1alpha.DestinationDns{
+													DestinationNames: []string{"google.ca"},
+												},
+											},
+											Port: 80,
+										},
+										Stats: &v1alpha.ConnectionStats{
+											TxBytes: 1338,
+										},
 									},
 								},
 							},
@@ -197,14 +213,10 @@ func TestDiffIgnoreBytesSent(t *testing.T) {
 			},
 		}},
 		IgnoreFields(
-			"namespaces.workloads.processes.connections.bytes_sent",
-			"namespaces.workloads.processes.connections.bytes_received",
-			"namespaces.workloads.processes.children.connections.bytes_sent",
-			"namespaces.workloads.processes.children.connections.bytes_received",
-			"host.processes.connections.bytes_sent",
-			"host.processes.connections.bytes_received",
-			"host.processes.children.connections.bytes_sent",
-			"host.processes.children.connections.bytes_received",
+			"namespaces.workloads.processes.connections.stats",
+			"namespaces.workloads.processes.children.connections.stats",
+			"host.processes.connections.stats",
+			"host.processes.children.connections.stats",
 		),
 	)
 	fmt.Println(string(diff))

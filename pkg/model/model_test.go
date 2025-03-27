@@ -71,17 +71,25 @@ func TestModelToMonitorData(t *testing.T) {
 				Workloads: []*appModelV1.ApplicationWorkload{
 					{
 						Name: "workload1",
-						Kind: "pod",
+						Kind: appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
 						Processes: []*appModelV1.ApplicationProcessGroup{
 							{
 								Name:      "process1",
 								Arguments: "arg1",
 								Connections: []*appModelV1.ApplicationConnection{
 									{
-										DestinationName: "dest1",
-										DestinationPort: 80,
-										BytesSent:       100,
-										BytesReceived:   200,
+										Destination: &appModelV1.Destination{
+											Type: &appModelV1.Destination_Dns{
+												Dns: &appModelV1.DestinationDns{
+													DestinationNames: []string{"dest1"},
+												},
+											},
+											Port: 80,
+										},
+										Stats: &appModelV1.ConnectionStats{
+											TxBytes: 100,
+											RxBytes: 200,
+										},
 									},
 								},
 							},
@@ -101,10 +109,18 @@ func TestModelToMonitorData(t *testing.T) {
 					Arguments: "arg1",
 					Connections: []*appModelV1.ApplicationConnection{
 						{
-							DestinationName: "dest2",
-							DestinationPort: 443,
-							BytesSent:       300,
-							BytesReceived:   400,
+							Destination: &appModelV1.Destination{
+								Type: &appModelV1.Destination_Dns{
+									Dns: &appModelV1.DestinationDns{
+										DestinationNames: []string{"dest2"},
+									},
+								},
+								Port: 443,
+							},
+							Stats: &appModelV1.ConnectionStats{
+								TxBytes: 300,
+								RxBytes: 400,
+							},
 						},
 					},
 				},
@@ -123,11 +139,11 @@ func TestModelToMonitorData(t *testing.T) {
 	expectedNMD := NetworkMonitorData{
 		NetworkKey{
 			SourceNamespace:    "default",
-			SourceWorkloadKind: "pod",
+			SourceWorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
 			SourceWorkloadName: "workload1",
 			SourceProcessName:  "process1",
 			SourceProcessArgs:  "arg1",
-			DestinationName:    "dest1",
+			DestinationNames:   "dest1",
 			DestinationPort:    80,
 		}: NetworkMonitorValue{
 			TXBytes: 100,
@@ -135,11 +151,11 @@ func TestModelToMonitorData(t *testing.T) {
 		},
 		NetworkKey{
 			SourceNamespace:    HostNamespace,
-			SourceWorkloadKind: HostKind,
+			SourceWorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			SourceWorkloadName: HostWorkload,
 			SourceProcessName:  "hostprocess1",
 			SourceProcessArgs:  "arg1",
-			DestinationName:    "dest2",
+			DestinationNames:   "dest2",
 			DestinationPort:    443,
 		}: NetworkMonitorValue{
 			TXBytes: 300,
@@ -150,28 +166,28 @@ func TestModelToMonitorData(t *testing.T) {
 	expectedPMD := ProcessMonitorData{
 		ProcessKey{
 			Namespace:    "default",
-			WorkloadKind: "pod",
+			WorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
 			WorkloadName: "workload1",
 			Name:         "process1",
 			Args:         "arg1",
 		}: ProcessValue{},
 		ProcessKey{
 			Namespace:    "default",
-			WorkloadKind: "pod",
+			WorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
 			WorkloadName: "workload1",
 			Name:         "process2",
 			Args:         "arg2",
 		}: ProcessValue{},
 		ProcessKey{
 			Namespace:    HostNamespace,
-			WorkloadKind: HostKind,
+			WorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			WorkloadName: HostWorkload,
 			Name:         "hostprocess1",
 			Args:         "arg1",
 		}: ProcessValue{},
 		ProcessKey{
 			Namespace:    HostNamespace,
-			WorkloadKind: HostKind,
+			WorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			WorkloadName: HostWorkload,
 			Name:         "hostprocess2",
 			Args:         "arg2",

@@ -87,7 +87,7 @@ func monitorStdin() error {
 		model.ToMonitorData(newnmd, newpmd, newModel.GetApplicationModel())
 
 		processKeys := slices.Collect(maps.Keys(newpmd))
-		slices.SortFunc(processKeys, model.SortProcessKeys)
+		slices.SortFunc(processKeys, model.CompareProcessKeys)
 		for _, key := range processKeys {
 			if _, ok := currentpmd[key]; !ok {
 				fmt.Println("🚀", key)
@@ -95,7 +95,7 @@ func monitorStdin() error {
 		}
 
 		networkKeys := slices.Collect(maps.Keys(newnmd))
-		slices.SortFunc(networkKeys, model.SortNetworkKeys)
+		slices.SortFunc(networkKeys, model.CompareNetworkKeys)
 		for _, key := range networkKeys {
 			if _, ok := currentnmd[key]; !ok {
 				fmt.Println("🔌", key)

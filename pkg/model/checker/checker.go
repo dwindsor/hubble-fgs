@@ -18,7 +18,9 @@ import (
 	"strings"
 
 	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/checker/decls"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 	celk8s "k8s.io/apiserver/pkg/cel/library"
@@ -81,6 +83,13 @@ func compile(env *cel.Env, expr string) (*cel.Ast, error) {
 	return ast, nil
 }
 
+func exportConsts(mapping map[string]int32) (declarations []*exprpb.Decl) {
+	for name, id := range mapping {
+		declarations = append(declarations, decls.NewConst(name, decls.Int, &exprpb.Constant{ConstantKind: &exprpb.Constant_Int64Value{Int64Value: int64(id)}}))
+	}
+	return declarations
+}
+
 // ApplicationModelChecker checks an application model using CEL expressions.
 type ApplicationModelChecker struct {
 	env *cel.Env
@@ -110,6 +119,8 @@ func NewApplicationModelChecker() (*ApplicationModelChecker, error) {
 		celk8s.CIDR(),
 		celk8s.Lists(),
 	}
+
+	options = append(options, cel.Declarations(exportConsts(appModelV1.WorkloadKind_value)...))
 
 	celEnv, err := cel.NewEnv(options...)
 	if err != nil {

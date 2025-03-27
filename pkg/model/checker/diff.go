@@ -118,7 +118,10 @@ func innerJsonDiff(a, b *appModelV1.ApplicationModel, oo *options) ([]byte, bool
 		dstB = b
 	}
 
-	patch, err := jsondiff.Compare(dstA, dstB, jsondiff.LCS(), jsondiff.Rationalize())
+	// TODO: jsondiff.LCS() causes a bug with some sequences, but it makes the
+	// output much nicer. Add it back in when we have a chance to get a fix in
+	// place.
+	patch, err := jsondiff.Compare(dstA, dstB, jsondiff.Rationalize())
 	if err != nil {
 		return nil, false, err
 	}

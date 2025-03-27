@@ -22,10 +22,22 @@ func TestEnsureSorted(t *testing.T) {
 					Name: "a",
 					Connections: []*v1alpha.ApplicationConnection{
 						{
-							DestinationName: "b.com",
+							Destination: &v1alpha.Destination{
+								Type: &v1alpha.Destination_Dns{
+									Dns: &v1alpha.DestinationDns{
+										DestinationNames: []string{"b.com"},
+									},
+								},
+							},
 						},
 						{
-							DestinationName: "a.com",
+							Destination: &v1alpha.Destination{
+								Type: &v1alpha.Destination_Dns{
+									Dns: &v1alpha.DestinationDns{
+										DestinationNames: []string{"a.com"},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -43,10 +55,22 @@ func TestEnsureSorted(t *testing.T) {
 					Name: "a",
 					Connections: []*v1alpha.ApplicationConnection{
 						{
-							DestinationName: "a.com",
+							Destination: &v1alpha.Destination{
+								Type: &v1alpha.Destination_Dns{
+									Dns: &v1alpha.DestinationDns{
+										DestinationNames: []string{"a.com"},
+									},
+								},
+							},
 						},
 						{
-							DestinationName: "b.com",
+							Destination: &v1alpha.Destination{
+								Type: &v1alpha.Destination_Dns{
+									Dns: &v1alpha.DestinationDns{
+										DestinationNames: []string{"b.com"},
+									},
+								},
+							},
 						},
 					},
 				},
