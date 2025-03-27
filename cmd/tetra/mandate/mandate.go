@@ -17,6 +17,7 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
 	eecommon "github.com/isovalent/hubble-fgs/cmd/tetra/common"
 	"github.com/isovalent/hubble-fgs/pkg/mandate"
 	"github.com/isovalent/hubble-fgs/pkg/mandate/cli"
@@ -72,8 +73,14 @@ func statusCmd() *cobra.Command {
 			}
 
 			if res.LoadedMandate != nil {
-				fmt.Printf("policies:\n")
+				if output == "text" {
+					fmt.Printf("policies:\n")
+				}
 				eecommon.ListPolicies(cmd, output, mandate.OrigPolName)
+				if output == "text" {
+					fmt.Printf("alerts:\n")
+				}
+				alertrule.ListAlertRules(cmd, output, mandate.OrigAlertName)
 			}
 
 			return nil
