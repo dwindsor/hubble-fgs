@@ -157,7 +157,14 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 				logger.GetLogger().WithError(err).Warn("calculate action failed")
 				continue
 			}
+
+			ep := record.DatapathEndpoint{
+				EP:   podEP,
+				Port: 0,
+			}
+
 			for _, subject := range s.Subjects {
+
 				for _, process := range s.Policy.Subject.InProcessName {
 					self, err := prog.GetBinaryId(process)
 					if err != nil {
@@ -172,16 +179,16 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 						Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 					}
 					records = append(records, &record.DatapathRecord{
-						Src:    processSrc,
-						EP:     podEP,
-						Action: action,
+						Src:      processSrc,
+						Endpoint: ep,
+						Action:   action,
 					})
 				}
 				if len(s.Policy.Subject.InProcessName) == 0 {
 					records = append(records, &record.DatapathRecord{
-						Src:    subject,
-						EP:     podEP,
-						Action: action,
+						Src:      subject,
+						Endpoint: ep,
+						Action:   action,
 					})
 				}
 			}
@@ -223,11 +230,16 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 		}
 		d := state.Dst[s.Name]
 		for _, ep := range d.Endpoints {
+			dpEndpoint := record.DatapathEndpoint{
+				EP:   ep,
+				Port: 0,
+			}
+
 			if len(s.Policy.Subject.InProcessName) == 0 {
 				records = append(records, &record.DatapathRecord{
-					Src:    subject,
-					EP:     ep,
-					Action: action,
+					Src:      subject,
+					Endpoint: dpEndpoint,
+					Action:   action,
 				})
 			}
 			for _, process := range s.Policy.Subject.InProcessName {
@@ -243,9 +255,9 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 					Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 				}
 				records = append(records, &record.DatapathRecord{
-					Src:    processSrc,
-					EP:     ep,
-					Action: action,
+					Src:      processSrc,
+					Endpoint: dpEndpoint,
+					Action:   action,
 				})
 			}
 		}
@@ -260,7 +272,10 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 			// Action is not part of the default action key so we just need Src field
 			records = append(records, &record.DatapathRecord{
 				Src: subject,
-				EP:  nil,
+				Endpoint: record.DatapathEndpoint{
+					EP:   nil,
+					Port: 0,
+				},
 			})
 		}
 
@@ -274,6 +289,14 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 				logger.GetLogger().WithError(err).Warn("calculate action failed")
 				continue
 			}
+			ep := &endpoint.Endpoint{
+				Type: endpoint.DnsType,
+				Dns:  entry,
+			}
+			endpoint := record.DatapathEndpoint{
+				EP:   ep,
+				Port: 0,
+			}
 			for _, process := range s.Policy.Subject.InProcessName {
 				self, err := prog.GetBinaryId(process)
 				if err != nil {
@@ -286,25 +309,18 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 					Self:     self,
 					Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 				}
-				ep := &endpoint.Endpoint{
-					Type: endpoint.DnsType,
-					Dns:  entry,
-				}
+
 				records = append(records, &record.DatapathRecord{
-					Src:    processSrc,
-					EP:     ep,
-					Action: action,
+					Src:      processSrc,
+					Endpoint: endpoint,
+					Action:   action,
 				})
 			}
 			if len(s.Policy.Subject.InProcessName) == 0 {
-				ep := &endpoint.Endpoint{
-					Type: endpoint.DnsType,
-					Dns:  entry,
-				}
 				records = append(records, &record.DatapathRecord{
-					Src:    subject,
-					EP:     ep,
-					Action: action,
+					Src:      subject,
+					Endpoint: endpoint,
+					Action:   action,
 				})
 			}
 		}
@@ -336,6 +352,11 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 			d.AddEndpoint(ep)
 		}
 
+		endpoint := record.DatapathEndpoint{
+			EP:   ep,
+			Port: 0,
+		}
+
 		// For dest dest label selector we need to create src->dst binding
 		// to do this walk all subjects and add the new dst. Merge conflicts
 		// are resolved by BPF datapath.
@@ -361,16 +382,16 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 						Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 					}
 					records = append(records, &record.DatapathRecord{
-						Src:    processSrc,
-						EP:     ep,
-						Action: action,
+						Src:      processSrc,
+						Endpoint: endpoint,
+						Action:   action,
 					})
 				}
 			} else {
 				records = append(records, &record.DatapathRecord{
-					Src:    subject,
-					EP:     ep,
-					Action: action,
+					Src:      subject,
+					Endpoint: endpoint,
+					Action:   action,
 				})
 			}
 		}

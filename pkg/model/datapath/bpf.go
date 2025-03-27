@@ -93,9 +93,9 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 
 	initProgrammerOnce.Do(func() { initMap() })
 
-	if r.EP != nil {
+	if r.Endpoint.EP != nil {
 		c := endpoint.Get()
-		dst, err = c.AddEndpoint(*r.EP)
+		dst, err = c.AddEndpoint(*r.Endpoint.EP)
 		if err != nil {
 			p.AddError++
 			logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
@@ -113,15 +113,15 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 	// logic and backoff to do the map update later. This backoffs with
 	// x2 each iteration.
 	if r.Init {
-		if r.EP != nil && r.EP.Dns != "" {
-			if err := dnsDomainMap.Update(r.EP.Dns, dst); err != nil {
-				QuotasInitDNSDomainMappings[*r.EP] = dst
+		if r.Endpoint.EP != nil && r.Endpoint.EP.Dns != "" {
+			if err := dnsDomainMap.Update(r.Endpoint.EP.Dns, dst); err != nil {
+				QuotasInitDNSDomainMappings[*r.Endpoint.EP] = dst
 				go scheduleDomainMapFlush()
 			}
 		}
 	} else {
-		if r.EP != nil && r.EP.Dns != "" {
-			QuotasInitDNSDomainMappings[*r.EP] = dst
+		if r.Endpoint.EP != nil && r.Endpoint.EP.Dns != "" {
+			QuotasInitDNSDomainMappings[*r.Endpoint.EP] = dst
 			go scheduleDomainMapFlush()
 		}
 	}
@@ -131,7 +131,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 		LocalNSId:         r.Src.CgroupId,
 		DestinationId:     dst,
 		DestinationSource: types.DestinationSourceUser,
-		DestinationPort:   0,
+		DestinationPort:   r.Endpoint.Port,
 	}
 
 	value := &types.DestinationEndpointValue{
@@ -179,7 +179,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	var addr [2]uint64
 	src := r.Src
-	ep := r.EP
+	ep := r.Endpoint.EP
 
 	initProgrammerOnce.Do(func() { initMap() })
 

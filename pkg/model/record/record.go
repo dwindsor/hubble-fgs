@@ -41,11 +41,23 @@ func (a *DatapathAction) String() string {
 	return fmt.Sprintf("Quota %d Reset %d Policy %s", a.Quota, a.Reset, policy)
 }
 
+type DatapathEndpoint struct {
+	EP   *endpoint.Endpoint
+	Port uint64
+}
+
+func (r DatapathEndpoint) String() string {
+	if r.Port != 0 {
+		return fmt.Sprintf("%s : %d", r.EP, r.Port)
+	}
+	return fmt.Sprint(r.EP)
+}
+
 type DatapathRecord struct {
-	Src    *types.ProcessTreeKey
-	EP     *endpoint.Endpoint
-	Action *DatapathAction
-	Init   bool // temporary field until we fix order-of-ops on DNS, UDP, TCP sensors
+	Src      *types.ProcessTreeKey
+	Endpoint DatapathEndpoint
+	Action   *DatapathAction
+	Init     bool // temporary field until we fix order-of-ops on DNS, UDP, TCP sensors
 }
 
 func (r *DatapathRecord) String() string {
@@ -56,13 +68,13 @@ func (r *DatapathRecord) String() string {
 	if r.Src != nil {
 		src = fmt.Sprintf("%d:%d", r.Src.CgroupId, r.Src.Self)
 	}
-	if r.EP != nil {
-		ep = fmt.Sprintf("%s", r.EP.String())
+	if r.Endpoint.EP != nil {
+		ep = fmt.Sprint(r.Endpoint.EP.String())
 	}
 	if r.Action != nil {
 		action = fmt.Sprintf("%s", r.Action)
 	}
-	return fmt.Sprintf("Src %s EP %s Action %s", src, ep, action)
+	return fmt.Sprintf("Src %s Endpoint %s Action %s", src, ep, action)
 }
 
 // Set difference operator, A - B. We burn some memory and have to
@@ -86,8 +98,8 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 			CgroupId: r.Src.CgroupId,
 			Self:     r.Src.Self,
 		}
-		if r.EP != nil {
-			key.EP = *r.EP
+		if r.Endpoint.EP != nil {
+			key.EP = *r.Endpoint.EP
 		}
 		bMap[key] = r
 	}
@@ -97,8 +109,8 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 			CgroupId: r.Src.CgroupId,
 			Self:     r.Src.Self,
 		}
-		if r.EP != nil {
-			key.EP = *r.EP
+		if r.Endpoint.EP != nil {
+			key.EP = *r.Endpoint.EP
 		}
 		_, ok := bMap[key]
 		if !ok {

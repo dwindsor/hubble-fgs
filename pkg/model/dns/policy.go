@@ -54,9 +54,13 @@ func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.Proces
 				Type: endpoint.DnsType,
 				Dns:  entry,
 			}
+			endpoint := record.DatapathEndpoint{
+				EP:   ep,
+				Port: 0,
+			}
 			record := &record.DatapathRecord{
-				Src: src,
-				EP:  ep,
+				Src:      src,
+				Endpoint: endpoint,
 			}
 			if err := prog.RemoveSingleRecord(record); err != nil {
 				logger.GetLogger().WithFields(logrus.Fields{
@@ -79,9 +83,13 @@ func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.Proces
 	}
 
 	for _, ep := range ls.Endpoints {
+		endpoint := record.DatapathEndpoint{
+			EP:   ep,
+			Port: 0,
+		}
 		record := &record.DatapathRecord{
-			Src: src,
-			EP:  ep,
+			Src:      src,
+			Endpoint: endpoint,
 		}
 		if prog.RemoveSingleRecord(record); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
@@ -243,11 +251,15 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 				Type: endpoint.DnsType,
 				Dns:  entry,
 			}
+			endpoint := record.DatapathEndpoint{
+				EP:   ep,
+				Port: 0,
+			}
 			records = append(records, &record.DatapathRecord{
-				Src:    src,
-				EP:     ep,
-				Action: action,
-				Init:   init,
+				Src:      src,
+				Endpoint: endpoint,
+				Action:   action,
+				Init:     init,
 			})
 		}
 	}
@@ -255,11 +267,16 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 	ls := state.Dst[uid]
 	if ls != nil {
 		for _, ep := range ls.Endpoints {
+			endpoint := record.DatapathEndpoint{
+				EP:   ep,
+				Port: 0,
+			}
+
 			records = append(records, &record.DatapathRecord{
-				Src:    src,
-				EP:     ep,
-				Action: action,
-				Init:   init,
+				Src:      src,
+				Endpoint: endpoint,
+				Action:   action,
+				Init:     init,
 			})
 		}
 	}
@@ -319,11 +336,15 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 	}
 
 	// Append the default record for the Pod layer
+	endpoint := record.DatapathEndpoint{
+		EP:   nil,
+		Port: 0,
+	}
 	dfltRecord := &record.DatapathRecord{
-		Src:    src,
-		EP:     nil,
-		Action: dfltAction,
-		Init:   init,
+		Src:      src,
+		Endpoint: endpoint,
+		Action:   dfltAction,
+		Init:     init,
 	}
 	records = append(records, dfltRecord)
 
