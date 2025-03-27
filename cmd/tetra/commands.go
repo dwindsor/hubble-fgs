@@ -17,7 +17,6 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/version"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/getevents"
-	"github.com/isovalent/hubble-fgs/cmd/tetra/mandate"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/record"
 	"github.com/spf13/cobra"
 )
@@ -31,7 +30,6 @@ func addBaseCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(stacktracetree.New())
 	rootCmd.AddCommand(status.New())
 	rootCmd.AddCommand(record.New())
-	rootCmd.AddCommand(mandate.New())
 	rootCmd.AddCommand(alertrule.New())
 
 	// bugtool technically builds on darwin and windows but makes no sense since
@@ -46,4 +44,8 @@ func addBaseCommands(rootCmd *cobra.Command) {
 	// file does not build on windows and darwin because it imports
 	// github.com/cilium/tetragon/pkg/cgroups that have build constraints
 	// rootCmd.AddCommand(file.New())
+
+	// Getting an error while trying to build this in darwin, so make it linux only
+	// rootCmd.AddCommand(mandate.New())
+
 }

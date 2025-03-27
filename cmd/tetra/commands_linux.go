@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/cmd/tetra/dns"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/exec"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/file"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/mandate"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/sandboxpolicy"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/syscallentries"
 	_ "github.com/isovalent/hubble-fgs/pkg/errmetrics"
@@ -46,4 +47,5 @@ func addCommands(rootCmd *cobra.Command) {
 	debugCmd := debug.New()
 	debugCmd.AddCommand(dns.NewDNSCmd())
 	rootCmd.AddCommand(debugCmd)
+	rootCmd.AddCommand(mandate.New())
 }
