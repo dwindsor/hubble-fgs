@@ -268,6 +268,7 @@ func (m *manager) start() {
 
 func (m *manager) status() *Status {
 	var ret Status
+	ret.Running = true
 	ret.Conf = m.cnf
 	if m.obj != nil {
 		ret.Mandate = &LoadedMandate{
