@@ -225,3 +225,60 @@ func TestManagerConfigure(t *testing.T) {
 		require.Equal(t, 3, status.Log.Total)
 	})
 }
+
+func TestManagerNoAlerts(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
+	t.Cleanup(func() {
+		os.RemoveAll(tmpDir)
+	})
+	require.NoError(t, err)
+	tsm := NewTestSensorManager()
+	cnf := mandateconf.ManagerConf{
+		URL:           filepath.Join(tmpDir, "mandate-alerts.yaml"),
+		RefreshPeriod: 1 * time.Second,
+	}
+	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
+	require.NoError(t, err)
+
+	synctest.Run(func() {
+		mgr, err := NewManager(cnf, tsm, nil)
+		require.NoError(t, err)
+		mgr.Start()
+		defer mgr.stop()
+		synctest.Wait()
+		// should fail, because alert manager is disabled
+		status := mgr.Status()
+		require.Equal(t, 1, status.Log.Total)
+		require.Equal(t, 1, status.Log.Failures)
+	})
+}
+
+func TestManagerAlerts(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "mandate-test-*")
+	t.Cleanup(func() {
+		os.RemoveAll(tmpDir)
+	})
+	require.NoError(t, err)
+	tsm := NewTestSensorManager()
+	tam := NewTestAlertManager()
+	cnf := mandateconf.ManagerConf{
+		URL:           filepath.Join(tmpDir, "mandate-alerts.yaml"),
+		RefreshPeriod: 1 * time.Second,
+	}
+	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
+	require.NoError(t, err)
+
+	synctest.Run(func() {
+		mgr, err := NewManager(cnf, tsm, tam)
+		require.NoError(t, err)
+		mgr.Start()
+		defer mgr.stop()
+		synctest.Wait()
+		status := mgr.Status()
+		require.Equal(t, 1, status.Log.Total)
+		require.Equal(t, 0, status.Log.Failures)
+		//txt, err := json.MarshalIndent(&status, "", "  ")
+		//fmt.Printf("%s\n", string(txt))
+		//fmt.Printf("%v\n", status)
+	})
+}

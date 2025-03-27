@@ -28,3 +28,15 @@ func TestPolName(t *testing.T) {
 	_, ok := OrigPolName("pizza")
 	require.False(t, ok)
 }
+
+func TestAlertName(t *testing.T) {
+	for _, id := range []uint{1, 2324} {
+		n := mandateAlertName("pizza", id)
+		orig, ok := OrigAlertName(n)
+		require.True(t, ok, fmt.Sprintf("could not match %s", n))
+		require.Equal(t, "pizza", orig)
+	}
+
+	_, ok := OrigAlertName("pizza")
+	require.False(t, ok)
+}

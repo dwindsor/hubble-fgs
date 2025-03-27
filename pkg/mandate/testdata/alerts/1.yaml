@@ -1,0 +1,9 @@
+apiVersion: cilium.io/v1alpha1
+kind: AlertRule
+metadata:
+  name: test
+spec:
+  expression: process_exec.process.binary == "/usr/bin/curl"
+  message: Curl is curling in /usr/bin.
+  severity: info
+  tags: [http]
