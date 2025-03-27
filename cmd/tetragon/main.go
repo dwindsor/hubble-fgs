@@ -558,8 +558,12 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	var mandateMgr mandate.Manager
 	mandateConf := enterpriseOption.Config.MandateConf
 	if mandateConf.URL != "" {
+		var alMgr alerts.RuleManager
+		if enterpriseOption.Config.EnableAlerts {
+			alMgr = alertsManager
+		}
 		var err error
-		mandateMgr, err = mandate.NewManager(mandateConf, observer.GetSensorManager(), nil)
+		mandateMgr, err = mandate.NewManager(mandateConf, observer.GetSensorManager(), alMgr)
 		if err != nil {
 			return err
 		}
