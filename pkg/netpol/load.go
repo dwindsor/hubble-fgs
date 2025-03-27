@@ -84,7 +84,7 @@ func LoadTNPFromDir(ctx context.Context, dir string) error {
 		// Probably tetragon not fully installed, users did not create
 		// /etc/tetragon/tetragon.tp.d/
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			logger.GetLogger().WithField("tracing-policy-dir", dir).Info("Loading Tracing Policies from directory ignored, directory does not exist")
+			logger.GetLogger().WithField("tetragon-network-policy-dir", dir).Info("Loading Tetragon Network Policies from directory ignored, directory does not exist")
 			return nil
 		}
 	}
