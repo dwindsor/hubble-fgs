@@ -11,8 +11,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/multiplexer"
 	"github.com/cilium/tetragon/tests/e2e/flags"
 	"github.com/cilium/tetragon/tests/e2e/state"
+	"google.golang.org/grpc"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -59,7 +61,9 @@ func PortForwardTetragonPods(testenv env.Environment) env.Func {
 		grpcPorts := make(map[string]int)
 		promPorts := make(map[string]int)
 		gopsPorts := make(map[string]int)
+		grpcConns := make(map[string]*grpc.ClientConn)
 		for i, pod := range podList.Items {
+			grpcLocalPort := grpcPort + i
 			if ctx, err = PortForwardPod(
 				testenv,
 				&pod,
@@ -67,11 +71,19 @@ func PortForwardTetragonPods(testenv env.Environment) env.Func {
 				os.Stderr,
 				30,
 				time.Second,
-				fmt.Sprintf("%d:%d", grpcPort+i, grpcPort),
+				func() error {
+					addr := fmt.Sprintf("localhost:%d", grpcLocalPort)
+					conn, err := multiplexer.ConnectAttempt(ctx, addr)
+					if err == nil {
+						grpcConns[pod.Name] = conn
+					}
+					return err
+				},
+				fmt.Sprintf("%d:%d", grpcLocalPort, grpcPort),
 				fmt.Sprintf("%d:%d", promPort+i, promPort),
 				fmt.Sprintf("%d:%d", gopsPort+i, gopsPort),
 			)(ctx, cfg); err != nil {
-				return ctx, err
+				return ctx, fmt.Errorf("tetragon portfwarding failed: %w", err)
 			}
 			grpcPorts[pod.Name] = grpcPort + i
 			promPorts[pod.Name] = promPort + i
@@ -79,13 +91,66 @@ func PortForwardTetragonPods(testenv env.Environment) env.Func {
 		}
 
 		ctx = context.WithValue(ctx, state.GrpcForwardedPorts, grpcPorts)
+		ctx = context.WithValue(ctx, state.GrpcForwardedConns, grpcConns)
 		ctx = context.WithValue(ctx, state.PromForwardedPorts, promPorts)
 		ctx = context.WithValue(ctx, state.GopsForwardedPorts, gopsPorts)
+		testenv.Finish(func(ctx context.Context, _ *envconf.Config) (context.Context, error) {
+			for _, conn := range grpcConns {
+				conn.Close()
+			}
+			return ctx, nil
+		})
 
 		klog.InfoS("Successfully forwarded ports for Tetragon pods", "grpcPorts", grpcPorts, "promPorts", promPorts, "gopsPorts", gopsPorts)
 
 		return ctx, nil
 	}
+}
+
+func doPortForward(
+	testenv env.Environment,
+	restCfg *rest.Config,
+	reqURL *url.URL,
+	out, outErr *os.File,
+	pod *corev1.Pod,
+	testFn func() error,
+	ports ...string,
+) error {
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{})
+	pfwd, err := newPortForwarder(restCfg, reqURL, out, outErr, stopChan, readyChan, ports)
+	if err != nil {
+		return fmt.Errorf("failed to create new port forwarder: %w", err)
+	}
+
+	go func() {
+		err := pfwd.ForwardPorts()
+		klog.InfoS("port forward stopped",
+			"pod", pod.Name,
+			"namespace", pod.Namespace,
+			"ports", ports,
+			"err", err)
+	}()
+
+	<-readyChan
+	if testFn != nil {
+		err = testFn()
+	}
+
+	if err != nil {
+		close(stopChan)
+	} else {
+		testenv.Finish(func(ctx context.Context, _ *envconf.Config) (context.Context, error) {
+			klog.InfoS("Test ended, stopping portforward",
+				"pod", pod.Name,
+				"namespace", pod.Namespace,
+				"ports", ports)
+			close(stopChan)
+			return ctx, nil
+		})
+	}
+
+	return err
 }
 
 // PortForwardPod forwards one or more ports to a given pod. Port forwards are
@@ -97,7 +162,14 @@ func PortForwardTetragonPods(testenv env.Environment) env.Func {
 //
 // retries and retryBackoff can be used to configure how many times this function should
 // retry on failure to set up the port forward and how long it should wait between retries.
-func PortForwardPod(testenv env.Environment, pod *corev1.Pod, out, outErr *os.File, retries uint, retryBackoff time.Duration, ports ...string) env.Func {
+func PortForwardPod(
+	testenv env.Environment,
+	pod *corev1.Pod,
+	out, outErr *os.File,
+	retries uint,
+	retryBackoff time.Duration,
+	testFn func() error,
+	ports ...string) env.Func {
 	return func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
 		restCfg, err := getRestConfig(cfg)
 		if err != nil {
@@ -116,53 +188,13 @@ func PortForwardPod(testenv env.Environment, pod *corev1.Pod, out, outErr *os.Fi
 			SubResource("portforward").
 			URL()
 
-		stopChan := make(chan struct{})
-		readyChan := make(chan struct{})
-
-		var pfwd *portforward.PortForwarder
 		for i := uint(0); ; i++ {
-			pfwd, err = newPortForwarder(restCfg, reqUrl, out, outErr, stopChan, readyChan, ports)
+			err = doPortForward(testenv, restCfg, reqUrl, out, outErr, pod, testFn, ports...)
 			if err == nil || i == retries {
-				break
+				return ctx, err
 			}
 			time.Sleep(retryBackoff)
-			klog.V(2).InfoS("Failed to port forward, retrying",
-				"pod", pod.Name,
-				"namespace", pod.Namespace,
-				"ports", ports,
-				"attempt", i,
-				"err", err)
 		}
-		if err != nil {
-			return ctx, fmt.Errorf("failed to portforward after %d retries: %w", retries, err)
-		}
-
-		// Automatically stop portforwarding
-		testenv.Finish(func(ctx context.Context, _ *envconf.Config) (context.Context, error) {
-			klog.V(2).InfoS("Test ended, stopping portforward",
-				"pod", pod.Name,
-				"namespace", pod.Namespace,
-				"ports", ports)
-			close(stopChan)
-			return ctx, nil
-		})
-
-		klog.V(2).InfoS("Starting portforward",
-			"pod", pod.Name,
-			"namespace", pod.Namespace,
-			"ports", ports)
-
-		go func() {
-			if err := pfwd.ForwardPorts(); err != nil {
-				klog.ErrorS(err,
-					"error during portforward",
-					"pod", pod.Name,
-					"namespace", pod.Namespace,
-					"ports", ports)
-			}
-		}()
-
-		return ctx, nil
 	}
 }
 

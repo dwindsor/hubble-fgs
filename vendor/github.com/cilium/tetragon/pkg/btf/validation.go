@@ -142,13 +142,8 @@ func ValidateKprobeSpec(bspec *btf.Spec, call string, kspec *v1alpha1.KProbeSpec
 		}
 
 		// next try to deduce the syscall name.
-		// NB: this might change in different kernels so if we fail we treat it as a warning
-		prefix := "__x64_sys_"
-		if !strings.HasPrefix(call, prefix) {
-			return &ValidationWarn{s: fmt.Sprintf("could not get the function prototype for %s: arguments will not be verified", call)}
-		}
-		syscall := strings.TrimPrefix(call, prefix)
-		return validateSycall(kspec, syscall)
+		_, syscall := arch.CutSyscallPrefix(call)
+		return validateSycall(kspec, strings.TrimPrefix(syscall, "sys_"))
 	}
 
 	fnNArgs := uint32(len(proto.Params))
@@ -428,12 +423,12 @@ func validateSycall(kspec *v1alpha1.KProbeSpec, name string) error {
 func AvailableSyscalls() ([]string, error) {
 	// NB(kkourt): we should have a single function for this (see observerFindBTF)
 	btfFile := "/sys/kernel/btf/vmlinux"
-	tetragonBtfEnv := os.Getenv("TETRAGON_BTF")
-	if tetragonBtfEnv != "" {
-		if _, err := os.Stat(tetragonBtfEnv); err != nil {
-			return nil, fmt.Errorf("Failed to find BTF: %s", tetragonBtfEnv)
+	tetragonBTFEnv := os.Getenv("TETRAGON_BTF")
+	if tetragonBTFEnv != "" {
+		if _, err := os.Stat(tetragonBTFEnv); err != nil {
+			return nil, fmt.Errorf("Failed to find BTF: %s", tetragonBTFEnv)
 		}
-		btfFile = tetragonBtfEnv
+		btfFile = tetragonBTFEnv
 	}
 	bspec, err := btf.LoadSpec(btfFile)
 	if err != nil {
@@ -473,12 +468,12 @@ func AvailableSyscalls() ([]string, error) {
 func GetSyscallsList() ([]string, error) {
 	btfFile := "/sys/kernel/btf/vmlinux"
 
-	tetragonBtfEnv := os.Getenv("TETRAGON_BTF")
-	if tetragonBtfEnv != "" {
-		if _, err := os.Stat(tetragonBtfEnv); err != nil {
-			return []string{}, fmt.Errorf("Failed to find BTF: %s", tetragonBtfEnv)
+	tetragonBTFEnv := os.Getenv("TETRAGON_BTF")
+	if tetragonBTFEnv != "" {
+		if _, err := os.Stat(tetragonBTFEnv); err != nil {
+			return []string{}, fmt.Errorf("Failed to find BTF: %s", tetragonBTFEnv)
 		}
-		btfFile = tetragonBtfEnv
+		btfFile = tetragonBTFEnv
 	}
 
 	bspec, err := btf.LoadSpec(btfFile)
