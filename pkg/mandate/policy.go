@@ -47,6 +47,20 @@ func mandatePolName(n string, id uint) string {
 
 }
 
+var alertNameRegex = regexp.MustCompile(`^mandate\+alert-\d+-(.*)$`)
+
+func mandateAlertName(n string, id uint) string {
+	return fmt.Sprintf("mandate+alert-%d-%s", id, n)
+}
+
+func OrigAlertName(n string) (string, bool) {
+	match := alertNameRegex.FindStringSubmatch(n)
+	if len(match) < 2 {
+		return "", false
+	}
+	return match[1], true
+}
+
 func (m *manager) NewMandatePolicy(tp tracingpolicy.TracingPolicy) tracingpolicy.TracingPolicy {
 	ret := MandatePolicy{
 		tp:   tp,

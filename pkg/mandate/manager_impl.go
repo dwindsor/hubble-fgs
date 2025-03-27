@@ -18,8 +18,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/alerts"
 	"github.com/isovalent/hubble-fgs/pkg/attempt"
 	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 
@@ -32,6 +34,7 @@ type manager struct {
 	obj            *Obj
 	cnf            mandateconf.ManagerConf
 	sensorMgr      SensorManager
+	alertRuleMgr   AlertRuleManager
 	c              chan cmd
 	wg             sync.WaitGroup
 	loadedPolicies []policy
@@ -70,6 +73,7 @@ type polTy int
 const (
 	invalidPolTy polTy = iota
 	tracingPolTy
+	alertPolTy
 )
 
 type policy struct {
@@ -102,11 +106,16 @@ func newTracingPolicy(url string, tp tracingpolicy.TracingPolicy) policy {
 // NewManager creates a new manager
 //
 //revive:disable:unexported-return
-func NewManager(cnf mandateconf.ManagerConf, sensorMgr SensorManager) (*manager, error) {
+func NewManager(
+	cnf mandateconf.ManagerConf,
+	sensorMgr SensorManager,
+	alertRuleMgr AlertRuleManager,
+) (*manager, error) {
 	mgr := &manager{
-		cnf:       cnf,
-		sensorMgr: sensorMgr,
-		polNextID: 1,
+		cnf:          cnf,
+		sensorMgr:    sensorMgr,
+		alertRuleMgr: alertRuleMgr,
+		polNextID:    1,
 	}
 	return mgr, nil
 }
@@ -115,8 +124,14 @@ func (m *manager) unloadPolicy(ctx context.Context, pol policy) error {
 	switch pol.ty {
 	case tracingPolTy:
 		return m.sensorMgr.DeleteTracingPolicy(ctx, pol.name, pol.namespace)
+	case alertPolTy:
+		if m.alertRuleMgr == nil {
+			return errors.New("alert manager disabled")
+		}
+		m.alertRuleMgr.DeleteAlertRule(pol.name)
+		return nil
 	default:
-		return fmt.Errorf("unknown tracing polilcy type: %d", pol.ty)
+		return fmt.Errorf("unknown policy type: %d", pol.ty)
 	}
 }
 
@@ -140,6 +155,8 @@ func (m *manager) attemptLoadPolicy(
 		return newTracingPolicy(pol.url_.String(), mp), nil
 	case "TracingPolicyNamespaced":
 		return invalidPolicy(), errors.New("namespaced tracing policies are not supported")
+	case "AlertRule":
+		return m.attemptLoadAlert(att, data, pol)
 	default:
 		return invalidPolicy(), errors.New("unknown policy")
 
@@ -285,6 +302,62 @@ func (m *manager) attemptLoadMandateTracingPolicy(
 		return nil, err
 	}
 	return ret, nil
+}
+
+func (m *manager) uniqueAlertName(ar *v1alpha1.AlertRule) string {
+	name := mandateAlertName(ar.GetName(), m.polNextID)
+	m.polNextID++
+	return name
+}
+
+func (m *manager) attemptLoadAlert(
+	att *attempt.InprAttempt,
+	data []byte,
+	mandatePol *Policy,
+) (pol policy, err error) {
+	pol = invalidPolicy()
+	defer func() {
+		att.Complete(err)
+	}()
+
+	if m.alertRuleMgr == nil {
+		err = errors.New("alerts disabled")
+		return
+	}
+
+	if mandatePol.ownMode() != "" {
+		err = errors.New("alerts do not support mode")
+		return
+	}
+
+	var ar *v1alpha1.AlertRule
+	crdCtx, err := alerts.CRDContext()
+	if err != nil {
+		err = fmt.Errorf("failed to retrieve CRD context for AlertRule: %w", err)
+		return
+	}
+	ar, err = crdCtx.FromYAML(string(data))
+	if err != nil {
+		return
+	}
+
+	// NB(kkourt): We rename the alert rules so that alerts with the same name end up having
+	// different names as we do for policies. This allows us to ensure that everything loads
+	// properly before removing the policies from the previous mandate file
+	pol = policy{
+		name:     m.uniqueAlertName(ar),
+		origName: ar.GetName(),
+		url:      mandatePol.url_.String(),
+		ty:       alertPolTy,
+	}
+	ar.SetName(pol.name)
+	err = m.alertRuleMgr.AddAlertRuleWithFilename(ar, pol.origName+".log")
+	if err != nil {
+		err = fmt.Errorf("failed to add alert rule: %w", err)
+		return
+	}
+
+	return
 }
 
 func (m *manager) start() {

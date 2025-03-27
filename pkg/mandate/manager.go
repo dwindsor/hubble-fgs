@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/attempt"
 	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
@@ -27,6 +28,11 @@ type SensorManager interface {
 	AddTracingPolicy(ctx context.Context, tp tracingpolicy.TracingPolicy) error
 	DeleteTracingPolicy(ctx context.Context, name string, namespace string) error
 	ConfigureTracingPolicy(_ context.Context, conf *tetragon.ConfigureTracingPolicyRequest) error
+}
+
+type AlertRuleManager interface {
+	AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error
+	DeleteAlertRule(name string)
 }
 
 type LoadedMandate struct {

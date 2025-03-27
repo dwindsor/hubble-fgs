@@ -37,7 +37,7 @@ func TestManager(t *testing.T) {
 	}
 
 	synctest.Run(func() {
-		mgr, err := NewManager(cnf, tsm)
+		mgr, err := NewManager(cnf, tsm, nil)
 		require.NoError(t, err)
 		mgr.Start()
 		defer mgr.stop()
@@ -127,7 +127,7 @@ func TestManagerConf(t *testing.T) {
 	}
 
 	synctest.Run(func() {
-		mgr, err := NewManager(cnf, tsm)
+		mgr, err := NewManager(cnf, tsm, nil)
 		require.NoError(t, err)
 		mgr.Start()
 		defer mgr.stop()
@@ -174,7 +174,7 @@ func TestManagerConfigure(t *testing.T) {
 	}
 
 	synctest.Run(func() {
-		mgr, err := NewManager(cnf, tsm)
+		mgr, err := NewManager(cnf, tsm, nil)
 		require.NoError(t, err)
 		mgr.Start()
 		defer mgr.Stop()
