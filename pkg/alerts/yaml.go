@@ -36,7 +36,7 @@ func FromYAML(data string) (crdutils.CRDObject, error) {
 
 	switch unstr.GetKind() {
 	case "AlertRule":
-		crdCtx, err := getARContext()
+		crdCtx, err := CRDContext()
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve CRD context for AlertRule: %w", err)
 		}
@@ -58,7 +58,7 @@ func FromFile(path string) (crdutils.CRDObject, error) {
 	return FromYAML(string(data))
 }
 
-func getARContext() (*crdutils.CRDContext[*v1alpha1.AlertRule], error) {
+func CRDContext() (*crdutils.CRDContext[*v1alpha1.AlertRule], error) {
 	var err error
 	arOnce.Do(func() {
 		arContext, err = crdutils.NewCRDContext[*v1alpha1.AlertRule](&client.AlertRuleCRD.Definition)
