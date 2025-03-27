@@ -1343,6 +1343,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		}
 	}
 
+	t0 := time.Now()
 	allInodes := make(map[fileapi.InodeKey]fileapi.InodeVal)
 	allDigestMaps := make(map[string][]string) // map from path to list of acceptable digests
 
@@ -1418,6 +1419,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	}
 
 	logger.GetLogger().WithFields(logrus.Fields{
+		"time":           time.Since(t0).String(),
 		"total-inodes":   len(allInodes),
 		"host-inodes":    numHostInodes,
 		"num-pods":       len(allPods),
