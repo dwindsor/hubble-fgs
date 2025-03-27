@@ -58,23 +58,35 @@ func getRecordSlice() []*DatapathRecord {
 		Deny:  uint64(1),
 	}
 
+	e1 := DatapathEndpoint{
+		EP:   epName1,
+		Port: 0,
+	}
 	r1 := &DatapathRecord{
-		Src:    src,
-		EP:     epName1,
-		Action: action,
-		Init:   false,
+		Src:      src,
+		Endpoint: e1,
+		Action:   action,
+		Init:     false,
+	}
+	e2 := DatapathEndpoint{
+		EP:   epName2,
+		Port: 0,
 	}
 	r2 := &DatapathRecord{
-		Src:    src,
-		EP:     epName2,
-		Action: action,
-		Init:   false,
+		Src:      src,
+		Endpoint: e2,
+		Action:   action,
+		Init:     false,
+	}
+	e3 := DatapathEndpoint{
+		EP:   epName3,
+		Port: 0,
 	}
 	r3 := &DatapathRecord{
-		Src:    src,
-		EP:     epName3,
-		Action: action,
-		Init:   false,
+		Src:      src,
+		Endpoint: e3,
+		Action:   action,
+		Init:     false,
 	}
 
 	return []*DatapathRecord{r1, r2, r3}
@@ -181,11 +193,16 @@ func BenchmarkDiffRecord(b *testing.B) {
 			epName.Namespace = fmt.Sprintf("testNamespace%d", id)
 		}
 
+		endpoint := DatapathEndpoint{
+			EP:   &ep,
+			Port: 0,
+		}
+
 		r := &DatapathRecord{
-			Src:    &s,
-			EP:     &ep,
-			Action: &a,
-			Init:   false,
+			Src:      &s,
+			Endpoint: endpoint,
+			Action:   &a,
+			Init:     false,
 		}
 		record = append(record, r)
 	}
@@ -233,11 +250,15 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 			epName.Namespace = fmt.Sprintf("testNamespace%d", id)
 		}
 
+		endpoint := DatapathEndpoint{
+			EP:   &ep,
+			Port: 0,
+		}
 		r := &DatapathRecord{
-			Src:    &s,
-			EP:     &ep,
-			Action: &a,
-			Init:   false,
+			Src:      &s,
+			Endpoint: endpoint,
+			Action:   &a,
+			Init:     false,
 		}
 		record = append(record, r)
 	}

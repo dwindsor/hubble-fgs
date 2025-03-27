@@ -226,10 +226,10 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
 	assert.NotZero(t, r1[0].Src.CgroupId)
-	assert.Equal(t, endpoint.DnsType, r1[0].EP.Type)
-	assert.Equal(t, "test.io", r1[0].EP.Dns)
-	assert.Equal(t, endpoint.DnsType, r1[1].EP.Type)
-	assert.Equal(t, "test.com", r1[1].EP.Dns)
+	assert.Equal(t, endpoint.DnsType, r1[0].Endpoint.EP.Type)
+	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
+	assert.Equal(t, endpoint.DnsType, r1[1].Endpoint.EP.Type)
+	assert.Equal(t, "test.com", r1[1].Endpoint.EP.Dns)
 
 	// dstPod does not match subject so will have no FQDN records but will match endpoint
 	// labels and srcPod needs to be given a record for the srcPod->dstPod pair.
@@ -239,8 +239,8 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r2))
 	assert.Equal(t, r1[0].Src.CgroupId, r2[0].Src.CgroupId)
-	assert.Equal(t, endpoint.PodType, r2[0].EP.Type)
-	assert.Equal(t, dstPodName, r2[0].EP.Name)
+	assert.Equal(t, endpoint.PodType, r2[0].Endpoint.EP.Type)
+	assert.Equal(t, dstPodName, r2[0].Endpoint.EP.Name)
 
 	addPod(t, dstIdKeep, dstPodNameKeep, dstPodLabels)
 	dstPodKeep := testPod(t, "4", "testNamespace", dstPodNameKeep, "testPod", dstPodLabels)
@@ -248,8 +248,8 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r3))
 	assert.Equal(t, r1[0].Src.CgroupId, r3[0].Src.CgroupId)
-	assert.Equal(t, endpoint.PodType, r3[0].EP.Type)
-	assert.Equal(t, dstPodNameKeep, r3[0].EP.Name)
+	assert.Equal(t, endpoint.PodType, r3[0].Endpoint.EP.Type)
+	assert.Equal(t, dstPodNameKeep, r3[0].Endpoint.EP.Name)
 
 	// Test matchLabels keys are tracking the subjects
 	src, _ := s.Src[name]
@@ -326,17 +326,17 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	assert.Equal(t, 3, len(r1))
 
 	assert.NotZero(t, r1[0].Src.CgroupId)
-	assert.Equal(t, endpoint.DnsType, r1[0].EP.Type)
-	assert.Equal(t, "test.io", r1[0].EP.Dns)
+	assert.Equal(t, endpoint.DnsType, r1[0].Endpoint.EP.Type)
+	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
 	assert.Equal(t, r1[0].Action.Deny, record.PolicyDeny)
 
 	assert.NotZero(t, r1[1].Src.CgroupId)
-	assert.Equal(t, endpoint.DnsType, r1[1].EP.Type)
-	assert.Equal(t, "test.com", r1[1].EP.Dns)
+	assert.Equal(t, endpoint.DnsType, r1[1].Endpoint.EP.Type)
+	assert.Equal(t, "test.com", r1[1].Endpoint.EP.Dns)
 	assert.Equal(t, r1[1].Action.Deny, record.PolicyDeny)
 
 	assert.NotZero(t, r1[2].Src.CgroupId)
-	assert.Nil(t, r1[2].EP)
+	assert.Nil(t, r1[2].Endpoint.EP)
 	assert.Equal(t, r1[2].Action.Deny, record.PolicyAllow)
 
 	// Remove pod and policy
@@ -385,21 +385,21 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
 
 	assert.NotZero(t, r1[0].Src.CgroupId)
-	assert.Equal(t, endpoint.DnsType, r1[0].EP.Type)
-	assert.Equal(t, "test.io", r1[0].EP.Dns)
+	assert.Equal(t, endpoint.DnsType, r1[0].Endpoint.EP.Type)
+	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
 	assert.Equal(t, r1[0].Action.Deny, record.PolicyAllow)
 
 	assert.NotZero(t, r1[1].Src.CgroupId)
-	assert.Equal(t, endpoint.DnsType, r1[1].EP.Type)
-	assert.Equal(t, "test.com", r1[1].EP.Dns)
+	assert.Equal(t, endpoint.DnsType, r1[1].Endpoint.EP.Type)
+	assert.Equal(t, "test.com", r1[1].Endpoint.EP.Dns)
 	assert.Equal(t, r1[1].Action.Deny, record.PolicyAllow)
 
 	assert.NotZero(t, r1[2].Src.CgroupId)
-	assert.Equal(t, endpoint.PodType, r1[2].EP.Type)
+	assert.Equal(t, endpoint.PodType, r1[2].Endpoint.EP.Type)
 	assert.Equal(t, r1[2].Action.Deny, record.PolicyAllow)
 
 	assert.NotZero(t, r1[3].Src.CgroupId)
-	assert.Nil(t, r1[3].EP)
+	assert.Nil(t, r1[3].Endpoint.EP)
 	assert.Equal(t, r1[3].Action.Deny, record.PolicyDeny)
 
 	// Remove pod and policy
@@ -471,15 +471,15 @@ func cntRecordsEPTypes(records []*record.DatapathRecord) (int, int, int) {
 	cntPodType := 0
 	cntNilType := 0
 	for _, r := range records {
-		if r.EP == nil {
+		if r.Endpoint.EP == nil {
 			cntNilType++
 			continue
 		}
-		if r.EP.Type == endpoint.DnsType {
+		if r.Endpoint.EP.Type == endpoint.DnsType {
 			cntDnsType++
 			continue
 		}
-		if r.EP.Type == endpoint.PodType {
+		if r.Endpoint.EP.Type == endpoint.PodType {
 			cntPodType++
 			continue
 		}
