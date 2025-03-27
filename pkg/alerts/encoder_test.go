@@ -67,7 +67,7 @@ func TestJSONEncode(t *testing.T) {
 	wc := nopWriteCloser{&buf}
 
 	// Create encoder, encode, check encoded JSON
-	encoder := newJsonEncoder(wc)
+	encoder := newJsonEncoder(wc, "")
 	err := encoder.encode(exampleAlert)
 	assert.NoError(t, err)
 
@@ -81,7 +81,7 @@ func TestJSONEncodeNoEvent(t *testing.T) {
 	wc := nopWriteCloser{&buf}
 
 	// Create encoder, encode, check encoded JSON
-	encoder := newJsonEncoder(wc)
+	encoder := newJsonEncoder(wc, "")
 	err := encoder.encode(&tetragon.Alert{Rule: exampleRule})
 	assert.NoError(t, err)
 	expected := `{"rule":{"name":"curl","severity":"CRITICAL","message":"Curl is curling.","tags":["network"]}}`
@@ -94,7 +94,7 @@ func TestJSONEncodeEmpty(t *testing.T) {
 	wc := nopWriteCloser{&buf}
 
 	// Create encoder, encode, check encoded JSON
-	encoder := newJsonEncoder(wc)
+	encoder := newJsonEncoder(wc, "")
 	err := encoder.encode(&tetragon.Alert{})
 	assert.NoError(t, err)
 	expected := "{}\n"
@@ -106,7 +106,7 @@ func TestJSONEncodNil(t *testing.T) {
 	wc := nopWriteCloser{&buf}
 
 	// Create encoder, encode, check encoded JSON
-	encoder := newJsonEncoder(wc)
+	encoder := newJsonEncoder(wc, "")
 	err := encoder.encode(nil)
 	assert.NoError(t, err)
 	expected := "{}\n"
@@ -123,7 +123,7 @@ func (w errorWriteCloser) Close() error { return nil }
 
 func TestJSONEncodeWriteError(t *testing.T) {
 	wc := errorWriteCloser{}
-	encoder := newJsonEncoder(wc)
+	encoder := newJsonEncoder(wc, "")
 
 	err := encoder.encode(exampleAlert)
 	assert.Error(t, err)

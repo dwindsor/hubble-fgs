@@ -32,23 +32,33 @@ var (
 )
 
 type rule struct {
-	cel      cel.Program
-	name     string
-	message  string
-	tags     []string
-	severity string
-
+	cel         cel.Program
+	name        string
+	message     string
+	tags        []string
+	severity    string
 	jsonEncoder *jsonEncoder
 }
 
 type RuleManager interface {
 	AddAlertRule(ar *v1alpha1.AlertRule) error
 	DeleteAlertRule(name string)
+
+	// Add an alert rule that writes on a specific filename.
+	//
+	// NB(kkourt): The mandate code uses this functio so that it can install two alert rules
+	// with the same name. In the future, we might expose the ability to specify a filename in
+	// the alert rule in the spec as well.
+	//
+	// WARNING: If the fname argument is ever provided by the user, we need to validate it
+	// (e.g., using ValidateDNS1123Subdomain) before calling this function.
+	AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error
 }
 
 type ruleManager struct {
-	rules map[string]*rule
-	mutex sync.RWMutex
+	rules    map[string]*rule
+	encoders map[string]*jsonEncoder
+	mutex    sync.RWMutex
 }
 
 func NewRuleManager() RuleManager {
@@ -57,11 +67,15 @@ func NewRuleManager() RuleManager {
 
 func newRuleManager() *ruleManager {
 	return &ruleManager{
-		rules: make(map[string]*rule),
+		rules:    make(map[string]*rule),
+		encoders: make(map[string]*jsonEncoder),
 	}
 }
 
-func (r *ruleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
+// Add an alert rule that writes on a specific filename.
+// This is useful for the mandate code. If you want to call this function, ensure that fname is
+// sanitized if it comes from the user (e.g., using ValidateDNS1123Subdomain)
+func (r *ruleManager) AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error {
 	if ar == nil {
 		return nil
 	}
@@ -70,48 +84,75 @@ func (r *ruleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 	if err != nil {
 		return err
 	}
-	name := ar.GetName()
+
 	var encoder *jsonEncoder
+	var newEncoder bool
+	// use an existing encoder if one exists
 	r.mutex.Lock()
-	if rule, ok := r.rules[name]; ok {
-		// we have the same rule, we can re-use the jsonEncoder to guarantee
-		// that JSON records are written atomically to the file.
-		encoder = rule.jsonEncoder
+	encoder, _ = r.encoders[fname]
+	if encoder != nil {
+		encoder.IncRef()
 	}
 	r.mutex.Unlock()
 
-	// otherwise, let's open a new file
+	// if no existing encoder exists, let's create a new one by openning a new file
 	if eeOption.Config.AlertsExportDir != "" && encoder == nil {
 		perms, _ := fileutils.RegularFilePerms(option.Config.ExportFilePerm)
-		filename := filepath.Join(eeOption.Config.AlertsExportDir, name+".log")
+		filename := filepath.Join(eeOption.Config.AlertsExportDir, fname)
 		fh, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, perms)
 		if err != nil {
 			return fmt.Errorf("failed to open a file: %w", err)
 		}
-		encoder = newJsonEncoder(fh)
+		encoder = newJsonEncoder(fh, fname)
+		newEncoder = true
 	}
 
-	// now we can replace the rule
+	name := ar.GetName()
 	r.mutex.Lock()
+	// if we are replacing a rule, decref its encoder
+	if oldRule, ok := r.rules[name]; ok {
+		r.encoderDecref(oldRule)
+	}
 	r.rules[name] = &rule{
 		cel:         celProgram,
-		name:        name,
+		name:        ar.GetName(),
 		message:     ar.Spec.Message,
 		tags:        ar.Spec.Tags,
 		severity:    ar.Spec.Severity,
 		jsonEncoder: encoder,
 	}
+	if newEncoder {
+		r.encoders[fname] = encoder
+	}
 	r.mutex.Unlock()
 	return nil
+}
+
+func (r *ruleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
+	if ar == nil {
+		return nil
+	}
+	return r.AddAlertRuleWithFilename(ar, ar.GetName()+".log")
 }
 
 func (r *ruleManager) DeleteAlertRule(name string) {
 	r.mutex.Lock()
 	if rule, ok := r.rules[name]; ok {
-		if rule.jsonEncoder != nil {
-			rule.jsonEncoder.Close()
-		}
+		r.encoderDecref(rule)
 		delete(r.rules, name)
 	}
 	r.mutex.Unlock()
+}
+
+// encoderDecref decreases the reference counter of rules jsonEncoder, and removes it from
+// r.encoders if the reference count is 0
+func (r *ruleManager) encoderDecref(rule *rule) {
+	je := rule.jsonEncoder
+	if je == nil {
+		return
+	}
+	cnt := je.DecRef()
+	if cnt == int32(0) {
+		delete(r.encoders, je.fname)
+	}
 }

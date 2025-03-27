@@ -21,21 +21,33 @@ import (
 
 type jsonEncoder struct {
 	writer io.WriteCloser
+	fname  string
+	refCnt int32
 	mu     sync.Mutex
-	closed bool
 }
 
-func newJsonEncoder(w io.WriteCloser) *jsonEncoder {
+func newJsonEncoder(w io.WriteCloser, fname string) *jsonEncoder {
 	return &jsonEncoder{
 		writer: w,
+		fname:  fname,
+		refCnt: 1,
 	}
 }
 
-func (e *jsonEncoder) Close() error {
+func (e *jsonEncoder) IncRef() {
 	e.mu.Lock()
-	e.closed = true
-	e.mu.Unlock()
-	return e.writer.Close()
+	defer e.mu.Unlock()
+	e.refCnt++
+}
+
+func (e *jsonEncoder) DecRef() int32 {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.refCnt--
+	if e.refCnt == 0 {
+		e.writer.Close()
+	}
+	return e.refCnt
 }
 
 func (e *jsonEncoder) encode(alert *tetragon.Alert) error {
@@ -49,7 +61,7 @@ func (e *jsonEncoder) encode(alert *tetragon.Alert) error {
 	defer e.mu.Unlock()
 
 	// encoder is closed, nothing to do
-	if e.closed {
+	if e.refCnt == 0 {
 		return nil
 	}
 	out = append(out, '\n')
