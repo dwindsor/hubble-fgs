@@ -1,18 +1,4 @@
-package netpol
-
-import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-)
-
-func TestMain(m *testing.M) {
-	m.Run()
-}
-
-func TestFromYAML(t *testing.T) {
-	policy :=
-		`apiVersion: cilium.io/v1alpha1
+apiVersion: cilium.io/v1alpha1
 kind: TetragonNetworkPolicy
 metadata:
   name: "example-label-segmentation"
@@ -21,20 +7,24 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      A: "a"
-      B: "b"
+      class: "xwing"
   processSelector:
     operator: "In"
     values:
-    - "/usr/bin/curl"
-    - "/usr/local/bin/curl"
+      - "/usr/bin/curl"
+      - "/usr/sbin/curl"
   defaultAction: "deny"
   rules:
   - hook: "connect"
     action: "allow"
     destination:
     - labels:
-        matchLabels: ["C=c", "D=d"]
+        matchLabels: ["org=empire"]
+      ports:
+        protocol: "TCP"
+        ports: [80, 8080]
+    - labels:
+        matchLabels: ["org=tiefighter"]
       ports:
         protocol: "TCP"
         ports: [80, 8080]
@@ -43,7 +33,3 @@ spec:
       ports:
         protocol: "TCP"
         ports: [80, 8080]
-`
-	_, err := fromYAML(policy)
-	assert.NoError(t, err)
-}
