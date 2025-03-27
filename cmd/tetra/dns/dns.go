@@ -12,7 +12,6 @@ package dns
 
 import (
 	"fmt"
-	"path/filepath"
 	"text/tabwriter"
 
 	"github.com/cilium/ebpf"
@@ -26,14 +25,14 @@ func NewDNSCmd() *cobra.Command {
 		Use:   "dns",
 		Short: "Debug the DNS BPF parser IP to domain map.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			ipToIDMapFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.DNSEndpointIDMapName)
+			ipToIDMapFile := bpf.MapPath(dnsparser.DNSEndpointIDMapName)
 			ipToIDMap, err := ebpf.LoadPinnedMap(ipToIDMapFile, nil)
 			if err != nil {
 				return fmt.Errorf("fail to load pinned map %s: %w", ipToIDMapFile, err)
 			}
 			defer ipToIDMap.Close()
 
-			idToDomainMapFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.IDToDomainMapName)
+			idToDomainMapFile := bpf.MapPath(dnsparser.IDToDomainMapName)
 			idToDomainMap, err := ebpf.LoadPinnedMap(idToDomainMapFile, nil)
 			if err != nil {
 				return fmt.Errorf("fail to load pinned map %s: %w", idToDomainMapFile, err)
