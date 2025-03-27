@@ -10,6 +10,7 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 	__u32 s_magic, operation, rule_id;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
+	union exec_flags flags;
 	int err;
 
 	if (!policy_filter_match())
@@ -34,12 +35,15 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 
 	generate_path(msg, _(&file->f_path));
 
-	operation = eval_selectors(action_exec, 0, 0, msg->path.str, msg->path.size);
-	if (!(operation & FILE_OP_POST))
-		return operation;
-
 	msg->is_exe_from_memfd = is_memfd(file);
 	msg->is_exe_upper_layer = is_dentry_upper(file);
+
+	flags.d8[EXEC_ATTR_MEMFD_IDX] = msg->is_exe_from_memfd;
+	flags.d8[EXEC_ATTR_UPPER_IDX] = msg->is_exe_upper_layer;
+
+	operation = eval_selectors(action_exec, flags.d32, 0, msg->path.str, msg->path.size);
+	if (!(operation & FILE_OP_POST))
+		return operation;
 
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0);
 

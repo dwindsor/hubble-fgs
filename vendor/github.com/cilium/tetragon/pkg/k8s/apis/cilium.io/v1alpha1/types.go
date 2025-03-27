@@ -216,6 +216,17 @@ type FilePathGlobSelector struct {
 	Values []GlobPattern `json:"values,omitempty"`
 }
 
+// +kubebuilder:validation:Enum=True;False;Any
+// +kubebuilder:default=Any
+type ExecAttributes = string
+
+type FileExecAttributesSelector struct {
+	// Shows if the executable file of the current process is an anonymous file created using memfd_create(). Relevant to detect malicious in-memory code injection.
+	IsFromMemfd ExecAttributes `json:"isFromMemFd,omitempty"`
+	// Shows if this process' executable file is in upper layer in overlayfs. If true, this means that the file is added on the container after the creation of it.
+	IsUpperLayer ExecAttributes `json:"isUpperLayer,omitempty"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
@@ -242,6 +253,9 @@ type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of glob patterns to match the filename.
 	MatchFilename []FilePathGlobSelector `json:"matchFilename,omitempty"`
+	// +kubebuilder:validation:Optional
+	// A list of exec attributes to match on the event.
+	MatchExecAttributes []FileExecAttributesSelector `json:"matchExecAttributes,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`

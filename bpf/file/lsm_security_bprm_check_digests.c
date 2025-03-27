@@ -15,6 +15,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	__u32 s_magic, operation, rule_id;
 	struct digest_key *digest = 0;
 	struct msg_file_ops *msg;
+	union exec_flags flags;
 	struct dentry *dentry;
 	struct file *file;
 	int err;
@@ -55,16 +56,19 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	msg->digest.algo = ima_file_hash(_(bprm->file), msg->digest.digest, IMA_MAX_DIGEST_SIZE);
 	digest = &msg->digest;
 
-	operation = eval_selectors(action_exec, 0, digest, msg->path.str, msg->path.size);
+	msg->is_exe_from_memfd = is_memfd(file);
+	msg->is_exe_upper_layer = is_dentry_upper(file);
+
+	flags.d8[EXEC_ATTR_MEMFD_IDX] = msg->is_exe_from_memfd;
+	flags.d8[EXEC_ATTR_UPPER_IDX] = msg->is_exe_upper_layer;
+
+	operation = eval_selectors(action_exec, flags.d32, digest, msg->path.str, msg->path.size);
 	if (!(operation & FILE_OP_POST)) {
 		err = operation;
 		goto lsm_bprm_check_security_ret;
 	}
 
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0);
-
-	msg->is_exe_from_memfd = is_memfd(file);
-	msg->is_exe_upper_layer = is_dentry_upper(file);
 
 	// Getting a file digest requires a sleepable LSM program.
 	// Sleepable programs can only use array, hash, ringbuf and local storage maps.

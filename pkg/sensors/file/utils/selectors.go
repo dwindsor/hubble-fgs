@@ -150,6 +150,17 @@ type MatchFilenameOps struct {
 	paths map[string]uint32 // when op == MatchFilenameInFileWithDigest
 }
 
+const (
+	MatchExecAttrFalse = 0
+	MatchExecAttrTrue  = 1
+	MatchExecAttrAny   = 2
+)
+
+type MatchExecAttrs struct {
+	isUpperLayer uint32
+	isFromMemfd  uint32
+}
+
 type KernelSelectorState struct {
 	selectors.KernelSelectorState
 
@@ -174,6 +185,9 @@ type KernelSelectorState struct {
 	// matchFilename
 	patterns map[uint32]*MatchFilenameOps
 
+	// matchExecAttributes
+	exec map[uint32]*MatchExecAttrs
+
 	// matchActions value
 	action map[uint32]uint32
 
@@ -191,6 +205,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 		rename:              map[uint32]*RenameOps{},
 		oflags:              map[uint32]*OpenFlagsOps{},
 		patterns:            map[uint32]*MatchFilenameOps{},
+		exec:                map[uint32]*MatchExecAttrs{},
 		action:              map[uint32]uint32{},
 	}
 }
@@ -240,6 +255,16 @@ func (k *KernelSelectorState) InitOrGetRename(selIdx uint32) *RenameOps {
 	}
 	inner := &RenameOps{}
 	k.rename[selIdx] = inner
+	return inner
+}
+
+func (k *KernelSelectorState) InitOrGetExecAttrs(selIdx uint32) *MatchExecAttrs {
+	val, ok := k.exec[selIdx]
+	if ok {
+		return val
+	}
+	inner := &MatchExecAttrs{}
+	k.exec[selIdx] = inner
 	return inner
 }
 
@@ -548,6 +573,15 @@ func GenerateFileNamespacesMap(m *ebpf.Map, sel *KernelSelectorState) error {
 func GenerateFileRenameMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	for idx, rename := range sel.rename {
 		if err := m.Update(idx, rename, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GenerateFileExecAttrs(m *ebpf.Map, sel *KernelSelectorState) error {
+	for idx, exec := range sel.exec {
+		if err := m.Update(idx, exec, ebpf.UpdateAny); err != nil {
 			return err
 		}
 	}
@@ -1199,6 +1233,40 @@ func ParseMatchFilename(k *KernelSelectorState, op []v1alpha1.FilePathGlobSelect
 	return nil
 }
 
+func ParseExecAttributes(k *KernelSelectorState, op []v1alpha1.FileExecAttributesSelector, selIdx int) error {
+	if len(op) > 1 {
+		return fmt.Errorf("only support a single operation inside a single selector")
+	}
+	if len(op) == 0 {
+		return nil
+	}
+
+	val := k.InitOrGetExecAttrs(uint32(selIdx))
+	o := op[0]
+
+	if o.IsFromMemfd == "" || strings.ToUpper(o.IsFromMemfd) == "ANY" {
+		val.isFromMemfd = MatchExecAttrAny
+	} else if strings.ToUpper(o.IsFromMemfd) == "TRUE" {
+		val.isFromMemfd = MatchExecAttrTrue
+	} else if strings.ToUpper(o.IsFromMemfd) == "FALSE" {
+		val.isFromMemfd = MatchExecAttrFalse
+	} else {
+		return fmt.Errorf("Unknown value in isFromMemfd:(%s) (valid options are: 'Any', 'True', and 'False')", o.IsFromMemfd)
+	}
+
+	if o.IsUpperLayer == "" || strings.ToUpper(o.IsUpperLayer) == "ANY" {
+		val.isUpperLayer = MatchExecAttrAny
+	} else if strings.ToUpper(o.IsUpperLayer) == "TRUE" {
+		val.isUpperLayer = MatchExecAttrTrue
+	} else if strings.ToUpper(o.IsUpperLayer) == "FALSE" {
+		val.isUpperLayer = MatchExecAttrFalse
+	} else {
+		return fmt.Errorf("Unknown value in IsUpperLayer:(%s) (valid options are: 'Any', 'True', and 'False')", o.IsUpperLayer)
+	}
+
+	return nil
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors int) (*KernelSelectorState, error) {
 	if len(fileSel) > maxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
@@ -1228,6 +1296,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 		}
 		if err := ParseMatchFilename(kernelSelectors, s.MatchFilename, i); err != nil {
 			return nil, fmt.Errorf("parseMatchFilename error: %w", err)
+		}
+		if err := ParseExecAttributes(kernelSelectors, s.MatchExecAttributes, i); err != nil {
+			return nil, fmt.Errorf("parseExecAttributes error: %w", err)
 		}
 		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
 			return nil, fmt.Errorf("parseMatchActions error: %w", err)

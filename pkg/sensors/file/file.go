@@ -153,6 +153,7 @@ var (
 		{"tg_mb_sel_opts", SharedMap},        // for matchBinaries operator
 		{"tg_mb_paths", SharedMap},           // for matchBinaries In/NotIn operator
 		{"string_prefix_maps", SharedMap},    // for matchBinaries Prefix/NoPrefix operator
+		{"exec_attributes_map", SharedMap},
 	}
 
 	InodeBasedSelectorMaps = []MapInfo{
@@ -458,7 +459,7 @@ var (
 		{"kprobe", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open.o", "security_file_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityFileOpenMaps[:]}}}},
 	}
 
-	FimHooksObserveExec = FimHook{"kprobe", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check.o", "security_bprm_check", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}}
+	FimHooksObserveExec = FimHook{"kprobe", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check.o", "security_bprm_check", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], {{"exec_attributes_map", SharedMap}}}}}}
 
 	FimHooksFmodRet = [...]FimHook{
 		{"fmod_ret", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_fmod.o", "security_mmap_file", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
@@ -499,7 +500,7 @@ var (
 		{"fmod_ret", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_fmod.o", "security_file_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityFileOpenMaps[:]}}}},
 	}
 
-	FimHooksFmodRetExec = FimHook{"fmod_ret", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_fmod.o", "security_bprm_check", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}}
+	FimHooksFmodRetExec = FimHook{"fmod_ret", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_fmod.o", "security_bprm_check", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], {{"exec_attributes_map", SharedMap}}}}}}
 
 	FimHooksLsm = [...]FimHook{
 		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_lsm.o", "mmap_file", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
@@ -540,7 +541,7 @@ var (
 		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_lsm.o", "file_open", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityFileOpenMaps[:]}}}},
 	}
 
-	FimHooksLsmExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm.o", "bprm_check_security", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}}
+	FimHooksLsmExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm.o", "bprm_check_security", [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], {{"exec_attributes_map", SharedMap}}}}}}
 
 	FimHooksLsmExecDigests = [...]FimHook{
 		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "bprm_check_security", [][]MapInfo{
@@ -553,6 +554,7 @@ var (
 			{{"tg_cgtracker_map", BaseMap}},
 			{{"exec_retprobe_map", SharedMap}},
 			{{"file_digests_maps", SharedMap}},
+			{{"exec_attributes_map", SharedMap}},
 		}}}},
 		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "security_bprm_check", [][]MapInfo{
 			{{"tcpmon_map", BaseMap}},
@@ -1801,6 +1803,13 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
 					if err := fm.GenerateFileRenameMap(m, sel); err != nil {
 						return fmt.Errorf("file_rename_map: %w", err)
+					}
+					return nil
+				}
+			case m.Name == "exec_attributes_map":
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+					if err := fm.GenerateFileExecAttrs(m, sel); err != nil {
+						return fmt.Errorf("exec_attributes_map: %w", err)
 					}
 					return nil
 				}

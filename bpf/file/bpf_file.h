@@ -427,6 +427,30 @@ struct {
 	__uint(max_entries, 1);
 } digest_heap_map SEC(".maps");
 
+#define EXEC_ATTR_MEMFD_IDX 0
+#define EXEC_ATTR_UPPER_IDX 1
+
+union exec_flags {
+	__u32 d32;
+	__u8 d8[sizeof(__u32) / sizeof(__u8)];
+};
+
+#define MATCH_EXEC_ATTR_FALSE 0
+#define MATCH_EXEC_ATTR_TRUE  1
+#define MATCH_EXEC_ATTR_ANY   2
+
+struct exec_attr {
+	__u32 is_exe_upper_layer; // MATCH_EXEC_ATTR_*
+	__u32 is_exe_from_memfd; // MATCH_EXEC_ATTR_*
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u32); /* selector id */
+	__type(value, struct exec_attr);
+	__uint(max_entries, MAX_FIM_SELECTORS); // max number of selectors -- to be set from the user-space
+} exec_attributes_map SEC(".maps");
+
 #define MAX_SELECTOR_OPEN_FLAGS 8
 
 // Need to declare the value of the inner map here otherwise we get the
@@ -930,6 +954,39 @@ static inline __attribute__((always_inline)) int check_match_filename(__u32 sel_
 }
 #endif /* __ENABLE_GLOB_SUPPORT */
 
+// returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_exec_attributes(__u32 sel_idx, __u32 action, __u32 flags)
+{
+	__u8 is_exe_upper_layer, is_exe_from_memfd;
+	__u32 sel = sel_idx;
+	struct exec_attr *v;
+	union exec_flags f;
+
+	f.d32 = flags;
+	is_exe_from_memfd = f.d8[EXEC_ATTR_MEMFD_IDX];
+	is_exe_upper_layer = f.d8[EXEC_ATTR_UPPER_IDX];
+
+	// only applicable to open events
+	if (action != action_exec)
+		return 1;
+
+	v = map_lookup_elem(&exec_attributes_map, &sel);
+	if (!v) // no matchExecAttr for this selector -- match
+		return 1;
+
+	if (v->is_exe_upper_layer != MATCH_EXEC_ATTR_ANY) {
+		if (v->is_exe_upper_layer != is_exe_upper_layer)
+			return 0; // event value is different from selector value -- do no match
+	}
+
+	if (v->is_exe_from_memfd != MATCH_EXEC_ATTR_ANY) {
+		if (v->is_exe_from_memfd != is_exe_from_memfd)
+			return 0; // event value is different from selector value -- do no match
+	}
+
+	return 1;
+}
+
 static inline __attribute__((always_inline)) __u32
 __eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *digest, struct execve_map_value *execve, char *path, __u32 len)
 {
@@ -949,6 +1006,8 @@ __eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *di
 	if (!check_match_capabilities(sel_idx))
 		return 0;
 	if (!check_match_open_flags(sel_idx, action, flags))
+		return 0;
+	if (!check_match_exec_attributes(sel_idx, action, flags))
 		return 0;
 #endif
 #ifdef __ENABLE_GLOB_SUPPORT

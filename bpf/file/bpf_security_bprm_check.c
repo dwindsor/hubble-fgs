@@ -18,6 +18,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	struct file *file;
 	__u32 operation = 0;
 	struct digest_key *digest = 0;
+	union exec_flags flags;
 #ifdef __FILE_DIGEST_LSM
 	struct exec_key key = {
 		.pid_tgid = get_current_pid_tgid(),
@@ -67,11 +68,17 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	digest = &msg->digest;
 #endif
 
+	msg->is_exe_from_memfd = is_memfd(file);
+	msg->is_exe_upper_layer = is_dentry_upper(file);
+
+	flags.d8[EXEC_ATTR_MEMFD_IDX] = msg->is_exe_from_memfd;
+	flags.d8[EXEC_ATTR_UPPER_IDX] = msg->is_exe_upper_layer;
+
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(action_exec, 0, digest, 0, 0);
+	operation = eval_selectors(action_exec, flags.d32, digest, 0, 0);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
@@ -94,8 +101,6 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;
 	msg->tid = (__u32)get_current_pid_tgid();
-	msg->is_exe_from_memfd = is_memfd(file);
-	msg->is_exe_upper_layer = is_dentry_upper(file);
 
 	// Getting a file digest requires a sleepable LSM program.
 	// Sleepable programs can only use array, hash, ringbuf and local storage maps.

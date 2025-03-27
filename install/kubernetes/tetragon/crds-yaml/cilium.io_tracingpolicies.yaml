@@ -542,6 +542,31 @@ spec:
                             - operator
                             type: object
                           type: array
+                        matchExecAttributes:
+                          description: A list of exec attributes to match on the event.
+                          items:
+                            properties:
+                              isFromMemFd:
+                                description: Shows if the executable file of the current
+                                  process is an anonymous file created using memfd_create().
+                                  Relevant to detect malicious in-memory code injection.
+                                enum:
+                                - "True"
+                                - "False"
+                                - Any
+                                type: string
+                              isUpperLayer:
+                                description: Shows if this process' executable file
+                                  is in upper layer in overlayfs. If true, this means
+                                  that the file is added on the container after the
+                                  creation of it.
+                                enum:
+                                - "True"
+                                - "False"
+                                - Any
+                                type: string
+                            type: object
+                          type: array
                         matchFilename:
                           description: A list of glob patterns to match the filename.
                           items:
