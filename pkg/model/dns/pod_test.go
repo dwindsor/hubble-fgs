@@ -1015,3 +1015,202 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 }
+
+func TestProcessPortPolicyDestSrc(t *testing.T) {
+	s := New()
+	SetRealizedState(s)
+
+	srcId := nextId()
+	dstId := nextId()
+
+	srcPodName := "testNamePodSrc"
+	srcPodLabels := "A=a,B=b"
+
+	dstPodName := "testNamePodDst"
+	dstPodLabels := "D1=d1,D2=d2,D3=d3"
+
+	// Add policy and ensure we generate rules
+	netpolA := testMatchPortDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
+	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
+	aState, addASet, removeASet, errSet := __CreateMatchLabelsPolicySet(netpolASet)
+
+	assert.NoError(t, errSet)
+	assert.Zero(t, len(addASet))
+	assert.Zero(t, len(removeASet))
+
+	// Add dst pod and then src pod while no policy is in play
+	SetRealizedState(aState)
+	s = GetRealizedState()
+
+	addPod(t, dstId, dstPodName, dstPodLabels)
+	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	rDst, err := s.__PodAdd(dstPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(rDst))
+
+	addPod(t, srcId, srcPodName, srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	r1, err := s.__PodAdd(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 13, len(r1))
+
+	port80 := 0
+	port81 := 0
+	for _, r := range r1 {
+		if r.Endpoint.EP == nil {
+			continue
+		}
+		if r.Endpoint.EP.Type == endpoint.DnsType {
+			if r.Endpoint.Port == 80 {
+				port80++
+			} else if r.Endpoint.Port == 81 {
+				port81++
+			}
+			continue
+		}
+		if r.Endpoint.EP.Type == endpoint.PodType {
+			if r.Endpoint.Port == 80 {
+				port80++
+			} else if r.Endpoint.Port == 81 {
+				port81++
+			}
+			continue
+		}
+	}
+	assert.Equal(t, 6, port80)
+	assert.Equal(t, 6, port81)
+
+	dns, pod, n := cntRecordsEPTypes(r1)
+	assert.Equal(t, 8, dns)
+	assert.Equal(t, 4, pod)
+	assert.Equal(t, 1, n)
+
+	// netpol A remains, remove it.
+	aRemove, aUpdate, err := aState.__RemoveMatchLabelNetworkPolicy("netpolZ_0", netpolA)
+	assert.NoError(t, err)
+	assert.Equal(t, 13, len(aRemove))
+	assert.Zero(t, len(aUpdate))
+
+	// Remove source pod there should be no more records
+	delPod(t, srcId)
+	deleted, err := aState.__PodRemove(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(deleted))
+
+	// Remove destination pod, should not be any records remaining
+	delPod(t, dstId)
+	deleted, err = aState.__PodRemove(dstPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(deleted))
+}
+
+func countPorts(records []*record.DatapathRecord, port uint32) int {
+	cnt := 0
+
+	for _, r := range records {
+		if r.Endpoint.EP == nil {
+			continue
+		}
+		if r.Endpoint.EP.Type == endpoint.DnsType {
+			if r.Endpoint.Port == port {
+				cnt++
+			}
+			continue
+		}
+		if r.Endpoint.EP.Type == endpoint.PodType {
+			if r.Endpoint.Port == port {
+				cnt++
+			}
+			continue
+		}
+	}
+	return cnt
+}
+
+func TestProcessPortPolicySrcDest(t *testing.T) {
+	s := New()
+	SetRealizedState(s)
+
+	srcId := nextId()
+	dstId := nextId()
+
+	srcPodName := "testNamePodSrc"
+	srcPodLabels := "A=a,B=b"
+
+	dstPodName := "testNamePodDst"
+	dstPodLabels := "D1=d1,D2=d2,D3=d3"
+
+	// Add policy and ensure we generate rules
+	netpolA := testMatchPortDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
+	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
+	aState, addASet, removeASet, errSet := __CreateMatchLabelsPolicySet(netpolASet)
+
+	assert.NoError(t, errSet)
+	assert.Zero(t, len(addASet))
+	assert.Zero(t, len(removeASet))
+
+	// Add dst pod and then src pod while no policy is in play
+	SetRealizedState(aState)
+	s = GetRealizedState()
+
+	addPod(t, srcId, srcPodName, srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	r1, err := s.__PodAdd(srcPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 9, len(r1))
+
+	dns, pod, n := cntRecordsEPTypes(r1)
+	assert.Equal(t, 8, dns)
+	assert.Equal(t, 0, pod)
+	assert.Equal(t, 1, n)
+
+	port80 := countPorts(r1, 80)
+	port81 := countPorts(r1, 81)
+
+	assert.Equal(t, 4, port80)
+	assert.Equal(t, 4, port81)
+
+	addPod(t, dstId, dstPodName, dstPodLabels)
+	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	rDst, err := s.__PodAdd(dstPod, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(rDst))
+
+	port80 = countPorts(rDst, 80)
+	port81 = countPorts(rDst, 81)
+	assert.Equal(t, 2, port80)
+	assert.Equal(t, 2, port81)
+
+	dns, pod, n = cntRecordsEPTypes(rDst)
+	assert.Equal(t, 0, dns)
+	assert.Equal(t, 4, pod)
+	assert.Equal(t, 0, n)
+
+	// netpol A remains, remove it.
+	aRemove, aUpdate, err := aState.__RemoveMatchLabelNetworkPolicy("netpolZ_0", netpolA)
+	assert.NoError(t, err)
+	assert.Equal(t, 13, len(aRemove))
+	assert.Zero(t, len(aUpdate))
+
+	dns, pod, n = cntRecordsEPTypes(aRemove)
+	assert.Equal(t, 8, dns)
+	assert.Equal(t, 4, pod)
+	assert.Equal(t, 1, n)
+
+	port80 = countPorts(aRemove, 80)
+	port81 = countPorts(aRemove, 81)
+	assert.Equal(t, 6, port80)
+	assert.Equal(t, 6, port81)
+
+	// Remove source pod there should be no more records
+	delPod(t, srcId)
+	deleted, err := aState.__PodRemove(srcPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(deleted))
+
+	// Remove destination pod, should not be any records remaining
+	delPod(t, dstId)
+	deleted, err = aState.__PodRemove(dstPod, true)
+	assert.NoError(t, err)
+	assert.Zero(t, len(deleted))
+}
