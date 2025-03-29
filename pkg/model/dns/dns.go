@@ -488,5 +488,5 @@ func PodAdd(epPod *v1alpha1.PodInfo, local bool) error {
 	if err != nil {
 		return err
 	}
-	return prog.AddRecords(records)
+	return prog.AddRecords(records, false)
 }

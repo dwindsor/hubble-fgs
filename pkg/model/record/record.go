@@ -7,6 +7,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
+// Precedence order is assumed to same as numeric order which
+// is required by BPF datapath implementation. So that order
+// is Deny >> Allow >> None.
 const (
 	PolicyNone  = uint64(0x00)
 	PolicyAllow = uint64(0x01)

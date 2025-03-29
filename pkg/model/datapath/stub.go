@@ -24,11 +24,11 @@ func (p *DummyBpfProgrammer) Start() error {
 	return nil
 }
 
-func (p *DummyBpfProgrammer) AddSingleRecord(_ *record.DatapathRecord) error {
+func (p *DummyBpfProgrammer) AddSingleRecord(_ *record.DatapathRecord, _ bool) error {
 	return nil
 }
 
-func (p *DummyBpfProgrammer) AddRecords(_ []*record.DatapathRecord) error {
+func (p *DummyBpfProgrammer) AddRecords(_ []*record.DatapathRecord, _ bool) error {
 	return nil
 }
 

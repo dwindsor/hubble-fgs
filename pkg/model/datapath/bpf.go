@@ -59,9 +59,9 @@ func initMap() {
 	}
 }
 
-func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord) error {
+func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool) error {
 	for _, r := range records {
-		p.AddSingleRecord(r)
+		p.AddSingleRecord(r, force)
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func scheduleDomainMapFlush() {
 
 // src *types.ProcessTreeKey, ep *endpoint.Endpoint, quota, reset, deny uint64, init bool) error {
 // what was init for again?
-func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
+func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) error {
 	var addr [2]uint64
 	var dst uint64
 	var err error
@@ -148,6 +148,16 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord) error {
 		KtimeCreate:    0,
 		AddrCreate:     addr,
 		Port:           0,
+	}
+
+	if !force {
+		lookupValue := &types.DestinationEndpointValue{}
+		err = dstMap.Lookup(key, lookupValue)
+		if err == nil {
+			if lookupValue.TxDeny > value.TxDeny {
+				return nil
+			}
+		}
 	}
 
 	if err := dstMap.Update(key, value, 0); err != nil {

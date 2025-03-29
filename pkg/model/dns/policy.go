@@ -28,7 +28,7 @@ func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
 	if err != nil {
 		return err
 	}
-	if err := prog.AddRecords(records); err != nil {
+	if err := prog.AddRecords(records, false); err != nil {
 		return err
 	}
 
@@ -180,7 +180,7 @@ func (state *PolicyState) RemoveMatchLabelNetworkPolicy(uid string, policy *type
 	}
 	// Necessary order to ensure any updates to records are in place before we
 	// remove stale records.
-	prog.AddRecords(updateSet)
+	prog.AddRecords(updateSet, true)
 	prog.RemoveRecords(zombieSet)
 	return nil
 }
@@ -542,7 +542,7 @@ func CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) error {
 	// might duplicate existing records its fine we just update
 	// them regardless. Then second remove any old records that
 	// are no longer valid.
-	prog.AddRecords(addSet)
+	prog.AddRecords(addSet, false)
 	prog.RemoveRecords(removeSet)
 
 	// Setnew state
