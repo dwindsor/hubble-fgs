@@ -1,0 +1,4 @@
+The policy pair described here result in a complete lock down of the pod because
+the deny.yaml will default to allow, but deny connects to 'org=empire'. Then the
+allow.yaml will default to deny, but allow connects to 'org=empire'. The result
+is the default becomes deny and connects to 'org=empire' also becomes deny.

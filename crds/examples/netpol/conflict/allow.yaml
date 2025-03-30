@@ -1,0 +1,24 @@
+apiVersion: cilium.io/v1alpha1
+kind: TetragonNetworkPolicy
+metadata:
+  name: "example-allow-segmentation"
+  annotations:
+    author: "IsovalentQATeam"
+spec:
+  podSelector:
+    matchLabels:
+      class: "xwing"
+  processSelector:
+    operator: "In"
+    values:
+      - "/usr/bin/curl"
+      - "/usr/sbin/curl"
+  defaultAction: "deny"
+  rules:
+  - hook: "connect"
+    action: "allow"
+    destination:
+    - labels:
+        matchLabels: ["org=empire"]
+      ports:
+        protocol: "TCP"
