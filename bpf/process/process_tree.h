@@ -505,7 +505,17 @@ static inline __attribute__((always_inline)) int process_socketmap_rekey(struct 
 	return 0;
 }
 
-static inline __attribute__((always_inline)) bool policy_drop(__u64 sum)
+/* Encode precedence rules */
+static inline __attribute__((always_inline)) int default_policy_verdict(__u64 sum)
+{
+	if (sum & TNP_POLICY_DENY)
+		return TNP_POLICY_DENY;
+	if (sum & TNP_POLICY_ALLOW)
+		return TNP_POLICY_ALLOW;
+	return TNP_POLICY_UNKNOWN;
+}
+
+static inline __attribute__((always_inline)) bool is_policy_drop(__u64 sum)
 {
 	if (sum & TNP_POLICY_ALLOW)
 		return false;
@@ -516,7 +526,7 @@ static inline __attribute__((always_inline)) void dest_policy(__u64 *p, __u64 le
 {
 	__sync_fetch_and_add(&v->rx_bytes, len);
 	*p |= v->deny;
-	if (policy_drop(*p))
+	if (is_policy_drop(*p))
 		__sync_fetch_and_add(&v->tx_drops, len);
 }
 
@@ -537,6 +547,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	struct destination_endpoint_key key;
 	__u64 policy = 0, quota, now;
 	__u64 len = skb->len;
+	int verdict;
 
 	/* These are incomplete keys the result of process and sessions taht
 	 * existed before Tetragon started. We may add support for these flows
@@ -586,8 +597,16 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		__sync_fetch_and_add(&dest->tx_drops, len);
 		return SK_DROP;
 	}
+
 	/* We put this below the quota support because legacy quota policy
-	 * does not push a a default rule and we hit the !dest case.
+	 * does not push a default rule and we hit the !dest case.
+	 */
+	verdict = default_policy_verdict(policy);
+	if (verdict != TNP_POLICY_UNKNOWN)
+		goto out;
+
+	/* If there is no specific verdict allow or deny from above we
+	 * check pod specific wildcard rule. This acts as a catch all.
 	 */
 	key.destination_id = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
@@ -596,7 +615,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	__sync_fetch_and_add(&dest->tx_bytes, len);
 	dest_policy(&policy, len, dest);
 out:
-	if (policy_drop(policy))
+	if (is_policy_drop(policy))
 		return SK_DROP;
 
 	return SK_PASS;
@@ -619,6 +638,7 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	struct destination_endpoint_key key;
 	__u64 len = skb->len;
 	__u64 policy = 0;
+	int verdict;
 
 	/* Same as above see note in _send. */
 	if (!v->dst_key.source)
@@ -645,13 +665,23 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 		goto out;
 	dest_policy(&policy, len, dest);
 
+	/* We put this below the quota support because legacy quota policy
+	 * does not push a default rule and we hit the !dest case.
+	 */
+	verdict = default_policy_verdict(policy);
+	if (verdict != TNP_POLICY_UNKNOWN)
+		goto out;
+
+	/* If there is no specific verdict allow or deny from above we
+	 * check pod specific wildcard rule. This acts as a catch all.
+	 */
 	key.destination_id = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
 	if (!dest)
 		goto out;
 	dest_policy(&policy, len, dest);
 out:
-	if (policy_drop(policy))
+	if (is_policy_drop(policy))
 		return SK_DROP;
 
 	return SK_PASS;
