@@ -18,7 +18,7 @@ spec:
   - hook: "connect"
     action: "allow"
     destination:
-    - labels:
-        matchLabels: ["org=empire"]
+    - matchLabels:
+        org: "empire"
       ports:
         protocol: "TCP"

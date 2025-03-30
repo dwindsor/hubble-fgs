@@ -18,8 +18,8 @@ spec:
   - hook: "connect"
     action: "allow"
     destination:
-    - labels:
-        matchLabels: ["org=empire"]
+    - matchLabels:
+        org: "empire"
       ports:
         protocol: "TCP"
         ports: [80, 8080]
@@ -29,7 +29,8 @@ spec:
         protocol: "TCP"
         ports: [80, 8080]
     - fqdn:
-        fqdn: ["ebpf.io", "tetragon.io"]
+      - "ebpf.io"
+      - "tetragon.io"]
       ports:
         protocol: "TCP"
         ports: [80, 8080]
