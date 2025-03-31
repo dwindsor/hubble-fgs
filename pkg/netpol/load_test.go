@@ -34,16 +34,35 @@ spec:
     action: "allow"
     destination:
     - matchLabels:
-          C: "c"
+        C: "c"
+        D: "c"
       ports:
         protocol: "TCP"
         ports: [80, 8080]
     - fqdn:
-        fqdn: ["ebpf.io", "tetragon.io"]
+      - "ebpf.io"
+      - "tetragon.io"
       ports:
         protocol: "TCP"
         ports: [80, 8080]
 `
-	_, err := fromYAML(policy)
+	tnp, err := fromYAML(policy)
 	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
+	assert.Equal(t, "In", tnp.Spec.ProcessSelector.Operator)
+	assert.Equal(t, 2, len(tnp.Spec.ProcessSelector.Values))
+	assert.Equal(t, "deny", tnp.Spec.DefaultAction)
+	assert.Equal(t, 1, len(tnp.Spec.Rules))
+	assert.Equal(t, "connect", tnp.Spec.Rules[0].Hook)
+	assert.Equal(t, "allow", tnp.Spec.Rules[0].Action)
+	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination))
+	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination[0].MatchLabels))
+	assert.Equal(t, "TCP", tnp.Spec.Rules[0].Destination[0].Ports.Protocol)
+	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination[0].Ports.Ports))
+	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination[1].FQDN))
+	assert.Equal(t, "ebpf.io", tnp.Spec.Rules[0].Destination[1].FQDN[0])
+	assert.Equal(t, "tetragon.io", tnp.Spec.Rules[0].Destination[1].FQDN[1])
+	assert.Equal(t, "TCP", tnp.Spec.Rules[0].Destination[1].Ports.Protocol)
+	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination[1].Ports.Ports))
 }
