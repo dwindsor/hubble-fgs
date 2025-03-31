@@ -34,20 +34,20 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.81.0
 	github.com/prometheus/client_golang v1.21.1
 	github.com/prometheus/client_model v0.6.1
-	github.com/rivo/tview v0.0.0-20250325173046-7b72abf45814
+	github.com/rivo/tview v0.0.0-20250330220935-949945f8d922
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.20.1
 	github.com/sryoya/protorand v0.0.0-20250114120907-8c1a8e3138f2
 	github.com/stretchr/testify v1.10.0
-	github.com/vishvananda/netlink v1.3.1-0.20250326185452-77407094245c
+	github.com/vishvananda/netlink v1.3.1-0.20250328051554-cb48698f2590
 	github.com/vishvananda/netns v0.0.5
 	github.com/wI2L/jsondiff v0.6.1
 	github.com/xlab/treeprint v1.2.0
 	github.com/yalue/native_endian v1.0.2
 	go.opentelemetry.io/proto/otlp v1.5.0
-	golang.org/x/net v0.37.0
+	golang.org/x/net v0.38.0
 	golang.org/x/sys v0.31.0
 	golang.org/x/time v0.11.0
 	google.golang.org/api v0.228.0
