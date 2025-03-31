@@ -87,11 +87,6 @@ func (tgnpn *TetragonNetworkPolicyNamespaced) GetObjectMetaStruct() *metav1.Obje
 	return &tgnpn.ObjectMeta
 }
 
-type NetworkDestinationFQDN struct {
-	// +kubebuilder:validation:Required
-	Fqdn []string `json:"fqdn"`
-}
-
 type NetworkDestinationCIDR struct {
 	// +kubebuilder:validation:Required
 	CIDR []string `json:"cidr"`
@@ -122,7 +117,7 @@ type NetworkDestinationPorts struct {
 
 type NetworkDestination struct {
 	// +kubebuilder:validation:Optional
-	FQDN NetworkDestinationFQDN `json:"FQDN,omitempty"`
+	FQDN []string `json:"FQDN,omitempty"`
 	// +kubebuilder:validation:Optional
 	CIDR NetworkDestinationCIDR `json:"CIDR,omitempty"`
 	// Currently we only support MatchLabelsValue style. Full MatchExpressions may

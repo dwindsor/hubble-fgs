@@ -62,9 +62,9 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 
 			var f *types.TetragonNetworkFQDN
 
-			if len(d.FQDN.Fqdn) > 0 {
+			if len(d.FQDN) > 0 {
 				f = &types.TetragonNetworkFQDN{
-					Names: d.FQDN.Fqdn,
+					Names: d.FQDN,
 				}
 			} else {
 				f = nil

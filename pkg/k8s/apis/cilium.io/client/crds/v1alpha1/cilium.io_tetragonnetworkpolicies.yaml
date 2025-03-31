@@ -153,14 +153,9 @@ spec:
                             - cidr
                             type: object
                           FQDN:
-                            properties:
-                              fqdn:
-                                items:
-                                  type: string
-                                type: array
-                            required:
-                            - fqdn
-                            type: object
+                            items:
+                              type: string
+                            type: array
                           matchLabels:
                             additionalProperties:
                               type: string
