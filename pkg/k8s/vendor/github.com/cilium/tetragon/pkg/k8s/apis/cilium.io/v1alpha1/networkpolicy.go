@@ -98,8 +98,8 @@ type NetworkDestinationCIDR struct {
 }
 
 type NetworkDestinationLabels struct {
-	// +kubebuilder:validation:Required
-	MatchLabels []string `json:"matchLabels"`
+	// +kubebuilder:validation:Optional
+	MatchLabels map[string]string `json:"matchLabels,omitempty" protobuf:"bytes,1,rep,name=matchLabels"`
 }
 
 type NetworkDestinationWorkload struct {
@@ -125,8 +125,10 @@ type NetworkDestination struct {
 	FQDN NetworkDestinationFQDN `json:"FQDN,omitempty"`
 	// +kubebuilder:validation:Optional
 	CIDR NetworkDestinationCIDR `json:"CIDR,omitempty"`
+	// Currently we only support MatchLabelsValue style. Full MatchExpressions may
+	// be supported later.
 	// +kubebuilder:validation:Optional
-	Labels NetworkDestinationLabels `json:"labels,omitempty"`
+	MatchLabels map[string]string `json:"matchLabels,omitempty" protobuf:"bytes,1,rep,name=matchLabels"`
 	// +kubebuilder:validation:Optional
 	Workload NetworkDestinationWorkload `json:"workload,omitempty"`
 	// +kubebuilder:validation:Required

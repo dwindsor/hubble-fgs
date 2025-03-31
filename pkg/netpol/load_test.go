@@ -33,8 +33,8 @@ spec:
   - hook: "connect"
     action: "allow"
     destination:
-    - labels:
-        matchLabels: ["C=c", "D=d"]
+    - matchLabels:
+          C: "c"
       ports:
         protocol: "TCP"
         ports: [80, 8080]

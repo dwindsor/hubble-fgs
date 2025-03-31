@@ -1071,7 +1071,13 @@ func (in *NetworkDestination) DeepCopyInto(out *NetworkDestination) {
 	*out = *in
 	in.FQDN.DeepCopyInto(&out.FQDN)
 	in.CIDR.DeepCopyInto(&out.CIDR)
-	in.Labels.DeepCopyInto(&out.Labels)
+	if in.MatchLabels != nil {
+		in, out := &in.MatchLabels, &out.MatchLabels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	out.Workload = in.Workload
 	in.Ports.DeepCopyInto(&out.Ports)
 	return
@@ -1134,8 +1140,10 @@ func (in *NetworkDestinationLabels) DeepCopyInto(out *NetworkDestinationLabels) 
 	*out = *in
 	if in.MatchLabels != nil {
 		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }

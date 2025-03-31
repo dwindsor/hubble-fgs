@@ -70,13 +70,9 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 				f = nil
 			}
 
-			if len(d.Labels.MatchLabels) > 0 {
-				for _, l := range d.Labels.MatchLabels {
-					kv := strings.Split(l, "=")
-					if len(kv) < 2 {
-						return policy, fmt.Errorf("Invalidor unsupported match labels %s", l)
-					}
-					destEqual[kv[0]] = kv[1]
+			if len(d.MatchLabels) > 0 {
+				for k, v := range d.MatchLabels {
+					destEqual[k] = v
 				}
 			}
 

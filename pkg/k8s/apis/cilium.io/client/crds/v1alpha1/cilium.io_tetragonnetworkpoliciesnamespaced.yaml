@@ -161,14 +161,12 @@ spec:
                             required:
                             - fqdn
                             type: object
-                          labels:
-                            properties:
-                              matchLabels:
-                                items:
-                                  type: string
-                                type: array
-                            required:
-                            - matchLabels
+                          matchLabels:
+                            additionalProperties:
+                              type: string
+                            description: |-
+                              Currently we only support MatchLabelsValue style. Full MatchExpressions may
+                              be supported later.
                             type: object
                           ports:
                             properties:
