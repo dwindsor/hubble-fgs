@@ -643,17 +643,20 @@ static inline __attribute__((always_inline)) int check_match_operations(__u32 se
 	return 1;
 }
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct digest_key);
+	__uint(max_entries, 1);
+} digest_key_heap SEC(".maps");
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_digests(__u32 sel_idx, struct digest_key *digest, __u32 action)
 {
 	void *file_digests_map;
-	struct digest_key op_key = {
-		.digest = { 0 },
-		.algo = 0x7fffffff, // INT32_MAX
-		.ok = 0,
-	};
+	struct digest_key *op_key;
 	__u32 *op, *val;
-	__s32 algo;
+	__s32 algo, zero = 0;
 
 	// the event does not support digests yet, so accept
 	if (digest == 0)
@@ -662,6 +665,14 @@ static inline __attribute__((always_inline)) int check_match_digests(__u32 sel_i
 	// only applicable to exec events
 	if (action != action_exec)
 		return 1;
+
+	op_key = map_lookup_elem(&digest_key_heap, &zero);
+	if (!op_key)
+		return 0;
+
+	memset(op_key->digest, 0, sizeof(__u8) * IMA_MAX_DIGEST_SIZE);
+	op_key->algo = 0x7fffffff; // INT32_MAX
+	op_key->ok = 0;
 
 	// failed to get digest
 	probe_read_kernel(&algo, sizeof(algo), (__u8 *)digest + offsetof(struct digest_key, algo));
@@ -672,10 +683,10 @@ static inline __attribute__((always_inline)) int check_match_digests(__u32 sel_i
 	if (!file_digests_map) /* no matchDigests for this selector */
 		return 1;
 
-	op = map_lookup_elem(file_digests_map, &op_key);
+	op = map_lookup_elem(file_digests_map, op_key);
 	if (op) {
-		probe_read_kernel(&op_key, sizeof(op_key), digest);
-		val = map_lookup_elem(file_digests_map, &op_key);
+		probe_read_kernel(op_key, sizeof(*op_key), digest);
+		val = map_lookup_elem(file_digests_map, op_key);
 		if (*op == op_filter_in) {
 			if (!val)
 				return 0;

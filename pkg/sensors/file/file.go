@@ -405,6 +405,7 @@ var (
 				{{"tg_cgtracker_map", BaseMap}},
 				{{"exec_retprobe_map", SharedMap}},
 				{{"file_digests_maps", SharedMap}},
+				{{"digest_key_heap", PrivateMap}},
 			},
 		}}},
 		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "security_bprm_check",
@@ -554,6 +555,7 @@ var (
 			{{"tg_cgtracker_map", BaseMap}},
 			{{"exec_retprobe_map", SharedMap}},
 			{{"file_digests_maps", SharedMap}},
+			{{"digest_key_heap", PrivateMap}},
 			{{"exec_attributes_map", SharedMap}},
 		}}}},
 		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "security_bprm_check", [][]MapInfo{
