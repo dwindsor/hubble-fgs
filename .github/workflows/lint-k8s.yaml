@@ -59,8 +59,8 @@ jobs:
 
           # Check for version variable changes
 
-          old_version=$(git show ${{ github.event.pull_request.base.sha }}:pkg/k8s/apis/cilium.io/v1alpha1/version.go | sed -n 's/^const CustomResourceDefinitionSchemaVersion = "\(.*\)".*/\1/p')
-          new_version=$(sed -n 's/^const CustomResourceDefinitionSchemaVersion = "\(.*\)".*/\1/p' pkg/k8s/apis/cilium.io/v1alpha1/version.go)
+          old_version=$(git show ${{ github.event.pull_request.base.sha }}:pkg/k8s/apis/cilium.io/v1alpha1/version.go | sed -n 's/^\t\+CustomResourceDefinitionSchemaVersion = "\(.*\)".*/\1/p')
+          new_version=$(sed -n 's/^\t\+CustomResourceDefinitionSchemaVersion = "\(.*\)".*/\1/p' pkg/k8s/apis/cilium.io/v1alpha1/version.go)
 
           echo "old_version=$old_version"
           echo "new_version=$new_version"
