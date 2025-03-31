@@ -8,3 +8,4 @@ nop
 dlopen
 /syscall-tester
 proctree
+memfd_exec

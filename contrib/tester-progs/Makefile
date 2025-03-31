@@ -3,7 +3,7 @@ GCC ?= gcc
 
 PROGS = sigkill-tester capabilities-tester namespace-tester \
 	dup-tester fork-tester nop dlopen \
-	syscall-tester proctree
+	syscall-tester proctree memfd_exec
 
 all: $(PROGS)
 	make -C aio/
@@ -39,6 +39,9 @@ syscall-tester: FORCE
 	go build -o syscall-tester ./go/syscall-tester
 
 proctree: proctree.c
+	$(GCC) -Wall $< -o $@
+
+memfd_exec: memfd_exec.c
 	$(GCC) -Wall $< -o $@
 
 .PHONY: clean

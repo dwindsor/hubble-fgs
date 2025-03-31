@@ -700,3 +700,93 @@ func TestMatchBinariesFollowChildren(t *testing.T) {
 	require.Equal(t, 1, numFileRead)     // we expect one read call
 	require.Equal(t, 0, otherFileEvents) // we don't expect any other FIM events
 }
+
+func TestMatchExecAttributes(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+
+	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
+		t.Skip("File monitoring with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	tus.LoadInitialSensor(t)
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tuo.GetTestSensorManager(t)
+
+	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, testDir)
+
+	fileTracingPolicy := tracingpolicy.GenericTracingPolicy{
+		Metadata: v1api.ObjectMeta{
+			Name: "file-monitoring-matchexecattr",
+		},
+		Spec: v1alpha1.TracingPolicySpec{
+			FileMonitoring: v1alpha1.FileSpec{
+				PathsPatterns: []v1alpha1.FilePathPattern{
+					{
+						Type: "AllFileOps",
+					},
+				},
+				MonitorHostFiles: true,
+				Selectors: []v1alpha1.FileSelector{
+					{
+						MatchOperations: []v1alpha1.OperationSelector{
+							{
+								Operator: "In",
+								Values: []string{
+									"FILE_EXEC",
+								},
+							},
+						},
+						MatchExecAttributes: []v1alpha1.FileExecAttributesSelector{
+							{
+								IsFromMemfd:  "True",
+								IsUpperLayer: "Any",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicy)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	var numFileExec, numFileOthers int
+	eventFn := func(ev notify.Message) error {
+		if file, ok := ev.(*grpc.MsgFileEventUnix); ok {
+			if tetragon.FileAction(file.Msg.Action) == tetragon.FileAction_FILE_EXEC {
+				numFileExec++
+			} else {
+				numFileOthers++
+			}
+		}
+		return nil
+	}
+
+	memfdExecBin := testutils.RepoRootPath("contrib/tester-progs/memfd_exec")
+	ops := func() {
+		cmd := exec.Command(memfdExecBin)
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("failed to run command %s: %v", cmd, err)
+		}
+	}
+
+	perfring.RunTest(t, ctx, ops, eventFn)
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	require.Equal(t, 1, numFileExec)   // we expect one exec event
+	require.Equal(t, 0, numFileOthers) // we don't expect any other FIM events
+}
