@@ -23,9 +23,9 @@ spec:
       ports:
         protocol: "TCP"
         ports: [80, 8080]
-    - fqdn:
+    - FQDN:
       - "ebpf.io"
-      - "tetragon.io"]
+      - "tetragon.io"
       ports:
         protocol: "TCP"
         ports: [80, 8080]
