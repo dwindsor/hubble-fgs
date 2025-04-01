@@ -34,6 +34,7 @@ spec:
     action: "allow"
     destination:
     - matchLabels:
+        "app.kubernetes.io/name": "tetragon-aggregator"
         C: "c"
         D: "c"
       ports:
@@ -48,7 +49,6 @@ spec:
 `
 	tnp, err := fromYAML(policy)
 	assert.NoError(t, err)
-
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
 	assert.Equal(t, "In", tnp.Spec.ProcessSelector.Operator)
 	assert.Equal(t, 2, len(tnp.Spec.ProcessSelector.Values))
@@ -57,7 +57,10 @@ spec:
 	assert.Equal(t, "connect", tnp.Spec.Rules[0].Hook)
 	assert.Equal(t, "allow", tnp.Spec.Rules[0].Action)
 	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination))
-	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination[0].MatchLabels))
+	assert.Equal(t, 3, len(tnp.Spec.Rules[0].Destination[0].MatchLabels))
+	key, ok := tnp.Spec.Rules[0].Destination[0].MatchLabels["app.kubernetes.io/name"]
+	assert.True(t, ok)
+	assert.Equal(t, "tetragon-aggregator", key)
 	assert.Equal(t, "TCP", tnp.Spec.Rules[0].Destination[0].Ports.Protocol)
 	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination[0].Ports.Ports))
 	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination[1].FQDN))
