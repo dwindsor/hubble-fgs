@@ -372,10 +372,11 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 	globalDNSIDMap := NewGlobalDNSIDMap(rawGlobalDNSIDMap)
 
 	type Wanted struct {
-		wantDomain  string
-		wantID      DNSID
-		wantIPs     []netip.Addr
-		overwritten bool
+		wantDomain     string
+		wantID         DNSID
+		wantIPs        []netip.Addr
+		overwritten    bool
+		idToDomainOnly bool
 	}
 
 	type testQuery struct {
@@ -487,29 +488,28 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 		},
 		{
 			// This scenario tests that updating the domain maps after the BPF DNS parsed
-			// already fails to warn users that this situation would not work:
+			// already:
 			//
 			// 	idToDomain: {1, SOURCE_DNS} -> example.com
 			// 	domainToID: example.com -> {1, SOURCE_DNS}
-			// 	DNSIPToID:  1.1.1.1 -> {1, SOURCE_DNS}
+			// 	endpoitnID: 1.1.1.1 -> {1, SOURCE_DNS}
 			//
 			// Then we load a quota policy containing example.com, currently it adds those
-			// entry to idToDomain and domainToID (this test checks that this fails in prevention):
+			// entry to idToDomain and domainToID (this creates a duplicate entry but with
+			// a USER source instead of DNS source):
 			//
 			// 	idToDomain: {1, SOURCE_USER} -> example.com
 			// 	domainToID: example.com -> {1, SOURCE_USER}
 			//
-			// So we end up with:
+			// Then because SOURCE_USER will be promoted and the SOURCE_DNS entry removed
+			// we end up with:
 			//
-			// 	idToDomain: {1, SOURCE_DNS} -> example.com
-			// 	            {1, SOURCE_USER} -> example.com
-			// 	domainToID: example.com -> {1, SOURCE_DNS}
-			// 	            example.com -> {1, SOURCE_USER}
-			// 	DNSIPToID:  1.1.1.1 -> {1, SOURCE_DNS}
-			//      endpointID: 1.1.1.1 -> {1, SOURCE_USER}
+			// 	idToDomain: {1, SOURCE_DNS}  -> example.com
+			//                  {1, SOURCE_USER} -> example.com
+			// 	domainToID: example.com -> {1, SOURCE_USER}
+			//      endpointID: 1.1.1.1 -> {1, SOURCE_DNS}
 			//
-			// And the quota policy wouldn't work because DNS takes precedence (maybe we should change the order?)
-			name: "Post userspace IDs from quotas fails",
+			name: "Post userspace IDs from quotas",
 			packets: [][]byte{
 				{0x10, 0x2b, 0x41, 0x81, 0x9b, 0x8, 0xc4, 0x8b, 0xa3, 0x54, 0x2e, 0x3f, 0x8, 0x0, 0x45, 0x0, 0x0, 0x52, 0x6a, 0x28, 0x40, 0x0, 0x39, 0x11, 0x16, 0xc5, 0x1, 0x1, 0x1, 0x1, 0xc0, 0xa8, 0xfe, 0x3, 0x0, 0x35, 0xd3, 0x3f, 0x0, 0x3e, 0xb3, 0x28, 0x56, 0x85, 0x81, 0x80, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x0, 0x1, 0x5, 0x63, 0x69, 0x73, 0x63, 0x6f, 0x3, 0x63, 0x6f, 0x6d, 0x0, 0x0, 0x1, 0x0, 0x1, 0xc0, 0xc, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x1, 0x25, 0x0, 0x4, 0x48, 0xa3, 0x4, 0xb9, 0x0, 0x0, 0x29, 0x4, 0xd0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
 				{0x10, 0x2b, 0x41, 0x81, 0x9b, 0x8, 0xc4, 0x8b, 0xa3, 0x54, 0x2e, 0x3f, 0x8, 0x0, 0x45, 0x0, 0x0, 0x5c, 0x8e, 0x4c, 0x40, 0x0, 0x39, 0x11, 0xf2, 0x96, 0x1, 0x1, 0x1, 0x1, 0xc0, 0xa8, 0xfe, 0x3, 0x0, 0x35, 0xf0, 0xe, 0x0, 0x48, 0x6e, 0x58, 0xd2, 0x0, 0x81, 0x80, 0x0, 0x1, 0x0, 0x2, 0x0, 0x0, 0x0, 0x0, 0x4, 0x69, 0x6d, 0x61, 0x70, 0x5, 0x67, 0x6d, 0x61, 0x69, 0x6c, 0x3, 0x63, 0x6f, 0x6d, 0x0, 0x0, 0x1, 0x0, 0x1, 0xc0, 0xc, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x0, 0xbd, 0x0, 0x4, 0x4a, 0x7d, 0x47, 0x6d, 0xc0, 0xc, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x0, 0xbd, 0x0, 0x4, 0x4a, 0x7d, 0x47, 0x6c},
@@ -529,14 +529,21 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 					wantIPs:    parseIPs("74.125.71.109", "74.125.71.108"),
 				},
 				{
-					wantDomain: "france.fr",
-					wantID:     DNSID{ID: uint64(2), Source: types.DestinationSourceUser},
-					wantIPs:    parseIPs("5.44.163.39"),
+					wantDomain:     "france.fr",
+					wantID:         DNSID{ID: uint64(2), Source: types.DestinationSourceUser},
+					wantIPs:        parseIPs("5.44.163.39"),
+					idToDomainOnly: true,
+					overwritten:    true,
 				},
 				{
 					wantDomain: "cncf.com",
-					wantID:     DNSID{ID: uint64(1), Source: types.DestinationSourceDNS},
+					wantID:     DNSID{ID: uint64(2), Source: types.DestinationSourceDNS},
 					wantIPs:    parseIPs("198.185.159.145", "198.49.23.144", "198.49.23.145", "198.185.159.144"),
+				},
+				{
+					wantDomain: "france.fr",
+					wantID:     DNSID{ID: uint64(2), Source: types.DestinationSourceUser},
+					wantIPs:    []netip.Addr{}, // No IPs for SourceUser yet
 				},
 			},
 			runBeforeParser: func() error {
@@ -555,10 +562,10 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 
 				return domainMap.Update("france.fr", 2)
 			},
-			runAfterParserFails: true,
+			runAfterParserFails: false,
 		},
 		{
-			// This scenario tests misuse of domainMap.Update from userspace with two
+			// This scenario tests duplicate domainMap.Update from userspace with two
 			// different userspace IDs with the same domain.
 			name: "Duplicate userspace IDs from quotas",
 			packets: [][]byte{
@@ -575,7 +582,7 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 				},
 				{
 					wantDomain: "imap.gmail.com",
-					wantID:     DNSID{ID: uint64(2), Source: types.DestinationSourceUser},
+					wantID:     DNSID{ID: uint64(1), Source: types.DestinationSourceUser},
 					wantIPs:    parseIPs("74.125.71.109", "74.125.71.108"),
 				},
 				{
@@ -596,7 +603,7 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 				}
 				return domainMap.Update("imap.gmail.com", 2)
 			},
-			runBeforeParserFails: true,
+			runBeforeParserFails: false,
 		},
 	}
 
@@ -694,8 +701,15 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 				t.FailNow()
 			}
 
-			if len(domainToID) != len(tq.wants) {
-				t.Errorf("length mismatch in domain to ID map, got %d expected %d", len(idToDomain), len(tq.wants))
+			idOnly := 0
+			for _, w := range tq.wants {
+				if w.idToDomainOnly {
+					idOnly++
+				}
+			}
+
+			if len(domainToID) != len(tq.wants)-idOnly {
+				t.Errorf("length mismatch in domain to ID map, got %d expected %d", len(domainToID), len(tq.wants))
 				t.Log(domainToID)
 				t.FailNow()
 			}
@@ -733,7 +747,6 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 						t.Errorf("DNS endpoint ID mismatch, got %v want %v", id, w.wantID)
 					}
 				}
-
 			}
 		})
 	}
