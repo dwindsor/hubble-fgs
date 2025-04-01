@@ -20,6 +20,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
@@ -345,11 +346,14 @@ func (m *DomainMap) Update(domain string, id uint64) error {
 	if err == nil {
 		switch idValue.Source {
 		case types.DestinationSourceDNS:
-			// This is a known limitation of current implementation
-			return fmt.Errorf("domain was already parsed by the BPF DNS parser and given an ID")
+			// The kernel learned the mapping already, but lets teach
+			// it the soruceUser variant as well because the policy
+			// will be behind the Source User value.
+			logger.GetLogger().Debug("overwrite kernel DestinationSourceDNS with DestinationUserSource")
 		case types.DestinationSourceUser:
-			// This is a misuse, caller should already know this already exists
-			return fmt.Errorf("domain already exists and was created by userspace")
+			// This is not an error userspace is using the map as
+			// the cache.
+			return nil
 		}
 	}
 
