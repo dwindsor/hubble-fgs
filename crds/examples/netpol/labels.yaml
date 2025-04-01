@@ -1,7 +1,7 @@
 apiVersion: cilium.io/v1alpha1
 kind: TetragonNetworkPolicy
 metadata:
-  name: "example-label-segmentation"
+  name: "label-segmentation"
   annotations:
     author: "IsovalentQATeam"
 spec:
