@@ -92,6 +92,11 @@ var (
 		"io_read(struct io_kiocb*, bool)":                           "57",
 		"io_read(struct io_kiocb*, struct io_kiocb**, bool)":        "55",
 		"io_read(struct io_kiocb*, const struct sqe_submit*, bool)": "51",
+		// vfs_mkdir retprobe
+		"int vfs_mkdir(struct inode*, struct dentry*, umode_t)":                               "vfs_mkdir_exit",
+		"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)":       "vfs_mkdir_exit",
+		"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)":            "vfs_mkdir_exit",
+		"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)": "vfs_mkdir_exit_v614",
 	}
 )
 
@@ -886,8 +891,8 @@ func testFileCreate(gt *testing.T, t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func getProgSuffix(t *testing.T, spec *btf.Spec, fnName string) string {
-	proto, err := fgsBTF.GetFuncProto(spec, fnName, false)
+func getProgSuffix(t *testing.T, spec *btf.Spec, fnName string, retprobe bool) string {
+	proto, err := fgsBTF.GetFuncProto(spec, fnName, retprobe)
 	if err != nil {
 		t.Fatalf("GetFuncProto function: %s error: %s", fnName, err)
 	}
@@ -920,10 +925,11 @@ func TestLoadFileSensor(t *testing.T) {
 		t.Fatalf("GetCachedBTF error: %s", err)
 	}
 
-	mkdirVerSuffix := getProgSuffix(t, spec, "vfs_mkdir")
-	unlinkVerSuffix := getProgSuffix(t, spec, "vfs_unlink")
-	attrVerSuffix := getProgSuffix(t, spec, "security_inode_setattr")
-	renameVerSuffix := getProgSuffix(t, spec, "vfs_rename")
+	mkdirVerSuffix := getProgSuffix(t, spec, "vfs_mkdir", false)
+	unlinkVerSuffix := getProgSuffix(t, spec, "vfs_unlink", false)
+	attrVerSuffix := getProgSuffix(t, spec, "security_inode_setattr", false)
+	renameVerSuffix := getProgSuffix(t, spec, "vfs_rename", false)
+	retprobeMkdir := getProgSuffix(t, spec, "vfs_mkdir", true)
 
 	sensorProgs := []tus.SensorProg{
 		0:  tus.SensorProg{Name: "vfs_fallocate", Type: ebpf.Kprobe},
@@ -935,7 +941,7 @@ func TestLoadFileSensor(t *testing.T) {
 		6:  tus.SensorProg{Name: "finish_open", Type: ebpf.Kprobe},
 		7:  tus.SensorProg{Name: "security_inode_rmdir", Type: ebpf.Kprobe},
 		8:  tus.SensorProg{Name: fmt.Sprintf("vfs_mkdir_v%s", mkdirVerSuffix), Type: ebpf.Kprobe},
-		9:  tus.SensorProg{Name: "vfs_mkdir_exit", Type: ebpf.Kprobe},
+		9:  tus.SensorProg{Name: retprobeMkdir, Type: ebpf.Kprobe},
 		10: tus.SensorProg{Name: "security_path_rename", Type: ebpf.Kprobe},
 		11: tus.SensorProg{Name: "security_path_rename_exit", Type: ebpf.Kprobe},
 		12: tus.SensorProg{Name: fmt.Sprintf("vfs_rename_v%s", renameVerSuffix), Type: ebpf.Kprobe},
@@ -949,7 +955,7 @@ func TestLoadFileSensor(t *testing.T) {
 	}
 
 	if fm.SupportIoUring() {
-		ioUringSuffix := getProgSuffix(t, spec, "io_read")
+		ioUringSuffix := getProgSuffix(t, spec, "io_read", false)
 		ioUringProgs := []tus.SensorProg{
 			{Name: fmt.Sprintf("io_read_entry_%s", ioUringSuffix), Type: ebpf.Kprobe},
 			{Name: "io_read_exit", Type: ebpf.Kprobe},

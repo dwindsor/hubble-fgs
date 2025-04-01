@@ -188,8 +188,8 @@ int BPF_KPROBE(vfs_mkdir_v419, struct inode *dir, struct dentry *dentry, umode_t
 	return 0;
 }
 
-SEC("kretprobe/vfs_mkdir")
-int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
+static inline __attribute__((always_inline)) int
+handle_retprobe_vfs_mkdir(struct pt_regs *ctx, bool success)
 {
 	struct file_retprobe_key rkey = {
 		.pid_tgid = get_current_pid_tgid(),
@@ -206,7 +206,7 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	__u32 path_size = 0;
 	__u32 operation = 0;
 
-	if (ret) {
+	if (!success) {
 		if ((val = map_lookup_elem(&mkdir_retprobe_map, &rkey))) {
 			struct file_retprobe_key dkey = {
 				.pid_tgid = rkey.pid_tgid,
@@ -312,6 +312,18 @@ int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 vfs_mkdir_exit_error:
 	inc_error(hook_vfs_mkdir, -err);
 	return 0;
+}
+
+SEC("kretprobe/vfs_mkdir")
+int BPF_KRETPROBE(vfs_mkdir_exit, long ret)
+{
+	return handle_retprobe_vfs_mkdir(ctx, (ret == 0));
+}
+
+SEC("kretprobe/vfs_mkdir/614")
+int BPF_KRETPROBE(vfs_mkdir_exit_v614, struct dentry *dentry)
+{
+	return handle_retprobe_vfs_mkdir(ctx, (dentry != 0));
 }
 
 #if defined(__FILE_ENFORCE_LSM) || defined(__FILE_ENFORCE_FMOD)
