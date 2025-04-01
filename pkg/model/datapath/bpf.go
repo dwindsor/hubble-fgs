@@ -79,6 +79,7 @@ func scheduleDomainMapFlush() {
 		if err == nil {
 			return
 		}
+		logger.GetLogger().WithError(err).Debug("retry domain mapping")
 		time.Sleep(time.Duration(i) * time.Second)
 	}
 	logger.GetLogger().Warn("failed to program domain map policy incomplete")
