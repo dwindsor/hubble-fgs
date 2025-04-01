@@ -558,44 +558,44 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 
 	process_socketmap_rekey(&v->dst_key, skb);
 	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
-	if (!dest)
-		goto out;
-	dest_policy(&policy, len, dest);
-	__sync_fetch_and_add(&dest->tx_bytes, len);
+	if (dest) {
+		dest_policy(&policy, len, dest);
+		__sync_fetch_and_add(&dest->tx_bytes, len);
+	}
 
 	/* Also update the per dst entry */
 	key = v->dst_key;
 	key.port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (!dest)
-		goto out;
-	__sync_fetch_and_add(&dest->tx_bytes, len);
-	dest_policy(&policy, len, dest);
+	if (dest) {
+		__sync_fetch_and_add(&dest->tx_bytes, len);
+		dest_policy(&policy, len, dest);
+	}
 
 	key.local_id.uid = 0;
 	key.local_id.cpu = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (!dest)
-		goto out;
-	__sync_fetch_and_add(&dest->tx_bytes, len);
-	dest_policy(&policy, len, dest);
+	if (dest) {
+		__sync_fetch_and_add(&dest->tx_bytes, len);
+		dest_policy(&policy, len, dest);
 
-	/* This is all a bit racy, but if you are surfing on the edge of a
-	 * time window the observer can't tell order of operations between
-	 * two skbs and they can't measure time well enough to know if I did
-	 * it 100% correctly. All this is write_once so values are not going
-	 * to be corrupted.
-	 */
-	now = ktime_get_ns();
-	if (dest->ktime_tx_reset && (now - dest->ktime_last_reset > dest->ktime_tx_reset)) {
-		atomic_xchg(&dest->tx_quota, 0);
-		atomic_xchg(&dest->ktime_last_reset, now);
-	}
+		/* This is all a bit racy, but if you are surfing on the edge of a
+		 * time window the observer can't tell order of operations between
+		 * two skbs and they can't measure time well enough to know if I did
+		 * it 100% correctly. All this is write_once so values are not going
+		 * to be corrupted.
+		 */
+		now = ktime_get_ns();
+		if (dest->ktime_tx_reset && (now - dest->ktime_last_reset > dest->ktime_tx_reset)) {
+			atomic_xchg(&dest->tx_quota, 0);
+			atomic_xchg(&dest->ktime_last_reset, now);
+		}
 
-	quota = __sync_add_and_fetch(&dest->tx_quota, len);
-	if (dest->tx_limit && quota > dest->tx_limit) {
-		__sync_fetch_and_add(&dest->tx_drops, len);
-		return SK_DROP;
+		quota = __sync_add_and_fetch(&dest->tx_quota, len);
+		if (dest->tx_limit && quota > dest->tx_limit) {
+			__sync_fetch_and_add(&dest->tx_drops, len);
+			return SK_DROP;
+		}
 	}
 
 	/* We put this below the quota support because legacy quota policy
@@ -610,10 +610,10 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	 */
 	key.destination_id = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (!dest)
-		goto out;
-	__sync_fetch_and_add(&dest->tx_bytes, len);
-	dest_policy(&policy, len, dest);
+	if (dest) {
+		__sync_fetch_and_add(&dest->tx_bytes, len);
+		dest_policy(&policy, len, dest);
+	}
 out:
 	if (is_policy_drop(policy))
 		return SK_DROP;
@@ -646,24 +646,21 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 
 	process_socketmap_rekey(&v->dst_key, skb);
 	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
-	if (!dest)
-		goto out;
-	dest_policy(&policy, len, dest);
+	if (dest)
+		dest_policy(&policy, len, dest);
 
 	/* Also update the per dst entry */
 	key = v->dst_key;
 	key.port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (!dest)
-		goto out;
-	dest_policy(&policy, len, dest);
+	if (dest)
+		dest_policy(&policy, len, dest);
 
 	key.local_id.uid = 0;
 	key.local_id.cpu = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (!dest)
-		goto out;
-	dest_policy(&policy, len, dest);
+	if (dest)
+		dest_policy(&policy, len, dest);
 
 	/* We put this below the quota support because legacy quota policy
 	 * does not push a default rule and we hit the !dest case.
@@ -677,9 +674,8 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	 */
 	key.destination_id = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (!dest)
-		goto out;
-	dest_policy(&policy, len, dest);
+	if (dest)
+		dest_policy(&policy, len, dest);
 out:
 	if (is_policy_drop(policy))
 		return SK_DROP;
