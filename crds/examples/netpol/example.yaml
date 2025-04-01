@@ -19,12 +19,7 @@ spec:
     action: "allow"
     destination:
     - matchLabels:
-        org: "empire"
-      ports:
-        protocol: "TCP"
-        ports: [80, 8080]
-    - labels:
-        matchLabels: ["org=tiefighter"]
+        app.kubernetes.io/name: "deathstar"
       ports:
         protocol: "TCP"
         ports: [80, 8080]
