@@ -201,7 +201,7 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 	}
 
 	if !local {
-		state.remotePods[pod.ObjectMeta.UID] = nil
+		delete(state.remotePods, pod.ObjectMeta.UID)
 		return records, nil
 	}
 
@@ -323,7 +323,7 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 			}
 		}
 	}
-	state.localPods[pod.ObjectMeta.UID] = nil
+	delete(state.localPods, pod.ObjectMeta.UID)
 	return records, nil
 }
 
