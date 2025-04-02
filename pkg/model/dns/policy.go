@@ -469,7 +469,7 @@ func __CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*Polic
 	calculatorState := New()
 
 	for _, p := range currentState.localPods {
-		r, err := calculatorState.__PodAdd(p, true)
+		r, err := calculatorState.__PodAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -477,7 +477,7 @@ func __CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*Polic
 	}
 
 	for _, p := range currentState.remotePods {
-		r, err := calculatorState.__PodAdd(p, false)
+		r, err := calculatorState.__PodAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -509,14 +509,14 @@ func __CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*Polic
 	// Walk existing pods and create new []record from new policy
 	addSet := []*record.DatapathRecord{}
 	for _, p := range currentState.localPods {
-		r, err := s.__PodAdd(p, true)
+		r, err := s.__PodAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		addSet = append(addSet, r...)
 	}
 	for _, p := range currentState.remotePods {
-		r, err := s.__PodAdd(p, true)
+		r, err := s.__PodAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}

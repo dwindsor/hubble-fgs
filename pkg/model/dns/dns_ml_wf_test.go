@@ -65,7 +65,7 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 		assert.Equal(t, len(x), 2)
 
 		p := testPod(t, "100", "testNamespace", x[0], "testKind", x[1])
-		PodAdd(p, true)
+		PodAdd(p)
 	}
 
 	for _, c := range check {

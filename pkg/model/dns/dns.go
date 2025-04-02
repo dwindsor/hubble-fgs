@@ -3,7 +3,6 @@
 package dns
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -135,7 +134,7 @@ func (state *PolicyState) DestroyState() {
 //
 // So we are scaling with the hash operation and (2 * # policy * avg(label length)
 // roughly. Run ./go test --test.bench -test.run BenchPodRemove to get a real idea.
-func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 	var records []*record.DatapathRecord
 
 	ml := &matchLabels.LabelSet{
@@ -200,7 +199,8 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 		}
 	}
 
-	if !local {
+	_, ok := state.remotePods[pod.ObjectMeta.UID]
+	if ok {
 		delete(state.remotePods, pod.ObjectMeta.UID)
 		return records, nil
 	}
@@ -216,6 +216,7 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 	if coll == nil {
 		return records, nil
 	}
+
 	subject, err := createPodSrcKey(pod)
 	if err != nil {
 		return records, nil
@@ -327,13 +328,13 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo, local bool) ([]*rec
 	return records, nil
 }
 
-func PodRemove(pod *v1alpha1.PodInfo, local bool) error {
+func PodRemove(pod *v1alpha1.PodInfo) error {
 	state := GetRealizedState()
 
 	state.Reader.RLock()
 	defer state.Reader.RUnlock()
 
-	records, err := state.__PodRemove(pod, local)
+	records, err := state.__PodRemove(pod)
 	if err != nil {
 		return err
 	}
@@ -438,7 +439,7 @@ func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.Labe
 	return records
 }
 
-func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 	ml := &matchLabels.LabelSet{
 		Label: epPod.ObjectMeta.Labels,
 	}
@@ -452,11 +453,6 @@ func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*reco
 
 	epRecords := state.EndpointAdd(ep, ml, true)
 
-	if !local {
-		state.remotePods[epPod.ObjectMeta.UID] = epPod
-		return epRecords, nil
-	}
-
 	// tbd fold this into policy xlate layer
 	if err := checkWorkloadQuotaPolicy(epPod); err != nil {
 		return epRecords, err
@@ -466,10 +462,11 @@ func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*reco
 	if err != nil {
 		return epRecords, err
 	}
-	// This is a hard error if the pod was added we must know its namespace for a
-	// src ID otherwise we are in a bad state.
+
+	// If there is no local key it must be a remote pod
 	if src == nil {
-		return epRecords, fmt.Errorf("unknown or corrupt state, pod has unresolved src identity")
+		state.remotePods[epPod.ObjectMeta.UID] = epPod
+		return epRecords, nil
 	}
 
 	srcRecords := state.SrcAdd(src, ml, true)
@@ -478,15 +475,16 @@ func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo, local bool) ([]*reco
 }
 
 // Top level handler to add pod and calculate tetragon network policy
-func PodAdd(epPod *v1alpha1.PodInfo, local bool) error {
+func PodAdd(epPod *v1alpha1.PodInfo) error {
 	state := GetRealizedState()
 
 	state.Reader.RLock()
 	defer state.Reader.RUnlock()
 
-	records, err := state.__PodAdd(epPod, local)
+	records, err := state.__PodAdd(epPod)
 	if err != nil {
 		return err
 	}
+
 	return prog.AddRecords(records, false)
 }

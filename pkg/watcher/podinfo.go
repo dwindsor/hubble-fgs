@@ -77,11 +77,7 @@ func AddPodInfoInformer(w oss.Watcher) error {
 					c := endpoint.Get()
 					if c != nil { // Ths is nil when !option.Config.EnableProcessTree
 						c.AddIpPodMap(t)
-						isLocal := false
-						if _, err := realK8sWatcher.FindPod(string(t.UID)); err != nil {
-							isLocal = true
-						}
-						dns.PodAdd(t, isLocal)
+						dns.PodAdd(t)
 					}
 				}
 			},
@@ -96,11 +92,7 @@ func AddPodInfoInformer(w oss.Watcher) error {
 				case *v1alpha1.PodInfo:
 					logger.GetLogger().Debug("Delete Pod: %v", t)
 					if enterpriseOption.Config.EnableProcessTree { // this pairs with above c != nil check
-						isLocal := false
-						if _, err := realK8sWatcher.FindPod(string(t.UID)); err != nil {
-							isLocal = true
-						}
-						dns.PodRemove(t, isLocal)
+						dns.PodRemove(t)
 					}
 				}
 			},

@@ -65,6 +65,7 @@ func addTetragonNetworkPolicy(obj any) {
 	dns.CreateMatchLabelsPolicySet(policy)
 
 	logger.GetLogger().WithFields(logrus.Fields{
+		"title":         name,
 		"policy":        policy,
 		"network rules": len(policy),
 	}).Info("adding network policy")
