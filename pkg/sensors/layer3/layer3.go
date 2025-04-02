@@ -465,7 +465,7 @@ func (l3 *l3Sensor) createCgroupProtocolCfgMap(l3cfg CgroupProtocolConfigValue) 
 	return nil
 }
 
-func (l3 *l3Sensor) configureMaps(args sensors.LoadProbeArgs) error {
+func (l3 *l3Sensor) configureMaps() error {
 	l3cfg := CgroupProtocolConfigValue{}
 
 	if tcpEnabled {
@@ -474,14 +474,14 @@ func (l3 *l3Sensor) configureMaps(args sensors.LoadProbeArgs) error {
 		l3cfg.tcp6Enabled = 1
 	}
 	if udpEnabled {
-		if err := udp.ConfigureMaps(args.BPFDir, udp.ConfigMapName, udp.Config); err != nil {
+		if err := udp.ConfigureMaps(bpf.MapPrefixPath(), udp.ConfigMapName, udp.Config); err != nil {
 			return err
 		}
 		l3cfg.udp4Enabled = 1
 		l3cfg.udp6Enabled = 1
 	}
 	if icmpEnabled {
-		if err := icmp.ConfigureMaps(args.BPFDir, icmp.ConfigMapName, icmp.Config); err != nil {
+		if err := icmp.ConfigureMaps(bpf.MapPrefixPath(), icmp.ConfigMapName, icmp.Config); err != nil {
 			return err
 		}
 		l3cfg.icmp4Enabled = 1
@@ -533,7 +533,7 @@ func configureSensor(args sensors.LoadProbeArgs) error {
 func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	// Configure maps when the first program is loaded.
 	if !configured {
-		l3.configureMaps(args)
+		l3.configureMaps()
 		configured = true
 	}
 
