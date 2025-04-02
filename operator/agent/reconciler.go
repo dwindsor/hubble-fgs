@@ -238,6 +238,57 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		log.Info("aggregator deployment updated")
 	}
 
+	// Reconcile the Tetragon Aggregator Service.
+	desiredAggregatorService, err := AggregatorService(log, req.Namespace, AggregatorDeploymentName, opCM)
+	if err != nil {
+		log.Error(err, "unable to generate the desired aggregator service")
+		return ctrl.Result{}, nil
+	}
+	if desiredAggregatorService != nil {
+		if err := ctrl.SetControllerReference(opCM, desiredAggregatorService, r.Scheme); err != nil {
+			log.Error(err, "unable to set the owner reference to the aggregator service")
+			return ctrl.Result{}, err
+		}
+	}
+	aggregatorService := &corev1.Service{}
+	aggregatorServiceNamespacedName := types.NamespacedName{
+		Namespace: req.Namespace,
+		Name:      AggregatorDeploymentName,
+	}
+	if err := r.Get(ctx, aggregatorServiceNamespacedName, aggregatorService); err != nil {
+		if !apierrors.IsNotFound(err) {
+			log.Error(err, "unable to fetch aggregator service")
+			return ctrl.Result{}, err
+		}
+		if desiredAggregatorService != nil {
+			log.Info("aggregator service not found, creating")
+			if err := r.Create(ctx, desiredAggregatorService); err != nil {
+				log.Error(err, "unable to create aggregator service")
+				return ctrl.Result{}, err
+			}
+			log.Info("aggregator service created")
+			return ctrl.Result{Requeue: true}, nil
+		}
+	} else {
+		if desiredAggregatorService == nil {
+			if err := r.Delete(ctx, desiredAggregatorService); err != nil {
+				log.Error(err, "unable to delete the aggregator service")
+				return ctrl.Result{}, err
+			}
+			log.Info("aggregator service deleted")
+			return ctrl.Result{Requeue: true}, nil
+		}
+	}
+	if desiredAggregatorService != nil && (!equality.Semantic.DeepEqual(aggregatorService.Labels, desiredAggregatorService.Labels) ||
+		!equality.Semantic.DeepEqual(aggregatorService.Spec, desiredAggregatorService.Spec)) {
+		log.Info("updating aggregator service")
+		if err := r.Update(ctx, desiredAggregatorService); err != nil {
+			log.Error(err, "unable to update aggregator service")
+			return ctrl.Result{}, err
+		}
+		log.Info("aggregator service updated")
+	}
+
 	log.Info("reconciliation completed")
 	return ctrl.Result{}, nil
 }

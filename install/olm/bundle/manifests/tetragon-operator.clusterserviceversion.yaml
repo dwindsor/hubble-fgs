@@ -95,6 +95,7 @@ spec:
           resources:
           - daemonsets
           - deployments
+          - services
           verbs:
           - get
           - list
