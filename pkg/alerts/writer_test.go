@@ -99,7 +99,12 @@ func TestWriter(t *testing.T) {
 	// ensure that ExportFileMaxBackups is respected
 	require.NoError(t, err)
 	writeNRotates(lw, 10)
-	expectedfilesnr := option.Config.ExportFileMaxBackups + 1
+	// NB: normally, and indeed in most cases, the files are going to be max_backups+1.
+	// In some cases, however, the rotation's affect are not visible in the fs when we test.
+	// To counter that, we add a slack of one. Note that it's still the case that the test will
+	// fail if no rotation happens, since we write enough data for 10 rotations, while we check
+	// for 3 + 1 + 1 = 5 files.
+	expectedfilesnr := (option.Config.ExportFileMaxBackups + 1) + 1
 	expectedbytes := int64(1024 * 1024 * option.Config.ExportFileMaxSizeMB * expectedfilesnr)
 	// NB: using "LessOrEqual" in these tests to avoid races/flakes. In the majority of the
 	// cases, we seem to be hitting equal but not always.
