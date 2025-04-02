@@ -57,11 +57,17 @@ func TestEvaluateRules(t *testing.T) {
 		found[f.Name()] = true
 	}
 	for filename, expectedContent := range expectedFiles {
-		assert.Contains(t, found, filename)
 		filepath := filepath.Join(option.Config.AlertsExportDir, filename)
 		content, err := os.ReadFile(filepath)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedContent, normalizeJSON(string(content)))
+		// NB: if the rule did not match, then file might not exist (indeed, the lumberjack
+		// writer we use will not write a file)
+		if len(expectedContent) == 0 {
+			assert.Equal(t, 0, len(content))
+		} else {
+			assert.NoError(t, err)
+			assert.Contains(t, found, filename)
+			assert.Equal(t, expectedContent, normalizeJSON(string(content)))
+		}
 	}
 }
 

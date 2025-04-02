@@ -11,18 +11,14 @@
 package alerts
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/google/cel-go/cel"
 
-	"github.com/cilium/tetragon/pkg/fileutils"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/option"
 
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
@@ -97,13 +93,12 @@ func (r *ruleManager) AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 
 	// if no existing encoder exists, let's create a new one by openning a new file
 	if eeOption.Config.AlertsExportDir != "" && encoder == nil {
-		perms, _ := fileutils.RegularFilePerms(option.Config.ExportFilePerm)
 		filename := filepath.Join(eeOption.Config.AlertsExportDir, fname)
-		fh, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, perms)
+		lw, err := newLogWriter(filename)
 		if err != nil {
-			return fmt.Errorf("failed to open a file: %w", err)
+			return err
 		}
-		encoder = newJsonEncoder(fh, fname)
+		encoder = newJsonEncoder(lw, fname)
 		newEncoder = true
 	}
 
