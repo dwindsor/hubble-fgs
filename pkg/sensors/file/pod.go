@@ -150,7 +150,7 @@ func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) 
 		}
 	} else {
 		// we expect to have the pod created here
-		logger.GetLogger().Warnf("fim: pod [%s] does not exists in our metadata during the call of rthooks.CreateContainer", pod.ObjectMeta.Name)
+		logger.GetLogger().Warnf("fim: pod [%s] does not exists in our metadata during the call of rthooks.CreateContainer", pod.Name)
 	}
 	allPodsMu.Unlock()
 
@@ -164,12 +164,12 @@ func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) 
 		return nil
 	}
 
-	_, err = TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, containerID, pod.ObjectMeta.Namespace, pod.ObjectMeta.Name, arg.Req.RootDir, true)
+	_, err = TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, containerID, pod.Namespace, pod.Name, arg.Req.RootDir, true)
 	if err != nil {
 		return err
 	}
 
-	_, err = TracingPolicyPathDigestsContainerFsScanner([]fm.SpecPinPath{}, containerID, pod.ObjectMeta.Namespace, pod.ObjectMeta.Name, arg.Req.RootDir, true)
+	_, err = TracingPolicyPathDigestsContainerFsScanner([]fm.SpecPinPath{}, containerID, pod.Namespace, pod.Name, arg.Req.RootDir, true)
 	if err != nil {
 		return err
 	}

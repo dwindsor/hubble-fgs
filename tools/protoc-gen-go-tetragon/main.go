@@ -13,7 +13,7 @@ func main() {
 		gen.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
 		for _, generator := range generate.Generators {
 			if err := generator(gen, gen.Files); err != nil {
-				return fmt.Errorf("Failed to generate file: %v", err)
+				return fmt.Errorf("failed to generate file: %v", err)
 			}
 		}
 		return nil

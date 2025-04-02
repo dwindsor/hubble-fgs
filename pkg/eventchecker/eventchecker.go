@@ -142,9 +142,7 @@ func (c *OrderedMultiResponseChecker) Reset() {
 
 // Append adds a new checker to the list of checkers
 func (c *OrderedMultiResponseChecker) Append(checkers ...ResponseChecker) {
-	for _, checker := range checkers {
-		c.checkers = append(c.checkers, checker)
-	}
+	c.checkers = append(c.checkers, checkers...)
 }
 
 // NewSingleMultiResponseChecker checks all responses against a single checker
@@ -492,7 +490,7 @@ func checkEvent(r *tetragon.GetEventsResponse, _ Logger, types ...tetragon.Event
 		return ev.Test, nil
 	}
 
-	return fmt.Errorf("Unknown event type (%T)", r.Event), nil
+	return fmt.Errorf("unknown event type (%T)", r.Event), nil
 }
 
 // NewListenEventChecker creates a new EventChainChecker for Listen events
@@ -645,7 +643,7 @@ func eventHasDstIP(e fgsEvent, ip string) error {
 		if evIP == ip {
 			return nil
 		}
-		return fmt.Errorf("Expecting DstIP %s but %T has %s", ip, ev, evIP)
+		return fmt.Errorf("expecting DstIP %s but %T has %s", ip, ev, evIP)
 	}
 	return fmt.Errorf("type %T does not have DstIP", e)
 }
@@ -668,7 +666,7 @@ func eventHasSrcIP(e fgsEvent, ip string) error {
 		if evIP == ip {
 			return nil
 		}
-		return fmt.Errorf("Expecting SrcIP %s but %T has %s", ip, ev, evIP)
+		return fmt.Errorf("expecting SrcIP %s but %T has %s", ip, ev, evIP)
 	}
 	return fmt.Errorf("type %T does not have SrcIP", e)
 }
@@ -716,7 +714,7 @@ func eventHasProtocol(e fgsEvent, proto tetragon.SocketProtocol) error {
 		if evProto == proto {
 			return nil
 		}
-		return fmt.Errorf("Expecting Protocol %s but %T has %s", proto, ev, evProto)
+		return fmt.Errorf("expecting Protocol %s but %T has %s", proto, ev, evProto)
 	}
 	return fmt.Errorf("type %T does not have Protocol", e)
 }
@@ -741,7 +739,7 @@ func eventHasType(e fgsEvent, proto string) error {
 		if evProto == proto {
 			return nil
 		}
-		return fmt.Errorf("Expecting Type %s but %T has %s", proto, ev, evProto)
+		return fmt.Errorf("expecting Type %s but %T has %s", proto, ev, evProto)
 	}
 	return fmt.Errorf("type %T does not have Type", e)
 }
@@ -826,25 +824,25 @@ func eventHasCookie(e fgsEvent, cookie uint64) error {
 		if v.SockCookie == cookie {
 			return nil
 		}
-		return fmt.Errorf("Expecting cookie %d but ProcessListen has %d", cookie, v.SockCookie)
+		return fmt.Errorf("expecting cookie %d but ProcessListen has %d", cookie, v.SockCookie)
 
 	case *tetragon.ProcessAccept:
 		if v.SockCookie == cookie {
 			return nil
 		}
-		return fmt.Errorf("Expecting cookie %d but ProcessAccept has %d", cookie, v.SockCookie)
+		return fmt.Errorf("expecting cookie %d but ProcessAccept has %d", cookie, v.SockCookie)
 
 	case *tetragon.ProcessConnect:
 		if v.SockCookie == cookie {
 			return nil
 		}
-		return fmt.Errorf("Expecting cookie %d but ProcessConnect has %d", cookie, v.SockCookie)
+		return fmt.Errorf("expecting cookie %d but ProcessConnect has %d", cookie, v.SockCookie)
 
 	case *tetragon.ProcessClose:
 		if v.SockCookie == cookie {
 			return nil
 		}
-		return fmt.Errorf("Expecting cookie %d but ProcessClose has %d", cookie, v.SockCookie)
+		return fmt.Errorf("expecting cookie %d but ProcessClose has %d", cookie, v.SockCookie)
 
 	default:
 		return fmt.Errorf("type %T does not have cookie", v)
@@ -869,7 +867,7 @@ func eventHasIP(e fgsEvent, IP string) error {
 		if evIP == IP {
 			return nil
 		}
-		return fmt.Errorf("Expecting IP %s but %T has %s", IP, ev, evIP)
+		return fmt.Errorf("expecting IP %s but %T has %s", IP, ev, evIP)
 	}
 	return fmt.Errorf("type %T does not have IP", e)
 }
@@ -918,7 +916,7 @@ func eventHasNegotiatedVersion(e fgsEvent, version string) error {
 		if evVersion == version {
 			return nil
 		}
-		return fmt.Errorf("Expecting NegotiatedVersion %s but %T has %s", version, ev, evVersion)
+		return fmt.Errorf("expecting NegotiatedVersion %s but %T has %s", version, ev, evVersion)
 	}
 	return fmt.Errorf("type %T does not have NegotiatedVersion", e)
 }
@@ -951,7 +949,7 @@ func eventHasSupportedVersions(e fgsEvent, versions []string) error {
 		if reflect.DeepEqual(versionsSet, evVersionsSet) {
 			return nil
 		}
-		return fmt.Errorf("Expecting SupportedVersions %s but %T has %s", versions, ev, evVersions)
+		return fmt.Errorf("expecting SupportedVersions %s but %T has %s", versions, ev, evVersions)
 	}
 	return fmt.Errorf("type %T does not have SupportedVersions", e)
 }
@@ -975,7 +973,7 @@ func eventHasSniType(e fgsEvent, _type string) error {
 		if evType == _type {
 			return nil
 		}
-		return fmt.Errorf("Expecting SniType %s but %T has %s", _type, ev, evType)
+		return fmt.Errorf("expecting SniType %s but %T has %s", _type, ev, evType)
 	}
 	return fmt.Errorf("type %T does not have SniType", e)
 }
@@ -999,7 +997,7 @@ func eventHasSniName(e fgsEvent, name string) error {
 		if evName == name {
 			return nil
 		}
-		return fmt.Errorf("Expecting SniName %s but %T has %s", name, ev, evName)
+		return fmt.Errorf("expecting SniName %s but %T has %s", name, ev, evName)
 	}
 	return fmt.Errorf("type %T does not have SniName", e)
 }
@@ -1448,16 +1446,17 @@ func compareCapabilities(p *tetragon.Process, caps *tetragon.Capabilities, ctype
 	}
 	var lCaps []tetragon.CapabilitiesType
 	var rCaps []tetragon.CapabilitiesType
-	if ctype == CapsPermitted {
+	switch ctype {
+	case CapsPermitted:
 		lCaps = caps.GetPermitted()
 		rCaps = p.Cap.GetPermitted()
-	} else if ctype == CapsEffective {
+	case CapsEffective:
 		lCaps = caps.GetEffective()
 		rCaps = p.Cap.GetEffective()
-	} else if ctype == CapsInheritable {
+	case CapsInheritable:
 		lCaps = caps.GetInheritable()
 		rCaps = p.Cap.GetInheritable()
-	} else {
+	default:
 		return fmt.Errorf("compareCapabilities: Unknown ctype = %d", ctype)
 	}
 	if lCaps == nil && rCaps == nil { // both are nil -> accept
@@ -1894,7 +1893,7 @@ func httpWithString(
 	matcher := sm.GetMatcher()
 	return HTTPCheckerFn(func(t *tetragon.ProcessHttp, log Logger) error {
 		if t == nil {
-			return fmt.Errorf("Http is nil and cannot match %s using %v", desc, sm)
+			return fmt.Errorf("http is nil and cannot match %s using %v", desc, sm)
 		}
 		s := getter(t)
 		if err := matcher(s); err != nil {
@@ -1986,7 +1985,7 @@ func HTTPWithResponseReason(sm StringMatcher) HTTPChecker {
 func HTTPWithResponseCode(code uint32) HTTPChecker {
 	return HTTPCheckerFn(func(t *tetragon.ProcessHttp, log Logger) error {
 		if t == nil {
-			return fmt.Errorf("Http is nil and cannot match Response.Code using %d", code)
+			return fmt.Errorf("http is nil and cannot match Response.Code using %d", code)
 		}
 		if t.Http.Response.Code != code {
 			return fmt.Errorf("expected status code to be %d but got %d", code, t.Http.Response.Code)

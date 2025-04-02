@@ -163,11 +163,7 @@ func (src tcpOrTLSCRRSource) sourceLoop(ctx context.Context, sinkPort int, diale
 	buf := []byte("hello world")
 	rbuf := make([]byte, 1024)
 
-	for {
-		if ctx.Err() != nil {
-			break
-		}
-
+	for ctx.Err() == nil {
 		tconn := time.Now()
 		if tconn.After(tend) {
 			break
@@ -391,13 +387,13 @@ func (src goHTTPCRRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 	act := func() error {
 		conn, err := dialer.DialContext(ctx, "tcp4", target)
 		if err != nil {
-			return fmt.Errorf("Dial: %w", err)
+			return fmt.Errorf("dial: %w", err)
 		}
 		defer conn.Close()
 
 		_, err = ChunkingConn{conn}.Write(req)
 		if err != nil {
-			return fmt.Errorf("Write: %w", err)
+			return fmt.Errorf("write: %w", err)
 		}
 
 		reader := bufio.NewReader(conn)
@@ -409,7 +405,7 @@ func (src goHTTPCRRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 
 		_, err = io.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("ReadAll: %w", err)
+			return fmt.Errorf("readAll: %w", err)
 		}
 		return nil
 	}

@@ -3,13 +3,12 @@ package sockinfo
 import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func GetTupleV4(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo {
+func GetTupleV4(tuple *networkapi.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
 	if tuple == nil {
@@ -40,7 +39,7 @@ func GetTupleV4(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockIn
 	}
 }
 
-func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo {
+func GetTuple(tuple *networkapi.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
 	if tuple == nil {

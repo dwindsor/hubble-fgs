@@ -204,7 +204,7 @@ metadata:
 		{
 			name: "tls with tetragon tls sensor parser not running",
 			tracingPolicy: &tracingPolicy{
-				fmt.Sprintf(`
+				`
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -216,14 +216,14 @@ spec:
       mode: "socket"
     tcp:
       enable: true
-                `),
+                `,
 			},
 			numConnections: 10_000,
 		},
 		{
 			name: "tls with tetragon tls sensor parser running",
 			tracingPolicy: &tracingPolicy{
-				fmt.Sprintf(`
+				`
             apiVersion: cilium.io/v1alpha1
             kind: TracingPolicy
             metadata:
@@ -238,14 +238,14 @@ spec:
                     - {{ .port }}
                 tcp:
                   enable: true
-                            `),
+                            `,
 			},
 			numConnections: 10_000,
 		},
 		{
 			name: "tls with tetragon nop sensor parser running",
 			tracingPolicy: &tracingPolicy{
-				fmt.Sprintf(`
+				`
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -259,14 +259,14 @@ spec:
         - {{ .port }}
     tcp:
       enable: true
-                `),
+                `,
 			},
 			numConnections: 10_000,
 		},
 		{
 			name: "tls with tetragon http sensor parser running",
 			tracingPolicy: &tracingPolicy{
-				fmt.Sprintf(`
+				`
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -280,7 +280,7 @@ spec:
         - {{ .port }}
     tcp:
       enable: true
-                `),
+                `,
 			},
 			numConnections: 10_000,
 		},

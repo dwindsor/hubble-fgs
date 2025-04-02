@@ -19,12 +19,13 @@ import (
 )
 
 func postStatsEventSocketStats(res *tetragon.ProcessSockStats) {
-	if res.Socket.Protocol == tetragon.SocketProtocol_TCP {
+	switch res.Socket.Protocol {
+	case tetragon.SocketProtocol_TCP:
 		l := createSocketLabels(tcpconfig.CurrentLabels, res)
 		if tcpconfig.MetricsEnabled {
 			postTCPSocketStats(l, res.Stats)
 		}
-	} else if res.Socket.Protocol == tetragon.SocketProtocol_UDP {
+	case tetragon.SocketProtocol_UDP:
 		l := createSocketLabels(udpconfig.CurrentLabels, res)
 		if udpconfig.MetricsEnabled {
 			postUDPSocketStats(l, res.Stats)

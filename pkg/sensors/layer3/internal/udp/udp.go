@@ -32,7 +32,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	// api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
@@ -183,8 +183,8 @@ func (v *ConfigValue) String() string {
 }
 
 func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
-	saddr := api.GetIP(socket.Tuple.SAddr, 0, socket.Tuple.IPv6 != 0)
-	daddr := api.GetIP(socket.Tuple.DAddr, 0, socket.Tuple.IPv6 != 0)
+	saddr := networkapi.GetIP(socket.Tuple.SAddr, 0, socket.Tuple.IPv6 != 0)
+	daddr := networkapi.GetIP(socket.Tuple.DAddr, 0, socket.Tuple.IPv6 != 0)
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Tuple.SPort, "Dport": socket.Tuple.DPort, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
 
 	if socket.State != unix.BPF_TCP_CLOSE && socket.State != unix.BPF_TCP_ESTABLISHED {
@@ -380,7 +380,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error
 }
 
 func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPEvent{}
+	m := networkapi.MsgIPEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
 		return nil, err
@@ -400,7 +400,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6, PsVersion: m.PsVersion}] = true
 		pseudoSocketsUpdate.Unlock()
 		// If there is an existing cache entry for this pseudo-socket then it must be stale, so remove it.
-		udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: api.MsgIPTuple{
+		udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: networkapi.MsgIPTuple{
 			SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6, Proto: unix.IPPROTO_UDP},
 			PsVersion: m.PsVersion,
 		}
@@ -442,13 +442,13 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 
 		for psock := range pseudoSocketList {
 			// Send stats event
-			udpKey := api.UdpInfoKey{Cookie: m.SockCookie, Version: m.Version, Tuple: api.MsgIPTuple{
+			udpKey := networkapi.UdpInfoKey{Cookie: m.SockCookie, Version: m.Version, Tuple: networkapi.MsgIPTuple{
 				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: unix.IPPROTO_UDP,
 			}}
-			udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: api.MsgIPTuple{
+			udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: networkapi.MsgIPTuple{
 				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: unix.IPPROTO_UDP},
 				PsVersion: psock.PsVersion}
-			var udpValue api.UdpInfoValue
+			var udpValue networkapi.UdpInfoValue
 			err := udpMap.Lookup(udpKey, &udpValue)
 			if err != nil {
 				socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeCloseEventMissingSocket)
@@ -459,7 +459,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 				// Entry has been evicted from the BPF map (likely LRU overspill).
 				// We can still (and should) send a close event, although stats and duration will be 0.
 				if !DisableCloseEvents {
-					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &api.UdpInfoValue{
+					closeEvents = append(closeEvents, createCloseEvent(&udpKey, &networkapi.UdpInfoValue{
 						Ktime:    m.Common.Ktime,
 						Pid:      m.ProcessKey.Pid,
 						PidKtime: m.ProcessKey.Ktime,
@@ -518,14 +518,14 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{msgUnix}, nil
 }
 
-func MsgToUdpSeqErrorUnix(m *api.MsgUdpSeqCheckErrorEvent) *udp_seq_check_error.MsgUdpSeqCheckErrorEventUnix {
+func MsgToUdpSeqErrorUnix(m *networkapi.MsgUdpSeqCheckErrorEvent) *udp_seq_check_error.MsgUdpSeqCheckErrorEventUnix {
 	unix := &udp_seq_check_error.MsgUdpSeqCheckErrorEventUnix{}
 	unix.Msg = m
 	return unix
 }
 
 func handleUdpSeqError(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgUdpSeqCheckErrorEvent{}
+	m := networkapi.MsgUdpSeqCheckErrorEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
 		return nil, err
@@ -538,7 +538,7 @@ func handleUdpSeqError(r *bytes.Reader) ([]observer.Event, error) {
 func Init() error {
 	var err error
 
-	stats, err = lru.New[udpStatsKey, api.UdpInfoValue](udpStatsCacheSize)
+	stats, err = lru.New[udpStatsKey, networkapi.UdpInfoValue](udpStatsCacheSize)
 	if err != nil {
 		return err
 	}

@@ -27,7 +27,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
@@ -227,14 +226,14 @@ func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Cookie": socket.Sockaddr}).Debug("Discovered ICMP Socket")
 }
 
-func MsgToICMPUnix(m *api.MsgICMPEvent) *icmp.MsgICMPEventUnix {
+func MsgToICMPUnix(m *networkapi.MsgICMPEvent) *icmp.MsgICMPEventUnix {
 	unix := &icmp.MsgICMPEventUnix{}
 	unix.Msg = m
 	return unix
 }
 
 func handleIcmp(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgICMPEvent{}
+	m := networkapi.MsgICMPEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
 		return nil, err

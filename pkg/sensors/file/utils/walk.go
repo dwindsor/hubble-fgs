@@ -406,7 +406,8 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 				DevMinor: GetDevMinor(stat.Dev),
 			}
 
-			if op == AddToMap {
+			switch op {
+			case AddToMap:
 				var val fileapi.InodeVal
 
 				val.Action = action
@@ -419,7 +420,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 				if err := store.AddInode(key, val); err != nil {
 					return fmt.Errorf("failed to call addFilePath: %w", err)
 				}
-			} else if op == RemoveFromMap {
+			case RemoveFromMap:
 				store.RemoveInode(key)
 			}
 
@@ -431,7 +432,8 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 				DevMinor: GetDevMinor(stat.Dev),
 			}
 
-			if op == AddToMap {
+			switch op {
+			case AddToMap:
 				var val fileapi.InodeVal
 
 				// We should have all directory names to end with "/"
@@ -450,7 +452,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 				if err := store.AddInode(key, val); err != nil {
 					return fmt.Errorf("failed to call addDirPath: %w", err)
 				}
-			} else if op == RemoveFromMap {
+			case RemoveFromMap:
 				store.RemoveInode(key)
 			}
 
@@ -482,11 +484,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 	// The next for loop will also add /dir/home/ and /dir/.
 	// This is need in the case where the user removes /dir/home/
 	// and creates that again.
-	for {
-		if path == "/" { // reached the root fs - nothing more to do
-			break
-		}
-
+	for path != "/" { // reached the root fs - nothing more to do
 		// remove the rightmost path component
 		path, _ = filepath.Split(strings.TrimSuffix(path, "/"))
 
@@ -558,15 +556,16 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 }
 
 func PathPatternToString(p v1alpha1.FilePathPattern) string {
-	if p.Type == "FilePrefixSuffix" {
+	switch p.Type {
+	case "FilePrefixSuffix":
 		return fmt.Sprintf("FilePrefixSuffix{Prefix:[%s],Suffix:[%s]}", p.FilePrefixSuffix.Prefix, p.FilePrefixSuffix.Suffix)
-	} else if p.Type == "PathPrefix" {
+	case "PathPrefix":
 		return fmt.Sprintf("PathPrefix{Prefix:[%s]}", p.PathPrefix.Prefix)
-	} else if p.Type == "FileExactMatch" {
+	case "FileExactMatch":
 		return fmt.Sprintf("FileExactMatch{Path:[%s]}", p.FileExactMatch.Path)
-	} else if p.Type == "FileSystemType" {
+	case "FileSystemType":
 		return fmt.Sprintf("FileSystemType{Names:%s}", p.FileSystemType.Names)
-	} else if p.Type == "AllFileOps" {
+	case "AllFileOps":
 		return "AllFileOps"
 	}
 	return fmt.Sprintf("<unknown type: %s>", p.Type)

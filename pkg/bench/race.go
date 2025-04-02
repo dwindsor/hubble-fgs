@@ -45,7 +45,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	// Imported to allow sensors to be initialized inside init().
-	_ "github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 
 	// Init sensors for benchmarking

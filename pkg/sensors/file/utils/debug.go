@@ -20,11 +20,12 @@ import (
 )
 
 func actToStr(act uint32) string {
-	if act == FilterIgnore {
+	switch act {
+	case FilterIgnore:
 		return fmt.Sprintf("ignore(%d)", act)
-	} else if act == FilterMatch {
+	case FilterMatch:
 		return fmt.Sprintf("match(%d)", act)
-	} else if act == FilterMonitor {
+	case FilterMonitor:
 		return fmt.Sprintf("monitor(%d)", act)
 	}
 	return fmt.Sprintf("unknown(%d)", act)

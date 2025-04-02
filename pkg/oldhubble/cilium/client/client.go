@@ -31,7 +31,7 @@ func NewClient() (*Cilium, error) {
 
 // GetIPCache retrieves the contents of the Cilium ipcache
 func (c *Cilium) GetIPCache() ([]*models.IPListEntry, error) {
-	ips, err := c.Client.Policy.GetIP(nil)
+	ips, err := c.Policy.GetIP(nil)
 	if err != nil {
 		return nil, err
 	}

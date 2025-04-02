@@ -366,5 +366,5 @@ spec:
 	require.Error(t, err)
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
-	assert.Equal(t, 28, exitErr.ProcessState.ExitCode(), "wrong exit code: curl should exit with 28 (timeout)")
+	assert.Equal(t, 28, exitErr.ExitCode(), "wrong exit code: curl should exit with 28 (timeout)")
 }

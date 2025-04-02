@@ -125,7 +125,7 @@ func CPUUsageFromTime(output string, otherLine func(line string)) (cpuUsage CPUU
 				return
 			}
 			cpuUsage.SystemTime = time.Duration(secs * float64(time.Second))
-		} else if !(line == "" || strings.HasPrefix(line, "real")) {
+		} else if line != "" && !strings.HasPrefix(line, "real") {
 			otherLine(line)
 		}
 

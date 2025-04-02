@@ -57,15 +57,15 @@ func (p *Policy) init(m *Mandate) error {
 
 // ownMode returns the mode configured in the policy (does not consider what is in the mandate conf)
 func (p *Policy) ownMode() string {
-	if p.Conf != nil && p.Conf.Mode != "" {
-		return p.Conf.Mode
+	if p.Conf != nil && p.Mode != "" {
+		return p.Mode
 	}
 	return ""
 }
 
 func policyMode(m *Mandate, p *Policy) string {
-	if p.Conf != nil && p.Conf.Mode != "" {
-		return p.Conf.Mode
+	if p.Conf != nil && p.Mode != "" {
+		return p.Mode
 	}
 	return m.Conf.Mode
 }

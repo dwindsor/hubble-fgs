@@ -105,7 +105,7 @@ func runNetworkCB() {
 			links, err = netlink.LinkList()
 			if err != nil {
 				logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("netns LinkList failed")
-				return fmt.Errorf("Netlink LinkList() error: %v", err)
+				return fmt.Errorf("netlink LinkList() error: %v", err)
 			}
 			for _, l := range links {
 				emitInterfaceEvent(l.Attrs(), v.Netns, v.Pod)
@@ -191,7 +191,7 @@ func handleNetNsExit(r *bytes.Reader) ([]observer.Event, error) {
 	m := MsgNetNsExitEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to read netns exit operation: %w", err)
+		return nil, fmt.Errorf("failed to read netns exit operation: %w", err)
 	}
 	nscache.DelNetNs(m.NsInum)
 	return nil, nil

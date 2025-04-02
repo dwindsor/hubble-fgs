@@ -138,7 +138,7 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo) ([]*record.Datapath
 	var records []*record.DatapathRecord
 
 	ml := &matchLabels.LabelSet{
-		Label: pod.ObjectMeta.Labels,
+		Label: pod.Labels,
 	}
 
 	// Remove datapath entries with {subjects} -> pod. This requires two steps
@@ -199,9 +199,9 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo) ([]*record.Datapath
 		}
 	}
 
-	_, ok := state.remotePods[pod.ObjectMeta.UID]
+	_, ok := state.remotePods[pod.UID]
 	if ok {
-		delete(state.remotePods, pod.ObjectMeta.UID)
+		delete(state.remotePods, pod.UID)
 		return records, nil
 	}
 
@@ -324,7 +324,7 @@ func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo) ([]*record.Datapath
 			}
 		}
 	}
-	delete(state.localPods, pod.ObjectMeta.UID)
+	delete(state.localPods, pod.UID)
 	return records, nil
 }
 
@@ -441,7 +441,7 @@ func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.Labe
 
 func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 	ml := &matchLabels.LabelSet{
-		Label: epPod.ObjectMeta.Labels,
+		Label: epPod.Labels,
 	}
 
 	ep := &endpoint.Endpoint{
@@ -465,12 +465,12 @@ func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathR
 
 	// If there is no local key it must be a remote pod
 	if src == nil {
-		state.remotePods[epPod.ObjectMeta.UID] = epPod
+		state.remotePods[epPod.UID] = epPod
 		return epRecords, nil
 	}
 
 	srcRecords := state.SrcAdd(src, ml, true)
-	state.localPods[epPod.ObjectMeta.UID] = epPod
+	state.localPods[epPod.UID] = epPod
 	return append(epRecords, srcRecords...), nil
 }
 

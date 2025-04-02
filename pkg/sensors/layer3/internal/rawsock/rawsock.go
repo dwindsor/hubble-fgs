@@ -28,7 +28,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
@@ -169,7 +168,7 @@ func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 }
 
 func handleRawsock(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPEvent{}
+	m := networkapi.MsgIPEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
 		return nil, err

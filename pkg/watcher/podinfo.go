@@ -135,7 +135,7 @@ func FindPodInfoByNS(watcher oss.K8sResourceWatcher, ns string) ([]*v1alpha1.Pod
 	allPods := podInfoInformer.GetStore().List()
 	for i := range allPods {
 		if pod, ok := allPods[i].(*v1alpha1.PodInfo); ok {
-			if pod.ObjectMeta.Namespace == ns {
+			if pod.Namespace == ns {
 				nsPods = append(nsPods, pod)
 			}
 		}

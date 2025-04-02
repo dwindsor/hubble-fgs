@@ -139,7 +139,7 @@ type MsgExecveEventUnix struct {
 }
 
 func (msg *MsgExecveEventUnix) RetryInternal(_ notify.Event, _ uint64) (*process.ProcessInternal, error) {
-	return nil, fmt.Errorf("Unreachable state: MsgExecveEventUnix with missing internal")
+	return nil, fmt.Errorf("unreachable state: MsgExecveEventUnix with missing internal")
 }
 
 func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -311,12 +311,12 @@ func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		if internal, err := process.AddCloneEvent(&msg.MsgCloneEvent); err == nil {
 			if ec != nil && ec.Needed(internal.UnsafeGetProcess()) {
 				// adding to the cache due to missing pod info
-				ec.Add(internal, nil, msg.MsgCloneEvent.Common.Ktime, msg.MsgCloneEvent.Ktime, msg)
+				ec.Add(internal, nil, msg.Common.Ktime, msg.Ktime, msg)
 			}
 		} else {
 			if ec != nil {
 				// adding to the cache due to missing parent
-				ec.Add(nil, nil, msg.MsgCloneEvent.Common.Ktime, msg.MsgCloneEvent.Ktime, msg)
+				ec.Add(nil, nil, msg.Common.Ktime, msg.Ktime, msg)
 			}
 		}
 	default:

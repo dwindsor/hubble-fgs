@@ -543,9 +543,10 @@ func ipEventRetryInternal(op uint8, socketFlags uint32, refCntDone *[2]bool, ev 
 
 	if process != nil {
 		if !refCntDone[exec.ProcessRefCnt] && !skipRefCnt {
-			if refAction == refInc {
+			switch refAction {
+			case refInc:
 				process.RefInc(fmt.Sprintf("cache-process-%s", opStr))
-			} else if refAction == refDec {
+			case refDec:
 				process.RefDec(fmt.Sprintf("cache-process-%s", opStr))
 			}
 			refCntDone[exec.ProcessRefCnt] = true
@@ -558,9 +559,10 @@ func ipEventRetryInternal(op uint8, socketFlags uint32, refCntDone *[2]bool, ev 
 	if parent != nil {
 		ev.SetParent(parent.UnsafeGetProcess())
 		if !refCntDone[exec.ParentRefCnt] && !skipRefCnt {
-			if refAction == refInc {
+			switch refAction {
+			case refInc:
 				parent.RefInc(fmt.Sprintf("cache-parent-%s", opStr))
-			} else if refAction == refDec {
+			case refDec:
 				parent.RefDec(fmt.Sprintf("cache-parent-%s", opStr))
 				exec.MaybeParentRefDec(process, parent)
 			}

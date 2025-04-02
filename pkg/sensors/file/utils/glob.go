@@ -31,13 +31,14 @@ type GlobState struct {
 }
 
 func (s *GlobState) AddTransition(input rune, target int32) {
-	if input == '*' {
+	switch input {
+	case '*':
 		s.hasStar = true
 		s.nextStar = target
-	} else if input == '?' {
+	case '?':
 		s.hasQmark = true
 		s.nextQmark = target
-	} else {
+	default:
 		s.hasChar = true
 		s.valueChar = byte(input)
 		s.nextChar = target

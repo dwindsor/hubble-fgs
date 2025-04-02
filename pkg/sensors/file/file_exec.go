@@ -106,7 +106,7 @@ func (k *observerFileExecSensor) PolicyHandler(
 			path.Join(option.Config.HubbleLib, h.progName),
 			h.name,
 			fmt.Sprintf("%s/%s", h.tp, h.progSection),
-			fmt.Sprintf("%s_%s", strings.Replace(h.tp, ".", "_", -1), h.name),
+			fmt.Sprintf("%s_%s", strings.ReplaceAll(h.tp, ".", "_"), h.name),
 			"file_exec_monitoring")
 		load.SetLoaderData(FimLoaderData{
 			tp: h.tp,
@@ -192,10 +192,10 @@ func (k *observerFileExecSensor) PolicyHandler(
 			m := program.MapBuilderPolicy(m, load)
 
 			// custom max entries setup
-			switch {
-			case m.Name == "tg_mb_paths":
+			switch m.Name {
+			case "tg_mb_paths":
 				m.SetInnerMaxEntries(selState.MatchBinariesPathsMaxEntries())
-			case m.Name == "file_digests_maps":
+			case "file_digests_maps":
 				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesDigestsMap(selState)))
 			}
 			maps = append(maps, m)

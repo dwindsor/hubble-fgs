@@ -98,8 +98,8 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		if ipError.Process != nil {
 			processInfo, caps = p.colorer.ProcessInfo(response.NodeName, ipError.Process)
 		} else {
-			processInfo = fmt.Sprintf("(unknown process)")
-			caps = fmt.Sprintf("")
+			processInfo = "(unknown process)"
+			caps = ""
 		}
 		event := p.colorer.Blue.Sprintf("💢 %-7s", "IP-Error")
 		errDetails := p.colorer.Cyan.Sprint(ipError.SourceIp, "->", ipError.DestinationIp,

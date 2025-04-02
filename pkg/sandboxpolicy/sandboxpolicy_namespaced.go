@@ -34,7 +34,7 @@ func (p *SandboxTracingPolicyNamespaced) spName() string {
 	if p == nil || p.sp == nil {
 		return "unknown-nssp-name"
 	}
-	return p.sp.ObjectMeta.Name
+	return p.sp.Name
 }
 
 func toTracingPolicyNamespaced(namespace string, name string, spec *v1alpha1.SandboxSpec) (*SandboxTracingPolicyNamespaced, error) {
@@ -58,8 +58,8 @@ func ToTracingPolicyNamespaced(p *v1alpha1.SandboxPolicyNamespaced) (*SandboxTra
 		return nil, fmt.Errorf("sandboxpolicy is empty")
 	}
 
-	name := TracingPolicyName(p.ObjectMeta.Name)
-	pol, err := toTracingPolicyNamespaced(p.ObjectMeta.Namespace, name, &p.Spec)
+	name := TracingPolicyName(p.Name)
+	pol, err := toTracingPolicyNamespaced(p.Namespace, name, &p.Spec)
 	if err != nil {
 		return nil, err
 	}

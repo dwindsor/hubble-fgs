@@ -120,7 +120,7 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 			logger.GetLogger().Warnf("Misconfigured %s latency Histogram: Min value must be less than Max", protoStr)
 			config.Enable = 0
 			enabled[protocol] = false
-			return config, fmt.Errorf("Misconfigured %s latency Histogram: Min value must be less than Max", protoStr)
+			return config, fmt.Errorf("misconfigured %s latency Histogram: Min value must be less than Max", protoStr)
 		}
 		latencyRange := float64(latencyMax - latencyMin)
 		fLatencyMin := float64(latencyMin)

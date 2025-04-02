@@ -69,11 +69,7 @@ func (tester *TestCaseTester) Assert(t *testing.T, tc *TestCase) bool {
 			return false
 		}
 	}
-	if !assert.Equal(t, expectedSteps, nSteps, "expected %d steps, got %d", expectedSteps, nSteps) {
-		return false
-	}
-
-	return true
+	return assert.Equal(t, expectedSteps, nSteps, "expected %d steps, got %d", expectedSteps, nSteps)
 }
 
 type TestStepTester interface {
@@ -148,11 +144,7 @@ func (tester *TestStepEventTester) Assert(t *testing.T, step TestStep) bool {
 		}
 	}
 	n, _ := io.Copy(io.Discard, r)
-	if !assert.Equal(t, int64(0), n, "%d unmatched bytes remain", n) {
-		return false
-	}
-
-	return true
+	return assert.Equal(t, int64(0), n, "%d unmatched bytes remain", n)
 }
 
 type TestStepEventDumpTester struct {

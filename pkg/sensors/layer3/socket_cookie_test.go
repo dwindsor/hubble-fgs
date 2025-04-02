@@ -34,7 +34,7 @@ func socketCookieTest(_ *testing.T) (ec.MultiEventChecker, error) {
 
 	// initialize listen, connect, and accept file descriptors, and ensure that they
 	// are closed once we return
-	var lFD, cFD, aFD int = -1, -1, -1
+	lFD, cFD, aFD := -1, -1, -1
 	defer func() {
 		if lFD != -1 {
 			syscall.Close(lFD)

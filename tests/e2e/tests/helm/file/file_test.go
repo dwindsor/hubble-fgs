@@ -52,7 +52,7 @@ func TestMain(m *testing.M) {
 		if pr == "" {
 			pr = "/proc"
 		}
-		ctx, err = helpers.LoadCRDString(file.Namespace, strings.Replace(file.UbuntulYaml, "HOST_PROC", pr, -1), true)(ctx, cfg)
+		ctx, err = helpers.LoadCRDString(file.Namespace, strings.ReplaceAll(file.UbuntulYaml, "HOST_PROC", pr), true)(ctx, cfg)
 		if err != nil {
 			return ctx, fmt.Errorf("failed to deploy ubuntu pod: %w", err)
 		}
@@ -151,7 +151,7 @@ func TestMain(m *testing.M) {
 			pr = "/proc"
 		}
 		var err error
-		ctx, err = helpers.UnloadCRDString(file.Namespace, strings.Replace(file.UbuntulYaml, "HOST_PROC", pr, -1), true)(ctx, cfg)
+		ctx, err = helpers.UnloadCRDString(file.Namespace, strings.ReplaceAll(file.UbuntulYaml, "HOST_PROC", pr), true)(ctx, cfg)
 		if err != nil {
 			return ctx, fmt.Errorf("failed to remove tracing policy: %w", err)
 		}

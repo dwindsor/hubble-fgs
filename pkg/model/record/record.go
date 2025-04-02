@@ -79,7 +79,7 @@ func (r *DatapathRecord) String() string {
 	ep := fmt.Sprint(r.Endpoint.String())
 
 	if r.Action != nil {
-		action = fmt.Sprintf("%s", r.Action)
+		action = r.Action.String()
 	}
 	return fmt.Sprintf("Src %s Endpoint %s Action %s", src, ep, action)
 }

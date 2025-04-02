@@ -35,7 +35,7 @@ func deleteSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors
 	var err error
 	switch sp := obj.(type) {
 	case *v1alpha1.SandboxPolicy:
-		tpName := sandboxpolicy.TracingPolicyName(sp.ObjectMeta.Name)
+		tpName := sandboxpolicy.TracingPolicyName(sp.Name)
 		log.WithFields(logrus.Fields{
 			"sp-name": sp.ObjectMeta.Name,
 			"tp-name": tpName,
@@ -43,13 +43,13 @@ func deleteSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors
 		err = s.DeleteTracingPolicy(ctx, tpName, "")
 
 	case *v1alpha1.SandboxPolicyNamespaced:
-		tpName := sandboxpolicy.TracingPolicyName(sp.ObjectMeta.Name)
+		tpName := sandboxpolicy.TracingPolicyName(sp.Name)
 		log.WithFields(logrus.Fields{
 			"sp-name":   sp.ObjectMeta.Name,
 			"tp-name":   tpName,
 			"namespace": sp.ObjectMeta.Namespace,
 		}).Info("deleting sandbox policy")
-		err = s.DeleteTracingPolicy(ctx, tpName, sp.ObjectMeta.Namespace)
+		err = s.DeleteTracingPolicy(ctx, tpName, sp.Namespace)
 
 	default:
 		log.WithFields(logrus.Fields{

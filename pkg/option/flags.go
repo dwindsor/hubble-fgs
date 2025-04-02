@@ -159,7 +159,7 @@ func ReadAndSetEnterpriseFlags() {
 	if viper.IsSet(KeyHubbleLib) {
 		logger.GetLogger().Warnf("Flag --%s has been deprecated, please use --%s instead", KeyHubbleLib, option.KeyHubbleLib)
 		// If option.KeyHubbleLib has been set then it takes precedence.
-		if viper.IsSet(option.KeyHubbleLib) == false {
+		if !viper.IsSet(option.KeyHubbleLib) {
 			option.Config.HubbleLib = viper.GetString(KeyHubbleLib)
 		}
 	}

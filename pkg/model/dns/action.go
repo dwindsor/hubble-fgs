@@ -13,13 +13,14 @@ func quotaToNs(reset string) (uint64, error) {
 	var mult uint64
 
 	specifier := reset[len(reset)-1:]
-	if specifier == "m" {
+	switch specifier {
+	case "m":
 		mult = 60000000000
-	} else if specifier == "h" {
+	case "h":
 		mult = 3600000000000
-	} else if specifier == "s" {
+	case "s":
 		mult = 1000000000
-	} else {
+	default:
 		return 0, fmt.Errorf("unknown reset specifier %s", specifier)
 	}
 	time := reset[0 : len(reset)-1]

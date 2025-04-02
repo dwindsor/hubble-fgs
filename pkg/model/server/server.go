@@ -97,9 +97,9 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 	iter := uuid.Iterate()
 	for iter.Next(&key, &value) {
 		n := bytes.IndexByte(value.Binary[:], 0)
-		selfStr := fmt.Sprintf("%s", value.Binary[:n])
+		selfStr := string(value.Binary[:n])
 		m := bytes.Index(value.Args[:], []byte{0x00, 0x00})
-		selfArgs := fmt.Sprintf("%s", value.Args[:m])
+		selfArgs := string(value.Args[:m])
 		// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
 		// since args in process tree binary map does not contain CWD.
 		selfArgs, _ = process.ArgsDecoder(selfArgs, api.EventNoCWDSupport)
@@ -504,9 +504,9 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		}
 		// uidValue.Binary is a fixed size byte array. Trim trailing null bytes.
 		n := bytes.IndexByte(uidValue.Binary[:], 0)
-		selfStr := fmt.Sprintf("%s", uidValue.Binary[:n])
+		selfStr := string(uidValue.Binary[:n])
 		m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
-		selfArgs := fmt.Sprintf("%s", uidValue.Args[:m])
+		selfArgs := string(uidValue.Args[:m])
 		// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
 		// since args in process tree binary map does not contain CWD.
 		selfArgs, _ = process.ArgsDecoder(selfArgs, api.EventNoCWDSupport)
@@ -518,17 +518,16 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 			err = uidMap.Lookup(&parent, &uidValue)
 			if err == nil {
 				n = bytes.IndexByte(uidValue.Binary[:], 0)
-				parentPath = fmt.Sprintf("%s", uidValue.Binary[:n])
+				parentPath = string(uidValue.Binary[:n])
 				m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
-				parentArgs = fmt.Sprintf("%s", uidValue.Args[:m])
+				parentArgs = string(uidValue.Args[:m])
 				// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
 				// since args in process tree binary map does not contain CWD.
 				parentArgs, _ = process.ArgsDecoder(parentArgs, api.EventNoCWDSupport)
 			}
 		}
 
-		var dest []*tetragon.Destination
-		dest = dstList[key.Self]
+		dest := dstList[key.Self]
 
 		var inInitTree *wrapperspb.BoolValue
 		if val.InContainer {

@@ -252,7 +252,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, dstPodNameKeep, r3[0].Endpoint.EP.Name)
 
 	// Test matchLabels keys are tracking the subjects
-	src, _ := s.Src[name]
+	src := s.Src[name]
 	assert.NotNil(t, src)
 	assert.Equal(t, 1, len(src.Subjects))
 	assert.Equal(t, r1[0].Src.CgroupId, src.Subjects[0].CgroupId)
@@ -1061,17 +1061,19 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 			continue
 		}
 		if r.Endpoint.EP.Type == endpoint.DnsType {
-			if r.Endpoint.Port == 80 {
+			switch r.Endpoint.Port {
+			case 80:
 				port80++
-			} else if r.Endpoint.Port == 81 {
+			case 81:
 				port81++
 			}
 			continue
 		}
 		if r.Endpoint.EP.Type == endpoint.PodType {
-			if r.Endpoint.Port == 80 {
+			switch r.Endpoint.Port {
+			case 80:
 				port80++
-			} else if r.Endpoint.Port == 81 {
+			case 81:
 				port81++
 			}
 			continue

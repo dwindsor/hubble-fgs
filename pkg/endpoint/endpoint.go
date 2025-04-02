@@ -18,7 +18,6 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 type Type int
@@ -64,12 +63,12 @@ func newCache() (*Cache, error) {
 		return cache, nil
 	}
 
-	logger.GetLogger().WithField("size", enterpriseOption.Config.EndpointCacheSize).Info("Initializing Endpoint cache")
-	fwdlru, err := lru.New[uint64, Endpoint](enterpriseOption.Config.EndpointCacheSize)
+	logger.GetLogger().WithField("size", option.Config.EndpointCacheSize).Info("Initializing Endpoint cache")
+	fwdlru, err := lru.New[uint64, Endpoint](option.Config.EndpointCacheSize)
 	if err != nil {
 		return nil, err
 	}
-	revLru, err := lru.New[Endpoint, uint64](enterpriseOption.Config.EndpointCacheSize)
+	revLru, err := lru.New[Endpoint, uint64](option.Config.EndpointCacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +78,7 @@ func newCache() (*Cache, error) {
 		Type:       bpf.BPF_MAP_TYPE_LRU_HASH,
 		KeySize:    uint32(unsafe.Sizeof(endpointKey{})),
 		ValueSize:  uint32(unsafe.Sizeof(endpointValue{})),
-		MaxEntries: uint32(enterpriseOption.Config.EndpointCacheSize),
+		MaxEntries: uint32(option.Config.EndpointCacheSize),
 		Pinning:    ebpf.PinByName,
 	}
 	opts := ebpf.MapOptions{
@@ -183,8 +182,8 @@ func (c *Cache) AddIpServiceMap(epService *corev1.Service) {
 
 	ep := Endpoint{
 		Type:      ServiceType,
-		Namespace: epService.ObjectMeta.Namespace,
-		Name:      epService.ObjectMeta.Name,
+		Namespace: epService.Namespace,
+		Name:      epService.Name,
 	}
 
 	// Notice pods may reuse IPs in this case we just update the

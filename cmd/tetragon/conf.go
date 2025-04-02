@@ -112,8 +112,8 @@ func validateConfig() (bool, error) {
 		return false, errConfigBoth
 	}
 
-	if len(newConfDirs) > 0 && oldConfYaml == true ||
-		len(oldConfDirs) > 0 && newConfYaml == true {
+	if len(newConfDirs) > 0 && oldConfYaml ||
+		len(oldConfDirs) > 0 && newConfYaml {
 		return false, errConfigBoth
 	}
 
@@ -130,7 +130,7 @@ func readConfigFile(path string, file string) error {
 	if err != nil {
 		return err
 	}
-	if st.Mode().IsRegular() == false {
+	if !st.Mode().IsRegular() {
 		return fmt.Errorf("failed to read config file '%s' not a regular file", file)
 	}
 
@@ -148,7 +148,7 @@ func readConfigDir(path string) error {
 	if err != nil {
 		return err
 	}
-	if st.IsDir() == false {
+	if !st.IsDir() {
 		return fmt.Errorf("'%s' is not a directory", path)
 	}
 
@@ -164,7 +164,7 @@ func readConfigDir(path string) error {
 }
 
 func readConfigSettings(newEnv bool, newConf bool, defaultConfDir string, defaultConfDropIn string, dropInsDir []string) {
-	if newEnv == true {
+	if newEnv {
 		viper.SetEnvPrefix("tetragon")
 	} else {
 		viper.SetEnvPrefix("fgs")
@@ -174,7 +174,7 @@ func readConfigSettings(newEnv bool, newConf bool, defaultConfDir string, defaul
 	viper.AutomaticEnv()
 
 	// First set default conf file and format
-	if newConf == true {
+	if newConf {
 		viper.SetConfigName("tetragon")
 	} else {
 		viper.SetConfigName("hubble-fgs")
@@ -189,7 +189,7 @@ func readConfigSettings(newEnv bool, newConf bool, defaultConfDir string, defaul
 	// Look into cwd first, this is needed for quick development only
 	readConfigFile(".", "tetragon.yaml")
 
-	if newConf == true {
+	if newConf {
 		readConfigFile(defaultConfDir, "tetragon.yaml")
 	} else {
 		// Look for /etc/hubble-fgs/hubble-fgs.yaml

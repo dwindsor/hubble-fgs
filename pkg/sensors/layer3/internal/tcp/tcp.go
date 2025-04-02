@@ -526,7 +526,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 
 	if spec.Parser.Tcp.Qos != nil {
 		if !enterpriseOption.Config.EnableProcessTree {
-			return false, fmt.Errorf("Failed to load quota policy. Requires enable process tree")
+			return false, fmt.Errorf("failed to load quota policy. Requires enable process tree")
 		}
 
 		if err := configureQos(spec.Parser.Tcp.Qos); err != nil {
@@ -572,7 +572,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 		tcpconfig.RttHistogramMin = spec.Parser.Tcp.RttHistogram.Min
 
 		if tcpconfig.RttHistogramMax < tcpconfig.RttHistogramMin {
-			return false, fmt.Errorf("Misconfigured Rtt Histogram: Min value must be less than Max")
+			return false, fmt.Errorf("misconfigured Rtt Histogram: Min value must be less than Max")
 		}
 	} else {
 		tcpconfig.RttHistogramMax = 0

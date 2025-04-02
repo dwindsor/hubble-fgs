@@ -75,7 +75,7 @@ func (policy PolicyList) Exists(l *LabelSet) bool {
 func (policy PolicyList) AddPod(name string, ep *endpoint.Endpoint) error {
 	p, ok := policy[name]
 	if !ok {
-		return fmt.Errorf("Policy name (%s) does not exist", name)
+		return fmt.Errorf("policy name (%s) does not exist", name)
 	}
 	p.Endpoints = append(p.Endpoints, ep)
 	return nil

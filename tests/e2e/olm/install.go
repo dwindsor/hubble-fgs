@@ -268,7 +268,7 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 		}
 		dsCMStr := string(dsCMString)
 		// Workaround as extraArgs is not a literal value
-		dsCMStr = strings.Replace(dsCMStr, " PLACEHOLDER", extraArgs, -1)
+		dsCMStr = strings.ReplaceAll(dsCMStr, " PLACEHOLDER", extraArgs)
 		opCM.Data[agent.OperatorConfigMapAgentDaemonSetKey] = dsCMStr
 		tetragonRes := client.Resources(o.Namespace)
 		if err := tetragonRes.Create(ctx, opCM); err != nil {
@@ -296,7 +296,7 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 		}
 		var subStr *strings.Reader
 		if _, ok := o.HelmValues[tetragon.AgentImageKey]; ok {
-			tmp := strings.Replace(Subscription, "env:", fmt.Sprintf("env:\n     - name: TETRAGON_IMAGE\n       value: %s", o.HelmValues[tetragon.AgentImageKey]), -1)
+			tmp := strings.ReplaceAll(Subscription, "env:", fmt.Sprintf("env:\n     - name: TETRAGON_IMAGE\n       value: %s", o.HelmValues[tetragon.AgentImageKey]))
 			subStr = strings.NewReader(tmp)
 		} else {
 			subStr = strings.NewReader(Subscription)
@@ -340,13 +340,13 @@ func TetragonInstall(opts ...tetragon.Option) env.Func {
 				err = tetragonRes.List(ctx, &pods)
 				if err == nil {
 					for _, item := range pods.Items {
-						klog.Info("Pod name ", item.ObjectMeta.Name)
+						klog.Info("Pod name ", item.Name)
 						klog.Info("Pod status ", item.Status)
-						if strings.HasPrefix(item.ObjectMeta.Name, "tetragon-operator") {
+						if strings.HasPrefix(item.Name, "tetragon-operator") {
 							klog.Info("Tetragon operator spec ", item.Spec)
 							cl, err := clientset.NewForConfig(cfg.Client().RESTConfig())
 							if err == nil {
-								logs, _ = getPodLogs(ctx, cl, o.Namespace, item.ObjectMeta.Name, "tetragon-operator", false, nil, nil)
+								logs, _ = getPodLogs(ctx, cl, o.Namespace, item.Name, "tetragon-operator", false, nil, nil)
 							} else {
 								klog.Error("Failed retrieving tetragon operator logs ", err)
 							}

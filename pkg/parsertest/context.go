@@ -42,7 +42,7 @@ func (ctx *TestContext) emitEgress(pkt []byte) error {
 		return err
 	}
 	if n != len(pkt) {
-		return fmt.Errorf("Write failed to write all bytes (%d < %d)",
+		return fmt.Errorf("write failed to write all bytes (%d < %d)",
 			n, len(pkt))
 	}
 
@@ -53,12 +53,12 @@ func (ctx *TestContext) emitEgress(pkt []byte) error {
 		return err
 	}
 	if n != len(pkt) {
-		return fmt.Errorf("Read failed to read all bytes (%d < %d)",
+		return fmt.Errorf("read failed to read all bytes (%d < %d)",
 			n, len(pkt))
 	}
 
 	if !assert.Equal(ctx.t, pkt, b) {
-		return fmt.Errorf("Bytes received not equal to bytes sent")
+		return fmt.Errorf("bytes received not equal to bytes sent")
 	}
 
 	return nil
@@ -77,7 +77,7 @@ func (ctx *TestContext) emitIngress(pkt []byte) error {
 		return err
 	}
 	if n != len(pkt) {
-		return fmt.Errorf("Write failed to write all bytes (%d < %d)",
+		return fmt.Errorf("write failed to write all bytes (%d < %d)",
 			n, len(pkt))
 	}
 
@@ -88,12 +88,12 @@ func (ctx *TestContext) emitIngress(pkt []byte) error {
 		return err
 	}
 	if n != len(pkt) {
-		return fmt.Errorf("Read failed to read all bytes (%d < %d)",
+		return fmt.Errorf("read failed to read all bytes (%d < %d)",
 			n, len(pkt))
 	}
 
 	if !assert.Equal(ctx.t, pkt, b) {
-		return fmt.Errorf("Bytes received not equal to bytes sent")
+		return fmt.Errorf("bytes received not equal to bytes sent")
 	}
 
 	return nil

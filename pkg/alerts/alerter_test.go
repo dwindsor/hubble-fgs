@@ -34,10 +34,10 @@ func TestEvaluateRules(t *testing.T) {
 	option.Config.AlertsExportDir = t.TempDir()
 	// Add same two alert rules, but with JSON export enabled
 	exampleCopy := exampleAR.DeepCopy()
-	exampleCopy.ObjectMeta.Name = "curl2"
+	exampleCopy.Name = "curl2"
 	a.ruleManager.AddAlertRule(exampleCopy)
 	anotherCopy := anotherAR.DeepCopy()
-	anotherCopy.ObjectMeta.Name = "shell2"
+	anotherCopy.Name = "shell2"
 	a.ruleManager.AddAlertRule(anotherCopy)
 	assert.Len(t, a.ruleManager.rules, 4)
 

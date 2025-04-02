@@ -166,7 +166,7 @@ type Subevent struct {
 
 func (s *Subevent) Match(ctx *TestContext, event []byte, op byte) *TestStepError {
 	if int(op) != s.Op {
-		return &TestStepError{s.Position, "match", fmt.Errorf("Wanted event type %d, but got %d", s.Op, op)}
+		return &TestStepError{s.Position, "match", fmt.Errorf("wanted event type %d, but got %d", s.Op, op)}
 	}
 	r := bytes.NewReader(event)
 	for _, m := range s.Matchers {
@@ -207,7 +207,7 @@ outer:
 			return &TestStepError{e.Position, "waitForEvent", fmt.Errorf("EOF on ops %v event channels", e.Ops)}
 		}
 		if len(event) == 0 {
-			return &TestStepError{e.Position, "emptyEventError", fmt.Errorf("Events block received empty event")}
+			return &TestStepError{e.Position, "emptyEventError", fmt.Errorf("events block received empty event")}
 		}
 		op := event[0]
 		ctx.t.Logf("EVENT op=%d bytes=%d\n", op, len(event))

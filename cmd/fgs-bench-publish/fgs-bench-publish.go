@@ -89,13 +89,14 @@ func main() {
 		summaries[summary.Args.TestName] = &summary
 	}
 
-	if cmd == "publish" {
+	switch cmd {
+	case "publish":
 		for _, summary := range summaries {
 			publishToSheets(sheetsService, gitRev, summary)
 		}
-	} else if cmd == "pretty" {
+	case "pretty":
 		prettyPrintForPR(sheetsService, gitRev, summaries)
-	} else {
+	default:
 		log.Fatalf("Unknown command '%s', expected 'publish' or 'pretty'", cmd)
 	}
 }

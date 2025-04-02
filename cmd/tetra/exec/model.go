@@ -499,10 +499,8 @@ func runBrowserTree() error {
 	go func() {
 		errChan <- srv.ListenAndServe()
 	}()
-	select {
-	case <-ctx.Done():
-		srv.Shutdown(ctx)
-	}
+	<-ctx.Done()
+	srv.Shutdown(ctx)
 	return <-errChan
 }
 
@@ -910,9 +908,10 @@ func NewShow() *cobra.Command {
 		Hidden:       false,
 		SilenceUsage: false,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			if output == "interactive" {
+			switch output {
+			case "interactive":
 				return printInteractiveTree()
-			} else if output == "web" {
+			case "web":
 				switch err := runBrowserTree(); err {
 				case http.ErrServerClosed:
 					fmt.Println("server closed")
@@ -950,10 +949,7 @@ type sortableProcessDebug struct {
 }
 
 func (s sortableProcessDebug) Less(x, y int) bool {
-	if s.p[x].Id < s.p[y].Id {
-		return false
-	}
-	return true
+	return s.p[x].Id >= s.p[y].Id
 }
 
 func (s sortableProcessDebug) Len() int {
@@ -974,9 +970,7 @@ func printProcessDebug() error {
 
 	index := make([]*tetragon.ProcessUUID, 0, len(res.Map.Process))
 
-	for _, p := range res.Map.Process {
-		index = append(index, p)
-	}
+	index = append(index, res.Map.Process...)
 
 	s := sortableProcessDebug{
 		p: index,
@@ -1072,10 +1066,7 @@ type sortableEndpoint struct {
 }
 
 func (s sortableEndpoint) Less(x, y int) bool {
-	if s.e[x].Key < s.e[y].Key {
-		return false
-	}
-	return true
+	return s.e[x].Key >= s.e[y].Key
 }
 
 func (s sortableEndpoint) Len() int {

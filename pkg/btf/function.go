@@ -52,11 +52,11 @@ func getTypeInternal(sb *strings.Builder, myType interface{}, fnName string, kre
 		}
 		sb.WriteString(")")
 	case *btf.Struct:
-		sb.WriteString(fmt.Sprintf("struct %s", t.Name))
+		fmt.Fprintf(sb, "struct %s", t.Name)
 	case *btf.Fwd:
-		sb.WriteString(fmt.Sprintf("struct %s", t.Name))
+		fmt.Fprintf(sb, "struct %s", t.Name)
 	case *btf.Enum:
-		sb.WriteString(fmt.Sprintf("enum %s", t.Name))
+		fmt.Fprintf(sb, "enum %s", t.Name)
 	default:
 		logger.GetLogger().Warnf("Unknown type %s", t)
 	}

@@ -115,7 +115,7 @@ func doBenchmark(output string, tests []benchmarkNetworkTest) error {
 
 	file, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
-		return fmt.Errorf("File does not exists or cannot be created")
+		return fmt.Errorf("file does not exists or cannot be created")
 	}
 	defer file.Close()
 

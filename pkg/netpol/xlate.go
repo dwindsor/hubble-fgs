@@ -12,7 +12,7 @@ import (
 func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.TetragonNetworkPolicy, error) {
 	policy := []*types.TetragonNetworkPolicy{}
 	subjEqual := np.Spec.PodSelector.MatchLabels
-	name := np.ObjectMeta.Name
+	name := np.Name
 
 	subj := types.TetragonNetworkSubject{
 		MatchLabelsEqual: subjEqual,
@@ -25,9 +25,7 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 		if sel.Operator != "In" {
 			return nil, fmt.Errorf("unsupported process selector op, only 'In' is currently supported")
 		}
-		for _, v := range sel.Values {
-			subj.InProcessName = append(subj.InProcessName, v)
-		}
+		subj.InProcessName = append(subj.InProcessName, sel.Values...)
 	}
 
 	dfltEnforce := &types.TetragonEnforceAction{}
@@ -74,9 +72,7 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 			}
 
 			ports := make([]uint32, 0, len(d.Ports.Ports))
-			for _, p := range d.Ports.Ports {
-				ports = append(ports, p)
-			}
+			ports = append(ports, d.Ports.Ports...)
 
 			dest := types.TetragonNetworkDestination{
 				FQDN:   f,

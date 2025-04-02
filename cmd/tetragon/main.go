@@ -249,7 +249,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		log.Fatal(err)
 	}
 
-	if filepath.IsAbs(option.Config.TracingPolicyDir) == false {
+	if !filepath.IsAbs(option.Config.TracingPolicyDir) {
 		log.Fatalf("Failed path specified by --tracing-policy-dir '%q' is not absolute", option.Config.TracingPolicyDir)
 	}
 	option.Config.TracingPolicyDir = filepath.Clean(option.Config.TracingPolicyDir)
@@ -351,7 +351,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// so we don't bother renaming in that case.
 	oldBpfDir, err := getOldBpfDir(bpf.MapPrefixPath())
 	if err != nil {
-		return fmt.Errorf("Failed to move old tetragon base directory: %w", err)
+		return fmt.Errorf("failed to move old tetragon base directory: %w", err)
 	}
 
 	// Raise memory resource
@@ -718,7 +718,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	deleteOldBpfDir(oldBpfDir)
 
 	// k8s should have metrics, so periodically log only in a non k8s
-	if option.Config.EnableK8s == false {
+	if !option.Config.EnableK8s {
 		go logStatus(ctx, obs)
 	}
 
@@ -822,7 +822,7 @@ func loadTpFromDir(ctx context.Context, dir string) error {
 			return err
 		}
 
-		if st.Mode().IsRegular() == false {
+		if !st.Mode().IsRegular() {
 			return nil
 		}
 

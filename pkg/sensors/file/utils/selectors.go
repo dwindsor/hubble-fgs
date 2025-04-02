@@ -1133,11 +1133,12 @@ func ParseRenameSrcType(k *KernelSelectorState, m v1alpha1.FileRenameTypeSelecto
 	val.opsMatchMask = 0
 	for _, v := range m.Values {
 		valstr := strings.ToUpper(v)
-		if valstr == "FILE" {
+		switch valstr {
+		case "FILE":
 			val.opsMatchMask |= SRC_REG_FILE
-		} else if valstr == "DIRECTORY" {
+		case "DIRECTORY":
 			val.opsMatchMask |= SRC_DIRECTORY
-		} else {
+		default:
 			return fmt.Errorf("parseRenameSrcType: value %s unknown", valstr)
 		}
 	}
@@ -1207,13 +1208,14 @@ func ParseMatchFilename(k *KernelSelectorState, op []v1alpha1.FilePathGlobSelect
 		}
 
 		val := k.InitOrGetPatterns(uint32(selIdx))
-		if o.Operator == "InFileWithDigest" {
+		switch o.Operator {
+		case "InFileWithDigest":
 			val.op = MatchFilenameInFileWithDigest
 
 			for idx, p := range o.Values {
 				val.paths[p] = uint32(idx)
 			}
-		} else if o.Operator == "InPattern" {
+		case "InPattern":
 			if len(o.Values) > 256 {
 				return fmt.Errorf("only support up to 256 patterns")
 			}
@@ -1251,7 +1253,7 @@ func ParseExecAttributes(k *KernelSelectorState, op []v1alpha1.FileExecAttribute
 	} else if strings.ToUpper(o.IsFromMemfd) == "FALSE" {
 		val.isFromMemfd = MatchExecAttrFalse
 	} else {
-		return fmt.Errorf("Unknown value in isFromMemfd:(%s) (valid options are: 'Any', 'True', and 'False')", o.IsFromMemfd)
+		return fmt.Errorf("unknown value in isFromMemfd:(%s) (valid options are: 'Any', 'True', and 'False')", o.IsFromMemfd)
 	}
 
 	if o.IsUpperLayer == "" || strings.ToUpper(o.IsUpperLayer) == "ANY" {
@@ -1261,7 +1263,7 @@ func ParseExecAttributes(k *KernelSelectorState, op []v1alpha1.FileExecAttribute
 	} else if strings.ToUpper(o.IsUpperLayer) == "FALSE" {
 		val.isUpperLayer = MatchExecAttrFalse
 	} else {
-		return fmt.Errorf("Unknown value in IsUpperLayer:(%s) (valid options are: 'Any', 'True', and 'False')", o.IsUpperLayer)
+		return fmt.Errorf("unknown value in IsUpperLayer:(%s) (valid options are: 'Any', 'True', and 'False')", o.IsUpperLayer)
 	}
 
 	return nil

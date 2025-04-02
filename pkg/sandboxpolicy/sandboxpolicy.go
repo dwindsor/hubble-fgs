@@ -42,7 +42,7 @@ func (p *SandboxTracingPolicy) spName() string {
 	if p == nil || p.sp == nil {
 		return "unknown-sp-name"
 	}
-	return p.sp.ObjectMeta.Name
+	return p.sp.Name
 }
 
 func sandboxHandler(
@@ -112,7 +112,7 @@ func ToTracingPolicy(p *v1alpha1.SandboxPolicy) (*SandboxTracingPolicy, error) {
 		return nil, fmt.Errorf("sandboxpolicy is empty")
 	}
 
-	name := TracingPolicyName(p.ObjectMeta.Name)
+	name := TracingPolicyName(p.Name)
 	pol, err := toTracingPolicy(name, &p.Spec)
 	if err != nil {
 		return nil, err

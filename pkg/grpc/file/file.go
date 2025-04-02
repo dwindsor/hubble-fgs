@@ -135,11 +135,12 @@ func getOpenFlags(flags uint32) []string {
 	var f []string
 
 	// first check the access modes
-	if flags&unix.O_ACCMODE == unix.O_RDONLY {
+	switch flags & unix.O_ACCMODE {
+	case unix.O_RDONLY:
 		f = append(f, "O_RDONLY")
-	} else if flags&unix.O_ACCMODE == unix.O_RDWR {
+	case unix.O_RDWR:
 		f = append(f, "O_RDWR")
-	} else if flags&unix.O_ACCMODE == unix.O_WRONLY {
+	case unix.O_WRONLY:
 		f = append(f, "O_WRONLY")
 	}
 
@@ -410,19 +411,20 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 
 	action := tetragon.FileAction(event.Msg.Action)
 	var args *tetragon.FileArgument
-	if action == tetragon.FileAction_FILE_READDIR {
+	switch action {
+	case tetragon.FileAction_FILE_READDIR:
 		args = createReadDirArgs(event)
 		// generate file location only to inode-based events
 		if event.Msg.Path.Flags&fileapi.PATH_BASED_FILE == 0 {
 			args.GetReaddirArg().GetFile().Location = fileLocation(tetragonProcess, event.ContainerID)
 		}
-	} else if action == tetragon.FileAction_FILE_CHATTR {
+	case tetragon.FileAction_FILE_CHATTR:
 		args = createAttrArgs(event)
 		// generate file location only to inode-based events
 		if event.Msg.Path.Flags&fileapi.PATH_BASED_FILE == 0 {
 			args.GetAttrArg().GetFile().Location = fileLocation(tetragonProcess, event.ContainerID)
 		}
-	} else {
+	default:
 		args = createGenericArgs(event)
 		// generate file location only to inode-based events
 		if event.Msg.Path.Flags&fileapi.PATH_BASED_FILE == 0 {

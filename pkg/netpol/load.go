@@ -111,7 +111,7 @@ func LoadTNPFromDir(ctx context.Context, dir string) error {
 			return err
 		}
 
-		if st.Mode().IsRegular() == false {
+		if !st.Mode().IsRegular() {
 			return nil
 		}
 

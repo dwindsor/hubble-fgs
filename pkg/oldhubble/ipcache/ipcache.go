@@ -132,7 +132,7 @@ func (ipc *IPCache) InitializeFrom(entries []*models.IPListEntry) error {
 	cache := map[string]entry{}
 	for _, e := range entries {
 		if e == nil || e.Cidr == nil || e.Identity == nil {
-			return fmt.Errorf("Received invalid ipcache entry from cilium")
+			return fmt.Errorf("received invalid ipcache entry from cilium")
 		}
 
 		var (

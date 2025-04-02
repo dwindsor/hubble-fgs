@@ -156,7 +156,7 @@ func getExistingSockets() (map[uint32][]uint32, error) {
 	}
 
 	for _, d := range procFS {
-		if d.IsDir() == false {
+		if !d.IsDir() {
 			continue
 		}
 

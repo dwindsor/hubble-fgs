@@ -85,7 +85,7 @@ func (r *ruleManager) AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 	var newEncoder bool
 	// use an existing encoder if one exists
 	r.mutex.Lock()
-	encoder, _ = r.encoders[fname]
+	encoder = r.encoders[fname]
 	if encoder != nil {
 		encoder.IncRef()
 	}

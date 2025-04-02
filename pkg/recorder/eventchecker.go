@@ -217,7 +217,7 @@ func (rec *Recorder) RecordResponse(res *tetragon.GetEventsResponse) error {
 		return fmt.Errorf("nil recorder spec")
 	}
 
-	if FilterResponse(&rec.Spec.EventFilters, res) == FilterResultDiscard {
+	if FilterResponse(&rec.EventFilters, res) == FilterResultDiscard {
 		return nil
 	}
 
@@ -228,7 +228,7 @@ func (rec *Recorder) RecordResponse(res *tetragon.GetEventsResponse) error {
 
 	// *ec.ProcessExecChecker -> "exec"
 	eventName := checkerToEventName(checker)
-	if filter, ok := rec.Spec.FieldFilters[eventName]; ok {
+	if filter, ok := rec.FieldFilters[eventName]; ok {
 		var err error
 		checker, err = FilterCheckerFields(&filter, checker)
 		if err != nil {
@@ -239,7 +239,7 @@ func (rec *Recorder) RecordResponse(res *tetragon.GetEventsResponse) error {
 	}
 
 	// * is special and will apply to all events
-	if filter, ok := rec.Spec.FieldFilters["*"]; ok {
+	if filter, ok := rec.FieldFilters["*"]; ok {
 		var err error
 		checker, err = FilterCheckerFields(&filter, checker)
 		if err != nil {

@@ -39,7 +39,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	// Retrieve the intent.
 	opCMNamespacedName := types.NamespacedName{
-		Namespace: req.NamespacedName.Namespace,
+		Namespace: req.Namespace,
 		Name:      OperatorConfigMapName,
 	}
 	opCM := &corev1.ConfigMap{}
@@ -50,7 +50,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		}
 		log.Info("operator ConfigMap not found, creating")
 		// The operator ConfigMap created, contains only default settings and instructions.
-		err = r.Create(ctx, DefaultOperatorConfigMap(log, req.NamespacedName.Namespace, OperatorConfigMapName))
+		err = r.Create(ctx, DefaultOperatorConfigMap(log, req.Namespace, OperatorConfigMapName))
 		if err == nil {
 			log.Info("operator ConfigMap created")
 			return ctrl.Result{Requeue: true}, nil
@@ -63,14 +63,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Reconcile the agent ConfigMap.
-	desiredCM := ExtractAgentConfigMap(log, req.NamespacedName.Namespace, AgentConfigMapName, opCM)
+	desiredCM := ExtractAgentConfigMap(log, req.Namespace, AgentConfigMapName, opCM)
 	if err := ctrl.SetControllerReference(opCM, desiredCM, r.Scheme); err != nil {
 		log.Error(err, "unable to set the owner reference to the ConfigMap")
 		return ctrl.Result{}, err
 	}
 	agentCM := &corev1.ConfigMap{}
 	agentCMNamespacedName := types.NamespacedName{
-		Namespace: req.NamespacedName.Namespace,
+		Namespace: req.Namespace,
 		Name:      AgentConfigMapName,
 	}
 	if err := r.Get(ctx, agentCMNamespacedName, agentCM); err != nil {
@@ -96,7 +96,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Reconcile the agent DaemonSet.
-	desiredDS, err := DaemonSet(log, req.NamespacedName.Namespace, DaemonSetName, opCM)
+	desiredDS, err := DaemonSet(log, req.Namespace, DaemonSetName, opCM)
 	if err != nil {
 		log.Error(err, "unable to generate the desired daemon set")
 		return ctrl.Result{}, nil
@@ -107,7 +107,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 	ds := &appsv1.DaemonSet{}
 	dsNamespacedName := types.NamespacedName{
-		Namespace: req.NamespacedName.Namespace,
+		Namespace: req.Namespace,
 		Name:      DaemonSetName,
 	}
 	if err := r.Get(ctx, dsNamespacedName, ds); err != nil {
@@ -134,7 +134,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Reconcile the runtime hooks DaemonSet
-	desiredRTDS, err := RTDaemonSet(log, req.NamespacedName.Namespace, RTDaemonSetName, opCM)
+	desiredRTDS, err := RTDaemonSet(log, req.Namespace, RTDaemonSetName, opCM)
 	if err != nil {
 		log.Error(err, "unable to generate the desired runtime hooks daemon set")
 		// no need to requeue as it is not recoverable without a config change
@@ -149,7 +149,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 	rtDS := &appsv1.DaemonSet{}
 	rtDSNamespacedName := types.NamespacedName{
-		Namespace: req.NamespacedName.Namespace,
+		Namespace: req.Namespace,
 		Name:      RTDaemonSetName,
 	}
 	if err := r.Get(ctx, rtDSNamespacedName, rtDS); err != nil {

@@ -49,7 +49,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 
 	// Imported to allow sensors to be initialized inside init().
-	_ "github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 
 	// Iinit sensors for benchmarking

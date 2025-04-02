@@ -269,7 +269,7 @@ func EnableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestampEnable, cgroup
 		maps = append(maps, DNSGlobalIDMap)
 	}
 
-	if needDispatcher == true {
+	if needDispatcher {
 		if kernels.MinKernelVersion("5.4.0") {
 			if !kernels.MinKernelVersion("5.5.0") {
 				progsCollectStats = append(progsCollectStats, dispatcherSkbLoad54Progs...)
@@ -587,11 +587,12 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 	case "layer3_sensor":
 		var err error
-		if args.Load.Attach == "sockops" {
+		switch args.Load.Attach {
+		case "sockops":
 			err = cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
-		} else if args.Load.Attach == "fentry" {
+		case "fentry":
 			err = program.LoadTracingProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
-		} else {
+		default:
 			err = program.LoadKprobeProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		}
 		if err != nil {

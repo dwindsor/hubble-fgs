@@ -32,7 +32,7 @@ func AddSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Ma
 	case *v1alpha1.SandboxPolicy:
 		var err error
 		log = log.WithFields(logrus.Fields{
-			"sandbox-policy-name": sp.ObjectMeta.Name,
+			"sandbox-policy-name": sp.Name,
 		})
 		tp, err = ToTracingPolicy(sp)
 		if err != nil {
@@ -43,8 +43,8 @@ func AddSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Ma
 	case *v1alpha1.SandboxPolicyNamespaced:
 		var err error
 		log = log.WithFields(logrus.Fields{
-			"sandbox-policy-name":      sp.ObjectMeta.Name,
-			"sandbox-policy-namespace": sp.ObjectMeta.Namespace,
+			"sandbox-policy-name":      sp.Name,
+			"sandbox-policy-namespace": sp.Namespace,
 		})
 		tp, err = ToTracingPolicyNamespaced(sp)
 		if err != nil {

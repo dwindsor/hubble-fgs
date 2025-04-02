@@ -17,7 +17,6 @@ import (
 	"github.com/yalue/native_endian"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
 )
@@ -34,25 +33,25 @@ func DisableDns() {
 	enableDns = false
 }
 
-func MsgToIPUnix(m *api.MsgIPEvent) *layer3.MsgIPEventUnix {
+func MsgToIPUnix(m *networkapi.MsgIPEvent) *layer3.MsgIPEventUnix {
 	unix := &layer3.MsgIPEventUnix{}
 
 	unix.Msg = m
 	unix.Duration = time.Duration((m.CloseTime - m.CreateTime) * uint64(time.Nanosecond))
 	if enableDns {
-		unix.Msg.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY
+		unix.Msg.SocketFlags |= networkapi.SOCKFLAGS_TYPE_DNSREADY
 	}
 
 	return unix
 }
 
-func MsgToIPWithStatsUnix(m *api.MsgIPWithStatsEvent) *layer3.MsgIPWithStatsEventUnix {
+func MsgToIPWithStatsUnix(m *networkapi.MsgIPWithStatsEvent) *layer3.MsgIPWithStatsEventUnix {
 	unix := &layer3.MsgIPWithStatsEventUnix{}
 
 	unix.Msg = m
 	unix.Duration = time.Duration((m.CloseTime - m.CreateTime) * uint64(time.Nanosecond))
 	if enableDns {
-		unix.Msg.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY
+		unix.Msg.SocketFlags |= networkapi.SOCKFLAGS_TYPE_DNSREADY
 	}
 
 	return unix
@@ -233,7 +232,7 @@ func incMetric(code int64, ipv6 uint8) {
 }
 
 func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPEvent{}
+	m := networkapi.MsgIPEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
 		return nil, err
