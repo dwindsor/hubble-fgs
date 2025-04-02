@@ -136,11 +136,11 @@ func TestAddSameRule(t *testing.T) {
 	assert.Len(t, rm.rules, 1)
 	assert.Len(t, rm.encoders, 1)
 	encoder := rm.rules[ruleName].jsonEncoder
-	assert.Equal(t, int32(1), encoder.refCnt)
+	assert.Equal(t, int32(1), encoder.refCnt.Load())
 	rm.DeleteAlertRule(ruleName)
 	assert.Len(t, rm.rules, 0)
 	assert.Len(t, rm.encoders, 0)
-	assert.Equal(t, int32(0), encoder.refCnt)
+	assert.Equal(t, int32(0), encoder.refCnt.Load())
 }
 
 func TestAddFilanameRule(t *testing.T) {
@@ -166,22 +166,22 @@ func TestAddFilanameRule(t *testing.T) {
 	encoder1 := rm.rules[ruleName].jsonEncoder
 	encoder2 := rm.rules[anotherRuleName].jsonEncoder
 	assert.NotEqual(t, encoder1, encoder2)
-	assert.Equal(t, int32(1), encoder1.refCnt)
-	assert.Equal(t, int32(1), encoder2.refCnt)
+	assert.Equal(t, int32(1), encoder1.refCnt.Load())
+	assert.Equal(t, int32(1), encoder2.refCnt.Load())
 	assert.Len(t, rm.rules, 2)
 	assert.Len(t, rm.encoders, 2)
 
 	rm.DeleteAlertRule(ruleName)
 	assert.Len(t, rm.rules, 1)
 	assert.Len(t, rm.encoders, 1)
-	assert.Equal(t, int32(0), encoder1.refCnt)
-	assert.Equal(t, int32(1), encoder2.refCnt)
+	assert.Equal(t, int32(0), encoder1.refCnt.Load())
+	assert.Equal(t, int32(1), encoder2.refCnt.Load())
 
 	rm.DeleteAlertRule(anotherRuleName)
 	assert.Len(t, rm.rules, 0)
 	assert.Len(t, rm.encoders, 0)
-	assert.Equal(t, int32(0), encoder1.refCnt)
-	assert.Equal(t, int32(0), encoder2.refCnt)
+	assert.Equal(t, int32(0), encoder1.refCnt.Load())
+	assert.Equal(t, int32(0), encoder2.refCnt.Load())
 }
 
 func TestAddSameFilenameRule(t *testing.T) {
@@ -213,7 +213,7 @@ func TestAddSameFilenameRule(t *testing.T) {
 	encoder1 := rm.rules[ruleName].jsonEncoder
 	encoder2 := rm.rules[anotherRuleName].jsonEncoder
 	assert.Equal(t, encoder1, encoder2)
-	assert.Equal(t, int32(2), encoder1.refCnt)
+	assert.Equal(t, int32(2), encoder1.refCnt.Load())
 	assert.Len(t, rm.encoders, 1)
 
 	// write one
@@ -224,7 +224,7 @@ func TestAddSameFilenameRule(t *testing.T) {
 	rm.DeleteAlertRule(ruleName)
 	assert.Len(t, rm.rules, 1)
 	assert.Len(t, rm.encoders, 1)
-	assert.Equal(t, int32(1), encoder1.refCnt)
+	assert.Equal(t, int32(1), encoder1.refCnt.Load())
 
 	// write two
 	err = encoder1.encode(&tetragon.Alert{Rule: exampleRule})
@@ -234,7 +234,7 @@ func TestAddSameFilenameRule(t *testing.T) {
 	rm.DeleteAlertRule(anotherRuleName)
 	assert.Len(t, rm.rules, 0)
 	assert.Len(t, rm.encoders, 0)
-	assert.Equal(t, int32(0), encoder1.refCnt)
+	assert.Equal(t, int32(0), encoder1.refCnt.Load())
 
 	// write two, this should not appear because we have closed the file
 	err = encoder1.encode(&tetragon.Alert{Rule: exampleRule})

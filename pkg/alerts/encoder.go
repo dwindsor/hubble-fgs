@@ -12,7 +12,7 @@ package alerts
 
 import (
 	"io"
-	"sync"
+	"sync/atomic"
 
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -22,32 +22,28 @@ import (
 type jsonEncoder struct {
 	writer io.WriteCloser
 	fname  string
-	refCnt int32
-	mu     sync.Mutex
+	refCnt atomic.Int32
 }
 
 func newJsonEncoder(w io.WriteCloser, fname string) *jsonEncoder {
-	return &jsonEncoder{
+	ret := &jsonEncoder{
 		writer: w,
 		fname:  fname,
-		refCnt: 1,
 	}
+	ret.refCnt.Store(1)
+	return ret
 }
 
 func (e *jsonEncoder) IncRef() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.refCnt++
+	e.refCnt.Add(1)
 }
 
 func (e *jsonEncoder) DecRef() int32 {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.refCnt--
-	if e.refCnt == 0 {
+	refCnt := e.refCnt.Add(-1)
+	if refCnt == 0 {
 		e.writer.Close()
 	}
-	return e.refCnt
+	return refCnt
 }
 
 func (e *jsonEncoder) encode(alert *tetragon.Alert) error {
@@ -56,17 +52,15 @@ func (e *jsonEncoder) encode(alert *tetragon.Alert) error {
 		return err
 	}
 
-	// let's take a lock, this will ensure that writes are atomic
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	// encoder is closed, nothing to do
-	if e.refCnt == 0 {
+	if e.refCnt.Load() == 0 {
 		return nil
 	}
 	out = append(out, '\n')
 	_, err = e.writer.Write(out)
-	if err != nil {
+
+	// only return an error if the encoder was not closed in the meantime
+	if err != nil && e.refCnt.Load() > 0 {
 		return err
 	}
 	return nil

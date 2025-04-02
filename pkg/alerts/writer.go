@@ -71,9 +71,10 @@ func (lw *logWriter) rotate() {
 }
 
 func newLogWriter(filename string) (io.WriteCloser, error) {
-
 	// use the same configuration options as the export file
 	lw := &logWriter{
+		// NB: lumberjack locks before every Write, which is something our code depends on
+		// to not get mangled entries for the cases where multiple writers exist.
 		l: &lumberjack.Logger{
 			Filename:   filename,
 			MaxSize:    option.Config.ExportFileMaxSizeMB,
