@@ -21,10 +21,11 @@ type Reconciler struct {
 }
 
 const (
-	AgentConfigMapName    = "tetragon-config"
-	OperatorConfigMapName = "tetragon-operator-config"
-	DaemonSetName         = "tetragon"
-	RTDaemonSetName       = "tetragon-rthooks"
+	AgentConfigMapName       = "tetragon-config"
+	OperatorConfigMapName    = "tetragon-operator-config"
+	DaemonSetName            = "tetragon"
+	RTDaemonSetName          = "tetragon-rthooks"
+	AggregatorDeploymentName = "tetragon-aggregator"
 )
 
 // Reconcile gets notified and reconciles the Tetragon operator configuration.
@@ -184,6 +185,57 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, err
 		}
 		log.Info("runtime hooks daemon set updated")
+	}
+
+	// Reconcile the Tetragon Aggregator Deployment.
+	desiredAggregatorDeploy, err := AggregatorDeployment(log, req.Namespace, AggregatorDeploymentName, opCM)
+	if err != nil {
+		log.Error(err, "unable to generate the desired aggregator deployment")
+		return ctrl.Result{}, nil
+	}
+	if desiredAggregatorDeploy != nil {
+		if err := ctrl.SetControllerReference(opCM, desiredAggregatorDeploy, r.Scheme); err != nil {
+			log.Error(err, "unable to set the owner reference to the aggregator deployment")
+			return ctrl.Result{}, err
+		}
+	}
+	aggregatorDeploy := &appsv1.Deployment{}
+	aggregatorDeployNamespacedName := types.NamespacedName{
+		Namespace: req.Namespace,
+		Name:      AggregatorDeploymentName,
+	}
+	if err := r.Get(ctx, aggregatorDeployNamespacedName, aggregatorDeploy); err != nil {
+		if !apierrors.IsNotFound(err) {
+			log.Error(err, "unable to fetch aggregator deployment")
+			return ctrl.Result{}, err
+		}
+		if desiredAggregatorDeploy != nil {
+			log.Info("aggregator deployment not found, creating")
+			if err := r.Create(ctx, desiredAggregatorDeploy); err != nil {
+				log.Error(err, "unable to create aggregator deployment")
+				return ctrl.Result{}, err
+			}
+			log.Info("aggregator deployment created")
+			return ctrl.Result{Requeue: true}, nil
+		}
+	} else {
+		if desiredAggregatorDeploy == nil {
+			if err := r.Delete(ctx, desiredAggregatorDeploy); err != nil {
+				log.Error(err, "unable to delete the aggregator deployment")
+				return ctrl.Result{}, err
+			}
+			log.Info("aggregator deployment deleted")
+			return ctrl.Result{Requeue: true}, nil
+		}
+	}
+	if desiredAggregatorDeploy != nil && (!equality.Semantic.DeepEqual(aggregatorDeploy.Labels, desiredAggregatorDeploy.Labels) ||
+		!equality.Semantic.DeepEqual(aggregatorDeploy.Spec, desiredAggregatorDeploy.Spec)) {
+		log.Info("updating aggregator deployment")
+		if err := r.Update(ctx, desiredAggregatorDeploy); err != nil {
+			log.Error(err, "unable to update aggregator deployment")
+			return ctrl.Result{}, err
+		}
+		log.Info("aggregator deployment updated")
 	}
 
 	log.Info("reconciliation completed")

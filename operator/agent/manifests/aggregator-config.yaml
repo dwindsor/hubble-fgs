@@ -1,0 +1,35 @@
+# Enables the Tetragon Aggregator.
+enabled: false
+# Annotations for the Tetragon Aggregator Deployment.
+#annotations:
+#  key1: value1
+# Annotations for the Tetragon Aggregator Deployment Pods.
+#podAnnotations:
+#  key1: value1
+# Extra labels to be added on the Tetragon Aggregator Deployment.
+#extraLabels:
+# Extra labels to be added on the Tetragon Aggregator Deployment Pods.
+#extraPodLabels:
+# priorityClassName for the Tetragon Aggregator Deployment Pods.
+#priorityClassName:
+# securityContext for the Tetragon Aggregator Deployment Pods.
+#securityContext:
+# securityContext for the Tetragon Aggregator Deployment Pod container.
+podSecurityContext: |
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - "ALL"
+# resources for the Tetragon Operator Deployment Pod container.
+#resources:
+#strategy:
+# Steer the Tetragon Aggregator Deployment Pod placement via nodeSelector, tolerations and affinity rules.
+#nodeSelector:
+#tolerations:
+#affinity:
+# tetragon-aggregator image.
+imagePullPolicy: IfNotPresent
+#imagePullSecrets:
+# Extra volumes for the Tetragon Aggregator Deployment.
+#extraVolumes:
+#extraVolumeMounts:

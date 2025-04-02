@@ -15,6 +15,7 @@ const (
 	OperatorConfigMapAgentConfigMapKey   = "agentConfigMap"
 	OperatorConfigMapAgentDaemonSetKey   = "agentDaemonSet"
 	OperatorConfigMapRTHooksDaemonSetKey = "rtHooks"
+	OperatorConfigMapAggregatorKey       = "aggregator"
 )
 
 var (
@@ -29,6 +30,9 @@ var (
 
 	//go:embed manifests/rthooks-daemonset-config.yaml
 	defaultRTDSConfig string
+
+	//go:embed manifests/aggregator-config.yaml
+	defaultAggregatorConfig string
 )
 
 // DefaultOperatorConfigMap creates a ConfigMap.
@@ -41,6 +45,7 @@ func DefaultOperatorConfigMap(log logr.Logger, namespace string, name string) *c
 	data[OperatorConfigMapAgentConfigMapKey] = defaultAgentConfig
 	data[OperatorConfigMapAgentDaemonSetKey] = defaultDSConfig
 	data[OperatorConfigMapRTHooksDaemonSetKey] = defaultRTDSConfig
+	data[OperatorConfigMapAggregatorKey] = defaultAggregatorConfig
 	cm := &corev1.ConfigMap{
 		TypeMeta: k8sv1.TypeMeta{
 			Kind:       "ConfigMap",

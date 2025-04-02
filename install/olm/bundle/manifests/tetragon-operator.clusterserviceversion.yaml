@@ -94,6 +94,7 @@ spec:
           - "apps"
           resources:
           - daemonsets
+          - deployments
           verbs:
           - get
           - list
@@ -106,6 +107,7 @@ spec:
           - "apps"
           resources:
           - daemonsets/finalizers
+          - deployments/finalizers
           verbs:
           - create
           - delete
@@ -266,6 +268,8 @@ spec:
                   value: "quay.io/cilium/tetragon-rthooks:v0.5"
                 - name: TETRAGON_METADATA_IMAGE
                   value: "quay.io/isovalent/hubble-enterprise-metadata:current"
+                - name: TETRAGON_AGGREGATOR_IMAGE
+                  value: "quay.io/isovalent/tetragon-aggregator:v1.16.0"
                 - name: TETRAGON_OPERATOR_MANAGE_AGENT
                   value: "true"
                 - name: TETRAGON_OPERATOR_NAMESPACE
