@@ -5,19 +5,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/yaml"
 )
 
 // AggregatorService instantiates a Tetragon Aggregator Service.
-func AggregatorService(log logr.Logger, namespace string, name string, cm *corev1.ConfigMap) (*corev1.Service, error) {
-	aggregatorConfigYaml := cm.Data[OperatorConfigMapAggregatorKey]
-	aggregatorCMFields := make(map[string]interface{})
-	if err := yaml.Unmarshal([]byte(aggregatorConfigYaml), &aggregatorCMFields); err != nil {
-		log.WithValues("value", aggregatorConfigYaml).Error(err, "could not unmarshal the aggregator configuration")
-		return nil, err
-	}
+func AggregatorService(log logr.Logger, namespace string, name string, config map[string]interface{}) (*corev1.Service, error) {
 	// the aggregator service gets only created if it is enabled
-	if !configValue(log, aggregatorCMFields, "enabled", false) {
+	if !configValue(log, config, "enabled", false) {
 		return nil, nil
 	}
 

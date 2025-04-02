@@ -12,6 +12,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 )
 
 // Reconciler reconciles the Tetragon agent.
@@ -187,8 +188,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		log.Info("runtime hooks daemon set updated")
 	}
 
+	aggregatorConfigYaml := opCM.Data[OperatorConfigMapAggregatorKey]
+	aggregatorCMFields := make(map[string]interface{})
+	if err := yaml.Unmarshal([]byte(aggregatorConfigYaml), &aggregatorCMFields); err != nil {
+		log.WithValues("value", aggregatorConfigYaml).Error(err, "could not unmarshal the aggregator configuration")
+		return ctrl.Result{}, err
+	}
+
 	// Reconcile the Tetragon Aggregator Deployment.
-	desiredAggregatorDeploy, err := AggregatorDeployment(log, req.Namespace, AggregatorDeploymentName, opCM)
+	desiredAggregatorDeploy, err := AggregatorDeployment(log, req.Namespace, AggregatorDeploymentName, aggregatorCMFields)
 	if err != nil {
 		log.Error(err, "unable to generate the desired aggregator deployment")
 		return ctrl.Result{}, nil
@@ -239,7 +247,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	// Reconcile the Tetragon Aggregator Service.
-	desiredAggregatorService, err := AggregatorService(log, req.Namespace, AggregatorDeploymentName, opCM)
+	desiredAggregatorService, err := AggregatorService(log, req.Namespace, AggregatorDeploymentName, aggregatorCMFields)
 	if err != nil {
 		log.Error(err, "unable to generate the desired aggregator service")
 		return ctrl.Result{}, nil

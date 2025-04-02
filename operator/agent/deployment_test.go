@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 )
 
 func TestAggregatorDeployment(t *testing.T) {
@@ -282,8 +283,13 @@ extraVolumeMounts: |
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			// get the config
+			config := make(map[string]interface{})
+			err := yaml.Unmarshal([]byte(tt.cm.Data[OperatorConfigMapAggregatorKey]), &config)
+			require.NoError(t, err)
+
 			// function to test
-			actual, err := AggregatorDeployment(logr.Log, tt.namespace, tt.deploymentName, tt.cm)
+			actual, err := AggregatorDeployment(logr.Log, tt.namespace, tt.deploymentName, config)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, actual)
 		})

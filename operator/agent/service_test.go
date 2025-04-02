@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 )
 
 func TestAggregatorService(t *testing.T) {
@@ -69,8 +70,13 @@ func TestAggregatorService(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			// get the config
+			config := make(map[string]interface{})
+			err := yaml.Unmarshal([]byte(tt.cm.Data[OperatorConfigMapAggregatorKey]), &config)
+			require.NoError(t, err)
+
 			// function to test
-			actual, err := AggregatorService(logr.Log, tt.namespace, tt.serviceName, tt.cm)
+			actual, err := AggregatorService(logr.Log, tt.namespace, tt.serviceName, config)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, actual)
 		})
