@@ -386,3 +386,29 @@ spec:
 	assert.Equal(t, "TCP", tnp.Spec.Rules[0].Destination[1].Ports.Protocol)
 	assert.Equal(t, 0, len(tnp.Spec.Rules[0].Destination[1].Ports.Ports))
 }
+
+func TestFromYAMLNothing(t *testing.T) {
+	policy :=
+		`apiVersion: cilium.io/v1alpha1
+kind: TetragonNetworkPolicy
+metadata:
+  name: "example-label-segmentation"
+  annotations:
+    author: "IsovalentQATeam"
+spec:
+  defaultAction: "deny"
+  rules:
+  - hook: "connect"
+    action: "allow"
+    destination:
+`
+	tnp, err := fromYAML(policy)
+	assert.NoError(t, err)
+	assert.Nil(t, tnp.Spec.PodSelector)
+	assert.Nil(t, tnp.Spec.ProcessSelector)
+
+	assert.Equal(t, 1, len(tnp.Spec.Rules))
+	assert.Equal(t, "connect", tnp.Spec.Rules[0].Hook)
+	assert.Equal(t, "allow", tnp.Spec.Rules[0].Action)
+	assert.Equal(t, 0, len(tnp.Spec.Rules[0].Destination))
+}
