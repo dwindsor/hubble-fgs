@@ -710,6 +710,7 @@ func EnableLayer3Progs() error {
 	}
 	if enterpriseOption.Config.EnableDNS {
 		dnsEnabled = true
+		udp.InitDNS()
 	}
 	udpCGroup = true
 	if !hasCgroup() {

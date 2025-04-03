@@ -153,6 +153,12 @@ func ParseOptions(config *networkapi.UdpConfigValue) {
 	}
 }
 
+// InitDNS sets the default DNS port so that enabling DNS works out of the box.
+func InitDNS() {
+	Config.DnsPorts[0] = defaultDnsPort
+	ParseOptions(&Config)
+}
+
 // ParseDNSSepec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify DNS and run DNS parser on it.
 //
