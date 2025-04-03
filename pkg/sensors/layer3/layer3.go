@@ -13,9 +13,9 @@ package layer3
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"runtime"
 	"time"
-	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -160,9 +160,9 @@ var (
 	dispatcherSkbLoad54Progs = []*program.Program{EgressDispatcherSkbLoad54, IngressDispatcherSkbLoad54}
 
 	// Dispatcher protocol configuration map
-	protoCfgMap          = program.MapBuilder("tg_cgroup_protocol_cfg_map", EgressDispatcher)
-	protoCfgSkbLoadMap   = program.MapBuilder("tg_cgroup_protocol_cfg_map", EgressDispatcherSkbLoad)
-	protoCfgSkbLoad54Map = program.MapBuilder("tg_cgroup_protocol_cfg_map", EgressDispatcherSkbLoad54)
+	protoCfgMap          = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcher)
+	protoCfgSkbLoadMap   = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcherSkbLoad)
+	protoCfgSkbLoad54Map = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcherSkbLoad54)
 
 	// Dispatcher Latency maps
 	latencyConfigMap        = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher)
@@ -472,29 +472,18 @@ func (k *CgroupProtocolConfigKey) String() string {
 	return fmt.Sprintf("Zero: %d", k.Zero)
 }
 
-func (l3 *l3Sensor) createCgroupProtocolCfgMap(l3cfg CgroupProtocolConfigValue) error {
-	zero := CgroupProtocolConfigKey{
-		Zero: 0,
-	}
-	c := &ebpf.MapSpec{
-		Name:       CgroupProtocolConfigMapName,
-		Type:       bpf.BPF_MAP_TYPE_ARRAY,
-		KeySize:    uint32(unsafe.Sizeof(CgroupProtocolConfigKey{})),
-		ValueSize:  uint32(unsafe.Sizeof(CgroupProtocolConfigValue{})),
-		MaxEntries: 1,
-		Pinning:    ebpf.PinByName,
-	}
-	opts := ebpf.MapOptions{
-		PinPath: bpf.MapPrefixPath(),
-	}
-
-	cfgMap, err := ebpf.NewMapWithOptions(c, opts)
+func (l3 *l3Sensor) configureCgroupProtocolCfgMap(l3cfg CgroupProtocolConfigValue) error {
+	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), CgroupProtocolConfigMapName), nil)
 	if err != nil {
-		return fmt.Errorf("failed `tg_cgroup_protocol_cfg_map` ebpf.NewMapWithOptions: %w", err)
+		return err
 	}
-	defer cfgMap.Close()
+	defer m.Close()
 
-	if err := cfgMap.Update(zero, l3cfg, ebpf.UpdateAny); err != nil {
+	key := &CgroupProtocolConfigKey{
+		Zero: uint32(0),
+	}
+	err = m.Put(key, &l3cfg)
+	if err != nil {
 		return fmt.Errorf("failed cgroup_protocol_cfg_map Update: %w", err)
 	}
 
@@ -529,7 +518,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	// Rawsock has no config maps.
 
 	if icmpEnabled || tcpEnabled || udpEnabled {
-		if err := l3.createCgroupProtocolCfgMap(l3cfg); err != nil {
+		if err := l3.configureCgroupProtocolCfgMap(l3cfg); err != nil {
 			return err
 		}
 	}
