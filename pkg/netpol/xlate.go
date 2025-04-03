@@ -58,8 +58,6 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 		}
 
 		for _, d := range r.Destination {
-			destEqual := make(map[string]string)
-
 			var f *types.TetragonNetworkFQDN
 
 			if len(d.FQDN) > 0 {
@@ -70,14 +68,8 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 				f = nil
 			}
 
-			if len(d.MatchLabels) > 0 {
-				for k, v := range d.MatchLabels {
-					destEqual[k] = v
-				}
-			}
-
 			labels := types.TetragonNetworkLabels{
-				Equal: destEqual,
+				Equal: d.PodSelector.MatchLabels,
 			}
 
 			ports := make([]uint32, 0, len(d.Ports.Ports))

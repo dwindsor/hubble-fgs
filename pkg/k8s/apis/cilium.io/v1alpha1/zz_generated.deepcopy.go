@@ -1075,12 +1075,10 @@ func (in *NetworkDestination) DeepCopyInto(out *NetworkDestination) {
 		copy(*out, *in)
 	}
 	in.CIDR.DeepCopyInto(&out.CIDR)
-	if in.MatchLabels != nil {
-		in, out := &in.MatchLabels, &out.MatchLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
+	if in.PodSelector != nil {
+		in, out := &in.PodSelector, &out.PodSelector
+		*out = new(v1.LabelSelector)
+		(*in).DeepCopyInto(*out)
 	}
 	out.Workload = in.Workload
 	in.Ports.DeepCopyInto(&out.Ports)

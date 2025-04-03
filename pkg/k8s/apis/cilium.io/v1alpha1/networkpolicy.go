@@ -120,10 +120,9 @@ type NetworkDestination struct {
 	FQDN []string `json:"FQDN,omitempty"`
 	// +kubebuilder:validation:Optional
 	CIDR NetworkDestinationCIDR `json:"CIDR,omitempty"`
-	// Currently we only support MatchLabelsValue style. Full MatchExpressions may
-	// be supported later.
 	// +kubebuilder:validation:Optional
-	MatchLabels map[string]string `json:"matchLabels,omitempty" protobuf:"bytes,1,rep,name=matchLabels"`
+	// PodSelector selects pods that this policy applies to
+	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
 	// +kubebuilder:validation:Optional
 	Workload NetworkDestinationWorkload `json:"workload,omitempty"`
 	// +kubebuilder:validation:Required

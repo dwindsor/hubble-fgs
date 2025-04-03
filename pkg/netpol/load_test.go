@@ -33,10 +33,11 @@ spec:
   - hook: "connect"
     action: "allow"
     destination:
-    - matchLabels:
-        "app.kubernetes.io/name": "tetragon-aggregator"
-        C: "c"
-        D: "c"
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: tetragon-aggregator
+          C: "c"
+          D: "d"
       ports:
         protocol: "TCP"
         ports: [80, 8080]
@@ -57,8 +58,8 @@ spec:
 	assert.Equal(t, "connect", tnp.Spec.Rules[0].Hook)
 	assert.Equal(t, "allow", tnp.Spec.Rules[0].Action)
 	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination))
-	assert.Equal(t, 3, len(tnp.Spec.Rules[0].Destination[0].MatchLabels))
-	key, ok := tnp.Spec.Rules[0].Destination[0].MatchLabels["app.kubernetes.io/name"]
+	assert.Equal(t, 3, len(tnp.Spec.Rules[0].Destination[0].PodSelector.MatchLabels))
+	key, ok := tnp.Spec.Rules[0].Destination[0].PodSelector.MatchLabels["app.kubernetes.io/name"]
 	assert.True(t, ok)
 	assert.Equal(t, "tetragon-aggregator", key)
 	assert.Equal(t, "TCP", tnp.Spec.Rules[0].Destination[0].Ports.Protocol)
