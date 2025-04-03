@@ -336,3 +336,53 @@ spec:
 	assert.Equal(t, "TCP", tnp.Spec.Rules[0].Destination[1].Ports.Protocol)
 	assert.Equal(t, 0, len(tnp.Spec.Rules[0].Destination[1].Ports.Ports))
 }
+
+func TestFromYAMLPartialMissingSubject(t *testing.T) {
+	policy :=
+		`apiVersion: cilium.io/v1alpha1
+kind: TetragonNetworkPolicy
+metadata:
+  name: "example-label-segmentation"
+  annotations:
+    author: "IsovalentQATeam"
+spec:
+  defaultAction: "deny"
+  rules:
+  - hook: "connect"
+    action: "allow"
+    destination:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: tetragon-aggregator
+          C: "c"
+          D: "d"
+      ports:
+        protocol: "TCP"
+    - fqdn:
+      - "ebpf.io"
+      - "tetragon.io"
+      ports:
+        protocol: "TCP"
+`
+	tnp, err := fromYAML(policy)
+	assert.NoError(t, err)
+	assert.Nil(t, tnp.Spec.PodSelector)
+	assert.Nil(t, tnp.Spec.ProcessSelector)
+
+	assert.Equal(t, "deny", tnp.Spec.DefaultAction)
+	assert.Equal(t, 1, len(tnp.Spec.Rules))
+	assert.Equal(t, "connect", tnp.Spec.Rules[0].Hook)
+	assert.Equal(t, "allow", tnp.Spec.Rules[0].Action)
+	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination))
+	assert.Equal(t, 3, len(tnp.Spec.Rules[0].Destination[0].PodSelector.MatchLabels))
+	key, ok := tnp.Spec.Rules[0].Destination[0].PodSelector.MatchLabels["app.kubernetes.io/name"]
+	assert.True(t, ok)
+	assert.Equal(t, "tetragon-aggregator", key)
+	assert.Equal(t, "TCP", tnp.Spec.Rules[0].Destination[0].Ports.Protocol)
+	assert.Equal(t, 0, len(tnp.Spec.Rules[0].Destination[0].Ports.Ports))
+	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination[1].FQDN))
+	assert.Equal(t, "ebpf.io", tnp.Spec.Rules[0].Destination[1].FQDN[0])
+	assert.Equal(t, "tetragon.io", tnp.Spec.Rules[0].Destination[1].FQDN[1])
+	assert.Equal(t, "TCP", tnp.Spec.Rules[0].Destination[1].Ports.Protocol)
+	assert.Equal(t, 0, len(tnp.Spec.Rules[0].Destination[1].Ports.Ports))
+}
