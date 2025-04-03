@@ -101,7 +101,7 @@ func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.Proces
 		logger.GetLogger().WithFields(logrus.Fields{
 			"cgid": src.CgroupId,
 			"self": src.Self,
-		}).Info("TCP DNS labels endpoint quota removed")
+		}).Debug("TCP DNS labels endpoint quota removed")
 	}
 
 	return nil
