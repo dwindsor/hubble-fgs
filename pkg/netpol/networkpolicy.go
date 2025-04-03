@@ -109,6 +109,7 @@ func deleteNetworkPolicy(obj any) {
 			"name": name,
 		}).WithError(err).Warn("remove from policyLibrary failed")
 	}
+	delete(policyLibrary, name)
 }
 
 func AddTetragonNetworkPolicyInformer(_ context.Context, w watcher.Watcher) error {
