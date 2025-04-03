@@ -37,22 +37,18 @@ func addTetragonNetworkPolicy(obj any) {
 		policy, err = ToTetragonNetworkPolicy(np)
 		if err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
-				"network-policy-name": np.ObjectMeta.Name,
-			}).WithError(err).Warn("AddNetworkPolicy: failed to convert to Tetragon network policy")
+				"network-policy-name":      np.ObjectMeta.Name,
+				"network-policy-namespace": np.ObjectMeta.Namespace,
+			}).WithError(err).Warn("addNetworkPolicy: failed to convert TetragonNetworkPolicy to Tetragon network policy")
 			return
 		}
 
 	case *v1alpha1.TetragonNetworkPolicyNamespaced:
-		name = np.ObjectMeta.Name
-		crdNS = np
-		policy, err = ToTetragonNetworkPolicyNamespaced(np)
-		if err != nil {
-			logger.GetLogger().WithFields(logrus.Fields{
-				"network-policy-name":      np.ObjectMeta.Name,
-				"network-policy-namespace": np.ObjectMeta.Namespace,
-			}).WithError(err).Warn("AddNetworkPolicy: failed to convert to Tetragon network policy")
-			return
-		}
+		logger.GetLogger().WithFields(logrus.Fields{
+			"obj":      obj,
+			"obj-type": fmt.Sprintf("%T", obj),
+		}).Warn("addNetworkPolicy: namespaced policy currently not supported")
+		return
 
 	default:
 		logger.GetLogger().WithFields(logrus.Fields{
@@ -68,7 +64,7 @@ func addTetragonNetworkPolicy(obj any) {
 			"title":         name,
 			"policy":        policy,
 			"network rules": len(policy),
-		}).Warn("Policy create overwriting existing network policy")
+		}).Warn("addNetworkPolicy: aborted, policy create would overwrite existing network policy")
 		return
 	}
 
@@ -76,10 +72,10 @@ func addTetragonNetworkPolicy(obj any) {
 	_, ok = policyLibrary[existTest]
 	if ok {
 		logger.GetLogger().WithFields(logrus.Fields{
-			"title":         name,
+			"title":         existTest,
 			"policy":        policy,
 			"network rules": len(policy),
-		}).Warn("Policy create overwriting existing network policy")
+		}).Warn("addNetworkPolicy: aborted, policy create would overwrite existing network policy")
 		return
 	}
 
@@ -95,7 +91,7 @@ func addTetragonNetworkPolicy(obj any) {
 		"title":         name,
 		"policy":        policy,
 		"network rules": len(policy),
-	}).Info("adding network policy")
+	}).Info("addNetworkPolicy: completed successfully")
 }
 
 func updateTetragonNetworkPolicy(_, newObj any) {
@@ -124,14 +120,14 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 		logger.GetLogger().WithFields(logrus.Fields{
 			"obj":      newObj,
 			"obj-type": fmt.Sprintf("%T", newObj),
-		}).Warn("updateNetworkPolicy: not supported")
+		}).Warn("updateNetworkPolicy: namespaced policy currently not supported")
 		return
 
 	default:
 		logger.GetLogger().WithFields(logrus.Fields{
 			"obj":      newObj,
 			"obj-type": fmt.Sprintf("%T", newObj),
-		}).Warn("deleteNetworkPolicy: invalid type")
+		}).Warn("updateNetworkPolicy: invalid type")
 		return
 	}
 
@@ -148,7 +144,7 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 				"new title":     newName,
 				"old title":     oldName,
 				"network rules": len(newPolicy),
-			}).Warn("Policy update but policy does not exist")
+			}).Debug("updateNetworkPolicy: update but policy does not exist")
 		}
 	}
 
@@ -169,14 +165,14 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 			"new title":     newName,
 			"old title":     oldName,
 			"network rules": len(newPolicy),
-		}).Warn("failed to create new state in an update Tetragon network policy command")
+		}).Warn("updateNetworkPolicy: failed to create new state in an update to Tetragon network policy command")
 	}
 
 	if err := dns.RemoveNetworkPolicySet(oldName, oldStory.irPolicy); err != nil {
 		logger.GetLogger().WithFields(logrus.Fields{
 			"new name": newName,
 			"old name": oldName,
-		}).WithError(err).Warn("failed to remove old state in an update Tetragon network policy command")
+		}).WithError(err).Warn("updateNetworkPolicy: failed to remove old state in an update to Tetragon network policy command")
 	}
 
 	delete(policyLibrary, oldName)
@@ -191,7 +187,7 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 		"title":             newName,
 		"oldTitle":          oldName,
 		"new network rules": len(newPolicy),
-	}).Info("updated network policy")
+	}).Info("updateNetworkPolicy: completed successfully")
 }
 
 func deleteNetworkPolicy(obj any) {
@@ -202,7 +198,10 @@ func deleteNetworkPolicy(obj any) {
 		name = np.ObjectMeta.Name
 
 	case *v1alpha1.TetragonNetworkPolicyNamespaced:
-		name = np.ObjectMeta.Name
+		logger.GetLogger().WithFields(logrus.Fields{
+			"obj":      obj,
+			"obj-type": fmt.Sprintf("%T", obj),
+		}).Warn("deleteNetworkPolicy: namespaced policy currently not supported")
 
 	default:
 		logger.GetLogger().WithFields(logrus.Fields{
@@ -219,21 +218,22 @@ func deleteNetworkPolicy(obj any) {
 		if !ok {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"name": name,
-			}).Warn("deleteNetworkPolicy does not exist")
-			return // nothing to delete
+			}).Warn("deleteNetworkPolicy: abort policy does not exist")
+			return
 		}
 		name = deleteName
 	}
 	if err := dns.RemoveNetworkPolicySet(name, story.irPolicy); err != nil {
 		logger.GetLogger().WithFields(logrus.Fields{
 			"name": name,
-		}).WithError(err).Warn("remove from policyLibrary failed")
+		}).WithError(err).Warn("deleteNetworkPolicy: abort removing policy failed")
+		return
 	}
 	delete(policyLibrary, name)
 
 	logger.GetLogger().WithFields(logrus.Fields{
 		"title": name,
-	}).Info("deleted network policy")
+	}).Info("deleteNetworkPolicy: completed successfully")
 }
 
 func AddTetragonNetworkPolicyInformer(_ context.Context, w watcher.Watcher) error {
