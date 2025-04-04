@@ -40,6 +40,8 @@ type config struct {
 	SandboxPolicies        []string
 	EnableCilium           bool
 
+	NetworkPolicies []string
+
 	EnableAlerts    bool
 	AlertsExportDir string
 

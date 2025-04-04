@@ -686,12 +686,15 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		if err != nil {
 			return fmt.Errorf("add TracingPolicy failed: %w", err)
 		}
+	}
 
-		err = netpol.LoadTNPFromFile(ctx, option.Config.TracingPolicy)
-		if err != nil {
-			return fmt.Errorf("add TetragonNetworkPolicy failed: %w", err)
+	if len(enterpriseOption.Config.NetworkPolicies) > 0 {
+		for _, f := range enterpriseOption.Config.NetworkPolicies {
+			err = netpol.LoadTNPFromFile(ctx, f)
+			if err != nil {
+				return fmt.Errorf("add TetragonNetworkPolicy failed: %w", err)
+			}
 		}
-
 	}
 
 	if len(enterpriseOption.Config.SandboxPolicies) > 0 {

@@ -47,6 +47,7 @@ const (
 	keyEnablePolicyK8sWatcher         = "enable-policy-k8swatcher"
 	keyEnableSandboxPolicies          = "enable-sandboxpolicies"
 	keySandboxPolicy                  = "sandbox-policy"
+	keyNetworkPolicy                  = "network-policy"
 	keyEnableAlerts                   = "enable-alerts"
 	keyAlertsExportDir                = "alerts-export-dir"
 	keyDebugX                         = "debugx"
@@ -116,6 +117,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnablePolicyK8sWatcher, true, "Enable watching Kubernetes API server for all supported policy resources, unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely by `--enable-k8s-api=false`.")
 	flags.Bool(keyEnableSandboxPolicies, true, "Enable sandboxpolicies")
 	flags.StringSlice(keySandboxPolicy, []string{}, "Sandbox policy file to load at startup")
+	flags.StringSlice(keyNetworkPolicy, []string{}, "Network policy file to load at startup")
 	flags.Bool(keyEnableAlerts, false, "Enable alerts.")
 	flags.String(keyAlertsExportDir, "", "Directory for alert JSON export (filenames will be retrieved from alert rule names). Disabled by default.")
 	flags.StringSlice(keyDebugX, []string{}, "Extended debug to enable (e.g. \"tcp,udp+\"). Choose from: tcp, udp, icmp, rawsock. Tetragon defaults to maintaining metrics for program errors. Specifying the protocol/sub-system here causes events to be dispatched as well; adding a '+' will also get console messages")
@@ -162,6 +164,7 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnablePolicyK8sWatcher = viper.GetBool(keyEnablePolicyK8sWatcher)
 	Config.EnableSandboxPolicies = viper.GetBool(keyEnableSandboxPolicies)
 	Config.SandboxPolicies = viper.GetStringSlice(keySandboxPolicy)
+	Config.NetworkPolicies = viper.GetStringSlice(keyNetworkPolicy)
 	Config.EnableAlerts = viper.GetBool(keyEnableAlerts)
 	Config.AlertsExportDir = viper.GetString(keyAlertsExportDir)
 	Config.DebugX = viper.GetStringSlice(keyDebugX)
