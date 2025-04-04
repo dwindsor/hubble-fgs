@@ -75,6 +75,10 @@ func LoadTNPFromFile(ctx context.Context, file string) error {
 }
 
 func LoadTNPFromDir(ctx context.Context, dir string) error {
+	if dir == "" {
+		return nil
+	}
+
 	tpMaxDepth := 1
 	npFS := os.DirFS(dir)
 

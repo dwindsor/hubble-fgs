@@ -676,7 +676,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return err
 	}
 
-	err = netpol.LoadTNPFromDir(ctx, option.Config.TracingPolicyDir)
+	err = netpol.LoadTNPFromDir(ctx, enterpriseOption.Config.NetworkPoliciesDir)
 	if err != nil {
 		return err
 	}
