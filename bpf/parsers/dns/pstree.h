@@ -93,7 +93,7 @@ FUNC_INLINE int assign_dns_id_mapping(struct ip_addr *ip, char *domain)
 		if (!global_id)
 			return -1;
 
-		id_val->id = __sync_fetch_and_add(global_id, 1);
+		id_val->id = __sync_add_and_fetch(global_id, 1);
 		id_val->source = DESTINATION_SOURCE_DNS;
 
 		DEBUG("ID generated: %d", id_val->id);
