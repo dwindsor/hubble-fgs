@@ -837,12 +837,12 @@ func addTracingPolicy(ctx context.Context, file string) error {
 
 	tp, err := tracingpolicy.FromFile(f)
 	if err != nil {
-		return fmt.Errorf("failed to read tracing policy: %w", err)
+		return fmt.Errorf("failed to read (%s) tracing policy: %w", file, err)
 	}
 
 	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
 	if err != nil {
-		return fmt.Errorf("failed to get sensors from parser policy: %w", err)
+		return fmt.Errorf("failed to get sensors from (%s) parser policy: %w", file, err)
 	}
 
 	namespace := ""
@@ -909,7 +909,7 @@ func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*
 
 	perms, err := fileutils.RegularFilePerms(option.Config.ExportFilePerm)
 	if err != nil {
-		log.WithError(err).Warnf("Failed to parse export file permission '%s', failing back to %v",
+		log.WithError(err).WithField("filename", filename).Warnf("Failed to parse export file permission '%s', failing back to %v",
 			option.KeyExportFilePerm, perms)
 	}
 	writer.FileMode = perms
@@ -917,11 +917,11 @@ func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*
 	finfo, err := os.Stat(filepath.Clean(writer.Filename))
 	if err == nil && finfo.IsDir() {
 		// Error if exportFilename points to a directory
-		return nil, fmt.Errorf("passed export JSON logs file point to a directory")
+		return nil, fmt.Errorf("passed export JSON logs file (%s) point to a directory", filename)
 	}
 	abspath, err := filepath.Abs(filepath.Clean(writer.Filename))
 	if err != nil {
-		log.WithError(err).WithField("filename", writer.Filename).Warn("Failed to get absolute path of export file", writer.Filename)
+		log.WithError(err).WithField("filename", writer.Filename).Warn("Failed to get absolute path of export file")
 	} else {
 		log.WithField("filename", abspath).Info("Initialized export file")
 

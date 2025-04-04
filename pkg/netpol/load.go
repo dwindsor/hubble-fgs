@@ -56,7 +56,7 @@ func addNetworkPolicy(_ context.Context, file string) error {
 
 	np, err := fromFile(f)
 	if err != nil {
-		return fmt.Errorf("failed to read tetragon network policy: %w", err)
+		return fmt.Errorf("failed to read (%s) tetragon network policy: %w", file, err)
 	}
 	if np == nil {
 		return nil
