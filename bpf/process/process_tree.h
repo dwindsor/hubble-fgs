@@ -524,7 +524,6 @@ static inline __attribute__((always_inline)) bool is_policy_drop(__u64 sum)
 
 static inline __attribute__((always_inline)) void dest_policy(__u64 *p, __u64 len, struct destination_endpoint_value *v)
 {
-	__sync_fetch_and_add(&v->rx_bytes, len);
 	*p |= v->deny;
 	if (is_policy_drop(*p))
 		__sync_fetch_and_add(&v->tx_drops, len);
@@ -646,21 +645,27 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 
 	process_socketmap_rekey(&v->dst_key, skb);
 	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
-	if (dest)
+	if (dest) {
+		__sync_fetch_and_add(&dest->rx_bytes, len);
 		dest_policy(&policy, len, dest);
+	}
 
 	/* Also update the per dst entry */
 	key = v->dst_key;
 	key.port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest)
+	if (dest) {
+		__sync_fetch_and_add(&dest->rx_bytes, len);
 		dest_policy(&policy, len, dest);
+	}
 
 	key.local_id.uid = 0;
 	key.local_id.cpu = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest)
+	if (dest) {
+		__sync_fetch_and_add(&dest->rx_bytes, len);
 		dest_policy(&policy, len, dest);
+	}
 
 	/* We put this below the quota support because legacy quota policy
 	 * does not push a default rule and we hit the !dest case.
@@ -674,8 +679,10 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	 */
 	key.destination_id = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest)
+	if (dest) {
+		__sync_fetch_and_add(&dest->rx_bytes, len);
 		dest_policy(&policy, len, dest);
+	}
 out:
 	if (is_policy_drop(policy))
 		return SK_DROP;
