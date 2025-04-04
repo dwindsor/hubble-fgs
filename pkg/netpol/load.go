@@ -21,7 +21,7 @@ func fromYAML(data string) (*v1alpha1.TetragonNetworkPolicy, error) {
 	var unstr unstructured.Unstructured
 
 	if err := yaml.Unmarshal([]byte(data), &unstr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal unstructured YAML: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal unstructured Tetragon network policy YAML: %w", err)
 	}
 	kind := unstr.GetKind()
 	switch kind {
@@ -29,11 +29,11 @@ func fromYAML(data string) (*v1alpha1.TetragonNetworkPolicy, error) {
 		var tnp v1alpha1.TetragonNetworkPolicy
 
 		if err := yaml.UnmarshalStrict([]byte(data), &tnp); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal TNP YAML: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal Tetragon network policy YAML: %w", err)
 		}
 		return &tnp, nil
 	case v1alpha1.TNPNamespacedKindDefinition:
-		return nil, fmt.Errorf("namespaced network policy not supported")
+		return nil, fmt.Errorf("namespaced tetragon network policy not supported")
 	default:
 		return nil, nil
 	}
@@ -56,7 +56,7 @@ func addNetworkPolicy(_ context.Context, file string) error {
 
 	np, err := fromFile(f)
 	if err != nil {
-		return fmt.Errorf("failed to read tracing policy: %w", err)
+		return fmt.Errorf("failed to read tetragon network policy: %w", err)
 	}
 	if np == nil {
 		return nil
