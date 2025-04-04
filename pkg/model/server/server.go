@@ -165,11 +165,29 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 	return resp, nil
 }
 
+func GetBPFDnsEndpoints() (map[dnsparser.DNSID]string, error) {
+	idToDomainMapFile := bpf.MapPath(dnsparser.IDToDomainMapName)
+	idToDomainMap, err := ebpf.LoadPinnedMap(idToDomainMapFile, nil)
+	if err != nil {
+		return make(map[dnsparser.DNSID]string, 0), fmt.Errorf("fail to load pinned map %s: %w", idToDomainMapFile, err)
+	}
+	defer idToDomainMap.Close()
+
+	idToDomain := dnsparser.NewIDToDomainMap(idToDomainMap)
+	return idToDomain.Values()
+}
+
 func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapRequest) (*tetragon.GetEndpointMapResponse, error) {
 	c := endpoint.MustGet()
 	keys, endpoints := c.DebugEndpointMap()
 	tetragonEndpoints := make([]*tetragon.Endpoint, 0)
 	endptToId := make(map[uint64]*tetragon.Endpoint)
+	bpfDNSEndpoints, err := GetBPFDnsEndpoints()
+
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("failed to collect bpf DNS endpoints")
+		// continue and at least collect other endpoints
+	}
 
 	endptIdMap := filepath.Join(bpf.MapPrefixPath(), endpointIdMap)
 	endpt, err := ebpf.LoadPinnedMap(endptIdMap, nil)
@@ -183,6 +201,18 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 		endptIdKey   types.EndpointIdKey
 		endptIdValue types.EndpointIdValue
 	)
+
+	for key, e := range bpfDNSEndpoints {
+		id := key.ID
+		v := &tetragon.Endpoint{
+			Key:  id,
+			Type: tetragon.EndpointType_BpfDnsType,
+			Dns:  e,
+		}
+
+		endptToId[id] = v
+		tetragonEndpoints = append(tetragonEndpoints, v)
+	}
 
 	for i, e := range endpoints {
 		id := keys[i]

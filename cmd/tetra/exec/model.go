@@ -1097,6 +1097,8 @@ func printDebugCompact(res *tetragon.GetEndpointMapResponse) error {
 		keyStr := strconv.FormatUint(e.Key, 10)
 		idSpaces := 2 - len(keyStr) + 14
 		switch e.Type {
+		case tetragon.EndpointType_BpfDnsType:
+			fmt.Printf("%s%*c %d:bpf %*c %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces-4, ' ', e.Dns)
 		case tetragon.EndpointType_Dnstype:
 			fmt.Printf("%s%*c %d %*c %s\n", e.SrcIP, spaces, ' ', e.Key, idSpaces, ' ', e.Dns)
 		case tetragon.EndpointType_PodType:
