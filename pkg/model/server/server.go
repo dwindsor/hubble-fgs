@@ -337,9 +337,22 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		case types.DestinationSourceUser:
 			var ok bool
 
+			// If we have service or pod for this destination ID then
+			// use that. If none exists check the domain map for a
+			// DNS string and use that. Finally, give up at that point.
 			ep, ok = c.LookupID(dstKey.DestinationId)
-			if !ok {
+			if ok {
+				break
+			}
+
+			domain, err := dnsDomainMap.Domain(dstKey.DestinationId)
+			if err != nil {
+				logger.GetLogger().WithField("id", dstKey.DestinationId).WithError(err).Warn("Could not retrieve BPF DNS parser domain info for Source User")
 				continue
+			}
+			ep = endpoint.Endpoint{
+				Type: endpoint.DnsType,
+				Dns:  domain,
 			}
 		case types.DestinationSourceDNS:
 			domain, err := dnsDomainMap.Domain(dstKey.DestinationId)
