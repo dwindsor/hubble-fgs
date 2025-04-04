@@ -87,6 +87,8 @@ func TestWriter(t *testing.T) {
 			// NB: if there is a partial error here, we can be smarter and write the rest of the
 			// data to the buffer
 			require.NoError(t, err)
+			// NB: do a sync to ensure files are flushed and fs changes are visible
+			syscall.Sync()
 		}
 	}
 
