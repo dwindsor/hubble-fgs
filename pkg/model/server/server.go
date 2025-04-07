@@ -413,6 +413,12 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		}
 
 		switch ep.Type {
+		case endpoint.UnknownType:
+			d = &tetragon.Destination{
+				DestinationNames: []string{},
+				Port:             uint64(0),
+				Stats:            stats,
+			}
 		case endpoint.DnsType:
 			d = &tetragon.Destination{
 				DestinationNames: strings.Split(ep.Dns, ","),
