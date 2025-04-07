@@ -221,13 +221,13 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	// The normal path captures Userspace sources.
 	if dst == uint64(0) {
 		key.DestinationSource = types.DestinationSourceBPF
-		if err := dstMap.Update(key, value, 0); err != nil {
+		if err := conflictUpdateMap(key, value); err != nil {
 			p.AddError++
 			return err
 		}
 
 		key.DestinationSource = types.DestinationSourceDNS
-		if err := dstMap.Update(key, value, 0); err != nil {
+		if err := conflictUpdateMap(key, value); err != nil {
 			p.AddError++
 			return err
 		}
