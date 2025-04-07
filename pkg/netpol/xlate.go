@@ -68,8 +68,9 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 				f = nil
 			}
 
-			labels := types.TetragonNetworkLabels{
-				Equal: d.PodSelector.MatchLabels,
+			labels := types.TetragonNetworkLabels{}
+			if d.PodSelector != nil {
+				labels.Equal = d.PodSelector.MatchLabels
 			}
 
 			ports := make([]uint32, 0, len(d.Ports.Ports))
