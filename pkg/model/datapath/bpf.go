@@ -97,7 +97,7 @@ func conflictUpdateMap(key *types.DestinationEndpointKey, value *types.Destinati
 
 	lookupValue := &types.DestinationEndpointValue{}
 	if err := dstMap.Lookup(key, lookupValue); err == nil {
-		if lookupValue.TxDeny > value.TxDeny {
+		if lookupValue.TxDeny >= value.TxDeny {
 			return nil
 		}
 	}
