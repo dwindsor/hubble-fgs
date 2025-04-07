@@ -93,6 +93,49 @@ func scheduleDomainMapFlush() {
 	logger.GetLogger().Warn("failed to program domain map policy incomplete")
 }
 
+func conflictUpdateMap(key *types.DestinationEndpointKey, value *types.DestinationEndpointValue) error {
+
+	lookupValue := &types.DestinationEndpointValue{}
+	if err := dstMap.Lookup(key, lookupValue); err == nil {
+		if lookupValue.TxDeny > value.TxDeny {
+			return nil
+		}
+	}
+
+	return dstMap.Update(key, value, 0)
+}
+
+// This call will destroy key and value they can not be used after this.
+func populateStatEntry(key *types.DestinationEndpointKey, value *types.DestinationEndpointValue) error {
+	value.TxDeny = record.PolicyNone // we want rules for stats, not to impact verdict
+
+	// 2  (src,  *  , local_id, destination, local_nsid).TX += skb->len
+	if key.DestinationPort != 0 {
+		key.DestinationPort = 0
+		if err := conflictUpdateMap(key, value); err != nil {
+			return err
+		}
+	}
+
+	// 3  (src,  *  ,    *    , destination, local_nsid).TX += skb->len
+	if key.LocalId != 0 {
+		key.LocalId = 0
+		if err := conflictUpdateMap(key, value); err != nil {
+			return err
+		}
+	}
+
+	// 4  (src,  *  ,    *    , *, local_nsid).TX += skb->len
+	if key.DestinationId != 0 {
+		key.DestinationId = 0
+		if err := conflictUpdateMap(key, value); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // src *types.ProcessTreeKey, ep *endpoint.Endpoint, quota, reset, deny uint64, init bool) error {
 // what was init for again?
 func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) error {
@@ -161,8 +204,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 
 	if !force {
 		lookupValue := &types.DestinationEndpointValue{}
-		err = dstMap.Lookup(key, lookupValue)
-		if err == nil {
+		if err := dstMap.Lookup(key, lookupValue); err == nil {
 			if lookupValue.TxDeny > value.TxDeny {
 				return nil
 			}
@@ -186,6 +228,11 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 
 		key.DestinationSource = types.DestinationSourceDNS
 		if err := dstMap.Update(key, value, 0); err != nil {
+			p.AddError++
+			return err
+		}
+	} else if !force {
+		if err := populateStatEntry(key, value); err != nil {
 			p.AddError++
 			return err
 		}
