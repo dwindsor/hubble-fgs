@@ -278,6 +278,35 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	return resp, nil
 }
 
+func statsAdd(a, b *tetragon.DestinationStats) *tetragon.DestinationStats {
+	quota := uint64(0)
+	limit := uint64(0)
+	var reset *timestamppb.Timestamp
+	var txreset *timestamppb.Timestamp
+
+	if a.TxLimit <= b.TxLimit {
+		limit = a.TxLimit
+		quota = a.TxQuota
+		reset = a.KtimeLastReset
+		txreset = a.KtimeTxReset
+	} else if b.TxLimit < a.TxLimit {
+		limit = b.TxLimit
+		quota = b.TxQuota
+		reset = b.KtimeLastReset
+		txreset = b.KtimeTxReset
+	}
+
+	return &tetragon.DestinationStats{
+		TxBytes:        a.TxBytes + b.TxBytes,
+		RxBytes:        a.RxBytes + b.RxBytes,
+		TxDrops:        a.TxDrops + b.TxDrops,
+		TxLimit:        limit,
+		TxQuota:        quota,
+		KtimeLastReset: reset,
+		KtimeTxReset:   txreset,
+	}
+}
+
 func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModelResponse, error) {
 	processModel := make([]*tetragon.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
@@ -439,6 +468,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 					if dedup.DestinationPod == nil &&
 						strings.Compare(strings.Join(dedup.DestinationNames, ","), strings.Join(d.DestinationNames, ",")) == 0 &&
 						dedup.Port == d.Port {
+						dedup.Stats = statsAdd(dedup.Stats, d.Stats)
 						skip = true
 						break
 					}
