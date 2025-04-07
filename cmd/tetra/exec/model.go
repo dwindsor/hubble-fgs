@@ -162,6 +162,8 @@ func printStats(d *tetragon.Destination) string {
 
 	if d.Stats.TxLimit > 0 {
 		stats = fmt.Sprintf("tx: %d rx: %d drops: %d limit: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops, d.Stats.TxLimit)
+	} else if d.Stats.TxDrops > 0 {
+		stats = fmt.Sprintf("tx: %d rx: %d drops: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops)
 	} else {
 		stats = fmt.Sprintf("tx: %d rx: %d", d.Stats.TxBytes, d.Stats.RxBytes)
 	}
