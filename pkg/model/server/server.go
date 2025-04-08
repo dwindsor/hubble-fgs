@@ -307,6 +307,31 @@ func statsAdd(a, b *tetragon.DestinationStats) *tetragon.DestinationStats {
 	}
 }
 
+func fqdnDestEqual(a, b *tetragon.Destination) bool {
+	return a.DestinationPod == nil &&
+		strings.Compare(strings.Join(a.DestinationNames, ","), strings.Join(b.DestinationNames, ",")) == 0 &&
+		a.Port == b.Port
+}
+
+func podEqual(a, b *tetragon.Pod) bool {
+	return strings.Compare(a.Name, b.Name) == 0 &&
+		strings.Compare(a.Namespace, b.Namespace) == 0
+}
+
+func podDestEqual(a, b *tetragon.Destination) bool {
+	return a.DestinationPod != nil && b.DestinationPod != nil && podEqual(a.DestinationPod, b.DestinationPod) && a.Port == b.Port
+}
+
+func destEqual(a, b *tetragon.Destination) bool {
+	if fqdnDestEqual(a, b) {
+		return true
+	}
+	if podDestEqual(a, b) {
+		return true
+	}
+	return false
+}
+
 func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModelResponse, error) {
 	processModel := make([]*tetragon.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
@@ -471,9 +496,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 				skip := false
 
 				for _, dedup := range l {
-					if dedup.DestinationPod == nil &&
-						strings.Compare(strings.Join(dedup.DestinationNames, ","), strings.Join(d.DestinationNames, ",")) == 0 &&
-						dedup.Port == d.Port {
+					if destEqual(dedup, d) {
 						dedup.Stats = statsAdd(dedup.Stats, d.Stats)
 						skip = true
 						break
