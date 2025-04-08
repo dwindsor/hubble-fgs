@@ -75,6 +75,8 @@ static struct tree_id get_new_tree_id()
 	return id;
 }
 
+char global_zero[MAXARGLENGTH] = { 0 };
+
 int __insert_process_tree(__u32 pid, __u64 cgid)
 {
 	struct process_tree_binary_uid_key *tree_key;
@@ -103,6 +105,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	// does not specify args. Next lookup the fully qualified process
 	// with args key. And finally generate an ID.
 	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
+	probe_read_kernel(&tree_key->args, MAXARGLENGTH, global_zero);
 	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 	if (!self_uid) {
 		probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
@@ -308,6 +311,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	if (!tree_key)
 		return 0;
 	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
+	probe_read_kernel(&tree_key->args, MAXARGLENGTH, global_zero);
 	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 	if (!self_uid) {
 		probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
