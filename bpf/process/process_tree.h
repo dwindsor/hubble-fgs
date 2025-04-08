@@ -543,7 +543,7 @@ static inline __attribute__((always_inline)) int dest_policy(__u64 *p, __u64 len
  */
 static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
-	struct destination_endpoint_value *dest_full, *dest_port, *dest_local, *dest_default;
+	struct destination_endpoint_value *dest_full, *dest_port, *dest_local, *dest_default, dummy;
 	struct destination_endpoint_key key;
 	__u64 policy = 0, quota, now;
 	__u64 len = skb->len;
@@ -564,6 +564,8 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		verdict = dest_policy(&policy, len, dest_full);
 		if (verdict == SK_DROP)
 			__sync_fetch_and_add(&dest_full->tx_drops, len);
+	} else {
+		dest_full = &dummy;
 	}
 
 	/* Also update the per dst entry */
@@ -573,8 +575,12 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	if (dest_port) {
 		__sync_fetch_and_add(&dest_port->tx_bytes, len);
 		verdict = dest_policy(&policy, len, dest_port);
-		if (verdict == SK_DROP)
+		if (verdict == SK_DROP) {
+			__sync_fetch_and_add(&dest_full->tx_drops, len);
 			__sync_fetch_and_add(&dest_port->tx_drops, len);
+		}
+	} else {
+		dest_port = &dummy;
 	}
 
 	key.local_id.uid = 0;
@@ -583,8 +589,11 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	if (dest_local) {
 		__sync_fetch_and_add(&dest_local->tx_bytes, len);
 		verdict = dest_policy(&policy, len, dest_local);
-		if (verdict == SK_DROP)
+		if (verdict == SK_DROP) {
+			__sync_fetch_and_add(&dest_full->tx_drops, len);
+			__sync_fetch_and_add(&dest_port->tx_drops, len);
 			__sync_fetch_and_add(&dest_local->tx_drops, len);
+		}
 
 		/* This is all a bit racy, but if you are surfing on the edge of a
 		 * time window the observer can't tell order of operations between
@@ -600,9 +609,13 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 
 		quota = __sync_add_and_fetch(&dest_local->tx_quota, len);
 		if (dest_local->tx_limit && quota > dest_local->tx_limit) {
+			__sync_fetch_and_add(&dest_full->tx_drops, len);
+			__sync_fetch_and_add(&dest_port->tx_drops, len);
 			__sync_fetch_and_add(&dest_local->tx_drops, len);
 			return SK_DROP;
 		}
+	} else {
+		dest_local = &dummy;
 	}
 
 	/* We put this below the quota support because legacy quota policy
@@ -620,8 +633,12 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	if (dest_default) {
 		__sync_fetch_and_add(&dest_default->tx_bytes, len);
 		verdict = dest_policy(&policy, len, dest_default);
-		if (verdict == SK_DROP)
+		if (verdict == SK_DROP) {
+			__sync_fetch_and_add(&dest_full->tx_drops, len);
+			__sync_fetch_and_add(&dest_port->tx_drops, len);
+			__sync_fetch_and_add(&dest_local->tx_drops, len);
 			__sync_fetch_and_add(&dest_default->tx_drops, len);
+		}
 	}
 out:
 	if (is_policy_drop(policy))
