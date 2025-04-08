@@ -51,6 +51,8 @@ spec:
       ports:
         protocol: "TCP"
         ports: [80, 8080]
+    - ipBlock:
+        cidr: "127.0.0.1/24" 
 `
 	tnp, err := fromYAML(policy)
 	assert.NoError(t, err)
@@ -62,7 +64,7 @@ spec:
 	assert.Equal(t, 1, len(tnp.Spec.Rules))
 	assert.Equal(t, "connect", tnp.Spec.Rules[0].Hook)
 	assert.Equal(t, "allow", tnp.Spec.Rules[0].Action)
-	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination))
+	assert.Equal(t, 3, len(tnp.Spec.Rules[0].Destination))
 	assert.Equal(t, 3, len(tnp.Spec.Rules[0].Destination[0].PodSelector.MatchLabels))
 	key, ok := tnp.Spec.Rules[0].Destination[0].PodSelector.MatchLabels["app.kubernetes.io/name"]
 	assert.True(t, ok)
@@ -74,6 +76,7 @@ spec:
 	assert.Equal(t, "tetragon.io", tnp.Spec.Rules[0].Destination[1].FQDN[1])
 	assert.Equal(t, "TCP", tnp.Spec.Rules[0].Destination[1].Ports.Protocol)
 	assert.Equal(t, 2, len(tnp.Spec.Rules[0].Destination[1].Ports.Ports))
+	assert.Equal(t, "127.0.0.1/24", tnp.Spec.Rules[0].Destination[2].IPBlock.CIDR)
 }
 
 func TestFromYAMLFQDN(t *testing.T) {
