@@ -18,8 +18,9 @@ spec:
   - hook: "connect"
     action: "allow"
     destination:
-    - matchLabels:
-        app.kubernetes.io/name: "deathstar"
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: "deathstar"
       ports:
         protocol: "TCP"
         ports: [80, 8080]
