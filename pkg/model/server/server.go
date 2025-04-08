@@ -364,6 +364,14 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		var d *tetragon.Destination
 		var ep endpoint.Endpoint
 
+		// The zero destination rule is a default_action policy rule
+		// skip posting to the user as drops have been pushed down
+		// to more specific rules and showing 0.0.0.0 -> 0.0.0.0 drops
+		// counter seems not so helpful.
+		if dstKey.DestinationId == 0 {
+			continue
+		}
+
 		switch dstKey.DestinationSource {
 		case types.DestinationSourceBPF:
 			ip := networkapi.GetIP(dstVal.AddrCreate, ops.MSG_OP_UNDEF, dstVal.IPv6 != 0)
