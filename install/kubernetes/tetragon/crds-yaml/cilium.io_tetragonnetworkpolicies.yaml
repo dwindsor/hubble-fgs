@@ -199,19 +199,17 @@ spec:
                     destination:
                       items:
                         properties:
-                          CIDR:
-                            properties:
-                              cidr:
-                                items:
-                                  type: string
-                                type: array
-                            required:
-                            - cidr
-                            type: object
                           FQDN:
                             items:
                               type: string
                             type: array
+                          ipBlock:
+                            properties:
+                              cidr:
+                                type: string
+                            required:
+                            - cidr
+                            type: object
                           podSelector:
                             description: PodSelector selects pods that this policy
                               applies to

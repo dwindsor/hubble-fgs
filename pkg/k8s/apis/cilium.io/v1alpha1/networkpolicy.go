@@ -89,7 +89,7 @@ func (tgnpn *TetragonNetworkPolicyNamespaced) GetObjectMetaStruct() *metav1.Obje
 
 type NetworkDestinationCIDR struct {
 	// +kubebuilder:validation:Required
-	CIDR []string `json:"cidr"`
+	CIDR string `json:"cidr"`
 }
 
 type NetworkDestinationLabels struct {
@@ -119,7 +119,7 @@ type NetworkDestination struct {
 	// +kubebuilder:validation:Optional
 	FQDN []string `json:"FQDN,omitempty"`
 	// +kubebuilder:validation:Optional
-	CIDR NetworkDestinationCIDR `json:"CIDR,omitempty"`
+	IPBlock NetworkDestinationCIDR `json:"ipBlock,omitempty"`
 	// +kubebuilder:validation:Optional
 	// PodSelector selects pods that this policy applies to
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
