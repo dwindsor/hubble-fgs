@@ -19,6 +19,10 @@ metadata:
   annotations:
     author: "IsovalentQATeam"
 spec:
+  namespaceSelector:
+    matchLabels:
+      AS: "ns"
+      BS: "bs"
   podSelector:
     matchLabels:
       A: "a"
@@ -50,6 +54,7 @@ spec:
 `
 	tnp, err := fromYAML(policy)
 	assert.NoError(t, err)
+	assert.Equal(t, 2, len(tnp.Spec.NamespaceSelector.MatchLabels))
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
 	assert.Equal(t, "In", tnp.Spec.ProcessSelector.Operator)
 	assert.Equal(t, 2, len(tnp.Spec.ProcessSelector.Values))
@@ -103,6 +108,7 @@ spec:
 `
 	tnp, err := fromYAML(policy)
 	assert.NoError(t, err)
+	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
 	assert.Equal(t, "In", tnp.Spec.ProcessSelector.Operator)
 	assert.Equal(t, 2, len(tnp.Spec.ProcessSelector.Values))
@@ -153,6 +159,7 @@ spec:
 `
 	tnp, err := fromYAML(policy)
 	assert.NoError(t, err)
+	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
 	assert.Equal(t, "In", tnp.Spec.ProcessSelector.Operator)
 	assert.Equal(t, 2, len(tnp.Spec.ProcessSelector.Values))
@@ -208,6 +215,7 @@ spec:
 `
 	tnp, err := fromYAML(policy)
 	assert.NoError(t, err)
+	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
 	assert.Equal(t, "In", tnp.Spec.ProcessSelector.Operator)
 	assert.Equal(t, 2, len(tnp.Spec.ProcessSelector.Values))
@@ -262,6 +270,7 @@ spec:
 `
 	tnp, err := fromYAML(policy)
 	assert.NoError(t, err)
+	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
 	assert.Nil(t, tnp.Spec.ProcessSelector)
 	assert.Equal(t, "deny", tnp.Spec.DefaultAction)
@@ -366,6 +375,7 @@ spec:
 `
 	tnp, err := fromYAML(policy)
 	assert.NoError(t, err)
+	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Nil(t, tnp.Spec.PodSelector)
 	assert.Nil(t, tnp.Spec.ProcessSelector)
 
@@ -404,6 +414,7 @@ spec:
 `
 	tnp, err := fromYAML(policy)
 	assert.NoError(t, err)
+	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Nil(t, tnp.Spec.PodSelector)
 	assert.Nil(t, tnp.Spec.ProcessSelector)
 
