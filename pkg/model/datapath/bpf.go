@@ -205,7 +205,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	if !force {
 		lookupValue := &types.DestinationEndpointValue{}
 		if err := dstMap.Lookup(key, lookupValue); err == nil {
-			if lookupValue.TxDeny > value.TxDeny {
+			if lookupValue.TxDeny >= value.TxDeny {
 				return nil
 			}
 		}
