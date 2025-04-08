@@ -2,6 +2,7 @@ package agent
 
 import (
 	_ "embed"
+	"errors"
 
 	"github.com/go-logr/logr"
 
@@ -85,4 +86,29 @@ func ValuesAsMap(log logr.Logger, yamlValues string) map[string]string {
 		log.WithValues("value", yamlValues).Error(err, "could not unmarshal the agent ConfigMap, left empty")
 	}
 	return values
+}
+
+func configValue[V string | bool](log logr.Logger, config map[string]any, key string, defaultValue V) V {
+	if value, ok := config[key]; ok {
+		if typedValue, ok := value.(V); ok {
+			return typedValue
+		}
+		log.WithValues("key", key, "value", value).Error(errors.New("could not unmarshal"), "default value used instead")
+	}
+	return defaultValue
+}
+
+func configMapOfString(log logr.Logger, m map[string]any, key string) map[string]string {
+	stringValues := map[string]string{}
+	if values, ok := m[key]; ok {
+		typedValues, ok := values.(map[string]interface{})
+		if !ok {
+			log.WithValues("key", key, "value", values).Error(errors.New("could not unmarshal"), "not applied")
+		} else {
+			for k, v := range typedValues {
+				stringValues[k] = v.(string)
+			}
+		}
+	}
+	return stringValues
 }

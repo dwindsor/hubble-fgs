@@ -577,16 +577,6 @@ func dnsPolicy(log logr.Logger, config map[string]any) corev1.DNSPolicy {
 	return corev1.DNSDefault
 }
 
-func imagePullPolicy(log logr.Logger, config map[string]any, key string) corev1.PullPolicy {
-	policy := corev1.PullPolicy(configValue(log, config, key, ""))
-	switch policy {
-	case corev1.PullAlways, corev1.PullNever, corev1.PullIfNotPresent:
-		return policy
-	}
-	log.WithValues("key", key, "value", policy).Error(errors.New("could not resolve image pull policy"), "default value used instead")
-	return corev1.PullIfNotPresent
-}
-
 func volumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 	hostPathDirectoryVolumeType := corev1.HostPathDirectory
 	hostPathDirectoryOrCreateVolumeType := corev1.HostPathDirectoryOrCreate
@@ -719,30 +709,6 @@ func rtVolumes(log logr.Logger, cmFields map[string]any) []corev1.Volume {
 	return volumes
 }
 
-func volumeMountsFromConfigMap(log logr.Logger, cmFields map[string]any, key string) []corev1.VolumeMount {
-	value := configValue(log, cmFields, key, "")
-	if value == "" {
-		return []corev1.VolumeMount{}
-	}
-	mounts := make([]corev1.VolumeMount, 0)
-	if err := yaml.Unmarshal([]byte(value), &mounts); err != nil {
-		log.WithValues("value", value).Error(err, fmt.Sprintf("could not unmarshal the %s volume mount, skipped", key))
-	}
-	return mounts
-}
-
-func volumesFromConfigMap(log logr.Logger, cmFields map[string]any, key string) []corev1.Volume {
-	value := configValue(log, cmFields, key, "")
-	if value == "" {
-		return []corev1.Volume{}
-	}
-	volumes := make([]corev1.Volume, 0)
-	if err := yaml.Unmarshal([]byte(value), &volumes); err != nil {
-		log.WithValues("value", value).Error(err, fmt.Sprintf("could not unmarshal the %s volume, skipped", key))
-	}
-	return volumes
-}
-
 func hostPathVolumesFromConfigMap(log logr.Logger, cmFields map[string]any, key string) []corev1.Volume {
 	value := configValue(log, cmFields, key, "")
 	if value == "" {
@@ -768,16 +734,6 @@ func hostPathVolumesFromConfigMap(log logr.Logger, cmFields map[string]any, key 
 	return volumes
 }
 
-func configValue[V string | bool](log logr.Logger, config map[string]any, key string, defaultValue V) V {
-	if value, ok := config[key]; ok {
-		if typedValue, ok := value.(V); ok {
-			return typedValue
-		}
-		log.WithValues("key", key, "value", value).Error(errors.New("could not unmarshal"), "default value used instead")
-	}
-	return defaultValue
-}
-
 func configArray(log logr.Logger, config map[string]any, key string, defaultValue []string) []string {
 	if value, ok := config[key]; ok {
 		if a, ok := value.([]interface{}); ok {
@@ -790,21 +746,6 @@ func configArray(log logr.Logger, config map[string]any, key string, defaultValu
 		log.WithValues("key", key, "value", value).Error(errors.New("could not unmarshal"), "default values used instead")
 	}
 	return defaultValue
-}
-
-func configMapOfString(log logr.Logger, m map[string]any, key string) map[string]string {
-	stringValues := map[string]string{}
-	if values, ok := m[key]; ok {
-		typedValues, ok := values.(map[string]interface{})
-		if !ok {
-			log.WithValues("key", key, "value", values).Error(errors.New("could not unmarshal"), "not applied")
-		} else {
-			for k, v := range typedValues {
-				stringValues[k] = v.(string)
-			}
-		}
-	}
-	return stringValues
 }
 
 func configValueInt(log logr.Logger, config map[string]any, key string, bitSize int, defaultValue int) int {
