@@ -140,6 +140,9 @@ type NetworkPolicyRule struct {
 
 type NetworkPolicySpec struct {
 	// +kubebuilder:validation:Optional
+	// NamespaceSelector selects namespace that this policy applies to
+	NamespaceSelector *slimv1.LabelSelector `json:"namespaceSelector,omitempty"`
+	// +kubebuilder:validation:Optional
 	// PodSelector selects pods that this policy applies to
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
 	// +kubebuilder:validation:Optional
