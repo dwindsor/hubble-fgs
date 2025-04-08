@@ -75,8 +75,8 @@ struct tree_id {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space
-	__uint(key_size, sizeof(struct process_tree_binary_uid_key));
-	__uint(value_size, sizeof(struct tree_id));
+	__type(key, struct process_tree_binary_uid_key);
+	__type(value, struct tree_id);
 } process_tree_binary_uid_map SEC(".maps");
 
 /* This map is redundant and will be removed. Its used for shorthand
