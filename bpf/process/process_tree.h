@@ -522,11 +522,12 @@ static inline __attribute__((always_inline)) bool is_policy_drop(__u64 sum)
 	return (sum & TNP_POLICY_DENY);
 }
 
-static inline __attribute__((always_inline)) void dest_policy(__u64 *p, __u64 len, struct destination_endpoint_value *v)
+static inline __attribute__((always_inline)) int dest_policy(__u64 *p, __u64 len, struct destination_endpoint_value *v)
 {
 	*p |= v->deny;
 	if (is_policy_drop(*p))
-		__sync_fetch_and_add(&v->tx_drops, len);
+		return SK_DROP;
+	return SK_PASS;
 }
 
 /* Stats and deny/allow decisions are made in a sequence each step
@@ -535,14 +536,14 @@ static inline __attribute__((always_inline)) void dest_policy(__u64 *p, __u64 le
  *
  * Order of operations:
  *
- * local_id + nsid + l3(destination_id) + l4(port)
- * local_id + nsid + l3(destination_id)
- *            nsid + l3(destination_id)
- *            nsid
+ * local_id + nsid + l3(destination_id) + l4(port)   : dest_full
+ * local_id + nsid + l3(destination_id)              : dest_port
+ *            nsid + l3(destination_id)              : dest_local
+ *            nsid                                   : default
  */
 static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
-	struct destination_endpoint_value *dest;
+	struct destination_endpoint_value *dest_full, *dest_port, *dest_local, *dest_default;
 	struct destination_endpoint_key key;
 	__u64 policy = 0, quota, now;
 	__u64 len = skb->len;
@@ -556,27 +557,34 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		return SK_PASS;
 
 	process_socketmap_rekey(&v->dst_key, skb);
-	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
-	if (dest) {
-		dest_policy(&policy, len, dest);
-		__sync_fetch_and_add(&dest->tx_bytes, len);
+	dest_full = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
+	if (dest_full) {
+		__sync_fetch_and_add(&dest_full->tx_bytes, len);
+
+		verdict = dest_policy(&policy, len, dest_full);
+		if (verdict == SK_DROP)
+			__sync_fetch_and_add(&dest_full->tx_drops, len);
 	}
 
 	/* Also update the per dst entry */
 	key = v->dst_key;
 	key.port = 0;
-	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest) {
-		__sync_fetch_and_add(&dest->tx_bytes, len);
-		dest_policy(&policy, len, dest);
+	dest_port = map_lookup_elem(&destination_endpoint_map, &key);
+	if (dest_port) {
+		__sync_fetch_and_add(&dest_port->tx_bytes, len);
+		verdict = dest_policy(&policy, len, dest_port);
+		if (verdict == SK_DROP)
+			__sync_fetch_and_add(&dest_port->tx_drops, len);
 	}
 
 	key.local_id.uid = 0;
 	key.local_id.cpu = 0;
-	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest) {
-		__sync_fetch_and_add(&dest->tx_bytes, len);
-		dest_policy(&policy, len, dest);
+	dest_local = map_lookup_elem(&destination_endpoint_map, &key);
+	if (dest_local) {
+		__sync_fetch_and_add(&dest_local->tx_bytes, len);
+		verdict = dest_policy(&policy, len, dest_local);
+		if (verdict == SK_DROP)
+			__sync_fetch_and_add(&dest_local->tx_drops, len);
 
 		/* This is all a bit racy, but if you are surfing on the edge of a
 		 * time window the observer can't tell order of operations between
@@ -585,14 +593,14 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		 * to be corrupted.
 		 */
 		now = ktime_get_ns();
-		if (dest->ktime_tx_reset && (now - dest->ktime_last_reset > dest->ktime_tx_reset)) {
-			atomic_xchg(&dest->tx_quota, 0);
-			atomic_xchg(&dest->ktime_last_reset, now);
+		if (dest_local->ktime_tx_reset && (now - dest_local->ktime_last_reset > dest_local->ktime_tx_reset)) {
+			atomic_xchg(&dest_local->tx_quota, 0);
+			atomic_xchg(&dest_local->ktime_last_reset, now);
 		}
 
-		quota = __sync_add_and_fetch(&dest->tx_quota, len);
-		if (dest->tx_limit && quota > dest->tx_limit) {
-			__sync_fetch_and_add(&dest->tx_drops, len);
+		quota = __sync_add_and_fetch(&dest_local->tx_quota, len);
+		if (dest_local->tx_limit && quota > dest_local->tx_limit) {
+			__sync_fetch_and_add(&dest_local->tx_drops, len);
 			return SK_DROP;
 		}
 	}
@@ -608,10 +616,12 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	 * check pod specific wildcard rule. This acts as a catch all.
 	 */
 	key.destination_id = 0;
-	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest) {
-		__sync_fetch_and_add(&dest->tx_bytes, len);
-		dest_policy(&policy, len, dest);
+	dest_default = map_lookup_elem(&destination_endpoint_map, &key);
+	if (dest_default) {
+		__sync_fetch_and_add(&dest_default->tx_bytes, len);
+		verdict = dest_policy(&policy, len, dest_default);
+		if (verdict == SK_DROP)
+			__sync_fetch_and_add(&dest_default->tx_drops, len);
 	}
 out:
 	if (is_policy_drop(policy))
@@ -633,7 +643,7 @@ out:
  */
 static inline __attribute__((always_inline)) int process_socketmap_recv(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
-	struct destination_endpoint_value *dest;
+	struct destination_endpoint_value *dest_full, *dest_port, *dest_local, *dest_default;
 	struct destination_endpoint_key key;
 	__u64 len = skb->len;
 	__u64 policy = 0;
@@ -644,27 +654,33 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 		return SK_PASS;
 
 	process_socketmap_rekey(&v->dst_key, skb);
-	dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
-	if (dest) {
-		__sync_fetch_and_add(&dest->rx_bytes, len);
-		dest_policy(&policy, len, dest);
+	dest_full = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
+	if (dest_full) {
+		__sync_fetch_and_add(&dest_full->rx_bytes, len);
+		verdict = dest_policy(&policy, len, dest_full);
+		if (verdict == SK_DROP)
+			__sync_fetch_and_add(&dest_full->tx_drops, len);
 	}
 
 	/* Also update the per dst entry */
 	key = v->dst_key;
 	key.port = 0;
-	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest) {
-		__sync_fetch_and_add(&dest->rx_bytes, len);
-		dest_policy(&policy, len, dest);
+	dest_port = map_lookup_elem(&destination_endpoint_map, &key);
+	if (dest_port) {
+		__sync_fetch_and_add(&dest_port->rx_bytes, len);
+		verdict = dest_policy(&policy, len, dest_port);
+		if (verdict == SK_DROP)
+			__sync_fetch_and_add(&dest_port->tx_drops, len);
 	}
 
 	key.local_id.uid = 0;
 	key.local_id.cpu = 0;
-	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest) {
-		__sync_fetch_and_add(&dest->rx_bytes, len);
-		dest_policy(&policy, len, dest);
+	dest_local = map_lookup_elem(&destination_endpoint_map, &key);
+	if (dest_local) {
+		__sync_fetch_and_add(&dest_local->rx_bytes, len);
+		verdict = dest_policy(&policy, len, dest_local);
+		if (verdict == SK_DROP)
+			__sync_fetch_and_add(&dest_local->tx_drops, len);
 	}
 
 	/* We put this below the quota support because legacy quota policy
@@ -678,10 +694,12 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	 * check pod specific wildcard rule. This acts as a catch all.
 	 */
 	key.destination_id = 0;
-	dest = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest) {
-		__sync_fetch_and_add(&dest->rx_bytes, len);
-		dest_policy(&policy, len, dest);
+	dest_default = map_lookup_elem(&destination_endpoint_map, &key);
+	if (dest_default) {
+		__sync_fetch_and_add(&dest_default->rx_bytes, len);
+		dest_policy(&policy, len, dest_default);
+		if (verdict == SK_DROP)
+			__sync_fetch_and_add(&dest_default->tx_drops, len);
 	}
 out:
 	if (is_policy_drop(policy))
