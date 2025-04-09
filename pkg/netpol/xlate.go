@@ -21,6 +21,15 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 		subj.MatchLabelsEqual = np.Spec.PodSelector.MatchLabels
 	}
 
+	if np.Spec.NamespaceSelector != nil {
+		nsSet := np.Spec.NamespaceSelector.MatchLabels
+
+		for k, v := range nsSet {
+			tnpKey := fmt.Sprintf("_tnp_%s", k)
+			subj.MatchLabelsEqual[tnpKey] = v
+		}
+	}
+
 	if np.Spec.ProcessSelector != nil {
 		sel := np.Spec.ProcessSelector
 
