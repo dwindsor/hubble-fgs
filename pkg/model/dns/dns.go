@@ -3,6 +3,7 @@
 package dns
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -439,10 +440,30 @@ func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.Labe
 	return records
 }
 
+func getNamespaceLabels(ns string) map[string]string {
+	l := make(map[string]string)
+
+	l["kubernetes.io/metadata.name"] = ns
+	return l
+}
+
+func addNamespaceLabels(epPod *v1alpha1.PodInfo, ml *matchLabels.LabelSet) error {
+	ns := epPod.Namespace
+	labels := getNamespaceLabels(ns)
+
+	for k, v := range labels {
+		tnpKey := fmt.Sprintf("_tnp_%s", k)
+		ml.Label[tnpKey] = v
+	}
+	return nil
+}
+
 func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 	ml := &matchLabels.LabelSet{
 		Label: epPod.Labels,
 	}
+
+	addNamespaceLabels(epPod, ml)
 
 	ep := &endpoint.Endpoint{
 		Type:      endpoint.PodType,
