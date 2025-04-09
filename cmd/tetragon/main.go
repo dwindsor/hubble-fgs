@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/cgrouprate"
 	"github.com/cilium/tetragon/pkg/fieldfilters"
 	"github.com/cilium/tetragon/pkg/health"
+	ossManager "github.com/cilium/tetragon/pkg/manager"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/rthooks"
@@ -30,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
+	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/mandate"
 	mandatesrv "github.com/isovalent/hubble-fgs/pkg/mandate/server"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
@@ -41,7 +43,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
-	"github.com/isovalent/hubble-fgs/pkg/svcinfo"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -461,8 +462,15 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	var k8sClient *kubernetes.Clientset
 	var crdClient *versioned.Clientset
 	var k8sWatcher watcher.K8sResourceWatcher
+	var controllerManager *ossManager.ControllerManager
 	if option.Config.EnableK8s {
 		log.Info("Enabling Kubernetes API")
+		// Start controller-runtime manager.
+		controllerManager = ossManager.Get()
+		if err := manager.ConfigureManager(ctx, controllerManager); err != nil {
+			return err
+		}
+		controllerManager.Start(ctx)
 		// retrieve k8s clients
 		k8sClient, crdClient, err = watcher.GetK8sClients(waitCRDs)
 		if err != nil {
@@ -479,10 +487,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			return err
 		}
 		if option.Config.EnablePodInfo {
-			err = enterpriseWatcher.AddServiceInformer(k8sWatcher, enterpriseOption.Config.EnableApplicationModel)
-			if err != nil {
-				return err
-			}
 			err = enterpriseWatcher.AddPodInfoInformer(k8sWatcher, enterpriseOption.Config.EnableApplicationModel)
 			if err != nil {
 				return err
@@ -509,7 +513,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return fmt.Errorf("failed to init process cache: %w", err)
 	}
 	podinfo.SetK8sResourceWatcher(k8sWatcher)
-	svcinfo.SetK8sResourceWatcher(k8sWatcher)
 
 	// cleanupWg is needed to ensure that gRPC code cleanly finishes before we exit (e.g,
 	// due to a signal). This is needed, for example, so that the exported writes full
