@@ -202,10 +202,15 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		Port:           0,
 	}
 
-	if !force {
-		lookupValue := &types.DestinationEndpointValue{}
-		if err := dstMap.Lookup(key, lookupValue); err == nil {
+	lookupValue := &types.DestinationEndpointValue{}
+	err = dstMap.Lookup(key, lookupValue)
+	if err == nil {
+		if !force {
 			if lookupValue.TxDeny >= value.TxDeny {
+				return nil
+			}
+		} else {
+			if lookupValue.TxDeny == value.TxDeny {
 				return nil
 			}
 		}
