@@ -11,12 +11,14 @@ import (
 // Normalize K8s Tetragon Network Policy into internal representation
 func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.TetragonNetworkPolicy, error) {
 	policy := []*types.TetragonNetworkPolicy{}
-	subjEqual := np.Spec.PodSelector.MatchLabels
 	name := np.Name
 
 	subj := types.TetragonNetworkSubject{
-		MatchLabelsEqual: subjEqual,
-		Workload:         types.TetragonWorkloadNetworkSubject{},
+		Workload: types.TetragonWorkloadNetworkSubject{},
+	}
+
+	if np.Spec.PodSelector != nil {
+		subj.MatchLabelsEqual = np.Spec.PodSelector.MatchLabels
 	}
 
 	if np.Spec.ProcessSelector != nil {
