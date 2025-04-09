@@ -3612,6 +3612,7 @@ Determins the behaviour of a field filter
 | IpType | 3 |  |
 | ServiceType | 4 |  |
 | ListenType | 5 |  |
+| BpfDnsType | 6 |  |
 
 
  
