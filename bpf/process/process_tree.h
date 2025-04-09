@@ -561,10 +561,11 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		return SK_PASS;
 
 	process_socketmap_rekey(&v->dst_key, skb);
-	dest_full = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
+
+	key = v->dst_key;
+	dest_full = map_lookup_elem(&destination_endpoint_map, &key);
 	if (dest_full) {
 		__sync_fetch_and_add(&dest_full->tx_bytes, len);
-
 		verdict = dest_policy(&policy, len, dest_full);
 		if (verdict == SK_DROP)
 			__sync_fetch_and_add(&dest_full->tx_drops, len);
