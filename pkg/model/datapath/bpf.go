@@ -112,6 +112,7 @@ func populateStatEntry(key *types.DestinationEndpointKey, value *types.Destinati
 	// 2  (src,  *  , local_id, destination, local_nsid).TX += skb->len
 	if key.DestinationPort != 0 {
 		key.DestinationPort = 0
+		value.Port = 0
 		if err := conflictUpdateMap(key, value); err != nil {
 			return err
 		}
@@ -199,7 +200,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		IPv6:           0,
 		KtimeCreate:    0,
 		AddrCreate:     addr,
-		Port:           0,
+		Port:           uint64(r.Endpoint.Port),
 	}
 
 	lookupValue := &types.DestinationEndpointValue{}
