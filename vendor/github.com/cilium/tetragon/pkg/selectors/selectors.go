@@ -7,7 +7,7 @@ package selectors
 
 import (
 	"encoding/binary"
-	"fmt"
+	"errors"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/kernels"
@@ -296,7 +296,7 @@ func GetCurrentOffset(k *KernelSelectorData) uint32 {
 }
 
 func WriteSelectorByteArray(k *KernelSelectorData, b []byte, size uint32) {
-	for l := uint32(0); l < size; l++ {
+	for l := range size {
 		k.e[k.off+l] = b[l]
 	}
 	k.off += size
@@ -354,19 +354,19 @@ func ArgStringSelectorValue(v string, removeNul bool) ([MaxStringMapsSize]byte, 
 	s := len(b)
 	if kernels.MinKernelVersion("5.11") {
 		if s > MaxStringMapsSize-2 {
-			return ret, 0, fmt.Errorf("string is too long")
+			return ret, 0, errors.New("string is too long")
 		}
 	} else if kernels.MinKernelVersion("5.4") {
 		if s > StringMapSize7a-2 {
-			return ret, 0, fmt.Errorf("string is too long")
+			return ret, 0, errors.New("string is too long")
 		}
 	} else {
 		if s > stringMapSize5-1 {
-			return ret, 0, fmt.Errorf("string is too long")
+			return ret, 0, errors.New("string is too long")
 		}
 	}
 	if s == 0 {
-		return ret, 0, fmt.Errorf("string is empty")
+		return ret, 0, errors.New("string is empty")
 	}
 	// Calculate length of string padded to next multiple of key increment size
 	paddedLen := stringPaddedLen(s)
@@ -469,7 +469,7 @@ func (k *KernelSelectorState) insertStringMaps(stringMaps SelectorStringMaps) [S
 	details := [StringMapsNumSubMaps]uint32{}
 	mapid := uint32(0)
 
-	for subMap := 0; subMap < StringMapsNumSubMaps; subMap++ {
+	for subMap := range StringMapsNumSubMaps {
 		if len(stringMaps[subMap]) > 0 {
 			mapid = uint32(len(k.maps.stringMaps[subMap]))
 			k.maps.stringMaps[subMap] = append(k.maps.stringMaps[subMap], stringMaps[subMap])

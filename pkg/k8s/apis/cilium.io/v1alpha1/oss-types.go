@@ -286,6 +286,9 @@ type TracepointSpec struct {
 	// Tags to categorize the event, will be include in the event output.
 	// Maximum of 16 Tags are supported.
 	Tags []string `json:"tags,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Enable raw tracepoint arguments
+	Raw bool `json:"raw,omitempty"`
 }
 
 type UProbeSpec struct {
@@ -360,6 +363,8 @@ type PodInfoSpec struct {
 	// Host networking requested for this pod. Use the host's network namespace.
 	// If this option is set, the ports that will be used must be specified.
 	HostNetwork bool `json:"hostNetwork,omitempty"`
+	// NodeName is the name of the node that the pod is schduled to run on.
+	NodeName string `json:"nodeName,omitempty"`
 }
 
 type PodInfoStatus struct {

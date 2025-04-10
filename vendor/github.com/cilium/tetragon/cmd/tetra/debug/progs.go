@@ -60,7 +60,7 @@ type progsConfig struct {
 
 var (
 	initOnce sync.Once
-	initErr  error
+	initErr  error // nolint:errname
 	initProg *ebpf.Program
 	cfg      progsConfig
 )
@@ -95,7 +95,7 @@ func detectBpffs() (string, error) {
 		}
 		return path, nil
 	}
-	return "", fmt.Errorf("bpffs mount not found")
+	return "", errors.New("bpffs mount not found")
 }
 
 func detectLib() (string, error) {
@@ -107,7 +107,7 @@ func detectLib() (string, error) {
 		}
 		return path, nil
 	}
-	return "", fmt.Errorf("lib directory mount not found")
+	return "", errors.New("lib directory mount not found")
 }
 
 func NewProgsCmd() *cobra.Command {
@@ -172,7 +172,7 @@ func runProgs(ctx context.Context) error {
 	// Enable bpf stats
 	stats, err := ebpf.EnableStats(uint32(unix.BPF_STATS_RUN_TIME))
 	if err != nil {
-		return fmt.Errorf("failed to enable stats: %v", err)
+		return fmt.Errorf("failed to enable stats: %w", err)
 	}
 	defer stats.Close()
 
@@ -329,7 +329,7 @@ func getAllProgs(lib string) ([]*prog, error) {
 
 		prog, ok := coll.Programs["iter"]
 		if !ok {
-			initErr = fmt.Errorf("can't file iter program")
+			initErr = errors.New("can't file iter program")
 			return
 		}
 		initProg, initErr = prog.Clone()

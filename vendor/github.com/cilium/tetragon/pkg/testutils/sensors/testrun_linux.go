@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -20,43 +19,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/sirupsen/logrus"
 )
-
-var config *Config
-
-// Conf is configuration for testing sensors.
-// It is intialized in TestSensorsRun() so all sensors test should call this
-// function in their TestMain
-type Config struct {
-	TetragonLib         string
-	SelfBinary          string
-	CmdWaitTime         time.Duration
-	DisableTetragonLogs bool
-	Debug               bool
-	Trace               bool
-}
-
-var ConfigDefaults = Config{
-	TetragonLib: filepath.Join(TetragonBpfPath(), "objs"),
-	SelfBinary:  filepath.Base(os.Args[0]),
-	// NB: for sensor tests, CmdWaitTime is initialized by TestSensorsRun to 5min
-	CmdWaitTime:         60000 * time.Millisecond,
-	DisableTetragonLogs: false,
-	Debug:               false,
-	Trace:               false,
-}
-
-func Conf() *Config {
-	if config == nil {
-		panic("please call TestSensorsRun() to initialize GetTestSensorsConf")
-	}
-	return config
-}
-
-// TetragonBpfPath retrieves bpf code path
-func TetragonBpfPath() string {
-	_, testFname, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(testFname), "..", "..", "..", "bpf")
-}
 
 func TestSensorsRun(m *testing.M, sensorName string) int {
 	c := ConfigDefaults
@@ -105,7 +67,7 @@ func TestSensorsRun(m *testing.M, sensorName string) int {
 	// Also, we currently seem to fail to remove the /sys/fs/bpf/<testMapDir>
 	// Do so here, until we figure out a way to do it properly. Also, issue
 	// a message.
-	testMapDir := fmt.Sprintf("test%s", sensorName)
+	testMapDir := "test" + sensorName
 
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()

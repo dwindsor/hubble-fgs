@@ -27,6 +27,8 @@ type config struct {
 	ForceLargeProgs bool
 	ClusterName     string
 
+	EnablePodAnnotations bool
+
 	EnableProcessAncestors           bool
 	EnableProcessKprobeAncestors     bool
 	EnableProcessTracepointAncestors bool
@@ -154,7 +156,7 @@ func ReadDirConfig(dirName string) (map[string]interface{}, error) {
 	m := map[string]interface{}{}
 	files, err := os.ReadDir(dirName)
 	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("unable to read configuration directory: %s", err)
+		return nil, fmt.Errorf("unable to read configuration directory: %w", err)
 	}
 	for _, f := range files {
 		if f.IsDir() {
@@ -224,7 +226,7 @@ func ReadConfigDir(path string) error {
 		return err
 	}
 	if err := viper.MergeConfigMap(cm); err != nil {
-		return fmt.Errorf("merge config failed %v", err)
+		return fmt.Errorf("merge config failed %w", err)
 	}
 
 	return nil

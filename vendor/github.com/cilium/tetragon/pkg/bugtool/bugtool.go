@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -224,7 +225,7 @@ func doBugtool(info *InitInfo, outFname string) error {
 			bugtoolLogger,
 		},
 	}
-	prefixDir := fmt.Sprintf("tetragon-bugtool-%s", time.Now().Format("20060102150405"))
+	prefixDir := "tetragon-bugtool-" + time.Now().Format("20060102150405")
 
 	outFile, err := os.Create(outFname)
 	if err != nil {
@@ -304,7 +305,7 @@ func (s *bugtoolInfo) addLibFiles(tarWriter *tar.Writer) error {
 			// symlinks if they point within the directory we are archiving, but since
 			// we do not use them, there is currently no reason for the complexity.
 			mode := info.Mode()
-			if !(mode.IsRegular() || mode.IsDir()) {
+			if !mode.IsRegular() && !mode.IsDir() {
 				s.multiLog.WithField("path", path).Warn("not a regular file, ignoring")
 				return nil
 			}
@@ -620,7 +621,7 @@ func (s bugtoolInfo) addPmapOut(tarWriter *tar.Writer) error {
 		return fmt.Errorf("failed to locate pmap: %w", err)
 	}
 
-	s.execCmd(tarWriter, "pmap.out", pmap, "-x", fmt.Sprintf("%d", s.info.PID))
+	s.execCmd(tarWriter, "pmap.out", pmap, "-x", strconv.Itoa(s.info.PID))
 	return nil
 }
 
@@ -642,16 +643,16 @@ func findCgroupMountPath(r io.Reader, unified bool, controller string) (string, 
 	}
 
 	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("error reading /proc/mounts: %v", err)
+		return "", fmt.Errorf("error reading /proc/mounts: %w", err)
 	}
 
-	return "", fmt.Errorf("cgroup filesystem not found")
+	return "", errors.New("cgroup filesystem not found")
 }
 
 func FindCgroupMountPath(unified bool, controller string) (string, error) {
 	file, err := os.Open("/proc/mounts")
 	if err != nil {
-		return "", fmt.Errorf("failed to open /proc/mounts: %v", err)
+		return "", fmt.Errorf("failed to open /proc/mounts: %w", err)
 	}
 	defer file.Close()
 	return findCgroupMountPath(file, unified, controller)

@@ -92,7 +92,7 @@ const (
 )
 
 func (i PodID) String() string {
-	var x uuid.UUID = uuid.UUID(i)
+	var x = uuid.UUID(i)
 	return x.String()
 }
 
@@ -140,7 +140,7 @@ func (pod *podInfo) delCachedPolicy(polID PolicyID) {
 }
 
 func (pod *podInfo) addCachedPolicy(polID PolicyID) {
-	for i := 0; i < len(pod.matchedPolicies); i++ {
+	for i := range len(pod.matchedPolicies) {
 		if pod.matchedPolicies[i] == polID {
 			return
 		}
@@ -149,7 +149,7 @@ func (pod *podInfo) addCachedPolicy(polID PolicyID) {
 }
 
 func (pod *podInfo) hasPolicy(polID PolicyID) bool {
-	for i := 0; i < len(pod.matchedPolicies); i++ {
+	for i := range len(pod.matchedPolicies) {
 		if pod.matchedPolicies[i] == polID {
 			return true
 		}
@@ -709,7 +709,7 @@ func (m *state) AddPodContainer(podID PodID, namespace, workload, kind string, p
 		}).Info("AddPodContainer: added pod")
 	} else if pod.namespace != namespace {
 		// sanity check: old and new namespace should match
-		return &podNamespaceConflictErr{podID: podID, oldNs: pod.namespace, newNs: namespace}
+		return &podNamespaceConflictError{podID: podID, oldNs: pod.namespace, newNs: namespace}
 	}
 
 	m.addPodContainers(pod, []string{containerID}, []CgroupID{cgID}, []string{containerName})
@@ -922,7 +922,7 @@ func (m *state) UpdatePod(podID PodID, namespace, workload, kind string, podLabe
 		dlog.Info("UpdatePod: added pod")
 	} else if pod.namespace != namespace {
 		// sanity check: old and new namespace should match
-		return &podNamespaceConflictErr{podID: podID, oldNs: pod.namespace, newNs: namespace}
+		return &podNamespaceConflictError{podID: podID, oldNs: pod.namespace, newNs: namespace}
 	}
 
 	// labels changed: check if there are policies ads that:

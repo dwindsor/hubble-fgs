@@ -19,26 +19,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/unloader"
 )
 
-// AttachFunc is the type for the various attachment functions. The function is
-// given the program and it's up to it to close it.
-type AttachFunc func(*ebpf.Collection, *ebpf.CollectionSpec, *ebpf.Program, *ebpf.ProgramSpec) (unloader.Unloader, error)
-
-type OpenFunc func(*ebpf.CollectionSpec) error
-
-type LoadOpts struct {
-	Attach AttachFunc
-	Open   OpenFunc
-	Maps   []*Map
-}
-
-func linkPinPath(bpfDir string, load *Program, extra ...string) string {
-	pinPath := filepath.Join(bpfDir, load.PinPath, "link")
-	if len(extra) != 0 {
-		pinPath = pinPath + "_" + strings.Join(extra, "_")
-	}
-	return pinPath
-}
-
 func linkPin(lnk link.Link, bpfDir string, load *Program, extra ...string) error {
 	// pinned link is not supported
 	if !bpf.HasLinkPin() {
@@ -52,10 +32,6 @@ func linkPin(lnk link.Link, bpfDir string, load *Program, extra ...string) error
 		return fmt.Errorf("pinning link '%s' failed: %w", pinPath, err)
 	}
 	return nil
-}
-
-func RawAttach(targetFD int) AttachFunc {
-	return RawAttachWithFlags(targetFD, 0)
 }
 
 func RawAttachWithFlags(targetFD int, flags uint32) AttachFunc {
@@ -161,7 +137,7 @@ func KprobeOpen(load *Program) OpenFunc {
 			if load.OverrideFmodRet {
 				spec, ok := coll.Programs["generic_fmodret_override"]
 				if !ok {
-					return fmt.Errorf("failed to find generic_fmodret_override")
+					return errors.New("failed to find generic_fmodret_override")
 				}
 				spec.AttachTo = load.Attach
 				disableProg(coll, "generic_kprobe_override")
@@ -206,12 +182,12 @@ func kprobeAttachOverride(load *Program, bpfDir string,
 
 	spec, ok := collSpec.Programs["generic_kprobe_override"]
 	if !ok {
-		return fmt.Errorf("spec for generic_kprobe_override program not found")
+		return errors.New("spec for generic_kprobe_override program not found")
 	}
 
 	prog, ok := coll.Programs["generic_kprobe_override"]
 	if !ok {
-		return fmt.Errorf("program generic_kprobe_override not found")
+		return errors.New("program generic_kprobe_override not found")
 	}
 
 	prog, err := prog.Clone()
@@ -238,12 +214,12 @@ func fmodretAttachOverride(load *Program, bpfDir string,
 
 	spec, ok := collSpec.Programs["generic_fmodret_override"]
 	if !ok {
-		return fmt.Errorf("spec for generic_fmodret_override program not found")
+		return errors.New("spec for generic_fmodret_override program not found")
 	}
 
 	prog, ok := coll.Programs["generic_fmodret_override"]
 	if !ok {
-		return fmt.Errorf("program generic_fmodret_override not found")
+		return errors.New("program generic_fmodret_override not found")
 	}
 
 	prog, err := prog.Clone()
@@ -379,17 +355,6 @@ func MultiUprobeAttach(load *Program) AttachFunc {
 	}
 }
 
-func NoAttach() AttachFunc {
-	return func(_ *ebpf.Collection, _ *ebpf.CollectionSpec,
-		prog *ebpf.Program, _ *ebpf.ProgramSpec) (unloader.Unloader, error) {
-		return unloader.ChainUnloader{
-			unloader.ProgUnloader{
-				Prog: prog,
-			},
-		}, nil
-	}
-}
-
 func TracingAttach(load *Program, bpfDir string) AttachFunc {
 	return func(_ *ebpf.Collection, _ *ebpf.CollectionSpec,
 		prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
@@ -422,7 +387,7 @@ func LSMOpen(load *Program) OpenFunc {
 			if prog.AttachType == ebpf.AttachLSMMac {
 				prog.AttachTo = load.Attach
 			} else {
-				return fmt.Errorf("Only AttachLSMMac is supported for generic_lsm programs")
+				return errors.New("only AttachLSMMac is supported for generic_lsm programs")
 			}
 		}
 		return nil
@@ -724,7 +689,7 @@ func installTailCalls(bpfDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 		}
 		defer tailCallsMap.Close()
 
-		for i := 0; i < 13; i++ {
+		for i := range 13 {
 			secName := fmt.Sprintf("%s/%d", secPrefix, i)
 			if progName, ok := secToProgName[secName]; ok {
 				if prog, ok := coll.Programs[progName]; ok {
@@ -745,16 +710,6 @@ func installTailCalls(bpfDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 	}
 
 	return nil
-}
-
-// MissingConstantsError is returned by [rewriteConstants].
-type MissingConstantsError struct {
-	// The constants missing from .rodata.
-	Constants []string
-}
-
-func (m *MissingConstantsError) Error() string {
-	return fmt.Sprintf("some constants are missing from .rodata: %s", strings.Join(m.Constants, ", "))
 }
 
 func rewriteConstants(spec *ebpf.CollectionSpec, consts map[string]interface{}) error {
@@ -997,7 +952,7 @@ func doLoadProgram(
 
 	err = installTailCalls(bpfDir, spec, coll, load)
 	if err != nil {
-		return nil, fmt.Errorf("installing tail calls failed: %s", err)
+		return nil, fmt.Errorf("installing tail calls failed: %w", err)
 	}
 
 	for _, mapLoad := range load.MapLoad {
@@ -1060,69 +1015,4 @@ func doLoadProgram(
 		return copyLoadedCollection(coll)
 	}
 	return nil, nil
-}
-
-// The loadProgram loads and attach bpf object @load. It is expected that user
-// provides @loadOpts with mandatory attach function and optional open function.
-//
-// The load process is roughly as follows:
-//
-//   - load object              | ebpf.LoadCollectionSpec
-//   - open callback            | loadOpts.open(spec)
-//   - open refferenced maps    |
-//   - creates collection       | ebpf.NewCollectionWithOptions(spec, opts)
-//   - install tail calls       | loadOpts.ci
-//   - load maps with values    |
-//   - pin main program         |
-//   - attach callback          | loadOpts.attach(coll, spec, prog, progSpec)
-//   - print loaded progs/maps  | if KeepCollection == true
-//
-// The  @loadOpts.open callback can be used to customize ebpf.CollectionSpec
-// before it's loaded into kernel (like disable/enable programs).
-//
-// The @loadOpts.attach callback is used to actually attach main object program
-// to desired function/symbol/whatever..
-//
-// The @loadOpts.ci defines specific installation of tailcalls in object.
-
-func loadProgram(
-	bpfDir string,
-	load *Program,
-	opts *LoadOpts,
-	verbose int,
-) error {
-
-	// Attach function is mandatory
-	if opts.Attach == nil {
-		return fmt.Errorf("attach function is not provided")
-	}
-
-	lc, err := doLoadProgram(bpfDir, load, opts, verbose)
-	if err != nil {
-		return err
-	}
-	if KeepCollection {
-		load.LC = filterLoadedCollection(lc)
-		printLoadedCollection(load.Name, load.LC)
-	}
-	return nil
-}
-
-func LoadProgram(
-	bpfDir string,
-	load *Program,
-	maps []*Map,
-	attach AttachFunc,
-	verbose int,
-) error {
-	return loadProgram(bpfDir, load, &LoadOpts{Attach: attach, Maps: maps}, verbose)
-}
-
-func LoadProgramOpts(
-	bpfDir string,
-	load *Program,
-	opts *LoadOpts,
-	verbose int,
-) error {
-	return loadProgram(bpfDir, load, opts, verbose)
 }

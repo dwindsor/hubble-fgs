@@ -14,7 +14,6 @@ import (
 	"github.com/cilium/tetragon/pkg/btf"
 	conf "github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/generictypes"
-	gt "github.com/cilium/tetragon/pkg/generictypes"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/selectors"
@@ -28,10 +27,16 @@ func addPaddingOnNestedPtr(ty ebtf.Type, path []string) []string {
 	return path
 }
 
-func resolveBTFArg(hook string, arg v1alpha1.KProbeArg) (*ebtf.Type, [api.MaxBTFArgDepth]api.ConfigBTFArg, error) {
+func resolveBTFArg(hook string, arg v1alpha1.KProbeArg, tp bool) (*ebtf.Type, [api.MaxBTFArgDepth]api.ConfigBTFArg, error) {
 	btfArg := [api.MaxBTFArgDepth]api.ConfigBTFArg{}
 
-	param, err := btf.FindBTFFuncParamFromHook(hook, int(arg.Index))
+	// tracepoints have extra first internal argument, so we need to adjust the index
+	index := int(arg.Index)
+	if tp {
+		index++
+	}
+
+	param, err := btf.FindBTFFuncParamFromHook(hook, index)
 	if err != nil {
 		return nil, btfArg, err
 	}
@@ -44,7 +49,7 @@ func resolveBTFArg(hook string, arg v1alpha1.KProbeArg) (*ebtf.Type, [api.MaxBTF
 	pathBase := strings.Split(arg.Resolve, ".")
 	path := addPaddingOnNestedPtr(rootType, pathBase)
 	if len(path) > api.MaxBTFArgDepth {
-		return nil, btfArg, fmt.Errorf("Unable to resolve %q. The maximum depth allowed is %d", arg.Resolve, api.MaxBTFArgDepth)
+		return nil, btfArg, fmt.Errorf("unable to resolve %q. The maximum depth allowed is %d", arg.Resolve, api.MaxBTFArgDepth)
 	}
 
 	lastBTFType, err := resolveBTFPath(&btfArg, btf.ResolveNestedTypes(rootType), path)
@@ -56,9 +61,9 @@ func resolveBTFPath(btfArg *[api.MaxBTFArgDepth]api.ConfigBTFArg, rootType ebtf.
 }
 
 func findTypeFromBTFType(arg v1alpha1.KProbeArg, btfType *ebtf.Type) int {
-	ty := gt.GenericTypeFromBTF(*btfType)
-	if ty == gt.GenericInvalidType {
-		return gt.GenericTypeFromString(arg.Type)
+	ty := generictypes.GenericTypeFromBTF(*btfType)
+	if ty == generictypes.GenericInvalidType {
+		return generictypes.GenericTypeFromString(arg.Type)
 	}
 	return ty
 }

@@ -4,6 +4,7 @@
 package caps
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -54,11 +55,10 @@ func isCapValid(capInt int32) bool {
 	return false
 }
 
-// AreSubset() Checks if "a" is a subset of "set"
-// Rerturns true if all "a" capabilities are also in "set", otherwise
-// false.
+// AreSubset checks if "a" is a subset of "set". Returns true if all "a"
+// capabilities are also in "set", otherwise false.
 func AreSubset(a uint64, set uint64) bool {
-	return (!((a & ^uint64(set)) != 0))
+	return (a & set) == a
 }
 
 // capToMask() returns the mask of the corresponding u32
@@ -91,7 +91,7 @@ func GetCapability(capInt int32) (string, error) {
 
 func GetCapabilities(capInt uint64) string {
 	var caps []string
-	for i := uint64(0); i < 64; i++ {
+	for i := range uint64(64) {
 		if (1<<i)&capInt != 0 {
 			caps = append(caps, capabilitiesString[i])
 		}
@@ -418,7 +418,7 @@ func GetPIDCaps(filename string) (uint32, uint64, uint64, uint64) {
 	getValue64Hex := func(line string) (uint64, error) {
 		fields := strings.Fields(line)
 		if len(fields) < 2 {
-			return 0, fmt.Errorf("Fields to few arguments")
+			return 0, errors.New("fields to few arguments")
 		}
 		pidField := fields[len(fields)-1]
 		pid, err := strconv.ParseUint(pidField, 16, 64)
@@ -428,7 +428,7 @@ func GetPIDCaps(filename string) (uint32, uint64, uint64, uint64) {
 	getValue32Int := func(line string) (uint32, error) {
 		fields := strings.Fields(line)
 		if len(fields) < 2 {
-			return 0, fmt.Errorf("Fields to few arguments")
+			return 0, errors.New("fields to few arguments")
 		}
 		pidField := fields[len(fields)-1]
 		pid, err := strconv.ParseUint(pidField, 10, 32)
@@ -464,7 +464,7 @@ func GetPIDCaps(filename string) (uint32, uint64, uint64, uint64) {
 
 func GetCapabilitiesTypes(capInt uint64) []tetragon.CapabilitiesType {
 	var caps []tetragon.CapabilitiesType
-	for i := uint64(0); i < 64; i++ {
+	for i := range uint64(64) {
 		if (1<<i)&capInt != 0 {
 			e := tetragon.CapabilitiesType(i)
 			caps = append(caps, e)

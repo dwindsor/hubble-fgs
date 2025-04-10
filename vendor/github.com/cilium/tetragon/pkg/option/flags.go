@@ -4,6 +4,7 @@
 package option
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -36,6 +37,8 @@ const (
 
 	KeyEnableK8sAPI      = "enable-k8s-api"
 	KeyK8sKubeConfigPath = "k8s-kubeconfig-path"
+
+	KeyEnablePodAnnotations = "enable-pod-annotations"
 
 	KeyMetricsServer      = "metrics-server"
 	KeyMetricsLabelFilter = "metrics-label-filter"
@@ -174,13 +177,13 @@ func ReadAndSetFlags() error {
 	var err error
 
 	if Config.RBSize, err = strutils.ParseSize(viper.GetString(KeyRBSize)); err != nil {
-		return fmt.Errorf("failed to parse rb-size value: %s", err)
+		return fmt.Errorf("failed to parse rb-size value: %w", err)
 	}
 	if Config.RBSizeTotal, err = strutils.ParseSize(viper.GetString(KeyRBSizeTotal)); err != nil {
-		return fmt.Errorf("failed to parse rb-size-total value: %s", err)
+		return fmt.Errorf("failed to parse rb-size-total value: %w", err)
 	}
 	if Config.RBQueueSize, err = strutils.ParseSize(viper.GetString(KeyRBQueueSize)); err != nil {
-		return fmt.Errorf("failed to parse rb-queue-size value: %s", err)
+		return fmt.Errorf("failed to parse rb-queue-size value: %w", err)
 	}
 
 	Config.GopsAddr = viper.GetString(KeyGopsAddr)
@@ -194,7 +197,7 @@ func ReadAndSetFlags() error {
 	Config.ProcessCacheGCInterval = viper.GetDuration(KeyProcessCacheGCInterval)
 
 	if Config.ProcessCacheGCInterval <= 0 {
-		return fmt.Errorf("failed to parse process-cache-gc-interval value. Must be >= 0")
+		return errors.New("failed to parse process-cache-gc-interval value. Must be >= 0")
 	}
 
 	Config.MetricsServer = viper.GetString(KeyMetricsServer)
@@ -230,6 +233,7 @@ func ReadAndSetFlags() error {
 	Config.TracingPolicyDir = viper.GetString(KeyTracingPolicyDir)
 
 	Config.EnablePodInfo = viper.GetBool(KeyEnablePodInfo)
+	Config.EnablePodAnnotations = viper.GetBool(KeyEnablePodAnnotations)
 	Config.EnableTracingPolicyCRD = viper.GetBool(KeyEnableTracingPolicyCRD)
 
 	Config.TracingPolicy = viper.GetString(KeyTracingPolicy)
@@ -352,7 +356,7 @@ func AddFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyEnableProcessCred, false, "Enable process_cred events")
 	flags.Bool(KeyEnableProcessNs, false, "Enable namespace information in process_exec and process_kprobe events")
 	flags.Uint(KeyEventQueueSize, 10000, "Set the size of the internal event queue.")
-
+	flags.Bool(KeyEnablePodAnnotations, false, "Add pod annotations field to events.")
 	// Allow to include ancestor processes in events
 	flags.Bool(KeyEnableProcessAncestors, false, "Include ancestors in process_exec and process_exit events. Disabled by default. Required by other enable ancestors options for correct reference counting")
 	flags.Bool(KeyEnableProcessKprobeAncestors, false, fmt.Sprintf("Include ancestors in process_kprobe events. Only used if '%s' is set to 'true'", KeyEnableProcessAncestors))

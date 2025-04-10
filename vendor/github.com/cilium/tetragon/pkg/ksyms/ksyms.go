@@ -59,7 +59,7 @@ func (ksym *ksym) isFunction() bool {
 
 // NewKsyms creates a new Ksyms structure (by reading procfs/kallsyms)
 func NewKsyms(procfs string) (*Ksyms, error) {
-	kallsymsFname := fmt.Sprintf("%s/kallsyms", procfs)
+	kallsymsFname := procfs + "/kallsyms"
 	file, err := os.Open(kallsymsFname)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func NewKsyms(procfs string) (*Ksyms, error) {
 		}
 
 		if sym.addr, err = strconv.ParseUint(fields[0], 16, 64); err != nil {
-			err = fmt.Errorf("failed to parse address: %v", err)
+			err = fmt.Errorf("failed to parse address: %w", err)
 			break
 		}
 		sym.ty = fields[1]
@@ -181,7 +181,7 @@ func (k *Ksyms) getFnOffset(addr uint64) (*FnOffset, error) {
 
 	sym := k.table[l]
 	if !sym.isFunction() {
-		return nil, fmt.Errorf("Unable to find function for addr 0x%x", addr)
+		return nil, fmt.Errorf("unable to find function for addr 0x%x", addr)
 	}
 
 	return &FnOffset{

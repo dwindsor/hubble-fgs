@@ -4,6 +4,7 @@
 package eventchecker
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -32,7 +33,7 @@ func (field *Field) generateWith(g *protogen.GeneratedFile, msg *CheckedMessage)
 	}
 
 	g.P(`// With` + field.GoName + ` adds a ` + field.GoName + ` check to the ` + msg.checkerName(g))
-	if field.isPrimitive() && !(field.isList() || field.isMap()) {
+	if field.isPrimitive() && (!field.isList() && !field.isMap()) {
 		g.P(`func (checker *` + msg.checkerName(g) + `) With` + field.GoName + `(check ` + typeName + `) *` + msg.checkerName(g) + `{
             checker.` + field.GoName + ` = &check`)
 	} else if field.isList() {
@@ -108,7 +109,7 @@ func doGetFieldFrom(field *Field, g *protogen.GeneratedFile, handleList, handleO
 	}
 
 	doOneofFrom := func(oneof *protogen.Oneof) (string, error) {
-		innerFrom, err := doGetFieldFrom(field, g, handleList, false, checkerName, checkerVar, fmt.Sprintf("event.%s", field.GoName))
+		innerFrom, err := doGetFieldFrom(field, g, handleList, false, checkerName, checkerVar, "event."+field.GoName)
 		if err != nil {
 			return "", err
 		}
@@ -235,11 +236,12 @@ func doGetFieldFrom(field *Field, g *protogen.GeneratedFile, handleList, handleO
 		return doStringFrom(), nil
 
 	case protoreflect.MessageKind:
-		if field.Message.GoIdent.GoImportPath == imports.WrappersPath {
+		switch field.Message.GoIdent.GoImportPath {
+		case imports.WrappersPath:
 			return doWrapperFrom(), nil
-		} else if field.Message.GoIdent.GoImportPath == imports.TimestampPath {
+		case imports.TimestampPath:
 			return doTimestampFrom(), nil
-		} else if field.Message.GoIdent.GoImportPath == imports.DurationPath {
+		case imports.DurationPath:
 			return doDurationFrom(), nil
 		}
 		return doCheckerFrom(), nil
@@ -248,7 +250,7 @@ func doGetFieldFrom(field *Field, g *protogen.GeneratedFile, handleList, handleO
 		return doEnumFrom(), nil
 
 	default:
-		return "", fmt.Errorf("Unhandled field type %s (please edit doGetFieldFrom in field.go)", kind)
+		return "", fmt.Errorf("unhandled field type %s (please edit doGetFieldFrom in field.go)", kind)
 	}
 }
 
@@ -352,7 +354,7 @@ func checkForMap(g *protogen.GeneratedFile, field *Field, checkerName, checkerVa
 
 // checkForOneof returns the event checker body for a Oneof.
 func checkForOneof(g *protogen.GeneratedFile, field *Field, checkerName string, checkerVar string) (string, error) {
-	inner, err := checkForKind(g, field, checkerVar, fmt.Sprintf("event.%s", field.GoName))
+	inner, err := checkForKind(g, field, checkerVar, "event."+field.GoName)
 	if err != nil {
 		return "", err
 	}
@@ -386,7 +388,7 @@ func checkForKind(g *protogen.GeneratedFile, field *Field, checkerVar, eventVar 
 	// protobuf wrapper types
 	doWrapperCheck := func() string {
 		ff := kindToFormat(kind)
-		wrapperVal := fmt.Sprintf("%s.Value", eventVar)
+		wrapperVal := eventVar + ".Value"
 		return `if ` + eventVar + ` == nil {
             return ` + common.FmtErrorf(g, field.GoName+" is nil and does not match expected value "+ff, "*"+checkerVar) + `
         }
@@ -450,11 +452,12 @@ func checkForKind(g *protogen.GeneratedFile, field *Field, checkerVar, eventVar 
 		return doStringCheck(), nil
 
 	case protoreflect.MessageKind:
-		if field.Message.GoIdent.GoImportPath == imports.WrappersPath {
+		switch field.Message.GoIdent.GoImportPath {
+		case imports.WrappersPath:
 			return doWrapperCheck(), nil
-		} else if field.Message.GoIdent.GoImportPath == imports.TimestampPath {
+		case imports.TimestampPath:
 			return doTimestampCheck(), nil
-		} else if field.Message.GoIdent.GoImportPath == imports.DurationPath {
+		case imports.DurationPath:
 			return doDurationCheck(), nil
 		}
 		return doCheckerCheck(), nil
@@ -463,7 +466,7 @@ func checkForKind(g *protogen.GeneratedFile, field *Field, checkerVar, eventVar 
 		return doEnumCheck(), nil
 
 	default:
-		return "", fmt.Errorf("Unhandled field type %s (please edit checkForKind in field.go)", kind)
+		return "", fmt.Errorf("unhandled field type %s (please edit checkForKind in field.go)", kind)
 	}
 }
 
@@ -640,7 +643,7 @@ func (field *Field) name() string {
 func (field *Field) listCheckerName(g *protogen.GeneratedFile) string {
 	if msg := field.Message; msg != nil {
 		typeImportPath := string(field.Message.GoIdent.GoImportPath)
-		ret := fmt.Sprintf("%sListMatcher", msg.GoIdent.GoName)
+		ret := msg.GoIdent.GoName + "ListMatcher"
 		if !strings.HasPrefix(typeImportPath, common.TetragonPackageName) {
 			importPath := filepath.Join(typeImportPath, "codegen", "eventchecker")
 			ret = g.QualifiedGoIdent(protogen.GoIdent{
@@ -651,7 +654,7 @@ func (field *Field) listCheckerName(g *protogen.GeneratedFile) string {
 		return ret
 	} else if enum := field.Enum; enum != nil {
 		typeImportPath := string(field.Enum.GoIdent.GoImportPath)
-		ret := fmt.Sprintf("%sListMatcher", enum.GoIdent.GoName)
+		ret := enum.GoIdent.GoName + "ListMatcher"
 		if !strings.HasPrefix(typeImportPath, common.TetragonPackageName) {
 			importPath := filepath.Join(typeImportPath, "codegen", "eventchecker")
 			ret = g.QualifiedGoIdent(protogen.GoIdent{
@@ -662,7 +665,7 @@ func (field *Field) listCheckerName(g *protogen.GeneratedFile) string {
 		return ret
 	}
 	varIdent := field.kind().String()
-	return fmt.Sprintf("%sListMatcher", strcase.ToCamel(varIdent))
+	return strcase.ToCamel(varIdent) + "ListMatcher"
 }
 
 func (field *Field) newListCheckerName(g *protogen.GeneratedFile) string {
@@ -776,7 +779,7 @@ func (field *Field) typeName(g *protogen.GeneratedFile) (string, error) {
 	// Pod.Labels is a special case
 	if field.GoIdent.GoName == "Pod_Labels" {
 		smatcher := common.StringMatcherIdent(g, "StringMatcher")
-		return fmt.Sprintf("map[string]%s", smatcher), nil
+		return "map[string]" + smatcher, nil
 	}
 
 	var type_ string
@@ -801,14 +804,15 @@ func (field *Field) typeName(g *protogen.GeneratedFile) (string, error) {
 		type_ = smatcher
 
 	case protoreflect.MessageKind:
-		if field.Message.GoIdent.GoImportPath == imports.TimestampPath {
+		switch field.Message.GoIdent.GoImportPath {
+		case imports.TimestampPath:
 			tsmatcher := common.TimestampMatcherIdent(g, "TimestampMatcher")
 			type_ = tsmatcher
-		} else if field.Message.GoIdent.GoImportPath == imports.DurationPath {
+		case imports.DurationPath:
 			dmatcher := common.DurationMatcherIdent(g, "DurationMatcher")
 			type_ = dmatcher
-		} else {
-			type_ = fmt.Sprintf("%sChecker", field.Message.GoIdent.GoName)
+		default:
+			type_ = field.Message.GoIdent.GoName + "Checker"
 			typeImportPath := string(field.Message.GoIdent.GoImportPath)
 			if !strings.HasPrefix(typeImportPath, common.TetragonPackageName) {
 				importPath := filepath.Join(typeImportPath, "codegen", "eventchecker")
@@ -820,7 +824,7 @@ func (field *Field) typeName(g *protogen.GeneratedFile) (string, error) {
 		}
 
 	case protoreflect.EnumKind:
-		type_ = fmt.Sprintf("%sChecker", field.Enum.GoIdent.GoName)
+		type_ = field.Enum.GoIdent.GoName + "Checker"
 		typeImportPath := string(field.Enum.GoIdent.GoImportPath)
 		if !strings.HasPrefix(typeImportPath, common.TetragonPackageName) {
 			importPath := filepath.Join(typeImportPath, "codegen", "eventchecker")
@@ -831,22 +835,22 @@ func (field *Field) typeName(g *protogen.GeneratedFile) (string, error) {
 		}
 
 	default:
-		return "", fmt.Errorf("Unhandled field type %s (please edit checkerTypeName in field.go)", kind)
+		return "", fmt.Errorf("unhandled field type %s (please edit checkerTypeName in field.go)", kind)
 	}
 
 	if field.isMap() {
 		if field.Desc.MapKey().Kind() != protoreflect.StringKind {
-			return "", fmt.Errorf("maps without string keys are not supported")
+			return "", errors.New("maps without string keys are not supported")
 		}
 		if field.Desc.MapValue().Kind() != protoreflect.StringKind {
-			return "", fmt.Errorf("maps without string values are not supported")
+			return "", errors.New("maps without string values are not supported")
 		}
-		return fmt.Sprintf("map[string]%s", common.StringMatcherIdent(g, "StringMatcher")), nil
+		return "map[string]" + common.StringMatcherIdent(g, "StringMatcher"), nil
 	} else if field.isList() {
 		if field.isPrimitive() {
-			return fmt.Sprintf("[]%s", type_), nil
+			return "[]" + type_, nil
 		}
-		return fmt.Sprintf("[]*%s", type_), nil
+		return "[]*" + type_, nil
 	}
 
 	return type_, nil

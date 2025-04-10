@@ -4,9 +4,7 @@
 package process
 
 import (
-	"encoding/base64"
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -25,7 +23,6 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/caps"
 	"github.com/cilium/tetragon/pkg/reader/exec"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/path"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/watcher"
@@ -208,7 +205,7 @@ func (pi *ProcessInternal) AnnotateProcess(cred, ns bool) error {
 	process := pi.getProcess()
 	defer pi.putProcess()
 	if process == nil {
-		return fmt.Errorf("Process is nil")
+		return errors.New("process is nil")
 	}
 	if cred {
 		process.Cap = pi.capabilities
@@ -221,11 +218,11 @@ func (pi *ProcessInternal) AnnotateProcess(cred, ns bool) error {
 }
 
 func (pi *ProcessInternal) RefDec(reason string) {
-	procCache.refDec(pi, fmt.Sprintf("%s--", reason))
+	procCache.refDec(pi, reason+"--")
 }
 
 func (pi *ProcessInternal) RefInc(reason string) {
-	procCache.refInc(pi, fmt.Sprintf("%s++", reason))
+	procCache.refInc(pi, reason+"++")
 }
 
 func (pi *ProcessInternal) RefGet() uint32 {
@@ -258,10 +255,6 @@ func UpdateEventProcessTid(process *tetragon.Process, tid *uint32) {
 	if process != nil && tid != nil {
 		process.Tid = &wrapperspb.UInt32Value{Value: *tid}
 	}
-}
-
-func GetProcessID(pid uint32, ktime uint64) string {
-	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%d:%d", node.GetNodeNameForExport(), ktime, pid)))
 }
 
 func GetExecID(proc *tetragonAPI.MsgProcess) string {
@@ -413,7 +406,7 @@ func initProcessInternalClone(event *tetragonAPI.MsgCloneEvent,
 	parent *ProcessInternal, parentExecId string) (*ProcessInternal, error) {
 	pi := parent.cloneInternalProcessCopy()
 	if pi.process == nil {
-		err := fmt.Errorf("failed to clone parent process from cache")
+		err := errors.New("failed to clone parent process from cache")
 		logger.GetLogger().WithFields(logrus.Fields{
 			"event.name":           "Clone",
 			"event.parent.pid":     event.Parent.Pid,

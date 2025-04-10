@@ -25,7 +25,7 @@ func (msg *CheckedMessage) Generate(g *protogen.GeneratedFile, isEvent bool) err
 			continue
 		}
 		if err := field.generateListMatcher(g); err != nil {
-			return fmt.Errorf("Failed to generate list checker: %w", err)
+			return fmt.Errorf("failed to generate list checker: %w", err)
 		}
 	}
 
@@ -145,7 +145,7 @@ func (msg *CheckedMessage) generateChecker(g *protogen.GeneratedFile, isEvent bo
 }
 
 func (msg *CheckedMessage) checkerName(g *protogen.GeneratedFile) string {
-	ret := fmt.Sprintf("%sChecker", msg.GoIdent.GoName)
+	ret := msg.GoIdent.GoName + "Checker"
 	typeImportPath := string(msg.GoIdent.GoImportPath)
 	if !strings.HasPrefix(typeImportPath, common.TetragonPackageName) {
 		importPath := filepath.Join(typeImportPath, "codegen", "eventchecker")
@@ -165,7 +165,7 @@ func (msg *CheckedMessage) fieldsBody(g *protogen.GeneratedFile) (string, error)
 		if err != nil {
 			return "", err
 		}
-		if !(f.isList() || f.isMap()) {
+		if !f.isList() && !f.isMap() {
 			fieldsStr += fmt.Sprintf("%s *%s `%s`\n", f.name(), typeName, f.jsonTag())
 		} else if f.isList() {
 			fieldsStr += fmt.Sprintf("%s *%s `%s`\n", f.name(), f.listCheckerName(g), f.jsonTag())

@@ -1,16 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Cilium
 
-//go:build linux
-// +build linux
-
 package bpf
 
 import (
+	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
-	"sync"
 	"syscall"
 
 	"github.com/cilium/ebpf/rlimit"
@@ -20,100 +16,10 @@ import (
 )
 
 var (
-	// Path to where bpffs is mounted
-	mapRoot = defaults.DefaultMapRoot
-
 	// Path to where debugfs is mounted
 	debugFSRoot = "/sys/kernel/debug"
-
 	// Path to where cgroup2 is mounted
 	cgroup2Root = defaults.Cgroup2Dir
-
-	// Prefix for all maps (default: tc/globals)
-	mapPrefix = defaults.DefaultMapPrefix
-
-	// Set to true on first get request to detect misorder
-	lockedDown      = false
-	once            sync.Once
-	readMountInfo   sync.Once
-	mountInfoPrefix string
-)
-
-func lockDown() {
-	lockedDown = true
-}
-
-func SetMapRoot(path string) {
-	if lockedDown {
-		panic("SetMapRoot() call after MapRoot was read")
-	}
-	mapRoot = path
-}
-
-func GetMapRoot() string {
-	once.Do(lockDown)
-	return mapRoot
-}
-
-func SetMapPrefix(path string) {
-	if lockedDown {
-		panic("SetMapPrefix() call after MapPrefix was read")
-	}
-	mapPrefix = path
-}
-
-func MapPrefixPath() string {
-	once.Do(lockDown)
-	return filepath.Join(mapRoot, mapPrefix)
-}
-
-func mapPathFromMountInfo(name string) string {
-	readMountInfo.Do(func() {
-		mountInfos, err := mountinfo.GetMountInfo()
-		if err != nil {
-			logger.GetLogger().WithError(err).Warn("Could not get mount info for map root lookup")
-		}
-
-		for _, mountInfo := range mountInfos {
-			if mountInfo.FilesystemType == mountinfo.FilesystemTypeBPFFS {
-				mountInfoPrefix = filepath.Join(mountInfo.MountPoint, mapPrefix)
-				return
-			}
-		}
-
-		logger.GetLogger().Warn("Could not find BPF map root")
-	})
-
-	return filepath.Join(mountInfoPrefix, name)
-}
-
-// MapPath returns a path for a BPF map with a given name.
-func MapPath(name string) string {
-	return mapPathFromMountInfo(name)
-}
-
-// LocalMapName returns the name for a BPF map that is local to the specified ID.
-func LocalMapName(name string, id uint16) string {
-	return fmt.Sprintf("%s%05d", name, id)
-}
-
-// LocalMapPath returns the path for a BPF map that is local to the specified ID.
-func LocalMapPath(name string, id uint16) string {
-	return MapPath(LocalMapName(name, id))
-}
-
-// Environment returns a list of environment variables which are needed to make
-// BPF programs and tc aware of the actual BPFFS mount path.
-func Environment() []string {
-	return append(
-		os.Environ(),
-		fmt.Sprintf("CILIUM_BPF_MNT=%s", GetMapRoot()),
-		fmt.Sprintf("TC_BPF_MNT=%s", GetMapRoot()),
-	)
-}
-
-var (
-	mountOnce sync.Once
 )
 
 // mountFS mounts the BPFFS filesystem into the desired mapRoot directory.
@@ -122,10 +28,10 @@ func mountFS(root, kind string) error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			if err := os.MkdirAll(root, 0755); err != nil {
-				return fmt.Errorf("unable to create %s mount directory: %s", kind, err)
+				return fmt.Errorf("unable to create %s mount directory: %w", kind, err)
 			}
 		} else {
-			return fmt.Errorf("failed to stat the mount path %s: %s", root, err)
+			return fmt.Errorf("failed to stat the mount path %s: %w", root, err)
 
 		}
 	} else if !mapRootStat.IsDir() {
@@ -133,7 +39,7 @@ func mountFS(root, kind string) error {
 	}
 
 	if err := syscall.Mount(root, root, kind, 0, ""); err != nil {
-		return fmt.Errorf("failed to mount %s %s: %s", root, kind, err)
+		return fmt.Errorf("failed to mount %s %s: %w", root, kind, err)
 	}
 	return nil
 }
@@ -201,7 +107,7 @@ func checkOrMountDebugFSDefaultLocations() error {
 		return mountFS(debugFSRoot, mountinfo.FilesystemTypeDebugFS)
 	}
 	if !debugfsInstance {
-		return fmt.Errorf("instance exists with othe type")
+		return errors.New("instance exists with othe type")
 	}
 	return nil
 }
@@ -222,7 +128,7 @@ func checkOrMountCgroupDefaultLocation() error {
 		return mountFS(cgroup2Root, mountinfo.FilesystemTypeCgroup2)
 	}
 	if !cgroupInstance {
-		return fmt.Errorf("instance exists with other type")
+		return errors.New("instance exists with other type")
 	}
 	return nil
 }

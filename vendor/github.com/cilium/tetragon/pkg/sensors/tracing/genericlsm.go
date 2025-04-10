@@ -19,7 +19,6 @@ import (
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/config"
-	conf "github.com/cilium/tetragon/pkg/config"
 	gt "github.com/cilium/tetragon/pkg/generictypes"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/idtable"
@@ -121,13 +120,13 @@ func handleGenericLsm(r *bytes.Reader) ([]observer.Event, error) {
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warnf("Failed to read process call msg")
-		return nil, fmt.Errorf("Failed to read process call msg")
+		return nil, errors.New("failed to read process call msg")
 	}
 
 	gl, err := genericLsmTableGet(idtable.EntryID{ID: int(m.FuncId)})
 	if err != nil {
 		logger.GetLogger().WithError(err).Warnf("Failed to match id:%d", m.FuncId)
-		return nil, fmt.Errorf("Failed to match id")
+		return nil, errors.New("failed to match id")
 	}
 
 	unix := &tracing.MsgGenericLsmUnix{}
@@ -155,23 +154,23 @@ func handleGenericLsm(r *bytes.Reader) ([]observer.Event, error) {
 		err := binary.Read(r, binary.LittleEndian, &state)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warnf("Failed to read IMA hash state")
-			return nil, fmt.Errorf("Failed to read IMA hash state")
+			return nil, errors.New("failed to read IMA hash state")
 		}
 		if state != 2 {
 			logger.GetLogger().WithError(err).Warnf("LSM bpf program chain is violated")
-			return nil, fmt.Errorf("LSM bpf program chain is violated")
+			return nil, errors.New("LSM bpf program chain is violated")
 		}
 		var algo int8
 		err = binary.Read(r, binary.LittleEndian, &algo)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warnf("Failed to read IMA hash algorithm")
-			return nil, fmt.Errorf("Failed to read IMA hash algorithm")
+			return nil, errors.New("failed to read IMA hash algorithm")
 		}
 		unix.ImaHash.Algo = int32(algo)
 		err = binary.Read(r, binary.LittleEndian, &unix.ImaHash.Hash)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warnf("Failed to read IMA hash value")
-			return nil, fmt.Errorf("Failed to read IMA hash value")
+			return nil, errors.New("failed to read IMA hash value")
 		}
 	}
 
@@ -181,7 +180,7 @@ func handleGenericLsm(r *bytes.Reader) ([]observer.Event, error) {
 func isValidLsmSelectors(selectors []v1alpha1.KProbeSelector) error {
 	for _, s := range selectors {
 		if len(s.MatchReturnArgs) > 0 {
-			return fmt.Errorf("MatchReturnArgs selector is not supported")
+			return errors.New("MatchReturnArgs selector is not supported")
 		}
 		if len(s.MatchActions) > 0 {
 			for _, a := range s.MatchActions {
@@ -193,7 +192,7 @@ func isValidLsmSelectors(selectors []v1alpha1.KProbeSelector) error {
 					continue
 				case "post":
 					if a.KernelStackTrace || a.UserStackTrace {
-						return fmt.Errorf("Stacktrace actions are not supported")
+						return errors.New("stacktrace actions are not supported")
 					}
 				default:
 					return fmt.Errorf("%s action is not supported", a.Action)
@@ -224,19 +223,19 @@ func addLsm(f *v1alpha1.LsmHookSpec, in *addLsmIn) (id idtable.EntryID, err erro
 		return errFn(err)
 	}
 
-	config := &api.EventConfig{}
-	config.PolicyID = uint32(in.policyID)
+	eventConfig := &api.EventConfig{}
+	eventConfig.PolicyID = uint32(in.policyID)
 
 	msgField, err := getPolicyMessage(f.Message)
 	if errors.Is(err, ErrMsgSyntaxShort) || errors.Is(err, ErrMsgSyntaxEscape) {
-		return errFn(fmt.Errorf("Error: '%v'", err))
+		return errFn(fmt.Errorf("error: '%w'", err))
 	} else if errors.Is(err, ErrMsgSyntaxLong) {
 		logger.GetLogger().WithField("policy-name", in.policyName).Warnf("TracingPolicy 'message' field too long, truncated to %d characters", TpMaxMessageLen)
 	}
 
 	tagsField, err := getPolicyTags(f.Tags)
 	if err != nil {
-		return errFn(fmt.Errorf("Error: '%v'", err))
+		return errFn(fmt.Errorf("error: '%w'", err))
 	}
 
 	// Parse Arguments
@@ -245,11 +244,11 @@ func addLsm(f *v1alpha1.LsmHookSpec, in *addLsmIn) (id idtable.EntryID, err erro
 
 		if a.Resolve != "" && j < api.EventConfigMaxArgs {
 			if !bpf.HasProgramLargeSize() {
-				return errFn(fmt.Errorf("Error: Resolve flag can't be used for your kernel version. Please update to version 5.4 or higher or disable Resolve flag"))
+				return errFn(errors.New("error: Resolve flag can't be used for your kernel version. Please update to version 5.4 or higher or disable Resolve flag"))
 			}
-			lastBTFType, btfArg, err := resolveBTFArg("bpf_lsm_"+f.Hook, a)
+			lastBTFType, btfArg, err := resolveBTFArg("bpf_lsm_"+f.Hook, a, false)
 			if err != nil {
-				return errFn(fmt.Errorf("Error on hook %q for index %d : %v", f.Hook, a.Index, err))
+				return errFn(fmt.Errorf("error on hook %q for index %d : %w", f.Hook, a.Index, err))
 			}
 			allBTFArgs[j] = btfArg
 			argType = findTypeFromBTFType(a, lastBTFType)
@@ -263,7 +262,7 @@ func addLsm(f *v1alpha1.LsmHookSpec, in *addLsmIn) (id idtable.EntryID, err erro
 			if argType != gt.GenericCharBuffer {
 				logger.GetLogger().Warnf("maxData flag is ignored (supported for char_buf type)")
 			}
-			if !conf.EnableLargeProgs() {
+			if !config.EnableLargeProgs() {
 				logger.GetLogger().Warnf("maxData flag is ignored (supported from large programs)")
 			}
 		}
@@ -272,11 +271,11 @@ func addLsm(f *v1alpha1.LsmHookSpec, in *addLsmIn) (id idtable.EntryID, err erro
 			return errFn(err)
 		}
 		if a.Index > 4 {
-			return errFn(fmt.Errorf("Error add arg: ArgType %s Index %d out of bounds",
+			return errFn(fmt.Errorf("error add arg: ArgType %s Index %d out of bounds",
 				a.Type, int(a.Index)))
 		}
-		config.Arg[a.Index] = int32(argType)
-		config.ArgM[a.Index] = uint32(argMValue)
+		eventConfig.Arg[a.Index] = int32(argType)
+		eventConfig.ArgM[a.Index] = uint32(argMValue)
 
 		argsBTFSet[a.Index] = true
 		argP := argPrinter{index: j, ty: argType, maxData: a.MaxData, label: a.Label}
@@ -285,27 +284,27 @@ func addLsm(f *v1alpha1.LsmHookSpec, in *addLsmIn) (id idtable.EntryID, err erro
 		pathArgWarning(a.Index, argType, f.Selectors)
 	}
 
-	config.BTFArg = allBTFArgs
-	config.ArgReturn = int32(0)
-	config.ArgReturnCopy = int32(0)
+	eventConfig.BTFArg = allBTFArgs
+	eventConfig.ArgReturn = int32(0)
+	eventConfig.ArgReturnCopy = int32(0)
 
 	// Mark remaining arguments as 'nops' the kernel side will skip
 	// copying 'nop' args.
 	for j, a := range argsBTFSet {
 		if !a {
 			if j != api.ReturnArgIndex {
-				config.Arg[j] = gt.GenericNopType
-				config.ArgM[j] = 0
+				eventConfig.Arg[j] = gt.GenericNopType
+				eventConfig.ArgM[j] = 0
 			}
 		}
 	}
 
-	config.Syscall = 0
+	eventConfig.Syscall = 0
 
 	// create a new entry on the table, and pass its id to BPF-side
 	// so that we can do the matching at event-generation time
 	lsmEntry := genericLsm{
-		config:      config,
+		config:      eventConfig,
 		argPrinters: argSigPrinters,
 		hook:        f.Hook,
 		tableId:     idtable.UninitializedEntryID,
@@ -331,7 +330,7 @@ func addLsm(f *v1alpha1.LsmHookSpec, in *addLsmIn) (id idtable.EntryID, err erro
 	}
 
 	genericLsmTable.AddEntry(&lsmEntry)
-	config.FuncId = uint32(lsmEntry.tableId.ID)
+	eventConfig.FuncId = uint32(lsmEntry.tableId.ID)
 
 	logger.GetLogger().
 		WithField("hook", lsmEntry.hook).
@@ -352,7 +351,7 @@ func createGenericLsmSensor(
 	var err error
 
 	if !bpf.HasLSMPrograms() || !config.EnableLargeProgs() {
-		return nil, fmt.Errorf("Does you kernel support the bpf LSM? You can enable LSM BPF by modifying" +
+		return nil, errors.New("does you kernel support the bpf LSM? You can enable LSM BPF by modifying" +
 			"the GRUB configuration /etc/default/grub with GRUB_CMDLINE_LINUX=\"lsm=bpf\"")
 	}
 
@@ -584,7 +583,7 @@ func filterMapsForLsm(load *program.Program, lsmEntry *genericLsm) []*program.Ma
 		numSubMaps = selectors.StringMapsNumSubMapsSmall
 	}
 
-	for string_map_index := 0; string_map_index < numSubMaps; string_map_index++ {
+	for string_map_index := range numSubMaps {
 		stringFilterMap[string_map_index] = program.MapBuilderProgram(fmt.Sprintf("string_maps_%d", string_map_index), load)
 		if !kernels.MinKernelVersion("5.9") {
 			// Versions before 5.9 do not allow inner maps to have different sizes.

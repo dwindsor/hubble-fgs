@@ -45,7 +45,7 @@ var (
 	).SetPolicy(basePolicy)
 
 	Exit = program.Builder(
-		"bpf_exit.o",
+		config.ExitObj(),
 		"acct_process",
 		"kprobe/acct_process",
 		"event_exit",
@@ -53,7 +53,7 @@ var (
 	).SetPolicy(basePolicy)
 
 	Fork = program.Builder(
-		"bpf_fork.o",
+		config.ForkObj(),
 		"wake_up_new_task",
 		"kprobe/wake_up_new_task",
 		"kprobe_pid_clear",
@@ -153,33 +153,6 @@ func GetExecveMapStats() *program.Map {
 
 func GetTetragonConfMap() *program.Map {
 	return TetragonConfMap
-}
-
-func GetDefaultPrograms() []*program.Program {
-	progs := []*program.Program{
-		Exit,
-		Fork,
-		Execve,
-		ExecveBprmCommit,
-	}
-	return progs
-}
-
-func GetDefaultMaps() []*program.Map {
-	maps := []*program.Map{
-		ExecveMap,
-		ExecveJoinMap,
-		ExecveStats,
-		ExecveJoinMapStats,
-		ExecveTailCallsMap,
-		TCPMonMap,
-		TetragonConfMap,
-		StatsMap,
-		MatchBinariesSetMap,
-		ErrMetricsMap,
-	}
-	return maps
-
 }
 
 func initBaseSensor() *sensors.Sensor {

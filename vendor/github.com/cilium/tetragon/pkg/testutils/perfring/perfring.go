@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Tetragon
 
+//go:build !windows
+
 // Package perfring provides utilities to do tests using the perf ringbuffer directly
 package perfring
 
@@ -91,27 +93,24 @@ func ProcessEvents(t *testing.T, ctx context.Context, eventFn EventFn, wgStarted
 
 		complChecker := testsensor.NewCompletionChecker()
 
-		for {
-			if ctx.Err() != nil {
-				break
-			}
+		for ctx.Err() == nil {
 
 			record, err := perfReader.Read()
 			if err != nil {
 				if ctx.Err() == nil {
-					errChan <- fmt.Errorf("error reading perfring data: %v", err)
+					errChan <- fmt.Errorf("error reading perfring data: %w", err)
 				}
 				break
 			}
 
 			_, events, handlerErr := observer.HandlePerfData(record.RawSample)
 			if handlerErr != nil {
-				errChan <- fmt.Errorf("error handling perfring data: %v", handlerErr)
+				errChan <- fmt.Errorf("error handling perfring data: %w", handlerErr)
 				break
 			}
 			err = loopEvents(events, eventFn, complChecker)
 			if err != nil {
-				errChan <- fmt.Errorf("error loop event function returned: %s", err)
+				errChan <- fmt.Errorf("error loop event function returned: %w", err)
 				break
 			}
 

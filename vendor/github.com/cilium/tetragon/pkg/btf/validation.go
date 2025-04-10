@@ -21,24 +21,24 @@ import (
 	"github.com/cilium/tetragon/pkg/syscallinfo"
 )
 
-// ValidationWarn is used to mark that validation was not successful but it's not
+// ValidationWarnError is used to mark that validation was not successful but it's not
 // clear that the spec is problematic. Callers may use this error to issue a
 // warning instead of aborting
-type ValidationWarn struct {
+type ValidationWarnError struct {
 	s string
 }
 
-func (e *ValidationWarn) Error() string {
+func (e *ValidationWarnError) Error() string {
 	return e.s
 }
 
-// ValidationFailed is used to mark that validation was not successful and that
+// ValidationFailedError is used to mark that validation was not successful and that
 // the we should not continue with loading this spec.
-type ValidationFailed struct {
+type ValidationFailedError struct {
 	s string
 }
 
-func (e *ValidationFailed) Error() string {
+func (e *ValidationFailedError) Error() string {
 	return e.s
 }
 
@@ -92,11 +92,11 @@ func ValidateKprobeSpec(bspec *btf.Spec, call string, kspec *v1alpha1.KProbeSpec
 
 	if err != nil {
 		if kspec.Syscall {
-			return &ValidationFailed{
+			return &ValidationFailedError{
 				s: fmt.Sprintf("syscall %q (or %q) %v", origCall, call, err),
 			}
 		}
-		return &ValidationFailed{s: fmt.Sprintf("call %q %v", call, err)}
+		return &ValidationFailedError{s: fmt.Sprintf("call %q %v", call, err)}
 	}
 
 	proto, ok := fn.Type.(*btf.FuncProto)
@@ -112,33 +112,33 @@ func ValidateKprobeSpec(bspec *btf.Spec, call string, kspec *v1alpha1.KProbeSpec
 	if kspec.Syscall {
 		ret, ok := proto.Return.(*btf.Int)
 		if !ok {
-			return fmt.Errorf("kprobe spec validation failed: syscall return type is not Int")
+			return errors.New("kprobe spec validation failed: syscall return type is not Int")
 		}
 		if ret.Name != "long int" {
-			return fmt.Errorf("kprobe spec validation failed: syscall return type is not long int")
+			return errors.New("kprobe spec validation failed: syscall return type is not long int")
 		}
 
 		if len(proto.Params) != 1 {
-			return fmt.Errorf("kprobe spec validation failed: syscall with more than one arg")
+			return errors.New("kprobe spec validation failed: syscall with more than one arg")
 		}
 
 		ptr, ok := proto.Params[0].Type.(*btf.Pointer)
 		if !ok {
-			return fmt.Errorf("kprobe spec validation failed: syscall arg is not pointer")
+			return errors.New("kprobe spec validation failed: syscall arg is not pointer")
 		}
 
 		cnst, ok := ptr.Target.(*btf.Const)
 		if !ok {
-			return fmt.Errorf("kprobe spec validation failed: syscall arg is not const pointer")
+			return errors.New("kprobe spec validation failed: syscall arg is not const pointer")
 		}
 
 		arg, ok := cnst.Type.(*btf.Struct)
 		if !ok {
-			return fmt.Errorf("kprobe spec validation failed: syscall arg is not const pointer to struct")
+			return errors.New("kprobe spec validation failed: syscall arg is not const pointer to struct")
 		}
 
 		if arg.Name != "pt_regs" {
-			return fmt.Errorf("kprobe spec validation failed: syscall arg is not const pointer to struct pt_regs")
+			return errors.New("kprobe spec validation failed: syscall arg is not const pointer to struct pt_regs")
 		}
 
 		// next try to deduce the syscall name.
@@ -155,17 +155,17 @@ func ValidateKprobeSpec(bspec *btf.Spec, call string, kspec *v1alpha1.KProbeSpec
 		arg := proto.Params[int(specArg.Index)]
 		paramTyStr := getKernelType(arg.Type)
 		if !typesCompatible(specArg.Type, paramTyStr) {
-			return &ValidationWarn{s: fmt.Sprintf("type (%s) of argument %d does not match spec type (%s)\n", paramTyStr, specArg.Index, specArg.Type)}
+			return &ValidationWarnError{s: fmt.Sprintf("type (%s) of argument %d does not match spec type (%s)\n", paramTyStr, specArg.Index, specArg.Type)}
 		}
 	}
 
 	if kspec.Return {
 		retTyStr := getKernelType(proto.Return)
 		if kspec.ReturnArg == nil {
-			return &ValidationWarn{s: "return is set to true, but there is no return arg specified"}
+			return &ValidationWarnError{s: "return is set to true, but there is no return arg specified"}
 		}
 		if !typesCompatible(kspec.ReturnArg.Type, retTyStr) {
-			return &ValidationWarn{s: fmt.Sprintf("return type (%s) does not match spec return type (%s)\n", retTyStr, kspec.ReturnArg.Type)}
+			return &ValidationWarnError{s: fmt.Sprintf("return type (%s) does not match spec return type (%s)\n", retTyStr, kspec.ReturnArg.Type)}
 		}
 	}
 
@@ -399,7 +399,7 @@ func validateSycall(kspec *v1alpha1.KProbeSpec, name string) error {
 
 	argsInfo, ok := syscallinfo.GetSyscallArgs(name)
 	if !ok {
-		return &ValidationWarn{s: fmt.Sprintf("missing information for syscall %s: arguments will not be verified", name)}
+		return &ValidationWarnError{s: fmt.Sprintf("missing information for syscall %s: arguments will not be verified", name)}
 	}
 
 	for i := range kspec.Args {
@@ -410,7 +410,7 @@ func validateSycall(kspec *v1alpha1.KProbeSpec, name string) error {
 
 		argTy := argsInfo[specArg.Index].Type
 		if !typesCompatible(specArg.Type, argTy) {
-			return &ValidationWarn{s: fmt.Sprintf("type (%s) of syscall argument %d does not match spec type (%s)\n", argTy, specArg.Index, specArg.Type)}
+			return &ValidationWarnError{s: fmt.Sprintf("type (%s) of syscall argument %d does not match spec type (%s)\n", argTy, specArg.Index, specArg.Type)}
 		}
 	}
 
@@ -426,13 +426,13 @@ func AvailableSyscalls() ([]string, error) {
 	tetragonBTFEnv := os.Getenv("TETRAGON_BTF")
 	if tetragonBTFEnv != "" {
 		if _, err := os.Stat(tetragonBTFEnv); err != nil {
-			return nil, fmt.Errorf("Failed to find BTF: %s", tetragonBTFEnv)
+			return nil, fmt.Errorf("failed to find BTF: %s", tetragonBTFEnv)
 		}
 		btfFile = tetragonBTFEnv
 	}
 	bspec, err := btf.LoadSpec(btfFile)
 	if err != nil {
-		return nil, fmt.Errorf("BTF load failed: %v", err)
+		return nil, fmt.Errorf("BTF load failed: %w", err)
 	}
 
 	ret := []string{}
@@ -471,14 +471,14 @@ func GetSyscallsList() ([]string, error) {
 	tetragonBTFEnv := os.Getenv("TETRAGON_BTF")
 	if tetragonBTFEnv != "" {
 		if _, err := os.Stat(tetragonBTFEnv); err != nil {
-			return []string{}, fmt.Errorf("Failed to find BTF: %s", tetragonBTFEnv)
+			return []string{}, fmt.Errorf("failed to find BTF: %s", tetragonBTFEnv)
 		}
 		btfFile = tetragonBTFEnv
 	}
 
 	bspec, err := btf.LoadSpec(btfFile)
 	if err != nil {
-		return []string{}, fmt.Errorf("BTF load failed: %v", err)
+		return []string{}, fmt.Errorf("BTF load failed: %w", err)
 	}
 
 	var list []string

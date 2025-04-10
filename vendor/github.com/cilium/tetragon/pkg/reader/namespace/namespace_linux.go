@@ -43,7 +43,7 @@ func GetPidNsInode(pid uint32, nsStr string) (uint32, error) {
 	netns := filepath.Join(option.Config.ProcFS, pidStr, "ns", nsStr)
 	netStr, err := os.Readlink(netns)
 	if err != nil {
-		return 0, fmt.Errorf("namespace '%s' %v", netns, err)
+		return 0, fmt.Errorf("namespace '%s' %w", netns, err)
 	}
 	fields := strings.Split(netStr, ":")
 	if len(fields) < 2 {
@@ -94,7 +94,7 @@ func GetCurrentNamespace() *tetragon.Namespaces {
 		return nil
 	}
 	self_ns := make(map[string]uint32)
-	for i := 0; i < len(listNamespaces); i++ {
+	for i := range listNamespaces {
 		ino, err := GetSelfNsInode(listNamespaces[i])
 		if err != nil {
 			logger.GetLogger().WithError(err).Warnf("Failed to read current namespace")
@@ -230,10 +230,7 @@ func GetMsgNamespaces(ns processapi.MsgNamespaces) (*tetragon.Namespaces, error)
 }
 
 func initHostNamespace() (*tetragon.Namespaces, error) {
-	_, err := os.Stat(filepath.Join(option.Config.ProcFS, "1", "ns", "time"))
-	if err != nil {
-		logger.GetLogger().WithError(err).Infof("Kernel does not support time namespaces")
-	} else {
+	if _, err := os.Stat(filepath.Join(option.Config.ProcFS, "1", "ns", "time")); err == nil {
 		TimeNsSupport = true
 	}
 
@@ -241,13 +238,9 @@ func initHostNamespace() (*tetragon.Namespaces, error) {
 	for _, n := range listNamespaces {
 		ino, err := GetPidNsInode(1, n)
 		if err != nil {
-			if (n == "time" || n == "time_for_children") && !TimeNsSupport {
-				// Explicitly initialize host time namespace to zero which indicates
-				// kernel does not support it.
-				knownNamespaces[n] = &tetragon.Namespace{Inum: 0, IsHost: false}
-				continue
-			}
-			return nil, err
+			logger.GetLogger().WithError(err).Infof("Kernel does not support %s namespaces", n)
+			knownNamespaces[n] = &tetragon.Namespace{Inum: 0, IsHost: false}
+			continue
 		}
 		// Ino can't be zero here
 		knownNamespaces[n] = &tetragon.Namespace{

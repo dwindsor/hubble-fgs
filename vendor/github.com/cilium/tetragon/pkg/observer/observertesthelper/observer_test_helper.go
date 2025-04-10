@@ -12,6 +12,7 @@ package observertesthelper
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -512,7 +513,7 @@ func ExecWGCurl(readyWG *sync.WaitGroup, retries uint, args ...string) error {
 
 	var err error
 	// retries=0 -> 1 try, retries=1 -> 2 tries, and so on...
-	for try := uint(0); try < retries+1; try++ {
+	for try := range uint(retries + 1) {
 		cmd := exec.Command("/usr/bin/curl", args...)
 		err = cmd.Run()
 		if err == nil {
@@ -529,12 +530,12 @@ type fakeK8sWatcher struct {
 }
 
 func (f *fakeK8sWatcher) FindMirrorPod(_ string) (*corev1.Pod, error) {
-	return nil, fmt.Errorf("fakeK8sWatcher does not support Mirror pods")
+	return nil, errors.New("fakeK8sWatcher does not support Mirror pods")
 }
 
 func (f *fakeK8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
 	if podID == "" {
-		return nil, fmt.Errorf("empty podID")
+		return nil, errors.New("empty podID")
 	}
 
 	return &corev1.Pod{
@@ -612,7 +613,7 @@ func WaitForProcess(process string) error {
 		procfs = "/proc/"
 	}
 	procDir, _ := os.ReadDir(procfs)
-	for i := 0; i < 120; i++ {
+	for range 120 {
 		for _, d := range procDir {
 
 			cmdline, err := os.ReadFile(filepath.Join(procfs, d.Name(), "/cmdline"))
@@ -635,7 +636,7 @@ func WriteConfigFile(fileName, config string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := out.Write([]byte(config)); err != nil {
+	if _, err := out.WriteString(config); err != nil {
 		return err
 	}
 	return out.Sync()

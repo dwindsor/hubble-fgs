@@ -4,12 +4,11 @@
 package exec
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/ops"
 	"github.com/cilium/tetragon/pkg/api/processapi"
-	tetragonAPI "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/cgroups"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
@@ -137,11 +136,11 @@ func (msg *MsgCgroupEventUnix) Notify() bool {
 }
 
 func (msg *MsgCgroupEventUnix) RetryInternal(_ notify.Event, _ uint64) (*process.ProcessInternal, error) {
-	return nil, fmt.Errorf("Unreachable state: MsgCgroupEventUnix RetryInternal() was called")
+	return nil, errors.New("unreachable state: MsgCgroupEventUnix RetryInternal() was called")
 }
 
 func (msg *MsgCgroupEventUnix) Retry(_ *process.ProcessInternal, _ notify.Event) error {
-	return fmt.Errorf("Unreachable state: MsgCgroupEventUnix Retry() was called")
+	return errors.New("unreachable state: MsgCgroupEventUnix Retry() was called")
 }
 
 func (msg *MsgCgroupEventUnix) HandleMessage() *tetragon.GetEventsResponse {
@@ -194,7 +193,7 @@ func (msg *MsgExecveEventUnix) Notify() bool {
 }
 
 func (msg *MsgExecveEventUnix) RetryInternal(_ notify.Event, _ uint64) (*process.ProcessInternal, error) {
-	return nil, fmt.Errorf("Unreachable state: MsgExecveEventUnix with missing internal")
+	return nil, errors.New("unreachable state: MsgExecveEventUnix with missing internal")
 }
 
 func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -380,7 +379,7 @@ func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	if ec := eventcache.Get(); ec != nil {
 		if proc == nil {
 			// adding to the cache due to missing parent
-			ec.Add(nil, nil, msg.MsgCloneEvent.Common.Ktime, msg.MsgCloneEvent.Ktime, msg)
+			ec.Add(nil, nil, msg.Common.Ktime, msg.Ktime, msg)
 			return nil
 		}
 
@@ -389,7 +388,7 @@ func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		if ec.Needed(proc.UnsafeGetProcess()) ||
 			option.Config.EnableProcessAncestors && ec.NeededAncestors(parent, ancestors) {
 			// adding to the cache due to missing pod info or ancestors
-			ec.Add(proc, nil, msg.MsgCloneEvent.Common.Ktime, msg.MsgCloneEvent.Ktime, msg)
+			ec.Add(proc, nil, msg.Common.Ktime, msg.Ktime, msg)
 			return nil
 		}
 	}
@@ -513,7 +512,7 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 }
 
 type MsgExitEventUnix struct {
-	tetragonAPI.MsgExitEvent
+	processapi.MsgExitEvent
 	RefCntDone [3]bool
 }
 
@@ -588,7 +587,7 @@ func (msg *MsgExitEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 }
 
 func (msg *MsgExitEventUnix) Cast(o interface{}) notify.Message {
-	t := o.(tetragonAPI.MsgExitEvent)
+	t := o.(processapi.MsgExitEvent)
 	return &MsgExitEventUnix{MsgExitEvent: t}
 }
 
