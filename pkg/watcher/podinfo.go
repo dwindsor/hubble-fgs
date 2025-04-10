@@ -19,7 +19,6 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	oss "github.com/cilium/tetragon/pkg/watcher"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
@@ -47,7 +46,7 @@ func podInfoIPIndexFunc(obj interface{}) ([]string, error) {
 	return nil, fmt.Errorf("%w - found %T", errNoPodInfo, obj)
 }
 
-func AddPodInfoInformer(w oss.Watcher) error {
+func AddPodInfoInformer(w oss.Watcher, enableProcessTree bool) error {
 	realK8sWatcher := w.(*oss.K8sWatcher)
 	if realK8sWatcher == nil {
 		return fmt.Errorf("k8s watcher not initialized")
@@ -62,43 +61,38 @@ func AddPodInfoInformer(w oss.Watcher) error {
 	w.AddInformer(podInfoInformerName, informer, map[string]cache.IndexFunc{
 		podInfoIPsIdx: podInfoIPIndexFunc,
 	})
+	if !enableProcessTree {
+		return nil
+	}
 
 	// The endpoint cache will be initialized here if it wasn't before. This
 	// has to happen before the event handler is started and sensors are
 	// loaded, to ensure we have maps and caches configured, and avoid racing
-	// with sensor coming online. Get() returns nil if feature is not enabled.
-	c := endpoint.Get()
-	if c != nil {
-		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				switch t := obj.(type) {
-				case *v1alpha1.PodInfo:
-					logger.GetLogger().Debug("Add Pod: %v", t)
-					c := endpoint.Get()
-					if c != nil { // Ths is nil when !option.Config.EnableProcessTree
-						c.AddIpPodMap(t)
-						dns.PodAdd(t)
-					}
-				}
-			},
-			UpdateFunc: func(old interface{}, _ interface{}) {
-				switch t := old.(type) {
-				case *v1alpha1.PodInfo:
-					logger.GetLogger().Debug("Update Pod: %v", t)
-				}
-			},
-			DeleteFunc: func(old interface{}) {
-				switch t := old.(type) {
-				case *v1alpha1.PodInfo:
-					logger.GetLogger().Debug("Delete Pod: %v", t)
-					if enterpriseOption.Config.EnableProcessTree { // this pairs with above c != nil check
-						dns.PodRemove(t)
-					}
-				}
-			},
-		})
-	}
-
+	// with sensor coming online.
+	c := endpoint.MustGet()
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			switch t := obj.(type) {
+			case *v1alpha1.PodInfo:
+				logger.GetLogger().Debug("Add Pod: %v", t)
+				c.AddIpPodMap(t)
+				dns.PodAdd(t)
+			}
+		},
+		UpdateFunc: func(old interface{}, _ interface{}) {
+			switch t := old.(type) {
+			case *v1alpha1.PodInfo:
+				logger.GetLogger().Debug("Update Pod: %v", t)
+			}
+		},
+		DeleteFunc: func(old interface{}) {
+			switch t := old.(type) {
+			case *v1alpha1.PodInfo:
+				logger.GetLogger().Debug("Delete Pod: %v", t)
+				dns.PodRemove(t)
+			}
+		},
+	})
 	return nil
 }
 

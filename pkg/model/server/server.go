@@ -166,7 +166,7 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 }
 
 func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapRequest) (*tetragon.GetEndpointMapResponse, error) {
-	c := endpoint.Get()
+	c := endpoint.MustGet()
 	keys, endpoints := c.DebugEndpointMap()
 	tetragonEndpoints := make([]*tetragon.Endpoint, 0)
 	endptToId := make(map[uint64]*tetragon.Endpoint)
@@ -273,7 +273,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 	dstList := make(map[uint64][]*tetragon.Destination)
 	nsList := make(map[uint64][]*tetragon.Destination)
 
-	c := endpoint.Get()
+	c := endpoint.MustGet()
 
 	iter := endpt.Iterate()
 	for iter.Next(&dstKey, &dstVal) {

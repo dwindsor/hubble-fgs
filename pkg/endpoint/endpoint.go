@@ -340,3 +340,11 @@ func Get() *Cache {
 	})
 	return cache
 }
+
+func MustGet() *Cache {
+	cache := Get()
+	if cache == nil {
+		panic("Endpoint cache got accessed with --enable-process-tree=false. This is a bug.")
+	}
+	return cache
+}

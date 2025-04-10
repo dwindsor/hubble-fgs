@@ -27,7 +27,7 @@ func TestFindServiceByIP(t *testing.T) {
 	ctx := context.Background()
 	k8sClient := fake.NewSimpleClientset()
 	k8sWatcher := watcher.NewK8sWatcher(k8sClient, nil, 60*time.Second)
-	err := AddServiceInformer(k8sWatcher)
+	err := AddServiceInformer(k8sWatcher, false)
 	assert.NoError(t, err)
 	k8sWatcher.Start()
 	svc1 := v1.Service{

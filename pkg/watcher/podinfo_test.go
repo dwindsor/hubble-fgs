@@ -27,7 +27,7 @@ func TestPodInfoByIP(t *testing.T) {
 	ctx := context.Background()
 	tetragonClient := fakeTetragon.NewSimpleClientset()
 	k8sWatcher := watcher.NewK8sWatcher(nil, tetragonClient, 60*time.Second)
-	err := AddPodInfoInformer(k8sWatcher)
+	err := AddPodInfoInformer(k8sWatcher, false)
 	assert.NoError(t, err)
 	k8sWatcher.Start()
 	pod1 := v1alpha1.PodInfo{

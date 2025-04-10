@@ -479,14 +479,11 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			return err
 		}
 		if option.Config.EnablePodInfo {
-			// NB(anna): Service and PodInfo informers also provide metadata
-			// for the process tree. Should we tie it to the podinfo flag?
-			// Should we check the process tree flag here?
-			err = enterpriseWatcher.AddServiceInformer(k8sWatcher)
+			err = enterpriseWatcher.AddServiceInformer(k8sWatcher, enterpriseOption.Config.EnableProcessTree)
 			if err != nil {
 				return err
 			}
-			err = enterpriseWatcher.AddPodInfoInformer(k8sWatcher)
+			err = enterpriseWatcher.AddPodInfoInformer(k8sWatcher, enterpriseOption.Config.EnableProcessTree)
 			if err != nil {
 				return err
 			}

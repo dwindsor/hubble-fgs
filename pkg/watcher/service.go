@@ -41,7 +41,7 @@ func serviceIPIndexFunc(obj interface{}) ([]string, error) {
 	return nil, fmt.Errorf("%w - found %T", errNoService, obj)
 }
 
-func AddServiceInformer(w oss.Watcher) error {
+func AddServiceInformer(w oss.Watcher, enableProcessTree bool) error {
 	if w == nil {
 		return fmt.Errorf("k8s watcher not initialized")
 	}
@@ -55,37 +55,36 @@ func AddServiceInformer(w oss.Watcher) error {
 	w.AddInformer(serviceInformerName, informer, map[string]cache.IndexFunc{
 		serviceIPsIdx: serviceIPIndexFunc,
 	})
+	if !enableProcessTree {
+		return nil
+	}
 
 	// The endpoint cache will be initialized here if it wasn't before. This
 	// has to happen before the event handler is started and sensors are
 	// loaded, to ensure we have maps and caches configured, and avoid racing
-	// with sensor coming online. Get() returns nil if feature is not enabled.
-	c := endpoint.Get()
-	if c != nil {
-		informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				switch s := obj.(type) {
-				case *corev1.Service:
-					c := endpoint.Get()
-					logger.GetLogger().Debug("Add Service: %v", s)
-					c.AddIpServiceMap(s)
-				}
-			},
-			UpdateFunc: func(old interface{}, _ interface{}) {
-				switch s := old.(type) {
-				case *corev1.Service:
-					logger.GetLogger().Debug("Update Service: %v", s)
-				}
-			},
-			DeleteFunc: func(old interface{}) {
-				switch s := old.(type) {
-				case *corev1.Service:
-					logger.GetLogger().Debug("Delete Service: %v", s)
-				}
-			},
-		})
-	}
-
+	// with sensor coming online.
+	c := endpoint.MustGet()
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			switch s := obj.(type) {
+			case *corev1.Service:
+				logger.GetLogger().Debug("Add Service: %v", s)
+				c.AddIpServiceMap(s)
+			}
+		},
+		UpdateFunc: func(old interface{}, _ interface{}) {
+			switch s := old.(type) {
+			case *corev1.Service:
+				logger.GetLogger().Debug("Update Service: %v", s)
+			}
+		},
+		DeleteFunc: func(old interface{}) {
+			switch s := old.(type) {
+			case *corev1.Service:
+				logger.GetLogger().Debug("Delete Service: %v", s)
+			}
+		},
+	})
 	return nil
 }
 

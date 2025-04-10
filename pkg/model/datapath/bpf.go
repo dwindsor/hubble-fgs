@@ -95,7 +95,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	initProgrammerOnce.Do(func() { initMap() })
 
 	if r.Endpoint.EP != nil {
-		c := endpoint.Get()
+		c := endpoint.MustGet()
 		dst, err = c.AddEndpoint(*r.Endpoint.EP)
 		if err != nil {
 			p.AddError++
