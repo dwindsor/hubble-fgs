@@ -317,13 +317,66 @@ struct {
 	__uint(max_entries, 1);
 } ipv6ext_heap SEC(".maps");
 
+#define INSPECT_AND_ADVANCE_IPV6_HEADER                                                                               \
+	/* Correct the length parameter, depending on current extension. */                                           \
+	switch (e->curr) {                                                                                            \
+	case 255:                                                                                                     \
+		/* Fixed header. */                                                                                   \
+		e->byte_len = sizeof(struct ipv6hdr);                                                                 \
+		break;                                                                                                \
+	case 0:                                                                                                       \
+	case 43:                                                                                                      \
+	case 60:                                                                                                      \
+		e->byte_len = (e->len * 8) + 8;                                                                       \
+		break;                                                                                                \
+	case 44:                                                                                                      \
+		e->byte_len = 8;                                                                                      \
+		break;                                                                                                \
+	case 51:                                                                                                      \
+		e->byte_len = (e->len * 4) + 8;                                                                       \
+		break;                                                                                                \
+	}                                                                                                             \
+                                                                                                                      \
+	/* Move to next extension. */                                                                                 \
+	e->ip_off += e->byte_len;                                                                                     \
+	/* If next is transport (or an unhandled header, e.g. ESP or Mobility), return it and the optional offset. */ \
+	if (e->next != 0 && e->next != 43 && e->next != 44 && e->next != 51 && e->next != 60) {                       \
+		if (payload_off)                                                                                      \
+			*payload_off = e->ip_off;                                                                     \
+		return e->next;                                                                                       \
+	}                                                                                                             \
+	e->curr = e->next;                                                                                            \
+	/* Read next header and current length. */                                                                    \
+	if (kp) {                                                                                                     \
+		/* Kprobe: we have a void *skb_head */                                                                \
+		if (probe_read_kernel(&e->next, 2,                                                                    \
+				      skb_head + e->ip_off) < 0) {                                                    \
+			if (err) {                                                                                    \
+				*err = IP_ERROR_IPV6_READ_PROBE;                                                      \
+			}                                                                                             \
+			return IP_HEADER_ERROR;                                                                       \
+		}                                                                                                     \
+	} else {                                                                                                      \
+		e->ip_off &= 0x7fff;                                                                                  \
+		if (data + e->ip_off + 2 <= data_end) {                                                               \
+			*(u16 *)&e->next = *(u16 *)(data + e->ip_off);                                                \
+		} else {                                                                                              \
+			if (skb_load_bytes(skb_head, e->ip_off,                                                       \
+					   &e->next, 2) < 0) {                                                        \
+				if (err) {                                                                            \
+					*err = IP_ERROR_IPV6_READ_SKB_LOAD;                                           \
+				}                                                                                     \
+				return IP_HEADER_ERROR;                                                               \
+			}                                                                                             \
+		}                                                                                                     \
+	}
+
 static inline __attribute__((always_inline)) u8
 get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
-	      void *skb_head, void *data_end, bool lazy, bool kp,
+	      struct __sk_buff *skb_head, void *data, void *data_end, bool kp,
 	      unsigned long int *err)
 {
 	struct ipv6ext *e;
-	u8 header_count;
 	int zero = 0;
 
 	e = map_lookup_elem(&ipv6ext_heap, &zero);
@@ -334,77 +387,24 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 		return IP_HEADER_ERROR;
 	}
 
-	e->ip_off = network_header_off;
+	// Provide an upper bound that is less than 0xffff otherwise comparisons with data_end will not
+	// change the range on a packet register.
+	e->ip_off = network_header_off & 0x7fff;
 	e->curr = 255;
 	e->len = 0;
 	e->next = ip->nexthdr;
 
-// Maximum 7 valid extensions.
-#pragma unroll
-	for (header_count = 0; header_count < 7; header_count++) {
-		// Correct the length parameter, depending on current extension.
-		switch (e->curr) {
-		case 255:
-			// Fixed header.
-			e->byte_len = sizeof(struct ipv6hdr);
-			break;
-		case 0:
-		case 43:
-		case 60:
-			e->byte_len = (e->len * 8) + 8;
-			break;
-		case 44:
-			e->byte_len = 8;
-			break;
-		case 51:
-			e->byte_len = (e->len * 4) + 8;
-			break;
-		}
+	// Maximum 7 valid extensions.
+	// Clang didn't want to unroll this loop (which was odd given it was a simple iterator)
+	// so we are unrolling it ourselves.
+	INSPECT_AND_ADVANCE_IPV6_HEADER
+	INSPECT_AND_ADVANCE_IPV6_HEADER
+	INSPECT_AND_ADVANCE_IPV6_HEADER
+	INSPECT_AND_ADVANCE_IPV6_HEADER
+	INSPECT_AND_ADVANCE_IPV6_HEADER
+	INSPECT_AND_ADVANCE_IPV6_HEADER
+	INSPECT_AND_ADVANCE_IPV6_HEADER
 
-		// Move to next extension.
-		e->ip_off += e->byte_len;
-		// If next is transport (or an unhandled header, e.g. ESP or Mobility), return it and the optional offset.
-		if (e->next != 0 && e->next != 43 && e->next != 44 && e->next != 51 && e->next != 60) {
-			if (payload_off)
-				*payload_off = e->ip_off;
-			return e->next;
-		}
-		e->curr = e->next;
-		// Read next header and current length.
-		if (lazy) {
-			if (kp) {
-				// Kprobe: we have a void *skb_head
-				if (probe_read_kernel(&e->next, 2,
-						      skb_head + e->ip_off) < 0) {
-					if (err) {
-						*err = IP_ERROR_IPV6_READ_PROBE;
-					}
-					return IP_HEADER_ERROR;
-				}
-			} else {
-				// SKB: we have a struct __sk_buff
-				if (skb_load_bytes(skb_head, e->ip_off,
-						   &e->next, 2) < 0) {
-					if (err) {
-						*err = IP_ERROR_IPV6_READ_SKB_LOAD;
-					}
-					return IP_HEADER_ERROR;
-				}
-			}
-		} else {
-			if (skb_head + e->ip_off + 2 > data_end) {
-				if (err) {
-					*err = IP_ERROR_IPV6_READ_SKB_DIRECT;
-				}
-				return IP_HEADER_ERROR;
-			}
-			*(u16 *)&e->next = *(u16 *)(skb_head + e->ip_off);
-		}
-	}
-	// Not found transport header.
-	if (err) {
-		*err = IP_ERROR_IPV6_TOO_MANY_EXT;
-	}
 	return IP_HEADER_ERROR;
 }
 

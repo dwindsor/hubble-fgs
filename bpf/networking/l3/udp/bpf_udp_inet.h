@@ -337,7 +337,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 		packet->ipv6 = true;
 		proto = get_ip6_proto(0, &packet->ip.ip6,
 				      packet->network_header_off,
-				      packet->skb_head, 0, true, true, &err);
+				      packet->skb_head, 0, 0, true, &err);
 		if (proto == IP_HEADER_ERROR) {
 			packetver = packet->ip.ip6.version;
 			ip = &packet->ip.ip6;
@@ -510,7 +510,7 @@ udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off
 	if (!cookie)
 		return SK_PASS;
 
-	get_ip6_proto(&udp_off, ip6, 0, skb, 0, true, false, &err);
+	get_ip6_proto(&udp_off, ip6, 0, skb, 0, 0, false, &err);
 	if (!udp_off) {
 		emit_ip_error_event(skb, ip6, cookie, true,
 				    ver_ip6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
@@ -548,7 +548,7 @@ int udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16
 	if (!cookie)
 		return SK_PASS;
 
-	get_ip6_proto(&udp_off, ip6, 0, skb, 0, true, false, &err);
+	get_ip6_proto(&udp_off, ip6, 0, skb, 0, 0, false, &err);
 	if (!udp_off) {
 		emit_ip_error_event(skb, (struct iphdr *)ip6, cookie, true,
 				    6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);

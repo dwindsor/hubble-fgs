@@ -91,7 +91,7 @@ static inline __attribute__((always_inline)) struct tls_packet_details *tls_inet
 			return 0;
 		packet->ipv6 = true;
 		proto = get_ip6_proto(&packet->tcp_off, &packet->ip.ip6, 0, skb,
-				      0, true, false, &err);
+				      0, 0, false, &err);
 		if (proto == IP_HEADER_ERROR) {
 			emit_ip_error_event(skb, &packet->ip.ip6, cookie, true,
 					    packet->ip.ip4.version, send + 1, 0, err);

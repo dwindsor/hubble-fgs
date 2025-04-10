@@ -130,7 +130,7 @@ icmp_rcv(void *ctx, struct sk_buff *skb)
 					    version, 1, 0, IP_ERROR_INET_READ_IP);
 			return 0;
 		}
-		protocol = get_ip6_proto(&payload_off, &ip6, network_header_off, skb_head, 0, true, true, &err);
+		protocol = get_ip6_proto(&payload_off, &ip6, network_header_off, skb_head, 0, 0, true, &err);
 		if (protocol == IP_HEADER_ERROR) {
 			emit_ip_error_event(ctx, &ip6, &cookie, true, version, 1, 0, IP_ERROR_INET_READ_IP);
 			return 0;
