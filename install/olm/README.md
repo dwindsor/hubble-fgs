@@ -23,9 +23,15 @@ make bundle-build bundle-push
 Prerequisites:
 - OLM is available on the cluster
 - The [operator-sdk CLI](https://sdk.operatorframework.io/docs/installation/) has been installed on your machine
+- If OLM needs to be installed (e.g.: in case of kind cluster), run the following command: `operator-sdk olm install`
+- To test Tetragon OLM operator changes locally:
+  * Build the operator image: `make image-operator`
+  * Push the operator image in a registry or load in a cluster
+  * Override the operator image reference in the `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml`
+  * Build and push OLM bundle
 
 ```bash
 kubectl create ns tetragon
-operator-sdk run bundle  $DOCKER_REGISTRY/$DOCKER_DEV_ACCOUNT/tetragon-operator-bundle:$DOCKER_IMAGE_TAG -n tetragon
+operator-sdk run bundle $DOCKER_REGISTRY/$DOCKER_DEV_ACCOUNT/tetragon-operator-bundle:$DOCKER_IMAGE_TAG -n tetragon
 ```
 
