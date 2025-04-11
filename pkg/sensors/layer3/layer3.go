@@ -234,6 +234,22 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 		progsCollectStats = append(progsCollectStats, udpProgsStats...)
 		maps = append(maps, udpMaps...)
 		needDispatcher = true
+
+		// For now, the DNS parser is loaded alongside the UDP sensor
+		if enterpriseOption.Config.EnableBPFDNSParser {
+			logger.GetLogger().Info("Enabling the BPF DNS parser")
+			DNSEndpointIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			DNSDomainMapRev.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			if enterpriseOption.Config.EnableProcessTree {
+				DNSDomainMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			}
+
+			maps = append(maps, DNSParserErrorMap)
+			maps = append(maps, DNSEndpointIDMap)
+			maps = append(maps, DNSDomainMap)
+			maps = append(maps, DNSDomainMapRev)
+			maps = append(maps, DNSGlobalIDMap)
+		}
 	}
 	if icmpEnabled {
 		icmpProgsInit, icmpProgsStats, icmpMaps := icmp.EnableIcmp()
@@ -248,21 +264,6 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 		progsCollectStats = append(progsCollectStats, rawProgsStats...)
 		maps = append(maps, rawMaps...)
 		needDispatcher = true
-	}
-	if dnsEnabled {
-		if enterpriseOption.Config.EnableBPFDNSParser {
-			DNSEndpointIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			DNSDomainMapRev.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			if enterpriseOption.Config.EnableProcessTree {
-				DNSDomainMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			}
-		}
-
-		maps = append(maps, DNSParserErrorMap)
-		maps = append(maps, DNSEndpointIDMap)
-		maps = append(maps, DNSDomainMap)
-		maps = append(maps, DNSDomainMapRev)
-		maps = append(maps, DNSGlobalIDMap)
 	}
 
 	if needDispatcher {
