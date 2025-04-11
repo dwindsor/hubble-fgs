@@ -15,7 +15,8 @@ WORKDIR /go/src/github.com/isovalent/hubble-fgs
 RUN apt-get update && apt-get install -y linux-libc-dev
 COPY . ./
 ARG TARGETARCH
-RUN make tetragon-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH
+ARG DEBUG
+RUN make tetragon-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH DEBUG=$DEBUG
 
 # Second builder (cross-)compile:
 # - tetragon-fs-scanner (this one compiles a C program, so a gcc cross compiler is needed)
