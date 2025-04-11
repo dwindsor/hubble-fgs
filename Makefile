@@ -425,9 +425,9 @@ else
 kind-install-tetragon: build-helm-tetragon
 endif
 ifneq ($(VALUES),)
-	$(OSS_DIR)/contrib/kind/install-tetragon.sh -v $(VALUES)
+	$(OSS_DIR)/contrib/kind/install-tetragon.sh -v $(VALUES) --force
 else
-	$(OSS_DIR)/contrib/kind/install-tetragon.sh
+	$(OSS_DIR)/contrib/kind/install-tetragon.sh --force
 endif
 
 .PHONY: kind-setup
