@@ -1142,7 +1142,10 @@ func execute() error {
 				log.WithError(err).Fatal("Failed to parse command line flags")
 			}
 
-			enterpriseOption.ReadAndSetEnterpriseFlags()
+			err := enterpriseOption.ReadAndValidateEnterpriseFlags()
+			if err != nil {
+				log.WithError(err).Fatal("Failed to read and validate flags")
+			}
 
 			// Unfortunately, due to an over-reliance on init() throughout the codebase,
 			// we have to rely on resizing the caches here rather than simply initializing

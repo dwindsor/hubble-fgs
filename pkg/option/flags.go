@@ -11,6 +11,7 @@
 package option
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -149,7 +150,17 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableDNS, false, "Enable DNS observability")
 }
 
-func ReadAndSetEnterpriseFlags() {
+func ReadAndValidateEnterpriseFlags() error {
+	readAndSetEnterpriseFlags()
+
+	err := validateConfig(Config)
+	if err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+	return nil
+}
+
+func readAndSetEnterpriseFlags() {
 	Config.EnableProcessTree = viper.GetBool(KeyEnableApplicationModel)
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
 	Config.ProcessTreeExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
@@ -193,7 +204,7 @@ func ReadAndSetEnterpriseFlags() {
 	Config.EnableDnsDebug = viper.GetBool(KeyEnableDnsDebug)
 	Config.EnableCilium = viper.GetBool(KeyEnableCiliumAPI)
 	Config.ProcessCacheStaleInterval = viper.GetDuration(KeyProcessCacheStaleInterval)
-	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser) && kernels.MinKernelVersion("5.15.0")
+	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser)
 	Config.DNSStatsPerSocket = viper.GetBool(keyDNSStatsPerSocket)
 
 	if viper.IsSet(KeyEnableSyscallTracking) && !viper.IsSet(KeyEnableApplicationModel) {
@@ -215,4 +226,18 @@ func ReadAndSetEnterpriseFlags() {
 	if Config.EnableTCP || Config.EnableUDP || Config.EnableICMP || Config.EnableRawsock || Config.EnableDNS {
 		Config.Layer3CLIEnable = true
 	}
+}
+
+func validateConfig(config config) error {
+	if config.EnableBPFDNSParser {
+		if !kernels.MinKernelVersion("5.15.0") {
+			return errors.New("kernel version 5.15.0+ is required for the BPF DNS parser")
+		}
+
+		// The BPF DNS parser is loaded alongside the UDP sensor
+		if !config.EnableUDP {
+			return fmt.Errorf("the BPF DNS parser requires --%s", keyEnableUDP)
+		}
+	}
+	return nil
 }
