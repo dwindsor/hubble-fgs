@@ -43,6 +43,11 @@ func (e *Endpoint) String() string {
 	return fmt.Sprintf("wl(%s:%s:%s) dns(%s) ip(%s)", e.Kind, e.Namespace, e.Name, e.Dns, e.Ip)
 }
 
+type EndpointCache interface {
+	// AddIpServiceMap adds a Kubernetes service to the endpoint cache.
+	AddIpServiceMap(epService *corev1.Service) error
+}
+
 type Cache struct {
 	cache       *lru.Cache[uint64, Endpoint]
 	revCache    *lru.Cache[Endpoint, uint64]
@@ -174,7 +179,7 @@ func (c *Cache) LookupIP(ip net.IP) (uint64, error) {
 	return value.Id, nil
 }
 
-func (c *Cache) AddIpServiceMap(epService *corev1.Service) {
+func (c *Cache) AddIpServiceMap(epService *corev1.Service) error {
 	var (
 		key   endpointKey
 		value endpointValue
@@ -205,10 +210,10 @@ func (c *Cache) AddIpServiceMap(epService *corev1.Service) {
 			continue
 		}
 		if err := c.endpointMap.Update(key, value, 0); err != nil {
-			logger.GetLogger().WithError(err).Warn("Could not update endpoint map")
-			continue
+			return err
 		}
 	}
+	return nil
 }
 
 func (c *Cache) AddIpPodMap(epPod *v1alpha1.PodInfo) {
