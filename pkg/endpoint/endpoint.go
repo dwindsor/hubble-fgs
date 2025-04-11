@@ -18,6 +18,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/stretchr/testify/mock"
 )
 
 type Type int
@@ -43,9 +44,18 @@ func (e *Endpoint) String() string {
 	return fmt.Sprintf("wl(%s:%s:%s) dns(%s) ip(%s)", e.Kind, e.Namespace, e.Name, e.Dns, e.Ip)
 }
 
+var _ EndpointCache = &Cache{}
+var _ EndpointCache = &FakeCache{}
+
 type EndpointCache interface {
 	// AddIpServiceMap adds a Kubernetes service to the endpoint cache.
 	AddIpServiceMap(epService *corev1.Service) error
+	AddIpPodMap(epPod *v1alpha1.PodInfo)
+	AddIpDnsMap(dns *tetragon.DnsInfo)
+	AddEndpoint(ep Endpoint) (uint64, error)
+	LookupID(lookup uint64) (value Endpoint, ok bool)
+	LookupIP(ip net.IP) (uint64, error)
+	DebugEndpointMap() ([]uint64, []*Endpoint)
 }
 
 type Cache struct {
@@ -55,7 +65,7 @@ type Cache struct {
 }
 
 var (
-	cache           *Cache
+	cache           EndpointCache
 	endpointIdMap   = "tg_endpoint_id_map"
 	initGlobalCache sync.Once
 
@@ -63,7 +73,7 @@ var (
 	id     = uint64(1)
 )
 
-func newCache() (*Cache, error) {
+func newCache() (EndpointCache, error) {
 	if cache != nil {
 		return cache, nil
 	}
@@ -328,28 +338,48 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 	}
 }
 
-func Get() *Cache {
-	// This check pairs with ./pkg/podinfo/podinfo.go so if its dropped
-	// fix the deleteFunc there as well.
-	if !option.Config.EnableProcessTree {
-		return nil
-	}
-
-	initGlobalCache.Do(func() {
-		var err error
-
-		cache, err = newCache()
-		if err != nil {
-			logger.GetLogger().WithError(err).Warn("Could not initialize endpoint model")
-		}
-	})
-	return cache
+type FakeCache struct {
+	mock.Mock
 }
 
-func MustGet() *Cache {
-	cache := Get()
-	if cache == nil {
-		panic("Endpoint cache got accessed with --enable-process-tree=false. This is a bug.")
-	}
+func (fc *FakeCache) AddIpServiceMap(epService *corev1.Service) error {
+	args := fc.Called(epService)
+	return args.Error(0)
+}
+
+func (fc *FakeCache) AddIpPodMap(_ *v1alpha1.PodInfo) {
+}
+
+func (fc *FakeCache) AddIpDnsMap(_ *tetragon.DnsInfo) {
+}
+
+func (fc *FakeCache) AddEndpoint(_ Endpoint) (uint64, error) {
+	return 0, fmt.Errorf("FakeCache: AddIpServiceMap not implemented")
+}
+
+func (fc *FakeCache) LookupID(_ uint64) (value Endpoint, ok bool) {
+	return Endpoint{}, false
+}
+
+func (fc *FakeCache) LookupIP(_ net.IP) (uint64, error) {
+	return 0, fmt.Errorf("FakeCache: LookupIP not implemented")
+}
+
+func (fc *FakeCache) DebugEndpointMap() ([]uint64, []*Endpoint) {
+	return nil, nil
+}
+
+func MustGet() EndpointCache {
+	initGlobalCache.Do(func() {
+		var err error
+		if !option.Config.EnableProcessTree {
+			cache = &FakeCache{}
+		} else {
+			cache, err = newCache()
+			if err != nil {
+				logger.GetLogger().WithError(err).Warn("Could not initialize endpoint model")
+			}
+		}
+	})
 	return cache
 }

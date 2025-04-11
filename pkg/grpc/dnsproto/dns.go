@@ -115,10 +115,8 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	if c != nil {
 		c.AddIp(fgsDns)
 	}
-	e := endpoint.Get()
-	if e != nil {
-		e.AddIpDnsMap(fgsDns)
-	}
+	e := endpoint.MustGet()
+	e.AddIpDnsMap(fgsDns)
 
 	fgsEvent := &tetragon.ProcessDns{
 		Process: proc,

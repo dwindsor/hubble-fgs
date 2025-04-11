@@ -17,7 +17,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,17 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
-
-var _ endpoint.EndpointCache = &MockedCache{}
-
-type MockedCache struct {
-	mock.Mock
-}
-
-func (m *MockedCache) AddIpServiceMap(epService *corev1.Service) error {
-	args := m.Called(epService)
-	return args.Error(0)
-}
 
 func TestReconcile(t *testing.T) {
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{
@@ -48,7 +36,7 @@ func TestReconcile(t *testing.T) {
 		},
 	}
 	client := getClientBuilder().WithObjects(svc).Build()
-	cache := new(MockedCache)
+	cache := new(endpoint.FakeCache)
 	call := cache.On("AddIpServiceMap", svc).Return(nil)
 	reconciler := ServiceReconciler{client, cache}
 	namespacedName := types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}

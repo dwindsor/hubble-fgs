@@ -259,7 +259,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	if ep != nil {
 		var err error
 
-		c := endpoint.Get()
+		c := endpoint.MustGet()
 		dst, err = c.AddEndpoint(*ep)
 		if err != nil {
 			p.DelError++
