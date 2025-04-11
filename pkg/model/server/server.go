@@ -206,6 +206,9 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	)
 
 	for key, e := range bpfDNSEndpoints {
+		if key.Source != types.DestinationSourceDNS {
+			continue
+		}
 		id := key.ID
 		v := &tetragon.Endpoint{
 			Key:  id,
