@@ -84,6 +84,7 @@ func (nk NetworkKey) String() string {
 type NetworkMonitorValue struct {
 	TXBytes uint64
 	RXBytes uint64
+	TXDrops uint64
 }
 
 func getByteSize(b uint64) string {
@@ -97,7 +98,7 @@ func getByteSize(b uint64) string {
 }
 
 func (nmv NetworkMonitorValue) String() string {
-	return fmt.Sprintf("%s sent %s received", getByteSize(nmv.TXBytes), getByteSize(nmv.RXBytes))
+	return fmt.Sprintf("%s sent %s received %s dropped", getByteSize(nmv.TXBytes), getByteSize(nmv.RXBytes), getByteSize(nmv.TXDrops))
 }
 
 type NetworkQuotaValue struct {
@@ -128,8 +129,8 @@ func (nmv NetworkMonitorValue) GetRxBytes() uint64 {
 	return nmv.RXBytes
 }
 
-func (NetworkMonitorValue) GetTxDrops() uint64 {
-	return 0
+func (nmv NetworkMonitorValue) GetTxDrops() uint64 {
+	return nmv.TXDrops
 }
 
 func (NetworkMonitorValue) GetTxQuota() uint64 {
@@ -398,6 +399,7 @@ func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess 
 				currentValue := result[key]
 				currentValue.TXBytes += dst.GetStats().GetTxBytes()
 				currentValue.RXBytes += dst.GetStats().GetRxBytes()
+				currentValue.TXDrops += dst.GetStats().GetTxDrops()
 				result[key] = currentValue
 			} else if process.GetBinary() == "" && dst.GetStats().GetTxLimit() > 0 {
 				// This is quota-related stats.
@@ -416,12 +418,14 @@ func Diff(current, newer NetworkMonitorData) NetworkMonitorData {
 				diff[newKey] = NetworkMonitorValue{
 					TXBytes: newValue.TXBytes - currentValue.TXBytes,
 					RXBytes: newValue.RXBytes - currentValue.RXBytes,
+					TXDrops: newValue.TXDrops - currentValue.TXDrops,
 				}
 			}
 		} else {
 			diff[newKey] = NetworkMonitorValue{
 				TXBytes: newValue.TXBytes,
 				RXBytes: newValue.RXBytes,
+				TXDrops: newValue.TXDrops,
 			}
 		}
 	}
