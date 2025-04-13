@@ -377,7 +377,7 @@ func selected(node *tview.TreeNode) {
 		addProcessNodes(node, val.GetProcesses())
 	case *appModelV1.ApplicationProcessGroup:
 		for _, conn := range val.GetConnections() {
-			childName := fmt.Sprintf("%s:%d", model.DestinationNameAppModel(conn.Destination), conn.Destination.Port)
+			childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d)", model.DestinationNameAppModel(conn.Destination), conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops)
 			child := tview.NewTreeNode(childName).
 				SetReference(conn).
 				SetSelectable(true).
