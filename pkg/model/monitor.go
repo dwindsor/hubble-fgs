@@ -362,7 +362,10 @@ func getSyscallInfo(abi string, syscalls []uint32) (*appModelV1.ApplicationSysca
 	return syscall_info, nil
 }
 
+var warnOnce = false
+
 func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess bool) (NetworkMonitorData, NetworkQuotaData, ProcessMonitorData) {
+
 	result := NetworkMonitorData{}
 	quota := NetworkQuotaData{}
 	proc := ProcessMonitorData{}
@@ -371,9 +374,12 @@ func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess 
 			processKey := getProcessMonitorKey(process)
 			syscalls, err := getSyscallInfo(process.Abi, process.Syscalls)
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("failed to populate system call data for process")
-				continue
+				if !warnOnce {
+					logger.GetLogger().WithError(err).Warnf("failed to populate system call data for process")
+					warnOnce = true
+				}
 			}
+
 			proc[processKey] = ProcessValue{
 				InInitTree: process.InInitTree,
 				Syscalls:   syscalls,
