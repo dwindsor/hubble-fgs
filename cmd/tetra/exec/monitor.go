@@ -43,7 +43,9 @@ func s3Monitor(bucket string, interval time.Duration, namespaces []string) error
 		return nil
 	}
 
-	s3Client := s3.NewFromConfig(sdkConfig)
+	s3Client := s3.NewFromConfig(sdkConfig, func(o *s3.Options) {
+		o.DisableLogOutputChecksumValidationSkipped = true
+	})
 	_, err = s3Client.HeadBucket(ctx, &s3.HeadBucketInput{
 		Bucket: aws.String(bucket),
 	})
