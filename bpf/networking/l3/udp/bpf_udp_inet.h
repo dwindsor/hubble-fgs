@@ -26,7 +26,6 @@
 #include "bpf_tracing.h"
 #include "dns/bpf_dns.h"
 #include "bpf_udp_info.h"
-
 #include "parsers/dns/parser.h"
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
@@ -161,12 +160,15 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	struct latency_protocol_config *udp_latency = 0;
 	struct latency_config *latency_config = 0;
 	struct socketmap_value *process;
-	struct udp_info_key key = { 0 };
 	struct udp_info_value *value;
+	struct udp_info_key *key;
 	u64 cookie_ver = 0;
 	s64 latency = 0;
 	int zero = 0;
 
+	key = (struct udp_info_key *)map_lookup_elem(&tg_udp_key_heap, &zero);
+	if (!key)
+		return 1;
 	if (!send) {
 		latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
 		if (!latency_config)
@@ -188,20 +190,20 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		process = 0;
 	}
 
-	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, udp_latency, send, process, &key);
+	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, udp_latency, send, process, key);
 	if (!value)
 		return 1;
 
 	/* Only check sequence numbers on recevied packets. */
 	if (!send)
 		udp_seq_err_check(skb, skb_head, ip, ipv6, cookie, payload_off,
-				  payload_sz, process, &key, value);
+				  payload_sz, process, key, value);
 
 	if (process)
 		cookie_ver = process->version;
 
 	if (dns_send_userspace)
-		udp_dns(skb, skb_head, &key, value, ip, ipv6, send, cookie, cookie_ver, payload_off, payload_sz);
+		udp_dns(skb, skb_head, key, value, ip, ipv6, send, cookie, cookie_ver, payload_off, payload_sz);
 	return 1;
 }
 
@@ -378,73 +380,19 @@ inet_handler_lazy_kp_emit_error:
 	emit_ip_error_event(ctx, ip, &cookie, ipv6, packetver, send + 1, 0, err);
 }
 
-#ifdef SKB_LOAD_BYTES
 static inline __attribute__((always_inline)) int
 udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
 	size_t ipopts = sizeof(struct iphdr) + sizeof(struct timestamp_option);
-	size_t ipopts_b = ipopts / sizeof(u32);
-	struct timestamp_option *ts_opt = 0;
-	struct timestamp_option ipopt;
-	int payload_off, payload_sz;
-	struct udphdr udp;
-	u8 udp_off;
-
-	if (!skb)
-		return SK_PASS;
-	if (!ip)
-		return SK_PASS;
-	if (!cookie)
-		return SK_PASS;
-
-	if (ip->ihl >= ipopts_b) {
-		int err;
-
-		/* Packet has at least enough space for the Timestamp IP Option,
-		 * so check if the first option is the Timestamp option that we
-		 * add to detect UDP latency.
-		 */
-		err = skb_load_bytes(skb, sizeof(struct iphdr), &ipopt, sizeof(struct timestamp_option));
-		if (err < 0) {
-			emit_ip_error_event(
-				skb, &ip, cookie, false,
-				false, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-		} else {
-			if (ipopt.type == IPO_TYPE &&
-			    ipopt.magic == bpf_ntohl(IPO_MAGIC_W) &&
-			    ipopt.magic == ipopt.magic2) {
-				ts_opt = &ipopt;
-			}
-		}
-	}
-
-	udp_off = ip_payload_off(ip);
-	if (skb_load_bytes(skb, udp_off, &udp, sizeof(struct udphdr)) < 0) {
-		emit_ip_error_event(skb, ip, cookie, false,
-				    false, send + 1, 0, IP_ERROR_INET_READ_UDP);
-		return SK_PASS;
-	}
-
-	payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
-	payload_off = udp_off + sizeof(struct udphdr);
-	udp_send(skb, 0, ip, false, ts_opt, &udp, cookie, payload_off, payload_sz, send, true);
-	udp_watermarks(skb, cookie, ip, payload_sz, false, send);
-	return SK_PASS;
-}
-#else
-int udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
-{
 	void *data_end = (void *)(long)skb->data_end;
-	void *data = (long *)(long)skb->data;
-	struct timestamp_option *ts_opt = 0;
-
-	size_t ipopts = sizeof(struct iphdr) + sizeof(struct timestamp_option);
+	struct timestamp_option *ts_opt = 0, ipopt;
 	size_t ipopts_b = ipopts / sizeof(u32);
-
-	int payload_sz, payload_off;
-	struct udphdr *udp;
-	u8 udp_off;
+	void *data = (long *)(long)skb->data;
 	bool dns_send_userspace = true;
+	int payload_sz, payload_off;
+	struct udphdr *udp, udptmp;
+	u8 udp_off;
+	int err;
 
 	if (!skb)
 		return SK_PASS;
@@ -458,16 +406,25 @@ int udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int se
 		 * so check if the first option is the Timestamp option that we
 		 * add to detect UDP latency.
 		 */
-		if (data + ipopts > data_end) {
-			emit_ip_error_event(
-				skb, ip, cookie, false,
-				ip->version, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-		} else {
+		if (data + ipopts <= data_end) {
 			ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
 			if (ts_opt->type != IPO_TYPE ||
 			    ts_opt->magic != bpf_ntohl(IPO_MAGIC_W) ||
 			    ts_opt->magic != ts_opt->magic2) {
 				ts_opt = 0;
+			}
+		} else {
+			err = skb_load_bytes(skb, sizeof(struct iphdr), &ipopt, sizeof(struct timestamp_option));
+			if (err < 0) {
+				emit_ip_error_event(
+					skb, &ip, cookie, false,
+					false, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);
+			} else {
+				if (ipopt.type == IPO_TYPE &&
+				    ipopt.magic == bpf_ntohl(IPO_MAGIC_W) &&
+				    ipopt.magic == ipopt.magic2) {
+					ts_opt = &ipopt;
+				}
 			}
 		}
 	}
@@ -475,71 +432,40 @@ int udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int se
 	asm volatile("%[udp_off] &= 0xff;\n"
 		     : [udp_off] "+r"(udp_off)
 		     :);
-	udp = (struct udphdr *)(data + udp_off);
-	if (data + udp_off + sizeof(struct udphdr) > data_end) {
-		emit_ip_error_event(skb, ip, cookie, false,
-				    ip->version, send + 1, 0, IP_ERROR_INET_READ_UDP);
-		return SK_PASS;
+	if (data + udp_off + sizeof(struct udphdr) <= data_end) {
+		udp = (struct udphdr *)(data + udp_off);
+	} else {
+		err = skb_load_bytes(skb, udp_off, &udptmp, sizeof(struct udphdr));
+		if (err < 0) {
+			emit_ip_error_event(skb, ip, cookie, false,
+					    false, send + 1, 0, IP_ERROR_INET_READ_UDP);
+			return SK_PASS;
+		}
+		udp = &udptmp;
 	}
 	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
+#ifndef SKB_LOAD_BYTES
 	if (udp->source == bpf_htons(DNS_PORT) && bpf_dns_parser_enabled())
 		dns_send_userspace = !!parse_dns(skb, payload_off);
+#endif
 	udp_send(skb, 0, ip, false, ts_opt, udp, cookie,
 		 payload_off,
 		 payload_sz, send, dns_send_userspace);
 	udp_watermarks(skb, cookie, ip, payload_sz, false, send);
 	return SK_PASS;
 }
-#endif // SKB_LOAD_BYTES
 
-#ifdef SKB_LOAD_BYTES
 static inline __attribute__((always_inline)) int
 udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
 {
-	int payload_off, payload_sz;
-	unsigned long err;
-	struct udphdr udp;
-	int ver_ip6 = 6;
-	u16 udp_off;
-
-	if (!skb)
-		return SK_PASS;
-	if (!ip6)
-		return SK_PASS;
-	if (!cookie)
-		return SK_PASS;
-
-	get_ip6_proto(&udp_off, ip6, 0, skb, 0, 0, false, &err);
-	if (!udp_off) {
-		emit_ip_error_event(skb, ip6, cookie, true,
-				    ver_ip6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
-		return SK_PASS;
-	}
-
-	if (skb_load_bytes(skb, udp_off, &udp, sizeof(struct udphdr)) < 0) {
-		emit_ip_error_event(skb, (struct iphdr *)ip6, cookie, ver_ip6,
-				    6, send + 1, 0, IP_ERROR_INET_READ_UDP);
-		return SK_PASS;
-	}
-	payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
-	payload_off = udp_off + sizeof(struct udphdr);
-	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, &udp,
-		 cookie, payload_off, payload_sz, send, true);
-	udp_watermarks(skb, cookie, (struct iphdr *)ip6, payload_sz, true, send);
-
-	return SK_PASS;
-}
-#else
-int udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
-{
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
+	bool dns_send_userspace = true;
 	int payload_sz, payload_off;
 	struct udphdr *udp, cpy;
 	unsigned long err;
 	u16 udp_off;
-	bool dns_send_userspace = true;
 
 	if (!skb)
 		return SK_PASS;
@@ -548,7 +474,7 @@ int udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16
 	if (!cookie)
 		return SK_PASS;
 
-	get_ip6_proto(&udp_off, ip6, 0, skb, 0, 0, false, &err);
+	get_ip6_proto(&udp_off, ip6, 0, skb, data, data_end, false, &err);
 	if (!udp_off) {
 		emit_ip_error_event(skb, (struct iphdr *)ip6, cookie, true,
 				    6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
@@ -568,13 +494,14 @@ int udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16
 	}
 	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
+#ifndef SKB_LOAD_BYTES
 	if (udp->source == bpf_htons(DNS_PORT) && bpf_dns_parser_enabled())
 		dns_send_userspace = !!parse_dns(skb, payload_off);
+#endif
 	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, udp, cookie,
 		 payload_off,
 		 payload_sz, send, dns_send_userspace);
 	udp_watermarks(skb, cookie, (struct iphdr *)ip6, payload_sz, true, send);
 	return SK_PASS;
 }
-#endif // SKB_LOAD_BYTES
 #endif //__BPF_INET_H_
