@@ -31,6 +31,9 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/defaults"
@@ -387,13 +390,31 @@ func selected(node *tview.TreeNode) {
 	}
 }
 
-func printInteractiveTree() error {
+func printInteractiveTree(enableS3 bool, bucket string) error {
+	ctx := context.Background()
 	appModel := &appModelV1.ApplicationModelEvent{}
 	fi, _ := os.Stdin.Stat()
 	if fi.Mode()&os.ModeNamedPipe != 0 {
 		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
 		err := decoder.Decode(&appModel)
 		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
+	} else if enableS3 {
+		fmt.Printf("Enable S3 load default config!\n")
+		config, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			return err
+		}
+		client := s3.NewFromConfig(config, func(o *s3.Options) {
+			o.DisableLogOutputChecksumValidationSkipped = true
+		})
+		last, err := s3GetLastKey(ctx, client, bucket, "")
+		if err != nil {
+			return err
+		}
+		appModel, err = getS3Model(ctx, client, bucket, last, []string{})
+		if err != nil {
 			return err
 		}
 	} else {
@@ -469,7 +490,7 @@ func getTreeHtml(w http.ResponseWriter, _ *http.Request, getter treeGetter) {
 	tmpl.Execute(w, values)
 }
 
-func runBrowserTree() error {
+func runBrowserTree(enableS3 bool, bucket string) error {
 	appModel := &appModelV1.ApplicationModelEvent{}
 	var getter treeGetter
 	ctx := context.Background()
@@ -479,6 +500,23 @@ func runBrowserTree() error {
 		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
 		err := decoder.Decode(&appModel)
 		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
+		getter = &wrappedEvent{ApplicationModelEvent: appModel}
+	} else if enableS3 {
+		config, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			return err
+		}
+		client := s3.NewFromConfig(config, func(o *s3.Options) {
+			o.DisableLogOutputChecksumValidationSkipped = true
+		})
+		last, err := s3GetLastKey(ctx, client, bucket, "")
+		if err != nil {
+			return err
+		}
+		appModel, err := getS3Model(ctx, client, bucket, last, []string{})
+		if err != nil {
 			return err
 		}
 		getter = &wrappedEvent{ApplicationModelEvent: appModel}
@@ -905,6 +943,9 @@ func NewDiff() *cobra.Command {
 }
 
 func NewShow() *cobra.Command {
+	var s3 bool
+	bucket := ""
+
 	ret := &cobra.Command{
 		Use:          "show",
 		Short:        "Show application model using a gRPC connection or JSON",
@@ -913,9 +954,9 @@ func NewShow() *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			switch output {
 			case "interactive":
-				return printInteractiveTree()
+				return printInteractiveTree(s3, bucket)
 			case "web":
-				switch err := runBrowserTree(); err {
+				switch err := runBrowserTree(s3, bucket); err {
 				case http.ErrServerClosed:
 					fmt.Println("server closed")
 					return nil
@@ -928,6 +969,8 @@ func NewShow() *cobra.Command {
 	}
 
 	flags := ret.Flags()
+	flags.BoolVar(&s3, "s3", false, "S3 source")
+	flags.StringVar(&bucket, "bucket", "appmodel", "S3 bucket source")
 	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model|interactive|web")
 	viper.BindPFlags(flags)
 
