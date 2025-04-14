@@ -10,7 +10,7 @@ import (
 )
 
 type config struct {
-	EnableProcessTree         bool
+	EnableApplicationModel    bool
 	EnableSyscallTracking     bool
 	ProcessTreeExportInterval time.Duration
 	ProcessTreeExportFilename string
@@ -77,7 +77,7 @@ type config struct {
 var (
 	// Config contains all the configuration used by Tetragon.
 	Config = config{
-		EnableProcessTree:         false,
+		EnableApplicationModel:    false,
 		EnableSyscallTracking:     false,
 		ProcessTreeExportInterval: 0,
 		DnsCacheSize:              1024,

@@ -479,11 +479,11 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			return err
 		}
 		if option.Config.EnablePodInfo {
-			err = enterpriseWatcher.AddServiceInformer(k8sWatcher, enterpriseOption.Config.EnableProcessTree)
+			err = enterpriseWatcher.AddServiceInformer(k8sWatcher, enterpriseOption.Config.EnableApplicationModel)
 			if err != nil {
 				return err
 			}
-			err = enterpriseWatcher.AddPodInfoInformer(k8sWatcher, enterpriseOption.Config.EnableProcessTree)
+			err = enterpriseWatcher.AddPodInfoInformer(k8sWatcher, enterpriseOption.Config.EnableApplicationModel)
 			if err != nil {
 				return err
 			}
@@ -643,7 +643,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 					return err
 				}
 			}
-			if enterpriseOption.Config.EnableProcessTree {
+			if enterpriseOption.Config.EnableApplicationModel {
 				err = netpol.AddTetragonNetworkPolicyInformer(ctx, policyWatcher)
 				if err != nil {
 					return err

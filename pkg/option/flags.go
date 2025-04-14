@@ -161,7 +161,7 @@ func ReadAndValidateEnterpriseFlags() error {
 }
 
 func readAndSetEnterpriseFlags() {
-	Config.EnableProcessTree = viper.GetBool(KeyEnableApplicationModel)
+	Config.EnableApplicationModel = viper.GetBool(KeyEnableApplicationModel)
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
 	Config.ProcessTreeExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
 	Config.ProcessTreeExportFilename = viper.GetString(KeyApplicationModelExportFilename)
@@ -207,10 +207,6 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser)
 	Config.DNSStatsPerSocket = viper.GetBool(keyDNSStatsPerSocket)
 
-	if viper.IsSet(KeyEnableSyscallTracking) && !viper.IsSet(KeyEnableApplicationModel) {
-		logger.GetLogger().Warnf("You must enable the application model with --enable-application-model before enabling system call tracking")
-		Config.EnableSyscallTracking = false
-	}
 	Config.EnableFimDispatcher = viper.GetBool(KeyEnableFimDispatcher)
 	Config.MandateConf.URL = viper.GetString(KeyMandateURL)
 	Config.MandateConf.RefreshPeriod = viper.GetDuration(KeyMandateRefreshPeriod)
@@ -244,5 +240,10 @@ func validateConfig(config config) error {
 	if (len(config.NetworkPolicies) != 0 || config.NetworkPoliciesDir != "") && !config.EnableTCP {
 		return fmt.Errorf("network policies require --%s", KeyEnableTCP)
 	}
+
+	if config.EnableSyscallTracking && !config.EnableApplicationModel {
+		return fmt.Errorf("system call tracking requires --%s", KeyEnableApplicationModel)
+	}
+
 	return nil
 }

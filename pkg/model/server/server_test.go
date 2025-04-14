@@ -130,7 +130,7 @@ func setupProcessTreeEnable(t *testing.T, ctx context.Context, doneWG *sync.Wait
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	option.Config.EnableProcessTree = true
+	option.Config.EnableApplicationModel = true
 	option.Config.EnableSyscallTracking = true
 	option.Config.EnableBPFDNSParser = true
 

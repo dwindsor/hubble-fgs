@@ -708,7 +708,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 }
 
 func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
-	if !option.Config.EnableProcessTree {
+	if !option.Config.EnableApplicationModel {
 		return nil, fmt.Errorf("application model must be enabled with the --enable-application-model flag or the tetragon.enableApplicationModel Helm value")
 	}
 	namespaces := req.GetNamespaces()
@@ -735,7 +735,7 @@ func DefaultNewServer() (*Server, error) {
 
 func NewServer(enableBpfId bool) (*Server, error) {
 	cfg := &CfgProcessModel{
-		Enable:      option.Config.EnableProcessTree,
+		Enable:      option.Config.EnableApplicationModel,
 		EnableBpfId: enableBpfId,
 	}
 	err := configureSettings(cfg)

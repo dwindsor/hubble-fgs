@@ -213,7 +213,7 @@ func GetDefaultPrograms() []*program.Program {
 	} else {
 		progs = append(progs, Execve)
 	}
-	if enterpriseOption.Config.EnableProcessTree && enterpriseOption.Config.EnableSyscallTracking {
+	if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.EnableSyscallTracking {
 		logger.GetLogger().Info("Enable syscall tracking")
 		progs = append(progs, SysEnterProg)
 	}
@@ -252,7 +252,7 @@ func GetDefaultMaps() []*program.Map {
 		BpfEndpointIdMap,
 		ErrMetricsMap,
 	}
-	if enterpriseOption.Config.EnableProcessTree && enterpriseOption.Config.EnableSyscallTracking {
+	if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.EnableSyscallTracking {
 		maps = append(maps, SyscallsMap)
 	}
 
@@ -292,7 +292,7 @@ func LoadDefault(bpfDir string) error {
 func ConfigureMapSizes() {
 	// If Process Tree Modeling is enabled also set maps to minimal size
 	// to avoid unnecessary memory usage.
-	if !enterpriseOption.Config.EnableProcessTree {
+	if !enterpriseOption.Config.EnableApplicationModel {
 		return
 	}
 

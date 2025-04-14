@@ -240,7 +240,7 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 			logger.GetLogger().Info("Enabling the BPF DNS parser")
 			DNSEndpointIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 			DNSDomainMapRev.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			if enterpriseOption.Config.EnableProcessTree {
+			if enterpriseOption.Config.EnableApplicationModel {
 				DNSDomainMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 			}
 

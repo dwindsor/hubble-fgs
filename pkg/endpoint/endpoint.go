@@ -372,7 +372,7 @@ func (fc *FakeCache) DebugEndpointMap() ([]uint64, []*Endpoint) {
 func MustGet() EndpointCache {
 	initGlobalCache.Do(func() {
 		var err error
-		if !option.Config.EnableProcessTree {
+		if !option.Config.EnableApplicationModel {
 			cache = &FakeCache{}
 		} else {
 			cache, err = newCache()
