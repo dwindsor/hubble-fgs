@@ -35,14 +35,11 @@ struct {
 static inline __attribute__((always_inline)) bool
 get_tcp_fin(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bool ipv6)
 {
-#ifndef SKB_LOAD_BYTES
 	__u64 data_end = skb->data_end;
 	__u64 data = skb->data;
-#endif
 	struct tcphdr *tcp;
 	struct tcphdr stor;
 
-#ifndef SKB_LOAD_BYTES
 	if (data + (tcp_offset & 0x0fff) + sizeof(struct tcphdr) > data_end) {
 		if (skb_load_bytes(skb, tcp_offset, &stor, sizeof(struct tcphdr)) < 0) {
 			emit_ip_error_event(skb, ip, cookie, ipv6, 0, 1, 0, IP_ERROR_INET_READ_TCP);
@@ -52,15 +49,6 @@ get_tcp_fin(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bo
 	} else {
 		tcp = (struct tcphdr *)(data + (tcp_offset & 0xfff));
 	}
-#else
-	{
-		if (skb_load_bytes(skb, tcp_offset, &stor, sizeof(struct tcphdr)) < 0) {
-			emit_ip_error_event(skb, ip, cookie, ipv6, 0, 1, 0, IP_ERROR_INET_READ_TCP);
-			return false;
-		}
-		tcp = &stor;
-	}
-#endif
 	return tcp->fin;
 }
 
@@ -224,86 +212,30 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 }
 
 #ifdef SKB_LOAD_BYTES
-static inline __attribute__((always_inline)) int
-tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+static inline __attribute__((always_inline))
+#endif
+int
+tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 {
 	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
+	void *data_end = (void *)(long)skb->data_end;
+	void *data = (long *)(long)skb->data;
+#ifndef SKB_LOAD_BYTES
+	struct tcpsocketmap_value *socket;
+	__u64 c;
+#endif
 
-	if (send)
-#ifndef NO_CGROUP_PROBE_READ
-		return tcp_handler_send(skb, cookie);
-#else
+	if (!ip) {
+		emit_ip_error_event(skb, 0, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_IPHDR);
 		return SK_PASS;
-#endif
-
-#ifndef NO_CGROUP_PROBE_READ
-	if (ip)
-		tcp_check_fin_rx(skb, ip, ip->ihl * sizeof(__u32), cookie, false);
-#endif
+	}
 
 	if (!cookie) {
 		emit_ip_error_event(skb, ip, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_COOKIE);
 		return SK_PASS;
 	}
-	if (!ip) {
-		emit_ip_error_event(skb, 0, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_IPHDR);
-		return SK_PASS;
-	}
 
-	/* Packet has at least enough space for the Timestamp IP Option,
-	 * so check if the first option is the Timestamp option that we
-	 * add to detect TCP latency.
-	 */
-	if (ip->ihl >= ts_size / sizeof(u32)) {
-		struct timestamp_option ts_opt;
-
-		if (skb_load_bytes(skb, sizeof(struct iphdr), &ts_opt, sizeof(struct timestamp_option)) < 0) {
-			emit_ip_error_event(skb, ip, cookie, false, 4, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-			return SK_PASS;
-		}
-		if (ts_opt.type != IPO_TYPE &&
-		    ts_opt.magic != bpf_ntohl(IPO_MAGIC_W) &&
-		    ts_opt.magic != ts_opt.magic2) {
-			return SK_PASS;
-		}
-		check_timestamp(skb, &ts_opt, cookie);
-	}
-	return SK_PASS;
-}
-
-static inline __attribute__((always_inline)) int
-tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 payload_off, int send)
-{
-	if (send)
-#ifndef NO_CGROUP_PROBE_READ
-		return tcp_handler_send(skb, cookie);
-#else
-		return SK_PASS;
-#endif
-
-#ifndef NO_CGROUP_PROBE_READ
-	tcp_check_fin_rx(skb, ip6, payload_off, cookie, true);
-#endif
-	return SK_PASS;
-}
-
-#else
-int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
-{
-	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
-	void *data_end = (void *)(long)skb->data_end;
-	void *data = (long *)(long)skb->data;
-	struct tcpsocketmap_value *socket;
-	__u64 c;
-
-	if (!ip) {
-		emit_ip_error_event(skb, 0, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_IPHDR);
-		return SK_PASS;
-	}
-
-	if (!cookie)
-		return SK_PASS;
-
+#ifndef SKB_LOAD_BYTES
 	c = *cookie;
 	socket = lookup_tcpsocketmap(&c);
 	if (socket) {
@@ -312,6 +244,7 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 		if (verdict == SK_DROP)
 			return SK_DROP;
 	}
+#endif
 
 	/* Packet has at least enough space for the Timestamp IP Option,
 	 * so check if the first option is the Timestamp option that we
@@ -339,23 +272,43 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 	return SK_PASS;
 }
 
-int tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+#ifdef SKB_LOAD_BYTES
+static inline __attribute__((always_inline))
+#endif
+int
+tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 {
 	if (send)
+#ifndef NO_CGROUP_PROBE_READ
 		return tcp_handler_send(skb, cookie);
+#else
+		return SK_PASS;
+#endif
 
+#ifndef NO_CGROUP_PROBE_READ
 	if (ip)
 		tcp_check_fin_rx(skb, ip, ip->ihl * sizeof(__u32), cookie, false);
+#endif
 	return tcp_handler_ip4_recv(skb, ip, cookie);
 }
 
-int tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 payload_off, int send)
+#ifdef SKB_LOAD_BYTES
+static inline __attribute__((always_inline))
+#endif
+int
+tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 payload_off, int send)
 {
 	if (send)
+#ifndef NO_CGROUP_PROBE_READ
 		return tcp_handler_send(skb, cookie);
+#else
+		return SK_PASS;
+#endif
 
+#ifndef NO_CGROUP_PROBE_READ
 	tcp_check_fin_rx(skb, ip6, payload_off, cookie, true);
+#endif
 	return SK_PASS;
 }
-#endif // SKB_LOAD_BYTES
+
 #endif //__BPF_TCP_RECV_H_
