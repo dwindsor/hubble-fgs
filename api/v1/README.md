@@ -3627,13 +3627,13 @@ Determins the behaviour of a field filter
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Unknown | 0 |  |
-| Dnstype | 1 |  |
-| PodType | 2 |  |
-| IpType | 3 |  |
-| ServiceType | 4 |  |
-| ListenType | 5 |  |
-| BpfDnsType | 6 |  |
+| ENDPOINT_TYPE_UNKNOWN | 0 |  |
+| ENDPOINT_TYPE_DNS | 1 |  |
+| ENDPOINT_TYPE_POD | 2 |  |
+| ENDPOINT_TYPE_IP | 3 |  |
+| ENDPOINT_TYPE_SERVICE | 4 |  |
+| ENDPOINT_TYPE_LISTEN | 5 |  |
+| ENDPOINT_TYPE_BPF_DNS | 6 |  |
 
 
  

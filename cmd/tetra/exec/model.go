@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/signal"
 	"sort"
+	"strings"
 	"syscall"
 	"text/tabwriter"
 	"text/template"
@@ -1046,23 +1047,24 @@ func printDebugJSON(res *tetragon.GetEndpointMapResponse) error {
 
 func printDebugCompact(res *tetragon.GetEndpointMapResponse) error {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "LocalIP\tEndpointID\tEndpointValue")
+	fmt.Fprintln(w, "Type\tID\tLocalIP\tValue")
 	for _, e := range res.Map.Endpoints {
+		fmt.Fprintf(w, "%s\t%d\t%s\t", strings.ToLower(strings.TrimPrefix(e.Type.String(), "ENDPOINT_TYPE_")), e.Key, e.SrcIP)
 		switch e.Type {
-		case tetragon.EndpointType_BpfDnsType:
-			fmt.Fprintf(w, "%s\t%d:bpf\t%s\n", e.SrcIP, e.Key, e.Dns)
-		case tetragon.EndpointType_Dnstype:
-			fmt.Fprintf(w, "%s\t%d\t%s\n", e.SrcIP, e.Key, e.Dns)
-		case tetragon.EndpointType_PodType, tetragon.EndpointType_ServiceType:
-			fmt.Fprintf(w, "%s\t%d\t%s:%s %s\n", e.SrcIP, e.Key, e.Namespace, e.Name, e.Kind)
-		case tetragon.EndpointType_IpType:
-			fmt.Fprintf(w, "%s\t%d\t%s\n", e.SrcIP, e.Key, e.Ip)
-		case tetragon.EndpointType_ListenType:
-			fmt.Fprintf(w, "%s\t%d\t%s:%s\n", e.SrcIP, e.Key, e.Ip, e.Port)
+		case tetragon.EndpointType_ENDPOINT_TYPE_DNS, tetragon.EndpointType_ENDPOINT_TYPE_BPF_DNS:
+			fmt.Fprintf(w, "%s\t", e.Dns)
+		case tetragon.EndpointType_ENDPOINT_TYPE_POD, tetragon.EndpointType_ENDPOINT_TYPE_SERVICE:
+			fmt.Fprintf(w, "%s:%s %s\t", e.Namespace, e.Name, e.Kind)
+		case tetragon.EndpointType_ENDPOINT_TYPE_IP:
+			fmt.Fprintf(w, "%s\t", e.Ip)
+		case tetragon.EndpointType_ENDPOINT_TYPE_LISTEN:
+			fmt.Fprintf(w, "%s:%s\t", e.Ip, e.Port)
 		default:
-			fmt.Fprintf(w, "%s\t%d\tunknownType\n", e.SrcIP, e.Key)
+			fmt.Fprintln(w, "unknown")
 		}
+		fmt.Fprintln(w, "")
 	}
+
 	return w.Flush()
 }
 

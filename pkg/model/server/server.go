@@ -212,7 +212,7 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 		id := key.ID
 		v := &tetragon.Endpoint{
 			Key:  id,
-			Type: tetragon.EndpointType_BpfDnsType,
+			Type: tetragon.EndpointType_ENDPOINT_TYPE_BPF_DNS,
 			Dns:  e,
 		}
 
@@ -266,7 +266,7 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 		port := fmt.Sprintf("%d", listenKey.Port)
 		v := &tetragon.Endpoint{
 			Key:  0,
-			Type: tetragon.EndpointType_ListenType,
+			Type: tetragon.EndpointType_ENDPOINT_TYPE_LISTEN,
 			Ip:   ip.String(),
 			Port: port,
 		}
