@@ -5,15 +5,14 @@ import clsx from "clsx";
 import React from "react";
 import { useConnector } from "~/hooks/useConnector";
 import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
-import type { ApplicationProcessGroup } from "~/proto";
+import { type ApplicationProcessGroup, type Destination, FileEventKind } from "~/proto";
+import { DestinationKind } from "~/utils/destination";
 import {
   type Endpoint,
+  type EndpointInfo,
   EndpointKind,
   EndpointModeKind,
-  constructEndpoint,
-  getEndpointPort,
-  inferEndpointKind,
-  trimEndpointPort,
+  inferEndpointTitle,
 } from "~/utils/endpoints";
 import { isSuspiciousProc } from "~/utils/procs";
 import { type Stat, advanceStat, createStat } from "~/utils/stat";
@@ -35,17 +34,20 @@ export const EndpointItem = memo(function Endpoint(props: Props) {
     !!state.highlightedEndpointsMap.get(props.endpoint)?.has(EndpointModeKind.Pinned),
   );
 
-  const kind = useMemo(() => {
-    return inferEndpointKind(props.endpoint);
-  }, [props.endpoint]);
+  const endpointInfo = useMemo(() => {
+    return state.endpointsMap.get(props.endpoint) as EndpointInfo;
+  }, [state.endpointsMap, props.endpoint]);
 
   const title = useMemo(() => {
-    return trimEndpointPort(props.endpoint);
-  }, [props.endpoint]);
+    return inferEndpointTitle(props.endpoint, endpointInfo.kind);
+  }, [props.endpoint, endpointInfo]);
 
   const port = useMemo(() => {
-    return getEndpointPort(props.endpoint);
-  }, [props.endpoint]);
+    if (endpointInfo.kind === EndpointKind.Destination) {
+      return (props.endpoint as Destination).port?.toString() ?? null;
+    }
+    return null;
+  }, [props.endpoint, endpointInfo]);
 
   const stat = useMemo(() => {
     if (!highlightedProc) {
@@ -54,11 +56,12 @@ export const EndpointItem = memo(function Endpoint(props: Props) {
     const stat = createStat();
     let was = false;
     highlightedProc.connections?.forEach((conn) => {
-      if (props.endpoint === constructEndpoint(conn)) {
+      if (props.endpoint === conn.destination) {
         was = true;
         advanceStat(stat, {
-          bytesSent: Number(conn.bytesSent || 0),
-          bytesReceived: Number(conn.bytesReceived || 0),
+          txBytes: Number(conn.stats?.tx_bytes || 0),
+          rxBytes: Number(conn.stats?.rx_bytes || 0),
+          txDrops: Number(conn.stats?.tx_drops || 0),
           hasSuspiciousProcs: isSuspiciousProc(highlightedProc),
         });
       }
@@ -144,7 +147,7 @@ export const EndpointItem = memo(function Endpoint(props: Props) {
     state.highlightEndpoint(props.endpoint, true, EndpointModeKind.Pinned);
   }, [state, props.endpoint]);
 
-  const className = clsx(css.endpoint, classNameFromEndpointKind(kind), {
+  const className = clsx(css.endpoint, classNameFromEndpointInfo(endpointInfo), {
     [css.highlighted]: highlightedProc,
   });
 
@@ -157,24 +160,24 @@ export const EndpointItem = memo(function Endpoint(props: Props) {
     >
       <div ref={connector.ref} className={css.connector} />
       <span className={css.endpointContent}>
-        {renderEndpoint(kind, title, port, stat, isPinned)}
+        {renderEndpoint(endpointInfo, title, port, stat, isPinned)}
       </span>
     </div>
   );
 });
 
 function renderEndpoint(
-  kind: EndpointKind,
+  endpointInfo: EndpointInfo,
   title: string,
   port: string | null,
   stat: Stat | null,
   isPinned: boolean,
 ) {
-  switch (kind) {
-    case EndpointKind.Kube:
+  switch (endpointInfo.subKind) {
+    case DestinationKind.Kubernetes:
       return (
         <>
-          <KubeEndpoint title={title} port={port} isPinned={isPinned} />
+          <KubernetesEndpoint title={title} port={port} isPinned={isPinned} />
           {stat && (
             <>
               {" "}
@@ -183,7 +186,7 @@ function renderEndpoint(
           )}
         </>
       );
-    case EndpointKind.OuterDns:
+    case DestinationKind.OuterDns:
       return (
         <span className={css.title}>
           {isPinned && <Pin />}
@@ -197,12 +200,12 @@ function renderEndpoint(
           )}
         </span>
       );
-    case EndpointKind.OuterIp:
-    case EndpointKind.InnerIp:
-    case EndpointKind.HostMetadataService:
+    case DestinationKind.OuterIp:
+    case DestinationKind.InnerIp:
+    case DestinationKind.HostMetadataService:
       return (
         <>
-          <IpEndpoint kind={kind} ip={title} port={port} isPinned={isPinned} />
+          <IpEndpoint ip={title} port={port} isPinned={isPinned} />
           {stat && (
             <>
               {" "}
@@ -211,6 +214,17 @@ function renderEndpoint(
           )}
         </>
       );
+    case FileEventKind.Read:
+    case FileEventKind.Write: {
+      const kind = endpointInfo.subKind === FileEventKind.Read ? "Read" : "Write";
+      return (
+        <span className={css.title}>
+          {isPinned && <Pin />}
+          {title}
+          <span className={css.fileEventKind}>{kind}</span>
+        </span>
+      );
+    }
     default:
       return (
         <span className={css.title}>
@@ -228,21 +242,24 @@ function renderEndpoint(
   }
 }
 
-function classNameFromEndpointKind(kind: EndpointKind): string | null {
-  switch (kind) {
-    case EndpointKind.OuterIp:
-    case EndpointKind.OuterDns:
-      return css.entityOuter;
-    case EndpointKind.Kube:
-    case EndpointKind.HostMetadataService:
-      return css.entityKube;
+function classNameFromEndpointInfo(endpointInfo: EndpointInfo): string | null {
+  switch (endpointInfo.subKind) {
+    case DestinationKind.OuterIp:
+    case DestinationKind.OuterDns:
+      return css.entityDestinationOuter;
+    case DestinationKind.Kubernetes:
+    case DestinationKind.HostMetadataService:
+      return css.entityDestinationKubernetes;
+    case FileEventKind.Read:
+      return css.entityFileEventRead;
+    case FileEventKind.Write:
+      return css.entityFileEventWrite;
     default:
       return null;
   }
 }
 
 function IpEndpoint(props: {
-  kind: EndpointKind;
   ip: string;
   port: string | null;
   isPinned: boolean;
@@ -274,13 +291,13 @@ function IpEndpoint(props: {
   );
 }
 
-function KubeEndpoint(props: { title: string; port: string | null; isPinned: boolean }) {
+function KubernetesEndpoint(props: { title: string; port: string | null; isPinned: boolean }) {
   const { title, type, namespace } = useMemo(() => {
     const parts = props.title.split(/[\/:]/);
     return {
-      title: parts[2],
-      type: parts[1],
       namespace: parts[0],
+      type: parts[1],
+      title: parts[2],
     };
   }, [props.title]);
 
@@ -291,8 +308,8 @@ function KubeEndpoint(props: { title: string; port: string | null; isPinned: boo
         {title}
         {props.port && <Port port={props.port} />}
       </span>{" "}
-      <span className={css.entityKubeNamespace}>{namespace}</span>{" "}
-      <span className={css.entityKubeType}>{type}</span>
+      <span className={css.entityDestinationKubernetesNamespace}>{namespace}</span>{" "}
+      <span className={css.entityDestinationKubernetesType}>{type}</span>
     </span>
   );
 }

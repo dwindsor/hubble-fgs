@@ -12,7 +12,7 @@
 .part {
   width: 7px;
   height: 100%;
-  background: hsl(from var(--ipt-color-entity-inner) h s calc(l + 10));
+  background: hsl(from var(--ipt-color-entity-destination-inner) h s calc(l + 10));
 
   &:first-child {
     border-radius: 3px 0 0 3px;
@@ -26,29 +26,47 @@
     border-radius: 3px;
   }
 
-  &.entityOuter {
-    background: hsl(from var(--ipt-color-entity-outer) h s calc(l + 10));
+  &.entityDestinationOuter {
+    background: hsl(from var(--ipt-color-entity-destination-outer) h s calc(l + 10));
   }
 
-  &.entityKube {
-    background: hsl(from var(--ipt-color-entity-kube) h s calc(l + 10));
+  &.entityDestinationKubernetes {
+    background: hsl(from var(--ipt-color-entity-destination-kubernetes) h s calc(l + 10));
+  }
+
+  &.entityFileEventRead {
+    background: hsl(from var(--ipt-color-entity-file-event-read) h s calc(l + 10));
+  }
+
+  &.entityFileEventWrite {
+    background: hsl(from var(--ipt-color-entity-file-event-write) h s calc(l + 10));
   }
 }
 
 :global(.ipt-highlighted) .part {
-  background: var(--ipt-color-entity-inner);
+  background: var(--ipt-color-entity-destination-inner);
 }
 
-:global(.ipt-highlighted) .entityOuter {
-  background: var(--ipt-color-entity-outer);
+:global(.ipt-highlighted) .entityDestinationOuter {
+  background: var(--ipt-color-entity-destination-outer);
 }
 
-:global(.ipt-highlighted) .entityKube {
-  background: var(--ipt-color-entity-kube);
+:global(.ipt-highlighted) .entityDestinationKubernetes {
+  background: var(--ipt-color-entity-destination-kubernetes);
+}
+
+:global(.ipt-highlighted) .entityFileEventRead {
+  background: var(--ipt-color-entity-file-event-read);
+}
+
+:global(.ipt-highlighted) .entityFileEventWrite {
+  background: var(--ipt-color-entity-file-event-write);
 }
 
 :global(.ipt-muted) .part,
-:global(.ipt-muted) .entityOuter,
-:global(.ipt-muted) .entityKube {
+:global(.ipt-muted) .entityDestinationOuter,
+:global(.ipt-muted) .entityDestinationKubernetes,
+:global(.ipt-muted) .entityFileEventRead,
+:global(.ipt-muted) .entityFileEventWrite {
   background: var(--ipt-color-entity-muted);
 }

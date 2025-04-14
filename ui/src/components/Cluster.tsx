@@ -19,7 +19,7 @@ export const Cluster = memo(function Cluster() {
           <summary className={css.clusterName} onClick={onClick}>
             <div>
               <ClusterIcon className={css.clusterIcon} size={14} color={colors.treeBranch} />
-              <span>{state.model.clusterName}</span>
+              <span>{state.model.cluster_name}</span>
             </div>
           </summary>
         )}

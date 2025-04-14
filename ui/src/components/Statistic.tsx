@@ -13,13 +13,14 @@ export interface Props {
 export const Statistic = memo(function Statistic(props: Props) {
   return (
     <span className={clsx(css.wrapper, "ipt-tree-item-stat")}>
-      {props.stat.bytesSent > 0 && (
+      {(props.stat.txBytes > 0 || props.stat.rxBytes > 0) && (
         <>
-          <Traffic dir="received" bytes={props.stat.bytesReceived} />
+          <Traffic dir="received" bytes={props.stat.rxBytes} />
           {"/"}
-          <Traffic dir="sent" bytes={props.stat.bytesSent} />
+          <Traffic dir="sent" bytes={props.stat.txBytes} />
         </>
       )}
+      {props.stat.txDrops > 0 && <Drops drops={props.stat.txDrops} />}
       {props.showSuspiciousMarker && props.stat.hasSuspiciousProcs && (
         <span className={css.suspiciousMarker}>
           <WarningIcon color={colors.suspicious} size={14} />
@@ -60,5 +61,14 @@ const Traffic = memo(function Traffic(props: { dir: "sent" | "received"; bytes: 
       {"← "}
       {value}
     </>
+  );
+});
+
+const Drops = memo(function Drops(props: { drops: number }) {
+  return (
+    <span className={css.drops}>
+      {props.drops}
+      <span className={css.dropsIcon}>Drops</span>
+    </span>
   );
 });

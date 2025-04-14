@@ -1,8 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { FileEventKind } from "~/proto";
 import { type AppState, useAppState } from "~/state/AppContext";
 import { colors } from "~/theme/colors";
 import type { ConnectionLine } from "~/utils/connections";
-import { type Endpoint, EndpointKind, EndpointModeKind } from "~/utils/endpoints";
+import { DestinationKind } from "~/utils/destination";
+import { type Endpoint, EndpointModeKind } from "~/utils/endpoints";
 import type { WH } from "~/utils/geometry";
 
 export interface Props {
@@ -10,23 +12,29 @@ export interface Props {
 }
 
 const BASE_LINE_COLOR = {
-  [EndpointKind.OuterDns]: colors.entityOuter,
-  [EndpointKind.OuterIp]: colors.entityOuter,
-  [EndpointKind.HostMetadataService]: colors.entityKube,
-  [EndpointKind.Kube]: colors.entityKube,
-  [EndpointKind.InnerDns]: colors.entityInner,
-  [EndpointKind.InnerIp]: colors.entityInner,
-  [EndpointKind.Other]: colors.entityInner,
+  [DestinationKind.OuterDns]: colors.entityDestinationOuter,
+  [DestinationKind.OuterIp]: colors.entityDestinationOuter,
+  [DestinationKind.HostMetadataService]: colors.entityDestinationKubernetes,
+  [DestinationKind.Kubernetes]: colors.entityDestinationKubernetes,
+  [DestinationKind.InnerDns]: colors.entityDestinationInner,
+  [DestinationKind.InnerIp]: colors.entityDestinationInner,
+  [DestinationKind.Other]: colors.entityDestinationInner,
+  [FileEventKind.Read]: colors.entityFileEventRead,
+  [FileEventKind.Write]: colors.entityFileEventWrite,
+  [FileEventKind.Unspecified]: colors.entityDestinationInner,
 } as const;
 
 const HIGHLIGHTED_LINE_COLOR = {
-  [EndpointKind.OuterDns]: colors.entityOuterHighlighted,
-  [EndpointKind.OuterIp]: colors.entityOuterHighlighted,
-  [EndpointKind.HostMetadataService]: colors.entityKubeHighlighted,
-  [EndpointKind.Kube]: colors.entityKubeHighlighted,
-  [EndpointKind.InnerDns]: colors.entityInnerHighlighted,
-  [EndpointKind.InnerIp]: colors.entityInnerHighlighted,
-  [EndpointKind.Other]: colors.entityInnerHighlighted,
+  [DestinationKind.OuterDns]: colors.entityDestinationOuterHighlighted,
+  [DestinationKind.OuterIp]: colors.entityDestinationOuterHighlighted,
+  [DestinationKind.HostMetadataService]: colors.entityDestinationKubernetesHighlighted,
+  [DestinationKind.Kubernetes]: colors.entityDestinationKubernetesHighlighted,
+  [DestinationKind.InnerDns]: colors.entityDestinationInnerHighlighted,
+  [DestinationKind.InnerIp]: colors.entityDestinationInnerHighlighted,
+  [DestinationKind.Other]: colors.entityDestinationInnerHighlighted,
+  [FileEventKind.Read]: colors.entityFileEventReadHighlighted,
+  [FileEventKind.Write]: colors.entityFileEventWriteHighlighted,
+  [FileEventKind.Unspecified]: colors.entityDestinationInnerHighlighted,
 } as const;
 
 const MUTED_LINE_COLOR = colors.entityMuted;
@@ -74,7 +82,7 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
           return;
         }
 
-        const highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
+        const highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.subKind];
         const color = state.highlightedProc
           ? proc === state.highlightedProc
             ? highlightedLineColor
@@ -150,8 +158,8 @@ function getLineColor(state: AppState, endpoint: Endpoint): string {
     return "";
   }
 
-  const baseLineColor = BASE_LINE_COLOR[endpointInfo.kind];
-  const highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.kind];
+  const baseLineColor = BASE_LINE_COLOR[endpointInfo.subKind];
+  const highlightedLineColor = HIGHLIGHTED_LINE_COLOR[endpointInfo.subKind];
 
   let color: string = baseLineColor;
   if (state.highlightedEndpointsMap.size) {

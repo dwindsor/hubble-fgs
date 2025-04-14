@@ -1,7 +1,7 @@
 .wrapper {
   position: relative;
   top: 1px;
-  color: var(--ipt-color-entity-inner);
+  color: var(--ipt-color-entity-destination-inner);
   font-size: 0.8em;
   white-space: pre;
   word-spacing: -5px;
@@ -12,4 +12,16 @@
   top: 3px;
   display: inline-block;
   margin-left: 10px;
+}
+
+.drops {
+  position: relative;
+  margin-left: 10px;
+  margin-right: 10px;
+
+  .dropsIcon {
+    font-size: 10px;
+    line-height: 10px;
+    margin-left: 2px;
+  }
 }

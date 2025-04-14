@@ -1,5 +1,4 @@
 import { memo, useMemo } from "react";
-import { objectToCamel } from "ts-case-convert";
 import type { ApplicationModelEvent } from "~/proto";
 import { AppContext, createAppContext } from "~/state/AppContext";
 import { injectCSSVars } from "~/theme";
@@ -16,7 +15,7 @@ injectCSSVars();
 export const Root = memo(function Root(props: Props) {
   const appContext = useMemo(() => {
     return createAppContext({
-      model: objectToCamel(props.model) as ApplicationModelEvent,
+      model: props.model,
       getTreeOffset: props.getTreeOffset,
       persistInUrl: props.persistStateInUrl,
     });

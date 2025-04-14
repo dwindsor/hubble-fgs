@@ -1,23 +1,9 @@
 import debounce from "lodash/debounce";
-import React, {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useElementSize } from "~/hooks/useElementSize";
-import {
-  type EndpointFiltersState,
-  useEndpointFilters,
-} from "~/hooks/useEndpointFilters";
+import { type EndpointFiltersState, useEndpointFilters } from "~/hooks/useEndpointFilters";
 import { type AppState, useAppState } from "~/state/AppContext";
-import {
-  type Endpoint,
-  EndpointModeKind,
-  endpointsKindOrder,
-} from "~/utils/endpoints";
+import { type Endpoint, EndpointModeKind, endpointsKindOrder } from "~/utils/endpoints";
 import { Enum, type EnumType } from "~/utils/enum";
 import { UrlParams, getQueryParam, setQueryParam } from "~/utils/url";
 import { EndpointItem } from "./Endpoint";
@@ -31,9 +17,7 @@ export const Endpoints = memo(function Endpoints() {
 
   const size = useElementSize(ref);
 
-  const [searchQuery, setSearchQuery] = useState(
-    getQueryParam(UrlParams.SearchQuery) ?? ""
-  );
+  const [searchQuery, setSearchQuery] = useState(getQueryParam(UrlParams.SearchQuery) ?? "");
 
   const endpoints = useEndpoints(searchQuery);
 
@@ -53,22 +37,19 @@ export const Endpoints = memo(function Endpoints() {
         }
       }
     },
-    [state.persistInUrl]
+    [state.persistInUrl],
   );
 
   const isEmptySearchResult = useMemo(() => {
     return (
-      (searchQuery.length > 0 &&
-        endpoints.list[0]?.kind !== EndpointItemKind.Search) ||
+      (searchQuery.length > 0 && endpoints.list[0]?.kind !== EndpointItemKind.Search) ||
       (endpoints.filters.value.size > 0 && endpoints.list.length === 0)
     );
   }, [searchQuery, endpoints]);
 
   const isNotShowingEndpoints = useMemo(() => {
     return (
-      endpoints.list.length === 0 &&
-      endpoints.filters.value.size === 0 &&
-      searchQuery.length === 0
+      endpoints.list.length === 0 && endpoints.filters.value.size === 0 && searchQuery.length === 0
     );
   }, [searchQuery, endpoints]);
 
@@ -83,28 +64,29 @@ export const Endpoints = memo(function Endpoints() {
             type="search"
             value={searchQuery}
             onChange={onSearch}
-            placeholder="Search endpoint..."
+            placeholder="Search for network connections..."
           />
         </div>
       </div>
       <div ref={ref} className={css.endpointsList}>
         {isEmptySearchResult && (
           <div className={css.emptySearch}>
-            <div className={css.emptySearchTitle}>Endpoints not found</div>
+            <div className={css.emptySearchTitle}>Entries not found</div>
             <hr />
           </div>
         )}
         {isNotShowingEndpoints && (
           <div className={css.noEndpoints}>
             <div className={css.noEndpointsTitle}>
-              Open the processes tree or use filters/search to see endpoints
+              Open the processes tree or use filters/search to see entries
             </div>
           </div>
         )}
         {endpoints.list.map(({ kind, endpoint }, idx) => {
+          const endpointInfo = state.endpointsMap.get(endpoint);
           const prev = endpoints.list[idx - 1];
           return (
-            <React.Fragment key={endpoint}>
+            <React.Fragment key={endpointInfo?.hash ?? idx}>
               {prev && prev.kind !== kind && <hr />}
               <EndpointItem endpoint={endpoint} />
             </React.Fragment>
@@ -120,9 +102,7 @@ function useEndpoints(searchQuery: string) {
 
   const filters = useEndpointFilters();
 
-  const [list, setList] = useState<EndpointsList>(
-    createEndpointsList(state, searchQuery, filters)
-  );
+  const [list, setList] = useState<EndpointsList>(createEndpointsList(state, searchQuery, filters));
 
   const debouncedUpdate = useMemo(() => {
     return debounce(() => {
@@ -162,8 +142,8 @@ type EndpointsList = Array<{ kind: EndpointItemKind; endpoint: Endpoint }>;
 
 function createEndpointsList(
   state: AppState,
-  searchQuery: string,
-  filters: EndpointFiltersState
+  query: string,
+  filters: EndpointFiltersState,
 ): EndpointsList {
   const visibleEndpoints = new Set<Endpoint>();
   const searchEndpoints = new Set<Endpoint>();
@@ -180,18 +160,15 @@ function createEndpointsList(
     }
   });
 
-  for (const endpoint of state.endpointsMap.keys()) {
-    if (searchQuery.length > 0 && endpoint.includes(searchQuery)) {
+  for (const [endpointHash, endpoint] of state.endpointsHashMap.entries()) {
+    if (query.length > 0 && endpointHash.includes(query)) {
       addEndpoint(searchEndpoints, endpoint);
     }
 
     const procs = state.connectionsMap.get(endpoint);
     procs?.forEach((proc) => {
       const procInfo = state.processesMap.get(proc);
-      if (
-        searchQuery.length === 0 ||
-        (searchQuery.length > 0 && endpoint.includes(searchQuery))
-      ) {
+      if (query.length === 0 || (query.length > 0 && endpointHash.includes(query))) {
         if (procInfo?.visible) {
           addEndpoint(visibleEndpoints, endpoint);
         } else if (filters.value.size > 0) {
@@ -205,7 +182,7 @@ function createEndpointsList(
     searchEndpoints.delete(endpoint);
   });
 
-  const sortedUVisibleEndpoints = sortEndpoints(state, visibleEndpoints);
+  const sortedVisibleEndpoints = sortEndpoints(state, visibleEndpoints);
   const sortedSearchEndpoints = sortEndpoints(state, searchEndpoints);
 
   const list: EndpointsList = [];
@@ -214,14 +191,14 @@ function createEndpointsList(
     ...sortedSearchEndpoints.map((endpoint) => ({
       kind: EndpointItemKind.Search,
       endpoint,
-    }))
+    })),
   );
 
   list.push(
-    ...sortedUVisibleEndpoints.map((endpoint) => ({
+    ...sortedVisibleEndpoints.map((endpoint) => ({
       kind: EndpointItemKind.Visible,
       endpoint,
-    }))
+    })),
   );
 
   return list;
@@ -232,10 +209,10 @@ function sortEndpoints(state: AppState, endpoints: Set<Endpoint>): Endpoint[] {
     const x = state.endpointsMap.get(a);
     const y = state.endpointsMap.get(b);
 
-    if (x && y && x?.kind !== y?.kind) {
-      return endpointsKindOrder[x.kind] - endpointsKindOrder[y.kind];
+    if (x && y && x?.subKind !== y?.subKind) {
+      return endpointsKindOrder[x.subKind] - endpointsKindOrder[y.subKind];
     }
 
-    return a.localeCompare(b);
+    return x?.hash.localeCompare(y?.hash ?? "") ?? 0;
   });
 }

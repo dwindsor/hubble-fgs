@@ -1,6 +1,3 @@
-import { create } from "@bufbuild/protobuf";
-import { timestampNow } from "@bufbuild/protobuf/wkt";
-import { ApplicationModelEventSchema } from "@ipa/application_model/v1alpha/application_model_pb";
 import { createContext, useContext } from "react";
 import type { ApplicationModelEvent, ApplicationProcessGroup } from "~/proto";
 import { assert } from "~/utils/assert";
@@ -41,7 +38,11 @@ export function createAppContext({
       });
     getQueryParam(UrlParams.Pinned)
       ?.split(",")
-      .forEach((endpoint) => {
+      .forEach((endpointHash) => {
+        const endpoint = state.endpointsHashMap.get(endpointHash);
+        if (!endpoint) {
+          return;
+        }
         const modes = new Set<EndpointModeKind>();
         modes.add(EndpointModeKind.Pinned);
         inner.highlightedEndpointsMap.set(endpoint, modes);
@@ -92,6 +93,10 @@ export function createAppContext({
 
     get endpointsMap() {
       return state.endpointsMap;
+    },
+
+    get endpointsHashMap() {
+      return state.endpointsHashMap;
     },
 
     get stat() {
@@ -154,9 +159,9 @@ export function createAppContext({
       return inner.highlightedEndpointsMap;
     },
 
-    highlightEndpoint(endpoint: Endpoint, state: boolean, mode: EndpointModeKind) {
+    highlightEndpoint(endpoint: Endpoint, highlight: boolean, mode: EndpointModeKind) {
       const modes = inner.highlightedEndpointsMap.get(endpoint) ?? new Set();
-      if (!state) {
+      if (!highlight) {
         modes.delete(mode);
         if (!modes.size) {
           inner.highlightedEndpointsMap.delete(endpoint);
@@ -166,10 +171,14 @@ export function createAppContext({
         inner.highlightedEndpointsMap.set(endpoint, modes);
       }
 
-      const pinned: Endpoint[] = [];
+      const pinned: string[] = [];
       inner.highlightedEndpointsMap.forEach((modes, endpoint) => {
         if (!modes.has(EndpointModeKind.Pinned)) return;
-        pinned.push(endpoint);
+        const endpointInfo = state.endpointsMap.get(endpoint);
+        if (!endpointInfo) {
+          return;
+        }
+        pinned.push(endpointInfo.hash);
       });
       if (pinned.length) {
         that.setQueryParam(UrlParams.Pinned, pinned.sort().join(","));
@@ -177,7 +186,7 @@ export function createAppContext({
         that.setQueryParam(UrlParams.Pinned, undefined);
       }
 
-      emitter.emitter.emit(EmitterEventKind.HighlightEndpoint, endpoint, state, mode);
+      emitter.emitter.emit(EmitterEventKind.HighlightEndpoint, endpoint, highlight, mode);
       that.redrawConnectionLines();
     },
 
@@ -201,11 +210,7 @@ export function createAppContext({
 
 export const AppContext = createContext(
   createAppContext({
-    model: create(ApplicationModelEventSchema, {
-      clusterName: "",
-      nodeName: "",
-      time: timestampNow(),
-    }),
+    model: {},
     getTreeOffset: () => ({}),
   }),
 );

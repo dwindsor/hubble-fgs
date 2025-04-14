@@ -1,16 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
+import { FileEventKind } from "~/proto";
 import { useAppState } from "~/state/AppContext";
-import {
-  type Endpoint,
-  EndpointFilterKind,
-  EndpointKind,
-  inferEndpointKind,
-} from "~/utils/endpoints";
+import { DestinationFilterKind, DestinationKind } from "~/utils/destination";
+import { type Endpoint, EndpointKind, inferEndpointSubKind } from "~/utils/endpoints";
+import { FileEventFilterKind } from "~/utils/file-event";
 import { UrlParams, getQueryParam, setQueryParam } from "~/utils/url";
 
+export type FilterKind = DestinationFilterKind | FileEventFilterKind;
+
 export interface EndpointFiltersState {
-  value: Set<EndpointFilterKind>;
-  toggle: (kind: EndpointFilterKind) => void;
+  value: Set<FilterKind>;
+  toggle: (kind: FilterKind) => void;
   checkEndpointPassesFilters: (endpoint: Endpoint) => boolean;
 }
 
@@ -19,20 +19,20 @@ export function useEndpointFilters() {
 
   const initialValue = state.persistInUrl
     ? (() => {
-        const filters = new Set<EndpointFilterKind>();
+        const filters = new Set<FilterKind>();
         getQueryParam(UrlParams.EndpointFilters)
           ?.split(",")
           .forEach((filter) => {
-            filters.add(filter as EndpointFilterKind);
+            filters.add(filter as FilterKind);
           });
         return filters;
       })()
-    : new Set<EndpointFilterKind>();
+    : new Set<FilterKind>();
 
   const [endpointFilters, setEndpointFilters] = useState(initialValue);
 
   const toggle = useCallback(
-    (kind: EndpointFilterKind) => {
+    (kind: FilterKind) => {
       setEndpointFilters((prev) => {
         const cloned = new Set(prev);
         if (cloned.has(kind)) {
@@ -66,35 +66,47 @@ export function useEndpointFilters() {
   }, [endpointFilters, toggle]);
 }
 
-function checkEndpointPassesFilters(filters: Set<EndpointFilterKind>, endpoint: Endpoint): boolean {
+function checkEndpointPassesFilters(filters: Set<FilterKind>, endpoint: Endpoint): boolean {
   if (filters.size === 0) {
     return true;
   }
 
-  const kind = inferEndpointKind(endpoint);
-  if (
-    (kind === EndpointKind.OuterIp || kind === EndpointKind.OuterDns) &&
-    filters.has(EndpointFilterKind.Outer)
-  ) {
-    return true;
-  }
+  if ("port" in endpoint) {
+    const subKind = inferEndpointSubKind(endpoint, EndpointKind.Destination);
+    if (
+      (subKind === DestinationKind.OuterIp || subKind === DestinationKind.OuterDns) &&
+      filters.has(DestinationFilterKind.Outer)
+    ) {
+      return true;
+    }
 
-  if (
-    (kind === EndpointKind.InnerIp || kind === EndpointKind.InnerDns) &&
-    filters.has(EndpointFilterKind.Inner)
-  ) {
-    return true;
-  }
+    if (
+      (subKind === DestinationKind.InnerIp || subKind === DestinationKind.InnerDns) &&
+      filters.has(DestinationFilterKind.Inner)
+    ) {
+      return true;
+    }
 
-  if (
-    (kind === EndpointKind.Kube || kind === EndpointKind.HostMetadataService) &&
-    filters.has(EndpointFilterKind.Kube)
-  ) {
-    return true;
-  }
+    if (
+      (subKind === DestinationKind.Kubernetes || subKind === DestinationKind.HostMetadataService) &&
+      filters.has(DestinationFilterKind.Kubernetes)
+    ) {
+      return true;
+    }
 
-  if (kind === EndpointKind.Other && filters.has(EndpointFilterKind.Other)) {
-    return true;
+    if (subKind === DestinationKind.Other && filters.has(DestinationFilterKind.Other)) {
+      return true;
+    }
+  } else {
+    const subKind = inferEndpointSubKind(endpoint, EndpointKind.FileEvent);
+
+    if (subKind === FileEventKind.Read && filters.has(FileEventFilterKind.Read)) {
+      return true;
+    }
+
+    if (subKind === FileEventKind.Write && filters.has(FileEventFilterKind.Write)) {
+      return true;
+    }
   }
 
   return false;

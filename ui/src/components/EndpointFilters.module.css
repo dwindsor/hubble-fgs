@@ -1,15 +1,22 @@
 .wrapper {
   display: flex;
-  list-style: none outside;
-
+  flex-direction: row;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   &,
   li {
     margin: 0;
     padding: 0;
   }
-
+  li + li {
+    margin-left: 3px;
+  }
   li {
     button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: #fff;
       padding: 0 5px;
       border: none;
@@ -17,88 +24,122 @@
       font-size: 1em;
       line-height: 1;
       font-family: var(--ipt-font-sans-serif);
-    }
-
-    &:first-child {
-      button {
-        border-radius: 3px 0 0 3px;
+      border-radius: 3px;
+      input[type="checkbox"] {
+        margin-right: 3px;
       }
     }
-
-    &:last-child {
-      button {
-        border-radius: 0 3px 3px 0;
-      }
-    }
-
-    &.entity-outer {
-      --color: var(--ipt-color-entity-outer);
-
+    &.entity-destination-outer {
+      --color: var(--ipt-color-entity-destination-outer);
       button {
         border: 1px solid var(--color);
         background: var(--color);
-
         &:hover {
           border-color: hsl(from var(--color) h s calc(l - 10));
           box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 10));
         }
-
         &:active {
           border-color: hsl(from var(--color) h s calc(l - 20));
           box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 20));
         }
-
         input,
         input:hover {
           accent-color: hsl(from var(--color) h s calc(l - 40));
         }
       }
     }
-
-    &.entity-kube {
-      --color: var(--ipt-color-entity-kube);
-
+    &.entity-destination-kubernetes {
+      --color: var(--ipt-color-entity-destination-kubernetes);
       button {
         border: 1px solid var(--color);
         background: var(--color);
-
         &:hover {
           border-color: hsl(from var(--color) h s calc(l - 15));
           box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 15));
         }
-
         &:active {
           border-color: hsl(from var(--color) h s calc(l - 25));
           box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 25));
         }
-
         input {
           accent-color: hsl(from var(--color) h s calc(l - 40));
         }
       }
     }
-
-    &.entity-inner {
-      --color: var(--ipt-color-entity-inner);
-
+    &.entity-destination-inner {
+      --color: var(--ipt-color-entity-destination-inner);
       button {
         border: 1px solid hsl(from var(--color) h s calc(l - 10));
         background: hsl(from var(--color) h s calc(l - 10));
-
         &:hover {
           border: 1px solid hsl(from var(--color) h s calc(l - 20));
           background: hsl(from var(--color) h s calc(l - 20));
         }
-
         &:active {
           border: 1px solid hsl(from var(--color) h s calc(l - 30));
           background: hsl(from var(--color) h s calc(l - 30));
         }
-
+        input {
+          accent-color: hsl(from var(--color) h s calc(l - 40));
+        }
+      }
+    }
+    &.entity-file-event-read {
+      --color: var(--ipt-color-entity-file-event-read);
+      button {
+        border: 1px solid var(--color);
+        background: var(--color);
+        &:hover {
+          border-color: hsl(from var(--color) h s calc(l - 10));
+          box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 10));
+        }
+        &:active {
+          border-color: hsl(from var(--color) h s calc(l - 20));
+          box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 20));
+        }
+        input {
+          accent-color: hsl(from var(--color) h s calc(l - 40));
+        }
+      }
+    }
+    &.entity-file-event-write {
+      --color: var(--ipt-color-entity-file-event-write);
+      button {
+        border: 1px solid var(--color);
+        background: var(--color);
+        &:hover {
+          border-color: hsl(from var(--color) h s calc(l - 10));
+          box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 10));
+        }
+        &:active {
+          border-color: hsl(from var(--color) h s calc(l - 20));
+          box-shadow: inset 0 0 6px hsl(from var(--color) h s calc(l - 20));
+        }
         input {
           accent-color: hsl(from var(--color) h s calc(l - 40));
         }
       }
     }
   }
+}
+.filtersContainer {
+  display: flex;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.filterGroup + .filterGroup {
+  margin-left: 20px;
+}
+
+.filterGroupTitle {
+  font-size: 0.9em;
+  font-weight: bold;
+  color: #555;
+  margin-left: 3px;
+  font-family: var(--ipt-font-sans-serif);
 }

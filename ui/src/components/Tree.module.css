@@ -87,15 +87,15 @@
   li > div:hover,
   :global(.ipt-interactive.ipt-highlighted) {
     :global(.ipt-tree-item-stat) {
-      color: hsl(from var(--ipt-color-entity-inner) h s calc(l - 30));
+      color: hsl(from var(--ipt-color-entity-destination-inner) h s calc(l - 30));
     }
 
     &:global(.ipt-endpoint-outer) :global(.ipt-tree-item-stat) {
-      color: hsl(from var(--ipt-color-entity-outer) h s calc(l - 10));
+      color: hsl(from var(--ipt-color-entity-destination-outer) h s calc(l - 10));
     }
 
     &:global(.ipt-endpoint-kube) :global(.ipt-tree-item-stat) {
-      color: hsl(from var(--ipt-color-entity-kube) h s calc(l - 10));
+      color: hsl(from var(--ipt-color-entity-destination-kubernetes) h s calc(l - 10));
     }
   }
 

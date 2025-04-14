@@ -8,15 +8,15 @@ export type ProcessInfo = {
   xy?: XY | undefined;
 };
 
-export type ProcessesMap = WeakMap<ApplicationProcessGroup, ProcessInfo>;
+export type ProcessesMap = Map<ApplicationProcessGroup, ProcessInfo>;
 
 export function getProcHash(proc: ApplicationProcessGroup) {
   return `${proc.name}:[${proc.arguments}]`;
 }
 
 export function isSuspiciousProc(proc: ApplicationProcessGroup): boolean {
-  if (typeof proc.inInitTree === "boolean") {
-    return !proc.inInitTree;
+  if (typeof proc.in_init_tree === "boolean") {
+    return !proc.in_init_tree;
   }
   return false;
 }

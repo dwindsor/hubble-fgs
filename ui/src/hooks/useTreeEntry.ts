@@ -1,7 +1,8 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppState } from "~/state/AppContext";
-import { type Endpoint, EndpointKind } from "~/utils/endpoints";
+import { DestinationKind } from "~/utils/destination";
+import type { Endpoint } from "~/utils/endpoints";
 import { Enum, type EnumType } from "~/utils/enum";
 import { type Stat, type TreeEntryStat, advanceStat, createTreeEntryStat } from "~/utils/stat";
 import { useConnector } from "./useConnector";
@@ -54,6 +55,13 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
     return state.endpointsMap.get(selectedEndpoint)?.kind ?? null;
   }, [state, selectedEndpoint]);
 
+  const endpointSubKind = useMemo(() => {
+    if (!selectedEndpoint) {
+      return null;
+    }
+    return state.endpointsMap.get(selectedEndpoint)?.subKind ?? null;
+  }, [state, selectedEndpoint]);
+
   const hasConnections = useMemo(() => {
     return !!visibleEndpoints?.size;
   }, [visibleEndpoints]);
@@ -100,10 +108,10 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
     return clsx("ipt-interactive", {
       "ipt-highlighted": visualState === VisualStateKind.Highlighted || selectedEndpoint,
       "ipt-muted": visualState === VisualStateKind.Muted,
-      "ipt-endpoint-outer": endpointKind === EndpointKind.OuterDns,
-      "ipt-endpoint-kube": endpointKind === EndpointKind.Kube,
+      "ipt-endpoint-outer": endpointSubKind === DestinationKind.OuterDns,
+      "ipt-endpoint-kube": endpointSubKind === DestinationKind.Kubernetes,
     });
-  }, [visualState, selectedEndpoint, endpointKind]);
+  }, [visualState, selectedEndpoint, endpointSubKind]);
 
   useEffect(() => {
     return state.onEndpointHighlight((endpoint, value) => {
@@ -131,6 +139,7 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
       hasConnections,
       endpoint: selectedEndpoint,
       endpointKind,
+      endpointSubKind,
       setVisualState,
     }),
     [
@@ -141,6 +150,7 @@ export function useTreeEntry(args: { statInfo: TreeEntryStat | undefined }) {
       hasConnections,
       selectedEndpoint,
       endpointKind,
+      endpointSubKind,
     ],
   );
 }

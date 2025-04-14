@@ -1,6 +1,12 @@
-import type { ApplicationModelEvent, ApplicationProcessGroup } from "~/proto";
+import type { ApplicationModelEvent, ApplicationProcessGroup, Destination } from "~/proto";
 import type { ConnectionsMap } from "~/utils/connections";
-import { type EndpointsMap, constructEndpoint, inferEndpointKind } from "~/utils/endpoints";
+import {
+  EndpointKind,
+  type EndpointsHashMap,
+  type EndpointsMap,
+  inferEndpointHash,
+  inferEndpointSubKind,
+} from "~/utils/endpoints";
 import { type ProcessesMap, getProcHash, isSuspiciousProc } from "~/utils/procs";
 import {
   type StatState,
@@ -18,11 +24,13 @@ import { getWorkloadHash } from "~/utils/workloads";
 export function createAppState(model?: ApplicationModelEvent): {
   processesMap: ProcessesMap;
   endpointsMap: EndpointsMap;
+  endpointsHashMap: EndpointsHashMap;
   connectionsMap: ConnectionsMap;
   stat: StatState;
 } {
-  const processesMap: ProcessesMap = new WeakMap();
+  const processesMap: ProcessesMap = new Map();
   const endpointsMap: EndpointsMap = new Map();
+  const endpointsHashMap: EndpointsHashMap = new Map();
   const connectionsMap: ConnectionsMap = new Map();
   const stat = createStatState();
 
@@ -30,6 +38,7 @@ export function createAppState(model?: ApplicationModelEvent): {
     return {
       processesMap,
       endpointsMap,
+      endpointsHashMap,
       connectionsMap,
       stat,
     };
@@ -57,12 +66,56 @@ export function createAppState(model?: ApplicationModelEvent): {
       advanceStat(recStat, procStat);
 
       proc.connections?.forEach((conn) => {
-        const endpoint = constructEndpoint(conn);
-        endpointsMap.set(endpoint, { kind: inferEndpointKind(endpoint) });
+        if (!conn.destination) {
+          return;
+        }
+
+        const endpoint = conn.destination as unknown as Destination;
+        const endpointKind = EndpointKind.Destination;
+        const endpointHash = inferEndpointHash(endpoint, endpointKind);
+        const endpointSubKind = inferEndpointSubKind(endpoint, endpointKind);
+        endpointsMap.set(endpoint, {
+          hash: endpointHash,
+          kind: endpointKind,
+          subKind: endpointSubKind,
+        });
+        endpointsHashMap.set(endpointHash, endpoint);
 
         const endpointStat = createStat({
-          bytesSent: Number(conn.bytesSent || 0),
-          bytesReceived: Number(conn.bytesReceived || 0),
+          txBytes: Number(conn.stats?.tx_bytes || 0),
+          rxBytes: Number(conn.stats?.rx_bytes || 0),
+          txDrops: Number(conn.stats?.tx_drops || 0),
+          hasSuspiciousProcs: procStat.hasSuspiciousProcs,
+        });
+        advanceEndpointStat(stat.endpointsMap, endpoint, endpointStat);
+
+        procStat.endpointsMap.set(endpoint, endpointStat);
+
+        advanceStat(recStat, endpointStat);
+        advanceEndpointStat(recStat.endpointsMap, endpoint, endpointStat);
+
+        const endpointConnections = connectionsMap.get(endpoint) ?? new Set();
+        endpointConnections.add(proc);
+        connectionsMap.set(endpoint, endpointConnections);
+      });
+
+      proc.file_events?.forEach((fileEvent) => {
+        if (!fileEvent.file_path) {
+          return;
+        }
+
+        const endpoint = fileEvent;
+        const endpointKind = EndpointKind.FileEvent;
+        const endpointHash = inferEndpointHash(endpoint, endpointKind);
+        const endpointSubKind = inferEndpointSubKind(endpoint, endpointKind);
+        endpointsMap.set(endpoint, {
+          hash: endpointHash,
+          kind: endpointKind,
+          subKind: endpointSubKind,
+        });
+        endpointsHashMap.set(endpointHash, endpoint);
+
+        const endpointStat = createStat({
           hasSuspiciousProcs: procStat.hasSuspiciousProcs,
         });
         advanceEndpointStat(stat.endpointsMap, endpoint, endpointStat);
@@ -85,11 +138,11 @@ export function createAppState(model?: ApplicationModelEvent): {
     return recStat;
   };
 
-  stat.host = rec({ path: [] }, model.applicationModel?.host?.processes ?? []);
+  stat.host = rec({ path: [] }, model.application_model?.host?.processes ?? []);
 
   stat.namespaces = createTreeEntryStat();
 
-  model.applicationModel?.namespaces?.forEach((namespace) => {
+  model.application_model?.namespaces?.forEach((namespace) => {
     if (!namespace.name) return;
 
     const namespaceStat = createTreeEntryStat();
@@ -122,6 +175,7 @@ export function createAppState(model?: ApplicationModelEvent): {
   return {
     processesMap,
     endpointsMap,
+    endpointsHashMap,
     connectionsMap,
     stat,
   };

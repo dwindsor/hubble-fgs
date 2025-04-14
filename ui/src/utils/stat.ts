@@ -4,8 +4,9 @@ import type { Namespace } from "./namespaces";
 import type { Workload } from "./workloads";
 
 export type Stat = {
-  bytesSent: number;
-  bytesReceived: number;
+  txBytes: number;
+  rxBytes: number;
+  txDrops: number;
   hasSuspiciousProcs: boolean;
 };
 
@@ -18,8 +19,9 @@ export type StatState = ReturnType<typeof createStatState>;
 
 export function createStat(initializer?: Partial<Stat>): Stat {
   return {
-    bytesSent: 0,
-    bytesReceived: 0,
+    txBytes: 0,
+    rxBytes: 0,
+    txDrops: 0,
     hasSuspiciousProcs: false,
     ...initializer,
   };
@@ -35,8 +37,9 @@ export function createTreeEntryStat(initializer?: Partial<TreeEntryStat>): TreeE
 
 export function advanceStat(target: Stat, ...extenders: Stat[]) {
   extenders.forEach((extender) => {
-    target.bytesSent += extender.bytesSent;
-    target.bytesReceived += extender.bytesReceived;
+    target.txBytes += extender.txBytes;
+    target.rxBytes += extender.rxBytes;
+    target.txDrops += extender.txDrops;
     target.hasSuspiciousProcs ||= extender.hasSuspiciousProcs;
   });
 }

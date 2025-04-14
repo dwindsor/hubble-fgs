@@ -1,10 +1,19 @@
-import ipaddr from "ipaddr.js";
-import type { ApplicationConnection } from "~/proto";
+import { type ApplicationFileEvent, type Destination, FileEventKind } from "~/proto";
+import {
+  DestinationKind,
+  inferEndpointDestinationHash,
+  inferEndpointDestinationKind,
+  inferEndpointDestinationTitle,
+} from "./destination";
 import { Enum, type EnumType } from "./enum";
+import {
+  inferEndpointFileEventHash,
+  inferEndpointFileEventKind,
+  inferEndpointFileEventTitle,
+} from "./file-event";
 import type { XY } from "./geometry";
-import { checkIpAddress, specialIps } from "./ips";
 
-export type Endpoint = string;
+export type Endpoint = Destination | ApplicationFileEvent;
 
 export const EndpointModeKind = Enum({
   Hovered: "hovered",
@@ -13,92 +22,70 @@ export const EndpointModeKind = Enum({
 
 export type EndpointModeKind = EnumType<typeof EndpointModeKind>;
 
-export const EndpointFilterKind = Enum({
-  Inner: "inner",
-  Outer: "outer",
-  Kube: "kube",
-  Other: "other",
-});
-
-export type EndpointFilterKind = EnumType<typeof EndpointFilterKind>;
-
-export type EndpointsMap = Map<Endpoint, EndpointInfo>;
-
-export type EndpointInfo = {
-  kind: EndpointKind;
-  visible?: boolean | undefined;
-  xy?: XY | undefined;
-};
-
 export const EndpointKind = Enum({
-  OuterIp: "Outer-ip",
-  InnerIp: "inner-ip",
-  OuterDns: "outer-dns",
-  InnerDns: "inner-dns",
-  Kube: "kube",
-  HostMetadataService: "host-metadata-service",
-  Other: "other",
+  Destination: "destination",
+  FileEvent: "file",
 });
 
 export type EndpointKind = EnumType<typeof EndpointKind>;
 
+export type EndpointSubKind = EnumType<typeof DestinationKind> | EnumType<typeof FileEventKind>;
+
+export type EndpointsMap = Map<Endpoint, EndpointInfo>;
+
+export type EndpointsHashMap = Map<string, Endpoint>;
+
+export type EndpointInfo = {
+  hash: string;
+  kind: EndpointKind;
+  subKind: EndpointSubKind;
+  visible?: boolean | undefined;
+  xy?: XY | undefined;
+};
+
 export const endpointsKindOrder = [
-  EndpointKind.OuterDns,
-  EndpointKind.OuterIp,
-  EndpointKind.HostMetadataService,
-  EndpointKind.Kube,
-  EndpointKind.InnerDns,
-  EndpointKind.InnerIp,
+  DestinationKind.OuterDns,
+  DestinationKind.OuterIp,
+  DestinationKind.HostMetadataService,
+  DestinationKind.Kubernetes,
+  DestinationKind.InnerDns,
+  DestinationKind.InnerIp,
+  FileEventKind.Read,
+  FileEventKind.Write,
 ].reduce(
   (acc, item, idx) => {
     acc[item] = idx;
     return acc;
   },
-  {} as { [key in EndpointKind]: number },
+  {} as { [key in DestinationKind | FileEventKind]: number },
 );
 
-export function inferEndpointKind(endpoint: Endpoint): EndpointKind {
-  const endpointWithoutPort = trimEndpointPort(endpoint);
-
-  if (endpoint === "169.254.169.254:80") {
-    return EndpointKind.HostMetadataService;
+export function inferEndpointSubKind(endpoint: Endpoint, kind: EndpointKind): EndpointSubKind {
+  if (kind === EndpointKind.Destination) {
+    return inferEndpointDestinationKind(endpoint as Destination);
   }
-  if (endpointWithoutPort.includes("/")) {
-    return EndpointKind.Kube;
+  if (kind === EndpointKind.FileEvent) {
+    return inferEndpointFileEventKind(endpoint as ApplicationFileEvent);
   }
-  if (checkIpAddress(endpointWithoutPort)) {
-    const ranges = {
-      inner: specialIps,
-    };
-    const type = ipaddr.subnetMatch(ipaddr.parse(endpointWithoutPort), ranges, "outer");
-    return type === "inner" ? EndpointKind.InnerIp : EndpointKind.OuterIp;
-  }
-  if (
-    (endpointWithoutPort.startsWith("ip-") && endpointWithoutPort.endsWith(".internal")) ||
-    endpointWithoutPort.endsWith(".svc.cluster.local")
-  ) {
-    return EndpointKind.InnerDns;
-  }
-  return EndpointKind.OuterDns;
+  throw new Error(`Unhandled endpoint type: ${kind}`);
 }
 
-export function getEndpointPort(endpoint: Endpoint): string | null {
-  let port = "";
-  for (let i = endpoint.length - 1; i >= 0; i--) {
-    const ch = endpoint[i];
-    if (ch === ":") {
-      return port;
-    }
-    port = ch + port;
+export function inferEndpointHash(endpoint: Endpoint, kind: EndpointKind): string {
+  if (kind === EndpointKind.Destination) {
+    return inferEndpointDestinationHash(endpoint as Destination);
   }
-  return null;
+  if (kind === EndpointKind.FileEvent) {
+    return inferEndpointFileEventHash(endpoint as ApplicationFileEvent);
+  }
+  throw new Error(`Unhandled endpoint type: ${kind}`);
 }
 
-export function trimEndpointPort(endpoint: Endpoint): string {
-  const port = getEndpointPort(endpoint);
-  return endpoint.slice(0, endpoint.length - (port ? port.length + 1 : 0));
-}
-
-export function constructEndpoint(conn: ApplicationConnection): Endpoint {
-  return `${conn.destinationName}:${conn.destinationPort}`;
+export function inferEndpointTitle(endpoint: Endpoint, kind: EndpointKind): string {
+  if (kind === EndpointKind.Destination) {
+    return inferEndpointDestinationTitle(endpoint as Destination);
+  }
+  if (kind === EndpointKind.FileEvent) {
+    return inferEndpointFileEventTitle(endpoint as ApplicationFileEvent);
+  }
+  throw new Error(`Unhandled endpoint type: ${kind}`);
 }
