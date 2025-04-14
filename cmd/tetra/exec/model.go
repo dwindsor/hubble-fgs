@@ -451,15 +451,24 @@ func getProcessTreeGrpc(c *ConnectedModelClient) (*tetragon.GetProcessModelRespo
 }
 
 func printGrpcTree() error {
-	c := NewConnectedModelClient()
-	defer c.Close()
+	appModel := &appModelV1.ApplicationModelEvent{}
+	fi, _ := os.Stdin.Stat()
+	if fi.Mode()&os.ModeNamedPipe != 0 {
+		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
+		err := decoder.Decode(&appModel)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
+	} else {
+		c := NewConnectedModelClient()
+		defer c.Close()
 
-	res, err := getProcessTreeGrpc(&c)
-	if err != nil {
-		return err
+		res, err := getProcessTreeGrpc(&c)
+		if err != nil {
+			return err
+		}
+		appModel = model.ProcessModelToApplicationModel(res)
 	}
-
-	appModel := model.ProcessModelToApplicationModel(res)
 
 	switch output {
 	case "tree":
