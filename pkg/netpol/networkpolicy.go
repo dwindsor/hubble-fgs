@@ -9,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/cache"
 )
@@ -29,6 +30,10 @@ func addTetragonNetworkPolicy(obj any) {
 	var err error
 
 	name := ""
+
+	if !option.Config.EnableTCP {
+		logger.GetLogger().Warnf("addNetworkPolicy: network policies require --%s", option.KeyEnableTCP)
+	}
 
 	switch np := obj.(type) {
 	case *v1alpha1.TetragonNetworkPolicy:
