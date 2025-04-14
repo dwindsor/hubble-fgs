@@ -450,13 +450,30 @@ func getProcessTreeGrpc(c *ConnectedModelClient) (*tetragon.GetProcessModelRespo
 	return res, nil
 }
 
-func printGrpcTree() error {
+func printGrpcTree(enableS3 bool, bucket string) error {
+	ctx := context.Background()
 	appModel := &appModelV1.ApplicationModelEvent{}
 	fi, _ := os.Stdin.Stat()
 	if fi.Mode()&os.ModeNamedPipe != 0 {
 		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
 		err := decoder.Decode(&appModel)
 		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
+	} else if enableS3 {
+		config, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			return err
+		}
+		client := s3.NewFromConfig(config, func(o *s3.Options) {
+			o.DisableLogOutputChecksumValidationSkipped = true
+		})
+		last, err := s3GetLastKey(ctx, client, bucket, "")
+		if err != nil {
+			return err
+		}
+		appModel, err = getS3Model(ctx, client, bucket, last, namespaces)
+		if err != nil {
 			return err
 		}
 	} else {
@@ -830,7 +847,7 @@ func NewShow() *cobra.Command {
 					return err
 				}
 			}
-			return printGrpcTree()
+			return printGrpcTree(s3, bucket)
 		},
 	}
 
