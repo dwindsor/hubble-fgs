@@ -32,7 +32,7 @@ struct {
 	__uint(max_entries, 1);
 } tcp_cookie_heap SEC(".maps");
 
-static inline bool
+static inline __attribute__((always_inline)) bool
 get_tcp_fin(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bool ipv6)
 {
 #ifndef SKB_LOAD_BYTES
@@ -64,7 +64,7 @@ get_tcp_fin(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bo
 	return tcp->fin;
 }
 
-static inline int
+static inline __attribute__((always_inline)) int
 tcp_check_fin_rx(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bool ipv6)
 {
 	bool tcpfin = get_tcp_fin(skb, ip, tcp_offset, cookie, ipv6);
