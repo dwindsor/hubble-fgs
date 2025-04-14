@@ -131,49 +131,6 @@ func (c ConnectedModelClient) Close() {
 
 var tree = treeprint.New()
 
-func printDestination(d *tetragon.Destination) (string, string) {
-	endptName := ""
-	dst := ""
-
-	if d.DestinationPod != nil {
-		endptName = d.DestinationPod.String()
-	}
-	if d.DestinationService != nil {
-		endptName = d.DestinationService.String()
-	}
-	if len(d.DestinationNames) > 0 {
-		if endptName != "" {
-			endptName = fmt.Sprintf("%s %s", d.DestinationNames, endptName)
-		} else {
-			endptName = fmt.Sprintf("%s", d.DestinationNames)
-		}
-	}
-
-	if d.Port != 0 {
-		dst = fmt.Sprintf("%s   (%d) ", endptName, d.Port)
-	} else {
-		dst = fmt.Sprintf("%s ", endptName)
-	}
-	return endptName, dst
-}
-
-func printStats(d *tetragon.Destination) string {
-	stats := ""
-
-	if d.Stats == nil {
-		return stats
-	}
-
-	if d.Stats.TxLimit > 0 {
-		stats = fmt.Sprintf("tx: %d rx: %d drops: %d limit: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops, d.Stats.TxLimit)
-	} else if d.Stats.TxDrops > 0 {
-		stats = fmt.Sprintf("tx: %d rx: %d drops: %d", d.Stats.TxBytes, d.Stats.RxBytes, d.Stats.TxDrops)
-	} else {
-		stats = fmt.Sprintf("tx: %d rx: %d", d.Stats.TxBytes, d.Stats.RxBytes)
-	}
-	return stats
-}
-
 func printTree(appModel *appModelV1.ApplicationModelEvent) error {
 	// For each namespace collection find workload collections
 	for _, ns := range appModel.ApplicationModel.Namespaces {
@@ -193,15 +150,6 @@ func printTree(appModel *appModelV1.ApplicationModelEvent) error {
 		}
 	}
 	fmt.Println(tree.String())
-	return nil
-}
-
-func printJSONTree(res *tetragon.GetProcessModelResponse) error {
-	out, err := res.MarshalJSON()
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(out))
 	return nil
 }
 
@@ -517,8 +465,6 @@ func printGrpcTree() error {
 	case "tree":
 		return printTree(appModel)
 	case "json":
-		return printJSONTree(res)
-	case "model":
 		return printModel(appModel)
 	default:
 		return fmt.Errorf("invalid output format: %s", output)
@@ -882,7 +828,7 @@ func NewShow() *cobra.Command {
 	flags := ret.Flags()
 	flags.BoolVar(&s3, "s3", false, "S3 source")
 	flags.StringVar(&bucket, "bucket", "appmodel", "S3 bucket source")
-	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|model|interactive|web")
+	flags.StringVarP(&output, "output", "o", "tree", "Specify the output format: tree|json|interactive|web")
 	viper.BindPFlags(flags)
 
 	return ret
