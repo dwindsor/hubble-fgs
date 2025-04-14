@@ -17,14 +17,12 @@ import (
 
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 const (
-	KeyHubbleLib                      = "hubble-lib"
 	KeyFlowExportFilename             = "flow-export-filename"
 	KeyFlowExportFileMaxSizeMB        = "flow-export-file-max-size-mb"
 	KeyFlowExportFileMaxBackups       = "flow-export-file-max-backups"
@@ -89,9 +87,6 @@ func FixUpOSSFlags(flags *pflag.FlagSet) {
 }
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
-	flags.String(KeyHubbleLib, defaults.DefaultTetragonLib, "Location of hubble libs (btf and bpf files)")
-	// TODO(michi) Remove after branching v1.12.
-	flags.MarkDeprecated(KeyHubbleLib, fmt.Sprintf("Use --%s instead.", option.KeyHubbleLib))
 	flags.String(KeyFlowExportFilename, "", "Filename for flow JSON export. Disabled by default")
 	flags.Int(KeyFlowExportFileMaxSizeMB, 10, "Size in MB for rotating flow JSON export files")
 	flags.Int(KeyFlowExportFileMaxBackups, 5, "Number of rotated flow JSON export files to retain")
@@ -182,15 +177,6 @@ func readAndSetEnterpriseFlags() {
 	Config.FlowExportFileMaxBackups = viper.GetInt(KeyFlowExportFileMaxBackups)
 	Config.FlowExportFileCompress = viper.GetBool(KeyFlowExportFileCompress)
 	Config.EnableIcmpTracking = viper.GetBool(keyEnableIcmpTracking)
-	// TODO(michi) Remove after branching v1.12.
-	// We parse shared flags with OSS then we parse Enterprise ones
-	if viper.IsSet(KeyHubbleLib) {
-		logger.GetLogger().Warnf("Flag --%s has been deprecated, please use --%s instead", KeyHubbleLib, option.KeyHubbleLib)
-		// If option.KeyHubbleLib has been set then it takes precedence.
-		if !viper.IsSet(option.KeyHubbleLib) {
-			option.Config.HubbleLib = viper.GetString(KeyHubbleLib)
-		}
-	}
 	Config.EnablePolicyK8sWatcher = viper.GetBool(keyEnablePolicyK8sWatcher)
 	Config.EnableSandboxPolicies = viper.GetBool(keyEnableSandboxPolicies)
 	Config.SandboxPolicies = viper.GetStringSlice(keySandboxPolicy)
