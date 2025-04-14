@@ -174,110 +174,20 @@ func printStats(d *tetragon.Destination) string {
 	return stats
 }
 
-func printTree(res *tetragon.GetProcessModelResponse) error {
-	// Create namespaces collections
-	nsCollections := make(map[string][]*tetragon.ProcessModel)
-	wlPrintList := make(map[string]bool)
-
-	for _, p := range res.Processes {
-		ns, ok := nsCollections[p.Namespace]
-		if ok {
-			nsCollections[p.Namespace] = append(ns, p)
-		} else {
-			nsCollections[p.Namespace] = []*tetragon.ProcessModel{p}
-		}
-	}
-
-	for _, wl := range workloads {
-		wlPrintList[wl] = true
-	}
-
-	nsKeys := make([]string, 0, len(nsCollections))
-	for nsKey := range nsCollections {
-		nsKeys = append(nsKeys, nsKey)
-	}
-	sort.Strings(nsKeys)
-
+func printTree(appModel *appModelV1.ApplicationModelEvent) error {
 	// For each namespace collection find workload collections
-	for _, k := range nsKeys {
-		var nsStr string
+	for _, ns := range appModel.ApplicationModel.Namespaces {
+		nsTree := tree.AddBranch(ns.Name)
+		for _, wl := range ns.Workloads {
+			wlTree := nsTree.AddBranch(wl.Name)
 
-		n := k
-		r := nsCollections[k]
+			for _, p := range wl.Processes {
+				bin := p.Name + " " + p.Arguments
+				binaryBranch := wlTree.AddBranch(bin)
 
-		if n == "" {
-			nsStr = model.HostNamespace
-		} else {
-			nsStr = n
-		}
-
-		nsTree := tree.AddBranch(nsStr)
-
-		// Create workload collections
-		wlCollections := make(map[string][]*tetragon.ProcessModel)
-		for _, p := range r {
-			wlName := fmt.Sprintf("%s:%s", p.Workload.Kind, p.Workload.Name)
-
-			if _, ok := wlPrintList[wlName]; !ok && len(workloads) > 0 {
-				continue
-			}
-
-			wl, ok := wlCollections[wlName]
-			if ok {
-				wlCollections[wlName] = append(wl, p)
-			} else {
-				wlCollections[wlName] = []*tetragon.ProcessModel{p}
-			}
-		}
-
-		wlKeys := make([]string, 0, len(wlCollections))
-		for key := range wlCollections {
-			wlKeys = append(wlKeys, key)
-		}
-		sort.Strings(wlKeys)
-
-		for _, key := range wlKeys {
-			wlStr := key
-			wlProcesses := wlCollections[key]
-
-			if wlStr == "" {
-				wlStr = model.HostWorkload
-			}
-
-			wlTree := nsTree.AddBranch(wlStr)
-
-			for _, p := range wlProcesses {
-				path := ""
-				if p.Binary != "" {
-					path = fmt.Sprintf("%s %s:%s %s", p.Parent, p.ParentArgs, p.Binary, p.BinaryArgs)
-				} else {
-					path = fmt.Sprintf(model.WorkloadDestinations)
-				}
-				binaryBranch := wlTree.AddBranch(path)
-
-				zeroDests := make(map[string]treeprint.Tree)
-
-				for _, d := range p.Dest {
-					if d.Port != 0 {
-						continue
-					}
-
-					endptName, dstStr := printDestination(d)
-					stats := printStats(d)
-					compact := fmt.Sprintf("%s[%s]", dstStr, stats)
-					zeroDests[endptName] = binaryBranch.AddBranch(compact)
-				}
-				for _, d := range p.Dest {
-					if d.Port == 0 {
-						continue
-					}
-					endptName, dstStr := printDestination(d)
-					val, ok := zeroDests[endptName]
-					if ok {
-						stats := printStats(d)
-						compact := fmt.Sprintf("%s[%s]", dstStr, stats)
-						val.AddBranch(compact)
-					}
+				for _, conn := range p.Connections {
+					childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d)", model.DestinationNameAppModel(conn.Destination), conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops)
+					binaryBranch.AddBranch(childName)
 				}
 			}
 		}
@@ -295,8 +205,7 @@ func printJSONTree(res *tetragon.GetProcessModelResponse) error {
 	return nil
 }
 
-func printModel(res *tetragon.GetProcessModelResponse) error {
-	appModel := model.ProcessModelToApplicationModel(res)
+func printModel(appModel *appModelV1.ApplicationModelEvent) error {
 	out, err := json.Marshal(appModel)
 	if err != nil {
 		return err
@@ -602,13 +511,15 @@ func printGrpcTree() error {
 		return err
 	}
 
+	appModel := model.ProcessModelToApplicationModel(res)
+
 	switch output {
 	case "tree":
-		return printTree(res)
+		return printTree(appModel)
 	case "json":
 		return printJSONTree(res)
 	case "model":
-		return printModel(res)
+		return printModel(appModel)
 	default:
 		return fmt.Errorf("invalid output format: %s", output)
 	}
