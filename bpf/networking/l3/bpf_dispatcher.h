@@ -62,7 +62,6 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 	if (!ip6)
 		return SK_PASS;
 
-#ifndef SKB_LOAD_BYTES
 	if (data + sizeof(struct iphdr) > data_end) {
 		if (skb_load_bytes(skb, 0, &stor, sizeof(struct iphdr)) < 0) {
 			emit_ip_error_event(skb, 0, cookie, false, 0, 1, 0, IP_ERROR_INET_READ_VER);
@@ -72,15 +71,6 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 	} else {
 		ip = (struct iphdr *)data;
 	}
-#else
-	{
-		if (skb_load_bytes(skb, 0, &stor, sizeof(struct iphdr)) < 0) {
-			emit_ip_error_event(skb, 0, cookie, false, 0, 1, 0, IP_ERROR_INET_READ_VER);
-			return SK_PASS;
-		}
-		ip = &stor;
-	}
-#endif
 
 	cfg = (struct cgroup_dispatch_cfg *)map_lookup_elem(&tg_cgroup_protocol_cfg_map, &zero);
 	if (!cfg)
