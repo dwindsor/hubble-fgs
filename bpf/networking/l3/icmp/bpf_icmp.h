@@ -157,33 +157,34 @@ send_icmp_event(void *ctx, struct msg_icmp_event *val, u64 *cookie, struct sk_bu
 				 sizeof(struct msg_icmp_event));
 }
 
-#ifdef SKB_LOAD_BYTES
-static inline __attribute__((always_inline))
-#endif
-int
-icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+int icmp_handler_ip4(struct __sk_buff *skb, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
 	u8 icmp_data_store[ICMP_HDR_LEN * 2];
 	struct msg_icmp_event *val;
 	struct iphdr rep_ip4_store;
+	struct handler_vars *vars;
 	struct iphdr *rep_ip4 = 0;
 	struct tcphdr tcp_store;
 	struct tcphdr *tcp = 0;
 	bool skb_read = false;
+	struct iphdr *ip;
 	u8 *rep_ptr = 0;
 	u8 *icmp_data;
 	int zero = 0;
 
+	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	if (!vars)
+		return SK_PASS;
+
+	if (data + sizeof(struct iphdr) > data_end)
+		ip = &vars->ip;
+	else
+		ip = (struct iphdr *)data;
+
 	val = (struct msg_icmp_event *)map_lookup_elem(&icmp_event_heap, &zero);
 	if (!val)
-		return SK_PASS;
-
-	if (unlikely(!ip))
-		return SK_PASS;
-
-	if (unlikely(!cookie))
 		return SK_PASS;
 
 	val->tuple.send = send;
@@ -199,7 +200,7 @@ icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 	} else {
 		if (skb_load_bytes(skb, ip->ihl * sizeof(u32), icmp_data_store, sizeof(icmp_data_store)) < 0) {
 			// TBD: JF Fix the compiler please.
-			u64 c = *cookie; // compiler + verifier oddity to coerce this into a correct verifier type
+			u64 c = vars->cookie; // compiler + verifier oddity to coerce this into a correct verifier type
 			emit_ip_error_event(skb, ip, &c, false, ip->version, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
 			return SK_PASS;
 		}
@@ -279,7 +280,7 @@ icmp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 	if (val->icmp_type == ICMP_REDIRECT)
 		val->icmp_gateway[0] = *(__u32 *)(val->icmp_data);
 
-	send_icmp_event(skb, val, cookie, 0, 0, 0);
+	send_icmp_event(skb, val, &vars->cookie, 0, 0, 0);
 	return SK_PASS;
 }
 

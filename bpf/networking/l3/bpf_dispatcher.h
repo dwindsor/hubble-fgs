@@ -81,7 +81,7 @@ tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 		if (ip->protocol == IPPROTO_UDP && cfg->udp4)
 			ret = udp_handler_ip4(skb, send);
 		else if (ip->protocol == IPPROTO_ICMP && cfg->icmp4)
-			ret = icmp_handler_ip4(skb, ip, &vars->cookie, send);
+			ret = icmp_handler_ip4(skb, send);
 		else if (ip->protocol == IPPROTO_TCP && cfg->tcp4)
 			ret = tcp_handler_ip4(skb, ip, &vars->cookie, send);
 		break;
