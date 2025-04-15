@@ -450,7 +450,6 @@ func getNamespaceLabels(ns string) map[string]string {
 func addNamespaceLabels(epPod *v1alpha1.PodInfo, ml *matchLabels.LabelSet) error {
 	ns := epPod.Namespace
 	labels := getNamespaceLabels(ns)
-
 	for k, v := range labels {
 		tnpKey := fmt.Sprintf("_tnp_%s", k)
 		ml.Label[tnpKey] = v
@@ -459,8 +458,11 @@ func addNamespaceLabels(epPod *v1alpha1.PodInfo, ml *matchLabels.LabelSet) error
 }
 
 func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
-	ml := &matchLabels.LabelSet{
-		Label: epPod.Labels,
+	ml := &matchLabels.LabelSet{}
+	if epPod.Labels == nil {
+		ml.Label = make(map[string]string, 1)
+	} else {
+		ml.Label = epPod.Labels
 	}
 
 	addNamespaceLabels(epPod, ml)
