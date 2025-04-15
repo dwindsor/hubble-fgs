@@ -24,7 +24,7 @@ type policyStory struct {
 var policyLibrary map[string]policyStory
 
 func addTetragonNetworkPolicy(obj any) {
-	var policy []*types.TetragonNetworkPolicy
+	var policies []*types.TetragonNetworkPolicy
 	var crd *v1alpha1.TetragonNetworkPolicy
 	var crdNS *v1alpha1.TetragonNetworkPolicyNamespaced
 	var err error
@@ -39,7 +39,7 @@ func addTetragonNetworkPolicy(obj any) {
 	case *v1alpha1.TetragonNetworkPolicy:
 		name = np.Name
 		crd = np
-		policy, err = ToTetragonNetworkPolicy(np)
+		policies, err = ToTetragonNetworkPolicies(np)
 		if err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"network-policy-name":      np.ObjectMeta.Name,
@@ -63,39 +63,26 @@ func addTetragonNetworkPolicy(obj any) {
 		return
 	}
 
-	_, ok := policyLibrary[name]
-	if ok {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"title":         name,
-			"policy":        policy,
-			"network rules": len(policy),
-		}).Warn("addNetworkPolicy: aborted, policy create would overwrite existing network policy")
-		return
-	}
-
-	existTest := fmt.Sprintf("__%s", name)
-	_, ok = policyLibrary[existTest]
-	if ok {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"title":         existTest,
-			"policy":        policy,
-			"network rules": len(policy),
-		}).Warn("addNetworkPolicy: aborted, policy create would overwrite existing network policy")
-		return
-	}
-
-	dns.CreateMatchLabelsPolicySet(policy)
-	policyLibrary[name] = policyStory{
+	err = loadPolicy(policyStory{
 		title:       name,
 		crdPolicy:   crd,
 		crdNSPolicy: crdNS,
-		irPolicy:    policy,
+		irPolicy:    policies,
+	})
+
+	if err != nil {
+		logger.GetLogger().WithError(err).WithFields(logrus.Fields{
+			"title":         name,
+			"policy":        policies,
+			"network rules": len(policies),
+		}).Warn("addNetworkPolicy: aborted")
+		return
 	}
 
 	logger.GetLogger().WithFields(logrus.Fields{
 		"title":         name,
-		"policy":        policy,
-		"network rules": len(policy),
+		"policy":        policies,
+		"network rules": len(policies),
 	}).Info("addNetworkPolicy: completed successfully")
 }
 
@@ -112,7 +99,7 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 	case *v1alpha1.TetragonNetworkPolicy:
 		newName = np.Name
 		crd = np
-		newPolicy, err = ToTetragonNetworkPolicy(np)
+		newPolicy, err = ToTetragonNetworkPolicies(np)
 		if err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"network-policy-name":      np.ObjectMeta.Name,
@@ -272,4 +259,25 @@ func AddTetragonNetworkPolicyInformer(_ context.Context, w watcher.Watcher) erro
 
 func init() {
 	policyLibrary = make(map[string]policyStory)
+}
+
+func loadPolicy(policyStory policyStory) error {
+	_, exist := policyLibrary[policyStory.title]
+	if exist {
+		return fmt.Errorf("loading policy story %s would overwrite existing network policy", policyStory.title)
+	}
+
+	existTest := fmt.Sprintf("__%s", policyStory.title)
+	_, exist = policyLibrary[existTest]
+	if exist {
+		return fmt.Errorf("loading policy story %s would overwrite existing network policy", policyStory.title)
+	}
+
+	err := dns.CreateMatchLabelsPolicySet(policyStory.irPolicy)
+	if err != nil {
+		return fmt.Errorf("failed create match label from policy set %s: %w", policyStory.title, err)
+	}
+	policyLibrary[policyStory.title] = policyStory
+
+	return nil
 }

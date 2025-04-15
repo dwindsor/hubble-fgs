@@ -62,6 +62,16 @@ func addNetworkPolicy(_ context.Context, file string) error {
 		return nil
 	}
 
+	policies, err := ToTetragonNetworkPolicies(np)
+	if err != nil {
+		return fmt.Errorf("failed to convert TetragonNetworkPolicy %s to internal representation: %w", np.Name, err)
+	}
+
+	err = loadPolicy(policyStory{title: np.Name, crdPolicy: np, crdNSPolicy: nil, irPolicy: policies})
+	if err != nil {
+		return fmt.Errorf("failed to load TetragonNetworkPolicy: %w", err)
+	}
+
 	logger.GetLogger().WithFields(logrus.Fields{
 		"TetragonNetworkPolicy": file,
 		"metadata.name":         np.Name,

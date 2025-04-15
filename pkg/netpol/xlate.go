@@ -9,7 +9,7 @@ import (
 )
 
 // Normalize K8s Tetragon Network Policy into internal representation
-func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.TetragonNetworkPolicy, error) {
+func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.TetragonNetworkPolicy, error) {
 	policy := []*types.TetragonNetworkPolicy{}
 	name := np.Name
 
@@ -52,7 +52,7 @@ func ToTetragonNetworkPolicy(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tetra
 
 	for _, r := range np.Spec.Rules {
 		if r.Hook != "connect" {
-			return nil, fmt.Errorf("unsupporte hook type (%s)", r.Hook)
+			return nil, fmt.Errorf("unsupported hook type (%s)", r.Hook)
 		}
 
 		enforce := &types.TetragonEnforceAction{}
