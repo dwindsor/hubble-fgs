@@ -135,7 +135,7 @@ func (state *PolicyState) DestroyState() {
 //
 // So we are scaling with the hash operation and (2 * # policy * avg(label length)
 // roughly. Run ./go test --test.bench -test.run BenchPodRemove to get a real idea.
-func (state *PolicyState) __PodRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 	var records []*record.DatapathRecord
 
 	ml := &matchLabels.LabelSet{
@@ -335,7 +335,7 @@ func PodRemove(pod *v1alpha1.PodInfo) error {
 	state.Reader.RLock()
 	defer state.Reader.RUnlock()
 
-	records, err := state.__PodRemove(pod)
+	records, err := state.podRemove(pod)
 	if err != nil {
 		return err
 	}
@@ -457,7 +457,7 @@ func addNamespaceLabels(epPod *v1alpha1.PodInfo, ml *matchLabels.LabelSet) error
 	return nil
 }
 
-func (state *PolicyState) __PodAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) podAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 	ml := &matchLabels.LabelSet{}
 	if epPod.Labels == nil {
 		ml.Label = make(map[string]string, 1)
@@ -504,7 +504,7 @@ func PodAdd(epPod *v1alpha1.PodInfo) error {
 	state.Reader.RLock()
 	defer state.Reader.RUnlock()
 
-	records, err := state.__PodAdd(epPod)
+	records, err := state.podAdd(epPod)
 	if err != nil {
 		return err
 	}

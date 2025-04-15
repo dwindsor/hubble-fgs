@@ -128,7 +128,7 @@ func (state *PolicyState) RemoveNetworkPolicy(name string, policy *types.Tetrago
 	return state.progRemoveNetworkPolicy(name, src, d)
 }
 
-func (state *PolicyState) __RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, []*record.DatapathRecord, error) {
+func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, []*record.DatapathRecord, error) {
 	state.SrcLock.Lock()
 	defer state.SrcLock.Unlock()
 
@@ -174,7 +174,7 @@ func (state *PolicyState) __RemoveMatchLabelNetworkPolicy(uid string, policy *ty
 }
 
 func (state *PolicyState) RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
-	zombieSet, updateSet, err := state.__RemoveMatchLabelNetworkPolicy(uid, policy)
+	zombieSet, updateSet, err := state.removeMatchLabelNetworkPolicy(uid, policy)
 	if err != nil {
 		return err
 	}
@@ -459,7 +459,7 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 	return allPolicy
 }
 
-func __CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
+func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
 	// Entry point to Policy state create
 	// Collect existing policy set
 	currentState := GetRealizedState()
@@ -469,7 +469,7 @@ func __CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*Polic
 	calculatorState := New()
 
 	for _, p := range currentState.localPods {
-		r, err := calculatorState.__PodAdd(p)
+		r, err := calculatorState.podAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -477,7 +477,7 @@ func __CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*Polic
 	}
 
 	for _, p := range currentState.remotePods {
-		r, err := calculatorState.__PodAdd(p)
+		r, err := calculatorState.podAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -509,14 +509,14 @@ func __CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*Polic
 	// Walk existing pods and create new []record from new policy
 	addSet := []*record.DatapathRecord{}
 	for _, p := range currentState.localPods {
-		r, err := s.__PodAdd(p)
+		r, err := s.podAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		addSet = append(addSet, r...)
 	}
 	for _, p := range currentState.remotePods {
-		r, err := s.__PodAdd(p)
+		r, err := s.podAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -533,7 +533,7 @@ func CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) error {
 	state.Reader.Lock()
 	defer state.Reader.Unlock()
 
-	newState, addSet, removeSet, err := __CreateMatchLabelsPolicySet(policy)
+	newState, addSet, removeSet, err := createMatchLabelsPolicySet(policy)
 	if err != nil {
 		return err
 	}
