@@ -83,7 +83,7 @@ tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 		else if (ip->protocol == IPPROTO_ICMP && cfg->icmp4)
 			ret = icmp_handler_ip4(skb, send);
 		else if (ip->protocol == IPPROTO_TCP && cfg->tcp4)
-			ret = tcp_handler_ip4(skb, ip, &vars->cookie, send);
+			ret = tcp_handler_ip4(skb, send);
 		break;
 	case 6:
 		if (skb_load_bytes(skb, 0, ip6, sizeof(struct ipv6hdr)) < 0) {

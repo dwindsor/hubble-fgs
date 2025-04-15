@@ -272,24 +272,34 @@ tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 	return SK_PASS;
 }
 
-#ifdef SKB_LOAD_BYTES
-static inline __attribute__((always_inline))
-#endif
-int
-tcp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+int tcp_handler_ip4(struct __sk_buff *skb, int send)
 {
+	void *data_end = (void *)(long)skb->data_end;
+	void *data = (long *)(long)skb->data;
+	struct handler_vars *vars;
+	struct iphdr *ip;
+	int zero = 0;
+
+	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	if (!vars)
+		return SK_PASS;
+
+	if (data + sizeof(struct iphdr) > data_end)
+		ip = &vars->ip;
+	else
+		ip = (struct iphdr *)data;
+
 	if (send)
 #ifndef NO_CGROUP_PROBE_READ
-		return tcp_handler_send(skb, cookie);
+		return tcp_handler_send(skb, &vars->cookie);
 #else
 		return SK_PASS;
 #endif
 
 #ifndef NO_CGROUP_PROBE_READ
-	if (ip)
-		tcp_check_fin_rx(skb, ip, ip->ihl * sizeof(__u32), cookie, false);
+	tcp_check_fin_rx(skb, ip, ip->ihl * sizeof(__u32), &vars->cookie, false);
 #endif
-	return tcp_handler_ip4_recv(skb, ip, cookie);
+	return tcp_handler_ip4_recv(skb, ip, &vars->cookie);
 }
 
 #ifdef SKB_LOAD_BYTES
