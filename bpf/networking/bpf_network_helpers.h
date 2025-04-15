@@ -86,6 +86,7 @@ struct {
 
 struct handler_vars {
 	struct iphdr ip;
+	struct ipv6hdr ip6;
 	u64 cookie;
 };
 

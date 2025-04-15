@@ -20,20 +20,6 @@ struct {
 	__uint(max_entries, 1);
 } tg_cgroup_protocol_cfg_map SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, u64);
-	__uint(max_entries, 1);
-} cgroup_cookie_heap SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct ipv6hdr);
-	__uint(max_entries, 1);
-} ipv6hdr_heap SEC(".maps");
-
 static inline __attribute__((always_inline)) int
 tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 {
@@ -41,7 +27,6 @@ tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 	void *data = (long *)(long)skb->data;
 	struct cgroup_dispatch_cfg *cfg;
 	struct handler_vars *vars;
-	struct ipv6hdr *ip6;
 	int ret = SK_PASS;
 	struct iphdr *ip;
 	u16 payload_off;
@@ -58,10 +43,6 @@ tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 		emit_ip_error_event(skb, 0, &vars->cookie, false, 0, 1, 0, IP_ERROR_INET_NO_COOKIE);
 		return SK_PASS;
 	}
-
-	ip6 = map_lookup_elem(&ipv6hdr_heap, &zero);
-	if (!ip6)
-		return SK_PASS;
 
 	if (data + sizeof(struct iphdr) > data_end) {
 		if (skb_load_bytes(skb, 0, &vars->ip, sizeof(struct iphdr)) < 0) {
@@ -86,20 +67,20 @@ tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 			ret = tcp_handler_ip4(skb, send);
 		break;
 	case 6:
-		if (skb_load_bytes(skb, 0, ip6, sizeof(struct ipv6hdr)) < 0) {
+		if (skb_load_bytes(skb, 0, &vars->ip6, sizeof(struct ipv6hdr)) < 0) {
 			emit_ip_error_event(skb, 0, &vars->cookie, true, ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
 			return SK_PASS;
 		}
-		protocol = get_ip6_proto(&payload_off, ip6, 0, skb, data, data_end, false, 0);
+		protocol = get_ip6_proto(&payload_off, &vars->ip6, 0, skb, data, data_end, false, 0);
 		if (protocol == IP_HEADER_ERROR) {
-			emit_ip_error_event(skb, ip6, &vars->cookie, true, ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
+			emit_ip_error_event(skb, &vars->ip6, &vars->cookie, true, ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
 			return SK_PASS;
 		} else if (protocol == IPPROTO_UDP && cfg->udp6) {
-			udp_handler_ip6(skb, ip6, &vars->cookie, payload_off, send);
+			udp_handler_ip6(skb, &vars->ip6, &vars->cookie, payload_off, send);
 		} else if (protocol == IPPROTO_TCP && cfg->tcp6) {
-			ret = tcp_handler_ip6(skb, ip6, &vars->cookie, payload_off, send);
+			ret = tcp_handler_ip6(skb, &vars->ip6, &vars->cookie, payload_off, send);
 		} else if (protocol == IPPROTO_ICMP6 && cfg->icmp6) {
-			icmp_handler_ip6(skb, ip6, &vars->cookie, payload_off, send);
+			icmp_handler_ip6(skb, &vars->ip6, &vars->cookie, payload_off, send);
 		}
 		break;
 	}
