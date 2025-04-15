@@ -376,7 +376,7 @@ func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess 
 			syscalls, err := getSyscallInfo(process.Abi, process.Syscalls)
 			if err != nil {
 				if !warnOnce {
-					logger.GetLogger().WithError(err).Warnf("failed to populate system call data for process")
+					logger.GetLogger().WithError(err).Debug("failed to populate system call data for process")
 					warnOnce = true
 				}
 			}
