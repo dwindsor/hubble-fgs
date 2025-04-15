@@ -98,5 +98,5 @@ func s3GetLastKey(ctx context.Context, s3Client *s3.Client, bucket, lastKey stri
 	if len(objKeys) > 0 {
 		return objKeys[len(objKeys)-1], nil
 	}
-	return "", nil
+	return "", fmt.Errorf("bucket empty, no objects found")
 }
