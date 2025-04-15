@@ -61,8 +61,8 @@ func calculateAction(a *types.TetragonNetworkAction) (*record.DatapathAction, er
 	}
 
 	return &record.DatapathAction{
-		Quota: quota,
-		Reset: reset,
-		Deny:  deny,
+		QuotaLimit: quota,
+		ResetTime:  reset,
+		Action:     deny,
 	}, nil
 }

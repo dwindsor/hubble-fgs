@@ -53,9 +53,9 @@ func getRecordSlice() []*DatapathRecord {
 	}
 
 	action := &DatapathAction{
-		Quota: uint64(1),
-		Reset: uint64(1),
-		Deny:  uint64(1),
+		QuotaLimit: uint64(1),
+		ResetTime:  uint64(1),
+		Action:     uint64(1),
 	}
 
 	e1 := DatapathEndpoint{
@@ -173,9 +173,9 @@ func BenchmarkDiffRecord(b *testing.B) {
 	}
 
 	action := &DatapathAction{
-		Quota: uint64(1),
-		Reset: uint64(1),
-		Deny:  uint64(1),
+		QuotaLimit: uint64(1),
+		ResetTime:  uint64(1),
+		Action:     uint64(1),
 	}
 
 	record := []*DatapathRecord{}
@@ -230,9 +230,9 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 	}
 
 	action := &DatapathAction{
-		Quota: uint64(1),
-		Reset: uint64(1),
-		Deny:  uint64(1),
+		QuotaLimit: uint64(1),
+		ResetTime:  uint64(1),
+		Action:     uint64(1),
 	}
 
 	record := []*DatapathRecord{}

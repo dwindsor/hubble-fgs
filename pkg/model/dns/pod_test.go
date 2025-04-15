@@ -328,16 +328,16 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	assert.NotZero(t, r1[0].Src.CgroupId)
 	assert.Equal(t, endpoint.DnsType, r1[0].Endpoint.EP.Type)
 	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
-	assert.Equal(t, r1[0].Action.Deny, record.PolicyDeny)
+	assert.Equal(t, r1[0].Action.Action, record.PolicyDeny)
 
 	assert.NotZero(t, r1[1].Src.CgroupId)
 	assert.Equal(t, endpoint.DnsType, r1[1].Endpoint.EP.Type)
 	assert.Equal(t, "test.com", r1[1].Endpoint.EP.Dns)
-	assert.Equal(t, r1[1].Action.Deny, record.PolicyDeny)
+	assert.Equal(t, r1[1].Action.Action, record.PolicyDeny)
 
 	assert.NotZero(t, r1[2].Src.CgroupId)
 	assert.Nil(t, r1[2].Endpoint.EP)
-	assert.Equal(t, r1[2].Action.Deny, record.PolicyAllow)
+	assert.Equal(t, r1[2].Action.Action, record.PolicyAllow)
 
 	// Remove pod and policy
 	delPod(t, srcId)
@@ -387,20 +387,20 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	assert.NotZero(t, r1[0].Src.CgroupId)
 	assert.Equal(t, endpoint.DnsType, r1[0].Endpoint.EP.Type)
 	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
-	assert.Equal(t, r1[0].Action.Deny, record.PolicyAllow)
+	assert.Equal(t, r1[0].Action.Action, record.PolicyAllow)
 
 	assert.NotZero(t, r1[1].Src.CgroupId)
 	assert.Equal(t, endpoint.DnsType, r1[1].Endpoint.EP.Type)
 	assert.Equal(t, "test.com", r1[1].Endpoint.EP.Dns)
-	assert.Equal(t, r1[1].Action.Deny, record.PolicyAllow)
+	assert.Equal(t, r1[1].Action.Action, record.PolicyAllow)
 
 	assert.NotZero(t, r1[2].Src.CgroupId)
 	assert.Equal(t, endpoint.PodType, r1[2].Endpoint.EP.Type)
-	assert.Equal(t, r1[2].Action.Deny, record.PolicyAllow)
+	assert.Equal(t, r1[2].Action.Action, record.PolicyAllow)
 
 	assert.NotZero(t, r1[3].Src.CgroupId)
 	assert.Nil(t, r1[3].Endpoint.EP)
-	assert.Equal(t, r1[3].Action.Deny, record.PolicyDeny)
+	assert.Equal(t, r1[3].Action.Action, record.PolicyDeny)
 
 	// Remove pod and policy
 	delPod(t, dstId)

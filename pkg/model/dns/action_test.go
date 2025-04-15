@@ -21,7 +21,7 @@ func TestCalculateDeny(t *testing.T) {
 	}
 	da, err := calculateAction(a)
 	assert.NoError(t, err)
-	assert.Equal(t, record.PolicyDeny, da.Deny)
+	assert.Equal(t, record.PolicyDeny, da.Action)
 }
 
 func TestCalculateNoDeny(t *testing.T) {
@@ -35,7 +35,7 @@ func TestCalculateNoDeny(t *testing.T) {
 	}
 	da, err := calculateAction(a)
 	assert.NoError(t, err)
-	assert.Equal(t, record.PolicyNone, da.Deny)
+	assert.Equal(t, record.PolicyNone, da.Action)
 }
 
 func TestCalculateAllow(t *testing.T) {
@@ -49,5 +49,5 @@ func TestCalculateAllow(t *testing.T) {
 	}
 	da, err := calculateAction(a)
 	assert.NoError(t, err)
-	assert.Equal(t, record.PolicyAllow, da.Deny)
+	assert.Equal(t, record.PolicyAllow, da.Action)
 }

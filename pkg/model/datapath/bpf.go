@@ -97,7 +97,7 @@ func conflictUpdateMap(key *types.DestinationEndpointKey, value *types.Destinati
 
 	lookupValue := &types.DestinationEndpointValue{}
 	if err := dstMap.Lookup(key, lookupValue); err == nil {
-		if lookupValue.TxDeny >= value.TxDeny {
+		if lookupValue.TxAction >= value.TxAction {
 			return nil
 		}
 	}
@@ -107,7 +107,7 @@ func conflictUpdateMap(key *types.DestinationEndpointKey, value *types.Destinati
 
 // This call will destroy key and value they can not be used after this.
 func populateStatEntry(key *types.DestinationEndpointKey, value *types.DestinationEndpointValue) error {
-	value.TxDeny = record.PolicyNone // we want rules for stats, not to impact verdict
+	value.TxAction = record.PolicyNone // we want rules for stats, not to impact verdict
 
 	// 2  (src,  *  , local_id, destination, local_nsid).TX += skb->len
 	if key.DestinationPort != 0 {
@@ -189,11 +189,11 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 
 	value := &types.DestinationEndpointValue{
 		TxQuota:        0,
-		TxLimit:        r.Action.Quota,
+		TxLimit:        r.Action.QuotaLimit,
 		TxDrops:        0,
-		TxDeny:         r.Action.Deny,
+		TxAction:       r.Action.Action,
 		KtimeLastReset: 0,
-		KtimeTxReset:   r.Action.Reset,
+		KtimeTxReset:   r.Action.ResetTime,
 		TxBytes:        0,
 		RxBytes:        0,
 		Pad0:           0,
@@ -206,14 +206,14 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	lookupValue := &types.DestinationEndpointValue{}
 	err = dstMap.Lookup(key, lookupValue)
 	if err == nil {
-		if !force {
-			if lookupValue.TxDeny >= value.TxDeny {
-				return nil
-			}
-		} else {
-			if lookupValue.TxDeny == value.TxDeny {
-				return nil
-			}
+		// key exist and the action is the same, ignore
+		if lookupValue.TxAction == value.TxAction {
+			return nil
+		}
+		// key exists, we don't force, and the existing action is
+		// "superior" (with order none < allow < deny), ignore
+		if !force && lookupValue.TxAction > value.TxAction {
+			return nil
 		}
 	}
 
@@ -286,7 +286,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 		TxQuota:        0,
 		TxLimit:        0,
 		TxDrops:        0,
-		TxDeny:         0,
+		TxAction:       0,
 		KtimeLastReset: 0,
 		KtimeTxReset:   0,
 		TxBytes:        0,

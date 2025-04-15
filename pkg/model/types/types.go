@@ -50,7 +50,7 @@ type DestinationEndpointValue struct {
 	TxQuota        uint64
 	TxLimit        uint64
 	TxDrops        uint64
-	TxDeny         uint64
+	TxAction       uint64
 	KtimeLastReset uint64
 	KtimeTxReset   uint64
 	TxBytes        uint64
