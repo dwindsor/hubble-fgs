@@ -65,7 +65,7 @@ func addNetworkPolicy(_ context.Context, file string) error {
 	logger.GetLogger().WithFields(logrus.Fields{
 		"TetragonNetworkPolicy": file,
 		"metadata.name":         np.Name,
-	}).Info("Added TetraginNetworkPolicy with success")
+	}).Info("Added TetragonNetworkPolicy with success")
 
 	return nil
 }
