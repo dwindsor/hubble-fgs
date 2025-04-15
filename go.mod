@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.12
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.2
 	github.com/breml/jsondiffprinter v0.0.12
-	github.com/cilium/cilium v1.17.2
+	github.com/cilium/cilium v1.17.3
 	github.com/cilium/ebpf v0.18.0
 	github.com/cilium/lumberjack/v2 v2.4.1
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
@@ -33,8 +33,8 @@ require (
 	github.com/miekg/dns v1.1.64
 	github.com/operator-framework/api v0.30.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.81.0
-	github.com/prometheus/client_golang v1.21.1
-	github.com/prometheus/client_model v0.6.1
+	github.com/prometheus/client_golang v1.22.0
+	github.com/prometheus/client_model v0.6.2
 	github.com/rivo/tview v0.0.0-20250330220935-949945f8d922
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
@@ -42,7 +42,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/sryoya/protorand v0.0.0-20250114120907-8c1a8e3138f2
 	github.com/stretchr/testify v1.10.0
-	github.com/vishvananda/netlink v1.3.1-0.20250403053213-38b12299c14f
+	github.com/vishvananda/netlink v1.3.1-0.20250414221550-d85a66b0d8f7
 	github.com/vishvananda/netns v0.0.5
 	github.com/wI2L/jsondiff v0.6.1
 	github.com/xlab/treeprint v1.2.0
@@ -52,7 +52,7 @@ require (
 	golang.org/x/sys v0.32.0
 	golang.org/x/time v0.11.0
 	google.golang.org/api v0.228.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb
+	google.golang.org/genproto/googleapis/api v0.0.0-20250407143221-ac9807e6c755
 	google.golang.org/grpc v1.71.1
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1
@@ -126,7 +126,7 @@ require (
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/isovalent/metricstool v0.1.3 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
-	github.com/klauspost/compress v1.17.11 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mackerelio/go-osstat v0.2.5 // indirect
@@ -162,7 +162,7 @@ require (
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250407143221-ac9807e6c755 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
