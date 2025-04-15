@@ -449,8 +449,13 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 			cgroupEgressProg, cgroupIngressProg, udpBindProg,
 		})...)
 		tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			cgroupEgressProg, cgroupIngressProg,
+			cgroupIngressProg,
 		})...)
+		if kernels.MinKernelVersion("5.5.0") {
+			tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
+				cgroupEgressProg,
+			})...)
+		}
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			cgroupEgressProg, cgroupIngressProg, udpBindProg,
 		})...)

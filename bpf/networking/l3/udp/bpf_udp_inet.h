@@ -380,8 +380,7 @@ inet_handler_lazy_kp_emit_error:
 	emit_ip_error_event(ctx, ip, &cookie, ipv6, packetver, send + 1, 0, err);
 }
 
-static inline __attribute__((always_inline)) int
-udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
+int udp_handler_ip4(struct __sk_buff *skb, int send)
 {
 	size_t ipopts = sizeof(struct iphdr) + sizeof(struct timestamp_option);
 	void *data_end = (void *)(long)skb->data_end;
@@ -391,15 +390,22 @@ udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 	bool dns_send_userspace = true;
 	int payload_sz, payload_off;
 	struct udphdr *udp, udptmp;
+	struct handler_vars *vars;
+	struct iphdr *ip;
 	u8 udp_off;
 	int err;
 
 	if (!skb)
 		return SK_PASS;
-	if (!ip)
+
+	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	if (!vars)
 		return SK_PASS;
-	if (!cookie)
-		return SK_PASS;
+
+	if (data + sizeof(struct iphdr) > data_end)
+		ip = &vars->ip;
+	else
+		ip = (struct iphdr *)data;
 
 	if (ip->ihl >= ipopts_b) {
 		/* Packet has at least enough space for the Timestamp IP Option,
@@ -417,7 +423,7 @@ udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 			err = skb_load_bytes(skb, sizeof(struct iphdr), &ipopt, sizeof(struct timestamp_option));
 			if (err < 0) {
 				emit_ip_error_event(
-					skb, &ip, cookie, false,
+					skb, &ip, &vars->cookie, false,
 					false, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);
 			} else {
 				if (ipopt.type == IPO_TYPE &&
@@ -437,7 +443,7 @@ udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 	} else {
 		err = skb_load_bytes(skb, udp_off, &udptmp, sizeof(struct udphdr));
 		if (err < 0) {
-			emit_ip_error_event(skb, ip, cookie, false,
+			emit_ip_error_event(skb, ip, &vars->cookie, false,
 					    false, send + 1, 0, IP_ERROR_INET_READ_UDP);
 			return SK_PASS;
 		}
@@ -449,10 +455,10 @@ udp_handler_ip4(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, int send)
 	if (udp->source == bpf_htons(DNS_PORT) && bpf_dns_parser_enabled())
 		dns_send_userspace = !!parse_dns(skb, payload_off);
 #endif
-	udp_send(skb, 0, ip, false, ts_opt, udp, cookie,
+	udp_send(skb, 0, ip, false, ts_opt, udp, &vars->cookie,
 		 payload_off,
 		 payload_sz, send, dns_send_userspace);
-	udp_watermarks(skb, cookie, ip, payload_sz, false, send);
+	udp_watermarks(skb, &vars->cookie, ip, payload_sz, false, send);
 	return SK_PASS;
 }
 

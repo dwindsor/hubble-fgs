@@ -34,27 +34,28 @@ struct {
 	__uint(max_entries, 1);
 } ipv6hdr_heap SEC(".maps");
 
-int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
+static inline __attribute__((always_inline)) int
+tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
 	struct cgroup_dispatch_cfg *cfg;
+	struct handler_vars *vars;
 	struct ipv6hdr *ip6;
-	struct iphdr stor;
 	int ret = SK_PASS;
 	struct iphdr *ip;
 	u16 payload_off;
 	int zero = 0;
-	u64 *cookie;
 	u8 protocol;
 
-	cookie = (u64 *)map_lookup_elem(&cgroup_cookie_heap, &zero);
-	if (!cookie)
+	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	if (!vars)
 		return SK_PASS;
-	write_cookie(cookie, (u64)skb->sk);
 
-	if (!*cookie) {
-		emit_ip_error_event(skb, 0, cookie, false, 0, 1, 0, IP_ERROR_INET_NO_COOKIE);
+	write_cookie(&vars->cookie, (u64)skb->sk);
+
+	if (!vars->cookie) {
+		emit_ip_error_event(skb, 0, &vars->cookie, false, 0, 1, 0, IP_ERROR_INET_NO_COOKIE);
 		return SK_PASS;
 	}
 
@@ -63,14 +64,13 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 		return SK_PASS;
 
 	if (data + sizeof(struct iphdr) > data_end) {
-		if (skb_load_bytes(skb, 0, &stor, sizeof(struct iphdr)) < 0) {
-			emit_ip_error_event(skb, 0, cookie, false, 0, 1, 0, IP_ERROR_INET_READ_VER);
+		if (skb_load_bytes(skb, 0, &vars->ip, sizeof(struct iphdr)) < 0) {
+			emit_ip_error_event(skb, 0, &vars->cookie, false, 0, 1, 0, IP_ERROR_INET_READ_VER);
 			return SK_PASS;
 		}
-		ip = &stor;
-	} else {
+		ip = &vars->ip;
+	} else
 		ip = (struct iphdr *)data;
-	}
 
 	cfg = (struct cgroup_dispatch_cfg *)map_lookup_elem(&tg_cgroup_protocol_cfg_map, &zero);
 	if (!cfg)
@@ -79,27 +79,27 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 	switch (ip->version) {
 	case 4:
 		if (ip->protocol == IPPROTO_UDP && cfg->udp4)
-			ret = udp_handler_ip4(skb, ip, cookie, send);
+			ret = udp_handler_ip4(skb, send);
 		else if (ip->protocol == IPPROTO_ICMP && cfg->icmp4)
-			ret = icmp_handler_ip4(skb, ip, cookie, send);
+			ret = icmp_handler_ip4(skb, ip, &vars->cookie, send);
 		else if (ip->protocol == IPPROTO_TCP && cfg->tcp4)
-			ret = tcp_handler_ip4(skb, ip, cookie, send);
+			ret = tcp_handler_ip4(skb, ip, &vars->cookie, send);
 		break;
 	case 6:
 		if (skb_load_bytes(skb, 0, ip6, sizeof(struct ipv6hdr)) < 0) {
-			emit_ip_error_event(skb, 0, cookie, true, ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
+			emit_ip_error_event(skb, 0, &vars->cookie, true, ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
 			return SK_PASS;
 		}
 		protocol = get_ip6_proto(&payload_off, ip6, 0, skb, data, data_end, false, 0);
 		if (protocol == IP_HEADER_ERROR) {
-			emit_ip_error_event(skb, ip6, cookie, true, ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
+			emit_ip_error_event(skb, ip6, &vars->cookie, true, ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
 			return SK_PASS;
 		} else if (protocol == IPPROTO_UDP && cfg->udp6) {
-			udp_handler_ip6(skb, ip6, cookie, payload_off, send);
+			udp_handler_ip6(skb, ip6, &vars->cookie, payload_off, send);
 		} else if (protocol == IPPROTO_TCP && cfg->tcp6) {
-			ret = tcp_handler_ip6(skb, ip6, cookie, payload_off, send);
+			ret = tcp_handler_ip6(skb, ip6, &vars->cookie, payload_off, send);
 		} else if (protocol == IPPROTO_ICMP6 && cfg->icmp6) {
-			icmp_handler_ip6(skb, ip6, cookie, payload_off, send);
+			icmp_handler_ip6(skb, ip6, &vars->cookie, payload_off, send);
 		}
 		break;
 	}

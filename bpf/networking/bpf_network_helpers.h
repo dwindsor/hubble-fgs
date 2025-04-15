@@ -84,6 +84,18 @@ struct {
 	__uint(max_entries, 1);
 } ip_error_event_heap SEC(".maps");
 
+struct handler_vars {
+	struct iphdr ip;
+	u64 cookie;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct handler_vars);
+	__uint(max_entries, 1);
+} dispatcher_heap SEC(".maps");
+
 static inline __attribute__((always_inline)) void
 get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk)
 {
