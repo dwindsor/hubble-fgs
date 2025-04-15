@@ -139,7 +139,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 	var records []*record.DatapathRecord
 
 	ml := &matchLabels.LabelSet{
-		Label: pod.Labels,
+		Labels: pod.Labels,
 	}
 
 	// Remove datapath entries with {subjects} -> pod. This requires two steps
@@ -452,7 +452,7 @@ func addNamespaceLabels(epPod *v1alpha1.PodInfo, ml *matchLabels.LabelSet) error
 	labels := getNamespaceLabels(ns)
 	for k, v := range labels {
 		tnpKey := fmt.Sprintf("_tnp_%s", k)
-		ml.Label[tnpKey] = v
+		ml.Labels[tnpKey] = v
 	}
 	return nil
 }
@@ -460,9 +460,9 @@ func addNamespaceLabels(epPod *v1alpha1.PodInfo, ml *matchLabels.LabelSet) error
 func (state *PolicyState) podAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 	ml := &matchLabels.LabelSet{}
 	if epPod.Labels == nil {
-		ml.Label = make(map[string]string, 1)
+		ml.Labels = make(map[string]string, 1)
 	} else {
-		ml.Label = epPod.Labels
+		ml.Labels = epPod.Labels
 	}
 
 	addNamespaceLabels(epPod, ml)

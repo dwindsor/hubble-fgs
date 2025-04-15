@@ -10,7 +10,7 @@ import (
 
 type LabelSet struct {
 	Name      string
-	Label     map[string]string
+	Labels    map[string]string
 	Policy    *types.TetragonNetworkPolicy
 	Endpoints []*endpoint.Endpoint
 	Subjects  []*types.ProcessTreeKey
@@ -18,7 +18,7 @@ type LabelSet struct {
 }
 
 func (l *LabelSet) GetLabels() map[string]string {
-	return l.Label
+	return l.Labels
 }
 
 func (l *LabelSet) GetPolicy() *types.TetragonNetworkPolicy {
@@ -26,11 +26,11 @@ func (l *LabelSet) GetPolicy() *types.TetragonNetworkPolicy {
 }
 
 func (l *LabelSet) Size() int {
-	return len(l.Label)
+	return len(l.Labels)
 }
 
 func (l *LabelSet) Subset(set map[string]string) bool {
-	for k, v := range l.Label {
+	for k, v := range l.Labels {
 		value, ok := set[k]
 		if !ok {
 			return false
@@ -49,7 +49,7 @@ func (l *LabelSet) ParseEquals(ml []string) {
 		if len(e) != 2 {
 			continue
 		}
-		l.Label[e[0]] = e[1]
+		l.Labels[e[0]] = e[1]
 	}
 }
 
@@ -65,7 +65,7 @@ type PolicyList map[string]*LabelSet
 
 func (policy PolicyList) Exists(l *LabelSet) bool {
 	for _, p := range policy {
-		if p.Subset(l.Label) {
+		if p.Subset(l.Labels) {
 			return true
 		}
 	}
@@ -85,7 +85,7 @@ func (policy PolicyList) Collection(l *LabelSet) []*LabelSet {
 	col := []*LabelSet{}
 
 	for _, p := range policy {
-		if p.Subset(l.Label) {
+		if p.Subset(l.Labels) {
 			col = append(col, p)
 		}
 	}

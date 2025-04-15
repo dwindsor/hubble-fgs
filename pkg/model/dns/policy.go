@@ -138,7 +138,7 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *type
 	var afterSubjs []*record.DatapathRecord
 
 	subjectLabels := &matchLabels.LabelSet{
-		Label:  policy.Subject.MatchLabelsEqual,
+		Labels: policy.Subject.MatchLabelsEqual,
 		Policy: policy,
 	}
 
@@ -396,7 +396,7 @@ func (state *PolicyState) CreateDstMatchLabelsPolicy(uid string, policy *types.T
 
 	ls := &matchLabels.LabelSet{
 		Name:   uid,
-		Label:  policy.Destination.Labels.Equal,
+		Labels: policy.Destination.Labels.Equal,
 		Policy: policy,
 		Ports:  policy.Destination.Ports,
 	}
@@ -412,7 +412,7 @@ func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.T
 
 	ls := &matchLabels.LabelSet{
 		Name:   uid,
-		Label:  policy.Subject.MatchLabelsEqual,
+		Labels: policy.Subject.MatchLabelsEqual,
 		Policy: policy,
 		Ports:  policy.Destination.Ports,
 	}

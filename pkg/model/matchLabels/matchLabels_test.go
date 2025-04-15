@@ -17,18 +17,18 @@ func TestGetLabels(t *testing.T) {
 	netpol := &types.TetragonNetworkPolicy{}
 	s1 := &LabelSet{
 		Name:   "netpol",
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
 
-	s1.Label["A"] = "a"
-	s1.Label["B"] = "b"
-	s1.Label["C"] = "c"
-	s1.Label["D"] = "d"
-	s1.Label["E"] = "e"
+	s1.Labels["A"] = "a"
+	s1.Labels["B"] = "b"
+	s1.Labels["C"] = "c"
+	s1.Labels["D"] = "d"
+	s1.Labels["E"] = "e"
 
 	s2 := s1.GetLabels()
-	assert.Equal(t, s1.Label, s2)
+	assert.Equal(t, s1.Labels, s2)
 }
 
 func TestSinglePolicy(t *testing.T) {
@@ -36,45 +36,45 @@ func TestSinglePolicy(t *testing.T) {
 	p := &PolicyList{}
 
 	s := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
-	s.Label["A"] = "a"
-	s.Label["B"] = "b"
-	s.Label["C"] = "c"
-	s.Label["D"] = "d"
-	s.Label["E"] = "e"
+	s.Labels["A"] = "a"
+	s.Labels["B"] = "b"
+	s.Labels["C"] = "c"
+	s.Labels["D"] = "d"
+	s.Labels["E"] = "e"
 
 	p.Add("s", s)
 	match := p.Exists(s)
 	assert.True(t, match, "keyset should exist")
 
 	s2 := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
-	s2.Label["A"] = "a"
-	s2.Label["B"] = "b"
-	s2.Label["C"] = "c"
-	s2.Label["D"] = "d"
-	s2.Label["E"] = "e"
-	s2.Label["E"] = "f"
+	s2.Labels["A"] = "a"
+	s2.Labels["B"] = "b"
+	s2.Labels["C"] = "c"
+	s2.Labels["D"] = "d"
+	s2.Labels["E"] = "e"
+	s2.Labels["E"] = "f"
 	match = p.Exists(s2)
 	assert.False(t, match, "keyset should not match")
 
-	s2.Label["E"] = "e"
-	s2.Label["F"] = "f"
+	s2.Labels["E"] = "e"
+	s2.Labels["F"] = "f"
 	match = p.Exists(s2)
 	assert.True(t, match, "keyset should match even if extra keys exist")
 
 	s3 := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
-	s3.Label["A"] = "a"
-	s3.Label["B"] = "b"
-	s3.Label["C"] = "c"
-	s3.Label["D"] = "d"
+	s3.Labels["A"] = "a"
+	s3.Labels["B"] = "b"
+	s3.Labels["C"] = "c"
+	s3.Labels["D"] = "d"
 	match = p.Exists(s3)
 	assert.False(t, match, "keyset with partial subset should fail")
 	p.Flush()
@@ -85,14 +85,14 @@ func TestFlushPolicy(t *testing.T) {
 	p := &PolicyList{}
 
 	s := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
-	s.Label["A"] = "a"
-	s.Label["B"] = "b"
-	s.Label["C"] = "c"
-	s.Label["D"] = "d"
-	s.Label["E"] = "e"
+	s.Labels["A"] = "a"
+	s.Labels["B"] = "b"
+	s.Labels["C"] = "c"
+	s.Labels["D"] = "d"
+	s.Labels["E"] = "e"
 
 	p.Add("s", s)
 	match := p.Exists(s)
@@ -108,14 +108,14 @@ func TestDeletePolicy(t *testing.T) {
 	p := &PolicyList{}
 
 	s := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
-	s.Label["A"] = "a"
-	s.Label["B"] = "b"
-	s.Label["C"] = "c"
-	s.Label["D"] = "d"
-	s.Label["E"] = "e"
+	s.Labels["A"] = "a"
+	s.Labels["B"] = "b"
+	s.Labels["C"] = "c"
+	s.Labels["D"] = "d"
+	s.Labels["E"] = "e"
 
 	p.Add("s", s)
 	match := p.Exists(s)
@@ -134,19 +134,19 @@ func TestManySimplePolicy(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d", i)
 		s := &LabelSet{
-			Label:  make(map[string]string),
+			Labels: make(map[string]string),
 			Policy: netpol,
 		}
-		s.Label[is] = is
+		s.Labels[is] = is
 		p.Add(is, s)
 	}
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d", i)
 		s := &LabelSet{
-			Label:  make(map[string]string),
+			Labels: make(map[string]string),
 			Policy: netpol,
 		}
-		s.Label[is] = is
+		s.Labels[is] = is
 		match := p.Exists(s)
 		assert.True(t, match, "keyset missing")
 	}
@@ -160,19 +160,19 @@ func TestManyLongerPolicy(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d", i)
 		s := &LabelSet{
-			Label:  make(map[string]string),
+			Labels: make(map[string]string),
 			Policy: netpol,
 		}
-		s.Label[is] = is
+		s.Labels[is] = is
 		p.Add(is, s)
 	}
 	s := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d", i)
-		s.Label[is] = is
+		s.Labels[is] = is
 	}
 	match := p.Exists(s)
 	assert.True(t, match, "keyset missing")
@@ -184,48 +184,48 @@ func TestCollectionPolicy(t *testing.T) {
 	p := &PolicyList{}
 
 	s1 := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
 	s2 := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
 
-	s1.Label["A"] = "a"
-	s1.Label["B"] = "b"
+	s1.Labels["A"] = "a"
+	s1.Labels["B"] = "b"
 
-	s2.Label["B"] = "b"
-	s2.Label["C"] = "c"
+	s2.Labels["B"] = "b"
+	s2.Labels["C"] = "c"
 
 	p.Add("s1", s1)
 	p.Add("s2", s2)
 
 	search := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
-	search.Label["D"] = "D"
+	search.Labels["D"] = "D"
 	// No overlap expect empty set
 	collection := p.Collection(search)
 	assert.Equal(t, 0, len(collection))
-	delete(search.Label, "D")
+	delete(search.Labels, "D")
 	// Find single entry
-	search.Label["A"] = "a"
-	search.Label["B"] = "b"
+	search.Labels["A"] = "a"
+	search.Labels["B"] = "b"
 	collection = p.Collection(search)
 	assert.Equal(t, 1, len(collection))
 	// Find both s1 and s2
-	search.Label["C"] = "c"
-	search.Label["D"] = "d"
+	search.Labels["C"] = "c"
+	search.Labels["D"] = "d"
 	collection = p.Collection(search)
 	assert.Equal(t, 2, len(collection))
 	// Find s1 set with valid keys but invalid values
-	search.Label["C"] = "C"
+	search.Labels["C"] = "C"
 	collection = p.Collection(search)
 	assert.Equal(t, 1, len(collection))
 	// Find null set with valid keys but invalid values
-	search.Label["A"] = "A"
+	search.Labels["A"] = "A"
 	collection = p.Collection(search)
 	assert.Equal(t, 0, len(collection))
 	p.Flush()
@@ -238,14 +238,14 @@ func TestPodAdd(t *testing.T) {
 
 	s := &LabelSet{
 		Name:   name,
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
-	s.Label["A"] = "a"
-	s.Label["B"] = "b"
-	s.Label["C"] = "c"
-	s.Label["D"] = "d"
-	s.Label["E"] = "e"
+	s.Labels["A"] = "a"
+	s.Labels["B"] = "b"
+	s.Labels["C"] = "c"
+	s.Labels["D"] = "d"
+	s.Labels["E"] = "e"
 
 	p.Add(name, s)
 	match := p.Exists(s)
@@ -289,22 +289,22 @@ func BenchmarkMatchPolicy(b *testing.B) {
 	p := PolicyList{}
 
 	s := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d%+200s", i, " ")
-		s.Label[is] = is
+		s.Labels[is] = is
 		p.Add(is, s)
 	}
 
 	find := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d%+100s", i, " ")
-		find.Label[is] = is
+		find.Labels[is] = is
 	}
 
 	for i := 0; i < b.N; i++ {
@@ -318,23 +318,23 @@ func BenchmarkCollection(b *testing.B) {
 	p := PolicyList{}
 
 	s := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
 
 	for i := 0; i < 100; i++ {
 		is := fmt.Sprintf("%d%+20s", i, " ")
-		s.Label[is] = is
+		s.Labels[is] = is
 		p.Add(is, s)
 	}
 
 	find := &LabelSet{
-		Label:  make(map[string]string),
+		Labels: make(map[string]string),
 		Policy: netpol,
 	}
 	for i := 0; i < 100; i++ {
 		is := fmt.Sprintf("%d%+20s", i, " ")
-		find.Label[is] = is
+		find.Labels[is] = is
 	}
 
 	var collection []*LabelSet

@@ -268,8 +268,8 @@ func CreateDstMatchLabels(t *testing.T) {
 	err := s.CreateDstMatchLabelsPolicy(name, netpol)
 	assert.NoError(t, err)
 	d := s.Dst[name]
-	assert.Equal(t, "d1", d.Label["D1"])
-	assert.Equal(t, "d2", d.Label["D2"])
+	assert.Equal(t, "d1", d.Labels["D1"])
+	assert.Equal(t, "d2", d.Labels["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
 }
 
@@ -281,8 +281,8 @@ func CreateSrcMatchLabels(t *testing.T) {
 	assert.NoError(t, err)
 	src := s.Src[name]
 	assert.NotNil(t, src)
-	assert.Equal(t, "a", src.Label["A"])
-	assert.Equal(t, "b", src.Label["B"])
+	assert.Equal(t, "a", src.Labels["A"])
+	assert.Equal(t, "b", src.Labels["B"])
 	assert.Equal(t, 0, len(src.Subjects)) // no pods yet so no subjects either
 }
 
@@ -294,13 +294,13 @@ func TestAddNetworkPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	d := s.Dst[name]
 	assert.NotNil(t, d)
-	assert.Equal(t, "d1", d.Label["D1"])
-	assert.Equal(t, "d2", d.Label["D2"])
+	assert.Equal(t, "d1", d.Labels["D1"])
+	assert.Equal(t, "d2", d.Labels["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
 	src := s.Src[name]
 	assert.NotNil(t, src)
-	assert.Equal(t, "a", src.Label["A"])
-	assert.Equal(t, "b", src.Label["B"])
+	assert.Equal(t, "a", src.Labels["A"])
+	assert.Equal(t, "b", src.Labels["B"])
 	assert.Equal(t, 0, len(src.Subjects)) // no pods yet so no subjects either
 }
 
@@ -312,13 +312,13 @@ func testAddNetworkActionPolicy(t *testing.T, action string) {
 	assert.NoError(t, err)
 	d := s.Dst[name]
 	assert.NotNil(t, d)
-	assert.Equal(t, "d1", d.Label["D1"])
-	assert.Equal(t, "d2", d.Label["D2"])
+	assert.Equal(t, "d1", d.Labels["D1"])
+	assert.Equal(t, "d2", d.Labels["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
 	src := s.Src[name]
 	assert.NotNil(t, src)
-	assert.Equal(t, "a", src.Label["A"])
-	assert.Equal(t, "b", src.Label["B"])
+	assert.Equal(t, "a", src.Labels["A"])
+	assert.Equal(t, "b", src.Labels["B"])
 	assert.Equal(t, 0, len(src.Subjects)) // no pods yet so no subjects either
 
 }

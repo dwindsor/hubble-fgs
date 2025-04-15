@@ -480,7 +480,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 
 func qosSpecToPolicy(p *v1alpha1.QuotaPolicySpec, resetLimits string) *types.TetragonNetworkPolicy {
 	mlEqual := matchLabels.LabelSet{
-		Label: make(map[string]string),
+		Labels: make(map[string]string),
 	}
 	if len(p.MatchLabels) > 0 {
 		mlEqual.ParseEquals(p.MatchLabels)
