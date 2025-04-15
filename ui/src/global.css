@@ -10,3 +10,21 @@ body {
   height: 100%;
   min-height: 100%;
 }
+
+.ipt-tooltip {
+  background-color: #444;
+  color: white;
+  font-size: 90%;
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 320px;
+  z-index: var(--ipt-z-index-tooltip);
+  font-family: var(--ipt-font-sans-serif);
+  font-size: 12px;
+
+  .section + .section {
+    margin-top: 10px;
+  }
+}

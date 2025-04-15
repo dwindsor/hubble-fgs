@@ -25,7 +25,7 @@ export const colors = {
   entityFileEventWrite: "#d7a854",
   entityFileEventWriteHighlighted: "#d29c3e",
 
-  entityMuted: "#eeeeee",
+  entityMuted: "#ddd",
 };
 
 export const destinationColorsMap = {

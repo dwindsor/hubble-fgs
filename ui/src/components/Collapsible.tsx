@@ -1,7 +1,6 @@
-import hashsum from "hash-sum";
 import { type ReactNode, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useAppState } from "~/state/AppContext";
-import type { TreePath } from "~/utils/tree";
+import { type TreePath, calcTreePathHash } from "~/utils/tree";
 
 export interface Props {
   path: TreePath;
@@ -16,29 +15,36 @@ export interface Props {
 export const Collapsible = memo(function Collapsible(props: Props) {
   const state = useAppState();
 
-  const pathHash = useMemo(() => hashsum(props.path), [props.path]);
+  const pathHash = useMemo(() => calcTreePathHash(props.path), [props.path]);
 
   const [expanded, setExpanded] = useState(
     state.getTreePathStatus(pathHash)?.expanded ?? props.initialOpen ?? false,
   );
 
   useEffect(() => {
-    state.setTreePathStatus(pathHash, { visible: true });
-    return () => {
-      state.setTreePathStatus(pathHash, { visible: false });
-    };
+    return state.onTreePathStatusChanged((changedPath, changedPathStatus) => {
+      const changedPathHash = calcTreePathHash(changedPath);
+      if (pathHash !== changedPathHash) {
+        return;
+      }
+      setExpanded(!!changedPathStatus.expanded);
+    });
   }, [state, pathHash]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignore "expanded" specificaly, we only want to control visibility
+  useEffect(() => {
+    state.setTreePathStatus(props.path, { visible: true, expanded });
+    return () => {
+      state.setTreePathStatus(props.path, { visible: false });
+    };
+  }, [state, props.path]);
 
   const onClick = useCallback(
     (event: React.MouseEvent) => {
       event.preventDefault();
-      setExpanded((prev) => {
-        const next = !prev;
-        state.setTreePathStatus(pathHash, { expanded: next });
-        return next;
-      });
+      state.toggleTreePath(props.path);
     },
-    [state, pathHash],
+    [state, props.path],
   );
 
   return (

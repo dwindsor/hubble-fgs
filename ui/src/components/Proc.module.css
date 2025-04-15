@@ -36,3 +36,27 @@
   text-shadow: -0.25px 0px 0 currentColor, 0.25px 0px 0 currentColor;
   transition: text-shadow ease-in 1s;
 }
+
+.tooltipTrigger {
+  position: relative;
+  top: 1px;
+  left: -2px;
+}
+
+.tooltip {
+  background-color: #444;
+  color: white;
+  font-size: 90%;
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 320px;
+  z-index: var(--ipt-z-index-tooltip);
+  font-family: var(--ipt-font-monospace);
+  font-size: 12px;
+
+  .section + .section {
+    margin-top: 10px;
+  }
+}

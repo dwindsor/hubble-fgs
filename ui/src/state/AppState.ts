@@ -18,6 +18,7 @@ import {
   createStatState,
   createTreeEntryStat,
 } from "~/utils/stat";
+import { ThrowableMap } from "~/utils/throwable-map";
 import type { TreeHostProcPath, TreeWorkloadProcPath } from "~/utils/tree";
 import { getWorkloadHash } from "~/utils/workloads";
 
@@ -28,9 +29,9 @@ export function createAppState(model?: ApplicationModelEvent): {
   connectionsMap: ConnectionsMap;
   stat: StatState;
 } {
-  const processesMap: ProcessesMap = new Map();
-  const endpointsMap: EndpointsMap = new Map();
-  const endpointsHashMap: EndpointsHashMap = new Map();
+  const processesMap: ProcessesMap = new ThrowableMap();
+  const endpointsMap: EndpointsMap = new ThrowableMap();
+  const endpointsHashMap: EndpointsHashMap = new ThrowableMap();
   const connectionsMap: ConnectionsMap = new Map();
   const stat = createStatState();
 

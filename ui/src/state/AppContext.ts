@@ -3,7 +3,12 @@ import type { ApplicationModelEvent, ApplicationProcessGroup } from "~/proto";
 import { assert } from "~/utils/assert";
 import { type Endpoint, EndpointModeKind } from "~/utils/endpoints";
 import type { XY } from "~/utils/geometry";
-import type { TreePathHash, TreePathStatus } from "~/utils/tree";
+import {
+  type TreePath,
+  type TreePathHash,
+  type TreePathStatus,
+  calcTreePathHash,
+} from "~/utils/tree";
 import { UrlParams, getQueryParam, setQueryParam } from "~/utils/url";
 import { AppEmitter, EmitterEventKind } from "./AppEmitter";
 import { createAppState } from "./AppState";
@@ -68,8 +73,12 @@ export function createAppContext({
       return inner.treePathsMap.get(hash);
     },
 
-    setTreePathStatus(hash: TreePathHash, status: TreePathStatus) {
-      inner.treePathsMap.set(hash, Object.assign(inner.treePathsMap.get(hash) ?? {}, status));
+    setTreePathStatus(path: TreePath, status: TreePathStatus) {
+      const pathHash = calcTreePathHash(path);
+      inner.treePathsMap.set(
+        pathHash,
+        Object.assign(inner.treePathsMap.get(pathHash) ?? {}, status),
+      );
 
       const expanded: TreePathHash[] = [];
       inner.treePathsMap.forEach((value, hash) => {
@@ -81,6 +90,19 @@ export function createAppContext({
       } else {
         that.setQueryParam(UrlParams.Expanded, undefined);
       }
+
+      emitter.emitter.emit(
+        EmitterEventKind.TreePathStatusChanged,
+        path,
+        inner.treePathsMap.get(pathHash) ?? {},
+      );
+    },
+
+    onTreePathStatusChanged: emitter.createSubscriber(EmitterEventKind.TreePathStatusChanged),
+
+    toggleTreePath(path: TreePath) {
+      const pathHash = calcTreePathHash(path);
+      that.setTreePathStatus(path, { expanded: !inner.treePathsMap.get(pathHash)?.expanded });
     },
 
     get connectionsMap() {
@@ -187,6 +209,7 @@ export function createAppContext({
       }
 
       emitter.emitter.emit(EmitterEventKind.HighlightEndpoint, endpoint, highlight, mode);
+
       that.redrawConnectionLines();
     },
 

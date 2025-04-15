@@ -2036,6 +2036,10 @@ export const model = {
               },
               {
                 name: "/app/worker",
+                syscall_info: {
+                  syscalls: ["READ", "WRITE", "FSTAT", "MMAP"],
+                  abi: "X86_64",
+                },
                 connections: [
                   {
                     destination: { dns: { destination_names: ["172.20.0.1"] }, port: "443" },

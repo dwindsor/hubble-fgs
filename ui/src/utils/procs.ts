@@ -1,5 +1,6 @@
 import type { ApplicationProcessGroup } from "~/proto";
 import type { XY } from "./geometry";
+import type { ThrowableMap } from "./throwable-map";
 import type { TreePath } from "./tree";
 
 export type ProcessInfo = {
@@ -8,7 +9,7 @@ export type ProcessInfo = {
   xy?: XY | undefined;
 };
 
-export type ProcessesMap = Map<ApplicationProcessGroup, ProcessInfo>;
+export type ProcessesMap = ThrowableMap<ApplicationProcessGroup, ProcessInfo>;
 
 export function getProcHash(proc: ApplicationProcessGroup) {
   return `${proc.name}:[${proc.arguments}]`;

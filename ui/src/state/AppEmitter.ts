@@ -4,6 +4,7 @@ import type TypedEmitter from "typed-emitter";
 import type { ApplicationProcessGroup } from "~/proto";
 import type { Endpoint, EndpointModeKind } from "~/utils/endpoints";
 import { Enum, type EnumType } from "~/utils/enum";
+import type { TreePath, TreePathStatus } from "~/utils/tree";
 
 export const EmitterEventKind = Enum({
   TreeChanged: "tree-changed",
@@ -13,6 +14,7 @@ export const EmitterEventKind = Enum({
   ProcUpdated: "proc-updated",
   HighlightEndpoint: "highlight-endpoint",
   HighlightProc: "highlight-proc",
+  TreePathStatusChanged: "tree-path-status-changed",
   Scrolled: "scrolled",
 });
 
@@ -30,6 +32,7 @@ export type EmitterHandlers = {
     mode: EndpointModeKind,
   ) => void;
   [EmitterEventKind.HighlightProc]: (proc: ApplicationProcessGroup, state: boolean) => void;
+  [EmitterEventKind.TreePathStatusChanged]: (path: TreePath, status: TreePathStatus) => void;
   [EmitterEventKind.Scrolled]: () => void;
 };
 

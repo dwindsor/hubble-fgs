@@ -117,10 +117,24 @@
   background-color: hsl(from var(--ipt-color-entity-destination-kubernetes) h s calc(l + 25));
 }
 
-.entityDestinationKubernetesType {
+.entityDestinationKubernetesKind {
   margin-left: 5px;
   font-size: 0.8em;
   color: var(--ipt-color-text-muted);
+}
+
+.entityDestinationKubernetesExpandLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 2px;
+  border-radius: 3px;
+  margin-left: 10px;
+  background: hsl(from var(--ipt-color-text-muted) h s calc(l + 20));
+
+  &:hover {
+    background: var(--ipt-color-text-muted);
+  }
 }
 
 .entityFileEventRead .title {

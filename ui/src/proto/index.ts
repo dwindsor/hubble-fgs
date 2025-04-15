@@ -1,6 +1,6 @@
 import * as ProtoAppModel from "@ipa/application_model/v1alpha/application_model_pb";
 import type { ObjectToSnake } from "ts-case-convert";
-import { Enum, type EnumType, createEnumFromProto } from "~/utils/enum";
+import { type EnumType, createEnumFromProto } from "~/utils/enum";
 import type { DeepPartial } from "~/utils/types";
 
 export type ApplicationModelEvent = ObjectToSnake<DeepPartial<ProtoAppModel.ApplicationModelEvent>>;
@@ -66,9 +66,9 @@ export enum ProtoFileEventKind {
 }
 
 export const FILE_EVENT_KIND_KEY_PREFIX = "FILE_EVENT_KIND_";
-export const FileEventKind = Enum({
+export const FileEventKind = {
   Unspecified: "FILE_EVENT_KIND_UNSPECIFIED",
   Read: "FILE_EVENT_KIND_READ",
   Write: "FILE_EVENT_KIND_WRITE",
-});
+};
 export type FileEventKind = EnumType<typeof FileEventKind>;

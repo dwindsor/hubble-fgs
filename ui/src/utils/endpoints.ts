@@ -12,6 +12,7 @@ import {
   inferEndpointFileEventTitle,
 } from "./file-event";
 import type { XY } from "./geometry";
+import type { ThrowableMap } from "./throwable-map";
 
 export type Endpoint = Destination | ApplicationFileEvent;
 
@@ -31,9 +32,9 @@ export type EndpointKind = EnumType<typeof EndpointKind>;
 
 export type EndpointSubKind = EnumType<typeof DestinationKind> | EnumType<typeof FileEventKind>;
 
-export type EndpointsMap = Map<Endpoint, EndpointInfo>;
+export type EndpointsMap = ThrowableMap<Endpoint, EndpointInfo>;
 
-export type EndpointsHashMap = Map<string, Endpoint>;
+export type EndpointsHashMap = ThrowableMap<string, Endpoint>;
 
 export type EndpointInfo = {
   hash: string;

@@ -16,8 +16,11 @@ import {
 } from "~/utils/endpoints";
 import { isSuspiciousProc } from "~/utils/procs";
 import { type Stat, advanceStat, createStat } from "~/utils/stat";
+import type { TreePath } from "~/utils/tree";
 import css from "./Endpoint.module.css";
+import { ExpandVerticalIcon } from "./Icons/ExpandVerticalIcon";
 import { Statistic } from "./Statistic";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/Tooltip";
 
 export interface Props {
   endpoint: Endpoint;
@@ -292,24 +295,53 @@ function IpEndpoint(props: {
 }
 
 function KubernetesEndpoint(props: { title: string; port: string | null; isPinned: boolean }) {
-  const { title, type, namespace } = useMemo(() => {
+  const state = useAppState();
+
+  const { workloadName, workloadKind, workloadNamespace } = useMemo(() => {
     const parts = props.title.split(/[\/:]/);
     return {
-      namespace: parts[0],
-      type: parts[1],
-      title: parts[2],
+      workloadNamespace: parts[0],
+      workloadKind: parts[1],
+      workloadName: parts[2],
     };
   }, [props.title]);
+
+  const onClickExpandLink = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const treePathsToExpand: TreePath[] = [
+        { cluster: true },
+        { node: true },
+        { namespaces: true },
+        { namespace: workloadNamespace },
+        { namespace: workloadNamespace, workload: workloadName },
+      ];
+      treePathsToExpand.forEach((treePath) => {
+        state.setTreePathStatus(treePath, { expanded: true });
+      });
+    },
+    [state, workloadNamespace, workloadName],
+  );
 
   return (
     <span>
       <span className={css.title}>
         {props.isPinned && <Pin />}
-        {title}
+        {workloadName}
         {props.port && <Port port={props.port} />}
       </span>{" "}
-      <span className={css.entityDestinationKubernetesNamespace}>{namespace}</span>{" "}
-      <span className={css.entityDestinationKubernetesType}>{type}</span>
+      <span className={css.entityDestinationKubernetesNamespace}>{workloadNamespace}</span>{" "}
+      <span className={css.entityDestinationKubernetesKind}>{workloadKind}</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={css.entityDestinationKubernetesExpandLink} onClick={onClickExpandLink}>
+            <ExpandVerticalIcon size={12} color="transparent" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="ipt-tooltip">Expand in processes tree</TooltipContent>
+      </Tooltip>
     </span>
   );
 }

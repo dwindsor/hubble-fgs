@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
 import { useDebouncedCallback } from "~/hooks/useDebouncedCallback";
 import { useTreeEntry } from "~/hooks/useTreeEntry";
 import type { ApplicationProcessGroup } from "~/proto";
@@ -7,9 +7,11 @@ import { useAppState } from "~/state/AppContext";
 import { getProcHash, isSuspiciousProc } from "~/utils/procs";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
+import { InfoIcon } from "./Icons/Info";
 import css from "./Proc.module.css";
 import { Statistic } from "./Statistic";
 import { TextOverflow } from "./TextOverflow";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/Tooltip";
 
 export interface ProcProps {
   proc: ApplicationProcessGroup;
@@ -98,6 +100,10 @@ export const ProcItem = memo(function Proc(props: ProcProps) {
     [css.suspicious]: isSuspiciousProc(props.proc),
   });
 
+  const tooltipAvailable = useMemo(() => {
+    return (props.proc.syscall_info?.syscalls?.length ?? 0) > 0 || props.proc.syscall_info?.abi;
+  }, [props.proc]);
+
   if (!info) {
     return null;
   }
@@ -111,6 +117,7 @@ export const ProcItem = memo(function Proc(props: ProcProps) {
             <summary className={entry.className} onClick={onClick}>
               <div className={css.inner}>
                 <Binary name={props.proc.name} /> <Arguments arguments={props.proc.arguments} />
+                {tooltipAvailable && <ProcTooltip proc={props.proc} />}
                 {entry.stat && <Statistic stat={entry.stat} />}
                 {entry.hasConnections && (
                   <Connector connector={entry.connector} endpoints={entry.connectorEndpoints} />
@@ -128,6 +135,7 @@ export const ProcItem = memo(function Proc(props: ProcProps) {
       ) : (
         <div className={clsx(css.inner, entry.className)}>
           <Binary name={props.proc.name} /> <Arguments arguments={props.proc.arguments} />
+          {tooltipAvailable && <ProcTooltip proc={props.proc} />}
           {entry.stat && <Statistic stat={entry.stat} />}
           {entry.hasConnections && (
             <Connector connector={entry.connector} endpoints={entry.connectorEndpoints} />
@@ -173,5 +181,30 @@ function Arguments(props: { arguments?: string | undefined }) {
       title={props.arguments}
       className={css.arguments}
     />
+  );
+}
+
+function ProcTooltip(props: { proc: ApplicationProcessGroup }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={css.tooltipTrigger}>
+          <InfoIcon size={12} />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className={clsx("ipt-tooltip", css.tooltip)}>
+        {(props.proc.syscall_info?.syscalls?.length ?? 0) > 0 && (
+          <div className={css.section}>
+            <b>Syscalls</b>:{" "}
+            <span className={css.syscalls}>{props.proc.syscall_info?.syscalls.join(", ")}</span>
+          </div>
+        )}
+        {props.proc.syscall_info?.abi && (
+          <div className={css.section}>
+            <b>ABI</b>: {props.proc.syscall_info?.abi}
+          </div>
+        )}
+      </TooltipContent>
+    </Tooltip>
   );
 }

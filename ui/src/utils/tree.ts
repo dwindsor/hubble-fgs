@@ -1,3 +1,4 @@
+import hashsum from "hash-sum";
 import type { Namespace } from "./namespaces";
 import type { Workload } from "./workloads";
 
@@ -29,3 +30,7 @@ export const TREE_CLUSTER_PATH: TreeClusterPath = { cluster: true };
 export const TREE_NODE_PATH: TreeNodePath = { node: true };
 export const TREE_HOST_PATH: TreeHostPath = { host: true };
 export const TREE_NAMESPACES_PATH: TreeNamespacesPath = { namespaces: true };
+
+export function calcTreePathHash(path: TreePath): string {
+  return hashsum(path);
+}

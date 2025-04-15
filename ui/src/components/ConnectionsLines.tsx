@@ -72,8 +72,8 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
         return;
       }
 
-      const endpointX = endpointInfo.xy.x * window.devicePixelRatio;
-      const endpointY = endpointInfo.xy.y * window.devicePixelRatio;
+      const endpointX = endpointInfo.xy.x;
+      const endpointY = endpointInfo.xy.y;
 
       procs.forEach((proc) => {
         const procInfo = state.processesMap.get(proc);
@@ -89,8 +89,8 @@ export const ConnectionsLines = memo(function ConnectionsLines(props: Props) {
             : MUTED_LINE_COLOR
           : getLineColor(state, endpoint);
 
-        const procX = procInfo.xy.x * window.devicePixelRatio;
-        const procY = procInfo.xy.y * window.devicePixelRatio;
+        const procX = procInfo.xy.x;
+        const procY = procInfo.xy.y;
 
         const line: ConnectionLine = {
           from: { x: procX, y: procY },
