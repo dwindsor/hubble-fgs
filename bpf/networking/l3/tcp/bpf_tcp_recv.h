@@ -302,23 +302,28 @@ int tcp_handler_ip4(struct __sk_buff *skb, int send)
 	return tcp_handler_ip4_recv(skb, ip, &vars->cookie);
 }
 
-#ifdef SKB_LOAD_BYTES
-static inline __attribute__((always_inline))
-#endif
-int
-tcp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 payload_off, int send)
+#ifdef NO_CGROUP_PROBE_READ
+int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
 {
-	if (send)
-#ifndef NO_CGROUP_PROBE_READ
-		return tcp_handler_send(skb, cookie);
-#else
-		return SK_PASS;
-#endif
-
-#ifndef NO_CGROUP_PROBE_READ
-	tcp_check_fin_rx(skb, ip6, payload_off, cookie, true);
-#endif
 	return SK_PASS;
 }
+#else
+int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
+{
+	struct handler_vars *vars;
+	struct ipv6hdr *ip6;
+
+	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	if (!vars)
+		return SK_PASS;
+	ip6 = &vars->ip6;
+
+	if (send)
+		return tcp_handler_send(skb, &vars->cookie);
+
+	tcp_check_fin_rx(skb, ip6, payload_off, &vars->cookie, true);
+	return SK_PASS;
+}
+#endif
 
 #endif //__BPF_TCP_RECV_H_
