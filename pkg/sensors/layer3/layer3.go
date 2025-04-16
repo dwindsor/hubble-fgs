@@ -116,16 +116,16 @@ var (
 		"cgrp_egress",
 	)
 
-	EgressDispatcherSkbLoad = program.Builder(
-		"bpf_cgroup_net_load.o",
+	EgressDispatcherNoProbeRead = program.Builder(
+		"bpf_cgroup_net_no_probe_read.o",
 		"cgroup_egress",
 		"cgroup_skb/egress",
 		"tg_cgroup_egress",
 		"cgrp_egress",
 	)
 
-	EgressDispatcherSkbLoad54 = program.Builder(
-		"bpf_cgroup_net_load_5-4.o",
+	EgressDispatcherProcessTree = program.Builder(
+		"bpf_cgroup_net_pstree.o",
 		"cgroup_egress",
 		"cgroup_skb/egress",
 		"tg_cgroup_egress",
@@ -140,72 +140,73 @@ var (
 		"cgrp_ingress",
 	)
 
-	IngressDispatcherSkbLoad = program.Builder(
-		"bpf_cgroup_net_load.o",
+	IngressDispatcherNoProbeRead = program.Builder(
+		"bpf_cgroup_net_no_probe_read.o",
 		"cgroup_ingress",
 		"cgroup_skb/ingress",
 		"tg_cgroup_ingress",
 		"cgrp_ingress",
 	)
 
-	IngressDispatcherSkbLoad54 = program.Builder(
-		"bpf_cgroup_net_load_5-4.o",
+	IngressDispatcherProcessTree = program.Builder(
+		"bpf_cgroup_net_pstree.o",
 		"cgroup_ingress",
 		"cgroup_skb/ingress",
 		"tg_cgroup_ingress",
 		"cgrp_ingress",
 	)
 
-	dispatcherProgs          = []*program.Program{EgressDispatcher, IngressDispatcher}
-	dispatcherSkbLoadProgs   = []*program.Program{EgressDispatcherSkbLoad, IngressDispatcherSkbLoad}
-	dispatcherSkbLoad54Progs = []*program.Program{EgressDispatcherSkbLoad54, IngressDispatcherSkbLoad54}
+	dispatcherProgs            = []*program.Program{EgressDispatcher, IngressDispatcher}
+	dispatcherNoProbeReadProgs = []*program.Program{EgressDispatcherNoProbeRead, IngressDispatcherNoProbeRead}
+	dispatcherProcessTreeProgs = []*program.Program{EgressDispatcherProcessTree, IngressDispatcherProcessTree}
 
 	// Dispatcher protocol configuration map
-	protoCfgMap          = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcher)
-	protoCfgSkbLoadMap   = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcherSkbLoad)
-	protoCfgSkbLoad54Map = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcherSkbLoad54)
+	protoCfgMap            = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcher)
+	protoCfgNoProbeReadMap = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcherNoProbeRead)
+	protoCfgProcessTreeMap = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcherProcessTree)
 
 	// Dispatcher Latency maps
-	latencyConfigMap        = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher)
-	latencyConfigSkbLoadMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcherSkbLoad54)
+	latencyConfigMap            = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher)
+	latencyConfigNoProbeReadMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcherNoProbeRead)
+	latencyConfigProcessTreeMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcherProcessTree)
 
 	// Dispatcher UDP maps
-	udpMap          = program.MapBuilder(udp.UdpMapName, EgressDispatcher)
-	udpMapSkbLoad   = program.MapBuilder(udp.UdpMapName, EgressDispatcherSkbLoad)
-	udpMapSkbLoad54 = program.MapBuilder(udp.UdpMapName, EgressDispatcherSkbLoad54)
+	udpMap            = program.MapBuilder(udp.UdpMapName, EgressDispatcher)
+	udpNoProbeReadMap = program.MapBuilder(udp.UdpMapName, EgressDispatcherNoProbeRead)
+	udpProcessTreeMap = program.MapBuilder(udp.UdpMapName, EgressDispatcherProcessTree)
 
-	udpMapStats          = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher)
-	udpMapStatsSkbLoad   = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcherSkbLoad)
-	udpMapStatsSkbLoad54 = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcherSkbLoad54)
+	udpMapStats            = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher)
+	udpNoProbeReadMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcherNoProbeRead)
+	udpProcessTreeMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcherProcessTree)
 
-	udpConfigMap          = program.MapBuilder(udp.ConfigMapName, EgressDispatcher)
-	udpConfigSkbLoadMap   = program.MapBuilder(udp.ConfigMapName, EgressDispatcherSkbLoad)
-	udpConfigSkbLoad54Map = program.MapBuilder(udp.ConfigMapName, EgressDispatcherSkbLoad54)
+	udpConfigMap            = program.MapBuilder(udp.ConfigMapName, EgressDispatcher)
+	udpConfigNoProbeReadMap = program.MapBuilder(udp.ConfigMapName, EgressDispatcherNoProbeRead)
+	udpConfigProcessTreeMap = program.MapBuilder(udp.ConfigMapName, EgressDispatcherProcessTree)
 
-	udpPayloadMap          = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcher)
-	udpPayloadSkbLoadMap   = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcherSkbLoad)
-	udpPayloadSkbLoad54Map = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcherSkbLoad54)
+	udpPayloadMap            = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcher)
+	udpPayloadNoProbeReadMap = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcherNoProbeRead)
+	udpPayloadProcessTreeMap = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcherProcessTree)
 
-	udpMaps          = []*program.Map{udpMap, udpMapStats, udpConfigMap, udpPayloadMap, latencyConfigMap}
-	udpMapsSkbLoad   = []*program.Map{udpMapSkbLoad, udpMapStatsSkbLoad, udpConfigSkbLoadMap, udpPayloadSkbLoadMap, latencyConfigSkbLoadMap}
-	udpMapsSkbLoad54 = []*program.Map{udpMapSkbLoad54, udpMapStatsSkbLoad54, udpConfigSkbLoad54Map, udpPayloadSkbLoad54Map, latencyConfigSkbLoadMap}
+	udpMaps            = []*program.Map{udpMap, udpMapStats, udpConfigMap, udpPayloadMap, latencyConfigMap}
+	udpNoProbeReadMaps = []*program.Map{udpNoProbeReadMap, udpNoProbeReadMapStats, udpConfigNoProbeReadMap, udpPayloadNoProbeReadMap, latencyConfigNoProbeReadMap}
+	udpProcessTreeMaps = []*program.Map{udpProcessTreeMap, udpProcessTreeMapStats, udpConfigProcessTreeMap, udpPayloadProcessTreeMap, latencyConfigProcessTreeMap}
 
 	// DNS Parser maps
 	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.15
-	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcher, EgressDispatcher)
-	DNSDomainMap      = program.MapBuilder(dnsparser.DomainToIDMapName, IngressDispatcher, EgressDispatcher)
-	DNSDomainMapRev   = program.MapBuilder(dnsparser.IDToDomainMapName, IngressDispatcher, EgressDispatcher)
-	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcher, EgressDispatcher)
+	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
+	DNSDomainMap      = program.MapBuilder(dnsparser.DomainToIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
+	DNSDomainMapRev   = program.MapBuilder(dnsparser.IDToDomainMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
+	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	// This map is shared between the DNS parser and the process tree: the fdlookup and tcpsockops progs
-	DNSEndpointIDMap = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcher, EgressDispatcher, ip.FdLookupFentry_5_15, ip.FdLookupKprobe_5_15, tcp.TcpSockops515)
+	DNSEndpointIDMap = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree, ip.FdLookupFentry_5_15, ip.FdLookupKprobe_5_15, tcp.TcpSockops515)
 
 	// LPM maps
 	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, IngressDispatcher, EgressDispatcher)
 	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, IngressDispatcher, EgressDispatcher)
 
 	// Dispatcher all maps
-	dispatcherMaps = append(udpMaps,
-		[]*program.Map{protoCfgMap,
+	dispatcherProcessTreeMaps = append(udpProcessTreeMaps,
+		[]*program.Map{protoCfgProcessTreeMap,
 			// Process Tree maps
 			program.MapUserFrom(base.DestinationEndpointMap),
 			program.MapUserFrom(base.ListenEndpointMap),
@@ -213,8 +214,8 @@ var (
 			program.MapUserFrom(base.BpfEndpointIdMap),
 			program.MapUserFrom(base.EndpointIdMap),
 		}...)
-	dispatcherSkbLoadMaps   = append(udpMapsSkbLoad, protoCfgSkbLoadMap)
-	dispatcherSkbLoad54Maps = append(udpMapsSkbLoad54, protoCfgSkbLoad54Map)
+	dispatcherMaps            = append(udpMaps, protoCfgMap)
+	dispatcherNoProbeReadMaps = append(udpNoProbeReadMaps, protoCfgNoProbeReadMap)
 )
 
 func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*program.Program, []*program.Map) {
@@ -282,18 +283,18 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 	if needDispatcher {
 		if kernels.MinKernelVersion("5.4.0") {
 			if !kernels.MinKernelVersion("5.5.0") {
-				progsCollectStats = append(progsCollectStats, dispatcherSkbLoad54Progs...)
-				maps = append(maps, dispatcherSkbLoad54Maps...)
+				progsCollectStats = append(progsCollectStats, dispatcherNoProbeReadProgs...)
+				maps = append(maps, dispatcherNoProbeReadMaps...)
 			} else if !kernels.MinKernelVersion("5.14.0") {
-				progsCollectStats = append(progsCollectStats, dispatcherSkbLoadProgs...)
-				maps = append(maps, dispatcherSkbLoadMaps...)
+				progsCollectStats = append(progsCollectStats, dispatcherProgs...)
+				maps = append(maps, dispatcherMaps...)
 			} else {
 				if runtime.GOARCH != "amd64" {
-					progsCollectStats = append(progsCollectStats, dispatcherSkbLoadProgs...)
-					maps = append(maps, dispatcherSkbLoadMaps...)
-				} else {
 					progsCollectStats = append(progsCollectStats, dispatcherProgs...)
 					maps = append(maps, dispatcherMaps...)
+				} else {
+					progsCollectStats = append(progsCollectStats, dispatcherProcessTreeProgs...)
+					maps = append(maps, dispatcherProcessTreeMaps...)
 				}
 			}
 		} else {

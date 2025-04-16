@@ -8,10 +8,8 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-#define PROCESS_TREE
-#define IN_KERNEL_DNS
-
 #include "vmlinux.h"
+#include "icmp/bpf_icmp.h"
 #include "bpf_dispatcher.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
@@ -23,15 +21,13 @@ int _version __attribute__((section(("version")), used)) =
 __attribute__((section("cgroup_skb/ingress"), used)) int
 tg_cgroup_ingress(struct __sk_buff *skb)
 {
-	volatile int ret = tg_cgroup_dispatcher(skb, 0);
-
-	return ret & 1;
+	tg_cgroup_dispatcher(skb, 0);
+	return SK_PASS;
 }
 
 __attribute__((section("cgroup_skb/egress"), used)) int
 tg_cgroup_egress(struct __sk_buff *skb)
 {
-	volatile int ret = tg_cgroup_dispatcher(skb, 1);
-
-	return ret & 1;
+	tg_cgroup_dispatcher(skb, 1);
+	return SK_PASS;
 }
