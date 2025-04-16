@@ -20,8 +20,7 @@ struct {
 	__uint(max_entries, 1);
 } tg_cgroup_protocol_cfg_map SEC(".maps");
 
-static inline __attribute__((always_inline)) int
-tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
+int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
