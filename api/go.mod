@@ -4,9 +4,9 @@ go 1.24.0
 
 replace (
 	github.com/cilium/tetragon => ../modules/tetragon-oss
+	github.com/cilium/tetragon-oss/pkg/k8s => ../modules/tetragon-oss/pkg/k8s
 	github.com/cilium/tetragon/api => ../modules/tetragon-oss/api
-
-	github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
+	github.com/cilium/tetragon/pkg/k8s => ./pkg/k8s
 )
 
 require (
