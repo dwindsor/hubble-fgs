@@ -459,6 +459,11 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 	return allPolicy
 }
 
+// createMatchLabelsPolicySet computes the records generated from the current
+// state and policies, then computes the records generated from a fresh state
+// contaning the current and new policies. It then returns the new state, the
+// records to add and the records to remove (which are the diff between the
+// current computed records and the new ones).
 func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
 	// Entry point to Policy state create
 	// Collect existing policy set
@@ -485,7 +490,7 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 	}
 
 	// Building new state with extended policy set
-	s := New()
+	newState := New()
 	allPolicy := append(currentPolicy, policy...)
 	uidGenerator := make(map[string]int, len(allPolicy))
 
@@ -500,32 +505,32 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 		}
 
 		uid := fmt.Sprintf("%s_%d", p.Name, id)
-		err := s.CreateMatchLabelsPolicy(uid, p)
+		err := newState.CreateMatchLabelsPolicy(uid, p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 	}
 
 	// Walk existing pods and create new []record from new policy
-	addSet := []*record.DatapathRecord{}
+	addRecordsSet := []*record.DatapathRecord{}
 	for _, p := range currentState.localPods {
-		r, err := s.podAdd(p)
+		r, err := newState.podAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		addSet = append(addSet, r...)
+		addRecordsSet = append(addRecordsSet, r...)
 	}
 	for _, p := range currentState.remotePods {
-		r, err := s.podAdd(p)
+		r, err := newState.podAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		addSet = append(addSet, r...)
+		addRecordsSet = append(addRecordsSet, r...)
 	}
 
 	// If the record no longer exists remove it.
-	removeSet := record.Diff(calculatorRecords, addSet)
-	return s, addSet, removeSet, nil
+	removeRecordsSet := record.Diff(calculatorRecords, addRecordsSet)
+	return newState, addRecordsSet, removeRecordsSet, nil
 }
 
 func CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) error {
