@@ -249,41 +249,9 @@ func selected(node *tview.TreeNode) {
 }
 
 func printInteractiveTree(enableS3 bool, bucket string) error {
-	ctx := context.Background()
-	appModel := &appModelV1.ApplicationModelEvent{}
-	fi, _ := os.Stdin.Stat()
-	if fi.Mode()&os.ModeNamedPipe != 0 {
-		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
-		err := decoder.Decode(&appModel)
-		if err != nil && !errors.Is(err, io.EOF) {
-			return err
-		}
-	} else if enableS3 {
-		fmt.Printf("Enable S3 load default config!\n")
-		config, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
-			return err
-		}
-		client := s3.NewFromConfig(config, func(o *s3.Options) {
-			o.DisableLogOutputChecksumValidationSkipped = true
-		})
-		last, err := s3GetLastKey(ctx, client, bucket, "")
-		if err != nil {
-			return err
-		}
-		appModel, err = getS3Model(ctx, client, bucket, last, []string{})
-		if err != nil {
-			return err
-		}
-	} else {
-		c := NewConnectedModelClient()
-		defer c.Close()
-
-		res, err := getProcessTreeGrpc(&c)
-		if err != nil {
-			return err
-		}
-		appModel = model.ProcessModelToApplicationModel(res)
+	appModel, err := getAppModel(enableS3, bucket)
+	if err != nil {
+		return err
 	}
 	root := tview.NewTreeNode("app_model").
 		SetReference(appModel.GetApplicationModel()).
@@ -308,20 +276,6 @@ type wrappedEvent struct {
 
 func (model *wrappedEvent) GetTree() (*appModelV1.ApplicationModelEvent, error) {
 	return model.ApplicationModelEvent, nil
-}
-
-type wrappedGrpc struct {
-	*ConnectedModelClient
-}
-
-func (client *wrappedGrpc) GetTree() (*appModelV1.ApplicationModelEvent, error) {
-	res, err := getProcessTreeGrpc(client.ConnectedModelClient)
-	if err != nil {
-		return nil, err
-	}
-
-	appModel := model.ProcessModelToApplicationModel(res)
-	return appModel, nil
 }
 
 func getTreeHtml(w http.ResponseWriter, _ *http.Request, getter treeGetter) {
@@ -349,40 +303,12 @@ func getTreeHtml(w http.ResponseWriter, _ *http.Request, getter treeGetter) {
 }
 
 func runBrowserTree(enableS3 bool, bucket string) error {
-	appModel := &appModelV1.ApplicationModelEvent{}
-	var getter treeGetter
 	ctx := context.Background()
-
-	fi, _ := os.Stdin.Stat()
-	if fi.Mode()&os.ModeNamedPipe != 0 {
-		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
-		err := decoder.Decode(&appModel)
-		if err != nil && !errors.Is(err, io.EOF) {
-			return err
-		}
-		getter = &wrappedEvent{ApplicationModelEvent: appModel}
-	} else if enableS3 {
-		config, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
-			return err
-		}
-		client := s3.NewFromConfig(config, func(o *s3.Options) {
-			o.DisableLogOutputChecksumValidationSkipped = true
-		})
-		last, err := s3GetLastKey(ctx, client, bucket, "")
-		if err != nil {
-			return err
-		}
-		appModel, err := getS3Model(ctx, client, bucket, last, []string{})
-		if err != nil {
-			return err
-		}
-		getter = &wrappedEvent{ApplicationModelEvent: appModel}
-	} else {
-		c := NewConnectedModelClient()
-		ctx = c.Ctx
-		getter = &wrappedGrpc{ConnectedModelClient: &c}
+	appModel, err := getAppModel(enableS3, bucket)
+	if err != nil {
+		return err
 	}
+	getter := &wrappedEvent{ApplicationModelEvent: appModel}
 
 	srv := &http.Server{
 		Addr:        ":3333",
@@ -472,7 +398,7 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 		})
 		last, err := s3GetLastKey(ctx, client, bucket, "")
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
 		appModel, err = getS3Model(ctx, client, bucket, last, namespaces)
 		if err != nil {
@@ -498,40 +424,9 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 }
 
 func printGrpcTree(enableS3 bool, bucket string) error {
-	ctx := context.Background()
-	appModel := &appModelV1.ApplicationModelEvent{}
-	fi, _ := os.Stdin.Stat()
-	if fi.Mode()&os.ModeNamedPipe != 0 {
-		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
-		err := decoder.Decode(&appModel)
-		if err != nil && !errors.Is(err, io.EOF) {
-			return err
-		}
-	} else if enableS3 {
-		config, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
-			return err
-		}
-		client := s3.NewFromConfig(config, func(o *s3.Options) {
-			o.DisableLogOutputChecksumValidationSkipped = true
-		})
-		last, err := s3GetLastKey(ctx, client, bucket, "")
-		if err != nil {
-			return err
-		}
-		appModel, err = getS3Model(ctx, client, bucket, last, namespaces)
-		if err != nil {
-			return err
-		}
-	} else {
-		c := NewConnectedModelClient()
-		defer c.Close()
-
-		res, err := getProcessTreeGrpc(&c)
-		if err != nil {
-			return err
-		}
-		appModel = model.ProcessModelToApplicationModel(res)
+	appModel, err := getAppModel(enableS3, bucket)
+	if err != nil {
+		return err
 	}
 
 	switch output {
@@ -616,21 +511,10 @@ func generateChecker() (string, error) {
 }
 
 func generateCheckerGrpc() (string, error) {
-	c := NewConnectedModelClient()
-	defer c.Close()
-
-	if host {
-		namespaces = append(namespaces, model.HostNamespace)
-	}
-	res, err := c.Client.GetProcessModel(c.Ctx, &tetragon.GetProcessModelRequest{
-		Namespaces: namespaces,
-		Debug:      common.Debug,
-	})
-	if err != nil || res == nil {
+	appModel, err := getAppModel(false, "")
+	if err != nil {
 		return "", err
 	}
-
-	appModel := model.ProcessModelToApplicationModel(res)
 
 	return checker.GenerateCheckerCEL(appModel)
 }
