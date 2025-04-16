@@ -414,25 +414,21 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 		 */
 		if (data + ipopts <= data_end) {
 			ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
-			if (ts_opt->type != IPO_TYPE ||
-			    ts_opt->magic != bpf_ntohl(IPO_MAGIC_W) ||
-			    ts_opt->magic != ts_opt->magic2) {
-				ts_opt = 0;
-			}
 		} else {
 			err = skb_load_bytes(skb, sizeof(struct iphdr), &ipopt, sizeof(struct timestamp_option));
 			if (err < 0) {
 				emit_ip_error_event(
 					skb, &ip, &vars->cookie, false,
-					false, send + 1, 0, IP_ERROR_INET_READ_IP_OPTION);
+					ip->version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
 			} else {
-				if (ipopt.type == IPO_TYPE &&
-				    ipopt.magic == bpf_ntohl(IPO_MAGIC_W) &&
-				    ipopt.magic == ipopt.magic2) {
-					ts_opt = &ipopt;
-				}
+				ts_opt = &ipopt;
 			}
 		}
+
+		if (ts_opt && (ts_opt->type != IPO_TYPE ||
+			       ts_opt->magic != bpf_ntohl(IPO_MAGIC_W) ||
+			       ts_opt->magic != ts_opt->magic2))
+			ts_opt = 0;
 	}
 	udp_off = ip_payload_off(ip);
 	asm volatile("%[udp_off] &= 0xff;\n"

@@ -210,10 +210,12 @@ int tcp_handler_send(struct __sk_buff *skb)
 int tcp_handler_ip4_recv(struct __sk_buff *skb)
 {
 	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
+	struct timestamp_option *ts_opt = 0, ts_opt_tmp;
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
 	struct handler_vars *vars;
 	struct iphdr *ip;
+	int err;
 
 #ifndef SKB_LOAD_BYTES
 	struct tcpsocketmap_value *socket;
@@ -241,19 +243,23 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb)
 	 * add to detect TCP latency.
 	 */
 	if (ip->ihl >= ts_size / sizeof(u32)) {
-		struct timestamp_option *ts_opt;
+		if (data + ts_size <= data_end) {
+			ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
+		} else {
+			err = skb_load_bytes(skb, sizeof(struct iphdr), &ts_opt_tmp, sizeof(struct timestamp_option));
+			if (err < 0) {
+				emit_ip_error_event(
+					skb, &ip, &vars->cookie, false,
+					false, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
+			} else {
+				ts_opt = &ts_opt_tmp;
+			}
+		}
 
-		if (data + ts_size > data_end) {
-			emit_ip_error_event(skb, ip, &vars->cookie, false, ip->version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
-			return SK_PASS;
-		}
-		ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
-		if (ts_opt->type != IPO_TYPE ||
-		    ts_opt->magic != bpf_ntohl(IPO_MAGIC_W) ||
-		    ts_opt->magic != ts_opt->magic2) {
-			return SK_PASS;
-		}
-		check_timestamp(skb, ts_opt, &vars->cookie);
+		if (ts_opt && ts_opt->type == IPO_TYPE &&
+		    ts_opt->magic == bpf_ntohl(IPO_MAGIC_W) &&
+		    ts_opt->magic == ts_opt->magic2)
+			check_timestamp(skb, ts_opt, &vars->cookie);
 	}
 	return SK_PASS;
 }
