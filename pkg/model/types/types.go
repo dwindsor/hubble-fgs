@@ -114,9 +114,9 @@ type TetragonWorkloadNetworkSubject struct {
 const TetragonBinaryPathMaxLen = 256
 
 type TetragonNetworkSubject struct {
-	MatchLabelsEqual map[string]string
-	Workload         TetragonWorkloadNetworkSubject
-	InProcessName    []string
+	Labels        TetragonNetworkLabels
+	Workload      TetragonWorkloadNetworkSubject
+	InProcessName []string
 }
 
 type TetragonNetworkFQDN struct {

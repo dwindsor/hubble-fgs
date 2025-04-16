@@ -40,7 +40,7 @@ func testMatchSrcLabelsPolicy(name, labels string) *types.TetragonNetworkPolicy 
 	}
 
 	s := types.TetragonNetworkSubject{
-		MatchLabelsEqual: ml,
+		Labels: types.TetragonNetworkLabels{Equal: ml},
 	}
 	f := &types.TetragonNetworkFQDN{
 		Names: []string{"test.io", "test.com"},
@@ -225,8 +225,8 @@ func TestCreateSrcKey(t *testing.T) {
 	}
 
 	subject := types.TetragonNetworkSubject{
-		MatchLabelsEqual: ml,
-		Workload:         wl,
+		Labels:   types.TetragonNetworkLabels{Equal: ml},
+		Workload: wl,
 	}
 
 	labels := make(map[string]string)

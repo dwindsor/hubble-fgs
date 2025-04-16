@@ -47,7 +47,7 @@ func AddUnsafeNetworkPolicy(policyUID string, policy *types.TetragonNetworkPolic
 func ClearDnsPolicy(policyUID string, policy *types.TetragonNetworkPolicy) error {
 	s := dns.New()
 
-	if len(policy.Subject.MatchLabelsEqual) > 0 {
+	if len(policy.Subject.Labels.Equal) > 0 {
 		return s.RemoveMatchLabelNetworkPolicy(policyUID, policy)
 	}
 	return s.RemoveNetworkPolicy(policyUID, policy)
