@@ -80,7 +80,7 @@ tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 		} else if (protocol == IPPROTO_TCP && cfg->tcp6) {
 			ret = tcp_handler_ip6(skb, payload_off, send);
 		} else if (protocol == IPPROTO_ICMP6 && cfg->icmp6) {
-			icmp_handler_ip6(skb, &vars->ip6, &vars->cookie, payload_off, send);
+			icmp_handler_ip6(skb, payload_off, send);
 		}
 		break;
 	}

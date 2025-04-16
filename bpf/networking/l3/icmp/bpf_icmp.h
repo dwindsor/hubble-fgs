@@ -284,11 +284,7 @@ int icmp_handler_ip4(struct __sk_buff *skb, int send)
 	return SK_PASS;
 }
 
-#ifdef SKB_LOAD_BYTES
-static inline __attribute__((always_inline))
-#endif
-int
-icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
+int icmp_handler_ip6(struct __sk_buff *skb, u16 off, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
@@ -296,22 +292,23 @@ icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 of
 	struct ipv6hdr rep_ip6_store;
 	struct ipv6hdr *rep_ip6 = 0;
 	struct msg_icmp_event *val;
+	struct handler_vars *vars;
 	struct icmp_config *cfg;
 	struct tcphdr tcp_store;
 	bool skb_read = false;
+	struct ipv6hdr *ip6;
 	struct tcphdr *tcp;
 	u8 *icmp_data;
 	int zero = 0;
 	u8 *rep_ptr;
 
-	if (unlikely(!ip6))
+	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	if (!vars)
 		return SK_PASS;
-
-	if (unlikely(!cookie))
-		return SK_PASS;
+	ip6 = &vars->ip6;
 
 	if (!off) {
-		emit_ip_error_event(skb, ip6, cookie, true, 6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
+		emit_ip_error_event(skb, ip6, &vars->cookie, true, 6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
 		return SK_PASS;
 	}
 
@@ -341,7 +338,7 @@ icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 of
 		icmp_data = (u8 *)data + off;
 	} else {
 		if (skb_load_bytes(skb, off, icmp_data_store, sizeof(icmp_data_store)) < 0) {
-			emit_ip_error_event(skb, ip6, cookie, false, 6, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
+			emit_ip_error_event(skb, ip6, &vars->cookie, false, 6, send + 1, 0, IP_ERROR_INET_READ_PAYLOAD);
 			return SK_PASS;
 		}
 		skb_read = true;
@@ -431,7 +428,7 @@ icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 of
 	if (val->icmp_type == ICMPV6_PARAMPROB)
 		val->icmp_ip_pointer = *(u32 *)val->icmp_data;
 
-	send_icmp_event(skb, val, cookie, 0, 0, 0);
+	send_icmp_event(skb, val, &vars->cookie, 0, 0, 0);
 	return SK_PASS;
 }
 
