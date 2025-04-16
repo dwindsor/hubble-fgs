@@ -451,6 +451,52 @@ func getProcessTreeGrpc(c *ConnectedModelClient) (*tetragon.GetProcessModelRespo
 	return res, nil
 }
 
+func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEvent, error) {
+	var err error
+	ctx := context.Background()
+	appModel := &appModelV1.ApplicationModelEvent{}
+	fi, _ := os.Stdin.Stat()
+	if fi.Mode()&os.ModeNamedPipe != 0 {
+		decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
+		err := decoder.Decode(&appModel)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return nil, err
+		}
+	} else if enableS3 {
+		config, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			return nil, err
+		}
+		client := s3.NewFromConfig(config, func(o *s3.Options) {
+			o.DisableLogOutputChecksumValidationSkipped = true
+		})
+		last, err := s3GetLastKey(ctx, client, bucket, "")
+		if err != nil {
+			return nil,err
+		}
+		appModel, err = getS3Model(ctx, client, bucket, last, namespaces)
+		if err != nil {
+			return nil, err
+		}
+	} else if appModelFilename != "" {
+		appModel, err = readAppModelFromFile(appModelFilename)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		c := NewConnectedModelClient()
+		defer c.Close()
+
+		res, err := getProcessTreeGrpc(&c)
+		if err != nil {
+			return nil, err
+		}
+		appModel = model.ProcessModelToApplicationModel(res)
+	}
+
+	return appModel, nil
+}
+
 func printGrpcTree(enableS3 bool, bucket string) error {
 	ctx := context.Background()
 	appModel := &appModelV1.ApplicationModelEvent{}
@@ -516,26 +562,6 @@ func getProcessModel(c *ConnectedModelClient, req *tetragon.GetProcessModelReque
 	return &processModel, nil
 }
 
-func getAppModel() (*appModelV1.ApplicationModelEvent, error) {
-	if appModelFilename == "" {
-		c := NewConnectedModelClient()
-		defer c.Close()
-
-		if host {
-			namespaces = append(namespaces, model.HostNamespace)
-		}
-		processModel, err := getProcessModel(&c, &tetragon.GetProcessModelRequest{
-			Namespaces: namespaces,
-			Debug:      common.Debug,
-		})
-		if err != nil {
-			return nil, err
-		}
-		return model.ProcessModelToApplicationModel(processModel), nil
-	}
-	return readAppModelFromFile(appModelFilename)
-}
-
 func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 	var err error
 	var exprs []string
@@ -545,7 +571,7 @@ func checkProcessTree() (checker.ApplicationCheckerResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	appModel, err := getAppModel()
+	appModel, err := getAppModel(false, "")
 	if err != nil {
 		return nil, err
 	}
