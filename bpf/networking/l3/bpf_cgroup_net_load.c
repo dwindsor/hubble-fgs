@@ -8,8 +8,6 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-#define SKB_LOAD_BYTES
-
 #include "vmlinux.h"
 #include "icmp/bpf_icmp.h"
 #include "bpf_dispatcher.h"

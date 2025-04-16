@@ -8,6 +8,9 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+#define PROCESS_TREE
+#define IN_KERNEL_DNS
+
 #include "vmlinux.h"
 #include "bpf_dispatcher.h"
 

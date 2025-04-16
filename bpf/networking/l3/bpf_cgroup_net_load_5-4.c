@@ -8,7 +8,6 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-#define SKB_LOAD_BYTES
 #define TRACK_ICMP_FROM_SKB
 #define NO_CGROUP_PROBE_READ
 

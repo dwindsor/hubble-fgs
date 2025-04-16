@@ -201,7 +201,7 @@ int tcp_handler_send(struct __sk_buff *skb)
 		}
 	}
 	cgrp_tcp_socketmap_stats(sk, socket);
-#ifndef SKB_LOAD_BYTES
+#ifdef PROCESS_TREE
 	return process_socketmap_send(socket, skb);
 #endif
 	return SK_PASS;
@@ -217,7 +217,7 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb)
 	struct iphdr *ip;
 	int err;
 
-#ifndef SKB_LOAD_BYTES
+#ifdef PROCESS_TREE
 	struct tcpsocketmap_value *socket;
 	__u64 c;
 #endif
@@ -227,7 +227,7 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb)
 		return SK_PASS;
 	ip = &vars->ip;
 
-#ifndef SKB_LOAD_BYTES
+#ifdef PROCESS_TREE
 	c = vars->cookie;
 	socket = lookup_tcpsocketmap(&c);
 	if (socket) {

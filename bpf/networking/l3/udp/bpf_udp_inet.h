@@ -447,7 +447,7 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 	}
 	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
-#ifndef SKB_LOAD_BYTES
+#ifdef IN_KERNEL_DNS
 	if (udp->source == bpf_htons(DNS_PORT) && bpf_dns_parser_enabled())
 		dns_send_userspace = !!parse_dns(skb, payload_off);
 #endif
@@ -495,7 +495,7 @@ int udp_handler_ip6(struct __sk_buff *skb, u16 udp_off, int send)
 	}
 	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
-#ifndef SKB_LOAD_BYTES
+#ifdef IN_KERNEL_DNS
 	if (udp->source == bpf_htons(DNS_PORT) && bpf_dns_parser_enabled())
 		dns_send_userspace = !!parse_dns(skb, payload_off);
 #endif
