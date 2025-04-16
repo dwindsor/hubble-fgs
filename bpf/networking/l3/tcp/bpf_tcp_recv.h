@@ -124,15 +124,12 @@ check_timestamp(void *ctx, struct timestamp_option *ts_opt, u64 *cookie)
 	return SK_PASS;
 }
 
-#ifdef SKB_LOAD_BYTES
-static inline __attribute__((always_inline))
-#endif
-int
-tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
+int tcp_handler_send(struct __sk_buff *skb)
 {
 	__u64 tcp_bytes_sent, tcp_bytes_received;
 	struct tcp_send_check_sample_cfg *cfg;
 	struct tcpsocketmap_value *socket;
+	struct handler_vars *vars;
 	struct tcp_sock *tcp;
 	struct sock *sk;
 	__u32 rcv_wnd;
@@ -140,18 +137,17 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 	__u8 state;
 	__u64 c;
 
-	if (!cookie) {
-		emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_COOKIE);
+	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	if (!vars)
 		return SK_PASS;
-	}
 
-	c = *cookie;
+	c = vars->cookie;
 	// We can just cast pointers here because a struct bpf_sock * points to the same location
 	// as a struct sock * (with BPF magic behind the scenes to provide different functionality).
 	tcp = (struct tcp_sock *)c;
 	sk = (struct sock *)tcp;
 	if (!tcp) {
-		emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_TCPSOCK);
+		emit_ip_error_event(skb, 0, &vars->cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_TCPSOCK);
 		return SK_PASS;
 	}
 
@@ -161,7 +157,7 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 	if (unlikely(!socket)) {
 		// Don't report an error here if the TCP socket isn't yet active.
 		if (tcp_active(state))
-			emit_ip_error_event(skb, 0, cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_SOCKET);
+			emit_ip_error_event(skb, 0, &vars->cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_SOCKET);
 		return SK_PASS;
 	}
 
@@ -211,32 +207,26 @@ tcp_handler_send(struct __sk_buff *skb, u64 *cookie)
 	return SK_PASS;
 }
 
-#ifdef SKB_LOAD_BYTES
-static inline __attribute__((always_inline))
-#endif
-int
-tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
+int tcp_handler_ip4_recv(struct __sk_buff *skb)
 {
 	size_t ts_size = sizeof(struct iphdr) + sizeof(struct timestamp_option);
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
+	struct handler_vars *vars;
+	struct iphdr *ip;
+
 #ifndef SKB_LOAD_BYTES
 	struct tcpsocketmap_value *socket;
 	__u64 c;
 #endif
 
-	if (!ip) {
-		emit_ip_error_event(skb, 0, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_IPHDR);
+	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	if (!vars)
 		return SK_PASS;
-	}
-
-	if (!cookie) {
-		emit_ip_error_event(skb, ip, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_COOKIE);
-		return SK_PASS;
-	}
+	ip = &vars->ip;
 
 #ifndef SKB_LOAD_BYTES
-	c = *cookie;
+	c = vars->cookie;
 	socket = lookup_tcpsocketmap(&c);
 	if (socket) {
 		int verdict = process_socketmap_recv(socket, skb);
@@ -254,11 +244,7 @@ tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 		struct timestamp_option *ts_opt;
 
 		if (data + ts_size > data_end) {
-			if (!cookie) {
-				emit_ip_error_event(skb, ip, cookie, false, 4, 1, 0, IP_ERROR_TCP_RECV_NO_COOKIE);
-				return SK_PASS;
-			}
-			emit_ip_error_event(skb, ip, cookie, false, ip->version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
+			emit_ip_error_event(skb, ip, &vars->cookie, false, ip->version, 1, 0, IP_ERROR_INET_READ_IP_OPTION);
 			return SK_PASS;
 		}
 		ts_opt = (struct timestamp_option *)(data + sizeof(struct iphdr));
@@ -267,11 +253,24 @@ tcp_handler_ip4_recv(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie)
 		    ts_opt->magic != ts_opt->magic2) {
 			return SK_PASS;
 		}
-		check_timestamp(skb, ts_opt, cookie);
+		check_timestamp(skb, ts_opt, &vars->cookie);
 	}
 	return SK_PASS;
 }
 
+#ifdef NO_CGROUP_PROBE_READ
+int tcp_handler_ip4(struct __sk_buff *skb, int send)
+{
+	if (send)
+		return SK_PASS;
+	return tcp_handler_ip4_recv(skb);
+}
+
+int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
+{
+	return SK_PASS;
+}
+#else
 int tcp_handler_ip4(struct __sk_buff *skb, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
@@ -290,24 +289,11 @@ int tcp_handler_ip4(struct __sk_buff *skb, int send)
 		ip = (struct iphdr *)data;
 
 	if (send)
-#ifndef NO_CGROUP_PROBE_READ
-		return tcp_handler_send(skb, &vars->cookie);
-#else
-		return SK_PASS;
-#endif
+		return tcp_handler_send(skb);
 
-#ifndef NO_CGROUP_PROBE_READ
 	tcp_check_fin_rx(skb, ip, ip->ihl * sizeof(__u32), &vars->cookie, false);
-#endif
-	return tcp_handler_ip4_recv(skb, ip, &vars->cookie);
+	return tcp_handler_ip4_recv(skb);
 }
-
-#ifdef NO_CGROUP_PROBE_READ
-int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
-{
-	return SK_PASS;
-}
-#else
 int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
 {
 	struct handler_vars *vars;
@@ -319,7 +305,7 @@ int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
 	ip6 = &vars->ip6;
 
 	if (send)
-		return tcp_handler_send(skb, &vars->cookie);
+		return tcp_handler_send(skb);
 
 	tcp_check_fin_rx(skb, ip6, payload_off, &vars->cookie, true);
 	return SK_PASS;
