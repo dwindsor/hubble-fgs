@@ -355,6 +355,10 @@ icmp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 of
 		return SK_PASS;
 
 	val->common.op = ISO_MSG_OP_ICMP;
+	/* Verifier forgets the constraint on off on older kernels if it spills onto the stack. */
+	asm volatile("%[off] &= 0x7fff;\n"
+		     : [off] "+r"(off)
+		     :);
 	val->icmp_len = (data_end - data) - off - ICMP_HDR_LEN - sizeof(u32); // total len - payload offset - ICMP header
 	*(u32 *)val->icmp_data = *(u32 *)(icmp_data + ICMP_HDR_DATA_OFF);
 

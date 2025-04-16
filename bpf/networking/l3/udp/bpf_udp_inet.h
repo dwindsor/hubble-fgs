@@ -463,15 +463,13 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 }
 
 static inline __attribute__((always_inline)) int
-udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off, int send)
+udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 udp_off, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
 	bool dns_send_userspace = true;
 	int payload_sz, payload_off;
 	struct udphdr *udp, cpy;
-	unsigned long err;
-	u16 udp_off;
 
 	if (!skb)
 		return SK_PASS;
@@ -480,7 +478,6 @@ udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 off
 	if (!cookie)
 		return SK_PASS;
 
-	get_ip6_proto(&udp_off, ip6, 0, skb, data, data_end, false, &err);
 	if (!udp_off) {
 		emit_ip_error_event(skb, (struct iphdr *)ip6, cookie, true,
 				    6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
