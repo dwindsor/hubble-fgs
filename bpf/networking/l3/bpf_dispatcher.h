@@ -76,7 +76,7 @@ tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 			emit_ip_error_event(skb, &vars->ip6, &vars->cookie, true, ip->version, send + 1, 0, IP_ERROR_INET_READ_IP);
 			return SK_PASS;
 		} else if (protocol == IPPROTO_UDP && cfg->udp6) {
-			udp_handler_ip6(skb, &vars->ip6, &vars->cookie, payload_off, send);
+			udp_handler_ip6(skb, payload_off, send);
 		} else if (protocol == IPPROTO_TCP && cfg->tcp6) {
 			ret = tcp_handler_ip6(skb, &vars->ip6, &vars->cookie, payload_off, send);
 		} else if (protocol == IPPROTO_ICMP6 && cfg->icmp6) {

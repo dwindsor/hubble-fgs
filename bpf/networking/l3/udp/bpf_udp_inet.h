@@ -462,24 +462,26 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 	return SK_PASS;
 }
 
-static inline __attribute__((always_inline)) int
-udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 udp_off, int send)
+int udp_handler_ip6(struct __sk_buff *skb, u16 udp_off, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
 	bool dns_send_userspace = true;
 	int payload_sz, payload_off;
+	struct handler_vars *vars;
 	struct udphdr *udp, cpy;
+	struct ipv6hdr *ip6;
 
 	if (!skb)
 		return SK_PASS;
-	if (!ip6)
+
+	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	if (!vars)
 		return SK_PASS;
-	if (!cookie)
-		return SK_PASS;
+	ip6 = &vars->ip6;
 
 	if (!udp_off) {
-		emit_ip_error_event(skb, (struct iphdr *)ip6, cookie, true,
+		emit_ip_error_event(skb, (struct iphdr *)ip6, &vars->cookie, true,
 				    6, send + 1, 0, IP_ERROR_INET_NO_PAYLOAD_OFFSET);
 		return SK_PASS;
 	}
@@ -489,7 +491,7 @@ udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 udp
 	udp = (struct udphdr *)(data + udp_off);
 	if (udp + sizeof(struct udphdr) > data_end) {
 		if (skb_load_bytes(skb, udp_off, &cpy, sizeof(struct udphdr)) < 0) {
-			emit_ip_error_event(skb, (struct iphdr *)ip6, cookie, 6,
+			emit_ip_error_event(skb, (struct iphdr *)ip6, &vars->cookie, 6,
 					    6, send + 1, 0, IP_ERROR_INET_READ_UDP);
 			return SK_PASS;
 		}
@@ -501,10 +503,10 @@ udp_handler_ip6(struct __sk_buff *skb, struct ipv6hdr *ip6, u64 *cookie, u16 udp
 	if (udp->source == bpf_htons(DNS_PORT) && bpf_dns_parser_enabled())
 		dns_send_userspace = !!parse_dns(skb, payload_off);
 #endif
-	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, udp, cookie,
+	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, udp, &vars->cookie,
 		 payload_off,
 		 payload_sz, send, dns_send_userspace);
-	udp_watermarks(skb, cookie, (struct iphdr *)ip6, payload_sz, true, send);
+	udp_watermarks(skb, &vars->cookie, (struct iphdr *)ip6, payload_sz, true, send);
 	return SK_PASS;
 }
 #endif //__BPF_INET_H_
