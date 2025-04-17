@@ -26,10 +26,18 @@ tg_udp_bind_sock(struct pt_regs *ctx)
 	__u64 cookie = PT_REGS_PARM1(ctx);
 	int attach = PT_REGS_PARM2(ctx);
 
-	if (attach == bpf_core_enum_value(enum bpf_attach_type, BPF_CGROUP_INET4_POST_BIND)) {
-		return __udp_bind_sock(ctx, cookie, false);
-	} else if (attach == bpf_core_enum_value(enum bpf_attach_type, BPF_CGROUP_INET6_POST_BIND)) {
-		return __udp_bind_sock(ctx, cookie, true);
+	if (bpf_core_type_exists(enum cgroup_bpf_attach_type)) {
+		if (attach == bpf_core_enum_value(enum cgroup_bpf_attach_type, CGROUP_INET4_POST_BIND)) {
+			__udp_bind_sock(ctx, cookie, false);
+		} else if (attach == bpf_core_enum_value(enum cgroup_bpf_attach_type, CGROUP_INET6_POST_BIND)) {
+			__udp_bind_sock(ctx, cookie, true);
+		}
+	} else {
+		if (attach == bpf_core_enum_value(enum bpf_attach_type, BPF_CGROUP_INET4_POST_BIND)) {
+			__udp_bind_sock(ctx, cookie, false);
+		} else if (attach == bpf_core_enum_value(enum bpf_attach_type, BPF_CGROUP_INET6_POST_BIND)) {
+			__udp_bind_sock(ctx, cookie, true);
+		}
 	}
 
 	return 1;

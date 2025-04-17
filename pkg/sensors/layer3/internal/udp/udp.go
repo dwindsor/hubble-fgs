@@ -90,22 +90,6 @@ var (
 		"udp_fentry",
 	)
 
-	SkUdpBind_5_15Kprobe = program.Builder(
-		"bpf_udp_bind_5_15.o",
-		"__cgroup_bpf_run_filter_sk",
-		"kprobe/__cgroup_bpf_run_filter_sk",
-		"tg_udp_bind_sock",
-		"layer3_sensor",
-	)
-
-	SkUdpBind_5_15Fentry = program.Builder(
-		"bpf_udp_bind_5_15_fentry.o",
-		"fentry",
-		"fentry/__cgroup_bpf_run_filter_sk",
-		"tg_udp_bind_sock",
-		"udp_fentry",
-	)
-
 	// Dummy (NOP) programs need to be attached to the cgroup hooks in order to cause the __cgroup_bpf_run_filter_sk
 	// hook to be called (5.10+).
 	SkUdpBindDummy4 = program.Builder(
@@ -244,16 +228,10 @@ func UnloadSensor() error {
 }
 
 func bindProg() *program.Program {
-	if !kernels.MinKernelVersion("5.15.0") {
-		if utils.SupportFentry() {
-			return SkUdpBindFentry
-		}
-		return SkUdpBindKprobe
-	}
 	if utils.SupportFentry() {
-		return SkUdpBind_5_15Fentry
+		return SkUdpBindFentry
 	}
-	return SkUdpBind_5_15Kprobe
+	return SkUdpBindKprobe
 }
 
 func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Program, []*program.Map) {
