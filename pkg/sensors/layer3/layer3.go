@@ -18,8 +18,6 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/asm"
-	"github.com/cilium/ebpf/features"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
@@ -284,7 +282,7 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 
 	if needDispatcher {
 		if utils.CGroupSKBAvailable() {
-			if err := features.HaveProgramHelper(ebpf.CGroupSKB, asm.FnProbeReadKernel); err != nil {
+			if !utils.SupportCGroupSKBProbeRead() {
 				progsCollectStats = append(progsCollectStats, dispatcherNoProbeReadProgs...)
 				maps = append(maps, dispatcherNoProbeReadMaps...)
 			} else if !utils.SupportProcessTree() {

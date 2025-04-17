@@ -23,6 +23,7 @@ import (
 
 var (
 	checkCGroupSKBAvailable = sync.OnceValue(_checkCGroupSKBAvailable)
+	checkCGroupSKBProbeRead = sync.OnceValue(_checkCGroupSKBProbeRead)
 	checkAddAndFetch        = sync.OnceValue(_checkAddAndFetch)
 	checkCurrentTaskBTF     = sync.OnceValue(_checkCurrentTaskBTF)
 )
@@ -60,6 +61,16 @@ func _checkCGroupSKBAvailable() bool {
 		return false
 	}
 	err = features.HaveProgramHelper(ebpf.CGroupSKB, asm.FnPerfEventOutput)
+	return err == nil
+}
+
+// SupportCGroupSKBProbeRead checks if the kernel supports the probe_read helper on CGroup/SKB programs.
+func SupportCGroupSKBProbeRead() bool {
+	return checkCGroupSKBProbeRead()
+}
+
+func _checkCGroupSKBProbeRead() bool {
+	err := features.HaveProgramHelper(ebpf.CGroupSKB, asm.FnProbeReadKernel)
 	return err == nil
 }
 

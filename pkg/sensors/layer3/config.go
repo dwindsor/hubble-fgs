@@ -7,10 +7,10 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -58,7 +58,7 @@ func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 	}
 
 	icmpNetMatch := uint8(1)
-	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+	if !utils.SupportCGroupSKBProbeRead() {
 		icmpNetMatch = 0
 	}
 
