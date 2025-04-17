@@ -64,7 +64,7 @@ var (
 	celExprs         []string
 	celYAML          string
 	appModelFilename string
-	verboseDiff      bool
+	verbose          bool
 	patch            bool
 	check            bool
 	ignoreInDiff     []string
@@ -676,7 +676,7 @@ func NewDiff() *cobra.Command {
 			if term.IsTerminal(int(os.Stdout.Fd())) {
 				opts = append(opts, checker.PrintColor())
 			}
-			if !verboseDiff {
+			if !verbose {
 				opts = append(opts, checker.HideUnchanged())
 			}
 
@@ -728,7 +728,7 @@ func NewDiff() *cobra.Command {
 	flags := ret.Flags()
 	flags.BoolVarP(&check, "check", "c", check, "Exit with failure status when models do not match")
 	flags.BoolVarP(&patch, "patch", "p", patch, "Output as a JSON patch")
-	flags.BoolVarP(&verboseDiff, "verbose", "v", patch, "Print all fields when pretty printing diff")
+	flags.BoolVarP(&verbose, "verbose", "v", patch, "Print all fields when pretty printing")
 	flags.BoolVar(&ignoreByteCounts, "ignore-byte-counts", ignoreByteCounts, "Convenience helper to ignore connection byte counts in diff")
 	flags.StringArrayVarP(&ignoreInDiff, "ignore", "i", ignoreInDiff, "Field mask paths to ignore in the diff")
 	viper.BindPFlags(flags)
