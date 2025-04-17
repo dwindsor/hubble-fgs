@@ -174,8 +174,8 @@ var (
 		"layer3_sensor",
 	)
 
-	TcpSockops515 = program.Builder(
-		"bpf_tcp_sockops_5_15.o",
+	TcpSockops = program.Builder(
+		"bpf_tcp_sockops.o",
 		"sockops",
 		"sockops/tcp_sockops",
 		"tg_tcp_sockops",
@@ -217,35 +217,35 @@ var (
 	FinRxMapFentry           = program.MapBuilder("tg_tcp_finrx_map", CloseFentry)
 
 	// Maps for TCP Sockets on Sockops
-	SocketOpsMap          = program.MapBuilder(base.SocketMap.Name, TcpSockops515)
-	SocketOpsTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, TcpSockops515)
-	SocketOpsTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, TcpSockops515)
-	SocketOpsTupleRevMap  = program.MapBuilder(base.SocketTupleRevMap.Name, TcpSockops515)
-	SocketOpsTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, TcpSockops515)
-	SocketOpsFinRxMap     = program.MapBuilder("tg_tcp_finrx_map", TcpSockops515)
+	SocketOpsMap          = program.MapBuilder(base.SocketMap.Name, TcpSockops)
+	SocketOpsTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, TcpSockops)
+	SocketOpsTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, TcpSockops)
+	SocketOpsTupleRevMap  = program.MapBuilder(base.SocketTupleRevMap.Name, TcpSockops)
+	SocketOpsTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, TcpSockops)
+	SocketOpsFinRxMap     = program.MapBuilder("tg_tcp_finrx_map", TcpSockops)
 
 	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
 
 	// TCP Runtime maps
 	CfgMapKprobe       = program.MapBuilder("tg_cfg_map", ConnectKprobe)
 	CfgMapFentry       = program.MapBuilder("tg_cfg_map", ConnectFentry)
-	CfgOpsMap          = program.MapBuilder("tg_cfg_map", TcpSockops515)
+	CfgOpsMap          = program.MapBuilder("tg_cfg_map", TcpSockops)
 	TcpSocketMapKprobe = program.MapBuilder("tg_tcpsocket_map", ConnectKprobe)
 	TcpSocketMapFentry = program.MapBuilder("tg_tcpsocket_map", ConnectFentry)
-	TcpOpsSocketMap    = program.MapBuilder("tg_tcpsocket_map", TcpSockops515)
+	TcpOpsSocketMap    = program.MapBuilder("tg_tcpsocket_map", TcpSockops)
 	TcpSocketStats     = program.MapBuilder("tg_tcpsocket_map_stats", SecurityGraft)
 	VerMapKprobe       = program.MapBuilder("tg_ver_map", ConnectKprobe)
 	VerMapFentry       = program.MapBuilder("tg_ver_map", ConnectFentry)
-	VerOpsMap          = program.MapBuilder("tg_ver_map", TcpSockops515)
+	VerOpsMap          = program.MapBuilder("tg_ver_map", TcpSockops)
 
 	// Parser maps
-	HTTPContext       = program.MapBuilder("tg_http_map", TcpSockops515)
-	TLSContext        = program.MapBuilder("tg_tls_map", TcpSockops515)
+	HTTPContext       = program.MapBuilder("tg_http_map", TcpSockops)
+	TLSContext        = program.MapBuilder("tg_tls_map", TcpSockops)
 	TLSMapStatsKprobe = program.MapBuilder("tg_tls_map_stats", ConnectKprobe)
 	TLSMapStatsFentry = program.MapBuilder("tg_tls_map_stats", ConnectFentry)
-	TLSOpsMapStats    = program.MapBuilder("tg_tls_map_stats", TcpSockops515)
-	TLSBottles        = program.MapBuilder("tg_bottles", TcpSockops515)
-	TLSBottleStats    = program.MapBuilder("tg_bottle_map_stats", TcpSockops515)
+	TLSOpsMapStats    = program.MapBuilder("tg_tls_map_stats", TcpSockops)
+	TLSBottles        = program.MapBuilder("tg_bottles", TcpSockops)
+	TLSBottleStats    = program.MapBuilder("tg_bottle_map_stats", TcpSockops)
 
 	// Maps for watermarks detection
 	SendCheckSampler            = program.MapBuilder("tg_tcp_send_check_sampler", SendCheck4)
@@ -254,11 +254,11 @@ var (
 	// Map for disabling events
 	EventDisableConfigKprobe = program.MapBuilder("tg_event_disable_config", ConnectKprobe)
 	EventDisableConfigFentry = program.MapBuilder("tg_event_disable_config", ConnectFentry)
-	EventDisableConfigOps    = program.MapBuilder("tg_event_disable_config", TcpSockops515)
+	EventDisableConfigOps    = program.MapBuilder("tg_event_disable_config", TcpSockops)
 
 	// LPM maps
-	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, TcpSockops515)
-	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, TcpSockops515)
+	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, TcpSockops)
+	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, TcpSockops)
 )
 
 func ConfigureMaps() error {
@@ -443,7 +443,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 			}...)
 			maps = append(maps, mapsConnectFentry...)
 		} else {
-			progsInitSock = append(progsInitSock, TcpSockops515, SecurityAccept, SecurityGraft)
+			progsInitSock = append(progsInitSock, TcpSockops, SecurityAccept, SecurityGraft)
 			maps = append(maps, mapsOps...)
 			maps = append(maps, processModelMapsEnable()...)
 		}

@@ -26,7 +26,7 @@ PARSERS = bpf_sockops.o bpf_http.o bpf_http_verdict.o bpf_http_parser.o
 TLS = bpf_tls_inet_send.o bpf_tls_skmsg.o bpf_tls_skskb_parser.o bpf_tls_skskb_verdict.o bpf_setsockopt.o
 NOP = bpf_nop.o bpf_nop_verdict.o bpf_nop_parser.o
 
-NETWORKING = bpf_kfree_skb.o bpf_fd_lookup.o bpf_fd_lookup_fentry.o bpf_fd_lookup_5_15.o bpf_fd_lookup_fentry_5_15.o
+NETWORKING = bpf_kfree_skb.o bpf_fd_lookup.o bpf_fd_lookup_fentry.o bpf_fd_lookup_pstree.o bpf_fd_lookup_fentry_pstree.o
 
 SOCKTRACK = bpf_sk_alloc.o bpf_security_sk_alloc.o
 
@@ -39,7 +39,7 @@ TCP = bpf_tcp_close.o bpf_tcp_close_fentry.o \
       bpf_tcp_listen.o bpf_tcp_listen_fentry.o \
       bpf_tcp_rtt.o bpf_tcp_rtt_fentry.o \
       bpf_tcp_send_check.o \
-      bpf_tcp_sockops_5_15.o
+      bpf_tcp_sockops.o
 
 L2 = bpf_net_ns_net_exit.o
 

@@ -191,13 +191,13 @@ var (
 	udpProcessTreeMaps = []*program.Map{udpProcessTreeMap, udpProcessTreeMapStats, udpConfigProcessTreeMap, udpPayloadProcessTreeMap, latencyConfigProcessTreeMap}
 
 	// DNS Parser maps
-	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.15
+	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.14
 	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	DNSDomainMap      = program.MapBuilder(dnsparser.DomainToIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	DNSDomainMapRev   = program.MapBuilder(dnsparser.IDToDomainMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	// This map is shared between the DNS parser and the process tree: the fdlookup and tcpsockops progs
-	DNSEndpointIDMap = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree, ip.FdLookupFentry_5_15, ip.FdLookupKprobe_5_15, tcp.TcpSockops515)
+	DNSEndpointIDMap = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree, ip.FdLookupFentryProcessTree, ip.FdLookupKprobeProcessTree, tcp.TcpSockops)
 
 	// LPM maps
 	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, IngressDispatcher, EgressDispatcher)
