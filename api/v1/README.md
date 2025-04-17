@@ -1913,6 +1913,7 @@ HTTP PARSER
 | tracing_policy | [string](#string) |  |  |
 | rule_matched | [string](#string) |  |  |
 | ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
+| message | [string](#string) |  |  |
 
 
 

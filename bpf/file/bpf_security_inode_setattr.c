@@ -73,7 +73,7 @@ static inline __attribute__((always_inline)) int do_security_inode_setattr(void 
 {
 	unsigned int ia_valid = BPF_CORE_READ(attr, ia_valid);
 	struct msg_file_ops *msg;
-	__u32 operation = 0;
+	__u32 operation = 0, msg_id = 0;
 	int err = 0;
 
 	if (!policy_filter_match())
@@ -104,12 +104,13 @@ static inline __attribute__((always_inline)) int do_security_inode_setattr(void 
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(msg->action, 0, 0, 0, 0);
+	operation = eval_selectors(msg->action, 0, 0, 0, 0, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
 	msg->operation = operation;
 	msg->hook = hook_security_inode_setattr;
+	msg->msg_id = msg_id;
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

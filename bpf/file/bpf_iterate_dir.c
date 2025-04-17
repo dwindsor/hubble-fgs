@@ -15,7 +15,7 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 	struct dentry *dentry, *parent_dentry;
 	struct msg_file_ops *msg;
 	struct inode_val *file_val = 0;
-	__u32 operation = 0;
+	__u32 operation = 0, msg_id = 0;
 
 	if (!policy_filter_match())
 		return 0;
@@ -60,7 +60,7 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(action_readdir, 0, 0, 0, 0);
+	operation = eval_selectors(action_readdir, 0, 0, 0, 0, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
@@ -82,6 +82,7 @@ static inline __attribute__((always_inline)) int handle_iterate_dir(void *ctx, s
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;
+	msg->msg_id = msg_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
 

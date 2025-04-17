@@ -84,7 +84,7 @@ func (k *observerFileExecSensor) PolicyHandler(
 		return nil, fmt.Errorf("FileExecMonitoring failed to parse selectors: %w", err)
 	}
 
-	defaultAction, err := fm.GetActions(spec.FileExecMonitoring.DefaultActions)
+	defaultAction, _, err := fm.GetActions(spec.FileExecMonitoring.DefaultActions)
 	if err != nil {
 		return nil, fmt.Errorf("FileExecMonitoring failed to parse default actions: %s", err)
 	}

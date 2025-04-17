@@ -161,6 +161,16 @@ type MatchExecAttrs struct {
 	isFromMemfd  uint32
 }
 
+type ActionsVal struct {
+	val uint32
+	msg string
+}
+
+type ActionsValId struct {
+	val   uint32
+	msgId uint32
+}
+
 type KernelSelectorState struct {
 	selectors.KernelSelectorState
 
@@ -189,7 +199,7 @@ type KernelSelectorState struct {
 	exec map[uint32]*MatchExecAttrs
 
 	// matchActions value
-	action map[uint32]uint32
+	action map[uint32]*ActionsVal
 
 	// number of selectors
 	num uint32
@@ -206,7 +216,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 		oflags:              map[uint32]*OpenFlagsOps{},
 		patterns:            map[uint32]*MatchFilenameOps{},
 		exec:                map[uint32]*MatchExecAttrs{},
-		action:              map[uint32]uint32{},
+		action:              map[uint32]*ActionsVal{},
 	}
 }
 
@@ -854,11 +864,21 @@ func GetMaxInnerEntriesPatternsMap(sel *KernelSelectorState) int {
 
 func GenerateFileActionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	for idx, action := range sel.action {
-		if err := m.Update(idx, action, ebpf.UpdateAny); err != nil {
+		if err := m.Update(idx, ActionsValId{val: action.val, msgId: idx + 1}, ebpf.UpdateAny); err != nil { // do +1 here to leave 0 for errors
 			return err
 		}
 	}
 	return nil
+}
+
+func (k *KernelSelectorState) GetMessagesMap() map[uint32]string {
+	ret := make(map[uint32]string)
+	for idx, action := range k.action {
+		if action.msg != "" {
+			ret[idx+1] = action.msg // do +1 here to leave 0 for errors
+		}
+	}
+	return ret
 }
 
 func ParseMatchOperation(k *KernelSelectorState, b *v1alpha1.OperationSelector, selIdx int) error {
@@ -939,29 +959,31 @@ func ParseMatchDigests(k *KernelSelectorState, digests []v1alpha1.DigestSelector
 	return nil
 }
 
-func GetActions(actions []v1alpha1.FileActionSelector) (uint32, error) {
+func GetActions(actions []v1alpha1.FileActionSelector) (uint32, string, error) {
 	if len(actions) > 1 {
-		return 0, fmt.Errorf("only support single actions selector")
+		return 0, "", fmt.Errorf("only support single actions selector")
 	}
 
 	// no specific actions for this selector, use Post by default
 	if len(actions) == 0 {
-		return FileOperationTypePost, nil
+		return FileOperationTypePost, "", nil
 	}
 
 	// parse all actions
 	action := uint32(0)
+	message := ""
 	for _, a := range actions {
 		act, ok := fileActionTypeTable[strings.ToLower(a.Action)]
 		if !ok {
-			return 0, fmt.Errorf("parseMatchAction: ActionType %s unknown", a.Action)
+			return 0, "", fmt.Errorf("parseMatchAction: ActionType %s unknown", a.Action)
 		}
 		action |= act
+		message = a.Message
 	}
 
 	// having both post and nopost is not allowed
 	if action&FileOperationTypePost != 0 && action&FileOperationTypeNoPost != 0 {
-		return 0, fmt.Errorf("parseMatchAction: Post and NoPost actions are not allowed: %s", actions)
+		return 0, "", fmt.Errorf("parseMatchAction: Post and NoPost actions are not allowed: %s", actions)
 	}
 
 	// if we have only block (and not NoPost), let's add Post as well
@@ -969,21 +991,30 @@ func GetActions(actions []v1alpha1.FileActionSelector) (uint32, error) {
 		action |= FileOperationTypePost
 	}
 
-	return action, nil
+	return action, message, nil
 }
 
 func ParseMatchActions(k *KernelSelectorState, actions []v1alpha1.FileActionSelector, selIdx int) error {
-	action, err := GetActions(actions)
+	action, message, err := GetActions(actions)
 	if err != nil {
 		return err
 	}
-	k.action[uint32(selIdx)] = action
+
+	val, ok := k.action[uint32(selIdx)]
+	if !ok {
+		val = &ActionsVal{}
+		k.action[uint32(selIdx)] = val
+	}
+
+	val.val = action
+	val.msg = message
+
 	return nil
 }
 
 func (k *KernelSelectorState) NeedEnforcement() bool {
 	for _, v := range k.action {
-		if v&FileOperationTypeBlock != 0 {
+		if v.val&FileOperationTypeBlock != 0 {
 			return true
 		}
 	}

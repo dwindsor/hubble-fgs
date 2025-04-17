@@ -19,7 +19,7 @@ file_open(void *ctx, struct file *file)
 	struct msg_file_ops *msg;
 	struct inode_val *file_val = 0;
 	int zero = 0, action = 0, err = 0;
-	__u32 operation = 0, rule_id = 0;
+	__u32 operation = 0, rule_id = 0, msg_id = 0;
 	struct file_config_map_value *conf;
 	struct inode *inode;
 	struct dentry *dentry;
@@ -61,7 +61,7 @@ file_open(void *ctx, struct file *file)
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action_open, open_flags, 0, 0, 0);
+	operation = eval_selectors(action_open, open_flags, 0, 0, 0, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
@@ -123,6 +123,7 @@ generate_message:
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;
+	msg->msg_id = msg_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
 	msg->open_flags = open_flags;

@@ -363,6 +363,7 @@ message ProcessFile {
   string tracing_policy = 11;
   string rule_matched = 12;
   repeated Process ancestors = 13; // Not in use for now. Please rely on ancestors in ProcessExec.
+  string message = 14;
 }
 
 // ProcessFileExec events provide (additional to ProcessExec) information about files being executed.

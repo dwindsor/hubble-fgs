@@ -66,7 +66,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	__u64 lv = (__u64)old_dentry;
 	struct inode *d_inode;
 	struct file_config_map_value *conf;
-	__u32 zero = 0;
+	__u32 zero = 0, msg_id = 0;
 	umode_t i_mode;
 
 	if (!policy_filter_match())
@@ -227,7 +227,8 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	// resolve any paths (if needed) for items outside of watched path
 	resolve_missed_paths(v, conf);
 
-	v->operation = eval_selectors(action_rename, v->msg.flags, 0, 0, 0);
+	v->operation = eval_selectors(action_rename, v->msg.flags, 0, 0, 0, &msg_id);
+	v->msg.msg_id = msg_id;
 
 	/*
 	 * We will use 2 keys:

@@ -7,7 +7,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 static inline __attribute__((always_inline)) __u32 path_unlink(void *ctx, const struct path *dir, struct dentry *new_dentry)
 {
-	__u32 s_magic, operation, rule_id;
+	__u32 s_magic, operation, rule_id, msg_id = 0;
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
 	struct inode *inode;
@@ -45,11 +45,11 @@ static inline __attribute__((always_inline)) __u32 path_unlink(void *ctx, const 
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action_delete, 0, 0, msg->path.str, msg->path.size);
+	operation = eval_selectors(action_delete, 0, 0, msg->path.str, msg->path.size, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
-	complete_msg(msg, action_delete, hook_security_path_unlink, operation, rule_id, 0);
+	complete_msg(msg, action_delete, hook_security_path_unlink, operation, rule_id, 0, msg_id);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

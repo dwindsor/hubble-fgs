@@ -15,7 +15,7 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	struct inode_val *file_val = 0;
 	int zero = 0, action = 0, err = 0;
 	struct inode *inode;
-	__u32 operation = 0, rule_id = 0;
+	__u32 operation = 0, rule_id = 0, msg_id = 0;
 	struct file_config_map_value *conf = 0;
 
 	if (!policy_filter_match())
@@ -90,7 +90,7 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action_create, 0, 0, 0, 0);
+	operation = eval_selectors(action_create, 0, 0, 0, 0, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 	/* operation cannot be FILE_OP_BLOCK here */
@@ -106,6 +106,7 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	msg->operation = FILE_OP_POST;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;
+	msg->msg_id = msg_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
 

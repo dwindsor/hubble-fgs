@@ -7,7 +7,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, struct file *file)
 {
-	__u32 s_magic, operation, rule_id;
+	__u32 s_magic, operation, rule_id, msg_id = 0;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
 	union exec_flags flags;
@@ -41,11 +41,11 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 	flags.d8[EXEC_ATTR_MEMFD_IDX] = msg->is_exe_from_memfd;
 	flags.d8[EXEC_ATTR_UPPER_IDX] = msg->is_exe_upper_layer;
 
-	operation = eval_selectors(action_exec, flags.d32, 0, msg->path.str, msg->path.size);
+	operation = eval_selectors(action_exec, flags.d32, 0, msg->path.str, msg->path.size, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
-	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0);
+	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0, msg_id);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

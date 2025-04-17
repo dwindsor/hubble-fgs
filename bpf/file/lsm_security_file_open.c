@@ -7,7 +7,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 static inline __attribute__((always_inline)) __u32 path_file_open(void *ctx, struct file *file)
 {
-	__u32 operation = 0, rule_id, open_flags, s_magic;
+	__u32 operation = 0, rule_id, open_flags, s_magic, msg_id = 0;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
 	int err;
@@ -43,11 +43,11 @@ static inline __attribute__((always_inline)) __u32 path_file_open(void *ctx, str
 	// In these events we also have to update any internal maps,
 	// which is already done here.
 	open_flags = BPF_CORE_READ(file, f_flags);
-	operation = eval_selectors(action_open, open_flags, 0, msg->path.str, msg->path.size);
+	operation = eval_selectors(action_open, open_flags, 0, msg->path.str, msg->path.size, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
-	complete_msg(msg, action_open, hook_security_file_open, operation, rule_id, open_flags);
+	complete_msg(msg, action_open, hook_security_file_open, operation, rule_id, open_flags, msg_id);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

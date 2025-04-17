@@ -16,7 +16,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	struct msg_file_ops *msg;
 	struct inode_val *file_val = 0;
 	struct file *file;
-	__u32 operation = 0;
+	__u32 operation = 0, msg_id = 0;
 	struct digest_key *digest = 0;
 	union exec_flags flags;
 #ifdef __FILE_DIGEST_LSM
@@ -78,7 +78,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(action_exec, flags.d32, digest, 0, 0);
+	operation = eval_selectors(action_exec, flags.d32, digest, 0, 0, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
@@ -99,6 +99,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
+	msg->msg_id = msg_id;
 	msg->rule_id = file_val->rule_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 

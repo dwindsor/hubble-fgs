@@ -486,11 +486,16 @@ struct {
 	__type(value, struct file_sel_namespaces);
 } file_namespaces_map SEC(".maps");
 
+struct file_actions_val {
+	__u32 val;
+	__u32 msg_id;
+};
+
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, MAX_FIM_SELECTORS);
 	__type(key, __u32); /* selector id */
-	__type(value, __u32);
+	__type(value, struct file_actions_val);
 } file_actions_map SEC(".maps");
 
 struct {
@@ -999,9 +1004,9 @@ static inline __attribute__((always_inline)) int check_match_exec_attributes(__u
 }
 
 static inline __attribute__((always_inline)) __u32
-__eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *digest, struct execve_map_value *execve, char *path, __u32 len)
+__eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *digest, struct execve_map_value *execve, char *path, __u32 len, __u32 *msg_id)
 {
-	__u32 *act = 0;
+	struct file_actions_val *act = 0;
 
 	if (!check_match_binaries(sel_idx, execve))
 		return 0;
@@ -1029,8 +1034,11 @@ __eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *di
 		return 0;
 
 	act = map_lookup_elem(&file_actions_map, &sel_idx);
-	if (act)
-		return *act;
+	if (act) {
+		if (msg_id)
+			*msg_id = act->msg_id;
+		return act->val;
+	}
 	return 0;
 }
 
@@ -1042,6 +1050,7 @@ struct selectors_ctx {
 	__u32 action;
 	__u32 flags;
 	__u32 num_selectors;
+	__u32 msg_id;
 	struct digest_key *digest;
 };
 
@@ -1074,7 +1083,7 @@ static long selectors_cb(u32 index, void *ununsed)
 	 */
 	execve = event_find_curr(&zero, &walker);
 
-	ctx->retval = __eval_selectors(index, ctx->action, ctx->flags, ctx->digest, execve, ctx->path, ctx->len);
+	ctx->retval = __eval_selectors(index, ctx->action, ctx->flags, ctx->digest, execve, ctx->path, ctx->len, &ctx->msg_id);
 	if (ctx->retval) { // we return the value from the first selector that matches
 		return 1;
 	}
@@ -1097,7 +1106,7 @@ static inline __attribute__((always_inline)) bool policy_filter_match()
 }
 
 static inline __attribute__((always_inline)) __u32
-eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path, __u32 len)
+eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path, __u32 len, __u32 *msg_id)
 {
 	struct file_config_map_value *conf;
 	__u32 zero = 0;
@@ -1129,8 +1138,11 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 	ctx->retval = 0;
 	ctx->num_selectors = conf->num_selectors;
 	ctx->digest = digest;
+	ctx->msg_id = 0;
 
 	loop(128, &selectors_cb, 0, 0);
+	if (msg_id)
+		*msg_id = ctx->msg_id;
 	if (ctx->retval)
 		return ctx->retval;
 #else /* __V61_BPF_PROG */
@@ -1148,7 +1160,7 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 	for (i = 0; i < MAX_FIM_SELECTORS; ++i) {
 		if (i >= conf->num_selectors) // no need to check more selectors
 			break;
-		val = __eval_selectors(i, action, flags, digest, execve, path, len);
+		val = __eval_selectors(i, action, flags, digest, execve, path, len, msg_id);
 		if (val) // we return the value from the first selector that matches
 			return val;
 	}
@@ -1159,7 +1171,7 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 static inline __attribute__((always_inline)) __u32
 __eval_exec_selectors(__u32 sel_idx, struct digest_key *digest, struct execve_map_value *execve)
 {
-	__u32 *act = 0;
+	struct file_actions_val *act = 0;
 
 	if (!check_match_binaries(sel_idx, execve))
 		return 0;
@@ -1172,7 +1184,7 @@ __eval_exec_selectors(__u32 sel_idx, struct digest_key *digest, struct execve_ma
 
 	act = map_lookup_elem(&file_actions_map, &sel_idx);
 	if (act)
-		return *act;
+		return act->val;
 	return 0;
 }
 
@@ -1598,7 +1610,7 @@ generate_path_rename(struct msg_rename_elem *msg, struct path *path)
 }
 
 static inline __attribute__((always_inline)) void
-complete_msg(struct msg_file_ops *msg, __u32 action, __u32 hook, __u32 operation, __u32 rule_id, __u32 open_flags)
+complete_msg(struct msg_file_ops *msg, __u32 action, __u32 hook, __u32 operation, __u32 rule_id, __u32 open_flags, __u32 msg_id)
 {
 	msg->action = action;
 	msg->hook = hook;
@@ -1607,6 +1619,7 @@ complete_msg(struct msg_file_ops *msg, __u32 action, __u32 hook, __u32 operation
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;
+	msg->msg_id = msg_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->open_flags = open_flags;
 }
@@ -1674,7 +1687,7 @@ skip_access(struct inode *inode)
 static inline __attribute__((always_inline)) int
 path_generic_file_access(void *ctx, struct file *file, int action, int hook_type)
 {
-	__u32 s_magic, operation, rule_id;
+	__u32 s_magic, operation, rule_id, msg_id = 0;
 	struct io_uring_op_key key = {
 		.file_ptr = (__u64)file,
 		.pid_tgid = get_current_pid_tgid(),
@@ -1725,11 +1738,11 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(action, 0, 0, msg->path.str, msg->path.size);
+	operation = eval_selectors(action, 0, 0, msg->path.str, msg->path.size, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
-	complete_msg(msg, action, hook_type, operation, rule_id, 0);
+	complete_msg(msg, action, hook_type, operation, rule_id, 0, msg_id);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

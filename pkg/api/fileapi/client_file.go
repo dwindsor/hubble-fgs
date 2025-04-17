@@ -134,7 +134,8 @@ type MsgFileEvent struct {
 	OpenFlags       uint32                  `align:"open_flags"`
 	IsExeUpperLayer uint8                   `align:"is_exe_upper_layer"`
 	IsExeFromMemfd  uint8                   `align:"is_exe_from_memfd"`
-	Pad             [2]uint8                `align:"pad"`
+	Pad             [6]uint8                `align:"pad"`
+	MessageId       uint32                  `align:"msg_id"`
 }
 
 type MsgFileSplitPath struct {
@@ -170,6 +171,8 @@ type MsgFileRenameEvent struct {
 	Operation  uint32                  `align:"operation"`
 	RuleID     uint32                  `align:"rule_id"`
 	Tid        uint32                  `align:"tid"`
+	MessageId  uint32                  `align:"msg_id"`
+	Pad        uint32                  `align:"pad"`
 }
 
 type FileConfigMapValue struct {

@@ -39,6 +39,7 @@ type FileMonitoring struct {
 	PinPathPrefix string
 	TpName        string
 	TpRules       map[int]string
+	TpMessages    map[uint32]string
 	Config        *fileapi.FileConfigMapValue
 	DigestPaths   []string
 	PathMetadata  map[string][]fm.DigestPathMetadata
@@ -84,6 +85,21 @@ func (t *FimTable) GetOneLockedOrFail() (*FileMonitoring, func(), error) {
 	}
 
 	return tc, func() { t.mu.Unlock() }, nil
+}
+
+func (t *FimTable) GetTpMessage(tpID, msgID uint32) string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	val, ok := t.mp[tpID]
+	if !ok {
+		return "<unresolved_policy>"
+	}
+
+	msg, ok := val.TpMessages[msgID]
+	if ok {
+		return msg
+	}
+	return "" // no message provided
 }
 
 func (t *FimTable) GetTpName(id uint32) string {

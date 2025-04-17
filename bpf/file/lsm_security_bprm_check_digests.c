@@ -12,7 +12,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 		.pid_tgid = get_current_pid_tgid(),
 		.bprm_ptr = (__u64)bprm,
 	};
-	__u32 s_magic, operation, rule_id;
+	__u32 s_magic, operation, rule_id, msg_id = 0;
 	struct digest_key *digest = 0;
 	struct msg_file_ops *msg;
 	union exec_flags flags;
@@ -62,13 +62,13 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	flags.d8[EXEC_ATTR_MEMFD_IDX] = msg->is_exe_from_memfd;
 	flags.d8[EXEC_ATTR_UPPER_IDX] = msg->is_exe_upper_layer;
 
-	operation = eval_selectors(action_exec, flags.d32, digest, msg->path.str, msg->path.size);
+	operation = eval_selectors(action_exec, flags.d32, digest, msg->path.str, msg->path.size, &msg_id);
 	if (!(operation & FILE_OP_POST)) {
 		err = operation;
 		goto lsm_bprm_check_security_ret;
 	}
 
-	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0);
+	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0, msg_id);
 
 	// Getting a file digest requires a sleepable LSM program.
 	// Sleepable programs can only use array, hash, ringbuf and local storage maps.

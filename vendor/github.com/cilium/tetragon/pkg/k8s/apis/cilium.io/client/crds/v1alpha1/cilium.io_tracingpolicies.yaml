@@ -131,6 +131,11 @@ spec:
                           - Block
                           - NoPost
                           type: string
+                        message:
+                          description: A short message of 256 characters max that
+                            will be included in the event output to inform users which
+                            selector is matched.
+                          type: string
                       required:
                       - action
                       type: object
@@ -161,6 +166,11 @@ spec:
                                 - Post
                                 - Block
                                 - NoPost
+                                type: string
+                              message:
+                                description: A short message of 256 characters max
+                                  that will be included in the event output to inform
+                                  users which selector is matched.
                                 type: string
                             required:
                             - action
@@ -488,6 +498,11 @@ spec:
                                 - Post
                                 - Block
                                 - NoPost
+                                type: string
+                              message:
+                                description: A short message of 256 characters max
+                                  that will be included in the event output to inform
+                                  users which selector is matched.
                                 type: string
                             required:
                             - action

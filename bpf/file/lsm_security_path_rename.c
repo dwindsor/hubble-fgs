@@ -42,7 +42,7 @@ static inline __attribute__((always_inline)) __u32
 path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, const struct path *new_dir, struct dentry *new_dentry)
 {
 	struct inode *old_dir_inode, *new_dir_inode;
-	__u32 s_magic, rule_id, operation = 0, src_op, dst_op, path_size = 0;
+	__u32 s_magic, rule_id, operation = 0, src_op, dst_op, path_size = 0, src_msg_id = 0, dst_msg_id = 0;
 	struct msg_file_rename_ops *msg;
 	struct inode *d_inode;
 	umode_t i_mode;
@@ -101,7 +101,7 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	rename_copy_dname(old_dentry, &msg->src);
 
 	path = get_combined_path(&msg->src.path, &path_size);
-	src_op = eval_selectors(action_rename, msg->flags, 0, path, path_size);
+	src_op = eval_selectors(action_rename, msg->flags, 0, path, path_size, &src_msg_id);
 
 	// get destination dir path
 	generate_path_rename(&msg->dst, (struct path *)new_dir);
@@ -110,7 +110,7 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	rename_copy_dname(new_dentry, &msg->dst);
 
 	path = get_combined_path(&msg->dst.path, &path_size);
-	dst_op = eval_selectors(action_rename, msg->flags, 0, path, path_size);
+	dst_op = eval_selectors(action_rename, msg->flags, 0, path, path_size, &dst_msg_id);
 
 	// check both the one non-zero operation
 	operation = src_op ? src_op : dst_op;
@@ -124,6 +124,7 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;
+	msg->msg_id = src_op ? src_msg_id : dst_msg_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_rename_ops));

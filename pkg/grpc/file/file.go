@@ -442,6 +442,7 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
 		TracingPolicy: event.TpName,
 		RuleMatched:   event.TpRule,
+		Message:       event.TpMessage,
 	}
 
 	if tetragonEvent.Action == tetragon.FileAction_FILE_CREATE {
@@ -551,6 +552,7 @@ type MsgFileEventUnix struct {
 	ContainerID string
 	TpName      string
 	TpRule      string
+	TpMessage   string
 	Digest      MsgDigest
 	OpenFlags   uint32
 }
@@ -671,11 +673,12 @@ type MsgRenameElemUnix struct {
 }
 
 type MsgFileRenameEventUnix struct {
-	Msg    *fileapi.MsgFileRenameEvent
-	Src    MsgRenameElemUnix
-	Dst    MsgRenameElemUnix
-	TpName string
-	TpRule string
+	Msg       *fileapi.MsgFileRenameEvent
+	Src       MsgRenameElemUnix
+	Dst       MsgRenameElemUnix
+	TpName    string
+	TpRule    string
+	TpMessage string
 }
 
 func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
@@ -720,6 +723,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
 		TracingPolicy: event.TpName,
 		RuleMatched:   event.TpRule,
+		Message:       event.TpMessage,
 	}
 
 	filemetrics.FileTotalEventsInc()
@@ -751,7 +755,7 @@ func (msg *MsgFileRenameEventUnix) Retry(internal *process.ProcessInternal, ev n
 	if err := eventcache.HandleGenericEvent(internal, ev, nil); err != nil {
 		return err
 	}
-	handleFileEventCacheRetryMetrics(ev, &MsgFileEventUnix{TpName: msg.TpName, TpRule: msg.TpRule})
+	handleFileEventCacheRetryMetrics(ev, &MsgFileEventUnix{TpName: msg.TpName, TpRule: msg.TpRule, TpMessage: msg.TpMessage})
 	return nil
 }
 

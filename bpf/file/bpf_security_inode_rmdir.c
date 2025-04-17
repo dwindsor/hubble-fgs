@@ -15,7 +15,7 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 	struct inode_key file_key;
 	struct inode_val *file_val = 0;
 	struct msg_file_ops *msg;
-	__u32 operation = 0;
+	__u32 operation = 0, msg_id = 0;
 
 	if (!policy_filter_match())
 		return 0;
@@ -48,7 +48,7 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// In these events we will update any internal maps.
-	operation = eval_selectors(action_rmdir, 0, 0, 0, 0);
+	operation = eval_selectors(action_rmdir, 0, 0, 0, 0, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		goto ignore_rmdir;
 
@@ -66,6 +66,7 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;
+	msg->msg_id = msg_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
 

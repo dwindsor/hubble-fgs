@@ -166,6 +166,9 @@ type FileActionSelector struct {
 	// +kubebuilder:validation:Enum=Post;Block;NoPost
 	// Action to Execute. Post will post an event; Block will also post an event, and additionally block the operation (application will receive an error).
 	Action string `json:"action"`
+	// +kubebuilder:validation:Optional
+	// A short message of 256 characters max that will be included in the event output to inform users which selector is matched.
+	Message string `json:"message"`
 }
 
 // Example: "sha1:f2e2c1b280ae3268c15fd31cd8d2fcec9a984c5f"

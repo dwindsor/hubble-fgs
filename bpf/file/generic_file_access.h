@@ -16,7 +16,7 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	struct path path;
 	struct msg_file_ops *msg;
 	struct inode_val *file_val = 0;
-	__u32 operation = 0;
+	__u32 operation = 0, msg_id = 0;
 	struct io_uring_op_key key = {
 		.file_ptr = (__u64)file,
 		.pid_tgid = get_current_pid_tgid(),
@@ -77,7 +77,7 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(action, 0, 0, 0, 0);
+	operation = eval_selectors(action, 0, 0, 0, 0, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
@@ -99,6 +99,7 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;
+	msg->msg_id = msg_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
 

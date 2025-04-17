@@ -8,7 +8,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 static inline __attribute__((always_inline)) __u32 path_link(void *ctx, const struct path *dir, struct dentry *new_dentry)
 {
 	struct dentry *parent_dentry;
-	__u32 operation, rule_id, s_magic;
+	__u32 operation, rule_id, s_magic, msg_id = 0;
 	struct msg_file_ops *msg;
 
 	if (!policy_filter_match())
@@ -37,11 +37,11 @@ static inline __attribute__((always_inline)) __u32 path_link(void *ctx, const st
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action_link, 0, 0, msg->path.str, msg->path.size);
+	operation = eval_selectors(action_link, 0, 0, msg->path.str, msg->path.size, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
-	complete_msg(msg, action_link, hook_security_path_link, operation, rule_id, 0);
+	complete_msg(msg, action_link, hook_security_path_link, operation, rule_id, 0, msg_id);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

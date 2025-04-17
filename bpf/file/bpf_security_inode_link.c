@@ -16,7 +16,7 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 	struct msg_file_ops *msg;
 	struct inode_val *file_val = 0;
 	int zero = 0, action = 0, err = 0;
-	__u32 operation = 0, rule_id = 0;
+	__u32 operation = 0, rule_id = 0, msg_id = 0;
 	struct file_config_map_value *conf;
 	struct inode *old_inode;
 	struct inode_key file_key;
@@ -104,7 +104,7 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action_link, 0, 0, 0, 0);
+	operation = eval_selectors(action_link, 0, 0, 0, 0, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
@@ -115,6 +115,7 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;
+	msg->msg_id = msg_id;
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
 

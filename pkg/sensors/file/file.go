@@ -1101,6 +1101,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		ContainerID: cid,
 		TpName:      pol.FileMonitoringTable.GetTpName(m.TpId),
 		TpRule:      pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
+		TpMessage:   pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
 		Digest:      digest,
 		OpenFlags:   m.OpenFlags,
 	}
@@ -1218,8 +1219,9 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			ParentFs:    createFsInfoUnix(m.Dst.ParentFs),
 			ContainerID: dstCid,
 		},
-		TpName: pol.FileMonitoringTable.GetTpName(m.TpId),
-		TpRule: pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
+		TpName:    pol.FileMonitoringTable.GetTpName(m.TpId),
+		TpRule:    pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
+		TpMessage: pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
 	}
 
 	return []observer.Event{unix}, nil
@@ -1303,6 +1305,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		PinPathPrefix: name,
 		TpName:        policy.TpName(),
 		TpRules:       make(map[int]string),
+		TpMessages:    sel.GetMessagesMap(),
 		Config:        &config,
 		DigestPaths:   sel.GetDigestPaths(),
 		PathMetadata:  sel.GetPathMetadata(),

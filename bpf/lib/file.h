@@ -251,7 +251,8 @@ struct msg_file_ops {
 	__u32 open_flags;
 	__u8 is_exe_upper_layer;
 	__u8 is_exe_from_memfd;
-	__u8 pad[2];
+	__u8 pad[6];
+	__u32 msg_id;
 };
 
 struct vfs_mkdir_info {
@@ -294,6 +295,8 @@ struct msg_file_rename_ops {
 	__u32 operation; // FILE_OP_POST or FILE_OP_BLOCK
 	__u32 rule_id;
 	__u32 tid;
+	__u32 msg_id;
+	__u32 pad;
 };
 
 struct vfs_rename_info {
