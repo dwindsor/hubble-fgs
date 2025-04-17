@@ -20,7 +20,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
@@ -91,7 +90,7 @@ var (
 	)
 
 	// Dummy (NOP) programs need to be attached to the cgroup hooks in order to cause the __cgroup_bpf_run_filter_sk
-	// hook to be called (5.10+).
+	// hook to be called (5.13+).
 	SkUdpBindDummy4 = program.Builder(
 		"bpf_udp_bind_dummy.o",
 		"inet4_bind_dummy",
@@ -262,9 +261,13 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 			PsVerMap,
 		}
 	} else {
-		progsInitSock = append(progsInitSock, bindProg())
-		if kernels.MinKernelVersion("5.14.0") {
-			progsInitSock = append(progsInitSock, []*program.Program{SkUdpBindDummy4, SkUdpBindDummy6}...)
+		if !DisableListenEvents {
+			progsInitSock = append(progsInitSock, bindProg())
+			// Some kernels (vanilla v5.13+) need programs attached to socket operations to trigger our
+			// hook for UDP bind.
+			if utils.UDPBindNeedsDummies() {
+				progsInitSock = append(progsInitSock, []*program.Program{SkUdpBindDummy4, SkUdpBindDummy6}...)
+			}
 		}
 		maps = []*program.Map{
 			SocketCookieMap,
