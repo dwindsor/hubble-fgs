@@ -19,7 +19,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -135,8 +134,8 @@ func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 	var progsCollectStats []*program.Program
 	var maps []*program.Map
 
-	if !kernels.MinKernelVersion("5.4.0") {
-		logger.GetLogger().Warn("ICMP requires kernel v5.4 or later")
+	if !utils.CGroupSKBAvailable() {
+		logger.GetLogger().Warn("ICMP support requires a later kernel (v5.4+ or RHEL equivalent)")
 		return nil, nil, nil
 	}
 
@@ -214,9 +213,9 @@ func UnloadSensor() error {
 }
 
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
-	if !kernels.MinKernelVersion("5.4.0") {
-		logger.GetLogger().Warn("ICMP requires kernel v5.4 or later")
-		return fmt.Errorf("icmp requires kernel v5.4 or later")
+	if !utils.CGroupSKBAvailable() {
+		logger.GetLogger().Warn("ICMP support requires a later kernel (v5.4+ or RHEL equivalent)")
+		return fmt.Errorf("icmp support requires a later kernel (v5.4+ or RHEL equivalent)")
 	}
 
 	if spec.Parser.Icmp != nil && spec.Parser.Icmp.V6Info {

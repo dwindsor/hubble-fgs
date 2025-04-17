@@ -20,7 +20,6 @@ import (
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/matchers/durationmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -31,6 +30,7 @@ import (
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
@@ -67,8 +67,8 @@ func getRawsockObserverWithEnable(t *testing.T, ctx context.Context) *observer.O
 }
 
 func testRawsockCreateClose(t *testing.T, ty int) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.RawHooksAvailable() {
+		t.Skipf("This test requires raw socket support, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -151,8 +151,8 @@ func TestRawsockCreateClose6(t *testing.T) {
 }
 
 func TestRawsockCLISwitch(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.RawHooksAvailable() {
+		t.Skipf("This test requires raw socket support, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup

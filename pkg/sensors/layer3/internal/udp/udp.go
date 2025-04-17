@@ -262,8 +262,8 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 	var maps []*program.Map
 	var versionStr string
 
-	if !kernels.MinKernelVersion("5.4.0") {
-		logger.GetLogger().Infof("Minimum kernel version (5.4) not met for UDP cgroup mode, falling back to socket mode")
+	if !utils.CGroupSKBAvailable() {
+		logger.GetLogger().Infof("Minimum kernel version (5.4 or RHEL equivalent) not met for UDP cgroup mode, falling back to socket mode")
 		cgroup = false
 	}
 

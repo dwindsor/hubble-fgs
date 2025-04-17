@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
@@ -103,8 +102,8 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 }
 
 func EnableRawsock() ([]*program.Program, []*program.Program, []*program.Map) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		logger.GetLogger().Warn("Raw sockets requires kernel v5.4 or later")
+	if !utils.RawHooksAvailable() {
+		logger.GetLogger().Warn("Raw sockets support missing from kernel")
 		return nil, nil, nil
 	}
 

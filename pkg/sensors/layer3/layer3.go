@@ -20,7 +20,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/policyfilter"
@@ -361,7 +360,7 @@ type l3Sensor struct {
 }
 
 func hasCgroup() bool {
-	return kernels.MinKernelVersion("5.4.0")
+	return utils.CGroupSKBAvailable()
 }
 
 func (l3 *l3Sensor) PolicyHandler(
@@ -409,6 +408,9 @@ func (l3 *l3Sensor) PolicyHandler(
 			udpEnabled = true
 			// DNS requires cgroup programs.
 			udpCgroup = true
+		}
+		if rawEnabled && !utils.RawHooksAvailable() {
+			return nil, fmt.Errorf("raw sockets enabled in policy but kernel support missing")
 		}
 	}
 	// However, disable cgroup and therefore DNS if the kernel is too old
@@ -720,6 +722,9 @@ func EnableLayer3Progs() error {
 		icmpEnabled = true
 	}
 	if enterpriseOption.Config.EnableRawsock {
+		if !utils.RawHooksAvailable() {
+			return fmt.Errorf("raw sockets enabled but kernel support missing")
+		}
 		rawEnabled = true
 	}
 	if enterpriseOption.Config.EnableDNS {

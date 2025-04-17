@@ -26,6 +26,7 @@ var (
 	checkCGroupSKBProbeRead = sync.OnceValue(_checkCGroupSKBProbeRead)
 	checkAddAndFetch        = sync.OnceValue(_checkAddAndFetch)
 	checkCurrentTaskBTF     = sync.OnceValue(_checkCurrentTaskBTF)
+	checkRawHooksAvailable  = sync.OnceValue(_checkRawHooksAvailable)
 )
 
 // SkSkbParserRequired returns whether the underlying kernel requires skskb
@@ -138,4 +139,45 @@ func _checkCurrentTaskBTF() bool {
 // allow the process tree functionality to work.
 func SupportProcessTree() bool {
 	return SupportAddAndFetch() && SupportCurrentTaskBTF()
+}
+
+func checkForHook(hook string) error {
+	spec := &ebpf.ProgramSpec{
+		Type:       ebpf.Kprobe,
+		AttachType: ebpf.AttachNone,
+		AttachTo:   hook,
+		License:    "GPL",
+		Instructions: asm.Instructions{
+			asm.LoadImm(asm.R0, 0, asm.DWord),
+			asm.Return(),
+		},
+	}
+
+	var prog *ebpf.Program
+	var lnk link.Link
+	var err error
+	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
+		LogDisabled: false,
+	})
+	if err == nil {
+		if lnk, err = link.Kprobe(spec.AttachTo, prog, nil); err == nil {
+			lnk.Close()
+		}
+		prog.Close()
+	}
+	return err
+}
+
+// RawHooksAvailable checks if the two hooks we use for raw sockets are available.
+func RawHooksAvailable() bool {
+	return checkRawHooksAvailable()
+}
+
+func _checkRawHooksAvailable() bool {
+	err := checkForHook("raw_sk_init")
+	if err != nil {
+		return false
+	}
+	err = checkForHook("rawv6_init_sk")
+	return err == nil
 }

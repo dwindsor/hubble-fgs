@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -410,7 +409,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		ProcessNetworkWatermarksMap,
 	}
 
-	// Kernels before 5.15 are difficult to support BPF in kernel models
+	// Kernels before 5.14 are difficult to support BPF in kernel models
 	// for connect maps. The main issue is lack of atomic operations to
 	// support multiple cores accessing the map.
 	// Kernels before 5.5 don't support Fentry, so use kprobes here.
@@ -424,7 +423,7 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 			SecurityGraftKprobe,
 		}...)
 		maps = append(maps, mapsConnectKprobe...)
-	} else if !kernels.MinKernelVersion("5.14.0") {
+	} else if !utils.SupportProcessTree() {
 		progsInitSock = append(progsInitSock, []*program.Program{
 			ConnectFentry,
 			CloseFentry,
@@ -461,12 +460,12 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	/* Kernels <=5.4 do not have probe_read() support for cgroup/skb programs
 	 * so we fall back on kprobes here.
 	 */
-	if !kernels.MinKernelVersion("5.5.0") {
+	if !utils.CGroupSKBAvailable() || !utils.SupportCGroupSKBProbeRead() {
 		progsCollectStats = append(progsCollectStats, SendCheck4)
 		progsCollectStats = append(progsCollectStats, SendCheck6)
 	}
 
-	if kernels.MinKernelVersion("5.4.0") {
+	if utils.CGroupSKBAvailable() {
 		if timestampEnable {
 			logger.GetLogger().Info("Enabling TCP latency")
 			TimestampEnabled = true
