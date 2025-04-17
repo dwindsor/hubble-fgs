@@ -49,7 +49,7 @@ func NewEnterpriseEncoder(w io.Writer, colorMode encoder.ColorMode, timestamps b
 }
 
 // Encode implements EventEncoder.Encode.
-func (p *EnterpriseEncoder) Encode(v interface{}) error {
+func (p *EnterpriseEncoder) EncodePrefix(prefix string, v interface{}) error {
 	event, ok := v.(*tetragon.GetEventsResponse)
 	if !ok {
 		return encoder.ErrInvalidEvent
@@ -62,10 +62,14 @@ func (p *EnterpriseEncoder) Encode(v interface{}) error {
 
 	if p.inner.Timestamps {
 		ts := event.Time.AsTime().UTC().Format(rfc3339Nano)
-		str = fmt.Sprintf("%s %s", ts, str)
+		str = fmt.Sprintf("%s%s %s", prefix, ts, str)
 	}
 	fmt.Fprintln(p.inner.Writer, str)
 	return nil
+}
+
+func (p *EnterpriseEncoder) Encode(v interface{}) error {
+	return p.EncodePrefix("", v)
 }
 
 func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) (string, error) {
