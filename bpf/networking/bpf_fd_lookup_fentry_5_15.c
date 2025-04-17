@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-#define KERNEL_5_15
+#define PROCESS_TREE
 #include "vmlinux.h"
 
 #include "api.h"

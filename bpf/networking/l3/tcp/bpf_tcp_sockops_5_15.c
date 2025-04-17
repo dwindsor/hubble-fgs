@@ -9,7 +9,7 @@
 // permission is obtained from Isovalent Inc.
 //
 
-#define KERNEL_5_15
+#define PROCESS_TREE
 #include "bpf_tcp_connect.h"
 #include "bpf_tcp_state.h"
 #include "bpf_tcp_listen.h"
@@ -175,9 +175,7 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 	struct tcpsocketmap_value *v = init_tcpsocketmap_value(key, skops->family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
 	if (!v)
 		return 0;
-#ifdef KERNEL_5_15
 	v->deny = process_socketmap_add(v, &(val->tuple));
-#endif
 	add_tcpsocketmap(&cookie, v, true);
 	return 0;
 }

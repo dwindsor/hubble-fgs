@@ -259,7 +259,7 @@ __proc_task_name(void *ctx, struct task_struct *p)
 		tcp_socketmap_stats(sk, tcp_stats);
 
 		memset(&tcp_stats->dst_key, 0, sizeof(tcp_stats->dst_key));
-#ifdef KERNEL_5_15
+#ifdef PROCESS_TREE
 		__insert_process_tree(value->key.pid, config->cgrpid);
 		if (tcp_stats->socket_flags == SOCKFLAGS_TYPE_LISTEN) {
 			__process_listen_add(tcp_stats, &config->tuple, config->cgrpid);

@@ -25,7 +25,7 @@
 #include "bpf_network_helpers.h"
 #include "bpf_tcp_state.h"
 
-#ifdef KERNEL_5_15
+#ifdef PROCESS_TREE
 #include "process/process_tree.h"
 #endif
 
@@ -150,7 +150,7 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 	if (key && socket)
 		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
 	if (v) {
-#ifdef KERNEL_5_15
+#ifdef PROCESS_TREE
 		process_socketmap_add(v, &(val->tuple));
 #endif
 		add_tcpsocketmap(&cookie, v, true);
