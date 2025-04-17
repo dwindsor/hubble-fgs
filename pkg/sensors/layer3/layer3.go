@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/features"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
@@ -281,11 +283,11 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 	}
 
 	if needDispatcher {
-		if kernels.MinKernelVersion("5.4.0") {
-			if !kernels.MinKernelVersion("5.5.0") {
+		if utils.CGroupSKBAvailable() {
+			if err := features.HaveProgramHelper(ebpf.CGroupSKB, asm.FnProbeReadKernel); err != nil {
 				progsCollectStats = append(progsCollectStats, dispatcherNoProbeReadProgs...)
 				maps = append(maps, dispatcherNoProbeReadMaps...)
-			} else if !kernels.MinKernelVersion("5.14.0") {
+			} else if !utils.SupportProcessTree() {
 				progsCollectStats = append(progsCollectStats, dispatcherProgs...)
 				maps = append(maps, dispatcherMaps...)
 			} else {
@@ -298,7 +300,7 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 				}
 			}
 		} else {
-			logger.GetLogger().Info("Cgroup hooks requires 5.4+ kernels using Kprobes")
+			logger.GetLogger().Info("Cgroup support requires a later kernel (v5.4+ or RHEL equivalent)")
 		}
 	}
 
@@ -411,9 +413,8 @@ func (l3 *l3Sensor) PolicyHandler(
 			udpCgroup = true
 		}
 	}
-	// However, disable cgroup and therefore DNS if unavailable.
-	if !hasCgroup() {
-		logger.GetLogger().Warn("Kernel does not provide suitable CGroup/SKB support. Falling back to kprobes and disabling DNS.")
+	// However, disable cgroup and therefore DNS if the kernel is too old
+	if !utils.CGroupSKBAvailable() {
 		udpCgroup = false
 		dnsEnabled = false
 	}

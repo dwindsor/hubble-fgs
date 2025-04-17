@@ -11,8 +11,20 @@
 package utils
 
 import (
+	"sync"
+
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/features"
+	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/option"
+)
+
+var (
+	checkCGroupSKBAvailable = sync.OnceValue(_checkCGroupSKBAvailable)
+	checkAddAndFetch        = sync.OnceValue(_checkAddAndFetch)
+	checkCurrentTaskBTF     = sync.OnceValue(_checkCurrentTaskBTF)
 )
 
 // SkSkbParserRequired returns whether the underlying kernel requires skskb
@@ -30,4 +42,89 @@ func EnableV511Progs() bool {
 	}
 	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
 	return (int64(kernelVer) >= kernels.KernelStringToNumeric("5.11.0"))
+}
+
+// CGRoupSKBAvailable checks if the kernel supports CGroup/SKB programs, has support for large programs,
+// and the CGroup/SKB programs have the perf_event_output helper.
+func CGroupSKBAvailable() bool {
+	return checkCGroupSKBAvailable()
+}
+
+func _checkCGroupSKBAvailable() bool {
+	err := features.HaveProgramType(ebpf.CGroupSKB)
+	if err != nil {
+		return false
+	}
+	err = features.HaveLargeInstructions()
+	if err != nil {
+		return false
+	}
+	err = features.HaveProgramHelper(ebpf.CGroupSKB, asm.FnPerfEventOutput)
+	return err == nil
+}
+
+// SupportAddAndFetch checks if the kernel supports the add_and_fetch instruction.
+func SupportAddAndFetch() bool {
+	err := checkAddAndFetch()
+	return err == nil
+}
+
+func _checkAddAndFetch() error {
+	// c/ebpf doesn't support setting offsets or constants directly in the helper, so use the helper
+	// to create the instruction and then add the offset and constant after.
+	addAndFetchInsn := asm.StoreXAdd(asm.R10, asm.R2, asm.DWord)
+	addAndFetchInsn.Offset = -8
+	addAndFetchInsn.Constant = 1
+	spec := &ebpf.ProgramSpec{
+		Type:       ebpf.Kprobe,
+		AttachType: ebpf.AttachNone,
+		AttachTo:   "tcp_connect",
+		License:    "GPL",
+		Instructions: asm.Instructions{
+			asm.LoadImm(asm.R1, 0, asm.DWord),
+			asm.LoadImm(asm.R2, 1, asm.DWord),
+			asm.StoreMem(asm.R10, -8, asm.R1, asm.DWord),
+			addAndFetchInsn,
+			asm.LoadImm(asm.R0, 0, asm.DWord),
+			asm.Return(),
+		},
+	}
+
+	var prog *ebpf.Program
+	var lnk link.Link
+	var err error
+	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
+		LogDisabled: false,
+	})
+	if err == nil {
+		if lnk, err = link.Kprobe(spec.AttachTo, prog, nil); err == nil {
+			lnk.Close()
+		}
+		prog.Close()
+	}
+	return err
+}
+
+// SupportCurrentTaskBTF checks if the kernel supports the get_current_task_btf helper in CGroup/SKB
+func SupportCurrentTaskBTF() bool {
+	return checkCurrentTaskBTF()
+}
+
+func _checkCurrentTaskBTF() bool {
+	err := features.HaveProgramType(ebpf.CGroupSKB)
+	if err != nil {
+		return false
+	}
+	err = features.HaveLargeInstructions()
+	if err != nil {
+		return false
+	}
+	err = features.HaveProgramHelper(ebpf.CGroupSKB, asm.FnGetCurrentTaskBtf)
+	return err == nil
+}
+
+// SupportProcessTree checks if the kernel supports the right programs, instructions and helpers to
+// allow the process tree functionality to work.
+func SupportProcessTree() bool {
+	return SupportAddAndFetch() && SupportCurrentTaskBTF()
 }
