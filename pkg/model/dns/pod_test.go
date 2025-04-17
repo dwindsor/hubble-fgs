@@ -92,8 +92,10 @@ func testPod(t *testing.T, id, ns, name, kind, matchLabels string) *v1alpha1.Pod
 		Kind: kind,
 	}
 	meta := metav1.ObjectMeta{
-		Labels: ml,
-		UID:    k8stype.UID(name),
+		Labels:    ml,
+		UID:       k8stype.UID(name),
+		Name:      name,
+		Namespace: ns,
 	}
 	podInfo := &v1alpha1.PodInfo{
 		WorkloadType:   ty,
@@ -222,7 +224,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	// srcPod matches subject labels so will be granted to records one for FQDN name.
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
 	assert.NotZero(t, r1[0].Src.CgroupId)
@@ -235,7 +237,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	// labels and srcPod needs to be given a record for the srcPod->dstPod pair.
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
-	r2, err := s.podAdd(dstPod)
+	r2, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r2))
 	assert.Equal(t, r1[0].Src.CgroupId, r2[0].Src.CgroupId)
@@ -244,7 +246,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 
 	addPod(t, dstIdKeep, dstPodNameKeep, dstPodLabels)
 	dstPodKeep := testPod(t, "4", "testNamespace", dstPodNameKeep, "testPod", dstPodLabels)
-	r3, err := s.podAdd(dstPodKeep)
+	r3, err := s.objectAdd(dstPodKeep)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r3))
 	assert.Equal(t, r1[0].Src.CgroupId, r3[0].Src.CgroupId)
@@ -321,7 +323,7 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	// srcPod matches subject labels so will be granted to records one for default action
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
 
@@ -373,14 +375,14 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	// add dst pod first which does not match a subject for any policy8
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(rDst)) // no records to program datapath bc not a subject
 
 	// add src pod next and ensure we build correct policy
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
 
@@ -440,13 +442,13 @@ func TestPolicySet(t *testing.T) {
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
 	s = GetRealizedState()
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
 
@@ -505,13 +507,13 @@ func TestPolicySetWithPods(t *testing.T) {
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
 	s = GetRealizedState()
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
@@ -564,19 +566,19 @@ func TestPolicyOverlapping(t *testing.T) {
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testKind", dstPodLabels)
 	s = GetRealizedState()
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testKind", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
 	addPod(t, indId, indPodName, indPodLabels)
 	indPod := testPod(t, "4", "testNamespace", indPodName, "testKind", indPodLabels)
-	rind, err := s.podAdd(indPod)
+	rind, err := s.objectAdd(indPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(rind))
 
@@ -653,20 +655,20 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	// Add src, dst, and ind pods while no policy is in play
 	addPod(t, indId, indPodName, indPodLabels)
 	indPod := testPod(t, "4", "testNamespace", indPodName, "testKind", indPodLabels)
-	rind, err := s.podAdd(indPod)
+	rind, err := s.objectAdd(indPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(rind))
 
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testKind", dstPodLabels)
 	s = GetRealizedState()
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testKind", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
@@ -772,13 +774,13 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
 
 	s = GetRealizedState()
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
@@ -838,7 +840,7 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r1))
 
@@ -847,7 +849,7 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
 
 	s = GetRealizedState()
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
@@ -920,13 +922,13 @@ func TestProcessPolicySrcDest(t *testing.T) {
 	SetRealizedState(aState)
 
 	s = GetRealizedState()
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(r1))
 
@@ -982,13 +984,13 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(r1))
 
@@ -1044,13 +1046,13 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Zero(t, len(rDst))
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 13, len(r1))
 
@@ -1157,7 +1159,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 
 	addPod(t, srcId, srcPodName, srcPodLabels)
 	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
-	r1, err := s.podAdd(srcPod)
+	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 9, len(r1))
 
@@ -1174,7 +1176,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
-	rDst, err := s.podAdd(dstPod)
+	rDst, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(rDst))
 

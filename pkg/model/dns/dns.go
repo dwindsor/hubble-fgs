@@ -15,6 +15,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
@@ -38,19 +40,27 @@ func init() {
 }
 
 // Legacy policy add for quotas
-func checkWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
-	subject := types.TetragonWorkloadNetworkSubject{
-		Namespace: epPod.WorkloadObject.Namespace,
-		Name:      epPod.WorkloadObject.Name,
-		Kind:      epPod.WorkloadType.Kind,
+func checkWorkloadQuotaPolicy(endpointObject metav1.Object) error {
+	var s types.TetragonWorkloadNetworkSubject
+	switch o := endpointObject.(type) {
+	case *v1alpha1.PodInfo:
+		s.Name = o.WorkloadObject.Name
+		s.Namespace = o.WorkloadObject.Namespace
+		s.Kind = o.WorkloadType.Kind
+	case *corev1.Node:
+		s.Name = endpointObject.GetName()
+		s.Namespace = endpointObject.GetNamespace()
+		s.Kind = o.Kind
+	default:
+		return fmt.Errorf("object %s has unsupported type", o.GetName())
 	}
 
 	queueWlLock.Lock()
-	policy, ok := queueWl[subject]
+	policy, ok := queueWl[s]
 	if !ok {
 		/* Check for Namespace policy */
 		namespaceSubject := types.TetragonWorkloadNetworkSubject{
-			Namespace: subject.Namespace,
+			Namespace: s.Namespace,
 			Kind:      "",
 			Name:      "",
 		}
@@ -60,23 +70,54 @@ func checkWorkloadQuotaPolicy(epPod *v1alpha1.PodInfo) error {
 			return nil
 		}
 	} else {
-		delete(queueWl, subject)
+		delete(queueWl, s)
 	}
 	queueWlLock.Unlock()
 	return AddNetworkPolicy(policy, true)
 }
 
-func createPodEndpoint(pod *v1alpha1.PodInfo) *endpoint.Endpoint {
-	return &endpoint.Endpoint{
-		Type:      endpoint.PodType,
-		Namespace: pod.WorkloadObject.Namespace,
-		Name:      pod.WorkloadObject.Name,
-		Kind:      pod.WorkloadType.Kind,
+func createObjectEndpoint(object metav1.Object) *endpoint.Endpoint {
+	var ep endpoint.Endpoint
+
+	switch o := object.(type) {
+	case *v1alpha1.PodInfo:
+		// For Pods, we use the metadata of the top level workload
+		// that created the object so that they represent one endpoint
+		ep.Type = endpoint.PodType
+		ep.Name = o.WorkloadObject.Name
+		ep.Namespace = o.WorkloadObject.Namespace
+		ep.Kind = o.WorkloadType.Kind
+	case *corev1.Node:
+		ep.Type = endpoint.NodeType
+		ep.Name = object.GetName()
+		ep.Namespace = object.GetNamespace()
+		ep.Kind = o.Kind
+	default:
+		ep.Type = endpoint.UnknownType
+		ep.Name = object.GetName()
+		ep.Namespace = object.GetNamespace()
 	}
+
+	return &ep
 }
 
-func createPodSrcKey(pod *v1alpha1.PodInfo) (*types.ProcessTreeKey, error) {
-	return createSrcKey(pod.WorkloadObject.Namespace, pod.WorkloadObject.Name, pod.WorkloadType.Kind)
+func createObjectSrcKey(object metav1.Object) (*types.ProcessTreeKey, error) {
+	var name, namespace, kind string
+	switch o := object.(type) {
+	case *v1alpha1.PodInfo:
+		// For Pods, we use the metadata of the top level workload
+		// that created the object so that they represent one source
+		name = o.WorkloadObject.Name
+		namespace = o.WorkloadObject.Namespace
+		kind = o.WorkloadType.Kind
+	case *corev1.Node:
+		name = object.GetName()
+		namespace = object.GetNamespace()
+		kind = o.Kind
+	default:
+		return nil, fmt.Errorf("object %s has unsupported type", o.GetName())
+	}
+	return createSrcKey(namespace, name, kind)
 }
 
 func GetRealizedState() *PolicyState {
@@ -91,8 +132,8 @@ type PolicyState struct {
 	Dst matchLabels.PolicyList
 	Src matchLabels.PolicyList
 
-	localPods  map[k8stypes.UID]*v1alpha1.PodInfo
-	remotePods map[k8stypes.UID]*v1alpha1.PodInfo
+	localObjects  map[k8stypes.UID]metav1.Object
+	remoteObjects map[k8stypes.UID]metav1.Object
 
 	DstLock sync.Mutex
 	SrcLock sync.Mutex
@@ -105,8 +146,8 @@ func NewPolicyState() *PolicyState {
 	s.Dst = make(map[string]*matchLabels.LabelSet)
 	s.Src = make(map[string]*matchLabels.LabelSet)
 
-	s.localPods = make(map[k8stypes.UID]*v1alpha1.PodInfo)
-	s.remotePods = make(map[k8stypes.UID]*v1alpha1.PodInfo)
+	s.localObjects = make(map[k8stypes.UID]metav1.Object)
+	s.remoteObjects = make(map[k8stypes.UID]metav1.Object)
 
 	s.DstLock = sync.Mutex{}
 	s.SrcLock = sync.Mutex{}
@@ -123,8 +164,8 @@ func (state *PolicyState) DestroyState() {
 	state.Dst = nil
 	state.Src = nil
 
-	state.localPods = nil
-	state.remotePods = nil
+	state.localObjects = nil
+	state.remoteObjects = nil
 }
 
 // Top level handler to remove pod: performance bouns, this op requires 2 matchLabel
@@ -149,7 +190,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 	// To clear datapath walk the collection of subjects and remove s_i -> endpoint.
 	dests := state.Dst.Collection(ml)
 	if dests != nil {
-		podEP := createPodEndpoint(pod)
+		podEP := createObjectEndpoint(pod)
 		for _, d := range dests {
 			s := state.Src[d.Name]
 			action, err := calculateAction(&s.Policy.Action)
@@ -200,9 +241,9 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 		}
 	}
 
-	_, ok := state.remotePods[pod.UID]
+	_, ok := state.remoteObjects[pod.UID]
 	if ok {
-		delete(state.remotePods, pod.UID)
+		delete(state.remoteObjects, pod.UID)
 		return records, nil
 	}
 
@@ -218,7 +259,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 		return records, nil
 	}
 
-	subject, err := createPodSrcKey(pod)
+	subject, err := createObjectSrcKey(pod)
 	if err != nil {
 		return records, nil
 	}
@@ -325,7 +366,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 			}
 		}
 	}
-	delete(state.localPods, pod.UID)
+	delete(state.localObjects, pod.UID)
 	return records, nil
 }
 
@@ -447,8 +488,8 @@ func getNamespaceLabels(ns string) map[string]string {
 	return l
 }
 
-func addNamespaceLabels(epPod *v1alpha1.PodInfo, ml *matchLabels.LabelSet) error {
-	ns := epPod.Namespace
+func addNamespaceLabels(endpointObject metav1.Object, ml *matchLabels.LabelSet) error {
+	ns := endpointObject.GetNamespace()
 	labels := getNamespaceLabels(ns)
 	for k, v := range labels {
 		tnpKey := fmt.Sprintf("_tnp_%s", k)
@@ -457,43 +498,38 @@ func addNamespaceLabels(epPod *v1alpha1.PodInfo, ml *matchLabels.LabelSet) error
 	return nil
 }
 
-func (state *PolicyState) podAdd(epPod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]*record.DatapathRecord, error) {
 	ml := &matchLabels.LabelSet{}
-	if epPod.Labels == nil {
+	if endpointObject.GetLabels() == nil {
 		ml.Labels = make(map[string]string, 1)
 	} else {
-		ml.Labels = epPod.Labels
+		ml.Labels = endpointObject.GetLabels()
 	}
 
-	addNamespaceLabels(epPod, ml)
+	addNamespaceLabels(endpointObject, ml)
 
-	ep := &endpoint.Endpoint{
-		Type:      endpoint.PodType,
-		Namespace: epPod.WorkloadObject.Namespace,
-		Name:      epPod.WorkloadObject.Name,
-		Kind:      epPod.WorkloadType.Kind,
-	}
+	ep := createObjectEndpoint(endpointObject)
 
 	epRecords := state.EndpointAdd(ep, ml, true)
 
 	// tbd fold this into policy xlate layer
-	if err := checkWorkloadQuotaPolicy(epPod); err != nil {
+	if err := checkWorkloadQuotaPolicy(endpointObject); err != nil {
 		return epRecords, err
 	}
 
-	src, err := createPodSrcKey(epPod)
+	src, err := createObjectSrcKey(endpointObject)
 	if err != nil {
 		return epRecords, err
 	}
 
 	// If there is no local key it must be a remote pod
 	if src == nil {
-		state.remotePods[epPod.UID] = epPod
+		state.remoteObjects[endpointObject.GetUID()] = endpointObject
 		return epRecords, nil
 	}
 
 	srcRecords := state.SrcAdd(src, ml, true)
-	state.localPods[epPod.UID] = epPod
+	state.localObjects[endpointObject.GetUID()] = endpointObject
 	return append(epRecords, srcRecords...), nil
 }
 
@@ -504,7 +540,7 @@ func PodAdd(epPod *v1alpha1.PodInfo) error {
 	state.Reader.RLock()
 	defer state.Reader.RUnlock()
 
-	records, err := state.podAdd(epPod)
+	records, err := state.objectAdd(epPod)
 	if err != nil {
 		return err
 	}

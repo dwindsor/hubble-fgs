@@ -29,6 +29,7 @@ const (
 	PodType     Type = 2
 	IpType      Type = 3
 	ServiceType Type = 4
+	NodeType    Type = 7
 )
 
 type Endpoint struct {

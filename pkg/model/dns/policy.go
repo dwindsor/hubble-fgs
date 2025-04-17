@@ -469,16 +469,16 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 	calculatorRecords := []*record.DatapathRecord{}
 	calculatorState := NewPolicyState()
 
-	for _, p := range currentState.localPods {
-		r, err := calculatorState.podAdd(p)
+	for _, p := range currentState.localObjects {
+		r, err := calculatorState.objectAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		calculatorRecords = append(calculatorRecords, r...)
 	}
 
-	for _, p := range currentState.remotePods {
-		r, err := calculatorState.podAdd(p)
+	for _, p := range currentState.remoteObjects {
+		r, err := calculatorState.objectAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -509,15 +509,15 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 
 	// Walk existing pods and create new []record from new policy
 	addRecordsSet := []*record.DatapathRecord{}
-	for _, p := range currentState.localPods {
-		r, err := newState.podAdd(p)
+	for _, p := range currentState.localObjects {
+		r, err := newState.objectAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		addRecordsSet = append(addRecordsSet, r...)
 	}
-	for _, p := range currentState.remotePods {
-		r, err := newState.podAdd(p)
+	for _, p := range currentState.remoteObjects {
+		r, err := newState.objectAdd(p)
 		if err != nil {
 			return nil, nil, nil, err
 		}
