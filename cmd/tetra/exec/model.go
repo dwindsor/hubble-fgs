@@ -1054,13 +1054,15 @@ func printDebugCompact(res *tetragon.GetEndpointMapResponse) error {
 		case tetragon.EndpointType_ENDPOINT_TYPE_DNS, tetragon.EndpointType_ENDPOINT_TYPE_BPF_DNS:
 			fmt.Fprintf(w, "%s\t", e.Dns)
 		case tetragon.EndpointType_ENDPOINT_TYPE_POD, tetragon.EndpointType_ENDPOINT_TYPE_SERVICE:
-			fmt.Fprintf(w, "%s:%s %s\t", e.Namespace, e.Name, e.Kind)
+			fmt.Fprintf(w, "%s:%s(%s)\t", e.Namespace, e.Name, e.Kind)
 		case tetragon.EndpointType_ENDPOINT_TYPE_IP:
 			fmt.Fprintf(w, "%s\t", e.Ip)
 		case tetragon.EndpointType_ENDPOINT_TYPE_LISTEN:
 			fmt.Fprintf(w, "%s:%s\t", e.Ip, e.Port)
+		case tetragon.EndpointType_ENDPOINT_TYPE_NODE:
+			fmt.Fprintf(w, "%s(%s)\t", e.Name, e.Kind)
 		default:
-			fmt.Fprintln(w, "unknown")
+			fmt.Fprint(w, "unknown")
 		}
 		fmt.Fprintln(w, "")
 	}
