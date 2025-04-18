@@ -181,12 +181,11 @@ func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
 	uid := "testName"
 
 	policy := testMatchSrcLabelsPolicy(name, "A=a,B=b")
-	err := s.CreateSrcMatchLabelsPolicy(uid, policy)
-	assert.NoError(t, err)
+	s.CreateSrcMatchLabelsPolicy(uid, policy)
 
 	assert.Equal(t, 1, len(s.Src))
 
-	err = s.RemoveMatchLabelNetworkPolicy(uid, policy)
+	err := s.RemoveMatchLabelNetworkPolicy(uid, policy)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(s.Src))
@@ -200,12 +199,11 @@ func TestCreateDstMatchLabelsPolicy(t *testing.T) {
 	nextId()
 
 	policy := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	err := s.CreateDstMatchLabelsPolicy(uid, policy)
-	assert.NoError(t, err)
+	s.CreateDstMatchLabelsPolicy(uid, policy)
 
 	assert.Equal(t, 1, len(s.Dst))
 
-	err = s.RemoveMatchLabelNetworkPolicy(uid, policy)
+	err := s.RemoveMatchLabelNetworkPolicy(uid, policy)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(s.Dst))
@@ -256,8 +254,7 @@ func TestCreateSrcKey(t *testing.T) {
 		Action:      action,
 	}
 
-	err := s.CreateSrcMatchLabelsPolicy("testUID", netpol)
-	assert.NoError(t, err)
+	s.CreateSrcMatchLabelsPolicy("testUID", netpol)
 	assert.Equal(t, 1, len(s.Src))
 }
 
@@ -265,8 +262,7 @@ func CreateDstMatchLabels(t *testing.T) {
 	s := NewPolicyState()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	err := s.CreateDstMatchLabelsPolicy(name, netpol)
-	assert.NoError(t, err)
+	s.CreateDstMatchLabelsPolicy(name, netpol)
 	d := s.Dst[name]
 	assert.Equal(t, "d1", d.Labels["D1"])
 	assert.Equal(t, "d2", d.Labels["D2"])
@@ -277,8 +273,7 @@ func CreateSrcMatchLabels(t *testing.T) {
 	s := NewPolicyState()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	err := s.CreateSrcMatchLabelsPolicy(name, netpol)
-	assert.NoError(t, err)
+	s.CreateSrcMatchLabelsPolicy(name, netpol)
 	src := s.Src[name]
 	assert.NotNil(t, src)
 	assert.Equal(t, "a", src.Labels["A"])

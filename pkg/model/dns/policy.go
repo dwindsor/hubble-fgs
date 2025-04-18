@@ -386,12 +386,12 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 }
 
 // Create DstMatchLAbelsPolicy to add new Network Policy
-func (state *PolicyState) CreateDstMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+func (state *PolicyState) CreateDstMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) {
 	state.DstLock.Lock()
 	defer state.DstLock.Unlock()
 
 	if len(policy.Destination.Labels.Equal) < 1 {
-		return nil
+		return
 	}
 
 	ls := &matchLabels.LabelSet{
@@ -402,11 +402,10 @@ func (state *PolicyState) CreateDstMatchLabelsPolicy(uid string, policy *types.T
 	}
 
 	state.Dst.Add(uid, ls)
-	return nil
 }
 
 // Create SrcMatchLAbelsPolicy to add new Network Policy
-func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) {
 	state.SrcLock.Lock()
 	defer state.SrcLock.Unlock()
 
@@ -418,15 +417,11 @@ func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.T
 	}
 
 	state.Src.Add(uid, ls)
-	return nil
 }
 
 func (state *PolicyState) CreateMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
 	if len(policy.Destination.Labels.Equal) > 0 {
-		err := state.CreateDstMatchLabelsPolicy(uid, policy)
-		if err != nil {
-			return err
-		}
+		state.CreateDstMatchLabelsPolicy(uid, policy)
 	}
 
 	// There are a few possibilities for possible scope.
@@ -435,8 +430,9 @@ func (state *PolicyState) CreateMatchLabelsPolicy(uid string, policy *types.Tetr
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
 	if len(policy.Subject.Labels.Equal) > 0 {
-		return state.CreateSrcMatchLabelsPolicy(uid, policy)
+		state.CreateSrcMatchLabelsPolicy(uid, policy)
 	}
+
 	return nil
 }
 
