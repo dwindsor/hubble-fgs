@@ -21,6 +21,11 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	InternalHostName = "_host"
+	InternalLabelKey = "_internal"
+)
+
 var (
 	RealizedState *PolicyState
 	DesiredState  *PolicyState
@@ -148,6 +153,17 @@ func NewPolicyState() *PolicyState {
 	s.Src = make(map[string]*matchLabels.LabelSet)
 
 	s.localObjects = make(map[k8stypes.UID]metav1.Object)
+	// Initialize the new state with a local object representing the host
+	// itself as a Node with a special label
+	s.localObjects[InternalHostName] = &corev1.Node{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Node",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   InternalHostName,
+			Labels: map[string]string{InternalLabelKey: InternalHostName},
+		},
+	}
 	s.remoteObjects = make(map[k8stypes.UID]metav1.Object)
 
 	s.DstLock = sync.Mutex{}

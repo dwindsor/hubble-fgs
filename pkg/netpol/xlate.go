@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
@@ -20,6 +21,12 @@ func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tet
 	if np.Spec.PodSelector != nil {
 		subj.Labels = types.TetragonNetworkLabels{
 			Equal: np.Spec.PodSelector.MatchLabels,
+		}
+	} else {
+		// If there's no PodSelector in a policy, assume the user
+		// intended to target the host of the agent itself
+		subj.Labels = types.TetragonNetworkLabels{
+			Equal: map[string]string{dns.InternalLabelKey: dns.InternalHostName},
 		}
 	}
 
@@ -82,6 +89,11 @@ func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tet
 			labels := types.TetragonNetworkLabels{}
 			if d.PodSelector != nil {
 				labels.Equal = d.PodSelector.MatchLabels
+			} else {
+				// As for the top level PodSelector, assume no
+				// PodSelector means to target the agent host
+				// itself
+				labels.Equal = map[string]string{dns.InternalLabelKey: dns.InternalHostName}
 			}
 
 			ports := make([]uint32, 0, len(d.Ports.Ports))
