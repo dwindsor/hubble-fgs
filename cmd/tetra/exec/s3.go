@@ -13,8 +13,49 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 )
+
+func getS3Alerts(ctx context.Context, s3Client *s3.Client, bucket, lastKey string) (map[string][]*tetragon.Alert, map[string]int, error) {
+	alertBin := make(map[string][]*tetragon.Alert)
+	alertCount := make(map[string]int)
+
+	result, err := s3Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(lastKey),
+	})
+	if err != nil {
+		return alertBin, alertCount, fmt.Errorf("getObject error: %w", err)
+	}
+	body, err := io.ReadAll(result.Body)
+	if err != nil {
+		return alertBin, alertCount, fmt.Errorf("object ReadAll error: %w", err)
+	}
+	reader := bytes.NewReader(body)
+	gzreader, err := gzip.NewReader(reader)
+	if err != nil {
+		return alertBin, alertCount, fmt.Errorf("gzip reader error: %w", err)
+	}
+	data, err := io.ReadAll(gzreader)
+	if err != nil {
+		return alertBin, alertCount, fmt.Errorf("appmodel reader error: %w", err)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	for {
+		alert := &tetragon.Alert{}
+		err := decoder.Decode(&alert)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return alertBin, alertCount, err
+		}
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		alertBin[alert.Rule.Name] = append(alertBin[alert.Rule.Name], alert)
+		alertCount[alert.Rule.Name]++
+	}
+	return alertBin, alertCount, nil
+}
 
 func getS3Model(ctx context.Context, s3Client *s3.Client, bucket, lastKey string, namespaces []string) (*appModelV1.ApplicationModelEvent, error) {
 	result, err := s3Client.GetObject(ctx, &s3.GetObjectInput{

@@ -14,6 +14,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -178,6 +179,104 @@ func monitorStdin() error {
 	return nil
 }
 
+func s3MonitorAlert(bucket string, interval time.Duration, _ []string) error {
+	ctx := context.Background()
+	config, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return err
+	}
+	client := s3.NewFromConfig(config, func(o *s3.Options) {
+		o.DisableLogOutputChecksumValidationSkipped = true
+	})
+	if bucket == "" {
+		bucket = DefaultAlertsBucket
+	}
+	last, err := s3GetLastKey(ctx, client, bucket, "")
+	if err != nil {
+		return err
+	}
+	ticker := time.NewTicker(interval)
+	for range ticker.C {
+		key, err := s3GetLastKey(ctx, client, bucket, last)
+		if err != nil {
+			continue
+		}
+		// If last key is empty then we failed to find a new object.
+		if key == "" {
+			continue
+		}
+
+		if last != key {
+			alertSingleton, alertCount, err := getS3Alerts(ctx, client, bucket, last)
+			if err != nil {
+				fmt.Printf("gets3Alerts error: %s", err)
+				return err
+			}
+			prettyPrintAlert(alertSingleton, alertCount)
+			last = key
+		}
+	}
+	return nil
+}
+
+func monitorStdinAlerts(_ time.Duration, _ []string) error {
+	decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
+	for {
+		alertSingleton := make(map[string][]*tetragon.Alert, 1)
+		alertCount := make(map[string]int)
+
+		alert := &tetragon.Alert{}
+		err := decoder.Decode(&alert)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return err
+		}
+		if errors.Is(err, io.EOF) {
+			continue
+		}
+
+		alertSingleton[alert.Rule.Name] = append(alertSingleton[alert.Rule.Name], alert)
+		alertCount[alert.Rule.Name]++
+
+		prettyPrintAlert(alertSingleton, alertCount)
+	}
+}
+
+func NewMonitorAlerts() *cobra.Command {
+	var s3 bool
+	bucket := ""
+
+	ret := &cobra.Command{
+		Use:    "alerts",
+		Short:  "Periodically monitor alerts and statistics collected by Tetragon",
+		Hidden: true, // Still under development. Keep it hidden.
+		RunE: func(_ *cobra.Command, _ []string) error {
+			interval := viper.GetDuration("interval")
+			namespaces := viper.GetStringSlice("namespaces")
+			if viper.GetBool("host") {
+				namespaces = append(namespaces, model.HostNamespace)
+			}
+			// Check if stdin is being piped, if so, monitor application models
+			// from stdin instead of connecting to Tetragon gRPC endpoint.
+			fi, _ := os.Stdin.Stat()
+			if fi.Mode()&os.ModeNamedPipe != 0 {
+				return monitorStdinAlerts(interval, namespaces)
+			}
+			if s3 {
+				return s3MonitorAlert(bucket, interval, namespaces)
+			}
+			return nil
+		},
+	}
+
+	flags := ret.Flags()
+	flags.BoolVarP(&verbose, "verbose", "v", false, "Print all fields when pretty printing")
+	flags.BoolVar(&s3, "s3", false, "S3 source")
+	flags.StringVar(&bucket, "bucket", "alerts", "S3 bucket source")
+	viper.BindPFlags(flags)
+
+	return ret
+}
+
 func NewMonitor() *cobra.Command {
 	ret := &cobra.Command{
 		Use:    "monitor",
@@ -204,7 +303,10 @@ func NewMonitor() *cobra.Command {
 		},
 	}
 
+	ret.AddCommand(NewMonitorAlerts())
+
 	flags := ret.Flags()
+	flags.BoolVarP(&verbose, "verbose", "v", false, "Print all fields when pretty printing")
 	flags.DurationP("interval", "i", 5*time.Second, "Monitor interval")
 	flags.StringSliceP("namespaces", "n", nil, "Monitor processes in specific namespaces")
 	flags.Bool("host", false, "Monitor host processes")

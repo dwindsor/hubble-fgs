@@ -1085,6 +1085,37 @@ func squash() error {
 	return nil
 }
 
+func printAlerts(s3Enable bool, bucket string) error {
+	alerts, counts, err := getAlertModel(s3Enable, bucket)
+	if err != nil {
+		return err
+	}
+	prettyPrintAlert(alerts, counts)
+	return nil
+}
+
+func NewAlerts() *cobra.Command {
+	var s3 bool
+	bucket := ""
+
+	ret := &cobra.Command{
+		Use:          "alerts",
+		Short:        "Show alerts using a gRPC connection or JSON",
+		Hidden:       false,
+		SilenceUsage: false,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return printAlerts(s3, bucket)
+		},
+	}
+
+	flags := ret.Flags()
+	flags.BoolVar(&s3, "s3", false, "S3 source")
+	flags.StringVar(&bucket, "bucket", "appmodel", "S3 bucket source")
+	viper.BindPFlags(flags)
+
+	return ret
+}
+
 func New() *cobra.Command {
 	ret := &cobra.Command{
 		Use:          "model",
@@ -1096,6 +1127,7 @@ func New() *cobra.Command {
 		},
 	}
 
+	ret.AddCommand(NewAlerts())
 	ret.AddCommand(NewShow())
 	ret.AddCommand(NewCheck())
 	ret.AddCommand(NewDebug())
@@ -1107,6 +1139,7 @@ func New() *cobra.Command {
 		"Get processes in specific namespaces. Specify '<host-namespace>' to list host processes.")
 	pflags.StringSliceVar(&workloads, "workloads", nil, "Get tree by workload")
 	pflags.BoolVar(&host, "host", false, "Include the tree for host")
+	pflags.BoolVarP(&verbose, "verbose", "v", false, "Print all fields when pretty printing")
 	viper.BindPFlags(pflags)
 
 	return ret
