@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/policyfilter"
-	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/stretchr/testify/assert"
@@ -228,9 +228,9 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
 	assert.NotZero(t, r1[0].Src.CgroupId)
-	assert.Equal(t, endpoint.DnsType, r1[0].Endpoint.EP.Type)
+	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[0].Endpoint.EP.Type)
 	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
-	assert.Equal(t, endpoint.DnsType, r1[1].Endpoint.EP.Type)
+	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[1].Endpoint.EP.Type)
 	assert.Equal(t, "test.com", r1[1].Endpoint.EP.Dns)
 
 	// dstPod does not match subject so will have no FQDN records but will match endpoint
@@ -241,7 +241,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r2))
 	assert.Equal(t, r1[0].Src.CgroupId, r2[0].Src.CgroupId)
-	assert.Equal(t, endpoint.PodType, r2[0].Endpoint.EP.Type)
+	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, r2[0].Endpoint.EP.Type)
 	assert.Equal(t, dstPodName, r2[0].Endpoint.EP.Name)
 
 	addPod(t, dstIdKeep, dstPodNameKeep, dstPodLabels)
@@ -250,7 +250,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r3))
 	assert.Equal(t, r1[0].Src.CgroupId, r3[0].Src.CgroupId)
-	assert.Equal(t, endpoint.PodType, r3[0].Endpoint.EP.Type)
+	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, r3[0].Endpoint.EP.Type)
 	assert.Equal(t, dstPodNameKeep, r3[0].Endpoint.EP.Name)
 
 	// Test matchLabels keys are tracking the subjects
@@ -263,7 +263,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	dst := s.Dst[name]
 	assert.NotNil(t, dst)
 	assert.Equal(t, 2, len(dst.Endpoints))
-	assert.Equal(t, endpoint.PodType, dst.Endpoints[0].Type)
+	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, dst.Endpoints[0].Type)
 	assert.Equal(t, dstPodName, dst.Endpoints[0].Name)
 	assert.Equal(t, "testNamespace", dst.Endpoints[0].Namespace)
 	assert.Equal(t, "testPod", dst.Endpoints[0].Kind)
@@ -328,12 +328,12 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	assert.Equal(t, 3, len(r1))
 
 	assert.NotZero(t, r1[0].Src.CgroupId)
-	assert.Equal(t, endpoint.DnsType, r1[0].Endpoint.EP.Type)
+	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[0].Endpoint.EP.Type)
 	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
 	assert.Equal(t, r1[0].Action.Action, record.PolicyDeny)
 
 	assert.NotZero(t, r1[1].Src.CgroupId)
-	assert.Equal(t, endpoint.DnsType, r1[1].Endpoint.EP.Type)
+	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[1].Endpoint.EP.Type)
 	assert.Equal(t, "test.com", r1[1].Endpoint.EP.Dns)
 	assert.Equal(t, r1[1].Action.Action, record.PolicyDeny)
 
@@ -387,17 +387,17 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
 
 	assert.NotZero(t, r1[0].Src.CgroupId)
-	assert.Equal(t, endpoint.DnsType, r1[0].Endpoint.EP.Type)
+	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[0].Endpoint.EP.Type)
 	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
 	assert.Equal(t, r1[0].Action.Action, record.PolicyAllow)
 
 	assert.NotZero(t, r1[1].Src.CgroupId)
-	assert.Equal(t, endpoint.DnsType, r1[1].Endpoint.EP.Type)
+	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[1].Endpoint.EP.Type)
 	assert.Equal(t, "test.com", r1[1].Endpoint.EP.Dns)
 	assert.Equal(t, r1[1].Action.Action, record.PolicyAllow)
 
 	assert.NotZero(t, r1[2].Src.CgroupId)
-	assert.Equal(t, endpoint.PodType, r1[2].Endpoint.EP.Type)
+	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, r1[2].Endpoint.EP.Type)
 	assert.Equal(t, r1[2].Action.Action, record.PolicyAllow)
 
 	assert.NotZero(t, r1[3].Src.CgroupId)
@@ -477,11 +477,11 @@ func cntRecordsEPTypes(records []*record.DatapathRecord) (int, int, int) {
 			cntNilType++
 			continue
 		}
-		if r.Endpoint.EP.Type == endpoint.DnsType {
+		if r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_DNS {
 			cntDnsType++
 			continue
 		}
-		if r.Endpoint.EP.Type == endpoint.PodType {
+		if r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_POD {
 			cntPodType++
 			continue
 		}
@@ -1062,7 +1062,7 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 		if r.Endpoint.EP == nil {
 			continue
 		}
-		if r.Endpoint.EP.Type == endpoint.DnsType {
+		if r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_DNS {
 			switch r.Endpoint.Port {
 			case 80:
 				port80++
@@ -1071,7 +1071,7 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 			}
 			continue
 		}
-		if r.Endpoint.EP.Type == endpoint.PodType {
+		if r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_POD {
 			switch r.Endpoint.Port {
 			case 80:
 				port80++
@@ -1115,13 +1115,13 @@ func countPorts(records []*record.DatapathRecord, port uint32) int {
 		if r.Endpoint.EP == nil {
 			continue
 		}
-		if r.Endpoint.EP.Type == endpoint.DnsType {
+		if r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_DNS {
 			if r.Endpoint.Port == port {
 				cnt++
 			}
 			continue
 		}
-		if r.Endpoint.EP.Type == endpoint.PodType {
+		if r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_POD {
 			if r.Endpoint.Port == port {
 				cnt++
 			}

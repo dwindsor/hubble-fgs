@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ func getRecordSlice() []*DatapathRecord {
 	}
 
 	epName1 := &endpoint.Endpoint{
-		Type:      endpoint.PodType,
+		Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
 		Dns:       "",
 		Kind:      "testKind",
 		Namespace: "testNamespace",
@@ -37,7 +38,7 @@ func getRecordSlice() []*DatapathRecord {
 	}
 
 	epName2 := &endpoint.Endpoint{
-		Type:      endpoint.PodType,
+		Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
 		Dns:       "",
 		Kind:      "testKind",
 		Namespace: "testNamespace",
@@ -45,7 +46,7 @@ func getRecordSlice() []*DatapathRecord {
 	}
 
 	epName3 := &endpoint.Endpoint{
-		Type:      endpoint.PodType,
+		Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
 		Dns:       "",
 		Kind:      "testKind",
 		Namespace: "testNamespace",
@@ -165,7 +166,7 @@ func BenchmarkDiffRecord(b *testing.B) {
 	}
 
 	epName := &endpoint.Endpoint{
-		Type:      endpoint.PodType,
+		Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
 		Dns:       "",
 		Kind:      "testKind",
 		Namespace: "testNamespace0",
@@ -222,7 +223,7 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 	}
 
 	epName := &endpoint.Endpoint{
-		Type:      endpoint.PodType,
+		Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
 		Dns:       "",
 		Kind:      "testKind",
 		Namespace: "testNamespace0",

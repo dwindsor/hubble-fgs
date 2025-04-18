@@ -392,13 +392,13 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 				if !ok {
 					continue
 				}
-				if ep.Type == endpoint.DnsType && debug {
+				if ep.Type == tetragon.EndpointType_ENDPOINT_TYPE_DNS && debug {
 					ep.Dns = ep.Dns + "<promoted>"
 				}
 
 			} else {
 				ep = endpoint.Endpoint{
-					Type: endpoint.IpType,
+					Type: tetragon.EndpointType_ENDPOINT_TYPE_IP,
 					Ip:   ip.String(),
 				}
 			}
@@ -419,7 +419,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 				continue
 			}
 			ep = endpoint.Endpoint{
-				Type: endpoint.DnsType,
+				Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
 				Dns:  domain,
 			}
 		case types.DestinationSourceDNS:
@@ -429,7 +429,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 				continue
 			}
 			ep = endpoint.Endpoint{
-				Type: endpoint.DnsType,
+				Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
 				Dns:  domain,
 			}
 		default:
@@ -452,19 +452,19 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		}
 
 		switch ep.Type {
-		case endpoint.UnknownType:
+		case tetragon.EndpointType_ENDPOINT_TYPE_UNKNOWN:
 			d = &tetragon.Destination{
 				DestinationNames: []string{},
 				Port:             uint64(0),
 				Stats:            stats,
 			}
-		case endpoint.DnsType:
+		case tetragon.EndpointType_ENDPOINT_TYPE_DNS:
 			d = &tetragon.Destination{
 				DestinationNames: strings.Split(ep.Dns, ","),
 				Port:             dstVal.Port,
 				Stats:            stats,
 			}
-		case endpoint.ServiceType:
+		case tetragon.EndpointType_ENDPOINT_TYPE_SERVICE:
 			d = &tetragon.Destination{
 				DestinationService: &tetragon.Service{
 					Namespace: ep.Namespace,
@@ -473,7 +473,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 				Port:  dstVal.Port,
 				Stats: stats,
 			}
-		case endpoint.PodType:
+		case tetragon.EndpointType_ENDPOINT_TYPE_POD:
 			d = &tetragon.Destination{
 				DestinationPod: &tetragon.Pod{
 					Namespace:    ep.Namespace,
@@ -483,7 +483,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 				Port:  dstVal.Port,
 				Stats: stats,
 			}
-		case endpoint.IpType:
+		case tetragon.EndpointType_ENDPOINT_TYPE_IP:
 			d = &tetragon.Destination{
 				DestinationNames: strings.Split(ep.Ip, ","),
 				Port:             dstVal.Port,

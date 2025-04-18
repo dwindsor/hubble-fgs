@@ -21,19 +21,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type Type int
-
-const (
-	UnknownType Type = 0
-	DnsType     Type = 1
-	PodType     Type = 2
-	IpType      Type = 3
-	ServiceType Type = 4
-	NodeType    Type = 7
-)
-
 type Endpoint struct {
-	Type      Type
+	Type      tetragon.EndpointType
 	Dns       string
 	Kind      string
 	Namespace string
@@ -197,7 +186,7 @@ func (c *Cache) AddIpServiceMap(epService *corev1.Service) error {
 	)
 
 	ep := Endpoint{
-		Type:      ServiceType,
+		Type:      tetragon.EndpointType_ENDPOINT_TYPE_SERVICE,
 		Namespace: epService.Namespace,
 		Name:      epService.Name,
 	}
@@ -234,7 +223,7 @@ func (c *Cache) AddIpPodMap(epPod *v1alpha1.PodInfo) {
 	)
 
 	ep := Endpoint{
-		Type:      PodType,
+		Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
 		Kind:      epPod.WorkloadType.Kind,
 		Namespace: epPod.WorkloadObject.Namespace,
 		Name:      epPod.WorkloadObject.Name,
@@ -275,7 +264,7 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 	)
 
 	ep := Endpoint{
-		Type: DnsType,
+		Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
 		Dns:  strings.Join(dns.Names, ","),
 	}
 

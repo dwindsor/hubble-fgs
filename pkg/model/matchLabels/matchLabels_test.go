@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/stretchr/testify/assert"
@@ -252,14 +253,14 @@ func TestPodAdd(t *testing.T) {
 	assert.True(t, match, "keyset should exist")
 
 	epPod1 := &endpoint.Endpoint{
-		Type:      endpoint.PodType,
+		Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
 		Kind:      "kindTest",
 		Namespace: "workloadNamespace",
 		Name:      "workloadTest1",
 	}
 
 	epPod2 := &endpoint.Endpoint{
-		Type:      endpoint.PodType,
+		Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
 		Kind:      "kindTest",
 		Namespace: "workloadNamespace",
 		Name:      "workloadTest2",

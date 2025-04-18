@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
@@ -51,7 +52,7 @@ func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.Proces
 	if d.FQDN != nil {
 		for _, entry := range d.FQDN.Names {
 			ep := &endpoint.Endpoint{
-				Type: endpoint.DnsType,
+				Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
 				Dns:  entry,
 			}
 			endpoint := record.DatapathEndpoint{
@@ -249,7 +250,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 		for _, entry := range policy.Destination.FQDN.Names {
 			if len(policy.Destination.Ports) == 0 {
 				ep := &endpoint.Endpoint{
-					Type: endpoint.DnsType,
+					Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
 					Dns:  entry,
 				}
 				endpoint := record.DatapathEndpoint{
@@ -266,7 +267,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 
 			for _, port := range policy.Destination.Ports {
 				ep := &endpoint.Endpoint{
-					Type: endpoint.DnsType,
+					Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
 					Dns:  entry,
 				}
 				endpoint := record.DatapathEndpoint{

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
@@ -83,17 +84,17 @@ func createObjectEndpoint(object metav1.Object) *endpoint.Endpoint {
 	case *v1alpha1.PodInfo:
 		// For Pods, we use the metadata of the top level workload
 		// that created the object so that they represent one endpoint
-		ep.Type = endpoint.PodType
+		ep.Type = tetragon.EndpointType_ENDPOINT_TYPE_POD
 		ep.Name = o.WorkloadObject.Name
 		ep.Namespace = o.WorkloadObject.Namespace
 		ep.Kind = o.WorkloadType.Kind
 	case *corev1.Node:
-		ep.Type = endpoint.NodeType
+		ep.Type = tetragon.EndpointType_ENDPOINT_TYPE_NODE
 		ep.Name = object.GetName()
 		ep.Namespace = object.GetNamespace()
 		ep.Kind = o.Kind
 	default:
-		ep.Type = endpoint.UnknownType
+		ep.Type = tetragon.EndpointType_ENDPOINT_TYPE_UNKNOWN
 		ep.Name = object.GetName()
 		ep.Namespace = object.GetNamespace()
 	}
@@ -331,7 +332,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 				continue
 			}
 			ep := &endpoint.Endpoint{
-				Type: endpoint.DnsType,
+				Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
 				Dns:  entry,
 			}
 			endpoint := record.DatapathEndpoint{
