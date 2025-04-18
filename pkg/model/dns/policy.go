@@ -414,7 +414,6 @@ func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.T
 		Name:   uid,
 		Labels: policy.Subject.Labels.Equal,
 		Policy: policy,
-		Ports:  policy.Destination.Ports,
 	}
 
 	state.Src.Add(uid, ls)
