@@ -111,7 +111,7 @@ func testPod(t *testing.T, id, ns, name, kind, matchLabels string) *v1alpha1.Pod
 func TestCheckWorkloadExists(t *testing.T) {
 	name := "testName"
 
-	s := New()
+	s := NewPolicyState()
 
 	test1Id := nextId()
 	addPod(t, test1Id, name, "A=a")
@@ -159,7 +159,7 @@ func TestSrcKeyLookup(t *testing.T) {
 }
 
 func TestSrcPolicyLookup(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 
 	name1 := "testName1"
 	name2 := "testName2"
@@ -199,7 +199,7 @@ func TestSrcPolicyLookup(t *testing.T) {
 }
 
 func TestCheckMatchLabelsPolicy(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "netpol"
 	srcId := nextId()
 	dstId := nextId()
@@ -304,7 +304,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 }
 
 func TestSrcPolicyAddsDefaultAction(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "netpol"
 	srcId := nextId()
 
@@ -353,7 +353,7 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 
 // Test addPod again, but bring up subject after destinations are already loaded
 func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "netpol"
 	srcId := nextId()
 	dstId := nextId()
@@ -421,7 +421,7 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 }
 
 func TestPolicySet(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 	name := "netpol"
 	srcId := nextId()
@@ -489,7 +489,7 @@ func cntRecordsEPTypes(records []*record.DatapathRecord) (int, int, int) {
 }
 
 func TestPolicySetWithPods(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 	name := "netpol"
 	srcId := nextId()
@@ -544,7 +544,7 @@ func TestPolicySetWithPods(t *testing.T) {
 }
 
 func TestPolicyOverlapping(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 
 	srcId := nextId()
@@ -634,7 +634,7 @@ func TestPolicyOverlapping(t *testing.T) {
 }
 
 func TestPolicyOverlappingPolicyDelete(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 
 	srcId := nextId()
@@ -755,7 +755,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 }
 
 func TestDestSrcProcessPolicy(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 
 	srcId := nextId()
@@ -824,7 +824,7 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 }
 
 func TestSrcDestProcessPolicy(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 
 	srcId := nextId()
@@ -893,7 +893,7 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 }
 
 func TestProcessPolicySrcDest(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 
 	srcId := nextId()
@@ -955,7 +955,7 @@ func TestProcessPolicySrcDest(t *testing.T) {
 }
 
 func TestProcessPolicyDestSrc(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 
 	srcId := nextId()
@@ -1017,7 +1017,7 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 }
 
 func TestProcessPortPolicyDestSrc(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 
 	srcId := nextId()
@@ -1130,7 +1130,7 @@ func countPorts(records []*record.DatapathRecord, port uint32) int {
 }
 
 func TestProcessPortPolicySrcDest(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 
 	srcId := nextId()

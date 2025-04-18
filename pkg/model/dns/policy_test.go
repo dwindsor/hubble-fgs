@@ -119,7 +119,7 @@ func testMatchPortDstProcessLabelsDenyPolicy(name, src, dst, action string) *typ
 }
 
 func TestQueueWorkloadPolicy(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "test"
 	policy := testFQDNPolicy(name)
 
@@ -132,7 +132,7 @@ func TestQueueWorkloadPolicy(t *testing.T) {
 }
 
 func TestCreateSrcKeyNoState(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "test"
 	policy := testFQDNPolicy(name)
 	_, err := createSrcPolicy(policy)
@@ -143,7 +143,7 @@ func TestCreateSrcKeyNoState(t *testing.T) {
 }
 
 func TestCreateSrcKeyNamespaceNoState(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "test"
 	policy := testFQDNPolicy(name)
 	policy.Subject.Workload.Name = ""
@@ -158,7 +158,7 @@ func TestCreateSrcKeyNamespaceNoState(t *testing.T) {
 }
 
 func TestCreatSrcKeyGlobal(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "test"
 	policy := testFQDNPolicy(name)
 	policy.Subject.Workload.Namespace = ""
@@ -176,7 +176,7 @@ func TestCreatSrcKeyGlobal(t *testing.T) {
 }
 
 func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "testName"
 	uid := "testName"
 
@@ -193,7 +193,7 @@ func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
 }
 
 func TestCreateDstMatchLabelsPolicy(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "testName"
 	uid := "testName"
 
@@ -212,7 +212,7 @@ func TestCreateDstMatchLabelsPolicy(t *testing.T) {
 }
 
 func TestCreateSrcKey(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 
 	ml := make(map[string]string)
 	ml["A"] = "a"
@@ -262,7 +262,7 @@ func TestCreateSrcKey(t *testing.T) {
 }
 
 func CreateDstMatchLabels(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	err := s.CreateDstMatchLabelsPolicy(name, netpol)
@@ -274,7 +274,7 @@ func CreateDstMatchLabels(t *testing.T) {
 }
 
 func CreateSrcMatchLabels(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	err := s.CreateSrcMatchLabelsPolicy(name, netpol)
@@ -287,7 +287,7 @@ func CreateSrcMatchLabels(t *testing.T) {
 }
 
 func TestAddNetworkPolicy(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
 	err := s.CreateMatchLabelsPolicy(name, netpol)
@@ -305,7 +305,7 @@ func TestAddNetworkPolicy(t *testing.T) {
 }
 
 func testAddNetworkActionPolicy(t *testing.T, action string) {
-	s := New()
+	s := NewPolicyState()
 	name := "testPol"
 	netpol := testMatchDstLabelsDenyPolicy(name, "A=a,B=b", "D1=d1,D2=d2", action)
 	err := s.CreateMatchLabelsPolicy(name, netpol)

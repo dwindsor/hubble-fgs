@@ -471,7 +471,7 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 	currentPolicy := currentState.getAllExistingPolicy()
 
 	calculatorRecords := []*record.DatapathRecord{}
-	calculatorState := New()
+	calculatorState := NewPolicyState()
 
 	for _, p := range currentState.localPods {
 		r, err := calculatorState.podAdd(p)
@@ -490,7 +490,7 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 	}
 
 	// Building new state with extended policy set
-	newState := New()
+	newState := NewPolicyState()
 	allPolicy := append(currentPolicy, policy...)
 	uidGenerator := make(map[string]int, len(allPolicy))
 

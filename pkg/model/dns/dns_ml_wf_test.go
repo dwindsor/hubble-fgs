@@ -24,7 +24,7 @@ var tests = []policyCalcTest{
 }
 
 func TestMatchLabelsTable(t *testing.T) {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 
 	for _, test := range tests {

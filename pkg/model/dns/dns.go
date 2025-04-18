@@ -33,7 +33,7 @@ var (
 
 // At init we build an empty realized state
 func init() {
-	s := New()
+	s := NewPolicyState()
 	SetRealizedState(s)
 }
 
@@ -100,7 +100,7 @@ type PolicyState struct {
 	Reader sync.RWMutex
 }
 
-func New() *PolicyState {
+func NewPolicyState() *PolicyState {
 	s := &PolicyState{}
 	s.Dst = make(map[string]*matchLabels.LabelSet)
 	s.Src = make(map[string]*matchLabels.LabelSet)
