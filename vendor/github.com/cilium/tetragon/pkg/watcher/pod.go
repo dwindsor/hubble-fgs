@@ -54,7 +54,7 @@ func AddPodInformer(w *K8sWatcher, local bool) error {
 
 	// initialize deleted pod cache
 	var err error
-	w.deletedPodCache, err = newDeletedPodCache()
+	w.deletedPodCache, err = NewDeletedPodCache()
 	if err != nil {
 		return fmt.Errorf("failed to initialize deleted pod cache: %w", err)
 	}
@@ -67,7 +67,7 @@ func AddPodInformer(w *K8sWatcher, local bool) error {
 	})
 
 	// add event handlers to the informer
-	informer.AddEventHandler(w.deletedPodCache.eventHandler())
+	informer.AddEventHandler(w.deletedPodCache.EventHandler())
 	podhooks.InstallHooks(informer)
 
 	return nil
@@ -143,6 +143,10 @@ func (watcher *K8sWatcher) FindContainer(containerID string) (*corev1.Pod, *core
 	if podInformer == nil {
 		return nil, nil, false
 	}
+	return FindContainer(containerID, podInformer, watcher.deletedPodCache)
+}
+
+func FindContainer(containerID string, podInformer cache.SharedIndexInformer, deletedPodCache *DeletedPodCache) (*corev1.Pod, *corev1.ContainerStatus, bool) {
 	indexedContainerID := containerID
 	if len(containerID) > containerIDLen {
 		indexedContainerID = containerID[:containerIDLen]
@@ -161,7 +165,7 @@ func (watcher *K8sWatcher) FindContainer(containerID string) (*corev1.Pod, *core
 		return pod, cont, found
 	}
 
-	return watcher.deletedPodCache.findContainer(indexedContainerID)
+	return deletedPodCache.FindContainer(indexedContainerID)
 }
 
 // TODO(michi) Not the most efficient implementation. Optimize as needed.
@@ -205,6 +209,10 @@ func (watcher *K8sWatcher) FindMirrorPod(hash string) (*corev1.Pod, error) {
 	if podInformer == nil {
 		return nil, errors.New("pod informer not initialized")
 	}
+	return FindMirrorPod(hash, podInformer)
+}
+
+func FindMirrorPod(hash string, podInformer cache.SharedIndexInformer) (*corev1.Pod, error) {
 	pods := podInformer.GetStore().List()
 	for i := range pods {
 		if pod, ok := pods[i].(*corev1.Pod); ok {
@@ -223,7 +231,10 @@ func (watcher *K8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
 	if podInformer == nil {
 		return nil, errors.New("pod informer not initialized")
 	}
+	return FindPod(podID, podInformer)
+}
 
+func FindPod(podID string, podInformer cache.SharedIndexInformer) (*corev1.Pod, error) {
 	// First try to find the pod by index
 	objs, err := podInformer.GetIndexer().ByIndex(podIdx, podID)
 	if err != nil {
