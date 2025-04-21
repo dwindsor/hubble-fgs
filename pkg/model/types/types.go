@@ -127,9 +127,14 @@ type TetragonNetworkLabels struct {
 	Equal map[string]string
 }
 
+type TetragonNetworkCIDR struct {
+	CIDR string `json:"cidr"`
+}
+
 type TetragonNetworkDestination struct {
 	FQDN   *TetragonNetworkFQDN
 	Labels TetragonNetworkLabels
+	CIDR   *TetragonNetworkCIDR
 	Ports  []uint32
 }
 

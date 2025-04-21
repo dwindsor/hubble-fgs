@@ -77,6 +77,7 @@ func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tet
 
 		for _, d := range r.Destination {
 			var f *types.TetragonNetworkFQDN
+			var ip *types.TetragonNetworkCIDR
 
 			if len(d.FQDN) > 0 {
 				f = &types.TetragonNetworkFQDN{
@@ -84,6 +85,12 @@ func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tet
 				}
 			} else {
 				f = nil
+			}
+
+			if d.IPBlock != nil {
+				ip = &types.TetragonNetworkCIDR{
+					CIDR: d.IPBlock.CIDR,
+				}
 			}
 
 			labels := types.TetragonNetworkLabels{}
@@ -102,6 +109,7 @@ func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tet
 			dest := types.TetragonNetworkDestination{
 				FQDN:   f,
 				Labels: labels,
+				CIDR:   ip,
 				Ports:  ports,
 			}
 
