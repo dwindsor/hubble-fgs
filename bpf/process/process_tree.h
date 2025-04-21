@@ -334,36 +334,43 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	ip_key.addr[1] = tuple->daddr[1];
 	ip_key.af_inet6 = tuple->ipv6;
 
-	// destination precedence DNS, Userspace (service, pods), BPF generated ID.
+	/* destination precedence: DNS, Userspace object, LPM object, kernel */
+
+	/* Check for DNS generated IDs */
 	dns_value = map_lookup_elem(&tg_dns_endpoint_id_map, &ip_key);
 	if (dns_value) {
 		destkey.destination_id = dns_value->id;
 		destkey.source = dns_value->source;
-	} else {
-		// destination_id verifier fix to if/else;
-		value = map_lookup_elem(&tg_endpoint_id_map, &key);
-		if (!value) {
-			if (!cfg->bpfGenIds)
-				return 0;
-
-			destkey.source = DESTINATION_SOURCE_BPF;
-			value = map_lookup_elem(&tg_bpf_endpoint_id_map, &key);
-			if (!value) {
-				value = map_lookup_elem(&tg_bpf_endpoint_id_heap, &zero);
-				if (!value)
-					return 0;
-				value->id = __sync_fetch_and_add(&glbl_bpf_endpoint_id, 1);
-				destkey.destination_id = value->id;
-				map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
-			} else {
-				destkey.destination_id = value->id;
-			}
-		} else {
-			destkey.destination_id = value->id;
-			destkey.source = DESTINATION_SOURCE_USERSPACE;
-		}
+		goto found_id;
 	}
 
+	// Check for Userspace generated IDs to objects
+	value = map_lookup_elem(&tg_endpoint_id_map, &key);
+	if (value) {
+		destkey.destination_id = value->id;
+		destkey.source = DESTINATION_SOURCE_USERSPACE;
+		goto found_id;
+	}
+
+	if (!cfg->bpfGenIds) /* We can abort if we only want userspace IDs */
+		return 0;
+
+	// Check for BPF generated IDs
+	destkey.source = DESTINATION_SOURCE_BPF;
+	value = map_lookup_elem(&tg_bpf_endpoint_id_map, &key);
+	if (value) {
+		destkey.destination_id = value->id;
+		goto found_id;
+	}
+
+	/* There is no known ID for this IP so lets create one */
+	value = map_lookup_elem(&tg_bpf_endpoint_id_heap, &zero);
+	if (!value)
+		return 0;
+	value->id = __sync_fetch_and_add(&glbl_bpf_endpoint_id, 1);
+	destkey.destination_id = value->id;
+	map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
+found_id:
 	destkey.local_id = *self_uid;
 	destkey.port = tuple->dport;
 	destkey.local_nsid = 0;
