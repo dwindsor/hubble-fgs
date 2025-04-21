@@ -49,6 +49,10 @@ func QueueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
 func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.ProcessTreeKey, d *types.TetragonNetworkDestination) error {
 	var err error
 
+	if d.CIDR != nil {
+		state.progRemoveCIDRDest(d.CIDR, src)
+	}
+
 	if d.FQDN != nil {
 		for _, entry := range d.FQDN.Names {
 			ep := &endpoint.Endpoint{
@@ -245,6 +249,14 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 
 func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKey, action *record.DatapathAction, policy *types.TetragonNetworkPolicy, init bool) []*record.DatapathRecord {
 	records := []*record.DatapathRecord{}
+
+	if policy.Destination.CIDR != nil {
+		r, err := state.addDestSrcCIDRRecords(&policy.Destination, src, action, init)
+		if err != nil {
+			logger.GetLogger().WithField("CIDR", policy.Destination.CIDR).WithError(err).Warn("CIDR policy record error")
+		}
+		records = append(records, r...)
+	}
 
 	if policy.Destination.FQDN != nil {
 		for _, entry := range policy.Destination.FQDN.Names {

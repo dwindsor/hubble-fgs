@@ -337,6 +337,19 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 			})
 		}
 
+		if s.Policy.Destination.CIDR != nil {
+			r, err := state.addDestCIDRRecords(
+				&s.Policy.Destination,
+				&s.Policy.Subject,
+				subject,
+				action)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warn("PodRemove CIDR records error")
+			} else {
+				records = append(records, r...)
+			}
+		}
+
 		if s.Policy.Destination.FQDN == nil {
 			continue
 		}
