@@ -29,6 +29,7 @@
 
 #include "policy_filter.h"
 #include "process_endpoint.h"
+#include "lpm.h"
 
 #include "parsers/dns/pstree.h"
 
@@ -287,10 +288,11 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	int zero = 0;
 	__u64 *nsid;
 
+	struct dns_endpoint_id_value *dns_value;
+	struct endpoint_id_value *value;
 	struct endpoint_id_key key;
 	struct ip_addr ip_key = {};
-	struct endpoint_id_value *value;
-	struct dns_endpoint_id_value *dns_value;
+	uint64_t lpm_id;
 
 	if (!tuple)
 		return 0;
@@ -354,6 +356,13 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 
 	if (!cfg->bpfGenIds) /* We can abort if we only want userspace IDs */
 		return 0;
+
+	lpm_id = lpm_ipkey_lookup(&ip_key);
+	if (lpm_id) {
+		destkey.destination_id = lpm_id;
+		destkey.source = DESTINATION_SOURCE_LPM;
+		goto found_id;
+	}
 
 	// Check for BPF generated IDs
 	destkey.source = DESTINATION_SOURCE_BPF;
