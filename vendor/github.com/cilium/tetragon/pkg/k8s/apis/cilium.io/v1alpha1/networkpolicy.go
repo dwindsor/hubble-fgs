@@ -119,7 +119,7 @@ type NetworkDestination struct {
 	// +kubebuilder:validation:Optional
 	FQDN []string `json:"FQDN,omitempty"`
 	// +kubebuilder:validation:Optional
-	IPBlock NetworkDestinationCIDR `json:"ipBlock,omitempty"`
+	IPBlock *NetworkDestinationCIDR `json:"ipBlock,omitempty"`
 	// +kubebuilder:validation:Optional
 	// PodSelector selects pods that this policy applies to
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`

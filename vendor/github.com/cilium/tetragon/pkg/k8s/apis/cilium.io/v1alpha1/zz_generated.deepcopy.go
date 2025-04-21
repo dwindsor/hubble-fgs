@@ -1095,7 +1095,11 @@ func (in *NetworkDestination) DeepCopyInto(out *NetworkDestination) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	out.IPBlock = in.IPBlock
+	if in.IPBlock != nil {
+		in, out := &in.IPBlock, &out.IPBlock
+		*out = new(NetworkDestinationCIDR)
+		**out = **in
+	}
 	if in.PodSelector != nil {
 		in, out := &in.PodSelector, &out.PodSelector
 		*out = new(v1.LabelSelector)
