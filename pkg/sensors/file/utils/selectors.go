@@ -1368,6 +1368,66 @@ func InitKernelExecSelectorState(fileSel []v1alpha1.FileExecSelector) (*KernelSe
 	return kernelSelectors, nil
 }
 
+func populateStringPrefixFilterMap(
+	pinPathPrefix string,
+	outerMap *ebpf.Map,
+	innerID uint32,
+	innerData map[selectors.KernelLPMTrieStringPrefix]struct{},
+	maxEntries uint32,
+) error {
+	innerName := fmt.Sprintf("string_prefix_map_%d", innerID)
+	innerSpec := &ebpf.MapSpec{
+		Name:       innerName,
+		Type:       ebpf.LPMTrie,
+		KeySize:    4 + selectors.StringPrefixMaxLength, // NB: KernelLpmTrieStringPrefix consists of 32bit prefix and 256 byte data
+		ValueSize:  uint32(1),
+		MaxEntries: maxEntries,
+		Flags:      bpf.BPF_F_NO_PREALLOC,
+	}
+	innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
+		PinPath: sensors.PathJoin(pinPathPrefix, innerName),
+	})
+	if err != nil {
+		return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
+	}
+	defer innerMap.Close()
+
+	one := uint8(1)
+	for val := range innerData {
+		err := innerMap.Update(val, one, 0)
+		if err != nil {
+			return fmt.Errorf("failed to insert value into %s: %w", innerName, err)
+		}
+	}
+
+	if err := outerMap.Update(uint32(innerID), uint32(innerMap.FD()), 0); err != nil {
+		return fmt.Errorf("failed to insert %s: %w", innerName, err)
+	}
+
+	return nil
+}
+
+func PopulateStringPrefixFilterMaps(
+	k *selectors.KernelSelectorState,
+	pinPathPrefix string,
+	outerMap *ebpf.Map,
+) error {
+	maxEntries := k.StringPrefixMapsMaxEntries()
+	for i, am := range k.StringPrefixMaps() {
+		nrEntries := uint32(len(am))
+		// Versions before 5.9 do not allow inner maps to have different sizes.
+		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
+		if !kernels.MinKernelVersion("5.9") {
+			nrEntries = uint32(maxEntries)
+		}
+		err := populateStringPrefixFilterMap(pinPathPrefix, outerMap, uint32(i), am, nrEntries)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func populateStringPostfixFilterMap(
 	pinPathPrefix string,
 	outerMap *ebpf.Map,

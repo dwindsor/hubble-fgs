@@ -1611,6 +1611,13 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				loadMapFunc = func(outerMap *ebpf.Map, _ string, _ uint32) error {
 					return fm.PopulateMatchBinariesMaps(sel, outerMap)
 				}
+			case "string_prefix_maps":
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+					if err := fm.PopulateStringPrefixFilterMaps(&sel.KernelSelectorState, pinPathPrefix, m); err != nil {
+						return fmt.Errorf("file_ops_maps: %w", err)
+					}
+					return nil
+				}
 			case "string_postfix_maps":
 				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
 					if err := fm.PopulateStringPostfixFilterMaps(&sel.KernelSelectorState, pinPathPrefix, m); err != nil {
