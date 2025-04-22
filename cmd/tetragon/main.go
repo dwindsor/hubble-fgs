@@ -629,7 +629,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			// recommended to use it to disable watching TracingPolicy in EE.
 			// Use --enable-policy-k8swatcher=false instead.
 			if option.Config.EnableTracingPolicyCRD {
-				err = crdwatcher.AddTracingPolicyInformer(ctx, policyWatcher, observer.GetSensorManager())
+				err = crdwatcher.AddTracingPolicyInformer(ctx, controllerManager, observer.GetSensorManager())
 				if err != nil {
 					return err
 				}

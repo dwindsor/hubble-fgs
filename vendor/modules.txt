@@ -1,4 +1,4 @@
-# cel.dev/expr v0.19.1
+# cel.dev/expr v0.20.0
 ## explicit; go 1.21.1
 cel.dev/expr
 # cloud.google.com/go/auth v0.15.0
@@ -1116,8 +1116,8 @@ github.com/prometheus/client_model/go
 ## explicit; go 1.21
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/model
-# github.com/prometheus/procfs v0.16.0
-## explicit; go 1.21
+# github.com/prometheus/procfs v0.16.1
+## explicit; go 1.23.0
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
@@ -1440,8 +1440,8 @@ google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.71.1
-## explicit; go 1.22.0
+# google.golang.org/grpc v1.72.0
+## explicit; go 1.23
 google.golang.org/grpc
 google.golang.org/grpc/attributes
 google.golang.org/grpc/backoff
