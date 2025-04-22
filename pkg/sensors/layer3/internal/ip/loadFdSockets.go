@@ -24,7 +24,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/cgroups"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
@@ -198,7 +197,7 @@ func getExistingSockets() (map[uint32][]uint32, error) {
 func getFdLookupPrograms() []*program.Program {
 	var progs []*program.Program
 
-	if !kernels.MinKernelVersion("5.15.0") {
+	if !utils.SupportProcessTree() {
 		if utils.SupportFentry() {
 			progs = append(progs, FdLookupFentry)
 		} else {
@@ -233,7 +232,7 @@ func getFdLookupMaps() []*program.Map {
 		maps = append(maps, FdLookupConfigMapKprobe, SocketCookieMapKprobe, SocketCookieStatsKprobe, VerMapKprobe,
 			SocketTupleMapKprobe, SocketTupleMapStatsKprobe, SocketTupleRevMapKprobe, SocketTupleHintMapKprobe, TcpSocketMapKprobe, CfgMapKprobe)
 	}
-	if kernels.MinKernelVersion("5.14.0") {
+	if utils.SupportProcessTree() {
 		if runtime.GOARCH == "amd64" {
 			maps = append(maps, []*program.Map{
 				program.MapUserFrom(base.EndpointIdMap),
