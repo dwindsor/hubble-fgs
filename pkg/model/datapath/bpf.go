@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 
 var (
@@ -20,6 +22,7 @@ var (
 	binaryMap          *ebpf.Map
 	uidBpfMap          *ebpf.Map
 	initProgrammerOnce sync.Once
+	lpmMap             *lpm.LPMMap
 )
 
 var (
@@ -64,6 +67,11 @@ func initMap() {
 	uidBpfMap, err = ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("file", file).Warn("failed to open file")
+	}
+
+	lpmMap, err = lpm.NewLPM()
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("failed to create LPM programmer")
 	}
 }
 
@@ -176,6 +184,13 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		if r.Endpoint.EP != nil && r.Endpoint.EP.Dns != "" {
 			QuotasInitDNSDomainMappings[*r.Endpoint.EP] = dst
 			go scheduleDomainMapFlush()
+		}
+	}
+
+	if r.Endpoint.EP != nil && r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
+		if err := lpmMap.Write(r.Endpoint.EP.Ip, dst); err != nil {
+			logger.GetLogger().WithError(err).Warn("Failed to create LPM id")
+			return err
 		}
 	}
 
