@@ -14,7 +14,6 @@ import (
 	"runtime"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/kernels"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -257,7 +256,7 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
 	confMap := tus.SensorMap{}
-	if kernels.MinKernelVersion("5.11.0") {
+	if utils.SupportProcessTree() {
 		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
 		confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpSockopsProg,
@@ -346,7 +345,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 
 	var sendCheckSamplerMap tus.SensorMap
 
-	if !kernels.MinKernelVersion("5.5.0") { // <=5.4 special snowflake
+	if !utils.SupportCGroupSKBProbeRead() { // <=5.4 special snowflake
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpSendCheck4Prog, tcpSendCheck6Prog,
 		})...)
@@ -392,7 +391,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		})...)
 	}
 
-	if !kernels.MinKernelVersion("5.4.0") { // 4.19 - <5.4
+	if !utils.CGroupSKBAvailable() { // 4.19 - <5.4
 		sensorMaps = append(sensorMaps, []tus.SensorMap{
 			SensorMapByProgName(sensorProgs, "tg_udp_map", []string{
 				udpInetLazySendProg,
@@ -462,7 +461,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		})...)
 	}
 
-	if withIcmp && kernels.MinKernelVersion("5.4.0") {
+	if withIcmp && utils.CGroupSKBAvailable() {
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			pingInitSockProg, icmp4RcvProg, icmp6RcvProg,
 		})...)
@@ -489,7 +488,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		})...)
 	}
 
-	if withRaw && kernels.MinKernelVersion("5.4.0") {
+	if withRaw {
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			rawsock4SkInitProg, rawsock6SkInitProg,
 		})...)
@@ -524,7 +523,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
 	confMap := tus.SensorMap{}
-	if kernels.MinKernelVersion("5.14.0") {
+	if utils.SupportProcessTree() {
 		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
 		if runtime.GOARCH == "amd64" {
 			confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
@@ -661,14 +660,14 @@ func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool,
 		}
 	}
 
-	if !kernels.MinKernelVersion("5.5.0") { // <=5.4 special snowflake
+	if !utils.SupportCGroupSKBProbeRead() { // <=5.4 special snowflake
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
 			{Name: tcpSendCheck4Prog, Type: ebpf.Kprobe},
 			{Name: tcpSendCheck6Prog, Type: ebpf.Kprobe},
 		}...)
 	}
 
-	if !kernels.MinKernelVersion("5.4.0") { // 4.19 - <5.4
+	if !utils.CGroupSKBAvailable() { // 4.19 - <5.4
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
 			{Name: udpInetLazySendProg, Type: ebpf.Kprobe},
 			{Name: udpBindProg, Type: ebpf.Kprobe},
@@ -685,7 +684,7 @@ func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool,
 		}
 	}
 
-	if kernels.MinKernelVersion("5.14.0") { // 5.14+
+	if utils.UDPBindNeedsDummies() { // 5.13+
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
 			{Name: udpBindDummy4Prog, Type: ebpf.CGroupSock},
 			{Name: udpBindDummy6Prog, Type: ebpf.CGroupSock},
@@ -696,7 +695,7 @@ func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool,
 		sensorProgs = append(sensorProgs, tus.SensorProg{Name: udpEgressTimestampProg, Type: ebpf.SchedCLS})
 	}
 
-	if withIcmp && kernels.MinKernelVersion("5.4.0") {
+	if withIcmp && utils.CGroupSKBAvailable() {
 		if utils.SupportFentry() {
 			sensorProgs = append(sensorProgs, []tus.SensorProg{
 				{Name: pingInitSockProg, Type: ebpf.Tracing},
@@ -712,7 +711,7 @@ func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool,
 		}
 	}
 
-	if withRaw && kernels.MinKernelVersion("5.4.0") {
+	if withRaw {
 		if utils.SupportFentry() {
 			sensorProgs = append(sensorProgs, []tus.SensorProg{
 				{Name: rawsock4SkInitProg, Type: ebpf.Tracing},
@@ -747,7 +746,7 @@ func ProgsAndMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool
 	var sensorMaps []tus.SensorMap
 	var ni uint
 
-	if kernels.MinKernelVersion("5.14.0") {
+	if utils.SupportProcessTree() {
 		if runtime.GOARCH != "amd64" {
 			sensorProgs, ni = kprobeOrFentrySensorProgs(withRTT, withUdpLatency, withIcmp, withRaw)
 			sensorMaps = kprobeOrFentrySensorMaps(withRTT, withUdpLatency, withIcmp, withRaw, sensorProgs, ni)

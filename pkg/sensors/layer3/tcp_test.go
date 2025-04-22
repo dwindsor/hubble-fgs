@@ -32,7 +32,6 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -49,6 +48,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
@@ -981,9 +981,6 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
 
 	bpf.CheckOrMountCgroup2()
 
@@ -1251,8 +1248,8 @@ func TestDetectLatency4(t *testing.T) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -1331,9 +1328,6 @@ func TestDetectRTT4(t *testing.T) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
 
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -1410,9 +1404,6 @@ func TestDetectSRTT4(t *testing.T) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
 
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -2009,9 +2000,6 @@ func TestDetectRTT6(t *testing.T) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
 
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -2089,9 +2077,6 @@ func TestDetectSRTT6(t *testing.T) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
 
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -2200,8 +2185,8 @@ func TestDetectSRTT6(t *testing.T) {
 }
 
 func TestIOUringAcceptEvent(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skipf("io_uring requires kernel >= 5.4")
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
 		t.Skipf("Test seems to time out on ARM")
@@ -2304,8 +2289,8 @@ func TestIOUringAcceptEvent(t *testing.T) {
 
 // FIXME: net io_uring test seems to time out on ARM.
 func TestIOUringConnectEvent(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skipf("io_uring requires kernel >= 5.4")
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
 		t.Skipf("Test seems to time out on ARM")

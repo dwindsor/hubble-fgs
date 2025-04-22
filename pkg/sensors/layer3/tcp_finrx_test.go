@@ -24,7 +24,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
-	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/stretchr/testify/assert"
@@ -35,6 +34,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 func parsePortFromAddrPort(addrPort string) (uint32, error) {
@@ -269,8 +269,8 @@ func TestFinRx(t *testing.T) {
 	// For reliability, we really need the sockops handlers as the kprobes can be
 	// unreliable. Note, the technology should work from kernel v5.5 (it needs
 	// probe_read_kernel in Cgroup/SKB programs).
-	if v := "5.5.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.SupportCGroupSKBProbeRead() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup

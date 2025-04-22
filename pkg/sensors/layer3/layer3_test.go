@@ -13,15 +13,12 @@ package layer3_test
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"os/exec"
 	"syscall"
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -32,6 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/testutil"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -58,10 +56,6 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) && os.Getenv("KVM_CI") != "" {
-		fmt.Fprintf(os.Stderr, "Minimum kernel version (%v) for Layer3 tests in KVM CI not met, skipping", v)
-		return
-	}
 	bpf.CheckOrMountCgroup2()
 
 	flag.Parse()
@@ -143,7 +137,7 @@ func getSocatCommand(t *testing.T, orig string) string {
 // Note 20.0.0.0/8 is the DoD and isn't routable on the Internet
 // This is included to test latency timestamps are NOT added
 // to any real TCP packets.
-const layer3Config = `
+const layer3ConfigTcp = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -153,10 +147,16 @@ spec:
     tcp:
       enable: true
       statsInterval: 20
+`
+
+const layer3ConfigTcpRtt = `
       histogram:
         enable: true
         min: 0
         max: 4000
+`
+
+const layer3ConfigRemainder = `
       watermarks:
         enable: true
         windowSize: 1000
@@ -181,9 +181,12 @@ spec:
     dns:
       enable: true
 `
-const layer3IcmpRawConfig = layer3Config + `
+const layer3IcmpConfig = `
     icmp:
       enable: true
+`
+
+const layer3RawConfig = `
     rawsock:
       enable: true
       reportClose: true
@@ -195,6 +198,21 @@ kind: TracingPolicy
 metadata:
   name: "noconfig"
 `
+
+func layer3Config(withRTT, withICMP, withRaw bool) string {
+	c := layer3ConfigTcp
+	if withRTT {
+		c = c + layer3ConfigTcpRtt
+	}
+	c = c + layer3ConfigRemainder
+	if withICMP {
+		c = c + layer3IcmpConfig
+	}
+	if withRaw {
+		c = c + layer3RawConfig
+	}
+	return c
+}
 
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.
@@ -229,12 +247,8 @@ func getNoConfigObserver(t *testing.T, ctx context.Context, filtered bool) *obse
 
 func TestLoadLayer3Sensor(t *testing.T) {
 	var l3Config string
-	if !kernels.MinKernelVersion("5.4.0") {
-		logger.GetLogger().Info("Disabling ICMP as it requires kernel v5.4 or later")
-		l3Config = layer3Config
-	} else {
-		l3Config = layer3IcmpRawConfig
-	}
+	rawHooksAvailable := utils.CGroupSKBAvailable() && utils.RawHooksAvailable()
+	l3Config = layer3Config(utils.CGroupSKBAvailable(), utils.CGroupSKBAvailable(), rawHooksAvailable)
 	if err := observertesthelper.WriteConfigFile(testConfigFile, l3Config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
@@ -245,7 +259,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
-	sensorProgs, sensorMaps := testutil.ProgsAndMaps(true, true, true, true)
+	sensorProgs, sensorMaps := testutil.ProgsAndMaps(utils.CGroupSKBAvailable(), true, utils.CGroupSKBAvailable(), rawHooksAvailable)
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 

@@ -22,7 +22,6 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
-	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
@@ -31,6 +30,7 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -72,8 +72,8 @@ func getIcmpAndUdpObserver(t *testing.T, ctx context.Context, filtered bool) *ob
 }
 
 func TestPingOutbound4(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -133,8 +133,8 @@ func TestPingOutbound4(t *testing.T) {
 }
 
 func TestPingCLISwitch(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -204,8 +204,8 @@ func TestPingCLISwitch(t *testing.T) {
 }
 
 func TestPingInAndOutbound4(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -286,8 +286,8 @@ func TestPingInAndOutbound4(t *testing.T) {
 }
 
 func TestInboundDestUnreach4(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	bpf.CheckOrMountCgroup2()
@@ -361,8 +361,8 @@ func TestInboundDestUnreach4(t *testing.T) {
 }
 
 func TestPingOutbound6(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -422,8 +422,8 @@ func TestPingOutbound6(t *testing.T) {
 }
 
 func TestPingInAndOutbound6(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -504,8 +504,8 @@ func TestPingInAndOutbound6(t *testing.T) {
 }
 
 func TestInboundDestUnreach6(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	bpf.CheckOrMountCgroup2()

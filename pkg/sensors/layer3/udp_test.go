@@ -33,7 +33,6 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/matchers/durationmatcher"
 	"github.com/cilium/tetragon/pkg/matchers/listmatcher"
@@ -47,6 +46,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
@@ -301,8 +301,8 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	clientProcess := ec.NewProcessChecker().
@@ -594,8 +594,8 @@ func runUdpLayer7Client() {
 }
 
 func TestUdpSeqCheck(t *testing.T) {
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	t.Skip("UDP Seq Checking disabled.")
@@ -1716,8 +1716,8 @@ func TestConnectAfterStartEvent6(t *testing.T) {
 }
 
 func testDnsEvents(t *testing.T, withQuestions bool) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skipf("dns requires kernel >= 5.4")
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -2085,8 +2085,8 @@ func TestGCWithNonzeroInterval(t *testing.T) {
 
 // FIXME: net io_uring test seems to time out on ARM.
 func TestUdpIOUringConnectEvent(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skipf("io_uring requires kernel >= 5.4")
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
 		t.Skipf("Test seems to time out on ARM")
