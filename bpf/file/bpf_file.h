@@ -546,6 +546,8 @@ static inline __attribute__((always_inline)) int check_match_binaries(__u32 seli
 	__u8 *found_key;
 #ifdef __LARGE_BPF_PROG
 	struct string_prefix_lpm_trie *prefix_key;
+	struct string_postfix_lpm_trie *postfix_key;
+	__u64 postfix_len = STRING_POSTFIX_MAX_MATCH_LENGTH - 1;
 	long ret;
 	int zero = 0;
 #endif
@@ -603,6 +605,29 @@ static inline __attribute__((always_inline)) int check_match_binaries(__u32 seli
 			if (ret < 0)
 				return 0;
 			found_key = map_lookup_elem(path_map, prefix_key);
+			break;
+		case op_filter_str_postfix:
+		case op_filter_str_notpostfix:
+			path_map = map_lookup_elem(&string_postfix_maps, &selector_options->map_id);
+			if (!path_map)
+				return 0;
+			if (current->bin.path_length >= 0 && current->bin.path_length < STRING_POSTFIX_MAX_MATCH_LENGTH)
+				postfix_len = current->bin.path_length;
+			postfix_key = (struct string_postfix_lpm_trie *)map_lookup_elem(&string_postfix_maps_heap, &zero);
+			if (!postfix_key)
+				return 0;
+			postfix_key->prefixlen = postfix_len * 8; // prefixlen is in bits
+			if (!current->bin.reversed) {
+				file_copy_reverse((__u8 *)current->bin.end_r, postfix_len, (__u8 *)current->bin.end, current->bin.path_length - postfix_len);
+				current->bin.reversed = true;
+			}
+			asm volatile("%[postfix_len] &= %1 ;\n" // to make 5.4 kernels happy
+				     : [postfix_len] "+r"(postfix_len)
+				     : "i"(STRING_POSTFIX_MAX_LENGTH - 1));
+			if (postfix_len < STRING_POSTFIX_MAX_MATCH_LENGTH)
+				if (probe_read(postfix_key->data, postfix_len, current->bin.end_r) < 0)
+					return 0;
+			found_key = map_lookup_elem(path_map, postfix_key);
 			break;
 #endif
 		default:

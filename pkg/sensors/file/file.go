@@ -133,40 +133,44 @@ type FimProg struct {
 
 var (
 	PathBasedSelectorMaps = []MapInfo{
-		{"selectors_ctx_heap", PrivateMap},   // for selectors with __V61_BPF_PROG
-		{"file_prefix_lpm_heap", PrivateMap}, // for matchBinaries
-		{"file_msg_caps_heap", PrivateMap},   // for matchLinuxCapabilities
-		{"file_msg_ns_heap", PrivateMap},     // for matchLinuxNamespaces
-		{"digest_heap_map", PrivateMap},      // for matchFilename InFileWithDigest operator
-		{"filename_heap_map", PrivateMap},    // for matchFilename InFileWithDigest operator
-		{"file_ops_maps", SharedMap},         // for matchOperations
-		{"file_actions_map", SharedMap},      // for matchActions
-		{"file_capabilities_map", SharedMap}, // for matchLinuxCapabilities
-		{"file_namespaces_map", SharedMap},   // for matchLinuxNamespaces
-		{"file_open_flags_map", SharedMap},   // for matchOpenFlags
-		{"file_rename_map", SharedMap},       // for matchRenameSrcType
-		{"filename_ops_map", SharedMap},      // for matchFilename operator
-		{"filename_digest_map", SharedMap},   // for matchFilename InFileWithDigest operator
-		{"filename_path_map", SharedMap},     // for matchFilename InFileWithDigest operator
-		{"glob_patterns_map", SharedMap},     // for matchFilename InPattern operator
-		{"glob_temp_maps", SharedMap},        // for matchFilename InPattern operator
-		{"tg_mb_sel_opts", SharedMap},        // for matchBinaries operator
-		{"tg_mb_paths", SharedMap},           // for matchBinaries In/NotIn operator
-		{"string_prefix_maps", SharedMap},    // for matchBinaries Prefix/NoPrefix operator
+		{"selectors_ctx_heap", PrivateMap},       // for selectors with __V61_BPF_PROG
+		{"file_prefix_lpm_heap", PrivateMap},     // for matchBinaries
+		{"file_msg_caps_heap", PrivateMap},       // for matchLinuxCapabilities
+		{"file_msg_ns_heap", PrivateMap},         // for matchLinuxNamespaces
+		{"digest_heap_map", PrivateMap},          // for matchFilename InFileWithDigest operator
+		{"filename_heap_map", PrivateMap},        // for matchFilename InFileWithDigest operator
+		{"file_ops_maps", SharedMap},             // for matchOperations
+		{"file_actions_map", SharedMap},          // for matchActions
+		{"file_capabilities_map", SharedMap},     // for matchLinuxCapabilities
+		{"file_namespaces_map", SharedMap},       // for matchLinuxNamespaces
+		{"file_open_flags_map", SharedMap},       // for matchOpenFlags
+		{"file_rename_map", SharedMap},           // for matchRenameSrcType
+		{"filename_ops_map", SharedMap},          // for matchFilename operator
+		{"filename_digest_map", SharedMap},       // for matchFilename InFileWithDigest operator
+		{"filename_path_map", SharedMap},         // for matchFilename InFileWithDigest operator
+		{"glob_patterns_map", SharedMap},         // for matchFilename InPattern operator
+		{"glob_temp_maps", SharedMap},            // for matchFilename InPattern operator
+		{"tg_mb_sel_opts", SharedMap},            // for matchBinaries operator
+		{"tg_mb_paths", SharedMap},               // for matchBinaries In/NotIn operator
+		{"string_prefix_maps", SharedMap},        // for matchBinaries Prefix/NoPrefix operator
+		{"string_postfix_maps", SharedMap},       // for matchBinaries Postfix/NoPostfix operator
+		{"string_postfix_maps_heap", PrivateMap}, // for matchBinaries Postfix/NoPostfix operator
 		{"exec_attributes_map", SharedMap},
 	}
 
 	InodeBasedSelectorMaps = []MapInfo{
-		{"file_msg_caps_heap", PrivateMap},   // for matchLinuxCapabilities
-		{"file_msg_ns_heap", PrivateMap},     // for matchLinuxNamespaces
-		{"file_prefix_lpm_heap", PrivateMap}, // for matchBinaries
-		{"file_actions_map", SharedMap},      // for matchActions
-		{"file_capabilities_map", SharedMap}, // for matchLinuxCapabilities
-		{"file_namespaces_map", SharedMap},   // for matchLinuxNamespaces
-		{"file_ops_maps", SharedMap},         // for matchOperations
-		{"string_prefix_maps", SharedMap},    // for matchBinaries Prefix/NoPrefix operator
-		{"tg_mb_sel_opts", SharedMap},        // for matchBinaries operator
-		{"tg_mb_paths", SharedMap},           // for matchBinaries In/NotIn operator
+		{"file_msg_caps_heap", PrivateMap},       // for matchLinuxCapabilities
+		{"file_msg_ns_heap", PrivateMap},         // for matchLinuxNamespaces
+		{"file_prefix_lpm_heap", PrivateMap},     // for matchBinaries
+		{"file_actions_map", SharedMap},          // for matchActions
+		{"file_capabilities_map", SharedMap},     // for matchLinuxCapabilities
+		{"file_namespaces_map", SharedMap},       // for matchLinuxNamespaces
+		{"file_ops_maps", SharedMap},             // for matchOperations
+		{"string_prefix_maps", SharedMap},        // for matchBinaries Prefix/NoPrefix operator
+		{"string_postfix_maps", SharedMap},       // for matchBinaries Postfix/NoPostfix operator
+		{"string_postfix_maps_heap", PrivateMap}, // for matchBinaries Postfix/NoPostfix operator
+		{"tg_mb_sel_opts", SharedMap},            // for matchBinaries operator
+		{"tg_mb_paths", SharedMap},               // for matchBinaries In/NotIn operator
 	}
 
 	PathBasedMiscMaps = []MapInfo{
@@ -1606,6 +1610,13 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				m.SetMaxEntries(maxSelectors)
 				loadMapFunc = func(outerMap *ebpf.Map, _ string, _ uint32) error {
 					return fm.PopulateMatchBinariesMaps(sel, outerMap)
+				}
+			case "string_postfix_maps":
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+					if err := fm.PopulateStringPostfixFilterMaps(&sel.KernelSelectorState, pinPathPrefix, m); err != nil {
+						return fmt.Errorf("file_ops_maps: %w", err)
+					}
+					return nil
 				}
 			case "file_ops_maps":
 				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesOpsMap(sel)))
