@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/option"
+	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -28,6 +29,7 @@ const (
 	KeyFlowExportFileMaxBackups       = "flow-export-file-max-backups"
 	KeyFlowExportFileCompress         = "flow-export-file-compress"
 	KeyFimFifoPath                    = "fim-fifo-path"
+	KeyFimFifoLocalPath               = "fim-fifo-local-path"
 	KeyFimRuntimeEndpoint             = "fim-runtime-endpoint"
 	keyFimMaxFileSizeDigest           = "fim-max-file-size-digest"
 	keyFimTimeoutDigest               = "fim-timeout-digest"
@@ -105,7 +107,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Int(KeyTlsCacheSize, 1024, "Set the size of the internal TLS cache. Higher values enable Tetragon to keep track of more in progress handshakes before evicting old ones")
 	flags.Int(KeyTcpCacheSize, 32768, "Set the size of the internal TCP cache. Higher values enable Tetragon to keep track of more concurrent TCP sessions before evicting old ones")
 	flags.Int(KeyNetNsCacheSize, 256, "Set the size of the internal network namespace cache. This should be aligned with the maximum number of network namespaces (approximately, the maxumum number of pods) we expect to see in the system")
-	flags.String(KeyFimFifoPath, defaults.DefaultRunDir, "Path for the FIFO used for fs-scanner and tetragon communication")
+	flags.String(KeyFimFifoPath, defaults.DefaultRunDir, "Path for the FIFO used for fs-scanner and tetragon communication (for k8s deployments)")
+	flags.String(KeyFimFifoLocalPath, fm.LocalScannerFifoPath, "Path for the FIFO used for fs-scanner and tetragon communication (for standalone deployments)")
 	flags.String(KeyFimRuntimeEndpoint, "", "Custom container runtime endpoint for FIM (can be used only for containerd or cri-o)")
 	flags.Int64(keyFimMaxFileSizeDigest, 1*1024*1024*1024, "Set the maximum file size in FIM that we will compute a digest (in bytes)")
 	flags.Int64(keyFimTimeoutDigest, 30, "Set the timeout when computing a file digest in FIM (in seconds)")
@@ -169,6 +172,7 @@ func readAndSetEnterpriseFlags() {
 	Config.TcpCacheSize = viper.GetInt(KeyTcpCacheSize)
 	Config.NetNsCacheSize = viper.GetInt(KeyNetNsCacheSize)
 	Config.FimFifoPath = viper.GetString(KeyFimFifoPath)
+	Config.FimFifoLocalPath = viper.GetString(KeyFimFifoLocalPath)
 	Config.FimRuntimeEndpoint = viper.GetString(KeyFimRuntimeEndpoint)
 	Config.FimMaxFileSizeDigest = viper.GetInt64(keyFimMaxFileSizeDigest)
 	Config.FimMaxTimeoutDigestSec = viper.GetInt64(keyFimTimeoutDigest)

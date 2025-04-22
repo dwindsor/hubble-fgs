@@ -23,6 +23,7 @@ type config struct {
 	TcpCacheSize         int
 	NetNsCacheSize       int
 
+	FimFifoLocalPath       string
 	FimFifoPath            string
 	FimRuntimeEndpoint     string
 	FimMaxFileSizeDigest   int64

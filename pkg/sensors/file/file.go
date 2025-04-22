@@ -887,7 +887,7 @@ func startFsScanner() (*exec.Cmd, error) {
 		if option.Config.EnableK8s {
 			fm.ScannerFifoPath = path.Join(eeOption.Config.FimFifoPath, fm.ScannerFifoName)
 		} else {
-			fm.ScannerFifoPath = path.Join(fm.LocalScannerFifoPath, fm.ScannerFifoName)
+			fm.ScannerFifoPath = path.Join(eeOption.Config.FimFifoLocalPath, fm.ScannerFifoName)
 		}
 	}
 

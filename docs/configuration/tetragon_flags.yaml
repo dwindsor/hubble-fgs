@@ -252,10 +252,14 @@ options:
     - name: fim-enable-dispatcher
       default_value: "false"
       usage: Enable FIM dispatcher when supported
+    - name: fim-fifo-local-path
+      default_value: /var/run
+      usage: |
+        Path for the FIFO used for fs-scanner and tetragon communication (for standalone deployments)
     - name: fim-fifo-path
       default_value: /var/run/tetragon/
       usage: |
-        Path for the FIFO used for fs-scanner and tetragon communication
+        Path for the FIFO used for fs-scanner and tetragon communication (for k8s deployments)
     - name: fim-max-file-size-digest
       default_value: "1073741824"
       usage: |

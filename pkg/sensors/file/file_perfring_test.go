@@ -34,7 +34,9 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	ossTestUtils "github.com/cilium/tetragon/pkg/testutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/require"
@@ -67,6 +69,7 @@ func TestFileSuffixPattern(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	sm := tuo.GetTestSensorManager(t)
@@ -298,6 +301,7 @@ func TestFileFsTypeMatch(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	sm := tuo.GetTestSensorManager(t)
@@ -408,6 +412,7 @@ func TestFileGlobMatch(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	sm := tuo.GetTestSensorManager(t)
@@ -513,6 +518,7 @@ func TestFileDigestMatch(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	sm := tuo.GetTestSensorManager(t)
@@ -618,6 +624,7 @@ func TestMatchBinariesFollowChildren(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	sm := tuo.GetTestSensorManager(t)
@@ -713,6 +720,7 @@ func TestMatchExecAttributes(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
 	tus.LoadInitialSensor(t)
 	tus.LoadSensor(t, testsensor.GetTestSensor())
 	sm := tuo.GetTestSensorManager(t)
