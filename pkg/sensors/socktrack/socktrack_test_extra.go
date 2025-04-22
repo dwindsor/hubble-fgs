@@ -15,7 +15,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
-	"github.com/cilium/tetragon/pkg/kernels"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
@@ -47,7 +46,7 @@ func ProgsAndMaps() ([]tus.SensorProg, []tus.SensorMap) {
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1}},
 	}
 
-	if kernels.MinKernelVersion("5.11.0") {
+	if utils.SupportProcessTree() {
 		pstreeMaps := []tus.SensorMap{
 			{Name: "tg_conf_map", Progs: []uint{0, 1}},
 		}

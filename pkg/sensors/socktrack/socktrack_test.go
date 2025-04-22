@@ -25,7 +25,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	"github.com/stretchr/testify/assert"
@@ -74,10 +73,6 @@ func (v *sockValue) String() string {
 }
 
 func TestMain(m *testing.M) {
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) && os.Getenv("KVM_CI") != "" {
-		fmt.Fprintf(os.Stderr, "Minimum kernel version (%v) for Socktrack tests in KVM CI not met, skipping", v)
-		return
-	}
 	bpf.CheckOrMountCgroup2()
 
 	ec := runner.TestSensorsRun(m, "Socktrack")
