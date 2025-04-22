@@ -468,9 +468,10 @@ func TestPolicySet(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func cntRecordsEPTypes(records []*record.DatapathRecord) (int, int, int) {
+func cntRecordsEPTypes(records []*record.DatapathRecord) (int, int, int, int) {
 	cntDnsType := 0
 	cntPodType := 0
+	cntCIDRType := 0
 	cntNilType := 0
 	for _, r := range records {
 		if r.Endpoint.EP == nil {
@@ -485,9 +486,14 @@ func cntRecordsEPTypes(records []*record.DatapathRecord) (int, int, int) {
 			cntPodType++
 			continue
 		}
+		if r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
+			cntCIDRType++
+			continue
+		}
+
 	}
 
-	return cntDnsType, cntPodType, cntNilType
+	return cntDnsType, cntPodType, cntCIDRType, cntNilType
 }
 
 func TestPolicySetWithPods(t *testing.T) {
@@ -524,7 +530,7 @@ func TestPolicySetWithPods(t *testing.T) {
 	assert.NoError(t, errSet)
 	assert.Equal(t, 4, len(addSet))
 	assert.Zero(t, len(removeSet))
-	cntDnsType, cntPodType, cntNilType := cntRecordsEPTypes(addSet)
+	cntDnsType, cntPodType, _, cntNilType := cntRecordsEPTypes(addSet)
 	assert.Equal(t, cntDnsType, 2)
 	assert.Equal(t, cntPodType, 1)
 	assert.Equal(t, cntNilType, 1)
@@ -590,7 +596,7 @@ func TestPolicyOverlapping(t *testing.T) {
 	assert.Equal(t, 4, len(addASet))
 	assert.Zero(t, len(removeASet))
 
-	dns, pod, n := cntRecordsEPTypes(addASet)
+	dns, pod, _, n := cntRecordsEPTypes(addASet)
 	assert.Equal(t, dns, 2)
 	assert.Equal(t, pod, 1)
 	assert.Equal(t, n, 1)
@@ -604,7 +610,7 @@ func TestPolicyOverlapping(t *testing.T) {
 	assert.Zero(t, len(removeBSet))
 	assert.Equal(t, 8, len(addBSet))
 
-	dns, pod, n = cntRecordsEPTypes(addBSet)
+	dns, pod, _, n = cntRecordsEPTypes(addBSet)
 	assert.Equal(t, 4, dns)
 	assert.Equal(t, 2, pod)
 	assert.Equal(t, 2, n)
@@ -681,7 +687,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Equal(t, 4, len(addASet))
 	assert.Zero(t, len(removeASet))
 
-	dns, pod, n := cntRecordsEPTypes(addASet)
+	dns, pod, _, n := cntRecordsEPTypes(addASet)
 	assert.Equal(t, dns, 2)
 	assert.Equal(t, pod, 1)
 	assert.Equal(t, n, 1)
@@ -695,7 +701,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Zero(t, len(removeBSet))
 	assert.Equal(t, 8, len(addBSet))
 
-	dns, pod, n = cntRecordsEPTypes(addBSet)
+	dns, pod, _, n = cntRecordsEPTypes(addBSet)
 	assert.Equal(t, 4, dns)
 	assert.Equal(t, 2, pod)
 	assert.Equal(t, 2, n)
@@ -709,7 +715,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Zero(t, len(removeCSet))
 	assert.Equal(t, 12, len(addCSet))
 
-	dns, pod, n = cntRecordsEPTypes(addCSet)
+	dns, pod, _, n = cntRecordsEPTypes(addCSet)
 	assert.Equal(t, 6, dns)
 	assert.Equal(t, 3, pod)
 	assert.Equal(t, 3, n)
@@ -796,7 +802,7 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	assert.Equal(t, 7, len(addASet))
 	assert.Zero(t, len(removeASet))
 
-	dns, pod, n := cntRecordsEPTypes(addASet)
+	dns, pod, _, n := cntRecordsEPTypes(addASet)
 	// record entry for /usr/bin/curl -> {fqdn1, fqdn2}
 	// record entry for /usr/sbin/curl -> {fqdn1, fqdn2}
 	assert.Equal(t, dns, 4)
@@ -865,7 +871,7 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 	assert.Equal(t, 7, len(addASet))
 	assert.Zero(t, len(removeASet))
 
-	dns, pod, n := cntRecordsEPTypes(addASet)
+	dns, pod, _, n := cntRecordsEPTypes(addASet)
 	// record entry for /usr/bin/curl -> {fqdn1, fqdn2}
 	// record entry for /usr/sbin/curl -> {fqdn1, fqdn2}
 	assert.Equal(t, dns, 4)
@@ -932,7 +938,7 @@ func TestProcessPolicySrcDest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(r1))
 
-	dns, pod, n := cntRecordsEPTypes(r1)
+	dns, pod, _, n := cntRecordsEPTypes(r1)
 	assert.Equal(t, 4, dns)
 	assert.Equal(t, 2, pod)
 	assert.Equal(t, 1, n)
@@ -994,7 +1000,7 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(r1))
 
-	dns, pod, n := cntRecordsEPTypes(r1)
+	dns, pod, _, n := cntRecordsEPTypes(r1)
 	assert.Equal(t, 4, dns)
 	assert.Equal(t, 2, pod)
 	assert.Equal(t, 1, n)
@@ -1084,7 +1090,7 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 	assert.Equal(t, 6, port80)
 	assert.Equal(t, 6, port81)
 
-	dns, pod, n := cntRecordsEPTypes(r1)
+	dns, pod, _, n := cntRecordsEPTypes(r1)
 	assert.Equal(t, 8, dns)
 	assert.Equal(t, 4, pod)
 	assert.Equal(t, 1, n)
@@ -1163,7 +1169,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 9, len(r1))
 
-	dns, pod, n := cntRecordsEPTypes(r1)
+	dns, pod, _, n := cntRecordsEPTypes(r1)
 	assert.Equal(t, 8, dns)
 	assert.Equal(t, 0, pod)
 	assert.Equal(t, 1, n)
@@ -1185,7 +1191,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 2, port80)
 	assert.Equal(t, 2, port81)
 
-	dns, pod, n = cntRecordsEPTypes(rDst)
+	dns, pod, _, n = cntRecordsEPTypes(rDst)
 	assert.Equal(t, 0, dns)
 	assert.Equal(t, 4, pod)
 	assert.Equal(t, 0, n)
@@ -1196,7 +1202,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 13, len(aRemove))
 	assert.Zero(t, len(aUpdate))
 
-	dns, pod, n = cntRecordsEPTypes(aRemove)
+	dns, pod, _, n = cntRecordsEPTypes(aRemove)
 	assert.Equal(t, 8, dns)
 	assert.Equal(t, 4, pod)
 	assert.Equal(t, 1, n)
