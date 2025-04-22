@@ -547,7 +547,7 @@ static inline __attribute__((always_inline)) int dest_policy(__u64 *p, __u64 len
  */
 static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
-	struct destination_endpoint_value *dest_full, *dest_port, *dest_local, *dest_default, dummy;
+	struct destination_endpoint_value *dest_full, *dest_port, *dest_local, *dest_default, dummy = { 0 };
 	struct destination_endpoint_key key;
 	__u64 policy = 0, quota, now;
 	__u64 len = skb->len;
