@@ -1224,3 +1224,94 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Zero(t, len(deleted))
 }
+
+func TestProcessCIDRPolicySrcDest(t *testing.T) {
+	s := NewPolicyState()
+	SetRealizedState(s)
+
+	srcId := nextId()
+	dstId := nextId()
+
+	srcPodName := "testNamePodSrc"
+	srcPodLabels := "A=a,B=b"
+
+	dstPodName := "testNamePodDst"
+	dstPodLabels := "D1=d1,D2=d2,D3=d3"
+
+	// Add policy and ensure we generate rules
+	netpolA := testMatchPortCIDRDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow", "10.0.0.1/16")
+	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
+	aState, addASet, removeASet, errSet := createMatchLabelsPolicySet(netpolASet)
+
+	assert.NoError(t, errSet)
+	assert.Zero(t, len(addASet))
+	assert.Zero(t, len(removeASet))
+
+	// Add dst pod and then src pod while no policy is in play
+	SetRealizedState(aState)
+	s = GetRealizedState()
+
+	addPod(t, srcId, srcPodName, srcPodLabels)
+	srcPod := testPod(t, "2", "testNamespace", srcPodName, "testPod", srcPodLabels)
+	r1, err := s.objectAdd(srcPod)
+	assert.NoError(t, err)
+	assert.Equal(t, 13, len(r1))
+
+	dns, pod, cidr, n := cntRecordsEPTypes(r1)
+	assert.Equal(t, 8, dns)
+	assert.Equal(t, 0, pod)
+	assert.Equal(t, 4, cidr)
+	assert.Equal(t, 1, n)
+
+	port80 := countPorts(r1, 80)
+	port81 := countPorts(r1, 81)
+
+	assert.Equal(t, 4, port80)
+	assert.Equal(t, 4, port81)
+
+	addPod(t, dstId, dstPodName, dstPodLabels)
+	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
+	rDst, err := s.objectAdd(dstPod)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(rDst))
+
+	port80 = countPorts(rDst, 80)
+	port81 = countPorts(rDst, 81)
+	assert.Equal(t, 2, port80)
+	assert.Equal(t, 2, port81)
+
+	dns, pod, cidr, n = cntRecordsEPTypes(rDst)
+	assert.Equal(t, 0, dns)
+	assert.Equal(t, 4, pod)
+	assert.Equal(t, 0, cidr)
+	assert.Equal(t, 0, n)
+
+	// netpol A remains, remove it.
+	aRemove, aUpdate, err := aState.removeMatchLabelNetworkPolicy("netpolZ_0", netpolA)
+	assert.NoError(t, err)
+	assert.Equal(t, 17, len(aRemove))
+	assert.Zero(t, len(aUpdate))
+
+	dns, pod, cidr, n = cntRecordsEPTypes(aRemove)
+	assert.Equal(t, 8, dns)
+	assert.Equal(t, 4, pod)
+	assert.Equal(t, 4, cidr)
+	assert.Equal(t, 1, n)
+
+	port80 = countPorts(aRemove, 80)
+	port81 = countPorts(aRemove, 81)
+	assert.Equal(t, 6, port80)
+	assert.Equal(t, 6, port81)
+
+	// Remove source pod there should be no more records
+	delPod(t, srcId)
+	deleted, err := aState.podRemove(srcPod)
+	assert.NoError(t, err)
+	assert.Zero(t, len(deleted))
+
+	// Remove destination pod, should not be any records remaining
+	delPod(t, dstId)
+	deleted, err = aState.podRemove(dstPod)
+	assert.NoError(t, err)
+	assert.Zero(t, len(deleted))
+}

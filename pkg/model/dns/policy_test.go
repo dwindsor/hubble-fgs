@@ -118,6 +118,15 @@ func testMatchPortDstProcessLabelsDenyPolicy(name, src, dst, action string) *typ
 	return netpol
 }
 
+func testMatchPortCIDRDstProcessLabelsDenyPolicy(name, src, dst, action, cidr string) *types.TetragonNetworkPolicy {
+	netpol := testMatchPortDstProcessLabelsDenyPolicy(name, src, dst, action)
+	netpol.Destination.CIDR = &types.TetragonNetworkCIDR{
+		CIDR: cidr,
+	}
+
+	return netpol
+}
+
 func TestQueueWorkloadPolicy(t *testing.T) {
 	s := NewPolicyState()
 	name := "test"
