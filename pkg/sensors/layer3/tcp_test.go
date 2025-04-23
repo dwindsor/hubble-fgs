@@ -201,13 +201,157 @@ func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool,
 	return getLayer3Observer(t, ctx, tcpDisableEventsConfig, !docker)
 }
 
-func TestConnectEvent4(t *testing.T) {
+func TestTCPBasic(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
+	startExistingTCPServices(t)
+
+	obs := getBasicTcpObserver(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	for _, test := range basicTCPTests {
+		t.Logf("Running test: %s", test.name)
+		if !t.Run(test.name, func(lt *testing.T) {
+			test.f(t, lt, &readyWG)
+		}) {
+			t.Logf("Test %s failed", test.name)
+			break
+		}
+		t.Logf("Test %s was successful", test.name)
+	}
+}
+
+func TestTCPDocker(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	startDockerTCPServices(t)
+
+	obs := getBasicTcpObserver(t, ctx, true)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	for _, test := range dockerTCPTests {
+		t.Logf("Running test: %s", test.name)
+		if !t.Run(test.name, func(lt *testing.T) {
+			test.f(t, lt, &readyWG)
+		}) {
+			t.Logf("Test %s failed", test.name)
+			break
+		}
+		t.Logf("Test %s was successful", test.name)
+	}
+}
+
+func TestTCPRTT(t *testing.T) {
+	if !utils.RTTHookAvailable() {
+		t.Skipf("RTT hooks are unavailable, skipping")
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	obs := getTcpObserverWithRTTDetection(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	for _, test := range RTTTests {
+		t.Logf("Running test: %s", test.name)
+		if !t.Run(test.name, func(lt *testing.T) {
+			test.f(t, lt, &readyWG)
+		}) {
+			t.Logf("Test %s failed", test.name)
+			break
+		}
+		t.Logf("Test %s was successful", test.name)
+	}
+}
+
+var basicTCPTests = []basicTest{
+	{"testConnectEvent4", testConnectEvent4},
+	{"testExecEventClone4", testExecEventClone4},
+	{"testExistingListenEvent4", testExistingListenEvent4},
+	{"testExistingAcceptEvent4", testExistingAcceptEvent4},
+	{"testExistingRootCWDListenEvent4", testExistingRootCWDListenEvent4},
+	{"testListenAcceptClose4", testListenAcceptClose4},
+	{"testConnectEvent6", testConnectEvent6},
+	{"testExecEventClone6", testExecEventClone6},
+	{"testExistingListenEvent6", testExistingListenEvent6},
+	{"testExistingAcceptEvent6", testExistingAcceptEvent6},
+	{"testExistingRootCWDListenEvent6", testExistingRootCWDListenEvent6},
+	{"testListenAcceptClose6", testListenAcceptClose6},
+	{"testIOUringAcceptEvent", testIOUringAcceptEvent},
+	{"testIOUringConnectEvent", testIOUringConnectEvent},
+}
+
+var dockerTCPTests = []basicTest{
+	{"testDockerExistingListenEvent4", testDockerExistingListenEvent4},
+	{"testDockerListenConnect4", testDockerListenConnect4},
+	{"testDockerExistingListenEvent6", testDockerExistingListenEvent6},
+	{"testDockerListenConnect6", testDockerListenConnect6},
+}
+
+var RTTTests = []basicTest{
+	{"testDetectRTT4", testDetectRTT4},
+	{"testDetectSRTT4", testDetectSRTT4},
+	{"testDetectRTT6", testDetectRTT6},
+	{"testDetectSRTT6", testDetectSRTT6},
+}
+
+var (
+	cmdServerTCP8082, cmdServerTCP8082V6, cmdServerTCP8083, cmdServerTCP8083V6, cmdServerTCP8094, cmdServerTCP8094V6 *exec.Cmd
+)
+
+func startExistingTCPServices(t *testing.T) {
+	nc := getNCCommand(t, "nc.openbsd")
+
+	cmdServerTCP8082 = exec.Command(nc, "-nvlp", "8082", "-s", "0.0.0.0")
+	assert.NoError(t, cmdServerTCP8082.Start())
+	cmdServerTCP8083 = exec.Command(nc, "-nvlp", "8083", "-s", "0.0.0.0")
+	assert.NoError(t, cmdServerTCP8083.Start())
+	cmdServerTCP8082V6 = exec.Command(nc, "-6nvlp", "8082", "-s", "::")
+	assert.NoError(t, cmdServerTCP8082V6.Start())
+	cmdServerTCP8083V6 = exec.Command(nc, "-6nvlp", "8083", "-s", "::")
+	assert.NoError(t, cmdServerTCP8083V6.Start())
+
+	path, err := os.Getwd()
+	if err != nil {
+		t.Fail()
+	}
+	/* Start server in '/' before creating observer */
+	os.Chdir("/")
+	cmdServerTCP8094 = exec.Command(nc, "-nvlp", "8094", "-s", "0.0.0.0")
+	assert.NoError(t, cmdServerTCP8094.Start())
+	cmdServer8094V6 := exec.Command(nc, "-6nvlp", "8094", "-s", "::")
+	assert.NoError(t, cmdServer8094V6.Start())
+	os.Chdir(path)
+
+	time.Sleep(1000 * time.Millisecond)
+}
+
+func startDockerTCPServices(t *testing.T) {
+	// Try removing container first as an existing one will cause the following line to fail.
+	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
+	/* Start server before creating obs */
+	docker.Run(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "0.0.0.0")
+	observertesthelper.WaitForProcess("nc -nvlp 8087 -s 0.0.0.0")
+	// Try removing container first as an existing one will cause the following line to fail.
+	exec.Command("docker", "rm", "--force", "fgs-test-server-v6").Run()
+	/* Start server before creating obs */
+	docker.Run(t, "--name", "fgs-test-server-v6", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8086", "-s", "[::]")
+	observertesthelper.WaitForProcess("nc -nvlp 8086 -s [::]")
+	time.Sleep(2 * time.Second)
+}
+
+func testConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
@@ -237,10 +381,8 @@ func TestConnectEvent4(t *testing.T) {
 			WithSocketType(sm.Full("connect")),
 	)
 
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observertesthelper.ExecWGCurl(&readyWG, 10, "127.0.0.1")
-	err := jsonchecker.JsonTestCheck(t, checker)
+	observertesthelper.ExecWGCurl(readyWG, 10, "127.0.0.1")
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
@@ -320,13 +462,7 @@ func TestNoDisableConnectEvent4NoCLI(t *testing.T) {
 	testDisableConfigConnect4(t, false, false)
 }
 
-func TestExecEventClone4(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testExecEventClone4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	orig := "nc.openbsd"
 	server := orig
 	client := server
@@ -378,9 +514,6 @@ func TestExecEventClone4(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
@@ -388,20 +521,14 @@ func TestExecEventClone4(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestExistingListenEvent4(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testExistingListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -426,29 +553,14 @@ func TestExistingListenEvent4(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	/* Start server before creating obs */
-	cmdServer := exec.Command(server, "-nvlp", "8082", "-s", "0.0.0.0")
-	assert.NoError(t, cmdServer.Start())
-
-	time.Sleep(1000 * time.Millisecond)
-
-	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdServerTCP8082)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestExistingAcceptEvent4(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testExistingAcceptEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
@@ -480,35 +592,20 @@ func TestExistingAcceptEvent4(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	/* Start server before creating obs */
-	cmdServer := exec.Command(server, "-nvlp", "8083", "-s", "0.0.0.0")
-	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
-
-	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
 	cmdClient := exec.Command(client, "127.0.0.1", "8083")
 	assert.NoError(t, cmdClient.Start())
 	time.Sleep(1000 * time.Millisecond)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdServerTCP8083)
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestExistingRootCWDListenEvent4(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testExistingRootCWDListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -534,34 +631,14 @@ func TestExistingRootCWDListenEvent4(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	path, err := os.Getwd()
-	if err != nil {
-		t.Fail()
-	}
-
-	/* Start server in '/' before creating observer */
-	os.Chdir("/")
-	cmdServer := exec.Command(server, "-nvlp", "8094", "-s", "0.0.0.0")
-	assert.NoError(t, cmdServer.Start())
-	os.Chdir(path)
-
-	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdServerTCP8094)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestListenAcceptClose4(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testListenAcceptClose4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
@@ -604,9 +681,6 @@ func TestListenAcceptClose4(t *testing.T) {
 		// some go way to close the sockets.
 	)
 
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8085")
 	assert.NoError(t, cmdServer.Start())
@@ -619,7 +693,7 @@ func TestListenAcceptClose4(t *testing.T) {
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
@@ -739,27 +813,11 @@ func TestNoDisableListenAcceptClose4NoCLI(t *testing.T) {
 	testDisableConfigListenAcceptClose4(t, false, false, false, false)
 }
 
-func TestDockerExistingListenEvent4(t *testing.T) {
+func testDockerExistingListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		t.Skipf("docker not available. skipping test: %s", err)
 	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	// Try removing container first as an existing one will cause the following line to fail.
-	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
-	/* Start server before creating obs */
-	docker.Run(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "0.0.0.0")
-	observertesthelper.WaitForProcess("nc -nvlp 8087 -s 0.0.0.0")
-	time.Sleep(2 * time.Second)
-
-	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx, true)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
 
 	// Ideally we would also verify the dockerID, but our current dockerID
 	// scanner from procFS does not match github actions docker env that
@@ -792,23 +850,14 @@ func TestDockerExistingListenEvent4(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestDockerListenConnect4(t *testing.T) {
+func testDockerListenConnect4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		t.Skipf("docker not available. skipping test: %s", err)
 	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	obs := getBasicTcpObserver(t, ctx, true)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	// Try removing container first as an existing one will cause the following line to fail.
@@ -873,7 +922,7 @@ func TestDockerListenConnect4(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
@@ -1331,20 +1380,10 @@ func TestDetectLatency4(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestDetectRTT4(t *testing.T) {
+func testDetectRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-
-	if !utils.RTTHookAvailable() {
-		t.Skipf("RTT hooks are unavailable, skipping")
-	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
 
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
@@ -1388,9 +1427,6 @@ func TestDetectRTT4(t *testing.T) {
 						WithValues(ec.NewHistogramBucketChecker().
 							WithPercentile(1))))))
 
-	obs := getTcpObserverWithRTTDetection(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8083")
 	assert.NoError(t, cmdServer.Start())
@@ -1407,20 +1443,14 @@ func TestDetectRTT4(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 	killAndWaitCommand(t, cmdServer)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestDetectSRTT4(t *testing.T) {
+func testDetectSRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
 
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
@@ -1496,9 +1526,6 @@ func TestDetectSRTT4(t *testing.T) {
 		},
 	}
 
-	obs := getTcpObserverWithRTTDetection(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8184")
 	assert.NoError(t, cmdServer.Start())
@@ -1515,20 +1542,14 @@ func TestDetectSRTT4(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 	killAndWaitCommand(t, cmdServer)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, statsChecker)
+	err = jsonchecker.JsonTestCheck(gt, statsChecker)
 	assert.NoError(t, err)
 }
 
-func TestConnectEvent6(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
@@ -1558,20 +1579,12 @@ func TestConnectEvent6(t *testing.T) {
 			WithSocketType(sm.Full("connect")),
 	)
 
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	observertesthelper.ExecWGCurl(&readyWG, 10, "[::1]")
-	err := jsonchecker.JsonTestCheck(t, checker)
+	observertesthelper.ExecWGCurl(readyWG, 10, "[::1]")
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestExecEventClone6(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testExecEventClone6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	orig := "nc.openbsd"
 	server := orig
 	client := server
@@ -1623,9 +1636,6 @@ func TestExecEventClone6(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-6nvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
@@ -1633,20 +1643,14 @@ func TestExecEventClone6(t *testing.T) {
 	cmdClient := exec.Command(client, "-6", "::1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestExistingListenEvent6(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testExistingListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -1671,29 +1675,14 @@ func TestExistingListenEvent6(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	/* Start server before creating obs */
-	cmdServer := exec.Command(server, "-6nvlp", "8082", "-s", "::")
-	assert.NoError(t, cmdServer.Start())
-
-	time.Sleep(1000 * time.Millisecond)
-
-	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdServerTCP8082V6)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestExistingAcceptEvent6(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testExistingAcceptEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
@@ -1725,35 +1714,20 @@ func TestExistingAcceptEvent6(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	/* Start server before creating obs */
-	cmdServer := exec.Command(server, "-6nvlp", "8083", "-s", "::")
-	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
-
-	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
 	cmdClient := exec.Command(client, "-6", "::1", "8083")
 	assert.NoError(t, cmdClient.Start())
 	time.Sleep(1000 * time.Millisecond)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdServerTCP8083V6)
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestExistingRootCWDListenEvent6(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testExistingRootCWDListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -1779,35 +1753,15 @@ func TestExistingRootCWDListenEvent6(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	path, err := os.Getwd()
-	if err != nil {
-		t.Fail()
-	}
-
-	/* Start server in '/' before creating observer */
-	os.Chdir("/")
-	cmdServer := exec.Command(server, "-6nvlp", "8094", "-s", "::")
-	assert.NoError(t, cmdServer.Start())
-	os.Chdir(path)
-
-	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdServerTCP8094V6)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestListenAcceptClose6(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testListenAcceptClose6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
@@ -1850,9 +1804,6 @@ func TestListenAcceptClose6(t *testing.T) {
 		// some go way to close the sockets.
 	)
 
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-6nvlp", "8085")
 	assert.NoError(t, cmdServer.Start())
@@ -1865,31 +1816,15 @@ func TestListenAcceptClose6(t *testing.T) {
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestDockerExistingListenEvent6(t *testing.T) {
+func testDockerExistingListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		t.Skipf("docker not available. skipping test: %s", err)
 	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	// Try removing container first as an existing one will cause the following line to fail.
-	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
-	/* Start server before creating obs */
-	docker.Run(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8086", "-s", "[::]")
-	observertesthelper.WaitForProcess("nc -nvlp 8086 -s [::]")
-	time.Sleep(2 * time.Second)
-
-	/* Create obs */
-	obs := getBasicTcpObserver(t, ctx, true)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
 
 	// Ideally we would also verify the dockerID, but our current dockerID
 	// scanner from procFS does not match github actions docker env that
@@ -1922,30 +1857,21 @@ func TestDockerExistingListenEvent6(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestDockerListenConnect6(t *testing.T) {
+func testDockerListenConnect6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		t.Skipf("docker not available. skipping test: %s", err)
 	}
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	obs := getBasicTcpObserver(t, ctx, true)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	// Try removing container first as an existing one will cause the following line to fail.
-	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
-	serverDockerID := docker.Run(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "[::]")
+	exec.Command("docker", "rm", "--force", "fgs-test-server-v6").Run()
+	serverDockerID := docker.Run(t, "--name", "fgs-test-server-v6", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "[::]")
 	time.Sleep(1 * time.Second)
-	clientDockerID := docker.Run(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8087")
+	clientDockerID := docker.Run(t, "--link", "fgs-test-server-v6", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server-v6", "8087")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
@@ -1964,7 +1890,7 @@ func TestDockerListenConnect6(t *testing.T) {
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("/nc")).
-		WithArguments(sm.Full("-p 9876 fgs-test-server 8087")).
+		WithArguments(sm.Full("-p 9876 fgs-test-server-v6 8087")).
 		WithCwd(sm.Full("/")).
 		WithUid(0).
 		WithDocker(fgsClientID)
@@ -2003,24 +1929,14 @@ func TestDockerListenConnect6(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestDetectRTT6(t *testing.T) {
+func testDetectRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-
-	if !utils.RTTHookAvailable() {
-		t.Skipf("RTT hooks are unavailable, skipping")
-	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
 
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
@@ -2064,9 +1980,6 @@ func TestDetectRTT6(t *testing.T) {
 						WithValues(ec.NewHistogramBucketChecker().
 							WithPercentile(1))))))
 
-	obs := getTcpObserverWithRTTDetection(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-6nvlp", "8083")
 	assert.NoError(t, cmdServer.Start())
@@ -2083,21 +1996,15 @@ func TestDetectRTT6(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 	killAndWaitCommand(t, cmdServer)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
 // FIXME: net io_uring test seems to time out on ARM.
-func TestDetectSRTT6(t *testing.T) {
+func testDetectSRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
 
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
@@ -2173,9 +2080,6 @@ func TestDetectSRTT6(t *testing.T) {
 		},
 	}
 
-	obs := getTcpObserverWithRTTDetection(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-6nvlp", "8184")
 	assert.NoError(t, cmdServer.Start())
@@ -2192,14 +2096,14 @@ func TestDetectSRTT6(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 	killAndWaitCommand(t, cmdServer)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, statsChecker)
+	err = jsonchecker.JsonTestCheck(gt, statsChecker)
 	assert.NoError(t, err)
 }
 
-func TestIOUringAcceptEvent(t *testing.T) {
+func testIOUringAcceptEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -2210,12 +2114,6 @@ func TestIOUringAcceptEvent(t *testing.T) {
 	if err == nil && strings.Contains(hostname, "rhel") {
 		t.Skipf("This test is problematic on RHEL, skipping")
 	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
 
 	server := testutils.RepoRootPath("contrib/tester-progs/io_uring/tcp_iouring_server")
 	client := getNCCommand(t, "nc.openbsd")
@@ -2260,9 +2158,6 @@ func TestIOUringAcceptEvent(t *testing.T) {
 				WithBytesReceived(5)),
 	)
 
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server)
 	serverOutput, err := cmdServer.StdoutPipe()
@@ -2299,7 +2194,7 @@ func TestIOUringAcceptEvent(t *testing.T) {
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -2307,7 +2202,7 @@ func TestIOUringAcceptEvent(t *testing.T) {
 }
 
 // FIXME: net io_uring test seems to time out on ARM.
-func TestIOUringConnectEvent(t *testing.T) {
+func testIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -2318,12 +2213,6 @@ func TestIOUringConnectEvent(t *testing.T) {
 	if err == nil && strings.Contains(hostname, "rhel") {
 		t.Skipf("This test is problematic on RHEL, skipping")
 	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
 
 	client := testutils.RepoRootPath("contrib/tester-progs/io_uring/tcp_iouring_client")
 	server := getNCCommand(t, "nc.openbsd")
@@ -2367,9 +2256,6 @@ func TestIOUringConnectEvent(t *testing.T) {
 				WithBytesSent(5)),
 	)
 
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8001")
 	serverError, err := cmdServer.StderrPipe()
@@ -2409,7 +2295,7 @@ func TestIOUringConnectEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
