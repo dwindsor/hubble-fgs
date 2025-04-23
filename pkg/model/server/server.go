@@ -506,6 +506,12 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 				Port:             dstVal.Port,
 				Stats:            stats,
 			}
+		case tetragon.EndpointType_ENDPOINT_TYPE_CIDR:
+			d = &tetragon.Destination{
+				DestinationNames: []string{ep.Ip},
+				Port:             dstVal.Port,
+				Stats:            stats,
+			}
 		}
 
 		// If this is the Zero ProcessID and it has a NSId then its an
