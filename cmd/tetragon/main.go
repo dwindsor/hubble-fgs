@@ -21,7 +21,6 @@ import (
 	"github.com/cilium/tetragon/pkg/cgrouprate"
 	"github.com/cilium/tetragon/pkg/fieldfilters"
 	"github.com/cilium/tetragon/pkg/health"
-	ossManager "github.com/cilium/tetragon/pkg/manager"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/rthooks"
@@ -462,15 +461,8 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	var k8sClient *kubernetes.Clientset
 	var crdClient *versioned.Clientset
 	var k8sWatcher watcher.K8sResourceWatcher
-	var controllerManager *ossManager.ControllerManager
 	if option.Config.EnableK8s {
 		log.Info("Enabling Kubernetes API")
-		// Start controller-runtime manager.
-		controllerManager = ossManager.Get()
-		if err := manager.ConfigureManager(ctx, controllerManager); err != nil {
-			return err
-		}
-		controllerManager.Start(ctx)
 		// retrieve k8s clients
 		k8sClient, crdClient, err = watcher.GetK8sClients(waitCRDs)
 		if err != nil {
@@ -496,6 +488,8 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		log.Info("Disabling Kubernetes API")
 		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
 	}
+	// Start Kubernetes manager.
+	kubernetesManager := manager.Get()
 	// start k8s watcher
 	k8sWatcher.Start()
 
@@ -629,7 +623,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			// recommended to use it to disable watching TracingPolicy in EE.
 			// Use --enable-policy-k8swatcher=false instead.
 			if option.Config.EnableTracingPolicyCRD {
-				err = crdwatcher.AddTracingPolicyInformer(ctx, controllerManager, observer.GetSensorManager())
+				err = crdwatcher.AddTracingPolicyInformer(ctx, kubernetesManager.GetControllerManager(), observer.GetSensorManager())
 				if err != nil {
 					return err
 				}

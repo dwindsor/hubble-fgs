@@ -134,7 +134,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	if fgsProcess != nil {
 		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, ops.MSG_OP_HTTP, event.Msg.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
-		fgsEvent.DestinationService = manager.GetSvcInfoOfIp(destinationIP)
+		fgsEvent.DestinationService = manager.Get().GetSvcInfoOfIp(destinationIP)
 	}
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
@@ -219,7 +219,7 @@ func GetProcessClose(event *MsgIPWithStatsEventUnix) *tetragon.ProcessClose {
 	if fgsProcess != nil {
 		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, ops.MSG_OP_HTTP, event.Msg.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
-		fgsEvent.DestinationService = manager.GetSvcInfoOfIp(destinationIP)
+		fgsEvent.DestinationService = manager.Get().GetSvcInfoOfIp(destinationIP)
 	}
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
@@ -352,7 +352,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	if fgsProcess != nil {
 		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, ops.MSG_OP_HTTP, event.Msg.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
-		fgsEvent.DestinationService = manager.GetSvcInfoOfIp(destinationIP)
+		fgsEvent.DestinationService = manager.Get().GetSvcInfoOfIp(destinationIP)
 	}
 
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
@@ -794,7 +794,7 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	if fgsProcess != nil {
 		destinationIP := networkapi.GetIP(event.Msg.Tuple.DAddr, event.Msg.Common.Op, event.Msg.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
-		fgsEvent.DestinationService = manager.GetSvcInfoOfIp(destinationIP)
+		fgsEvent.DestinationService = manager.Get().GetSvcInfoOfIp(destinationIP)
 	}
 
 	ec := eventcache.Get()
