@@ -3653,6 +3653,7 @@ Determins the behaviour of a field filter
 | ENDPOINT_TYPE_LISTEN | 5 |  |
 | ENDPOINT_TYPE_BPF_DNS | 6 |  |
 | ENDPOINT_TYPE_NODE | 7 |  |
+| ENDPOINT_TYPE_CIDR | 8 |  |
 
 
  
