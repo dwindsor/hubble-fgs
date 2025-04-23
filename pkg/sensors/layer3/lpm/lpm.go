@@ -29,8 +29,8 @@ type ValueMap struct {
 }
 
 const (
-	addr4lpmMapName = "addr4lpm_map"
-	addr6lpmMapName = "addr6lpm_map"
+	Addr4lpmMapName = "addr4lpm_map"
+	Addr6lpmMapName = "addr6lpm_map"
 )
 
 type LPMMap struct {
@@ -39,14 +39,14 @@ type LPMMap struct {
 }
 
 func NewLPM() (*LPMMap, error) {
-	fileLpm4 := filepath.Join(bpf.MapPrefixPath(), addr4lpmMapName)
+	fileLpm4 := filepath.Join(bpf.MapPrefixPath(), Addr4lpmMapName)
 	addr4lpm, err := ebpf.LoadPinnedMap(fileLpm4, nil)
 	if err != nil {
 		logger.GetLogger().Errorf("failed to pin addr4 LPM Map (%s): %v", fileLpm4, err)
 		return nil, err
 	}
 
-	fileLpm6 := filepath.Join(bpf.MapPrefixPath(), addr6lpmMapName)
+	fileLpm6 := filepath.Join(bpf.MapPrefixPath(), Addr6lpmMapName)
 	addr6lpm, err := ebpf.LoadPinnedMap(fileLpm6, nil)
 	if err != nil {
 		logger.GetLogger().Errorf("failed to pin addr6 LPM Map (%s): %v", fileLpm6, err)
@@ -59,10 +59,10 @@ func NewLPM() (*LPMMap, error) {
 	}, nil
 }
 
-func (lpm *LPMMap) writeIp6(ip string, id uint64) error {
+func (lpm *LPMMap) writeIp4(ip string, id uint64) error {
 	addr, maskLen, err := parseAddr(ip)
 	if err != nil {
-		return fmt.Errorf("writeIp6 can not parse %s: %w", ip, err)
+		return fmt.Errorf("writeIp4 can not parse %s: %w", ip, err)
 	}
 	ip4 := binary.LittleEndian.Uint32(addr)
 	val := KernelLPMTrie4{prefix: maskLen, addr: ip4}
@@ -72,10 +72,10 @@ func (lpm *LPMMap) writeIp6(ip string, id uint64) error {
 	return nil
 }
 
-func (lpm *LPMMap) writeIp4(ip string, id uint64) error {
+func (lpm *LPMMap) writeIp6(ip string, id uint64) error {
 	addr, maskLen, err := parseAddr(ip)
 	if err != nil {
-		return fmt.Errorf("writeIp4 can not parse %s: %w", ip, err)
+		return fmt.Errorf("writeIp6 can not parse %s: %w", ip, err)
 	}
 	var addrSlice [16]byte
 	copy(addrSlice[:], addr)
@@ -89,11 +89,10 @@ func (lpm *LPMMap) writeIp4(ip string, id uint64) error {
 func (lpm *LPMMap) Write(ip string, id uint64) error {
 	var err error
 
-	ver := net.ParseIP(ip)
-	if ver.To4() != nil {
-		err = lpm.writeIp4(ip, id)
-	} else {
+	if strings.Contains(ip, ":") {
 		err = lpm.writeIp6(ip, id)
+	} else {
+		err = lpm.writeIp4(ip, id)
 	}
 	return err
 }

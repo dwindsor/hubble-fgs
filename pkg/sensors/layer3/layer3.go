@@ -37,6 +37,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
@@ -198,6 +199,10 @@ var (
 	// This map is shared between the DNS parser and the process tree: the fdlookup and tcpsockops progs
 	DNSEndpointIDMap = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcher, EgressDispatcher, ip.FdLookupFentry_5_15, ip.FdLookupKprobe_5_15, tcp.TcpSockops515)
 
+	// LPM maps
+	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, IngressDispatcher, EgressDispatcher)
+	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, IngressDispatcher, EgressDispatcher)
+
 	// Dispatcher all maps
 	dispatcherMaps = append(udpMaps,
 		[]*program.Map{protoCfgMap,
@@ -251,6 +256,14 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 			maps = append(maps, DNSGlobalIDMap)
 		}
 	}
+
+	if tcpEnabled || udpEnabled {
+		Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+		Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+		maps = append(maps, Addr6LpmMap)
+		maps = append(maps, Addr4LpmMap)
+	}
+
 	if icmpEnabled {
 		icmpProgsInit, icmpProgsStats, icmpMaps := icmp.EnableIcmp()
 		progsInitSock = append(progsInitSock, icmpProgsInit...)

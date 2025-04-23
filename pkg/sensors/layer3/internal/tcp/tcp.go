@@ -38,6 +38,7 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
@@ -255,6 +256,10 @@ var (
 	EventDisableConfigKprobe = program.MapBuilder("tg_event_disable_config", ConnectKprobe)
 	EventDisableConfigFentry = program.MapBuilder("tg_event_disable_config", ConnectFentry)
 	EventDisableConfigOps    = program.MapBuilder("tg_event_disable_config", TcpSockops515)
+
+	// LPM maps
+	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, TcpSockops515)
+	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, TcpSockops515)
 )
 
 func ConfigureMaps() error {
@@ -330,6 +335,8 @@ func UnloadSensor(tp tracingpolicy.TracingPolicy) error {
 }
 
 func processModelMapsEnable() []*program.Map {
+	Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	maps := []*program.Map{
 		program.MapUserFrom(base.EndpointIdMap),
 		program.MapUserFrom(base.BpfEndpointIdMap),
@@ -339,6 +346,7 @@ func processModelMapsEnable() []*program.Map {
 		program.MapUserFrom(base.DestinationEndpointMap),
 		program.MapUserFrom(base.ListenEndpointMap),
 	}
+	maps = append(maps, []*program.Map{Addr4LpmMap, Addr6LpmMap}...)
 	return maps
 }
 

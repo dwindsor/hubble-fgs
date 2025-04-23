@@ -31,9 +31,12 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 const (
@@ -95,6 +98,12 @@ var (
 	// Endpoint Models
 	ProcessTreeIdMapKprobe = program.MapBuilder("tg_tree_id", FdLookupKprobe_5_15)
 	ProcessTreeIdMapFentry = program.MapBuilder("tg_tree_id", FdLookupFentry_5_15)
+
+	// LPM maps
+	Addr6LpmMapFentry = program.MapBuilder(lpm.Addr6lpmMapName, FdLookupFentry_5_15)
+	Addr4LpmMapFentry = program.MapBuilder(lpm.Addr4lpmMapName, FdLookupFentry_5_15)
+	Addr6LpmMapKprobe = program.MapBuilder(lpm.Addr6lpmMapName, FdLookupKprobe_5_15)
+	Addr4LpmMapKprobe = program.MapBuilder(lpm.Addr4lpmMapName, FdLookupKprobe_5_15)
 
 	// Shared socket cookie infrastructure
 	SocketCookieMapKprobe     = program.MapBuilder(SocketMapName, FdLookupKprobe, FdLookupKprobe_5_15)
@@ -237,9 +246,13 @@ func getFdLookupMaps() []*program.Map {
 				program.MapUserFrom(base.PidDataMap),
 			}...)
 			if utils.SupportFentry() {
-				maps = append(maps, []*program.Map{ProcessTreeIdMapFentry}...)
+				Addr6LpmMapFentry.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+				Addr4LpmMapFentry.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+				maps = append(maps, []*program.Map{ProcessTreeIdMapFentry, Addr4LpmMapFentry, Addr6LpmMapFentry}...)
 			} else {
-				maps = append(maps, []*program.Map{ProcessTreeIdMapKprobe}...)
+				Addr6LpmMapKprobe.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+				Addr4LpmMapKprobe.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+				maps = append(maps, []*program.Map{ProcessTreeIdMapKprobe, Addr4LpmMapKprobe, Addr6LpmMapKprobe}...)
 			}
 		}
 	}
