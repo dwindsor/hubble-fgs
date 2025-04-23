@@ -11,10 +11,12 @@ help:
 
 .PHONY: generate
 generate:
-	../../contrib/repo-docker-run.sh \
+	../../contrib/scripts/repo-docker-run.sh \
 		--env GOCACHE=/go/.cache \
+		--volume $(CURDIR)/../..:/src \
+		--workdir /src/pkg/k8s \
 		$(BUILDER_IMAGE) \
-		make -C $(CURDIR) __do_generate
+		make __do_generate
 
 # Enterprise pkg/k8s is used as a replacement for OSS cilium/tetragon/pkg/k8s. It
 # replaces the k8s v1alpha1 and factories with new ones that know both OSS and
