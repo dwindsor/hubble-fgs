@@ -6,21 +6,11 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/watcher"
-	coreV1 "k8s.io/api/core/v1"
-
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
+	"github.com/isovalent/hubble-fgs/pkg/manager"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
+	coreV1 "k8s.io/api/core/v1"
 )
-
-var (
-	k8sResourceWatcher watcher.K8sResourceWatcher
-)
-
-func SetK8sResourceWatcher(watcher watcher.K8sResourceWatcher) {
-	k8sResourceWatcher = watcher
-}
 
 func getExecCommand(probe *coreV1.Probe) []string {
 	if probe != nil && probe.Exec != nil {
@@ -52,7 +42,7 @@ func getPodInfoOfIpFromCilium(ip net.IP) *tetragon.Pod {
 }
 
 func getPodInfoOfIpFromPodInfo(ip net.IP) *tetragon.Pod {
-	pods, err := enterpriseWatcher.FindPodInfoByIP(k8sResourceWatcher, ip.String())
+	pods, err := manager.Get().FindPodInfoByIP(ip.String())
 	if err != nil || len(pods) != 1 {
 		return nil
 	}
@@ -74,6 +64,6 @@ func GetProbes(pod *coreV1.Pod, containerStatus *coreV1.ContainerStatus) ([]stri
 	return nil, nil
 }
 
-func GetPodInfoOfNS(namespace string) ([]*v1alpha1.PodInfo, error) {
-	return enterpriseWatcher.FindPodInfoByNS(k8sResourceWatcher, namespace)
+func GetPodInfoOfNS(namespace string) ([]v1alpha1.PodInfo, error) {
+	return manager.Get().GetPodInfoOfNS(namespace)
 }

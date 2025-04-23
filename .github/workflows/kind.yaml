@@ -1,0 +1,43 @@
+name: Kind Integration Test
+on:
+  pull_request: {}
+jobs:
+  kind-integration-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        # checkout pull request head ref so that "make chart-version" prints the correct chart version.
+        ref: ${{ github.event.pull_request.head.ref }}
+        # required for git describe used by "make chart-version"
+        fetch-depth: 0
+        submodules: true
+
+    - name: Get Helm dev chart version
+      id: version
+      run: |
+        echo "version=$(make chart-version)" >> $GITHUB_OUTPUT
+
+    - name: Install Go
+      uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+      with:
+        # renovate: datasource=golang-version depName=go
+        go-version: '1.24.2'
+
+    - name: Install Kind and create cluster
+      uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
+
+    - name: Wait for Helm dev chart to be available
+      timeout-minutes: 15
+      shell: bash
+      run: |
+        until helm pull oci://quay.io/isovalent-charts-dev/tetragon --version ${{ steps.version.outputs.version }}; do sleep 30s; done
+
+    - name: Run go integration tests
+      run: |
+        helm install tetragon -n tetragon --create-namespace oci://quay.io/isovalent-charts-dev/tetragon \
+          --version ${{ steps.version.outputs.version }} \
+          --set tetragonOperator.podInfo.enabled=true
+        go test --tags=integration -v ./pkg/manager

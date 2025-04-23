@@ -39,7 +39,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
@@ -478,12 +477,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		if err != nil {
 			return err
 		}
-		if option.Config.EnablePodInfo {
-			err = enterpriseWatcher.AddPodInfoInformer(k8sWatcher, enterpriseOption.Config.EnableApplicationModel)
-			if err != nil {
-				return err
-			}
-		}
 	} else {
 		log.Info("Disabling Kubernetes API")
 		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
@@ -506,7 +499,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if err := process.InitCache(k8sWatcher, option.Config.ProcessCacheSize, pcGCInterval); err != nil {
 		return fmt.Errorf("failed to init process cache: %w", err)
 	}
-	podinfo.SetK8sResourceWatcher(k8sWatcher)
 
 	// cleanupWg is needed to ensure that gRPC code cleanly finishes before we exit (e.g,
 	// due to a signal). This is needed, for example, so that the exported writes full
