@@ -971,6 +971,8 @@ func printDebugCompact(res *tetragon.GetEndpointMapResponse) error {
 			fmt.Fprintf(w, "%s:%s\t", e.Ip, e.Port)
 		case tetragon.EndpointType_ENDPOINT_TYPE_NODE:
 			fmt.Fprintf(w, "%s(%s)\t", e.Name, e.Kind)
+		case tetragon.EndpointType_ENDPOINT_TYPE_CIDR:
+			fmt.Fprintf(w, "%s\t", e.Ip)
 		default:
 			fmt.Fprint(w, "unknown")
 		}
