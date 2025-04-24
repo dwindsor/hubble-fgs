@@ -77,12 +77,6 @@ jobs:
           tenant-id: ${{ secrets.AZURE_PR_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_PR_SUBSCRIPTION_ID }}
 
-      - name: Install aks-preview CLI extension
-        run: |
-            az extension add --name aks-preview
-            az extension update --name aks-preview
-            az version
-
       - name: Create AKS cluster
         run: |
           # Create group
