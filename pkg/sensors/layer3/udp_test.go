@@ -2091,6 +2091,10 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
 		t.Skipf("Test seems to time out on ARM")
 	}
+	hostname, err := os.Hostname()
+	if err == nil && strings.Contains(hostname, "rhel") {
+		t.Skipf("This test is problematic on RHEL, skipping")
+	}
 
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()

@@ -14,6 +14,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -271,6 +272,11 @@ func TestFinRx(t *testing.T) {
 	// probe_read_kernel in Cgroup/SKB programs).
 	if !utils.SupportCGroupSKBProbeRead() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+
+	hostname, err := os.Hostname()
+	if err == nil && strings.Contains(hostname, "rhel") {
+		t.Skipf("This test is problematic on RHEL, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup

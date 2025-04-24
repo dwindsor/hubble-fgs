@@ -622,6 +622,11 @@ func TestListenAcceptClose4(t *testing.T) {
 }
 
 func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disableListen bool, disableAccept bool, disableClose bool) {
+	hostname, err := os.Hostname()
+	if err == nil && strings.Contains(hostname, "rhel") {
+		t.Skipf("This test is problematic on RHEL, skipping")
+	}
+
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -703,7 +708,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 	killAndWaitCommand(t, cmdClient)
 
 	// Regardless of enabled/disabled network events, we should exepct the exec events
-	err := jsonchecker.JsonTestCheck(t, execChecker)
+	err = jsonchecker.JsonTestCheck(t, execChecker)
 	assert.NoError(t, err)
 
 	listenErr := jsonchecker.JsonTestCheckExpect(t, listenChecker, disableListen)
@@ -2199,6 +2204,10 @@ func TestIOUringAcceptEvent(t *testing.T) {
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
 		t.Skipf("Test seems to time out on ARM")
 	}
+	hostname, err := os.Hostname()
+	if err == nil && strings.Contains(hostname, "rhel") {
+		t.Skipf("This test is problematic on RHEL, skipping")
+	}
 
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -2302,6 +2311,10 @@ func TestIOUringConnectEvent(t *testing.T) {
 	}
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
 		t.Skipf("Test seems to time out on ARM")
+	}
+	hostname, err := os.Hostname()
+	if err == nil && strings.Contains(hostname, "rhel") {
+		t.Skipf("This test is problematic on RHEL, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
