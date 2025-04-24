@@ -43,6 +43,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
@@ -765,6 +766,19 @@ func RunLayer3Progs(ctx context.Context) error {
 }
 
 func StartLayer3Progs(ctx context.Context) error {
+	logger.GetLogger().WithFields(logrus.Fields{
+		"CGroupSKBAvailable":        utils.CGroupSKBAvailable(),
+		"SupportCGroupSKBProbeRead": utils.SupportCGroupSKBProbeRead(),
+		"SupportAddAndFetch":        utils.SupportAddAndFetch(),
+		"SupportCurrentTaskBTF":     utils.SupportCurrentTaskBTF(),
+		"SupportProcessTree":        utils.SupportProcessTree(),
+		"RawHooksAvailable":         utils.RawHooksAvailable(),
+		"RTTHookAvailable":          utils.RTTHookAvailable(),
+		"UDPBindNeedsDummies":       utils.UDPBindNeedsDummies(),
+		"SupportFentry":             utils.SupportFentry(),
+		"SupportFmodRet":            utils.SupportFmodRet(),
+		"SupportLSM":                utils.SupportLSM(),
+	}).Info("Layer3 functionality")
 	err := EnableLayer3Progs()
 	if err != nil {
 		return err
