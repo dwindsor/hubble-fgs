@@ -14,6 +14,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 
@@ -194,6 +195,11 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		}
 	}
 
+	id, ok := library.GetId(r.Policy.Name)
+	if !ok {
+		logger.GetLogger().WithField("Policy", r.Policy.Name).Warn("programmer unable to map policy name to ID")
+	}
+
 	key := &types.DestinationEndpointKey{
 		LocalId:           r.Src.Self,
 		LocalNSId:         r.Src.CgroupId,
@@ -211,7 +217,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		KtimeTxReset:   r.Action.ResetTime,
 		TxBytes:        0,
 		RxBytes:        0,
-		Pad0:           0,
+		Policy:         id,
 		IPv6:           0,
 		KtimeCreate:    0,
 		AddrCreate:     addr,
@@ -306,7 +312,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 		KtimeTxReset:   0,
 		TxBytes:        0,
 		RxBytes:        0,
-		Pad0:           0,
+		Policy:         0,
 		IPv6:           0,
 		KtimeCreate:    0,
 		AddrCreate:     addr,

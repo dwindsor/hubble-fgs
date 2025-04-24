@@ -57,7 +57,7 @@ type DestinationEndpointValue struct {
 	KtimeTxReset   uint64
 	TxBytes        uint64
 	RxBytes        uint64
-	Pad0           uint64
+	Policy         uint64
 	IPv6           uint64
 	KtimeCreate    uint64
 	AddrCreate     [2]uint64

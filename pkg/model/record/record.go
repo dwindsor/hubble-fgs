@@ -64,7 +64,16 @@ func (r DatapathEndpoint) String() string {
 	return fmt.Sprint(r.EP)
 }
 
+type Policy struct {
+	Name string
+}
+
+func (p Policy) String() string {
+	return fmt.Sprint(p.Name)
+}
+
 type DatapathRecord struct {
+	Policy   Policy
 	Src      *types.ProcessTreeKey
 	Endpoint DatapathEndpoint
 	Action   *DatapathAction
@@ -84,7 +93,7 @@ func (r *DatapathRecord) String() string {
 	if r.Action != nil {
 		action = r.Action.String()
 	}
-	return fmt.Sprintf("Src %s Endpoint %s Action %s", src, ep, action)
+	return fmt.Sprintf("Policy %s Src %s Endpoint %s Action %s", r.Policy.Name, src, ep, action)
 }
 
 // Set difference operator, A - B. We burn some memory and have to
