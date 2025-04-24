@@ -11,6 +11,7 @@ import (
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/sirupsen/logrus"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -67,7 +68,7 @@ func addNetworkPolicy(_ context.Context, file string) error {
 		return fmt.Errorf("failed to convert TetragonNetworkPolicy %s to internal representation: %w", np.Name, err)
 	}
 
-	err = loadPolicy(policyStory{title: np.Name, crdPolicy: np, crdNSPolicy: nil, irPolicy: policies})
+	err = loadPolicy(&library.PolicyStory{Title: np.Name, CRDPolicy: np, CRDNSPolicy: nil, IrPolicy: policies})
 	if err != nil {
 		return fmt.Errorf("failed to load TetragonNetworkPolicy: %w", err)
 	}

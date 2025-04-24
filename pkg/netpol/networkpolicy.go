@@ -3,25 +3,18 @@ package netpol
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/cache"
 )
-
-type policyStory struct {
-	title       string
-	crdPolicy   *v1alpha1.TetragonNetworkPolicy
-	crdNSPolicy *v1alpha1.TetragonNetworkPolicyNamespaced
-	irPolicy    []*types.TetragonNetworkPolicy
-}
-
-var policyLibrary map[string]policyStory
 
 func addTetragonNetworkPolicy(obj any) {
 	var policies []*types.TetragonNetworkPolicy
@@ -63,11 +56,11 @@ func addTetragonNetworkPolicy(obj any) {
 		return
 	}
 
-	err = loadPolicy(policyStory{
-		title:       name,
-		crdPolicy:   crd,
-		crdNSPolicy: crdNS,
-		irPolicy:    policies,
+	err = loadPolicy(&library.PolicyStory{
+		Title:       name,
+		CRDPolicy:   crd,
+		CRDNSPolicy: crdNS,
+		IrPolicy:    policies,
 	})
 
 	if err != nil {
@@ -124,13 +117,13 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 	}
 
 	oldName = fmt.Sprintf("__%s", newName)
-	oldStory, ok := policyLibrary[oldName]
+	oldStory, ok := library.Get(oldName)
 	if !ok {
 		t := newName
 		newName = oldName
 		oldName = t
 
-		oldStory, ok = policyLibrary[oldName]
+		oldStory, ok = library.Get(oldName)
 		if !ok {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"new title":     newName,
@@ -151,6 +144,12 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 	// Policy update is slightly complicated to avoid having a gap
 	// in policy. First we create the updated policy and only then
 	// do we remove the previous policy.
+	library.Add(&library.PolicyStory{
+		Title:       newName,
+		CRDPolicy:   crd,
+		CRDNSPolicy: crdNS,
+		IrPolicy:    newPolicy,
+	})
 	err = dns.CreateMatchLabelsPolicySet(newPolicy)
 	if err != nil {
 		logger.GetLogger().WithFields(logrus.Fields{
@@ -160,19 +159,11 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 		}).Warn("updateNetworkPolicy: failed to create new state in an update to Tetragon network policy command")
 	}
 
-	if err := dns.RemoveNetworkPolicySet(oldName, oldStory.irPolicy); err != nil {
+	if err := dns.RemoveNetworkPolicySet(oldName, oldStory.IrPolicy); err != nil {
 		logger.GetLogger().WithFields(logrus.Fields{
 			"new name": newName,
 			"old name": oldName,
 		}).WithError(err).Warn("updateNetworkPolicy: failed to remove old state in an update to Tetragon network policy command")
-	}
-
-	delete(policyLibrary, oldName)
-	policyLibrary[newName] = policyStory{
-		title:       newName,
-		crdPolicy:   crd,
-		crdNSPolicy: crdNS,
-		irPolicy:    newPolicy,
 	}
 
 	logger.GetLogger().WithFields(logrus.Fields{
@@ -203,10 +194,10 @@ func deleteNetworkPolicy(obj any) {
 		return
 	}
 
-	story, ok := policyLibrary[name]
+	story, ok := library.Get(name)
 	if !ok {
 		deleteName := fmt.Sprintf("__%s", name)
-		story, ok = policyLibrary[deleteName]
+		story, ok = library.Get(deleteName)
 		if !ok {
 			logger.GetLogger().WithFields(logrus.Fields{
 				"name": name,
@@ -215,14 +206,19 @@ func deleteNetworkPolicy(obj any) {
 		}
 		name = deleteName
 	}
-	if err := dns.RemoveNetworkPolicySet(name, story.irPolicy); err != nil {
+	if err := dns.RemoveNetworkPolicySet(name, story.IrPolicy); err != nil {
 		logger.GetLogger().WithFields(logrus.Fields{
 			"name": name,
 		}).WithError(err).Warn("deleteNetworkPolicy: abort removing policy failed")
 		return
 	}
-	delete(policyLibrary, name)
-
+	library.Delete(name)
+	if strings.HasPrefix(name, "__") {
+		library.Delete(name[len("__"):])
+	} else {
+		n := fmt.Sprintf("__%s", name)
+		library.Delete(n)
+	}
 	logger.GetLogger().WithFields(logrus.Fields{
 		"title": name,
 	}).Info("deleteNetworkPolicy: completed successfully")
@@ -247,27 +243,22 @@ func AddTetragonNetworkPolicyInformer(ctx context.Context, m *manager.Controller
 	return err
 }
 
-func init() {
-	policyLibrary = make(map[string]policyStory)
-}
-
-func loadPolicy(policyStory policyStory) error {
-	_, exist := policyLibrary[policyStory.title]
+func loadPolicy(policyStory *library.PolicyStory) error {
+	_, exist := library.Get(policyStory.Title)
 	if exist {
-		return fmt.Errorf("loading policy story %s would overwrite existing network policy", policyStory.title)
+		return fmt.Errorf("loading policy story %s would overwrite existing network policy", policyStory.Title)
 	}
 
-	existTest := fmt.Sprintf("__%s", policyStory.title)
-	_, exist = policyLibrary[existTest]
+	existTest := fmt.Sprintf("__%s", policyStory.Title)
+	_, exist = library.Get(existTest)
 	if exist {
-		return fmt.Errorf("loading policy story %s would overwrite existing network policy", policyStory.title)
+		return fmt.Errorf("loading policy story %s would overwrite existing network policy", policyStory.Title)
 	}
 
-	err := dns.CreateMatchLabelsPolicySet(policyStory.irPolicy)
+	library.Add(policyStory)
+	err := dns.CreateMatchLabelsPolicySet(policyStory.IrPolicy)
 	if err != nil {
-		return fmt.Errorf("failed create match label from policy set %s: %w", policyStory.title, err)
+		return fmt.Errorf("failed create match label from policy set %s: %w", policyStory.Title, err)
 	}
-	policyLibrary[policyStory.title] = policyStory
-
 	return nil
 }
