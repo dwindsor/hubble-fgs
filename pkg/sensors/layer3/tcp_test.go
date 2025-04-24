@@ -1329,6 +1329,10 @@ func TestDetectRTT4(t *testing.T) {
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
 
+	if !utils.RTTHookAvailable() {
+		t.Skipf("RTT hooks are unavailable, skipping")
+	}
+
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -2000,6 +2004,10 @@ func TestDetectRTT6(t *testing.T) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
+
+	if !utils.RTTHookAvailable() {
+		t.Skipf("RTT hooks are unavailable, skipping")
+	}
 
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()

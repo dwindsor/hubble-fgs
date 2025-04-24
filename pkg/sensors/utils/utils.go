@@ -30,6 +30,7 @@ var (
 	checkAddAndFetch         = sync.OnceValue(_checkAddAndFetch)
 	checkCurrentTaskBTF      = sync.OnceValue(_checkCurrentTaskBTF)
 	checkRawHooksAvailable   = sync.OnceValue(_checkRawHooksAvailable)
+	checkRTTHookAvailable    = sync.OnceValue(_checkRTTHookAvailable)
 	checkUDPBindNeedsDummies = sync.OnceValue(_checkUDPBindNeedsDummies)
 )
 
@@ -183,6 +184,16 @@ func _checkRawHooksAvailable() bool {
 		return false
 	}
 	err = checkForHook("rawv6_init_sk")
+	return err == nil
+}
+
+// RTTHookAvailable checks if the hook we use for RTT observation is available.
+func RTTHookAvailable() bool {
+	return checkRTTHookAvailable()
+}
+
+func _checkRTTHookAvailable() bool {
+	err := checkForHook("tcp_ack_update_rtt")
 	return err == nil
 }
 

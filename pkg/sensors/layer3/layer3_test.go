@@ -248,7 +248,7 @@ func getNoConfigObserver(t *testing.T, ctx context.Context, filtered bool) *obse
 func TestLoadLayer3Sensor(t *testing.T) {
 	var l3Config string
 	rawHooksAvailable := utils.CGroupSKBAvailable() && utils.RawHooksAvailable()
-	l3Config = layer3Config(utils.CGroupSKBAvailable(), utils.CGroupSKBAvailable(), rawHooksAvailable)
+	l3Config = layer3Config(utils.RTTHookAvailable(), utils.CGroupSKBAvailable(), rawHooksAvailable)
 	if err := observertesthelper.WriteConfigFile(testConfigFile, l3Config); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
@@ -259,7 +259,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
 
-	sensorProgs, sensorMaps := testutil.ProgsAndMaps(utils.CGroupSKBAvailable(), true, utils.CGroupSKBAvailable(), rawHooksAvailable)
+	sensorProgs, sensorMaps := testutil.ProgsAndMaps(utils.RTTHookAvailable(), true, utils.CGroupSKBAvailable(), rawHooksAvailable)
 
 	tusee.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
