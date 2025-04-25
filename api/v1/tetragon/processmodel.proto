@@ -147,6 +147,7 @@ message DestinationEndpointDebug {
   uint64 tx_drops = 8;
   uint64 default_allow_bytes = 9;
   uint64 default_deny_bytes = 10;
+  string policy = 11;
 }
 
 message GetDestinationMapResponse {

@@ -3432,6 +3432,7 @@ Determins the behaviour of a field filter
 | tx_drops | [uint64](#uint64) |  |  |
 | default_allow_bytes | [uint64](#uint64) |  |  |
 | default_deny_bytes | [uint64](#uint64) |  |  |
+| policy | [string](#string) |  |  |
 
 
 
