@@ -28,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -63,6 +64,7 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 
 	iter := m.Iterate()
 	for iter.Next(&k, &v) {
+		title, _ := library.GetName(v.Policy)
 		d := &tetragon.DestinationEndpointDebug{
 			LocalId:           k.LocalId,
 			LocalNsId:         k.LocalNSId,
@@ -74,6 +76,7 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 			TxDrops:           v.TxDrops,
 			DefaultAllowBytes: v.AllowDefault,
 			DefaultDenyBytes:  v.DenyDefault,
+			Policy:            title,
 		}
 		dests = append(dests, d)
 	}
