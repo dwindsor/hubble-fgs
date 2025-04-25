@@ -17,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	enterpriseClient "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/manager"
@@ -61,6 +62,18 @@ type EnterpriseManager struct {
 
 func New(ctx context.Context) (KubernetesManager, error) {
 	ossManager := manager.Get()
+	// This looks a bit off, starting controller-runtime manager before adding
+	// controllers, but we need to start the manager to be able to start an
+	// informer for CRDs. Adding controllers after starting the manager is ok
+	// according to https://github.com/kubernetes-sigs/controller-runtime/issues/1994.
+	ossManager.Start(ctx)
+	// Wait for tetragon-operator to create CRDs
+	enabledCRDs := getEnabledCRDs()
+	if len(enabledCRDs) > 0 {
+		if err := ossManager.WaitCRDs(ctx, enabledCRDs); err != nil {
+			return nil, err
+		}
+	}
 	// Set up an index on the Service object for looking up services by their ClusterIP.
 	err := ossManager.Manager.GetFieldIndexer().IndexField(ctx, &corev1.Service{}, serviceClusterIPField, getServiceClusterIPs)
 	if err != nil {
@@ -79,7 +92,6 @@ func New(ctx context.Context) (KubernetesManager, error) {
 			return nil, err
 		}
 	}
-	ossManager.Start(ctx)
 	return &EnterpriseManager{ossManager}, nil
 }
 
@@ -200,4 +212,31 @@ func (fm *FakeManager) FindPodInfoByIP(_ string) ([]v1alpha1.PodInfo, error) {
 
 func (fm *FakeManager) GetPodInfoOfNS(_ string) ([]v1alpha1.PodInfo, error) {
 	return nil, fmt.Errorf("not implemented")
+}
+
+func getEnabledCRDs() map[string]struct{} {
+	crds := make(map[string]struct{})
+
+	if option.Config.EnablePodInfo {
+		crds[v1alpha1.PIName] = struct{}{}
+	}
+
+	if enterpriseOption.Config.EnablePolicyK8sWatcher {
+		// NB(anna): Check this option for OSS compatibility, but it's not
+		// recommended to use it to disable watching TracingPolicy in EE.
+		// Use --enable-policy-k8swatcher=false instead.
+		if option.Config.EnableTracingPolicyCRD {
+			crds[v1alpha1.TPName] = struct{}{}
+			crds[v1alpha1.TPNamespacedName] = struct{}{}
+		}
+		if enterpriseOption.Config.EnableSandboxPolicies {
+			crds[enterpriseClient.SandboxPolicyCRD.ResName] = struct{}{}
+			crds[enterpriseClient.SandboxPolicyNamespacedCRD.ResName] = struct{}{}
+		}
+	}
+
+	crds[enterpriseClient.AlertRuleCRD.ResName] = struct{}{}
+	crds[enterpriseClient.TetragonNetworkPolicyCRD.ResName] = struct{}{}
+	crds[enterpriseClient.TetragonNetworkPolicyNamespacedCRD.ResName] = struct{}{}
+	return crds
 }

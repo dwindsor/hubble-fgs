@@ -53,8 +53,6 @@ import (
 	"github.com/cilium/tetragon/pkg/fileutils"
 	"github.com/cilium/tetragon/pkg/filters"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
@@ -90,12 +88,8 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/durationpb"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	apiextensionsinformer "k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/apiextensions/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
 )
 
 var (
@@ -460,10 +454,14 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	var k8sClient *kubernetes.Clientset
 	var crdClient *versioned.Clientset
 	var k8sWatcher watcher.K8sResourceWatcher
+	// Start Kubernetes manager. Note this doesn't have to be in the if block
+	// below. If Kubernetes is not enabled, this call returns a fake manager.
+	kubernetesManager := manager.Get()
 	if option.Config.EnableK8s {
 		log.Info("Enabling Kubernetes API")
+
 		// retrieve k8s clients
-		k8sClient, crdClient, err = watcher.GetK8sClients(waitCRDs)
+		k8sClient, crdClient, err = watcher.GetK8sClients(func(_ *rest.Config) error { return nil })
 		if err != nil {
 			return err
 		}
@@ -481,8 +479,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		log.Info("Disabling Kubernetes API")
 		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
 	}
-	// Start Kubernetes manager.
-	kubernetesManager := manager.Get()
 	// start k8s watcher
 	k8sWatcher.Start()
 
@@ -712,71 +708,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	}
 
 	return obs.StartReady(ctx, ready)
-}
-
-func waitCRDs(config *rest.Config) error {
-	crds := make(map[string]struct{})
-
-	if option.Config.EnablePodInfo {
-		crds[v1alpha1.PIName] = struct{}{}
-	}
-
-	if enterpriseOption.Config.EnablePolicyK8sWatcher {
-		// NB(anna): Check this option for OSS compatibility, but it's not
-		// recommended to use it to disable watching TracingPolicy in EE.
-		// Use --enable-policy-k8swatcher=false instead.
-		if option.Config.EnableTracingPolicyCRD {
-			crds[v1alpha1.TPName] = struct{}{}
-			crds[v1alpha1.TPNamespacedName] = struct{}{}
-		}
-		if enterpriseOption.Config.EnableSandboxPolicies {
-			crds[client.SandboxPolicyCRD.ResName] = struct{}{}
-			crds[client.SandboxPolicyNamespacedCRD.ResName] = struct{}{}
-		}
-	}
-
-	crds[client.AlertRuleCRD.ResName] = struct{}{}
-	crds[client.TetragonNetworkPolicyCRD.ResName] = struct{}{}
-	crds[client.TetragonNetworkPolicyNamespacedCRD.ResName] = struct{}{}
-
-	if len(crds) == 0 {
-		log.Info("No CRDs are enabled")
-		return nil
-	}
-
-	log.WithField("crds", crds).Info("Waiting for required CRDs")
-	var wg sync.WaitGroup
-	wg.Add(1)
-	crdClient := apiextensionsclientset.NewForConfigOrDie(config)
-	crdInformer := apiextensionsinformer.NewCustomResourceDefinitionInformer(crdClient, 0*time.Second, nil)
-	_, err := crdInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
-			crdObject, ok := obj.(*v1.CustomResourceDefinition)
-			if !ok {
-				log.WithField("obj", obj).Warn("Received an invalid object")
-				return
-			}
-			if _, ok := crds[crdObject.Name]; ok {
-				log.WithField("crd", crdObject.Name).Info("Found CRD")
-				delete(crds, crdObject.Name)
-				if len(crds) == 0 {
-					log.Info("Found all the required CRDs")
-					wg.Done()
-				}
-			}
-		},
-	})
-	if err != nil {
-		log.WithError(err).Error("failed to add event handler")
-		return err
-	}
-	stop := make(chan struct{})
-	go func() {
-		crdInformer.Run(stop)
-	}()
-	wg.Wait()
-	close(stop)
-	return nil
 }
 
 func loadTpFromDir(ctx context.Context, dir string) error {

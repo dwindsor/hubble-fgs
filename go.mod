@@ -57,7 +57,6 @@ require (
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.32.4
-	k8s.io/apiextensions-apiserver v0.32.4
 	k8s.io/apimachinery v0.32.4
 	k8s.io/apiserver v0.32.4
 	k8s.io/client-go v0.32.4
@@ -166,6 +165,7 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
+	k8s.io/apiextensions-apiserver v0.32.4 // indirect
 	k8s.io/component-base v0.32.4 // indirect
 	k8s.io/cri-api v0.31.4 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240911193312-2b36238f13e9 // indirect
