@@ -11,6 +11,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/sirupsen/logrus"
 )
 
@@ -249,6 +250,9 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 
 func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKey, action *record.DatapathAction, policy *types.TetragonNetworkPolicy, init bool) []*record.DatapathRecord {
 	records := []*record.DatapathRecord{}
+	recordPolicy := record.Policy{
+		Name: uid,
+	}
 
 	if policy.Destination.CIDR != nil {
 		r, err := state.addDestSrcCIDRRecords(&policy.Destination, src, action, init)
@@ -270,6 +274,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 					Port: 0,
 				}
 				records = append(records, &record.DatapathRecord{
+					Policy:   recordPolicy,
 					Src:      src,
 					Endpoint: endpoint,
 					Action:   action,
@@ -287,6 +292,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 					Port: port,
 				}
 				records = append(records, &record.DatapathRecord{
+					Policy:   recordPolicy,
 					Src:      src,
 					Endpoint: endpoint,
 					Action:   action,
@@ -306,6 +312,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 				}
 
 				records = append(records, &record.DatapathRecord{
+					Policy:   recordPolicy,
 					Src:      src,
 					Endpoint: endpoint,
 					Action:   action,
@@ -319,6 +326,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 				}
 
 				records = append(records, &record.DatapathRecord{
+					Policy:   recordPolicy,
 					Src:      src,
 					Endpoint: endpoint,
 					Action:   action,
@@ -387,7 +395,11 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 		EP:   nil,
 		Port: 0,
 	}
+	recordPolicy := record.Policy{
+		Name: uid,
+	}
 	dfltRecord := &record.DatapathRecord{
+		Policy:   recordPolicy,
 		Src:      src,
 		Endpoint: endpoint,
 		Action:   dfltAction,
@@ -513,6 +525,7 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 		}
 
 		uid := fmt.Sprintf("%s_%d", p.Name, id)
+		library.Link(p.Name, uid)
 		err := newState.CreateMatchLabelsPolicy(uid, p)
 		if err != nil {
 			return nil, nil, nil, err
@@ -577,6 +590,7 @@ func RemoveNetworkPolicySet(name string, policy []*types.TetragonNetworkPolicy) 
 		if err != nil {
 			return err
 		}
+		library.DelLink(uid)
 	}
 	return nil
 }

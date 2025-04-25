@@ -196,6 +196,10 @@ func (state *PolicyState) DestroyState() {
 func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 	var records []*record.DatapathRecord
 
+	policy := record.Policy{
+		Name: "", // empty name on Remove is OK.
+	}
+
 	ml := &matchLabels.LabelSet{
 		Labels: pod.Labels,
 	}
@@ -236,6 +240,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 						Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 					}
 					records = append(records, &record.DatapathRecord{
+						Policy:   policy,
 						Src:      processSrc,
 						Endpoint: ep,
 						Action:   action,
@@ -243,6 +248,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 				}
 				if len(s.Policy.Subject.InProcessName) == 0 {
 					records = append(records, &record.DatapathRecord{
+						Policy:   policy,
 						Src:      subject,
 						Endpoint: ep,
 						Action:   action,
@@ -295,6 +301,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 
 			if len(s.Policy.Subject.InProcessName) == 0 {
 				records = append(records, &record.DatapathRecord{
+					Policy:   policy,
 					Src:      subject,
 					Endpoint: dpEndpoint,
 					Action:   action,
@@ -313,6 +320,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 					Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 				}
 				records = append(records, &record.DatapathRecord{
+					Policy:   policy,
 					Src:      processSrc,
 					Endpoint: dpEndpoint,
 					Action:   action,
@@ -329,7 +337,8 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 		if s.Policy.Default.EnforceAction != nil {
 			// Action is not part of the default action key so we just need Src field
 			records = append(records, &record.DatapathRecord{
-				Src: subject,
+				Policy: policy,
+				Src:    subject,
 				Endpoint: record.DatapathEndpoint{
 					EP:   nil,
 					Port: 0,
@@ -382,6 +391,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 				}
 
 				records = append(records, &record.DatapathRecord{
+					Policy:   policy,
 					Src:      processSrc,
 					Endpoint: endpoint,
 					Action:   action,
@@ -389,6 +399,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 			}
 			if len(s.Policy.Subject.InProcessName) == 0 {
 				records = append(records, &record.DatapathRecord{
+					Policy:   policy,
 					Src:      subject,
 					Endpoint: endpoint,
 					Action:   action,
@@ -427,6 +438,9 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 		// to do this walk all subjects and add the new dst. Merge conflicts
 		// are resolved by BPF datapath.
 		policyList := state.Src[d.Name]
+		policy := record.Policy{
+			Name: policyList.Name,
+		}
 		for _, subject := range policyList.Subjects {
 			action, err := calculateAction(&policyList.Policy.Action)
 			if err != nil {
@@ -453,6 +467,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 							Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 						}
 						records = append(records, &record.DatapathRecord{
+							Policy:   policy,
 							Src:      processSrc,
 							Endpoint: endpoint,
 							Action:   action,
@@ -470,6 +485,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 							Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 						}
 						records = append(records, &record.DatapathRecord{
+							Policy:   policy,
 							Src:      processSrc,
 							Endpoint: endpoint,
 							Action:   action,
@@ -483,6 +499,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 				}
 
 				records = append(records, &record.DatapathRecord{
+					Policy:   policy,
 					Src:      subject,
 					Endpoint: endpoint,
 					Action:   action,
