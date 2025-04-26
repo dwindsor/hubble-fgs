@@ -87,6 +87,7 @@
     - [HttpResponse](#tetragon-HttpResponse)
     - [Inode](#tetragon-Inode)
     - [InterfaceStats](#tetragon-InterfaceStats)
+    - [LinkArg](#tetragon-LinkArg)
     - [ProcessAccept](#tetragon-ProcessAccept)
     - [ProcessClose](#tetragon-ProcessClose)
     - [ProcessConnect](#tetragon-ProcessConnect)
@@ -1542,6 +1543,7 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 | rename_arg | [RenameFileArg](#tetragon-RenameFileArg) |  |  |
 | readdir_arg | [ReadDirArg](#tetragon-ReadDirArg) |  |  |
 | attr_arg | [AttrArg](#tetragon-AttrArg) |  |  |
+| link_arg | [LinkArg](#tetragon-LinkArg) |  |  |
 
 
 
@@ -1822,6 +1824,23 @@ HTTP PARSER
 | netns | [string](#string) |  |  |
 | container_name | [string](#string) |  |  |
 | qlen | [Histogram](#tetragon-Histogram) |  |  |
+
+
+
+
+
+
+<a name="tetragon-LinkArg"></a>
+
+### LinkArg
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| link | [FileDetails](#tetragon-FileDetails) |  |  |
+| target | [FileDetails](#tetragon-FileDetails) |  |  |
+| mnt_ns | [Namespace](#tetragon-Namespace) |  |  |
 
 
 

@@ -1623,9 +1623,9 @@ __generate_path(struct path *path, char *buf, __u32 bufsz, __u32 *sz, __u32 *fla
 }
 
 static inline __attribute__((always_inline)) void
-generate_path(struct msg_file_ops *msg, struct path *path)
+generate_path(struct msg_file_path *p, struct path *path)
 {
-	__generate_path(path, msg->path.str, sizeof(msg->path.str), &msg->path.size, &msg->path.flags);
+	__generate_path(path, p->str, sizeof(p->str), &p->size, &p->flags);
 }
 
 static inline __attribute__((always_inline)) void
@@ -1757,7 +1757,7 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path(msg, _(&file->f_path));
+	generate_path(&msg->path, _(&file->f_path));
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
@@ -1774,28 +1774,28 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	return operation;
 }
 
-static inline __attribute__((always_inline)) void generate_path_mixed(struct msg_file_ops *msg, struct path *dir, struct dentry *new_dentry)
+static inline __attribute__((always_inline)) void generate_path_mixed(struct msg_file_path *p, struct path *dir, struct dentry *new_dentry)
 {
 	__u64 path_size, dlen_size = 0;
 	struct qstr d_name;
 
 	// first copy the dir path
-	generate_path(msg, dir);
-	path_size = msg->path.size;
+	generate_path(p, dir);
+	path_size = p->size;
 
 	// now write a "/" after the dentry name
 	path_size &= 0xff;
-	msg->path.str[path_size] = '/';
+	p->str[path_size] = '/';
 	path_size++;
 
 	// at the end write the dentry name
 	probe_read_kernel(&d_name, sizeof(d_name), _(&new_dentry->d_name));
 	dlen_size = d_name.len &= 0x3f;
-	probe_read_kernel(msg->path.str + path_size, dlen_size, (const char *)d_name.name);
+	probe_read_kernel(p->str + path_size, dlen_size, (const char *)d_name.name);
 	path_size += dlen_size;
 
-	msg->path.size = path_size;
-	msg->path.flags = PATH_BASED_FILE;
+	p->size = path_size;
+	p->flags = PATH_BASED_FILE;
 }
 
 static inline __attribute__((always_inline)) void

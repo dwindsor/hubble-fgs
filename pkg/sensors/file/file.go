@@ -282,6 +282,10 @@ var (
 		{"file_heap_map", PrivateMap}, // for struct msg_file_ops
 	}
 
+	MiscLinkMaps = []MapInfo{
+		{"file_link_heap_map", PrivateMap}, // for struct msg_file_link_ops
+	}
+
 	CreateInodeMiscMaps = []MapInfo{
 		{"lpm_trie_heap_key", PrivateMap},
 		{"lpm_trie_map_alloc", SharedMap},
@@ -367,7 +371,7 @@ var (
 		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "lsm_security_mmap_file.o", "mmap_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		// security_path_* became part of sleepable_lsm_hooks in kernel 6.8 (https://github.com/torvalds/linux/commit/b13cddf633562b9b2c34fd63471d377019704ebe).
 		// Use probeDpathSecurityPathTruncate to check support for that.
-		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscLinkMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "security_path_mkdir", []FimFunc{{"security_path_mkdir(const struct path*, struct dentry*, umode_t)", "lsm_security_path_mkdir.o", "path_mkdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "security_path_rmdir", []FimFunc{{"security_path_rmdir(const struct path*, struct dentry*)", "lsm_security_path_rmdir.o", "path_rmdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "lsm_security_path_unlink.o", "path_unlink", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
@@ -382,7 +386,7 @@ var (
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_kernel_read_file.o", "kernel_read_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_file_open.o", "file_open", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_mmap_file.o", "mmap_file", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_link.o", "path_link", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_link.o", "path_link", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscLinkMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_mkdir.o", "path_mkdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_rmdir.o", "path_rmdir", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_unlink.o", "path_unlink", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
@@ -1008,6 +1012,7 @@ func init() {
 
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE, handleFileOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_RENAME, handleFileRenameOps)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_LINK, handleFileLinkOps)
 	rthooks.RegisterCallbacksAtInit(rthooks.Callbacks{
 		CreateContainer: rthooksCreateContainer,
 	})
@@ -1108,6 +1113,40 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		TpMessage:   pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
 		Digest:      digest,
 		OpenFlags:   m.OpenFlags,
+	}
+
+	return []observer.Event{unix}, nil
+}
+
+func handleFileLinkOps(r *bytes.Reader) ([]observer.Event, error) {
+	m := fileapi.MsgFileLinkEvent{}
+	err := binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileLink)
+		return nil, fmt.Errorf("failed to read file link operation: %w", err)
+	}
+
+	targetStr := strutils.UTF8FromBPFBytes(m.Target.Path.Str[:])
+	if uint32(len(targetStr)) > m.Target.Path.Size {
+		targetStr = targetStr[:m.Target.Path.Size]
+	}
+
+	linkStr := strutils.UTF8FromBPFBytes(m.Link.Path.Str[:])
+	if uint32(len(linkStr)) > m.Link.Path.Size {
+		linkStr = linkStr[:m.Link.Path.Size]
+	}
+
+	unix := &file.MsgFileLinkEventUnix{
+		Msg:            &m,
+		TargetPath:     targetStr,
+		TargetFs:       createFsInfoUnix(m.Target.Fs),
+		TargetParentFs: createFsInfoUnix(m.Target.ParentFs),
+		LinkPath:       linkStr,
+		LinkFs:         createFsInfoUnix(m.Link.Fs),
+		LinkParentFs:   createFsInfoUnix(m.Link.ParentFs),
+		TpName:         pol.FileMonitoringTable.GetTpName(m.TpId),
+		TpRule:         pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
+		TpMessage:      pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
 	}
 
 	return []observer.Event{unix}, nil

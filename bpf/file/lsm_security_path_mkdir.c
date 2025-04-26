@@ -30,7 +30,7 @@ static inline __attribute__((always_inline)) __u32 path_mkdir(void *ctx, const s
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path_mixed(msg, (struct path *)dir, new_dentry);
+	generate_path_mixed(&msg->path, (struct path *)dir, new_dentry);
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

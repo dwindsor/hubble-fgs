@@ -138,6 +138,8 @@ func TestStructAlignments(t *testing.T) {
 		"msg_file_split_path":        {fileapi.MsgFileSplitPath{}},
 		"msg_rename_elem":            {fileapi.MsgRenameElem{}},
 		"msg_file_rename_ops":        {fileapi.MsgFileRenameEvent{}},
+		"msg_link_elem":              {fileapi.MsgLinkElem{}},
+		"msg_file_link_ops":          {fileapi.MsgFileLinkEvent{}},
 		"file_config_map_value":      {fileapi.FileConfigMapValue{}},
 		"file_exec_config_map_value": {fileapi.FileExecConfigMapValue{}},
 		"lpm_key":                    {fileapi.LPMMapKey{}},

@@ -50,7 +50,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path(msg, _(&file->f_path));
+	generate_path(&msg->path, _(&file->f_path));
 
 	msg->digest.ok = 1;
 	msg->digest.algo = ima_file_hash(_(bprm->file), msg->digest.digest, IMA_MAX_DIGEST_SIZE);

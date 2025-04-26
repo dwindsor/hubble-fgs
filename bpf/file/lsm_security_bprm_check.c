@@ -33,7 +33,7 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path(msg, _(&file->f_path));
+	generate_path(&msg->path, _(&file->f_path));
 
 	msg->is_exe_from_memfd = is_memfd(file);
 	msg->is_exe_upper_layer = is_dentry_upper(file);

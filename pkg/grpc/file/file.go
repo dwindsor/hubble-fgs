@@ -470,6 +470,80 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	return tetragonEvent
 }
 
+func GetProcessFileLink(event *MsgFileLinkEventUnix) *tetragon.ProcessFile {
+	var tetragonParent, tetragonProcess *tetragon.Process
+
+	internal, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
+	if internal == nil {
+		tetragonProcess = &tetragon.Process{
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
+		}
+	} else {
+		tetragonProcess = internal.UnsafeGetProcess()
+	}
+	if parent != nil {
+		tetragonParent = parent.UnsafeGetProcess()
+	}
+
+	action := tetragon.FileAction(event.Msg.Action)
+	args := &tetragon.LinkArg{
+		Link: &tetragon.FileDetails{
+			Filename: &tetragon.FileDetails_Str{Str: event.LinkPath},
+			Inode: &tetragon.Inode{
+				Number: event.Msg.Link.Ino,
+				Fs:     createFileSystem(event.LinkFs, event.Msg.Link.Fs.SDev),
+			},
+			ParentInode: &tetragon.Inode{
+				Number: event.Msg.Link.ParentIno,
+				Fs:     createFileSystem(event.LinkParentFs, event.Msg.Link.ParentFs.SDev),
+			},
+		},
+		Target: &tetragon.FileDetails{
+			Filename: &tetragon.FileDetails_Str{Str: event.TargetPath},
+			Inode: &tetragon.Inode{
+				Number: event.Msg.Target.Ino,
+				Fs:     createFileSystem(event.TargetFs, event.Msg.Target.Fs.SDev),
+			},
+			ParentInode: &tetragon.Inode{
+				Number: event.Msg.Target.ParentIno,
+				Fs:     createFileSystem(event.TargetParentFs, event.Msg.Target.ParentFs.SDev),
+			},
+		},
+		MntNs: createMntNs(event.Msg.MntNs),
+	}
+
+	tetragonEvent := &tetragon.ProcessFile{
+		Process:       tetragonProcess,
+		Parent:        tetragonParent,
+		Action:        action,
+		Args:          &tetragon.FileArgument{Arg: &tetragon.FileArgument_LinkArg{LinkArg: args}},
+		Time:          ktime.ToProto(event.Msg.Timestamp),
+		Hook:          fileHookMap[event.Msg.Hook],
+		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
+		TracingPolicy: event.TpName,
+		RuleMatched:   event.TpRule,
+		Message:       event.TpMessage,
+	}
+
+	filemetrics.FileTotalEventsInc()
+
+	ec := eventcache.Get()
+	if ec != nil &&
+		(ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
+		filemetrics.FileTotalCacheInEventsInc()
+		ec.Add(nil, tetragonEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
+		return nil
+	}
+
+	if internal != nil {
+		tetragonEvent.Process = internal.GetProcessCopy()
+		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Msg.Tid)
+	}
+	handleFileTotalActionEvents(tetragonEvent, event.TpName, event.TpRule)
+	return tetragonEvent
+}
+
 func GetProcessFileExec(event *MsgFileEventUnix) *tetragon.ProcessFileExec {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
@@ -569,6 +643,16 @@ func handleFileEventCacheRetryMetrics(ev notify.Event, msg *MsgFileEventUnix) {
 	}
 }
 
+func handleFileLinkEventCacheRetryMetrics(ev notify.Event, msg *MsgFileLinkEventUnix) {
+	event := ev.Encapsulate()
+	switch e := event.(type) {
+	case *tetragon.GetEventsResponse_ProcessFile:
+		handleFileTotalActionEvents(e.ProcessFile, msg.TpName, msg.TpRule)
+	default:
+		filemetrics.FileTotalErrorsInc(filemetrics.GrpcEventcacheRetry)
+	}
+}
+
 func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
 	return eventcache.HandleGenericInternal(ev, p.Pid.Value, &msg.Msg.Tid, timestamp)
@@ -618,6 +702,52 @@ func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 
 func (msg *MsgFileEventUnix) Cast(_ interface{}) notify.Message {
 	return &MsgFileEventUnix{}
+}
+
+type MsgFileLinkEventUnix struct {
+	Msg            *fileapi.MsgFileLinkEvent
+	TargetPath     string
+	TargetFs       MsgFsInfoUnix
+	TargetParentFs MsgFsInfoUnix
+	LinkPath       string
+	LinkFs         MsgFsInfoUnix
+	LinkParentFs   MsgFsInfoUnix
+	TpName         string
+	TpRule         string
+	TpMessage      string
+}
+
+func (msg *MsgFileLinkEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	p := ev.GetProcess()
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, &msg.Msg.Tid, timestamp)
+}
+
+func (msg *MsgFileLinkEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	if err := eventcache.HandleGenericEvent(internal, ev, nil); err != nil {
+		return err
+	}
+	handleFileLinkEventCacheRetryMetrics(ev, msg)
+	return nil
+}
+
+func (msg *MsgFileLinkEventUnix) Notify() bool {
+	filemetrics.FileTotalCacheOutEventsInc()
+	return true
+}
+
+func (msg *MsgFileLinkEventUnix) HandleMessage() *tetragon.GetEventsResponse {
+	f := GetProcessFileLink(msg)
+	if f == nil {
+		return nil
+	}
+	return &tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessFile{ProcessFile: f},
+		Time:  ktime.ToProto(msg.Msg.Common.Ktime),
+	}
+}
+
+func (msg *MsgFileLinkEventUnix) Cast(_ interface{}) notify.Message {
+	return &MsgFileLinkEventUnix{}
 }
 
 func GetRenameFlags(flags uint32) []string {

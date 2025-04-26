@@ -33,6 +33,7 @@ const (
 	SensorFileRPCInitCont
 	SensorFileRPCDestroyCont
 	SensorFileOp
+	SensorFileLink
 	SensorFileMv
 	SensorFileMvTcId
 	SensorFileMvScanner
@@ -59,6 +60,7 @@ var fileErrorLabelValues = map[FileError]string{
 	SensorFileRPCInitCont:             "sensor_file_rpc_init_cont",
 	SensorFileRPCDestroyCont:          "sensor_file_rpc_destroy_cont",
 	SensorFileOp:                      "sensor_file_op",
+	SensorFileLink:                    "sensor_file_link",
 	SensorFileMv:                      "sensor_file_mv",
 	SensorFileMvTcId:                  "sensor_file_mv_tcid",
 	SensorFileMvScanner:               "sensor_file_mv_scanner",

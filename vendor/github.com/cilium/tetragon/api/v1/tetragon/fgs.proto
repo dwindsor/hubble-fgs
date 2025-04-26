@@ -333,12 +333,19 @@ message AttrArg {
   tetragon.Namespace mnt_ns = 3;
 }
 
+message LinkArg {
+  FileDetails link = 1;
+  FileDetails target = 2;
+  tetragon.Namespace mnt_ns = 3;
+}
+
 message FileArgument {
   oneof arg {
     GenericFileArg generic_arg = 1;
     RenameFileArg rename_arg = 2;
     ReadDirArg readdir_arg = 3;
     AttrArg attr_arg = 4;
+    LinkArg link_arg = 5;
   }
 }
 

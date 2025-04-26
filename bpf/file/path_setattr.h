@@ -25,7 +25,7 @@ static inline __attribute__((always_inline)) __u32 path_setattr(void *ctx, const
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path(msg, (struct path *)path);
+	generate_path(&msg->path, (struct path *)path);
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

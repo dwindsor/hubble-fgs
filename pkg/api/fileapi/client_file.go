@@ -138,6 +138,32 @@ type MsgFileEvent struct {
 	MessageId       uint32                  `align:"msg_id"`
 }
 
+type MsgLinkElem struct {
+	Ino       uint64      `align:"ino"`
+	Fs        MsgFsInfo   `align:"fs"`
+	ParentIno uint64      `align:"parent_ino"`
+	ParentFs  MsgFsInfo   `align:"parent_fs"`
+	Path      MsgFilePath `align:"path"`
+}
+
+type MsgFileLinkEvent struct {
+	Common     processapi.MsgCommon    `align:"common"`
+	ProcessKey processapi.MsgExecveKey `align:"current"`
+	Action     uint32                  `align:"action"`
+	Hook       uint32                  `align:"hook"`
+	Timestamp  uint64                  `align:"ktime"`
+	Target     MsgLinkElem             `align:"target"`
+	Link       MsgLinkElem             `align:"link"`
+	MntNs      uint32                  `align:"mnt_ns"`
+	Flags      uint32                  `align:"flags"`
+	TpId       uint32                  `align:"tp_id"`
+	Operation  uint32                  `align:"operation"`
+	RuleID     uint32                  `align:"rule_id"`
+	Tid        uint32                  `align:"tid"`
+	MessageId  uint32                  `align:"msg_id"`
+	Pad        uint32                  `align:"pad"`
+}
+
 type MsgFileSplitPath struct {
 	Dir         [256]byte `align:"dir"`  // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
 	Name        [128]byte `align:"name"` // should match MAX_NAME_SIZE in bpf/lib/generic.h

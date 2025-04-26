@@ -35,7 +35,7 @@ static inline __attribute__((always_inline)) __u32 path_file_open(void *ctx, str
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path(msg, _(&file->f_path));
+	generate_path(&msg->path, _(&file->f_path));
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

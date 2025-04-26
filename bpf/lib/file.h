@@ -255,6 +255,32 @@ struct msg_file_ops {
 	__u32 msg_id;
 };
 
+struct msg_link_elem {
+	__u64 ino;
+	struct msg_fs_info fs;
+	__u64 parent_ino;
+	struct msg_fs_info parent_fs;
+	struct msg_file_path path;
+};
+
+struct msg_file_link_ops {
+	struct msg_common common;
+	struct msg_execve_key current;
+	__u32 action;
+	__u32 hook;
+	__u64 ktime;
+	struct msg_link_elem target;
+	struct msg_link_elem link;
+	__u32 mnt_ns;
+	__u32 flags;
+	__u32 tp_id;
+	__u32 operation; // FILE_OP_POST or FILE_OP_BLOCK
+	__u32 rule_id;
+	__u32 tid;
+	__u32 msg_id;
+	__u32 pad;
+};
+
 struct vfs_mkdir_info {
 	struct dentry *dentry;
 	struct msg_file_ops msg;
