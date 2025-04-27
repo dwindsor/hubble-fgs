@@ -73,6 +73,12 @@ type MsgFilePath struct {
 	ContainerID [64]byte  `align:"container_id"`
 }
 
+type MsgFilePathSimple struct {
+	Str   [256]byte `align:"str"` // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
+	Size  uint32    `align:"size"`
+	Flags uint32    `align:"flags"`
+}
+
 type MsgFsInfo struct {
 	SDev  uint32   `align:"dev"`
 	Pad   uint32   `align:"pad"`
@@ -153,6 +159,24 @@ type MsgFileLinkEvent struct {
 	Hook       uint32                  `align:"hook"`
 	Timestamp  uint64                  `align:"ktime"`
 	Target     MsgLinkElem             `align:"target"`
+	Link       MsgLinkElem             `align:"link"`
+	MntNs      uint32                  `align:"mnt_ns"`
+	Flags      uint32                  `align:"flags"`
+	TpId       uint32                  `align:"tp_id"`
+	Operation  uint32                  `align:"operation"`
+	RuleID     uint32                  `align:"rule_id"`
+	Tid        uint32                  `align:"tid"`
+	MessageId  uint32                  `align:"msg_id"`
+	Pad        uint32                  `align:"pad"`
+}
+
+type MsgFileSymlinkEvent struct {
+	Common     processapi.MsgCommon    `align:"common"`
+	ProcessKey processapi.MsgExecveKey `align:"current"`
+	Action     uint32                  `align:"action"`
+	Hook       uint32                  `align:"hook"`
+	Timestamp  uint64                  `align:"ktime"`
+	Target     MsgFilePathSimple       `align:"target"`
 	Link       MsgLinkElem             `align:"link"`
 	MntNs      uint32                  `align:"mnt_ns"`
 	Flags      uint32                  `align:"flags"`
@@ -322,7 +346,8 @@ const (
 	FileHookSecurityChmod          = 35
 	FileHookSecurityChown          = 36
 	FileHookSecurityTruncate       = 37
-	FileHookMax                    = 38
+	FileHookSecuritySymlink        = 38
+	FileHookMax                    = 39
 )
 
 type FileErrors struct {

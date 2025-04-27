@@ -51,6 +51,8 @@ struct full_path _full_path;
 struct glob_state _glob_state;
 struct msg_link_elem _msg_link_elem;
 struct msg_file_link_ops _msg_file_link_ops;
+struct msg_file_path_simple _msg_file_path_simple;
+struct msg_file_symlink_ops _msg_file_symlink_ops;
 
 struct fd_lookup_config _fd_lookup_config;
 

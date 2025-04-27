@@ -736,6 +736,7 @@ spec:
                                   - FILE_EXEC
                                   - FILE_LINK
                                   - FILE_OPEN
+                                  - FILE_SYMLINK
                                   type: string
                                 type: array
                             required:

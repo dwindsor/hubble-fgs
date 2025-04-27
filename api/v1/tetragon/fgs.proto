@@ -222,6 +222,7 @@ enum FileAction {
   FILE_EXEC = 10;
   FILE_LINK = 11;
   FILE_OPEN = 12;
+  FILE_SYMLINK = 13;
 }
 
 message FileSystem {
@@ -339,6 +340,12 @@ message LinkArg {
   tetragon.Namespace mnt_ns = 3;
 }
 
+message SymlinkArg {
+  FileDetails link = 1;
+  string target = 2;
+  tetragon.Namespace mnt_ns = 3;
+}
+
 message FileArgument {
   oneof arg {
     GenericFileArg generic_arg = 1;
@@ -346,6 +353,7 @@ message FileArgument {
     ReadDirArg readdir_arg = 3;
     AttrArg attr_arg = 4;
     LinkArg link_arg = 5;
+    SymlinkArg symlink_arg = 6;
   }
 }
 

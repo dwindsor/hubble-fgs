@@ -116,7 +116,8 @@ const (
 	MSG_OP_RAWSOCK_CREATE = 137
 	MSG_OP_RAWSOCK_CLOSE  = 138
 
-	MSG_OP_FILE_LINK = 139
+	MSG_OP_FILE_LINK    = 139
+	MSG_OP_FILE_SYMLINK = 140
 )
 
 var OpCodeStrings = map[OpCode]string{
@@ -159,6 +160,7 @@ var OpCodeStrings = map[OpCode]string{
 	MSG_OP_RAWSOCK_CREATE:            "RawsockCreate",
 	MSG_OP_RAWSOCK_CLOSE:             "RawsockClose",
 	MSG_OP_FILE_LINK:                 "FileLink",
+	MSG_OP_FILE_SYMLINK:              "FileSymlink",
 }
 
 func (op OpCode) String() string {

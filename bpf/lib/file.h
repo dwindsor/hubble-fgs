@@ -48,6 +48,7 @@ enum {
 	action_exec = 10,
 	action_link = 11,
 	action_open = 12,
+	action_symlink = 13,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -90,7 +91,8 @@ enum {
 	hook_security_path_chmod = 35,
 	hook_security_path_chown = 36,
 	hook_security_path_truncate = 37,
-	hook_max = 38,
+	hook_security_path_symlink = 38,
+	hook_max = 39,
 };
 
 enum {
@@ -160,6 +162,12 @@ struct msg_file_path {
 	__u32 size;
 	__u32 flags;
 	char container_id[CONTAINER_ID_LEN];
+};
+
+struct msg_file_path_simple {
+	char str[MAX_FILEPATH_SIZE];
+	__u32 size;
+	__u32 flags;
 };
 
 // The file system name is a pointer to char (i.e. https://elixir.bootlin.com/linux/v6.8/source/include/linux/fs.h#L2445).
@@ -270,6 +278,24 @@ struct msg_file_link_ops {
 	__u32 hook;
 	__u64 ktime;
 	struct msg_link_elem target;
+	struct msg_link_elem link;
+	__u32 mnt_ns;
+	__u32 flags;
+	__u32 tp_id;
+	__u32 operation; // FILE_OP_POST or FILE_OP_BLOCK
+	__u32 rule_id;
+	__u32 tid;
+	__u32 msg_id;
+	__u32 pad;
+};
+
+struct msg_file_symlink_ops {
+	struct msg_common common;
+	struct msg_execve_key current;
+	__u32 action;
+	__u32 hook;
+	__u64 ktime;
+	struct msg_file_path_simple target;
 	struct msg_link_elem link;
 	__u32 mnt_ns;
 	__u32 flags;

@@ -591,7 +591,7 @@ Total number of process_file event errors (can be from the grpc or sensor).
 
 | label | values |
 | ----- | ------ |
-| `reason` | `grpc_eventcache_retry, grpc_nil_ev_proc, grpc_not_valid_action, grpc_not_valid_op, grpc_op_gt_one, metrics_inode_map, metrics_kernel_errors_map, sensor_file_destroy_podDelete_scanner, sensor_file_destroy_podUpdate_scanner, sensor_file_get_pod_info, sensor_file_init_container_scanner, sensor_file_init_podAdd_scanner, sensor_file_init_podUpdate_scanner, sensor_file_init_scanner, sensor_file_link, sensor_file_mv, sensor_file_mv_scanner, sensor_file_mv_tcid, sensor_file_op, sensor_file_rpc_destroy_cont, sensor_file_rpc_init_cont, sensor_file_rpc_init_host, sensor_file_rpc_scanner, sensor_file_rpc_terminate` |
+| `reason` | `grpc_eventcache_retry, grpc_nil_ev_proc, grpc_not_valid_action, grpc_not_valid_op, grpc_op_gt_one, metrics_inode_map, metrics_kernel_errors_map, sensor_file_destroy_podDelete_scanner, sensor_file_destroy_podUpdate_scanner, sensor_file_get_pod_info, sensor_file_init_container_scanner, sensor_file_init_podAdd_scanner, sensor_file_init_podUpdate_scanner, sensor_file_init_scanner, sensor_file_link, sensor_file_mv, sensor_file_mv_scanner, sensor_file_mv_tcid, sensor_file_op, sensor_file_rpc_destroy_cont, sensor_file_rpc_init_cont, sensor_file_rpc_init_host, sensor_file_rpc_scanner, sensor_file_rpc_terminate, sensor_file_symlink` |
 
 ### `tetragon_file_events_total`
 
@@ -787,7 +787,7 @@ Total file events per action
 
 | label | values |
 | ----- | ------ |
-| `action` | `FILE_CHATTR, FILE_CREATE, FILE_DELETE, FILE_EXEC, FILE_INVALID, FILE_LINK, FILE_MKDIR, FILE_OPEN, FILE_READ, FILE_READDIR, FILE_RENAME, FILE_RMDIR, FILE_WRITE` |
+| `action` | `FILE_CHATTR, FILE_CREATE, FILE_DELETE, FILE_EXEC, FILE_INVALID, FILE_LINK, FILE_MKDIR, FILE_OPEN, FILE_READ, FILE_READDIR, FILE_RENAME, FILE_RMDIR, FILE_SYMLINK, FILE_WRITE` |
 | `namespace` | `example-namespace` |
 | `node ` | `example-nodename` |
 | `operation` | `FILE_OP_BLOCK, FILE_OP_NOPOST, FILE_OP_POST, FILE_OP_UNKNOWN` |

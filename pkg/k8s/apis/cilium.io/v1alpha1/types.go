@@ -151,7 +151,7 @@ func (tp *TracingPolicy) TpName() string {
 
 // OperationSelectorValue represents the value for MatchOperations.
 //
-// +kubebuilder:validation:Enum=FILE_INVALID;FILE_WRITE;FILE_READ;FILE_DELETE;FILE_CREATE;FILE_RMDIR;FILE_MKDIR;FILE_RENAME;FILE_READDIR;FILE_CHATTR;FILE_EXEC;FILE_LINK;FILE_OPEN
+// +kubebuilder:validation:Enum=FILE_INVALID;FILE_WRITE;FILE_READ;FILE_DELETE;FILE_CREATE;FILE_RMDIR;FILE_MKDIR;FILE_RENAME;FILE_READDIR;FILE_CHATTR;FILE_EXEC;FILE_LINK;FILE_OPEN;FILE_SYMLINK
 type OperationSelectorValue = string
 
 type OperationSelector struct {

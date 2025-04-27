@@ -152,6 +152,8 @@ func TestStructAlignments(t *testing.T) {
 		"pattern_val":                {fileapi.PatternValue{}},
 		"full_path":                  {fileapi.FullPath{}},
 		"glob_state":                 {fm.GlobState{}},
+		"msg_file_path_simple":       {fileapi.MsgFilePathSimple{}},
+		"msg_file_symlink_ops":       {fileapi.MsgFileSymlinkEvent{}},
 	}
 	err := check.CheckStructAlignments(path, toCheck, true)
 	if err != nil {

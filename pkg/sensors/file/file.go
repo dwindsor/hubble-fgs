@@ -286,6 +286,10 @@ var (
 		{"file_link_heap_map", PrivateMap}, // for struct msg_file_link_ops
 	}
 
+	MiscSymlinkMaps = []MapInfo{
+		{"file_symlink_heap_map", PrivateMap}, // for struct msg_file_link_ops
+	}
+
 	CreateInodeMiscMaps = []MapInfo{
 		{"lpm_trie_heap_key", PrivateMap},
 		{"lpm_trie_map_alloc", SharedMap},
@@ -379,6 +383,7 @@ var (
 		{"lsm", "security_path_chmod", []FimFunc{{"security_path_chmod(const struct path*, umode_t)", "lsm_security_path_chmod.o", "path_chmod", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_chown.o", "path_chown", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], {{"file_rename_heap_map", PrivateMap}}, {{"rename_path_heap", PrivateMap}}, PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_path_symlink", []FimFunc{{"security_path_symlink(const struct path*, struct dentry*, const int*)", "lsm_security_path_symlink.o", "path_symlink", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscSymlinkMaps[:], PathBasedTailCallMaps[:]}}}},
 	}
 
 	FimPathBasedTailCallHooks = [...]FimHook{
@@ -394,6 +399,7 @@ var (
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_chmod.o", "path_chmod", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_chown.o", "path_chown", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_rename.o", "path_rename", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], {{"file_rename_heap_map", PrivateMap}}, {{"rename_path_heap", PrivateMap}}, PathBasedTailCallMaps[:]}}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_symlink.o", "path_symlink", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscSymlinkMaps[:], PathBasedTailCallMaps[:]}}}},
 	}
 
 	FimPathBasedHooksExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}}
@@ -1013,6 +1019,7 @@ func init() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE, handleFileOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_RENAME, handleFileRenameOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_LINK, handleFileLinkOps)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_SYMLINK, handleFileSymlinkOps)
 	rthooks.RegisterCallbacksAtInit(rthooks.Callbacks{
 		CreateContainer: rthooksCreateContainer,
 	})
@@ -1147,6 +1154,38 @@ func handleFileLinkOps(r *bytes.Reader) ([]observer.Event, error) {
 		TpName:         pol.FileMonitoringTable.GetTpName(m.TpId),
 		TpRule:         pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
 		TpMessage:      pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
+	}
+
+	return []observer.Event{unix}, nil
+}
+
+func handleFileSymlinkOps(r *bytes.Reader) ([]observer.Event, error) {
+	m := fileapi.MsgFileSymlinkEvent{}
+	err := binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileSymlink)
+		return nil, fmt.Errorf("failed to read file symlink operation: %w", err)
+	}
+
+	linkStr := strutils.UTF8FromBPFBytes(m.Link.Path.Str[:])
+	if uint32(len(linkStr)) > m.Link.Path.Size {
+		linkStr = linkStr[:m.Link.Path.Size]
+	}
+
+	targetStr := strutils.UTF8FromBPFBytes(m.Target.Str[:])
+	if uint32(len(targetStr)) > m.Target.Size {
+		targetStr = targetStr[:m.Target.Size]
+	}
+
+	unix := &file.MsgFileSymlinkEventUnix{
+		Msg:          &m,
+		TargetPath:   targetStr,
+		LinkPath:     linkStr,
+		LinkFs:       createFsInfoUnix(m.Link.Fs),
+		LinkParentFs: createFsInfoUnix(m.Link.ParentFs),
+		TpName:       pol.FileMonitoringTable.GetTpName(m.TpId),
+		TpRule:       pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
+		TpMessage:    pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
 	}
 
 	return []observer.Event{unix}, nil
@@ -1588,7 +1627,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			checkReWrite = probeDpathSecurityKernelReadFile
 		case "lsm_security_file_open.o", "lsm_security_mmap_file.o", "lsm_security_bprm_check.o", "lsm_security_bprm_check_digests.o":
 			checkReWrite = probeDpathSecurityFileOpen
-		case "lsm_security_path_link.o", "lsm_security_path_mkdir.o", "lsm_security_path_rmdir.o", "lsm_security_path_unlink.o", "lsm_security_path_truncate.o", "lsm_security_path_chmod.o", "lsm_security_path_chown.o", "lsm_security_path_rename.o":
+		case "lsm_security_path_link.o", "lsm_security_path_symlink.o", "lsm_security_path_mkdir.o", "lsm_security_path_rmdir.o", "lsm_security_path_unlink.o", "lsm_security_path_truncate.o", "lsm_security_path_chmod.o", "lsm_security_path_chown.o", "lsm_security_path_rename.o":
 			checkReWrite = probeDpathSecurityPathTruncate
 		}
 		if checkReWrite != nil {
@@ -2416,6 +2455,14 @@ var (
 		"file_monitoring",
 	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
 
+	SecurityPathSymlink = program.Builder(
+		"lsm_dispatcher_path_symlink.o",
+		"path_symlink",
+		"lsm/path_symlink",
+		"lsm_path_symlink",
+		"file_monitoring",
+	).SetPolicy(baseFIMPolicy).SetLoaderData(FimLoaderData{tp: "lsm", tail: TailCallIndex{valid: true, index: 0}})
+
 	baseFIMPrograms = []*program.Program{
 		SecurityFilePermission,
 		SecurityKernelReadFile,
@@ -2430,6 +2477,7 @@ var (
 		SecurityPathChown,
 		SecurityPathRename,
 		SecurityBprmCheck,
+		SecurityPathSymlink,
 	}
 
 	PolicyFilterReverseMaps = program.MapBuilder("policy_filter_cgroup_maps", baseFIMPrograms...)
@@ -2451,6 +2499,7 @@ var (
 		SecurityPathChown.Label:      program.MapBuilderProgram("fim_tail_calls", SecurityPathChown),
 		SecurityPathRename.Label:     program.MapBuilderProgram("fim_tail_calls", SecurityPathRename),
 		SecurityBprmCheck.Label:      program.MapBuilderProgram("fim_tail_calls", SecurityBprmCheck),
+		SecurityPathSymlink.Label:    program.MapBuilderProgram("fim_tail_calls", SecurityPathSymlink),
 	}
 )
 

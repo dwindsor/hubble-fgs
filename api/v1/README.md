@@ -108,6 +108,7 @@
     - [Service](#tetragon-Service)
     - [SockInfo](#tetragon-SockInfo)
     - [SocketStats](#tetragon-SocketStats)
+    - [SymlinkArg](#tetragon-SymlinkArg)
     - [Tls](#tetragon-Tls)
   
     - [DigestAlgo](#tetragon-DigestAlgo)
@@ -1544,6 +1545,7 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 | readdir_arg | [ReadDirArg](#tetragon-ReadDirArg) |  |  |
 | attr_arg | [AttrArg](#tetragon-AttrArg) |  |  |
 | link_arg | [LinkArg](#tetragon-LinkArg) |  |  |
+| symlink_arg | [SymlinkArg](#tetragon-SymlinkArg) |  |  |
 
 
 
@@ -2313,6 +2315,23 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 
 
 
+<a name="tetragon-SymlinkArg"></a>
+
+### SymlinkArg
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| link | [FileDetails](#tetragon-FileDetails) |  |  |
+| target | [string](#string) |  |  |
+| mnt_ns | [Namespace](#tetragon-Namespace) |  |  |
+
+
+
+
+
+
 <a name="tetragon-Tls"></a>
 
 ### Tls
@@ -2407,6 +2426,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | FILE_EXEC | 10 |  |
 | FILE_LINK | 11 |  |
 | FILE_OPEN | 12 |  |
+| FILE_SYMLINK | 13 |  |
 
 
 
