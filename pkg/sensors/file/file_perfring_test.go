@@ -477,9 +477,14 @@ func TestFileGlobMatch(t *testing.T) {
 		execFn("/usr/bin/mv", d, e) // nothing match
 		execFn("/usr/bin/mv", e, c) // dst match
 
+		execFn("/usr/bin/ln", c, e)       // src match
+		execFn("/usr/bin/ln", "-s", c, d) // src match
+
 		execFn("/usr/bin/rm", a) // match
 		execFn("/usr/bin/rm", b) // no match
 		execFn("/usr/bin/rm", c) // match
+		execFn("/usr/bin/rm", d) // no match
+		execFn("/usr/bin/rm", e) // no match
 	}
 
 	events := perfring.RunTestEvents(t, ctx, ops)
@@ -490,15 +495,23 @@ func TestFileGlobMatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	capturedEvents := 0
+	capturedLinkEvents := 0
+	capturedSymlinkEvents := 0
 	for _, ev := range events {
 		if _, ok := ev.(*grpc.MsgFileEventUnix); ok {
 			capturedEvents++
+		} else if _, ok := ev.(*grpc.MsgFileLinkEventUnix); ok {
+			capturedLinkEvents++
+		} else if _, ok := ev.(*grpc.MsgFileSymlinkEventUnix); ok {
+			capturedSymlinkEvents++
 		} else if _, ok := ev.(*grpc.MsgFileRenameEventUnix); ok {
 			capturedEvents++
 		}
 	}
 
 	assert.Equal(t, capturedEvents, 6, "we expect to have 6 events")
+	assert.Equal(t, capturedLinkEvents, 1, "we expect to have 1 link event")
+	assert.Equal(t, capturedSymlinkEvents, 1, "we expect to have 1 symlink event")
 }
 
 func TestFileDigestMatch(t *testing.T) {
