@@ -15,6 +15,7 @@ package layer3_test
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"syscall"
 	"testing"
@@ -68,7 +69,7 @@ func getRawsockObserverWithEnable(t *testing.T, ctx context.Context) *observer.O
 	return getLayer3Observer(t, ctx, rawsockConfigWithCloseEvents, true)
 }
 
-func testRawsockCreateClose(t *testing.T, ty int) {
+func TestRawsockBasic(t *testing.T) {
 	if !utils.RawHooksAvailable() {
 		t.Skipf("This test requires raw socket support, skipping")
 	}
@@ -79,6 +80,22 @@ func testRawsockCreateClose(t *testing.T, ty int) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
+	obs := getRawsockObserverWithEnable(t, ctx)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	for testNum := 1; testNum <= 6; testNum++ {
+		t.Logf("Running test: %d", testNum)
+		if !t.Run(fmt.Sprintf("Rawsock%d", testNum), func(lt *testing.T) {
+			testRawsockCreateClose(t, lt, &readyWG, testNum)
+		}) {
+			t.Logf("Test %d failed", testNum)
+			break
+		}
+		t.Logf("Test %d was successful", testNum)
+	}
+}
+
+func testRawsockCreateClose(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup, ty int) {
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
@@ -93,9 +110,6 @@ func testRawsockCreateClose(t *testing.T, ty int) {
 			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(1 * time.Second)},
 				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
 	)
-
-	obs := getRawsockObserverWithEnable(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 
@@ -124,32 +138,8 @@ func testRawsockCreateClose(t *testing.T, ty int) {
 	syscall.Close(fd)
 	syscall.ForkLock.Unlock()
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
-}
-
-func TestRawsockCreateClose1(t *testing.T) {
-	testRawsockCreateClose(t, 1)
-}
-
-func TestRawsockCreateClose2(t *testing.T) {
-	testRawsockCreateClose(t, 2)
-}
-
-func TestRawsockCreateClose3(t *testing.T) {
-	testRawsockCreateClose(t, 3)
-}
-
-func TestRawsockCreateClose4(t *testing.T) {
-	testRawsockCreateClose(t, 4)
-}
-
-func TestRawsockCreateClose5(t *testing.T) {
-	testRawsockCreateClose(t, 5)
-}
-
-func TestRawsockCreateClose6(t *testing.T) {
-	testRawsockCreateClose(t, 6)
 }
 
 func TestRawsockCLISwitch(t *testing.T) {
