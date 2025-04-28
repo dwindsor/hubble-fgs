@@ -43,6 +43,8 @@ message DestinationStats {
   uint64 TxQuota = 5;
   google.protobuf.Timestamp KtimeLastReset = 6;
   google.protobuf.Timestamp KtimeTxReset = 7;
+  uint64 DefaultAllowBytes = 8;
+  uint64 DefaultDenyBytes = 9;
 }
 
 message Destination {

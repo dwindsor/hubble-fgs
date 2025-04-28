@@ -3451,6 +3451,8 @@ Determins the behaviour of a field filter
 | TxQuota | [uint64](#uint64) |  |  |
 | KtimeLastReset | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
 | KtimeTxReset | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| DefaultAllowBytes | [uint64](#uint64) |  |  |
+| DefaultDenyBytes | [uint64](#uint64) |  |  |
 
 
 
