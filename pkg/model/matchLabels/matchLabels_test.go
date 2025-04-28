@@ -10,10 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMain(m *testing.M) {
-	m.Run()
-}
-
 func TestGetLabels(t *testing.T) {
 	netpol := &types.TetragonNetworkPolicy{}
 	s1 := &LabelSet{

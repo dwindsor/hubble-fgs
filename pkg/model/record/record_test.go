@@ -10,10 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMain(m *testing.M) {
-	m.Run()
-}
-
 func TestDiffEmptySets(t *testing.T) {
 	emptyA := []*DatapathRecord{}
 	emptyB := []*DatapathRecord{}

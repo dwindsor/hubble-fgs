@@ -6,10 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMain(m *testing.M) {
-	m.Run()
-}
-
 func TestFromYAML(t *testing.T) {
 	policy :=
 		`apiVersion: cilium.io/v1alpha1
