@@ -15,16 +15,16 @@ jobs:
       matrix:
         os: [ ubuntu-22.04, ubuntu-22.04-arm64 ]
     steps:
+    - name: Checkout code
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      with:
+        submodules: true
+
     - name: Install Go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         # renovate: datasource=golang-version depName=go
         go-version: '1.24.2'
-    - name: Checkout code
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      with:
-        path: go/src/github.com/isovalent/hubble-fgs/
-        submodules: true
 
     - name: Install dependencies x86
       run: |
@@ -49,7 +49,6 @@ jobs:
         sudo apt install libelf-dev netcat-openbsd netcat-traditional socat libcap-dev libaio-dev liburing-dev iproute2 net-tools
         export PATH=${GOPATH}/bin:${PATH}
         sudo -E echo "copy build tools from images"
-        cd ${GITHUB_WORKSPACE}/go/src/github.com/isovalent/hubble-fgs
         sudo sed -i '/secure_path/d' /etc/sudoers
         sudo sed -i '/env_reset/d' /etc/sudoers
         echo `which clang`
@@ -58,7 +57,7 @@ jobs:
         make check-copyright
         sudo make tetragon-bpf
         sudo -E echo "run go tests: " `uname -a`
-        export FGS_LIB="${GITHUB_WORKSPACE}/go/src/github.com/isovalent/hubble-fgs/bpf/objs/"
+        export FGS_LIB="$(pwd)/bpf/objs/"
         sudo apt install gcc # needed for tester-progs
         sudo -E make tetragon-fs-scanner
         sudo -E make tester-progs
