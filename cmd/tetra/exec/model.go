@@ -144,7 +144,10 @@ func printTree(appModel *appModelV1.ApplicationModelEvent) error {
 				binaryBranch := wlTree.AddBranch(bin)
 
 				for _, conn := range p.Connections {
-					childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d)", model.DestinationNameAppModel(conn.Destination), conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops)
+					childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d defaultDrop: %d defaultAllow: %d)",
+						model.DestinationNameAppModel(conn.Destination),
+						conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops,
+						conn.Stats.DefaultDropBytes, conn.Stats.DefaultAllowBytes)
 					binaryBranch.AddBranch(childName)
 				}
 			}
@@ -238,7 +241,10 @@ func selected(node *tview.TreeNode) {
 		addProcessNodes(node, val.GetProcesses())
 	case *appModelV1.ApplicationProcessGroup:
 		for _, conn := range val.GetConnections() {
-			childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d)", model.DestinationNameAppModel(conn.Destination), conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops)
+			childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d defaultDrop: %d defaultAllow: %d)",
+				model.DestinationNameAppModel(conn.Destination),
+				conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops,
+				conn.Stats.DefaultDropBytes, conn.Stats.DefaultAllowBytes)
 			child := tview.NewTreeNode(childName).
 				SetReference(conn).
 				SetSelectable(true).
@@ -864,7 +870,7 @@ func printDestinationDebug() error {
 		return err
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "LocalNSID\tLocalID\tDest ID:Src(Port)[Src]\tTxQuota\tTxLimit\tTxDrop")
+	fmt.Fprintln(w, "LocalNSID\tLocalID\tDest ID:Src(Port)[Src]\tTxQuota\tTxLimit\tTxDrop\tDefaultDrop\tDefaultAllow")
 
 	// Implementing a full Stringer on a proper type is more annoying that helpful
 	// for this simple uint64, let's just use a custom local stringer for this
@@ -882,7 +888,7 @@ func printDestinationDebug() error {
 	}
 
 	for _, d := range res.Destinations {
-		fmt.Fprintf(w, "%d\t%d\t%d:%d(%d)[%s]\t%d\t%d\t%d\n",
+		fmt.Fprintf(w, "%d\t%d\t%d:%d(%d)[%s]\t%d\t%d\t%d\t%d\t%d\n",
 			d.LocalNsId,
 			d.LocalId,
 			d.DestinationId,
@@ -892,6 +898,8 @@ func printDestinationDebug() error {
 			d.TxQuota,
 			d.TxLimit,
 			d.TxDrops,
+			d.DefaultDenyBytes,
+			d.DefaultAllowBytes,
 		)
 	}
 	return w.Flush()
