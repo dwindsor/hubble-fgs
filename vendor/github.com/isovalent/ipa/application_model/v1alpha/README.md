@@ -709,6 +709,8 @@ the following criteria:
 | tx_quota_usage | [uint64](#uint64) |  |  |
 | last_quota_reset | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
 | next_quota_reset | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| default_drop_bytes | [uint64](#uint64) |  |  |
+| default_allow_bytes | [uint64](#uint64) |  |  |
 
 
 

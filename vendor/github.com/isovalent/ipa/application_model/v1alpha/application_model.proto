@@ -109,6 +109,8 @@ message ConnectionStats {
   uint64 tx_quota_usage = 5;
   google.protobuf.Timestamp last_quota_reset = 6;
   google.protobuf.Timestamp next_quota_reset = 7;
+  uint64 default_drop_bytes = 8;
+  uint64 default_allow_bytes = 9;
 }
 
 message Destination {

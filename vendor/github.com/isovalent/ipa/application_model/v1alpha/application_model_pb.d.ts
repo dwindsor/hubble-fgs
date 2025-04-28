@@ -294,6 +294,16 @@ export declare type ConnectionStats = Message<"application_model.v1alpha.Connect
    * @generated from field: google.protobuf.Timestamp next_quota_reset = 7;
    */
   nextQuotaReset?: Timestamp;
+
+  /**
+   * @generated from field: uint64 default_drop_bytes = 8;
+   */
+  defaultDropBytes: bigint;
+
+  /**
+   * @generated from field: uint64 default_allow_bytes = 9;
+   */
+  defaultAllowBytes: bigint;
 };
 
 /**
