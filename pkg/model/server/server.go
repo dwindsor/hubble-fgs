@@ -72,6 +72,8 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 			TxQuota:           v.TxQuota,
 			TxLimit:           v.TxLimit,
 			TxDrops:           v.TxDrops,
+			DefaultAllowBytes: v.AllowDefault,
+			DefaultDenyBytes:  v.DenyDefault,
 		}
 		dests = append(dests, d)
 	}
@@ -303,13 +305,15 @@ func statsAdd(a, b *tetragon.DestinationStats) *tetragon.DestinationStats {
 	}
 
 	return &tetragon.DestinationStats{
-		TxBytes:        a.TxBytes + b.TxBytes,
-		RxBytes:        a.RxBytes + b.RxBytes,
-		TxDrops:        a.TxDrops + b.TxDrops,
-		TxLimit:        limit,
-		TxQuota:        quota,
-		KtimeLastReset: reset,
-		KtimeTxReset:   txreset,
+		TxBytes:           a.TxBytes + b.TxBytes,
+		RxBytes:           a.RxBytes + b.RxBytes,
+		DefaultAllowBytes: a.DefaultAllowBytes + b.DefaultAllowBytes,
+		DefaultDenyBytes:  a.DefaultDenyBytes + b.DefaultDenyBytes,
+		TxDrops:           a.TxDrops + b.TxDrops,
+		TxLimit:           limit,
+		TxQuota:           quota,
+		KtimeLastReset:    reset,
+		KtimeTxReset:      txreset,
 	}
 }
 
@@ -438,9 +442,11 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		}
 
 		stats := &tetragon.DestinationStats{
-			TxBytes: dstVal.TxBytes,
-			RxBytes: dstVal.RxBytes,
-			TxDrops: dstVal.TxDrops,
+			TxBytes:           dstVal.TxBytes,
+			RxBytes:           dstVal.RxBytes,
+			TxDrops:           dstVal.TxDrops,
+			DefaultAllowBytes: dstVal.AllowDefault,
+			DefaultDenyBytes:  dstVal.DenyDefault,
 		}
 		// Report quota-related stats if TxLimit is set.
 		if dstVal.TxLimit != 0 {
