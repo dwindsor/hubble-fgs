@@ -11,6 +11,8 @@
 // go test -gcflags="" -c ./pkg/sensors/file -o go-tests/file.test
 // sudo ./go-tests/file.test --bpf-lib ./bpf/objs/ [ -test.run TestCopyFileRange ]
 
+//go:build sudo_tests
+
 package file
 
 import (

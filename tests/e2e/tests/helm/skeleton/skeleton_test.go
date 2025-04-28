@@ -9,6 +9,8 @@
 //  permission is obtained from Isovalent Inc.
 //
 
+//go:build e2e_tests
+
 // This package contains a simple test skeleton that can be copied, pasted, and modified
 // to create new Tetragon e2e tests.
 package skeleton_test

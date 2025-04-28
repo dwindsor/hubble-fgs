@@ -11,6 +11,8 @@
 // go test -gcflags="" -c ./pkg/sensors/file -o go-tests/file.test
 // sudo ./go-tests/file.test --bpf-lib ./bpf/objs/ -test.run TestGlobFSMeBPF
 
+//go:build sudo_tests
+
 package file
 
 import (

@@ -9,6 +9,8 @@
 //  permission is obtained from Isovalent Inc.
 //
 
+//go:build e2e_tests
+
 package httptls_test
 
 import (

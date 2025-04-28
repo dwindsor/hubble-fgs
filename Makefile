@@ -282,9 +282,14 @@ copy-golangci-lint:
 	docker cp ${xid}:/usr/bin/golangci-lint bin/golangci-lint
 	docker rm ${xid}
 
+## unit-test: ## Run Go unit tests without any external dependencies.
+.PHONY: unit-test
+unit-test:
+	$(GO) test ./...
+
 .PHONY: test
 test: tester-progs tetragon-bpf tetragon-bpf-test ## Run Go tests.
-	$(GO) test -exec "$(SUDO)" -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover $(GO_TEST_PACKAGES) ${EXTRA_TESTFLAGS}
+	$(GO) test -exec "$(SUDO)" -tags sudo_tests -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover $(GO_TEST_PACKAGES) ${EXTRA_TESTFLAGS}
 
 .PHONY: tester-progs
 tester-progs:
@@ -377,6 +382,7 @@ else
 e2e-test:
 endif
 	$(GO) test -p 1 -parallel 1 $(E2E_COVER_FLAG) $(E2E_GO_BUILD_GCFLAGS)  \
+		-tags e2e_tests                                                \
 		-timeout $(E2E_TIMEOUT) ${E2E_EXTRA_GOTEST_FLAGS}              \
 		${E2E_TESTS} ${E2E_EXTRA_TEST_FLAGS} $(E2E_BTF_FLAGS)          \
 		-tetragon.helm.set tetragon.image.override="$(E2E_AGENT)"      \

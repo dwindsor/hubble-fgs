@@ -4,6 +4,8 @@
 // go test -gcflags="" -c ./pkg/grpc/layer3/ -o go-tests/grpc-l3.test
 // sudo ./go-tests/grpc-l3.test [ -test.run TestGrpcExec ]
 
+//go:build sudo_tests
+
 package layer3
 
 import (

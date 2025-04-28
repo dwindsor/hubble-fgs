@@ -37,3 +37,7 @@ issues:
 formatters:
   enable:
     - goimports
+run:
+  build-tags:
+    - e2e_tests
+    - sudo_tests

@@ -1,3 +1,5 @@
+//go:build sudo_tests
+
 package layer3_test
 
 import (

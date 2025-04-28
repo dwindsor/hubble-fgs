@@ -4,6 +4,8 @@
 // go test -gcflags="" -c ./pkg/grpc/exec/ -o go-tests/grpc-exec.test
 // sudo ./go-tests/grpc-exec.test  [ -test.run TestGrpcExec ]
 
+//go:build sudo_tests
+
 package exec
 
 import (

@@ -1,3 +1,5 @@
+//go:build sudo_tests
+
 package dns
 
 import (

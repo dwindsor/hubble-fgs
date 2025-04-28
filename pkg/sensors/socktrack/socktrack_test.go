@@ -9,6 +9,8 @@
 //  permission is obtained from Isovalent Inc.
 //
 
+//go:build sudo_tests
+
 package socktrack_test
 
 import (
