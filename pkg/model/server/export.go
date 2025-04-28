@@ -16,9 +16,12 @@ import (
 	"io"
 	"time"
 
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/model"
+	"github.com/isovalent/hubble-fgs/pkg/model/diff"
 )
 
 func ExportProcessModel(ctx context.Context, server *Server, writer io.Writer, interval time.Duration) {
@@ -36,6 +39,48 @@ func ExportProcessModel(ctx context.Context, server *Server, writer io.Writer, i
 			appModel := model.ProcessModelToApplicationModel(res)
 			if err := encoder.Encode(appModel); err != nil {
 				logger.GetLogger().WithError(err).Error("Failed to encode application model as JSON")
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func ExportApplicationModelDiff(ctx context.Context, server *Server, writer io.Writer, interval time.Duration) {
+	res, err := server.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
+	if err != nil {
+		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
+		return
+	}
+	lastModel := model.ProcessModelToApplicationModel(res)
+	encoder := json.NewEncoder(writer)
+	ticker := time.NewTicker(interval)
+	logger.GetLogger().WithField("interval", interval).Info("Exporting application difference model")
+	for {
+		select {
+		case <-ticker.C:
+			res, err := server.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
+			if err != nil {
+				logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
+				return
+			}
+			newModel := model.ProcessModelToApplicationModel(res)
+			diffModel, err := diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
+			if err != nil {
+				logger.GetLogger().WithError(err).Error("Failed to produce application model difference as JSON")
+				return
+			}
+
+			lastModel = newModel
+			diffModelEvent := &appModelV1.ApplicationModelEvent{
+				ClusterName:      lastModel.ClusterName,
+				NodeName:         lastModel.NodeName,
+				Time:             lastModel.Time,
+				ApplicationModel: diffModel,
+			}
+			if err := encoder.Encode(diffModelEvent); err != nil {
+				logger.GetLogger().WithError(err).Error("Failed to encode application model difference as JSON")
 				return
 			}
 		case <-ctx.Done():

@@ -24,53 +24,55 @@ import (
 )
 
 const (
-	KeyFlowExportFilename             = "flow-export-filename"
-	KeyFlowExportFileMaxSizeMB        = "flow-export-file-max-size-mb"
-	KeyFlowExportFileMaxBackups       = "flow-export-file-max-backups"
-	KeyFlowExportFileCompress         = "flow-export-file-compress"
-	KeyFimFifoPath                    = "fim-fifo-path"
-	KeyFimFifoLocalPath               = "fim-fifo-local-path"
-	KeyFimRuntimeEndpoint             = "fim-runtime-endpoint"
-	keyFimMaxFileSizeDigest           = "fim-max-file-size-digest"
-	keyFimTimeoutDigest               = "fim-timeout-digest"
-	KeyDnsCacheSize                   = "dns-cache-size"
-	KeyEndpointCacheSize              = "endpoint-cache-size"
-	KeyBpfEndpointCacheSize           = "bpf-endpoint-cache-size"
-	KeyTlsCacheSize                   = "tls-cache-size"
-	KeyTcpCacheSize                   = "tcp-cache-size"
-	KeyNetNsCacheSize                 = "net-ns-cache-size"
-	KeyDetatchOldBPF                  = "detach-old-bpf"
-	KeyEnableApplicationModel         = "enable-application-model"
-	KeyEnableSyscallTracking          = "enable-syscall-tracking"
-	KeyApplicationModelCacheSize      = "application-model-cache-size"
-	KeyApplicationModelExportInterval = "application-model-export-interval"
-	KeyApplicationModelExportFilename = "application-model-export-filename"
-	keyEnableIcmpTracking             = "enable-icmp-tracking"
-	keyEnablePolicyK8sWatcher         = "enable-policy-k8swatcher"
-	keyEnableSandboxPolicies          = "enable-sandboxpolicies"
-	keySandboxPolicy                  = "sandbox-policy"
-	keyNetworkPolicy                  = "network-policy"
-	keyNetworkPolicyDir               = "network-policy-dir"
-	keyEnableAlerts                   = "enable-alerts"
-	keyAlertsExportDir                = "alerts-export-dir"
-	keyDebugX                         = "debugx"
-	keyEnableAWSSonar                 = "enable-aws-sonar"
-	keyAWSSonarRegion                 = "aws-sonar-region"
-	KeyEnableCiliumAPI                = "enable-cilium-api"
-	KeyEnableDnsDebug                 = "enable-dns-debug"
-	KeyProcessCacheStaleInterval      = "process-cache-stale-interval"
-	keyEnableBPFDNSParser             = "enable-bpf-dns-parser"
-	keyDNSStatsPerSocket              = "dns-stats-per-socket"
-	KeyEnableFimDispatcher            = "fim-enable-dispatcher"
-	KeyMandateURL                     = "mandate-url"
-	KeyMandateRefreshPeriod           = "mandate-refresh-period"
-	KeyEnableTCP                      = "enable-tcp"
-	keyEnableTCPRTT                   = "enable-tcp-rtt"
-	keyEnableUDP                      = "enable-udp"
-	keyEnableLatency                  = "enable-latency"
-	keyEnableICMP                     = "enable-icmp"
-	keyEnableRawsock                  = "enable-rawsock"
-	keyEnableDNS                      = "enable-dns"
+	KeyFlowExportFilename                 = "flow-export-filename"
+	KeyFlowExportFileMaxSizeMB            = "flow-export-file-max-size-mb"
+	KeyFlowExportFileMaxBackups           = "flow-export-file-max-backups"
+	KeyFlowExportFileCompress             = "flow-export-file-compress"
+	KeyFimFifoPath                        = "fim-fifo-path"
+	KeyFimFifoLocalPath                   = "fim-fifo-local-path"
+	KeyFimRuntimeEndpoint                 = "fim-runtime-endpoint"
+	keyFimMaxFileSizeDigest               = "fim-max-file-size-digest"
+	keyFimTimeoutDigest                   = "fim-timeout-digest"
+	KeyDnsCacheSize                       = "dns-cache-size"
+	KeyEndpointCacheSize                  = "endpoint-cache-size"
+	KeyBpfEndpointCacheSize               = "bpf-endpoint-cache-size"
+	KeyTlsCacheSize                       = "tls-cache-size"
+	KeyTcpCacheSize                       = "tcp-cache-size"
+	KeyNetNsCacheSize                     = "net-ns-cache-size"
+	KeyDetatchOldBPF                      = "detach-old-bpf"
+	KeyEnableApplicationModel             = "enable-application-model"
+	KeyEnableSyscallTracking              = "enable-syscall-tracking"
+	KeyApplicationModelCacheSize          = "application-model-cache-size"
+	KeyApplicationModelExportInterval     = "application-model-export-interval"
+	KeyApplicationModelExportFilename     = "application-model-export-filename"
+	KeyApplicationModelDiffExportInterval = "application-model-diff-export-interval"
+	KeyApplicationModelDiffExportFilename = "application-model-diff-export-filename"
+	keyEnableIcmpTracking                 = "enable-icmp-tracking"
+	keyEnablePolicyK8sWatcher             = "enable-policy-k8swatcher"
+	keyEnableSandboxPolicies              = "enable-sandboxpolicies"
+	keySandboxPolicy                      = "sandbox-policy"
+	keyNetworkPolicy                      = "network-policy"
+	keyNetworkPolicyDir                   = "network-policy-dir"
+	keyEnableAlerts                       = "enable-alerts"
+	keyAlertsExportDir                    = "alerts-export-dir"
+	keyDebugX                             = "debugx"
+	keyEnableAWSSonar                     = "enable-aws-sonar"
+	keyAWSSonarRegion                     = "aws-sonar-region"
+	KeyEnableCiliumAPI                    = "enable-cilium-api"
+	KeyEnableDnsDebug                     = "enable-dns-debug"
+	KeyProcessCacheStaleInterval          = "process-cache-stale-interval"
+	keyEnableBPFDNSParser                 = "enable-bpf-dns-parser"
+	keyDNSStatsPerSocket                  = "dns-stats-per-socket"
+	KeyEnableFimDispatcher                = "fim-enable-dispatcher"
+	KeyMandateURL                         = "mandate-url"
+	KeyMandateRefreshPeriod               = "mandate-refresh-period"
+	KeyEnableTCP                          = "enable-tcp"
+	keyEnableTCPRTT                       = "enable-tcp-rtt"
+	keyEnableUDP                          = "enable-udp"
+	keyEnableLatency                      = "enable-latency"
+	keyEnableICMP                         = "enable-icmp"
+	keyEnableRawsock                      = "enable-rawsock"
+	keyEnableDNS                          = "enable-dns"
 )
 
 func FixUpOSSFlags(flags *pflag.FlagSet) {
@@ -100,6 +102,10 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden(KeyApplicationModelExportInterval)
 	flags.String(KeyApplicationModelExportFilename, "", "Filename for application model JSON export. Set to \"\" to disable.")
 	flags.MarkHidden(KeyApplicationModelExportFilename)
+	flags.Duration(KeyApplicationModelDiffExportInterval, 0, "Interval at which to export application model difference as JSON.")
+	flags.MarkHidden(KeyApplicationModelDiffExportInterval)
+	flags.String(KeyApplicationModelDiffExportFilename, "", "Filename for application model difference JSON export. Set to \"\" to disable.")
+	flags.MarkHidden(KeyApplicationModelDiffExportFilename)
 	flags.Int(KeyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
 	flags.Int(KeyApplicationModelCacheSize, 65536, "Set the size of the BPF data structure to store application model and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones")
 	flags.Int(KeyEndpointCacheSize, 65536, "Set the size of the internal endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones")
@@ -163,6 +169,8 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
 	Config.ProcessTreeExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
 	Config.ProcessTreeExportFilename = viper.GetString(KeyApplicationModelExportFilename)
+	Config.ApplicationModelDiffExportInterval = viper.GetDuration(KeyApplicationModelDiffExportInterval)
+	Config.ApplicationModelDiffExportFilename = viper.GetString(KeyApplicationModelDiffExportFilename)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)
 	Config.DnsCacheSize = viper.GetInt(KeyDnsCacheSize)
 	Config.ProcessTreeCacheSize = viper.GetInt(KeyApplicationModelCacheSize)

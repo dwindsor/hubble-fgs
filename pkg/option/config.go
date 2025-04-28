@@ -15,6 +15,9 @@ type config struct {
 	ProcessTreeExportInterval time.Duration
 	ProcessTreeExportFilename string
 
+	ApplicationModelDiffExportFilename string
+	ApplicationModelDiffExportInterval time.Duration
+
 	DnsCacheSize         int
 	ProcessTreeCacheSize int
 	EndpointCacheSize    int
