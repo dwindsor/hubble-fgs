@@ -161,7 +161,7 @@ spec:
       enable: true
       ports: [53]
 `
-const udpL7ConfigDisableClose = `
+const udpConfigDisableClose = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -176,14 +176,10 @@ spec:
       cgroup: true
       statsInterval: 20
       deleteIdleSocketInterval: 60
-      seqCheck:
-        enable: true
-        appId: 1
-        ports: [31337]
       disableEvents:
         disableClose: `
 
-const udpL7ConfigDisableListen = `
+const udpConfigDisableListen = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -198,10 +194,6 @@ spec:
       cgroup: true
       statsInterval: 20
       deleteIdleSocketInterval: 60
-      seqCheck:
-        enable: true
-        appId: 1
-        ports: [31337]
       disableEvents:
         disableListen: `
 
@@ -216,6 +208,67 @@ spec:
       enable: true
       cgroup: true
 `
+
+// Note 20.0.0.0/8 is the DoD and isn't routable on the Internet
+// This is included to test UDP latency timestamps are NOT added
+// to any real UDP packets.
+const udpBasicConfig = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    udp:
+      enable: true
+      cgroup: true
+      statsInterval: 2
+      latency:
+        enable: true
+        matchSubnets: [20.0.0.0/8]
+        min: 0
+        max: 10000
+`
+
+const udpBasicConfigWOEnable = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    udp:
+      cgroup: true
+      statsInterval: 2
+      latency:
+        enable: true
+        matchSubnets: [20.0.0.0/8]
+        min: 0
+        max: 10000
+`
+
+// Setting UDP latency max to 1,000,000 means 1% equates to
+// 10ms, which a packet across loopback should easily be
+// quicker than.
+const udpConfigWithLatencyDetection = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    udp:
+      enable: true
+      cgroup: true
+      statsInterval: 2
+      latency:
+        enable: true
+        matchSubnets: [127.0.0.1/32]
+        matchPorts: [8081]
+        min: 0
+        max: 1000000
+`
+
 const UDPBUFSIZE, UDPBUFVAR = 1024, 256
 const udpHostname = "127.0.0.1"
 const udpPortno = 31337
@@ -726,66 +779,6 @@ func TestUdpSeqCheck(t *testing.T) {
 	killAndWaitCommand(t, clientCmd)
 }
 
-// Note 20.0.0.0/8 is the DoD and isn't routable on the Internet
-// This is included to test UDP latency timestamps are NOT added
-// to any real UDP packets.
-const udpBasicConfig = `
-apiversion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "udp"
-spec:
-  parser:
-    udp:
-      enable: true
-      cgroup: true
-      statsInterval: 2
-      latency:
-        enable: true
-        matchSubnets: [20.0.0.0/8]
-        min: 0
-        max: 10000
-`
-
-const udpBasicConfigWOEnable = `
-apiversion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "udp"
-spec:
-  parser:
-    udp:
-      cgroup: true
-      statsInterval: 2
-      latency:
-        enable: true
-        matchSubnets: [20.0.0.0/8]
-        min: 0
-        max: 10000
-`
-
-// Setting UDP latency max to 1,000,000 means 1% equates to
-// 10ms, which a packet across loopback should easily be
-// quicker than.
-const udpConfigWithLatencyDetection = `
-apiversion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "udp"
-spec:
-  parser:
-    udp:
-      enable: true
-      cgroup: true
-      statsInterval: 2
-      latency:
-        enable: true
-        matchSubnets: [127.0.0.1/32]
-        matchPorts: [8081]
-        min: 0
-        max: 1000000
-`
-
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.
 //
@@ -816,13 +809,56 @@ func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, CLISwitches 
 	return getLayer3Observer(t, ctx, udpDisableEventsConfig, true)
 }
 
-func TestUdpConnectEvent4(t *testing.T) {
+func TestUDPBasic(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
+	startExistingUDPServices(t)
+
+	obs := getBasicUdpObserver(t, ctx)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	for _, test := range basicUDPTests {
+		t.Logf("Running test: %s", test.name)
+		if !t.Run(test.name, func(lt *testing.T) {
+			test.f(t, lt, &readyWG)
+		}) {
+			t.Logf("Test %s failed", test.name)
+			break
+		}
+		t.Logf("Test %s was successful", test.name)
+	}
+}
+
+var (
+	cmdServerUDP8081, cmdServerUDP8081V6 *exec.Cmd
+)
+
+func startExistingUDPServices(t *testing.T) {
+	nc := getNCCommand(t, "nc.openbsd")
+
+	cmdServerUDP8081 = exec.Command(nc, "-unvlp", "8081")
+	assert.NoError(t, cmdServerUDP8081.Start())
+	cmdServerUDP8081V6 = exec.Command(nc, "-6unvlp", "8081")
+	assert.NoError(t, cmdServerUDP8081V6.Start())
+	time.Sleep(1000 * time.Millisecond)
+}
+
+var basicUDPTests = []basicTest{
+	{"testUdpConnectEvent4", testUdpConnectEvent4},
+	{"testListenEvent4", testListenEvent4},
+	{"testConnectAfterStartEvent4", testConnectAfterStartEvent4},
+	{"testUdpMulticast4", testUdpMulticast4},
+	{"testUdpConnectEvent6", testUdpConnectEvent6},
+	{"testListenEvent6", testListenEvent6},
+	{"testConnectAfterStartEvent6", testConnectAfterStartEvent6},
+	{"testUdpIOUringConnectEvent", testUdpIOUringConnectEvent},
+}
+
+func testUdpConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
@@ -936,9 +972,6 @@ func TestUdpConnectEvent4(t *testing.T) {
 		},
 	}
 
-	obs := getBasicUdpObserver(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-unvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
@@ -951,23 +984,17 @@ func TestUdpConnectEvent4(t *testing.T) {
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, statsChecker)
+	err = jsonchecker.JsonTestCheck(gt, statsChecker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestListenEvent4(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -992,15 +1019,12 @@ func TestListenEvent4(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_UDP),
 	)
 
-	obs := getBasicUdpObserver(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-unvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -1169,16 +1193,10 @@ func TestNoDisableConnectStats4NoCLI(t *testing.T) {
 	testDisableConnectStatsConfig4(t, false, false, false)
 }
 
-func TestConnectAfterStartEvent4(t *testing.T) {
+func testConnectAfterStartEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	// FIXME: something broke this test case, but since it was never merged upstream this went
 	// unnoticed... need to investigate
 	t.Skip("This test is consistently failing at the moment, need to figure out why and fix it up.")
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
 
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
@@ -1236,13 +1254,6 @@ func TestConnectAfterStartEvent4(t *testing.T) {
 				WithSegsIn(1)),
 	)
 
-	cmdServer := exec.Command(server, "-unvlp", "8081")
-	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
-
-	obs := getBasicUdpObserver(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
 	stdin, err := cmdClient.StdinPipe()
@@ -1251,10 +1262,10 @@ func TestConnectAfterStartEvent4(t *testing.T) {
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdServerUDP8081)
 	killAndWaitCommand(t, cmdClient)
 }
 
@@ -1348,13 +1359,7 @@ func TestUdpDetectLatency4(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestUdpMulticast4(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testUdpMulticast4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getSocatCommand(t, "socat")
 	client := server
 
@@ -1416,9 +1421,6 @@ func TestUdpMulticast4(t *testing.T) {
 		serverStatsChecker,
 	)
 
-	obs := getBasicUdpObserver(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-", "UDP4-LISTEN:8100,ip-add-membership=224.0.0.1:lo")
 	assert.NoError(t, cmdServer.Start())
@@ -1432,19 +1434,13 @@ func TestUdpMulticast4(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(1000 * time.Millisecond)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 }
-func TestUdpConnectEvent6(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testUdpConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
@@ -1558,9 +1554,6 @@ func TestUdpConnectEvent6(t *testing.T) {
 		},
 	}
 
-	obs := getBasicUdpObserver(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-6unvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
@@ -1573,23 +1566,17 @@ func TestUdpConnectEvent6(t *testing.T) {
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, statsChecker)
+	err = jsonchecker.JsonTestCheck(gt, statsChecker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestListenEvent6(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -1614,30 +1601,21 @@ func TestListenEvent6(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_UDP),
 	)
 
-	obs := getBasicUdpObserver(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-6unvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
 }
 
-func TestConnectAfterStartEvent6(t *testing.T) {
+func testConnectAfterStartEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	// FIXME: something broke this test case, but since it was never merged upstream this went
 	// unnoticed... need to investigate
 	t.Skip("This test is consistently failing at the moment, need to figure out why and fix it up.")
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
 
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
@@ -1695,13 +1673,6 @@ func TestConnectAfterStartEvent6(t *testing.T) {
 				WithSegsIn(1)),
 	)
 
-	cmdServer := exec.Command(server, "-6unvlp", "8081")
-	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
-
-	obs := getBasicUdpObserver(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdClient := exec.Command(client, "-6u", "::1", "8081")
 	stdin, err := cmdClient.StdinPipe()
@@ -1710,10 +1681,10 @@ func TestConnectAfterStartEvent6(t *testing.T) {
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdServerUDP8081V6)
 	killAndWaitCommand(t, cmdClient)
 }
 
@@ -1882,7 +1853,7 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	disableCloseConfig := udpL7ConfigDisableClose + strconv.FormatBool(disableClose)
+	disableCloseConfig := udpConfigDisableClose + strconv.FormatBool(disableClose)
 	if err := observertesthelper.WriteConfigFile(testConfigFile, disableCloseConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
@@ -1970,7 +1941,7 @@ func testDisableListenConfig(t *testing.T, disableListen bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	disableListenConfig := udpL7ConfigDisableListen + strconv.FormatBool(disableListen)
+	disableListenConfig := udpConfigDisableListen + strconv.FormatBool(disableListen)
 	if err := observertesthelper.WriteConfigFile(testConfigFile, disableListenConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
@@ -2086,7 +2057,7 @@ func TestGCWithNonzeroInterval(t *testing.T) {
 }
 
 // FIXME: net io_uring test seems to time out on ARM.
-func TestUdpIOUringConnectEvent(t *testing.T) {
+func testUdpIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -2097,12 +2068,6 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 	if err == nil && strings.Contains(hostname, "rhel") {
 		t.Skipf("This test is problematic on RHEL, skipping")
 	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
 
 	server := testutils.RepoRootPath("contrib/tester-progs/io_uring/udp_iouring_server")
 	client := getNCCommand(t, "nc.openbsd")
@@ -2245,9 +2210,6 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 		},
 	}
 
-	obs := getBasicUdpObserver(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(server)
 	serverOutput, err := cmdServer.StdoutPipe()
@@ -2284,10 +2246,10 @@ func TestUdpIOUringConnectEvent(t *testing.T) {
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	err = jsonchecker.JsonTestCheck(t, statsChecker)
+	err = jsonchecker.JsonTestCheck(gt, statsChecker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
