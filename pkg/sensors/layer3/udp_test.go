@@ -1031,6 +1031,10 @@ func testListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 }
 
 func TestUDPCLISwitch(t *testing.T) {
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 

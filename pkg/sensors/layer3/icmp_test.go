@@ -22,7 +22,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -73,7 +72,7 @@ func getIcmpAndUdpObserver(t *testing.T, ctx context.Context, filtered bool) *ob
 	return getLayer3Observer(t, ctx, icmpAndUdpBasicConfig, filtered)
 }
 
-func TestPingOutbound4(t *testing.T) {
+func TestICMPBasic(t *testing.T) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -84,6 +83,66 @@ func TestPingOutbound4(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
+	obs := getBasicIcmpObserver(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	for _, test := range basicICMPTests {
+		t.Logf("Running test: %s", test.name)
+		if !t.Run(test.name, func(lt *testing.T) {
+			test.f(t, lt, &readyWG)
+		}) {
+			t.Logf("Test %s failed", test.name)
+			break
+		}
+		t.Logf("Test %s was successful", test.name)
+	}
+}
+
+func TestICMPUDP(t *testing.T) {
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	oldEnableIcmpTrackingValue := enterpriseOption.Config.EnableIcmpTracking
+	enterpriseOption.Config.EnableIcmpTracking = true
+	t.Cleanup(func() {
+		enterpriseOption.Config.EnableIcmpTracking = oldEnableIcmpTrackingValue
+	})
+
+	obs := getIcmpAndUdpObserver(t, ctx, false)
+	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	for _, test := range UDPICMPTests {
+		t.Logf("Running test: %s", test.name)
+		if !t.Run(test.name, func(lt *testing.T) {
+			test.f(t, lt, &readyWG)
+		}) {
+			t.Logf("Test %s failed", test.name)
+			break
+		}
+		t.Logf("Test %s was successful", test.name)
+	}
+}
+
+var basicICMPTests = []basicTest{
+	{"testPingOutbound4", testPingOutbound4},
+	{"testPingInAndOutbound4", testPingInAndOutbound4},
+	{"testPingOutbound6", testPingOutbound6},
+	{"testPingInAndOutbound6", testPingInAndOutbound6},
+}
+
+var UDPICMPTests = []basicTest{
+	{"testInboundDestUnreach4", testInboundDestUnreach4},
+	{"testInboundDestUnreach6", testInboundDestUnreach6},
+}
+
+func testPingOutbound4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -122,19 +181,16 @@ func TestPingOutbound4(t *testing.T) {
 			WithDirection(sm.Full("ingress")),
 	)
 
-	obs := getBasicIcmpObserver(t, ctx, true)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestPingCLISwitch(t *testing.T) {
+func TestICMPCLISwitch(t *testing.T) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -192,7 +248,7 @@ func TestPingCLISwitch(t *testing.T) {
 			WithDirection(sm.Full("ingress")),
 	)
 
-	obs := getNoConfigObserver(t, ctx, true)
+	obs := getNoConfigObserver(t, ctx, false)
 	layer3.StartLayer3Progs(ctx)
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
@@ -205,17 +261,7 @@ func TestPingCLISwitch(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestPingInAndOutbound4(t *testing.T) {
-	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
-	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testPingInAndOutbound4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -275,37 +321,16 @@ func TestPingInAndOutbound4(t *testing.T) {
 			WithDirection(sm.Full("ingress")),
 	)
 
-	obs := getBasicIcmpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestInboundDestUnreach4(t *testing.T) {
-	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
-	}
-
-	bpf.CheckOrMountCgroup2()
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	oldEnableIcmpTrackingValue := enterpriseOption.Config.EnableIcmpTracking
-	enterpriseOption.Config.EnableIcmpTracking = true
-	t.Cleanup(func() {
-		enterpriseOption.Config.EnableIcmpTracking = oldEnableIcmpTrackingValue
-	})
-
+func testInboundDestUnreach4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	cmd := "nc"
 
 	selfChecker := ec.NewProcessChecker().
@@ -345,9 +370,6 @@ func TestInboundDestUnreach4(t *testing.T) {
 			WithParent(selfChecker),
 	)
 
-	obs := getIcmpAndUdpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdClient := exec.Command(cmd, "-u", "127.0.0.1", "10043")
 	stdin, err := cmdClient.StdinPipe()
@@ -358,21 +380,11 @@ func TestInboundDestUnreach4(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(1000 * time.Millisecond)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestPingOutbound6(t *testing.T) {
-	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
-	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testPingOutbound6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -411,29 +423,16 @@ func TestPingOutbound6(t *testing.T) {
 			WithDirection(sm.Full("ingress")),
 	)
 
-	obs := getBasicIcmpObserver(t, ctx, true)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-6c1", "::1")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestPingInAndOutbound6(t *testing.T) {
-	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
-	}
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
+func testPingInAndOutbound6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -493,37 +492,16 @@ func TestPingInAndOutbound6(t *testing.T) {
 			WithDirection(sm.Full("ingress")),
 	)
 
-	obs := getBasicIcmpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-6c1", "::1")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
-func TestInboundDestUnreach6(t *testing.T) {
-	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
-	}
-
-	bpf.CheckOrMountCgroup2()
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	oldEnableIcmpTrackingValue := enterpriseOption.Config.EnableIcmpTracking
-	enterpriseOption.Config.EnableIcmpTracking = true
-	t.Cleanup(func() {
-		enterpriseOption.Config.EnableIcmpTracking = oldEnableIcmpTrackingValue
-	})
-
+func testInboundDestUnreach6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	cmd := "nc"
 
 	selfChecker := ec.NewProcessChecker().
@@ -563,9 +541,6 @@ func TestInboundDestUnreach6(t *testing.T) {
 			WithParent(selfChecker),
 	)
 
-	obs := getIcmpAndUdpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
 	readyWG.Wait()
 	cmdClient := exec.Command(cmd, "-6u", "::1", "10043")
 	stdin, err := cmdClient.StdinPipe()
@@ -576,6 +551,6 @@ func TestInboundDestUnreach6(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(1000 * time.Millisecond)
 
-	err = jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
