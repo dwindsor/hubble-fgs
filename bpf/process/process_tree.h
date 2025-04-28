@@ -659,6 +659,16 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 			__sync_fetch_and_add(&dest_port->tx_drops, len);
 			__sync_fetch_and_add(&dest_local->tx_drops, len);
 			__sync_fetch_and_add(&dest_default->tx_drops, len);
+
+			__sync_fetch_and_add(&dest_full->deny_default, len);
+			__sync_fetch_and_add(&dest_port->deny_default, len);
+			__sync_fetch_and_add(&dest_local->deny_default, len);
+			__sync_fetch_and_add(&dest_default->deny_default, len);
+		} else {
+			__sync_fetch_and_add(&dest_full->allow_default, len);
+			__sync_fetch_and_add(&dest_port->allow_default, len);
+			__sync_fetch_and_add(&dest_local->allow_default, len);
+			__sync_fetch_and_add(&dest_default->allow_default, len);
 		}
 	}
 out:

@@ -82,9 +82,11 @@ func (nk NetworkKey) String() string {
 }
 
 type NetworkMonitorValue struct {
-	TXBytes uint64
-	RXBytes uint64
-	TXDrops uint64
+	TXBytes           uint64
+	RXBytes           uint64
+	AllowDefaultBytes uint64
+	DenyDefaultBytes  uint64
+	TXDrops           uint64
 }
 
 func getByteSize(b uint64) string {
@@ -102,18 +104,22 @@ func (nmv NetworkMonitorValue) String() string {
 }
 
 type NetworkQuotaValue struct {
-	TXBytes   uint64
-	RXBytes   uint64
-	TXDrops   uint64
-	TXQuota   uint64
-	TXUsage   uint64
-	LastReset time.Time
-	NextReset time.Time
+	TXBytes           uint64
+	RXBytes           uint64
+	AllowDefaultBytes uint64
+	DenyDefaultBytes  uint64
+	TXDrops           uint64
+	TXQuota           uint64
+	TXUsage           uint64
+	LastReset         time.Time
+	NextReset         time.Time
 }
 
 type byteCounter interface {
 	GetTxBytes() uint64
 	GetRxBytes() uint64
+	GetAllowDefaultBytes() uint64
+	GetDenyDefaultBytes() uint64
 	GetTxDrops() uint64
 	GetTxQuota() uint64
 	GetTxUsage() uint64
@@ -127,6 +133,14 @@ func (nmv NetworkMonitorValue) GetTxBytes() uint64 {
 
 func (nmv NetworkMonitorValue) GetRxBytes() uint64 {
 	return nmv.RXBytes
+}
+
+func (nmv NetworkMonitorValue) GetAllowDefaultBytes() uint64 {
+	return nmv.AllowDefaultBytes
+}
+
+func (nmv NetworkMonitorValue) GetDenyDefaultBytes() uint64 {
+	return nmv.DenyDefaultBytes
 }
 
 func (nmv NetworkMonitorValue) GetTxDrops() uint64 {
@@ -328,13 +342,15 @@ func getProcessMonitorKey(process *tetragon.ProcessModel) ProcessKey {
 
 func getNetworkQuotaValue(dst *tetragon.Destination) NetworkQuotaValue {
 	return NetworkQuotaValue{
-		TXBytes:   dst.GetStats().GetTxBytes(),
-		RXBytes:   dst.GetStats().GetRxBytes(),
-		TXDrops:   dst.GetStats().GetTxDrops(),
-		TXQuota:   dst.GetStats().GetTxLimit(),
-		TXUsage:   dst.GetStats().GetTxQuota(),
-		NextReset: dst.GetStats().GetKtimeTxReset().AsTime(),
-		LastReset: dst.GetStats().GetKtimeLastReset().AsTime(),
+		TXBytes:           dst.GetStats().GetTxBytes(),
+		RXBytes:           dst.GetStats().GetRxBytes(),
+		AllowDefaultBytes: dst.GetStats().GetDefaultAllowBytes(),
+		DenyDefaultBytes:  dst.GetStats().GetDefaultDenyBytes(),
+		TXDrops:           dst.GetStats().GetTxDrops(),
+		TXQuota:           dst.GetStats().GetTxLimit(),
+		TXUsage:           dst.GetStats().GetTxQuota(),
+		NextReset:         dst.GetStats().GetKtimeTxReset().AsTime(),
+		LastReset:         dst.GetStats().GetKtimeLastReset().AsTime(),
 	}
 }
 
@@ -399,6 +415,8 @@ func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess 
 				currentValue := result[key]
 				currentValue.TXBytes += dst.GetStats().GetTxBytes()
 				currentValue.RXBytes += dst.GetStats().GetRxBytes()
+				currentValue.AllowDefaultBytes += dst.GetStats().GetDefaultAllowBytes()
+				currentValue.DenyDefaultBytes += dst.GetStats().GetDefaultDenyBytes()
 				currentValue.TXDrops += dst.GetStats().GetTxDrops()
 				result[key] = currentValue
 			} else if process.GetBinary() == "" && dst.GetStats().GetTxLimit() > 0 {

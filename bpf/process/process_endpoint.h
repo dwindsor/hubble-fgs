@@ -182,6 +182,8 @@ struct destination_endpoint_value {
 	__u64 tx_quota;
 	__u64 tx_limit;
 	__u64 tx_drops;
+	__u64 allow_default;
+	__u64 deny_default;
 	__u64 deny;
 	__u64 ktime_last_reset;
 	__u64 ktime_tx_reset;

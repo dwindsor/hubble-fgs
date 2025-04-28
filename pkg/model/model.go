@@ -85,13 +85,15 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	nsMap[nsKey][wlkey][pskey].connections[connKey] = &appModelV1.ApplicationConnection{
 		Destination: nwKeyToDestination(&nk),
 		Stats: &appModelV1.ConnectionStats{
-			TxBytes:        bc.GetTxBytes(),
-			RxBytes:        bc.GetRxBytes(),
-			TxDrops:        bc.GetTxDrops(),
-			TxQuota:        bc.GetTxQuota(),
-			TxQuotaUsage:   bc.GetTxUsage(),
-			LastQuotaReset: maybeTimeToTimestamp(bc.GetLastReset()),
-			NextQuotaReset: maybeTimeToTimestamp(bc.GetNextReset()),
+			TxBytes:           bc.GetTxBytes(),
+			RxBytes:           bc.GetRxBytes(),
+			DefaultAllowBytes: bc.GetAllowDefaultBytes(),
+			DefaultDropBytes:  bc.GetDenyDefaultBytes(),
+			TxDrops:           bc.GetTxDrops(),
+			TxQuota:           bc.GetTxQuota(),
+			TxQuotaUsage:      bc.GetTxUsage(),
+			LastQuotaReset:    maybeTimeToTimestamp(bc.GetLastReset()),
+			NextQuotaReset:    maybeTimeToTimestamp(bc.GetNextReset()),
 		},
 	}
 }
