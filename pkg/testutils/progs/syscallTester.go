@@ -78,31 +78,31 @@ type SyscallTester struct {
 }
 
 //revive:disable:context-as-argument
-func StartSyscallTester(t *testing.T, ctx context.Context) *SyscallTester {
+func StartSyscallTester(t *testing.T, ctx context.Context) (*SyscallTester, error) {
 
 	prog := testutils.RepoRootPath("contrib/tester-progs/syscall-tester")
 	cmd := exec.CommandContext(ctx, prog)
 
 	progStderr, err := cmd.StderrPipe()
 	if err != nil {
-		t.Fatalf("stderr pipe filed: %v", err)
+		return nil, err
 	}
 	t.Cleanup(func() { progStderr.Close() })
 
 	progStdout, err := cmd.StdoutPipe()
 	if err != nil {
-		t.Fatalf("stdout pipe filed: %v", err)
+		return nil, err
 	}
 	t.Cleanup(func() { progStdout.Close() })
 
 	progStdin, err := cmd.StdinPipe()
 	if err != nil {
-		t.Fatalf("stdin pipe filed: %v", err)
+		return nil, err
 	}
 	t.Cleanup(func() { progStdin.Close() })
 
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("failed to start syscall-tester: %v", err)
+		return nil, err
 	}
 
 	// print stderr in the logs
@@ -118,7 +118,7 @@ func StartSyscallTester(t *testing.T, ctx context.Context) *SyscallTester {
 		progStdout:   progStdout,
 		progStdin:    progStdin,
 		stdoutReader: bufio.NewReader(progStdout),
-	}
+	}, nil
 }
 
 func (st *SyscallTester) Process() *os.Process {

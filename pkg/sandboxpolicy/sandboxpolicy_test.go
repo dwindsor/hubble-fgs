@@ -57,7 +57,8 @@ type testCase struct {
 //revive:disable:context-as-argument
 func (tc *testCase) Run(t *testing.T, ctx context.Context) {
 	testutils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
-	st := testprogs.StartSyscallTester(t, ctx)
+	st, err := testprogs.StartSyscallTester(t, ctx)
+	require.NoError(t, err)
 	if tc.shouldSkip != nil {
 		if reason := tc.shouldSkip(); reason != "" {
 			t.Skip(reason)

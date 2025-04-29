@@ -18,10 +18,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const skipMessage = "Failed to start syscall-tester. This typically happens when syscall-tester binary is not found. Run 'make tester-progs' to compile syscall-tester:"
+
 func TestSyscallTesterCommand(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	st := StartSyscallTester(t, ctx)
+	st, err := StartSyscallTester(t, ctx)
+	if err != nil {
+		t.Skip(skipMessage, err)
+	}
 	res, err := st.Command("ping")
 	require.Equal(t, res, "pong")
 	require.Nil(t, err)
@@ -34,9 +39,12 @@ func TestSyscallTesterCommand(t *testing.T) {
 func TestSyscallTesterSigkill(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	st := StartSyscallTester(t, ctx)
+	st, err := StartSyscallTester(t, ctx)
+	if err != nil {
+		t.Skip(skipMessage, err)
+	}
 	st.Process().Kill()
-	err := st.Cmd.Wait()
+	err = st.Cmd.Wait()
 	require.NotNil(t, err)
 	require.Equal(t, err.Error(), "signal: killed")
 }
@@ -44,8 +52,11 @@ func TestSyscallTesterSigkill(t *testing.T) {
 func TestSyscallTesterTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 	defer cancel()
-	st := StartSyscallTester(t, ctx)
-	err := st.Cmd.Wait()
+	st, err := StartSyscallTester(t, ctx)
+	if err != nil {
+		t.Skip(skipMessage, err)
+	}
+	err = st.Cmd.Wait()
 	require.NotNil(t, err.Error())
 	// NB: timeout will result in a kill
 	require.Equal(t, err.Error(), "signal: killed")
