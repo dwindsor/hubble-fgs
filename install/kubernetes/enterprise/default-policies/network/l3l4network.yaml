@@ -9,9 +9,9 @@ spec:
     udp:
       enable: true
       cgroup: true
-      statsInterval: 10
+      statsInterval: 60
     tcp:
       enable: true
-      statsInterval: 10
+      statsInterval: 60
     dns:
       enable: true
