@@ -19,8 +19,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/manager"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 )
 
@@ -102,18 +102,13 @@ func updateSandboxPolicy(
 	}
 }
 
-func AddSandboxPolicyInformer(ctx context.Context, w watcher.Watcher, s *sensors.Manager) error {
+func AddSandboxPolicyInformer(ctx context.Context, m *manager.ControllerManager, s *sensors.Manager) error {
 	log := logger.GetLogger().WithField("crd-watcher", true)
-	if w == nil {
-		return fmt.Errorf("k8s watcher not initialized")
+	spInformer, err := m.Manager.GetCache().GetInformer(ctx, &v1alpha1.SandboxPolicy{})
+	if err != nil {
+		return err
 	}
-	factory := w.GetCRDInformerFactory()
-	if factory == nil {
-		return fmt.Errorf("CRD informer factory not initialized")
-	}
-
-	spInformer := factory.Cilium().V1alpha1().SandboxPolicies().Informer()
-	spInformer.AddEventHandler(
+	_, err = spInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				addSandboxPolicy(ctx, log, s, obj)
@@ -124,13 +119,15 @@ func AddSandboxPolicyInformer(ctx context.Context, w watcher.Watcher, s *sensors
 			UpdateFunc: func(oldObj interface{}, newObj interface{}) {
 				updateSandboxPolicy(ctx, log, s, oldObj, newObj)
 			}})
-	err := w.AddInformer("SandboxPolicy", spInformer, nil)
 	if err != nil {
-		return fmt.Errorf("failed to add SandboxPolicy informer: %w", err)
+		return err
 	}
 
-	spnInformer := factory.Cilium().V1alpha1().SandboxPoliciesNamespaced().Informer()
-	spnInformer.AddEventHandler(
+	spnInformer, err := m.Manager.GetCache().GetInformer(ctx, &v1alpha1.SandboxPolicyNamespaced{})
+	if err != nil {
+		return err
+	}
+	_, err = spnInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				addSandboxPolicy(ctx, log, s, obj)
@@ -141,10 +138,5 @@ func AddSandboxPolicyInformer(ctx context.Context, w watcher.Watcher, s *sensors
 			UpdateFunc: func(oldObj interface{}, newObj interface{}) {
 				updateSandboxPolicy(ctx, log, s, oldObj, newObj)
 			}})
-	err = w.AddInformer("SandboxPolicyNamespaced", spnInformer, nil)
-	if err != nil {
-		return fmt.Errorf("failed to add SandboxPolicyNamespaced informer: %w", err)
-	}
-
-	return nil
+	return err
 }

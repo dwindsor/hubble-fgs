@@ -53,7 +53,6 @@ import (
 	"github.com/cilium/tetragon/pkg/fileutils"
 	"github.com/cilium/tetragon/pkg/filters"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
-	"github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metricsconfig"
@@ -452,7 +451,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// happen before the sensors are loaded, otherwise events will be stuck
 	// waiting for metadata.
 	var k8sClient *kubernetes.Clientset
-	var crdClient *versioned.Clientset
 	var k8sWatcher watcher.K8sResourceWatcher
 	// Start Kubernetes manager. Note this doesn't have to be in the if block
 	// below. If Kubernetes is not enabled, this call returns a fake manager.
@@ -461,13 +459,13 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		log.Info("Enabling Kubernetes API")
 
 		// retrieve k8s clients
-		k8sClient, crdClient, err = watcher.GetK8sClients(func(_ *rest.Config) error { return nil })
+		k8sClient, _, err = watcher.GetK8sClients(func(_ *rest.Config) error { return nil })
 		if err != nil {
 			return err
 		}
 
 		// create k8s watcher
-		k8sWatcher = watcher.NewK8sWatcher(k8sClient, crdClient, 60*time.Second)
+		k8sWatcher = watcher.NewK8sWatcher(k8sClient, nil, 60*time.Second)
 
 		// add informers for all resources
 		realK8sWatcher := k8sWatcher.(*watcher.K8sWatcher)
@@ -602,8 +600,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// load on the first attempt.
 	if option.Config.EnableK8s {
 		log.Info("Enabling policy watcher")
-		// create k8s watcher
-		policyWatcher := watcher.NewK8sWatcher(nil, crdClient, 60*time.Second)
 
 		// add informers for all resources
 		if enterpriseOption.Config.EnablePolicyK8sWatcher {
@@ -617,25 +613,24 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 				}
 			}
 			if enterpriseOption.Config.EnableSandboxPolicies {
-				err = enterpriseWatcher.AddSandboxPolicyInformer(ctx, policyWatcher, observer.GetSensorManager())
+				err = enterpriseWatcher.AddSandboxPolicyInformer(ctx, kubernetesManager.GetControllerManager(), observer.GetSensorManager())
 				if err != nil {
 					return err
 				}
 			}
 			if enterpriseOption.Config.EnableAlerts {
-				err = enterpriseWatcher.AddAlertRuleInformer(policyWatcher, alertsManager)
+				err = enterpriseWatcher.AddAlertRuleInformer(ctx, kubernetesManager.GetControllerManager(), alertsManager)
 				if err != nil {
 					return err
 				}
 			}
 			if enterpriseOption.Config.EnableApplicationModel {
-				err = netpol.AddTetragonNetworkPolicyInformer(ctx, policyWatcher)
+				err = netpol.AddTetragonNetworkPolicyInformer(ctx, kubernetesManager.GetControllerManager())
 				if err != nil {
 					return err
 				}
 			}
 		}
-		policyWatcher.Start()
 	}
 
 	obs.LogPinnedBpf(observerDir)

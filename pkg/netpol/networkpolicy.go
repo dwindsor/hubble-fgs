@@ -6,7 +6,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/watcher"
+	"github.com/cilium/tetragon/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/option"
@@ -228,17 +228,12 @@ func deleteNetworkPolicy(obj any) {
 	}).Info("deleteNetworkPolicy: completed successfully")
 }
 
-func AddTetragonNetworkPolicyInformer(_ context.Context, w watcher.Watcher) error {
-	if w == nil {
-		return fmt.Errorf("k8s watcher not initialized")
+func AddTetragonNetworkPolicyInformer(ctx context.Context, m *manager.ControllerManager) error {
+	informer, err := m.Manager.GetCache().GetInformer(ctx, &v1alpha1.TetragonNetworkPolicy{})
+	if err != nil {
+		return err
 	}
-	factory := w.GetCRDInformerFactory()
-	if factory == nil {
-		return fmt.Errorf("CRD informer factory not initialized")
-	}
-
-	informer := factory.Cilium().V1alpha1().TetragonNetworkPolicies().Informer()
-	informer.AddEventHandler(
+	_, err = informer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj any) {
 				addTetragonNetworkPolicy(obj)
@@ -249,12 +244,7 @@ func AddTetragonNetworkPolicyInformer(_ context.Context, w watcher.Watcher) erro
 			DeleteFunc: func(obj any) {
 				deleteNetworkPolicy(obj)
 			}})
-	err := w.AddInformer("TetragonNetworkPolicy", informer, nil)
-	if err != nil {
-		return fmt.Errorf("failed to add TetragonNetworkPolicy informer: %w", err)
-	}
-
-	return nil
+	return err
 }
 
 func init() {

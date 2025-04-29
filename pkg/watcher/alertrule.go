@@ -11,6 +11,7 @@
 package watcher
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/sirupsen/logrus"
@@ -18,7 +19,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/watcher"
+	"github.com/cilium/tetragon/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 )
 
@@ -112,17 +113,12 @@ func convertToAlertRule(obj any) *v1alpha1.AlertRule {
 	return nil
 }
 
-func AddAlertRuleInformer(w watcher.Watcher, rm alerts.RuleManager) error {
-	if w == nil {
-		return fmt.Errorf("k8s watcher not initialized")
+func AddAlertRuleInformer(ctx context.Context, m *manager.ControllerManager, rm alerts.RuleManager) error {
+	informer, err := m.Manager.GetCache().GetInformer(ctx, &v1alpha1.AlertRule{})
+	if err != nil {
+		return nil
 	}
-	factory := w.GetCRDInformerFactory()
-	if factory == nil {
-		return fmt.Errorf("CRD informer factory not initialized")
-	}
-
-	informer := factory.Cilium().V1alpha1().AlertRules().Informer()
-	informer.AddEventHandler(
+	_, err = informer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj any) {
 				addAlertRule(obj, rm)
@@ -133,10 +129,5 @@ func AddAlertRuleInformer(w watcher.Watcher, rm alerts.RuleManager) error {
 			DeleteFunc: func(obj any) {
 				deleteAlertRule(obj, rm)
 			}})
-	err := w.AddInformer("AlertRule", informer, nil)
-	if err != nil {
-		return fmt.Errorf("failed to add AlertRule informer: %w", err)
-	}
-
-	return nil
+	return err
 }
