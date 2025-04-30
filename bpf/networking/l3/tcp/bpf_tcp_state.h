@@ -44,6 +44,12 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 
 	v->key.pid = key->pid;
 	v->key.ktime = key->ktime;
+	v->dst_key.local_id.uid = 0;
+	v->dst_key.local_id.cpu = 0;
+	v->dst_key.local_nsid = 0;
+	v->dst_key.destination_id = 0;
+	v->dst_key.source = 0;
+	v->dst_key.port = 0;
 	v->stats.create_time = create_time;
 	v->stats.ktime = create_time;
 	v->socket_flags = flags;
