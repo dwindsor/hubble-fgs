@@ -10,6 +10,13 @@ options:
       default_value: "65536"
       usage: |
         Set the size of the BPF data structure to store application model and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones
+    - name: application-model-diff-export-filename
+      usage: |
+        Filename for application model difference JSON export. Set to "" to disable.
+    - name: application-model-diff-export-interval
+      default_value: 0s
+      usage: |
+        Interval at which to export application model difference as JSON.
     - name: application-model-export-filename
       usage: |
         Filename for application model JSON export. Set to "" to disable.
