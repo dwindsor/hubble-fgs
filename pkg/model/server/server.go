@@ -41,6 +41,7 @@ const (
 	listenEndpointMap      = "listen_endpoint_map"
 	endpointIdMap          = "tg_endpoint_id_map"
 	syscallMap             = "tg_syscall_map"
+	nsIDMapName            = "tg_cgroup_namespace_map"
 )
 
 type Server struct {
@@ -351,6 +352,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 	binaryFile := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	syscallMap := filepath.Join(bpf.MapPrefixPath(), syscallMap)
+	nsIDMapPath := filepath.Join(bpf.MapPrefixPath(), nsIDMapName)
 
 	endpt, err := ebpf.LoadPinnedMap(endptMap, nil)
 	if err != nil {
@@ -358,6 +360,13 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		return nil, err
 	}
 	defer endpt.Close()
+
+	nsIDMap, err := ebpf.LoadPinnedMap(nsIDMapPath, nil)
+	if err != nil {
+		logger.GetLogger().WithError(err).WithField("file", nsIDMapPath).Warn("Could not open nsid map")
+		return nil, err
+	}
+	defer nsIDMap.Close()
 
 	var dnsDomainMap dnsparser.DomainMap
 	defer dnsDomainMap.CloseMaps()
@@ -643,16 +652,35 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		})
 	}
 
+	type NSIDUpdate struct {
+		oldValue types.ProcessTreeValue
+		newNSID  uint64
+	}
+	pendingNSIDUpdates := make(map[types.ProcessTreeKey]NSIDUpdate)
 	iter = m.Iterate()
 	for iter.Next(&key, &val) {
 		var ns, wl, kind string
 		syscalls := set.NewSet[uint32]()
 
-		nsId, ok := state.GetNsId(policyfilter.StateID(key.NSID))
+		if val.MaybeMissingNSID {
+			var updatedNSID uint64
+			if err := nsIDMap.Lookup(&val.CgroupID, &updatedNSID); err != nil {
+				logger.GetLogger().WithError(err).WithField("cgid", val.CgroupID).Debug("failed to look up nsid")
+			} else {
+				// Queue up a map update and fixup NSID value
+				pendingNSIDUpdates[key] = NSIDUpdate{
+					oldValue: val,
+					newNSID:  updatedNSID,
+				}
+				key.NSID = updatedNSID
+			}
+		}
+
+		policyFilterNSInfo, ok := state.GetNsId(policyfilter.StateID(key.NSID))
 		if ok {
-			ns = nsId.Namespace
-			wl = nsId.Workload
-			kind = nsId.Kind
+			ns = policyFilterNSInfo.Namespace
+			wl = policyFilterNSInfo.Workload
+			kind = policyFilterNSInfo.Kind
 		} else {
 			ns = model.HostNamespace
 			wl = model.HostWorkload
@@ -737,6 +765,20 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 			InInitTree: inInitTree,
 		})
 	}
+
+	// Do queued NSID updates
+	// TODO use batch operations here if supported
+	for k, v := range pendingNSIDUpdates {
+		// Delete the old entry
+		m.Delete(&k)
+		// Fix up new NSID and remove the flag
+		k.NSID = v.newNSID
+		v.oldValue.MaybeMissingNSID = false
+		// Update process tree map with the new value
+		m.Update(&k, &v.oldValue, ebpf.UpdateAny)
+	}
+	clear(pendingNSIDUpdates)
+
 	return &tetragon.GetProcessModelResponse{
 		Processes: processModel,
 	}, nil

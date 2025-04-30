@@ -18,17 +18,19 @@ type ProcessExecveKey struct {
 
 type ProcessTreeKey struct {
 	NSID  uint64
-	Depth    uint64
-	Self     uint64
-	Path     [8]uint64
+	Depth uint64
+	Self  uint64
+	Path  [8]uint64
 }
 
 type ProcessTreeValue struct {
-	KtimeFirstExec uint64
-	KtimeLastExec  uint64
-	Pad0           [6]uint8
-	InContainer    bool
-	InInitTree     bool
+	KtimeFirstExec   uint64
+	KtimeLastExec    uint64
+	CgroupID         uint64
+	Pad0             [5]uint8
+	MaybeMissingNSID bool
+	InContainer      bool
+	InInitTree       bool
 }
 
 const (
