@@ -16,6 +16,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"os"
@@ -223,6 +224,8 @@ func TestTCPBasic(t *testing.T) {
 		}
 		t.Logf("Test %s was successful", test.name)
 	}
+
+	stopExistingTCPServices(t)
 }
 
 func TestTCPDocker(t *testing.T) {
@@ -247,6 +250,8 @@ func TestTCPDocker(t *testing.T) {
 		}
 		t.Logf("Test %s was successful", test.name)
 	}
+
+	stopDockerTCPServices(t)
 }
 
 func TestTCPRTT(t *testing.T) {
@@ -308,18 +313,24 @@ var RTTTests = []basicTest{
 
 var (
 	cmdServerTCP8082, cmdServerTCP8082V6, cmdServerTCP8083, cmdServerTCP8083V6, cmdServerTCP8094, cmdServerTCP8094V6 *exec.Cmd
+	stdoutTCP8083, stdoutTCP8083V6                                                                                   io.ReadCloser
 )
 
 func startExistingTCPServices(t *testing.T) {
 	nc := getNCCommand(t, "nc.openbsd")
+	var err error
 
 	cmdServerTCP8082 = exec.Command(nc, "-nvlp", "8082", "-s", "0.0.0.0")
 	assert.NoError(t, cmdServerTCP8082.Start())
 	cmdServerTCP8083 = exec.Command(nc, "-nvlp", "8083", "-s", "0.0.0.0")
+	stdoutTCP8083, err = cmdServerTCP8083.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServerTCP8083.Start())
 	cmdServerTCP8082V6 = exec.Command(nc, "-6nvlp", "8082", "-s", "::")
 	assert.NoError(t, cmdServerTCP8082V6.Start())
 	cmdServerTCP8083V6 = exec.Command(nc, "-6nvlp", "8083", "-s", "::")
+	stdoutTCP8083V6, err = cmdServerTCP8083V6.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServerTCP8083V6.Start())
 
 	path, err := os.Getwd()
@@ -334,7 +345,27 @@ func startExistingTCPServices(t *testing.T) {
 	assert.NoError(t, cmdServer8094V6.Start())
 	os.Chdir(path)
 
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8082, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
+	err = waitForSocketToListen(t, net.ParseIP("::"), 8082, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	assert.NoError(t, err)
+	err = waitForSocketToListen(t, net.ParseIP("::"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	assert.NoError(t, err)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8094, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
+	err = waitForSocketToListen(t, net.ParseIP("::"), 8094, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	assert.NoError(t, err)
+}
+
+func stopExistingTCPServices(t *testing.T) {
+	killAndWaitCommand(t, cmdServerTCP8082)
+	killAndWaitCommand(t, cmdServerTCP8083)
+	killAndWaitCommand(t, cmdServerTCP8082V6)
+	killAndWaitCommand(t, cmdServerTCP8083V6)
+	killAndWaitCommand(t, cmdServerTCP8094)
+	killAndWaitCommand(t, cmdServerTCP8094V6)
 }
 
 func startDockerTCPServices(t *testing.T) {
@@ -348,7 +379,11 @@ func startDockerTCPServices(t *testing.T) {
 	/* Start server before creating obs */
 	docker.Run(t, "--name", "fgs-test-server-v6", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8086", "-s", "[::]")
 	observertesthelper.WaitForProcess("nc -nvlp 8086 -s [::]")
-	time.Sleep(2 * time.Second)
+}
+
+func stopDockerTCPServices(_ *testing.T) {
+	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
+	exec.Command("docker", "rm", "--force", "fgs-test-server-v6").Run()
 }
 
 func testConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
@@ -484,7 +519,7 @@ func testExecEventClone4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8081"))
+		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0"))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
@@ -515,13 +550,21 @@ func testExecEventClone4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8081")
+	cmdServer := exec.Command(server, "-nvlp", "8081", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8081, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
+
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -593,12 +636,15 @@ func testExistingAcceptEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGro
 	)
 
 	readyWG.Wait()
-	time.Sleep(1000 * time.Millisecond)
 	cmdClient := exec.Command(client, "127.0.0.1", "8083")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	time.Sleep(1000 * time.Millisecond)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdoutTCP8083, "hello")
+
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServerTCP8083)
@@ -647,7 +693,7 @@ func testListenAcceptClose4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8085"))
+		WithArguments(sm.Full("-nvlp 8085 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -682,18 +728,24 @@ func testListenAcceptClose4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 	)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8085")
+	cmdServer := exec.Command(server, "-nvlp", "8085", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
 	cmdClient := exec.Command(client, "127.0.0.1", "8085")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
 
-	time.Sleep(1000 * time.Millisecond)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
@@ -728,7 +780,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8086"))
+		WithArguments(sm.Full("-nvlp 8086 -s 0.0.0.0"))
 
 	execChecker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -772,13 +824,19 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8086")
+	cmdServer := exec.Command(server, "-nvlp", "8086", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8086, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
 	cmdClient := exec.Command(client, "127.0.0.1", "8086")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
 
-	time.Sleep(1000 * time.Millisecond)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
@@ -1322,7 +1380,7 @@ func TestDetectLatency4(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8082"))
+		WithArguments(sm.Full("-nvlp 8082 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1361,17 +1419,19 @@ func TestDetectLatency4(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8082")
+	cmdServer := exec.Command(server, "-nvlp", "8082", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8082, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
 
 	cmdClient := exec.Command(client, "127.0.0.1", "8082")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	killAndWaitCommand(t, cmdClient)
 	killAndWaitCommand(t, cmdServer)
@@ -1393,7 +1453,7 @@ func testDetectRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8083"))
+		WithArguments(sm.Full("-nvlp 8083 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1428,17 +1488,19 @@ func testDetectRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 							WithPercentile(1))))))
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8083")
+	cmdServer := exec.Command(server, "-nvlp", "8083", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
 
 	cmdClient := exec.Command(client, "127.0.0.1", "8083")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	killAndWaitCommand(t, cmdClient)
 	killAndWaitCommand(t, cmdServer)
@@ -1460,7 +1522,7 @@ func testDetectSRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8184"))
+		WithArguments(sm.Full("-nvlp 8184 -s 0.0.0.0"))
 
 	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
 		WithProcess(ncChecker).
@@ -1527,17 +1589,19 @@ func testDetectSRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	}
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8184")
+	cmdServer := exec.Command(server, "-nvlp", "8184", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8184, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
 
 	cmdClient := exec.Command(client, "127.0.0.1", "8184")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	killAndWaitCommand(t, cmdClient)
 	killAndWaitCommand(t, cmdServer)
@@ -1606,7 +1670,7 @@ func testExecEventClone6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6nvlp 8081"))
+		WithArguments(sm.Full("-6nvlp 8081 -s ::"))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
@@ -1637,13 +1701,21 @@ func testExecEventClone6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-6nvlp", "8081")
+	cmdServer := exec.Command(server, "-6nvlp", "8081", "-s", "::")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("::"), 8081, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	assert.NoError(t, err)
 	cmdClient := exec.Command(client, "-6", "::1", "8081")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
+
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -1715,12 +1787,14 @@ func testExistingAcceptEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGro
 	)
 
 	readyWG.Wait()
-	time.Sleep(1000 * time.Millisecond)
 	cmdClient := exec.Command(client, "-6", "::1", "8083")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	time.Sleep(1000 * time.Millisecond)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdoutTCP8083V6, "hello")
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServerTCP8083V6)
@@ -1770,7 +1844,7 @@ func testListenAcceptClose6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6nvlp 8085"))
+		WithArguments(sm.Full("-6nvlp 8085 -s ::"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1805,18 +1879,24 @@ func testListenAcceptClose6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 	)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-6nvlp", "8085")
+	cmdServer := exec.Command(server, "-6nvlp", "8085", "-s", "::")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("::"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	assert.NoError(t, err)
 	cmdClient := exec.Command(client, "-6", "::1", "8085")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
 
-	time.Sleep(1000 * time.Millisecond)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 }
 
@@ -1946,7 +2026,7 @@ func testDetectRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6nvlp 8083"))
+		WithArguments(sm.Full("-6nvlp 8083 -s ::"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1981,17 +2061,19 @@ func testDetectRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 							WithPercentile(1))))))
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-6nvlp", "8083")
+	cmdServer := exec.Command(server, "-6nvlp", "8083", "-s", "::")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("::"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	assert.NoError(t, err)
 
 	cmdClient := exec.Command(client, "-6n", "::1", "8083")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	killAndWaitCommand(t, cmdClient)
 	killAndWaitCommand(t, cmdServer)
@@ -2014,7 +2096,7 @@ func testDetectSRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6nvlp 8184"))
+		WithArguments(sm.Full("-6nvlp 8184 -s ::"))
 
 	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
 		WithProcess(ncChecker).
@@ -2081,17 +2163,19 @@ func testDetectSRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	}
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-6nvlp", "8184")
+	cmdServer := exec.Command(server, "-6nvlp", "8184", "-s", "::")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("::"), 8184, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	assert.NoError(t, err)
 
 	cmdClient := exec.Command(client, "-6n", "::1", "8184")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	killAndWaitCommand(t, cmdClient)
 	killAndWaitCommand(t, cmdServer)
