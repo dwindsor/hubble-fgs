@@ -177,7 +177,7 @@ func TestCreatSrcKeyGlobal(t *testing.T) {
 	policy.Subject.Workload.Kind = ""
 	key, err := createSrcPolicy(policy)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(0), key.CgroupId)
+	assert.Equal(t, uint64(0), key.NSID)
 	assert.Equal(t, uint64(0), key.Depth)
 	assert.Equal(t, uint64(0), key.Self)
 

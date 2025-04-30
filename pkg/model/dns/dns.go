@@ -234,10 +234,10 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 					}
 
 					processSrc := &types.ProcessTreeKey{
-						CgroupId: subject.CgroupId,
-						Depth:    0,
-						Self:     self,
-						Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+						NSID:  subject.NSID,
+						Depth: 0,
+						Self:  self,
+						Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 					}
 					records = append(records, &record.DatapathRecord{
 						Policy:   policy,
@@ -314,10 +314,10 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 					continue
 				}
 				processSrc := &types.ProcessTreeKey{
-					CgroupId: subject.CgroupId,
-					Depth:    0,
-					Self:     self,
-					Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+					NSID:  subject.NSID,
+					Depth: 0,
+					Self:  self,
+					Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 				}
 				records = append(records, &record.DatapathRecord{
 					Policy:   policy,
@@ -384,10 +384,10 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 					continue
 				}
 				processSrc := &types.ProcessTreeKey{
-					CgroupId: subject.CgroupId,
-					Depth:    0,
-					Self:     self,
-					Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+					NSID:  subject.NSID,
+					Depth: 0,
+					Self:  self,
+					Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 				}
 
 				records = append(records, &record.DatapathRecord{
@@ -461,10 +461,10 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 							Port: 0,
 						}
 						processSrc := &types.ProcessTreeKey{
-							CgroupId: subject.CgroupId,
-							Depth:    0,
-							Self:     self,
-							Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+							NSID:  subject.NSID,
+							Depth: 0,
+							Self:  self,
+							Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 						}
 						records = append(records, &record.DatapathRecord{
 							Policy:   policy,
@@ -479,10 +479,10 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 							Port: port,
 						}
 						processSrc := &types.ProcessTreeKey{
-							CgroupId: subject.CgroupId,
-							Depth:    0,
-							Self:     self,
-							Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+							NSID:  subject.NSID,
+							Depth: 0,
+							Self:  self,
+							Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 						}
 						records = append(records, &record.DatapathRecord{
 							Policy:   policy,

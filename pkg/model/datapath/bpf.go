@@ -202,7 +202,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 
 	key := &types.DestinationEndpointKey{
 		LocalId:           r.Src.Self,
-		LocalNSId:         r.Src.CgroupId,
+		LocalNSId:         r.Src.NSID,
 		DestinationId:     dst,
 		DestinationSource: types.DestinationSourceUser,
 		DestinationPort:   uint64(r.Endpoint.Port),
@@ -297,7 +297,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	// to me that we need to move it given the connection is likely still around.
 	key := &types.DestinationEndpointKey{
 		LocalId:           src.Self,
-		LocalNSId:         src.CgroupId,
+		LocalNSId:         src.NSID,
 		DestinationId:     dst,
 		DestinationSource: types.DestinationSourceUser,
 		DestinationPort:   uint64(r.Endpoint.Port),

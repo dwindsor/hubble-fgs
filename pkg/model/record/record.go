@@ -85,7 +85,7 @@ func (r *DatapathRecord) String() string {
 	action := ""
 
 	if r.Src != nil {
-		src = fmt.Sprintf("%d:%d", r.Src.CgroupId, r.Src.Self)
+		src = fmt.Sprintf("%d:%d", r.Src.NSID, r.Src.Self)
 	}
 
 	ep := fmt.Sprint(r.Endpoint.String())
@@ -114,7 +114,7 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 
 	for _, r := range B {
 		key := recordKey{
-			CgroupId: r.Src.CgroupId,
+			CgroupId: r.Src.NSID,
 			Self:     r.Src.Self,
 		}
 		if r.Endpoint.EP != nil {
@@ -126,7 +126,7 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 
 	for _, r := range A {
 		key := recordKey{
-			CgroupId: r.Src.CgroupId,
+			CgroupId: r.Src.NSID,
 			Self:     r.Src.Self,
 		}
 		if r.Endpoint.EP != nil {

@@ -27,14 +27,14 @@ func (state *PolicyState) progRemoveCIDRDest(
 	}
 	if err := prog.RemoveSingleRecord(record); err != nil {
 		logger.GetLogger().WithFields(logrus.Fields{
-			"cgid": src.CgroupId,
+			"cgid": src.NSID,
 			"self": src.Self,
 			"dest": cidr.CIDR,
 		}).WithError(err).Error("TCP CIDR remove Failed")
 		return err
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
-		"cgid": src.CgroupId,
+		"cgid": src.NSID,
 		"self": src.Self,
 		"dest": cidr.CIDR,
 	}).Debug("TCP CIDR removed")
@@ -98,10 +98,10 @@ func (state *PolicyState) addDestCIDRRecords(
 			continue
 		}
 		processSrc := &types.ProcessTreeKey{
-			CgroupId: podSubject.CgroupId,
-			Depth:    0,
-			Self:     self,
-			Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+			NSID:  podSubject.NSID,
+			Depth: 0,
+			Self:  self,
+			Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 		}
 		r, err := state.addDestSrcCIDRRecords(dest, processSrc, action, true)
 		if err != nil {

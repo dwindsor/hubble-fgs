@@ -17,7 +17,7 @@ type ProcessExecveKey struct {
 }
 
 type ProcessTreeKey struct {
-	CgroupId uint64
+	NSID  uint64
 	Depth    uint64
 	Self     uint64
 	Path     [8]uint64

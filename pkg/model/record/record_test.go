@@ -20,9 +20,9 @@ func TestDiffEmptySets(t *testing.T) {
 
 func getRecordSlice() []*DatapathRecord {
 	src := &types.ProcessTreeKey{
-		CgroupId: uint64(1),
-		Depth:    0,
-		Self:     0,
+		NSID:  uint64(1),
+		Depth: 0,
+		Self:  0,
 	}
 
 	epName1 := &endpoint.Endpoint{
@@ -156,9 +156,9 @@ func TestRecordDisjoint(t *testing.T) {
 // Worstcase is all Pods found matching policy on delete giving Set(A) == Set(B)
 func BenchmarkDiffRecord(b *testing.B) {
 	src := &types.ProcessTreeKey{
-		CgroupId: uint64(1),
-		Depth:    0,
-		Self:     0,
+		NSID:  uint64(1),
+		Depth: 0,
+		Self:  0,
 	}
 
 	epName := &endpoint.Endpoint{
@@ -179,7 +179,7 @@ func BenchmarkDiffRecord(b *testing.B) {
 
 	for id := 0; id < 20000; id++ {
 		s := *src
-		s.CgroupId = uint64(id)
+		s.NSID = uint64(id)
 
 		ep := *epName
 		ep.Name = fmt.Sprintf("testPod%d", id)
@@ -213,9 +213,9 @@ func BenchmarkDiffRecord(b *testing.B) {
 // Worstcase is all Pods found matching policy on delete giving Set(A) == Set(B)
 func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 	src := &types.ProcessTreeKey{
-		CgroupId: uint64(1),
-		Depth:    0,
-		Self:     0,
+		NSID:  uint64(1),
+		Depth: 0,
+		Self:  0,
 	}
 
 	epName := &endpoint.Endpoint{
@@ -236,7 +236,7 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 
 	for id := 0; id < 20000; id++ {
 		s := *src
-		s.CgroupId = uint64(id)
+		s.NSID = uint64(id)
 
 		ep := *epName
 		ep.Name = fmt.Sprintf("testPod%d", id)

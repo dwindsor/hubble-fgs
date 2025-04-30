@@ -124,7 +124,7 @@ func TestCheckWorkloadExists(t *testing.T) {
 	key, err := createSrcPolicy(policy)
 	assert.NoError(t, err)
 	assert.NotNil(t, key)
-	assert.NotZero(t, key.CgroupId)
+	assert.NotZero(t, key.NSID)
 	assert.Equal(t, 0, len(queueWl))
 
 	pod := testPod(t, "1", "testNamespace", "testNameFoo", "Pod", "")
@@ -150,12 +150,12 @@ func TestSrcKeyLookup(t *testing.T) {
 	key, err := createSrcKey("testNamespace", "test1", "testKind")
 	assert.NoError(t, err)
 	assert.NotNil(t, key)
-	assert.NotZero(t, key.CgroupId)
+	assert.NotZero(t, key.NSID)
 
 	key, err = createSrcKey("testNamespace", "test2", "testKind")
 	assert.NoError(t, err)
 	assert.NotNil(t, key)
-	assert.NotZero(t, key.CgroupId)
+	assert.NotZero(t, key.NSID)
 
 	delPod(t, test1Id)
 	delPod(t, test2Id)
@@ -179,7 +179,7 @@ func TestSrcPolicyLookup(t *testing.T) {
 	key, err := createSrcPolicy(policy1)
 	assert.NoError(t, err)
 	assert.NotNil(t, key)
-	assert.NotZero(t, key.CgroupId)
+	assert.NotZero(t, key.NSID)
 	assert.Equal(t, 0, len(queueWl))
 
 	policy2 := testFQDNPolicy(name2)
@@ -187,7 +187,7 @@ func TestSrcPolicyLookup(t *testing.T) {
 	key, err = createSrcPolicy(policy2)
 	assert.NoError(t, err)
 	assert.NotNil(t, key)
-	assert.NotZero(t, key.CgroupId)
+	assert.NotZero(t, key.NSID)
 	assert.Equal(t, 0, len(queueWl))
 
 	err = s.RemoveNetworkPolicy(name1, policy1)
@@ -229,7 +229,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	r1, err := s.objectAdd(srcPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
-	assert.NotZero(t, r1[0].Src.CgroupId)
+	assert.NotZero(t, r1[0].Src.NSID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[0].Endpoint.EP.Type)
 	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[1].Endpoint.EP.Type)
@@ -242,7 +242,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	r2, err := s.objectAdd(dstPod)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r2))
-	assert.Equal(t, r1[0].Src.CgroupId, r2[0].Src.CgroupId)
+	assert.Equal(t, r1[0].Src.NSID, r2[0].Src.NSID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, r2[0].Endpoint.EP.Type)
 	assert.Equal(t, dstPodName, r2[0].Endpoint.EP.Name)
 
@@ -251,7 +251,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	r3, err := s.objectAdd(dstPodKeep)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r3))
-	assert.Equal(t, r1[0].Src.CgroupId, r3[0].Src.CgroupId)
+	assert.Equal(t, r1[0].Src.NSID, r3[0].Src.NSID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, r3[0].Endpoint.EP.Type)
 	assert.Equal(t, dstPodNameKeep, r3[0].Endpoint.EP.Name)
 
@@ -259,7 +259,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	src := s.Src[name]
 	assert.NotNil(t, src)
 	assert.Equal(t, 1, len(src.Subjects))
-	assert.Equal(t, r1[0].Src.CgroupId, src.Subjects[0].CgroupId)
+	assert.Equal(t, r1[0].Src.NSID, src.Subjects[0].NSID)
 
 	// Test matchLAbelsDstPolicy is tracking endpoints
 	dst := s.Dst[name]
@@ -329,17 +329,17 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r1))
 
-	assert.NotZero(t, r1[0].Src.CgroupId)
+	assert.NotZero(t, r1[0].Src.NSID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[0].Endpoint.EP.Type)
 	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
 	assert.Equal(t, r1[0].Action.Action, record.PolicyDeny)
 
-	assert.NotZero(t, r1[1].Src.CgroupId)
+	assert.NotZero(t, r1[1].Src.NSID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[1].Endpoint.EP.Type)
 	assert.Equal(t, "test.com", r1[1].Endpoint.EP.Dns)
 	assert.Equal(t, r1[1].Action.Action, record.PolicyDeny)
 
-	assert.NotZero(t, r1[2].Src.CgroupId)
+	assert.NotZero(t, r1[2].Src.NSID)
 	assert.Nil(t, r1[2].Endpoint.EP)
 	assert.Equal(t, r1[2].Action.Action, record.PolicyAllow)
 
@@ -388,21 +388,21 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(r1)) // program datapath now for subject->dst
 
-	assert.NotZero(t, r1[0].Src.CgroupId)
+	assert.NotZero(t, r1[0].Src.NSID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[0].Endpoint.EP.Type)
 	assert.Equal(t, "test.io", r1[0].Endpoint.EP.Dns)
 	assert.Equal(t, r1[0].Action.Action, record.PolicyAllow)
 
-	assert.NotZero(t, r1[1].Src.CgroupId)
+	assert.NotZero(t, r1[1].Src.NSID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_DNS, r1[1].Endpoint.EP.Type)
 	assert.Equal(t, "test.com", r1[1].Endpoint.EP.Dns)
 	assert.Equal(t, r1[1].Action.Action, record.PolicyAllow)
 
-	assert.NotZero(t, r1[2].Src.CgroupId)
+	assert.NotZero(t, r1[2].Src.NSID)
 	assert.Equal(t, tetragon.EndpointType_ENDPOINT_TYPE_POD, r1[2].Endpoint.EP.Type)
 	assert.Equal(t, r1[2].Action.Action, record.PolicyAllow)
 
-	assert.NotZero(t, r1[3].Src.CgroupId)
+	assert.NotZero(t, r1[3].Src.NSID)
 	assert.Nil(t, r1[3].Endpoint.EP)
 	assert.Equal(t, r1[3].Action.Action, record.PolicyDeny)
 

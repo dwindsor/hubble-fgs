@@ -70,14 +70,14 @@ func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.Proces
 			}
 			if err := prog.RemoveSingleRecord(record); err != nil {
 				logger.GetLogger().WithFields(logrus.Fields{
-					"cgid": src.CgroupId,
+					"cgid": src.NSID,
 					"self": src.Self,
 					"dest": entry,
 				}).WithError(err).Error("TCP quota remove Failed")
 			}
 		}
 		logger.GetLogger().WithFields(logrus.Fields{
-			"cgid": src.CgroupId,
+			"cgid": src.NSID,
 			"self": src.Self,
 			"dest": strings.Join(d.FQDN.Names, " "),
 		}).Debug("TCP quota removed")
@@ -99,13 +99,13 @@ func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.Proces
 		}
 		if prog.RemoveSingleRecord(record); err != nil {
 			logger.GetLogger().WithFields(logrus.Fields{
-				"cgid": src.CgroupId,
+				"cgid": src.NSID,
 				"self": src.Self,
 			}).WithError(err).Error("TCP quota labels endpoint remove Failed")
 			continue
 		}
 		logger.GetLogger().WithFields(logrus.Fields{
-			"cgid": src.CgroupId,
+			"cgid": src.NSID,
 			"self": src.Self,
 		}).Debug("TCP DNS labels endpoint quota removed")
 	}
@@ -241,10 +241,10 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 	}
 
 	return &types.ProcessTreeKey{
-		CgroupId: uint64(nsId),
-		Depth:    0,
-		Self:     0,
-		Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+		NSID:  uint64(nsId),
+		Depth: 0,
+		Self:  0,
+		Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 	}, nil
 }
 
@@ -376,10 +376,10 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 			}
 
 			processSrc := &types.ProcessTreeKey{
-				CgroupId: src.CgroupId,
-				Depth:    0,
-				Self:     self,
-				Path:     [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
+				NSID:  src.NSID,
+				Depth: 0,
+				Self:  self,
+				Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 			}
 
 			r := state.policyDestRecords(uid, processSrc, action, policy, init)

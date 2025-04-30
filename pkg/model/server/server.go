@@ -648,7 +648,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		var ns, wl, kind string
 		syscalls := set.NewSet[uint32]()
 
-		nsId, ok := state.GetNsId(policyfilter.StateID(key.CgroupId))
+		nsId, ok := state.GetNsId(policyfilter.StateID(key.NSID))
 		if ok {
 			ns = nsId.Namespace
 			wl = nsId.Workload
