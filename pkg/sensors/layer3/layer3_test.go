@@ -13,13 +13,19 @@
 package layer3_test
 
 import (
+	"bytes"
 	"context"
 	"flag"
+	"fmt"
+	"io"
+	"net"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -28,6 +34,8 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -278,4 +286,94 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		sensi = append(sensi, s)
 	}
 	sensors.UnloadSensors(sensi)
+}
+
+func ipToHexstring(addr net.IP) string {
+	ret := ""
+	if addr.To4() == nil {
+		for i := 0; i < 4; i++ {
+			for j := 3; j >= 0; j-- {
+				ret += fmt.Sprintf("%02x", addr[i*4+j])
+			}
+		}
+		return ret
+	}
+	addr = addr.To4()
+	for i := len(addr) - 1; i >= 0; i-- {
+		ret += fmt.Sprintf("%02x", addr[i])
+	}
+	return ret
+}
+
+func isSocketListening(t *testing.T, addr net.IP, port uint16, protocol uint16, af uint16) (bool, error) {
+	netFile := "/proc/net/"
+	switch protocol {
+	case syscall.IPPROTO_TCP:
+		netFile += "tcp"
+	case syscall.IPPROTO_UDP:
+		netFile += "udp"
+	default:
+		return false, fmt.Errorf("protocol must be IPPROTO_TCP or IPPROTO_UDP")
+	}
+	switch af {
+	case syscall.AF_INET:
+	case syscall.AF_INET6:
+		netFile += "6"
+	default:
+		return false, fmt.Errorf("address family must be AF_INET or AF_INET6")
+	}
+	addrPort := ipToHexstring(addr)
+	addrPort += fmt.Sprintf(":%04X", port)
+	t.Logf("Looking in file: %s for address:port: %s", netFile, addrPort)
+
+	netData, err := os.ReadFile(netFile)
+	if err != nil {
+		return false, err
+	}
+	netLines := strings.Split(string(netData), "\n")
+	for _, line := range netLines {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		// fields[1] is local address:port
+		if fields[1] == addrPort {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func waitForSocketToListen(t *testing.T, addr net.IP, port uint16, protocol uint16, af uint16) error {
+	t.Logf("Waiting for socket to listen: address: %s, port: %d", addr, port)
+	sockListening, err := isSocketListening(t, addr, port, protocol, af)
+	if err != nil {
+		t.Logf("isSocketListening failed: %s", err)
+		return err
+	}
+	for !sockListening {
+		sockListening, err = isSocketListening(t, addr, port, protocol, af)
+		if err != nil {
+			return err
+		}
+		// The intention of this millisleep is to allow CPU relaxing, task switching, etc
+		// so that hopefully some amount of time has passed between checks, mainly just to
+		// reduce churn.
+		time.Sleep(time.Millisecond)
+	}
+	return nil
+}
+
+func sendData(t *testing.T, stdin io.WriteCloser, msg string) {
+	_, err := stdin.Write([]byte(msg))
+	assert.NoError(t, err)
+}
+
+func waitForData(t *testing.T, stdout io.ReadCloser, msg string) {
+	rx := make([]byte, 5)
+	for !bytes.Equal(rx, []byte(msg)) {
+		_, err := stdout.Read(rx)
+		t.Logf("read [%x] '%s'", rx, string(rx))
+		require.NoError(t, err)
+	}
 }

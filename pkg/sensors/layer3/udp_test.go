@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"os"
@@ -831,20 +832,36 @@ func TestUDPBasic(t *testing.T) {
 		}
 		t.Logf("Test %s was successful", test.name)
 	}
+
+	stopExistingUDPServices(t)
 }
 
 var (
-	cmdServerUDP8081, cmdServerUDP8081V6 *exec.Cmd
+	cmdServerUDP8981, cmdServerUDP8981V6 *exec.Cmd
+	stdoutUDP8981, stdoutUDP8981V6       io.ReadCloser
 )
 
 func startExistingUDPServices(t *testing.T) {
 	nc := getNCCommand(t, "nc.openbsd")
+	var err error
 
-	cmdServerUDP8081 = exec.Command(nc, "-unvlp", "8081")
-	assert.NoError(t, cmdServerUDP8081.Start())
-	cmdServerUDP8081V6 = exec.Command(nc, "-6unvlp", "8081")
-	assert.NoError(t, cmdServerUDP8081V6.Start())
-	time.Sleep(1000 * time.Millisecond)
+	cmdServerUDP8981 = exec.Command(nc, "-unvlp", "8981", "-s", "0.0.0.0")
+	stdoutUDP8981, err = cmdServerUDP8981.StdoutPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdServerUDP8981.Start())
+	cmdServerUDP8981V6 = exec.Command(nc, "-6unvlp", "8981", "-s", "::")
+	stdoutUDP8981V6, err = cmdServerUDP8981V6.StdoutPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdServerUDP8981V6.Start())
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8981, syscall.IPPROTO_UDP, syscall.AF_INET)
+	assert.NoError(t, err)
+	err = waitForSocketToListen(t, net.ParseIP("::"), 8981, syscall.IPPROTO_UDP, syscall.AF_INET6)
+	assert.NoError(t, err)
+}
+
+func stopExistingUDPServices(t *testing.T) {
+	killAndWaitCommand(t, cmdServerUDP8981)
+	killAndWaitCommand(t, cmdServerUDP8981V6)
 }
 
 var basicUDPTests = []basicTest{
@@ -867,7 +884,7 @@ func testUdpConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-unvlp 8081"))
+		WithArguments(sm.Full("-unvlp 8081 -s 0.0.0.0"))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
@@ -905,6 +922,20 @@ func testUdpConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
 			WithSourcePort(8081).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		ec.NewProcessCloseChecker("serverClose").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8081).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		ec.NewProcessCloseChecker("clientClose").
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationPort(8081).
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 		clientStatsChecker,
@@ -973,25 +1004,28 @@ func testUdpConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 	}
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-unvlp", "8081")
+	cmdServer := exec.Command(server, "-unvlp", "8081", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.IPv4(0, 0, 0, 0), 8081, syscall.IPPROTO_UDP, syscall.AF_INET)
+	assert.NoError(t, err)
 
 	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
+
+	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(t, cmdServer)
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	err = jsonchecker.JsonTestCheck(gt, statsChecker)
 	assert.NoError(t, err)
-
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
 }
 
 func testListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
@@ -1002,7 +1036,7 @@ func testListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-unvlp 8081"))
+		WithArguments(sm.Full("-unvlp 8082 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1015,16 +1049,17 @@ func testListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8081).
+			WithPort(8082).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 	)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-unvlp", "8081")
+	cmdServer := exec.Command(server, "-unvlp", "8082", "-s", "0.0.0.0")
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err := waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8082, syscall.IPPROTO_UDP, syscall.AF_INET)
+	assert.NoError(t, err)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -1057,7 +1092,7 @@ func TestUDPCLISwitch(t *testing.T) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-unvlp 8081"))
+		WithArguments(sm.Full("-unvlp 8083 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1070,7 +1105,7 @@ func TestUDPCLISwitch(t *testing.T) {
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8081).
+			WithPort(8083).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 	)
 
@@ -1079,11 +1114,12 @@ func TestUDPCLISwitch(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-unvlp", "8081")
+	cmdServer := exec.Command(server, "-unvlp", "8083", "-s", "0.0.0.0")
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err := waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8083, syscall.IPPROTO_UDP, syscall.AF_INET)
+	assert.NoError(t, err)
 
-	err := jsonchecker.JsonTestCheck(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -1115,11 +1151,11 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-unvlp 8081"))
+		WithArguments(sm.Full("-unvlp 8084 -s 0.0.0.0"))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
-		WithArguments(sm.Full("-u 127.0.0.1 8081"))
+		WithArguments(sm.Full("-u 127.0.0.1 8084"))
 
 	execChecker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1136,7 +1172,7 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 	connectChecker := ec.NewUnorderedEventChecker(
 		ec.NewProcessConnectChecker("serverConnect").
 			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8081).
+			WithSourcePort(8084).
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 	)
@@ -1146,7 +1182,7 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 				WithProtocol(tetragon.SocketProtocol_UDP).
 				WithSourceIp(sm.Full("127.0.0.1")).
 				WithDestinationIp(sm.Full("127.0.0.1")).
-				WithSourcePort(8081)),
+				WithSourcePort(8084)),
 	)
 
 	obs := getUdpObserverDisableEvents(t, ctx, CLISwitches, disableConnect, true, true, disableStats)
@@ -1156,16 +1192,19 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-unvlp", "8081")
+	cmdServer := exec.Command(server, "-unvlp", "8084", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8084, syscall.IPPROTO_UDP, syscall.AF_INET)
+	assert.NoError(t, err)
 
-	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
+	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8084")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	// Regardless of enabled/disabled network events, we should exepct the exec events
 	err = jsonchecker.JsonTestCheck(t, execChecker)
@@ -1210,11 +1249,11 @@ func testConnectAfterStartEvent4(gt *testing.T, t *testing.T, readyWG *sync.Wait
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-unvlp 8081"))
+		WithArguments(sm.Full("-unvlp 8981 -s 0.0.0.0"))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
-		WithArguments(sm.Full("-u 127.0.0.1 8081"))
+		WithArguments(sm.Full("-u 127.0.0.1 8981"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1230,7 +1269,7 @@ func testConnectAfterStartEvent4(gt *testing.T, t *testing.T, readyWG *sync.Wait
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8081).
+			WithSourcePort(8981).
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 		// Check client sock stats
@@ -1240,7 +1279,7 @@ func testConnectAfterStartEvent4(gt *testing.T, t *testing.T, readyWG *sync.Wait
 			WithSocket(ec.NewSockInfoChecker().
 				WithProtocol(tetragon.SocketProtocol_UDP).
 				WithDestinationIp(sm.Full("127.0.0.1")).
-				WithDestinationPort(8081)).
+				WithDestinationPort(8981)).
 			WithStats(ec.NewSocketStatsChecker().
 				WithBytesSent(5).
 				WithSegsOut(1)),
@@ -1252,24 +1291,23 @@ func testConnectAfterStartEvent4(gt *testing.T, t *testing.T, readyWG *sync.Wait
 				WithProtocol(tetragon.SocketProtocol_UDP).
 				WithSourceIp(sm.Full("127.0.0.1")).
 				WithDestinationIp(sm.Full("127.0.0.1")).
-				WithSourcePort(8081)).
+				WithSourcePort(8981)).
 			WithStats(ec.NewSocketStatsChecker().
 				WithBytesReceived(5).
 				WithSegsIn(1)),
 	)
 
 	readyWG.Wait()
-	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
+	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8981")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdoutUDP8981, "hello")
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	killAndWaitCommand(t, cmdServerUDP8081)
 	killAndWaitCommand(t, cmdClient)
 }
 
@@ -1291,11 +1329,11 @@ func TestUdpDetectLatency4(t *testing.T) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-unvlp 8081"))
+		WithArguments(sm.Full("-unvlp 8085 -s 0.0.0.0"))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
-		WithArguments(sm.Full("-u 127.0.0.1 8081"))
+		WithArguments(sm.Full("-u 127.0.0.1 8085"))
 
 	clientStatsChecker := ec.NewProcessSockStatsChecker("clientStats").
 		WithProcess(ncCliChecker).
@@ -1303,7 +1341,7 @@ func TestUdpDetectLatency4(t *testing.T) {
 		WithSocket(ec.NewSockInfoChecker().
 			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithDestinationPort(8081))
+			WithDestinationPort(8085))
 
 	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
 		WithProcess(ncSrvChecker).
@@ -1312,7 +1350,7 @@ func TestUdpDetectLatency4(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithSourceIp(sm.Full("127.0.0.1")).
 			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8081)).
+			WithSourcePort(8085)).
 		WithStats(ec.NewSocketStatsChecker().
 			WithLatency(ec.NewHistogramChecker().
 				WithBuckets(ec.NewHistogramBucketListMatcher().
@@ -1334,7 +1372,7 @@ func TestUdpDetectLatency4(t *testing.T) {
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8081).
+			WithSourcePort(8085).
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 		clientStatsChecker,
@@ -1345,16 +1383,19 @@ func TestUdpDetectLatency4(t *testing.T) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-unvlp", "8081")
+	cmdServer := exec.Command(server, "-unvlp", "8085", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8085, syscall.IPPROTO_UDP, syscall.AF_INET)
+	assert.NoError(t, err)
 
-	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
+	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8085")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -1428,15 +1469,14 @@ func testUdpMulticast4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-", "UDP4-LISTEN:8100,ip-add-membership=224.0.0.1:lo")
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err := waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8100, syscall.IPPROTO_UDP, syscall.AF_INET)
+	assert.NoError(t, err)
 
 	cmdClient := exec.Command(client, "-", "UDP4-DATAGRAM:224.0.0.1:8100")
 	stdinClient, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdinClient.Write([]byte("hello"))
-	assert.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
+	sendData(t, stdinClient, "hello")
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
@@ -1444,6 +1484,7 @@ func testUdpMulticast4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 }
+
 func testUdpConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
@@ -1453,7 +1494,7 @@ func testUdpConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6unvlp 8081"))
+		WithArguments(sm.Full("-6unvlp 8081 -s ::"))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
@@ -1491,6 +1532,20 @@ func testUdpConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("::1")).
 			WithSourcePort(8081).
+			WithDestinationIp(sm.Full("::1")).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		ec.NewProcessCloseChecker("serverClose").
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::1")).
+			WithSourcePort(8081).
+			WithDestinationIp(sm.Full("::1")).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		ec.NewProcessCloseChecker("clientClose").
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::1")).
+			WithDestinationPort(8081).
 			WithDestinationIp(sm.Full("::1")).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 		clientStatsChecker,
@@ -1559,25 +1614,29 @@ func testUdpConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 	}
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-6unvlp", "8081")
+	cmdServer := exec.Command(server, "-6unvlp", "8081", "-s", "::")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("::"), 8081, syscall.IPPROTO_UDP, syscall.AF_INET6)
+	assert.NoError(t, err)
 
 	cmdClient := exec.Command(client, "-6u", "::1", "8081")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
+	sendData(t, stdin, "hello")
+
+	waitForData(t, stdout, "hello")
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	err = jsonchecker.JsonTestCheck(gt, statsChecker)
 	assert.NoError(t, err)
-
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
 }
 
 func testListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
@@ -1588,7 +1647,7 @@ func testListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6unvlp 8081"))
+		WithArguments(sm.Full("-6unvlp 8082 -s ::"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1601,16 +1660,17 @@ func testListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("::")).
-			WithPort(8081).
+			WithPort(8082).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 	)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-6unvlp", "8081")
+	cmdServer := exec.Command(server, "-6unvlp", "8082", "-s", "::")
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err := waitForSocketToListen(t, net.ParseIP("::"), 8082, syscall.IPPROTO_UDP, syscall.AF_INET6)
+	assert.NoError(t, err)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -1629,11 +1689,11 @@ func testConnectAfterStartEvent6(gt *testing.T, t *testing.T, readyWG *sync.Wait
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-6unvlp 8081"))
+		WithArguments(sm.Full("-6unvlp 8981 -s ::"))
 
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(client)).
-		WithArguments(sm.Full("-6u ::1 8081"))
+		WithArguments(sm.Full("-6u ::1 8981"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -1649,7 +1709,7 @@ func testConnectAfterStartEvent6(gt *testing.T, t *testing.T, readyWG *sync.Wait
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("::1")).
-			WithSourcePort(8081).
+			WithSourcePort(8981).
 			WithDestinationIp(sm.Full("::1")).
 			WithProtocol(tetragon.SocketProtocol_UDP),
 		// Check client sock stats
@@ -1659,7 +1719,7 @@ func testConnectAfterStartEvent6(gt *testing.T, t *testing.T, readyWG *sync.Wait
 			WithSocket(ec.NewSockInfoChecker().
 				WithProtocol(tetragon.SocketProtocol_UDP).
 				WithDestinationIp(sm.Full("::1")).
-				WithDestinationPort(8081)).
+				WithDestinationPort(8981)).
 			WithStats(ec.NewSocketStatsChecker().
 				WithBytesSent(5).
 				WithSegsOut(1)),
@@ -1671,24 +1731,23 @@ func testConnectAfterStartEvent6(gt *testing.T, t *testing.T, readyWG *sync.Wait
 				WithProtocol(tetragon.SocketProtocol_UDP).
 				WithSourceIp(sm.Full("::1")).
 				WithDestinationIp(sm.Full("::1")).
-				WithSourcePort(8081)).
+				WithSourcePort(8981)).
 			WithStats(ec.NewSocketStatsChecker().
 				WithBytesReceived(5).
 				WithSegsIn(1)),
 	)
 
 	readyWG.Wait()
-	cmdClient := exec.Command(client, "-6u", "::1", "8081")
+	cmdClient := exec.Command(client, "-6u", "::1", "8981")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdoutUDP8981V6, "hello")
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
-	killAndWaitCommand(t, cmdServerUDP8081V6)
 	killAndWaitCommand(t, cmdClient)
 }
 
@@ -2017,16 +2076,19 @@ func testGC(t *testing.T, defaultInterval bool, interval int, numExpectedGCRuns 
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-unvlp", "8081")
+	cmdServer := exec.Command(server, "-unvlp", "8086", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8086, syscall.IPPROTO_UDP, syscall.AF_INET)
+	assert.NoError(t, err)
 
-	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
+	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8086")
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
 	GCTickerStart := udpGcMetricGet(socketmetrics.UDPGCTypeTicker)
 
@@ -2247,9 +2309,7 @@ func testUdpIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitG
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
-
+	sendData(t, stdin, "hello")
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
 
