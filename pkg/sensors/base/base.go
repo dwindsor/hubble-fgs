@@ -152,6 +152,7 @@ var (
 	MatchBinariesSetMap      = program.MapBuilder(mbset.MapName, Execve)
 	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	SyscallsMap              = program.MapBuilder("tg_syscall_map", SysEnterProg)
+	NsIDMap                  = program.MapBuilder("tg_cgroup_namespace_map", Execve)
 )
 
 func setupSensor() {
@@ -257,6 +258,9 @@ func GetDefaultMaps() []*program.Map {
 	}
 	if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.EnableSyscallTracking {
 		maps = append(maps, SyscallsMap)
+	}
+	if enterpriseOption.Config.EnableApplicationModel {
+		maps = append(maps, NsIDMap)
 	}
 
 	ConfigureMapSizes()
