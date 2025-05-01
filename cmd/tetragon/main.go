@@ -87,8 +87,6 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/durationpb"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 var (
@@ -447,38 +445,20 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Initialize alert rule manager
 	alertsManager := alerts.NewRuleManager()
 
-	// Initialize a k8s watcher used to retrieve process metadata. This should
+	// Initialize a pod accessor used to retrieve process metadata. This should
 	// happen before the sensors are loaded, otherwise events will be stuck
 	// waiting for metadata.
-	var k8sClient *kubernetes.Clientset
-	var k8sWatcher watcher.K8sResourceWatcher
+	var podAccessor watcher.PodAccessor
 	// Start Kubernetes manager. Note this doesn't have to be in the if block
 	// below. If Kubernetes is not enabled, this call returns a fake manager.
 	kubernetesManager := manager.Get()
 	if option.Config.EnableK8s {
 		log.Info("Enabling Kubernetes API")
-
-		// retrieve k8s clients
-		k8sClient, _, err = watcher.GetK8sClients(func(_ *rest.Config) error { return nil })
-		if err != nil {
-			return err
-		}
-
-		// create k8s watcher
-		k8sWatcher = watcher.NewK8sWatcher(k8sClient, nil, 60*time.Second)
-
-		// add informers for all resources
-		realK8sWatcher := k8sWatcher.(*watcher.K8sWatcher)
-		err = watcher.AddPodInformer(realK8sWatcher, true)
-		if err != nil {
-			return err
-		}
+		podAccessor = kubernetesManager.GetControllerManager()
 	} else {
 		log.Info("Disabling Kubernetes API")
-		k8sWatcher = watcher.NewFakeK8sWatcher(nil)
+		podAccessor = watcher.NewFakeK8sWatcher(nil)
 	}
-	// start k8s watcher
-	k8sWatcher.Start()
 
 	_, err = cilium.InitCiliumState(ctx, enterpriseOption.Config.EnableCilium)
 	if err != nil {
@@ -490,7 +470,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		pcGCInterval = defaults.DefaultProcessCacheGCInterval
 	}
 
-	if err := process.InitCache(k8sWatcher, option.Config.ProcessCacheSize, pcGCInterval); err != nil {
+	if err := process.InitCache(podAccessor, option.Config.ProcessCacheSize, pcGCInterval); err != nil {
 		return fmt.Errorf("failed to init process cache: %w", err)
 	}
 
@@ -509,7 +489,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	ctx, cancel2 := context.WithCancel(ctx)
 	defer cancel2()
 
-	hookRunner := rthooks.GlobalRunner().WithWatcher(k8sWatcher)
+	hookRunner := rthooks.GlobalRunner().WithWatcher(podAccessor)
 
 	err = setRedactionFilters()
 	if err != nil {
