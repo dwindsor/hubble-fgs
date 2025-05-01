@@ -26,7 +26,6 @@ github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/cilium.io/v
 github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/internalinterfaces
 github.com/cilium/tetragon/pkg/k8s/client/listers/cilium.io/v1alpha1
 github.com/cilium/tetragon/pkg/k8s/crdutils
-github.com/cilium/tetragon/pkg/k8s/version
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew

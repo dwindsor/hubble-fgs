@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Tetragon
 
+//go:build !windows
+
 package helpers
 
 import (
@@ -49,7 +51,7 @@ var (
 func init() {
 	flag.StringVar(&clusterName, "cluster-name", "tetragon-ci", "Set the name of the k8s cluster being used")
 	// renovate: datasource=docker
-	flag.StringVar(&clusterImage, "cluster-image", "kindest/node:v1.32.3", "Set the node image for the kind cluster")
+	flag.StringVar(&clusterImage, "cluster-image", "kindest/node:v1.33.0", "Set the node image for the kind cluster")
 }
 
 // GetClusterName fetches the cluster name configured with -cluster-name or the temporary

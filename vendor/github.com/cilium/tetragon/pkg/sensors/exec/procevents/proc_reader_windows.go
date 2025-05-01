@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"unsafe"
 
@@ -107,7 +108,7 @@ type RtlUserProcessParams64 struct {
 	CommandLine   UnicodeString64
 }
 
-type SYSTEM_INFO struct {
+type SystemInfo struct {
 	wProcessorArchitecture      uint16
 	wReserved                   uint16
 	dwPageSize                  uint32
@@ -127,7 +128,7 @@ func convertUTF16ToString(src []byte) string {
 	codePoints := make([]uint16, srcLen)
 
 	srcIdx := 0
-	for i := 0; i < srcLen; i++ {
+	for i := range srcLen {
 		codePoints[i] = uint16(src[srcIdx]) | uint16(src[srcIdx+1])<<8
 		srcIdx += 2
 	}
@@ -161,7 +162,7 @@ func procKernel() procs {
 
 func getCWD(pid uint32) (string, uint32) {
 	flags := uint32(0)
-	pidstr := fmt.Sprint(pid)
+	pidstr := strconv.FormatUint(uint64(pid), 10)
 
 	if pid == 0 {
 		return "", flags
@@ -180,14 +181,7 @@ func getCWD(pid uint32) (string, uint32) {
 	return cwd, flags
 }
 
-func updateExecveMapStats(procs int64) {
-	//ToDo: WIP
-	// Currently we do not share the infor gathered in usermode with execve map in kernel in Windows,
-	// This method is currently stubbed out but will be implemented
-
-}
-
-func writeExecveMap(procs []procs) {
+func writeExecveMap(_ []procs) {
 	//ToDo: WIP
 	// Currently we do not share the infor gathered in usermode with execve map in kernel in Windows,
 	// This method is currently stubbed out but will be implemented
@@ -201,12 +195,12 @@ func getProcessParamsFromHandle64(handle windows.Handle) (RtlUserProcessParams64
 
 	buf := readProcessMemory(syscall.Handle(handle), false, pebAddress, uint(unsafe.Sizeof(PEB64{})))
 	if len(buf) != int(unsafe.Sizeof(PEB64{})) {
-		return RtlUserProcessParams64{}, fmt.Errorf("cannot read process PEB")
+		return RtlUserProcessParams64{}, errors.New("cannot read process PEB")
 	}
 	peb := (*PEB64)(unsafe.Pointer(&buf[0]))
 	buf = readProcessMemory(syscall.Handle(handle), false, peb.ProcessParameters, uint(unsafe.Sizeof(RtlUserProcessParams64{})))
 	if len(buf) != int(unsafe.Sizeof(RtlUserProcessParams64{})) {
-		return RtlUserProcessParams64{}, fmt.Errorf("cannot read user process parameters")
+		return RtlUserProcessParams64{}, errors.New("cannot read user process parameters")
 	}
 	return *(*RtlUserProcessParams64)(unsafe.Pointer(&buf[0])), nil
 }
@@ -219,12 +213,12 @@ func getProcessParamsFromHandle32(handle windows.Handle) (RtlUserProcessParams32
 
 	buf := readProcessMemory(syscall.Handle(handle), true, pebAddress, uint(unsafe.Sizeof(PEB32{})))
 	if len(buf) != int(unsafe.Sizeof(PEB32{})) {
-		return RtlUserProcessParams32{}, fmt.Errorf("cannot read process PEB")
+		return RtlUserProcessParams32{}, errors.New("cannot read process PEB")
 	}
 	peb := (*PEB32)(unsafe.Pointer(&buf[0]))
 	buf = readProcessMemory(syscall.Handle(handle), true, uint64(peb.ProcessParameters), uint(unsafe.Sizeof(RtlUserProcessParams32{})))
 	if len(buf) != int(unsafe.Sizeof(RtlUserProcessParams32{})) {
-		return RtlUserProcessParams32{}, fmt.Errorf("cannot read user process parameters")
+		return RtlUserProcessParams32{}, errors.New("cannot read user process parameters")
 	}
 	return *(*RtlUserProcessParams32)(unsafe.Pointer(&buf[0])), nil
 }
@@ -254,26 +248,23 @@ func queryPebAddress(procHandle syscall.Handle, is32BitProcess bool) (uint64, er
 		)
 		if status := windows.NTStatus(ret); status == windows.STATUS_SUCCESS {
 			return uint64(wow64), nil
-		} else {
-			return 0, windows.NTStatus(ret)
 		}
-	} else {
-		//we are on a 64-bit process reading an external 64-bit process
-		var info ProcessBasicInfo64
-
-		ret, _, _ := NtQueryInformationProcess.Call(
-			uintptr(procHandle),
-			uintptr(windows.ProcessBasicInformation),
-			uintptr(unsafe.Pointer(&info)),
-			uintptr(unsafe.Sizeof(info)),
-			uintptr(0),
-		)
-		if status := windows.NTStatus(ret); status == windows.STATUS_SUCCESS {
-			return info.PebBaseAddress, nil
-		} else {
-			return 0, windows.NTStatus(ret)
-		}
+		return 0, windows.NTStatus(ret)
 	}
+	//we are on a 64-bit process reading an external 64-bit process
+	var info ProcessBasicInfo64
+
+	ret, _, _ := NtQueryInformationProcess.Call(
+		uintptr(procHandle),
+		uintptr(windows.ProcessBasicInformation),
+		uintptr(unsafe.Pointer(&info)),
+		uintptr(unsafe.Sizeof(info)),
+		uintptr(0),
+	)
+	if status := windows.NTStatus(ret); status == windows.STATUS_SUCCESS {
+		return info.PebBaseAddress, nil
+	}
+	return 0, windows.NTStatus(ret)
 }
 
 func readProcessMemory(procHandle syscall.Handle, _ bool, address uint64, size uint) []byte {
@@ -295,7 +286,7 @@ func readProcessMemory(procHandle syscall.Handle, _ bool, address uint64, size u
 }
 
 func init() {
-	var systemInfo SYSTEM_INFO
+	var systemInfo SystemInfo
 	GetSystemInfo.Call(uintptr(unsafe.Pointer(&systemInfo)))
 	processorArch = uint(systemInfo.wProcessorArchitecture)
 }
@@ -339,7 +330,7 @@ func getProcessImagePathFromHandle(hProc windows.Handle) (string, error) {
 		}
 		return windows.UTF16ToString(buf[:]), nil
 	}
-	return "", fmt.Errorf("Could not find function QueryFullProcessImageNameW")
+	return "", errors.New("could not find function QueryFullProcessImageNameW")
 }
 
 func fetchProcessCmdLineFromHandle(hProc windows.Handle) (string, error) {
@@ -376,15 +367,16 @@ func fetchProcessCmdLineFromHandle(hProc windows.Handle) (string, error) {
 	return "", nil
 }
 
+// nolint:revive
 func NewProcess(procEntry windows.ProcessEntry32) (procs, error) {
 	var empty procs
 	var pcmdline string
 	var cmdline string
 	var ktime uint64
 	var pktime uint64
-	var pid uint32 = procEntry.ProcessID
-	var ppid uint32 = procEntry.ParentProcessID
-	var execPath string = windows.UTF16ToString(procEntry.ExeFile[:])
+	var pid = procEntry.ProcessID
+	var ppid = procEntry.ParentProcessID
+	var execPath = windows.UTF16ToString(procEntry.ExeFile[:])
 	var pexecPath string
 	hProc, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION|windows.PROCESS_VM_READ|windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
 	if err != nil {
@@ -505,7 +497,7 @@ func NewProcess(procEntry windows.ProcessEntry32) (procs, error) {
 
 }
 
-func listRunningProcs(procPath string) ([]procs, error) {
+func listRunningProcs(_ string) ([]procs, error) {
 	var processes []procs
 	snapshotHandle, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, uint32(0))
 	if err != nil {

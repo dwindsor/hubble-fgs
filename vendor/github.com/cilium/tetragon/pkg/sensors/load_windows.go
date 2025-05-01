@@ -34,7 +34,7 @@ func observerLoadInstance(bpfDir string, load *program.Program, maps []*program.
 	return nil
 }
 
-func loadInstance(bpfDir string, load *program.Program, maps []*program.Map, version, verbose int) error {
+func loadInstance(bpfDir string, load *program.Program, maps []*program.Map, _, verbose int) error {
 	// Check if the load.type is a standard program type. If so, use the standard loader.
 	loadFn, ok := standardTypes[load.Type]
 	if ok {
@@ -52,11 +52,9 @@ func observerMinReqs() (bool, error) {
 	return true, nil
 }
 
-func flushKernelSpec() {
-	return
-}
+func flushKernelSpec() {}
 
-func (s *Sensor) preLoadMaps(bpfDir string, loadedMaps []*program.Map) ([]*program.Map, error) {
+func (s *Sensor) preLoadMaps(_ string, _ []*program.Map) ([]*program.Map, error) {
 	return nil, nil
 }
 

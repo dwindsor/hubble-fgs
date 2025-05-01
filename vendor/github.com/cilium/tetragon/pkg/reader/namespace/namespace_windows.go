@@ -10,16 +10,11 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 )
 
-type hostNamespaces struct {
-	ns  *tetragon.Namespaces
-	err error
-}
-
 func GetMyPidG() uint32 {
 	return uint32(os.Getpid())
 }
 
-func IsMsgNsInHostMntUser(ns *processapi.MsgNamespaces) (bool, error) {
+func IsMsgNsInHostMntUser(_ *processapi.MsgNamespaces) (bool, error) {
 	return true, nil
 }
 
@@ -72,6 +67,6 @@ func getConstNamespaces() (*tetragon.Namespaces, error) {
 
 	return retVal, nil
 }
-func GetMsgNamespaces(ns processapi.MsgNamespaces) (*tetragon.Namespaces, error) {
+func GetMsgNamespaces(_ processapi.MsgNamespaces) (*tetragon.Namespaces, error) {
 	return getConstNamespaces()
 }

@@ -4,11 +4,13 @@
 package proc
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"syscall"
 	"unsafe"
 
+	"github.com/cilium/tetragon/pkg/constants"
 	"golang.org/x/sys/windows"
 )
 
@@ -20,7 +22,7 @@ type TokenGroups struct {
 func getIDFromSID(str_sid string) (string, error) {
 	tokens := strings.Split(str_sid, "-")
 	if len(tokens) <= 1 {
-		return "", fmt.Errorf("Could no parse SID %s", str_sid)
+		return "", fmt.Errorf("could no parse SID %s", str_sid)
 	}
 	return tokens[len(tokens)-1], nil
 }
@@ -71,7 +73,7 @@ func getTokenInfo(t syscall.Token, class uint32, initSize int) (unsafe.Pointer, 
 		if e == nil {
 			return unsafe.Pointer(&b[0]), nil
 		}
-		if e != syscall.ERROR_INSUFFICIENT_BUFFER {
+		if !errors.Is(e, syscall.ERROR_INSUFFICIENT_BUFFER) {
 			return nil, e
 		}
 		if n <= uint32(len(b)) {
@@ -95,7 +97,7 @@ func fillLoginUid(hProc windows.Handle, status *Status) error {
 	}
 	tokenGroups := (*TokenGroups)(ret)
 	if tokenGroups.GroupCount == 0 {
-		return fmt.Errorf("login uid not found")
+		return errors.New("login uid not found")
 	}
 
 	sidAndAttributes := (*syscall.SIDAndAttributes)(unsafe.Pointer(&tokenGroups.Groups[0]))
@@ -133,8 +135,8 @@ func GetStatus(pid uint32) (*Status, error) {
 	return GetStatusFromHandle(hProc)
 }
 
-func GetProcStatStrings(file string) ([]string, error) {
-	return nil, fmt.Errorf(" Not supported on Windows")
+func GetProcStatStrings(_ string) ([]string, error) {
+	return nil, constants.ErrWindowsNotSupported
 }
 
 // GetSelfPid() Get current pid
@@ -143,6 +145,6 @@ func GetProcStatStrings(file string) ([]string, error) {
 //
 //	Current pid from procfs and nil on success
 //	Zero and error on failure
-func GetSelfPid(procfs string) (uint64, error) {
+func GetSelfPid(_ string) (uint64, error) {
 	return uint64(windows.GetCurrentProcessId()), nil
 }

@@ -4,25 +4,19 @@
 package bpf
 
 import (
-	"errors"
+	"github.com/cilium/tetragon/pkg/constants"
 )
 
-var (
-	notSupportedWinErr = errors.New("not supported on windows")
-)
-
-func CheckOrMountFS(bpfRoot string) {
-
-}
+func CheckOrMountFS(_ string) {}
 
 func CheckOrMountDebugFS() error {
-	return notSupportedWinErr
+	return constants.ErrWindowsNotSupported
 }
 
 func CheckOrMountCgroup2() error {
-	return notSupportedWinErr
+	return constants.ErrWindowsNotSupported
 }
 
 func ConfigureResourceLimits() error {
-	return notSupportedWinErr
+	return constants.ErrWindowsNotSupported
 }

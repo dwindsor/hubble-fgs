@@ -3,6 +3,7 @@
 package bpf
 
 import (
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"syscall"
@@ -13,55 +14,53 @@ import (
 )
 
 var (
-	ModuleNt       = windows.NewLazySystemDLL("ntdll.dll")
 	ModuleKernel32 = windows.NewLazySystemDLL("kernel32.dll")
 
-	NtQuerySystemInformation = ModuleNt.NewProc("NtQuerySystemInformation")
-	CreateFileW              = ModuleKernel32.NewProc("CreateFileW")
-	DeviceIoControl          = ModuleKernel32.NewProc("DeviceIoControl")
-	WaitForSingleObject      = ModuleKernel32.NewProc("WaitForSingleObject")
-	CreateEventW             = ModuleKernel32.NewProc("CreateEventW")
-	ResetEvent               = ModuleKernel32.NewProc("ResetEvent")
-	GetModuleHandleW         = ModuleKernel32.NewProc("GetModuleHandleW")
-	GetHandleFromFd          = EbpfApi.NewProc("ebpf_get_handle_from_fd")
-	log                      = logger.GetLogger()
+	CreateFileW         = ModuleKernel32.NewProc("CreateFileW")
+	DeviceIoControl     = ModuleKernel32.NewProc("DeviceIoControl")
+	WaitForSingleObject = ModuleKernel32.NewProc("WaitForSingleObject")
+	CreateEventW        = ModuleKernel32.NewProc("CreateEventW")
+	ResetEvent          = ModuleKernel32.NewProc("ResetEvent")
+	getModuleHandleW    = ModuleKernel32.NewProc("GetModuleHandleW")
+	GetHandleFromFd     = EbpfApi.NewProc("ebpf_get_handle_from_fd")
+	log                 = logger.GetLogger()
 )
 
-type _ebpf_operation_header struct {
+type operationHeader struct {
 	length uint16
 	id     uint32
 }
 
-type _ebpf_operation_map_query_buffer_request struct {
-	header     _ebpf_operation_header
-	map_handle uint64
-	index      uint32
+type operationMapQueryBufferRequest struct {
+	header    operationHeader
+	mapHandle uint64
+	index     uint32
 }
 
-type _ebpf_operation_map_query_buffer_reply struct {
-	header          _ebpf_operation_header
-	buffer_address  uint64
-	consumer_offset uint64
+type operationMapQueryBufferReply struct {
+	header         operationHeader
+	bufferAddress  uint64
+	consumerOffset uint64
 }
 
-type _ebpf_operation_map_async_query_request struct {
-	header          _ebpf_operation_header
-	map_handle      uint64
-	index           uint32
-	consumer_offset uint64
+type operationMapAsyncQueryRequest struct {
+	header         operationHeader
+	mapHandle      uint64
+	index          uint32
+	consumerOffset uint64
 }
-type _ebpf_map_async_query_result struct {
-	producer   uint64
-	consumer   uint64
-	lost_count uint64
-}
-
-type _ebpf_operation_map_async_query_reply struct {
-	header             _ebpf_operation_header
-	async_query_result _ebpf_map_async_query_result
+type mapAsyncQueryResult struct {
+	producer  uint64
+	consumer  uint64
+	lostCount uint64
 }
 
-type ebpf_ring_buffer_record struct {
+type operationMapAsyncQueryReply struct {
+	header           operationHeader
+	asyncQueryResult mapAsyncQueryResult
+}
+
+type RingBufferRecord struct {
 	length      uint32
 	page_offset uint32
 	data        [1]uint8
@@ -69,9 +68,9 @@ type ebpf_ring_buffer_record struct {
 
 type ProcessInfo struct {
 	ProcessId         uint32
-	ParentProcessId   uint32
-	CreatingProcessId uint32
-	CreatingThreadId  uint32
+	ParentProcessID   uint32
+	CreatingProcessID uint32
+	CreatingThreadID  uint32
 	CreationTime      uint64
 	ExitTime          uint64
 	ProcessExitCode   uint32
@@ -81,8 +80,8 @@ type ProcessInfo struct {
 type GetOsfHandle func(fd int) uint32
 
 var (
-	io_pending_err = error(syscall.Errno(windows.ERROR_IO_PENDING))
-	success_err    = error(syscall.Errno(windows.ERROR_SUCCESS))
+	errIOPending = error(syscall.Errno(windows.ERROR_IO_PENDING))
+	errSuccess   = error(syscall.Errno(windows.ERROR_SUCCESS))
 )
 
 const (
@@ -107,13 +106,13 @@ const (
 )
 
 type WindowsRingBufReader struct {
-	currRequest      _ebpf_operation_map_async_query_request
-	producer_offset  uint64
-	consumer_offset  uint64
+	currRequest      operationMapAsyncQueryRequest
+	producerOffset   uint64
+	consumerOffset   uint64
 	hSync            uintptr
 	hASync           uintptr
 	hOverlappedEvent uintptr
-	ring_buffer_size uint64
+	ringBufferSize   uint64
 	byteBuf          []byte
 }
 
@@ -126,40 +125,43 @@ func GetNewWindowsRingBufReader() *WindowsRingBufReader {
 	return &reader
 }
 
-func CTL_CODE(DeviceType, Function, Method, Access uint32) uint32 {
+func CTLCode(DeviceType, Function, Method, Access uint32) uint32 {
 	return (DeviceType << 16) | (Access << 14) | (Function << 2) | Method
 }
 
-func EbpfRingBufferRecordIsLocked(record *ebpf_ring_buffer_record) bool {
+func EbpfRingBufferRecordIsLocked(record *RingBufferRecord) bool {
 	return atomic.LoadUint32(&record.length)&EBPF_RINGBUF_LOCK_BIT != 0
 }
 
-func EbpfRingBufferRecordIsDiscarded(record *ebpf_ring_buffer_record) bool {
+func EbpfRingBufferRecordIsDiscarded(record *RingBufferRecord) bool {
 	return atomic.LoadUint32(&record.length)&EBPF_RINGBUF_DISCARD_BIT != 0
 }
 
-func EbpfRingBufferRecordLength(record *ebpf_ring_buffer_record) uint32 {
+func EbpfRingBufferRecordLength(record *RingBufferRecord) uint32 {
 	return (atomic.LoadUint32(&record.length)) & (uint32(^(EBPF_RINGBUF_LOCK_BIT | EBPF_RINGBUF_DISCARD_BIT)))
 }
 
-func EbpfRingBufferRecordTotalSize(record *ebpf_ring_buffer_record) uint32 {
+func EbpfRingBufferRecordTotalSize(record *RingBufferRecord) uint32 {
 	return (EbpfRingBufferRecordLength(record) + uint32(unsafe.Offsetof(record.data)) + 7) & ^uint32(7)
 }
 
 func (reader *WindowsRingBufReader) invokeIoctl(request unsafe.Pointer, dwReqSize uint32, response unsafe.Pointer, dwRespSize uint32, overlapped unsafe.Pointer) error {
 	var actualReplySize uint32
-	var requestSize uint32 = dwReqSize
-	var requestPtr unsafe.Pointer = request
-	var replySize uint32 = dwRespSize
-	var replyPtr unsafe.Pointer = response
-	var variableReplySize bool = false
-	var err error
-	var hDevice uintptr = INVALID_HANDLE_VALUE
+	var requestSize = dwReqSize
+	var requestPtr = request
+	var replySize = dwRespSize
+	var replyPtr = response
+	var hDevice = INVALID_HANDLE_VALUE
+
+	ebpfIODevicePtr, err := syscall.UTF16PtrFromString(EBPF_IO_DEVICE)
+	if err != nil {
+		return fmt.Errorf("failed to convert string %s to UTF16 pointer: %w", EBPF_IO_DEVICE, err)
+	}
 
 	if overlapped == nil {
 		if reader.hSync == INVALID_HANDLE_VALUE {
 			reader.hSync, _, err = CreateFileW.Call(
-				uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(EBPF_IO_DEVICE))),
+				uintptr(unsafe.Pointer(ebpfIODevicePtr)),
 				uintptr(syscall.GENERIC_READ|syscall.GENERIC_WRITE),
 				0,
 				0,
@@ -168,14 +170,14 @@ func (reader *WindowsRingBufReader) invokeIoctl(request unsafe.Pointer, dwReqSiz
 				0,
 			)
 			if reader.hSync == INVALID_HANDLE_VALUE {
-				return err
+				return fmt.Errorf("fail to call CreateFileW: %w", err)
 			}
 			hDevice = reader.hSync
 		}
 	} else {
 		if reader.hASync == INVALID_HANDLE_VALUE {
 			reader.hASync, _, err = CreateFileW.Call(
-				uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(EBPF_IO_DEVICE))),
+				uintptr(unsafe.Pointer(ebpfIODevicePtr)),
 				uintptr(syscall.GENERIC_READ|syscall.GENERIC_WRITE),
 				0,
 				0,
@@ -184,17 +186,17 @@ func (reader *WindowsRingBufReader) invokeIoctl(request unsafe.Pointer, dwReqSiz
 				0,
 			)
 			if reader.hASync == INVALID_HANDLE_VALUE {
-				return err
+				return fmt.Errorf("fail to call CreateFileW with flag overlapped: %w", err)
 			}
 		}
 		hDevice = reader.hASync
 	}
 	if hDevice == INVALID_HANDLE_VALUE {
-		return fmt.Errorf("error opening device")
+		return errors.New("error opening device")
 	}
 	success, _, err := DeviceIoControl.Call(
 		uintptr(hDevice),
-		uintptr(CTL_CODE(FILE_DEVICE_NETWORK, 0x900, METHOD_BUFFERED, FILE_ANY_ACCESS)),
+		uintptr(CTLCode(FILE_DEVICE_NETWORK, 0x900, METHOD_BUFFERED, FILE_ANY_ACCESS)),
 		uintptr(requestPtr),
 		uintptr(requestSize),
 		uintptr(replyPtr),
@@ -202,27 +204,22 @@ func (reader *WindowsRingBufReader) invokeIoctl(request unsafe.Pointer, dwReqSiz
 		uintptr(unsafe.Pointer(&actualReplySize)),
 		uintptr(overlapped),
 	)
-	if (overlapped != nil) && (success == 0) && (err == io_pending_err) {
+	if (overlapped != nil) && (success == 0) && (errors.Is(err, errIOPending)) {
 		success = 1
 		err = nil
 	}
 
 	if success == 0 {
-		log.WithError(syscall.GetLastError()).Error("device io control failed.")
-		return err
+		return fmt.Errorf("device IO control failed: %w", err)
 	}
 
-	if actualReplySize != replySize && !variableReplySize {
-		return err
-	}
+	// Note that actualReplySize != replySize is not an error for async APIs
 	return nil
-
 }
+
 func CreateOverlappedEvent() (uintptr, error) {
-	var err error
-	var hEvent uintptr
-	hEvent, _, err = CreateEventW.Call(0, 0, 0, 0)
-	if err != error(syscall.Errno(0)) {
+	hEvent, _, err := CreateEventW.Call(0, 0, 0, 0)
+	if !errors.Is(err, error(syscall.Errno(0))) {
 		log.WithError(err).Error("failed creating overlapped Event.")
 		return INVALID_HANDLE_VALUE, err
 	}
@@ -230,84 +227,95 @@ func CreateOverlappedEvent() (uintptr, error) {
 	return hEvent, nil
 }
 
-func EbpfGetHandleFromFd(fd int) (uintptr, error) {
-	var moduleHandle uintptr
+func GetModuleHandleW(module string) (syscall.Handle, error) {
+	moduleStringPtr, err := syscall.UTF16PtrFromString(module)
+	if err != nil {
+		return syscall.InvalidHandle, fmt.Errorf("fail to convert string %s to UTF16 pointer: %w", module, err)
+	}
 
-	moduleHandle, _, err := GetModuleHandleW.Call(uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(`ucrtbased.dll`))))
-	if (err != success_err) || (moduleHandle == 0) {
-		moduleHandle, _, err = GetModuleHandleW.Call(uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(`ucrtbase.dll`))))
+	handlerPtr, _, err := getModuleHandleW.Call(uintptr(unsafe.Pointer(moduleStringPtr)))
+	if (!errors.Is(err, errSuccess)) || (handlerPtr == 0) {
+		return syscall.InvalidHandle, err
 	}
-	if (err != success_err) || (moduleHandle == 0) {
-		log.WithError(err).Error("error getting ucrt base.")
-		return 0, err
+
+	return syscall.Handle(handlerPtr), nil
+}
+
+func EbpfGetHandleFromFD(fd int) (uintptr, error) {
+	moduleHandle, err := GetModuleHandleW("ucrtbased.dll")
+	if err != nil {
+		// retry with another name
+		moduleHandle, err = GetModuleHandleW("ucrtbase.dll")
+		if err != nil {
+			return 0, err
+		}
 	}
-	proc, err := syscall.GetProcAddress(syscall.Handle(moduleHandle), "_get_osfhandle")
+
+	proc, err := syscall.GetProcAddress(moduleHandle, "_get_osfhandle")
 	if (err != nil) || (proc == 0) {
-		log.WithError(err).Error("error getting _get_osfhandle.")
-		return 0, err
+		return 0, fmt.Errorf("error getting _get_osfhandle: %w", err)
 	}
 
+	// nolint:staticcheck
 	ret, _, err := syscall.Syscall9(uintptr(proc), 1, uintptr(fd), 0, 0, 0, 0, 0, 0, 0, 0)
-	if (err != success_err) || (ret == 0) {
-		log.WithError(err).Error("error calling api.")
-		return 0, err
+	if (!errors.Is(err, errSuccess)) || (ret == 0) {
+		return 0, fmt.Errorf("error calling api: %w", err)
 	}
 
 	return ret, nil
 }
 
-func EbpfRingBufferNextRecord(buffer []byte, bufferLength, consumer, producer uint64) *ebpf_ring_buffer_record {
+func EbpfRingBufferNextRecord(buffer []byte, bufferLength, consumer, producer uint64) *RingBufferRecord {
 	if producer <= consumer {
 		return nil
 	}
-	return (*ebpf_ring_buffer_record)(unsafe.Pointer(&buffer[consumer%bufferLength]))
+	return (*RingBufferRecord)(unsafe.Pointer(&buffer[consumer%bufferLength]))
 }
 
 func (reader *WindowsRingBufReader) Init(fd int, ring_buffer_size int) error {
 	if fd <= 0 {
-		return fmt.Errorf("invalid fd provided")
+		return errors.New("invalid fd provided")
 	}
-	reader.ring_buffer_size = uint64(ring_buffer_size)
-	handle, err := EbpfGetHandleFromFd(fd)
+	reader.ringBufferSize = uint64(ring_buffer_size)
+	handle, err := EbpfGetHandleFromFD(fd)
 	if err != nil {
 		return fmt.Errorf("cannot get handle from fd: %w", err)
 	}
-	var map_handle windows.Handle
-	err = windows.DuplicateHandle(windows.CurrentProcess(), windows.Handle(handle), windows.CurrentProcess(), &map_handle, 0, false, windows.DUPLICATE_SAME_ACCESS)
+	var mapHandle windows.Handle
+	err = windows.DuplicateHandle(windows.CurrentProcess(), windows.Handle(handle), windows.CurrentProcess(), &mapHandle, 0, false, windows.DUPLICATE_SAME_ACCESS)
 	if err != nil {
 		return fmt.Errorf("cannot duplicate handle: %w", err)
 	}
-	var req _ebpf_operation_map_query_buffer_request
-	req.map_handle = uint64(handle)
+	var req operationMapQueryBufferRequest
+	req.mapHandle = uint64(handle)
 	req.header.id = EBPF_OP_MAP_QUERY_BUF
 	req.header.length = uint16(unsafe.Sizeof(req))
-	var reply _ebpf_operation_map_query_buffer_reply
+	var reply operationMapQueryBufferReply
 	err = reader.invokeIoctl(unsafe.Pointer(&req), uint32(unsafe.Sizeof(req)), unsafe.Pointer(&reply), uint32(unsafe.Sizeof(reply)), nil)
 	if err != nil {
 		return fmt.Errorf("failed to do device io control: %w", err)
 	}
-	var buffer uintptr
-	buffer = uintptr(reply.buffer_address)
+	var buffer = uintptr(reply.bufferAddress)
 	reader.byteBuf = unsafe.Slice((*byte)(unsafe.Pointer(buffer)), ring_buffer_size)
 
 	reader.currRequest.header.length = uint16(unsafe.Sizeof(reader.currRequest))
 	reader.currRequest.header.id = EBPF_OP_MAP_ASYNC_QUERY
-	reader.currRequest.map_handle = uint64(handle)
-	reader.currRequest.consumer_offset = reply.consumer_offset
+	reader.currRequest.mapHandle = uint64(handle)
+	reader.currRequest.consumerOffset = reply.consumerOffset
 
 	return nil
 }
 
 func (reader *WindowsRingBufReader) fetchNextOffsets() error {
-	if reader.consumer_offset > reader.producer_offset {
-		return fmt.Errorf("offsets are not same, read ahead in buffer")
+	if reader.consumerOffset > reader.producerOffset {
+		return errors.New("offsets are not same, read ahead in buffer")
 	}
-	var async_reply _ebpf_operation_map_async_query_reply
+	var asyncReply operationMapAsyncQueryReply
 	var overlapped syscall.Overlapped
 	overlapped.HEvent = syscall.Handle(reader.hOverlappedEvent)
 
-	err := reader.invokeIoctl(unsafe.Pointer(&reader.currRequest), uint32(unsafe.Sizeof(reader.currRequest)), unsafe.Pointer(&async_reply), uint32(unsafe.Sizeof(async_reply)), unsafe.Pointer(&overlapped))
-	if err == error(syscall.Errno(997)) {
+	err := reader.invokeIoctl(unsafe.Pointer(&reader.currRequest), uint32(unsafe.Sizeof(reader.currRequest)), unsafe.Pointer(&asyncReply), uint32(unsafe.Sizeof(asyncReply)), unsafe.Pointer(&overlapped))
+	if errors.Is(err, error(syscall.Errno(997))) {
 		err = nil
 	}
 	if err != nil {
@@ -315,7 +323,7 @@ func (reader *WindowsRingBufReader) fetchNextOffsets() error {
 		return err
 	}
 	waitReason, _, err := WaitForSingleObject.Call(uintptr(overlapped.HEvent), syscall.INFINITE)
-	if err != success_err {
+	if !errors.Is(err, errSuccess) {
 		return err
 	}
 	if waitReason != windows.WAIT_OBJECT_0 {
@@ -324,29 +332,29 @@ func (reader *WindowsRingBufReader) fetchNextOffsets() error {
 	}
 	windows.ResetEvent(windows.Handle(overlapped.HEvent))
 
-	var async_query_result *_ebpf_map_async_query_result = (*_ebpf_map_async_query_result)(unsafe.Pointer(&(async_reply.async_query_result)))
-	reader.consumer_offset = async_query_result.consumer
-	reader.producer_offset = async_query_result.producer
+	var asyncQueryResult = (*mapAsyncQueryResult)(unsafe.Pointer(&(asyncReply.asyncQueryResult)))
+	reader.consumerOffset = asyncQueryResult.consumer
+	reader.producerOffset = asyncQueryResult.producer
 	return nil
 }
 
 func (reader *WindowsRingBufReader) GetNextProcess() (*ProcessInfo, uint32) {
-	if reader.consumer_offset == reader.producer_offset {
+	if reader.consumerOffset == reader.producerOffset {
 		err := reader.fetchNextOffsets()
 		if err != nil {
 			return nil, ERR_RINGBUF_UNKNOWN_ERROR
 		}
 	}
-	record := EbpfRingBufferNextRecord(reader.byteBuf, uint64(reader.ring_buffer_size), reader.consumer_offset, reader.producer_offset)
+	record := EbpfRingBufferNextRecord(reader.byteBuf, uint64(reader.ringBufferSize), reader.consumerOffset, reader.producerOffset)
 	if record == nil {
 		return nil, ERR_RINGBUF_OFFSET_MISMATCH
 	}
 	if EbpfRingBufferRecordIsLocked(record) {
 		return nil, ERR_RINGBUF_TRY_AGAIN
 	}
-	reader.consumer_offset += uint64(EbpfRingBufferRecordTotalSize(record))
+	reader.consumerOffset += uint64(EbpfRingBufferRecordTotalSize(record))
 	// This will be communicated in next ioctl
-	reader.currRequest.consumer_offset = reader.consumer_offset
+	reader.currRequest.consumerOffset = reader.consumerOffset
 	if !EbpfRingBufferRecordIsDiscarded(record) {
 		procInfo := (*ProcessInfo)(unsafe.Pointer(&(record.data)))
 		return procInfo, ERR_RINGBUF_SUCCESS

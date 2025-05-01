@@ -4,7 +4,6 @@
 package program
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -18,9 +17,7 @@ import (
 )
 
 var (
-	notSupportedWinErr     = errors.New("not supported on windows")
-	programTypeProcessGUID = makeGUID(0x22ea7b37, 0x1043, 0x4d0d, [8]byte{0xb6, 0x0d, 0xca, 0xfa, 0x1c, 0x7b, 0x63, 0x8e})
-	attachTypeProcessGUID  = makeGUID(0x66e20687, 0x9805, 0x4458, [8]byte{0xa0, 0xdb, 0x38, 0xe2, 0x20, 0xd3, 0x16, 0x85})
+	attachTypeProcessGUID = makeGUID(0x66e20687, 0x9805, 0x4458, [8]byte{0xa0, 0xdb, 0x38, 0xe2, 0x20, 0xd3, 0x16, 0x85})
 )
 
 func makeGUID(data1 uint32, data2 uint16, data3 uint16, data4 [8]byte) windows.GUID {
@@ -28,17 +25,17 @@ func makeGUID(data1 uint32, data2 uint16, data3 uint16, data4 [8]byte) windows.G
 }
 
 func winAttachStub(_ *ebpf.Collection, _ *ebpf.CollectionSpec,
-	prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
+	_ *ebpf.Program, _ *ebpf.ProgramSpec) (unloader.Unloader, error) {
 
-	return nil, notSupportedWinErr
+	return nil, constants.ErrWindowsNotSupported
 }
 
-func RawAttachWithFlags(targetFD int, flags uint32) AttachFunc {
+func RawAttachWithFlags(_ int, _ uint32) AttachFunc {
 	return winAttachStub
 }
 
-func windowsAttach(load *Program, prog *ebpf.Program, spec *ebpf.ProgramSpec,
-	symbol string, bpfDir string, extra ...string) (unloader.Unloader, error) {
+func windowsAttach(_ *Program, prog *ebpf.Program, _ *ebpf.ProgramSpec,
+	_ string, _ string, _ ...string) (unloader.Unloader, error) {
 
 	attachType, err := ebpf.WindowsAttachTypeForGUID(attachTypeProcessGUID.String())
 	if err != nil {
@@ -64,41 +61,41 @@ func windowsAttach(load *Program, prog *ebpf.Program, spec *ebpf.ProgramSpec,
 }
 
 func WindowsAttach(load *Program, bpfDir string) AttachFunc {
-	return func(coll *ebpf.Collection, collSpec *ebpf.CollectionSpec,
+	return func(_ *ebpf.Collection, _ *ebpf.CollectionSpec,
 		prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
 
 		return windowsAttach(load, prog, spec, load.Attach, bpfDir)
 	}
 }
 
-func LoadWindowsProgram(bpfDir string, load *Program, maps []*Map, verbose int) error {
+func LoadWindowsProgram(bpfDir string, load *Program, _ []*Map, verbose int) error {
 	opts := &LoadOpts{
 		Attach: WindowsAttach(load, bpfDir),
 	}
 	return loadProgram(bpfDir, load, opts, verbose)
 }
 
-func LoadTracepointProgram(bpfDir string, load *Program, maps []*Map, verbose int) error {
+func LoadTracepointProgram(_ string, _ *Program, _ []*Map, _ int) error {
 	return constants.ErrWindowsNotSupported
 }
 
-func LoadKprobeProgramAttachMany(bpfDir string, load *Program, syms []string, maps []*Map, verbose int) error {
+func LoadKprobeProgramAttachMany(_ string, _ *Program, _ []string, _ []*Map, _ int) error {
 	return constants.ErrWindowsNotSupported
 }
 
-func LoadMultiKprobeProgram(bpfDir string, load *Program, maps []*Map, verbose int) error {
+func LoadMultiKprobeProgram(_ string, _ *Program, _ []*Map, _ int) error {
 	return constants.ErrWindowsNotSupported
 }
 
-func LoadFmodRetProgram(bpfDir string, load *Program, maps []*Map, progName string, verbose int) error {
+func LoadFmodRetProgram(_ string, _ *Program, _ []*Map, _ string, _ int) error {
 	return constants.ErrWindowsNotSupported
 }
 
 func doLoadProgram(
-	bpfDir string,
+	_ string,
 	load *Program,
 	loadOpts *LoadOpts,
-	verbose int,
+	_ int,
 ) (*LoadedCollection, error) {
 
 	coll, err := ebpf.LoadCollection(load.Name)
