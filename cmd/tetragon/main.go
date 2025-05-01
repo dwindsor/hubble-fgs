@@ -900,14 +900,32 @@ func startExporter(ctx context.Context, server *server.Server) error {
 }
 
 func startApplicationModelExporter(ctx context.Context, modelServer *model.Server) error {
-	writer, err := getWriter(
-		enterpriseOption.Config.ApplicationModelExportFilename,
-		option.Config.ExportFileMaxSizeMB,
-		option.Config.ExportFileMaxBackups,
-		option.Config.ExportFileCompress,
-	)
-	if err != nil {
-		return err
+	var flatWriter *lumberjack.Logger
+	var writer *lumberjack.Logger
+	var err error
+
+	if enterpriseOption.Config.ApplicationModelExportFilename != "" {
+		writer, err = getWriter(
+			enterpriseOption.Config.ApplicationModelExportFilename,
+			option.Config.ExportFileMaxSizeMB,
+			option.Config.ExportFileMaxBackups,
+			option.Config.ExportFileCompress,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
+		flatWriter, err = getWriter(
+			enterpriseOption.Config.ApplicationModelDiffExportFilename,
+			option.Config.ExportFileMaxSizeMB,
+			option.Config.ExportFileMaxBackups,
+			option.Config.ExportFileCompress,
+		)
+		if err != nil {
+			return err
+		}
 	}
 
 	if option.Config.ExportFileRotationInterval < 0 {
@@ -934,7 +952,7 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 		}()
 	}
 
-	go model.ExportApplicationModel(ctx, modelServer, writer,
+	go model.ExportApplicationModel(ctx, modelServer, writer, flatWriter,
 		enterpriseOption.Config.ApplicationModelExportInterval,
 		enterpriseOption.Config.ApplicationModelEnableDiff)
 

@@ -24,17 +24,30 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
 )
 
-func ExportApplicationModel(ctx context.Context, server *Server, writer io.Writer, interval time.Duration, enableDiffModel bool) {
+func ExportApplicationModel(ctx context.Context, server *Server, writer io.Writer, flatWriter io.Writer, interval time.Duration, enableDiffModel bool) {
+	var encoder *json.Encoder
+	var flatEncoder *json.Encoder
+
 	res, err := server.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
 	if err != nil {
 		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 		return
 	}
 	lastModel := model.ProcessModelToApplicationModel(res)
-	encoder := json.NewEncoder(writer)
+
+	if writer != nil {
+		encoder = json.NewEncoder(writer)
+	}
+
+	if flatWriter != nil {
+		flatEncoder = json.NewEncoder(flatWriter)
+	}
+
 	ticker := time.NewTicker(interval)
 	logger.GetLogger().WithField("interval", interval).Info("Exporting process model")
 	for {
+		var diffModel *appModelV1.ApplicationModel
+
 		select {
 		case <-ticker.C:
 			res, err := server.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
@@ -44,7 +57,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			}
 			newModel := model.ProcessModelToApplicationModel(res)
 			if enableDiffModel {
-				diffModel, err := diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
+				diffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
 				if err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to produce application model difference as JSON")
 					return
@@ -68,6 +81,25 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				}
 			}
 
+			if flatEncoder != nil {
+				diffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
+				if err != nil {
+					logger.GetLogger().WithError(err).Error("Failed to produce application model difference as JSON")
+					return
+				}
+
+				netFlatPack, err := diff.ApplicationModelToNetworkFlat(diffModel)
+				if err != nil {
+					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim model")
+					return
+				}
+				for _, entry := range netFlatPack {
+					if err := flatEncoder.Encode(entry); err != nil {
+						logger.GetLogger().WithError(err).Error("Failed to encode slim application model as JSON")
+						return
+					}
+				}
+			}
 		case <-ctx.Done():
 			return
 		}

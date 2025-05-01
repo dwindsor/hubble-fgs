@@ -16,8 +16,9 @@ type config struct {
 	ApplicationModelExportFilename string
 	ApplicationModelEnableDiff     bool
 
-	ApplicationModelDiffExportFilename string
-	ApplicationModelDiffExportInterval time.Duration
+	ApplicationModelDiffExportFilename  string
+	ApplicationModelDiffExportInterval  time.Duration
+	ApplicationModelSlimNetworkFilename string
 
 	DnsCacheSize         int
 	ProcessTreeCacheSize int

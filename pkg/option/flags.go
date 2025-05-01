@@ -104,7 +104,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden(KeyApplicationModelExportFilename)
 	flags.Bool(KeyApplicationModelEnableDiff, true, "Enable application model only for new data.")
 	flags.MarkHidden(KeyApplicationModelEnableDiff)
-	flags.String(KeyApplicationModelDiffExportFilename, "", "Filename for application model difference JSON export. Set to \"\" to disable.")
+	flags.String(KeyApplicationModelDiffExportFilename, "", "Filename for application flat model JSON export. Set to \"\" to disable.")
 	flags.MarkHidden(KeyApplicationModelDiffExportFilename)
 	flags.Int(KeyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
 	flags.Int(KeyApplicationModelCacheSize, 65536, "Set the size of the BPF data structure to store application model and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones")

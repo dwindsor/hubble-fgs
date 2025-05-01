@@ -1,8 +1,13 @@
 package diff
 
 import (
+	"fmt"
+
+	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func StatsZero(a *appModelV1.ConnectionStats) bool {
@@ -157,4 +162,91 @@ func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.Applicat
 	return &appModelV1.ApplicationModel{
 		Namespaces: nsDiff,
 	}, nil
+}
+
+func getType(d *appModelV1.Destination) appModelV1.ApplicationModelDestinationType {
+	var t appModelV1.ApplicationModelDestinationType
+
+	switch d.Type.(type) {
+	case *appModelV1.Destination_Dns:
+		t = appModelV1.ApplicationModelDestinationType_APPLICATION_MODEL_DESTINATION_TYPE_DNS
+	case *appModelV1.Destination_Ip:
+		t = appModelV1.ApplicationModelDestinationType_APPLICATION_MODEL_DESTINATION_TYPE_CIDR
+	case *appModelV1.Destination_Workload:
+		t = appModelV1.ApplicationModelDestinationType_APPLICATION_MODEL_DESTINATION_TYPE_KUBERNETES
+	default:
+		panic(fmt.Sprintf("unexpected v1alpha.isDestination_Type: %#v", d.Type))
+	}
+
+	return t
+}
+
+func getDestination(d *appModelV1.Destination) (string, string, string, appModelV1.WorkloadKind) {
+	name := ""
+	ns := ""
+	wlName := ""
+	var wlKind appModelV1.WorkloadKind
+
+	switch at := d.Type.(type) {
+	case *appModelV1.Destination_Dns:
+		if len(at.Dns.DestinationNames) > 0 {
+			name = at.Dns.DestinationNames[0]
+		}
+	case *appModelV1.Destination_Ip:
+		name = at.Ip.Ip
+	case *appModelV1.Destination_Workload:
+		ns = at.Workload.Namespace
+		wlName = at.Workload.Namespace
+		wlKind = at.Workload.Kind
+
+		name = fmt.Sprintf("%s:%s:%s", ns, wlKind, wlName)
+	default:
+		panic(fmt.Sprintf("unexpected v1alpha.isDestination_Type: %#v", d.Type))
+	}
+
+	return name, ns, wlName, wlKind
+}
+
+func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV1.ApplicationModelNetworkFlatEntry, error) {
+	n := []*appModelV1.ApplicationModelNetworkFlatEntry{}
+	node := node.GetNodeNameForExport()
+	cluster := option.Config.ClusterName
+	time := timestamppb.Now()
+
+	for _, ns := range a.Namespaces {
+		for _, wl := range ns.Workloads {
+			for _, p := range wl.Processes {
+				for _, c := range p.Connections {
+					destName, dns, dname, dkind := getDestination(c.Destination)
+					dType := getType(c.Destination)
+
+					entry := &appModelV1.ApplicationModelNetworkFlatEntry{
+						ClusterName:                       cluster,
+						NodeName:                          node,
+						EventType:                         appModelV1.ApplicationModelEventType_APPLICATION_MODEL_EVENT_TYPE_NETWORK_CONNECT,
+						Time:                              time,
+						KubernetesNamespace:               ns.Name,
+						KubernetesWorkloadName:            wl.Name,
+						KubernetesWorkloadKind:            wl.Kind,
+						ProcessName:                       p.Name,
+						ProcessArguments:                  p.Arguments,
+						DestinationName:                   destName,
+						DestinationType:                   dType,
+						DestinationPort:                   uint32(c.Destination.Port),
+						DestinationKubernetesNamespace:    dns,
+						DestinationKubernetesWorkloadKind: dkind.String(),
+						DestinationKubernetesWorkloadName: dname,
+						TxBytes:                           c.Stats.TxBytes,
+						RxBytes:                           c.Stats.RxBytes,
+						TxDrops:                           c.Stats.TxDrops,
+						DefaultDropBytes:                  c.Stats.DefaultDropBytes,
+						DefaultAllowBytes:                 c.Stats.DefaultAllowBytes,
+					}
+					n = append(n, entry)
+				}
+
+			}
+		}
+	}
+	return n, nil
 }
