@@ -12,6 +12,7 @@
     - [ApplicationHost](#application_model-v1alpha-ApplicationHost)
     - [ApplicationModel](#application_model-v1alpha-ApplicationModel)
     - [ApplicationModelEvent](#application_model-v1alpha-ApplicationModelEvent)
+    - [ApplicationModelNetworkFlatEntry](#application_model-v1alpha-ApplicationModelNetworkFlatEntry)
     - [ApplicationNamespace](#application_model-v1alpha-ApplicationNamespace)
     - [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup)
     - [ApplicationSyscalls](#application_model-v1alpha-ApplicationSyscalls)
@@ -22,6 +23,8 @@
     - [DestinationIP](#application_model-v1alpha-DestinationIP)
     - [DestinationWorkload](#application_model-v1alpha-DestinationWorkload)
   
+    - [ApplicationModelDestinationType](#application_model-v1alpha-ApplicationModelDestinationType)
+    - [ApplicationModelEventType](#application_model-v1alpha-ApplicationModelEventType)
     - [WorkloadKind](#application_model-v1alpha-WorkloadKind)
   
 - [Scalar Value Types](#scalar-value-types)
@@ -614,6 +617,41 @@ WARNING for consumers: numbers are arbitrary.
 
 
 
+<a name="application_model-v1alpha-ApplicationModelNetworkFlatEntry"></a>
+
+### ApplicationModelNetworkFlatEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| cluster_name | [string](#string) |  |  |
+| node_name | [string](#string) |  |  |
+| event_type | [ApplicationModelEventType](#application_model-v1alpha-ApplicationModelEventType) |  |  |
+| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| kubernetes_namespace | [string](#string) |  |  |
+| kubernetes_workload_name | [string](#string) |  |  |
+| kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  |  |
+| process_hash | [string](#string) |  |  |
+| process_name | [string](#string) |  |  |
+| process_arguments | [string](#string) |  |  |
+| destination_name | [string](#string) |  |  |
+| destination_type | [ApplicationModelDestinationType](#application_model-v1alpha-ApplicationModelDestinationType) |  |  |
+| destination_port | [uint32](#uint32) |  |  |
+| destination_kubernetes_namespace | [string](#string) |  |  |
+| destination_kubernetes_workload_kind | [string](#string) |  |  |
+| destination_kubernetes_workload_name | [string](#string) |  |  |
+| tx_bytes | [uint64](#uint64) |  |  |
+| rx_bytes | [uint64](#uint64) |  |  |
+| tx_drops | [uint64](#uint64) |  |  |
+| default_drop_bytes | [uint64](#uint64) |  |  |
+| default_allow_bytes | [uint64](#uint64) |  |  |
+
+
+
+
+
+
 <a name="application_model-v1alpha-ApplicationNamespace"></a>
 
 ### ApplicationNamespace
@@ -782,6 +820,33 @@ the following criteria:
 
 
  
+
+
+<a name="application_model-v1alpha-ApplicationModelDestinationType"></a>
+
+### ApplicationModelDestinationType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| APPLICATION_MODEL_DESTINATION_TYPE_UNSPECIFIED | 0 |  |
+| APPLICATION_MODEL_DESTINATION_TYPE_DNS | 1 |  |
+| APPLICATION_MODEL_DESTINATION_TYPE_CIDR | 2 |  |
+| APPLICATION_MODEL_DESTINATION_TYPE_KUBERNETES | 3 |  |
+
+
+
+<a name="application_model-v1alpha-ApplicationModelEventType"></a>
+
+### ApplicationModelEventType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| APPLICATION_MODEL_EVENT_TYPE_UNSPECIFIED | 0 |  |
+| APPLICATION_MODEL_EVENT_TYPE_PROCESS | 1 |  |
+| APPLICATION_MODEL_EVENT_TYPE_NETWORK_CONNECT | 2 |  |
+
 
 
 <a name="application_model-v1alpha-WorkloadKind"></a>

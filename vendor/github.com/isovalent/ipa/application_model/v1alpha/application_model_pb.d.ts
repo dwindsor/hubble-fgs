@@ -23,6 +23,122 @@ import type { Abi, Sys } from "./syscalls_pb";
 export declare const file_application_model_v1alpha_application_model: GenFile;
 
 /**
+ * @generated from message application_model.v1alpha.ApplicationModelNetworkFlatEntry
+ */
+export declare type ApplicationModelNetworkFlatEntry = Message<"application_model.v1alpha.ApplicationModelNetworkFlatEntry"> & {
+  /**
+   * @generated from field: string cluster_name = 1;
+   */
+  clusterName: string;
+
+  /**
+   * @generated from field: string node_name = 2;
+   */
+  nodeName: string;
+
+  /**
+   * @generated from field: application_model.v1alpha.ApplicationModelEventType event_type = 3;
+   */
+  eventType: ApplicationModelEventType;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp time = 4;
+   */
+  time?: Timestamp;
+
+  /**
+   * @generated from field: string kubernetes_namespace = 5;
+   */
+  kubernetesNamespace: string;
+
+  /**
+   * @generated from field: string kubernetes_workload_name = 6;
+   */
+  kubernetesWorkloadName: string;
+
+  /**
+   * @generated from field: application_model.v1alpha.WorkloadKind kubernetes_workload_kind = 7;
+   */
+  kubernetesWorkloadKind: WorkloadKind;
+
+  /**
+   * @generated from field: string process_hash = 8;
+   */
+  processHash: string;
+
+  /**
+   * @generated from field: string process_name = 9;
+   */
+  processName: string;
+
+  /**
+   * @generated from field: string process_arguments = 10;
+   */
+  processArguments: string;
+
+  /**
+   * @generated from field: string destination_name = 11;
+   */
+  destinationName: string;
+
+  /**
+   * @generated from field: application_model.v1alpha.ApplicationModelDestinationType destination_type = 12;
+   */
+  destinationType: ApplicationModelDestinationType;
+
+  /**
+   * @generated from field: uint32 destination_port = 13;
+   */
+  destinationPort: number;
+
+  /**
+   * @generated from field: string destination_kubernetes_namespace = 14;
+   */
+  destinationKubernetesNamespace: string;
+
+  /**
+   * @generated from field: string destination_kubernetes_workload_kind = 15;
+   */
+  destinationKubernetesWorkloadKind: string;
+
+  /**
+   * @generated from field: string destination_kubernetes_workload_name = 16;
+   */
+  destinationKubernetesWorkloadName: string;
+
+  /**
+   * @generated from field: uint64 tx_bytes = 17;
+   */
+  txBytes: bigint;
+
+  /**
+   * @generated from field: uint64 rx_bytes = 18;
+   */
+  rxBytes: bigint;
+
+  /**
+   * @generated from field: uint64 tx_drops = 19;
+   */
+  txDrops: bigint;
+
+  /**
+   * @generated from field: uint64 default_drop_bytes = 20;
+   */
+  defaultDropBytes: bigint;
+
+  /**
+   * @generated from field: uint64 default_allow_bytes = 21;
+   */
+  defaultAllowBytes: bigint;
+};
+
+/**
+ * Describes the message application_model.v1alpha.ApplicationModelNetworkFlatEntry.
+ * Use `create(ApplicationModelNetworkFlatEntrySchema)` to create a new message.
+ */
+export declare const ApplicationModelNetworkFlatEntrySchema: GenMessage<ApplicationModelNetworkFlatEntry>;
+
+/**
  * @generated from message application_model.v1alpha.ApplicationModelEvent
  */
 export declare type ApplicationModelEvent = Message<"application_model.v1alpha.ApplicationModelEvent"> & {
@@ -429,6 +545,61 @@ export declare type ApplicationSyscalls = Message<"application_model.v1alpha.App
  * Use `create(ApplicationSyscallsSchema)` to create a new message.
  */
 export declare const ApplicationSyscallsSchema: GenMessage<ApplicationSyscalls>;
+
+/**
+ * @generated from enum application_model.v1alpha.ApplicationModelDestinationType
+ */
+export enum ApplicationModelDestinationType {
+  /**
+   * @generated from enum value: APPLICATION_MODEL_DESTINATION_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: APPLICATION_MODEL_DESTINATION_TYPE_DNS = 1;
+   */
+  DNS = 1,
+
+  /**
+   * @generated from enum value: APPLICATION_MODEL_DESTINATION_TYPE_CIDR = 2;
+   */
+  CIDR = 2,
+
+  /**
+   * @generated from enum value: APPLICATION_MODEL_DESTINATION_TYPE_KUBERNETES = 3;
+   */
+  KUBERNETES = 3,
+}
+
+/**
+ * Describes the enum application_model.v1alpha.ApplicationModelDestinationType.
+ */
+export declare const ApplicationModelDestinationTypeSchema: GenEnum<ApplicationModelDestinationType>;
+
+/**
+ * @generated from enum application_model.v1alpha.ApplicationModelEventType
+ */
+export enum ApplicationModelEventType {
+  /**
+   * @generated from enum value: APPLICATION_MODEL_EVENT_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: APPLICATION_MODEL_EVENT_TYPE_PROCESS = 1;
+   */
+  PROCESS = 1,
+
+  /**
+   * @generated from enum value: APPLICATION_MODEL_EVENT_TYPE_NETWORK_CONNECT = 2;
+   */
+  NETWORK_CONNECT = 2,
+}
+
+/**
+ * Describes the enum application_model.v1alpha.ApplicationModelEventType.
+ */
+export declare const ApplicationModelEventTypeSchema: GenEnum<ApplicationModelEventType>;
 
 /**
  * @generated from enum application_model.v1alpha.WorkloadKind

@@ -28,7 +28,7 @@ require (
 	github.com/google/gops v0.3.28
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/isovalent/ipa v0.0.0-20250428205244-8351e748e957
+	github.com/isovalent/ipa v0.0.0-20250501184414-e6310958a493
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.64
 	github.com/operator-framework/api v0.30.0
