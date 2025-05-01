@@ -287,3 +287,34 @@ func TestApplicationModelDiff(t *testing.T) {
 	assert.Equal(t, 1, len(d.Namespaces[0].Workloads[0].Processes[0].Connections))
 	assert.Equal(t, uint64(9), d.Namespaces[0].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
 }
+
+func TestToNetworkFlat(t *testing.T) {
+	aModel := appModel()
+	bModel := appModel()
+	bModel.Namespaces[0].Workloads[0].Processes[1].Connections[0].Stats.TxBytes = 1
+	bModel.Namespaces[1].Workloads[1].Processes[1].Connections[1].Stats.RxBytes = 1
+
+	d, err := ApplicationModelDiff(aModel, bModel)
+	assert.NoError(t, err)
+
+	f, err := ApplicationModelToNetworkFlat(d)
+	assert.NoError(t, err)
+	assert.Equal(t, "ns1", f[0].KubernetesNamespace)
+	assert.Equal(t, "ns2", f[1].KubernetesNamespace)
+	assert.Equal(t, "workload2", f[0].KubernetesWorkloadName)
+	assert.Equal(t, "workload1", f[1].KubernetesWorkloadName)
+	assert.Equal(t, "ci", f[0].ProcessName)
+	assert.Equal(t, "ci", f[1].ProcessName)
+	assert.Equal(t, "makesThingsWork", f[0].ProcessArguments)
+	assert.Equal(t, "makesThingsWork", f[1].ProcessArguments)
+	assert.Equal(t, "10.0.0.1", f[0].DestinationName)
+	assert.Equal(t, "cisco.com", f[1].DestinationName)
+	assert.Equal(t, appModelV1.ApplicationModelDestinationType_APPLICATION_MODEL_DESTINATION_TYPE_CIDR, f[0].DestinationType)
+	assert.Equal(t, appModelV1.ApplicationModelDestinationType_APPLICATION_MODEL_DESTINATION_TYPE_DNS, f[1].DestinationType)
+	assert.Equal(t, uint32(80), f[0].DestinationPort)
+	assert.Equal(t, uint32(80), f[1].DestinationPort)
+	assert.Equal(t, uint64(9), f[0].TxBytes)
+	assert.Equal(t, uint64(0), f[1].TxBytes)
+	assert.Equal(t, uint64(0), f[0].RxBytes)
+	assert.Equal(t, uint64(1), f[1].RxBytes)
+}
