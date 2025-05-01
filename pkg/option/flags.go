@@ -167,8 +167,8 @@ func ReadAndValidateEnterpriseFlags() error {
 func readAndSetEnterpriseFlags() {
 	Config.EnableApplicationModel = viper.GetBool(KeyEnableApplicationModel)
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
-	Config.ProcessTreeExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
-	Config.ProcessTreeExportFilename = viper.GetString(KeyApplicationModelExportFilename)
+	Config.ApplicationModelExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
+	Config.ApplicationModelExportFilename = viper.GetString(KeyApplicationModelExportFilename)
 	Config.ApplicationModelDiffExportInterval = viper.GetDuration(KeyApplicationModelDiffExportInterval)
 	Config.ApplicationModelDiffExportFilename = viper.GetString(KeyApplicationModelDiffExportFilename)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)

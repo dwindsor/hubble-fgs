@@ -556,8 +556,8 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			return fmt.Errorf("failed to start json exporter: %w", err)
 		}
 	}
-	if enterpriseOption.Config.ProcessTreeExportInterval != 0 && enterpriseOption.Config.ProcessTreeExportFilename != "" {
-		if err = startProcessTreeExporter(ctx, modelServer); err != nil {
+	if enterpriseOption.Config.ApplicationModelExportInterval != 0 && enterpriseOption.Config.ApplicationModelExportFilename != "" {
+		if err = startApplicationModelExporter(ctx, modelServer); err != nil {
 			return fmt.Errorf("failed to start json application model exporter: %w", err)
 		}
 	}
@@ -904,9 +904,9 @@ func startExporter(ctx context.Context, server *server.Server) error {
 	return nil
 }
 
-func startProcessTreeExporter(ctx context.Context, modelServer *model.Server) error {
+func startApplicationModelExporter(ctx context.Context, modelServer *model.Server) error {
 	writer, err := getWriter(
-		enterpriseOption.Config.ProcessTreeExportFilename,
+		enterpriseOption.Config.ApplicationModelExportFilename,
 		option.Config.ExportFileMaxSizeMB,
 		option.Config.ExportFileMaxBackups,
 		option.Config.ExportFileCompress,
@@ -931,7 +931,7 @@ func startProcessTreeExporter(ctx context.Context, modelServer *model.Server) er
 				case <-ticker.C:
 					if rotationErr := writer.Rotate(); rotationErr != nil {
 						log.WithError(rotationErr).WithField(
-							"file", enterpriseOption.Config.ProcessTreeExportFilename,
+							"file", enterpriseOption.Config.ApplicationModelExportFilename,
 						).Warn("Failed to rotate JSON application model export file")
 					}
 				}
@@ -939,7 +939,7 @@ func startProcessTreeExporter(ctx context.Context, modelServer *model.Server) er
 		}()
 	}
 
-	go model.ExportProcessModel(ctx, modelServer, writer, enterpriseOption.Config.ProcessTreeExportInterval)
+	go model.ExportApplicationModel(ctx, modelServer, writer, enterpriseOption.Config.ApplicationModelExportInterval)
 
 	return nil
 }

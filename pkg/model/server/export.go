@@ -24,7 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
 )
 
-func ExportProcessModel(ctx context.Context, server *Server, writer io.Writer, interval time.Duration) {
+func ExportApplicationModel(ctx context.Context, server *Server, writer io.Writer, interval time.Duration) {
 	encoder := json.NewEncoder(writer)
 	ticker := time.NewTicker(interval)
 	logger.GetLogger().WithField("interval", interval).Info("Exporting process model")
