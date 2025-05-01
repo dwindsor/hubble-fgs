@@ -14,6 +14,7 @@ type config struct {
 	EnableSyscallTracking          bool
 	ApplicationModelExportInterval time.Duration
 	ApplicationModelExportFilename string
+	ApplicationModelEnableDiff     bool
 
 	ApplicationModelDiffExportFilename string
 	ApplicationModelDiffExportInterval time.Duration

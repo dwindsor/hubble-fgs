@@ -556,14 +556,9 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			return fmt.Errorf("failed to start json exporter: %w", err)
 		}
 	}
-	if enterpriseOption.Config.ApplicationModelExportInterval != 0 && enterpriseOption.Config.ApplicationModelExportFilename != "" {
+	if enterpriseOption.Config.ApplicationModelExportInterval != 0 {
 		if err = startApplicationModelExporter(ctx, modelServer); err != nil {
 			return fmt.Errorf("failed to start json application model exporter: %w", err)
-		}
-	}
-	if enterpriseOption.Config.ApplicationModelDiffExportInterval != 0 && enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
-		if err = startApplicationModelDiffExporter(ctx, modelServer); err != nil {
-			return fmt.Errorf("failed to start json application model difference exporter: %w", err)
 		}
 	}
 	if enterpriseOption.Config.EnableAlerts {
@@ -939,22 +934,10 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 		}()
 	}
 
-	go model.ExportApplicationModel(ctx, modelServer, writer, enterpriseOption.Config.ApplicationModelExportInterval)
+	go model.ExportApplicationModel(ctx, modelServer, writer,
+		enterpriseOption.Config.ApplicationModelExportInterval,
+		enterpriseOption.Config.ApplicationModelEnableDiff)
 
-	return nil
-}
-
-func startApplicationModelDiffExporter(ctx context.Context, modelServer *model.Server) error {
-	writer, err := getWriter(
-		enterpriseOption.Config.ApplicationModelDiffExportFilename,
-		option.Config.ExportFileMaxSizeMB,
-		option.Config.ExportFileMaxBackups,
-		option.Config.ExportFileCompress,
-	)
-	if err != nil {
-		return err
-	}
-	go model.ExportApplicationModelDiff(ctx, modelServer, writer, enterpriseOption.Config.ApplicationModelDiffExportInterval)
 	return nil
 }
 

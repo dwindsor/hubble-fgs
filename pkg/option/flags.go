@@ -45,7 +45,7 @@ const (
 	KeyApplicationModelCacheSize          = "application-model-cache-size"
 	KeyApplicationModelExportInterval     = "application-model-export-interval"
 	KeyApplicationModelExportFilename     = "application-model-export-filename"
-	KeyApplicationModelDiffExportInterval = "application-model-diff-export-interval"
+	KeyApplicationModelEnableDiff         = "application-model-enable-diff"
 	KeyApplicationModelDiffExportFilename = "application-model-diff-export-filename"
 	keyEnableIcmpTracking                 = "enable-icmp-tracking"
 	keyEnablePolicyK8sWatcher             = "enable-policy-k8swatcher"
@@ -102,8 +102,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden(KeyApplicationModelExportInterval)
 	flags.String(KeyApplicationModelExportFilename, "", "Filename for application model JSON export. Set to \"\" to disable.")
 	flags.MarkHidden(KeyApplicationModelExportFilename)
-	flags.Duration(KeyApplicationModelDiffExportInterval, 0, "Interval at which to export application model difference as JSON.")
-	flags.MarkHidden(KeyApplicationModelDiffExportInterval)
+	flags.Bool(KeyApplicationModelEnableDiff, true, "Enable application model only for new data.")
+	flags.MarkHidden(KeyApplicationModelEnableDiff)
 	flags.String(KeyApplicationModelDiffExportFilename, "", "Filename for application model difference JSON export. Set to \"\" to disable.")
 	flags.MarkHidden(KeyApplicationModelDiffExportFilename)
 	flags.Int(KeyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
@@ -169,7 +169,7 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
 	Config.ApplicationModelExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
 	Config.ApplicationModelExportFilename = viper.GetString(KeyApplicationModelExportFilename)
-	Config.ApplicationModelDiffExportInterval = viper.GetDuration(KeyApplicationModelDiffExportInterval)
+	Config.ApplicationModelEnableDiff = viper.GetBool(KeyApplicationModelEnableDiff)
 	Config.ApplicationModelDiffExportFilename = viper.GetString(KeyApplicationModelDiffExportFilename)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)
 	Config.DnsCacheSize = viper.GetInt(KeyDnsCacheSize)
