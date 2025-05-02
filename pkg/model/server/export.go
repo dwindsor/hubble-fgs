@@ -55,15 +55,23 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 				return
 			}
+
 			newModel := model.ProcessModelToApplicationModel(res)
-			if enableDiffModel {
+			if enableDiffModel || flatEncoder != nil {
 				diffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
 				if err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to produce application model difference as JSON")
 					return
 				}
 
+				// If nothing has changed do not update last model and skip writing empty record
+				if diffModel == nil {
+					continue
+				}
 				lastModel = newModel
+			}
+
+			if enableDiffModel {
 				diffModelEvent := &appModelV1.ApplicationModelEvent{
 					ClusterName:      lastModel.ClusterName,
 					NodeName:         lastModel.NodeName,
@@ -82,12 +90,6 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			}
 
 			if flatEncoder != nil {
-				diffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
-				if err != nil {
-					logger.GetLogger().WithError(err).Error("Failed to produce application model difference as JSON")
-					return
-				}
-
 				netFlatPack, err := diff.ApplicationModelToNetworkFlat(diffModel)
 				if err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim model")

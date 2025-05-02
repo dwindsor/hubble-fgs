@@ -159,6 +159,10 @@ func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.Applicat
 		}
 	}
 
+	if len(nsDiff) == 0 {
+		return nil, nil
+	}
+
 	return &appModelV1.ApplicationModel{
 		Namespaces: nsDiff,
 	}, nil

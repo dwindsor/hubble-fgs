@@ -271,7 +271,7 @@ func TestApplicationModelEqual(t *testing.T) {
 
 	d, err := ApplicationModelDiff(aModel, bModel)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(d.Namespaces))
+	assert.Nil(t, d)
 }
 
 func TestApplicationModelDiff(t *testing.T) {
