@@ -42,6 +42,7 @@ import (
 	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ossAlignchecker "github.com/cilium/tetragon/pkg/alignchecker"
@@ -967,6 +968,8 @@ func Serve(
 	tetragon.RegisterProcessModelServiceServer(grpcServer, model)
 	tetragon.RegisterMandateServiceServer(grpcServer, mandate)
 	tetragon.RegisterAlertServiceServer(grpcServer, alerter)
+	appModelV1.RegisterApplicationModelServiceServer(grpcServer, model)
+
 	proto, addr, err := server.SplitListenAddr(listenAddr)
 	if err != nil {
 		return fmt.Errorf("failed to parse listen address: %w", err)

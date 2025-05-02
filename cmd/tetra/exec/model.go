@@ -71,6 +71,13 @@ var (
 	ignoreByteCounts = true
 )
 
+type ApplicationModelClient struct {
+	Client appModelV1.ApplicationModelServiceClient
+	Ctx    context.Context
+	conn   *grpc.ClientConn
+	cancel context.CancelFunc
+}
+
 type ConnectedModelClient struct {
 	Client tetragon.ProcessModelServiceClient
 	Ctx    context.Context
@@ -335,6 +342,37 @@ func runBrowserTree(enableS3 bool, bucket string) error {
 	return <-errChan
 }
 
+// NewApplicationModelClient return a connected client to a tetragon server, caller
+// must call Close() on the client. On failure to connect, this function calls
+// Fatal() thus stopping execution.
+func NewApplicationModelClient() *ApplicationModelClient {
+	c := &ApplicationModelClient{}
+	c.Ctx, c.cancel = signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+
+	var serverAddr string
+	var err error
+
+	backoff := time.Second
+	attempts := 0
+	for {
+		c.conn, serverAddr, err = connect(c.Ctx)
+		if err != nil {
+			if attempts < common.Retries {
+				// Exponential backoff
+				attempts++
+				logger.GetLogger().WithField("server-address", serverAddr).WithField("attempts", attempts).WithError(err).Error("Connection attempt failed, retrying...")
+				time.Sleep(backoff)
+				backoff *= 2
+				continue
+			}
+			logger.GetLogger().WithField("server-address", serverAddr).WithField("attempts", attempts).WithError(err).Fatal("Failed to connect to server")
+		}
+		break
+	}
+
+	c.Client = appModelV1.NewApplicationModelServiceClient(c.conn)
+	return c
+}
 // NewConnectedClient return a connected client to a tetragon server, caller
 // must call Close() on the client. On failure to connect, this function calls
 // Fatal() thus stopping execution.

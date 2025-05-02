@@ -19,13 +19,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	"github.com/isovalent/hubble-fgs/pkg/model"
@@ -102,37 +103,54 @@ func s3Monitor(bucket string, interval time.Duration, namespaces []string) error
 	return nil
 }
 
-func monitor(interval time.Duration, namespaces []string) error {
-	c := NewConnectedModelClient()
-	defer c.Close()
+func monitor(namespaces []string) error {
+	var buf bytes.Buffer
+	compactEncoder := encoder.NewEnterpriseEncoder(&buf, "always", true)
 
-	res, err := getProcessModel(&c, &tetragon.GetProcessModelRequest{
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		<-signals
+		cancel()
+	}()
+
+	c := NewApplicationModelClient()
+
+	req := &appModelV1.StreamTelemetryRequest{
 		Namespaces: namespaces,
-		Debug:      common.Debug,
-	})
+		Host:       false,
+	}
+
+	stream, err := c.Client.StreamTelemetry(ctx, req)
 	if err != nil {
-		logger.GetLogger().WithError(err).Error("Failed to retrieve events from Tetragon")
+		logger.GetLogger().WithError(err).Error("failed streaming model request")
 		return err
 	}
-	currentData, _, _ := model.ConvertToMonitorData(res, false)
 
-	ticker := time.NewTicker(interval)
 	for {
 		select {
-		case <-ticker.C:
-			res, err := getProcessModel(&c, &tetragon.GetProcessModelRequest{Namespaces: namespaces})
+		case <-ctx.Done():
+			return nil
+		default:
+			res, err := stream.Recv()
 			if err != nil {
-				logger.GetLogger().WithError(err).Error("Failed to retrieve events from Tetragon")
+				return nil
+			}
+
+			network := res.GetNetwork()
+			if network == nil {
+				logger.GetLogger().Error("stream received unknown event type")
 				return err
 			}
-			newData, quota, _ := model.ConvertToMonitorData(res, false)
-			diff := model.Diff(currentData, newData)
-			quota.Print()
-			diff.Print()
-			currentData = newData
-		case <-c.Ctx.Done():
-			fmt.Print("\r")
-			return nil
+
+			s, err := compactEncoder.AppModelEventToString(network)
+			if err != nil {
+				return err
+			}
+			fmt.Println(s)
 		}
 	}
 }
@@ -280,7 +298,7 @@ func NewMonitor() *cobra.Command {
 			if s3 {
 				return s3Monitor(bucket, interval, namespaces)
 			}
-			return monitor(interval, namespaces)
+			return monitor(namespaces)
 		},
 	}
 

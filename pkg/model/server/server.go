@@ -27,9 +27,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model"
+	"github.com/isovalent/hubble-fgs/pkg/model/diff"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -46,6 +48,7 @@ const (
 
 type Server struct {
 	tetragon.UnimplementedProcessModelServiceServer
+	appModelV1.UnimplementedApplicationModelServiceServer
 }
 
 func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestinationMapRequest) (*tetragon.GetDestinationMapResponse, error) {
@@ -803,6 +806,70 @@ func (s *Server) GetProcesses(req *tetragon.GetProcessModelRequest, stream tetra
 		}
 	}
 	return nil
+}
+
+func (s *Server) GetModel(_ context.Context, req *appModelV1.GetModelRequest) (*appModelV1.GetModelResponse, error) {
+	return nil, nil
+}
+
+func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream appModelV1.ApplicationModelService_StreamTelemetryServer) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	interval := time.Duration(1) * time.Second
+	ticker := time.NewTicker(interval)
+
+	res, err := s.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
+	if err != nil {
+		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
+		return err
+	}
+	lastModel := model.ProcessModelToApplicationModel(res)
+
+	for {
+		var diffModel *appModelV1.ApplicationModel
+
+		select {
+		case <-ticker.C:
+			res, err := s.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
+			if err != nil {
+				logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
+				return err
+			}
+			newModel := model.ProcessModelToApplicationModel(res)
+			diffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
+			if err != nil {
+				logger.GetLogger().WithError(err).Error("Failed to produce application model difference")
+				return err
+			}
+
+			// If nothing has changed do not update last model and skip writing empty record
+			if diffModel == nil {
+				continue
+			}
+			lastModel = newModel
+
+			netFlatPack, err := diff.ApplicationModelToNetworkFlat(diffModel)
+			if err != nil {
+				logger.GetLogger().WithError(err).Error("Failed to decode application model to network event model")
+				return err
+			}
+			for _, entry := range netFlatPack {
+				network := &appModelV1.StreamTelemetryResponse_Network{
+					Network: entry,
+				}
+				send := appModelV1.StreamTelemetryResponse{
+					Event: network,
+				}
+				if err := stream.Send(&send); err != nil {
+					logger.GetLogger().WithError(err).Error("Failed to send network event model")
+					return err
+				}
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 func DefaultNewServer() (*Server, error) {
