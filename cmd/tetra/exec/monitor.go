@@ -12,14 +12,13 @@ package exec
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"os"
-	"slices"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -28,6 +27,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/spf13/cobra"
@@ -138,43 +138,24 @@ func monitor(interval time.Duration, namespaces []string) error {
 }
 
 func monitorStdin() error {
-	currentModel := &appModelV1.ApplicationModelEvent{}
+	var buf bytes.Buffer
+	compactEncoder := encoder.NewEnterpriseEncoder(&buf, "always", true)
 	decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
-	if err := decoder.Decode(currentModel); err != nil {
-		return err
-	}
 	for {
-		newModel := &appModelV1.ApplicationModelEvent{}
-		err := decoder.Decode(newModel)
+		newEntry := &appModelV1.ApplicationModelNetworkFlatEntry{}
+		err := decoder.Decode(newEntry)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return err
 		}
-		currentnmd := model.NetworkMonitorData{}
-		currentpmd := model.ProcessMonitorData{}
-		newnmd := model.NetworkMonitorData{}
-		newpmd := model.ProcessMonitorData{}
-		model.ToMonitorData(currentnmd, currentpmd, currentModel.GetApplicationModel())
-		model.ToMonitorData(newnmd, newpmd, newModel.GetApplicationModel())
 
-		processKeys := slices.Collect(maps.Keys(newpmd))
-		slices.SortFunc(processKeys, model.CompareProcessKeys)
-		for _, key := range processKeys {
-			if _, ok := currentpmd[key]; !ok {
-				fmt.Println("🚀", key)
-			}
+		s, err := compactEncoder.AppModelEventToString(newEntry)
+		if err != nil {
+			return err
 		}
-
-		networkKeys := slices.Collect(maps.Keys(newnmd))
-		slices.SortFunc(networkKeys, model.CompareNetworkKeys)
-		for _, key := range networkKeys {
-			if _, ok := currentnmd[key]; !ok {
-				fmt.Println("🔌", key)
-			}
-		}
-		currentModel = newModel
+		fmt.Println(s)
 	}
 	return nil
 }
