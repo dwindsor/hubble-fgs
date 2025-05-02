@@ -81,7 +81,8 @@ func (p *EnterpriseEncoder) AppModelEventToString(event *appModelV1.ApplicationM
 		destination := p.colorer.simpleTuple(
 			event.DestinationName,
 			event.DestinationPort)
-		return fmt.Sprintf("%s %s %s", connect, processInfo, destination), nil
+		stats := p.colorer.Cyan.Sprintf("tx %d rx %d drops %d defaultDrops %d defaultAllow %d", event.TxBytes, event.RxBytes, event.TxDrops, event.DefaultDropBytes, event.DefaultAllowBytes)
+		return fmt.Sprintf("%s %s %s (%s)", connect, processInfo, destination, stats), nil
 
 	}
 	return "", fmt.Errorf("%w: %s", ErrUnknownEventType, event.EventType.String())
