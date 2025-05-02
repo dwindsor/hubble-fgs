@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/dustin/go-humanize"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/miekg/dns"
 )
 
@@ -70,6 +71,20 @@ func (p *EnterpriseEncoder) EncodePrefix(prefix string, v interface{}) error {
 
 func (p *EnterpriseEncoder) Encode(v interface{}) error {
 	return p.EncodePrefix("", v)
+}
+
+func (p *EnterpriseEncoder) AppModelEventToString(event *appModelV1.ApplicationModelNetworkFlatEntry) (string, error) {
+	switch event.EventType {
+	case appModelV1.ApplicationModelEventType_APPLICATION_MODEL_EVENT_TYPE_NETWORK_CONNECT:
+		connect := p.colorer.Blue.Sprintf("🔌 %-7s", "connect")
+		processInfo := p.colorer.flatProcessInfo(event.NodeName, event.ProcessName, event.KubernetesNamespace, event.KubernetesWorkloadName)
+		destination := p.colorer.simpleTuple(
+			event.DestinationName,
+			event.DestinationPort)
+		return fmt.Sprintf("%s %s %s", connect, processInfo, destination), nil
+
+	}
+	return "", fmt.Errorf("%w: %s", ErrUnknownEventType, event.EventType.String())
 }
 
 func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) (string, error) {

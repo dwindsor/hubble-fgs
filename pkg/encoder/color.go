@@ -121,3 +121,17 @@ func (c colorer) fiveTuple(
 	}
 	return c.Cyan.Sprint(protocol, " ", srcHost, ":", srcPort, " => ", dstHost, ":", dstPort, " ", dns)
 }
+
+func (c colorer) simpleTuple(dstName string, dstPort uint32) string {
+	return c.Cyan.Sprint(" => ", dstName, ":", dstPort)
+}
+
+func (c *colorer) flatProcessInfo(host, process, podNamespace, podName string) string {
+	source := c.Green.Sprint(host)
+	if podNamespace != "" {
+		source = c.Green.Sprint(podNamespace, "/", podName)
+	}
+	proc := c.Magenta.Sprint(process)
+	return fmt.Sprintf("%s %s", source, proc)
+
+}
