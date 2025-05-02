@@ -22,11 +22,14 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
-func ExportApplicationModel(ctx context.Context, server *Server, writer io.Writer, flatWriter io.Writer, interval time.Duration, enableDiffModel bool) {
+func ExportApplicationModel(ctx context.Context, server *Server, writer io.Writer, flatWriter io.Writer, interval time.Duration) {
 	var encoder *json.Encoder
 	var flatEncoder *json.Encoder
+
+	isDiffModel := enterpriseOption.Config.ApplicationModelDiffExportFilename != "" || enterpriseOption.Config.ApplicationModelEnableDiff
 
 	res, err := server.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
 	if err != nil {
@@ -57,7 +60,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			}
 
 			newModel := model.ProcessModelToApplicationModel(res)
-			if enableDiffModel || flatEncoder != nil {
+			if isDiffModel {
 				diffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
 				if err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to produce application model difference as JSON")
@@ -71,7 +74,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				lastModel = newModel
 			}
 
-			if enableDiffModel {
+			if enterpriseOption.Config.ApplicationModelEnableDiff {
 				diffModelEvent := &appModelV1.ApplicationModelEvent{
 					ClusterName:      lastModel.ClusterName,
 					NodeName:         lastModel.NodeName,
@@ -89,7 +92,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				}
 			}
 
-			if flatEncoder != nil {
+			if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
 				netFlatPack, err := diff.ApplicationModelToNetworkFlat(diffModel)
 				if err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim model")

@@ -953,8 +953,7 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 	}
 
 	go model.ExportApplicationModel(ctx, modelServer, writer, flatWriter,
-		enterpriseOption.Config.ApplicationModelExportInterval,
-		enterpriseOption.Config.ApplicationModelEnableDiff)
+		enterpriseOption.Config.ApplicationModelExportInterval)
 
 	return nil
 }
