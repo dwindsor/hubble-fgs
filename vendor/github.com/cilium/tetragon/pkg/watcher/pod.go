@@ -10,8 +10,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
-
-	"github.com/cilium/tetragon/pkg/podhooks"
 )
 
 const (
@@ -25,11 +23,6 @@ var (
 	errNoPod = errors.New("object is not a *corev1.Pod")
 )
 
-type K8sResourceWatcher interface {
-	Watcher
-	PodAccessor
-}
-
 // PodAccessor defines an interface for accessing pods from Kubernetes API.
 type PodAccessor interface {
 	// Find a pod/container pair for the given container ID.
@@ -38,39 +31,6 @@ type PodAccessor interface {
 	FindPod(podID string) (*corev1.Pod, error)
 	// Find a mirror pod for a static pod
 	FindMirrorPod(hash string) (*corev1.Pod, error)
-}
-
-func AddPodInformer(w *K8sWatcher, local bool) error {
-	if w == nil {
-		return errors.New("k8s watcher not initialized")
-	}
-	factory := w.GetK8sInformerFactory()
-	if local {
-		factory = w.GetLocalK8sInformerFactory()
-	}
-	if factory == nil {
-		return errors.New("k8s informer factory not initialized")
-	}
-
-	// initialize deleted pod cache
-	var err error
-	w.deletedPodCache, err = NewDeletedPodCache()
-	if err != nil {
-		return fmt.Errorf("failed to initialize deleted pod cache: %w", err)
-	}
-
-	// add informer to the watcher
-	informer := factory.Core().V1().Pods().Informer()
-	w.AddInformer(podInformerName, informer, map[string]cache.IndexFunc{
-		ContainerIdx: ContainerIndexFunc,
-		PodIdx:       PodIndexFunc,
-	})
-
-	// add event handlers to the informer
-	informer.AddEventHandler(w.deletedPodCache.EventHandler())
-	podhooks.InstallHooks(informer)
-
-	return nil
 }
 
 func ContainerIDKey(contID string) (string, error) {
@@ -137,15 +97,6 @@ func PodIndexFunc(obj interface{}) ([]string, error) {
 	return nil, fmt.Errorf("PodIndexFunc: %w - found %T", errNoPod, obj)
 }
 
-// FindContainer implements PodAccessor.FindContainer.
-func (watcher *K8sWatcher) FindContainer(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
-	podInformer := watcher.GetInformer(podInformerName)
-	if podInformer == nil {
-		return nil, nil, false
-	}
-	return FindContainer(containerID, podInformer, watcher.deletedPodCache)
-}
-
 func FindContainer(containerID string, podInformer cache.SharedIndexInformer, deletedPodCache *DeletedPodCache) (*corev1.Pod, *corev1.ContainerStatus, bool) {
 	indexedContainerID := containerID
 	if len(containerID) > containerIDLen {
@@ -200,18 +151,6 @@ func findContainer(containerID string, pods []interface{}) (*corev1.Pod, *corev1
 	return nil, nil, false
 }
 
-// FindMirrorPod finds the mirror pod of a static pod based on the hash
-// see: https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-config-hash,
-// https://kubernetes.io/docs/reference/labels-annotations-taints/#kubernetes-io-config-mirror,
-// https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/
-func (watcher *K8sWatcher) FindMirrorPod(hash string) (*corev1.Pod, error) {
-	podInformer := watcher.GetInformer(podInformerName)
-	if podInformer == nil {
-		return nil, errors.New("pod informer not initialized")
-	}
-	return FindMirrorPod(hash, podInformer)
-}
-
 func FindMirrorPod(hash string, podInformer cache.SharedIndexInformer) (*corev1.Pod, error) {
 	pods := podInformer.GetStore().List()
 	for i := range pods {
@@ -224,14 +163,6 @@ func FindMirrorPod(hash string, podInformer cache.SharedIndexInformer) (*corev1.
 		}
 	}
 	return nil, fmt.Errorf("static pod (hash=%s) not found", hash)
-}
-
-func (watcher *K8sWatcher) FindPod(podID string) (*corev1.Pod, error) {
-	podInformer := watcher.GetInformer(podInformerName)
-	if podInformer == nil {
-		return nil, errors.New("pod informer not initialized")
-	}
-	return FindPod(podID, podInformer)
 }
 
 func FindPod(podID string, podInformer cache.SharedIndexInformer) (*corev1.Pod, error) {

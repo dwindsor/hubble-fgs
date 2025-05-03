@@ -261,7 +261,7 @@ func (n DummyNotifier) NotifyListener(original interface{}, processed *tetragon.
 	}
 }
 
-func initEnv(t *testing.T, watcher watcher.K8sResourceWatcher) context.CancelFunc {
+func initEnv(t *testing.T, watcher watcher.PodAccessor) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	_, err := cilium.InitCiliumState(ctx, false)
