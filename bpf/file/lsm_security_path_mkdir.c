@@ -37,7 +37,7 @@ static inline __attribute__((always_inline)) __u32 path_mkdir(void *ctx, const s
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action_mkdir, 0, 0, msg->path.str, msg->path.size, &msg_id);
+	operation = eval_selectors((struct sel_args){ action_mkdir, 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 

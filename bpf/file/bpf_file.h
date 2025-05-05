@@ -538,6 +538,16 @@ struct {
 	__uint(max_entries, 1);
 } file_errors_map SEC(".maps");
 
+struct sel_path {
+	char *path;
+	__u32 len;
+};
+
+struct sel_args {
+	__u32 action;
+	__u32 flags;
+};
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_binaries(__u32 selidx, struct execve_map_value *current)
 {
@@ -1030,33 +1040,33 @@ static inline __attribute__((always_inline)) int check_match_exec_attributes(__u
 }
 
 static inline __attribute__((always_inline)) __u32
-__eval_selectors(__u32 sel_idx, __u32 action, __u32 flags, struct digest_key *digest, struct execve_map_value *execve, char *path, __u32 len, __u32 *msg_id)
+__eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest, struct execve_map_value *execve, struct sel_path path, __u32 *msg_id)
 {
 	struct file_actions_val *act = 0;
 
 	if (!check_match_binaries(sel_idx, execve))
 		return 0;
-	if (!check_match_operations(sel_idx, action))
+	if (!check_match_operations(sel_idx, args.action))
 		return 0;
 #ifdef __LARGE_BPF_PROG
 #ifdef __FILE_DIGEST_LSM
-	if (!check_match_digests(sel_idx, digest, action))
+	if (!check_match_digests(sel_idx, digest, args.action))
 		return 0;
 #endif
 	if (!check_match_namespaces(sel_idx))
 		return 0;
 	if (!check_match_capabilities(sel_idx))
 		return 0;
-	if (!check_match_open_flags(sel_idx, action, flags))
+	if (!check_match_open_flags(sel_idx, args.action, args.flags))
 		return 0;
-	if (!check_match_exec_attributes(sel_idx, action, flags))
+	if (!check_match_exec_attributes(sel_idx, args.action, args.flags))
 		return 0;
 #endif
 #ifdef __ENABLE_GLOB_SUPPORT
-	if (!check_match_filename(sel_idx, path, len, digest))
+	if (!check_match_filename(sel_idx, path.path, path.len, digest))
 		return 0;
 #endif
-	if (!check_match_rename(sel_idx, action, flags))
+	if (!check_match_rename(sel_idx, args.action, args.flags))
 		return 0;
 
 	act = map_lookup_elem(&file_actions_map, &sel_idx);
@@ -1109,7 +1119,7 @@ static long selectors_cb(u32 index, void *ununsed)
 	 */
 	execve = event_find_curr(&zero, &walker);
 
-	ctx->retval = __eval_selectors(index, ctx->action, ctx->flags, ctx->digest, execve, ctx->path, ctx->len, &ctx->msg_id);
+	ctx->retval = __eval_selectors(index, (struct sel_args){ ctx->action, ctx->flags }, ctx->digest, execve, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
 	if (ctx->retval) { // we return the value from the first selector that matches
 		return 1;
 	}
@@ -1132,7 +1142,7 @@ static inline __attribute__((always_inline)) bool policy_filter_match()
 }
 
 static inline __attribute__((always_inline)) __u32
-eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path, __u32 len, __u32 *msg_id)
+eval_selectors(struct sel_args args, struct digest_key *digest, struct sel_path path, __u32 *msg_id)
 {
 	struct file_config_map_value *conf;
 	__u32 zero = 0;
@@ -1157,10 +1167,10 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 	if (!ctx)
 		return 0;
 
-	ctx->action = action;
-	ctx->flags = flags;
-	ctx->path = path;
-	ctx->len = len;
+	ctx->action = args.action;
+	ctx->flags = args.flags;
+	ctx->path = path.path;
+	ctx->len = path.len;
 	ctx->retval = 0;
 	ctx->num_selectors = conf->num_selectors;
 	ctx->digest = digest;
@@ -1186,7 +1196,7 @@ eval_selectors(__u32 action, __u32 flags, struct digest_key *digest, char *path,
 	for (i = 0; i < MAX_FIM_SELECTORS; ++i) {
 		if (i >= conf->num_selectors) // no need to check more selectors
 			break;
-		val = __eval_selectors(i, action, flags, digest, execve, path, len, msg_id);
+		val = __eval_selectors(i, args, digest, execve, path, msg_id);
 		if (val) // we return the value from the first selector that matches
 			return val;
 	}
@@ -1764,7 +1774,7 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors(action, 0, 0, msg->path.str, msg->path.size, &msg_id);
+	operation = eval_selectors((struct sel_args){ action, 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 

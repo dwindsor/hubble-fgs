@@ -61,7 +61,7 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors(action_create, 0, 0, 0, 0, &msg_id);
+	operation = eval_selectors((struct sel_args){ action_create, 0 }, 0, (struct sel_path){ 0, 0 }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 

@@ -81,9 +81,9 @@ static inline __attribute__((always_inline)) __u32 path_symlink(void *ctx, const
 	if (ret > 0) // on success
 		msg->target.size = ret - 1; // as this includes the trailing NUL character
 
-	link_op = eval_selectors(action_symlink, 0, 0, msg->link.path.str, msg->link.path.size, &link_msg_id);
+	link_op = eval_selectors((struct sel_args){ action_symlink, 0 }, 0, (struct sel_path){ msg->link.path.str, msg->link.path.size }, &link_msg_id);
 
-	target_op = eval_selectors(action_symlink, 0, 0, msg->target.str, msg->target.size, &target_msg_id);
+	target_op = eval_selectors((struct sel_args){ action_symlink, 0 }, 0, (struct sel_path){ msg->target.str, msg->target.size }, &target_msg_id);
 
 	operation = link_op ? link_op : target_op;
 	if (!(operation & FILE_OP_POST))

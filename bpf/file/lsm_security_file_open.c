@@ -43,7 +43,7 @@ static inline __attribute__((always_inline)) __u32 path_file_open(void *ctx, str
 	// In these events we also have to update any internal maps,
 	// which is already done here.
 	open_flags = BPF_CORE_READ(file, f_flags);
-	operation = eval_selectors(action_open, open_flags, 0, msg->path.str, msg->path.size, &msg_id);
+	operation = eval_selectors((struct sel_args){ action_open, open_flags }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 

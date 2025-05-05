@@ -122,7 +122,7 @@ static inline __attribute__((always_inline)) int handle_open_raw(void *ctx, cons
 	msg->open_flags = flags;
 	msg->retval = ret;
 
-	operation = eval_selectors(action_openraw, flags, 0, msg->path.str, msg->path.size, &msg_id);
+	operation = eval_selectors((struct sel_args){ action_openraw, flags }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return 0;
 

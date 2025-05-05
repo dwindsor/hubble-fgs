@@ -41,7 +41,7 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 	flags.d8[EXEC_ATTR_MEMFD_IDX] = msg->is_exe_from_memfd;
 	flags.d8[EXEC_ATTR_UPPER_IDX] = msg->is_exe_upper_layer;
 
-	operation = eval_selectors(action_exec, flags.d32, 0, msg->path.str, msg->path.size, &msg_id);
+	operation = eval_selectors((struct sel_args){ action_exec, flags.d32 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
