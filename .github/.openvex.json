@@ -1,10 +1,24 @@
 {
   "@context": "https://openvex.dev/ns/v0.2.0",
-  "@id": "merged-vex-29507518cb95701ee44ca2d1a6a29928ee93ab7c9ca46dbecb8be84795459065",
+  "@id": "merged-vex-a85f0d458bc11db0fd196d6fb1aac1ebca138824f2d04f4cb02ee039d5243e90",
   "author": "Unknown Author",
-  "timestamp": "2025-03-14T18:59:58.0380209+01:00",
+  "timestamp": "2025-05-05T09:33:52.86334295+02:00",
   "version": 1,
   "statements": [
+    {
+      "vulnerability": {
+        "name": "GHSA-5vxx-c285-pcq4"
+      },
+      "timestamp": "2025-05-05T09:33:13.849990077+02:00",
+      "products": [
+        {
+          "@id": "pkg:oci/tetragon-ci"
+        }
+      ],
+      "status": "not_affected",
+      "status_notes": "Tetragon does not use the affected functionality",
+      "justification": "vulnerable_code_not_in_execute_path"
+    },
     {
       "vulnerability": {
         "name": "GHSA-7p9f-6x8j-gxxp"
