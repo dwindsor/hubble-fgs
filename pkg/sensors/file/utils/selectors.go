@@ -199,6 +199,9 @@ type KernelSelectorState struct {
 	// matchExecAttributes
 	exec map[uint32]*MatchExecAttrs
 
+	// matchOpenrawResult
+	openraw map[uint32]uint32
+
 	// matchActions value
 	action map[uint32]*ActionsVal
 
@@ -217,6 +220,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 		oflags:              map[uint32]*OpenFlagsOps{},
 		patterns:            map[uint32]*MatchFilenameOps{},
 		exec:                map[uint32]*MatchExecAttrs{},
+		openraw:             map[uint32]uint32{},
 		action:              map[uint32]*ActionsVal{},
 	}
 }
@@ -1301,6 +1305,45 @@ func ParseExecAttributes(k *KernelSelectorState, op []v1alpha1.FileExecAttribute
 	return nil
 }
 
+const (
+	SelOpenrawSuccess = 0
+	SelOpenrawFailed  = 1
+)
+
+func ParseMatchOpenrawResult(k *KernelSelectorState, op []v1alpha1.FileOpenrawResultSelector, selIdx int) error {
+	if len(op) > 1 {
+		return fmt.Errorf("only support a single operation inside a single selector")
+	}
+	if len(op) == 0 {
+		return nil
+	}
+
+	o := op[0]
+	if strings.ToUpper(o.Result) == "FAILED" {
+		k.openraw[uint32(selIdx)] = SelOpenrawFailed
+	} else if strings.ToUpper(o.Result) == "SUCCEED" {
+		k.openraw[uint32(selIdx)] = SelOpenrawSuccess
+	}
+
+	return nil
+}
+
+func GenerateOpenrawResultMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	for idx, result := range sel.openraw {
+		if err := m.Update(idx, result, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetOpenrawResultMapSize(sel *KernelSelectorState) int {
+	if len(sel.openraw) == 0 {
+		return 1
+	}
+	return len(sel.openraw)
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors int) (*KernelSelectorState, error) {
 	if len(fileSel) > maxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
@@ -1333,6 +1376,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 		}
 		if err := ParseExecAttributes(kernelSelectors, s.MatchExecAttributes, i); err != nil {
 			return nil, fmt.Errorf("parseExecAttributes error: %w", err)
+		}
+		if err := ParseMatchOpenrawResult(kernelSelectors, s.MatchOpenrawResult, i); err != nil {
+			return nil, fmt.Errorf("parseMatchOpenrawResult error: %w", err)
 		}
 		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
 			return nil, fmt.Errorf("parseMatchActions error: %w", err)

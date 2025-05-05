@@ -1,5 +1,6 @@
 #define __V61_BPF_PROG
 #define __ENABLE_GLOB_SUPPORT
+#define __ENABLE_OPENRAW_SUPPORT
 #include "bpf_file.h"
 #include "dispatcher.h"
 #include "getname.h"
@@ -122,7 +123,7 @@ static inline __attribute__((always_inline)) int handle_open_raw(void *ctx, cons
 	msg->open_flags = flags;
 	msg->retval = ret;
 
-	operation = eval_selectors((struct sel_args){ action_openraw, flags }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
+	operation = eval_selectors((struct sel_args){ action_openraw, flags, ret }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return 0;
 

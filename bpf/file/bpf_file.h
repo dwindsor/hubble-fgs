@@ -546,7 +546,18 @@ struct sel_path {
 struct sel_args {
 	__u32 action;
 	__u32 flags;
+	__s32 retval;
 };
+
+#define SEL_OPENRAW_SUCCESS 0
+#define SEL_OPENRAW_FAILURE 1
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u32);
+	__type(value, __u32); /* SEL_OPENRAW_* */
+	__uint(max_entries, 1); /* the user will setup this */
+} file_openraw_result_map SEC(".maps");
 
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_binaries(__u32 selidx, struct execve_map_value *current)
@@ -1039,6 +1050,28 @@ static inline __attribute__((always_inline)) int check_match_exec_attributes(__u
 	return 1;
 }
 
+// returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_openraw_result(__u32 sel_idx, __u32 action, __s32 result)
+{
+	__u32 sel = sel_idx;
+	__u32 *sel_res = 0;
+
+	// only applicable to openraw events
+	if (action != action_openraw)
+		return 1;
+
+	sel_res = map_lookup_elem(&file_openraw_result_map, &sel);
+	if (!sel_res) // no matchOpenrawResult for this selector -- match
+		return 1;
+
+	if (*sel_res == SEL_OPENRAW_SUCCESS) // match succeed open call
+		return result > 0;
+	else if (*sel_res == SEL_OPENRAW_FAILURE) // match failed open call
+		return result < 0;
+
+	return 0;
+}
+
 static inline __attribute__((always_inline)) __u32
 __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest, struct execve_map_value *execve, struct sel_path path, __u32 *msg_id)
 {
@@ -1066,6 +1099,10 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 	if (!check_match_filename(sel_idx, path.path, path.len, digest))
 		return 0;
 #endif
+#ifdef __ENABLE_OPENRAW_SUPPORT
+	if (!check_match_openraw_result(sel_idx, args.action, args.retval))
+		return 0;
+#endif
 	if (!check_match_rename(sel_idx, args.action, args.flags))
 		return 0;
 
@@ -1085,6 +1122,7 @@ struct selectors_ctx {
 	__u32 retval;
 	__u32 action;
 	__u32 flags;
+	__s32 ret;
 	__u32 num_selectors;
 	__u32 msg_id;
 	struct digest_key *digest;
@@ -1119,7 +1157,7 @@ static long selectors_cb(u32 index, void *ununsed)
 	 */
 	execve = event_find_curr(&zero, &walker);
 
-	ctx->retval = __eval_selectors(index, (struct sel_args){ ctx->action, ctx->flags }, ctx->digest, execve, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
+	ctx->retval = __eval_selectors(index, (struct sel_args){ ctx->action, ctx->flags, ctx->ret }, ctx->digest, execve, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
 	if (ctx->retval) { // we return the value from the first selector that matches
 		return 1;
 	}
@@ -1169,6 +1207,7 @@ eval_selectors(struct sel_args args, struct digest_key *digest, struct sel_path 
 
 	ctx->action = args.action;
 	ctx->flags = args.flags;
+	ctx->ret = args.retval;
 	ctx->path = path.path;
 	ctx->len = path.len;
 	ctx->retval = 0;

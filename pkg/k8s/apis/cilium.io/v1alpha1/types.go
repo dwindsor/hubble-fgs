@@ -230,6 +230,14 @@ type FileExecAttributesSelector struct {
 	IsUpperLayer ExecAttributes `json:"isUpperLayer,omitempty"`
 }
 
+// +kubebuilder:validation:Enum=Succeed;Failed
+type OpenrawResultValue = string
+
+type FileOpenrawResultSelector struct {
+	// Matches on the return value of FILE_OPENRAW operations.
+	Result OpenrawResultValue `json:"result,omitempty"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
@@ -259,6 +267,9 @@ type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of exec attributes to match on the event.
 	MatchExecAttributes []FileExecAttributesSelector `json:"matchExecAttributes,omitempty"`
+	// +kubebuilder:validation:Optional
+	// A list of results to match on openraw operations.
+	MatchOpenrawResult []FileOpenrawResultSelector `json:"matchOpenrawResult,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`
