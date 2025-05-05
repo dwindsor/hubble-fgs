@@ -22,7 +22,7 @@ version: "0.0.0-dev"
 appVersion: "0.0.0-dev"
 dependencies:
   - name: grafana
-    version: "8.11.4"
+    version: "8.15.0"
     repository: https://grafana.github.io/helm-charts
     condition: integratedGrafana.enabled
   - name: kube-state-metrics
