@@ -373,6 +373,7 @@ func NewApplicationModelClient() *ApplicationModelClient {
 	c.Client = appModelV1.NewApplicationModelServiceClient(c.conn)
 	return c
 }
+
 // NewConnectedClient return a connected client to a tetragon server, caller
 // must call Close() on the client. On failure to connect, this function calls
 // Fatal() thus stopping execution.
@@ -454,14 +455,14 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 			return nil, err
 		}
 	} else {
-		c := NewConnectedModelClient()
-		defer c.Close()
+		c := NewApplicationModelClient()
 
-		res, err := getProcessTreeGrpc(&c)
+		req := &appModelV1.GetModelRequest{}
+		resp, err := c.Client.GetModel(ctx, req)
 		if err != nil {
 			return nil, err
 		}
-		appModel = model.ProcessModelToApplicationModel(res)
+		appModel = resp.Model
 	}
 
 	return appModel, nil

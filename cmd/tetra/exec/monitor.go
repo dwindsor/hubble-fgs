@@ -118,7 +118,6 @@ func monitor(namespaces []string) error {
 	}()
 
 	c := NewApplicationModelClient()
-
 	req := &appModelV1.StreamTelemetryRequest{
 		Namespaces: namespaces,
 		Host:       false,
