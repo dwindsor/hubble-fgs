@@ -1,5 +1,3 @@
-// Copyright (C) Isovalent, Inc. - All Rights Reserved.
-//
 // NOTICE: All information contained herein is, and remains the property of
 // Isovalent Inc and its suppliers, if any. The intellectual and technical
 // concepts contained herein are proprietary to Isovalent Inc and its suppliers
@@ -40,6 +38,8 @@ message ApplicationModelNetworkFlatEntry {
   uint64 tx_drops = 19;
   uint64 default_drop_bytes = 20;
   uint64 default_allow_bytes = 21;
+  uint64 default_drop_sessions = 22;
+  uint64 default_allowed_sessions = 23;
 }
 
 enum ApplicationModelDestinationType {
@@ -176,4 +176,35 @@ message DestinationIP {
 message ApplicationSyscalls {
   repeated Sys syscalls = 1;
   Abi abi = 2;
+}
+
+message GetModelRequest {
+  // Namespaces to collect model for.
+  repeated string namespaces = 1;
+  // Include model request information for the host
+  bool host = 2;
+}
+
+message GetModelResponse {
+  ApplicationModelEvent model = 1;
+}
+
+message StreamTelemetryRequest {
+  // Namespaces to collect model for.
+  repeated string namespaces = 1;
+  // Include model request information for the host
+  bool host = 2;
+}
+
+message StreamTelemetryResponse {
+  // The type-speicifc fields of flat events.
+  oneof event {
+    // Application Model Network Flat Entry event has the
+    ApplicationModelNetworkFlatEntry network = 1;
+  }
+}
+
+service ApplicationModelService {
+  rpc GetModel(GetModelRequest) returns (GetModelResponse) {}
+  rpc StreamTelemetry(StreamTelemetryRequest) returns (stream StreamTelemetryResponse) {}
 }

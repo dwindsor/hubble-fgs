@@ -1,5 +1,3 @@
-// Copyright (C) Isovalent, Inc. - All Rights Reserved.
-//
 // NOTICE: All information contained herein is, and remains the property of
 // Isovalent Inc and its suppliers, if any. The intellectual and technical
 // concepts contained herein are proprietary to Isovalent Inc and its suppliers
@@ -12,7 +10,7 @@
 // @generated from file application_model/v1alpha/application_model.proto (package application_model.v1alpha, syntax proto3)
 /* eslint-disable */
 
-import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv1";
 import type { Message } from "@bufbuild/protobuf";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { Abi, Sys } from "./syscalls_pb";
@@ -130,6 +128,16 @@ export declare type ApplicationModelNetworkFlatEntry = Message<"application_mode
    * @generated from field: uint64 default_allow_bytes = 21;
    */
   defaultAllowBytes: bigint;
+
+  /**
+   * @generated from field: uint64 default_drop_sessions = 22;
+   */
+  defaultDropSessions: bigint;
+
+  /**
+   * @generated from field: uint64 default_allowed_sessions = 23;
+   */
+  defaultAllowedSessions: bigint;
 };
 
 /**
@@ -547,6 +555,98 @@ export declare type ApplicationSyscalls = Message<"application_model.v1alpha.App
 export declare const ApplicationSyscallsSchema: GenMessage<ApplicationSyscalls>;
 
 /**
+ * @generated from message application_model.v1alpha.GetModelRequest
+ */
+export declare type GetModelRequest = Message<"application_model.v1alpha.GetModelRequest"> & {
+  /**
+   * Namespaces to collect model for.
+   *
+   * @generated from field: repeated string namespaces = 1;
+   */
+  namespaces: string[];
+
+  /**
+   * Include model request information for the host
+   *
+   * @generated from field: bool host = 2;
+   */
+  host: boolean;
+};
+
+/**
+ * Describes the message application_model.v1alpha.GetModelRequest.
+ * Use `create(GetModelRequestSchema)` to create a new message.
+ */
+export declare const GetModelRequestSchema: GenMessage<GetModelRequest>;
+
+/**
+ * @generated from message application_model.v1alpha.GetModelResponse
+ */
+export declare type GetModelResponse = Message<"application_model.v1alpha.GetModelResponse"> & {
+  /**
+   * @generated from field: application_model.v1alpha.ApplicationModelEvent model = 1;
+   */
+  model?: ApplicationModelEvent;
+};
+
+/**
+ * Describes the message application_model.v1alpha.GetModelResponse.
+ * Use `create(GetModelResponseSchema)` to create a new message.
+ */
+export declare const GetModelResponseSchema: GenMessage<GetModelResponse>;
+
+/**
+ * @generated from message application_model.v1alpha.StreamTelemetryRequest
+ */
+export declare type StreamTelemetryRequest = Message<"application_model.v1alpha.StreamTelemetryRequest"> & {
+  /**
+   * Namespaces to collect model for.
+   *
+   * @generated from field: repeated string namespaces = 1;
+   */
+  namespaces: string[];
+
+  /**
+   * Include model request information for the host
+   *
+   * @generated from field: bool host = 2;
+   */
+  host: boolean;
+};
+
+/**
+ * Describes the message application_model.v1alpha.StreamTelemetryRequest.
+ * Use `create(StreamTelemetryRequestSchema)` to create a new message.
+ */
+export declare const StreamTelemetryRequestSchema: GenMessage<StreamTelemetryRequest>;
+
+/**
+ * @generated from message application_model.v1alpha.StreamTelemetryResponse
+ */
+export declare type StreamTelemetryResponse = Message<"application_model.v1alpha.StreamTelemetryResponse"> & {
+  /**
+   * The type-speicifc fields of flat events.
+   *
+   * @generated from oneof application_model.v1alpha.StreamTelemetryResponse.event
+   */
+  event: {
+    /**
+     * Application Model Network Flat Entry event has the
+     *
+     * @generated from field: application_model.v1alpha.ApplicationModelNetworkFlatEntry network = 1;
+     */
+    value: ApplicationModelNetworkFlatEntry;
+    case: "network";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message application_model.v1alpha.StreamTelemetryResponse.
+ * Use `create(StreamTelemetryResponseSchema)` to create a new message.
+ */
+export declare const StreamTelemetryResponseSchema: GenMessage<StreamTelemetryResponse>;
+
+/**
  * @generated from enum application_model.v1alpha.ApplicationModelDestinationType
  */
 export enum ApplicationModelDestinationType {
@@ -655,4 +755,26 @@ export enum WorkloadKind {
  * Describes the enum application_model.v1alpha.WorkloadKind.
  */
 export declare const WorkloadKindSchema: GenEnum<WorkloadKind>;
+
+/**
+ * @generated from service application_model.v1alpha.ApplicationModelService
+ */
+export declare const ApplicationModelService: GenService<{
+  /**
+   * @generated from rpc application_model.v1alpha.ApplicationModelService.GetModel
+   */
+  getModel: {
+    methodKind: "unary";
+    input: typeof GetModelRequestSchema;
+    output: typeof GetModelResponseSchema;
+  },
+  /**
+   * @generated from rpc application_model.v1alpha.ApplicationModelService.StreamTelemetry
+   */
+  streamTelemetry: {
+    methodKind: "server_streaming";
+    input: typeof StreamTelemetryRequestSchema;
+    output: typeof StreamTelemetryResponseSchema;
+  },
+}>;
 

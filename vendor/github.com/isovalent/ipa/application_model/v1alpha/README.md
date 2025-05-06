@@ -22,10 +22,16 @@
     - [DestinationDns](#application_model-v1alpha-DestinationDns)
     - [DestinationIP](#application_model-v1alpha-DestinationIP)
     - [DestinationWorkload](#application_model-v1alpha-DestinationWorkload)
+    - [GetModelRequest](#application_model-v1alpha-GetModelRequest)
+    - [GetModelResponse](#application_model-v1alpha-GetModelResponse)
+    - [StreamTelemetryRequest](#application_model-v1alpha-StreamTelemetryRequest)
+    - [StreamTelemetryResponse](#application_model-v1alpha-StreamTelemetryResponse)
   
     - [ApplicationModelDestinationType](#application_model-v1alpha-ApplicationModelDestinationType)
     - [ApplicationModelEventType](#application_model-v1alpha-ApplicationModelEventType)
     - [WorkloadKind](#application_model-v1alpha-WorkloadKind)
+  
+    - [ApplicationModelService](#application_model-v1alpha-ApplicationModelService)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -646,6 +652,8 @@ WARNING for consumers: numbers are arbitrary.
 | tx_drops | [uint64](#uint64) |  |  |
 | default_drop_bytes | [uint64](#uint64) |  |  |
 | default_allow_bytes | [uint64](#uint64) |  |  |
+| default_drop_sessions | [uint64](#uint64) |  |  |
+| default_allowed_sessions | [uint64](#uint64) |  |  |
 
 
 
@@ -819,6 +827,68 @@ the following criteria:
 
 
 
+
+<a name="application_model-v1alpha-GetModelRequest"></a>
+
+### GetModelRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| namespaces | [string](#string) | repeated | Namespaces to collect model for. |
+| host | [bool](#bool) |  | Include model request information for the host |
+
+
+
+
+
+
+<a name="application_model-v1alpha-GetModelResponse"></a>
+
+### GetModelResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| model | [ApplicationModelEvent](#application_model-v1alpha-ApplicationModelEvent) |  |  |
+
+
+
+
+
+
+<a name="application_model-v1alpha-StreamTelemetryRequest"></a>
+
+### StreamTelemetryRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| namespaces | [string](#string) | repeated | Namespaces to collect model for. |
+| host | [bool](#bool) |  | Include model request information for the host |
+
+
+
+
+
+
+<a name="application_model-v1alpha-StreamTelemetryResponse"></a>
+
+### StreamTelemetryResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| network | [ApplicationModelNetworkFlatEntry](#application_model-v1alpha-ApplicationModelNetworkFlatEntry) |  | Application Model Network Flat Entry event has the |
+
+
+
+
+
  
 
 
@@ -870,6 +940,17 @@ the following criteria:
  
 
  
+
+
+<a name="application_model-v1alpha-ApplicationModelService"></a>
+
+### ApplicationModelService
+
+
+| Method Name | Request Type | Response Type | Description |
+| ----------- | ------------ | ------------- | ------------|
+| GetModel | [GetModelRequest](#application_model-v1alpha-GetModelRequest) | [GetModelResponse](#application_model-v1alpha-GetModelResponse) |  |
+| StreamTelemetry | [StreamTelemetryRequest](#application_model-v1alpha-StreamTelemetryRequest) | [StreamTelemetryResponse](#application_model-v1alpha-StreamTelemetryResponse) stream |  |
 
  
 
