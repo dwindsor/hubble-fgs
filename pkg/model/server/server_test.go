@@ -308,7 +308,8 @@ spec:
 			if err != nil {
 				t.Fatalf("getProcessModel error: %s", err)
 			}
-			appModelEvent := model.ProcessModelToApplicationModel(res)
+			emptyFilter := make(map[string]bool, 0)
+			appModelEvent := model.ProcessModelToApplicationModel(res, emptyFilter)
 			modelChk, err := checker.NewApplicationModelChecker()
 			if err != nil {
 				t.Fatalf("NewApplicationModelChecker error: %s", err)

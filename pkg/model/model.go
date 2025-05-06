@@ -136,7 +136,7 @@ func translateWorkloadKind(kind string) appModelV1.WorkloadKind {
 	return appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
 }
 
-func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationModelEvent {
+func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool) *appModelV1.ApplicationModelEvent {
 	result := &appModelV1.ApplicationModelEvent{}
 	result.ApplicationModel = &appModelV1.ApplicationModel{}
 	result.ApplicationModel.Host = &appModelV1.ApplicationHost{}
@@ -144,6 +144,10 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 	result.ClusterName = option.Config.ClusterName
 	result.Time = timestamppb.Now()
 	for key, val := range nsMap {
+		_, ok := nsFilter[key.name]
+		if ok {
+			continue
+		}
 		if key.name == HostNamespace {
 			// There is no workload info for host processes.
 			for _, wlval := range val {
@@ -187,7 +191,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap) *appModelV1.ApplicationM
 	return result
 }
 
-func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) *appModelV1.ApplicationModelEvent {
+func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse, nsFilter map[string]bool) *appModelV1.ApplicationModelEvent {
 	// Ignore quota info for now.
 	monitor, _, processes := ConvertToMonitorData(res, true)
 	nsMap := make(namespaceMap)
@@ -197,7 +201,7 @@ func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse) *appM
 	for key, val := range processes {
 		handleProcessEvent(nsMap, key, val)
 	}
-	return namespaceMapToApplicationModel(nsMap)
+	return namespaceMapToApplicationModel(nsMap, nsFilter)
 }
 
 func DestinationNameAppModel(dst *appModelV1.Destination) string {
@@ -290,5 +294,6 @@ func Merge(m1, m2 *appModelV1.ApplicationModel) *appModelV1.ApplicationModel {
 	for key, val := range pmd {
 		handleProcessEvent(nsMap, key, val)
 	}
-	return namespaceMapToApplicationModel(nsMap).GetApplicationModel()
+	emptyFilter := make(map[string]bool)
+	return namespaceMapToApplicationModel(nsMap, emptyFilter).GetApplicationModel()
 }

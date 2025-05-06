@@ -814,7 +814,11 @@ func (s *Server) GetModel(ctx context.Context, req *appModelV1.GetModelRequest) 
 		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 		return nil, err
 	}
-	model := model.ProcessModelToApplicationModel(res)
+	nsFilter := make(map[string]bool, 0)
+	for _, f := range req.Namespaces {
+		nsFilter[f] = true
+	}
+	model := model.ProcessModelToApplicationModel(res, nsFilter)
 	return &appModelV1.GetModelResponse{
 		Model: model,
 	}, nil
@@ -827,12 +831,17 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 	interval := time.Duration(1) * time.Second
 	ticker := time.NewTicker(interval)
 
+	nsFilter := make(map[string]bool, 0)
+	for _, f := range req.Namespaces {
+		nsFilter[f] = true
+	}
+
 	res, err := s.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
 	if err != nil {
 		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 		return err
 	}
-	lastModel := model.ProcessModelToApplicationModel(res)
+	lastModel := model.ProcessModelToApplicationModel(res, nsFilter)
 
 	for {
 		var diffModel *appModelV1.ApplicationModel
@@ -844,7 +853,7 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 				logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 				return err
 			}
-			newModel := model.ProcessModelToApplicationModel(res)
+			newModel := model.ProcessModelToApplicationModel(res, nsFilter)
 			diffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
 			if err != nil {
 				logger.GetLogger().WithError(err).Error("Failed to produce application model difference")

@@ -36,7 +36,8 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 		return
 	}
-	lastModel := model.ProcessModelToApplicationModel(res)
+	emptyFilter := make(map[string]bool)
+	lastModel := model.ProcessModelToApplicationModel(res, emptyFilter)
 
 	if writer != nil {
 		encoder = json.NewEncoder(writer)
@@ -59,7 +60,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				return
 			}
 
-			newModel := model.ProcessModelToApplicationModel(res)
+			newModel := model.ProcessModelToApplicationModel(res, emptyFilter)
 			if isDiffModel {
 				diffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
 				if err != nil {
