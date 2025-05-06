@@ -5,3 +5,4 @@ sq_poll
 tcp_iouring_client
 tcp_iouring_server
 udp_iouring_server
+open_liburing

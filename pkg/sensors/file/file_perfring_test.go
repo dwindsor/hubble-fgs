@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"syscall"
 	"testing"
 
 	// NB: we need to load these two so that the policy handlers are loaded
@@ -45,6 +46,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sys/unix"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	testsensor "github.com/cilium/tetragon/pkg/sensors/test"
@@ -812,4 +814,148 @@ func TestMatchExecAttributes(t *testing.T) {
 
 	require.Equal(t, 1, numFileExec)   // we expect one exec event
 	require.Equal(t, 0, numFileOthers) // we don't expect any other FIM events
+}
+
+type OpenRawTestCase struct {
+	Path           string
+	TpName         string
+	Hook           uint32
+	Retval         int32
+	IsRelativePath int32
+}
+
+func TestMatchOpenrawOps(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+
+	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
+		t.Skip("File monitoring with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
+	tus.LoadInitialSensor(t)
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tuo.GetTestSensorManager(t)
+
+	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, testDir)
+
+	fileTracingPolicy := tracingpolicy.GenericTracingPolicy{
+		Metadata: v1api.ObjectMeta{
+			Name: "file-monitoring-openraw",
+		},
+		Spec: v1alpha1.TracingPolicySpec{
+			FileMonitoring: v1alpha1.FileSpec{
+				PathsPatterns: []v1alpha1.FilePathPattern{
+					{
+						Type: "AllFileOps",
+					},
+				},
+				MonitorHostFiles: true,
+				Selectors: []v1alpha1.FileSelector{
+					{
+						MatchOperations: []v1alpha1.OperationSelector{
+							{
+								Operator: "In",
+								Values: []string{
+									"FILE_OPENRAW",
+								},
+							},
+						},
+						MatchFilename: []v1alpha1.FilePathGlobSelector{
+							{
+								Operator: "InPattern",
+								Values: []v1alpha1.GlobPattern{
+									"*passwd*",
+									"*something_wrong*",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicy)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	expectedEvents := map[OpenRawTestCase]int{
+		OpenRawTestCase{
+			Path:           "/etc/passwd",
+			TpName:         "file-monitoring-openraw",
+			Hook:           41, // hook_io_openat2
+			Retval:         0,
+			IsRelativePath: 0,
+		}: 0,
+		OpenRawTestCase{
+			Path:           "/etc/passwd",
+			TpName:         "file-monitoring-openraw",
+			Hook:           44, // hook_sys_openat
+			Retval:         0,
+			IsRelativePath: 0,
+		}: 0,
+		OpenRawTestCase{
+			Path:           "./something_wrong.txt",
+			TpName:         "file-monitoring-openraw",
+			Hook:           44, // hook_sys_openat
+			Retval:         int32(unix.ENOENT),
+			IsRelativePath: 1,
+		}: 0,
+	}
+
+	// var numFileExec int
+	eventFn := func(ev notify.Message) error {
+		if file, ok := ev.(*grpc.MsgFileOpenrawEventUnix); ok {
+			e := OpenRawTestCase{
+				Path:           file.Path,
+				TpName:         file.TpName,
+				Hook:           file.Msg.Hook,
+				Retval:         file.Retval,
+				IsRelativePath: file.Msg.IsRelativePath,
+			}
+
+			if _, ok := expectedEvents[e]; ok {
+				expectedEvents[e]++
+			}
+		}
+		return nil
+	}
+
+	openIoUringBin := testutils.RepoRootPath("contrib/tester-progs/io_uring/open_liburing")
+	ops := func() {
+		cmd := exec.Command(openIoUringBin, "/etc/passwd")
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("failed to run command %s: %v", cmd, err)
+		}
+
+		if fd, err := syscall.Openat(unix.AT_FDCWD, "/etc/passwd", unix.O_RDONLY, 0); err != nil {
+			t.Fatalf("failed to run openat syscall: %v", err)
+		} else {
+			syscall.Close(fd)
+		}
+
+		if fd, err := syscall.Openat(unix.AT_FDCWD, "./something_wrong.txt", unix.O_RDONLY, 0); err == nil {
+			syscall.Close(fd)
+			t.Fatalf("succeed openat syscall that should fail")
+		}
+	}
+
+	perfring.RunTest(t, ctx, ops, eventFn)
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	for ev, cnt := range expectedEvents {
+		require.Equal(t, 1, cnt, "all events should appear exactly once: %s", ev)
+	}
 }
