@@ -13,6 +13,9 @@
       "products": [
         {
           "@id": "pkg:oci/tetragon-ci"
+        },
+        {
+          "@id": "pkg:oci/tetragon-operator-ci"
         }
       ],
       "status": "not_affected",
