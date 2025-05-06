@@ -124,7 +124,34 @@ jobs:
           push: true
           tags: |
             quay.io/${{ github.repository_owner }}/tetragon-operator-bundle:${{ steps.tag.outputs.tag }}
-      
+
+      - name: Get Readonly Github App Credentials
+        uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
+        with:
+          url: ${{ vars.VAULT_URL }}
+          method: jwt
+          namespace: ${{ github.repository_owner }}/github-actions
+          secrets: |
+            secret/data/org/${{ github.repository_owner }} github_app_id | GH_READONLY_APP_ID;
+            secret/data/org/${{ github.repository_owner }} github_app_pem | GH_READONLY_APP_PEM;
+          
+      - id: generate-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ env.GH_READONLY_APP_ID }}
+          private-key: ${{ env.GH_READONLY_APP_PEM }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ipa
+
+      - name: Configure git to use generated token
+        run: |
+             READONLY_GH_TOKEN=${{ steps.generate-token.outputs.token }}
+             # override git config to use the token for cloning
+             git config --global \
+               url."https://x-access-token::${READONLY_GH_TOKEN}@github.com/isovalent".insteadOf \
+               "https://github.com/isovalent"
+          
       - name: Catalog update PR
         run: |
           git checkout master
