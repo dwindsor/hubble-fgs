@@ -318,3 +318,21 @@ func TestToNetworkFlat(t *testing.T) {
 	assert.Equal(t, uint64(0), f[0].RxBytes)
 	assert.Equal(t, uint64(1), f[1].RxBytes)
 }
+
+func Test_getDestination(t *testing.T) {
+	dest := appModelV1.Destination{
+		Type: &appModelV1.Destination_Workload{
+			Workload: &appModelV1.DestinationWorkload{
+				Name:      "kubernetes",
+				Namespace: "default",
+				Kind:      appModelV1.WorkloadKind_WORKLOAD_KIND_SERVICE,
+			},
+		},
+		Port: 1234,
+	}
+	name, namespace, workloadName, workloadKind := getDestination(&dest)
+	assert.Equal(t, "default:WORKLOAD_KIND_SERVICE:kubernetes", name)
+	assert.Equal(t, dest.GetWorkload().GetNamespace(), namespace)
+	assert.Equal(t, dest.GetWorkload().GetName(), workloadName)
+	assert.Equal(t, dest.GetWorkload().GetKind(), workloadKind)
+}

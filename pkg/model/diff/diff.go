@@ -200,7 +200,7 @@ func getDestination(d *appModelV1.Destination) (string, string, string, appModel
 		name = at.Ip.Ip
 	case *appModelV1.Destination_Workload:
 		ns = at.Workload.Namespace
-		wlName = at.Workload.Namespace
+		wlName = at.Workload.Name
 		wlKind = at.Workload.Kind
 
 		name = fmt.Sprintf("%s:%s:%s", ns, wlKind, wlName)
