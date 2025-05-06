@@ -737,6 +737,7 @@ spec:
                                   - FILE_LINK
                                   - FILE_OPEN
                                   - FILE_SYMLINK
+                                  - FILE_OPENRAW
                                   type: string
                                 type: array
                             required:

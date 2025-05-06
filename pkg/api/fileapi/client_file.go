@@ -188,6 +188,28 @@ type MsgFileSymlinkEvent struct {
 	Pad        uint32                  `align:"pad"`
 }
 
+type MsgFileOpenRawEvent struct {
+	Common         processapi.MsgCommon    `align:"common"`
+	ProcessKey     processapi.MsgExecveKey `align:"current"`
+	Action         uint32                  `align:"action"`
+	Hook           uint32                  `align:"hook"`
+	Timestamp      uint64                  `align:"ktime"`
+	Path           MsgFilePathSimple       `align:"path"`
+	Dir            MsgFilePathSimple       `align:"dir"`
+	DirIno         uint64                  `align:"dir_ino"`
+	DirFs          MsgFsInfo               `align:"dir_fs"`
+	Flags          uint32                  `align:"flags"`
+	TpId           uint32                  `align:"tp_id"`
+	Operation      uint32                  `align:"operation"`
+	RuleID         uint32                  `align:"rule_id"`
+	Tid            uint32                  `align:"tid"`
+	MessageId      uint32                  `align:"msg_id"`
+	OpenFlags      uint32                  `align:"open_flags"`
+	Retval         int32                   `align:"retval"`
+	IsRelativePath int32                   `align:"is_relative_path"`
+	Pad            uint32                  `align:"pad"`
+}
+
 type MsgFileSplitPath struct {
 	Dir         [256]byte `align:"dir"`  // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
 	Name        [128]byte `align:"name"` // should match MAX_NAME_SIZE in bpf/lib/generic.h
@@ -347,7 +369,14 @@ const (
 	FileHookSecurityChown          = 36
 	FileHookSecurityTruncate       = 37
 	FileHookSecuritySymlink        = 38
-	FileHookMax                    = 39
+	FileHookGetname                = 39
+	FileHookGetnameFlags           = 40
+	FileHookIoOpenat2              = 41
+	FileHookSysCreat               = 42
+	FileHookSysOpen                = 43
+	FileHookSysOpenat              = 44
+	FileHookSysOpenat2             = 45
+	FileHookMax                    = 46
 )
 
 type FileErrors struct {

@@ -156,6 +156,7 @@ func TestStructAlignments(t *testing.T) {
 		"glob_state":                 {fm.GlobState{}},
 		"msg_file_path_simple":       {fileapi.MsgFilePathSimple{}},
 		"msg_file_symlink_ops":       {fileapi.MsgFileSymlinkEvent{}},
+		"msg_file_openraw_ops":       {fileapi.MsgFileOpenRawEvent{}},
 	}
 	err := check.CheckStructAlignments(path, toCheck, true)
 	if err != nil {
@@ -3364,7 +3365,7 @@ func TestFileLinkOnTmpFile(t *testing.T) {
 }
 
 func TestBPFFilesExist(t *testing.T) {
-	for _, hks := range [][]FimHook{FimPathBasedHooks[:], FimPathBasedTailCallHooks[:], {FimPathBasedHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
+	for _, hks := range [][]FimHook{{FimPathBasedGetnameHook}, {FimPathBasedGetnameFlagsHook}, FimPathBasedArchHooks[:], FimPathBasedHooks[:], FimPathBasedTailCallHooks[:], {FimPathBasedHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
 		for _, hk := range hks {
 			for _, of := range hk.prog {
 				objFile := filepath.Join(runner.Conf().TetragonLib, of.progName)
@@ -3375,7 +3376,7 @@ func TestBPFFilesExist(t *testing.T) {
 }
 
 func TestBPFProgsMaps(t *testing.T) {
-	for _, hks := range [][]FimHook{FimPathBasedHooks[:], FimPathBasedTailCallHooks[:], {FimPathBasedHooksExec}, {FimPathBasedTailCallHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
+	for _, hks := range [][]FimHook{{FimPathBasedGetnameHook}, {FimPathBasedGetnameFlagsHook}, FimPathBasedArchHooks[:], FimPathBasedHooks[:], FimPathBasedTailCallHooks[:], {FimPathBasedHooksExec}, {FimPathBasedTailCallHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
 		for _, hk := range hks {
 			for _, of := range hk.prog {
 				objFile := filepath.Join(runner.Conf().TetragonLib, of.progName)

@@ -49,6 +49,7 @@ enum {
 	action_link = 11,
 	action_open = 12,
 	action_symlink = 13,
+	action_openraw = 14,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -92,7 +93,14 @@ enum {
 	hook_security_path_chown = 36,
 	hook_security_path_truncate = 37,
 	hook_security_path_symlink = 38,
-	hook_max = 39,
+	hook_getname = 39,
+	hook_getname_flags = 40,
+	hook_io_openat2 = 41,
+	hook_sys_creat = 42,
+	hook_sys_open = 43,
+	hook_sys_openat = 44,
+	hook_sys_openat2 = 45,
+	hook_max = 46,
 };
 
 enum {
@@ -304,6 +312,32 @@ struct msg_file_symlink_ops {
 	__u32 rule_id;
 	__u32 tid;
 	__u32 msg_id;
+	__u32 pad;
+};
+
+#define SRC_PATH_INVALID       0
+#define SRC_PATH_USER_MEMORY   1
+#define SRC_PATH_KERNEL_MEMORY 2
+
+struct msg_file_openraw_ops {
+	struct msg_common common;
+	struct msg_execve_key current;
+	__u32 action;
+	__u32 hook;
+	__u64 ktime;
+	struct msg_file_path_simple path;
+	struct msg_file_path_simple dir;
+	__u64 dir_ino;
+	struct msg_fs_info dir_fs;
+	__u32 flags;
+	__u32 tp_id;
+	__u32 operation; // FILE_OP_POST or FILE_OP_BLOCK
+	__u32 rule_id;
+	__u32 tid;
+	__u32 msg_id;
+	__u32 open_flags;
+	__s32 retval;
+	__u32 is_relative_path;
 	__u32 pad;
 };
 

@@ -60,6 +60,14 @@ var (
 		fileapi.FileHookSecurityChmod:          "security_path_chmod",
 		fileapi.FileHookSecurityChown:          "security_path_chown",
 		fileapi.FileHookSecurityTruncate:       "security_path_truncate",
+		fileapi.FileHookSecuritySymlink:        "security_path_symlink",
+		fileapi.FileHookGetname:                "getname",
+		fileapi.FileHookGetnameFlags:           "getname_flags",
+		fileapi.FileHookIoOpenat2:              "io_openat2",
+		fileapi.FileHookSysCreat:               "sys_creat",
+		fileapi.FileHookSysOpen:                "sys_open",
+		fileapi.FileHookSysOpenat:              "sys_openat",
+		fileapi.FileHookSysOpenat2:             "sys_openat2",
 	}
 
 	fileErrorReasonMap = map[int]string{

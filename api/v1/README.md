@@ -88,6 +88,8 @@
     - [Inode](#tetragon-Inode)
     - [InterfaceStats](#tetragon-InterfaceStats)
     - [LinkArg](#tetragon-LinkArg)
+    - [OpenRawArg](#tetragon-OpenRawArg)
+    - [PathDetails](#tetragon-PathDetails)
     - [ProcessAccept](#tetragon-ProcessAccept)
     - [ProcessClose](#tetragon-ProcessClose)
     - [ProcessConnect](#tetragon-ProcessConnect)
@@ -116,6 +118,7 @@
     - [FileOperation](#tetragon-FileOperation)
     - [FileScope](#tetragon-FileScope)
     - [SocketProtocol](#tetragon-SocketProtocol)
+    - [SysRetval](#tetragon-SysRetval)
     - [TlsCertificateError](#tetragon-TlsCertificateError)
   
 - [tetragon/dns.proto](#tetragon_dns-proto)
@@ -1546,6 +1549,7 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 | attr_arg | [AttrArg](#tetragon-AttrArg) |  |  |
 | link_arg | [LinkArg](#tetragon-LinkArg) |  |  |
 | symlink_arg | [SymlinkArg](#tetragon-SymlinkArg) |  |  |
+| openraw_arg | [OpenRawArg](#tetragon-OpenRawArg) |  |  |
 
 
 
@@ -1843,6 +1847,40 @@ HTTP PARSER
 | link | [FileDetails](#tetragon-FileDetails) |  |  |
 | target | [FileDetails](#tetragon-FileDetails) |  |  |
 | mnt_ns | [Namespace](#tetragon-Namespace) |  |  |
+
+
+
+
+
+
+<a name="tetragon-OpenRawArg"></a>
+
+### OpenRawArg
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [PathDetails](#tetragon-PathDetails) |  | the user provided path to open |
+| dir | [FileDetails](#tetragon-FileDetails) |  | for openat and openat2 calls |
+| flags | [string](#string) | repeated | O_* flags |
+| error_code | [SysRetval](#tetragon-SysRetval) |  | SUCCESS or error (i.e. EINVAL, ENOENT, etc.) |
+
+
+
+
+
+
+<a name="tetragon-PathDetails"></a>
+
+### PathDetails
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| str | [string](#string) |  |  |
+| is_relative_path | [google.protobuf.BoolValue](#google-protobuf-BoolValue) |  |  |
 
 
 
@@ -2427,6 +2465,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | FILE_LINK | 11 |  |
 | FILE_OPEN | 12 |  |
 | FILE_SYMLINK | 13 |  |
+| FILE_OPENRAW | 14 |  |
 
 
 
@@ -2470,6 +2509,51 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | TCP | 6 |  |
 | UDP | 17 |  |
 | ICMPV6 | 58 |  |
+
+
+
+<a name="tetragon-SysRetval"></a>
+
+### SysRetval
+from https://elixir.bootlin.com/linux/v6.14.4/source/include/uapi/asm-generic/errno-base.h
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SUCCESS | 0 |  |
+| EPERM | 1 | Operation not permitted |
+| ENOENT | 2 | No such file or directory |
+| ESRCH | 3 | No such process |
+| EINTR | 4 | Interrupted system call |
+| EIO | 5 | I/O error |
+| ENXIO | 6 | No such device or address |
+| E2BIG | 7 | Argument list too long |
+| ENOEXEC | 8 | Exec format error |
+| EBADF | 9 | Bad file number |
+| ECHILD | 10 | No child processes |
+| EAGAIN | 11 | Try again |
+| ENOMEM | 12 | Out of memory |
+| EACCES | 13 | Permission denied |
+| EFAULT | 14 | Bad address |
+| ENOTBLK | 15 | Block device required |
+| EBUSY | 16 | Device or resource busy |
+| EEXIST | 17 | File exists |
+| EXDEV | 18 | Cross-device link |
+| ENODEV | 19 | No such device |
+| ENOTDIR | 20 | Not a directory |
+| EISDIR | 21 | Is a directory |
+| EINVAL | 22 | Invalid argument |
+| ENFILE | 23 | File table overflow |
+| EMFILE | 24 | Too many open files |
+| ENOTTY | 25 | Not a typewriter |
+| ETXTBSY | 26 | Text file busy |
+| EFBIG | 27 | File too large |
+| ENOSPC | 28 | No space left on device |
+| ESPIPE | 29 | Illegal seek |
+| EROFS | 30 | Read-only file system |
+| EMLINK | 31 | Too many links |
+| EPIPE | 32 | Broken pipe |
+| EDOM | 33 | Math argument out of domain of func |
+| ERANGE | 34 | Math result not representable |
 
 
 

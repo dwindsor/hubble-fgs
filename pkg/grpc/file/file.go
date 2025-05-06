@@ -77,6 +77,13 @@ var (
 		36: "security_path_chown",
 		37: "security_path_truncate",
 		38: "security_path_symlink",
+		39: "hook_getname",
+		40: "hook_getname_flags",
+		41: "hook_io_openat2",
+		42: "hook_sys_creat",
+		43: "hook_sys_open",
+		44: "hook_sys_openat",
+		45: "hook_sys_openat2",
 	}
 
 	renameFlagsString = map[uint32]string{
@@ -609,6 +616,73 @@ func GetProcessFileSymlink(event *MsgFileSymlinkEventUnix) *tetragon.ProcessFile
 	return tetragonEvent
 }
 
+func GetProcessFileOpenraw(event *MsgFileOpenrawEventUnix) *tetragon.ProcessFile {
+	var tetragonParent, tetragonProcess *tetragon.Process
+
+	internal, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
+	if internal == nil {
+		tetragonProcess = &tetragon.Process{
+			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
+		}
+	} else {
+		tetragonProcess = internal.UnsafeGetProcess()
+	}
+	if parent != nil {
+		tetragonParent = parent.UnsafeGetProcess()
+	}
+
+	action := tetragon.FileAction(event.Msg.Action)
+	args := &tetragon.OpenRawArg{
+		Path: &tetragon.PathDetails{
+			Path:           &tetragon.PathDetails_Str{Str: event.Path},
+			IsRelativePath: &wrapperspb.BoolValue{Value: event.Msg.IsRelativePath != 0},
+		},
+		ErrorCode: tetragon.SysRetval(event.Retval),
+		Flags:     getOpenFlags(event.Msg.OpenFlags),
+	}
+
+	if event.Msg.IsRelativePath != 0 {
+		args.Dir = &tetragon.FileDetails{
+			Filename: &tetragon.FileDetails_Str{Str: event.DirPath},
+			Inode: &tetragon.Inode{
+				Number: event.Msg.DirIno,
+				Fs:     createFileSystem(event.DirFs, event.Msg.DirFs.SDev),
+			},
+		}
+	}
+
+	tetragonEvent := &tetragon.ProcessFile{
+		Process:       tetragonProcess,
+		Parent:        tetragonParent,
+		Action:        action,
+		Args:          &tetragon.FileArgument{Arg: &tetragon.FileArgument_OpenrawArg{OpenrawArg: args}},
+		Time:          ktime.ToProto(event.Msg.Timestamp),
+		Hook:          fileHookMap[event.Msg.Hook],
+		Operation:     []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
+		TracingPolicy: event.TpName,
+		RuleMatched:   event.TpRule,
+		Message:       event.TpMessage,
+	}
+
+	filemetrics.FileTotalEventsInc()
+
+	ec := eventcache.Get()
+	if ec != nil &&
+		(ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
+		filemetrics.FileTotalCacheInEventsInc()
+		ec.Add(nil, tetragonEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
+		return nil
+	}
+
+	if internal != nil {
+		tetragonEvent.Process = internal.GetProcessCopy()
+		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Msg.Tid)
+	}
+	handleFileTotalActionEvents(tetragonEvent, event.TpName, event.TpRule)
+	return tetragonEvent
+}
+
 func GetProcessFileExec(event *MsgFileEventUnix) *tetragon.ProcessFileExec {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
@@ -719,6 +793,16 @@ func handleFileLinkEventCacheRetryMetrics(ev notify.Event, msg *MsgFileLinkEvent
 }
 
 func handleFileSymlinkEventCacheRetryMetrics(ev notify.Event, msg *MsgFileSymlinkEventUnix) {
+	event := ev.Encapsulate()
+	switch e := event.(type) {
+	case *tetragon.GetEventsResponse_ProcessFile:
+		handleFileTotalActionEvents(e.ProcessFile, msg.TpName, msg.TpRule)
+	default:
+		filemetrics.FileTotalErrorsInc(filemetrics.GrpcEventcacheRetry)
+	}
+}
+
+func handleFileOpenrawEventCacheRetryMetrics(ev notify.Event, msg *MsgFileOpenrawEventUnix) {
 	event := ev.Encapsulate()
 	switch e := event.(type) {
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -867,6 +951,50 @@ func (msg *MsgFileSymlinkEventUnix) HandleMessage() *tetragon.GetEventsResponse 
 
 func (msg *MsgFileSymlinkEventUnix) Cast(_ interface{}) notify.Message {
 	return &MsgFileSymlinkEventUnix{}
+}
+
+type MsgFileOpenrawEventUnix struct {
+	Msg       *fileapi.MsgFileOpenRawEvent
+	Path      string
+	DirPath   string
+	DirFs     MsgFsInfoUnix
+	Retval    int32
+	TpName    string
+	TpRule    string
+	TpMessage string
+}
+
+func (msg *MsgFileOpenrawEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	p := ev.GetProcess()
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, &msg.Msg.Tid, timestamp)
+}
+
+func (msg *MsgFileOpenrawEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	if err := eventcache.HandleGenericEvent(internal, ev, nil); err != nil {
+		return err
+	}
+	handleFileOpenrawEventCacheRetryMetrics(ev, msg)
+	return nil
+}
+
+func (msg *MsgFileOpenrawEventUnix) Notify() bool {
+	filemetrics.FileTotalCacheOutEventsInc()
+	return true
+}
+
+func (msg *MsgFileOpenrawEventUnix) HandleMessage() *tetragon.GetEventsResponse {
+	f := GetProcessFileOpenraw(msg)
+	if f == nil {
+		return nil
+	}
+	return &tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessFile{ProcessFile: f},
+		Time:  ktime.ToProto(msg.Msg.Common.Ktime),
+	}
+}
+
+func (msg *MsgFileOpenrawEventUnix) Cast(_ interface{}) notify.Message {
+	return &MsgFileOpenrawEventUnix{}
 }
 
 func GetRenameFlags(flags uint32) []string {

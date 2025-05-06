@@ -384,7 +384,12 @@ var (
 		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_chown.o", "path_chown", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], {{"file_rename_heap_map", PrivateMap}}, {{"rename_path_heap", PrivateMap}}, PathBasedTailCallMaps[:]}}}},
 		{"lsm", "security_path_symlink", []FimFunc{{"security_path_symlink(const struct path*, struct dentry*, const int*)", "lsm_security_path_symlink.o", "path_symlink", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscSymlinkMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"fexit", "io_openat2", []FimFunc{{"int io_openat2(struct io_kiocb*, int)", "fexit_sys_open.o", "io_openat2", [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
 	}
+
+	FimPathBasedGetnameHook = FimHook{"fexit", "getname", []FimFunc{{"struct filename* getname(const int*)", "fexit_getname.o", "getname", [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"kpath_heap", PrivateMap}}}}}}
+
+	FimPathBasedGetnameFlagsHook = FimHook{"fexit", "getname_flags", []FimFunc{{"struct filename* getname_flags(const int*, int)", "fexit_getname_flags.o", "getname_flags", [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"kpath_heap", PrivateMap}}}}}}
 
 	FimPathBasedTailCallHooks = [...]FimHook{
 		{"fmod_ret", "tail_call", []FimFunc{{"", "fmod_security_file_permission.o", "security_file_permission", [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
@@ -422,7 +427,7 @@ var (
 				{{"digest_key_heap", PrivateMap}},
 			},
 		}}},
-		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "security_bprm_check",
+		{"fexit", "security_bprm_check", []FimFunc{{"int security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "security_bprm_check",
 			[][]MapInfo{
 				{{"tcpmon_map", BaseMap}},
 				{{"tg_stats_map", BaseMap}},
@@ -572,7 +577,7 @@ var (
 			{{"digest_key_heap", PrivateMap}},
 			{{"exec_attributes_map", SharedMap}},
 		}}}},
-		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "security_bprm_check", [][]MapInfo{
+		{"fexit", "security_bprm_check", []FimFunc{{"int security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "security_bprm_check", [][]MapInfo{
 			{{"tcpmon_map", BaseMap}},
 			{{"tg_stats_map", BaseMap}},
 			{{"exec_retprobe_map", SharedMap}},
@@ -1020,6 +1025,7 @@ func init() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_RENAME, handleFileRenameOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_LINK, handleFileLinkOps)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_SYMLINK, handleFileSymlinkOps)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_OPENRAW, handleFileOpenrawOps)
 	rthooks.RegisterCallbacksAtInit(rthooks.Callbacks{
 		CreateContainer: rthooksCreateContainer,
 	})
@@ -1186,6 +1192,46 @@ func handleFileSymlinkOps(r *bytes.Reader) ([]observer.Event, error) {
 		TpName:       pol.FileMonitoringTable.GetTpName(m.TpId),
 		TpRule:       pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
 		TpMessage:    pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
+	}
+
+	return []observer.Event{unix}, nil
+}
+
+func handleFileOpenrawOps(r *bytes.Reader) ([]observer.Event, error) {
+	m := fileapi.MsgFileOpenRawEvent{}
+	err := binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileOpenraw)
+		return nil, fmt.Errorf("failed to read file openraw operation: %w", err)
+	}
+
+	openPath := strutils.UTF8FromBPFBytes(m.Path.Str[:])
+	if uint32(len(openPath)) > m.Path.Size {
+		openPath = openPath[:m.Path.Size]
+	}
+
+	retval := m.Retval
+	if retval > 0 {
+		retval = 0
+	}
+	retval = -retval
+
+	unix := &file.MsgFileOpenrawEventUnix{
+		Msg:       &m,
+		Path:      openPath,
+		Retval:    retval,
+		TpName:    pol.FileMonitoringTable.GetTpName(m.TpId),
+		TpRule:    pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
+		TpMessage: pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
+	}
+
+	if m.IsRelativePath != 0 {
+		dirPath := strutils.UTF8FromBPFBytes(m.Dir.Str[:])
+		if uint32(len(dirPath)) > m.Dir.Size {
+			dirPath = dirPath[:m.Dir.Size]
+		}
+		unix.DirPath = dirPath
+		unix.DirFs = createFsInfoUnix(m.DirFs)
 	}
 
 	return []observer.Event{unix}, nil
@@ -2081,6 +2127,14 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 			hooks = append(hooks, FimPathBasedTailCallHooksExec)
 		} else {
 			hooks = FimPathBasedHooks[:]
+			// first try to attach to getname if this is not available we will try getname_flags
+			// we need that because in latest kernels the getname function is inlined
+			if _, err := fgsBTF.GetFuncProto(spec, "getname", false); err == nil {
+				hooks = append(hooks, FimPathBasedGetnameHook)
+			} else {
+				hooks = append(hooks, FimPathBasedGetnameFlagsHook)
+			}
+			hooks = append(hooks, FimPathBasedArchHooks[:]...)
 			m = "path-based"
 			if digestSupport {
 				for _, h := range FimPathBasedHooksExecDigests {
@@ -2166,7 +2220,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 			continue
 		}
 
-		kretprobe := (h.tp == "kretprobe")
+		kretprobe := (h.tp == "kretprobe") || (h.tp == "fexit") || (h.tp == "fexit.s")
 		p, err := fgsBTF.GetFuncProto(spec, h.name, kretprobe)
 		if err != nil {
 			if h.name == "security_path_rename" {
@@ -2652,7 +2706,7 @@ func loadProbe(args sensors.LoadProbeArgs) error {
 		if err == nil {
 			err = setTailCallIfNeeded(args, v)
 		}
-	case "fentry", "fexit", "fmod_ret":
+	case "fentry", "fexit", "fmod_ret", "fentry.s", "fexit.s", "fmod_ret.s":
 		err = program.LoadTracingProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err == nil {
 			err = setTailCallIfNeeded(args, v)
