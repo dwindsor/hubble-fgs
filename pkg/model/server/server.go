@@ -808,8 +808,16 @@ func (s *Server) GetProcesses(req *tetragon.GetProcessModelRequest, stream tetra
 	return nil
 }
 
-func (s *Server) GetModel(_ context.Context, req *appModelV1.GetModelRequest) (*appModelV1.GetModelResponse, error) {
-	return nil, nil
+func (s *Server) GetModel(ctx context.Context, req *appModelV1.GetModelRequest) (*appModelV1.GetModelResponse, error) {
+	res, err := s.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
+	if err != nil {
+		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
+		return nil, err
+	}
+	model := model.ProcessModelToApplicationModel(res)
+	return &appModelV1.GetModelResponse{
+		Model: model,
+	}, nil
 }
 
 func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream appModelV1.ApplicationModelService_StreamTelemetryServer) error {
