@@ -69,7 +69,7 @@ static inline __attribute__((always_inline)) int handle_open_raw(void *ctx, cons
 	map_key = (__u64)filename;
 	kpath = map_lookup_elem(&open_user_to_kernel_path, &map_key);
 	if (!kpath)
-		return 0;
+		return -FILE_ERR_GET_OPENRAW_KPATH;
 
 	probe_read_kernel(msg->path.str, MAX_FILEPATH_SIZE, kpath->str);
 	msg->path.size = kpath->size;
@@ -147,8 +147,13 @@ int BPF_PROG(sys_open, const struct pt_regs *regs, int ret) // SYSCALL_DEFINE3(o
 	const char *filename = (const char *)PT_REGS_PARM1_CORE_SYSCALL(regs); // user memory
 	int flags = PT_REGS_PARM2_CORE_SYSCALL(regs);
 	int dfd = AT_FDCWD;
+	int err = 0;
 
-	handle_open_raw(ctx, filename, flags, hook_sys_open, dfd, ret);
+	err = handle_open_raw(ctx, filename, flags, hook_sys_open, dfd, ret);
+	if (err < 0) {
+		inc_error(hook_sys_open, -err);
+		return 0;
+	}
 
 	return 0;
 }
@@ -159,8 +164,13 @@ int BPF_PROG(sys_openat, const struct pt_regs *regs, int ret) // SYSCALL_DEFINE4
 	int dfd = PT_REGS_PARM1_CORE_SYSCALL(regs);
 	const char *filename = (const char *)PT_REGS_PARM2_CORE_SYSCALL(regs); // user memory
 	int flags = PT_REGS_PARM3_CORE_SYSCALL(regs);
+	int err = 0;
 
-	handle_open_raw(ctx, filename, flags, hook_sys_openat, dfd, ret);
+	err = handle_open_raw(ctx, filename, flags, hook_sys_openat, dfd, ret);
+	if (err < 0) {
+		inc_error(hook_sys_openat, -err);
+		return 0;
+	}
 
 	return 0;
 }
@@ -171,9 +181,13 @@ int BPF_PROG(sys_openat2, const struct pt_regs *regs, int ret) // SYSCALL_DEFINE
 	int dfd = PT_REGS_PARM1_CORE_SYSCALL(regs);
 	const char *filename = (const char *)PT_REGS_PARM2_CORE_SYSCALL(regs); // user memory
 	struct open_how *how = (struct open_how *)PT_REGS_PARM3_CORE_SYSCALL(regs);
+	int err = 0;
 
-	handle_open_raw(ctx, filename, BPF_CORE_READ(how, flags), hook_sys_openat2, dfd, ret);
-
+	err = handle_open_raw(ctx, filename, BPF_CORE_READ(how, flags), hook_sys_openat2, dfd, ret);
+	if (err < 0) {
+		inc_error(hook_sys_openat2, -err);
+		return 0;
+	}
 	return 0;
 }
 
@@ -183,8 +197,13 @@ int BPF_PROG(sys_creat, const struct pt_regs *regs, int ret) // SYSCALL_DEFINE2(
 	const char *filename = (const char *)PT_REGS_PARM1_CORE_SYSCALL(regs); // user memory
 	int flags = O_CREAT | O_WRONLY | O_TRUNC;
 	int dfd = AT_FDCWD;
+	int err = 0;
 
-	handle_open_raw(ctx, filename, flags, hook_sys_creat, dfd, ret);
+	err = handle_open_raw(ctx, filename, flags, hook_sys_creat, dfd, ret);
+	if (err < 0) {
+		inc_error(hook_sys_creat, -err);
+		return 0;
+	}
 
 	return 0;
 }
@@ -198,8 +217,13 @@ int BPF_PROG(io_openat2, struct io_kiocb *req, unsigned int issue_flags, int ret
 	int flags = BPF_CORE_READ(open, how.flags);
 	int dfd = BPF_CORE_READ(open, dfd);
 	int retval = BPF_CORE_READ(req, cqe.res);
+	int err = 0;
 
-	handle_open_raw(ctx, BPF_CORE_READ(filename, uptr), flags, hook_io_openat2, dfd, (ret == 0) ? (retval) : (ret));
+	err = handle_open_raw(ctx, BPF_CORE_READ(filename, uptr), flags, hook_io_openat2, dfd, (ret == 0) ? (retval) : (ret));
+	if (err < 0) {
+		inc_error(hook_io_openat2, -err);
+		return 0;
+	}
 
 	return 0;
 }

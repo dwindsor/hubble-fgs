@@ -115,6 +115,7 @@ var (
 		fileapi.FileErrUpdateFsNotifyMap:        "update_fsnotify_map",
 		fileapi.FileErrDeleteFsNotifyMap:        "delete_fsnotify_map",
 		fileapi.FileErrLookupPatternsMap:        "lookup_patterns_map",
+		fileapi.FIleErrLookupOpenrawKpathMap:    "lookup_openraw_kpath_map",
 		fileapi.FileErrUnexpected:               "unexpected",
 	}
 )

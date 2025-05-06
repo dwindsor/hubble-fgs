@@ -492,8 +492,9 @@ struct glob_state {
 #define FILE_ERR_UPDATE_FSNOTIFY_MAP	     41 // map_update_elem(&fsnotify_created_files_map, ...) < 0
 #define FILE_ERR_DELETE_FSNOTIFY_MAP	     42 // map_delete_elem(&fsnotify_created_files_map, ...) < 0
 #define FILE_ERR_GET_PATTERN_MAP	     43 // map_lookup_elem(&patterns_map_alloc, ...) == 0
-#define FILE_ERR_UNEXPECTED		     44
-#define FILE_ERR_MAX			     45
+#define FILE_ERR_GET_OPENRAW_KPATH	     44 // map_lookup_elem(&open_user_to_kernel_path, ...) == 0
+#define FILE_ERR_UNEXPECTED		     45
+#define FILE_ERR_MAX			     46
 
 struct file_errors {
 	__u64 m[hook_max][FILE_ERR_MAX];

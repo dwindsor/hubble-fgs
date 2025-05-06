@@ -325,8 +325,9 @@ const (
 	FileErrUpdateFsNotifyMap        = 41
 	FileErrDeleteFsNotifyMap        = 42
 	FileErrLookupPatternsMap        = 43
-	FileErrUnexpected               = 44
-	FileErrMax                      = 45
+	FIleErrLookupOpenrawKpathMap    = 44
+	FileErrUnexpected               = 45
+	FileErrMax                      = 46
 )
 
 const (
