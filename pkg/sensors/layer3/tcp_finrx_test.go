@@ -16,14 +16,11 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"os"
+	"net"
 	"os/exec"
-	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"testing"
-	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
@@ -40,99 +37,18 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
-func parsePortFromAddrPort(addrPort string) (uint32, error) {
-	parts := strings.Split(addrPort, ":")
-	portStr := parts[len(parts)-1]
-	if len(portStr) < 1 {
-		return 0, fmt.Errorf("Cannot extract port from '%s'", addrPort)
-	}
-	if portStr == "*" {
-		return 0, nil
-	}
-	port, err := strconv.ParseUint(portStr, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return uint32(port), nil
-}
-
-func countSockets(port uint32, output []byte, skip int) (int, error) {
-	count := 0
-	lines := strings.Split(string(output), "\n")
-	for i, line := range lines {
-		if i < skip {
-			// skip header
-			continue
-		}
-		fields := strings.Fields(line)
-		if len(fields) < 5 {
-			continue
-		}
-		lport, err := parsePortFromAddrPort(fields[3])
-		if err != nil {
-			return 0, err
-		}
-		rport, err := parsePortFromAddrPort(fields[4])
-		if err != nil {
-			return 0, err
-		}
-		if lport == port || rport == port {
-			count++
+func waitForSocket(s *bufio.Scanner) {
+	for s.Scan() {
+		line := s.Text()
+		if line == "Waiting..." {
+			break
 		}
 	}
-	return count, nil
-}
-
-func countSocketsSs(t *testing.T, port uint32) (int, error) {
-	output, err := exec.Command("/usr/bin/ss", "-latn").Output()
-	if err != nil {
-		t.Logf("Command 'ss' failed: '%s'", err)
-		return 0, err
-	}
-	return countSockets(port, output, 1)
-}
-
-func countSocketsNetstat(t *testing.T, port uint32) (int, error) {
-	output, err := exec.Command("/usr/bin/netstat", "-latn").Output()
-	if err != nil {
-		t.Logf("Command 'netstat' failed: '%s'", err)
-		return 0, err
-	}
-	return countSockets(port, output, 2)
-}
-
-func waitForSocketsToClose(t *testing.T, port uint32) error {
-	t.Log("Waiting for sockets to close")
-	useSs := true
-	numPorts, err := countSocketsSs(t, port)
-	if err != nil {
-		t.Log("Failed to count open sockets with 'ss'")
-		useSs = false
-		numPorts, err = countSocketsNetstat(t, port)
-		if err != nil {
-			t.Log("Failed to count open sockets with 'netstat'")
-			return err
-		}
-		t.Log("Using 'netstat' to count open sockets")
-	} else {
-		t.Log("Using 'ss' to count open sockets")
-	}
-	for numPorts > 0 {
-		if useSs {
-			numPorts, err = countSocketsSs(t, port)
-		} else {
-			numPorts, err = countSocketsNetstat(t, port)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func testFinRx(gt *testing.T, t *testing.T, port uint32, serverIterations, clientIterations int,
 	serverPattern, clientPattern string, serverSignal, clientSignal syscall.Signal,
-	serverBytes, clientBytes uint64, delay time.Duration) {
+	serverBytes, clientBytes uint64) {
 
 	client := testutils.RepoRootPath("contrib/tester-progs/net/tcp_client")
 	server := testutils.RepoRootPath("contrib/tester-progs/net/tcp_server")
@@ -198,31 +114,28 @@ func testFinRx(gt *testing.T, t *testing.T, port uint32, serverIterations, clien
 
 	cmdServer := exec.Command(server, fmt.Sprintf("%d", port), fmt.Sprintf("%d", serverIterations), serverPattern)
 	serverOut, err := cmdServer.StdoutPipe()
-	require.NoError(gt, err, "could not connect to server output pipe")
+	require.NoError(t, err, "could not connect to server output pipe")
 
 	err = cmdServer.Start()
-	require.NoError(gt, err, "cannot start server")
+	require.NoError(t, err, "cannot start server")
+	t.Logf("Started the server")
 
-	serverBuf := bufio.NewReader(serverOut)
-	var line []byte
-	for string(line) != "Ready!" {
-		line, _, err = serverBuf.ReadLine()
-		if err != nil {
-			killAndWaitCommand(t, cmdServer)
-			t.Fatal(err)
-		}
-		if len(line) == 0 {
-			killAndWaitCommand(t, cmdServer)
-			t.Fatal("received empty line from TCP server")
+	serverScanner := bufio.NewScanner(serverOut)
+	for serverScanner.Scan() {
+		line := serverScanner.Text()
+		if line == "Ready!" {
+			break
 		}
 	}
 
 	cmdClient := exec.Command(client, fmt.Sprintf("%d", port), fmt.Sprintf("%d", clientIterations), clientPattern)
-	cmdClient.Stderr = nil
-	cmdClient.Stdout = nil
+	clientOut, err := cmdClient.StdoutPipe()
+	require.NoError(t, err, "could not connect to client output pipe")
 
 	err = cmdClient.Start()
-	require.NoError(gt, err, "cannot start client")
+	require.NoError(t, err, "cannot start client")
+
+	clientScanner := bufio.NewScanner(clientOut)
 
 	if clientSignal == 0 {
 		// No signal means expect it to end.
@@ -244,28 +157,35 @@ func testFinRx(gt *testing.T, t *testing.T, port uint32, serverIterations, clien
 		}
 	}
 
-	time.Sleep(delay)
-
 	if clientSignal != 0 {
+		waitForSocket(clientScanner)
 		signalAndWaitCommand(t, cmdClient, clientSignal)
 	}
 
 	if serverSignal != 0 {
+		waitForSocket(serverScanner)
 		signalAndWaitCommand(t, cmdServer, serverSignal)
 	}
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	if err != nil {
 		// Checker test failed, so maybe we need to wait for the sockets to close
-		err = waitForSocketsToClose(t, port)
+		err = waitForSocketsToClose(t, net.ParseIP("127.0.0.1"), uint16(port), syscall.IPPROTO_TCP, syscall.AF_INET)
 		if err != nil {
 			t.Logf("waitForSocketsToClose failed: '%s'", err)
 		}
-		time.Sleep(100 * time.Millisecond)
-		err = jsonchecker.JsonTestCheck(gt, checker)
+		// We want the checker to wait a bit longer for the TCP close events to appear. The
+		// best we can do is some form of work as sleeps are no longer helpful. We may as well
+		// do the check as the work.
+		for count := 0; count < 10; count++ {
+			err = jsonchecker.JsonTestCheck(gt, checker)
+			if err == nil {
+				break
+			}
+		}
 	}
 
-	assert.NoError(gt, err)
+	assert.NoError(t, err)
 }
 
 func TestFinRx(t *testing.T) {
@@ -274,11 +194,6 @@ func TestFinRx(t *testing.T) {
 	// probe_read_kernel in Cgroup/SKB programs).
 	if !utils.SupportCGroupSKBProbeRead() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
-	}
-
-	hostname, err := os.Hostname()
-	if err == nil && strings.Contains(hostname, "rhel") {
-		t.Skipf("This test is problematic on RHEL, skipping")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -297,8 +212,7 @@ func TestFinRx(t *testing.T) {
 			testFinRx(t, lt,
 				test.port, test.serverIterations, test.clientIterations,
 				test.serverPattern, test.clientPattern, test.serverSignal,
-				test.clientSignal, test.serverBytes, test.clientBytes,
-				test.delay)
+				test.clientSignal, test.serverBytes, test.clientBytes)
 		}) {
 			break // stop on first failure
 		}
@@ -316,90 +230,89 @@ type finRxTest struct {
 	clientSignal     syscall.Signal
 	serverBytes      uint64
 	clientBytes      uint64
-	delay            time.Duration
 }
 
 var (
 	finRxTests = []finRxTest{
-		{"RecvOnlyKillServerKillClient", 3551, -1, -1, "SW", "RW", syscall.SIGKILL, syscall.SIGKILL, 5, 0, time.Second},
-		{"RecvOnlyKillServerHupClient", 3552, -1, -1, "SW", "RW", syscall.SIGKILL, syscall.SIGHUP, 5, 0, time.Second},
-		{"RecvOnlyKillServerTermClient", 3553, -1, -1, "SW", "RW", syscall.SIGKILL, syscall.SIGTERM, 5, 0, time.Second},
-		{"RecvOnlyKillServerExitClient", 3554, -1, 1, "SW", "R", syscall.SIGKILL, 0, 5, 0, time.Second},
-		{"RecvOnlyHupServerKillClient", 3555, -1, -1, "SW", "RW", syscall.SIGHUP, syscall.SIGKILL, 5, 0, time.Second},
-		{"RecvOnlyHupServerHupClient", 3556, -1, -1, "SW", "RW", syscall.SIGHUP, syscall.SIGHUP, 5, 0, time.Second},
-		{"RecvOnlyHupServerTermClient", 3557, -1, -1, "SW", "RW", syscall.SIGHUP, syscall.SIGTERM, 5, 0, time.Second},
-		{"RecvOnlyHupServerExitClient", 3558, -1, 1, "SW", "R", syscall.SIGHUP, 0, 5, 0, time.Second},
-		{"RecvOnlyTermServerKillClient", 3559, -1, -1, "SW", "RW", syscall.SIGTERM, syscall.SIGKILL, 5, 0, time.Second},
-		{"RecvOnlyTermServerHupClient", 3560, -1, -1, "SW", "RW", syscall.SIGTERM, syscall.SIGHUP, 5, 0, time.Second},
-		{"RecvOnlyTermServerTermClient", 3561, -1, -1, "SW", "RW", syscall.SIGTERM, syscall.SIGTERM, 5, 0, time.Second},
-		{"RecvOnlyTermServerExitClient", 3562, -1, 1, "SW", "R", syscall.SIGTERM, 0, 5, 0, time.Second},
-		{"RecvOnlyExitServerKillClient", 3563, 1, -1, "S", "RW", 0, syscall.SIGKILL, 5, 0, time.Second},
-		{"RecvOnlyExitServerHupClient", 3564, 1, -1, "S", "RW", 0, syscall.SIGHUP, 5, 0, time.Second},
-		{"RecvOnlyExitServerTermClient", 3565, 1, -1, "S", "RW", 0, syscall.SIGTERM, 5, 0, time.Second},
-		{"RecvOnlyExitServerExitClient", 3566, 1, 1, "S", "R", 0, 0, 5, 0, time.Second},
-		{"SendOnlyKillServerKillClient", 3567, -1, -1, "RW", "SW", syscall.SIGKILL, syscall.SIGKILL, 0, 5, time.Second},
-		{"SendOnlyKillServerHupClient", 3568, -1, -1, "RW", "SW", syscall.SIGKILL, syscall.SIGHUP, 0, 5, time.Second},
-		{"SendOnlyKillServerTermClient", 3569, -1, -1, "RW", "SW", syscall.SIGKILL, syscall.SIGTERM, 0, 5, time.Second},
-		{"SendOnlyKillServerExitClient", 3570, -1, 1, "RW", "S", syscall.SIGKILL, 0, 0, 5, time.Second},
-		{"SendOnlyHupServerKillClient", 3571, -1, -1, "RW", "SW", syscall.SIGHUP, syscall.SIGKILL, 0, 5, time.Second},
-		{"SendOnlyHupServerHupClient", 3572, -1, -1, "RW", "SW", syscall.SIGHUP, syscall.SIGHUP, 0, 5, time.Second},
-		{"SendOnlyHupServerTermClient", 3573, -1, -1, "RW", "SW", syscall.SIGHUP, syscall.SIGTERM, 0, 5, time.Second},
-		{"SendOnlyHupServerExitClient", 3574, -1, 1, "RW", "S", syscall.SIGHUP, 0, 0, 5, time.Second},
-		{"SendOnlyTermServerKillClient", 3575, -1, -1, "RW", "SW", syscall.SIGTERM, syscall.SIGKILL, 0, 5, time.Second},
-		{"SendOnlyTermServerHupClient", 3576, -1, -1, "RW", "SW", syscall.SIGTERM, syscall.SIGHUP, 0, 5, time.Second},
-		{"SendOnlyTermServerTermClient", 3577, -1, -1, "RW", "SW", syscall.SIGTERM, syscall.SIGTERM, 0, 5, time.Second},
-		{"SendOnlyTermServerExitClient", 3578, -1, 1, "RW", "S", syscall.SIGTERM, 0, 0, 5, time.Second},
-		{"SendOnlyExitServerKillClient", 3579, 1, -1, "R", "SW", 0, syscall.SIGKILL, 0, 5, time.Second},
-		{"SendOnlyExitServerHupClient", 3580, 1, -1, "R", "SW", 0, syscall.SIGHUP, 0, 5, time.Second},
-		{"SendOnlyExitServerTermClient", 3581, 1, -1, "R", "SW", 0, syscall.SIGTERM, 0, 5, time.Second},
-		{"SendOnlyExitServerExitClient", 3582, 1, 1, "R", "S", 0, 0, 0, 5, time.Second},
-		{"SendRecvKillServerKillClient", 3583, -1, -1, "RSW", "SRW", syscall.SIGKILL, syscall.SIGKILL, 5, 5, time.Second},
-		{"SendRecvKillServerHupClient", 3584, -1, -1, "RSW", "SRW", syscall.SIGKILL, syscall.SIGHUP, 5, 5, time.Second},
-		{"SendRecvKillServerTermClient", 3585, -1, -1, "RSW", "SRW", syscall.SIGKILL, syscall.SIGTERM, 5, 5, time.Second},
-		{"SendRecvKillServerExitClient", 3586, -1, 1, "RSW", "SR", syscall.SIGKILL, 0, 5, 5, time.Second},
-		{"SendRecvHupServerKillClient", 3587, -1, -1, "RSW", "SRW", syscall.SIGHUP, syscall.SIGKILL, 5, 5, time.Second},
-		{"SendRecvHupServerHupClient", 3588, -1, -1, "RSW", "SRW", syscall.SIGHUP, syscall.SIGHUP, 5, 5, time.Second},
-		{"SendRecvHupServerTermClient", 3589, -1, -1, "RSW", "SRW", syscall.SIGHUP, syscall.SIGTERM, 5, 5, time.Second},
-		{"SendRecvHupServerExitClient", 3590, -1, 1, "RSW", "SR", syscall.SIGHUP, 0, 5, 5, time.Second},
-		{"SendRecvTermServerKillClient", 3591, -1, -1, "RSW", "SRW", syscall.SIGTERM, syscall.SIGKILL, 5, 5, time.Second},
-		{"SendRecvTermServerHupClient", 3592, -1, -1, "RSW", "SRW", syscall.SIGTERM, syscall.SIGHUP, 5, 5, time.Second},
-		{"SendRecvTermServerTermClient", 3593, -1, -1, "RSW", "SRW", syscall.SIGTERM, syscall.SIGTERM, 5, 5, time.Second},
-		{"SendRecvTermServerExitClient", 3594, -1, 1, "RSW", "SR", syscall.SIGTERM, 0, 5, 5, time.Second},
-		{"SendRecvExitServerKillClient", 3595, 1, -1, "RS", "SRW", 0, syscall.SIGKILL, 5, 5, time.Second},
-		{"SendRecvExitServerHupClient", 3596, 1, -1, "RS", "SRW", 0, syscall.SIGHUP, 5, 5, time.Second},
-		{"SendRecvExitServerTermClient", 3597, 1, -1, "RS", "SRW", 0, syscall.SIGTERM, 5, 5, time.Second},
-		{"SendRecvExitServerExitClient", 3598, 1, 1, "RS", "SR", 0, 0, 5, 5, time.Second},
-		{"RecvSendKillServerKillClient", 3599, -1, -1, "SRW", "RSW", syscall.SIGKILL, syscall.SIGKILL, 5, 5, time.Second},
-		{"RecvSendKillServerHupClient", 3600, -1, -1, "SRW", "RSW", syscall.SIGKILL, syscall.SIGHUP, 5, 5, time.Second},
-		{"RecvSendKillServerTermClient", 3601, -1, -1, "SRW", "RSW", syscall.SIGKILL, syscall.SIGTERM, 5, 5, time.Second},
-		{"RecvSendKillServerExitClient", 3602, -1, 1, "SRW", "RS", syscall.SIGKILL, 0, 5, 5, time.Second},
-		{"RecvSendHupServerKillClient", 3603, -1, -1, "SRW", "RSW", syscall.SIGHUP, syscall.SIGKILL, 5, 5, time.Second},
-		{"RecvSendHupServerHupClient", 3604, -1, -1, "SRW", "RSW", syscall.SIGHUP, syscall.SIGHUP, 5, 5, time.Second},
-		{"RecvSendHupServerTermClient", 3605, -1, -1, "SRW", "RSW", syscall.SIGHUP, syscall.SIGTERM, 5, 5, time.Second},
-		{"RecvSendHupServerExitClient", 3606, -1, 1, "SRW", "RS", syscall.SIGHUP, 0, 5, 5, time.Second},
-		{"RecvSendTermServerKillClient", 3607, -1, -1, "SRW", "RSW", syscall.SIGTERM, syscall.SIGKILL, 5, 5, time.Second},
-		{"RecvSendTermServerHupClient", 3608, -1, -1, "SRW", "RSW", syscall.SIGTERM, syscall.SIGHUP, 5, 5, time.Second},
-		{"RecvSendTermServerTermClient", 3609, -1, -1, "SRW", "RSW", syscall.SIGTERM, syscall.SIGTERM, 5, 5, time.Second},
-		{"RecvSendTermServerExitClient", 3610, -1, 1, "SRW", "RS", syscall.SIGTERM, 0, 5, 5, time.Second},
-		{"RecvSendExitServerKillClient", 3611, 1, -1, "SR", "RSW", 0, syscall.SIGKILL, 5, 5, time.Second},
-		{"RecvSendExitServerHupClient", 3612, 1, -1, "SR", "RSW", 0, syscall.SIGHUP, 5, 5, time.Second},
-		{"RecvSendExitServerTermClient", 3613, 1, -1, "SR", "RSW", 0, syscall.SIGTERM, 5, 5, time.Second},
-		{"RecvSendExitServerExitClient", 3614, 1, 1, "SR", "RS", 0, 0, 5, 5, time.Second},
-		{"SilentKillServerKillClient", 3615, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGKILL, 0, 0, time.Second},
-		{"SilentKillServerHupClient", 3616, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGHUP, 0, 0, time.Second},
-		{"SilentKillServerTermClient", 3617, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGTERM, 0, 0, time.Second},
-		{"SilentKillServerExitClient", 3618, -1, 0, "W", "", syscall.SIGKILL, 0, 0, 0, time.Second},
-		{"SilentHupServerKillClient", 3619, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGKILL, 0, 0, time.Second},
-		{"SilentHupServerHupClient", 3620, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGHUP, 0, 0, time.Second},
-		{"SilentHupServerTermClient", 3621, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGTERM, 0, 0, time.Second},
-		{"SilentHupServerExitClient", 3622, -1, 0, "W", "", syscall.SIGHUP, 0, 0, 0, time.Second},
-		{"SilentTermServerKillClient", 3623, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGKILL, 0, 0, time.Second},
-		{"SilentTermServerHupClient", 3624, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGHUP, 0, 0, time.Second},
-		{"SilentTermServerTermClient", 3625, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGTERM, 0, 0, time.Second},
-		{"SilentTermServerExitClient", 3626, -1, 0, "W", "", syscall.SIGTERM, 0, 0, 0, time.Second},
-		{"SilentExitServerKillClient", 3627, 0, -1, "", "W", 0, syscall.SIGKILL, 0, 0, time.Second},
-		{"SilentExitServerHupClient", 3627, 0, -1, "", "W", 0, syscall.SIGHUP, 0, 0, time.Second},
-		{"SilentExitServerTermClient", 3629, 0, -1, "", "W", 0, syscall.SIGTERM, 0, 0, time.Second},
-		{"SilentExitServerExitClient", 3630, 0, 0, "", "", 0, 0, 0, 0, time.Second},
+		{"RecvOnlyKillServerKillClient", 3551, -1, -1, "SW", "RW", syscall.SIGKILL, syscall.SIGKILL, 5, 0},
+		{"RecvOnlyKillServerHupClient", 3552, -1, -1, "SW", "RW", syscall.SIGKILL, syscall.SIGHUP, 5, 0},
+		{"RecvOnlyKillServerTermClient", 3553, -1, -1, "SW", "RW", syscall.SIGKILL, syscall.SIGTERM, 5, 0},
+		{"RecvOnlyKillServerExitClient", 3554, -1, 1, "SW", "R", syscall.SIGKILL, 0, 5, 0},
+		{"RecvOnlyHupServerKillClient", 3555, -1, -1, "SW", "RW", syscall.SIGHUP, syscall.SIGKILL, 5, 0},
+		{"RecvOnlyHupServerHupClient", 3556, -1, -1, "SW", "RW", syscall.SIGHUP, syscall.SIGHUP, 5, 0},
+		{"RecvOnlyHupServerTermClient", 3557, -1, -1, "SW", "RW", syscall.SIGHUP, syscall.SIGTERM, 5, 0},
+		{"RecvOnlyHupServerExitClient", 3558, -1, 1, "SW", "R", syscall.SIGHUP, 0, 5, 0},
+		{"RecvOnlyTermServerKillClient", 3559, -1, -1, "SW", "RW", syscall.SIGTERM, syscall.SIGKILL, 5, 0},
+		{"RecvOnlyTermServerHupClient", 3560, -1, -1, "SW", "RW", syscall.SIGTERM, syscall.SIGHUP, 5, 0},
+		{"RecvOnlyTermServerTermClient", 3561, -1, -1, "SW", "RW", syscall.SIGTERM, syscall.SIGTERM, 5, 0},
+		{"RecvOnlyTermServerExitClient", 3562, -1, 1, "SW", "R", syscall.SIGTERM, 0, 5, 0},
+		{"RecvOnlyExitServerKillClient", 3563, 1, -1, "S", "RW", 0, syscall.SIGKILL, 5, 0},
+		{"RecvOnlyExitServerHupClient", 3564, 1, -1, "S", "RW", 0, syscall.SIGHUP, 5, 0},
+		{"RecvOnlyExitServerTermClient", 3565, 1, -1, "S", "RW", 0, syscall.SIGTERM, 5, 0},
+		{"RecvOnlyExitServerExitClient", 3566, 1, 1, "S", "R", 0, 0, 5, 0},
+		{"SendOnlyKillServerKillClient", 3567, -1, -1, "RW", "SW", syscall.SIGKILL, syscall.SIGKILL, 0, 5},
+		{"SendOnlyKillServerHupClient", 3568, -1, -1, "RW", "SW", syscall.SIGKILL, syscall.SIGHUP, 0, 5},
+		{"SendOnlyKillServerTermClient", 3569, -1, -1, "RW", "SW", syscall.SIGKILL, syscall.SIGTERM, 0, 5},
+		{"SendOnlyKillServerExitClient", 3570, -1, 1, "RW", "S", syscall.SIGKILL, 0, 0, 5},
+		{"SendOnlyHupServerKillClient", 3571, -1, -1, "RW", "SW", syscall.SIGHUP, syscall.SIGKILL, 0, 5},
+		{"SendOnlyHupServerHupClient", 3572, -1, -1, "RW", "SW", syscall.SIGHUP, syscall.SIGHUP, 0, 5},
+		{"SendOnlyHupServerTermClient", 3573, -1, -1, "RW", "SW", syscall.SIGHUP, syscall.SIGTERM, 0, 5},
+		{"SendOnlyHupServerExitClient", 3574, -1, 1, "RW", "S", syscall.SIGHUP, 0, 0, 5},
+		{"SendOnlyTermServerKillClient", 3575, -1, -1, "RW", "SW", syscall.SIGTERM, syscall.SIGKILL, 0, 5},
+		{"SendOnlyTermServerHupClient", 3576, -1, -1, "RW", "SW", syscall.SIGTERM, syscall.SIGHUP, 0, 5},
+		{"SendOnlyTermServerTermClient", 3577, -1, -1, "RW", "SW", syscall.SIGTERM, syscall.SIGTERM, 0, 5},
+		{"SendOnlyTermServerExitClient", 3578, -1, 1, "RW", "S", syscall.SIGTERM, 0, 0, 5},
+		{"SendOnlyExitServerKillClient", 3579, 1, -1, "R", "SW", 0, syscall.SIGKILL, 0, 5},
+		{"SendOnlyExitServerHupClient", 3580, 1, -1, "R", "SW", 0, syscall.SIGHUP, 0, 5},
+		{"SendOnlyExitServerTermClient", 3581, 1, -1, "R", "SW", 0, syscall.SIGTERM, 0, 5},
+		{"SendOnlyExitServerExitClient", 3582, 1, 1, "R", "S", 0, 0, 0, 5},
+		{"SendRecvKillServerKillClient", 3583, -1, -1, "RSW", "SRW", syscall.SIGKILL, syscall.SIGKILL, 5, 5},
+		{"SendRecvKillServerHupClient", 3584, -1, -1, "RSW", "SRW", syscall.SIGKILL, syscall.SIGHUP, 5, 5},
+		{"SendRecvKillServerTermClient", 3585, -1, -1, "RSW", "SRW", syscall.SIGKILL, syscall.SIGTERM, 5, 5},
+		{"SendRecvKillServerExitClient", 3586, -1, 1, "RSW", "SR", syscall.SIGKILL, 0, 5, 5},
+		{"SendRecvHupServerKillClient", 3587, -1, -1, "RSW", "SRW", syscall.SIGHUP, syscall.SIGKILL, 5, 5},
+		{"SendRecvHupServerHupClient", 3588, -1, -1, "RSW", "SRW", syscall.SIGHUP, syscall.SIGHUP, 5, 5},
+		{"SendRecvHupServerTermClient", 3589, -1, -1, "RSW", "SRW", syscall.SIGHUP, syscall.SIGTERM, 5, 5},
+		{"SendRecvHupServerExitClient", 3590, -1, 1, "RSW", "SR", syscall.SIGHUP, 0, 5, 5},
+		{"SendRecvTermServerKillClient", 3591, -1, -1, "RSW", "SRW", syscall.SIGTERM, syscall.SIGKILL, 5, 5},
+		{"SendRecvTermServerHupClient", 3592, -1, -1, "RSW", "SRW", syscall.SIGTERM, syscall.SIGHUP, 5, 5},
+		{"SendRecvTermServerTermClient", 3593, -1, -1, "RSW", "SRW", syscall.SIGTERM, syscall.SIGTERM, 5, 5},
+		{"SendRecvTermServerExitClient", 3594, -1, 1, "RSW", "SR", syscall.SIGTERM, 0, 5, 5},
+		{"SendRecvExitServerKillClient", 3595, 1, -1, "RS", "SRW", 0, syscall.SIGKILL, 5, 5},
+		{"SendRecvExitServerHupClient", 3596, 1, -1, "RS", "SRW", 0, syscall.SIGHUP, 5, 5},
+		{"SendRecvExitServerTermClient", 3597, 1, -1, "RS", "SRW", 0, syscall.SIGTERM, 5, 5},
+		{"SendRecvExitServerExitClient", 3598, 1, 1, "RS", "SR", 0, 0, 5, 5},
+		{"RecvSendKillServerKillClient", 3599, -1, -1, "SRW", "RSW", syscall.SIGKILL, syscall.SIGKILL, 5, 5},
+		{"RecvSendKillServerHupClient", 3600, -1, -1, "SRW", "RSW", syscall.SIGKILL, syscall.SIGHUP, 5, 5},
+		{"RecvSendKillServerTermClient", 3601, -1, -1, "SRW", "RSW", syscall.SIGKILL, syscall.SIGTERM, 5, 5},
+		{"RecvSendKillServerExitClient", 3602, -1, 1, "SRW", "RS", syscall.SIGKILL, 0, 5, 5},
+		{"RecvSendHupServerKillClient", 3603, -1, -1, "SRW", "RSW", syscall.SIGHUP, syscall.SIGKILL, 5, 5},
+		{"RecvSendHupServerHupClient", 3604, -1, -1, "SRW", "RSW", syscall.SIGHUP, syscall.SIGHUP, 5, 5},
+		{"RecvSendHupServerTermClient", 3605, -1, -1, "SRW", "RSW", syscall.SIGHUP, syscall.SIGTERM, 5, 5},
+		{"RecvSendHupServerExitClient", 3606, -1, 1, "SRW", "RS", syscall.SIGHUP, 0, 5, 5},
+		{"RecvSendTermServerKillClient", 3607, -1, -1, "SRW", "RSW", syscall.SIGTERM, syscall.SIGKILL, 5, 5},
+		{"RecvSendTermServerHupClient", 3608, -1, -1, "SRW", "RSW", syscall.SIGTERM, syscall.SIGHUP, 5, 5},
+		{"RecvSendTermServerTermClient", 3609, -1, -1, "SRW", "RSW", syscall.SIGTERM, syscall.SIGTERM, 5, 5},
+		{"RecvSendTermServerExitClient", 3610, -1, 1, "SRW", "RS", syscall.SIGTERM, 0, 5, 5},
+		{"RecvSendExitServerKillClient", 3611, 1, -1, "SR", "RSW", 0, syscall.SIGKILL, 5, 5},
+		{"RecvSendExitServerHupClient", 3612, 1, -1, "SR", "RSW", 0, syscall.SIGHUP, 5, 5},
+		{"RecvSendExitServerTermClient", 3613, 1, -1, "SR", "RSW", 0, syscall.SIGTERM, 5, 5},
+		{"RecvSendExitServerExitClient", 3614, 1, 1, "SR", "RS", 0, 0, 5, 5},
+		{"SilentKillServerKillClient", 3615, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGKILL, 0, 0},
+		{"SilentKillServerHupClient", 3616, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGHUP, 0, 0},
+		{"SilentKillServerTermClient", 3617, -1, -1, "W", "W", syscall.SIGKILL, syscall.SIGTERM, 0, 0},
+		{"SilentKillServerExitClient", 3618, -1, 0, "W", "", syscall.SIGKILL, 0, 0, 0},
+		{"SilentHupServerKillClient", 3619, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGKILL, 0, 0},
+		{"SilentHupServerHupClient", 3620, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGHUP, 0, 0},
+		{"SilentHupServerTermClient", 3621, -1, -1, "W", "W", syscall.SIGHUP, syscall.SIGTERM, 0, 0},
+		{"SilentHupServerExitClient", 3622, -1, 0, "W", "", syscall.SIGHUP, 0, 0, 0},
+		{"SilentTermServerKillClient", 3623, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGKILL, 0, 0},
+		{"SilentTermServerHupClient", 3624, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGHUP, 0, 0},
+		{"SilentTermServerTermClient", 3625, -1, -1, "W", "W", syscall.SIGTERM, syscall.SIGTERM, 0, 0},
+		{"SilentTermServerExitClient", 3626, -1, 0, "W", "", syscall.SIGTERM, 0, 0, 0},
+		{"SilentExitServerKillClient", 3627, 0, -1, "", "W", 0, syscall.SIGKILL, 0, 0},
+		{"SilentExitServerHupClient", 3627, 0, -1, "", "W", 0, syscall.SIGHUP, 0, 0},
+		{"SilentExitServerTermClient", 3629, 0, -1, "", "W", 0, syscall.SIGTERM, 0, 0},
+		{"SilentExitServerExitClient", 3630, 0, 0, "", "", 0, 0, 0, 0},
 	}
 )

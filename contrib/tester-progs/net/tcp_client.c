@@ -99,6 +99,8 @@ int main(int argc, char *argv[])
 	sigaction(SIGTERM, &sigact, NULL);
 	sigaction(SIGHUP, &sigact, NULL);
 
+	setbuf(stdout, NULL);
+
 	strcpy((char *)buf, "data\n");
 	buf_len = 5;
 
@@ -150,6 +152,8 @@ int main(int argc, char *argv[])
 					printf("send() failed: %s\n", strerror(errno));
 				break;
 			case 'W':
+				usleep(10000);
+				printf("Waiting...\n");
 				while(1) sleep(1);
 			}
 			patt_ptr++;
