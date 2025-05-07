@@ -127,8 +127,9 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 		listen_process->key.ktime = value->key.ktime;
 		listen_process->create_time = ktime_get_ns();
 		listen_process->version = 0;
-		listen_process->protocol = 0;
+		listen_process->protocol = IPPROTO_TCP;
 		memset(&listen_process->pad, 0, 7);
+		add_socketmap(&listen_cookie, listen_process, 0, false);
 	}
 
 	/* Similar to above if the tg_tcp_accept_socket_to_sk_map did not
