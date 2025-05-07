@@ -406,22 +406,6 @@ func NewConnectedModelClient() ConnectedModelClient {
 	return c
 }
 
-func getProcessTreeGrpc(c *ConnectedModelClient) (*tetragon.GetProcessModelResponse, error) {
-	if host {
-		namespaces = append(namespaces, model.HostNamespace)
-	}
-	res, err := getProcessModel(c, &tetragon.GetProcessModelRequest{
-		Namespaces: namespaces,
-		Debug:      common.Debug,
-	})
-	if err != nil || res == nil {
-		logger.GetLogger().WithError(err).Warn("failed to get application model")
-		return nil, err
-	}
-
-	return res, nil
-}
-
 func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEvent, error) {
 	var err error
 	ctx := context.Background()
@@ -482,24 +466,6 @@ func printGrpcTree(enableS3 bool, bucket string) error {
 	default:
 		return fmt.Errorf("invalid output format: %s", output)
 	}
-}
-
-func getProcessModel(c *ConnectedModelClient, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
-	processModel := tetragon.GetProcessModelResponse{}
-	res, err := c.Client.GetProcesses(c.Ctx, req)
-	if err != nil || res == nil {
-		return nil, err
-	}
-	for {
-		proc, err := res.Recv()
-		if errors.Is(err, io.EOF) {
-			break
-		} else if err != nil {
-			return nil, err
-		}
-		processModel.Processes = append(processModel.Processes, proc)
-	}
-	return &processModel, nil
 }
 
 func checkProcessTree() (checker.ApplicationCheckerResult, error) {
