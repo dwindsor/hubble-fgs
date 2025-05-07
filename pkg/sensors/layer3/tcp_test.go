@@ -750,11 +750,6 @@ func testListenAcceptClose4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 }
 
 func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disableListen bool, disableAccept bool, disableClose bool) {
-	hostname, err := os.Hostname()
-	if err == nil && strings.Contains(hostname, "rhel") {
-		t.Skipf("This test is problematic on RHEL, skipping")
-	}
-
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -2194,9 +2189,8 @@ func testIOUringAcceptEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
 		t.Skipf("Test seems to time out on ARM")
 	}
-	hostname, err := os.Hostname()
-	if err == nil && strings.Contains(hostname, "rhel") {
-		t.Skipf("This test is problematic on RHEL, skipping")
+	if !utils.NetIOUringAvailable() {
+		t.Skipf("Net io_uring not available, skipping")
 	}
 
 	server := testutils.RepoRootPath("contrib/tester-progs/io_uring/tcp_iouring_server")
@@ -2293,9 +2287,8 @@ func testIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
 		t.Skipf("Test seems to time out on ARM")
 	}
-	hostname, err := os.Hostname()
-	if err == nil && strings.Contains(hostname, "rhel") {
-		t.Skipf("This test is problematic on RHEL, skipping")
+	if !utils.NetIOUringAvailable() {
+		t.Skipf("Net io_uring not available, skipping")
 	}
 
 	client := testutils.RepoRootPath("contrib/tester-progs/io_uring/tcp_iouring_client")

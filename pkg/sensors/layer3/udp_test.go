@@ -1237,10 +1237,6 @@ func TestNoDisableConnectStats4NoCLI(t *testing.T) {
 }
 
 func testConnectAfterStartEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	// FIXME: something broke this test case, but since it was never merged upstream this went
-	// unnoticed... need to investigate
-	t.Skip("This test is consistently failing at the moment, need to figure out why and fix it up.")
-
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
@@ -1677,10 +1673,6 @@ func testListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 }
 
 func testConnectAfterStartEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	// FIXME: something broke this test case, but since it was never merged upstream this went
-	// unnoticed... need to investigate
-	t.Skip("This test is consistently failing at the moment, need to figure out why and fix it up.")
-
 	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
@@ -2130,9 +2122,8 @@ func testUdpIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitG
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
 		t.Skipf("Test seems to time out on ARM")
 	}
-	hostname, err := os.Hostname()
-	if err == nil && strings.Contains(hostname, "rhel") {
-		t.Skipf("This test is problematic on RHEL, skipping")
+	if !utils.NetIOUringAvailable() {
+		t.Skipf("Net io_uring not available, skipping")
 	}
 
 	server := testutils.RepoRootPath("contrib/tester-progs/io_uring/udp_iouring_server")
