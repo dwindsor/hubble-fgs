@@ -66,16 +66,16 @@ int skops_tuple(u64 cookie, struct msg_ip_event *val, struct bpf_sock_ops *skops
 	 */
 	probe_read_kernel(&__cookie, sizeof(__cookie), &cookie);
 
-	val->tuple.sport = skops->local_port;
+	val->tuple.sport = _(skops->local_port);
 	probe_read_kernel(&val->tuple.dport, sizeof(val->tuple.dport),
 			  _(&(((struct sock *)__cookie)->__sk_common.skc_dport)));
 	val->tuple.dport = bpf_ntohs(val->tuple.dport);
 
-	if (skops->family != AF_INET6) {
+	if (_(skops->family) != AF_INET6) {
 		val->tuple.ipv6 = false;
-		val->tuple.saddr[0] = skops->local_ip4;
+		val->tuple.saddr[0] = _(skops->local_ip4);
 		val->tuple.saddr[1] = 0;
-		val->tuple.daddr[0] = skops->remote_ip4;
+		val->tuple.daddr[0] = _(skops->remote_ip4);
 		val->tuple.daddr[1] = 0;
 	} else {
 		val->tuple.ipv6 = true;
@@ -103,7 +103,7 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	u64 cookie;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
-	cookie = (u64)skops->sk;
+	cookie = (u64)_(skops->sk);
 	socket = lookup_socketmap(&cookie);
 	if (!socket)
 		return 0;
@@ -131,7 +131,7 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 					 sizeof(struct msg_ip_event));
 	}
 
-	v = init_tcpsocketmap_value(&val->key, skops->family, SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version, &val->tuple);
+	v = init_tcpsocketmap_value(&val->key, _(skops->family), SOCKFLAGS_TYPE_LISTEN, socket->create_time, socket->version, &val->tuple);
 	if (!v)
 		return 0;
 	add_tcpsocketmap(&cookie, v, true);
@@ -148,10 +148,10 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 	u64 cookie;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
-	cookie = (__u64)skops->sk;
+	cookie = (__u64)_(skops->sk);
 	socket = lookup_socketmap(&cookie);
 	if (!socket) {
-		emit_ip_error_event(skops, 0, &cookie, skops->family == AF_INET6, 0, 0, 0, IP_ERROR_TCP_CONNECT_NO_PROCESS);
+		emit_ip_error_event(skops, 0, &cookie, _(skops->family) == AF_INET6, 0, 0, 0, IP_ERROR_TCP_CONNECT_NO_PROCESS);
 		return 0;
 	}
 
@@ -172,7 +172,7 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 
 	event_post_connect(skops, val);
 
-	struct tcpsocketmap_value *v = init_tcpsocketmap_value(key, skops->family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
+	struct tcpsocketmap_value *v = init_tcpsocketmap_value(key, _(skops->family), SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
 	if (!v)
 		return 0;
 	v->deny = process_socketmap_add(v, &(val->tuple));
@@ -191,10 +191,10 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	u64 cookie;
 
 	/* In TCP we use the struct sock address as the socket cookie. */
-	cookie = (u64)skops->sk;
+	cookie = (u64)_(skops->sk);
 
-	old_state = skops->args[0];
-	state = skops->args[1];
+	old_state = _(skops->args[0]);
+	state = _(skops->args[1]);
 
 	if (state != TCP_CLOSE)
 		return 0;
@@ -245,12 +245,13 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 __attribute__((section("sockops/tcp_sockops"), used)) int
 tg_event_tcp_sockops(struct bpf_sock_ops *skops)
 {
-	__u32 family = skops->family;
+	__u32 family = _(skops->family);
+	__u32 op = _(skops->op);
 
 	if (family != AF_INET && family != AF_INET6)
 		return 0;
 
-	switch (skops->op) {
+	switch (op) {
 	case BPF_SOCK_OPS_TCP_CONNECT_CB:
 		sock_ops_cb_flags_set(skops, BPF_SOCK_OPS_STATE_CB_FLAG);
 		event_tcp_sockops_connect(skops);

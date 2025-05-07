@@ -24,7 +24,7 @@ int _version __attribute__((section(("version")), used)) =
 SEC("fentry/security_socket_accept")
 int BPF_PROG(tg_security_socket_accept, struct socket *sock, struct socket *newsocket)
 {
-	return __security_socket_accept(sock->sk, newsocket);
+	return __security_socket_accept(_(sock->sk), newsocket);
 }
 
 SEC("fentry/security_sock_graft")

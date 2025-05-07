@@ -70,8 +70,8 @@ __section("sockops/fgs_sockops") int tg_sockmap(struct bpf_sock_ops *skops)
 {
 	__u32 family, op;
 
-	family = skops->family;
-	op = skops->op;
+	family = _(skops->family);
+	op = _(skops->op);
 
 	switch (op) {
 	case BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB:
