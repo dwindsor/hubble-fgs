@@ -28,13 +28,6 @@ struct {
 	__type(key, int);
 	__type(value, struct tcpsocketmap_value);
 	__uint(max_entries, 1);
-} tg_listen_socket SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct tcpsocketmap_value);
-	__uint(max_entries, 1);
 } tg_accept_socket SEC(".maps");
 
 struct {
@@ -76,7 +69,6 @@ __security_socket_accept(struct sock *sk, struct socket *newsocket)
 static inline __attribute__((always_inline)) int
 __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 {
-	struct tcpsocketmap_value *listen_socket = 0;
 	struct socketmap_value *listen_process = 0;
 	struct tcp_event_disable_config *event_cfg;
 	struct tcpsocketmap_value *accept_socket;
@@ -98,7 +90,6 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	if (likely(cookie)) {
 		listen_cookie = (u64)*cookie;
 		listen_process = lookup_socketmap(&listen_cookie);
-		listen_socket = lookup_tcpsocketmap(&listen_cookie);
 	}
 	newcookie = (u64)sk;
 
@@ -130,18 +121,6 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 		listen_process->protocol = IPPROTO_TCP;
 		memset(&listen_process->pad, 0, 7);
 		add_socketmap(&listen_cookie, listen_process, 0, false);
-	}
-
-	/* Similar to above if the tg_tcp_accept_socket_to_sk_map did not
-	 * find an entry because of blocking accept() at Tetragon startup
-	 * we will need to populate the key to the listen socket directly.
-	 */
-	if (unlikely(!listen_socket)) {
-		listen_socket = (struct tcpsocketmap_value *)map_lookup_elem(&tg_listen_socket, &zero);
-		if (!listen_socket)
-			return 0;
-
-		listen_socket->key = listen_process->key;
 	}
 
 	cookie_version = cookie_inc_version();
