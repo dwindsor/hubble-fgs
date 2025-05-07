@@ -1,6 +1,6 @@
 GCC ?= gcc
 
-PROGS = cp_liburing cat_liburing write_liburing sq_poll tcp_iouring_server tcp_iouring_client udp_iouring_server open_liburing
+PROGS = cp_liburing cat_liburing write_liburing sq_poll net_iouring_check tcp_iouring_server tcp_iouring_client udp_iouring_server open_liburing
 
 all: $(PROGS)
 
@@ -15,6 +15,9 @@ write_liburing: write_liburing.c
 
 sq_poll: sq_poll.c
 	$(GCC) -Wall -o sq_poll sq_poll.c -luring
+
+net_iouring_check: net_iouring_check.c
+	$(GCC) -Wall -o net_iouring_check net_iouring_check.c -luring
 
 tcp_iouring_server: tcp_iouring_server.c
 	$(GCC) -Wall -o tcp_iouring_server tcp_iouring_server.c -luring

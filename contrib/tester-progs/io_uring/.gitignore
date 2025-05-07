@@ -2,6 +2,7 @@ cp_liburing
 cat_liburing
 write_liburing
 sq_poll
+net_iouring_check
 tcp_iouring_client
 tcp_iouring_server
 udp_iouring_server
