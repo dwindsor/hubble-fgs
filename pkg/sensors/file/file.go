@@ -1972,6 +1972,8 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 					return nil
 				}
 			case "file_open_flags_map":
+				m.SetMaxEntries(maxSelectors)
+				m.SetInnerMaxEntries(fm.MaxOpenFlagMaskPerOp)
 				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
 					if err := fm.GenerateFileOpenFlagsMap(m, sel, pinPathPrefix); err != nil {
 						return fmt.Errorf("file_open_flags_map: %w", err)

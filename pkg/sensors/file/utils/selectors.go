@@ -82,7 +82,7 @@ var namespaceTypeTable = map[string]uint32{
 	"user":            namespaceTypeUser,
 }
 
-const maxOpenFlagMaskPerOp = 8
+const MaxOpenFlagMaskPerOp = 8
 
 var openFlagsString = map[string]uint32{
 	"O_APPEND":    unix.O_APPEND,
@@ -144,7 +144,7 @@ type OpenFlagsPair struct {
 }
 
 type OpenFlagsOps struct {
-	flags [maxOpenFlagMaskPerOp]OpenFlagsPair
+	flags [MaxOpenFlagMaskPerOp]OpenFlagsPair
 }
 
 type MatchFilenameOps struct {
@@ -257,7 +257,7 @@ func (k *KernelSelectorState) InitOrGetOpenFlags(selIdx uint32) *OpenFlagsOps {
 		return val
 	}
 	inner := &OpenFlagsOps{}
-	for i := 0; i < maxOpenFlagMaskPerOp; i++ {
+	for i := 0; i < MaxOpenFlagMaskPerOp; i++ {
 		inner.flags[i].Op = 0
 		inner.flags[i].Mask = 0
 	}
@@ -609,11 +609,20 @@ func GenerateFileOpenFlagsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinP
 	for innerID, entries := range sel.oflags {
 		innerName := fmt.Sprintf("file_open_flags_map_%d", innerID)
 		innerSpec := &ebpf.MapSpec{
-			Name:       innerName,
-			Type:       ebpf.Array,
-			KeySize:    4, // uint32
-			ValueSize:  uint32(unsafe.Sizeof(OpenFlagsPair{})),
-			MaxEntries: maxOpenFlagMaskPerOp,
+			Name:    innerName,
+			Type:    ebpf.Array,
+			KeySize: uint32(unsafe.Sizeof(uint32(0))),
+			Key: &btf.Int{
+				Name:     "unsigned int",
+				Size:     uint32(unsafe.Sizeof(uint32(0))),
+				Encoding: btf.Unsigned,
+			},
+			ValueSize: uint32(unsafe.Sizeof(OpenFlagsPair{})),
+			Value: &btf.Struct{
+				Name: "onflags",
+				Size: uint32(unsafe.Sizeof(OpenFlagsPair{})),
+			},
+			MaxEntries: MaxOpenFlagMaskPerOp,
 		}
 		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
 			PinPath: sensors.PathJoin(pinPathPrefix, innerName),
@@ -1226,8 +1235,8 @@ func ParseOpenFlag(k *KernelSelectorState, op v1alpha1.FileOpenFlagsTypeSelector
 }
 
 func ParseOpenFlags(k *KernelSelectorState, op []v1alpha1.FileOpenFlagsTypeSelector, selIdx int) error {
-	if len(op) > maxOpenFlagMaskPerOp {
-		return fmt.Errorf("only support up to %d open flags masks inside a single selector", maxOpenFlagMaskPerOp)
+	if len(op) > MaxOpenFlagMaskPerOp {
+		return fmt.Errorf("only support up to %d open flags masks inside a single selector", MaxOpenFlagMaskPerOp)
 	}
 	for opIdx, m := range op {
 		if err := ParseOpenFlag(k, m, opIdx, selIdx); err != nil {
