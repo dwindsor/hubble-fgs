@@ -101,5 +101,14 @@ spec:
         values:
         - "FILE_DELETE"
         - "FILE_WRITE"
+      matchUidGid:
+      - uid:
+        - operator: "In" 
+          values:
+          - 0
+        gid:
+        - operator: "In" 
+          values:
+          - 0
       matchActions:
       - action: Block # Possible values: Block or Post (default).
