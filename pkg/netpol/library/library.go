@@ -84,3 +84,17 @@ func GetName(id uint64) (string, bool) {
 	}
 	return p.Title, ok
 }
+
+func GetList() []string {
+	l := make(map[uint64]string)
+
+	for title, id := range policyLibrary {
+		l[id] = title
+	}
+
+	names := []string{}
+	for _, title := range l {
+		names = append(names, title)
+	}
+	return names
+}
