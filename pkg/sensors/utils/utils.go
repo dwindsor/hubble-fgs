@@ -11,12 +11,14 @@
 package utils
 
 import (
+	"fmt"
 	"os/exec"
 	"sync"
 	"syscall"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/features"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -316,4 +318,15 @@ func _checkNetIOUring() bool {
 	cmdTest := exec.Command(testProg)
 	err := cmdTest.Run()
 	return err == nil
+}
+
+func LogLayer3Features() string {
+	// once we have detected all features, flush the BTF spec
+	// we cache all values so calling again a Has* function will
+	// not load the BTF again
+	defer btf.FlushKernelSpec()
+	return fmt.Sprintf("packet: %t, packet_mem: %t, add_and_fetch: %t, current_task_btf: %t, process_tree: %t, "+
+		"raw_sockets: %t, RTT_hook: %t, fentry: %t",
+		CGroupSKBAvailable(), SupportCGroupSKBProbeRead(), SupportAddAndFetch(), SupportCurrentTaskBTF(), SupportProcessTree(),
+		RawHooksAvailable(), RTTHookAvailable(), SupportFentry())
 }
