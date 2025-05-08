@@ -182,6 +182,19 @@
   
     - [MandateService](#tetragon-MandateService)
   
+- [tetragon/networkpolicyservice.proto](#tetragon_networkpolicyservice-proto)
+    - [AddNetworkPolicyFromYAMLRequest](#tetragon-AddNetworkPolicyFromYAMLRequest)
+    - [AddNetworkPolicyResponse](#tetragon-AddNetworkPolicyResponse)
+    - [DeleteNetworkPolicyRequest](#tetragon-DeleteNetworkPolicyRequest)
+    - [DeleteNetworkPolicyResponse](#tetragon-DeleteNetworkPolicyResponse)
+    - [GetNetworkPolicyRequest](#tetragon-GetNetworkPolicyRequest)
+    - [GetNetworkPolicyResponse](#tetragon-GetNetworkPolicyResponse)
+    - [ListNetworkPolicyRequest](#tetragon-ListNetworkPolicyRequest)
+    - [ListNetworkPolicyResponse](#tetragon-ListNetworkPolicyResponse)
+    - [NetworkPolicyInfo](#tetragon-NetworkPolicyInfo)
+  
+    - [NetworkPolicyService](#tetragon-NetworkPolicyService)
+  
 - [tetragon/processmodel.proto](#tetragon_processmodel-proto)
     - [Destination](#tetragon-Destination)
     - [DestinationEndpointDebug](#tetragon-DestinationEndpointDebug)
@@ -3467,6 +3480,156 @@ Determins the behaviour of a field filter
 | ----------- | ------------ | ------------- | ------------|
 | GetMandateStatus | [GetMandateStatusReq](#tetragon-GetMandateStatusReq) | [GetMandateStatusRes](#tetragon-GetMandateStatusRes) |  |
 | MandateConfigure | [MandateConfigureReq](#tetragon-MandateConfigureReq) | [MandateConfigureRes](#tetragon-MandateConfigureRes) |  |
+
+ 
+
+
+
+<a name="tetragon_networkpolicyservice-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/networkpolicyservice.proto
+
+
+
+<a name="tetragon-AddNetworkPolicyFromYAMLRequest"></a>
+
+### AddNetworkPolicyFromYAMLRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| yaml | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-AddNetworkPolicyResponse"></a>
+
+### AddNetworkPolicyResponse
+
+
+
+
+
+
+
+<a name="tetragon-DeleteNetworkPolicyRequest"></a>
+
+### DeleteNetworkPolicyRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-DeleteNetworkPolicyResponse"></a>
+
+### DeleteNetworkPolicyResponse
+
+
+
+
+
+
+
+<a name="tetragon-GetNetworkPolicyRequest"></a>
+
+### GetNetworkPolicyRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-GetNetworkPolicyResponse"></a>
+
+### GetNetworkPolicyResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| yaml | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ListNetworkPolicyRequest"></a>
+
+### ListNetworkPolicyRequest
+
+
+
+
+
+
+
+<a name="tetragon-ListNetworkPolicyResponse"></a>
+
+### ListNetworkPolicyResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| info | [NetworkPolicyInfo](#tetragon-NetworkPolicyInfo) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-NetworkPolicyInfo"></a>
+
+### NetworkPolicyInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+
+<a name="tetragon-NetworkPolicyService"></a>
+
+### NetworkPolicyService
+
+
+| Method Name | Request Type | Response Type | Description |
+| ----------- | ------------ | ------------- | ------------|
+| AddNetworkPolicyFromYAML | [AddNetworkPolicyFromYAMLRequest](#tetragon-AddNetworkPolicyFromYAMLRequest) | [AddNetworkPolicyResponse](#tetragon-AddNetworkPolicyResponse) |  |
+| DeleteNetworkPolicy | [DeleteNetworkPolicyRequest](#tetragon-DeleteNetworkPolicyRequest) | [DeleteNetworkPolicyResponse](#tetragon-DeleteNetworkPolicyResponse) |  |
+| ListNetworkPolicy | [ListNetworkPolicyRequest](#tetragon-ListNetworkPolicyRequest) | [ListNetworkPolicyResponse](#tetragon-ListNetworkPolicyResponse) |  |
+| GetNetworkPolicy | [GetNetworkPolicyRequest](#tetragon-GetNetworkPolicyRequest) | [GetNetworkPolicyResponse](#tetragon-GetNetworkPolicyResponse) |  |
 
  
 
