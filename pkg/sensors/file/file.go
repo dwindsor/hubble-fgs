@@ -140,6 +140,7 @@ var (
 		{"digest_heap_map", PrivateMap},          // for matchFilename InFileWithDigest operator
 		{"filename_heap_map", PrivateMap},        // for matchFilename InFileWithDigest operator
 		{"file_ops_maps", SharedMap},             // for matchOperations
+		{"file_uidgid_map", SharedMap},           // for matchUidGid
 		{"file_actions_map", SharedMap},          // for matchActions
 		{"file_capabilities_map", SharedMap},     // for matchLinuxCapabilities
 		{"file_namespaces_map", SharedMap},       // for matchLinuxNamespaces
@@ -166,6 +167,7 @@ var (
 		{"file_capabilities_map", SharedMap},     // for matchLinuxCapabilities
 		{"file_namespaces_map", SharedMap},       // for matchLinuxNamespaces
 		{"file_ops_maps", SharedMap},             // for matchOperations
+		{"file_uidgid_map", SharedMap},           // for matchUidGid
 		{"string_prefix_maps", SharedMap},        // for matchBinaries Prefix/NoPrefix operator
 		{"string_postfix_maps", SharedMap},       // for matchBinaries Postfix/NoPostfix operator
 		{"string_postfix_maps_heap", PrivateMap}, // for matchBinaries Postfix/NoPostfix operator
@@ -1757,6 +1759,14 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
 					if err := fm.GenerateFileOpsMap(m, sel, pinPathPrefix); err != nil {
 						return fmt.Errorf("file_ops_maps: %w", err)
+					}
+					return nil
+				}
+			case "file_uidgid_map":
+				m.SetMaxEntries(fm.GetUidGidMapSize(sel))
+				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+					if err := fm.GenerateUidGidMap(m, sel); err != nil {
+						return fmt.Errorf("file_uidgid_map: %w", err)
 					}
 					return nil
 				}

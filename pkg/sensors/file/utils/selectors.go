@@ -174,6 +174,13 @@ type ActionsValId struct {
 	msgId uint32
 }
 
+type UidGidVal struct {
+	uidOp  uint32
+	uidVal uint32
+	gidOp  uint32
+	gidVal uint32
+}
+
 type KernelSelectorState struct {
 	selectors.KernelSelectorState
 
@@ -204,6 +211,9 @@ type KernelSelectorState struct {
 	// matchOpenrawResult
 	openraw map[uint32]uint32
 
+	// matchUidGid
+	uidgid map[uint32]*UidGidVal
+
 	// matchActions value
 	action map[uint32]*ActionsVal
 
@@ -223,6 +233,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 		patterns:            map[uint32]*MatchFilenameOps{},
 		exec:                map[uint32]*MatchExecAttrs{},
 		openraw:             map[uint32]uint32{},
+		uidgid:              map[uint32]*UidGidVal{},
 		action:              map[uint32]*ActionsVal{},
 	}
 }
@@ -1357,6 +1368,85 @@ func GetOpenrawResultMapSize(sel *KernelSelectorState) int {
 	return len(sel.openraw)
 }
 
+func ParseMatchUidGid(k *KernelSelectorState, op []v1alpha1.UidGidSelector, selIdx int) error {
+	if len(op) > 1 {
+		return fmt.Errorf("only support a single operation inside a single selector")
+	}
+	if len(op) == 0 {
+		return nil
+	}
+
+	getVal := func(v []v1alpha1.UidGidValues) (uint32, uint32, error) {
+		if len(v) == 0 {
+			return 0, 0, nil
+		}
+		if len(v) > 1 {
+			return 0, 0, fmt.Errorf("only support a single entry")
+		}
+
+		vv := v[0]
+		if len(vv.Values) == 0 {
+			return 0, 0, nil
+		}
+		if len(vv.Values) > 1 {
+			return 0, 0, fmt.Errorf("only support a single value")
+		}
+
+		op, err := selectors.SelectorOp(vv.Operator)
+		if err != nil {
+			return 0, 0, err
+		}
+
+		return op, vv.Values[0], nil
+	}
+
+	o := op[0]
+
+	uidOp, uidVal, uidErr := getVal(o.Uid)
+	if uidErr != nil {
+		return fmt.Errorf("uid error: %v", uidErr)
+	}
+
+	gidOp, gidVal, gidErr := getVal(o.Gid)
+	if gidErr != nil {
+		return fmt.Errorf("gid error: %v", gidErr)
+	}
+
+	// nothing to be done here, both are empty
+	if uidOp == 0 && gidOp == 0 {
+		return nil
+	}
+
+	val, ok := k.uidgid[uint32(selIdx)]
+	if !ok {
+		val = &UidGidVal{}
+		k.uidgid[uint32(selIdx)] = val
+	}
+
+	val.uidOp = uidOp
+	val.uidVal = uidVal
+	val.gidOp = gidOp
+	val.gidVal = gidVal
+
+	return nil
+}
+
+func GenerateUidGidMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	for idx, result := range sel.uidgid {
+		if err := m.Update(idx, result, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetUidGidMapSize(sel *KernelSelectorState) int {
+	if len(sel.uidgid) == 0 {
+		return 1
+	}
+	return len(sel.uidgid)
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors int) (*KernelSelectorState, error) {
 	if len(fileSel) > maxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
@@ -1392,6 +1482,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 		}
 		if err := ParseMatchOpenrawResult(kernelSelectors, s.MatchOpenrawResult, i); err != nil {
 			return nil, fmt.Errorf("parseMatchOpenrawResult error: %w", err)
+		}
+		if err := ParseMatchUidGid(kernelSelectors, s.MatchUidGid, i); err != nil {
+			return nil, fmt.Errorf("parseMatchUidGid error: %w", err)
 		}
 		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
 			return nil, fmt.Errorf("parseMatchActions error: %w", err)

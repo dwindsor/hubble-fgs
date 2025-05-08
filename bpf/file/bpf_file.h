@@ -561,6 +561,20 @@ struct {
 	__uint(max_entries, 1); /* the user will setup this */
 } file_openraw_result_map SEC(".maps");
 
+struct sel_uidgid {
+	__u32 uid_op;
+	__u32 uid_val;
+	__u32 gid_op;
+	__u32 gid_val;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u32);
+	__type(value, struct sel_uidgid); /* SEL_UIDGID_* */
+	__uint(max_entries, 1); /* the user will setup this */
+} file_uidgid_map SEC(".maps");
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_binaries(__u32 selidx, struct execve_map_value *current)
 {
@@ -1075,6 +1089,39 @@ static inline __attribute__((always_inline)) int check_match_openraw_result(__u3
 	return 0;
 }
 
+// returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_uid_gid(__u32 sel_idx)
+{
+	__u32 sel = sel_idx;
+	struct sel_uidgid *val = 0;
+	__u64 uid_gid = get_current_uid_gid();
+	__u32 gid = uid_gid >> 32;
+	__u32 uid = uid_gid & 0xFFFFFFFFUL;
+
+	val = map_lookup_elem(&file_uidgid_map, &sel);
+	if (!val) // no matchidGid for this selector -- match
+		return 1;
+
+	if (val->uid_op == op_filter_in) {
+		if (uid == val->uid_val)
+			goto sel_check_gid;
+		return 0; // do not match
+	} else if (val->uid_op == op_filter_notin) {
+		if (uid != val->uid_val)
+			goto sel_check_gid;
+		return 0; // do not match
+	}
+
+sel_check_gid:
+	if (val->gid_op == op_filter_in)
+		return gid == val->gid_val;
+	else if (val->gid_op == op_filter_notin)
+		return gid != val->gid_val;
+
+	// we already matched uid here but we didn't have to check gid, so match
+	return 1;
+}
+
 static inline __attribute__((always_inline)) __u32
 __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest, struct execve_map_value *execve, struct sel_path path, __u32 *msg_id)
 {
@@ -1083,6 +1130,8 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 	if (!check_match_binaries(sel_idx, execve))
 		return 0;
 	if (!check_match_operations(sel_idx, args.action))
+		return 0;
+	if (!check_match_uid_gid(sel_idx))
 		return 0;
 #ifdef __LARGE_BPF_PROG
 #ifdef __FILE_DIGEST_LSM
