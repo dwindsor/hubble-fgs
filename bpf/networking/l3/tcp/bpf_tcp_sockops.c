@@ -54,21 +54,12 @@ int skops_socket_with_stats(u64 cookie, struct msg_ip_with_stats_event *val, str
 
 int skops_tuple(u64 cookie, struct msg_ip_event *val, struct bpf_sock_ops *skops)
 {
-	u64 __cookie;
-
 	if (!val)
 		return 0;
 
-	/* Verifier on 6.14 need this to confuse the verifier into dropping the
-	 * type info on __sk. The result is then we can walk into it as much as
-	 * necessary. Otherwise clang likes to do things such as sk+=32 to find
-	 * types and verifier disapproves of modifying its type sock var.
-	 */
-	probe_read_kernel(&__cookie, sizeof(__cookie), &cookie);
-
 	val->tuple.sport = _(skops->local_port);
 	probe_read_kernel(&val->tuple.dport, sizeof(val->tuple.dport),
-			  _(&(((struct sock *)__cookie)->__sk_common.skc_dport)));
+			  _(&(((struct sock *)cookie)->__sk_common.skc_dport)));
 	val->tuple.dport = bpf_ntohs(val->tuple.dport);
 
 	if (_(skops->family) != AF_INET6) {
@@ -80,9 +71,9 @@ int skops_tuple(u64 cookie, struct msg_ip_event *val, struct bpf_sock_ops *skops
 	} else {
 		val->tuple.ipv6 = true;
 		probe_read_kernel(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
-				  _(&(((struct sock *)__cookie)->__sk_common.skc_v6_rcv_saddr)));
+				  _(&(((struct sock *)cookie)->__sk_common.skc_v6_rcv_saddr)));
 		probe_read_kernel(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
-				  _(&(((struct sock *)__cookie)->__sk_common.skc_v6_daddr)));
+				  _(&(((struct sock *)cookie)->__sk_common.skc_v6_daddr)));
 	}
 
 	return 0;
@@ -99,11 +90,17 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	struct socketmap_value *socket = 0;
 	struct tcpsocketmap_value *v;
 	struct msg_ip_event *val;
+	u64 cookie, __cookie;
 	u32 zero = 0;
-	u64 cookie;
 
-	/* In TCP we use the struct sock address as the socket cookie. */
-	cookie = (u64)_(skops->sk);
+	/* In TCP we use the struct sock address as the socket cookie.
+	 * Verifier on 6.15 (maybe earlier) maintained that cookie was a sock-or-null and
+	 * didn't want to pass it to the skops_tuple() function as a scalar. This
+	 * construction converts the sock-or-null to a scalar. Note, probe_reading
+	 * directly from the _(skops->sk) caused confusion so should be avoided.
+	*/
+	__cookie = (u64)_(skops->sk);
+	probe_read_kernel(&cookie, sizeof(cookie), &__cookie);
 	socket = lookup_socketmap(&cookie);
 	if (!socket)
 		return 0;
@@ -144,11 +141,17 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 	struct socketmap_value *socket = 0;
 	struct msg_execve_key *key;
 	struct msg_ip_event *val;
+	u64 cookie, __cookie;
 	__u32 zero = 0;
-	u64 cookie;
 
-	/* In TCP we use the struct sock address as the socket cookie. */
-	cookie = (__u64)_(skops->sk);
+	/* In TCP we use the struct sock address as the socket cookie.
+	 * Verifier on 6.15 (maybe earlier) maintained that cookie was a sock-or-null and
+	 * didn't want to pass it to the skops_tuple() function as a scalar. This
+	 * construction converts the sock-or-null to a scalar. Note, probe_reading
+	 * directly from the _(skops->sk) caused confusion so should be avoided.
+	*/
+	__cookie = (u64)_(skops->sk);
+	probe_read_kernel(&cookie, sizeof(cookie), &__cookie);
 	socket = lookup_socketmap(&cookie);
 	if (!socket) {
 		emit_ip_error_event(skops, 0, &cookie, _(skops->family) == AF_INET6, 0, 0, 0, IP_ERROR_TCP_CONNECT_NO_PROCESS);
@@ -186,12 +189,18 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	struct msg_ip_with_stats_event *val;
 	struct tcpsocketmap_value *socket;
 	int old_state, state;
+	u64 cookie, __cookie;
 	u32 zero = 0;
 	size_t size;
-	u64 cookie;
 
-	/* In TCP we use the struct sock address as the socket cookie. */
-	cookie = (u64)_(skops->sk);
+	/* In TCP we use the struct sock address as the socket cookie.
+	 * Verifier on 6.15 (maybe earlier) maintained that cookie was a sock-or-null and
+	 * didn't want to pass it to the skops_tuple() function as a scalar. This
+	 * construction converts the sock-or-null to a scalar. Note, probe_reading
+	 * directly from the _(skops->sk) caused confusion so should be avoided.
+	*/
+	__cookie = (u64)_(skops->sk);
+	probe_read_kernel(&cookie, sizeof(cookie), &__cookie);
 
 	old_state = _(skops->args[0]);
 	state = _(skops->args[1]);
