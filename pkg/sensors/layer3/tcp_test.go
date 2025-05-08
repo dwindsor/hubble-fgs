@@ -341,8 +341,8 @@ func startExistingTCPServices(t *testing.T) {
 	os.Chdir("/")
 	cmdServerTCP8094 = exec.Command(nc, "-nvlp", "8094", "-s", "0.0.0.0")
 	assert.NoError(t, cmdServerTCP8094.Start())
-	cmdServer8094V6 := exec.Command(nc, "-6nvlp", "8094", "-s", "::")
-	assert.NoError(t, cmdServer8094V6.Start())
+	cmdServerTCP8094V6 = exec.Command(nc, "-6nvlp", "8094", "-s", "::")
+	assert.NoError(t, cmdServerTCP8094V6.Start())
 	os.Chdir(path)
 
 	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8082, syscall.IPPROTO_TCP, syscall.AF_INET)
