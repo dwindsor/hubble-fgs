@@ -886,7 +886,7 @@ static inline __attribute__((always_inline)) int check_match_open_flags(__u32 se
 	int i = 0;
 
 	// only applicable to open events
-	if (action != action_open)
+	if (action != action_open && action != action_openraw)
 		return 1;
 
 	inner_open_flags_map = map_lookup_elem(&file_open_flags_map, &sel_idx);
