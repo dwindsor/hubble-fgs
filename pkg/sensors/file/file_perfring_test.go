@@ -898,6 +898,13 @@ func TestMatchOpenrawOps(t *testing.T) {
 			IsRelativePath: 0,
 		}: 0,
 		OpenRawTestCase{
+			Path:           "./something_wrong.txt",
+			TpName:         "file-monitoring-openraw",
+			Hook:           41, // hook_io_openat2
+			Retval:         int32(unix.ENOENT),
+			IsRelativePath: 1,
+		}: 0,
+		OpenRawTestCase{
 			Path:           "/etc/passwd",
 			TpName:         "file-monitoring-openraw",
 			Hook:           44, // hook_sys_openat
@@ -935,6 +942,11 @@ func TestMatchOpenrawOps(t *testing.T) {
 	ops := func() {
 		cmd := exec.Command(openIoUringBin, "/etc/passwd")
 		if err := cmd.Run(); err != nil {
+			t.Fatalf("failed to run command %s: %v", cmd, err)
+		}
+
+		cmd = exec.Command(openIoUringBin, "./something_wrong.txt")
+		if err := cmd.Run(); err == nil {
 			t.Fatalf("failed to run command %s: %v", cmd, err)
 		}
 

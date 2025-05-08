@@ -13,6 +13,8 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 #define O_CREAT	 00000100
 #define O_TRUNC	 00001000
 
+#define EAGAIN 11 /* Try again */
+
 static long BPF_FUNC(copy_from_user, void *dst, __u32 size, const void *user_ptr);
 static long BPF_FUNC(probe_read_user_str, void *dst, u32 size, const void *unsafe_ptr);
 
@@ -50,21 +52,10 @@ static struct msg_file_openraw_ops *get_msg_openraw_init()
 	return msg;
 }
 
-static inline __attribute__((always_inline)) int handle_open_raw(void *ctx, const char *filename, __u32 flags, __u32 hook, int dfd, int ret)
+int getname_from_hook(struct msg_file_openraw_ops *msg, const char *filename)
 {
-	struct msg_file_openraw_ops *msg;
-	struct kpath *kpath;
 	__u64 map_key = 0;
-	__u32 operation = 0;
-	__u32 msg_id = 0;
-	__u32 rule_id = 0;
-
-	if (!policy_filter_match())
-		return 0;
-
-	msg = get_msg_openraw_init();
-	if (!msg)
-		return -FILE_ERR_GET_MSG_HEAP;
+	struct kpath *kpath;
 
 	map_key = (__u64)filename;
 	kpath = map_lookup_elem(&open_user_to_kernel_path, &map_key);
@@ -77,6 +68,39 @@ static inline __attribute__((always_inline)) int handle_open_raw(void *ctx, cons
 
 	if (!__sync_sub_and_fetch(&kpath->refcnt, 1))
 		map_delete_elem(&open_user_to_kernel_path, &map_key);
+
+	return 0;
+}
+
+int getname_from_filename(struct msg_file_openraw_ops *msg, const char *filename)
+{
+	long ret;
+
+	ret = probe_read_kernel_str(msg->path.str, MAX_FILEPATH_SIZE, filename);
+	msg->path.size = (ret > 0) ? (ret - 1) : (0);
+	msg->path.flags = 0;
+
+	return 0;
+}
+
+static inline __attribute__((always_inline)) int handle_open_raw(void *ctx, int (*get_path)(struct msg_file_openraw_ops *, const char *), const char *filename, __u32 flags, __u32 hook, int dfd, int ret)
+{
+	struct msg_file_openraw_ops *msg;
+	__u32 operation = 0;
+	__u32 msg_id = 0;
+	__u32 rule_id = 0;
+	int err;
+
+	if (!policy_filter_match())
+		return 0;
+
+	msg = get_msg_openraw_init();
+	if (!msg)
+		return -FILE_ERR_GET_MSG_HEAP;
+
+	err = get_path(msg, filename);
+	if (err < 0)
+		return err;
 
 	msg->is_relative_path = msg->path.str[0] != '/';
 	if (msg->is_relative_path) { // in that case, we also need the dfd
@@ -149,7 +173,7 @@ int BPF_PROG(sys_open, const struct pt_regs *regs, int ret) // SYSCALL_DEFINE3(o
 	int dfd = AT_FDCWD;
 	int err = 0;
 
-	err = handle_open_raw(ctx, filename, flags, hook_sys_open, dfd, ret);
+	err = handle_open_raw(ctx, getname_from_hook, filename, flags, hook_sys_open, dfd, ret);
 	if (err < 0) {
 		inc_error(hook_sys_open, -err);
 		return 0;
@@ -166,7 +190,7 @@ int BPF_PROG(sys_openat, const struct pt_regs *regs, int ret) // SYSCALL_DEFINE4
 	int flags = PT_REGS_PARM3_CORE_SYSCALL(regs);
 	int err = 0;
 
-	err = handle_open_raw(ctx, filename, flags, hook_sys_openat, dfd, ret);
+	err = handle_open_raw(ctx, getname_from_hook, filename, flags, hook_sys_openat, dfd, ret);
 	if (err < 0) {
 		inc_error(hook_sys_openat, -err);
 		return 0;
@@ -183,7 +207,7 @@ int BPF_PROG(sys_openat2, const struct pt_regs *regs, int ret) // SYSCALL_DEFINE
 	struct open_how *how = (struct open_how *)PT_REGS_PARM3_CORE_SYSCALL(regs);
 	int err = 0;
 
-	err = handle_open_raw(ctx, filename, BPF_CORE_READ(how, flags), hook_sys_openat2, dfd, ret);
+	err = handle_open_raw(ctx, getname_from_hook, filename, BPF_CORE_READ(how, flags), hook_sys_openat2, dfd, ret);
 	if (err < 0) {
 		inc_error(hook_sys_openat2, -err);
 		return 0;
@@ -199,7 +223,7 @@ int BPF_PROG(sys_creat, const struct pt_regs *regs, int ret) // SYSCALL_DEFINE2(
 	int dfd = AT_FDCWD;
 	int err = 0;
 
-	err = handle_open_raw(ctx, filename, flags, hook_sys_creat, dfd, ret);
+	err = handle_open_raw(ctx, getname_from_hook, filename, flags, hook_sys_creat, dfd, ret);
 	if (err < 0) {
 		inc_error(hook_sys_creat, -err);
 		return 0;
@@ -219,7 +243,11 @@ int BPF_PROG(io_openat2, struct io_kiocb *req, unsigned int issue_flags, int ret
 	int retval = BPF_CORE_READ(req, cqe.res);
 	int err = 0;
 
-	err = handle_open_raw(ctx, BPF_CORE_READ(filename, uptr), flags, hook_io_openat2, dfd, (ret == 0) ? (retval) : (ret));
+	// this is a failure related to io_uring and will be retried automatically
+	if (ret == -EAGAIN)
+		return 0;
+
+	err = handle_open_raw(ctx, getname_from_filename, BPF_CORE_READ(filename, name), flags, hook_io_openat2, dfd, retval);
 	if (err < 0) {
 		inc_error(hook_io_openat2, -err);
 		return 0;
