@@ -137,8 +137,10 @@ type RenameOps struct {
 }
 
 type OpenFlagsPair struct {
-	Op   uint32
-	Mask uint32
+	Op      uint32
+	Mask    uint32
+	AccMode uint32
+	Pad     uint32
 }
 
 type OpenFlagsOps struct {
@@ -625,8 +627,10 @@ func GenerateFileOpenFlagsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinP
 
 		for i, f := range entries.flags {
 			if err := innerMap.Update(uint32(i), OpenFlagsPair{
-				Op:   f.Op,
-				Mask: f.Mask,
+				Op:      f.Op,
+				Mask:    f.Mask & ^uint32(unix.O_ACCMODE),
+				AccMode: f.Mask & uint32(unix.O_ACCMODE),
+				Pad:     0,
 			}, ebpf.UpdateAny); err != nil {
 				return fmt.Errorf("entries: %w", err)
 			}

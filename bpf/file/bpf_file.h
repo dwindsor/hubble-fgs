@@ -138,6 +138,8 @@
 #define TMPFS_MAGIC	      0x01021994
 #define HUGETLBFS_MAGIC	      0x958458f6
 
+#define O_ACCMODE 00000003UL
+
 #define OLDVAL 0
 #define NEWVAL 1
 
@@ -897,15 +899,16 @@ static inline __attribute__((always_inline)) int check_match_open_flags(__u32 se
 		__u32 k = i;
 		of = map_lookup_elem(inner_open_flags_map, &k);
 		if (of) {
-			if (of->op == op_filter_in) {
-				if (flags & of->mask)
-					return 1;
-			} else if (of->op == op_filter_notin) {
-				if (!(flags & of->mask))
-					return 1;
-			} else { // this will cover op == 0 as well
+			// The first part of this expression matches on the acc mode (i.e. O_RDONLY, O_RDWR, or O_WRONLY)
+			// The secondd part of this expression matches on the other open flags and we require at least
+			// those that are defined in the selector to match. Having more than those, results also in a match.
+			bool rs = ((flags & O_ACCMODE) == of->acc_mode) && (((flags & ~O_ACCMODE) & of->mask) == of->mask);
+			if (of->op == op_filter_in)
+				return rs;
+			else if (of->op == op_filter_notin)
+				return !rs;
+			else // this will cover op == 0 as well
 				return 0;
-			}
 		}
 	}
 

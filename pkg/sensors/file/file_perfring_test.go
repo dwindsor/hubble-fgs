@@ -875,6 +875,14 @@ func TestMatchOpenrawOps(t *testing.T) {
 								},
 							},
 						},
+						MatchOpenFlags: []v1alpha1.FileOpenFlagsTypeSelector{
+							{
+								Operator: "In",
+								Values: []v1alpha1.OpenFlagSelectorValue{
+									"O_RDONLY",
+								},
+							},
+						},
 					},
 				},
 			},
