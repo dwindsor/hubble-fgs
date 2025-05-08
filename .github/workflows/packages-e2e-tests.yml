@@ -108,7 +108,7 @@ jobs:
       - name: Copy dns.yaml tracing policy to /etc/tetragon/tetragon.tp.d/
         run: |
           sudo mkdir -p /etc/tetragon/tetragon.tp.d/
-          sudo cp crds/examples/dns.yaml /etc/tetragon/tetragon.tp.d/dns.yaml
+          sudo cp examples/tracingpolicy/dns.yaml /etc/tetragon/tetragon.tp.d/dns.yaml
 
       - name: Install Tetragon EE Tarball
         run: |
@@ -143,7 +143,7 @@ jobs:
             sudo sync
             sudo tetra status
             sudo tetra tracingpolicy list | grep dns -
-            sudo tetra tracingpolicy add crds/examples/udp.yaml
+            sudo tetra tracingpolicy add examples/tracingpolicy/udp.yaml
             sudo tetra tracingpolicy list | grep udp -
             sudo tetra bugtool
             sudo grep "tetra" /var/log/tetragon/tetragon.log
@@ -152,7 +152,7 @@ jobs:
         run: |
           sudo systemctl stop tetragon-enterprise
           sudo mkdir -p /opt/tetragon.tp.d/
-          sudo cp crds/examples/dns.yaml /opt/tetragon.tp.d/dns.yaml
+          sudo cp examples/tracingpolicy/dns.yaml /opt/tetragon.tp.d/dns.yaml
           echo "/opt/tetragon.tp.d/" | sudo tee /etc/tetragon/tetragon.conf.d/tracing-policy-dir
           echo "localhost:8118" | sudo tee /etc/tetragon/tetragon.conf.d/gops-address
           sudo systemctl start tetragon-enterprise
