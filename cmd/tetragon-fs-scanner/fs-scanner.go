@@ -672,6 +672,10 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 func tracingPolicyContainerDestroy(args *fm.FsScannerContainerDestroy) error {
 	containerID := fm.RemoveContainerIdPrefix(args.ContainerID)
 	for _, tp := range args.Tp {
+		if tp.IsPathBased { // nothing to do on path based policies
+			continue
+		}
+
 		handle, err := ebpf.LoadPinnedMap(program.PolicyMapPath(args.MapDir, tp.PolicyName, fm.InodeMapName), nil)
 		if err != nil {
 			return err

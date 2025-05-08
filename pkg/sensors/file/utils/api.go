@@ -109,6 +109,7 @@ type SpecPinPath struct {
 	DigestPaths  []string
 	PathMetadata map[string][]DigestPathMetadata
 	UserInodeNum int64
+	IsPathBased  bool
 }
 
 type FsScannerContainerInit struct {

@@ -1437,6 +1437,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		Config:        &config,
 		DigestPaths:   sel.GetDigestPaths(),
 		PathMetadata:  sel.GetPathMetadata(),
+		IsPathBased:   mode == PathBasedTpMode,
 	}
 	// Add rules from file_paths with a unique number assosciated to each of them.
 	// No need to add file_paths_exclude as we will never get an event from these.
@@ -1526,9 +1527,10 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	allPodsMu.Unlock()
 	for _, i := range allContainers {
 		s := fm.SpecPinPath{
-			PolicyName: policy.TpName(),
-			PinPath:    e.PinPathPrefix,
-			Spec:       kprobes,
+			PolicyName:  policy.TpName(),
+			PinPath:     e.PinPathPrefix,
+			Spec:        kprobes,
+			IsPathBased: mode == PathBasedTpMode,
 		}
 
 		containerInodes, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root, false)

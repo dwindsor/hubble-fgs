@@ -44,6 +44,7 @@ type FileMonitoring struct {
 	DigestPaths   []string
 	PathMetadata  map[string][]fm.DigestPathMetadata
 	UserInodeNum  int64
+	IsPathBased   bool
 }
 
 type FimTable struct {
@@ -135,6 +136,7 @@ func (t *FimTable) GetValuesFIM() []fm.SpecPinPath {
 			DigestPaths:  elem.DigestPaths,
 			PathMetadata: elem.PathMetadata,
 			UserInodeNum: elem.UserInodeNum,
+			IsPathBased:  elem.IsPathBased,
 		})
 	}
 	return vals
