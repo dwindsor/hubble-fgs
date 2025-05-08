@@ -238,6 +238,23 @@ type FileOpenrawResultSelector struct {
 	Result OpenrawResultValue `json:"result,omitempty"`
 }
 
+type UidGidValues struct {
+	// +kubebuilder:validation:Enum=In;NotIn
+	// Filter operation.
+	Operator string `json:"operator"`
+	// the values of gid/uid to match
+	Values []uint32 `json:"values,omitempty"`
+}
+
+type UidGidSelector struct {
+	// +kubebuilder:validation:Optional
+	// Matches on uid value.
+	Uid []UidGidValues `json:"uid,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Matches on gid value.
+	Gid []UidGidValues `json:"gid,omitempty"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
@@ -270,6 +287,9 @@ type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of results to match on openraw operations.
 	MatchOpenrawResult []FileOpenrawResultSelector `json:"matchOpenrawResult,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Match on uid and gid values.
+	MatchUidGid []UidGidSelector `json:"matchUidGid,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`

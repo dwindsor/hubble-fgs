@@ -778,6 +778,52 @@ spec:
                             - operator
                             type: object
                           type: array
+                        matchUidGid:
+                          description: Match on uid and gid values.
+                          items:
+                            properties:
+                              gid:
+                                description: Matches on gid value.
+                                items:
+                                  properties:
+                                    operator:
+                                      description: Filter operation.
+                                      enum:
+                                      - In
+                                      - NotIn
+                                      type: string
+                                    values:
+                                      description: the values of gid/uid to match
+                                      items:
+                                        format: int32
+                                        type: integer
+                                      type: array
+                                  required:
+                                  - operator
+                                  type: object
+                                type: array
+                              uid:
+                                description: Matches on uid value.
+                                items:
+                                  properties:
+                                    operator:
+                                      description: Filter operation.
+                                      enum:
+                                      - In
+                                      - NotIn
+                                      type: string
+                                    values:
+                                      description: the values of gid/uid to match
+                                      items:
+                                        format: int32
+                                        type: integer
+                                      type: array
+                                  required:
+                                  - operator
+                                  type: object
+                                type: array
+                            type: object
+                          type: array
                       type: object
                     type: array
                 type: object
