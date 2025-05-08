@@ -545,9 +545,10 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return fmt.Errorf("failed to create process manager: %w", err)
 	}
 	alerter := alerts.NewAlerter(ctx, alertsManager)
+	netpolManager := netpol.New(ctx)
 
 	// Start gRPC server
-	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer, mandatesrv.New(mandateMgr), alerter); err != nil {
+	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer, mandatesrv.New(mandateMgr), alerter, netpolManager); err != nil {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 
@@ -961,13 +962,13 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 
 func Serve(
 	ctx context.Context, listenAddr string,
-	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer,
-) error {
+	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager) error {
 	grpcServer := grpc.NewServer()
 	tetragon.RegisterFineGuidanceSensorsServer(grpcServer, srv)
 	tetragon.RegisterProcessModelServiceServer(grpcServer, model)
 	tetragon.RegisterMandateServiceServer(grpcServer, mandate)
 	tetragon.RegisterAlertServiceServer(grpcServer, alerter)
+	tetragon.RegisterNetworkPolicyServiceServer(grpcServer, netpol)
 	appModelV1.RegisterApplicationModelServiceServer(grpcServer, model)
 
 	proto, addr, err := server.SplitListenAddr(listenAddr)
