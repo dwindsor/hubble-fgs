@@ -1,18 +1,9 @@
-# Custom Resource Definitions for FGS
+If you're looking for Tetragon CustomResourceDefinitions, you can find them
+under the `pkg/k8s/apis/cilium.io` directory. It contains the CRD Go code,
+generated clients, as well as CRD YAML files.
 
-Custom resource definition YAML files in this directory are auto-generated
-using [controller-gen](https://book.kubebuilder.io/reference/controller-gen.html)
-based on types defined in [pkg/k8s/apis/isovalent.com](../pkg/k8s/apis/isovalent.com).
-Run:
-
-    make generate
-
-from the top-level directory to regenerated these files.
-
-See [examples](examples) directory for example custom resources. These
-examples are written manually. Add more examples if you feel like it.
-
-# To Deploy sample write.yaml
-
-$ kubectl apply -f ./cilium.io_tracingpolicies.yaml
-$ kubectl apply -f ./examples/write.yam
+If you're looking for examples of Tetragon Custom Resources, you can find them
+under the `examples` directory. If you're looking for the Tetragon default
+ruleset, it's under the `install/kubernetes/enterprise/default-policies`
+directory. Other policies (e.g. used in demos or developed for a specific
+customer) can be found in different repositories too.
