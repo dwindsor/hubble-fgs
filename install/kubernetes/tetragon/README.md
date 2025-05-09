@@ -57,7 +57,7 @@ Helm chart for Tetragon Enterprise
 | rthooks.failAllowNamespaces | string | `""` | Comma-separated list of namespaces to allow Pod creation for, in case tetragon-oci-hook fails to reach Tetragon agent. The namespace Tetragon is deployed in is always added as an exception and must not be added again. |
 | rthooks.image | object | `{"override":null,"repository":"quay.io/cilium/tetragon-rthooks","tag":"v0.5"}` | image for the Tetragon rthooks pod |
 | rthooks.installDir | string | `"/opt/tetragon"` | installDir is the host location where the tetragon-oci-hook binary will be installed |
-| rthooks.interface | string | `""` | Method to use for installing  rthooks. Values:     "oci-hooks":       Add an apppriate file to "/usr/share/containers/oci/hooks.d". Use this with CRI-O.       See https://github.com/containers/common/blob/main/pkg/hooks/docs/oci-hooks.5.md       for more details.       Specific configuration for this interface can be found under "OciHooks".     "nri-hook":      Install the hook via NRI. Use this with containerd. Requires NRI being enabled.      see: https://github.com/containerd/containerd/blob/main/docs/NRI.md.  |
+| rthooks.interface | string | `""` | Method to use for installing  rthooks. Values:     "oci-hooks":       Add an apppriate file to "/usr/share/containers/oci/hooks.d". Use this with CRI-O.       See https://github.com/containers/common/blob/main/pkg/hooks/docs/oci-hooks.5.md       for more details.       Specific configuration for this interface can be found under "ociHooks".     "nri-hook":      Install the hook via NRI. Use this with containerd. Requires NRI being enabled.      see: https://github.com/containerd/containerd/blob/main/docs/NRI.md.      Specific configuration for this interface can be found under "nriHook".  |
 | rthooks.nriHook | object | `{"nriSocket":"/var/run/nri/nri.sock"}` | configuration for the "nri-hook" interface |
 | rthooks.nriHook.nriSocket | string | `"/var/run/nri/nri.sock"` | path to NRI socket |
 | rthooks.ociHooks | object | `{"hooksPath":"/usr/share/containers/oci/hooks.d"}` | configuration for "oci-hooks" interface |
@@ -147,13 +147,6 @@ Helm chart for Tetragon Enterprise
 | tetragon.metadata.image.override | string | `nil` |  |
 | tetragon.metadata.image.repository | string | `"quay.io/isovalent/hubble-enterprise-metadata"` |  |
 | tetragon.metadata.image.tag | string | `"current"` |  |
-| tetragon.ociHookSetup | object | `{"enabled":false,"extraVolumeMounts":[],"failAllowNamespaces":"","installDir":"/opt/tetragon","interface":"oci-hooks","resources":{},"securityContext":{"privileged":true}}` | Configure tetragon's init container for setting up tetragon-oci-hook on the host NOTE: This is deprecated, please use .rthooks |
-| tetragon.ociHookSetup.enabled | bool | `false` | enable  init container to setup tetragon-oci-hook |
-| tetragon.ociHookSetup.extraVolumeMounts | list | `[]` | Extra volume mounts to add to the oci-hook-setup init container |
-| tetragon.ociHookSetup.failAllowNamespaces | string | `""` | Comma-separated list of namespaces to allow Pod creation for, in case tetragon-oci-hook fails to reach Tetragon agent. The namespace Tetragon is deployed in is always added as an exception and must not be added again. |
-| tetragon.ociHookSetup.interface | string | `"oci-hooks"` | interface specifices how the hook is  configured. There is only one avaialble value for now: "oci-hooks" (https://github.com/containers/common/blob/main/pkg/hooks/docs/oci-hooks.5.md). |
-| tetragon.ociHookSetup.resources | object | `{}` | resources for the the oci-hook-setup init container |
-| tetragon.ociHookSetup.securityContext | object | `{"privileged":true}` | Security context for oci-hook-setup init container |
 | tetragon.podAnnotations.enabled | bool | `false` |  |
 | tetragon.pprof.address | string | `"localhost"` | The address at which to expose pprof. |
 | tetragon.pprof.enabled | bool | `false` | Whether to enable exposing pprof server. |
@@ -207,7 +200,7 @@ Helm chart for Tetragon Enterprise
 | tetragonOperator.nodeSelector | object | `{}` | Steer the Tetragon Operator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
 | tetragonOperator.podAnnotations | object | `{}` | Annotations for the Tetragon Operator Deployment Pods. |
 | tetragonOperator.podInfo.enabled | bool | `true` | Enables the PodInfo CRD and the controller that reconciles PodInfo custom resources. |
-| tetragonOperator.podSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}` | securityContext for the Tetragon Operator Deployment Pod container. |
+| tetragonOperator.podSecurityContext | object | `{}` | securityContext for the Tetragon Operator Deployment Pods. |
 | tetragonOperator.priorityClassName | string | `""` | priorityClassName for the Tetragon Operator Deployment Pods. |
 | tetragonOperator.prometheus.address | string | `""` | The address at which to expose Tetragon Operator metrics. Set it to "" to expose on all available interfaces. |
 | tetragonOperator.prometheus.enabled | bool | `true` | Enables the Tetragon Operator metrics. |
@@ -218,7 +211,7 @@ Helm chart for Tetragon Enterprise
 | tetragonOperator.prometheus.serviceMonitor.scrapeInterval | string | `"60s"` | Interval at which metrics should be scraped. If not specified, Prometheus' global scrape interval is used. |
 | tetragonOperator.replicas | int | `1` | Number of replicas to run for the tetragon-operator deployment |
 | tetragonOperator.resources | object | `{"limits":{"cpu":"500m","memory":"128Mi"},"requests":{"cpu":"10m","memory":"64Mi"}}` | resources for the Tetragon Operator Deployment Pod container. |
-| tetragonOperator.securityContext | object | `{}` | securityContext for the Tetragon Operator Deployment Pods. |
+| tetragonOperator.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}` | securityContext for the Tetragon Operator Deployment Pod container. |
 | tetragonOperator.serviceAccount | object | `{"annotations":{},"create":true,"name":""}` | tetragon-operator service account. |
 | tetragonOperator.strategy | object | `{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0},"type":"RollingUpdate"}` | resources for the Tetragon Operator Deployment update strategy |
 | tetragonOperator.tolerations | list | `[]` |  |

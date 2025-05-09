@@ -42,14 +42,14 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/sryoya/protorand v0.0.0-20250114120907-8c1a8e3138f2
 	github.com/stretchr/testify v1.10.0
-	github.com/vishvananda/netlink v1.3.1-0.20250414221550-d85a66b0d8f7
+	github.com/vishvananda/netlink v1.3.1-0.20250425193846-9d88d8385bf9
 	github.com/vishvananda/netns v0.0.5
 	github.com/wI2L/jsondiff v0.6.1
 	github.com/xlab/treeprint v1.2.0
 	github.com/yalue/native_endian v1.0.2
 	go.opentelemetry.io/proto/otlp v1.5.0
 	golang.org/x/net v0.38.0
-	golang.org/x/sys v0.32.0
+	golang.org/x/sys v0.33.0
 	golang.org/x/time v0.11.0
 	google.golang.org/api v0.228.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20250407143221-ac9807e6c755
@@ -236,8 +236,8 @@ require (
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
-	golang.org/x/sync v0.13.0 // indirect
-	golang.org/x/term v0.31.0
+	golang.org/x/sync v0.14.0 // indirect
+	golang.org/x/term v0.32.0
 	golang.org/x/text v0.23.0
 	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect

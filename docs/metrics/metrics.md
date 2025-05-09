@@ -18,7 +18,7 @@ Build information about tetragon
 | label | values |
 | ----- | ------ |
 | `commit` | `931b70f2c9878ba985ba6b589827bea17da6ec33` |
-| `go_version` | `go1.24.2` |
+| `go_version` | `go1.24.3` |
 | `modified` | `false` |
 | `time ` | `2022-05-13T15:54:45Z` |
 | `version` | `v1.2.0` |
@@ -289,6 +289,10 @@ The total time of BPF program running.
 | `section` | `kprobe/sys_open` |
 | `sensor` | `generic_kprobe` |
 
+### `tetragon_policyfilter_hook_container_image_missing_total`
+
+The total number of operations when the container image was missing in the OCI hook
+
 ### `tetragon_policyfilter_hook_container_name_missing_total`
 
 The total number of operations when the container name was missing in the OCI hook
@@ -393,7 +397,7 @@ Information about the Go environment.
 
 | label | values |
 | ----- | ------ |
-| `version` | `go1.24.2` |
+| `version` | `go1.24.3` |
 
 ### `go_memstats_alloc_bytes`
 
