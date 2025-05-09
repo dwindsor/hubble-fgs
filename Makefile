@@ -552,8 +552,10 @@ check-copyright: ## Check copyright headers.
 
 ##@ OSS submodule helpers
 
+## oss-sync: ## Sync OSS submodule with the main branch and create an oss-sync commit.
+## oss-sync OSS_SYNC_TARGET=pr/lambdanis/fix-bug: ## Sync OSS submodule with a specific branch.
 .PHONY: oss-sync
-oss-sync: ## Sync OSS submodule and create an oss-sync commit.
+oss-sync:
 	@echo Syncing OSS submodule...
 	@./contrib/oss-chores/oss-sync.sh "$(OSS_SYNC_TARGET)"
 
