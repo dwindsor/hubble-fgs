@@ -13,13 +13,19 @@
 package examples_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	"github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml"
 	"github.com/cilium/tetragon/pkg/crdutils"
+	"github.com/cilium/tetragon/pkg/eventcheckertests/yamlhelpers"
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
 )
@@ -52,4 +58,35 @@ func TestExamplesTetragonNetworkPolicy(t *testing.T) {
 		_, err := netpol.FromFile(path)
 		return err
 	})
+}
+
+func TestExamplesEventchecker(t *testing.T) {
+	_, filename, _, _ := runtime.Caller(0)
+	examplesDir := filepath.Join(filepath.Dir(filename), "../../crds/eventchecker")
+	err := filepath.Walk(examplesDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip directories and non-yaml files
+		if info.IsDir() || (!strings.HasSuffix(info.Name(), "yaml") && !strings.HasSuffix(info.Name(), "yml")) {
+			return nil
+		}
+
+		// Fill this in with template data as needed
+		templateData := map[string]string{
+			"Pid": fmt.Sprint(os.Getpid()),
+		}
+
+		// Attempt to parse the file
+		data, err := crdutils.ReadFileTemplate(path, templateData)
+		assert.NoError(t, err, "example %s must parse correctly", info.Name())
+
+		var conf yaml.EventCheckerConf
+		yamlhelpers.AssertUnmarshalRoundTrip(t, []byte(data), &conf)
+
+		return nil
+	})
+
+	assert.NoError(t, err, "failed to walk examples directory")
 }
