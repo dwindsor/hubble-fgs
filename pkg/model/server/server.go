@@ -778,7 +778,9 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		k.NSID = v.newNSID
 		v.oldValue.MaybeMissingNSID = false
 		// Update process tree map with the new value
-		m.Update(&k, &v.oldValue, ebpf.UpdateAny)
+		if err := m.Update(&k, &v.oldValue, ebpf.UpdateAny); err != nil {
+			logger.GetLogger().WithError(err).WithField("nsid", k.NSID).WithField("uid", k.Self).Debug("failed to update process tree map with corrected NSID")
+		}
 	}
 	clear(pendingNSIDUpdates)
 
