@@ -101,7 +101,7 @@ func _checkAddAndFetch() error {
 	// to create the instruction and then add the offset and constant after.
 	addAndFetchInsn := asm.StoreXAdd(asm.R10, asm.R2, asm.DWord)
 	addAndFetchInsn.Offset = -8
-	addAndFetchInsn.Constant = 1
+	addAndFetchInsn.Constant = 1 // set BPF_FETCH bit
 	spec := &ebpf.ProgramSpec{
 		Type:       ebpf.Kprobe,
 		AttachType: ebpf.AttachNone,
@@ -153,7 +153,7 @@ func _checkCurrentTaskBTF() bool {
 // SupportProcessTree checks if the kernel supports the right programs, instructions and helpers to
 // allow the process tree functionality to work.
 func SupportProcessTree() bool {
-	return SupportAddAndFetch() && SupportCurrentTaskBTF()
+	return SupportAddAndFetch() && SupportCurrentTaskBTF() && SupportGlobalFuncPtrArgs()
 }
 
 // SupportFuncByFuncVerif checks if the kernel supports function-by-function verification

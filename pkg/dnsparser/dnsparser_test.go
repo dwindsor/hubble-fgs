@@ -30,6 +30,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/google/gopacket/pcapgo"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"golang.org/x/sys/unix"
 )
 
@@ -50,9 +51,8 @@ func parseIPs(ips ...string) []netip.Addr {
 }
 
 func loadDNSTestCollection(t *testing.T) *ebpf.Collection {
-	// Try at least loading the test program from 5.15, even if it cannot run it should load.
-	if v := "5.15.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	if !utils.SupportDNSParser() {
+		t.Skip()
 	}
 
 	// load test program

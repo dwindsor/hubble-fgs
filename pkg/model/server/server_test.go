@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/netip"
 	"os"
@@ -19,7 +20,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper/docker"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
@@ -29,6 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/server"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	"github.com/isovalent/ipa/application_model/v1alpha"
@@ -56,7 +57,6 @@ var tests = []processTree{
 		Checks: []string{
 			`model.host.processes.exists(p, p.name.matches("/usr/bin/bash") && p.arguments.matches("-c.*uname.*-r.*"))`,
 		},
-		ArmSupport: true,
 	},
 	{
 		Name: "testBasicCurl",
@@ -67,7 +67,6 @@ var tests = []processTree{
 		Checks: []string{
 			`model.host.processes.exists(p, p.name.matches(".*curl") && p.connections.exists(c, c.destination.dns.destination_names.exists(n, n.matches("ebpf.io")) && c.stats.tx_bytes > 0))`,
 		},
-		ArmSupport: false,
 	},
 	{
 		Name: "testInInitTree",
@@ -81,7 +80,6 @@ var tests = []processTree{
 			`model.host.processes.exists(p, p.name.matches("bash") && p.arguments.matches("-c \"sleep infinity\"") && p.in_init_tree)`,
 			`model.host.processes.exists(p, p.name.matches("bash") && p.arguments.matches("-c \"echo testificate\"") && !p.in_init_tree)`,
 		},
-		ArmSupport: false,
 	},
 	{
 		Name: "testSyscallsRead",
@@ -90,27 +88,47 @@ var tests = []processTree{
 			newCmdStep(testutils.RepoRootPath("contrib/tester-progs/read_write/read"), testutils.RepoRootPath("testdata/dummy_files/lorem.txt")),
 		},
 		Checks: []string{
-			`model.host.processes.exists(p,
-				p.name.matches("tester-progs/read_write/read") &&
-				p.arguments.matches("testdata/dummy_files/lorem.txt") &&
-				sets.contains(p.syscall_info.syscalls, [
-					SYS_BRK,
-					SYS_ACCESS,
-					SYS_OPENAT,
-					SYS_CLOSE,
-					SYS_MMAP,
-					SYS_PREAD64,
-					SYS_ARCH_PRCTL,
-					SYS_SET_TID_ADDRESS,
-					SYS_SET_ROBUST_LIST,
-					SYS_RSEQ,
-					SYS_MPROTECT,
-					SYS_MUNMAP,
-					SYS_READ,
-					SYS_PRLIMIT64,
-				]))`,
+			fmt.Sprintf(`model.host.processes.exists(p,
+			    p.name.matches("tester-progs/read_write/read") &&
+			    p.arguments.matches("testdata/dummy_files/lorem.txt") &&
+			    sets.contains(p.syscall_info.syscalls, [
+			        SYS_BRK,
+			        SYS_OPENAT,
+			        SYS_CLOSE,
+			        SYS_MMAP,
+			        SYS_SET_TID_ADDRESS,
+			        SYS_SET_ROBUST_LIST,
+			        SYS_RSEQ,
+			        SYS_MPROTECT,
+			        SYS_MUNMAP,
+			        SYS_READ,
+			        SYS_PRLIMIT64,
+			        %s
+			        %s
+			        %s
+			    ]))`,
+				func() string {
+					access := "SYS_ACCESS,"
+					if runtime.GOARCH == "arm64" {
+						access = "SYS_FACCESSAT,"
+					}
+					return access
+				}(),
+				func() string {
+					pread := "SYS_PREAD64,"
+					if runtime.GOARCH == "arm64" {
+						pread = ""
+					}
+					return pread
+				}(),
+				func() string {
+					prctl := "SYS_ARCH_PRCTL,"
+					if runtime.GOARCH == "arm64" {
+						prctl = ""
+					}
+					return prctl
+				}()),
 		},
-		ArmSupport: false,
 	},
 }
 
@@ -260,15 +278,14 @@ func newSleepStep(duration time.Duration) *sleepStep {
 }
 
 type processTree struct {
-	Name       string
-	Steps      []testStep
-	Checks     []string
-	ArmSupport bool
+	Name   string
+	Steps  []testStep
+	Checks []string
 }
 
 func TestProcessTree(t *testing.T) {
-	if v := "5.15.0"; !kernels.MinKernelVersion(v) {
-		return
+	if !utils.SupportProcessTree() {
+		t.Skip()
 	}
 
 	var doneWG sync.WaitGroup
@@ -296,10 +313,6 @@ spec:
 
 	for _, e := range tests {
 		t.Run(e.Name, func(t *testing.T) {
-			if runtime.GOARCH != "amd64" && !e.ArmSupport {
-				t.Skipf("ARM not supported for test %s, skipping", e.Name)
-			}
-
 			for _, step := range e.Steps {
 				step.Step(t)
 			}
@@ -329,8 +342,7 @@ spec:
 }
 
 func TestProcessTree_DNSPolicy(t *testing.T) {
-	// So far DNS policy are only supported on amd64 but could be extend to arm64 on recent kernels
-	if runtime.GOARCH != "amd64" || !kernels.MinKernelVersion("5.15.0") {
+	if !utils.SupportDNSParser() || !utils.SupportProcessTree() {
 		t.Skip()
 	}
 

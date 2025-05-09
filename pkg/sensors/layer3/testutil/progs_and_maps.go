@@ -254,13 +254,10 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	cfgMap.Progs = MergeIntoMap(cfgMap.Progs, GetMapProgs(sockMaps, cfgMap.Name), ni)
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
-	confMap := tus.SensorMap{}
-	if utils.SupportProcessTree() {
-		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
-		confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			tcpSockopsProg, cgroupEgressProg, cgroupIngressProg,
-		})...)
-	}
+	confMap := SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
+	confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
+		tcpSockopsProg, cgroupEgressProg, cgroupIngressProg,
+	})...)
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		socketMap,
@@ -522,12 +519,6 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
 	confMap := tus.SensorMap{}
-	if utils.SupportProcessTree() {
-		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
-		confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			tcpSockopsProg, tcpSecurityAccept, tcpSecurityGraft, cgroupEgressProg, cgroupIngressProg,
-		})...)
-	}
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		socketMap,

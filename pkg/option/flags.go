@@ -11,13 +11,11 @@
 package option
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/defaults"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/option"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/spf13/pflag"
@@ -253,10 +251,6 @@ func readAndSetEnterpriseFlags() {
 
 func validateConfig(config config) error {
 	if config.EnableBPFDNSParser {
-		if !kernels.MinKernelVersion("5.15.0") {
-			return errors.New("kernel version 5.15.0+ is required for the BPF DNS parser")
-		}
-
 		// The BPF DNS parser is loaded alongside the UDP sensor
 		if !config.EnableUDP {
 			return fmt.Errorf("the BPF DNS parser requires --%s", keyEnableUDP)
