@@ -30,6 +30,7 @@ type ManagerTestSuite struct {
 
 func (suite *ManagerTestSuite) SetupSuite() {
 	option.Config.EnableK8s = true
+	option.Config.EnablePodInfo = true
 	useExistingCluster := true
 	suite.testEnv = &envtest.Environment{
 		UseExistingCluster: &useExistingCluster,

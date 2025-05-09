@@ -79,9 +79,11 @@ func New(ctx context.Context) (KubernetesManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = ossManager.Manager.GetFieldIndexer().IndexField(ctx, &v1alpha1.PodInfo{}, podInfoIPField, getPodInfoIPs)
-	if err != nil {
-		return nil, err
+	if option.Config.EnablePodInfo {
+		err = ossManager.Manager.GetFieldIndexer().IndexField(ctx, &v1alpha1.PodInfo{}, podInfoIPField, getPodInfoIPs)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if enterpriseOption.Config.EnableApplicationModel {
 		serviceReconciler := controllers.NewServiceReconciler(ossManager.Manager.GetClient(), endpoint.MustGet())
