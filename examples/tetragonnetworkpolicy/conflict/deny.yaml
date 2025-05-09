@@ -18,7 +18,8 @@ spec:
   - hook: "connect"
     action: "deny"
     destination:
-    - matchLabels:
-        org: "empire"
+    - podSelector:
+        matchLabels:
+          org: "empire"
       ports:
         protocol: "TCP"

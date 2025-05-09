@@ -40,7 +40,7 @@ func fromYAML(data string) (*v1alpha1.TetragonNetworkPolicy, error) {
 	}
 }
 
-func fromFile(path string) (*v1alpha1.TetragonNetworkPolicy, error) {
+func FromFile(path string) (*v1alpha1.TetragonNetworkPolicy, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func addNetworkPolicy(_ context.Context, file string) error {
 		return err
 	}
 
-	np, err := fromFile(f)
+	np, err := FromFile(f)
 	if err != nil {
 		return fmt.Errorf("failed to read (%s) tetragon network policy: %w", file, err)
 	}
