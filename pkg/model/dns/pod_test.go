@@ -8,6 +8,7 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/podhelpers"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -63,7 +64,8 @@ func addPod(t *testing.T, id policyfilter.PodID, name, labels string) {
 	err = state.AddPodContainer(id,
 		"testNamespace", name, "testKind",
 		matchLabels,
-		"testContainerID", cgid, "testContainerName")
+		"testContainerID", cgid,
+		podhelpers.ContainerInfo{Name: "testContainerName", Repo: "testContainerRepo"})
 	assert.NoError(t, err)
 }
 
@@ -106,7 +108,9 @@ func testPod(t *testing.T, id, ns, name, kind, matchLabels string) *v1alpha1.Pod
 	}
 
 	cgid := policyfilter.CgroupID(0x01)
-	err = state.AddPodContainer(podId(id), ns, name, kind, ml, "testContainerID", cgid, "testContainerName")
+	err = state.AddPodContainer(
+		podId(id), ns, name, kind, ml, "testContainerID", cgid,
+		podhelpers.ContainerInfo{Name: "testContainerName", Repo: "testContainerRepo"})
 	assert.NoError(t, err)
 
 	return podInfo
