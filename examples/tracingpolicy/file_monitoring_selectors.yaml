@@ -110,5 +110,8 @@ spec:
         - operator: "In" 
           values:
           - 0
+      matchProcessDuration: # match all processes that run for more than 2 seconds
+      - operator: "GT"
+        value: 2s
       matchActions:
       - action: Block # Possible values: Block or Post (default).
