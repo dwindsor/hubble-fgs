@@ -255,6 +255,15 @@ type UidGidSelector struct {
 	Gid []UidGidValues `json:"gid,omitempty"`
 }
 
+type ProcessDurationSelector struct {
+	// +kubebuilder:validation:Enum=lt;LT;LessThan;gt;GT;GreaterThan
+	// Filter operation.
+	Operator string `json:"operator"`
+	// +kubebuilder:validation:Format=duration
+	// The time to compare with the process duration. Accepts unit suffix such as ns, us, ms, s, etc.
+	Value string `json:"value"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
@@ -290,6 +299,9 @@ type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// Match on uid and gid values.
 	MatchUidGid []UidGidSelector `json:"matchUidGid,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Match on process duration.
+	MatchProcessDuration []ProcessDurationSelector `json:"matchProcessDuration,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`

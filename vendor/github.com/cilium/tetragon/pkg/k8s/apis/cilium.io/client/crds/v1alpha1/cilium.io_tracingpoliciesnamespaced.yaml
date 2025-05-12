@@ -757,6 +757,31 @@ spec:
                             - operator
                             type: object
                           type: array
+                        matchProcessDuration:
+                          description: Match on process duration.
+                          items:
+                            properties:
+                              operator:
+                                description: Filter operation.
+                                enum:
+                                - lt
+                                - LT
+                                - LessThan
+                                - gt
+                                - GT
+                                - GreaterThan
+                                type: string
+                              value:
+                                description: The time to compare with the process
+                                  duration. Accepts unit suffix such as ns, us, ms,
+                                  s, etc.
+                                format: duration
+                                type: string
+                            required:
+                            - operator
+                            - value
+                            type: object
+                          type: array
                         matchRenameSrcType:
                           description: A list of file rename type filters.
                           items:
