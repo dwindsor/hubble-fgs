@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -181,6 +182,12 @@ type UidGidVal struct {
 	gidVal uint32
 }
 
+type ProcessDurationVal struct {
+	Op  uint32
+	Pad uint32
+	Val uint64
+}
+
 type KernelSelectorState struct {
 	selectors.KernelSelectorState
 
@@ -214,6 +221,9 @@ type KernelSelectorState struct {
 	// matchUidGid
 	uidgid map[uint32]*UidGidVal
 
+	// matchProcessDuration
+	processduration map[uint32]*ProcessDurationVal
+
 	// matchActions value
 	action map[uint32]*ActionsVal
 
@@ -234,6 +244,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 		exec:                map[uint32]*MatchExecAttrs{},
 		openraw:             map[uint32]uint32{},
 		uidgid:              map[uint32]*UidGidVal{},
+		processduration:     map[uint32]*ProcessDurationVal{},
 		action:              map[uint32]*ActionsVal{},
 	}
 }
@@ -1447,6 +1458,59 @@ func GetUidGidMapSize(sel *KernelSelectorState) int {
 	return len(sel.uidgid)
 }
 
+func ParseMatchProcessDuration(k *KernelSelectorState, op []v1alpha1.ProcessDurationSelector, selIdx int) error {
+	if len(op) > 1 {
+		return fmt.Errorf("only support a single operation inside a single selector")
+	}
+	if len(op) == 0 {
+		return nil
+	}
+
+	o := op[0]
+
+	// operator
+	oper, err := selectors.SelectorOp(o.Operator)
+	if err != nil {
+		return fmt.Errorf("matchProcessDuration error: %w", err)
+	}
+	if oper != selectors.SelectorOpGT && oper != selectors.SelectorOpLT {
+		return fmt.Errorf("matchProcessDuration supports only Gt and Lt operator")
+	}
+
+	// value
+	dur, err := time.ParseDuration(o.Value)
+	if err != nil {
+		return fmt.Errorf("matchProcessDuration invalid format for duration error: %w", err)
+	}
+
+	entry, ok := k.processduration[uint32(selIdx)]
+	if !ok {
+		entry = &ProcessDurationVal{}
+		k.processduration[uint32(selIdx)] = entry
+	}
+	entry.Op = oper
+	entry.Pad = 0
+	entry.Val = uint64(dur.Nanoseconds())
+
+	return nil
+}
+
+func GenerateProcessDurationMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	for idx, result := range sel.processduration {
+		if err := m.Update(idx, result, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetProcessDurationMapSize(sel *KernelSelectorState) int {
+	if len(sel.processduration) == 0 {
+		return 1
+	}
+	return len(sel.processduration)
+}
+
 func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors int) (*KernelSelectorState, error) {
 	if len(fileSel) > maxFimSelectors {
 		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
@@ -1485,6 +1549,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 		}
 		if err := ParseMatchUidGid(kernelSelectors, s.MatchUidGid, i); err != nil {
 			return nil, fmt.Errorf("parseMatchUidGid error: %w", err)
+		}
+		if err := ParseMatchProcessDuration(kernelSelectors, s.MatchProcessDuration, i); err != nil {
+			return nil, fmt.Errorf("parseMatchProcessDuration error: %w", err)
 		}
 		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
 			return nil, fmt.Errorf("parseMatchActions error: %w", err)

@@ -575,6 +575,19 @@ struct {
 	__uint(max_entries, 1); /* the user will setup this */
 } file_uidgid_map SEC(".maps");
 
+struct sel_proc_dur {
+	__u32 op;
+	__u32 pad;
+	__u64 val;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u32);
+	__type(value, struct sel_proc_dur);
+	__uint(max_entries, 1); /* the user will setup this */
+} file_proc_dur_map SEC(".maps");
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_binaries(__u32 selidx, struct execve_map_value *current)
 {
@@ -1122,6 +1135,30 @@ sel_check_gid:
 	return 1;
 }
 
+// returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_proc_dur(__u32 sel_idx, struct execve_map_value *execve)
+{
+	__u32 sel = sel_idx;
+	struct sel_proc_dur *val = 0;
+	__u64 curr_time = 0;
+	__u64 process_duration = 0;
+
+	val = map_lookup_elem(&file_proc_dur_map, &sel);
+	if (!val) // no matchProcessDuration for this selector -- match
+		return 1;
+
+	curr_time = ktime_get_ns();
+	if (curr_time < execve->key.ktime) // current time should always be greater than process init time
+		return 0;
+
+	process_duration = curr_time - execve->key.ktime;
+	if (val->op == op_filter_gt)
+		return process_duration > val->val;
+	else if (val->op == op_filter_lt)
+		return process_duration < val->val;
+	return 0; // we make sure in the user-space that op is Gt or Lt
+}
+
 static inline __attribute__((always_inline)) __u32
 __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest, struct execve_map_value *execve, struct sel_path path, __u32 *msg_id)
 {
@@ -1132,6 +1169,8 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 	if (!check_match_operations(sel_idx, args.action))
 		return 0;
 	if (!check_match_uid_gid(sel_idx))
+		return 0;
+	if (!check_match_proc_dur(sel_idx, execve))
 		return 0;
 #ifdef __LARGE_BPF_PROG
 #ifdef __FILE_DIGEST_LSM
