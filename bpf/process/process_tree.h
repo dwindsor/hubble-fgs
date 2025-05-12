@@ -506,6 +506,27 @@ int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tupl
 	return 0;
 }
 
+static int repair_socket_nsid(struct destination_endpoint_key *key)
+{
+	__u64 cgid, *nsid;
+
+	if (likely(key->local_nsid != 0))
+		return 0;
+
+	cgid = tg_sockops_get_current_cgroup_id();
+	if (likely(cgid == 0))
+		return 0;
+
+	// Otherwise we have CGID, but no local NSID mapping so lets
+	// attempt to discover if one exists.
+	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
+	if (nsid) {
+		key->local_nsid = *nsid;
+		return 1;
+	}
+	return 0;
+}
+
 static inline __attribute__((always_inline)) int process_socketmap_rekey(struct destination_endpoint_key *key, struct __sk_buff *skb)
 {
 	struct endpoint_id_value *value;
@@ -589,6 +610,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	if (!v->dst_key.source)
 		return SK_PASS;
 
+	repair_socket_nsid(&v->dst_key);
 	process_socketmap_rekey(&v->dst_key, skb);
 
 	key = v->dst_key;
