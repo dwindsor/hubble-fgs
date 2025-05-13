@@ -2,6 +2,7 @@ package dns
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -15,12 +16,9 @@ type Cache struct {
 }
 
 var (
-	cache *Cache
+	cache    *Cache
+	initOnce sync.Once
 )
-
-func init() {
-	NewCache()
-}
 
 func NewCache() (*Cache, error) {
 	if cache != nil {
@@ -33,19 +31,12 @@ func NewCache() (*Cache, error) {
 		return nil, err
 	}
 
-	cache = &Cache{cache: lru}
-	return cache, nil
+	return &Cache{cache: lru}, nil
 }
 
-func ResizeCache(size int) error {
-	if cache == nil {
-		if _, err := NewCache(); err != nil {
-			return err
-		}
-	}
-
+func ResizeCache(size int) {
+	cache := Get()
 	cache.cache.Resize(size)
-	return nil
 }
 
 func (c *Cache) GetIp(ip string) ([]string, error) {
@@ -70,5 +61,12 @@ func (c *Cache) AddIp(dns *tetragon.DnsInfo) {
 }
 
 func Get() *Cache {
+	initOnce.Do(func() {
+		var err error
+		cache, err = NewCache()
+		if err != nil {
+			panic(err)
+		}
+	})
 	return cache
 }

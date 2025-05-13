@@ -1032,9 +1032,7 @@ func servePprof(addr string) error {
 }
 
 func resizeCaches() error {
-	if err := dns.ResizeCache(enterpriseOption.Config.DnsCacheSize); err != nil {
-		return err
-	}
+	dns.ResizeCache(enterpriseOption.Config.DnsCacheSize)
 	return nscache.ResizeCache(enterpriseOption.Config.NetNsCacheSize)
 }
 
