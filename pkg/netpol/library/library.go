@@ -44,6 +44,11 @@ func Delete(name string) {
 	if ok {
 		delete(idLibrary, id)
 	}
+	for str, n := range policyLibrary {
+		if n == id {
+			DelLink(str)
+		}
+	}
 }
 
 func Link(title string, ref string) error {
@@ -86,15 +91,9 @@ func GetName(id uint64) (string, bool) {
 }
 
 func GetList() []string {
-	l := make(map[uint64]string)
-
-	for title, id := range policyLibrary {
-		l[id] = title
-	}
-
 	names := []string{}
-	for _, title := range l {
-		names = append(names, title)
+	for _, story := range idLibrary {
+		names = append(names, story.Title)
 	}
 	return names
 }
