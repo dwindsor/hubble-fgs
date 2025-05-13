@@ -14,7 +14,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"runtime"
 	"syscall"
 	"time"
 
@@ -433,20 +432,9 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		}...)
 		maps = append(maps, mapsConnectFentry...)
 	} else {
-		if runtime.GOARCH != "amd64" {
-			progsInitSock = append(progsInitSock, []*program.Program{
-				ConnectFentry,
-				CloseFentry,
-				ListenFentry,
-				SecurityAccept,
-				SecurityGraft,
-			}...)
-			maps = append(maps, mapsConnectFentry...)
-		} else {
-			progsInitSock = append(progsInitSock, TcpSockops, SecurityAccept, SecurityGraft)
-			maps = append(maps, mapsOps...)
-			maps = append(maps, processModelMapsEnable()...)
-		}
+		progsInitSock = append(progsInitSock, TcpSockops, SecurityAccept, SecurityGraft)
+		maps = append(maps, mapsOps...)
+		maps = append(maps, processModelMapsEnable()...)
 	}
 
 	if tcpconfig.RttHistogramMax != 0 || enterpriseOption.Config.EnableTCPRTT {

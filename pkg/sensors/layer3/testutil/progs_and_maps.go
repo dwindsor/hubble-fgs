@@ -11,8 +11,6 @@
 package testutil
 
 import (
-	"runtime"
-
 	"github.com/cilium/ebpf"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
@@ -525,11 +523,9 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 	confMap := tus.SensorMap{}
 	if utils.SupportProcessTree() {
 		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
-		if runtime.GOARCH == "amd64" {
-			confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
-				tcpSockopsProg, tcpSecurityAccept, tcpSecurityGraft,
-			})...)
-		}
+		confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
+			tcpSockopsProg, tcpSecurityAccept, tcpSecurityGraft,
+		})...)
 	}
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
@@ -747,13 +743,8 @@ func ProgsAndMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool
 	var ni uint
 
 	if utils.SupportProcessTree() {
-		if runtime.GOARCH != "amd64" {
-			sensorProgs, ni = kprobeOrFentrySensorProgs(withRTT, withUdpLatency, withIcmp, withRaw)
-			sensorMaps = kprobeOrFentrySensorMaps(withRTT, withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
-		} else {
-			sensorProgs, ni = sockopsSensorProgs(withRTT, withUdpLatency, withIcmp, withRaw)
-			sensorMaps = sockopsSensorMaps(withRTT, withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
-		}
+		sensorProgs, ni = sockopsSensorProgs(withRTT, withUdpLatency, withIcmp, withRaw)
+		sensorMaps = sockopsSensorMaps(withRTT, withUdpLatency, withIcmp, withRaw, sensorProgs, ni)
 	} else {
 		sensorProgs, ni = kprobeOrFentrySensorProgs(withRTT, withUdpLatency, withIcmp, withRaw)
 		sensorMaps = kprobeOrFentrySensorMaps(withRTT, withUdpLatency, withIcmp, withRaw, sensorProgs, ni)

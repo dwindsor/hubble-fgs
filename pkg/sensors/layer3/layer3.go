@@ -14,7 +14,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -289,13 +288,8 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 				progsCollectStats = append(progsCollectStats, dispatcherProgs...)
 				maps = append(maps, dispatcherMaps...)
 			} else {
-				if runtime.GOARCH != "amd64" {
-					progsCollectStats = append(progsCollectStats, dispatcherProgs...)
-					maps = append(maps, dispatcherMaps...)
-				} else {
-					progsCollectStats = append(progsCollectStats, dispatcherProcessTreeProgs...)
-					maps = append(maps, dispatcherProcessTreeMaps...)
-				}
+				progsCollectStats = append(progsCollectStats, dispatcherProcessTreeProgs...)
+				maps = append(maps, dispatcherProcessTreeMaps...)
 			}
 		} else {
 			logger.GetLogger().Info("Cgroup support requires a later kernel (v5.4+ or RHEL equivalent)")

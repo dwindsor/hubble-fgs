@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -204,18 +203,10 @@ func getFdLookupPrograms() []*program.Program {
 			progs = append(progs, FdLookupKprobe)
 		}
 	} else {
-		if runtime.GOARCH != "amd64" {
-			if utils.SupportFentry() {
-				progs = append(progs, FdLookupFentry)
-			} else {
-				progs = append(progs, FdLookupKprobe)
-			}
+		if utils.SupportFentry() {
+			progs = append(progs, FdLookupFentryProcessTree)
 		} else {
-			if utils.SupportFentry() {
-				progs = append(progs, FdLookupFentryProcessTree)
-			} else {
-				progs = append(progs, FdLookupKprobeProcessTree)
-			}
+			progs = append(progs, FdLookupKprobeProcessTree)
 		}
 	}
 
@@ -233,26 +224,24 @@ func getFdLookupMaps() []*program.Map {
 			SocketTupleMapKprobe, SocketTupleMapStatsKprobe, SocketTupleRevMapKprobe, SocketTupleHintMapKprobe, TcpSocketMapKprobe, CfgMapKprobe)
 	}
 	if utils.SupportProcessTree() {
-		if runtime.GOARCH == "amd64" {
-			maps = append(maps, []*program.Map{
-				program.MapUserFrom(base.EndpointIdMap),
-				program.MapUserFrom(base.BpfEndpointIdMap),
-				program.MapUserFrom(base.ProcessTreeMap),
-				program.MapUserFrom(base.ProcessTreeBinaryUUIDMap),
-				program.MapUserFrom(base.ProcessTreeUUIDBinaryMap),
-				program.MapUserFrom(base.DestinationEndpointMap),
-				program.MapUserFrom(base.ListenEndpointMap),
-				program.MapUserFrom(base.PidDataMap),
-			}...)
-			if utils.SupportFentry() {
-				Addr6LpmMapFentry.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-				Addr4LpmMapFentry.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-				maps = append(maps, []*program.Map{ProcessTreeIdMapFentry, Addr4LpmMapFentry, Addr6LpmMapFentry}...)
-			} else {
-				Addr6LpmMapKprobe.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-				Addr4LpmMapKprobe.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-				maps = append(maps, []*program.Map{ProcessTreeIdMapKprobe, Addr4LpmMapKprobe, Addr6LpmMapKprobe}...)
-			}
+		maps = append(maps, []*program.Map{
+			program.MapUserFrom(base.EndpointIdMap),
+			program.MapUserFrom(base.BpfEndpointIdMap),
+			program.MapUserFrom(base.ProcessTreeMap),
+			program.MapUserFrom(base.ProcessTreeBinaryUUIDMap),
+			program.MapUserFrom(base.ProcessTreeUUIDBinaryMap),
+			program.MapUserFrom(base.DestinationEndpointMap),
+			program.MapUserFrom(base.ListenEndpointMap),
+			program.MapUserFrom(base.PidDataMap),
+		}...)
+		if utils.SupportFentry() {
+			Addr6LpmMapFentry.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			Addr4LpmMapFentry.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			maps = append(maps, []*program.Map{ProcessTreeIdMapFentry, Addr4LpmMapFentry, Addr6LpmMapFentry}...)
+		} else {
+			Addr6LpmMapKprobe.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			Addr4LpmMapKprobe.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			maps = append(maps, []*program.Map{ProcessTreeIdMapKprobe, Addr4LpmMapKprobe, Addr6LpmMapKprobe}...)
 		}
 	}
 
