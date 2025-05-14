@@ -13,7 +13,6 @@ package alerts
 import (
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
 
@@ -88,7 +87,7 @@ func TestWriter(t *testing.T) {
 			// data to the buffer
 			require.NoError(t, err)
 			// NB: do a sync to ensure files are flushed and fs changes are visible
-			syscall.Sync()
+			syncFS()
 		}
 	}
 
@@ -123,7 +122,7 @@ func TestWriter(t *testing.T) {
 		for range nrotations {
 			lw.rotate()
 			// NB: do a sync to ensure files are flushed and fs changes are visible
-			syscall.Sync()
+			syncFS()
 		}
 	}
 
