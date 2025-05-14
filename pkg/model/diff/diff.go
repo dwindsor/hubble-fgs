@@ -252,5 +252,35 @@ func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV
 			}
 		}
 	}
+
+	if a.Host != nil {
+		for _, p := range a.Host.Processes {
+			for _, c := range p.Connections {
+				destName, dns, dname, dkind := getDestination(c.Destination)
+				dType := getType(c.Destination)
+
+				entry := &appModelV1.ApplicationModelNetworkFlatEntry{
+					ClusterName:                       cluster,
+					NodeName:                          node,
+					EventType:                         appModelV1.ApplicationModelEventType_APPLICATION_MODEL_EVENT_TYPE_NETWORK_CONNECT,
+					Time:                              time,
+					ProcessName:                       p.Name,
+					ProcessArguments:                  p.Arguments,
+					DestinationName:                   destName,
+					DestinationType:                   dType,
+					DestinationPort:                   uint32(c.Destination.Port),
+					DestinationKubernetesNamespace:    dns,
+					DestinationKubernetesWorkloadKind: dkind.String(),
+					DestinationKubernetesWorkloadName: dname,
+					TxBytes:                           c.Stats.TxBytes,
+					RxBytes:                           c.Stats.RxBytes,
+					TxDrops:                           c.Stats.TxDrops,
+					DefaultDropBytes:                  c.Stats.DefaultDropBytes,
+					DefaultAllowBytes:                 c.Stats.DefaultAllowBytes,
+				}
+				n = append(n, entry)
+			}
+		}
+	}
 	return n, nil
 }
