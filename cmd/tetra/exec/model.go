@@ -139,7 +139,7 @@ func (c ConnectedModelClient) Close() {
 
 var tree = treeprint.New()
 
-func printTree(appModel *appModelV1.ApplicationModelEvent) error {
+func printTree(appModel *appModelV1.ApplicationModelEvent, host bool) error {
 	// For each namespace collection find workload collections
 	for _, ns := range appModel.ApplicationModel.Namespaces {
 		nsTree := tree.AddBranch(ns.Name)
@@ -158,6 +158,23 @@ func printTree(appModel *appModelV1.ApplicationModelEvent) error {
 					binaryBranch.AddBranch(childName)
 				}
 			}
+		}
+	}
+	if !host {
+		fmt.Println(tree.String())
+		return nil
+	}
+	hostTree := tree.AddBranch("host")
+	for _, p := range appModel.ApplicationModel.Host.Processes {
+		bin := p.Name + " " + p.Arguments
+		binaryBranch := hostTree.AddBranch(bin)
+
+		for _, conn := range p.Connections {
+			childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d defaultDrop: %d defaultAllow: %d)",
+				model.DestinationNameAppModel(conn.Destination),
+				conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops,
+				conn.Stats.DefaultDropBytes, conn.Stats.DefaultAllowBytes)
+			binaryBranch.AddBranch(childName)
 		}
 	}
 	fmt.Println(tree.String())
@@ -452,7 +469,7 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 	return appModel, nil
 }
 
-func printGrpcTree(enableS3 bool, bucket string) error {
+func printGrpcTree(enableS3, host bool, bucket string) error {
 	appModel, err := getAppModel(enableS3, bucket)
 	if err != nil {
 		return err
@@ -460,7 +477,7 @@ func printGrpcTree(enableS3 bool, bucket string) error {
 
 	switch output {
 	case "tree":
-		return printTree(appModel)
+		return printTree(appModel, host)
 	case "json":
 		return printModel(appModel)
 	default:
@@ -769,7 +786,7 @@ func NewShow() *cobra.Command {
 					return err
 				}
 			}
-			return printGrpcTree(s3, bucket)
+			return printGrpcTree(s3, host, bucket)
 		},
 	}
 
