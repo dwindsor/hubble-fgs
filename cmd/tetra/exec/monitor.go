@@ -103,7 +103,7 @@ func s3Monitor(bucket string, interval time.Duration, namespaces []string) error
 	return nil
 }
 
-func monitor(namespaces []string) error {
+func monitor(namespaces []string, host bool) error {
 	var buf bytes.Buffer
 	compactEncoder := encoder.NewEnterpriseEncoder(&buf, "always", true)
 
@@ -120,7 +120,7 @@ func monitor(namespaces []string) error {
 	c := NewApplicationModelClient()
 	req := &appModelV1.StreamTelemetryRequest{
 		Namespaces: namespaces,
-		Host:       false,
+		Host:       host,
 	}
 
 	stream, err := c.Client.StreamTelemetry(ctx, req)
@@ -285,7 +285,8 @@ func NewMonitor() *cobra.Command {
 			bucket := viper.GetString("bucket")
 			interval := viper.GetDuration("interval")
 			namespaces := viper.GetStringSlice("namespaces")
-			if viper.GetBool("host") {
+			host := viper.GetBool("host")
+			if host {
 				namespaces = append(namespaces, model.HostNamespace)
 			}
 			// Check if stdin is being piped, if so, monitor application models
@@ -297,7 +298,7 @@ func NewMonitor() *cobra.Command {
 			if s3 {
 				return s3Monitor(bucket, interval, namespaces)
 			}
-			return monitor(namespaces)
+			return monitor(namespaces, host)
 		},
 	}
 
