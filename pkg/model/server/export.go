@@ -19,6 +19,7 @@ import (
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/networkmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -100,6 +101,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 					return
 				}
 				for _, entry := range netFlatPack {
+					networkmetrics.Collect(entry)
 					if err := flatEncoder.Encode(entry); err != nil {
 						logger.GetLogger().WithError(err).Error("Failed to encode slim application model as JSON")
 						return

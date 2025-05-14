@@ -35,6 +35,7 @@ func main() {
 		"health-tls":          "Tetragon TLS Sensor Health",
 		"events":              "Tetragon Events",
 		"dns":                 "Tetragon DNS",
+		"network":             "Tetragon Network Telemetry",
 		"file":                "Tetragon File",
 		"http":                "Tetragon HTTP",
 		"icmp":                "Tetragon ICMP",
@@ -95,6 +96,8 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 		enterpriseMetricsConfig.InitProcessCacheCleanMetricsForDocs(reg)
 	case "debug-dns-parser":
 		dnsparsermetrics.EnableDebugDNSParserMetrics(reg).InitForDocs()
+	case "network":
+		enterpriseMetricsConfig.InitNetworkMetricsForDocs(reg)
 	}
 	return nil
 }

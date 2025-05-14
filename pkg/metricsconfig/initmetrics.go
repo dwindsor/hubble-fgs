@@ -20,6 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/icmpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/networkmetrics"
 	processcachecleanmetrics "github.com/isovalent/hubble-fgs/pkg/metrics/processcacheclean"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/sandboxmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
@@ -161,6 +162,14 @@ func InitProcessCacheCleanMetricsForDocs(registry *prometheus.Registry) {
 	processcachecleanmetrics.InitEventsMetricsForDocs(registry)
 }
 
+func InitNetworkMetricsForDocs(registry *prometheus.Registry) {
+	networkmetrics.InitMetricsForDocs(registry)
+}
+
+func initAllNetworkMetrics(registry *prometheus.Registry) {
+	networkmetrics.InitMetrics(registry)
+}
+
 func initAllDebugDNSParserMetrics(registry *prometheus.Registry) {
 	if option.Config.EnableBPFDNSParser {
 		dnsparsermetrics.EnableDebugDNSParserMetrics(registry)
@@ -185,6 +194,7 @@ func InitAllEEMetrics(registry *prometheus.Registry) {
 	initAllSandboxMetrics(registry)
 	initAllProcessCacheCleanMetrics(registry)
 	initAllDebugDNSParserMetrics(registry)
+	initAllNetworkMetrics(registry)
 }
 
 func InitAllMetrics(registry *prometheus.Registry) {
