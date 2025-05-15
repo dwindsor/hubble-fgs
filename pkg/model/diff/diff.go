@@ -133,6 +133,7 @@ func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.Applicati
 
 func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.ApplicationModel) (*appModelV1.ApplicationModel, error) {
 	nsDiff := make([]*appModelV1.ApplicationNamespace, 0)
+	psDiff := make([]*appModelV1.ApplicationProcessGroup, 0)
 	nsB := make(map[string]*appModelV1.ApplicationNamespace, len(b.Namespaces))
 	for _, ns := range b.Namespaces {
 		nsB[ns.Name] = ns
@@ -159,12 +160,29 @@ func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.Applicat
 		}
 	}
 
-	if len(nsDiff) == 0 {
+	if a.Host != nil {
+		var err error
+
+		psDiff, err = ProcessDiff(a.Host.Processes, b.Host.Processes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(nsDiff) == 0 && len(psDiff) == 0 {
 		return nil, nil
+	}
+
+	var hostDiff *appModelV1.ApplicationHost
+	if len(psDiff) > 0 {
+		hostDiff = &appModelV1.ApplicationHost{
+			Processes: psDiff,
+		}
 	}
 
 	return &appModelV1.ApplicationModel{
 		Namespaces: nsDiff,
+		Host:       hostDiff,
 	}, nil
 }
 
