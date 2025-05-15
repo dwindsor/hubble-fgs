@@ -244,6 +244,17 @@ func TestWorkloadDiff(t *testing.T) {
 	assert.Equal(t, uint64(9), dSet[0].Processes[0].Connections[0].Stats.TxBytes)
 }
 
+func hostModel() *appModelV1.ApplicationHost {
+	aSet := psGroup()
+
+	a := conns()
+	aSet[1].Connections = a
+
+	return &appModelV1.ApplicationHost{
+		Processes: aSet,
+	}
+}
+
 func appModel() *appModelV1.ApplicationModel {
 	wl1 := workloads()
 	wl2 := workloads()
@@ -317,6 +328,36 @@ func TestToNetworkFlat(t *testing.T) {
 	assert.Equal(t, uint64(0), f[1].TxBytes)
 	assert.Equal(t, uint64(0), f[0].RxBytes)
 	assert.Equal(t, uint64(1), f[1].RxBytes)
+}
+
+func TestToNetworkFlatHost(t *testing.T) {
+	aHost := hostModel()
+	bHost := hostModel()
+	bHost.Processes[1].Connections[0].Stats.TxBytes = 1
+
+	aModel := &appModelV1.ApplicationModel{
+		Namespaces: []*appModelV1.ApplicationNamespace{},
+		Host:       aHost,
+	}
+	bModel := &appModelV1.ApplicationModel{
+		Namespaces: []*appModelV1.ApplicationNamespace{},
+		Host:       bHost,
+	}
+
+	d, err := ApplicationModelDiff(aModel, bModel)
+	assert.NoError(t, err)
+
+	f, err := ApplicationModelToNetworkFlat(d)
+	assert.NoError(t, err)
+	assert.Equal(t, "", f[0].KubernetesNamespace)
+	assert.Equal(t, "", f[0].KubernetesWorkloadName)
+	assert.Equal(t, "ci", f[0].ProcessName)
+	assert.Equal(t, "makesThingsWork", f[0].ProcessArguments)
+	assert.Equal(t, "10.0.0.1", f[0].DestinationName)
+	assert.Equal(t, appModelV1.ApplicationModelDestinationType_APPLICATION_MODEL_DESTINATION_TYPE_CIDR, f[0].DestinationType)
+	assert.Equal(t, uint32(80), f[0].DestinationPort)
+	assert.Equal(t, uint64(9), f[0].TxBytes)
+	assert.Equal(t, uint64(0), f[0].RxBytes)
 }
 
 func Test_getDestination(t *testing.T) {
