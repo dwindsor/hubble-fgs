@@ -411,6 +411,28 @@ func NewIPToDomainMap(ipToIDMap, idToDomainMap *ebpf.Map) IPToDomainMap {
 	}
 }
 
+func LoadNewIPToDomainMap() (IPToDomainMap, error) {
+	ipToIDMapFile := bpf.MapPath(DNSEndpointIDMapName)
+	ipToIDMap, err := ebpf.LoadPinnedMap(ipToIDMapFile, nil)
+	if err != nil {
+		return IPToDomainMap{}, fmt.Errorf("fail to load pinned map %s: %w", ipToIDMapFile, err)
+	}
+
+	idToDomainMapFile := bpf.MapPath(IDToDomainMapName)
+	idToDomainMap, err := ebpf.LoadPinnedMap(idToDomainMapFile, nil)
+	if err != nil {
+		return IPToDomainMap{}, fmt.Errorf("fail to load pinned map %s: %w", idToDomainMapFile, err)
+	}
+
+	return NewIPToDomainMap(ipToIDMap, idToDomainMap), nil
+}
+
+func (m IPToDomainMap) Close() error {
+	err1 := m.idToDomainMap.idToDomainMap.Close()
+	err2 := m.ipToIDMap.dnsEndpointIDMap.Close()
+	return errors.Join(err1, err2)
+}
+
 func (m IPToDomainMap) Clear() error {
 	err1 := m.ipToIDMap.Clear()
 	err2 := m.idToDomainMap.Clear()
