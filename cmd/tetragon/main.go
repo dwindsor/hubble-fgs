@@ -49,6 +49,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/bugtool"
+	ossconfig "github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/exporter"
 	"github.com/cilium/tetragon/pkg/fileutils"
@@ -102,11 +103,17 @@ func main() {
 }
 
 func checkStructAlignments() error {
-	bpfObjPath := path.Join(option.Config.HubbleLib, "bpf_alignchecker_oss.o")
+	bpfObjPath, err := ossconfig.FindProgramFile("bpf_alignchecker_oss.o")
+	if err != nil {
+		return err
+	}
 	if err := ossAlignchecker.CheckStructAlignments(bpfObjPath); err != nil {
 		return err
 	}
-	bpfObjPath = path.Join(option.Config.HubbleLib, "bpf_alignchecker.o")
+	bpfObjPath, err = ossconfig.FindProgramFile("bpf_alignchecker.o")
+	if err != nil {
+		return err
+	}
 	return alignchecker.CheckStructAlignments(bpfObjPath)
 }
 
