@@ -12,11 +12,13 @@
 # First builder (cross-)compile the BPF programs
 FROM --platform=$BUILDPLATFORM quay.io/cilium/clang:b97f5b3d5c38da62fb009f21a53cd42aefd54a2f@sha256:e1c8ed0acd2e24ed05377f2861d8174af28e09bef3bbc79649c8eba165207df0 AS bpf-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
-RUN apt-get update && apt-get install -y linux-libc-dev
+RUN apt-get update && apt-get install -y linux-libc-dev gzip
 COPY . ./
 ARG TARGETARCH
 ARG DEBUG
+ARG COMPRESS_BPF
 RUN make tetragon-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH DEBUG=$DEBUG
+RUN if [ "$COMPRESS_BPF" = "gzip" ]; then gzip bpf/objs/*.o; fi
 
 # Second builder (cross-)compile:
 # - tetragon-fs-scanner (this one compiles a C program, so a gcc cross compiler is needed)
@@ -106,7 +108,7 @@ RUN apk upgrade --no-cache
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetragon /usr/bin/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetra /usr/bin/
 COPY --from=gops /go/src/github.com/google/gops/gops /usr/bin/
-COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/tetragon/
+COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/* /var/lib/tetragon/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/tetragon-fs-scanner /var/lib/tetragon/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/tetragon-runner /var/lib/tetragon/
 # legacy aliases

@@ -18,6 +18,7 @@ EXTRA_TESTFLAGS ?=
 SUDO ?= sudo
 GO_TEST_TIMEOUT ?= 20m
 GO_TEST_PACKAGES ?= ./pkg/... ./cmd/... ./operator/...
+CONTAINER_ENGINE_ARGS ?=
 
 export GOEXPERIMENT=synctest
 
@@ -192,7 +193,7 @@ compile-commands:
 
 .PHONY: image
 image: ## Build the Tetragon agent container image.
-	$(CONTAINER_ENGINE) build -t "${TETRAGON_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --build-arg DEBUG=${DEBUG} --target release --platform=linux/${TARGET_ARCH} .
+	$(CONTAINER_ENGINE) build -t "${TETRAGON_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --build-arg DEBUG=${DEBUG} --target release --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} .
 	@echo "Push like this when ready:"
 	@echo "${CONTAINER_ENGINE} push ${TETRAGON_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
