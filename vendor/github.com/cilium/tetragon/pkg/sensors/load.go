@@ -6,10 +6,9 @@ package sensors
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
-	"strings"
 
+	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
@@ -258,24 +257,12 @@ func (s *Sensor) Destroy(unpin bool) {
 }
 
 func (s *Sensor) findProgram(p *program.Program) error {
-	logger.GetLogger().WithField("file", p.Name).Debug("Checking for bpf file")
-	if _, err := os.Stat(p.Name); err == nil {
-		logger.GetLogger().WithField("file", p.Name).Debug("Found bpf file")
-		return nil
+	pathname, err := config.FindProgramFile(p.Name)
+	if err != nil {
+		return err
 	}
-	logger.GetLogger().WithField("file", p.Name).Debug("Candidate bpf file does not exist")
-	last := strings.Split(p.Name, "/")
-	filename := last[len(last)-1]
-
-	path := path.Join(option.Config.HubbleLib, filename)
-	if _, err := os.Stat(path); err == nil {
-		p.Name = path
-		logger.GetLogger().WithField("file", path).Debug("Found bpf file")
-		return nil
-	}
-	logger.GetLogger().WithField("file", path).Debug("Candidate bpf file does not exist")
-
-	return fmt.Errorf("sensor program %q can not be found", p.Name)
+	p.Name = pathname
+	return nil
 }
 
 // FindPrograms finds all the BPF programs in the sensor on the filesytem.

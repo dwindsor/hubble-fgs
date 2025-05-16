@@ -15,13 +15,13 @@ godebug gotypesalias=0
 
 require (
 	github.com/blang/semver/v4 v4.0.0
-	github.com/cilium/cilium v1.17.3
+	github.com/cilium/cilium v1.17.4
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f
 	github.com/stretchr/testify v1.10.0
-	k8s.io/apiextensions-apiserver v0.32.4
-	k8s.io/apimachinery v0.32.4
-	k8s.io/client-go v0.32.4
+	k8s.io/apiextensions-apiserver v0.32.5
+	k8s.io/apimachinery v0.32.5
+	k8s.io/client-go v0.32.5
 	sigs.k8s.io/controller-tools v0.16.5
 )
 
@@ -72,7 +72,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.32.4 // indirect
+	k8s.io/api v0.32.5 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
 	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
