@@ -107,7 +107,10 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 		Http:    fgsHttp,
 	}
 
-	fgsEvent.Socket.DestinationNames, _ = dns.Get().LookupDomains(fgsEvent.Socket.DestinationIp)
+	fgsEvent.Socket.DestinationNames, err = dns.Get().LookupDomains(fgsEvent.Socket.DestinationIp)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("DNS cache lookup failure")
+	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the

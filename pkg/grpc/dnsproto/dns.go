@@ -125,7 +125,11 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 		Dns:     fgsDns,
 	}
 
-	fgsEvent.Socket.DestinationNames, _ = c.LookupDomains(fgsEvent.Socket.DestinationIp)
+	var err error
+	fgsEvent.Socket.DestinationNames, err = c.LookupDomains(fgsEvent.Socket.DestinationIp)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("DNS cache lookup failure")
+	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the

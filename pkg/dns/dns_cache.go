@@ -85,7 +85,7 @@ func (c *Cache) LookupDomains(ip string) ([]string, error) {
 		entries, ok := c.userspaceCache.Get(ip)
 		if !ok {
 			dnsmetrics.DnsCacheMisses().Inc()
-			return nil, fmt.Errorf("no dns entry found")
+			return domains, nil
 		}
 		domains = append(domains, entries...)
 	}
