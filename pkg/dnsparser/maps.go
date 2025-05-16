@@ -480,11 +480,14 @@ func (m IPToDomainMap) Values() (map[netip.Addr]string, error) {
 func (m IPToDomainMap) Lookup(ip netip.Addr) (string, error) {
 	id, err := m.ipToIDMap.Lookup(ip)
 	if err != nil {
-		return "", err
+		if errors.Is(err, ebpf.ErrKeyNotExist) {
+			return "", nil
+		}
+		return "", fmt.Errorf("failed to lookup for IP %s id: %w", ip, err)
 	}
 	domain, err := m.idToDomainMap.Lookup(id)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to find domain associated with ID %d: %w", id, err)
 	}
 	return domain, nil
 }

@@ -125,7 +125,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 		Dns:     fgsDns,
 	}
 
-	fgsEvent.Socket.DestinationNames, _ = c.GetIp(fgsEvent.Socket.DestinationIp)
+	fgsEvent.Socket.DestinationNames, _ = c.LookupDomains(fgsEvent.Socket.DestinationIp)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the

@@ -126,7 +126,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	}
 
 	ec := eventcache.Get()
-	fgsEvent.DestinationNames, _ = dns.Get().GetIp(destinationIP.String())
+	fgsEvent.DestinationNames, _ = dns.Get().LookupDomains(destinationIP.String())
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -211,7 +211,7 @@ func GetProcessClose(event *MsgIPWithStatsEventUnix) *tetragon.ProcessClose {
 
 	dnsCache := dns.Get()
 	ec := eventcache.Get()
-	fgsEvent.DestinationNames, _ = dnsCache.GetIp(destinationIP.String())
+	fgsEvent.DestinationNames, _ = dnsCache.LookupDomains(destinationIP.String())
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -344,7 +344,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 
 	dnsCache := dns.Get()
 	ec := eventcache.Get()
-	fgsEvent.DestinationNames, _ = dnsCache.GetIp(destinationIP.String())
+	fgsEvent.DestinationNames, _ = dnsCache.LookupDomains(destinationIP.String())
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -489,7 +489,7 @@ func CreateProcessSockStats(event *MsgIPWithStatsEventUnix, cache bool) *tetrago
 	// now I'll skip bouncing these through DNS entries when missing DNS
 	dnsCache := dns.Get()
 	ec := eventcache.Get()
-	fgsEvent.Socket.DestinationNames, _ = dnsCache.GetIp(fgsTuple.DestinationIp)
+	fgsEvent.Socket.DestinationNames, _ = dnsCache.LookupDomains(fgsTuple.DestinationIp)
 
 	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)

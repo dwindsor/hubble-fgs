@@ -98,7 +98,7 @@ func createProcessUdpSeqCheckError(
 	}
 
 	ec := eventcache.Get()
-	socket.DestinationNames, _ = dns.Get().GetIp(destinationIP.String())
+	socket.DestinationNames, _ = dns.Get().LookupDomains(destinationIP.String())
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the

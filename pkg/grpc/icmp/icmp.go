@@ -431,7 +431,7 @@ func GetProcessIcmp(
 	}
 
 	dnsCache := dns.Get()
-	fgsEvent.DestinationNames, _ = dnsCache.GetIp(fgsEvent.DestinationIp)
+	fgsEvent.DestinationNames, _ = dnsCache.LookupDomains(fgsEvent.DestinationIp)
 	fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIp)
 
 	switch event.Msg.IcmpData.IcmpIpProto {
