@@ -150,6 +150,16 @@ func (m IDToDomainMap) Values() (map[DNSID]string, error) {
 	return Values[DNSID](m.idToDomainMap)
 }
 
+func (m IDToDomainMap) Lookup(id DNSID) (string, error) {
+	value := make([]byte, dnsMaxNameSize+1)
+	err := m.idToDomainMap.Lookup(&id, &value)
+	if err != nil {
+		return "", err
+	}
+	str, _, _ := bytes.Cut(value, []byte("\x00"))
+	return string(str), nil
+}
+
 func (m IDToDomainMap) Clear() error {
 	entries := m.idToDomainMap.Iterate()
 
@@ -253,6 +263,16 @@ func (m DNSEndpointIDMap) Values() (map[netip.Addr]DNSID, error) {
 	}
 
 	return actualMap, nil
+}
+
+func (m DNSEndpointIDMap) Lookup(ip netip.Addr) (DNSID, error) {
+	key := dnsapi.NewIPAddr(ip)
+	var value DNSID
+	err := m.dnsEndpointIDMap.Lookup(&key, &value)
+	if err != nil {
+		return DNSID{}, err
+	}
+	return value, nil
 }
 
 func (m DNSEndpointIDMap) Clear() error {
@@ -455,6 +475,18 @@ func (m IPToDomainMap) Values() (map[netip.Addr]string, error) {
 		ipToDomain[ip] = idToDomain[id]
 	}
 	return ipToDomain, nil
+}
+
+func (m IPToDomainMap) Lookup(ip netip.Addr) (string, error) {
+	id, err := m.ipToIDMap.Lookup(ip)
+	if err != nil {
+		return "", err
+	}
+	domain, err := m.idToDomainMap.Lookup(id)
+	if err != nil {
+		return "", err
+	}
+	return domain, nil
 }
 
 type GlobalDNSIDMap struct {
