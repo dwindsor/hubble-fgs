@@ -413,28 +413,30 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	// support multiple cores accessing the map.
 	// Kernels before 5.5 don't support Fentry, so use kprobes here.
 	// These can be unreliable as they can be preempted.
-	if !utils.SupportFentry() {
-		progsInitSock = append(progsInitSock, []*program.Program{
-			ConnectKprobe,
-			CloseKprobe,
-			ListenKprobe,
-			SecurityAcceptKprobe,
-			SecurityGraftKprobe,
-		}...)
-		maps = append(maps, mapsConnectKprobe...)
-	} else if !utils.SupportProcessTree() {
+	if utils.SupportProcessTree() {
+		progsInitSock = append(progsInitSock, TcpSockops)
+		maps = append(maps, mapsOps...)
+		maps = append(maps, processModelMapsEnable()...)
+	} else if utils.SupportFentry() {
 		progsInitSock = append(progsInitSock, []*program.Program{
 			ConnectFentry,
 			CloseFentry,
 			ListenFentry,
-			SecurityAccept,
-			SecurityGraft,
 		}...)
 		maps = append(maps, mapsConnectFentry...)
 	} else {
-		progsInitSock = append(progsInitSock, TcpSockops, SecurityAccept, SecurityGraft)
-		maps = append(maps, mapsOps...)
-		maps = append(maps, processModelMapsEnable()...)
+		progsInitSock = append(progsInitSock, []*program.Program{
+			ConnectKprobe,
+			CloseKprobe,
+			ListenKprobe,
+		}...)
+		maps = append(maps, mapsConnectKprobe...)
+	}
+
+	if utils.SupportFentry() {
+		progsInitSock = append(progsInitSock, SecurityAccept, SecurityGraft)
+	} else {
+		progsInitSock = append(progsInitSock, SecurityAcceptKprobe, SecurityGraftKprobe)
 	}
 
 	if tcpconfig.RttHistogramMax != 0 || enterpriseOption.Config.EnableTCPRTT {

@@ -553,14 +553,26 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 func sockopsSensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool) ([]tus.SensorProg, uint) {
 	sensorProgs := []tus.SensorProg{
 		{Name: tcpSockopsProg, Type: ebpf.SockOps},
-		{Name: tcpSecurityAccept, Type: ebpf.Tracing},
-		{Name: tcpSecurityGraft, Type: ebpf.Tracing},
 		{Name: cgroupEgressProg, Type: ebpf.CGroupSKB},
 		{Name: cgroupIngressProg, Type: ebpf.CGroupSKB},
 		{Name: udpBindDummy4Prog, Type: ebpf.CGroupSock},
 		{Name: udpBindDummy6Prog, Type: ebpf.CGroupSock},
-		{Name: securitySkAllocProg, Type: ebpf.Tracing},
-		{Name: securitySkFreeProg, Type: ebpf.Tracing},
+	}
+
+	if utils.SupportFentry() {
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			{Name: tcpSecurityAccept, Type: ebpf.Tracing},
+			{Name: tcpSecurityGraft, Type: ebpf.Tracing},
+			{Name: securitySkAllocProg, Type: ebpf.Tracing},
+			{Name: securitySkFreeProg, Type: ebpf.Tracing},
+		}...)
+	} else {
+		sensorProgs = append(sensorProgs, []tus.SensorProg{
+			{Name: tcpSecurityAccept, Type: ebpf.Kprobe},
+			{Name: tcpSecurityGraft, Type: ebpf.Kprobe},
+			{Name: securitySkAllocProg, Type: ebpf.Kprobe},
+			{Name: securitySkFreeProg, Type: ebpf.Kprobe},
+		}...)
 	}
 
 	if withRTT {
