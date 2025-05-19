@@ -73,9 +73,9 @@ func (p *EnterpriseEncoder) Encode(v interface{}) error {
 	return p.EncodePrefix("", v)
 }
 
-func (p *EnterpriseEncoder) AppModelEventToString(event *appModelV1.ApplicationModelNetworkFlatEntry) (string, error) {
+func (p *EnterpriseEncoder) AppModelEventToString(event *appModelV1.NetworkTelemetry) (string, error) {
 	switch event.EventType {
-	case appModelV1.ApplicationModelEventType_APPLICATION_MODEL_EVENT_TYPE_NETWORK_CONNECT:
+	case appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT:
 		connect := p.colorer.Blue.Sprintf("🔌 %-7s", "connect")
 		processInfo := p.colorer.flatProcessInfo(event.NodeName, event.ProcessName, event.KubernetesNamespace, event.KubernetesWorkloadName)
 		destination := p.colorer.simpleTuple(

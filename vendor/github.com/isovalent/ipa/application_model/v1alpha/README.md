@@ -12,7 +12,6 @@
     - [ApplicationHost](#application_model-v1alpha-ApplicationHost)
     - [ApplicationModel](#application_model-v1alpha-ApplicationModel)
     - [ApplicationModelEvent](#application_model-v1alpha-ApplicationModelEvent)
-    - [ApplicationModelNetworkFlatEntry](#application_model-v1alpha-ApplicationModelNetworkFlatEntry)
     - [ApplicationNamespace](#application_model-v1alpha-ApplicationNamespace)
     - [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup)
     - [ApplicationSyscalls](#application_model-v1alpha-ApplicationSyscalls)
@@ -24,11 +23,14 @@
     - [DestinationWorkload](#application_model-v1alpha-DestinationWorkload)
     - [GetModelRequest](#application_model-v1alpha-GetModelRequest)
     - [GetModelResponse](#application_model-v1alpha-GetModelResponse)
+    - [NetworkTelemetry](#application_model-v1alpha-NetworkTelemetry)
+    - [ProcessTelemetry](#application_model-v1alpha-ProcessTelemetry)
     - [StreamTelemetryRequest](#application_model-v1alpha-StreamTelemetryRequest)
     - [StreamTelemetryResponse](#application_model-v1alpha-StreamTelemetryResponse)
   
-    - [ApplicationModelDestinationType](#application_model-v1alpha-ApplicationModelDestinationType)
-    - [ApplicationModelEventType](#application_model-v1alpha-ApplicationModelEventType)
+    - [DestinationType](#application_model-v1alpha-DestinationType)
+    - [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType)
+    - [TelemetryType](#application_model-v1alpha-TelemetryType)
     - [WorkloadKind](#application_model-v1alpha-WorkloadKind)
   
     - [ApplicationModelService](#application_model-v1alpha-ApplicationModelService)
@@ -623,43 +625,6 @@ WARNING for consumers: numbers are arbitrary.
 
 
 
-<a name="application_model-v1alpha-ApplicationModelNetworkFlatEntry"></a>
-
-### ApplicationModelNetworkFlatEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| cluster_name | [string](#string) |  |  |
-| node_name | [string](#string) |  |  |
-| event_type | [ApplicationModelEventType](#application_model-v1alpha-ApplicationModelEventType) |  |  |
-| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
-| kubernetes_namespace | [string](#string) |  |  |
-| kubernetes_workload_name | [string](#string) |  |  |
-| kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  |  |
-| process_hash | [string](#string) |  |  |
-| process_name | [string](#string) |  |  |
-| process_arguments | [string](#string) |  |  |
-| destination_name | [string](#string) |  |  |
-| destination_type | [ApplicationModelDestinationType](#application_model-v1alpha-ApplicationModelDestinationType) |  |  |
-| destination_port | [uint32](#uint32) |  |  |
-| destination_kubernetes_namespace | [string](#string) |  |  |
-| destination_kubernetes_workload_kind | [string](#string) |  |  |
-| destination_kubernetes_workload_name | [string](#string) |  |  |
-| tx_bytes | [uint64](#uint64) |  |  |
-| rx_bytes | [uint64](#uint64) |  |  |
-| tx_drops | [uint64](#uint64) |  |  |
-| default_drop_bytes | [uint64](#uint64) |  |  |
-| default_allow_bytes | [uint64](#uint64) |  |  |
-| default_drop_sessions | [uint64](#uint64) |  |  |
-| default_allowed_sessions | [uint64](#uint64) |  |  |
-
-
-
-
-
-
 <a name="application_model-v1alpha-ApplicationNamespace"></a>
 
 ### ApplicationNamespace
@@ -859,6 +824,72 @@ the following criteria:
 
 
 
+<a name="application_model-v1alpha-NetworkTelemetry"></a>
+
+### NetworkTelemetry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| cluster_name | [string](#string) |  |  |
+| node_name | [string](#string) |  |  |
+| event_type | [TelemetryType](#application_model-v1alpha-TelemetryType) |  |  |
+| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| kubernetes_namespace | [string](#string) |  |  |
+| kubernetes_workload_name | [string](#string) |  |  |
+| kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  |  |
+| process_hash | [string](#string) |  |  |
+| process_name | [string](#string) |  |  |
+| process_arguments | [string](#string) |  |  |
+| destination_name | [string](#string) |  |  |
+| destination_type | [DestinationType](#application_model-v1alpha-DestinationType) |  |  |
+| destination_port | [uint32](#uint32) |  |  |
+| destination_kubernetes_namespace | [string](#string) |  |  |
+| destination_kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  |  |
+| destination_kubernetes_workload_name | [string](#string) |  |  |
+| tx_bytes | [uint64](#uint64) |  |  |
+| rx_bytes | [uint64](#uint64) |  |  |
+| tx_drops | [uint64](#uint64) |  |  |
+| default_drop_bytes | [uint64](#uint64) |  |  |
+| default_allow_bytes | [uint64](#uint64) |  |  |
+| default_drop_sessions | [uint64](#uint64) |  |  |
+| default_allowed_sessions | [uint64](#uint64) |  |  |
+| id | [string](#string) |  | An opaque identifier that is unique to this telemetry data across all the telemetry types. |
+| protocol | [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType) |  |  |
+
+
+
+
+
+
+<a name="application_model-v1alpha-ProcessTelemetry"></a>
+
+### ProcessTelemetry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| cluster_name | [string](#string) |  |  |
+| node_name | [string](#string) |  |  |
+| event_type | [TelemetryType](#application_model-v1alpha-TelemetryType) |  |  |
+| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| kubernetes_namespace | [string](#string) |  |  |
+| kubernetes_workload_name | [string](#string) |  |  |
+| kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  |  |
+| process_hash | [string](#string) |  |  |
+| process_name | [string](#string) |  |  |
+| process_arguments | [string](#string) |  |  |
+| execution_count | [uint64](#uint64) |  |  |
+| parent_hash | [string](#string) |  |  |
+| id | [string](#string) |  | An opaque identifier that is unique to this telemetry data across all the telemetry types. |
+
+
+
+
+
+
 <a name="application_model-v1alpha-StreamTelemetryRequest"></a>
 
 ### StreamTelemetryRequest
@@ -883,7 +914,7 @@ the following criteria:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| network | [ApplicationModelNetworkFlatEntry](#application_model-v1alpha-ApplicationModelNetworkFlatEntry) |  | Application Model Network Flat Entry event has the |
+| network | [NetworkTelemetry](#application_model-v1alpha-NetworkTelemetry) |  | Application Model Network Flat Entry event has the |
 
 
 
@@ -892,30 +923,43 @@ the following criteria:
  
 
 
-<a name="application_model-v1alpha-ApplicationModelDestinationType"></a>
+<a name="application_model-v1alpha-DestinationType"></a>
 
-### ApplicationModelDestinationType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| APPLICATION_MODEL_DESTINATION_TYPE_UNSPECIFIED | 0 |  |
-| APPLICATION_MODEL_DESTINATION_TYPE_DNS | 1 |  |
-| APPLICATION_MODEL_DESTINATION_TYPE_CIDR | 2 |  |
-| APPLICATION_MODEL_DESTINATION_TYPE_KUBERNETES | 3 |  |
-
-
-
-<a name="application_model-v1alpha-ApplicationModelEventType"></a>
-
-### ApplicationModelEventType
+### DestinationType
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| APPLICATION_MODEL_EVENT_TYPE_UNSPECIFIED | 0 |  |
-| APPLICATION_MODEL_EVENT_TYPE_PROCESS | 1 |  |
-| APPLICATION_MODEL_EVENT_TYPE_NETWORK_CONNECT | 2 |  |
+| DESTINATION_TYPE_UNSPECIFIED | 0 |  |
+| DESTINATION_TYPE_DNS | 1 |  |
+| DESTINATION_TYPE_CIDR | 2 |  |
+| DESTINATION_TYPE_KUBERNETES | 3 |  |
+
+
+
+<a name="application_model-v1alpha-NetworkProtocolType"></a>
+
+### NetworkProtocolType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NETWORK_PROTOCOL_TYPE_UNSPECIFIED | 0 |  |
+| NETWORK_PROTOCOL_TYPE_TCP | 1 |  |
+| NETWORK_PROTOCOL_TYPE_UDP | 2 |  |
+
+
+
+<a name="application_model-v1alpha-TelemetryType"></a>
+
+### TelemetryType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TELEMETRY_TYPE_UNSPECIFIED | 0 |  |
+| TELEMETRY_TYPE_PROCESS | 1 |  |
+| TELEMETRY_TYPE_NETWORK_CONNECT | 2 |  |
 
 
 

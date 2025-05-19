@@ -159,7 +159,7 @@ func monitorStdin() error {
 	compactEncoder := encoder.NewEnterpriseEncoder(&buf, "always", true)
 	decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
 	for {
-		newEntry := &appModelV1.ApplicationModelNetworkFlatEntry{}
+		newEntry := &appModelV1.NetworkTelemetry{}
 		err := decoder.Decode(newEntry)
 		if err == io.EOF {
 			break

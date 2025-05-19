@@ -186,16 +186,16 @@ func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.Applicat
 	}, nil
 }
 
-func getType(d *appModelV1.Destination) appModelV1.ApplicationModelDestinationType {
-	var t appModelV1.ApplicationModelDestinationType
+func getType(d *appModelV1.Destination) appModelV1.DestinationType {
+	var t appModelV1.DestinationType
 
 	switch d.Type.(type) {
 	case *appModelV1.Destination_Dns:
-		t = appModelV1.ApplicationModelDestinationType_APPLICATION_MODEL_DESTINATION_TYPE_DNS
+		t = appModelV1.DestinationType_DESTINATION_TYPE_DNS
 	case *appModelV1.Destination_Ip:
-		t = appModelV1.ApplicationModelDestinationType_APPLICATION_MODEL_DESTINATION_TYPE_CIDR
+		t = appModelV1.DestinationType_DESTINATION_TYPE_CIDR
 	case *appModelV1.Destination_Workload:
-		t = appModelV1.ApplicationModelDestinationType_APPLICATION_MODEL_DESTINATION_TYPE_KUBERNETES
+		t = appModelV1.DestinationType_DESTINATION_TYPE_KUBERNETES
 	default:
 		panic(fmt.Sprintf("unexpected v1alpha.isDestination_Type: %#v", d.Type))
 	}
@@ -229,8 +229,8 @@ func getDestination(d *appModelV1.Destination) (string, string, string, appModel
 	return name, ns, wlName, wlKind
 }
 
-func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV1.ApplicationModelNetworkFlatEntry, error) {
-	n := []*appModelV1.ApplicationModelNetworkFlatEntry{}
+func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV1.NetworkTelemetry, error) {
+	n := []*appModelV1.NetworkTelemetry{}
 	node := node.GetNodeNameForExport()
 	cluster := option.Config.ClusterName
 	time := timestamppb.Now()
@@ -242,10 +242,10 @@ func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV
 					destName, dns, dname, dkind := getDestination(c.Destination)
 					dType := getType(c.Destination)
 
-					entry := &appModelV1.ApplicationModelNetworkFlatEntry{
+					entry := &appModelV1.NetworkTelemetry{
 						ClusterName:                       cluster,
 						NodeName:                          node,
-						EventType:                         appModelV1.ApplicationModelEventType_APPLICATION_MODEL_EVENT_TYPE_NETWORK_CONNECT,
+						EventType:                         appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
 						Time:                              time,
 						KubernetesNamespace:               ns.Name,
 						KubernetesWorkloadName:            wl.Name,
@@ -256,7 +256,7 @@ func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV
 						DestinationType:                   dType,
 						DestinationPort:                   uint32(c.Destination.Port),
 						DestinationKubernetesNamespace:    dns,
-						DestinationKubernetesWorkloadKind: dkind.String(),
+						DestinationKubernetesWorkloadKind: dkind,
 						DestinationKubernetesWorkloadName: dname,
 						TxBytes:                           c.Stats.TxBytes,
 						RxBytes:                           c.Stats.RxBytes,
@@ -277,10 +277,10 @@ func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV
 				destName, dns, dname, dkind := getDestination(c.Destination)
 				dType := getType(c.Destination)
 
-				entry := &appModelV1.ApplicationModelNetworkFlatEntry{
+				entry := &appModelV1.NetworkTelemetry{
 					ClusterName:                       cluster,
 					NodeName:                          node,
-					EventType:                         appModelV1.ApplicationModelEventType_APPLICATION_MODEL_EVENT_TYPE_NETWORK_CONNECT,
+					EventType:                         appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
 					Time:                              time,
 					ProcessName:                       p.Name,
 					ProcessArguments:                  p.Arguments,
@@ -288,7 +288,7 @@ func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV
 					DestinationType:                   dType,
 					DestinationPort:                   uint32(c.Destination.Port),
 					DestinationKubernetesNamespace:    dns,
-					DestinationKubernetesWorkloadKind: dkind.String(),
+					DestinationKubernetesWorkloadKind: dkind,
 					DestinationKubernetesWorkloadName: dname,
 					TxBytes:                           c.Stats.TxBytes,
 					RxBytes:                           c.Stats.RxBytes,

@@ -21,9 +21,9 @@ import type { Abi, Sys } from "./syscalls_pb";
 export declare const file_application_model_v1alpha_application_model: GenFile;
 
 /**
- * @generated from message application_model.v1alpha.ApplicationModelNetworkFlatEntry
+ * @generated from message application_model.v1alpha.ProcessTelemetry
  */
-export declare type ApplicationModelNetworkFlatEntry = Message<"application_model.v1alpha.ApplicationModelNetworkFlatEntry"> & {
+export declare type ProcessTelemetry = Message<"application_model.v1alpha.ProcessTelemetry"> & {
   /**
    * @generated from field: string cluster_name = 1;
    */
@@ -35,9 +35,88 @@ export declare type ApplicationModelNetworkFlatEntry = Message<"application_mode
   nodeName: string;
 
   /**
-   * @generated from field: application_model.v1alpha.ApplicationModelEventType event_type = 3;
+   * @generated from field: application_model.v1alpha.TelemetryType event_type = 3;
    */
-  eventType: ApplicationModelEventType;
+  eventType: TelemetryType;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp time = 4;
+   */
+  time?: Timestamp;
+
+  /**
+   * @generated from field: string kubernetes_namespace = 5;
+   */
+  kubernetesNamespace: string;
+
+  /**
+   * @generated from field: string kubernetes_workload_name = 6;
+   */
+  kubernetesWorkloadName: string;
+
+  /**
+   * @generated from field: application_model.v1alpha.WorkloadKind kubernetes_workload_kind = 7;
+   */
+  kubernetesWorkloadKind: WorkloadKind;
+
+  /**
+   * @generated from field: string process_hash = 8;
+   */
+  processHash: string;
+
+  /**
+   * @generated from field: string process_name = 9;
+   */
+  processName: string;
+
+  /**
+   * @generated from field: string process_arguments = 10;
+   */
+  processArguments: string;
+
+  /**
+   * @generated from field: uint64 execution_count = 11;
+   */
+  executionCount: bigint;
+
+  /**
+   * @generated from field: string parent_hash = 12;
+   */
+  parentHash: string;
+
+  /**
+   * An opaque identifier that is unique to this telemetry data across all the
+   * telemetry types.
+   *
+   * @generated from field: string id = 13;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message application_model.v1alpha.ProcessTelemetry.
+ * Use `create(ProcessTelemetrySchema)` to create a new message.
+ */
+export declare const ProcessTelemetrySchema: GenMessage<ProcessTelemetry>;
+
+/**
+ * @generated from message application_model.v1alpha.NetworkTelemetry
+ */
+export declare type NetworkTelemetry = Message<"application_model.v1alpha.NetworkTelemetry"> & {
+  /**
+   * @generated from field: string cluster_name = 1;
+   */
+  clusterName: string;
+
+  /**
+   * @generated from field: string node_name = 2;
+   */
+  nodeName: string;
+
+  /**
+   * @generated from field: application_model.v1alpha.TelemetryType event_type = 3;
+   */
+  eventType: TelemetryType;
 
   /**
    * @generated from field: google.protobuf.Timestamp time = 4;
@@ -80,9 +159,9 @@ export declare type ApplicationModelNetworkFlatEntry = Message<"application_mode
   destinationName: string;
 
   /**
-   * @generated from field: application_model.v1alpha.ApplicationModelDestinationType destination_type = 12;
+   * @generated from field: application_model.v1alpha.DestinationType destination_type = 12;
    */
-  destinationType: ApplicationModelDestinationType;
+  destinationType: DestinationType;
 
   /**
    * @generated from field: uint32 destination_port = 13;
@@ -95,9 +174,9 @@ export declare type ApplicationModelNetworkFlatEntry = Message<"application_mode
   destinationKubernetesNamespace: string;
 
   /**
-   * @generated from field: string destination_kubernetes_workload_kind = 15;
+   * @generated from field: application_model.v1alpha.WorkloadKind destination_kubernetes_workload_kind = 15;
    */
-  destinationKubernetesWorkloadKind: string;
+  destinationKubernetesWorkloadKind: WorkloadKind;
 
   /**
    * @generated from field: string destination_kubernetes_workload_name = 16;
@@ -138,13 +217,26 @@ export declare type ApplicationModelNetworkFlatEntry = Message<"application_mode
    * @generated from field: uint64 default_allowed_sessions = 23;
    */
   defaultAllowedSessions: bigint;
+
+  /**
+   * An opaque identifier that is unique to this telemetry data across all the
+   * telemetry types.
+   *
+   * @generated from field: string id = 24;
+   */
+  id: string;
+
+  /**
+   * @generated from field: application_model.v1alpha.NetworkProtocolType protocol = 25;
+   */
+  protocol: NetworkProtocolType;
 };
 
 /**
- * Describes the message application_model.v1alpha.ApplicationModelNetworkFlatEntry.
- * Use `create(ApplicationModelNetworkFlatEntrySchema)` to create a new message.
+ * Describes the message application_model.v1alpha.NetworkTelemetry.
+ * Use `create(NetworkTelemetrySchema)` to create a new message.
  */
-export declare const ApplicationModelNetworkFlatEntrySchema: GenMessage<ApplicationModelNetworkFlatEntry>;
+export declare const NetworkTelemetrySchema: GenMessage<NetworkTelemetry>;
 
 /**
  * @generated from message application_model.v1alpha.ApplicationModelEvent
@@ -633,9 +725,9 @@ export declare type StreamTelemetryResponse = Message<"application_model.v1alpha
     /**
      * Application Model Network Flat Entry event has the
      *
-     * @generated from field: application_model.v1alpha.ApplicationModelNetworkFlatEntry network = 1;
+     * @generated from field: application_model.v1alpha.NetworkTelemetry network = 1;
      */
-    value: ApplicationModelNetworkFlatEntry;
+    value: NetworkTelemetry;
     case: "network";
   } | { case: undefined; value?: undefined };
 };
@@ -647,59 +739,84 @@ export declare type StreamTelemetryResponse = Message<"application_model.v1alpha
 export declare const StreamTelemetryResponseSchema: GenMessage<StreamTelemetryResponse>;
 
 /**
- * @generated from enum application_model.v1alpha.ApplicationModelDestinationType
+ * @generated from enum application_model.v1alpha.NetworkProtocolType
  */
-export enum ApplicationModelDestinationType {
+export enum NetworkProtocolType {
   /**
-   * @generated from enum value: APPLICATION_MODEL_DESTINATION_TYPE_UNSPECIFIED = 0;
+   * @generated from enum value: NETWORK_PROTOCOL_TYPE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: APPLICATION_MODEL_DESTINATION_TYPE_DNS = 1;
+   * @generated from enum value: NETWORK_PROTOCOL_TYPE_TCP = 1;
+   */
+  TCP = 1,
+
+  /**
+   * @generated from enum value: NETWORK_PROTOCOL_TYPE_UDP = 2;
+   */
+  UDP = 2,
+}
+
+/**
+ * Describes the enum application_model.v1alpha.NetworkProtocolType.
+ */
+export declare const NetworkProtocolTypeSchema: GenEnum<NetworkProtocolType>;
+
+/**
+ * @generated from enum application_model.v1alpha.DestinationType
+ */
+export enum DestinationType {
+  /**
+   * @generated from enum value: DESTINATION_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: DESTINATION_TYPE_DNS = 1;
    */
   DNS = 1,
 
   /**
-   * @generated from enum value: APPLICATION_MODEL_DESTINATION_TYPE_CIDR = 2;
+   * @generated from enum value: DESTINATION_TYPE_CIDR = 2;
    */
   CIDR = 2,
 
   /**
-   * @generated from enum value: APPLICATION_MODEL_DESTINATION_TYPE_KUBERNETES = 3;
+   * @generated from enum value: DESTINATION_TYPE_KUBERNETES = 3;
    */
   KUBERNETES = 3,
 }
 
 /**
- * Describes the enum application_model.v1alpha.ApplicationModelDestinationType.
+ * Describes the enum application_model.v1alpha.DestinationType.
  */
-export declare const ApplicationModelDestinationTypeSchema: GenEnum<ApplicationModelDestinationType>;
+export declare const DestinationTypeSchema: GenEnum<DestinationType>;
 
 /**
- * @generated from enum application_model.v1alpha.ApplicationModelEventType
+ * @generated from enum application_model.v1alpha.TelemetryType
  */
-export enum ApplicationModelEventType {
+export enum TelemetryType {
   /**
-   * @generated from enum value: APPLICATION_MODEL_EVENT_TYPE_UNSPECIFIED = 0;
+   * @generated from enum value: TELEMETRY_TYPE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: APPLICATION_MODEL_EVENT_TYPE_PROCESS = 1;
+   * @generated from enum value: TELEMETRY_TYPE_PROCESS = 1;
    */
   PROCESS = 1,
 
   /**
-   * @generated from enum value: APPLICATION_MODEL_EVENT_TYPE_NETWORK_CONNECT = 2;
+   * @generated from enum value: TELEMETRY_TYPE_NETWORK_CONNECT = 2;
    */
   NETWORK_CONNECT = 2,
 }
 
 /**
- * Describes the enum application_model.v1alpha.ApplicationModelEventType.
+ * Describes the enum application_model.v1alpha.TelemetryType.
  */
-export declare const ApplicationModelEventTypeSchema: GenEnum<ApplicationModelEventType>;
+export declare const TelemetryTypeSchema: GenEnum<TelemetryType>;
 
 /**
  * @generated from enum application_model.v1alpha.WorkloadKind
