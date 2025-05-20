@@ -18,7 +18,7 @@ import (
 	"syscall"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"golang.org/x/sys/unix"
+	"github.com/cilium/tetragon/pkg/reader/exec"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -688,7 +688,7 @@ func eventHasSignal(e fgsEvent, s syscall.Signal) error {
 		GetSignal() string
 	}); ok {
 		evSignal := ev.GetSignal()
-		if evSignal == unix.SignalName(s) {
+		if evSignal == exec.Signal(uint32(s)) {
 			return nil
 		}
 	}
