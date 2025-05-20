@@ -369,10 +369,110 @@ struct tree_id *find_self_uid(__u32 pid)
 	return self_uid;
 }
 
+/* Push destkey into socket metadata so future update can avoid the key
+ * generation above. Notice because many sockets may have the same destkey
+ * this is not necessarily a new entry in the destination_endpoint_map.
+ * Further, we complicate our life here a bit because now we have to promote
+ * keys to the 'more' correct userspace key if it shows up.
+ *
+ * Return the verdict code after resolving the sources.
+ */
+static inline __attribute__((always_inline)) int resolve_key(struct destination_endpoint_key *dnskey,
+							     struct destination_endpoint_key *lpmkey,
+							     struct destination_endpoint_key *usrkey,
+							     struct destination_endpoint_key *destkey,
+							     struct msg_ip_tuple *tuple,
+							     struct tcpsocketmap_value *v)
+{
+	uint64_t dnsv, usrv, destv, lpmv, orv;
+
+	dnsv = find_key(dnskey, tuple);
+	lpmv = find_key(lpmkey, tuple);
+	usrv = find_key(usrkey, tuple);
+	destv = find_key(destkey, tuple);
+
+	orv = (dnsv | lpmv | usrv | destv);
+	if (orv & TNP_POLICY_DENY) {
+		if (dnsv & TNP_POLICY_DENY) {
+			v->dst_key = *dnskey;
+			return dnsv;
+		}
+		if (lpmv & TNP_POLICY_DENY) {
+			v->dst_key = *lpmkey;
+			return lpmv;
+		}
+		if (usrv & TNP_POLICY_DENY) {
+			v->dst_key = *usrkey;
+			return usrv;
+		}
+		if (destv & TNP_POLICY_DENY) {
+			v->dst_key = *destkey;
+			return destv;
+		}
+	} else if (orv & TNP_POLICY_ALLOW) {
+		if (dnsv & TNP_POLICY_ALLOW) {
+			v->dst_key = *dnskey;
+			return dnsv;
+		}
+		if (lpmv & TNP_POLICY_ALLOW) {
+			v->dst_key = *lpmkey;
+			return lpmv;
+		}
+		if (usrv & TNP_POLICY_ALLOW) {
+			v->dst_key = *usrkey;
+			return usrv;
+		}
+		if (destv & TNP_POLICY_ALLOW) {
+			v->dst_key = *destkey;
+			return destv;
+		}
+	} else {
+		struct destination_endpoint_value *dst_value;
+		struct destination_endpoint_key *dfltkey;
+		int zero = 0;
+
+		dfltkey = map_lookup_elem(&destination_endpoint_key_heap, &zero);
+		if (!dfltkey)
+			return 0;
+
+		/* Small optimization. We could do the default key lookup as
+		 * part of find_key() but then we would dup the lookup for
+		 * each dst type. So instead of duplicating the lookup do it
+		 * once here.
+		 */
+		dfltkey->source = DESTINATION_SOURCE_BPF;
+		dfltkey->destination_id = 0;
+		dfltkey->local_id.uid = 0;
+		dfltkey->local_id.cpu = 0;
+		dfltkey->port = 0;
+
+		/* If there is no explicit policy we want to do accounting
+		 * with the most specific dst key. We create a precedence
+		 * here: dns, lpm, usr, bpf, dflt.
+		 */
+		if (dnskey->source) {
+			v->dst_key = *dnskey;
+		} else if (lpmkey->source) {
+			v->dst_key = *lpmkey;
+		} else if (usrkey->source) {
+			v->dst_key = *usrkey;
+		} else if (destkey->source) {
+			v->dst_key = *destkey;
+		} else {
+			v->dst_key = *dfltkey;
+		}
+
+		dst_value = map_lookup_elem(&destination_endpoint_map, dfltkey);
+		if (dst_value)
+			return dst_value->deny | TNP_POLICY_FALLTHRU;
+	}
+
+	return 0;
+}
+
 static inline __attribute__((always_inline)) int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
 	struct destination_endpoint_key dnskey, lpmkey, usrkey, destkey;
-	struct destination_endpoint_value *dst_value;
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
 	struct tree_id *self_uid;
@@ -383,7 +483,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	struct endpoint_id_value *value;
 	struct endpoint_id_key key;
 	struct ip_addr ip_key = {};
-	uint64_t lpm_id, dnsv, usrv, destv, lpmv, orv;
+	uint64_t lpm_id;
 
 	destkey.source = usrkey.source = lpmkey.source = dnskey.source = DESTINATION_SOURCE_UNKNOWN;
 
@@ -465,71 +565,7 @@ found_id:
 		}
 	}
 
-	/* Push destkey into socket metadata so future update can avoid
-	 * the key generation above. Notice because many sockets may have
-	 * the same destkey this is not necessarily a new entry in the
-	 * destination_endpoint_map. Further we complicate our life here
-	 * a bit because now we have to promote keys to the 'more' correct
-	 * userspace key if it shows up.
-	 */
-	dnsv = find_key(&dnskey, tuple);
-	lpmv = find_key(&lpmkey, tuple);
-	usrv = find_key(&usrkey, tuple);
-	destv = find_key(&destkey, tuple);
-
-	orv = (dnsv | lpmv | usrv | destv);
-	if (orv & TNP_POLICY_DENY) {
-		if (dnsv & TNP_POLICY_DENY) {
-			v->dst_key = dnskey;
-			return dnsv;
-		}
-		if (lpmv & TNP_POLICY_DENY) {
-			v->dst_key = lpmkey;
-			return lpmv;
-		}
-		if (usrv & TNP_POLICY_DENY) {
-			v->dst_key = usrkey;
-			return usrv;
-		}
-		if (destv & TNP_POLICY_DENY) {
-			v->dst_key = destkey;
-			return destv;
-		}
-	} else if (orv & TNP_POLICY_ALLOW) {
-		if (dnsv & TNP_POLICY_ALLOW) {
-			v->dst_key = dnskey;
-			return dnsv;
-		}
-		if (lpmv & TNP_POLICY_ALLOW) {
-			v->dst_key = lpmkey;
-			return lpmv;
-		}
-		if (usrv & TNP_POLICY_ALLOW) {
-			v->dst_key = usrkey;
-			return usrv;
-		}
-		if (destv & TNP_POLICY_ALLOW) {
-			v->dst_key = destkey;
-			return destv;
-		}
-	} else {
-		/* Small optimization. We could do the default key lookup as
-		 * part of find_key() but then we would dup the lookup for
-		 * each dst type. So instead of duplicating the lookup do it
-		 * once here.
-		 */
-		destkey.source = DESTINATION_SOURCE_BPF;
-		destkey.destination_id = 0;
-		destkey.local_id.uid = 0;
-		destkey.local_id.cpu = 0;
-		destkey.port = 0;
-		v->dst_key = destkey;
-		dst_value = map_lookup_elem(&destination_endpoint_map, &destkey);
-		if (dst_value)
-			return dst_value->deny | TNP_POLICY_FALLTHRU;
-	}
-
-	return 0;
+	return resolve_key(&dnskey, &lpmkey, &usrkey, &destkey, tuple, v);
 }
 
 static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)

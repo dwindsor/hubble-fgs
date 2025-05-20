@@ -220,6 +220,13 @@ struct {
 	__type(value, struct destination_endpoint_value);
 } destination_endpoint_heap SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, uint32_t);
+	__type(value, struct destination_endpoint_key);
+} destination_endpoint_key_heap SEC(".maps");
+
 struct listen_endpoint_key {
 	__u64 addr[2];
 	__u64 nsid;
