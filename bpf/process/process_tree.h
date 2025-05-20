@@ -290,10 +290,64 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	return 0;
 }
 
+static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple *tuple)
+{
+	struct destination_endpoint_value *dest;
+	struct destination_endpoint_value *destvalue;
+	struct tree_id self;
+	int zero = 0;
+
+	if (!key->source)
+		return 0;
+
+	if (unlikely(!tuple))
+		return 0;
+
+	dest = map_lookup_elem(&destination_endpoint_map, key);
+	if (dest && dest->deny)
+		return dest->deny;
+
+	destvalue = map_lookup_elem(&destination_endpoint_heap, &zero);
+	if (!destvalue)
+		return 0;
+
+	destvalue->ktime_create = ktime_get_ns();
+	destvalue->addr_create[0] = tuple->daddr[0];
+	destvalue->addr_create[1] = tuple->daddr[1];
+	destvalue->ipv6 = tuple->ipv6;
+	destvalue->port = tuple->dport;
+	destvalue->deny = 0;
+	destvalue->tx_quota = destvalue->tx_limit = 0;
+	destvalue->tx_bytes = destvalue->rx_bytes = 0;
+	map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+	/* If there is a dest.port entry then we previously also
+	 * add the dest.port=0 entry so we only need to check this
+	 * on new dest entries.
+	 */
+	key->port = 0;
+	destvalue->port = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, key);
+	if (dest && dest->deny) {
+		// fixup process key
+		key->port = tuple->dport;
+		return dest->deny;
+	}
+
+	self = key->local_id;
+	key->local_id.uid = 0;
+	key->local_id.cpu = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, key);
+	key->local_id = self; // restore local_id for caller
+	key->port = tuple->dport; // restore port for caller
+	if (dest && dest->deny)
+		return dest->deny;
+	return 0;
+}
+
 static inline __attribute__((always_inline)) int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
-	struct destination_endpoint_key destkey;
-	struct destination_endpoint_value *dest;
+	struct destination_endpoint_key dnskey, lpmkey, usrkey, destkey;
+	struct destination_endpoint_value *dst_value;
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
 	struct execve_map_value *curr;
@@ -305,7 +359,9 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	struct endpoint_id_value *value;
 	struct endpoint_id_key key;
 	struct ip_addr ip_key = {};
-	uint64_t lpm_id;
+	uint64_t lpm_id, dnsv, usrv, destv, lpmv, orv;
+
+	destkey.source = usrkey.source = lpmkey.source = dnskey.source = DESTINATION_SOURCE_UNKNOWN;
 
 	if (!tuple)
 		return 0;
@@ -349,41 +405,35 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	ip_key.addr[1] = tuple->daddr[1];
 	ip_key.af_inet6 = tuple->ipv6;
 
-	/* destination precedence: DNS, Userspace object, LPM object, kernel */
-
 	/* Check for DNS generated IDs */
 	dns_value = map_lookup_elem(&tg_dns_endpoint_id_map, &ip_key);
 	if (dns_value) {
-		destkey.destination_id = dns_value->id;
-		destkey.source = dns_value->source;
-		goto found_id;
+		dnskey.destination_id = dns_value->id;
+		dnskey.source = dns_value->source;
 	}
 
 	// Check for Userspace generated IDs to objects
 	value = map_lookup_elem(&tg_endpoint_id_map, &key);
 	if (value) {
-		destkey.destination_id = value->id;
-		destkey.source = DESTINATION_SOURCE_USERSPACE;
-		goto found_id;
+		usrkey.destination_id = value->id;
+		usrkey.source = DESTINATION_SOURCE_USERSPACE;
 	}
-
-	if (!cfg->bpfGenIds) /* We can abort if we only want userspace IDs */
-		return 0;
 
 	lpm_id = lpm_ipkey_lookup(&ip_key);
 	if (lpm_id) {
-		destkey.destination_id = lpm_id;
-		destkey.source = DESTINATION_SOURCE_LPM;
-		goto found_id;
+		lpmkey.destination_id = lpm_id;
+		lpmkey.source = DESTINATION_SOURCE_USERSPACE;
 	}
 
 	// Check for BPF generated IDs
-	destkey.source = DESTINATION_SOURCE_BPF;
 	value = map_lookup_elem(&tg_bpf_endpoint_id_map, &key);
 	if (value) {
 		destkey.destination_id = value->id;
-		goto found_id;
+		destkey.source = DESTINATION_SOURCE_BPF;
 	}
+
+	if (usrkey.source > 0 || dnskey.source > 0 || lpmkey.source > 0 || destkey.source > 0)
+		goto found_id;
 
 	/* There is no known ID for this IP so lets create one */
 	value = map_lookup_elem(&tg_bpf_endpoint_id_heap, &zero);
@@ -391,16 +441,18 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 		return 0;
 	value->id = __sync_fetch_and_add(&glbl_bpf_endpoint_id, 1);
 	destkey.destination_id = value->id;
+	destkey.source = DESTINATION_SOURCE_BPF;
 	map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
 found_id:
-	destkey.local_id = *self_uid;
-	destkey.port = tuple->dport;
-	destkey.local_nsid = 0;
+	dnskey.local_id = lpmkey.local_id = usrkey.local_id = destkey.local_id = *self_uid;
+	dnskey.port = lpmkey.port = usrkey.port = destkey.port = tuple->dport;
+	dnskey.local_nsid = lpmkey.local_nsid = usrkey.local_nsid = destkey.local_nsid = 0;
 
 	if (cgid) {
 		nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
-		if (nsid)
-			destkey.local_nsid = *nsid;
+		if (nsid) {
+			dnskey.local_nsid = lpmkey.local_nsid = usrkey.local_nsid = destkey.local_nsid = *nsid;
+		}
 	}
 
 	/* Push destkey into socket metadata so future update can avoid
@@ -410,56 +462,61 @@ found_id:
 	 * a bit because now we have to promote keys to the 'more' correct
 	 * userspace key if it shows up.
 	 */
-	v->dst_key = destkey;
+	dnsv = find_key(&dnskey, tuple);
+	lpmv = find_key(&lpmkey, tuple);
+	usrv = find_key(&usrkey, tuple);
+	destv = find_key(&destkey, tuple);
 
-	dest = map_lookup_elem(&destination_endpoint_map, &destkey);
-	if (!dest) {
-		struct destination_endpoint_value *destvalue;
-
-		destvalue = map_lookup_elem(&destination_endpoint_heap, &zero);
-		if (!destvalue)
-			return 0;
-
-		destvalue->ktime_create = ktime_get_ns();
-		destvalue->addr_create[0] = tuple->daddr[0];
-		destvalue->addr_create[1] = tuple->daddr[1];
-		destvalue->ipv6 = tuple->ipv6;
-		destvalue->port = tuple->dport;
-		destvalue->deny = 0;
-		destvalue->tx_quota = destvalue->tx_limit = 0;
-		destvalue->tx_bytes = destvalue->rx_bytes = 0;
-		map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
-		/* If there is a dest.port entry then we previously also
-		 * add the dest.port=0 entry so we only need to check this
-		 * on new dest entries.
-		 */
-		destkey.port = 0;
-		destvalue->port = 0;
-		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
-		if (!dest)
-			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
-		else if (dest->deny == 1) {
-			// fixup process entry
-			destkey.port = tuple->dport;
-			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
-			return 1;
+	orv = (dnsv | lpmv | usrv | destv);
+	if (orv & TNP_POLICY_DENY) {
+		if (dnsv & TNP_POLICY_DENY) {
+			v->dst_key = dnskey;
+			return dnsv;
 		}
-
-		destkey.local_id.uid = 0;
-		destkey.local_id.cpu = 0;
-		dest = map_lookup_elem(&destination_endpoint_map, &destkey);
-		if (!dest)
-			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
-		else if (dest->deny == 1) {
-			// fixup local state this is dumb
-			destkey.local_id = *self_uid;
-			destkey.port = tuple->dport;
-			map_update_elem(&destination_endpoint_map, &destkey, destvalue, 0);
-			return 1;
+		if (lpmv & TNP_POLICY_DENY) {
+			v->dst_key = lpmkey;
+			return lpmv;
+		}
+		if (usrv & TNP_POLICY_DENY) {
+			v->dst_key = usrkey;
+			return usrv;
+		}
+		if (destv & TNP_POLICY_DENY) {
+			v->dst_key = destkey;
+			return destv;
+		}
+	} else if (orv & TNP_POLICY_ALLOW) {
+		if (dnsv & TNP_POLICY_ALLOW) {
+			v->dst_key = dnskey;
+			return dnsv;
+		}
+		if (lpmv & TNP_POLICY_ALLOW) {
+			v->dst_key = lpmkey;
+			return lpmv;
+		}
+		if (usrv & TNP_POLICY_ALLOW) {
+			v->dst_key = usrkey;
+			return usrv;
+		}
+		if (destv & TNP_POLICY_ALLOW) {
+			v->dst_key = destkey;
+			return destv;
 		}
 	} else {
-		if (dest->deny)
-			return 1;
+		/* Small optimization. We could do the default key lookup as
+		 * part of find_key() but then we would dup the lookup for
+		 * each dst type. So instead of duplicating the lookup do it
+		 * once here.
+		 */
+		destkey.source = DESTINATION_SOURCE_BPF;
+		destkey.destination_id = 0;
+		destkey.local_id.uid = 0;
+		destkey.local_id.cpu = 0;
+		destkey.port = 0;
+		v->dst_key = destkey;
+		dst_value = map_lookup_elem(&destination_endpoint_map, &destkey);
+		if (dst_value)
+			return dst_value->deny | TNP_POLICY_FALLTHRU;
 	}
 
 	return 0;

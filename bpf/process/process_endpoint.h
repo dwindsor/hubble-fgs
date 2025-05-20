@@ -156,15 +156,16 @@ struct {
 	__type(value, struct process_tree_value);
 } process_tree_value_heap SEC(".maps");
 
-#define DESTINATION_SOURCE_UNKNOWNN  0
+#define DESTINATION_SOURCE_UNKNOWN   0
 #define DESTINATION_SOURCE_BPF	     1
 #define DESTINATION_SOURCE_USERSPACE 2
 #define DESTINATION_SOURCE_DNS	     3
 #define DESTINATION_SOURCE_LPM	     4
 
-#define TNP_POLICY_UNKNOWN 0x00
-#define TNP_POLICY_ALLOW   0x01
-#define TNP_POLICY_DENY	   0x02
+#define TNP_POLICY_UNKNOWN  0x00
+#define TNP_POLICY_ALLOW    0x01
+#define TNP_POLICY_DENY	    0x02
+#define TNP_POLICY_FALLTHRU 0x04
 
 /* Somewhat counter-intuitively destinations are scoped by local
  * id and/or local ns_id. This ensures that if two processes in
