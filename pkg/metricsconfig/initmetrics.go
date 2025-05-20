@@ -13,6 +13,7 @@ package metricsconfig
 import (
 	oss "github.com/cilium/tetragon/pkg/metricsconfig"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsparsermetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
@@ -162,7 +163,7 @@ func InitProcessCacheCleanMetricsForDocs(registry *prometheus.Registry) {
 
 func initAllDebugDNSParserMetrics(registry *prometheus.Registry) {
 	if option.Config.EnableBPFDNSParser {
-		dnsmetrics.EnableDebugDNSParserMetrics(registry)
+		dnsparsermetrics.EnableDebugDNSParserMetrics(registry)
 	}
 }
 

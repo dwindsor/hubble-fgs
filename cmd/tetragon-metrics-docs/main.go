@@ -20,7 +20,7 @@ import (
 	"github.com/cilium/tetragon/cmd/tetragon-metrics-docs/metricsmd"
 	"github.com/cilium/tetragon/pkg/metricsconfig"
 
-	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsparsermetrics"
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 )
 
@@ -94,7 +94,7 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 	case "process-cache-clean":
 		enterpriseMetricsConfig.InitProcessCacheCleanMetricsForDocs(reg)
 	case "debug-dns-parser":
-		dnsmetrics.EnableDebugDNSParserMetrics(reg).InitForDocs()
+		dnsparsermetrics.EnableDebugDNSParserMetrics(reg).InitForDocs()
 	}
 	return nil
 }
