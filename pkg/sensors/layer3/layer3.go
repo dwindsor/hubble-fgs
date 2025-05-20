@@ -520,6 +520,12 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		l3cfg.udp4Enabled = 1
 		l3cfg.udp6Enabled = 1
 	}
+	if udpEnabled && enterpriseOption.Config.EnableBPFDNSParser && enterpriseOption.Config.EnableApplicationModel {
+		err := dnsparser.InitializeDNSMapsWithLocalhost()
+		if err != nil {
+			return fmt.Errorf("failed to initialize the DNS maps: %w", err)
+		}
+	}
 	if icmpEnabled && (spec == nil || spec.Parser.Icmp != nil) {
 		if err := icmp.ConfigureMaps(bpf.MapPrefixPath(), icmp.ConfigMapName, icmp.Config); err != nil {
 			return err

@@ -19,9 +19,11 @@ import (
 	"runtime"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
@@ -48,6 +50,58 @@ type ErrorMap struct {
 type DNSID struct {
 	ID     uint64
 	Source uint64
+}
+
+// InitializeDNSMapsWithLocalhost fills the DNS map with localhost related
+// entries. Indeed, RFC 6761 specifies in its section 6.3 that:
+//
+// Users are free to use localhost names as they would any other domain names.
+// Users may assume that IPv4 and IPv6 address queries for localhost names will
+// always resolve to the respective IP loopback address.
+//
+// Most well implemented software will not resolve localhost (like curl, see
+// https://daniel.haxx.se/blog/2021/05/31/curl-localhost-as-a-local-host/), so
+// we need to pre-fill those information since we might not see the DNS pkt.
+func InitializeDNSMapsWithLocalhost() error {
+	// The ID must come from userspace, and as such, this will only work if
+	// the application model is enabled (otherwise the userspace endpoint
+	// cache isn't enabled)
+	userspaceEndpointCache := endpoint.MustGet()
+	id, err := userspaceEndpointCache.AddEndpoint(endpoint.Endpoint{
+		Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
+		Dns:  "localhost",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add the localhost endpoint: %w", err)
+	}
+
+	// Update the IP to ID link
+	dnsEndpointIDMapFile := filepath.Join(bpf.MapPrefixPath(), DNSEndpointIDMapName)
+	dnsEndpointIDMapRaw, err := ebpf.LoadPinnedMap(dnsEndpointIDMapFile, nil)
+	if err != nil {
+		return fmt.Errorf("failed loading %s map: %w", dnsEndpointIDMapFile, err)
+	}
+	defer dnsEndpointIDMapRaw.Close()
+	dnsEndpointIDMap := NewDNSEndpointIDMap(dnsEndpointIDMapRaw)
+
+	err = dnsEndpointIDMap.Update(netip.MustParseAddr("127.0.0.1"), DNSID{id, types.DestinationSourceUser})
+	if err != nil {
+		return fmt.Errorf("failed adding the 127.0.0.1 IP as localhost endpoint: %w", err)
+	}
+	err = dnsEndpointIDMap.Update(netip.MustParseAddr("::1"), DNSID{id, types.DestinationSourceUser})
+	if err != nil {
+		return fmt.Errorf("failed adding the ::1 IP as localhost endpoint: %w", err)
+	}
+
+	// Update the domain maps (direct and reverse using DomainMap)
+	dnsDomainMap := DomainMap{}
+	err = dnsDomainMap.Update("localhost", id)
+	if err != nil {
+		return fmt.Errorf("failed updating the domain<->ID maps with localhost: %w", err)
+	}
+	dnsDomainMap.CloseMaps()
+
+	return nil
 }
 
 func NewErrorMap(m *ebpf.Map) ErrorMap {
@@ -294,6 +348,16 @@ func (m DNSEndpointIDMap) Clear() error {
 		return fmt.Errorf("failed to batch delete keys %v: %w", keys, err)
 	}
 
+	return nil
+}
+
+func (m DNSEndpointIDMap) Update(ip netip.Addr, id DNSID) error {
+	var key dnsapi.IPAddr
+	key.Set(ip)
+	err := m.dnsEndpointIDMap.Update(&key, &id, ebpf.UpdateAny)
+	if err != nil {
+		return fmt.Errorf("failed to update the key %s with value %d: %w", key, id, err)
+	}
 	return nil
 }
 
