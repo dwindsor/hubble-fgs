@@ -15,7 +15,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/option"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
@@ -73,7 +73,7 @@ func init() {
 	}
 
 	// Setup BTF cache
-	btf.InitCachedBTF(option.Config.HubbleLib, "")
+	btf.InitializeCachedBTF(option.Config.HubbleLib, "")
 
 	// Probe for the testdata. Changing the working directory
 	// to keep the test-case filenames short.
