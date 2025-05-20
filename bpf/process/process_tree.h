@@ -344,13 +344,37 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	return 0;
 }
 
+struct tree_id *find_self_uid(__u32 pid)
+{
+	struct process_tree_binary_uid_key *tree_key;
+	struct execve_map_value *curr;
+	struct tree_id *self_uid;
+	int zero = 0;
+
+	curr = execve_map_get_noinit(pid);
+	if (!curr)
+		return 0;
+
+	tree_key = map_lookup_elem(&process_tree_binary_uid_key_map, &zero);
+	if (!tree_key)
+		return 0;
+	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
+	probe_read_kernel(&tree_key->args, MAXARGLENGTH, global_zero);
+
+	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
+	if (!self_uid) {
+		probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
+		self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
+	}
+	return self_uid;
+}
+
 static inline __attribute__((always_inline)) int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
 	struct destination_endpoint_key dnskey, lpmkey, usrkey, destkey;
 	struct destination_endpoint_value *dst_value;
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
-	struct execve_map_value *curr;
 	struct tree_id *self_uid;
 	int zero = 0;
 	__u64 *nsid;
@@ -373,23 +397,9 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	if (!cfg || !cfg->enableProcessTree)
 		return 0;
 
-	curr = execve_map_get_noinit(v->key.pid);
-	if (!curr)
+	self_uid = find_self_uid(v->key.pid);
+	if (!self_uid)
 		return 0;
-
-	struct process_tree_binary_uid_key *tree_key;
-	tree_key = map_lookup_elem(&process_tree_binary_uid_key_map, &zero);
-	if (!tree_key)
-		return 0;
-	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
-	probe_read_kernel(&tree_key->args, MAXARGLENGTH, global_zero);
-	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
-	if (!self_uid) {
-		probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
-		self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
-		if (!self_uid)
-			return 0;
-	}
 
 	zero_uid.pid = 0;
 	memset(&zero_uid.pad, 0, sizeof(zero_uid.pad));
