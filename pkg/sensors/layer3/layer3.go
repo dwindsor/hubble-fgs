@@ -335,7 +335,10 @@ func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestam
 	} else {
 		// If we are loading programs (!Layer3CLIEnable) then the sensor will be configured at the
 		// appropriate point. As we're not, configure the sensor now.
-		l3.configureMaps(spec)
+		err := l3.configureMaps(spec)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("failed to configure layer3 maps")
+		}
 	}
 
 	udp.SetGcInterval(udpInterval)
@@ -487,7 +490,7 @@ func (k *CgroupProtocolConfigKey) String() string {
 func (l3 *l3Sensor) configureCgroupProtocolCfgMap(l3cfg CgroupProtocolConfigValue) error {
 	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), CgroupProtocolConfigMapName), nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed loading map %s: %w", CgroupProtocolConfigMapName, err)
 	}
 	defer m.Close()
 
@@ -496,7 +499,7 @@ func (l3 *l3Sensor) configureCgroupProtocolCfgMap(l3cfg CgroupProtocolConfigValu
 	}
 	err = m.Put(key, &l3cfg)
 	if err != nil {
-		return fmt.Errorf("failed cgroup_protocol_cfg_map Update: %w", err)
+		return fmt.Errorf("failed %s update: %w", CgroupProtocolConfigMapName, err)
 	}
 
 	return nil
@@ -509,13 +512,15 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	configureSettings(rawEnabled, reportRawClose, udpEnabled)
 
 	if tcpEnabled && (spec == nil || spec.Parser.Tcp != nil) {
-		tcp.ConfigureMaps()
+		if err := tcp.ConfigureMaps(); err != nil {
+			return fmt.Errorf("failed to configure TCP maps: %w", err)
+		}
 		l3cfg.tcp4Enabled = 1
 		l3cfg.tcp6Enabled = 1
 	}
 	if udpEnabled && (spec == nil || spec.Parser.Udp != nil) {
 		if err := udp.ConfigureMaps(bpf.MapPrefixPath(), udp.ConfigMapName, udp.Config); err != nil {
-			return err
+			return fmt.Errorf("failed to configure UDP maps: %w", err)
 		}
 		l3cfg.udp4Enabled = 1
 		l3cfg.udp6Enabled = 1
@@ -528,7 +533,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	}
 	if icmpEnabled && (spec == nil || spec.Parser.Icmp != nil) {
 		if err := icmp.ConfigureMaps(bpf.MapPrefixPath(), icmp.ConfigMapName, icmp.Config); err != nil {
-			return err
+			return fmt.Errorf("failed to configure ICMP maps: %w", err)
 		}
 		l3cfg.icmp4Enabled = 1
 		l3cfg.icmp6Enabled = 1
@@ -537,7 +542,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 
 	if icmpEnabled || tcpEnabled || udpEnabled {
 		if err := l3.configureCgroupProtocolCfgMap(l3cfg); err != nil {
-			return err
+			return fmt.Errorf("failed to configure cgroup protocol config map: %w", err)
 		}
 	}
 
@@ -579,7 +584,10 @@ func (l3 *l3Sensor) configureSensor() error {
 func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	// Configure maps when the first program is loaded.
 	if !configured {
-		l3.configureMaps(nil)
+		err := l3.configureMaps(nil)
+		if err != nil {
+			return fmt.Errorf("failed to configure layer3 maps: %w", err)
+		}
 		configured = true
 	}
 
