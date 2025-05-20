@@ -244,10 +244,8 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 		if enterpriseOption.Config.EnableBPFDNSParser {
 			logger.GetLogger().Info("Enabling the BPF DNS parser")
 			DNSEndpointIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			DNSDomainMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 			DNSDomainMapRev.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			if enterpriseOption.Config.EnableApplicationModel {
-				DNSDomainMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			}
 
 			maps = append(maps, DNSParserErrorMap)
 			maps = append(maps, DNSEndpointIDMap)
