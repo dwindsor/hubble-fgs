@@ -612,6 +612,7 @@ static inline __attribute__((always_inline)) int process_socketmap_rekey(struct 
 	if (value && value->id != key->destination_id) {
 		key->source = DESTINATION_SOURCE_USERSPACE;
 		key->destination_id = value->id;
+		return 1;
 	}
 	return 0;
 }
@@ -685,8 +686,8 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	struct destination_endpoint_value *dest_full, *dest_port, *dest_local, *dest_default, dummy = { 0 };
 	struct destination_endpoint_key key;
 	__u64 len = skb->len;
+	int verdict, rewrite;
 	__u64 policy = 0;
-	int verdict;
 
 	/* These are incomplete keys the result of process and sessions taht
 	 * existed before Tetragon started. We may add support for these flows
@@ -695,8 +696,25 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	if (!v->dst_key.source)
 		return SK_PASS;
 
-	repair_socket_nsid(&v->dst_key);
-	process_socketmap_rekey(&v->dst_key, skb);
+	rewrite = repair_socket_nsid(&v->dst_key);
+	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
+	if (!rewrite) {
+		key = v->dst_key;
+		dest_full = map_lookup_elem(&destination_endpoint_map, &key);
+		if (dest_full) {
+			__sync_fetch_and_add(&dest_full->tx_bytes, len);
+			if (is_policy_drop(v->deny)) {
+				__sync_fetch_and_add(&dest_full->tx_drops, len);
+				if (v->deny & TNP_POLICY_FALLTHRU)
+					__sync_fetch_and_add(&dest_full->deny_default, len);
+				return SK_DROP;
+			}
+			if (v->deny & TNP_POLICY_FALLTHRU)
+				__sync_fetch_and_add(&dest_full->allow_default, len);
+
+			return SK_PASS;
+		}
+	}
 
 	key = v->dst_key;
 	dest_full = map_lookup_elem(&destination_endpoint_map, &key);
