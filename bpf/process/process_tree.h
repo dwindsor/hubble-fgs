@@ -584,6 +584,34 @@ static inline __attribute__((always_inline)) int dest_policy(__u64 *p, __u64 len
 	return SK_PASS;
 }
 
+static inline __attribute__((always_inline)) int qos(struct destination_endpoint_value *dest, struct destination_endpoint_value *port, struct destination_endpoint_value *full, __u64 len)
+{
+	int verdict = SK_PASS;
+	__u64 quota, now;
+
+	/* This is all a bit racy, but if you are surfing on the edge of a
+	 * time window the observer can't tell order of operations between
+	 * two skbs and they can't measure time well enough to know if I did
+	 * it 100% correctly. All this is write_once so values are not going
+	 * to be corrupted.
+	 */
+	now = ktime_get_ns();
+	if (dest->ktime_tx_reset && (now - dest->ktime_last_reset > dest->ktime_tx_reset)) {
+		atomic_xchg(&dest->tx_quota, 0);
+		atomic_xchg(&dest->ktime_last_reset, now);
+	}
+
+	quota = __sync_add_and_fetch(&dest->tx_quota, len);
+	if (dest->tx_limit && quota > dest->tx_limit) {
+		__sync_fetch_and_add(&full->tx_drops, len);
+		__sync_fetch_and_add(&port->tx_drops, len);
+		__sync_fetch_and_add(&dest->tx_drops, len);
+		verdict = SK_DROP;
+	}
+
+	return verdict;
+}
+
 /* Stats and deny/allow decisions are made in a sequence each step
  * loosens the key searching for a higher level rule. The order of
  * this search is important and is done in the following order.
@@ -599,8 +627,8 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 {
 	struct destination_endpoint_value *dest_full, *dest_port, *dest_local, *dest_default, dummy = { 0 };
 	struct destination_endpoint_key key;
-	__u64 policy = 0, quota, now;
 	__u64 len = skb->len;
+	__u64 policy = 0;
 	int verdict;
 
 	/* These are incomplete keys the result of process and sessions taht
@@ -651,25 +679,9 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 			__sync_fetch_and_add(&dest_local->tx_drops, len);
 		}
 
-		/* This is all a bit racy, but if you are surfing on the edge of a
-		 * time window the observer can't tell order of operations between
-		 * two skbs and they can't measure time well enough to know if I did
-		 * it 100% correctly. All this is write_once so values are not going
-		 * to be corrupted.
-		 */
-		now = ktime_get_ns();
-		if (dest_local->ktime_tx_reset && (now - dest_local->ktime_last_reset > dest_local->ktime_tx_reset)) {
-			atomic_xchg(&dest_local->tx_quota, 0);
-			atomic_xchg(&dest_local->ktime_last_reset, now);
-		}
-
-		quota = __sync_add_and_fetch(&dest_local->tx_quota, len);
-		if (dest_local->tx_limit && quota > dest_local->tx_limit) {
-			__sync_fetch_and_add(&dest_full->tx_drops, len);
-			__sync_fetch_and_add(&dest_port->tx_drops, len);
-			__sync_fetch_and_add(&dest_local->tx_drops, len);
+		verdict = qos(dest_local, dest_port, dest_full, len);
+		if (verdict == SK_DROP)
 			return SK_DROP;
-		}
 	} else {
 		dest_local = &dummy;
 	}
