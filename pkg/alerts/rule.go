@@ -42,7 +42,7 @@ type RuleManager interface {
 
 	// Add an alert rule that writes on a specific filename.
 	//
-	// NB(kkourt): The mandate code uses this functio so that it can install two alert rules
+	// NB(kkourt): The mandate code uses this function so that it can install two alert rules
 	// with the same name. In the future, we might expose the ability to specify a filename in
 	// the alert rule in the spec as well.
 	//
