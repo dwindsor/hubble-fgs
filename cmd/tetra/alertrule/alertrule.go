@@ -121,6 +121,11 @@ func New() *cobra.Command {
 		getCmd,
 	)
 
+	testCmd := testCommand()
+	if testCmd != nil {
+		cmd.AddCommand(testCmd)
+	}
+
 	return cmd
 }
 
