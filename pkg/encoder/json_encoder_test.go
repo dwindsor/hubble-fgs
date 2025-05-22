@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/cilium/api/v1/observer"
 	"github.com/cilium/cilium/pkg/labels"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -92,6 +93,8 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 }
 
 func TestJSONEncoder_processConnectToFlow(t *testing.T) {
+	option.Config.ClusterName = "test-cluster"
+	defer func() { option.Config.ClusterName = "" }()
 	nodeIPs := map[string]struct{}{
 		"10.0.0.1": {},
 		"10.0.0.2": {},
@@ -151,7 +154,8 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		},
 		Source: &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
 		Destination: &flow.Endpoint{
-			Namespace: "ns-2",
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-2",
 		},
 		DestinationService: &flow.Service{
 			Name:      "svc-2",
@@ -196,12 +200,14 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			},
 		},
 		Source: &flow.Endpoint{
-			Namespace: "ns-1",
-			Labels:    []string{"k8s:key1=val1", "k8s:key2=val2"},
-			PodName:   "pod-1",
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-1",
+			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
+			PodName:     "pod-1",
 		},
 		Destination: &flow.Endpoint{
-			Namespace: "ns-2",
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-2",
 		},
 		DestinationService: &flow.Service{
 			Name:      "svc-2",
@@ -233,12 +239,14 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			},
 		},
 		Source: &flow.Endpoint{
-			Namespace: "ns-1",
-			Labels:    []string{"k8s:key1=val1", "k8s:key2=val2"},
-			PodName:   "pod-1",
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-1",
+			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
+			PodName:     "pod-1",
 		},
 		Destination: &flow.Endpoint{
-			Namespace: "ns-2",
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-2",
 		},
 		DestinationService: &flow.Service{
 			Name:      "svc-2",
@@ -270,12 +278,14 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			},
 		},
 		Source: &flow.Endpoint{
-			Namespace: "ns-1",
-			Labels:    []string{"k8s:key1=val1", "k8s:key2=val2"},
-			PodName:   "pod-1",
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-1",
+			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
+			PodName:     "pod-1",
 		},
 		Destination: &flow.Endpoint{
-			Namespace: "ns-2",
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-2",
 		},
 		DestinationNames: []string{"isovalent.com"},
 		DestinationService: &flow.Service{
@@ -314,16 +324,18 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			},
 		},
 		Source: &flow.Endpoint{
-			Namespace: "ns-1",
-			Labels:    []string{"k8s:key1=val1", "k8s:key2=val2"},
-			PodName:   "pod-1",
-			Workloads: []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-1",
+			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
+			PodName:     "pod-1",
+			Workloads:   []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
 		},
 		Destination: &flow.Endpoint{
-			Namespace: "ns-1",
-			PodName:   "dst-pod-1",
-			Labels:    []string{},
-			Workloads: []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-1",
+			PodName:     "dst-pod-1",
+			Labels:      []string{},
+			Workloads:   []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
 		},
 		DestinationNames: []string{"isovalent.com"},
 		Type:             observer.FlowType_L3_L4,
@@ -353,16 +365,18 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			},
 		},
 		Source: &flow.Endpoint{
-			Namespace: "ns-1",
-			Labels:    []string{"k8s:key1=val1", "k8s:key2=val2"},
-			PodName:   "pod-1",
-			Workloads: []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-1",
+			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
+			PodName:     "pod-1",
+			Workloads:   []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
 		},
 		Destination: &flow.Endpoint{
-			Namespace: "ns-1",
-			PodName:   "dst-pod-1",
-			Labels:    []string{},
-			Workloads: []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-1",
+			PodName:     "dst-pod-1",
+			Labels:      []string{},
+			Workloads:   []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
 		},
 		DestinationNames: []string{"isovalent.com"},
 		Type:             observer.FlowType_L3_L4,
@@ -392,16 +406,18 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			},
 		},
 		Source: &flow.Endpoint{
-			Namespace: "ns-1",
-			Labels:    []string{"k8s:key1=val1", "k8s:key2=val2"},
-			PodName:   "pod-1",
-			Workloads: []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-1",
+			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
+			PodName:     "pod-1",
+			Workloads:   []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
 		},
 		Destination: &flow.Endpoint{
-			Namespace: "ns-1",
-			PodName:   "dst-pod-1",
-			Labels:    []string{},
-			Workloads: []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
+			ClusterName: option.Config.ClusterName,
+			Namespace:   "ns-1",
+			PodName:     "dst-pod-1",
+			Labels:      []string{},
+			Workloads:   []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
 		},
 		DestinationNames: []string{"isovalent.com"},
 		Type:             observer.FlowType_L3_L4,

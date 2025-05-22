@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	jsonEncoder "github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/golang/protobuf/ptypes/wrappers"
 )
@@ -114,6 +115,7 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 	var source, destination flow.Endpoint
 	sourcePod := pc.GetProcess().GetPod()
 	if sourcePod != nil {
+		source.ClusterName = option.Config.ClusterName
 		source.Namespace = sourcePod.Namespace
 		source.PodName = sourcePod.Name
 		sourceLabels := labels.Map2Labels(sourcePod.PodLabels, labels.LabelSourceK8s).GetModel()
@@ -131,6 +133,7 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 	destinationSvc := pc.GetDestinationService()
 	var destinationService *flow.Service
 	if destinationPod != nil {
+		destination.ClusterName = option.Config.ClusterName
 		destination.Namespace = destinationPod.Namespace
 		destination.PodName = destinationPod.Name
 		destinationLabels := labels.Map2Labels(destinationPod.PodLabels, labels.LabelSourceK8s).GetModel()
@@ -140,6 +143,7 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 			destination.Workloads = []*flow.Workload{{Name: destinationPod.Workload, Kind: destinationPod.WorkloadKind}}
 		}
 	} else if destinationSvc != nil {
+		destination.ClusterName = option.Config.ClusterName
 		destination.Namespace = destinationSvc.Namespace
 		destinationService = &flow.Service{
 			Name:      destinationSvc.Name,
