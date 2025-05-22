@@ -5,6 +5,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/modelapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -77,6 +78,8 @@ func CheckStructAlignments(pathToObj string) error {
 		"process_tree_binary_uid_key": {types.ProcessTreeBinaryUUIDValue{}},
 		"tree_id":                     {types.TreeId{}},
 		"process_syscall_value":       {types.ProcessSyscallValue{}},
+		"procfs_cfg":                  {modelapi.ProcFSConfigValue{}},
+		"u32":                         {modelapi.ProcFSConfigKey{}},
 	}
 
 	return alignchecker.CheckStructAlignments(pathToObj, alignments, true)

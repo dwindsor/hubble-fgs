@@ -68,7 +68,9 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_execve_event_v611.o bpf_
 	  bpf_loader.o \
 	  bpf_enforcer.o bpf_multi_enforcer.o bpf_fmodret_enforcer.o \
 	  bpf_cgroup.o \
-	  bpf_syscall.o
+	  bpf_syscall.o \
+	  bpf_procfs_walk.o \
+	  bpf_procfs_walk_fentry.o
 
 FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_filemap_map_pages_v419.o bpf_filemap_page_mkwrite.o bpf_filemap_page_mkwrite_v419.o bpf_finish_open.o bpf_finish_open_v419.o \
 	  bpf_security_file_permission.o bpf_security_file_permission_v419.o bpf_vfs_unlink.o bpf_vfs_unlink_v419.o bpf_vfs_fallocate.o bpf_vfs_fallocate_v419.o bpf_vfs_open.o bpf_vfs_open_v419.o \
@@ -294,6 +296,18 @@ objs/bpf_syscall.o: $(ISOPROCESS)bpf_syscall.c $(ISOPROCESS)process_syscall.h
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
 deps/bpf_syscall.d: $(ISOPROCESS)bpf_syscall.c
+	$(rule_d)
+
+objs/bpf_procfs_walk.o: $(ISOPROCESS)bpf_procfs_walk.c $(ISOPROCESS)procfs_walk.h
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+deps/bpf_procfs_walk.d: $(ISOPROCESS)bpf_procfs_walk.c
+	$(rule_d)
+
+objs/bpf_procfs_walk_fentry.o: $(ISOPROCESS)bpf_procfs_walk_fentry.c $(ISOPROCESS)procfs_walk.h
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+deps/bpf_procfs_walk_fentry.d: $(ISOPROCESS)bpf_procfs_walk_fentry.c
 	$(rule_d)
 
 ## bpf_enforcer: __BPF_OVERRIDE_RETURN, but no __MULTI_KPROBE

@@ -72,6 +72,7 @@ import (
 
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base/procfs"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
@@ -514,6 +515,11 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if err = loadInitialSensor(ctx); err != nil {
 		return err
 	}
+	if enterpriseOption.Config.EnableApplicationModel {
+		if err = procfs.LoadInitialSensor(ctx); err != nil {
+			return err
+		}
+	}
 	if err = file.LoadFIMInitialSensor(ctx); err != nil {
 		return err
 	}
@@ -626,6 +632,16 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 
 	if err = procevents.GetRunningProcs(); err != nil {
 		return err
+	}
+
+	// We need to the execve map to be pre-populated via procevents, so make
+	// sure to let that run first. TODO: eventually we may be able to use a
+	// similar technique to completely remove procevents, but this will require
+	// some OSS work.
+	if enterpriseOption.Config.EnableApplicationModel {
+		if err = procfs.ProcFSWalk(); err != nil {
+			logger.GetLogger().WithError(err).Warn("failed to pre-populate application model entries")
+		}
 	}
 
 	if err := cgrouprate.NewCgroupRate(ctx, pm, &option.Config.CgroupRate); err != nil {

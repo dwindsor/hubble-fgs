@@ -11,6 +11,7 @@
 #include "process/process_endpoint.h"
 #include "process/process_syscall.h"
 #include "parsers/dns/dns.h"
+#include "process/procfs_walk.h"
 
 // Layer 3
 struct msg_ip_event _msg_ip_event;
@@ -70,3 +71,5 @@ struct endpoint_id_value _endpoint_id_value;
 struct process_tree_binary_uid_key _process_tree_binary_uid_key;
 struct tree_id _tree_id;
 struct process_syscall_value _process_syscall_value;
+struct procfs_cfg _procfs_cfg;
+u32 _procfs_cfg_key;
