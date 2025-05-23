@@ -466,7 +466,6 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		if (dst_value)
 			return dst_value->deny | TNP_POLICY_FALLTHRU;
 	}
-
 	return 0;
 }
 
@@ -716,6 +715,45 @@ static inline __attribute__((always_inline)) int qos(struct destination_endpoint
 	return verdict;
 }
 
+static __attribute__((noinline)) int qos_from_key(struct destination_endpoint_key *key, __u64 len)
+{
+	struct destination_endpoint_value *dest;
+	int verdict = SK_PASS;
+	__u64 quota, now;
+
+	if (!key) {
+		return SK_PASS;
+	}
+
+	key->port = 0;
+	key->local_id.uid = 0;
+	key->local_id.cpu = 0;
+	dest = map_lookup_elem(&destination_endpoint_map, key);
+	if (!dest) {
+		return SK_PASS;
+	}
+
+	/* This is all a bit racy, but if you are surfing on the edge of a
+	 * time window the observer can't tell order of operations between
+	 * two skbs and they can't measure time well enough to know if I did
+	 * it 100% correctly. All this is write_once so values are not going
+	 * to be corrupted.
+	 */
+	now = ktime_get_ns();
+	if (dest->ktime_tx_reset && (now - dest->ktime_last_reset > dest->ktime_tx_reset)) {
+		atomic_xchg(&dest->tx_quota, 0);
+		atomic_xchg(&dest->ktime_last_reset, now);
+	}
+
+	quota = __sync_add_and_fetch(&dest->tx_quota, len);
+	if (dest->tx_limit && quota > dest->tx_limit) {
+		__sync_fetch_and_add(&dest->tx_drops, len);
+		verdict = SK_DROP;
+	}
+
+	return verdict;
+}
+
 /* Stats and deny/allow decisions are made in a sequence each step
  * loosens the key searching for a higher level rule. The order of
  * this search is important and is done in the following order.
@@ -758,7 +796,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 			if (v->deny & TNP_POLICY_FALLTHRU)
 				__sync_fetch_and_add(&dest_full->allow_default, len);
 
-			return SK_PASS;
+			return qos_from_key(&key, len);
 		}
 	}
 
