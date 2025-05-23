@@ -14,22 +14,17 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/timer"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/vishvananda/netlink"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -84,35 +79,7 @@ func runNetworkCB() {
 		}
 	}
 
-	cache := nscache.GetCache()
-	values := cache.Values()
-	for _, v := range values {
-		pidStr := strconv.FormatUint(uint64(v.Pid), 10)
-		if err != nil {
-			logger.GetLogger().WithError(err).Warn("Unable to convert Pid to string")
-			continue
-		}
-		nsFileName := filepath.Join(option.Config.ProcFS, pidStr, "ns", "net")
-		netns, err := ns.GetNS(nsFileName)
-		if err != nil {
-			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Debugf("runNetworkCB GetNS from path failed")
-			nscache.DelNetNs(v.Netns)
-			continue
-		}
-		defer netns.Close()
-
-		err = netns.Do(func(_ ns.NetNS) error {
-			links, err = netlink.LinkList()
-			if err != nil {
-				logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("netns LinkList failed")
-				return fmt.Errorf("netlink LinkList() error: %v", err)
-			}
-			for _, l := range links {
-				emitInterfaceEvent(l.Attrs(), v.Netns, v.Pod)
-			}
-			return nil
-		})
-	}
+	emitNSEvent()
 }
 
 type networkSensor struct {
