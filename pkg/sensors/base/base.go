@@ -16,7 +16,6 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/errmetrics"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ksyms"
@@ -32,7 +31,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base/procfs"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 var (
@@ -199,73 +197,6 @@ func GetExecveMapStats() *program.Map {
 
 func GetTetragonConfMap() *program.Map {
 	return TetragonConfMap
-}
-
-func GetDefaultPrograms() []*program.Program {
-	progs := []*program.Program{
-		Exit,
-		Fork,
-		ExecveBprmCommit,
-	}
-	if EnableV611Progs() {
-		progs = append(progs, ExecveV611)
-	} else if config.EnableV61Progs() {
-		progs = append(progs, ExecveV61)
-	} else if utils.EnableV511Progs() {
-		progs = append(progs, ExecveV511)
-	} else if config.EnableLargeProgs() {
-		progs = append(progs, ExecveV53)
-	} else {
-		progs = append(progs, Execve)
-	}
-	if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.EnableSyscallTracking {
-		logger.GetLogger().Info("Enable syscall tracking")
-		progs = append(progs, SysEnterProg)
-	}
-	return progs
-}
-
-func GetDefaultMaps() []*program.Map {
-	maps := []*program.Map{
-		PNWatermarksMapStats,
-		ProcessNetworkWatermarksMap,
-		SocketMap,
-		SocketStats,
-		SocketTupleMap,
-		SocketTupleStats,
-		SocketTupleRevMap,
-		SocketTupleHintMap,
-		CfgMap,
-		ExecveJoinMap,
-		ExecveJoinMapStats,
-		ExecveMap,
-		ExecveStats,
-		ExecveTailCallsMap,
-		StatsMap,
-		PorcessTreeConfigMap,
-		MatchBinariesSetMap,
-		TetragonConfMap,
-		TCPMonMap,
-		PidDataMap,
-		ProcessTreeId,
-		ProcessTreeMap,
-		ProcessTreeBinaryUUIDMap,
-		ProcessTreeUUIDBinaryMap,
-		EndpointIdMap,
-		DestinationEndpointMap,
-		ListenEndpointMap,
-		BpfEndpointIdMap,
-		ErrMetricsMap,
-	}
-	if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.EnableSyscallTracking {
-		maps = append(maps, SyscallsMap)
-	}
-	if enterpriseOption.Config.EnableApplicationModel {
-		maps = append(maps, NsIDMap)
-	}
-
-	ConfigureMapSizes()
-	return maps
 }
 
 func initBaseSensor() *sensors.Sensor {
