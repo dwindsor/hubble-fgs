@@ -33,6 +33,7 @@ var (
 	checkCGroupSKBProbeRead  = sync.OnceValue(_checkCGroupSKBProbeRead)
 	checkAddAndFetch         = sync.OnceValue(_checkAddAndFetch)
 	checkCurrentTaskBTF      = sync.OnceValue(_checkCurrentTaskBTF)
+	checkFuncByFuncVerif     = sync.OnceValue(_checkFuncByFuncVerif)
 	checkRawHooksAvailable   = sync.OnceValue(_checkRawHooksAvailable)
 	checkRTTHookAvailable    = sync.OnceValue(_checkRTTHookAvailable)
 	checkUDPBindNeedsDummies = sync.OnceValue(_checkUDPBindNeedsDummies)
@@ -149,6 +150,41 @@ func _checkCurrentTaskBTF() bool {
 // allow the process tree functionality to work.
 func SupportProcessTree() bool {
 	return SupportAddAndFetch() && SupportCurrentTaskBTF()
+}
+
+// SupportFuncByFuncVerif checks if the kernel supports function-by-function verification
+func SupportFuncByFuncVerif() bool {
+	err := checkFuncByFuncVerif()
+	return err == nil
+}
+
+func _checkFuncByFuncVerif() error {
+	u32 := &btf.Int{Name: "u32", Size: 4, Encoding: btf.Unsigned}
+	proto := &btf.FuncProto{Return: u32}
+	fn := &btf.Func{Name: "f", Type: proto, Linkage: btf.GlobalFunc}
+
+	builder, err := btf.NewBuilder([]btf.Type{u32, proto, fn})
+	if err != nil {
+		return err
+	}
+	raw, err := builder.Marshal(nil, nil)
+	if err != nil {
+		return err
+	}
+
+	// Verifier will complain "load btf: invalid argument: [3] FUNC f ...
+	// ... type_id=2 vlen != 0" if functionality doesn't exist
+	h, err := btf.NewHandleFromRawBTF(raw)
+	if h != nil {
+		syscall.Close(h.FD())
+	}
+
+	return err
+}
+
+// SupportDNSParser checks if the kernel supports the right capabilities to allow the DNS parsing functionality to work.
+func SupportDNSParser() bool {
+	return SupportAddAndFetch() && SupportFuncByFuncVerif()
 }
 
 func checkForHook(hook string) error {
@@ -326,7 +362,7 @@ func LogLayer3Features() string {
 	// not load the BTF again
 	defer btf.FlushKernelSpec()
 	return fmt.Sprintf("packet: %t, packet_mem: %t, add_and_fetch: %t, current_task_btf: %t, process_tree: %t, "+
-		"raw_sockets: %t, RTT_hook: %t, fentry: %t",
+		"func_by_func_verif: %t, raw_sockets: %t, RTT_hook: %t, fentry: %t",
 		CGroupSKBAvailable(), SupportCGroupSKBProbeRead(), SupportAddAndFetch(), SupportCurrentTaskBTF(), SupportProcessTree(),
-		RawHooksAvailable(), RTTHookAvailable(), SupportFentry())
+		SupportFuncByFuncVerif(), RawHooksAvailable(), RTTHookAvailable(), SupportFentry())
 }
