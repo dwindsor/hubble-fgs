@@ -12,9 +12,12 @@ import (
 	"runtime"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
@@ -203,6 +206,42 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
+	podDenyPolicy = &record.DatapathRecord{
+		Policy: record.Policy{
+			Name: "testPolicyPod",
+		},
+		Src: wildcardSrc,
+		Endpoint: record.DatapathEndpoint{
+			EP: &endpoint.Endpoint{
+				Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
+				Kind:      "bpfTestKind",
+				Namespace: "bpfTestNamespace",
+				Name:      "bpfTestName",
+			},
+			Port: 0,
+		},
+		Action: &record.DatapathAction{
+			Action: record.PolicyDeny,
+		},
+	}
+	podAllowPolicy = &record.DatapathRecord{
+		Policy: record.Policy{
+			Name: "testPolicyPod",
+		},
+		Src: wildcardSrc,
+		Endpoint: record.DatapathEndpoint{
+			EP: &endpoint.Endpoint{
+				Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
+				Kind:      "bpfTestKind",
+				Namespace: "bpfTestNamespace",
+				Name:      "bpfTestName",
+			},
+			Port: 0,
+		},
+		Action: &record.DatapathAction{
+			Action: record.PolicyAllow,
+		},
+	}
 )
 
 // checks
@@ -302,9 +341,44 @@ var tests = []recordTest{
 		checks:  digAndCurl,
 		deny:    true,
 	},
+	{ // test basic Pod deny policy
+		name:    "testPodDeny",
+		records: []*record.DatapathRecord{podDenyPolicy},
+		checks:  curl,
+		deny:    true,
+	},
+	{ // test basic Pod allow policy
+		name:    "testPodAllow",
+		records: []*record.DatapathRecord{podAllowPolicy},
+		checks:  curl,
+		deny:    false,
+	},
 }
 
 func loadRecords(r *recordTest, t *testing.T) {
+	for _, rec := range r.records {
+		if rec.Endpoint.EP == nil {
+			continue
+		}
+		if rec.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_POD {
+			epPod := &v1alpha1.PodInfo{
+				WorkloadType: metav1.TypeMeta{
+					Kind: rec.Endpoint.EP.Kind,
+				},
+				WorkloadObject: v1alpha1.WorkloadObjectMeta{
+					Namespace: rec.Endpoint.EP.Namespace,
+					Name:      rec.Endpoint.EP.Name,
+				},
+				Status: v1alpha1.PodInfoStatus{
+					PodIPs: []v1alpha1.PodIP{
+						v1alpha1.PodIP{IP: "127.0.0.1"},
+					},
+				},
+			}
+			c := endpoint.MustGet()
+			c.AddIpPodMap(epPod)
+		}
+	}
 	err := prog.AddRecords(r.records, true)
 	require.NoError(t, err)
 }
