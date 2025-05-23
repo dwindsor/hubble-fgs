@@ -289,6 +289,13 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 		}
 	}
 
+	if r.Endpoint.EP != nil && r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
+		if err := lpmMap.Delete(r.Endpoint.EP.Ip); err != nil {
+			logger.GetLogger().WithError(err).Warn("Failed to delete LPM entry")
+			return err
+		}
+	}
+
 	// On delete leave dnsDomainMap, it should be managed as its own object!
 
 	// Ideally we would keep all the values here and just update the TxDeny, TxQuota and

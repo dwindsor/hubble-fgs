@@ -86,6 +86,33 @@ func (lpm *LPMMap) writeIp6(ip string, id uint64) error {
 	return nil
 }
 
+func (lpm *LPMMap) deleteIp4(ip string) error {
+	addr, maskLen, err := parseAddr(ip)
+	if err != nil {
+		return fmt.Errorf("writeIp4 can not parse %s: %w", ip, err)
+	}
+	ip4 := binary.LittleEndian.Uint32(addr)
+	val := KernelLPMTrie4{prefix: maskLen, addr: ip4}
+	if err := lpm.addr4.Delete(val); err != nil {
+		logger.GetLogger().WithError(err).Errorf("Failed to delete LPM4 %s", ip)
+	}
+	return nil
+}
+
+func (lpm *LPMMap) deleteIp6(ip string) error {
+	addr, maskLen, err := parseAddr(ip)
+	if err != nil {
+		return fmt.Errorf("writeIp6 can not parse %s: %w", ip, err)
+	}
+	var addrSlice [16]byte
+	copy(addrSlice[:], addr)
+	val := KernelLPMTrie6{prefix: maskLen, addr: addrSlice}
+	if err := lpm.addr6.Delete(val); err != nil {
+		logger.GetLogger().WithError(err).Errorf("Failed to delete LPM6 %s", ip)
+	}
+	return nil
+}
+
 func (lpm *LPMMap) Write(ip string, id uint64) error {
 	var err error
 
@@ -93,6 +120,17 @@ func (lpm *LPMMap) Write(ip string, id uint64) error {
 		err = lpm.writeIp6(ip, id)
 	} else {
 		err = lpm.writeIp4(ip, id)
+	}
+	return err
+}
+
+func (lpm *LPMMap) Delete(ip string) error {
+	var err error
+
+	if strings.Contains(ip, ":") {
+		err = lpm.deleteIp6(ip)
+	} else {
+		err = lpm.deleteIp4(ip)
 	}
 	return err
 }
