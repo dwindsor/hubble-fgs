@@ -11,24 +11,14 @@
 package runner
 
 import (
-	"fmt"
-	"path/filepath"
-	"runtime"
+	"testing"
 
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
-func init() {
-	sensors.ConfigDefaults.TetragonLib = filepath.Join(TetragonBpfPath(), "objs")
-	fmt.Println("default bpf dir is: ", sensors.ConfigDefaults.TetragonLib)
-}
-
-// tetragonBpfPath retrieves bpf code path
-func TetragonBpfPath() string {
-	_, testFname, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(testFname), "..", "..", "..", "bpf")
-}
-
-func Conf() *sensors.Config {
-	return sensors.Conf()
+// TestSensorsRun runs a sensor test. Call this from inside the TestMain() of a sensor
+// test. It returns an exit code. Additionally will release any Cgroup programs
+// that are left because we do not have Cgroup links yet or on all kernels.
+func TestSensorsRun(m *testing.M, sensorName string) int {
+	return sensors.TestSensorsRun(m, sensorName)
 }
