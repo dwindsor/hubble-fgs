@@ -23,7 +23,6 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 )
 
 var (
@@ -78,11 +77,6 @@ func builder(policy tracingpolicy.TracingPolicy, name string) (sensors.SensorIfa
 
 type sockopsSensor struct {
 	name string
-}
-
-func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
-	return err
 }
 
 func (*sockopsSensor) PolicyHandler(
