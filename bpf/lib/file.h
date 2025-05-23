@@ -220,7 +220,7 @@ struct onflags {
 	__u32 op; // 0 Empty, 1 In, 2 NotIn
 	__u32 mask;
 	__u32 acc_mode;
-	__u32 pad;
+	__u32 has_acc_mode;
 };
 
 struct ns_filter {

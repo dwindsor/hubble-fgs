@@ -926,16 +926,20 @@ static inline __attribute__((always_inline)) int check_match_open_flags(__u32 se
 		__u32 k = i;
 		of = map_lookup_elem(inner_open_flags_map, &k);
 		if (of) {
+			if (of->op == 0) // no more operators
+				break;
+
 			// The first part of this expression matches on the acc mode (i.e. O_RDONLY, O_RDWR, or O_WRONLY)
 			// The secondd part of this expression matches on the other open flags and we require at least
 			// those that are defined in the selector to match. Having more than those, results also in a match.
-			bool rs = ((flags & O_ACCMODE) == of->acc_mode) && (((flags & ~O_ACCMODE) & of->mask) == of->mask);
-			if (of->op == op_filter_in)
-				return rs;
-			else if (of->op == op_filter_notin)
-				return !rs;
-			else // this will cover op == 0 as well
-				return 0;
+			bool rs = ((flags & ~O_ACCMODE) & of->mask) == of->mask;
+			if (of->has_acc_mode)
+				rs = ((flags & O_ACCMODE) == of->acc_mode) && rs;
+
+			if (of->op == op_filter_in && rs)
+				return 1;
+			else if (of->op == op_filter_notin && !rs)
+				return 1;
 		}
 	}
 

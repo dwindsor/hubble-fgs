@@ -138,10 +138,10 @@ type RenameOps struct {
 }
 
 type OpenFlagsPair struct {
-	Op      uint32
-	Mask    uint32
-	AccMode uint32
-	Pad     uint32
+	Op         uint32
+	Mask       uint32
+	AccMode    uint32
+	HasAccMode uint32
 }
 
 type OpenFlagsOps struct {
@@ -282,6 +282,7 @@ func (k *KernelSelectorState) InitOrGetOpenFlags(selIdx uint32) *OpenFlagsOps {
 	for i := 0; i < MaxOpenFlagMaskPerOp; i++ {
 		inner.flags[i].Op = 0
 		inner.flags[i].Mask = 0
+		inner.flags[i].HasAccMode = 0
 	}
 	k.oflags[selIdx] = inner
 	return inner
@@ -658,10 +659,10 @@ func GenerateFileOpenFlagsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinP
 
 		for i, f := range entries.flags {
 			if err := innerMap.Update(uint32(i), OpenFlagsPair{
-				Op:      f.Op,
-				Mask:    f.Mask & ^uint32(unix.O_ACCMODE),
-				AccMode: f.Mask & uint32(unix.O_ACCMODE),
-				Pad:     0,
+				Op:         f.Op,
+				Mask:       f.Mask & ^uint32(unix.O_ACCMODE),
+				AccMode:    f.Mask & uint32(unix.O_ACCMODE),
+				HasAccMode: f.HasAccMode,
 			}, ebpf.UpdateAny); err != nil {
 				return fmt.Errorf("entries: %w", err)
 			}
@@ -1249,6 +1250,9 @@ func ParseOpenFlag(k *KernelSelectorState, op v1alpha1.FileOpenFlagsTypeSelector
 		valNum, ok := openFlagsString[valStr]
 		if !ok {
 			return fmt.Errorf("matchOpenFlags: value %s unknown", valStr)
+		}
+		if valNum == unix.O_RDONLY || valNum == unix.O_RDWR || valNum == unix.O_WRONLY {
+			val.flags[opIdx].HasAccMode |= 1
 		}
 		val.flags[opIdx].Mask |= valNum
 	}
