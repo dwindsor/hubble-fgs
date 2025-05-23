@@ -19,7 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type NetworkPolicyManager struct {
