@@ -20,8 +20,8 @@ import (
 	"github.com/cilium/tetragon/pkg/ftrace"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/sensors/tracing"
 	"github.com/isovalent/hubble-fgs/pkg/abicalls"
+	"github.com/isovalent/hubble-fgs/pkg/constants"
 )
 
 var deprecatedSyscalls = (func() map[string]struct{} {
@@ -76,7 +76,7 @@ func getEIsFn() (func(n string) ([]string, []uint32), error) {
 				entries = append(entries, c.Symbols...)
 			}
 			if c := calls.IA32; c != nil {
-				ids = append(ids, uint32(c.ID)|tracing.Is32Bit)
+				ids = append(ids, uint32(c.ID)|constants.Is32Bit)
 				entries = append(entries, c.Symbols...)
 			}
 			return
@@ -92,7 +92,7 @@ func getEIsFn() (func(n string) ([]string, []uint32), error) {
 				entries = append(entries, c.Symbols...)
 			}
 			if c := calls.ARM32; c != nil {
-				ids = append(ids, uint32(c.ID)|tracing.Is32Bit)
+				ids = append(ids, uint32(c.ID)|constants.Is32Bit)
 				entries = append(entries, c.Symbols...)
 			}
 			return

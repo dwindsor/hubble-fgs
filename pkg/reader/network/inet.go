@@ -3,12 +3,12 @@ package network
 import (
 	"fmt"
 
-	"golang.org/x/sys/unix"
+	"github.com/cilium/tetragon/pkg/constants"
 )
 
 var inetFamily = map[uint16]string{
-	unix.AF_INET:  "AF_INET",
-	unix.AF_INET6: "AF_INET6",
+	constants.AF_INET:  "AF_INET",
+	constants.AF_INET6: "AF_INET6",
 }
 
 func InetFamily(family uint16) string {

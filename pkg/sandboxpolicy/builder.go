@@ -18,8 +18,8 @@ import (
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/syscallinfo"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/common"
 
 	slimv1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/meta/v1"
 	k8sv1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -179,12 +179,12 @@ func rawSyscallTracepointTranslate(
 		return fmt.Errorf("unexpected tracepoint argument type: %T", orig.Args[0])
 	}
 
-	ev.Name, _ = syscallinfo.GetSyscallName(syscallID.ABI, int(syscallID.ID))
+	ev.Name, _ = common.GetSyscallName(syscallID.ABI, int(syscallID.ID))
 	if ev.Name == "" {
 		ev.Name = fmt.Sprintf("syscall-%d", syscallID.ID)
 	}
 
-	defaultABI, _ := syscallinfo.DefaultABI()
+	defaultABI, _ := common.DefaultABI()
 	if syscallID.ABI != defaultABI {
 		ev.Name = fmt.Sprintf("%s/%s", syscallID.ABI, ev.Name)
 	}
