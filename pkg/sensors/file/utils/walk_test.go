@@ -8,6 +8,8 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
+//go:build !windows
+
 // go test -gcflags="" -c ./pkg/sensors/file/utils -o go-tests/file-utils.test
 // ./go-tests/file-utils.test -test.run TestWalk
 
