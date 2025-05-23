@@ -879,6 +879,12 @@ func TestMatchOpenrawOps(t *testing.T) {
 							{
 								Operator: "In",
 								Values: []v1alpha1.OpenFlagSelectorValue{
+									"O_RDWR",
+								},
+							},
+							{
+								Operator: "In",
+								Values: []v1alpha1.OpenFlagSelectorValue{
 									"O_RDONLY",
 								},
 							},
