@@ -257,7 +257,7 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	if utils.SupportProcessTree() {
 		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
 		confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			tcpSockopsProg,
+			tcpSockopsProg, cgroupEgressProg, cgroupIngressProg,
 		})...)
 	}
 
@@ -524,7 +524,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 	if utils.SupportProcessTree() {
 		confMap = SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
 		confMap.Progs = append(confMap.Progs, getMapIndicesByName(sensorProgs, []string{
-			tcpSockopsProg, tcpSecurityAccept, tcpSecurityGraft,
+			tcpSockopsProg, tcpSecurityAccept, tcpSecurityGraft, cgroupEgressProg, cgroupIngressProg,
 		})...)
 	}
 
