@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"regexp"
 
-	v1 "github.com/cilium/cilium/pkg/hubble/api/v1"
-	hubbleFilters "github.com/cilium/cilium/pkg/hubble/filters"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
 )
 
 type URIRegexFilter struct{}
 
-func (f *URIRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *URIRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.UriRegex != nil {
 		filter, err := filterByURIRegex(ff.UriRegex, f)
@@ -30,8 +29,8 @@ func (f *URIRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) (
 
 type SNIRegexFilter struct{}
 
-func (f *SNIRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *SNIRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.SniRegex != nil {
 		filter, err := filterByURIRegex(ff.SniRegex, f)
@@ -46,8 +45,8 @@ func (f *SNIRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) (
 
 type DestinationNamesRegexFilter struct{}
 
-func (f *DestinationNamesRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *DestinationNamesRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.DestinationNamesRegex != nil {
 		filter, err := filterByURIRegex(ff.DestinationNamesRegex, f)
@@ -62,8 +61,8 @@ func (f *DestinationNamesRegexFilter) OnBuildFilter(_ context.Context, ff *tetra
 
 type DestinationPodRegexFilter struct{}
 
-func (f *DestinationPodRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *DestinationPodRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.DestinationPodRegex != nil {
 		filter, err := filterByURIRegex(ff.DestinationPodRegex, f)
@@ -78,8 +77,8 @@ func (f *DestinationPodRegexFilter) OnBuildFilter(_ context.Context, ff *tetrago
 
 type DestinationNamespaceRegexFilter struct{}
 
-func (f *DestinationNamespaceRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *DestinationNamespaceRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.DestinationNamespaceRegex != nil {
 		filter, err := filterByURIRegex(ff.DestinationNamespaceRegex, f)
@@ -94,8 +93,8 @@ func (f *DestinationNamespaceRegexFilter) OnBuildFilter(_ context.Context, ff *t
 
 type DnsNamesRegexFilter struct{}
 
-func (f *DnsNamesRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *DnsNamesRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.DnsNamesRegex != nil {
 		filter, err := filterByURIRegex(ff.DnsNamesRegex, f)
@@ -110,8 +109,8 @@ func (f *DnsNamesRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filt
 
 type HostRegexFilter struct{}
 
-func (f *HostRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *HostRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.HostRegex != nil {
 		filter, err := filterByURIRegex(ff.HostRegex, f)
@@ -124,7 +123,7 @@ func (f *HostRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) 
 	return fs, nil
 }
 
-func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (hubbleFilters.FilterFunc, error) {
+func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (filters.FilterFunc, error) {
 	var URIs []*regexp.Regexp
 
 	for _, pattern := range uriPatterns {
@@ -135,7 +134,7 @@ func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (hubbleFilt
 		URIs = append(URIs, query)
 	}
 
-	return func(ev *v1.Event) bool {
+	return func(ev *event.Event) bool {
 		var URIStrings []string
 
 		switch f.(type) {
@@ -232,7 +231,7 @@ type GetHttp interface {
 	GetHttp() *tetragon.HttpInfo
 }
 
-func getSNIName(event *v1.Event) (string, bool) {
+func getSNIName(event *event.Event) (string, bool) {
 	if event == nil {
 		return "", false
 	}
@@ -247,7 +246,7 @@ func getSNIName(event *v1.Event) (string, bool) {
 	return ev.GetSniName(), true
 }
 
-func getDestinationNames(event *v1.Event) ([]string, bool) {
+func getDestinationNames(event *event.Event) ([]string, bool) {
 	if event == nil {
 		return nil, false
 	}
@@ -272,7 +271,7 @@ func getDestinationNames(event *v1.Event) ([]string, bool) {
 	return ev.GetDestinationNames(), true
 }
 
-func getDestinationPod(event *v1.Event) (string, bool) {
+func getDestinationPod(event *event.Event) (string, bool) {
 	if event == nil {
 		return "", false
 	}
@@ -304,7 +303,7 @@ func getDestinationPod(event *v1.Event) (string, bool) {
 	return pod.Name, true
 }
 
-func getDestinationNamespace(event *v1.Event) (string, bool) {
+func getDestinationNamespace(event *event.Event) (string, bool) {
 	if event == nil {
 		return "", false
 	}
@@ -336,7 +335,7 @@ func getDestinationNamespace(event *v1.Event) (string, bool) {
 	return pod.Namespace, true
 }
 
-func getDnsNames(event *v1.Event) ([]string, bool) {
+func getDnsNames(event *event.Event) ([]string, bool) {
 	if event == nil {
 		return nil, false
 	}
@@ -355,7 +354,7 @@ func getDnsNames(event *v1.Event) ([]string, bool) {
 	return dns.Names, true
 }
 
-func getSockInfo(event *v1.Event) (*tetragon.SockInfo, bool) {
+func getSockInfo(event *event.Event) (*tetragon.SockInfo, bool) {
 	if event == nil {
 		return nil, false
 	}
@@ -374,7 +373,7 @@ func getSockInfo(event *v1.Event) (*tetragon.SockInfo, bool) {
 	return socket, true
 }
 
-func getHttpRequest(event *v1.Event) (*tetragon.HttpRequest, bool) {
+func getHttpRequest(event *event.Event) (*tetragon.HttpRequest, bool) {
 	if event == nil {
 		return nil, false
 	}

@@ -14,8 +14,8 @@ import (
 	"context"
 	"testing"
 
-	v1 "github.com/cilium/cilium/pkg/hubble/api/v1"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,7 +63,7 @@ func TestGetIPAddrsFromEvents(t *testing.T) {
 }
 
 func TestFilterByCIDR(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessListen{
 				ProcessListen: &tetragon.ProcessListen{
@@ -91,7 +91,7 @@ func TestFilterByCIDR(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, ff(ev), "filter should fail")
 
-	ev = &v1.Event{
+	ev = &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessListen{
 				ProcessListen: &tetragon.ProcessListen{
@@ -113,7 +113,7 @@ func TestFilterByCIDR(t *testing.T) {
 }
 
 func TestFilterByCIDR_IPv6(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessListen{
 				ProcessListen: &tetragon.ProcessListen{
@@ -133,7 +133,7 @@ func TestFilterByCIDR_IPv6(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ff(ev), "filter should pass")
 
-	ev = &v1.Event{
+	ev = &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessListen{
 				ProcessListen: &tetragon.ProcessListen{
@@ -170,7 +170,7 @@ func TestFilterByCIDR_IPv6(t *testing.T) {
 }
 
 func TestFilterWithNoField(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessExec{
 				ProcessExec: &tetragon.ProcessExec{},
@@ -185,7 +185,7 @@ func TestFilterWithNoField(t *testing.T) {
 }
 
 func TestIPCIDRFilter(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessListen{
 				ProcessListen: &tetragon.ProcessListen{
@@ -217,7 +217,7 @@ func TestIPCIDRFilter(t *testing.T) {
 }
 
 func TestSourceCIDRFilter(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &tetragon.ProcessConnect{
@@ -249,7 +249,7 @@ func TestSourceCIDRFilter(t *testing.T) {
 }
 
 func TestDestinationCIDRFilter(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &tetragon.ProcessConnect{
@@ -281,7 +281,7 @@ func TestDestinationCIDRFilter(t *testing.T) {
 }
 
 func TestFilterEventTypeMatch(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &tetragon.ProcessConnect{
@@ -317,7 +317,7 @@ func TestFilterEventTypeMatch(t *testing.T) {
 }
 
 func TestCidrFiltersHttpDns(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessHttp{
 				ProcessHttp: &tetragon.ProcessHttp{
@@ -350,7 +350,7 @@ func TestCidrFiltersHttpDns(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "filter should not match")
 
-	ev = &v1.Event{
+	ev = &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessDns{
 				ProcessDns: &tetragon.ProcessDns{

@@ -13,17 +13,17 @@ package filters
 import (
 	"context"
 
-	v1 "github.com/cilium/cilium/pkg/hubble/api/v1"
-	hubbleFilters "github.com/cilium/cilium/pkg/hubble/filters"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/event"
+	"github.com/cilium/tetragon/pkg/filters"
 )
 
 // ProtocolFilter filters by the protocol field on event types that support it.
 // This can be used to filter network events for a specific socket protocol.
 type ProtocolFilter struct{}
 
-func (f *ProtocolFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *ProtocolFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.Protocol != nil {
 		filter, err := filterByProtocol(ff.Protocol)
@@ -36,8 +36,8 @@ func (f *ProtocolFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) (
 	return fs, nil
 }
 
-func filterByProtocol(fs []tetragon.SocketProtocol) (hubbleFilters.FilterFunc, error) {
-	return func(ev *v1.Event) bool {
+func filterByProtocol(fs []tetragon.SocketProtocol) (filters.FilterFunc, error) {
+	return func(ev *event.Event) bool {
 		res, ok := ev.Event.(*tetragon.GetEventsResponse)
 		if !ok {
 			return false

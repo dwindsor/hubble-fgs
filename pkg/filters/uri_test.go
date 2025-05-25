@@ -13,14 +13,14 @@ package filters
 import (
 	"testing"
 
-	v1 "github.com/cilium/cilium/pkg/hubble/api/v1"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFilterByDestinationNames(t *testing.T) {
-	testCase := func(name string, ev *v1.Event) {
+	testCase := func(name string, ev *event.Event) {
 		ff, err := filterByURIRegex([]string{}, &DestinationNamesRegexFilter{})
 		require.NoError(t, err)
 		assert.False(t, ff(ev), name+": filter should fail")
@@ -58,7 +58,7 @@ func TestFilterByDestinationNames(t *testing.T) {
 		assert.True(t, ff(ev), name+": filter should pass")
 	}
 
-	testCase("connect", &v1.Event{
+	testCase("connect", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &tetragon.ProcessConnect{
@@ -68,7 +68,7 @@ func TestFilterByDestinationNames(t *testing.T) {
 		},
 	})
 
-	testCase("close", &v1.Event{
+	testCase("close", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessClose{
 				ProcessClose: &tetragon.ProcessClose{
@@ -78,7 +78,7 @@ func TestFilterByDestinationNames(t *testing.T) {
 		},
 	})
 
-	testCase("accept", &v1.Event{
+	testCase("accept", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessAccept{
 				ProcessAccept: &tetragon.ProcessAccept{
@@ -88,7 +88,7 @@ func TestFilterByDestinationNames(t *testing.T) {
 		},
 	})
 
-	testCase("http_sockinfo", &v1.Event{
+	testCase("http_sockinfo", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessHttp{
 				ProcessHttp: &tetragon.ProcessHttp{
@@ -100,7 +100,7 @@ func TestFilterByDestinationNames(t *testing.T) {
 		},
 	})
 
-	testCase("dns_sockinfo", &v1.Event{
+	testCase("dns_sockinfo", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessDns{
 				ProcessDns: &tetragon.ProcessDns{
@@ -112,7 +112,7 @@ func TestFilterByDestinationNames(t *testing.T) {
 		},
 	})
 
-	testCase("sockstats_sockinfo", &v1.Event{
+	testCase("sockstats_sockinfo", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessSockStats{
 				ProcessSockStats: &tetragon.ProcessSockStats{
@@ -126,7 +126,7 @@ func TestFilterByDestinationNames(t *testing.T) {
 }
 
 func TestFilterBySNIName(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_Tls{
 				Tls: &tetragon.Tls{
@@ -170,7 +170,7 @@ func TestFilterBySNIName(t *testing.T) {
 }
 
 func TestFilterByURI(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessHttp{
 				ProcessHttp: &tetragon.ProcessHttp{
@@ -218,7 +218,7 @@ func TestFilterByURI(t *testing.T) {
 }
 
 func TestFilterByDestinationPod(t *testing.T) {
-	testCase := func(name string, ev *v1.Event) {
+	testCase := func(name string, ev *event.Event) {
 		ff, err := filterByURIRegex([]string{}, &DestinationPodRegexFilter{})
 		require.NoError(t, err)
 		assert.False(t, ff(ev), name+": filter should fail")
@@ -244,7 +244,7 @@ func TestFilterByDestinationPod(t *testing.T) {
 		assert.True(t, ff(ev), name+": filter should pass")
 	}
 
-	testCase("connect", &v1.Event{
+	testCase("connect", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &tetragon.ProcessConnect{
@@ -256,7 +256,7 @@ func TestFilterByDestinationPod(t *testing.T) {
 		},
 	})
 
-	testCase("close", &v1.Event{
+	testCase("close", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessClose{
 				ProcessClose: &tetragon.ProcessClose{
@@ -268,7 +268,7 @@ func TestFilterByDestinationPod(t *testing.T) {
 		},
 	})
 
-	testCase("accept", &v1.Event{
+	testCase("accept", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessAccept{
 				ProcessAccept: &tetragon.ProcessAccept{
@@ -280,7 +280,7 @@ func TestFilterByDestinationPod(t *testing.T) {
 		},
 	})
 
-	testCase("http_sockinfo", &v1.Event{
+	testCase("http_sockinfo", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessHttp{
 				ProcessHttp: &tetragon.ProcessHttp{
@@ -294,7 +294,7 @@ func TestFilterByDestinationPod(t *testing.T) {
 		},
 	})
 
-	testCase("dns_sockinfo", &v1.Event{
+	testCase("dns_sockinfo", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessDns{
 				ProcessDns: &tetragon.ProcessDns{
@@ -308,7 +308,7 @@ func TestFilterByDestinationPod(t *testing.T) {
 		},
 	})
 
-	testCase("sockstats_sockinfo", &v1.Event{
+	testCase("sockstats_sockinfo", &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessSockStats{
 				ProcessSockStats: &tetragon.ProcessSockStats{
@@ -324,7 +324,7 @@ func TestFilterByDestinationPod(t *testing.T) {
 }
 
 func TestFilterByHost(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessHttp{
 				ProcessHttp: &tetragon.ProcessHttp{
@@ -372,7 +372,7 @@ func TestFilterByHost(t *testing.T) {
 }
 
 func TestFilterByDestinationNamespace(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &tetragon.ProcessConnect{

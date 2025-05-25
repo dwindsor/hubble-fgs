@@ -251,9 +251,6 @@ github.com/cilium/cilium/pkg/container/set
 github.com/cilium/cilium/pkg/datapath/linux/safenetlink
 github.com/cilium/cilium/pkg/defaults
 github.com/cilium/cilium/pkg/endpoint/id
-github.com/cilium/cilium/pkg/hubble/api/v1
-github.com/cilium/cilium/pkg/hubble/filters
-github.com/cilium/cilium/pkg/hubble/k8s
 github.com/cilium/cilium/pkg/identity
 github.com/cilium/cilium/pkg/ip
 github.com/cilium/cilium/pkg/ipam/option
@@ -351,6 +348,7 @@ github.com/cilium/tetragon/pkg/cri
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/encoder
 github.com/cilium/tetragon/pkg/errmetrics
+github.com/cilium/tetragon/pkg/event
 github.com/cilium/tetragon/pkg/eventcache
 github.com/cilium/tetragon/pkg/eventcheckertests/yamlhelpers
 github.com/cilium/tetragon/pkg/eventhandler

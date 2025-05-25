@@ -13,12 +13,10 @@ package filters
 import (
 	"context"
 	"fmt"
-
 	stdNet "net"
 
-	v1 "github.com/cilium/cilium/pkg/hubble/api/v1"
-	hubbleFilters "github.com/cilium/cilium/pkg/hubble/filters"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
 	"k8s.io/utils/net"
@@ -27,8 +25,8 @@ import (
 // IPCIDRFilter filters on any IP field, including ProcessListen.ip
 type IPCIDRFilter struct{}
 
-func (f *IPCIDRFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *IPCIDRFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.IpCidr != nil {
 		filter, err := filterByCIDR(ff.IpCidr, f)
@@ -44,8 +42,8 @@ func (f *IPCIDRFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]
 // SourceCIDRFilter filters on the source_ip field
 type SourceCIDRFilter struct{}
 
-func (f *SourceCIDRFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *SourceCIDRFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.SourceIpCidr != nil {
 		filter, err := filterByCIDR(ff.SourceIpCidr, f)
@@ -61,8 +59,8 @@ func (f *SourceCIDRFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter)
 // DestCIDRFilter filters on the destination_ip field
 type DestCIDRFilter struct{}
 
-func (f *DestCIDRFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
-	var fs []hubbleFilters.FilterFunc
+func (f *DestCIDRFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]filters.FilterFunc, error) {
+	var fs []filters.FilterFunc
 
 	if ff.DestinationIpCidr != nil {
 		filter, err := filterByCIDR(ff.DestinationIpCidr, f)
@@ -146,7 +144,7 @@ func (f *cidrFilter) MatchCIDR(res *tetragon.GetEventsResponse) bool {
 	return false
 }
 
-func filterByCIDR(fs []string, f filters.OnBuildFilter) (hubbleFilters.FilterFunc, error) {
+func filterByCIDR(fs []string, f filters.OnBuildFilter) (filters.FilterFunc, error) {
 	const V6_CIDR_MASK = "/128"
 	const V4_CIDR_MASK = "/32"
 
@@ -180,7 +178,7 @@ func filterByCIDR(fs []string, f filters.OnBuildFilter) (hubbleFilters.FilterFun
 
 	}
 
-	return func(ev *v1.Event) bool {
+	return func(ev *event.Event) bool {
 		res, ok := ev.Event.(*tetragon.GetEventsResponse)
 		if !ok {
 			return false
@@ -217,7 +215,7 @@ func getIP(res *tetragon.GetEventsResponse) (string, bool) {
 func getSourceIP(res *tetragon.GetEventsResponse) (string, bool) {
 	// If the event has socket info, use that instead
 	if _, ok := tetragon.UnwrapGetEventsResponse(res).(GetSocket); ok {
-		sockInfo, ok := getSockInfo(&v1.Event{Event: res})
+		sockInfo, ok := getSockInfo(&event.Event{Event: res})
 		if !ok {
 			return "", false
 		}
@@ -234,7 +232,7 @@ func getSourceIP(res *tetragon.GetEventsResponse) (string, bool) {
 func getDestinationIP(res *tetragon.GetEventsResponse) (string, bool) {
 	// If the event has socket info, use that instead
 	if _, ok := tetragon.UnwrapGetEventsResponse(res).(GetSocket); ok {
-		sockInfo, ok := getSockInfo(&v1.Event{Event: res})
+		sockInfo, ok := getSockInfo(&event.Event{Event: res})
 		if !ok {
 			return "", false
 		}

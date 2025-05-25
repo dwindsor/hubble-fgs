@@ -139,6 +139,7 @@
     - [Filter](#tetragon-Filter)
     - [GetEventsRequest](#tetragon-GetEventsRequest)
     - [GetEventsResponse](#tetragon-GetEventsResponse)
+    - [GetEventsResponse.NodeLabelsEntry](#tetragon-GetEventsResponse-NodeLabelsEntry)
     - [ProcessThrottle](#tetragon-ProcessThrottle)
     - [RateLimitInfo](#tetragon-RateLimitInfo)
     - [RedactionFilter](#tetragon-RedactionFilter)
@@ -1299,6 +1300,8 @@ loader sensor event triggered for loaded binary/library
 | args | [KprobeArgument](#tetragon-KprobeArgument) | repeated | Arguments definition of the observed uprobe. |
 | tags | [string](#string) | repeated | Tags of the Tracing Policy to categorize the event. |
 | ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
+| offset | [uint64](#uint64) |  | uprobe offset (mutualy exclusive with symbol) |
+| ref_ctr_offset | [uint64](#uint64) |  | uprobe ref_ctr_offset |
 
 
 
@@ -2935,6 +2938,23 @@ Note that currently only process_accept and process_connect events are aggregate
 For an aggregated response, this field to set to the timestamp at which the event was observed for the first time in a given aggregation time window. |
 | aggregation_info | [AggregationInfo](#tetragon-AggregationInfo) |  | aggregation_info contains information about aggregation results. This field is set only for aggregated responses. |
 | cluster_name | [string](#string) |  | Name of the cluster where this event was observed. |
+| node_labels | [GetEventsResponse.NodeLabelsEntry](#tetragon-GetEventsResponse-NodeLabelsEntry) | repeated | Labels associated with the node where this event was observed. |
+
+
+
+
+
+
+<a name="tetragon-GetEventsResponse-NodeLabelsEntry"></a>
+
+### GetEventsResponse.NodeLabelsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 

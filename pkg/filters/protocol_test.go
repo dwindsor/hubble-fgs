@@ -13,8 +13,8 @@ package filters
 import (
 	"testing"
 
-	v1 "github.com/cilium/cilium/pkg/hubble/api/v1"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -106,7 +106,7 @@ func TestGetProtocol(t *testing.T) {
 }
 
 func TestFilterByProtocolMatch(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &tetragon.ProcessConnect{
@@ -122,7 +122,7 @@ func TestFilterByProtocolMatch(t *testing.T) {
 }
 
 func TestFilterByProtocolNoMatch(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &tetragon.ProcessConnect{
@@ -138,7 +138,7 @@ func TestFilterByProtocolNoMatch(t *testing.T) {
 }
 
 func TestFilterByProtocolMulti(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &tetragon.ProcessConnect{
@@ -154,7 +154,7 @@ func TestFilterByProtocolMulti(t *testing.T) {
 }
 
 func TestFilterByProtocolEmpty(t *testing.T) {
-	ev := &v1.Event{
+	ev := &event.Event{
 		Event: &tetragon.GetEventsResponse{
 			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &tetragon.ProcessConnect{
