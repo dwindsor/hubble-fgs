@@ -299,6 +299,10 @@ func (m *manager) attemptLoadMandateTracingPolicy(
 	ret = m.NewMandatePolicy(ret)
 	err = m.sensorMgr.AddTracingPolicy(ctx, ret)
 	if err != nil {
+		// NB: In certain situations, the sensor manager will fail to load a policy, but it
+		// will keep it under the load_error state. So, let's try to remove it here to not
+		// leave any leftovers
+		m.sensorMgr.DeleteTracingPolicy(ctx, ret.TpName(), "")
 		return nil, err
 	}
 	return ret, nil
