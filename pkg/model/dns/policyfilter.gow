@@ -1,0 +1,37 @@
+package dns
+
+import (
+	"github.com/cilium/tetragon/pkg/labels"
+	"github.com/cilium/tetragon/pkg/policyfilter"
+)
+
+type StateIDGetter interface {
+	// GetIdNs retrieve the internal ID (stateID) that links the
+	// namespace/name/kind to a cgroupID
+	GetIdNs(id policyfilter.NSID) (policyfilter.StateID, bool)
+
+	// AddPodContainer informs policyfilter about a new container and its cgroup id in a pod.
+	// The pod might or might not have been encountered before.
+	// This method is intended to update policyfilter state from container hooks
+	AddPodContainer(podID policyfilter.PodID, namespace, workload, kind string, podLabels labels.Labels,
+		containerID string, cgID policyfilter.CgroupID, containerName string) error
+
+	// DelPod informs policyfilter that a pod has been deleted
+	DelPod(podID policyfilter.PodID) error
+}
+
+var stateIDGetter = func() (StateIDGetter, error) {
+	state, err := policyfilter.GetState()
+	if err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+type FakePolicyFilterState struct{
+	pods map[]
+}
+
+func (s FakePolicyFilterState) GetIdNs(id policyfilter.NSID) (policyfilter.StateID, bool) {
+	return 1, true
+}
