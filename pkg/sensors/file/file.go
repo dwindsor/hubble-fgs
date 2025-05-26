@@ -1728,28 +1728,28 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			m := program.MapBuilderPolicy(m.name, load)
 
 			// custom max entries setup
-			var loadMapFunc func(_ *ebpf.Map, _ string, _ uint32) error
+			var loadMapFunc func(_ *ebpf.Map, _ string) error
 			switch m.Name {
 			case "tg_mb_paths":
 				m.SetInnerMaxEntries(sel.MatchBinariesPathsMaxEntries())
 				m.SetMaxEntries(maxSelectors)
-				loadMapFunc = func(outerMap *ebpf.Map, pinPathPrefix string, _ uint32) error {
+				loadMapFunc = func(outerMap *ebpf.Map, pinPathPrefix string) error {
 					return fm.PopulateMatchBinariesPathsMaps(sel, pinPathPrefix, outerMap)
 				}
 			case "tg_mb_sel_opts":
 				m.SetMaxEntries(maxSelectors)
-				loadMapFunc = func(outerMap *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(outerMap *ebpf.Map, _ string) error {
 					return fm.PopulateMatchBinariesMaps(sel, outerMap)
 				}
 			case "string_prefix_maps":
-				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string) error {
 					if err := fm.PopulateStringPrefixFilterMaps(&sel.KernelSelectorState, pinPathPrefix, m); err != nil {
 						return fmt.Errorf("file_ops_maps: %w", err)
 					}
 					return nil
 				}
 			case "string_postfix_maps":
-				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string) error {
 					if err := fm.PopulateStringPostfixFilterMaps(&sel.KernelSelectorState, pinPathPrefix, m); err != nil {
 						return fmt.Errorf("file_ops_maps: %w", err)
 					}
@@ -1758,7 +1758,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			case "file_ops_maps":
 				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesOpsMap(sel)))
 				m.SetMaxEntries(maxSelectors)
-				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string) error {
 					if err := fm.GenerateFileOpsMap(m, sel, pinPathPrefix); err != nil {
 						return fmt.Errorf("file_ops_maps: %w", err)
 					}
@@ -1766,7 +1766,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case "file_uidgid_map":
 				m.SetMaxEntries(fm.GetUidGidMapSize(sel))
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateUidGidMap(m, sel); err != nil {
 						return fmt.Errorf("file_uidgid_map: %w", err)
 					}
@@ -1774,7 +1774,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case "file_proc_dur_map":
 				m.SetMaxEntries(fm.GetProcessDurationMapSize(sel))
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateProcessDurationMap(m, sel); err != nil {
 						return fmt.Errorf("file_proc_dur_map: %w", err)
 					}
@@ -1783,7 +1783,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			case "file_digests_maps":
 				m.SetInnerMaxEntries(int(fm.GetMaxInnerEntriesDigestsMap(sel)))
 				m.SetMaxEntries(maxSelectors)
-				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string) error {
 					if err := fm.GenerateFileDigestsMap(m, sel, pinPathPrefix); err != nil {
 						return fmt.Errorf("file_digests_maps: %w", err)
 					}
@@ -1791,7 +1791,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case "hash_map_inode_alloc":
 				m.SetMaxEntries(int(config.MaxWatchedInodes))
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					for k, v := range allInodes {
 						if err := m.Update(k, v, 0); err != nil {
 							return err
@@ -1801,7 +1801,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case "exact_match_map_alloc":
 				m.SetMaxEntries(int(exactFilePathMatchSize))
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					for k, v := range exactFilePathMatch {
 						key := fileapi.FullPath{}
 						copy(key.Path[:], []byte(k))
@@ -1813,7 +1813,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case "file_system_type_map":
 				m.SetMaxEntries(numFileSystemTypes)
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					for i, p := range kprobes.PathsPatterns {
 						if p.Type == "FileSystemType" {
 							for _, fsName := range p.FileSystemType.Names {
@@ -1832,7 +1832,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case "file_actions_map":
 				m.SetMaxEntries(maxSelectors)
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateFileActionsMap(m, sel); err != nil {
 						return fmt.Errorf("file_actions_map: %w", err)
 					}
@@ -1840,7 +1840,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case "file_namespaces_map":
 				m.SetMaxEntries(maxSelectors)
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateFileNamespacesMap(m, sel); err != nil {
 						return fmt.Errorf("file_namespaces_map: %w", err)
 					}
@@ -1848,7 +1848,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case "file_capabilities_map":
 				m.SetMaxEntries(maxSelectors)
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateFileCapabilitiesMap(m, sel); err != nil {
 						return fmt.Errorf("file_capabilities_map: %w", err)
 					}
@@ -1856,7 +1856,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case "glob_patterns_map":
 				m.SetInnerMaxEntries(fm.GetMaxInnerEntriesPatternsMap(sel))
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					if err := fm.GeneratePatternsMap(m, sel, e.PinPathPrefix); err != nil {
 						return fmt.Errorf("glob_patterns_map: %w", err)
 					}
@@ -1865,7 +1865,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			case "glob_temp_maps":
 				m.SetInnerMaxEntries(128) // same as INNER_MAX_STATES in bpf_glob.h
 				m.SetMaxEntries(2 * bpf.GetNumPossibleCPUs())
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					for i := range 2 * bpf.GetNumPossibleCPUs() {
 						innerName := fmt.Sprintf("glob_inner_%d", i)
 						innerSpec := &ebpf.MapSpec{
@@ -1892,18 +1892,18 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 			case "filename_ops_map":
 				m.SetMaxEntries(fm.GetNumFilenameSelectors(sel))
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					return fm.GenerateFilenameOpsMap(m, sel)
 				}
 			case "filename_path_map":
 				m.SetMaxEntries(maxSelectors)
 				m.SetInnerMaxEntries(fm.GetMaxInnerEntriesPathMap(sel))
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					return fm.GeneratePathsMap(m, sel, e.PinPathPrefix)
 				}
 			case "file_openraw_result_map":
 				m.SetMaxEntries(fm.GetOpenrawResultMapSize(sel))
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					return fm.GenerateOpenrawResultMap(m, sel)
 				}
 			case "filename_digest_map":
@@ -1915,7 +1915,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				// should be enough for most cases.
 				// TODO: make this configurable
 				m.SetInnerMaxEntries((fm.GetMaxInnerEntriesPathMap(sel) * 32))
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					algo, err := probeImaEnabled()
 					if err != nil {
 						return fmt.Errorf("failed to probe IMA: %w", err)
@@ -1927,7 +1927,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 					return fm.GenerateDigestsMap(m, sel, e.PinPathPrefix, allDigestMaps, algoNum)
 				}
 			case "lpm_trie_map_alloc":
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					for _, str := range kprobes.PathsExclude {
 						if err := addFilters(m, str, fileapi.LPMMapValue{Action: fm.FilterIgnore}); err != nil {
 							return fmt.Errorf("failed to add ExcludePath: %w", err)
@@ -1952,7 +1952,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 					return nil
 				}
 			case "patterns_map_alloc":
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					for i, p := range kprobes.PathsPatterns {
 						if p.Type == "FilePrefixSuffix" {
 							key := uint32(i)
@@ -1978,14 +1978,14 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 					return nil
 				}
 			case "file_rename_map":
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateFileRenameMap(m, sel); err != nil {
 						return fmt.Errorf("file_rename_map: %w", err)
 					}
 					return nil
 				}
 			case "exec_attributes_map":
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateFileExecAttrs(m, sel); err != nil {
 						return fmt.Errorf("exec_attributes_map: %w", err)
 					}
@@ -1994,18 +1994,18 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			case "file_open_flags_map":
 				m.SetMaxEntries(maxSelectors)
 				m.SetInnerMaxEntries(fm.MaxOpenFlagMaskPerOp)
-				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, pinPathPrefix string) error {
 					if err := fm.GenerateFileOpenFlagsMap(m, sel, pinPathPrefix); err != nil {
 						return fmt.Errorf("file_open_flags_map: %w", err)
 					}
 					return nil
 				}
 			case "file_config_map":
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					return m.Update(uint32(0), config, ebpf.UpdateAny)
 				}
 			case "hash_map_inode_alloc_stats":
-				loadMapFunc = func(m *ebpf.Map, _ string, _ uint32) error {
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					return m.Update(uint32(0), []int64{int64(len(allInodes))}, ebpf.UpdateAny)
 				}
 			}
@@ -2013,9 +2013,8 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			// use a load func if needed
 			if loadMapFunc != nil {
 				load.MapLoad = append(load.MapLoad, &program.MapLoad{
-					Index: 0,
-					Name:  m.Name,
-					Load:  loadMapFunc,
+					Name: m.Name,
+					Load: loadMapFunc,
 				})
 			}
 

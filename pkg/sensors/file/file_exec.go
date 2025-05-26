@@ -116,23 +116,20 @@ func (k *observerFileExecSensor) PolicyHandler(
 
 		load.MapLoad = []*program.MapLoad{
 			{
-				Index: 0,
-				Name:  "tg_mb_sel_opts",
-				Load: func(outerMap *ebpf.Map, _ string, _ uint32) error {
+				Name: "tg_mb_sel_opts",
+				Load: func(outerMap *ebpf.Map, _ string) error {
 					return fm.PopulateMatchBinariesMaps(selState, outerMap)
 				},
 			},
 			{
-				Index: 0,
-				Name:  "tg_mb_paths",
-				Load: func(outerMap *ebpf.Map, _ string, _ uint32) error {
+				Name: "tg_mb_paths",
+				Load: func(outerMap *ebpf.Map, _ string) error {
 					return fm.PopulateMatchBinariesPathsMaps(selState, name, outerMap)
 				},
 			},
 			{
-				Index: 0,
-				Name:  "file_digests_maps",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				Name: "file_digests_maps",
+				Load: func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateFileDigestsMap(m, selState, name); err != nil {
 						return fmt.Errorf("file_digests_maps: %w", err)
 					}
@@ -140,9 +137,8 @@ func (k *observerFileExecSensor) PolicyHandler(
 				},
 			},
 			{
-				Index: 0,
-				Name:  "file_capabilities_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				Name: "file_capabilities_map",
+				Load: func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateFileCapabilitiesMap(m, selState); err != nil {
 						return fmt.Errorf("file_capabilities_map: %w", err)
 					}
@@ -150,9 +146,8 @@ func (k *observerFileExecSensor) PolicyHandler(
 				},
 			},
 			{
-				Index: 0,
-				Name:  "file_namespaces_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				Name: "file_namespaces_map",
+				Load: func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateFileNamespacesMap(m, selState); err != nil {
 						return fmt.Errorf("file_namespaces_map: %w", err)
 					}
@@ -160,9 +155,8 @@ func (k *observerFileExecSensor) PolicyHandler(
 				},
 			},
 			{
-				Index: 0,
-				Name:  "file_actions_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				Name: "file_actions_map",
+				Load: func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateFileActionsMap(m, selState); err != nil {
 						return fmt.Errorf("file_actions_map: %w", err)
 					}
@@ -170,9 +164,8 @@ func (k *observerFileExecSensor) PolicyHandler(
 				},
 			},
 			{
-				Index: 0,
-				Name:  "file_exec_config_map",
-				Load: func(m *ebpf.Map, _ string, _ uint32) error {
+				Name: "file_exec_config_map",
+				Load: func(m *ebpf.Map, _ string) error {
 					return m.Update(uint32(0), config, ebpf.UpdateAny)
 				},
 			},
