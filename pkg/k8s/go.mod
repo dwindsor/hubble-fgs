@@ -2,17 +2,6 @@ module github.com/isovalent/hubble-fgs/pkg/k8s
 
 go 1.24.0
 
-// This can be removed once we have k8s code that contains those fixes:
-// - https://github.com/kubernetes-sigs/controller-tools/pull/1061
-// - https://github.com/kubernetes/gengo/pull/281
-//
-// We also need the replaced directive in order to have this patch
-// cilium/controller-tools@d944deb while we don't use gotypesalias=1. More
-// details here kubernetes-sigs/controller-tools#1071. Remove the replace
-// directive on controller-tools and use the upstream version when you remove
-// the following line.
-godebug gotypesalias=0
-
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/cilium/cilium v1.17.4
@@ -71,6 +60,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/api v0.33.0 // indirect
+	k8s.io/code-generator v0.33.0 // indirect
+	k8s.io/gengo/v2 v2.0.0-20250207200755-1244d31929d7 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
@@ -86,11 +77,3 @@ replace (
 	// Set EE pkg/k8s to be this module
 	github.com/cilium/tetragon/pkg/k8s => ./
 )
-
-// This replace directive has to be in sync with with github.com/cilium/cilium
-// except for sigs.k8s.io/controller-tools.  If the github.com/cilium/cilium
-// version is bumped, the sync must be refreshed. As of now we use, see the
-// replace directive:
-// https://github.com/cilium/cilium/blob/cdf10116cea7a3babc493214b4ac856128734bcc/go.mod#L332-L338
-// See the comment on "godebug gotypesalias=0" for more details
-replace sigs.k8s.io/controller-tools => github.com/cilium/controller-tools v0.16.1-1
