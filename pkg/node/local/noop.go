@@ -10,9 +10,13 @@
 
 package local
 
+import (
+	"context"
+)
+
 type NoopMetadataService struct {
 }
 
-func (n *NoopMetadataService) GetLabels() (map[string]string, error) {
+func (n *NoopMetadataService) GetLabels(_ context.Context) (map[string]string, error) {
 	return nil, nil
 }

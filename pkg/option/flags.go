@@ -80,11 +80,12 @@ const (
 	keyEnableRawsock                      = "enable-rawsock"
 	keyEnableDNS                          = "enable-dns"
 
+	EnvironmentAWS        = "aws"
 	EnvironmentKubernetes = "kubernetes"
 )
 
 var (
-	environments = []string{EnvironmentKubernetes}
+	environments = []string{EnvironmentAWS, EnvironmentKubernetes}
 )
 
 func FixUpOSSFlags(flags *pflag.FlagSet) {

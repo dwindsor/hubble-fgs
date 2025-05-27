@@ -11,22 +11,27 @@
 package local
 
 import (
+	"context"
+
 	ossOption "github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 var (
+	_ MetadataService = (*AWSMetadataService)(nil)
 	_ MetadataService = (*KubernetesMetadataService)(nil)
 	_ MetadataService = (*NoopMetadataService)(nil)
 )
 
 type MetadataService interface {
-	GetLabels() (map[string]string, error)
+	GetLabels(ctx context.Context) (map[string]string, error)
 }
 
 func GetMetadataService() (MetadataService, error) {
 	switch {
+	case option.Config.Environment == option.EnvironmentAWS:
+		return NewAWSMetadataService()
 	case option.Config.Environment == option.EnvironmentKubernetes || ossOption.Config.EnableK8s:
 		return NewKubernetesMetadataService(manager.Get())
 	default:

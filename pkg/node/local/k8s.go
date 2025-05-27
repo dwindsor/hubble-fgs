@@ -11,6 +11,8 @@
 package local
 
 import (
+	"context"
+
 	"github.com/isovalent/hubble-fgs/pkg/manager"
 )
 
@@ -22,7 +24,7 @@ func NewKubernetesMetadataService(manager manager.KubernetesManager) (*Kubernete
 	return &KubernetesMetadataService{manager}, nil
 }
 
-func (m *KubernetesMetadataService) GetLabels() (map[string]string, error) {
+func (m *KubernetesMetadataService) GetLabels(_ context.Context) (map[string]string, error) {
 	node, err := m.manager.GetControllerManager().GetNode()
 	if err != nil {
 		return nil, err

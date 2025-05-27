@@ -210,7 +210,7 @@ options:
         Set the size of the internal endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones
     - name: environment
       usage: |
-        Specify the environment in which Tetragon is running. Valid values are: [kubernetes]
+        Specify the environment in which Tetragon is running. Valid values are: [aws kubernetes]
     - name: event-cache-retries
       default_value: "15"
       usage: Number of retries for event cache
