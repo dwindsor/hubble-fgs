@@ -34,6 +34,7 @@ var (
 	checkAddAndFetch         = sync.OnceValue(_checkAddAndFetch)
 	checkCurrentTaskBTF      = sync.OnceValue(_checkCurrentTaskBTF)
 	checkFuncByFuncVerif     = sync.OnceValue(_checkFuncByFuncVerif)
+	checkGlobalFuncPtrArgs   = sync.OnceValue(_checkGlobalFuncPtrArgs)
 	checkRawHooksAvailable   = sync.OnceValue(_checkRawHooksAvailable)
 	checkRTTHookAvailable    = sync.OnceValue(_checkRTTHookAvailable)
 	checkUDPBindNeedsDummies = sync.OnceValue(_checkUDPBindNeedsDummies)
@@ -182,9 +183,81 @@ func _checkFuncByFuncVerif() error {
 	return err
 }
 
+// SupportGlobalFuncPtrArgs checks if the kernel supports the passing pointer arguments to global eBPF functions
+func SupportGlobalFuncPtrArgs() bool {
+	err := checkGlobalFuncPtrArgs()
+	return err == nil
+}
+
+func _checkGlobalFuncPtrArgs() error {
+	// BTF could not distinguish between static and global funcs prior to
+	// the function-by-function verification implementation, so that check
+	// is a pre-requisite for this one
+	if err := checkFuncByFuncVerif(); err != nil {
+		return err
+	}
+
+	u32 := &btf.Int{Name: "u32", Size: 4, Encoding: btf.Unsigned}
+
+	staticFn := &btf.Func{
+		Name: "_",
+		Type: &btf.FuncProto{
+			Return: &btf.Int{Size: 16},
+			Params: []btf.FuncParam{},
+		},
+		Linkage: btf.StaticFunc,
+	}
+
+	globalFn := &btf.Func{
+		Name: "_",
+		Type: &btf.FuncProto{
+			Return: &btf.Int{Size: 16},
+			Params: []btf.FuncParam{
+				{Name: "ptr_arg", Type: &btf.Pointer{Target: u32}},
+			},
+		},
+		Linkage: btf.GlobalFunc,
+	}
+
+	// Verifier will complain "Arg#0 type PTR in _() is not supported yet"
+	// if we can't pass a pointer arg
+	ins := asm.Instructions{
+		btf.WithFuncMetadata(asm.LoadImm(asm.R0, 0, asm.DWord), staticFn),
+		asm.Mov.Reg(asm.R1, 0),
+		asm.Call.Label("fn"),
+		asm.Return(),
+		btf.WithFuncMetadata(asm.LoadImm(asm.R0, 0, asm.DWord), globalFn).WithSymbol("fn"),
+		asm.Return(),
+	}
+
+	spec := &ebpf.ProgramSpec{
+		Type:         ebpf.Kprobe,
+		AttachType:   ebpf.AttachNone,
+		AttachTo:     "tcp_connect",
+		Instructions: ins,
+		License:      "GPL",
+	}
+
+	var prog *ebpf.Program
+	var lnk link.Link
+	var err error
+	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
+		LogDisabled: false,
+	})
+	if err == nil {
+		if lnk, err = link.Kprobe(spec.AttachTo, prog, nil); err == nil {
+			lnk.Close()
+		}
+		prog.Close()
+	}
+	defer prog.Close()
+
+	return nil
+}
+
 // SupportDNSParser checks if the kernel supports the right capabilities to allow the DNS parsing functionality to work.
 func SupportDNSParser() bool {
-	return SupportAddAndFetch() && SupportFuncByFuncVerif()
+	return SupportAddAndFetch() && SupportFuncByFuncVerif() && SupportGlobalFuncPtrArgs()
 }
 
 func checkForHook(hook string) error {
@@ -362,7 +435,7 @@ func LogLayer3Features() string {
 	// not load the BTF again
 	defer btf.FlushKernelSpec()
 	return fmt.Sprintf("packet: %t, packet_mem: %t, add_and_fetch: %t, current_task_btf: %t, process_tree: %t, "+
-		"func_by_func_verif: %t, raw_sockets: %t, RTT_hook: %t, fentry: %t",
+		"func_by_func_verif: %t, global_func_ptr_args: %t, raw_sockets: %t, RTT_hook: %t, fentry: %t",
 		CGroupSKBAvailable(), SupportCGroupSKBProbeRead(), SupportAddAndFetch(), SupportCurrentTaskBTF(), SupportProcessTree(),
-		SupportFuncByFuncVerif(), RawHooksAvailable(), RTTHookAvailable(), SupportFentry())
+		SupportFuncByFuncVerif(), SupportGlobalFuncPtrArgs(), RawHooksAvailable(), RTTHookAvailable(), SupportFentry())
 }
