@@ -13,6 +13,7 @@ package encoder
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/netip"
@@ -63,11 +64,15 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 	var flowError error
 	if _, ok := response.GetEvent().(*tetragon.GetEventsResponse_ProcessConnect); ok && h.enableFlowExport {
 		f := h.processConnectToFlow(response.GetProcessConnect())
-		f.NodeName = response.NodeName
+		if response.ClusterName != "" {
+			f.NodeName = fmt.Sprintf("%s/%s", response.ClusterName, response.NodeName)
+		} else {
+			f.NodeName = response.NodeName
+		}
 		f.Time = response.Time
 		res := &observer.GetFlowsResponse{
 			ResponseTypes: &observer.GetFlowsResponse_Flow{Flow: f},
-			NodeName:      response.NodeName,
+			NodeName:      f.NodeName,
 			Time:          response.Time,
 		}
 		flowError = h.flowEncoder.Encode(res)

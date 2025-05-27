@@ -52,9 +52,10 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 	var b, flowBuffer bytes.Buffer
 	e := NewJSONEncoder(&b, &flowBuffer, true, make(map[string]struct{}))
 	event := tetragon.GetEventsResponse{
-		Event:    &tetragon.GetEventsResponse_ProcessConnect{},
-		NodeName: "my-node",
-		Time:     &timestamppb.Timestamp{Seconds: 1, Nanos: 2},
+		Event:       &tetragon.GetEventsResponse_ProcessConnect{},
+		ClusterName: "my-cluster",
+		NodeName:    "my-node",
+		Time:        &timestamppb.Timestamp{Seconds: 1, Nanos: 2},
 	}
 	assert.NoError(t, e.Encode(&event))
 	res := tetragon.GetEventsResponse{}
@@ -67,13 +68,13 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 				Source:           &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
 				Destination:      &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
 				IsReply:          &wrappers.BoolValue{Value: false},
-				NodeName:         "my-node",
+				NodeName:         "my-cluster/my-node",
 				Time:             &timestamppb.Timestamp{Seconds: 1, Nanos: 2},
 				TrafficDirection: flow.TrafficDirection_EGRESS,
 				Type:             observer.FlowType_L3_L4,
 			},
 		},
-		NodeName: "my-node",
+		NodeName: "my-cluster/my-node",
 		Time:     &timestamppb.Timestamp{Seconds: 1, Nanos: 2},
 	}
 	actualFlow := observer.GetFlowsResponse{}
