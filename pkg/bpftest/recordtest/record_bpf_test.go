@@ -353,6 +353,30 @@ var tests = []recordTest{
 		checks:  curl,
 		deny:    false,
 	},
+	{ // test conflicting Pod allow policy with DNS deny
+		name:    "testPodAllowDNSDeny",
+		records: []*record.DatapathRecord{podAllowPolicy, dnsLoDenyPolicy},
+		checks:  digAndCurl,
+		deny:    true,
+	},
+	{ // test conflicting Pod allow policy with DNS deny, reverse order
+		name:    "testPodAllowDNSDeny",
+		records: []*record.DatapathRecord{dnsLoDenyPolicy, podAllowPolicy},
+		checks:  digAndCurl,
+		deny:    true,
+	},
+	{ // test conflicting Pod deny policy with DNS allow
+		name:    "testDNSAllowPodDeny",
+		records: []*record.DatapathRecord{podDenyPolicy, dnsLoAllowPolicy},
+		checks:  digAndCurl,
+		deny:    true,
+	},
+	{ // test conflicting Pod deny policy with DNS allow, reverse order
+		name:    "testDNSAllowPoDDeny",
+		records: []*record.DatapathRecord{dnsLoDenyPolicy, podAllowPolicy},
+		checks:  digAndCurl,
+		deny:    true,
+	},
 }
 
 func loadRecords(r *recordTest, t *testing.T) {
