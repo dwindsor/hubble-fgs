@@ -540,7 +540,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	}
 	// Rawsock has no config maps.
 
-	if icmpEnabled || tcpEnabled || udpEnabled {
+	if utils.CGroupSKBAvailable() && (icmpEnabled || tcpEnabled || udpEnabled) {
 		if err := l3.configureCgroupProtocolCfgMap(l3cfg); err != nil {
 			return fmt.Errorf("failed to configure cgroup protocol config map: %w", err)
 		}
