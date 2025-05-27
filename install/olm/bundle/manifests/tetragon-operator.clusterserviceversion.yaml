@@ -196,6 +196,7 @@ spec:
         - apiGroups:
           - ""
           resources:
+          - nodes
           - pods
           - services
           verbs:

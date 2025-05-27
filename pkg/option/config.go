@@ -10,6 +10,14 @@ import (
 )
 
 type config struct {
+	// Environment specifies the environment in which Tetragon is running. It
+	// can be one of the following:
+	// - "kubernetes": Tetragon is running in a Kubernetes environment. In this
+	// mode, Tetragon retrieves the local node information from Kubernetes API
+	// server.
+	// - "": Unspecified. Tetragon will not attempt to retrieve any environment
+	//   specific information.
+	Environment                    string
 	EnableApplicationModel         bool
 	EnableSyscallTracking          bool
 	ApplicationModelExportInterval time.Duration

@@ -13,6 +13,7 @@ package option
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/defaults"
@@ -24,6 +25,7 @@ import (
 )
 
 const (
+	KeyEnvironment                        = "environment"
 	KeyOCSFExportFilename                 = "ocsf-export-filename"
 	KeyOCSFExportFileMaxSizeMB            = "ocsf-export-file-max-size-mb"
 	KeyOCSFExportFileMaxBackups           = "ocsf-export-file-max-backups"
@@ -77,6 +79,12 @@ const (
 	keyEnableICMP                         = "enable-icmp"
 	keyEnableRawsock                      = "enable-rawsock"
 	keyEnableDNS                          = "enable-dns"
+
+	EnvironmentKubernetes = "kubernetes"
+)
+
+var (
+	environments = []string{EnvironmentKubernetes}
 )
 
 func FixUpOSSFlags(flags *pflag.FlagSet) {
@@ -95,6 +103,8 @@ func FixUpOSSFlags(flags *pflag.FlagSet) {
 }
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
+	flags.String(KeyEnvironment, "", "Specify the environment in which Tetragon is running. Valid values are: "+fmt.Sprintf("%s", environments))
+	flags.MarkHidden(KeyEnvironment)
 	// OCSF export flags
 	flags.String(KeyOCSFExportFilename, "", "Filename for OCSF JSON export. Disabled by default")
 	flags.Int(KeyOCSFExportFileMaxSizeMB, 10, "Size in MB for rotating OCSF JSON export files")
@@ -175,6 +185,7 @@ func ReadAndValidateEnterpriseFlags() error {
 }
 
 func readAndSetEnterpriseFlags() {
+	Config.Environment = viper.GetString(KeyEnvironment)
 	Config.OCSFExportFilename = viper.GetString(KeyOCSFExportFilename)
 	Config.EnableApplicationModel = viper.GetBool(KeyEnableApplicationModel)
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
@@ -254,5 +265,10 @@ func validateConfig(config config) error {
 		return fmt.Errorf("system call tracking requires --%s", KeyEnableApplicationModel)
 	}
 
+	if config.Environment != "" {
+		if !slices.Contains(environments, config.Environment) {
+			return fmt.Errorf("invalid environment '%s', valid values are %s", config.Environment, environments)
+		}
+	}
 	return nil
 }

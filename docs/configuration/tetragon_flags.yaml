@@ -204,6 +204,9 @@ options:
       default_value: "65536"
       usage: |
         Set the size of the internal endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones
+    - name: environment
+      usage: |
+        Specify the environment in which Tetragon is running. Valid values are: [kubernetes]
     - name: event-cache-retries
       default_value: "15"
       usage: Number of retries for event cache

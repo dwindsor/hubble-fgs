@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/fieldfilters"
 	"github.com/cilium/tetragon/pkg/health"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
+	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
@@ -37,6 +38,7 @@ import (
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
+	"github.com/isovalent/hubble-fgs/pkg/node/local"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
@@ -467,6 +469,17 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	} else {
 		log.Info("Disabling Kubernetes API")
 		podAccessor = watcher.NewFakeK8sWatcher(nil)
+	}
+	nodeMetadata, err := local.GetMetadataService()
+	if err != nil {
+		log.WithError(err).Warn("Failed to get node info. node_labels field will be empty")
+	} else {
+		labels, err := nodeMetadata.GetLabels()
+		if err != nil {
+			log.WithError(err).Warn("Failed to get node info. node_labels field will be empty")
+		} else {
+			node.SetKubernetesNodeLabels(labels)
+		}
 	}
 
 	_, err = cilium.InitCiliumState(ctx, enterpriseOption.Config.EnableCilium)
