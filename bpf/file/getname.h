@@ -37,7 +37,7 @@ struct {
 	__type(value, struct kpath_val);
 } open_user_to_kernel_path SEC(".maps");
 
-int handle_getname(const char *filename, struct filename *f)
+static inline __attribute__((always_inline)) int handle_getname(const char *filename, struct filename *f)
 {
 	struct kpath_key map_key = {
 		.ptr = (__u64)filename,
@@ -53,6 +53,9 @@ int handle_getname(const char *filename, struct filename *f)
 	// first check if we can find that in the map
 	kpath = map_lookup_elem(&open_user_to_kernel_path, &map_key);
 	if (kpath) {
+		ret = probe_read_kernel_str(kpath->str, MAX_FILEPATH_SIZE, BPF_CORE_READ(f, name));
+		kpath->size = (ret > 0) ? (ret - 1) : (0);
+		kpath->flags = 0;
 		__sync_fetch_and_add(&kpath->refcnt, 1);
 	} else {
 		kpath = map_lookup_elem(&kpath_heap, &zero);
