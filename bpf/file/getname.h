@@ -11,7 +11,7 @@
 
 #define FEXIT(a, b) "fexit/__" a "_" b
 
-struct kpath {
+struct kpath_val {
 	char str[MAX_FILEPATH_SIZE];
 	__u32 size;
 	__u32 flags;
@@ -26,7 +26,7 @@ struct kpath_key {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
-	__type(value, struct kpath);
+	__type(value, struct kpath_val);
 	__uint(max_entries, 1);
 } kpath_heap SEC(".maps");
 
@@ -34,7 +34,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 4096);
 	__type(key, struct kpath_key);
-	__type(value, struct kpath);
+	__type(value, struct kpath_val);
 } open_user_to_kernel_path SEC(".maps");
 
 int handle_getname(const char *filename, struct filename *f)
@@ -43,7 +43,7 @@ int handle_getname(const char *filename, struct filename *f)
 		.ptr = (__u64)filename,
 		.pid_tgid = get_current_pid_tgid(),
 	};
-	struct kpath *kpath;
+	struct kpath_val *kpath;
 	int zero = 0;
 	long ret;
 

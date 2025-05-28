@@ -58,7 +58,7 @@ int getname_from_hook(struct msg_file_openraw_ops *msg, const char *filename)
 		.ptr = (__u64)filename,
 		.pid_tgid = get_current_pid_tgid(),
 	};
-	struct kpath *kpath;
+	struct kpath_val *kpath;
 
 	kpath = map_lookup_elem(&open_user_to_kernel_path, &map_key);
 	if (!kpath)
