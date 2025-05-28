@@ -18,6 +18,11 @@ struct kpath {
 	__s64 refcnt;
 };
 
+struct kpath_key {
+	__u64 ptr;
+	__u64 pid_tgid;
+};
+
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
@@ -28,14 +33,17 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 4096);
-	__type(key, __u64);
+	__type(key, struct kpath_key);
 	__type(value, struct kpath);
 } open_user_to_kernel_path SEC(".maps");
 
 int handle_getname(const char *filename, struct filename *f)
 {
+	struct kpath_key map_key = {
+		.ptr = (__u64)filename,
+		.pid_tgid = get_current_pid_tgid(),
+	};
 	struct kpath *kpath;
-	__u64 map_key = 0;
 	int zero = 0;
 	long ret;
 
@@ -43,7 +51,6 @@ int handle_getname(const char *filename, struct filename *f)
 		return 0;
 
 	// first check if we can find that in the map
-	map_key = (__u64)filename;
 	kpath = map_lookup_elem(&open_user_to_kernel_path, &map_key);
 	if (kpath) {
 		__sync_fetch_and_add(&kpath->refcnt, 1);
@@ -57,7 +64,6 @@ int handle_getname(const char *filename, struct filename *f)
 		kpath->flags = 0;
 		kpath->refcnt = 1;
 
-		map_key = (__u64)filename;
 		map_update_elem(&open_user_to_kernel_path, &map_key, kpath, 0);
 	}
 

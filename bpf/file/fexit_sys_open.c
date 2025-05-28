@@ -54,10 +54,12 @@ static struct msg_file_openraw_ops *get_msg_openraw_init()
 
 int getname_from_hook(struct msg_file_openraw_ops *msg, const char *filename)
 {
-	__u64 map_key = 0;
+	struct kpath_key map_key = {
+		.ptr = (__u64)filename,
+		.pid_tgid = get_current_pid_tgid(),
+	};
 	struct kpath *kpath;
 
-	map_key = (__u64)filename;
 	kpath = map_lookup_elem(&open_user_to_kernel_path, &map_key);
 	if (!kpath)
 		return -FILE_ERR_GET_OPENRAW_KPATH;
