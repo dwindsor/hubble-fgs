@@ -409,6 +409,30 @@ func waitForListeningSocketToClose(t *testing.T, addr net.IP, port uint16, proto
 	return nil
 }
 
+func isSocketConnected(addr net.IP, port uint16, protocol uint16, af uint16) (bool, error) {
+	return isSocketEstablished(addr, port, protocol, af, false)
+}
+
+func waitForConnectedSocketToClose(t *testing.T, addr net.IP, port uint16, protocol uint16, af uint16) error {
+	t.Logf("Waiting for socket to close: address: %s, port: %d", addr, port)
+	sockConnected, err := isSocketConnected(addr, port, protocol, af)
+	if err != nil {
+		t.Logf("isSocketConnected failed: %s", err)
+		return err
+	}
+	for sockConnected {
+		sockConnected, err = isSocketConnected(addr, port, protocol, af)
+		if err != nil {
+			return err
+		}
+		// The intention of this millisleep is to allow CPU relaxing, task switching, etc
+		// so that hopefully some amount of time has passed between checks, mainly just to
+		// reduce churn.
+		time.Sleep(time.Millisecond)
+	}
+	return nil
+}
+
 func sendData(t *testing.T, stdin io.WriteCloser, msg string) {
 	_, err := stdin.Write([]byte(msg))
 	assert.NoError(t, err)
