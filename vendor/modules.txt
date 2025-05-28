@@ -255,9 +255,6 @@ github.com/cilium/cilium/pkg/identity
 github.com/cilium/cilium/pkg/ip
 github.com/cilium/cilium/pkg/ipam/option
 github.com/cilium/cilium/pkg/k8s/apis/cilium.io
-github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/labels
-github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/meta/v1
-github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/selection
 github.com/cilium/cilium/pkg/labels
 github.com/cilium/cilium/pkg/lock
 github.com/cilium/cilium/pkg/logging
@@ -484,6 +481,9 @@ github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
 github.com/cilium/tetragon/pkg/k8s/crdutils
+github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/labels
+github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1
+github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/selection
 github.com/cilium/tetragon/pkg/k8s/version
 # github.com/containerd/cgroups/v3 v3.0.3
 ## explicit; go 1.18

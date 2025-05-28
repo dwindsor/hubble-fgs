@@ -63,7 +63,7 @@ import (
 
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 
-	slimv1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/apis/meta/v1"
+	slimv1 "github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
