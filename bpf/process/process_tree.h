@@ -344,7 +344,8 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	return 0;
 }
 
-struct tree_id *find_self_uid(__u32 pid)
+// inlined to handle returning struct pointer
+static inline __attribute__((always_inline)) struct tree_id *find_self_uid(__u32 pid)
 {
 	struct process_tree_binary_uid_key *tree_key;
 	struct execve_map_value *curr;
@@ -469,9 +470,37 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 	return 0;
 }
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct destination_endpoint_key);
+	__uint(max_entries, 1);
+} destination_endpoint_key_dns SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct destination_endpoint_key);
+	__uint(max_entries, 1);
+} destination_endpoint_key_lpm SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct destination_endpoint_key);
+	__uint(max_entries, 1);
+} destination_endpoint_key_usr SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct destination_endpoint_key);
+	__uint(max_entries, 1);
+} destination_endpoint_key_dest SEC(".maps");
+
 static inline __attribute__((always_inline)) int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
-	struct destination_endpoint_key dnskey, lpmkey, usrkey, destkey;
+	struct destination_endpoint_key *dnskey, *lpmkey, *usrkey, *destkey;
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
 	struct tree_id *self_uid;
@@ -484,7 +513,15 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	struct ip_addr ip_key = {};
 	uint64_t lpm_id;
 
-	destkey.source = usrkey.source = lpmkey.source = dnskey.source = DESTINATION_SOURCE_UNKNOWN;
+	dnskey = map_lookup_elem(&destination_endpoint_key_dns, &zero);
+	lpmkey = map_lookup_elem(&destination_endpoint_key_lpm, &zero);
+	usrkey = map_lookup_elem(&destination_endpoint_key_usr, &zero);
+	destkey = map_lookup_elem(&destination_endpoint_key_dest, &zero);
+
+	if (!dnskey || !lpmkey || !usrkey || !destkey)
+		return 0;
+
+	destkey->source = usrkey->source = lpmkey->source = dnskey->source = DESTINATION_SOURCE_UNKNOWN;
 
 	if (!tuple)
 		return 0;
@@ -517,31 +554,31 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	/* Check for DNS generated IDs */
 	dns_value = map_lookup_elem(&tg_dns_endpoint_id_map, &ip_key);
 	if (dns_value) {
-		dnskey.destination_id = dns_value->id;
-		dnskey.source = dns_value->source;
+		dnskey->destination_id = dns_value->id;
+		dnskey->source = dns_value->source;
 	}
 
 	// Check for Userspace generated IDs to objects
 	value = map_lookup_elem(&tg_endpoint_id_map, &key);
 	if (value) {
-		usrkey.destination_id = value->id;
-		usrkey.source = DESTINATION_SOURCE_USERSPACE;
+		usrkey->destination_id = value->id;
+		usrkey->source = DESTINATION_SOURCE_USERSPACE;
 	}
 
 	lpm_id = lpm_ipkey_lookup(&ip_key);
 	if (lpm_id) {
-		lpmkey.destination_id = lpm_id;
-		lpmkey.source = DESTINATION_SOURCE_USERSPACE;
+		lpmkey->destination_id = lpm_id;
+		lpmkey->source = DESTINATION_SOURCE_USERSPACE;
 	}
 
 	// Check for BPF generated IDs
 	value = map_lookup_elem(&tg_bpf_endpoint_id_map, &key);
 	if (value) {
-		destkey.destination_id = value->id;
-		destkey.source = DESTINATION_SOURCE_BPF;
+		destkey->destination_id = value->id;
+		destkey->source = DESTINATION_SOURCE_BPF;
 	}
 
-	if (usrkey.source > 0 || dnskey.source > 0 || lpmkey.source > 0 || destkey.source > 0)
+	if (usrkey->source > 0 || dnskey->source > 0 || lpmkey->source > 0 || destkey->source > 0)
 		goto found_id;
 
 	/* There is no known ID for this IP so lets create one */
@@ -549,22 +586,22 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	if (!value)
 		return 0;
 	value->id = __sync_fetch_and_add(&glbl_bpf_endpoint_id, 1);
-	destkey.destination_id = value->id;
-	destkey.source = DESTINATION_SOURCE_BPF;
+	destkey->destination_id = value->id;
+	destkey->source = DESTINATION_SOURCE_BPF;
 	map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
 found_id:
-	dnskey.local_id = lpmkey.local_id = usrkey.local_id = destkey.local_id = *self_uid;
-	dnskey.port = lpmkey.port = usrkey.port = destkey.port = tuple->dport;
-	dnskey.local_nsid = lpmkey.local_nsid = usrkey.local_nsid = destkey.local_nsid = 0;
+	dnskey->local_id = lpmkey->local_id = usrkey->local_id = destkey->local_id = *self_uid;
+	dnskey->port = lpmkey->port = usrkey->port = destkey->port = tuple->dport;
+	dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = 0;
 
 	if (cgid) {
 		nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
 		if (nsid) {
-			dnskey.local_nsid = lpmkey.local_nsid = usrkey.local_nsid = destkey.local_nsid = *nsid;
+			dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = *nsid;
 		}
 	}
 
-	return resolve_key(&dnskey, &lpmkey, &usrkey, &destkey, tuple, v);
+	return resolve_key(dnskey, lpmkey, usrkey, destkey, tuple, v);
 }
 
 static inline __attribute__((always_inline)) int process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple)
