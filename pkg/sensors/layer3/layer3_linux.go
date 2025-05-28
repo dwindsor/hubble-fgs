@@ -212,6 +212,8 @@ var (
 			program.MapUserFrom(base.ProcessTreeBinaryUUIDMap),
 			program.MapUserFrom(base.BpfEndpointIdMap),
 			program.MapUserFrom(base.EndpointIdMap),
+			program.MapUserFrom(base.Addr6LpmMap),
+			program.MapUserFrom(base.Addr4LpmMap),
 		}...)
 	dispatcherMaps            = append(udpMaps, protoCfgMap)
 	dispatcherNoProbeReadMaps = append(udpNoProbeReadMaps, protoCfgNoProbeReadMap)
