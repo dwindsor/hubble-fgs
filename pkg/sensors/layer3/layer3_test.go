@@ -324,7 +324,9 @@ func ipToHexstring(addr net.IP) string {
 	return ret
 }
 
-func isSocketListening(t *testing.T, addr net.IP, port uint16, protocol uint16, af uint16) (bool, error) {
+// isSocketEstablished checks /proc for the IP address and port. If listening is true, it checks the local address:port,
+// otherwise it checks the remote address:port.
+func isSocketEstablished(addr net.IP, port uint16, protocol uint16, af uint16, listening bool) (bool, error) {
 	netFile := "/proc/net/"
 	switch protocol {
 	case syscall.IPPROTO_TCP:
@@ -343,7 +345,6 @@ func isSocketListening(t *testing.T, addr net.IP, port uint16, protocol uint16, 
 	}
 	addrPort := ipToHexstring(addr)
 	addrPort += fmt.Sprintf(":%04X", port)
-	t.Logf("Looking in file: %s for address:port: %s", netFile, addrPort)
 
 	netData, err := os.ReadFile(netFile)
 	if err != nil {
@@ -352,26 +353,31 @@ func isSocketListening(t *testing.T, addr net.IP, port uint16, protocol uint16, 
 	netLines := strings.Split(string(netData), "\n")
 	for _, line := range netLines {
 		fields := strings.Fields(line)
-		if len(fields) < 2 {
+		if len(fields) < 3 {
 			continue
 		}
 		// fields[1] is local address:port
-		if fields[1] == addrPort {
+		// fields[2] is remote address:port
+		if (listening && fields[1] == addrPort) || (!listening && fields[2] == addrPort) {
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
+func isSocketListening(addr net.IP, port uint16, protocol uint16, af uint16) (bool, error) {
+	return isSocketEstablished(addr, port, protocol, af, true)
+}
+
 func waitForSocketToListen(t *testing.T, addr net.IP, port uint16, protocol uint16, af uint16) error {
 	t.Logf("Waiting for socket to listen: address: %s, port: %d", addr, port)
-	sockListening, err := isSocketListening(t, addr, port, protocol, af)
+	sockListening, err := isSocketListening(addr, port, protocol, af)
 	if err != nil {
 		t.Logf("isSocketListening failed: %s", err)
 		return err
 	}
 	for !sockListening {
-		sockListening, err = isSocketListening(t, addr, port, protocol, af)
+		sockListening, err = isSocketListening(addr, port, protocol, af)
 		if err != nil {
 			return err
 		}
@@ -385,13 +391,13 @@ func waitForSocketToListen(t *testing.T, addr net.IP, port uint16, protocol uint
 
 func waitForListeningSocketToClose(t *testing.T, addr net.IP, port uint16, protocol uint16, af uint16) error {
 	t.Logf("Waiting for socket to close: address: %s, port: %d", addr, port)
-	sockListening, err := isSocketListening(t, addr, port, protocol, af)
+	sockListening, err := isSocketListening(addr, port, protocol, af)
 	if err != nil {
 		t.Logf("isSocketListening failed: %s", err)
 		return err
 	}
 	for sockListening {
-		sockListening, err = isSocketListening(t, addr, port, protocol, af)
+		sockListening, err = isSocketListening(addr, port, protocol, af)
 		if err != nil {
 			return err
 		}
