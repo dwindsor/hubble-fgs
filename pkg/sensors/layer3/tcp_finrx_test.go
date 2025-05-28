@@ -29,7 +29,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
@@ -167,24 +166,7 @@ func testFinRx(gt *testing.T, t *testing.T, port uint32, serverIterations, clien
 		signalAndWaitCommand(t, cmdServer, serverSignal)
 	}
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	if err != nil {
-		// Checker test failed, so maybe we need to wait for the sockets to close
-		err = waitForListeningSocketToClose(t, net.ParseIP("127.0.0.1"), uint16(port), syscall.IPPROTO_TCP, syscall.AF_INET)
-		if err != nil {
-			t.Logf("waitForSocketsToClose failed: '%s'", err)
-		}
-		// We want the checker to wait a bit longer for the TCP close events to appear. The
-		// best we can do is some form of work as sleeps are no longer helpful. We may as well
-		// do the check as the work.
-		for count := 0; count < 10; count++ {
-			err = jsonchecker.JsonTestCheck(gt, checker)
-			if err == nil {
-				break
-			}
-		}
-	}
-
+	err = waitAndCheckForSocketsToClose(gt, t, checker, net.ParseIP("127.0.0.1"), uint16(port), syscall.IPPROTO_TCP, syscall.AF_INET)
 	assert.NoError(t, err)
 }
 

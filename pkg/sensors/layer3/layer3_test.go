@@ -27,7 +27,9 @@ import (
 	"testing"
 	"time"
 
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
@@ -512,6 +514,38 @@ func waitForConnectedSocketToClose(t *testing.T, addr net.IP, port uint16, proto
 		time.Sleep(time.Millisecond)
 	}
 	return nil
+}
+
+func waitAndCheckForSocketsToClose(gt, t *testing.T, checker *ec.UnorderedEventChecker, addr net.IP, port uint16, protocol uint16, af uint16) error {
+	// Wait for the listening socket to close. The listening socket should not care for any TIME_WAIT-like states
+	// because it only listens, and therefore should close straight away. This wait will a) ensure that happened and
+	// b) cause a small delay during which hopefully other things occurred.
+	// We don't want to wait for the client or server sockets because they could go into TIME_WAIT-like states and it
+	// appears that we can still get the events we need when that happens. Instead we'll wait for those if we are
+	// missing events.
+	err := waitForListeningSocketToClose(t, net.ParseIP("0.0.0.0"), port, protocol, af)
+	if err != nil {
+		return fmt.Errorf("waitForListeningSocketToClose (listener) failed: '%s'", err)
+	}
+
+	err = jsonchecker.JsonTestCheck(gt, checker)
+	if err == nil {
+		return nil
+	}
+
+	// Let's wait for the sockets to close. This is expensive so we only do this if we really have to.
+	// Note, it takes about the same amount of time to wait for both sockets as to wait for one, and there
+	// is minimal benefit in checking the events between the two or choosing one to do first over the other.
+	err = waitForListeningSocketToClose(t, addr, port, protocol, af)
+	if err != nil {
+		return fmt.Errorf("waitForListeningSocketToClose (accepted) failed: '%s'", err)
+	}
+	err = waitForConnectedSocketToClose(t, addr, port, protocol, af)
+	if err != nil {
+		return fmt.Errorf("waitForConnectedSocketToClose failed: '%s'", err)
+	}
+
+	return jsonchecker.JsonTestCheck(gt, checker)
 }
 
 func sendData(t *testing.T, stdin io.WriteCloser, msg string) {
