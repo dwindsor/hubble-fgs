@@ -755,6 +755,7 @@ static inline __attribute__((always_inline)) int qos(struct destination_endpoint
 static __attribute__((noinline)) int qos_from_key(struct destination_endpoint_key *key, __u64 len)
 {
 	struct destination_endpoint_value *dest;
+	struct destination_endpoint_key k;
 	int verdict = SK_PASS;
 	__u64 quota, now;
 
@@ -762,10 +763,15 @@ static __attribute__((noinline)) int qos_from_key(struct destination_endpoint_ke
 		return SK_PASS;
 	}
 
-	key->port = 0;
-	key->local_id.uid = 0;
-	key->local_id.cpu = 0;
-	dest = map_lookup_elem(&destination_endpoint_map, key);
+	// QOS keys are per Pod and do not include process level information.
+	k.local_id.uid = 0;
+	k.local_id.cpu = 0;
+	k.local_nsid = key->local_nsid;
+	k.destination_id = key->destination_id;
+	k.source = key->source;
+	k.port = 0;
+
+	dest = map_lookup_elem(&destination_endpoint_map, &k);
 	if (!dest) {
 		return SK_PASS;
 	}
@@ -795,7 +801,7 @@ static int send(int deny, struct destination_endpoint_key *key, __u64 len)
 {
 	struct destination_endpoint_value *dest;
 
-	dest = map_lookup_elem(&destination_endpoint_map, &key);
+	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (!dest)
 		return -1;
 
@@ -825,7 +831,6 @@ static int send(int deny, struct destination_endpoint_key *key, __u64 len)
  */
 static inline __attribute__((always_inline)) int process_socketmap_send(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
-	struct destination_endpoint_key key;
 	__u64 cgid, len = skb->len;
 	int verdict, rewrite;
 
@@ -839,8 +844,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	rewrite = repair_socket_nsid(&v->dst_key);
 	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
 	if (!rewrite) {
-		key = v->dst_key;
-		verdict = send(v->deny, &key, len);
+		verdict = send(v->deny, &v->dst_key, len);
 		if (verdict < 0)
 			goto err_out;
 		return verdict;
@@ -848,8 +852,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 err_out:
 	cgid = tg_sockops_get_current_cgroup_id();
 	v->deny = __process_socketmap_add(v, &v->tuple, cgid);
-	key = v->dst_key;
-	verdict = send(v->deny, &key, len);
+	verdict = send(v->deny, &v->dst_key, len);
 	if (verdict < 0)
 		return SK_PASS;
 	return verdict;
