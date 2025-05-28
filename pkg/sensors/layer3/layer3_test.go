@@ -383,7 +383,7 @@ func waitForSocketToListen(t *testing.T, addr net.IP, port uint16, protocol uint
 	return nil
 }
 
-func waitForSocketsToClose(t *testing.T, addr net.IP, port uint16, protocol uint16, af uint16) error {
+func waitForListeningSocketToClose(t *testing.T, addr net.IP, port uint16, protocol uint16, af uint16) error {
 	t.Logf("Waiting for socket to close: address: %s, port: %d", addr, port)
 	sockListening, err := isSocketListening(t, addr, port, protocol, af)
 	if err != nil {

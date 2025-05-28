@@ -170,7 +170,7 @@ func testFinRx(gt *testing.T, t *testing.T, port uint32, serverIterations, clien
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	if err != nil {
 		// Checker test failed, so maybe we need to wait for the sockets to close
-		err = waitForSocketsToClose(t, net.ParseIP("127.0.0.1"), uint16(port), syscall.IPPROTO_TCP, syscall.AF_INET)
+		err = waitForListeningSocketToClose(t, net.ParseIP("127.0.0.1"), uint16(port), syscall.IPPROTO_TCP, syscall.AF_INET)
 		if err != nil {
 			t.Logf("waitForSocketsToClose failed: '%s'", err)
 		}
