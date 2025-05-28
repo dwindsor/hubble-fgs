@@ -745,7 +745,8 @@ func testListenAcceptClose4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
+	// Wait for the sockets to close
+	err = waitAndCheckForSocketsToClose(gt, t, checker, net.ParseIP("127.0.0.1"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
 	assert.NoError(t, err)
 }
 
@@ -846,8 +847,23 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 	acceptErr := jsonchecker.JsonTestCheckExpect(t, acceptChecker, disableAccept)
 	assert.NoError(t, acceptErr)
 
-	closeErr := jsonchecker.JsonTestCheckExpect(t, closeChecker, disableClose)
-	assert.NoError(t, closeErr)
+	// Wait for the listening socket to close
+	err = waitForListeningSocketToClose(t, net.ParseIP("0.0.0.0"), 8086, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheckExpect(t, closeChecker, disableClose)
+	if err == nil {
+		return
+	}
+
+	// Let's wait for the sockets to close. This is expensive so we only do this if we really have to.
+	err = waitForListeningSocketToClose(t, net.ParseIP("127.0.0.1"), 8086, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
+	err = waitForConnectedSocketToClose(t, net.ParseIP("127.0.0.1"), 8086, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheckExpect(t, closeChecker, disableClose)
+	assert.NoError(t, err)
 }
 
 func TestDisableListenAcceptClose4CLI(t *testing.T) {
@@ -973,9 +989,8 @@ func testDockerListenConnect4(gt *testing.T, t *testing.T, readyWG *sync.WaitGro
 			WithSocketType(sm.Full("connect")),
 	)
 
-	time.Sleep(1 * time.Second)
-
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	// Wait for the sockets to close
+	err := waitAndCheckForSocketsToClose(gt, t, checker, net.ParseIP("127.0.0.1"), 8088, syscall.IPPROTO_TCP, syscall.AF_INET)
 	assert.NoError(t, err)
 }
 
@@ -1891,7 +1906,8 @@ func testListenAcceptClose6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
+	// Wait for the sockets to close
+	err = waitAndCheckForSocketsToClose(gt, t, checker, net.ParseIP("::1"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
 	assert.NoError(t, err)
 }
 
@@ -2002,9 +2018,8 @@ func testDockerListenConnect6(gt *testing.T, t *testing.T, readyWG *sync.WaitGro
 			WithSocketType(sm.Full("connect")),
 	)
 
-	time.Sleep(1 * time.Second)
-
-	err := jsonchecker.JsonTestCheck(gt, checker)
+	// Wait for the sockets to close
+	err := waitAndCheckForSocketsToClose(gt, t, checker, net.ParseIP("::1"), 8087, syscall.IPPROTO_TCP, syscall.AF_INET)
 	assert.NoError(t, err)
 }
 
