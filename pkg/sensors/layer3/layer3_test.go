@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -92,7 +93,25 @@ func TestMain(m *testing.M) {
 	}
 
 	ec := runner.TestSensorsRun(m, "SensorLayer3")
+	if ec != 0 {
+		netstat()
+	}
 	os.Exit(ec)
+}
+
+func netstat() {
+	netstat, err := exec.Command("ss", "-plantu").Output()
+	if err != nil {
+		netstat, err = exec.Command("netstat", "-plantu").Output()
+	}
+	if err == nil {
+		netstats := string(netstat)
+		for _, line := range strings.Split(netstats, "\n") {
+			logger.GetLogger().Info(line)
+		}
+	} else {
+		logger.GetLogger().WithError(err).Info("netstat failed")
+	}
 }
 
 func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
