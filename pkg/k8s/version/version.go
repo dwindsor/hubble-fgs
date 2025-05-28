@@ -18,9 +18,9 @@ package version
 
 import (
 	"fmt"
+	"sync"
 
-	"github.com/cilium/cilium/pkg/lock"
-	"github.com/cilium/cilium/pkg/versioncheck"
+	"github.com/cilium/tetragon/pkg/k8s/versioncheck"
 
 	"github.com/blang/semver/v4"
 	"k8s.io/client-go/kubernetes"
@@ -43,7 +43,7 @@ type ServerCapabilities struct {
 }
 
 type cachedVersion struct {
-	mutex        lock.RWMutex
+	mutex        sync.RWMutex
 	capabilities ServerCapabilities
 	version      semver.Version
 }

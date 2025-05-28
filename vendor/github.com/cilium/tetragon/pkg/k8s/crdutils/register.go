@@ -10,6 +10,8 @@
 package crdutils
 
 import (
+	"log/slog"
+
 	osscrdutils "github.com/cilium/tetragon-oss/pkg/k8s/crdutils"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
@@ -18,14 +20,14 @@ type CRDOptions = osscrdutils.CRDOptions
 
 type CRD = osscrdutils.CRD
 
-func NewCRDBytes(crdName, resName string, crdBytes []byte) CRD {
-	return osscrdutils.NewCRDBytes(crdName, resName, crdBytes)
+func NewCRDBytes(logger *slog.Logger, crdName, resName string, crdBytes []byte) CRD {
+	return osscrdutils.NewCRDBytes(logger, crdName, resName, crdBytes)
 }
 
-func RegisterCRDs(clientset apiextensionsclient.Interface, crds []CRD) error {
-	return osscrdutils.RegisterCRDs(clientset, crds)
+func RegisterCRDs(logger *slog.Logger, clientset apiextensionsclient.Interface, crds []CRD) error {
+	return osscrdutils.RegisterCRDs(logger, clientset, crds)
 }
 
-func RegisterCRDsWithOptions(clientset apiextensionsclient.Interface, crds []CRD, opts CRDOptions) error {
-	return osscrdutils.RegisterCRDsWithOptions(clientset, crds, opts)
+func RegisterCRDsWithOptions(logger *slog.Logger, clientset apiextensionsclient.Interface, crds []CRD, opts CRDOptions) error {
+	return osscrdutils.RegisterCRDsWithOptions(logger, clientset, crds, opts)
 }

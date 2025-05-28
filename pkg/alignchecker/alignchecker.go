@@ -1,7 +1,7 @@
 package alignchecker
 
 import (
-	"github.com/cilium/cilium/pkg/alignchecker"
+	"github.com/cilium/tetragon/pkg/alignchecker"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"

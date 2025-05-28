@@ -108,7 +108,7 @@ func checkStructAlignments() error {
 	if err != nil {
 		return err
 	}
-	if err := ossAlignchecker.CheckStructAlignments(bpfObjPath); err != nil {
+	if err := ossAlignchecker.CheckStructAlignmentsDefault(bpfObjPath); err != nil {
 		return err
 	}
 	bpfObjPath, err = ossconfig.FindProgramFile("bpf_alignchecker.o")

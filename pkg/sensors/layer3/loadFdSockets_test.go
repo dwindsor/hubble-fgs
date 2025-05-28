@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	check "github.com/cilium/cilium/pkg/alignchecker"
+	check "github.com/cilium/tetragon/pkg/alignchecker"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )

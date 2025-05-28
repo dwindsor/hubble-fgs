@@ -11,6 +11,7 @@ package client
 
 import (
 	_ "embed"
+	"log/slog"
 
 	osscrdutils "github.com/cilium/tetragon-oss/pkg/k8s/crdutils"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -24,6 +25,7 @@ var (
 	crdsv1Alpha1TracingPolicies []byte
 
 	TracingPolicyCRD = osscrdutils.NewCRDBytes(
+		slog.Default(),
 		v1alpha1.TPCRDName,
 		v1alpha1.TPName,
 		crdsv1Alpha1TracingPolicies)
@@ -32,6 +34,7 @@ var (
 	crdsv1Alpha1TracingPoliciesNamespaced []byte
 
 	TracingPolicyNamespacedCRD = osscrdutils.NewCRDBytes(
+		slog.Default(),
 		v1alpha1.TPNamespacedCRDName,
 		v1alpha1.TPNamespacedName,
 		crdsv1Alpha1TracingPoliciesNamespaced)
@@ -40,6 +43,7 @@ var (
 	crdsv1Alpha1PodInfo []byte
 
 	PodInfoCRD = osscrdutils.NewCRDBytes(
+		slog.Default(),
 		v1alpha1.PICRDName,
 		v1alpha1.PIName,
 		crdsv1Alpha1PodInfo)
@@ -48,6 +52,7 @@ var (
 	crdsv1Alpha1SandboxPolicy []byte
 
 	SandboxPolicyCRD = osscrdutils.NewCRDBytes(
+		slog.Default(),
 		"SandboxPolicy/v1alpha1",
 		"sandboxpolicies.cilium.io",
 		crdsv1Alpha1SandboxPolicy,
@@ -57,6 +62,7 @@ var (
 	crdsv1Alpha1SandboxPolicyNamespaced []byte
 
 	SandboxPolicyNamespacedCRD = osscrdutils.NewCRDBytes(
+		slog.Default(),
 		"SandboxPolicyNamespaced/v1alpha1",
 		"sandboxpoliciesnamespaced.cilium.io",
 		crdsv1Alpha1SandboxPolicyNamespaced,
@@ -66,6 +72,7 @@ var (
 	crdsv1Alpha1TetragonNetworkPolicy []byte
 
 	TetragonNetworkPolicyCRD = osscrdutils.NewCRDBytes(
+		slog.Default(),
 		"TetragonNetworkPolicy/v1alpha1",
 		"tetragonnetworkpolicies.cilium.io",
 		crdsv1Alpha1TetragonNetworkPolicy,
@@ -75,6 +82,7 @@ var (
 	crdsv1Alpha1TetragonNetworkPolicyNamespaced []byte
 
 	TetragonNetworkPolicyNamespacedCRD = osscrdutils.NewCRDBytes(
+		slog.Default(),
 		"TetragonNetworkPolicyNamespaced/v1alpha1",
 		"tetragonnetworkpoliciesnamespaced.cilium.io",
 		crdsv1Alpha1TetragonNetworkPolicyNamespaced,
@@ -84,6 +92,7 @@ var (
 	crdsv1Alpha1AlertRule []byte
 
 	AlertRuleCRD = osscrdutils.NewCRDBytes(
+		slog.Default(),
 		"AlertRule/v1alpha1",
 		"alertrules.cilium.io",
 		crdsv1Alpha1AlertRule,

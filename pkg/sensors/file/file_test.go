@@ -32,11 +32,11 @@ import (
 	"testing"
 	"time"
 
-	check "github.com/cilium/cilium/pkg/alignchecker"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+	check "github.com/cilium/tetragon/pkg/alignchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"

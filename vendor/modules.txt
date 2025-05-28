@@ -239,7 +239,6 @@ github.com/cilium/cilium/api/v1/flow
 github.com/cilium/cilium/api/v1/models
 github.com/cilium/cilium/api/v1/observer
 github.com/cilium/cilium/api/v1/relay
-github.com/cilium/cilium/pkg/alignchecker
 github.com/cilium/cilium/pkg/api
 github.com/cilium/cilium/pkg/byteorder
 github.com/cilium/cilium/pkg/cidr
@@ -367,6 +366,7 @@ github.com/cilium/tetragon/pkg/ksyms
 github.com/cilium/tetragon/pkg/ktime
 github.com/cilium/tetragon/pkg/labels
 github.com/cilium/tetragon/pkg/logger
+github.com/cilium/tetragon/pkg/logger/logfields
 github.com/cilium/tetragon/pkg/manager
 github.com/cilium/tetragon/pkg/matchers/bytesmatcher
 github.com/cilium/tetragon/pkg/matchers/durationmatcher
@@ -485,6 +485,7 @@ github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/labels
 github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1
 github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/selection
 github.com/cilium/tetragon/pkg/k8s/version
+github.com/cilium/tetragon/pkg/k8s/versioncheck
 # github.com/containerd/cgroups/v3 v3.0.3
 ## explicit; go 1.18
 github.com/containerd/cgroups/v3/cgroup1/stats

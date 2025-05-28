@@ -10,17 +10,17 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/cilium/cilium/pkg/logging"
-	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/operator/cmd"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
+	logging "github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 
 	"github.com/isovalent/hubble-fgs/operator/agent"
 	"github.com/isovalent/hubble-fgs/operator/options"
 )
 
 func main() {
-	log := logging.DefaultLogger.WithField(logfields.LogSubsys, "tetragon-operator")
+	log := logging.DefaultSlogLogger.With(logfields.LogSubsys, "tetragon-operator")
 	ossCmd := cmd.New()
 	ossCmdRun := ossCmd.Run
 	ossCmd.Run = func(cmd *cobra.Command, args []string) {
@@ -40,7 +40,7 @@ func main() {
 				return err
 			}
 		} else {
-			log.Infof("Tetragon daemon set manager deactivated, set %s to true for its activation", options.ManageAgentKey)
+			log.Info(fmt.Sprintf("Tetragon daemon set manager deactivated, set %s to true for its activation", options.ManageAgentKey))
 		}
 		return ossServeRunE(cmd, args)
 	}
