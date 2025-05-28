@@ -17,6 +17,7 @@ import (
 
 	"github.com/cilium/cilium/api/v1/flow"
 	"github.com/cilium/cilium/api/v1/observer"
+	"github.com/cilium/cilium/pkg/identity"
 	"github.com/cilium/cilium/pkg/labels"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/option"
@@ -65,8 +66,8 @@ func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 			Flow: &flow.Flow{
 				Verdict:          flow.Verdict_TRACED,
 				IP:               nil,
-				Source:           &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
-				Destination:      &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
+				Source:           &flow.Endpoint{Labels: labels.LabelWorld.GetModel(), Identity: uint32(identity.ReservedIdentityWorld)},
+				Destination:      &flow.Endpoint{Labels: labels.LabelWorld.GetModel(), Identity: uint32(identity.ReservedIdentityWorld)},
 				IsReply:          &wrappers.BoolValue{Value: false},
 				NodeName:         "my-cluster/my-node",
 				Time:             &timestamppb.Timestamp{Seconds: 1, Nanos: 2},
@@ -112,8 +113,8 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	expectedFlow := &flow.Flow{
 		Verdict:          flow.Verdict_TRACED,
 		IP:               nil,
-		Source:           &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
-		Destination:      &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
+		Source:           &flow.Endpoint{Labels: labels.LabelWorld.GetModel(), Identity: uint32(identity.ReservedIdentityWorld)},
+		Destination:      &flow.Endpoint{Labels: labels.LabelWorld.GetModel(), Identity: uint32(identity.ReservedIdentityWorld)},
 		Type:             observer.FlowType_L3_L4,
 		TrafficDirection: flow.TrafficDirection_EGRESS,
 		IsReply:          &wrappers.BoolValue{Value: false},
@@ -153,7 +154,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 				},
 			},
 		},
-		Source: &flow.Endpoint{Labels: labels.LabelWorld.GetModel()},
+		Source: &flow.Endpoint{Labels: labels.LabelWorld.GetModel(), Identity: uint32(identity.ReservedIdentityWorld)},
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
 			Namespace:   "ns-2",
@@ -330,6 +331,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
 			PodName:     "pod-1",
 			Workloads:   []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
+			Identity:    uint32(2174683603),
 		},
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
@@ -337,6 +339,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			PodName:     "dst-pod-1",
 			Labels:      []string{},
 			Workloads:   []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
+			Identity:    uint32(2610432757),
 		},
 		DestinationNames: []string{"isovalent.com"},
 		Type:             observer.FlowType_L3_L4,
@@ -371,6 +374,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
 			PodName:     "pod-1",
 			Workloads:   []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
+			Identity:    uint32(2174683603),
 		},
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
@@ -378,6 +382,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			PodName:     "dst-pod-1",
 			Labels:      []string{},
 			Workloads:   []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
+			Identity:    uint32(2610432757),
 		},
 		DestinationNames: []string{"isovalent.com"},
 		Type:             observer.FlowType_L3_L4,
@@ -412,6 +417,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
 			PodName:     "pod-1",
 			Workloads:   []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
+			Identity:    uint32(2174683603),
 		},
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
@@ -419,6 +425,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			PodName:     "dst-pod-1",
 			Labels:      []string{},
 			Workloads:   []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
+			Identity:    uint32(2610432757),
 		},
 		DestinationNames: []string{"isovalent.com"},
 		Type:             observer.FlowType_L3_L4,
@@ -457,8 +464,8 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 				},
 			},
 		},
-		Source:           &flow.Endpoint{Labels: labels.LabelHost.GetModel()},
-		Destination:      &flow.Endpoint{Labels: labels.LabelHost.GetModel()},
+		Source:           &flow.Endpoint{Labels: labels.LabelHost.GetModel(), Identity: uint32(identity.ReservedIdentityHost)},
+		Destination:      &flow.Endpoint{Labels: labels.LabelHost.GetModel(), Identity: uint32(identity.ReservedIdentityHost)},
 		Type:             observer.FlowType_L3_L4,
 		TrafficDirection: flow.TrafficDirection_EGRESS,
 		IsReply:          &wrappers.BoolValue{Value: false},

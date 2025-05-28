@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/adler32"
 	"io"
 	"net"
 	"net/netip"
@@ -21,6 +22,7 @@ import (
 
 	"github.com/cilium/cilium/api/v1/flow"
 	"github.com/cilium/cilium/api/v1/observer"
+	"github.com/cilium/cilium/pkg/identity"
 	"github.com/cilium/cilium/pkg/labels"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	jsonEncoder "github.com/cilium/tetragon/pkg/encoder"
@@ -80,6 +82,10 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 	return errors.Join(flowError, h.protoJSONEncoder.Encode(response))
 }
 
+func getIdentity(namespace string, workloadKind string, workloadName string) uint32 {
+	return adler32.Checksum([]byte(namespace + " " + workloadKind + " " + workloadName))
+}
+
 func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Flow {
 	var ip *flow.IP
 	switch addr, _ := netip.ParseAddr(pc.GetSourceIp()); {
@@ -128,11 +134,14 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		source.Labels = sourceLabels
 		if sourcePod.Workload != "" && sourcePod.WorkloadKind != "" {
 			source.Workloads = []*flow.Workload{{Name: sourcePod.Workload, Kind: sourcePod.WorkloadKind}}
+			source.Identity = getIdentity(sourcePod.Namespace, sourcePod.WorkloadKind, sourcePod.Workload)
 		}
 	} else if _, ok := h.nodeIPs[pc.GetSourceIp()]; ok {
 		source.Labels = labels.LabelHost.GetModel()
+		source.Identity = uint32(identity.ReservedIdentityHost)
 	} else {
 		source.Labels = labels.LabelWorld.GetModel()
+		source.Identity = uint32(identity.ReservedIdentityWorld)
 	}
 	destinationPod := pc.GetDestinationPod()
 	destinationSvc := pc.GetDestinationService()
@@ -146,6 +155,7 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		destination.Labels = destinationLabels
 		if destinationPod.Workload != "" && destinationPod.WorkloadKind != "" {
 			destination.Workloads = []*flow.Workload{{Name: destinationPod.Workload, Kind: destinationPod.WorkloadKind}}
+			destination.Identity = getIdentity(destinationPod.Namespace, destinationPod.WorkloadKind, destinationPod.Workload)
 		}
 	} else if destinationSvc != nil {
 		destination.ClusterName = option.Config.ClusterName
@@ -156,8 +166,10 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		}
 	} else if _, ok := h.nodeIPs[pc.GetDestinationIp()]; ok {
 		destination.Labels = labels.LabelHost.GetModel()
+		destination.Identity = uint32(identity.ReservedIdentityHost)
 	} else {
 		destination.Labels = labels.LabelWorld.GetModel()
+		destination.Identity = uint32(identity.ReservedIdentityWorld)
 	}
 	return &flow.Flow{
 		Verdict:            flow.Verdict_TRACED,
