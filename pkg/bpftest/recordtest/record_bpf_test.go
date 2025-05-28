@@ -242,6 +242,32 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
+	defaultAllow = &record.DatapathRecord{
+		Policy: record.Policy{
+			Name: "testPolicyPod",
+		},
+		Src: wildcardSrc,
+		Endpoint: record.DatapathEndpoint{
+			EP:   nil,
+			Port: 0,
+		},
+		Action: &record.DatapathAction{
+			Action: record.PolicyAllow,
+		},
+	}
+	defaultDeny = &record.DatapathRecord{
+		Policy: record.Policy{
+			Name: "testPolicyPod",
+		},
+		Src: wildcardSrc,
+		Endpoint: record.DatapathEndpoint{
+			EP:   nil,
+			Port: 0,
+		},
+		Action: &record.DatapathAction{
+			Action: record.PolicyDeny,
+		},
+	}
 )
 
 // checks
@@ -376,6 +402,30 @@ var tests = []recordTest{
 		records: []*record.DatapathRecord{dnsLoDenyPolicy, podAllowPolicy},
 		checks:  digAndCurl,
 		deny:    true,
+	},
+	{ // test default deny with IP curl
+		name:    "testDefaultDenyIP",
+		records: []*record.DatapathRecord{defaultDeny},
+		checks:  curl,
+		deny:    true,
+	},
+	{ // test default deny with dns curl
+		name:    "testDefaultDenyDNS",
+		records: []*record.DatapathRecord{defaultDeny},
+		checks:  digAndCurl,
+		deny:    true,
+	},
+	{ // test default allow with IP curl
+		name:    "testDefaultAllowIP",
+		records: []*record.DatapathRecord{defaultAllow},
+		checks:  curl,
+		deny:    false,
+	},
+	{ // test default allow with dns curl
+		name:    "testDefaultAllowDNS",
+		records: []*record.DatapathRecord{defaultAllow},
+		checks:  digAndCurl,
+		deny:    false,
 	},
 }
 
