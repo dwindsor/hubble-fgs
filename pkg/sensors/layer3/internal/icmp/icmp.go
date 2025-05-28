@@ -24,10 +24,10 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
-	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
@@ -200,7 +200,7 @@ func ConfigureMaps(mapDir string, mapName string, config ConfigValue) error {
 }
 
 func ConfigureSensor() error {
-	ip.LoadSockets(fdCallback, unix.IPPROTO_ICMP, 0)
+	ip.LoadSockets(fdCallback, constants.IPPROTO_ICMP, 0)
 	return nil
 }
 

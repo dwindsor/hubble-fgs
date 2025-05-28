@@ -15,6 +15,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -28,11 +29,11 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
-	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	// api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
@@ -140,14 +141,14 @@ func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	daddr := networkapi.GetIP(socket.Tuple.DAddr, 0, socket.Tuple.IPv6 != 0)
 	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Tuple.SPort, "Dport": socket.Tuple.DPort, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
 
-	if socket.State != unix.BPF_TCP_CLOSE && socket.State != unix.BPF_TCP_ESTABLISHED {
+	if socket.State != constants.BPF_TCP_CLOSE && socket.State != constants.BPF_TCP_ESTABLISHED {
 		return
 	}
 
 	udp := layer3.MsgIPEventUnix{}
 	udp.Msg = &networkapi.MsgIPEvent{}
 
-	if socket.State == unix.BPF_TCP_CLOSE {
+	if socket.State == constants.BPF_TCP_CLOSE {
 		if DisableListenEvents {
 			return
 		}
@@ -202,7 +203,7 @@ func ConfigureMaps(mapDir string, mapName string, config networkapi.UdpConfigVal
 }
 
 func ConfigureSensor() error {
-	ip.LoadSockets(fdCallback, unix.IPPROTO_UDP, 0)
+	ip.LoadSockets(fdCallback, syscall.IPPROTO_UDP, 0)
 	udpconfig.UdpMapRemoves = 0
 	if udpGcInterval > 0 {
 		gcTimer.Start(udpGcInterval)
@@ -213,9 +214,9 @@ func ConfigureSensor() error {
 func UnloadSensor() error {
 	gcTimer.Stop()
 	TimestampEnabled = false
-	networklatency.Stop(unix.IPPROTO_UDP)
+	networklatency.Stop(syscall.IPPROTO_UDP)
 	if WatermarksEnabled {
-		networkWatermarksEvents.Stop(unix.IPPROTO_UDP)
+		networkWatermarksEvents.Stop(syscall.IPPROTO_UDP)
 		WatermarksEnabled = false
 	}
 	udpconfig.MetricsEnabled = false
@@ -358,7 +359,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		pseudoSocketsUpdate.Unlock()
 		// If there is an existing cache entry for this pseudo-socket then it must be stale, so remove it.
 		udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: networkapi.MsgIPTuple{
-			SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6, Proto: unix.IPPROTO_UDP},
+			SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6, Proto: syscall.IPPROTO_UDP},
 			PsVersion: m.PsVersion,
 		}
 		stats.Remove(udpStatsKey)
@@ -400,10 +401,10 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		for psock := range pseudoSocketList {
 			// Send stats event
 			udpKey := networkapi.UdpInfoKey{Cookie: m.SockCookie, Version: m.Version, Tuple: networkapi.MsgIPTuple{
-				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: unix.IPPROTO_UDP,
+				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: syscall.IPPROTO_UDP,
 			}}
 			udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: networkapi.MsgIPTuple{
-				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: unix.IPPROTO_UDP},
+				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: syscall.IPPROTO_UDP},
 				PsVersion: psock.PsVersion}
 			var udpValue networkapi.UdpInfoValue
 			err := udpMap.Lookup(udpKey, &udpValue)

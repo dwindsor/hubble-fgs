@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
+	"syscall"
 	"unsafe"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -13,7 +14,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 	"golang.org/x/net/dns/dnsmessage"
-	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	networkapi "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -137,7 +137,7 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (networkapi.UdpConfigValue, 
 	ParseUdpWatermarksSpec(&config, spec)
 	latencyConfig := networklatency.ProtocolConfig{}
 	if spec.Parser.Udp != nil {
-		latencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Udp.Latency, unix.IPPROTO_UDP)
+		latencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Udp.Latency, syscall.IPPROTO_UDP)
 	}
 	ParseSeqCheckSpec(&config, spec)
 	ParseDisableSpec(&config, spec)
@@ -216,7 +216,7 @@ func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tr
 		config.WatermarksBurstTriggerPercent = uint64(spec.Parser.Udp.Watermarks.BurstTriggerPercent) + 100
 		// DipTriggerPercent is the percent below the average; we supply it as a percentage multiplier.
 		config.WatermarksDipTriggerPercent = 100 - uint64(spec.Parser.Udp.Watermarks.DipTriggerPercent)
-		go networkWatermarksEvents.Start(spec, unix.IPPROTO_UDP, false)
+		go networkWatermarksEvents.Start(spec, syscall.IPPROTO_UDP, false)
 	} else if spec.Parser.Udp != nil && spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
 		WatermarksEnabled = true
 		config.WatermarksEnable = 1
@@ -229,7 +229,7 @@ func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tr
 		config.WatermarksWindowSize = (uint64(spec.Parser.Udp.Burst.WindowSize) * 2 * 1000000) / 3
 		// TriggerPercent is the percent above the average; we supply it as a percentage multiplier.
 		config.WatermarksBurstTriggerPercent = uint64(spec.Parser.Udp.Burst.TriggerPercent) + 100
-		go networkWatermarksEvents.Start(spec, unix.IPPROTO_UDP, true)
+		go networkWatermarksEvents.Start(spec, syscall.IPPROTO_UDP, true)
 	} else {
 		config.WatermarksEnable = 0
 		config.WatermarksAvgWindowSizeMs = 0

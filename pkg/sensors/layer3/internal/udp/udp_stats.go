@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -28,11 +29,11 @@ import (
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/common"
+	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
-
-	"golang.org/x/sys/unix"
 )
 
 const (
@@ -133,9 +134,9 @@ func createCloseEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, closeTimeNs uint64
 }
 
 func emitCloseEvent(k *api.UdpInfoKey, v *api.UdpInfoValue) {
-	currentTime := unix.Timespec{}
+	currentTime := syscall.Timespec{}
 	closeTimeNs := uint64(0)
-	err := unix.ClockGettime(int32(unix.CLOCK_MONOTONIC), &currentTime)
+	err := common.ClockGettime(int32(constants.CLOCK_MONOTONIC), &currentTime)
 	if err == nil {
 		closeTimeNs = uint64(currentTime.Nano())
 	}
@@ -402,7 +403,7 @@ func removeStaleEntries(m *ebpf.Map) {
 	for k, tuplemap := range pseudoSockets {
 		for v := range tuplemap {
 			bpfKey := api.UdpInfoKey{Cookie: k.Cookie, Version: k.Version, Tuple: api.MsgIPTuple{
-				SAddr: v.SAddr, SPort: v.SPort, DAddr: v.DAddr, DPort: v.DPort, IPv6: v.IPv6, Proto: unix.IPPROTO_UDP,
+				SAddr: v.SAddr, SPort: v.SPort, DAddr: v.DAddr, DPort: v.DPort, IPv6: v.IPv6, Proto: syscall.IPPROTO_UDP,
 			}}
 			var bpfValue api.UdpInfoValue
 			err := m.Lookup(bpfKey, &bpfValue)

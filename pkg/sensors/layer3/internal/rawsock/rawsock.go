@@ -24,10 +24,10 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
-	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/rawsockconfig"
@@ -137,7 +137,7 @@ func EnableRawsock() ([]*program.Program, []*program.Program, []*program.Map) {
 }
 
 func ConfigureSensor() error {
-	ip.LoadSockets(fdCallback, unix.IPPROTO_RAW, 0)
+	ip.LoadSockets(fdCallback, constants.IPPROTO_RAW, 0)
 	return nil
 }
 

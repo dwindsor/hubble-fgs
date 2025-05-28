@@ -28,11 +28,11 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
@@ -358,11 +358,11 @@ func getSocketsForNsFromFile(sockets *map[uint64]networkapi.FdLookupValue, netFi
 			return err
 		}
 		if protocol == syscall.IPPROTO_TCP {
-			if state != unix.BPF_TCP_ESTABLISHED && state != unix.BPF_TCP_LISTEN {
+			if state != constants.BPF_TCP_ESTABLISHED && state != constants.BPF_TCP_LISTEN {
 				continue
 			}
 		} else if protocol == syscall.IPPROTO_UDP {
-			if state != unix.BPF_TCP_CLOSE && state != unix.BPF_TCP_ESTABLISHED {
+			if state != constants.BPF_TCP_CLOSE && state != constants.BPF_TCP_ESTABLISHED {
 				continue
 			}
 		}
@@ -403,9 +403,9 @@ func getSocketsForNs(sockets *map[uint64]networkapi.FdLookupValue, netPath strin
 		socketFiles = append(socketFiles, "tcp", "tcp6")
 	case syscall.IPPROTO_UDP:
 		socketFiles = append(socketFiles, "udp", "udp6")
-	case syscall.IPPROTO_ICMP:
+	case constants.IPPROTO_ICMP:
 		socketFiles = append(socketFiles, "icmp", "icmp6")
-	case syscall.IPPROTO_RAW:
+	case constants.IPPROTO_RAW:
 		socketFiles = append(socketFiles, "raw", "raw6")
 	}
 
