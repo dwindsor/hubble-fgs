@@ -32,6 +32,11 @@ message ProcessTelemetry {
   // An opaque identifier that is unique to this telemetry data across all the
   // telemetry types.
   string id = 13;
+  // Labels of the node that transmitted this telemetry event. For nodes that
+  // belong to a Kubernetes cluster, this field contains Kubernetes node labels.
+  // For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
+  // Kubernetes cluster, this field may contain VM tags / labels.
+  map<string, string> node_labels = 14;
 }
 
 message NetworkTelemetry {
@@ -62,6 +67,96 @@ message NetworkTelemetry {
   // telemetry types.
   string id = 24;
   NetworkProtocolType protocol = 25;
+  // Labels of the node that transmitted this telemetry event. For nodes that
+  // belong to a Kubernetes cluster, this field contains Kubernetes node labels.
+  // For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
+  // Kubernetes cluster, this field may contain VM tags / labels.
+  map<string, string> node_labels = 26;
+}
+
+message NetworkConnectPolicyTelemetry {
+  // An opaque identifier that is unique to this telemetry event across all the
+  // telemetry types.
+  string id = 1;
+  // Timestamp at which this telemetry event got transmitted.
+  google.protobuf.Timestamp time = 2;
+  // Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT_POLICY`.
+  TelemetryType event_type = 3;
+  // Name of the cluster that transmitted this telemetry event.
+  string cluster_name = 4;
+  // Name of the node that transmitted this telemetry event.
+  string node_name = 5;
+  // Labels of the node that transmitted this telemetry event. For nodes that
+  // belong to a Kubernetes cluster, this field contains Kubernetes node labels.
+  // For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
+  // Kubernetes cluster, this field may contain VM tags / labels.
+  map<string, string> node_labels = 6;
+  // Kubernetes namespace in which the process that received this policy verdict
+  // is running. This field is set if and only if the process belongs to a
+  // Kubernetes workload.
+  string kubernetes_namespace = 7;
+  // Kubernetes workload kind of the process that received this policy verdict.
+  // This field is set if and only if the process belongs to a Kubernetes workload.
+  WorkloadKind kubernetes_workload_kind = 8;
+  // Kubernetes workload name of the process that received this policy verdict.
+  // This field is set if and only if the process belongs to a Kubernetes workload.
+  string kubernetes_workload_name = 9;
+  // Hash of the process that received this policy verdict.
+  // TODO: Document how the hash is calculated.
+  string process_hash = 10;
+  // Name of the process that received this policy verdict.
+  string process_name = 11;
+  // Arguments of the process that received this policy verdict.
+  string process_arguments = 12;
+  // Destination name of the connection (e.g. "tetragon.io") that received this
+  // network connect policy verdict.
+  string destination_name = 13;
+  // Destination type of the connection that received this network connect
+  // policy verdict.
+  DestinationType destination_type = 14;
+  // Destination port of the connection that received this network connect
+  // policy verdict.
+  uint32 destination_port = 15;
+  // Kubernetes namespace of the destination workload. This field is set if
+  // and only if destination_type is `DESTINATION_TYPE_KUBERNETES`.
+  string destination_kubernetes_namespace = 16;
+  // Kubernetes workload kind of the destination. This field is set if and only
+  // if destination_type is `DESTINATION_TYPE_KUBERNETES`.
+  WorkloadKind destination_kubernetes_workload_kind = 17;
+  // Kubernetes workload name of the destination. This field is set if and only
+  // if destination_type is `DESTINATION_TYPE_KUBERNETES`.
+  string destination_kubernetes_workload_name = 18;
+  // Network protocol of the connection that received this network connect
+  // policy verdict.
+  NetworkProtocolType protocol = 19;
+  // Policy verdict.
+  PolicyVerdict verdict = 20;
+  // Name of the Tetragon network connect policy that made this verdict.
+  string policy_name = 21;
+  // Name of the Tetragon network connect policy rule that made this verdict.
+  string rule_name = 22;
+  // tx_bytes allowed or dropped.
+  // For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
+  // transmit bytes from connections allowed by the policy rule.
+  // For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
+  // dropped transmit bytes from connections dropped by the policy rule.
+  uint64 tx_bytes = 23;
+  // The number of receive bytes from connections allowed by the policy rule. This
+  // field is not set for `POLICY_VERDICT_DROP` verdict events.
+  uint64 rx_bytes = 24;
+  // The number of TCP connections / UDP sessions allowed or dropped by this
+  // policy rule.
+  // For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
+  // TCP connections / UDP sessions allowed by this policy rule.
+  // For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
+  // dropped TCP connections / UDP sessions dropped by this policy rule.
+  uint64 sessions = 25;
+}
+
+enum PolicyVerdict {
+  POLICY_VERDICT_UNSPECIFIED = 0;
+  POLICY_VERDICT_ALLOW = 1;
+  POLICY_VERDICT_DROP = 2;
 }
 
 enum NetworkProtocolType {
@@ -81,6 +176,7 @@ enum TelemetryType {
   TELEMETRY_TYPE_UNSPECIFIED = 0;
   TELEMETRY_TYPE_PROCESS = 1;
   TELEMETRY_TYPE_NETWORK_CONNECT = 2;
+  TELEMETRY_TYPE_NETWORK_CONNECT_POLICY = 3;
 }
 
 message ApplicationModelEvent {

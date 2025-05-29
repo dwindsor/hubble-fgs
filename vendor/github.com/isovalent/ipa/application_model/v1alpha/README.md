@@ -23,13 +23,18 @@
     - [DestinationWorkload](#application_model-v1alpha-DestinationWorkload)
     - [GetModelRequest](#application_model-v1alpha-GetModelRequest)
     - [GetModelResponse](#application_model-v1alpha-GetModelResponse)
+    - [NetworkConnectPolicyTelemetry](#application_model-v1alpha-NetworkConnectPolicyTelemetry)
+    - [NetworkConnectPolicyTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkConnectPolicyTelemetry-NodeLabelsEntry)
     - [NetworkTelemetry](#application_model-v1alpha-NetworkTelemetry)
+    - [NetworkTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkTelemetry-NodeLabelsEntry)
     - [ProcessTelemetry](#application_model-v1alpha-ProcessTelemetry)
+    - [ProcessTelemetry.NodeLabelsEntry](#application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry)
     - [StreamTelemetryRequest](#application_model-v1alpha-StreamTelemetryRequest)
     - [StreamTelemetryResponse](#application_model-v1alpha-StreamTelemetryResponse)
   
     - [DestinationType](#application_model-v1alpha-DestinationType)
     - [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType)
+    - [PolicyVerdict](#application_model-v1alpha-PolicyVerdict)
     - [TelemetryType](#application_model-v1alpha-TelemetryType)
     - [WorkloadKind](#application_model-v1alpha-WorkloadKind)
   
@@ -824,6 +829,61 @@ the following criteria:
 
 
 
+<a name="application_model-v1alpha-NetworkConnectPolicyTelemetry"></a>
+
+### NetworkConnectPolicyTelemetry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | An opaque identifier that is unique to this telemetry event across all the telemetry types. |
+| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Timestamp at which this telemetry event got transmitted. |
+| event_type | [TelemetryType](#application_model-v1alpha-TelemetryType) |  | Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT_POLICY`. |
+| cluster_name | [string](#string) |  | Name of the cluster that transmitted this telemetry event. |
+| node_name | [string](#string) |  | Name of the node that transmitted this telemetry event. |
+| node_labels | [NetworkConnectPolicyTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkConnectPolicyTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
+| kubernetes_namespace | [string](#string) |  | Kubernetes namespace in which the process that received this policy verdict is running. This field is set if and only if the process belongs to a Kubernetes workload. |
+| kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  | Kubernetes workload kind of the process that received this policy verdict. This field is set if and only if the process belongs to a Kubernetes workload. |
+| kubernetes_workload_name | [string](#string) |  | Kubernetes workload name of the process that received this policy verdict. This field is set if and only if the process belongs to a Kubernetes workload. |
+| process_hash | [string](#string) |  | Hash of the process that received this policy verdict. TODO: Document how the hash is calculated. |
+| process_name | [string](#string) |  | Name of the process that received this policy verdict. |
+| process_arguments | [string](#string) |  | Arguments of the process that received this policy verdict. |
+| destination_name | [string](#string) |  | Destination name of the connection (e.g. &#34;tetragon.io&#34;) that received this network connect policy verdict. |
+| destination_type | [DestinationType](#application_model-v1alpha-DestinationType) |  | Destination type of the connection that received this network connect policy verdict. |
+| destination_port | [uint32](#uint32) |  | Destination port of the connection that received this network connect policy verdict. |
+| destination_kubernetes_namespace | [string](#string) |  | Kubernetes namespace of the destination workload. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
+| destination_kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  | Kubernetes workload kind of the destination. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
+| destination_kubernetes_workload_name | [string](#string) |  | Kubernetes workload name of the destination. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
+| protocol | [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType) |  | Network protocol of the connection that received this network connect policy verdict. |
+| verdict | [PolicyVerdict](#application_model-v1alpha-PolicyVerdict) |  | Policy verdict. |
+| policy_name | [string](#string) |  | Name of the Tetragon network connect policy that made this verdict. |
+| rule_name | [string](#string) |  | Name of the Tetragon network connect policy rule that made this verdict. |
+| tx_bytes | [uint64](#uint64) |  | tx_bytes allowed or dropped. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of transmit bytes from connections allowed by the policy rule. For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of dropped transmit bytes from connections dropped by the policy rule. |
+| rx_bytes | [uint64](#uint64) |  | The number of receive bytes from connections allowed by the policy rule. This field is not set for `POLICY_VERDICT_DROP` verdict events. |
+| sessions | [uint64](#uint64) |  | The number of TCP connections / UDP sessions allowed or dropped by this policy rule. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of TCP connections / UDP sessions allowed by this policy rule. For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of dropped TCP connections / UDP sessions dropped by this policy rule. |
+
+
+
+
+
+
+<a name="application_model-v1alpha-NetworkConnectPolicyTelemetry-NodeLabelsEntry"></a>
+
+### NetworkConnectPolicyTelemetry.NodeLabelsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="application_model-v1alpha-NetworkTelemetry"></a>
 
 ### NetworkTelemetry
@@ -857,6 +917,23 @@ the following criteria:
 | default_allowed_sessions | [uint64](#uint64) |  |  |
 | id | [string](#string) |  | An opaque identifier that is unique to this telemetry data across all the telemetry types. |
 | protocol | [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType) |  |  |
+| node_labels | [NetworkTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
+
+
+
+
+
+
+<a name="application_model-v1alpha-NetworkTelemetry-NodeLabelsEntry"></a>
+
+### NetworkTelemetry.NodeLabelsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -884,6 +961,23 @@ the following criteria:
 | execution_count | [uint64](#uint64) |  |  |
 | parent_hash | [string](#string) |  |  |
 | id | [string](#string) |  | An opaque identifier that is unique to this telemetry data across all the telemetry types. |
+| node_labels | [ProcessTelemetry.NodeLabelsEntry](#application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
+
+
+
+
+
+
+<a name="application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry"></a>
+
+### ProcessTelemetry.NodeLabelsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
@@ -950,6 +1044,19 @@ the following criteria:
 
 
 
+<a name="application_model-v1alpha-PolicyVerdict"></a>
+
+### PolicyVerdict
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| POLICY_VERDICT_UNSPECIFIED | 0 |  |
+| POLICY_VERDICT_ALLOW | 1 |  |
+| POLICY_VERDICT_DROP | 2 |  |
+
+
+
 <a name="application_model-v1alpha-TelemetryType"></a>
 
 ### TelemetryType
@@ -960,6 +1067,7 @@ the following criteria:
 | TELEMETRY_TYPE_UNSPECIFIED | 0 |  |
 | TELEMETRY_TYPE_PROCESS | 1 |  |
 | TELEMETRY_TYPE_NETWORK_CONNECT | 2 |  |
+| TELEMETRY_TYPE_NETWORK_CONNECT_POLICY | 3 |  |
 
 
 
