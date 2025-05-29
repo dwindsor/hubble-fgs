@@ -77,6 +77,11 @@ const (
 	PathBased // this is used both for observability and enforcement
 )
 
+type ModeWithError struct {
+	Md  Mode
+	Err error
+}
+
 type TpMode uint32
 
 const (
@@ -2133,7 +2138,7 @@ func getFileCreateHooks(spec *btf.Spec, hooks []FimHook, config *fileapi.FileCon
 	return append(hooks, FimHooksFileCreate418[:]...)
 }
 
-func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioUringSupport bool) ([]FimProg, error) {
+func findHooks(config *fileapi.FileConfigMapValue, mode ModeWithError, digestSupport, ioUringSupport bool) ([]FimProg, error) {
 	spec, err := ossBTF.NewBTF()
 	if err != nil {
 		return nil, fmt.Errorf("GetCachedBTF error: %s", err)
@@ -2144,7 +2149,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 
 	var hooks []FimHook
 	m := ""
-	switch mode {
+	switch mode.Md {
 	case PathBased:
 		if eeOption.Config.EnableFimDispatcher {
 			hooks = FimPathBasedTailCallHooks[:]
@@ -2214,7 +2219,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 		}
 		hooks = getIoUringHooks(spec, ioUringSupport, hooks)
 	default:
-		return nil, fmt.Errorf("unknown mode in findHooks [%d]", mode)
+		return nil, mode.Err
 	}
 	logger.GetLogger().Infof("Loading file hooks for %s", m)
 
@@ -2283,7 +2288,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode Mode, digestSupport, ioU
 }
 
 // returns the mode (i.e. Observe, Enforce etc.) and if the kernel supports file digests
-func probeFileMode(s *fm.KernelSelectorState, h TpMode) (Mode, bool) {
+func probeFileMode(s *fm.KernelSelectorState, h TpMode) (ModeWithError, bool) {
 	supportTracing := utils.SupportFmodRet()
 	logger.GetLogger().Infof("probeTracingModifyReturn() = %t", supportTracing)
 	logger.GetLogger().Infof("HaveProgramType(ebpf.Tracing) = %t", (features.HaveProgramType(ebpf.Tracing) == nil))
@@ -2311,24 +2316,45 @@ func probeFileMode(s *fm.KernelSelectorState, h TpMode) (Mode, bool) {
 
 	digestSupport := supportLSM && supportImaFileHash
 
-	if h == PathBasedTpMode {
-		if supportTracing && supportLSM && supportBpfLoop && supportBpfForEachMapElem {
-			return PathBased, digestSupport
+	var errs []error
+	if !supportTracing {
+		errs = append(errs, errors.New("fmod_ret programs are not supported (need kernel >= 5.7)"))
+	}
+	if !supportLSM {
+		if features.HaveProgramType(ebpf.LSM) == nil {
+			errs = append(errs, errors.New("lsm programs are supported but not enabled (need to enable LSM by adding \"bpf\" to the lsm kernel boot argument)"))
+		} else {
+			errs = append(errs, errors.New("lsm programs are not supported (need kernel >= 5.7 and CONFIG_BPF_LSM=y in kernel config)"))
 		}
-		return PathBasedNotSupported, digestSupport
 	}
 
+	if h == PathBasedTpMode {
+		if supportTracing && supportLSM && supportBpfLoop && supportBpfForEachMapElem {
+			return ModeWithError{PathBased, nil}, digestSupport
+		}
+
+		// path-based programs have additional requirements
+		if !supportBpfLoop {
+			errs = append(errs, errors.New("bpf_loop helper is not supported (need kernel >= 5.17)"))
+		}
+		if !supportBpfForEachMapElem {
+			errs = append(errs, errors.New("bpf_for_each_map_elem helper is not supported (need kernel >= 5.13)"))
+		}
+		return ModeWithError{PathBasedNotSupported, fmt.Errorf("path-based policies are not supported due to the following error(s): %w", errors.Join(errs...))}, digestSupport
+	}
+
+	// inode-based programs here
 	if !s.NeedEnforcement() {
-		return Observe, digestSupport
+		return ModeWithError{Observe, nil}, digestSupport
 	}
 
 	// If we have support for lsm and fmod_ret we prefer to use lsm.
 	if supportLSM {
-		return EnforceLSM, digestSupport
+		return ModeWithError{EnforceLSM, nil}, digestSupport
 	} else if supportTracing {
-		return EnforceFmodRet, digestSupport
+		return ModeWithError{EnforceFmodRet, nil}, digestSupport
 	}
-	return EnforceNotSupported, digestSupport
+	return ModeWithError{EnforceNotSupported, fmt.Errorf("enforcement in inode-based policies are not supported due to the following error(s): %w (either of lsm or fmod_ret programs are enough)", errors.Join(errs...))}, digestSupport
 }
 
 type configFileSensorOptions struct {
