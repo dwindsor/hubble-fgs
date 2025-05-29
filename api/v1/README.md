@@ -108,6 +108,7 @@
     - [ReadDirArg](#tetragon-ReadDirArg)
     - [RenameFileArg](#tetragon-RenameFileArg)
     - [Service](#tetragon-Service)
+    - [Service.SelectorLabelsEntry](#tetragon-Service-SelectorLabelsEntry)
     - [SockInfo](#tetragon-SockInfo)
     - [SocketStats](#tetragon-SocketStats)
     - [SymlinkArg](#tetragon-SymlinkArg)
@@ -2312,6 +2313,23 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | ----- | ---- | ----- | ----------- |
 | Name | [string](#string) |  |  |
 | Namespace | [string](#string) |  |  |
+| selector_labels | [Service.SelectorLabelsEntry](#tetragon-Service-SelectorLabelsEntry) | repeated | Selector labels of this service. |
+
+
+
+
+
+
+<a name="tetragon-Service-SelectorLabelsEntry"></a>
+
+### Service.SelectorLabelsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 

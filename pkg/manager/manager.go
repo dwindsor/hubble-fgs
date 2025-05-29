@@ -139,8 +139,9 @@ func (em *EnterpriseManager) GetSvcInfoOfIp(ip net.IP) *tetragon.Service {
 		return nil
 	}
 	return &tetragon.Service{
-		Name:      serviceList.Items[0].Name,
-		Namespace: serviceList.Items[0].Namespace,
+		Name:           serviceList.Items[0].Name,
+		Namespace:      serviceList.Items[0].Namespace,
+		SelectorLabels: serviceList.Items[0].Spec.Selector,
 	}
 }
 

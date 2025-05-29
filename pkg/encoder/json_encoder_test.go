@@ -158,6 +158,8 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
 			Namespace:   "ns-2",
+			Identity:    991692317,
+			Labels:      []string{},
 		},
 		DestinationService: &flow.Service{
 			Name:      "svc-2",
@@ -210,6 +212,8 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
 			Namespace:   "ns-2",
+			Identity:    991692317,
+			Labels:      []string{},
 		},
 		DestinationService: &flow.Service{
 			Name:      "svc-2",
@@ -249,6 +253,8 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
 			Namespace:   "ns-2",
+			Identity:    991692317,
+			Labels:      []string{},
 		},
 		DestinationService: &flow.Service{
 			Name:      "svc-2",
@@ -261,8 +267,9 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	}
 	assert.Equal(t, expectedFlow, actualFlow)
 
-	// With a DNS name
+	// With a DNS name and service selector labels
 	event.GetProcessConnect().DestinationNames = []string{"isovalent.com"}
+	event.GetProcessConnect().DestinationService.SelectorLabels = map[string]string{"app": "myapp"}
 	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
 	expectedFlow = &flow.Flow{
 		Verdict: flow.Verdict_TRACED,
@@ -288,6 +295,8 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
 			Namespace:   "ns-2",
+			Identity:    991692317,
+			Labels:      []string{"k8s:app=myapp"},
 		},
 		DestinationNames: []string{"isovalent.com"},
 		DestinationService: &flow.Service{

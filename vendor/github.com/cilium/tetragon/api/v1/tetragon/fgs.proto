@@ -91,6 +91,8 @@ enum SocketProtocol {
 message Service {
   string Name = 1;
   string Namespace = 2;
+  // Selector labels of this service.
+  map<string, string> selector_labels = 3;
 }
 
 message ProcessConnect {

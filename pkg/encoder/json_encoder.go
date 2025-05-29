@@ -160,6 +160,8 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 	} else if destinationSvc != nil {
 		destination.ClusterName = option.Config.ClusterName
 		destination.Namespace = destinationSvc.Namespace
+		destination.Labels = labels.Map2Labels(destinationSvc.SelectorLabels, labels.LabelSourceK8s).GetModel()
+		destination.Identity = getIdentity(destinationSvc.Namespace, "service", destinationSvc.Name)
 		destinationService = &flow.Service{
 			Name:      destinationSvc.Name,
 			Namespace: destinationSvc.Namespace,
