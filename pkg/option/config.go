@@ -37,6 +37,11 @@ type config struct {
 	DisableKprobeMulti bool
 	DetachOldBpf       bool
 
+	OCSFExportFilename       string
+	OCSFExportFileMaxSizeMB  int
+	OCSFExportFileMaxBackups int
+	OCSFExportFileCompress   bool
+
 	FlowExportFilename       string
 	FlowExportFileMaxSizeMB  int
 	FlowExportFileMaxBackups int

@@ -30,6 +30,8 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/golang/protobuf/ptypes/wrappers"
+
+	"github.com/isovalent/ipa/ocsf/v1alpha"
 )
 
 // JSONEncoder is a shim encoder that wraps ProtoJsonEncoder.
@@ -39,12 +41,14 @@ import (
 // and Hubble flow, while delegating encoding of all the other event types to ProtoJsonEncoder.
 type JSONEncoder struct {
 	flowEncoder      *json.Encoder
+	ocsfEncoder      *json.Encoder
 	protoJSONEncoder *jsonEncoder.ProtojsonEncoder
 	enableFlowExport bool
+	enableOCSFExport bool
 	nodeIPs          map[string]struct{}
 }
 
-func NewJSONEncoder(writer io.Writer, flowWriter io.Writer, enableFlowExport bool, nodeIPs map[string]struct{}) *JSONEncoder {
+func NewJSONEncoder(writer io.Writer, ocsfWriter, flowWriter io.Writer, enableOCSFExport, enableFlowExport bool, nodeIPs map[string]struct{}) *JSONEncoder {
 	encoder := JSONEncoder{
 		protoJSONEncoder: jsonEncoder.NewProtojsonEncoder(writer),
 		nodeIPs:          nodeIPs,
@@ -52,6 +56,10 @@ func NewJSONEncoder(writer io.Writer, flowWriter io.Writer, enableFlowExport boo
 	if enableFlowExport {
 		encoder.enableFlowExport = true
 		encoder.flowEncoder = json.NewEncoder(flowWriter)
+	}
+	if enableOCSFExport {
+		encoder.enableOCSFExport = true
+		encoder.ocsfEncoder = json.NewEncoder(ocsfWriter)
 	}
 	return &encoder
 }
@@ -63,7 +71,7 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 		logger.GetLogger().WithField("event", v).Warn("invalid event")
 		return nil
 	}
-	var flowError error
+	var ocsfError, flowError error
 	if _, ok := response.GetEvent().(*tetragon.GetEventsResponse_ProcessConnect); ok && h.enableFlowExport {
 		f := h.processConnectToFlow(response.GetProcessConnect())
 		if response.ClusterName != "" {
@@ -79,12 +87,23 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 		}
 		flowError = h.flowEncoder.Encode(res)
 	}
-	return errors.Join(flowError, h.protoJSONEncoder.Encode(response))
+	if _, ok := response.GetEvent().(*tetragon.GetEventsResponse_ProcessConnect); ok && h.enableOCSFExport {
+		n := h.processConnectToOCSF(response.GetProcessConnect())
+		res := v1alpha.EndpointEvent{
+			Detail: n,
+		}
+		ocsfError = h.ocsfEncoder.Encode(res)
+	}
+	return errors.Join(flowError, ocsfError, h.protoJSONEncoder.Encode(response))
 }
 
 func getIdentity(namespace string, workloadKind string, workloadName string) uint16 {
 	checksum32 := adler32.Checksum([]byte(namespace + " " + workloadKind + " " + workloadName))
 	return uint16(checksum32 & 0xFFFF)
+}
+
+func (h *JSONEncoder) processConnectToOCSF(pc *tetragon.ProcessConnect) *v1alpha.EndpointEvent_NetworkActivityDetail {
+	return nil
 }
 
 func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Flow {

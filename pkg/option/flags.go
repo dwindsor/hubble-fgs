@@ -24,6 +24,10 @@ import (
 )
 
 const (
+	KeyOCSFExportFilename                 = "ocsf-export-filename"
+	KeyOCSFExportFileMaxSizeMB            = "ocsf-export-file-max-size-mb"
+	KeyOCSFExportFileMaxBackups           = "ocsf-export-file-max-backups"
+	KeyOCSFExportFileCompress             = "ocsf-export-file-compress"
 	KeyFlowExportFilename                 = "flow-export-filename"
 	KeyFlowExportFileMaxSizeMB            = "flow-export-file-max-size-mb"
 	KeyFlowExportFileMaxBackups           = "flow-export-file-max-backups"
@@ -91,6 +95,12 @@ func FixUpOSSFlags(flags *pflag.FlagSet) {
 }
 
 func AddEnterpriseFlags(flags *pflag.FlagSet) {
+	// OCSF export flags
+	flags.String(KeyOCSFExportFilename, "", "Filename for OCSF JSON export. Disabled by default")
+	flags.Int(KeyOCSFExportFileMaxSizeMB, 10, "Size in MB for rotating OCSF JSON export files")
+	flags.Int(KeyOCSFExportFileMaxBackups, 5, "Number of rotated OCSF JSON export files to retain")
+	flags.Bool(KeyOCSFExportFileCompress, false, "Compress rotated OCSF JSON export files")
+	// flows export flags
 	flags.String(KeyFlowExportFilename, "", "Filename for flow JSON export. Disabled by default")
 	flags.Int(KeyFlowExportFileMaxSizeMB, 10, "Size in MB for rotating flow JSON export files")
 	flags.Int(KeyFlowExportFileMaxBackups, 5, "Number of rotated flow JSON export files to retain")
@@ -165,6 +175,7 @@ func ReadAndValidateEnterpriseFlags() error {
 }
 
 func readAndSetEnterpriseFlags() {
+	Config.OCSFExportFilename = viper.GetString(KeyOCSFExportFilename)
 	Config.EnableApplicationModel = viper.GetBool(KeyEnableApplicationModel)
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
 	Config.ApplicationModelExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)

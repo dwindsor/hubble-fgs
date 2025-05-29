@@ -927,6 +927,7 @@ github.com/inconshreveable/mousetrap
 # github.com/isovalent/ipa v0.0.0-20250529155317-0292e6a7bad8
 ## explicit; go 1.24
 github.com/isovalent/ipa/application_model/v1alpha
+github.com/isovalent/ipa/ocsf/v1alpha
 # github.com/isovalent/metricstool v0.1.4
 ## explicit; go 1.22.0
 github.com/isovalent/metricstool/pkg/metricsmd

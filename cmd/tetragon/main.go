@@ -874,6 +874,15 @@ func startExporter(ctx context.Context, server *server.Server) error {
 		}
 	}
 
+	var ocsfWriter *lumberjack.Logger
+	enableOCSFExport := enterpriseOption.Config.OCSFExportFilename != ""
+	if enableOCSFExport {
+		ocsfWriter, err = getWriter(enterpriseOption.Config.OCSFExportFilename, enterpriseOption.Config.OCSFExportFileMaxSizeMB, enterpriseOption.Config.OCSFExportFileMaxBackups, enterpriseOption.Config.OCSFExportFileCompress)
+		if err != nil {
+			return err
+		}
+	}
+
 	if option.Config.ExportFileRotationInterval < 0 {
 		// Passed an invalid interval let's error out
 		return fmt.Errorf("frequency '%s' at which to rotate JSON export files is negative", option.Config.ExportFileRotationInterval.String())
@@ -903,7 +912,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 	nodeIPs := encoder.GetNodeIPs()
 	// Track how many bytes are written to the event export location
 	encoderWriter := exporter.NewExportedBytesTotalWriter(writer)
-	encoder := encoder.NewJSONEncoder(encoderWriter, flowWriter, enableFlowExport, nodeIPs)
+	encoder := encoder.NewJSONEncoder(encoderWriter, ocsfWriter, flowWriter, enableOCSFExport, enableFlowExport, nodeIPs)
 	var rateLimiter *ratelimit.RateLimiter
 	if option.Config.ExportRateLimit >= 0 {
 		rateLimiter = ratelimit.NewRateLimiter(ctx, 1*time.Minute, option.Config.ExportRateLimit, encoder)
