@@ -750,12 +750,14 @@ func testListenAcceptClose4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 	assert.NoError(t, err)
 }
 
-func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disableListen bool, disableAccept bool, disableClose bool) {
+func testDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitches bool, disableListen bool, disableAccept bool, disableClose bool) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
+
+	portstr := fmt.Sprintf("%d", port)
 
 	if CLISwitches {
 		oldEnableTCPValue := enterpriseOption.Config.EnableTCP
@@ -776,7 +778,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8086 -s 0.0.0.0"))
+		WithArguments(sm.Full("-nvlp " + portstr + " -s 0.0.0.0"))
 
 	execChecker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -792,7 +794,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
-			WithPort(8086).
+			WithPort(uint32(port)).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 	acceptChecker := ec.NewUnorderedEventChecker(
@@ -800,7 +802,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8086).
+			WithSourcePort(uint32(port)).
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 	closeChecker := ec.NewUnorderedEventChecker(
@@ -808,7 +810,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
-			WithSourcePort(8086).
+			WithSourcePort(uint32(port)).
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("accept")),
 	)
@@ -820,13 +822,13 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	cmdServer := exec.Command(server, "-nvlp", "8086", "-s", "0.0.0.0")
+	cmdServer := exec.Command(server, "-nvlp", portstr, "-s", "0.0.0.0")
 	stdout, err := cmdServer.StdoutPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8086, syscall.IPPROTO_TCP, syscall.AF_INET)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), port, syscall.IPPROTO_TCP, syscall.AF_INET)
 	assert.NoError(t, err)
-	cmdClient := exec.Command(client, "127.0.0.1", "8086")
+	cmdClient := exec.Command(client, "127.0.0.1", portstr)
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
@@ -848,7 +850,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 	assert.NoError(t, acceptErr)
 
 	// Wait for the listening socket to close
-	err = waitForListeningSocketToClose(t, net.ParseIP("0.0.0.0"), 8086, syscall.IPPROTO_TCP, syscall.AF_INET)
+	err = waitForListeningSocketToClose(t, net.ParseIP("0.0.0.0"), port, syscall.IPPROTO_TCP, syscall.AF_INET)
 	require.NoError(t, err)
 
 	err = jsonchecker.JsonTestCheckExpect(t, closeChecker, disableClose)
@@ -857,9 +859,9 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 	}
 
 	// Let's wait for the sockets to close. This is expensive so we only do this if we really have to.
-	err = waitForListeningSocketToClose(t, net.ParseIP("127.0.0.1"), 8086, syscall.IPPROTO_TCP, syscall.AF_INET)
+	err = waitForListeningSocketToClose(t, net.ParseIP("127.0.0.1"), port, syscall.IPPROTO_TCP, syscall.AF_INET)
 	assert.NoError(t, err)
-	err = waitForConnectedSocketToClose(t, net.ParseIP("127.0.0.1"), 8086, syscall.IPPROTO_TCP, syscall.AF_INET)
+	err = waitForConnectedSocketToClose(t, net.ParseIP("127.0.0.1"), port, syscall.IPPROTO_TCP, syscall.AF_INET)
 	assert.NoError(t, err)
 
 	err = jsonchecker.JsonTestCheckExpect(t, closeChecker, disableClose)
@@ -867,19 +869,19 @@ func testDisableConfigListenAcceptClose4(t *testing.T, CLISwitches bool, disable
 }
 
 func TestDisableListenAcceptClose4CLI(t *testing.T) {
-	testDisableConfigListenAcceptClose4(t, true, true, true, true)
+	testDisableConfigListenAcceptClose4(t, 8101, true, true, true, true)
 }
 
 func TestNoDisableListenAcceptClose4CLI(t *testing.T) {
-	testDisableConfigListenAcceptClose4(t, true, false, false, false)
+	testDisableConfigListenAcceptClose4(t, 8102, true, false, false, false)
 }
 
 func TestDisableListenAcceptClose4NoCLI(t *testing.T) {
-	testDisableConfigListenAcceptClose4(t, false, true, true, true)
+	testDisableConfigListenAcceptClose4(t, 8103, false, true, true, true)
 }
 
 func TestNoDisableListenAcceptClose4NoCLI(t *testing.T) {
-	testDisableConfigListenAcceptClose4(t, false, false, false, false)
+	testDisableConfigListenAcceptClose4(t, 8104, false, false, false, false)
 }
 
 func testDockerExistingListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
