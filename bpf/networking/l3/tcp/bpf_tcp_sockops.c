@@ -35,7 +35,6 @@ int skops_tcpsocket(u64 cookie, struct msg_ip_event *val, struct tcpsocketmap_va
 	val->common.size = sizeof(struct msg_ip_event);
 	val->common.ktime = ktime_get_ns();
 	val->socket_cookie = cookie;
-	val->socket_flags = 0;
 	val->version = socket->version;
 	val->key.pid = socket->key.pid;
 	val->key.ktime = socket->key.ktime;
@@ -227,6 +226,8 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	val->common.op = ISO_MSG_OP_TCPCLOSE;
 	skops_socket_with_stats(cookie, val, socket);
 	skops_tuple_with_stats(cookie, val, skops);
+	if (old_state == TCP_SYN_SENT)
+		val->socket_flags |= SOCKFLAGS_CONNECT_REJECTED;
 	get_socket_stats((struct sock *)cookie, socket, &val->stats);
 	val->close_time = ktime_get_ns();
 	socket->closed = 1;

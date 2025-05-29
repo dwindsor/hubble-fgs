@@ -155,6 +155,9 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 
 func SocketFlagsToType(t uint32) string {
 	if t&networkapi.SOCKFLAGS_TYPE_CONNECT != 0 {
+		if t&networkapi.SOCKFLAGS_CONNECT_REJECTED != 0 {
+			return "connect failed"
+		}
 		return "connect"
 	} else if t&networkapi.SOCKFLAGS_TYPE_ACCEPT != 0 {
 		return "accept"

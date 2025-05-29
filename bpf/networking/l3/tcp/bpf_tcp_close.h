@@ -43,11 +43,12 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	 */
 	cookie = (u64)skp;
 
+	/* Get the state that we are transitioning from */
+	probe_read_kernel(&old_state, sizeof(old_state),
+			  (const void *)_(&(skp->__sk_common.skc_state)));
+
 	socket = lookup_tcpsocketmap(&cookie);
 	if (!socket) {
-		/* Get the state that we are transitioning from */
-		probe_read_kernel(&old_state, sizeof(old_state),
-				  (const void *)_(&(skp->__sk_common.skc_state)));
 		// Don't report an error here if the TCP socket isn't yet active.
 		if (tcp_active(old_state))
 			emit_ip_error_event(ctx, 0, &cookie, false, 0, 0, 0, IP_ERROR_TCP_CLOSE_NO_SOCKET);
@@ -68,7 +69,6 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 		.common.ktime = ktime_get_ns(),
 
 		.socket_cookie = cookie,
-		.socket_flags = 0,
 		.version = socket->version,
 	};
 
@@ -78,6 +78,8 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	val->create_time = socket->stats.create_time;
 	val->close_time = ktime_get_ns();
 	val->socket_flags = socket->socket_flags;
+	if (old_state == TCP_SYN_SENT)
+		val->socket_flags |= SOCKFLAGS_CONNECT_REJECTED;
 	val->tuple.proto = IPPROTO_TCP;
 	probe_read_kernel(&val->tuple.sport, sizeof(val->tuple.sport),
 			  _(&(skp->__sk_common.skc_num)));

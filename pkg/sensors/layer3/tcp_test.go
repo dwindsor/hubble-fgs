@@ -281,13 +281,13 @@ func TestTCPRTT(t *testing.T) {
 }
 
 var basicTCPTests = []basicTest{
-	{"testConnectEvent4", testConnectEvent4},
+	{"testFailedConnectEvent4", testFailedConnectEvent4},
 	{"testExecEventClone4", testExecEventClone4},
 	{"testExistingListenEvent4", testExistingListenEvent4},
 	{"testExistingAcceptEvent4", testExistingAcceptEvent4},
 	{"testExistingRootCWDListenEvent4", testExistingRootCWDListenEvent4},
 	{"testListenAcceptClose4", testListenAcceptClose4},
-	{"testConnectEvent6", testConnectEvent6},
+	{"testFailedConnectEvent6", testFailedConnectEvent6},
 	{"testExecEventClone6", testExecEventClone6},
 	{"testExistingListenEvent6", testExistingListenEvent6},
 	{"testExistingAcceptEvent6", testExistingAcceptEvent6},
@@ -386,7 +386,7 @@ func stopDockerTCPServices(_ *testing.T) {
 	exec.Command("docker", "rm", "--force", "fgs-test-server-v6").Run()
 }
 
-func testConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func testFailedConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
@@ -413,7 +413,7 @@ func testConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithDestinationPort(80).
 			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithSocketType(sm.Full("connect")),
+			WithSocketType(sm.Full("connect failed")),
 	)
 
 	observertesthelper.ExecWGCurl(readyWG, 10, "127.0.0.1")
@@ -1608,7 +1608,7 @@ func testDetectSRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	assert.NoError(t, err)
 }
 
-func testConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func testFailedConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
@@ -1635,7 +1635,7 @@ func testConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithDestinationIp(sm.Full("::1")).
 			WithDestinationPort(80).
 			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithSocketType(sm.Full("connect")),
+			WithSocketType(sm.Full("connect failed")),
 	)
 
 	observertesthelper.ExecWGCurl(readyWG, 10, "[::1]")

@@ -23,6 +23,8 @@
 
 #define SOCKFLAGS_TYPE_MASK 0x7
 
+#define SOCKFLAGS_CONNECT_REJECTED 0x10000
+
 struct msg_ip_tuple {
 	__u64 saddr[2];
 	__u64 daddr[2];

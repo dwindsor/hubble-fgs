@@ -29,6 +29,8 @@ const (
 	SOCKFLAGS_TYPE_LISTEN  = 0x4
 	// User space flag space 0x00F0
 	SOCKFLAGS_TYPE_DNSREADY = 0x10
+	// Extra flags
+	SOCKFLAGS_CONNECT_REJECTED = 0x10000
 )
 
 const (
