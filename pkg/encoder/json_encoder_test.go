@@ -158,7 +158,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
 			Namespace:   "ns-2",
-			Identity:    991692317,
+			Identity:    1565,
 			Labels:      []string{},
 		},
 		DestinationService: &flow.Service{
@@ -212,7 +212,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
 			Namespace:   "ns-2",
-			Identity:    991692317,
+			Identity:    1565,
 			Labels:      []string{},
 		},
 		DestinationService: &flow.Service{
@@ -253,7 +253,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
 			Namespace:   "ns-2",
-			Identity:    991692317,
+			Identity:    1565,
 			Labels:      []string{},
 		},
 		DestinationService: &flow.Service{
@@ -295,7 +295,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
 			Namespace:   "ns-2",
-			Identity:    991692317,
+			Identity:    1565,
 			Labels:      []string{"k8s:app=myapp"},
 		},
 		DestinationNames: []string{"isovalent.com"},
@@ -340,7 +340,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
 			PodName:     "pod-1",
 			Workloads:   []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
-			Identity:    uint32(2174683603),
+			Identity:    uint32(2515),
 		},
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
@@ -348,7 +348,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			PodName:     "dst-pod-1",
 			Labels:      []string{},
 			Workloads:   []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
-			Identity:    uint32(2610432757),
+			Identity:    uint32(2805),
 		},
 		DestinationNames: []string{"isovalent.com"},
 		Type:             observer.FlowType_L3_L4,
@@ -383,7 +383,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
 			PodName:     "pod-1",
 			Workloads:   []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
-			Identity:    uint32(2174683603),
+			Identity:    uint32(2515),
 		},
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
@@ -391,7 +391,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			PodName:     "dst-pod-1",
 			Labels:      []string{},
 			Workloads:   []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
-			Identity:    uint32(2610432757),
+			Identity:    uint32(2805),
 		},
 		DestinationNames: []string{"isovalent.com"},
 		Type:             observer.FlowType_L3_L4,
@@ -426,7 +426,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			Labels:      []string{"k8s:key1=val1", "k8s:key2=val2"},
 			PodName:     "pod-1",
 			Workloads:   []*flow.Workload{{Kind: "DaemonSet", Name: "my-daemonset"}},
-			Identity:    uint32(2174683603),
+			Identity:    uint32(2515),
 		},
 		Destination: &flow.Endpoint{
 			ClusterName: option.Config.ClusterName,
@@ -434,7 +434,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 			PodName:     "dst-pod-1",
 			Labels:      []string{},
 			Workloads:   []*flow.Workload{{Kind: "Deployment", Name: "my-deployment"}},
-			Identity:    uint32(2610432757),
+			Identity:    uint32(2805),
 		},
 		DestinationNames: []string{"isovalent.com"},
 		Type:             observer.FlowType_L3_L4,

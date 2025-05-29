@@ -82,8 +82,9 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 	return errors.Join(flowError, h.protoJSONEncoder.Encode(response))
 }
 
-func getIdentity(namespace string, workloadKind string, workloadName string) uint32 {
-	return adler32.Checksum([]byte(namespace + " " + workloadKind + " " + workloadName))
+func getIdentity(namespace string, workloadKind string, workloadName string) uint16 {
+	checksum32 := adler32.Checksum([]byte(namespace + " " + workloadKind + " " + workloadName))
+	return uint16(checksum32 & 0xFFFF)
 }
 
 func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Flow {
@@ -134,7 +135,7 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		source.Labels = sourceLabels
 		if sourcePod.Workload != "" && sourcePod.WorkloadKind != "" {
 			source.Workloads = []*flow.Workload{{Name: sourcePod.Workload, Kind: sourcePod.WorkloadKind}}
-			source.Identity = getIdentity(sourcePod.Namespace, sourcePod.WorkloadKind, sourcePod.Workload)
+			source.Identity = uint32(getIdentity(sourcePod.Namespace, sourcePod.WorkloadKind, sourcePod.Workload))
 		}
 	} else if _, ok := h.nodeIPs[pc.GetSourceIp()]; ok {
 		source.Labels = labels.LabelHost.GetModel()
@@ -155,13 +156,13 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 		destination.Labels = destinationLabels
 		if destinationPod.Workload != "" && destinationPod.WorkloadKind != "" {
 			destination.Workloads = []*flow.Workload{{Name: destinationPod.Workload, Kind: destinationPod.WorkloadKind}}
-			destination.Identity = getIdentity(destinationPod.Namespace, destinationPod.WorkloadKind, destinationPod.Workload)
+			destination.Identity = uint32(getIdentity(destinationPod.Namespace, destinationPod.WorkloadKind, destinationPod.Workload))
 		}
 	} else if destinationSvc != nil {
 		destination.ClusterName = option.Config.ClusterName
 		destination.Namespace = destinationSvc.Namespace
 		destination.Labels = labels.Map2Labels(destinationSvc.SelectorLabels, labels.LabelSourceK8s).GetModel()
-		destination.Identity = getIdentity(destinationSvc.Namespace, "service", destinationSvc.Name)
+		destination.Identity = uint32(getIdentity(destinationSvc.Namespace, "service", destinationSvc.Name))
 		destinationService = &flow.Service{
 			Name:      destinationSvc.Name,
 			Namespace: destinationSvc.Namespace,
