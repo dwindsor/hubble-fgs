@@ -201,5 +201,8 @@ func GetNodeIPs() map[string]struct{} {
 	for _, ip := range ips {
 		nodeIPs[ip.String()] = struct{}{}
 	}
+	// Classify loopback addresses as reserved:host.
+	nodeIPs["127.0.0.1"] = struct{}{}
+	nodeIPs["::1"] = struct{}{}
 	return nodeIPs
 }

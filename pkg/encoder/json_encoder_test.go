@@ -483,3 +483,9 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 	actualFlow = e.processConnectToFlow(event.GetProcessConnect())
 	assert.Equal(t, expectedFlow, actualFlow)
 }
+
+func TestGetNodeIPs(t *testing.T) {
+	nodeIPs := GetNodeIPs()
+	assert.Contains(t, nodeIPs, "127.0.0.1")
+	assert.Contains(t, nodeIPs, "::1")
+}
