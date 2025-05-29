@@ -30,8 +30,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/golang/protobuf/ptypes/wrappers"
-
-	"github.com/isovalent/ipa/ocsf/v1alpha"
+	"github.com/isovalent/hubble-fgs/pkg/ocsf"
 )
 
 // JSONEncoder is a shim encoder that wraps ProtoJsonEncoder.
@@ -88,11 +87,10 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 		flowError = h.flowEncoder.Encode(res)
 	}
 	if _, ok := response.GetEvent().(*tetragon.GetEventsResponse_ProcessConnect); ok && h.enableOCSFExport {
-		n := h.processConnectToOCSF(response.GetProcessConnect())
-		res := v1alpha.EndpointEvent{
-			Detail: n,
+		res, ok := ocsf.ResponseToOCSF(response)
+		if ok {
+			ocsfError = h.ocsfEncoder.Encode(res)
 		}
-		ocsfError = h.ocsfEncoder.Encode(res)
 	}
 	return errors.Join(flowError, ocsfError, h.protoJSONEncoder.Encode(response))
 }
@@ -100,10 +98,6 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 func getIdentity(namespace string, workloadKind string, workloadName string) uint16 {
 	checksum32 := adler32.Checksum([]byte(namespace + " " + workloadKind + " " + workloadName))
 	return uint16(checksum32 & 0xFFFF)
-}
-
-func (h *JSONEncoder) processConnectToOCSF(pc *tetragon.ProcessConnect) *v1alpha.EndpointEvent_NetworkActivityDetail {
-	return nil
 }
 
 func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Flow {
