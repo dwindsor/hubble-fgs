@@ -489,3 +489,51 @@ func TestGetNodeIPs(t *testing.T) {
 	assert.Contains(t, nodeIPs, "127.0.0.1")
 	assert.Contains(t, nodeIPs, "::1")
 }
+
+func TestJSONEncoder_processConnectToFlowKubeAPIServer(t *testing.T) {
+	nodeIPs := map[string]struct{}{"10.0.0.1": {}}
+	e := NewJSONEncoder(io.Discard, io.Discard, true, nodeIPs)
+	event := tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessConnect{
+			ProcessConnect: &tetragon.ProcessConnect{
+				SourceIp:           "10.0.0.1",
+				SourcePort:         &wrappers.UInt32Value{Value: 54321},
+				DestinationIp:      "10.0.0.2",
+				DestinationService: &tetragon.Service{Name: "kubernetes", Namespace: "default"},
+				DestinationPort:    &wrappers.UInt32Value{Value: 443},
+				SockCookie:         12345,
+				Protocol:           tetragon.SocketProtocol_TCP,
+			},
+		},
+	}
+	expectedFlow := &flow.Flow{
+		Verdict: flow.Verdict_TRACED,
+		IP: &flow.IP{
+			IpVersion:   flow.IPVersion_IPv4,
+			Source:      "10.0.0.1",
+			Destination: "10.0.0.2",
+		},
+		L4: &flow.Layer4{
+			Protocol: &flow.Layer4_TCP{
+				TCP: &flow.TCP{
+					SourcePort:      54321,
+					DestinationPort: 443,
+				},
+			},
+		},
+		Source: &flow.Endpoint{
+			Labels:   labels.LabelHost.GetModel(),
+			Identity: uint32(identity.ReservedIdentityHost),
+		},
+		Destination: &flow.Endpoint{
+			Labels:   labels.LabelKubeAPIServer.GetModel(),
+			Identity: uint32(identity.ReservedIdentityKubeAPIServer),
+		},
+		Type:             observer.FlowType_L3_L4,
+		TrafficDirection: flow.TrafficDirection_EGRESS,
+		IsReply:          &wrappers.BoolValue{Value: false},
+		SocketCookie:     12345,
+	}
+	actualFlow := e.processConnectToFlow(event.GetProcessConnect())
+	assert.Equal(t, expectedFlow, actualFlow)
+}

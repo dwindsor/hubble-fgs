@@ -158,6 +158,11 @@ func (h *JSONEncoder) processConnectToFlow(pc *tetragon.ProcessConnect) *flow.Fl
 			destination.Workloads = []*flow.Workload{{Name: destinationPod.Workload, Kind: destinationPod.WorkloadKind}}
 			destination.Identity = uint32(getIdentity(destinationPod.Namespace, destinationPod.WorkloadKind, destinationPod.Workload))
 		}
+	} else if destinationSvc != nil && destinationSvc.Namespace == "default" && destinationSvc.Name == "kubernetes" {
+		// This is kubernetes API server service. Use reserved:kube-apiserver label.
+		destination.ClusterName = option.Config.ClusterName
+		destination.Labels = labels.LabelKubeAPIServer.GetModel()
+		destination.Identity = uint32(identity.ReservedIdentityKubeAPIServer)
 	} else if destinationSvc != nil {
 		destination.ClusterName = option.Config.ClusterName
 		destination.Namespace = destinationSvc.Namespace
