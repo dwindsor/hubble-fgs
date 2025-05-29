@@ -818,6 +818,26 @@ static int send(int deny, struct destination_endpoint_key *key, __u64 len)
 	return qos_from_key(key, len);
 }
 
+static int recv(int deny, struct destination_endpoint_key *key, __u64 len)
+{
+	struct destination_endpoint_value *dest;
+
+	dest = map_lookup_elem(&destination_endpoint_map, key);
+	if (!dest)
+		return -1;
+
+	__sync_fetch_and_add(&dest->rx_bytes, len);
+	if (is_policy_drop(deny)) {
+		if (deny & TNP_POLICY_FALLTHRU)
+			__sync_fetch_and_add(&dest->deny_default, len);
+		return SK_DROP;
+	}
+	if (deny & TNP_POLICY_FALLTHRU)
+		__sync_fetch_and_add(&dest->allow_default, len);
+
+	return SK_PASS;
+}
+
 /* Stats and deny/allow decisions are made in a sequence each step
  * loosens the key searching for a higher level rule. The order of
  * this search is important and is done in the following order.
@@ -871,69 +891,28 @@ err_out:
  */
 static inline __attribute__((always_inline)) int process_socketmap_recv(struct tcpsocketmap_value *v, struct __sk_buff *skb)
 {
-	struct destination_endpoint_value *dest_full, *dest_port, *dest_local, *dest_default;
-	struct destination_endpoint_key key;
-	__u64 len = skb->len;
-	__u64 policy = 0;
-	int verdict;
+	__u64 cgid, len = skb->len;
+	int verdict, rewrite;
 
 	/* Same as above see note in _send. */
 	if (!v->dst_key.source)
 		return SK_PASS;
 
-	process_socketmap_rekey(&v->dst_key, skb);
-	dest_full = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
-	if (dest_full) {
-		__sync_fetch_and_add(&dest_full->rx_bytes, len);
-		verdict = dest_policy(&policy, len, dest_full);
-		if (verdict == SK_DROP)
-			__sync_fetch_and_add(&dest_full->tx_drops, len);
+	rewrite = repair_socket_nsid(&v->dst_key);
+	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
+	if (!rewrite) {
+		verdict = recv(v->deny, &v->dst_key, len);
+		if (verdict < 0)
+			goto err_out;
+		return verdict;
 	}
-
-	/* Also update the per dst entry */
-	key = v->dst_key;
-	key.port = 0;
-	dest_port = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest_port) {
-		__sync_fetch_and_add(&dest_port->rx_bytes, len);
-		verdict = dest_policy(&policy, len, dest_port);
-		if (verdict == SK_DROP)
-			__sync_fetch_and_add(&dest_port->tx_drops, len);
-	}
-
-	key.local_id.uid = 0;
-	key.local_id.cpu = 0;
-	dest_local = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest_local) {
-		__sync_fetch_and_add(&dest_local->rx_bytes, len);
-		verdict = dest_policy(&policy, len, dest_local);
-		if (verdict == SK_DROP)
-			__sync_fetch_and_add(&dest_local->tx_drops, len);
-	}
-
-	/* We put this below the quota support because legacy quota policy
-	 * does not push a default rule and we hit the !dest case.
-	 */
-	verdict = default_policy_verdict(policy);
-	if (verdict != TNP_POLICY_UNKNOWN)
-		goto out;
-
-	/* If there is no specific verdict allow or deny from above we
-	 * check pod specific wildcard rule. This acts as a catch all.
-	 */
-	key.destination_id = 0;
-	dest_default = map_lookup_elem(&destination_endpoint_map, &key);
-	if (dest_default) {
-		__sync_fetch_and_add(&dest_default->rx_bytes, len);
-		dest_policy(&policy, len, dest_default);
-		if (verdict == SK_DROP)
-			__sync_fetch_and_add(&dest_default->tx_drops, len);
-	}
-out:
-	if (is_policy_drop(policy))
-		return SK_DROP;
-
-	return SK_PASS;
+err_out:
+	cgid = tg_sockops_get_current_cgroup_id();
+	v->deny = __process_socketmap_add(v, &v->tuple, cgid);
+	verdict = recv(v->deny, &v->dst_key, len);
+	if (verdict < 0)
+		return SK_PASS;
+	return verdict;
 }
 
 #endif // __PROCESS_TREE_H__
