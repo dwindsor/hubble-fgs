@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/version"
 	"github.com/isovalent/ipa/ocsf/v1alpha"
 )
 
@@ -72,6 +74,34 @@ func processConnectToOCSFSource(pc *tetragon.ProcessConnect) *v1alpha.NetworkEnd
 	}
 }
 
+func getAgent() *v1alpha.Agent {
+	tetragonName := "Isovalent Tetragon"
+	tetragonVendor := "Isovalent Cisco"
+	tetragonVersion := version.Version
+
+	agentTypeId := v1alpha.AgentTypeID_AGENT_TYPE_ID_OTHER
+	agentType := v1alpha.AgentTypeID_name[int32(agentTypeId)]
+
+	return &v1alpha.Agent{
+		Name:       &tetragonName,
+		Type:       &agentType,
+		TypeId:     &agentTypeId,
+		Uid:        &tetragonVersion,
+		VendorName: &tetragonVendor,
+	}
+}
+
+func getDevice() *v1alpha.Device {
+	agent := getAgent()
+	agents := []*v1alpha.Agent{agent}
+	hostname := node.GetNodeNameForExport()
+
+	return &v1alpha.Device{
+		AgentList: agents,
+		Hostname:  &hostname,
+	}
+}
+
 func processConnectToOCSF(pc *tetragon.ProcessConnect) *v1alpha.EndpointEvent_NetworkActivityDetail {
 	categoryId := v1alpha.CategoryID_CATEGORY_ID_NETWORK_ACTIVITY
 	categoryName := v1alpha.CategoryID_name[int32(categoryId)]
@@ -86,6 +116,8 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect) *v1alpha.EndpointEvent_Ne
 	connectionInfo := processConnectToOCSFConnectInformation(pc)
 	destination := processConnectToOCSFDestination(pc)
 	source := processConnectToOCSFSource(pc)
+
+	device := getDevice()
 
 	statusId := v1alpha.BaseEventStatusID_BASE_EVENT_STATUS_ID_SUCCESS
 	status := v1alpha.BaseEventStatusID_name[int32(statusId)]
@@ -102,6 +134,7 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect) *v1alpha.EndpointEvent_Ne
 		ClassName:      &className,
 		ClassUid:       classId,
 		ConnectionInfo: connectionInfo,
+		Device:         device,
 		DstEndpoint:    destination,
 		SrcEndpoint:    source,
 		Status:         &status,
