@@ -350,6 +350,17 @@ options:
       usage: Network policy file to load at startup
     - name: network-policy-dir
       usage: Directory for network policies to load at startup
+    - name: ocsf-export-file-compress
+      default_value: "false"
+      usage: Compress rotated OCSF JSON export files
+    - name: ocsf-export-file-max-backups
+      default_value: "5"
+      usage: Number of rotated OCSF JSON export files to retain
+    - name: ocsf-export-file-max-size-mb
+      default_value: "10"
+      usage: Size in MB for rotating OCSF JSON export files
+    - name: ocsf-export-filename
+      usage: Filename for OCSF JSON export. Disabled by default
     - name: pprof-address
       usage: |
         Serves runtime profile data via HTTP (e.g. 'localhost:6060'). Disabled by default
