@@ -31,7 +31,7 @@ import (
 // StartMinimalTetragonModel configures and start a minimal testing tetragon
 // instance to run with the application model, the DNS parser (and thus UDP),
 // and TCP. This is for example the minimum configuration for network policies.
-func StartMinimalTetragonModel(ctx context.Context, t *testing.T) {
+func StartMinimalTetragonModel(ctx context.Context, t *testing.T) *model.Server {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
@@ -49,6 +49,7 @@ func StartMinimalTetragonModel(ctx context.Context, t *testing.T) {
 	enterpriseOption.Config.EnableUDP = true
 	enterpriseOption.Config.EnableBPFDNSParser = true
 	enterpriseOption.Config.EnableApplicationModel = true
+	option.Config.EnablePolicyFilter = true
 
 	obs := observer.NewObserver()
 	err := obs.InitSensorManager()
@@ -66,6 +67,8 @@ func StartMinimalTetragonModel(ctx context.Context, t *testing.T) {
 	require.NoError(t, err)
 	err = procevents.GetRunningProcs()
 	require.NoError(t, err)
-	_, err = model.DefaultNewServer()
+	server, err := model.DefaultNewServer()
 	require.NoError(t, err)
+
+	return server
 }

@@ -274,8 +274,8 @@ var (
 
 // checks
 var (
-	curl       = []recordCheck{recordCheck{check: "curl"}}
-	digAndCurl = []recordCheck{recordCheck{check: "dig"}, recordCheck{check: "curl"}}
+	curl       = []recordCheck{{check: "curl"}}
+	digAndCurl = []recordCheck{{check: "dig"}, {check: "curl"}}
 )
 
 var tests = []recordTest{
@@ -495,7 +495,7 @@ func loadRecords(r *recordTest, t *testing.T) {
 				},
 				Status: v1alpha1.PodInfoStatus{
 					PodIPs: []v1alpha1.PodIP{
-						v1alpha1.PodIP{IP: "127.0.0.1"},
+						{IP: "127.0.0.1"},
 					},
 				},
 			}
