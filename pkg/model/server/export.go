@@ -94,9 +94,21 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			}
 
 			if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
+				procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, diffModel)
+				if err != nil {
+					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim process model")
+					return
+				}
+				for _, entry := range procFlatPack {
+					if err := flatEncoder.Encode(entry); err != nil {
+						logger.GetLogger().WithError(err).Error("Failed to encode slim process application model as JSON")
+						return
+					}
+				}
+
 				netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, diffModel)
 				if err != nil {
-					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim model")
+					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim network model")
 					return
 				}
 				for _, entry := range netFlatPack {

@@ -232,6 +232,47 @@ func getDestination(d *appModelV1.Destination) (string, string, string, appModel
 	return name, ns, wlName, wlKind
 }
 
+func ApplicationModelToProcessFlat(_ context.Context, a *appModelV1.ApplicationModel) ([]*appModelV1.ProcessTelemetry, error) {
+	t := []*appModelV1.ProcessTelemetry{}
+	node := node.GetNodeNameForExport()
+	cluster := option.Config.ClusterName
+	time := timestamppb.Now()
+
+	for _, ns := range a.Namespaces {
+		for _, wl := range ns.Workloads {
+			for _, p := range wl.Processes {
+				entry := &appModelV1.ProcessTelemetry{
+					ClusterName:            cluster,
+					NodeName:               node,
+					EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_PROCESS,
+					Time:                   time,
+					KubernetesNamespace:    ns.Name,
+					KubernetesWorkloadName: wl.Name,
+					KubernetesWorkloadKind: wl.Kind,
+					ProcessName:            p.Name,
+					ProcessArguments:       p.Arguments,
+				}
+				t = append(t, entry)
+			}
+		}
+	}
+
+	if a.Host != nil {
+		for _, p := range a.Host.Processes {
+			entry := &appModelV1.ProcessTelemetry{
+				ClusterName:      cluster,
+				NodeName:         node,
+				EventType:        appModelV1.TelemetryType_TELEMETRY_TYPE_PROCESS,
+				Time:             time,
+				ProcessName:      p.Name,
+				ProcessArguments: p.Arguments,
+			}
+			t = append(t, entry)
+		}
+	}
+	return t, nil
+}
+
 func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.ApplicationModel) ([]*appModelV1.NetworkTelemetry, error) {
 	n := []*appModelV1.NetworkTelemetry{}
 	node := node.GetNodeNameForExport()
