@@ -478,7 +478,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		if err != nil {
 			log.WithError(err).Warn("Failed to get node info. node_labels field will be empty")
 		} else {
-			node.SetKubernetesNodeLabels(labels)
+			node.SetNodeLabels(labels)
 		}
 	}
 
