@@ -13,6 +13,7 @@ package icmp
 import (
 	"encoding/binary"
 	"fmt"
+	"syscall"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
@@ -27,7 +28,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
-	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -440,9 +440,9 @@ func GetProcessIcmp(
 	fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIp)
 
 	switch event.Msg.IcmpData.IcmpIpProto {
-	case unix.IPPROTO_TCP:
+	case syscall.IPPROTO_TCP:
 		fgsEvent.IcmpIpProtocol = tetragon.SocketProtocol_TCP
-	case unix.IPPROTO_UDP:
+	case syscall.IPPROTO_UDP:
 		fgsEvent.IcmpIpProtocol = tetragon.SocketProtocol_UDP
 	}
 

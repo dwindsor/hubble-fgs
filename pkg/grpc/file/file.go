@@ -21,12 +21,12 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
+	"github.com/isovalent/hubble-fgs/pkg/common"
+	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
-	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -110,22 +110,22 @@ var (
 	}
 
 	openFlagsString = map[uint32]string{
-		unix.O_APPEND:    "O_APPEND",
-		unix.O_ASYNC:     "O_ASYNC",
-		unix.O_CLOEXEC:   "O_CLOEXEC",
-		unix.O_CREAT:     "O_CREAT",
-		unix.O_DIRECT:    "O_DIRECT",
-		unix.O_DIRECTORY: "O_DIRECTORY",
-		unix.O_TMPFILE:   "O_TMPFILE",
-		unix.O_DSYNC:     "O_DSYNC",
-		unix.O_EXCL:      "O_EXCL",
-		unix.O_NOATIME:   "O_NOATIME",
-		unix.O_NOCTTY:    "O_NOCTTY",
-		unix.O_NOFOLLOW:  "O_NOFOLLOW",
-		unix.O_NONBLOCK:  "O_NONBLOCK", // or O_NDELAY
-		unix.O_PATH:      "O_PATH",
-		unix.O_SYNC:      "O_SYNC", // or O_FSYNC
-		unix.O_TRUNC:     "O_TRUNC",
+		constants.O_APPEND:    "O_APPEND",
+		constants.O_ASYNC:     "O_ASYNC",
+		constants.O_CLOEXEC:   "O_CLOEXEC",
+		constants.O_CREAT:     "O_CREAT",
+		constants.O_DIRECT:    "O_DIRECT",
+		constants.O_DIRECTORY: "O_DIRECTORY",
+		constants.O_TMPFILE:   "O_TMPFILE",
+		constants.O_DSYNC:     "O_DSYNC",
+		constants.O_EXCL:      "O_EXCL",
+		constants.O_NOATIME:   "O_NOATIME",
+		constants.O_NOCTTY:    "O_NOCTTY",
+		constants.O_NOFOLLOW:  "O_NOFOLLOW",
+		constants.O_NONBLOCK:  "O_NONBLOCK", // or O_NDELAY
+		constants.O_PATH:      "O_PATH",
+		constants.O_SYNC:      "O_SYNC", // or O_FSYNC
+		constants.O_TRUNC:     "O_TRUNC",
 	}
 )
 
@@ -143,12 +143,12 @@ func getOpenFlags(flags uint32) []string {
 	var f []string
 
 	// first check the access modes
-	switch flags & unix.O_ACCMODE {
-	case unix.O_RDONLY:
+	switch flags & constants.O_ACCMODE {
+	case constants.O_RDONLY:
 		f = append(f, "O_RDONLY")
-	case unix.O_RDWR:
+	case constants.O_RDWR:
 		f = append(f, "O_RDWR")
-	case unix.O_WRONLY:
+	case constants.O_WRONLY:
 		f = append(f, "O_WRONLY")
 	}
 
@@ -176,7 +176,7 @@ func createFileSystem(fs MsgFsInfoUnix, sDev uint32) *tetragon.FileSystem {
 }
 
 func createMntNs(inum uint32) *tetragon.Namespace {
-	hostNs, _ := namespace.InitHostNamespace()
+	hostNs, _ := common.InitHostNamespaces()
 	return &tetragon.Namespace{
 		Inum:   inum,
 		IsHost: hostNs.Mnt.Inum == inum,
