@@ -17,6 +17,7 @@ test_dns_parser(struct __sk_buff *skb)
 	struct dnshdr *dns;
 	int8_t error;
 	uint32_t error_idx, *counter;
+	int send;
 
 	switch (bpf_ntohs(skb->protocol)) {
 	case ETH_P_IP:
@@ -68,9 +69,9 @@ test_dns_parser(struct __sk_buff *skb)
 		goto test_give_up;
 	}
 
-	// Verify if that source port (answer) is DNS.
-	if (udp->source != bpf_htons(DNS_PORT)) {
-		// Skip non-DNS answers packets.
+	// Verify if that source (answer) or dest (query) port is DNS.
+	if (udp->source != bpf_htons(DNS_PORT) && udp->dest != bpf_htons(DNS_PORT)) {
+		// Skip non-DNS packets.
 		error = -5;
 		goto test_give_up;
 	}
@@ -78,7 +79,10 @@ test_dns_parser(struct __sk_buff *skb)
 	// Parse the DNS header.
 	dns = (void *)udp + sizeof(struct udphdr);
 
-	int parser_ret = parse_dns(skb, (void *)dns - (void *)ip);
+	// Need to artifially alternate between egress and ingress
+	send = udp->source == bpf_htons(DNS_PORT);
+
+	int parser_ret = parse_dns(skb, (void *)dns - (void *)ip, send);
 	if (parser_ret < 0) {
 		DEBUG("parser failed with: %d", parser_ret);
 	}

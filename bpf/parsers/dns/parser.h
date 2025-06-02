@@ -18,6 +18,7 @@
 #include "pstree.h"
 #include "lib/address_family.h"
 #include "lib/config.h"
+#include "lib/strncmp.h"
 
 uint32_t zero = 0;
 
@@ -262,13 +263,15 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 // the packet is an IP packet with a UDP datagram using the DNS source port
 // (53), it parses from the UDP payload, needing an offset. It returns 0 on
 // success, 1 on not-applicable and < 0 on failure.
-__attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
+__attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int send)
 {
 	struct dnshdr *dns;
 	void *data, *data_end;
+	char *name, *req_name;
+	void *id_found;
 	int name_len;
 	int8_t error, ret;
-	uint32_t error_idx, *counter;
+	uint32_t error_idx, *counter, transaction_id;
 
 	if (offset > UDP_MAX_SIZE)
 		offset = UDP_MAX_SIZE;
@@ -278,12 +281,51 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 	if (dns + 1 > (void *)(long)skb->data_end)
 		return DNS_PARSER_SKIP;
 
-	// Verify if it's a response and there are answers.
-	if ((bpf_ntohs(dns->flags) & BIT(15)) == 0 || dns->ancount == 0)
-		return DNS_PARSER_SKIP; // Skip incorrect DNS answers packets.
+	// The transaction_id used cannot be just the dns->id because of local
+	// requests/responses: on some hosts, all DNS queries go through a local
+	// resolver, so when trying to do a request you end up in a situation
+	// like the following diagram.
+	//
+	// +--------------------------------+
+	// |  client          local server  |       outside
+	// |                                |
+	// |      egress      ingress       |
+	// |   +---+ -----------> +---+ ----|------> +---+
+	// |   |   |              |   |     |        |   |
+	// |   +---+ <----------- +---+ <---|------- +---+
+	// |      ingress     egress        |
+	// +--------------------------------+
+	//             localhost
+	//
+	// From the localhost PoV, you see each requests twice, as egress and
+	// ingress, and then the responses twice as egress and ingress. While
+	// for request, the parser recording the transaction ID is idempotent,
+	// it's not for checking that the ID (because the first response will
+	// delete the entry from the map) and thus the parser will identify the
+	// following response as an unrequested response, and thus poisoning.
+	//
+	// Here we use the ingress/egress indicator, and we flip the bit on
+	// receiving the response so we can scope the transaction ID to two
+	// local sockets.
+	transaction_id = ((send & 1U) << 16) | dns->id;
+
+	if (bpf_ntohs(dns->flags) & BIT(15)) { // response
+		transaction_id ^= (1U << 16);
+		// If there are no answers, skip the malformed response.
+		if (dns->ancount == 0)
+			return DNS_PARSER_SKIP;
+
+		// Early check for existing ID from requests map.
+		id_found = map_lookup_elem(&tg_dns_req_id_map, &transaction_id);
+		if (!id_found) {
+			// Didn't expect a response with this ID.
+			error = -10;
+			goto done;
+		}
+	}
 
 	// Move to DNS answer section.
-	data = (void *)dns + DNS_HDR_SIZE;
+	data = (void *)dns + sizeof(struct dnshdr);
 	data_end = (void *)(long)skb->data_end;
 	if (data >= data_end)
 		return DNS_PARSER_SKIP;
@@ -293,39 +335,67 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 	// "In the DNS, QDCOUNT Is (Usually) One"
 	// https://datatracker.ietf.org/doc/rfc9619/
 	if (bpf_ntohs(dns->qdcount) != 1) {
-		error = -10;
-		goto give_up;
+		error = -11;
+		goto done;
 	}
 
 	// Parse Question Section
 	name_len = parse_dns_name(skb, data, (size_t)(data - skb->data), false);
 	if (name_len < 0) {
 		error = name_len;
-		goto give_up;
+		goto done;
 	}
 
 	if (name_len > SKB_DATA_MAX_SIZE) {
-		error = -11;
-		goto give_up;
+		error = -12;
+		goto done;
 	}
 	data += name_len;
 
-#ifdef TETRAGON_BPF_DEBUG
-	char *name = map_lookup_elem(&name_heap_map, &zero);
-	if (name) {
-		DEBUG("domain: %s", name);
+	// Record the request ID or verify the response domain is correct with the ID.
+	name = map_lookup_elem(&name_heap_map, &zero);
+	if (!name)
+		return DNS_PARSER_SKIP;
+
+	if (!(bpf_ntohs(dns->flags) & BIT(15))) { // request
+		if (map_update_elem(&tg_dns_req_id_map, &transaction_id, name, BPF_ANY))
+			error = -13;
+		// End of the request parsing.
+		goto done;
 	}
+
+	// Rest of the execution is for parsing responses content.
+	req_name = map_lookup_elem(&tg_dns_req_id_map, &transaction_id);
+	if (!req_name) {
+		// This should never happen as it was already checked
+		// before parsing the questions.
+		error = -14;
+		goto done;
+	}
+
+	if (strncmp_truncated(req_name, DNS_MAX_NAME_SIZE, name)) {
+		error = -15;
+		goto done;
+	}
+
+	if (map_delete_elem(&tg_dns_req_id_map, &transaction_id)) {
+		error = -16;
+		goto done;
+	}
+
+#ifdef TETRAGON_BPF_DEBUG
+	DEBUG("domain: %s", name);
 #endif
 
 	// Parse QType and QClass
 	if (data + sizeof(u16) * 2 > data_end) {
-		error = -13;
-		goto give_up;
+		error = -17;
+		goto done;
 	}
 	__u16 qtype = bpf_ntohs(*(__u16 *)data);
 	if (qtype != A_RECORD && qtype != AAAA_RECORD) {
-		error = -14;
-		goto give_up;
+		error = -18;
+		goto done;
 	}
 	data += sizeof(u16) * 2;
 
@@ -335,12 +405,12 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 		ret = parse_dns_answer(skb, (size_t)data - skb->data);
 		if (ret < 0) {
 			error = ret;
-			goto give_up;
+			goto done;
 		}
 		// Skip the parsed answer
 		if (data + ret > data_end) {
-			error = -15;
-			goto give_up;
+			error = -19;
+			goto done;
 		}
 		data += ret;
 	}
@@ -349,7 +419,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset)
 	// so we use error = 0 as success, we might remove this and just return.
 	// return DNS_PARSER_SUCCESS;
 
-give_up:
+done:
 	if (error <= 0) {
 		error_idx = -error;
 		counter = map_lookup_elem(&tg_dns_error_map, &error_idx);

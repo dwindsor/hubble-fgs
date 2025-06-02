@@ -14,10 +14,9 @@
 #include "vmlinux.h"
 #include "bpf_task.h"
 
-#define DNS_PORT     53
-#define DNS_HDR_SIZE 12
-#define A_RECORD     1
-#define AAAA_RECORD  28
+#define DNS_PORT    53
+#define A_RECORD    1
+#define AAAA_RECORD 28
 
 #define DNS_MAX_NAME_SIZE  255
 #define DNS_MAX_LABEL_SIZE 63
@@ -71,6 +70,9 @@
 #define DNS_PARSER_SKIP	   1
 #define DNS_PARSER_SUCCESS 0
 
+// This is the size of the LRU map containing the pending requests IDs.
+#define DNS_MAX_PENDING_REQUESTS 1024
+
 struct dnshdr {
 	__u16 id;
 	__u16 flags;
@@ -100,5 +102,12 @@ struct {
 	__type(key, __u32);
 	__type(value, __u32);
 } tg_dns_error_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, DNS_MAX_PENDING_REQUESTS);
+	__type(key, __u32);
+	__type(value, char[DNS_MAX_NAME_SIZE + 1]);
+} tg_dns_req_id_map SEC(".maps");
 
 #endif // DNS_H
