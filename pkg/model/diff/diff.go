@@ -65,8 +65,9 @@ func ConnectionDiff(a, b []*appModelV1.ApplicationConnection) ([]*appModelV1.App
 	return connsDiff, nil
 }
 
-func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.ApplicationProcessGroup) ([]*appModelV1.ApplicationProcessGroup, error) {
+func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.ApplicationProcessGroup) ([]*appModelV1.ApplicationProcessGroup, []*appModelV1.ApplicationProcessGroup, error) {
 	psDiff := make([]*appModelV1.ApplicationProcessGroup, 0)
+	connDiff := make([]*appModelV1.ApplicationProcessGroup, 0)
 	psB := make(map[string]*appModelV1.ApplicationProcessGroup, len(b))
 	for _, p := range b {
 		psB[p.Name+p.Arguments] = p
@@ -93,18 +94,19 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 		// What we care about is new connections.
 		conns, err := ConnectionDiff(p.Connections, b.Connections)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if len(conns) > 0 {
 			d.Connections = conns
-			psDiff = append(psDiff, d)
+			connDiff = append(connDiff, d)
 		}
 	}
-	return psDiff, nil
+	return connDiff, psDiff, nil
 }
 
-func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.ApplicationWorkload) ([]*appModelV1.ApplicationWorkload, error) {
+func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.ApplicationWorkload) ([]*appModelV1.ApplicationWorkload, []*appModelV1.ApplicationWorkload, error) {
 	wlDiff := make([]*appModelV1.ApplicationWorkload, 0)
+	connDiff := make([]*appModelV1.ApplicationWorkload, 0)
 	wlB := make(map[string]*appModelV1.ApplicationWorkload, len(b))
 	for _, wl := range b {
 		wlB[wl.Name] = wl
@@ -122,21 +124,26 @@ func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.Applicati
 			Kind: wl.Kind,
 		}
 
-		psDiff, err := ProcessDiff(wl.Processes, w.Processes)
+		psDiff, connwlDiff, err := ProcessDiff(wl.Processes, w.Processes)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if len(psDiff) > 0 {
 			d.Processes = psDiff
 			wlDiff = append(wlDiff, d)
 		}
+		if len(connwlDiff) > 0 {
+			d.Processes = connwlDiff
+			connDiff = append(connDiff, d)
+		}
 	}
-	return wlDiff, nil
+	return connDiff, wlDiff, nil
 }
 
-func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.ApplicationModel) (*appModelV1.ApplicationModel, error) {
-	nsDiff := make([]*appModelV1.ApplicationNamespace, 0)
-	psDiff := make([]*appModelV1.ApplicationProcessGroup, 0)
+func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.ApplicationModel) (*appModelV1.ApplicationModel, *appModelV1.ApplicationModel, error) {
+	nsProcessDiff := make([]*appModelV1.ApplicationNamespace, 0)
+	nsNetworkDiff := make([]*appModelV1.ApplicationNamespace, 0)
+
 	nsB := make(map[string]*appModelV1.ApplicationNamespace, len(b.Namespaces))
 	for _, ns := range b.Namespaces {
 		nsB[ns.Name] = ns
@@ -146,47 +153,69 @@ func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.Applicat
 		// If namespace does not exist in B add it to the diff
 		b, ok := nsB[ns.Name]
 		if !ok {
-			nsDiff = append(nsDiff, ns)
+			nsProcessDiff = append(nsProcessDiff, ns)
 			continue
 		}
 
 		d := &appModelV1.ApplicationNamespace{}
 		d.Name = ns.Name
 
-		wlDiff, err := WorkloadDiff(ns.Workloads, b.Workloads)
+		networkDiff, wlDiff, err := WorkloadDiff(ns.Workloads, b.Workloads)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if len(wlDiff) > 0 {
 			d.Workloads = wlDiff
-			nsDiff = append(nsDiff, d)
+			nsProcessDiff = append(nsProcessDiff, d)
+		}
+		if len(networkDiff) > 0 {
+			d.Workloads = networkDiff
+			nsNetworkDiff = append(nsNetworkDiff, d)
 		}
 	}
+
+	processDiff := make([]*appModelV1.ApplicationProcessGroup, 0)
+	networkDiff := make([]*appModelV1.ApplicationProcessGroup, 0)
 
 	if a.Host != nil {
 		var err error
 
-		psDiff, err = ProcessDiff(a.Host.Processes, b.Host.Processes)
+		networkDiff, processDiff, err = ProcessDiff(a.Host.Processes, b.Host.Processes)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	if len(nsDiff) == 0 && len(psDiff) == 0 {
-		return nil, nil
-	}
+	var processDiffModel *appModelV1.ApplicationModel
+	var networkDiffModel *appModelV1.ApplicationModel
 
-	var hostDiff *appModelV1.ApplicationHost
-	if len(psDiff) > 0 {
-		hostDiff = &appModelV1.ApplicationHost{
-			Processes: psDiff,
+	if len(nsProcessDiff) != 0 || len(processDiff) != 0 {
+		processDiffModel = &appModelV1.ApplicationModel{}
+
+		if len(nsProcessDiff) > 0 {
+			processDiffModel.Namespaces = nsProcessDiff
+		}
+		if len(processDiff) > 0 {
+			processDiffModel.Host = &appModelV1.ApplicationHost{
+				Processes: processDiff,
+			}
 		}
 	}
 
-	return &appModelV1.ApplicationModel{
-		Namespaces: nsDiff,
-		Host:       hostDiff,
-	}, nil
+	if len(nsNetworkDiff) != 0 || len(networkDiff) != 0 {
+		networkDiffModel = &appModelV1.ApplicationModel{}
+
+		if len(nsNetworkDiff) != 0 {
+			networkDiffModel.Namespaces = nsNetworkDiff
+		}
+		if len(networkDiff) != 0 {
+			networkDiffModel.Host = &appModelV1.ApplicationHost{
+				Processes: networkDiff,
+			}
+		}
+	}
+
+	return networkDiffModel, processDiffModel, nil
 }
 
 func getType(d *appModelV1.Destination) appModelV1.DestinationType {
@@ -238,6 +267,10 @@ func ApplicationModelToProcessFlat(_ context.Context, a *appModelV1.ApplicationM
 	cluster := option.Config.ClusterName
 	time := timestamppb.Now()
 
+	if a == nil {
+		return nil, nil
+	}
+
 	for _, ns := range a.Namespaces {
 		for _, wl := range ns.Workloads {
 			for _, p := range wl.Processes {
@@ -279,6 +312,10 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 	cluster := option.Config.ClusterName
 	time := timestamppb.Now()
 	labels := make(map[string]string)
+
+	if a == nil {
+		return nil, nil
+	}
 
 	nodeMetadata, err := local.GetMetadataService()
 	if err != nil {

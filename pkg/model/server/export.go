@@ -50,7 +50,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 	ticker := time.NewTicker(interval)
 	logger.GetLogger().WithField("interval", interval).Info("Exporting process model")
 	for {
-		var diffModel *appModelV1.ApplicationModel
+		var networkDiffModel, processDiffModel, mergedDiffModel *appModelV1.ApplicationModel
 
 		select {
 		case <-ticker.C:
@@ -62,14 +62,14 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 
 			newModel := model.ProcessModelToApplicationModel(res, emptyFilter)
 			if isDiffModel {
-				diffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
+				networkDiffModel, processDiffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
 				if err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to produce application model difference as JSON")
 					return
 				}
 
 				// If nothing has changed do not update last model and skip writing empty record
-				if diffModel == nil {
+				if networkDiffModel == nil && processDiffModel == nil {
 					continue
 				}
 				lastModel = newModel
@@ -80,7 +80,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 					ClusterName:      lastModel.ClusterName,
 					NodeName:         lastModel.NodeName,
 					Time:             lastModel.Time,
-					ApplicationModel: diffModel,
+					ApplicationModel: mergedDiffModel,
 				}
 				if err := encoder.Encode(diffModelEvent); err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to encode application model difference as JSON")
@@ -94,7 +94,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			}
 
 			if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
-				procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, diffModel)
+				procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel)
 				if err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim process model")
 					return
@@ -106,7 +106,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 					}
 				}
 
-				netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, diffModel)
+				netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel)
 				if err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim network model")
 					return

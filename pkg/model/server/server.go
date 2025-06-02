@@ -849,7 +849,7 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 	lastModel := model.ProcessModelToApplicationModel(res, nsFilter)
 
 	for {
-		var diffModel *appModelV1.ApplicationModel
+		var networkDiffModel *appModelV1.ApplicationModel
 
 		select {
 		case <-ticker.C:
@@ -859,19 +859,19 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 				return err
 			}
 			newModel := model.ProcessModelToApplicationModel(res, nsFilter)
-			diffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
+			networkDiffModel, _, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
 			if err != nil {
 				logger.GetLogger().WithError(err).Error("Failed to produce application model difference")
 				return err
 			}
 
 			// If nothing has changed do not update last model and skip writing empty record
-			if diffModel == nil {
+			if networkDiffModel == nil {
 				continue
 			}
 			lastModel = newModel
 
-			netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, diffModel)
+			netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel)
 			if err != nil {
 				logger.GetLogger().WithError(err).Error("Failed to decode application model to network event model")
 				return err
