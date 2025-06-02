@@ -32,6 +32,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -701,7 +702,9 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		processKey.Id = key.Self
 		err := uidMap.Lookup(&processKey, &uidValue)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("Could not map self UUID to Path")
+			logger.GetLogger().WithFields(logrus.Fields{
+				"uuid": processKey,
+			}).WithError(err).Warn("Could not map self UUID to Path")
 			continue
 		}
 		// uidValue.Binary is a fixed size byte array. Trim trailing null bytes.
