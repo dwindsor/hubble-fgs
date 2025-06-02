@@ -16,6 +16,7 @@
 #include "../bpf_cookie.h"
 #include "../bpf_network_helpers.h"
 #include "bpf_tracing.h"
+#include "../l3/tcp/bpf_tcp_close.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -119,6 +120,7 @@ store_socket(void *ctx, u64 cookie, u8 protocol)
 static inline __attribute__((always_inline)) int
 destroy_socket(void *ctx, u64 cookie)
 {
+	struct tcpsocketmap_value *socket;
 	struct socketmap_value *process;
 	struct cfg_value *cfg;
 	int zero = 0;
@@ -139,6 +141,9 @@ destroy_socket(void *ctx, u64 cookie)
 				emit_sk_event(ctx, process, cookie, ISO_MSG_OP_RAWSOCK_CLOSE);
 			break;
 		case IPPROTO_TCP:
+			socket = lookup_tcpsocketmap(&cookie);
+			if (socket && !socket->closed)
+				__event_tcp_close(ctx, (struct sock *)cookie, TCP_CLOSE);
 			del_tcpsocketmap(&cookie);
 			map_delete_elem(&tg_tcp_finrx_map, &cookie);
 			break;
