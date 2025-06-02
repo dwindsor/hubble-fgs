@@ -1,11 +1,14 @@
 package diff
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/model"
+	"github.com/isovalent/hubble-fgs/pkg/node/local"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -229,11 +232,22 @@ func getDestination(d *appModelV1.Destination) (string, string, string, appModel
 	return name, ns, wlName, wlKind
 }
 
-func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV1.NetworkTelemetry, error) {
+func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.ApplicationModel) ([]*appModelV1.NetworkTelemetry, error) {
 	n := []*appModelV1.NetworkTelemetry{}
 	node := node.GetNodeNameForExport()
 	cluster := option.Config.ClusterName
 	time := timestamppb.Now()
+	labels := make(map[string]string)
+
+	nodeMetadata, err := local.GetMetadataService()
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Application model to network flat failed to get node info. node_labels field will be empty")
+	} else {
+		labels, err = nodeMetadata.GetLabels(ctx)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("Application model to network flat failed to get node info. node_labels field will be empty")
+		}
+	}
 
 	for _, ns := range a.Namespaces {
 		for _, wl := range ns.Workloads {
@@ -263,10 +277,10 @@ func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV
 						TxDrops:                           c.Stats.TxDrops,
 						DefaultDropBytes:                  c.Stats.DefaultDropBytes,
 						DefaultAllowBytes:                 c.Stats.DefaultAllowBytes,
+						NodeLabels:                        labels,
 					}
 					n = append(n, entry)
 				}
-
 			}
 		}
 	}
@@ -295,6 +309,7 @@ func ApplicationModelToNetworkFlat(a *appModelV1.ApplicationModel) ([]*appModelV
 					TxDrops:                           c.Stats.TxDrops,
 					DefaultDropBytes:                  c.Stats.DefaultDropBytes,
 					DefaultAllowBytes:                 c.Stats.DefaultAllowBytes,
+					NodeLabels:                        labels,
 				}
 				n = append(n, entry)
 			}

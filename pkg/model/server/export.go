@@ -94,7 +94,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			}
 
 			if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
-				netFlatPack, err := diff.ApplicationModelToNetworkFlat(diffModel)
+				netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, diffModel)
 				if err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim model")
 					return
