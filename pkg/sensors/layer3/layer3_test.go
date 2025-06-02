@@ -312,16 +312,21 @@ func ipToHexstring(addr net.IP) string {
 	if addr.To4() == nil {
 		for i := 0; i < 4; i++ {
 			for j := 3; j >= 0; j-- {
-				ret += fmt.Sprintf("%02x", addr[i*4+j])
+				ret += fmt.Sprintf("%02X", addr[i*4+j])
 			}
 		}
 		return ret
 	}
 	addr = addr.To4()
 	for i := len(addr) - 1; i >= 0; i-- {
-		ret += fmt.Sprintf("%02x", addr[i])
+		ret += fmt.Sprintf("%02X", addr[i])
 	}
 	return ret
+}
+
+func TestIpToHexstring(t *testing.T) {
+	assert.Equal(t, "0100007F", ipToHexstring(net.ParseIP("127.0.0.1")))
+	assert.Equal(t, "000080FE00000000FF005450563412FE", ipToHexstring(net.ParseIP("fe80::5054:ff:fe12:3456")))
 }
 
 // isSocketEstablished checks /proc for the IP address and port. If listening is true, it checks the local address:port,
@@ -367,6 +372,82 @@ func isSocketEstablished(addr net.IP, port uint16, protocol uint16, af uint16, l
 
 func isSocketListening(addr net.IP, port uint16, protocol uint16, af uint16) (bool, error) {
 	return isSocketEstablished(addr, port, protocol, af, true)
+}
+
+func TestIsSocketListening(t *testing.T) {
+	listening, err := isSocketListening(net.ParseIP("0.0.0.0"), 9021, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+	require.False(t, listening)
+
+	server := getNCCommand(t, "nc.openbsd")
+	cmdServer := exec.Command(server, "-nvlp", "9021", "-s", "0.0.0.0")
+	assert.NoError(t, cmdServer.Start())
+	defer killAndWaitCommand(t, cmdServer)
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 9021, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
+
+	listening, err = isSocketListening(net.ParseIP("0.0.0.0"), 9021, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+	require.True(t, listening)
+
+	killAndWaitCommand(t, cmdServer)
+
+	err = waitForListeningSocketToClose(t, net.ParseIP("0.0.0.0"), 9021, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+
+	listening, err = isSocketListening(net.ParseIP("0.0.0.0"), 9021, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+	require.False(t, listening)
+}
+
+func TestIsSocketConnected(t *testing.T) {
+	listening, err := isSocketListening(net.ParseIP("0.0.0.0"), 9022, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+	require.False(t, listening)
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+	cmdServer := exec.Command(server, "-nvlp", "9022", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdServer.Start())
+	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 9022, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
+	cmdClient := exec.Command(client, "127.0.0.1", "9022")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+
+	err = waitForSocketToListen(t, net.ParseIP("127.0.0.1"), 9022, syscall.IPPROTO_TCP, syscall.AF_INET)
+	assert.NoError(t, err)
+
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+
+	// Wait for the connected server socket to close
+	err = waitForListeningSocketToClose(t, net.ParseIP("127.0.0.1"), 9022, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+	listening, err = isSocketListening(net.ParseIP("127.0.0.1"), 9022, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+	require.False(t, listening)
+
+	// Wait for the listening server socket to close
+	zeroaddr := net.ParseIP("0.0.0.0")
+	err = waitForListeningSocketToClose(t, zeroaddr, 9022, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+	listening, err = isSocketListening(net.ParseIP("0.0.0.0"), 9022, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+	require.False(t, listening)
+
+	// Wait for the connected client socket to close
+	err = waitForConnectedSocketToClose(t, net.ParseIP("127.0.0.1"), 9022, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+	listening, err = isSocketConnected(net.ParseIP("127.0.0.1"), 9022, syscall.IPPROTO_TCP, syscall.AF_INET)
+	require.NoError(t, err)
+	require.False(t, listening)
 }
 
 func waitForSocketToListen(t *testing.T, addr net.IP, port uint16, protocol uint16, af uint16) error {
