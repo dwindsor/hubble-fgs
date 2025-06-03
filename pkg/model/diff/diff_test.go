@@ -1,6 +1,7 @@
 package diff
 
 import (
+	"context"
 	"testing"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
@@ -173,10 +174,11 @@ func TestProcessDiff(t *testing.T) {
 	bSet[1].Name = "ciNew"
 	bSet[1].Arguments = "NewCIIsBest"
 
-	d, err := ProcessDiff(aSet, bSet)
+	network, process, err := ProcessDiff(aSet, bSet)
 
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(d))
+	assert.Equal(t, 1, len(process))
+	assert.Equal(t, 0, len(network))
 }
 
 func TestProcessConnectDiff(t *testing.T) {
@@ -190,11 +192,12 @@ func TestProcessConnectDiff(t *testing.T) {
 	bSet[1].Connections = b
 	bSet[1].Connections[0].Stats.TxBytes = 1
 
-	dSet, err := ProcessDiff(aSet, bSet)
+	network, process, err := ProcessDiff(aSet, bSet)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(dSet))
-	assert.Equal(t, 1, len(dSet[0].Connections))
-	assert.Equal(t, uint64(9), dSet[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, 1, len(network))
+	assert.Equal(t, 1, len(network[0].Connections))
+	assert.Equal(t, uint64(9), network[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, 0, len(process))
 }
 
 func workloads() []*appModelV1.ApplicationWorkload {
@@ -225,7 +228,7 @@ func workloads() []*appModelV1.ApplicationWorkload {
 func TestWorkloadEqual(t *testing.T) {
 	aSet := workloads()
 	bSet := workloads()
-	dSet, err := WorkloadDiff(aSet, bSet)
+	_, dSet, err := WorkloadDiff(aSet, bSet)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(dSet))
 }
@@ -236,12 +239,13 @@ func TestWorkloadDiff(t *testing.T) {
 
 	bSet[0].Processes[1].Connections[0].Stats.TxBytes = 1
 
-	dSet, err := WorkloadDiff(aSet, bSet)
+	network, process, err := WorkloadDiff(aSet, bSet)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(dSet))
-	assert.Equal(t, 1, len(dSet[0].Processes))
-	assert.Equal(t, 1, len(dSet[0].Processes[0].Connections))
-	assert.Equal(t, uint64(9), dSet[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, 0, len(process))
+	assert.Equal(t, 1, len(network))
+	assert.Equal(t, 1, len(network[0].Processes))
+	assert.Equal(t, 1, len(network[0].Processes[0].Connections))
+	assert.Equal(t, uint64(9), network[0].Processes[0].Connections[0].Stats.TxBytes)
 }
 
 func hostModel() *appModelV1.ApplicationHost {
@@ -280,7 +284,7 @@ func TestApplicationModelEqual(t *testing.T) {
 	aModel := appModel()
 	bModel := appModel()
 
-	d, err := ApplicationModelDiff(aModel, bModel)
+	_, d, err := ApplicationModelDiff(aModel, bModel)
 	assert.NoError(t, err)
 	assert.Nil(t, d)
 }
@@ -290,25 +294,31 @@ func TestApplicationModelDiff(t *testing.T) {
 	bModel := appModel()
 	bModel.Namespaces[0].Workloads[0].Processes[1].Connections[0].Stats.TxBytes = 1
 
-	d, err := ApplicationModelDiff(aModel, bModel)
+	network, process, err := ApplicationModelDiff(aModel, bModel)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(d.Namespaces))
-	assert.Equal(t, 1, len(d.Namespaces[0].Workloads))
-	assert.Equal(t, 1, len(d.Namespaces[0].Workloads[0].Processes))
-	assert.Equal(t, 1, len(d.Namespaces[0].Workloads[0].Processes[0].Connections))
-	assert.Equal(t, uint64(9), d.Namespaces[0].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Nil(t, process)
+	assert.Equal(t, 1, len(network.Namespaces))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes[0].Connections))
+	assert.Equal(t, uint64(9), network.Namespaces[0].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
 }
 
 func TestToNetworkFlat(t *testing.T) {
+	ctx := context.Background()
+
 	aModel := appModel()
 	bModel := appModel()
 	bModel.Namespaces[0].Workloads[0].Processes[1].Connections[0].Stats.TxBytes = 1
 	bModel.Namespaces[1].Workloads[1].Processes[1].Connections[1].Stats.RxBytes = 1
 
-	d, err := ApplicationModelDiff(aModel, bModel)
+	network, process, err := ApplicationModelDiff(aModel, bModel)
 	assert.NoError(t, err)
 
-	f, err := ApplicationModelToNetworkFlat(d)
+	assert.Nil(t, process)
+	assert.Equal(t, 2, len(network.Namespaces))
+
+	f, err := ApplicationModelToNetworkFlat(ctx, network)
 	assert.NoError(t, err)
 	assert.Equal(t, "ns1", f[0].KubernetesNamespace)
 	assert.Equal(t, "ns2", f[1].KubernetesNamespace)
@@ -331,6 +341,8 @@ func TestToNetworkFlat(t *testing.T) {
 }
 
 func TestToNetworkFlatHost(t *testing.T) {
+	ctx := context.Background()
+
 	aHost := hostModel()
 	bHost := hostModel()
 	bHost.Processes[1].Connections[0].Stats.TxBytes = 1
@@ -344,10 +356,11 @@ func TestToNetworkFlatHost(t *testing.T) {
 		Host:       bHost,
 	}
 
-	d, err := ApplicationModelDiff(aModel, bModel)
+	network, process, err := ApplicationModelDiff(aModel, bModel)
 	assert.NoError(t, err)
+	assert.Nil(t, process)
 
-	f, err := ApplicationModelToNetworkFlat(d)
+	f, err := ApplicationModelToNetworkFlat(ctx, network)
 	assert.NoError(t, err)
 	assert.Equal(t, "", f[0].KubernetesNamespace)
 	assert.Equal(t, "", f[0].KubernetesWorkloadName)

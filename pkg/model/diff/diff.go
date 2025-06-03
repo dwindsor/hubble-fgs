@@ -124,7 +124,7 @@ func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.Applicati
 			Kind: wl.Kind,
 		}
 
-		psDiff, connwlDiff, err := ProcessDiff(wl.Processes, w.Processes)
+		connwlDiff, psDiff, err := ProcessDiff(wl.Processes, w.Processes)
 		if err != nil {
 			return nil, nil, err
 		}
