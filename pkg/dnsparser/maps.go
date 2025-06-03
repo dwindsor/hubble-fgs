@@ -36,6 +36,8 @@ const (
 	DNSEndpointIDMapName = "tg_dns_endpoint_id_map"
 	GlobalDNSIDMapName   = "tg_glb_dns_id"
 
+	RequestIDMapName = "tg_dns_req_id_map"
+
 	dnsMaxNameSize = 255
 )
 
@@ -571,4 +573,67 @@ func (m *GlobalDNSIDMap) Reset() error {
 	var value uint64
 
 	return m.globalDNSIDMap.Update(&key, &value, ebpf.UpdateAny)
+}
+
+type RequestIDMap struct {
+	requestIDMap *ebpf.Map
+}
+
+func NewRequestIDMap(requestIDMap *ebpf.Map) RequestIDMap {
+	return RequestIDMap{
+		requestIDMap: requestIDMap,
+	}
+}
+
+func (m RequestIDMap) Update(id uint32, domain string) error {
+	value := make([]byte, dnsMaxNameSize+1)
+	copy(value, domain)
+	err := m.requestIDMap.Update(&id, &value, ebpf.UpdateAny)
+	if err != nil {
+		return fmt.Errorf("failed to update map with key %d and value %s: %w", id, value, err)
+	}
+	return nil
+}
+
+func (m RequestIDMap) Lookup(id uint32) (string, error) {
+	value := make([]byte, dnsMaxNameSize+1)
+	err := m.requestIDMap.Lookup(&id, &value)
+	if err != nil {
+		return "", fmt.Errorf("failed to lookup map with key %d: %w", id, err)
+	}
+	str, _, _ := bytes.Cut(value, []byte("\x00"))
+	return string(str), nil
+}
+
+func (m RequestIDMap) KeyMissing(id uint32) (bool, error) {
+	_, err := m.Lookup(id)
+	if err != nil {
+		if errors.Is(err, ebpf.ErrKeyNotExist) {
+			return true, nil
+		}
+		return false, err
+	}
+	return false, nil
+}
+
+func (m RequestIDMap) Clear() error {
+	entries := m.requestIDMap.Iterate()
+
+	keys := []uint32{}
+	var key uint32
+	value := make([]byte, dnsMaxNameSize+1)
+
+	for entries.Next(&key, value) {
+		keys = append(keys, key)
+	}
+
+	if err := entries.Err(); err != nil {
+		return fmt.Errorf("failed to iterate over entries: %w", err)
+	}
+
+	if _, err := m.requestIDMap.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
+		return fmt.Errorf("failed to batch delete keys %v: %w", keys, err)
+	}
+
+	return nil
 }
