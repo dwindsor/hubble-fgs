@@ -225,7 +225,7 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 
 	val->common.op = ISO_MSG_OP_TCPCLOSE;
 	skops_socket_with_stats(cookie, val, socket);
-	skops_tuple_with_stats(cookie, val, skops);
+	val->tuple = socket->tuple;
 	if (old_state == TCP_SYN_SENT)
 		val->socket_flags |= SOCKFLAGS_CONNECT_FAILED;
 	get_socket_stats((struct sock *)cookie, socket, &val->stats);

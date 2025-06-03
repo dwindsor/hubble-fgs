@@ -80,28 +80,7 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	val->socket_flags = socket->socket_flags;
 	if (old_state == TCP_SYN_SENT)
 		val->socket_flags |= SOCKFLAGS_CONNECT_FAILED;
-	val->tuple.proto = IPPROTO_TCP;
-	probe_read_kernel(&val->tuple.sport, sizeof(val->tuple.sport),
-			  _(&(skp->__sk_common.skc_num)));
-	probe_read_kernel(&val->tuple.dport, sizeof(val->tuple.dport),
-			  _(&(skp->__sk_common.skc_dport)));
-	val->tuple.dport = bpf_ntohs(val->tuple.dport);
-
-	if (!socket->tuple.ipv6) {
-		val->tuple.ipv6 = false;
-		probe_read_kernel(&val->tuple.saddr[0], sizeof(u32),
-				  _(&(skp->__sk_common.skc_rcv_saddr)));
-		val->tuple.saddr[1] = 0;
-		probe_read_kernel(&val->tuple.daddr[0], sizeof(u32),
-				  _(&(skp->__sk_common.skc_daddr)));
-		val->tuple.daddr[1] = 0;
-	} else {
-		val->tuple.ipv6 = true;
-		probe_read_kernel(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
-				  _(&(skp->__sk_common.skc_v6_rcv_saddr)));
-		probe_read_kernel(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
-				  _(&(skp->__sk_common.skc_v6_daddr)));
-	}
+	val->tuple = socket->tuple;
 
 	get_socket_stats(skp, socket, &val->stats);
 	socket->closed = 1;
