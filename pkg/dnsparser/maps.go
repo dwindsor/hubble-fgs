@@ -216,11 +216,11 @@ func (m IDToDomainMap) Lookup(id DNSID) (string, error) {
 	return string(str), nil
 }
 
-func (m IDToDomainMap) Clear() error {
-	entries := m.idToDomainMap.Iterate()
+func ClearWithNameValue[K comparable](m *ebpf.Map) error {
+	entries := m.Iterate()
 
-	keys := []DNSID{}
-	var key DNSID
+	keys := []K{}
+	var key K
 	value := make([]byte, dnsMaxNameSize+1)
 
 	for entries.Next(&key, value) {
@@ -231,11 +231,15 @@ func (m IDToDomainMap) Clear() error {
 		return fmt.Errorf("failed to iterate over entries: %w", err)
 	}
 
-	if _, err := m.idToDomainMap.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
+	if _, err := m.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
 		return fmt.Errorf("failed to batch delete keys %v: %w", keys, err)
 	}
 
 	return nil
+}
+
+func (m IDToDomainMap) Clear() error {
+	return ClearWithNameValue[DNSID](m.idToDomainMap)
 }
 
 type DomainToIDMap struct {
@@ -617,23 +621,5 @@ func (m RequestIDMap) KeyMissing(id uint32) (bool, error) {
 }
 
 func (m RequestIDMap) Clear() error {
-	entries := m.requestIDMap.Iterate()
-
-	keys := []uint32{}
-	var key uint32
-	value := make([]byte, dnsMaxNameSize+1)
-
-	for entries.Next(&key, value) {
-		keys = append(keys, key)
-	}
-
-	if err := entries.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over entries: %w", err)
-	}
-
-	if _, err := m.requestIDMap.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
-		return fmt.Errorf("failed to batch delete keys %v: %w", keys, err)
-	}
-
-	return nil
+	return ClearWithNameValue[uint32](m.requestIDMap)
 }
