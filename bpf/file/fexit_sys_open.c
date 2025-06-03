@@ -104,6 +104,13 @@ static inline __attribute__((always_inline)) int handle_open_raw(void *ctx, int 
 	if (err < 0)
 		return err;
 
+	msg->open_flags = flags;
+	msg->retval = ret;
+
+	operation = eval_selectors((struct sel_args){ action_openraw, flags, ret }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
+	if (!(operation & FILE_OP_POST))
+		return 0;
+
 	msg->is_relative_path = msg->path.str[0] != '/';
 	if (msg->is_relative_path) { // in that case, we also need the dfd
 		int flags = 0, size;
@@ -145,13 +152,6 @@ static inline __attribute__((always_inline)) int handle_open_raw(void *ctx, int 
 		msg->dir_ino = BPF_CORE_READ(dir_path, dentry, d_inode, i_ino);
 		get_fs_info(&msg->dir_fs, &msg->dir_ino, BPF_CORE_READ(dir_path, dentry, d_inode), BPF_CORE_READ(dir_path, dentry));
 	}
-
-	msg->open_flags = flags;
-	msg->retval = ret;
-
-	operation = eval_selectors((struct sel_args){ action_openraw, flags, ret }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
-	if (!(operation & FILE_OP_POST))
-		return 0;
 
 	msg->action = action_openraw;
 	msg->hook = hook;
