@@ -873,7 +873,9 @@ func TestDisableListenAcceptClose4CLI(t *testing.T) {
 }
 
 func TestNoDisableListenAcceptClose4CLI(t *testing.T) {
-	testDisableConfigListenAcceptClose4(t, 8102, true, false, false, false)
+	// The close events within these tests are a little flaky when only using kprobes, so always disable
+	// close tests if we don't support FEntry.
+	testDisableConfigListenAcceptClose4(t, 8102, true, false, false, !utils.SupportFentry())
 }
 
 func TestDisableListenAcceptClose4NoCLI(t *testing.T) {
@@ -881,7 +883,9 @@ func TestDisableListenAcceptClose4NoCLI(t *testing.T) {
 }
 
 func TestNoDisableListenAcceptClose4NoCLI(t *testing.T) {
-	testDisableConfigListenAcceptClose4(t, 8104, false, false, false, false)
+	// The close events within these tests are a little flaky when only using kprobes, so always disable
+	// close tests if we don't support FEntry.
+	testDisableConfigListenAcceptClose4(t, 8104, false, false, false, !utils.SupportFentry())
 }
 
 func testDockerExistingListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
