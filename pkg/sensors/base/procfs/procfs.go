@@ -91,15 +91,6 @@ func GetMaps() (maps []*program.Map) {
 
 type loader struct{}
 
-func (loader *loader) LoadProbe(args sensors.LoadProbeArgs) error {
-	switch args.Load.Attach {
-	case "fentry":
-		return program.LoadTracingProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
-	default:
-		return program.LoadKprobeProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
-	}
-}
-
 func LoadInitialSensor(ctx context.Context) error {
 	mgr := observer.GetSensorManager()
 	initialProcFSSensor := &sensors.Sensor{

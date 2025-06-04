@@ -16,6 +16,7 @@ import (
 	"net"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -25,9 +26,10 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/timer"
+	"github.com/isovalent/hubble-fgs/pkg/common"
+	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/tc"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 )
 
 const (
@@ -101,9 +103,9 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 	config := ProtocolConfig{}
 	var protoStr string
 	switch protocol {
-	case unix.IPPROTO_UDP:
+	case syscall.IPPROTO_UDP:
 		protoStr = "UDP"
-	case unix.IPPROTO_TCP:
+	case syscall.IPPROTO_TCP:
 		protoStr = "TCP"
 	default:
 		protoStr = "Unknown"
@@ -220,9 +222,9 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 // GetBootTime gets the boot time in nanoseconds, which is used in latency calculations
 // between nodes.
 func GetBootTime() (uint64, error) {
-	clk := int32(unix.CLOCK_MONOTONIC)
-	currentTime := unix.Timespec{}
-	if err := unix.ClockGettime(clk, &currentTime); err != nil {
+	clk := int32(constants.CLOCK_MONOTONIC)
+	currentTime := syscall.Timespec{}
+	if err := common.ClockGettime(clk, &currentTime); err != nil {
 		return 0, fmt.Errorf("failed to get current monotonic time")
 	}
 	t := time.Now().Add(-time.Duration(currentTime.Nano()))
@@ -340,9 +342,9 @@ func ConfigureLatency(protocol uint16, config ProtocolConfig) error {
 	}
 
 	switch protocol {
-	case unix.IPPROTO_UDP:
+	case syscall.IPPROTO_UDP:
 		latencyConfig.Udp = config
-	case unix.IPPROTO_TCP:
+	case syscall.IPPROTO_TCP:
 		latencyConfig.Tcp = config
 	}
 
