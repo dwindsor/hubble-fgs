@@ -50,7 +50,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 	ticker := time.NewTicker(interval)
 	logger.GetLogger().WithField("interval", interval).Info("Exporting process model")
 	for {
-		var networkDiffModel, processDiffModel, mergedDiffModel *appModelV1.ApplicationModel
+		var networkDiffModel, processDiffModel *appModelV1.ApplicationModel
 
 		select {
 		case <-ticker.C:
@@ -75,18 +75,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				lastModel = newModel
 			}
 
-			if enterpriseOption.Config.ApplicationModelEnableDiff {
-				diffModelEvent := &appModelV1.ApplicationModelEvent{
-					ClusterName:      lastModel.ClusterName,
-					NodeName:         lastModel.NodeName,
-					Time:             lastModel.Time,
-					ApplicationModel: mergedDiffModel,
-				}
-				if err := encoder.Encode(diffModelEvent); err != nil {
-					logger.GetLogger().WithError(err).Error("Failed to encode application model difference as JSON")
-					return
-				}
-			} else {
+			if enterpriseOption.Config.ApplicationModelExportFilename != "" {
 				if err := encoder.Encode(newModel); err != nil {
 					logger.GetLogger().WithError(err).Error("Failed to encode application model as JSON")
 					return
