@@ -1,3 +1,5 @@
+//go:build !windows
+
 package compliance
 
 // NB(willfindlay): Function(t *testing.T, ctx context.Context) is the reasonable

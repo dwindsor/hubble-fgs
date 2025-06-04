@@ -9,6 +9,8 @@
 //  permission is obtained from Isovalent Inc.
 //
 
+//go:build !windows
+
 package enterprise
 
 import "github.com/cilium/tetragon/tests/e2e/helpers"
