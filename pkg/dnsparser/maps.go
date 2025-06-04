@@ -216,19 +216,19 @@ func (m IDToDomainMap) Lookup(id DNSID) (string, error) {
 	return string(str), nil
 }
 
-func ClearWithNameValue[K comparable](m *ebpf.Map) error {
-	entries := m.Iterate()
+func Clear[K comparable](m *ebpf.Map) error {
+	var keys []K
+	var cur, next K
 
-	keys := []K{}
-	var key K
-	value := make([]byte, dnsMaxNameSize+1)
-
-	for entries.Next(&key, value) {
-		keys = append(keys, key)
-	}
-
-	if err := entries.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over entries: %w", err)
+	for err := m.NextKey(nil, &next); ; err = m.NextKey(cur, &next) {
+		if errors.Is(err, ebpf.ErrKeyNotExist) {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to iterate keys: %w", err)
+		}
+		keys = append(keys, next)
+		cur = next
 	}
 
 	if _, err := m.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
@@ -239,7 +239,7 @@ func ClearWithNameValue[K comparable](m *ebpf.Map) error {
 }
 
 func (m IDToDomainMap) Clear() error {
-	return ClearWithNameValue[DNSID](m.idToDomainMap)
+	return Clear[DNSID](m.idToDomainMap)
 }
 
 type DomainToIDMap struct {
@@ -273,27 +273,7 @@ func (m DomainToIDMap) Values() (map[string]DNSID, error) {
 }
 
 func (m DomainToIDMap) Clear() error {
-	entries := m.domainToIDMap.Iterate()
-
-	keys := [][256]byte{}
-	key := make([]byte, dnsMaxNameSize+1)
-	var value DNSID
-
-	for entries.Next(key, &value) {
-		array := [256]byte{}
-		copy(array[:], key)
-		keys = append(keys, array)
-	}
-
-	if err := entries.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over entries: %w", err)
-	}
-
-	if _, err := m.domainToIDMap.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
-		return fmt.Errorf("failed to batch delete keys %v: %w", keys, err)
-	}
-
-	return nil
+	return Clear[[dnsMaxNameSize + 1]byte](m.domainToIDMap)
 }
 
 type DNSEndpointIDMap struct {
@@ -336,25 +316,7 @@ func (m DNSEndpointIDMap) Lookup(ip netip.Addr) (DNSID, error) {
 }
 
 func (m DNSEndpointIDMap) Clear() error {
-	entries := m.dnsEndpointIDMap.Iterate()
-
-	keys := []dnsapi.IPAddr{}
-	var key dnsapi.IPAddr
-	var value DNSID
-
-	for entries.Next(&key, &value) {
-		keys = append(keys, key)
-	}
-
-	if err := entries.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over entries: %w", err)
-	}
-
-	if _, err := m.dnsEndpointIDMap.BatchDelete(keys, &ebpf.BatchOptions{}); err != nil {
-		return fmt.Errorf("failed to batch delete keys %v: %w", keys, err)
-	}
-
-	return nil
+	return Clear[dnsapi.IPAddr](m.dnsEndpointIDMap)
 }
 
 func (m DNSEndpointIDMap) Update(ip netip.Addr, id DNSID) error {
@@ -621,5 +583,5 @@ func (m RequestIDMap) KeyMissing(id uint32) (bool, error) {
 }
 
 func (m RequestIDMap) Clear() error {
-	return ClearWithNameValue[uint32](m.requestIDMap)
+	return Clear[uint32](m.requestIDMap)
 }
