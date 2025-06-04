@@ -1153,6 +1153,7 @@ func execute() error {
 
 	option.AddFlags(flags)
 	enterpriseOption.FixUpOSSFlags(flags)
+	enterpriseOption.AddOSSpecificFlags(flags)
 	enterpriseOption.AddEnterpriseFlags(flags)
 
 	viper.BindPFlags(flags)

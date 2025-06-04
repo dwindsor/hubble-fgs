@@ -92,10 +92,6 @@ func FixUpOSSFlags(flags *pflag.FlagSet) {
 	flags.Lookup(option.KeyCompatibilitySyscall64SizeType).Usage =
 		"syscall64 type will produce output of type size (compatibility flag, will be removed in v1.16)"
 
-	// some fixes to defaults related to https://github.com/cilium/tetragon/pull/2938
-	flags.Lookup(option.KeyEnableProcessAncestors).Usage = "Include ancestors in process exec events"
-	flags.Lookup(option.KeyEnableProcessAncestors).Value = newBoolValue(true, &option.Config.EnableProcessAncestors)
-	flags.Lookup(option.KeyEnableProcessAncestors).DefValue = "true"
 	flags.Lookup(option.KeyEnableProcessKprobeAncestors).Hidden = true
 	flags.Lookup(option.KeyEnableProcessTracepointAncestors).Hidden = true
 	flags.Lookup(option.KeyEnableProcessUprobeAncestors).Hidden = true
