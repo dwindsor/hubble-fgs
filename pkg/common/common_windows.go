@@ -19,12 +19,16 @@ import (
 	"github.com/cilium/tetragon/pkg/constants"
 	"github.com/cilium/tetragon/pkg/ktime"
 	consts "github.com/isovalent/hubble-fgs/pkg/constants"
+	"golang.org/x/sys/windows"
 )
 
 var (
-	dll            = syscall.MustLoadDLL("kernel32.dll")
-	queryCounter   = dll.MustFindProc("QueryPerformanceCounter")
-	queryFrequency = dll.MustFindProc("QueryPerformanceFrequency")
+	dll                     = syscall.MustLoadDLL("kernel32.dll")
+	queryCounter            = dll.MustFindProc("QueryPerformanceCounter")
+	queryFrequency          = dll.MustFindProc("QueryPerformanceFrequency")
+	getSystemTimeAsFileTime = dll.MustFindProc("GetSystemTimeAsFileTime")
+	getTickCount            = dll.MustFindProc("GetTickCount64")
+	booTimeEpoch            = GetBootTimeInWindowsEpoch()
 )
 
 func InitHostNamespaces() (*tetragon.Namespaces, error) {
@@ -39,11 +43,19 @@ func GetSyscallName(abi string, sysID int) (string, error) {
 	return "", constants.ErrWindowsNotSupported
 }
 
-func getBootTimeNanoseconds() int64 {
-	var freq, counter int64
+func getBootTimeNanoseconds() uint64 {
+	var freq, counter uint64
 	queryFrequency.Call(uintptr(unsafe.Pointer(&freq)))
-	queryCounter.Call(uintptr(unsafe.Pointer(&counter)))
-	return (counter * 1e9) / freq
+	if freq == 0 {
+		ticks, _, _ := getTickCount.Call()
+		counter = uint64(ticks)
+		freq = 1000
+	} else {
+		queryCounter.Call(uintptr(unsafe.Pointer(&counter)))
+	}
+	var multiplier float64
+	multiplier = float64(10000000000) / float64(freq)
+	return uint64(float64(counter) * multiplier)
 }
 
 func ClockGettime(clockid int32, clockTime *syscall.Timespec) (err error) {
@@ -62,4 +74,26 @@ func ClockGettime(clockid int32, clockTime *syscall.Timespec) (err error) {
 		Nsec: int64(nowTime % time.Second), // Extract nanoseconds
 	}
 	return nil
+}
+
+func GetSystemTimeAsFileTime() windows.Filetime {
+	var ft windows.Filetime
+	getSystemTimeAsFileTime.Call(uintptr(unsafe.Pointer(&ft)))
+	return ft
+}
+
+// This function returns the value of system boot in 100 NS since 1600
+
+func GetBootTimeInWindowsEpoch() uint64 {
+	ft := GetSystemTimeAsFileTime()
+	kTime := uint64((int64(ft.HighDateTime) << 32) + int64(ft.LowDateTime))
+	var bootTime uint64
+	queryCounter.Call(uintptr(unsafe.Pointer(&bootTime)))
+	bTime := getBootTimeNanoseconds()
+	return (kTime - (bTime / 1000))
+
+}
+
+func KTimeToWindowsEpoch(ktime uint64) uint64 {
+	return (ktime/100 + booTimeEpoch)
 }
