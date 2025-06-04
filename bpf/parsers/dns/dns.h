@@ -70,9 +70,6 @@
 #define DNS_PARSER_SKIP	   1
 #define DNS_PARSER_SUCCESS 0
 
-// This is the size of the LRU map containing the pending requests IDs.
-#define DNS_MAX_PENDING_REQUESTS 1024
-
 struct dnshdr {
 	__u16 id;
 	__u16 flags;
@@ -105,7 +102,7 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__uint(max_entries, DNS_MAX_PENDING_REQUESTS);
+	__uint(max_entries, 1); // This will be resized by userspace
 	__type(key, __u32);
 	__type(value, char[DNS_MAX_NAME_SIZE + 1]);
 } tg_dns_req_id_map SEC(".maps");

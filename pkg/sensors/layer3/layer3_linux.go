@@ -195,6 +195,7 @@ var (
 	DNSDomainMap      = program.MapBuilder(dnsparser.DomainToIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	DNSDomainMapRev   = program.MapBuilder(dnsparser.IDToDomainMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
+	RequestIDMapName  = program.MapBuilder(dnsparser.RequestIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	// This map is shared between the DNS parser and the process tree: the fdlookup and tcpsockops progs
 	DNSEndpointIDMap = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree, ip.FdLookupFentryProcessTree, ip.FdLookupKprobeProcessTree, tcp.TcpSockops)
 
@@ -247,12 +248,14 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 			DNSEndpointIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 			DNSDomainMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 			DNSDomainMapRev.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+			RequestIDMapName.SetMaxEntries(int(enterpriseOption.Config.BPFDNSParserMaxPendingRequests))
 
 			maps = append(maps, DNSParserErrorMap)
 			maps = append(maps, DNSEndpointIDMap)
 			maps = append(maps, DNSDomainMap)
 			maps = append(maps, DNSDomainMapRev)
 			maps = append(maps, DNSGlobalIDMap)
+			maps = append(maps, RequestIDMapName)
 		}
 	}
 

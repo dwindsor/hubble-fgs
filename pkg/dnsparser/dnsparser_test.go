@@ -68,6 +68,7 @@ func loadDNSTestCollection(t *testing.T) *ebpf.Collection {
 	collSpec.Maps[DNSEndpointIDMapName].MaxEntries = 1024
 	collSpec.Maps[DomainToIDMapName].MaxEntries = 1024
 	collSpec.Maps[IDToDomainMapName].MaxEntries = 1024
+	collSpec.Maps[RequestIDMapName].MaxEntries = 1024
 
 	collOpts := ebpf.CollectionOptions{}
 	if verifierLogs != nil && *verifierLogs {

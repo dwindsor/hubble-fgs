@@ -73,9 +73,10 @@ type config struct {
 	EnableAWSSonar bool
 	AWSSonarRegion string
 
-	EnableIcmpTracking bool
-	EnableDnsDebug     bool
-	EnableBPFDNSParser bool
+	EnableIcmpTracking             bool
+	EnableDnsDebug                 bool
+	EnableBPFDNSParser             bool
+	BPFDNSParserMaxPendingRequests uint32
 
 	DNSStatsPerSocket bool
 
@@ -115,5 +116,6 @@ var (
 		EnableCilium:                   false,
 		ProcessCacheStaleInterval:      time.Duration(60 * time.Minute),
 		EnableFimDispatcher:            false,
+		BPFDNSParserMaxPendingRequests: 1024,
 	}
 )
