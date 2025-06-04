@@ -21,6 +21,7 @@
 #include "bpf_helpers.h"
 #include "../../networking/bpf_cookie.h"
 #include "../../networking/l3/tcp/bpf_tcp_info.h"
+#include "lib/strncmp.h"
 
 #define HTTP_REQUEST_MORE 0
 #define HTTP_REQUEST_DONE 1
@@ -135,30 +136,6 @@ eat_next_char(ctx_md *msg, struct msg_http *http)
 	http->offset++;
 	return c;
 }
-
-/* Do not call this directly. Instead, use the strncmp_truncated macro.
- */
-static inline __attribute__((always_inline)) int
-__strncmp_truncated(const char *s1, __u32 s1_sz, const char *s2, __u32 s2_sz)
-{
-	int diff;
-	int i;
-
-	for (i = 0; i < s1_sz && i < s2_sz; i++) {
-		diff = s1[i] - s2[i];
-		if (diff != 0) {
-			return diff;
-		}
-	}
-	return 0;
-}
-
-/* Do a string compare between two strings. The second string s2 should be
- * fixed-size. This function will truncate the string compare to avoid verifier
- * complexity issues.
- */
-#define strncmp_truncated(s1, sz, s2) \
-	__strncmp_truncated(s1, sz, s2, sizeof(s2) - 1)
 
 static inline __attribute__((always_inline)) __u32
 __get_method(ctx_md *msg, struct msg_http *http)
