@@ -100,8 +100,8 @@ struct {
 static inline __attribute__((always_inline)) void
 get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk)
 {
+	__u64 *fin_bytes_recv_ptr, bytes_received;
 	struct tcp_sock *tcp = 0;
-	__u64 *fin_bytes_recv_ptr;
 	__u64 cookie = (__u64)sk;
 
 	/* Verifier on 6.14 need this to confuse the verifier into dropping the
@@ -133,15 +133,13 @@ get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk)
 	probe_read_kernel(&stats->retranssegs, sizeof(__u32), _(&(tcp->total_retrans)));
 
 #ifndef STATS_KPROBE
-	/* If we've received a FIN, then use the value of bytes_received at that point and
-	 * not the current value as it might include an extra byte for ACKing the FIN.
-	 */
+	/* If we've received a FIN, and the value stored is one less than the current value,
+	 * then use the stored value as the current value likely includes an ACK for the FIN. */
+	probe_read_kernel(&bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 	fin_bytes_recv_ptr = (__u64 *)map_lookup_elem(&tg_tcp_finrx_map, &cookie);
-	if (fin_bytes_recv_ptr) {
-		WRITE_ONCE(stats->bytes_received, *fin_bytes_recv_ptr);
-	} else {
-		probe_read_kernel(&stats->bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
-	}
+	if (bytes_received > 0 && fin_bytes_recv_ptr && *fin_bytes_recv_ptr == bytes_received - 1)
+		bytes_received--;
+	WRITE_ONCE(stats->bytes_received, bytes_received);
 #else
 	/* We don't currently support FIN tracking on kernels <=v5.5. */
 	probe_read_kernel(&stats->bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));

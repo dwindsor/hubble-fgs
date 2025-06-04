@@ -58,7 +58,6 @@ tcp_check_fin_rx(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cooki
 	bool tcpfin = get_tcp_fin(skb, ip, tcp_offset, cookie, ipv6);
 	struct tcp_sock *tcp;
 	__u64 bytes_received;
-	__u64 *exists;
 	__u64 c;
 
 	// Only handle FIN datagrams.
@@ -71,18 +70,27 @@ tcp_check_fin_rx(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cooki
 	c = *cookie;
 	tcp = (struct tcp_sock *)c;
 
-	// If we've received a FIN, then we can assume no more data from the
-	// remote. So let's store the bytes_received for this socket. Future
-	// stats collection for this socket will use this value instead of
-	// the one in the TCP stack. This avoids counting an extra byte for
-	// an ACK of a FIN.
-
-	// First check if we've already received a FIN for this socket (we delete
-	// them on socket destruction).
-	exists = map_lookup_elem(&tg_tcp_finrx_map, &c);
-	if (exists)
-		return SK_PASS;
-	// Otherwise, store the current bytes_received.
+	// There are a few situations in which we could have received a FIN:
+	// 1) As the last packet from a peer. This is the normal FIN.
+	// 2) As a genuine out-of-order FIN. Data packets will follow.
+	// 3) As a rogue FIN that doesn't match the sequence number.
+	// We cannot reliably tell which situation we are in without replicating
+	// the kernel's checks. We can make the following assumptions, however:
+	// a) If a FIN is ACKed, the received_bytes might be incremented.
+	// b) If we receive multiple FINs for a socket, the last one is most
+	// likely to be the genuine one, because after a genuine one the socket
+	// is likely being shut down.
+	// c) If at socket close the stack bytes_received is one more than the
+	// bytes_received observed for the last FIN, then the stack value
+	// includes an ACK; use the recorded value.
+	// We can therefore record the bytes_received in the stack for every
+	// FIN we see. When accounting, if the stack received_bytes is not one
+	// more than the recorded received_bytes, use the stack value. This
+	// will result in off-by-one errors in some connections where the FIN
+	// arrived out-of-order. It will, however, protect against the majority
+	// of rogue FINs, allowing a discrepancy of at most 1 byte (where a
+	// rogue FIN was received after the real FIN but before the socket has
+	// been destroyed).
 	probe_read_kernel(&bytes_received, sizeof(bytes_received), _(&tcp->bytes_received));
 	map_update_elem(&tg_tcp_finrx_map, &c, &bytes_received, 0);
 
@@ -215,6 +223,7 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb)
 	void *data = (long *)(long)skb->data;
 	struct handler_vars *vars;
 	struct iphdr *ip;
+	int zero = 0;
 	int err;
 
 #ifdef PROCESS_TREE
@@ -304,6 +313,7 @@ int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
 {
 	struct handler_vars *vars;
 	struct ipv6hdr *ip6;
+	int zero = 0;
 
 	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
 	if (!vars)
