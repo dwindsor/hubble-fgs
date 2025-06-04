@@ -181,6 +181,22 @@ var (
 		"layer3_sensor",
 	)
 
+	TCPResetKprobe = program.Builder(
+		"bpf_tcp_rst.o",
+		"tcp_reset",
+		"kprobe/tcp_reset",
+		"tg_event_tcp_reset",
+		"layer3_sensor",
+	)
+
+	TCPResetFentry = program.Builder(
+		"bpf_tcp_rst_fentry.o",
+		"tcp_reset",
+		"fentry/tcp_reset",
+		"tg_event_tcp_reset",
+		"tcp_fentry",
+	)
+
 	// RTT Tracer uses kprobe or Fentry on the TCP ACK Update RTT to get the rtt_us value
 	// as that is easily obtained. This is probably as good as we can easily get,
 	// although open to improvements and discussion.
@@ -434,9 +450,9 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	}
 
 	if utils.SupportFentry() {
-		progsInitSock = append(progsInitSock, SecurityAccept, SecurityGraft)
+		progsInitSock = append(progsInitSock, SecurityAccept, SecurityGraft, TCPResetFentry)
 	} else {
-		progsInitSock = append(progsInitSock, SecurityAcceptKprobe, SecurityGraftKprobe)
+		progsInitSock = append(progsInitSock, SecurityAcceptKprobe, SecurityGraftKprobe, TCPResetKprobe)
 	}
 
 	if tcpconfig.RttHistogramMax != 0 || enterpriseOption.Config.EnableTCPRTT {

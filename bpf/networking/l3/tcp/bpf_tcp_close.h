@@ -79,7 +79,7 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	val->close_time = ktime_get_ns();
 	val->socket_flags = socket->socket_flags;
 	if (old_state == TCP_SYN_SENT)
-		val->socket_flags |= SOCKFLAGS_CONNECT_REJECTED;
+		val->socket_flags |= SOCKFLAGS_CONNECT_FAILED;
 	val->tuple.proto = IPPROTO_TCP;
 	probe_read_kernel(&val->tuple.sport, sizeof(val->tuple.sport),
 			  _(&(skp->__sk_common.skc_num)));

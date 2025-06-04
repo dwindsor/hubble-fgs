@@ -154,17 +154,28 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 }
 
 func SocketFlagsToType(t uint32) string {
+	var ty string
+
+	// First allocate exactly one of the below four types.
 	if t&networkapi.SOCKFLAGS_TYPE_CONNECT != 0 {
-		if t&networkapi.SOCKFLAGS_CONNECT_REJECTED != 0 {
-			return "connect failed"
-		}
-		return "connect"
+		ty = "connect"
 	} else if t&networkapi.SOCKFLAGS_TYPE_ACCEPT != 0 {
-		return "accept"
+		ty = "accept"
 	} else if t&networkapi.SOCKFLAGS_TYPE_LISTEN != 0 {
-		return "listen"
+		ty = "listen"
+	} else {
+		ty = "unknown"
 	}
-	return "unknown"
+
+	// Check if the connection was reset. If it wasn't, check if it failed.
+	// We never report "connect reset failed", just "connect", "connect reset",
+	// or "connect failed".
+	if t&networkapi.SOCKFLAGS_CONNECTION_RESET != 0 {
+		ty += " reset"
+	} else if t&networkapi.SOCKFLAGS_CONNECT_FAILED != 0 {
+		ty += " failed"
+	}
+	return ty
 }
 
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.

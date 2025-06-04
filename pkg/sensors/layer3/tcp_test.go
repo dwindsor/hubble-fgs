@@ -413,7 +413,7 @@ func testFailedConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithDestinationPort(80).
 			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithSocketType(sm.Full("connect failed")),
+			WithSocketType(sm.Full("connect reset")),
 	)
 
 	observertesthelper.ExecWGCurl(readyWG, 10, "127.0.0.1")
@@ -1635,7 +1635,7 @@ func testFailedConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 			WithDestinationIp(sm.Full("::1")).
 			WithDestinationPort(80).
 			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithSocketType(sm.Full("connect failed")),
+			WithSocketType(sm.Full("connect reset")),
 	)
 
 	observertesthelper.ExecWGCurl(readyWG, 10, "[::1]")

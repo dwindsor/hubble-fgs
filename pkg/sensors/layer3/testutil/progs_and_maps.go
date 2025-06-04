@@ -83,6 +83,7 @@ const (
 	tcpSecurityGraft  = "tg_security_sock_graft"
 	tcpCloseProg      = "tg_event_tcp_close"
 	tcpListenProg     = "tg_event_sys_listen"
+	tcpRstProg        = "tg_event_tcp_reset"
 	tcpRttProg        = "tg_tcp_ack_update_rtt"
 	tcpSendCheck4Prog = "tg_event_tcp_v4_send_check"
 	tcpSendCheck6Prog = "tg_event_tcp_v6_send_check"
@@ -108,7 +109,7 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 
 	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
 	socketMapStats := SensorMapByProgName(sensorProgs, "tg_socket_map_stats", []string{tcpSecurityGraft, fdLookupProg})
-	tcpSocketMap := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map", []string{tcpSockopsProg, securitySkFreeProg, tcpSecurityGraft, fdLookupProg})
+	tcpSocketMap := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map", []string{tcpSockopsProg, securitySkFreeProg, tcpSecurityGraft, fdLookupProg, tcpRstProg})
 	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map", []string{tcpSockopsProg, tcpSecurityGraft})
 	socketTupleMapStats := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map_stats", []string{tcpSockopsProg, tcpSecurityGraft})
 	socketTupleRevMap := SensorMapByProgName(sensorProgs, "tg_rev_tuple_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
@@ -295,7 +296,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 
 	tcpSocketMap := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map", []string{
 		tcpConnectProg, tcpCloseProg, tcpListenProg, tcpSecurityGraft,
-		securitySkFreeProg, fdLookupProg,
+		securitySkFreeProg, fdLookupProg, tcpRstProg,
 	})
 
 	tcpSocketMapStats := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map_stats", []string{
@@ -565,6 +566,7 @@ func sockopsSensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool, withRa
 			{Name: tcpSecurityGraft, Type: ebpf.Tracing},
 			{Name: securitySkAllocProg, Type: ebpf.Tracing},
 			{Name: securitySkFreeProg, Type: ebpf.Tracing},
+			{Name: tcpRstProg, Type: ebpf.Tracing},
 		}...)
 	} else {
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
@@ -572,6 +574,7 @@ func sockopsSensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool, withRa
 			{Name: tcpSecurityGraft, Type: ebpf.Kprobe},
 			{Name: securitySkAllocProg, Type: ebpf.Kprobe},
 			{Name: securitySkFreeProg, Type: ebpf.Kprobe},
+			{Name: tcpRstProg, Type: ebpf.Kprobe},
 		}...)
 	}
 
@@ -649,6 +652,7 @@ func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool,
 			tus.SensorProg{Name: tcpListenProg, Type: ebpf.Tracing},
 			tus.SensorProg{Name: tcpSecurityAccept, Type: ebpf.Tracing},
 			tus.SensorProg{Name: tcpSecurityGraft, Type: ebpf.Tracing},
+			tus.SensorProg{Name: tcpRstProg, Type: ebpf.Tracing},
 		)
 	} else {
 		sensorProgs = append(sensorProgs,
@@ -657,6 +661,7 @@ func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool,
 			tus.SensorProg{Name: tcpListenProg, Type: ebpf.Kprobe},
 			tus.SensorProg{Name: tcpSecurityAccept, Type: ebpf.Kprobe},
 			tus.SensorProg{Name: tcpSecurityGraft, Type: ebpf.Kprobe},
+			tus.SensorProg{Name: tcpRstProg, Type: ebpf.Kprobe},
 		)
 	}
 
