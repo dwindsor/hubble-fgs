@@ -32,6 +32,9 @@ jobs:
           - name: tetragon
             dockerfile: ./Dockerfile
 
+          - name: tetragon-slim
+            dockerfile: ./Dockerfile.slim
+
           - name: tetragon-aggregator
             dockerfile: ./Dockerfile.aggregator
 
