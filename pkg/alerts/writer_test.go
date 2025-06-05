@@ -13,6 +13,7 @@ package alerts
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -100,6 +101,8 @@ func TestWriter(t *testing.T) {
 	// ensure that ExportFileMaxBackups is respected
 	require.NoError(t, err)
 	writeNRotates(lw, 10)
+	// NB: the actual rotation happens in a goroutine. Let's give it a chance to run.
+	runtime.Gosched()
 	// NB: normally, and indeed in most cases, the files are going to be max_backups+1.
 	// In some cases, however, the rotation's affect are not visible in the fs when we test.
 	// To counter that, we add a slack of one. Note that it's still the case that the test will
@@ -124,6 +127,8 @@ func TestWriter(t *testing.T) {
 			// NB: do a sync to ensure files are flushed and fs changes are visible
 			syncFS()
 		}
+		// NB: the actual rotation happens in a goroutine. Let's give it a chance to run.
+		runtime.Gosched()
 	}
 
 	nbytes = totalLogFileSize()
