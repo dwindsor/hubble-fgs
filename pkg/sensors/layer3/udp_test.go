@@ -1961,7 +1961,6 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 		if err != nil {
 			quit = true
 		}
-		time.Sleep(10 * time.Millisecond)
 	}
 
 	err = jsonchecker.JsonTestCheckExpect(t, checker, disableClose)
