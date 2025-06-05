@@ -135,6 +135,15 @@ tetragon-operator: ## Compile the Tetragon operator.
 tetra: ## Compile the Tetragon gRPC client.
 	$(GO_BUILD) ./cmd/bin/tetra
 
+.PHONY: tetrabox
+tetrabox: tetragon-runner ## Compile single multi-call tetragon binary
+	$(GO_BUILD) ./cmd/bin/tetrabox
+	# set up symlinks so that things work
+	rm -f tetra tetragon $(FS_SCANNER_BIN)
+	ln -s tetrabox tetra
+	ln -s tetrabox tetragon
+	ln -s `dirname $(FS_SCANNER_BIN) | sed -e 's:[^/]\+:..:g'`/tetrabox $(FS_SCANNER_BIN)
+
 .PHONY: tetragon-bpf
 ifeq (1,$(LOCAL_CLANG))
 tetragon-bpf: tetragon-bpf-local ## Compile bpf programs.
@@ -159,10 +168,15 @@ fgs-bench: ## Compile fgs-bench tool.
 fgs-bench-graph:
 	$(GO) build ./cmd/fgs-bench-graph
 
-.PHONY: tetragon-fs-scanner
-tetragon-fs-scanner:
-	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/bin/tetragon-fs-scanner/
+
+.PHONY: tetragon-runner
+tetragon-runner:
+	mkdir -p `dirname $(FS_SCANNER_RUNNER)`
 	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/tetragon-runner.c
+
+.PHONY: tetragon-fs-scanner
+tetragon-fs-scanner: tetragon-runner
+	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/bin/tetragon-fs-scanner/
 
 GO_BUILD_HOOK = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) -C $(OSS_DIR)/contrib/tetragon-rthooks build $(GO_BUILD_FLAGS)
 
