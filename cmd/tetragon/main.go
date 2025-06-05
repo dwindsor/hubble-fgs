@@ -1,4 +1,4 @@
-package main
+package tetragon
 
 import (
 	"context"
@@ -87,13 +87,6 @@ import (
 var (
 	log = logger.GetLogger()
 )
-
-func main() {
-	if err := execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-}
 
 func getExportFilters() ([]*tetragon.Filter, []*tetragon.Filter, error) {
 	allowList, err := filters.ParseFilterList(viper.GetString(option.KeyExportAllowlist), viper.GetBool(option.KeyEnablePidSetFilter))
@@ -1056,7 +1049,7 @@ func resizeCaches() error {
 	return nscache.ResizeCache(enterpriseOption.Config.NetNsCacheSize)
 }
 
-func execute() error {
+func Execute() error {
 	rootCmd := &cobra.Command{
 		Use:   "tetragon",
 		Short: "Tetragon Enterprise - eBPF-based Security Observability and Runtime Enforcement",

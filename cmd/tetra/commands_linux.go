@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package main
+package tetra
 
 import (
 	"github.com/cilium/tetragon/cmd/tetra/bugtool"

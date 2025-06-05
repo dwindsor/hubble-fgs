@@ -8,14 +8,18 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package tetra
+package main
 
 import (
-	"github.com/cilium/tetragon/cmd/tetra/loglevel"
-	"github.com/spf13/cobra"
+	"fmt"
+	"os"
+
+	"github.com/isovalent/hubble-fgs/cmd/tetra"
 )
 
-func addCommands(rootCmd *cobra.Command) {
-	addBaseCommands(rootCmd)
-	rootCmd.AddCommand(loglevel.New())
+func main() {
+	if err := tetra.New().Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
 }

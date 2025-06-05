@@ -121,7 +121,7 @@ clean: tarball-clean
 
 .PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
-	$(GO_BUILD) ./cmd/tetragon
+	$(GO_BUILD) ./cmd/bin/tetragon
 
 .PHONY: tetragon-aggregator
 tetragon-aggregator: ## Compile the Tetragon aggregator
@@ -133,7 +133,7 @@ tetragon-operator: ## Compile the Tetragon operator.
 
 .PHONY: tetra
 tetra: ## Compile the Tetragon gRPC client.
-	$(GO_BUILD) ./cmd/tetra
+	$(GO_BUILD) ./cmd/bin/tetra
 
 .PHONY: tetragon-bpf
 ifeq (1,$(LOCAL_CLANG))
@@ -161,7 +161,7 @@ fgs-bench-graph:
 
 .PHONY: tetragon-fs-scanner
 tetragon-fs-scanner:
-	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/tetragon-fs-scanner/
+	$(GO_BUILD) -buildvcs=false -o $(FS_SCANNER_BIN) ./cmd/bin/tetragon-fs-scanner/
 	$(CC) -static -Wall -Wextra -o $(FS_SCANNER_RUNNER) contrib/fs-scanner-runner/tetragon-runner.c
 
 GO_BUILD_HOOK = CGO_ENABLED=0 GOARCH=$(GOARCH) $(GO) -C $(OSS_DIR)/contrib/tetragon-rthooks build $(GO_BUILD_FLAGS)

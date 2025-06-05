@@ -7,15 +7,12 @@
 // protected by trade secret or copyright law.  Dissemination of this information
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
-
-package tetra
+package main
 
 import (
-	"github.com/cilium/tetragon/cmd/tetra/loglevel"
-	"github.com/spf13/cobra"
+	fs_scanner "github.com/isovalent/hubble-fgs/cmd/tetragon-fs-scanner"
 )
 
-func addCommands(rootCmd *cobra.Command) {
-	addBaseCommands(rootCmd)
-	rootCmd.AddCommand(loglevel.New())
+func main() {
+	fs_scanner.Main()
 }

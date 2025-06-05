@@ -154,5 +154,5 @@ jobs:
 
       - name: Build tetragon Windows binaries
         run: |
-          GOOS=windows GOARCH=amd64 go build ./cmd/tetragon/
-          GOOS=windows GOARCH=arm64 go build ./cmd/tetragon/
+          GOOS=windows GOARCH=amd64 go build ./cmd/bin/tetragon/
+          GOOS=windows GOARCH=arm64 go build ./cmd/bin/tetragon/

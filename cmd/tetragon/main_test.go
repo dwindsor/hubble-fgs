@@ -3,7 +3,7 @@
 
 //go:build sudo_tests
 
-package main
+package tetragon
 
 import (
 	"context"

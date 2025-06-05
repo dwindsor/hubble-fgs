@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package main
+package fs_scanner
 
 import (
 	"context"
@@ -719,7 +719,7 @@ func GetMntNsInode() (uint, error) {
 	return uint(inodeEntry), nil
 }
 
-func main() {
+func Main() {
 	flag.Int64Var(&maxFileSizeDigest, "maxSizeFileDigest", 1*1024*1024*1024, "Set the maximum file size that we will compute a digest (in bytes)")
 	flag.Int64Var(&maxTimeoutDigestSeconds, "maxTimeoutFileDigest", 30, "Set the timeout when computing a file digest (in seconds)")
 	flag.Parse()
