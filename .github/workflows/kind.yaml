@@ -26,6 +26,14 @@ jobs:
         # renovate: datasource=golang-version depName=go
         go-version: '1.24.3'
 
+    - name: Install the latest Cilium CLI
+      run: |
+        curl -sSL --remote-name-all https://github.com/isovalent/cilium-cli-releases/releases/latest/download/cilium-linux-amd64.tar.gz{,.sha256sum}
+        sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
+        tar xzvfC cilium-linux-amd64.tar.gz /tmp
+        sudo install /tmp/cilium /usr/local/bin
+        rm cilium-linux-amd64.tar.gz{,.sha256sum} /tmp/cilium
+
     - name: Install Kind and create cluster
       uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
 
@@ -41,3 +49,18 @@ jobs:
           --version ${{ steps.version.outputs.version }} \
           --set tetragonOperator.podInfo.enabled=true
         go test --tags=integration -v ./pkg/manager
+
+    - name: Capture sysdump
+      if: ${{ always() }}
+      run: |
+        kubectl get pods --all-namespaces -o wide
+        cilium sysdump --output-filename "tetragon-sysdump-<ts>" --tetragon-namespace tetragon
+      shell: bash {0} # Disable default fail-fast behaviour so that all commands run independently
+
+    - name: Upload sysdump
+      if: ${{ always() }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: tetragon-sysdump
+        path: tetragon-sysdump-*.zip
+        retention-days: 5
