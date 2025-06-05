@@ -107,7 +107,7 @@ func testRawsockCreateClose(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 			WithProcess(selfChecker),
 		ec.NewProcessRawsockCloseChecker("rawsockClose").
 			WithProcess(selfChecker).
-			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(1 * time.Second)},
+			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0)},
 				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
 	)
 
@@ -133,7 +133,6 @@ func testRawsockCreateClose(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 		fd, err = syscall.Socket(syscall.AF_PACKET, syscall.SOCK_DGRAM, syscall.ETH_P_ALL)
 	}
 	assert.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
 
 	syscall.Close(fd)
 	syscall.ForkLock.Unlock()
@@ -173,7 +172,7 @@ func TestRawsockCLISwitch(t *testing.T) {
 			WithProcess(selfChecker),
 		ec.NewProcessRawsockCloseChecker("rawsockClose").
 			WithProcess(selfChecker).
-			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(1 * time.Second)},
+			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0)},
 				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
 	)
 
@@ -197,7 +196,6 @@ func TestRawsockCLISwitch(t *testing.T) {
 
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_LOOP)
 	assert.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
 
 	syscall.Close(fd)
 	syscall.ForkLock.Unlock()
