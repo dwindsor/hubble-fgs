@@ -77,6 +77,9 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 		b, ok := psB[p.Name+p.Arguments]
 		if !ok {
 			psDiff = append(psDiff, p)
+			if len(p.Connections) > 0 {
+				connDiff = append(connDiff, p)
+			}
 			continue
 		}
 
@@ -104,6 +107,23 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 	return connDiff, psDiff, nil
 }
 
+func wlFilterConns(wl *appModelV1.ApplicationWorkload) *appModelV1.ApplicationWorkload {
+	diff := &appModelV1.ApplicationWorkload{
+		Name: wl.Name,
+		Kind: wl.Kind,
+	}
+
+	for _, p := range wl.Processes {
+		if len(p.Connections) > 0 {
+			diff.Processes = append(diff.Processes, p)
+		}
+	}
+	if len(diff.Processes) > 0 {
+		return diff
+	}
+	return nil
+}
+
 func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.ApplicationWorkload) ([]*appModelV1.ApplicationWorkload, []*appModelV1.ApplicationWorkload, error) {
 	wlDiff := make([]*appModelV1.ApplicationWorkload, 0)
 	connDiff := make([]*appModelV1.ApplicationWorkload, 0)
@@ -116,6 +136,11 @@ func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.Applicati
 		w, ok := wlB[wl.Name]
 		if !ok {
 			wlDiff = append(wlDiff, wl)
+
+			wlf := wlFilterConns(wl)
+			if wlf != nil {
+				connDiff = append(connDiff, wlf)
+			}
 			continue
 		}
 
@@ -140,6 +165,24 @@ func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.Applicati
 	return connDiff, wlDiff, nil
 }
 
+func nsFilterConns(ns *appModelV1.ApplicationNamespace) *appModelV1.ApplicationNamespace {
+	diff := &appModelV1.ApplicationNamespace{
+		Name: ns.Name,
+	}
+
+	for _, wl := range ns.Workloads {
+		wlDiff := wlFilterConns(wl)
+		if wlDiff != nil {
+			diff.Workloads = append(diff.Workloads, wlDiff)
+		}
+	}
+
+	if len(diff.Workloads) > 0 {
+		return diff
+	}
+	return nil
+}
+
 func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.ApplicationModel) (*appModelV1.ApplicationModel, *appModelV1.ApplicationModel, error) {
 	nsProcessDiff := make([]*appModelV1.ApplicationNamespace, 0)
 	nsNetworkDiff := make([]*appModelV1.ApplicationNamespace, 0)
@@ -154,6 +197,11 @@ func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.Applicat
 		b, ok := nsB[ns.Name]
 		if !ok {
 			nsProcessDiff = append(nsProcessDiff, ns)
+
+			nsf := nsFilterConns(ns)
+			if nsf != nil {
+				nsNetworkDiff = append(nsNetworkDiff, nsf)
+			}
 			continue
 		}
 
