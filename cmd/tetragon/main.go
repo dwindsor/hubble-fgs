@@ -65,17 +65,11 @@ import (
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/cilium/tetragon/pkg/watcher/crdwatcher"
 
-	// Imported to allow sensors to be initialized inside init().
+	"github.com/cilium/lumberjack/v2"
+	gops "github.com/google/gops/agent"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
-
-	// Add enterprise-specific filters to the global registry
-	_ "github.com/isovalent/hubble-fgs/pkg/filters"
-
-	"github.com/cilium/lumberjack/v2"
-	gops "github.com/google/gops/agent"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"

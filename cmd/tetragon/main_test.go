@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/testutils"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensorinit"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	"github.com/stretchr/testify/assert"
 )

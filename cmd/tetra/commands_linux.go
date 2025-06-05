@@ -25,7 +25,6 @@ import (
 	"github.com/isovalent/hubble-fgs/cmd/tetra/probe"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/sandboxpolicy"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/syscallentries"
-	_ "github.com/isovalent/hubble-fgs/pkg/errmetrics"
 	"github.com/spf13/cobra"
 )
 
