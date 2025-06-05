@@ -18,7 +18,6 @@ import (
 	"os/exec"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
@@ -183,8 +182,7 @@ func testPingOutbound4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 	readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
-	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	assert.NoError(t, cmdServer.Run())
 
 	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
@@ -254,8 +252,7 @@ func TestICMPCLISwitch(t *testing.T) {
 
 	readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
-	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	assert.NoError(t, cmdServer.Run())
 
 	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -323,8 +320,7 @@ func testPingInAndOutbound4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 
 	readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
-	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	assert.NoError(t, cmdServer.Run())
 
 	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
@@ -375,10 +371,9 @@ func testInboundDestUnreach4(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	time.Sleep(100 * time.Millisecond)
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
+	assert.NoError(t, cmdClient.Wait())
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
@@ -425,8 +420,7 @@ func testPingOutbound6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 	readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-6c1", "::1")
-	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	assert.NoError(t, cmdServer.Run())
 
 	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
@@ -494,8 +488,7 @@ func testPingInAndOutbound6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 
 	readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-6c1", "::1")
-	assert.NoError(t, cmdServer.Start())
-	time.Sleep(1000 * time.Millisecond)
+	assert.NoError(t, cmdServer.Run())
 
 	err := jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
@@ -546,10 +539,9 @@ func testInboundDestUnreach6(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 	stdin, err := cmdClient.StdinPipe()
 	assert.NoError(t, err)
 	assert.NoError(t, cmdClient.Start())
-	time.Sleep(100 * time.Millisecond)
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
-	time.Sleep(1000 * time.Millisecond)
+	assert.NoError(t, cmdClient.Wait())
 
 	err = jsonchecker.JsonTestCheck(gt, checker)
 	assert.NoError(t, err)
