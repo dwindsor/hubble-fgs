@@ -5,6 +5,7 @@ INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 DOCKER_IMAGE_TAG ?= latest
 TETRAGON_IMAGE_NAME ?= isovalent/tetragon
+TETRAGON_SLIM_IMAGE_NAME ?= isovalent/tetragon-slim
 AGGREGATOR_IMAGE_NAME ?= isovalent/tetragon-aggregator
 OPERATOR_IMAGE_NAME ?= isovalent/tetragon-operator
 LOCAL_CLANG ?= 0
@@ -210,6 +211,12 @@ image: ## Build the Tetragon agent container image.
 	$(CONTAINER_ENGINE) build -t "${TETRAGON_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --build-arg DEBUG=${DEBUG} --target release --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} .
 	@echo "Push like this when ready:"
 	@echo "${CONTAINER_ENGINE} push ${TETRAGON_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
+
+.PHONY: image-slim
+image-slim: ## Build the Tetragon agent container image.
+	$(CONTAINER_ENGINE) build -f Dockerfile.slim -t "${TETRAGON_SLIM_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --build-arg DEBUG=${DEBUG} --target release --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} .
+	@echo "Push like this when ready:"
+	@echo "${CONTAINER_ENGINE} push ${TETRAGON_SLIM_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
 .PHONY: image-aggregator
 image-aggregator: ## Build the Tetragon aggregator container image.
