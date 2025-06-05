@@ -200,6 +200,30 @@ func TestProcessConnectDiff(t *testing.T) {
 	assert.Equal(t, 0, len(process))
 }
 
+func TestProcessNetworkConnectDiff(t *testing.T) {
+	aSet := psGroup()
+	bSet := psGroup()
+
+	a := conns()
+	b := conns()
+
+	aSet[1].Connections = a
+	aSet[1].Connections[0].Stats.TxBytes = 2
+	aSet[1].Connections[1].Stats.TxBytes = 3
+	aSet[1].Arguments = "NewCIIsBest"
+	bSet[1].Connections = b
+
+	network, process, err := ProcessDiff(aSet, bSet)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(network))
+	assert.Equal(t, 2, len(network[0].Connections))
+	assert.Equal(t, uint64(2), network[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(3), network[0].Connections[1].Stats.TxBytes)
+	assert.Equal(t, 1, len(process))
+	assert.Equal(t, "ci", process[0].Name)
+	assert.Equal(t, "NewCIIsBest", process[0].Arguments)
+}
+
 func workloads() []*appModelV1.ApplicationWorkload {
 	a := make([]*appModelV1.ApplicationWorkload, 2)
 
@@ -228,9 +252,10 @@ func workloads() []*appModelV1.ApplicationWorkload {
 func TestWorkloadEqual(t *testing.T) {
 	aSet := workloads()
 	bSet := workloads()
-	_, dSet, err := WorkloadDiff(aSet, bSet)
+	netSet, procSet, err := WorkloadDiff(aSet, bSet)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(dSet))
+	assert.Equal(t, 0, len(procSet))
+	assert.Equal(t, 0, len(netSet))
 }
 
 func TestWorkloadDiff(t *testing.T) {
@@ -246,6 +271,60 @@ func TestWorkloadDiff(t *testing.T) {
 	assert.Equal(t, 1, len(network[0].Processes))
 	assert.Equal(t, 1, len(network[0].Processes[0].Connections))
 	assert.Equal(t, uint64(9), network[0].Processes[0].Connections[0].Stats.TxBytes)
+}
+
+func TestWorkloadNetProcDiff(t *testing.T) {
+	aSet := workloads()
+	bSet := workloads()
+
+	bSet[1].Processes[1].Connections[0].Stats.TxBytes = 1
+	aSet[0].Processes[1].Arguments = "changes"
+
+	network, process, err := WorkloadDiff(aSet, bSet)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(process))
+	assert.Equal(t, 1, len(process[0].Processes))
+	assert.Equal(t, 2, len(process[0].Processes[0].Connections))
+	assert.Equal(t, "ci", process[0].Processes[0].Name)
+	assert.Equal(t, "changes", process[0].Processes[0].Arguments)
+
+	assert.Equal(t, 2, len(network))
+
+	assert.Equal(t, 1, len(network[0].Processes))
+	assert.Equal(t, 2, len(network[0].Processes[0].Connections))
+	assert.Equal(t, uint64(10), network[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network[0].Processes[0].Connections[1].Stats.TxBytes)
+
+	assert.Equal(t, 1, len(network[1].Processes))
+	assert.Equal(t, 1, len(network[1].Processes[0].Connections))
+	assert.Equal(t, uint64(9), network[1].Processes[0].Connections[0].Stats.TxBytes)
+}
+
+func TestWorkloadNameDiff(t *testing.T) {
+	aSet := workloads()
+	bSet := workloads()
+
+	aSet[0].Name = "wl-changes"
+
+	network, process, err := WorkloadDiff(aSet, bSet)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(process))
+	assert.Equal(t, 1, len(network))
+
+	// Processes
+	assert.Equal(t, 2, len(process[0].Processes))
+	assert.Equal(t, 1, len(network[0].Processes))
+	// Assert Process is copied through correctly.
+	assert.Equal(t, "foolishFish", process[0].Processes[0].Name)
+	assert.Equal(t, "havingFun", process[0].Processes[0].Arguments)
+	assert.Equal(t, "ci", process[0].Processes[1].Name)
+	assert.Equal(t, "makesThingsWork", process[0].Processes[1].Arguments)
+	// Assert Network is copied through correctly
+	assert.Equal(t, "ci", network[0].Processes[0].Name)
+	assert.Equal(t, "makesThingsWork", network[0].Processes[0].Arguments)
+	assert.Equal(t, 2, len(network[0].Processes[0].Connections))
+	assert.Equal(t, uint64(10), network[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network[0].Processes[0].Connections[1].Stats.TxBytes)
 }
 
 func hostModel() *appModelV1.ApplicationHost {
@@ -302,6 +381,68 @@ func TestApplicationModelDiff(t *testing.T) {
 	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes))
 	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes[0].Connections))
 	assert.Equal(t, uint64(9), network.Namespaces[0].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
+}
+
+func TestApplicationModelProcNetDiff(t *testing.T) {
+	aModel := appModel()
+	bModel := appModel()
+	bModel.Namespaces[0].Workloads[0].Processes[1].Connections[0].Stats.TxBytes = 1
+	aModel.Namespaces[1].Workloads[1].Processes[1].Arguments = "changes"
+
+	network, process, err := ApplicationModelDiff(aModel, bModel)
+	assert.NoError(t, err)
+	assert.NotNil(t, network)
+	assert.NotNil(t, process)
+
+	assert.Equal(t, 1, len(process.Namespaces))
+	assert.Equal(t, 2, len(network.Namespaces))
+
+	// TxBytes inc adds a single process Connection to network
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes[0].Connections))
+	assert.Equal(t, uint64(9), network.Namespaces[0].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
+	// Args change adds two new process Connections to network
+	assert.Equal(t, 1, len(network.Namespaces[1].Workloads))
+	assert.Equal(t, 1, len(network.Namespaces[1].Workloads[0].Processes))
+	assert.Equal(t, 2, len(network.Namespaces[1].Workloads[0].Processes[0].Connections))
+	assert.Equal(t, uint64(10), network.Namespaces[1].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network.Namespaces[1].Workloads[0].Processes[0].Connections[1].Stats.TxBytes)
+	// Arguments impact to process
+	assert.Equal(t, 1, len(process.Namespaces[0].Workloads))
+	assert.Equal(t, 1, len(process.Namespaces[0].Workloads[0].Processes))
+	assert.Equal(t, "ci", process.Namespaces[0].Workloads[0].Processes[0].Name)
+	assert.Equal(t, "changes", process.Namespaces[0].Workloads[0].Processes[0].Arguments)
+}
+
+func TestApplicationModelNSDiff(t *testing.T) {
+	aModel := appModel()
+	bModel := appModel()
+
+	aModel.Namespaces[0].Name = "new-ns"
+
+	network, process, err := ApplicationModelDiff(aModel, bModel)
+	assert.NoError(t, err)
+	assert.NotNil(t, network)
+	assert.NotNil(t, process)
+
+	assert.Equal(t, 1, len(process.Namespaces))
+	assert.Equal(t, 1, len(network.Namespaces))
+
+	assert.Equal(t, 2, len(network.Namespaces[0].Workloads))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[1].Processes))
+	assert.Equal(t, 2, len(network.Namespaces[0].Workloads[0].Processes[0].Connections))
+	assert.Equal(t, 2, len(network.Namespaces[0].Workloads[1].Processes[0].Connections))
+	assert.Equal(t, uint64(10), network.Namespaces[0].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network.Namespaces[0].Workloads[0].Processes[0].Connections[1].Stats.TxBytes)
+
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads))
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[0].Processes))
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[1].Processes))
+	assert.Equal(t, 0, len(process.Namespaces[0].Workloads[0].Processes[0].Connections))
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[0].Processes[1].Connections))
+	assert.Equal(t, "new-ns", network.Namespaces[0].Name)
 }
 
 func TestToNetworkFlat(t *testing.T) {
