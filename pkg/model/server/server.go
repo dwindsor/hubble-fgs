@@ -21,9 +21,9 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/cilium/tetragon/pkg/syscallinfo"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/common"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model"
@@ -580,7 +580,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 	var sm *ebpf.Map
 	var abi string
 	if option.Config.EnableSyscallTracking {
-		abi, err = syscallinfo.DefaultABI()
+		abi, err = common.DefaultABI()
 		if err != nil {
 			return nil, fmt.Errorf("unsupported ABI %q for syscall sensor: %w", abi, err)
 		}

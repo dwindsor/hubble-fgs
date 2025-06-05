@@ -22,8 +22,8 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/syscallinfo"
 	"github.com/google/go-cmp/cmp"
+	"github.com/isovalent/hubble-fgs/pkg/common"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -357,7 +357,7 @@ func getNetworkQuotaValue(dst *tetragon.Destination) NetworkQuotaValue {
 func getSyscallInfo(abi string, syscalls []uint32) (*appModelV1.ApplicationSyscalls, error) {
 	syscall_info := &appModelV1.ApplicationSyscalls{}
 	for _, syscall := range syscalls {
-		name, err := syscallinfo.GetSyscallName(abi, int(syscall))
+		name, err := common.GetSyscallName(abi, int(syscall))
 		if err != nil {
 			return nil, err
 		}
