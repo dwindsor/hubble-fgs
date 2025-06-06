@@ -81,7 +81,12 @@ func (p *EnterpriseEncoder) AppModelEventToString(event *appModelV1.NetworkConne
 		destination := p.colorer.simpleTuple(
 			event.DestinationName,
 			event.DestinationPort)
-		stats := p.colorer.Cyan.Sprintf("tx %d rx %d", event.TxBytes, event.RxBytes)
+		stats := ""
+		if event.PolicyName != "" {
+			stats = p.colorer.Cyan.Sprintf("tx %d rx %d policy %s -> %s", event.TxBytes, event.RxBytes, event.PolicyName, appModelV1.PolicyVerdict_name[int32(event.Verdict)])
+		} else {
+			stats = p.colorer.Cyan.Sprintf("tx %d rx %d", event.TxBytes, event.RxBytes)
+		}
 		return fmt.Sprintf("%s %s %s (%s)", connect, processInfo, destination, stats), nil
 
 	}
