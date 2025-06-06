@@ -23,10 +23,8 @@
     - [DestinationWorkload](#application_model-v1alpha-DestinationWorkload)
     - [GetModelRequest](#application_model-v1alpha-GetModelRequest)
     - [GetModelResponse](#application_model-v1alpha-GetModelResponse)
-    - [NetworkConnectPolicyTelemetry](#application_model-v1alpha-NetworkConnectPolicyTelemetry)
-    - [NetworkConnectPolicyTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkConnectPolicyTelemetry-NodeLabelsEntry)
-    - [NetworkTelemetry](#application_model-v1alpha-NetworkTelemetry)
-    - [NetworkTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkTelemetry-NodeLabelsEntry)
+    - [NetworkConnectTelemetry](#application_model-v1alpha-NetworkConnectTelemetry)
+    - [NetworkConnectTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkConnectTelemetry-NodeLabelsEntry)
     - [ProcessTelemetry](#application_model-v1alpha-ProcessTelemetry)
     - [ProcessTelemetry.NodeLabelsEntry](#application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry)
     - [StreamTelemetryRequest](#application_model-v1alpha-StreamTelemetryRequest)
@@ -829,9 +827,9 @@ the following criteria:
 
 
 
-<a name="application_model-v1alpha-NetworkConnectPolicyTelemetry"></a>
+<a name="application_model-v1alpha-NetworkConnectTelemetry"></a>
 
-### NetworkConnectPolicyTelemetry
+### NetworkConnectTelemetry
 
 
 
@@ -839,10 +837,10 @@ the following criteria:
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | An opaque identifier that is unique to this telemetry event across all the telemetry types. |
 | time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Timestamp at which this telemetry event got transmitted. |
-| event_type | [TelemetryType](#application_model-v1alpha-TelemetryType) |  | Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT_POLICY`. |
+| event_type | [TelemetryType](#application_model-v1alpha-TelemetryType) |  | Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT`. |
 | cluster_name | [string](#string) |  | Name of the cluster that transmitted this telemetry event. |
 | node_name | [string](#string) |  | Name of the node that transmitted this telemetry event. |
-| node_labels | [NetworkConnectPolicyTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkConnectPolicyTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
+| node_labels | [NetworkConnectTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkConnectTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
 | kubernetes_namespace | [string](#string) |  | Kubernetes namespace in which the process that received this policy verdict is running. This field is set if and only if the process belongs to a Kubernetes workload. |
 | kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  | Kubernetes workload kind of the process that received this policy verdict. This field is set if and only if the process belongs to a Kubernetes workload. |
 | kubernetes_workload_name | [string](#string) |  | Kubernetes workload name of the process that received this policy verdict. This field is set if and only if the process belongs to a Kubernetes workload. |
@@ -856,77 +854,21 @@ the following criteria:
 | destination_kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  | Kubernetes workload kind of the destination. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
 | destination_kubernetes_workload_name | [string](#string) |  | Kubernetes workload name of the destination. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
 | protocol | [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType) |  | Network protocol of the connection that received this network connect policy verdict. |
-| verdict | [PolicyVerdict](#application_model-v1alpha-PolicyVerdict) |  | Policy verdict. |
-| policy_name | [string](#string) |  | Name of the Tetragon network connect policy that made this verdict. |
-| rule_name | [string](#string) |  | Name of the Tetragon network connect policy rule that made this verdict. |
-| tx_bytes | [uint64](#uint64) |  | tx_bytes allowed or dropped. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of transmit bytes from connections allowed by the policy rule. For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of dropped transmit bytes from connections dropped by the policy rule. |
+| verdict | [PolicyVerdict](#application_model-v1alpha-PolicyVerdict) |  | Policy verdict. If the connections don&#39;t have corresponding policy rules, this field is set to POLICY_VERDICT_UNSPECIFIED. |
+| policy_name | [string](#string) |  | Name of the Tetragon network connect policy that made this verdict. If the connections don&#39;t have corresponding policy rules, this field is not set. |
+| rule_name | [string](#string) |  | Name of the Tetragon network connect policy rule that made this verdict. If the connections don&#39;t have corresponding policy rules, this field is not set. If the connections were allowed by the default allow rule, this field is set to &#34;tetragon:default-allow&#34;. If the connections were dropped by the default drop rule, this field is set to &#34;tetragon:default-drop&#34;. |
+| tx_bytes | [uint64](#uint64) |  | tx_bytes allowed or dropped. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of transmit bytes from connections allowed by the policy rule. For `POLICY_VERDICT_DROP` verdict events, this field is set to zero. |
 | rx_bytes | [uint64](#uint64) |  | The number of receive bytes from connections allowed by the policy rule. This field is not set for `POLICY_VERDICT_DROP` verdict events. |
-| sessions | [uint64](#uint64) |  | The number of TCP connections / UDP sessions allowed or dropped by this policy rule. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of TCP connections / UDP sessions allowed by this policy rule. For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of dropped TCP connections / UDP sessions dropped by this policy rule. |
+| sessions | [uint64](#uint64) |  | The number of TCP connections / UDP sessions. For `POLICY_VERDICT_UNSPECIFIED` verdict events, this field specifies the number of TCP connections / UDP sessions created. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of TCP connections / UDP sessions allowed by this policy rule. For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of dropped TCP connections / UDP sessions dropped by this policy rule. |
 
 
 
 
 
 
-<a name="application_model-v1alpha-NetworkConnectPolicyTelemetry-NodeLabelsEntry"></a>
+<a name="application_model-v1alpha-NetworkConnectTelemetry-NodeLabelsEntry"></a>
 
-### NetworkConnectPolicyTelemetry.NodeLabelsEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="application_model-v1alpha-NetworkTelemetry"></a>
-
-### NetworkTelemetry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| cluster_name | [string](#string) |  |  |
-| node_name | [string](#string) |  |  |
-| event_type | [TelemetryType](#application_model-v1alpha-TelemetryType) |  |  |
-| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
-| kubernetes_namespace | [string](#string) |  |  |
-| kubernetes_workload_name | [string](#string) |  |  |
-| kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  |  |
-| process_hash | [string](#string) |  |  |
-| process_name | [string](#string) |  |  |
-| process_arguments | [string](#string) |  |  |
-| destination_name | [string](#string) |  |  |
-| destination_type | [DestinationType](#application_model-v1alpha-DestinationType) |  |  |
-| destination_port | [uint32](#uint32) |  |  |
-| destination_kubernetes_namespace | [string](#string) |  |  |
-| destination_kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  |  |
-| destination_kubernetes_workload_name | [string](#string) |  |  |
-| tx_bytes | [uint64](#uint64) |  |  |
-| rx_bytes | [uint64](#uint64) |  |  |
-| tx_drops | [uint64](#uint64) |  |  |
-| default_drop_bytes | [uint64](#uint64) |  |  |
-| default_allow_bytes | [uint64](#uint64) |  |  |
-| default_drop_sessions | [uint64](#uint64) |  |  |
-| default_allowed_sessions | [uint64](#uint64) |  |  |
-| id | [string](#string) |  | An opaque identifier that is unique to this telemetry data across all the telemetry types. |
-| protocol | [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType) |  |  |
-| node_labels | [NetworkTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
-
-
-
-
-
-
-<a name="application_model-v1alpha-NetworkTelemetry-NodeLabelsEntry"></a>
-
-### NetworkTelemetry.NodeLabelsEntry
+### NetworkConnectTelemetry.NodeLabelsEntry
 
 
 
@@ -1008,7 +950,8 @@ the following criteria:
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| network | [NetworkTelemetry](#application_model-v1alpha-NetworkTelemetry) |  | Application Model Network Flat Entry event has the |
+| process | [ProcessTelemetry](#application_model-v1alpha-ProcessTelemetry) |  |  |
+| network_connect | [NetworkConnectTelemetry](#application_model-v1alpha-NetworkConnectTelemetry) |  |  |
 
 
 
@@ -1067,7 +1010,6 @@ the following criteria:
 | TELEMETRY_TYPE_UNSPECIFIED | 0 |  |
 | TELEMETRY_TYPE_PROCESS | 1 |  |
 | TELEMETRY_TYPE_NETWORK_CONNECT | 2 |  |
-| TELEMETRY_TYPE_NETWORK_CONNECT_POLICY | 3 |  |
 
 
 

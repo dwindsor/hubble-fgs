@@ -73,7 +73,7 @@ func (p *EnterpriseEncoder) Encode(v interface{}) error {
 	return p.EncodePrefix("", v)
 }
 
-func (p *EnterpriseEncoder) AppModelEventToString(event *appModelV1.NetworkTelemetry) (string, error) {
+func (p *EnterpriseEncoder) AppModelEventToString(event *appModelV1.NetworkConnectTelemetry) (string, error) {
 	switch event.EventType {
 	case appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT:
 		connect := p.colorer.Blue.Sprintf("🔌 %-7s", "connect")
@@ -81,7 +81,7 @@ func (p *EnterpriseEncoder) AppModelEventToString(event *appModelV1.NetworkTelem
 		destination := p.colorer.simpleTuple(
 			event.DestinationName,
 			event.DestinationPort)
-		stats := p.colorer.Cyan.Sprintf("tx %d rx %d drops %d defaultDrops %d defaultAllow %d", event.TxBytes, event.RxBytes, event.TxDrops, event.DefaultDropBytes, event.DefaultAllowBytes)
+		stats := p.colorer.Cyan.Sprintf("tx %d rx %d", event.TxBytes, event.RxBytes)
 		return fmt.Sprintf("%s %s %s (%s)", connect, processInfo, destination, stats), nil
 
 	}

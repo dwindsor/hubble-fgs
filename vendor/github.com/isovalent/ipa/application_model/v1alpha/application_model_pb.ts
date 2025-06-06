@@ -22,7 +22,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file application_model/v1alpha/application_model.proto.
  */
 export const file_application_model_v1alpha_application_model: GenFile = /*@__PURE__*/
-  fileDesc("CjFhcHBsaWNhdGlvbl9tb2RlbC92MWFscGhhL2FwcGxpY2F0aW9uX21vZGVsLnByb3RvEhlhcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhIrQEChBQcm9jZXNzVGVsZW1ldHJ5EhQKDGNsdXN0ZXJfbmFtZRgBIAEoCRIRCglub2RlX25hbWUYAiABKAkSPAoKZXZlbnRfdHlwZRgDIAEoDjIoLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuVGVsZW1ldHJ5VHlwZRIoCgR0aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIcChRrdWJlcm5ldGVzX25hbWVzcGFjZRgFIAEoCRIgChhrdWJlcm5ldGVzX3dvcmtsb2FkX25hbWUYBiABKAkSSQoYa3ViZXJuZXRlc193b3JrbG9hZF9raW5kGAcgASgOMicuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5Xb3JrbG9hZEtpbmQSFAoMcHJvY2Vzc19oYXNoGAggASgJEhQKDHByb2Nlc3NfbmFtZRgJIAEoCRIZChFwcm9jZXNzX2FyZ3VtZW50cxgKIAEoCRIXCg9leGVjdXRpb25fY291bnQYCyABKAQSEwoLcGFyZW50X2hhc2gYDCABKAkSCgoCaWQYDSABKAkSUAoLbm9kZV9sYWJlbHMYDiADKAsyOy5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLlByb2Nlc3NUZWxlbWV0cnkuTm9kZUxhYmVsc0VudHJ5GjEKD05vZGVMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIqEIChBOZXR3b3JrVGVsZW1ldHJ5EhQKDGNsdXN0ZXJfbmFtZRgBIAEoCRIRCglub2RlX25hbWUYAiABKAkSPAoKZXZlbnRfdHlwZRgDIAEoDjIoLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuVGVsZW1ldHJ5VHlwZRIoCgR0aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIcChRrdWJlcm5ldGVzX25hbWVzcGFjZRgFIAEoCRIgChhrdWJlcm5ldGVzX3dvcmtsb2FkX25hbWUYBiABKAkSSQoYa3ViZXJuZXRlc193b3JrbG9hZF9raW5kGAcgASgOMicuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5Xb3JrbG9hZEtpbmQSFAoMcHJvY2Vzc19oYXNoGAggASgJEhQKDHByb2Nlc3NfbmFtZRgJIAEoCRIZChFwcm9jZXNzX2FyZ3VtZW50cxgKIAEoCRIYChBkZXN0aW5hdGlvbl9uYW1lGAsgASgJEkQKEGRlc3RpbmF0aW9uX3R5cGUYDCABKA4yKi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkRlc3RpbmF0aW9uVHlwZRIYChBkZXN0aW5hdGlvbl9wb3J0GA0gASgNEigKIGRlc3RpbmF0aW9uX2t1YmVybmV0ZXNfbmFtZXNwYWNlGA4gASgJElUKJGRlc3RpbmF0aW9uX2t1YmVybmV0ZXNfd29ya2xvYWRfa2luZBgPIAEoDjInLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuV29ya2xvYWRLaW5kEiwKJGRlc3RpbmF0aW9uX2t1YmVybmV0ZXNfd29ya2xvYWRfbmFtZRgQIAEoCRIQCgh0eF9ieXRlcxgRIAEoBBIQCghyeF9ieXRlcxgSIAEoBBIQCgh0eF9kcm9wcxgTIAEoBBIaChJkZWZhdWx0X2Ryb3BfYnl0ZXMYFCABKAQSGwoTZGVmYXVsdF9hbGxvd19ieXRlcxgVIAEoBBIdChVkZWZhdWx0X2Ryb3Bfc2Vzc2lvbnMYFiABKAQSIAoYZGVmYXVsdF9hbGxvd2VkX3Nlc3Npb25zGBcgASgEEgoKAmlkGBggASgJEkAKCHByb3RvY29sGBkgASgOMi4uYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5OZXR3b3JrUHJvdG9jb2xUeXBlElAKC25vZGVfbGFiZWxzGBogAygLMjsuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5OZXR3b3JrVGVsZW1ldHJ5Lk5vZGVMYWJlbHNFbnRyeRoxCg9Ob2RlTGFiZWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASKkCAodTmV0d29ya0Nvbm5lY3RQb2xpY3lUZWxlbWV0cnkSCgoCaWQYASABKAkSKAoEdGltZRgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASPAoKZXZlbnRfdHlwZRgDIAEoDjIoLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuVGVsZW1ldHJ5VHlwZRIUCgxjbHVzdGVyX25hbWUYBCABKAkSEQoJbm9kZV9uYW1lGAUgASgJEl0KC25vZGVfbGFiZWxzGAYgAygLMkguYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5OZXR3b3JrQ29ubmVjdFBvbGljeVRlbGVtZXRyeS5Ob2RlTGFiZWxzRW50cnkSHAoUa3ViZXJuZXRlc19uYW1lc3BhY2UYByABKAkSSQoYa3ViZXJuZXRlc193b3JrbG9hZF9raW5kGAggASgOMicuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5Xb3JrbG9hZEtpbmQSIAoYa3ViZXJuZXRlc193b3JrbG9hZF9uYW1lGAkgASgJEhQKDHByb2Nlc3NfaGFzaBgKIAEoCRIUCgxwcm9jZXNzX25hbWUYCyABKAkSGQoRcHJvY2Vzc19hcmd1bWVudHMYDCABKAkSGAoQZGVzdGluYXRpb25fbmFtZRgNIAEoCRJEChBkZXN0aW5hdGlvbl90eXBlGA4gASgOMiouYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5EZXN0aW5hdGlvblR5cGUSGAoQZGVzdGluYXRpb25fcG9ydBgPIAEoDRIoCiBkZXN0aW5hdGlvbl9rdWJlcm5ldGVzX25hbWVzcGFjZRgQIAEoCRJVCiRkZXN0aW5hdGlvbl9rdWJlcm5ldGVzX3dvcmtsb2FkX2tpbmQYESABKA4yJy5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLldvcmtsb2FkS2luZBIsCiRkZXN0aW5hdGlvbl9rdWJlcm5ldGVzX3dvcmtsb2FkX25hbWUYEiABKAkSQAoIcHJvdG9jb2wYEyABKA4yLi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLk5ldHdvcmtQcm90b2NvbFR5cGUSOQoHdmVyZGljdBgUIAEoDjIoLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuUG9saWN5VmVyZGljdBITCgtwb2xpY3lfbmFtZRgVIAEoCRIRCglydWxlX25hbWUYFiABKAkSEAoIdHhfYnl0ZXMYFyABKAQSEAoIcnhfYnl0ZXMYGCABKAQSEAoIc2Vzc2lvbnMYGSABKAQaMQoPTm9kZUxhYmVsc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEisgEKFUFwcGxpY2F0aW9uTW9kZWxFdmVudBIUCgxjbHVzdGVyX25hbWUYASABKAkSEQoJbm9kZV9uYW1lGAIgASgJEigKBHRpbWUYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEkYKEWFwcGxpY2F0aW9uX21vZGVsGAQgASgLMisuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvbk1vZGVsIpEBChBBcHBsaWNhdGlvbk1vZGVsEkMKCm5hbWVzcGFjZXMYASADKAsyLy5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkFwcGxpY2F0aW9uTmFtZXNwYWNlEjgKBGhvc3QYAiABKAsyKi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkFwcGxpY2F0aW9uSG9zdCJYCg9BcHBsaWNhdGlvbkhvc3QSRQoJcHJvY2Vzc2VzGAEgAygLMjIuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvblByb2Nlc3NHcm91cCJnChRBcHBsaWNhdGlvbk5hbWVzcGFjZRIMCgRuYW1lGAEgASgJEkEKCXdvcmtsb2FkcxgCIAMoCzIuLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Xb3JrbG9hZCKhAQoTQXBwbGljYXRpb25Xb3JrbG9hZBIMCgRuYW1lGAEgASgJEjUKBGtpbmQYAiABKA4yJy5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLldvcmtsb2FkS2luZBJFCglwcm9jZXNzZXMYAyADKAsyMi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkFwcGxpY2F0aW9uUHJvY2Vzc0dyb3VwItEDChdBcHBsaWNhdGlvblByb2Nlc3NHcm91cBIMCgRoYXNoGAEgASgJEgwKBG5hbWUYAiABKAkSEQoJYXJndW1lbnRzGAMgASgJEkQKCGNoaWxkcmVuGAQgAygLMjIuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvblByb2Nlc3NHcm91cBJFCgtjb25uZWN0aW9ucxgFIAMoCzIwLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Db25uZWN0aW9uEjAKDGluX2luaXRfdHJlZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5Cb29sVmFsdWUSRAoMc3lzY2FsbF9pbmZvGAcgASgLMi4uYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvblN5c2NhbGxzEhUKDXByb2Nlc3NfY291bnQYCCABKAQSNQoRbGF0ZXN0X3N0YXJ0X3RpbWUYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjQKEGxhdGVzdF9leGl0X3RpbWUYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIo8BChVBcHBsaWNhdGlvbkNvbm5lY3Rpb24SOwoLZGVzdGluYXRpb24YASABKAsyJi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkRlc3RpbmF0aW9uEjkKBXN0YXRzGAIgASgLMiouYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5Db25uZWN0aW9uU3RhdHMilgIKD0Nvbm5lY3Rpb25TdGF0cxIQCgh0eF9ieXRlcxgBIAEoBBIQCghyeF9ieXRlcxgCIAEoBBIQCgh0eF9kcm9wcxgDIAEoBBIQCgh0eF9xdW90YRgEIAEoBBIWCg50eF9xdW90YV91c2FnZRgFIAEoBBI0ChBsYXN0X3F1b3RhX3Jlc2V0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI0ChBuZXh0X3F1b3RhX3Jlc2V0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIaChJkZWZhdWx0X2Ryb3BfYnl0ZXMYCCABKAQSGwoTZGVmYXVsdF9hbGxvd19ieXRlcxgJIAEoBCLaAQoLRGVzdGluYXRpb24SOAoDZG5zGAEgASgLMikuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5EZXN0aW5hdGlvbkRuc0gAEkIKCHdvcmtsb2FkGAIgASgLMi4uYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5EZXN0aW5hdGlvbldvcmtsb2FkSAASNgoCaXAYAyABKAsyKC5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkRlc3RpbmF0aW9uSVBIABINCgRwb3J0GOkHIAEoBEIGCgR0eXBlIisKDkRlc3RpbmF0aW9uRG5zEhkKEWRlc3RpbmF0aW9uX25hbWVzGAEgAygJIm0KE0Rlc3RpbmF0aW9uV29ya2xvYWQSDAoEbmFtZRgBIAEoCRIRCgluYW1lc3BhY2UYAiABKAkSNQoEa2luZBgDIAEoDjInLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuV29ya2xvYWRLaW5kIhsKDURlc3RpbmF0aW9uSVASCgoCaXAYASABKAkidAoTQXBwbGljYXRpb25TeXNjYWxscxIwCghzeXNjYWxscxgBIAMoDjIeLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuU3lzEisKA2FiaRgCIAEoDjIeLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQWJpIjMKD0dldE1vZGVsUmVxdWVzdBISCgpuYW1lc3BhY2VzGAEgAygJEgwKBGhvc3QYAiABKAgiUwoQR2V0TW9kZWxSZXNwb25zZRI/CgVtb2RlbBgBIAEoCzIwLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Nb2RlbEV2ZW50IjoKFlN0cmVhbVRlbGVtZXRyeVJlcXVlc3QSEgoKbmFtZXNwYWNlcxgBIAMoCRIMCgRob3N0GAIgASgIImIKF1N0cmVhbVRlbGVtZXRyeVJlc3BvbnNlEj4KB25ldHdvcmsYASABKAsyKy5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLk5ldHdvcmtUZWxlbWV0cnlIAEIHCgVldmVudCpiCg1Qb2xpY3lWZXJkaWN0Eh4KGlBPTElDWV9WRVJESUNUX1VOU1BFQ0lGSUVEEAASGAoUUE9MSUNZX1ZFUkRJQ1RfQUxMT1cQARIXChNQT0xJQ1lfVkVSRElDVF9EUk9QEAIqegoTTmV0d29ya1Byb3RvY29sVHlwZRIlCiFORVRXT1JLX1BST1RPQ09MX1RZUEVfVU5TUEVDSUZJRUQQABIdChlORVRXT1JLX1BST1RPQ09MX1RZUEVfVENQEAESHQoZTkVUV09SS19QUk9UT0NPTF9UWVBFX1VEUBACKokBCg9EZXN0aW5hdGlvblR5cGUSIAocREVTVElOQVRJT05fVFlQRV9VTlNQRUNJRklFRBAAEhgKFERFU1RJTkFUSU9OX1RZUEVfRE5TEAESGQoVREVTVElOQVRJT05fVFlQRV9DSURSEAISHwobREVTVElOQVRJT05fVFlQRV9LVUJFUk5FVEVTEAMqmgEKDVRlbGVtZXRyeVR5cGUSHgoaVEVMRU1FVFJZX1RZUEVfVU5TUEVDSUZJRUQQABIaChZURUxFTUVUUllfVFlQRV9QUk9DRVNTEAESIgoeVEVMRU1FVFJZX1RZUEVfTkVUV09SS19DT05ORUNUEAISKQolVEVMRU1FVFJZX1RZUEVfTkVUV09SS19DT05ORUNUX1BPTElDWRADKokCCgxXb3JrbG9hZEtpbmQSHQoZV09SS0xPQURfS0lORF9VTlNQRUNJRklFRBAAEhUKEVdPUktMT0FEX0tJTkRfUE9EEAESHAoYV09SS0xPQURfS0lORF9ERVBMT1lNRU5UEAISGwoXV09SS0xPQURfS0lORF9EQUVNT05TRVQQAxIdChlXT1JLTE9BRF9LSU5EX1NUQVRFRlVMU0VUEAQSFQoRV09SS0xPQURfS0lORF9KT0IQBRIZChVXT1JLTE9BRF9LSU5EX0NST05KT0IQBhIcChhXT1JLTE9BRF9LSU5EX1JFUExJQ0FTRVQQBxIZChVXT1JLTE9BRF9LSU5EX1NFUlZJQ0UQCDL+AQoXQXBwbGljYXRpb25Nb2RlbFNlcnZpY2USZQoIR2V0TW9kZWwSKi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkdldE1vZGVsUmVxdWVzdBorLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuR2V0TW9kZWxSZXNwb25zZSIAEnwKD1N0cmVhbVRlbGVtZXRyeRIxLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuU3RyZWFtVGVsZW1ldHJ5UmVxdWVzdBoyLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuU3RyZWFtVGVsZW1ldHJ5UmVzcG9uc2UiADABQjRaMmdpdGh1Yi5jb20vaXNvdmFsZW50L2lwYS9hcHBsaWNhdGlvbl9tb2RlbC92MWFscGhhYgZwcm90bzM", [file_application_model_v1alpha_syscalls, file_google_protobuf_timestamp, file_google_protobuf_wrappers]);
+  fileDesc("CjFhcHBsaWNhdGlvbl9tb2RlbC92MWFscGhhL2FwcGxpY2F0aW9uX21vZGVsLnByb3RvEhlhcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhIrQEChBQcm9jZXNzVGVsZW1ldHJ5EhQKDGNsdXN0ZXJfbmFtZRgBIAEoCRIRCglub2RlX25hbWUYAiABKAkSPAoKZXZlbnRfdHlwZRgDIAEoDjIoLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuVGVsZW1ldHJ5VHlwZRIoCgR0aW1lGAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIcChRrdWJlcm5ldGVzX25hbWVzcGFjZRgFIAEoCRIgChhrdWJlcm5ldGVzX3dvcmtsb2FkX25hbWUYBiABKAkSSQoYa3ViZXJuZXRlc193b3JrbG9hZF9raW5kGAcgASgOMicuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5Xb3JrbG9hZEtpbmQSFAoMcHJvY2Vzc19oYXNoGAggASgJEhQKDHByb2Nlc3NfbmFtZRgJIAEoCRIZChFwcm9jZXNzX2FyZ3VtZW50cxgKIAEoCRIXCg9leGVjdXRpb25fY291bnQYCyABKAQSEwoLcGFyZW50X2hhc2gYDCABKAkSCgoCaWQYDSABKAkSUAoLbm9kZV9sYWJlbHMYDiADKAsyOy5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLlByb2Nlc3NUZWxlbWV0cnkuTm9kZUxhYmVsc0VudHJ5GjEKD05vZGVMYWJlbHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIpgIChdOZXR3b3JrQ29ubmVjdFRlbGVtZXRyeRIKCgJpZBgBIAEoCRIoCgR0aW1lGAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI8CgpldmVudF90eXBlGAMgASgOMiguYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5UZWxlbWV0cnlUeXBlEhQKDGNsdXN0ZXJfbmFtZRgEIAEoCRIRCglub2RlX25hbWUYBSABKAkSVwoLbm9kZV9sYWJlbHMYBiADKAsyQi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLk5ldHdvcmtDb25uZWN0VGVsZW1ldHJ5Lk5vZGVMYWJlbHNFbnRyeRIcChRrdWJlcm5ldGVzX25hbWVzcGFjZRgHIAEoCRJJChhrdWJlcm5ldGVzX3dvcmtsb2FkX2tpbmQYCCABKA4yJy5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLldvcmtsb2FkS2luZBIgChhrdWJlcm5ldGVzX3dvcmtsb2FkX25hbWUYCSABKAkSFAoMcHJvY2Vzc19oYXNoGAogASgJEhQKDHByb2Nlc3NfbmFtZRgLIAEoCRIZChFwcm9jZXNzX2FyZ3VtZW50cxgMIAEoCRIYChBkZXN0aW5hdGlvbl9uYW1lGA0gASgJEkQKEGRlc3RpbmF0aW9uX3R5cGUYDiABKA4yKi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkRlc3RpbmF0aW9uVHlwZRIYChBkZXN0aW5hdGlvbl9wb3J0GA8gASgNEigKIGRlc3RpbmF0aW9uX2t1YmVybmV0ZXNfbmFtZXNwYWNlGBAgASgJElUKJGRlc3RpbmF0aW9uX2t1YmVybmV0ZXNfd29ya2xvYWRfa2luZBgRIAEoDjInLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuV29ya2xvYWRLaW5kEiwKJGRlc3RpbmF0aW9uX2t1YmVybmV0ZXNfd29ya2xvYWRfbmFtZRgSIAEoCRJACghwcm90b2NvbBgTIAEoDjIuLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuTmV0d29ya1Byb3RvY29sVHlwZRI5Cgd2ZXJkaWN0GBQgASgOMiguYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5Qb2xpY3lWZXJkaWN0EhMKC3BvbGljeV9uYW1lGBUgASgJEhEKCXJ1bGVfbmFtZRgWIAEoCRIQCgh0eF9ieXRlcxgXIAEoBBIQCghyeF9ieXRlcxgYIAEoBBIQCghzZXNzaW9ucxgZIAEoBBoxCg9Ob2RlTGFiZWxzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASKyAQoVQXBwbGljYXRpb25Nb2RlbEV2ZW50EhQKDGNsdXN0ZXJfbmFtZRgBIAEoCRIRCglub2RlX25hbWUYAiABKAkSKAoEdGltZRgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASRgoRYXBwbGljYXRpb25fbW9kZWwYBCABKAsyKy5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkFwcGxpY2F0aW9uTW9kZWwikQEKEEFwcGxpY2F0aW9uTW9kZWwSQwoKbmFtZXNwYWNlcxgBIAMoCzIvLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25OYW1lc3BhY2USOAoEaG9zdBgCIAEoCzIqLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Ib3N0IlgKD0FwcGxpY2F0aW9uSG9zdBJFCglwcm9jZXNzZXMYASADKAsyMi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkFwcGxpY2F0aW9uUHJvY2Vzc0dyb3VwImcKFEFwcGxpY2F0aW9uTmFtZXNwYWNlEgwKBG5hbWUYASABKAkSQQoJd29ya2xvYWRzGAIgAygLMi4uYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvbldvcmtsb2FkIqEBChNBcHBsaWNhdGlvbldvcmtsb2FkEgwKBG5hbWUYASABKAkSNQoEa2luZBgCIAEoDjInLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuV29ya2xvYWRLaW5kEkUKCXByb2Nlc3NlcxgDIAMoCzIyLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuQXBwbGljYXRpb25Qcm9jZXNzR3JvdXAi0QMKF0FwcGxpY2F0aW9uUHJvY2Vzc0dyb3VwEgwKBGhhc2gYASABKAkSDAoEbmFtZRgCIAEoCRIRCglhcmd1bWVudHMYAyABKAkSRAoIY2hpbGRyZW4YBCADKAsyMi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkFwcGxpY2F0aW9uUHJvY2Vzc0dyb3VwEkUKC2Nvbm5lY3Rpb25zGAUgAygLMjAuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvbkNvbm5lY3Rpb24SMAoMaW5faW5pdF90cmVlGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLkJvb2xWYWx1ZRJECgxzeXNjYWxsX2luZm8YByABKAsyLi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkFwcGxpY2F0aW9uU3lzY2FsbHMSFQoNcHJvY2Vzc19jb3VudBgIIAEoBBI1ChFsYXRlc3Rfc3RhcnRfdGltZRgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNAoQbGF0ZXN0X2V4aXRfdGltZRgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAijwEKFUFwcGxpY2F0aW9uQ29ubmVjdGlvbhI7CgtkZXN0aW5hdGlvbhgBIAEoCzImLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuRGVzdGluYXRpb24SOQoFc3RhdHMYAiABKAsyKi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkNvbm5lY3Rpb25TdGF0cyKWAgoPQ29ubmVjdGlvblN0YXRzEhAKCHR4X2J5dGVzGAEgASgEEhAKCHJ4X2J5dGVzGAIgASgEEhAKCHR4X2Ryb3BzGAMgASgEEhAKCHR4X3F1b3RhGAQgASgEEhYKDnR4X3F1b3RhX3VzYWdlGAUgASgEEjQKEGxhc3RfcXVvdGFfcmVzZXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjQKEG5leHRfcXVvdGFfcmVzZXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmRlZmF1bHRfZHJvcF9ieXRlcxgIIAEoBBIbChNkZWZhdWx0X2FsbG93X2J5dGVzGAkgASgEItoBCgtEZXN0aW5hdGlvbhI4CgNkbnMYASABKAsyKS5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkRlc3RpbmF0aW9uRG5zSAASQgoId29ya2xvYWQYAiABKAsyLi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLkRlc3RpbmF0aW9uV29ya2xvYWRIABI2CgJpcBgDIAEoCzIoLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuRGVzdGluYXRpb25JUEgAEg0KBHBvcnQY6QcgASgEQgYKBHR5cGUiKwoORGVzdGluYXRpb25EbnMSGQoRZGVzdGluYXRpb25fbmFtZXMYASADKAkibQoTRGVzdGluYXRpb25Xb3JrbG9hZBIMCgRuYW1lGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRI1CgRraW5kGAMgASgOMicuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5Xb3JrbG9hZEtpbmQiGwoNRGVzdGluYXRpb25JUBIKCgJpcBgBIAEoCSJ0ChNBcHBsaWNhdGlvblN5c2NhbGxzEjAKCHN5c2NhbGxzGAEgAygOMh4uYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5TeXMSKwoDYWJpGAIgASgOMh4uYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BYmkiMwoPR2V0TW9kZWxSZXF1ZXN0EhIKCm5hbWVzcGFjZXMYASADKAkSDAoEaG9zdBgCIAEoCCJTChBHZXRNb2RlbFJlc3BvbnNlEj8KBW1vZGVsGAEgASgLMjAuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5BcHBsaWNhdGlvbk1vZGVsRXZlbnQiOgoWU3RyZWFtVGVsZW1ldHJ5UmVxdWVzdBISCgpuYW1lc3BhY2VzGAEgAygJEgwKBGhvc3QYAiABKAgisQEKF1N0cmVhbVRlbGVtZXRyeVJlc3BvbnNlEj4KB3Byb2Nlc3MYASABKAsyKy5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLlByb2Nlc3NUZWxlbWV0cnlIABJNCg9uZXR3b3JrX2Nvbm5lY3QYAiABKAsyMi5hcHBsaWNhdGlvbl9tb2RlbC52MWFscGhhLk5ldHdvcmtDb25uZWN0VGVsZW1ldHJ5SABCBwoFZXZlbnQqYgoNUG9saWN5VmVyZGljdBIeChpQT0xJQ1lfVkVSRElDVF9VTlNQRUNJRklFRBAAEhgKFFBPTElDWV9WRVJESUNUX0FMTE9XEAESFwoTUE9MSUNZX1ZFUkRJQ1RfRFJPUBACKnoKE05ldHdvcmtQcm90b2NvbFR5cGUSJQohTkVUV09SS19QUk9UT0NPTF9UWVBFX1VOU1BFQ0lGSUVEEAASHQoZTkVUV09SS19QUk9UT0NPTF9UWVBFX1RDUBABEh0KGU5FVFdPUktfUFJPVE9DT0xfVFlQRV9VRFAQAiqJAQoPRGVzdGluYXRpb25UeXBlEiAKHERFU1RJTkFUSU9OX1RZUEVfVU5TUEVDSUZJRUQQABIYChRERVNUSU5BVElPTl9UWVBFX0ROUxABEhkKFURFU1RJTkFUSU9OX1RZUEVfQ0lEUhACEh8KG0RFU1RJTkFUSU9OX1RZUEVfS1VCRVJORVRFUxADKm8KDVRlbGVtZXRyeVR5cGUSHgoaVEVMRU1FVFJZX1RZUEVfVU5TUEVDSUZJRUQQABIaChZURUxFTUVUUllfVFlQRV9QUk9DRVNTEAESIgoeVEVMRU1FVFJZX1RZUEVfTkVUV09SS19DT05ORUNUEAIqiQIKDFdvcmtsb2FkS2luZBIdChlXT1JLTE9BRF9LSU5EX1VOU1BFQ0lGSUVEEAASFQoRV09SS0xPQURfS0lORF9QT0QQARIcChhXT1JLTE9BRF9LSU5EX0RFUExPWU1FTlQQAhIbChdXT1JLTE9BRF9LSU5EX0RBRU1PTlNFVBADEh0KGVdPUktMT0FEX0tJTkRfU1RBVEVGVUxTRVQQBBIVChFXT1JLTE9BRF9LSU5EX0pPQhAFEhkKFVdPUktMT0FEX0tJTkRfQ1JPTkpPQhAGEhwKGFdPUktMT0FEX0tJTkRfUkVQTElDQVNFVBAHEhkKFVdPUktMT0FEX0tJTkRfU0VSVklDRRAIMv4BChdBcHBsaWNhdGlvbk1vZGVsU2VydmljZRJlCghHZXRNb2RlbBIqLmFwcGxpY2F0aW9uX21vZGVsLnYxYWxwaGEuR2V0TW9kZWxSZXF1ZXN0GisuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5HZXRNb2RlbFJlc3BvbnNlIgASfAoPU3RyZWFtVGVsZW1ldHJ5EjEuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5TdHJlYW1UZWxlbWV0cnlSZXF1ZXN0GjIuYXBwbGljYXRpb25fbW9kZWwudjFhbHBoYS5TdHJlYW1UZWxlbWV0cnlSZXNwb25zZSIAMAFCNFoyZ2l0aHViLmNvbS9pc292YWxlbnQvaXBhL2FwcGxpY2F0aW9uX21vZGVsL3YxYWxwaGFiBnByb3RvMw", [file_application_model_v1alpha_syscalls, file_google_protobuf_timestamp, file_google_protobuf_wrappers]);
 
 /**
  * @generated from message application_model.v1alpha.ProcessTelemetry
@@ -115,159 +115,9 @@ export const ProcessTelemetrySchema: GenMessage<ProcessTelemetry> = /*@__PURE__*
   messageDesc(file_application_model_v1alpha_application_model, 0);
 
 /**
- * @generated from message application_model.v1alpha.NetworkTelemetry
+ * @generated from message application_model.v1alpha.NetworkConnectTelemetry
  */
-export type NetworkTelemetry = Message<"application_model.v1alpha.NetworkTelemetry"> & {
-  /**
-   * @generated from field: string cluster_name = 1;
-   */
-  clusterName: string;
-
-  /**
-   * @generated from field: string node_name = 2;
-   */
-  nodeName: string;
-
-  /**
-   * @generated from field: application_model.v1alpha.TelemetryType event_type = 3;
-   */
-  eventType: TelemetryType;
-
-  /**
-   * @generated from field: google.protobuf.Timestamp time = 4;
-   */
-  time?: Timestamp;
-
-  /**
-   * @generated from field: string kubernetes_namespace = 5;
-   */
-  kubernetesNamespace: string;
-
-  /**
-   * @generated from field: string kubernetes_workload_name = 6;
-   */
-  kubernetesWorkloadName: string;
-
-  /**
-   * @generated from field: application_model.v1alpha.WorkloadKind kubernetes_workload_kind = 7;
-   */
-  kubernetesWorkloadKind: WorkloadKind;
-
-  /**
-   * @generated from field: string process_hash = 8;
-   */
-  processHash: string;
-
-  /**
-   * @generated from field: string process_name = 9;
-   */
-  processName: string;
-
-  /**
-   * @generated from field: string process_arguments = 10;
-   */
-  processArguments: string;
-
-  /**
-   * @generated from field: string destination_name = 11;
-   */
-  destinationName: string;
-
-  /**
-   * @generated from field: application_model.v1alpha.DestinationType destination_type = 12;
-   */
-  destinationType: DestinationType;
-
-  /**
-   * @generated from field: uint32 destination_port = 13;
-   */
-  destinationPort: number;
-
-  /**
-   * @generated from field: string destination_kubernetes_namespace = 14;
-   */
-  destinationKubernetesNamespace: string;
-
-  /**
-   * @generated from field: application_model.v1alpha.WorkloadKind destination_kubernetes_workload_kind = 15;
-   */
-  destinationKubernetesWorkloadKind: WorkloadKind;
-
-  /**
-   * @generated from field: string destination_kubernetes_workload_name = 16;
-   */
-  destinationKubernetesWorkloadName: string;
-
-  /**
-   * @generated from field: uint64 tx_bytes = 17;
-   */
-  txBytes: bigint;
-
-  /**
-   * @generated from field: uint64 rx_bytes = 18;
-   */
-  rxBytes: bigint;
-
-  /**
-   * @generated from field: uint64 tx_drops = 19;
-   */
-  txDrops: bigint;
-
-  /**
-   * @generated from field: uint64 default_drop_bytes = 20;
-   */
-  defaultDropBytes: bigint;
-
-  /**
-   * @generated from field: uint64 default_allow_bytes = 21;
-   */
-  defaultAllowBytes: bigint;
-
-  /**
-   * @generated from field: uint64 default_drop_sessions = 22;
-   */
-  defaultDropSessions: bigint;
-
-  /**
-   * @generated from field: uint64 default_allowed_sessions = 23;
-   */
-  defaultAllowedSessions: bigint;
-
-  /**
-   * An opaque identifier that is unique to this telemetry data across all the
-   * telemetry types.
-   *
-   * @generated from field: string id = 24;
-   */
-  id: string;
-
-  /**
-   * @generated from field: application_model.v1alpha.NetworkProtocolType protocol = 25;
-   */
-  protocol: NetworkProtocolType;
-
-  /**
-   * Labels of the node that transmitted this telemetry event. For nodes that
-   * belong to a Kubernetes cluster, this field contains Kubernetes node labels.
-   * For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
-   * Kubernetes cluster, this field may contain VM tags / labels.
-   *
-   * @generated from field: map<string, string> node_labels = 26;
-   */
-  nodeLabels: { [key: string]: string };
-};
-
-/**
- * Describes the message application_model.v1alpha.NetworkTelemetry.
- * Use `create(NetworkTelemetrySchema)` to create a new message.
- */
-export const NetworkTelemetrySchema: GenMessage<NetworkTelemetry> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 1);
-
-/**
- * @generated from message application_model.v1alpha.NetworkConnectPolicyTelemetry
- */
-export type NetworkConnectPolicyTelemetry = Message<"application_model.v1alpha.NetworkConnectPolicyTelemetry"> & {
+export type NetworkConnectTelemetry = Message<"application_model.v1alpha.NetworkConnectTelemetry"> & {
   /**
    * An opaque identifier that is unique to this telemetry event across all the
    * telemetry types.
@@ -284,7 +134,7 @@ export type NetworkConnectPolicyTelemetry = Message<"application_model.v1alpha.N
   time?: Timestamp;
 
   /**
-   * Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT_POLICY`.
+   * Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT`.
    *
    * @generated from field: application_model.v1alpha.TelemetryType event_type = 3;
    */
@@ -418,7 +268,8 @@ export type NetworkConnectPolicyTelemetry = Message<"application_model.v1alpha.N
   protocol: NetworkProtocolType;
 
   /**
-   * Policy verdict.
+   * Policy verdict. If the connections don't have corresponding policy rules,
+   * this field is set to POLICY_VERDICT_UNSPECIFIED.
    *
    * @generated from field: application_model.v1alpha.PolicyVerdict verdict = 20;
    */
@@ -426,6 +277,7 @@ export type NetworkConnectPolicyTelemetry = Message<"application_model.v1alpha.N
 
   /**
    * Name of the Tetragon network connect policy that made this verdict.
+   * If the connections don't have corresponding policy rules, this field is not set.
    *
    * @generated from field: string policy_name = 21;
    */
@@ -433,6 +285,11 @@ export type NetworkConnectPolicyTelemetry = Message<"application_model.v1alpha.N
 
   /**
    * Name of the Tetragon network connect policy rule that made this verdict.
+   * If the connections don't have corresponding policy rules, this field is not set.
+   * If the connections were allowed by the default allow rule, this field is set to
+   * "tetragon:default-allow".
+   * If the connections were dropped by the default drop rule, this field is set to
+   * "tetragon:default-drop".
    *
    * @generated from field: string rule_name = 22;
    */
@@ -442,8 +299,7 @@ export type NetworkConnectPolicyTelemetry = Message<"application_model.v1alpha.N
    * tx_bytes allowed or dropped.
    * For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
    * transmit bytes from connections allowed by the policy rule.
-   * For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
-   * dropped transmit bytes from connections dropped by the policy rule.
+   * For `POLICY_VERDICT_DROP` verdict events, this field is set to zero.
    *
    * @generated from field: uint64 tx_bytes = 23;
    */
@@ -458,8 +314,9 @@ export type NetworkConnectPolicyTelemetry = Message<"application_model.v1alpha.N
   rxBytes: bigint;
 
   /**
-   * The number of TCP connections / UDP sessions allowed or dropped by this
-   * policy rule.
+   * The number of TCP connections / UDP sessions.
+   * For `POLICY_VERDICT_UNSPECIFIED` verdict events, this field specifies the
+   * number of TCP connections / UDP sessions created.
    * For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
    * TCP connections / UDP sessions allowed by this policy rule.
    * For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
@@ -471,11 +328,11 @@ export type NetworkConnectPolicyTelemetry = Message<"application_model.v1alpha.N
 };
 
 /**
- * Describes the message application_model.v1alpha.NetworkConnectPolicyTelemetry.
- * Use `create(NetworkConnectPolicyTelemetrySchema)` to create a new message.
+ * Describes the message application_model.v1alpha.NetworkConnectTelemetry.
+ * Use `create(NetworkConnectTelemetrySchema)` to create a new message.
  */
-export const NetworkConnectPolicyTelemetrySchema: GenMessage<NetworkConnectPolicyTelemetry> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 2);
+export const NetworkConnectTelemetrySchema: GenMessage<NetworkConnectTelemetry> = /*@__PURE__*/
+  messageDesc(file_application_model_v1alpha_application_model, 1);
 
 /**
  * @generated from message application_model.v1alpha.ApplicationModelEvent
@@ -507,7 +364,7 @@ export type ApplicationModelEvent = Message<"application_model.v1alpha.Applicati
  * Use `create(ApplicationModelEventSchema)` to create a new message.
  */
 export const ApplicationModelEventSchema: GenMessage<ApplicationModelEvent> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 3);
+  messageDesc(file_application_model_v1alpha_application_model, 2);
 
 /**
  * @generated from message application_model.v1alpha.ApplicationModel
@@ -529,7 +386,7 @@ export type ApplicationModel = Message<"application_model.v1alpha.ApplicationMod
  * Use `create(ApplicationModelSchema)` to create a new message.
  */
 export const ApplicationModelSchema: GenMessage<ApplicationModel> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 4);
+  messageDesc(file_application_model_v1alpha_application_model, 3);
 
 /**
  * @generated from message application_model.v1alpha.ApplicationHost
@@ -549,7 +406,7 @@ export type ApplicationHost = Message<"application_model.v1alpha.ApplicationHost
  * Use `create(ApplicationHostSchema)` to create a new message.
  */
 export const ApplicationHostSchema: GenMessage<ApplicationHost> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 5);
+  messageDesc(file_application_model_v1alpha_application_model, 4);
 
 /**
  * @generated from message application_model.v1alpha.ApplicationNamespace
@@ -571,7 +428,7 @@ export type ApplicationNamespace = Message<"application_model.v1alpha.Applicatio
  * Use `create(ApplicationNamespaceSchema)` to create a new message.
  */
 export const ApplicationNamespaceSchema: GenMessage<ApplicationNamespace> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 6);
+  messageDesc(file_application_model_v1alpha_application_model, 5);
 
 /**
  * @generated from message application_model.v1alpha.ApplicationWorkload
@@ -601,7 +458,7 @@ export type ApplicationWorkload = Message<"application_model.v1alpha.Application
  * Use `create(ApplicationWorkloadSchema)` to create a new message.
  */
 export const ApplicationWorkloadSchema: GenMessage<ApplicationWorkload> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 7);
+  messageDesc(file_application_model_v1alpha_application_model, 6);
 
 /**
  * ApplicationProcessGroup represents a set of processes that are grouped by
@@ -694,7 +551,7 @@ export type ApplicationProcessGroup = Message<"application_model.v1alpha.Applica
  * Use `create(ApplicationProcessGroupSchema)` to create a new message.
  */
 export const ApplicationProcessGroupSchema: GenMessage<ApplicationProcessGroup> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 8);
+  messageDesc(file_application_model_v1alpha_application_model, 7);
 
 /**
  * @generated from message application_model.v1alpha.ApplicationConnection
@@ -716,7 +573,7 @@ export type ApplicationConnection = Message<"application_model.v1alpha.Applicati
  * Use `create(ApplicationConnectionSchema)` to create a new message.
  */
 export const ApplicationConnectionSchema: GenMessage<ApplicationConnection> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 9);
+  messageDesc(file_application_model_v1alpha_application_model, 8);
 
 /**
  * @generated from message application_model.v1alpha.ConnectionStats
@@ -773,7 +630,7 @@ export type ConnectionStats = Message<"application_model.v1alpha.ConnectionStats
  * Use `create(ConnectionStatsSchema)` to create a new message.
  */
 export const ConnectionStatsSchema: GenMessage<ConnectionStats> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 10);
+  messageDesc(file_application_model_v1alpha_application_model, 9);
 
 /**
  * @generated from message application_model.v1alpha.Destination
@@ -813,7 +670,7 @@ export type Destination = Message<"application_model.v1alpha.Destination"> & {
  * Use `create(DestinationSchema)` to create a new message.
  */
 export const DestinationSchema: GenMessage<Destination> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 11);
+  messageDesc(file_application_model_v1alpha_application_model, 10);
 
 /**
  * @generated from message application_model.v1alpha.DestinationDns
@@ -830,7 +687,7 @@ export type DestinationDns = Message<"application_model.v1alpha.DestinationDns">
  * Use `create(DestinationDnsSchema)` to create a new message.
  */
 export const DestinationDnsSchema: GenMessage<DestinationDns> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 12);
+  messageDesc(file_application_model_v1alpha_application_model, 11);
 
 /**
  * @generated from message application_model.v1alpha.DestinationWorkload
@@ -857,7 +714,7 @@ export type DestinationWorkload = Message<"application_model.v1alpha.Destination
  * Use `create(DestinationWorkloadSchema)` to create a new message.
  */
 export const DestinationWorkloadSchema: GenMessage<DestinationWorkload> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 13);
+  messageDesc(file_application_model_v1alpha_application_model, 12);
 
 /**
  * @generated from message application_model.v1alpha.DestinationIP
@@ -874,7 +731,7 @@ export type DestinationIP = Message<"application_model.v1alpha.DestinationIP"> &
  * Use `create(DestinationIPSchema)` to create a new message.
  */
 export const DestinationIPSchema: GenMessage<DestinationIP> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 14);
+  messageDesc(file_application_model_v1alpha_application_model, 13);
 
 /**
  * @generated from message application_model.v1alpha.ApplicationSyscalls
@@ -896,7 +753,7 @@ export type ApplicationSyscalls = Message<"application_model.v1alpha.Application
  * Use `create(ApplicationSyscallsSchema)` to create a new message.
  */
 export const ApplicationSyscallsSchema: GenMessage<ApplicationSyscalls> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 15);
+  messageDesc(file_application_model_v1alpha_application_model, 14);
 
 /**
  * @generated from message application_model.v1alpha.GetModelRequest
@@ -922,7 +779,7 @@ export type GetModelRequest = Message<"application_model.v1alpha.GetModelRequest
  * Use `create(GetModelRequestSchema)` to create a new message.
  */
 export const GetModelRequestSchema: GenMessage<GetModelRequest> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 16);
+  messageDesc(file_application_model_v1alpha_application_model, 15);
 
 /**
  * @generated from message application_model.v1alpha.GetModelResponse
@@ -939,7 +796,7 @@ export type GetModelResponse = Message<"application_model.v1alpha.GetModelRespon
  * Use `create(GetModelResponseSchema)` to create a new message.
  */
 export const GetModelResponseSchema: GenMessage<GetModelResponse> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 17);
+  messageDesc(file_application_model_v1alpha_application_model, 16);
 
 /**
  * @generated from message application_model.v1alpha.StreamTelemetryRequest
@@ -965,25 +822,29 @@ export type StreamTelemetryRequest = Message<"application_model.v1alpha.StreamTe
  * Use `create(StreamTelemetryRequestSchema)` to create a new message.
  */
 export const StreamTelemetryRequestSchema: GenMessage<StreamTelemetryRequest> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 18);
+  messageDesc(file_application_model_v1alpha_application_model, 17);
 
 /**
  * @generated from message application_model.v1alpha.StreamTelemetryResponse
  */
 export type StreamTelemetryResponse = Message<"application_model.v1alpha.StreamTelemetryResponse"> & {
   /**
-   * The type-speicifc fields of flat events.
+   * Each StreamTelemetryResponse contains one of the telemetry events listed below.
    *
    * @generated from oneof application_model.v1alpha.StreamTelemetryResponse.event
    */
   event: {
     /**
-     * Application Model Network Flat Entry event has the
-     *
-     * @generated from field: application_model.v1alpha.NetworkTelemetry network = 1;
+     * @generated from field: application_model.v1alpha.ProcessTelemetry process = 1;
      */
-    value: NetworkTelemetry;
-    case: "network";
+    value: ProcessTelemetry;
+    case: "process";
+  } | {
+    /**
+     * @generated from field: application_model.v1alpha.NetworkConnectTelemetry network_connect = 2;
+     */
+    value: NetworkConnectTelemetry;
+    case: "networkConnect";
   } | { case: undefined; value?: undefined };
 };
 
@@ -992,7 +853,7 @@ export type StreamTelemetryResponse = Message<"application_model.v1alpha.StreamT
  * Use `create(StreamTelemetryResponseSchema)` to create a new message.
  */
 export const StreamTelemetryResponseSchema: GenMessage<StreamTelemetryResponse> = /*@__PURE__*/
-  messageDesc(file_application_model_v1alpha_application_model, 19);
+  messageDesc(file_application_model_v1alpha_application_model, 18);
 
 /**
  * @generated from enum application_model.v1alpha.PolicyVerdict
@@ -1095,11 +956,6 @@ export enum TelemetryType {
    * @generated from enum value: TELEMETRY_TYPE_NETWORK_CONNECT = 2;
    */
   NETWORK_CONNECT = 2,
-
-  /**
-   * @generated from enum value: TELEMETRY_TYPE_NETWORK_CONNECT_POLICY = 3;
-   */
-  NETWORK_CONNECT_POLICY = 3,
 }
 
 /**

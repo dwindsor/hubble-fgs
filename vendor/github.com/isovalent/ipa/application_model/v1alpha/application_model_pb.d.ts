@@ -110,158 +110,9 @@ export declare type ProcessTelemetry = Message<"application_model.v1alpha.Proces
 export declare const ProcessTelemetrySchema: GenMessage<ProcessTelemetry>;
 
 /**
- * @generated from message application_model.v1alpha.NetworkTelemetry
+ * @generated from message application_model.v1alpha.NetworkConnectTelemetry
  */
-export declare type NetworkTelemetry = Message<"application_model.v1alpha.NetworkTelemetry"> & {
-  /**
-   * @generated from field: string cluster_name = 1;
-   */
-  clusterName: string;
-
-  /**
-   * @generated from field: string node_name = 2;
-   */
-  nodeName: string;
-
-  /**
-   * @generated from field: application_model.v1alpha.TelemetryType event_type = 3;
-   */
-  eventType: TelemetryType;
-
-  /**
-   * @generated from field: google.protobuf.Timestamp time = 4;
-   */
-  time?: Timestamp;
-
-  /**
-   * @generated from field: string kubernetes_namespace = 5;
-   */
-  kubernetesNamespace: string;
-
-  /**
-   * @generated from field: string kubernetes_workload_name = 6;
-   */
-  kubernetesWorkloadName: string;
-
-  /**
-   * @generated from field: application_model.v1alpha.WorkloadKind kubernetes_workload_kind = 7;
-   */
-  kubernetesWorkloadKind: WorkloadKind;
-
-  /**
-   * @generated from field: string process_hash = 8;
-   */
-  processHash: string;
-
-  /**
-   * @generated from field: string process_name = 9;
-   */
-  processName: string;
-
-  /**
-   * @generated from field: string process_arguments = 10;
-   */
-  processArguments: string;
-
-  /**
-   * @generated from field: string destination_name = 11;
-   */
-  destinationName: string;
-
-  /**
-   * @generated from field: application_model.v1alpha.DestinationType destination_type = 12;
-   */
-  destinationType: DestinationType;
-
-  /**
-   * @generated from field: uint32 destination_port = 13;
-   */
-  destinationPort: number;
-
-  /**
-   * @generated from field: string destination_kubernetes_namespace = 14;
-   */
-  destinationKubernetesNamespace: string;
-
-  /**
-   * @generated from field: application_model.v1alpha.WorkloadKind destination_kubernetes_workload_kind = 15;
-   */
-  destinationKubernetesWorkloadKind: WorkloadKind;
-
-  /**
-   * @generated from field: string destination_kubernetes_workload_name = 16;
-   */
-  destinationKubernetesWorkloadName: string;
-
-  /**
-   * @generated from field: uint64 tx_bytes = 17;
-   */
-  txBytes: bigint;
-
-  /**
-   * @generated from field: uint64 rx_bytes = 18;
-   */
-  rxBytes: bigint;
-
-  /**
-   * @generated from field: uint64 tx_drops = 19;
-   */
-  txDrops: bigint;
-
-  /**
-   * @generated from field: uint64 default_drop_bytes = 20;
-   */
-  defaultDropBytes: bigint;
-
-  /**
-   * @generated from field: uint64 default_allow_bytes = 21;
-   */
-  defaultAllowBytes: bigint;
-
-  /**
-   * @generated from field: uint64 default_drop_sessions = 22;
-   */
-  defaultDropSessions: bigint;
-
-  /**
-   * @generated from field: uint64 default_allowed_sessions = 23;
-   */
-  defaultAllowedSessions: bigint;
-
-  /**
-   * An opaque identifier that is unique to this telemetry data across all the
-   * telemetry types.
-   *
-   * @generated from field: string id = 24;
-   */
-  id: string;
-
-  /**
-   * @generated from field: application_model.v1alpha.NetworkProtocolType protocol = 25;
-   */
-  protocol: NetworkProtocolType;
-
-  /**
-   * Labels of the node that transmitted this telemetry event. For nodes that
-   * belong to a Kubernetes cluster, this field contains Kubernetes node labels.
-   * For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
-   * Kubernetes cluster, this field may contain VM tags / labels.
-   *
-   * @generated from field: map<string, string> node_labels = 26;
-   */
-  nodeLabels: { [key: string]: string };
-};
-
-/**
- * Describes the message application_model.v1alpha.NetworkTelemetry.
- * Use `create(NetworkTelemetrySchema)` to create a new message.
- */
-export declare const NetworkTelemetrySchema: GenMessage<NetworkTelemetry>;
-
-/**
- * @generated from message application_model.v1alpha.NetworkConnectPolicyTelemetry
- */
-export declare type NetworkConnectPolicyTelemetry = Message<"application_model.v1alpha.NetworkConnectPolicyTelemetry"> & {
+export declare type NetworkConnectTelemetry = Message<"application_model.v1alpha.NetworkConnectTelemetry"> & {
   /**
    * An opaque identifier that is unique to this telemetry event across all the
    * telemetry types.
@@ -278,7 +129,7 @@ export declare type NetworkConnectPolicyTelemetry = Message<"application_model.v
   time?: Timestamp;
 
   /**
-   * Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT_POLICY`.
+   * Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT`.
    *
    * @generated from field: application_model.v1alpha.TelemetryType event_type = 3;
    */
@@ -412,7 +263,8 @@ export declare type NetworkConnectPolicyTelemetry = Message<"application_model.v
   protocol: NetworkProtocolType;
 
   /**
-   * Policy verdict.
+   * Policy verdict. If the connections don't have corresponding policy rules,
+   * this field is set to POLICY_VERDICT_UNSPECIFIED.
    *
    * @generated from field: application_model.v1alpha.PolicyVerdict verdict = 20;
    */
@@ -420,6 +272,7 @@ export declare type NetworkConnectPolicyTelemetry = Message<"application_model.v
 
   /**
    * Name of the Tetragon network connect policy that made this verdict.
+   * If the connections don't have corresponding policy rules, this field is not set.
    *
    * @generated from field: string policy_name = 21;
    */
@@ -427,6 +280,11 @@ export declare type NetworkConnectPolicyTelemetry = Message<"application_model.v
 
   /**
    * Name of the Tetragon network connect policy rule that made this verdict.
+   * If the connections don't have corresponding policy rules, this field is not set.
+   * If the connections were allowed by the default allow rule, this field is set to
+   * "tetragon:default-allow".
+   * If the connections were dropped by the default drop rule, this field is set to
+   * "tetragon:default-drop".
    *
    * @generated from field: string rule_name = 22;
    */
@@ -436,8 +294,7 @@ export declare type NetworkConnectPolicyTelemetry = Message<"application_model.v
    * tx_bytes allowed or dropped.
    * For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
    * transmit bytes from connections allowed by the policy rule.
-   * For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
-   * dropped transmit bytes from connections dropped by the policy rule.
+   * For `POLICY_VERDICT_DROP` verdict events, this field is set to zero.
    *
    * @generated from field: uint64 tx_bytes = 23;
    */
@@ -452,8 +309,9 @@ export declare type NetworkConnectPolicyTelemetry = Message<"application_model.v
   rxBytes: bigint;
 
   /**
-   * The number of TCP connections / UDP sessions allowed or dropped by this
-   * policy rule.
+   * The number of TCP connections / UDP sessions.
+   * For `POLICY_VERDICT_UNSPECIFIED` verdict events, this field specifies the
+   * number of TCP connections / UDP sessions created.
    * For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
    * TCP connections / UDP sessions allowed by this policy rule.
    * For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
@@ -465,10 +323,10 @@ export declare type NetworkConnectPolicyTelemetry = Message<"application_model.v
 };
 
 /**
- * Describes the message application_model.v1alpha.NetworkConnectPolicyTelemetry.
- * Use `create(NetworkConnectPolicyTelemetrySchema)` to create a new message.
+ * Describes the message application_model.v1alpha.NetworkConnectTelemetry.
+ * Use `create(NetworkConnectTelemetrySchema)` to create a new message.
  */
-export declare const NetworkConnectPolicyTelemetrySchema: GenMessage<NetworkConnectPolicyTelemetry>;
+export declare const NetworkConnectTelemetrySchema: GenMessage<NetworkConnectTelemetry>;
 
 /**
  * @generated from message application_model.v1alpha.ApplicationModelEvent
@@ -949,18 +807,22 @@ export declare const StreamTelemetryRequestSchema: GenMessage<StreamTelemetryReq
  */
 export declare type StreamTelemetryResponse = Message<"application_model.v1alpha.StreamTelemetryResponse"> & {
   /**
-   * The type-speicifc fields of flat events.
+   * Each StreamTelemetryResponse contains one of the telemetry events listed below.
    *
    * @generated from oneof application_model.v1alpha.StreamTelemetryResponse.event
    */
   event: {
     /**
-     * Application Model Network Flat Entry event has the
-     *
-     * @generated from field: application_model.v1alpha.NetworkTelemetry network = 1;
+     * @generated from field: application_model.v1alpha.ProcessTelemetry process = 1;
      */
-    value: NetworkTelemetry;
-    case: "network";
+    value: ProcessTelemetry;
+    case: "process";
+  } | {
+    /**
+     * @generated from field: application_model.v1alpha.NetworkConnectTelemetry network_connect = 2;
+     */
+    value: NetworkConnectTelemetry;
+    case: "networkConnect";
   } | { case: undefined; value?: undefined };
 };
 
@@ -1068,11 +930,6 @@ export enum TelemetryType {
    * @generated from enum value: TELEMETRY_TYPE_NETWORK_CONNECT = 2;
    */
   NETWORK_CONNECT = 2,
-
-  /**
-   * @generated from enum value: TELEMETRY_TYPE_NETWORK_CONNECT_POLICY = 3;
-   */
-  NETWORK_CONNECT_POLICY = 3,
 }
 
 /**

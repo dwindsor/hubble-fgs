@@ -877,8 +877,8 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 				return err
 			}
 			for _, entry := range netFlatPack {
-				network := &appModelV1.StreamTelemetryResponse_Network{
-					Network: entry,
+				network := &appModelV1.StreamTelemetryResponse_NetworkConnect{
+					NetworkConnect: entry,
 				}
 				send := appModelV1.StreamTelemetryResponse{
 					Event: network,

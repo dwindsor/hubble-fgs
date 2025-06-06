@@ -112,6 +112,12 @@
 - [ocsf/v1alpha/cisco.proto](#ocsf_v1alpha_cisco-proto)
     - [EndpointEvent](#ocsf-v1alpha-EndpointEvent)
   
+- [ocsf/v1alpha/grpc.proto](#ocsf_v1alpha_grpc-proto)
+    - [StreamOCSFRequest](#ocsf-v1alpha-StreamOCSFRequest)
+    - [StreamOCSFResponse](#ocsf-v1alpha-StreamOCSFResponse)
+  
+    - [OCSFService](#ocsf-v1alpha-OCSFService)
+  
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -5602,6 +5608,59 @@ ocsf.Authentication authentication_detail = 113; ocsf.ProcessQuery process_query
  
 
  
+
+ 
+
+
+
+<a name="ocsf_v1alpha_grpc-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## ocsf/v1alpha/grpc.proto
+
+
+
+<a name="ocsf-v1alpha-StreamOCSFRequest"></a>
+
+### StreamOCSFRequest
+
+
+
+
+
+
+
+<a name="ocsf-v1alpha-StreamOCSFResponse"></a>
+
+### StreamOCSFResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| network_activity_detail | [NetworkActivity](#ocsf-v1alpha-NetworkActivity) |  | ocsf.ProcessActivity process_activity_detail = 101; ocsf.MemoryActivity memory_activity_detail = 102; ocsf.HTTPActivity http_activity_detail = 103; ocsf.FileSystemActivity file_activity_detail = 104; ocsf.DetectionFinding detection_finding_detail = 105; ocsf.RegistryKeyActivity registry_key_activity_detail = 106; ocsf.RegistryValueActivity registry_value_activity_detail = 107; ocsf.DNSActivity dns_activity_detail = 108; ocsf.WindowsServiceActivity windows_service_activity_detail = 109; ocsf.ScheduledJobActivity scheduled_job_activity_detail = 110; ocsf.ScriptActivity script_activity_detail = 111;
+
+ocsf.Authentication authentication_detail = 113; ocsf.ProcessQuery process_query_detail = 114; |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+
+<a name="ocsf-v1alpha-OCSFService"></a>
+
+### OCSFService
+
+
+| Method Name | Request Type | Response Type | Description |
+| ----------- | ------------ | ------------- | ------------|
+| StreamOCSF | [StreamOCSFRequest](#ocsf-v1alpha-StreamOCSFRequest) | [StreamOCSFResponse](#ocsf-v1alpha-StreamOCSFResponse) stream |  |
 
  
 

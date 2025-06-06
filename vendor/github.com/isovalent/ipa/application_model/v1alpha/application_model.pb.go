@@ -184,10 +184,9 @@ func (DestinationType) EnumDescriptor() ([]byte, []int) {
 type TelemetryType int32
 
 const (
-	TelemetryType_TELEMETRY_TYPE_UNSPECIFIED            TelemetryType = 0
-	TelemetryType_TELEMETRY_TYPE_PROCESS                TelemetryType = 1
-	TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT        TelemetryType = 2
-	TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT_POLICY TelemetryType = 3
+	TelemetryType_TELEMETRY_TYPE_UNSPECIFIED     TelemetryType = 0
+	TelemetryType_TELEMETRY_TYPE_PROCESS         TelemetryType = 1
+	TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT TelemetryType = 2
 )
 
 // Enum value maps for TelemetryType.
@@ -196,13 +195,11 @@ var (
 		0: "TELEMETRY_TYPE_UNSPECIFIED",
 		1: "TELEMETRY_TYPE_PROCESS",
 		2: "TELEMETRY_TYPE_NETWORK_CONNECT",
-		3: "TELEMETRY_TYPE_NETWORK_CONNECT_POLICY",
 	}
 	TelemetryType_value = map[string]int32{
-		"TELEMETRY_TYPE_UNSPECIFIED":            0,
-		"TELEMETRY_TYPE_PROCESS":                1,
-		"TELEMETRY_TYPE_NETWORK_CONNECT":        2,
-		"TELEMETRY_TYPE_NETWORK_CONNECT_POLICY": 3,
+		"TELEMETRY_TYPE_UNSPECIFIED":     0,
+		"TELEMETRY_TYPE_PROCESS":         1,
+		"TELEMETRY_TYPE_NETWORK_CONNECT": 2,
 	}
 )
 
@@ -454,264 +451,14 @@ func (x *ProcessTelemetry) GetNodeLabels() map[string]string {
 	return nil
 }
 
-type NetworkTelemetry struct {
-	state                             protoimpl.MessageState `protogen:"open.v1"`
-	ClusterName                       string                 `protobuf:"bytes,1,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
-	NodeName                          string                 `protobuf:"bytes,2,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
-	EventType                         TelemetryType          `protobuf:"varint,3,opt,name=event_type,json=eventType,proto3,enum=application_model.v1alpha.TelemetryType" json:"event_type,omitempty"`
-	Time                              *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=time,proto3" json:"time,omitempty"`
-	KubernetesNamespace               string                 `protobuf:"bytes,5,opt,name=kubernetes_namespace,json=kubernetesNamespace,proto3" json:"kubernetes_namespace,omitempty"`
-	KubernetesWorkloadName            string                 `protobuf:"bytes,6,opt,name=kubernetes_workload_name,json=kubernetesWorkloadName,proto3" json:"kubernetes_workload_name,omitempty"`
-	KubernetesWorkloadKind            WorkloadKind           `protobuf:"varint,7,opt,name=kubernetes_workload_kind,json=kubernetesWorkloadKind,proto3,enum=application_model.v1alpha.WorkloadKind" json:"kubernetes_workload_kind,omitempty"`
-	ProcessHash                       string                 `protobuf:"bytes,8,opt,name=process_hash,json=processHash,proto3" json:"process_hash,omitempty"`
-	ProcessName                       string                 `protobuf:"bytes,9,opt,name=process_name,json=processName,proto3" json:"process_name,omitempty"`
-	ProcessArguments                  string                 `protobuf:"bytes,10,opt,name=process_arguments,json=processArguments,proto3" json:"process_arguments,omitempty"`
-	DestinationName                   string                 `protobuf:"bytes,11,opt,name=destination_name,json=destinationName,proto3" json:"destination_name,omitempty"`
-	DestinationType                   DestinationType        `protobuf:"varint,12,opt,name=destination_type,json=destinationType,proto3,enum=application_model.v1alpha.DestinationType" json:"destination_type,omitempty"`
-	DestinationPort                   uint32                 `protobuf:"varint,13,opt,name=destination_port,json=destinationPort,proto3" json:"destination_port,omitempty"`
-	DestinationKubernetesNamespace    string                 `protobuf:"bytes,14,opt,name=destination_kubernetes_namespace,json=destinationKubernetesNamespace,proto3" json:"destination_kubernetes_namespace,omitempty"`
-	DestinationKubernetesWorkloadKind WorkloadKind           `protobuf:"varint,15,opt,name=destination_kubernetes_workload_kind,json=destinationKubernetesWorkloadKind,proto3,enum=application_model.v1alpha.WorkloadKind" json:"destination_kubernetes_workload_kind,omitempty"`
-	DestinationKubernetesWorkloadName string                 `protobuf:"bytes,16,opt,name=destination_kubernetes_workload_name,json=destinationKubernetesWorkloadName,proto3" json:"destination_kubernetes_workload_name,omitempty"`
-	TxBytes                           uint64                 `protobuf:"varint,17,opt,name=tx_bytes,json=txBytes,proto3" json:"tx_bytes,omitempty"`
-	RxBytes                           uint64                 `protobuf:"varint,18,opt,name=rx_bytes,json=rxBytes,proto3" json:"rx_bytes,omitempty"`
-	TxDrops                           uint64                 `protobuf:"varint,19,opt,name=tx_drops,json=txDrops,proto3" json:"tx_drops,omitempty"`
-	DefaultDropBytes                  uint64                 `protobuf:"varint,20,opt,name=default_drop_bytes,json=defaultDropBytes,proto3" json:"default_drop_bytes,omitempty"`
-	DefaultAllowBytes                 uint64                 `protobuf:"varint,21,opt,name=default_allow_bytes,json=defaultAllowBytes,proto3" json:"default_allow_bytes,omitempty"`
-	DefaultDropSessions               uint64                 `protobuf:"varint,22,opt,name=default_drop_sessions,json=defaultDropSessions,proto3" json:"default_drop_sessions,omitempty"`
-	DefaultAllowedSessions            uint64                 `protobuf:"varint,23,opt,name=default_allowed_sessions,json=defaultAllowedSessions,proto3" json:"default_allowed_sessions,omitempty"`
-	// An opaque identifier that is unique to this telemetry data across all the
-	// telemetry types.
-	Id       string              `protobuf:"bytes,24,opt,name=id,proto3" json:"id,omitempty"`
-	Protocol NetworkProtocolType `protobuf:"varint,25,opt,name=protocol,proto3,enum=application_model.v1alpha.NetworkProtocolType" json:"protocol,omitempty"`
-	// Labels of the node that transmitted this telemetry event. For nodes that
-	// belong to a Kubernetes cluster, this field contains Kubernetes node labels.
-	// For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
-	// Kubernetes cluster, this field may contain VM tags / labels.
-	NodeLabels    map[string]string `protobuf:"bytes,26,rep,name=node_labels,json=nodeLabels,proto3" json:"node_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *NetworkTelemetry) Reset() {
-	*x = NetworkTelemetry{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NetworkTelemetry) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NetworkTelemetry) ProtoMessage() {}
-
-func (x *NetworkTelemetry) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NetworkTelemetry.ProtoReflect.Descriptor instead.
-func (*NetworkTelemetry) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *NetworkTelemetry) GetClusterName() string {
-	if x != nil {
-		return x.ClusterName
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetNodeName() string {
-	if x != nil {
-		return x.NodeName
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetEventType() TelemetryType {
-	if x != nil {
-		return x.EventType
-	}
-	return TelemetryType_TELEMETRY_TYPE_UNSPECIFIED
-}
-
-func (x *NetworkTelemetry) GetTime() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Time
-	}
-	return nil
-}
-
-func (x *NetworkTelemetry) GetKubernetesNamespace() string {
-	if x != nil {
-		return x.KubernetesNamespace
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetKubernetesWorkloadName() string {
-	if x != nil {
-		return x.KubernetesWorkloadName
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetKubernetesWorkloadKind() WorkloadKind {
-	if x != nil {
-		return x.KubernetesWorkloadKind
-	}
-	return WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
-}
-
-func (x *NetworkTelemetry) GetProcessHash() string {
-	if x != nil {
-		return x.ProcessHash
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetProcessName() string {
-	if x != nil {
-		return x.ProcessName
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetProcessArguments() string {
-	if x != nil {
-		return x.ProcessArguments
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetDestinationName() string {
-	if x != nil {
-		return x.DestinationName
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetDestinationType() DestinationType {
-	if x != nil {
-		return x.DestinationType
-	}
-	return DestinationType_DESTINATION_TYPE_UNSPECIFIED
-}
-
-func (x *NetworkTelemetry) GetDestinationPort() uint32 {
-	if x != nil {
-		return x.DestinationPort
-	}
-	return 0
-}
-
-func (x *NetworkTelemetry) GetDestinationKubernetesNamespace() string {
-	if x != nil {
-		return x.DestinationKubernetesNamespace
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetDestinationKubernetesWorkloadKind() WorkloadKind {
-	if x != nil {
-		return x.DestinationKubernetesWorkloadKind
-	}
-	return WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
-}
-
-func (x *NetworkTelemetry) GetDestinationKubernetesWorkloadName() string {
-	if x != nil {
-		return x.DestinationKubernetesWorkloadName
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetTxBytes() uint64 {
-	if x != nil {
-		return x.TxBytes
-	}
-	return 0
-}
-
-func (x *NetworkTelemetry) GetRxBytes() uint64 {
-	if x != nil {
-		return x.RxBytes
-	}
-	return 0
-}
-
-func (x *NetworkTelemetry) GetTxDrops() uint64 {
-	if x != nil {
-		return x.TxDrops
-	}
-	return 0
-}
-
-func (x *NetworkTelemetry) GetDefaultDropBytes() uint64 {
-	if x != nil {
-		return x.DefaultDropBytes
-	}
-	return 0
-}
-
-func (x *NetworkTelemetry) GetDefaultAllowBytes() uint64 {
-	if x != nil {
-		return x.DefaultAllowBytes
-	}
-	return 0
-}
-
-func (x *NetworkTelemetry) GetDefaultDropSessions() uint64 {
-	if x != nil {
-		return x.DefaultDropSessions
-	}
-	return 0
-}
-
-func (x *NetworkTelemetry) GetDefaultAllowedSessions() uint64 {
-	if x != nil {
-		return x.DefaultAllowedSessions
-	}
-	return 0
-}
-
-func (x *NetworkTelemetry) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *NetworkTelemetry) GetProtocol() NetworkProtocolType {
-	if x != nil {
-		return x.Protocol
-	}
-	return NetworkProtocolType_NETWORK_PROTOCOL_TYPE_UNSPECIFIED
-}
-
-func (x *NetworkTelemetry) GetNodeLabels() map[string]string {
-	if x != nil {
-		return x.NodeLabels
-	}
-	return nil
-}
-
-type NetworkConnectPolicyTelemetry struct {
+type NetworkConnectTelemetry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// An opaque identifier that is unique to this telemetry event across all the
 	// telemetry types.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Timestamp at which this telemetry event got transmitted.
 	Time *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=time,proto3" json:"time,omitempty"`
-	// Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT_POLICY`.
+	// Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT`.
 	EventType TelemetryType `protobuf:"varint,3,opt,name=event_type,json=eventType,proto3,enum=application_model.v1alpha.TelemetryType" json:"event_type,omitempty"`
 	// Name of the cluster that transmitted this telemetry event.
 	ClusterName string `protobuf:"bytes,4,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
@@ -760,23 +507,30 @@ type NetworkConnectPolicyTelemetry struct {
 	// Network protocol of the connection that received this network connect
 	// policy verdict.
 	Protocol NetworkProtocolType `protobuf:"varint,19,opt,name=protocol,proto3,enum=application_model.v1alpha.NetworkProtocolType" json:"protocol,omitempty"`
-	// Policy verdict.
+	// Policy verdict. If the connections don't have corresponding policy rules,
+	// this field is set to POLICY_VERDICT_UNSPECIFIED.
 	Verdict PolicyVerdict `protobuf:"varint,20,opt,name=verdict,proto3,enum=application_model.v1alpha.PolicyVerdict" json:"verdict,omitempty"`
 	// Name of the Tetragon network connect policy that made this verdict.
+	// If the connections don't have corresponding policy rules, this field is not set.
 	PolicyName string `protobuf:"bytes,21,opt,name=policy_name,json=policyName,proto3" json:"policy_name,omitempty"`
 	// Name of the Tetragon network connect policy rule that made this verdict.
+	// If the connections don't have corresponding policy rules, this field is not set.
+	// If the connections were allowed by the default allow rule, this field is set to
+	// "tetragon:default-allow".
+	// If the connections were dropped by the default drop rule, this field is set to
+	// "tetragon:default-drop".
 	RuleName string `protobuf:"bytes,22,opt,name=rule_name,json=ruleName,proto3" json:"rule_name,omitempty"`
 	// tx_bytes allowed or dropped.
 	// For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
 	// transmit bytes from connections allowed by the policy rule.
-	// For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
-	// dropped transmit bytes from connections dropped by the policy rule.
+	// For `POLICY_VERDICT_DROP` verdict events, this field is set to zero.
 	TxBytes uint64 `protobuf:"varint,23,opt,name=tx_bytes,json=txBytes,proto3" json:"tx_bytes,omitempty"`
 	// The number of receive bytes from connections allowed by the policy rule. This
 	// field is not set for `POLICY_VERDICT_DROP` verdict events.
 	RxBytes uint64 `protobuf:"varint,24,opt,name=rx_bytes,json=rxBytes,proto3" json:"rx_bytes,omitempty"`
-	// The number of TCP connections / UDP sessions allowed or dropped by this
-	// policy rule.
+	// The number of TCP connections / UDP sessions.
+	// For `POLICY_VERDICT_UNSPECIFIED` verdict events, this field specifies the
+	// number of TCP connections / UDP sessions created.
 	// For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
 	// TCP connections / UDP sessions allowed by this policy rule.
 	// For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
@@ -786,21 +540,21 @@ type NetworkConnectPolicyTelemetry struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *NetworkConnectPolicyTelemetry) Reset() {
-	*x = NetworkConnectPolicyTelemetry{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[2]
+func (x *NetworkConnectTelemetry) Reset() {
+	*x = NetworkConnectTelemetry{}
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *NetworkConnectPolicyTelemetry) String() string {
+func (x *NetworkConnectTelemetry) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*NetworkConnectPolicyTelemetry) ProtoMessage() {}
+func (*NetworkConnectTelemetry) ProtoMessage() {}
 
-func (x *NetworkConnectPolicyTelemetry) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[2]
+func (x *NetworkConnectTelemetry) ProtoReflect() protoreflect.Message {
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -811,180 +565,180 @@ func (x *NetworkConnectPolicyTelemetry) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use NetworkConnectPolicyTelemetry.ProtoReflect.Descriptor instead.
-func (*NetworkConnectPolicyTelemetry) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use NetworkConnectTelemetry.ProtoReflect.Descriptor instead.
+func (*NetworkConnectTelemetry) Descriptor() ([]byte, []int) {
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetId() string {
+func (x *NetworkConnectTelemetry) GetId() string {
 	if x != nil {
 		return x.Id
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetTime() *timestamppb.Timestamp {
+func (x *NetworkConnectTelemetry) GetTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.Time
 	}
 	return nil
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetEventType() TelemetryType {
+func (x *NetworkConnectTelemetry) GetEventType() TelemetryType {
 	if x != nil {
 		return x.EventType
 	}
 	return TelemetryType_TELEMETRY_TYPE_UNSPECIFIED
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetClusterName() string {
+func (x *NetworkConnectTelemetry) GetClusterName() string {
 	if x != nil {
 		return x.ClusterName
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetNodeName() string {
+func (x *NetworkConnectTelemetry) GetNodeName() string {
 	if x != nil {
 		return x.NodeName
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetNodeLabels() map[string]string {
+func (x *NetworkConnectTelemetry) GetNodeLabels() map[string]string {
 	if x != nil {
 		return x.NodeLabels
 	}
 	return nil
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetKubernetesNamespace() string {
+func (x *NetworkConnectTelemetry) GetKubernetesNamespace() string {
 	if x != nil {
 		return x.KubernetesNamespace
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetKubernetesWorkloadKind() WorkloadKind {
+func (x *NetworkConnectTelemetry) GetKubernetesWorkloadKind() WorkloadKind {
 	if x != nil {
 		return x.KubernetesWorkloadKind
 	}
 	return WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetKubernetesWorkloadName() string {
+func (x *NetworkConnectTelemetry) GetKubernetesWorkloadName() string {
 	if x != nil {
 		return x.KubernetesWorkloadName
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetProcessHash() string {
+func (x *NetworkConnectTelemetry) GetProcessHash() string {
 	if x != nil {
 		return x.ProcessHash
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetProcessName() string {
+func (x *NetworkConnectTelemetry) GetProcessName() string {
 	if x != nil {
 		return x.ProcessName
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetProcessArguments() string {
+func (x *NetworkConnectTelemetry) GetProcessArguments() string {
 	if x != nil {
 		return x.ProcessArguments
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetDestinationName() string {
+func (x *NetworkConnectTelemetry) GetDestinationName() string {
 	if x != nil {
 		return x.DestinationName
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetDestinationType() DestinationType {
+func (x *NetworkConnectTelemetry) GetDestinationType() DestinationType {
 	if x != nil {
 		return x.DestinationType
 	}
 	return DestinationType_DESTINATION_TYPE_UNSPECIFIED
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetDestinationPort() uint32 {
+func (x *NetworkConnectTelemetry) GetDestinationPort() uint32 {
 	if x != nil {
 		return x.DestinationPort
 	}
 	return 0
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetDestinationKubernetesNamespace() string {
+func (x *NetworkConnectTelemetry) GetDestinationKubernetesNamespace() string {
 	if x != nil {
 		return x.DestinationKubernetesNamespace
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetDestinationKubernetesWorkloadKind() WorkloadKind {
+func (x *NetworkConnectTelemetry) GetDestinationKubernetesWorkloadKind() WorkloadKind {
 	if x != nil {
 		return x.DestinationKubernetesWorkloadKind
 	}
 	return WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetDestinationKubernetesWorkloadName() string {
+func (x *NetworkConnectTelemetry) GetDestinationKubernetesWorkloadName() string {
 	if x != nil {
 		return x.DestinationKubernetesWorkloadName
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetProtocol() NetworkProtocolType {
+func (x *NetworkConnectTelemetry) GetProtocol() NetworkProtocolType {
 	if x != nil {
 		return x.Protocol
 	}
 	return NetworkProtocolType_NETWORK_PROTOCOL_TYPE_UNSPECIFIED
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetVerdict() PolicyVerdict {
+func (x *NetworkConnectTelemetry) GetVerdict() PolicyVerdict {
 	if x != nil {
 		return x.Verdict
 	}
 	return PolicyVerdict_POLICY_VERDICT_UNSPECIFIED
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetPolicyName() string {
+func (x *NetworkConnectTelemetry) GetPolicyName() string {
 	if x != nil {
 		return x.PolicyName
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetRuleName() string {
+func (x *NetworkConnectTelemetry) GetRuleName() string {
 	if x != nil {
 		return x.RuleName
 	}
 	return ""
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetTxBytes() uint64 {
+func (x *NetworkConnectTelemetry) GetTxBytes() uint64 {
 	if x != nil {
 		return x.TxBytes
 	}
 	return 0
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetRxBytes() uint64 {
+func (x *NetworkConnectTelemetry) GetRxBytes() uint64 {
 	if x != nil {
 		return x.RxBytes
 	}
 	return 0
 }
 
-func (x *NetworkConnectPolicyTelemetry) GetSessions() uint64 {
+func (x *NetworkConnectTelemetry) GetSessions() uint64 {
 	if x != nil {
 		return x.Sessions
 	}
@@ -1003,7 +757,7 @@ type ApplicationModelEvent struct {
 
 func (x *ApplicationModelEvent) Reset() {
 	*x = ApplicationModelEvent{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[3]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1015,7 +769,7 @@ func (x *ApplicationModelEvent) String() string {
 func (*ApplicationModelEvent) ProtoMessage() {}
 
 func (x *ApplicationModelEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[3]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1028,7 +782,7 @@ func (x *ApplicationModelEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationModelEvent.ProtoReflect.Descriptor instead.
 func (*ApplicationModelEvent) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{3}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ApplicationModelEvent) GetClusterName() string {
@@ -1069,7 +823,7 @@ type ApplicationModel struct {
 
 func (x *ApplicationModel) Reset() {
 	*x = ApplicationModel{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[4]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1081,7 +835,7 @@ func (x *ApplicationModel) String() string {
 func (*ApplicationModel) ProtoMessage() {}
 
 func (x *ApplicationModel) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[4]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1094,7 +848,7 @@ func (x *ApplicationModel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationModel.ProtoReflect.Descriptor instead.
 func (*ApplicationModel) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{4}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ApplicationModel) GetNamespaces() []*ApplicationNamespace {
@@ -1122,7 +876,7 @@ type ApplicationHost struct {
 
 func (x *ApplicationHost) Reset() {
 	*x = ApplicationHost{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[5]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1134,7 +888,7 @@ func (x *ApplicationHost) String() string {
 func (*ApplicationHost) ProtoMessage() {}
 
 func (x *ApplicationHost) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[5]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1147,7 +901,7 @@ func (x *ApplicationHost) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationHost.ProtoReflect.Descriptor instead.
 func (*ApplicationHost) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{5}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ApplicationHost) GetProcesses() []*ApplicationProcessGroup {
@@ -1167,7 +921,7 @@ type ApplicationNamespace struct {
 
 func (x *ApplicationNamespace) Reset() {
 	*x = ApplicationNamespace{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[6]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1179,7 +933,7 @@ func (x *ApplicationNamespace) String() string {
 func (*ApplicationNamespace) ProtoMessage() {}
 
 func (x *ApplicationNamespace) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[6]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1192,7 +946,7 @@ func (x *ApplicationNamespace) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationNamespace.ProtoReflect.Descriptor instead.
 func (*ApplicationNamespace) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{6}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ApplicationNamespace) GetName() string {
@@ -1222,7 +976,7 @@ type ApplicationWorkload struct {
 
 func (x *ApplicationWorkload) Reset() {
 	*x = ApplicationWorkload{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[7]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1234,7 +988,7 @@ func (x *ApplicationWorkload) String() string {
 func (*ApplicationWorkload) ProtoMessage() {}
 
 func (x *ApplicationWorkload) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[7]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1247,7 +1001,7 @@ func (x *ApplicationWorkload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationWorkload.ProtoReflect.Descriptor instead.
 func (*ApplicationWorkload) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{7}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ApplicationWorkload) GetName() string {
@@ -1311,7 +1065,7 @@ type ApplicationProcessGroup struct {
 
 func (x *ApplicationProcessGroup) Reset() {
 	*x = ApplicationProcessGroup{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[8]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1323,7 +1077,7 @@ func (x *ApplicationProcessGroup) String() string {
 func (*ApplicationProcessGroup) ProtoMessage() {}
 
 func (x *ApplicationProcessGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[8]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1336,7 +1090,7 @@ func (x *ApplicationProcessGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationProcessGroup.ProtoReflect.Descriptor instead.
 func (*ApplicationProcessGroup) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{8}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ApplicationProcessGroup) GetHash() string {
@@ -1419,7 +1173,7 @@ type ApplicationConnection struct {
 
 func (x *ApplicationConnection) Reset() {
 	*x = ApplicationConnection{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[9]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1431,7 +1185,7 @@ func (x *ApplicationConnection) String() string {
 func (*ApplicationConnection) ProtoMessage() {}
 
 func (x *ApplicationConnection) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[9]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1444,7 +1198,7 @@ func (x *ApplicationConnection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationConnection.ProtoReflect.Descriptor instead.
 func (*ApplicationConnection) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{9}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ApplicationConnection) GetDestination() *Destination {
@@ -1478,7 +1232,7 @@ type ConnectionStats struct {
 
 func (x *ConnectionStats) Reset() {
 	*x = ConnectionStats{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[10]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1490,7 +1244,7 @@ func (x *ConnectionStats) String() string {
 func (*ConnectionStats) ProtoMessage() {}
 
 func (x *ConnectionStats) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[10]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1503,7 +1257,7 @@ func (x *ConnectionStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionStats.ProtoReflect.Descriptor instead.
 func (*ConnectionStats) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{10}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ConnectionStats) GetTxBytes() uint64 {
@@ -1584,7 +1338,7 @@ type Destination struct {
 
 func (x *Destination) Reset() {
 	*x = Destination{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[11]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1596,7 +1350,7 @@ func (x *Destination) String() string {
 func (*Destination) ProtoMessage() {}
 
 func (x *Destination) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[11]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1609,7 +1363,7 @@ func (x *Destination) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Destination.ProtoReflect.Descriptor instead.
 func (*Destination) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{11}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Destination) GetType() isDestination_Type {
@@ -1684,7 +1438,7 @@ type DestinationDns struct {
 
 func (x *DestinationDns) Reset() {
 	*x = DestinationDns{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[12]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1696,7 +1450,7 @@ func (x *DestinationDns) String() string {
 func (*DestinationDns) ProtoMessage() {}
 
 func (x *DestinationDns) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[12]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1709,7 +1463,7 @@ func (x *DestinationDns) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DestinationDns.ProtoReflect.Descriptor instead.
 func (*DestinationDns) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{12}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *DestinationDns) GetDestinationNames() []string {
@@ -1730,7 +1484,7 @@ type DestinationWorkload struct {
 
 func (x *DestinationWorkload) Reset() {
 	*x = DestinationWorkload{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[13]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1742,7 +1496,7 @@ func (x *DestinationWorkload) String() string {
 func (*DestinationWorkload) ProtoMessage() {}
 
 func (x *DestinationWorkload) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[13]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1755,7 +1509,7 @@ func (x *DestinationWorkload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DestinationWorkload.ProtoReflect.Descriptor instead.
 func (*DestinationWorkload) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{13}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *DestinationWorkload) GetName() string {
@@ -1788,7 +1542,7 @@ type DestinationIP struct {
 
 func (x *DestinationIP) Reset() {
 	*x = DestinationIP{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[14]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1800,7 +1554,7 @@ func (x *DestinationIP) String() string {
 func (*DestinationIP) ProtoMessage() {}
 
 func (x *DestinationIP) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[14]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1813,7 +1567,7 @@ func (x *DestinationIP) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DestinationIP.ProtoReflect.Descriptor instead.
 func (*DestinationIP) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{14}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DestinationIP) GetIp() string {
@@ -1833,7 +1587,7 @@ type ApplicationSyscalls struct {
 
 func (x *ApplicationSyscalls) Reset() {
 	*x = ApplicationSyscalls{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[15]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1845,7 +1599,7 @@ func (x *ApplicationSyscalls) String() string {
 func (*ApplicationSyscalls) ProtoMessage() {}
 
 func (x *ApplicationSyscalls) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[15]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1858,7 +1612,7 @@ func (x *ApplicationSyscalls) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationSyscalls.ProtoReflect.Descriptor instead.
 func (*ApplicationSyscalls) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{15}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ApplicationSyscalls) GetSyscalls() []Sys {
@@ -1887,7 +1641,7 @@ type GetModelRequest struct {
 
 func (x *GetModelRequest) Reset() {
 	*x = GetModelRequest{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[16]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1899,7 +1653,7 @@ func (x *GetModelRequest) String() string {
 func (*GetModelRequest) ProtoMessage() {}
 
 func (x *GetModelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[16]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1912,7 +1666,7 @@ func (x *GetModelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetModelRequest.ProtoReflect.Descriptor instead.
 func (*GetModelRequest) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{16}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetModelRequest) GetNamespaces() []string {
@@ -1938,7 +1692,7 @@ type GetModelResponse struct {
 
 func (x *GetModelResponse) Reset() {
 	*x = GetModelResponse{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[17]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1950,7 +1704,7 @@ func (x *GetModelResponse) String() string {
 func (*GetModelResponse) ProtoMessage() {}
 
 func (x *GetModelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[17]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1963,7 +1717,7 @@ func (x *GetModelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetModelResponse.ProtoReflect.Descriptor instead.
 func (*GetModelResponse) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{17}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetModelResponse) GetModel() *ApplicationModelEvent {
@@ -1985,7 +1739,7 @@ type StreamTelemetryRequest struct {
 
 func (x *StreamTelemetryRequest) Reset() {
 	*x = StreamTelemetryRequest{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[18]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1997,7 +1751,7 @@ func (x *StreamTelemetryRequest) String() string {
 func (*StreamTelemetryRequest) ProtoMessage() {}
 
 func (x *StreamTelemetryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[18]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2010,7 +1764,7 @@ func (x *StreamTelemetryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamTelemetryRequest.ProtoReflect.Descriptor instead.
 func (*StreamTelemetryRequest) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{18}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *StreamTelemetryRequest) GetNamespaces() []string {
@@ -2029,11 +1783,12 @@ func (x *StreamTelemetryRequest) GetHost() bool {
 
 type StreamTelemetryResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The type-speicifc fields of flat events.
+	// Each StreamTelemetryResponse contains one of the telemetry events listed below.
 	//
 	// Types that are valid to be assigned to Event:
 	//
-	//	*StreamTelemetryResponse_Network
+	//	*StreamTelemetryResponse_Process
+	//	*StreamTelemetryResponse_NetworkConnect
 	Event         isStreamTelemetryResponse_Event `protobuf_oneof:"event"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2041,7 +1796,7 @@ type StreamTelemetryResponse struct {
 
 func (x *StreamTelemetryResponse) Reset() {
 	*x = StreamTelemetryResponse{}
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[19]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2053,7 +1808,7 @@ func (x *StreamTelemetryResponse) String() string {
 func (*StreamTelemetryResponse) ProtoMessage() {}
 
 func (x *StreamTelemetryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[19]
+	mi := &file_application_model_v1alpha_application_model_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2066,7 +1821,7 @@ func (x *StreamTelemetryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamTelemetryResponse.ProtoReflect.Descriptor instead.
 func (*StreamTelemetryResponse) Descriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{19}
+	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *StreamTelemetryResponse) GetEvent() isStreamTelemetryResponse_Event {
@@ -2076,10 +1831,19 @@ func (x *StreamTelemetryResponse) GetEvent() isStreamTelemetryResponse_Event {
 	return nil
 }
 
-func (x *StreamTelemetryResponse) GetNetwork() *NetworkTelemetry {
+func (x *StreamTelemetryResponse) GetProcess() *ProcessTelemetry {
 	if x != nil {
-		if x, ok := x.Event.(*StreamTelemetryResponse_Network); ok {
-			return x.Network
+		if x, ok := x.Event.(*StreamTelemetryResponse_Process); ok {
+			return x.Process
+		}
+	}
+	return nil
+}
+
+func (x *StreamTelemetryResponse) GetNetworkConnect() *NetworkConnectTelemetry {
+	if x != nil {
+		if x, ok := x.Event.(*StreamTelemetryResponse_NetworkConnect); ok {
+			return x.NetworkConnect
 		}
 	}
 	return nil
@@ -2089,12 +1853,17 @@ type isStreamTelemetryResponse_Event interface {
 	isStreamTelemetryResponse_Event()
 }
 
-type StreamTelemetryResponse_Network struct {
-	// Application Model Network Flat Entry event has the
-	Network *NetworkTelemetry `protobuf:"bytes,1,opt,name=network,proto3,oneof"`
+type StreamTelemetryResponse_Process struct {
+	Process *ProcessTelemetry `protobuf:"bytes,1,opt,name=process,proto3,oneof"`
 }
 
-func (*StreamTelemetryResponse_Network) isStreamTelemetryResponse_Event() {}
+type StreamTelemetryResponse_NetworkConnect struct {
+	NetworkConnect *NetworkConnectTelemetry `protobuf:"bytes,2,opt,name=network_connect,json=networkConnect,proto3,oneof"`
+}
+
+func (*StreamTelemetryResponse_Process) isStreamTelemetryResponse_Event() {}
+
+func (*StreamTelemetryResponse_NetworkConnect) isStreamTelemetryResponse_Event() {}
 
 var File_application_model_v1alpha_application_model_proto protoreflect.FileDescriptor
 
@@ -2122,48 +1891,15 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"nodeLabels\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe6\v\n" +
-	"\x10NetworkTelemetry\x12!\n" +
-	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1b\n" +
-	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x12G\n" +
-	"\n" +
-	"event_type\x18\x03 \x01(\x0e2(.application_model.v1alpha.TelemetryTypeR\teventType\x12.\n" +
-	"\x04time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x121\n" +
-	"\x14kubernetes_namespace\x18\x05 \x01(\tR\x13kubernetesNamespace\x128\n" +
-	"\x18kubernetes_workload_name\x18\x06 \x01(\tR\x16kubernetesWorkloadName\x12a\n" +
-	"\x18kubernetes_workload_kind\x18\a \x01(\x0e2'.application_model.v1alpha.WorkloadKindR\x16kubernetesWorkloadKind\x12!\n" +
-	"\fprocess_hash\x18\b \x01(\tR\vprocessHash\x12!\n" +
-	"\fprocess_name\x18\t \x01(\tR\vprocessName\x12+\n" +
-	"\x11process_arguments\x18\n" +
-	" \x01(\tR\x10processArguments\x12)\n" +
-	"\x10destination_name\x18\v \x01(\tR\x0fdestinationName\x12U\n" +
-	"\x10destination_type\x18\f \x01(\x0e2*.application_model.v1alpha.DestinationTypeR\x0fdestinationType\x12)\n" +
-	"\x10destination_port\x18\r \x01(\rR\x0fdestinationPort\x12H\n" +
-	" destination_kubernetes_namespace\x18\x0e \x01(\tR\x1edestinationKubernetesNamespace\x12x\n" +
-	"$destination_kubernetes_workload_kind\x18\x0f \x01(\x0e2'.application_model.v1alpha.WorkloadKindR!destinationKubernetesWorkloadKind\x12O\n" +
-	"$destination_kubernetes_workload_name\x18\x10 \x01(\tR!destinationKubernetesWorkloadName\x12\x19\n" +
-	"\btx_bytes\x18\x11 \x01(\x04R\atxBytes\x12\x19\n" +
-	"\brx_bytes\x18\x12 \x01(\x04R\arxBytes\x12\x19\n" +
-	"\btx_drops\x18\x13 \x01(\x04R\atxDrops\x12,\n" +
-	"\x12default_drop_bytes\x18\x14 \x01(\x04R\x10defaultDropBytes\x12.\n" +
-	"\x13default_allow_bytes\x18\x15 \x01(\x04R\x11defaultAllowBytes\x122\n" +
-	"\x15default_drop_sessions\x18\x16 \x01(\x04R\x13defaultDropSessions\x128\n" +
-	"\x18default_allowed_sessions\x18\x17 \x01(\x04R\x16defaultAllowedSessions\x12\x0e\n" +
-	"\x02id\x18\x18 \x01(\tR\x02id\x12J\n" +
-	"\bprotocol\x18\x19 \x01(\x0e2..application_model.v1alpha.NetworkProtocolTypeR\bprotocol\x12\\\n" +
-	"\vnode_labels\x18\x1a \x03(\v2;.application_model.v1alpha.NetworkTelemetry.NodeLabelsEntryR\n" +
-	"nodeLabels\x1a=\n" +
-	"\x0fNodeLabelsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb7\v\n" +
-	"\x1dNetworkConnectPolicyTelemetry\x12\x0e\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xab\v\n" +
+	"\x17NetworkConnectTelemetry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x04time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12G\n" +
 	"\n" +
 	"event_type\x18\x03 \x01(\x0e2(.application_model.v1alpha.TelemetryTypeR\teventType\x12!\n" +
 	"\fcluster_name\x18\x04 \x01(\tR\vclusterName\x12\x1b\n" +
-	"\tnode_name\x18\x05 \x01(\tR\bnodeName\x12i\n" +
-	"\vnode_labels\x18\x06 \x03(\v2H.application_model.v1alpha.NetworkConnectPolicyTelemetry.NodeLabelsEntryR\n" +
+	"\tnode_name\x18\x05 \x01(\tR\bnodeName\x12c\n" +
+	"\vnode_labels\x18\x06 \x03(\v2B.application_model.v1alpha.NetworkConnectTelemetry.NodeLabelsEntryR\n" +
 	"nodeLabels\x121\n" +
 	"\x14kubernetes_namespace\x18\a \x01(\tR\x13kubernetesNamespace\x12a\n" +
 	"\x18kubernetes_workload_kind\x18\b \x01(\x0e2'.application_model.v1alpha.WorkloadKindR\x16kubernetesWorkloadKind\x128\n" +
@@ -2262,9 +1998,10 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\n" +
 	"namespaces\x18\x01 \x03(\tR\n" +
 	"namespaces\x12\x12\n" +
-	"\x04host\x18\x02 \x01(\bR\x04host\"k\n" +
+	"\x04host\x18\x02 \x01(\bR\x04host\"\xca\x01\n" +
 	"\x17StreamTelemetryResponse\x12G\n" +
-	"\anetwork\x18\x01 \x01(\v2+.application_model.v1alpha.NetworkTelemetryH\x00R\anetworkB\a\n" +
+	"\aprocess\x18\x01 \x01(\v2+.application_model.v1alpha.ProcessTelemetryH\x00R\aprocess\x12]\n" +
+	"\x0fnetwork_connect\x18\x02 \x01(\v22.application_model.v1alpha.NetworkConnectTelemetryH\x00R\x0enetworkConnectB\a\n" +
 	"\x05event*b\n" +
 	"\rPolicyVerdict\x12\x1e\n" +
 	"\x1aPOLICY_VERDICT_UNSPECIFIED\x10\x00\x12\x18\n" +
@@ -2278,12 +2015,11 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x1cDESTINATION_TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14DESTINATION_TYPE_DNS\x10\x01\x12\x19\n" +
 	"\x15DESTINATION_TYPE_CIDR\x10\x02\x12\x1f\n" +
-	"\x1bDESTINATION_TYPE_KUBERNETES\x10\x03*\x9a\x01\n" +
+	"\x1bDESTINATION_TYPE_KUBERNETES\x10\x03*o\n" +
 	"\rTelemetryType\x12\x1e\n" +
 	"\x1aTELEMETRY_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16TELEMETRY_TYPE_PROCESS\x10\x01\x12\"\n" +
-	"\x1eTELEMETRY_TYPE_NETWORK_CONNECT\x10\x02\x12)\n" +
-	"%TELEMETRY_TYPE_NETWORK_CONNECT_POLICY\x10\x03*\x89\x02\n" +
+	"\x1eTELEMETRY_TYPE_NETWORK_CONNECT\x10\x02*\x89\x02\n" +
 	"\fWorkloadKind\x12\x1d\n" +
 	"\x19WORKLOAD_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11WORKLOAD_KIND_POD\x10\x01\x12\x1c\n" +
@@ -2311,96 +2047,88 @@ func file_application_model_v1alpha_application_model_proto_rawDescGZIP() []byte
 }
 
 var file_application_model_v1alpha_application_model_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_application_model_v1alpha_application_model_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_application_model_v1alpha_application_model_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_application_model_v1alpha_application_model_proto_goTypes = []any{
-	(PolicyVerdict)(0),                    // 0: application_model.v1alpha.PolicyVerdict
-	(NetworkProtocolType)(0),              // 1: application_model.v1alpha.NetworkProtocolType
-	(DestinationType)(0),                  // 2: application_model.v1alpha.DestinationType
-	(TelemetryType)(0),                    // 3: application_model.v1alpha.TelemetryType
-	(WorkloadKind)(0),                     // 4: application_model.v1alpha.WorkloadKind
-	(*ProcessTelemetry)(nil),              // 5: application_model.v1alpha.ProcessTelemetry
-	(*NetworkTelemetry)(nil),              // 6: application_model.v1alpha.NetworkTelemetry
-	(*NetworkConnectPolicyTelemetry)(nil), // 7: application_model.v1alpha.NetworkConnectPolicyTelemetry
-	(*ApplicationModelEvent)(nil),         // 8: application_model.v1alpha.ApplicationModelEvent
-	(*ApplicationModel)(nil),              // 9: application_model.v1alpha.ApplicationModel
-	(*ApplicationHost)(nil),               // 10: application_model.v1alpha.ApplicationHost
-	(*ApplicationNamespace)(nil),          // 11: application_model.v1alpha.ApplicationNamespace
-	(*ApplicationWorkload)(nil),           // 12: application_model.v1alpha.ApplicationWorkload
-	(*ApplicationProcessGroup)(nil),       // 13: application_model.v1alpha.ApplicationProcessGroup
-	(*ApplicationConnection)(nil),         // 14: application_model.v1alpha.ApplicationConnection
-	(*ConnectionStats)(nil),               // 15: application_model.v1alpha.ConnectionStats
-	(*Destination)(nil),                   // 16: application_model.v1alpha.Destination
-	(*DestinationDns)(nil),                // 17: application_model.v1alpha.DestinationDns
-	(*DestinationWorkload)(nil),           // 18: application_model.v1alpha.DestinationWorkload
-	(*DestinationIP)(nil),                 // 19: application_model.v1alpha.DestinationIP
-	(*ApplicationSyscalls)(nil),           // 20: application_model.v1alpha.ApplicationSyscalls
-	(*GetModelRequest)(nil),               // 21: application_model.v1alpha.GetModelRequest
-	(*GetModelResponse)(nil),              // 22: application_model.v1alpha.GetModelResponse
-	(*StreamTelemetryRequest)(nil),        // 23: application_model.v1alpha.StreamTelemetryRequest
-	(*StreamTelemetryResponse)(nil),       // 24: application_model.v1alpha.StreamTelemetryResponse
-	nil,                                   // 25: application_model.v1alpha.ProcessTelemetry.NodeLabelsEntry
-	nil,                                   // 26: application_model.v1alpha.NetworkTelemetry.NodeLabelsEntry
-	nil,                                   // 27: application_model.v1alpha.NetworkConnectPolicyTelemetry.NodeLabelsEntry
-	(*timestamppb.Timestamp)(nil),         // 28: google.protobuf.Timestamp
-	(*wrapperspb.BoolValue)(nil),          // 29: google.protobuf.BoolValue
-	(Sys)(0),                              // 30: application_model.v1alpha.Sys
-	(Abi)(0),                              // 31: application_model.v1alpha.Abi
+	(PolicyVerdict)(0),              // 0: application_model.v1alpha.PolicyVerdict
+	(NetworkProtocolType)(0),        // 1: application_model.v1alpha.NetworkProtocolType
+	(DestinationType)(0),            // 2: application_model.v1alpha.DestinationType
+	(TelemetryType)(0),              // 3: application_model.v1alpha.TelemetryType
+	(WorkloadKind)(0),               // 4: application_model.v1alpha.WorkloadKind
+	(*ProcessTelemetry)(nil),        // 5: application_model.v1alpha.ProcessTelemetry
+	(*NetworkConnectTelemetry)(nil), // 6: application_model.v1alpha.NetworkConnectTelemetry
+	(*ApplicationModelEvent)(nil),   // 7: application_model.v1alpha.ApplicationModelEvent
+	(*ApplicationModel)(nil),        // 8: application_model.v1alpha.ApplicationModel
+	(*ApplicationHost)(nil),         // 9: application_model.v1alpha.ApplicationHost
+	(*ApplicationNamespace)(nil),    // 10: application_model.v1alpha.ApplicationNamespace
+	(*ApplicationWorkload)(nil),     // 11: application_model.v1alpha.ApplicationWorkload
+	(*ApplicationProcessGroup)(nil), // 12: application_model.v1alpha.ApplicationProcessGroup
+	(*ApplicationConnection)(nil),   // 13: application_model.v1alpha.ApplicationConnection
+	(*ConnectionStats)(nil),         // 14: application_model.v1alpha.ConnectionStats
+	(*Destination)(nil),             // 15: application_model.v1alpha.Destination
+	(*DestinationDns)(nil),          // 16: application_model.v1alpha.DestinationDns
+	(*DestinationWorkload)(nil),     // 17: application_model.v1alpha.DestinationWorkload
+	(*DestinationIP)(nil),           // 18: application_model.v1alpha.DestinationIP
+	(*ApplicationSyscalls)(nil),     // 19: application_model.v1alpha.ApplicationSyscalls
+	(*GetModelRequest)(nil),         // 20: application_model.v1alpha.GetModelRequest
+	(*GetModelResponse)(nil),        // 21: application_model.v1alpha.GetModelResponse
+	(*StreamTelemetryRequest)(nil),  // 22: application_model.v1alpha.StreamTelemetryRequest
+	(*StreamTelemetryResponse)(nil), // 23: application_model.v1alpha.StreamTelemetryResponse
+	nil,                             // 24: application_model.v1alpha.ProcessTelemetry.NodeLabelsEntry
+	nil,                             // 25: application_model.v1alpha.NetworkConnectTelemetry.NodeLabelsEntry
+	(*timestamppb.Timestamp)(nil),   // 26: google.protobuf.Timestamp
+	(*wrapperspb.BoolValue)(nil),    // 27: google.protobuf.BoolValue
+	(Sys)(0),                        // 28: application_model.v1alpha.Sys
+	(Abi)(0),                        // 29: application_model.v1alpha.Abi
 }
 var file_application_model_v1alpha_application_model_proto_depIdxs = []int32{
 	3,  // 0: application_model.v1alpha.ProcessTelemetry.event_type:type_name -> application_model.v1alpha.TelemetryType
-	28, // 1: application_model.v1alpha.ProcessTelemetry.time:type_name -> google.protobuf.Timestamp
+	26, // 1: application_model.v1alpha.ProcessTelemetry.time:type_name -> google.protobuf.Timestamp
 	4,  // 2: application_model.v1alpha.ProcessTelemetry.kubernetes_workload_kind:type_name -> application_model.v1alpha.WorkloadKind
-	25, // 3: application_model.v1alpha.ProcessTelemetry.node_labels:type_name -> application_model.v1alpha.ProcessTelemetry.NodeLabelsEntry
-	3,  // 4: application_model.v1alpha.NetworkTelemetry.event_type:type_name -> application_model.v1alpha.TelemetryType
-	28, // 5: application_model.v1alpha.NetworkTelemetry.time:type_name -> google.protobuf.Timestamp
-	4,  // 6: application_model.v1alpha.NetworkTelemetry.kubernetes_workload_kind:type_name -> application_model.v1alpha.WorkloadKind
-	2,  // 7: application_model.v1alpha.NetworkTelemetry.destination_type:type_name -> application_model.v1alpha.DestinationType
-	4,  // 8: application_model.v1alpha.NetworkTelemetry.destination_kubernetes_workload_kind:type_name -> application_model.v1alpha.WorkloadKind
-	1,  // 9: application_model.v1alpha.NetworkTelemetry.protocol:type_name -> application_model.v1alpha.NetworkProtocolType
-	26, // 10: application_model.v1alpha.NetworkTelemetry.node_labels:type_name -> application_model.v1alpha.NetworkTelemetry.NodeLabelsEntry
-	28, // 11: application_model.v1alpha.NetworkConnectPolicyTelemetry.time:type_name -> google.protobuf.Timestamp
-	3,  // 12: application_model.v1alpha.NetworkConnectPolicyTelemetry.event_type:type_name -> application_model.v1alpha.TelemetryType
-	27, // 13: application_model.v1alpha.NetworkConnectPolicyTelemetry.node_labels:type_name -> application_model.v1alpha.NetworkConnectPolicyTelemetry.NodeLabelsEntry
-	4,  // 14: application_model.v1alpha.NetworkConnectPolicyTelemetry.kubernetes_workload_kind:type_name -> application_model.v1alpha.WorkloadKind
-	2,  // 15: application_model.v1alpha.NetworkConnectPolicyTelemetry.destination_type:type_name -> application_model.v1alpha.DestinationType
-	4,  // 16: application_model.v1alpha.NetworkConnectPolicyTelemetry.destination_kubernetes_workload_kind:type_name -> application_model.v1alpha.WorkloadKind
-	1,  // 17: application_model.v1alpha.NetworkConnectPolicyTelemetry.protocol:type_name -> application_model.v1alpha.NetworkProtocolType
-	0,  // 18: application_model.v1alpha.NetworkConnectPolicyTelemetry.verdict:type_name -> application_model.v1alpha.PolicyVerdict
-	28, // 19: application_model.v1alpha.ApplicationModelEvent.time:type_name -> google.protobuf.Timestamp
-	9,  // 20: application_model.v1alpha.ApplicationModelEvent.application_model:type_name -> application_model.v1alpha.ApplicationModel
-	11, // 21: application_model.v1alpha.ApplicationModel.namespaces:type_name -> application_model.v1alpha.ApplicationNamespace
-	10, // 22: application_model.v1alpha.ApplicationModel.host:type_name -> application_model.v1alpha.ApplicationHost
-	13, // 23: application_model.v1alpha.ApplicationHost.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
-	12, // 24: application_model.v1alpha.ApplicationNamespace.workloads:type_name -> application_model.v1alpha.ApplicationWorkload
-	4,  // 25: application_model.v1alpha.ApplicationWorkload.kind:type_name -> application_model.v1alpha.WorkloadKind
-	13, // 26: application_model.v1alpha.ApplicationWorkload.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
-	13, // 27: application_model.v1alpha.ApplicationProcessGroup.children:type_name -> application_model.v1alpha.ApplicationProcessGroup
-	14, // 28: application_model.v1alpha.ApplicationProcessGroup.connections:type_name -> application_model.v1alpha.ApplicationConnection
-	29, // 29: application_model.v1alpha.ApplicationProcessGroup.in_init_tree:type_name -> google.protobuf.BoolValue
-	20, // 30: application_model.v1alpha.ApplicationProcessGroup.syscall_info:type_name -> application_model.v1alpha.ApplicationSyscalls
-	28, // 31: application_model.v1alpha.ApplicationProcessGroup.latest_start_time:type_name -> google.protobuf.Timestamp
-	28, // 32: application_model.v1alpha.ApplicationProcessGroup.latest_exit_time:type_name -> google.protobuf.Timestamp
-	16, // 33: application_model.v1alpha.ApplicationConnection.destination:type_name -> application_model.v1alpha.Destination
-	15, // 34: application_model.v1alpha.ApplicationConnection.stats:type_name -> application_model.v1alpha.ConnectionStats
-	28, // 35: application_model.v1alpha.ConnectionStats.last_quota_reset:type_name -> google.protobuf.Timestamp
-	28, // 36: application_model.v1alpha.ConnectionStats.next_quota_reset:type_name -> google.protobuf.Timestamp
-	17, // 37: application_model.v1alpha.Destination.dns:type_name -> application_model.v1alpha.DestinationDns
-	18, // 38: application_model.v1alpha.Destination.workload:type_name -> application_model.v1alpha.DestinationWorkload
-	19, // 39: application_model.v1alpha.Destination.ip:type_name -> application_model.v1alpha.DestinationIP
-	4,  // 40: application_model.v1alpha.DestinationWorkload.kind:type_name -> application_model.v1alpha.WorkloadKind
-	30, // 41: application_model.v1alpha.ApplicationSyscalls.syscalls:type_name -> application_model.v1alpha.Sys
-	31, // 42: application_model.v1alpha.ApplicationSyscalls.abi:type_name -> application_model.v1alpha.Abi
-	8,  // 43: application_model.v1alpha.GetModelResponse.model:type_name -> application_model.v1alpha.ApplicationModelEvent
-	6,  // 44: application_model.v1alpha.StreamTelemetryResponse.network:type_name -> application_model.v1alpha.NetworkTelemetry
-	21, // 45: application_model.v1alpha.ApplicationModelService.GetModel:input_type -> application_model.v1alpha.GetModelRequest
-	23, // 46: application_model.v1alpha.ApplicationModelService.StreamTelemetry:input_type -> application_model.v1alpha.StreamTelemetryRequest
-	22, // 47: application_model.v1alpha.ApplicationModelService.GetModel:output_type -> application_model.v1alpha.GetModelResponse
-	24, // 48: application_model.v1alpha.ApplicationModelService.StreamTelemetry:output_type -> application_model.v1alpha.StreamTelemetryResponse
-	47, // [47:49] is the sub-list for method output_type
-	45, // [45:47] is the sub-list for method input_type
-	45, // [45:45] is the sub-list for extension type_name
-	45, // [45:45] is the sub-list for extension extendee
-	0,  // [0:45] is the sub-list for field type_name
+	24, // 3: application_model.v1alpha.ProcessTelemetry.node_labels:type_name -> application_model.v1alpha.ProcessTelemetry.NodeLabelsEntry
+	26, // 4: application_model.v1alpha.NetworkConnectTelemetry.time:type_name -> google.protobuf.Timestamp
+	3,  // 5: application_model.v1alpha.NetworkConnectTelemetry.event_type:type_name -> application_model.v1alpha.TelemetryType
+	25, // 6: application_model.v1alpha.NetworkConnectTelemetry.node_labels:type_name -> application_model.v1alpha.NetworkConnectTelemetry.NodeLabelsEntry
+	4,  // 7: application_model.v1alpha.NetworkConnectTelemetry.kubernetes_workload_kind:type_name -> application_model.v1alpha.WorkloadKind
+	2,  // 8: application_model.v1alpha.NetworkConnectTelemetry.destination_type:type_name -> application_model.v1alpha.DestinationType
+	4,  // 9: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_workload_kind:type_name -> application_model.v1alpha.WorkloadKind
+	1,  // 10: application_model.v1alpha.NetworkConnectTelemetry.protocol:type_name -> application_model.v1alpha.NetworkProtocolType
+	0,  // 11: application_model.v1alpha.NetworkConnectTelemetry.verdict:type_name -> application_model.v1alpha.PolicyVerdict
+	26, // 12: application_model.v1alpha.ApplicationModelEvent.time:type_name -> google.protobuf.Timestamp
+	8,  // 13: application_model.v1alpha.ApplicationModelEvent.application_model:type_name -> application_model.v1alpha.ApplicationModel
+	10, // 14: application_model.v1alpha.ApplicationModel.namespaces:type_name -> application_model.v1alpha.ApplicationNamespace
+	9,  // 15: application_model.v1alpha.ApplicationModel.host:type_name -> application_model.v1alpha.ApplicationHost
+	12, // 16: application_model.v1alpha.ApplicationHost.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
+	11, // 17: application_model.v1alpha.ApplicationNamespace.workloads:type_name -> application_model.v1alpha.ApplicationWorkload
+	4,  // 18: application_model.v1alpha.ApplicationWorkload.kind:type_name -> application_model.v1alpha.WorkloadKind
+	12, // 19: application_model.v1alpha.ApplicationWorkload.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
+	12, // 20: application_model.v1alpha.ApplicationProcessGroup.children:type_name -> application_model.v1alpha.ApplicationProcessGroup
+	13, // 21: application_model.v1alpha.ApplicationProcessGroup.connections:type_name -> application_model.v1alpha.ApplicationConnection
+	27, // 22: application_model.v1alpha.ApplicationProcessGroup.in_init_tree:type_name -> google.protobuf.BoolValue
+	19, // 23: application_model.v1alpha.ApplicationProcessGroup.syscall_info:type_name -> application_model.v1alpha.ApplicationSyscalls
+	26, // 24: application_model.v1alpha.ApplicationProcessGroup.latest_start_time:type_name -> google.protobuf.Timestamp
+	26, // 25: application_model.v1alpha.ApplicationProcessGroup.latest_exit_time:type_name -> google.protobuf.Timestamp
+	15, // 26: application_model.v1alpha.ApplicationConnection.destination:type_name -> application_model.v1alpha.Destination
+	14, // 27: application_model.v1alpha.ApplicationConnection.stats:type_name -> application_model.v1alpha.ConnectionStats
+	26, // 28: application_model.v1alpha.ConnectionStats.last_quota_reset:type_name -> google.protobuf.Timestamp
+	26, // 29: application_model.v1alpha.ConnectionStats.next_quota_reset:type_name -> google.protobuf.Timestamp
+	16, // 30: application_model.v1alpha.Destination.dns:type_name -> application_model.v1alpha.DestinationDns
+	17, // 31: application_model.v1alpha.Destination.workload:type_name -> application_model.v1alpha.DestinationWorkload
+	18, // 32: application_model.v1alpha.Destination.ip:type_name -> application_model.v1alpha.DestinationIP
+	4,  // 33: application_model.v1alpha.DestinationWorkload.kind:type_name -> application_model.v1alpha.WorkloadKind
+	28, // 34: application_model.v1alpha.ApplicationSyscalls.syscalls:type_name -> application_model.v1alpha.Sys
+	29, // 35: application_model.v1alpha.ApplicationSyscalls.abi:type_name -> application_model.v1alpha.Abi
+	7,  // 36: application_model.v1alpha.GetModelResponse.model:type_name -> application_model.v1alpha.ApplicationModelEvent
+	5,  // 37: application_model.v1alpha.StreamTelemetryResponse.process:type_name -> application_model.v1alpha.ProcessTelemetry
+	6,  // 38: application_model.v1alpha.StreamTelemetryResponse.network_connect:type_name -> application_model.v1alpha.NetworkConnectTelemetry
+	20, // 39: application_model.v1alpha.ApplicationModelService.GetModel:input_type -> application_model.v1alpha.GetModelRequest
+	22, // 40: application_model.v1alpha.ApplicationModelService.StreamTelemetry:input_type -> application_model.v1alpha.StreamTelemetryRequest
+	21, // 41: application_model.v1alpha.ApplicationModelService.GetModel:output_type -> application_model.v1alpha.GetModelResponse
+	23, // 42: application_model.v1alpha.ApplicationModelService.StreamTelemetry:output_type -> application_model.v1alpha.StreamTelemetryResponse
+	41, // [41:43] is the sub-list for method output_type
+	39, // [39:41] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_application_model_v1alpha_application_model_proto_init() }
@@ -2409,13 +2137,14 @@ func file_application_model_v1alpha_application_model_proto_init() {
 		return
 	}
 	file_application_model_v1alpha_syscalls_proto_init()
-	file_application_model_v1alpha_application_model_proto_msgTypes[11].OneofWrappers = []any{
+	file_application_model_v1alpha_application_model_proto_msgTypes[10].OneofWrappers = []any{
 		(*Destination_Dns)(nil),
 		(*Destination_Workload)(nil),
 		(*Destination_Ip)(nil),
 	}
-	file_application_model_v1alpha_application_model_proto_msgTypes[19].OneofWrappers = []any{
-		(*StreamTelemetryResponse_Network)(nil),
+	file_application_model_v1alpha_application_model_proto_msgTypes[18].OneofWrappers = []any{
+		(*StreamTelemetryResponse_Process)(nil),
+		(*StreamTelemetryResponse_NetworkConnect)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -2423,7 +2152,7 @@ func file_application_model_v1alpha_application_model_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_application_model_v1alpha_application_model_proto_rawDesc), len(file_application_model_v1alpha_application_model_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   23,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

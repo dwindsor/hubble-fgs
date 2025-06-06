@@ -39,48 +39,13 @@ message ProcessTelemetry {
   map<string, string> node_labels = 14;
 }
 
-message NetworkTelemetry {
-  string cluster_name = 1;
-  string node_name = 2;
-  TelemetryType event_type = 3;
-  google.protobuf.Timestamp time = 4;
-  string kubernetes_namespace = 5;
-  string kubernetes_workload_name = 6;
-  WorkloadKind kubernetes_workload_kind = 7;
-  string process_hash = 8;
-  string process_name = 9;
-  string process_arguments = 10;
-  string destination_name = 11;
-  DestinationType destination_type = 12;
-  uint32 destination_port = 13;
-  string destination_kubernetes_namespace = 14;
-  WorkloadKind destination_kubernetes_workload_kind = 15;
-  string destination_kubernetes_workload_name = 16;
-  uint64 tx_bytes = 17;
-  uint64 rx_bytes = 18;
-  uint64 tx_drops = 19;
-  uint64 default_drop_bytes = 20;
-  uint64 default_allow_bytes = 21;
-  uint64 default_drop_sessions = 22;
-  uint64 default_allowed_sessions = 23;
-  // An opaque identifier that is unique to this telemetry data across all the
-  // telemetry types.
-  string id = 24;
-  NetworkProtocolType protocol = 25;
-  // Labels of the node that transmitted this telemetry event. For nodes that
-  // belong to a Kubernetes cluster, this field contains Kubernetes node labels.
-  // For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
-  // Kubernetes cluster, this field may contain VM tags / labels.
-  map<string, string> node_labels = 26;
-}
-
-message NetworkConnectPolicyTelemetry {
+message NetworkConnectTelemetry {
   // An opaque identifier that is unique to this telemetry event across all the
   // telemetry types.
   string id = 1;
   // Timestamp at which this telemetry event got transmitted.
   google.protobuf.Timestamp time = 2;
-  // Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT_POLICY`.
+  // Telemetry event type. This field is set to `TELEMETRY_TYPE_NETWORK_CONNECT`.
   TelemetryType event_type = 3;
   // Name of the cluster that transmitted this telemetry event.
   string cluster_name = 4;
@@ -129,23 +94,30 @@ message NetworkConnectPolicyTelemetry {
   // Network protocol of the connection that received this network connect
   // policy verdict.
   NetworkProtocolType protocol = 19;
-  // Policy verdict.
+  // Policy verdict. If the connections don't have corresponding policy rules,
+  // this field is set to POLICY_VERDICT_UNSPECIFIED.
   PolicyVerdict verdict = 20;
   // Name of the Tetragon network connect policy that made this verdict.
+  // If the connections don't have corresponding policy rules, this field is not set.
   string policy_name = 21;
   // Name of the Tetragon network connect policy rule that made this verdict.
+  // If the connections don't have corresponding policy rules, this field is not set.
+  // If the connections were allowed by the default allow rule, this field is set to
+  // "tetragon:default-allow".
+  // If the connections were dropped by the default drop rule, this field is set to
+  // "tetragon:default-drop".
   string rule_name = 22;
   // tx_bytes allowed or dropped.
   // For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
   // transmit bytes from connections allowed by the policy rule.
-  // For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
-  // dropped transmit bytes from connections dropped by the policy rule.
+  // For `POLICY_VERDICT_DROP` verdict events, this field is set to zero.
   uint64 tx_bytes = 23;
   // The number of receive bytes from connections allowed by the policy rule. This
   // field is not set for `POLICY_VERDICT_DROP` verdict events.
   uint64 rx_bytes = 24;
-  // The number of TCP connections / UDP sessions allowed or dropped by this
-  // policy rule.
+  // The number of TCP connections / UDP sessions.
+  // For `POLICY_VERDICT_UNSPECIFIED` verdict events, this field specifies the
+  // number of TCP connections / UDP sessions created.
   // For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
   // TCP connections / UDP sessions allowed by this policy rule.
   // For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
@@ -176,7 +148,6 @@ enum TelemetryType {
   TELEMETRY_TYPE_UNSPECIFIED = 0;
   TELEMETRY_TYPE_PROCESS = 1;
   TELEMETRY_TYPE_NETWORK_CONNECT = 2;
-  TELEMETRY_TYPE_NETWORK_CONNECT_POLICY = 3;
 }
 
 message ApplicationModelEvent {
@@ -257,9 +228,29 @@ message ApplicationProcessGroup {
   google.protobuf.Timestamp latest_exit_time = 10;
 }
 
+message NetworkPolicy {
+  // Policy verdict. If the connections don't have corresponding policy rules,
+  // this field is set to POLICY_VERDICT_UNSPECIFIED.
+  PolicyVerdict verdict = 20;
+  // Name of the Tetragon network connect policy that made this verdict.
+  // If the connections don't have corresponding policy rules, this field is not set.
+  string policy_name = 21;
+  // Name of the Tetragon network connect policy rule that made this verdict.
+  // If the connections don't have corresponding policy rules, this field is not set.
+  // If the connections were allowed by the default allow rule, this field is set to
+  // "tetragon:default-allow".
+  // If the connections were dropped by the default drop rule, this field is set to
+  // "tetragon:default-drop".
+  string rule_name = 22;
+}
+
 message ApplicationConnection {
+  // Destination information associated with the connection
   Destination destination = 1;
+  // Statistics associated with the connection
   ConnectionStats stats = 2;
+  // Policy information associated with the connection
+  NetworkPolicy policy = 3;
 }
 
 message ConnectionStats {
@@ -321,10 +312,10 @@ message StreamTelemetryRequest {
 }
 
 message StreamTelemetryResponse {
-  // The type-speicifc fields of flat events.
+  // Each StreamTelemetryResponse contains one of the telemetry events listed below.
   oneof event {
-    // Application Model Network Flat Entry event has the
-    NetworkTelemetry network = 1;
+    ProcessTelemetry process = 1;
+    NetworkConnectTelemetry network_connect = 2;
   }
 }
 

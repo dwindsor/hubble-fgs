@@ -354,8 +354,8 @@ func ApplicationModelToProcessFlat(_ context.Context, a *appModelV1.ApplicationM
 	return t, nil
 }
 
-func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.ApplicationModel) ([]*appModelV1.NetworkTelemetry, error) {
-	n := []*appModelV1.NetworkTelemetry{}
+func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.ApplicationModel) ([]*appModelV1.NetworkConnectTelemetry, error) {
+	n := []*appModelV1.NetworkConnectTelemetry{}
 	node := node.GetNodeNameForExport()
 	cluster := option.Config.ClusterName
 	time := timestamppb.Now()
@@ -382,7 +382,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					destName, dns, dname, dkind := getDestination(c.Destination)
 					dType := getType(c.Destination)
 
-					entry := &appModelV1.NetworkTelemetry{
+					entry := &appModelV1.NetworkConnectTelemetry{
 						ClusterName:                       cluster,
 						NodeName:                          node,
 						EventType:                         appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
@@ -400,9 +400,6 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 						DestinationKubernetesWorkloadName: dname,
 						TxBytes:                           c.Stats.TxBytes,
 						RxBytes:                           c.Stats.RxBytes,
-						TxDrops:                           c.Stats.TxDrops,
-						DefaultDropBytes:                  c.Stats.DefaultDropBytes,
-						DefaultAllowBytes:                 c.Stats.DefaultAllowBytes,
 						NodeLabels:                        labels,
 					}
 					n = append(n, entry)
@@ -417,7 +414,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 				destName, dns, dname, dkind := getDestination(c.Destination)
 				dType := getType(c.Destination)
 
-				entry := &appModelV1.NetworkTelemetry{
+				entry := &appModelV1.NetworkConnectTelemetry{
 					ClusterName:                       cluster,
 					NodeName:                          node,
 					EventType:                         appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
@@ -432,9 +429,6 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					DestinationKubernetesWorkloadName: dname,
 					TxBytes:                           c.Stats.TxBytes,
 					RxBytes:                           c.Stats.RxBytes,
-					TxDrops:                           c.Stats.TxDrops,
-					DefaultDropBytes:                  c.Stats.DefaultDropBytes,
-					DefaultAllowBytes:                 c.Stats.DefaultAllowBytes,
 					NodeLabels:                        labels,
 				}
 				n = append(n, entry)

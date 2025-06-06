@@ -139,7 +139,7 @@ func monitor(namespaces []string, host bool) error {
 				return nil
 			}
 
-			network := res.GetNetwork()
+			network := res.GetNetworkConnect()
 			if network == nil {
 				logger.GetLogger().Error("stream received unknown event type")
 				return err
@@ -159,7 +159,7 @@ func monitorStdin() error {
 	compactEncoder := encoder.NewEnterpriseEncoder(&buf, "always", true)
 	decoder := json.NewDecoder(bufio.NewReader(os.Stdin))
 	for {
-		newEntry := &appModelV1.NetworkTelemetry{}
+		newEntry := &appModelV1.NetworkConnectTelemetry{}
 		err := decoder.Decode(newEntry)
 		if err == io.EOF {
 			break
