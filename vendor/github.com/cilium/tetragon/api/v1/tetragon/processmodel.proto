@@ -72,12 +72,7 @@ message ProcessModel {
   string abi = 10;
 }
 
-message GetProcessModelResponse {
-  repeated ProcessModel processes = 1;
-}
-
 service ProcessModelService {
-  rpc GetProcessModel(GetProcessModelRequest) returns (GetProcessModelResponse) {}
   rpc GetEndpointMap(GetEndpointMapRequest) returns (GetEndpointMapResponse) {}
   rpc GetDestinationMap(GetDestinationMapRequest) returns (GetDestinationMapResponse) {}
   rpc GetProcesses(GetProcessModelRequest) returns (stream ProcessModel) {}

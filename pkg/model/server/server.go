@@ -34,7 +34,6 @@ import (
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -294,7 +293,7 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	return resp, nil
 }
 
-func statsAdd(a, b *tetragon.DestinationStats) *tetragon.DestinationStats {
+func statsAdd(a, b *types.DestinationStats) *types.DestinationStats {
 	quota := uint64(0)
 	limit := uint64(0)
 	var reset *timestamppb.Timestamp
@@ -312,7 +311,7 @@ func statsAdd(a, b *tetragon.DestinationStats) *tetragon.DestinationStats {
 		txreset = b.KtimeTxReset
 	}
 
-	return &tetragon.DestinationStats{
+	return &types.DestinationStats{
 		TxBytes:           a.TxBytes + b.TxBytes,
 		RxBytes:           a.RxBytes + b.RxBytes,
 		DefaultAllowBytes: a.DefaultAllowBytes + b.DefaultAllowBytes,
@@ -325,22 +324,22 @@ func statsAdd(a, b *tetragon.DestinationStats) *tetragon.DestinationStats {
 	}
 }
 
-func fqdnDestEqual(a, b *tetragon.Destination) bool {
+func fqdnDestEqual(a, b *types.Destination) bool {
 	return a.DestinationPod == nil &&
 		strings.Compare(strings.Join(a.DestinationNames, ","), strings.Join(b.DestinationNames, ",")) == 0 &&
 		a.Port == b.Port
 }
 
-func podEqual(a, b *tetragon.Pod) bool {
+func podEqual(a, b *types.Pod) bool {
 	return strings.Compare(a.Name, b.Name) == 0 &&
 		strings.Compare(a.Namespace, b.Namespace) == 0
 }
 
-func podDestEqual(a, b *tetragon.Destination) bool {
+func podDestEqual(a, b *types.Destination) bool {
 	return a.DestinationPod != nil && b.DestinationPod != nil && podEqual(a.DestinationPod, b.DestinationPod) && a.Port == b.Port
 }
 
-func destEqual(a, b *tetragon.Destination) bool {
+func destEqual(a, b *types.Destination) bool {
 	if fqdnDestEqual(a, b) {
 		return true
 	}
@@ -350,8 +349,8 @@ func destEqual(a, b *tetragon.Destination) bool {
 	return false
 }
 
-func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModelResponse, error) {
-	processModel := make([]*tetragon.ProcessModel, 0)
+func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, error) {
+	processModel := make([]*types.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
 	binaryFile := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
@@ -380,14 +379,14 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		dstVal types.DestinationEndpointValue
 	)
 
-	dstList := make(map[uint64][]*tetragon.Destination)
-	nsList := make(map[uint64][]*tetragon.Destination)
+	dstList := make(map[uint64][]*types.Destination)
+	nsList := make(map[uint64][]*types.Destination)
 
 	c := endpoint.MustGet()
 
 	iter := endpt.Iterate()
 	for iter.Next(&dstKey, &dstVal) {
-		var d *tetragon.Destination
+		var d *types.Destination
 		var ep endpoint.Endpoint
 
 		// The zero destination rule is a default_action policy rule
@@ -457,7 +456,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 			continue
 		}
 
-		stats := &tetragon.DestinationStats{
+		stats := &types.DestinationStats{
 			TxBytes:           dstVal.TxBytes,
 			RxBytes:           dstVal.RxBytes,
 			TxDrops:           dstVal.TxDrops,
@@ -475,20 +474,20 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 
 		switch ep.Type {
 		case tetragon.EndpointType_ENDPOINT_TYPE_UNKNOWN:
-			d = &tetragon.Destination{
+			d = &types.Destination{
 				DestinationNames: []string{},
 				Port:             uint64(0),
 				Stats:            stats,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_DNS:
-			d = &tetragon.Destination{
+			d = &types.Destination{
 				DestinationNames: strings.Split(ep.Dns, ","),
 				Port:             dstVal.Port,
 				Stats:            stats,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_POD:
-			d = &tetragon.Destination{
-				DestinationPod: &tetragon.Pod{
+			d = &types.Destination{
+				DestinationPod: &types.Pod{
 					Namespace:    ep.Namespace,
 					Workload:     ep.Name,
 					WorkloadKind: ep.Kind,
@@ -497,14 +496,14 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 				Stats: stats,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_IP:
-			d = &tetragon.Destination{
+			d = &types.Destination{
 				DestinationNames: strings.Split(ep.Ip, ","),
 				Port:             dstVal.Port,
 				Stats:            stats,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_SERVICE:
-			d = &tetragon.Destination{
-				DestinationService: &tetragon.Service{
+			d = &types.Destination{
+				DestinationService: &types.Service{
 					Namespace: ep.Namespace,
 					Name:      ep.Name,
 				},
@@ -512,24 +511,24 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 				Stats: stats,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_LISTEN:
-			d = &tetragon.Destination{
+			d = &types.Destination{
 				Port:  dstVal.Port,
 				Stats: stats,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_BPF_DNS:
-			d = &tetragon.Destination{
+			d = &types.Destination{
 				DestinationNames: []string{ep.Name},
 				Port:             dstVal.Port,
 				Stats:            stats,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_NODE:
-			d = &tetragon.Destination{
+			d = &types.Destination{
 				DestinationNames: []string{ep.Name},
 				Port:             dstVal.Port,
 				Stats:            stats,
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_CIDR:
-			d = &tetragon.Destination{
+			d = &types.Destination{
 				DestinationNames: []string{ep.Ip},
 				Port:             dstVal.Port,
 				Stats:            stats,
@@ -542,7 +541,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 			cgid := dstKey.LocalNSId
 			l, ok := nsList[cgid]
 			if !ok {
-				nsList[cgid] = []*tetragon.Destination{d}
+				nsList[cgid] = []*types.Destination{d}
 			} else {
 				l := append(l, d)
 				nsList[cgid] = l
@@ -550,7 +549,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		} else {
 			l, ok := dstList[dstKey.LocalId]
 			if !ok {
-				dstList[dstKey.LocalId] = []*tetragon.Destination{d}
+				dstList[dstKey.LocalId] = []*types.Destination{d}
 			} else {
 				skip := false
 
@@ -631,11 +630,11 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 			continue
 		}
 
-		processModel = append(processModel, &tetragon.ProcessModel{
+		processModel = append(processModel, &types.ProcessModel{
 			Binary:    "",
 			Parent:    "",
 			Namespace: nsPath,
-			Workload: &tetragon.Workload{
+			Workload: &types.Workload{
 				Name: wlPath,
 				Kind: kind,
 			},
@@ -647,12 +646,12 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 	// the defined id 0. If the model is qualified by namespace ignore
 	// these host destinations.
 	if len(dstList[0]) != 0 && len(namespaces) == 0 {
-		processModel = append(processModel, &tetragon.ProcessModel{
+		processModel = append(processModel, &types.ProcessModel{
 			Binary:    "",
 			Parent:    "",
 			Namespace: "",
 			Dest:      dstList[0],
-			Workload:  &tetragon.Workload{},
+			Workload:  &types.Workload{},
 		})
 	}
 
@@ -733,11 +732,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 		}
 
 		dest := dstList[key.Self]
-
-		var inInitTree *wrapperspb.BoolValue
-		if val.InContainer {
-			inInitTree = &wrapperspb.BoolValue{Value: val.InInitTree}
-		}
+		inInitTree := val.InInitTree
 
 		if option.Config.EnableSyscallTracking {
 			err = sm.Lookup(&key.Self, &syscallVal)
@@ -755,7 +750,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 			}
 		}
 
-		processModel = append(processModel, &tetragon.ProcessModel{
+		processModel = append(processModel, &types.ProcessModel{
 			Binary:     selfStr,
 			BinaryArgs: selfArgs,
 			Parent:     parentPath,
@@ -763,7 +758,7 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 			Namespace:  ns,
 			Syscalls:   syscalls.AsSlice(),
 			Abi:        abi,
-			Workload: &tetragon.Workload{
+			Workload: &types.Workload{
 				Name: wl,
 				Kind: kind,
 			},
@@ -787,34 +782,18 @@ func GetProcessModel(namespaces []string, debug bool) (*tetragon.GetProcessModel
 	}
 	clear(pendingNSIDUpdates)
 
-	return &tetragon.GetProcessModelResponse{
-		Processes: processModel,
-	}, nil
+	return processModel, nil
 }
 
-func (s *Server) GetProcessModel(_ context.Context, req *tetragon.GetProcessModelRequest) (*tetragon.GetProcessModelResponse, error) {
+func (s *Server) GetProcessModel(_ context.Context, ns []string, debug bool) ([]*types.ProcessModel, error) {
 	if !option.Config.EnableApplicationModel {
 		return nil, fmt.Errorf("application model must be enabled with the --enable-application-model flag or the tetragon.enableApplicationModel Helm value")
 	}
-	namespaces := req.GetNamespaces()
-	return GetProcessModel(namespaces, req.GetDebug())
-}
-
-func (s *Server) GetProcesses(req *tetragon.GetProcessModelRequest, stream tetragon.ProcessModelService_GetProcessesServer) error {
-	res, err := s.GetProcessModel(stream.Context(), req)
-	if err != nil {
-		return err
-	}
-	for _, proc := range res.GetProcesses() {
-		if err := stream.Send(proc); err != nil {
-			return err
-		}
-	}
-	return nil
+	return GetProcessModel(ns, debug)
 }
 
 func (s *Server) GetModel(ctx context.Context, req *appModelV1.GetModelRequest) (*appModelV1.GetModelResponse, error) {
-	res, err := s.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
+	res, err := s.GetProcessModel(ctx, []string{}, false)
 	if err != nil {
 		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 		return nil, err
@@ -841,7 +820,7 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 		nsFilter[f] = true
 	}
 
-	res, err := s.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
+	res, err := s.GetProcessModel(ctx, []string{}, false)
 	if err != nil {
 		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 		return err
@@ -853,7 +832,7 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 
 		select {
 		case <-ticker.C:
-			res, err := s.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
+			res, err := s.GetProcessModel(ctx, []string{}, false)
 			if err != nil {
 				logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 				return err

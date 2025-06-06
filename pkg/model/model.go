@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -52,7 +52,7 @@ type connectionKey struct {
 
 type processValue struct {
 	connections connectionMap
-	inInitTree  *wrapperspb.BoolValue
+	inInitTree  bool
 	syscalls    *appModelV1.ApplicationSyscalls
 }
 
@@ -156,7 +156,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 						Name:        pskey.name,
 						Arguments:   pskey.arguments,
 						Connections: slices.Collect(maps.Values(psval.connections)),
-						InInitTree:  psval.inInitTree,
+						InInitTree:  wrapperspb.Bool(psval.inInitTree),
 						SyscallInfo: psval.syscalls,
 					}
 					result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, ps)
@@ -176,7 +176,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 						Name:        pskey.name,
 						Arguments:   pskey.arguments,
 						Connections: slices.Collect(maps.Values(psval.connections)),
-						InInitTree:  psval.inInitTree,
+						InInitTree:  wrapperspb.Bool(psval.inInitTree),
 						SyscallInfo: psval.syscalls,
 					}
 					wl.Processes = append(wl.Processes, ps)
@@ -191,9 +191,9 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 	return result
 }
 
-func ProcessModelToApplicationModel(res *tetragon.GetProcessModelResponse, nsFilter map[string]bool) *appModelV1.ApplicationModelEvent {
+func ProcessModelToApplicationModel(processModel []*types.ProcessModel, nsFilter map[string]bool) *appModelV1.ApplicationModelEvent {
 	// Ignore quota info for now.
-	monitor, _, processes := ConvertToMonitorData(res, true)
+	monitor, _, processes := ConvertToMonitorData(processModel, true)
 	nsMap := make(namespaceMap)
 	for key, val := range monitor {
 		handleNetworkEvent(nsMap, key, val)

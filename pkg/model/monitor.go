@@ -20,12 +20,11 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/google/go-cmp/cmp"
 	"github.com/isovalent/hubble-fgs/pkg/common"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func prettyWorkloadKind(kind appModelV1.WorkloadKind) string {
@@ -221,7 +220,7 @@ type ProcessKey struct {
 }
 
 type ProcessValue struct {
-	InInitTree *wrapperspb.BoolValue
+	InInitTree bool
 	Syscalls   *appModelV1.ApplicationSyscalls
 }
 
@@ -246,22 +245,25 @@ func (nqd NetworkQuotaData) Print() {
 	}
 }
 
-func getNetworkMonitorKey(process *tetragon.ProcessModel, dst *tetragon.Destination, includeProcess bool) NetworkKey {
+func getNetworkMonitorKey(process *types.ProcessModel, dst *types.Destination, includeProcess bool) NetworkKey {
 	nwKey := NetworkKey{
-		SourceNamespace:    process.GetNamespace(),
-		SourceWorkloadName: process.GetWorkload().GetName(),
-		SourceWorkloadKind: translateWorkloadKind(process.GetWorkload().GetKind()),
+		SourceNamespace: process.Namespace,
+	}
+	if process.Workload != nil {
+		nwKey.SourceWorkloadName = process.Workload.Name
+		nwKey.SourceWorkloadKind = translateWorkloadKind(process.Workload.Kind)
+
 	}
 	if includeProcess {
-		nwKey.SourceProcessName = process.GetBinary()
-		nwKey.SourceProcessArgs = process.GetBinaryArgs()
+		nwKey.SourceProcessName = process.Binary
+		nwKey.SourceProcessArgs = process.BinaryArgs
 	}
 	addDestinationInfo(dst, &nwKey)
 	return nwKey
 }
 
 // addDestinationInfo adds destination information from a [tetragon.Destination] to a [NetworkKey].
-func addDestinationInfo(dst *tetragon.Destination, nwKey *NetworkKey) {
+func addDestinationInfo(dst *types.Destination, nwKey *NetworkKey) {
 	if len(dst.DestinationNames) > 0 {
 		if len(dst.DestinationNames) == 1 {
 			nwKey.DestinationNames = dst.DestinationNames[0]
@@ -330,27 +332,27 @@ func nwKeyToDestination(nwKey *NetworkKey) *appModelV1.Destination {
 	return res
 }
 
-func getProcessMonitorKey(process *tetragon.ProcessModel) ProcessKey {
+func getProcessMonitorKey(process *types.ProcessModel) ProcessKey {
 	return ProcessKey{
-		Namespace:    process.GetNamespace(),
-		WorkloadName: process.GetWorkload().GetName(),
-		WorkloadKind: translateWorkloadKind(process.GetWorkload().GetKind()),
-		Name:         process.GetBinary(),
-		Args:         process.GetBinaryArgs(),
+		Namespace:    process.Namespace,
+		WorkloadName: process.Workload.Name,
+		WorkloadKind: translateWorkloadKind(process.Workload.Kind),
+		Name:         process.Binary,
+		Args:         process.BinaryArgs,
 	}
 }
 
-func getNetworkQuotaValue(dst *tetragon.Destination) NetworkQuotaValue {
+func getNetworkQuotaValue(dst *types.Destination) NetworkQuotaValue {
 	return NetworkQuotaValue{
-		TXBytes:           dst.GetStats().GetTxBytes(),
-		RXBytes:           dst.GetStats().GetRxBytes(),
-		AllowDefaultBytes: dst.GetStats().GetDefaultAllowBytes(),
-		DenyDefaultBytes:  dst.GetStats().GetDefaultDenyBytes(),
-		TXDrops:           dst.GetStats().GetTxDrops(),
-		TXQuota:           dst.GetStats().GetTxLimit(),
-		TXUsage:           dst.GetStats().GetTxQuota(),
-		NextReset:         dst.GetStats().GetKtimeTxReset().AsTime(),
-		LastReset:         dst.GetStats().GetKtimeLastReset().AsTime(),
+		TXBytes:           dst.Stats.TxBytes,
+		RXBytes:           dst.Stats.RxBytes,
+		AllowDefaultBytes: dst.Stats.DefaultAllowBytes,
+		DenyDefaultBytes:  dst.Stats.DefaultDenyBytes,
+		TXDrops:           dst.Stats.TxDrops,
+		TXQuota:           dst.Stats.TxLimit,
+		TXUsage:           dst.Stats.TxQuota,
+		NextReset:         dst.Stats.KtimeTxReset.AsTime(),
+		LastReset:         dst.Stats.KtimeLastReset.AsTime(),
 	}
 }
 
@@ -381,13 +383,13 @@ func getSyscallInfo(abi string, syscalls []uint32) (*appModelV1.ApplicationSysca
 
 var warnOnce = false
 
-func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess bool) (NetworkMonitorData, NetworkQuotaData, ProcessMonitorData) {
+func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess bool) (NetworkMonitorData, NetworkQuotaData, ProcessMonitorData) {
 
 	result := NetworkMonitorData{}
 	quota := NetworkQuotaData{}
 	proc := ProcessMonitorData{}
-	for _, process := range res.GetProcesses() {
-		if len(process.GetDest()) == 0 {
+	for _, process := range processModel {
+		if len(process.Dest) == 0 {
 			processKey := getProcessMonitorKey(process)
 			syscalls, err := getSyscallInfo(process.Abi, process.Syscalls)
 			if err != nil {
@@ -403,23 +405,20 @@ func ConvertToMonitorData(res *tetragon.GetProcessModelResponse, includeProcess 
 			}
 			continue
 		}
-		for _, dst := range process.GetDest() {
-			if dst.GetStats() == nil {
-				continue
-			}
+		for _, dst := range process.Dest {
 			key := getNetworkMonitorKey(process, dst, includeProcess)
-			if dst.GetPort() != 0 {
+			if dst.Port != 0 {
 				if _, ok := result[key]; !ok {
 					result[key] = NetworkMonitorValue{}
 				}
 				currentValue := result[key]
-				currentValue.TXBytes += dst.GetStats().GetTxBytes()
-				currentValue.RXBytes += dst.GetStats().GetRxBytes()
-				currentValue.AllowDefaultBytes += dst.GetStats().GetDefaultAllowBytes()
-				currentValue.DenyDefaultBytes += dst.GetStats().GetDefaultDenyBytes()
-				currentValue.TXDrops += dst.GetStats().GetTxDrops()
+				currentValue.TXBytes += dst.Stats.TxBytes
+				currentValue.RXBytes += dst.Stats.RxBytes
+				currentValue.AllowDefaultBytes += dst.Stats.DefaultAllowBytes
+				currentValue.DenyDefaultBytes += dst.Stats.DefaultDenyBytes
+				currentValue.TXDrops += dst.Stats.TxDrops
 				result[key] = currentValue
-			} else if process.GetBinary() == "" && dst.GetStats().GetTxLimit() > 0 {
+			} else if process.Binary == "" && dst.Stats.TxLimit > 0 {
 				// This is quota-related stats.
 				quota[key] = getNetworkQuotaValue(dst)
 			}

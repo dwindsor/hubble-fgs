@@ -18,7 +18,6 @@ import (
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
@@ -31,7 +30,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 
 	isDiffModel := enterpriseOption.Config.ApplicationModelDiffExportFilename != "" || enterpriseOption.Config.ApplicationModelEnableDiff
 
-	res, err := server.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
+	res, err := server.GetProcessModel(ctx, []string{}, false)
 	if err != nil {
 		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 		return
@@ -54,7 +53,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 
 		select {
 		case <-ticker.C:
-			res, err := server.GetProcessModel(ctx, &tetragon.GetProcessModelRequest{})
+			res, err := server.GetProcessModel(ctx, []string{}, false)
 			if err != nil {
 				logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
 				return

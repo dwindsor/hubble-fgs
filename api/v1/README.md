@@ -210,7 +210,6 @@
     - [GetProcessMapRequest](#tetragon-GetProcessMapRequest)
     - [GetProcessMapResponse](#tetragon-GetProcessMapResponse)
     - [GetProcessModelRequest](#tetragon-GetProcessModelRequest)
-    - [GetProcessModelResponse](#tetragon-GetProcessModelResponse)
     - [ProcessMap](#tetragon-ProcessMap)
     - [ProcessModel](#tetragon-ProcessModel)
     - [ProcessUUID](#tetragon-ProcessUUID)
@@ -3877,21 +3876,6 @@ Determins the behaviour of a field filter
 
 
 
-<a name="tetragon-GetProcessModelResponse"></a>
-
-### GetProcessModelResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| processes | [ProcessModel](#tetragon-ProcessModel) | repeated |  |
-
-
-
-
-
-
 <a name="tetragon-ProcessMap"></a>
 
 ### ProcessMap
@@ -4008,7 +3992,6 @@ Determins the behaviour of a field filter
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
-| GetProcessModel | [GetProcessModelRequest](#tetragon-GetProcessModelRequest) | [GetProcessModelResponse](#tetragon-GetProcessModelResponse) |  |
 | GetEndpointMap | [GetEndpointMapRequest](#tetragon-GetEndpointMapRequest) | [GetEndpointMapResponse](#tetragon-GetEndpointMapResponse) |  |
 | GetDestinationMap | [GetDestinationMapRequest](#tetragon-GetDestinationMapRequest) | [GetDestinationMapResponse](#tetragon-GetDestinationMapResponse) |  |
 | GetProcesses | [GetProcessModelRequest](#tetragon-GetProcessModelRequest) | [ProcessModel](#tetragon-ProcessModel) stream |  |
