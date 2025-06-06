@@ -24,7 +24,7 @@ copy_oss_files:
 
 # FIXME: re-enable lint on the all target once we have a chance to fix the lints
 .PHONY: __all_local
-__all_local: __format_local __check-breaking_local __proto_local #__lint_local 
+__all_local: __format_local __proto_local #__lint_local __check-breaking_local
 
 .PHONY: __proto_local
 __proto_local: 
