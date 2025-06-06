@@ -25,6 +25,7 @@
     - [GetModelResponse](#application_model-v1alpha-GetModelResponse)
     - [NetworkConnectTelemetry](#application_model-v1alpha-NetworkConnectTelemetry)
     - [NetworkConnectTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkConnectTelemetry-NodeLabelsEntry)
+    - [NetworkPolicy](#application_model-v1alpha-NetworkPolicy)
     - [ProcessTelemetry](#application_model-v1alpha-ProcessTelemetry)
     - [ProcessTelemetry.NodeLabelsEntry](#application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry)
     - [StreamTelemetryRequest](#application_model-v1alpha-StreamTelemetryRequest)
@@ -571,8 +572,9 @@ WARNING for consumers: numbers are arbitrary.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| destination | [Destination](#application_model-v1alpha-Destination) |  |  |
-| stats | [ConnectionStats](#application_model-v1alpha-ConnectionStats) |  |  |
+| destination | [Destination](#application_model-v1alpha-Destination) |  | Destination information associated with the connection |
+| stats | [ConnectionStats](#application_model-v1alpha-ConnectionStats) |  | Statistics associated with the connection |
+| policy | [NetworkPolicy](#application_model-v1alpha-NetworkPolicy) |  | Policy information associated with the connection |
 
 
 
@@ -876,6 +878,23 @@ the following criteria:
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="application_model-v1alpha-NetworkPolicy"></a>
+
+### NetworkPolicy
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| verdict | [PolicyVerdict](#application_model-v1alpha-PolicyVerdict) |  | Policy verdict. If the connections don&#39;t have corresponding policy rules, this field is set to POLICY_VERDICT_UNSPECIFIED. |
+| policy_name | [string](#string) |  | Name of the Tetragon network connect policy that made this verdict. If the connections don&#39;t have corresponding policy rules, this field is not set. |
+| rule_name | [string](#string) |  | Name of the Tetragon network connect policy rule that made this verdict. If the connections don&#39;t have corresponding policy rules, this field is not set. If the connections were allowed by the default allow rule, this field is set to &#34;tetragon:default-allow&#34;. If the connections were dropped by the default drop rule, this field is set to &#34;tetragon:default-drop&#34;. |
 
 
 

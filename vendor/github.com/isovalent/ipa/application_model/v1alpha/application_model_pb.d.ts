@@ -542,18 +542,68 @@ export declare type ApplicationProcessGroup = Message<"application_model.v1alpha
 export declare const ApplicationProcessGroupSchema: GenMessage<ApplicationProcessGroup>;
 
 /**
+ * @generated from message application_model.v1alpha.NetworkPolicy
+ */
+export declare type NetworkPolicy = Message<"application_model.v1alpha.NetworkPolicy"> & {
+  /**
+   * Policy verdict. If the connections don't have corresponding policy rules,
+   * this field is set to POLICY_VERDICT_UNSPECIFIED.
+   *
+   * @generated from field: application_model.v1alpha.PolicyVerdict verdict = 20;
+   */
+  verdict: PolicyVerdict;
+
+  /**
+   * Name of the Tetragon network connect policy that made this verdict.
+   * If the connections don't have corresponding policy rules, this field is not set.
+   *
+   * @generated from field: string policy_name = 21;
+   */
+  policyName: string;
+
+  /**
+   * Name of the Tetragon network connect policy rule that made this verdict.
+   * If the connections don't have corresponding policy rules, this field is not set.
+   * If the connections were allowed by the default allow rule, this field is set to
+   * "tetragon:default-allow".
+   * If the connections were dropped by the default drop rule, this field is set to
+   * "tetragon:default-drop".
+   *
+   * @generated from field: string rule_name = 22;
+   */
+  ruleName: string;
+};
+
+/**
+ * Describes the message application_model.v1alpha.NetworkPolicy.
+ * Use `create(NetworkPolicySchema)` to create a new message.
+ */
+export declare const NetworkPolicySchema: GenMessage<NetworkPolicy>;
+
+/**
  * @generated from message application_model.v1alpha.ApplicationConnection
  */
 export declare type ApplicationConnection = Message<"application_model.v1alpha.ApplicationConnection"> & {
   /**
+   * Destination information associated with the connection
+   *
    * @generated from field: application_model.v1alpha.Destination destination = 1;
    */
   destination?: Destination;
 
   /**
+   * Statistics associated with the connection
+   *
    * @generated from field: application_model.v1alpha.ConnectionStats stats = 2;
    */
   stats?: ConnectionStats;
+
+  /**
+   * Policy information associated with the connection
+   *
+   * @generated from field: application_model.v1alpha.NetworkPolicy policy = 3;
+   */
+  policy?: NetworkPolicy;
 };
 
 /**
