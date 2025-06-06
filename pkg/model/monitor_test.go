@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/google/go-cmp/cmp"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,92 +46,90 @@ func TestNetworkMonitorValue_String(t *testing.T) {
 }
 
 func TestConvertToNetworkMonitorData(t *testing.T) {
-	res := tetragon.GetProcessModelResponse{
-		Processes: []*tetragon.ProcessModel{
-			{
-				Namespace: HostNamespace,
-				Binary:    "curl",
-				Dest: []*tetragon.Destination{
-					{
-						DestinationNames: []string{"cisco.com."},
-						Port:             443,
-						Stats:            &tetragon.DestinationStats{TxBytes: 10, RxBytes: 20},
-					},
+	res := []*types.ProcessModel{
+		{
+			Namespace: HostNamespace,
+			Binary:    "curl",
+			Dest: []*types.Destination{
+				{
+					DestinationNames: []string{"cisco.com."},
+					Port:             443,
+					Stats:            &types.DestinationStats{TxBytes: 10, RxBytes: 20},
 				},
 			},
-			{
-				Namespace: HostNamespace,
-				Binary:    "wget",
-				Dest: []*tetragon.Destination{
-					{
-						DestinationNames: []string{"cisco.com."},
-						Port:             443,
-						Stats:            &tetragon.DestinationStats{TxBytes: 30, RxBytes: 40},
-					},
+		},
+		{
+			Namespace: HostNamespace,
+			Binary:    "wget",
+			Dest: []*types.Destination{
+				{
+					DestinationNames: []string{"cisco.com."},
+					Port:             443,
+					Stats:            &types.DestinationStats{TxBytes: 30, RxBytes: 40},
 				},
 			},
-			{
-				Namespace: HostNamespace,
-				Binary:    "wget",
-				Dest: []*tetragon.Destination{
-					{
-						DestinationNames: []string{"cisco.com."},
-						Port:             80,
-						Stats:            &tetragon.DestinationStats{TxBytes: 100, RxBytes: 200},
-					},
+		},
+		{
+			Namespace: HostNamespace,
+			Binary:    "wget",
+			Dest: []*types.Destination{
+				{
+					DestinationNames: []string{"cisco.com."},
+					Port:             80,
+					Stats:            &types.DestinationStats{TxBytes: 100, RxBytes: 200},
 				},
 			},
-			{
-				Binary:    "wget",
-				Namespace: "client",
-				Workload:  &tetragon.Workload{Kind: "Deployment", Name: "my-app"},
-				Dest: []*tetragon.Destination{
-					{
-						DestinationPod: &tetragon.Pod{
-							Namespace:    "server",
-							WorkloadKind: "Deployment",
-							Workload:     "nginx",
-						},
-						Port:  8080,
-						Stats: &tetragon.DestinationStats{TxBytes: 200, RxBytes: 400},
+		},
+		{
+			Binary:    "wget",
+			Namespace: "client",
+			Workload:  &types.Workload{Kind: "Deployment", Name: "my-app"},
+			Dest: []*types.Destination{
+				{
+					DestinationPod: &types.Pod{
+						Namespace:    "server",
+						WorkloadKind: "Deployment",
+						Workload:     "nginx",
 					},
+					Port:  8080,
+					Stats: &types.DestinationStats{TxBytes: 200, RxBytes: 400},
 				},
 			},
-			{
-				Binary:    "wget",
-				Namespace: "client",
-				Workload:  &tetragon.Workload{Kind: "Deployment", Name: "my-app"},
-				Dest: []*tetragon.Destination{
-					{
-						DestinationService: &tetragon.Service{
-							Namespace: "default",
-							Name:      "kubernetes",
-						},
-						Port:  443,
-						Stats: &tetragon.DestinationStats{TxBytes: 300, RxBytes: 500},
+		},
+		{
+			Binary:    "wget",
+			Namespace: "client",
+			Workload:  &types.Workload{Kind: "Deployment", Name: "my-app"},
+			Dest: []*types.Destination{
+				{
+					DestinationService: &types.Service{
+						Namespace: "default",
+						Name:      "kubernetes",
 					},
+					Port:  443,
+					Stats: &types.DestinationStats{TxBytes: 300, RxBytes: 500},
 				},
 			},
-			// This is quota
-			{
-				Namespace: "client",
-				Workload:  &tetragon.Workload{Kind: "Deployment", Name: "my-app"},
-				Dest: []*tetragon.Destination{
-					{
-						DestinationPod: &tetragon.Pod{
-							Namespace:    "server",
-							WorkloadKind: "Deployment",
-							Workload:     "nginx",
-						},
-						Stats: &tetragon.DestinationStats{
-							TxBytes:        200,
-							RxBytes:        400,
-							TxDrops:        600,
-							TxLimit:        800,
-							TxQuota:        1000,
-							KtimeTxReset:   &timestamppb.Timestamp{Seconds: 1200, Nanos: 1400},
-							KtimeLastReset: &timestamppb.Timestamp{Seconds: 1000, Nanos: 1400},
-						},
+		},
+		// This is quota
+		{
+			Namespace: "client",
+			Workload:  &types.Workload{Kind: "Deployment", Name: "my-app"},
+			Dest: []*types.Destination{
+				{
+					DestinationPod: &types.Pod{
+						Namespace:    "server",
+						WorkloadKind: "Deployment",
+						Workload:     "nginx",
+					},
+					Stats: &types.DestinationStats{
+						TxBytes:        200,
+						RxBytes:        400,
+						TxDrops:        600,
+						TxLimit:        800,
+						TxQuota:        1000,
+						KtimeTxReset:   &timestamppb.Timestamp{Seconds: 1200, Nanos: 1400},
+						KtimeLastReset: &timestamppb.Timestamp{Seconds: 1000, Nanos: 1400},
 					},
 				},
 			},

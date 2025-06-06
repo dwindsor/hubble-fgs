@@ -33,7 +33,8 @@ func TestMerge(t *testing.T) {
 	res := Merge(&m1, &m2)
 	merged, err := res.MarshalJSON()
 	assert.NoError(t, err)
-	expected := `{"host":{"processes":[{"name":"curl"},{"name":"wget"}]}}`
+	expected := `{"host":{"processes":[{"in_init_tree":false,"name":"curl"},{"in_init_tree":false,"name":"wget"}]}}`
+
 	assert.JSONEq(t, expected, string(merged))
 }
 
@@ -59,7 +60,7 @@ func TestMergeArgs(t *testing.T) {
 	res := Merge(&m1, &m2)
 	merged, err := res.MarshalJSON()
 	assert.NoError(t, err)
-	expected := `{"host":{"processes":[{"name":"curl", "arguments":"-v ebpf.io"},{"name":"curl", "arguments":"-v tetragon.io"},{"name":"wget"}]}}`
+	expected := `{"host":{"processes":[{"in_init_tree":false,"name":"curl", "arguments":"-v ebpf.io"},{"in_init_tree":false,"name":"curl", "arguments":"-v tetragon.io"},{"in_init_tree":false,"name":"wget"}]}}`
 	assert.JSONEq(t, expected, string(merged))
 }
 
