@@ -21,13 +21,10 @@ import (
 	"github.com/cilium/tetragon/pkg/cgrouprate"
 	"github.com/cilium/tetragon/pkg/fieldfilters"
 	"github.com/cilium/tetragon/pkg/health"
-	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
-	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
@@ -44,14 +41,10 @@ import (
 	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
-	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	ossAlignchecker "github.com/cilium/tetragon/pkg/alignchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/bugtool"
-	ossconfig "github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/exporter"
 	"github.com/cilium/tetragon/pkg/fileutils"
@@ -74,11 +67,8 @@ import (
 
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base/procfs"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	// Add enterprise-specific filters to the global registry
@@ -103,21 +93,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-}
-
-func checkStructAlignments() error {
-	bpfObjPath, err := ossconfig.FindProgramFile("bpf_alignchecker_oss.o")
-	if err != nil {
-		return err
-	}
-	if err := ossAlignchecker.CheckStructAlignmentsDefault(bpfObjPath); err != nil {
-		return err
-	}
-	bpfObjPath, err = ossconfig.FindProgramFile("bpf_alignchecker.o")
-	if err != nil {
-		return err
-	}
-	return alignchecker.CheckStructAlignments(bpfObjPath)
 }
 
 func getExportFilters() ([]*tetragon.Filter, []*tetragon.Filter, error) {
@@ -263,7 +238,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	log.WithField("config", viper.AllSettings()).Info("config settings")
 
 	// Log early security context in case something fails
-	proc.LogCurrentSecurityContext()
+	logCurrentSecurityContext()
 
 	// Create run dir early
 	os.MkdirAll(defaults.DefaultRunDir, 0755)
@@ -303,7 +278,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Initialize namespaces here. On errors fail, there is
 	// no point to continue if read/ptrace on /proc/1/ fails.
 	// Providing correct information can't be achieved anyway.
-	_, err = namespace.InitHostNamespace()
+	err = initHostNamespaces()
 	if err != nil {
 		log.WithField("procfs", option.Config.ProcFS).WithError(err).Fatalf("Failed to initialize host namespaces")
 	}
@@ -367,7 +342,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		// Always release tg_ prefix as we are relatively sure these belong to us
 		// but, do more aggressive detach op to clean up old versioned programs when
 		// told.
-		if err := cgroup.DetachTetragonCgroups(true, enterpriseOption.Config.DetachOldBpf); err != nil {
+		if err := detachTetragonCgroups(true, enterpriseOption.Config.DetachOldBpf); err != nil {
 			log.WithError(err).Warn("Failed to detach cgroups, Consider removing it manually")
 		} else {
 			log.Info("Successfully released attched cgroups.")
@@ -382,7 +357,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Get observer from configFile
 	obs := observer.NewObserver()
 	defer func() {
-		file.TerminateFsScanner()
+		terminateFsScanner()
 		obs.PrintStats()
 	}()
 
@@ -424,7 +399,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return fmt.Errorf("failed to start sensor manager: %w", err)
 	}
 
-	err = btf.InitCachedBTF(option.Config.HubbleLib, option.Config.BTF)
+	err = initCachedBTF(option.Config.HubbleLib, option.Config.BTF)
 	if err != nil {
 		return fmt.Errorf("failed to init cached BTF: %w", err)
 	}
@@ -518,7 +493,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return err
 	}
 
-	modelServer, err := model.DefaultNewServer()
+	modelServer, err := getDefaultNewServer()
 	if err != nil {
 		return err
 	}
@@ -529,14 +504,14 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return err
 	}
 	if enterpriseOption.Config.EnableApplicationModel {
-		if err = procfs.LoadInitialSensor(ctx); err != nil {
+		if err = loadInitialProcFsSensor(ctx); err != nil {
 			return err
 		}
 	}
-	if err = file.LoadFIMInitialSensor(ctx); err != nil {
+	if err = loadFIMInitialSensor(ctx); err != nil {
 		return err
 	}
-	if err = layer3.StartLayer3Progs(ctx); err != nil {
+	if err = startLayer3Progs(ctx); err != nil {
 		return err
 	}
 	observer.GetSensorManager().LogSensorsAndProbes(ctx)
@@ -652,7 +627,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// similar technique to completely remove procevents, but this will require
 	// some OSS work.
 	if enterpriseOption.Config.EnableApplicationModel {
-		if err = procfs.ProcFSWalk(); err != nil {
+		if err = procFSWalk(); err != nil {
 			logger.GetLogger().WithError(err).Warn("failed to pre-populate application model entries")
 		}
 	}
@@ -1010,11 +985,11 @@ func Serve(
 	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager) error {
 	grpcServer := grpc.NewServer()
 	tetragon.RegisterFineGuidanceSensorsServer(grpcServer, srv)
-	tetragon.RegisterProcessModelServiceServer(grpcServer, model)
+	registerProcessModelServiceServer(grpcServer, model)
 	tetragon.RegisterMandateServiceServer(grpcServer, mandate)
 	tetragon.RegisterAlertServiceServer(grpcServer, alerter)
 	tetragon.RegisterNetworkPolicyServiceServer(grpcServer, netpol)
-	appModelV1.RegisterApplicationModelServiceServer(grpcServer, model)
+	registerApplicationModelServiceServer(grpcServer, model)
 
 	proto, addr, err := server.SplitListenAddr(listenAddr)
 	if err != nil {
