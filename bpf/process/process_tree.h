@@ -319,17 +319,13 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	destvalue->deny = 0;
 	destvalue->tx_quota = destvalue->tx_limit = 0;
 	destvalue->tx_bytes = destvalue->rx_bytes = 0;
-	map_update_elem(&destination_endpoint_map, key, destvalue, 0);
-	/* If there is a dest.port entry then we previously also
-	 * add the dest.port=0 entry so we only need to check this
-	 * on new dest entries.
-	 */
+
 	key->port = 0;
-	destvalue->port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (dest && dest->deny) {
-		// fixup process key
+		destvalue->policy = dest->policy;
 		key->port = tuple->dport;
+		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 		return dest->deny;
 	}
 
@@ -339,8 +335,12 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	key->local_id = self; // restore local_id for caller
 	key->port = tuple->dport; // restore port for caller
-	if (dest && dest->deny)
+	if (dest && dest->deny) {
+		destvalue->policy = dest->policy;
+		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 		return dest->deny;
+	}
+	map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 	return 0;
 }
 
