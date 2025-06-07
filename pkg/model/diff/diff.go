@@ -50,6 +50,7 @@ func ConnectionDiff(a, b []*appModelV1.ApplicationConnection) ([]*appModelV1.App
 				diff := &appModelV1.ApplicationConnection{
 					Destination: connA.Destination,
 					Stats:       stats,
+					Policy:      connA.Policy,
 				}
 				if !StatsZero(diff.Stats) {
 					connsDiff = append(connsDiff, diff)
@@ -354,6 +355,23 @@ func ApplicationModelToProcessFlat(_ context.Context, a *appModelV1.ApplicationM
 	return t, nil
 }
 
+func policyVerdict(s *appModelV1.ConnectionStats) appModelV1.PolicyVerdict {
+	if s.TxDrops > 0 {
+		return appModelV1.PolicyVerdict_POLICY_VERDICT_DROP
+	}
+	if s.DefaultDropBytes > 0 {
+		return appModelV1.PolicyVerdict_POLICY_VERDICT_DROP
+	}
+	if s.DefaultAllowBytes > 0 {
+		return appModelV1.PolicyVerdict_POLICY_VERDICT_ALLOW
+	}
+	// This check must be last because drop bytes will also inc the txbytes
+	if s.TxBytes > 0 || s.RxBytes > 0 {
+		return appModelV1.PolicyVerdict_POLICY_VERDICT_ALLOW
+	}
+	return appModelV1.PolicyVerdict_POLICY_VERDICT_UNSPECIFIED
+}
+
 func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.ApplicationModel) ([]*appModelV1.NetworkConnectTelemetry, error) {
 	n := []*appModelV1.NetworkConnectTelemetry{}
 	node := node.GetNodeNameForExport()
@@ -379,9 +397,13 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 		for _, wl := range ns.Workloads {
 			for _, p := range wl.Processes {
 				for _, c := range p.Connections {
+					verdict := appModelV1.PolicyVerdict_POLICY_VERDICT_UNSPECIFIED
 					destName, dns, dname, dkind := getDestination(c.Destination)
 					dType := getType(c.Destination)
 
+					if c.Policy.PolicyName != "" {
+						verdict = policyVerdict(c.Stats)
+					}
 					entry := &appModelV1.NetworkConnectTelemetry{
 						ClusterName:                       cluster,
 						NodeName:                          node,
@@ -401,6 +423,8 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 						TxBytes:                           c.Stats.TxBytes,
 						RxBytes:                           c.Stats.RxBytes,
 						NodeLabels:                        labels,
+						PolicyName:                        c.Policy.PolicyName,
+						Verdict:                           verdict,
 					}
 					n = append(n, entry)
 				}
@@ -411,8 +435,13 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 	if a.Host != nil {
 		for _, p := range a.Host.Processes {
 			for _, c := range p.Connections {
+				verdict := appModelV1.PolicyVerdict_POLICY_VERDICT_UNSPECIFIED
 				destName, dns, dname, dkind := getDestination(c.Destination)
 				dType := getType(c.Destination)
+
+				if c.Policy.PolicyName != "" {
+					verdict = policyVerdict(c.Stats)
+				}
 
 				entry := &appModelV1.NetworkConnectTelemetry{
 					ClusterName:                       cluster,
@@ -430,6 +459,8 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					TxBytes:                           c.Stats.TxBytes,
 					RxBytes:                           c.Stats.RxBytes,
 					NodeLabels:                        labels,
+					PolicyName:                        c.Policy.PolicyName,
+					Verdict:                           verdict,
 				}
 				n = append(n, entry)
 			}

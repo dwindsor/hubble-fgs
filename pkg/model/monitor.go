@@ -81,6 +81,7 @@ func (nk NetworkKey) String() string {
 }
 
 type NetworkMonitorValue struct {
+	PolicyName        string
 	TXBytes           uint64
 	RXBytes           uint64
 	AllowDefaultBytes uint64
@@ -99,7 +100,11 @@ func getByteSize(b uint64) string {
 }
 
 func (nmv NetworkMonitorValue) String() string {
-	return fmt.Sprintf("%s sent %s received %s dropped", getByteSize(nmv.TXBytes), getByteSize(nmv.RXBytes), getByteSize(nmv.TXDrops))
+	policy := ""
+	if nmv.PolicyName != "" {
+		policy = fmt.Sprintf("%s: ", nmv.PolicyName)
+	}
+	return fmt.Sprintf("%s%s sent %s received %s dropped", policy, getByteSize(nmv.TXBytes), getByteSize(nmv.RXBytes), getByteSize(nmv.TXDrops))
 }
 
 type NetworkQuotaValue struct {
@@ -115,6 +120,7 @@ type NetworkQuotaValue struct {
 }
 
 type byteCounter interface {
+	GetPolicy() string
 	GetTxBytes() uint64
 	GetRxBytes() uint64
 	GetAllowDefaultBytes() uint64
@@ -124,6 +130,10 @@ type byteCounter interface {
 	GetTxUsage() uint64
 	GetLastReset() *time.Time
 	GetNextReset() *time.Time
+}
+
+func (nmv NetworkMonitorValue) GetPolicy() string {
+	return nmv.PolicyName
 }
 
 func (nmv NetworkMonitorValue) GetTxBytes() uint64 {
@@ -412,6 +422,7 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 					result[key] = NetworkMonitorValue{}
 				}
 				currentValue := result[key]
+				currentValue.PolicyName = dst.Stats.Policy
 				currentValue.TXBytes += dst.Stats.TxBytes
 				currentValue.RXBytes += dst.Stats.RxBytes
 				currentValue.AllowDefaultBytes += dst.Stats.DefaultAllowBytes
@@ -433,16 +444,18 @@ func Diff(current, newer NetworkMonitorData) NetworkMonitorData {
 		if currentValue, ok := current[newKey]; ok {
 			if !cmp.Equal(currentValue, newValue) {
 				diff[newKey] = NetworkMonitorValue{
-					TXBytes: newValue.TXBytes - currentValue.TXBytes,
-					RXBytes: newValue.RXBytes - currentValue.RXBytes,
-					TXDrops: newValue.TXDrops - currentValue.TXDrops,
+					PolicyName: newValue.PolicyName,
+					TXBytes:    newValue.TXBytes - currentValue.TXBytes,
+					RXBytes:    newValue.RXBytes - currentValue.RXBytes,
+					TXDrops:    newValue.TXDrops - currentValue.TXDrops,
 				}
 			}
 		} else {
 			diff[newKey] = NetworkMonitorValue{
-				TXBytes: newValue.TXBytes,
-				RXBytes: newValue.RXBytes,
-				TXDrops: newValue.TXDrops,
+				PolicyName: newValue.PolicyName,
+				TXBytes:    newValue.TXBytes,
+				RXBytes:    newValue.RXBytes,
+				TXDrops:    newValue.TXDrops,
 			}
 		}
 	}

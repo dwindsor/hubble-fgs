@@ -472,6 +472,15 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			stats.KtimeTxReset = timestamppb.New(lastReset.Add(time.Duration(dstVal.KtimeTxReset)))
 		}
 
+		if dstVal.Policy != 0 {
+			policy, ok := library.GetName(dstVal.Policy)
+			if !ok {
+				logger.GetLogger().WithField("policyID", dstVal.Policy).Warn("unknown policy id in process model")
+			} else {
+				stats.Policy = policy
+			}
+		}
+
 		switch ep.Type {
 		case tetragon.EndpointType_ENDPOINT_TYPE_UNKNOWN:
 			d = &types.Destination{
