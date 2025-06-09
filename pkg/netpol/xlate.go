@@ -115,6 +115,7 @@ func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tet
 
 			policy = append(policy, &types.TetragonNetworkPolicy{
 				Name:        name,
+				Rule:        r.Description,
 				Subject:     subj,
 				Destination: dest,
 				Action:      act,

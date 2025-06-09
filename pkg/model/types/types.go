@@ -159,6 +159,7 @@ type TetragonNetworkAction struct {
 
 type TetragonNetworkPolicy struct {
 	Name        string
+	Rule        string
 	Subject     TetragonNetworkSubject
 	Destination TetragonNetworkDestination
 	Action      TetragonNetworkAction

@@ -58,6 +58,7 @@ func addTetragonNetworkPolicy(obj any) {
 
 	err = loadPolicy(&library.PolicyStory{
 		Title:       name,
+		Rules:       make(map[string]uint64),
 		CRDPolicy:   crd,
 		CRDNSPolicy: crdNS,
 		IrPolicy:    policies,
@@ -146,6 +147,7 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 	// do we remove the previous policy.
 	library.Add(&library.PolicyStory{
 		Title:       newName,
+		Rules:       make(map[string]uint64),
 		CRDPolicy:   crd,
 		CRDNSPolicy: crdNS,
 		IrPolicy:    newPolicy,
@@ -256,6 +258,10 @@ func loadPolicy(policyStory *library.PolicyStory) error {
 	}
 
 	library.Add(policyStory)
+	for _, r := range policyStory.IrPolicy {
+		library.AddRule(policyStory, r.Rule)
+	}
+
 	err := dns.CreateMatchLabelsPolicySet(policyStory.IrPolicy)
 	if err != nil {
 		return fmt.Errorf("failed create match label from policy set %s: %w", policyStory.Title, err)

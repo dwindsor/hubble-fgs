@@ -66,6 +66,7 @@ func (r DatapathEndpoint) String() string {
 
 type Policy struct {
 	Name string
+	Rule string
 }
 
 func (p Policy) String() string {
