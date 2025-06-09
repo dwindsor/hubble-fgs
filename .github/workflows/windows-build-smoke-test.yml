@@ -1,0 +1,327 @@
+name: Windows Build and Smoke
+on:
+  pull_request:
+    paths-ignore:
+      - docs/**
+  push:
+    branches:
+      - main
+      - v*
+    paths-ignore:
+      - docs/**
+jobs:
+  windows-ebpf-prog-build:
+    name: Build Windows ebpf programs
+    runs-on: windows-2022
+    timeout-minutes: 15
+
+    env:
+      GOCACHE: D:\gocache
+      GOMODCACHE: D:\gomodcache
+      TEMP: D:\temp
+      CI_EFW_VERSION: 0.20.0
+      BUILD_CONFIGURATION: Release
+      BUILD_PLATFORM: x64
+
+    steps:
+      - name: Create Temp Directory
+        run: mkdir D:\temp
+        shell: pwsh
+
+      - name: Checkout Tetragon Repo 
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: go/src/github.com/isovalent/hubble-fgs
+          submodules: true
+      
+      - name: Set MSVC Environment Variables
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          powershell.exe "echo 'msvc_tools_path=%VCToolsInstallDir%' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+          powershell.exe "echo 'msvc_tools_version=%VCToolsVersion%' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+          powershell.exe "echo 'ASAN_WIN_CONTINUE_ON_INTERCEPTION_FAILURE=true' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+          powershell.exe "echo 'VCINSTALLDIR=%VCINSTALLDIR%' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@767f00a3f09872d96a0cb9fcd5e6a4ff33311330
+        with:
+          msbuild-architecture: x64
+      
+      - name: Add Visual Studio LLVM to path
+        run: |
+          echo "$env:VCINSTALLDIR\tools\llvm\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Check for Clang version (MSVC)
+        run:
+          clang.exe --version
+
+      - name: Check clang version (LLVM)
+        shell: cmd
+        run:
+            '"c:\Program Files\llvm\bin\clang.exe" --version'
+
+      - name: Download ntosebpfext 
+        id: download-ntosebpfet
+        shell: powershell
+        working-directory: ${{ env.TEMP }}
+        run: | 
+          git clone --recursive https://github.com/microsoft/ntosebpfext.git
+          cd ${{ env.TEMP }}\ntosebpfext
+          git checkout e7dc209a8be0da2ff5d75f5772a0ee0bf4a10383
+      
+      - name: Copy Process_monitor.c file
+        run: |
+            $sourcePath = "${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\modules\tetragon-oss\bpf\windows\process_monitor.c"
+            $destinationPath = "${{ env.TEMP }}\ntosebpfext\tools\process_monitor_bpf\process_monitor.c"
+            Copy-Item -Path $sourcePath -Destination $destinationPath -Force
+        shell: powershell
+
+      - name: Configuring repo for first build
+        if: steps.skip_check.outputs.should_skip != 'true'
+        working-directory: ${{ env.TEMP }}\ntosebpfext
+        env:
+          CXXFLAGS: /ZH:SHA_256 ${{ env.CXX_FLAGS }}
+          LDFLAGS: ${{ env.LD_FLAGS }}
+        run: |
+            .\scripts\initialize_repo.ps1
+ 
+      - name: Build Process monitor ebpf program
+        working-directory: ${{ env.TEMP }}\ntosebpfext
+        run: msbuild -target:Tools\process_monitor_bpf:Rebuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{env.BUILD_PLATFORM}} /bl:${{env.BUILD_PLATFORM}}_${{env.BUILD_CONFIGURATION}}\build_logs\build.binlog ${{env.BUILD_OPTIONS}} ${{env.SOLUTION_FILE_PATH}}
+
+
+      - name: Download efw nuget package 
+        working-directory: ${{ env.TEMP }}
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/eBPF-for-Windows.x64.0.21.0.nupkg" -OutFile "${{ env.TEMP }}\efw.nupkg.zip"
+          Expand-Archive -Path "${{ env.TEMP }}\efw.nupkg.zip" -DestinationPath "${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0"
+
+      - name: Build tcp_connect monitor ebpf program
+        shell: cmd
+        working-directory: ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\windows
+        run:
+            '"c:\Program Files\llvm\bin\clang.exe" -g -target bpf -O2 -Werror -I${{ env.TEMP }}\ntosebpfext\packages\eBPF-for-Windows.0.18.0\build\native\include -c .\tcp_connect.c -o tcp_connect.o'
+
+
+      - name: Link  tcp_connect monitor ebpf program
+        shell: powershell
+        working-directory: ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\windows
+        run: |
+            ${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0\build\native\bin\Convert-BpfToNative.ps1 -FileName tcp_connect -IncludeDir ${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0\build\native\include -Platform x64 -Configuration Release -KernelMode $True -Verbose -Packages ${{ env.TEMP }}\ntosebpfext\packages
+            Copy-Item -Path ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\windows\tcp_connect.sys -Destination ${{ env.TEMP }}\ntosebpfext\${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} -Force
+
+      - name: Stage  tcp_connect monitor ebpf program
+        shell: powershell
+        working-directory: ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\windows
+        run:
+            Copy-Item -Path ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\windows\tcp_connect.sys -Destination ${{ env.TEMP }}\ntosebpfext\${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} -Force
+
+
+      - name: Zip Build Output
+        working-directory: ${{ env.TEMP }}\ntosebpfext
+        run: |
+          Compress-Archive -Path ${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} -DestinationPath .\build-${{env.BUILD_PLATFORM}}.${{env.BUILD_CONFIGURATION}}.zip
+
+      - name: Upload Build Output
+        uses: actions/upload-artifact@6027e3dd177782cd8ab9af838c04fd81a07f1d47
+        with:
+          working-directory: ${{ env.TEMP }}\ntosebpfext
+          name: ntosebpfext-build-output
+          path: ${{ env.TEMP }}\ntosebpfext\build-${{env.BUILD_PLATFORM}}.${{env.BUILD_CONFIGURATION}}.zip
+          retention-days: 5
+
+  windows-tetragon-build:
+    name: Build and Uplod Windows Tetragon and Tetra Binaries
+    runs-on: windows-2022
+    timeout-minutes: 15
+    env:
+      TEMP: D:\temp
+      GOARCH: amd64
+      GOOS: windows
+
+    steps:
+      - name: Create Temp Directory
+        run: mkdir D:\temp
+        shell: pwsh
+
+      - name: Install Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: '1.24.3'
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: go/src/github.com/isovalent/hubble-fgs
+          submodules: true
+      
+      - name: Build and Zip tetragon Windows binaries
+        working-directory: ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs
+        shell: powershell
+        run: |
+          go build -o .\Tetra.exe .\cmd\bin\tetra\ 
+          go build -o .\Tetragon.exe .\cmd\bin\tetragon\
+          Get-ChildItem
+          New-Item -ItemType Directory -Path ${{ env.TEMP }}\Tetragon-Windows
+          Copy-Item *.exe -Destination ${{ env.TEMP }}\Tetragon-Windows
+          Compress-Archive -Path ${{ env.TEMP }}\Tetragon-Windows\* -DestinationPath ${{ env.TEMP }}\Tetragon-Windows.zip
+          Get-ChildItem -Recurse ${{ env.TEMP }} 
+
+      - name: Upload Tetragon Windows binaries
+        uses: actions/upload-artifact@6027e3dd177782cd8ab9af838c04fd81a07f1d47
+        with:
+          name: tetragon-windows-build-output
+          path: ${{ env.TEMP }}\Tetragon-Windows.zip
+          retention-days: 5
+
+  windows-smoke-test:
+    name: Deploy and Test tetragon for Windows 
+    runs-on: windows-2022
+    needs:
+      - windows-tetragon-build
+      - windows-ebpf-prog-build
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        version:
+          - main
+    env:
+      TEMP: D:\temp
+      
+    steps:
+      - name: Create Temp Directory
+        run: mkdir D:\temp
+        shell: powershell
+      
+      - name: Create Temp Staging Directory
+        run: mkdir D:\temp\test
+        shell: powershell
+
+      - name: Download and Install eBPF for Windows
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip" -OutFile "$env:TEMP\efw.zip"
+          Expand-Archive -Path "$env:TEMP\efw.zip" -DestinationPath "$env:TEMP"
+          Rename-Item -Path "$env:TEMP\Build-native-only NativeOnlyRelease x64" -NewName "$env:TEMP\ebpf"
+          $setupScript = Get-ChildItem -Path "$env:TEMP\ebpf" -Filter "setup-ebpf.ps1" -Recurse | Select-Object -First 1
+          if ($setupScript) {
+            Write-Host "Found setup script: $($setupScript.FullName)"
+            Set-Location -Path $setupScript.DirectoryName
+            Write-Host "Changed directory to: $(Get-Location)"
+            & $setupScript.FullName
+          } else {
+            Write-Error "Setup script not found in the extracted package"
+            exit 1
+          }
+
+      - name: Add eBPF for Windows to PATH
+        shell: pwsh
+        run: echo "C:\Program Files\ebpf-for-windows\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Download tetragon-windows-build-output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: ${{ env.TEMP }}\test
+          name: tetragon-windows-build-output
+      
+      - name: Download ntosebpfext-build-output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: ${{ env.TEMP }}\test
+          name: ntosebpfext-build-output
+    
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: go/src/github.com/isovalent/hubble-fgs/
+
+      - name: Setup Tetragon for Windows 
+        working-directory: ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs
+        shell: powershell
+        run: ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\install\windows\setup-windows-ee.ps1 ${{ env.TEMP }}\test\Tetragon-Windows.zip ${{ env.TEMP }}\test\build-x64.Release.zip 
+
+      - name: Run Smoke test Windows
+        env:
+          TEMP: D:\temp
+          PATH: ${{ env.TEMP }};"C:\Program Files\ebpf-for-windows"
+        working-directory: C:\Program Files\Tetragon\cmd
+        shell: powershell
+        run: |
+          # Define the path to the JSON file
+          $jsonFilePath = "C:\Program Files\Tetragon\events.json"
+
+          # Define the path to the executable
+          $tetragonProcess = "C:\Program Files\Tetragon\cmd\tetragon.exe"
+
+          # Start the process in the background and capture its PID
+          $tetragonBackgroundProcess = Start-Process -FilePath "$tetragonProcess" -ArgumentList "--enable-tcp --export-filename ""$jsonFilePath""" -RedirectStandardOutput "C:\Program Files\Tetragon\tetragon.log" -NoNewWindow -PassThru
+
+          Start-Sleep -Seconds 5
+
+          if(Get-Process -id $tetragonBackgroundProcess.Id) {
+          Write-Host "Tetragon Running "
+          }
+          else {
+          throw "Tetragon is Not Running"
+          }
+
+          $notepad = Start-Process -FilePath "C:\Windows\System32\notepad.exe" -PassThru
+          $notepadPID = $notepad.Id
+          Write-Host "Process launched with PID: $notepadPID"
+
+          Stop-Process -Id $notepadPID
+
+          Write-Host "Process terminated with PID: $notepadPID"
+
+
+          Invoke-WebRequest -Uri "https://www.google.com"
+
+          Write-Host "Process $PID made a web request"
+
+          # Load the JSON content
+          $jsonContent = Get-Content -Path $jsonFilePath 
+
+          $execString = "\{\""process_exec\""\:\{\""process\""\:\{\""exec_id\""\:\"".{16,30}\""\,.{0,1}\""pid\""\:$notepadPID\,.{0,1}\""uid\""\:[0-9]{0,9}\,.{0,1}\""binary\""\:\""C:\\\\Windows\\\\system32\\\\notepad.exe\"""
+          $exitString = "\{\""process_exit\""\:\{\""process\""\:\{\""exec_id\""\:\"".{16,30}\""\,.{0,1}\""pid\""\:$notepadPID\,.{0,1}\""uid\""\:[0-9]{0,9}\,.{0,1}\""binary\""\:\""C:\\\\Windows\\\\system32\\\\notepad.exe\"""
+          $connectString = "\{\""process_connect\""\:\{\""process\""\:\{\""exec_id\""\:\"".{16,30}\""\,.{0,1}\""pid\""\:$PID\,.{0,1}\""uid\""\:[0-9]{0,9}\,.{0,1}\""binary\""\:\"".*\\\\powershell.exe\"""
+
+
+
+          Write-Host "Looking for regex: $execString"
+          # Search for the PID in the JSON file
+          if ($jsonContent -match $execString) {
+            Write-Host "Found exec of PID $notepadPID in JSON file: $execString"
+          } else {
+            Write-Host "exec of PID $notepadPID not found in event file: $jsonContent "
+            throw "EXEC EVENT not found in event JSON file."
+          }
+
+
+          Write-Host "Looking for regex: $exitString"
+          # Search for the PID in the JSON file
+          if ($jsonContent -match $exitString) {
+            Write-Host "Found exit of PID $notepadPID in JSON file: $exitString"
+          } else {
+            Write-Host "exit of PID $notepadPID not found in event file: $jsonContent "
+            throw "EXIT EVENT not found in event JSON file."
+          }
+
+
+          Write-Host "Looking for regex: $connectString"
+          # Search for the PID in the JSON file
+          if ($jsonContent -match $connectString) {
+            Write-Host "Found connect of PID $PID in JSON file: $connectString"
+          } else {
+            Write-Host "connect of PID not found in event file: $jsonContent "
+            throw "CONNECT EVENT not found in event JSON file."
+          }
+
+      
+      
+
+
+
+        
+
