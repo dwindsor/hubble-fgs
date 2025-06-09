@@ -81,6 +81,7 @@ func (nk NetworkKey) String() string {
 }
 
 type NetworkMonitorValue struct {
+	RuleName          string
 	PolicyName        string
 	TXBytes           uint64
 	RXBytes           uint64
@@ -121,6 +122,7 @@ type NetworkQuotaValue struct {
 
 type byteCounter interface {
 	GetPolicy() string
+	GetRule() string
 	GetTxBytes() uint64
 	GetRxBytes() uint64
 	GetAllowDefaultBytes() uint64
@@ -134,6 +136,10 @@ type byteCounter interface {
 
 func (nmv NetworkMonitorValue) GetPolicy() string {
 	return nmv.PolicyName
+}
+
+func (nmv NetworkMonitorValue) GetRule() string {
+	return nmv.RuleName
 }
 
 func (nmv NetworkMonitorValue) GetTxBytes() uint64 {
