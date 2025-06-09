@@ -252,6 +252,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 	records := []*record.DatapathRecord{}
 	recordPolicy := record.Policy{
 		Name: uid,
+		Rule: policy.Rule,
 	}
 
 	if policy.Destination.CIDR != nil {
@@ -397,6 +398,7 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 	}
 	recordPolicy := record.Policy{
 		Name: uid,
+		Rule: policy.Rule,
 	}
 	dfltRecord := &record.DatapathRecord{
 		Policy:   recordPolicy,

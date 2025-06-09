@@ -441,6 +441,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 		policyList := state.Src[d.Name]
 		policy := record.Policy{
 			Name: policyList.Name,
+			Rule: policyList.Policy.Rule,
 		}
 		for _, subject := range policyList.Subjects {
 			action, err := calculateAction(&policyList.Policy.Action)

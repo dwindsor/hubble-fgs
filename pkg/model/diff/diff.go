@@ -424,6 +424,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 						RxBytes:                           c.Stats.RxBytes,
 						NodeLabels:                        labels,
 						PolicyName:                        c.Policy.PolicyName,
+						RuleName:                          c.Policy.RuleName,
 						Verdict:                           verdict,
 					}
 					n = append(n, entry)
@@ -460,6 +461,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					RxBytes:                           c.Stats.RxBytes,
 					NodeLabels:                        labels,
 					PolicyName:                        c.Policy.PolicyName,
+					RuleName:                          c.Policy.RuleName,
 					Verdict:                           verdict,
 				}
 				n = append(n, entry)
