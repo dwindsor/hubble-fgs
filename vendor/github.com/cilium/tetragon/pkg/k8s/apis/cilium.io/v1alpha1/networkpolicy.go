@@ -130,6 +130,8 @@ type NetworkDestination struct {
 }
 
 type NetworkPolicyRule struct {
+	// +kubebuilder:validation:Required
+	Description string `json:"description"`
 	// +kubebuilder:validation:Enum=connect;listen
 	Hook string `json:"hook"`
 	// +kubebuilder:validation:Enum=allow;deny

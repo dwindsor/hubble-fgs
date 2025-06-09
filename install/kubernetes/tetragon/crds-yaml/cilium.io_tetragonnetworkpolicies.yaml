@@ -196,6 +196,8 @@ spec:
                       - allow
                       - deny
                       type: string
+                    description:
+                      type: string
                     destination:
                       items:
                         properties:
@@ -300,6 +302,7 @@ spec:
                       type: string
                   required:
                   - action
+                  - description
                   - hook
                   type: object
                 type: array
