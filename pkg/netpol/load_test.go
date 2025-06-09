@@ -30,7 +30,8 @@ spec:
     - "/usr/local/bin/curl"
   defaultAction: "deny"
   rules:
-  - hook: "connect"
+  - description: "connectAllowRule"
+    hook: "connect"
     action: "allow"
     destination:
     - podSelector:
@@ -58,6 +59,7 @@ spec:
 	assert.Equal(t, 2, len(tnp.Spec.ProcessSelector.Values))
 	assert.Equal(t, "deny", tnp.Spec.DefaultAction)
 	assert.Equal(t, 1, len(tnp.Spec.Rules))
+	assert.Equal(t, "connectAllowRule", tnp.Spec.Rules[0].Description)
 	assert.Equal(t, "connect", tnp.Spec.Rules[0].Hook)
 	assert.Equal(t, "allow", tnp.Spec.Rules[0].Action)
 	assert.Equal(t, 3, len(tnp.Spec.Rules[0].Destination))
@@ -95,7 +97,8 @@ spec:
     - "/usr/local/bin/curl"
   defaultAction: "deny"
   rules:
-  - hook: "connect"
+  - description: "connectAllowRule"
+    hook: "connect"
     action: "allow"
     destination:
     - fqdn:
@@ -144,7 +147,8 @@ spec:
     - "/usr/local/bin/curl"
   defaultAction: "deny"
   rules:
-  - hook: "connect"
+  - description: "connectAllowRule"
+    hook: "connect"
     action: "allow"
     destination:
     - podSelector:
@@ -196,7 +200,8 @@ spec:
     - "/usr/local/bin/curl"
   defaultAction: "deny"
   rules:
-  - hook: "connect"
+  - description: "connectAllowRule"
+    hook: "connect"
     action: "allow"
     destination:
     - podSelector:
@@ -251,7 +256,8 @@ spec:
       B: "b"
   defaultAction: "deny"
   rules:
-  - hook: "connect"
+  - description: "connectAllowRule"
+    hook: "connect"
     action: "allow"
     destination:
     - podSelector:
@@ -307,6 +313,7 @@ spec:
   defaultAction: "deny"
   rules:
   - hook: "connect"
+    description: "connectAllowRule"
     action: "allow"
     destination:
     - podSelector:
@@ -357,6 +364,7 @@ spec:
   defaultAction: "deny"
   rules:
   - hook: "connect"
+    description: "connectAllowRule"
     action: "allow"
     destination:
     - podSelector:
@@ -408,6 +416,7 @@ spec:
   defaultAction: "deny"
   rules:
   - hook: "connect"
+    description: "connectAllowRule"
     action: "allow"
     destination:
 `
