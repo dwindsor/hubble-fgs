@@ -10,6 +10,7 @@ import (
 type PolicyStory struct {
 	Title       string
 	Id          uint64
+	Rules       map[string]uint64
 	CRDPolicy   *v1alpha1.TetragonNetworkPolicy
 	CRDNSPolicy *v1alpha1.TetragonNetworkPolicyNamespaced
 	IrPolicy    []*types.TetragonNetworkPolicy
@@ -18,10 +19,16 @@ type PolicyStory struct {
 var policyLibrary map[string]uint64
 var idLibrary map[uint64]*PolicyStory
 var policyId uint64
+var ruleId uint64
 
 func generateId() uint64 {
 	policyId++
 	return policyId
+}
+
+func generateRuleId() uint64 {
+	ruleId++
+	return ruleId
 }
 
 func init() {
@@ -64,6 +71,11 @@ func DelLink(title string) {
 	delete(policyLibrary, title)
 }
 
+func AddRule(p *PolicyStory, rule string) {
+	ruleID := generateRuleId()
+	p.Rules[rule] = ruleID
+}
+
 func Add(p *PolicyStory) {
 	_, ok := policyLibrary[p.Title]
 	if ok {
@@ -82,12 +94,38 @@ func GetId(name string) (uint64, bool) {
 	return id, true
 }
 
+func GetRuleId(policy, rule string) (uint64, bool) {
+	p, ok := Get(policy)
+	if !ok {
+		return uint64(0), ok
+	}
+	id, ok := p.Rules[rule]
+	if !ok {
+		return uint64(0), ok
+	}
+	return id, true
+}
+
 func GetName(id uint64) (string, bool) {
 	p, ok := idLibrary[id]
 	if !ok {
 		return "", ok
 	}
 	return p.Title, ok
+}
+
+func GetRule(policy string, id uint64) (string, bool) {
+	p, ok := Get(policy)
+	if !ok  {
+		return "", false
+	}
+
+	for k, v := range p.Rules {
+		if v == id {
+			return k, true
+		}
+	}
+	return "", false
 }
 
 func GetList() []string {
