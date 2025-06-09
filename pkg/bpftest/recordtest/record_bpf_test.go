@@ -65,6 +65,7 @@ var (
 	ipLo1Policy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicy1",
+			Rule: "testRule1",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -81,6 +82,7 @@ var (
 	ipLo1AllowPolicy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicyAllow1",
+			Rule: "testRuleAllow1",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -97,6 +99,7 @@ var (
 	ipLo2Policy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicy2",
+			Rule: "testRule2",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -113,6 +116,7 @@ var (
 	ipLo2AllowPolicy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicyAllow2",
+			Rule: "testRuleAllow2",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -129,6 +133,7 @@ var (
 	ipLo3Policy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicy3",
+			Rule: "testRule3",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -145,6 +150,7 @@ var (
 	ipLo3AllowPolicy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicyAllow3",
+			Rule: "testRuleAllow3",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -161,6 +167,7 @@ var (
 	dnsLoDenyPolicy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicyDNSDeny",
+			Rule: "testRuleDNSDeny",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -177,6 +184,7 @@ var (
 	dnsLoDenyFooPolicy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicyDNSDeny",
+			Rule: "testRuleDNSDeny",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -193,6 +201,7 @@ var (
 	dnsLoAllowPolicy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicyDNSAllow",
+			Rule: "testRuleDNSAllow",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -209,6 +218,7 @@ var (
 	podDenyPolicy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicyPod",
+			Rule: "testRulePod",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -227,6 +237,7 @@ var (
 	podAllowPolicy = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicyPod",
+			Rule: "testRulePod",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -245,6 +256,7 @@ var (
 	defaultAllow = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicyPod",
+			Rule: "testRulePod",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -258,6 +270,7 @@ var (
 	defaultDeny = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "testPolicyPod",
+			Rule: "testRulePod",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
