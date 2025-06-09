@@ -324,6 +324,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
+		destvalue->rule = dest->rule;
 		key->port = tuple->dport;
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 		return dest->deny;
@@ -337,6 +338,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	key->port = tuple->dport; // restore port for caller
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
+		destvalue->rule = dest->rule;
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 		return dest->deny;
 	}
@@ -464,8 +466,27 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		}
 
 		dst_value = map_lookup_elem(&destination_endpoint_map, dfltkey);
-		if (dst_value)
+		if (dst_value) {
+			struct destination_endpoint_value *destvalue;
+
+			destvalue = map_lookup_elem(&destination_endpoint_heap, &zero);
+			if (!destvalue)
+				return 0;
+
+			destvalue->ktime_create = ktime_get_ns();
+			destvalue->addr_create[0] = tuple->daddr[0];
+			destvalue->addr_create[1] = tuple->daddr[1];
+			destvalue->ipv6 = tuple->ipv6;
+			destvalue->port = tuple->dport;
+			destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU;
+			destvalue->tx_quota = destvalue->tx_limit = 0;
+			destvalue->tx_bytes = destvalue->rx_bytes = 0;
+			destvalue->policy = dst_value->policy;
+			destvalue->rule = dst_value->rule;
+
+			map_update_elem(&destination_endpoint_map, &v->dst_key, destvalue, 0);
 			return dst_value->deny | TNP_POLICY_FALLTHRU;
+		}
 	}
 	return 0;
 }
