@@ -249,6 +249,9 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		return err
 	}
 
+	// This is the default rules ID.
+	value.Rule = 0
+
 	// If the EP is wildcarded we need to capture all destinations from
 	// any source (EPBF, Userspace, DNS) so we need some extra records.
 	// The normal path captures Userspace sources.

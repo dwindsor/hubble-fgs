@@ -480,7 +480,9 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				stats.Policy = policy
 			}
 
-			rule, ok := library.GetRule(policy, dstVal.Rule)
+			denyDefault := dstVal.DenyDefault > 0
+			allowDefault := dstVal.AllowDefault > 0
+			rule, ok := library.GetRule(policy, dstVal.Rule, denyDefault, allowDefault)
 			if !ok {
 				logger.GetLogger().WithField("Policy", policy).WithField("ruleID", dstVal.Rule).Warn("unknown rule id in process model")
 

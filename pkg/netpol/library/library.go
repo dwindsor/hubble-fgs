@@ -72,6 +72,9 @@ func DelLink(title string) {
 }
 
 func AddRule(p *PolicyStory, rule string) {
+	if _, ok := p.Rules[rule]; ok {
+		return
+	}
 	ruleID := generateRuleId()
 	p.Rules[rule] = ruleID
 }
@@ -114,9 +117,19 @@ func GetName(id uint64) (string, bool) {
 	return p.Title, ok
 }
 
-func GetRule(policy string, id uint64) (string, bool) {
+func GetRule(policy string, id uint64, deny, allow bool) (string, bool) {
 	p, ok := Get(policy)
-	if !ok  {
+	if !ok {
+		return "", false
+	}
+
+	// ID == 0 special case as the default rule.
+	if id == uint64(0) {
+		if allow {
+			return "tetragon:default-allow", true
+		} else if deny {
+			return "tetragon:default-deny", true
+		}
 		return "", false
 	}
 

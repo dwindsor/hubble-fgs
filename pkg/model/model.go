@@ -97,7 +97,7 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 		},
 		Policy: &appModelV1.NetworkPolicy{
 			PolicyName: bc.GetPolicy(),
-			RuleName: bc.GetRule(),
+			RuleName:   bc.GetRule(),
 		},
 	}
 }
