@@ -193,6 +193,7 @@ struct destination_endpoint_value {
 	__u64 tx_bytes;
 	__u64 rx_bytes;
 	__u64 policy;
+	__u64 rule;
 	__u64 ipv6;
 	__u64 ktime_create;
 	__u64 addr_create[2];

@@ -200,6 +200,11 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		logger.GetLogger().WithField("Policy", r.Policy.Name).Warn("programmer unable to map policy name to ID")
 	}
 
+	rule, ok := library.GetRuleId(r.Policy.Name, r.Policy.Rule)
+	if !ok {
+		logger.GetLogger().WithField("Policy", r.Policy.Name).WithField("Rule", r.Policy.Rule).Warn("programmer unable to map policy rule to ID")
+	}
+
 	key := &types.DestinationEndpointKey{
 		LocalId:           r.Src.Self,
 		LocalNSId:         r.Src.NSID,
@@ -218,6 +223,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		TxBytes:        0,
 		RxBytes:        0,
 		Policy:         id,
+		Rule:           rule,
 		IPv6:           0,
 		KtimeCreate:    0,
 		AddrCreate:     addr,
@@ -320,6 +326,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 		TxBytes:        0,
 		RxBytes:        0,
 		Policy:         0,
+		Rule:           0,
 		IPv6:           0,
 		KtimeCreate:    0,
 		AddrCreate:     addr,
