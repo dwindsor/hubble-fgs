@@ -15,7 +15,8 @@ spec:
       - "/usr/sbin/curl"
   defaultAction: "allow"
   rules:
-  - hook: "connect"
+  - description: "connectDenyRule"
+    hook: "connect"
     action: "deny"
     destination:
     - podSelector:
