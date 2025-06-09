@@ -103,7 +103,7 @@ func getByteSize(b uint64) string {
 func (nmv NetworkMonitorValue) String() string {
 	policy := ""
 	if nmv.PolicyName != "" {
-		policy = fmt.Sprintf("%s: ", nmv.PolicyName)
+		policy = fmt.Sprintf("%s:%s ", nmv.PolicyName, nmv.RuleName)
 	}
 	return fmt.Sprintf("%s%s sent %s received %s dropped", policy, getByteSize(nmv.TXBytes), getByteSize(nmv.RXBytes), getByteSize(nmv.TXDrops))
 }
@@ -429,6 +429,7 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 				}
 				currentValue := result[key]
 				currentValue.PolicyName = dst.Stats.Policy
+				currentValue.RuleName = dst.Stats.Rule
 				currentValue.TXBytes += dst.Stats.TxBytes
 				currentValue.RXBytes += dst.Stats.RxBytes
 				currentValue.AllowDefaultBytes += dst.Stats.DefaultAllowBytes
@@ -451,6 +452,7 @@ func Diff(current, newer NetworkMonitorData) NetworkMonitorData {
 			if !cmp.Equal(currentValue, newValue) {
 				diff[newKey] = NetworkMonitorValue{
 					PolicyName: newValue.PolicyName,
+					RuleName:   newValue.RuleName,
 					TXBytes:    newValue.TXBytes - currentValue.TXBytes,
 					RXBytes:    newValue.RXBytes - currentValue.RXBytes,
 					TXDrops:    newValue.TXDrops - currentValue.TXDrops,
@@ -459,6 +461,7 @@ func Diff(current, newer NetworkMonitorData) NetworkMonitorData {
 		} else {
 			diff[newKey] = NetworkMonitorValue{
 				PolicyName: newValue.PolicyName,
+				RuleName:   newValue.RuleName,
 				TXBytes:    newValue.TXBytes,
 				RXBytes:    newValue.RXBytes,
 				TXDrops:    newValue.TXDrops,
