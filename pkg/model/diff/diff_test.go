@@ -99,16 +99,24 @@ func destC() *appModelV1.Destination {
 	}
 }
 
+func policy() *appModelV1.NetworkPolicy {
+	return &appModelV1.NetworkPolicy{
+		PolicyName: "aTestPolicy",
+	}
+}
+
 func conns() []*appModelV1.ApplicationConnection {
 	a := make([]*appModelV1.ApplicationConnection, 2)
 
 	a[0] = &appModelV1.ApplicationConnection{
 		Destination: destA(),
 		Stats:       connStatsA(),
+		Policy:      policy(),
 	}
 	a[1] = &appModelV1.ApplicationConnection{
 		Destination: destB(),
 		Stats:       connStatsB(),
+		Policy:      policy(),
 	}
 	return a
 }
@@ -125,6 +133,7 @@ func TestConnectionStatsDiff(t *testing.T) {
 	a = append(a, &appModelV1.ApplicationConnection{
 		Destination: destC(),
 		Stats:       connStatsA(),
+		Policy:      policy(),
 	})
 
 	d, err := ConnectionDiff(a, b)
@@ -135,11 +144,13 @@ func TestConnectionStatsDiff(t *testing.T) {
 	assert.Equal(t, uint64(2), d[0].Stats.RxBytes)
 	assert.Equal(t, uint64(1), d[0].Stats.DefaultDropBytes)
 	assert.Equal(t, uint64(2), d[0].Stats.DefaultAllowBytes)
+	assert.Equal(t, "aTestPolicy", d[0].Policy.PolicyName)
 
 	assert.Equal(t, uint64(10), d[1].Stats.TxBytes)
 	assert.Equal(t, uint64(20), d[1].Stats.RxBytes)
 	assert.Equal(t, uint64(15), d[1].Stats.DefaultDropBytes)
 	assert.Equal(t, uint64(25), d[1].Stats.DefaultAllowBytes)
+	assert.Equal(t, "aTestPolicy", d[1].Policy.PolicyName)
 }
 
 func psGroup() []*appModelV1.ApplicationProcessGroup {
