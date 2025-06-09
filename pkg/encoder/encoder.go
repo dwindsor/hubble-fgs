@@ -83,7 +83,7 @@ func (p *EnterpriseEncoder) AppModelEventToString(event *appModelV1.NetworkConne
 			event.DestinationPort)
 		stats := ""
 		if event.PolicyName != "" {
-			stats = p.colorer.Cyan.Sprintf("tx %d rx %d policy %s -> %s", event.TxBytes, event.RxBytes, event.PolicyName, appModelV1.PolicyVerdict_name[int32(event.Verdict)])
+			stats = p.colorer.Cyan.Sprintf("tx %d rx %d policy %s:%s -> %s", event.TxBytes, event.RxBytes, event.PolicyName, event.RuleName, appModelV1.PolicyVerdict_name[int32(event.Verdict)])
 		} else {
 			stats = p.colorer.Cyan.Sprintf("tx %d rx %d", event.TxBytes, event.RxBytes)
 		}
