@@ -348,6 +348,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 
 		if s.Policy.Destination.CIDR != nil {
 			r, err := state.addDestCIDRRecords(
+				&policy,
 				&s.Policy.Destination,
 				&s.Policy.Subject,
 				subject,

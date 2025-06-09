@@ -255,7 +255,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 	}
 
 	if policy.Destination.CIDR != nil {
-		r, err := state.addDestSrcCIDRRecords(&policy.Destination, src, action, init)
+		r, err := state.addDestSrcCIDRRecords(&recordPolicy, &policy.Destination, src, action, init)
 		if err != nil {
 			logger.GetLogger().WithField("CIDR", policy.Destination.CIDR).WithError(err).Warn("CIDR policy record error")
 		}

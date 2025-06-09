@@ -42,6 +42,7 @@ func (state *PolicyState) progRemoveCIDRDest(
 }
 
 func (state *PolicyState) addDestSrcCIDRRecords(
+	policy *record.Policy,
 	dest *types.TetragonNetworkDestination,
 	src *types.ProcessTreeKey,
 	action *record.DatapathAction,
@@ -59,6 +60,7 @@ func (state *PolicyState) addDestSrcCIDRRecords(
 		}
 		return []*record.DatapathRecord{
 			&record.DatapathRecord{
+				Policy:   *policy,
 				Src:      src,
 				Endpoint: endpoint,
 				Action:   action,
@@ -74,6 +76,7 @@ func (state *PolicyState) addDestSrcCIDRRecords(
 			Port: port,
 		}
 		records = append(records, &record.DatapathRecord{
+			Policy:   *policy,
 			Src:      src,
 			Endpoint: endpoint,
 			Action:   action,
@@ -84,6 +87,7 @@ func (state *PolicyState) addDestSrcCIDRRecords(
 }
 
 func (state *PolicyState) addDestCIDRRecords(
+	policy *record.Policy,
 	dest *types.TetragonNetworkDestination,
 	subject *types.TetragonNetworkSubject,
 	podSubject *types.ProcessTreeKey,
@@ -103,7 +107,7 @@ func (state *PolicyState) addDestCIDRRecords(
 			Self:  self,
 			Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 		}
-		r, err := state.addDestSrcCIDRRecords(dest, processSrc, action, true)
+		r, err := state.addDestSrcCIDRRecords(policy, dest, processSrc, action, true)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("add DestCIDR recrods failed")
 		} else {
@@ -112,7 +116,7 @@ func (state *PolicyState) addDestCIDRRecords(
 	}
 
 	if len(subject.InProcessName) == 0 {
-		r, err := state.addDestSrcCIDRRecords(dest, podSubject, action, true)
+		r, err := state.addDestSrcCIDRRecords(policy, dest, podSubject, action, true)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warn("add DestCIDR recrods failed")
 		} else {
