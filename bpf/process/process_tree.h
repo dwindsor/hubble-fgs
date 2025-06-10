@@ -304,7 +304,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		return 0;
 
 	dest = map_lookup_elem(&destination_endpoint_map, key);
-	if (dest && dest->deny)
+	if (dest && (dest->deny & !TNP_POLICY_REFRESH))
 		return dest->deny;
 
 	destvalue = map_lookup_elem(&destination_endpoint_heap, &zero);
@@ -322,9 +322,13 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 
 	key->port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, key);
+	/* These do not check TNP_POLICY_REFRESH because we only cache keys for
+	 * exact matches. Here we have wildcard lookups.
+	 */
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
 		destvalue->rule = dest->rule;
+		destvalue->deny |= TNP_POLICY_CACHED;
 		key->port = tuple->dport;
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 		return dest->deny;
@@ -339,6 +343,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
 		destvalue->rule = dest->rule;
+		destvalue->deny |= TNP_POLICY_CACHED;
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 		return dest->deny;
 	}
@@ -431,7 +436,7 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		}
 	} else {
 		struct destination_endpoint_value *dst_value;
-		struct destination_endpoint_key *dfltkey;
+		struct destination_endpoint_key *dfltkey, *updatekey;
 		int zero = 0;
 
 		dfltkey = map_lookup_elem(&destination_endpoint_key_heap, &zero);
@@ -455,14 +460,19 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		 */
 		if (dnskey->source) {
 			v->dst_key = *dnskey;
+			updatekey = dnskey;
 		} else if (lpmkey->source) {
 			v->dst_key = *lpmkey;
+			updatekey = lpmkey;
 		} else if (usrkey->source) {
 			v->dst_key = *usrkey;
+			updatekey = usrkey;
 		} else if (destkey->source) {
 			v->dst_key = *destkey;
+			updatekey = destkey;
 		} else {
 			v->dst_key = *dfltkey;
+			updatekey = dfltkey;
 		}
 
 		dst_value = map_lookup_elem(&destination_endpoint_map, dfltkey);
@@ -478,13 +488,13 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			destvalue->addr_create[1] = tuple->daddr[1];
 			destvalue->ipv6 = tuple->ipv6;
 			destvalue->port = tuple->dport;
-			destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU;
+			destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU | TNP_POLICY_CACHED;
 			destvalue->tx_quota = destvalue->tx_limit = 0;
 			destvalue->tx_bytes = destvalue->rx_bytes = 0;
 			destvalue->policy = dst_value->policy;
 			destvalue->rule = dst_value->rule;
 
-			map_update_elem(&destination_endpoint_map, &v->dst_key, destvalue, 0);
+			map_update_elem(&destination_endpoint_map, updatekey, destvalue, 0);
 			return dst_value->deny | TNP_POLICY_FALLTHRU;
 		}
 	}

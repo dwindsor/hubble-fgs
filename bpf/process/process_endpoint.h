@@ -166,6 +166,9 @@ struct {
 #define TNP_POLICY_ALLOW    0x01
 #define TNP_POLICY_DENY	    0x02
 #define TNP_POLICY_FALLTHRU 0x04
+#define TNP_POLICY_CACHED   0x08
+
+#define TNP_POLICY_REFRESH 0xC
 
 /* Somewhat counter-intuitively destinations are scoped by local
  * id and/or local ns_id. This ensures that if two processes in
