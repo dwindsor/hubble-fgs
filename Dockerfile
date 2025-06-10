@@ -109,10 +109,6 @@ COPY --from=gops /go/src/github.com/google/gops/gops /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/* /var/lib/tetragon/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/tetragon-fs-scanner /var/lib/tetragon/
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/tetragon-runner /var/lib/tetragon/
-# legacy aliases
-RUN ln -s /usr/bin/tetra /usr/bin/hubble-fgs-printer
-RUN ln -s /usr/bin/tetra /usr/bin/hubble-enterprise
-RUN ln -s /usr/bin/tetragon /usr/bin/hubble-fgs
 ENTRYPOINT ["/usr/bin/tetragon"]
 
 # This target only builds with the `--target release` option and reduces the
