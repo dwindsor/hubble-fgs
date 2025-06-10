@@ -22,6 +22,7 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 )
 
 type Aggregator struct {
@@ -67,7 +68,7 @@ func (a *Aggregator) Start() {
 func (a *Aggregator) flush() {
 	for _, event := range a.cache {
 		if err := a.server.Send(event); err != nil {
-			logger.GetLogger().WithError(err).Warn("Failed to send aggregated response")
+			logger.GetLogger().Warn("Failed to send aggregated response", logfields.Error, err)
 		}
 	}
 	// clear the cache.
@@ -82,7 +83,7 @@ func (a *Aggregator) handleEvent(event *tetragon.GetEventsResponse) {
 		a.handleProcessConnect(event)
 	default:
 		if err := a.server.Send(event); err != nil {
-			logger.GetLogger().WithError(err).Warn("Failed to send unaggregated response")
+			logger.GetLogger().Warn("Failed to send unaggregated response", logfields.Error, err)
 		}
 	}
 }

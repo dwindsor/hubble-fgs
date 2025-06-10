@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/timer"
@@ -44,20 +45,20 @@ var (
 )
 
 func listenerTcp(addr string) {
-	logger.GetLogger().Infof("Heartbeat starting TCP listener: '%s'", addr)
+	logger.GetLogger().Info(fmt.Sprintf("Heartbeat starting TCP listener: '%s'", addr))
 	listen, err := net.Listen("tcp4", addr)
 	if err != nil {
 		errChan <- err
-		logger.GetLogger().WithError(err).Warnf("Heartbeat TCP listener failed to listen for '%s'", addr)
+		logger.GetLogger().Warn(fmt.Sprintf("Heartbeat TCP listener failed to listen for '%s'", addr), logfields.Error, err)
 		return
 	}
 	errChan <- nil
 	defer listen.Close()
 
-	logger.GetLogger().Infof("Heartbeat TCP listening: '%s'", addr)
+	logger.GetLogger().Info(fmt.Sprintf("Heartbeat TCP listening: '%s'", addr))
 	accept, err := listen.Accept()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warnf("Heartbeat TCP accept failed for '%s'", addr)
+		logger.GetLogger().Warn(fmt.Sprintf("Heartbeat TCP accept failed for '%s'", addr), logfields.Error, err)
 		return
 	}
 	defer accept.Close()
@@ -75,17 +76,17 @@ func listenerTcp(addr string) {
 }
 
 func listenerUdp(addr string) {
-	logger.GetLogger().Infof("Heartbeat starting UDP listener: '%s'", addr)
+	logger.GetLogger().Info(fmt.Sprintf("Heartbeat starting UDP listener: '%s'", addr))
 	listen, err := net.ListenPacket("udp4", addr)
 	if err != nil {
 		errChan <- err
-		logger.GetLogger().WithError(err).Warnf("Heartbeat UDP listener failed to listen for '%s'", addr)
+		logger.GetLogger().Warn(fmt.Sprintf("Heartbeat UDP listener failed to listen for '%s'", addr), logfields.Error, err)
 		return
 	}
 	errChan <- nil
 	defer listen.Close()
 
-	logger.GetLogger().Infof("Heartbeat UDP listening: '%s'", addr)
+	logger.GetLogger().Info(fmt.Sprintf("Heartbeat UDP listening: '%s'", addr))
 
 	buffer := make([]byte, 1)
 
@@ -104,7 +105,7 @@ func listenerUdp(addr string) {
 func connect(proto string, dest string) (net.Conn, error) {
 	conn, err := net.Dial(proto, dest)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warnf("Failed to connect to %s listener", strings.ToUpper(proto)[0:3])
+		logger.GetLogger().Warn(fmt.Sprintf("Failed to connect to %s listener", strings.ToUpper(proto)[0:3]), logfields.Error, err)
 		return nil, err
 	}
 	return conn, nil

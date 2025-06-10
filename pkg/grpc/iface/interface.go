@@ -128,7 +128,7 @@ func (msg *MsgInterfaceEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("HandleInterfaceMessage: Unhandled event")
+		logger.GetLogger().Warn("HandleInterfaceMessage: Unhandled event", "message", msg)
 	}
 	return res
 }

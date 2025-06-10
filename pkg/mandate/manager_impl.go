@@ -20,6 +20,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 	"github.com/isovalent/hubble-fgs/pkg/attempt"
@@ -171,7 +172,7 @@ func (m *manager) refresh(ctx context.Context) {
 	defer func() {
 		err := refrAtt.Complete(err)
 		if err != nil {
-			logger.GetLogger().Warnf("mandate: attempt did not properly completed: %s", err)
+			logger.GetLogger().Warn("mandate: attempt did not properly completed", logfields.Error, err)
 		}
 	}()
 
@@ -225,7 +226,7 @@ func (m *manager) refresh(ctx context.Context) {
 			func() error {
 				err := m.unloadPolicy(ctx, pol)
 				if err != nil {
-					logger.GetLogger().WithError(err).WithField("policy", pol.name).Warn("failed to unload mandate policy")
+					logger.GetLogger().Warn("failed to unload mandate policy", "policy", pol.name, logfields.Error, err)
 				}
 				return err
 			})

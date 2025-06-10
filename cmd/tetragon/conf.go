@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 
 	"github.com/spf13/viper"
@@ -56,9 +58,9 @@ func validateEnv() (bool, error) {
 		if strings.HasPrefix(s[0], "FGS_") {
 			fgs = s[0]
 			// Warn users about using old environment variable prefix  FGS_
-			log.Warnf("Environment variable with a prefix  FGS_  '%q'  has been deprecated, please use  TETRAGON_  prefix instead", fgs)
+			log.Warn(fmt.Sprintf("Environment variable with a prefix  FGS_  '%q'  has been deprecated, please use  TETRAGON_  prefix instead", fgs))
 			tgenv := strings.Replace(fgs, "FGS_", "TETRAGON_", 1)
-			log.Warnf("Environment variable  '%q'  will take precedence over  '%q'", fgs, tgenv)
+			log.Warn(fmt.Sprintf("Environment variable  '%q'  will take precedence over  '%q'", fgs, tgenv))
 		}
 		if strings.HasPrefix(s[0], "TETRAGON_") {
 			tetragon = s[0]
@@ -206,9 +208,9 @@ func readConfigSettings(newEnv bool, newConf bool, defaultConfDir string, defaul
 		if configDir != "" {
 			err := readConfigDir(configDir)
 			if err != nil {
-				log.WithField(option.KeyConfigDir, configDir).WithError(err).Fatal("Failed to read config from directory")
+				logger.Fatal(log, "Failed to read config from directory", logfields.Error, err, option.KeyConfigDir, configDir)
 			} else {
-				log.WithField(option.KeyConfigDir, configDir).Info("Loaded config from directory")
+				log.Info("Loaded config from directory", option.KeyConfigDir, configDir)
 			}
 		}
 	}

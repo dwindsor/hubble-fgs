@@ -54,7 +54,7 @@ func getCache() (*tlsCache, error) {
 		return __cache, nil
 	}
 
-	logger.GetLogger().WithField("size", enterpriseOption.Config.TlsCacheSize).Info("Initializing TLS cache")
+	logger.GetLogger().Info("Initializing TLS cache", "size", enterpriseOption.Config.TlsCacheSize)
 	lru, err := lru.New[networkapi.MsgSocketId, *MsgTLSEventCert](enterpriseOption.Config.TlsCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TLS cache: %w", err)

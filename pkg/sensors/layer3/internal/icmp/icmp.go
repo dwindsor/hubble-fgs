@@ -20,9 +20,9 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -180,14 +180,14 @@ func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 		}
 	}
 
-	logger.GetLogger().Infof("Enable ICMP")
+	logger.GetLogger().Info("Enable ICMP")
 	return progsInitSock, progsCollectStats, maps
 }
 
 func ConfigureMaps(mapDir string, mapName string, config ConfigValue) error {
 	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("LoadPinnedMap")
+		logger.GetLogger().Warn("LoadPinnedMap", logfields.Error, err)
 		return err
 	}
 	defer m.Close()
@@ -228,7 +228,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 }
 
 func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
-	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Cookie": socket.Sockaddr}).Debug("Discovered ICMP Socket")
+	logger.GetLogger().Debug("Discovered ICMP Socket", "Pid", pid, "Cookie", socket.Sockaddr)
 }
 
 func MsgToICMPUnix(m *networkapi.MsgICMPEvent) *icmp.MsgICMPEventUnix {

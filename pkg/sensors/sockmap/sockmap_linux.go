@@ -200,7 +200,7 @@ func enableTLSParser(policy tracingpolicy.TracingPolicy, tls, cg bool) *sensors.
 	if tls {
 		// Socket mode only work on 5.10 onwards
 		if kernels.MinKernelVersion("5.10.0") {
-			logger.GetLogger().Infof("Enable TLS")
+			logger.GetLogger().Info("Enable TLS")
 			progs = append(progs,
 				Skmsg,
 				SkSkbVerdict,
@@ -224,14 +224,14 @@ func enableTLSParser(policy tracingpolicy.TracingPolicy, tls, cg bool) *sensors.
 				HTTPFilterMap,
 			)
 		} else {
-			logger.GetLogger().Warnf("Cannot Enable TLS Socket mode on kernel <5.10")
+			logger.GetLogger().Warn("Cannot Enable TLS Socket mode on kernel <5.10")
 		}
 	}
 
 	if cg {
 		// CGroups only work on 5.10 onwards
 		if kernels.MinKernelVersion("5.10.0") {
-			logger.GetLogger().Infof("Enable TLS CGroup")
+			logger.GetLogger().Info("Enable TLS CGroup")
 			progs = append(progs,
 				CGEgress,
 				CGIngress,
@@ -246,7 +246,7 @@ func enableTLSParser(policy tracingpolicy.TracingPolicy, tls, cg bool) *sensors.
 				TcpSocketMap, TcpSocketStats,
 			)
 		} else {
-			logger.GetLogger().Warnf("Cannot Enable TLS CGroup on kernel <5.10")
+			logger.GetLogger().Warn("Cannot Enable TLS CGroup on kernel <5.10")
 		}
 	}
 

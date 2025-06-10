@@ -33,6 +33,7 @@ import (
 	"github.com/cilium/tetragon/pkg/exporter"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
@@ -110,7 +111,7 @@ type raceEncoder struct {
 func (re *raceEncoder) Encode(v interface{}) error {
 	re.count++
 	if re.count%1000 == 0 {
-		logger.GetLogger().Infof("FGS RACE: %d events received...", re.count)
+		logger.GetLogger().Info(fmt.Sprintf("FGS RACE: %d events received...", re.count))
 	}
 
 	// Also do protobuf marshalling to catch races
@@ -215,7 +216,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	} else {
 		exePath, err := os.Executable()
 		if err != nil {
-			logger.GetLogger().Fatal(err)
+			logger.Fatal(logger.GetLogger(), "Failed to get executable path", logfields.Error, err)
 		}
 		option.Config.HubbleLib = path.Join(path.Dir(exePath), "bpf/objs")
 
@@ -227,7 +228,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 
 	f, err := os.CreateTemp("/tmp", "fgs-race-crd-*.yaml")
 	if err != nil {
-		logger.GetLogger().Fatal(err)
+		logger.Fatal(logger.GetLogger(), "Failed to create temp dir", logfields.Error, err)
 	}
 	defer os.Remove(f.Name())
 	f.Write([]byte(benchConfig))
@@ -237,23 +238,23 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	obs := observer.NewObserver()
 
 	if err := obs.InitSensorManager(); err != nil {
-		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)
+		logger.Fatal(logger.GetLogger(), "InitSensorManager failed", logfields.Error, err)
 	}
 
 	if err := btf.InitCachedBTF(option.Config.HubbleLib, ""); err != nil {
-		logger.GetLogger().Fatal(err)
+		logger.Fatal(logger.GetLogger(), "InitCachedBTF failed", logfields.Error, err)
 	}
 
 	rl := &raceListener{ready}
 	obs.AddListener(rl)
 
 	if err := startRaceExporter(ctx, obs); err != nil {
-		logger.GetLogger().Fatal(err)
+		logger.Fatal(logger.GetLogger(), "startRaceExporter failed", logfields.Error, err)
 	}
 
 	tp, err := tracingpolicy.FromFile(f.Name())
 	if err != nil {
-		logger.GetLogger().Fatalf("ReadConfig failed: %v", err)
+		logger.Fatal(logger.GetLogger(), "ReadConfig failed", logfields.Error, err)
 	}
 
 	startSensors, err := sensors.GetMergedSensorFromParserPolicy(tp)
@@ -267,7 +268,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	}
 
 	if err := obs.Start(ctx); err != nil {
-		logger.GetLogger().Fatalf("Starting FGS failed: %v", err)
+		logger.Fatal(logger.GetLogger(), "Starting FGS failed", logfields.Error, err)
 	}
 
 	<-ctx.Done()

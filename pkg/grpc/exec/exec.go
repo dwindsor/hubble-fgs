@@ -8,6 +8,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
@@ -15,7 +16,6 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -42,7 +42,7 @@ func getAncestors(proc *tetragon.Process) []*process.ProcessInternal {
 	for {
 		entry, err := process.Get(parentExecID)
 		if err != nil {
-			logger.GetLogger().WithField("id in event", parentExecID).Debug("parent not found in cache")
+			logger.GetLogger().Debug("parent not found in cache", "id in event", parentExecID)
 			break
 		}
 		p := entry.UnsafeGetProcess()
@@ -72,7 +72,10 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 
 	// Set the cap field only if --enable-process-cred flag is set.
 	if err := proc.AnnotateProcess(option.Config.EnableProcessCred, option.Config.EnableProcessNs); err != nil {
-		logger.GetLogger().WithError(err).WithField("processId", fgsProcess.ExecId).WithField("parentId", parentId).Debugf("Failed to annotate process with capabilities and namespaces info")
+		logger.GetLogger().Debug("Failed to annotate process with capabilities and namespaces info",
+			logfields.Error, err,
+			"processId", fgsProcess.ExecId,
+			"parentId", parentId)
 	}
 
 	// Populate fgsAncestors by walking backwards through the parentId links. Some small
@@ -115,13 +118,12 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 	if err := event.finalize(fgsEvent, proc, eventcache.NO_EV_CACHE); err != nil {
 		// Propagate metric errors about finalizing the event
 		errormetrics.ErrorTotalInc(errormetrics.EventFinalizeProcessInfoFailed)
-		logger.GetLogger().WithFields(logrus.Fields{
-			"event.name":            "Execve",
-			"event.process.pid":     fgsProcess.GetPid().GetValue(),
-			"event.process.binary":  fgsProcess.Binary,
-			"event.process.exec_id": fgsProcess.ExecId,
-			"event.event_cache":     "no",
-		}).Debugf("ExecveEvent: failed to finalize process exec event")
+		logger.GetLogger().Debug("ExecveEvent: failed to finalize process exec event",
+			"event.name", "Execve",
+			"event.process.pid", fgsProcess.GetPid().GetValue(),
+			"event.process.binary", fgsProcess.Binary,
+			"event.process.exec_id", fgsProcess.ExecId,
+			"event.event_cache", "no")
 		// For ProcessExec event we do not fail let's return what we have even if it's not complete
 		// The eventmetrics will count further errors
 	}
@@ -198,13 +200,12 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 	if err := msg.finalize(ev, internal, eventcache.FROM_EV_CACHE); err != nil {
 		// Propagate metric errors about finalizing the event
 		errormetrics.ErrorTotalInc(errormetrics.EventFinalizeProcessInfoFailed)
-		logger.GetLogger().WithFields(logrus.Fields{
-			"event.name":            "Execve",
-			"event.process.pid":     proc.Pid.GetValue(),
-			"event.process.binary":  filename,
-			"event.process.exec_id": proc.GetExecId(),
-			"event.event_cache":     "yes",
-		}).Debugf("ExecveEvent: failed to finalize process exec event")
+		logger.GetLogger().Debug("ExecveEvent: failed to finalize process exec event",
+			"event.name", "Execve",
+			"event.process.pid", proc.Pid.GetValue(),
+			"event.process.binary", filename,
+			"event.process.exec_id", proc.GetExecId(),
+			"event.event_cache", "yes")
 		// For ProcessExec event we do not fail let's return what we have even if it's not complete
 		// The eventmetrics will count further errors
 	}
@@ -268,7 +269,7 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("HandleExecveMessage: Unhandled event")
+		logger.GetLogger().Warn("HandleExecveMessage: Unhandled event", "message", msg)
 	}
 	return res
 }
@@ -320,7 +321,7 @@ func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("HandleCloneMessage: Unhandled event")
+		logger.GetLogger().Warn("HandleCloneMessage: Unhandled event", "message", msg)
 	}
 	return nil
 }
@@ -398,12 +399,11 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 	// Check must be against event.Info.Tid so we cover all the cases of
 	// the tetragonProcess.Pid against BPF.
 	if fgsProcess.Pid.GetValue() != event.Info.Tid {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"event.name":           "Exit",
-			"event.process.pid":    event.ProcessKey.Pid,
-			"event.process.tid":    event.Info.Tid,
-			"event.process.binary": fgsProcess.Binary,
-		}).Warn("ExitEvent: process PID and TID mismatch")
+		logger.GetLogger().Warn("ExitEvent: process PID and TID mismatch",
+			"event.name", "Exit",
+			"event.process.pid", event.ProcessKey.Pid,
+			"event.process.tid", event.Info.Tid,
+			"event.process.binary", fgsProcess.Binary)
 	}
 
 	fgsEvent := &tetragon.ProcessExit{
@@ -491,7 +491,7 @@ func (msg *MsgExitEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("HandleExitMessage: Unhandled event")
+		logger.GetLogger().Warn("HandleExitMessage: Unhandled event", "message", msg)
 	}
 	return res
 }

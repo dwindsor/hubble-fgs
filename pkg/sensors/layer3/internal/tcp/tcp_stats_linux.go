@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/timer"
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -28,7 +29,6 @@ import (
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -148,14 +148,13 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 
 		// Explicit check for underflowed bytes_received < 0
 		if int64(tcpStats.BytesReceived) < 0 {
-			logger.GetLogger().WithFields(logrus.Fields{
-				"curr":          tcpStats,
-				"last":          last,
-				"cookie":        key.SockCookie,
-				"version":       value.Version,
-				"socketFlags":   value.SocketFlags,
-				"bytesReceived": int64(tcpStats.BytesReceived),
-			}).Warn("TCP stats underflow in bytesReceived in stats GC")
+			logger.GetLogger().Warn("TCP stats underflow in bytesReceived in stats GC",
+				"curr", tcpStats,
+				"last", last,
+				"cookie", key.SockCookie,
+				"version", value.Version,
+				"socketFlags", value.SocketFlags,
+				"bytesReceived", int64(tcpStats.BytesReceived))
 			// Correct it to make stats/metrics more sane (but beware that the bug still needs fixing
 			// as it likely affects sockets where bytes_received wasn't 0 before the decrement)
 			tcpStats.BytesReceived = 0
@@ -170,13 +169,13 @@ func getTCPGCCallback(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey,
 				if err == nil {
 					emitStats(&statsKey, value, &diffValue)
 				} else {
-					logger.GetLogger().WithError(err).WithFields(logrus.Fields{
-						"curr":        tcpStats,
-						"last":        last,
-						"cookie":      key.SockCookie,
-						"version":     value.Version,
-						"socketFlags": value.SocketFlags,
-					}).Warn("Failed to compute diff for TCP stats")
+					logger.GetLogger().Warn("Failed to compute diff for TCP stats",
+						logfields.Error, err,
+						"curr", tcpStats,
+						"last", last,
+						"cookie", key.SockCookie,
+						"version", value.Version,
+						"socketFlags", value.SocketFlags)
 				}
 			}
 		} else {
@@ -193,7 +192,7 @@ func getRunTcpGC(emitStats emitStatsFn, cache *lru.Cache[networkapi.TcpKey, netw
 
 		m, err := ebpf.LoadPinnedMap(file, nil)
 		if err != nil {
-			logger.GetLogger().WithError(err).WithField("file", file).Debug("TCP GC failed to open file")
+			logger.GetLogger().Debug("TCP GC failed to open file", logfields.Error, err, "file", file)
 			return
 		}
 		defer m.Close()
@@ -394,21 +393,23 @@ func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 		RttBucket7:                 uint32((rttRange * .99) + fRttMin),
 	}
 	m.Put(key, value)
-	logger.GetLogger().WithField("time", sampleRate).Info("Configured TCP sock statistic sampler: ")
-	logger.GetLogger().WithFields(logrus.Fields{"enable": watermarksEnable,
-		"windowSize":       watermarksAvgWindowSize,
-		"burstTriggerMult": burstTriggerMult,
-		"dipTriggerMult":   dipTriggerMult,
-	}).Info("Configured TCP watermarks: ")
-	logger.GetLogger().WithFields(logrus.Fields{"rttMin": rttMin, "rttRange": rttRange,
-		"bucket0": value.RttBucket0,
-		"bucket1": value.RttBucket1,
-		"bucket2": value.RttBucket2,
-		"bucket3": value.RttBucket3,
-		"bucket4": value.RttBucket4,
-		"bucket5": value.RttBucket5,
-		"bucket6": value.RttBucket6,
-		"bucket7": value.RttBucket7}).Info("Configured RTT buckets: ")
+	logger.GetLogger().Info("Configured TCP sock statistic sampler", "time", sampleRate)
+	logger.GetLogger().Info("Configured TCP watermarks",
+		"enable", watermarksEnable,
+		"windowSize", watermarksAvgWindowSize,
+		"burstTriggerMult", burstTriggerMult,
+		"dipTriggerMult", dipTriggerMult)
+	logger.GetLogger().Info("Configured RTT buckets",
+		"rttMin", rttMin,
+		"rttRange", rttRange,
+		"bucket0", value.RttBucket0,
+		"bucket1", value.RttBucket1,
+		"bucket2", value.RttBucket2,
+		"bucket3", value.RttBucket3,
+		"bucket4", value.RttBucket4,
+		"bucket5", value.RttBucket5,
+		"bucket6", value.RttBucket6,
+		"bucket7", value.RttBucket7)
 
 	// Configure the TCP stats collector that walks the TCP BPF map every
 	// time.Durations and post statistics about that connections. This is

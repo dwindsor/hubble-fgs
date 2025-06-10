@@ -22,11 +22,10 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/timer"
 	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/sirupsen/logrus"
-
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/common"
@@ -248,8 +247,9 @@ func udpDiffValues(key *api.UdpInfoKey, last, curr *api.UdpInfoValue) (api.UdpIn
 	if udpResetEvent(curr, last) {
 		ipDst := api.GetIP(key.Tuple.DAddr, ops.MSG_OP_UDPSTATS, key.Tuple.IPv6 != 0)
 		ipSrc := api.GetIP(key.Tuple.SAddr, ops.MSG_OP_UDPSTATS, key.Tuple.IPv6 != 0)
-		logger.GetLogger().WithFields(logrus.Fields{"source": ipSrc, "dest": ipDst, "curr": curr, "last": last, "key": key,
-			"pid": curr.Pid, "pidktime": curr.PidKtime}).Warnf("UDP stats underflow")
+		logger.GetLogger().Warn("UDP stats underflow",
+			"source", ipSrc, "dest", ipDst, "curr", curr, "last", last, "key", key,
+			"pid", curr.Pid, "pidktime", curr.PidKtime)
 		return api.UdpInfoValue{}, fmt.Errorf("UDP stats invalid diff operation")
 	}
 
@@ -280,7 +280,7 @@ func decMapStats() {
 func deleteLast(m *ebpf.Map) {
 	if deleteLastKey != nil {
 		if err := m.Delete(deleteLastKey); err != nil {
-			logger.GetLogger().WithError(err).WithField("key", deleteLastKey).Warn("UDP delete key failed.")
+			logger.GetLogger().Warn("UDP delete key failed.", logfields.Error, err, "key", deleteLastKey)
 			socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDeleteKeyFailed)
 		} else {
 			decMapStats()
@@ -301,7 +301,7 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 
 	t, err := ktime.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("time", udpValue.Ktime).Warn("UDP NanoTimeSince failed.")
+		logger.GetLogger().Warn("UDP NanoTimeSince failed.", logfields.Error, err, "time", udpValue.Ktime)
 		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeNanoTimeSinceFailure)
 		return
 	}
@@ -366,7 +366,7 @@ func runUdpGC() {
 
 	m, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", file).Warn("UDP GC failed to open file")
+		logger.GetLogger().Warn("UDP GC failed to open file", logfields.Error, err, "file", file)
 		// lock is safe only done here inside GC
 		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeFailedToOpenMap)
 		return

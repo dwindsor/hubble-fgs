@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand"
 	"net"
 	"os"
@@ -41,7 +42,6 @@ import (
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper/docker"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1577,7 +1577,7 @@ func testDetectSRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithSocketType(sm.Full("accept")))
 
 	statsChecker := &ec.FnEventChecker{
-		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
+		NextCheckFn: func(event_ ec.Event, _ *slog.Logger) (bool, error) {
 			event, ok := event_.(*tetragon.ProcessSockStats)
 			if !ok {
 				return false, fmt.Errorf("event is not a sockstats event")
@@ -1599,7 +1599,7 @@ func testDetectSRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 			return false, fmt.Errorf("sockstats event is not from server")
 		},
-		FinalCheckFn: func(_ *logrus.Logger) error {
+		FinalCheckFn: func(_ *slog.Logger) error {
 			return nil
 		},
 	}
@@ -2151,7 +2151,7 @@ func testDetectSRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithSocketType(sm.Full("accept")))
 
 	statsChecker := &ec.FnEventChecker{
-		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
+		NextCheckFn: func(event_ ec.Event, _ *slog.Logger) (bool, error) {
 			event, ok := event_.(*tetragon.ProcessSockStats)
 			if !ok {
 				return false, fmt.Errorf("event is not a sockstats event")
@@ -2173,7 +2173,7 @@ func testDetectSRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 
 			return false, fmt.Errorf("sockstats event is not from server")
 		},
-		FinalCheckFn: func(_ *logrus.Logger) error {
+		FinalCheckFn: func(_ *slog.Logger) error {
 			return nil
 		},
 	}
@@ -2284,7 +2284,7 @@ func testIOUringAcceptEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 	}
 
 	serverPid := uint32(cmdServer.Process.Pid)
-	logger.GetLogger().WithField("ServerPid", serverPid).Info("Running")
+	logger.GetLogger().Info("Running", "ServerPid", serverPid)
 
 	cmdClient := exec.Command(client, "127.0.0.1", "8000")
 	stdin, err := cmdClient.StdinPipe()
@@ -2378,7 +2378,7 @@ func testIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 	}
 
 	serverPid := uint32(cmdServer.Process.Pid)
-	logger.GetLogger().WithField("ServerPid", serverPid).Info("Running")
+	logger.GetLogger().Info("Running", "ServerPid", serverPid)
 
 	cmdClient := exec.Command(client)
 	cmdClient.Stderr = os.Stderr

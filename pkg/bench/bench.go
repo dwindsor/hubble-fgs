@@ -33,6 +33,7 @@ import (
 	"github.com/cilium/tetragon/pkg/exporter"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
@@ -125,7 +126,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	obs := observer.NewObserver()
 
 	if err := obs.InitSensorManager(); err != nil {
-		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)
+		logger.Fatal(logger.GetLogger(), "InitSensorManager failed", logfields.Error, err)
 	}
 
 	if err := btf.InitCachedBTF(option.Config.HubbleLib, ""); err != nil {

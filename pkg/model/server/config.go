@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 )
 
 var (
@@ -86,7 +87,7 @@ func configureSettings(cfg *CfgProcessModel) error {
 
 	err = m.Put(key, value)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Model configuration could not update map")
+		logger.GetLogger().Warn("Model configuration could not update map", logfields.Error, err)
 		return err
 	}
 	return nil

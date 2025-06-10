@@ -14,7 +14,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -24,43 +24,33 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 )
 
-func addSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Manager, obj interface{}) {
+func addSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors.Manager, obj interface{}) {
 	err := sandboxpolicy.AddSandboxPolicy(ctx, log, s, obj)
 	if err != nil {
-		log.WithError(err).Warn("failed to add sandbox policy")
+		log.Warn("failed to add sandbox policy", logfields.Error, err)
 	}
 }
 
-func deleteSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Manager, obj interface{}) {
+func deleteSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors.Manager, obj interface{}) {
 	var err error
 	switch sp := obj.(type) {
 	case *v1alpha1.SandboxPolicy:
 		tpName := sandboxpolicy.TracingPolicyName(sp.Name)
-		log.WithFields(logrus.Fields{
-			"sp-name": sp.ObjectMeta.Name,
-			"tp-name": tpName,
-		}).Info("deleting sandbox policy")
+		log.Info("deleting sandbox policy", "sp-name", sp.Name, "tp-name", tpName)
 		err = s.DeleteTracingPolicy(ctx, tpName, "")
 
 	case *v1alpha1.SandboxPolicyNamespaced:
 		tpName := sandboxpolicy.TracingPolicyName(sp.Name)
-		log.WithFields(logrus.Fields{
-			"sp-name":   sp.ObjectMeta.Name,
-			"tp-name":   tpName,
-			"namespace": sp.ObjectMeta.Namespace,
-		}).Info("deleting sandbox policy")
+		log.Info("deleting sandbox policy", "sp-name", sp.Name, "tp-name", tpName, "namespace", sp.Namespace)
 		err = s.DeleteTracingPolicy(ctx, tpName, sp.Namespace)
 
 	default:
-		log.WithFields(logrus.Fields{
-			"obj":      obj,
-			"obj-type": fmt.Sprintf("%T", obj),
-		}).Warn("deleteSandboxPolicy: invalid type")
+		log.Warn("deleteSandboxPolicy: invalid type", "obj", obj, "obj-type", fmt.Sprintf("%T", obj))
 		return
 	}
 
 	if err != nil {
-		log.WithError(err).Warn("failed to delete sandbox policy")
+		log.Warn("failed to delete sandbox policy", logfields.Error, err)
 	}
 }
 
@@ -86,7 +76,7 @@ func sandboxPolicyNeedsUpdate(
 }
 
 func updateSandboxPolicy(
-	ctx context.Context, log logrus.FieldLogger,
+	ctx context.Context, log logger.FieldLogger,
 	s *sensors.Manager, oldObj interface{}, newObj interface{},
 ) {
 	upd, err := sandboxPolicyNeedsUpdate(oldObj, newObj)
@@ -96,14 +86,14 @@ func updateSandboxPolicy(
 	}
 
 	if upd {
-		log := log.WithField("watcher-event", "update")
+		log := log.With("watcher-event", "update")
 		deleteSandboxPolicy(ctx, log, s, oldObj)
 		addSandboxPolicy(ctx, log, s, newObj)
 	}
 }
 
 func AddSandboxPolicyInformer(ctx context.Context, m *manager.ControllerManager, s *sensors.Manager) error {
-	log := logger.GetLogger().WithField("crd-watcher", true)
+	log := logger.GetLogger().With("crd-watcher", true)
 	spInformer, err := m.Manager.GetCache().GetInformer(ctx, &v1alpha1.SandboxPolicy{})
 	if err != nil {
 		return err

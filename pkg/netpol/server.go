@@ -18,7 +18,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
 
@@ -58,9 +57,7 @@ func (m *NetworkPolicyManager) AddNetworkPolicyFromYAML(_ context.Context, req *
 		return nil, fmt.Errorf("failed to load TetragonNetworkPolicy: %w", err)
 	}
 
-	logger.GetLogger().WithFields(logrus.Fields{
-		"Name": np.Name,
-	}).Info("GRPC Added TetragonNetworkPolicy with success")
+	logger.GetLogger().Info("GRPC Added TetragonNetworkPolicy with success", "Name", np.Name)
 
 	return &tetragon.AddNetworkPolicyResponse{}, nil
 }
@@ -79,9 +76,7 @@ func (m *NetworkPolicyManager) DeleteNetworkPolicy(_ context.Context, req *tetra
 	}
 
 	library.Delete(req.Name)
-	logger.GetLogger().WithFields(logrus.Fields{
-		"title": req.Name,
-	}).Info("network policy deleted")
+	logger.GetLogger().Info("network policy deleted", "title", req.Name)
 
 	return &tetragon.DeleteNetworkPolicyResponse{}, nil
 }

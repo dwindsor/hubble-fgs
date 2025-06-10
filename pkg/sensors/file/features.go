@@ -30,6 +30,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ossBTF "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
@@ -108,7 +109,7 @@ func probeOverlayModule() *btf.Spec {
 		if errors.Is(err, fs.ErrNotExist) {
 			logger.GetLogger().Info("btf: Overlay kmod does not exist. Skipping")
 		} else {
-			logger.GetLogger().WithError(err).WithField("func", "btf.LoadKernelModuleSpec").Warn("btf: Failed to load symbols from overlay kmod")
+			logger.GetLogger().Warn("btf: Failed to load symbols from overlay kmod", logfields.Error, err, "func", "btf.LoadKernelModuleSpec")
 		}
 		return nil
 	}
@@ -120,19 +121,19 @@ func probeOverlayModule() *btf.Spec {
 
 	b, err := btf.NewBuilder(allTypes)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("func", "btf.NewBuilder").Warn("btf: Failed to load symbols from overlay kmod")
+		logger.GetLogger().Warn("btf: Failed to load symbols from overlay kmod", logfields.Error, err, "func", "btf.NewBuilder")
 		return nil
 	}
 
 	raw, err := b.Marshal(nil, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("func", "b.Marshal").Warn("btf: Failed to load symbols from overlay kmod")
+		logger.GetLogger().Warn("btf: Failed to load symbols from overlay kmod", logfields.Error, err, "func", "b.Marshal")
 		return nil
 	}
 
 	mergedSpec, err := btf.LoadSpecFromReader(bytes.NewReader(raw))
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("func", "btf.LoadSpecFromReader").Warn("btf: Failed to load symbols from overlay kmod")
+		logger.GetLogger().Warn("btf: Failed to load symbols from overlay kmod", logfields.Error, err, "func", "btf.LoadSpecFromReader")
 		return nil
 	}
 

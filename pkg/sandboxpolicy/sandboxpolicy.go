@@ -62,7 +62,7 @@ func sandboxHandler(
 				spev := sandboxGRPC.NewMsgRawSyscall(xev, xlateFn, spName)
 				out = append(out, spev)
 			default:
-				logger.GetLogger().Warn("unexpected event type (%T) in sandbox policy handler", ev)
+				logger.GetLogger().Warn(fmt.Sprintf("unexpected event type (%T) in sandbox policy handler", ev))
 				out = append(out, ev)
 			}
 		}

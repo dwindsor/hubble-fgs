@@ -24,7 +24,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -43,7 +42,9 @@ var (
 func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	saddr := networkapi.GetIP(socket.Tuple.SAddr, 0, socket.Tuple.IPv6 != 0)
 	daddr := networkapi.GetIP(socket.Tuple.DAddr, 0, socket.Tuple.IPv6 != 0)
-	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Tuple.SPort, "Dport": socket.Tuple.DPort, "Protocol": socket.Protocol, "State": socket.State, "Cookie": socket.Sockaddr, "SockVersion": socket.SockVersion}).Debug("Discovered TCP Socket")
+	logger.GetLogger().Debug("Discovered TCP Socket",
+		"Pid", pid, "Saddr", saddr, "Daddr", daddr, "Sport", socket.Tuple.SPort, "Dport", socket.Tuple.DPort,
+		"Protocol", socket.Protocol, "State", socket.State, "Cookie", socket.Sockaddr, "SockVersion", socket.SockVersion)
 
 	if socket.State == 0 {
 		return

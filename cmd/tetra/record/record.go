@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/hubble-fgs/pkg/recorder"
 	"github.com/isovalent/hubble-fgs/pkg/recorder/config"
 	"github.com/spf13/cobra"
@@ -89,7 +90,7 @@ func recordGRPC(ctx context.Context, client tetragon.FineGuidanceSensorsClient, 
 	request := getRequest(namespaces, host, processes, pods)
 	stream, err := client.GetEvents(ctx, request)
 	if err != nil {
-		logger.GetLogger().WithError(err).Fatal("Failed to call GetEvents")
+		logger.Fatal(logger.GetLogger(), "Failed to call GetEvents", logfields.Error, err)
 	}
 	for {
 		res, err := stream.Recv()
@@ -100,7 +101,7 @@ func recordGRPC(ctx context.Context, client tetragon.FineGuidanceSensorsClient, 
 			break
 		}
 		if err = rec.RecordResponse(res); err != nil {
-			logger.GetLogger().WithError(err).WithField("event", res).Debug("Failed to record event")
+			logger.Fatal(logger.GetLogger(), "Failed to record event", logfields.Error, err, "event", res)
 		}
 	}
 
@@ -118,7 +119,7 @@ func recordGRPC(ctx context.Context, client tetragon.FineGuidanceSensorsClient, 
 func record(conf *config.GenericRecorderConf, out *os.File) func(ctx context.Context, client tetragon.FineGuidanceSensorsClient) {
 	return func(ctx context.Context, client tetragon.FineGuidanceSensorsClient) {
 		if err := recordGRPC(ctx, client, conf, out); err != nil {
-			logger.GetLogger().WithError(err).Fatal("Failed to record from gRPC")
+			logger.Fatal(logger.GetLogger(), "Failed to record from gRPC", logfields.Error, err)
 		}
 	}
 }
@@ -148,7 +149,7 @@ func New() *cobra.Command {
 		Run: func(_ *cobra.Command, args []string) {
 			config, err := config.FileConfigYaml(args[0])
 			if err != nil {
-				logger.GetLogger().WithError(err).Fatal("Failed to parse recorder config")
+				logger.Fatal(logger.GetLogger(), "Failed to parse recorder config", logfields.Error, err)
 			}
 
 			var outFile *os.File
@@ -158,7 +159,7 @@ func New() *cobra.Command {
 				var err error
 				outFile, err = os.Create(outFileName)
 				if err != nil {
-					logger.GetLogger().WithError(err).Fatal("Failed to open output file for writing")
+					logger.Fatal(logger.GetLogger(), "Failed to open output file for writing", logfields.Error, err)
 				}
 			}
 
@@ -167,7 +168,7 @@ func New() *cobra.Command {
 			if jsonFile != "" {
 				err := recordJSON(jsonFile, config, outFile)
 				if err != nil {
-					logger.GetLogger().WithError(err).Fatal("Failed to record from JSON file")
+					logger.Fatal(logger.GetLogger(), "Failed to record event from JSON file", logfields.Error, err)
 				}
 			} else {
 				common.CliRun(record(config, outFile))

@@ -9,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
@@ -216,7 +217,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 			s := state.Src[d.Name]
 			action, err := calculateAction(&s.Policy.Action)
 			if err != nil {
-				logger.GetLogger().WithError(err).Warn("calculate action failed")
+				logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
 				continue
 			}
 
@@ -229,7 +230,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 				for _, process := range s.Policy.Subject.InProcessName {
 					self, err := prog.GetBinaryId(process)
 					if err != nil {
-						logger.GetLogger().WithError(err).Warn("process policy remove error")
+						logger.GetLogger().Warn("process policy remove error", logfields.Error, err)
 						continue
 					}
 
@@ -290,7 +291,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 	for _, s := range coll {
 		action, err := calculateAction(&s.Policy.Action)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("calculate action failed")
+			logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
 			continue
 		}
 		d := state.Dst[s.Name]
@@ -310,7 +311,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 			for _, process := range s.Policy.Subject.InProcessName {
 				self, err := prog.GetBinaryId(process)
 				if err != nil {
-					logger.GetLogger().WithError(err).Warn("pod remove endpoint binary id error")
+					logger.GetLogger().Warn("pod remove endpoint binary id error", logfields.Error, err)
 					continue
 				}
 				processSrc := &types.ProcessTreeKey{
@@ -354,7 +355,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 				subject,
 				action)
 			if err != nil {
-				logger.GetLogger().WithError(err).Warn("PodRemove CIDR records error")
+				logger.GetLogger().Warn("PodRemove CIDR records error", logfields.Error, err)
 			} else {
 				records = append(records, r...)
 			}
@@ -367,7 +368,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 		for _, entry := range s.Policy.Destination.FQDN.Names {
 			action, err := calculateAction(&s.Policy.Action)
 			if err != nil {
-				logger.GetLogger().WithError(err).Warn("calculate action failed")
+				logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
 				continue
 			}
 			ep := &endpoint.Endpoint{
@@ -381,7 +382,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 			for _, process := range s.Policy.Subject.InProcessName {
 				self, err := prog.GetBinaryId(process)
 				if err != nil {
-					logger.GetLogger().WithError(err).Warn("pod remove FQDN binary id error")
+					logger.GetLogger().Warn("pod remove FQDN binary id error", logfields.Error, err)
 					continue
 				}
 				processSrc := &types.ProcessTreeKey{
@@ -446,7 +447,8 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 		for _, subject := range policyList.Subjects {
 			action, err := calculateAction(&policyList.Policy.Action)
 			if err != nil {
-				logger.GetLogger().WithError(err).WithField("policyName", d.Name).WithField("action", d.Policy.Action).Warn("could not calcluate actions, skipping action")
+				logger.GetLogger().Warn("could not calcluate actions, skipping action",
+					logfields.Error, err, "policyName", d.Name, "action", d.Policy.Action)
 				continue
 			}
 
@@ -454,7 +456,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 				for _, process := range policyList.Policy.Subject.InProcessName {
 					self, err := prog.GetBinaryId(process)
 					if err != nil {
-						logger.GetLogger().WithError(err).Warn("process policy remove error")
+						logger.GetLogger().Warn("process policy remove error", logfields.Error, err)
 						continue
 					}
 					if len(policyList.Policy.Destination.Ports) == 0 {
@@ -522,7 +524,7 @@ func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.Labe
 		}
 		sRecords, err := state.AddSrcPolicy(s.Name, src, s.Policy, true)
 		if err != nil {
-			logger.GetLogger().WithField("src", src).WithError(err).Warn("ProgAddNetwork failed")
+			logger.GetLogger().Warn("ProgAddNetwork failed", logfields.Error, err, "src", src)
 		}
 		records = append(records, sRecords...)
 	}

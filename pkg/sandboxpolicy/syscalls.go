@@ -167,16 +167,12 @@ func generateSyscalls(l []v1alpha1.SandboxSyscallItem, needBlock bool) ([]string
 	}
 
 	if len(deprecated) > 0 {
-		logger.GetLogger().
-			WithField("syscalls", deprecated).
-			Info("ignored deprecated (not supported by kernel) syscalls")
+		logger.GetLogger().Info("ignored deprecated (not supported by kernel) syscalls", "syscalls", deprecated)
 	}
 
 	if len(missingSyscalls) > 0 || len(missingEntries) > 0 {
-		logger.GetLogger().
-			WithField("missing-ids", missingSyscalls).
-			WithField("missing-entries", missingEntries).
-			Warn("missing syscall information")
+		logger.GetLogger().Warn("missing syscall information",
+			"missing-ids", missingSyscalls, "missing-entries", missingEntries)
 	}
 
 	if len(ids) == 0 {

@@ -12,6 +12,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 )
 
 type KernelLPMTrie4 struct {
@@ -42,14 +43,14 @@ func NewLPM() (*LPMMap, error) {
 	fileLpm4 := filepath.Join(bpf.MapPrefixPath(), Addr4lpmMapName)
 	addr4lpm, err := ebpf.LoadPinnedMap(fileLpm4, nil)
 	if err != nil {
-		logger.GetLogger().Errorf("failed to pin addr4 LPM Map (%s): %v", fileLpm4, err)
+		logger.GetLogger().Error(fmt.Sprintf("failed to pin addr4 LPM Map (%s)", fileLpm4), logfields.Error, err)
 		return nil, err
 	}
 
 	fileLpm6 := filepath.Join(bpf.MapPrefixPath(), Addr6lpmMapName)
 	addr6lpm, err := ebpf.LoadPinnedMap(fileLpm6, nil)
 	if err != nil {
-		logger.GetLogger().Errorf("failed to pin addr6 LPM Map (%s): %v", fileLpm6, err)
+		logger.GetLogger().Error(fmt.Sprintf("failed to pin addr6 LPM Map (%s)", fileLpm6), logfields.Error, err)
 		return nil, err
 	}
 
@@ -67,7 +68,7 @@ func (lpm *LPMMap) writeIp4(ip string, id uint64) error {
 	ip4 := binary.LittleEndian.Uint32(addr)
 	val := KernelLPMTrie4{prefix: maskLen, addr: ip4}
 	if err := lpm.addr4.Update(val, id, 0); err != nil {
-		logger.GetLogger().WithError(err).Errorf("Failed to program LPM4 %s->%d", ip, id)
+		logger.GetLogger().Error(fmt.Sprintf("Failed to program LPM4 %s->%d", ip, id), logfields.Error, err)
 	}
 	return nil
 }
@@ -81,7 +82,7 @@ func (lpm *LPMMap) writeIp6(ip string, id uint64) error {
 	copy(addrSlice[:], addr)
 	val := KernelLPMTrie6{prefix: maskLen, addr: addrSlice}
 	if err := lpm.addr6.Update(val, id, 0); err != nil {
-		logger.GetLogger().WithError(err).Errorf("Failed to program LPM6 %s->%d", ip, id)
+		logger.GetLogger().Error(fmt.Sprintf("Failed to program LPM6 %s->%d", ip, id), logfields.Error, err)
 	}
 	return nil
 }
@@ -94,7 +95,7 @@ func (lpm *LPMMap) deleteIp4(ip string) error {
 	ip4 := binary.LittleEndian.Uint32(addr)
 	val := KernelLPMTrie4{prefix: maskLen, addr: ip4}
 	if err := lpm.addr4.Delete(val); err != nil {
-		logger.GetLogger().WithError(err).Errorf("Failed to delete LPM4 %s", ip)
+		logger.GetLogger().Error(fmt.Sprintf("Failed to delete LPM4 %s", ip), logfields.Error, err)
 	}
 	return nil
 }
@@ -108,7 +109,7 @@ func (lpm *LPMMap) deleteIp6(ip string) error {
 	copy(addrSlice[:], addr)
 	val := KernelLPMTrie6{prefix: maskLen, addr: addrSlice}
 	if err := lpm.addr6.Delete(val); err != nil {
-		logger.GetLogger().WithError(err).Errorf("Failed to delete LPM6 %s", ip)
+		logger.GetLogger().Error(fmt.Sprintf("Failed to delete LPM6 %s", ip), logfields.Error, err)
 	}
 	return nil
 }

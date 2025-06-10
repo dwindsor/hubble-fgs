@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/timer"
 
@@ -168,7 +169,7 @@ func checkAndAddWatermarksEndEvents() {
 			watermarksLogValue.WatermarksState = 0
 			err := watermarksMap.Update(&watermarksLogKey, &watermarksLogValue, ebpf.UpdateExist)
 			if err != nil {
-				logger.GetLogger().WithError(err).Warn("Could not update watermarks log")
+				logger.GetLogger().Warn("Could not update watermarks log", logfields.Error, err)
 			}
 		}
 	}

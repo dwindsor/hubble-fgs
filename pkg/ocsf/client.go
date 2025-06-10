@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/ipa/ocsf/v1alpha"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -37,12 +38,13 @@ func NewOCSFJSONClient(ctx context.Context, serverAddr string) error {
 			if attempts < Retries {
 				// Exponential backoff
 				attempts++
-				logger.GetLogger().WithField("server-address", serverAddr).WithField("attempts", attempts).WithError(err).Error("Connection attempt failed, retrying...")
+				logger.GetLogger().Error("Connection attempt failed, retrying...", "server-address", serverAddr, "attempts", attempts, logfields.Error, err)
 				time.Sleep(backoff)
 				backoff *= 2
 				continue
 			}
-			logger.GetLogger().WithField("server-address", serverAddr).WithField("attempts", attempts).WithError(err).Fatal("Failed to connect to server")
+			logger.Fatal(logger.GetLogger(), "Failed to connect to OCSF server after multiple attempts",
+				"server-address", serverAddr, "attempts", attempts, logfields.Error, err)
 			return fmt.Errorf("server could not be reached")
 		}
 		break

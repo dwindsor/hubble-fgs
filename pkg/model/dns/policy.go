@@ -6,13 +6,13 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
-	"github.com/sirupsen/logrus"
 )
 
 // Legacy workload add for FQDN quota policy soon to be removed
@@ -69,18 +69,10 @@ func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.Proces
 				Endpoint: endpoint,
 			}
 			if err := prog.RemoveSingleRecord(record); err != nil {
-				logger.GetLogger().WithFields(logrus.Fields{
-					"cgid": src.NSID,
-					"self": src.Self,
-					"dest": entry,
-				}).WithError(err).Error("TCP quota remove Failed")
+				logger.GetLogger().Error("TCP quota remove Failed", logfields.Error, err, "cgid", src.NSID, "self", src.Self, "dest", entry)
 			}
 		}
-		logger.GetLogger().WithFields(logrus.Fields{
-			"cgid": src.NSID,
-			"self": src.Self,
-			"dest": strings.Join(d.FQDN.Names, " "),
-		}).Debug("TCP quota removed")
+		logger.GetLogger().Debug("TCP quota removed", "cgid", src.NSID, "self", src.Self, "dest", strings.Join(d.FQDN.Names, " "))
 	}
 
 	ls, ok := state.Dst[name]
@@ -98,16 +90,10 @@ func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.Proces
 			Endpoint: endpoint,
 		}
 		if prog.RemoveSingleRecord(record); err != nil {
-			logger.GetLogger().WithFields(logrus.Fields{
-				"cgid": src.NSID,
-				"self": src.Self,
-			}).WithError(err).Error("TCP quota labels endpoint remove Failed")
+			logger.GetLogger().Error("TCP quota labels endpoint remove Failed", logfields.Error, err, "cgid", src.NSID, "self", src.Self)
 			continue
 		}
-		logger.GetLogger().WithFields(logrus.Fields{
-			"cgid": src.NSID,
-			"self": src.Self,
-		}).Debug("TCP DNS labels endpoint quota removed")
+		logger.GetLogger().Debug("TCP DNS labels endpoint quota removed", "cgid", src.NSID, "self", src.Self)
 	}
 
 	return nil
@@ -165,7 +151,7 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *type
 		for _, src := range v.Subjects {
 			sRecords, err := state.AddSrcPolicy(v.Name, src, v.Policy, true)
 			if err != nil {
-				logger.GetLogger().WithField("src", src).WithError(err).Warn("AddSrcPolicy error")
+				logger.GetLogger().Warn("AddSrcPolicy error", logfields.Error, err, "src", src)
 				continue
 			}
 			afterSubjs = append(afterSubjs, sRecords...)
@@ -224,7 +210,7 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 
 		state, err := policyfilter.GetState()
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("Unable to get policyfilter")
+			logger.GetLogger().Warn("Unable to get policyfilter", logfields.Error, err)
 			return nil, err
 		}
 		// If the ID does not yet exist we need to wait for it to be added. This is
@@ -233,7 +219,7 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 		// support this.
 		nsId, ok = state.GetIdNs(workload)
 		if !ok {
-			logger.GetLogger().WithField("namespace", namespace).WithField("workload", wl).Debug("workload info does not exist yet, queuing for workload updates.")
+			logger.GetLogger().Debug("workload info does not exist yet, queuing for workload updates.", "namespace", namespace, "workload", wl)
 			return nil, nil
 		}
 	} else {
@@ -258,7 +244,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 	if policy.Destination.CIDR != nil {
 		r, err := state.addDestSrcCIDRRecords(&recordPolicy, &policy.Destination, src, action, init)
 		if err != nil {
-			logger.GetLogger().WithField("CIDR", policy.Destination.CIDR).WithError(err).Warn("CIDR policy record error")
+			logger.GetLogger().Warn("CIDR policy record error", logfields.Error, err, "CIDR", policy.Destination.CIDR)
 		}
 		records = append(records, r...)
 	}
@@ -344,21 +330,15 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 
 	dfltAction, err := calculateAction(&policy.Default)
 	if err != nil {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"uid":    uid,
-			"name":   policy.Name,
-			"action": policy.Action,
-		}).WithError(err).Error("policy has unsupported or invalid default action")
+		logger.GetLogger().Error("policy has unsupported or invalid default action", logfields.Error, err,
+			"uid", uid, "name", policy.Name, "action", policy.Action)
 		return records, err
 	}
 
 	action, err := calculateAction(&policy.Action)
 	if err != nil {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"uid":    uid,
-			"name":   policy.Name,
-			"action": policy.Action,
-		}).WithError(err).Error("policy has unsupported or invalid action")
+		logger.GetLogger().Error("policy has unsupported or invalid action", logfields.Error, err,
+			"uid", uid, "name", policy.Name, "action", policy.Action)
 		return records, err
 	}
 
@@ -369,10 +349,7 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 		for _, process := range policy.Subject.InProcessName {
 			self, err := prog.GetBinaryId(process)
 			if err != nil {
-				logger.GetLogger().WithFields(logrus.Fields{
-					"uid":     uid,
-					"process": process,
-				}).WithError(err).Warn("Failed to create record")
+				logger.GetLogger().Warn("Failed to create record", logfields.Error, err, "uid", uid, "process", process)
 				return records, err
 			}
 

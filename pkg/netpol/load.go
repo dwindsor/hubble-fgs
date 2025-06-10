@@ -12,8 +12,6 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
-	"github.com/sirupsen/logrus"
-
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
@@ -79,10 +77,7 @@ func addNetworkPolicy(_ context.Context, file string) error {
 		return fmt.Errorf("failed to load TetragonNetworkPolicy: %w", err)
 	}
 
-	logger.GetLogger().WithFields(logrus.Fields{
-		"TetragonNetworkPolicy": file,
-		"metadata.name":         np.Name,
-	}).Info("Added TetragonNetworkPolicy with success")
+	logger.GetLogger().Info("Added TetragonNetworkPolicy with success", "TetragonNetworkPolicy", file, "metadata.name", np.Name)
 
 	return nil
 }
@@ -105,7 +100,8 @@ func LoadTNPFromDir(ctx context.Context, dir string) error {
 		// Probably tetragon not fully installed, users did not create
 		// /etc/tetragon/tetragon.tp.d/
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			logger.GetLogger().WithField("tetragon-network-policy-dir", dir).Info("Loading Tetragon Network Policies from directory ignored, directory does not exist")
+			logger.GetLogger().Info("Loading Tetragon Network Policies from directory ignored, directory does not exist",
+				"tetragon-network-policy-dir", dir)
 			return nil
 		}
 	}

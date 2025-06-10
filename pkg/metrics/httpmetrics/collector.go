@@ -17,6 +17,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/prometheus/client_golang/prometheus"
@@ -69,7 +70,7 @@ func (c *bpfCollector) Collect(ch chan<- prometheus.Metric) {
 		return nil
 	})
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("error in http metrics collector")
+		logger.GetLogger().Warn("error in http metrics collector", logfields.Error, err)
 		httpCollectorErrors.Inc()
 		return
 	}

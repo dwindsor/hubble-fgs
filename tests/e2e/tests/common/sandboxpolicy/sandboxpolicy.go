@@ -17,10 +17,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
-
-	"github.com/sirupsen/logrus"
 
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 
@@ -139,7 +138,7 @@ type sandboxEventChecker struct {
 	matches int
 }
 
-func (c *sandboxEventChecker) NextEventCheck(event ec.Event, _ *logrus.Logger) (bool, error) {
+func (c *sandboxEventChecker) NextEventCheck(event ec.Event, _ *slog.Logger) (bool, error) {
 	switch ev := event.(type) {
 	case *tetragon.ProcessTracepoint:
 		return true, errors.New("got an unexpected tracepoint event")
@@ -154,7 +153,7 @@ func (c *sandboxEventChecker) NextEventCheck(event ec.Event, _ *logrus.Logger) (
 	return c.matches >= 5, nil
 }
 
-func (c *sandboxEventChecker) FinalCheck(_ *logrus.Logger) error {
+func (c *sandboxEventChecker) FinalCheck(_ *slog.Logger) error {
 	if c.matches > 0 {
 		return nil
 	}

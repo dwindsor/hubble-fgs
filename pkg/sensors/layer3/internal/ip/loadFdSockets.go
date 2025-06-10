@@ -24,17 +24,16 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/cgroups"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/constants"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-	"github.com/sirupsen/logrus"
-
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 const (
@@ -158,7 +157,7 @@ func getExistingSockets() (map[uint32][]uint32, error) {
 
 	procFS, err := os.ReadDir(option.Config.ProcFS)
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("Could not read directory %s", option.Config.ProcFS)
+		logger.GetLogger().Error("Could not read directory "+option.Config.ProcFS, logfields.Error, err)
 		return nil, err
 	}
 
@@ -180,7 +179,7 @@ func getExistingSockets() (map[uint32][]uint32, error) {
 
 		pid, err := proc.GetProcPid(d.Name())
 		if err != nil {
-			logger.GetLogger().WithError(err).Debugf("pid read error")
+			logger.GetLogger().Debug("pid read error", logfields.Error, err)
 			continue
 		}
 
@@ -258,7 +257,7 @@ func LoadSockets(callback FdCallback, protocol uint16, hint uint64) error {
 
 	procSocketFds, err := getExistingSockets()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Unable to get existing sockets")
+		logger.GetLogger().Warn("Unable to get existing sockets", logfields.Error, err)
 		return err
 	}
 	writeSocketCookies(procSocketFds, callback, protocol, hint)
@@ -283,7 +282,7 @@ func openConfigMap() *ebpf.Map {
 			time.Sleep(mapRetryDelay * time.Second)
 		}
 		if i > maxMapRetries {
-			logger.GetLogger().WithError(err).Warn("Unable to access FD Lookup Config map.")
+			logger.GetLogger().Warn("Unable to access FD Lookup Config map.", logfields.Error, err)
 			return nil
 		}
 	}
@@ -342,7 +341,7 @@ func getSocketsForNsFromFile(sockets *map[uint64]networkapi.FdLookupValue, netFi
 			continue
 		}
 		if len(entries) < 12 {
-			logger.GetLogger().WithFields(logrus.Fields{"len": len(entries), "netFile": netFile}).Info("split")
+			logger.GetLogger().Info("split", "len", len(entries), "netFile", netFile)
 			return fmt.Errorf("net file does not contain pointer")
 		}
 		cookie, err := strconv.ParseUint(entries[11], 16, 64)
@@ -527,7 +526,7 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 				var err error
 				socket, err = getAndAddSocketViaProc(pid, fd, protocol, m)
 				if err != nil {
-					logger.GetLogger().WithError(err).WithFields(logrus.Fields{"pid": pid, "fd": fd, "protocol": protocol}).Debug("Socket discovery failed")
+					logger.GetLogger().Debug("Socket discovery failed", logfields.Error, err, "pid", pid, "fd", fd, "protocol", protocol)
 					continue
 				}
 				v = &socket

@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 )
 
@@ -141,17 +142,17 @@ func IsCharDevice(m fs.FileMode) bool {
 func CheckFileMode(mode fs.FileMode, path string) {
 	l := logger.GetLogger()
 	if IsBlockDevice(mode) {
-		l.Debugf("Ignoring block device %s", path)
+		l.Debug("Ignoring block device " + path)
 	} else if IsNamedPipe(mode) {
-		l.Debugf("Ignoring named pipe %s", path)
+		l.Debug("Ignoring named pipe " + path)
 	} else if IsSocket(mode) {
-		l.Debugf("Ignoring socket %s", path)
+		l.Debug("Ignoring socket " + path)
 	} else if IsCharDevice(mode) {
-		l.Debugf("Ignoring character device %s", path)
+		l.Debug("Ignoring character device " + path)
 	} else if IsSymlink(mode) {
-		l.Debugf("Ignoring symbolic link %s", path)
+		l.Debug("Ignoring symbolic link " + path)
 	} else {
-		l.Warnf("Unknown file type %s -> %d", path, mode)
+		l.Warn(fmt.Sprintf("Unknown file type %s -> %d", path, mode))
 	}
 }
 
@@ -221,7 +222,7 @@ func RemoveContainerEntries(handle *ebpf.Map, containerID string) error {
 
 	num, err := rmEntries(handle, containerID)
 	if num != 0 {
-		logger.GetLogger().WithField("num", num).WithField("cid", containerID).Debug("Deleted inodes for container")
+		logger.GetLogger().Debug("Deleted inodes for container", "num", num, "cid", containerID)
 	}
 	return err
 }
@@ -406,7 +407,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			l.Debugf("%s", err.Error())
+			l.Debug("Error", logfields.Error, err)
 			return nil
 		}
 
@@ -419,7 +420,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 		if IsSymlink(mode) {
 			link, err := filepath.EvalSymlinks(path)
 			if err != nil {
-				l.WithError(err).Debugf("Cannot resolve symlink %s", link)
+				l.Debug("Cannot resolve symlink "+link, logfields.Error, err)
 				return nil
 			}
 			path = link
@@ -501,7 +502,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 
 			totalDirectories++
 		case IsSymlink(mode):
-			l.Warnf("%s is still a symlink\n", path)
+			l.Warn(path + " is still a symlink\n")
 		default:
 			CheckFileMode(mode, path)
 		}

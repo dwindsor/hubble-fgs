@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -48,7 +49,7 @@ func NewDNSParserErrorCollector() prometheus.Collector {
 func collect(ch chan<- prometheus.Metric) {
 	sensorList, err := observer.GetSensorManager().ListSensors(context.Background())
 	if err != nil {
-		logger.GetLogger().WithError(err).Error("Failed to list sensors")
+		logger.GetLogger().Error("Failed to list sensors", logfields.Error, err)
 		return
 	}
 
@@ -63,7 +64,7 @@ func collect(ch chan<- prometheus.Metric) {
 	mapFile := filepath.Join(bpf.MapPrefixPath(), ErrorMapName)
 	m, err := ebpf.LoadPinnedMap(mapFile, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", mapFile).Error("DNS parser error metrics: failure to load map")
+		logger.GetLogger().Error("DNS parser error metrics: failure to load map", logfields.Error, err, "file", mapFile)
 		return
 	}
 	defer m.Close()
@@ -72,7 +73,7 @@ func collect(ch chan<- prometheus.Metric) {
 
 	values, err := errorMap.ReadAll()
 	if err != nil {
-		logger.GetLogger().WithError(err).Error("DNS parser error metrics: failed to read the error map")
+		logger.GetLogger().Error("DNS parser error metrics: failed to read the error map", logfields.Error, err)
 		return
 	}
 

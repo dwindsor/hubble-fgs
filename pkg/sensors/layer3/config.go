@@ -8,10 +8,10 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -92,15 +92,15 @@ func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 	}
 	err = m.Put(key, value)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("configureSettings couldn't update tg_cfg_map")
+		logger.GetLogger().Warn("configureSettings couldn't update tg_cfg_map", logfields.Error, err)
 		return err
 	}
 	var vOut ConfigValue
 	err = m.Lookup(key, &vOut)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("configureSettings couldn't lookup tg_cfg_map")
+		logger.GetLogger().Warn("configureSettings couldn't lookup tg_cfg_map", logfields.Error, err)
 		return err
 	}
-	logger.GetLogger().WithFields(logrus.Fields{"enableIcmpTracking": icmpTracking}).Info("Config:")
+	logger.GetLogger().Info("Config", "enableIcmpTracking", icmpTracking)
 	return nil
 }

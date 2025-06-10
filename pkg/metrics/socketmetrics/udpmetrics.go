@@ -16,6 +16,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
@@ -266,7 +267,7 @@ func collect(ch chan<- prometheus.Metric) {
 	statsFile := filepath.Join(bpf.MapPrefixPath(), udpconfig.UdpMapStatsName)
 	mStats, err := ebpf.LoadPinnedMap(statsFile, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", statsFile).Warn("UDP map stats update failed to open file.")
+		logger.GetLogger().Warn("UDP map stats update failed to open file.", logfields.Error, err, "file", statsFile)
 		return
 	}
 	defer mStats.Close()
@@ -275,7 +276,7 @@ func collect(ch chan<- prometheus.Metric) {
 	var value []int64
 	err = mStats.Lookup(key, &value)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("UDP read map stats failed.")
+		logger.GetLogger().Warn("UDP read map stats failed.", logfields.Error, err)
 		return
 	}
 	udpconfig.UdpMapRemovesUpdate.Lock()

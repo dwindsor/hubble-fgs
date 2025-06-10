@@ -9,7 +9,7 @@ import (
 
 	"github.com/cilium/cilium/pkg/identity"
 	monitorAPI "github.com/cilium/cilium/pkg/monitor/api"
-	"github.com/sirupsen/logrus"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 )
 
 const (
@@ -27,7 +27,7 @@ func (s *State) fetchIPCache() error {
 	if err != nil {
 		return err
 	}
-	s.log.WithField("entries", len(entries)).Debug("Fetched ipcache from cilium")
+	s.log.Debug("Fetched ipcache from cilium", "entries", len(entries))
 	return nil
 }
 
@@ -37,10 +37,9 @@ func (s *State) processIPCacheEvent(an monitorAPI.AgentNotify) bool {
 	n := monitorAPI.IPCacheNotification{}
 	err := json.Unmarshal([]byte(an.Text), &n)
 	if err != nil {
-		s.log.WithFields(logrus.Fields{
-			"type":                int(an.Type),
-			"IPCacheNotification": an.Text,
-		}).Error("Unable to unmarshal IPCacheNotification")
+		s.log.Error("Unable to unmarshal IPCacheNotification",
+			"type", int(an.Type),
+			"IPCacheNotification", an.Text)
 		return false
 	}
 
@@ -58,7 +57,7 @@ func (s *State) processIPCacheEvent(an monitorAPI.AgentNotify) bool {
 	case monitorAPI.AgentNotifyIPCacheDeleted:
 		return s.ipcache.Delete(n.CIDR)
 	default:
-		s.log.WithField("type", int(an.Type)).Warn("Received unknown IPCache notification type")
+		s.log.Warn("Received unknown IPCache notification type", "type", int(an.Type))
 	}
 
 	return false
@@ -70,7 +69,7 @@ func (s *State) syncIPCache(ipcacheEvents <-chan monitorAPI.AgentNotify) {
 	for {
 		err := s.fetchIPCache()
 		if err != nil {
-			s.log.WithError(err).Error("Failed to fetch IPCache from Cilium")
+			s.log.Error("Failed to fetch IPCache from Cilium", logfields.Error, err)
 			time.Sleep(ipcacheInitRetryInterval)
 			continue
 		}
@@ -86,7 +85,7 @@ func (s *State) syncIPCache(ipcacheEvents <-chan monitorAPI.AgentNotify) {
 		case <-refresh.C:
 			err := s.fetchIPCache()
 			if err != nil {
-				s.log.WithError(err).Error("Failed to fetch IPCache from Cilium")
+				s.log.Error("Failed to fetch IPCache from Cilium", logfields.Error, err)
 				refresh.Reset(ipcacheInitRetryInterval)
 				continue
 			}
@@ -101,15 +100,9 @@ func (s *State) syncIPCache(ipcacheEvents <-chan monitorAPI.AgentNotify) {
 			updated := s.processIPCacheEvent(an)
 			switch {
 			case !updated && !inSync:
-				s.log.WithFields(logrus.Fields{
-					"type":                int(an.Type),
-					"IPCacheNotification": an.Text,
-				}).Debug("Received stale ipcache update")
+				s.log.Debug("Received stale ipcache update", "type", int(an.Type), "IPCacheNotification", an.Text)
 			case !updated && inSync:
-				s.log.WithFields(logrus.Fields{
-					"type":                int(an.Type),
-					"IPCacheNotification": an.Text,
-				}).Warn("Received unapplicable ipcache update")
+				s.log.Warn("Received unapplicable ipcache update", "type", int(an.Type), "IPCacheNotification", an.Text)
 			case updated && !inSync:
 				inSync = true
 			}

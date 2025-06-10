@@ -14,23 +14,23 @@ import (
 	monitorAPI "github.com/cilium/cilium/pkg/monitor/api"
 	"github.com/cilium/cilium/pkg/monitor/payload"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/hubble-fgs/pkg/oldhubble/cilium"
-	"github.com/sirupsen/logrus"
 )
 
 // returns an error if connect fails, otherwise nil
-func handleMonitorSocket(ctx context.Context, log logrus.FieldLogger, ciliumState *cilium.State) error {
+func handleMonitorSocket(ctx context.Context, log logger.FieldLogger, ciliumState *cilium.State) error {
 	conn, err := net.Dial("unix", defaults.MonitorSockPath1_2)
 	if err != nil {
-		log.WithError(err).Warnf("Failed to connect to %s", defaults.MonitorSockPath1_2)
+		log.Warn("Failed to connect to "+defaults.MonitorSockPath1_2, logfields.Error, err)
 		return err
 	}
 
 	if err = consumeMonitorEvents(ctx, conn, ciliumState); err != nil {
-		log.WithError(err).Warn("Failed to process monitor event. Reconnecting...")
+		log.Warn("Failed to process monitor event. Reconnecting...", logfields.Error, err)
 	}
 	if err = conn.Close(); err != nil {
-		log.WithError(err).Warnf("Failed to close %s", defaults.MonitorSockPath1_2)
+		log.Warn("Failed to close "+defaults.MonitorSockPath1_2, logfields.Error, err)
 	}
 
 	return nil
@@ -71,7 +71,7 @@ func consumeMonitorEvents(ctx context.Context, conn net.Conn, ciliumState *ciliu
 			payloadDecoder := gob.NewDecoder(buf)
 			an := monitorAPI.AgentNotify{}
 			if err := payloadDecoder.Decode(&an); err != nil {
-				logger.GetLogger().WithError(err).Warning("failed to decoded agent notification message")
+				logger.GetLogger().Warn("failed to decoded agent notification message", logfields.Error, err)
 				continue
 			}
 			switch an.Type {

@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -341,7 +342,7 @@ func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestam
 		// appropriate point. As we're not, configure the sensor now.
 		err := l3.configureMaps(spec)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("failed to configure layer3 maps")
+			logger.GetLogger().Warn("failed to configure layer3 maps", logfields.Error, err)
 		}
 	}
 
@@ -556,10 +557,10 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 func (l3 *l3Sensor) configureSensor() error {
 	if tcpEnabled {
 		tcp.ConfigureSensor()
-		logger.GetLogger().WithField("timestampEnabled", udp.TimestampEnabled).Debug("TCP Loader")
+		logger.GetLogger().Debug("TCP Loader", "timestampEnabled", tcp.TimestampEnabled)
 		if tcp.TimestampEnabled {
 			if err := networklatency.ConfigureLatency(unix.IPPROTO_TCP, tcpconfig.LatencyConfig); err != nil {
-				logger.GetLogger().WithError(err).Warn("ConfigureLatency TCP")
+				logger.GetLogger().Warn("ConfigureLatency TCP", logfields.Error, err)
 				return err
 			}
 			networklatency.Start()
@@ -567,7 +568,7 @@ func (l3 *l3Sensor) configureSensor() error {
 	}
 	if udpEnabled {
 		udp.ConfigureSensor()
-		logger.GetLogger().WithField("timestampEnabled", udp.TimestampEnabled).Debug("UDP Loader")
+		logger.GetLogger().Debug("UDP Loader", "timestampEnabled", udp.TimestampEnabled)
 		if udp.TimestampEnabled {
 			if err := networklatency.ConfigureLatency(unix.IPPROTO_UDP, udpconfig.LatencyConfig); err != nil {
 				return err
@@ -612,7 +613,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		cgrp_ingress_configured = true
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("CGRP")
+			logger.GetLogger().Warn("CGRP", logfields.Error, err)
 			return err
 		}
 	case "cgrp_egress":
@@ -622,25 +623,25 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		cgrp_egress_configured = true
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("CGRP")
+			logger.GetLogger().Warn("CGRP", logfields.Error, err)
 			return err
 		}
 	case "cgrp_inet4_bind", "cgrp_inet6_bind":
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("CGRP")
+			logger.GetLogger().Warn("CGRP", logfields.Error, err)
 			return err
 		}
 	case "tc_egress":
 		err := networklatency.AttachTc(args)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("TC_EGRESS")
+			logger.GetLogger().Warn("TC_EGRESS", logfields.Error, err)
 			return err
 		}
 	case "tcp_fentry", "udp_fentry", "icmp_fentry", "rawsock_fentry", "socktrack_fentry":
 		err := program.LoadTracingProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("FENTRY")
+			logger.GetLogger().Warn("FENTRY", logfields.Error, err)
 			return err
 		}
 	case "layer3_sensor":
@@ -654,7 +655,7 @@ func (l3 *l3Sensor) LoadProbe(args sensors.LoadProbeArgs) error {
 			err = program.LoadKprobeProgram(args.BPFDir, args.Load, args.Maps, args.Verbose)
 		}
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("LAYER3_SENSOR")
+			logger.GetLogger().Warn("LAYER3_SENSOR", logfields.Error, err)
 			return err
 		}
 	}
@@ -678,25 +679,25 @@ func init() {
 func AddLayer3() {
 	err := tcp.Init()
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("TCP init failed. Disabling Layer3")
+		logger.GetLogger().Error("TCP init failed. Disabling Layer3", logfields.Error, err)
 		return
 	}
 
 	err = udp.Init()
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("UDP init failed. Disabling Layer3")
+		logger.GetLogger().Error("UDP init failed. Disabling Layer3", logfields.Error, err)
 		return
 	}
 
 	err = icmp.Init()
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("ICMP init failed. Disabling Layer3")
+		logger.GetLogger().Error("ICMP init failed. Disabling Layer3", logfields.Error, err)
 		return
 	}
 
 	err = rawsock.Init()
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("RAW init failed. Disabling Layer3")
+		logger.GetLogger().Error("RAW init failed. Disabling Layer3", logfields.Error, err)
 		return
 	}
 
@@ -776,7 +777,7 @@ func RunLayer3Progs(ctx context.Context) error {
 }
 
 func StartLayer3Progs(ctx context.Context) error {
-	logger.GetLogger().WithField("values", utils.LogLayer3Features()).Info("Layer3 functionality")
+	logger.GetLogger().Info("Layer3 functionality", "values", utils.LogLayer3Features())
 	err := EnableLayer3Progs()
 	if err != nil {
 		return err

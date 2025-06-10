@@ -64,7 +64,7 @@ func builder(policy tracingpolicy.TracingPolicy, name string) (sensors.SensorIfa
 	var maps []*program.Map
 
 	if kernels.MinKernelVersion("5.8.0") {
-		logger.GetLogger().Infof("Enable Sockops")
+		logger.GetLogger().Info("Enable Sockops")
 		progs = append(progs, SockopsEstablished)
 		maps = append(maps,
 			HttpSockMap, TlsSockMap, NopSockMap,

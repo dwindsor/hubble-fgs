@@ -10,12 +10,12 @@
 package tetra
 
 import (
+	"log/slog"
 	"os"
 	"time"
 
 	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ func New() *cobra.Command {
 		},
 		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			if common.Debug {
-				logger.DefaultLogger.SetLevel(logrus.DebugLevel)
+				logger.SetLogLevel(slog.LevelDebug)
 			}
 		},
 	}

@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -410,7 +411,7 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 			syscalls, err := getSyscallInfo(process.Abi, process.Syscalls)
 			if err != nil {
 				if !warnOnce {
-					logger.GetLogger().WithError(err).Debug("failed to populate system call data for process")
+					logger.GetLogger().Debug("failed to populate system call data for process", logfields.Error, err)
 					warnOnce = true
 				}
 			}

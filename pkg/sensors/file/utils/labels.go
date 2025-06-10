@@ -66,11 +66,11 @@ func matchLabelSelectorRequirement(spec slimv1.LabelSelectorRequirement, podNs, 
 		case "NotIn":
 			return !match
 		default:
-			logger.GetLogger().WithField("op", op).Warnf("Unexpected Operator in matchLabels")
+			logger.GetLogger().Warn("Unexpected Operator in matchLabels", "op", op)
 			return false
 		}
 	default:
-		logger.GetLogger().WithField("label", spec.Key).Warnf("Unexpected InvalidLabel in matchLabels")
+		logger.GetLogger().Warn("Unexpected InvalidLabel in matchLabels", "label", spec.Key)
 		return false
 	}
 }
@@ -112,7 +112,7 @@ func matchLabels(labels map[string]slimv1.MatchLabelsValue, podNs, podName strin
 				return false
 			}
 		default:
-			logger.GetLogger().WithField("label", key).Warnf("Unexpected InvalidLabel in matchLabels")
+			logger.GetLogger().Warn("Unexpected InvalidLabel in matchLabels", "label", key)
 			return false
 		}
 	}

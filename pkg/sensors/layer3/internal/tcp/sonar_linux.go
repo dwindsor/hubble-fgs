@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	sigv4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	lru "github.com/hashicorp/golang-lru/v2"
 	colmpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	cpb "go.opentelemetry.io/proto/otlp/common/v1"
@@ -532,7 +533,7 @@ func createResource(_ context.Context, _ aws.Config) *rpb.Resource {
 	// add instance ID
 	instanceID, err := getInstanceID()
 	if err != nil || instanceID == "" {
-		logger.GetLogger().WithError(err).Warn("failed to get EC2 instance ID")
+		logger.GetLogger().Warn("failed to get EC2 instance ID", logfields.Error, err)
 		return resource
 	}
 	resource.Attributes = append(resource.Attributes, &cpb.KeyValue{
@@ -592,7 +593,7 @@ func postMetrics(ctx context.Context) error {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("unexpected response: %d %q", resp.StatusCode, body)
 	}
-	logger.GetLogger().WithField("scopes-count", len(exportRequest.ResourceMetrics[0].ScopeMetrics)).Debug("Successfully posted metrics to Sonar.")
+	logger.GetLogger().Debug("Successfully posted metrics to Sonar.", "scopes-count", len(exportRequest.ResourceMetrics[0].ScopeMetrics))
 
 	return nil
 }
@@ -613,7 +614,7 @@ func InitSonar(ctx context.Context) {
 
 			err := postMetrics(ctx)
 			if err != nil {
-				logger.GetLogger().WithError(err).Error("Failed to post metrics to Sonar")
+				logger.GetLogger().Error("Failed to post metrics to Sonar", logfields.Error, err)
 			}
 
 			// update last collection timestamp
@@ -623,6 +624,6 @@ func InitSonar(ctx context.Context) {
 
 	logger.GetLogger().Info("Enabling Sonar metrics push")
 	if err := sonarStats.enable(sonarInterval - sonarJitter); err != nil {
-		logger.GetLogger().WithError(err).Error("Failed to enable Sonar metrics push")
+		logger.GetLogger().Error("Failed to enable Sonar metrics push", logfields.Error, err)
 	}
 }

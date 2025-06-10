@@ -4,10 +4,11 @@
 package cilium
 
 import (
+	"log/slog"
+
 	monitorAPI "github.com/cilium/cilium/pkg/monitor/api"
 	"github.com/isovalent/hubble-fgs/pkg/oldhubble/cilium/client"
 	"github.com/isovalent/hubble-fgs/pkg/oldhubble/ipcache"
-	"github.com/sirupsen/logrus"
 )
 
 // State contains various caches for Cilium state and channels to notify
@@ -19,14 +20,14 @@ type State struct {
 	// ipcache is a mirror of Cilium's IPCache
 	ipcache *ipcache.IPCache
 
-	log *logrus.Entry
+	log *slog.Logger
 }
 
 // NewCiliumState returns a pointer to an initialized State struct.
 func NewCiliumState(
 	ciliumClient client.Client,
 	ipCache *ipcache.IPCache,
-	logger *logrus.Entry,
+	logger *slog.Logger,
 ) *State {
 	return &State{
 		ciliumClient: ciliumClient,

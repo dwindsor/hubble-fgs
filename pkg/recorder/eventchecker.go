@@ -235,7 +235,7 @@ func (rec *Recorder) RecordResponse(res *tetragon.GetEventsResponse) error {
 			return fmt.Errorf("error while filtering field: %w", err)
 		}
 	} else {
-		logger.GetLogger().WithField("event", eventName).Debug("no field filters for event")
+		logger.GetLogger().Debug("no field filters for event", "event", eventName)
 	}
 
 	// * is special and will apply to all events

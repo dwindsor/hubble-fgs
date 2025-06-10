@@ -23,13 +23,13 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/timer"
 	"github.com/isovalent/hubble-fgs/pkg/common"
 	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/tc"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -119,7 +119,7 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 		latencyMin := spec.Min
 		latencyMax := spec.Max
 		if latencyMax <= latencyMin {
-			logger.GetLogger().Warnf("Misconfigured %s latency Histogram: Min value must be less than Max", protoStr)
+			logger.GetLogger().Warn(fmt.Sprintf("Misconfigured %s latency Histogram: Min value must be less than Max", protoStr))
 			config.Enable = 0
 			enabled[protocol] = false
 			return config, fmt.Errorf("misconfigured %s latency Histogram: Min value must be less than Max", protoStr)
@@ -138,7 +138,7 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 		if len(spec.MatchSubnets) == 0 {
 			// Do not enable latency if subnets not specified as packet mangling
 			// has the opportunity to break networks.
-			logger.GetLogger().Warnf("%s latency disabled due to no valid subnets", protoStr)
+			logger.GetLogger().Warn(protoStr + " latency disabled due to no valid subnets")
 			config.Enable = 0
 			enabled[protocol] = false
 			return config, fmt.Errorf("%s latency disabled due to no valid subnets", protoStr)
@@ -150,43 +150,45 @@ func ParseLatencySpec(spec v1alpha1.LatencyPolicySpec, protocol uint16) (Protoco
 			}
 			ip, ipnet, err := net.ParseCIDR(subnet)
 			if err != nil {
-				logger.GetLogger().WithField("subnet", subnet).Warnf("Error parsing %s latency subnet", protoStr)
+				logger.GetLogger().Warn(fmt.Sprintf("Error parsing %s latency subnet", protoStr), "subnet", subnet)
 				continue
 			}
 			if ip.To4() == nil {
-				logger.GetLogger().WithField("subnet", subnet).Warnf("%s latency only supported on IPv4", protoStr)
+				logger.GetLogger().Warn(fmt.Sprintf("%s latency only supported on IPv4", protoStr), "subnet", subnet)
 				continue
 			}
 			prefixLen, _ := ipnet.Mask.Size()
 			if prefixLen == 0 {
-				logger.GetLogger().WithField("subnet", subnet).Warnf("%s latency only supports canonical subnets", protoStr)
+				logger.GetLogger().Warn(fmt.Sprintf("%s latency only supports canonical subnets", protoStr), "subnet", subnet)
 				continue
 			}
 			ipv4 := ipnet.IP.To4()
 			config.Subnets[index].Addr[0] = uint64(binary.LittleEndian.Uint32(ipv4))
 			config.Subnets[index].Ipv6 = 0
 			config.Subnets[index].PrefixLen = uint8(prefixLen)
-			logger.GetLogger().Infof("%s latency subnet: IP=%s/%d", protoStr, ipv4, config.Subnets[index].PrefixLen)
+			logger.GetLogger().Info(fmt.Sprintf("%s latency subnet: IP=%s/%d", protoStr, ipv4, config.Subnets[index].PrefixLen))
 			index++
 		}
 		if index == 0 {
 			// Do not enable latency if subnets not specified as packet mangling
 			// has the opportunity to break networks.
-			logger.GetLogger().Warnf("%s latency disabled due to no valid subnets", protoStr)
+			logger.GetLogger().Warn(fmt.Sprintf("%s latency disabled due to no valid subnets", protoStr))
 			config.Enable = 0
 			enabled[protocol] = false
 			return config, fmt.Errorf("%s latency disabled due to no valid subnets", protoStr)
 		}
 
-		logger.GetLogger().WithFields(logrus.Fields{"Min": latencyMin, "Range": latencyRange,
-			"bucket00": config.LatBucket00,
-			"bucket01": config.LatBucket01,
-			"bucket10": config.LatBucket10,
-			"bucket25": config.LatBucket25,
-			"bucket50": config.LatBucket50,
-			"bucket75": config.LatBucket75,
-			"bucket90": config.LatBucket90,
-			"bucket99": config.LatBucket99}).Infof("Configured %s latency buckets: ", protoStr)
+		logger.GetLogger().Info(fmt.Sprintf("Configured %s latency buckets: ", protoStr),
+			"Min", latencyMin,
+			"Range", latencyRange,
+			"bucket00", config.LatBucket00,
+			"bucket01", config.LatBucket01,
+			"bucket10", config.LatBucket10,
+			"bucket25", config.LatBucket25,
+			"bucket50", config.LatBucket50,
+			"bucket75", config.LatBucket75,
+			"bucket90", config.LatBucket90,
+			"bucket99", config.LatBucket99)
 
 		if clockCheckInterval == 0 || spec.ClockCheckInterval < clockCheckInterval {
 			clockCheckInterval = spec.ClockCheckInterval
@@ -236,7 +238,7 @@ func GetBootTime() (uint64, error) {
 func configureBootTime(config configValue) (configValue, error) {
 	t, err := GetBootTime()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("sensor clock error")
+		logger.GetLogger().Warn("sensor clock error", logfields.Error, err)
 		return config, err
 	}
 	config.BootNs = t
@@ -248,7 +250,7 @@ func configureBootTime(config configValue) (configValue, error) {
 func checkClock() {
 	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), ConfigMapName), nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("checkClock failed to open configuration map")
+		logger.GetLogger().Warn("checkClock failed to open configuration map", logfields.Error, err)
 		return
 	}
 	defer m.Close()
@@ -260,13 +262,13 @@ func checkClock() {
 	var config configValue
 	err = m.Lookup(key, &config)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("checkClock failed to read configuration map")
+		logger.GetLogger().Warn("checkClock failed to read configuration map", logfields.Error, err)
 		return
 	}
 
 	t, err := GetBootTime()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("checkClock failed to get boot time")
+		logger.GetLogger().Warn("checkClock failed to get boot time", logfields.Error, err)
 		return
 	}
 	diff := int64(t - config.BootNs)
@@ -279,10 +281,10 @@ func checkClock() {
 		config.BootNs = t
 		err = m.Put(key, &config)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("checkClock failed to update configuration map")
+			logger.GetLogger().Warn("checkClock failed to update configuration map", logfields.Error, err)
 			return
 		}
-		logger.GetLogger().WithFields(logrus.Fields{"From": old, "To": t}).Debug("checkClock updated")
+		logger.GetLogger().Debug("checkClock updated", "From", old, "To", t)
 	}
 }
 
@@ -296,7 +298,7 @@ func runTcCheck() {
 	for _, program := range tcList {
 		attachedInterfaces, exists := tcAttachedInterfaces[program.Load]
 		if !exists {
-			logger.GetLogger().WithFields(logrus.Fields{"program.Load": program.Load.Name}).Warn("tcAttachedInterfaces[program.Load] doesn't exist")
+			logger.GetLogger().Warn("tcAttachedInterfaces[program.Load] doesn't exist", "program.Load", program.Load.Name)
 			attachedInterfaces = make(map[tc.NamespaceInterface]bool)
 		}
 		attachedInterfaces, err := tc.LoadTC(program.BPFDir, program.Load, nil, program.Verbose, interfacesToAttach, attachedInterfaces)
@@ -351,7 +353,7 @@ func ConfigureLatency(protocol uint16, config ProtocolConfig) error {
 	latencyConfig, _ = configureBootTime(latencyConfig)
 
 	m.Put(key, &latencyConfig)
-	logger.GetLogger().Infof("Configured latency: %+v", latencyConfig)
+	logger.GetLogger().Info(fmt.Sprintf("Configured latency: %+v", latencyConfig))
 	return nil
 }
 

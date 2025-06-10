@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -62,7 +63,7 @@ func newAlerter(ctx context.Context, r RuleManager) *alerter {
 func (a *alerter) Send(event *tetragon.GetEventsResponse) error {
 	err := a.evaluateRules(a.Context(), event)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warning("Errors while evaluating event against alert rules.")
+		logger.GetLogger().Warn("Errors while evaluating event against alert rules.", logfields.Error, err)
 	}
 	return nil
 }

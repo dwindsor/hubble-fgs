@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
@@ -40,7 +41,7 @@ func calculateAction(a *types.TetragonNetworkAction) (*record.DatapathAction, er
 	if a.QuotaAction != nil {
 		reset, err = quotaToNs(a.QuotaAction.Reset)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("failed to conver reset time")
+			logger.GetLogger().Warn("failed to conver reset time", logfields.Error, err)
 			return nil, err
 		}
 

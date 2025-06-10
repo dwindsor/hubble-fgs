@@ -23,12 +23,12 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"github.com/sirupsen/logrus"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -204,7 +204,7 @@ func init() {
 
 	moreBytes, err = lru.New[api.HttpKey, *httpproto.MsgHttpEventUnix](moreBytesCacheSize)
 	if err != nil {
-		logger.GetLogger().Errorf("HTTP More bytes cache failed, may drop data: %s\n", err)
+		logger.GetLogger().Error("HTTP More bytes cache failed, may drop data", logfields.Error, err)
 		moreBytesEnable = false
 	} else {
 		moreBytesEnable = true
@@ -212,7 +212,7 @@ func init() {
 
 	aggregate, err = lru.New[api.HttpKey, *httpproto.MsgHttpEventUnix](cacheSize)
 	if err != nil {
-		logger.GetLogger().Errorf("HTTP aggregation disabled: %s\n", err)
+		logger.GetLogger().Error("HTTP aggregation disabled", logfields.Error, err)
 		aggregateEnable = false
 	} else {
 		aggregateEnable = true
@@ -220,7 +220,7 @@ func init() {
 
 	http2StateCache, err = lru.New[networkapi.MsgIPTuple, *http2State](http2StateCacheSize)
 	if err != nil {
-		logger.GetLogger().Fatal(err)
+		logger.Fatal(logger.GetLogger(), err.Error())
 	}
 
 	http := &httpSensor{
@@ -250,7 +250,7 @@ func init() {
 
 /* Add sensor from CRD */
 func EnableHTTPParser(policy tracingpolicy.TracingPolicy) *sensors.Sensor {
-	logger.GetLogger().Infof("Enable HTTP")
+	logger.GetLogger().Info("Enable HTTP")
 
 	progs := []*program.Program{
 		Skmsg,
@@ -333,18 +333,17 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 	}
 
 	if m.Request.Length > HTTP_CLAMP_URL_LENGTH {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"length": m.Request.Length,
-			"saddr":  networkapi.GetIP(unix.Msg.Tuple.SAddr, m.Common.Op, unix.Msg.Tuple.IPv6 != 0).String(),
-			"daddr":  networkapi.GetIP(unix.Msg.Tuple.DAddr, m.Common.Op, unix.Msg.Tuple.IPv6 != 0).String(),
-			"sport":  unix.Msg.Tuple.SPort,
-			"dport":  unix.Msg.Tuple.DPort,
-		}).Warnf("url length %d would exceed %d", m.Request.Length, HTTP_CLAMP_URL_LENGTH)
+		logger.GetLogger().Warn(fmt.Sprintf("url length %d would exceed %d", m.Request.Length, HTTP_CLAMP_URL_LENGTH),
+			"length", m.Request.Length,
+			"saddr", networkapi.GetIP(unix.Msg.Tuple.SAddr, m.Common.Op, unix.Msg.Tuple.IPv6 != 0).String(),
+			"daddr", networkapi.GetIP(unix.Msg.Tuple.DAddr, m.Common.Op, unix.Msg.Tuple.IPv6 != 0).String(),
+			"sport", unix.Msg.Tuple.SPort,
+			"dport", unix.Msg.Tuple.DPort)
 	}
 
 	url := make([]byte, int(min(m.Request.Length, HTTP_CLAMP_URL_LENGTH)))
 	if _, err := r.Read(url); err != nil {
-		logger.GetLogger().WithError(err).Warnf("HTTP URL read error")
+		logger.GetLogger().Warn("HTTP URL read error", logfields.Error, err)
 		return nil, err
 	}
 
@@ -424,7 +423,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent, r *bytes.Reader) ([]observer.Event,
 		}
 	}
 	if err := iter.Err(); err != nil {
-		logger.GetLogger().Debugf("Error iterating HTTP data: %s", err)
+		logger.GetLogger().Debug("Error iterating HTTP data", logfields.Error, err)
 		unix.Request.Flags = iter.ErrorToCode()
 	}
 
@@ -539,7 +538,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 
 	frame, err := s.framer.ReadFrame()
 	if err != nil {
-		logger.GetLogger().Printf("HTTP2: failed to read frame: %v (key: %v)\n", err, unix.Msg.Tuple)
+		logger.GetLogger().Debug(fmt.Sprintf("HTTP2: failed to read frame: %v (key: %v)\n", err, unix.Msg.Tuple))
 		return false
 	}
 
@@ -573,7 +572,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 	})
 
 	if _, err = s.decoder.Write(headers.HeaderBlockFragment()); err != nil {
-		logger.GetLogger().Warnf("HTTP2: failed to decode frame: %s (key: %v)\n", err, unix.Msg.Tuple)
+		logger.GetLogger().Warn(fmt.Sprintf("HTTP2: failed to decode frame: %s (key: %v)\n", err, unix.Msg.Tuple))
 		// Keep going as the decoding error may have been due to a lost event desyncing
 		// the header compression and we may have partially succeeded in decoding some of the headers.
 		// Better to emit the events with partial data than drop them completely. It's also likely
@@ -581,7 +580,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 	}
 
 	if err := s.decoder.Close(); err != nil {
-		logger.GetLogger().Warnf("HTTP2: failed to reset decoder: %s\n", err)
+		logger.GetLogger().Warn("HTTP2: failed to reset decoder", logfields.Error, err)
 	}
 
 	streamId := headers.Header().StreamID

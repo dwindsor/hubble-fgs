@@ -76,7 +76,7 @@ var (
 
 /* Enabled from the layer3 sensor */
 func EnableSocktrack() ([]*program.Program, []*program.Map) {
-	logger.GetLogger().Infof("Enable Socktrack")
+	logger.GetLogger().Info("Enable Socktrack")
 
 	var progs []*program.Program
 	var maps []*program.Map

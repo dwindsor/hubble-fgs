@@ -19,6 +19,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
@@ -41,7 +42,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
@@ -479,15 +479,14 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		}
 	}
 
-	logger.GetLogger().WithFields(logrus.Fields{
-		"statsInterval":              StatsInterval,
-		"watermarksEnable":           WatermarksEnable,
-		"watermarksWindowSize":       WatermarksWindowSize,
-		"watermarksBurstTriggerMult": WatermarksBurstTriggerMult,
-		"maxRttHistogram":            tcpconfig.RttHistogramMax,
-		"minRttHistogram":            tcpconfig.RttHistogramMin,
-		"metrics":                    tcpconfig.MetricsEnabled,
-	}).Infof("Enable TCP")
+	logger.GetLogger().Info("Enable TCP",
+		"statsInterval", StatsInterval,
+		"watermarksEnable", WatermarksEnable,
+		"watermarksWindowSize", WatermarksWindowSize,
+		"watermarksBurstTriggerMult", WatermarksBurstTriggerMult,
+		"maxRttHistogram", tcpconfig.RttHistogramMax,
+		"minRttHistogram", tcpconfig.RttHistogramMin,
+		"metrics", tcpconfig.MetricsEnabled)
 	return progsInitSock, progsCollectStats, maps
 }
 
@@ -627,14 +626,13 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 
 		// Explicit check for underflowed bytes_received < 0
 		if int64(m.SocketStats.BytesReceived) < 0 {
-			logger.GetLogger().WithFields(logrus.Fields{
-				"tuple":         m.Tuple,
-				"stats":         m.SocketStats,
-				"cookie":        m.SockCookie,
-				"version":       m.Version,
-				"socketFlags":   m.SocketFlags,
-				"bytesReceived": int64(m.SocketStats.BytesReceived),
-			}).Warn("TCP stats underflow in bytesReceived in Close")
+			logger.GetLogger().Warn("TCP stats underflow in bytesReceived in Close",
+				"tuple", m.Tuple,
+				"stats", m.SocketStats,
+				"cookie", m.SockCookie,
+				"version", m.Version,
+				"socketFlags", m.SocketFlags,
+				"bytesReceived", int64(m.SocketStats.BytesReceived))
 			// Correct it to make stats/metrics more sane (but beware that the bug still needs fixing
 			// as it likely affects sockets where bytes_received wasn't 0 before the decrement)
 			tcp.Msg.SocketStats.BytesReceived = 0
@@ -653,14 +651,14 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 			}
 			events = append(events, &c)
 		} else {
-			logger.GetLogger().WithError(err).WithFields(logrus.Fields{
-				"tuple":         m.Tuple,
-				"curr":          m.SocketStats,
-				"cookie":        m.SockCookie,
-				"version":       m.Version,
-				"socketFlags":   m.SocketFlags,
-				"bytesReceived": int64(m.SocketStats.BytesReceived),
-			}).Warn("Failed to compute diff for TCP stats in Close")
+			logger.GetLogger().Warn("Failed to compute diff for TCP stats in Close",
+				logfields.Error, err,
+				"tuple", m.Tuple,
+				"curr", m.SocketStats,
+				"cookie", m.SockCookie,
+				"version", m.Version,
+				"socketFlags", m.SocketFlags,
+				"bytesReceived", int64(m.SocketStats.BytesReceived))
 		}
 	}
 

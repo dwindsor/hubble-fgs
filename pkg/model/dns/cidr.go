@@ -3,10 +3,10 @@ package dns
 import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
-	"github.com/sirupsen/logrus"
 )
 
 func (state *PolicyState) progRemoveCIDRDest(
@@ -26,18 +26,11 @@ func (state *PolicyState) progRemoveCIDRDest(
 		Endpoint: endpoint,
 	}
 	if err := prog.RemoveSingleRecord(record); err != nil {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"cgid": src.NSID,
-			"self": src.Self,
-			"dest": cidr.CIDR,
-		}).WithError(err).Error("TCP CIDR remove Failed")
+		logger.GetLogger().Error("TCP CIDR remove Failed", logfields.Error, err,
+			"cgid", src.NSID, "self", src.Self, "dest", cidr.CIDR)
 		return err
 	}
-	logger.GetLogger().WithFields(logrus.Fields{
-		"cgid": src.NSID,
-		"self": src.Self,
-		"dest": cidr.CIDR,
-	}).Debug("TCP CIDR removed")
+	logger.GetLogger().Debug("TCP CIDR removed", "cgid", src.NSID, "self", src.Self, "dest", cidr.CIDR)
 	return nil
 }
 
@@ -98,7 +91,7 @@ func (state *PolicyState) addDestCIDRRecords(
 	for _, process := range subject.InProcessName {
 		self, err := prog.GetBinaryId(process)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("add cidr binary id error")
+			logger.GetLogger().Warn("add cidr binary id error", logfields.Error, err)
 			continue
 		}
 		processSrc := &types.ProcessTreeKey{
@@ -109,7 +102,7 @@ func (state *PolicyState) addDestCIDRRecords(
 		}
 		r, err := state.addDestSrcCIDRRecords(policy, dest, processSrc, action, true)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("add DestCIDR recrods failed")
+			logger.GetLogger().Warn("add DestCIDR recrods failed", logfields.Error, err)
 		} else {
 			records = append(records, r...)
 		}
@@ -118,7 +111,7 @@ func (state *PolicyState) addDestCIDRRecords(
 	if len(subject.InProcessName) == 0 {
 		r, err := state.addDestSrcCIDRRecords(policy, dest, podSubject, action, true)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("add DestCIDR recrods failed")
+			logger.GetLogger().Warn("add DestCIDR recrods failed", logfields.Error, err)
 		} else {
 			records = append(records, r...)
 		}

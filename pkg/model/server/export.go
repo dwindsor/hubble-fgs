@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/networkmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
@@ -36,7 +37,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 
 	res, err := server.GetProcessModel(ctx, []string{}, false)
 	if err != nil {
-		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
+		logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
 		return
 	}
 	emptyFilter := make(map[string]bool)
@@ -55,7 +56,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 	}
 
 	ticker := time.NewTicker(interval)
-	logger.GetLogger().WithField("interval", interval).Info("Exporting process model")
+	logger.GetLogger().Info("Exporting process model", "interval", interval)
 	for {
 		var networkDiffModel, processDiffModel *appModelV1.ApplicationModel
 
@@ -63,7 +64,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 		case <-ticker.C:
 			res, err := server.GetProcessModel(ctx, []string{}, false)
 			if err != nil {
-				logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
+				logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
 				return
 			}
 
@@ -71,7 +72,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			if isDiffModel {
 				networkDiffModel, processDiffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
 				if err != nil {
-					logger.GetLogger().WithError(err).Error("Failed to produce application model difference as JSON")
+					logger.GetLogger().Error("Failed to produce application model difference as JSON", logfields.Error, err)
 					return
 				}
 
@@ -84,7 +85,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 
 			if enterpriseOption.Config.ApplicationModelExportFilename != "" {
 				if err := encoder.Encode(newModel); err != nil {
-					logger.GetLogger().WithError(err).Error("Failed to encode application model as JSON")
+					logger.GetLogger().Error("Failed to encode application model as JSON", logfields.Error, err)
 					return
 				}
 			}
@@ -92,19 +93,19 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
 				procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel)
 				if err != nil {
-					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim process model")
+					logger.GetLogger().Error("Failed to decode application model to slim process model", logfields.Error, err)
 					return
 				}
 				for _, entry := range procFlatPack {
 					if err := flatEncoder.Encode(entry); err != nil {
-						logger.GetLogger().WithError(err).Error("Failed to encode slim process application model as JSON")
+						logger.GetLogger().Error("Failed to encode slim process application model as JSON", logfields.Error, err)
 						return
 					}
 				}
 
 				netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel)
 				if err != nil {
-					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim network model")
+					logger.GetLogger().Error("Failed to decode application model to slim network model", logfields.Error, err)
 					return
 				}
 
@@ -112,7 +113,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				for _, entry := range netFlatPack {
 					networkmetrics.Collect(entry)
 					if err := flatEncoder.Encode(entry); err != nil {
-						logger.GetLogger().WithError(err).Error("Failed to encode slim application model as JSON")
+						logger.GetLogger().Error("Failed to encode slim application model as JSON", logfields.Error, err)
 						return
 					}
 					conn := diff.TelemetryToConnection(entry)
@@ -129,7 +130,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 						Connections: conns,
 					}
 					if err := connectionEncoder.Encode(&log); err != nil {
-						logger.GetLogger().WithError(err).Warn("Failed to encode connection log as JSON")
+						logger.GetLogger().Warn("Failed to encode connection log as JSON", logfields.Error, err)
 					}
 					startTime = endTime
 				}

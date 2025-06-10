@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -72,7 +73,7 @@ func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns uint64, pod *tetragon.Po
 func runNetworkCB() {
 	links, err := netlink.LinkList()
 	if err != nil {
-		logger.GetLogger().WithError(err).Infof("Link list failed")
+		logger.GetLogger().Info("Link list failed", logfields.Error, err)
 	} else {
 		for _, l := range links {
 			emitInterfaceEvent(l.Attrs(), 0, nil)
@@ -117,7 +118,7 @@ func EnableNetworkParser(policy tracingpolicy.TracingPolicy, statInterval uint32
 	}
 
 	versionStr := "__networkPacket_probe__"
-	logger.GetLogger().Infof("Enable Polling Interface Statistics")
+	logger.GetLogger().Info("Enable Polling Interface Statistics")
 	progs = []*program.Program{
 		ExitNs,
 	}

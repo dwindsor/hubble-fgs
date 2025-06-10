@@ -9,6 +9,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/sensors/unloader"
@@ -24,7 +25,7 @@ var (
 func getAllRouteLinks() ([]netlink.Link, error) {
 	allLinks, err := netlink.LinkList()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Failed to list links")
+		logger.GetLogger().Warn("Failed to list links", logfields.Error, err)
 		return nil, err
 	}
 	return allLinks, nil
@@ -135,14 +136,14 @@ func doLoadTC(un *unloader.TcUnloader, load *program.Program, prog *ebpf.Program
 		attachment := NamespaceInterface{Ns: nsNum, If: link.Attrs().Name}
 		_, alreadyAttached := existing[attachment]
 		if !alreadyAttached {
-			logger.GetLogger().Infof("Attaching %s to device %s in net namespace %d", load.Type, link.Attrs().Name, nsNum)
+			logger.GetLogger().Info(fmt.Sprintf("Attaching %s to device %s in net namespace %d", load.Type, link.Attrs().Name, nsNum))
 			isIngress := load.Type == "tc_ingress"
 			if err = QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
-				logger.GetLogger().WithError(err).Warn("QdiscTCInsert Failed")
+				logger.GetLogger().Warn("QdiscTCInsert Failed", logfields.Error, err)
 				break
 			}
 			if err = AttachTCIngress(prog.FD(), link.Attrs().Name, isIngress); err != nil {
-				logger.GetLogger().WithError(err).Warn("AttachTC Failed")
+				logger.GetLogger().Warn("AttachTC Failed", logfields.Error, err)
 				break
 			}
 			un.Attachments = append(un.Attachments,
@@ -155,7 +156,7 @@ func doLoadTC(un *unloader.TcUnloader, load *program.Program, prog *ebpf.Program
 	}
 	if err != nil {
 		if unloadErr := un.Unload(true); unloadErr != nil {
-			logger.GetLogger().Warnf("Failed to unload on TC program rewind: %s", unloadErr)
+			logger.GetLogger().Warn("Failed to unload on TC program rewind", logfields.Error, unloadErr)
 		}
 		return err
 	}
@@ -208,7 +209,7 @@ func LoadTC(
 
 			netns, err := ns.GetNS(nsFileName)
 			if err != nil {
-				logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("LoadTC GetNS from path failed")
+				logger.GetLogger().Info("LoadTC GetNS from path failed", logfields.Error, err, "pid", os.Getpid(), "file", nsFileName)
 				continue
 			}
 

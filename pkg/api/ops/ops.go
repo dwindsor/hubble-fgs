@@ -168,7 +168,7 @@ var OpCodeStrings = map[OpCode]string{
 func (op OpCode) String() string {
 	s, ok := OpCodeStrings[op]
 	if !ok {
-		logger.GetLogger().WithField("opcode", op).Info("Unknown OpCode. This is a bug, please report it to Tetragon developers.")
+		logger.GetLogger().Info("Unknown OpCode. This is a bug, please report it to Tetragon developers.", "opcode", op)
 		return fmt.Sprintf("Unknown(%d)", op)
 	}
 	return s

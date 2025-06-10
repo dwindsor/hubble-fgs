@@ -12,6 +12,8 @@
 package http
 
 import (
+	"fmt"
+
 	"github.com/cilium/tetragon/pkg/logger"
 	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 )
@@ -51,7 +53,7 @@ func (it *http2FrameQueue) push(event *api.MsgHttpEvent) {
 
 	if id < it.next {
 		// Initialization out of order as an older event received. Reset.
-		logger.GetLogger().Warnf("HTTP/2 frame too old (%d < %d), resetting.", id, it.next)
+		logger.GetLogger().Warn(fmt.Sprintf("HTTP/2 frame too old (%d < %d), resetting.", id, it.next))
 		it.reset(event)
 		return
 	}
@@ -77,8 +79,8 @@ func (it *http2FrameQueue) push(event *api.MsgHttpEvent) {
 			skipped++
 		}
 
-		logger.GetLogger().Warnf("HTTP/2 frame too out of order (diff %d, max %d, received id %d, expected id %d). Skipping %d unseen events.",
-			diff, len(it.window), id, it.next, skipped)
+		logger.GetLogger().Warn(fmt.Sprintf("HTTP/2 frame too out of order (diff %d, max %d, received id %d, expected id %d). Skipping %d unseen events.",
+			diff, len(it.window), id, it.next, skipped))
 
 		// Check again if the event would fit
 		diff = int(id - it.next)

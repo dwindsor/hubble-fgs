@@ -14,7 +14,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -34,13 +34,9 @@ func addAlertRule(obj any, rm alerts.RuleManager) {
 	err := rm.AddAlertRule(ar)
 
 	if err != nil {
-		logger.GetLogger().WithError(err).WithFields(logrus.Fields{
-			"name": ar.GetName(),
-		}).Warn("Failed to add alert rule")
+		logger.GetLogger().Warn("Failed to add alert rule", "name", ar.GetName(), logfields.Error, err)
 	} else {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"name": ar.GetName(),
-		}).Info("Added alert rule")
+		logger.GetLogger().Info("Added alert rule", "name", ar.GetName())
 	}
 }
 
@@ -58,10 +54,9 @@ func updateAlertRule(oldObj any, newObj any, rm alerts.RuleManager) {
 		return
 	}
 	if oldAr.GetName() != newAr.GetName() {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"old-name": oldAr.GetName(),
-			"new-name": newAr.GetName(),
-		}).Warn("Can't update alert rule: old and new names are different.")
+		logger.GetLogger().Warn("Can't update alert rule: old and new names are different.",
+			"old-name", oldAr.GetName(),
+			"new-name", newAr.GetName())
 		return
 	}
 
@@ -70,13 +65,9 @@ func updateAlertRule(oldObj any, newObj any, rm alerts.RuleManager) {
 	err := rm.AddAlertRule(newAr)
 
 	if err != nil {
-		logger.GetLogger().WithError(err).WithFields(logrus.Fields{
-			"name": newAr.GetName(),
-		}).Warn("Failed to update alert rule")
+		logger.GetLogger().Warn("Failed to update alert rule", "name", newAr.GetName(), logfields.Error, err)
 	} else {
-		logger.GetLogger().WithFields(logrus.Fields{
-			"name": newAr.GetName(),
-		}).Info("Updated alert rule")
+		logger.GetLogger().Info("Updated alert rule", "name", newAr.GetName())
 	}
 }
 
@@ -90,9 +81,7 @@ func deleteAlertRule(obj any, rm alerts.RuleManager) {
 
 	rm.DeleteAlertRule(ar.GetName())
 
-	logger.GetLogger().WithFields(logrus.Fields{
-		"name": ar.GetName(),
-	}).Info("Deleted alert rule")
+	logger.GetLogger().Info("Deleted alert rule", "name", ar.GetName())
 }
 
 func convertToAlertRule(obj any) *v1alpha1.AlertRule {
@@ -105,10 +94,8 @@ func convertToAlertRule(obj any) *v1alpha1.AlertRule {
 			return deletedObj
 		}
 	default:
-		logger.GetLogger().WithFields(logrus.Fields{
-			"obj":      obj,
-			"obj-type": fmt.Sprintf("%T", obj),
-		}).Warn("Received invalid type, expected *v1alpha1.AlertRule")
+		logger.GetLogger().Warn("Received invalid type, expected *v1alpha1.AlertRule",
+			"obj", obj, "obj-type", fmt.Sprintf("%T", obj))
 	}
 	return nil
 }

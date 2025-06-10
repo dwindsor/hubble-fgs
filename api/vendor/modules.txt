@@ -11,9 +11,6 @@ github.com/cilium/tetragon/api/v1/tetragon
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker
 # github.com/kr/pretty v0.3.1
 ## explicit; go 1.12
-# github.com/sirupsen/logrus v1.9.3
-## explicit; go 1.13
-github.com/sirupsen/logrus
 # golang.org/x/net v0.39.0
 ## explicit; go 1.23.0
 golang.org/x/net/http/httpguts

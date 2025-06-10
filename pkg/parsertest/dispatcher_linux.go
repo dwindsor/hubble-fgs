@@ -8,12 +8,12 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/sirupsen/logrus"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 )
 
 type EventDispatcher struct {
 	sync.Mutex
-	log        logrus.FieldLogger
+	log        logger.FieldLogger
 	nextSubId  int
 	subs       map[int]*EventSubscription
 	perfReader *perf.Reader
@@ -26,13 +26,13 @@ func NewEventDispatcher() (*EventDispatcher, error) {
 
 	perfMap, err := ebpf.LoadPinnedMap(cfg.MapName, &pinOpts)
 	if err != nil {
-		log.Errorf("ebpf.LoadPinnedMap error: %s", err)
+		log.Error("ebpf.LoadPinnedMap error", logfields.Error, err)
 		return nil, err
 	}
 
 	perfReader, err := perf.NewReader(perfMap, 65536)
 	if err != nil {
-		log.Errorf("perf.NewReader error: %s", err)
+		log.Error("perf.NewReader error", logfields.Error, err)
 		return nil, err
 	}
 
@@ -62,7 +62,7 @@ func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) {
 		record, err := ed.perfReader.Read()
 		if err != nil {
 			if ctx.Err() == nil {
-				ed.log.Errorf("perf.Read failed: %s", err)
+				ed.log.Error("perf.Read failed", logfields.Error, err)
 			}
 			return
 		}

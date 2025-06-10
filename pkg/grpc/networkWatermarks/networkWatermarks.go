@@ -80,7 +80,7 @@ func (msg *MsgProcessNetworkWatermarksEventUnix) HandleMessage() *tetragon.GetEv
 		}
 
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("HandleProcessNetworkWatermarksMessage: Unhandled event")
+		logger.GetLogger().Warn("HandleProcessNetworkWatermarksMessage: Unhandled event", "message", msg)
 	}
 	return res
 }

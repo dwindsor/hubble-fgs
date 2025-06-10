@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -32,7 +33,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -56,7 +56,7 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 	destMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	m, err := ebpf.LoadPinnedMap(destMap, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", destinationEndpointMap).Warn("Could not open destinationEndpointMap for GetDestinationMapRequest")
+		logger.GetLogger().Warn("Could not open destinationEndpointMap for GetDestinationMapRequest", logfields.Error, err, "file", destinationEndpointMap)
 		return nil, err
 	}
 	defer m.Close()
@@ -99,7 +99,7 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 	uuidMap := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
 	uuid, err := ebpf.LoadPinnedMap(uuidMap, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", uuid).Warn("Could not open processTreeUUID map for GetProcessMapRequest")
+		logger.GetLogger().Warn("Could not open processTreeUUID map for GetProcessMapRequest", logfields.Error, err, "file", uuid)
 		return nil, err
 	}
 	defer uuid.Close()
@@ -131,7 +131,7 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 
 	m, err := ebpf.LoadPinnedMap(treeMap, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", treeMap).Warn("Could not open process tree map")
+		logger.GetLogger().Warn("Could not open process tree map", logfields.Error, err, "file", treeMap)
 		return nil, err
 	}
 
@@ -197,14 +197,14 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	bpfDNSEndpoints, err := GetBPFDnsEndpoints()
 
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("failed to collect bpf DNS endpoints")
+		logger.GetLogger().Warn("failed to collect bpf DNS endpoints", logfields.Error, err)
 		// continue and at least collect other endpoints
 	}
 
 	endptIdMap := filepath.Join(bpf.MapPrefixPath(), endpointIdMap)
 	endpt, err := ebpf.LoadPinnedMap(endptIdMap, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", endptIdMap).Warn("Could not open destination endpoint map for EndpointDebugReq")
+		logger.GetLogger().Warn("Could not open destination endpoint map for EndpointDebugReq", logfields.Error, err, "file", endptIdMap)
 		return nil, err
 	}
 	defer endpt.Close()
@@ -359,14 +359,14 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 	endpt, err := ebpf.LoadPinnedMap(endptMap, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", endptMap).Warn("Could not open destination endpoint map")
+		logger.GetLogger().Warn("Could not open destination endpoint map", logfields.Error, err, "file", endptMap)
 		return nil, err
 	}
 	defer endpt.Close()
 
 	nsIDMap, err := ebpf.LoadPinnedMap(nsIDMapPath, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", nsIDMapPath).Warn("Could not open nsid map")
+		logger.GetLogger().Warn("Could not open nsid map", logfields.Error, err, "file", nsIDMapPath)
 		return nil, err
 	}
 	defer nsIDMap.Close()
@@ -434,7 +434,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 			domain, err := dnsDomainMap.Domain(dstKey.DestinationId)
 			if err != nil {
-				logger.GetLogger().WithField("id", dstKey.DestinationId).WithError(err).Warn("Could not retrieve BPF DNS parser domain info for Source User")
+				logger.GetLogger().Warn("Could not retrieve BPF DNS parser domain info for Source User", logfields.Error, err, "id", dstKey.DestinationId)
 				continue
 			}
 			ep = endpoint.Endpoint{
@@ -444,7 +444,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		case types.DestinationSourceDNS:
 			domain, err := dnsDomainMap.Domain(dstKey.DestinationId)
 			if err != nil {
-				logger.GetLogger().WithError(err).Warn("Could not retrieve BPF DNS parser domain info")
+				logger.GetLogger().Warn("Could not retrieve BPF DNS parser domain info", logfields.Error, err)
 				continue
 			}
 			ep = endpoint.Endpoint{
@@ -452,7 +452,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				Dns:  domain,
 			}
 		default:
-			logger.GetLogger().WithError(err).Warn("unknown dstKey.DestinationSrc")
+			logger.GetLogger().Warn("unknown dstKey.DestinationSrc", logfields.Error, err)
 			continue
 		}
 
@@ -475,7 +475,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		if dstVal.Policy != 0 {
 			policy, ok := library.GetName(dstVal.Policy)
 			if !ok {
-				logger.GetLogger().WithField("policyID", dstVal.Policy).Warn("unknown policy id in process model")
+				logger.GetLogger().Warn("unknown policy id in process model", "policyID", dstVal.Policy)
 			} else {
 				stats.Policy = policy
 			}
@@ -484,7 +484,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			allowDefault := dstVal.AllowDefault > 0
 			rule, ok := library.GetRule(policy, dstVal.Rule, denyDefault, allowDefault)
 			if !ok {
-				logger.GetLogger().WithField("Policy", policy).WithField("ruleID", dstVal.Rule).Warn("unknown rule id in process model")
+				logger.GetLogger().Warn("unknown rule id in process model", "Policy", policy, "ruleID", dstVal.Rule)
 
 			} else {
 				stats.Rule = rule
@@ -589,7 +589,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 	m, err := ebpf.LoadPinnedMap(treeMap, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", treeMap).Warn("Could not open process tree map")
+		logger.GetLogger().Warn("Could not open process tree map", logfields.Error, err, "file", treeMap)
 		return nil, err
 	}
 
@@ -605,7 +605,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 		sm, err = ebpf.LoadPinnedMap(syscallMap, nil)
 		if err != nil {
-			logger.GetLogger().WithError(err).WithField("file", syscallMap).Info("Could not open syscall map")
+			logger.GetLogger().Info("Could not open syscall map", logfields.Error, err, "file", syscallMap)
 			return nil, err
 		}
 
@@ -620,14 +620,14 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 	uidMap, err := ebpf.LoadPinnedMap(binaryFile, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", binaryFile).Warn("Could not open UUID to Binary tree map")
+		logger.GetLogger().Warn("Could not open UUID to Binary tree map", logfields.Error, err, "file", binaryFile)
 		return nil, err
 	}
 	defer uidMap.Close()
 
 	state, err := policyfilter.GetState()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Could not get policyfilter state")
+		logger.GetLogger().Warn("Could not get policyfilter state", logfields.Error, err)
 		return nil, err
 	}
 
@@ -687,7 +687,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		if val.MaybeMissingNSID {
 			var updatedNSID uint64
 			if err := nsIDMap.Lookup(&val.CgroupID, &updatedNSID); err != nil {
-				logger.GetLogger().WithError(err).WithField("cgid", val.CgroupID).Debug("failed to look up nsid")
+				logger.GetLogger().Debug("failed to look up nsid", logfields.Error, err, "cgid", val.CgroupID)
 			} else {
 				// Queue up a map update and fixup NSID value
 				pendingNSIDUpdates[key] = NSIDUpdate{
@@ -720,9 +720,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		processKey.Id = key.Self
 		err := uidMap.Lookup(&processKey, &uidValue)
 		if err != nil {
-			logger.GetLogger().WithFields(logrus.Fields{
-				"uuid": processKey,
-			}).WithError(err).Warn("Could not map self UUID to Path")
+			logger.GetLogger().Warn("Could not map self UUID to Path", logfields.Error, err, "uuid", processKey)
 			continue
 		}
 		// uidValue.Binary is a fixed size byte array. Trim trailing null bytes.
@@ -765,7 +763,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 					}
 				}
 			} else {
-				logger.GetLogger().WithError(err).WithField("key", key.Self).Debugf("Failed to look up system calls for process")
+				logger.GetLogger().Debug("Failed to look up system calls for process", logfields.Error, err, "key", key.Self)
 			}
 		}
 
@@ -796,7 +794,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		v.oldValue.MaybeMissingNSID = false
 		// Update process tree map with the new value
 		if err := m.Update(&k, &v.oldValue, ebpf.UpdateAny); err != nil {
-			logger.GetLogger().WithError(err).WithField("nsid", k.NSID).WithField("uid", k.Self).Debug("failed to update process tree map with corrected NSID")
+			logger.GetLogger().Debug("failed to update process tree map with corrected NSID", logfields.Error, err, "nsid", k.NSID, "uid", k.Self)
 		}
 	}
 	clear(pendingNSIDUpdates)
@@ -814,7 +812,7 @@ func (s *Server) GetProcessModel(_ context.Context, ns []string, debug bool) ([]
 func (s *Server) GetModel(ctx context.Context, req *appModelV1.GetModelRequest) (*appModelV1.GetModelResponse, error) {
 	res, err := s.GetProcessModel(ctx, []string{}, false)
 	if err != nil {
-		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
+		logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
 		return nil, err
 	}
 	nsFilter := make(map[string]bool, 0)
@@ -841,7 +839,7 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 
 	res, err := s.GetProcessModel(ctx, []string{}, false)
 	if err != nil {
-		logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
+		logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
 		return err
 	}
 	lastModel := model.ProcessModelToApplicationModel(res, nsFilter)
@@ -853,13 +851,13 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 		case <-ticker.C:
 			res, err := s.GetProcessModel(ctx, []string{}, false)
 			if err != nil {
-				logger.GetLogger().WithError(err).Error("Failed to get process model from Tetragon")
+				logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
 				return err
 			}
 			newModel := model.ProcessModelToApplicationModel(res, nsFilter)
 			networkDiffModel, _, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
 			if err != nil {
-				logger.GetLogger().WithError(err).Error("Failed to produce application model difference")
+				logger.GetLogger().Error("Failed to produce application model difference", logfields.Error, err)
 				return err
 			}
 
@@ -871,7 +869,7 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 
 			netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel)
 			if err != nil {
-				logger.GetLogger().WithError(err).Error("Failed to decode application model to network event model")
+				logger.GetLogger().Error("Failed to decode application model to network event model", logfields.Error, err)
 				return err
 			}
 			for _, entry := range netFlatPack {
@@ -882,7 +880,7 @@ func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream 
 					Event: network,
 				}
 				if err := stream.Send(&send); err != nil {
-					logger.GetLogger().WithError(err).Error("Failed to send network event model")
+					logger.GetLogger().Error("Failed to send network event model", logfields.Error, err)
 					return err
 				}
 			}

@@ -96,7 +96,7 @@ func TlsErrorsTotal(err int, continuation bool) prometheus.Counter {
 	s, ok := tlsErrorString[err]
 	if !ok {
 		s = "unknown"
-		logger.GetLogger().WithField("code", err).Warn("unknown TLS error")
+		logger.GetLogger().Warn("unknown TLS error", "code", err)
 	}
 	return tlsErrorsTotal.WithLabelValues(s, fmt.Sprint(continuation))
 }

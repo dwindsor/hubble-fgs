@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	jsonEncoder "github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -74,7 +75,7 @@ func NewJSONEncoder(writer io.Writer, ocsfWriter, flowWriter io.Writer, ocsfServ
 func (h *JSONEncoder) Encode(v interface{}) error {
 	response, ok := v.(*tetragon.GetEventsResponse)
 	if !ok {
-		logger.GetLogger().WithField("event", v).Warn("invalid event")
+		logger.GetLogger().Warn("invalid event", "event", v)
 		return nil
 	}
 	var ocsfError, flowError error
@@ -228,8 +229,8 @@ func GetNodeIPs() map[string]struct{} {
 	nodeName := node.GetNodeNameForExport()
 	ips, err := net.LookupIP(nodeName)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("hostname", nodeName).
-			Warn("Failed to get host IP. Hubble flows to/from the host will be classified as 'reserved:world' instead of 'reserved:host'")
+		logger.GetLogger().Warn("Failed to get host IP. Hubble flows to/from the host will be classified as 'reserved:world' instead of 'reserved:host'",
+			"hostname", nodeName, logfields.Error, err)
 		return nodeIPs
 	}
 	for _, ip := range ips {

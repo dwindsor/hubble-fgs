@@ -22,7 +22,6 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -132,7 +131,7 @@ func EnableRawsock() ([]*program.Program, []*program.Program, []*program.Map) {
 		}
 	}
 
-	logger.GetLogger().Infof("Enable Raw socket")
+	logger.GetLogger().Info("Enable Raw socket")
 	return progsInitSock, nil, maps
 }
 
@@ -146,7 +145,7 @@ func UnloadSensor() error {
 }
 
 func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
-	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Cookie": socket.Sockaddr}).Debug("Discovered Raw Socket")
+	logger.GetLogger().Debug("Discovered Raw Socket", "Pid", pid, "Cookie", socket.Sockaddr)
 	pathName := filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid))
 	stats, err := proc.GetProcStatStrings(pathName)
 	if err != nil {

@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
@@ -337,7 +338,7 @@ func _checkUDPBindNeedsDummies() bool {
 	defer os.Remove(tempMapDir)
 	m, err := ebpf.NewMapWithOptions(mapSpec, opts)
 	if err != nil {
-		logger.GetLogger().WithError(err).Debug("UDPBindNeedsDummies failed NewMapWithOptions")
+		logger.GetLogger().Debug("UDPBindNeedsDummies failed NewMapWithOptions", logfields.Error, err)
 		return true
 	}
 	defer m.Unpin()
@@ -378,13 +379,13 @@ func _checkUDPBindNeedsDummies() bool {
 		LogDisabled: false,
 	})
 	if err != nil {
-		logger.GetLogger().WithError(err).Debug("UDPBindNeedsDummies failed NewProgramWithOptions")
+		logger.GetLogger().Debug("UDPBindNeedsDummies failed NewProgramWithOptions", logfields.Error, err)
 		return true
 	}
 	defer prog.Close()
 	lnk, err := link.Kprobe(spec.AttachTo, prog, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).Debug("UDPBindNeedsDummies failed link.Kprobe")
+		logger.GetLogger().Debug("UDPBindNeedsDummies failed link.Kprobe", logfields.Error, err)
 		return true
 	}
 	defer lnk.Close()
@@ -395,7 +396,7 @@ func _checkUDPBindNeedsDummies() bool {
 	syscall.ForkLock.Lock()
 	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 	if err != nil {
-		logger.GetLogger().WithError(err).Debug("UDPBindNeedsDummies failed Socket")
+		logger.GetLogger().Debug("UDPBindNeedsDummies failed Socket", logfields.Error, err)
 		return true
 	}
 	syscall.ForkLock.Unlock()
@@ -406,7 +407,7 @@ func _checkUDPBindNeedsDummies() bool {
 	}
 	err = syscall.Bind(fd, &sa)
 	if err != nil {
-		logger.GetLogger().WithError(err).Debug("UDPBindNeedsDummies failed Bind")
+		logger.GetLogger().Debug("UDPBindNeedsDummies failed Bind", logfields.Error, err)
 		return true
 	}
 
@@ -415,7 +416,7 @@ func _checkUDPBindNeedsDummies() bool {
 	value := uint64(0)
 	err = m.Lookup(zero, &value)
 	if err != nil {
-		logger.GetLogger().WithError(err).Debug("UDPBindNeedsDummies failed m.Lookup")
+		logger.GetLogger().Debug("UDPBindNeedsDummies failed m.Lookup", logfields.Error, err)
 		return true
 	}
 

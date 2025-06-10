@@ -17,7 +17,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/sirupsen/logrus"
 )
 
 type EventDisableKey struct {
@@ -76,9 +75,10 @@ func ConfigureTCPDisableEvents(disableConnect bool, disableClose bool, disableAc
 		DisableListen:  disableListenVar,
 	}
 	m.Put(key, value)
-	logger.GetLogger().WithFields(logrus.Fields{"disableConnect": disableConnectVar,
-		"disableClose":  disableCloseVar,
-		"disableAccept": disableAcceptVar,
-		"disableListen": disableListenVar}).Info("Event config:")
+	logger.GetLogger().Info("Event config:",
+		"disableConnect", disableConnectVar,
+		"disableClose", disableCloseVar,
+		"disableAccept", disableAcceptVar,
+		"disableListen", disableListenVar)
 	return nil
 }

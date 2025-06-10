@@ -188,7 +188,7 @@ func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (filters.Fi
 			}
 			URIStrings = append(URIStrings, ns)
 		default:
-			logger.GetLogger().WithField("filter_type", fmt.Sprintf("%T", f)).Error("Unsupported URI / Pod filter type")
+			logger.GetLogger().Error("Unsupported URI / Pod filter type", "filter_type", fmt.Sprintf("%T", f))
 			return false
 		}
 

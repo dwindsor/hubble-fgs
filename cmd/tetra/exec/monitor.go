@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
@@ -125,7 +126,7 @@ func monitor(namespaces []string, host bool) error {
 
 	stream, err := c.Client.StreamTelemetry(ctx, req)
 	if err != nil {
-		logger.GetLogger().WithError(err).Error("failed streaming model request")
+		logger.GetLogger().Error("failed streaming model request", logfields.Error, err)
 		return err
 	}
 

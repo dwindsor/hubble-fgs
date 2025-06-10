@@ -5,6 +5,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/notify"
@@ -102,7 +103,7 @@ func createProcessUdpSeqCheckError(
 	var err error
 	socket.DestinationNames, err = dns.Get().LookupDomains(destinationIP.String())
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("DNS cache lookup failure")
+		logger.GetLogger().Warn("DNS cache lookup failure", logfields.Error, err)
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data

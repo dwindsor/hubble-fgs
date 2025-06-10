@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"net"
 	"net/http"
 	pprofhttp "net/http/pprof"
@@ -21,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/cgrouprate"
 	"github.com/cilium/tetragon/pkg/fieldfilters"
 	"github.com/cilium/tetragon/pkg/health"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
@@ -70,7 +72,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 	"github.com/spf13/viper"
@@ -110,9 +111,9 @@ func setRedactionFilters() error {
 	redactionFilters := viper.GetString(option.KeyRedactionFilters)
 	fieldfilters.RedactionFilters, err = fieldfilters.ParseRedactionFilterList(redactionFilters)
 	if err == nil {
-		log.WithFields(logrus.Fields{"redactionFilters": redactionFilters}).Info("Configured redaction filters")
+		log.Info("Configured redaction filters", "redactionFilters", fieldfilters.RedactionFilters)
 	} else {
-		log.WithError(err).Error("Error configuring redaction filters")
+		log.Error("Error configuring redaction filters", logfields.Error, err)
 	}
 	return err
 }
@@ -133,20 +134,20 @@ func saveInitInfo() error {
 
 func stopProfile() {
 	if option.Config.MemProfile != "" {
-		log.WithField("file", option.Config.MemProfile).Info("Stopping mem profiling")
+		log.Info("Stopping mem profiling", "file", option.Config.MemProfile)
 		f, err := os.Create(option.Config.MemProfile)
 		if err != nil {
-			log.WithField("file", option.Config.MemProfile).Fatal("Could not create memory profile: ", err)
+			logger.Fatal(log, "Could not create memory profile", logfields.Error, err, "file", option.Config.MemProfile)
 		}
 		defer f.Close()
 		// get up-to-date statistics
 		runtime.GC()
 		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatal("could not write memory profile: ", err)
+			logger.Fatal(log, "Could not write memory profile", logfields.Error, err)
 		}
 	}
 	if option.Config.CpuProfile != "" {
-		log.WithField("file", option.Config.CpuProfile).Info("Stopping cpu profiling")
+		log.Info("Stopping cpu profiling", "file", option.Config.CpuProfile)
 		pprof.StopCPUProfile()
 	}
 }
@@ -163,14 +164,13 @@ func getOldBpfDir(path string) (string, error) {
 	// remove the 'xxx_old' leftover instance if needed
 	if _, err := os.Stat(old); err == nil {
 		os.RemoveAll(old)
-		log.WithField("path", old).
-			Info("Found bpf leftover instance, removing")
+		log.Info("Found bpf leftover instance, removing", "path", old)
 	}
 	// rename current tetragon instance to tetragon_old
 	if err := os.Rename(path, old); err != nil {
 		return "", err
 	}
-	log.Infof("Found bpf instance: %s, moved to: %s", path, old)
+	log.Info(fmt.Sprintf("Found bpf instance: %s, moved to: %s", path, old))
 	return old, nil
 }
 
@@ -179,12 +179,10 @@ func deleteOldBpfDir(path string) {
 		return
 	}
 	if err := os.RemoveAll(path); err != nil {
-		log.WithError(err).
-			WithField("path", path).
-			Error("Failed to remove old bpf instance")
+		log.Error("Failed to remove old bpf instance", logfields.Error, err, "path", path)
 		return
 	}
-	log.Infof("Removed bpf instance: %s", path)
+	log.Info("Removed bpf instance: " + path)
 }
 
 func loadInitialSensor(ctx context.Context) error {
@@ -209,20 +207,20 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 
 	// Logging should always be bootstrapped first. Do not add any code above this!
 	if err := logger.SetupLogging(option.Config.LogOpts, option.Config.Debug); err != nil {
-		log.Fatal(err)
+		logger.Fatal(log, "Failed to setup logging", logfields.Error, err)
 	}
 
 	if !filepath.IsAbs(option.Config.TracingPolicyDir) {
-		log.Fatalf("Failed path specified by --tracing-policy-dir '%q' is not absolute", option.Config.TracingPolicyDir)
+		logger.Fatal(log, fmt.Sprintf("Failed path specified by --tracing-policy-dir '%q' is not absolute", option.Config.TracingPolicyDir))
 	}
 	option.Config.TracingPolicyDir = filepath.Clean(option.Config.TracingPolicyDir)
 
 	if option.Config.RBSize != 0 && option.Config.RBSizeTotal != 0 {
-		log.Fatalf("Can't specify --rb-size and --rb-size-total together")
+		logger.Fatal(log, "Can't specify --rb-size and --rb-size-total together")
 	}
 
-	log.WithField("version", version.Version).Info("Starting Tetragon Enterprise")
-	log.WithField("config", viper.AllSettings()).Info("config settings")
+	log.Info("Starting Tetragon Enterprise", "version", version.Version)
+	log.Info("config settings", "config", viper.AllSettings())
 
 	// Log early security context in case something fails
 	logCurrentSecurityContext()
@@ -243,10 +241,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	}
 	defer pidfile.Delete()
 
-	log.WithFields(logrus.Fields{
-		"pid":     pid,
-		"pidfile": defaults.DefaultPidFile,
-	}).Info("Tetragon pid file creation succeeded")
+	log.Info("Tetragon pid file creation succeeded", "pid", pid, "pidfile", defaults.DefaultPidFile)
 
 	if option.Config.KeepSensorsOnExit {
 		// The effect of having both --release-pinned-bpf and --keep-sensors-on-exit options
@@ -267,7 +262,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Providing correct information can't be achieved anyway.
 	err = initHostNamespaces()
 	if err != nil {
-		log.WithField("procfs", option.Config.ProcFS).WithError(err).Fatalf("Failed to initialize host namespaces")
+		logger.Fatal(log, "Failed to initialize host namespaces", "procfs", option.Config.ProcFS, logfields.Error, err)
 	}
 
 	// Setup file system mounts
@@ -277,29 +272,29 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 
 	if option.Config.PprofAddr != "" {
 		go func() {
-			log.Infof("Starting pprof via HTTP on %s", option.Config.PprofAddr)
+			log.Info("Starting pprof via HTTP on " + option.Config.PprofAddr)
 			if err := servePprof(option.Config.PprofAddr); err != nil {
-				log.Warnf("Failed serving pprof via HTTP: %v", err)
+				log.Warn("Failed serving pprof via HTTP", logfields.Error, err)
 			}
 		}()
 	}
 
 	// Start profilers first as we have to capture them in signal handling
 	if option.Config.MemProfile != "" {
-		log.WithField("file", option.Config.MemProfile).Info("Starting mem profiling")
+		log.Info("Starting mem profiling", "file", option.Config.MemProfile)
 	}
 
 	if option.Config.CpuProfile != "" {
 		f, err := os.Create(option.Config.CpuProfile)
 		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
+			logger.Fatal(log, "Could not create CPU profile", logfields.Error, err, "file", option.Config.CpuProfile)
 		}
 		defer f.Close()
 
 		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
+			logger.Fatal(log, "Could not start CPU profile", logfields.Error, err)
 		}
-		log.WithField("file", option.Config.CpuProfile).Info("Starting cpu profiling")
+		log.Info("Starting cpu profiling", "file", option.Config.CpuProfile)
 	}
 
 	defer stopProfile()
@@ -330,14 +325,14 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		// but, do more aggressive detach op to clean up old versioned programs when
 		// told.
 		if err := detachTetragonCgroups(true, enterpriseOption.Config.DetachOldBpf); err != nil {
-			log.WithError(err).Warn("Failed to detach cgroups, Consider removing it manually")
+			log.Warn("Failed to detach cgroups, Consider removing it manually", logfields.Error, err)
 		} else {
 			log.Info("Successfully released attched cgroups.")
 		}
 		if err := os.RemoveAll(observerDir); err != nil {
-			log.WithField("bpf-dir", observerDir).WithError(err).Warn("Failed to release pinned BPF programs and map, Consider removing it manually")
+			log.Warn("Failed to release pinned BPF programs and map, Consider removing it manually", logfields.Error, err, "bpf-dir", observerDir)
 		} else {
-			log.WithField("bpf-dir", observerDir).Info("Successfully released pinned BPF programs and maps")
+			log.Info("Successfully released pinned BPF programs and maps", "bpf-dir", observerDir)
 		}
 	}
 
@@ -348,7 +343,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		obs.PrintStats()
 	}()
 
-	defaultLevel := logger.GetLogLevel()
+	defaultLevel := logger.GetLogLevel(logger.GetLogger())
 	go func() {
 		for {
 			s := <-sigs
@@ -356,28 +351,28 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			case syscall.SIGINT, syscall.SIGTERM:
 				// if we receive a signal, call cancel so that contexts are finalized, which will
 				// leads to normally return from tetragonExecute().
-				log.Infof("Received signal %s, shutting down...", s)
+				log.Info(fmt.Sprintf("Received signal %s, shutting down...", s))
 				cancel()
 				return
 			case tgsyscall.SIGRTMIN_20: // SIGRTMIN+20
-				currentLevel := logger.GetLogLevel()
-				if currentLevel == logrus.DebugLevel {
-					log.Infof("Received signal SIGRTMIN+20: LogLevel is already '%s'", currentLevel)
+				currentLevel := logger.GetLogLevel(logger.GetLogger())
+				if currentLevel == slog.LevelDebug {
+					log.Info(fmt.Sprintf("Received signal SIGRTMIN+20: LogLevel is already '%s'", currentLevel))
 				} else {
-					logger.SetLogLevel(logrus.DebugLevel)
-					log.Infof("Received signal SIGRTMIN+20: switching from LogLevel '%s' to '%s'", currentLevel, logger.GetLogLevel())
+					logger.SetLogLevel(slog.LevelDebug)
+					log.Info(fmt.Sprintf("Received signal SIGRTMIN+20: switching from LogLevel '%s' to '%s'", currentLevel, logger.GetLogLevel(logger.GetLogger())))
 				}
 			case tgsyscall.SIGRTMIN_21: // SIGRTMIN+21
-				currentLevel := logger.GetLogLevel()
-				if currentLevel == logrus.TraceLevel {
-					log.Infof("Received signal SIGRTMIN+21: LogLevel is already '%s'", currentLevel)
+				currentLevel := logger.GetLogLevel(logger.GetLogger())
+				if currentLevel == slog.LevelDebug {
+					log.Info(fmt.Sprintf("Received signal SIGRTMIN+21: LogLevel is already '%s'", currentLevel))
 				} else {
-					logger.SetLogLevel(logrus.TraceLevel)
-					log.Infof("Received signal SIGRTMIN+21: switching from LogLevel '%s' to '%s'", currentLevel, logger.GetLogLevel())
+					logger.SetLogLevel(slog.LevelDebug)
+					log.Info(fmt.Sprintf("Received signal SIGRTMIN+21: switching from LogLevel '%s' to '%s'", currentLevel, logger.GetLogLevel(logger.GetLogger())))
 				}
 			case tgsyscall.SIGRTMIN_22: // SIGRTMIN+22
 				logger.SetLogLevel(defaultLevel)
-				log.Infof("Received signal SIGRTMIN+22: resetting original LogLevel '%s'", logger.GetLogLevel())
+				log.Info(fmt.Sprintf("Received signal SIGRTMIN+22: resetting original LogLevel '%s'", logger.GetLogLevel(logger.GetLogger())))
 			}
 		}
 	}()
@@ -434,11 +429,11 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	}
 	nodeMetadata, err := local.GetMetadataService()
 	if err != nil {
-		log.WithError(err).Warn("Failed to get node info. node_labels field will be empty")
+		log.Warn("Failed to get node info. node_labels field will be empty", logfields.Error, err)
 	} else {
 		labels, err := nodeMetadata.GetLabels(ctx)
 		if err != nil {
-			log.WithError(err).Warn("Failed to get node info. node_labels field will be empty")
+			log.Warn("Failed to get node info. node_labels field will be empty", logfields.Error, err)
 		} else {
 			node.SetNodeLabels(labels)
 		}
@@ -615,7 +610,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// some OSS work.
 	if enterpriseOption.Config.EnableApplicationModel {
 		if err = procFSWalk(); err != nil {
-			logger.GetLogger().WithError(err).Warn("failed to pre-populate application model entries")
+			logger.GetLogger().Warn("failed to pre-populate application model entries", logfields.Error, err)
 		}
 	}
 
@@ -667,10 +662,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 				}
 			}
 		} else {
-			log.WithField(
-				"sandboxpolicies",
-				enterpriseOption.Config.SandboxPolicies,
-			).Fatal("sandbox policies specified but the feature is disabled")
+			logger.Fatal(log, "Sandbox policies specified but the feature is disabled", "sandboxpolicies", enterpriseOption.Config.SandboxPolicies)
 		}
 	}
 
@@ -694,7 +686,7 @@ func loadTpFromDir(ctx context.Context, dir string) error {
 		// Probably tetragon not fully installed, users did not create
 		// /etc/tetragon/tetragon.tp.d/
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			log.WithField("tracing-policy-dir", dir).Info("Loading Tracing Policies from directory ignored, directory does not exist")
+			log.Info("Loading Tracing Policies from directory ignored, directory does not exist", "tracing-policy-dir", dir)
 			return nil
 		}
 	}
@@ -748,11 +740,10 @@ func addTracingPolicy(ctx context.Context, file string) error {
 		namespace = tpNs.TpNamespace()
 	}
 
-	logger.GetLogger().WithFields(logrus.Fields{
-		"TracingPolicy":      file,
-		"metadata.namespace": namespace,
-		"metadata.name":      tp.TpName(),
-	}).Info("Added TracingPolicy with success")
+	logger.GetLogger().Info("Added TracingPolicy with success",
+		"TracingPolicy", file,
+		"metadata.namespace", namespace,
+		"metadata.name", tp.TpName())
 
 	return nil
 }
@@ -807,8 +798,8 @@ func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*
 
 	perms, err := fileutils.RegularFilePerms(option.Config.ExportFilePerm)
 	if err != nil {
-		log.WithError(err).WithField("filename", filename).Warnf("Failed to parse export file permission '%s', failing back to %v",
-			option.KeyExportFilePerm, perms)
+		log.Warn(fmt.Sprintf("Failed to parse export file permission '%s', failing back to %v",
+			option.KeyExportFilePerm, perms), "filename", filename)
 	}
 	writer.FileMode = perms
 
@@ -819,10 +810,9 @@ func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*
 	}
 	abspath, err := filepath.Abs(filepath.Clean(writer.Filename))
 	if err != nil {
-		log.WithError(err).WithField("filename", writer.Filename).Warn("Failed to get absolute path of export file")
+		log.Warn("Failed to get absolute path of export file", logfields.Error, err, "filename", writer.Filename)
 	} else {
-		log.WithField("filename", abspath).Info("Initialized export file")
-
+		log.Info("Initialized export file", "filename", abspath)
 	}
 	return writer, nil
 }
@@ -863,7 +853,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 		// Passed an invalid interval let's error out
 		return fmt.Errorf("frequency '%s' at which to rotate JSON export files is negative", option.Config.ExportFileRotationInterval.String())
 	} else if option.Config.ExportFileRotationInterval > 0 {
-		log.WithFields(logrus.Fields{"frequency": option.Config.ExportFileRotationInterval.String()}).Info("Periodically rotating JSON export files")
+		log.Info("Periodically rotating JSON export files", "frequency", option.Config.ExportFileRotationInterval.String())
 		go func() {
 			ticker := time.NewTicker(option.Config.ExportFileRotationInterval)
 			for {
@@ -872,12 +862,12 @@ func startExporter(ctx context.Context, server *server.Server) error {
 					return
 				case <-ticker.C:
 					if rotationErr := writer.Rotate(); rotationErr != nil {
-						log.WithError(rotationErr).WithField("file", option.Config.ExportFilename).Warn("Failed to rotate JSON export file")
+						log.Warn("Failed to rotate JSON export file", logfields.Error, rotationErr, "file", option.Config.ExportFilename)
 					}
 					if flowWriter != nil {
-						log.WithField("file", enterpriseOption.Config.FlowExportFilename).Info("Rotating JSON flow export file")
+						log.Info("Rotating JSON flow export file", "file", enterpriseOption.Config.FlowExportFilename)
 						if rotationErr := flowWriter.Rotate(); rotationErr != nil {
-							log.WithError(rotationErr).WithField("file", enterpriseOption.Config.FlowExportFilename).Warn("Failed to rotate JSON flow export file")
+							log.Warn("Failed to rotate JSON flow export file", logfields.Error, rotationErr, "file", enterpriseOption.Config.FlowExportFilename)
 						}
 					}
 				}
@@ -901,8 +891,8 @@ func startExporter(ctx context.Context, server *server.Server) error {
 		}
 	}
 	req := tetragon.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions, FieldFilters: fieldFilters}
-	log.WithFields(logrus.Fields{"fieldFilters": fieldFilters}).Info("Configured field filters")
-	log.WithFields(logrus.Fields{"logger": writer, "request": &req}).Info("Starting JSON exporter")
+	log.Info("Configured field filters", "fieldFilters", fieldFilters)
+	log.Info("Starting JSON exporter", "logger", writer)
 	exporter := exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
 	exporter.Start()
 
@@ -952,9 +942,7 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 		// Passed an invalid interval let's error out
 		return fmt.Errorf("frequency '%s' at which to rotate JSON export files is negative", option.Config.ExportFileRotationInterval.String())
 	} else if option.Config.ExportFileRotationInterval > 0 {
-		log.WithFields(logrus.Fields{
-			"frequency": option.Config.ExportFileRotationInterval.String(),
-		}).Info("Periodically rotating JSON application model export files")
+		log.Info("Periodically rotating JSON application model export files", "frequency", option.Config.ExportFileRotationInterval.String())
 		go func() {
 			ticker := time.NewTicker(option.Config.ExportFileRotationInterval)
 			for {
@@ -963,9 +951,8 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 					return
 				case <-ticker.C:
 					if rotationErr := writer.Rotate(); rotationErr != nil {
-						log.WithError(rotationErr).WithField(
-							"file", enterpriseOption.Config.ApplicationModelExportFilename,
-						).Warn("Failed to rotate JSON application model export file")
+						log.Warn("Failed to rotate JSON application model export file", logfields.Error, rotationErr,
+							"file", enterpriseOption.Config.ApplicationModelExportFilename)
 					}
 				}
 			}
@@ -1002,11 +989,11 @@ func Serve(
 			listener, err = net.Listen(proto, addr)
 		}
 		if err != nil {
-			log.WithError(err).WithField("protocol", proto).WithField("address", addr).Fatal("Failed to start gRPC server")
+			logger.Fatal(log, "Failed to start gRPC server", "address", addr, "protocol", proto, logfields.Error, err)
 		}
-		log.WithField("address", addr).WithField("protocol", proto).Info("Starting gRPC server")
+		log.Info("Starting gRPC server", "address", addr, "protocol", proto)
 		if err = grpcServer.Serve(listener); err != nil {
-			log.WithError(err).Error("Failed to close gRPC server")
+			log.Error("Failed to close gRPC server", logfields.Error, err)
 		}
 	}(proto, addr)
 	go func(proto, addr string) {
@@ -1034,7 +1021,7 @@ func startGopsServer() error {
 		return err
 	}
 
-	log.WithField("addr", option.Config.GopsAddr).Info("Starting gops server")
+	log.Info("Starting gops server", "addr", option.Config.GopsAddr)
 
 	return nil
 }
@@ -1068,17 +1055,17 @@ func Execute() error {
 		Run: func(cmd *cobra.Command, _ []string) {
 			if viper.GetBool(option.KeyGenerateDocs) {
 				if err := doc.GenYaml(cmd, os.Stdout); err != nil {
-					log.WithError(err).Fatal("Failed to generate docs")
+					logger.Fatal(log, "Failed to generate docs", logfields.Error, err)
 				}
 				return
 			}
 			if err := option.ReadAndSetFlags(); err != nil {
-				log.WithError(err).Fatal("Failed to parse command line flags")
+				logger.Fatal(log, "Failed to parse command line flags", logfields.Error, err)
 			}
 
 			err := enterpriseOption.ReadAndValidateEnterpriseFlags()
 			if err != nil {
-				log.WithError(err).Fatal("Failed to read and validate flags")
+				logger.Fatal(log, "Failed to read and validate flags", logfields.Error, err)
 			}
 
 			// Unfortunately, due to an over-reliance on init() throughout the codebase,
@@ -1088,15 +1075,15 @@ func Execute() error {
 			// shouldn't be prohibitively expensive and the caches won't actually have any
 			// entries yet.
 			if err := resizeCaches(); err != nil {
-				log.WithError(err).Fatal("Failed to configure caches")
+				logger.Fatal(log, "Failed to configure caches", logfields.Error, err)
 			}
 
 			if err := startGopsServer(); err != nil {
-				log.WithError(err).Fatal("Failed to start gops")
+				logger.Fatal(log, "Failed to start gops server", logfields.Error, err)
 			}
 
 			if err := hubbleFGSExecute(); err != nil {
-				log.WithError(err).Fatal("Failed to start tetragon")
+				logger.Fatal(log, "Failed to start tetragon", logfields.Error, err)
 			}
 		},
 	}
@@ -1106,18 +1093,18 @@ func Execute() error {
 		if err != nil {
 			// Warn about errors but do not fail, we will default to old
 			// FGS_ environment to not break users.
-			log.WithError(err).Warn("Failed to validate environment variables, using old 'FGS_' environment vars")
+			log.Warn("Failed to validate environment variables, using old 'FGS_' environment vars", logfields.Error, err)
 		}
 		newConf, err := validateConfig()
 		if err != nil {
-			log.WithError(err).Fatal("Failed to validate configuration")
+			logger.Fatal(log, "Failed to validate configuration", logfields.Error, err)
 		}
 		if newConf {
 			readConfigSettings(newEnv, newConf, adminTgConfDir, adminTgConfDropIn, packageTgConfDropIns)
 		} else {
 			// Warn users about using old configuration directories /etc/hubble-fgs/
-			log.Warnf("Configuration directory '%s' has been deprecated, please use '%s' instead or --%s flag",
-				oldAdminFgsConfDir, adminTgConfDir, option.KeyConfigDir)
+			log.Warn(fmt.Sprintf("Configuration directory '%s' has been deprecated, please use '%s' instead or --%s flag",
+				oldAdminFgsConfDir, adminTgConfDir, option.KeyConfigDir))
 			readConfigSettings(newEnv, newConf, oldAdminFgsConfDir, oldAdminFgsConfDropIn, packageTgConfDropIns)
 		}
 	})

@@ -19,10 +19,10 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/notify"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -129,7 +129,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	var err error
 	fgsEvent.DestinationNames, err = dns.Get().LookupDomains(destinationIP.String())
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("DNS cache lookup failure")
+		logger.GetLogger().Warn("DNS cache lookup failure", logfields.Error, err)
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
@@ -232,7 +232,7 @@ func GetProcessClose(event *MsgIPWithStatsEventUnix) *tetragon.ProcessClose {
 	var err error
 	fgsEvent.DestinationNames, err = dnsCache.LookupDomains(destinationIP.String())
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("DNS cache lookup failure")
+		logger.GetLogger().Warn("DNS cache lookup failure", logfields.Error, err)
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
@@ -369,7 +369,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	var err error
 	fgsEvent.DestinationNames, err = dnsCache.LookupDomains(destinationIP.String())
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("DNS cache lookup failure")
+		logger.GetLogger().Warn("DNS cache lookup failure", logfields.Error, err)
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
@@ -518,7 +518,7 @@ func CreateProcessSockStats(event *MsgIPWithStatsEventUnix, cache bool) *tetrago
 	var err error
 	fgsEvent.Socket.DestinationNames, err = dnsCache.LookupDomains(fgsTuple.DestinationIp)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("DNS cache lookup failure")
+		logger.GetLogger().Warn("DNS cache lookup failure", logfields.Error, err)
 	}
 
 	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
@@ -715,7 +715,7 @@ func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		}
 
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("HandleIpMessage: Unhandled event")
+		logger.GetLogger().Warn("HandleIpMessage: Unhandled event", "message", msg)
 	}
 	return res
 }
@@ -742,7 +742,7 @@ func (msg *MsgIPWithStatsEventUnix) HandleMessage() *tetragon.GetEventsResponse 
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("HandleIpMessage: Unhandled event")
+		logger.GetLogger().Warn("HandleIpMessage: Unhandled event", "message", msg)
 	}
 	return res
 }
@@ -846,16 +846,15 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 		//
 		// Still, if necessary, a switch statement can be used to choose which error
 		// types should be reported to the console or not.
-		logger.GetLogger().WithFields(logrus.Fields{
-			"Process":     fgsProcess,
-			"Tuple":       event.Msg.Tuple.String(),
-			"Cookie":      event.Msg.SockCookie,
-			"IpVersion":   version,
-			"Details":     details.Msg,
-			"Send":        send,
-			"VersionByte": uint64(event.Msg.Tuple.VersionByte),
-			"Data":        event.Msg.CreateTime,
-		}).Warn("IP error. This is a bug, please report it to Tetragon developers.")
+		logger.GetLogger().Warn("IP error. This is a bug, please report it to Tetragon developers.",
+			"Process", fgsProcess,
+			"Tuple", event.Msg.Tuple.String(),
+			"Cookie", event.Msg.SockCookie,
+			"IpVersion", version,
+			"Details", details.Msg,
+			"Send", send,
+			"VersionByte", uint64(event.Msg.Tuple.VersionByte),
+			"Data", event.Msg.CreateTime)
 	}
 
 	return fgsEvent

@@ -17,6 +17,7 @@ import (
 	"math"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -89,7 +90,7 @@ func printInodeMapCmd() *cobra.Command {
 			path := args[0]
 			err := fm.PrintInodeMap(path, filter)
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Printing failed!")
+				logger.GetLogger().Warn("Printing failed!", logfields.Error, err)
 			}
 		},
 	}
@@ -114,7 +115,7 @@ func printLpmMapCmd() *cobra.Command {
 			path := args[0]
 			err := fm.PrintLPMMap(path)
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Printing failed!")
+				logger.GetLogger().Warn("Printing failed!", logfields.Error, err)
 			}
 		},
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/eventhandler"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/policyconf"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -117,11 +118,20 @@ func (h policyHandler) PolicyHandler(
 
 	if len(spec.KProbes) > 0 {
 		name := "generic_kprobe"
-		err := preValidateKprobes(name, spec.KProbes, spec.Lists)
+		log := logger.GetLogger().With(
+			"policy", tracingpolicy.TpLongname(policy),
+			"sensor", name,
+		)
+		validateInfo, err := preValidateKprobes(log, spec.KProbes, spec.Lists)
 		if err != nil {
 			return nil, fmt.Errorf("validation failed: %w", err)
 		}
-		return createGenericKprobeSensor(spec, name, polInfo)
+		// if all kprobes where ignored, do not load anything. This is equivalent with
+		// having a policy with an empty kprobe: section
+		if allKprobesIgnored(validateInfo) {
+			return nil, nil
+		}
+		return createGenericKprobeSensor(spec, name, polInfo, validateInfo)
 	}
 	if len(spec.Tracepoints) > 0 {
 		return createGenericTracepointSensor(spec, "generic_tracepoint", polInfo)

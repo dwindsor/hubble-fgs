@@ -17,6 +17,7 @@ import (
 	"strconv"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/vishvananda/netlink"
@@ -33,7 +34,7 @@ func emitNSEvent() {
 		nsFileName := filepath.Join(option.Config.ProcFS, pidStr, "ns", "net")
 		netns, err := ns.GetNS(nsFileName)
 		if err != nil {
-			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Debugf("runNetworkCB GetNS from path failed")
+			logger.GetLogger().Debug("runNetworkCB GetNS from path failed", "pid", os.Getpid(), "file", nsFileName, logfields.Error, err)
 			nscache.DelNetNs(v.Netns)
 			continue
 		}
@@ -42,7 +43,7 @@ func emitNSEvent() {
 		_ = netns.Do(func(_ ns.NetNS) error {
 			links, err := netlink.LinkList()
 			if err != nil {
-				logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("netns LinkList failed")
+				logger.GetLogger().Info("netns LinkList failed", "pid", os.Getpid(), "file", nsFileName, logfields.Error, err)
 				return fmt.Errorf("netlink LinkList() error: %v", err)
 			}
 			for _, l := range links {

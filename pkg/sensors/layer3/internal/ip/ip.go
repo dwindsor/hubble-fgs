@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/yalue/native_endian"
@@ -152,7 +153,7 @@ func findPidFdForCookie(cookie uint64) (int, int, int, error) {
 
 	procFS, err := os.ReadDir(option.Config.ProcFS)
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("Could not read directory %s", option.Config.ProcFS)
+		logger.GetLogger().Error("Could not read directory "+option.Config.ProcFS, logfields.Error, err)
 		return 0, 0, 0, err
 	}
 

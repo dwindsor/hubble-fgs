@@ -38,7 +38,7 @@ func NewCache() (*Cache, error) {
 		isBPFDNSParserEnabled: enterpriseOption.Config.EnableBPFDNSParser,
 	}
 
-	logger.GetLogger().WithField("size", enterpriseOption.Config.DnsCacheSize).Info("Initializing userspace DNS cache")
+	logger.GetLogger().Info("Initializing userspace DNS cache", "size", enterpriseOption.Config.DnsCacheSize)
 	var err error
 	newCache.userspaceCache, err = lru.New[string, []string](enterpriseOption.Config.DnsCacheSize)
 	if err != nil {

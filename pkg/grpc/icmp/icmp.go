@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/notify"
@@ -435,7 +436,7 @@ func GetProcessIcmp(
 	var err error
 	fgsEvent.DestinationNames, err = dnsCache.LookupDomains(fgsEvent.DestinationIp)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("DNS cache lookup failure")
+		logger.GetLogger().Warn("DNS cache lookup failure", logfields.Error, err)
 	}
 	fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIp)
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/model"
@@ -388,11 +389,11 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 
 	nodeMetadata, err := local.GetMetadataService()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Application model to network flat failed to get node info. node_labels field will be empty")
+		logger.GetLogger().Warn("Application model to network flat failed to get node info. node_labels field will be empty", logfields.Error, err)
 	} else {
 		labels, err = nodeMetadata.GetLabels(ctx)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("Application model to network flat failed to get node info. node_labels field will be empty")
+			logger.GetLogger().Warn("Application model to network flat failed to get node info. node_labels field will be empty", logfields.Error, err)
 		}
 	}
 

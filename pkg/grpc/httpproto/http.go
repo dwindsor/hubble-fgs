@@ -8,6 +8,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
@@ -36,7 +37,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
 		}
-		logger.GetLogger().WithField("id in HTTP event", processID).Debug("process not found in cache")
+		logger.GetLogger().Debug("process not found in cache", "id in HTTP event", processID)
 	} else {
 		proc = processInt.UnsafeGetProcess()
 
@@ -46,12 +47,12 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	if len(event.Request.Code) != 0 {
 		code, err = GetHttpCode(event.Request.Code)
 		if err != nil {
-			logger.GetLogger().WithField("Unknown Response Code", event.Request.Code).Info("unknown code")
+			logger.GetLogger().Info("unknown code", "Unknown Response Code", event.Request.Code)
 		}
 
 		length, err := GetHttpContentLength(event.Request.RespContentLength)
 		if err != nil {
-			logger.GetLogger().WithError(err).WithField("RespContentLength", event.Request.RespContentLength).Info("Response Content-Length strconv error")
+			logger.GetLogger().Info("Response Content-Length strconv error", logfields.Error, err, "RespContentLength", event.Request.RespContentLength)
 		}
 
 		fgsHttpResponse = &tetragon.HttpResponse{
@@ -67,7 +68,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 
 	length, err := GetHttpContentLength(event.Request.ContentLength)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("ContentLength", event.Request.ContentLength).Info("Request Content-Length strconv error")
+		logger.GetLogger().Info("Request Content-Length strconv error", logfields.Error, err, "ContentLength", event.Request.ContentLength)
 	}
 
 	if len(event.Request.Method) != 0 {
@@ -109,7 +110,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 
 	fgsEvent.Socket.DestinationNames, err = dns.Get().LookupDomains(fgsEvent.Socket.DestinationIp)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("DNS cache lookup failure")
+		logger.GetLogger().Warn("DNS cache lookup failure", logfields.Error, err)
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
@@ -159,7 +160,7 @@ func (msg *MsgHttpEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("HandleHttpMessage: Unhandled event")
+		logger.GetLogger().Warn("HandleHttpMessage: Unhandled event", "message", msg)
 	}
 	return res
 }

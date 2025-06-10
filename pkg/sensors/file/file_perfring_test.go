@@ -32,9 +32,8 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
-	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
-
 	"github.com/cilium/tetragon/pkg/reader/notify"
+	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
 	ossTestUtils "github.com/cilium/tetragon/pkg/testutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -44,7 +43,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/require"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 
@@ -58,7 +56,7 @@ import (
 )
 
 func TestFileSuffixPattern(t *testing.T) {
-	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
 	if !kernels.MinKernelVersion("5.4.0") {
 		t.Skip("File monitoring patterns requires at least 5.4.0 kernel version")
@@ -290,7 +288,7 @@ func TestFileSuffixPattern(t *testing.T) {
 }
 
 func TestFileFsTypeMatch(t *testing.T) {
-	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
 	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
 		t.Skip("File monitoring patterns with FileSystemType type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
@@ -401,7 +399,7 @@ func TestFileFsTypeMatch(t *testing.T) {
 }
 
 func TestFileGlobMatch(t *testing.T) {
-	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
 	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
 		t.Skip("File monitoring patterns with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
@@ -519,7 +517,7 @@ func TestFileGlobMatch(t *testing.T) {
 }
 
 func TestFileDigestMatch(t *testing.T) {
-	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
 	_, imaSupport := probeImaEnabled()
 	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) || (imaSupport != nil) {
@@ -622,7 +620,7 @@ func TestFileDigestMatch(t *testing.T) {
 }
 
 func TestMatchBinariesFollowChildren(t *testing.T) {
-	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
 	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
 	defer cancel()
@@ -726,7 +724,7 @@ func TestMatchBinariesFollowChildren(t *testing.T) {
 }
 
 func TestMatchExecAttributes(t *testing.T) {
-	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
 	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
 		t.Skip("File monitoring with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
@@ -825,7 +823,7 @@ type OpenRawTestCase struct {
 }
 
 func TestMatchOpenrawOps(t *testing.T) {
-	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
 	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
 		t.Skip("File monitoring with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")

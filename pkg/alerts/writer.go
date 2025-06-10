@@ -19,17 +19,17 @@ import (
 	"github.com/cilium/lumberjack/v2"
 	"github.com/cilium/tetragon/pkg/fileutils"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 )
 
 var getPerms = sync.OnceValue(func() os.FileMode {
 	perms, err := fileutils.RegularFilePerms(option.Config.ExportFilePerm)
 	if err != nil {
-		logger.GetLogger().
-			WithError(err).
-			WithField("config-export-file-perm", option.Config.ExportFilePerm).
-			WithField("default", perms).
-			Info("alerts: failed to parse config export file permission, falling back to default")
+		logger.GetLogger().Info("alerts: failed to parse config export file permission, falling back to default",
+			logfields.Error, err,
+			"config-export-file-perm", option.Config.ExportFilePerm,
+			"default", perms)
 	}
 	return perms
 })

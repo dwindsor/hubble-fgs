@@ -121,7 +121,7 @@ func (a *InprAttempt) logAttempt(c Attempt) {
 	if a.inProgress > 0 {
 		a.inProgress--
 	} else {
-		logger.GetLogger().Error("invalid inProgress count when trying to log attempt: %d", a.inProgress)
+		logger.GetLogger().Error(fmt.Sprintf("invalid inProgress count when trying to log attempt: %d", a.inProgress))
 	}
 
 	a.attempts = append(a.attempts, c)

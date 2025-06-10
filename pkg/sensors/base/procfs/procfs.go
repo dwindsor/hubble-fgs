@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
@@ -139,7 +140,7 @@ func ProcFSWalk() error {
 
 	procFS, err := os.ReadDir(option.Config.ProcFS)
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("Could not read directory %s", option.Config.ProcFS)
+		logger.GetLogger().Error("Could not read directory "+option.Config.ProcFS, logfields.Error, err)
 		return err
 	}
 
@@ -170,7 +171,7 @@ func ProcFSWalk() error {
 		pid, err := proc.GetProcPid(d.Name())
 		if err != nil {
 			fmt.Printf("failed to read pid err=%s\n", err)
-			logger.GetLogger().WithError(err).Debugf("pid read error")
+			logger.GetLogger().Debug("pid read error", logfields.Error, err)
 			continue
 		}
 

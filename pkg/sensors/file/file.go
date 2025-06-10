@@ -40,13 +40,13 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/podhooks"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/strutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/cilium/tetragon/pkg/option"
@@ -663,7 +663,7 @@ func TerminateFsScanner() error {
 			break
 		}
 		if retry > 10 {
-			logger.GetLogger().Warnf("Failed to wait for fifo to be removed")
+			logger.GetLogger().Warn("Failed to wait for fifo to be removed")
 			break
 		}
 		time.Sleep(time.Second)
@@ -963,7 +963,7 @@ func startFsScanner() (*exec.Cmd, error) {
 	// This is the point of a clean start, so we expect no fs-scanner running
 	// or the FIFO to exist. We do this check and cleanup appropriately if needed.
 	if err := checkRunningFsScanner(fm.ScannerFifoPath); err != nil {
-		logger.GetLogger().WithError(err).Warn("checkRunningFsScanner fails")
+		logger.GetLogger().Warn("checkRunningFsScanner fails", logfields.Error, err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -972,7 +972,7 @@ func startFsScanner() (*exec.Cmd, error) {
 	fsScannerCancelFn = cancel
 	fsScannerCancelFnMtx.Unlock()
 
-	logger.GetLogger().WithField("args", fsScannerCmd.Args).Info("Agent starting")
+	logger.GetLogger().Info("Agent starting", "args", fsScannerCmd.Args)
 
 	fsScannerCmd.Env = append(fsScannerCmd.Env, fmt.Sprintf("TETRAGON_PROCFS=%s", option.Config.ProcFS))
 	fsScannerCmd.Stdout = os.Stdout
@@ -992,7 +992,7 @@ func startFsScanner() (*exec.Cmd, error) {
 		if retry > 10 {
 			return nil, fmt.Errorf("failed to start tetragon-fs-scanner")
 		}
-		logger.GetLogger().Infof("tetragon-fs-scanner fifo does not exist [retry = %d]", retry)
+		logger.GetLogger().Info(fmt.Sprintf("tetragon-fs-scanner fifo does not exist [retry = %d]", retry))
 		time.Sleep(2 * time.Second)
 		retry++
 	}
@@ -1000,7 +1000,7 @@ func startFsScanner() (*exec.Cmd, error) {
 	// We should wait here for the process to stop. Otherwise the FsScanner becomes a zombie.
 	go func() {
 		if err := fsScannerCmd.Wait(); err != nil {
-			logger.GetLogger().WithError(err).Warnf("fsScannerCmd.Wait(): failed with '%s'", err)
+			logger.GetLogger().Warn("fsScannerCmd.Wait() failed", logfields.Error, err)
 		}
 	}()
 
@@ -1314,7 +1314,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		path := filepath.Join(dstDir, dstName)
 		if diff, err := RenameFsScanner(path, option.Config.BpfDir, s.PinPathPrefix, renameCid, s.TpName, *s.Spec, m.Flags); err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvScanner)
-			l.WithError(err).Warnf("RenameFsScanner failed!")
+			l.Warn("RenameFsScanner failed!", logfields.Error, err)
 		} else {
 			atomic.AddInt64(&s.UserInodeNum, diff)
 		}
@@ -1325,21 +1325,21 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	if hasFlag(m.Flags, fm.SRC_DIRECTORY) {
 		if hasFlag(m.Flags, fm.DST_REG_FILE) {
 			if hasFlag(m.Flags, fm.MOVE_INSIDE) {
-				l.Warnf("[NOOP][SRC_DIRECTORY - MOVE_INSIDE - DST_REG_FILE]")
+				l.Warn("[NOOP][SRC_DIRECTORY - MOVE_INSIDE - DST_REG_FILE]")
 			} else if hasFlag(m.Flags, fm.MOVE_OUTSIDE) {
-				l.Warnf("[NOOP][SRC_DIRECTORY - MOVE_OUTSIDE - DST_REG_FILE]")
+				l.Warn("[NOOP][SRC_DIRECTORY - MOVE_OUTSIDE - DST_REG_FILE]")
 			} else if hasFlag(m.Flags, fm.MOVE_INTERNALLY) {
-				l.Warnf("[NOOP][SRC_DIRECTORY - MOVE_INTERNALLY - DST_REG_FILE]")
+				l.Warn("[NOOP][SRC_DIRECTORY - MOVE_INTERNALLY - DST_REG_FILE]")
 			}
 		}
 	} else if hasFlag(m.Flags, fm.SRC_REG_FILE) {
 		if hasFlag(m.Flags, fm.DST_DIRECTORY) {
 			if hasFlag(m.Flags, fm.MOVE_INSIDE) {
-				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_INSIDE - DST_DIRECTORY]")
+				l.Warn("[NOOP][SRC_REG_FILE - MOVE_INSIDE - DST_DIRECTORY]")
 			} else if hasFlag(m.Flags, fm.MOVE_OUTSIDE) {
-				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_OUTSIDE - DST_DIRECTORY]")
+				l.Warn("[NOOP][SRC_REG_FILE - MOVE_OUTSIDE - DST_DIRECTORY]")
 			} else if hasFlag(m.Flags, fm.MOVE_INTERNALLY) {
-				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_INTERNALLY - DST_DIRECTORY]")
+				l.Warn("[NOOP][SRC_REG_FILE - MOVE_INTERNALLY - DST_DIRECTORY]")
 			}
 		}
 	}
@@ -1501,7 +1501,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		hostInodes, err := TracingPolicyInitFsScanner(policy.TpName(), kprobes, option.Config.BpfDir, e.PinPathPrefix, false)
 		if err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitScanner)
-			l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
+			l.Warn("TracingPolicyInitFsScanner failed!", logfields.Error, err)
 		} else {
 			mapHelpers.Copy(allInodes, hostInodes)
 		}
@@ -1509,7 +1509,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		digestMap, err := TracingPolicyPathDigestsFsScanner(kprobes, sel)
 		if err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitScanner)
-			l.WithError(err).Warnf("TracingPolicyPathDigestsFsScanner failed!")
+			l.Warn("TracingPolicyPathDigestsFsScanner failed!", logfields.Error, err)
 		} else {
 			for k, v := range digestMap {
 				if _, ok := allDigestMaps[k]; !ok {
@@ -1547,7 +1547,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		containerInodes, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root, false)
 		if err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitContainerScanner)
-			logger.GetLogger().WithError(err).Warnf("TracingPolicyInitContainerFsScanner failed")
+			logger.GetLogger().Warn("TracingPolicyInitContainerFsScanner failed", logfields.Error, err)
 		} else {
 			mapHelpers.Copy(allInodes, containerInodes)
 		}
@@ -1557,7 +1557,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		digestMap, err := TracingPolicyPathDigestsContainerFsScanner([]fm.SpecPinPath{s}, i.cid, i.namespace, i.name, i.root, false)
 		if err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitContainerScanner)
-			l.WithError(err).Warnf("TracingPolicyPathDigestsContainerFsScanner failed!")
+			l.Warn("TracingPolicyPathDigestsContainerFsScanner failed!", logfields.Error, err)
 		} else {
 			for k, v := range digestMap {
 				if _, ok := allDigestMaps[k]; !ok {
@@ -1569,32 +1569,29 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		}
 	}
 
-	logger.GetLogger().WithFields(logrus.Fields{
-		"time":           time.Since(t0).String(),
-		"total-inodes":   len(allInodes),
-		"host-inodes":    numHostInodes,
-		"num-pods":       len(allPods),
-		"num-containers": len(allContainers),
-	}).Infof("Completed path scanning for %s.", e.TpName)
+	logger.GetLogger().Info(fmt.Sprintf("Completed path scanning for %s.", e.TpName),
+		"time", time.Since(t0).String(),
+		"total-inodes", len(allInodes),
+		"host-inodes", numHostInodes,
+		"num-pods", len(allPods),
+		"num-containers", len(allContainers))
 
 	switch tpConf.watchedInodeMapSizePolicy {
 	case "auto":
 		config.MaxWatchedInodes = uint32(float32(len(allInodes))*tpConf.watchedInodeMapSizeMultiplier) + tpConf.watchedInodeMapSizeConstant
-		logger.GetLogger().WithFields(logrus.Fields{
-			"max-inode-map-size":      config.MaxWatchedInodes,
-			"user-defined-multiplier": tpConf.watchedInodeMapSizeMultiplier,
-			"user-defined-constant":   tpConf.watchedInodeMapSizeConstant,
-		}).Infof("Using automatic map sizing for %s.", e.TpName)
+		logger.GetLogger().Info(fmt.Sprintf("Using automatic map sizing for %s.", e.TpName),
+			"max-inode-map-size", config.MaxWatchedInodes,
+			"user-defined-multiplier", tpConf.watchedInodeMapSizeMultiplier,
+			"user-defined-constant", tpConf.watchedInodeMapSizeConstant)
 	case "fixed":
 		// first check if the fixed size is enough to start the sensor
 		if uint32(len(allInodes)) >= tpConf.watchedInodeMapMaxiumSize {
 			return nil, fmt.Errorf("the fixed size of inode map (%d) for files is not enough to start the sensor: %d", tpConf.watchedInodeMapMaxiumSize, len(allInodes))
 		}
 		config.MaxWatchedInodes = tpConf.watchedInodeMapMaxiumSize
-		logger.GetLogger().WithFields(logrus.Fields{
-			"max-inode-map-size": config.MaxWatchedInodes,
-			"user-defined-size":  tpConf.watchedInodeMapMaxiumSize,
-		}).Infof("Using fixed map sizing for %s.", e.TpName)
+		logger.GetLogger().Info(fmt.Sprintf("Using fixed map sizing for %s.", e.TpName),
+			"max-inode-map-size", config.MaxWatchedInodes,
+			"user-defined-size", tpConf.watchedInodeMapMaxiumSize)
 	default:
 		return nil, fmt.Errorf("unknown watchedInodeMapSizePolicy: %s", tpConf.watchedInodeMapSizePolicy)
 	}
@@ -2093,7 +2090,8 @@ func getIoUringHooks(spec *btf.Spec, ioUringSupport bool, hooks []FimHook) []Fim
 		return append(hooks, FimIoUringHooks[:]...)
 	}
 
-	logger.GetLogger().WithFields(logrus.Fields{"io_read": hasIoRead, "io_write": hasIoWrite}).Warn("Cannot find io_read/io_write hooks for io_uring. Falling back to io_issue_sqe.")
+	logger.GetLogger().Warn("Cannot find io_read/io_write hooks for io_uring. Falling back to io_issue_sqe.",
+		"io_read", hasIoRead, "io_write", hasIoWrite)
 
 	// if they are unavailable we try to load io_issue_sqe hook
 	return append(hooks, FimIoUringSingleHooks[:]...)
@@ -2206,7 +2204,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode ModeWithError, digestSup
 	default:
 		return nil, mode.Err
 	}
-	logger.GetLogger().Infof("Loading file hooks for %s", m)
+	logger.GetLogger().Info("Loading file hooks for " + m)
 
 	fimProgs := make([]FimProg, 0)
 	for _, h := range hooks {
@@ -2242,7 +2240,7 @@ func findHooks(config *fileapi.FileConfigMapValue, mode ModeWithError, digestSup
 		p, err := fgsBTF.GetFuncProto(spec, h.name, kretprobe)
 		if err != nil {
 			if h.name == "security_path_rename" {
-				logger.GetLogger().Warnf("failed to find %s/security_path_rename hook, will continue without it", h.tp)
+				logger.GetLogger().Warn(fmt.Sprintf("failed to find %s/security_path_rename hook, will continue without it", h.tp))
 				config.HasSecurityPathRename = 0
 				continue
 			}
@@ -2275,29 +2273,29 @@ func findHooks(config *fileapi.FileConfigMapValue, mode ModeWithError, digestSup
 // returns the mode (i.e. Observe, Enforce etc.) and if the kernel supports file digests
 func probeFileMode(s *fm.KernelSelectorState, h TpMode) (ModeWithError, bool) {
 	supportTracing := utils.SupportFmodRet()
-	logger.GetLogger().Infof("probeTracingModifyReturn() = %t", supportTracing)
-	logger.GetLogger().Infof("HaveProgramType(ebpf.Tracing) = %t", (features.HaveProgramType(ebpf.Tracing) == nil))
+	logger.GetLogger().Info(fmt.Sprintf("probeTracingModifyReturn() = %t", supportTracing))
+	logger.GetLogger().Info(fmt.Sprintf("HaveProgramType(ebpf.Tracing) = %t", features.HaveProgramType(ebpf.Tracing) == nil))
 
 	supportLSM := utils.SupportLSM()
 	supportImaFileHash := (probeImaFileHashHelper() == nil)
-	logger.GetLogger().Infof("probeLSM() = %t probeImaFileHashHelper() = %t", supportLSM, supportImaFileHash)
-	logger.GetLogger().Infof("HaveProgramType(ebpf.LSM) = %t", (features.HaveProgramType(ebpf.LSM) == nil))
+	logger.GetLogger().Info(fmt.Sprintf("probeLSM() = %t probeImaFileHashHelper() = %t", supportLSM, supportImaFileHash))
+	logger.GetLogger().Info(fmt.Sprintf("HaveProgramType(ebpf.LSM) = %t", features.HaveProgramType(ebpf.LSM) == nil))
 
 	algo, err := probeImaEnabled()
-	logger.GetLogger().WithError(err).WithField("algo", algo).Infof("probeImaEnabled()")
+	logger.GetLogger().Info("probeImaEnabled()", logfields.Error, err, "algo", algo)
 
 	supportBpfLoop := (probeBpfLoop() == nil)
-	logger.GetLogger().Infof("probeBpfLoop() = %t", supportBpfLoop)
+	logger.GetLogger().Info(fmt.Sprintf("probeBpfLoop() = %t", supportBpfLoop))
 
 	supportBpfForEachMapElem := (probeForEachMapElem() == nil)
-	logger.GetLogger().Infof("probeForEachMapElem() = %t", supportBpfForEachMapElem)
+	logger.GetLogger().Info(fmt.Sprintf("probeForEachMapElem() = %t", supportBpfForEachMapElem))
 
-	logger.GetLogger().WithFields(logrus.Fields{
-		"security_file_permission":  (probeDpathSecurityFilePermission() == nil),
-		"security_path_truncate":    (probeDpathSecurityPathTruncate() == nil),
-		"security_file_open":        (probeDpathSecurityFileOpen() == nil),
-		"security_kernel_read_file": (probeDpathSecurityKernelReadFile() == nil),
-	}).Infof("probe bpf_d_path support")
+	logger.GetLogger().Info("probe bpf_d_path support",
+		"security_file_permission", probeDpathSecurityFilePermission() == nil,
+		"security_path_truncate", probeDpathSecurityPathTruncate() == nil,
+		"security_file_open", probeDpathSecurityFileOpen() == nil,
+		"security_kernel_read_file", probeDpathSecurityKernelReadFile() == nil,
+	)
 
 	digestSupport := supportLSM && supportImaFileHash
 
@@ -2657,10 +2655,10 @@ func (k *observerFileSensor) PolicyHandler(
 	if !tpConf.forceLoad && !kernels.MinKernelVersion("4.18.0") {
 		return nil, fmt.Errorf("FileMonitoring requires at least 4.18.0 version")
 	}
-	logger.GetLogger().Infof("FileMonitoring is enabled with %d prefixes and %d patterns to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsPatterns), len(spec.FileMonitoring.PathsExclude))
+	logger.GetLogger().Info(fmt.Sprintf("FileMonitoring is enabled with %d prefixes and %d patterns to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsPatterns), len(spec.FileMonitoring.PathsExclude)))
 
 	if !spec.FileMonitoring.MonitorHostFiles && spec.FileMonitoring.PodSelector == nil {
-		logger.GetLogger().Warnf("FileMonitoring policy with false monitorHostFile and nil PodSelector will not match anything")
+		logger.GetLogger().Warn("FileMonitoring policy with false monitorHostFile and nil PodSelector will not match anything")
 	}
 
 	mode, pathMatcher, err := GetTpMode(newFileSpec)
@@ -2690,7 +2688,7 @@ func (k *observerFileSensor) PolicyHandler(
 	}
 
 	ioUringSupport := fm.SupportIoUring()
-	logger.GetLogger().Infof("FileMonitoring kernel supports io_uring: %t", ioUringSupport)
+	logger.GetLogger().Info(fmt.Sprintf("FileMonitoring kernel supports io_uring: %t", ioUringSupport))
 
 	config := fileapi.FileConfigMapValue{
 		HasSecurityPathRename: 1,

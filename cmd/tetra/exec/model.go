@@ -34,6 +34,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
@@ -45,7 +46,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/rivo/tview"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/xlab/treeprint"
@@ -117,12 +117,11 @@ func connect(_ context.Context) (*grpc.ClientConn, string, error) {
 		// if address could not be found in tetragon-info.json file, use default
 		if err != nil {
 			common.ServerAddress = defaultServerAddress
-			logger.GetLogger().WithField("ServerAddress", common.ServerAddress).Debug("connect to server using default value")
+			logger.GetLogger().Debug("connect to server using default value", "ServerAddress", common.ServerAddress)
 		} else {
-			logger.GetLogger().WithFields(logrus.Fields{
-				"InitInfoFile":  defaults.InitInfoFile,
-				"ServerAddress": common.ServerAddress,
-			}).Debug("connect to server using address in info file")
+			logger.GetLogger().Debug("connect to server using address in info file",
+				"InitInfoFile", defaults.InitInfoFile,
+				"ServerAddress", common.ServerAddress)
 		}
 	}
 
@@ -377,12 +376,12 @@ func NewApplicationModelClient() *ApplicationModelClient {
 			if attempts < common.Retries {
 				// Exponential backoff
 				attempts++
-				logger.GetLogger().WithField("server-address", serverAddr).WithField("attempts", attempts).WithError(err).Error("Connection attempt failed, retrying...")
+				logger.GetLogger().Error("Connection attempt failed, retrying...", "server-address", serverAddr, "attempts", attempts)
 				time.Sleep(backoff)
 				backoff *= 2
 				continue
 			}
-			logger.GetLogger().WithField("server-address", serverAddr).WithField("attempts", attempts).WithError(err).Fatal("Failed to connect to server")
+			logger.Fatal(logger.GetLogger(), "Failed to connect to server", "server-address", serverAddr, "attempts", attempts, logfields.Error, err)
 		}
 		break
 	}
@@ -409,12 +408,12 @@ func NewConnectedModelClient() ConnectedModelClient {
 			if attempts < common.Retries {
 				// Exponential backoff
 				attempts++
-				logger.GetLogger().WithField("server-address", serverAddr).WithField("attempts", attempts).WithError(err).Error("Connection attempt failed, retrying...")
+				logger.GetLogger().Error("Connection attempt failed, retrying...", "server-address", serverAddr, "attempts", attempts, logfields.Error, err)
 				time.Sleep(backoff)
 				backoff *= 2
 				continue
 			}
-			logger.GetLogger().WithField("server-address", serverAddr).WithField("attempts", attempts).WithError(err).Fatal("Failed to connect to server")
+			logger.Fatal(logger.GetLogger(), "Failed to connect to server", "server-address", serverAddr, "attempts", attempts, logfields.Error, err)
 		}
 		break
 	}
@@ -805,7 +804,7 @@ func getProcessDebug() (*tetragon.GetProcessMapResponse, error) {
 
 	res, err := c.Client.GetProcessMap(c.Ctx, &tetragon.GetProcessMapRequest{})
 	if err != nil || res == nil {
-		logger.GetLogger().WithError(err).Warn("failed to get process map")
+		logger.GetLogger().Warn("failed to get process map", logfields.Error, err)
 		return nil, err
 	}
 
@@ -879,7 +878,7 @@ func getDestinationDebug() (*tetragon.GetDestinationMapResponse, error) {
 
 	res, err := c.Client.GetDestinationMap(c.Ctx, &tetragon.GetDestinationMapRequest{})
 	if err != nil || res == nil {
-		logger.GetLogger().WithError(err).Warn("failed to get destination map")
+		logger.GetLogger().Warn("failed to get destination map", logfields.Error, err)
 		return nil, err
 	}
 
@@ -952,7 +951,7 @@ func getDebug() (*tetragon.GetEndpointMapResponse, error) {
 
 	res, err := c.Client.GetEndpointMap(c.Ctx, &tetragon.GetEndpointMapRequest{})
 	if err != nil || res == nil {
-		logger.GetLogger().WithError(err).Warn("failed to get application model")
+		logger.GetLogger().Warn("failed to get application model", logfields.Error, err)
 		return nil, err
 	}
 

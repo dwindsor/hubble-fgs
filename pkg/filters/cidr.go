@@ -113,7 +113,7 @@ func (f *cidrFilter) getIPField(res *tetragon.GetEventsResponse) ([]string, bool
 			return []string{ip}, true
 		}
 	default:
-		logger.GetLogger().WithField("filter_type", fmt.Sprintf("%T", f)).Error("Unsupported CIDR filter type")
+		logger.GetLogger().Error("Unsupported CIDR filter type", "filter_type", fmt.Sprintf("%T", f))
 		// fall through to the return statement below
 	}
 	return nil, false

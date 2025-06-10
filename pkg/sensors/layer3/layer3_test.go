@@ -31,6 +31,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -112,7 +113,7 @@ func netstat() {
 			logger.GetLogger().Info(line)
 		}
 	} else {
-		logger.GetLogger().WithError(err).Info("netstat failed")
+		logger.GetLogger().Info("netstat failed", logfields.Error, err)
 	}
 }
 

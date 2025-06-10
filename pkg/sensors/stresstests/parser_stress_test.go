@@ -92,7 +92,7 @@ func startTlsWebServer(ctx context.Context) (int, chan error, error) {
 					continue
 				}
 				nCopied, err := io.Copy(c, c)
-				logger.GetLogger().Debugf("sent back %d bytes", nCopied)
+				logger.GetLogger().Debug(fmt.Sprintf("sent back %d bytes", nCopied))
 				if err != nil {
 					errChan <- fmt.Errorf("failed to send back bytes: %w", err)
 				}
@@ -154,7 +154,7 @@ func (tc *testCase) run(t *testing.T) {
 
 		for i := 0; i < tc.numConnections; i++ {
 			func() {
-				logger.GetLogger().WithField("i", i).Info("starting Connect-Request-Response round...")
+				logger.GetLogger().Info("starting Connect-Request-Response round...", "i", i)
 
 				// Call this first to ensure error queue is empty before attempting
 				// a connection, preventing deadlock.
@@ -170,12 +170,12 @@ func (tc *testCase) run(t *testing.T) {
 
 				payload := []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 				nWrote, err := conn.Write(payload)
-				logger.GetLogger().Debugf("wrote %d bytes", nWrote)
+				logger.GetLogger().Debug(fmt.Sprintf("wrote %d bytes", nWrote))
 				require.NoError(t, err, "payload should send")
 
 				response := make([]byte, len(payload))
 				nRead, err := conn.Read(response)
-				logger.GetLogger().Debugf("read %d bytes", nRead)
+				logger.GetLogger().Debug(fmt.Sprintf("read %d bytes", nRead))
 				require.NoError(t, err, "response should be received")
 
 				assert.Equal(t, response, payload, "server should reply with exact payload")
@@ -185,7 +185,7 @@ func (tc *testCase) run(t *testing.T) {
 }
 
 func TestTlsConnectionsSucceed(t *testing.T) {
-	testutils.CaptureLog(t, logger.DefaultLogger)
+	testutils.CaptureLog(t, logger.GetLogger())
 
 	testCases := []testCase{
 		{

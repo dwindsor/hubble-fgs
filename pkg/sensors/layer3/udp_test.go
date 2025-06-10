@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand"
 	"net"
 	"os"
@@ -42,7 +43,6 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
-	"github.com/sirupsen/logrus"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -951,7 +951,7 @@ func testUdpConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 	var serverBytesReceived uint64
 	var serverSegsIn uint32
 	statsChecker := &ec.FnEventChecker{
-		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
+		NextCheckFn: func(event_ ec.Event, _ *slog.Logger) (bool, error) {
 			event, ok := event_.(*tetragon.ProcessSockStats)
 			if !ok {
 				return false, fmt.Errorf("event is not a sockstats event")
@@ -975,7 +975,7 @@ func testUdpConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 
 			return false, fmt.Errorf("sockstats event is neither from client nor server")
 		},
-		FinalCheckFn: func(_ *logrus.Logger) error {
+		FinalCheckFn: func(_ *slog.Logger) error {
 			defer func() {
 				clientBytesSent = 0
 				clientSegsOut = 0
@@ -1557,7 +1557,7 @@ func testUdpConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 	var serverBytesReceived uint64
 	var serverSegsIn uint32
 	statsChecker := &ec.FnEventChecker{
-		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
+		NextCheckFn: func(event_ ec.Event, _ *slog.Logger) (bool, error) {
 			event, ok := event_.(*tetragon.ProcessSockStats)
 			if !ok {
 				return false, fmt.Errorf("event is not a sockstats event")
@@ -1581,7 +1581,7 @@ func testUdpConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 
 			return false, fmt.Errorf("sockstats event is neither from client nor server")
 		},
-		FinalCheckFn: func(_ *logrus.Logger) error {
+		FinalCheckFn: func(_ *slog.Logger) error {
 			defer func() {
 				clientBytesSent = 0
 				clientSegsOut = 0
@@ -2190,7 +2190,7 @@ func testUdpIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitG
 	var serverSegsIn uint32
 
 	statsChecker := &ec.FnEventChecker{
-		NextCheckFn: func(event_ ec.Event, _ *logrus.Logger) (bool, error) {
+		NextCheckFn: func(event_ ec.Event, _ *slog.Logger) (bool, error) {
 			event, ok := event_.(*tetragon.ProcessSockStats)
 			if !ok {
 				return false, fmt.Errorf("event is not a sockstats event")
@@ -2218,7 +2218,7 @@ func testUdpIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitG
 
 			return false, fmt.Errorf("sockstats event is neither from client nor server")
 		},
-		FinalCheckFn: func(_ *logrus.Logger) error {
+		FinalCheckFn: func(_ *slog.Logger) error {
 			defer func() {
 				clientBytesSent = 0
 				clientBytesReceived = 0
@@ -2293,7 +2293,7 @@ func testUdpIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitG
 	}
 
 	serverPid := uint32(cmdServer.Process.Pid)
-	logger.GetLogger().WithField("ServerPid", serverPid).Info("Running")
+	logger.GetLogger().Info("Running", "ServerPid", serverPid)
 
 	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8000")
 	stdin, err := cmdClient.StdinPipe()

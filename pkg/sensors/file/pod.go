@@ -14,9 +14,11 @@ package file
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/google/uuid"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
@@ -124,19 +126,19 @@ func podContainerDiff(oldPod *v1.Pod, newPod *v1.Pod) ([]string, []string) {
 func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) error {
 	containerID, err := arg.ContainerID()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("failed to retrieve container id, aborting hook")
+		logger.GetLogger().Warn("failed to retrieve container id, aborting hook", logfields.Error, err)
 		return err
 	}
 
 	podIDstr, err := arg.PodID()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("failed to retrieve pod id, aborting hook")
+		logger.GetLogger().Warn("failed to retrieve pod id, aborting hook", logfields.Error, err)
 		return err
 	}
 
 	pod, err := arg.Pod()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("failed to get pod info, aborting hook.")
+		logger.GetLogger().Warn("failed to get pod info, aborting hook.", logfields.Error, err)
 		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileGetPodInfo)
 		return err
 	}
@@ -152,7 +154,7 @@ func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) 
 		}
 	} else {
 		// we expect to have the pod created here
-		logger.GetLogger().Warnf("fim: pod [%s] does not exists in our metadata during the call of rthooks.CreateContainer", pod.Name)
+		logger.GetLogger().Warn(fmt.Sprintf("fim: pod [%s] does not exists in our metadata during the call of rthooks.CreateContainer", pod.Name), logfields.Error, err)
 	}
 	allPodsMu.Unlock()
 
@@ -182,13 +184,13 @@ func rthooksCreateContainer(_ context.Context, arg *rthooks.CreateContainerArg) 
 func podhooksAddFunc(obj interface{}) {
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
-		logger.GetLogger().Warn("fim, add-pod handler: unexpected object type: %T", pod)
+		logger.GetLogger().Warn(fmt.Sprintf("fim, add-pod handler: unexpected object type: %T", pod))
 		return
 	}
 
 	podID, err := uuid.Parse(string(pod.UID))
 	if err != nil {
-		logger.GetLogger().WithField("pod-id", pod.UID).WithError(err).Warn("fim, add-pod handler: failed to parse pod id")
+		logger.GetLogger().Warn("fim, add-pod handler: failed to parse pod id", logfields.Error, err, "pod-id", pod.UID)
 		return
 	}
 
@@ -197,7 +199,7 @@ func podhooksAddFunc(obj interface{}) {
 
 	allPodsMu.Lock()
 	if _, ok := allPods[podID.String()]; ok {
-		logger.GetLogger().Warnf("fim: pod [%s] already exists in our metadata", pod.Name)
+		logger.GetLogger().Warn(fmt.Sprintf("fim: pod [%s] already exists in our metadata", pod.Name))
 	} else {
 		d := PodInfo{
 			podName:      pod.Name,
@@ -225,11 +227,11 @@ func podhooksAddFunc(obj interface{}) {
 	for _, c := range newCIDs {
 		if _, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, c, pod.Namespace, pod.Name, "", true); err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitPodAddScanner)
-			logger.GetLogger().WithError(err).Warnf("add: TracingPolicyInitContainerFsScanner failed")
+			logger.GetLogger().Warn("add: TracingPolicyInitContainerFsScanner failed", logfields.Error, err)
 		}
 		if _, err = TracingPolicyPathDigestsContainerFsScanner([]fm.SpecPinPath{}, c, pod.Namespace, pod.Name, "", true); err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitPodAddScanner)
-			logger.GetLogger().WithError(err).Warnf("add: TracingPolicyPathDigestsContainerFsScanner failed")
+			logger.GetLogger().Warn("add: TracingPolicyPathDigestsContainerFsScanner failed", logfields.Error, err)
 		}
 	}
 }
@@ -238,25 +240,25 @@ func podhooksUpdateFunc(oldObj, newObj interface{}) {
 	pod1, ok1 := oldObj.(*v1.Pod)
 	pod2, ok2 := newObj.(*v1.Pod)
 	if !ok1 || !ok2 {
-		logger.GetLogger().Warn("fim, update-pod: unexpected object type(s): old:%T new:%T", pod1, pod2)
+		logger.GetLogger().Warn(fmt.Sprintf("fim, update-pod: unexpected object type(s): old:%T new:%T", pod1, pod2))
 		return
 	}
 	if pod1.UID != pod2.UID {
-		logger.GetLogger().Warn("fim, update-pod: unexpected pod ids: old:%T new:%T", pod1.UID, pod2.UID)
+		logger.GetLogger().Warn(fmt.Sprintf("fim, update-pod: unexpected pod ids: old:%T new:%T", pod1.UID, pod2.UID))
 		return
 	}
 	if pod1.Name != pod2.Name {
-		logger.GetLogger().Warn("fim, update-pod: unexpected pod name: old:%s new:%s", pod1.Name, pod2.Name)
+		logger.GetLogger().Warn(fmt.Sprintf("fim, update-pod: unexpected pod name: old:%s new:%s", pod1.Name, pod2.Name))
 		return
 	}
 	if pod1.Namespace != pod2.Namespace {
-		logger.GetLogger().Warn("fim, update-pod: unexpected pod namespaces: old:%s new:%s", pod1.Namespace, pod2.Namespace)
+		logger.GetLogger().Warn(fmt.Sprintf("fim, update-pod: unexpected pod namespaces: old:%s new:%s", pod1.Namespace, pod2.Namespace))
 		return
 	}
 
 	podID, err := uuid.Parse(string(pod1.UID))
 	if err != nil {
-		logger.GetLogger().WithField("pod-id", pod1.UID).WithError(err).Warn("fim, update-pod: failed to parse id")
+		logger.GetLogger().Warn("fim, update-pod: failed to parse id", logfields.Error, err, "pod-id", pod1.UID)
 		return
 	}
 
@@ -280,7 +282,7 @@ func podhooksUpdateFunc(oldObj, newObj interface{}) {
 			}
 		}
 	} else {
-		logger.GetLogger().Warnf("fim: pod [%s] does not exist in our metadata during update", pod1.Name)
+		logger.GetLogger().Warn(fmt.Sprintf("fim: pod [%s] does not exist in our metadata during update", pod1.Name))
 	}
 	allPodsMu.Unlock()
 
@@ -293,17 +295,17 @@ func podhooksUpdateFunc(oldObj, newObj interface{}) {
 	for _, c := range delCIDs {
 		if err := TracingPolicyDestroyContainerFsScanner(c); err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileDestroyPodUpdateScanner)
-			logger.GetLogger().WithError(err).Warnf("update: TracingPolicyDestroyContainerFsScanner failed")
+			logger.GetLogger().Warn("update: TracingPolicyDestroyContainerFsScanner failed", logfields.Error, err)
 		}
 	}
 	for _, c := range newCIDs {
 		if _, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, c, pod1.Namespace, pod1.Name, "", true); err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitPodUpdateScanner)
-			logger.GetLogger().WithError(err).Warnf("update: TracingPolicyInitContainerFsScanner failed")
+			logger.GetLogger().Warn("update: TracingPolicyInitContainerFsScanner failed", logfields.Error, err)
 		}
 		if _, err = TracingPolicyPathDigestsContainerFsScanner([]fm.SpecPinPath{}, c, pod1.Namespace, pod1.Name, "", true); err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileInitPodUpdateScanner)
-			logger.GetLogger().WithError(err).Warnf("add: TracingPolicyPathDigestsContainerFsScanner failed")
+			logger.GetLogger().Warn("add: TracingPolicyPathDigestsContainerFsScanner failed", logfields.Error, err)
 		}
 	}
 }
@@ -311,13 +313,13 @@ func podhooksUpdateFunc(oldObj, newObj interface{}) {
 func podhooksDeleteFunc(obj interface{}) {
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
-		logger.GetLogger().Warn("fim, add-pod handler: unexpected object type: %T", pod)
+		logger.GetLogger().Warn(fmt.Sprintf("fim, add-pod handler: unexpected object type: %T", pod))
 		return
 	}
 
 	podID, err := uuid.Parse(string(pod.UID))
 	if err != nil {
-		logger.GetLogger().WithField("pod-id", pod.UID).WithError(err).Warn("fim, add-pod handler: failed to parse pod id")
+		logger.GetLogger().Warn("fim, add-pod handler: failed to parse pod id", logfields.Error, err, "pod-id", pod.UID)
 		return
 	}
 
@@ -333,7 +335,7 @@ func podhooksDeleteFunc(obj interface{}) {
 			}
 		}
 	} else {
-		logger.GetLogger().Warnf("fim: pod [%s] does not exist in our metadata during delete", pod.Name)
+		logger.GetLogger().Warn(fmt.Sprintf("fim: pod [%s] does not exist in our metadata during delete", pod.Name))
 	}
 	delete(allPods, podID.String()) // delete the pod from our metadata
 	allPodsMu.Unlock()
@@ -347,7 +349,7 @@ func podhooksDeleteFunc(obj interface{}) {
 	for _, c := range delCIDs {
 		if err := TracingPolicyDestroyContainerFsScanner(c); err != nil {
 			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileDestroyPodDeleteScanner)
-			logger.GetLogger().WithError(err).Warnf("delete: TracingPolicyDestroyContainerFsScanner failed")
+			logger.GetLogger().Warn("delete: TracingPolicyDestroyContainerFsScanner failed", logfields.Error, err)
 		}
 	}
 }

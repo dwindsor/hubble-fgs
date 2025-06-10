@@ -30,6 +30,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
@@ -307,17 +308,21 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 		}
 
 		if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
-			logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding host files/directories failed")
+			logger.GetLogger().Warn("Adding host files/directories failed", "path", fm.PathPatternToString(p), "tracing-policy", args.PolicyName, logfields.Error, err)
 		} else {
-			logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added host files/directories")
+			logger.GetLogger().Debug("Added host files/directories",
+				"path", fm.PathPatternToString(p),
+				"tracing-policy", args.PolicyName,
+				"num-files",
+				fNum, "num-dirs", dNum)
 		}
 	}
 
 	for _, matcher := range prefixTree.Traverse() {
 		if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(0), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil { // rule ID will be overridden on match
-			logger.GetLogger().WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding host files/directories failed")
+			logger.GetLogger().Warn("Adding host files/directories failed", "tracing-policy", args.PolicyName, logfields.Error, err)
 		} else {
-			logger.GetLogger().WithField("tracing-policy", args.PolicyName).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added host files/directories")
+			logger.GetLogger().Debug("Added host files/directories", "tracing-policy", args.PolicyName, "num-files", fNum, "num-dirs", dNum)
 		}
 	}
 
@@ -326,9 +331,13 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 			Prefix: p,
 		}
 		if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
-			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Excluding host files/directories failed")
+			logger.GetLogger().Warn("Excluding host files/directories failed", "path", p, "tracing-policy", args.PolicyName, logfields.Error, err)
 		} else {
-			logger.GetLogger().WithField("path", p).WithField("tracing-policy", args.PolicyName).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Excluded host files/directories")
+			logger.GetLogger().Debug("Excluded host files/directories",
+				"path", p,
+				"tracing-policy", args.PolicyName,
+				"num-files",
+				fNum, "num-dirs", dNum)
 		}
 	}
 
@@ -370,12 +379,15 @@ func tracingPolicyFileDigests(args *fm.FsScannerDigests, reply *map[string]strin
 
 		// we cannot get digests for non-regular files
 		if !stat.Mode().IsRegular() {
-			logger.GetLogger().WithField("path", path).WithField("mode", stat.Mode()).Warn("Skipping non-regular files for digest computation")
+			logger.GetLogger().Warn("Skipping non-regular files for digest computation", "path", path, "mode", stat.Mode())
 			continue
 		}
 
 		if stat.Size() > maxFileSizeDigest {
-			logger.GetLogger().WithField("file-size", stat.Size()).WithField("max-file-size", maxFileSizeDigest).WithField("path", path).Warn("Skipping file for digest computation due to large size")
+			logger.GetLogger().Warn("Skipping file for digest computation due to large size",
+				"file-size", stat.Size(),
+				"max-file-size", maxFileSizeDigest,
+				"path", path)
 			continue
 		}
 
@@ -413,7 +425,10 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 			continue
 		}
 
-		logger.GetLogger().WithField("ns", args.PodNs).WithField("app", args.PodName).WithField("cid", args.ContainerID).Debug("fim: Adding digests for files")
+		logger.GetLogger().Debug("fim: Adding digests for files",
+			"ns", args.PodNs,
+			"app", args.PodName,
+			"cid", args.ContainerID)
 
 		var err error
 		rootDir := args.RootDir
@@ -440,12 +455,12 @@ func tracingPolicyContainerFileDigests(args *fm.FsScannerContainerDigests, reply
 
 				// we cannot get digests for non-regular files
 				if !stat.Mode().IsRegular() {
-					logger.GetLogger().WithField("path", path).WithField("mode", stat.Mode()).Warn("Skipping non-regular files for digest computation")
+					logger.GetLogger().Warn("Skipping non-regular files for digest computation", "path", path, "mode", stat.Mode())
 					continue
 				}
 
 				if stat.Size() > maxFileSizeDigest {
-					logger.GetLogger().WithField("file-size", stat.Size()).WithField("max-file-size", maxFileSizeDigest).WithField("path", path).Warn("Skipping file for digest computation due to large size")
+					logger.GetLogger().Warn("Skipping file for digest computation due to large size", "file-size", stat.Size(), "max-file-size", maxFileSizeDigest, "path", path)
 					continue
 				}
 
@@ -561,7 +576,7 @@ func renameDir(args *fm.FsScannerRename, reply *fm.FsScannerRenameReply) error {
 
 	if hasFlag(args.Flags, fm.MOVE_OUTSIDE) || hasFlag(args.Flags, fm.MOVE_INTERNALLY) {
 		if num, err := fm.WalkPathRenameCleanup(args.WalkPath, maps); err != nil {
-			logger.GetLogger().WithField("path", args.WalkPath).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Removing files/directories during rename failed")
+			logger.GetLogger().Warn("Removing files/directories during rename failed", "path", args.WalkPath, "tracing-policy", args.PolicyName, logfields.Error, err)
 		} else {
 			reply.Diff -= num
 		}
@@ -569,7 +584,7 @@ func renameDir(args *fm.FsScannerRename, reply *fm.FsScannerRenameReply) error {
 
 	if hasFlag(args.Flags, fm.MOVE_INSIDE) || hasFlag(args.Flags, fm.MOVE_INTERNALLY) {
 		if num, err := fm.WalkPathRenameAdd(args.WalkPath, maps, actionFn, locFn); err != nil {
-			logger.GetLogger().WithField("path", args.WalkPath).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding files/directories during rename failed")
+			logger.GetLogger().Warn("Adding files/directories during rename failed", "path", args.WalkPath, "tracing-policy", args.PolicyName, logfields.Error, err)
 		} else {
 			reply.Diff += num
 		}
@@ -606,7 +621,7 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 			continue
 		}
 
-		logger.GetLogger().WithField("ns", args.PodNs).WithField("app", args.PodName).WithField("cid", args.ContainerID).Debug("fim: Adding container files")
+		logger.GetLogger().Debug("fim: Adding container files", "ns", args.PodNs, "app", args.PodName, "cid", args.ContainerID)
 
 		var maps fm.InodeStore
 		var err error
@@ -649,17 +664,25 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 				}
 
 				if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
-					logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Adding container files/directories failed")
+					logger.GetLogger().Warn("Adding container files/directories failed",
+						"path", fm.PathPatternToString(p), "tracing-policy", tp.Spec, "containerID", containerID, logfields.Error, err)
 				} else {
-					logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added container files/directories")
+					logger.GetLogger().Debug("Added container files/directories",
+						"path", fm.PathPatternToString(p),
+						"tracing-policy", tp.Spec,
+						"containerID", containerID,
+						"num-files", fNum,
+						"num-dirs", dNum)
 				}
 			}
 
 			for _, matcher := range prefixTree.Traverse() {
 				if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(0), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil { // rule ID will be overridden on match
-					logger.GetLogger().WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Adding container files/directories failed")
+					logger.GetLogger().Warn("Adding container files/directories failed",
+						logfields.Error, err, "tracing-policy", tp.Spec, "containerID", containerID)
 				} else {
-					logger.GetLogger().WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added container files/directories")
+					logger.GetLogger().Debug("Added container files/directories",
+						"tracing-policy", tp.Spec, "containerID", containerID, "num-files", fNum, "num-dirs", dNum)
 				}
 			}
 
@@ -668,9 +691,14 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 					Prefix: p,
 				}
 				if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
-					logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Excluding container files/directories failed")
+					logger.GetLogger().Warn("Excluding container files/directories failed", "path", p, "tracing-policy", tp.Spec, "containerID", containerID, logfields.Error, err)
 				} else {
-					logger.GetLogger().WithField("path", p).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Excluded container files/directories")
+					logger.GetLogger().Debug("Excluded container files/directories",
+						"path", p,
+						"tracing-policy", tp.Spec,
+						"containerID", containerID,
+						"num-files", fNum,
+						"num-dirs", dNum)
 				}
 			}
 
@@ -775,29 +803,29 @@ func Main() {
 	}
 
 	if !isFlagPassed("hostMntNs") {
-		logger.GetLogger().Warnf("hostMntNs flag is not passed in tetragon-fs-scanner")
+		logger.GetLogger().Warn("hostMntNs flag is not passed in tetragon-fs-scanner")
 		os.Exit(1)
 	}
 
 	if !isFlagPassed("scannerFifoPath") {
-		logger.GetLogger().Warnf("scannerFifoPath flag is not passed in tetragon-fs-scanner")
+		logger.GetLogger().Warn("scannerFifoPath flag is not passed in tetragon-fs-scanner")
 		os.Exit(1)
 	}
 
 	if isFlagPassed("runtimeEndpoint") {
 		containerRuntimeEndpoint = *runtimeEndpoint
-		logger.GetLogger().WithField("endpoint", containerRuntimeEndpoint).Info("fim: Using custom container runtime endpoint")
+		logger.GetLogger().Info("fim: Using custom container runtime endpoint", "endpoint", containerRuntimeEndpoint)
 	} else {
 		logger.GetLogger().Info("fim: Using default runtime endpoints")
 	}
 
 	inum, err := GetMntNsInode()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("GetPidNsInode")
+		logger.GetLogger().Warn("GetPidNsInode", logfields.Error, err)
 		os.Exit(2)
 	}
 	if inum != *hostMntNs {
-		logger.GetLogger().Warnf("Mnt namespace of tetragon-fs-scanner (%d) does not match host mnt namespace", inum)
+		logger.GetLogger().Warn(fmt.Sprintf("Mnt namespace of tetragon-fs-scanner (%d) does not match host mnt namespace", inum))
 		os.Exit(3)
 	}
 

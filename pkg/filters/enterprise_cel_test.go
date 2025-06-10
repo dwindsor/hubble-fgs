@@ -7,13 +7,13 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
-	"github.com/sirupsen/logrus"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCELCIDRRange(t *testing.T) {
-	log := logrus.New()
+	log := logger.GetLogger()
 
 	f := []*tetragon.Filter{{CelExpression: []string{"cidr('10.0.0.0/16').containsIP(process_connect.source_ip) && !(process_connect.source_ip in ['10.0.20.137', '10.0.31.128'])"}}}
 	ff, err := filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{filters.NewCELExpressionFilter(log)})

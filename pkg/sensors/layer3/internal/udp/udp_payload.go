@@ -10,8 +10,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 	"golang.org/x/net/dns/dnsmessage"
 
@@ -34,7 +34,7 @@ func handleUdpPayload(r *bytes.Reader) ([]observer.Event, error) {
 	m := networkapi.MsgIPEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warnf("Udp Payload Read error")
+		logger.GetLogger().Warn("Udp Payload Read error", logfields.Error, err)
 		return nil, err
 	}
 	return handleUdpDns(&m, r)
@@ -49,7 +49,7 @@ func handleUdpDns(m *networkapi.MsgIPEvent, r *bytes.Reader) ([]observer.Event, 
 	buf := make([]byte, int(m.Common.Size)-int(unsafe.Sizeof(m)))
 
 	if _, err := r.Read(buf); err != nil {
-		logger.GetLogger().WithError(err).Warnf("Udp Dns Read error")
+		logger.GetLogger().Warn("Udp Dns Read error", logfields.Error, err)
 		return nil, err
 	}
 
@@ -61,13 +61,13 @@ func handleUdpDns(m *networkapi.MsgIPEvent, r *bytes.Reader) ([]observer.Event, 
 
 	hdr, err := p.Start(buf)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warnf("Start error")
+		logger.GetLogger().Warn("Start error", logfields.Error, err)
 		return nil, err
 	}
 
 	qs, err := p.AllQuestions()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warnf("Questions error")
+		logger.GetLogger().Warn("Questions error", logfields.Error, err)
 		return nil, err
 	}
 
@@ -83,7 +83,7 @@ func handleUdpDns(m *networkapi.MsgIPEvent, r *bytes.Reader) ([]observer.Event, 
 			break
 		}
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Answer parse error")
+			logger.GetLogger().Warn("Answer parse error", logfields.Error, err)
 			return nil, err
 		}
 
@@ -91,14 +91,14 @@ func handleUdpDns(m *networkapi.MsgIPEvent, r *bytes.Reader) ([]observer.Event, 
 		case dnsmessage.TypeA:
 			r, err := p.AResource()
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Resource parse error")
+				logger.GetLogger().Warn("Resource parse error", logfields.Error, err)
 				return nil, err
 			}
 			ips = append(ips, r.A[:])
 		case dnsmessage.TypeAAAA:
 			r, err := p.AAAAResource()
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("AAAA Resource parse error")
+				logger.GetLogger().Warn("AAAA Resource parse error", logfields.Error, err)
 				return nil, err
 			}
 			ips = append(ips, r.AAAA[:])
@@ -254,7 +254,7 @@ func ParseSeqCheckSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tracing
 			copy(config.SeqCheckPorts[:], spec.Parser.Udp.SeqCheck.Ports[0:networkapi.UdpMaxSeqCheckPorts])
 		}
 		config.SeqCheckAppId = spec.Parser.Udp.SeqCheck.AppId
-		logger.GetLogger().WithField("Application ID", spec.Parser.Udp.SeqCheck.AppId).Info("Enable UDP sequence checking")
+		logger.GetLogger().Info("Enable UDP sequence checking", "Application ID", spec.Parser.Udp.SeqCheck.AppId)
 	} else {
 		config.SeqCheckAppId = 0
 	}
@@ -271,6 +271,6 @@ func ParseDisableSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingP
 	if DisableListenEvents {
 		config.DisableListenEvents = 1
 	}
-	logger.GetLogger().WithFields(logrus.Fields{"disableConnect": DisableCloseEvents, "disableListen": DisableListenEvents,
-		"disableClose": DisableCloseEvents, "disableStats": DisableStatsEvents}).Info("UDP event types")
+	logger.GetLogger().Info("UDP event types", "disableConnect", DisableCloseEvents, "disableListen", DisableListenEvents,
+		"disableClose", DisableCloseEvents, "disableStats", DisableStatsEvents)
 }

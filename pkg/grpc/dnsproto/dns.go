@@ -7,6 +7,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	ossEventmetrics "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/notify"
@@ -21,7 +22,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/dns/dnsmessage"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -46,14 +46,13 @@ func isValidDnsType(t uint32) bool {
 func addDnsType(t uint32, types []tetragon.DnsType, msg *MsgDnsUnix, answer bool) []tetragon.DnsType {
 	if !isValidDnsType(t) {
 		if option.Config.EnableDnsDebug {
-			logger.GetLogger().WithFields(logrus.Fields{
-				"type":   t,
-				"pid":    msg.Msg.ProcessKey.Pid,
-				"src":    logutils.FormatTupleSrc(&msg.Msg.Common, &msg.Msg.Tuple),
-				"dst":    logutils.FormatTupleDst(&msg.Msg.Common, &msg.Msg.Tuple),
-				"answer": answer,
-				"proto":  msg.Msg.Tuple.Proto,
-			}).Warn("Invalid DNS type")
+			logger.GetLogger().Warn("Invalid DNS type",
+				"type", t,
+				"pid", msg.Msg.ProcessKey.Pid,
+				"src", logutils.FormatTupleSrc(&msg.Msg.Common, &msg.Msg.Tuple),
+				"dst", logutils.FormatTupleDst(&msg.Msg.Common, &msg.Msg.Tuple),
+				"answer", answer,
+				"proto", msg.Msg.Tuple.Proto)
 		}
 		types = append(types, tetragon.DnsType_DNS_TYPE_UNDEF)
 		return types
@@ -71,7 +70,8 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 			Pid:       &wrapperspb.UInt32Value{Value: msg.Msg.ProcessKey.Pid},
 			StartTime: ktime.ToProto(msg.Msg.ProcessKey.Ktime),
 		}
-		logger.GetLogger().WithField("id in DNS event", process.GetProcessID(msg.Msg.ProcessKey.Pid, msg.Msg.ProcessKey.Ktime)).Debug("process not found in cache")
+		logger.GetLogger().Debug("process not found in cache",
+			"id in DNS event", process.GetProcessID(msg.Msg.ProcessKey.Pid, msg.Msg.ProcessKey.Ktime))
 	} else {
 		proc = processInt.UnsafeGetProcess()
 
@@ -128,7 +128,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	var err error
 	fgsEvent.Socket.DestinationNames, err = c.LookupDomains(fgsEvent.Socket.DestinationIp)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("DNS cache lookup failure")
+		logger.GetLogger().Warn("DNS cache lookup failure", logfields.Error, err)
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
@@ -175,7 +175,7 @@ func (msg *MsgDnsUnix) HandleMessage() *tetragon.GetEventsResponse {
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("HandleDnsMessage: Unhandled event")
+		logger.GetLogger().Warn("HandleDnsMessage: Unhandled event", "message", msg)
 	}
 	return res
 }

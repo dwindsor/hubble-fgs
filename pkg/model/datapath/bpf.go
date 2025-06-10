@@ -10,6 +10,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
@@ -55,24 +56,24 @@ func initMap() {
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	dstMap, err = ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
-		logger.GetLogger().Errorf("failed to pin DestinationMap (%s): %v", file, err)
+		logger.GetLogger().Error(fmt.Sprintf("failed to pin DestinationMap (%s): %v", file, err))
 	}
 
 	file = filepath.Join(bpf.MapPrefixPath(), processTreeBinaryUUIDMap)
 	binaryMap, err = ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", file).Warn("failed to open file")
+		logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
 	}
 
 	file = filepath.Join(bpf.MapPrefixPath(), processTreeUUIDBinaryMap)
 	uidBpfMap, err = ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).WithField("file", file).Warn("failed to open file")
+		logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
 	}
 
 	lpmMap, err = lpm.NewLPM()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("failed to create LPM programmer")
+		logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)
 	}
 }
 
@@ -96,7 +97,7 @@ func scheduleDomainMapFlush() {
 		if err == nil {
 			return
 		}
-		logger.GetLogger().WithError(err).Debug("retry domain mapping")
+		logger.GetLogger().Debug("retry domain mapping", logfields.Error, err)
 		time.Sleep(time.Duration(i) * time.Second)
 	}
 	logger.GetLogger().Warn("failed to program domain map policy incomplete")
@@ -160,7 +161,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		dst, err = c.AddEndpoint(*r.Endpoint.EP)
 		if err != nil {
 			p.AddError++
-			logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
+			logger.GetLogger().Warn("Failed to add endpoint for quota", logfields.Error, err)
 			return err
 		}
 	} else {
@@ -190,19 +191,19 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 
 	if r.Endpoint.EP != nil && r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
 		if err := lpmMap.Write(r.Endpoint.EP.Ip, dst); err != nil {
-			logger.GetLogger().WithError(err).Warn("Failed to create LPM id")
+			logger.GetLogger().Warn("Failed to create LPM id", logfields.Error, err)
 			return err
 		}
 	}
 
 	id, ok := library.GetId(r.Policy.Name)
 	if !ok {
-		logger.GetLogger().WithField("Policy", r.Policy.Name).Warn("programmer unable to map policy name to ID")
+		logger.GetLogger().Warn("programmer unable to map policy name to ID", "Policy", r.Policy.Name)
 	}
 
 	rule, ok := library.GetRuleId(r.Policy.Name, r.Policy.Rule)
 	if !ok {
-		logger.GetLogger().WithField("Policy", r.Policy.Name).WithField("Rule", r.Policy.Rule).Warn("programmer unable to map policy rule to ID")
+		logger.GetLogger().Warn("programmer unable to map policy rule to ID", "Policy", r.Policy.Name, "Rule", r.Policy.Rule)
 	}
 
 	key := &types.DestinationEndpointKey{
@@ -293,14 +294,14 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 		dst, err = c.AddEndpoint(*ep)
 		if err != nil {
 			p.DelError++
-			logger.GetLogger().WithError(err).Warn("Failed to add endpoint for quota")
+			logger.GetLogger().Warn("Failed to add endpoint for quota", logfields.Error, err)
 			return err
 		}
 	}
 
 	if r.Endpoint.EP != nil && r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
 		if err := lpmMap.Delete(r.Endpoint.EP.Ip); err != nil {
-			logger.GetLogger().WithError(err).Warn("Failed to delete LPM entry")
+			logger.GetLogger().Warn("Failed to delete LPM entry", logfields.Error, err)
 			return err
 		}
 	}

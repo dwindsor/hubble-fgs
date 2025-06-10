@@ -9,9 +9,9 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/sensors/unloader"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
@@ -64,7 +64,7 @@ func CGroupAttachWithFlags(targetFD int, flags uint32) program.AttachFunc {
 			Attach:  spec.AttachType,
 			Flags:   flags,
 		})
-		logger.GetLogger().WithError(err).Info("RawAttachWithFlags")
+		logger.GetLogger().Info("RawAttachWithFlags", logfields.Error, err)
 		if err != nil {
 			prog.Close()
 			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
@@ -160,7 +160,7 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 		} else if strings.Contains(n, "nop") {
 			fd = nopSockfd
 		} else {
-			logger.GetLogger().WithField("mapName", n).Warn("Discovered SkMsg program with unknown name")
+			logger.GetLogger().Warn("Discovered SkMsg program with unknown name", "mapName", n)
 		}
 		return fd
 	}
@@ -212,9 +212,8 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 			if err := link.RawDetachProgram(opts); err != nil {
 				opts.Attach = ebpf.AttachCGroupInetEgress
 				if err := link.RawDetachProgram(opts); err != nil {
-					logger.GetLogger().WithError(err).WithFields(logrus.Fields{
-						"Target": cgrpfd, "Program": prog,
-					}).Warn("RawDetachProgram CgroupSKB error")
+					logger.GetLogger().Warn("RawDetachProgram CgroupSKB error", logfields.Error, err,
+						"Target", cgrpfd, "Program", prog)
 				}
 			}
 		case ebpf.SkMsg:
@@ -249,7 +248,7 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				Attach:  ebpf.AttachSkMsgVerdict,
 			}
 			if err := link.RawDetachProgram(opts); err != nil {
-				logger.GetLogger().WithError(err).Warn("RawDetachProgram SkMsg error")
+				logger.GetLogger().Warn("RawDetachProgram SkMsg error", logfields.Error, err)
 			}
 		case ebpf.SkSKB:
 			if bestEffort {
@@ -284,15 +283,15 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 			// These errors are debug only because we are expect an error here we don't
 			// know the type so we just guess and try to remove all of them.
 			if err := link.RawDetachProgram(opts); err != nil {
-				logger.GetLogger().WithError(err).Debug("RawDetachProgram AttachSkSKBStreamVerdict error")
+				logger.GetLogger().Debug("RawDetachProgram AttachSkSKBStreamVerdict error", logfields.Error, err)
 			}
 			opts.Attach = ebpf.AttachSkSKBStreamParser
 			if err := link.RawDetachProgram(opts); err != nil {
-				logger.GetLogger().WithError(err).Debug("RawDetachProgram AttachSkSKBStreamParser error")
+				logger.GetLogger().Debug("RawDetachProgram AttachSkSKBStreamParser error", logfields.Error, err)
 			}
 			opts.Attach = ebpf.AttachSkSKBVerdict
 			if err := link.RawDetachProgram(opts); err != nil {
-				logger.GetLogger().WithError(err).Debug("RawDetachProgram AttachSkSKBVerdict error")
+				logger.GetLogger().Debug("RawDetachProgram AttachSkSKBVerdict error", logfields.Error, err)
 			}
 		case ebpf.SockOps:
 			if bestEffort {
@@ -316,7 +315,7 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				Attach:  ebpf.AttachCGroupSockOps,
 			}
 			if err := link.RawDetachProgram(opts); err != nil {
-				logger.GetLogger().WithError(err).Warn("RawDetachProgram SockOps error")
+				logger.GetLogger().Warn("RawDetachProgram SockOps error", logfields.Error, err)
 			}
 		case ebpf.CGroupSockopt:
 			if bestEffort {
@@ -338,7 +337,7 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 				Attach:  ebpf.AttachCGroupSetsockopt,
 			}
 			if err := link.RawDetachProgram(opts); err != nil {
-				logger.GetLogger().WithError(err).Warn("RawDetachProgram Sockopt error")
+				logger.GetLogger().Warn("RawDetachProgram Sockopt error", logfields.Error, err)
 			}
 		case ebpf.CGroupSock:
 			if bestEffort {
@@ -362,7 +361,7 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 			if err := link.RawDetachProgram(opts); err != nil {
 				opts.Attach = ebpf.AttachCGroupInet6PostBind
 				if err := link.RawDetachProgram(opts); err != nil {
-					logger.GetLogger().WithError(err).Warn("RawDetachProgram CgroupSock error")
+					logger.GetLogger().Warn("RawDetachProgram CgroupSock error", logfields.Error, err)
 				}
 			}
 		}

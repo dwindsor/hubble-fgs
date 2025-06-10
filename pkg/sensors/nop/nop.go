@@ -145,7 +145,7 @@ func AddNop() {
 
 /* Add sensor from CRD */
 func EnableNopParser(policy tracingpolicy.TracingPolicy) *sensors.Sensor {
-	logger.GetLogger().Infof("Enable NOP")
+	logger.GetLogger().Info("Enable NOP")
 
 	progs := []*program.Program{
 		Skmsg,

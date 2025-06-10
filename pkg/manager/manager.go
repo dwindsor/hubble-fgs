@@ -171,7 +171,7 @@ func addPodInfoInformer(ctx context.Context, manager *manager.ControllerManager)
 		AddFunc: func(obj interface{}) {
 			switch t := obj.(type) {
 			case *v1alpha1.PodInfo:
-				logger.GetLogger().Debug("Add Pod: %v", t)
+				logger.GetLogger().Debug(fmt.Sprintf("Add Pod: %v", t))
 				c.AddIpPodMap(t)
 				dns.PodAdd(t)
 			}
@@ -179,13 +179,13 @@ func addPodInfoInformer(ctx context.Context, manager *manager.ControllerManager)
 		UpdateFunc: func(old interface{}, _ interface{}) {
 			switch t := old.(type) {
 			case *v1alpha1.PodInfo:
-				logger.GetLogger().Debug("Update Pod: %v", t)
+				logger.GetLogger().Debug(fmt.Sprintf("Update Pod: %v", t))
 			}
 		},
 		DeleteFunc: func(old interface{}) {
 			switch t := old.(type) {
 			case *v1alpha1.PodInfo:
-				logger.GetLogger().Debug("Delete Pod: %v", t)
+				logger.GetLogger().Debug(fmt.Sprintf("Delete Pod: %v", t))
 				dns.PodRemove(t)
 			}
 		},

@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/sirupsen/logrus"
+	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/yaml"
 
@@ -25,51 +26,40 @@ var (
 	spnOnce    sync.Once
 )
 
-func AddSandboxPolicy(ctx context.Context, log logrus.FieldLogger, s *sensors.Manager, obj interface{}) error {
+func AddSandboxPolicy(ctx context.Context, log logger.FieldLogger, s *sensors.Manager, obj interface{}) error {
 	var tp tracingpolicy.TracingPolicy
 
 	switch sp := obj.(type) {
 	case *v1alpha1.SandboxPolicy:
 		var err error
-		log = log.WithFields(logrus.Fields{
-			"sandbox-policy-name": sp.Name,
-		})
+		log = log.With("sandbox-policy-name", sp.Name)
 		tp, err = ToTracingPolicy(sp)
 		if err != nil {
-			log.WithError(err).Warn("AddSandboxPolicy: failed to convert to tracing policy")
+			log.Warn("AddSandboxPolicy: failed to convert to tracing policy", logfields.Error, err)
 			return fmt.Errorf("failed to convert sandboxpolicy to tracing policy: %w", err)
 		}
 
 	case *v1alpha1.SandboxPolicyNamespaced:
 		var err error
-		log = log.WithFields(logrus.Fields{
-			"sandbox-policy-name":      sp.Name,
-			"sandbox-policy-namespace": sp.Namespace,
-		})
+		log = log.With("sandbox-policy-name", sp.Name, "sandbox-policy-namespace", sp.Namespace)
 		tp, err = ToTracingPolicyNamespaced(sp)
 		if err != nil {
-			log.WithError(err).Warn("AddSandboxPolicy: failed to convert to tracing policy")
+			log.Warn("AddSandboxPolicy: failed to convert to tracing policy", logfields.Error, err)
 			return fmt.Errorf("failed to convert namespaced sandboxpolicy to tracing policy: %w", err)
 		}
 
 	default:
-		log.WithFields(logrus.Fields{
-			"obj":      obj,
-			"obj-type": fmt.Sprintf("%T", obj),
-		}).Warn("addSandboxPolicy: invalid type")
+		log.Warn("addSandboxPolicy: invalid type", "obj", obj, "obj-type", fmt.Sprintf("%T", obj))
 		return fmt.Errorf("invalid sandbox policy type: %T", obj)
 	}
 
-	log.WithFields(logrus.Fields{
-		"tp-name": tp.TpName(),
-		"tp-info": tp.TpInfo(),
-	}).Info("adding sandbox policy")
+	log.Info("adding sandbox policy", "tp-name", tp.TpName(), "tp-info", tp.TpInfo())
 	return s.AddTracingPolicy(ctx, tp)
 }
 
 func AddSandboxPolicyFromYAML(
 	ctx context.Context,
-	log logrus.FieldLogger,
+	log logger.FieldLogger,
 	s *sensors.Manager,
 	fname string,
 ) error {
@@ -88,7 +78,7 @@ func AddSandboxPolicyFromYAML(
 		return err
 	}
 
-	log = log.WithField("from-yaml", true)
+	log = log.With("from-yaml", true)
 	return AddSandboxPolicy(ctx, log, s, sp)
 }
 

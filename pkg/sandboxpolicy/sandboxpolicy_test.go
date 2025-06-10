@@ -24,7 +24,6 @@ import (
 	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
 	"github.com/cilium/tetragon/pkg/testutils"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
-	"github.com/sirupsen/logrus"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -56,7 +55,7 @@ type testCase struct {
 
 //revive:disable:context-as-argument
 func (tc *testCase) Run(t *testing.T, ctx context.Context) {
-	testutils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+	testutils.CaptureLog(t, logger.GetLogger())
 	st, err := testprogs.StartSyscallTester(t, ctx)
 	require.NoError(t, err)
 	if tc.shouldSkip != nil {

@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/tetragon/pkg/cgroups"
 	ossExec "github.com/cilium/tetragon/pkg/grpc/exec"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/caps"
@@ -35,8 +36,6 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
 	"github.com/cilium/tetragon/pkg/sensors/exec/userinfo"
-
-	"github.com/sirupsen/logrus"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
@@ -248,7 +247,7 @@ func pushExecveEvents(p procs, inInitTreeMap map[uint32]struct{}) {
 		if p.pid > 0 {
 			m.Unix.Kube.Docker, err = procsDockerId(p.pid)
 			if err != nil {
-				logger.GetLogger().WithError(err).Warn("Procfs execve event pods/ identifier error")
+				logger.GetLogger().Warn("Procfs execve event pods/ identifier error", logfields.Error, err)
 			}
 			if m.Unix.Kube.Docker != "" {
 				if cgid, err := cgroups.CgroupIDFromPID(p.pid); err == nil {
@@ -257,7 +256,7 @@ func pushExecveEvents(p procs, inInitTreeMap map[uint32]struct{}) {
 				} else if option.Config.EnableCgIDmap {
 					// only warn if cgidmap is enabled since this is where this
 					// value is used
-					logger.GetLogger().WithError(err).WithField("pid", p.pid).Warn("failed to find cgroup id for pid")
+					logger.GetLogger().Warn("failed to find cgroup id for pid", logfields.Error, err, "pid", p.pid)
 				}
 			}
 		}
@@ -306,11 +305,8 @@ func pushExecveEvents(p procs, inInitTreeMap map[uint32]struct{}) {
 
 		err := userinfo.MsgToExecveAccountUnix(m.Unix)
 		if err != nil {
-			logger.GetLogger().WithFields(logrus.Fields{
-				"process.pid":    p.pid,
-				"process.binary": filename,
-				"process.uid":    m.Unix.Process.UID,
-			}).WithError(err).Trace("Resolving process uid to username record failed")
+			logger.Trace(logger.GetLogger(), "Resolving process uid to username record failed", logfields.Error, err,
+				"process.pid", p.pid, "process.binary", filename, "process.uid", m.Unix.Process.UID)
 		}
 
 		observer.AllListeners(&m)
@@ -323,14 +319,13 @@ func updateExecveMapStats(procs int64) {
 
 	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), execveMapStats.Name), nil)
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("Could not open execve_map_stats")
+		logger.GetLogger().Error("Could not open execve_map_stats", logfields.Error, err)
 		return
 	}
 	defer m.Close()
 
 	if err := sensors.UpdateStatsMap(m, procs); err != nil {
-		logger.GetLogger().WithError(err).
-			Errorf("Failed to update execve_map_stats with procfs stats: %s", err)
+		logger.GetLogger().Error("Failed to update execve_map_stats with procfs stats", logfields.Error, err)
 	}
 }
 
@@ -390,7 +385,7 @@ func writeExecveMap(procs []procs) map[uint32]struct{} {
 		k, v := procToKeyValue(p, inInitTree)
 		err := m.Put(k, v)
 		if err != nil {
-			logger.GetLogger().WithField("value", v).WithError(err).Warn("failed to put value in execve_map")
+			logger.GetLogger().Warn("failed to put value in execve_map", logfields.Error, err, "value", v)
 		}
 	}
 	// In order for kprobe events from kernel ctx to not abort we need the
@@ -470,13 +465,13 @@ func listRunningProcs(procPath string) ([]procs, error) {
 
 		pid, err := proc.GetProcPid(d.Name())
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("pid read error")
+			logger.GetLogger().Warn("pid read error", logfields.Error, err)
 			continue
 		}
 
 		stats, err := proc.GetProcStatStrings(pathName)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("stats read error")
+			logger.GetLogger().Warn("stats read error", logfields.Error, err)
 			continue
 		}
 
@@ -488,7 +483,7 @@ func listRunningProcs(procPath string) ([]procs, error) {
 
 		ktime, err := proc.GetStatsKtime(stats)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("ktime read error")
+			logger.GetLogger().Warn("ktime read error", logfields.Error, err)
 		}
 
 		// Initialize with invalid uid
@@ -498,21 +493,21 @@ func listRunningProcs(procPath string) ([]procs, error) {
 		// Get process status
 		status, err := proc.GetStatus(pathName)
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Reading process status error")
+			logger.GetLogger().Warn("Reading process status error", logfields.Error, err)
 		} else {
 			uids, err = status.GetUids()
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Reading Uids of %s failed, falling back to uid: %d", pathName, uint32(proc.InvalidUid))
+				logger.GetLogger().Warn(fmt.Sprintf("Reading Uids of %s failed, falling back to uid: %d", pathName, uint32(proc.InvalidUid)), logfields.Error, err)
 			}
 
 			gids, err = status.GetGids()
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Reading Uids of %s failed, falling back to gid: %d", pathName, uint32(proc.InvalidUid))
+				logger.GetLogger().Warn(fmt.Sprintf("Reading Uids of %s failed, falling back to gid: %d", pathName, uint32(proc.InvalidUid)), logfields.Error, err)
 			}
 
 			auid, err = status.GetLoginUid()
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Reading Loginuid of %s failed, falling back to loginuid: %d", pathName, uint32(auid))
+				logger.GetLogger().Warn(fmt.Sprintf("Reading Loginuid of %s failed, falling back to loginuid: %d", pathName, uint32(auid)), logfields.Error, err)
 			}
 		}
 
@@ -520,47 +515,47 @@ func listRunningProcs(procPath string) ([]procs, error) {
 
 		uts_ns, err := namespace.GetPidNsInode(uint32(pid), "uts")
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Reading uts namespace failed")
+			logger.GetLogger().Warn("Reading uts namespace failed", logfields.Error, err)
 		}
 		ipc_ns, err := namespace.GetPidNsInode(uint32(pid), "ipc")
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Reading ipc namespace failed")
+			logger.GetLogger().Warn("Reading ipc namespace failed", logfields.Error, err)
 		}
 		mnt_ns, err := namespace.GetPidNsInode(uint32(pid), "mnt")
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Reading mnt namespace failed")
+			logger.GetLogger().Warn("Reading mnt namespace failed", logfields.Error, err)
 		}
 		pid_ns, err := namespace.GetPidNsInode(uint32(pid), "pid")
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Reading pid namespace failed")
+			logger.GetLogger().Warn("Reading pid namespace failed", logfields.Error, err)
 		}
 		pid_for_children_ns, err := namespace.GetPidNsInode(uint32(pid), "pid_for_children")
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Reading pid_for_children namespace failed")
+			logger.GetLogger().Warn("Reading pid_for_children namespace failed", logfields.Error, err)
 		}
 		net_ns, err := namespace.GetPidNsInode(uint32(pid), "net")
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Reading net namespace failed")
+			logger.GetLogger().Warn("Reading net namespace failed", logfields.Error, err)
 		}
 		time_ns := uint32(0)
 		time_for_children_ns := uint32(0)
 		if namespace.TimeNsSupport {
 			time_ns, err = namespace.GetPidNsInode(uint32(pid), "time")
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Reading time namespace failed")
+				logger.GetLogger().Warn("Reading time namespace failed", logfields.Error, err)
 			}
 			time_for_children_ns, err = namespace.GetPidNsInode(uint32(pid), "time_for_children")
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("Reading time_for_children namespace failed")
+				logger.GetLogger().Warn("Reading time_for_children namespace failed", logfields.Error, err)
 			}
 		}
 		cgroup_ns, err := namespace.GetPidNsInode(uint32(pid), "cgroup")
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Reading cgroup namespace failed")
+			logger.GetLogger().Warn("Reading cgroup namespace failed", logfields.Error, err)
 		}
 		user_ns, err := namespace.GetPidNsInode(uint32(pid), "user")
 		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("Reading user namespace failed")
+			logger.GetLogger().Warn("Reading user namespace failed", logfields.Error, err)
 		}
 
 		// On error procsDockerId zeros dockerId so we can ignore any errors.
@@ -578,7 +573,7 @@ func listRunningProcs(procPath string) ([]procs, error) {
 
 			pcmdline, err = os.ReadFile(filepath.Join(parentPath, "cmdline"))
 			if err != nil {
-				logger.GetLogger().WithError(err).WithField("path", parentPath).Warn("parent cmdline error")
+				logger.GetLogger().Warn("parent cmdline error", logfields.Error, err, "path", parentPath)
 				continue
 			}
 
@@ -593,13 +588,13 @@ func listRunningProcs(procPath string) ([]procs, error) {
 
 			pstats, err = proc.GetProcStatStrings(string(parentPath))
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("parent stats read error")
+				logger.GetLogger().Warn("parent stats read error", logfields.Error, err)
 				continue
 			}
 
 			pktime, err = proc.GetStatsKtime(pstats)
 			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("parent ktime read error")
+				logger.GetLogger().Warn("parent ktime read error", logfields.Error, err)
 			}
 
 			if dockerId != "" {
@@ -618,7 +613,7 @@ func listRunningProcs(procPath string) ([]procs, error) {
 			if kernelThread {
 				execPath = strings.TrimSuffix(string(cmdline), "\n")
 			} else {
-				logger.GetLogger().WithError(err).WithField("process", d.Name()).Warnf("reading process exe error")
+				logger.GetLogger().Warn("reading process exe error", logfields.Error, err, "process", d.Name())
 			}
 		}
 
@@ -628,7 +623,7 @@ func listRunningProcs(procPath string) ([]procs, error) {
 				if kernelThread {
 					pexecPath = strings.TrimSuffix(string(pcmdline), "\n")
 				} else {
-					logger.GetLogger().WithError(err).WithField("process", ppid).Warnf("reading process exe error")
+					logger.GetLogger().Warn("reading process exe error", logfields.Error, err, "process", ppid)
 				}
 			}
 		} else {
@@ -674,7 +669,7 @@ func listRunningProcs(procPath string) ([]procs, error) {
 		processes = append(processes, p)
 	}
 
-	logger.GetLogger().Infof("Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(processes), len(procFS))
+	logger.GetLogger().Info(fmt.Sprintf("Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(processes), len(procFS)))
 
 	return processes, nil
 }
@@ -682,7 +677,7 @@ func listRunningProcs(procPath string) ([]procs, error) {
 func GetRunningProcs() error {
 	procs, err := listRunningProcs(option.Config.ProcFS)
 	if err != nil {
-		logger.GetLogger().WithError(err).Errorf("Failed to list running processes from '%s'", option.Config.ProcFS)
+		logger.GetLogger().Error(fmt.Sprintf("Failed to list running processes from '%s'", option.Config.ProcFS), logfields.Error, err)
 		return err
 	}
 

@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/exec"
@@ -41,7 +42,7 @@ func HandleProcessedEvent(processedEvent interface{}) {
 		var err error
 		eventType, err = helpers.ResponseTypeString(ev)
 		if err != nil {
-			logger.GetLogger().WithField("event", processedEvent).WithError(err).Warn("metrics: handleProcessedEvent: unhandled event")
+			logger.GetLogger().Warn("metrics: handleProcessedEvent: unhandled event", logfields.Error, err, "event", processedEvent)
 			eventType = "unhandled"
 		}
 	default:

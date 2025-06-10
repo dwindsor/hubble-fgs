@@ -8,6 +8,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/cilium/ebpf"
@@ -68,7 +69,7 @@ func newCache() (EndpointCache, error) {
 		return cache, nil
 	}
 
-	logger.GetLogger().WithField("size", option.Config.EndpointCacheSize).Info("Initializing Endpoint cache")
+	logger.GetLogger().Info("Initializing Endpoint cache", "size", option.Config.EndpointCacheSize)
 	fwdlru, err := lru.New[uint64, Endpoint](option.Config.EndpointCacheSize)
 	if err != nil {
 		return nil, err
@@ -91,7 +92,7 @@ func newCache() (EndpointCache, error) {
 	}
 	m, err := ebpf.NewMapWithOptions(spec, opts)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Could not create endpoint map")
+		logger.GetLogger().Warn("Could not create endpoint map", logfields.Error, err)
 		return nil, err
 	}
 
@@ -156,7 +157,7 @@ func (c *Cache) AddEndpoint(ep Endpoint) (uint64, error) {
 	if !ok {
 		dstId = c.insertNewEndpoint(ep)
 	}
-	logger.GetLogger().WithField("id", dstId).Debug("PolicyID allocated")
+	logger.GetLogger().Debug("PolicyID allocated", "id", dstId)
 	return dstId, nil
 }
 
@@ -247,7 +248,7 @@ func (c *Cache) AddIpPodMap(epPod *v1alpha1.PodInfo) {
 			continue
 		}
 		if err := c.endpointMap.Update(key, value, 0); err != nil {
-			logger.GetLogger().WithError(err).Warn("Could not update endpoint map")
+			logger.GetLogger().Warn("Could not update endpoint map", logfields.Error, err)
 			continue
 		}
 	}
@@ -287,7 +288,7 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 		if err := c.endpointMap.Lookup(key, &tmp); err == nil {
 			epExists, ok := c.cache.Get(tmp.Id)
 			if !ok {
-				logger.GetLogger().WithError(err).Warn("AddIpDnsMap BPF map and user cache out of sync")
+				logger.GetLogger().Warn("AddIpDnsMap BPF map and user cache out of sync", logfields.Error, err)
 				continue
 			}
 
@@ -321,7 +322,7 @@ func (c *Cache) AddIpDnsMap(dns *tetragon.DnsInfo) {
 			}
 
 			if err := c.endpointMap.Update(key, value, 0); err != nil {
-				logger.GetLogger().WithError(err).Warn("Could not update endpoint map")
+				logger.GetLogger().Warn("Could not update endpoint map", logfields.Error, err)
 				continue
 			}
 		}
@@ -367,7 +368,7 @@ func MustGet() EndpointCache {
 		} else {
 			cache, err = newCache()
 			if err != nil {
-				logger.GetLogger().WithError(err).Warn("Could not initialize endpoint model")
+				logger.GetLogger().Warn("Could not initialize endpoint model", logfields.Error, err)
 			}
 		}
 	})

@@ -22,12 +22,12 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -139,7 +139,14 @@ var (
 func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	saddr := networkapi.GetIP(socket.Tuple.SAddr, 0, socket.Tuple.IPv6 != 0)
 	daddr := networkapi.GetIP(socket.Tuple.DAddr, 0, socket.Tuple.IPv6 != 0)
-	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Tuple.SPort, "Dport": socket.Tuple.DPort, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
+	logger.GetLogger().Debug("Discovered UDP Socket",
+		"Pid", pid,
+		"Saddr", saddr,
+		"Daddr", daddr,
+		"Sport", socket.Tuple.SPort,
+		"Dport", socket.Tuple.DPort,
+		"Protocol", socket.Protocol,
+		"State", socket.State)
 
 	if socket.State != constants.BPF_TCP_CLOSE && socket.State != constants.BPF_TCP_ESTABLISHED {
 		return
@@ -198,7 +205,7 @@ func ConfigureMaps(mapDir string, mapName string, config networkapi.UdpConfigVal
 		Zero: uint32(0),
 	}
 	m.Put(key, &config)
-	logger.GetLogger().WithField("config", config.String()).Info("Configured UDP sock statistic sampler: ")
+	logger.GetLogger().Info("Configured UDP sock statistic sampler", "config", config.String())
 	return nil
 }
 
@@ -241,7 +248,7 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 	var versionStr string
 
 	if !utils.CGroupSKBAvailable() {
-		logger.GetLogger().Infof("Minimum kernel version (5.4 or RHEL equivalent) not met for UDP cgroup mode, falling back to socket mode")
+		logger.GetLogger().Info("Minimum kernel version (5.4 or RHEL equivalent) not met for UDP cgroup mode, falling back to socket mode")
 		cgroup = false
 	}
 
@@ -287,18 +294,17 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 		progsInitSock = append(progsInitSock, networklatency.Timestamp)
 	}
 
-	logger.GetLogger().WithFields(logrus.Fields{
-		"sensorName":     versionStr,
-		"deleteInterval": UdpDeleteInterval,
-		"metrics":        udpconfig.MetricsEnabled,
-		"cgroup":         cgroup,
-	}).Infof("Enable UDP")
+	logger.GetLogger().Info("Enable UDP",
+		"sensorName", versionStr,
+		"deleteInterval", UdpDeleteInterval,
+		"metrics", udpconfig.MetricsEnabled,
+		"cgroup", cgroup)
 	return progsInitSock, progsCollectStats, maps
 }
 
 func SetGcInterval(interval time.Duration) {
 	udpGcInterval = interval
-	logger.GetLogger().WithField("statsInterval", interval).Info("UDP configured")
+	logger.GetLogger().Info("UDP configured", "statsInterval", interval)
 }
 
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error) {
@@ -333,7 +339,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error
 	}
 	Config, udpconfig.LatencyConfig = ParseUdpSpec(spec)
 	udpLatencyEnable := spec.Parser.Udp != nil && spec.Parser.Udp.Latency.Enable
-	logger.GetLogger().WithField("enable", udpLatencyEnable).Debug("UDP Latency config")
+	logger.GetLogger().Debug("UDP Latency config", "enable", udpLatencyEnable)
 	return udpLatencyEnable, interval, nil
 }
 
@@ -384,14 +390,14 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		mapFile := filepath.Join(bpf.MapPrefixPath(), UdpMapName)
 		udpMap, err := ebpf.LoadPinnedMap(mapFile, nil)
 		if err != nil {
-			logger.GetLogger().WithError(err).WithField("file", mapFile).Warn("UDP Close event failed to open map")
+			logger.GetLogger().Warn("UDP Close event failed to open map", logfields.Error, err, "file", mapFile)
 			return nil, fmt.Errorf("failed to open udp info map")
 		}
 		defer udpMap.Close()
 		mapStatsFile := filepath.Join(bpf.MapPrefixPath(), udpconfig.UdpMapStatsName)
 		udpMapStats, err := ebpf.LoadPinnedMap(mapStatsFile, nil)
 		if err != nil {
-			logger.GetLogger().WithError(err).WithField("file", mapFile).Warn("UDP Close event failed to open map")
+			logger.GetLogger().Warn("UDP Close event failed to open map", logfields.Error, err, "file", mapFile)
 			return nil, fmt.Errorf("failed to open udp info map stats")
 		}
 		defer udpMapStats.Close()
@@ -411,7 +417,8 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			if err != nil {
 				socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeCloseEventMissingSocket)
 				if time.Since(LastMissingStats) > MissingStatsErrorInterval {
-					logger.GetLogger().WithError(err).WithField("key", udpKey).Warn("UDP map look up failed for Close event. BPF UDP map might be too small, or IdleSocketDeleteInterval might be too large?")
+					logger.GetLogger().Warn("UDP map look up failed for Close event. BPF UDP map might be too small, or IdleSocketDeleteInterval might be too large?",
+						logfields.Error, err, "key", udpKey)
 					LastMissingStats = time.Now()
 				}
 				// Entry has been evicted from the BPF map (likely LRU overspill).
@@ -462,7 +469,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			}
 			err = udpMap.Delete(udpKey)
 			if err != nil {
-				logger.GetLogger().WithError(err).WithField("key", udpKey).Warn("UDP map delete")
+				logger.GetLogger().Warn("UDP map delete", "logfields.Error", err, "key", udpKey)
 			} else {
 				decMapStats()
 			}

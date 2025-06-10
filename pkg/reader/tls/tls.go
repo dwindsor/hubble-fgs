@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	"github.com/yalue/native_endian"
@@ -134,11 +135,11 @@ func GetTLSSupportedVersions(flv *api.FLV16, hasLength bool) string {
 	var s []string
 	vers, err := flv.Bytes()
 	if err != nil {
-		logger.GetLogger().WithError(err).Debug("TLS versions vector truncated")
+		logger.GetLogger().Debug("TLS versions vector truncated", logfields.Error, err)
 	}
 
 	// Dump FLV and bytes to logs when run with --log-level trace
-	logger.GetLogger().WithField("flv", flv).WithField("bytes", vers).Trace("GetTLSSupportedVersions called")
+	logger.Trace(logger.GetLogger(), "GetTLSSupportedVersions called", "flv", flv, "bytes", vers)
 
 	if len(vers) < 2 {
 		return ""

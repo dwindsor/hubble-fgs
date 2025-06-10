@@ -38,7 +38,7 @@ func InitCiliumState(ctx context.Context, enableCiliumAPI bool) (*cilium.State, 
 		ciliumState = cilium.NewCiliumState(
 			ciliumClient,
 			ipcache.New(),
-			logger.GetLogger().WithField("subsystem", "cilium"))
+			logger.GetLogger().With("subsystem", "cilium"))
 		go HandleMonitorSocket(ctx, ciliumState)
 	}
 	return ciliumState, nil
@@ -48,7 +48,7 @@ func GetFakeCiliumState() *cilium.State {
 	return cilium.NewCiliumState(
 		&fakeCiliumClient{},
 		ipcache.New(),
-		logger.GetLogger().WithField("subsystem", "cilium"))
+		logger.GetLogger().With("subsystem", "cilium"))
 }
 
 type fakeCiliumClient struct{}

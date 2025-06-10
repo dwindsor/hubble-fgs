@@ -33,7 +33,6 @@ import (
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
@@ -51,7 +50,7 @@ func runEbpfGlob(t *testing.T, pattern, str string) (bool, uint64, error) {
 		return false, 0, fmt.Errorf("runEbpfGlob: rlimit.RemoveMemlock: %w", err)
 	}
 
-	ossTestUtils.CaptureLog(t, logger.GetLogger().(*logrus.Logger))
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 
 	objFile := "lsm_test_glob.o"
