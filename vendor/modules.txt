@@ -1332,7 +1332,7 @@ golang.org/x/oauth2/google/internal/stsexchange
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sync v0.14.0
+# golang.org/x/sync v0.15.0
 ## explicit; go 1.23.0
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
@@ -1372,7 +1372,7 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/time v0.11.0
+# golang.org/x/time v0.12.0
 ## explicit; go 1.23.0
 golang.org/x/time/rate
 # golang.org/x/tools v0.32.0
