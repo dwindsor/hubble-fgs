@@ -18,11 +18,10 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
@@ -30,6 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/tests/compliance/config"
 	"github.com/isovalent/hubble-fgs/tests/compliance/testcontext"
 	"github.com/isovalent/hubble-fgs/tests/compliance/util"
+	"github.com/moby/go-archive"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/yaml"
@@ -265,7 +265,7 @@ func (ct *Test) Build(t *testing.T, ctx context.Context) error {
 	}
 	client.NegotiateAPIVersion(ctx)
 
-	res, err := client.ImageBuild(ctx, tar, types.ImageBuildOptions{
+	res, err := client.ImageBuild(ctx, tar, build.ImageBuildOptions{
 		Tags:       []string{ct.Tag()},
 		Dockerfile: "Dockerfile",
 		Remove:     true,

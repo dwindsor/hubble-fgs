@@ -34,6 +34,7 @@ require (
 	github.com/isovalent/ipa v0.0.0-20250606185641-39506eb4de2f
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.66
+	github.com/moby/go-archive v0.1.0
 	github.com/operator-framework/api v0.31.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.83.0
 	github.com/prometheus/client_golang v1.22.0
@@ -131,7 +132,6 @@ require (
 	github.com/mackerelio/go-osstat v0.2.5 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
-	github.com/moby/go-archive v0.1.0 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
