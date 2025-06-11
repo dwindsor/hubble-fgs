@@ -60,9 +60,6 @@ var TracingPolicyNamespacedYaml string
 var TracingEnforcePolicyYaml string
 
 func Test(t *testing.T, runner *runners.Runner, supportEnforcement bool) {
-	// Must be called at the beginning of every test
-	runner.SetupExport(t)
-
 	fileChecker := checker.NewRPCChecker(Checker(supportEnforcement), "fileChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
 	checkFile := features.New("Check File Events").
 		Assess("Run Event Checks", fileChecker.CheckInNamespace(30*time.Second, []string{Namespace, "default"}...)).

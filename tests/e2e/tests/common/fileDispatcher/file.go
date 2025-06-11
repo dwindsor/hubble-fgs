@@ -52,9 +52,6 @@ var PolicyPrefixYaml string
 var PolicySuffixYaml string
 
 func Test(t *testing.T, runner *runners.Runner) {
-	// Must be called at the beginning of every test
-	runner.SetupExport(t)
-
 	// FIM dispatcher works only on kernels >= 6.1
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("6.1.0") {

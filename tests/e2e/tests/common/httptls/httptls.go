@@ -50,9 +50,6 @@ var CURLYAML string
 var TracingPolicyYAML string
 
 func TestHTTP(t *testing.T, runner *runners.Runner) {
-	// Must be called at the beginning of every test
-	runner.SetupExport(t)
-
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {
@@ -95,9 +92,6 @@ func TestHTTP(t *testing.T, runner *runners.Runner) {
 }
 
 func TestTLS(t *testing.T, runner *runners.Runner) {
-	// Must be called at the beginning of every test
-	runner.SetupExport(t)
-
 	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {

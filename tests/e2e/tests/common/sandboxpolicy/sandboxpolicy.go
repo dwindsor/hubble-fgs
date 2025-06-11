@@ -41,8 +41,6 @@ const (
 )
 
 func Test(t *testing.T, runner *runners.Runner, testNamespace string) {
-	runner.SetupExport(t)
-
 	checker := sandboxChecker().WithTimeLimit(5 * time.Minute).WithEventLimit(10)
 	runEventChecker := features.New("Run Event Checks").
 		Assess("Run Event Checks", checker.CheckWithFilters(
