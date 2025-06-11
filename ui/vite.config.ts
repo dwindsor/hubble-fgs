@@ -8,7 +8,14 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 
 const root = __dirname;
 const src = path.resolve(root, "src");
-const ipa = path.resolve(root, "..", "vendor", "github.com", "isovalent", "ipa");
+const ipa = path.resolve(
+  root,
+  "..",
+  "vendor",
+  "github.com",
+  "isovalent",
+  "ipa"
+);
 const appType = process.env.APP_TYPE ?? "app";
 
 export default defineConfig(() => {
@@ -39,21 +46,26 @@ export default defineConfig(() => {
               : path.resolve(src, "components", "Root.tsx"),
         },
         external:
-          appType === "app" ? [] : ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+          appType === "app"
+            ? []
+            : ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
       },
     },
     resolve: {
       alias: {
         "~": src,
         "@ipa": ipa,
-        "@bufbuild/protobuf": path.resolve(root, "./node_modules/@bufbuild/protobuf/dist/esm"),
+        "@bufbuild/protobuf": path.resolve(
+          root,
+          "./node_modules/@bufbuild/protobuf/dist/esm"
+        ),
         "@bufbuild/protobuf/wkt": path.resolve(
           root,
-          "./node_modules/@bufbuild/protobuf/dist/esm/wkt",
+          "./node_modules/@bufbuild/protobuf/dist/esm/wkt"
         ),
-        "@bufbuild/protobuf/codegenv1": path.resolve(
+        "@bufbuild/protobuf/codegenv2": path.resolve(
           root,
-          "./node_modules/@bufbuild/protobuf/dist/esm/codegenv1",
+          "./node_modules/@bufbuild/protobuf/dist/esm/codegenv2"
         ),
       },
     },
