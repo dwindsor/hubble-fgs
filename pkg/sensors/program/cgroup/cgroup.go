@@ -10,15 +10,13 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/sensors/unloader"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
 const (
 	fgsCgroupPath = "/run/tetragon/cgroup2"
-)
-
-var (
-	fgsCgroupFD = -1
 )
 
 func LoadSockOpt(
@@ -33,14 +31,86 @@ func LoadSockOpt(
 func LoadCgroupProgram(
 	bpfDir string,
 	load *program.Program, maps []*program.Map, verbose int) error {
-	if fgsCgroupFD < 0 {
-		fd, err := unix.Open(fgsCgroupPath, unix.O_RDONLY, 0)
+	// Previously, we cached the cgroup path open file descriptor and reused it.
+	// In testing, multiple starts/stops of Tetragon appear to sometimes invalidate
+	// the cached value, leading to failure.
+	// Instead, we will open the path each time (and will close it to save file
+	// descriptors) as we only do this when we load a CGroup program and that
+	// doesn't happen often enough for the caching to be beneficial over the risk
+	// of failing to negate the cached value at the correct points during close
+	// down.
+	// We also add the O_CLOEXEC flag to prevent this file descriptor dangling in
+	// a forked child.
+	fgsCgroupFD, err := unix.Open(fgsCgroupPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return fmt.Errorf("failed to open '%s': %w", fgsCgroupPath, err)
+	}
+	defer unix.Close(fgsCgroupFD)
+	return program.LoadProgram(bpfDir, load, maps, CGroupAttachWithFlags(fgsCgroupFD, unix.BPF_F_ALLOW_MULTI), verbose)
+}
+
+// New attach function that uses a new unloader. The new unloader opens the
+// CGroup file itself rather than relying on a passed in file descriptor.
+// This should probably be ported to OSS but a) we need it now for Hypershield
+// (the related bug is holding up CI); and b) OSS doesn't use CGroup or
+// SockOps yet.
+func CGroupAttachWithFlags(targetFD int, flags uint32) program.AttachFunc {
+	return func(_ *ebpf.Collection, _ *ebpf.CollectionSpec,
+		prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
+
+		err := link.RawAttachProgram(link.RawAttachProgramOptions{
+			Target:  targetFD,
+			Program: prog,
+			Attach:  spec.AttachType,
+			Flags:   flags,
+		})
+		logger.GetLogger().WithError(err).Info("RawAttachWithFlags")
+		if err != nil {
+			prog.Close()
+			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
+		}
+		return unloader.ChainUnloader{
+			unloader.ProgUnloader{
+				Prog: prog,
+			},
+			&CGroupDetachUnloader{
+				Name:       spec.Name,
+				Prog:       prog,
+				AttachType: spec.AttachType,
+			},
+		}, nil
+	}
+}
+
+// cgroupDetachUnloader can be used to unload cgroup and sockmap programs.
+type CGroupDetachUnloader struct {
+	Name       string
+	Prog       *ebpf.Program
+	AttachType ebpf.AttachType
+}
+
+func (rdu *CGroupDetachUnloader) Unload(unpin bool) error {
+	defer rdu.Prog.Close()
+	// PROG_ATTACH does not return any link, so there's nothing to unpin,
+	// but we must skip the detach operation for 'unpin == false' otherwise
+	// the pinned program will be un-attached
+	if unpin {
+		fgsCgroupFD, err := unix.Open(fgsCgroupPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 		if err != nil {
 			return fmt.Errorf("failed to open '%s': %w", fgsCgroupPath, err)
 		}
-		fgsCgroupFD = fd
+		defer unix.Close(fgsCgroupFD)
+
+		err = link.RawDetachProgram(link.RawDetachProgramOptions{
+			Target:  fgsCgroupFD,
+			Program: rdu.Prog,
+			Attach:  rdu.AttachType,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to detach %s: %w", rdu.Name, err)
+		}
 	}
-	return program.LoadProgram(bpfDir, load, maps, program.RawAttachWithFlags(fgsCgroupFD, unix.BPF_F_ALLOW_MULTI), verbose)
+	return nil
 }
 
 func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
@@ -48,7 +118,7 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 	tlsSockfd := int(0)
 	nopSockfd := int(0)
 
-	cgrpfd, err := unix.Open(fgsCgroupPath, unix.O_RDONLY, 0)
+	cgrpfd, err := unix.Open(fgsCgroupPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
 	if err != nil {
 		return fmt.Errorf("failed to open '%s': %w", fgsCgroupPath, err)
 	}
@@ -142,7 +212,9 @@ func DetachTetragonCgroups(tgTypes, bestEffort bool) error {
 			if err := link.RawDetachProgram(opts); err != nil {
 				opts.Attach = ebpf.AttachCGroupInetEgress
 				if err := link.RawDetachProgram(opts); err != nil {
-					logger.GetLogger().WithError(err).Warn("RawDetachProgram CgroupSKB error")
+					logger.GetLogger().WithError(err).WithFields(logrus.Fields{
+						"Target": cgrpfd, "Program": prog,
+					}).Warn("RawDetachProgram CgroupSKB error")
 				}
 			}
 		case ebpf.SkMsg:
