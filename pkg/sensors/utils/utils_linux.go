@@ -12,7 +12,9 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -21,7 +23,7 @@ import (
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/ebpf/features"
 	"github.com/cilium/ebpf/link"
-	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
@@ -327,9 +329,12 @@ func _checkUDPBindNeedsDummies() bool {
 		MaxEntries: 1,
 		Pinning:    ebpf.PinByName,
 	}
+	tempMapDir := filepath.Join(defaults.DefaultMapRoot, "tg_udp_bind_probe")
 	opts := ebpf.MapOptions{
-		PinPath: bpf.MapPrefixPath(),
+		PinPath: tempMapDir,
 	}
+	os.MkdirAll(tempMapDir, 0700)
+	defer os.Remove(tempMapDir)
 	m, err := ebpf.NewMapWithOptions(mapSpec, opts)
 	if err != nil {
 		logger.GetLogger().WithError(err).Debug("UDPBindNeedsDummies failed NewMapWithOptions")
