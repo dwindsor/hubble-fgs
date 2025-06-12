@@ -294,16 +294,30 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 		v.LocationFlags = fileapi.HOST_FILE
 	}
 
+	prefixTree := fm.NewPrefixTree()
 	for i, p := range args.Spec.PathsPatterns {
 		matcher, err := fm.GetMatcher(p)
 		if err != nil {
 			return err
 		}
 
+		if m, ok := matcher.(fm.PrefixSuffixFileMatcher); ok {
+			prefixTree.Insert(m, uint32(i))
+			continue
+		}
+
 		if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
 			logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding host files/directories failed")
 		} else {
 			logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", args.PolicyName).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added host files/directories")
+		}
+	}
+
+	for _, matcher := range prefixTree.Traverse() {
+		if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(0), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil { // rule ID will be overridden on match
+			logger.GetLogger().WithField("tracing-policy", args.PolicyName).WithError(err).Warnf("Adding host files/directories failed")
+		} else {
+			logger.GetLogger().WithField("tracing-policy", args.PolicyName).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added host files/directories")
 		}
 	}
 
@@ -622,16 +636,30 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 		}
 
 		walkFn := func() error {
+			prefixTree := fm.NewPrefixTree()
 			for i, p := range tp.Spec.PathsPatterns {
 				matcher, err := fm.GetMatcher(p)
 				if err != nil {
 					return err
 				}
 
+				if m, ok := matcher.(fm.PrefixSuffixFileMatcher); ok {
+					prefixTree.Insert(m, uint32(i))
+					continue
+				}
+
 				if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
 					logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Adding container files/directories failed")
 				} else {
 					logger.GetLogger().WithField("path", fm.PathPatternToString(p)).WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added container files/directories")
+				}
+			}
+
+			for _, matcher := range prefixTree.Traverse() {
+				if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(0), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil { // rule ID will be overridden on match
+					logger.GetLogger().WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithError(err).Warnf("Adding container files/directories failed")
+				} else {
+					logger.GetLogger().WithField("tracing-policy", tp.Spec).WithField("containerID", containerID).WithField("num-files", fNum).WithField("num-dirs", dNum).Debug("Added container files/directories")
 				}
 			}
 

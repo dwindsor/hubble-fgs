@@ -272,7 +272,7 @@ func GetPrefixMatch(path string) ([]string, error) {
 type PathMatcher interface {
 	GetWalkPath() string
 	OverrideAction(uint32, fs.FileMode) uint32
-	MatchPath(string, fs.FileMode) bool
+	MatchPath(string, fs.FileMode, *uint32) bool
 	String() string
 }
 
@@ -288,7 +288,7 @@ func (p PrefixPathMatcher) OverrideAction(action uint32, _ fs.FileMode) uint32 {
 	return action
 }
 
-func (p PrefixPathMatcher) MatchPath(_ string, _ fs.FileMode) bool {
+func (p PrefixPathMatcher) MatchPath(_ string, _ fs.FileMode, _ *uint32) bool {
 	return true
 }
 func (p PrefixPathMatcher) String() string {
@@ -311,7 +311,7 @@ func (p PrefixSuffixFileMatcher) OverrideAction(action uint32, mode fs.FileMode)
 	return action
 }
 
-func (p PrefixSuffixFileMatcher) MatchPath(path string, mode fs.FileMode) bool {
+func (p PrefixSuffixFileMatcher) MatchPath(path string, mode fs.FileMode, _ *uint32) bool {
 	if mode.IsDir() {
 		return true
 	}
@@ -329,6 +329,47 @@ func (p PrefixSuffixFileMatcher) String() string {
 	return fmt.Sprintf("prefix:[%s], file_suffix:[%s]", p.Prefix, p.Suffix)
 }
 
+type PrefixSuffixFileMatcherRule struct {
+	Matcher PrefixSuffixFileMatcher
+	Rule    uint32
+}
+
+type PrefixSuffixFileMatchers struct {
+	WalkPrefix string
+	Matchers   map[PrefixSuffixFileMatcherRule]struct{}
+}
+
+func (p PrefixSuffixFileMatchers) GetWalkPath() string {
+	return p.WalkPrefix
+}
+
+func (p PrefixSuffixFileMatchers) OverrideAction(action uint32, mode fs.FileMode) uint32 {
+	if mode.IsDir() {
+		return FilterMonitor
+	}
+	return action
+}
+
+func (p PrefixSuffixFileMatchers) MatchPath(path string, mode fs.FileMode, rule *uint32) bool {
+	for m := range p.Matchers {
+		if m.Matcher.MatchPath(path, mode, nil) {
+			if rule != nil {
+				*rule = m.Rule
+			}
+			return true
+		}
+	}
+	return false
+}
+
+func (p PrefixSuffixFileMatchers) String() string {
+	res := fmt.Sprintf("[common prefix %s]", p.WalkPrefix)
+	for m := range p.Matchers {
+		res += fmt.Sprintf("[%s]", m.Matcher.String())
+	}
+	return res
+}
+
 type ExactPathFileMatcher struct {
 	Path string
 }
@@ -344,7 +385,7 @@ func (p ExactPathFileMatcher) OverrideAction(action uint32, mode fs.FileMode) ui
 	return action
 }
 
-func (p ExactPathFileMatcher) MatchPath(path string, mode fs.FileMode) bool {
+func (p ExactPathFileMatcher) MatchPath(path string, mode fs.FileMode, _ *uint32) bool {
 	if mode.IsDir() {
 		return true
 	}
@@ -389,7 +430,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 			return err
 		}
 
-		if !matcher.MatchPath(path, fileinfo.Mode()) {
+		if !matcher.MatchPath(path, fileinfo.Mode(), &rule) {
 			return nil
 		}
 
@@ -612,7 +653,7 @@ func CheckPath(spec v1alpha1.FileSpec, path string, mode fs.FileMode) (uint32, u
 			return 0, 0, err
 		}
 
-		if !matcher.MatchPath(path, mode) {
+		if !matcher.MatchPath(path, mode, &ruleID) {
 			continue
 		}
 
