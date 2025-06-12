@@ -46,6 +46,7 @@ jobs:
         run: |
           set -ex
           # Don't run 'make protogen' here, as it duplicates linting and vendoring checks.
+          make protoc-gen-go-tetragon
           make -C api vendor proto
           test -z "$(git status --porcelain)"
           if [ $? != 0 ]; then

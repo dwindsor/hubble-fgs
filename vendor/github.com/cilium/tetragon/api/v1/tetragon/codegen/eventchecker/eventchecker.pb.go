@@ -1630,16 +1630,18 @@ func (checker *ProcessTracepointChecker) FromProcessTracepoint(event *tetragon.P
 
 // ProcessUprobeChecker implements a checker struct to check a ProcessUprobe event
 type ProcessUprobeChecker struct {
-	CheckerName string                       `json:"checkerName"`
-	Process     *ProcessChecker              `json:"process,omitempty"`
-	Parent      *ProcessChecker              `json:"parent,omitempty"`
-	Path        *stringmatcher.StringMatcher `json:"path,omitempty"`
-	Symbol      *stringmatcher.StringMatcher `json:"symbol,omitempty"`
-	PolicyName  *stringmatcher.StringMatcher `json:"policyName,omitempty"`
-	Message     *stringmatcher.StringMatcher `json:"message,omitempty"`
-	Args        *KprobeArgumentListMatcher   `json:"args,omitempty"`
-	Tags        *StringListMatcher           `json:"tags,omitempty"`
-	Ancestors   *ProcessListMatcher          `json:"ancestors,omitempty"`
+	CheckerName  string                       `json:"checkerName"`
+	Process      *ProcessChecker              `json:"process,omitempty"`
+	Parent       *ProcessChecker              `json:"parent,omitempty"`
+	Path         *stringmatcher.StringMatcher `json:"path,omitempty"`
+	Symbol       *stringmatcher.StringMatcher `json:"symbol,omitempty"`
+	PolicyName   *stringmatcher.StringMatcher `json:"policyName,omitempty"`
+	Message      *stringmatcher.StringMatcher `json:"message,omitempty"`
+	Args         *KprobeArgumentListMatcher   `json:"args,omitempty"`
+	Tags         *StringListMatcher           `json:"tags,omitempty"`
+	Ancestors    *ProcessListMatcher          `json:"ancestors,omitempty"`
+	Offset       *uint64                      `json:"offset,omitempty"`
+	RefCtrOffset *uint64                      `json:"refCtrOffset,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -1726,6 +1728,16 @@ func (checker *ProcessUprobeChecker) Check(event *tetragon.ProcessUprobe) error 
 				return fmt.Errorf("Ancestors check failed: %w", err)
 			}
 		}
+		if checker.Offset != nil {
+			if *checker.Offset != event.Offset {
+				return fmt.Errorf("Offset has value %d which does not match expected value %d", event.Offset, *checker.Offset)
+			}
+		}
+		if checker.RefCtrOffset != nil {
+			if *checker.RefCtrOffset != event.RefCtrOffset {
+				return fmt.Errorf("RefCtrOffset has value %d which does not match expected value %d", event.RefCtrOffset, *checker.RefCtrOffset)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -1788,6 +1800,18 @@ func (checker *ProcessUprobeChecker) WithAncestors(check *ProcessListMatcher) *P
 	return checker
 }
 
+// WithOffset adds a Offset check to the ProcessUprobeChecker
+func (checker *ProcessUprobeChecker) WithOffset(check uint64) *ProcessUprobeChecker {
+	checker.Offset = &check
+	return checker
+}
+
+// WithRefCtrOffset adds a RefCtrOffset check to the ProcessUprobeChecker
+func (checker *ProcessUprobeChecker) WithRefCtrOffset(check uint64) *ProcessUprobeChecker {
+	checker.RefCtrOffset = &check
+	return checker
+}
+
 //FromProcessUprobe populates the ProcessUprobeChecker using data from a ProcessUprobe event
 func (checker *ProcessUprobeChecker) FromProcessUprobe(event *tetragon.ProcessUprobe) *ProcessUprobeChecker {
 	if event == nil {
@@ -1839,6 +1863,14 @@ func (checker *ProcessUprobeChecker) FromProcessUprobe(event *tetragon.ProcessUp
 		lm := NewProcessListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Ancestors = lm
+	}
+	{
+		val := event.Offset
+		checker.Offset = &val
+	}
+	{
+		val := event.RefCtrOffset
+		checker.RefCtrOffset = &val
 	}
 	return checker
 }
@@ -4543,6 +4575,7 @@ type ProcessFileChecker struct {
 	TracingPolicy *stringmatcher.StringMatcher       `json:"tracingPolicy,omitempty"`
 	RuleMatched   *stringmatcher.StringMatcher       `json:"ruleMatched,omitempty"`
 	Ancestors     *ProcessListMatcher                `json:"ancestors,omitempty"`
+	Message       *stringmatcher.StringMatcher       `json:"message,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -4649,6 +4682,11 @@ func (checker *ProcessFileChecker) Check(event *tetragon.ProcessFile) error {
 				return fmt.Errorf("Ancestors check failed: %w", err)
 			}
 		}
+		if checker.Message != nil {
+			if err := checker.Message.Match(event.Message); err != nil {
+				return fmt.Errorf("Message check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -4736,6 +4774,12 @@ func (checker *ProcessFileChecker) WithAncestors(check *ProcessListMatcher) *Pro
 	return checker
 }
 
+// WithMessage adds a Message check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithMessage(check *stringmatcher.StringMatcher) *ProcessFileChecker {
+	checker.Message = check
+	return checker
+}
+
 //FromProcessFile populates the ProcessFileChecker using data from a ProcessFile event
 func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) *ProcessFileChecker {
 	if event == nil {
@@ -4783,6 +4827,7 @@ func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) 
 			WithValues(checks...)
 		checker.Ancestors = lm
 	}
+	checker.Message = stringmatcher.Full(event.Message)
 	return checker
 }
 
@@ -7053,14 +7098,68 @@ func (checker *ImageChecker) FromImage(event *tetragon.Image) *ImageChecker {
 	return checker
 }
 
+// SecurityContextChecker implements a checker struct to check a SecurityContext field
+type SecurityContextChecker struct {
+	Privileged *bool `json:"privileged,omitempty"`
+}
+
+// NewSecurityContextChecker creates a new SecurityContextChecker
+func NewSecurityContextChecker() *SecurityContextChecker {
+	return &SecurityContextChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *SecurityContextChecker) GetCheckerType() string {
+	return "SecurityContextChecker"
+}
+
+// Check checks a SecurityContext field
+func (checker *SecurityContextChecker) Check(event *tetragon.SecurityContext) error {
+	if event == nil {
+		return fmt.Errorf("%s: SecurityContext field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Privileged != nil {
+			if *checker.Privileged != event.Privileged {
+				return fmt.Errorf("Privileged has value %t which does not match expected value %t", event.Privileged, *checker.Privileged)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithPrivileged adds a Privileged check to the SecurityContextChecker
+func (checker *SecurityContextChecker) WithPrivileged(check bool) *SecurityContextChecker {
+	checker.Privileged = &check
+	return checker
+}
+
+//FromSecurityContext populates the SecurityContextChecker using data from a SecurityContext field
+func (checker *SecurityContextChecker) FromSecurityContext(event *tetragon.SecurityContext) *SecurityContextChecker {
+	if event == nil {
+		return checker
+	}
+	{
+		val := event.Privileged
+		checker.Privileged = &val
+	}
+	return checker
+}
+
 // ContainerChecker implements a checker struct to check a Container field
 type ContainerChecker struct {
-	Id             *stringmatcher.StringMatcher       `json:"id,omitempty"`
-	Name           *stringmatcher.StringMatcher       `json:"name,omitempty"`
-	Image          *ImageChecker                      `json:"image,omitempty"`
-	StartTime      *timestampmatcher.TimestampMatcher `json:"startTime,omitempty"`
-	Pid            *uint32                            `json:"pid,omitempty"`
-	MaybeExecProbe *bool                              `json:"maybeExecProbe,omitempty"`
+	Id              *stringmatcher.StringMatcher       `json:"id,omitempty"`
+	Name            *stringmatcher.StringMatcher       `json:"name,omitempty"`
+	Image           *ImageChecker                      `json:"image,omitempty"`
+	StartTime       *timestampmatcher.TimestampMatcher `json:"startTime,omitempty"`
+	Pid             *uint32                            `json:"pid,omitempty"`
+	MaybeExecProbe  *bool                              `json:"maybeExecProbe,omitempty"`
+	SecurityContext *SecurityContextChecker            `json:"securityContext,omitempty"`
 }
 
 // NewContainerChecker creates a new ContainerChecker
@@ -7113,6 +7212,11 @@ func (checker *ContainerChecker) Check(event *tetragon.Container) error {
 				return fmt.Errorf("MaybeExecProbe has value %t which does not match expected value %t", event.MaybeExecProbe, *checker.MaybeExecProbe)
 			}
 		}
+		if checker.SecurityContext != nil {
+			if err := checker.SecurityContext.Check(event.SecurityContext); err != nil {
+				return fmt.Errorf("SecurityContext check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -7157,6 +7261,12 @@ func (checker *ContainerChecker) WithMaybeExecProbe(check bool) *ContainerChecke
 	return checker
 }
 
+// WithSecurityContext adds a SecurityContext check to the ContainerChecker
+func (checker *ContainerChecker) WithSecurityContext(check *SecurityContextChecker) *ContainerChecker {
+	checker.SecurityContext = check
+	return checker
+}
+
 //FromContainer populates the ContainerChecker using data from a Container field
 func (checker *ContainerChecker) FromContainer(event *tetragon.Container) *ContainerChecker {
 	if event == nil {
@@ -7177,17 +7287,21 @@ func (checker *ContainerChecker) FromContainer(event *tetragon.Container) *Conta
 		val := event.MaybeExecProbe
 		checker.MaybeExecProbe = &val
 	}
+	if event.SecurityContext != nil {
+		checker.SecurityContext = NewSecurityContextChecker().FromSecurityContext(event.SecurityContext)
+	}
 	return checker
 }
 
 // PodChecker implements a checker struct to check a Pod field
 type PodChecker struct {
-	Namespace    *stringmatcher.StringMatcher           `json:"namespace,omitempty"`
-	Name         *stringmatcher.StringMatcher           `json:"name,omitempty"`
-	Container    *ContainerChecker                      `json:"container,omitempty"`
-	PodLabels    map[string]stringmatcher.StringMatcher `json:"podLabels,omitempty"`
-	Workload     *stringmatcher.StringMatcher           `json:"workload,omitempty"`
-	WorkloadKind *stringmatcher.StringMatcher           `json:"workloadKind,omitempty"`
+	Namespace      *stringmatcher.StringMatcher           `json:"namespace,omitempty"`
+	Name           *stringmatcher.StringMatcher           `json:"name,omitempty"`
+	Container      *ContainerChecker                      `json:"container,omitempty"`
+	PodLabels      map[string]stringmatcher.StringMatcher `json:"podLabels,omitempty"`
+	Workload       *stringmatcher.StringMatcher           `json:"workload,omitempty"`
+	WorkloadKind   *stringmatcher.StringMatcher           `json:"workloadKind,omitempty"`
+	PodAnnotations map[string]stringmatcher.StringMatcher `json:"podAnnotations,omitempty"`
 }
 
 // NewPodChecker creates a new PodChecker
@@ -7257,6 +7371,31 @@ func (checker *PodChecker) Check(event *tetragon.Pod) error {
 				return fmt.Errorf("WorkloadKind check failed: %w", err)
 			}
 		}
+		{
+			var unmatched []string
+			matched := make(map[string]struct{})
+			for key, value := range event.PodAnnotations {
+				if len(checker.PodAnnotations) > 0 {
+					// Attempt to grab the matcher for this key
+					if matcher, ok := checker.PodAnnotations[key]; ok {
+						if err := matcher.Match(value); err != nil {
+							return fmt.Errorf("PodAnnotations[%s] (%s=%s) check failed: %w", key, key, value, err)
+						}
+						matched[key] = struct{}{}
+					}
+				}
+			}
+
+			// See if we have any unmatched values that we wanted to match
+			if len(matched) != len(checker.PodAnnotations) {
+				for k := range checker.PodAnnotations {
+					if _, ok := matched[k]; !ok {
+						unmatched = append(unmatched, k)
+					}
+				}
+				return fmt.Errorf("PodAnnotations unmatched: %v", unmatched)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -7301,6 +7440,12 @@ func (checker *PodChecker) WithWorkloadKind(check *stringmatcher.StringMatcher) 
 	return checker
 }
 
+// WithPodAnnotations adds a PodAnnotations check to the PodChecker
+func (checker *PodChecker) WithPodAnnotations(check map[string]stringmatcher.StringMatcher) *PodChecker {
+	checker.PodAnnotations = check
+	return checker
+}
+
 //FromPod populates the PodChecker using data from a Pod field
 func (checker *PodChecker) FromPod(event *tetragon.Pod) *PodChecker {
 	if event == nil {
@@ -7314,6 +7459,7 @@ func (checker *PodChecker) FromPod(event *tetragon.Pod) *PodChecker {
 	// TODO: implement fromMap
 	checker.Workload = stringmatcher.Full(event.Workload)
 	checker.WorkloadKind = stringmatcher.Full(event.WorkloadKind)
+	// TODO: implement fromMap
 	return checker
 }
 
@@ -12036,8 +12182,9 @@ func (checker *SocketStatsChecker) FromSocketStats(event *tetragon.SocketStats) 
 
 // ServiceChecker implements a checker struct to check a Service field
 type ServiceChecker struct {
-	Name      *stringmatcher.StringMatcher `json:"Name,omitempty"`
-	Namespace *stringmatcher.StringMatcher `json:"Namespace,omitempty"`
+	Name           *stringmatcher.StringMatcher           `json:"Name,omitempty"`
+	Namespace      *stringmatcher.StringMatcher           `json:"Namespace,omitempty"`
+	SelectorLabels map[string]stringmatcher.StringMatcher `json:"selectorLabels,omitempty"`
 }
 
 // NewServiceChecker creates a new ServiceChecker
@@ -12067,6 +12214,31 @@ func (checker *ServiceChecker) Check(event *tetragon.Service) error {
 				return fmt.Errorf("Namespace check failed: %w", err)
 			}
 		}
+		{
+			var unmatched []string
+			matched := make(map[string]struct{})
+			for key, value := range event.SelectorLabels {
+				if len(checker.SelectorLabels) > 0 {
+					// Attempt to grab the matcher for this key
+					if matcher, ok := checker.SelectorLabels[key]; ok {
+						if err := matcher.Match(value); err != nil {
+							return fmt.Errorf("SelectorLabels[%s] (%s=%s) check failed: %w", key, key, value, err)
+						}
+						matched[key] = struct{}{}
+					}
+				}
+			}
+
+			// See if we have any unmatched values that we wanted to match
+			if len(matched) != len(checker.SelectorLabels) {
+				for k := range checker.SelectorLabels {
+					if _, ok := matched[k]; !ok {
+						unmatched = append(unmatched, k)
+					}
+				}
+				return fmt.Errorf("SelectorLabels unmatched: %v", unmatched)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -12087,6 +12259,12 @@ func (checker *ServiceChecker) WithNamespace(check *stringmatcher.StringMatcher)
 	return checker
 }
 
+// WithSelectorLabels adds a SelectorLabels check to the ServiceChecker
+func (checker *ServiceChecker) WithSelectorLabels(check map[string]stringmatcher.StringMatcher) *ServiceChecker {
+	checker.SelectorLabels = check
+	return checker
+}
+
 //FromService populates the ServiceChecker using data from a Service field
 func (checker *ServiceChecker) FromService(event *tetragon.Service) *ServiceChecker {
 	if event == nil {
@@ -12094,6 +12272,7 @@ func (checker *ServiceChecker) FromService(event *tetragon.Service) *ServiceChec
 	}
 	checker.Name = stringmatcher.Full(event.Name)
 	checker.Namespace = stringmatcher.Full(event.Namespace)
+	// TODO: implement fromMap
 	return checker
 }
 
@@ -12604,10 +12783,12 @@ func (checker *FileDigestChecker) FromFileDigest(event *tetragon.FileDigest) *Fi
 
 // GenericFileArgChecker implements a checker struct to check a GenericFileArg field
 type GenericFileArgChecker struct {
-	File   *FileDetailsChecker `json:"file,omitempty"`
-	Io     *FileIOChecker      `json:"io,omitempty"`
-	MntNs  *NamespaceChecker   `json:"mntNs,omitempty"`
-	Digest *FileDigestChecker  `json:"digest,omitempty"`
+	File            *FileDetailsChecker `json:"file,omitempty"`
+	Io              *FileIOChecker      `json:"io,omitempty"`
+	MntNs           *NamespaceChecker   `json:"mntNs,omitempty"`
+	Digest          *FileDigestChecker  `json:"digest,omitempty"`
+	IsExeFromMemfd  *bool               `json:"isExeFromMemfd,omitempty"`
+	IsExeUpperLayer *bool               `json:"isExeUpperLayer,omitempty"`
 }
 
 // NewGenericFileArgChecker creates a new GenericFileArgChecker
@@ -12647,6 +12828,16 @@ func (checker *GenericFileArgChecker) Check(event *tetragon.GenericFileArg) erro
 				return fmt.Errorf("Digest check failed: %w", err)
 			}
 		}
+		if checker.IsExeFromMemfd != nil {
+			if *checker.IsExeFromMemfd != event.IsExeFromMemfd {
+				return fmt.Errorf("IsExeFromMemfd has value %t which does not match expected value %t", event.IsExeFromMemfd, *checker.IsExeFromMemfd)
+			}
+		}
+		if checker.IsExeUpperLayer != nil {
+			if *checker.IsExeUpperLayer != event.IsExeUpperLayer {
+				return fmt.Errorf("IsExeUpperLayer has value %t which does not match expected value %t", event.IsExeUpperLayer, *checker.IsExeUpperLayer)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -12679,6 +12870,18 @@ func (checker *GenericFileArgChecker) WithDigest(check *FileDigestChecker) *Gene
 	return checker
 }
 
+// WithIsExeFromMemfd adds a IsExeFromMemfd check to the GenericFileArgChecker
+func (checker *GenericFileArgChecker) WithIsExeFromMemfd(check bool) *GenericFileArgChecker {
+	checker.IsExeFromMemfd = &check
+	return checker
+}
+
+// WithIsExeUpperLayer adds a IsExeUpperLayer check to the GenericFileArgChecker
+func (checker *GenericFileArgChecker) WithIsExeUpperLayer(check bool) *GenericFileArgChecker {
+	checker.IsExeUpperLayer = &check
+	return checker
+}
+
 //FromGenericFileArg populates the GenericFileArgChecker using data from a GenericFileArg field
 func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.GenericFileArg) *GenericFileArgChecker {
 	if event == nil {
@@ -12695,6 +12898,14 @@ func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.Generic
 	}
 	if event.Digest != nil {
 		checker.Digest = NewFileDigestChecker().FromFileDigest(event.Digest)
+	}
+	{
+		val := event.IsExeFromMemfd
+		checker.IsExeFromMemfd = &val
+	}
+	{
+		val := event.IsExeUpperLayer
+		checker.IsExeUpperLayer = &val
 	}
 	return checker
 }
@@ -13098,12 +13309,358 @@ func (checker *AttrArgChecker) FromAttrArg(event *tetragon.AttrArg) *AttrArgChec
 	return checker
 }
 
+// LinkArgChecker implements a checker struct to check a LinkArg field
+type LinkArgChecker struct {
+	Link   *FileDetailsChecker `json:"link,omitempty"`
+	Target *FileDetailsChecker `json:"target,omitempty"`
+	MntNs  *NamespaceChecker   `json:"mntNs,omitempty"`
+}
+
+// NewLinkArgChecker creates a new LinkArgChecker
+func NewLinkArgChecker() *LinkArgChecker {
+	return &LinkArgChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *LinkArgChecker) GetCheckerType() string {
+	return "LinkArgChecker"
+}
+
+// Check checks a LinkArg field
+func (checker *LinkArgChecker) Check(event *tetragon.LinkArg) error {
+	if event == nil {
+		return fmt.Errorf("%s: LinkArg field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Link != nil {
+			if err := checker.Link.Check(event.Link); err != nil {
+				return fmt.Errorf("Link check failed: %w", err)
+			}
+		}
+		if checker.Target != nil {
+			if err := checker.Target.Check(event.Target); err != nil {
+				return fmt.Errorf("Target check failed: %w", err)
+			}
+		}
+		if checker.MntNs != nil {
+			if err := checker.MntNs.Check(event.MntNs); err != nil {
+				return fmt.Errorf("MntNs check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithLink adds a Link check to the LinkArgChecker
+func (checker *LinkArgChecker) WithLink(check *FileDetailsChecker) *LinkArgChecker {
+	checker.Link = check
+	return checker
+}
+
+// WithTarget adds a Target check to the LinkArgChecker
+func (checker *LinkArgChecker) WithTarget(check *FileDetailsChecker) *LinkArgChecker {
+	checker.Target = check
+	return checker
+}
+
+// WithMntNs adds a MntNs check to the LinkArgChecker
+func (checker *LinkArgChecker) WithMntNs(check *NamespaceChecker) *LinkArgChecker {
+	checker.MntNs = check
+	return checker
+}
+
+//FromLinkArg populates the LinkArgChecker using data from a LinkArg field
+func (checker *LinkArgChecker) FromLinkArg(event *tetragon.LinkArg) *LinkArgChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Link != nil {
+		checker.Link = NewFileDetailsChecker().FromFileDetails(event.Link)
+	}
+	if event.Target != nil {
+		checker.Target = NewFileDetailsChecker().FromFileDetails(event.Target)
+	}
+	if event.MntNs != nil {
+		checker.MntNs = NewNamespaceChecker().FromNamespace(event.MntNs)
+	}
+	return checker
+}
+
+// SymlinkArgChecker implements a checker struct to check a SymlinkArg field
+type SymlinkArgChecker struct {
+	Link   *FileDetailsChecker          `json:"link,omitempty"`
+	Target *stringmatcher.StringMatcher `json:"target,omitempty"`
+	MntNs  *NamespaceChecker            `json:"mntNs,omitempty"`
+}
+
+// NewSymlinkArgChecker creates a new SymlinkArgChecker
+func NewSymlinkArgChecker() *SymlinkArgChecker {
+	return &SymlinkArgChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *SymlinkArgChecker) GetCheckerType() string {
+	return "SymlinkArgChecker"
+}
+
+// Check checks a SymlinkArg field
+func (checker *SymlinkArgChecker) Check(event *tetragon.SymlinkArg) error {
+	if event == nil {
+		return fmt.Errorf("%s: SymlinkArg field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Link != nil {
+			if err := checker.Link.Check(event.Link); err != nil {
+				return fmt.Errorf("Link check failed: %w", err)
+			}
+		}
+		if checker.Target != nil {
+			if err := checker.Target.Match(event.Target); err != nil {
+				return fmt.Errorf("Target check failed: %w", err)
+			}
+		}
+		if checker.MntNs != nil {
+			if err := checker.MntNs.Check(event.MntNs); err != nil {
+				return fmt.Errorf("MntNs check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithLink adds a Link check to the SymlinkArgChecker
+func (checker *SymlinkArgChecker) WithLink(check *FileDetailsChecker) *SymlinkArgChecker {
+	checker.Link = check
+	return checker
+}
+
+// WithTarget adds a Target check to the SymlinkArgChecker
+func (checker *SymlinkArgChecker) WithTarget(check *stringmatcher.StringMatcher) *SymlinkArgChecker {
+	checker.Target = check
+	return checker
+}
+
+// WithMntNs adds a MntNs check to the SymlinkArgChecker
+func (checker *SymlinkArgChecker) WithMntNs(check *NamespaceChecker) *SymlinkArgChecker {
+	checker.MntNs = check
+	return checker
+}
+
+//FromSymlinkArg populates the SymlinkArgChecker using data from a SymlinkArg field
+func (checker *SymlinkArgChecker) FromSymlinkArg(event *tetragon.SymlinkArg) *SymlinkArgChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Link != nil {
+		checker.Link = NewFileDetailsChecker().FromFileDetails(event.Link)
+	}
+	checker.Target = stringmatcher.Full(event.Target)
+	if event.MntNs != nil {
+		checker.MntNs = NewNamespaceChecker().FromNamespace(event.MntNs)
+	}
+	return checker
+}
+
+// PathDetailsChecker implements a checker struct to check a PathDetails field
+type PathDetailsChecker struct {
+	Str            *stringmatcher.StringMatcher `json:"str,omitempty"`
+	IsRelativePath *bool                        `json:"isRelativePath,omitempty"`
+}
+
+// NewPathDetailsChecker creates a new PathDetailsChecker
+func NewPathDetailsChecker() *PathDetailsChecker {
+	return &PathDetailsChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *PathDetailsChecker) GetCheckerType() string {
+	return "PathDetailsChecker"
+}
+
+// Check checks a PathDetails field
+func (checker *PathDetailsChecker) Check(event *tetragon.PathDetails) error {
+	if event == nil {
+		return fmt.Errorf("%s: PathDetails field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Str != nil {
+			switch event := event.Path.(type) {
+			case *tetragon.PathDetails_Str:
+				if err := checker.Str.Match(event.Str); err != nil {
+					return fmt.Errorf("Str check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("PathDetailsChecker: Str check failed: %T is not a Str", event)
+			}
+		}
+		if checker.IsRelativePath != nil {
+			if event.IsRelativePath == nil {
+				return fmt.Errorf("IsRelativePath is nil and does not match expected value %v", *checker.IsRelativePath)
+			}
+			if *checker.IsRelativePath != event.IsRelativePath.Value {
+				return fmt.Errorf("IsRelativePath has value %v which does not match expected value %v", event.IsRelativePath.Value, *checker.IsRelativePath)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithStr adds a Str check to the PathDetailsChecker
+func (checker *PathDetailsChecker) WithStr(check *stringmatcher.StringMatcher) *PathDetailsChecker {
+	checker.Str = check
+	return checker
+}
+
+// WithIsRelativePath adds a IsRelativePath check to the PathDetailsChecker
+func (checker *PathDetailsChecker) WithIsRelativePath(check bool) *PathDetailsChecker {
+	checker.IsRelativePath = &check
+	return checker
+}
+
+//FromPathDetails populates the PathDetailsChecker using data from a PathDetails field
+func (checker *PathDetailsChecker) FromPathDetails(event *tetragon.PathDetails) *PathDetailsChecker {
+	if event == nil {
+		return checker
+	}
+	switch event := event.Path.(type) {
+	case *tetragon.PathDetails_Str:
+		checker.Str = stringmatcher.Full(event.Str)
+	}
+	if event.IsRelativePath != nil {
+		val := event.IsRelativePath.Value
+		checker.IsRelativePath = &val
+	}
+	return checker
+}
+
+// OpenRawArgChecker implements a checker struct to check a OpenRawArg field
+type OpenRawArgChecker struct {
+	Path      *PathDetailsChecker `json:"path,omitempty"`
+	Dir       *FileDetailsChecker `json:"dir,omitempty"`
+	Flags     *StringListMatcher  `json:"flags,omitempty"`
+	ErrorCode *SysRetvalChecker   `json:"errorCode,omitempty"`
+}
+
+// NewOpenRawArgChecker creates a new OpenRawArgChecker
+func NewOpenRawArgChecker() *OpenRawArgChecker {
+	return &OpenRawArgChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *OpenRawArgChecker) GetCheckerType() string {
+	return "OpenRawArgChecker"
+}
+
+// Check checks a OpenRawArg field
+func (checker *OpenRawArgChecker) Check(event *tetragon.OpenRawArg) error {
+	if event == nil {
+		return fmt.Errorf("%s: OpenRawArg field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Path != nil {
+			if err := checker.Path.Check(event.Path); err != nil {
+				return fmt.Errorf("Path check failed: %w", err)
+			}
+		}
+		if checker.Dir != nil {
+			if err := checker.Dir.Check(event.Dir); err != nil {
+				return fmt.Errorf("Dir check failed: %w", err)
+			}
+		}
+		if checker.Flags != nil {
+			if err := checker.Flags.Check(event.Flags); err != nil {
+				return fmt.Errorf("Flags check failed: %w", err)
+			}
+		}
+		if checker.ErrorCode != nil {
+			if err := checker.ErrorCode.Check(&event.ErrorCode); err != nil {
+				return fmt.Errorf("ErrorCode check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithPath adds a Path check to the OpenRawArgChecker
+func (checker *OpenRawArgChecker) WithPath(check *PathDetailsChecker) *OpenRawArgChecker {
+	checker.Path = check
+	return checker
+}
+
+// WithDir adds a Dir check to the OpenRawArgChecker
+func (checker *OpenRawArgChecker) WithDir(check *FileDetailsChecker) *OpenRawArgChecker {
+	checker.Dir = check
+	return checker
+}
+
+// WithFlags adds a Flags check to the OpenRawArgChecker
+func (checker *OpenRawArgChecker) WithFlags(check *StringListMatcher) *OpenRawArgChecker {
+	checker.Flags = check
+	return checker
+}
+
+// WithErrorCode adds a ErrorCode check to the OpenRawArgChecker
+func (checker *OpenRawArgChecker) WithErrorCode(check tetragon.SysRetval) *OpenRawArgChecker {
+	wrappedCheck := SysRetvalChecker(check)
+	checker.ErrorCode = &wrappedCheck
+	return checker
+}
+
+//FromOpenRawArg populates the OpenRawArgChecker using data from a OpenRawArg field
+func (checker *OpenRawArgChecker) FromOpenRawArg(event *tetragon.OpenRawArg) *OpenRawArgChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Path != nil {
+		checker.Path = NewPathDetailsChecker().FromPathDetails(event.Path)
+	}
+	if event.Dir != nil {
+		checker.Dir = NewFileDetailsChecker().FromFileDetails(event.Dir)
+	}
+	{
+		var checks []*stringmatcher.StringMatcher
+		for _, check := range event.Flags {
+			var convertedCheck *stringmatcher.StringMatcher
+			convertedCheck = stringmatcher.Full(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewStringListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Flags = lm
+	}
+	checker.ErrorCode = NewSysRetvalChecker(event.ErrorCode)
+	return checker
+}
+
 // FileArgumentChecker implements a checker struct to check a FileArgument field
 type FileArgumentChecker struct {
 	GenericArg *GenericFileArgChecker `json:"genericArg,omitempty"`
 	RenameArg  *RenameFileArgChecker  `json:"renameArg,omitempty"`
 	ReaddirArg *ReadDirArgChecker     `json:"readdirArg,omitempty"`
 	AttrArg    *AttrArgChecker        `json:"attrArg,omitempty"`
+	LinkArg    *LinkArgChecker        `json:"linkArg,omitempty"`
+	SymlinkArg *SymlinkArgChecker     `json:"symlinkArg,omitempty"`
+	OpenrawArg *OpenRawArgChecker     `json:"openrawArg,omitempty"`
 }
 
 // NewFileArgumentChecker creates a new FileArgumentChecker
@@ -13163,6 +13720,36 @@ func (checker *FileArgumentChecker) Check(event *tetragon.FileArgument) error {
 				return fmt.Errorf("FileArgumentChecker: AttrArg check failed: %T is not a AttrArg", event)
 			}
 		}
+		if checker.LinkArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.FileArgument_LinkArg:
+				if err := checker.LinkArg.Check(event.LinkArg); err != nil {
+					return fmt.Errorf("LinkArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("FileArgumentChecker: LinkArg check failed: %T is not a LinkArg", event)
+			}
+		}
+		if checker.SymlinkArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.FileArgument_SymlinkArg:
+				if err := checker.SymlinkArg.Check(event.SymlinkArg); err != nil {
+					return fmt.Errorf("SymlinkArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("FileArgumentChecker: SymlinkArg check failed: %T is not a SymlinkArg", event)
+			}
+		}
+		if checker.OpenrawArg != nil {
+			switch event := event.Arg.(type) {
+			case *tetragon.FileArgument_OpenrawArg:
+				if err := checker.OpenrawArg.Check(event.OpenrawArg); err != nil {
+					return fmt.Errorf("OpenrawArg check failed: %w", err)
+				}
+			default:
+				return fmt.Errorf("FileArgumentChecker: OpenrawArg check failed: %T is not a OpenrawArg", event)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -13195,6 +13782,24 @@ func (checker *FileArgumentChecker) WithAttrArg(check *AttrArgChecker) *FileArgu
 	return checker
 }
 
+// WithLinkArg adds a LinkArg check to the FileArgumentChecker
+func (checker *FileArgumentChecker) WithLinkArg(check *LinkArgChecker) *FileArgumentChecker {
+	checker.LinkArg = check
+	return checker
+}
+
+// WithSymlinkArg adds a SymlinkArg check to the FileArgumentChecker
+func (checker *FileArgumentChecker) WithSymlinkArg(check *SymlinkArgChecker) *FileArgumentChecker {
+	checker.SymlinkArg = check
+	return checker
+}
+
+// WithOpenrawArg adds a OpenrawArg check to the FileArgumentChecker
+func (checker *FileArgumentChecker) WithOpenrawArg(check *OpenRawArgChecker) *FileArgumentChecker {
+	checker.OpenrawArg = check
+	return checker
+}
+
 //FromFileArgument populates the FileArgumentChecker using data from a FileArgument field
 func (checker *FileArgumentChecker) FromFileArgument(event *tetragon.FileArgument) *FileArgumentChecker {
 	if event == nil {
@@ -13222,6 +13827,24 @@ func (checker *FileArgumentChecker) FromFileArgument(event *tetragon.FileArgumen
 	case *tetragon.FileArgument_AttrArg:
 		if event.AttrArg != nil {
 			checker.AttrArg = NewAttrArgChecker().FromAttrArg(event.AttrArg)
+		}
+	}
+	switch event := event.Arg.(type) {
+	case *tetragon.FileArgument_LinkArg:
+		if event.LinkArg != nil {
+			checker.LinkArg = NewLinkArgChecker().FromLinkArg(event.LinkArg)
+		}
+	}
+	switch event := event.Arg.(type) {
+	case *tetragon.FileArgument_SymlinkArg:
+		if event.SymlinkArg != nil {
+			checker.SymlinkArg = NewSymlinkArgChecker().FromSymlinkArg(event.SymlinkArg)
+		}
+	}
+	switch event := event.Arg.(type) {
+	case *tetragon.FileArgument_OpenrawArg:
+		if event.OpenrawArg != nil {
+			checker.OpenrawArg = NewOpenRawArgChecker().FromOpenRawArg(event.OpenrawArg)
 		}
 	}
 	return checker
@@ -14428,6 +15051,58 @@ nextCheck:
 	return nil
 }
 
+// BpfCmdChecker checks a tetragon.BpfCmd
+type BpfCmdChecker tetragon.BpfCmd
+
+// MarshalJSON implements json.Marshaler interface
+func (enum BpfCmdChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.BpfCmd_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "BPF_")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown BpfCmd %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *BpfCmdChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.BpfCmd_value[str]; ok {
+		*enum = BpfCmdChecker(n)
+	} else if n, ok := tetragon.BpfCmd_value["BPF_"+str]; ok {
+		*enum = BpfCmdChecker(n)
+	} else {
+		return fmt.Errorf("Unknown BpfCmd %s", str)
+	}
+
+	return nil
+}
+
+// NewBpfCmdChecker creates a new BpfCmdChecker
+func NewBpfCmdChecker(val tetragon.BpfCmd) *BpfCmdChecker {
+	enum := BpfCmdChecker(val)
+	return &enum
+}
+
+// Check checks a BpfCmd against the checker
+func (enum *BpfCmdChecker) Check(val *tetragon.BpfCmd) error {
+	if val == nil {
+		return fmt.Errorf("BpfCmdChecker: BpfCmd is nil and does not match expected value %s", tetragon.BpfCmd(*enum))
+	}
+	if *enum != BpfCmdChecker(*val) {
+		return fmt.Errorf("BpfCmdChecker: BpfCmd has value %s which does not match expected value %s", (*val), tetragon.BpfCmd(*enum))
+	}
+	return nil
+}
+
 // CapabilitiesTypeChecker checks a tetragon.CapabilitiesType
 type CapabilitiesTypeChecker tetragon.CapabilitiesType
 
@@ -14580,58 +15255,6 @@ func (enum *ProcessPrivilegesChangedChecker) Check(val *tetragon.ProcessPrivileg
 	}
 	if *enum != ProcessPrivilegesChangedChecker(*val) {
 		return fmt.Errorf("ProcessPrivilegesChangedChecker: ProcessPrivilegesChanged has value %s which does not match expected value %s", (*val), tetragon.ProcessPrivilegesChanged(*enum))
-	}
-	return nil
-}
-
-// BpfCmdChecker checks a tetragon.BpfCmd
-type BpfCmdChecker tetragon.BpfCmd
-
-// MarshalJSON implements json.Marshaler interface
-func (enum BpfCmdChecker) MarshalJSON() ([]byte, error) {
-	if name, ok := tetragon.BpfCmd_name[int32(enum)]; ok {
-		name = strings.TrimPrefix(name, "BPF_")
-		return json.Marshal(name)
-	}
-
-	return nil, fmt.Errorf("Unknown BpfCmd %d", enum)
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (enum *BpfCmdChecker) UnmarshalJSON(b []byte) error {
-	var str string
-	if err := yaml.UnmarshalStrict(b, &str); err != nil {
-		return err
-	}
-
-	// Convert to uppercase if not already
-	str = strings.ToUpper(str)
-
-	// Look up the value from the enum values map
-	if n, ok := tetragon.BpfCmd_value[str]; ok {
-		*enum = BpfCmdChecker(n)
-	} else if n, ok := tetragon.BpfCmd_value["BPF_"+str]; ok {
-		*enum = BpfCmdChecker(n)
-	} else {
-		return fmt.Errorf("Unknown BpfCmd %s", str)
-	}
-
-	return nil
-}
-
-// NewBpfCmdChecker creates a new BpfCmdChecker
-func NewBpfCmdChecker(val tetragon.BpfCmd) *BpfCmdChecker {
-	enum := BpfCmdChecker(val)
-	return &enum
-}
-
-// Check checks a BpfCmd against the checker
-func (enum *BpfCmdChecker) Check(val *tetragon.BpfCmd) error {
-	if val == nil {
-		return fmt.Errorf("BpfCmdChecker: BpfCmd is nil and does not match expected value %s", tetragon.BpfCmd(*enum))
-	}
-	if *enum != BpfCmdChecker(*val) {
-		return fmt.Errorf("BpfCmdChecker: BpfCmd has value %s which does not match expected value %s", (*val), tetragon.BpfCmd(*enum))
 	}
 	return nil
 }
@@ -14944,6 +15567,58 @@ func (enum *DigestAlgoChecker) Check(val *tetragon.DigestAlgo) error {
 	}
 	if *enum != DigestAlgoChecker(*val) {
 		return fmt.Errorf("DigestAlgoChecker: DigestAlgo has value %s which does not match expected value %s", (*val), tetragon.DigestAlgo(*enum))
+	}
+	return nil
+}
+
+// SysRetvalChecker checks a tetragon.SysRetval
+type SysRetvalChecker tetragon.SysRetval
+
+// MarshalJSON implements json.Marshaler interface
+func (enum SysRetvalChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.SysRetval_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown SysRetval %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *SysRetvalChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.SysRetval_value[str]; ok {
+		*enum = SysRetvalChecker(n)
+	} else if n, ok := tetragon.SysRetval_value[""+str]; ok {
+		*enum = SysRetvalChecker(n)
+	} else {
+		return fmt.Errorf("Unknown SysRetval %s", str)
+	}
+
+	return nil
+}
+
+// NewSysRetvalChecker creates a new SysRetvalChecker
+func NewSysRetvalChecker(val tetragon.SysRetval) *SysRetvalChecker {
+	enum := SysRetvalChecker(val)
+	return &enum
+}
+
+// Check checks a SysRetval against the checker
+func (enum *SysRetvalChecker) Check(val *tetragon.SysRetval) error {
+	if val == nil {
+		return fmt.Errorf("SysRetvalChecker: SysRetval is nil and does not match expected value %s", tetragon.SysRetval(*enum))
+	}
+	if *enum != SysRetvalChecker(*val) {
+		return fmt.Errorf("SysRetvalChecker: SysRetval has value %s which does not match expected value %s", (*val), tetragon.SysRetval(*enum))
 	}
 	return nil
 }
