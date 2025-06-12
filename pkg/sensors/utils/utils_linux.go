@@ -440,7 +440,7 @@ func LogLayer3Features() string {
 	// not load the BTF again
 	defer btf.FlushKernelSpec()
 	return fmt.Sprintf("packet: %t, packet_mem: %t, add_and_fetch: %t, current_task_btf: %t, process_tree: %t, "+
-		"func_by_func_verif: %t, global_func_ptr_args: %t, raw_sockets: %t, RTT_hook: %t, fentry: %t",
+		"func_by_func_verif: %t, global_func_ptr_args: %t, raw_sockets: %t, RTT_hook: %t, fentry: %t, udp_bind_needs_dummies: %t",
 		CGroupSKBAvailable(), SupportCGroupSKBProbeRead(), SupportAddAndFetch(), SupportCurrentTaskBTF(), SupportProcessTree(),
-		SupportFuncByFuncVerif(), SupportGlobalFuncPtrArgs(), RawHooksAvailable(), RTTHookAvailable(), SupportFentry())
+		SupportFuncByFuncVerif(), SupportGlobalFuncPtrArgs(), RawHooksAvailable(), RTTHookAvailable(), SupportFentry(), UDPBindNeedsDummies())
 }
