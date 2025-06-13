@@ -37,24 +37,20 @@ func TestPrefixTree1(t *testing.T) {
 		prefixTree.Insert(PrefixSuffixFileMatcher{Prefix: tc.prefix, Suffix: tc.suffix}, tc.rule)
 	}
 
-	assert.Equal(t, prefixTree.Traverse(),
-		[]PrefixSuffixFileMatchers{
-			{
-				WalkPrefix: "/sys/kernel",
-				Matchers: map[PrefixSuffixFileMatcherRule]struct{}{
-					{Matcher: PrefixSuffixFileMatcher{Prefix: "/sys/kernel/"}, Rule: 3}: struct{}{},
-				},
-			},
-			{
-				WalkPrefix: "/home",
-				Matchers: map[PrefixSuffixFileMatcherRule]struct{}{
-					{Matcher: PrefixSuffixFileMatcher{Prefix: "/home/", Suffix: ".txt"}, Rule: 0}:       struct{}{},
-					{Matcher: PrefixSuffixFileMatcher{Prefix: "/home/apapag/", Suffix: ".sh"}, Rule: 1}: struct{}{},
-					{Matcher: PrefixSuffixFileMatcher{Prefix: "/home/pizza/", Suffix: ".go"}, Rule: 2}:  struct{}{},
-				},
-			},
+	prefixes := prefixTree.Traverse()
+	assert.Equal(t, 2, len(prefixes))
+	assert.Contains(t, prefixes, PrefixSuffixFileMatchers{WalkPrefix: "/sys/kernel",
+		Matchers: map[PrefixSuffixFileMatcherRule]struct{}{
+			{Matcher: PrefixSuffixFileMatcher{Prefix: "/sys/kernel/"}, Rule: 3}: struct{}{},
+		}})
+	assert.Contains(t, prefixes, PrefixSuffixFileMatchers{
+		WalkPrefix: "/home",
+		Matchers: map[PrefixSuffixFileMatcherRule]struct{}{
+			{Matcher: PrefixSuffixFileMatcher{Prefix: "/home/", Suffix: ".txt"}, Rule: 0}:       struct{}{},
+			{Matcher: PrefixSuffixFileMatcher{Prefix: "/home/apapag/", Suffix: ".sh"}, Rule: 1}: struct{}{},
+			{Matcher: PrefixSuffixFileMatcher{Prefix: "/home/pizza/", Suffix: ".go"}, Rule: 2}:  struct{}{},
 		},
-	)
+	})
 }
 
 func TestPrefixTree2(t *testing.T) {
