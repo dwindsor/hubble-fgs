@@ -371,6 +371,8 @@ options:
       usage: Size in MB for rotating OCSF JSON export files
     - name: ocsf-export-filename
       usage: Filename for OCSF JSON export. Disabled by default
+    - name: ocsf-export-server
+      usage: Server for OCSF JSON export. Disabled by default
     - name: pprof-address
       usage: |
         Serves runtime profile data via HTTP (e.g. 'localhost:6060'). Disabled by default
