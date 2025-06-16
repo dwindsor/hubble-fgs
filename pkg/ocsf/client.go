@@ -16,19 +16,12 @@ type OCSFClient struct {
 	Client v1alpha.EventServiceClient
 	Ctx    context.Context
 	conn   *grpc.ClientConn
-	cancel context.CancelFunc
 }
 
 var (
 	Retries    = 4
-	ocsfclient *OCSFClient
+	ocsfClient *OCSFClient
 )
-
-type daemonInfo struct {
-	ServerAddr string `json:"server_address"`
-}
-
-var ocsfClient *OCSFClient
 
 // NewOCSFJSONClient return a connected client to a OCSF server
 func NewOCSFJSONClient(ctx context.Context, serverAddr string) error {
