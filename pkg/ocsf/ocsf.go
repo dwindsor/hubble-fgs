@@ -148,10 +148,7 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect) *v1alpha.EndpointEvent_Ne
 	}
 }
 
-func ResponseToOCSF(response *tetragon.GetEventsResponse) (*v1alpha.EndpointEvent, bool) {
+func ResponseToOCSF(response *tetragon.GetEventsResponse) *v1alpha.EndpointEvent_NetworkActivityDetail {
 	n := processConnectToOCSF(response.GetProcessConnect())
-	res := &v1alpha.EndpointEvent{
-		Detail: n,
-	}
-	return res, true
+	return n
 }

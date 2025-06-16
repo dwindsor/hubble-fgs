@@ -1,35 +1,22 @@
 syntax = "proto3";
 package ocsf.v1alpha;
 
-import "ocsf/v1alpha/ocsf.proto";
-
 option go_package = "github.com/isovalent/ipa/ocsf/v1alpha";
 
-message StreamOCSFRequest {}
-message StreamOCSFResponse {
-  //////////////////////////////////////////////////////////////////////////////
-  //
-  // This oneof is set based on the type of event.
-  // The set field contains details specific to the event type.
-  //
+message OcsfEvent {
+  string json = 1;
+}
+
+message ProcessEventsRequest {
   oneof detail {
-    // ocsf.ProcessActivity process_activity_detail = 101;
-    // ocsf.MemoryActivity memory_activity_detail = 102;
-    // ocsf.HTTPActivity http_activity_detail = 103;
-    // ocsf.FileSystemActivity file_activity_detail = 104;
-    // ocsf.DetectionFinding detection_finding_detail = 105;
-    // ocsf.RegistryKeyActivity registry_key_activity_detail = 106;
-    // ocsf.RegistryValueActivity registry_value_activity_detail = 107;
-    // ocsf.DNSActivity dns_activity_detail = 108;
-    // ocsf.WindowsServiceActivity windows_service_activity_detail = 109;
-    // ocsf.ScheduledJobActivity scheduled_job_activity_detail = 110;
-    // ocsf.ScriptActivity script_activity_detail = 111;
-    NetworkActivity network_activity_detail = 112;
-    // ocsf.Authentication authentication_detail = 113;
-    // ocsf.ProcessQuery process_query_detail = 114;
+    OcsfEvent ocsf_event = 1;
   }
 }
 
-service OCSFService {
-  rpc StreamOCSF(StreamOCSFRequest) returns (stream StreamOCSFResponse) {}
+message ProcessEventsResponse {
+  string message = 1;
+}
+
+service EventService {
+  rpc ProcessEvents(stream ProcessEventsRequest) returns (ProcessEventsResponse) {}
 }

@@ -19,105 +19,95 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	OCSFService_StreamOCSF_FullMethodName = "/ocsf.v1alpha.OCSFService/StreamOCSF"
+	EventService_ProcessEvents_FullMethodName = "/ocsf.v1alpha.EventService/ProcessEvents"
 )
 
-// OCSFServiceClient is the client API for OCSFService service.
+// EventServiceClient is the client API for EventService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type OCSFServiceClient interface {
-	StreamOCSF(ctx context.Context, in *StreamOCSFRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOCSFResponse], error)
+type EventServiceClient interface {
+	ProcessEvents(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[ProcessEventsRequest, ProcessEventsResponse], error)
 }
 
-type oCSFServiceClient struct {
+type eventServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewOCSFServiceClient(cc grpc.ClientConnInterface) OCSFServiceClient {
-	return &oCSFServiceClient{cc}
+func NewEventServiceClient(cc grpc.ClientConnInterface) EventServiceClient {
+	return &eventServiceClient{cc}
 }
 
-func (c *oCSFServiceClient) StreamOCSF(ctx context.Context, in *StreamOCSFRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOCSFResponse], error) {
+func (c *eventServiceClient) ProcessEvents(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[ProcessEventsRequest, ProcessEventsResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &OCSFService_ServiceDesc.Streams[0], OCSFService_StreamOCSF_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &EventService_ServiceDesc.Streams[0], EventService_ProcessEvents_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[StreamOCSFRequest, StreamOCSFResponse]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
+	x := &grpc.GenericClientStream[ProcessEventsRequest, ProcessEventsResponse]{ClientStream: stream}
 	return x, nil
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type OCSFService_StreamOCSFClient = grpc.ServerStreamingClient[StreamOCSFResponse]
+type EventService_ProcessEventsClient = grpc.ClientStreamingClient[ProcessEventsRequest, ProcessEventsResponse]
 
-// OCSFServiceServer is the server API for OCSFService service.
-// All implementations must embed UnimplementedOCSFServiceServer
+// EventServiceServer is the server API for EventService service.
+// All implementations must embed UnimplementedEventServiceServer
 // for forward compatibility.
-type OCSFServiceServer interface {
-	StreamOCSF(*StreamOCSFRequest, grpc.ServerStreamingServer[StreamOCSFResponse]) error
-	mustEmbedUnimplementedOCSFServiceServer()
+type EventServiceServer interface {
+	ProcessEvents(grpc.ClientStreamingServer[ProcessEventsRequest, ProcessEventsResponse]) error
+	mustEmbedUnimplementedEventServiceServer()
 }
 
-// UnimplementedOCSFServiceServer must be embedded to have
+// UnimplementedEventServiceServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedOCSFServiceServer struct{}
+type UnimplementedEventServiceServer struct{}
 
-func (UnimplementedOCSFServiceServer) StreamOCSF(*StreamOCSFRequest, grpc.ServerStreamingServer[StreamOCSFResponse]) error {
-	return status.Errorf(codes.Unimplemented, "method StreamOCSF not implemented")
+func (UnimplementedEventServiceServer) ProcessEvents(grpc.ClientStreamingServer[ProcessEventsRequest, ProcessEventsResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method ProcessEvents not implemented")
 }
-func (UnimplementedOCSFServiceServer) mustEmbedUnimplementedOCSFServiceServer() {}
-func (UnimplementedOCSFServiceServer) testEmbeddedByValue()                     {}
+func (UnimplementedEventServiceServer) mustEmbedUnimplementedEventServiceServer() {}
+func (UnimplementedEventServiceServer) testEmbeddedByValue()                      {}
 
-// UnsafeOCSFServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to OCSFServiceServer will
+// UnsafeEventServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to EventServiceServer will
 // result in compilation errors.
-type UnsafeOCSFServiceServer interface {
-	mustEmbedUnimplementedOCSFServiceServer()
+type UnsafeEventServiceServer interface {
+	mustEmbedUnimplementedEventServiceServer()
 }
 
-func RegisterOCSFServiceServer(s grpc.ServiceRegistrar, srv OCSFServiceServer) {
-	// If the following call pancis, it indicates UnimplementedOCSFServiceServer was
+func RegisterEventServiceServer(s grpc.ServiceRegistrar, srv EventServiceServer) {
+	// If the following call pancis, it indicates UnimplementedEventServiceServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&OCSFService_ServiceDesc, srv)
+	s.RegisterService(&EventService_ServiceDesc, srv)
 }
 
-func _OCSFService_StreamOCSF_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(StreamOCSFRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(OCSFServiceServer).StreamOCSF(m, &grpc.GenericServerStream[StreamOCSFRequest, StreamOCSFResponse]{ServerStream: stream})
+func _EventService_ProcessEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(EventServiceServer).ProcessEvents(&grpc.GenericServerStream[ProcessEventsRequest, ProcessEventsResponse]{ServerStream: stream})
 }
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type OCSFService_StreamOCSFServer = grpc.ServerStreamingServer[StreamOCSFResponse]
+type EventService_ProcessEventsServer = grpc.ClientStreamingServer[ProcessEventsRequest, ProcessEventsResponse]
 
-// OCSFService_ServiceDesc is the grpc.ServiceDesc for OCSFService service.
+// EventService_ServiceDesc is the grpc.ServiceDesc for EventService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var OCSFService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ocsf.v1alpha.OCSFService",
-	HandlerType: (*OCSFServiceServer)(nil),
+var EventService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "ocsf.v1alpha.EventService",
+	HandlerType: (*EventServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "StreamOCSF",
-			Handler:       _OCSFService_StreamOCSF_Handler,
-			ServerStreams: true,
+			StreamName:    "ProcessEvents",
+			Handler:       _EventService_ProcessEvents_Handler,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "ocsf/v1alpha/grpc.proto",

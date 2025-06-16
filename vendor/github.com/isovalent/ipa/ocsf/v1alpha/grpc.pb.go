@@ -21,26 +21,27 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type StreamOCSFRequest struct {
+type OcsfEvent struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Json          string                 `protobuf:"bytes,1,opt,name=json,proto3" json:"json,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *StreamOCSFRequest) Reset() {
-	*x = StreamOCSFRequest{}
+func (x *OcsfEvent) Reset() {
+	*x = OcsfEvent{}
 	mi := &file_ocsf_v1alpha_grpc_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *StreamOCSFRequest) String() string {
+func (x *OcsfEvent) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StreamOCSFRequest) ProtoMessage() {}
+func (*OcsfEvent) ProtoMessage() {}
 
-func (x *StreamOCSFRequest) ProtoReflect() protoreflect.Message {
+func (x *OcsfEvent) ProtoReflect() protoreflect.Message {
 	mi := &file_ocsf_v1alpha_grpc_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -52,40 +53,42 @@ func (x *StreamOCSFRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use StreamOCSFRequest.ProtoReflect.Descriptor instead.
-func (*StreamOCSFRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use OcsfEvent.ProtoReflect.Descriptor instead.
+func (*OcsfEvent) Descriptor() ([]byte, []int) {
 	return file_ocsf_v1alpha_grpc_proto_rawDescGZIP(), []int{0}
 }
 
-type StreamOCSFResponse struct {
+func (x *OcsfEvent) GetJson() string {
+	if x != nil {
+		return x.Json
+	}
+	return ""
+}
+
+type ProcessEventsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// ////////////////////////////////////////////////////////////////////////////
-	//
-	// This oneof is set based on the type of event.
-	// The set field contains details specific to the event type.
-	//
 	// Types that are valid to be assigned to Detail:
 	//
-	//	*StreamOCSFResponse_NetworkActivityDetail
-	Detail        isStreamOCSFResponse_Detail `protobuf_oneof:"detail"`
+	//	*ProcessEventsRequest_OcsfEvent
+	Detail        isProcessEventsRequest_Detail `protobuf_oneof:"detail"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *StreamOCSFResponse) Reset() {
-	*x = StreamOCSFResponse{}
+func (x *ProcessEventsRequest) Reset() {
+	*x = ProcessEventsRequest{}
 	mi := &file_ocsf_v1alpha_grpc_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *StreamOCSFResponse) String() string {
+func (x *ProcessEventsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StreamOCSFResponse) ProtoMessage() {}
+func (*ProcessEventsRequest) ProtoMessage() {}
 
-func (x *StreamOCSFResponse) ProtoReflect() protoreflect.Message {
+func (x *ProcessEventsRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_ocsf_v1alpha_grpc_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -97,60 +100,96 @@ func (x *StreamOCSFResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use StreamOCSFResponse.ProtoReflect.Descriptor instead.
-func (*StreamOCSFResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ProcessEventsRequest.ProtoReflect.Descriptor instead.
+func (*ProcessEventsRequest) Descriptor() ([]byte, []int) {
 	return file_ocsf_v1alpha_grpc_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *StreamOCSFResponse) GetDetail() isStreamOCSFResponse_Detail {
+func (x *ProcessEventsRequest) GetDetail() isProcessEventsRequest_Detail {
 	if x != nil {
 		return x.Detail
 	}
 	return nil
 }
 
-func (x *StreamOCSFResponse) GetNetworkActivityDetail() *NetworkActivity {
+func (x *ProcessEventsRequest) GetOcsfEvent() *OcsfEvent {
 	if x != nil {
-		if x, ok := x.Detail.(*StreamOCSFResponse_NetworkActivityDetail); ok {
-			return x.NetworkActivityDetail
+		if x, ok := x.Detail.(*ProcessEventsRequest_OcsfEvent); ok {
+			return x.OcsfEvent
 		}
 	}
 	return nil
 }
 
-type isStreamOCSFResponse_Detail interface {
-	isStreamOCSFResponse_Detail()
+type isProcessEventsRequest_Detail interface {
+	isProcessEventsRequest_Detail()
 }
 
-type StreamOCSFResponse_NetworkActivityDetail struct {
-	// ocsf.ProcessActivity process_activity_detail = 101;
-	// ocsf.MemoryActivity memory_activity_detail = 102;
-	// ocsf.HTTPActivity http_activity_detail = 103;
-	// ocsf.FileSystemActivity file_activity_detail = 104;
-	// ocsf.DetectionFinding detection_finding_detail = 105;
-	// ocsf.RegistryKeyActivity registry_key_activity_detail = 106;
-	// ocsf.RegistryValueActivity registry_value_activity_detail = 107;
-	// ocsf.DNSActivity dns_activity_detail = 108;
-	// ocsf.WindowsServiceActivity windows_service_activity_detail = 109;
-	// ocsf.ScheduledJobActivity scheduled_job_activity_detail = 110;
-	// ocsf.ScriptActivity script_activity_detail = 111;
-	NetworkActivityDetail *NetworkActivity `protobuf:"bytes,112,opt,name=network_activity_detail,json=networkActivityDetail,proto3,oneof"`
+type ProcessEventsRequest_OcsfEvent struct {
+	OcsfEvent *OcsfEvent `protobuf:"bytes,1,opt,name=ocsf_event,json=ocsfEvent,proto3,oneof"`
 }
 
-func (*StreamOCSFResponse_NetworkActivityDetail) isStreamOCSFResponse_Detail() {}
+func (*ProcessEventsRequest_OcsfEvent) isProcessEventsRequest_Detail() {}
+
+type ProcessEventsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProcessEventsResponse) Reset() {
+	*x = ProcessEventsResponse{}
+	mi := &file_ocsf_v1alpha_grpc_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessEventsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessEventsResponse) ProtoMessage() {}
+
+func (x *ProcessEventsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ocsf_v1alpha_grpc_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessEventsResponse.ProtoReflect.Descriptor instead.
+func (*ProcessEventsResponse) Descriptor() ([]byte, []int) {
+	return file_ocsf_v1alpha_grpc_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ProcessEventsResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
 
 var File_ocsf_v1alpha_grpc_proto protoreflect.FileDescriptor
 
 const file_ocsf_v1alpha_grpc_proto_rawDesc = "" +
 	"\n" +
-	"\x17ocsf/v1alpha/grpc.proto\x12\focsf.v1alpha\x1a\x17ocsf/v1alpha/ocsf.proto\"\x13\n" +
-	"\x11StreamOCSFRequest\"w\n" +
-	"\x12StreamOCSFResponse\x12W\n" +
-	"\x17network_activity_detail\x18p \x01(\v2\x1d.ocsf.v1alpha.NetworkActivityH\x00R\x15networkActivityDetailB\b\n" +
-	"\x06detail2b\n" +
-	"\vOCSFService\x12S\n" +
+	"\x17ocsf/v1alpha/grpc.proto\x12\focsf.v1alpha\"\x1f\n" +
+	"\tOcsfEvent\x12\x12\n" +
+	"\x04json\x18\x01 \x01(\tR\x04json\"Z\n" +
+	"\x14ProcessEventsRequest\x128\n" +
 	"\n" +
-	"StreamOCSF\x12\x1f.ocsf.v1alpha.StreamOCSFRequest\x1a .ocsf.v1alpha.StreamOCSFResponse\"\x000\x01B'Z%github.com/isovalent/ipa/ocsf/v1alphab\x06proto3"
+	"ocsf_event\x18\x01 \x01(\v2\x17.ocsf.v1alpha.OcsfEventH\x00R\tocsfEventB\b\n" +
+	"\x06detail\"1\n" +
+	"\x15ProcessEventsResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2l\n" +
+	"\fEventService\x12\\\n" +
+	"\rProcessEvents\x12\".ocsf.v1alpha.ProcessEventsRequest\x1a#.ocsf.v1alpha.ProcessEventsResponse\"\x00(\x01B'Z%github.com/isovalent/ipa/ocsf/v1alphab\x06proto3"
 
 var (
 	file_ocsf_v1alpha_grpc_proto_rawDescOnce sync.Once
@@ -164,16 +203,16 @@ func file_ocsf_v1alpha_grpc_proto_rawDescGZIP() []byte {
 	return file_ocsf_v1alpha_grpc_proto_rawDescData
 }
 
-var file_ocsf_v1alpha_grpc_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_ocsf_v1alpha_grpc_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_ocsf_v1alpha_grpc_proto_goTypes = []any{
-	(*StreamOCSFRequest)(nil),  // 0: ocsf.v1alpha.StreamOCSFRequest
-	(*StreamOCSFResponse)(nil), // 1: ocsf.v1alpha.StreamOCSFResponse
-	(*NetworkActivity)(nil),    // 2: ocsf.v1alpha.NetworkActivity
+	(*OcsfEvent)(nil),             // 0: ocsf.v1alpha.OcsfEvent
+	(*ProcessEventsRequest)(nil),  // 1: ocsf.v1alpha.ProcessEventsRequest
+	(*ProcessEventsResponse)(nil), // 2: ocsf.v1alpha.ProcessEventsResponse
 }
 var file_ocsf_v1alpha_grpc_proto_depIdxs = []int32{
-	2, // 0: ocsf.v1alpha.StreamOCSFResponse.network_activity_detail:type_name -> ocsf.v1alpha.NetworkActivity
-	0, // 1: ocsf.v1alpha.OCSFService.StreamOCSF:input_type -> ocsf.v1alpha.StreamOCSFRequest
-	1, // 2: ocsf.v1alpha.OCSFService.StreamOCSF:output_type -> ocsf.v1alpha.StreamOCSFResponse
+	0, // 0: ocsf.v1alpha.ProcessEventsRequest.ocsf_event:type_name -> ocsf.v1alpha.OcsfEvent
+	1, // 1: ocsf.v1alpha.EventService.ProcessEvents:input_type -> ocsf.v1alpha.ProcessEventsRequest
+	2, // 2: ocsf.v1alpha.EventService.ProcessEvents:output_type -> ocsf.v1alpha.ProcessEventsResponse
 	2, // [2:3] is the sub-list for method output_type
 	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -186,9 +225,8 @@ func file_ocsf_v1alpha_grpc_proto_init() {
 	if File_ocsf_v1alpha_grpc_proto != nil {
 		return
 	}
-	file_ocsf_v1alpha_ocsf_proto_init()
 	file_ocsf_v1alpha_grpc_proto_msgTypes[1].OneofWrappers = []any{
-		(*StreamOCSFResponse_NetworkActivityDetail)(nil),
+		(*ProcessEventsRequest_OcsfEvent)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -196,7 +234,7 @@ func file_ocsf_v1alpha_grpc_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ocsf_v1alpha_grpc_proto_rawDesc), len(file_ocsf_v1alpha_grpc_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

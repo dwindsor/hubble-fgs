@@ -4,7 +4,6 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
-import type { NetworkActivity } from "./ocsf_pb";
 
 /**
  * Describes the file ocsf/v1alpha/grpc.proto.
@@ -12,71 +11,70 @@ import type { NetworkActivity } from "./ocsf_pb";
 export declare const file_ocsf_v1alpha_grpc: GenFile;
 
 /**
- * @generated from message ocsf.v1alpha.StreamOCSFRequest
+ * @generated from message ocsf.v1alpha.OcsfEvent
  */
-export declare type StreamOCSFRequest = Message<"ocsf.v1alpha.StreamOCSFRequest"> & {
+export declare type OcsfEvent = Message<"ocsf.v1alpha.OcsfEvent"> & {
+  /**
+   * @generated from field: string json = 1;
+   */
+  json: string;
 };
 
 /**
- * Describes the message ocsf.v1alpha.StreamOCSFRequest.
- * Use `create(StreamOCSFRequestSchema)` to create a new message.
+ * Describes the message ocsf.v1alpha.OcsfEvent.
+ * Use `create(OcsfEventSchema)` to create a new message.
  */
-export declare const StreamOCSFRequestSchema: GenMessage<StreamOCSFRequest>;
+export declare const OcsfEventSchema: GenMessage<OcsfEvent>;
 
 /**
- * @generated from message ocsf.v1alpha.StreamOCSFResponse
+ * @generated from message ocsf.v1alpha.ProcessEventsRequest
  */
-export declare type StreamOCSFResponse = Message<"ocsf.v1alpha.StreamOCSFResponse"> & {
+export declare type ProcessEventsRequest = Message<"ocsf.v1alpha.ProcessEventsRequest"> & {
   /**
-   * ////////////////////////////////////////////////////////////////////////////
-   *
-   * This oneof is set based on the type of event.
-   * The set field contains details specific to the event type.
-   *
-   *
-   * @generated from oneof ocsf.v1alpha.StreamOCSFResponse.detail
+   * @generated from oneof ocsf.v1alpha.ProcessEventsRequest.detail
    */
   detail: {
     /**
-     * ocsf.ProcessActivity process_activity_detail = 101;
-     * ocsf.MemoryActivity memory_activity_detail = 102;
-     * ocsf.HTTPActivity http_activity_detail = 103;
-     * ocsf.FileSystemActivity file_activity_detail = 104;
-     * ocsf.DetectionFinding detection_finding_detail = 105;
-     * ocsf.RegistryKeyActivity registry_key_activity_detail = 106;
-     * ocsf.RegistryValueActivity registry_value_activity_detail = 107;
-     * ocsf.DNSActivity dns_activity_detail = 108;
-     * ocsf.WindowsServiceActivity windows_service_activity_detail = 109;
-     * ocsf.ScheduledJobActivity scheduled_job_activity_detail = 110;
-     * ocsf.ScriptActivity script_activity_detail = 111;
-     *
-     * ocsf.Authentication authentication_detail = 113;
-     * ocsf.ProcessQuery process_query_detail = 114;
-     *
-     * @generated from field: ocsf.v1alpha.NetworkActivity network_activity_detail = 112;
+     * @generated from field: ocsf.v1alpha.OcsfEvent ocsf_event = 1;
      */
-    value: NetworkActivity;
-    case: "networkActivityDetail";
+    value: OcsfEvent;
+    case: "ocsfEvent";
   } | { case: undefined; value?: undefined };
 };
 
 /**
- * Describes the message ocsf.v1alpha.StreamOCSFResponse.
- * Use `create(StreamOCSFResponseSchema)` to create a new message.
+ * Describes the message ocsf.v1alpha.ProcessEventsRequest.
+ * Use `create(ProcessEventsRequestSchema)` to create a new message.
  */
-export declare const StreamOCSFResponseSchema: GenMessage<StreamOCSFResponse>;
+export declare const ProcessEventsRequestSchema: GenMessage<ProcessEventsRequest>;
 
 /**
- * @generated from service ocsf.v1alpha.OCSFService
+ * @generated from message ocsf.v1alpha.ProcessEventsResponse
  */
-export declare const OCSFService: GenService<{
+export declare type ProcessEventsResponse = Message<"ocsf.v1alpha.ProcessEventsResponse"> & {
   /**
-   * @generated from rpc ocsf.v1alpha.OCSFService.StreamOCSF
+   * @generated from field: string message = 1;
    */
-  streamOCSF: {
-    methodKind: "server_streaming";
-    input: typeof StreamOCSFRequestSchema;
-    output: typeof StreamOCSFResponseSchema;
+  message: string;
+};
+
+/**
+ * Describes the message ocsf.v1alpha.ProcessEventsResponse.
+ * Use `create(ProcessEventsResponseSchema)` to create a new message.
+ */
+export declare const ProcessEventsResponseSchema: GenMessage<ProcessEventsResponse>;
+
+/**
+ * @generated from service ocsf.v1alpha.EventService
+ */
+export declare const EventService: GenService<{
+  /**
+   * @generated from rpc ocsf.v1alpha.EventService.ProcessEvents
+   */
+  processEvents: {
+    methodKind: "client_streaming";
+    input: typeof ProcessEventsRequestSchema;
+    output: typeof ProcessEventsResponseSchema;
   },
 }>;
 

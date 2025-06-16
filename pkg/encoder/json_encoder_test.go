@@ -30,7 +30,7 @@ import (
 
 func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 	var b bytes.Buffer
-	e := NewJSONEncoder(&b, nil, nil, false, false, make(map[string]struct{}))
+	e := NewJSONEncoder(&b, nil, nil, "", false, false, false, make(map[string]struct{}))
 	event := tetragon.GetEventsResponse{
 		Event: &tetragon.GetEventsResponse_ProcessConnect{},
 	}
@@ -51,7 +51,7 @@ func TestJSONEncoder_EncodeWithoutHubble(t *testing.T) {
 
 func TestJSONEncoder_EncodeWithHubble(t *testing.T) {
 	var b, flowBuffer bytes.Buffer
-	e := NewJSONEncoder(&b, nil, &flowBuffer, false, true, make(map[string]struct{}))
+	e := NewJSONEncoder(&b, nil, &flowBuffer, "", false, false, true, make(map[string]struct{}))
 	event := tetragon.GetEventsResponse{
 		Event:       &tetragon.GetEventsResponse_ProcessConnect{},
 		ClusterName: "my-cluster",
@@ -101,7 +101,7 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 		"10.0.0.1": {},
 		"10.0.0.2": {},
 	}
-	e := NewJSONEncoder(io.Discard, io.Discard, io.Discard, false, true, nodeIPs)
+	e := NewJSONEncoder(io.Discard, io.Discard, io.Discard, "", false, false, true, nodeIPs)
 
 	// Empty connect event
 	event := tetragon.GetEventsResponse{
@@ -492,7 +492,7 @@ func TestGetNodeIPs(t *testing.T) {
 
 func TestJSONEncoder_processConnectToFlowKubeAPIServer(t *testing.T) {
 	nodeIPs := map[string]struct{}{"10.0.0.1": {}}
-	e := NewJSONEncoder(io.Discard, io.Discard, io.Discard, false, true, nodeIPs)
+	e := NewJSONEncoder(io.Discard, io.Discard, io.Discard, "", false, false, true, nodeIPs)
 	event := tetragon.GetEventsResponse{
 		Event: &tetragon.GetEventsResponse_ProcessConnect{
 			ProcessConnect: &tetragon.ProcessConnect{

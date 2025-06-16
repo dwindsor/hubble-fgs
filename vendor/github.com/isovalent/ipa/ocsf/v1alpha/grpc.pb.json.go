@@ -8,25 +8,37 @@ import (
 )
 
 // MarshalJSON implements json.Marshaler
-func (msg *StreamOCSFRequest) MarshalJSON() ([]byte, error) {
+func (msg *OcsfEvent) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{
 		UseProtoNames: true,
 	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
-func (msg *StreamOCSFRequest) UnmarshalJSON(b []byte) error {
+func (msg *OcsfEvent) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
-func (msg *StreamOCSFResponse) MarshalJSON() ([]byte, error) {
+func (msg *ProcessEventsRequest) MarshalJSON() ([]byte, error) {
 	return protojson.MarshalOptions{
 		UseProtoNames: true,
 	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
-func (msg *StreamOCSFResponse) UnmarshalJSON(b []byte) error {
+func (msg *ProcessEventsRequest) UnmarshalJSON(b []byte) error {
+	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *ProcessEventsResponse) MarshalJSON() ([]byte, error) {
+	return protojson.MarshalOptions{
+		UseProtoNames: true,
+	}.Marshal(msg)
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *ProcessEventsResponse) UnmarshalJSON(b []byte) error {
 	return protojson.UnmarshalOptions{}.Unmarshal(b, msg)
 }

@@ -46,6 +46,7 @@ type config struct {
 	DetachOldBpf       bool
 
 	OCSFExportFilename       string
+	OCSFExportServer         string
 	OCSFExportFileMaxSizeMB  int
 	OCSFExportFileMaxBackups int
 	OCSFExportFileCompress   bool

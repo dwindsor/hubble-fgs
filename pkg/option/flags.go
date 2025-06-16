@@ -27,6 +27,7 @@ import (
 const (
 	KeyEnvironment                        = "environment"
 	KeyOCSFExportFilename                 = "ocsf-export-filename"
+	KeyOCSFExportServer                   = "ocsf-export-server"
 	KeyOCSFExportFileMaxSizeMB            = "ocsf-export-file-max-size-mb"
 	KeyOCSFExportFileMaxBackups           = "ocsf-export-file-max-backups"
 	KeyOCSFExportFileCompress             = "ocsf-export-file-compress"
@@ -105,6 +106,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden(KeyEnvironment)
 	// OCSF export flags
 	flags.String(KeyOCSFExportFilename, "", "Filename for OCSF JSON export. Disabled by default")
+	flags.String(KeyOCSFExportServer, "", "Server for OCSF JSON export. Disabled by default")
 	flags.Int(KeyOCSFExportFileMaxSizeMB, 10, "Size in MB for rotating OCSF JSON export files")
 	flags.Int(KeyOCSFExportFileMaxBackups, 5, "Number of rotated OCSF JSON export files to retain")
 	flags.Bool(KeyOCSFExportFileCompress, false, "Compress rotated OCSF JSON export files")
@@ -186,6 +188,7 @@ func ReadAndValidateEnterpriseFlags() error {
 func readAndSetEnterpriseFlags() {
 	Config.Environment = viper.GetString(KeyEnvironment)
 	Config.OCSFExportFilename = viper.GetString(KeyOCSFExportFilename)
+	Config.OCSFExportServer = viper.GetString(KeyOCSFExportServer)
 	Config.EnableApplicationModel = viper.GetBool(KeyEnableApplicationModel)
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
 	Config.ApplicationModelExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)

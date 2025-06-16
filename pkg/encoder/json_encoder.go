@@ -11,6 +11,7 @@
 package encoder
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,6 +32,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/isovalent/hubble-fgs/pkg/ocsf"
+	"github.com/isovalent/ipa/ocsf/v1alpha"
 )
 
 // JSONEncoder is a shim encoder that wraps ProtoJsonEncoder.
@@ -44,10 +46,11 @@ type JSONEncoder struct {
 	protoJSONEncoder *jsonEncoder.ProtojsonEncoder
 	enableFlowExport bool
 	enableOCSFExport bool
+	enableOCSFClient bool
 	nodeIPs          map[string]struct{}
 }
 
-func NewJSONEncoder(writer io.Writer, ocsfWriter, flowWriter io.Writer, enableOCSFExport, enableFlowExport bool, nodeIPs map[string]struct{}) *JSONEncoder {
+func NewJSONEncoder(writer io.Writer, ocsfWriter, flowWriter io.Writer, ocsfServer string, enableOCSFExport, enableOCSFClient, enableFlowExport bool, nodeIPs map[string]struct{}) *JSONEncoder {
 	encoder := JSONEncoder{
 		protoJSONEncoder: jsonEncoder.NewProtojsonEncoder(writer),
 		nodeIPs:          nodeIPs,
@@ -59,6 +62,10 @@ func NewJSONEncoder(writer io.Writer, ocsfWriter, flowWriter io.Writer, enableOC
 	if enableOCSFExport {
 		encoder.enableOCSFExport = true
 		encoder.ocsfEncoder = json.NewEncoder(ocsfWriter)
+	}
+	if enableOCSFClient {
+		encoder.enableOCSFClient = true
+		ocsf.NewOCSFJSONClient(context.Background(), ocsfServer)
 	}
 	return &encoder
 }
@@ -86,10 +93,19 @@ func (h *JSONEncoder) Encode(v interface{}) error {
 		}
 		flowError = h.flowEncoder.Encode(res)
 	}
-	if _, ok := response.GetEvent().(*tetragon.GetEventsResponse_ProcessConnect); ok && h.enableOCSFExport {
-		res, ok := ocsf.ResponseToOCSF(response)
-		if ok {
+	if _, ok := response.GetEvent().(*tetragon.GetEventsResponse_ProcessConnect); ok && (h.enableOCSFExport || h.enableOCSFClient) {
+		d := ocsf.ResponseToOCSF(response)
+		res := &v1alpha.EndpointEvent{
+			Detail: d,
+		}
+
+		if h.enableOCSFExport {
 			ocsfError = h.ocsfEncoder.Encode(res)
+		}
+		// The GRPC client is exporting JSON events over a GRPC encap so
+		// we embedd it into the JSON encoder.
+		if h.enableOCSFClient {
+			ocsf.SendOCSF(d)
 		}
 	}
 	return errors.Join(flowError, ocsfError, h.protoJSONEncoder.Encode(response))
