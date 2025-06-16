@@ -1304,6 +1304,9 @@ func ParseMatchFilename(k *KernelSelectorState, op []v1alpha1.FilePathGlobSelect
 				if err != nil {
 					return fmt.Errorf("failed to compile glob, pattern: %s error: %w", p, err)
 				}
+				if len(fsm.GetStates()) >= GlobPossibleMaxStates {
+					return fmt.Errorf("each glob pattern should be translated at maximum to %d states ('%s' has %d states)", GlobPossibleMaxStates, p, len(fsm.GetStates()))
+				}
 				val.fsm = append(val.fsm, fsm)
 			}
 		}

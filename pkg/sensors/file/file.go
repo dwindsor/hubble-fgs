@@ -1870,28 +1870,11 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 					return nil
 				}
 			case "glob_temp_maps":
-				m.SetInnerMaxEntries(128) // same as INNER_MAX_STATES in bpf_glob.h
 				m.SetMaxEntries(2 * bpf.GetNumPossibleCPUs())
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					for i := range 2 * bpf.GetNumPossibleCPUs() {
-						innerName := fmt.Sprintf("glob_inner_%d", i)
-						innerSpec := &ebpf.MapSpec{
-							Name:       innerName,
-							Type:       ebpf.Hash,
-							KeySize:    4,
-							ValueSize:  4,
-							MaxEntries: 128,
-						}
-						innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
-							PinPath: sensors.PathJoin(e.PinPathPrefix, innerName),
-						})
-						if err != nil {
-							return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
-						}
-						defer innerMap.Close()
-
-						if err := m.Update(uint32(i), uint32(innerMap.FD()), 0); err != nil {
-							return fmt.Errorf("failed to insert %s: %w", innerName, err)
+						if err := m.Update(uint32(i), fm.GlobTempVal{}, 0); err != nil {
+							return fmt.Errorf("failed to insert: %w", err)
 						}
 					}
 

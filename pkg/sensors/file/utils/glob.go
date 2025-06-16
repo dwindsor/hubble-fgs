@@ -17,6 +17,14 @@ import (
 	"unicode/utf8"
 )
 
+const GlobPossibleMaxStates = 512 // this should match POSSIBLE_MAX_STATES in bpf/file/bpf_glob.h
+
+type GlobTempVal struct {
+	V      [GlobPossibleMaxStates]uint8
+	Values [GlobPossibleMaxStates]uint32
+	Cnt    uint64
+}
+
 type GlobState struct {
 	idx       int32   `align:"idx"`       // my ID (i.e. index in the state array)
 	nextChar  int32   `align:"nextChar"`  // valid only when hasChar == true

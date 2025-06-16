@@ -155,6 +155,7 @@ static inline gid_t __kgid_val(kgid_t gid)
 
 static long BPF_FUNC(d_path, struct path *path, char *buf, u32 sz);
 static long BPF_FUNC(probe_read_kernel_str, void *dst, u32 size, const void *unsafe_ptr);
+static long BPF_FUNC(for_each_map_elem, void *map, void *callback_fn, void *callback_ctx, __u64 flags);
 
 #ifdef __LARGE_BPF_PROG
 // re-write this in user-space to enable bpf_d_path helper

@@ -110,22 +110,8 @@ func runEbpfGlob(t *testing.T, pattern, str string) (bool, error) {
 	}
 
 	for i := range 2 * bpf.GetNumPossibleCPUs() {
-		innerName := fmt.Sprintf("glob_inner_%d", i)
-		innerSpec := &ebpf.MapSpec{
-			Name:       innerName,
-			Type:       ebpf.Hash,
-			KeySize:    4,
-			ValueSize:  4,
-			MaxEntries: 128,
-		}
-		innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{})
-		if err != nil {
-			return false, fmt.Errorf("runEbpfGlob: ebpf.NewMapWithOptions: innerMap %s err: %w", innerName, err)
-		}
-		defer innerMap.Close()
-
-		if err := tmpBufferMap.Update(uint32(i), uint32(innerMap.FD()), 0); err != nil {
-			return false, fmt.Errorf("runEbpfGlob: tmpBufferMap.Update: innerMap %s err: %w", innerName, err)
+		if err := tmpBufferMap.Update(uint32(i), fm.GlobTempVal{}, 0); err != nil {
+			return false, fmt.Errorf("runEbpfGlob: tmpBufferMap.Update: err: %w", err)
 		}
 	}
 
