@@ -17,6 +17,7 @@ struct str {
 	__u32 len;
 	__u32 pad;
 	__u64 res;
+	__u64 dur;
 };
 
 struct {
@@ -38,12 +39,15 @@ int BPF_PROG(security_file_fcntl, struct file *file, unsigned int cmd, unsigned 
 {
 	struct str *s;
 	u32 zero = 0;
+	u64 beg = 0;
 
 	s = map_lookup_elem(&tg_string_map, &zero);
 	if (!s)
 		return 0;
 
+	beg = ktime_get_boot_ns();
 	s->res = check_pattern(&tg_pattern_map, s->path, s->len);
+	s->dur = (ktime_get_boot_ns() - beg);
 
 	return 0;
 }
