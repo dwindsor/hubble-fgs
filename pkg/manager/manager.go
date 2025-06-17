@@ -45,6 +45,8 @@ var (
 type KubernetesManager interface {
 	// GetControllerManager returns the underlying controller manager instance.
 	GetControllerManager() *manager.ControllerManager
+	// GetService returns the Kubernetes service for given namespace and name.
+	GetService(namespace, name string) *corev1.Service
 	// GetSvcInfoOfIp returns the Kubernetes service information for a given IP address.
 	GetSvcInfoOfIp(ip net.IP) *tetragon.Service
 	// FindPodInfoByIP returns the PodInfo objects associated with a given IP address.
@@ -131,6 +133,15 @@ func getPodInfoIPs(rawObj client.Object) []string {
 	return ips
 }
 
+func (em *EnterpriseManager) GetService(namespace, name string) *corev1.Service {
+	svc := &corev1.Service{}
+	err := em.ossManager.Manager.GetCache().Get(context.Background(), client.ObjectKey{Namespace: namespace, Name: name}, svc)
+	if err != nil {
+		return nil
+	}
+	return svc
+}
+
 func (em *EnterpriseManager) GetSvcInfoOfIp(ip net.IP) *tetragon.Service {
 	serviceList := corev1.ServiceList{}
 	listOptions := client.MatchingFields{serviceClusterIPField: ip.String()}
@@ -199,10 +210,24 @@ func (em *EnterpriseManager) GetPodInfoOfNS(ns string) ([]v1alpha1.PodInfo, erro
 }
 
 type FakeManager struct {
+	Service map[client.ObjectKey]*corev1.Service
 }
 
+func NewFakeManager() *FakeManager {
+	return &FakeManager{
+		Service: make(map[client.ObjectKey]*corev1.Service),
+	}
+}
 func (fm *FakeManager) GetControllerManager() *manager.ControllerManager {
 	return nil
+}
+
+func (fm *FakeManager) AddService(svc *corev1.Service) {
+	fm.Service[client.ObjectKey{Namespace: svc.Namespace, Name: svc.Name}] = svc
+}
+
+func (fm *FakeManager) GetService(namespace, name string) *corev1.Service {
+	return fm.Service[client.ObjectKey{Namespace: namespace, Name: name}]
 }
 
 func (fm *FakeManager) GetSvcInfoOfIp(_ net.IP) *tetragon.Service {

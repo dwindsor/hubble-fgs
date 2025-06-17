@@ -74,6 +74,15 @@ func (suite *ManagerTestSuite) TestFindPodInfoByIP() {
 	assert.Equal(suite.T(), pods[podIndex].Name, pod[0].Name)
 }
 
+func (suite *ManagerTestSuite) TestGetService() {
+	ns := "default"
+	name := "kubernetes"
+	service := suite.manager.GetService(ns, name)
+	assert.NotNil(suite.T(), service)
+	assert.Equal(suite.T(), ns, service.Namespace)
+	assert.Equal(suite.T(), name, service.Name)
+}
+
 func (suite *ManagerTestSuite) TearDownSuite() {
 	assert.NoError(suite.T(), suite.testEnv.Stop())
 }
