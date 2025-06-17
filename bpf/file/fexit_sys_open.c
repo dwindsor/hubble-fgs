@@ -237,8 +237,7 @@ int BPF_PROG(sys_creat, const struct pt_regs *regs, int ret) // SYSCALL_DEFINE2(
 SEC("fexit/io_openat2")
 int BPF_PROG(io_openat2, struct io_kiocb *req, unsigned int issue_flags, int ret) // for io_uring
 {
-	struct io_cmd_data data = BPF_CORE_READ(req, cmd);
-	struct io_open *open = (struct io_open *)&data;
+	struct io_open *open = (struct io_open *)req;
 	struct filename *filename = BPF_CORE_READ(open, filename);
 	int flags = BPF_CORE_READ(open, how.flags);
 	int dfd = BPF_CORE_READ(open, dfd);
