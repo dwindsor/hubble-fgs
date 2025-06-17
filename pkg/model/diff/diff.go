@@ -10,6 +10,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/node/local"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -469,4 +470,73 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 		}
 	}
 	return n, nil
+}
+
+func appModelToGraphWorkloadType(wlKind appModelV1.WorkloadKind) graphV1.KubernetesWorkloadType {
+	switch wlKind {
+	case appModelV1.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT:
+		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT
+	case appModelV1.WorkloadKind_WORKLOAD_KIND_STATEFULSET:
+		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_STATEFUL_SET
+	case appModelV1.WorkloadKind_WORKLOAD_KIND_DAEMONSET:
+		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_DAEMON_SET
+	case appModelV1.WorkloadKind_WORKLOAD_KIND_JOB:
+		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_JOB
+	case appModelV1.WorkloadKind_WORKLOAD_KIND_CRONJOB:
+		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_CRON_JOB
+	default:
+		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_UNSPECIFIED
+	}
+}
+
+func fromWorkloadToDNS(telemetry *appModelV1.NetworkConnectTelemetry) bool {
+	return telemetry.KubernetesNamespace != "" &&
+		telemetry.KubernetesWorkloadName != "" &&
+		telemetry.KubernetesWorkloadKind != appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED &&
+		telemetry.DestinationType == appModelV1.DestinationType_DESTINATION_TYPE_DNS &&
+		telemetry.DestinationName != ""
+}
+
+func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graphV1.Connection {
+	if !fromWorkloadToDNS(telemetry) {
+		return nil
+	}
+	source := &graphV1.Vertex{
+		Family: &graphV1.Vertex_Kubernetes{
+			Kubernetes: &graphV1.VertexFamilyKubernetes{
+				Uid:                  "",
+				ResourceVersion:      "",
+				ResourceName:         telemetry.KubernetesWorkloadName,
+				ClusterName:          telemetry.ClusterName,
+				Namespace:            telemetry.KubernetesNamespace,
+				NodeName:             telemetry.NodeName,
+				PodName:              "",
+				ContainerName:        "",
+				ServiceType:          0,
+				WorkloadType:         appModelToGraphWorkloadType(telemetry.KubernetesWorkloadKind),
+				Ip:                   "",
+				ApplicationModelUuid: "",
+			},
+		},
+	}
+	destination := &graphV1.Vertex{
+		Family: &graphV1.Vertex_WorldEntity{
+			WorldEntity: &graphV1.VertexFamilyWorldEntity{
+				DnsName: telemetry.DestinationName,
+			},
+		},
+	}
+	link := &graphV1.Edge{
+		Type: &graphV1.Edge_NetworkTelemetry{
+			NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
+				TxBytes: telemetry.TxBytes,
+				RxBytes: telemetry.RxBytes,
+			},
+		},
+	}
+	return &graphV1.Connection{
+		Source:      source,
+		Destination: destination,
+		Links:       []*graphV1.Edge{link},
+	}
 }

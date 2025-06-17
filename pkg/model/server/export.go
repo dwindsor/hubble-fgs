@@ -16,18 +16,21 @@ import (
 	"io"
 	"time"
 
-	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
-
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/networkmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func ExportApplicationModel(ctx context.Context, server *Server, writer io.Writer, flatWriter io.Writer, interval time.Duration) {
+func ExportApplicationModel(ctx context.Context, server *Server, writer io.Writer, flatWriter io.Writer, connectionWriter io.Writer, interval time.Duration) {
+	startTime := time.Now()
 	var encoder *json.Encoder
 	var flatEncoder *json.Encoder
+	var connectionEncoder *json.Encoder
 
 	isDiffModel := enterpriseOption.Config.ApplicationModelDiffExportFilename != "" || enterpriseOption.Config.ApplicationModelEnableDiff
 
@@ -45,6 +48,10 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 
 	if flatWriter != nil {
 		flatEncoder = json.NewEncoder(flatWriter)
+	}
+
+	if connectionWriter != nil {
+		connectionEncoder = json.NewEncoder(connectionWriter)
 	}
 
 	ticker := time.NewTicker(interval)
@@ -100,12 +107,31 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 					logger.GetLogger().WithError(err).Error("Failed to decode application model to slim network model")
 					return
 				}
+
+				var conns []*graphV1.Connection
 				for _, entry := range netFlatPack {
 					networkmetrics.Collect(entry)
 					if err := flatEncoder.Encode(entry); err != nil {
 						logger.GetLogger().WithError(err).Error("Failed to encode slim application model as JSON")
 						return
 					}
+					conn := diff.TelemetryToConnection(entry)
+					if conn != nil {
+						conns = append(conns, conn)
+					}
+				}
+				if connectionEncoder != nil && len(conns) > 0 {
+					endTime := time.Now()
+					log := graphV1.ConnectionLog{
+						Emitter:     graphV1.Emitter_EMITTER_TETRAGON,
+						WindowStart: timestamppb.New(startTime),
+						WindowEnd:   timestamppb.New(endTime),
+						Connections: conns,
+					}
+					if err := connectionEncoder.Encode(&log); err != nil {
+						logger.GetLogger().WithError(err).Warn("Failed to encode connection log as JSON")
+					}
+					startTime = endTime
 				}
 			}
 		case <-ctx.Done():

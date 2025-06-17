@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -541,4 +542,50 @@ func Test_getDestination(t *testing.T) {
 	assert.Equal(t, dest.GetWorkload().GetNamespace(), namespace)
 	assert.Equal(t, dest.GetWorkload().GetName(), workloadName)
 	assert.Equal(t, dest.GetWorkload().GetKind(), workloadKind)
+}
+
+func TestTelemetryToConnection(t *testing.T) {
+	telemetry := appModelV1.NetworkConnectTelemetry{
+		EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+		ClusterName:            "my-cluster",
+		NodeName:               "my-node",
+		KubernetesNamespace:    "tetragon",
+		KubernetesWorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+		KubernetesWorkloadName: "tetragon-grafana",
+		DestinationName:        "grafana.com",
+		DestinationType:        appModelV1.DestinationType_DESTINATION_TYPE_DNS,
+		DestinationPort:        443,
+		TxBytes:                1234,
+	}
+	connection := TelemetryToConnection(&telemetry)
+	expected := graphV1.Connection{
+		Source: &graphV1.Vertex{
+			Family: &graphV1.Vertex_Kubernetes{
+				Kubernetes: &graphV1.VertexFamilyKubernetes{
+					ResourceName: telemetry.KubernetesWorkloadName,
+					ClusterName:  telemetry.ClusterName,
+					Namespace:    telemetry.KubernetesNamespace,
+					NodeName:     telemetry.NodeName,
+					WorkloadType: graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT,
+				},
+			},
+		},
+		Destination: &graphV1.Vertex{
+			Family: &graphV1.Vertex_WorldEntity{
+				WorldEntity: &graphV1.VertexFamilyWorldEntity{
+					DnsName: telemetry.DestinationName,
+				},
+			},
+		},
+		Links: []*graphV1.Edge{
+			{
+				Type: &graphV1.Edge_NetworkTelemetry{
+					NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
+						TxBytes: 1234,
+					},
+				},
+			},
+		},
+	}
+	assert.EqualExportedValues(t, &expected, connection)
 }

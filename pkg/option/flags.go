@@ -54,6 +54,7 @@ const (
 	KeyApplicationModelExportFilename     = "application-model-export-filename"
 	KeyApplicationModelEnableDiff         = "application-model-enable-diff"
 	KeyApplicationModelDiffExportFilename = "application-model-diff-export-filename"
+	KeyConnectionLogFilename              = "connection-log-filename"
 	keyEnableIcmpTracking                 = "enable-icmp-tracking"
 	keyEnablePolicyK8sWatcher             = "enable-policy-k8swatcher"
 	keyEnableSandboxPolicies              = "enable-sandboxpolicies"
@@ -126,6 +127,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden(KeyApplicationModelEnableDiff)
 	flags.String(KeyApplicationModelDiffExportFilename, "", "Filename for application flat model JSON export. Set to \"\" to disable.")
 	flags.MarkHidden(KeyApplicationModelDiffExportFilename)
+	flags.String(KeyConnectionLogFilename, "", "Filename for connection log. Set to \"\" to disable.")
+	flags.MarkHidden(KeyConnectionLogFilename)
 	flags.Int(KeyDnsCacheSize, 1024, "Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones")
 	flags.Int(KeyApplicationModelCacheSize, 65536, "Set the size of the BPF data structure to store application model and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones")
 	flags.Int(KeyEndpointCacheSize, 65536, "Set the size of the internal endpoint cache. Higher values enable Tetragon to keep track of more network endpoints before evicting old ones")
@@ -195,6 +198,7 @@ func readAndSetEnterpriseFlags() {
 	Config.ApplicationModelExportFilename = viper.GetString(KeyApplicationModelExportFilename)
 	Config.ApplicationModelEnableDiff = viper.GetBool(KeyApplicationModelEnableDiff)
 	Config.ApplicationModelDiffExportFilename = viper.GetString(KeyApplicationModelDiffExportFilename)
+	Config.ConnectionLogFileName = viper.GetString(KeyConnectionLogFilename)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)
 	Config.DnsCacheSize = viper.GetInt(KeyDnsCacheSize)
 	Config.ProcessTreeCacheSize = viper.GetInt(KeyApplicationModelCacheSize)

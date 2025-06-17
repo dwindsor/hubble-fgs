@@ -44,6 +44,8 @@ options:
       usage: Name of the cluster where Tetragon is installed
     - name: config-dir
       usage: Configuration directory that contains a file for each option
+    - name: connection-log-filename
+      usage: Filename for connection log. Set to "" to disable.
     - name: cpuprofile
       usage: Store CPU profile into provided file
     - name: cri-endpoint

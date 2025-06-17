@@ -912,6 +912,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 func startApplicationModelExporter(ctx context.Context, modelServer *model.Server) error {
 	var flatWriter *lumberjack.Logger
 	var writer *lumberjack.Logger
+	var connectionWriter *lumberjack.Logger
 	var err error
 
 	if enterpriseOption.Config.ApplicationModelExportFilename != "" {
@@ -929,6 +930,15 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 	if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
 		flatWriter, err = getWriter(
 			enterpriseOption.Config.ApplicationModelDiffExportFilename,
+			option.Config.ExportFileMaxSizeMB,
+			option.Config.ExportFileMaxBackups,
+			option.Config.ExportFileCompress,
+		)
+		if err != nil {
+			return err
+		}
+		connectionWriter, err = getWriter(
+			enterpriseOption.Config.ConnectionLogFileName,
 			option.Config.ExportFileMaxSizeMB,
 			option.Config.ExportFileMaxBackups,
 			option.Config.ExportFileCompress,
@@ -962,7 +972,7 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 		}()
 	}
 
-	go model.ExportApplicationModel(ctx, modelServer, writer, flatWriter,
+	go model.ExportApplicationModel(ctx, modelServer, writer, flatWriter, connectionWriter,
 		enterpriseOption.Config.ApplicationModelExportInterval)
 
 	return nil
