@@ -556,17 +556,19 @@ func TestTelemetryToConnection(t *testing.T) {
 		DestinationType:        appModelV1.DestinationType_DESTINATION_TYPE_DNS,
 		DestinationPort:        443,
 		TxBytes:                1234,
+		ApplicationModelId:     "u-u-i-d",
 	}
 	connection := TelemetryToConnection(&telemetry)
 	expected := graphV1.Connection{
 		Source: &graphV1.Vertex{
 			Family: &graphV1.Vertex_Kubernetes{
 				Kubernetes: &graphV1.VertexFamilyKubernetes{
-					ResourceName: telemetry.KubernetesWorkloadName,
-					ClusterName:  telemetry.ClusterName,
-					Namespace:    telemetry.KubernetesNamespace,
-					NodeName:     telemetry.NodeName,
-					WorkloadType: graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT,
+					ResourceName:         telemetry.KubernetesWorkloadName,
+					ClusterName:          telemetry.ClusterName,
+					Namespace:            telemetry.KubernetesNamespace,
+					NodeName:             telemetry.NodeName,
+					WorkloadType:         graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT,
+					ApplicationModelUuid: telemetry.ApplicationModelId,
 				},
 			},
 		},

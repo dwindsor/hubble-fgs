@@ -318,9 +318,11 @@ type ProcessTelemetry struct {
 	// belong to a Kubernetes cluster, this field contains Kubernetes node labels.
 	// For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
 	// Kubernetes cluster, this field may contain VM tags / labels.
-	NodeLabels    map[string]string `protobuf:"bytes,14,rep,name=node_labels,json=nodeLabels,proto3" json:"node_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	NodeLabels map[string]string `protobuf:"bytes,14,rep,name=node_labels,json=nodeLabels,proto3" json:"node_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The ID of the application model from which this telemetry data got derived.
+	ApplicationModelId string `protobuf:"bytes,15,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ProcessTelemetry) Reset() {
@@ -451,6 +453,13 @@ func (x *ProcessTelemetry) GetNodeLabels() map[string]string {
 	return nil
 }
 
+func (x *ProcessTelemetry) GetApplicationModelId() string {
+	if x != nil {
+		return x.ApplicationModelId
+	}
+	return ""
+}
+
 type NetworkConnectTelemetry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// An opaque identifier that is unique to this telemetry event across all the
@@ -535,9 +544,11 @@ type NetworkConnectTelemetry struct {
 	// TCP connections / UDP sessions allowed by this policy rule.
 	// For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
 	// dropped TCP connections / UDP sessions dropped by this policy rule.
-	Sessions      uint64 `protobuf:"varint,25,opt,name=sessions,proto3" json:"sessions,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Sessions uint64 `protobuf:"varint,25,opt,name=sessions,proto3" json:"sessions,omitempty"`
+	// The ID of the application model from which this telemetry data got derived.
+	ApplicationModelId string `protobuf:"bytes,26,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *NetworkConnectTelemetry) Reset() {
@@ -745,6 +756,13 @@ func (x *NetworkConnectTelemetry) GetSessions() uint64 {
 	return 0
 }
 
+func (x *NetworkConnectTelemetry) GetApplicationModelId() string {
+	if x != nil {
+		return x.ApplicationModelId
+	}
+	return ""
+}
+
 type ApplicationModelEvent struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	ClusterName      string                 `protobuf:"bytes,1,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
@@ -814,9 +832,11 @@ func (x *ApplicationModelEvent) GetApplicationModel() *ApplicationModel {
 }
 
 type ApplicationModel struct {
-	state         protoimpl.MessageState  `protogen:"open.v1"`
-	Namespaces    []*ApplicationNamespace `protobuf:"bytes,1,rep,name=namespaces,proto3" json:"namespaces,omitempty"`
-	Host          *ApplicationHost        `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
+	state      protoimpl.MessageState  `protogen:"open.v1"`
+	Namespaces []*ApplicationNamespace `protobuf:"bytes,1,rep,name=namespaces,proto3" json:"namespaces,omitempty"`
+	Host       *ApplicationHost        `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
+	// An opaque ID that uniquely identifies this application model.
+	Id            string `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -863,6 +883,13 @@ func (x *ApplicationModel) GetHost() *ApplicationHost {
 		return x.Host
 	}
 	return nil
+}
+
+func (x *ApplicationModel) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
 }
 
 type ApplicationHost struct {
@@ -1950,7 +1977,7 @@ var File_application_model_v1alpha_application_model_proto protoreflect.FileDesc
 
 const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\n" +
-	"1application_model/v1alpha/application_model.proto\x12\x19application_model.v1alpha\x1a(application_model/v1alpha/syscalls.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\x85\x06\n" +
+	"1application_model/v1alpha/application_model.proto\x12\x19application_model.v1alpha\x1a(application_model/v1alpha/syscalls.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xb7\x06\n" +
 	"\x10ProcessTelemetry\x12!\n" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1b\n" +
 	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x12G\n" +
@@ -1969,10 +1996,11 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"parentHash\x12\x0e\n" +
 	"\x02id\x18\r \x01(\tR\x02id\x12\\\n" +
 	"\vnode_labels\x18\x0e \x03(\v2;.application_model.v1alpha.ProcessTelemetry.NodeLabelsEntryR\n" +
-	"nodeLabels\x1a=\n" +
+	"nodeLabels\x120\n" +
+	"\x14application_model_id\x18\x0f \x01(\tR\x12applicationModelId\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xab\v\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xdd\v\n" +
 	"\x17NetworkConnectTelemetry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x04time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12G\n" +
@@ -2002,7 +2030,8 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\trule_name\x18\x16 \x01(\tR\bruleName\x12\x19\n" +
 	"\btx_bytes\x18\x17 \x01(\x04R\atxBytes\x12\x19\n" +
 	"\brx_bytes\x18\x18 \x01(\x04R\arxBytes\x12\x1a\n" +
-	"\bsessions\x18\x19 \x01(\x04R\bsessions\x1a=\n" +
+	"\bsessions\x18\x19 \x01(\x04R\bsessions\x120\n" +
+	"\x14application_model_id\x18\x1a \x01(\tR\x12applicationModelId\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe1\x01\n" +
@@ -2010,12 +2039,13 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1b\n" +
 	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x12.\n" +
 	"\x04time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12X\n" +
-	"\x11application_model\x18\x04 \x01(\v2+.application_model.v1alpha.ApplicationModelR\x10applicationModel\"\xa3\x01\n" +
+	"\x11application_model\x18\x04 \x01(\v2+.application_model.v1alpha.ApplicationModelR\x10applicationModel\"\xb3\x01\n" +
 	"\x10ApplicationModel\x12O\n" +
 	"\n" +
 	"namespaces\x18\x01 \x03(\v2/.application_model.v1alpha.ApplicationNamespaceR\n" +
 	"namespaces\x12>\n" +
-	"\x04host\x18\x02 \x01(\v2*.application_model.v1alpha.ApplicationHostR\x04host\"c\n" +
+	"\x04host\x18\x02 \x01(\v2*.application_model.v1alpha.ApplicationHostR\x04host\x12\x0e\n" +
+	"\x02id\x18\x03 \x01(\tR\x02id\"c\n" +
 	"\x0fApplicationHost\x12P\n" +
 	"\tprocesses\x18\x01 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"x\n" +
 	"\x14ApplicationNamespace\x12\x12\n" +

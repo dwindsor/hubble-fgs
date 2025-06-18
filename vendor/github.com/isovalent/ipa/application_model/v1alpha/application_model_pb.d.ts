@@ -101,6 +101,13 @@ export declare type ProcessTelemetry = Message<"application_model.v1alpha.Proces
    * @generated from field: map<string, string> node_labels = 14;
    */
   nodeLabels: { [key: string]: string };
+
+  /**
+   * The ID of the application model from which this telemetry data got derived.
+   *
+   * @generated from field: string application_model_id = 15;
+   */
+  applicationModelId: string;
 };
 
 /**
@@ -320,6 +327,13 @@ export declare type NetworkConnectTelemetry = Message<"application_model.v1alpha
    * @generated from field: uint64 sessions = 25;
    */
   sessions: bigint;
+
+  /**
+   * The ID of the application model from which this telemetry data got derived.
+   *
+   * @generated from field: string application_model_id = 26;
+   */
+  applicationModelId: string;
 };
 
 /**
@@ -372,6 +386,13 @@ export declare type ApplicationModel = Message<"application_model.v1alpha.Applic
    * @generated from field: application_model.v1alpha.ApplicationHost host = 2;
    */
   host?: ApplicationHost;
+
+  /**
+   * An opaque ID that uniquely identifies this application model.
+   *
+   * @generated from field: string id = 3;
+   */
+  id: string;
 };
 
 /**

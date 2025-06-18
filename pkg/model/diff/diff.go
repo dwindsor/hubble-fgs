@@ -334,6 +334,7 @@ func ApplicationModelToProcessFlat(_ context.Context, a *appModelV1.ApplicationM
 					KubernetesWorkloadKind: wl.Kind,
 					ProcessName:            p.Name,
 					ProcessArguments:       p.Arguments,
+					ApplicationModelId:     a.Id,
 				}
 				t = append(t, entry)
 			}
@@ -343,12 +344,13 @@ func ApplicationModelToProcessFlat(_ context.Context, a *appModelV1.ApplicationM
 	if a.Host != nil {
 		for _, p := range a.Host.Processes {
 			entry := &appModelV1.ProcessTelemetry{
-				ClusterName:      cluster,
-				NodeName:         node,
-				EventType:        appModelV1.TelemetryType_TELEMETRY_TYPE_PROCESS,
-				Time:             time,
-				ProcessName:      p.Name,
-				ProcessArguments: p.Arguments,
+				ClusterName:        cluster,
+				NodeName:           node,
+				EventType:          appModelV1.TelemetryType_TELEMETRY_TYPE_PROCESS,
+				Time:               time,
+				ProcessName:        p.Name,
+				ProcessArguments:   p.Arguments,
+				ApplicationModelId: a.Id,
 			}
 			t = append(t, entry)
 		}
@@ -515,7 +517,7 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 				ServiceType:          0,
 				WorkloadType:         appModelToGraphWorkloadType(telemetry.KubernetesWorkloadKind),
 				Ip:                   "",
-				ApplicationModelUuid: "",
+				ApplicationModelUuid: telemetry.ApplicationModelId,
 			},
 		},
 	}

@@ -606,6 +606,7 @@ WARNING for consumers: numbers are arbitrary.
 | ----- | ---- | ----- | ----------- |
 | namespaces | [ApplicationNamespace](#application_model-v1alpha-ApplicationNamespace) | repeated |  |
 | host | [ApplicationHost](#application_model-v1alpha-ApplicationHost) |  |  |
+| id | [string](#string) |  | An opaque ID that uniquely identifies this application model. |
 
 
 
@@ -862,6 +863,7 @@ the following criteria:
 | tx_bytes | [uint64](#uint64) |  | tx_bytes allowed or dropped. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of transmit bytes from connections allowed by the policy rule. For `POLICY_VERDICT_DROP` verdict events, this field is set to zero. |
 | rx_bytes | [uint64](#uint64) |  | The number of receive bytes from connections allowed by the policy rule. This field is not set for `POLICY_VERDICT_DROP` verdict events. |
 | sessions | [uint64](#uint64) |  | The number of TCP connections / UDP sessions. For `POLICY_VERDICT_UNSPECIFIED` verdict events, this field specifies the number of TCP connections / UDP sessions created. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of TCP connections / UDP sessions allowed by this policy rule. For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of dropped TCP connections / UDP sessions dropped by this policy rule. |
+| application_model_id | [string](#string) |  | The ID of the application model from which this telemetry data got derived. |
 
 
 
@@ -923,6 +925,7 @@ the following criteria:
 | parent_hash | [string](#string) |  |  |
 | id | [string](#string) |  | An opaque identifier that is unique to this telemetry data across all the telemetry types. |
 | node_labels | [ProcessTelemetry.NodeLabelsEntry](#application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
+| application_model_id | [string](#string) |  | The ID of the application model from which this telemetry data got derived. |
 
 
 

@@ -37,6 +37,8 @@ message ProcessTelemetry {
   // For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any
   // Kubernetes cluster, this field may contain VM tags / labels.
   map<string, string> node_labels = 14;
+  // The ID of the application model from which this telemetry data got derived.
+  string application_model_id = 15;
 }
 
 message NetworkConnectTelemetry {
@@ -123,6 +125,8 @@ message NetworkConnectTelemetry {
   // For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
   // dropped TCP connections / UDP sessions dropped by this policy rule.
   uint64 sessions = 25;
+  // The ID of the application model from which this telemetry data got derived.
+  string application_model_id = 26;
 }
 
 enum PolicyVerdict {
@@ -160,6 +164,8 @@ message ApplicationModelEvent {
 message ApplicationModel {
   repeated ApplicationNamespace namespaces = 1;
   ApplicationHost host = 2;
+  // An opaque ID that uniquely identifies this application model.
+  string id = 3;
 }
 
 message ApplicationHost {
