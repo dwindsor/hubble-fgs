@@ -12,7 +12,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 		.pid_tgid = get_current_pid_tgid(),
 		.bprm_ptr = (__u64)bprm,
 	};
-	__u32 s_magic, operation, rule_id, msg_id = 0;
+	__u32 operation, rule_id, msg_id = 0;
 	struct digest_key *digest = 0;
 	struct msg_file_ops *msg;
 	union exec_flags flags;
@@ -45,8 +45,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	if (err < 0)
 		goto lsm_bprm_check_security_error;
 
-	s_magic = BPF_CORE_READ(file, f_inode, i_sb, s_magic);
-	rule_id = run_matcher(s_magic);
+	rule_id = run_matcher(BPF_CORE_READ(file, f_inode));
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 

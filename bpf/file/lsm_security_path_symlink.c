@@ -41,7 +41,7 @@ static struct msg_file_symlink_ops *get_msg_symlink_init()
 
 static inline __attribute__((always_inline)) __u32 path_symlink(void *ctx, const struct path *dir, struct dentry *dentry, const char *old_name)
 {
-	__u32 operation = 0, rule_id = 0, s_magic = 0;
+	__u32 operation = 0, rule_id = 0;
 	__u32 link_op = 0, target_op = 0, link_msg_id = 0, target_msg_id = 0;
 	struct msg_file_symlink_ops *msg;
 	struct dentry *parent_dentry;
@@ -71,8 +71,7 @@ static inline __attribute__((always_inline)) __u32 path_symlink(void *ctx, const
 
 	// in symbolic links we check only the link for the file system check
 	// as we don't know where the target resides
-	s_magic = BPF_CORE_READ(dir, dentry, d_inode, i_sb, s_magic);
-	rule_id = run_matcher(s_magic);
+	rule_id = run_matcher(BPF_CORE_READ(dir, dentry, d_inode));
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 

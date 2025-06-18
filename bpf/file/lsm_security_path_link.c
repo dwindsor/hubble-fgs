@@ -59,7 +59,7 @@ static inline __attribute__((always_inline)) __u32 path_link(void *ctx, struct d
 {
 	struct msg_file_link_ops *msg;
 	struct path new_path = { 0 };
-	__u32 operation = 0, rule_id = 0, s_magic = 0;
+	__u32 operation = 0, rule_id = 0;
 	__u32 link_op = 0, target_op = 0, link_msg_id = 0, target_msg_id = 0;
 	struct dentry *parent_dentry;
 	struct inode *inode;
@@ -101,8 +101,7 @@ static inline __attribute__((always_inline)) __u32 path_link(void *ctx, struct d
 
 	// in hard links both the target and the link should exist in the same file system
 	// thuse we are good if we check the magic number of the link
-	s_magic = BPF_CORE_READ(dir, dentry, d_inode, i_sb, s_magic);
-	rule_id = run_matcher(s_magic);
+	rule_id = run_matcher(BPF_CORE_READ(dir, dentry, d_inode));
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 

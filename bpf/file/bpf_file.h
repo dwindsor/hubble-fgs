@@ -163,9 +163,10 @@ static long BPF_FUNC(for_each_map_elem, void *map, void *callback_fn, void *call
 // which allows bpf_d_path helper into security_path_* functions.
 volatile const __u32 USE_BPF_D_PATH_HELPER = 0;
 
-#define INVALID_MATCHER 0
-#define MATCH_ALL	1
-#define FS_TYPE_MATCHER 2
+#define INVALID_MATCHER	   0
+#define MATCH_ALL	   1
+#define FS_TYPE_MATCHER	   2
+#define INODE_TYPE_MATCHER 3
 
 volatile const __u32 PATH_BASED_MATCHER = 0;
 #endif /* __LARGE_BPF_PROG */
@@ -269,6 +270,13 @@ struct {
 	__type(value, __u32);
 	__uint(max_entries, 1); /* the user will setup this */
 } file_system_type_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u32);
+	__type(value, __u32);
+	__uint(max_entries, 1); /* the user will setup this */
+} inode_type_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
@@ -1823,14 +1831,24 @@ generate_inode_metadata(struct msg_file_ops *msg, struct dentry *dentry)
 
 static inline __attribute__((always_inline))
 __u32
-run_matcher(__u32 s_magic)
+run_matcher(struct inode *inode)
 {
 #ifdef __LARGE_BPF_PROG
-	__u32 *r;
+	__u32 *r, s_magic, i_mode;
 
 	if (PATH_BASED_MATCHER == FS_TYPE_MATCHER) {
+		s_magic = BPF_CORE_READ(inode, i_sb, s_magic);
+
 		// check if we care about this file system
 		r = map_lookup_elem(&file_system_type_map, &s_magic);
+		if (!r)
+			return INVALID_RULE_ID;
+		return *r;
+	} else if (PATH_BASED_MATCHER == INODE_TYPE_MATCHER) {
+		i_mode = BPF_CORE_READ(inode, i_mode) & S_IFMT;
+
+		// check if we care about this inode type
+		r = map_lookup_elem(&inode_type_map, &i_mode);
 		if (!r)
 			return INVALID_RULE_ID;
 		return *r;
@@ -1858,7 +1876,7 @@ skip_access(struct inode *inode)
 static inline __attribute__((always_inline)) int
 path_generic_file_access(void *ctx, struct file *file, int action, int hook_type)
 {
-	__u32 s_magic, operation, rule_id, msg_id = 0;
+	__u32 operation, rule_id, msg_id = 0;
 	struct io_uring_op_key key = {
 		.file_ptr = (__u64)file,
 		.pid_tgid = get_current_pid_tgid(),
@@ -1898,8 +1916,7 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	if (err < 0)
 		return err;
 
-	s_magic = BPF_CORE_READ(file, f_inode, i_sb, s_magic);
-	rule_id = run_matcher(s_magic);
+	rule_id = run_matcher(BPF_CORE_READ(file, f_inode));
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 

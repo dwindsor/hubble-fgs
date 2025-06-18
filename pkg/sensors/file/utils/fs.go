@@ -49,4 +49,12 @@ var (
 		"nsfs":        unix.NSFS_MAGIC,
 		"devpts":      unix.DEVPTS_SUPER_MAGIC,
 	}
+
+	InodeTypes = map[string]uint32{
+		"link":    unix.S_IFLNK,
+		"file":    unix.S_IFREG,
+		"dir":     unix.S_IFDIR,
+		"chardev": unix.S_IFCHR,
+		"blkdev":  unix.S_IFBLK,
+	}
 )

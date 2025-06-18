@@ -98,6 +98,7 @@ const (
 	InvalidMatcher PathBasedMatcher = iota
 	MatchAll
 	FsTypeMatcher
+	InodeTypeMatcher
 )
 
 var fsScannerCmd *exec.Cmd
@@ -189,6 +190,7 @@ var (
 		{"file_config_map", SharedMap},      // for configuration options
 		{"file_errors_map", SharedMap},      // for eBPF errors
 		{"file_system_type_map", SharedMap}, // for FileSystemType type in file_paths_patterns
+		{"inode_type_map", SharedMap},       // for InodeType type in file_paths_patterns
 	}
 
 	InodeBasedMiscMaps = []MapInfo{
@@ -1610,8 +1612,10 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 	// count the number of entries with FileSystemType
 	// to set the proper size of that map
 	fileSystemTypes := make(map[string]uint32)
+	inodeTypes := make(map[string]uint32)
 	for _, p := range kprobes.PathsPatterns {
-		if p.Type == "FileSystemType" {
+		switch p.Type {
+		case "FileSystemType":
 			for _, n := range p.FileSystemType.Names {
 				nn := strings.ToLower(n)
 				// check if this is a valid file system name
@@ -1620,11 +1624,24 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				}
 				fileSystemTypes[nn] = uint32(0)
 			}
+		case "InodeType":
+			for _, n := range p.InodeType.Types {
+				nn := strings.ToLower(n)
+				// check if this is a valid inode type
+				if _, ok := fm.InodeTypes[nn]; !ok {
+					return nil, fmt.Errorf("inode type %s is not a valid option", n)
+				}
+				inodeTypes[nn] = uint32(0)
+			}
 		}
 	}
 	numFileSystemTypes := len(fileSystemTypes)
 	if numFileSystemTypes == 0 {
 		numFileSystemTypes = 1
+	}
+	numInodeTypes := len(inodeTypes)
+	if numInodeTypes == 0 {
+		numInodeTypes = 1
 	}
 
 	maxSelectors := fm.MaxFimSelectors
@@ -1828,6 +1845,25 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 								idx := uint32(i)
 								if err := m.Update(&key, &idx, ebpf.UpdateAny); err != nil {
 									return fmt.Errorf("failed to add FileSystemType in file_system_type_map: %w", err)
+								}
+							}
+						}
+					}
+					return nil
+				}
+			case "inode_type_map":
+				m.SetMaxEntries(numInodeTypes)
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
+					for i, p := range kprobes.PathsPatterns {
+						if p.Type == "InodeType" {
+							for _, inodeType := range p.InodeType.Types {
+								key, ok := fm.InodeTypes[strings.ToLower(inodeType)]
+								if !ok {
+									return fmt.Errorf("inode type %s is not a valid option", inodeType)
+								}
+								idx := uint32(i)
+								if err := m.Update(&key, &idx, ebpf.UpdateAny); err != nil {
+									return fmt.Errorf("failed to add InodeType in inode_type_map: %w", err)
 								}
 							}
 						}
@@ -2426,6 +2462,12 @@ func GetTpMode(s *v1alpha1.FileSpec) (TpMode, PathBasedMatcher, error) {
 				return 0, InvalidMatcher, fmt.Errorf("FileSystemType cannot be combined with other path-based modes")
 			}
 			pathMatcher = FsTypeMatcher
+		case "InodeType":
+			modeNum |= PathBasedTpMode
+			if pathMatcher != InvalidMatcher {
+				return 0, InvalidMatcher, fmt.Errorf("InodeType cannot be combined with other path-based modes")
+			}
+			pathMatcher = InodeTypeMatcher
 		case "AllFileOps":
 			modeNum |= PathBasedTpMode
 			if pathMatcher != InvalidMatcher {

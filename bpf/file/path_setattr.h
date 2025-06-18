@@ -3,7 +3,7 @@
 
 static inline __attribute__((always_inline)) __u32 path_setattr(void *ctx, const struct path *path, __u32 action, __u32 hook, umode_t mode, uid_t uid, gid_t gid, void (*set_attr)(struct msg_file_ops *, struct dentry *, umode_t, uid_t, gid_t))
 {
-	__u32 s_magic, operation, rule_id, msg_id = 0;
+	__u32 operation, rule_id, msg_id = 0;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
 	int err;
@@ -20,8 +20,7 @@ static inline __attribute__((always_inline)) __u32 path_setattr(void *ctx, const
 	if (err < 0)
 		return err;
 
-	s_magic = BPF_CORE_READ(path, dentry, d_inode, i_sb, s_magic);
-	rule_id = run_matcher(s_magic);
+	rule_id = run_matcher(BPF_CORE_READ(path, dentry, d_inode));
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 

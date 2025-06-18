@@ -7,7 +7,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 static inline __attribute__((always_inline)) __u32 path_mkdir(void *ctx, const struct path *dir, struct dentry *new_dentry)
 {
-	__u32 s_magic, operation, rule_id, msg_id = 0;
+	__u32 operation, rule_id, msg_id = 0;
 	struct dentry *parent_dentry;
 	struct msg_file_ops *msg;
 
@@ -25,8 +25,7 @@ static inline __attribute__((always_inline)) __u32 path_mkdir(void *ctx, const s
 
 	get_parent_ino_fs(msg, parent_dentry);
 
-	s_magic = BPF_CORE_READ(dir, dentry, d_inode, i_sb, s_magic);
-	rule_id = run_matcher(s_magic);
+	rule_id = run_matcher(BPF_CORE_READ(dir, dentry, d_inode));
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 

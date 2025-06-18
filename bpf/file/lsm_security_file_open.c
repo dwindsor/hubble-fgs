@@ -7,7 +7,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 static inline __attribute__((always_inline)) __u32 path_file_open(void *ctx, struct file *file)
 {
-	__u32 operation = 0, rule_id, open_flags, s_magic, msg_id = 0;
+	__u32 operation = 0, rule_id, open_flags, msg_id = 0;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
 	int err;
@@ -30,8 +30,7 @@ static inline __attribute__((always_inline)) __u32 path_file_open(void *ctx, str
 	if (err < 0)
 		return err;
 
-	s_magic = BPF_CORE_READ(file, f_inode, i_sb, s_magic);
-	rule_id = run_matcher(s_magic);
+	rule_id = run_matcher(BPF_CORE_READ(file, f_inode));
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 

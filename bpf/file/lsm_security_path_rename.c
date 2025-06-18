@@ -42,7 +42,7 @@ static inline __attribute__((always_inline)) __u32
 path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, const struct path *new_dir, struct dentry *new_dentry)
 {
 	struct inode *old_dir_inode, *new_dir_inode;
-	__u32 s_magic, rule_id, operation = 0, src_op, dst_op, path_size = 0, src_msg_id = 0, dst_msg_id = 0;
+	__u32 rule_id, operation = 0, src_op, dst_op, path_size = 0, src_msg_id = 0, dst_msg_id = 0;
 	struct msg_file_rename_ops *msg;
 	struct inode *d_inode;
 	umode_t i_mode;
@@ -89,8 +89,7 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	msg->dst.parent_ino = BPF_CORE_READ(new_dir_inode, i_ino);
 	get_fs_info(&(msg->dst.parent_fs), &(msg->dst.parent_ino), new_dir_inode, new_dentry);
 
-	s_magic = BPF_CORE_READ(old_dir_inode, i_sb, s_magic);
-	rule_id = run_matcher(s_magic);
+	rule_id = run_matcher(BPF_CORE_READ(old_dentry, d_inode));
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 

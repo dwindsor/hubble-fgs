@@ -609,6 +609,8 @@ func PathPatternToString(p v1alpha1.FilePathPattern) string {
 		return fmt.Sprintf("FileExactMatch{Path:[%s]}", p.FileExactMatch.Path)
 	case "FileSystemType":
 		return fmt.Sprintf("FileSystemType{Names:%s}", p.FileSystemType.Names)
+	case "InodeType":
+		return fmt.Sprintf("InodeType{Types:%s}", p.InodeType.Types)
 	case "AllFileOps":
 		return "AllFileOps"
 	}
