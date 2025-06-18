@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/server"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 )
 
 type Alerter interface {
@@ -109,12 +110,21 @@ func (a *alerter) Close() error {
 func (a *alerter) evaluateRules(ctx context.Context, event *tetragon.GetEventsResponse) error {
 	var errs error
 	for _, r := range a.ruleManager.rules {
+		// Evaluate the rule
 		match, err := filters.EvalCEL(ctx, r.cel, event)
 		if err != nil {
+			// Track evaluation errors
+			alertmetrics.AlertRuleEvaluationErrors.WithLabelValues(r.name).Inc()
 			errs = errors.Join(errs, fmt.Errorf("failed to evaluate rule CEL expression: %w", err))
 			continue
 		}
+
+		// If we have a match, track it and process the alert
 		if match {
+			// Use the helper function to record metrics for this alert match
+			alertmetrics.RecordAlertMatch(r.name, r.severity)
+
+			// Handle alert output
 			if r.jsonEncoder != nil {
 				alert := eventToAlert(event, r)
 				err = r.jsonEncoder.encode(alert)

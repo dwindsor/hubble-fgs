@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 )
 
 type jsonEncoder struct {
@@ -26,8 +27,9 @@ type jsonEncoder struct {
 }
 
 func newJsonEncoder(w io.WriteCloser, fname string) *jsonEncoder {
+	// Wrap the WriteCloser with our byte counter to track exported bytes
 	ret := &jsonEncoder{
-		writer: w,
+		writer: alertmetrics.NewAlertExportedBytesCounterWriter(w),
 		fname:  fname,
 	}
 	ret.refCnt.Store(1)

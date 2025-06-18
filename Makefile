@@ -549,6 +549,7 @@ metrics-docs: tetragon-metrics-docs ## Generate metrics reference.
 	$(CONTAINER_ENGINE) run --rm -v $(PWD):$(PWD) -w $(PWD) $(GO_IMAGE) ./tetragon-metrics-docs rawsocket >> $(METRICS_DOCS_PATH)
 	$(CONTAINER_ENGINE) run --rm -v $(PWD):$(PWD) -w $(PWD) $(GO_IMAGE) ./tetragon-metrics-docs tls >> $(METRICS_DOCS_PATH)
 	$(CONTAINER_ENGINE) run --rm -v $(PWD):$(PWD) -w $(PWD) $(GO_IMAGE) ./tetragon-metrics-docs debug-dns-parser >> $(METRICS_DOCS_PATH)
+	$(CONTAINER_ENGINE) run --rm -v $(PWD):$(PWD) -w $(PWD) $(GO_IMAGE) ./tetragon-metrics-docs alerts >> $(METRICS_DOCS_PATH)
 
 .PHONY: validate
 validate: check format generate-flags metrics-docs ## Convenience target running linters, formatters and generators across the codebase.

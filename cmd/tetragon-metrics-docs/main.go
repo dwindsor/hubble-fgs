@@ -47,6 +47,7 @@ func main() {
 		"sandbox":             "Tetragon SandboxPolicy metrics",
 		"process-cache-clean": "Tetragon Process Cache Clean metrics",
 		"debug-dns-parser":    "Tetragon Debug DNS Parser",
+		"alerts":              "Tetragon Alerts",
 	}
 
 	if err := metricsmd.New(targets, initMetrics).Execute(); err != nil {
@@ -98,6 +99,8 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 		dnsparsermetrics.EnableDebugDNSParserMetrics(reg).InitForDocs()
 	case "network":
 		enterpriseMetricsConfig.InitNetworkMetricsForDocs(reg)
+	case "alerts":
+		enterpriseMetricsConfig.InitAlertMetricsForDocs(reg)
 	}
 	return nil
 }

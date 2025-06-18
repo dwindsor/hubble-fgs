@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
@@ -76,8 +77,11 @@ func (r *ruleManager) AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 		return nil
 	}
 
+	name := ar.GetName()
 	celProgram, err := cef.CompileCEL(ar.Spec.Expression)
 	if err != nil {
+		// Track compilation errors in metrics
+		alertmetrics.AlertRuleCompilationErrors.WithLabelValues(name).Inc()
 		return err
 	}
 
@@ -102,23 +106,31 @@ func (r *ruleManager) AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 		newEncoder = true
 	}
 
-	name := ar.GetName()
+	severity := ar.Spec.Severity
 	r.mutex.Lock()
-	// if we are replacing a rule, decref its encoder
+	// if we are replacing a rule, decref its encoder and update metrics
 	if oldRule, ok := r.rules[name]; ok {
 		r.encoderDecref(oldRule)
+		// If we're replacing a rule with different severity, update metrics
+		if oldRule.severity != severity {
+			// Decrement the old severity count
+			r.updateRuleMetrics()
+		}
 	}
 	r.rules[name] = &rule{
 		cel:         celProgram,
 		name:        ar.GetName(),
 		message:     ar.Spec.Message,
 		tags:        ar.Spec.Tags,
-		severity:    ar.Spec.Severity,
+		severity:    severity,
 		jsonEncoder: encoder,
 	}
 	if newEncoder {
 		r.encoders[fname] = encoder
 	}
+
+	// Update metrics after adding new rule
+	r.updateRuleMetrics()
 	r.mutex.Unlock()
 	return nil
 }
@@ -130,11 +142,37 @@ func (r *ruleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 	return r.AddAlertRuleWithFilename(ar, ar.GetName()+".log")
 }
 
+// updateRuleMetrics calculates and updates metrics for alerting rules by severity
+// Note: This method assumes the caller holds r.mutex lock
+func (r *ruleManager) updateRuleMetrics() {
+	// Create a map to count rules by severity
+	severityCounts := make(map[string]int)
+
+	// Count rules by severity
+	for _, rule := range r.rules {
+		severityCounts[rule.severity]++
+	}
+
+	// Use Prometheus to track the counts
+	for severity, count := range severityCounts {
+		alertmetrics.UpdateAlertRuleCount(severity, float64(count))
+	}
+}
+
 func (r *ruleManager) DeleteAlertRule(name string) {
 	r.mutex.Lock()
 	if rule, ok := r.rules[name]; ok {
 		r.encoderDecref(rule)
 		delete(r.rules, name)
+
+		// Only delete evaluation and compilation error metrics
+		// We preserve the AlertTriggered metric to maintain historical data
+		// for the lifetime of the Tetragon agent
+		alertmetrics.DeleteEvaluationErrorMetric(rule.name)
+		alertmetrics.DeleteCompilationErrorMetric(rule.name)
+
+		// Update metrics after deleting a rule
+		r.updateRuleMetrics()
 	}
 	r.mutex.Unlock()
 }

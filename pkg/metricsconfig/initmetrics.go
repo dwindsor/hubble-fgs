@@ -12,6 +12,7 @@ package metricsconfig
 
 import (
 	oss "github.com/cilium/tetragon/pkg/metricsconfig"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsparsermetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
@@ -162,6 +163,14 @@ func InitProcessCacheCleanMetricsForDocs(registry *prometheus.Registry) {
 	processcachecleanmetrics.InitEventsMetricsForDocs(registry)
 }
 
+func initAllAlertMetrics(registry *prometheus.Registry) {
+	alertmetrics.InitMetrics(registry)
+}
+
+func InitAlertMetricsForDocs(registry *prometheus.Registry) {
+	alertmetrics.InitMetricsForDocs(registry)
+}
+
 func InitNetworkMetricsForDocs(registry *prometheus.Registry) {
 	networkmetrics.InitMetricsForDocs(registry)
 }
@@ -193,6 +202,7 @@ func InitAllEEMetrics(registry *prometheus.Registry) {
 	initAllTLSEventsMetrics(registry)
 	initAllSandboxMetrics(registry)
 	initAllProcessCacheCleanMetrics(registry)
+	initAllAlertMetrics(registry)
 	initAllDebugDNSParserMetrics(registry)
 	initAllNetworkMetrics(registry)
 }

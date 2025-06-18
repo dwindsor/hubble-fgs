@@ -1808,3 +1808,50 @@ The total and type of errors encountered while parsing DNS answers. Internal use
 | ----- | ------ |
 | `error_number` | `    0` |
 
+## Tetragon Alerts Metrics
+
+### `tetragon_alert_rules_by_severity_total`
+
+Number of alerts triggered by severity level. Reset on Tetragon restart.
+
+| label | values |
+| ----- | ------ |
+| `severity` | `critical` |
+
+### `tetragon_alert_rules_compilation_errors_total`
+
+Number of errors when compiling CEL expressions in alert rules. Deleted if the respective alert rule is not applied anymore.
+
+| label | values |
+| ----- | ------ |
+| `rule ` | `example-alert-rule` |
+
+### `tetragon_alert_rules_evaluation_errors_total`
+
+Number of errors during alert rule evaluation. Deleted if the respective alert rule is not applied anymore.
+
+| label | values |
+| ----- | ------ |
+| `rule ` | `example-alert-rule` |
+
+### `tetragon_alert_rules_exported_bytes_total`
+
+Number of bytes exported for alert events. Reset on Tetragon restart.
+
+### `tetragon_alert_rules_total`
+
+Number of alert rules currently present on the system. Updated whenever an alert rule is added or removed.
+
+| label | values |
+| ----- | ------ |
+| `severity` | `critical` |
+
+### `tetragon_alert_rules_triggered_total`
+
+Number of alerts triggered per rule name and severity. Reset on Tetragon restart.
+
+| label | values |
+| ----- | ------ |
+| `rule ` | `example-alert-rule` |
+| `severity` | `critical` |
+
