@@ -1,0 +1,17 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring-inode-type"
+spec:
+  file:
+    file_paths_patterns:
+    - type: InodeType
+      inode_type:
+        types:
+        - "chardev"
+        - "blkdev"
+    selectors:
+    - matchOperations:
+      - operator: "NotIn"
+        values:
+        - "FILE_OPENRAW"
