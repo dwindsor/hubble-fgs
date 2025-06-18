@@ -294,8 +294,8 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 {
 	struct destination_endpoint_value *dest;
 	struct destination_endpoint_value *destvalue;
+	int exists = 0, zero = 0;
 	struct tree_id self;
-	int zero = 0;
 
 	if (!key->source)
 		return 0;
@@ -303,22 +303,25 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	if (unlikely(!tuple))
 		return 0;
 
-	dest = map_lookup_elem(&destination_endpoint_map, key);
-	if (dest && (dest->deny & !TNP_POLICY_REFRESH))
-		return dest->deny;
+	destvalue = map_lookup_elem(&destination_endpoint_map, key);
+	if (destvalue && (destvalue->deny & !TNP_POLICY_REFRESH))
+		return destvalue->deny;
+	exists = !!destvalue;
 
-	destvalue = map_lookup_elem(&destination_endpoint_heap, &zero);
-	if (!destvalue)
-		return 0;
+	if (!destvalue) {
+		destvalue = map_lookup_elem(&destination_endpoint_heap, &zero);
+		if (!destvalue)
+			return 0;
 
-	destvalue->ktime_create = ktime_get_ns();
-	destvalue->addr_create[0] = tuple->daddr[0];
-	destvalue->addr_create[1] = tuple->daddr[1];
-	destvalue->ipv6 = tuple->ipv6;
-	destvalue->port = tuple->dport;
-	destvalue->deny = 0;
-	destvalue->tx_quota = destvalue->tx_limit = 0;
-	destvalue->tx_bytes = destvalue->rx_bytes = 0;
+		destvalue->ktime_create = ktime_get_ns();
+		destvalue->addr_create[0] = tuple->daddr[0];
+		destvalue->addr_create[1] = tuple->daddr[1];
+		destvalue->ipv6 = tuple->ipv6;
+		destvalue->port = tuple->dport;
+		destvalue->deny = 0;
+		destvalue->tx_quota = destvalue->tx_limit = 0;
+		destvalue->tx_bytes = destvalue->rx_bytes = 0;
+	}
 
 	key->port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, key);
@@ -347,7 +350,8 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 		return dest->deny;
 	}
-	map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+	if (!exists)
+		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 	return 0;
 }
 
