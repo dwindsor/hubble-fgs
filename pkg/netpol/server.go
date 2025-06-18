@@ -47,7 +47,13 @@ func (m *NetworkPolicyManager) AddNetworkPolicyFromYAML(_ context.Context, req *
 		return nil, fmt.Errorf("failed to convert TetragonNetworkPolicy %s to internal representation: %w", np.Name, err)
 	}
 
-	err = loadPolicy(&library.PolicyStory{Title: np.Name, CRDPolicy: np, CRDNSPolicy: nil, IrPolicy: policies})
+	err = loadPolicy(&library.PolicyStory{
+		Title:       np.Name,
+		Rules:       make(map[string]uint64),
+		CRDPolicy:   np,
+		CRDNSPolicy: nil,
+		IrPolicy:    policies,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to load TetragonNetworkPolicy: %w", err)
 	}
