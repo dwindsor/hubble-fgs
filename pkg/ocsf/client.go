@@ -14,9 +14,10 @@ import (
 )
 
 type OCSFClient struct {
-	Client v1alpha.EventServiceClient
-	Ctx    context.Context
+	client v1alpha.EventServiceClient
+	ctx    context.Context
 	conn   *grpc.ClientConn
+	stream grpc.ClientStreamingClient[v1alpha.ProcessEventsRequest, v1alpha.ProcessEventsResponse]
 }
 
 var (
@@ -49,13 +50,27 @@ func NewOCSFJSONClient(ctx context.Context, serverAddr string) error {
 		}
 		break
 	}
-
-	ocsfClient.Client = v1alpha.NewEventServiceClient(ocsfClient.conn)
-	ocsfClient.Ctx = ctx
+	ocsfClient.client = v1alpha.NewEventServiceClient(ocsfClient.conn)
+	ocsfClient.ctx = ctx
+	ocsfClient.stream, err = ocsfClient.client.ProcessEvents(ctx)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Client stream failed")
+		return fmt.Errorf("client stream failed")
+	}
 	return nil
 }
 
 func SendOCSF(network *v1alpha.EndpointEvent_NetworkActivityDetail) error {
+	var err error
+	// If the stream failed return nil its not enabled and we have
+	// original error in logs.
+	if ocsfClient.stream == nil {
+		ocsfClient.stream, err = ocsfClient.client.ProcessEvents(ocsfClient.ctx)
+		if err != nil {
+			logger.GetLogger().Debug("client stream never established retry")
+			return nil
+		}
+	}
 	json, err := protojson.Marshal(network.NetworkActivityDetail)
 	if err != nil {
 		return err
@@ -69,9 +84,10 @@ func SendOCSF(network *v1alpha.EndpointEvent_NetworkActivityDetail) error {
 	req := &v1alpha.ProcessEventsRequest{
 		Detail: reqOcsf,
 	}
-	stream, err := ocsfClient.Client.ProcessEvents(ocsfClient.Ctx)
+	err = ocsfClient.stream.Send(req)
 	if err != nil {
-		return err
+		logger.GetLogger().WithError(err).Warn("Client stream send failed attempting reconnect")
+		ocsfClient.stream, err = ocsfClient.client.ProcessEvents(ocsfClient.ctx)
 	}
-	return stream.Send(req)
+	return err
 }
