@@ -5,7 +5,7 @@ metadata:
   annotations:
     author: "Isovalent"
   labels:
-    app.kubernetes.io/version: 1.17.0-pre.3
+    app.kubernetes.io/version: 1.17.0-pre.4
 spec:
   kprobes:
     # Bpf verifier check during program loads
