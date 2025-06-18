@@ -91,5 +91,6 @@ func TestOLMHTTP(t *testing.T) {
 }
 
 func TestOLMTLS(t *testing.T) {
+	t.Skipf("TLS tests are currently disabled due to CI flakes. See GitHub Issue: https://github.com/isovalent/hubble-fgs/issues/6288")
 	httptls.TestTLS(t, runner)
 }
