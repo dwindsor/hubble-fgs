@@ -440,6 +440,54 @@ var tests = []recordTest{
 		checks:  digAndCurl,
 		deny:    false,
 	},
+	{ // test default deny with DNS deny with dig
+		name:    "testDefaultDenyWithDNSDenyDig",
+		records: []*record.DatapathRecord{dnsLoDenyPolicy, defaultDeny},
+		checks:  digAndCurl,
+		deny:    true,
+	},
+	{ // test default deny with DNS allow with dig
+		name:    "testDefaultDenyWithDNSAllowDig",
+		records: []*record.DatapathRecord{dnsLoAllowPolicy, defaultDeny},
+		checks:  digAndCurl,
+		deny:    false,
+	},
+	{ // test default allow with DNS deny with curl
+		name:    "testDefaultDenyWithDNSAllowDig",
+		records: []*record.DatapathRecord{dnsLoDenyPolicy, defaultAllow},
+		checks:  digAndCurl,
+		deny:    true,
+	},
+	{ // test default allow with DNS Deny with curl
+		name:    "testDefaultDenyWithDNSAllowDig",
+		records: []*record.DatapathRecord{dnsLoDenyPolicy, defaultAllow},
+		checks:  digAndCurl,
+		deny:    true,
+	},
+	{ // test default deny with IP deny with dig
+		name:    "testDefaultDenyWithDNSDenyDig",
+		records: []*record.DatapathRecord{ipLo1Policy, defaultDeny},
+		checks:  curl,
+		deny:    true,
+	},
+	{ // test default deny with IP allow with dig
+		name:    "testDefaultDenyWithDNSAllowDig",
+		records: []*record.DatapathRecord{ipLo1AllowPolicy, defaultDeny},
+		checks:  curl,
+		deny:    false,
+	},
+	{ // test default allow with IP deny with curl
+		name:    "testDefaultDenyWithDNSAllowDig",
+		records: []*record.DatapathRecord{ipLo1Policy, defaultAllow},
+		checks:  curl,
+		deny:    true,
+	},
+	{ // test default allow with IP Deny with curl
+		name:    "testDefaultDenyWithDNSAllowDig",
+		records: []*record.DatapathRecord{ipLo1Policy, defaultAllow},
+		checks:  curl,
+		deny:    true,
+	},
 }
 
 func loadRecords(r *recordTest, t *testing.T) {
