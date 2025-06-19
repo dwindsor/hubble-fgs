@@ -250,7 +250,7 @@ func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.Applicat
 	var networkDiffModel *appModelV1.ApplicationModel
 
 	if len(nsProcessDiff) != 0 || len(processDiff) != 0 {
-		processDiffModel = &appModelV1.ApplicationModel{}
+		processDiffModel = &appModelV1.ApplicationModel{Id: a.Id}
 
 		if len(nsProcessDiff) > 0 {
 			processDiffModel.Namespaces = nsProcessDiff
@@ -263,7 +263,7 @@ func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.Applicat
 	}
 
 	if len(nsNetworkDiff) != 0 || len(networkDiff) != 0 {
-		networkDiffModel = &appModelV1.ApplicationModel{}
+		networkDiffModel = &appModelV1.ApplicationModel{Id: a.Id}
 
 		if len(nsNetworkDiff) != 0 {
 			networkDiffModel.Namespaces = nsNetworkDiff
@@ -439,6 +439,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 						PolicyName:                        c.Policy.PolicyName,
 						RuleName:                          c.Policy.RuleName,
 						Verdict:                           verdict,
+						ApplicationModelId:                a.Id,
 					}
 					n = append(n, entry)
 				}
@@ -476,6 +477,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					PolicyName:                        c.Policy.PolicyName,
 					RuleName:                          c.Policy.RuleName,
 					Verdict:                           verdict,
+					ApplicationModelId:                a.Id,
 				}
 				n = append(n, entry)
 			}

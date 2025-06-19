@@ -462,6 +462,7 @@ func TestToNetworkFlat(t *testing.T) {
 	ctx := context.Background()
 
 	aModel := appModel()
+	aModel.Id = "u-u-i-d"
 	bModel := appModel()
 	bModel.Namespaces[0].Workloads[0].Processes[1].Connections[0].Stats.TxBytes = 1
 	bModel.Namespaces[1].Workloads[1].Processes[1].Connections[1].Stats.RxBytes = 1
@@ -492,6 +493,8 @@ func TestToNetworkFlat(t *testing.T) {
 	assert.Equal(t, uint64(0), f[1].TxBytes)
 	assert.Equal(t, uint64(0), f[0].RxBytes)
 	assert.Equal(t, uint64(1), f[1].RxBytes)
+	assert.Equal(t, aModel.Id, f[0].ApplicationModelId)
+	assert.Equal(t, aModel.Id, f[1].ApplicationModelId)
 }
 
 func TestToNetworkFlatHost(t *testing.T) {
@@ -504,6 +507,7 @@ func TestToNetworkFlatHost(t *testing.T) {
 	aModel := &appModelV1.ApplicationModel{
 		Namespaces: []*appModelV1.ApplicationNamespace{},
 		Host:       aHost,
+		Id:         "u-u-i-d",
 	}
 	bModel := &appModelV1.ApplicationModel{
 		Namespaces: []*appModelV1.ApplicationNamespace{},
@@ -525,6 +529,7 @@ func TestToNetworkFlatHost(t *testing.T) {
 	assert.Equal(t, uint32(80), f[0].DestinationPort)
 	assert.Equal(t, uint64(9), f[0].TxBytes)
 	assert.Equal(t, uint64(0), f[0].RxBytes)
+	assert.Equal(t, aModel.Id, f[0].ApplicationModelId)
 }
 
 func Test_getDestination(t *testing.T) {
