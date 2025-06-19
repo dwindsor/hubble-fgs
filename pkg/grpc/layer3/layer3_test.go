@@ -10,7 +10,6 @@ package layer3
 
 import (
 	"context"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -86,8 +85,8 @@ func TestGrpcL3InOrder(t *testing.T) {
 	watcher := watcher.NewFakeK8sWatcher(nil)
 	execOSS.InitEnv[*exec.MsgExecveEventUnix, *exec.MsgExitEventUnix](t, watcher)
 
-	parentPid := atomic.AddUint32(&execOSS.BasePid, 1)
-	currentPid := atomic.AddUint32(&execOSS.BasePid, 1)
+	parentPid := execOSS.BasePid.Add(1)
+	currentPid := execOSS.BasePid.Add(1)
 
 	execRoot, execParent, execMsg, exitMsg := execOSS.CreateEvents[*exec.MsgExecveEventUnix, *exec.MsgExitEventUnix](currentPid, 21034975089403, parentPid, 75200000000, "")
 	connectMsg, closeMsg := CreateConnectEvents(currentPid, 21034975089403, "")
@@ -293,8 +292,9 @@ func TestGrpcL3CloseFirst(t *testing.T) {
 		cancel()
 	}()
 
-	parentPid := atomic.AddUint32(&execOSS.BasePid, 1)
-	currentPid := atomic.AddUint32(&execOSS.BasePid, 1)
+	parentPid := execOSS.BasePid.Add(1)
+	currentPid := execOSS.BasePid.Add(1)
+
 	execRoot, _, _, _ := execOSS.CreateEvents[*exec.MsgExecveEventUnix, *exec.MsgExitEventUnix](currentPid, 21034975089403, parentPid, 75200000000, "")
 
 	execParent := createExecEvent(1000, 11111, 1, 0, "/usr/bin/containerd")
