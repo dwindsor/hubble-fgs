@@ -75,3 +75,26 @@ int tcp_connect4(bpf_sock_addr_t *ctx)
 	bpf_ringbuf_output(&process_ringbuf, &event, sizeof(event), 0);
 	return BPF_SOCK_ADDR_VERDICT_PROCEED;
 }
+
+SEC("cgroup/connect6")
+int tcp_connect6(bpf_sock_addr_t *ctx)
+{
+	if (ctx->protocol != IPPROTO_TCP) {
+		return BPF_SOCK_ADDR_VERDICT_PROCEED;
+	}
+	uint64_t ptid = bpf_get_current_pid_tgid();
+
+	struct msg_ip_event event = { 0 };
+	event.common.op = 2;
+	event.socket_cookie = bpf_get_socket_cookie(ctx);
+	event.common.ktime = bpf_ktime_get_boot_ns();
+	event.key.pid = ptid >> 32;
+	__builtin_memcpy(event.tuple.daddr, ctx->user_ip6, sizeof(ctx->user_ip6));
+	__builtin_memcpy(event.tuple.saddr, ctx->msg_src_ip6, sizeof(ctx->msg_src_ip6));
+	event.tuple.ipv6 = 1;
+	event.tuple.sport = swap_bytes(ctx->msg_src_port);
+	event.tuple.dport = swap_bytes(ctx->user_port);
+	event.tuple.proto = ctx->protocol;
+	bpf_ringbuf_output(&process_ringbuf, &event, sizeof(event), 0);
+	return BPF_SOCK_ADDR_VERDICT_PROCEED;
+}

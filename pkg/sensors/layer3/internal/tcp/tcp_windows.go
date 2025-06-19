@@ -28,16 +28,25 @@ import (
 var (
 	baseTCPConnectPolicy = "__base_tcp_connect__"
 
-	TCPConnect = program.Builder(
+	TCPConnect4 = program.Builder(
 		"tcp_connect.sys",
 		"cgroup/connect4",
 		"tcp_connect4",
-		"tcp::connect",
+		"tcp::connect4",
+		"windows",
+	).SetPolicy(baseTCPConnectPolicy)
+
+	TCPConnect6 = program.Builder(
+		"tcp_connect.sys",
+		"cgroup/connect6",
+		"tcp_connect6",
+		"tcp::connect6",
 		"windows",
 	).SetPolicy(baseTCPConnectPolicy)
 
 	baseTCPPrograms = []*program.Program{
-		TCPConnect,
+		TCPConnect4,
+		TCPConnect6,
 	}
 )
 
