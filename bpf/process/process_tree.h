@@ -479,6 +479,11 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			updatekey = dfltkey;
 		}
 
+		/* This also seperates host policy from pod/namespace policy so
+		 * that a pod policy will not use default policy from the host.
+		 */
+		dfltkey->local_nsid = updatekey->local_nsid;
+
 		dst_value = map_lookup_elem(&destination_endpoint_map, dfltkey);
 		if (dst_value) {
 			struct destination_endpoint_value *destvalue;
