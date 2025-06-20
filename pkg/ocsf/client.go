@@ -54,7 +54,7 @@ func NewOCSFJSONClient(ctx context.Context, serverAddr string) error {
 	ocsfClient.ctx = ctx
 	ocsfClient.stream, err = ocsfClient.client.ProcessEvents(ctx)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Client stream failed")
+		logger.GetLogger().Warn("Client stream failed", logfields.Error, err)
 		return fmt.Errorf("client stream failed")
 	}
 	return nil
@@ -86,7 +86,7 @@ func SendOCSF(network *v1alpha.EndpointEvent_NetworkActivityDetail) error {
 	}
 	err = ocsfClient.stream.Send(req)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Client stream send failed attempting reconnect")
+		logger.GetLogger().Warn("Client stream send failed attempting reconnect", logfields.Error, err)
 		ocsfClient.stream, err = ocsfClient.client.ProcessEvents(ocsfClient.ctx)
 	}
 	return err
