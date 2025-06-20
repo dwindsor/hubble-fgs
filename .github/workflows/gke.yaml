@@ -55,9 +55,7 @@ jobs:
 
       - name: Install Cilium CLI
         run: |
-          GOOS=$(go env GOOS)
-          GOARCH=$(go env GOARCH)
-          curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${{ env.ciliumCliVersion }}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
+          curl -sSL --remote-name-all https://github.com/isovalent/cilium-cli-releases/releases/latest/download/cilium-linux-amd64.tar.gz{,.sha256sum}
           sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
           sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/bin
           rm cilium-linux-amd64.tar.gz{,.sha256sum}
@@ -141,7 +139,22 @@ jobs:
             E2E_EXTRA_GOTEST_FLAGS="-failfast"                   \
             E2E_AGENT=${{ steps.vars.outputs.agentImage }}       \
             E2E_OPERATOR=${{ steps.vars.outputs.operatorImage }} \
-            E2E_EXTRA_TEST_FLAGS="-tetragon.keep-export=true -cluster-name ${{ steps.vars.outputs.clusterName }} -kubeconfig ~/.kube/config"
+            E2E_EXTRA_TEST_FLAGS="-tetragon.keep-export=true -cluster-name ${{ steps.vars.outputs.clusterName }} -kubeconfig ~/.kube/config -tetragon.uninstall-tetragon=false"
+
+      - name: Capture sysdump
+        if: ${{ always() }}
+        run: |
+          kubectl get pods --all-namespaces -o wide
+          cilium sysdump --output-filename "tetragon-sysdump-<ts>" --tetragon-namespace kube-system 
+        shell: bash {0} # Disable default fail-fast behaviour so that all commands run independently
+
+      - name: Upload sysdump
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tetragon-sysdump-${{ matrix.release-channel }}
+          path: tetragon-sysdump-*.zip
+          retention-days: 5
 
       - name: Cleanup
         id: cleanup
