@@ -145,7 +145,7 @@ func getFdForInode(inode uint64, fdPath string) (int, error) {
 	return 0, fmt.Errorf("failed to find fd for inode")
 }
 
-func findPidFdForCookie(cookie uint64) (int, int, int, error) {
+func FindPidFdForCookie(cookie uint64) (int, int, int, error) {
 	wrongNs := make(map[uint64]bool)
 	foundInode := uint64(0)
 	foundNs := uint64(0)
@@ -237,27 +237,6 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
 		return nil, err
-	}
-
-	// The intent here was to have the socket recover on a no socket error
-	// by scanning the /proc for an entry and then populating the socket
-	// map. Unfortunately, this results in lots of CPU overhead in some
-	// cases. Mark as debug only for immediate fix.
-	if option.Config.Debug {
-		if iperrormetrics.IpError(m.Return) == iperrormetrics.UdpStackBurstNoProcess ||
-			iperrormetrics.IpError(m.Return) == iperrormetrics.TcpSendNoSocket {
-			pid, fd, family, err := findPidFdForCookie(m.SockCookie)
-			if err == nil {
-				proto := uint16(0)
-				switch iperrormetrics.IpError(m.Return) {
-				case iperrormetrics.UdpStackBurstNoProcess:
-					proto = syscall.IPPROTO_UDP
-				case iperrormetrics.TcpSendNoSocket:
-					proto = syscall.IPPROTO_TCP
-				}
-				GetSocketForFD(proto, pid, fd, m.SockCookie, family)
-			}
-		}
 	}
 
 	switch iperrormetrics.IpError(m.Return) {
