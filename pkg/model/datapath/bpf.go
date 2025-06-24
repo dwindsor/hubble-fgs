@@ -203,7 +203,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		logger.GetLogger().Warn("programmer unable to map policy name to ID", "Policy", r.Policy.Name)
 	}
 
-	rule, ok := library.GetRuleId(r.Policy.Name, r.Policy.Rule)
+	ruleID, ok := library.GetRuleId(r.Policy.Name, r.Policy.Rule)
 	if !ok {
 		logger.GetLogger().Warn("programmer unable to map policy rule to ID", "Policy", r.Policy.Name, "Rule", r.Policy.Rule)
 	}
@@ -226,7 +226,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		TxBytes:        0,
 		RxBytes:        0,
 		Policy:         id,
-		Rule:           rule,
+		RuleID:         ruleID,
 		IPv6:           0,
 		KtimeCreate:    0,
 		AddrCreate:     addr,
@@ -256,7 +256,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	}
 
 	// This is the default rules ID.
-	value.Rule = 0
+	value.RuleID = 0
 
 	// If the EP is wildcarded we need to capture all destinations from
 	// any source (EPBF, Userspace, DNS) so we need some extra records.
@@ -335,7 +335,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 		TxBytes:        0,
 		RxBytes:        0,
 		Policy:         0,
-		Rule:           0,
+		RuleID:         0,
 		IPv6:           0,
 		KtimeCreate:    0,
 		AddrCreate:     addr,

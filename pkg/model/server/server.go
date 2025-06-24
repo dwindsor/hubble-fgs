@@ -431,9 +431,9 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 			denyDefault := dstVal.DenyDefault > 0
 			allowDefault := dstVal.AllowDefault > 0
-			rule, ok := library.GetRule(policy, dstVal.Rule, denyDefault, allowDefault)
+			rule, ok := library.GetRule(policy, dstVal.RuleID, denyDefault, allowDefault)
 			if !ok {
-				logger.GetLogger().Warn("unknown rule id in process model", "Policy", policy, "ruleID", dstVal.Rule)
+				logger.GetLogger().Warn("unknown rule id in process model", "Policy", policy, "ruleID", dstVal.RuleID)
 
 			} else {
 				stats.Rule = rule

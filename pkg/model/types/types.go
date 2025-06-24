@@ -60,7 +60,7 @@ type DestinationEndpointValue struct {
 	TxBytes        uint64
 	RxBytes        uint64
 	Policy         uint64
-	Rule           uint64
+	RuleID         uint64
 	IPv6           uint64
 	KtimeCreate    uint64
 	AddrCreate     [2]uint64
