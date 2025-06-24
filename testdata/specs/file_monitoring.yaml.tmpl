@@ -4,6 +4,8 @@ metadata:
   name: "file-monitoring"
 spec:
   file:
+    file_config:
+      enableMmapFileAccesses: "true"
     file_paths:
     - {{.MatchedPath}}
     monitorHostFiles: true

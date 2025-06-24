@@ -40,6 +40,10 @@ spec:
       # that holds the watched inodes. The default value (i.e. if
       # the user does not specify that option) is 262144.
       watchedInodeMapSizeConstant: "262144"
+      # This option will generate read/write events for file accesses
+      # that happen from memory-mapped-files (i.e. mmap). This is off
+      # by default as enabling that may increase cpu overheads.
+      enableMmapFileAccesses: "false"
     file_paths:
     - "/etc/"
     - "/var/testfile"

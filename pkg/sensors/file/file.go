@@ -273,9 +273,7 @@ var (
 
 	FimHooksObserve = [...]FimHook{
 		{"kprobe", "vfs_fallocate", []FimFunc{{"vfs_fallocate(struct file*, int, loff_t, loff_t)", "bpf_vfs_fallocate.o", "vfs_fallocate", fm.NewSet[tetragon.FileAction]()}}},
-		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o", "filemap_fault", fm.NewSet[tetragon.FileAction]()}}},
-		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_filemap_map_pages.o", "filemap_map_pages", fm.NewSet[tetragon.FileAction]()}}},
-		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_filemap_page_mkwrite.o", "filemap_page_mkwrite", fm.NewSet[tetragon.FileAction]()}}},
+
 		{"kprobe", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission.o", "security_file_permission", fm.NewSet[tetragon.FileAction]()}}},
 		{"kprobe", "vfs_unlink", []FimFunc{
 			{"vfs_unlink(struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/419", fm.NewSet[tetragon.FileAction]()},
@@ -312,6 +310,12 @@ var (
 		}},
 		{"kprobe", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link.o", "security_inode_link", fm.NewSet[tetragon.FileAction]()}}},
 		{"kprobe", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open.o", "security_file_open", fm.NewSet[tetragon.FileAction]()}}},
+	}
+
+	FimHooksMmapObserve = [...]FimHook{
+		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o", "filemap_fault", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_filemap_map_pages.o", "filemap_map_pages", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_filemap_page_mkwrite.o", "filemap_page_mkwrite", fm.NewSet[tetragon.FileAction]()}}},
 	}
 
 	FimHooksObserveExec = FimHook{"kprobe", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check.o", "security_bprm_check", fm.NewSet[tetragon.FileAction]()}}}
@@ -2003,7 +2007,7 @@ func getFileCreateHooks(spec *btf.Spec, hooks []FimHook, config *fileapi.FileCon
 	return append(hooks, FimHooksFileCreate418[:]...)
 }
 
-func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, mode ModeWithError, digestSupport, ioUringSupport bool) ([]FimProg, error) {
+func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, mode ModeWithError, digestSupport, ioUringSupport, enableMmapFileAccesses bool) ([]FimProg, error) {
 	spec, err := ossBTF.NewBTF()
 	if err != nil {
 		return nil, fmt.Errorf("GetCachedBTF error: %s", err)
@@ -2046,6 +2050,9 @@ func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, m
 		hooks = getIoUringHooks(spec, ioUringSupport, hooks)
 	case Observe:
 		hooks = FimHooksObserve[:]
+		if enableMmapFileAccesses {
+			hooks = append(hooks, FimHooksMmapObserve[:]...)
+		}
 		hooks = getFileCreateHooks(spec, hooks, config)
 		m = "observe"
 		if digestSupport {
@@ -2227,6 +2234,7 @@ type configFileSensorOptions struct {
 	watchedInodeMapMaxiumSize     uint32
 	watchedInodeMapSizeMultiplier float32
 	watchedInodeMapSizeConstant   uint32
+	enableMmapFileAccesses        bool
 }
 
 func configFileSensorOptionsInit(opts map[string]string) (*configFileSensorOptions, error) {
@@ -2237,6 +2245,7 @@ func configFileSensorOptionsInit(opts map[string]string) (*configFileSensorOptio
 		watchedInodeMapMaxiumSize:     256 * 1024, // 256K
 		watchedInodeMapSizeMultiplier: 4.0,
 		watchedInodeMapSizeConstant:   256 * 1024, // 256K
+		enableMmapFileAccesses:        false,
 	}
 
 	if val, ok := opts["forceLoad"]; ok {
@@ -2284,6 +2293,14 @@ func configFileSensorOptionsInit(opts map[string]string) (*configFileSensorOptio
 			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.watchedInodeMapSizeConstant should be a number. User input: [%s]", val)
 		}
 		conf.watchedInodeMapSizeConstant = uint32(v)
+	}
+
+	if val, ok := opts["enableMmapFileAccesses"]; ok {
+		boolValue, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, fmt.Errorf("FileMonitoring the value of spec.file.file_config.enableMmapFileAccesses should be a boolean. User input: [%s]", val)
+		}
+		conf.enableMmapFileAccesses = boolValue
 	}
 
 	return &conf, nil
@@ -2591,7 +2608,7 @@ func (k *observerFileSensor) PolicyHandler(
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring failed to parse selectors for getting metadata: %w", err)
 	}
-	progs, err := findHooks(&config, meta, fileMode, digestSupport, ioUringSupport)
+	progs, err := findHooks(&config, meta, fileMode, digestSupport, ioUringSupport, tpConf.enableMmapFileAccesses)
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks: %w", err)
 	}
