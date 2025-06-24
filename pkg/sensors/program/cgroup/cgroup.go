@@ -64,7 +64,6 @@ func CGroupAttachWithFlags(targetFD int, flags uint32) program.AttachFunc {
 			Attach:  spec.AttachType,
 			Flags:   flags,
 		})
-		logger.GetLogger().Info("RawAttachWithFlags", logfields.Error, err)
 		if err != nil {
 			prog.Close()
 			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
