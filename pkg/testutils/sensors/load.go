@@ -44,7 +44,7 @@ func CheckSensorLoad(sensors []*sensorsoss.Sensor, sensorMaps []tus.SensorMap, s
 
 	if kernels.MinKernelVersion("5.11.0") {
 		pstreeMaps := []tus.SensorMap{
-			{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3}},
+			{Name: "tg_conf_map", Progs: []uint{0, 2, 3}},
 		}
 		baseMaps = append(baseMaps, pstreeMaps...)
 	}
