@@ -418,7 +418,7 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 		defer c.Close()
 
 		req := &appModelV1.GetModelRequest{}
-		resp, err := c.Client.GetModel(ctx, req)
+		resp, err := c.Client.GetModel(c.Ctx, req)
 		if err != nil {
 			return nil, err
 		}

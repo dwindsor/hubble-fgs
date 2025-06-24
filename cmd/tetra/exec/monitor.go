@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -108,16 +106,6 @@ func monitor(namespaces []string, host bool) error {
 	var buf bytes.Buffer
 	compactEncoder := encoder.NewEnterpriseEncoder(&buf, "always", true)
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		<-signals
-		cancel()
-	}()
-
 	c, err := NewApplicationModelClient(context.Background())
 	if err != nil {
 		return err
@@ -128,7 +116,7 @@ func monitor(namespaces []string, host bool) error {
 		Host:       host,
 	}
 
-	stream, err := c.Client.StreamTelemetry(ctx, req)
+	stream, err := c.Client.StreamTelemetry(c.Ctx, req)
 	if err != nil {
 		logger.GetLogger().Error("failed streaming model request", logfields.Error, err)
 		return err
@@ -136,7 +124,7 @@ func monitor(namespaces []string, host bool) error {
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-c.Ctx.Done():
 			return nil
 		default:
 			res, err := stream.Recv()
