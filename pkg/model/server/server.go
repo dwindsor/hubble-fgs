@@ -78,8 +78,8 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 			TxQuota:           v.TxQuota,
 			TxLimit:           v.TxLimit,
 			TxDrops:           v.TxDrops,
-			DefaultAllowBytes: v.AllowDefault,
-			DefaultDenyBytes:  v.DenyDefault,
+			DefaultAllowBytes: v.AllowDefaultBytes,
+			DefaultDenyBytes:  v.DenyDefaultBytes,
 			Policy:            title,
 		}
 		dests = append(dests, d)
@@ -409,8 +409,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			TxBytes:           dstVal.TxBytes,
 			RxBytes:           dstVal.RxBytes,
 			TxDrops:           dstVal.TxDrops,
-			DefaultAllowBytes: dstVal.AllowDefault,
-			DefaultDenyBytes:  dstVal.DenyDefault,
+			DefaultAllowBytes: dstVal.AllowDefaultBytes,
+			DefaultDenyBytes:  dstVal.DenyDefaultBytes,
 		}
 		// Report quota-related stats if TxLimit is set.
 		if dstVal.TxLimit != 0 {
@@ -429,8 +429,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				stats.Policy = policy
 			}
 
-			denyDefault := dstVal.DenyDefault > 0
-			allowDefault := dstVal.AllowDefault > 0
+			denyDefault := dstVal.DenyDefaultBytes > 0
+			allowDefault := dstVal.AllowDefaultBytes > 0
 			rule, ok := library.GetRule(policy, dstVal.RuleID, denyDefault, allowDefault)
 			if !ok {
 				logger.GetLogger().Warn("unknown rule id in process model", "Policy", policy, "ruleID", dstVal.RuleID)
