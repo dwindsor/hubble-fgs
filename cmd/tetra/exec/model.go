@@ -30,7 +30,6 @@ import (
 	"syscall"
 	"text/tabwriter"
 	"text/template"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -38,7 +37,6 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
-	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/gdamore/tcell/v2"
 	"github.com/isovalent/hubble-fgs/pkg/model"
@@ -73,67 +71,30 @@ var (
 
 type ApplicationModelClient struct {
 	Client appModelV1.ApplicationModelServiceClient
-	Ctx    context.Context
-	conn   *grpc.ClientConn
-	cancel context.CancelFunc
+	// Ctx is a combination of the signal context and the timeout context
+	Ctx context.Context
+	// SignalCtx is only the signal context, you might want to use that context
+	// when the command should never timeout (like a stream command)
+	SignalCtx context.Context
+	conn      *grpc.ClientConn
+	// The signal context is the parent of the timeout context, so cancelling
+	// signal will cancel its child, timeout
+	signalCancel  context.CancelFunc
+	timeoutCancel context.CancelFunc
 }
 
 type ConnectedModelClient struct {
 	Client tetragon.ProcessModelServiceClient
-	Ctx    context.Context
-	conn   *grpc.ClientConn
-	cancel context.CancelFunc
-}
-
-const (
-	defaultServerAddress = "localhost:54321"
-)
-
-type daemonInfo struct {
-	ServerAddr string `json:"server_address"`
-}
-
-func readActiveServerAddress(fname string) (string, error) {
-	f, err := os.Open(fname)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	var info daemonInfo
-	if err := json.NewDecoder(f).Decode(&info); err != nil {
-		return "", err
-	}
-
-	return info.ServerAddr, nil
-}
-
-func connect(_ context.Context) (*grpc.ClientConn, string, error) {
-	// resolve ServerAdress: if flag set by user, use it, otherwise try to read
-	// it from tetragon-info.json, if it doesn't exist, just use default value
-	if common.ServerAddress == "" {
-		var err error
-		common.ServerAddress, err = readActiveServerAddress(defaults.InitInfoFile)
-		// if address could not be found in tetragon-info.json file, use default
-		if err != nil {
-			common.ServerAddress = defaultServerAddress
-			logger.GetLogger().Debug("connect to server using default value", "ServerAddress", common.ServerAddress)
-		} else {
-			logger.GetLogger().Debug("connect to server using address in info file",
-				"InitInfoFile", defaults.InitInfoFile,
-				"ServerAddress", common.ServerAddress)
-		}
-	}
-
-	conn, err := grpc.NewClient(common.ServerAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-	return conn, common.ServerAddress, err
-}
-
-// Close cleanup resources, it closes the connection and cancel the context
-func (c ConnectedModelClient) Close() {
-	c.conn.Close()
-	c.cancel()
+	// Ctx is a combination of the signal context and the timeout context
+	Ctx context.Context
+	// SignalCtx is only the signal context, you might want to use that context
+	// when the command should never timeout (like a stream command)
+	SignalCtx context.Context
+	conn      *grpc.ClientConn
+	// The signal context is the parent of the timeout context, so cancelling
+	// signal will cancel its child, timeout
+	signalCancel  context.CancelFunc
+	timeoutCancel context.CancelFunc
 }
 
 var tree = treeprint.New()
@@ -361,65 +322,54 @@ func runBrowserTree(enableS3 bool, bucket string) error {
 // NewApplicationModelClient return a connected client to a tetragon server, caller
 // must call Close() on the client. On failure to connect, this function calls
 // Fatal() thus stopping execution.
-func NewApplicationModelClient() *ApplicationModelClient {
+func NewApplicationModelClient(ctx context.Context) (*ApplicationModelClient, error) {
 	c := &ApplicationModelClient{}
-	c.Ctx, c.cancel = signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	c.SignalCtx, c.signalCancel = signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	c.Ctx, c.timeoutCancel = context.WithTimeout(c.SignalCtx, common.Timeout)
 
-	var serverAddr string
 	var err error
-
-	backoff := time.Second
-	attempts := 0
-	for {
-		c.conn, serverAddr, err = connect(c.Ctx)
-		if err != nil {
-			if attempts < common.Retries {
-				// Exponential backoff
-				attempts++
-				logger.GetLogger().Error("Connection attempt failed, retrying...", "server-address", serverAddr, "attempts", attempts)
-				time.Sleep(backoff)
-				backoff *= 2
-				continue
-			}
-			logger.Fatal(logger.GetLogger(), "Failed to connect to server", "server-address", serverAddr, "attempts", attempts, logfields.Error, err)
-		}
-		break
+	address := common.ResolveServerAddress()
+	c.conn, err = grpc.NewClient(address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(common.RetryPolicy(common.Retries)),
+		grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC client with address %s: %w", address, err)
 	}
 
 	c.Client = appModelV1.NewApplicationModelServiceClient(c.conn)
-	return c
+	return c, nil
 }
 
 // NewConnectedClient return a connected client to a tetragon server, caller
 // must call Close() on the client. On failure to connect, this function calls
 // Fatal() thus stopping execution.
-func NewConnectedModelClient() ConnectedModelClient {
-	c := ConnectedModelClient{}
-	c.Ctx, c.cancel = signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+func NewConnectedModelClient(ctx context.Context) (*ConnectedModelClient, error) {
+	c := &ConnectedModelClient{}
+	c.SignalCtx, c.signalCancel = signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	c.Ctx, c.timeoutCancel = context.WithTimeout(c.SignalCtx, common.Timeout)
 
-	var serverAddr string
 	var err error
-
-	backoff := time.Second
-	attempts := 0
-	for {
-		c.conn, serverAddr, err = connect(c.Ctx)
-		if err != nil {
-			if attempts < common.Retries {
-				// Exponential backoff
-				attempts++
-				logger.GetLogger().Error("Connection attempt failed, retrying...", "server-address", serverAddr, "attempts", attempts, logfields.Error, err)
-				time.Sleep(backoff)
-				backoff *= 2
-				continue
-			}
-			logger.Fatal(logger.GetLogger(), "Failed to connect to server", "server-address", serverAddr, "attempts", attempts, logfields.Error, err)
-		}
-		break
+	address := common.ResolveServerAddress()
+	c.conn, err = grpc.NewClient(address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(common.RetryPolicy(common.Retries)),
+		grpc.WithMaxCallAttempts(common.Retries+1), // maxAttempt includes the first call
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC client with address %s: %w", address, err)
 	}
 
 	c.Client = tetragon.NewProcessModelServiceClient(c.conn)
-	return c
+	return c, nil
+}
+
+// Close cleanup resources, it closes the connection and cancel the context
+func (c ConnectedModelClient) Close() {
+	c.conn.Close()
+	c.signalCancel()
+	c.timeoutCancel()
 }
 
 func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEvent, error) {
@@ -455,7 +405,10 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 			return nil, err
 		}
 	} else {
-		c := NewApplicationModelClient()
+		c, err := NewApplicationModelClient(context.Background())
+		if err != nil {
+			return nil, err
+		}
 
 		req := &appModelV1.GetModelRequest{}
 		resp, err := c.Client.GetModel(ctx, req)
@@ -799,7 +752,10 @@ func NewShow() *cobra.Command {
 }
 
 func getProcessDebug() (*tetragon.GetProcessMapResponse, error) {
-	c := NewConnectedModelClient()
+	c, err := NewConnectedModelClient(context.Background())
+	if err != nil {
+		return nil, err
+	}
 	defer c.Close()
 
 	res, err := c.Client.GetProcessMap(c.Ctx, &tetragon.GetProcessMapRequest{})
@@ -873,7 +829,10 @@ func NewDebugProcess() *cobra.Command {
 }
 
 func getDestinationDebug() (*tetragon.GetDestinationMapResponse, error) {
-	c := NewConnectedModelClient()
+	c, err := NewConnectedModelClient(context.Background())
+	if err != nil {
+		return nil, err
+	}
 	defer c.Close()
 
 	res, err := c.Client.GetDestinationMap(c.Ctx, &tetragon.GetDestinationMapRequest{})
@@ -946,7 +905,10 @@ func NewDebugDestination() *cobra.Command {
 }
 
 func getDebug() (*tetragon.GetEndpointMapResponse, error) {
-	c := NewConnectedModelClient()
+	c, err := NewConnectedModelClient(context.Background())
+	if err != nil {
+		return nil, err
+	}
 	defer c.Close()
 
 	res, err := c.Client.GetEndpointMap(c.Ctx, &tetragon.GetEndpointMapRequest{})

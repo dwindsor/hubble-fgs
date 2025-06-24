@@ -118,7 +118,10 @@ func monitor(namespaces []string, host bool) error {
 		cancel()
 	}()
 
-	c := NewApplicationModelClient()
+	c, err := NewApplicationModelClient(context.Background())
+	if err != nil {
+		return err
+	}
 	req := &appModelV1.StreamTelemetryRequest{
 		Namespaces: namespaces,
 		Host:       host,
