@@ -130,7 +130,7 @@ func GetRule(policy string, id uint64, deny, allow bool) (string, bool) {
 		} else if deny {
 			return "tetragon:default-deny", true
 		}
-		return "", false
+		return "", true
 	}
 
 	for k, v := range p.Rules {
