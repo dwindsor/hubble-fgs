@@ -122,6 +122,7 @@ func monitor(namespaces []string, host bool) error {
 	if err != nil {
 		return err
 	}
+	defer c.Close()
 	req := &appModelV1.StreamTelemetryRequest{
 		Namespaces: namespaces,
 		Host:       host,

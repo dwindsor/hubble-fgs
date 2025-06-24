@@ -342,6 +342,12 @@ func NewApplicationModelClient(ctx context.Context) (*ApplicationModelClient, er
 	return c, nil
 }
 
+func (c ApplicationModelClient) Close() {
+	c.conn.Close()
+	c.signalCancel()
+	c.timeoutCancel()
+}
+
 // NewConnectedClient return a connected client to a tetragon server, caller
 // must call Close() on the client. On failure to connect, this function calls
 // Fatal() thus stopping execution.
@@ -409,6 +415,7 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 		if err != nil {
 			return nil, err
 		}
+		defer c.Close()
 
 		req := &appModelV1.GetModelRequest{}
 		resp, err := c.Client.GetModel(ctx, req)
