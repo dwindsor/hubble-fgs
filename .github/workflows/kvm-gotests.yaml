@@ -67,12 +67,14 @@ jobs:
             echo lvh_kernel="${{ env.SHARED_FOLDER }}/vmlinuz-${{ matrix.kernel }}" >> $GITHUB_OUTPUT
             echo ssh_port=$ssh_port >> $GITHUB_OUTPUT
             echo unit_test_log="tetragon-unit-tests-${{ matrix.kernel }}-arm64" >> $GITHUB_OUTPUT
+            echo arch=arm64 >> $GITHUB_OUTPUT
           else
             echo metal_arm64=false >> $GITHUB_OUTPUT
             echo lvh_install_deps=true >> $GITHUB_OUTPUT
             echo lvh_kernel="" >> $GITHUB_OUTPUT
             echo ssh_port=2222 >> $GITHUB_OUTPUT
             echo unit_test_log="tetragon-unit-tests-${{ matrix.kernel }}" >> $GITHUB_OUTPUT
+            echo arch=amd64 >> $GITHUB_OUTPUT
           fi
 
       - name: Install GO
@@ -98,19 +100,20 @@ jobs:
           fi
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@e87948476ca97050b1f149ab2aec379d0de19b84 # v0.0.23
+        uses: cilium/little-vm-helper@e5b2424f49a2055186b7ac33e6a83b7c992b8f3a # v0.0.24
         with:
           install-dependencies: ${{ steps.vars.outputs.lvh_install_deps }}
           test-name: tetragon-unit-tests
           image: kind
           image-version: '${{ matrix.kernel }}'
           images-folder-parent: '${{ env.SHARED_FOLDER }}'
-          kernel: '${{ steps.vars.outputs.lvh_kernel }}'
+          kernel-path: '${{ steps.vars.outputs.lvh_kernel }}'
           host-mount: ./
           ssh-port: ${{ steps.vars.outputs.ssh_port }}
           mem: 4G
           cpu: 2
           cpu-kind: host
+          arch: ${{ steps.vars.outputs.arch }}
           cmd: |
             set -eux
             cd /host/hubble-fgs
