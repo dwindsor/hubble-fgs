@@ -57,6 +57,8 @@ func getTypeInternal(sb *strings.Builder, myType interface{}, fnName string, kre
 		fmt.Fprintf(sb, "struct %s", t.Name)
 	case *btf.Enum:
 		fmt.Fprintf(sb, "enum %s", t.Name)
+	case *btf.TypeTag:
+		getTypeInternal(sb, t.Type, fnName, kretprobe)
 	default:
 		logger.GetLogger().Warn(fmt.Sprintf("Unknown type %s", t))
 	}
