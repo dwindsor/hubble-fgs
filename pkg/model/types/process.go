@@ -6,7 +6,7 @@ import (
 
 type DestinationStats struct {
 	Policy            string
-	Rule              string
+	RuleName          string
 	TxBytes           uint64
 	RxBytes           uint64
 	TxDrops           uint64

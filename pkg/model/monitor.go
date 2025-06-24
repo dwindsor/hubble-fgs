@@ -430,7 +430,7 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 				}
 				currentValue := result[key]
 				currentValue.PolicyName = dst.Stats.Policy
-				currentValue.RuleName = dst.Stats.Rule
+				currentValue.RuleName = dst.Stats.RuleName
 				currentValue.TXBytes += dst.Stats.TxBytes
 				currentValue.RXBytes += dst.Stats.RxBytes
 				currentValue.AllowDefaultBytes += dst.Stats.DefaultAllowBytes

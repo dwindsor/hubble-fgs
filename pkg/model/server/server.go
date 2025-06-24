@@ -436,7 +436,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				logger.GetLogger().Warn("unknown rule id in process model", "Policy", policy, "ruleID", dstVal.RuleID)
 
 			} else {
-				stats.Rule = rule
+				stats.RuleName = rule
 			}
 		}
 
