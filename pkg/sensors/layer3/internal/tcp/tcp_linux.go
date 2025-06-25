@@ -217,41 +217,28 @@ var (
 	)
 
 	// Maps for TCP Sockets
-	SocketStats              = program.MapBuilder(base.SocketStats.Name, SecurityGraft)
-	SocketMapKprobe          = program.MapBuilder(base.SocketMap.Name, ConnectKprobe)
-	SocketTupleMapKprobe     = program.MapBuilder(base.SocketTupleMap.Name, ConnectKprobe)
-	SocketTupleStatsKprobe   = program.MapBuilder(base.SocketTupleStats.Name, ConnectKprobe)
-	SocketTupleRevMapKprobe  = program.MapBuilder(base.SocketTupleRevMap.Name, ConnectKprobe)
-	SocketTupleHintMapKprobe = program.MapBuilder(base.SocketTupleHintMap.Name, ConnectKprobe)
-	FinRxMapKprobe           = program.MapBuilder("tg_tcp_finrx_map", CloseKprobe)
-	SocketMapFentry          = program.MapBuilder(base.SocketMap.Name, ConnectFentry)
-	SocketTupleMapFentry     = program.MapBuilder(base.SocketTupleMap.Name, ConnectFentry)
-	SocketTupleStatsFentry   = program.MapBuilder(base.SocketTupleStats.Name, ConnectFentry)
-	SocketTupleRevMapFentry  = program.MapBuilder(base.SocketTupleRevMap.Name, ConnectFentry)
-	SocketTupleHintMapFentry = program.MapBuilder(base.SocketTupleHintMap.Name, ConnectFentry)
-	FinRxMapFentry           = program.MapBuilder("tg_tcp_finrx_map", CloseFentry)
+	SocketMap           = program.MapUserFrom(base.SocketMap)
+	SocketMapStats      = program.MapUserFrom(base.SocketStats)
+	SocketVersionMap    = program.MapUserFrom(base.SocketVersionMap)
+	SocketTupleMap      = program.MapUserFrom(base.SocketTupleMap)
+	SocketTupleMapStats = program.MapUserFrom(base.SocketTupleStats)
+	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
+	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
+	ConfigMap           = program.MapUserFrom(base.CfgMap)
+
+	FinRxMapKprobe = program.MapBuilder("tg_tcp_finrx_map", CloseKprobe)
+	FinRxMapFentry = program.MapBuilder("tg_tcp_finrx_map", CloseFentry)
 
 	// Maps for TCP Sockets on Sockops
-	SocketOpsMap          = program.MapBuilder(base.SocketMap.Name, TcpSockops)
-	SocketOpsTupleMap     = program.MapBuilder(base.SocketTupleMap.Name, TcpSockops)
-	SocketOpsTupleStats   = program.MapBuilder(base.SocketTupleStats.Name, TcpSockops)
-	SocketOpsTupleRevMap  = program.MapBuilder(base.SocketTupleRevMap.Name, TcpSockops)
-	SocketOpsTupleHintMap = program.MapBuilder(base.SocketTupleHintMap.Name, TcpSockops)
-	SocketOpsFinRxMap     = program.MapBuilder("tg_tcp_finrx_map", TcpSockops)
+	SocketOpsFinRxMap = program.MapBuilder("tg_tcp_finrx_map", TcpSockops)
 
 	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
 
 	// TCP Runtime maps
-	CfgMapKprobe       = program.MapBuilder("tg_cfg_map", ConnectKprobe)
-	CfgMapFentry       = program.MapBuilder("tg_cfg_map", ConnectFentry)
-	CfgOpsMap          = program.MapBuilder("tg_cfg_map", TcpSockops)
 	TcpSocketMapKprobe = program.MapBuilder("tg_tcpsocket_map", ConnectKprobe)
 	TcpSocketMapFentry = program.MapBuilder("tg_tcpsocket_map", ConnectFentry)
 	TcpOpsSocketMap    = program.MapBuilder("tg_tcpsocket_map", TcpSockops)
 	TcpSocketStats     = program.MapBuilder("tg_tcpsocket_map_stats", SecurityGraft)
-	VerMapKprobe       = program.MapBuilder("tg_ver_map", ConnectKprobe)
-	VerMapFentry       = program.MapBuilder("tg_ver_map", ConnectFentry)
-	VerOpsMap          = program.MapBuilder("tg_ver_map", TcpSockops)
 
 	// Parser maps
 	HTTPContext       = program.MapBuilder("tg_http_map", TcpSockops)
@@ -371,49 +358,35 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	progsCollectStats := []*program.Program{}
 
 	mapsOps := []*program.Map{
-		SocketOpsMap,
-		SocketOpsTupleMap,
-		SocketOpsTupleStats,
-		SocketOpsTupleRevMap,
-		SocketOpsTupleHintMap,
 		SocketOpsFinRxMap,
-		CfgOpsMap,
 		TcpOpsSocketMap,
-		VerOpsMap,
 		TLSOpsMapStats,
 		EventDisableConfigOps,
 	}
 
 	mapsConnectKprobe := []*program.Map{
-		SocketMapKprobe,
-		SocketTupleMapKprobe,
-		SocketTupleStatsKprobe,
-		SocketTupleRevMapKprobe,
-		SocketTupleHintMapKprobe,
 		FinRxMapKprobe,
-		CfgMapKprobe,
 		TcpSocketMapKprobe,
-		VerMapKprobe,
 		TLSMapStatsKprobe,
 		EventDisableConfigKprobe,
 	}
 
 	mapsConnectFentry := []*program.Map{
-		SocketMapFentry,
-		SocketTupleMapFentry,
-		SocketTupleStatsFentry,
-		SocketTupleRevMapFentry,
-		SocketTupleHintMapFentry,
 		FinRxMapFentry,
-		CfgMapFentry,
 		TcpSocketMapFentry,
-		VerMapFentry,
 		TLSMapStatsFentry,
 		EventDisableConfigFentry,
 	}
 
 	maps := []*program.Map{
-		SocketStats,
+		SocketMap,
+		SocketMapStats,
+		SocketVersionMap,
+		SocketTupleMap,
+		SocketTupleMapStats,
+		SocketTupleRevMap,
+		SocketTupleHintMap,
+		ConfigMap,
 		SecurityAcceptMap,
 		TcpSocketStats,
 		HTTPContext,

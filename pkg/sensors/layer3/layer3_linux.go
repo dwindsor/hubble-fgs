@@ -796,14 +796,11 @@ func HTTPContext() *program.Map {
 }
 
 func SocketMap() *program.Map {
-	if utils.SupportFentry() {
-		return tcp.SocketMapFentry
-	}
-	return tcp.SocketMapKprobe
+	return tcp.SocketMap
 }
 
 func SocketStats() *program.Map {
-	return tcp.SocketStats
+	return tcp.SocketMapStats
 }
 
 func TcpSocketMap() *program.Map {
