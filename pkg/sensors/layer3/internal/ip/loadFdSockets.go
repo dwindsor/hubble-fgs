@@ -103,24 +103,16 @@ var (
 	Addr4LpmMapKprobe = program.MapBuilder(lpm.Addr4lpmMapName, FdLookupKprobeProcessTree)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMapKprobe     = program.MapBuilder(SocketMapName, FdLookupKprobe, FdLookupKprobeProcessTree)
-	SocketCookieStatsKprobe   = program.MapBuilder(SocketMapStatsName, FdLookupKprobe, FdLookupKprobeProcessTree)
-	VerMapKprobe              = program.MapBuilder("tg_ver_map", FdLookupKprobe, FdLookupKprobeProcessTree)
-	SocketTupleMapKprobe      = program.MapBuilder("tg_socket_tuple_map", FdLookupKprobe, FdLookupKprobeProcessTree)
-	SocketTupleMapStatsKprobe = program.MapBuilder("tg_socket_tuple_map_stats", FdLookupKprobe, FdLookupKprobeProcessTree)
-	SocketTupleRevMapKprobe   = program.MapBuilder("tg_rev_tuple_map", FdLookupKprobe, FdLookupKprobeProcessTree)
-	SocketTupleHintMapKprobe  = program.MapBuilder("tg_socket_tuple_hint_map", FdLookupKprobe, FdLookupKprobeProcessTree)
-	TcpSocketMapKprobe        = program.MapBuilder("tg_tcpsocket_map", FdLookupKprobe, FdLookupKprobeProcessTree)
-	CfgMapKprobe              = program.MapBuilder("tg_cfg_map", FdLookupKprobe, FdLookupKprobeProcessTree)
-	SocketCookieMapFentry     = program.MapBuilder(SocketMapName, FdLookupFentry, FdLookupFentryProcessTree)
-	SocketCookieStatsFentry   = program.MapBuilder(SocketMapStatsName, FdLookupFentry, FdLookupFentryProcessTree)
-	VerMapFentry              = program.MapBuilder("tg_ver_map", FdLookupFentry, FdLookupFentryProcessTree)
-	SocketTupleMapFentry      = program.MapBuilder("tg_socket_tuple_map", FdLookupFentry, FdLookupFentryProcessTree)
-	SocketTupleMapStatsFentry = program.MapBuilder("tg_socket_tuple_map_stats", FdLookupFentry, FdLookupFentryProcessTree)
-	SocketTupleRevMapFentry   = program.MapBuilder("tg_rev_tuple_map", FdLookupFentry, FdLookupFentryProcessTree)
-	SocketTupleHintMapFentry  = program.MapBuilder("tg_socket_tuple_hint_map", FdLookupFentry, FdLookupFentryProcessTree)
-	TcpSocketMapFentry        = program.MapBuilder("tg_tcpsocket_map", FdLookupFentry, FdLookupFentryProcessTree)
-	CfgMapFentry              = program.MapBuilder("tg_cfg_map", FdLookupFentry, FdLookupFentryProcessTree)
+	SocketMap           = program.MapUserFrom(base.SocketMap)
+	SocketMapStats      = program.MapUserFrom(base.SocketStats)
+	SocketVersionMap    = program.MapUserFrom(base.SocketVersionMap)
+	SocketTupleMap      = program.MapUserFrom(base.SocketTupleMap)
+	SocketTupleMapStats = program.MapUserFrom(base.SocketTupleStats)
+	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
+	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
+	ConfigMap           = program.MapUserFrom(base.CfgMap)
+	TcpSocketMapKprobe  = program.MapBuilder("tg_tcpsocket_map", FdLookupKprobe, FdLookupKprobeProcessTree)
+	TcpSocketMapFentry  = program.MapBuilder("tg_tcpsocket_map", FdLookupFentry, FdLookupFentryProcessTree)
 )
 
 func Enable() ([]*program.Program, []*program.Map) {
@@ -213,14 +205,21 @@ func getFdLookupPrograms() []*program.Program {
 }
 
 func getFdLookupMaps() []*program.Map {
-	var maps []*program.Map
+	maps := []*program.Map{
+		SocketMap,
+		SocketMapStats,
+		SocketVersionMap,
+		SocketTupleMap,
+		SocketTupleMapStats,
+		SocketTupleRevMap,
+		SocketTupleHintMap,
+		ConfigMap,
+	}
 
 	if utils.SupportFentry() {
-		maps = append(maps, FdLookupConfigMapFentry, SocketCookieMapFentry, SocketCookieStatsFentry, VerMapFentry,
-			SocketTupleMapFentry, SocketTupleMapStatsFentry, SocketTupleRevMapFentry, SocketTupleHintMapFentry, TcpSocketMapFentry, CfgMapFentry)
+		maps = append(maps, FdLookupConfigMapFentry, TcpSocketMapFentry)
 	} else {
-		maps = append(maps, FdLookupConfigMapKprobe, SocketCookieMapKprobe, SocketCookieStatsKprobe, VerMapKprobe,
-			SocketTupleMapKprobe, SocketTupleMapStatsKprobe, SocketTupleRevMapKprobe, SocketTupleHintMapKprobe, TcpSocketMapKprobe, CfgMapKprobe)
+		maps = append(maps, FdLookupConfigMapKprobe, TcpSocketMapKprobe)
 	}
 	if utils.SupportProcessTree() {
 		maps = append(maps, []*program.Map{
