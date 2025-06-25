@@ -199,7 +199,7 @@ var (
 	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	RequestIDMapName  = program.MapBuilder(dnsparser.RequestIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	// This map is shared between the DNS parser and the process tree: the fdlookup and tcpsockops progs
-	DNSEndpointIDMap = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree, ip.FdLookupFentryProcessTree, ip.FdLookupKprobeProcessTree, tcp.TcpSockops)
+	DNSEndpointIDMap = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree, ip.FdLookupFentryProcessTree, ip.FdLookupKprobeProcessTree, tcpconfig.TcpSockops)
 
 	// LPM maps
 	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, IngressDispatcher, EgressDispatcher)
@@ -792,37 +792,37 @@ func StartLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 }
 
 func HTTPContext() *program.Map {
-	return tcp.HTTPContext
+	return tcpconfig.HTTPContext
 }
 
 func SocketMap() *program.Map {
-	return tcp.SocketMap
+	return tcpconfig.SocketMap
 }
 
 func SocketStats() *program.Map {
-	return tcp.SocketMapStats
+	return tcpconfig.SocketMapStats
 }
 
 func TcpSocketMap() *program.Map {
-	return tcp.TcpSocketMap
+	return tcpconfig.TcpSocketMap
 }
 
 func TcpSocketStats() *program.Map {
-	return tcp.TcpSocketStats
+	return tcpconfig.TcpSocketStats
 }
 
 func TLSContext() *program.Map {
-	return tcp.TLSContext
+	return tcpconfig.TLSContext
 }
 
 func TLSMapStats() *program.Map {
-	return tcp.TLSMapStats
+	return tcpconfig.TLSMapStats
 }
 
 func TLSBottles() *program.Map {
-	return tcp.TLSBottles
+	return tcpconfig.TLSBottles
 }
 
 func TLSBottleStats() *program.Map {
-	return tcp.TLSBottleStats
+	return tcpconfig.TLSBottleStats
 }

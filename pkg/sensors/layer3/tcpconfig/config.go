@@ -12,7 +12,195 @@ package tcpconfig
 
 import (
 	"github.com/cilium/tetragon/pkg/metrics"
+	"github.com/cilium/tetragon/pkg/sensors/program"
+
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
+)
+
+var (
+	// Ensure every program has a type defined by the layer3 sensor to force loading
+	// through our own LoadProbe function. This is essential for socket discovery.
+	//
+	// Kprobes are for systems without fentry support (<v5.5).
+	// Fentry are preferred from v5.5.
+	// SockOps are more efficient and available from v5.14.
+	// SockOps needs the SecurityAccept and SecurityGraft.
+	ConnectKprobe = program.Builder(
+		"bpf_tcp_connect.o",
+		"tcp_connect",
+		"kprobe/tcp_connect",
+		"tg_tcp_connect_kprobe",
+		"layer3_sensor",
+	)
+
+	ConnectFentry = program.Builder(
+		"bpf_tcp_connect_fentry.o",
+		"fentry",
+		"fentry/tcp_connect",
+		"tg_tcp_connect_fentry",
+		"tcp_fentry",
+	)
+
+	CloseKprobe = program.Builder(
+		"bpf_tcp_close.o",
+		"tcp_set_state",
+		"kprobe/tcp_set_state",
+		"tg_tcp_set_state",
+		"layer3_sensor",
+	)
+
+	CloseFentry = program.Builder(
+		"bpf_tcp_close_fentry.o",
+		"fentry",
+		"fentry/tcp_set_state",
+		"tg_tcp_set_state",
+		"tcp_fentry",
+	)
+
+	ListenKprobe = program.Builder(
+		"bpf_tcp_listen.o",
+		"__inet_hash",
+		"kprobe/__inet_hash",
+		"tg___inet_hash",
+		"layer3_sensor",
+	)
+
+	ListenFentry = program.Builder(
+		"bpf_tcp_listen_fentry.o",
+		"fentry",
+		"fentry/__inet_hash",
+		"tg___inet_hash",
+		"tcp_fentry",
+	)
+
+	SecurityAcceptKprobe = program.Builder(
+		"bpf_tcp_security_accept_kprobe.o",
+		"security_socket_accept",
+		"kprobe/security_socket_accept",
+		"tg_tcp_security_accept",
+		"layer3_sensor",
+	)
+
+	SecurityAccept = program.Builder(
+		"bpf_tcp_security_accept.o",
+		"security_socket_accept",
+		"fentry/security_socket_accept",
+		"tg_tcp_security_accept",
+		"tcp_fentry",
+	)
+
+	SecurityGraftKprobe = program.Builder(
+		"bpf_tcp_security_accept_kprobe.o",
+		"security_sock_graft",
+		"kprobe/security_sock_graft",
+		"tg_tcp_security_graft",
+		"layer3_sensor",
+	)
+
+	SecurityGraft = program.Builder(
+		"bpf_tcp_security_accept.o",
+		"security_sock_graft",
+		"fentry/security_sock_graft",
+		"tg_tcp_security_graft",
+		"tcp_fentry",
+	)
+
+	SendCheck4 = program.Builder(
+		"bpf_tcp_send_check.o",
+		"tcp_v4_send_check",
+		"kprobe/tcp_v4_send_check",
+		"tg_tcp_v4_send_check",
+		"layer3_sensor",
+	)
+
+	SendCheck6 = program.Builder(
+		"bpf_tcp_send_check.o",
+		"inet6_csk_xmit",
+		"kprobe/inet6_csk_xmit",
+		"tg_inet6_csk_xmit",
+		"layer3_sensor",
+	)
+
+	TcpSockops = program.Builder(
+		"bpf_tcp_sockops.o",
+		"sockops",
+		"sockops/tcp_sockops",
+		"tg_tcp_sockops",
+		"layer3_sensor",
+	)
+
+	TCPResetKprobe = program.Builder(
+		"bpf_tcp_rst.o",
+		"tcp_reset",
+		"kprobe/tcp_reset",
+		"tg_event_tcp_reset",
+		"layer3_sensor",
+	)
+
+	TCPResetFentry = program.Builder(
+		"bpf_tcp_rst_fentry.o",
+		"tcp_reset",
+		"fentry/tcp_reset",
+		"tg_event_tcp_reset",
+		"tcp_fentry",
+	)
+
+	// RTT Tracer uses kprobe or Fentry on the TCP ACK Update RTT to get the rtt_us value
+	// as that is easily obtained. This is probably as good as we can easily get,
+	// although open to improvements and discussion.
+	RttTracerKprobe = program.Builder(
+		"bpf_tcp_rtt.o",
+		"tcp_ack_update_rtt",
+		"kprobe/tcp_ack_update_rtt",
+		"tg_tcp_ack_update_rtt",
+		"layer3_sensor",
+	)
+
+	RttTracerFentry = program.Builder(
+		"bpf_tcp_rtt_fentry.o",
+		"fentry",
+		"fentry/tcp_ack_update_rtt",
+		"tg_tcp_ack_update_rtt",
+		"tcp_fentry",
+	)
+
+	// Maps for TCP Sockets
+	SocketMap           = program.MapUserFrom(base.SocketMap)
+	SocketMapStats      = program.MapUserFrom(base.SocketStats)
+	SocketVersionMap    = program.MapUserFrom(base.SocketVersionMap)
+	SocketTupleMap      = program.MapUserFrom(base.SocketTupleMap)
+	SocketTupleMapStats = program.MapUserFrom(base.SocketTupleStats)
+	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
+	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
+	ConfigMap           = program.MapUserFrom(base.CfgMap)
+
+	FinRxMap = program.MapBuilder("tg_tcp_finrx_map", CloseKprobe, CloseFentry, TcpSockops)
+
+	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
+
+	// TCP Runtime maps
+	TcpSocketMap   = program.MapBuilder("tg_tcpsocket_map", ConnectKprobe, ConnectFentry, TcpSockops)
+	TcpSocketStats = program.MapBuilder("tg_tcpsocket_map_stats", SecurityGraft)
+
+	// Parser maps
+	HTTPContext    = program.MapBuilder("tg_http_map", TcpSockops)
+	TLSContext     = program.MapBuilder("tg_tls_map", TcpSockops)
+	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", ConnectKprobe, ConnectFentry, TcpSockops)
+	TLSBottles     = program.MapBuilder("tg_bottles", TcpSockops)
+	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", TcpSockops)
+
+	// Maps for watermarks detection
+	SendCheckSampler            = program.MapBuilder("tg_tcp_send_check_sampler", SendCheck4)
+	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", SendCheck4)
+
+	// Map for disabling events
+	EventDisableConfig = program.MapBuilder("tg_event_disable_config", ConnectKprobe, ConnectFentry, TcpSockops)
+
+	// LPM maps
+	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, TcpSockops)
+	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, TcpSockops)
 )
 
 var (

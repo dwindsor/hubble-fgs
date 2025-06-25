@@ -37,7 +37,6 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
@@ -68,190 +67,6 @@ var (
 func StatsEnabled() bool {
 	return StatsInterval > 0
 }
-
-var (
-	// Ensure every program has a type defined by the layer3 sensor to force loading
-	// through our own LoadProbe function. This is essential for socket discovery.
-	//
-	// Kprobes are for systems without fentry support (<v5.5).
-	// Fentry are preferred from v5.5.
-	// SockOps are more efficient and available from v5.14.
-	// SockOps needs the SecurityAccept and SecurityGraft.
-	ConnectKprobe = program.Builder(
-		"bpf_tcp_connect.o",
-		"tcp_connect",
-		"kprobe/tcp_connect",
-		"tg_tcp_connect_kprobe",
-		"layer3_sensor",
-	)
-
-	ConnectFentry = program.Builder(
-		"bpf_tcp_connect_fentry.o",
-		"fentry",
-		"fentry/tcp_connect",
-		"tg_tcp_connect_fentry",
-		"tcp_fentry",
-	)
-
-	CloseKprobe = program.Builder(
-		"bpf_tcp_close.o",
-		"tcp_set_state",
-		"kprobe/tcp_set_state",
-		"tg_tcp_set_state",
-		"layer3_sensor",
-	)
-
-	CloseFentry = program.Builder(
-		"bpf_tcp_close_fentry.o",
-		"fentry",
-		"fentry/tcp_set_state",
-		"tg_tcp_set_state",
-		"tcp_fentry",
-	)
-
-	ListenKprobe = program.Builder(
-		"bpf_tcp_listen.o",
-		"__inet_hash",
-		"kprobe/__inet_hash",
-		"tg___inet_hash",
-		"layer3_sensor",
-	)
-
-	ListenFentry = program.Builder(
-		"bpf_tcp_listen_fentry.o",
-		"fentry",
-		"fentry/__inet_hash",
-		"tg___inet_hash",
-		"tcp_fentry",
-	)
-
-	SecurityAcceptKprobe = program.Builder(
-		"bpf_tcp_security_accept_kprobe.o",
-		"security_socket_accept",
-		"kprobe/security_socket_accept",
-		"tg_tcp_security_accept",
-		"layer3_sensor",
-	)
-
-	SecurityAccept = program.Builder(
-		"bpf_tcp_security_accept.o",
-		"security_socket_accept",
-		"fentry/security_socket_accept",
-		"tg_tcp_security_accept",
-		"tcp_fentry",
-	)
-
-	SecurityGraftKprobe = program.Builder(
-		"bpf_tcp_security_accept_kprobe.o",
-		"security_sock_graft",
-		"kprobe/security_sock_graft",
-		"tg_tcp_security_graft",
-		"layer3_sensor",
-	)
-
-	SecurityGraft = program.Builder(
-		"bpf_tcp_security_accept.o",
-		"security_sock_graft",
-		"fentry/security_sock_graft",
-		"tg_tcp_security_graft",
-		"tcp_fentry",
-	)
-
-	SendCheck4 = program.Builder(
-		"bpf_tcp_send_check.o",
-		"tcp_v4_send_check",
-		"kprobe/tcp_v4_send_check",
-		"tg_tcp_v4_send_check",
-		"layer3_sensor",
-	)
-
-	SendCheck6 = program.Builder(
-		"bpf_tcp_send_check.o",
-		"inet6_csk_xmit",
-		"kprobe/inet6_csk_xmit",
-		"tg_inet6_csk_xmit",
-		"layer3_sensor",
-	)
-
-	TcpSockops = program.Builder(
-		"bpf_tcp_sockops.o",
-		"sockops",
-		"sockops/tcp_sockops",
-		"tg_tcp_sockops",
-		"layer3_sensor",
-	)
-
-	TCPResetKprobe = program.Builder(
-		"bpf_tcp_rst.o",
-		"tcp_reset",
-		"kprobe/tcp_reset",
-		"tg_event_tcp_reset",
-		"layer3_sensor",
-	)
-
-	TCPResetFentry = program.Builder(
-		"bpf_tcp_rst_fentry.o",
-		"tcp_reset",
-		"fentry/tcp_reset",
-		"tg_event_tcp_reset",
-		"tcp_fentry",
-	)
-
-	// RTT Tracer uses kprobe or Fentry on the TCP ACK Update RTT to get the rtt_us value
-	// as that is easily obtained. This is probably as good as we can easily get,
-	// although open to improvements and discussion.
-	RttTracerKprobe = program.Builder(
-		"bpf_tcp_rtt.o",
-		"tcp_ack_update_rtt",
-		"kprobe/tcp_ack_update_rtt",
-		"tg_tcp_ack_update_rtt",
-		"layer3_sensor",
-	)
-
-	RttTracerFentry = program.Builder(
-		"bpf_tcp_rtt_fentry.o",
-		"fentry",
-		"fentry/tcp_ack_update_rtt",
-		"tg_tcp_ack_update_rtt",
-		"tcp_fentry",
-	)
-
-	// Maps for TCP Sockets
-	SocketMap           = program.MapUserFrom(base.SocketMap)
-	SocketMapStats      = program.MapUserFrom(base.SocketStats)
-	SocketVersionMap    = program.MapUserFrom(base.SocketVersionMap)
-	SocketTupleMap      = program.MapUserFrom(base.SocketTupleMap)
-	SocketTupleMapStats = program.MapUserFrom(base.SocketTupleStats)
-	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
-	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
-	ConfigMap           = program.MapUserFrom(base.CfgMap)
-
-	FinRxMap = program.MapBuilder("tg_tcp_finrx_map", CloseKprobe, CloseFentry, TcpSockops)
-
-	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
-
-	// TCP Runtime maps
-	TcpSocketMap   = program.MapBuilder("tg_tcpsocket_map", ConnectKprobe, ConnectFentry, TcpSockops)
-	TcpSocketStats = program.MapBuilder("tg_tcpsocket_map_stats", SecurityGraft)
-
-	// Parser maps
-	HTTPContext    = program.MapBuilder("tg_http_map", TcpSockops)
-	TLSContext     = program.MapBuilder("tg_tls_map", TcpSockops)
-	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", ConnectKprobe, ConnectFentry, TcpSockops)
-	TLSBottles     = program.MapBuilder("tg_bottles", TcpSockops)
-	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", TcpSockops)
-
-	// Maps for watermarks detection
-	SendCheckSampler            = program.MapBuilder("tg_tcp_send_check_sampler", SendCheck4)
-	ProcessNetworkWatermarksMap = program.MapBuilder(networkWatermarksEvents.ProcessNetworkWatermarksMapName, SendCheck4)
-
-	// Map for disabling events
-	EventDisableConfig = program.MapBuilder("tg_event_disable_config", ConnectKprobe, ConnectFentry, TcpSockops)
-
-	// LPM maps
-	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, TcpSockops)
-	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, TcpSockops)
-)
 
 func ConfigureMaps() error {
 	ConfigureSockStatSampler(StatsInterval,
@@ -326,8 +141,8 @@ func UnloadSensor(tp tracingpolicy.TracingPolicy) error {
 }
 
 func processModelMapsEnable() []*program.Map {
-	Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	tcpconfig.Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	tcpconfig.Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	maps := []*program.Map{
 		program.MapUserFrom(base.EndpointIdMap),
 		program.MapUserFrom(base.BpfEndpointIdMap),
@@ -337,7 +152,7 @@ func processModelMapsEnable() []*program.Map {
 		program.MapUserFrom(base.DestinationEndpointMap),
 		program.MapUserFrom(base.ListenEndpointMap),
 	}
-	maps = append(maps, []*program.Map{Addr4LpmMap, Addr6LpmMap}...)
+	maps = append(maps, []*program.Map{tcpconfig.Addr4LpmMap, tcpconfig.Addr6LpmMap}...)
 	return maps
 }
 
@@ -348,26 +163,26 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	progsCollectStats := []*program.Program{}
 
 	maps := []*program.Map{
-		SocketMap,
-		SocketMapStats,
-		SocketVersionMap,
-		SocketTupleMap,
-		SocketTupleMapStats,
-		SocketTupleRevMap,
-		SocketTupleHintMap,
-		ConfigMap,
-		SecurityAcceptMap,
-		TcpSocketStats,
-		HTTPContext,
-		TLSContext,
-		TLSBottles,
-		TLSBottleStats,
-		SendCheckSampler,
-		ProcessNetworkWatermarksMap,
-		FinRxMap,
-		TcpSocketMap,
-		EventDisableConfig,
-		TLSMapStats,
+		tcpconfig.SocketMap,
+		tcpconfig.SocketMapStats,
+		tcpconfig.SocketVersionMap,
+		tcpconfig.SocketTupleMap,
+		tcpconfig.SocketTupleMapStats,
+		tcpconfig.SocketTupleRevMap,
+		tcpconfig.SocketTupleHintMap,
+		tcpconfig.ConfigMap,
+		tcpconfig.SecurityAcceptMap,
+		tcpconfig.TcpSocketStats,
+		tcpconfig.HTTPContext,
+		tcpconfig.TLSContext,
+		tcpconfig.TLSBottles,
+		tcpconfig.TLSBottleStats,
+		tcpconfig.SendCheckSampler,
+		tcpconfig.ProcessNetworkWatermarksMap,
+		tcpconfig.FinRxMap,
+		tcpconfig.TcpSocketMap,
+		tcpconfig.EventDisableConfig,
+		tcpconfig.TLSMapStats,
 	}
 
 	// Kernels before 5.14 are difficult to support BPF in kernel models
@@ -376,33 +191,33 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	// Kernels before 5.5 don't support Fentry, so use kprobes here.
 	// These can be unreliable as they can be preempted.
 	if utils.SupportProcessTree() {
-		progsInitSock = append(progsInitSock, TcpSockops)
+		progsInitSock = append(progsInitSock, tcpconfig.TcpSockops)
 		maps = append(maps, processModelMapsEnable()...)
 	} else if utils.SupportFentry() {
 		progsInitSock = append(progsInitSock, []*program.Program{
-			ConnectFentry,
-			CloseFentry,
-			ListenFentry,
+			tcpconfig.ConnectFentry,
+			tcpconfig.CloseFentry,
+			tcpconfig.ListenFentry,
 		}...)
 	} else {
 		progsInitSock = append(progsInitSock, []*program.Program{
-			ConnectKprobe,
-			CloseKprobe,
-			ListenKprobe,
+			tcpconfig.ConnectKprobe,
+			tcpconfig.CloseKprobe,
+			tcpconfig.ListenKprobe,
 		}...)
 	}
 
 	if utils.SupportFentry() {
-		progsInitSock = append(progsInitSock, SecurityAccept, SecurityGraft, TCPResetFentry)
+		progsInitSock = append(progsInitSock, tcpconfig.SecurityAccept, tcpconfig.SecurityGraft, tcpconfig.TCPResetFentry)
 	} else {
-		progsInitSock = append(progsInitSock, SecurityAcceptKprobe, SecurityGraftKprobe, TCPResetKprobe)
+		progsInitSock = append(progsInitSock, tcpconfig.SecurityAcceptKprobe, tcpconfig.SecurityGraftKprobe, tcpconfig.TCPResetKprobe)
 	}
 
 	if tcpconfig.RttHistogramMax != 0 || enterpriseOption.Config.EnableTCPRTT {
 		if utils.SupportFentry() {
-			progsCollectStats = append(progsCollectStats, RttTracerFentry)
+			progsCollectStats = append(progsCollectStats, tcpconfig.RttTracerFentry)
 		} else {
-			progsCollectStats = append(progsCollectStats, RttTracerKprobe)
+			progsCollectStats = append(progsCollectStats, tcpconfig.RttTracerKprobe)
 		}
 	}
 
@@ -410,8 +225,8 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	 * so we fall back on kprobes here.
 	 */
 	if !utils.CGroupSKBAvailable() || !utils.SupportCGroupSKBProbeRead() {
-		progsCollectStats = append(progsCollectStats, SendCheck4)
-		progsCollectStats = append(progsCollectStats, SendCheck6)
+		progsCollectStats = append(progsCollectStats, tcpconfig.SendCheck4)
+		progsCollectStats = append(progsCollectStats, tcpconfig.SendCheck6)
 	}
 
 	if utils.CGroupSKBAvailable() {

@@ -354,7 +354,7 @@ func (s *statsManager) correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (gr
 
 func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, watermarksAvgWindowSize uint64,
 	burstTriggerMult uint64, dipTriggerMult uint64, rttMax, rttMin uint32) error {
-	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), SendCheckSampler.Name), nil)
+	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), tcpconfig.SendCheckSampler.Name), nil)
 	if err != nil {
 		return err
 	}
