@@ -89,18 +89,14 @@ var (
 	// so they need to stay global as is expected by its users.
 
 	// Socket lookup config map
-	FdLookupConfigMapKprobe = program.MapBuilder(FdLookupConfigMapName, FdLookupKprobe)
-	FdLookupConfigMapFentry = program.MapBuilder(FdLookupConfigMapName, FdLookupFentry)
+	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookupKprobe, FdLookupFentry, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 
 	// Endpoint Models
-	ProcessTreeIdMapKprobe = program.MapBuilder("tg_tree_id", FdLookupKprobeProcessTree)
-	ProcessTreeIdMapFentry = program.MapBuilder("tg_tree_id", FdLookupFentryProcessTree)
+	ProcessTreeIdMap = program.MapBuilder("tg_tree_id", FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 
 	// LPM maps
-	Addr6LpmMapFentry = program.MapBuilder(lpm.Addr6lpmMapName, FdLookupFentryProcessTree)
-	Addr4LpmMapFentry = program.MapBuilder(lpm.Addr4lpmMapName, FdLookupFentryProcessTree)
-	Addr6LpmMapKprobe = program.MapBuilder(lpm.Addr6lpmMapName, FdLookupKprobeProcessTree)
-	Addr4LpmMapKprobe = program.MapBuilder(lpm.Addr4lpmMapName, FdLookupKprobeProcessTree)
+	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, FdLookupFentryProcessTree, FdLookupKprobeProcessTree)
+	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, FdLookupFentryProcessTree, FdLookupKprobeProcessTree)
 
 	// Shared socket cookie infrastructure
 	SocketMap           = program.MapUserFrom(base.SocketMap)
@@ -111,8 +107,7 @@ var (
 	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
 	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
 	ConfigMap           = program.MapUserFrom(base.CfgMap)
-	TcpSocketMapKprobe  = program.MapBuilder("tg_tcpsocket_map", FdLookupKprobe, FdLookupKprobeProcessTree)
-	TcpSocketMapFentry  = program.MapBuilder("tg_tcpsocket_map", FdLookupFentry, FdLookupFentryProcessTree)
+	TcpSocketMap        = program.MapBuilder("tg_tcpsocket_map", FdLookupKprobe, FdLookupFentry, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 )
 
 func Enable() ([]*program.Program, []*program.Map) {
@@ -214,14 +209,13 @@ func getFdLookupMaps() []*program.Map {
 		SocketTupleRevMap,
 		SocketTupleHintMap,
 		ConfigMap,
+		FdLookupConfigMap,
+		TcpSocketMap,
 	}
 
-	if utils.SupportFentry() {
-		maps = append(maps, FdLookupConfigMapFentry, TcpSocketMapFentry)
-	} else {
-		maps = append(maps, FdLookupConfigMapKprobe, TcpSocketMapKprobe)
-	}
 	if utils.SupportProcessTree() {
+		Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+		Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 		maps = append(maps, []*program.Map{
 			program.MapUserFrom(base.EndpointIdMap),
 			program.MapUserFrom(base.BpfEndpointIdMap),
@@ -231,16 +225,10 @@ func getFdLookupMaps() []*program.Map {
 			program.MapUserFrom(base.DestinationEndpointMap),
 			program.MapUserFrom(base.ListenEndpointMap),
 			program.MapUserFrom(base.PidDataMap),
+			ProcessTreeIdMap,
+			Addr4LpmMap,
+			Addr6LpmMap,
 		}...)
-		if utils.SupportFentry() {
-			Addr6LpmMapFentry.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			Addr4LpmMapFentry.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			maps = append(maps, []*program.Map{ProcessTreeIdMapFentry, Addr4LpmMapFentry, Addr6LpmMapFentry}...)
-		} else {
-			Addr6LpmMapKprobe.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			Addr4LpmMapKprobe.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-			maps = append(maps, []*program.Map{ProcessTreeIdMapKprobe, Addr4LpmMapKprobe, Addr6LpmMapKprobe}...)
-		}
 	}
 
 	return maps
@@ -267,12 +255,7 @@ func LoadSockets(callback FdCallback, protocol uint16, hint uint64) error {
 func openConfigMap() *ebpf.Map {
 	mapDir := bpf.MapPrefixPath()
 
-	var fdLookupMapPath string
-	if utils.SupportFentry() {
-		fdLookupMapPath = filepath.Join(mapDir, FdLookupConfigMapFentry.PinPath)
-	} else {
-		fdLookupMapPath = filepath.Join(mapDir, FdLookupConfigMapKprobe.PinPath)
-	}
+	fdLookupMapPath := filepath.Join(mapDir, FdLookupConfigMap.PinPath)
 
 	m, err := ebpf.LoadPinnedMap(fdLookupMapPath, nil)
 	for i := 0; err != nil; i++ {
