@@ -30,6 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -37,7 +38,6 @@ import (
 var (
 	Config        ConfigValue
 	ConfigMapName = "tg_icmp_cfg_map"
-	SocketMapName = "tg_socket_map"
 )
 
 var (
@@ -95,25 +95,17 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMapKprobe    = program.MapBuilder(SocketMapName, IcmpRcvKprobe)
-	SocketCookieStatsKprobe  = program.MapBuilder("tg_socket_map_stats", IcmpRcvKprobe)
-	SocketTupleMapKprobe     = program.MapBuilder("tg_socket_tuple_map", IcmpRcvKprobe)
-	SocketTupleStatsKprobe   = program.MapBuilder("tg_socket_tuple_map_stats", IcmpRcvKprobe)
-	SocketTupleRevMapKprobe  = program.MapBuilder("tg_rev_tuple_map", IcmpRcvKprobe)
-	SocketTupleHintMapKprobe = program.MapBuilder("tg_socket_tuple_hint_map", IcmpRcvKprobe)
-	SocketCookieMapFentry    = program.MapBuilder(SocketMapName, IcmpRcvFentry)
-	SocketCookieStatsFentry  = program.MapBuilder("tg_socket_map_stats", IcmpRcvFentry)
-	SocketTupleMapFentry     = program.MapBuilder("tg_socket_tuple_map", IcmpRcvFentry)
-	SocketTupleStatsFentry   = program.MapBuilder("tg_socket_tuple_map_stats", IcmpRcvFentry)
-	SocketTupleRevMapFentry  = program.MapBuilder("tg_rev_tuple_map", IcmpRcvFentry)
-	SocketTupleHintMapFentry = program.MapBuilder("tg_socket_tuple_hint_map", IcmpRcvFentry)
+	SocketMap           = program.MapUserFrom(base.SocketMap)
+	SocketMapStats      = program.MapUserFrom(base.SocketStats)
+	SocketVersionMap    = program.MapUserFrom(base.SocketVersionMap)
+	SocketTupleMap      = program.MapUserFrom(base.SocketTupleMap)
+	SocketTupleMapStats = program.MapUserFrom(base.SocketTupleStats)
+	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
+	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
+	ConfigMap           = program.MapUserFrom(base.CfgMap)
+
 	// ICMP runtime maps
-	CfgMapKprobe     = program.MapBuilder("tg_cfg_map", IcmpRcvKprobe)
-	IcmpCfgMapKprobe = program.MapBuilder("tg_icmp_cfg_map", IcmpRcvKprobe)
-	VerMapKprobe     = program.MapBuilder("tg_ver_map", SkPingAllocKprobe)
-	CfgMapFentry     = program.MapBuilder("tg_cfg_map", IcmpRcvFentry)
-	IcmpCfgMapFentry = program.MapBuilder("tg_icmp_cfg_map", IcmpRcvFentry)
-	VerMapFentry     = program.MapBuilder("tg_ver_map", SkPingAllocFentry)
+	IcmpCfgMap = program.MapBuilder("tg_icmp_cfg_map", IcmpRcvKprobe)
 )
 
 type sensorConfigKey struct {
@@ -132,7 +124,17 @@ func (v *ConfigValue) String() string {
 func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 	var progsInitSock []*program.Program
 	var progsCollectStats []*program.Program
-	var maps []*program.Map
+	maps := []*program.Map{
+		SocketMap,
+		SocketMapStats,
+		SocketVersionMap,
+		SocketTupleMap,
+		SocketTupleMapStats,
+		SocketTupleRevMap,
+		SocketTupleHintMap,
+		ConfigMap,
+		IcmpCfgMap,
+	}
 
 	if !utils.CGroupSKBAvailable() {
 		logger.GetLogger().Warn("ICMP support requires a later kernel (v5.4+ or RHEL equivalent)")
@@ -147,17 +149,6 @@ func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 			IcmpRcvFentry,
 			IcmpRcv6Fentry,
 		}
-		maps = []*program.Map{
-			SocketCookieMapFentry,
-			SocketCookieStatsFentry,
-			SocketTupleMapFentry,
-			SocketTupleStatsFentry,
-			SocketTupleRevMapFentry,
-			SocketTupleHintMapFentry,
-			CfgMapFentry,
-			IcmpCfgMapFentry,
-			VerMapFentry,
-		}
 
 	} else {
 		progsInitSock = []*program.Program{
@@ -166,17 +157,6 @@ func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 		progsCollectStats = []*program.Program{
 			IcmpRcvKprobe,
 			IcmpRcv6Kprobe,
-		}
-		maps = []*program.Map{
-			SocketCookieMapKprobe,
-			SocketCookieStatsKprobe,
-			SocketTupleMapKprobe,
-			SocketTupleStatsKprobe,
-			SocketTupleRevMapKprobe,
-			SocketTupleHintMapKprobe,
-			CfgMapKprobe,
-			IcmpCfgMapKprobe,
-			VerMapKprobe,
 		}
 	}
 
