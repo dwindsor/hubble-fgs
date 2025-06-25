@@ -804,10 +804,7 @@ func SocketStats() *program.Map {
 }
 
 func TcpSocketMap() *program.Map {
-	if utils.SupportFentry() {
-		return tcp.TcpSocketMapFentry
-	}
-	return tcp.TcpSocketMapKprobe
+	return tcp.TcpSocketMap
 }
 
 func TcpSocketStats() *program.Map {
@@ -819,10 +816,7 @@ func TLSContext() *program.Map {
 }
 
 func TLSMapStats() *program.Map {
-	if utils.SupportFentry() {
-		return tcp.TLSMapStatsFentry
-	}
-	return tcp.TLSMapStatsKprobe
+	return tcp.TLSMapStats
 }
 
 func TLSBottles() *program.Map {

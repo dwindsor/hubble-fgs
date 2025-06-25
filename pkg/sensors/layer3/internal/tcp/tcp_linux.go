@@ -226,37 +226,27 @@ var (
 	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
 	ConfigMap           = program.MapUserFrom(base.CfgMap)
 
-	FinRxMapKprobe = program.MapBuilder("tg_tcp_finrx_map", CloseKprobe)
-	FinRxMapFentry = program.MapBuilder("tg_tcp_finrx_map", CloseFentry)
-
-	// Maps for TCP Sockets on Sockops
-	SocketOpsFinRxMap = program.MapBuilder("tg_tcp_finrx_map", TcpSockops)
+	FinRxMap = program.MapBuilder("tg_tcp_finrx_map", CloseKprobe, CloseFentry, TcpSockops)
 
 	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
 
 	// TCP Runtime maps
-	TcpSocketMapKprobe = program.MapBuilder("tg_tcpsocket_map", ConnectKprobe)
-	TcpSocketMapFentry = program.MapBuilder("tg_tcpsocket_map", ConnectFentry)
-	TcpOpsSocketMap    = program.MapBuilder("tg_tcpsocket_map", TcpSockops)
-	TcpSocketStats     = program.MapBuilder("tg_tcpsocket_map_stats", SecurityGraft)
+	TcpSocketMap   = program.MapBuilder("tg_tcpsocket_map", ConnectKprobe, ConnectFentry, TcpSockops)
+	TcpSocketStats = program.MapBuilder("tg_tcpsocket_map_stats", SecurityGraft)
 
 	// Parser maps
-	HTTPContext       = program.MapBuilder("tg_http_map", TcpSockops)
-	TLSContext        = program.MapBuilder("tg_tls_map", TcpSockops)
-	TLSMapStatsKprobe = program.MapBuilder("tg_tls_map_stats", ConnectKprobe)
-	TLSMapStatsFentry = program.MapBuilder("tg_tls_map_stats", ConnectFentry)
-	TLSOpsMapStats    = program.MapBuilder("tg_tls_map_stats", TcpSockops)
-	TLSBottles        = program.MapBuilder("tg_bottles", TcpSockops)
-	TLSBottleStats    = program.MapBuilder("tg_bottle_map_stats", TcpSockops)
+	HTTPContext    = program.MapBuilder("tg_http_map", TcpSockops)
+	TLSContext     = program.MapBuilder("tg_tls_map", TcpSockops)
+	TLSMapStats    = program.MapBuilder("tg_tls_map_stats", ConnectKprobe, ConnectFentry, TcpSockops)
+	TLSBottles     = program.MapBuilder("tg_bottles", TcpSockops)
+	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", TcpSockops)
 
 	// Maps for watermarks detection
 	SendCheckSampler            = program.MapBuilder("tg_tcp_send_check_sampler", SendCheck4)
 	ProcessNetworkWatermarksMap = program.MapBuilder(networkWatermarksEvents.ProcessNetworkWatermarksMapName, SendCheck4)
 
 	// Map for disabling events
-	EventDisableConfigKprobe = program.MapBuilder("tg_event_disable_config", ConnectKprobe)
-	EventDisableConfigFentry = program.MapBuilder("tg_event_disable_config", ConnectFentry)
-	EventDisableConfigOps    = program.MapBuilder("tg_event_disable_config", TcpSockops)
+	EventDisableConfig = program.MapBuilder("tg_event_disable_config", ConnectKprobe, ConnectFentry, TcpSockops)
 
 	// LPM maps
 	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, TcpSockops)
@@ -357,27 +347,6 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	progsInitSock := []*program.Program{}
 	progsCollectStats := []*program.Program{}
 
-	mapsOps := []*program.Map{
-		SocketOpsFinRxMap,
-		TcpOpsSocketMap,
-		TLSOpsMapStats,
-		EventDisableConfigOps,
-	}
-
-	mapsConnectKprobe := []*program.Map{
-		FinRxMapKprobe,
-		TcpSocketMapKprobe,
-		TLSMapStatsKprobe,
-		EventDisableConfigKprobe,
-	}
-
-	mapsConnectFentry := []*program.Map{
-		FinRxMapFentry,
-		TcpSocketMapFentry,
-		TLSMapStatsFentry,
-		EventDisableConfigFentry,
-	}
-
 	maps := []*program.Map{
 		SocketMap,
 		SocketMapStats,
@@ -395,6 +364,10 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		TLSBottleStats,
 		SendCheckSampler,
 		ProcessNetworkWatermarksMap,
+		FinRxMap,
+		TcpSocketMap,
+		EventDisableConfig,
+		TLSMapStats,
 	}
 
 	// Kernels before 5.14 are difficult to support BPF in kernel models
@@ -404,7 +377,6 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	// These can be unreliable as they can be preempted.
 	if utils.SupportProcessTree() {
 		progsInitSock = append(progsInitSock, TcpSockops)
-		maps = append(maps, mapsOps...)
 		maps = append(maps, processModelMapsEnable()...)
 	} else if utils.SupportFentry() {
 		progsInitSock = append(progsInitSock, []*program.Program{
@@ -412,14 +384,12 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 			CloseFentry,
 			ListenFentry,
 		}...)
-		maps = append(maps, mapsConnectFentry...)
 	} else {
 		progsInitSock = append(progsInitSock, []*program.Program{
 			ConnectKprobe,
 			CloseKprobe,
 			ListenKprobe,
 		}...)
-		maps = append(maps, mapsConnectKprobe...)
 	}
 
 	if utils.SupportFentry() {

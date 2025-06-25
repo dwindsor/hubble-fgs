@@ -41,7 +41,7 @@ func (v *EventDisableValue) String() string {
 }
 
 func ConfigureTCPDisableEvents(disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) error {
-	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), EventDisableConfigFentry.Name), nil)
+	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), EventDisableConfig.Name), nil)
 	if err != nil {
 		return err
 	}
