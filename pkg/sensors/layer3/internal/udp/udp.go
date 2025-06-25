@@ -38,6 +38,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/udp_seq_check_error"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
@@ -49,7 +50,6 @@ const (
 	UdpMapName        = "tg_udp_map"
 	ConfigMapName     = "tg_udp_config_map"
 	UdpPayloadMapName = "tg_udp_payload_map"
-	SocketMapName     = "tg_socket_map"
 
 	MissingStatsErrorInterval = time.Hour
 )
@@ -117,13 +117,15 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap    = program.MapBuilder(SocketMapName, SkUdpBindKprobe)
-	SocketTupleMap     = program.MapBuilder("tg_socket_tuple_map", SkUdpBindKprobe)
-	SocketTupleStats   = program.MapBuilder("tg_socket_tuple_map_stats", SkUdpBindKprobe)
-	SocketTupleRevMap  = program.MapBuilder("tg_rev_tuple_map", SkUdpBindKprobe)
-	SocketTupleHintMap = program.MapBuilder("tg_socket_tuple_hint_map", SkUdpBindKprobe)
-	CfgMap             = program.MapBuilder("tg_cfg_map", SkUdpBindKprobe)
-	PsVerMap           = program.MapBuilder("tg_psver_map", SkUdpBindKprobe)
+	SocketMap           = program.MapUserFrom(base.SocketMap)
+	SocketMapStats      = program.MapUserFrom(base.SocketStats)
+	SocketVersionMap    = program.MapUserFrom(base.SocketVersionMap)
+	SocketTupleMap      = program.MapUserFrom(base.SocketTupleMap)
+	SocketTupleMapStats = program.MapUserFrom(base.SocketTupleStats)
+	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
+	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
+	ConfigMap           = program.MapUserFrom(base.CfgMap)
+	PsVerMap            = program.MapBuilder("tg_psver_map", SkUdpBindKprobe)
 
 	// UDP maps
 	UdpMapLazyKprobe       = program.MapBuilder(UdpMapName, InetSendRecvLazy)
@@ -254,20 +256,30 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 
 	versionStr = "__udp_sensor_probe__"
 
+	maps = []*program.Map{
+		SocketMap,
+		SocketMapStats,
+		SocketVersionMap,
+		SocketTupleMap,
+		SocketTupleMapStats,
+		SocketTupleRevMap,
+		SocketTupleHintMap,
+		ConfigMap,
+		PsVerMap,
+	}
+
 	if !cgroup {
 		progsCollectStats = []*program.Program{
 			InetSendRecvLazy,
 		}
 		progsInitSock = append(progsInitSock, bindProg())
-		maps = []*program.Map{
+		maps = append(maps,
 			UdpMapLazyKprobe,
 			UdpMapStatsLazyKprobe,
 			UdpConfigLazyMapKprobe,
 			UdpPayloadLazyMapKprobe,
-			SocketCookieMap,
 			LatencyConfigMapLazyKprobe,
-			PsVerMap,
-		}
+		)
 	} else {
 		if !DisableListenEvents {
 			progsInitSock = append(progsInitSock, bindProg())
@@ -276,15 +288,6 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 			if utils.UDPBindNeedsDummies() {
 				progsInitSock = append(progsInitSock, []*program.Program{SkUdpBindDummy4, SkUdpBindDummy6}...)
 			}
-		}
-		maps = []*program.Map{
-			SocketCookieMap,
-			SocketTupleMap,
-			SocketTupleStats,
-			SocketTupleRevMap,
-			SocketTupleHintMap,
-			CfgMap,
-			PsVerMap,
 		}
 	}
 
