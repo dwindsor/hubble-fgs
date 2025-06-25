@@ -28,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/rawsockconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -72,16 +73,9 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMapKprobe   = program.MapBuilder(SocketMapName, SkRawAllocV4Kprobe)
-	SocketCookieStatsKprobe = program.MapBuilder("tg_socket_map_stats", SkRawAllocV4Kprobe)
-	VerMapKprobe            = program.MapBuilder("tg_ver_map", SkRawAllocV4Kprobe)
-	SocketCookieMapFentry   = program.MapBuilder(SocketMapName, SkRawAllocV4Fentry)
-	SocketCookieStatsFentry = program.MapBuilder("tg_socket_map_stats", SkRawAllocV4Fentry)
-	VerMapFentry            = program.MapBuilder("tg_ver_map", SkRawAllocV4Fentry)
-)
-
-const (
-	SocketMapName = "tg_socket_map"
+	SocketMap        = program.MapUserFrom(base.SocketMap)
+	SocketMapStats   = program.MapUserFrom(base.SocketStats)
+	SocketVersionMap = program.MapUserFrom(base.SocketVersionMap)
 )
 
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
@@ -107,27 +101,21 @@ func EnableRawsock() ([]*program.Program, []*program.Program, []*program.Map) {
 	}
 
 	var progsInitSock []*program.Program
-	var maps []*program.Map
+	maps := []*program.Map{
+		SocketMap,
+		SocketMapStats,
+		SocketVersionMap,
+	}
 
 	if utils.SupportFentry() {
 		progsInitSock = []*program.Program{
 			SkRawAllocV4Fentry,
 			SkRawAllocV6Fentry,
 		}
-		maps = []*program.Map{
-			SocketCookieMapFentry,
-			SocketCookieStatsFentry,
-			VerMapFentry,
-		}
 	} else {
 		progsInitSock = []*program.Program{
 			SkRawAllocV4Kprobe,
 			SkRawAllocV6Kprobe,
-		}
-		maps = []*program.Map{
-			SocketCookieMapKprobe,
-			SocketCookieStatsKprobe,
-			VerMapKprobe,
 		}
 	}
 
