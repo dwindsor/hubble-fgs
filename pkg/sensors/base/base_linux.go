@@ -48,6 +48,7 @@ func GetDefaultMaps() []*program.Map {
 		ProcessNetworkWatermarksMap,
 		SocketMap,
 		SocketStats,
+		SocketVersionMap,
 		SocketTupleMap,
 		SocketTupleStats,
 		SocketTupleRevMap,

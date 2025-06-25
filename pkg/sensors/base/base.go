@@ -117,6 +117,7 @@ var (
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", Exit)
 	SocketMap                   = program.MapBuilder(socktrackmaps.SocketMapName, Exit)
 	SocketStats                 = program.MapBuilder(socktrackmaps.SocketStatsName, Exit)
+	SocketVersionMap            = program.MapBuilder(socktrackmaps.SocketVersionMapName, Exit)
 	SocketTupleMap              = program.MapBuilder(socktrackmaps.SocketTupleMapName, Exit)
 	SocketTupleStats            = program.MapBuilder(socktrackmaps.SocketTupleStatsName, Exit)
 	SocketTupleRevMap           = program.MapBuilder(socktrackmaps.SocketTupleRevMapName, Exit)
