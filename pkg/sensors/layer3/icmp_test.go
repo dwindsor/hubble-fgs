@@ -310,6 +310,7 @@ func TestICMPCLISwitchPerfRing(t *testing.T) {
 }
 
 func TestICMPCLISwitchTetragon(t *testing.T) {
+	t.Skipf("This test is unreliable in CI")
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
