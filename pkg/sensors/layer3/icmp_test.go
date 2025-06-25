@@ -15,20 +15,39 @@ package layer3_test
 
 import (
 	"context"
+	"encoding/binary"
+	"net"
+	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+	"github.com/cilium/tetragon/pkg/logger"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
-	"github.com/stretchr/testify/assert"
+	"github.com/cilium/tetragon/pkg/option"
+	testsensor "github.com/cilium/tetragon/pkg/sensors/test"
+	"github.com/cilium/tetragon/pkg/testutils"
+	tuo "github.com/cilium/tetragon/pkg/testutils/observer"
+	"github.com/cilium/tetragon/pkg/testutils/perfring"
+	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/constants"
+	execapi "github.com/isovalent/hubble-fgs/pkg/grpc/exec"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -188,7 +207,109 @@ func testPingOutbound4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 	assert.NoError(t, err)
 }
 
-func TestICMPCLISwitch(t *testing.T) {
+func parseArgs(a string) string {
+	b := []byte(a)
+	for i, c := range b {
+		if c == '\x00' {
+			b[i] = ' '
+		}
+	}
+	return string(b)
+}
+
+func TestICMPCLISwitchPerfRing(t *testing.T) {
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+
+	testutils.CaptureLog(t, logger.GetLogger())
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	oldEnableICMPValue := enterpriseOption.Config.EnableICMP
+	enterpriseOption.Config.EnableICMP = true
+	oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
+	enterpriseOption.Config.Layer3CLIEnable = true
+	t.Cleanup(func() {
+		enterpriseOption.Config.EnableICMP = oldEnableICMPValue
+		enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
+	})
+
+	if err := observer.InitDataCache(1024); err != nil {
+		t.Fatalf("observertesthelper.InitDataCache: %s", err)
+	}
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	tus.LoadSensor(t, base.GetInitialSensorTest(t))
+
+	if err := procevents.GetRunningProcs(); err != nil {
+		t.Fatalf("procevents.GetRunningProcs: %s", err)
+	}
+
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tuo.GetTestSensorManager(t)
+	err := layer3.StartLayer3Progs(ctx, sm.Manager)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		sm.Manager.DeleteTracingPolicy(ctx, "__base_layer3__", "")
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	cmd := "ping"
+	pingPid := -1
+
+	ops := func() {
+		cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
+		require.NoError(t, cmdServer.Start())
+		pingPid = cmdServer.Process.Pid
+		require.NoError(t, cmdServer.Wait())
+	}
+
+	events := perfring.RunTestEvents(t, ctx, ops)
+
+	detectExec := false
+	detectPing := false
+	detectPingReply := false
+
+	for _, event := range events {
+		t.Logf("event = '%#v'", event)
+		switch e := event.(type) {
+		case *execapi.MsgExecveEventUnix:
+			if strings.HasSuffix(e.Unix.Process.Filename, cmd) && strings.HasPrefix(parseArgs(e.Unix.Process.Args), "-c1 127.0.0.1") &&
+				e.Unix.Process.PID == uint32(pingPid) && e.Unix.Msg.Parent.Pid == uint32(os.Getpid()) {
+				t.Logf("Matched pingExec")
+				detectExec = true
+			}
+		case *icmp.MsgICMPEventUnix:
+			saddr := networkapi.GetIP(e.Msg.Tuple.SAddr, e.Msg.Common.Op, e.Msg.Tuple.IPv6 == 1)
+			daddr := networkapi.GetIP(e.Msg.Tuple.DAddr, e.Msg.Common.Op, e.Msg.Tuple.IPv6 == 1)
+			localhost := net.ParseIP("127.0.0.1")
+			seqNum := binary.BigEndian.Uint16(e.Msg.IcmpData.IcmpData[2:4])
+
+			if e.Msg.ProcessKey.Pid == uint32(pingPid) && saddr.Equal(localhost) && daddr.Equal(localhost) &&
+				e.Msg.Tuple.Proto == constants.IPPROTO_ICMP && e.Msg.IcmpData.IcmpLen == 56 && seqNum == 1 {
+				if e.Msg.IcmpData.IcmpType == 8 && e.Msg.Tuple.Send == 1 {
+					detectPing = true
+					t.Logf("Matched ping")
+					continue
+				}
+				if e.Msg.IcmpData.IcmpType == 0 && e.Msg.Tuple.Send == 0 {
+					detectPingReply = true
+					t.Logf("Matched pingreply")
+					continue
+				}
+			}
+		}
+	}
+
+	assert.True(t, detectExec)
+	assert.True(t, detectPing)
+	assert.True(t, detectPingReply)
+}
+
+func TestICMPCLISwitchTetragon(t *testing.T) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
