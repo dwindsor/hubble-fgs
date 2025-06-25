@@ -13,18 +13,8 @@ package socktrack
 import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	socktrackmaps "github.com/isovalent/hubble-fgs/pkg/sensors/socktrack/maps"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-)
-
-const (
-	SocketMapName          = "tg_socket_map"
-	SocketStatsName        = "tg_socket_map_stats"
-	SocketTupleMapName     = "tg_socket_tuple_map"
-	SocketTupleStatsName   = "tg_socket_tuple_map_stats"
-	SocketTupleRevMapName  = "tg_rev_tuple_map"
-	SocketTupleHintMapName = "tg_socket_tuple_hint_map"
-	SocketVersionMapName   = "tg_ver_map"
-	SocketCfgMapName       = "tg_cfg_map"
 )
 
 var (
@@ -56,22 +46,22 @@ var (
 		"tg_security_sk_free",
 		"socktrack_fentry")
 
-	SocketMapKprobe           = program.MapBuilder(SocketMapName, SkAllocKprobe)
-	SocketMapStatsKprobe      = program.MapBuilder(SocketStatsName, SkAllocKprobe)
-	SocketTupleMapKprobe      = program.MapBuilder(SocketTupleMapName, SkFreeKprobe)
-	SocketTupleMapStatsKprobe = program.MapBuilder(SocketTupleStatsName, SkFreeKprobe)
-	SocketTupleRevMapKprobe   = program.MapBuilder(SocketTupleRevMapName, SkFreeKprobe)
-	SocketTupleHintMapKprobe  = program.MapBuilder(SocketTupleHintMapName, SkFreeKprobe)
-	VersionMapKprobe          = program.MapBuilder(SocketVersionMapName, SkAllocKprobe)
-	ConfigMapKprobe           = program.MapBuilder(SocketCfgMapName, SkFreeKprobe)
-	SocketMapFentry           = program.MapBuilder(SocketMapName, SkAllocFentry)
-	SocketMapStatsFentry      = program.MapBuilder(SocketStatsName, SkAllocFentry)
-	SocketTupleMapFentry      = program.MapBuilder(SocketTupleMapName, SkFreeFentry)
-	SocketTupleMapStatsFentry = program.MapBuilder(SocketTupleStatsName, SkFreeFentry)
-	SocketTupleRevMapFentry   = program.MapBuilder(SocketTupleRevMapName, SkFreeFentry)
-	SocketTupleHintMapFentry  = program.MapBuilder(SocketTupleHintMapName, SkFreeFentry)
-	VersionMapFentry          = program.MapBuilder(SocketVersionMapName, SkAllocFentry)
-	ConfigMapFentry           = program.MapBuilder(SocketCfgMapName, SkFreeFentry)
+	SocketMapKprobe           = program.MapBuilder(socktrackmaps.SocketMapName, SkAllocKprobe)
+	SocketMapStatsKprobe      = program.MapBuilder(socktrackmaps.SocketStatsName, SkAllocKprobe)
+	SocketTupleMapKprobe      = program.MapBuilder(socktrackmaps.SocketTupleMapName, SkFreeKprobe)
+	SocketTupleMapStatsKprobe = program.MapBuilder(socktrackmaps.SocketTupleStatsName, SkFreeKprobe)
+	SocketTupleRevMapKprobe   = program.MapBuilder(socktrackmaps.SocketTupleRevMapName, SkFreeKprobe)
+	SocketTupleHintMapKprobe  = program.MapBuilder(socktrackmaps.SocketTupleHintMapName, SkFreeKprobe)
+	VersionMapKprobe          = program.MapBuilder(socktrackmaps.SocketVersionMapName, SkAllocKprobe)
+	ConfigMapKprobe           = program.MapBuilder(socktrackmaps.SocketCfgMapName, SkFreeKprobe)
+	SocketMapFentry           = program.MapBuilder(socktrackmaps.SocketMapName, SkAllocFentry)
+	SocketMapStatsFentry      = program.MapBuilder(socktrackmaps.SocketStatsName, SkAllocFentry)
+	SocketTupleMapFentry      = program.MapBuilder(socktrackmaps.SocketTupleMapName, SkFreeFentry)
+	SocketTupleMapStatsFentry = program.MapBuilder(socktrackmaps.SocketTupleStatsName, SkFreeFentry)
+	SocketTupleRevMapFentry   = program.MapBuilder(socktrackmaps.SocketTupleRevMapName, SkFreeFentry)
+	SocketTupleHintMapFentry  = program.MapBuilder(socktrackmaps.SocketTupleHintMapName, SkFreeFentry)
+	VersionMapFentry          = program.MapBuilder(socktrackmaps.SocketVersionMapName, SkAllocFentry)
+	ConfigMapFentry           = program.MapBuilder(socktrackmaps.SocketCfgMapName, SkFreeFentry)
 )
 
 /* Enabled from the layer3 sensor */

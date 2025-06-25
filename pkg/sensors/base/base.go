@@ -31,7 +31,7 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base/procfs"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/socktrack"
+	socktrackmaps "github.com/isovalent/hubble-fgs/pkg/sensors/socktrack/maps"
 )
 
 var (
@@ -115,13 +115,13 @@ var (
 	/* Networking and Process Monitoring maps */
 	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, Fork, Exit, ExecveBprmCommit, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", Exit)
-	SocketMap                   = program.MapBuilder(socktrack.SocketMapName, Exit)
-	SocketStats                 = program.MapBuilder(socktrack.SocketStatsName, Exit)
-	SocketTupleMap              = program.MapBuilder(socktrack.SocketTupleMapName, Exit)
-	SocketTupleStats            = program.MapBuilder(socktrack.SocketTupleStatsName, Exit)
-	SocketTupleRevMap           = program.MapBuilder(socktrack.SocketTupleRevMapName, Exit)
-	SocketTupleHintMap          = program.MapBuilder(socktrack.SocketTupleHintMapName, Exit)
-	CfgMap                      = program.MapBuilder(socktrack.SocketCfgMapName, Exit)
+	SocketMap                   = program.MapBuilder(socktrackmaps.SocketMapName, Exit)
+	SocketStats                 = program.MapBuilder(socktrackmaps.SocketStatsName, Exit)
+	SocketTupleMap              = program.MapBuilder(socktrackmaps.SocketTupleMapName, Exit)
+	SocketTupleStats            = program.MapBuilder(socktrackmaps.SocketTupleStatsName, Exit)
+	SocketTupleRevMap           = program.MapBuilder(socktrackmaps.SocketTupleRevMapName, Exit)
+	SocketTupleHintMap          = program.MapBuilder(socktrackmaps.SocketTupleHintMapName, Exit)
+	CfgMap                      = program.MapBuilder(socktrackmaps.SocketCfgMapName, Exit)
 
 	ExecveTailCallsMap = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 
