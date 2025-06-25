@@ -63,7 +63,7 @@ func loadFIMInitialSensor(ctx context.Context) error {
 }
 
 func startLayer3Progs(ctx context.Context) error {
-	return layer3.StartLayer3Progs(ctx)
+	return layer3.StartLayer3Progs(ctx, nil)
 }
 
 func loadInitialProcFsSensor(ctx context.Context) error {

@@ -247,7 +247,7 @@ func TestICMPCLISwitch(t *testing.T) {
 	)
 
 	obs := getNoConfigObserver(t, ctx, false)
-	layer3.StartLayer3Progs(ctx)
+	layer3.StartLayer3Progs(ctx, nil)
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()

@@ -467,7 +467,7 @@ func testDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect bo
 
 	obs := getTcpObserverDisableEvents(t, ctx, false, CLISwitches, disableConnect, true, true, true)
 	if CLISwitches {
-		layer3.RunLayer3Progs(ctx)
+		layer3.RunLayer3Progs(ctx, nil)
 	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observertesthelper.ExecWGCurl(&readyWG, 10, "127.0.0.1")
@@ -817,7 +817,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitches 
 
 	obs := getTcpObserverDisableEvents(t, ctx, false, CLISwitches, true, disableClose, disableAccept, disableListen)
 	if CLISwitches {
-		layer3.RunLayer3Progs(ctx)
+		layer3.RunLayer3Progs(ctx, nil)
 	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 

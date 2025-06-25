@@ -177,7 +177,7 @@ func TestRawsockCLISwitch(t *testing.T) {
 	)
 
 	obs := getNoConfigObserver(t, ctx, true)
-	layer3.StartLayer3Progs(ctx)
+	layer3.StartLayer3Progs(ctx, nil)
 	tp, err := tracingpolicy.FromYAML(rawsockConfigWithCloseEventsWithoutEnable)
 	if err != nil {
 		t.Fatalf("failed to parse tracingpolicy: %s", err)

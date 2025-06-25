@@ -14,6 +14,7 @@ import (
 	"context"
 
 	"github.com/cilium/tetragon/pkg/constants"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
 )
@@ -26,11 +27,11 @@ func EnableLayer3Progs() error {
 	return constants.ErrWindowsNotSupported
 }
 
-func RunLayer3Progs(ctx context.Context) error {
+func RunLayer3Progs(ctx context.Context, _ *sensors.Manager) error {
 	return constants.ErrWindowsNotSupported
 }
 
-func StartLayer3Progs(ctx context.Context) error {
+func StartLayer3Progs(ctx context.Context, _ *sensors.Manager) error {
 	return constants.ErrWindowsNotSupported
 }
 

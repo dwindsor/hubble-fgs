@@ -1110,7 +1110,7 @@ func TestUDPCLISwitch(t *testing.T) {
 	)
 
 	obs := getNoConfigObserver(t, ctx, true)
-	layer3.StartLayer3Progs(ctx)
+	layer3.StartLayer3Progs(ctx, nil)
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -1187,7 +1187,7 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 
 	obs := getUdpObserverDisableEvents(t, ctx, CLISwitches, disableConnect, true, true, disableStats)
 	if CLISwitches {
-		layer3.RunLayer3Progs(ctx)
+		layer3.RunLayer3Progs(ctx, nil)
 	}
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 

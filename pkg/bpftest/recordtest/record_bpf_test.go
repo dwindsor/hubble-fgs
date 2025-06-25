@@ -573,7 +573,7 @@ func minimalTetragonModel(ctx context.Context, t *testing.T) {
 	require.NoError(t, err)
 	err = base.LoadDefault(option.Config.BpfDir)
 	require.NoError(t, err)
-	err = layer3.StartLayer3Progs(ctx)
+	err = layer3.StartLayer3Progs(ctx, nil)
 	require.NoError(t, err)
 	err = procevents.GetRunningProcs()
 	require.NoError(t, err)

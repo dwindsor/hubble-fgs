@@ -26,6 +26,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
@@ -761,10 +762,15 @@ func EnableLayer3Progs() error {
 	return nil
 }
 
-func RunLayer3Progs(ctx context.Context) error {
+func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 	// By default, enable CGroup/SKB.
 	progs, maps := ProgsAndMaps(enterpriseOption.Config.EnableLatency, udpCGroup, enterpriseOption.Config.EnableLatency)
-	mgr := observer.GetSensorManager()
+	var mgr *sensors.Manager
+	if sm != nil {
+		mgr = sm
+	} else {
+		mgr = observer.GetSensorManager()
+	}
 	initialLayer3Sensor := &sensors.Sensor{
 		Name:  baseLayer3Policy,
 		Progs: progs,
@@ -776,13 +782,13 @@ func RunLayer3Progs(ctx context.Context) error {
 	return mgr.EnableSensor(ctx, initialLayer3Sensor.Name)
 }
 
-func StartLayer3Progs(ctx context.Context) error {
+func StartLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 	logger.GetLogger().Info("Layer3 functionality", "values", utils.LogLayer3Features())
 	err := EnableLayer3Progs()
 	if err != nil {
 		return err
 	}
-	return RunLayer3Progs(ctx)
+	return RunLayer3Progs(ctx, sm)
 }
 
 func HTTPContext() *program.Map {
