@@ -126,7 +126,7 @@ func TestSocketCookie(t *testing.T) {
 	if err := observertesthelper.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)

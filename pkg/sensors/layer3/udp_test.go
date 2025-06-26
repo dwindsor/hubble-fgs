@@ -483,7 +483,7 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 		}
 	}
 
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
@@ -722,7 +722,7 @@ func TestUdpSeqCheck(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
@@ -1763,7 +1763,7 @@ func testDnsEvents(t *testing.T, withQuestions bool) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
@@ -1912,7 +1912,7 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 	if err := observertesthelper.WriteConfigFile(testConfigFile, disableCloseConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
@@ -1999,7 +1999,7 @@ func testDisableListenConfig(t *testing.T, disableListen bool) {
 	if err := observertesthelper.WriteConfigFile(testConfigFile, disableListenConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
@@ -2058,7 +2058,7 @@ func testGC(t *testing.T, defaultInterval bool, interval int, numExpectedGCRuns 
 	if err := observertesthelper.WriteConfigFile(testConfigFile, GCTestConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)

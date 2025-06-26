@@ -1235,7 +1235,7 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 		}
 	}
 
-	dfltBase := base.GetInitialSensor()
+	dfltBase := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, dfltBase, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)

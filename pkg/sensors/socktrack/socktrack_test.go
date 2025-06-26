@@ -111,7 +111,7 @@ func TestAddRemoveSock(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {

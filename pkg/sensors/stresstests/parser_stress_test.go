@@ -147,7 +147,7 @@ func (tc *testCase) run(t *testing.T) {
 
 			bpf.CheckOrMountCgroup2()
 
-			base := base.GetInitialSensor()
+			base := base.GetInitialSensorTest(t)
 			_, err = enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
 			require.NoError(t, err, "observer should start")
 		}

@@ -917,7 +917,7 @@ func TestLoadFileSensor(t *testing.T) {
 	specFname := createSpecFile(t, test_path)
 
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	b := base.GetInitialSensor()
+	b := base.GetInitialSensorTest(t)
 	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
@@ -1090,7 +1090,7 @@ func TestFileEnforceCreate(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, fmt.Sprintf("%s/", out), "FILE_CREATE")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
@@ -1148,7 +1148,7 @@ func TestFileEnforceWrite(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, fmt.Sprintf("%s/", out), "FILE_WRITE")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
@@ -1211,7 +1211,7 @@ func TestFileEnforceExec(t *testing.T) {
 
 	specFname := createSpecEnforceFile(t, testBin, "FILE_EXEC")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFname, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
@@ -2777,7 +2777,7 @@ func TestFileOps(t *testing.T) {
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	// Can't use observer.WithMyPid() here because we are also checking events from
 	// a spawned container here.
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
@@ -2907,7 +2907,7 @@ func TestFileExecBasic(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
@@ -3027,7 +3027,7 @@ func TestFileExecEnforcement(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
@@ -3088,7 +3088,7 @@ func TestFileExecSelectors(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
@@ -3142,7 +3142,7 @@ func TestFileUserDefinedMapSizes(t *testing.T) {
 
 	pol.ResetFIMTracingPolicies()
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
@@ -3207,7 +3207,7 @@ func TestFileRenameDirSuffix(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	specFile := newSpecFile(t, fmt.Sprintf("%s/", outDst), "file_monitoring_suffix.yaml.tmpl")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, specFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
@@ -3259,7 +3259,7 @@ func TestFileLinkOnTmpFile(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 
 	specFile := newSpecFile(t, fmt.Sprintf("%s/", outDst), "file_monitoring_config.yaml.tmpl")
 	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)

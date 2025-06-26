@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"testing"
 	"unsafe"
 
 	"github.com/cilium/tetragon/pkg/errmetrics"
@@ -208,10 +209,31 @@ func initBaseSensor() *sensors.Sensor {
 	return ossbase.ApplyExtensions(&sensor)
 }
 
+func initBaseSensorFn() func(tb testing.TB) *sensors.Sensor {
+	var (
+		s *sensors.Sensor
+		m sync.Mutex
+	)
+	return func(tb testing.TB) *sensors.Sensor {
+		m.Lock()
+		defer m.Unlock()
+		if s == nil {
+			s = initBaseSensor()
+			tb.Cleanup(func() {
+				tb.Logf("cleanup: unloading base sensor")
+				s.Unload(true)
+				s = nil
+			})
+		}
+		return s
+	}
+}
+
 var (
 	// GetInitialSensor returns the collection of Sensor that is loaded at
 	// initialization time.
-	GetInitialSensor = sync.OnceValue(initBaseSensor)
+	GetInitialSensor     = sync.OnceValue(initBaseSensor)
+	GetInitialSensorTest = initBaseSensorFn()
 )
 
 // LoadDefault loads the default sensor, including any from the configuration

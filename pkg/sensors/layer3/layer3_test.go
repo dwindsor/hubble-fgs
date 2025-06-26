@@ -263,7 +263,7 @@ func getLayer3Observer(t *testing.T, ctx context.Context, config string, filtere
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	var obs *observer.Observer
 	var err error
 	if filtered {
@@ -293,7 +293,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	b := base.GetInitialSensor()
+	b := base.GetInitialSensorTest(t)
 	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)

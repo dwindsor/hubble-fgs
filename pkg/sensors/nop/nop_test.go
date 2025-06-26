@@ -56,7 +56,7 @@ spec:
 }
 
 func TestNopSensorSmoke(t *testing.T) {
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	tus.LoadSensor(t, base)
 	yaml := nopConfig(1337)
 	policy, err := tracingpolicy.FromYAML(yaml)
@@ -72,7 +72,7 @@ func TestNopSensorSmoke(t *testing.T) {
 }
 
 func TestLoadNopSensor(t *testing.T) {
-	base := base.GetInitialSensor()
+	base := base.GetInitialSensorTest(t)
 	tus.LoadSensor(t, base)
 	yaml := nopConfig(1337)
 	policy, err := tracingpolicy.FromYAML(yaml)
