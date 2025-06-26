@@ -44,9 +44,27 @@ var (
 		"windows",
 	).SetPolicy(baseTCPConnectPolicy)
 
+	TCPAccept4 = program.Builder(
+		"tcp_connect.sys",
+		"cgroup/recv_accept4",
+		"tcp_accept4",
+		"tcp::accept4",
+		"windows",
+	).SetPolicy(baseTCPConnectPolicy)
+
+	TCPAccept6 = program.Builder(
+		"tcp_connect.sys",
+		"cgroup/recv_accept6",
+		"tcp_accept6",
+		"tcp::accept6",
+		"windows",
+	).SetPolicy(baseTCPConnectPolicy)
+
 	baseTCPPrograms = []*program.Program{
 		TCPConnect4,
 		TCPConnect6,
+		TCPAccept4,
+		TCPAccept6,
 	}
 )
 
@@ -84,4 +102,5 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 
 func init() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECTRET, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ACCEPT, handleTcp)
 }
