@@ -131,7 +131,7 @@ func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
 func signalAndWaitCommand(t *testing.T, cmd *exec.Cmd, signal syscall.Signal) {
 	if cmd != nil {
 		if cmd.Process != nil {
-			syscall.Kill(cmd.Process.Pid, signal)
+			cmd.Process.Signal(signal)
 		} else {
 			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
 		}
