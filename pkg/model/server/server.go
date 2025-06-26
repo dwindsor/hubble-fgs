@@ -452,7 +452,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				Dns:  domain,
 			}
 		default:
-			logger.GetLogger().Warn("unknown dstKey.DestinationSrc", logfields.Error, err)
+			logger.GetLogger().Warn("unknown dstKey.DestinationSrc", "DestinationSrc", dstKey.DestinationSource)
 			continue
 		}
 
