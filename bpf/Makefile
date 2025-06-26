@@ -502,10 +502,10 @@ objs/bpf_generic_tracepoint_v511.o: $(PROCESSDIR)/bpf_generic_tracepoint.c
 objs/bpf_generic_uprobe_v511.o: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 objs/bpf_multi_kprobe_v511.o objs/bpf_multi_retkprobe_v511.o:
-	$(call rule_o,-D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__MULTI_KPROBE)
+	$(call rule_o,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__MULTI_KPROBE)
 
 objs/%_v511.o:
-	$(call rule_o,-D__V511_BPF_PROG -D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS)
+	$(call rule_o,-D__V511_BPF_PROG -D__LARGE_BPF_PROG -D__V511_BPF_PROG)
 
 objs/bpf_execve_event_v611.o: $(ISOPROCESS)/bpf_ee_execve_event.c
 objs/bpf_execve_event_v61.o: $(ISOPROCESS)/bpf_ee_execve_event.c
@@ -517,10 +517,10 @@ objs/bpf_generic_tracepoint_v61.o: $(PROCESSDIR)/bpf_generic_tracepoint.c
 objs/bpf_generic_uprobe_v61.o: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 objs/bpf_multi_kprobe_v61.o objs/bpf_multi_retkprobe_v61.o:
-	$(call rule_o,-D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__V61_BPF_PROG -D__MULTI_KPROBE)
+	$(call rule_o,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG -D__MULTI_KPROBE)
 
 objs/%_v61.o:
-	$(call rule_o,-D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__V61_BPF_PROG)
+	$(call rule_o,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG)
 
 deps/bpf_execve_event_v611.d: $(ISOPROCESS)/bpf_ee_execve_event.c
 deps/bpf_execve_event_v61.d: $(ISOPROCESS)/bpf_ee_execve_event.c
@@ -532,7 +532,7 @@ deps/bpf_generic_tracepoint_v61.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_generic_uprobe_v61.d: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 $(DEPSDIR)%_v61.d:
-	$(call rule_d,-D__LARGE_BPF_PROG -D__LARGE_MAP_KEYS -D__V61_BPF_PROG)
+	$(call rule_d,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG)
 
 # BPFTESTDIR
 objs/%.o: $(BPFTESTDIR)%.c

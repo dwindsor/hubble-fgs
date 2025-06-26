@@ -601,6 +601,19 @@ func parseAddr(v string) ([]byte, uint32, error) {
 	return ipAddr.AsSlice(), uint32(ipAddr.BitLen()), nil
 }
 
+func capsStrToUint64(values []string) (uint64, error) {
+	caps := uint64(0)
+	for _, v := range values {
+		valstr := strings.ToUpper(strings.TrimSpace(v))
+		c, ok := tetragon.CapabilitiesType_value[valstr]
+		if !ok {
+			return 0, fmt.Errorf("value %s unknown", valstr)
+		}
+		caps |= (1 << c)
+	}
+	return caps, nil
+}
+
 func writeMatchValues(k *KernelSelectorState, values []string, ty, op uint32) error {
 	for _, v := range values {
 		base := getBase(v)
@@ -632,8 +645,14 @@ func writeMatchValues(k *KernelSelectorState, values []string, ty, op uint32) er
 			WriteSelectorUint64(&k.data, uint64(i))
 		case gt.GenericSockType, gt.GenericSkbType, gt.GenericSockaddrType, gt.GenericSocketType, gt.GenericNetDev:
 			return fmt.Errorf("MatchArgs type sock, socket, skb, sockaddr and net_device do not support operator %s", selectorOpStringTable[op])
-		case gt.GenericCharIovec:
-			return fmt.Errorf("MatchArgs values %s unsupported", v)
+		case gt.GenericKernelCap, gt.GenericCapInheritable, gt.GenericCapPermitted, gt.GenericCapEffective:
+			mask, err := parseCapabilitiesMask(v)
+			if err != nil {
+				return fmt.Errorf("MatchArgs capabilities mask value %s invalid: %w", v, err)
+			}
+			WriteSelectorUint64(&k.data, uint64(mask))
+		default:
+			return fmt.Errorf("MatchArgs type %s unsupported", gt.GenericTypeString(int(ty)))
 		}
 	}
 	return nil
@@ -1159,14 +1178,9 @@ func ParseMatchCaps(k *KernelSelectorState, action *v1alpha1.CapabilitiesSelecto
 	WriteSelectorUint32(&k.data, isns)
 
 	// values
-	caps := uint64(0)
-	for _, v := range action.Values {
-		valstr := strings.ToUpper(v)
-		c, ok := tetragon.CapabilitiesType_value[valstr]
-		if !ok {
-			return fmt.Errorf("parseMatchCapability: value %s unknown", valstr)
-		}
-		caps |= (1 << c)
+	caps, err := capsStrToUint64(action.Values)
+	if err != nil {
+		return err
 	}
 	WriteSelectorUint64(&k.data, caps)
 
@@ -1415,4 +1429,19 @@ func HasFilter(selectors []v1alpha1.KProbeSelector, index uint32) bool {
 		}
 	}
 	return false
+}
+
+// parseCapabilitiesMask create a capabilities mask
+func parseCapabilitiesMask(s string) (uint64, error) {
+	base := getBase(s)
+	mask, err := strconv.ParseUint(s, base, 64)
+	if err == nil {
+		return mask, nil
+	}
+	caps := strings.Split(s, ",")
+	mask, err = capsStrToUint64(caps)
+	if err != nil {
+		return uint64(0), fmt.Errorf("parseCapabilitiesMask: %w", err)
+	}
+	return mask, nil
 }
