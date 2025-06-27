@@ -180,7 +180,7 @@ func _checkFuncByFuncVerif() error {
 	// ... type_id=2 vlen != 0" if functionality doesn't exist
 	h, err := btf.NewHandleFromRawBTF(raw)
 	if h != nil {
-		syscall.Close(h.FD())
+		h.Close()
 	}
 
 	return err
