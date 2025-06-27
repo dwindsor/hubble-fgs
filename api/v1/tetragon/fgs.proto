@@ -108,6 +108,21 @@ message ProcessConnect {
   SocketProtocol protocol = 10;
   Service destination_service = 11;
   repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
+  TNPInfo policy_info = 13;
+}
+
+message TNPInfo {
+  string policy_name = 1;
+  string rule_name = 2;
+  TNPAction action = 3;
+}
+
+enum TNPAction {
+  TNP_POLICY_UNKNOWN = 0;
+  TNP_POLICY_ALLOW = 1;
+  TNP_POLICY_DENY = 2;
+  TNP_POLICY_DEFAULT_ALLOW = 3;
+  TNP_POLICY_DEFAULT_DENY = 4;
 }
 
 message ProcessClose {

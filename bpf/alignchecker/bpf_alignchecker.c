@@ -15,6 +15,7 @@
 
 // Layer 3
 struct msg_ip_event _msg_ip_event;
+struct msg_ip_with_tnp_event _msg_ip_with_tnp_event;
 struct msg_ip_with_stats_event _msg_ip_with_stats_event;
 struct tcpsocketmap_value _tcpsocketmap_value;
 struct udp_info_key _udp_info_key;

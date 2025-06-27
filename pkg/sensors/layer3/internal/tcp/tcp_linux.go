@@ -665,6 +665,17 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	return events, err
 }
 
+func handleTcpConnect(r *bytes.Reader) ([]observer.Event, error) {
+	m := networkapi.MsgIPWithTNPEvent{}
+	err := binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		return nil, err
+	}
+	tcp := ip.MsgWithTNPToIPUnix(&m)
+
+	return []observer.Event{tcp}, nil
+}
+
 func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 	m := networkapi.MsgIPEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
@@ -678,8 +689,8 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 
 func Init() error {
 	/* Core set of TCP events */
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECT, handleTcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECTRET, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECT, handleTcpConnect)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECTRET, handleTcpConnect)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCLOSE, handleTcpClose)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_BIND, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_LISTEN, handleTcp)

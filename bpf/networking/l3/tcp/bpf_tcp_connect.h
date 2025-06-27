@@ -38,16 +38,16 @@ int _version __attribute__((section(("version")), used)) =
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __u32);
-	__type(value, struct msg_ip_event);
+	__type(value, struct msg_ip_with_tnp_event);
 	__uint(max_entries, 1);
 } tcp_connect_event_map SEC(".maps");
 
-static inline __attribute__((always_inline)) struct msg_ip_event init_msg_ip_event(struct msg_execve_key *key, u64 cookie)
+static inline __attribute__((always_inline)) struct msg_ip_with_tnp_event init_msg_ip_with_tnp_event(struct msg_execve_key *key, u64 cookie)
 {
-	return (struct msg_ip_event){
+	return (struct msg_ip_with_tnp_event){
 		.common.op = ISO_MSG_OP_TCPCONNECTRET,
 		.common.ktime = ktime_get_ns(),
-		.common.size = sizeof(struct msg_ip_event),
+		.common.size = sizeof(struct msg_ip_with_tnp_event),
 		.key.pid = key->pid,
 		.key.ktime = key->ktime,
 		.socket_cookie = cookie,
@@ -55,11 +55,14 @@ static inline __attribute__((always_inline)) struct msg_ip_event init_msg_ip_eve
 		.version = 0,
 		.create_time = 0,
 		.close_time = 0,
+		.policy_id = 0,
+		.rule_id = 0,
+		.verdict = 0,
 	};
 }
 
 static inline __attribute__((always_inline)) int
-event_post_connect(void *ctx, struct msg_ip_event *val)
+event_post_connect(void *ctx, struct msg_ip_with_tnp_event *val)
 {
 	struct tcp_event_disable_config *event_cfg;
 	int zero = 0;
@@ -71,7 +74,7 @@ event_post_connect(void *ctx, struct msg_ip_event *val)
 		return 0;
 
 	if (!event_cfg->disableConnect) {
-		uint64_t size = sizeof(struct msg_ip_event);
+		uint64_t size = sizeof(struct msg_ip_with_tnp_event);
 
 		perf_event_output_metric(ctx, ISO_MSG_OP_TCPCONNECTRET, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	}
@@ -81,11 +84,14 @@ event_post_connect(void *ctx, struct msg_ip_event *val)
 static inline __attribute__((always_inline)) int
 __event_tcp_connect(void *ctx, struct sock *skp)
 {
+#ifdef PROCESS_TREE
+	struct destination_endpoint_value *dest;
+#endif
 	struct execve_map_value *process = 0;
 	struct socketmap_value *socket = 0;
 	struct tcpsocketmap_value *v = 0;
 	struct msg_execve_key *key;
-	struct msg_ip_event *val;
+	struct msg_ip_with_tnp_event *val;
 	__u32 ppid = 0, zero = 0;
 	bool walker = 0;
 	u16 family;
@@ -110,13 +116,13 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 		key = &process->key;
 	}
 
-	val = (struct msg_ip_event *)map_lookup_elem(&tcp_connect_event_map,
-						     &zero);
+	val = (struct msg_ip_with_tnp_event *)map_lookup_elem(&tcp_connect_event_map,
+							      &zero);
 	if (!val) {
 		return 0;
 	}
 
-	*val = init_msg_ip_event(key, cookie);
+	*val = init_msg_ip_with_tnp_event(key, cookie);
 	if (socket)
 		val->version = socket->version;
 
@@ -145,15 +151,30 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 				  _(&(skp->__sk_common.skc_v6_daddr)));
 	}
 
-	event_post_connect(ctx, val);
-
 	if (key && socket)
 		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
 	if (v) {
 #ifdef PROCESS_TREE
-		process_socketmap_add(v, &(val->tuple));
+		// We're not actually denying anything at this point. The deny happens
+		// at send/recv time. But it's interesting to export what the verdict
+		// _would_ be at the time the connection happens. At any rate,
+		// Hypershield folks need this information, so let's include it in the
+		// event and document the behaviour.
+		val->verdict = process_socketmap_add(v, &(val->tuple));
+		DEBUG("VERDICT: %d", val->verdict);
+
+		dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
+		if (dest) {
+			DEBUG("POLCIY ID: %d", dest->policy);
+			DEBUG("RULE:      %d", dest->rule);
+			val->policy_id = dest->policy;
+			val->rule_id = dest->rule;
+		}
 #endif
 		add_tcpsocketmap(&cookie, v, true);
 	}
+
+	event_post_connect(ctx, val);
+
 	return 1;
 }

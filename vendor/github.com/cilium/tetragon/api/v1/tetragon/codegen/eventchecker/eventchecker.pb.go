@@ -2617,6 +2617,7 @@ type ProcessConnectChecker struct {
 	Protocol           *SocketProtocolChecker       `json:"protocol,omitempty"`
 	DestinationService *ServiceChecker              `json:"destinationService,omitempty"`
 	Ancestors          *ProcessListMatcher          `json:"ancestors,omitempty"`
+	PolicyInfo         *TNPInfoChecker              `json:"policyInfo,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2724,6 +2725,11 @@ func (checker *ProcessConnectChecker) Check(event *tetragon.ProcessConnect) erro
 				return fmt.Errorf("Ancestors check failed: %w", err)
 			}
 		}
+		if checker.PolicyInfo != nil {
+			if err := checker.PolicyInfo.Check(event.PolicyInfo); err != nil {
+				return fmt.Errorf("PolicyInfo check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -2805,6 +2811,12 @@ func (checker *ProcessConnectChecker) WithAncestors(check *ProcessListMatcher) *
 	return checker
 }
 
+// WithPolicyInfo adds a PolicyInfo check to the ProcessConnectChecker
+func (checker *ProcessConnectChecker) WithPolicyInfo(check *TNPInfoChecker) *ProcessConnectChecker {
+	checker.PolicyInfo = check
+	return checker
+}
+
 //FromProcessConnect populates the ProcessConnectChecker using data from a ProcessConnect event
 func (checker *ProcessConnectChecker) FromProcessConnect(event *tetragon.ProcessConnect) *ProcessConnectChecker {
 	if event == nil {
@@ -2860,6 +2872,9 @@ func (checker *ProcessConnectChecker) FromProcessConnect(event *tetragon.Process
 		lm := NewProcessListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Ancestors = lm
+	}
+	if event.PolicyInfo != nil {
+		checker.PolicyInfo = NewTNPInfoChecker().FromTNPInfo(event.PolicyInfo)
 	}
 	return checker
 }
@@ -12276,6 +12291,83 @@ func (checker *ServiceChecker) FromService(event *tetragon.Service) *ServiceChec
 	return checker
 }
 
+// TNPInfoChecker implements a checker struct to check a TNPInfo field
+type TNPInfoChecker struct {
+	PolicyName *stringmatcher.StringMatcher `json:"policyName,omitempty"`
+	RuleName   *stringmatcher.StringMatcher `json:"ruleName,omitempty"`
+	Action     *TNPActionChecker            `json:"action,omitempty"`
+}
+
+// NewTNPInfoChecker creates a new TNPInfoChecker
+func NewTNPInfoChecker() *TNPInfoChecker {
+	return &TNPInfoChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *TNPInfoChecker) GetCheckerType() string {
+	return "TNPInfoChecker"
+}
+
+// Check checks a TNPInfo field
+func (checker *TNPInfoChecker) Check(event *tetragon.TNPInfo) error {
+	if event == nil {
+		return fmt.Errorf("%s: TNPInfo field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.PolicyName != nil {
+			if err := checker.PolicyName.Match(event.PolicyName); err != nil {
+				return fmt.Errorf("PolicyName check failed: %w", err)
+			}
+		}
+		if checker.RuleName != nil {
+			if err := checker.RuleName.Match(event.RuleName); err != nil {
+				return fmt.Errorf("RuleName check failed: %w", err)
+			}
+		}
+		if checker.Action != nil {
+			if err := checker.Action.Check(&event.Action); err != nil {
+				return fmt.Errorf("Action check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithPolicyName adds a PolicyName check to the TNPInfoChecker
+func (checker *TNPInfoChecker) WithPolicyName(check *stringmatcher.StringMatcher) *TNPInfoChecker {
+	checker.PolicyName = check
+	return checker
+}
+
+// WithRuleName adds a RuleName check to the TNPInfoChecker
+func (checker *TNPInfoChecker) WithRuleName(check *stringmatcher.StringMatcher) *TNPInfoChecker {
+	checker.RuleName = check
+	return checker
+}
+
+// WithAction adds a Action check to the TNPInfoChecker
+func (checker *TNPInfoChecker) WithAction(check tetragon.TNPAction) *TNPInfoChecker {
+	wrappedCheck := TNPActionChecker(check)
+	checker.Action = &wrappedCheck
+	return checker
+}
+
+//FromTNPInfo populates the TNPInfoChecker using data from a TNPInfo field
+func (checker *TNPInfoChecker) FromTNPInfo(event *tetragon.TNPInfo) *TNPInfoChecker {
+	if event == nil {
+		return checker
+	}
+	checker.PolicyName = stringmatcher.Full(event.PolicyName)
+	checker.RuleName = stringmatcher.Full(event.RuleName)
+	checker.Action = NewTNPActionChecker(event.Action)
+	return checker
+}
+
 // FileSystemChecker implements a checker struct to check a FileSystem field
 type FileSystemChecker struct {
 	Name *stringmatcher.StringMatcher `json:"name,omitempty"`
@@ -15411,6 +15503,58 @@ func (enum *SocketProtocolChecker) Check(val *tetragon.SocketProtocol) error {
 	}
 	if *enum != SocketProtocolChecker(*val) {
 		return fmt.Errorf("SocketProtocolChecker: SocketProtocol has value %s which does not match expected value %s", (*val), tetragon.SocketProtocol(*enum))
+	}
+	return nil
+}
+
+// TNPActionChecker checks a tetragon.TNPAction
+type TNPActionChecker tetragon.TNPAction
+
+// MarshalJSON implements json.Marshaler interface
+func (enum TNPActionChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.TNPAction_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "TNP_POLICY_")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown TNPAction %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *TNPActionChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.TNPAction_value[str]; ok {
+		*enum = TNPActionChecker(n)
+	} else if n, ok := tetragon.TNPAction_value["TNP_POLICY_"+str]; ok {
+		*enum = TNPActionChecker(n)
+	} else {
+		return fmt.Errorf("Unknown TNPAction %s", str)
+	}
+
+	return nil
+}
+
+// NewTNPActionChecker creates a new TNPActionChecker
+func NewTNPActionChecker(val tetragon.TNPAction) *TNPActionChecker {
+	enum := TNPActionChecker(val)
+	return &enum
+}
+
+// Check checks a TNPAction against the checker
+func (enum *TNPActionChecker) Check(val *tetragon.TNPAction) error {
+	if val == nil {
+		return fmt.Errorf("TNPActionChecker: TNPAction is nil and does not match expected value %s", tetragon.TNPAction(*enum))
+	}
+	if *enum != TNPActionChecker(*val) {
+		return fmt.Errorf("TNPActionChecker: TNPAction has value %s which does not match expected value %s", (*val), tetragon.TNPAction(*enum))
 	}
 	return nil
 }

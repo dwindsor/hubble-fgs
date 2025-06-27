@@ -137,9 +137,10 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 
 int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 {
+	struct destination_endpoint_value *dest;
 	struct socketmap_value *socket = 0;
 	struct msg_execve_key *key;
-	struct msg_ip_event *val;
+	struct msg_ip_with_tnp_event *val;
 	u64 cookie, __cookie;
 	__u32 zero = 0;
 
@@ -162,23 +163,41 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 	socket->protocol = IPPROTO_TCP;
 
 	key = &socket->key;
-	val = (struct msg_ip_event *)map_lookup_elem(&tcp_connect_event_map,
-						     &zero);
+	val = (struct msg_ip_with_tnp_event *)map_lookup_elem(&tcp_connect_event_map,
+							      &zero);
 	if (!val)
 		return 0;
 
 	val->common.op = ISO_MSG_OP_TCPCONNECTRET;
-	skops_socket(cookie, val, socket);
-	skops_tuple(cookie, val, skops);
+	skops_socket(cookie, (struct msg_ip_event *)val, socket);
+	skops_tuple(cookie, (struct msg_ip_event *)val, skops);
 	val->tuple.proto = IPPROTO_TCP;
-
-	event_post_connect(skops, val);
+	val->policy_id = 0;
+	val->rule_id = 0;
+	val->verdict = 0;
 
 	struct tcpsocketmap_value *v = init_tcpsocketmap_value(key, _(skops->family), SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);
-	if (!v)
-		return 0;
-	v->deny = process_socketmap_add(v, &(val->tuple));
-	add_tcpsocketmap(&cookie, v, true);
+	if (v) {
+		// We're not actually denying anything at this point. The deny happens
+		// at send/recv time. But it's interesting to export what the verdict
+		// _would_ be at the time the connection happens. At any rate,
+		// Hypershield folks need this information, so let's include it in the
+		// event and document the behaviour.
+		v->deny = process_socketmap_add(v, &(val->tuple));
+		val->verdict = v->deny;
+		DEBUG("VERDICT: %d", val->verdict);
+
+		dest = map_lookup_elem(&destination_endpoint_map, &v->dst_key);
+		if (dest) {
+			DEBUG("POLCIY ID: %d", dest->policy);
+			DEBUG("RULE:      %d", dest->rule);
+			val->policy_id = dest->policy;
+			val->rule_id = dest->rule;
+		}
+		add_tcpsocketmap(&cookie, v, true);
+	}
+
+	event_post_connect(skops, val);
 	return 0;
 }
 

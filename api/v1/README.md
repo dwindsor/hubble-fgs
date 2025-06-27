@@ -112,6 +112,7 @@
     - [SockInfo](#tetragon-SockInfo)
     - [SocketStats](#tetragon-SocketStats)
     - [SymlinkArg](#tetragon-SymlinkArg)
+    - [TNPInfo](#tetragon-TNPInfo)
     - [Tls](#tetragon-Tls)
   
     - [DigestAlgo](#tetragon-DigestAlgo)
@@ -120,6 +121,7 @@
     - [FileScope](#tetragon-FileScope)
     - [SocketProtocol](#tetragon-SocketProtocol)
     - [SysRetval](#tetragon-SysRetval)
+    - [TNPAction](#tetragon-TNPAction)
     - [TlsCertificateError](#tetragon-TlsCertificateError)
   
 - [tetragon/dns.proto](#tetragon_dns-proto)
@@ -1979,6 +1981,7 @@ HTTP PARSER
 | protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
 | destination_service | [Service](#tetragon-Service) |  |  |
 | ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
+| policy_info | [TNPInfo](#tetragon-TNPInfo) |  |  |
 
 
 
@@ -2404,6 +2407,23 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 
 
 
+<a name="tetragon-TNPInfo"></a>
+
+### TNPInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| policy_name | [string](#string) |  |  |
+| rule_name | [string](#string) |  |  |
+| action | [TNPAction](#tetragon-TNPAction) |  |  |
+
+
+
+
+
+
 <a name="tetragon-Tls"></a>
 
 ### Tls
@@ -2588,6 +2608,21 @@ from https://elixir.bootlin.com/linux/v6.14.4/source/include/uapi/asm-generic/er
 | EPIPE | 32 | Broken pipe |
 | EDOM | 33 | Math argument out of domain of func |
 | ERANGE | 34 | Math result not representable |
+
+
+
+<a name="tetragon-TNPAction"></a>
+
+### TNPAction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TNP_POLICY_UNKNOWN | 0 |  |
+| TNP_POLICY_ALLOW | 1 |  |
+| TNP_POLICY_DENY | 2 |  |
+| TNP_POLICY_DEFAULT_ALLOW | 3 |  |
+| TNP_POLICY_DEFAULT_DENY | 4 |  |
 
 
 

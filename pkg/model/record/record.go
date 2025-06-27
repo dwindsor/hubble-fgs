@@ -11,9 +11,10 @@ import (
 // is required by BPF datapath implementation. So that order
 // is Deny >> Allow >> None.
 const (
-	PolicyNone  = uint64(0x00)
-	PolicyAllow = uint64(0x01)
-	PolicyDeny  = uint64(0x02)
+	PolicyNone     = uint64(0x00)
+	PolicyAllow    = uint64(0x01)
+	PolicyDeny     = uint64(0x02)
+	PolicyFallthru = uint64(0x04)
 )
 
 // For initial landing lets ignore process hierarchy in this unrolled

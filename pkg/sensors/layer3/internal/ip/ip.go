@@ -46,6 +46,35 @@ func MsgToIPUnix(m *networkapi.MsgIPEvent) *layer3.MsgIPEventUnix {
 	return unix
 }
 
+func MsgWithTNPToIPUnix(m *networkapi.MsgIPWithTNPEvent) *layer3.MsgIPEventUnix {
+	unix := &layer3.MsgIPEventUnix{
+		RuleId:   m.RuleId,
+		PolicyId: m.PolicyId,
+		Verdict:  m.Verdict,
+	}
+
+	newM := &networkapi.MsgIPEvent{
+		Common:      m.Common,
+		Tuple:       m.Tuple,
+		Return:      m.Return,
+		ProcessKey:  m.ProcessKey,
+		SockCookie:  m.SockCookie,
+		SocketFlags: m.SocketFlags,
+		Pad:         m.Pad,
+		Version:     m.Version,
+		PsVersion:   m.PsVersion,
+		CreateTime:  m.CreateTime,
+		CloseTime:   m.CloseTime,
+	}
+	unix.Msg = newM
+	unix.Duration = time.Duration((m.CloseTime - m.CreateTime) * uint64(time.Nanosecond))
+	if enableDns {
+		unix.Msg.SocketFlags |= networkapi.SOCKFLAGS_TYPE_DNSREADY
+	}
+
+	return unix
+}
+
 func MsgToIPWithStatsUnix(m *networkapi.MsgIPWithStatsEvent) *layer3.MsgIPWithStatsEventUnix {
 	unix := &layer3.MsgIPWithStatsEventUnix{}
 

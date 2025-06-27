@@ -137,6 +137,13 @@ type MsgIPEvent struct {
 	CloseTime   uint64                  `align:"close_time"`
 }
 
+type MsgIPWithTNPEvent struct {
+	MsgIPEvent
+	PolicyId uint64 `align:"policy_id"`
+	RuleId   uint64 `align:"rule_id"`
+	Verdict  uint64 `align:"verdict"`
+}
+
 type MsgIPWithStatsEvent struct {
 	MsgIPEvent
 	SocketStats MsgSocketStats `align:"stats"`

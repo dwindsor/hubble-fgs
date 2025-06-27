@@ -34,6 +34,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/iperrormetrics"
+	"github.com/isovalent/hubble-fgs/pkg/model/record"
+	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 )
@@ -56,7 +58,10 @@ type IpEventUnixMeta struct {
 
 type MsgIPEventUnix struct {
 	IpEventUnixMeta
-	Msg *networkapi.MsgIPEvent
+	Msg      *networkapi.MsgIPEvent
+	PolicyId uint64
+	RuleId   uint64
+	Verdict  uint64
 }
 
 type MsgIPWithStatsEventUnix struct {
@@ -119,6 +124,43 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		DestinationPort: destinationPort,
 		SockCookie:      event.Msg.SockCookie,
 		Protocol:        opToProtocol(event.Msg.Common.Op),
+	}
+
+	// Fill out network policy information.
+	if event.PolicyId != 0 {
+		policyName, ok := library.GetName(event.PolicyId)
+		if ok {
+			var action tetragon.TNPAction
+			verdict := event.Verdict
+			if verdict&record.PolicyDeny == record.PolicyDeny {
+				if verdict&record.PolicyFallthru == record.PolicyFallthru {
+					action = tetragon.TNPAction_TNP_POLICY_DEFAULT_DENY
+				} else {
+					action = tetragon.TNPAction_TNP_POLICY_DENY
+				}
+			} else if verdict&record.PolicyAllow == record.PolicyAllow {
+				if verdict&record.PolicyFallthru == record.PolicyFallthru {
+					action = tetragon.TNPAction_TNP_POLICY_DEFAULT_ALLOW
+				} else {
+					action = tetragon.TNPAction_TNP_POLICY_ALLOW
+				}
+			}
+
+			ruleName, ok := library.GetRule(policyName, event.RuleId, verdict&record.PolicyDeny == record.PolicyDeny, verdict&record.PolicyAllow == record.PolicyAllow)
+			if !ok {
+				logger.GetLogger().Warn("failed to get rule name for id", "policy", policyName, "id", event.RuleId)
+			}
+
+			policyInfo := &tetragon.TNPInfo{
+				PolicyName: policyName,
+				RuleName:   ruleName,
+				Action:     action,
+			}
+
+			fgsEvent.PolicyInfo = policyInfo
+		} else {
+			logger.GetLogger().Warn("failed to get policy name for id", "id", event.PolicyId)
+		}
 	}
 
 	if event.Msg.SockCookie != 0 {

@@ -28,6 +28,7 @@ func CheckStructAlignments(pathToObj string) error {
 		// Layer 3
 		"msg_ip_tuple":            {networkapi.MsgIPTuple{}},
 		"msg_ip_event":            {networkapi.MsgIPEvent{}},
+		"msg_ip_with_tnp_event":   {networkapi.MsgIPWithTNPEvent{}},
 		"msg_ip_with_stats_event": {networkapi.MsgIPWithStatsEvent{}},
 		"tcpsocketmap_value":      {networkapi.TcpValue{}},
 		"udp_info_key":            {networkapi.UdpInfoKey{}},
