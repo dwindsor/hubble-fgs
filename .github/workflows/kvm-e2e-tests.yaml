@@ -201,8 +201,6 @@ jobs:
             export HOST_PROC=/procRoot
             if [[ ${{ matrix.kernel }} == 4.19-* ]]; then
               export E2E_BTF=/boot/btf-\$(uname -r)
-            else
-              export E2E_BTF=/sys/kernel/btf/vmlinux
             fi
             # FIXME: TestHTTP e2e test fails bpf-next kernels
             if [[ "${{ matrix.kernel }}" == bpf-next-* ]]; then

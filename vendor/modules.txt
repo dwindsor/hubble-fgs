@@ -254,7 +254,7 @@ github.com/cilium/cilium/pkg/time
 github.com/cilium/cilium/pkg/util
 github.com/cilium/cilium/pkg/version
 github.com/cilium/cilium/pkg/versioncheck
-# github.com/cilium/ebpf v0.18.0
+# github.com/cilium/ebpf v0.19.0
 ## explicit; go 1.23.0
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm

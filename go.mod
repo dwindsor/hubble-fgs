@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.80.1
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.17.4
-	github.com/cilium/ebpf v0.18.0
+	github.com/cilium/ebpf v0.19.0
 	github.com/cilium/lumberjack/v2 v2.4.1
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000

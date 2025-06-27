@@ -1671,7 +1671,6 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 		return pin
 	}
 
-	ovlSpec := probeOverlayModule()
 	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
 	for _, h := range fimProgs {
 		load := program.Builder(
@@ -1688,9 +1687,6 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 			progBpfDir: strings.Join([]string{h.tp, h.progSection}, "_"),
 			tailId:     tailId,
 		})
-		if ovlSpec != nil {
-			load.KernelTypes = ovlSpec
-		}
 
 		var checkReWrite func() error
 		switch h.progName {
