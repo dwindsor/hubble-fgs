@@ -8,9 +8,6 @@ on:
 permissions:
   id-token: write
 
-env:
-  TARGET_REPO: kubespec.dev
-
 jobs:
   dispatch:
     name: Dispatch kubespec.dev workflow event
@@ -38,7 +35,7 @@ jobs:
           private-key: ${{ env.GH_WF_DISPATCH_APP_PEM }}
           owner: ${{ github.repository_owner }}
           repositories: |
-            ${{ env.TARGET_REPO }}
+            ${{ vars.CRDS_TARGET_REPO_NAME }}
 
       - name: Trigger kubespec.dev CRD Deployments
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
@@ -46,11 +43,13 @@ jobs:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             const { repo, owner } = context.repo;
-            const target_repo = '${{ env.TARGET_REPO }}';
-            const workflow_id = 'generate-kubespec-site.yaml';
+            const target_repo = '${{ vars.CRDS_TARGET_REPO_NAME }}';
+            const workflow_id = '${{ vars.CRDS_TARGET_REPO_WORKFLOW_NAME }}';
+            const default_branch = '${{ vars.DEFAULT_BRANCH }}';
+
             const response = await github.rest.actions.createWorkflowDispatch({
               owner: owner,
               repo: target_repo,
               workflow_id: workflow_id,
-              ref: 'main',
+              ref: default_branch,
             });
