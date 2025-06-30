@@ -331,7 +331,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
 		destvalue->rule = dest->rule;
-		destvalue->deny |= TNP_POLICY_CACHED;
+		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		key->port = tuple->dport;
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 		return dest->deny;
@@ -346,7 +346,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	if (dest && dest->deny) {
 		destvalue->policy = dest->policy;
 		destvalue->rule = dest->rule;
-		destvalue->deny |= TNP_POLICY_CACHED;
+		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
 		return dest->deny;
 	}
