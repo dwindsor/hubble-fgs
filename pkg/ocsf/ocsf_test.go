@@ -101,7 +101,7 @@ func TestSource(t *testing.T) {
 }
 
 func TestConnect(t *testing.T) {
-	c := processConnectToOCSF(processConnect)
+	c := processConnectToOCSF(processConnect, timestamppb.Now())
 
 	activityId := v1alpha.NetworkActivityActivityID(1)
 	assert.Equal(t, *c.NetworkActivityDetail.ActivityId, activityId)

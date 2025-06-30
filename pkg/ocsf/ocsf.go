@@ -7,6 +7,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/isovalent/ipa/ocsf/v1alpha"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func processToOCSF(p *tetragon.Process) *v1alpha.Process {
@@ -102,7 +103,7 @@ func getDevice() *v1alpha.Device {
 	}
 }
 
-func processConnectToOCSF(pc *tetragon.ProcessConnect) *v1alpha.EndpointEvent_NetworkActivityDetail {
+func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp) *v1alpha.EndpointEvent_NetworkActivityDetail {
 	categoryId := v1alpha.CategoryID_CATEGORY_ID_NETWORK_ACTIVITY
 	categoryName := v1alpha.CategoryID_name[int32(categoryId)]
 
@@ -125,6 +126,8 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect) *v1alpha.EndpointEvent_Ne
 	typeName := activityString + className
 	typeId := int64(classId) + int64(activityId)
 
+	timestamp := t.AsTime().Format(time.RFC3339)
+
 	na := &v1alpha.NetworkActivity{
 		ActivityId:     &activityId,
 		ActivityName:   &activityString,
@@ -141,6 +144,7 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect) *v1alpha.EndpointEvent_Ne
 		StatusId:       &statusId,
 		TypeName:       &typeName,
 		TypeUid:        typeId,
+		TimeDt:         &timestamp,
 	}
 
 	return &v1alpha.EndpointEvent_NetworkActivityDetail{
@@ -149,6 +153,6 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect) *v1alpha.EndpointEvent_Ne
 }
 
 func ResponseToOCSF(response *tetragon.GetEventsResponse) *v1alpha.EndpointEvent_NetworkActivityDetail {
-	n := processConnectToOCSF(response.GetProcessConnect())
+	n := processConnectToOCSF(response.GetProcessConnect(), response.Time)
 	return n
 }
