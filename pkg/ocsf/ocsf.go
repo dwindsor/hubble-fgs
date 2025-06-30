@@ -138,6 +138,9 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp)
 		LoggedTimeDt: &now,
 	}
 
+	networkActivitySeverity := "Informational"
+	networkActivitySeverityId := v1alpha.BaseEventSeverityID_BASE_EVENT_SEVERITY_ID_INFORMATIONAL
+
 	na := &v1alpha.NetworkActivity{
 		ActivityId:     &activityId,
 		ActivityName:   &activityString,
@@ -150,6 +153,8 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp)
 		Device:         device,
 		DstEndpoint:    destination,
 		Metadata:       metadata,
+		Severity:       &networkActivitySeverity,
+		SeverityId:     networkActivitySeverityId,
 		SrcEndpoint:    source,
 		Status:         &status,
 		StatusId:       &statusId,
