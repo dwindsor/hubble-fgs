@@ -104,6 +104,32 @@ func getDevice() *v1alpha.Device {
 	}
 }
 
+func linuxExtension() []*v1alpha.SchemaExtension {
+	return []*v1alpha.SchemaExtension{
+		&v1alpha.SchemaExtension{
+			Name:    "linux",
+			Uid:     "1",
+			Version: "1.4.0",
+		},
+	}
+}
+
+func tetragonProduct() *v1alpha.Product {
+	name := "Tetragon"
+	vendor := "Isovalent"
+	version := version.Version
+
+	return &v1alpha.Product{
+		Name:       &name,
+		VendorName: &vendor,
+		Version:    &version,
+	}
+}
+
+func linuxProfile() []string {
+	return []string{"host", "security_control", "datetime", "linux/linux_users"}
+}
+
 func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp) *v1alpha.EndpointEvent_NetworkActivityDetail {
 	categoryId := v1alpha.CategoryID_CATEGORY_ID_NETWORK_ACTIVITY
 	categoryName := v1alpha.CategoryID_name[int32(categoryId)]
@@ -133,7 +159,14 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp)
 	uid := id.String()
 	now := timestamppb.Now().AsTime().Format(time.RFC3339)
 
+	ext := linuxExtension()
+	prod := tetragonProduct()
+	profile := linuxProfile()
+
 	metadata := &v1alpha.Metadata{
+		Extensions:   ext,
+		Product:      prod,
+		Profiles:     profile,
 		Uid:          &uid,
 		LoggedTimeDt: &now,
 	}
