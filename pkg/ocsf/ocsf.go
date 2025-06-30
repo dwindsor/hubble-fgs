@@ -6,6 +6,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/version"
+	"github.com/google/uuid"
 	"github.com/isovalent/ipa/ocsf/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -128,6 +129,15 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp)
 
 	timestamp := t.AsTime().Format(time.RFC3339)
 
+	id, _ := uuid.NewV7()
+	uid := id.String()
+	now := timestamppb.Now().AsTime().Format(time.RFC3339)
+
+	metadata := &v1alpha.Metadata{
+		Uid:          &uid,
+		LoggedTimeDt: &now,
+	}
+
 	na := &v1alpha.NetworkActivity{
 		ActivityId:     &activityId,
 		ActivityName:   &activityString,
@@ -139,6 +149,7 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp)
 		ConnectionInfo: connectionInfo,
 		Device:         device,
 		DstEndpoint:    destination,
+		Metadata:       metadata,
 		SrcEndpoint:    source,
 		Status:         &status,
 		StatusId:       &statusId,
