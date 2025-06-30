@@ -37,7 +37,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
@@ -160,36 +159,18 @@ var (
 	dispatcherNoProbeReadProgs = []*program.Program{EgressDispatcherNoProbeRead, IngressDispatcherNoProbeRead}
 	dispatcherProcessTreeProgs = []*program.Program{EgressDispatcherProcessTree, IngressDispatcherProcessTree}
 
-	// Dispatcher protocol configuration map
-	protoCfgMap            = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcher)
-	protoCfgNoProbeReadMap = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcherNoProbeRead)
-	protoCfgProcessTreeMap = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcherProcessTree)
+	// Dispatcher protocol configuration map, built here because it is only used by the dispatcher
+	protoCfgMap = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
 
-	// Dispatcher Latency maps
-	latencyConfigMap            = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher)
-	latencyConfigNoProbeReadMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcherNoProbeRead)
-	latencyConfigProcessTreeMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcherProcessTree)
+	// Dispatcher Latency maps; could be problematic from an ownership perspective. Solve another day.
+	latencyConfigMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher, IngressDispatcherNoProbeRead, IngressDispatcherProcessTree)
 
-	// Dispatcher UDP maps
-	udpMap            = program.MapBuilder(udp.UdpMapName, EgressDispatcher)
-	udpNoProbeReadMap = program.MapBuilder(udp.UdpMapName, EgressDispatcherNoProbeRead)
-	udpProcessTreeMap = program.MapBuilder(udp.UdpMapName, EgressDispatcherProcessTree)
-
-	udpMapStats            = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher)
-	udpNoProbeReadMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcherNoProbeRead)
-	udpProcessTreeMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcherProcessTree)
-
-	udpConfigMap            = program.MapBuilder(udp.ConfigMapName, EgressDispatcher)
-	udpConfigNoProbeReadMap = program.MapBuilder(udp.ConfigMapName, EgressDispatcherNoProbeRead)
-	udpConfigProcessTreeMap = program.MapBuilder(udp.ConfigMapName, EgressDispatcherProcessTree)
-
-	udpPayloadMap            = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcher)
-	udpPayloadNoProbeReadMap = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcherNoProbeRead)
-	udpPayloadProcessTreeMap = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcherProcessTree)
-
-	udpMaps            = []*program.Map{udpMap, udpMapStats, udpConfigMap, udpPayloadMap, latencyConfigMap}
-	udpNoProbeReadMaps = []*program.Map{udpNoProbeReadMap, udpNoProbeReadMapStats, udpConfigNoProbeReadMap, udpPayloadNoProbeReadMap, latencyConfigNoProbeReadMap}
-	udpProcessTreeMaps = []*program.Map{udpProcessTreeMap, udpProcessTreeMapStats, udpConfigProcessTreeMap, udpPayloadProcessTreeMap, latencyConfigProcessTreeMap}
+	// Dispatcher UDP maps, built here because they are only used by the dispatcher
+	udpMap        = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
+	udpMapStats   = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
+	udpConfigMap  = program.MapBuilder(udp.ConfigMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
+	udpPayloadMap = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
+	udpMaps       = []*program.Map{udpMap, udpMapStats, udpConfigMap, udpPayloadMap, latencyConfigMap, protoCfgMap}
 
 	// DNS Parser maps
 	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.14
@@ -199,15 +180,15 @@ var (
 	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	RequestIDMapName  = program.MapBuilder(dnsparser.RequestIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	// This map is shared between the DNS parser and the process tree: the fdlookup and tcpsockops progs
-	DNSEndpointIDMap = program.MapBuilder(dnsparser.DNSEndpointIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree, ip.FdLookupFentryProcessTree, ip.FdLookupKprobeProcessTree, tcpconfig.TcpSockops)
+	DNSEndpointIDMap = program.MapUserFrom(base.DNSEndpointIDMap)
 
 	// LPM maps
-	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, IngressDispatcher, EgressDispatcher)
-	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, IngressDispatcher, EgressDispatcher)
+	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)
+	Addr4LpmMap = program.MapUserFrom(base.Addr4LpmMap)
 
 	// Dispatcher all maps
-	dispatcherProcessTreeMaps = append(udpProcessTreeMaps,
-		[]*program.Map{protoCfgProcessTreeMap,
+	dispatcherProcessTreeMaps = append(udpMaps,
+		[]*program.Map{
 			// Process Tree maps
 			program.MapUserFrom(base.DestinationEndpointMap),
 			program.MapUserFrom(base.ListenEndpointMap),
@@ -217,8 +198,7 @@ var (
 			program.MapUserFrom(base.Addr6LpmMap),
 			program.MapUserFrom(base.Addr4LpmMap),
 		}...)
-	dispatcherMaps            = append(udpMaps, protoCfgMap)
-	dispatcherNoProbeReadMaps = append(udpNoProbeReadMaps, protoCfgNoProbeReadMap)
+	dispatcherMaps = udpMaps
 )
 
 func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*program.Program, []*program.Map) {
@@ -247,7 +227,6 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 		// For now, the DNS parser is loaded alongside the UDP sensor
 		if enterpriseOption.Config.EnableBPFDNSParser {
 			logger.GetLogger().Info("Enabling the BPF DNS parser")
-			DNSEndpointIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 			DNSDomainMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 			DNSDomainMapRev.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 			RequestIDMapName.SetMaxEntries(int(enterpriseOption.Config.BPFDNSParserMaxPendingRequests))
@@ -262,8 +241,6 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 	}
 
 	if tcpEnabled || udpEnabled {
-		Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-		Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 		maps = append(maps, Addr6LpmMap)
 		maps = append(maps, Addr4LpmMap)
 	}
@@ -287,7 +264,7 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 		if utils.CGroupSKBAvailable() {
 			if !utils.SupportCGroupSKBProbeRead() {
 				progsCollectStats = append(progsCollectStats, dispatcherNoProbeReadProgs...)
-				maps = append(maps, dispatcherNoProbeReadMaps...)
+				maps = append(maps, dispatcherMaps...)
 			} else if !utils.SupportProcessTree() {
 				progsCollectStats = append(progsCollectStats, dispatcherProgs...)
 				maps = append(maps, dispatcherMaps...)

@@ -30,9 +30,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/constants"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
@@ -92,11 +90,7 @@ var (
 	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookupKprobe, FdLookupFentry, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 
 	// Endpoint Models
-	ProcessTreeIdMap = program.MapBuilder("tg_tree_id", FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
-
-	// LPM maps
-	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, FdLookupFentryProcessTree, FdLookupKprobeProcessTree)
-	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, FdLookupFentryProcessTree, FdLookupKprobeProcessTree)
+	ProcessTreeIdMap = program.MapUserFrom(base.ProcessTreeId)
 
 	// Shared socket cookie infrastructure
 	SocketMap           = program.MapUserFrom(base.SocketMap)
@@ -107,7 +101,18 @@ var (
 	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
 	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
 	ConfigMap           = program.MapUserFrom(base.CfgMap)
-	TcpSocketMap        = program.MapBuilder("tg_tcpsocket_map", FdLookupKprobe, FdLookupFentry, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
+
+	// Shared base maps
+	ExecveMap = program.MapUserFrom(base.ExecveMap)
+
+	// LPM maps
+	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)
+	Addr4LpmMap = program.MapUserFrom(base.Addr4LpmMap)
+
+	// TCP maps
+	TcpSocketMap      = program.MapUserFrom(base.TcpSocketMap)
+	TcpSocketMapStats = program.MapUserFrom(base.TcpSocketMapStats)
+	DNSEndpointIDMap  = program.MapUserFrom(base.DNSEndpointIDMap)
 )
 
 func Enable() ([]*program.Program, []*program.Map) {
@@ -201,6 +206,7 @@ func getFdLookupPrograms() []*program.Program {
 
 func getFdLookupMaps() []*program.Map {
 	maps := []*program.Map{
+		FdLookupConfigMap,
 		SocketMap,
 		SocketMapStats,
 		SocketVersionMap,
@@ -209,13 +215,13 @@ func getFdLookupMaps() []*program.Map {
 		SocketTupleRevMap,
 		SocketTupleHintMap,
 		ConfigMap,
-		FdLookupConfigMap,
+		ExecveMap,
 		TcpSocketMap,
+		TcpSocketMapStats,
+		DNSEndpointIDMap,
 	}
 
 	if utils.SupportProcessTree() {
-		Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-		Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 		maps = append(maps, []*program.Map{
 			program.MapUserFrom(base.EndpointIdMap),
 			program.MapUserFrom(base.BpfEndpointIdMap),

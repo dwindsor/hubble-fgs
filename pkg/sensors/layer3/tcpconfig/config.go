@@ -15,7 +15,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 )
 
@@ -180,9 +179,9 @@ var (
 
 	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
 
-	// TCP Runtime maps
-	TcpSocketMap   = program.MapBuilder("tg_tcpsocket_map", ConnectKprobe, ConnectFentry, TcpSockops)
-	TcpSocketStats = program.MapBuilder("tg_tcpsocket_map_stats", SecurityGraft)
+	// TCP Runtime maps, created in internal/ip
+	TcpSocketMap   = program.MapUserFrom(base.TcpSocketMap)
+	TcpSocketStats = program.MapUserFrom(base.TcpSocketMapStats)
 
 	// Parser maps
 	HTTPContext    = program.MapBuilder("tg_http_map", TcpSockops)
@@ -198,9 +197,9 @@ var (
 	// Map for disabling events
 	EventDisableConfig = program.MapBuilder("tg_event_disable_config", ConnectKprobe, ConnectFentry, TcpSockops)
 
-	// LPM maps
-	Addr6LpmMap = program.MapBuilder(lpm.Addr6lpmMapName, TcpSockops)
-	Addr4LpmMap = program.MapBuilder(lpm.Addr4lpmMapName, TcpSockops)
+	// LPM maps, created in internal/ip
+	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)
+	Addr4LpmMap = program.MapUserFrom(base.Addr4LpmMap)
 )
 
 var (

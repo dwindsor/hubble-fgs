@@ -518,8 +518,6 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 	cfgMap.Progs = MergeIntoMap(cfgMap.Progs, GetMapProgs(sockMaps, cfgMap.Name), ni)
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
-	confMap := tus.SensorMap{}
-
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
 		socketMap,
 		socketMapStats,
@@ -535,7 +533,6 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		latencyConfigMap,
 		cfgMap,
 		verMap,
-		confMap,
 		fdLookupConfigMap,
 	}...)
 

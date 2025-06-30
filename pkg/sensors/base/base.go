@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/strutils"
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base/procfs"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
@@ -123,6 +124,9 @@ var (
 	SocketTupleRevMap           = program.MapBuilder(socktrackmaps.SocketTupleRevMapName, Exit)
 	SocketTupleHintMap          = program.MapBuilder(socktrackmaps.SocketTupleHintMapName, Exit)
 	CfgMap                      = program.MapBuilder(socktrackmaps.SocketCfgMapName, Exit)
+	TcpSocketMap                = program.MapBuilder("tg_tcpsocket_map", Exit)
+	TcpSocketMapStats           = program.MapBuilder("tg_tcpsocket_map_stats", Exit)
+	DNSEndpointIDMap            = program.MapBuilder(dnsparser.DNSEndpointIDMapName, Exit)
 
 	ExecveTailCallsMap = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 
@@ -149,7 +153,7 @@ var (
 	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	ListenEndpointMap        = program.MapBuilder("listen_endpoint_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Execve, ExecveV53, ExecveV61, ExecveV611)
-	PorcessTreeConfigMap     = program.MapBuilder("tg_process_tree_config_map", Execve, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
+	ProcessTreeConfigMap     = program.MapBuilder("tg_process_tree_config_map", Execve, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
 	MatchBinariesSetMap      = program.MapBuilder(mbset.MapName, Execve)
 	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 	SyscallsMap              = program.MapBuilder("tg_syscall_map", SysEnterProg)
@@ -267,6 +271,7 @@ func ConfigureMapSizes() {
 	ListenEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	DNSEndpointIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 
 	if enterpriseOption.Config.EnableSyscallTracking {
 		SyscallsMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
