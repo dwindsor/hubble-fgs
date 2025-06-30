@@ -1,9 +1,12 @@
 package ocsf
 
 import (
+	"runtime"
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/google/uuid"
@@ -93,14 +96,44 @@ func getAgent() *v1alpha.Agent {
 	}
 }
 
+func getOS() *v1alpha.OperatingSystemOS {
+	_, verStr, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
+	return &v1alpha.OperatingSystemOS{
+		KernelRelease: &verStr,
+		Name:          "Linux",
+		TypeId:        200,
+	}
+}
+
+func getHwInfo() *v1alpha.DeviceHardwareInfo {
+	arch := runtime.GOARCH
+	id := v1alpha.DeviceHardwareInfoCPUArchitectureID_DEVICE_HARDWARE_INFO_CPUARCHITECTURE_ID_UNKNOWN
+	if runtime.GOARCH == "amd64" || runtime.GOARCH != "x86_64" {
+		id = v1alpha.DeviceHardwareInfoCPUArchitectureID_DEVICE_HARDWARE_INFO_CPUARCHITECTURE_ID_X86
+	} else {
+		id = v1alpha.DeviceHardwareInfoCPUArchitectureID_DEVICE_HARDWARE_INFO_CPUARCHITECTURE_ID_ARM
+	}
+	bits := int32(64)
+
+	return &v1alpha.DeviceHardwareInfo{
+		CpuArchitecture:   &arch,
+		CpuArchitectureId: &id,
+		CpuBits:           &bits,
+	}
+}
+
 func getDevice() *v1alpha.Device {
 	agent := getAgent()
 	agents := []*v1alpha.Agent{agent}
 	hostname := node.GetNodeNameForExport()
+	os := getOS()
+	hw := getHwInfo()
 
 	return &v1alpha.Device{
 		AgentList: agents,
 		Hostname:  &hostname,
+		HwInfo:    hw,
+		Os:        os,
 	}
 }
 
