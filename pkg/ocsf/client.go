@@ -71,7 +71,11 @@ func SendOCSF(network *v1alpha.EndpointEvent_NetworkActivityDetail) error {
 			return nil
 		}
 	}
-	json, err := protojson.Marshal(network.NetworkActivityDetail)
+
+	options := protojson.MarshalOptions{
+		UseProtoNames: true,
+	}
+	json, err := options.Marshal(network.NetworkActivityDetail)
 	if err != nil {
 		return err
 	}
