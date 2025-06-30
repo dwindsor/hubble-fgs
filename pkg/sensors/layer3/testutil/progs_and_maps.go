@@ -688,7 +688,7 @@ func kprobeOrFentrySensorProgs(withRTT bool, withUdpLatency bool, withIcmp bool,
 		}
 	}
 
-	if utils.UDPBindNeedsDummies() { // 5.13+
+	if utils.CGroupSKBAvailable() && utils.UDPBindNeedsDummies() { // 5.13+
 		sensorProgs = append(sensorProgs, []tus.SensorProg{
 			{Name: udpBindDummy4Prog, Type: ebpf.CGroupSock},
 			{Name: udpBindDummy6Prog, Type: ebpf.CGroupSock},
