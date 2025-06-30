@@ -73,7 +73,8 @@ func SendOCSF(network *v1alpha.EndpointEvent_NetworkActivityDetail) error {
 	}
 
 	options := protojson.MarshalOptions{
-		UseProtoNames: true,
+		UseProtoNames:  true,
+		UseEnumNumbers: true,
 	}
 	json, err := options.Marshal(network.NetworkActivityDetail)
 	if err != nil {
