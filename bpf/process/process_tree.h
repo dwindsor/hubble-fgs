@@ -304,7 +304,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		return 0;
 
 	destvalue = map_lookup_elem(&destination_endpoint_map, key);
-	if (destvalue && (destvalue->deny & !TNP_POLICY_REFRESH))
+	if (destvalue && destvalue->deny && (destvalue->deny & TNP_POLICY_REFRESH) == 0)
 		return destvalue->deny;
 	exists = !!destvalue;
 
