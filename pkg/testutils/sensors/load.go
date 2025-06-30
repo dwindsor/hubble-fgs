@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/option"
 	sensorsoss "github.com/cilium/tetragon/pkg/sensors"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 func CheckSensorLoad(sensors []*sensorsoss.Sensor, sensorMaps []tus.SensorMap, sensorProgs []tus.SensorProg, t *testing.T) {
@@ -42,7 +42,7 @@ func CheckSensorLoad(sensors []*sensorsoss.Sensor, sensorMaps []tus.SensorMap, s
 		tus.SensorMap{Name: "tg_execve_joined_info_map_stats", Progs: []uint{0, 4}},
 	}
 
-	if kernels.MinKernelVersion("5.11.0") {
+	if utils.SupportProcessTree() {
 		pstreeMaps := []tus.SensorMap{
 			{Name: "tg_conf_map", Progs: []uint{0, 2, 3}},
 		}
