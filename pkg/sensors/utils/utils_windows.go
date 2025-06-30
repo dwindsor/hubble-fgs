@@ -43,3 +43,12 @@ func UDPBindNeedsDummies() bool {
 func RawHooksAvailable() bool {
 	return false
 }
+
+// RTTHookAvailable checks if the hook we use for RTT observation is available.
+func RTTHookAvailable() bool {
+	return false
+}
+
+func NetIOUringAvailable() bool {
+	return false
+}
