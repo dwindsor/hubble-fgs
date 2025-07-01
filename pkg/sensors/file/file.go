@@ -119,15 +119,9 @@ const (
 	BaseMap
 )
 
-type MapInfo struct {
-	name string
-	tp   MapType
-}
-
 type FimFunc struct {
 	proto, progName, progSection string
 	actions                      fm.Set[tetragon.FileAction]
-	maps                         [][]MapInfo
 }
 
 type FimHook struct {
@@ -138,239 +132,84 @@ type FimHook struct {
 type FimProg struct {
 	tp, name, progName, progSection string
 	actions                         fm.Set[tetragon.FileAction]
-	maps                            []MapInfo
+}
+
+var mapTypes = map[string]MapType{
+	".rodata":        SkipMap, // possibly due to PATH_BASED_MATCHER and USE_BPF_D_PATH_HELPER
+	".rodata.str1.1": SkipMap,
+
+	"execve_map":         BaseMap,
+	"policy_filter_maps": BaseMap,
+	"tcpmon_map":         BaseMap,
+	"tg_cgtracker_map":   BaseMap,
+	"tg_conf_map":        BaseMap,
+	"tg_stats_map":       BaseMap,
+
+	"buffer_heap_map":          PrivateMap, // for d_path_local
+	"digest_heap_map":          PrivateMap, // for matchFilename InFileWithDigest operator
+	"file_heap_map":            PrivateMap,
+	"file_msg_caps_heap":       PrivateMap, // for matchLinuxCapabilities
+	"file_msg_ns_heap":         PrivateMap, // for matchLinuxNamespaces
+	"file_prefix_lpm_heap":     PrivateMap, // for matchBinaries
+	"file_rename_heap_map":     PrivateMap,
+	"file_val_map":             PrivateMap,
+	"filename_heap_map":        PrivateMap, // for matchFilename InFileWithDigest operator
+	"lpm_trie_heap_key":        PrivateMap,
+	"rename_path_heap":         PrivateMap,
+	"selectors_ctx_heap":       PrivateMap, // for selectors with __V61_BPF_PROG
+	"vfs_mkdir_info_heap":      PrivateMap,
+	"string_postfix_maps_heap": PrivateMap, // for matchBinaries Postfix/NoPostfix operator
+	"file_link_heap_map":       PrivateMap, // for struct msg_file_link_ops
+	"file_symlink_heap_map":    PrivateMap, // for struct msg_file_link_ops
+	"file_openraw_heap_map":    PrivateMap,
+	"kpath_heap":               PrivateMap,
+	"digest_key_heap":          PrivateMap,
+
+	"exact_match_map_alloc":      SharedMap,
+	"exec_retprobe_map":          SharedMap,
+	"file_actions_map":           SharedMap, // for matchActions
+	"file_capabilities_map":      SharedMap, // for matchLinuxCapabilities
+	"file_config_map":            SharedMap, // for configuration options
+	"file_digests_maps":          SharedMap, // for matchDigests
+	"file_errors_map":            SharedMap, // for eBPF errors
+	"file_namespaces_map":        SharedMap, // for matchLinuxNamespaces
+	"file_open_flags_map":        SharedMap, // for matchOpenFlags
+	"file_ops_maps":              SharedMap, // for matchOperations
+	"file_rename_map":            SharedMap, // for matchRenameSrcType
+	"file_system_type_map":       SharedMap, // for FileSystemType type in file_paths_patterns
+	"filename_digest_map":        SharedMap, // for matchFilename InFileWithDigest operator
+	"filename_ops_map":           SharedMap, // for matchFilename operator
+	"filename_path_map":          SharedMap, // for matchFilename InFileWithDigest operator
+	"fsnotify_created_files_map": SharedMap,
+	"glob_patterns_map":          SharedMap, // for matchFilename InPattern operator
+	"glob_temp_maps":             SharedMap, // for matchFilename InPattern operator
+	"hash_map_inode_alloc":       SharedMap, // for all inodes
+	"hash_map_inode_alloc_stats": SharedMap,
+	"io_uring_map":               SharedMap, // for io_uring process information
+	"io_uring_retprobe_map":      SharedMap,
+	"lpm_trie_map_alloc":         SharedMap,
+	"mkdir_retprobe_map":         SharedMap,
+	"patterns_map_alloc":         SharedMap,
+	"rename_retprobe_map":        SharedMap,
+	"spr_retprobe_map":           SharedMap,
+	"string_prefix_maps":         SharedMap, // for matchBinaries Prefix/NoPrefix operator
+	"tg_mb_paths":                SharedMap, // for matchBinaries In/NotIn operator
+	"tg_mb_sel_opts":             SharedMap, // for matchBinaries operator
+	"vfs_rename_info_heap":       SharedMap,
+	"vr_retprobe_map":            SharedMap,
+	"file_uidgid_map":            SharedMap, // for matchUidGid
+	"file_proc_dur_map":          SharedMap,
+	"string_postfix_maps":        SharedMap, // for matchBinaries Postfix/NoPostfix operator
+	"exec_attributes_map":        SharedMap,
+	"inode_type_map":             SharedMap, // for InodeType type in file_paths_patterns
+	"fim_tail_calls":             SharedMap,
+	"dis_ctx_heap":               SharedMap,
+	"policy_id_to_tail_index":    SharedMap,
+	"file_openraw_result_map":    SharedMap,
+	"open_user_to_kernel_path":   SharedMap,
 }
 
 var (
-	PathBasedSelectorMaps = []MapInfo{
-		{"selectors_ctx_heap", PrivateMap},       // for selectors with __V61_BPF_PROG
-		{"file_prefix_lpm_heap", PrivateMap},     // for matchBinaries
-		{"file_msg_caps_heap", PrivateMap},       // for matchLinuxCapabilities
-		{"file_msg_ns_heap", PrivateMap},         // for matchLinuxNamespaces
-		{"digest_heap_map", PrivateMap},          // for matchFilename InFileWithDigest operator
-		{"filename_heap_map", PrivateMap},        // for matchFilename InFileWithDigest operator
-		{"file_ops_maps", SharedMap},             // for matchOperations
-		{"file_uidgid_map", SharedMap},           // for matchUidGid
-		{"file_proc_dur_map", SharedMap},         // for matchProcessDuration
-		{"file_actions_map", SharedMap},          // for matchActions
-		{"file_capabilities_map", SharedMap},     // for matchLinuxCapabilities
-		{"file_namespaces_map", SharedMap},       // for matchLinuxNamespaces
-		{"file_open_flags_map", SharedMap},       // for matchOpenFlags
-		{"file_rename_map", SharedMap},           // for matchRenameSrcType
-		{"filename_ops_map", SharedMap},          // for matchFilename operator
-		{"filename_digest_map", SharedMap},       // for matchFilename InFileWithDigest operator
-		{"filename_path_map", SharedMap},         // for matchFilename InFileWithDigest operator
-		{"glob_patterns_map", SharedMap},         // for matchFilename InPattern operator
-		{"glob_temp_maps", SharedMap},            // for matchFilename InPattern operator
-		{"tg_mb_sel_opts", SharedMap},            // for matchBinaries operator
-		{"tg_mb_paths", SharedMap},               // for matchBinaries In/NotIn operator
-		{"string_prefix_maps", SharedMap},        // for matchBinaries Prefix/NoPrefix operator
-		{"string_postfix_maps", SharedMap},       // for matchBinaries Postfix/NoPostfix operator
-		{"string_postfix_maps_heap", PrivateMap}, // for matchBinaries Postfix/NoPostfix operator
-		{"exec_attributes_map", SharedMap},
-	}
-
-	InodeBasedSelectorMaps = []MapInfo{
-		{"file_msg_caps_heap", PrivateMap},       // for matchLinuxCapabilities
-		{"file_msg_ns_heap", PrivateMap},         // for matchLinuxNamespaces
-		{"file_prefix_lpm_heap", PrivateMap},     // for matchBinaries
-		{"file_actions_map", SharedMap},          // for matchActions
-		{"file_capabilities_map", SharedMap},     // for matchLinuxCapabilities
-		{"file_namespaces_map", SharedMap},       // for matchLinuxNamespaces
-		{"file_ops_maps", SharedMap},             // for matchOperations
-		{"file_uidgid_map", SharedMap},           // for matchUidGid
-		{"file_proc_dur_map", SharedMap},         // for matchProcessDuration
-		{"string_prefix_maps", SharedMap},        // for matchBinaries Prefix/NoPrefix operator
-		{"string_postfix_maps", SharedMap},       // for matchBinaries Postfix/NoPostfix operator
-		{"string_postfix_maps_heap", PrivateMap}, // for matchBinaries Postfix/NoPostfix operator
-		{"tg_mb_sel_opts", SharedMap},            // for matchBinaries operator
-		{"tg_mb_paths", SharedMap},               // for matchBinaries In/NotIn operator
-		{".rodata", SkipMap},
-	}
-
-	PathBasedMiscMaps = []MapInfo{
-		{"buffer_heap_map", PrivateMap},     // for d_path_local
-		{"file_config_map", SharedMap},      // for configuration options
-		{"file_errors_map", SharedMap},      // for eBPF errors
-		{"file_system_type_map", SharedMap}, // for FileSystemType type in file_paths_patterns
-		{"inode_type_map", SharedMap},       // for InodeType type in file_paths_patterns
-	}
-
-	InodeBasedMiscMaps = []MapInfo{
-		{"file_config_map", SharedMap},      // for configuration options
-		{"file_errors_map", SharedMap},      // for eBPF errors
-		{"hash_map_inode_alloc", SharedMap}, // for all inodes
-	}
-
-	InodeStatsMap = []MapInfo{
-		{"hash_map_inode_alloc_stats", SharedMap},
-	}
-
-	BaseMaps = []MapInfo{
-		{"tcpmon_map", BaseMap},
-		{"execve_map", BaseMap},
-		{"policy_filter_maps", BaseMap},
-		{"tg_conf_map", BaseMap},
-		{"tg_cgtracker_map", BaseMap},
-		{"tg_stats_map", BaseMap},
-	}
-
-	SkipMaps = []MapInfo{
-		{".rodata", SkipMap}, // possibly due to PATH_BASED_MATCHER and USE_BPF_D_PATH_HELPER
-	}
-
-	IoUringMaps = []MapInfo{
-		{"io_uring_map", SharedMap}, // for io_uring process information
-		{"io_uring_retprobe_map", SharedMap},
-		{"file_errors_map", SharedMap}, // for eBPF errors
-	}
-
-	KprobeMkdirMaps = []MapInfo{
-		{"file_heap_map", PrivateMap}, // for struct msg_file_ops
-		{"lpm_trie_heap_key", PrivateMap},
-		{"lpm_trie_map_alloc", SharedMap},
-		{"execve_map", BaseMap},
-		{"policy_filter_maps", BaseMap},
-		{"buffer_heap_map", PrivateMap}, // for d_path_local
-		{"tg_conf_map", BaseMap},
-		{"tg_cgtracker_map", BaseMap},
-		{"vfs_mkdir_info_heap", PrivateMap},
-		{"mkdir_retprobe_map", SharedMap},
-	}
-
-	KretprobeMkdirMaps = []MapInfo{
-		{"tcpmon_map", BaseMap},
-		{"tg_stats_map", BaseMap},
-		{"mkdir_retprobe_map", SharedMap},
-		{"file_errors_map", SharedMap}, // for eBPF errors
-		{"file_heap_map", PrivateMap},  // for struct msg_file_ops
-		{"file_val_map", PrivateMap},
-		{"hash_map_inode_alloc", SharedMap}, // for all inodes
-	}
-
-	KprobeRenameMaps = []MapInfo{
-		{"file_rename_map", SharedMap},
-		{"execve_map", BaseMap},
-		{"policy_filter_maps", BaseMap},
-		{"buffer_heap_map", PrivateMap}, // for d_path_local
-		{"tg_conf_map", BaseMap},
-		{"tg_cgtracker_map", BaseMap},
-		{"vfs_rename_info_heap", SharedMap},
-		{"vr_retprobe_map", SharedMap},
-		{"rename_retprobe_map", SharedMap},
-	}
-
-	KretprobeRenameMaps = []MapInfo{
-		{"tcpmon_map", BaseMap},
-		{"tg_stats_map", BaseMap},
-		{"file_rename_heap_map", PrivateMap},
-		{"file_errors_map", SharedMap}, // for eBPF errors
-		{"file_config_map", SharedMap},
-		{"file_val_map", PrivateMap},
-		{"hash_map_inode_alloc", SharedMap}, // for all inodes
-		{"lpm_trie_heap_key", PrivateMap},
-		{"lpm_trie_map_alloc", SharedMap},
-		{"patterns_map_alloc", SharedMap},
-		{"rename_retprobe_map", SharedMap},
-		{"vr_retprobe_map", SharedMap},
-		{"exact_match_map_alloc", SharedMap},
-	}
-
-	KprobeSecurityPathRenameMaps = []MapInfo{
-		{"file_errors_map", SharedMap}, // for eBPF errors
-		{"rename_retprobe_map", SharedMap},
-		{"spr_retprobe_map", SharedMap},
-		{"vfs_rename_info_heap", SharedMap},
-	}
-
-	KretprobeSecurityPathRenameMaps = []MapInfo{
-		{"file_errors_map", SharedMap}, // for eBPF errors
-		{"rename_retprobe_map", SharedMap},
-		{"spr_retprobe_map", SharedMap},
-	}
-
-	RWMiscMaps = []MapInfo{
-		{"io_uring_map", SharedMap},   // for io_uring process information
-		{"file_heap_map", PrivateMap}, // for struct msg_file_ops
-	}
-
-	MiscMaps = []MapInfo{
-		{"file_heap_map", PrivateMap}, // for struct msg_file_ops
-	}
-
-	MiscLinkMaps = []MapInfo{
-		{"file_link_heap_map", PrivateMap}, // for struct msg_file_link_ops
-	}
-
-	MiscSymlinkMaps = []MapInfo{
-		{"file_symlink_heap_map", PrivateMap}, // for struct msg_file_link_ops
-	}
-
-	CreateInodeMiscMaps = []MapInfo{
-		{"lpm_trie_heap_key", PrivateMap},
-		{"lpm_trie_map_alloc", SharedMap},
-		{"patterns_map_alloc", SharedMap},
-		{"fsnotify_created_files_map", SharedMap},
-		{"exact_match_map_alloc", SharedMap},
-		{"buffer_heap_map", PrivateMap}, // for d_path_local
-		{"file_heap_map", PrivateMap},   // for struct msg_file_ops
-		{"file_val_map", PrivateMap},
-	}
-
-	SecurityFileOpenMaps = []MapInfo{
-		{"file_heap_map", PrivateMap},   // for struct msg_file_ops
-		{"buffer_heap_map", PrivateMap}, // for d_path_local
-		{"exact_match_map_alloc", SharedMap},
-		{"lpm_trie_heap_key", PrivateMap},
-		{"lpm_trie_map_alloc", SharedMap},
-		{"patterns_map_alloc", SharedMap},
-		{"file_open_flags_map", SharedMap}, // for matchOpenFlags
-		{".rodata.str1.1", SkipMap},
-	}
-
-	SecurityInodeLinkMaps = []MapInfo{
-		{"file_heap_map", PrivateMap},   // for struct msg_file_ops
-		{"buffer_heap_map", PrivateMap}, // for d_path_local
-		{"exact_match_map_alloc", SharedMap},
-		{"file_val_map", PrivateMap},
-		{"lpm_trie_heap_key", PrivateMap},
-		{"lpm_trie_map_alloc", SharedMap},
-		{"patterns_map_alloc", SharedMap},
-	}
-
-	SecurityInodeCreateMaps = []MapInfo{
-		{"file_heap_map", PrivateMap}, // for struct msg_file_ops
-		{"lpm_trie_heap_key", PrivateMap},
-		{"lpm_trie_map_alloc", SharedMap},
-		{"patterns_map_alloc", SharedMap},
-		{"exact_match_map_alloc", SharedMap},
-		{"hash_map_inode_alloc", SharedMap}, // for all inodes
-		{"file_config_map", SharedMap},      // for configuration options
-		{"buffer_heap_map", PrivateMap},     // for d_path_local
-	}
-
-	SecurityInodeRenameMaps = []MapInfo{
-		{"file_config_map", SharedMap},       // for configuration options
-		{"file_errors_map", SharedMap},       // for eBPF errors
-		{"file_rename_heap_map", PrivateMap}, // for struct msg_file_rename_ops
-		{"rename_retprobe_map", SharedMap},
-		{"tcpmon_map", BaseMap},
-		{"tg_stats_map", BaseMap},
-	}
-
-	SecurityInodeMkdirMaps = []MapInfo{
-		{"file_errors_map", SharedMap}, // for eBPF errors
-		{"file_heap_map", PrivateMap},  // for struct msg_file_ops
-		{"mkdir_retprobe_map", SharedMap},
-		{"tcpmon_map", BaseMap},
-		{"tg_stats_map", BaseMap},
-	}
-
-	PathBasedTailCallMaps = []MapInfo{
-		{"fim_tail_calls", SharedMap},
-		{"dis_ctx_heap", SharedMap},
-		{"policy_id_to_tail_index", SharedMap},
-	}
 
 	// These programs are based on bpf_d_path helper to get the file path. bpf_d_path is introduced in kernel 5.10 (https://github.com/torvalds/linux/commit/6e22ab9da79343532cd3cde39df25e5a5478c692).
 	// On the other hand, support for bpf_d_path helper is not introduced in 5.10 for all the following programs. We try to use bpf_d_path when it is available otherwise, we use our d_path_local helper.
@@ -381,271 +220,234 @@ var (
 		// This means that this is the only program where bpf_d_path helper is not supported in lsm. For this reason we use fmod_ret progs (and not fentry to provide enforcement).
 		// security_file_permission is part of the btf_allowlist_d_path since kernel 5.10 (https://github.com/torvalds/linux/commit/a8a717963fe5ecfd274eb93dd1285ee9428ffca7).
 		// Use probeDpathSecurityFilePermission to check support for that.
-		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "fmod_security_file_permission.o", "security_file_permission", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "fmod_security_file_permission.o", "security_file_permission", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}},
 		// security_kernel_read_file is part of sleepable_lsm_hooks since kernel 5.18 (https://github.com/torvalds/linux/commit/df6b3039fa112e17555776213cab7f07c0a8d98d).
 		// Use probeDpathSecurityKernelReadFile to check support for that.
-		{"lsm", "security_kernel_read_file", []FimFunc{{"security_kernel_read_file(struct file*, enum kernel_read_file_id, bool)", "lsm_security_kernel_read_file.o", "kernel_read_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_kernel_read_file", []FimFunc{{"security_kernel_read_file(struct file*, enum kernel_read_file_id, bool)", "lsm_security_kernel_read_file.o", "kernel_read_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ}...)}}},
 		// security_file_open, security_mmap_file, and security_bprm_check are part of sleepable_lsm_hooks since kernel 5.11 (https://github.com/torvalds/linux/commit/423f16108c9d832bd96059d5c882c8ef6d76eb96).
 		// Use probeDpathSecurityFileOpen to check support for that.
-		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "lsm_security_file_open.o", "file_open", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPEN}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "lsm_security_mmap_file.o", "mmap_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "lsm_security_file_open.o", "file_open", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPEN}...)}}},
+		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "lsm_security_mmap_file.o", "mmap_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}},
 		// security_path_* became part of sleepable_lsm_hooks in kernel 6.8 (https://github.com/torvalds/linux/commit/b13cddf633562b9b2c34fd63471d377019704ebe).
 		// Use probeDpathSecurityPathTruncate to check support for that.
-		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_LINK}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscLinkMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "security_path_mkdir", []FimFunc{{"security_path_mkdir(const struct path*, struct dentry*, umode_t)", "lsm_security_path_mkdir.o", "path_mkdir", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_MKDIR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "security_path_rmdir", []FimFunc{{"security_path_rmdir(const struct path*, struct dentry*)", "lsm_security_path_rmdir.o", "path_rmdir", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RMDIR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "lsm_security_path_unlink.o", "path_unlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_DELETE}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "security_path_truncate", []FimFunc{{"security_path_truncate(const struct path*)", "lsm_security_path_truncate.o", "path_truncate", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "security_path_chmod", []FimFunc{{"security_path_chmod(const struct path*, umode_t)", "lsm_security_path_chmod.o", "path_chmod", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_chown.o", "path_chown", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RENAME}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], {{"file_rename_heap_map", PrivateMap}}, {{"rename_path_heap", PrivateMap}}, PathBasedTailCallMaps[:]}}}},
-		{"lsm", "security_path_symlink", []FimFunc{{"security_path_symlink(const struct path*, struct dentry*, const int*)", "lsm_security_path_symlink.o", "path_symlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_SYMLINK}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscSymlinkMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"fexit", "io_openat2", []FimFunc{{"int io_openat2(struct io_kiocb*, int)", "fexit_sys_open.o", "io_openat2", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...), [][]MapInfo{SkipMaps[:], {{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
+		{"lsm", "security_path_link", []FimFunc{{"security_path_link(struct dentry*, const struct path*, struct dentry*)", "lsm_security_path_link.o", "path_link", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_LINK}...)}}},
+		{"lsm", "security_path_mkdir", []FimFunc{{"security_path_mkdir(const struct path*, struct dentry*, umode_t)", "lsm_security_path_mkdir.o", "path_mkdir", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_MKDIR}...)}}},
+		{"lsm", "security_path_rmdir", []FimFunc{{"security_path_rmdir(const struct path*, struct dentry*)", "lsm_security_path_rmdir.o", "path_rmdir", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RMDIR}...)}}},
+		{"lsm", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "lsm_security_path_unlink.o", "path_unlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_DELETE}...)}}},
+		{"lsm", "security_path_truncate", []FimFunc{{"security_path_truncate(const struct path*)", "lsm_security_path_truncate.o", "path_truncate", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...)}}},
+		{"lsm", "security_path_chmod", []FimFunc{{"security_path_chmod(const struct path*, umode_t)", "lsm_security_path_chmod.o", "path_chmod", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...)}}},
+		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_chown.o", "path_chown", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...)}}},
+		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RENAME}...)}}},
+		{"lsm", "security_path_symlink", []FimFunc{{"security_path_symlink(const struct path*, struct dentry*, const int*)", "lsm_security_path_symlink.o", "path_symlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_SYMLINK}...)}}},
+		{"fexit", "io_openat2", []FimFunc{{"int io_openat2(struct io_kiocb*, int)", "fexit_sys_open.o", "io_openat2", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}},
 	}
 
-	FimPathBasedGetnameHook = FimHook{"fexit", "getname", []FimFunc{{"struct filename* getname(const int*)", "fexit_getname.o", "getname", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...), [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"kpath_heap", PrivateMap}}}}}}
+	FimPathBasedGetnameHook = FimHook{"fexit", "getname", []FimFunc{{"struct filename* getname(const int*)", "fexit_getname.o", "getname", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}}
 
-	FimPathBasedGetnameFlagsHook = FimHook{"fexit", "getname_flags", []FimFunc{{"struct filename* getname_flags(const int*, int)", "fexit_getname_flags.o", "getname_flags", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...), [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"kpath_heap", PrivateMap}}}}}}
+	FimPathBasedGetnameFlagsHook = FimHook{"fexit", "getname_flags", []FimFunc{{"struct filename* getname_flags(const int*, int)", "fexit_getname_flags.o", "getname_flags", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}}
 
 	FimPathBasedTailCallHooks = [...]FimHook{
-		{"fmod_ret", "tail_call", []FimFunc{{"", "fmod_security_file_permission.o", "security_file_permission", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_kernel_read_file.o", "kernel_read_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_file_open.o", "file_open", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPEN}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_mmap_file.o", "mmap_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], RWMiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_link.o", "path_link", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_LINK}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscLinkMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_mkdir.o", "path_mkdir", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_MKDIR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_rmdir.o", "path_rmdir", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RMDIR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_unlink.o", "path_unlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_DELETE}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_truncate.o", "path_truncate", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_chmod.o", "path_chmod", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_chown.o", "path_chown", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_rename.o", "path_rename", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RENAME}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], {{"file_rename_heap_map", PrivateMap}}, {{"rename_path_heap", PrivateMap}}, PathBasedTailCallMaps[:]}}}},
-		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_symlink.o", "path_symlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_SYMLINK}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscSymlinkMaps[:], PathBasedTailCallMaps[:]}}}},
+		{"fmod_ret", "tail_call", []FimFunc{{"", "fmod_security_file_permission.o", "security_file_permission", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_kernel_read_file.o", "kernel_read_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_file_open.o", "file_open", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPEN}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_mmap_file.o", "mmap_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_link.o", "path_link", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_LINK}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_mkdir.o", "path_mkdir", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_MKDIR}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_rmdir.o", "path_rmdir", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RMDIR}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_unlink.o", "path_unlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_DELETE}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_truncate.o", "path_truncate", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_chmod.o", "path_chmod", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_chown.o", "path_chown", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_rename.o", "path_rename", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RENAME}...)}}},
+		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_symlink.o", "path_symlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_SYMLINK}...)}}},
 	}
 
-	FimPathBasedHooksExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}}
+	FimPathBasedHooksExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)}}}
 
-	FimPathBasedTailCallHooksExec = FimHook{"lsm", "tail_call", []FimFunc{{"", "lsm_security_bprm_check.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}}
+	FimPathBasedTailCallHooksExec = FimHook{"lsm", "tail_call", []FimFunc{{"", "lsm_security_bprm_check.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)}}}
 
 	FimPathBasedHooksExecDigests = [...]FimHook{
-		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...),
-			[][]MapInfo{
-				PathBasedSelectorMaps[:],
-				SkipMaps[:],
-				PathBasedMiscMaps[:],
-				MiscMaps[:],
-				{{"execve_map", BaseMap}},
-				{{"policy_filter_maps", BaseMap}},
-				{{"tg_conf_map", BaseMap}},
-				{{"tg_cgtracker_map", BaseMap}},
-				{{"exec_retprobe_map", SharedMap}},
-				{{"file_digests_maps", SharedMap}},
-				{{"digest_key_heap", PrivateMap}},
-			},
-		}}},
-		{"fexit", "security_bprm_check", []FimFunc{{"int security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "security_bprm_check", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...),
-			[][]MapInfo{
-				{{"tcpmon_map", BaseMap}},
-				{{"tg_stats_map", BaseMap}},
-				{{"exec_retprobe_map", SharedMap}},
-			},
-		}}},
+		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)}}},
+		{"fexit", "security_bprm_check", []FimFunc{{"int security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "security_bprm_check", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)}}},
 	}
 
 	FimHooksObserve = [...]FimHook{
-		{"kprobe", "vfs_fallocate", []FimFunc{{"vfs_fallocate(struct file*, int, loff_t, loff_t)", "bpf_vfs_fallocate.o", "vfs_fallocate", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
-		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o", "filemap_fault", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
-		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_filemap_map_pages.o", "filemap_map_pages", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
-		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_filemap_page_mkwrite.o", "filemap_page_mkwrite", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
-		{"kprobe", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission.o", "security_file_permission", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
+		{"kprobe", "vfs_fallocate", []FimFunc{{"vfs_fallocate(struct file*, int, loff_t, loff_t)", "bpf_vfs_fallocate.o", "vfs_fallocate", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_filemap_fault.o", "filemap_fault", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_filemap_map_pages.o", "filemap_map_pages", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_filemap_page_mkwrite.o", "filemap_page_mkwrite", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission.o", "security_file_permission", fm.NewSet[tetragon.FileAction]()}}},
 		{"kprobe", "vfs_unlink", []FimFunc{
-			{"vfs_unlink(struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/419", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], InodeStatsMap[:]}},
-			{"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/512", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], InodeStatsMap[:]}},
-			{"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/63", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], InodeStatsMap[:]}},
+			{"vfs_unlink(struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/419", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_unlink(struct user_namespace*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/512", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_unlink(struct mnt_idmap*, struct inode*, struct dentry*, struct inode**)", "bpf_vfs_unlink.o", "vfs_unlink/63", fm.NewSet[tetragon.FileAction]()},
 		}},
-		{"kprobe", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir.o", "security_inode_rmdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], InodeStatsMap[:]}}}},
+		{"kprobe", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir.o", "security_inode_rmdir", fm.NewSet[tetragon.FileAction]()}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
-			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
-			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
-			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
+			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", fm.NewSet[tetragon.FileAction]()},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
-			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
-			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
-			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
-			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
+			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction]()},
+			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction]()},
+			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction]()},
+			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet[tetragon.FileAction]()},
 		}},
-		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KprobeSecurityPathRenameMaps[:]}}}},
-		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeSecurityPathRenameMaps[:]}}}},
+		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction]()}}},
+		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction]()}}},
 		{"kprobe", "vfs_rename", []FimFunc{
-			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
-			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
+			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512", fm.NewSet[tetragon.FileAction]()},
 		}},
 		{"kretprobe", "vfs_rename", []FimFunc{
-			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeRenameMaps[:], InodeStatsMap[:]}},
-			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeRenameMaps[:], InodeStatsMap[:]}},
+			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction]()},
+			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction]()},
 		}},
-		{"kprobe", "iterate_dir", []FimFunc{{"iterate_dir(struct file*, struct dir_context*)", "bpf_iterate_dir.o", "iterate_dir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"kprobe", "iterate_dir", []FimFunc{{"iterate_dir(struct file*, struct dir_context*)", "bpf_iterate_dir.o", "iterate_dir", fm.NewSet[tetragon.FileAction]()}}},
 		{"kprobe", "security_inode_setattr", []FimFunc{
-			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/419", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
-			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/60", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
-			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/63", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/419", fm.NewSet[tetragon.FileAction]()},
+			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/60", fm.NewSet[tetragon.FileAction]()},
+			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr.o", "security_inode_setattr/63", fm.NewSet[tetragon.FileAction]()},
 		}},
-		{"kprobe", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link.o", "security_inode_link", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityInodeLinkMaps[:], InodeStatsMap[:]}}}},
-		{"kprobe", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open.o", "security_file_open", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityFileOpenMaps[:]}}}},
+		{"kprobe", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link.o", "security_inode_link", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open.o", "security_file_open", fm.NewSet[tetragon.FileAction]()}}},
 	}
 
-	FimHooksObserveExec = FimHook{"kprobe", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check.o", "security_bprm_check", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], {{"exec_attributes_map", SharedMap}}}}}}
+	FimHooksObserveExec = FimHook{"kprobe", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check.o", "security_bprm_check", fm.NewSet[tetragon.FileAction]()}}}
 
 	FimHooksFmodRet = [...]FimHook{
-		{"fmod_ret", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_fmod.o", "security_mmap_file", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
-		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_enforce_fmod.o", "security_file_permission", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
-		{"fmod_ret", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink_enforce_fmod.o", "security_inode_unlink", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], InodeStatsMap[:]}}}},
-		{"fmod_ret", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create_fmod.o", "security_inode_create", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], SecurityInodeCreateMaps[:]}}}},
-		{"fmod_ret", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir_enforce_fmod.o", "security_inode_rmdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], InodeStatsMap[:]}}}},
+		{"fmod_ret", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_fmod.o", "security_mmap_file", fm.NewSet[tetragon.FileAction]()}}},
+		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_enforce_fmod.o", "security_file_permission", fm.NewSet[tetragon.FileAction]()}}},
+		{"fmod_ret", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink_enforce_fmod.o", "security_inode_unlink", fm.NewSet[tetragon.FileAction]()}}},
+		{"fmod_ret", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create_fmod.o", "security_inode_create", fm.NewSet[tetragon.FileAction]()}}},
+		{"fmod_ret", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir_enforce_fmod.o", "security_inode_rmdir", fm.NewSet[tetragon.FileAction]()}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
-			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
-			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
-			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
+			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", fm.NewSet[tetragon.FileAction]()},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
-			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
-			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
-			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
-			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
+			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction]()},
+			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction]()},
+			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction]()},
+			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet[tetragon.FileAction]()},
 		}},
-		{"fmod_ret", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_fmod.o", "security_inode_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{SecurityInodeMkdirMaps[:]}}}},
-		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KprobeSecurityPathRenameMaps[:]}}}},
-		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeSecurityPathRenameMaps[:]}}}},
+		{"fmod_ret", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_fmod.o", "security_inode_mkdir", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction]()}}},
+		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction]()}}},
 		{"kprobe", "vfs_rename", []FimFunc{
-			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
-			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
+			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512", fm.NewSet[tetragon.FileAction]()},
 		}},
 		{"kretprobe", "vfs_rename", []FimFunc{
-			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeRenameMaps[:], InodeStatsMap[:]}},
-			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeRenameMaps[:], InodeStatsMap[:]}},
+			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction]()},
+			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction]()},
 		}},
-		{"fmod_ret", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename_enforce_fmod.o", "security_inode_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{SecurityInodeRenameMaps[:]}}}},
-		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir_enforce_fmod.o", "security_file_permission", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"fmod_ret", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename_enforce_fmod.o", "security_inode_rename", fm.NewSet[tetragon.FileAction]()}}},
+		{"fmod_ret", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir_enforce_fmod.o", "security_file_permission", fm.NewSet[tetragon.FileAction]()}}},
 		{"fmod_ret", "security_inode_setattr", []FimFunc{
-			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod.o", "security_inode_setattr", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
-			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v60.o", "security_inode_setattr", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
-			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v63.o", "security_inode_setattr", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod.o", "security_inode_setattr", fm.NewSet[tetragon.FileAction]()},
+			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v60.o", "security_inode_setattr", fm.NewSet[tetragon.FileAction]()},
+			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_fmod_v63.o", "security_inode_setattr", fm.NewSet[tetragon.FileAction]()},
 		}},
-		{"fmod_ret", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_fmod.o", "security_inode_link", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityInodeLinkMaps[:], InodeStatsMap[:]}}}},
-		{"fmod_ret", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_fmod.o", "security_file_open", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityFileOpenMaps[:]}}}},
+		{"fmod_ret", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_fmod.o", "security_inode_link", fm.NewSet[tetragon.FileAction]()}}},
+		{"fmod_ret", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_fmod.o", "security_file_open", fm.NewSet[tetragon.FileAction]()}}},
 	}
 
-	FimHooksFmodRetExec = FimHook{"fmod_ret", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_fmod.o", "security_bprm_check", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], {{"exec_attributes_map", SharedMap}}}}}}
+	FimHooksFmodRetExec = FimHook{"fmod_ret", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_fmod.o", "security_bprm_check", fm.NewSet[tetragon.FileAction]()}}}
 
 	FimHooksLsm = [...]FimHook{
-		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_lsm.o", "mmap_file", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
-		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_enforce_lsm.o", "file_permission", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], RWMiscMaps[:]}}}},
-		{"lsm", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink_enforce_lsm.o", "inode_unlink", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], InodeStatsMap[:]}}}},
-		{"lsm", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create_lsm.o", "inode_create", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], SecurityInodeCreateMaps[:]}}}},
-		{"lsm", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir_enforce_lsm.o", "inode_rmdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], InodeStatsMap[:]}}}},
+		{"lsm", "security_mmap_file", []FimFunc{{"security_mmap_file(struct file*, int, int)", "bpf_security_mmap_file_lsm.o", "mmap_file", fm.NewSet[tetragon.FileAction]()}}},
+		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_security_file_permission_enforce_lsm.o", "file_permission", fm.NewSet[tetragon.FileAction]()}}},
+		{"lsm", "security_inode_unlink", []FimFunc{{"security_inode_unlink(struct inode*, struct dentry*)", "bpf_vfs_unlink_enforce_lsm.o", "inode_unlink", fm.NewSet[tetragon.FileAction]()}}},
+		{"lsm", "security_inode_create", []FimFunc{{"security_inode_create(struct inode*, struct dentry*, umode_t)", "bpf_security_inode_create_lsm.o", "inode_create", fm.NewSet[tetragon.FileAction]()}}},
+		{"lsm", "security_inode_rmdir", []FimFunc{{"security_inode_rmdir(struct inode*, struct dentry*)", "bpf_security_inode_rmdir_enforce_lsm.o", "inode_rmdir", fm.NewSet[tetragon.FileAction]()}}},
 		{"kprobe", "vfs_mkdir", []FimFunc{
-			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
-			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
-			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeMkdirMaps[:]}},
+			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/419", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/512", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/63", fm.NewSet[tetragon.FileAction]()},
 		}},
 		{"kretprobe", "vfs_mkdir", []FimFunc{
-			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
-			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
-			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
-			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeMkdirMaps[:], InodeStatsMap[:]}},
+			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction]()},
+			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction]()},
+			{"int vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir", fm.NewSet[tetragon.FileAction]()},
+			{"struct dentry* vfs_mkdir(struct mnt_idmap*, struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir.o", "vfs_mkdir/614", fm.NewSet[tetragon.FileAction]()},
 		}},
-		{"lsm", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_lsm.o", "inode_mkdir", fm.NewSet[tetragon.FileAction](), [][]MapInfo{SecurityInodeMkdirMaps[:]}}}},
-		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KprobeSecurityPathRenameMaps[:]}}}},
-		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeSecurityPathRenameMaps[:]}}}},
+		{"lsm", "security_inode_mkdir", []FimFunc{{"security_inode_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_vfs_mkdir_enforce_lsm.o", "inode_mkdir", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction]()}}},
+		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_security_path_rename.o", "security_path_rename", fm.NewSet[tetragon.FileAction]()}}},
 		{"kprobe", "vfs_rename", []FimFunc{
-			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
-			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], InodeBasedMiscMaps[:], KprobeRenameMaps[:]}},
+			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename/419", fm.NewSet[tetragon.FileAction]()},
+			{"vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename/512", fm.NewSet[tetragon.FileAction]()},
 		}},
 		{"kretprobe", "vfs_rename", []FimFunc{
-			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeRenameMaps[:], InodeStatsMap[:]}},
-			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{KretprobeRenameMaps[:], InodeStatsMap[:]}},
+			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction]()},
+			{"int vfs_rename(struct renamedata*)", "bpf_vfs_rename.o", "vfs_rename", fm.NewSet[tetragon.FileAction]()},
 		}},
-		{"lsm", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename_enforce_lsm.o", "inode_rename", fm.NewSet[tetragon.FileAction](), [][]MapInfo{SecurityInodeRenameMaps[:]}}}},
-		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir_enforce_lsm.o", "file_permission", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}}}},
+		{"lsm", "security_inode_rename", []FimFunc{{"security_inode_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, int)", "bpf_vfs_rename_enforce_lsm.o", "inode_rename", fm.NewSet[tetragon.FileAction]()}}},
+		{"lsm", "security_file_permission", []FimFunc{{"security_file_permission(struct file*, int)", "bpf_iterate_dir_enforce_lsm.o", "file_permission", fm.NewSet[tetragon.FileAction]()}}},
 		{"lsm", "security_inode_setattr", []FimFunc{
-			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
-			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
-			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:]}},
+			{"security_inode_setattr(struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", fm.NewSet[tetragon.FileAction]()},
+			{"security_inode_setattr(struct user_namespace*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", fm.NewSet[tetragon.FileAction]()},
+			{"security_inode_setattr(struct mnt_idmap*, struct dentry*, struct iattr*)", "bpf_security_inode_setattr_enforce_lsm.o", "inode_setattr", fm.NewSet[tetragon.FileAction]()},
 		}},
-		{"lsm", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_lsm.o", "inode_link", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityInodeLinkMaps[:], InodeStatsMap[:]}}}},
-		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_lsm.o", "file_open", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], SecurityFileOpenMaps[:]}}}},
+		{"lsm", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_lsm.o", "inode_link", fm.NewSet[tetragon.FileAction]()}}},
+		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_lsm.o", "file_open", fm.NewSet[tetragon.FileAction]()}}},
 	}
 
-	FimHooksLsmExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm.o", "bprm_check_security", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], MiscMaps[:], {{"exec_attributes_map", SharedMap}}}}}}
+	FimHooksLsmExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm.o", "bprm_check_security", fm.NewSet[tetragon.FileAction]()}}}
 
 	FimHooksLsmExecDigests = [...]FimHook{
-		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "bprm_check_security", fm.NewSet[tetragon.FileAction](), [][]MapInfo{
-			InodeBasedSelectorMaps[:],
-			InodeBasedMiscMaps[:],
-			MiscMaps[:],
-			{{"execve_map", BaseMap}},
-			{{"policy_filter_maps", BaseMap}},
-			{{"tg_conf_map", BaseMap}},
-			{{"tg_cgtracker_map", BaseMap}},
-			{{"exec_retprobe_map", SharedMap}},
-			{{"file_digests_maps", SharedMap}},
-			{{"digest_key_heap", PrivateMap}},
-			{{"exec_attributes_map", SharedMap}},
-		}}}},
-		{"fexit", "security_bprm_check", []FimFunc{{"int security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "security_bprm_check", fm.NewSet[tetragon.FileAction](), [][]MapInfo{
-			{{"tcpmon_map", BaseMap}},
-			{{"tg_stats_map", BaseMap}},
-			{{"exec_retprobe_map", SharedMap}},
-			{{"file_errors_map", SharedMap}},
-		}}}},
+		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "bprm_check_security", fm.NewSet[tetragon.FileAction]()}}},
+		{"fexit", "security_bprm_check", []FimFunc{{"int security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm_digest.o", "security_bprm_check", fm.NewSet[tetragon.FileAction]()}}},
 	}
 
 	FimIoUringHooks = [...]FimHook{
 		{"kprobe", "io_read", []FimFunc{
-			{"io_read(struct io_kiocb*, int)", "bpf_io_uring.o", "io_read/510", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"io_read(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_read/59", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"io_read(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_read/57", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"io_read(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_read/55", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"io_read(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_read/51", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
+			{"io_read(struct io_kiocb*, int)", "bpf_io_uring.o", "io_read/510", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"io_read(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_read/59", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"io_read(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_read/57", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"io_read(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_read/55", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"io_read(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_read/51", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
 		}},
 		{"kretprobe", "io_read", []FimFunc{
-			{"int io_read(struct io_kiocb*, int)", "bpf_io_uring.o", "io_read", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"int io_read(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_read", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"int io_read(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_read", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"int io_read(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_read", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"int io_read(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_read", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
+			{"int io_read(struct io_kiocb*, int)", "bpf_io_uring.o", "io_read", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"int io_read(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_read", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"int io_read(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_read", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"int io_read(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_read", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"int io_read(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_read", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
 		}},
 		{"kprobe", "io_write", []FimFunc{
-			{"io_write(struct io_kiocb*, int)", "bpf_io_uring.o", "io_write/510", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"io_write(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_write/59", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"io_write(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_write/57", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"io_write(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_write/55", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"io_write(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_write/51", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
+			{"io_write(struct io_kiocb*, int)", "bpf_io_uring.o", "io_write/510", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"io_write(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_write/59", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"io_write(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_write/57", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"io_write(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_write/55", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"io_write(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_write/51", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
 		}},
 		{"kretprobe", "io_write", []FimFunc{
-			{"int io_write(struct io_kiocb*, int)", "bpf_io_uring.o", "io_write", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"int io_write(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_write", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"int io_write(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_write", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"int io_write(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_write", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
-			{"int io_write(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_write", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}},
+			{"int io_write(struct io_kiocb*, int)", "bpf_io_uring.o", "io_write", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"int io_write(struct io_kiocb*, bool, struct io_comp_state*)", "bpf_io_uring.o", "io_write", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"int io_write(struct io_kiocb*, bool)", "bpf_io_uring.o", "io_write", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"int io_write(struct io_kiocb*, struct io_kiocb**, bool)", "bpf_io_uring.o", "io_write", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
+			{"int io_write(struct io_kiocb*, const struct sqe_submit*, bool)", "bpf_io_uring.o", "io_write", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)},
 		}},
 	}
 
 	FimIoUringSingleHooks = [...]FimHook{
-		{"kprobe", "io_issue_sqe", []FimFunc{{"io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}}}},
-		{"kretprobe", "io_issue_sqe", []FimFunc{{"int io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...), [][]MapInfo{IoUringMaps[:]}}}},
+		{"kprobe", "io_issue_sqe", []FimFunc{{"io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}},
+		{"kretprobe", "io_issue_sqe", []FimFunc{{"int io_issue_sqe(struct io_kiocb*, int)", "bpf_io_uring.o", "io_issue_sqe", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}},
 	}
 
 	FimHooksFileCreate = [...]FimHook{
-		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], CreateInodeMiscMaps[:], InodeStatsMap[:]}}}},
-		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], CreateInodeMiscMaps[:], InodeStatsMap[:]}}}},
+		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_finish_open.o", "finish_open", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open", fm.NewSet[tetragon.FileAction]()}}},
 	}
 
 	FimHooksFileCreate418 = [...]FimHook{
-		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*), int*)", "bpf_finish_open.o", "finish_open", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], CreateInodeMiscMaps[:], InodeStatsMap[:]}}}},
-		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open", fm.NewSet[tetragon.FileAction](), [][]MapInfo{InodeBasedSelectorMaps[:], BaseMaps[:], InodeBasedMiscMaps[:], CreateInodeMiscMaps[:], InodeStatsMap[:]}}}},
-		{"kprobe", "fsnotify", []FimFunc{{"fsnotify(struct inode*, __u32, const void*, int, const struct qstr*, u32)", "bpf_fsnotify.o", "fsnotify", fm.NewSet[tetragon.FileAction](), [][]MapInfo{{{"fsnotify_created_files_map", SharedMap}}, {{"file_errors_map", SharedMap}}}}}},
+		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*), int*)", "bpf_finish_open.o", "finish_open", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_vfs_open.o", "vfs_open", fm.NewSet[tetragon.FileAction]()}}},
+		{"kprobe", "fsnotify", []FimFunc{{"fsnotify(struct inode*, __u32, const void*, int, const struct qstr*, u32)", "bpf_fsnotify.o", "fsnotify", fm.NewSet[tetragon.FileAction]()}}},
 	}
 )
 
@@ -1734,35 +1536,63 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 
 		progs = append(progs, load)
 
-		for _, m := range h.maps {
-			if m.tp == SkipMap || m.tp == PrivateMap || m.tp == BaseMap {
+		spec, err := ebpf.LoadCollectionSpec(load.Name)
+		if err != nil {
+			return nil, fmt.Errorf("addFileMonitoringSensor: ebpf.LoadCollectionSpec(%s): %w", load.Name, err)
+		}
+
+		uniqueMaps := make(map[string]uint32)
+		for _, oo := range spec.Programs {
+			if oo.SectionName != load.Label {
+				continue
+			}
+
+			// get all map references from the eBPF program
+			for _, i := range oo.Instructions {
+				if i.IsLoadFromMap() {
+					uniqueMaps[i.Reference()] = uint32(0)
+				}
+			}
+		}
+
+		if len(uniqueMaps) == 0 {
+			return nil, fmt.Errorf("program in %s with label %s does not have maps", load.Name, load.Label)
+		}
+
+		for mapName := range uniqueMaps {
+			mapType, ok := mapTypes[mapName]
+			if !ok {
+				return nil, fmt.Errorf("cannot find type for map %s", mapName)
+			}
+
+			if mapType == SkipMap || mapType == PrivateMap || mapType == BaseMap {
 				// nothing to do on those type of maps
 				continue
 			}
 
-			if m.name == "fim_tail_calls" || m.name == "policy_id_to_tail_index" || m.name == "dis_ctx_heap" {
+			if mapName == "fim_tail_calls" || mapName == "policy_id_to_tail_index" || mapName == "dis_ctx_heap" {
 				// we are not in a tail call program so just ignore those
 				if h.name != "tail_call" {
 					continue
 				}
 
-				switch m.name {
+				switch mapName {
 				case "policy_id_to_tail_index":
-					load.PinMap[m.name] = PolicyIdToTailIndexMap
+					load.PinMap[mapName] = PolicyIdToTailIndexMap
 				case "dis_ctx_heap":
-					load.PinMap[m.name] = DisCtxHeapMap
+					load.PinMap[mapName] = DisCtxHeapMap
 				case "fim_tail_calls":
 					mp, ok := DisCallsMaps[fmt.Sprintf("%s/%s", h.tp, h.progSection)]
 					if !ok {
 						return nil, fmt.Errorf("addFileMonitoringSensor: Failed to find fim_tail_calls map for program %s", h.name)
 					}
-					load.PinMap[m.name] = mp
+					load.PinMap[mapName] = mp
 				}
 				continue
 			}
 
 			// shared maps here
-			m := program.MapBuilderPolicy(m.name, load)
+			m := program.MapBuilderPolicy(mapName, load)
 
 			// custom max entries setup
 			var loadMapFunc func(_ *ebpf.Map, _ string) error
@@ -2267,24 +2097,12 @@ func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, m
 		// to attach that hook, fim will fail to load. The prototype of io_issue_sqe
 		// seems to be stable along all kernels that have this function.
 		if h.name == "io_issue_sqe" {
-			// generate the maps
-			maps := []MapInfo{}
-			for _, m := range h.prog[0].maps {
-				maps = append(maps, m...)
-			}
-
-			fimProgs = append(fimProgs, FimProg{h.tp, h.name, h.prog[0].progName, h.prog[0].progSection, h.prog[0].actions, maps})
+			fimProgs = append(fimProgs, FimProg{h.tp, h.name, h.prog[0].progName, h.prog[0].progSection, h.prog[0].actions})
 			continue
 		}
 
 		if h.name == "tail_call" {
-			// generate the maps
-			maps := []MapInfo{}
-			for _, m := range h.prog[0].maps {
-				maps = append(maps, m...)
-			}
-
-			fimProgs = append(fimProgs, FimProg{h.tp, h.name, h.prog[0].progName, h.prog[0].progSection, h.prog[0].actions, maps})
+			fimProgs = append(fimProgs, FimProg{h.tp, h.name, h.prog[0].progName, h.prog[0].progSection, h.prog[0].actions})
 			continue
 		}
 
@@ -2303,14 +2121,7 @@ func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, m
 		for _, f := range h.prog {
 			if f.proto == p {
 				progFound = true
-
-				// generate the maps
-				maps := []MapInfo{}
-				for _, m := range f.maps {
-					maps = append(maps, m...)
-				}
-
-				fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(f.progName), f.progSection, f.actions, maps})
+				fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(f.progName), f.progSection, f.actions})
 				break
 			}
 		}

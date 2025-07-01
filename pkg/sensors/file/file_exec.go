@@ -46,8 +46,8 @@ func init() {
 
 var (
 	FileExecHooksLsmDigests = [...]FimHook{
-		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "bprm_check_security", fm.NewSet[tetragon.FileAction](), [][]MapInfo{}}}},
-		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "security_bprm_check", fm.NewSet[tetragon.FileAction](), [][]MapInfo{}}}},
+		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "bprm_check_security", fm.NewSet[tetragon.FileAction]()}}},
+		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "security_bprm_check", fm.NewSet[tetragon.FileAction]()}}},
 	}
 )
 
@@ -79,7 +79,7 @@ func (k *observerFileExecSensor) PolicyHandler(
 		if len(h.prog) != 1 {
 			return nil, fmt.Errorf("FileExecMonitoring has more than one function prototypes per hook")
 		}
-		fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(h.prog[0].progName), h.prog[0].progSection, h.prog[0].actions, []MapInfo{}})
+		fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(h.prog[0].progName), h.prog[0].progSection, h.prog[0].actions})
 	}
 
 	selState, err := fm.InitKernelExecSelectorState(spec.FileExecMonitoring.Selectors)
