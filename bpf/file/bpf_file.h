@@ -610,6 +610,11 @@ struct {
 	__uint(max_entries, 1); /* the user will setup this */
 } file_proc_dur_map SEC(".maps");
 
+static inline __attribute__((always_inline)) bool has_match_binaries(__u32 selidx)
+{
+	return map_lookup_elem(&tg_mb_sel_opts, &selidx) != 0;
+}
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_binaries(__u32 selidx, struct execve_map_value *current)
 {
@@ -1161,6 +1166,11 @@ sel_check_gid:
 	return 1;
 }
 
+static inline __attribute__((always_inline)) bool has_match_proc_dur(__u32 selidx)
+{
+	return map_lookup_elem(&file_proc_dur_map, &selidx) != 0;
+}
+
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_proc_dur(__u32 sel_idx, struct execve_map_value *execve)
 {
@@ -1186,7 +1196,7 @@ static inline __attribute__((always_inline)) int check_match_proc_dur(__u32 sel_
 }
 
 static inline __attribute__((always_inline)) __u32
-__eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest, struct execve_map_value *execve, struct sel_path path, __u32 *msg_id)
+__eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest, struct sel_path path, __u32 *msg_id)
 {
 	struct file_actions_val *act = 0;
 
@@ -1202,14 +1212,6 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 	if (HAS_MATCH_UID_GID) {
 #endif
 		if (!check_match_uid_gid(sel_idx))
-			return 0;
-#ifdef __LARGE_BPF_PROG
-	}
-#endif
-#ifdef __LARGE_BPF_PROG
-	if (HAS_MATCH_PROCESS_DURATION) {
-#endif
-		if (!check_match_proc_dur(sel_idx, execve))
 			return 0;
 #ifdef __LARGE_BPF_PROG
 	}
@@ -1257,10 +1259,34 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 	}
 #endif
 #ifdef __LARGE_BPF_PROG
-	if (HAS_MATCH_BINARIES) {
+	if (HAS_MATCH_PROCESS_DURATION || HAS_MATCH_BINARIES) {
 #endif
-		if (!check_match_binaries(sel_idx, execve))
-			return 0;
+		// here we need to call event_find_curr()
+		if (has_match_binaries(sel_idx) || has_match_proc_dur(sel_idx)) {
+			struct execve_map_value *execve;
+			bool walker = 0;
+			__u32 ppid;
+
+			execve = event_find_curr(&ppid, &walker);
+			if (execve) {
+#ifdef __LARGE_BPF_PROG
+				if (HAS_MATCH_PROCESS_DURATION) {
+#endif
+					if (!check_match_proc_dur(sel_idx, execve))
+						return 0;
+#ifdef __LARGE_BPF_PROG
+				}
+#endif
+#ifdef __LARGE_BPF_PROG
+				if (HAS_MATCH_BINARIES) {
+#endif
+					if (!check_match_binaries(sel_idx, execve))
+						return 0;
+#ifdef __LARGE_BPF_PROG
+				}
+#endif
+			}
+		}
 #ifdef __LARGE_BPF_PROG
 	}
 #endif
@@ -1303,9 +1329,7 @@ struct {
 static long selectors_cb(u32 index, void *ununsed)
 {
 	struct selectors_ctx *ctx;
-	struct execve_map_value *execve;
 	__u32 zero = 0;
-	bool walker = 0;
 
 	ctx = map_lookup_elem(&selectors_ctx_heap, &zero);
 	if (!ctx)
@@ -1314,15 +1338,7 @@ static long selectors_cb(u32 index, void *ununsed)
 	if (index >= ctx->num_selectors) // no need to check more selectors
 		return 1;
 
-	/*
-	 * Do this outside of the loop in order to reduce the number of instructions
-	 * and make that work on 4.19 kernels. The check for != 0 is done close to
-	 * the use as we don't know here if the selector that uses that has matchBinaries
-	 * selector.
-	 */
-	execve = event_find_curr(&zero, &walker);
-
-	ctx->retval = __eval_selectors(index, (struct sel_args){ ctx->action, ctx->flags, ctx->ret }, ctx->digest, execve, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
+	ctx->retval = __eval_selectors(index, (struct sel_args){ ctx->action, ctx->flags, ctx->ret }, ctx->digest, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
 	if (ctx->retval) { // we return the value from the first selector that matches
 		return 1;
 	}
@@ -1350,9 +1366,7 @@ eval_selectors(struct sel_args args, struct digest_key *digest, struct sel_path 
 	struct file_config_map_value *conf;
 	__u32 zero = 0;
 #ifndef __V61_BPF_PROG
-	struct execve_map_value *execve;
-	__u32 ppid, i, val = 0;
-	bool walker = 0;
+	__u32 i, val = 0;
 #else
 	struct selectors_ctx *ctx;
 #endif
@@ -1386,21 +1400,13 @@ eval_selectors(struct sel_args args, struct digest_key *digest, struct sel_path 
 	if (ctx->retval)
 		return ctx->retval;
 #else /* __V61_BPF_PROG */
-	/*
-	 * Do this outside of the loop in order to reduce the number of instructions
-	 * and make that work on 4.19 kernels. The check for != 0 is done close to
-	 * the use as we don't know here if the selector that uses that has matchBinaries
-	 * selector.
-	 */
-	execve = event_find_curr(&ppid, &walker);
-
 #ifndef __LARGE_BPF_PROG
 #pragma unroll
 #endif /* __LARGE_BPF_PROG */
 	for (i = 0; i < MAX_FIM_SELECTORS; ++i) {
 		if (i >= conf->num_selectors) // no need to check more selectors
 			break;
-		val = __eval_selectors(i, args, digest, execve, path, msg_id);
+		val = __eval_selectors(i, args, digest, path, msg_id);
 		if (val) // we return the value from the first selector that matches
 			return val;
 	}
