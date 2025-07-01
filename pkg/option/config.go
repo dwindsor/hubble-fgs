@@ -91,6 +91,8 @@ type config struct {
 	EnableRawsock   bool
 	EnableDNS       bool
 	Layer3CLIEnable bool
+
+	EnableNetworkEvents bool
 }
 
 var (

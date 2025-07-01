@@ -76,6 +76,14 @@ func ConfigureMaps() error {
 		WatermarksDipTriggerMult,
 		tcpconfig.RttHistogramMax,
 		tcpconfig.RttHistogramMin)
+	// If this is a CLI configuration lets inherit the network events
+	// configuration as well.
+	if enterpriseOption.Config.Layer3CLIEnable {
+		DisableConnect = !enterpriseOption.Config.EnableNetworkEvents
+		DisableClose = !enterpriseOption.Config.EnableNetworkEvents
+		DisableAccept = !enterpriseOption.Config.EnableNetworkEvents
+		DisableListen = !enterpriseOption.Config.EnableNetworkEvents
+	}
 	ConfigureTCPDisableEvents(DisableConnect, DisableClose, DisableAccept, DisableListen)
 	err := configureQuotasDNSMaps(datapath.QuotasInitDNSDomainMappings)
 	if err != nil {
