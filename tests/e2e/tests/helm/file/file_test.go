@@ -19,6 +19,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	// Fix up OSS configuration defaults.
 	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
@@ -74,7 +75,7 @@ func TestMain(m *testing.M) {
 		if err != nil {
 			return ctx, fmt.Errorf("failed to load tracingPolicyYaml: %w", err)
 		}
-		if err := grpc.WaitForTracingPolicy(ctx, "file-monitoring"); err != nil {
+		if err := grpc.WaitForTracingPolicyWithTime(ctx, "file-monitoring", 20, 3*time.Second); err != nil {
 			return ctx, err
 		}
 		return ctx, nil
@@ -85,7 +86,7 @@ func TestMain(m *testing.M) {
 		if err != nil {
 			return ctx, fmt.Errorf("failed to load tracingPolicyNamespacedYaml: %w", err)
 		}
-		if err := grpc.WaitForTracingPolicy(ctx, "file-monitoring-namespaced"); err != nil {
+		if err := grpc.WaitForTracingPolicyWithTime(ctx, "file-monitoring-namespaced", 20, 3*time.Second); err != nil {
 			return ctx, err
 		}
 		return ctx, nil
@@ -110,7 +111,7 @@ func TestMain(m *testing.M) {
 			if err != nil {
 				return ctx, fmt.Errorf("failed to load tracingEnforcePolicyYaml: %w", err)
 			}
-			if err := grpc.WaitForTracingPolicy(ctx, "file-monitoring-enforcement"); err != nil {
+			if err := grpc.WaitForTracingPolicyWithTime(ctx, "file-monitoring-enforcement", 20, 3*time.Second); err != nil {
 				return ctx, err
 			}
 		} else {

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	// Fix up OSS configuration defaults.
 	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
@@ -64,7 +65,8 @@ func TestMain(m *testing.M) {
 		if err != nil {
 			return ctx, fmt.Errorf("failed to load PolicyPrefixYaml: %w", err)
 		}
-		if err := grpc.WaitForTracingPolicy(ctx, "fim-prefix"); err != nil {
+		if err := grpc.WaitForTracingPolicyWithTime(ctx, "fim-prefix", 20, 3*time.Second); err != nil {
+
 			return ctx, err
 		}
 		return ctx, nil
@@ -75,7 +77,8 @@ func TestMain(m *testing.M) {
 		if err != nil {
 			return ctx, fmt.Errorf("failed to load PolicySuffixYaml: %w", err)
 		}
-		if err := grpc.WaitForTracingPolicy(ctx, "fim-suffix"); err != nil {
+		if err := grpc.WaitForTracingPolicyWithTime(ctx, "fim-suffix", 20, 3*time.Second); err != nil {
+
 			return ctx, err
 		}
 		return ctx, nil
