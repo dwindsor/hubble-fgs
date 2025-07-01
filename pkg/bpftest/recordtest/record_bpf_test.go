@@ -614,10 +614,10 @@ func TestRecords(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), sensors.ConfigDefaults.CmdWaitTime)
 	defer cancel()
 
+	defer deleteOldBpfDir(t)
 	minimalTetragonModel(ctx, t)
 	defer func() {
 		observer.RemoveSensors(ctx)
-		deleteOldBpfDir(t)
 		cgroup.DetachTetragonCgroups(true, true)
 	}()
 
