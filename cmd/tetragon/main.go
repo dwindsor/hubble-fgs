@@ -927,6 +927,8 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 		if err != nil {
 			return err
 		}
+	}
+	if enterpriseOption.Config.ConnectionLogFileName != "" {
 		connectionWriter, err = getWriter(
 			enterpriseOption.Config.ConnectionLogFileName,
 			option.Config.ExportFileMaxSizeMB,
