@@ -33,7 +33,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 	var flatEncoder *json.Encoder
 	var connectionEncoder *json.Encoder
 
-	isDiffModel := enterpriseOption.Config.ApplicationModelDiffExportFilename != "" || enterpriseOption.Config.ApplicationModelEnableDiff
+	isDiffModel := enterpriseOption.Config.ApplicationModelDiffExportFilename != ""
 
 	res, err := server.GetProcessModel(ctx, []string{}, false)
 	if err != nil {

@@ -50,7 +50,6 @@ const (
 	KeyApplicationModelCacheSize          = "application-model-cache-size"
 	KeyApplicationModelExportInterval     = "application-model-export-interval"
 	KeyApplicationModelExportFilename     = "application-model-export-filename"
-	KeyApplicationModelEnableDiff         = "application-model-enable-diff"
 	KeyApplicationModelDiffExportFilename = "application-model-diff-export-filename"
 	KeyConnectionLogFilename              = "connection-log-filename"
 	keyEnableIcmpTracking                 = "enable-icmp-tracking"
@@ -121,8 +120,6 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden(KeyApplicationModelExportInterval)
 	flags.String(KeyApplicationModelExportFilename, "", "Filename for application model JSON export. Set to \"\" to disable.")
 	flags.MarkHidden(KeyApplicationModelExportFilename)
-	flags.Bool(KeyApplicationModelEnableDiff, true, "Enable application model only for new data.")
-	flags.MarkHidden(KeyApplicationModelEnableDiff)
 	flags.String(KeyApplicationModelDiffExportFilename, "", "Filename for application flat model JSON export. Set to \"\" to disable.")
 	flags.MarkHidden(KeyApplicationModelDiffExportFilename)
 	flags.String(KeyConnectionLogFilename, "", "Filename for connection log. Set to \"\" to disable.")
@@ -194,7 +191,6 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableSyscallTracking = viper.GetBool(KeyEnableSyscallTracking)
 	Config.ApplicationModelExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
 	Config.ApplicationModelExportFilename = viper.GetString(KeyApplicationModelExportFilename)
-	Config.ApplicationModelEnableDiff = viper.GetBool(KeyApplicationModelEnableDiff)
 	Config.ApplicationModelDiffExportFilename = viper.GetString(KeyApplicationModelDiffExportFilename)
 	Config.ConnectionLogFileName = viper.GetString(KeyConnectionLogFilename)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)
