@@ -17,6 +17,7 @@
 #include "bpf_latency.h"
 #include "bpf_tracing.h"
 #include "bpf_udp_info.h"
+#include "../bpf_network_event_config.h"
 
 /* Applying 'packed' attribute to structs causes clang to write to the
  * members byte-by-byte, as offsets may not be aligned. This is bad for
@@ -118,13 +119,23 @@ static inline __attribute__((always_inline)) void
 emit_udp_event(void *ctx, int op, u64 *cookie, u64 cookie_ver, u64 ps_ver, struct udp_info_key *k, struct udp_info_value *v)
 {
 	size_t size = sizeof(struct msg_ip_event);
+	struct event_disable_config *event_cfg;
 	struct msg_ip_event *val;
+	u32 zero = 0;
+
+	event_cfg = (struct event_disable_config *)map_lookup_elem(
+		&tg_event_disable_config, &zero);
+	if (!event_cfg)
+		return;
 
 	val = (struct msg_ip_event *)build_udp_payload_event(k, v, *cookie, cookie_ver, ps_ver, size);
 	if (!val)
 		return;
-	val->common.op = op;
-	perf_event_output_metric(ctx, ISO_MSG_OP_UDPCONNECT, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+
+	if (!event_cfg->disableConnect) {
+		val->common.op = op;
+		perf_event_output_metric(ctx, ISO_MSG_OP_UDPCONNECT, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	}
 	return;
 }
 
