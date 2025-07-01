@@ -13,9 +13,6 @@ options:
     - name: application-model-diff-export-filename
       usage: |
         Filename for application flat model JSON export. Set to "" to disable.
-    - name: application-model-enable-diff
-      default_value: "true"
-      usage: Enable application model only for new data.
     - name: application-model-export-filename
       usage: |
         Filename for application model JSON export. Set to "" to disable.
