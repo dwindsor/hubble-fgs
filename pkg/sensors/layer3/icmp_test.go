@@ -40,6 +40,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/constants"
@@ -90,77 +91,73 @@ func getIcmpAndUdpObserver(t *testing.T, ctx context.Context, filtered bool) *ob
 	return getLayer3Observer(t, ctx, icmpAndUdpBasicConfig, filtered)
 }
 
+type ICMPBasic struct {
+	suite.Suite
+	doneWG, readyWG sync.WaitGroup
+	ctx             context.Context
+	cancel          context.CancelFunc
+}
+
 func TestICMPBasic(t *testing.T) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
+	suite.Run(t, new(ICMPBasic))
+}
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
+func (suite *ICMPBasic) SetupSuite() {
+	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	obs := getBasicIcmpObserver(suite.T(), suite.ctx, false)
+	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	obs := getBasicIcmpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
-	for _, test := range basicICMPTests {
-		t.Logf("Running test: %s", test.name)
-		if !t.Run(test.name, func(lt *testing.T) {
-			test.f(t, lt, &readyWG)
-		}) {
-			t.Logf("Test %s failed", test.name)
-			break
-		}
-		t.Logf("Test %s was successful", test.name)
+func (suite *ICMPBasic) HandleStats(_ string, stats *suite.SuiteInformation) {
+	if stats.Passed() {
+		testutils.DoneWithExportFile(suite.T())
 	}
+}
+
+func (suite *ICMPBasic) TearDownSuite() {
+	suite.cancel()
+}
+
+type ICMPUDP struct {
+	suite.Suite
+	doneWG, readyWG            sync.WaitGroup
+	ctx                        context.Context
+	cancel                     context.CancelFunc
+	oldEnableIcmpTrackingValue bool
 }
 
 func TestICMPUDP(t *testing.T) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
+	suite.Run(t, new(ICMPUDP))
+}
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
+func (suite *ICMPUDP) SetupSuite() {
+	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	oldEnableIcmpTrackingValue := enterpriseOption.Config.EnableIcmpTracking
+	suite.oldEnableIcmpTrackingValue = enterpriseOption.Config.EnableIcmpTracking
 	enterpriseOption.Config.EnableIcmpTracking = true
-	t.Cleanup(func() {
-		enterpriseOption.Config.EnableIcmpTracking = oldEnableIcmpTrackingValue
-	})
 
-	obs := getIcmpAndUdpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	obs := getIcmpAndUdpObserver(suite.T(), suite.ctx, false)
+	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
+}
 
-	for _, test := range UDPICMPTests {
-		t.Logf("Running test: %s", test.name)
-		if !t.Run(test.name, func(lt *testing.T) {
-			test.f(t, lt, &readyWG)
-		}) {
-			t.Logf("Test %s failed", test.name)
-			break
-		}
-		t.Logf("Test %s was successful", test.name)
+func (suite *ICMPUDP) HandleStats(_ string, stats *suite.SuiteInformation) {
+	if stats.Passed() {
+		testutils.DoneWithExportFile(suite.T())
 	}
 }
 
-var basicICMPTests = []basicTest{
-	{"testPingOutbound4", testPingOutbound4},
-	{"testPingInAndOutbound4", testPingInAndOutbound4},
-	{"testPingOutbound6", testPingOutbound6},
-	{"testPingInAndOutbound6", testPingInAndOutbound6},
+func (suite *ICMPUDP) TearDownSuite() {
+	enterpriseOption.Config.EnableIcmpTracking = suite.oldEnableIcmpTrackingValue
+	suite.cancel()
 }
 
-var UDPICMPTests = []basicTest{
-	{"testInboundDestUnreach4", testInboundDestUnreach4},
-	{"testInboundDestUnreach6", testInboundDestUnreach6},
-}
-
-func testPingOutbound4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *ICMPBasic) TestPingOutbound4() {
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -199,12 +196,12 @@ func testPingOutbound4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithDirection(sm.Full("ingress")),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
-	assert.NoError(t, cmdServer.Run())
+	assert.NoError(suite.T(), cmdServer.Run())
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err := jsonchecker.JsonTestCheckExpectWithKeep(suite.T(), checker, false, true)
+	assert.NoError(suite.T(), err)
 }
 
 func parseArgs(a string) string {
@@ -380,7 +377,7 @@ func TestICMPCLISwitchTetragon(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func testPingInAndOutbound4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *ICMPBasic) TestPingInAndOutbound4() {
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -440,15 +437,15 @@ func testPingInAndOutbound4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 			WithDirection(sm.Full("ingress")),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-c1", "127.0.0.1")
-	assert.NoError(t, cmdServer.Run())
+	assert.NoError(suite.T(), cmdServer.Run())
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err := jsonchecker.JsonTestCheckExpectWithKeep(suite.T(), checker, false, true)
+	assert.NoError(suite.T(), err)
 }
 
-func testInboundDestUnreach4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *ICMPUDP) TestInboundDestUnreach4() {
 	cmd := "nc"
 
 	selfChecker := ec.NewProcessChecker().
@@ -488,20 +485,20 @@ func testInboundDestUnreach4(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 			WithParent(selfChecker),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdClient := exec.Command(cmd, "-u", "127.0.0.1", "10043")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
+	assert.NoError(suite.T(), err)
+	assert.NoError(suite.T(), cmdClient.Start())
 	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Wait())
+	assert.NoError(suite.T(), err)
+	assert.NoError(suite.T(), cmdClient.Wait())
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	assert.NoError(suite.T(), err)
 }
 
-func testPingOutbound6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *ICMPBasic) TestPingOutbound6() {
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -540,15 +537,15 @@ func testPingOutbound6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithDirection(sm.Full("ingress")),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-6c1", "::1")
-	assert.NoError(t, cmdServer.Run())
+	assert.NoError(suite.T(), cmdServer.Run())
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err := jsonchecker.JsonTestCheckExpectWithKeep(suite.T(), checker, false, true)
+	assert.NoError(suite.T(), err)
 }
 
-func testPingInAndOutbound6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *ICMPBasic) TestPingInAndOutbound6() {
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -608,15 +605,15 @@ func testPingInAndOutbound6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 			WithDirection(sm.Full("ingress")),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(cmd, "-6c1", "::1")
-	assert.NoError(t, cmdServer.Run())
+	assert.NoError(suite.T(), cmdServer.Run())
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err := jsonchecker.JsonTestCheckExpectWithKeep(suite.T(), checker, false, true)
+	assert.NoError(suite.T(), err)
 }
 
-func testInboundDestUnreach6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *ICMPUDP) TestInboundDestUnreach6() {
 	cmd := "nc"
 
 	selfChecker := ec.NewProcessChecker().
@@ -656,15 +653,15 @@ func testInboundDestUnreach6(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 			WithParent(selfChecker),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdClient := exec.Command(cmd, "-6u", "::1", "10043")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
+	assert.NoError(suite.T(), err)
+	assert.NoError(suite.T(), cmdClient.Start())
 	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Wait())
+	assert.NoError(suite.T(), err)
+	assert.NoError(suite.T(), cmdClient.Wait())
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	assert.NoError(suite.T(), err)
 }
