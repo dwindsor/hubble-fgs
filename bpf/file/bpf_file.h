@@ -1191,14 +1191,6 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 	struct file_actions_val *act = 0;
 
 #ifdef __LARGE_BPF_PROG
-	if (HAS_MATCH_BINARIES) {
-#endif
-		if (!check_match_binaries(sel_idx, execve))
-			return 0;
-#ifdef __LARGE_BPF_PROG
-	}
-#endif
-#ifdef __LARGE_BPF_PROG
 	if (HAS_MATCH_OPERATIONS) {
 #endif
 		if (!check_match_operations(sel_idx, args.action))
@@ -1246,12 +1238,6 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 			return 0;
 	}
 #endif
-#ifdef __ENABLE_GLOB_SUPPORT
-	if (HAS_MATCH_FILENAME) {
-		if (!check_match_filename(sel_idx, path.path, path.len, digest))
-			return 0;
-	}
-#endif
 #ifdef __ENABLE_OPENRAW_SUPPORT
 #ifdef __LARGE_BPF_PROG
 	if (HAS_MATCH_OPENRAW_RESULT) {
@@ -1268,6 +1254,20 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 		if (!check_match_rename(sel_idx, args.action, args.flags))
 			return 0;
 #ifdef __LARGE_BPF_PROG
+	}
+#endif
+#ifdef __LARGE_BPF_PROG
+	if (HAS_MATCH_BINARIES) {
+#endif
+		if (!check_match_binaries(sel_idx, execve))
+			return 0;
+#ifdef __LARGE_BPF_PROG
+	}
+#endif
+#ifdef __ENABLE_GLOB_SUPPORT
+	if (HAS_MATCH_FILENAME) {
+		if (!check_match_filename(sel_idx, path.path, path.len, digest))
+			return 0;
 	}
 #endif
 
