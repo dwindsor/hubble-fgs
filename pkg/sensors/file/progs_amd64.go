@@ -12,11 +12,16 @@
 
 package file
 
+import (
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
+)
+
 var (
 	FimPathBasedArchHooks = [...]FimHook{
-		{"fexit", "__x64_sys_open", []FimFunc{{"int __x64_sys_open(const struct pt_regs*)", "fexit_sys_open.o", "__x64_sys_open", [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
-		{"fexit", "__x64_sys_openat", []FimFunc{{"int __x64_sys_openat(const struct pt_regs*)", "fexit_sys_open.o", "__x64_sys_openat", [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
-		{"fexit", "__x64_sys_openat2", []FimFunc{{"int __x64_sys_openat2(const struct pt_regs*)", "fexit_sys_open.o", "__x64_sys_openat2", [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
-		{"fexit", "__x64_sys_creat", []FimFunc{{"int __x64_sys_creat(const struct pt_regs*)", "fexit_sys_open.o", "__x64_sys_creat", [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
+		{"fexit", "__x64_sys_open", []FimFunc{{"int __x64_sys_open(const struct pt_regs*)", "fexit_sys_open.o", "__x64_sys_open", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...), [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
+		{"fexit", "__x64_sys_openat", []FimFunc{{"int __x64_sys_openat(const struct pt_regs*)", "fexit_sys_open.o", "__x64_sys_openat", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...), [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
+		{"fexit", "__x64_sys_openat2", []FimFunc{{"int __x64_sys_openat2(const struct pt_regs*)", "fexit_sys_open.o", "__x64_sys_openat2", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...), [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
+		{"fexit", "__x64_sys_creat", []FimFunc{{"int __x64_sys_creat(const struct pt_regs*)", "fexit_sys_open.o", "__x64_sys_creat", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...), [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
 	}
 )

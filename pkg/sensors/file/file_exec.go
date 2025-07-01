@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -45,8 +46,8 @@ func init() {
 
 var (
 	FileExecHooksLsmDigests = [...]FimHook{
-		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "bprm_check_security", [][]MapInfo{}}}},
-		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "security_bprm_check", [][]MapInfo{}}}},
+		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "bprm_check_security", fm.NewSet[tetragon.FileAction](), [][]MapInfo{}}}},
+		{"fexit", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_file_exec.o", "security_bprm_check", fm.NewSet[tetragon.FileAction](), [][]MapInfo{}}}},
 	}
 )
 
@@ -78,7 +79,7 @@ func (k *observerFileExecSensor) PolicyHandler(
 		if len(h.prog) != 1 {
 			return nil, fmt.Errorf("FileExecMonitoring has more than one function prototypes per hook")
 		}
-		fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(h.prog[0].progName), h.prog[0].progSection, []MapInfo{}})
+		fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(h.prog[0].progName), h.prog[0].progSection, h.prog[0].actions, []MapInfo{}})
 	}
 
 	selState, err := fm.InitKernelExecSelectorState(spec.FileExecMonitoring.Selectors)
