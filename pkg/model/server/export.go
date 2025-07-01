@@ -27,13 +27,72 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func ExportApplicationModel(ctx context.Context, server *Server, writer io.Writer, flatWriter io.Writer, connectionWriter io.Writer, interval time.Duration) {
-	startTime := time.Now()
-	var encoder *json.Encoder
-	var flatEncoder *json.Encoder
-	var connectionEncoder *json.Encoder
+func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection *json.Encoder, newModel, lastModel *appModelV1.ApplicationModel) (time.Time, error) {
+	now := time.Now()
 
-	isDiffModel := enterpriseOption.Config.ApplicationModelDiffExportFilename != ""
+	networkDiffModel, processDiffModel, err := diff.ApplicationModelDiff(newModel, lastModel)
+	if err != nil {
+		logger.GetLogger().Error("Failed to produce application model difference as JSON", logfields.Error, err)
+		return last, err
+	}
+
+	// If nothing has changed do not update last model and skip writing empty record
+	if networkDiffModel == nil && processDiffModel == nil {
+		return last, nil
+	}
+
+	procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel)
+	if err != nil {
+		logger.GetLogger().Error("Failed to decode application model to process telemetry", logfields.Error, err)
+		return last, err
+	}
+
+	for _, entry := range procFlatPack {
+		if err := telemetry.Encode(entry); err != nil {
+			logger.GetLogger().Error("Failed to encode process telemetry as JSON", logfields.Error, err)
+			return last, err
+		}
+	}
+
+	netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel)
+	if err != nil {
+		logger.GetLogger().Error("Failed to decode application model to network telemetry", logfields.Error, err)
+		return last, err
+	}
+
+	var conns []*graphV1.Connection
+	for _, entry := range netFlatPack {
+		networkmetrics.Collect(entry)
+		if err := telemetry.Encode(entry); err != nil {
+			logger.GetLogger().Error("Failed to encode network telemetry as JSON", logfields.Error, err)
+			return last, err
+		}
+		conn := diff.TelemetryToConnection(entry)
+		if conn != nil {
+			conns = append(conns, conn)
+		}
+	}
+
+	if connection != nil && len(conns) > 0 {
+		log := graphV1.ConnectionLog{
+			Emitter:     graphV1.Emitter_EMITTER_TETRAGON,
+			WindowStart: timestamppb.New(last),
+			WindowEnd:   timestamppb.New(now),
+			Connections: conns,
+		}
+		if err := connection.Encode(&log); err != nil {
+			logger.GetLogger().Warn("Failed to encode connection log as JSON", logfields.Error, err)
+		}
+	}
+	return now, nil
+}
+
+func ExportApplicationModel(ctx context.Context, server *Server, writer io.Writer, flatWriter io.Writer, connectionWriter io.Writer, interval time.Duration) {
+	var encoder *json.Encoder
+	var telemetry *json.Encoder
+	var connection *json.Encoder
+
+	lastTime := time.Now()
 
 	res, err := server.GetProcessModel(ctx, []string{}, false)
 	if err != nil {
@@ -48,18 +107,16 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 	}
 
 	if flatWriter != nil {
-		flatEncoder = json.NewEncoder(flatWriter)
+		telemetry = json.NewEncoder(flatWriter)
 	}
 
 	if connectionWriter != nil {
-		connectionEncoder = json.NewEncoder(connectionWriter)
+		connection = json.NewEncoder(connectionWriter)
 	}
 
 	ticker := time.NewTicker(interval)
 	logger.GetLogger().Info("Exporting process model", "interval", interval)
 	for {
-		var networkDiffModel, processDiffModel *appModelV1.ApplicationModel
-
 		select {
 		case <-ticker.C:
 			res, err := server.GetProcessModel(ctx, []string{}, false)
@@ -69,19 +126,6 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			}
 
 			newModel := model.ProcessModelToApplicationModel(res, emptyFilter)
-			if isDiffModel {
-				networkDiffModel, processDiffModel, err = diff.ApplicationModelDiff(newModel.ApplicationModel, lastModel.ApplicationModel)
-				if err != nil {
-					logger.GetLogger().Error("Failed to produce application model difference as JSON", logfields.Error, err)
-					return
-				}
-
-				// If nothing has changed do not update last model and skip writing empty record
-				if networkDiffModel == nil && processDiffModel == nil {
-					continue
-				}
-				lastModel = newModel
-			}
 
 			if enterpriseOption.Config.ApplicationModelExportFilename != "" {
 				if err := encoder.Encode(newModel); err != nil {
@@ -91,49 +135,8 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			}
 
 			if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
-				procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel)
-				if err != nil {
-					logger.GetLogger().Error("Failed to decode application model to slim process model", logfields.Error, err)
-					return
-				}
-				for _, entry := range procFlatPack {
-					if err := flatEncoder.Encode(entry); err != nil {
-						logger.GetLogger().Error("Failed to encode slim process application model as JSON", logfields.Error, err)
-						return
-					}
-				}
-
-				netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel)
-				if err != nil {
-					logger.GetLogger().Error("Failed to decode application model to slim network model", logfields.Error, err)
-					return
-				}
-
-				var conns []*graphV1.Connection
-				for _, entry := range netFlatPack {
-					networkmetrics.Collect(entry)
-					if err := flatEncoder.Encode(entry); err != nil {
-						logger.GetLogger().Error("Failed to encode slim application model as JSON", logfields.Error, err)
-						return
-					}
-					conn := diff.TelemetryToConnection(entry)
-					if conn != nil {
-						conns = append(conns, conn)
-					}
-				}
-				if connectionEncoder != nil && len(conns) > 0 {
-					endTime := time.Now()
-					log := graphV1.ConnectionLog{
-						Emitter:     graphV1.Emitter_EMITTER_TETRAGON,
-						WindowStart: timestamppb.New(startTime),
-						WindowEnd:   timestamppb.New(endTime),
-						Connections: conns,
-					}
-					if err := connectionEncoder.Encode(&log); err != nil {
-						logger.GetLogger().Warn("Failed to encode connection log as JSON", logfields.Error, err)
-					}
-					startTime = endTime
-				}
+				lastTime, _ = exportTelemetry(ctx, lastTime, telemetry, connection, newModel.ApplicationModel, lastModel.ApplicationModel)
+				lastModel = newModel
 			}
 		case <-ctx.Done():
 			return
