@@ -163,6 +163,19 @@ static long BPF_FUNC(for_each_map_elem, void *map, void *callback_fn, void *call
 // which allows bpf_d_path helper into security_path_* functions.
 volatile const __u32 USE_BPF_D_PATH_HELPER = 0;
 
+volatile const __u32 HAS_MATCH_BINARIES = 1;
+volatile const __u32 HAS_MATCH_OPERATIONS = 1;
+volatile const __u32 HAS_MATCH_DIGESTS = 1;
+volatile const __u32 HAS_MATCH_NAMESPACES = 1;
+volatile const __u32 HAS_MATCH_CAPABILITIES = 1;
+volatile const __u32 HAS_MATCH_RENAME_SRC_TYPE = 1;
+volatile const __u32 HAS_MATCH_OPEN_FLAGS = 1;
+volatile const __u32 HAS_MATCH_FILENAME = 1;
+volatile const __u32 HAS_MATCH_EXEC_ATTRIBUTES = 1;
+volatile const __u32 HAS_MATCH_OPENRAW_RESULT = 1;
+volatile const __u32 HAS_MATCH_UID_GID = 1;
+volatile const __u32 HAS_MATCH_PROCESS_DURATION = 1;
+
 #define INVALID_MATCHER	   0
 #define MATCH_ALL	   1
 #define FS_TYPE_MATCHER	   2
@@ -1177,38 +1190,86 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 {
 	struct file_actions_val *act = 0;
 
-	if (!check_match_binaries(sel_idx, execve))
-		return 0;
-	if (!check_match_operations(sel_idx, args.action))
-		return 0;
-	if (!check_match_uid_gid(sel_idx))
-		return 0;
-	if (!check_match_proc_dur(sel_idx, execve))
-		return 0;
+#ifdef __LARGE_BPF_PROG
+	if (HAS_MATCH_BINARIES) {
+#endif
+		if (!check_match_binaries(sel_idx, execve))
+			return 0;
+#ifdef __LARGE_BPF_PROG
+	}
+#endif
+#ifdef __LARGE_BPF_PROG
+	if (HAS_MATCH_OPERATIONS) {
+#endif
+		if (!check_match_operations(sel_idx, args.action))
+			return 0;
+#ifdef __LARGE_BPF_PROG
+	}
+#endif
+#ifdef __LARGE_BPF_PROG
+	if (HAS_MATCH_UID_GID) {
+#endif
+		if (!check_match_uid_gid(sel_idx))
+			return 0;
+#ifdef __LARGE_BPF_PROG
+	}
+#endif
+#ifdef __LARGE_BPF_PROG
+	if (HAS_MATCH_PROCESS_DURATION) {
+#endif
+		if (!check_match_proc_dur(sel_idx, execve))
+			return 0;
+#ifdef __LARGE_BPF_PROG
+	}
+#endif
 #ifdef __LARGE_BPF_PROG
 #ifdef __FILE_DIGEST_LSM
-	if (!check_match_digests(sel_idx, digest, args.action))
-		return 0;
+	if (HAS_MATCH_DIGESTS) {
+		if (!check_match_digests(sel_idx, digest, args.action))
+			return 0;
+	}
 #endif
-	if (!check_match_namespaces(sel_idx))
-		return 0;
-	if (!check_match_capabilities(sel_idx))
-		return 0;
-	if (!check_match_open_flags(sel_idx, args.action, args.flags))
-		return 0;
-	if (!check_match_exec_attributes(sel_idx, args.action, args.flags))
-		return 0;
+	if (HAS_MATCH_NAMESPACES) {
+		if (!check_match_namespaces(sel_idx))
+			return 0;
+	}
+	if (HAS_MATCH_CAPABILITIES) {
+		if (!check_match_capabilities(sel_idx))
+			return 0;
+	}
+	if (HAS_MATCH_OPEN_FLAGS) {
+		if (!check_match_open_flags(sel_idx, args.action, args.flags))
+			return 0;
+	}
+	if (HAS_MATCH_EXEC_ATTRIBUTES) {
+		if (!check_match_exec_attributes(sel_idx, args.action, args.flags))
+			return 0;
+	}
 #endif
 #ifdef __ENABLE_GLOB_SUPPORT
-	if (!check_match_filename(sel_idx, path.path, path.len, digest))
-		return 0;
+	if (HAS_MATCH_FILENAME) {
+		if (!check_match_filename(sel_idx, path.path, path.len, digest))
+			return 0;
+	}
 #endif
 #ifdef __ENABLE_OPENRAW_SUPPORT
-	if (!check_match_openraw_result(sel_idx, args.action, args.retval))
-		return 0;
+#ifdef __LARGE_BPF_PROG
+	if (HAS_MATCH_OPENRAW_RESULT) {
 #endif
-	if (!check_match_rename(sel_idx, args.action, args.flags))
-		return 0;
+		if (!check_match_openraw_result(sel_idx, args.action, args.retval))
+			return 0;
+#ifdef __LARGE_BPF_PROG
+	}
+#endif
+#endif
+#ifdef __LARGE_BPF_PROG
+	if (HAS_MATCH_RENAME_SRC_TYPE) {
+#endif
+		if (!check_match_rename(sel_idx, args.action, args.flags))
+			return 0;
+#ifdef __LARGE_BPF_PROG
+	}
+#endif
 
 	act = map_lookup_elem(&file_actions_map, &sel_idx);
 	if (act) {

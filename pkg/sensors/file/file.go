@@ -185,6 +185,7 @@ var (
 		{"string_postfix_maps_heap", PrivateMap}, // for matchBinaries Postfix/NoPostfix operator
 		{"tg_mb_sel_opts", SharedMap},            // for matchBinaries operator
 		{"tg_mb_paths", SharedMap},               // for matchBinaries In/NotIn operator
+		{".rodata", SkipMap},
 	}
 
 	PathBasedMiscMaps = []MapInfo{
@@ -399,7 +400,7 @@ var (
 		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_chown.o", "path_chown", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscMaps[:], PathBasedTailCallMaps[:]}}}},
 		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RENAME}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], {{"file_rename_heap_map", PrivateMap}}, {{"rename_path_heap", PrivateMap}}, PathBasedTailCallMaps[:]}}}},
 		{"lsm", "security_path_symlink", []FimFunc{{"security_path_symlink(const struct path*, struct dentry*, const int*)", "lsm_security_path_symlink.o", "path_symlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_SYMLINK}...), [][]MapInfo{PathBasedSelectorMaps[:], BaseMaps[:], SkipMaps[:], PathBasedMiscMaps[:], MiscSymlinkMaps[:], PathBasedTailCallMaps[:]}}}},
-		{"fexit", "io_openat2", []FimFunc{{"int io_openat2(struct io_kiocb*, int)", "fexit_sys_open.o", "io_openat2", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...), [][]MapInfo{{{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
+		{"fexit", "io_openat2", []FimFunc{{"int io_openat2(struct io_kiocb*, int)", "fexit_sys_open.o", "io_openat2", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...), [][]MapInfo{SkipMaps[:], {{"file_errors_map", SharedMap}}, {{"file_openraw_result_map", SharedMap}}, {{"file_openraw_heap_map", PrivateMap}}, {{"file_config_map", SharedMap}}, {{"buffer_heap_map", PrivateMap}}, PathBasedSelectorMaps[:], BaseMaps[:]}}}},
 	}
 
 	FimPathBasedGetnameHook = FimHook{"fexit", "getname", []FimFunc{{"struct filename* getname(const int*)", "fexit_getname.o", "getname", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...), [][]MapInfo{{{"open_user_to_kernel_path", SharedMap}}, {{"kpath_heap", PrivateMap}}}}}}
@@ -1437,7 +1438,7 @@ type FimLoaderData struct {
 	tailId     uint32
 }
 
-func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState, tpConf *configFileSensorOptions, pathMatcher PathBasedMatcher, mode TpMode) (*sensors.Sensor, error) {
+func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.SelectorsMetadata, kprobes v1alpha1.FileSpec, fimProgs []FimProg, config fileapi.FileConfigMapValue, sel *fm.KernelSelectorState, tpConf *configFileSensorOptions, pathMatcher PathBasedMatcher, mode TpMode) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -1712,6 +1713,23 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, kprobes v1alpha
 				// so, we don't need to use a separate section for that
 				"PATH_BASED_MATCHER": uint32(pathMatcher),
 			}
+		} else {
+			load.RewriteConstants = map[string]interface{}{}
+		}
+
+		if bpf.HasProgramLargeSize() {
+			load.RewriteConstants["HAS_MATCH_BINARIES"] = uint32(fm.If(meta.HasMatchBinaries, 1, 0))
+			load.RewriteConstants["HAS_MATCH_OPERATIONS"] = uint32(fm.If(meta.HasMatchOperations, 1, 0))
+			load.RewriteConstants["HAS_MATCH_DIGESTS"] = uint32(fm.If(meta.HasMatchDigests, 1, 0))
+			load.RewriteConstants["HAS_MATCH_NAMESPACES"] = uint32(fm.If(meta.HasMatchNamespaces, 1, 0))
+			load.RewriteConstants["HAS_MATCH_CAPABILITIES"] = uint32(fm.If(meta.HasMatchCapabilities, 1, 0))
+			load.RewriteConstants["HAS_MATCH_RENAME_SRC_TYPE"] = uint32(fm.If(meta.HasMatchRenameSrcType, 1, 0))
+			load.RewriteConstants["HAS_MATCH_OPEN_FLAGS"] = uint32(fm.If(meta.HasMatchOpenFlags, 1, 0))
+			load.RewriteConstants["HAS_MATCH_FILENAME"] = uint32(fm.If(meta.HasMatchFilename, 1, 0))
+			load.RewriteConstants["HAS_MATCH_EXEC_ATTRIBUTES"] = uint32(fm.If(meta.HasMatchExecAttributes, 1, 0))
+			load.RewriteConstants["HAS_MATCH_OPENRAW_RESULT"] = uint32(fm.If(meta.HasMatchOpenrawResult, 1, 0))
+			load.RewriteConstants["HAS_MATCH_UID_GID"] = uint32(fm.If(meta.HasMatchUidGid, 1, 0))
+			load.RewriteConstants["HAS_MATCH_PROCESS_DURATION"] = uint32(fm.If(meta.HasMatchProcessDuration, 1, 0))
 		}
 
 		progs = append(progs, load)
@@ -2766,7 +2784,7 @@ func (k *observerFileSensor) PolicyHandler(
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks: %w", err)
 	}
-	return addFileMonitoringSensor(policy, *newFileSpec, progs, config, selState, tpConf, pathMatcher, mode)
+	return addFileMonitoringSensor(policy, meta, *newFileSpec, progs, config, selState, tpConf, pathMatcher, mode)
 }
 
 func setTailCallIfNeeded(args sensors.LoadProbeArgs, v FimLoaderData) error {
