@@ -492,18 +492,7 @@ func appModelToGraphWorkloadType(wlKind appModelV1.WorkloadKind) graphV1.Kuberne
 	}
 }
 
-func fromWorkloadToDNS(telemetry *appModelV1.NetworkConnectTelemetry) bool {
-	return telemetry.KubernetesNamespace != "" &&
-		telemetry.KubernetesWorkloadName != "" &&
-		telemetry.KubernetesWorkloadKind != appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED &&
-		telemetry.DestinationType == appModelV1.DestinationType_DESTINATION_TYPE_DNS &&
-		telemetry.DestinationName != ""
-}
-
 func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graphV1.Connection {
-	if !fromWorkloadToDNS(telemetry) {
-		return nil
-	}
 	source := &graphV1.Vertex{
 		Family: &graphV1.Vertex_Kubernetes{
 			Kubernetes: &graphV1.VertexFamilyKubernetes{
