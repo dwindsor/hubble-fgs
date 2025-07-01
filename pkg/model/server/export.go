@@ -41,16 +41,18 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 		return last, nil
 	}
 
-	procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel)
-	if err != nil {
-		logger.GetLogger().Error("Failed to decode application model to process telemetry", logfields.Error, err)
-		return last, err
-	}
-
-	for _, entry := range procFlatPack {
-		if err := telemetry.Encode(entry); err != nil {
-			logger.GetLogger().Error("Failed to encode process telemetry as JSON", logfields.Error, err)
+	if telemetry != nil {
+		procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel)
+		if err != nil {
+			logger.GetLogger().Error("Failed to decode application model to process telemetry", logfields.Error, err)
 			return last, err
+		}
+
+		for _, entry := range procFlatPack {
+			if err := telemetry.Encode(entry); err != nil {
+				logger.GetLogger().Error("Failed to encode process telemetry as JSON", logfields.Error, err)
+				return last, err
+			}
 		}
 	}
 
@@ -63,13 +65,17 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 	var conns []*graphV1.Connection
 	for _, entry := range netFlatPack {
 		networkmetrics.Collect(entry)
-		if err := telemetry.Encode(entry); err != nil {
-			logger.GetLogger().Error("Failed to encode network telemetry as JSON", logfields.Error, err)
-			return last, err
+		if telemetry != nil {
+			if err := telemetry.Encode(entry); err != nil {
+				logger.GetLogger().Error("Failed to encode network telemetry as JSON", logfields.Error, err)
+				return last, err
+			}
 		}
-		conn := diff.TelemetryToConnection(entry)
-		if conn != nil {
-			conns = append(conns, conn)
+		if connection != nil {
+			conn := diff.TelemetryToConnection(entry)
+			if conn != nil {
+				conns = append(conns, conn)
+			}
 		}
 	}
 
@@ -106,11 +112,14 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 		encoder = json.NewEncoder(writer)
 	}
 
-	if flatWriter != nil {
+	// *Writer is an interface so we can't nil check it and we drop back to
+	// the enterprise option the source of truth. Although its annoying for
+	// CI.
+	if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
 		telemetry = json.NewEncoder(flatWriter)
 	}
 
-	if connectionWriter != nil {
+	if enterpriseOption.Config.ConnectionLogFileName != "" {
 		connection = json.NewEncoder(connectionWriter)
 	}
 
@@ -134,7 +143,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				}
 			}
 
-			if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
+			if telemetry != nil || connection != nil {
 				lastTime, _ = exportTelemetry(ctx, lastTime, telemetry, connection, newModel.ApplicationModel, lastModel.ApplicationModel)
 				lastModel = newModel
 			}
