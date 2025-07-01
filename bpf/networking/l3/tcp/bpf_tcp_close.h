@@ -22,13 +22,13 @@
 #include "bpf_tracing.h"
 #include "parsers/http/http.h"
 #include "parsers/bottle.h"
-#include "bpf_tcp_network_event_config.h"
+#include "../bpf_network_event_config.h"
 #include "bpf_tcp_state.h"
 
 static inline __attribute__((always_inline)) int
 __event_tcp_close(void *ctx, struct sock *skp, int state)
 {
-	struct tcp_event_disable_config *event_cfg;
+	struct event_disable_config *event_cfg;
 	struct msg_ip_with_stats_event *val;
 	struct tcpsocketmap_value *socket;
 	unsigned char old_state;
@@ -85,7 +85,7 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	get_socket_stats(skp, socket, &val->stats);
 	socket->closed = 1;
 
-	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
+	event_cfg = (struct event_disable_config *)map_lookup_elem(
 		&tg_event_disable_config, &zero);
 	if (!event_cfg)
 		return 0;

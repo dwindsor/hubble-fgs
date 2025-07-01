@@ -20,7 +20,7 @@
 #include "parsers/tls/tls_map.h"
 #include "bpf_fd_to_sk.h"
 #include "bpf_tracing.h"
-#include "bpf_tcp_network_event_config.h"
+#include "../bpf_network_event_config.h"
 #include "bpf_tcp_info.h"
 #include "bpf_network_helpers.h"
 #include "bpf_tcp_state.h"
@@ -64,10 +64,10 @@ static inline __attribute__((always_inline)) struct msg_ip_with_tnp_event init_m
 static inline __attribute__((always_inline)) int
 event_post_connect(void *ctx, struct msg_ip_with_tnp_event *val)
 {
-	struct tcp_event_disable_config *event_cfg;
+	struct event_disable_config *event_cfg;
 	int zero = 0;
 
-	event_cfg = (struct tcp_event_disable_config *)
+	event_cfg = (struct event_disable_config *)
 		map_lookup_elem(&tg_event_disable_config, &zero);
 
 	if (!event_cfg)

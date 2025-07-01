@@ -85,7 +85,7 @@ int skops_tuple_with_stats(u64 cookie, struct msg_ip_with_stats_event *val, stru
 
 int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 {
-	struct tcp_event_disable_config *event_cfg;
+	struct event_disable_config *event_cfg;
 	struct socketmap_value *socket = 0;
 	struct tcpsocketmap_value *v;
 	struct msg_ip_event *val;
@@ -117,7 +117,7 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	skops_socket(cookie, val, socket);
 	skops_tuple(cookie, val, skops);
 
-	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
+	event_cfg = (struct event_disable_config *)map_lookup_elem(
 		&tg_event_disable_config, &zero);
 	if (!event_cfg)
 		return 0;
@@ -203,7 +203,7 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 
 int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 {
-	struct tcp_event_disable_config *event_cfg;
+	struct event_disable_config *event_cfg;
 	struct msg_ip_with_stats_event *val;
 	struct tcpsocketmap_value *socket;
 	int old_state, state;
@@ -251,7 +251,7 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	val->close_time = ktime_get_ns();
 	socket->closed = 1;
 
-	event_cfg = (struct tcp_event_disable_config *)map_lookup_elem(
+	event_cfg = (struct event_disable_config *)map_lookup_elem(
 		&tg_event_disable_config, &zero);
 	if (!event_cfg)
 		return 0;
