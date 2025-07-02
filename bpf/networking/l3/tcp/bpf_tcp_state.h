@@ -23,14 +23,14 @@ struct {
 	__type(key, __u32);
 	__type(value, struct msg_ip_with_stats_event);
 	__uint(max_entries, 1);
-} tcp_close_event_map SEC(".maps");
+} tg_h_tcpcls_ev SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __u32);
 	__type(value, struct tcpsocketmap_value);
 	__uint(max_entries, 1);
-} tg_sockops_tcpsocket_map SEC(".maps");
+} tg_h_tcpsk SEC(".maps");
 
 static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcpsocketmap_value(
 	struct msg_execve_key *key, u16 family, u32 flags, u64 create_time, u64 version, struct msg_ip_tuple *tuple)
@@ -38,7 +38,7 @@ static inline __attribute__((always_inline)) struct tcpsocketmap_value *init_tcp
 	struct tcpsocketmap_value *v;
 	int zero = 0;
 
-	v = map_lookup_elem(&tg_sockops_tcpsocket_map, &zero);
+	v = map_lookup_elem(&tg_h_tcpsk, &zero);
 	if (!v)
 		return 0;
 

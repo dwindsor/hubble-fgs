@@ -24,25 +24,18 @@
 #include "bpf_tcp_listen.h"
 
 struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct tcpsocketmap_value);
-	__uint(max_entries, 1);
-} tg_accept_socket SEC(".maps");
-
-struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__type(key, int);
 	__type(value, struct socketmap_value);
 	__uint(max_entries, 1);
-} tg_listen_process SEC(".maps");
+} tg_h_tcplstn_ps SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __u32);
 	__type(value, struct msg_ip_event);
 	__uint(max_entries, 1);
-} tcp_accept_event_map SEC(".maps");
+} tg_h_tcpacc_ev SEC(".maps");
 
 /* Theory of Operations: The kernel does not at the moment have a hook that
  * is reliable to capture both the listen sock and the new sock from the
@@ -107,7 +100,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 		bool walked;
 		u32 ppid;
 
-		listen_process = (struct socketmap_value *)map_lookup_elem(&tg_listen_process, &zero);
+		listen_process = (struct socketmap_value *)map_lookup_elem(&tg_h_tcplstn_ps, &zero);
 		if (!listen_process)
 			return 0;
 
@@ -168,7 +161,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	if (!event_cfg->disableAccept) {
 		size_t size = sizeof(struct msg_ip_event);
 
-		event = (struct msg_ip_event *)map_lookup_elem(&tcp_accept_event_map,
+		event = (struct msg_ip_event *)map_lookup_elem(&tg_h_tcpacc_ev,
 							       &zero);
 		if (!event)
 			return 0;

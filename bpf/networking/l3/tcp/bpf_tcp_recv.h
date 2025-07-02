@@ -25,13 +25,6 @@
 #include "bpf_tcp_info.h"
 #include "process/process_tree.h"
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, u64);
-	__uint(max_entries, 1);
-} tcp_cookie_heap SEC(".maps");
-
 static inline __attribute__((always_inline)) bool
 get_tcp_fin(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bool ipv6)
 {

@@ -33,7 +33,7 @@ struct {
 	__type(key, __u32);
 	__type(value, struct msg_ip_event);
 	__uint(max_entries, 1);
-} tcp_listen_event_map SEC(".maps");
+} tg_h_tcplstn_ev SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -76,7 +76,7 @@ __event_sys_listen(void *ctx, struct sock *skp)
 		key = &process->key;
 	}
 
-	val = (struct msg_ip_event *)map_lookup_elem(&tcp_listen_event_map,
+	val = (struct msg_ip_event *)map_lookup_elem(&tg_h_tcplstn_ev,
 						     &zero);
 	if (!val) {
 		return 0;

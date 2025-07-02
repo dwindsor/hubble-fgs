@@ -109,7 +109,7 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	// socket allocation.
 	socket->protocol = IPPROTO_TCP;
 
-	val = (struct msg_ip_event *)map_lookup_elem(&tcp_listen_event_map,
+	val = (struct msg_ip_event *)map_lookup_elem(&tg_h_tcplstn_ev,
 						     &zero);
 	if (!val)
 		return 0;
@@ -164,7 +164,7 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 	socket->protocol = IPPROTO_TCP;
 
 	key = &socket->key;
-	val = (struct msg_ip_with_tnp_event *)map_lookup_elem(&tcp_connect_event_map,
+	val = (struct msg_ip_with_tnp_event *)map_lookup_elem(&tg_h_tcpconn_ev,
 							      &zero);
 	if (!val)
 		return 0;
@@ -239,7 +239,7 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	if (socket->closed)
 		return 0;
 
-	val = (struct msg_ip_with_stats_event *)map_lookup_elem(&tcp_close_event_map, &zero);
+	val = (struct msg_ip_with_stats_event *)map_lookup_elem(&tg_h_tcpcls_ev, &zero);
 	if (!val)
 		return 0;
 

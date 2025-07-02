@@ -40,7 +40,7 @@ struct {
 	__type(key, __u32);
 	__type(value, struct msg_ip_with_tnp_event);
 	__uint(max_entries, 1);
-} tcp_connect_event_map SEC(".maps");
+} tg_h_tcpconn_ev SEC(".maps");
 
 static inline __attribute__((always_inline)) struct msg_ip_with_tnp_event init_msg_ip_with_tnp_event(struct msg_execve_key *key, u64 cookie)
 {
@@ -116,7 +116,7 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 		key = &process->key;
 	}
 
-	val = (struct msg_ip_with_tnp_event *)map_lookup_elem(&tcp_connect_event_map,
+	val = (struct msg_ip_with_tnp_event *)map_lookup_elem(&tg_h_tcpconn_ev,
 							      &zero);
 	if (!val) {
 		return 0;

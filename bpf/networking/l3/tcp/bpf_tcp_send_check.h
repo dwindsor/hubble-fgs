@@ -23,13 +23,6 @@
 #include "bpf_tracing.h"
 #include "bpf_tcp_info.h"
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, __u32);
-	__type(value, struct msg_ip_event);
-	__uint(max_entries, 1);
-} tg_tcp_send_check_event_map SEC(".maps");
-
 static inline __attribute__((always_inline)) int
 __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 {

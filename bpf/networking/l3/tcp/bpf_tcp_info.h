@@ -62,13 +62,6 @@ struct {
 	__uint(max_entries, 32768);
 } tg_tcp_finrx_map SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct tcpsocketmap_value);
-	__uint(max_entries, 1);
-} tg_tcpsocket_map_heap SEC(".maps");
-
 struct tcp_send_check_sample_cfg {
 	__u8 watermarksEnable;
 	__u8 rttEnable;
