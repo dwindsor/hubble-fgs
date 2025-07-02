@@ -55,7 +55,7 @@ struct {
 	__type(key, int);
 	__type(value, struct msg_icmp_event);
 	__uint(max_entries, 1);
-} icmp_event_heap SEC(".maps");
+} tg_h_icmp_ev SEC(".maps");
 
 struct icmp_config {
 	u8 v6_info;
@@ -183,7 +183,7 @@ int icmp_handler_ip4(struct __sk_buff *skb, int send)
 	else
 		ip = (struct iphdr *)data;
 
-	val = (struct msg_icmp_event *)map_lookup_elem(&icmp_event_heap, &zero);
+	val = (struct msg_icmp_event *)map_lookup_elem(&tg_h_icmp_ev, &zero);
 	if (!val)
 		return SK_PASS;
 
@@ -312,7 +312,7 @@ int icmp_handler_ip6(struct __sk_buff *skb, u16 off, int send)
 		return SK_PASS;
 	}
 
-	val = (struct msg_icmp_event *)map_lookup_elem(&icmp_event_heap, &zero);
+	val = (struct msg_icmp_event *)map_lookup_elem(&tg_h_icmp_ev, &zero);
 	if (!val)
 		return SK_PASS;
 

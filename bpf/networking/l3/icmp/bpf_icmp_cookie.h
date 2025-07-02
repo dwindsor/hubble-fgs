@@ -91,7 +91,7 @@ struct {
 	__type(key, int);
 	__type(value, struct socket_tuple_key);
 	__uint(max_entries, 1);
-} tg_socket_tuple_heap SEC(".maps");
+} tg_h_sk_tuple SEC(".maps");
 
 static inline __attribute__((always_inline)) bool
 icmp_tracking_enabled()
@@ -124,7 +124,7 @@ make_tuple_key_from_sk(struct msg_ip_tuple *tuple, struct sock *sk)
 	int zero = 0;
 	struct sock *__sk = 0;
 
-	key = (struct socket_tuple_key *)map_lookup_elem(&tg_socket_tuple_heap, &zero);
+	key = (struct socket_tuple_key *)map_lookup_elem(&tg_h_sk_tuple, &zero);
 	if (!key)
 		return 0;
 
@@ -166,7 +166,7 @@ make_tuple_key_from_skb(struct sk_buff *skb, struct msg_ip_tuple *tuple, u8 prot
 	struct net_device *skb_dev;
 	int zero = 0;
 
-	key = map_lookup_elem(&tg_socket_tuple_heap, &zero);
+	key = map_lookup_elem(&tg_h_sk_tuple, &zero);
 	if (!key)
 		return 0;
 
@@ -200,7 +200,7 @@ make_tuple_key_from_cgroup_skb(struct __sk_buff *skb, u16 protocol)
 	struct socket_tuple_key *key;
 	int zero = 0;
 
-	key = map_lookup_elem(&tg_socket_tuple_heap, &zero);
+	key = map_lookup_elem(&tg_h_sk_tuple, &zero);
 	if (!key)
 		return 0;
 
