@@ -60,11 +60,20 @@ var (
 		"windows",
 	).SetPolicy(baseTCPConnectPolicy)
 
+	SockOps = program.Builder(
+		"tcp_connect.sys",
+		"sockops",
+		"sockops_monitor",
+		"tcp::sockops_monitor",
+		"windows",
+	).SetPolicy(baseTCPConnectPolicy)
+
 	baseTCPPrograms = []*program.Program{
 		TCPConnect4,
 		TCPConnect6,
 		TCPAccept4,
 		TCPAccept6,
+		SockOps,
 	}
 )
 
@@ -88,6 +97,19 @@ func LoadWinTCPSensor(ctx context.Context) error {
 	return mgr.EnableSensor(ctx, initialTCPSensor.Name)
 }
 
+func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
+	m := networkapi.MsgIPWithStatsEvent{}
+	var err error
+	err = binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		return nil, err
+	}
+	m.Common.Ktime = common.KTimeToWindowsEpoch(m.Common.Ktime)
+	tcp := ip.MsgToIPWithStatsUnix(&m)
+	events := []observer.Event{tcp}
+	return events, err
+}
+
 func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 	m := networkapi.MsgIPEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
@@ -103,4 +125,5 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 func init() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECTRET, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ACCEPT, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCLOSE, handleTcpClose)
 }
