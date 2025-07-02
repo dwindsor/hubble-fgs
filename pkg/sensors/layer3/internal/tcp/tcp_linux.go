@@ -141,8 +141,6 @@ func UnloadSensor(tp tracingpolicy.TracingPolicy) error {
 }
 
 func processModelMapsEnable() []*program.Map {
-	tcpconfig.Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	tcpconfig.Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	maps := []*program.Map{
 		program.MapUserFrom(base.EndpointIdMap),
 		program.MapUserFrom(base.BpfEndpointIdMap),
