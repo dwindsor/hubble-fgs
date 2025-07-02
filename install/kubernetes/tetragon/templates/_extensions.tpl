@@ -37,6 +37,7 @@ enable-latency: {{ .Values.tetragon.layer3.latency.enabled | quote }}
 enable-icmp: {{ .Values.tetragon.layer3.icmp.enabled | quote }}
 enable-rawsock: {{ .Values.tetragon.layer3.rawsock.enabled | quote }}
 enable-dns: {{ .Values.tetragon.dns.enabled | quote }}
+enable-network-events: {{ .Values.tetragon.enableEvents.network | quote }}
 {{- if .Values.tetragon.awsSonar.enabled }}
 enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}

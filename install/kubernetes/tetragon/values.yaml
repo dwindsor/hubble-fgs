@@ -290,6 +290,8 @@ tetragon:
   enableProcessTree: false
   # -- Enable system call tracking in the process tree.
   enableSyscallTracking: false
+  enableEvents:
+    network: true
   # Layer3
   layer3:
     tcp:

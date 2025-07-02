@@ -134,6 +134,9 @@ options:
     - name: enable-msg-handling-latency
       default_value: "false"
       usage: Enable metrics for message handling latency
+    - name: enable-network-events
+      default_value: "true"
+      usage: Enable Network Events from BPF to userspace
     - name: enable-pid-set-filter
       default_value: "false"
       usage: |
