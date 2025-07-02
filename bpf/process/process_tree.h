@@ -98,7 +98,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	if (!curr)
 		return 0;
 
-	tree_key = map_lookup_elem(&process_tree_binary_uid_key_map, &zero);
+	tree_key = map_lookup_elem(&tg_h_ps_buidkey, &zero);
 	if (!tree_key)
 		return 0;
 
@@ -157,7 +157,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 
 	old = map_lookup_elem(&process_tree_map, k);
 	if (!old) {
-		old = map_lookup_elem(&process_tree_value_heap, &zero);
+		old = map_lookup_elem(&tg_h_ps_value, &zero);
 		if (!old)
 			return 0;
 
@@ -257,7 +257,7 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 
 	struct process_tree_binary_uid_key *tree_key;
 
-	tree_key = map_lookup_elem(&process_tree_binary_uid_key_map, &zero);
+	tree_key = map_lookup_elem(&tg_h_ps_buidkey, &zero);
 	if (!tree_key)
 		return 0;
 	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
@@ -279,7 +279,7 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	if (nsid)
 		key.nsid = *nsid;
 
-	value = map_lookup_elem(&listen_endpoint_heap, &zero);
+	value = map_lookup_elem(&tg_h_ps_lstnval, &zero);
 	if (!value)
 		return 0;
 	value->self = *self_uid;
@@ -310,7 +310,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	exists = !!destvalue;
 
 	if (!destvalue) {
-		destvalue = map_lookup_elem(&destination_endpoint_heap, &zero);
+		destvalue = map_lookup_elem(&tg_h_ps_dstval, &zero);
 		if (!destvalue)
 			return 0;
 
@@ -375,7 +375,7 @@ static inline __attribute__((always_inline)) struct tree_id *find_self_uid(__u32
 	if (!curr)
 		return 0;
 
-	tree_key = map_lookup_elem(&process_tree_binary_uid_key_map, &zero);
+	tree_key = map_lookup_elem(&tg_h_ps_buidkey, &zero);
 	if (!tree_key)
 		return 0;
 	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
@@ -451,7 +451,7 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		struct destination_endpoint_key *dfltkey, *updatekey;
 		int zero = 0;
 
-		dfltkey = map_lookup_elem(&destination_endpoint_key_heap, &zero);
+		dfltkey = map_lookup_elem(&tg_h_ps_dfltkey, &zero);
 		if (!dfltkey)
 			return 0;
 
@@ -504,7 +504,7 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 				return destvalue->deny;
 			}
 
-			destvalue = map_lookup_elem(&destination_endpoint_heap, &zero);
+			destvalue = map_lookup_elem(&tg_h_ps_dstval, &zero);
 			if (!destvalue)
 				return 0;
 
@@ -531,28 +531,28 @@ struct {
 	__type(key, int);
 	__type(value, struct destination_endpoint_key);
 	__uint(max_entries, 1);
-} destination_endpoint_key_dns SEC(".maps");
+} tg_h_ps_dnskey SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct destination_endpoint_key);
 	__uint(max_entries, 1);
-} destination_endpoint_key_lpm SEC(".maps");
+} tg_h_ps_lpmkey SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct destination_endpoint_key);
 	__uint(max_entries, 1);
-} destination_endpoint_key_usr SEC(".maps");
+} tg_h_ps_usrkey SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct destination_endpoint_key);
 	__uint(max_entries, 1);
-} destination_endpoint_key_dest SEC(".maps");
+} tg_h_ps_dstkey SEC(".maps");
 
 static inline __attribute__((always_inline)) int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
@@ -569,10 +569,10 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	struct ip_addr ip_key = {};
 	uint64_t lpm_id;
 
-	dnskey = map_lookup_elem(&destination_endpoint_key_dns, &zero);
-	lpmkey = map_lookup_elem(&destination_endpoint_key_lpm, &zero);
-	usrkey = map_lookup_elem(&destination_endpoint_key_usr, &zero);
-	destkey = map_lookup_elem(&destination_endpoint_key_dest, &zero);
+	dnskey = map_lookup_elem(&tg_h_ps_dnskey, &zero);
+	lpmkey = map_lookup_elem(&tg_h_ps_lpmkey, &zero);
+	usrkey = map_lookup_elem(&tg_h_ps_usrkey, &zero);
+	destkey = map_lookup_elem(&tg_h_ps_dstkey, &zero);
 
 	if (!dnskey || !lpmkey || !usrkey || !destkey)
 		return 0;
@@ -638,7 +638,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 		goto found_id;
 
 	/* There is no known ID for this IP so lets create one */
-	value = map_lookup_elem(&tg_bpf_endpoint_id_heap, &zero);
+	value = map_lookup_elem(&tg_h_ps_epid, &zero);
 	if (!value)
 		return 0;
 	value->id = __sync_fetch_and_add(&glbl_bpf_endpoint_id, 1);

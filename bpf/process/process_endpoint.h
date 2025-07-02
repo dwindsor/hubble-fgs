@@ -53,7 +53,7 @@ struct {
 	__uint(max_entries, 1);
 	__type(key, uint32_t);
 	__type(value, struct endpoint_id_value);
-} tg_bpf_endpoint_id_heap SEC(".maps");
+} tg_h_ps_epid SEC(".maps");
 
 struct process_tree_binary_uid_key {
 	char binary[BINARY_PATH_MAX_LEN];
@@ -65,7 +65,7 @@ struct {
 	__uint(max_entries, 1);
 	__type(key, uint32_t);
 	__type(value, struct process_tree_binary_uid_key);
-} process_tree_binary_uid_key_map SEC(".maps");
+} tg_h_ps_buidkey SEC(".maps");
 
 struct tree_id {
 	uint32_t uid;
@@ -136,17 +136,7 @@ struct {
 	__type(value, struct process_tree_key);
 } tg_ee_pid_data SEC(".maps");
 
-/* The process_tree_key_heap is simply heap storage to allocate
- * keys from.
- */
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, 1);
-	__type(key, uint32_t);
-	__type(value, struct process_tree_key);
-} process_tree_key_heap SEC(".maps");
-
-/* process_tree_value_heap is simply heap storage to allocate
+/* tg_h_ps_value is simply heap storage to allocate
  * process_tree_value from.
  */
 struct {
@@ -154,7 +144,7 @@ struct {
 	__uint(max_entries, 1);
 	__type(key, uint32_t);
 	__type(value, struct process_tree_value);
-} process_tree_value_heap SEC(".maps");
+} tg_h_ps_value SEC(".maps");
 
 #define DESTINATION_SOURCE_UNKNOWN   0
 #define DESTINATION_SOURCE_BPF	     1
@@ -222,14 +212,14 @@ struct {
 	__uint(max_entries, 1);
 	__type(key, uint32_t);
 	__type(value, struct destination_endpoint_value);
-} destination_endpoint_heap SEC(".maps");
+} tg_h_ps_dstval SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
 	__type(key, uint32_t);
 	__type(value, struct destination_endpoint_key);
-} destination_endpoint_key_heap SEC(".maps");
+} tg_h_ps_dfltkey SEC(".maps");
 
 struct listen_endpoint_key {
 	__u64 addr[2];
@@ -250,7 +240,7 @@ struct {
 	__uint(max_entries, 1);
 	__type(key, uint32_t);
 	__type(value, struct listen_endpoint_value);
-} listen_endpoint_heap SEC(".maps");
+} tg_h_ps_lstnval SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
