@@ -429,6 +429,7 @@ func testDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect bo
 	defer cancel()
 
 	if CLISwitches {
+		enterpriseOption.Config.EnableNetworkEvents = !disableConnect
 		oldEnableTCPValue := enterpriseOption.Config.EnableTCP
 		enterpriseOption.Config.EnableTCP = true
 		oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
@@ -760,6 +761,7 @@ func testDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitches 
 	portstr := fmt.Sprintf("%d", port)
 
 	if CLISwitches {
+		enterpriseOption.Config.EnableNetworkEvents = !disableListen
 		oldEnableTCPValue := enterpriseOption.Config.EnableTCP
 		enterpriseOption.Config.EnableTCP = true
 		oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
