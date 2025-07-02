@@ -93,7 +93,7 @@ struct {
 	__type(key, int);
 	__type(value, u64);
 	__uint(max_entries, 1);
-} tg_tls_cookie_heap SEC(".maps");
+} tg_h_tls_cookie SEC(".maps");
 
 #define PROTO_SKIP  0
 #define PROTO_TRACK 1

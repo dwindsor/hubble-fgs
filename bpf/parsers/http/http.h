@@ -167,7 +167,7 @@ struct {
 	__type(key, int);
 	__type(value, struct msg_http_event);
 	__uint(max_entries, 1);
-} tg_http_map_heap SEC(".maps");
+} tg_h_http_ev SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);

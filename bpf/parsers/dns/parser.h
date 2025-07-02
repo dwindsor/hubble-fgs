@@ -61,7 +61,7 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start, int ski
 	data += 1; // Move past length byte
 
 	if (!skip) {
-		name = map_lookup_elem(&name_heap_map, &zero);
+		name = map_lookup_elem(&tg_h_dns_name, &zero);
 		if (!name)
 			return -23;
 	}
@@ -117,7 +117,7 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 
 	// Even though we NULL byte end the string, it will be used as a key so it needs to be cleared
 	if (!skip) {
-		char *name = map_lookup_elem(&name_heap_map, &zero);
+		char *name = map_lookup_elem(&tg_h_dns_name, &zero);
 		if (!name)
 			return -25;
 		memset((uint64_t *)name, 0, DNS_MAX_NAME_SIZE + 1);
@@ -212,7 +212,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		return offset + data_len;
 	}
 
-	name = map_lookup_elem(&name_heap_map, &zero);
+	name = map_lookup_elem(&tg_h_dns_name, &zero);
 	if (!name)
 		return -34;
 
@@ -353,7 +353,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 	data += name_len;
 
 	// Record the request ID or verify the response domain is correct with the ID.
-	name = map_lookup_elem(&name_heap_map, &zero);
+	name = map_lookup_elem(&tg_h_dns_name, &zero);
 	if (!name)
 		return DNS_PARSER_SKIP;
 

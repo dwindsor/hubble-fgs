@@ -76,7 +76,7 @@ get_http_context(ctx_md *msg)
 		struct msg_http_event *__http;
 		int zero = 0;
 
-		__http = map_lookup_elem(&tg_http_map_heap, &zero);
+		__http = map_lookup_elem(&tg_h_http_ev, &zero);
 		if (!__http)
 			goto out;
 

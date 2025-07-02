@@ -57,7 +57,7 @@ struct {
 	__uint(max_entries, 1);
 	__type(key, uint32_t);
 	__type(value, struct dns_endpoint_id_value);
-} tg_bpf_dns_endpoint_id_heap SEC(".maps");
+} tg_h_dns_epid SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -86,7 +86,7 @@ FUNC_INLINE int assign_dns_id_mapping(struct ip_addr *ip, char *domain)
 			return -1;
 	} else {
 		// Generate a new ID from BPF side
-		id_val = map_lookup_elem(&tg_bpf_dns_endpoint_id_heap, &zero);
+		id_val = map_lookup_elem(&tg_h_dns_epid, &zero);
 		if (!id_val)
 			return -1;
 		global_id = map_lookup_elem(&tg_glb_dns_id, &zero);

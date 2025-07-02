@@ -91,7 +91,7 @@ struct {
 	__type(key, __u32);
 	// we can't tell the verifier that (name_offset + label_length < 255) so we need 63 extra bytes.
 	__type(value, char[DNS_MAX_NAME_SIZE + DNS_MAX_LABEL_SIZE]);
-} name_heap_map SEC(".maps");
+} tg_h_dns_name SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);

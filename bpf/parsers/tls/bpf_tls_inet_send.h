@@ -42,7 +42,7 @@ struct {
 	__type(key, int);
 	__type(value, struct tls_packet_details);
 	__uint(max_entries, 1);
-} tls_header_heap SEC(".maps");
+} tg_h_tls_hdr SEC(".maps");
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 {
@@ -64,14 +64,14 @@ static inline __attribute__((always_inline)) struct tls_packet_details *tls_inet
 	int result;
 	u8 proto;
 
-	cookie = map_lookup_elem(&tg_tls_cookie_heap, &zero);
+	cookie = map_lookup_elem(&tg_h_tls_cookie, &zero);
 	if (!cookie)
 		return 0;
 	write_cookie(cookie, (u64)skb->sk);
 	if (!*cookie)
 		return 0;
 
-	packet = map_lookup_elem(&tls_header_heap, &zero);
+	packet = map_lookup_elem(&tg_h_tls_hdr, &zero);
 	if (!packet)
 		return 0;
 
