@@ -221,7 +221,7 @@ udp_watermarks(void *ctx, u64 *cookie, struct iphdr *ip, int payload_sz, bool ip
 	if (!config || !config->watermarks_enable)
 		return;
 
-	c = (struct process_network_watermarks_config *)map_lookup_elem(&tg_pn_watermarks_config_heap, &zero);
+	c = (struct process_network_watermarks_config *)map_lookup_elem(&tg_h_l3_wtmk_c, &zero);
 	if (!c)
 		return;
 	c->avg_window_size_ms = config->watermarks_avg_window_size_ms;
@@ -399,7 +399,7 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 	if (!skb)
 		return SK_PASS;
 
-	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
 	if (!vars)
 		return SK_PASS;
 
@@ -472,7 +472,7 @@ int udp_handler_ip6(struct __sk_buff *skb, u16 udp_off, int send)
 	if (!skb)
 		return SK_PASS;
 
-	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
 	if (!vars)
 		return SK_PASS;
 	ip6 = &vars->ip6;

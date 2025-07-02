@@ -174,7 +174,7 @@ int icmp_handler_ip4(struct __sk_buff *skb, int send)
 	u8 *icmp_data;
 	int zero = 0;
 
-	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
 	if (!vars)
 		return SK_PASS;
 
@@ -302,7 +302,7 @@ int icmp_handler_ip6(struct __sk_buff *skb, u16 off, int send)
 	int zero = 0;
 	u8 *rep_ptr;
 
-	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
 	if (!vars)
 		return SK_PASS;
 	ip6 = &vars->ip6;

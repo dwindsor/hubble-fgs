@@ -32,7 +32,7 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 	int zero = 0;
 	u8 protocol;
 
-	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
 	if (!vars)
 		return SK_PASS;
 

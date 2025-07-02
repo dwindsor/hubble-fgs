@@ -54,21 +54,21 @@ struct {
 	__type(key, int);
 	__type(value, struct msg_process_network_watermarks_event);
 	__uint(max_entries, 1);
-} tg_pn_watermarks_event_heap SEC(".maps");
+} tg_h_l3_wtmk_ev SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct process_network_watermarks_log);
 	__uint(max_entries, 1);
-} tg_pn_watermarks_value_heap SEC(".maps");
+} tg_h_l3_wtmk_v SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct process_network_watermarks_config);
 	__uint(max_entries, 1);
-} tg_pn_watermarks_config_heap SEC(".maps");
+} tg_h_l3_wtmk_c SEC(".maps");
 
 #define WATERMARKS_KEY_PROTO_SHIFT  48
 #define WATERMARKS_KEY_DIR_SHIFT    32
@@ -141,7 +141,7 @@ process_watermarks_map_delete(void *ctx, __u32 tgid)
 	__u64 *cntr;
 
 	process = execve_map_get_noinit(tgid);
-	val = map_lookup_elem(&tg_pn_watermarks_event_heap, &zero);
+	val = map_lookup_elem(&tg_h_l3_wtmk_ev, &zero);
 	cntr = map_lookup_elem(&tg_pn_watermarks_map_stats, &zero);
 
 	if (val && process) {
@@ -183,7 +183,7 @@ init_watermarks_log(u64 watermarks_key, u64 process_start_time, u64 vol,
 	int err, zero = 0;
 	u64 *cntr;
 
-	watermarks_log = map_lookup_elem(&tg_pn_watermarks_value_heap, &zero);
+	watermarks_log = map_lookup_elem(&tg_h_l3_wtmk_v, &zero);
 	if (!watermarks_log)
 		return;
 
@@ -341,7 +341,7 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 		struct msg_process_network_watermarks_event *val;
 		int zero = 0;
 
-		val = map_lookup_elem(&tg_pn_watermarks_event_heap, &zero);
+		val = map_lookup_elem(&tg_h_l3_wtmk_ev, &zero);
 		if (!val)
 			return;
 

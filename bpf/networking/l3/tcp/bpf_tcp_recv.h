@@ -139,7 +139,7 @@ int tcp_handler_send(struct __sk_buff *skb)
 	__u8 state;
 	__u64 c;
 
-	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
 	if (!vars)
 		return SK_PASS;
 
@@ -230,7 +230,7 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb)
 	__u64 c;
 #endif
 
-	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
 	if (!vars)
 		return SK_PASS;
 	ip = &vars->ip;
@@ -293,7 +293,7 @@ int tcp_handler_ip4(struct __sk_buff *skb, int send)
 	struct iphdr *ip;
 	int zero = 0;
 
-	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
 	if (!vars)
 		return SK_PASS;
 
@@ -314,7 +314,7 @@ int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
 	struct ipv6hdr *ip6;
 	int zero = 0;
 
-	vars = (struct handler_vars *)map_lookup_elem(&dispatcher_heap, &zero);
+	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
 	if (!vars)
 		return SK_PASS;
 	ip6 = &vars->ip6;

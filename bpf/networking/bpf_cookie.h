@@ -47,7 +47,7 @@ struct {
 	__type(key, int);
 	__type(value, struct socketmap_value);
 	__uint(max_entries, 1);
-} tg_socket_map_heap SEC(".maps");
+} tg_h_l3_sk SEC(".maps");
 
 /* Store the latest cookie version number. Each socket receives a
  * new global version number, unique to each socket.
@@ -207,7 +207,7 @@ update_socketmap(u64 *cookie, u32 pid, u16 protocol, struct msg_ip_tuple *tuple)
 		if (!value)
 			return false;
 		if (!process) {
-			process = (struct socketmap_value *)map_lookup_elem(&tg_socket_map_heap, &zero);
+			process = (struct socketmap_value *)map_lookup_elem(&tg_h_l3_sk, &zero);
 			if (!process)
 				return false;
 			process->key.pid = value->key.pid;

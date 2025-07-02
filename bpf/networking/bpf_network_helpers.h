@@ -82,7 +82,7 @@ struct {
 	__type(key, int);
 	__type(value, struct msg_ip_event);
 	__uint(max_entries, 1);
-} ip_error_event_heap SEC(".maps");
+} tg_h_l3_iperr SEC(".maps");
 
 struct handler_vars {
 	struct iphdr ip;
@@ -95,7 +95,7 @@ struct {
 	__type(key, int);
 	__type(value, struct handler_vars);
 	__uint(max_entries, 1);
-} dispatcher_heap SEC(".maps");
+} tg_p_l3_dsptchr SEC(".maps");
 
 static inline __attribute__((always_inline)) void
 get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk)
@@ -326,7 +326,7 @@ struct {
 	__type(key, int);
 	__type(value, struct ipv6ext);
 	__uint(max_entries, 1);
-} ipv6ext_heap SEC(".maps");
+} tg_h_l3_ipv6ext SEC(".maps");
 
 #define INSPECT_AND_ADVANCE_IPV6_HEADER                                                                               \
 	/* Correct the length parameter, depending on current extension. */                                           \
@@ -390,7 +390,7 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 	struct ipv6ext *e;
 	int zero = 0;
 
-	e = map_lookup_elem(&ipv6ext_heap, &zero);
+	e = map_lookup_elem(&tg_h_l3_ipv6ext, &zero);
 	if (!e) {
 		if (err) {
 			*err = IP_ERROR_NO_HEAP;
@@ -459,7 +459,7 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	struct msg_ip_event *val;
 	int zero = 0;
 
-	val = map_lookup_elem(&ip_error_event_heap, &zero);
+	val = map_lookup_elem(&tg_h_l3_iperr, &zero);
 	if (!val)
 		return;
 

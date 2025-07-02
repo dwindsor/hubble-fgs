@@ -32,7 +32,7 @@ struct {
 	__type(value, unsigned char[16384 + sizeof(struct ethhdr) +
 				    sizeof(struct iphdr) + IPO_LEN + 1]);
 	__uint(max_entries, 1);
-} packet_heap SEC(".maps");
+} tg_h_l3_ts_ev SEC(".maps");
 
 static inline __attribute__((always_inline)) bool
 port_permitted(struct latency_protocol_config *config, u16 dport, u16 sport)
@@ -186,7 +186,7 @@ egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 		return true;
 	}
 
-	buffer = map_lookup_elem(&packet_heap, &zero);
+	buffer = map_lookup_elem(&tg_h_l3_ts_ev, &zero);
 	if (!buffer)
 		return true;
 
