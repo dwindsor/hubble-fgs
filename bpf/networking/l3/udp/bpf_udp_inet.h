@@ -101,7 +101,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	if (!value) {
 		int zero = 0;
 
-		value = (struct udp_info_value *)map_lookup_elem(&tg_udp_value_heap, &zero);
+		value = (struct udp_info_value *)map_lookup_elem(&tg_h_udp_value, &zero);
 		if (!value)
 			return 0;
 
@@ -167,7 +167,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	s64 latency = 0;
 	int zero = 0;
 
-	key = (struct udp_info_key *)map_lookup_elem(&tg_udp_key_heap, &zero);
+	key = (struct udp_info_key *)map_lookup_elem(&tg_h_udp_key, &zero);
 	if (!key)
 		return 1;
 	if (!send) {
@@ -278,7 +278,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, u64 send)
 		emit_ip_error_event(ctx, 0, 0, false, 0, send + 1, 0, IP_ERROR_INET_NO_COOKIE);
 		return;
 	}
-	packet = (struct udp_packet_details *)map_lookup_elem(&tg_udp_header_heap, &zero);
+	packet = (struct udp_packet_details *)map_lookup_elem(&tg_h_udp_header, &zero);
 	if (!packet)
 		return;
 

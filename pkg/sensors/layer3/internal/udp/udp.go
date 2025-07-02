@@ -47,9 +47,8 @@ import (
 )
 
 const (
-	UdpMapName        = "tg_udp_map"
-	ConfigMapName     = "tg_udp_config_map"
-	UdpPayloadMapName = "tg_udp_payload_map"
+	UdpMapName    = "tg_udp_map"
+	ConfigMapName = "tg_udp_config_map"
 
 	MissingStatsErrorInterval = time.Hour
 )
@@ -131,9 +130,6 @@ var (
 	UdpMapLazyKprobe       = program.MapBuilder(UdpMapName, InetSendRecvLazy)
 	UdpMapStatsLazyKprobe  = program.MapBuilder(udpconfig.UdpMapStatsName, InetSendRecvLazy)
 	UdpConfigLazyMapKprobe = program.MapBuilder(ConfigMapName, InetSendRecvLazy)
-
-	// UDP maps
-	UdpPayloadLazyMapKprobe = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
 
 	LatencyConfigMapLazyKprobe = program.MapBuilder(networklatency.ConfigMapName, InetSendRecvLazy)
 )
@@ -277,7 +273,6 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 			UdpMapLazyKprobe,
 			UdpMapStatsLazyKprobe,
 			UdpConfigLazyMapKprobe,
-			UdpPayloadLazyMapKprobe,
 			LatencyConfigMapLazyKprobe,
 		)
 	} else {

@@ -30,7 +30,7 @@ struct {
 	__type(key, int);
 	__type(value, struct msg_udp_seq_error_event);
 	__uint(max_entries, 1);
-} udp_seq_err_event_heap SEC(".maps");
+} tg_h_udpseq_ev SEC(".maps");
 
 #ifdef SEQ_CHECK_ENABLED
 static inline __attribute__((always_inline)) bool
@@ -160,7 +160,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 	}
 
 	// Error – datagram is ahead of expected one. Create event.
-	e = (struct msg_udp_seq_error_event *)map_lookup_elem(&udp_seq_err_event_heap, &zero);
+	e = (struct msg_udp_seq_error_event *)map_lookup_elem(&tg_h_udpseq_ev, &zero);
 	if (!e)
 		return;
 

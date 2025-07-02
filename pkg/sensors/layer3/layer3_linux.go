@@ -167,11 +167,10 @@ var (
 	latencyConfigMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher, IngressDispatcherNoProbeRead, IngressDispatcherProcessTree)
 
 	// Dispatcher UDP maps, built here because they are only used by the dispatcher
-	udpMap        = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
-	udpMapStats   = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
-	udpConfigMap  = program.MapBuilder(udp.ConfigMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
-	udpPayloadMap = program.MapBuilder(udp.UdpPayloadMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
-	udpMaps       = []*program.Map{udpMap, udpMapStats, udpConfigMap, udpPayloadMap, latencyConfigMap, protoCfgMap}
+	udpMap       = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
+	udpMapStats  = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
+	udpConfigMap = program.MapBuilder(udp.ConfigMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
+	udpMaps      = []*program.Map{udpMap, udpMapStats, udpConfigMap, latencyConfigMap, protoCfgMap}
 
 	// DNS Parser maps
 	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.14

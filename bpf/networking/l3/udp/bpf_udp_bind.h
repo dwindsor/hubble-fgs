@@ -25,7 +25,7 @@ struct {
 	__type(key, __u32);
 	__type(value, struct msg_ip_event);
 	__uint(max_entries, 1);
-} udp_bind_event_map SEC(".maps");
+} tg_h_udpbind_ev SEC(".maps");
 
 static inline __attribute__((always_inline)) int
 __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
@@ -53,7 +53,7 @@ __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
 	if (protocol != IPPROTO_UDP)
 		return 0;
 
-	event = (struct msg_ip_event *)map_lookup_elem(&udp_bind_event_map, &zero);
+	event = (struct msg_ip_event *)map_lookup_elem(&tg_h_udpbind_ev, &zero);
 	if (!event)
 		return 0;
 

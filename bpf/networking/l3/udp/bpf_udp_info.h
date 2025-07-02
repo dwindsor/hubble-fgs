@@ -94,14 +94,14 @@ struct {
 	__type(key, int);
 	__type(value, struct udp_info_key);
 	__uint(max_entries, 1);
-} tg_udp_key_heap SEC(".maps");
+} tg_h_udp_key SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, struct udp_info_value);
 	__uint(max_entries, 1);
-} tg_udp_value_heap SEC(".maps");
+} tg_h_udp_value SEC(".maps");
 
 static inline __attribute__((always_inline)) int
 dns_source_port_match(u16 *ports, u16 port)
