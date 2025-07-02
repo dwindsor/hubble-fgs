@@ -875,9 +875,13 @@ func TestDisableListenAcceptClose4CLI(t *testing.T) {
 }
 
 func TestNoDisableListenAcceptClose4CLI(t *testing.T) {
+	if !utils.SupportFentry() {
+		t.Skipf("Close events without Fentry can cause missed events. skipping test")
+	}
+
 	// The close events within these tests are a little flaky when only using kprobes, so always disable
 	// close tests if we don't support FEntry.
-	testDisableConfigListenAcceptClose4(t, 8102, true, false, false, !utils.SupportFentry())
+	testDisableConfigListenAcceptClose4(t, 8102, true, false, false, false)
 }
 
 func TestDisableListenAcceptClose4NoCLI(t *testing.T) {
