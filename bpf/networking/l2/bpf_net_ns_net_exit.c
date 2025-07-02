@@ -26,7 +26,7 @@ struct {
 	__type(key, int);
 	__type(value, struct msg_netns_exit);
 	__uint(max_entries, 1);
-} netns_exit_heap SEC(".maps");
+} tg_h_netns_exit SEC(".maps");
 
 __attribute__((section("kprobe/net_ns_net_exit"), used)) int
 net_ns_net_exit(struct pt_regs *ctx)
@@ -38,7 +38,7 @@ net_ns_net_exit(struct pt_regs *ctx)
 
 	probe_read_kernel(&nscommon, sizeof(nscommon), _(&(net->ns)));
 
-	val = map_lookup_elem(&netns_exit_heap, &zero);
+	val = map_lookup_elem(&tg_h_netns_exit, &zero);
 	if (!val)
 		return 1;
 	val->common.op = ISO_MSG_OP_NETNS_EXIT;
