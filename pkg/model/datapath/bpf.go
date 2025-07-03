@@ -107,7 +107,9 @@ func conflictUpdateMap(key *types.DestinationEndpointKey, value *types.Destinati
 
 	lookupValue := &types.DestinationEndpointValue{}
 	if err := dstMap.Lookup(key, lookupValue); err == nil {
-		if lookupValue.TxAction >= value.TxAction {
+		lookupAction := lookupValue.TxAction & record.PolicyMask
+		valueAction := value.TxAction & record.PolicyMask
+		if lookupAction >= valueAction {
 			return nil
 		}
 	}
@@ -234,13 +236,16 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	lookupValue := &types.DestinationEndpointValue{}
 	err = dstMap.Lookup(key, lookupValue)
 	if err == nil {
+		lookupAction := lookupValue.TxAction & record.PolicyMask
+		valueAction := value.TxAction & record.PolicyMask
+
 		// key exist and the action is the same, ignore
-		if lookupValue.TxAction == value.TxAction {
+		if lookupAction == valueAction {
 			return nil
 		}
 		// key exists, we don't force, and the existing action is
 		// "superior" (with order none < allow < deny), ignore
-		if !force && lookupValue.TxAction > value.TxAction {
+		if !force && lookupAction > valueAction {
 			return nil
 		}
 	}
