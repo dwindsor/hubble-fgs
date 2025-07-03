@@ -61,7 +61,8 @@ func TestStatsDiff(t *testing.T) {
 	b := connStatsB()
 	abResult := connStatsDiff()
 
-	diff := StatsDiff(a, b)
+	diff, err := StatsDiff(a, b)
+	assert.NoError(t, err)
 	connStatsEqual(t, diff, abResult)
 }
 

@@ -23,7 +23,11 @@ func StatsZero(a *appModelV1.ConnectionStats) bool {
 	return false
 }
 
-func StatsDiff(a, b *appModelV1.ConnectionStats) *appModelV1.ConnectionStats {
+func StatsDiff(a, b *appModelV1.ConnectionStats) (*appModelV1.ConnectionStats, error) {
+	if b.TxBytes > a.TxBytes {
+		return nil, fmt.Errorf("stats diff underflow: %d - %d", a.TxBytes, b.TxBytes)
+	}
+
 	return &appModelV1.ConnectionStats{
 		TxBytes:           a.TxBytes - b.TxBytes,
 		RxBytes:           a.RxBytes - b.RxBytes,
@@ -34,7 +38,7 @@ func StatsDiff(a, b *appModelV1.ConnectionStats) *appModelV1.ConnectionStats {
 		NextQuotaReset:    a.NextQuotaReset,
 		DefaultDropBytes:  a.DefaultDropBytes - b.DefaultDropBytes,
 		DefaultAllowBytes: a.DefaultAllowBytes - b.DefaultAllowBytes,
-	}
+	}, nil
 }
 
 func ConnectionDiff(a, b []*appModelV1.ApplicationConnection) ([]*appModelV1.ApplicationConnection, error) {
@@ -48,7 +52,12 @@ func ConnectionDiff(a, b []*appModelV1.ApplicationConnection) ([]*appModelV1.App
 			res := model.CompareDestination(connA.Destination, connB.Destination)
 			if res == 0 {
 				found = true
-				stats := StatsDiff(connA.Stats, connB.Stats)
+				stats, err := StatsDiff(connA.Stats, connB.Stats)
+				if err != nil {
+					logger.GetLogger().Warn("skipping connection, stats diff error", "new", connA.String(), "old", connB.String(), logfields.Error, err)
+					break
+				}
+
 				diff := &appModelV1.ApplicationConnection{
 					Destination: connA.Destination,
 					Stats:       stats,
