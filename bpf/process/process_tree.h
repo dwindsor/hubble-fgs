@@ -313,14 +313,21 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		if (!destvalue)
 			return 0;
 
+		destvalue->tx_quota = 0;
+		destvalue->tx_limit = 0;
+		destvalue->tx_drops = 0;
+		destvalue->allow_default = 0;
+		destvalue->deny_default = 0;
+		destvalue->deny = 0;
+		destvalue->tx_bytes = 0;
+		destvalue->rx_bytes = 0;
+		destvalue->policy = 0;
+		destvalue->rule = 0;
+		destvalue->ipv6 = tuple->ipv6;
 		destvalue->ktime_create = ktime_get_ns();
 		destvalue->addr_create[0] = tuple->daddr[0];
 		destvalue->addr_create[1] = tuple->daddr[1];
-		destvalue->ipv6 = tuple->ipv6;
 		destvalue->port = tuple->dport;
-		destvalue->deny = 0;
-		destvalue->tx_quota = destvalue->tx_limit = 0;
-		destvalue->tx_bytes = destvalue->rx_bytes = 0;
 	}
 
 	key->port = 0;
