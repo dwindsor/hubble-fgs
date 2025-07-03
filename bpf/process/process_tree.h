@@ -452,7 +452,6 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		 * each dst type. So instead of duplicating the lookup do it
 		 * once here.
 		 */
-		dfltkey->source = DESTINATION_SOURCE_BPF;
 		dfltkey->destination_id = 0;
 		dfltkey->local_id.uid = 0;
 		dfltkey->local_id.cpu = 0;
@@ -483,6 +482,7 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		 * that a pod policy will not use default policy from the host.
 		 */
 		dfltkey->local_nsid = updatekey->local_nsid;
+		dfltkey->source = updatekey->source;
 
 		dst_value = map_lookup_elem(&destination_endpoint_map, dfltkey);
 		if (dst_value) {
