@@ -126,7 +126,7 @@ struct pattern_val {
 	__u32 rule;
 };
 
-struct full_path {
+struct __attribute__((aligned(8))) full_path {
 	char path[256];
 };
 
