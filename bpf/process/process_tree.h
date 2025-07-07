@@ -495,6 +495,12 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		if (dst_value) {
 			struct destination_endpoint_value *destvalue;
 
+			destvalue = map_lookup_elem(&destination_endpoint_map, updatekey);
+			if (destvalue) {
+				destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU | TNP_POLICY_CACHED;
+				return destvalue->deny;
+			}
+
 			destvalue = map_lookup_elem(&destination_endpoint_heap, &zero);
 			if (!destvalue)
 				return 0;
