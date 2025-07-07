@@ -2975,7 +2975,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_network_watermark | [ProcessNetworkWatermark](#tetragon-ProcessNetworkWatermark) |  |  |
 | process_uprobe | [ProcessUprobe](#tetragon-ProcessUprobe) |  |  |
 | process_udp_seq_check_error | [ProcessUdpSeqCheckError](#tetragon-ProcessUdpSeqCheckError) |  |  |
-| process_file_exec | [ProcessFileExec](#tetragon-ProcessFileExec) |  |  |
+| process_file_exec | [ProcessFileExec](#tetragon-ProcessFileExec) |  | **Deprecated.**  |
 | process_icmp | [ProcessIcmp](#tetragon-ProcessIcmp) |  |  |
 | process_rawsock_create | [ProcessRawsockCreate](#tetragon-ProcessRawsockCreate) |  |  |
 | process_rawsock_close | [ProcessRawsockClose](#tetragon-ProcessRawsockClose) |  |  |

@@ -283,7 +283,7 @@ message GetEventsResponse {
     ProcessNetworkWatermark process_network_watermark = 19;
     ProcessUprobe process_uprobe = 20;
     ProcessUdpSeqCheckError process_udp_seq_check_error = 21;
-    ProcessFileExec process_file_exec = 22;
+    ProcessFileExec process_file_exec = 22 [deprecated = true];
     ProcessIcmp process_icmp = 23;
     ProcessRawsockCreate process_rawsock_create = 24;
     ProcessRawsockClose process_rawsock_close = 25;

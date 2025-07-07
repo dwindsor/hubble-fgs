@@ -456,6 +456,7 @@ message ProcessFile {
 // ProcessFileExec events provide (additional to ProcessExec) information about files being executed.
 // They are configured in the "exec:" section of the TracingPolicy.
 message ProcessFileExec {
+  option deprecated = true;
   tetragon.Process process = 1;
   tetragon.Process parent = 2;
   FileDetails file = 3;

@@ -25,7 +25,9 @@ Depending on your setup, changes listed here might require a manual intervention
 
 ### Events (protobuf API)
 
-* TBD
+* ProcessFileExec event is deprecated and will be removed in the next release.
+  Please update your policies to use ProcessFile events, which provide equivalent
+  functionality.
 
 ### Metrics
 
