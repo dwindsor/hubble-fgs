@@ -37,6 +37,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -95,6 +96,7 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 
+	enterpriseOption.Config.EnableApplicationModel = true
 	ec := runner.TestSensorsRun(m, "SensorLayer3")
 	if ec != 0 {
 		netstat()

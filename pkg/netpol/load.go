@@ -147,3 +147,31 @@ func LoadTNPFromDir(dir string) error {
 
 	return err
 }
+
+func Add(np *v1alpha1.TetragonNetworkPolicy) error {
+	policies, err := ToTetragonNetworkPolicies(np)
+	if err != nil {
+		return fmt.Errorf("failed to convert TetragonNetworkPolicy %s to internal representation: %w", np.Name, err)
+	}
+	if np == nil {
+		return nil
+	}
+
+	err = loadPolicy(&library.PolicyStory{
+		Title:       np.Name,
+		Rules:       make(map[string]uint64),
+		CRDPolicy:   np,
+		CRDNSPolicy: nil,
+		IrPolicy:    policies,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to load TetragonNetworkPolicy: %w", err)
+	}
+
+	logger.GetLogger().Info("Added TetragonNetworkPolicy with success", "TetragonNetworkPolicy", np.Name)
+	return nil
+}
+
+func Delete(np *v1alpha1.TetragonNetworkPolicy) {
+	deleteNetworkPolicy(np)
+}
