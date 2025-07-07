@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFromYAML(t *testing.T) {
@@ -50,9 +51,11 @@ spec:
         ports: [80, 8080]
     - ipBlock:
         cidr: "127.0.0.1/24" 
+      ports:
+        protocol: "TCP"
 `
 	tnp, err := FromYAML(policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 2, len(tnp.Spec.NamespaceSelector.MatchLabels))
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
 	assert.Equal(t, "In", tnp.Spec.ProcessSelector.Operator)
