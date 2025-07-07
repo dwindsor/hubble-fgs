@@ -631,7 +631,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return err
 	}
 
-	err = netpol.LoadTNPFromDir(ctx, enterpriseOption.Config.NetworkPoliciesDir)
+	err = netpol.LoadTNPFromDir(enterpriseOption.Config.NetworkPoliciesDir)
 	if err != nil {
 		return err
 	}
@@ -645,7 +645,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 
 	if len(enterpriseOption.Config.NetworkPolicies) > 0 {
 		for _, f := range enterpriseOption.Config.NetworkPolicies {
-			err = netpol.LoadTNPFromFile(ctx, f)
+			err = netpol.LoadTNPFromFile(f)
 			if err != nil {
 				return fmt.Errorf("add TetragonNetworkPolicy failed: %w", err)
 			}

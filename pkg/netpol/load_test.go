@@ -51,7 +51,7 @@ spec:
     - ipBlock:
         cidr: "127.0.0.1/24" 
 `
-	tnp, err := fromYAML(policy)
+	tnp, err := FromYAML(policy)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(tnp.Spec.NamespaceSelector.MatchLabels))
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
@@ -108,7 +108,7 @@ spec:
         protocol: "TCP"
         ports: [80, 8080]
 `
-	tnp, err := fromYAML(policy)
+	tnp, err := FromYAML(policy)
 	assert.NoError(t, err)
 	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
@@ -160,7 +160,7 @@ spec:
         protocol: "TCP"
         ports: [80, 8080]
 `
-	tnp, err := fromYAML(policy)
+	tnp, err := FromYAML(policy)
 	assert.NoError(t, err)
 	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
@@ -217,7 +217,7 @@ spec:
       ports:
         protocol: "TCP"
 `
-	tnp, err := fromYAML(policy)
+	tnp, err := FromYAML(policy)
 	assert.NoError(t, err)
 	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
@@ -273,7 +273,7 @@ spec:
       ports:
         protocol: "TCP"
 `
-	tnp, err := fromYAML(policy)
+	tnp, err := FromYAML(policy)
 	assert.NoError(t, err)
 	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Equal(t, 2, len(tnp.Spec.PodSelector.MatchLabels))
@@ -329,7 +329,7 @@ spec:
       ports:
         protocol: "TCP"
 `
-	tnp, err := fromYAML(policy)
+	tnp, err := FromYAML(policy)
 	assert.NoError(t, err)
 	assert.Nil(t, tnp.Spec.PodSelector)
 	assert.Equal(t, "In", tnp.Spec.ProcessSelector.Operator)
@@ -380,7 +380,7 @@ spec:
       ports:
         protocol: "TCP"
 `
-	tnp, err := fromYAML(policy)
+	tnp, err := FromYAML(policy)
 	assert.NoError(t, err)
 	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Nil(t, tnp.Spec.PodSelector)
@@ -420,7 +420,7 @@ spec:
     action: "allow"
     destination:
 `
-	tnp, err := fromYAML(policy)
+	tnp, err := FromYAML(policy)
 	assert.NoError(t, err)
 	assert.Nil(t, tnp.Spec.NamespaceSelector)
 	assert.Nil(t, tnp.Spec.PodSelector)

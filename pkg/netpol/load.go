@@ -1,7 +1,6 @@
 package netpol
 
 import (
-	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -32,7 +31,7 @@ func getTNPContext() (*crdutils.CRDContext[*v1alpha1.TetragonNetworkPolicy], err
 	return tnpContext, err
 }
 
-func fromYAML(data string) (*v1alpha1.TetragonNetworkPolicy, error) {
+func FromYAML(data string) (*v1alpha1.TetragonNetworkPolicy, error) {
 	var unstr unstructured.Unstructured
 	if err := yaml.UnmarshalStrict([]byte(data), &unstr); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal unstructured Tetragon network policy YAML: %w", err)
@@ -58,23 +57,23 @@ func fromYAML(data string) (*v1alpha1.TetragonNetworkPolicy, error) {
 }
 
 func FromFile(path string) (*v1alpha1.TetragonNetworkPolicy, error) {
-	data, err := os.ReadFile(path)
+	cleanPath, err := filepath.Abs(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}
 
-	return fromYAML(string(data))
-}
-
-func addNetworkPolicy(_ context.Context, file string) error {
-	f, err := filepath.Abs(filepath.Clean(file))
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	np, err := FromFile(f)
+	return FromYAML(string(data))
+}
+
+func LoadTNPFromFile(path string) error {
+	np, err := FromFile(path)
 	if err != nil {
-		return fmt.Errorf("failed to read (%s) tetragon network policy: %w", file, err)
+		return fmt.Errorf("failed to parse %q TetragonNetworkPolicy: %w", path, err)
 	}
 	if np == nil {
 		return nil
@@ -96,16 +95,12 @@ func addNetworkPolicy(_ context.Context, file string) error {
 		return fmt.Errorf("failed to load TetragonNetworkPolicy: %w", err)
 	}
 
-	logger.GetLogger().Info("Added TetragonNetworkPolicy with success", "TetragonNetworkPolicy", file, "metadata.name", np.Name)
+	logger.GetLogger().Info("Added TetragonNetworkPolicy with success", "TetragonNetworkPolicy", path, "metadata.name", np.Name)
 
 	return nil
 }
 
-func LoadTNPFromFile(ctx context.Context, file string) error {
-	return addNetworkPolicy(ctx, file)
-}
-
-func LoadTNPFromDir(ctx context.Context, dir string) error {
+func LoadTNPFromDir(dir string) error {
 	if dir == "" {
 		return nil
 	}
@@ -147,7 +142,7 @@ func LoadTNPFromDir(ctx context.Context, dir string) error {
 			return nil
 		}
 
-		return addNetworkPolicy(ctx, file)
+		return LoadTNPFromFile(file)
 	})
 
 	return err

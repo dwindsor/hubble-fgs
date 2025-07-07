@@ -33,7 +33,7 @@ func New(ctx context.Context) *NetworkPolicyManager {
 }
 
 func (m *NetworkPolicyManager) AddNetworkPolicyFromYAML(_ context.Context, req *tetragon.AddNetworkPolicyFromYAMLRequest) (*tetragon.AddNetworkPolicyResponse, error) {
-	np, err := fromYAML(req.Yaml)
+	np, err := FromYAML(req.Yaml)
 	if err != nil {
 		return nil, err
 	}
