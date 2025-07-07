@@ -7,8 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
+	"github.com/cilium/tetragon/pkg/crdutils"
 	"github.com/cilium/tetragon/pkg/defaults"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
@@ -16,21 +19,37 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
+var (
+	tnpContext *crdutils.CRDContext[*v1alpha1.TetragonNetworkPolicy]
+	tnpOnce    sync.Once
+)
+
+func getTNPContext() (*crdutils.CRDContext[*v1alpha1.TetragonNetworkPolicy], error) {
+	var err error
+	tnpOnce.Do(func() {
+		tnpContext, err = crdutils.NewCRDContext[*v1alpha1.TetragonNetworkPolicy](&client.TetragonNetworkPolicyCRD.Definition)
+	})
+	return tnpContext, err
+}
+
 func fromYAML(data string) (*v1alpha1.TetragonNetworkPolicy, error) {
 	var unstr unstructured.Unstructured
-
-	if err := yaml.Unmarshal([]byte(data), &unstr); err != nil {
+	if err := yaml.UnmarshalStrict([]byte(data), &unstr); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal unstructured Tetragon network policy YAML: %w", err)
 	}
-	kind := unstr.GetKind()
-	switch kind {
-	case v1alpha1.TNPKindDefinition:
-		var tnp v1alpha1.TetragonNetworkPolicy
 
-		if err := yaml.UnmarshalStrict([]byte(data), &tnp); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal Tetragon network policy YAML: %w", err)
+	switch unstr.GetKind() {
+	case v1alpha1.TNPKindDefinition:
+		crdCtx, err := getTNPContext()
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve CRD context for TetragonNetworkPolicy: %w", err)
 		}
-		return &tnp, nil
+
+		tnp, err := crdCtx.FromYAML(data)
+		if err != nil {
+			return nil, err
+		}
+		return tnp, nil
 	case v1alpha1.TNPNamespacedKindDefinition:
 		return nil, fmt.Errorf("namespaced tetragon network policy not supported")
 	default:
