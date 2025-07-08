@@ -20,7 +20,7 @@ jobs:
         with:
           url: ${{ vars.VAULT_URL }}
           method: jwt
-          namespace: ${{ github.repository_owner }}/github-actions
+          namespace: ${{ vars.VAULT_NAMESPACE }}
           secrets: |
             ${{ env.SECRETS_PATH }} helm_github_app_id | HELM_REPO_APP_ID;
             ${{ env.SECRETS_PATH }} helm_github_app_pem | HELM_REPO_APP_PEM;
