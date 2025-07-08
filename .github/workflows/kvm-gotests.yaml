@@ -87,6 +87,7 @@ jobs:
         if: steps.vars.outputs.metal_arm64 == 'true'
         run: |
           go install github.com/cilium/little-vm-helper/cmd/lvh@latest
+          sudo install $(go env GOPATH)/bin/lvh /usr/local/bin/
 
       # Local caching mechanism since we run on the same runner, we could use GitHub cache also
       - name: Download the kernel
@@ -100,7 +101,7 @@ jobs:
           fi
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@e5b2424f49a2055186b7ac33e6a83b7c992b8f3a # v0.0.24
+        uses: cilium/little-vm-helper@9c1f3a549af06e213863d034c13ba1c5d1e3c667 # v0.0.26
         with:
           install-dependencies: ${{ steps.vars.outputs.lvh_install_deps }}
           test-name: tetragon-unit-tests
@@ -152,7 +153,7 @@ jobs:
             service ssh restart
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@e87948476ca97050b1f149ab2aec379d0de19b84 # v0.0.23
+        uses: cilium/little-vm-helper@9c1f3a549af06e213863d034c13ba1c5d1e3c667 # v0.0.26
         with:
           provision: 'false'
           ssh-port: ${{ steps.vars.outputs.ssh_port }}
