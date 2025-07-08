@@ -1826,6 +1826,22 @@ Number of errors when compiling CEL expressions in alert rules. Deleted if the r
 | ----- | ------ |
 | `rule ` | `example-alert-rule` |
 
+### `tetragon_alert_rules_evaluated_num_total`
+
+Number of alerts evaluated per rule. Reset on Tetragon restart.
+
+| label | values |
+| ----- | ------ |
+| `rule ` | `example-alert-rule` |
+
+### `tetragon_alert_rules_evaluated_usec_total`
+
+Total amount of usec of alerts evaluated per rule. Reset on Tetragon restart.
+
+| label | values |
+| ----- | ------ |
+| `rule ` | `example-alert-rule` |
+
 ### `tetragon_alert_rules_evaluation_errors_total`
 
 Number of errors during alert rule evaluation. Deleted if the respective alert rule is not applied anymore.

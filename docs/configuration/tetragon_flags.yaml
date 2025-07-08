@@ -76,6 +76,9 @@ options:
     - name: enable-alerts
       default_value: "false"
       usage: Enable alerts.
+    - name: enable-alerts-profiling
+      default_value: "false"
+      usage: Enable profiling for alerts
     - name: enable-ancestors
       default_value: '[]'
       usage: |

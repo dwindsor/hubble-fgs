@@ -80,6 +80,7 @@ const (
 	keyEnableRawsock                      = "enable-rawsock"
 	keyEnableDNS                          = "enable-dns"
 	keyEnableNetworkEvents                = "enable-network-events"
+	keyEnableAlertsProfiling              = "enable-alerts-profiling"
 
 	EnvironmentAWS        = "aws"
 	EnvironmentKubernetes = "kubernetes"
@@ -173,6 +174,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableRawsock, false, "Enable raw socket observability")
 	flags.Bool(keyEnableDNS, false, "Enable DNS observability")
 	flags.Bool(keyEnableNetworkEvents, true, "Enable Network Events from BPF to userspace")
+	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
 }
 
 func ReadAndValidateEnterpriseFlags() error {
@@ -241,6 +243,7 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableRawsock = viper.GetBool(keyEnableRawsock)
 	Config.EnableDNS = viper.GetBool(keyEnableDNS)
 	Config.EnableNetworkEvents = viper.GetBool(keyEnableNetworkEvents)
+	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
 	// then we ignore enable/disable in policies.
 	if Config.EnableTCP || Config.EnableUDP || Config.EnableICMP || Config.EnableRawsock || Config.EnableDNS {

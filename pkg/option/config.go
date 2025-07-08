@@ -93,6 +93,8 @@ type config struct {
 	Layer3CLIEnable bool
 
 	EnableNetworkEvents bool
+
+	EnableAlertProfiling bool
 }
 
 var (
@@ -118,5 +120,6 @@ var (
 		ProcessCacheStaleInterval:      time.Duration(60 * time.Minute),
 		EnableFimDispatcher:            false,
 		BPFDNSParserMaxPendingRequests: 1024,
+		EnableAlertProfiling:           false,
 	}
 )

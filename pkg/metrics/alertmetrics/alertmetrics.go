@@ -83,6 +83,28 @@ var (
 		},
 		[]string{"rule"},
 	)
+
+	// AlertsEvaluatedTotal counts the number of alerts evaluated per rule
+	AlertsEvaluatedTotal = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace:   consts.MetricsNamespace,
+			Name:        "alert_rules_evaluated_num_total",
+			Help:        "Number of alerts evaluated per rule. Reset on Tetragon restart.",
+			ConstLabels: nil,
+		},
+		[]string{"rule"},
+	)
+
+	// AlertsEvaluatedTimeTotal counts the total number of usec in alerts evaluated per rule
+	AlertsEvaluatedTimeTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace:   consts.MetricsNamespace,
+			Name:        "alert_rules_evaluated_usec_total",
+			Help:        "Total amount of usec of alerts evaluated per rule. Reset on Tetragon restart.",
+			ConstLabels: nil,
+		},
+		[]string{"rule"},
+	)
 )
 
 // UpdateAlertRuleCount updates the gauge of currently loaded alert rules
@@ -110,6 +132,11 @@ func RecordAlertMatch(rule, severity string) {
 	AlertsBySeverityTotal.WithLabelValues(severity).Inc()
 }
 
+func RecordAlertTime(rule string, duration float64) {
+	AlertsEvaluatedTotal.WithLabelValues(rule).Inc()
+	AlertsEvaluatedTimeTotal.WithLabelValues(rule).Add(duration)
+}
+
 // InitMetrics registers all alert metrics with Prometheus
 func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(AlertsExportedBytesTotal)
@@ -118,6 +145,8 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(AlertRulesTotal)
 	registry.MustRegister(AlertRuleEvaluationErrors)
 	registry.MustRegister(AlertRuleCompilationErrors)
+	registry.MustRegister(AlertsEvaluatedTotal)
+	registry.MustRegister(AlertsEvaluatedTimeTotal)
 }
 
 // InitMetricsForDocs registers metrics and adds example entries for documentation
@@ -131,6 +160,8 @@ func InitMetricsForDocs(registry *prometheus.Registry) {
 	AlertRulesTotal.WithLabelValues("critical").Set(0)
 	AlertRuleEvaluationErrors.WithLabelValues("example-alert-rule").Add(0)
 	AlertRuleCompilationErrors.WithLabelValues("example-alert-rule").Add(0)
+	AlertsEvaluatedTotal.WithLabelValues("example-alert-rule").Add(0)
+	AlertsEvaluatedTimeTotal.WithLabelValues("example-alert-rule").Add(0)
 }
 
 // byteCounterWriter wraps an io.WriteCloser and tracks the number of bytes written

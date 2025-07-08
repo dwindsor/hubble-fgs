@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"google.golang.org/grpc/metadata"
@@ -26,6 +27,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/server"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 type Alerter interface {
@@ -111,12 +113,19 @@ func (a *alerter) evaluateRules(ctx context.Context, event *tetragon.GetEventsRe
 	var errs error
 	for _, r := range a.ruleManager.rules {
 		// Evaluate the rule
+		var timer time.Time
+		if option.Config.EnableAlertProfiling {
+			timer = time.Now()
+		}
 		match, err := filters.EvalCEL(ctx, r.cel, event)
 		if err != nil {
 			// Track evaluation errors
 			alertmetrics.AlertRuleEvaluationErrors.WithLabelValues(r.name).Inc()
 			errs = errors.Join(errs, fmt.Errorf("failed to evaluate rule CEL expression: %w", err))
 			continue
+		}
+		if option.Config.EnableAlertProfiling {
+			alertmetrics.RecordAlertTime(r.name, float64(time.Since(timer).Microseconds()))
 		}
 
 		// If we have a match, track it and process the alert
