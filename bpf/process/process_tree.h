@@ -498,6 +498,8 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			destvalue = map_lookup_elem(&destination_endpoint_map, updatekey);
 			if (destvalue) {
 				destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU | TNP_POLICY_CACHED;
+				destvalue->policy = dst_value->policy;
+				destvalue->rule = dst_value->rule;
 				return destvalue->deny;
 			}
 
