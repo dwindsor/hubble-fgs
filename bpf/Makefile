@@ -71,7 +71,8 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_execve_event_v611.o bpf_
 	  bpf_cgroup.o \
 	  bpf_syscall.o \
 	  bpf_procfs_walk.o \
-	  bpf_procfs_walk_fentry.o
+	  bpf_procfs_walk_fentry.o \
+	  bpf_prog_iter.o
 
 FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_filemap_map_pages_v419.o bpf_filemap_page_mkwrite.o bpf_filemap_page_mkwrite_v419.o bpf_finish_open.o bpf_finish_open_v419.o \
 	  bpf_security_file_permission.o bpf_security_file_permission_v419.o bpf_vfs_unlink.o bpf_vfs_unlink_v419.o bpf_vfs_fallocate.o bpf_vfs_fallocate_v419.o bpf_vfs_open.o bpf_vfs_open_v419.o \
