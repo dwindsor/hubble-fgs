@@ -474,13 +474,18 @@ func PopulateMatchBinariesPathsMaps(k *KernelSelectorState, pinPathPrefix string
 
 func GetMaxInnerEntriesOpsMap(sel *KernelSelectorState) uint32 {
 	maxEntries := uint32(0)
-	for _, entry := range sel.GetOpsEntries() {
-		num := entry.GetOpsSelMapSize()
-		if num > maxEntries {
-			maxEntries = num
+	if !kernels.MinKernelVersion("5.9") {
+		maxEntries = uint32(len(tetragon.FileAction_value))
+	} else {
+		for _, entry := range sel.GetOpsEntries() {
+			num := entry.GetOpsSelMapSize()
+			if num > maxEntries {
+				maxEntries = num
+			}
 		}
 	}
 	return maxEntries + 1 // for the special entry UINT32_MAX
+
 }
 
 func GenerateFileOpsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {

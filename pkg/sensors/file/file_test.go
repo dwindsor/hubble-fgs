@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-// go test -gcflags="" -c ./pkg/sensors/file -o go-tests/file.test
+// go test -tags sudo_tests -gcflags="" -c ./pkg/sensors/file -o go-tests/file.test
 // sudo ./go-tests/file.test --bpf-lib ./bpf/objs/ [ -test.run TestCopyFileRange ]
 
 //go:build sudo_tests

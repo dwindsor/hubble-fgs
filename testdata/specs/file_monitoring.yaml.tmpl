@@ -17,7 +17,18 @@ spec:
       matchOperations:
       - operator: "In"
         values:
+        - "FILE_WRITE"
+        - "FILE_READ"
         - "FILE_DELETE"
+        - "FILE_CREATE"
+        - "FILE_RMDIR"
+        - "FILE_MKDIR"
+        - "FILE_RENAME"
+        - "FILE_READDIR"
+        - "FILE_CHATTR"
+        - "FILE_EXEC"
+        - "FILE_LINK"
+        - "FILE_OPEN"
     - matchBinaries:
       - operator: "In"
         values:
@@ -25,4 +36,15 @@ spec:
       matchOperations:
       - operator: "In"
         values:
+        - "FILE_WRITE"
+        - "FILE_READ"
         - "FILE_DELETE"
+        - "FILE_CREATE"
+        - "FILE_RMDIR"
+        - "FILE_MKDIR"
+        - "FILE_RENAME"
+        - "FILE_READDIR"
+        - "FILE_CHATTR"
+        - "FILE_EXEC"
+        - "FILE_LINK"
+        - "FILE_OPEN"
