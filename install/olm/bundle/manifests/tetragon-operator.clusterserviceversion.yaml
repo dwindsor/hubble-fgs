@@ -261,7 +261,7 @@ spec:
                       - --config-dir=/etc/tetragon/operator.conf.d/
                     env:
                       - name: TETRAGON_IMAGE
-                        value: "quay.io/isovalent/tetragon:v1.17.0-pre.8@sha256:8937f2f592cfbf7de7a424eda7fc955587e62383301af167202e2b2665ac4c41"
+                        value: "quay.io/isovalent/tetragon:v1.17.0-pre.8@sha256:e3570c5c5c6d8809bfc945c4559c8b3eebdbd2825b307953a9b2dbcfe98b5bd9"
                       - name: EXPORT_IMAGE
                         value: "quay.io/isovalent/hubble-export-stdout:v1.0.4"
                       - name: TETRAGON_RTHOOKS_IMAGE
@@ -269,14 +269,14 @@ spec:
                       - name: TETRAGON_METADATA_IMAGE
                         value: "quay.io/isovalent/hubble-enterprise-metadata:v1.17.0-pre.8@sha256:71cbb44a41b60ab64c6eae99f819796868a57234a5ff210598bd23b73b3b02c7"
                       - name: TETRAGON_AGGREGATOR_IMAGE
-                        value: "quay.io/isovalent/tetragon-aggregator:v1.17.0-pre.8@sha256:ba5e48cf56793935484a87e6d0fdbc9d42909840a095761f34cb679d31e1980f"
+                        value: "quay.io/isovalent/tetragon-aggregator:v1.17.0-pre.8@sha256:0c326061c2636cba95a02b2d480d7679e2e5c8cdc7b11036e595e1df256366ad"
                       - name: TETRAGON_OPERATOR_MANAGE_AGENT
                         value: "true"
                       - name: TETRAGON_OPERATOR_NAMESPACE
                         valueFrom:
                           fieldRef:
                             fieldPath: metadata.namespace
-                    image: "quay.io/isovalent/tetragon-operator:v1.17.0-pre.8@sha256:28153f7494b2c22fefe161880e706cd46c3544555de7f22e09b8204f29a7c251"
+                    image: "quay.io/isovalent/tetragon-operator:v1.17.0-pre.8@sha256:da76fa542b1accf1bf6ebef6889852d913f6e4bc56bd4dfdadc92cc40816d0d4"
                     imagePullPolicy: IfNotPresent
                     volumeMounts:
                       - mountPath: /etc/tetragon/operator.conf.d/
@@ -340,5 +340,5 @@ spec:
   provider:
     name: Isovalent
     url: "https://isovalent.com"
-  version: 1.17.0-pre.7
-  replaces: tetragon-operator.v0.0.1
+  version: 1.17.0-pre.8
+  replaces: tetragon-operator.v1.17.0-pre.8
