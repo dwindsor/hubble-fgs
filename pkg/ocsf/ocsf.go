@@ -18,7 +18,7 @@ func processToOCSF(p *tetragon.Process) *v1alpha.Process {
 	pid := int32(p.Pid.GetValue())
 	auid := int32(p.Auid.GetValue())
 
-	createdTimeString := p.StartTime.AsTime().Format(time.RFC3339)
+	createdTimeString := p.StartTime.AsTime().Format(time.RFC3339Nano)
 	createdTime := p.StartTime.AsTime().UnixMilli()
 
 	return &v1alpha.Process{
@@ -186,11 +186,11 @@ func processConnectToOCSF(pc *tetragon.ProcessConnect, t *timestamppb.Timestamp)
 	typeName := activityString + className
 	typeId := int64(classId) + int64(activityId)
 
-	timestamp := t.AsTime().Format(time.RFC3339)
+	timestamp := t.AsTime().Format(time.RFC3339Nano)
 
 	id, _ := uuid.NewV7()
 	uid := id.String()
-	now := timestamppb.Now().AsTime().Format(time.RFC3339)
+	now := timestamppb.Now().AsTime().Format(time.RFC3339Nano)
 
 	ext := linuxExtension()
 	prod := tetragonProduct()
