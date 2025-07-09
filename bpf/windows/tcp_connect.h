@@ -36,6 +36,19 @@ struct msg_ip_tuple {
 	uint8_t ipv6;
 }; // All fields aligned so no 'packed' attribute.
 
+struct connection_key {
+	uint32_t pid;
+	uint64_t daddr[2];
+	uint16_t dport;
+	uint16_t sport;
+};
+
+struct connection_entry {
+	uint64_t socket_cookie;
+	// 0 is for outbound (connect), 1 is for inbound (accept).
+	uint32_t socket_flags;
+};
+
 struct msg_execve_key {
 	uint32_t pid; // Process TGID
 	uint8_t pad[4];
@@ -88,3 +101,8 @@ struct msg_ip_with_stats_event {
 	uint64_t close_time; // only used on close events.
 	struct msg_socket_stats stats;
 }; // All fields aligned so no 'packed' attribute.
+
+#define SOCKFLAGS_TYPE_UNKNOWN 0x0
+#define SOCKFLAGS_TYPE_CONNECT 0x1
+#define SOCKFLAGS_TYPE_ACCEPT  0x2
+#define SOCKFLAGS_TYPE_LISTEN  0x4

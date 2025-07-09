@@ -10,33 +10,68 @@ struct
 	__uint(pinning, LIBBPF_PIN_BY_NAME);
 } process_ringbuf SEC(".maps");
 
+struct
+{
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct connection_key);
+	__type(value, struct connection_entry);
+	__uint(max_entries, 64 * 1024);
+} connection_map SEC(".maps");
+
 uint16_t swap_bytes(uint16_t in)
 {
 	return (in << 8) | (in >> 8);
 }
 
 __inline void
-raise_ip_event(bpf_sock_addr_t *ctx, int eventCode, int ipv6)
+raise_ip_event(bpf_sock_addr_t *ctx, int eventCode, int ipv6, int is_accept)
 {
 	uint64_t ptid = bpf_get_current_pid_tgid();
 
 	struct msg_ip_event event = { 0 };
+	struct connection_entry entry = { 0 };
+	struct connection_key key = { 0 };
 	event.common.op = eventCode;
 	event.socket_cookie = bpf_get_socket_cookie(ctx);
 	event.common.ktime = bpf_ktime_get_boot_ns();
 	event.key.pid = ptid >> 32;
+
+	uint64_t *daddr, *saddr;
+	uint16_t *sport, *dport;
+
+	if (is_accept) {
+		daddr = &event.tuple.saddr[0];
+		saddr = &event.tuple.daddr[0];
+		sport = &event.tuple.dport;
+		dport = &event.tuple.sport;
+	} else {
+		daddr = &event.tuple.daddr[0];
+		saddr = &event.tuple.saddr[0];
+		sport = &event.tuple.sport;
+		dport = &event.tuple.dport;
+	}
+
 	if (ipv6) {
-		__builtin_memcpy(event.tuple.daddr, ctx->user_ip6, sizeof(ctx->user_ip6));
-		__builtin_memcpy(event.tuple.saddr, ctx->msg_src_ip6, sizeof(ctx->msg_src_ip6));
+		__builtin_memcpy(daddr, ctx->user_ip6, sizeof(ctx->user_ip6));
+		__builtin_memcpy(saddr, ctx->msg_src_ip6, sizeof(ctx->msg_src_ip6));
 		event.tuple.ipv6 = 1;
 	} else {
-		event.tuple.daddr[0] = ctx->user_ip4;
-		event.tuple.saddr[0] = ctx->msg_src_ip4;
+		__builtin_memcpy(daddr, (void *)(&(ctx->user_ip4)), sizeof(ctx->user_ip4));
+		__builtin_memcpy(saddr, (void *)(&(ctx->msg_src_ip4)), sizeof(ctx->msg_src_ip4));
 	}
-	event.tuple.sport = swap_bytes(ctx->msg_src_port);
-	event.tuple.dport = swap_bytes(ctx->user_port);
+	*sport = swap_bytes(ctx->msg_src_port);
+	*dport = swap_bytes(ctx->user_port);
+
 	event.tuple.proto = ctx->protocol;
+	event.socket_flags = (eventCode == 2) ? SOCKFLAGS_TYPE_CONNECT : SOCKFLAGS_TYPE_ACCEPT;
 	bpf_ringbuf_output(&process_ringbuf, &event, sizeof(event), 0);
+	key.pid = event.key.pid;
+	__builtin_memcpy(&(key.daddr), event.tuple.daddr, sizeof(event.tuple.daddr));
+	key.dport = event.tuple.dport;
+	key.sport = event.tuple.sport;
+	entry.socket_cookie = event.socket_cookie;
+	entry.socket_flags = event.socket_flags;
+	bpf_map_update_elem(&connection_map, &key, &entry, BPF_ANY);
 }
 
 SEC("cgroup/connect4")
@@ -45,7 +80,7 @@ int tcp_connect4(bpf_sock_addr_t *ctx)
 	if (ctx->protocol != IPPROTO_TCP) {
 		return BPF_SOCK_ADDR_VERDICT_PROCEED;
 	}
-	raise_ip_event(ctx, 2, 0);
+	raise_ip_event(ctx, 2, 0, 0);
 	return BPF_SOCK_ADDR_VERDICT_PROCEED;
 }
 
@@ -55,7 +90,7 @@ int tcp_connect6(bpf_sock_addr_t *ctx)
 	if (ctx->protocol != IPPROTO_TCP) {
 		return BPF_SOCK_ADDR_VERDICT_PROCEED;
 	}
-	raise_ip_event(ctx, 2, 1);
+	raise_ip_event(ctx, 2, 1, 0);
 	return BPF_SOCK_ADDR_VERDICT_PROCEED;
 }
 
@@ -65,7 +100,7 @@ int tcp_accept4(bpf_sock_addr_t *ctx)
 	if (ctx->protocol != IPPROTO_TCP) {
 		return BPF_SOCK_ADDR_VERDICT_PROCEED;
 	}
-	raise_ip_event(ctx, 9, 0);
+	raise_ip_event(ctx, 9, 0, 1);
 	return BPF_SOCK_ADDR_VERDICT_PROCEED;
 }
 
@@ -75,7 +110,7 @@ int tcp_accept6(bpf_sock_addr_t *ctx)
 	if (ctx->protocol != IPPROTO_TCP) {
 		return BPF_SOCK_ADDR_VERDICT_PROCEED;
 	}
-	raise_ip_event(ctx, 9, 1);
+	raise_ip_event(ctx, 9, 1, 1);
 	return BPF_SOCK_ADDR_VERDICT_PROCEED;
 }
 
@@ -105,6 +140,20 @@ int sockops_monitor(bpf_sock_ops_t *ctx)
 	event.tuple.sport = swap_bytes(ctx->local_port);
 	event.tuple.dport = swap_bytes(ctx->remote_port);
 	event.tuple.proto = ctx->protocol;
+
+	struct connection_entry *entry;
+	struct connection_key key = { 0 };
+	key.pid = event.key.pid;
+	__builtin_memcpy(&(key.daddr), event.tuple.daddr, sizeof(event.tuple.daddr));
+	key.dport = event.tuple.dport;
+	key.sport = event.tuple.sport;
+	entry = bpf_map_lookup_elem(&connection_map, &key);
+	if (entry) {
+		event.socket_cookie = entry->socket_cookie;
+		event.socket_flags = entry->socket_flags;
+		bpf_map_delete_elem(&connection_map, &key);
+	}
+
 	bpf_ringbuf_output(&process_ringbuf, &event, sizeof(event), 0);
 	return result;
 }
