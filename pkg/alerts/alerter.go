@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -111,13 +113,26 @@ func (a *alerter) Close() error {
 // against every single rule, regardless of the event type. Optimize as needed.
 func (a *alerter) evaluateRules(ctx context.Context, event *tetragon.GetEventsResponse) error {
 	var errs error
+	eventMap := helpers.ProcessEventMap(event)
+	rules := []*rule{}
+
+	// keep only the rules that are related to that event
 	for _, r := range a.ruleManager.rules {
+		for _, n := range r.eventNames {
+			if !reflect.ValueOf(eventMap[n]).IsNil() { // is the incoming event related to that alert?
+				rules = append(rules, r)
+				break
+			}
+		}
+	}
+
+	for _, r := range rules {
 		// Evaluate the rule
 		var timer time.Time
 		if option.Config.EnableAlertProfiling {
 			timer = time.Now()
 		}
-		match, err := filters.EvalCEL(ctx, r.cel, event)
+		match, err := filters.EvalCEL(ctx, r.cel, eventMap)
 		if err != nil {
 			// Track evaluation errors
 			alertmetrics.AlertRuleEvaluationErrors.WithLabelValues(r.name).Inc()

@@ -30,6 +30,7 @@ var (
 
 type rule struct {
 	cel         cel.Program
+	eventNames  []string
 	name        string
 	message     string
 	tags        []string
@@ -78,7 +79,7 @@ func (r *ruleManager) AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 	}
 
 	name := ar.GetName()
-	celProgram, err := cef.CompileCEL(ar.Spec.Expression)
+	celProgram, eventNames, err := cef.CompileCEL(ar.Spec.Expression)
 	if err != nil {
 		// Track compilation errors in metrics
 		alertmetrics.AlertRuleCompilationErrors.WithLabelValues(name).Inc()
@@ -119,6 +120,7 @@ func (r *ruleManager) AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 	}
 	r.rules[name] = &rule{
 		cel:         celProgram,
+		eventNames:  eventNames,
 		name:        ar.GetName(),
 		message:     ar.Spec.Message,
 		tags:        ar.Spec.Tags,

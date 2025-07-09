@@ -17,6 +17,7 @@ import (
 	"os"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -49,7 +50,7 @@ func testCommand() *cobra.Command {
 			}
 
 			cef := filters.NewCELExpressionFilter(logger.GetLogger())
-			celProgram, err := cef.CompileCEL(ar.Spec.Expression)
+			celProgram, _, err := cef.CompileCEL(ar.Spec.Expression)
 			if err != nil {
 				return err
 			}
@@ -77,7 +78,7 @@ func testCommand() *cobra.Command {
 					continue
 				}
 
-				match, err := filters.EvalCEL(cmd.Context(), celProgram, event)
+				match, err := filters.EvalCEL(cmd.Context(), celProgram, helpers.ProcessEventMap(event))
 				if err != nil {
 					return err
 				}
