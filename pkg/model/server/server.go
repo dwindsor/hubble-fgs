@@ -379,7 +379,12 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		dstVal types.DestinationEndpointValue
 	)
 
-	dstList := make(map[uint64][]*types.Destination)
+	type dstListKey struct {
+		localID uint64
+		nsID    uint64
+	}
+
+	dstList := make(map[dstListKey][]*types.Destination)
 	nsList := make(map[uint64][]*types.Destination)
 
 	c := endpoint.MustGet()
@@ -566,9 +571,14 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				nsList[cgid] = l
 			}
 		} else {
-			l, ok := dstList[dstKey.LocalId]
+			idKey := dstListKey{
+				localID: dstKey.LocalId,
+				nsID:    dstKey.LocalNSId,
+			}
+
+			l, ok := dstList[idKey]
 			if !ok {
-				dstList[dstKey.LocalId] = []*types.Destination{d}
+				dstList[idKey] = []*types.Destination{d}
 			} else {
 				skip := false
 
@@ -582,7 +592,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				if !skip {
 					l = append(l, d)
 				}
-				dstList[dstKey.LocalId] = l
+				dstList[idKey] = l
 			}
 		}
 	}
@@ -661,15 +671,20 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		})
 	}
 
+	idKey := dstListKey{
+		localID: 0,
+		nsID:    0,
+	}
+
 	// Build process independent destination totals for host; these use
 	// the defined id 0. If the model is qualified by namespace ignore
 	// these host destinations.
-	if len(dstList[0]) != 0 && len(namespaces) == 0 {
+	if len(dstList[idKey]) != 0 && len(namespaces) == 0 {
 		processModel = append(processModel, &types.ProcessModel{
 			Binary:    "",
 			Parent:    "",
 			Namespace: "",
-			Dest:      dstList[0],
+			Dest:      dstList[idKey],
 			Workload:  &types.Workload{},
 		})
 	}
@@ -748,7 +763,11 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			}
 		}
 
-		dest := dstList[key.Self]
+		idKey := dstListKey{
+			localID: key.Self,
+			nsID:    key.NSID,
+		}
+		dest := dstList[idKey]
 		inInitTree := val.InInitTree
 
 		if option.Config.EnableSyscallTracking {
