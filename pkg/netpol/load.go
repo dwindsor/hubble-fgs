@@ -70,37 +70,31 @@ func FromFile(path string) (*v1alpha1.TetragonNetworkPolicy, error) {
 	return FromYAML(string(data))
 }
 
-func LoadTNPFromFile(path string) error {
-	np, err := FromFile(path)
+func AddFromYAML(data string) error {
+	policy, err := FromYAML(data)
 	if err != nil {
-		return fmt.Errorf("failed to parse %q TetragonNetworkPolicy: %w", path, err)
+		return fmt.Errorf("failed to parse TetragonNetworkPolicy: %w", err)
 	}
-	if np == nil {
-		return nil
-	}
-
-	policies, err := ToTetragonNetworkPolicies(np)
-	if err != nil {
-		return fmt.Errorf("failed to convert TetragonNetworkPolicy %s to internal representation: %w", np.Name, err)
+	if policy == nil {
+		return fmt.Errorf("failed loading policy, policy is nil")
 	}
 
-	err = loadPolicy(&library.PolicyStory{
-		Title:       np.Name,
-		Rules:       make(map[string]uint64),
-		CRDPolicy:   np,
-		CRDNSPolicy: nil,
-		IrPolicy:    policies,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to load TetragonNetworkPolicy: %w", err)
-	}
-
-	logger.GetLogger().Info("Added TetragonNetworkPolicy with success", "TetragonNetworkPolicy", path, "metadata.name", np.Name)
-
-	return nil
+	return Add(policy)
 }
 
-func LoadTNPFromDir(dir string) error {
+func AddFromFile(path string) error {
+	policy, err := FromFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to parse TetragonNetworkPolicy from file %q: %w", path, err)
+	}
+	if policy == nil {
+		return fmt.Errorf("failed loading policy from file %q, policy is nil", path)
+	}
+
+	return Add(policy)
+}
+
+func AddFromDir(dir string) error {
 	if dir == "" {
 		return nil
 	}
@@ -142,7 +136,7 @@ func LoadTNPFromDir(dir string) error {
 			return nil
 		}
 
-		return LoadTNPFromFile(file)
+		return AddFromFile(file)
 	})
 
 	return err
