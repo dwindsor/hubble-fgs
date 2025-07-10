@@ -10,6 +10,10 @@
 #define POSSIBLE_MAX_STATES	 512 // this should match GlobPossibleMaxStates in pkg/sensors/file/utils/glob.go
 #define POSSIBLE_MAX_STATES_MASK (POSSIBLE_MAX_STATES - 1)
 
+#define BITMAP_SHIFT  6
+#define BITMAP_MASK   63
+#define BITS_PER_BYTE 8
+
 /*
  * The following struct represents a set of states (each state is represented
  * as a number). The operations that we should support (and be efficient) are
@@ -44,10 +48,24 @@
  *    patterns is 34. So 512 should be enough for almost all (reasonable) cases.
  */
 struct __attribute__((aligned(8))) glob_temp_val {
-	__u8 v[POSSIBLE_MAX_STATES];
+	__u64 v[POSSIBLE_MAX_STATES / BITS_PER_BYTE / sizeof(uint64_t) /* one bit per state */];
 	__u32 values[POSSIBLE_MAX_STATES];
 	__u64 cnt;
 };
+
+static inline __attribute__((always_inline)) void bitmap_set(struct glob_temp_val *b, int n)
+{
+	int word = n >> BITMAP_SHIFT;
+	int position = n & BITMAP_MASK;
+	b->v[word] |= (uint64_t)1 << position;
+}
+
+static inline __attribute__((always_inline)) int bitmap_read(struct glob_temp_val *b, int n)
+{
+	int word = n >> BITMAP_SHIFT;
+	int position = n & BITMAP_MASK;
+	return (b->v[word] >> position) & 1;
+}
 
 static void add_elem_glob_temp_val(struct glob_temp_val *m, u32 key)
 {
@@ -56,9 +74,9 @@ static void add_elem_glob_temp_val(struct glob_temp_val *m, u32 key)
 		     : [key] "+r"(key)
 		     : "i"(POSSIBLE_MAX_STATES_MASK));
 
-	if (m->v[key] == 0) { // if the key does not exist
+	if (bitmap_read(m, key) == 0) { // if the key does not exist
 		m->values[m->cnt & POSSIBLE_MAX_STATES_MASK] = key; // append that to the array
-		m->v[key] = 1; // set this to the "bytemap"
+		bitmap_set(m, key); // set this to the "bytemap"
 		m->cnt++; // increase the number of elements
 	}
 	// nothing to do if the element already exists
@@ -66,7 +84,7 @@ static void add_elem_glob_temp_val(struct glob_temp_val *m, u32 key)
 
 static void cleanup_glob_temp_val(struct glob_temp_val *m)
 {
-	memset(m->v, 0, POSSIBLE_MAX_STATES * sizeof(__u8));
+	memset(m->v, 0, sizeof(m->v));
 	m->cnt = 0;
 	// no need to zero out the append-only array
 	// as we get elements from index 0 to m->cnt

@@ -15,12 +15,16 @@ import (
 	"regexp"
 	"strings"
 	"unicode/utf8"
+	"unsafe"
 )
 
-const GlobPossibleMaxStates = 512 // this should match POSSIBLE_MAX_STATES in bpf/file/bpf_glob.h
+const (
+	GlobPossibleMaxStates = 512 // this should match POSSIBLE_MAX_STATES in bpf/file/bpf_glob.h
+	BitsPerByte           = 8
+)
 
 type GlobTempVal struct {
-	V      [GlobPossibleMaxStates]uint8
+	V      [GlobPossibleMaxStates / BitsPerByte / unsafe.Sizeof(uint64(0))]uint64 // one bit per state
 	Values [GlobPossibleMaxStates]uint32
 	Cnt    uint64
 }
