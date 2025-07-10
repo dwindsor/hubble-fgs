@@ -293,62 +293,6 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 	return resp, nil
 }
 
-func statsAdd(a, b *types.DestinationStats) *types.DestinationStats {
-	quota := uint64(0)
-	limit := uint64(0)
-	var reset *timestamppb.Timestamp
-	var txreset *timestamppb.Timestamp
-
-	if a.TxLimit <= b.TxLimit {
-		limit = a.TxLimit
-		quota = a.TxQuota
-		reset = a.KtimeLastReset
-		txreset = a.KtimeTxReset
-	} else if b.TxLimit < a.TxLimit {
-		limit = b.TxLimit
-		quota = b.TxQuota
-		reset = b.KtimeLastReset
-		txreset = b.KtimeTxReset
-	}
-
-	return &types.DestinationStats{
-		TxBytes:           a.TxBytes + b.TxBytes,
-		RxBytes:           a.RxBytes + b.RxBytes,
-		DefaultAllowBytes: a.DefaultAllowBytes + b.DefaultAllowBytes,
-		DefaultDenyBytes:  a.DefaultDenyBytes + b.DefaultDenyBytes,
-		TxDrops:           a.TxDrops + b.TxDrops,
-		TxLimit:           limit,
-		TxQuota:           quota,
-		KtimeLastReset:    reset,
-		KtimeTxReset:      txreset,
-	}
-}
-
-func fqdnDestEqual(a, b *types.Destination) bool {
-	return a.DestinationPod == nil &&
-		strings.Compare(strings.Join(a.DestinationNames, ","), strings.Join(b.DestinationNames, ",")) == 0 &&
-		a.Port == b.Port
-}
-
-func podEqual(a, b *types.Pod) bool {
-	return strings.Compare(a.Name, b.Name) == 0 &&
-		strings.Compare(a.Namespace, b.Namespace) == 0
-}
-
-func podDestEqual(a, b *types.Destination) bool {
-	return a.DestinationPod != nil && b.DestinationPod != nil && podEqual(a.DestinationPod, b.DestinationPod) && a.Port == b.Port
-}
-
-func destEqual(a, b *types.Destination) bool {
-	if fqdnDestEqual(a, b) {
-		return true
-	}
-	if podDestEqual(a, b) {
-		return true
-	}
-	return false
-}
-
 func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, error) {
 	processModel := make([]*types.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
@@ -580,18 +524,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			if !ok {
 				dstList[idKey] = []*types.Destination{d}
 			} else {
-				skip := false
-
-				for _, dedup := range l {
-					if destEqual(dedup, d) {
-						dedup.Stats = statsAdd(dedup.Stats, d.Stats)
-						skip = true
-						break
-					}
-				}
-				if !skip {
-					l = append(l, d)
-				}
+				l = append(l, d)
 				dstList[idKey] = l
 			}
 		}
