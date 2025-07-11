@@ -111,6 +111,7 @@ static inline __attribute__((always_inline)) int __find_my_self(struct execve_ma
 
 	if (self_uid) {
 		*id = *self_uid;
+		map_lookup_elem(&process_tree_uid_binary_map, &id);
 	} else {
 		*id = get_new_tree_id();
 		if (!id->uid)
