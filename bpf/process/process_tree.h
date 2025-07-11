@@ -79,28 +79,23 @@ static struct tree_id get_new_tree_id()
 
 char global_zero[MAXARGLENGTH] = { 0 };
 
-int __insert_process_tree(__u32 pid, __u64 cgid)
+/* find_my_self, will lookup the UID for this process or create one if it is
+ * not found. Unfortunately, not all verifiers can track the PID from the
+ * callers easily resulting in verifier errors so we mark it inline which
+ * fixes the issue because that removes the function call.
+ */
+static inline __attribute__((always_inline)) int find_my_self(struct execve_map_value *curr, __u32 pid, struct tree_id *id)
 {
 	struct process_tree_binary_uid_key *tree_key;
-	struct process_tree_key *k, local = { 0 }, *parent;
-	struct process_tree_config *cfg;
-	struct process_tree_value *old;
-	struct execve_map_value *curr;
-	struct tree_id id, *self_uid;
-	__u64 zero = 0;
-	__u64 *nsid;
-
-	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
-	if (!cfg || !cfg->enableProcessTree)
-		return 0;
-
-	curr = execve_map_get_noinit(pid);
-	if (!curr)
-		return 0;
+	struct tree_id empty = { .uid = 0, .cpu = 0 };
+	struct tree_id *self_uid;
+	int zero = 0;
 
 	tree_key = map_lookup_elem(&tg_h_ps_buidkey, &zero);
-	if (!tree_key)
+	if (!tree_key) {
+		*id = empty;
 		return 0;
+	}
 
 	// Process UID is done in the following order. First check if there
 	// is a binary key with empty args. This is needed for policy that
@@ -115,14 +110,43 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	}
 
 	if (self_uid) {
-		id = *self_uid;
+		*id = *self_uid;
 	} else {
-		id = get_new_tree_id();
-		if (!id.uid)
-			return 0;
-		map_update_elem(&process_tree_uid_binary_map, &id, tree_key, 0);
-		map_update_elem(&process_tree_binary_uid_map, tree_key, &id, 0);
+		*id = get_new_tree_id();
+		if (!id->uid)
+			return -1;
+		map_update_elem(&process_tree_uid_binary_map, id, tree_key, 0);
+		map_update_elem(&process_tree_binary_uid_map, tree_key, id, 0);
 	}
+	return 0;
+}
+
+int find_my_nsid(__u64 cgid)
+{
+	__u64 *nsid;
+
+	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
+	if (nsid)
+		return *nsid;
+	return 0;
+}
+
+int __insert_process_tree(__u32 pid, __u64 cgid)
+{
+	struct process_tree_key *k, local = { 0 }, *parent;
+	struct process_tree_config *cfg;
+	struct process_tree_value *old;
+	struct execve_map_value *curr;
+	__u64 zero = 0;
+
+	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
+	if (!cfg || !cfg->enableProcessTree)
+		return 0;
+
+	curr = execve_map_get_noinit(pid);
+	if (!curr)
+		return 0;
+
 	parent = map_lookup_elem(&tg_ee_pid_data, &curr->pkey.pid);
 	k = &local;
 	if (parent) {
@@ -143,16 +167,10 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		k->path[6].uid = 0;
 		k->path[7].uid = 0;
 	}
+	find_my_self(curr, pid, &k->self);
+	k->nsid = find_my_nsid(cgid);
 
-	k->self = id;
 	map_update_elem(&tg_ee_pid_data, &pid, &local, 0);
-
-	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
-	if (nsid)
-		k->nsid = *nsid;
-	else
-		k->nsid = 0;
-
 	DEBUG("curr->nspid=%d curr->key.pid=%d", curr->nspid, curr->key.pid);
 
 	old = map_lookup_elem(&process_tree_map, k);
