@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/netip"
 	"os"
 	"os/exec"
@@ -347,16 +346,7 @@ func TestProcessTree_DNSPolicy(t *testing.T) {
 	}
 
 	// Start an HTTP server serving 128 null bytes on localhost:8080
-	server := &http.Server{Addr: ":8080", Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Write(make([]byte, 128))
-	})}
-	go func() {
-		err := server.ListenAndServe()
-		if !errors.Is(err, http.ErrServerClosed) {
-			panic(err) // can't call t.Fatal from another goroutine
-		}
-	}()
-	defer server.Close()
+	testutils.StartSimpleHTTPServer(t, ":8080")
 
 	// Specifying --ipv4 to ask curl not to fallback to IPv6 when IPv4
 	// failed on dual stack host, otherwise we escape the quota limitation

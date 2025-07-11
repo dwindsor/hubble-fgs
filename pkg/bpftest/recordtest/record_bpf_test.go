@@ -4,9 +4,7 @@ package recordbpftest
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"os/exec"
 	"runtime"
 	"testing"
@@ -542,29 +540,8 @@ func TestRecords(t *testing.T) {
 		t.Skip()
 	}
 
-	// Start an HTTP server serving 128 null bytes on localhost:8080
-	server1 := &http.Server{Addr: ":8080", Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Write(make([]byte, 128))
-	})}
-	go func() {
-		err := server1.ListenAndServe()
-		if !errors.Is(err, http.ErrServerClosed) {
-			panic(err) // can't call t.Fatal from another goroutine
-		}
-	}()
-	defer server1.Close()
-
-	// Start an HTTP server serving 128 null bytes on localhost:8081
-	server2 := &http.Server{Addr: ":8081", Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Write(make([]byte, 128))
-	})}
-	go func() {
-		err := server2.ListenAndServe()
-		if !errors.Is(err, http.ErrServerClosed) {
-			panic(err) // can't call t.Fatal from another goroutine
-		}
-	}()
-	defer server2.Close()
+	testutils.StartSimpleHTTPServer(t, ":8080")
+	testutils.StartSimpleHTTPServer(t, ":8081")
 
 	ctx, cancel := context.WithTimeout(context.Background(), sensors.ConfigDefaults.CmdWaitTime)
 	defer cancel()
