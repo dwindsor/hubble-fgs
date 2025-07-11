@@ -271,11 +271,7 @@ __u64 tg_sockops_get_current_cgroup_id(void)
 int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
 	struct process_tree_config *cfg;
-	struct msg_execve_key zero_uid;
-	struct execve_map_value *curr;
-	struct tree_id *self_uid;
 	int zero = 0;
-	__u64 *nsid;
 
 	struct listen_endpoint_key key;
 	struct listen_endpoint_value *value;
@@ -289,38 +285,16 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	if (!cfg || !cfg->enableProcessTree)
 		return 0;
 
-	curr = execve_map_get_noinit(v->key.pid);
-	if (!curr)
-		return 0;
-
-	struct process_tree_binary_uid_key *tree_key;
-
-	tree_key = map_lookup_elem(&tg_h_ps_buidkey, &zero);
-	if (!tree_key)
-		return 0;
-	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
-	probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
-	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
-	if (!self_uid)
-		return 0;
-
-	zero_uid.pid = 0;
-	memset(&zero_uid.pad, 0, sizeof(zero_uid.pad));
-	zero_uid.ktime = 0;
-
 	key.addr[0] = tuple->saddr[0];
 	key.addr[1] = tuple->saddr[1];
 	key.port = tuple->sport;
-	key.nsid = 0;
-
-	nsid = map_lookup_elem(&tg_cgroup_namespace_map, &cgid);
-	if (nsid)
-		key.nsid = *nsid;
+	key.nsid = find_my_nsid(cgid);
 
 	value = map_lookup_elem(&tg_h_ps_lstnval, &zero);
 	if (!value)
 		return 0;
-	value->self = *self_uid;
+
+	find_my_self(v->key.pid, &value->self);
 	value->accepted = 0;
 	value->tx_bytes = 0;
 	value->rx_bytes = 0;
