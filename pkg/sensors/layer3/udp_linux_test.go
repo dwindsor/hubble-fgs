@@ -2121,7 +2121,7 @@ func testUdpIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitG
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
 		t.Skipf("Test seems to time out on ARM")
 	}
-	if !utils.NetIOUringAvailable() {
+	if !testutils.NetIOUringAvailable() {
 		t.Skipf("Net io_uring not available, skipping")
 	}
 

@@ -13,7 +13,6 @@ package utils
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sync"
 	"syscall"
@@ -28,7 +27,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
 
 var (
@@ -41,7 +39,6 @@ var (
 	checkRawHooksAvailable   = sync.OnceValue(_checkRawHooksAvailable)
 	checkRTTHookAvailable    = sync.OnceValue(_checkRTTHookAvailable)
 	checkUDPBindNeedsDummies = sync.OnceValue(_checkUDPBindNeedsDummies)
-	checkNetIOUring          = sync.OnceValue(_checkNetIOUring)
 )
 
 // SkSkbParserRequired returns whether the underlying kernel requires skskb
@@ -421,18 +418,6 @@ func _checkUDPBindNeedsDummies() bool {
 	}
 
 	return value == 0
-}
-
-// NetIOUringAvailable checks if the kernel supports net io_uring. Returns false in case of error.
-func NetIOUringAvailable() bool {
-	return checkNetIOUring()
-}
-
-func _checkNetIOUring() bool {
-	testProg := testutils.RepoRootPath("contrib/tester-progs/io_uring/net_iouring_check")
-	cmdTest := exec.Command(testProg)
-	err := cmdTest.Run()
-	return err == nil
 }
 
 func LogLayer3Features() string {

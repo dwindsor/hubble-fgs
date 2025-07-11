@@ -48,7 +48,3 @@ func RawHooksAvailable() bool {
 func RTTHookAvailable() bool {
 	return false
 }
-
-func NetIOUringAvailable() bool {
-	return false
-}
