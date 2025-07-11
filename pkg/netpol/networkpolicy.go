@@ -148,7 +148,7 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 		"title", newName, "oldTitle", oldName, "new network rules", len(newPolicy))
 }
 
-func deleteNetworkPolicy(obj any) {
+func deleteNetworkPolicyObj(obj any) {
 	name := ""
 
 	switch np := obj.(type) {
@@ -164,19 +164,26 @@ func deleteNetworkPolicy(obj any) {
 		return
 	}
 
+	err := deleteNetworkPolicy(name)
+	if err != nil {
+		logger.GetLogger().Warn("TetragonNetworkPolicy deletion failed", logfields.Error, err)
+	}
+	logger.GetLogger().Info("TetragonNetworkPolicy successfully deleted", "name", name)
+
+}
+
+func deleteNetworkPolicy(name string) error {
 	story, ok := library.Get(name)
 	if !ok {
 		deleteName := fmt.Sprintf("__%s", name)
 		story, ok = library.Get(deleteName)
 		if !ok {
-			logger.GetLogger().Warn("deleteNetworkPolicy: abort policy does not exist", "name", name)
-			return
+			return fmt.Errorf("policy %q does not exist", name)
 		}
 		name = deleteName
 	}
 	if err := dns.RemoveNetworkPolicySet(name, story.IrPolicy); err != nil {
-		logger.GetLogger().Warn("deleteNetworkPolicy: abort removing policy failed", "name", name, logfields.Error, err)
-		return
+		return fmt.Errorf("removing policy %q failed: %w", name, err)
 	}
 	library.Delete(name)
 	if strings.HasPrefix(name, "__") {
@@ -185,7 +192,7 @@ func deleteNetworkPolicy(obj any) {
 		n := fmt.Sprintf("__%s", name)
 		library.Delete(n)
 	}
-	logger.GetLogger().Info("deleteNetworkPolicy: completed successfully", "title", name)
+	return nil
 }
 
 func AddTetragonNetworkPolicyInformer(ctx context.Context, m *manager.ControllerManager) error {
@@ -202,7 +209,7 @@ func AddTetragonNetworkPolicyInformer(ctx context.Context, m *manager.Controller
 				updateTetragonNetworkPolicy(oldObj, newObj)
 			},
 			DeleteFunc: func(obj any) {
-				deleteNetworkPolicy(obj)
+				deleteNetworkPolicyObj(obj)
 			}})
 	return err
 }

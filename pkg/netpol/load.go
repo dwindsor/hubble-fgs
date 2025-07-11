@@ -166,6 +166,9 @@ func Add(np *v1alpha1.TetragonNetworkPolicy) error {
 	return nil
 }
 
-func Delete(np *v1alpha1.TetragonNetworkPolicy) {
-	deleteNetworkPolicy(np)
+func Delete(np *v1alpha1.TetragonNetworkPolicy) error {
+	if np == nil {
+		return nil
+	}
+	return deleteNetworkPolicy(np.Name)
 }
