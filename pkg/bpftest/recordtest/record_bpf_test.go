@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"os/exec"
 	"runtime"
 	"testing"
@@ -15,24 +14,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/bpftest"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
-	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/require"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -545,42 +536,6 @@ func runCmds(r *recordTest, t *testing.T) {
 	}
 }
 
-func deleteOldBpfDir(t *testing.T) {
-	path := bpf.MapPrefixPath()
-	err := os.RemoveAll(path)
-	require.NoError(t, err)
-}
-
-func minimalTetragonModel(ctx context.Context, t *testing.T) {
-	bpf.ConfigureResourceLimits()
-	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
-	bpf.CheckOrMountCgroup2()
-
-	option.Config.HubbleLib = "../../../bpf/objs"
-	option.Config.BpfDir = bpf.MapPrefixPath()
-
-	enterpriseOption.Config.Layer3CLIEnable = true
-	enterpriseOption.Config.EnableTCP = true
-	enterpriseOption.Config.EnableUDP = true
-	enterpriseOption.Config.EnableBPFDNSParser = true
-	enterpriseOption.Config.EnableApplicationModel = true
-
-	obs := observer.NewObserver()
-	err := obs.InitSensorManager()
-	require.NoError(t, err)
-	err = btf.InitCachedBTF(option.Config.HubbleLib, "")
-	require.NoError(t, err)
-	err = base.LoadDefault(option.Config.BpfDir)
-	require.NoError(t, err)
-	err = layer3.StartLayer3Progs(ctx, nil)
-	require.NoError(t, err)
-	err = procevents.GetRunningProcs()
-	require.NoError(t, err)
-	_, err = model.DefaultNewServer()
-	require.NoError(t, err)
-}
-
 func TestRecords(t *testing.T) {
 	// So far DNS policy are only supported on amd64 but could be extend to arm64 on recent kernels
 	if runtime.GOARCH != "amd64" || !kernels.MinKernelVersion("5.15.0") {
@@ -614,12 +569,7 @@ func TestRecords(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), sensors.ConfigDefaults.CmdWaitTime)
 	defer cancel()
 
-	defer deleteOldBpfDir(t)
-	minimalTetragonModel(ctx, t)
-	defer func() {
-		observer.RemoveSensors(ctx)
-		cgroup.DetachTetragonCgroups(true, true)
-	}()
+	bpftest.StartMinimalTetragonModel(ctx, t)
 
 	curlArg := []string{"--max-time", "0.1", "--ipv4", "127.0.0.1:8080"}
 
