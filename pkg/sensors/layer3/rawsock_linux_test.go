@@ -16,6 +16,7 @@ package layer3_test
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"sync"
 	"syscall"
 	"testing"
@@ -27,14 +28,17 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	osstestutils "github.com/cilium/tetragon/pkg/testutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -61,6 +65,76 @@ spec:
       reportClose: true
 `
 
+type rawTests struct {
+	suite.Suite
+	doneWG, readyWG sync.WaitGroup
+	ctx             context.Context
+	cancel          context.CancelFunc
+}
+
+func TestRawsockCreateClose(t *testing.T) {
+	if !utils.RawHooksAvailable() {
+		t.Skipf("This test requires raw socket support, skipping")
+	}
+	if !utils.CGroupSKBAvailable() {
+		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+	suite.Run(t, new(rawTests))
+}
+
+func (suite *rawTests) SetupSuite() {
+	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	obs := getRawsockObserverWithEnable(suite.T(), suite.ctx)
+	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
+}
+
+func (suite *rawTests) HandleStats(_ string, stats *suite.SuiteInformation) {
+	if stats.Passed() {
+		osstestutils.DoneWithExportFile(suite.T())
+	}
+}
+
+func (suite *rawTests) TearDownSuite() {
+	suite.cancel()
+}
+
+type rawTest int
+
+const (
+	noneNoneNone rawTest = iota
+	packetRawLoop
+	packetDgramIp
+	inetRawUdp
+	inetRawRaw
+	packetRawAll
+	packetDgramAll
+)
+
+// These are in alphabetical order to match the order they'll likely run in.
+func (suite *rawTests) TestRawsockInetRawRaw() {
+	suite.testRawsockCreateClose(inetRawRaw)
+}
+
+func (suite *rawTests) TestRawsockInetRawUdp() {
+	suite.testRawsockCreateClose(inetRawUdp)
+}
+
+func (suite *rawTests) TestRawsockPacketDgramAll() {
+	suite.testRawsockCreateClose(packetDgramAll)
+}
+
+func (suite *rawTests) TestRawsockPacketDgramIp() {
+	suite.testRawsockCreateClose(packetDgramIp)
+}
+
+func (suite *rawTests) TestRawsockPacketRawAll() {
+	suite.testRawsockCreateClose(packetRawAll)
+}
+
+func (suite *rawTests) TestRawsockPacketRawLoop() {
+	suite.testRawsockCreateClose(packetRawLoop)
+}
+
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.
 //
@@ -69,76 +143,37 @@ func getRawsockObserverWithEnable(t *testing.T, ctx context.Context) *observer.O
 	return getLayer3Observer(t, ctx, rawsockConfigWithCloseEvents, true)
 }
 
-func TestRawsockBasic(t *testing.T) {
-	if !utils.RawHooksAvailable() {
-		t.Skipf("This test requires raw socket support, skipping")
-	}
+func (suite *rawTests) testRawsockCreateClose(ty rawTest) {
+	suite.readyWG.Wait()
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
+	rawsockBinary := testutils.RepoRootPath("contrib/tester-progs/net/rawsock")
+	rawTestStr := fmt.Sprintf("%d", ty)
+	rawsockCmd := exec.Command(rawsockBinary, rawTestStr)
+	err := rawsockCmd.Run()
+	suite.Require().NoError(err, "cannot run rawsock helper")
 
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	obs := getRawsockObserverWithEnable(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
-	for testNum := 1; testNum <= 6; testNum++ {
-		t.Logf("Running test: %d", testNum)
-		if !t.Run(fmt.Sprintf("Rawsock%d", testNum), func(lt *testing.T) {
-			testRawsockCreateClose(t, lt, &readyWG, testNum)
-		}) {
-			t.Logf("Test %d failed", testNum)
-			break
-		}
-		t.Logf("Test %d was successful", testNum)
-	}
-}
-
-func testRawsockCreateClose(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup, ty int) {
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
-
+	rawsockChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("rawsock")).
+		WithArguments(sm.Full(rawTestStr))
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
 			WithProcess(selfChecker).
 			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker("rawsockExec").
+			WithProcess(rawsockChecker).
+			WithParent(selfChecker),
 		ec.NewProcessRawsockCreateChecker("rawsockCreate").
-			WithProcess(selfChecker),
+			WithProcess(rawsockChecker),
 		ec.NewProcessRawsockCloseChecker("rawsockClose").
-			WithProcess(selfChecker).
+			WithProcess(rawsockChecker).
 			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0)},
 				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
 	)
 
-	readyWG.Wait()
-
-	// syscall.Socket needs a ForkLock. See https://go.dev/src/syscall/exec_unix.go
-	syscall.ForkLock.Lock()
-	var fd int
-	var err error
-
-	switch ty {
-	case 1:
-		fd, err = syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_LOOP)
-	case 2:
-		fd, err = syscall.Socket(syscall.AF_PACKET, syscall.SOCK_DGRAM, syscall.ETH_P_IP)
-	case 3:
-		fd, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_UDP)
-	case 4:
-		fd, err = syscall.Socket(syscall.AF_INET, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
-	case 5:
-		fd, err = syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, syscall.ETH_P_ALL)
-	case 6:
-		fd, err = syscall.Socket(syscall.AF_PACKET, syscall.SOCK_DGRAM, syscall.ETH_P_ALL)
-	}
-	assert.NoError(t, err)
-
-	syscall.Close(fd)
-	syscall.ForkLock.Unlock()
-
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	assert.NoError(suite.T(), err)
 }
 
 func TestRawsockCLISwitch(t *testing.T) {
