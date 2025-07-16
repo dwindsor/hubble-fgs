@@ -43,6 +43,7 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	osstestutils "github.com/cilium/tetragon/pkg/testutils"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -58,6 +59,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
@@ -810,30 +812,35 @@ func getUdpObserverDisableEvents(t *testing.T, ctx context.Context, CLISwitches 
 	return getLayer3Observer(t, ctx, udpDisableEventsConfig, true)
 }
 
+type UDPBasic struct {
+	suite.Suite
+	doneWG, readyWG sync.WaitGroup
+	ctx             context.Context
+	cancel          context.CancelFunc
+}
+
 func TestUDPBasic(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
+	suite.Run(t, new(UDPBasic))
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
+func (suite *UDPBasic) SetupSuite() {
+	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 
-	startExistingUDPServices(t)
+	suite.startExistingUDPServices()
 
-	obs := getBasicUdpObserver(t, ctx)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	obs := getBasicUdpObserver(suite.T(), suite.ctx)
+	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
+}
 
-	for _, test := range basicUDPTests {
-		t.Logf("Running test: %s", test.name)
-		if !t.Run(test.name, func(lt *testing.T) {
-			test.f(t, lt, &readyWG)
-		}) {
-			t.Logf("Test %s failed", test.name)
-			break
-		}
-		t.Logf("Test %s was successful", test.name)
+func (suite *UDPBasic) HandleStats(_ string, stats *suite.SuiteInformation) {
+	if stats.Passed() {
+		osstestutils.DoneWithExportFile(suite.T())
 	}
+}
 
-	stopExistingUDPServices(t)
+func (suite *UDPBasic) TearDownSuite() {
+	suite.stopExistingUDPServices()
+	suite.cancel()
 }
 
 var (
@@ -841,42 +848,31 @@ var (
 	stdoutUDP8981, stdoutUDP8981V6       io.ReadCloser
 )
 
-func startExistingUDPServices(t *testing.T) {
-	nc := getNCCommand(t, "nc.openbsd")
+func (suite *UDPBasic) startExistingUDPServices() {
+	nc := getNCCommand(suite.T(), "nc.openbsd")
 	var err error
 
 	cmdServerUDP8981 = exec.Command(nc, "-unvlp", "8981", "-s", "0.0.0.0")
 	stdoutUDP8981, err = cmdServerUDP8981.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServerUDP8981.Start())
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServerUDP8981.Start())
 	cmdServerUDP8981V6 = exec.Command(nc, "-6unvlp", "8981", "-s", "::")
 	stdoutUDP8981V6, err = cmdServerUDP8981V6.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServerUDP8981V6.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8981, syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
-	err = waitForSocketToListen(t, net.ParseIP("::"), 8981, syscall.IPPROTO_UDP, syscall.AF_INET6)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServerUDP8981V6.Start())
+	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8981, syscall.IPPROTO_UDP, syscall.AF_INET)
+	suite.Assert().NoError(err)
+	err = waitForSocketToListen(suite.T(), net.ParseIP("::"), 8981, syscall.IPPROTO_UDP, syscall.AF_INET6)
+	suite.Assert().NoError(err)
 }
 
-func stopExistingUDPServices(t *testing.T) {
-	killAndWaitCommand(t, cmdServerUDP8981)
-	killAndWaitCommand(t, cmdServerUDP8981V6)
+func (suite *UDPBasic) stopExistingUDPServices() {
+	killAndWaitCommand(suite.T(), cmdServerUDP8981)
+	killAndWaitCommand(suite.T(), cmdServerUDP8981V6)
 }
 
-var basicUDPTests = []basicTest{
-	{"testUdpConnectEvent4", testUdpConnectEvent4},
-	{"testListenEvent4", testListenEvent4},
-	{"testConnectAfterStartEvent4", testConnectAfterStartEvent4},
-	{"testUdpMulticast4", testUdpMulticast4},
-	{"testUdpConnectEvent6", testUdpConnectEvent6},
-	{"testListenEvent6", testListenEvent6},
-	{"testConnectAfterStartEvent6", testConnectAfterStartEvent6},
-	{"testUdpIOUringConnectEvent", testUdpIOUringConnectEvent},
-}
-
-func testUdpConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *UDPBasic) TestUdpConnectEvent4() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -1003,33 +999,33 @@ func testUdpConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 		},
 	}
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-unvlp", "8081", "-s", "0.0.0.0")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.IPv4(0, 0, 0, 0), 8081, syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServer.Start())
+	err = waitForSocketToListen(suite.T(), net.IPv4(0, 0, 0, 0), 8081, syscall.IPPROTO_UDP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 
 	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdout, "hello")
 
-	killAndWaitCommand(t, cmdClient)
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	err = jsonchecker.JsonTestCheck(gt, statsChecker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), statsChecker)
+	suite.Assert().NoError(err)
 }
 
-func testListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *UDPBasic) TestListenEvent4() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -1053,16 +1049,16 @@ func testListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithProtocol(tetragon.SocketProtocol_UDP),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-unvlp", "8082", "-s", "0.0.0.0")
-	assert.NoError(t, cmdServer.Start())
-	err := waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8082, syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
+	suite.Assert().NoError(cmdServer.Start())
+	err := waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8082, syscall.IPPROTO_UDP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(suite.T(), cmdServer)
 }
 
 func TestUDPCLISwitch(t *testing.T) {
@@ -1236,8 +1232,8 @@ func TestNoDisableConnectStats4NoCLI(t *testing.T) {
 	testDisableConnectStatsConfig4(t, false, false, false)
 }
 
-func testConnectAfterStartEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *UDPBasic) TestConnectAfterStartEvent4() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -1293,18 +1289,18 @@ func testConnectAfterStartEvent4(gt *testing.T, t *testing.T, readyWG *sync.Wait
 				WithSegsIn(1)),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8981")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	waitForData(t, stdoutUDP8981, "hello")
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdoutUDP8981, "hello")
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdClient)
 }
 
 func TestUdpDetectLatency4(t *testing.T) {
@@ -1400,8 +1396,8 @@ func TestUdpDetectLatency4(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 }
 
-func testUdpMulticast4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getSocatCommand(t, "socat")
+func (suite *UDPBasic) TestUdpMulticast4() {
+	server := getSocatCommand(suite.T(), "socat")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -1462,27 +1458,27 @@ func testUdpMulticast4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 		serverStatsChecker,
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-", "UDP4-LISTEN:8100,ip-add-membership=224.0.0.1:lo")
-	assert.NoError(t, cmdServer.Start())
-	err := waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8100, syscall.IPPROTO_UDP, syscall.AF_INET)
-	assert.NoError(t, err)
+	suite.Assert().NoError(cmdServer.Start())
+	err := waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8100, syscall.IPPROTO_UDP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 
 	cmdClient := exec.Command(client, "-", "UDP4-DATAGRAM:224.0.0.1:8100")
 	stdinClient, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdinClient, "hello")
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdinClient, "hello")
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
 }
 
-func testUdpConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *UDPBasic) TestUdpConnectEvent6() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -1609,34 +1605,34 @@ func testUdpConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) 
 		},
 	}
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-6unvlp", "8081", "-s", "::")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("::"), 8081, syscall.IPPROTO_UDP, syscall.AF_INET6)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServer.Start())
+	err = waitForSocketToListen(suite.T(), net.ParseIP("::"), 8081, syscall.IPPROTO_UDP, syscall.AF_INET6)
+	suite.Assert().NoError(err)
 
 	cmdClient := exec.Command(client, "-6u", "::1", "8081")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdin, "hello")
 
-	waitForData(t, stdout, "hello")
+	waitForData(suite.T(), stdout, "hello")
 
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	err = jsonchecker.JsonTestCheck(gt, statsChecker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), statsChecker)
+	suite.Assert().NoError(err)
 }
 
-func testListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *UDPBasic) TestListenEvent6() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -1660,20 +1656,20 @@ func testListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithProtocol(tetragon.SocketProtocol_UDP),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-6unvlp", "8082", "-s", "::")
-	assert.NoError(t, cmdServer.Start())
-	err := waitForSocketToListen(t, net.ParseIP("::"), 8082, syscall.IPPROTO_UDP, syscall.AF_INET6)
-	assert.NoError(t, err)
+	suite.Assert().NoError(cmdServer.Start())
+	err := waitForSocketToListen(suite.T(), net.ParseIP("::"), 8082, syscall.IPPROTO_UDP, syscall.AF_INET6)
+	suite.Assert().NoError(err)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(suite.T(), cmdServer)
 }
 
-func testConnectAfterStartEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *UDPBasic) TestConnectAfterStartEvent6() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -1729,18 +1725,18 @@ func testConnectAfterStartEvent6(gt *testing.T, t *testing.T, readyWG *sync.Wait
 				WithSegsIn(1)),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdClient := exec.Command(client, "-6u", "::1", "8981")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	waitForData(t, stdoutUDP8981V6, "hello")
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdoutUDP8981V6, "hello")
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdClient)
 }
 
 func testDnsEvents(t *testing.T, withQuestions bool) {
@@ -2114,19 +2110,19 @@ func TestGCWithNonzeroInterval(t *testing.T) {
 }
 
 // FIXME: net io_uring test seems to time out on ARM.
-func testUdpIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *UDPBasic) TestUdpIOUringConnectEvent() {
 	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
+		suite.T().Skipf("This test requires CGroup/SKB, skipping")
 	}
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
-		t.Skipf("Test seems to time out on ARM")
+		suite.T().Skipf("Test seems to time out on ARM")
 	}
 	if !testutils.NetIOUringAvailable() {
-		t.Skipf("Net io_uring not available, skipping")
+		suite.T().Skipf("Net io_uring not available, skipping")
 	}
 
 	server := testutils.RepoRootPath("contrib/tester-progs/io_uring/udp_iouring_server")
-	client := getNCCommand(t, "nc.openbsd")
+	client := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -2266,29 +2262,29 @@ func testUdpIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitG
 		},
 	}
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server)
 	serverOutput, err := cmdServer.StdoutPipe()
-	require.NoError(t, err, "could not connect to server output pipe")
+	suite.Require().NoError(err, "could not connect to server output pipe")
 	cmdServer.Stderr = os.Stderr
 
 	err = cmdServer.Start()
-	require.NoError(t, err, "cannot start server")
+	suite.Require().NoError(err, "cannot start server")
 
 	serverBuf := bufio.NewReader(serverOutput)
 	var line []byte
 	for string(line) != "Ready" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
-			killAndWaitCommand(t, cmdServer)
-			t.Fatal(err)
+			killAndWaitCommand(suite.T(), cmdServer)
+			suite.T().Fatal(err)
 		}
 		if len(line) == 0 {
-			killAndWaitCommand(t, cmdServer)
-			t.Fatal("received empty line from UDP server")
+			killAndWaitCommand(suite.T(), cmdServer)
+			suite.T().Fatal("received empty line from UDP server")
 		}
 		if strings.HasPrefix(string(line), "NotReady") {
-			t.Fatalf("UDP server failed to start: '%s'", string(line))
+			suite.T().Fatalf("UDP server failed to start: '%s'", string(line))
 		}
 	}
 
@@ -2297,15 +2293,15 @@ func testUdpIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitG
 
 	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8000")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdin, "hello")
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	err = jsonchecker.JsonTestCheck(gt, statsChecker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), statsChecker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
 }
