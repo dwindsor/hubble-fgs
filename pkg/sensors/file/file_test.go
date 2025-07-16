@@ -1027,7 +1027,7 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "file_val_map", Progs: []uint{14}},
 	}
 
-	if kernels.MinKernelVersion("5.11.0") {
+	if utils.SupportProcessTree() {
 		pstreeMaps := []tus.SensorMap{
 			{Name: "tg_conf_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18, 19}},
 		}
