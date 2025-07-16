@@ -267,7 +267,6 @@ func createMultiKprobeSensor(polInfo *policyInfo, multiIDs []idtable.EntryID, ha
 		gk.data = data
 
 		has.stackTrace = has.stackTrace || gk.hasStackTrace
-		has.rateLimit = has.rateLimit || gk.hasRatelimit
 		has.override = has.override || gk.hasOverride
 	}
 
@@ -426,7 +425,7 @@ func preValidateKprobe(
 	btfobj *btf.Spec,
 	lists []v1alpha1.ListSpec,
 ) (*kpValidateInfo, error) {
-	isSyscall := false
+	isSyscall := f.Syscall
 	var calls []string
 	// the f.Call is either defined as list:NAME
 	// or specifies directly the function
@@ -439,7 +438,9 @@ func preValidateKprobe(
 		if err != nil {
 			return nil, fmt.Errorf("failed to get symbols from list '%s': %w", f.Call, err)
 		}
-		isSyscall = isSyscallListType(list.Type)
+		if isSyscallListType(list.Type) {
+			isSyscall = true
+		}
 	} else {
 		calls = []string{f.Call}
 		if f.Syscall {
@@ -451,7 +452,6 @@ func preValidateKprobe(
 			} else {
 				calls[0] = prefixedName
 			}
-			isSyscall = true
 		}
 	}
 
@@ -584,6 +584,7 @@ func hasMapsSetup(spec *v1alpha1.TracingPolicySpec) hasMaps {
 	for _, kprobe := range spec.KProbes {
 		has.fdInstall = has.fdInstall || selectorsHaveFDInstall(kprobe.Selectors)
 		has.enforcer = has.enforcer || len(spec.Enforcers) != 0
+		has.rateLimit = has.rateLimit || selectorsHaveRateLimit(kprobe.Selectors)
 
 		// check for early break
 		if has.fdInstall && has.enforcer {
@@ -677,8 +678,19 @@ func createGenericKprobeSensor(
 		Namespace: polInfo.namespace,
 		DestroyHook: func() error {
 			var errs error
+
 			for _, id := range ids {
-				_, err := genericKprobeTable.RemoveEntry(id)
+				gk, err := genericKprobeTableGet(id)
+				if err != nil {
+					errs = errors.Join(errs, err)
+					continue
+				}
+
+				if err = selectors.CleanupKernelSelectorState(gk.loadArgs.selectors.entry); err != nil {
+					errs = errors.Join(errs, err)
+				}
+
+				_, err = genericKprobeTable.RemoveEntry(id)
 				if err != nil {
 					errs = errors.Join(errs, err)
 				}
@@ -1086,7 +1098,6 @@ func createSingleKprobeSensor(polInfo *policyInfo, ids []idtable.EntryID, has ha
 
 		// setup per kprobe map config
 		has.stackTrace = gk.hasStackTrace
-		has.rateLimit = gk.hasRatelimit
 		has.override = gk.hasOverride
 
 		progs, maps = createKprobeSensorFromEntry(polInfo, gk, progs, maps, has)

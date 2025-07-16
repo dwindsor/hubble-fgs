@@ -200,37 +200,40 @@ const (
 	// more socket ops
 	SelectorOpFamily = 28
 	SelectorOpState  = 29
+	// capabilities
+	SelectorOpCapabilitiesGained = 30
 )
 
 var selectorOpStringTable = map[uint32]string{
-	SelectorOpGT:           "gt",
-	SelectorOpLT:           "lt",
-	SelectorOpEQ:           "Equal",
-	SelectorOpNEQ:          "NotEqual",
-	SelectorOpIn:           "In",
-	SelectorOpNotIn:        "NotIn",
-	SelectorOpPrefix:       "Prefix",
-	SelectorOpPostfix:      "Postfix",
-	SelectorInMap:          "InMap",
-	SelectorNotInMap:       "NotInMap",
-	SelectorOpMASK:         "Mask",
-	SelectorOpSaddr:        "SAddr",
-	SelectorOpDaddr:        "DAddr",
-	SelectorOpSport:        "SPort",
-	SelectorOpDport:        "DPort",
-	SelectorOpProtocol:     "Protocol",
-	SelectorOpNotSport:     "NotSPort",
-	SelectorOpNotDport:     "NotDPort",
-	SelectorOpSportPriv:    "SPortPriv",
-	SelectorOpNotSportPriv: "NotSPortPriv",
-	SelectorOpDportPriv:    "DPortPriv",
-	SelectorOpNotDportPriv: "NotDPortPriv",
-	SelectorOpNotSaddr:     "NotSAddr",
-	SelectorOpNotDaddr:     "NotDAddr",
-	SelectorOpNotPrefix:    "NotPrefix",
-	SelectorOpNotPostfix:   "NotPostfix",
-	SelectorOpFamily:       "Family",
-	SelectorOpState:        "State",
+	SelectorOpGT:                 "gt",
+	SelectorOpLT:                 "lt",
+	SelectorOpEQ:                 "Equal",
+	SelectorOpNEQ:                "NotEqual",
+	SelectorOpIn:                 "In",
+	SelectorOpNotIn:              "NotIn",
+	SelectorOpPrefix:             "Prefix",
+	SelectorOpPostfix:            "Postfix",
+	SelectorInMap:                "InMap",
+	SelectorNotInMap:             "NotInMap",
+	SelectorOpMASK:               "Mask",
+	SelectorOpSaddr:              "SAddr",
+	SelectorOpDaddr:              "DAddr",
+	SelectorOpSport:              "SPort",
+	SelectorOpDport:              "DPort",
+	SelectorOpProtocol:           "Protocol",
+	SelectorOpNotSport:           "NotSPort",
+	SelectorOpNotDport:           "NotDPort",
+	SelectorOpSportPriv:          "SPortPriv",
+	SelectorOpNotSportPriv:       "NotSPortPriv",
+	SelectorOpDportPriv:          "DPortPriv",
+	SelectorOpNotDportPriv:       "NotDPortPriv",
+	SelectorOpNotSaddr:           "NotSAddr",
+	SelectorOpNotDaddr:           "NotDAddr",
+	SelectorOpNotPrefix:          "NotPrefix",
+	SelectorOpNotPostfix:         "NotPostfix",
+	SelectorOpFamily:             "Family",
+	SelectorOpState:              "State",
+	SelectorOpCapabilitiesGained: "CapabilitiesGained",
 }
 
 func SelectorOp(op string) (uint32, error) {
@@ -291,6 +294,8 @@ func SelectorOp(op string) (uint32, error) {
 		return SelectorOpFamily, nil
 	case "state", "State":
 		return SelectorOpState, nil
+	case "CapabilitiesGained":
+		return SelectorOpCapabilitiesGained, nil
 	}
 
 	return 0, fmt.Errorf("unknown op '%s'", op)
@@ -750,22 +755,42 @@ func writePostfixStrings(k *KernelSelectorState, values []string, ty uint32) err
 
 func checkOp(op uint32) error {
 	switch op {
-	case SelectorOpGT, SelectorOpLT:
+	case SelectorOpGT, SelectorOpLT, SelectorOpCapabilitiesGained:
 		if !config.EnableLargeProgs() {
-			return errors.New("GT/LT operators are only supported in kernels >= 5.3")
+			opName := selectorOpStringTable[op]
+			return fmt.Errorf(
+				"operator %d (%s) is only supported in kernels supporting large programs (normally versions >= 5.3)",
+				op, opName,
+			)
 		}
 	}
 	return nil
 }
 
+func argIndexTypeFromArgs(
+	arg *v1alpha1.ArgSelector,
+	argsIndex int,
+	sig []v1alpha1.KProbeArg,
+) (uint32, uint32, error) {
+	index := arg.Args[argsIndex]
+	if index >= uint32(len(sig)) {
+		return 0, 0, fmt.Errorf("wrong ArgSelector.Arg value %d, max(%d)", index, uint32(len(sig)))
+	}
+	ty := sig[index].Type
+	return index, uint32(gt.GenericTypeFromString(ty)), nil
+}
+
+func isCapabilityType(ty uint32) bool {
+	switch ty {
+	case gt.GenericKernelCap, gt.GenericCapInheritable, gt.GenericCapPermitted, gt.GenericCapEffective:
+		return true
+	}
+	return false
+}
+
 func argIndexType(arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) (uint32, uint32, error) {
-	if arg.Arg != nil {
-		index := *arg.Arg
-		if index >= uint32(len(sig)) {
-			return 0, 0, fmt.Errorf("wrong ArgSelector.Arg value %d, max(%d)", index, uint32(len(sig)))
-		}
-		ty := sig[index].Type
-		return index, uint32(gt.GenericTypeFromString(ty)), nil
+	if len(arg.Args) > 0 {
+		return argIndexTypeFromArgs(arg, 0, sig)
 	}
 	for idx, s := range sig {
 		if arg.Index == s.Index {
@@ -854,6 +879,20 @@ func ParseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1al
 		if ty == gt.GenericSockaddrType && (op == SelectorOpDportPriv || op == SelectorOpNotDportPriv) {
 			return errors.New("sockaddr only supports [not]saddr, [not]sport[priv], and family")
 		}
+	case SelectorOpCapabilitiesGained:
+		if len(arg.Args) != 2 {
+			return errors.New("CapabilitiesGained operator requires two args: the new and the old capability")
+		}
+		index2, ty2, err := argIndexTypeFromArgs(arg, 1, sig)
+		if err != nil {
+			return fmt.Errorf("failed to get second argument for CapabilitiesGained operator: %w", err)
+		}
+		if !isCapabilityType(ty) || !isCapabilityType(ty2) {
+			return errors.New("CapabilitiesGained operator requaries capability type arguments")
+		}
+		// write the index of the second argument in the data
+		WriteSelectorUint32(&k.data, index2)
+
 	default:
 		err = writeMatchValues(k, arg.Values, ty, op)
 		if err != nil {
@@ -1228,9 +1267,10 @@ func ParseMatchBinary(k *KernelSelectorState, b *v1alpha1.BinarySelector, selIdx
 	sel.Op = op
 	sel.MBSetID = mbset.InvalidID
 	if b.FollowChildren {
-		if op != SelectorOpIn {
+		if op != SelectorOpIn && op != SelectorOpNotIn {
 			return fmt.Errorf("matchBinary: followChildren not yet implemented for operation '%s'", b.Operator)
 		}
+
 		sel.MBSetID, err = mbset.AllocID()
 		if err != nil {
 			return fmt.Errorf("matchBinary followChildren: failed to allocate ID: %w", err)
@@ -1401,6 +1441,18 @@ func InitKernelReturnSelectorState(selectors []v1alpha1.KProbeSelector, returnAr
 	}
 
 	return createKernelSelectorState(selectors, listReader, maps, parse)
+}
+
+func CleanupKernelSelectorState(state *KernelSelectorState) error {
+	var errs error
+
+	for selectorID, paths := range state.MatchBinariesPaths() {
+		sel := state.MatchBinaries()[selectorID]
+		if err := mbset.RemoveID(sel.MBSetID, paths); err != nil {
+			errs = errors.Join(errs, err)
+		}
+	}
+	return errs
 }
 
 func HasOverride(spec *v1alpha1.KProbeSpec) bool {

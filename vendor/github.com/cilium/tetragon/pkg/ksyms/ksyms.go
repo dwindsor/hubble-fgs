@@ -63,7 +63,7 @@ func NewKsyms(procfs string) (*Ksyms, error) {
 	kallsymsFname := procfs + "/kallsyms"
 	file, err := os.Open(kallsymsFname)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open %q file: %w", kallsymsFname, err)
 	}
 	defer file.Close()
 
@@ -78,20 +78,19 @@ func NewKsyms(procfs string) (*Ksyms, error) {
 		var sym ksym
 
 		if len(fields) < 3 {
-			fmt.Fprintf(os.Stderr, "Failed to parse: '%s'\n", txt)
+			logger.GetLogger().Warn("failed to parse kallsyms line", "line", txt)
 			continue
 		}
 
 		if sym.addr, err = strconv.ParseUint(fields[0], 16, 64); err != nil {
-			err = fmt.Errorf("failed to parse address: %w", err)
+			err = fmt.Errorf("failed to parse address %q: %w", fields[0], err)
 			break
 		}
 		sym.ty = fields[1]
 		sym.name = fields[2]
 
-		//fmt.Printf("%s => %d %s\n", txt, sym.addr, sym.name)
 		if sym.isFunction() && sym.addr == 0 {
-			err = fmt.Errorf("function %s reported at address 0. Insuffcient permissions?", sym.name)
+			err = fmt.Errorf("function %s reported at address 0, insufficient permissions? If not, kptr_restrict might be set to 2", sym.name)
 			break
 		}
 
@@ -114,12 +113,11 @@ func NewKsyms(procfs string) (*Ksyms, error) {
 		err = s.Err()
 	}
 
-	if err != nil && len(ksyms.table) == 0 {
-		err = errors.New("no symbols found")
-	}
-
 	if err != nil {
-		return nil, err
+		if len(ksyms.table) == 0 {
+			return nil, fmt.Errorf("no kernel symbols found: %w", err)
+		}
+		return nil, fmt.Errorf("error while parsing kallsyms: %w", err)
 	}
 
 	if needsSort {
@@ -130,8 +128,7 @@ func NewKsyms(procfs string) (*Ksyms, error) {
 	if err == nil {
 		ksyms.fnCache = fc
 	} else {
-
-		logger.GetLogger().Info("failed to initialize cache", logfields.Error, err)
+		logger.GetLogger().Warn("failed to initialize kallsyms cache", logfields.Error, err)
 	}
 
 	return &ksyms, nil

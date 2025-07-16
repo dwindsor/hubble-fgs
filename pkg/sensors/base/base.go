@@ -17,7 +17,9 @@ import (
 	"testing"
 	"unsafe"
 
+	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/errmetrics"
+	"github.com/cilium/tetragon/pkg/execvemapupdater"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -78,6 +80,14 @@ var (
 		"execve",
 	).SetPolicy(basePolicy)
 
+	ExecveMapUpdate = program.Builder(
+		config.ExecUpdateObj(),
+		"seccomp",
+		"seccomp",
+		"execve_map_update",
+		"seccomp",
+	).SetPolicy(basePolicy)
+
 	ExecveBprmCommit = program.Builder(
 		"bpf_execve_bprm_commit_creds.o",
 		"security_bprm_committing_creds",
@@ -114,7 +124,7 @@ var (
 	TCPMonMap = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
 
 	/* Networking and Process Monitoring maps */
-	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, Fork, Exit, ExecveBprmCommit, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
+	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, Fork, Exit, ExecveBprmCommit, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry, ExecveMapUpdate)
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", Exit)
 	SocketMap                   = program.MapBuilder(socktrackmaps.SocketMapName, Exit)
 	SocketStats                 = program.MapBuilder(socktrackmaps.SocketStatsName, Exit)
@@ -128,7 +138,8 @@ var (
 	TcpSocketMapStats           = program.MapBuilder("tg_tcpsocket_map_stats", Exit)
 	DNSEndpointIDMap            = program.MapBuilder(dnsparser.DNSEndpointIDMapName, Exit)
 
-	ExecveTailCallsMap = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	ExecveTailCallsMap  = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	ExecveMapUpdateData = program.MapBuilder("execve_map_update_data", ExecveMapUpdate)
 
 	ExecveJoinMap = program.MapBuilder("tg_execve_joined_info_map", ExecveBprmCommit)
 
@@ -209,6 +220,12 @@ func initBaseSensor() *sensors.Sensor {
 		Name: basePolicy,
 	}
 	setupSensor()
+	if config.EnableLargeProgs() {
+		mbset.SetMBSetUpdater(&execvemapupdater.ExecveMapUpdater{
+			Load: ExecveMapUpdate,
+			Map:  ExecveMapUpdateData,
+		})
+	}
 	sensor.Progs = GetDefaultPrograms()
 	sensor.Maps = GetDefaultMaps()
 	return ossbase.ApplyExtensions(&sensor)

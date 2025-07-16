@@ -12,6 +12,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/errmetrics"
+	"github.com/cilium/tetragon/pkg/execvemapupdater"
 	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/mbset"
@@ -35,6 +36,14 @@ var (
 		"tracepoint/sys_execve",
 		"event_execve",
 		"execve",
+	).SetPolicy(basePolicy)
+
+	ExecveMapUpdate = program.Builder(
+		config.ExecUpdateObj(),
+		"seccomp",
+		"seccomp",
+		"execve_map_update",
+		"seccomp",
 	).SetPolicy(basePolicy)
 
 	ExecveBprmCommit = program.Builder(
@@ -64,8 +73,9 @@ var (
 	/* Event Ring map */
 	TCPMonMap = program.MapBuilder("tcpmon_map", Execve)
 	/* Networking and Process Monitoring maps */
-	ExecveMap          = program.MapBuilder("execve_map", Execve, Exit, Fork, ExecveBprmCommit)
-	ExecveTailCallsMap = program.MapBuilderProgram("execve_calls", Execve)
+	ExecveMap           = program.MapBuilder("execve_map", Execve, Exit, Fork, ExecveBprmCommit, ExecveMapUpdate)
+	ExecveTailCallsMap  = program.MapBuilderProgram("execve_calls", Execve)
+	ExecveMapUpdateData = program.MapBuilder("execve_map_update_data", ExecveMapUpdate)
 
 	ExecveJoinMap = program.MapBuilder("tg_execve_joined_info_map", ExecveBprmCommit)
 
@@ -160,6 +170,12 @@ func initBaseSensor() *sensors.Sensor {
 		Name: basePolicy,
 	}
 	setupSensor()
+	if config.EnableLargeProgs() {
+		mbset.SetMBSetUpdater(&execvemapupdater.ExecveMapUpdater{
+			Load: ExecveMapUpdate,
+			Map:  ExecveMapUpdateData,
+		})
+	}
 	sensor.Progs = GetDefaultPrograms()
 	sensor.Maps = GetDefaultMaps()
 	return ApplyExtensions(&sensor)

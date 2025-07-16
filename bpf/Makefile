@@ -72,7 +72,9 @@ PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_execve_event_v611.o bpf_
 	  bpf_syscall.o \
 	  bpf_procfs_walk.o \
 	  bpf_procfs_walk_fentry.o \
-	  bpf_prog_iter.o
+	  bpf_prog_iter.o \
+	  bpf_procfs_walk_fentry.o \
+	  bpf_execve_map_update.o bpf_execve_map_update_v53.o bpf_execve_map_update_v511.o
 
 FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_filemap_map_pages_v419.o bpf_filemap_page_mkwrite.o bpf_filemap_page_mkwrite_v419.o bpf_finish_open.o bpf_finish_open_v419.o \
 	  bpf_security_file_permission.o bpf_security_file_permission_v419.o bpf_vfs_unlink.o bpf_vfs_unlink_v419.o bpf_vfs_fallocate.o bpf_vfs_fallocate_v419.o bpf_vfs_open.o bpf_vfs_open_v419.o \
@@ -406,6 +408,9 @@ objs/bpf_security_bprm_check_v419.o: $(FILEDIR)/bpf_security_bprm_check.c
 objs/bpf_security_path_rename_v419.o: $(FILEDIR)/bpf_security_path_rename.c
 objs/bpf_security_inode_link_v419.o: $(FILEDIR)/bpf_security_inode_link.c
 objs/bpf_security_file_open_v419.o: $(FILEDIR)/bpf_security_file_open.c
+objs/bpf_execve_map_update_v53.o: $(PROCESSDIR)/bpf_execve_map_update.c
+objs/bpf_execve_map_update_v511.o: $(PROCESSDIR)/bpf_execve_map_update.c
+objs/bpf_execve_map_update_v61.o: $(PROCESSDIR)/bpf_execve_map_update.c
 
 objs/bpf_multi_kprobe_v53.o objs/bpf_multi_retkprobe_v53.o:
 	$(call rule_o,-D__LARGE_BPF_PROG -D__MULTI_KPROBE)

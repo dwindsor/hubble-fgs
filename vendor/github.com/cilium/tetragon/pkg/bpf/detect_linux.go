@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -230,6 +231,10 @@ func HasProgramLargeSize() bool {
 	return features.HaveLargeInstructions() == nil
 }
 
+// detectLSM must check for the presence of the 'bpf' flag in
+// /sys/kernel/security/lsm in addition to trying to attach a BPF LSM program
+// because if the BPF LSM is not loaded, the program can be loaded on the kernel
+// but will never be triggered.
 func detectLSM() bool {
 	if features.HaveProgramType(ebpf.LSM) != nil {
 		return false
@@ -271,7 +276,7 @@ func detectLSM() bool {
 			License:    "Dual BSD/GPL",
 		})
 		if err != nil {
-			logger.GetLogger().Error("failed to load lsm probe", logfields.Error, err)
+			logger.GetLogger().Error("failed to load LSM probe", logfields.Error, err)
 			return false
 		}
 		defer prog.Close()
@@ -280,7 +285,11 @@ func detectLSM() bool {
 			Program: prog,
 		})
 		if err != nil {
-			logger.GetLogger().Error("failed to attach lsm probe", logfields.Error, err)
+			msg := "failed to attach LSM probe"
+			if runtime.GOARCH == "arm64" {
+				msg += ", you might be missing linux patch efc9909fdce0 (\"bpf, arm64: Add bpf trampoline for arm64\"). BPF LSM is supported since 5.7 but BPF trampolines for arm64 are available only since 6.0 in upstream kernels."
+			}
+			logger.GetLogger().Error(msg, logfields.Error, err)
 			return false
 		}
 		link.Close()

@@ -23,6 +23,7 @@ func GetDefaultPrograms() []*program.Program {
 		Exit,
 		Fork,
 		ExecveBprmCommit,
+		ExecveMapUpdate,
 	}
 	if EnableV611Progs() {
 		progs = append(progs, ExecveV611)
@@ -59,6 +60,7 @@ func GetDefaultMaps() []*program.Map {
 		TcpSocketMapStats,
 		DNSEndpointIDMap,
 		ExecveTailCallsMap,
+		ExecveMapUpdateData,
 		ExecveJoinMap,
 		TetragonConfMap,
 		ExecveStats,

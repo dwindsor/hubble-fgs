@@ -1,0 +1,4 @@
+tetragonMandate:
+  info:                     # info allows for arbitry key-values to describe this policy
+    version: "0.0.1"
+  policies:                 # list of policies
