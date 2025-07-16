@@ -519,7 +519,7 @@ func waitForConnectedSocketToClose(t *testing.T, addr net.IP, port uint16, proto
 	return nil
 }
 
-func waitAndCheckForSocketsToClose(gt, t *testing.T, checker *ec.UnorderedEventChecker, addr net.IP, port uint16, protocol uint16, af uint16) error {
+func waitAndCheckForSocketsToClose(t *testing.T, checker *ec.UnorderedEventChecker, addr net.IP, port uint16, protocol uint16, af uint16) error {
 	// Wait for the listening socket to close. The listening socket should not care for any TIME_WAIT-like states
 	// because it only listens, and therefore should close straight away. This wait will a) ensure that happened and
 	// b) cause a small delay during which hopefully other things occurred.
@@ -531,7 +531,7 @@ func waitAndCheckForSocketsToClose(gt, t *testing.T, checker *ec.UnorderedEventC
 		return fmt.Errorf("waitForListeningSocketToClose (listener) failed: '%s'", err)
 	}
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	if err == nil {
 		return nil
 	}
@@ -548,7 +548,7 @@ func waitAndCheckForSocketsToClose(gt, t *testing.T, checker *ec.UnorderedEventC
 		return fmt.Errorf("waitForConnectedSocketToClose failed: '%s'", err)
 	}
 
-	return jsonchecker.JsonTestCheck(gt, checker)
+	return jsonchecker.JsonTestCheck(t, checker)
 }
 
 func sendData(t *testing.T, stdin io.WriteCloser, msg string) {

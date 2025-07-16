@@ -42,8 +42,10 @@ import (
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper/docker"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
+	osstestutils "github.com/cilium/tetragon/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
@@ -202,113 +204,95 @@ func getTcpObserverDisableEvents(t *testing.T, ctx context.Context, docker bool,
 	return getLayer3Observer(t, ctx, tcpDisableEventsConfig, !docker)
 }
 
+type TCPCommon struct {
+	suite.Suite
+	doneWG, readyWG sync.WaitGroup
+	ctx             context.Context
+	cancel          context.CancelFunc
+}
+
+type TCPBasic struct {
+	TCPCommon
+}
+
 func TestTCPBasic(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
+	suite.Run(t, new(TCPBasic))
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
+func (suite *TCPBasic) SetupSuite() {
+	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	suite.startExistingTCPServices()
+	obs := getBasicTcpObserver(suite.T(), suite.ctx, false)
+	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
+}
 
-	startExistingTCPServices(t)
-
-	obs := getBasicTcpObserver(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
-	for _, test := range basicTCPTests {
-		t.Logf("Running test: %s", test.name)
-		if !t.Run(test.name, func(lt *testing.T) {
-			test.f(t, lt, &readyWG)
-		}) {
-			t.Logf("Test %s failed", test.name)
-			break
-		}
-		t.Logf("Test %s was successful", test.name)
+func (suite *TCPBasic) HandleStats(_ string, stats *suite.SuiteInformation) {
+	if stats.Passed() {
+		osstestutils.DoneWithExportFile(suite.T())
 	}
+}
 
-	stopExistingTCPServices(t)
+func (suite *TCPBasic) TearDownSuite() {
+	suite.stopExistingTCPServices()
+	suite.cancel()
+}
+
+type TCPDocker struct {
+	TCPCommon
 }
 
 func TestTCPDocker(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
+	suite.Run(t, new(TCPDocker))
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
+func (suite *TCPDocker) SetupSuite() {
+	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	suite.startDockerTCPServices()
+	obs := getBasicTcpObserver(suite.T(), suite.ctx, true)
+	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
+}
 
-	startDockerTCPServices(t)
-
-	obs := getBasicTcpObserver(t, ctx, true)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
-	for _, test := range dockerTCPTests {
-		t.Logf("Running test: %s", test.name)
-		if !t.Run(test.name, func(lt *testing.T) {
-			test.f(t, lt, &readyWG)
-		}) {
-			t.Logf("Test %s failed", test.name)
-			break
-		}
-		t.Logf("Test %s was successful", test.name)
+func (suite *TCPDocker) HandleStats(_ string, stats *suite.SuiteInformation) {
+	if stats.Passed() {
+		osstestutils.DoneWithExportFile(suite.T())
 	}
+}
 
-	stopDockerTCPServices(t)
+func (suite *TCPDocker) TearDownSuite() {
+	suite.stopDockerTCPServices()
+	suite.cancel()
+}
+
+type TCPRTT struct {
+	TCPCommon
 }
 
 func TestTCPRTT(t *testing.T) {
+	// timing related tests are unreliable currently. In lieu of a solution, let's
+	// disable these tests.
+	t.Skipf("Test disabled due to unreliable timing in CI")
+
 	if !utils.RTTHookAvailable() {
 		t.Skipf("RTT hooks are unavailable, skipping")
 	}
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
+	suite.Run(t, new(TCPRTT))
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
+func (suite *TCPRTT) SetupSuite() {
+	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	obs := getTcpObserverWithRTTDetection(suite.T(), suite.ctx, false)
+	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
+}
 
-	obs := getTcpObserverWithRTTDetection(t, ctx, false)
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-
-	for _, test := range RTTTests {
-		t.Logf("Running test: %s", test.name)
-		if !t.Run(test.name, func(lt *testing.T) {
-			test.f(t, lt, &readyWG)
-		}) {
-			t.Logf("Test %s failed", test.name)
-			break
-		}
-		t.Logf("Test %s was successful", test.name)
+func (suite *TCPRTT) HandleStats(_ string, stats *suite.SuiteInformation) {
+	if stats.Passed() {
+		osstestutils.DoneWithExportFile(suite.T())
 	}
 }
 
-var basicTCPTests = []basicTest{
-	{"testFailedConnectEvent4", testFailedConnectEvent4},
-	{"testExecEventClone4", testExecEventClone4},
-	{"testExistingListenEvent4", testExistingListenEvent4},
-	{"testExistingAcceptEvent4", testExistingAcceptEvent4},
-	{"testExistingRootCWDListenEvent4", testExistingRootCWDListenEvent4},
-	{"testListenAcceptClose4", testListenAcceptClose4},
-	{"testFailedConnectEvent6", testFailedConnectEvent6},
-	{"testExecEventClone6", testExecEventClone6},
-	{"testExistingListenEvent6", testExistingListenEvent6},
-	{"testExistingAcceptEvent6", testExistingAcceptEvent6},
-	{"testExistingRootCWDListenEvent6", testExistingRootCWDListenEvent6},
-	{"testListenAcceptClose6", testListenAcceptClose6},
-	{"testIOUringAcceptEvent", testIOUringAcceptEvent},
-	{"testIOUringConnectEvent", testIOUringConnectEvent},
-}
-
-var dockerTCPTests = []basicTest{
-	{"testDockerExistingListenEvent4", testDockerExistingListenEvent4},
-	{"testDockerListenConnect4", testDockerListenConnect4},
-	{"testDockerExistingListenEvent6", testDockerExistingListenEvent6},
-	{"testDockerListenConnect6", testDockerListenConnect6},
-}
-
-var RTTTests = []basicTest{
-	{"testDetectRTT4", testDetectRTT4},
-	{"testDetectSRTT4", testDetectSRTT4},
-	{"testDetectRTT6", testDetectRTT6},
-	{"testDetectSRTT6", testDetectSRTT6},
+func (suite *TCPRTT) TearDownSuite() {
+	suite.cancel()
 }
 
 var (
@@ -316,77 +300,77 @@ var (
 	stdoutTCP8083, stdoutTCP8083V6                                                                                   io.ReadCloser
 )
 
-func startExistingTCPServices(t *testing.T) {
-	nc := getNCCommand(t, "nc.openbsd")
+func (suite *TCPBasic) startExistingTCPServices() {
+	nc := getNCCommand(suite.T(), "nc.openbsd")
 	var err error
 
 	cmdServerTCP8082 = exec.Command(nc, "-nvlp", "8082", "-s", "0.0.0.0")
-	assert.NoError(t, cmdServerTCP8082.Start())
+	suite.Assert().NoError(cmdServerTCP8082.Start())
 	cmdServerTCP8083 = exec.Command(nc, "-nvlp", "8083", "-s", "0.0.0.0")
 	stdoutTCP8083, err = cmdServerTCP8083.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServerTCP8083.Start())
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServerTCP8083.Start())
 	cmdServerTCP8082V6 = exec.Command(nc, "-6nvlp", "8082", "-s", "::")
-	assert.NoError(t, cmdServerTCP8082V6.Start())
+	suite.Assert().NoError(cmdServerTCP8082V6.Start())
 	cmdServerTCP8083V6 = exec.Command(nc, "-6nvlp", "8083", "-s", "::")
 	stdoutTCP8083V6, err = cmdServerTCP8083V6.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServerTCP8083V6.Start())
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServerTCP8083V6.Start())
 
 	path, err := os.Getwd()
 	if err != nil {
-		t.Fail()
+		suite.T().Fail()
 	}
 	/* Start server in '/' before creating observer */
 	os.Chdir("/")
 	cmdServerTCP8094 = exec.Command(nc, "-nvlp", "8094", "-s", "0.0.0.0")
-	assert.NoError(t, cmdServerTCP8094.Start())
+	suite.Assert().NoError(cmdServerTCP8094.Start())
 	cmdServerTCP8094V6 = exec.Command(nc, "-6nvlp", "8094", "-s", "::")
-	assert.NoError(t, cmdServerTCP8094V6.Start())
+	suite.Assert().NoError(cmdServerTCP8094V6.Start())
 	os.Chdir(path)
 
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8082, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
-	err = waitForSocketToListen(t, net.ParseIP("::"), 8082, syscall.IPPROTO_TCP, syscall.AF_INET6)
-	assert.NoError(t, err)
-	err = waitForSocketToListen(t, net.ParseIP("::"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET6)
-	assert.NoError(t, err)
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8094, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
-	err = waitForSocketToListen(t, net.ParseIP("::"), 8094, syscall.IPPROTO_TCP, syscall.AF_INET6)
-	assert.NoError(t, err)
+	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8082, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
+	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
+	err = waitForSocketToListen(suite.T(), net.ParseIP("::"), 8082, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	suite.Assert().NoError(err)
+	err = waitForSocketToListen(suite.T(), net.ParseIP("::"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	suite.Assert().NoError(err)
+	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8094, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
+	err = waitForSocketToListen(suite.T(), net.ParseIP("::"), 8094, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	suite.Assert().NoError(err)
 }
 
-func stopExistingTCPServices(t *testing.T) {
-	killAndWaitCommand(t, cmdServerTCP8082)
-	killAndWaitCommand(t, cmdServerTCP8083)
-	killAndWaitCommand(t, cmdServerTCP8082V6)
-	killAndWaitCommand(t, cmdServerTCP8083V6)
-	killAndWaitCommand(t, cmdServerTCP8094)
-	killAndWaitCommand(t, cmdServerTCP8094V6)
+func (suite *TCPBasic) stopExistingTCPServices() {
+	killAndWaitCommand(suite.T(), cmdServerTCP8082)
+	killAndWaitCommand(suite.T(), cmdServerTCP8083)
+	killAndWaitCommand(suite.T(), cmdServerTCP8082V6)
+	killAndWaitCommand(suite.T(), cmdServerTCP8083V6)
+	killAndWaitCommand(suite.T(), cmdServerTCP8094)
+	killAndWaitCommand(suite.T(), cmdServerTCP8094V6)
 }
 
-func startDockerTCPServices(t *testing.T) {
+func (suite *TCPDocker) startDockerTCPServices() {
 	// Try removing container first as an existing one will cause the following line to fail.
 	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
 	/* Start server before creating obs */
-	docker.Run(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "0.0.0.0")
+	docker.Run(suite.T(), "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "0.0.0.0")
 	observertesthelper.WaitForProcess("nc -nvlp 8087 -s 0.0.0.0")
 	// Try removing container first as an existing one will cause the following line to fail.
 	exec.Command("docker", "rm", "--force", "fgs-test-server-v6").Run()
 	/* Start server before creating obs */
-	docker.Run(t, "--name", "fgs-test-server-v6", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8086", "-s", "[::]")
+	docker.Run(suite.T(), "--name", "fgs-test-server-v6", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8086", "-s", "[::]")
 	observertesthelper.WaitForProcess("nc -nvlp 8086 -s [::]")
 }
 
-func stopDockerTCPServices(_ *testing.T) {
+func (suite *TCPDocker) stopDockerTCPServices() {
 	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
 	exec.Command("docker", "rm", "--force", "fgs-test-server-v6").Run()
 }
 
-func testFailedConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPBasic) TestFailedConnectEvent4() {
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
@@ -416,9 +400,9 @@ func testFailedConnectEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 			WithSocketType(sm.Full("connect reset")),
 	)
 
-	observertesthelper.ExecWGCurl(readyWG, 10, "127.0.0.1")
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	observertesthelper.ExecWGCurl(&suite.readyWG, 10, "127.0.0.1")
+	err := jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 }
 
 func testDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect bool) {
@@ -498,7 +482,7 @@ func TestNoDisableConnectEvent4NoCLI(t *testing.T) {
 	testDisableConfigConnect4(t, false, false)
 }
 
-func testExecEventClone4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPBasic) TestExecEventClone4() {
 	orig := "nc.openbsd"
 	server := orig
 	client := server
@@ -507,11 +491,11 @@ func testExecEventClone4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 		client = server
 
 		if _, err := exec.LookPath(server); err != nil {
-			t.Fatalf("Binary server=%q,client=%q doesn't exist on host machine, cannot continue",
+			suite.T().Fatalf("Binary server=%q,client=%q doesn't exist on host machine, cannot continue",
 				server, client)
 		}
 
-		t.Logf("Using server=%v,client=%v instead of original programs (server=%v,client=%v)",
+		suite.T().Logf("Using server=%v,client=%v instead of original programs (server=%v,client=%v)",
 			server, client, orig, orig)
 	}
 
@@ -550,30 +534,30 @@ func testExecEventClone4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081", "-s", "0.0.0.0")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8081, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServer.Start())
+	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8081, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
 
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdout, "hello")
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
 }
 
-func testExistingListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *TCPBasic) TestExistingListenEvent4() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -597,15 +581,15 @@ func testExistingListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGro
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	readyWG.Wait()
-	killAndWaitCommand(t, cmdServerTCP8082)
+	suite.readyWG.Wait()
+	killAndWaitCommand(suite.T(), cmdServerTCP8082)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err := jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 }
 
-func testExistingAcceptEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *TCPBasic) TestExistingAcceptEvent4() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -636,24 +620,24 @@ func testExistingAcceptEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGro
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdClient := exec.Command(client, "127.0.0.1", "8083")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
 
-	sendData(t, stdin, "hello")
-	waitForData(t, stdoutTCP8083, "hello")
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdoutTCP8083, "hello")
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdServerTCP8083)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServerTCP8083)
+	killAndWaitCommand(suite.T(), cmdClient)
 }
 
-func testExistingRootCWDListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *TCPBasic) TestExistingRootCWDListenEvent4() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -678,15 +662,15 @@ func testExistingRootCWDListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	readyWG.Wait()
-	killAndWaitCommand(t, cmdServerTCP8094)
+	suite.readyWG.Wait()
+	killAndWaitCommand(suite.T(), cmdServerTCP8094)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err := jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 }
 
-func testListenAcceptClose4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *TCPBasic) TestListenAcceptClose4() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -728,27 +712,27 @@ func testListenAcceptClose4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 		// some go way to close the sockets.
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8085", "-s", "0.0.0.0")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServer.Start())
+	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 	cmdClient := exec.Command(client, "127.0.0.1", "8085")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
 
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdout, "hello")
 
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
 
 	// Wait for the sockets to close
-	err = waitAndCheckForSocketsToClose(gt, t, checker, net.ParseIP("127.0.0.1"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
+	err = waitAndCheckForSocketsToClose(suite.T(), checker, net.ParseIP("127.0.0.1"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 }
 
 func testDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitches bool, disableListen bool, disableAccept bool, disableClose bool) {
@@ -894,11 +878,11 @@ func TestNoDisableListenAcceptClose4NoCLI(t *testing.T) {
 	testDisableConfigListenAcceptClose4(t, 8104, false, false, false, !utils.SupportFentry())
 }
 
-func testDockerExistingListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPDocker) TestDockerExistingListenEvent4() {
 	if err := exec.Command("docker", "version").Run(); err != nil {
-		t.Skipf("docker not available. skipping test: %s", err)
+		suite.T().Skipf("docker not available. skipping test: %s", err)
 	}
-	readyWG.Wait()
+	suite.readyWG.Wait()
 
 	// Ideally we would also verify the dockerID, but our current dockerID
 	// scanner from procFS does not match github actions docker env that
@@ -931,21 +915,21 @@ func testDockerExistingListenEvent4(gt *testing.T, t *testing.T, readyWG *sync.W
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err := jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 }
 
-func testDockerListenConnect4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPDocker) TestDockerListenConnect4() {
 	if err := exec.Command("docker", "version").Run(); err != nil {
-		t.Skipf("docker not available. skipping test: %s", err)
+		suite.T().Skipf("docker not available. skipping test: %s", err)
 	}
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	// Try removing container first as an existing one will cause the following line to fail.
 	exec.Command("docker", "rm", "--force", "fgs-test-server").Run()
-	serverDockerID := docker.Run(t, "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8088", "-s", "0.0.0.0")
+	serverDockerID := docker.Run(suite.T(), "--name", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8088", "-s", "0.0.0.0")
 	time.Sleep(1 * time.Second)
-	clientDockerID := docker.Run(t, "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8088")
+	clientDockerID := docker.Run(suite.T(), "--link", "fgs-test-server", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server", "8088")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
@@ -1002,8 +986,8 @@ func testDockerListenConnect4(gt *testing.T, t *testing.T, readyWG *sync.WaitGro
 	)
 
 	// Wait for the sockets to close
-	err := waitAndCheckForSocketsToClose(gt, t, checker, net.ParseIP("127.0.0.1"), 8088, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
+	err := waitAndCheckForSocketsToClose(suite.T(), checker, net.ParseIP("127.0.0.1"), 8088, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 }
 
 const TCPBUFSIZE, TCPBUFVAR = 1024, 256
@@ -1462,12 +1446,12 @@ func TestDetectLatency4(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func testDetectRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPRTT) TestDetectRTT4() {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
-	t.Skipf("Test disabled due to unreliable timing in CI")
+	suite.T().Skipf("Test disabled due to unreliable timing in CI")
 
-	server := getNCCommand(t, "nc.openbsd")
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -1509,34 +1493,34 @@ func testDetectRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 						WithValues(ec.NewHistogramBucketChecker().
 							WithPercentile(1))))))
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8083", "-s", "0.0.0.0")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServer.Start())
+	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 
 	cmdClient := exec.Command(client, "127.0.0.1", "8083")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdout, "hello")
 
-	killAndWaitCommand(t, cmdClient)
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 }
 
-func testDetectSRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPRTT) TestDetectSRTT4() {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
-	t.Skipf("Test disabled due to unreliable timing in CI")
+	suite.T().Skipf("Test disabled due to unreliable timing in CI")
 
-	server := getNCCommand(t, "nc.openbsd")
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -1610,32 +1594,32 @@ func testDetectSRTT4(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 		},
 	}
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8184", "-s", "0.0.0.0")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("0.0.0.0"), 8184, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServer.Start())
+	err = waitForSocketToListen(suite.T(), net.ParseIP("0.0.0.0"), 8184, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 
 	cmdClient := exec.Command(client, "127.0.0.1", "8184")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdout, "hello")
 
-	killAndWaitCommand(t, cmdClient)
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	err = jsonchecker.JsonTestCheck(gt, statsChecker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), statsChecker)
+	suite.Assert().NoError(err)
 }
 
-func testFailedConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPBasic) TestFailedConnectEvent6() {
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
@@ -1665,12 +1649,12 @@ func testFailedConnectEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 			WithSocketType(sm.Full("connect reset")),
 	)
 
-	observertesthelper.ExecWGCurl(readyWG, 10, "[::1]")
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	observertesthelper.ExecWGCurl(&suite.readyWG, 10, "[::1]")
+	err := jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 }
 
-func testExecEventClone6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPBasic) TestExecEventClone6() {
 	orig := "nc.openbsd"
 	server := orig
 	client := server
@@ -1679,11 +1663,11 @@ func testExecEventClone6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 		client = server
 
 		if _, err := exec.LookPath(server); err != nil {
-			t.Fatalf("Binary server=%q,client=%q doesn't exist on host machine, cannot continue",
+			suite.T().Fatalf("Binary server=%q,client=%q doesn't exist on host machine, cannot continue",
 				server, client)
 		}
 
-		t.Logf("Using server=%v,client=%v instead of original programs (server=%v,client=%v)",
+		suite.T().Logf("Using server=%v,client=%v instead of original programs (server=%v,client=%v)",
 			server, client, orig, orig)
 	}
 
@@ -1722,30 +1706,30 @@ func testExecEventClone6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-6nvlp", "8081", "-s", "::")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("::"), 8081, syscall.IPPROTO_TCP, syscall.AF_INET6)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServer.Start())
+	err = waitForSocketToListen(suite.T(), net.ParseIP("::"), 8081, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	suite.Assert().NoError(err)
 	cmdClient := exec.Command(client, "-6", "::1", "8081")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
 
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdout, "hello")
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
 }
 
-func testExistingListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *TCPBasic) TestExistingListenEvent6() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -1769,15 +1753,15 @@ func testExistingListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGro
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	readyWG.Wait()
-	killAndWaitCommand(t, cmdServerTCP8082V6)
+	suite.readyWG.Wait()
+	killAndWaitCommand(suite.T(), cmdServerTCP8082V6)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err := jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 }
 
-func testExistingAcceptEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *TCPBasic) TestExistingAcceptEvent6() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -1808,23 +1792,23 @@ func testExistingAcceptEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGro
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdClient := exec.Command(client, "-6", "::1", "8083")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	waitForData(t, stdoutTCP8083V6, "hello")
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdoutTCP8083V6, "hello")
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdServerTCP8083V6)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServerTCP8083V6)
+	killAndWaitCommand(suite.T(), cmdClient)
 }
 
-func testExistingRootCWDListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *TCPBasic) TestExistingRootCWDListenEvent6() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -1849,16 +1833,16 @@ func testExistingRootCWDListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 
-	killAndWaitCommand(t, cmdServerTCP8094V6)
+	killAndWaitCommand(suite.T(), cmdServerTCP8094V6)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err := jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 }
 
-func testListenAcceptClose6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
-	server := getNCCommand(t, "nc.openbsd")
+func (suite *TCPBasic) TestListenAcceptClose6() {
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -1900,34 +1884,34 @@ func testListenAcceptClose6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 		// some go way to close the sockets.
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-6nvlp", "8085", "-s", "::")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("::"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET6)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServer.Start())
+	err = waitForSocketToListen(suite.T(), net.ParseIP("::"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	suite.Assert().NoError(err)
 	cmdClient := exec.Command(client, "-6", "::1", "8085")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
 
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdout, "hello")
 
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
 
 	// Wait for the sockets to close
-	err = waitAndCheckForSocketsToClose(gt, t, checker, net.ParseIP("::1"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
+	err = waitAndCheckForSocketsToClose(suite.T(), checker, net.ParseIP("::1"), 8085, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 }
 
-func testDockerExistingListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPDocker) TestDockerExistingListenEvent6() {
 	if err := exec.Command("docker", "version").Run(); err != nil {
-		t.Skipf("docker not available. skipping test: %s", err)
+		suite.T().Skipf("docker not available. skipping test: %s", err)
 	}
-	readyWG.Wait()
+	suite.readyWG.Wait()
 
 	// Ideally we would also verify the dockerID, but our current dockerID
 	// scanner from procFS does not match github actions docker env that
@@ -1960,21 +1944,21 @@ func testDockerExistingListenEvent6(gt *testing.T, t *testing.T, readyWG *sync.W
 			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
-	err := jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err := jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 }
 
-func testDockerListenConnect6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPDocker) TestDockerListenConnect6() {
 	if err := exec.Command("docker", "version").Run(); err != nil {
-		t.Skipf("docker not available. skipping test: %s", err)
+		suite.T().Skipf("docker not available. skipping test: %s", err)
 	}
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	// Try removing container first as an existing one will cause the following line to fail.
 	exec.Command("docker", "rm", "--force", "fgs-test-server-v6").Run()
-	serverDockerID := docker.Run(t, "--name", "fgs-test-server-v6", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "[::]")
+	serverDockerID := docker.Run(suite.T(), "--name", "fgs-test-server-v6", "--entrypoint", "nc", alpineCurlImage, "-nvlp", "8087", "-s", "[::]")
 	time.Sleep(1 * time.Second)
-	clientDockerID := docker.Run(t, "--link", "fgs-test-server-v6", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server-v6", "8087")
+	clientDockerID := docker.Run(suite.T(), "--link", "fgs-test-server-v6", "--entrypoint", "nc", alpineCurlImage, "-p", "9876", "fgs-test-server-v6", "8087")
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
@@ -2031,16 +2015,16 @@ func testDockerListenConnect6(gt *testing.T, t *testing.T, readyWG *sync.WaitGro
 	)
 
 	// Wait for the sockets to close
-	err := waitAndCheckForSocketsToClose(gt, t, checker, net.ParseIP("::1"), 8087, syscall.IPPROTO_TCP, syscall.AF_INET)
-	assert.NoError(t, err)
+	err := waitAndCheckForSocketsToClose(suite.T(), checker, net.ParseIP("::1"), 8087, syscall.IPPROTO_TCP, syscall.AF_INET)
+	suite.Assert().NoError(err)
 }
 
-func testDetectRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPRTT) TestDetectRTT6() {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
-	t.Skipf("Test disabled due to unreliable timing in CI")
+	suite.T().Skipf("Test disabled due to unreliable timing in CI")
 
-	server := getNCCommand(t, "nc.openbsd")
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -2082,35 +2066,35 @@ func testDetectRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 						WithValues(ec.NewHistogramBucketChecker().
 							WithPercentile(1))))))
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-6nvlp", "8083", "-s", "::")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("::"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET6)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServer.Start())
+	err = waitForSocketToListen(suite.T(), net.ParseIP("::"), 8083, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	suite.Assert().NoError(err)
 
 	cmdClient := exec.Command(client, "-6n", "::1", "8083")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdout, "hello")
 
-	killAndWaitCommand(t, cmdClient)
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 }
 
 // FIXME: net io_uring test seems to time out on ARM.
-func testDetectSRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPRTT) TestDetectSRTT6() {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
-	t.Skipf("Test disabled due to unreliable timing in CI")
+	suite.T().Skipf("Test disabled due to unreliable timing in CI")
 
-	server := getNCCommand(t, "nc.openbsd")
+	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -2184,44 +2168,44 @@ func testDetectSRTT6(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
 		},
 	}
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-6nvlp", "8184", "-s", "::")
 	stdout, err := cmdServer.StdoutPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdServer.Start())
-	err = waitForSocketToListen(t, net.ParseIP("::"), 8184, syscall.IPPROTO_TCP, syscall.AF_INET6)
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdServer.Start())
+	err = waitForSocketToListen(suite.T(), net.ParseIP("::"), 8184, syscall.IPPROTO_TCP, syscall.AF_INET6)
+	suite.Assert().NoError(err)
 
 	cmdClient := exec.Command(client, "-6n", "::1", "8184")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
-	sendData(t, stdin, "hello")
-	waitForData(t, stdout, "hello")
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
+	sendData(suite.T(), stdin, "hello")
+	waitForData(suite.T(), stdout, "hello")
 
-	killAndWaitCommand(t, cmdClient)
-	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	err = jsonchecker.JsonTestCheck(gt, statsChecker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), statsChecker)
+	suite.Assert().NoError(err)
 }
 
-func testIOUringAcceptEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPBasic) TestIOUringAcceptEvent() {
 	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
+		suite.T().Skipf("This test requires CGroup/SKB, skipping")
 	}
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
-		t.Skipf("Test seems to time out on ARM")
+		suite.T().Skipf("Test seems to time out on ARM")
 	}
 	if !testutils.NetIOUringAvailable() {
-		t.Skipf("Net io_uring not available, skipping")
+		suite.T().Skipf("Net io_uring not available, skipping")
 	}
 
 	server := testutils.RepoRootPath("contrib/tester-progs/io_uring/tcp_iouring_server")
-	client := getNCCommand(t, "nc.openbsd")
+	client := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -2263,29 +2247,29 @@ func testIOUringAcceptEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 				WithBytesReceived(5)),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server)
 	serverOutput, err := cmdServer.StdoutPipe()
-	require.NoError(t, err, "could not connect to server output pipe")
+	suite.Require().NoError(err, "could not connect to server output pipe")
 	cmdServer.Stderr = os.Stderr
 
 	err = cmdServer.Start()
-	require.NoError(t, err, "cannot start server")
+	suite.Require().NoError(err, "cannot start server")
 
 	serverBuf := bufio.NewReader(serverOutput)
 	var line []byte
 	for string(line) != "Ready" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
-			killAndWaitCommand(t, cmdServer)
-			t.Fatal(err)
+			killAndWaitCommand(suite.T(), cmdServer)
+			suite.T().Fatal(err)
 		}
 		if len(line) == 0 {
-			killAndWaitCommand(t, cmdServer)
-			t.Fatal("received empty line from TCP server")
+			killAndWaitCommand(suite.T(), cmdServer)
+			suite.T().Fatal("received empty line from TCP server")
 		}
 		if strings.HasPrefix(string(line), "NotReady") {
-			t.Fatalf("TCP server failed to start: '%s'", string(line))
+			suite.T().Fatalf("TCP server failed to start: '%s'", string(line))
 		}
 	}
 
@@ -2294,32 +2278,32 @@ func testIOUringAcceptEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup
 
 	cmdClient := exec.Command(client, "127.0.0.1", "8000")
 	stdin, err := cmdClient.StdinPipe()
-	assert.NoError(t, err)
-	assert.NoError(t, cmdClient.Start())
+	suite.Assert().NoError(err)
+	suite.Assert().NoError(cmdClient.Start())
 	_, err = stdin.Write([]byte("hello"))
-	assert.NoError(t, err)
+	suite.Assert().NoError(err)
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
 }
 
 // FIXME: net io_uring test seems to time out on ARM.
-func testIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup) {
+func (suite *TCPBasic) TestIOUringConnectEvent() {
 	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
+		suite.T().Skipf("This test requires CGroup/SKB, skipping")
 	}
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "x86_64" {
-		t.Skipf("Test seems to time out on ARM")
+		suite.T().Skipf("Test seems to time out on ARM")
 	}
 	if !testutils.NetIOUringAvailable() {
-		t.Skipf("Net io_uring not available, skipping")
+		suite.T().Skipf("Net io_uring not available, skipping")
 	}
 
 	client := testutils.RepoRootPath("contrib/tester-progs/io_uring/tcp_iouring_client")
-	server := getNCCommand(t, "nc.openbsd")
+	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -2360,26 +2344,26 @@ func testIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 				WithBytesSent(5)),
 	)
 
-	readyWG.Wait()
+	suite.readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8001")
 	serverError, err := cmdServer.StderrPipe()
-	require.NoError(t, err, "could not connect to server output pipe")
+	suite.Require().NoError(err, "could not connect to server output pipe")
 	cmdServer.Stdout = nil
 
 	err = cmdServer.Start()
-	require.NoError(t, err, "cannot start server")
+	suite.Require().NoError(err, "cannot start server")
 
 	serverBuf := bufio.NewReader(serverError)
 	var line []byte
 	for string(line) != "Listening on 0.0.0.0 8001" {
 		line, _, err = serverBuf.ReadLine()
 		if err != nil {
-			killAndWaitCommand(t, cmdServer)
-			t.Fatal(err)
+			killAndWaitCommand(suite.T(), cmdServer)
+			suite.T().Fatal(err)
 		}
 		if len(line) == 0 {
-			killAndWaitCommand(t, cmdServer)
-			t.Fatal("received empty line from TCP server")
+			killAndWaitCommand(suite.T(), cmdServer)
+			suite.T().Fatal("received empty line from TCP server")
 		}
 	}
 
@@ -2391,17 +2375,17 @@ func testIOUringConnectEvent(gt *testing.T, t *testing.T, readyWG *sync.WaitGrou
 	cmdClient.Stdout = os.Stdout
 
 	err = cmdClient.Start()
-	require.NoError(t, err, "cannot start client")
+	suite.Require().NoError(err, "cannot start client")
 
 	err = cmdClient.Wait()
 	if err != nil {
-		killAndWaitCommand(t, cmdServer)
-		t.Fatal(err)
+		killAndWaitCommand(suite.T(), cmdServer)
+		suite.T().Fatal(err)
 	}
 
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(t, err)
+	err = jsonchecker.JsonTestCheck(suite.T(), checker)
+	suite.Assert().NoError(err)
 
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
+	killAndWaitCommand(suite.T(), cmdServer)
+	killAndWaitCommand(suite.T(), cmdClient)
 }
