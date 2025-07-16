@@ -22,7 +22,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -247,13 +246,6 @@ func layer3Config(withRTT, withICMP, withRaw bool) string {
 		c = c + layer3RawConfig
 	}
 	return c
-}
-
-// Subtest definitions.
-type basicTestFn func(gt *testing.T, t *testing.T, readyWG *sync.WaitGroup)
-type basicTest struct {
-	name string
-	f    basicTestFn
 }
 
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
