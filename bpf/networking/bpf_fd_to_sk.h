@@ -89,7 +89,7 @@ fd_to_sk(struct sock **sk_ret, struct task_struct *p, int filedesc, u16 required
 	family_ret = probe_read_kernel(family, sizeof(*family),
 				       _(&(sk->__sk_common.skc_family)));
 	/* Record AF_PACKET sockets as AF_INET. */
-	if (type == SOCK_RAW && *family == AF_PACKET)
+	if ((type == SOCK_RAW || type == SOCK_DGRAM) && *family == AF_PACKET)
 		*family = AF_INET;
 	if (family_ret == 0 && (*family != AF_INET && *family != AF_INET6))
 		return FD_TO_SK_WRONG_FAMILY;
