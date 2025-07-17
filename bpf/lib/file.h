@@ -50,6 +50,7 @@ enum {
 	action_open = 12,
 	action_symlink = 13,
 	action_openraw = 14,
+	action_unix_connect = 15,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -100,7 +101,8 @@ enum {
 	hook_sys_open = 43,
 	hook_sys_openat = 44,
 	hook_sys_openat2 = 45,
-	hook_max = 46,
+	hook_security_unix_stream_connect = 46,
+	hook_max = 47,
 };
 
 enum {
