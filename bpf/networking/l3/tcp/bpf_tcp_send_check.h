@@ -39,6 +39,7 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	struct tcp_sock *tcp;
 	__u32 rcv_wnd;
 	int zero = 0;
+	u32 txs = 0;
 	u64 cookie;
 	u8 state;
 
@@ -57,7 +58,11 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	socket = lookup_tcpsocketmap(&cookie);
 	if (unlikely(!socket)) {
 		// Don't report an error here if the TCP socket isn't yet active.
-		if (tcp_active(state))
+		// Sockets can enter TCP_ESTABLISHED before the socket graft happens. We check
+		// that we haven't sent a packet or an ACK in that case.
+		if (bpf_core_field_exists(tcp->segs_out))
+			probe_read_kernel(&txs, sizeof(__u32), _(&(tcp->segs_out)));
+		if (tcp_active(state) && txs > 1)
 			emit_ip_error_event(ctx, 0, &cookie, ipv6, 0, 2, 0, IP_ERROR_TCP_SEND_NO_SOCKET);
 		return 0;
 	}

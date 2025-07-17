@@ -142,6 +142,7 @@ int tcp_handler_send(struct __sk_buff *skb)
 	struct sock *sk;
 	__u32 rcv_wnd;
 	int zero = 0;
+	u32 txs = 0;
 	__u8 state;
 	__u64 c;
 
@@ -164,8 +165,13 @@ int tcp_handler_send(struct __sk_buff *skb)
 	socket = lookup_tcpsocketmap(&c);
 	if (unlikely(!socket)) {
 		// Don't report an error here if the TCP socket isn't yet active.
-		if (tcp_active(state))
+		// Sockets can enter TCP_ESTABLISHED before the socket graft happens. We check
+		// that we haven't sent a packet or an ACK in that case.
+		if (bpf_core_field_exists(tcp->segs_out))
+			probe_read_kernel(&txs, sizeof(__u32), _(&(tcp->segs_out)));
+		if (tcp_active(state) && txs > 1) {
 			emit_ip_error_event(skb, 0, &vars->cookie, false, 4, 2, 0, IP_ERROR_TCP_SEND_NO_SOCKET);
+		}
 		return SK_PASS;
 	}
 
