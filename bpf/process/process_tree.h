@@ -84,16 +84,14 @@ char global_zero[MAXARGLENGTH] = { 0 };
  * callers easily resulting in verifier errors so we mark it inline which
  * fixes the issue because that removes the function call.
  */
-static inline __attribute__((always_inline)) int __find_my_self(struct execve_map_value *curr, __u32 pid, struct tree_id *id)
+static inline __attribute__((always_inline)) uint64_t __find_my_self(struct execve_map_value *curr, __u32 pid)
 {
 	struct process_tree_binary_uid_key *tree_key;
-	struct tree_id empty = { .uid = 0, .cpu = 0 };
-	struct tree_id *self_uid;
+	struct tree_id *self_uid, new_uid;
 	int zero = 0;
 
 	tree_key = map_lookup_elem(&tg_h_ps_buidkey, &zero);
 	if (!tree_key) {
-		*id = empty;
 		return 0;
 	}
 
@@ -110,25 +108,22 @@ static inline __attribute__((always_inline)) int __find_my_self(struct execve_ma
 	}
 
 	if (self_uid) {
-		*id = *self_uid;
-		map_lookup_elem(&process_tree_uid_binary_map, &id);
-	} else {
-		*id = get_new_tree_id();
-		if (!id->uid)
-			return -1;
-		map_update_elem(&process_tree_uid_binary_map, id, tree_key, 0);
-		map_update_elem(&process_tree_binary_uid_map, tree_key, id, 0);
+		map_lookup_elem(&process_tree_uid_binary_map, self_uid);
+		return ((uint64_t)self_uid->cpu << 32) | (uint64_t)self_uid->uid;
 	}
-	return 0;
+
+	new_uid = get_new_tree_id();
+	if (!new_uid.uid)
+		return 0;
+	map_update_elem(&process_tree_uid_binary_map, &new_uid, tree_key, 0);
+	map_update_elem(&process_tree_binary_uid_map, tree_key, &new_uid, 0);
+	return ((uint64_t)new_uid.cpu << 32) | (uint64_t)new_uid.uid;
 }
 
 /* tree_id is a u64 don't worry about returning it directly */
-static inline __attribute__((always_inline)) int find_my_self(__u32 pid, struct tree_id *id)
+static inline __attribute__((always_inline)) uint64_t find_my_self(__u32 pid)
 {
 	struct execve_map_value *curr;
-
-	if (unlikely(!id)) // silly null check to appease verifier.
-		return 0;
 
 	/* PID=0 is kernel threads we don't need to police the kernel. And
 	 * this is acctually here to bound pid for verifier.
@@ -139,7 +134,7 @@ static inline __attribute__((always_inline)) int find_my_self(__u32 pid, struct 
 	curr = execve_map_get_noinit(pid);
 	if (!curr)
 		return 0;
-	return __find_my_self(curr, pid, id);
+	return __find_my_self(curr, pid);
 }
 
 int find_my_nsid(__u64 cgid)
@@ -158,7 +153,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	struct process_tree_config *cfg;
 	struct process_tree_value *old;
 	struct execve_map_value *curr;
-	__u64 zero = 0;
+	__u64 zero = 0, uid;
 
 	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
 	if (!cfg || !cfg->enableProcessTree)
@@ -188,7 +183,10 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		k->path[6].uid = 0;
 		k->path[7].uid = 0;
 	}
-	__find_my_self(curr, pid, &k->self);
+
+	uid = __find_my_self(curr, pid);
+	k->self.uid = uid & 0xffffffff;
+	k->self.cpu = uid >> 32;
 	k->nsid = find_my_nsid(cgid);
 
 	map_update_elem(&tg_ee_pid_data, &pid, &local, 0);
@@ -273,6 +271,7 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 {
 	struct process_tree_config *cfg;
 	int zero = 0;
+	uint64_t uid;
 
 	struct listen_endpoint_key key;
 	struct listen_endpoint_value *value;
@@ -295,7 +294,9 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	if (!value)
 		return 0;
 
-	find_my_self(v->key.pid, &value->self);
+	uid = find_my_self(v->key.pid);
+	value->self.uid = uid & 0xffffffff;
+	value->self.cpu = uid >> 32;
 	value->accepted = 0;
 	value->tx_bytes = 0;
 	value->rx_bytes = 0;
@@ -548,7 +549,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	struct msg_execve_key zero_uid;
 	struct tree_id self_uid;
 	int zero = 0;
-	__u64 *nsid;
+	__u64 *nsid, uid;
 
 	struct dns_endpoint_id_value *dns_value;
 	struct endpoint_id_value *value;
@@ -576,7 +577,14 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	if (!cfg || !cfg->enableProcessTree)
 		return 0;
 
-	find_my_self(v->key.pid, &self_uid);
+	uid = find_my_self(v->key.pid);
+	self_uid.uid = uid & 0xffffffff;
+	self_uid.cpu = uid >> 32;
+
+	/* Appease the verifier on AKS 5.15.180 kernels I've had trouble with
+	 * this recently I think they missed some fixes to verifier or something.
+	 */
+	dnskey->local_id = lpmkey->local_id = usrkey->local_id = destkey->local_id = self_uid;
 	zero_uid.pid = 0;
 	memset(&zero_uid.pad, 0, sizeof(zero_uid.pad));
 	zero_uid.ktime = 0;
@@ -630,7 +638,6 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	destkey->source = DESTINATION_SOURCE_BPF;
 	map_update_elem(&tg_bpf_endpoint_id_map, &key, value, 0);
 found_id:
-	dnskey->local_id = lpmkey->local_id = usrkey->local_id = destkey->local_id = self_uid;
 	dnskey->port = lpmkey->port = usrkey->port = destkey->port = tuple->dport;
 	dnskey->local_nsid = lpmkey->local_nsid = usrkey->local_nsid = destkey->local_nsid = 0;
 
