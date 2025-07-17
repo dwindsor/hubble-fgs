@@ -249,6 +249,8 @@ var (
 
 	FimPathBasedGetnameFlagsHook = FimHook{"fexit", "getname_flags", []FimFunc{{"struct filename* getname_flags(const int*, int)", "fexit_getname_flags.o", "getname_flags", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}}
 
+	FimPathBasedSecurityUnixStreamConnect = FimHook{"lsm", "security_unix_stream_connect", []FimFunc{{"security_unix_stream_connect(struct sock*, struct sock*, struct sock*)", "lsm_security_unix_stream_connect.o", "unix_stream_connect", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_UNIX_CONNECT}...)}}}
+
 	FimPathBasedTailCallHooks = [...]FimHook{
 		{"fmod_ret", "tail_call", []FimFunc{{"", "fmod_security_file_permission.o", "security_file_permission", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}},
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_kernel_read_file.o", "kernel_read_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ}...)}}},
@@ -1509,6 +1511,8 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			checkReWrite = probeDpathSecurityFileOpen
 		case "lsm_security_path_link.o", "lsm_security_path_symlink.o", "lsm_security_path_mkdir.o", "lsm_security_path_rmdir.o", "lsm_security_path_unlink.o", "lsm_security_path_truncate.o", "lsm_security_path_chmod.o", "lsm_security_path_chown.o", "lsm_security_path_rename.o":
 			checkReWrite = probeDpathSecurityPathTruncate
+		case "lsm_security_unix_stream_connect.o":
+			checkReWrite = func() error { return errors.New("bpf_d_path not supported") }
 		}
 		if checkReWrite != nil {
 			val := uint32(0)
@@ -2037,6 +2041,11 @@ func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, m
 				hooks = append(hooks, FimPathBasedGetnameHook)
 			} else {
 				hooks = append(hooks, FimPathBasedGetnameFlagsHook)
+			}
+			if _, err := fgsBTF.GetFuncProto(spec, "security_unix_stream_connect", false); err == nil {
+				hooks = append(hooks, FimPathBasedSecurityUnixStreamConnect)
+			} else {
+				logger.GetLogger().Warn("FileMonitoring hook security_unix_stream_connect not found. Will not generate FILE_UNIX_CONNECT events")
 			}
 			hooks = append(hooks, FimPathBasedArchHooks[:]...)
 			m = "path-based"
