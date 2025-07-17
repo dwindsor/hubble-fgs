@@ -96,6 +96,16 @@ func PrintFilenameDigestMaps(policyDir string) error {
 	return nil
 }
 
+func hashMapFileModeToStr(m uint32) string {
+	switch m {
+	case fileapi.HashMapFileModeFile:
+		return "File"
+	case fileapi.HashMapFileModeDirectory:
+		return "Directory"
+	}
+	return "Unknown"
+}
+
 func PrintInodeMap(path string, filter func(key *fileapi.InodeKey, val *fileapi.InodeVal) bool) error {
 	handle, err := ebpf.LoadPinnedMap(path, nil)
 	if err != nil {
@@ -112,9 +122,9 @@ func PrintInodeMap(path string, filter func(key *fileapi.InodeKey, val *fileapi.
 		if filter(&key, &val) {
 			if val.ContainerID[0] != 0x00 && val.ContainerID[1] != 0x00 {
 				cid := string(val.ContainerID[:])
-				fmt.Printf("ino[%7d],major[%3d],minor[%3d],action[%12s],cid[%s],path[%s]\n", key.Ino, key.DevMajor, key.DevMinor, actToStr(val.Action), cid, string(val.FullPath[:val.PathSize]))
+				fmt.Printf("ino[%7d],major[%3d],minor[%3d],action[%12s],cid[%s],path[%s],mode[%s]\n", key.Ino, key.DevMajor, key.DevMinor, actToStr(val.Action), cid, string(val.FullPath[:val.PathSize]), hashMapFileModeToStr(val.Mode))
 			} else {
-				fmt.Printf("ino[%7d],major[%3d],minor[%3d],action[%12s],path[%s]\n", key.Ino, key.DevMajor, key.DevMinor, actToStr(val.Action), string(val.FullPath[:val.PathSize]))
+				fmt.Printf("ino[%7d],major[%3d],minor[%3d],action[%12s],path[%s],mode[%s]\n", key.Ino, key.DevMajor, key.DevMinor, actToStr(val.Action), string(val.FullPath[:val.PathSize]), hashMapFileModeToStr(val.Mode))
 			}
 			matched++
 		}
