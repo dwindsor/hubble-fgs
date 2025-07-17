@@ -493,9 +493,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if err = loadFIMInitialSensor(ctx); err != nil {
 		return err
 	}
-	if err = startLayer3Progs(ctx); err != nil {
-		return err
-	}
 	observer.GetSensorManager().LogSensorsAndProbes(ctx)
 	defer func() {
 		observer.RemoveSensors(ctx)
@@ -601,6 +598,9 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	obs.LogPinnedBpf(observerDir)
 
 	if err = procevents.GetRunningProcs(); err != nil {
+		return err
+	}
+	if err = startLayer3Progs(ctx); err != nil {
 		return err
 	}
 
