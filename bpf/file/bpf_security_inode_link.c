@@ -83,6 +83,7 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 		return -FILE_ERR_GET_FILE_VAL_HEAP;
 
 	file_val->action = action;
+	file_val->source = INODE_VAL_SRC_EBPF_LINK;
 	file_val->size = msg->path.size;
 	probe_read_str(file_val->path, MAX_FILEPATH_SIZE, msg->path.str);
 

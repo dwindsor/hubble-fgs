@@ -96,12 +96,32 @@ func PrintFilenameDigestMaps(policyDir string) error {
 	return nil
 }
 
-func hashMapFileModeToStr(m uint32) string {
+func hashMapFileModeToStr(m uint16) string {
 	switch m {
 	case fileapi.HashMapFileModeFile:
 		return "File"
 	case fileapi.HashMapFileModeDirectory:
 		return "Directory"
+	}
+	return "Unknown"
+}
+
+func inodeValSrcToStr(s uint16) string {
+	switch s {
+	case fileapi.InodeValSrcWalk:
+		return "Walk"
+	case fileapi.InodeValSrcWalkRename:
+		return "WalkRename"
+	case fileapi.InodeValSrcWalkPath:
+		return "WalkPath"
+	case fileapi.InodeValSrcEbpfRename:
+		return "eBPFRename"
+	case fileapi.InodeValSrcEbpfLink:
+		return "eBPFLink"
+	case fileapi.InodeValSrcEbpfMkdir:
+		return "eBPFMkdir"
+	case fileapi.InodeValSrcEbpfCreate:
+		return "eBPFCreate"
 	}
 	return "Unknown"
 }
@@ -122,9 +142,9 @@ func PrintInodeMap(path string, filter func(key *fileapi.InodeKey, val *fileapi.
 		if filter(&key, &val) {
 			if val.ContainerID[0] != 0x00 && val.ContainerID[1] != 0x00 {
 				cid := string(val.ContainerID[:])
-				fmt.Printf("ino[%7d],major[%3d],minor[%3d],action[%12s],cid[%s],path[%s],mode[%s]\n", key.Ino, key.DevMajor, key.DevMinor, actToStr(val.Action), cid, string(val.FullPath[:val.PathSize]), hashMapFileModeToStr(val.Mode))
+				fmt.Printf("ino[%7d],major[%3d],minor[%3d],action[%12s],cid[%s],path[%s],mode[%s],src[%s]\n", key.Ino, key.DevMajor, key.DevMinor, actToStr(val.Action), cid, string(val.FullPath[:val.PathSize]), hashMapFileModeToStr(val.Mode), inodeValSrcToStr(val.Source))
 			} else {
-				fmt.Printf("ino[%7d],major[%3d],minor[%3d],action[%12s],path[%s],mode[%s]\n", key.Ino, key.DevMajor, key.DevMinor, actToStr(val.Action), string(val.FullPath[:val.PathSize]), hashMapFileModeToStr(val.Mode))
+				fmt.Printf("ino[%7d],major[%3d],minor[%3d],action[%12s],path[%s],mode[%s],src[%s]\n", key.Ino, key.DevMajor, key.DevMinor, actToStr(val.Action), string(val.FullPath[:val.PathSize]), hashMapFileModeToStr(val.Mode), inodeValSrcToStr(val.Source))
 			}
 			matched++
 		}

@@ -155,6 +155,15 @@ struct inode_key {
 #define HASH_MAP_FILE_MODE_FILE	     1
 #define HASH_MAP_FILE_MODE_DIRECTORY 2
 
+#define INODE_VAL_SRC_UNKNOWN	  0
+#define INODE_VAL_SRC_WALK	  1
+#define INODE_VAL_SRC_WALK_RENAME 2
+#define INODE_VAL_SRC_WALK_PATH	  3
+#define INODE_VAL_SRC_EBPF_RENAME 4
+#define INODE_VAL_SRC_EBPF_LINK	  5
+#define INODE_VAL_SRC_EBPF_MKDIR  6
+#define INODE_VAL_SRC_EBPF_CREATE 7
+
 struct inode_val {
 	__u32 action;
 	__u32 size;
@@ -162,7 +171,8 @@ struct inode_val {
 	char container_id[CONTAINER_ID_LEN];
 	__u64 location_flags;
 	__u32 rule_id;
-	__u32 mode; // HASH_MAP_FILE_*
+	__u16 mode; // HASH_MAP_FILE_*
+	__u16 source; // NODE_VAL_SRC_*
 };
 
 struct msg_file_path {

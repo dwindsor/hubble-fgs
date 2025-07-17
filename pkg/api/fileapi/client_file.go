@@ -56,6 +56,17 @@ const (
 	HashMapFileModeDirectory = 2
 )
 
+const (
+	InodeValSrcUnknown    = 0
+	InodeValSrcWalk       = 1
+	InodeValSrcWalkRename = 2
+	InodeValSrcWalkPath   = 3
+	InodeValSrcEbpfRename = 4
+	InodeValSrcEbpfLink   = 5
+	InodeValSrcEbpfMkdir  = 6
+	InodeValSrcEbpfCreate = 7
+)
+
 type InodeVal struct {
 	Action        uint32    `align:"action"`
 	PathSize      uint32    `align:"size"`
@@ -63,7 +74,8 @@ type InodeVal struct {
 	ContainerID   [64]byte  `align:"container_id"`
 	LocationFlags uint64    `align:"location_flags"` // HOST_FILE or CONTAINER_FILE
 	RuleID        uint32    `align:"rule_id"`
-	Mode          uint32    `align:"mode"` // HashMapFileMode*
+	Mode          uint16    `align:"mode"`   // HashMapFileMode*
+	Source        uint16    `align:"source"` // InodeValSrc*
 }
 
 type MsgFilePath struct {

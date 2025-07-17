@@ -269,6 +269,7 @@ handle_retprobe_vfs_mkdir(struct pt_regs *ctx, bool success)
 	}
 
 	file_val->action = action;
+	file_val->source = INODE_VAL_SRC_EBPF_MKDIR;
 	file_val->size = msg->path.size;
 	path_size = msg->path.size;
 	asm volatile("%[path_size] &= 0xff;\n"

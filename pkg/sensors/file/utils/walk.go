@@ -460,6 +460,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 				locationFn(&val)
 				val.RuleID = rule
 				val.Mode = fileapi.HashMapFileModeFile
+				val.Source = fileapi.InodeValSrcWalk
 
 				if err := store.AddInode(key, val); err != nil {
 					return fmt.Errorf("failed to call addFilePath: %w", err)
@@ -492,6 +493,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 				locationFn(&val)
 				val.RuleID = rule
 				val.Mode = fileapi.HashMapFileModeDirectory
+				val.Source = fileapi.InodeValSrcWalk
 
 				if err := store.AddInode(key, val); err != nil {
 					return fmt.Errorf("failed to call addDirPath: %w", err)
@@ -577,6 +579,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 			Action:   FilterMonitor,
 			PathSize: uint32(len(path)),
 			Mode:     fileapi.HashMapFileModeDirectory,
+			Source:   fileapi.InodeValSrcWalkPath,
 		}
 		copy(val.FullPath[:], path)
 		locationFn(&val)
@@ -764,6 +767,7 @@ func WalkPathRenameAdd(path string, store InodeStore, actionFn func(string, fs.F
 			Action:   action,
 			PathSize: uint32(len(path)),
 			RuleID:   ruleID,
+			Source:   fileapi.InodeValSrcWalkRename,
 		}
 		locationFn(&val)
 

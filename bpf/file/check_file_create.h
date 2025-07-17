@@ -69,6 +69,7 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 		return -FILE_ERR_GET_FILE_VAL_HEAP;
 
 	file_val->action = action;
+	file_val->source = INODE_VAL_SRC_EBPF_CREATE;
 	file_val->size = msg->path.size;
 	probe_read_str(file_val->path, MAX_FILEPATH_SIZE, msg->path.str);
 

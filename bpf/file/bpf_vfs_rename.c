@@ -507,6 +507,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 			}
 			file_val->location_flags = val->msg.src.path.flags;
 			file_val->rule_id = rule_id;
+			file_val->source = INODE_VAL_SRC_EBPF_RENAME;
 
 			if (update_inode_rename(&(val->msg.src), file_val) < 0) {
 				err = -FILE_ERR_UPDATE_INODE_MAP;
@@ -540,6 +541,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 				}
 				file_val->location_flags = val->msg.src.path.flags;
 				file_val->rule_id = rule_id;
+				file_val->source = INODE_VAL_SRC_EBPF_RENAME;
 
 				if (update_inode_rename(&(val->msg.src), file_val) < 0) {
 					err = -FILE_ERR_UPDATE_INODE_MAP;
