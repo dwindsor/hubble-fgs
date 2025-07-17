@@ -87,7 +87,7 @@ jobs:
         if: steps.vars.outputs.metal_arm64 == 'true'
         run: |
           go install github.com/cilium/little-vm-helper/cmd/lvh@latest
-          sudo install $(go env GOPATH)/bin/lvh /usr/local/bin/
+          sudo install $(go env GOPATH)/bin/lvh /usr/local/bin/ || echo "skip because of race (see https://unix.stackexchange.com/a/116281/604289)"
 
       # Local caching mechanism since we run on the same runner, we could use GitHub cache also
       - name: Download the kernel
