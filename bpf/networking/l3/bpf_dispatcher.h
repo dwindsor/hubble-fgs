@@ -18,7 +18,7 @@ struct {
 	__type(key, int);
 	__type(value, struct cgroup_dispatch_cfg);
 	__uint(max_entries, 1);
-} tg_cgroup_protocol_cfg_map SEC(".maps");
+} tg_l3_proto SEC(".maps");
 
 int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 {
@@ -52,7 +52,7 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 	} else
 		ip = (struct iphdr *)data;
 
-	cfg = (struct cgroup_dispatch_cfg *)map_lookup_elem(&tg_cgroup_protocol_cfg_map, &zero);
+	cfg = (struct cgroup_dispatch_cfg *)map_lookup_elem(&tg_l3_proto, &zero);
 	if (!cfg)
 		return SK_PASS;
 

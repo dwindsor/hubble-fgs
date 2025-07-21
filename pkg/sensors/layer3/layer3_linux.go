@@ -65,7 +65,7 @@ var (
 
 var (
 	baseLayer3Policy            = "__base_layer3__"
-	CgroupProtocolConfigMapName = "tg_cgroup_protocol_cfg_map"
+	CgroupProtocolConfigMapName = "tg_l3_proto"
 )
 
 func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
