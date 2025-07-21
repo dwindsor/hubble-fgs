@@ -30,6 +30,8 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/constants"
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -112,7 +114,9 @@ var (
 	// TCP maps
 	TcpSocketMap      = program.MapUserFrom(base.TcpSocketMap)
 	TcpSocketMapStats = program.MapUserFrom(base.TcpSocketMapStats)
-	DNSIPToIDMaps     = program.MapUserFrom(base.DNSIPToIDMapsName)
+
+	// DNS parsers maps, shared between process tree and the parser
+	DNSIPToIDMaps = program.MapBuilder(dnsparser.IPToIDMapsName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 )
 
 func Enable() ([]*program.Program, []*program.Map) {
@@ -235,6 +239,10 @@ func getFdLookupMaps() []*program.Map {
 			Addr4LpmMap,
 			Addr6LpmMap,
 		}...)
+	}
+
+	if enterpriseOption.Config.EnableBPFDNSParser {
+		DNSIPToIDMaps.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	}
 
 	return maps

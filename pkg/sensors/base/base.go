@@ -30,7 +30,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/strutils"
-	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base/procfs"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
@@ -137,7 +136,6 @@ var (
 	UDPCfgMap                   = program.MapBuilder(socktrackmaps.UDPCfgMapName, Exit)
 	TcpSocketMap                = program.MapBuilder("tg_l3_tcpsk", Exit)
 	TcpSocketMapStats           = program.MapBuilder("tg_l3_tcpsk_stats", Exit)
-	DNSIPToIDMapsName           = program.MapBuilder(dnsparser.IPToIDMapsName, Exit)
 
 	ExecveTailCallsMap  = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 	ExecveMapUpdateData = program.MapBuilder("execve_map_update_data", ExecveMapUpdate)
@@ -289,7 +287,6 @@ func ConfigureMapSizes() {
 	ListenEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	DNSIPToIDMapsName.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 
 	if enterpriseOption.Config.EnableSyscallTracking {
 		SyscallsMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)

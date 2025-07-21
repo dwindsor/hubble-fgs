@@ -85,5 +85,4 @@ var (
 	// TCP maps
 	TcpSocketMap      = program.MapUserFrom(base.TcpSocketMap)
 	TcpSocketMapStats = program.MapUserFrom(base.TcpSocketMapStats)
-	DNSIPToIDMaps  = program.MapUserFrom(base.DNSIPToIDMapsName)
 )
