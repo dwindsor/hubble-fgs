@@ -67,7 +67,7 @@ struct {
 	__type(key, int);
 	__type(value, struct icmp_config);
 	__uint(max_entries, 1);
-} tg_icmp_cfg_map SEC(".maps");
+} tg_l3_icmp_cfg SEC(".maps");
 
 #define IPSKB_L3SLAVE  (1 << 7) // As defined in kernel
 #define IP6SKB_L3SLAVE 64 // As defined in kernel
@@ -347,7 +347,7 @@ int icmp_handler_ip6(struct __sk_buff *skb, u16 off, int send)
 	val->icmp_type = icmp_data[0];
 	val->icmp_code = icmp_data[1];
 
-	cfg = map_lookup_elem(&tg_icmp_cfg_map, &zero);
+	cfg = map_lookup_elem(&tg_l3_icmp_cfg, &zero);
 	if (cfg && !cfg->v6_info && val->icmp_type > ICMPV6_ECHO_REPLY)
 		return SK_PASS;
 

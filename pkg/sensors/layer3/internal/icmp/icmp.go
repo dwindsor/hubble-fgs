@@ -37,7 +37,7 @@ import (
 
 var (
 	Config        ConfigValue
-	ConfigMapName = "tg_icmp_cfg_map"
+	ConfigMapName = "tg_l3_icmp_cfg"
 )
 
 var (
@@ -105,7 +105,7 @@ var (
 	ConfigMap           = program.MapUserFrom(base.CfgMap)
 
 	// ICMP runtime maps
-	IcmpCfgMap = program.MapBuilder("tg_icmp_cfg_map", IcmpRcvKprobe)
+	IcmpCfgMap = program.MapBuilder("tg_l3_icmp_cfg", IcmpRcvKprobe)
 )
 
 type sensorConfigKey struct {

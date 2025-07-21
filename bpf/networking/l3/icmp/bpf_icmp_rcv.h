@@ -154,7 +154,7 @@ icmp_rcv(void *ctx, struct sk_buff *skb)
 			return 0;
 		val->icmp_code = icmp_data[1];
 
-		cfg = map_lookup_elem(&tg_icmp_cfg_map, &zero);
+		cfg = map_lookup_elem(&tg_l3_icmp_cfg, &zero);
 		if (cfg && !cfg->v6_info && val->icmp_type > ICMPV6_ECHO_REPLY)
 			return 0;
 
