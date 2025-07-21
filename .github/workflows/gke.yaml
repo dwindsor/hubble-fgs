@@ -1,13 +1,9 @@
 name: ConformanceGKE
 
 on:
-  pull_request:
-    paths-ignore:
-      - "**.md"
-      - "contrib/grafana/**"
-  push:
-    branches:
-      - master
+  # Run every 6 hours
+  schedule:
+    - cron:  '0 0/6 * * *'
 env:
   zone: us-west2-a
   ciliumCliVersion: v0.12.11
