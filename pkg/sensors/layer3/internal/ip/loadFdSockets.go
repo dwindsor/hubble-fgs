@@ -112,7 +112,7 @@ var (
 	// TCP maps
 	TcpSocketMap      = program.MapUserFrom(base.TcpSocketMap)
 	TcpSocketMapStats = program.MapUserFrom(base.TcpSocketMapStats)
-	DNSEndpointIDMap  = program.MapUserFrom(base.DNSEndpointIDMap)
+	DNSIPToIDMaps     = program.MapUserFrom(base.DNSIPToIDMapsName)
 )
 
 func Enable() ([]*program.Program, []*program.Map) {
@@ -218,7 +218,7 @@ func getFdLookupMaps() []*program.Map {
 		ExecveMap,
 		TcpSocketMap,
 		TcpSocketMapStats,
-		DNSEndpointIDMap,
+		DNSIPToIDMaps,
 	}
 
 	if utils.SupportProcessTree() {

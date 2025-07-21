@@ -65,7 +65,7 @@ func loadDNSTestCollection(t *testing.T) *ebpf.Collection {
 	}
 
 	// Resizing map (to an overkill size because it's LRU_HASH)
-	collSpec.Maps[DNSEndpointIDMapName].MaxEntries = 1024
+	collSpec.Maps[IPToIDMapsName].MaxEntries = 1024
 	collSpec.Maps[DomainToIDMapName].MaxEntries = 1024
 	collSpec.Maps[IDToDomainMapName].MaxEntries = 1024
 	collSpec.Maps[RequestIDMapName].MaxEntries = 1024
@@ -239,15 +239,15 @@ func Test_DNSParser(t *testing.T) {
 	}
 	errMap := NewErrorMap(rawErrMap)
 
-	rawIPToIDMap, ok := coll.Maps[DNSEndpointIDMapName]
+	rawIPToIDMaps, ok := coll.Maps[IPToIDMapsName]
 	if !ok {
-		t.Fatalf("map %s not found", DNSEndpointIDMapName)
+		t.Fatalf("map %s not found", IPToIDMapsName)
 	}
 	rawIDToDomainMap, ok := coll.Maps[IDToDomainMapName]
 	if !ok {
 		t.Fatalf("map %s not found", IDToDomainMapName)
 	}
-	ipToDomainMap := NewIPToDomainMap(rawIPToIDMap, rawIDToDomainMap)
+	ipToDomainMap := NewIPToDomainMap(rawIPToIDMaps, rawIDToDomainMap)
 
 	rawRequestIDMap, ok := coll.Maps[RequestIDMapName]
 	if !ok {
@@ -409,15 +409,15 @@ func Test_DNSParser_RequestResponse(t *testing.T) {
 	}
 	errMap := NewErrorMap(rawErrMap)
 
-	rawIPToIDMap, ok := coll.Maps[DNSEndpointIDMapName]
+	rawIPToIDMaps, ok := coll.Maps[IPToIDMapsName]
 	if !ok {
-		t.Fatalf("map %s not found", DNSEndpointIDMapName)
+		t.Fatalf("map %s not found", IPToIDMapsName)
 	}
 	rawIDToDomainMap, ok := coll.Maps[IDToDomainMapName]
 	if !ok {
 		t.Fatalf("map %s not found", IDToDomainMapName)
 	}
-	ipToDomainMap := NewIPToDomainMap(rawIPToIDMap, rawIDToDomainMap)
+	ipToDomainMap := NewIPToDomainMap(rawIPToIDMaps, rawIDToDomainMap)
 
 	rawRequestIDMap, ok := coll.Maps[RequestIDMapName]
 	if !ok {
@@ -517,11 +517,11 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 	}
 	domainToIDMap := NewDomainToIDMap(rawDomainToIDMap)
 
-	rawDNSEndpointIDMap, ok := coll.Maps[DNSEndpointIDMapName]
+	rawIPToIDMaps, ok := coll.Maps[IPToIDMapsName]
 	if !ok {
-		t.Fatalf("map %s not found", DNSEndpointIDMapName)
+		t.Fatalf("map %s not found", IPToIDMapsName)
 	}
-	dnsEndpointIDMap := NewDNSEndpointIDMap(rawDNSEndpointIDMap)
+	ipToIDMaps := NewIPToIDMaps(rawIPToIDMaps)
 
 	rawGlobalDNSIDMap, ok := coll.Maps[GlobalDNSIDMapName]
 	if !ok {
@@ -793,7 +793,7 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 				if err != nil {
 					t.Error(err)
 				}
-				err = dnsEndpointIDMap.Clear()
+				err = ipToIDMaps.Clear()
 				if err != nil {
 					t.Error(err)
 				}
@@ -873,7 +873,7 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			dnsEndpointID, err := dnsEndpointIDMap.Values()
+			dnsEndpointIDs, err := ipToIDMaps.Values()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -921,7 +921,7 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 				}
 
 				for _, ip := range w.wantIPs {
-					id, ok := dnsEndpointID[ip]
+					id, ok := dnsEndpointIDs[ip]
 					if !ok {
 						t.Errorf("DNS endpoint ID entry %s to ID %v missing", ip, w.wantID)
 						t.FailNow()

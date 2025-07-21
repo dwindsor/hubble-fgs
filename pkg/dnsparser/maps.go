@@ -31,10 +31,10 @@ const (
 	ErrorMapName = "tg_dns_error_map"
 
 	// Process tree related maps
-	DomainToIDMapName    = "tg_bpf_domain_map"
-	IDToDomainMapName    = "tg_bpf_domain_rev_map"
-	DNSEndpointIDMapName = "tg_dns_endpoint_id_map"
-	GlobalDNSIDMapName   = "tg_glb_dns_id"
+	DomainToIDMapName  = "tg_bpf_domain_map"
+	IDToDomainMapName  = "tg_bpf_domain_rev_map"
+	IPToIDMapsName     = "tg_dns_ip_id"
+	GlobalDNSIDMapName = "tg_glb_dns_id"
 
 	RequestIDMapName = "tg_dns_req_id_map"
 
@@ -78,19 +78,19 @@ func InitializeDNSMapsWithLocalhost() error {
 	}
 
 	// Update the IP to ID link
-	dnsEndpointIDMapFile := filepath.Join(bpf.MapPrefixPath(), DNSEndpointIDMapName)
-	dnsEndpointIDMapRaw, err := ebpf.LoadPinnedMap(dnsEndpointIDMapFile, nil)
+	IPToIDMapsFile := filepath.Join(bpf.MapPrefixPath(), IPToIDMapsName)
+	IPToIDMapsRaw, err := ebpf.LoadPinnedMap(IPToIDMapsFile, nil)
 	if err != nil {
-		return fmt.Errorf("failed loading %s map: %w", dnsEndpointIDMapFile, err)
+		return fmt.Errorf("failed loading %s map: %w", IPToIDMapsFile, err)
 	}
-	defer dnsEndpointIDMapRaw.Close()
-	dnsEndpointIDMap := NewDNSEndpointIDMap(dnsEndpointIDMapRaw)
+	defer IPToIDMapsRaw.Close()
+	dnsIPToIDMaps := NewIPToIDMaps(IPToIDMapsRaw)
 
-	err = dnsEndpointIDMap.Update(netip.MustParseAddr("127.0.0.1"), DNSID{id, types.DestinationSourceUser})
+	err = dnsIPToIDMaps.Update(netip.MustParseAddr("127.0.0.1"), DNSID{id, types.DestinationSourceUser})
 	if err != nil {
 		return fmt.Errorf("failed adding the 127.0.0.1 IP as localhost endpoint: %w", err)
 	}
-	err = dnsEndpointIDMap.Update(netip.MustParseAddr("::1"), DNSID{id, types.DestinationSourceUser})
+	err = dnsIPToIDMaps.Update(netip.MustParseAddr("::1"), DNSID{id, types.DestinationSourceUser})
 	if err != nil {
 		return fmt.Errorf("failed adding the ::1 IP as localhost endpoint: %w", err)
 	}
@@ -276,18 +276,18 @@ func (m DomainToIDMap) Clear() error {
 	return Clear[[dnsMaxNameSize + 1]byte](m.domainToIDMap)
 }
 
-type DNSEndpointIDMap struct {
-	dnsEndpointIDMap *ebpf.Map
+type IPToIDMaps struct {
+	ipToIDMaps *ebpf.Map
 }
 
-func NewDNSEndpointIDMap(dnsEndpointIDMap *ebpf.Map) DNSEndpointIDMap {
-	return DNSEndpointIDMap{
-		dnsEndpointIDMap: dnsEndpointIDMap,
+func NewIPToIDMaps(ipToIDMaps *ebpf.Map) IPToIDMaps {
+	return IPToIDMaps{
+		ipToIDMaps: ipToIDMaps,
 	}
 }
 
-func (m DNSEndpointIDMap) Values() (map[netip.Addr]DNSID, error) {
-	entries := m.dnsEndpointIDMap.Iterate()
+func (m IPToIDMaps) Values() (map[netip.Addr]DNSID, error) {
+	entries := m.ipToIDMaps.Iterate()
 
 	var key dnsapi.IPAddr
 	var value DNSID
@@ -305,24 +305,24 @@ func (m DNSEndpointIDMap) Values() (map[netip.Addr]DNSID, error) {
 	return actualMap, nil
 }
 
-func (m DNSEndpointIDMap) Lookup(ip netip.Addr) (DNSID, error) {
+func (m IPToIDMaps) Lookup(ip netip.Addr) (DNSID, error) {
 	key := dnsapi.NewIPAddr(ip)
 	var value DNSID
-	err := m.dnsEndpointIDMap.Lookup(&key, &value)
+	err := m.ipToIDMaps.Lookup(&key, &value)
 	if err != nil {
 		return DNSID{}, err
 	}
 	return value, nil
 }
 
-func (m DNSEndpointIDMap) Clear() error {
-	return Clear[dnsapi.IPAddr](m.dnsEndpointIDMap)
+func (m IPToIDMaps) Clear() error {
+	return Clear[dnsapi.IPAddr](m.ipToIDMaps)
 }
 
-func (m DNSEndpointIDMap) Update(ip netip.Addr, id DNSID) error {
+func (m IPToIDMaps) Update(ip netip.Addr, id DNSID) error {
 	var key dnsapi.IPAddr
 	key.Set(ip)
-	err := m.dnsEndpointIDMap.Update(&key, &id, ebpf.UpdateAny)
+	err := m.ipToIDMaps.Update(&key, &id, ebpf.UpdateAny)
 	if err != nil {
 		return fmt.Errorf("failed to update the key %s with value %d: %w", key, id, err)
 	}
@@ -452,22 +452,22 @@ func (m *DomainMap) Domain(id uint64) (string, error) {
 }
 
 type IPToDomainMap struct {
-	ipToIDMap     DNSEndpointIDMap
+	ipToIDMaps    IPToIDMaps
 	idToDomainMap IDToDomainMap
 }
 
-func NewIPToDomainMap(ipToIDMap, idToDomainMap *ebpf.Map) IPToDomainMap {
+func NewIPToDomainMap(ipToIDMaps, idToDomainMap *ebpf.Map) IPToDomainMap {
 	return IPToDomainMap{
-		ipToIDMap:     NewDNSEndpointIDMap(ipToIDMap),
+		ipToIDMaps:    NewIPToIDMaps(ipToIDMaps),
 		idToDomainMap: NewIDToDomainMap(idToDomainMap),
 	}
 }
 
 func LoadNewIPToDomainMap() (IPToDomainMap, error) {
-	ipToIDMapFile := bpf.MapPath(DNSEndpointIDMapName)
-	ipToIDMap, err := ebpf.LoadPinnedMap(ipToIDMapFile, nil)
+	ipToIDMapsFile := bpf.MapPath(IPToIDMapsName)
+	ipToIDMaps, err := ebpf.LoadPinnedMap(ipToIDMapsFile, nil)
 	if err != nil {
-		return IPToDomainMap{}, fmt.Errorf("fail to load pinned map %s: %w", ipToIDMapFile, err)
+		return IPToDomainMap{}, fmt.Errorf("fail to load pinned map %s: %w", ipToIDMapsFile, err)
 	}
 
 	idToDomainMapFile := bpf.MapPath(IDToDomainMapName)
@@ -476,23 +476,23 @@ func LoadNewIPToDomainMap() (IPToDomainMap, error) {
 		return IPToDomainMap{}, fmt.Errorf("fail to load pinned map %s: %w", idToDomainMapFile, err)
 	}
 
-	return NewIPToDomainMap(ipToIDMap, idToDomainMap), nil
+	return NewIPToDomainMap(ipToIDMaps, idToDomainMap), nil
 }
 
 func (m IPToDomainMap) Close() error {
 	err1 := m.idToDomainMap.idToDomainMap.Close()
-	err2 := m.ipToIDMap.dnsEndpointIDMap.Close()
+	err2 := m.ipToIDMaps.ipToIDMaps.Close()
 	return errors.Join(err1, err2)
 }
 
 func (m IPToDomainMap) Clear() error {
-	err1 := m.ipToIDMap.Clear()
+	err1 := m.ipToIDMaps.Clear()
 	err2 := m.idToDomainMap.Clear()
 	return errors.Join(err1, err2)
 }
 
 func (m IPToDomainMap) Values() (map[netip.Addr]string, error) {
-	ipToID, err := m.ipToIDMap.Values()
+	ipToID, err := m.ipToIDMaps.Values()
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve values of ip to ID map: %w", err)
 	}
@@ -510,7 +510,7 @@ func (m IPToDomainMap) Values() (map[netip.Addr]string, error) {
 }
 
 func (m IPToDomainMap) Lookup(ip netip.Addr) (string, error) {
-	id, err := m.ipToIDMap.Lookup(ip)
+	id, err := m.ipToIDMaps.Lookup(ip)
 	if err != nil {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			return "", nil

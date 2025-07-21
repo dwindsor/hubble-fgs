@@ -399,17 +399,17 @@ spec:
 	require.NoError(t, err)
 
 	// Verify that the BPF DNS parser was filled with the entry
-	ipToIDMapFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.DNSEndpointIDMapName)
-	ipToIDMap, err := ebpf.LoadPinnedMap(ipToIDMapFile, nil)
+	ipToIDMapsFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.IPToIDMapsName)
+	ipToIDMaps, err := ebpf.LoadPinnedMap(ipToIDMapsFile, nil)
 	require.NoError(t, err)
-	defer ipToIDMap.Close()
+	defer ipToIDMaps.Close()
 
 	idToDomainMapFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.IDToDomainMapName)
 	idToDomainMap, err := ebpf.LoadPinnedMap(idToDomainMapFile, nil)
 	require.NoError(t, err)
 	defer idToDomainMap.Close()
 
-	ipMap := dnsparser.NewIPToDomainMap(ipToIDMap, idToDomainMap)
+	ipMap := dnsparser.NewIPToDomainMap(ipToIDMaps, idToDomainMap)
 
 	values, err := ipMap.Values()
 	require.NoError(t, err)

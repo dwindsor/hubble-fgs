@@ -59,7 +59,7 @@ func GetDefaultMaps() []*program.Map {
 		UDPCfgMap,
 		TcpSocketMap,
 		TcpSocketMapStats,
-		DNSEndpointIDMap,
+		DNSIPToIDMapsName,
 		ExecveTailCallsMap,
 		ExecveMapUpdateData,
 		ExecveJoinMap,

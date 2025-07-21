@@ -33,7 +33,7 @@ struct {
 	__uint(max_entries, 1); // will be resized by user space
 	__type(key, struct ip_addr);
 	__type(value, struct dns_endpoint_id_value);
-} tg_dns_endpoint_id_map SEC(".maps");
+} tg_dns_ip_id SEC(".maps");
 
 // domain_string -> ID, this is read-write from BPF and userspace. From the BPF
 // DNS parser and the quota policy parser.
@@ -80,7 +80,7 @@ FUNC_INLINE int assign_dns_id_mapping(struct ip_addr *ip, char *domain)
 	if (id_val) {
 		// If the ID is not coming from userspace or the DNS parser BPF
 		// side, the map was malformed with a wrong source. Note that
-		// SOURCE_DNS should still write into tg_dns_endpoint_id_map
+		// SOURCE_DNS should still write into tg_dns_ip_id
 		// because we can have many IPs to the same domain.
 		if (id_val->source != DESTINATION_SOURCE_USERSPACE && id_val->source != DESTINATION_SOURCE_DNS)
 			return -1;
@@ -102,7 +102,7 @@ FUNC_INLINE int assign_dns_id_mapping(struct ip_addr *ip, char *domain)
 		map_update_elem(&tg_bpf_domain_rev_map, id_val, domain, BPF_ANY);
 	}
 
-	map_update_elem(&tg_dns_endpoint_id_map, ip, id_val, BPF_ANY);
+	map_update_elem(&tg_dns_ip_id, ip, id_val, BPF_ANY);
 
 	return 0;
 }

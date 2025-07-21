@@ -180,7 +180,7 @@ var (
 	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	RequestIDMapName  = program.MapBuilder(dnsparser.RequestIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
 	// This map is shared between the DNS parser and the process tree: the fdlookup and tcpsockops progs
-	DNSEndpointIDMap = program.MapUserFrom(base.DNSEndpointIDMap)
+	DNSIPToIDMaps = program.MapUserFrom(base.DNSIPToIDMapsName)
 
 	// LPM maps
 	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)
@@ -234,7 +234,7 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 			RequestIDMapName.SetMaxEntries(int(enterpriseOption.Config.BPFDNSParserMaxPendingRequests))
 
 			maps = append(maps, DNSParserErrorMap)
-			maps = append(maps, DNSEndpointIDMap)
+			maps = append(maps, DNSIPToIDMaps)
 			maps = append(maps, DNSDomainMap)
 			maps = append(maps, DNSDomainMapRev)
 			maps = append(maps, DNSGlobalIDMap)

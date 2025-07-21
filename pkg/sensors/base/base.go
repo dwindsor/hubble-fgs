@@ -137,7 +137,7 @@ var (
 	UDPCfgMap                   = program.MapBuilder(socktrackmaps.UDPCfgMapName, Exit)
 	TcpSocketMap                = program.MapBuilder("tg_l3_tcpsk", Exit)
 	TcpSocketMapStats           = program.MapBuilder("tg_l3_tcpsk_stats", Exit)
-	DNSEndpointIDMap            = program.MapBuilder(dnsparser.DNSEndpointIDMapName, Exit)
+	DNSIPToIDMapsName           = program.MapBuilder(dnsparser.IPToIDMapsName, Exit)
 
 	ExecveTailCallsMap  = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 	ExecveMapUpdateData = program.MapBuilder("execve_map_update_data", ExecveMapUpdate)
@@ -289,7 +289,7 @@ func ConfigureMapSizes() {
 	ListenEndpointMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	Addr6LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 	Addr4LpmMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
-	DNSEndpointIDMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+	DNSIPToIDMapsName.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
 
 	if enterpriseOption.Config.EnableSyscallTracking {
 		SyscallsMap.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
