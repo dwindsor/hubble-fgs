@@ -92,13 +92,13 @@ func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 	}
 	err = m.Put(key, value)
 	if err != nil {
-		logger.GetLogger().Warn("configureSettings couldn't update tg_cfg_map", logfields.Error, err)
+		logger.GetLogger().Warn("configureSettings couldn't update tg_l3_cfg", logfields.Error, err)
 		return err
 	}
 	var vOut ConfigValue
 	err = m.Lookup(key, &vOut)
 	if err != nil {
-		logger.GetLogger().Warn("configureSettings couldn't lookup tg_cfg_map", logfields.Error, err)
+		logger.GetLogger().Warn("configureSettings couldn't lookup tg_l3_cfg", logfields.Error, err)
 		return err
 	}
 	logger.GetLogger().Info("Config", "enableIcmpTracking", icmpTracking)

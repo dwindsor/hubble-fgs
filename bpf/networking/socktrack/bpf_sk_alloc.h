@@ -108,7 +108,7 @@ store_socket(void *ctx, u64 cookie, u8 protocol)
 	// been populated, and might be ICMP or raw without a tuple.
 	add_socketmap(&cookie, &process, 0, false);
 
-	cfg = map_lookup_elem(&tg_cfg_map, &zero);
+	cfg = map_lookup_elem(&tg_l3_cfg, &zero);
 	if (!cfg)
 		return 0;
 
@@ -129,7 +129,7 @@ destroy_socket(void *ctx, u64 cookie)
 	if (!process)
 		return 0;
 
-	cfg = (struct cfg_value *)map_lookup_elem(&tg_cfg_map, &zero);
+	cfg = (struct cfg_value *)map_lookup_elem(&tg_l3_cfg, &zero);
 	if (cfg) {
 		switch (process->protocol) {
 		case IPPROTO_UDP:

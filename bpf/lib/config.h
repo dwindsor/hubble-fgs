@@ -29,6 +29,6 @@ struct {
 	__type(key, int);
 	__type(value, struct cfg_value);
 	__uint(max_entries, 1);
-} tg_cfg_map SEC(".maps");
+} tg_l3_cfg SEC(".maps");
 
 #endif

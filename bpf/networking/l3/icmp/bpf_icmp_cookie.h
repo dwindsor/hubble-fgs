@@ -99,7 +99,7 @@ icmp_tracking_enabled()
 	struct cfg_value *cfg;
 	int zero = 0;
 
-	cfg = (struct cfg_value *)map_lookup_elem(&tg_cfg_map, &zero);
+	cfg = (struct cfg_value *)map_lookup_elem(&tg_l3_cfg, &zero);
 	if (!cfg || !cfg->icmp_tracking_enabled)
 		return false;
 	return true;
@@ -111,7 +111,7 @@ icmp_net_match()
 	struct cfg_value *cfg;
 	int zero = 0;
 
-	cfg = (struct cfg_value *)map_lookup_elem(&tg_cfg_map, &zero);
+	cfg = (struct cfg_value *)map_lookup_elem(&tg_l3_cfg, &zero);
 	if (!cfg || !cfg->icmp_net_match)
 		return false;
 	return true;

@@ -41,7 +41,7 @@ func ProgsAndMaps() ([]tus.SensorProg, []tus.SensorMap) {
 		tus.SensorMap{Name: "tg_rev_tuple_map", Progs: []uint{1}},
 		tus.SensorMap{Name: "tg_socket_tuple_hint_map", Progs: []uint{1}},
 		tus.SensorMap{Name: "tg_ver_map", Progs: []uint{0}},
-		tus.SensorMap{Name: "tg_cfg_map", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tg_l3_cfg", Progs: []uint{0, 1}},
 		tus.SensorMap{Name: "execve_map", Progs: []uint{0}},
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1}},
 	}
