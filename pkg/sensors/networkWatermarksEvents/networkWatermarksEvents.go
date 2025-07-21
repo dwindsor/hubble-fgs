@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	ProcessNetworkWatermarksMapName      = "tg_pn_watermarks_map"
-	ProcessNetworkWatermarksStatsMapName = "tg_pn_watermarks_map_stats"
+	ProcessNetworkWatermarksMapName      = "tg_l3_wtmk"
+	ProcessNetworkWatermarksStatsMapName = "tg_l3_wtmk_stats"
 
 	PROCESS_NETWORK_WATERMARKS_PROTO_SHIFT   = 48
 	PROCESS_NETWORK_WATERMARKS_PROCESS_MASK  = 0xffffffff

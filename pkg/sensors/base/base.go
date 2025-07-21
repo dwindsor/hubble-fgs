@@ -125,7 +125,7 @@ var (
 
 	/* Networking and Process Monitoring maps */
 	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, Fork, Exit, ExecveBprmCommit, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry, ExecveMapUpdate)
-	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", Exit)
+	ProcessNetworkWatermarksMap = program.MapBuilder("tg_l3_wtmk", Exit)
 	SocketMap                   = program.MapBuilder(socktrackmaps.SocketMapName, Exit)
 	SocketStats                 = program.MapBuilder(socktrackmaps.SocketStatsName, Exit)
 	SocketVersionMap            = program.MapBuilder(socktrackmaps.SocketVersionMapName, Exit)
@@ -148,7 +148,7 @@ var (
 
 	/* Internal statistics for debugging */
 	ExecveStats          = program.MapBuilder("execve_map_stats", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
-	PNWatermarksMapStats = program.MapBuilder("tg_pn_watermarks_map_stats", Exit)
+	PNWatermarksMapStats = program.MapBuilder("tg_l3_wtmk_stats", Exit)
 	ExecveJoinMapStats   = program.MapBuilder("tg_execve_joined_info_map_stats", ExecveBprmCommit)
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 

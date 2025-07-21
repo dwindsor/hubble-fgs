@@ -192,7 +192,7 @@ var (
 
 	// Maps for watermarks detection
 	SendCheckSampler            = program.MapBuilder("tg_l3_tcp_cfg", SendCheck4)
-	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", SendCheck4)
+	ProcessNetworkWatermarksMap = program.MapBuilder("tg_l3_wtmk", SendCheck4)
 
 	// Map for disabling events
 	EventDisableConfig = program.MapBuilder("tg_l3_tcp_dsble", ConnectKprobe, ConnectFentry, TcpSockops)

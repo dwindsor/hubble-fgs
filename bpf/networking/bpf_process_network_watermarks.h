@@ -40,14 +40,14 @@ struct {
 	__type(key, __u64);
 	__type(value, struct process_network_watermarks_log);
 	__uint(max_entries, MAX_UDP_PROCESSES);
-} tg_pn_watermarks_map SEC(".maps");
+} tg_l3_wtmk SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
 	__type(value, __u64);
 	__uint(max_entries, 1);
-} tg_pn_watermarks_map_stats SEC(".maps");
+} tg_l3_wtmk_stats SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -111,7 +111,7 @@ process_watermarks_check_and_delete(struct msg_process_network_watermarks_event 
 
 	__u64 watermarks_key =
 		tgid_to_watermarks_key(e->key.pid, protocol, send);
-	watermarks_log = map_lookup_elem(&tg_pn_watermarks_map, &watermarks_key);
+	watermarks_log = map_lookup_elem(&tg_l3_wtmk, &watermarks_key);
 	if (watermarks_log && watermarks_log->watermarks_state) {
 		// Currently in burst state, so send burst end event
 		e->direction = send;
@@ -127,7 +127,7 @@ process_watermarks_check_and_delete(struct msg_process_network_watermarks_event 
 			sizeof(struct msg_process_network_watermarks_event));
 	}
 
-	int err = map_delete_elem(&tg_pn_watermarks_map, &watermarks_key);
+	int err = map_delete_elem(&tg_l3_wtmk, &watermarks_key);
 	if (!err && cntr)
 		*cntr = *cntr - 1;
 }
@@ -142,7 +142,7 @@ process_watermarks_map_delete(void *ctx, __u32 tgid)
 
 	process = execve_map_get_noinit(tgid);
 	val = map_lookup_elem(&tg_h_l3_wtmk_ev, &zero);
-	cntr = map_lookup_elem(&tg_pn_watermarks_map_stats, &zero);
+	cntr = map_lookup_elem(&tg_l3_wtmk_stats, &zero);
 
 	if (val && process) {
 		// Complete common event details.
@@ -197,9 +197,9 @@ init_watermarks_log(u64 watermarks_key, u64 process_start_time, u64 vol,
 		.watermarks_window_size = watermarks_window_size,
 	};
 
-	err = map_update_elem(&tg_pn_watermarks_map, &watermarks_key,
+	err = map_update_elem(&tg_l3_wtmk, &watermarks_key,
 			      watermarks_log, BPF_NOEXIST);
-	if (!err && (cntr = map_lookup_elem(&tg_pn_watermarks_map_stats, &zero)))
+	if (!err && (cntr = map_lookup_elem(&tg_l3_wtmk_stats, &zero)))
 		*cntr = *cntr + 1;
 }
 
@@ -246,7 +246,7 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 	watermarks_key =
 		tgid_to_watermarks_key(process->key.pid, protocol, send);
 
-	watermarks_log = map_lookup_elem(&tg_pn_watermarks_map, &watermarks_key);
+	watermarks_log = map_lookup_elem(&tg_l3_wtmk, &watermarks_key);
 	if (!watermarks_log) {
 		// First packet for this process in this direction, for this protocol.
 		// This could be racy in the sense that multiple cores could initialise the
