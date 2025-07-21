@@ -140,7 +140,7 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 		})...)
 	}
 
-	latencyConfigMap := tus.SensorMap{Name: "tg_latency_config_map", Progs: []uint{}}
+	latencyConfigMap := tus.SensorMap{Name: "tg_l3_lat_cfg", Progs: []uint{}}
 	if withUdpLatency {
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			udpEgressTimestampProg,
@@ -377,7 +377,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		})...)
 	}
 
-	latencyConfigMap := tus.SensorMap{Name: "tg_latency_config_map", Progs: []uint{}}
+	latencyConfigMap := tus.SensorMap{Name: "tg_l3_lat_cfg", Progs: []uint{}}
 	if withUdpLatency {
 		latencyConfigMap.Progs = append(latencyConfigMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			udpEgressTimestampProg,

@@ -25,7 +25,7 @@ tg_egress_timestamp(struct __sk_buff *skb)
 	struct iphdr *iph;
 	int zero = 0;
 
-	latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
+	latency_config = (struct latency_config *)map_lookup_elem(&tg_l3_lat_cfg, &zero);
 	if (!latency_config || (!latency_config->tcp.enable && !latency_config->udp.enable))
 		return TC_ACT_PIPE;
 

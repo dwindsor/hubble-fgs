@@ -35,7 +35,7 @@ import (
 const (
 	maxSubnets    = 4
 	maxPorts      = 4
-	ConfigMapName = "tg_latency_config_map"
+	ConfigMapName = "tg_l3_lat_cfg"
 )
 
 var (

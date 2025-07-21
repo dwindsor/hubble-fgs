@@ -171,7 +171,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	if (!key)
 		return 1;
 	if (!send) {
-		latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
+		latency_config = (struct latency_config *)map_lookup_elem(&tg_l3_lat_cfg, &zero);
 		if (!latency_config)
 			return 1;
 		if (latency_config->udp.enable) {

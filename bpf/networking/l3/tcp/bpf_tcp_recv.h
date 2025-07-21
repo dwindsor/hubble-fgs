@@ -99,7 +99,7 @@ check_timestamp(void *ctx, struct timestamp_option *ts_opt, u64 *cookie)
 	s64 latency = 0;
 	int zero = 0;
 
-	latency_config = (struct latency_config *)map_lookup_elem(&tg_latency_config_map, &zero);
+	latency_config = (struct latency_config *)map_lookup_elem(&tg_l3_lat_cfg, &zero);
 	if (!latency_config || !latency_config->tcp.enable) {
 		return SK_PASS;
 	}
