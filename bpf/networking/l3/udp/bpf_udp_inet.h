@@ -82,7 +82,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 
 	udp_key(key, &dns_combined, cookie, cookie_ver, ip, ipv6, udp, send);
 
-	value = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, key);
+	value = (struct udp_info_value *)map_lookup_elem(&tg_l3_udpsk, key);
 
 	/* If the PID matches means this is a known connection key and its
 	 * on a known process/socket binding then simply account for bytes

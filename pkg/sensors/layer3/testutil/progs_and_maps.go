@@ -151,13 +151,13 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	}
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
-		SensorMapByProgName(sensorProgs, "tg_udp_map", []string{
+		SensorMapByProgName(sensorProgs, "tg_l3_udpsk", []string{
 			cgroupEgressProg, cgroupIngressProg,
 		}),
-		SensorMapByProgName(sensorProgs, "tg_udp_map_count", []string{
+		SensorMapByProgName(sensorProgs, "tg_l3_udpsk_cnt", []string{
 			cgroupEgressProg, cgroupIngressProg,
 		}),
-		SensorMapByProgName(sensorProgs, "tg_udp_config_map", []string{
+		SensorMapByProgName(sensorProgs, "tg_l3_udp_cfg", []string{
 			cgroupEgressProg, cgroupIngressProg, udpBindProg,
 		}),
 	}...)
@@ -389,13 +389,13 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 
 	if !utils.CGroupSKBAvailable() { // 4.19 - <5.4
 		sensorMaps = append(sensorMaps, []tus.SensorMap{
-			SensorMapByProgName(sensorProgs, "tg_udp_map", []string{
+			SensorMapByProgName(sensorProgs, "tg_l3_udpsk", []string{
 				udpInetLazySendProg,
 			}),
-			SensorMapByProgName(sensorProgs, "tg_udp_map_count", []string{
+			SensorMapByProgName(sensorProgs, "tg_l3_udpsk_cnt", []string{
 				udpInetLazySendProg,
 			}),
-			SensorMapByProgName(sensorProgs, "tg_udp_config_map", []string{
+			SensorMapByProgName(sensorProgs, "tg_l3_udp_cfg", []string{
 				udpInetLazySendProg, udpBindProg,
 			}),
 		}...)
@@ -414,13 +414,13 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		})...)
 	} else { // 5.4+
 		sensorMaps = append(sensorMaps, []tus.SensorMap{
-			SensorMapByProgName(sensorProgs, "tg_udp_map", []string{
+			SensorMapByProgName(sensorProgs, "tg_l3_udpsk", []string{
 				cgroupEgressProg, cgroupIngressProg,
 			}),
-			SensorMapByProgName(sensorProgs, "tg_udp_map_count", []string{
+			SensorMapByProgName(sensorProgs, "tg_l3_udpsk_cnt", []string{
 				cgroupEgressProg, cgroupIngressProg,
 			}),
-			SensorMapByProgName(sensorProgs, "tg_udp_config_map", []string{
+			SensorMapByProgName(sensorProgs, "tg_l3_udp_cfg", []string{
 				cgroupEgressProg, cgroupIngressProg, udpBindProg,
 			}),
 		}...)

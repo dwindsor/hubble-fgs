@@ -29,9 +29,9 @@ struct {
 	__type(key, struct udp_info_key);
 	__type(value, struct udp_info_value);
 	__uint(max_entries, MAX_UDP_ENDPOINTS);
-} tg_udp_map SEC(".maps");
+} tg_l3_udpsk SEC(".maps");
 
-// We specifically do not use *_stats as the map name to hold the counts of tg_udp_map
+// We specifically do not use *_stats as the map name to hold the counts of tg_l3_udpsk
 // usage because we increment from BPF but decrement from user space. If we did use
 // *_stats then we'd have a race condition where both BPF and user space update the
 // map at the same time. We avoid this by counting increments in a PERCPU map in BPF
@@ -43,7 +43,7 @@ struct {
 	__type(key, __s32);
 	__type(value, __s64);
 	__uint(max_entries, 1);
-} tg_udp_map_count SEC(".maps");
+} tg_l3_udpsk_cnt SEC(".maps");
 
 /* Store the latest pseudo-socket version number. Each pseudo-socket receives a
  * new global version number, unique to each pseudo-socket.
@@ -53,7 +53,7 @@ struct {
 	__type(key, u32);
 	__type(value, u64);
 	__uint(max_entries, 1);
-} tg_psver_map SEC(".maps");
+} tg_l3_udpsk_ver SEC(".maps");
 
 static inline __attribute__((always_inline)) u64
 pseudo_socket_inc_version()
@@ -61,7 +61,7 @@ pseudo_socket_inc_version()
 	u64 *version;
 	u32 zero = 0;
 
-	version = (u64 *)map_lookup_elem(&tg_psver_map, &zero);
+	version = (u64 *)map_lookup_elem(&tg_l3_udpsk_ver, &zero);
 	if (!version)
 		return 0;
 	__sync_fetch_and_add(version, 1);
@@ -246,13 +246,13 @@ update_rx_value(struct udp_info_value *v, u32 len)
 static inline __attribute__((always_inline)) void
 add_udp_map(struct udp_info_key *key, struct udp_info_value *value)
 {
-	struct udp_info_value *existing = (struct udp_info_value *)map_lookup_elem(&tg_udp_map, key);
+	struct udp_info_value *existing = (struct udp_info_value *)map_lookup_elem(&tg_l3_udpsk, key);
 	int zero = 0;
 	__s64 *cntr;
 	int err;
 
-	err = map_update_elem(&tg_udp_map, key, value, 0);
-	if (!err && !existing && (cntr = (__s64 *)map_lookup_elem(&tg_udp_map_count, &zero)))
+	err = map_update_elem(&tg_l3_udpsk, key, value, 0);
+	if (!err && !existing && (cntr = (__s64 *)map_lookup_elem(&tg_l3_udpsk_cnt, &zero)))
 		*cntr = *cntr + 1;
 }
 

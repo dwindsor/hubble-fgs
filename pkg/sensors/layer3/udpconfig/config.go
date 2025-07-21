@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	UdpMapStatsName = "tg_udp_map_count"
+	UdpMapStatsName = "tg_l3_udpsk_cnt"
 )
 
 var (

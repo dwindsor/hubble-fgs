@@ -47,8 +47,8 @@ import (
 )
 
 const (
-	UdpMapName    = "tg_udp_map"
-	ConfigMapName = "tg_udp_config_map"
+	UdpMapName    = "tg_l3_udpsk"
+	ConfigMapName = "tg_l3_udp_cfg"
 
 	MissingStatsErrorInterval = time.Hour
 )
@@ -124,7 +124,7 @@ var (
 	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
 	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
 	ConfigMap           = program.MapUserFrom(base.CfgMap)
-	PsVerMap            = program.MapBuilder("tg_psver_map", SkUdpBindKprobe)
+	PsVerMap            = program.MapBuilder("tg_l3_udpsk_ver", SkUdpBindKprobe)
 
 	// UDP maps
 	UdpMapLazyKprobe       = program.MapBuilder(UdpMapName, InetSendRecvLazy)
