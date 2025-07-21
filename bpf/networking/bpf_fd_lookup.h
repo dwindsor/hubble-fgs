@@ -47,7 +47,7 @@ struct {
 	__type(key, __u32);
 	__type(value, struct fd_lookup_config);
 	__uint(max_entries, 1);
-} fd_lookup_config_map SEC(".maps");
+} tg_l3_sk_lookup SEC(".maps");
 
 static inline __attribute__((always_inline)) struct execve_map_value *
 event_find_task(struct task_struct *task, __u32 pid, __u32 *ppid, bool *walked)
@@ -92,7 +92,7 @@ __proc_task_name(void *ctx, struct task_struct *p)
 	u32 ppid;
 
 	config = (struct fd_lookup_config *)map_lookup_elem(
-		&fd_lookup_config_map, &zero);
+		&tg_l3_sk_lookup, &zero);
 	if (!config)
 		return 0;
 	config->signal_hit = 1;

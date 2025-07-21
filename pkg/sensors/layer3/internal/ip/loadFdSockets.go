@@ -37,7 +37,7 @@ import (
 const (
 	maxMapRetries         = 4
 	mapRetryDelay         = 1
-	FdLookupConfigMapName = "fd_lookup_config_map"
+	FdLookupConfigMapName = "tg_l3_sk_lookup"
 	SocketMapName         = "tg_l3_sk"
 	SocketMapStatsName    = "tg_l3_sk_stats"
 )

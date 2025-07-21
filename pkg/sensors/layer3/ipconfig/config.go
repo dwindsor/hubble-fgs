@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	FdLookupConfigMapName = "fd_lookup_config_map"
+	FdLookupConfigMapName = "tg_l3_sk_lookup"
 )
 
 var (
