@@ -11,8 +11,8 @@
 package socktrackmaps
 
 const (
-	SocketMapName          = "tg_socket_map"
-	SocketStatsName        = "tg_socket_map_stats"
+	SocketMapName          = "tg_l3_sk"
+	SocketStatsName        = "tg_l3_sk_stats"
 	SocketTupleMapName     = "tg_socket_tuple_map"
 	SocketTupleStatsName   = "tg_socket_tuple_map_stats"
 	SocketTupleRevMapName  = "tg_rev_tuple_map"

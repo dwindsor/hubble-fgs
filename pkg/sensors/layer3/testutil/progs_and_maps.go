@@ -107,8 +107,8 @@ const (
 func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
 	var sensorMaps []tus.SensorMap
 
-	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
-	socketMapStats := SensorMapByProgName(sensorProgs, "tg_socket_map_stats", []string{tcpSecurityGraft, fdLookupProg})
+	socketMap := SensorMapByProgName(sensorProgs, "tg_l3_sk", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
+	socketMapStats := SensorMapByProgName(sensorProgs, "tg_l3_sk_stats", []string{tcpSecurityGraft, fdLookupProg})
 	tcpSocketMap := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map", []string{tcpSockopsProg, securitySkFreeProg, tcpSecurityGraft, fdLookupProg, tcpRstProg})
 	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map", []string{tcpSockopsProg, tcpSecurityGraft})
 	socketTupleMapStats := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map_stats", []string{tcpSockopsProg, tcpSecurityGraft})
@@ -283,11 +283,11 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw bool, sensorProgs []tus.SensorProg, ni uint) []tus.SensorMap {
 	var sensorMaps []tus.SensorMap
 
-	socketMap := SensorMapByProgName(sensorProgs, "tg_socket_map", []string{
+	socketMap := SensorMapByProgName(sensorProgs, "tg_l3_sk", []string{
 		tcpConnectProg, tcpCloseProg, tcpListenProg, tcpSecurityGraft, fdLookupProg,
 	})
 
-	socketMapStats := SensorMapByProgName(sensorProgs, "tg_socket_map_stats", []string{
+	socketMapStats := SensorMapByProgName(sensorProgs, "tg_l3_sk_stats", []string{
 		tcpSecurityGraft, fdLookupProg,
 	})
 

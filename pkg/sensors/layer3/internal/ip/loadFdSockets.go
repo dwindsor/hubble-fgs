@@ -38,8 +38,8 @@ const (
 	maxMapRetries         = 4
 	mapRetryDelay         = 1
 	FdLookupConfigMapName = "fd_lookup_config_map"
-	SocketMapName         = "tg_socket_map"
-	SocketMapStatsName    = "tg_socket_map_stats"
+	SocketMapName         = "tg_l3_sk"
+	SocketMapStatsName    = "tg_l3_sk_stats"
 )
 
 type FdCallback func(*networkapi.FdLookupValue, uint32)

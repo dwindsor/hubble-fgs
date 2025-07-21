@@ -127,11 +127,11 @@ func TestAddRemoveSock(t *testing.T) {
 	//time.Sleep(time.Minute * 5)
 	time.Sleep(time.Second * 1)
 
-	file := filepath.Join(bpf.MapPrefixPath(), "tg_socket_map")
+	file := filepath.Join(bpf.MapPrefixPath(), "tg_l3_sk")
 
 	m, err := ebpf.LoadPinnedMap(file, nil)
 	if err != nil {
-		t.Logf("Failed to open map tg_socket_map: %s", err)
+		t.Logf("Failed to open map tg_l3_sk: %s", err)
 		t.Fail()
 	}
 	defer m.Close()
