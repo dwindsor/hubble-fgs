@@ -242,7 +242,7 @@ func getFdLookupMaps() []*program.Map {
 	}
 
 	if enterpriseOption.Config.EnableBPFDNSParser {
-		DNSIPToIDMaps.SetMaxEntries(enterpriseOption.Config.ProcessTreeCacheSize)
+		DNSIPToIDMaps.SetMaxEntries(dnsparser.MaxEntriesOuterMaps)
 	}
 
 	return maps

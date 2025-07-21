@@ -17,14 +17,17 @@ import (
 	"net/netip"
 	"path/filepath"
 	"runtime"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 const (
@@ -39,6 +42,9 @@ const (
 	RequestIDMapName = "tg_dns_req_id_map"
 
 	dnsMaxNameSize = 255
+
+	MaxEntriesOuterMaps = 1024
+	DefaultInnerMapID   = 0
 )
 
 type IpMap struct {
@@ -54,7 +60,7 @@ type DNSID struct {
 	Source uint64
 }
 
-// InitializeDNSMapsWithLocalhost fills the DNS map with localhost related
+// PopulateDNSMapsWithLocalhost fills the DNS map with localhost related
 // entries. Indeed, RFC 6761 specifies in its section 6.3 that:
 //
 // Users are free to use localhost names as they would any other domain names.
@@ -64,7 +70,7 @@ type DNSID struct {
 // Most well implemented software will not resolve localhost (like curl, see
 // https://daniel.haxx.se/blog/2021/05/31/curl-localhost-as-a-local-host/), so
 // we need to pre-fill those information since we might not see the DNS pkt.
-func InitializeDNSMapsWithLocalhost() error {
+func PopulateDNSMapsWithLocalhost() error {
 	// The ID must come from userspace, and as such, this will only work if
 	// the application model is enabled (otherwise the userspace endpoint
 	// cache isn't enabled)
@@ -86,11 +92,11 @@ func InitializeDNSMapsWithLocalhost() error {
 	defer IPToIDMapsRaw.Close()
 	dnsIPToIDMaps := NewIPToIDMaps(IPToIDMapsRaw)
 
-	err = dnsIPToIDMaps.Update(netip.MustParseAddr("127.0.0.1"), DNSID{id, types.DestinationSourceUser})
+	err = dnsIPToIDMaps.Update(DefaultInnerMapID, netip.MustParseAddr("127.0.0.1"), DNSID{id, types.DestinationSourceUser})
 	if err != nil {
 		return fmt.Errorf("failed adding the 127.0.0.1 IP as localhost endpoint: %w", err)
 	}
-	err = dnsIPToIDMaps.Update(netip.MustParseAddr("::1"), DNSID{id, types.DestinationSourceUser})
+	err = dnsIPToIDMaps.Update(DefaultInnerMapID, netip.MustParseAddr("::1"), DNSID{id, types.DestinationSourceUser})
 	if err != nil {
 		return fmt.Errorf("failed adding the ::1 IP as localhost endpoint: %w", err)
 	}
@@ -104,6 +110,46 @@ func InitializeDNSMapsWithLocalhost() error {
 	dnsDomainMap.CloseMaps()
 
 	return nil
+}
+
+func initializeIPToIDMap(m *ebpf.Map) error {
+	// Create the default map
+	// Key and value needs to be defined for kernels before (at min)
+	// 6.6. For recent versions, KeySize and ValueSize are enough.
+	innerDefault, err := ebpf.NewMap(&ebpf.MapSpec{
+		Name:    "tg_dns_ip_id_0",
+		Type:    ebpf.LRUHash,
+		KeySize: uint32(unsafe.Sizeof(dnsapi.IPAddr{})),
+		Key: &btf.Struct{
+			Size: uint32(unsafe.Sizeof(dnsapi.IPAddr{})),
+		},
+		ValueSize: uint32(unsafe.Sizeof(DNSID{})),
+		Value: &btf.Struct{
+			Size: uint32(unsafe.Sizeof(DNSID{})),
+		},
+		MaxEntries: uint32(enterpriseOption.Config.ProcessTreeCacheSize),
+	})
+
+	if err != nil {
+		return fmt.Errorf("error creating a new inner DNSIPToID map: %w", err)
+	}
+
+	err = m.Put(uint32(0), uint32(innerDefault.FD()))
+	if err != nil {
+		return fmt.Errorf("error putting the new inner DNSIPToID map: %w", err)
+	}
+	return nil
+}
+
+func InitializeIPToIDMap() error {
+	ipToIDMapsFile := filepath.Join(bpf.MapPrefixPath(), IPToIDMapsName)
+	ipToIDMapsRaw, err := ebpf.LoadPinnedMap(ipToIDMapsFile, nil)
+	if err != nil {
+		return fmt.Errorf("failed to load %q map: %w", ipToIDMapsFile, err)
+	}
+	defer ipToIDMapsRaw.Close()
+
+	return initializeIPToIDMap(ipToIDMapsRaw)
 }
 
 func NewErrorMap(m *ebpf.Map) ErrorMap {
@@ -286,8 +332,27 @@ func NewIPToIDMaps(ipToIDMaps *ebpf.Map) IPToIDMaps {
 	}
 }
 
-func (m IPToIDMaps) Values() (map[netip.Addr]DNSID, error) {
-	entries := m.ipToIDMaps.Iterate()
+func (m IPToIDMaps) openInnerMap(mapID uint32) (*ebpf.Map, error) {
+	var innerMapID ebpf.MapID
+	err := m.ipToIDMaps.Lookup(mapID, &innerMapID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve inner map %d: %w", mapID, err)
+	}
+	dnsIPToIDMap, err := ebpf.NewMapFromID(innerMapID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve inner map from ID %d: %w", innerMapID, err)
+	}
+	return dnsIPToIDMap, nil
+}
+
+func (m IPToIDMaps) Values(mapID uint32) (map[netip.Addr]DNSID, error) {
+	dnsIPToIDMap, err := m.openInnerMap(mapID)
+	if err != nil {
+		return nil, err
+	}
+	defer dnsIPToIDMap.Close()
+
+	entries := dnsIPToIDMap.Iterate()
 
 	var key dnsapi.IPAddr
 	var value DNSID
@@ -305,24 +370,41 @@ func (m IPToIDMaps) Values() (map[netip.Addr]DNSID, error) {
 	return actualMap, nil
 }
 
-func (m IPToIDMaps) Lookup(ip netip.Addr) (DNSID, error) {
+func (m IPToIDMaps) Lookup(mapID uint32, ip netip.Addr) (DNSID, error) {
+	dnsIPToIDMap, err := m.openInnerMap(mapID)
+	if err != nil {
+		return DNSID{}, err
+	}
+	defer dnsIPToIDMap.Close()
+
 	key := dnsapi.NewIPAddr(ip)
 	var value DNSID
-	err := m.ipToIDMaps.Lookup(&key, &value)
+	err = dnsIPToIDMap.Lookup(&key, &value)
 	if err != nil {
 		return DNSID{}, err
 	}
 	return value, nil
 }
 
-func (m IPToIDMaps) Clear() error {
-	return Clear[dnsapi.IPAddr](m.ipToIDMaps)
+func (m IPToIDMaps) Clear(mapID uint32) error {
+	dnsIPToIDMap, err := m.openInnerMap(mapID)
+	if err != nil {
+		return err
+	}
+	defer dnsIPToIDMap.Close()
+	return Clear[dnsapi.IPAddr](dnsIPToIDMap)
 }
 
-func (m IPToIDMaps) Update(ip netip.Addr, id DNSID) error {
+func (m IPToIDMaps) Update(mapID uint32, ip netip.Addr, id DNSID) error {
+	dnsIPToIDMap, err := m.openInnerMap(mapID)
+	if err != nil {
+		return err
+	}
+	defer dnsIPToIDMap.Close()
+
 	var key dnsapi.IPAddr
 	key.Set(ip)
-	err := m.ipToIDMaps.Update(&key, &id, ebpf.UpdateAny)
+	err = dnsIPToIDMap.Update(&key, &id, ebpf.UpdateAny)
 	if err != nil {
 		return fmt.Errorf("failed to update the key %s with value %d: %w", key, id, err)
 	}
@@ -486,13 +568,13 @@ func (m IPToDomainMap) Close() error {
 }
 
 func (m IPToDomainMap) Clear() error {
-	err1 := m.ipToIDMaps.Clear()
+	err1 := m.ipToIDMaps.Clear(DefaultInnerMapID)
 	err2 := m.idToDomainMap.Clear()
 	return errors.Join(err1, err2)
 }
 
 func (m IPToDomainMap) Values() (map[netip.Addr]string, error) {
-	ipToID, err := m.ipToIDMaps.Values()
+	ipToID, err := m.ipToIDMaps.Values(DefaultInnerMapID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve values of ip to ID map: %w", err)
 	}
@@ -510,7 +592,7 @@ func (m IPToDomainMap) Values() (map[netip.Addr]string, error) {
 }
 
 func (m IPToDomainMap) Lookup(ip netip.Addr) (string, error) {
-	id, err := m.ipToIDMaps.Lookup(ip)
+	id, err := m.ipToIDMaps.Lookup(DefaultInnerMapID, ip)
 	if err != nil {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			return "", nil

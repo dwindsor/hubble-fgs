@@ -600,10 +600,13 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	ip_key.af_inet6 = tuple->ipv6;
 
 	/* Check for DNS generated IDs */
-	dns_value = map_lookup_elem(&tg_dns_ip_id, &ip_key);
-	if (dns_value) {
-		dnskey->destination_id = dns_value->id;
-		dnskey->source = dns_value->source;
+	void *tg_dns_ip_id_map = map_lookup_elem(&tg_dns_ip_id, &zero);
+	if (tg_dns_ip_id_map) {
+		dns_value = map_lookup_elem(tg_dns_ip_id_map, &ip_key);
+		if (dns_value) {
+			dnskey->destination_id = dns_value->id;
+			dnskey->source = dns_value->source;
+		}
 	}
 
 	// Check for Userspace generated IDs to objects

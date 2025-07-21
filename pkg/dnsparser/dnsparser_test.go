@@ -243,6 +243,10 @@ func Test_DNSParser(t *testing.T) {
 	if !ok {
 		t.Fatalf("map %s not found", IPToIDMapsName)
 	}
+	err := initializeIPToIDMap(rawIPToIDMaps)
+	if err != nil {
+		t.Fatalf("failed to initialize IPToIDMaps: %s", err)
+	}
 	rawIDToDomainMap, ok := coll.Maps[IDToDomainMapName]
 	if !ok {
 		t.Fatalf("map %s not found", IDToDomainMapName)
@@ -413,6 +417,10 @@ func Test_DNSParser_RequestResponse(t *testing.T) {
 	if !ok {
 		t.Fatalf("map %s not found", IPToIDMapsName)
 	}
+	err := initializeIPToIDMap(rawIPToIDMaps)
+	if err != nil {
+		t.Fatalf("failed to initialize IPToIDMaps: %s", err)
+	}
 	rawIDToDomainMap, ok := coll.Maps[IDToDomainMapName]
 	if !ok {
 		t.Fatalf("map %s not found", IDToDomainMapName)
@@ -520,6 +528,10 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 	rawIPToIDMaps, ok := coll.Maps[IPToIDMapsName]
 	if !ok {
 		t.Fatalf("map %s not found", IPToIDMapsName)
+	}
+	err := initializeIPToIDMap(rawIPToIDMaps)
+	if err != nil {
+		t.Fatalf("failed to initialize IPToIDMaps: %s", err)
 	}
 	ipToIDMaps := NewIPToIDMaps(rawIPToIDMaps)
 
@@ -793,7 +805,7 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 				if err != nil {
 					t.Error(err)
 				}
-				err = ipToIDMaps.Clear()
+				err = ipToIDMaps.Clear(DefaultInnerMapID)
 				if err != nil {
 					t.Error(err)
 				}
@@ -873,7 +885,7 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			dnsEndpointIDs, err := ipToIDMaps.Values()
+			dnsEndpointIDs, err := ipToIDMaps.Values(DefaultInnerMapID)
 			if err != nil {
 				t.Fatal(err)
 			}
