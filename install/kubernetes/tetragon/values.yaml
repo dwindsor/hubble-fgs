@@ -47,6 +47,7 @@ exportDirectory: "/var/run/cilium/tetragon"
 hostNetwork: true
 tetragon:
   enabled: true
+  nameOverride: ""
   image:
     override: ~
     repository: quay.io/isovalent/tetragon
@@ -330,6 +331,8 @@ tetragon:
 tetragonOperator:
   # -- Enables the Tetragon Operator.
   enabled: true
+  # -- The name of the Tetragon Operator deployment.
+  nameOverride: ""
   # -- Number of replicas to run for the tetragon-operator deployment
   replicas: 1
   # -- Lease handling for an automated failover when running multiple replicas

@@ -343,38 +343,104 @@ func ResponseTypeMap() map[string]proto.Message {
 	}
 }
 
-// ProcessEventMap returns a map from event field names (e.g. "process_exec") to corresponding
-// protobuf messages in a given tetragon.GetEventsResponse (e.g. response.GetProcessExec()).
-func ProcessEventMap(response *tetragon.GetEventsResponse) map[string]any {
+// ProcessEventMapTuple returns a tuple from event field name (e.g. "process_exec") to corresponding
+// protobuf messages for a given tetragon.GetEventsResponse (e.g. response.GetProcessExec()).
+func ProcessEventMapTuple(response *tetragon.GetEventsResponse) (string, any, any) {
+	switch response.Event.(type) {
+	case *tetragon.GetEventsResponse_ProcessExec:
+		return "process_exec", response.GetProcessExec(), (*tetragon.ProcessExec)(nil)
+	case *tetragon.GetEventsResponse_ProcessConnect:
+		return "process_connect", response.GetProcessConnect(), (*tetragon.ProcessConnect)(nil)
+	case *tetragon.GetEventsResponse_ProcessListen:
+		return "process_listen", response.GetProcessListen(), (*tetragon.ProcessListen)(nil)
+	case *tetragon.GetEventsResponse_Tls:
+		return "tls", response.GetTls(), (*tetragon.Tls)(nil)
+	case *tetragon.GetEventsResponse_ProcessExit:
+		return "process_exit", response.GetProcessExit(), (*tetragon.ProcessExit)(nil)
+	case *tetragon.GetEventsResponse_ProcessClose:
+		return "process_close", response.GetProcessClose(), (*tetragon.ProcessClose)(nil)
+	case *tetragon.GetEventsResponse_ProcessAccept:
+		return "process_accept", response.GetProcessAccept(), (*tetragon.ProcessAccept)(nil)
+	case *tetragon.GetEventsResponse_ProcessKprobe:
+		return "process_kprobe", response.GetProcessKprobe(), (*tetragon.ProcessKprobe)(nil)
+	case *tetragon.GetEventsResponse_ProcessTracepoint:
+		return "process_tracepoint", response.GetProcessTracepoint(), (*tetragon.ProcessTracepoint)(nil)
+	case *tetragon.GetEventsResponse_ProcessSockStats:
+		return "process_sock_stats", response.GetProcessSockStats(), (*tetragon.ProcessSockStats)(nil)
+	case *tetragon.GetEventsResponse_ProcessHttp:
+		return "process_http", response.GetProcessHttp(), (*tetragon.ProcessHttp)(nil)
+	case *tetragon.GetEventsResponse_InterfaceStats:
+		return "interface_stats", response.GetInterfaceStats(), (*tetragon.InterfaceStats)(nil)
+	case *tetragon.GetEventsResponse_ProcessDns:
+		return "process_dns", response.GetProcessDns(), (*tetragon.ProcessDns)(nil)
+	case *tetragon.GetEventsResponse_ProcessNetworkBurst:
+		return "process_network_burst", response.GetProcessNetworkBurst(), (*tetragon.ProcessNetworkBurst)(nil)
+	case *tetragon.GetEventsResponse_ProcessFile:
+		return "process_file", response.GetProcessFile(), (*tetragon.ProcessFile)(nil)
+	case *tetragon.GetEventsResponse_ProcessIpError:
+		return "process_ip_error", response.GetProcessIpError(), (*tetragon.ProcessIpError)(nil)
+	case *tetragon.GetEventsResponse_ProcessLoader:
+		return "process_loader", response.GetProcessLoader(), (*tetragon.ProcessLoader)(nil)
+	case *tetragon.GetEventsResponse_ProcessNetworkWatermark:
+		return "process_network_watermark", response.GetProcessNetworkWatermark(), (*tetragon.ProcessNetworkWatermark)(nil)
+	case *tetragon.GetEventsResponse_ProcessUprobe:
+		return "process_uprobe", response.GetProcessUprobe(), (*tetragon.ProcessUprobe)(nil)
+	case *tetragon.GetEventsResponse_ProcessUdpSeqCheckError:
+		return "process_udp_seq_check_error", response.GetProcessUdpSeqCheckError(), (*tetragon.ProcessUdpSeqCheckError)(nil)
+	case *tetragon.GetEventsResponse_ProcessFileExec:
+		return "process_file_exec", response.GetProcessFileExec(), (*tetragon.ProcessFileExec)(nil)
+	case *tetragon.GetEventsResponse_ProcessIcmp:
+		return "process_icmp", response.GetProcessIcmp(), (*tetragon.ProcessIcmp)(nil)
+	case *tetragon.GetEventsResponse_ProcessRawsockCreate:
+		return "process_rawsock_create", response.GetProcessRawsockCreate(), (*tetragon.ProcessRawsockCreate)(nil)
+	case *tetragon.GetEventsResponse_ProcessRawsockClose:
+		return "process_rawsock_close", response.GetProcessRawsockClose(), (*tetragon.ProcessRawsockClose)(nil)
+	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
+		return "process_sandbox_syscall", response.GetProcessSandboxSyscall(), (*tetragon.ProcessSandboxSyscall)(nil)
+	case *tetragon.GetEventsResponse_ProcessThrottle:
+		return "process_throttle", response.GetProcessThrottle(), (*tetragon.ProcessThrottle)(nil)
+	case *tetragon.GetEventsResponse_ProcessLsm:
+		return "process_lsm", response.GetProcessLsm(), (*tetragon.ProcessLsm)(nil)
+	case *tetragon.GetEventsResponse_Test:
+		return "test", response.GetTest(), (*tetragon.Test)(nil)
+	case *tetragon.GetEventsResponse_RateLimitInfo:
+		return "rate_limit_info", response.GetRateLimitInfo(), (*tetragon.RateLimitInfo)(nil)
+
+	}
+	return "", nil, nil
+}
+
+// ProcessEventMapEmpty returns a map from event field names (e.g. "process_exec") with nil as value
+func ProcessEventMapEmpty() map[string]any {
 	return map[string]any{
-		"process_exec":                response.GetProcessExec(),
-		"process_connect":             response.GetProcessConnect(),
-		"process_listen":              response.GetProcessListen(),
-		"tls":                         response.GetTls(),
-		"process_exit":                response.GetProcessExit(),
-		"process_close":               response.GetProcessClose(),
-		"process_accept":              response.GetProcessAccept(),
-		"process_kprobe":              response.GetProcessKprobe(),
-		"process_tracepoint":          response.GetProcessTracepoint(),
-		"process_sock_stats":          response.GetProcessSockStats(),
-		"process_http":                response.GetProcessHttp(),
-		"interface_stats":             response.GetInterfaceStats(),
-		"process_dns":                 response.GetProcessDns(),
-		"process_network_burst":       response.GetProcessNetworkBurst(),
-		"process_file":                response.GetProcessFile(),
-		"process_ip_error":            response.GetProcessIpError(),
-		"process_loader":              response.GetProcessLoader(),
-		"process_network_watermark":   response.GetProcessNetworkWatermark(),
-		"process_uprobe":              response.GetProcessUprobe(),
-		"process_udp_seq_check_error": response.GetProcessUdpSeqCheckError(),
-		"process_file_exec":           response.GetProcessFileExec(),
-		"process_icmp":                response.GetProcessIcmp(),
-		"process_rawsock_create":      response.GetProcessRawsockCreate(),
-		"process_rawsock_close":       response.GetProcessRawsockClose(),
-		"process_sandbox_syscall":     response.GetProcessSandboxSyscall(),
-		"process_throttle":            response.GetProcessThrottle(),
-		"process_lsm":                 response.GetProcessLsm(),
-		"test":                        response.GetTest(),
-		"rate_limit_info":             response.GetRateLimitInfo(),
+		"process_exec":                (*tetragon.ProcessExec)(nil),
+		"process_connect":             (*tetragon.ProcessConnect)(nil),
+		"process_listen":              (*tetragon.ProcessListen)(nil),
+		"tls":                         (*tetragon.Tls)(nil),
+		"process_exit":                (*tetragon.ProcessExit)(nil),
+		"process_close":               (*tetragon.ProcessClose)(nil),
+		"process_accept":              (*tetragon.ProcessAccept)(nil),
+		"process_kprobe":              (*tetragon.ProcessKprobe)(nil),
+		"process_tracepoint":          (*tetragon.ProcessTracepoint)(nil),
+		"process_sock_stats":          (*tetragon.ProcessSockStats)(nil),
+		"process_http":                (*tetragon.ProcessHttp)(nil),
+		"interface_stats":             (*tetragon.InterfaceStats)(nil),
+		"process_dns":                 (*tetragon.ProcessDns)(nil),
+		"process_network_burst":       (*tetragon.ProcessNetworkBurst)(nil),
+		"process_file":                (*tetragon.ProcessFile)(nil),
+		"process_ip_error":            (*tetragon.ProcessIpError)(nil),
+		"process_loader":              (*tetragon.ProcessLoader)(nil),
+		"process_network_watermark":   (*tetragon.ProcessNetworkWatermark)(nil),
+		"process_uprobe":              (*tetragon.ProcessUprobe)(nil),
+		"process_udp_seq_check_error": (*tetragon.ProcessUdpSeqCheckError)(nil),
+		"process_file_exec":           (*tetragon.ProcessFileExec)(nil),
+		"process_icmp":                (*tetragon.ProcessIcmp)(nil),
+		"process_rawsock_create":      (*tetragon.ProcessRawsockCreate)(nil),
+		"process_rawsock_close":       (*tetragon.ProcessRawsockClose)(nil),
+		"process_sandbox_syscall":     (*tetragon.ProcessSandboxSyscall)(nil),
+		"process_throttle":            (*tetragon.ProcessThrottle)(nil),
+		"process_lsm":                 (*tetragon.ProcessLsm)(nil),
+		"test":                        (*tetragon.Test)(nil),
+		"rate_limit_info":             (*tetragon.RateLimitInfo)(nil),
 	}
 }

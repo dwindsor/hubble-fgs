@@ -148,6 +148,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.metadata.image.override | string | `nil` |  |
 | tetragon.metadata.image.repository | string | `"quay.io/isovalent/hubble-enterprise-metadata"` |  |
 | tetragon.metadata.image.tag | string | `"current"` |  |
+| tetragon.nameOverride | string | `""` |  |
 | tetragon.podAnnotations.enabled | bool | `false` |  |
 | tetragon.pprof.address | string | `"localhost"` | The address at which to expose pprof. |
 | tetragon.pprof.enabled | bool | `false` | Whether to enable exposing pprof server. |
@@ -199,6 +200,7 @@ Helm chart for Tetragon Enterprise
 | tetragonOperator.failoverLease.namespace | string | `""` | Kubernetes Namespace in which the Lease resource is created. Defaults to the namespace where Tetragon is deployed in, if it's empty. |
 | tetragonOperator.forceUpdateCRDs | bool | `false` |  |
 | tetragonOperator.image | object | `{"override":null,"pullPolicy":"IfNotPresent","repository":"quay.io/isovalent/tetragon-operator","tag":"v1.17.0-rc.1"}` | tetragon-operator image. |
+| tetragonOperator.nameOverride | string | `""` | The name of the Tetragon Operator deployment. |
 | tetragonOperator.nodeSelector | object | `{}` | Steer the Tetragon Operator Deployment Pod placement via nodeSelector, tolerations and affinity rules. |
 | tetragonOperator.podAnnotations | object | `{}` | Annotations for the Tetragon Operator Deployment Pods. |
 | tetragonOperator.podInfo.enabled | bool | `true` | Enables the PodInfo CRD and the controller that reconciles PodInfo custom resources. |

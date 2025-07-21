@@ -64,6 +64,9 @@ func testCommand() *cobra.Command {
 
 			scanner := bufio.NewScanner(file)
 			unmarshaller := protojson.UnmarshalOptions{DiscardUnknown: true}
+			// Create a single empty (all values are nil) process event map
+			// this removes the need to do map allocations inside the loop
+			eventMap := helpers.ProcessEventMapEmpty()
 
 			matches := make([]*bool, 0)
 			for scanner.Scan() {
@@ -78,7 +81,22 @@ func testCommand() *cobra.Command {
 					continue
 				}
 
-				match, err := filters.EvalCEL(cmd.Context(), celProgram, helpers.ProcessEventMap(event))
+				// First we get the details about the event such as the name ("process_exec")
+				// and a casted pointer (*tetragon.ProcessExec) to the actual event. The third
+				// return value is always nil but casted to the appropriate type in order
+				// not to cause issues with the CEL evaluation.
+				evName, evData, evDefer := helpers.ProcessEventMapTuple(event)
+				// Set to the empty map the appropriate value in the correct position.
+				eventMap[evName] = evData
+				defer func() {
+					// When we are done make that nil again.
+					// evDefer is nil but casted to the appropriate type (i.e. (*tetragon.ProcessExec)(nil)).
+					// If we used nil here (without the cast) we were getting errors similar to:
+					// "error running CEL program: unsupported field selection target: (<nil>)<nil>"
+					eventMap[evName] = evDefer
+				}()
+
+				match, err := filters.EvalCEL(cmd.Context(), celProgram, eventMap)
 				if err != nil {
 					return err
 				}

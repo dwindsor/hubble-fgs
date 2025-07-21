@@ -112,27 +112,40 @@ func (a *alerter) Close() error {
 // This is a very inefficient implementation, as we evaluate every single event
 // against every single rule, regardless of the event type. Optimize as needed.
 func (a *alerter) evaluateRules(ctx context.Context, event *tetragon.GetEventsResponse) error {
-	var errs error
-	eventMap := helpers.ProcessEventMap(event)
-	rules := []*rule{}
+	// First we get the details about the event such as the name ("process_exec")
+	// and a casted pointer (*tetragon.ProcessExec) to the actual event. The third
+	// return value is always nil but casted to the appropriate type in order
+	// not to cause issues with the CEL evaluation.
+	evName, evData, evDefer := helpers.ProcessEventMapTuple(event)
+	// Set to the empty map the appropriate value in the correct position.
+	a.ruleManager.eventMap[evName] = evData
+	defer func() {
+		// When we are done make that nil again.
+		// evDefer is nil but casted to the appropriate type (i.e. (*tetragon.ProcessExec)(nil)).
+		// If we used nil here (without the cast) we were getting errors similar to:
+		// "error running CEL program: unsupported field selection target: (<nil>)<nil>"
+		a.ruleManager.eventMap[evName] = evDefer
+	}()
 
 	// keep only the rules that are related to that event
+	rules := []*rule{}
 	for _, r := range a.ruleManager.rules {
 		for _, n := range r.eventNames {
-			if !reflect.ValueOf(eventMap[n]).IsNil() { // is the incoming event related to that alert?
+			if !reflect.ValueOf(a.ruleManager.eventMap[n]).IsNil() { // is the incoming event related to that alert?
 				rules = append(rules, r)
 				break
 			}
 		}
 	}
 
+	var errs error
 	for _, r := range rules {
 		// Evaluate the rule
 		var timer time.Time
 		if option.Config.EnableAlertProfiling {
 			timer = time.Now()
 		}
-		match, err := filters.EvalCEL(ctx, r.cel, eventMap)
+		match, err := filters.EvalCEL(ctx, r.cel, a.ruleManager.eventMap)
 		if err != nil {
 			// Track evaluation errors
 			alertmetrics.AlertRuleEvaluationErrors.WithLabelValues(r.name).Inc()

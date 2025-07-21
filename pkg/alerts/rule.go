@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
@@ -56,6 +57,7 @@ type RuleManager interface {
 type ruleManager struct {
 	rules    map[string]*rule
 	encoders map[string]*jsonEncoder
+	eventMap map[string]any
 	mutex    sync.RWMutex
 }
 
@@ -67,6 +69,9 @@ func newRuleManager() *ruleManager {
 	return &ruleManager{
 		rules:    make(map[string]*rule),
 		encoders: make(map[string]*jsonEncoder),
+		// Create a single empty (all values are nil) process event map
+		// this removes the need to do map allocations for every incoming event.
+		eventMap: helpers.ProcessEventMapEmpty(),
 	}
 }
 
