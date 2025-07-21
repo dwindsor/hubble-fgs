@@ -38,14 +38,14 @@ struct {
 	__type(key, u64);
 	__type(value, struct tcpsocketmap_value);
 	__uint(max_entries, 32768);
-} tg_tcpsocket_map SEC(".maps");
+} tg_l3_tcpsk SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __s32);
 	__type(value, __s64);
 	__uint(max_entries, 1);
-} tg_tcpsocket_map_stats SEC(".maps");
+} tg_l3_tcpsk_stats SEC(".maps");
 
 /* Separate map to hold the bytes_received at the time a FIN was received.
  * This allows us to avoid including the potential extra byte that appears
@@ -60,7 +60,7 @@ struct {
 	__type(key, u64);
 	__type(value, u64);
 	__uint(max_entries, 32768);
-} tg_tcp_finrx_map SEC(".maps");
+} tg_l3_tcp_finrx SEC(".maps");
 
 struct tcp_send_check_sample_cfg {
 	__u8 watermarksEnable;
@@ -85,7 +85,7 @@ struct {
 	__type(key, __u32);
 	__type(value, struct tcp_send_check_sample_cfg);
 	__uint(max_entries, 1);
-} tg_tcp_send_check_sampler SEC(".maps");
+} tg_l3_tcp_cfg SEC(".maps");
 
 /* Handle the case where an entry already exists for this cookie. This could
  * be the correct entry (so do nothing) or an incorrect entry (correct it).
@@ -97,14 +97,14 @@ struct {
 static inline __attribute__((always_inline)) void
 add_tcpsocketmap(u64 *cookie, struct tcpsocketmap_value *v, bool update_tuple_map)
 {
-	struct tcpsocketmap_value *existing = (struct tcpsocketmap_value *)map_lookup_elem(&tg_tcpsocket_map, cookie);
+	struct tcpsocketmap_value *existing = (struct tcpsocketmap_value *)map_lookup_elem(&tg_l3_tcpsk, cookie);
 	int zero = 0;
 	__s64 *cntr;
 	int err;
 
-	err = map_update_elem(&tg_tcpsocket_map, cookie, v, 0);
+	err = map_update_elem(&tg_l3_tcpsk, cookie, v, 0);
 	if (!err) {
-		if (!existing && (cntr = (__s64 *)map_lookup_elem(&tg_tcpsocket_map_stats, &zero)))
+		if (!existing && (cntr = (__s64 *)map_lookup_elem(&tg_l3_tcpsk_stats, &zero)))
 			*cntr = *cntr + 1;
 		if (update_tuple_map)
 			add_socket_tuple_map(&v->tuple, cookie);
@@ -114,12 +114,12 @@ add_tcpsocketmap(u64 *cookie, struct tcpsocketmap_value *v, bool update_tuple_ma
 static inline __attribute__((always_inline)) void
 del_tcpsocketmap(u64 *cookie)
 {
-	int err = map_delete_elem(&tg_tcpsocket_map, cookie);
+	int err = map_delete_elem(&tg_l3_tcpsk, cookie);
 	int zero = 0;
 	__s64 *cntr;
 
 	if (!err) {
-		if ((cntr = (__s64 *)map_lookup_elem(&tg_tcpsocket_map_stats, &zero)))
+		if ((cntr = (__s64 *)map_lookup_elem(&tg_l3_tcpsk_stats, &zero)))
 			*cntr = *cntr - 1;
 		del_socket_tuple_map(cookie);
 	}
@@ -128,7 +128,7 @@ del_tcpsocketmap(u64 *cookie)
 static inline __attribute__((always_inline)) struct tcpsocketmap_value *
 lookup_tcpsocketmap(u64 *cookie)
 {
-	return (struct tcpsocketmap_value *)map_lookup_elem(&tg_tcpsocket_map, cookie);
+	return (struct tcpsocketmap_value *)map_lookup_elem(&tg_l3_tcpsk, cookie);
 }
 
 static inline __attribute__((always_inline)) bool

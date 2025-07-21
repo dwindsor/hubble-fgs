@@ -89,7 +89,7 @@ __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
 	event->version = process->version;
 
 	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_event_disable_config, &zero);
+		&tg_l3_tcp_dsble, &zero);
 	if (!event_cfg)
 		return 0;
 

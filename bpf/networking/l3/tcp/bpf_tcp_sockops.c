@@ -119,7 +119,7 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	skops_tuple(cookie, val, skops);
 
 	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_event_disable_config, &zero);
+		&tg_l3_tcp_dsble, &zero);
 	if (!event_cfg)
 		return 0;
 
@@ -253,7 +253,7 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	socket->closed = 1;
 
 	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_event_disable_config, &zero);
+		&tg_l3_tcp_dsble, &zero);
 	if (!event_cfg)
 		return 0;
 

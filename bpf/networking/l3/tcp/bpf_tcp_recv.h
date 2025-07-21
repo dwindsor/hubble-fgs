@@ -85,7 +85,7 @@ tcp_check_fin_rx(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cooki
 	// rogue FIN was received after the real FIN but before the socket has
 	// been destroyed).
 	probe_read_kernel(&bytes_received, sizeof(bytes_received), _(&tcp->bytes_received));
-	map_update_elem(&tg_tcp_finrx_map, &c, &bytes_received, 0);
+	map_update_elem(&tg_l3_tcp_finrx, &c, &bytes_received, 0);
 
 	return SK_PASS;
 }
@@ -175,7 +175,7 @@ int tcp_handler_send(struct __sk_buff *skb)
 	if (!rcv_wnd && state == TCP_ESTABLISHED)
 		socket->stats.zero_window++;
 
-	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
+	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_l3_tcp_cfg, &zero);
 	if (cfg && cfg->watermarksEnable && socket->key.pid != 0) {
 		struct socketmap_value process = {
 			.key.ktime = socket->key.ktime,

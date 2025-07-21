@@ -145,7 +145,7 @@ destroy_socket(void *ctx, u64 cookie)
 			if (socket && !socket->closed)
 				__event_tcp_close(ctx, (struct sock *)cookie, TCP_CLOSE);
 			del_tcpsocketmap(&cookie);
-			map_delete_elem(&tg_tcp_finrx_map, &cookie);
+			map_delete_elem(&tg_l3_tcp_finrx, &cookie);
 			break;
 		}
 	}

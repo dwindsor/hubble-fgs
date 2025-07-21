@@ -68,7 +68,7 @@ event_post_connect(void *ctx, struct msg_ip_with_tnp_event *val)
 	int zero = 0;
 
 	event_cfg = (struct event_disable_config *)
-		map_lookup_elem(&tg_event_disable_config, &zero);
+		map_lookup_elem(&tg_l3_tcp_dsble, &zero);
 
 	if (!event_cfg)
 		return 0;

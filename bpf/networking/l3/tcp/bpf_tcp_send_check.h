@@ -85,7 +85,7 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	probe_read_kernel(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	probe_read_kernel(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 
-	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
+	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_l3_tcp_cfg, &zero);
 	process.create_time = socket->stats.create_time;
 	process.key = socket->key;
 	process.protocol = socket->tuple.proto;

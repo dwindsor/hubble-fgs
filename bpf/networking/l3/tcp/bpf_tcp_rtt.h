@@ -34,7 +34,7 @@ __tcp_ack_update_rtt(void *ctx, struct tcp_sock *skp, u32 flag, s64 seq_rtt_us, 
 	u64 cookie;
 
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(
-		&tg_tcp_send_check_sampler, &zero);
+		&tg_l3_tcp_cfg, &zero);
 	if (!cfg || !cfg->rttEnable)
 		return 0;
 

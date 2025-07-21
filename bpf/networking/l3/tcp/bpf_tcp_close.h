@@ -86,7 +86,7 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	socket->closed = 1;
 
 	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_event_disable_config, &zero);
+		&tg_l3_tcp_dsble, &zero);
 	if (!event_cfg)
 		return 0;
 

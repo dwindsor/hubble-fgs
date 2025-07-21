@@ -175,9 +175,9 @@ var (
 	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
 	ConfigMap           = program.MapUserFrom(base.CfgMap)
 
-	FinRxMap = program.MapBuilder("tg_tcp_finrx_map", CloseKprobe, CloseFentry, TcpSockops)
+	FinRxMap = program.MapBuilder("tg_l3_tcp_finrx", CloseKprobe, CloseFentry, TcpSockops)
 
-	SecurityAcceptMap = program.MapBuilder("tg_tcp_accept_socket_to_sk_map", SecurityAccept)
+	SecurityAcceptMap = program.MapBuilder("tg_l3_tcp_accsk", SecurityAccept)
 
 	// TCP Runtime maps, created in internal/ip
 	TcpSocketMap   = program.MapUserFrom(base.TcpSocketMap)
@@ -191,11 +191,11 @@ var (
 	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", TcpSockops)
 
 	// Maps for watermarks detection
-	SendCheckSampler            = program.MapBuilder("tg_tcp_send_check_sampler", SendCheck4)
+	SendCheckSampler            = program.MapBuilder("tg_l3_tcp_cfg", SendCheck4)
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", SendCheck4)
 
 	// Map for disabling events
-	EventDisableConfig = program.MapBuilder("tg_event_disable_config", ConnectKprobe, ConnectFentry, TcpSockops)
+	EventDisableConfig = program.MapBuilder("tg_l3_tcp_dsble", ConnectKprobe, ConnectFentry, TcpSockops)
 
 	// LPM maps, created in internal/ip
 	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)

@@ -136,7 +136,7 @@ get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk)
 	/* If we've received a FIN, and the value stored is one less than the current value,
 	 * then use the stored value as the current value likely includes an ACK for the FIN. */
 	probe_read_kernel(&bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
-	fin_bytes_recv_ptr = (__u64 *)map_lookup_elem(&tg_tcp_finrx_map, &cookie);
+	fin_bytes_recv_ptr = (__u64 *)map_lookup_elem(&tg_l3_tcp_finrx, &cookie);
 	if (bytes_received > 0 && fin_bytes_recv_ptr && *fin_bytes_recv_ptr == bytes_received - 1)
 		bytes_received--;
 	WRITE_ONCE(stats->bytes_received, bytes_received);
@@ -181,7 +181,7 @@ get_socket_stats(struct sock *sk,
 	//stats->tozerowin populated in-band TCP hook watching for zero window
 	stats->zero_window = socket->stats.zero_window;
 
-	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_tcp_send_check_sampler, &zero);
+	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_l3_tcp_cfg, &zero);
 	if (cfg && cfg->rttEnable) {
 #pragma unroll
 		for (i = 0; i < 8; i++) {

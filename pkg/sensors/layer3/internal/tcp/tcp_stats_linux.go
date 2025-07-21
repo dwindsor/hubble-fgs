@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	TcpMapName     = "tg_tcpsocket_map"
+	TcpMapName     = "tg_l3_tcpsk"
 	statsCacheSize = 32000
 )
 

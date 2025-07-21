@@ -55,7 +55,7 @@ __security_socket_accept(struct sock *sk, struct socket *newsocket)
 {
 	u64 cookie = (u64)newsocket;
 
-	map_update_elem(&tg_tcp_accept_socket_to_sk_map, &cookie, &sk, 0);
+	map_update_elem(&tg_l3_tcp_accsk, &cookie, &sk, 0);
 	return 0;
 }
 
@@ -79,7 +79,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	if (family != AF_INET && family != AF_INET6)
 		return 0;
 
-	cookie = (u64 *)map_lookup_elem(&tg_tcp_accept_socket_to_sk_map, &parent_cookie);
+	cookie = (u64 *)map_lookup_elem(&tg_l3_tcp_accsk, &parent_cookie);
 	if (likely(cookie)) {
 		listen_cookie = (u64)*cookie;
 		listen_process = lookup_socketmap(&listen_cookie);
@@ -88,7 +88,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 
 	/* This is to handle the case where a socket is blocking on accept
 	 * when Tetragon started. In this case the socket created on accept()
-	 * will not have an entry yet in the tg_tcp_accept_socket_to_sk_map.
+	 * will not have an entry yet in the tg_l3_tcp_accsk.
 	 * Nor will it have an entry in the socketmap because the socket
 	 * create was before starting Tetragon as well. This means we will
 	 * not be able to find its parent listen socket. So we need to find
@@ -154,7 +154,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	// Don't need to add the tuple because add_socketmap() will already have done so.
 	add_tcpsocketmap(&newcookie, accept_socket, false);
 
-	event_cfg = (struct event_disable_config *)map_lookup_elem(&tg_event_disable_config, &zero);
+	event_cfg = (struct event_disable_config *)map_lookup_elem(&tg_l3_tcp_dsble, &zero);
 	if (!event_cfg)
 		return 0;
 

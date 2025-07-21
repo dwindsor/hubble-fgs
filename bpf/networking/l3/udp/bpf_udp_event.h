@@ -117,7 +117,7 @@ emit_udp_event(void *ctx, int op, u64 *cookie, u64 cookie_ver, u64 ps_ver, struc
 	u32 zero = 0;
 
 	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_event_disable_config, &zero);
+		&tg_l3_tcp_dsble, &zero);
 	if (!event_cfg)
 		return;
 

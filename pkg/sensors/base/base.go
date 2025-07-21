@@ -134,8 +134,8 @@ var (
 	SocketTupleRevMap           = program.MapBuilder(socktrackmaps.SocketTupleRevMapName, Exit)
 	SocketTupleHintMap          = program.MapBuilder(socktrackmaps.SocketTupleHintMapName, Exit)
 	CfgMap                      = program.MapBuilder(socktrackmaps.SocketCfgMapName, Exit)
-	TcpSocketMap                = program.MapBuilder("tg_tcpsocket_map", Exit)
-	TcpSocketMapStats           = program.MapBuilder("tg_tcpsocket_map_stats", Exit)
+	TcpSocketMap                = program.MapBuilder("tg_l3_tcpsk", Exit)
+	TcpSocketMapStats           = program.MapBuilder("tg_l3_tcpsk_stats", Exit)
 	DNSEndpointIDMap            = program.MapBuilder(dnsparser.DNSEndpointIDMapName, Exit)
 
 	ExecveTailCallsMap  = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)

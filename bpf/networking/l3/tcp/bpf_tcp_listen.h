@@ -40,7 +40,7 @@ struct {
 	__type(key, __u64);
 	__type(value, __u64);
 	__uint(max_entries, 32000);
-} tg_tcp_accept_socket_to_sk_map SEC(".maps");
+} tg_l3_tcp_accsk SEC(".maps");
 
 static inline __attribute__((always_inline)) int
 __event_sys_listen(void *ctx, struct sock *skp)
@@ -117,7 +117,7 @@ __event_sys_listen(void *ctx, struct sock *skp)
 				  _(&(skp->__sk_common.skc_v6_rcv_saddr)));
 	}
 	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_event_disable_config, &zero);
+		&tg_l3_tcp_dsble, &zero);
 	if (!event_cfg)
 		return 0;
 

@@ -27,6 +27,6 @@ struct {
 	__type(key, __u32);
 	__type(value, struct event_disable_config);
 	__uint(max_entries, 1);
-} tg_event_disable_config SEC(".maps");
+} tg_l3_tcp_dsble SEC(".maps");
 
 #endif
