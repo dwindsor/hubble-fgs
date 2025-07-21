@@ -63,28 +63,28 @@ struct {
 	__type(key, struct socket_tuple_key);
 	__type(value, u64);
 	__uint(max_entries, 32768);
-} tg_socket_tuple_map SEC(".maps");
+} tg_l3_sk_tup SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __s32);
 	__type(value, __s64);
 	__uint(max_entries, 1);
-} tg_socket_tuple_map_stats SEC(".maps");
+} tg_l3_sk_tup_stats SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, u64);
 	__type(value, struct socket_tuple_key);
 	__uint(max_entries, 32768);
-} tg_rev_tuple_map SEC(".maps");
+} tg_l3_sk_revtup SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, struct socket_tuple_hint_key);
 	__type(value, struct socket_tuple_hint_value);
 	__uint(max_entries, 32768);
-} tg_socket_tuple_hint_map SEC(".maps");
+} tg_l3_sk_tuphnt SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -237,7 +237,7 @@ set_tuple_hint(struct socket_tuple_key *key)
 	hkey.protocol = key->protocol;
 	hkey.sport = key->sport;
 
-	val = map_lookup_elem(&tg_socket_tuple_hint_map, &hkey);
+	val = map_lookup_elem(&tg_l3_sk_tuphnt, &hkey);
 	if (!val)
 		val = &new_val;
 
@@ -250,7 +250,7 @@ set_tuple_hint(struct socket_tuple_key *key)
 	val->refcnt++;
 
 	if (val == &new_val)
-		map_update_elem(&tg_socket_tuple_hint_map, &hkey, val, 0);
+		map_update_elem(&tg_l3_sk_tuphnt, &hkey, val, 0);
 }
 
 static inline __attribute__((always_inline)) void
@@ -264,7 +264,7 @@ delete_tuple_hint(struct socket_tuple_key *key)
 	hkey.protocol = key->protocol;
 	hkey.sport = key->sport;
 
-	val = map_lookup_elem(&tg_socket_tuple_hint_map, &hkey);
+	val = map_lookup_elem(&tg_l3_sk_tuphnt, &hkey);
 	if (!val)
 		return;
 
@@ -277,7 +277,7 @@ delete_tuple_hint(struct socket_tuple_key *key)
 	if (val->refcnt)
 		val->refcnt--;
 	if (!val->refcnt)
-		map_delete_elem(&tg_socket_tuple_hint_map, &hkey);
+		map_delete_elem(&tg_l3_sk_tuphnt, &hkey);
 }
 
 static inline __attribute__((always_inline)) struct socket_tuple_hint_value *
@@ -290,7 +290,7 @@ get_tuple_hint(struct socket_tuple_key *key)
 	hkey.protocol = key->protocol;
 	hkey.sport = key->sport;
 
-	return map_lookup_elem(&tg_socket_tuple_hint_map, &hkey);
+	return map_lookup_elem(&tg_l3_sk_tuphnt, &hkey);
 }
 
 static inline __attribute__((always_inline)) void
@@ -302,14 +302,14 @@ __add_socket_tuple_map(u64 *cookie, struct socket_tuple_key *key)
 	__u64 *val;
 	int err;
 
-	val = map_lookup_elem(&tg_socket_tuple_map, key);
+	val = map_lookup_elem(&tg_l3_sk_tup, key);
 	if (val && *val == *cookie)
 		return;
 
 	if (val)
 		delete_tuple_hint(key);
 
-	err = map_update_elem(&tg_socket_tuple_map, key, &c, 0);
+	err = map_update_elem(&tg_l3_sk_tup, key, &c, 0);
 
 	if (!err) {
 		// Add reverse mapping from cookie to tuple so that we can easily
@@ -318,8 +318,8 @@ __add_socket_tuple_map(u64 *cookie, struct socket_tuple_key *key)
 		// remote IP address could be empty at creation and filled in at
 		// deletion; also source port is often available at creation but not
 		// at deletion.)
-		map_update_elem(&tg_rev_tuple_map, &c, key, 0);
-		if (!val && (cntr = (__s64 *)map_lookup_elem(&tg_socket_tuple_map_stats, &zero)))
+		map_update_elem(&tg_l3_sk_revtup, &c, key, 0);
+		if (!val && (cntr = (__s64 *)map_lookup_elem(&tg_l3_sk_tup_stats, &zero)))
 			*cntr = *cntr + 1;
 		set_tuple_hint(key);
 	}
@@ -368,18 +368,18 @@ del_socket_tuple_map(u64 *cookie)
 	if (!icmp_tracking_enabled())
 		return;
 
-	key = map_lookup_elem(&tg_rev_tuple_map, &c);
+	key = map_lookup_elem(&tg_l3_sk_revtup, &c);
 	if (!key)
 		return;
 
-	err = map_delete_elem(&tg_socket_tuple_map, key);
+	err = map_delete_elem(&tg_l3_sk_tup, key);
 	if (!err) {
-		if ((cntr = (__s64 *)map_lookup_elem(&tg_socket_tuple_map_stats, &zero)))
+		if ((cntr = (__s64 *)map_lookup_elem(&tg_l3_sk_tup_stats, &zero)))
 			*cntr = *cntr - 1;
 		delete_tuple_hint(key);
 	}
 
-	map_delete_elem(&tg_rev_tuple_map, &c);
+	map_delete_elem(&tg_l3_sk_revtup, &c);
 }
 
 struct netns_ipv4___with_l3mdev {
@@ -458,7 +458,7 @@ lookup_socket_tuple_map(struct socket_tuple_key *key, int dif, int sdif)
 					lookup_key.bound_dev_if = 0;
 					break;
 				}
-				cookie = map_lookup_elem(&tg_socket_tuple_map, &lookup_key);
+				cookie = map_lookup_elem(&tg_l3_sk_tup, &lookup_key);
 				if (!cookie)
 					continue;
 				if (lookup_key.bound_dev_if != 0 || !sdif || get_l3mdev_accept(lookup_key.net))

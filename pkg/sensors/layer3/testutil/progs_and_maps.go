@@ -110,10 +110,10 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	socketMap := SensorMapByProgName(sensorProgs, "tg_l3_sk", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
 	socketMapStats := SensorMapByProgName(sensorProgs, "tg_l3_sk_stats", []string{tcpSecurityGraft, fdLookupProg})
 	tcpSocketMap := SensorMapByProgName(sensorProgs, "tg_tcpsocket_map", []string{tcpSockopsProg, securitySkFreeProg, tcpSecurityGraft, fdLookupProg, tcpRstProg})
-	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map", []string{tcpSockopsProg, tcpSecurityGraft})
-	socketTupleMapStats := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map_stats", []string{tcpSockopsProg, tcpSecurityGraft})
-	socketTupleRevMap := SensorMapByProgName(sensorProgs, "tg_rev_tuple_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
-	socketTupleHintMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_hint_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
+	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_tup", []string{tcpSockopsProg, tcpSecurityGraft})
+	socketTupleMapStats := SensorMapByProgName(sensorProgs, "tg_l3_sk_tup_stats", []string{tcpSockopsProg, tcpSecurityGraft})
+	socketTupleRevMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_revtup", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
+	socketTupleHintMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_tuphnt", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
 	tcpMonMap := SensorMapByProgName(sensorProgs, "tcpmon_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
 	execveMap := SensorMapByProgName(sensorProgs, "execve_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
 	cfgMap := SensorMapByProgName(sensorProgs, "tg_l3_cfg", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
@@ -301,19 +301,19 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		securitySkFreeProg, fdLookupProg,
 	})
 
-	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map", []string{
+	socketTupleMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_tup", []string{
 		tcpConnectProg, tcpListenProg, tcpSecurityGraft, fdLookupProg,
 	})
 
-	socketTupleMapStats := SensorMapByProgName(sensorProgs, "tg_socket_tuple_map_stats", []string{
+	socketTupleMapStats := SensorMapByProgName(sensorProgs, "tg_l3_sk_tup_stats", []string{
 		tcpConnectProg, tcpListenProg, tcpSecurityGraft, fdLookupProg,
 	})
 
-	socketTupleRevMap := SensorMapByProgName(sensorProgs, "tg_rev_tuple_map", []string{
+	socketTupleRevMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_revtup", []string{
 		tcpConnectProg, tcpListenProg, tcpSecurityGraft, fdLookupProg,
 	})
 
-	socketTupleHintMap := SensorMapByProgName(sensorProgs, "tg_socket_tuple_hint_map", []string{
+	socketTupleHintMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_tuphnt", []string{
 		tcpConnectProg, tcpListenProg, tcpSecurityGraft, fdLookupProg,
 	})
 

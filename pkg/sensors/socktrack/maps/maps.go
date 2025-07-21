@@ -13,10 +13,10 @@ package socktrackmaps
 const (
 	SocketMapName          = "tg_l3_sk"
 	SocketStatsName        = "tg_l3_sk_stats"
-	SocketTupleMapName     = "tg_socket_tuple_map"
-	SocketTupleStatsName   = "tg_socket_tuple_map_stats"
-	SocketTupleRevMapName  = "tg_rev_tuple_map"
-	SocketTupleHintMapName = "tg_socket_tuple_hint_map"
+	SocketTupleMapName     = "tg_l3_sk_tup"
+	SocketTupleStatsName   = "tg_l3_sk_tup_stats"
+	SocketTupleRevMapName  = "tg_l3_sk_revtup"
+	SocketTupleHintMapName = "tg_l3_sk_tuphnt"
 	SocketVersionMapName   = "tg_ver_map"
 	SocketCfgMapName       = "tg_l3_cfg"
 )
