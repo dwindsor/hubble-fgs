@@ -117,7 +117,7 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	tcpMonMap := SensorMapByProgName(sensorProgs, "tcpmon_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
 	execveMap := SensorMapByProgName(sensorProgs, "execve_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
 	cfgMap := SensorMapByProgName(sensorProgs, "tg_l3_cfg", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
-	verMap := SensorMapByProgName(sensorProgs, "tg_ver_map", []string{tcpSecurityGraft, fdLookupProg})
+	verMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_ver", []string{tcpSecurityGraft, fdLookupProg})
 	acceptMap := SensorMapByProgName(sensorProgs, "tg_l3_tcp_accsk", []string{tcpSecurityAccept, tcpSecurityGraft})
 	sendCheckSamplerMap := SensorMapByProgName(sensorProgs, "tg_l3_tcp_cfg", []string{cgroupEgressProg, cgroupIngressProg})
 	fdLookupConfigMap := SensorMapByProgName(sensorProgs, "fd_lookup_config_map", []string{fdLookupProg})
@@ -329,7 +329,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		tcpConnectProg, tcpListenProg, tcpSecurityGraft, fdLookupProg,
 	})
 
-	verMap := SensorMapByProgName(sensorProgs, "tg_ver_map", []string{
+	verMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_ver", []string{
 		tcpSecurityGraft, fdLookupProg,
 	})
 

@@ -17,6 +17,6 @@ const (
 	SocketTupleStatsName   = "tg_l3_sk_tup_stats"
 	SocketTupleRevMapName  = "tg_l3_sk_revtup"
 	SocketTupleHintMapName = "tg_l3_sk_tuphnt"
-	SocketVersionMapName   = "tg_ver_map"
+	SocketVersionMapName   = "tg_l3_sk_ver"
 	SocketCfgMapName       = "tg_l3_cfg"
 )

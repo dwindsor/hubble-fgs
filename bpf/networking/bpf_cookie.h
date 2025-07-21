@@ -57,7 +57,7 @@ struct {
 	__type(key, u32);
 	__type(value, u64);
 	__uint(max_entries, 1);
-} tg_ver_map SEC(".maps");
+} tg_l3_sk_ver SEC(".maps");
 
 static inline __attribute__((always_inline)) u64
 cookie_inc_version()
@@ -65,7 +65,7 @@ cookie_inc_version()
 	u64 *version;
 	u32 zero = 0;
 
-	version = (u64 *)map_lookup_elem(&tg_ver_map, &zero);
+	version = (u64 *)map_lookup_elem(&tg_l3_sk_ver, &zero);
 	if (!version)
 		return 0;
 	__sync_fetch_and_add(version, 1);
