@@ -402,10 +402,8 @@ func (p ExactPathFileMatcher) String() string {
 	return fmt.Sprintf("exact:[%s]", p.Path)
 }
 
-func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, action uint32, locationFn func(v *fileapi.InodeVal)) (int, int, error) {
+func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, action uint32, locationFn func(v *fileapi.InodeVal)) error {
 	l := logger.GetLogger()
-	totalFiles := 0
-	totalDirectories := 0
 
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -470,8 +468,6 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 			case RemoveFromMap:
 				store.RemoveInode(key)
 			}
-
-			totalFiles++
 		case mode.IsDir():
 			key := fileapi.InodeKey{
 				Ino:      stat.Ino,
@@ -503,8 +499,6 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 			case RemoveFromMap:
 				store.RemoveInode(key)
 			}
-
-			totalDirectories++
 		case IsSymlink(mode):
 			l.Warn(path + " is still a symlink\n")
 		default:
@@ -517,12 +511,12 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 	path := matcher.GetWalkPath()
 	paths, err := GetPrefixMatch(path)
 	if err != nil {
-		return 0, 0, err
+		return err
 	}
 
 	for _, p := range paths {
 		if err := filepath.Walk(p, walkFn); err != nil {
-			return 0, 0, err
+			return err
 		}
 	}
 
@@ -553,7 +547,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 				continue
 			}
 			// on other os.Lstat types of error we just return that
-			return 0, 0, statErr
+			return statErr
 		}
 
 		if mode := flInfo.Mode(); !mode.IsDir() {
@@ -562,7 +556,7 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 
 		stat, ok := flInfo.Sys().(*syscall.Stat_t)
 		if !ok {
-			return 0, 0, fmt.Errorf("stat is not a syscall.Stat_t")
+			return fmt.Errorf("stat is not a syscall.Stat_t")
 		}
 
 		key := fileapi.InodeKey{
@@ -595,13 +589,11 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 		}
 
 		if err := store.AddInode(key, val); err != nil {
-			return 0, 0, fmt.Errorf("failed to call addDirPath: %w", err)
+			return fmt.Errorf("failed to call addDirPath: %w", err)
 		}
-
-		totalDirectories++
 	}
 
-	return totalFiles, totalDirectories, nil
+	return nil
 }
 
 func PathPatternToString(p v1alpha1.FilePathPattern) string {

@@ -307,22 +307,20 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 			continue
 		}
 
-		if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
+		if err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
 			logger.GetLogger().Warn("Adding host files/directories failed", "path", fm.PathPatternToString(p), "tracing-policy", args.PolicyName, logfields.Error, err)
 		} else {
 			logger.GetLogger().Debug("Added host files/directories",
 				"path", fm.PathPatternToString(p),
-				"tracing-policy", args.PolicyName,
-				"num-files",
-				fNum, "num-dirs", dNum)
+				"tracing-policy", args.PolicyName)
 		}
 	}
 
 	for _, matcher := range prefixTree.Traverse() {
-		if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(0), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil { // rule ID will be overridden on match
+		if err := fm.WalkPathRaw(matcher, uint32(0), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil { // rule ID will be overridden on match
 			logger.GetLogger().Warn("Adding host files/directories failed", "tracing-policy", args.PolicyName, logfields.Error, err)
 		} else {
-			logger.GetLogger().Debug("Added host files/directories", "tracing-policy", args.PolicyName, "num-files", fNum, "num-dirs", dNum)
+			logger.GetLogger().Debug("Added host files/directories", "tracing-policy", args.PolicyName)
 		}
 	}
 
@@ -330,14 +328,12 @@ func tracingPolicyInit(args *fm.FsScannerInit, reply *map[fileapi.InodeKey]filea
 		matcher := fm.PrefixPathMatcher{
 			Prefix: p,
 		}
-		if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
+		if err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
 			logger.GetLogger().Warn("Excluding host files/directories failed", "path", p, "tracing-policy", args.PolicyName, logfields.Error, err)
 		} else {
 			logger.GetLogger().Debug("Excluded host files/directories",
 				"path", p,
-				"tracing-policy", args.PolicyName,
-				"num-files",
-				fNum, "num-dirs", dNum)
+				"tracing-policy", args.PolicyName)
 		}
 	}
 
@@ -663,26 +659,24 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 					continue
 				}
 
-				if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
+				if err := fm.WalkPathRaw(matcher, uint32(i), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil {
 					logger.GetLogger().Warn("Adding container files/directories failed",
 						"path", fm.PathPatternToString(p), "tracing-policy", tp.Spec, "containerID", containerID, logfields.Error, err)
 				} else {
 					logger.GetLogger().Debug("Added container files/directories",
 						"path", fm.PathPatternToString(p),
 						"tracing-policy", tp.Spec,
-						"containerID", containerID,
-						"num-files", fNum,
-						"num-dirs", dNum)
+						"containerID", containerID)
 				}
 			}
 
 			for _, matcher := range prefixTree.Traverse() {
-				if fNum, dNum, err := fm.WalkPathRaw(matcher, uint32(0), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil { // rule ID will be overridden on match
+				if err := fm.WalkPathRaw(matcher, uint32(0), maps, fm.AddToMap, fm.FilterMatch, locFn); err != nil { // rule ID will be overridden on match
 					logger.GetLogger().Warn("Adding container files/directories failed",
 						logfields.Error, err, "tracing-policy", tp.Spec, "containerID", containerID)
 				} else {
 					logger.GetLogger().Debug("Added container files/directories",
-						"tracing-policy", tp.Spec, "containerID", containerID, "num-files", fNum, "num-dirs", dNum)
+						"tracing-policy", tp.Spec, "containerID", containerID)
 				}
 			}
 
@@ -690,15 +684,13 @@ func tracingPolicyContainerInit(args *fm.FsScannerContainerInit, reply *map[file
 				matcher := fm.PrefixPathMatcher{
 					Prefix: p,
 				}
-				if fNum, dNum, err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
+				if err := fm.WalkPathRaw(matcher, 0, maps, fm.RemoveFromMap, fm.FilterIgnore, locFn); err != nil {
 					logger.GetLogger().Warn("Excluding container files/directories failed", "path", p, "tracing-policy", tp.Spec, "containerID", containerID, logfields.Error, err)
 				} else {
 					logger.GetLogger().Debug("Excluded container files/directories",
 						"path", p,
 						"tracing-policy", tp.Spec,
-						"containerID", containerID,
-						"num-files", fNum,
-						"num-dirs", dNum)
+						"containerID", containerID)
 				}
 			}
 
