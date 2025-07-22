@@ -45,8 +45,9 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 				     msg->parent_ino, msg->parent_fs.dev);
 	if (!file_val)
 		return 0;
-	// we don't care for anything inside this directory
-	if (file_val->action == FILTER_IGNORE)
+	if (file_val->mode != HASH_MAP_FILE_MODE_DIRECTORY) // we care only for directories here
+		return 0;
+	if (file_val->action == FILTER_IGNORE) // we don't care for anything inside this directory
 		return 0;
 
 	err = generate_new_file_path(dentry, msg, file_val);

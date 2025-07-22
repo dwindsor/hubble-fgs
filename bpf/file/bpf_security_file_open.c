@@ -70,8 +70,9 @@ file_open(void *ctx, struct file *file)
 	// we cannot find that so let's check the directory
 	if (!file_val)
 		goto check_dir;
-	// we don't care for anything inside this directory
-	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR)
+	if (file_val->mode != HASH_MAP_FILE_MODE_FILE && file_val->mode != HASH_MAP_FILE_MODE_DIRECTORY) // we care only for files and directories here
+		return 0;
+	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR) // we don't care for anything inside this directory
 		return 0;
 
 	memcpy(msg->path.str, file_val->path, 256);
@@ -89,8 +90,9 @@ check_dir:
 				     msg->parent_ino, msg->parent_fs.dev);
 	if (!file_val)
 		return 0;
-	// we don't care for anything inside this directory
-	if (file_val->action == FILTER_IGNORE)
+	if (file_val->mode != HASH_MAP_FILE_MODE_DIRECTORY) // we care only for directories here
+		return 0;
+	if (file_val->action == FILTER_IGNORE) // we don't care for anything inside this directory
 		return 0;
 
 	err = generate_new_file_path(dentry, msg, file_val);

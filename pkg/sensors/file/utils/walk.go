@@ -408,6 +408,8 @@ func translateMode(fileinfo fs.FileInfo) uint16 {
 		return fileapi.HashMapFileModeFile
 	case mode.IsDir():
 		return fileapi.HashMapFileModeDirectory
+	case IsSocket(mode.Type()):
+		return fileapi.HashMapFileModeSocket
 	default:
 		return fileapi.HashMapFileModeUnknown
 	}
@@ -423,7 +425,8 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 		}
 
 		mode := info.Mode()
-		if !mode.IsRegular() && !mode.IsDir() && !IsSymlink(mode) && !IsBlockDevice(mode) && !IsCharDevice(mode) {
+		// First check for the type of file.
+		if !mode.IsRegular() && !mode.IsDir() && !IsSymlink(mode) && !IsBlockDevice(mode) && !IsCharDevice(mode) && !IsSocket(mode) {
 			CheckFileMode(mode, path)
 			return nil
 		}
@@ -442,24 +445,25 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 			return err
 		}
 
-		if !matcher.MatchPath(path, fileinfo.Mode(), &rule) {
+		mode = fileinfo.Mode()
+		// Second check for the type of file. We need that as we evaluated symbolic links before.
+		if !mode.IsRegular() && !mode.IsDir() && !IsBlockDevice(mode) && !IsCharDevice(mode) && !IsSocket(mode) {
+			CheckFileMode(mode, path)
+			return nil
+		} else if IsSymlink(mode) {
+			l.Warn("symlink evaluated to another symlink", "path", path)
 			return nil
 		}
 
-		action := matcher.OverrideAction(action, fileinfo.Mode())
+		if !matcher.MatchPath(path, mode, &rule) {
+			return nil
+		}
+
+		action := matcher.OverrideAction(action, mode)
 
 		stat, ok := fileinfo.Sys().(*syscall.Stat_t)
 		if !ok {
 			return fmt.Errorf("stat is not a syscall.Stat_t")
-		}
-
-		switch mode := fileinfo.Mode(); {
-		case mode.IsRegular(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()), mode.IsDir():
-			break
-		case IsSymlink(mode):
-			l.Warn(path + " is still a symlink\n")
-		default:
-			CheckFileMode(mode, path)
 		}
 
 		key := fileapi.InodeKey{
@@ -688,7 +692,7 @@ func WalkPathRenameCleanup(path string, store InodeStore) (int64, error) {
 		}
 
 		switch mode := info.Mode(); {
-		case mode.IsRegular(), mode.IsDir(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()):
+		case mode.IsRegular(), mode.IsDir(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()), IsSocket(mode.Type()):
 			k := fileapi.InodeKey{
 				Ino:      stat.Ino,
 				DevMajor: GetDevMajor(stat.Dev),
@@ -756,7 +760,7 @@ func WalkPathRenameAdd(path string, store InodeStore, actionFn func(string, fs.F
 		locationFn(&val)
 
 		switch mode := fileinfo.Mode(); {
-		case mode.IsRegular(), mode.IsDir(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()):
+		case mode.IsRegular(), mode.IsDir(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()), IsSocket(mode.Type()):
 			if mode.IsDir() {
 				// We should have all directory names to end with "/"
 				// Check if this is the case, otherwise add it.

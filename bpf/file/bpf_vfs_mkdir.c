@@ -78,8 +78,9 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 				     msg->parent_ino, msg->parent_fs.dev);
 	if (!file_val)
 		return 0;
-	// we don't care for anything inside this directory
-	if (file_val->action == FILTER_IGNORE)
+	if (file_val->mode != HASH_MAP_FILE_MODE_DIRECTORY) // we care only for directories here
+		return 0;
+	if (file_val->action == FILTER_IGNORE) // we don't care for anything inside this directory
 		return 0;
 
 	// here we care about this directory and we have to create it's path

@@ -54,9 +54,9 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 				     msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;
-
-	// we don't care about that so after the map cleanup we can return
-	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR)
+	if (file_val->mode != HASH_MAP_FILE_MODE_FILE) // we care only for files here
+		return 0;
+	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR) // we don't care about that so after the map cleanup we can return
 		goto ignore_unlink;
 
 	// At this point we know that we care about this access.

@@ -104,6 +104,8 @@ func hashMapFileModeToStr(m uint16) string {
 		return "File"
 	case fileapi.HashMapFileModeDirectory:
 		return "Directory"
+	case fileapi.HashMapFileModeSocket:
+		return "Socket"
 	}
 	return "Unknown"
 }

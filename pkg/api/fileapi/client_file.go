@@ -54,6 +54,7 @@ const (
 	HashMapFileModeUnknown   = 0
 	HashMapFileModeFile      = 1
 	HashMapFileModeDirectory = 2
+	HashMapFileModeSocket    = 3
 )
 
 const (

@@ -40,7 +40,8 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 				     msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;
-
+	if (file_val->mode != HASH_MAP_FILE_MODE_DIRECTORY) // we care only for directories here
+		return 0;
 	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR)
 		goto ignore_rmdir;
 

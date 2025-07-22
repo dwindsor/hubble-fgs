@@ -156,6 +156,7 @@ struct inode_key {
 #define HASH_MAP_FILE_MODE_UNKNOWN   0
 #define HASH_MAP_FILE_MODE_FILE	     1
 #define HASH_MAP_FILE_MODE_DIRECTORY 2
+#define HASH_MAP_FILE_MODE_SOCKET    3
 
 #define INODE_VAL_SRC_UNKNOWN	  0
 #define INODE_VAL_SRC_WALK	  1
