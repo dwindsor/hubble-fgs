@@ -190,16 +190,16 @@ volatile const __u32 PATH_BASED_MATCHER = 0;
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, struct file_retprobe_key);
-	__type(value, struct vfs_mkdir_info);
+	__type(value, struct vfs_mk_info);
 	__uint(max_entries, 1024);
-} mkdir_retprobe_map SEC(".maps");
+} mk_retprobe_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
-	__type(value, struct vfs_mkdir_info);
+	__type(value, struct vfs_mk_info);
 	__uint(max_entries, 1);
-} vfs_mkdir_info_heap SEC(".maps");
+} vfs_mk_info_heap SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);

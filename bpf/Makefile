@@ -133,7 +133,8 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 	  lsm_security_bprm_check_digests.o probe_bpf_ima_file_hash.o fmod_ret_dispatcher.o lsm_dispatcher_bprm_check_security.o lsm_dispatcher_kernel_read_file.o lsm_dispatcher_path_chmod.o \
 	  lsm_dispatcher_path_link.o lsm_dispatcher_path_symlink.o lsm_dispatcher_path_rename.o lsm_dispatcher_path_truncate.o lsm_dispatcher_file_open.o lsm_dispatcher_mmap_file.o lsm_dispatcher_path_chown.o lsm_dispatcher_path_mkdir.o \
 	  lsm_dispatcher_path_rmdir.o lsm_dispatcher_path_unlink.o fexit_getname_flags.o fexit_getname.o fexit_sys_open.o lsm_security_unix_stream_connect.o \
-	  bpf_security_unix_stream_connect.o bpf_security_unix_stream_connect_v419.o bpf_security_unix_stream_connect_enforce_lsm.o bpf_security_unix_stream_connect_enforce_fmod.o
+	  bpf_security_unix_stream_connect.o bpf_security_unix_stream_connect_v419.o bpf_security_unix_stream_connect_enforce_lsm.o bpf_security_unix_stream_connect_enforce_fmod.o \
+	  bpf_vfs_mknod.o bpf_vfs_mknod_v419.o bpf_vfs_mknod_enforce_lsm.o bpf_vfs_mknod_enforce_fmod.o
 
 CGROUP = bpf_cgtracker.o
 
@@ -437,6 +438,7 @@ objs/bpf_filemap_page_mkwrite_v419.o: $(FILEDIR)/bpf_filemap_page_mkwrite.c
 objs/bpf_security_file_permission_v419.o: $(FILEDIR)/bpf_security_file_permission.c
 objs/bpf_vfs_unlink_v419.o: $(FILEDIR)/bpf_vfs_unlink.c
 objs/security_unix_stream_connect_v419.o: $(FILEDIR)/bpf_security_unix_stream_connect.c
+objs/vfs_mknod_v419.o: $(FILEDIR)/bpf_vfs_mknod.c
 objs/bpf_security_inode_setattr_v419.o: $(FILEDIR)/bpf_security_inode_setattr.c
 objs/bpf_vfs_fallocate_v419.o: $(FILEDIR)/bpf_vfs_fallocate.c
 objs/bpf_finish_open_v419.o: $(FILEDIR)/bpf_finish_open.c
@@ -498,6 +500,7 @@ deps/bpf_filemap_page_mkwrite_v419.d: $(FILEDIR)/bpf_filemap_page_mkwrite.c
 deps/bpf_security_file_permission_v419.d: $(FILEDIR)/bpf_security_file_permission.c
 deps/bpf_vfs_unlink_v419.d: $(FILEDIR)/bpf_vfs_unlink.c
 deps/bpf_security_unix_stream_connect_v419.d: $(FILEDIR)/bpf_security_unix_stream_connect.c
+deps/bpf_vfs_mknod_v419.d: $(FILEDIR)/bpf_vfs_mknod.c
 deps/bpf_security_inode_setattr_v419.d: $(FILEDIR)/bpf_security_inode_setattr.c
 deps/bpf_vfs_fallocate_v419.d: $(FILEDIR)/bpf_vfs_fallocate.c
 deps/bpf_finish_open_v419.d: $(FILEDIR)/bpf_finish_open.c
@@ -524,6 +527,8 @@ deps/bpf_vfs_unlink_enforce_lsm.d: $(FILEDIR)/bpf_vfs_unlink.c
 deps/bpf_vfs_unlink_enforce_fmod.d: $(FILEDIR)/bpf_vfs_unlink.c
 deps/bpf_security_unix_stream_connect_enforce_lsm.d: $(FILEDIR)/bpf_security_unix_stream_connect.c
 deps/bpf_security_unix_stream_connect_enforce_fmod.d: $(FILEDIR)/bpf_security_unix_stream_connect.c
+deps/bpf_vfs_mknod_enforce_lsm.d: $(FILEDIR)/bpf_vfs_mknod.c
+deps/bpf_vfs_mknod_enforce_fmod.d: $(FILEDIR)/bpf_vfs_mknod.c
 deps/bpf_vfs_rename_enforce_lsm.d: $(FILEDIR)/bpf_vfs_rename.c
 deps/bpf_vfs_rename_enforce_fmod.d: $(FILEDIR)/bpf_vfs_rename.c
 deps/bpf_security_inode_setattr_enforce_lsm.d: $(FILEDIR)/bpf_security_inode_setattr.c

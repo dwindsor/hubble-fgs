@@ -51,6 +51,7 @@ enum {
 	action_symlink = 13,
 	action_openraw = 14,
 	action_unix_socket_connect = 15,
+	action_unix_socket_create = 16,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -102,7 +103,9 @@ enum {
 	hook_sys_openat = 44,
 	hook_sys_openat2 = 45,
 	hook_security_unix_stream_connect = 46,
-	hook_max = 47,
+	hook_security_inode_mknod = 47,
+	hook_vfs_mknod = 48,
+	hook_max = 49,
 };
 
 enum {
@@ -165,7 +168,8 @@ struct inode_key {
 #define INODE_VAL_SRC_EBPF_RENAME 4
 #define INODE_VAL_SRC_EBPF_LINK	  5
 #define INODE_VAL_SRC_EBPF_MKDIR  6
-#define INODE_VAL_SRC_EBPF_CREATE 7
+#define INODE_VAL_SRC_EBPF_MKNOD  7
+#define INODE_VAL_SRC_EBPF_CREATE 8
 
 struct inode_val {
 	__u32 action;
@@ -356,11 +360,12 @@ struct msg_file_openraw_ops {
 	__u32 pad;
 };
 
-struct vfs_mkdir_info {
+struct vfs_mk_info {
 	struct dentry *dentry;
 	struct msg_file_ops msg;
 	int action;
 	__u32 operation;
+	__u16 mode;
 };
 
 struct msg_file_split_path {
@@ -479,10 +484,10 @@ struct glob_state {
 #define FILE_ERR_UPDATE_INODE_MAP	     13 // map_update_elem(&hash_map_inode_alloc, ...) < 0
 #define FILE_ERR_DENTRY_FROM_PATH	     14 // path->dentry == 0
 #define FILE_ERR_DELETE_INODE_MAP	     15 // map_delete_elem(&hash_map_inode_alloc, ...) < 0
-#define FILE_ERR_MKDIR_INFO_HEAP_HEAP	     16 // map_lookup_elem(&vfs_mkdir_info_heap, &zero) == 0
-#define FILE_ERR_UPDATE_MKDIR_RETPROBE_MAP   17 // map_update_elem(&mkdir_retprobe_map, ...) < 0
-#define FILE_ERR_DELETE_MKDIR_RETPROBE_MAP   18 // map_delete_elem(&mkdir_retprobe_map, ...) < 0
-#define FILE_ERR_LOOKUP_MKDIR_RETPROBE_MAP   19 // map_lookup_elem(&mkdir_retprobe_map, ...) < 0
+#define FILE_ERR_MKDIR_INFO_HEAP_HEAP	     16 // map_lookup_elem(&vfs_mk_info_heap, &zero) == 0
+#define FILE_ERR_UPDATE_MKDIR_RETPROBE_MAP   17 // map_update_elem(&mk_retprobe_map, ...) < 0
+#define FILE_ERR_DELETE_MKDIR_RETPROBE_MAP   18 // map_delete_elem(&mk_retprobe_map, ...) < 0
+#define FILE_ERR_LOOKUP_MKDIR_RETPROBE_MAP   19 // map_lookup_elem(&mk_retprobe_map, ...) < 0
 #define FILE_ERR_RENAME_INFO_HEAP	     20 // map_lookup_elem(&vfs_rename_info_heap, &zero) == 0
 #define FILE_ERR_UPDATE_RENAME_RETPROBE_MAP  21 // map_update_elem(&rename_retprobe_map, ...) < 0
 #define FILE_ERR_DELETE_RENAME_RETPROBE_MAP  22 // map_delete_elem(&rename_retprobe_map, ...) < 0

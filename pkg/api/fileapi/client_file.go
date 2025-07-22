@@ -65,7 +65,8 @@ const (
 	InodeValSrcEbpfRename = 4
 	InodeValSrcEbpfLink   = 5
 	InodeValSrcEbpfMkdir  = 6
-	InodeValSrcEbpfCreate = 7
+	InodeValSrcEbpfMknod  = 7
+	InodeValSrcEbpfCreate = 8
 )
 
 type InodeVal struct {
@@ -391,7 +392,9 @@ const (
 	FileHookSysOpenat                 = 44
 	FileHookSysOpenat2                = 45
 	FileHookSecurityUnixStreamConnect = 46
-	FileHookMax                       = 47
+	FileHookSecurityInodeMknod        = 47
+	FileHookVfsMknod                  = 48
+	FileHookMax                       = 49
 )
 
 type FileErrors struct {

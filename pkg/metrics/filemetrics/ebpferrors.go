@@ -70,6 +70,8 @@ var (
 		fileapi.FileHookSysOpenat:                 "sys_openat",
 		fileapi.FileHookSysOpenat2:                "sys_openat2",
 		fileapi.FileHookSecurityUnixStreamConnect: "security_unix_stream_connect",
+		fileapi.FileHookSecurityInodeMknod:        "security_inode_mknod",
+		fileapi.FileHookVfsMknod:                  "vfs_mknod",
 	}
 
 	fileErrorReasonMap = map[int]string{
@@ -90,9 +92,9 @@ var (
 		fileapi.FileErrDentryFromPath:           "dentry_from_path",
 		fileapi.FileErrDeleteInodeMap:           "delete_inode_map",
 		fileapi.FileErrMkdirInfoHeap:            "mkdir_info_heap",
-		fileapi.FileErrUpdateMkdirRetprobeMap:   "update_mkdir_retprobe_map",
-		fileapi.FileErrDeleteMkdirRetprobeMap:   "delete_mkdir_retprobe_map",
-		fileapi.FileErrLookupMkdirRetprobeMap:   "lookup_mkdir_retprobe_map",
+		fileapi.FileErrUpdateMkdirRetprobeMap:   "update_mk_retprobe_map",
+		fileapi.FileErrDeleteMkdirRetprobeMap:   "delete_mk_retprobe_map",
+		fileapi.FileErrLookupMkdirRetprobeMap:   "lookup_mk_retprobe_map",
 		fileapi.FileErrRenameInfoHeap:           "rename_info_heap",
 		fileapi.FileErrUpdateRenameRetprobeMap:  "update_rename_retprobe_map",
 		fileapi.FileErrDeleteRenameRetprobeMap:  "delete_rename_retprobe_map",
