@@ -167,6 +167,8 @@ const (
 	FileAction_FILE_SYMLINK             FileAction = 13
 	FileAction_FILE_OPENRAW             FileAction = 14
 	FileAction_FILE_UNIX_SOCKET_CONNECT FileAction = 15
+	FileAction_FILE_UNIX_SOCKET_CREATE  FileAction = 16
+	FileAction_FILE_UNIX_SOCKET_DELETE  FileAction = 17
 )
 
 // Enum value maps for FileAction.
@@ -188,6 +190,8 @@ var (
 		13: "FILE_SYMLINK",
 		14: "FILE_OPENRAW",
 		15: "FILE_UNIX_SOCKET_CONNECT",
+		16: "FILE_UNIX_SOCKET_CREATE",
+		17: "FILE_UNIX_SOCKET_DELETE",
 	}
 	FileAction_value = map[string]int32{
 		"FILE_INVALID":             0,
@@ -206,6 +210,8 @@ var (
 		"FILE_SYMLINK":             13,
 		"FILE_OPENRAW":             14,
 		"FILE_UNIX_SOCKET_CONNECT": 15,
+		"FILE_UNIX_SOCKET_CREATE":  16,
+		"FILE_UNIX_SOCKET_DELETE":  17,
 	}
 )
 
@@ -5339,7 +5345,7 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\x10TNP_POLICY_ALLOW\x10\x01\x12\x13\n" +
 	"\x0fTNP_POLICY_DENY\x10\x02\x12\x1c\n" +
 	"\x18TNP_POLICY_DEFAULT_ALLOW\x10\x03\x12\x1b\n" +
-	"\x17TNP_POLICY_DEFAULT_DENY\x10\x04*\xa2\x02\n" +
+	"\x17TNP_POLICY_DEFAULT_DENY\x10\x04*\xdc\x02\n" +
 	"\n" +
 	"FileAction\x12\x10\n" +
 	"\fFILE_INVALID\x10\x00\x12\x0e\n" +
@@ -5361,7 +5367,9 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\tFILE_OPEN\x10\f\x12\x10\n" +
 	"\fFILE_SYMLINK\x10\r\x12\x10\n" +
 	"\fFILE_OPENRAW\x10\x0e\x12\x1c\n" +
-	"\x18FILE_UNIX_SOCKET_CONNECT\x10\x0f*a\n" +
+	"\x18FILE_UNIX_SOCKET_CONNECT\x10\x0f\x12\x1b\n" +
+	"\x17FILE_UNIX_SOCKET_CREATE\x10\x10\x12\x1b\n" +
+	"\x17FILE_UNIX_SOCKET_DELETE\x10\x11*a\n" +
 	"\tFileScope\x12\x10\n" +
 	"\fUNKNOWN_FILE\x10\x00\x12\r\n" +
 	"\tHOST_FILE\x10\x01\x12\x18\n" +

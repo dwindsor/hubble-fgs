@@ -2552,6 +2552,8 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | FILE_SYMLINK | 13 |  |
 | FILE_OPENRAW | 14 |  |
 | FILE_UNIX_SOCKET_CONNECT | 15 |  |
+| FILE_UNIX_SOCKET_CREATE | 16 |  |
+| FILE_UNIX_SOCKET_DELETE | 17 |  |
 
 
 
