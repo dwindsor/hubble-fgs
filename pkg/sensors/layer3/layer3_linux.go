@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -202,6 +203,8 @@ var (
 )
 
 func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*program.Program, []*program.Map) {
+	ReportFunctionality()
+
 	needDispatcher := false
 
 	progsInitSock, maps := socktrack.EnableSocktrack()
@@ -760,12 +763,20 @@ func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 }
 
 func StartLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
-	logger.GetLogger().Info("Layer3 functionality", "values", utils.LogLayer3Features())
+	ReportFunctionality()
 	err := EnableLayer3Progs()
 	if err != nil {
 		return err
 	}
 	return RunLayer3Progs(ctx, sm)
+}
+
+var reportFuncOnce sync.Once
+
+func ReportFunctionality() {
+	reportFuncOnce.Do(func() {
+		logger.GetLogger().Info("Layer3 functionality", "values", utils.LogLayer3Features())
+	})
 }
 
 func HTTPContext() *program.Map {
