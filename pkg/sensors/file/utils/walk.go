@@ -402,6 +402,17 @@ func (p ExactPathFileMatcher) String() string {
 	return fmt.Sprintf("exact:[%s]", p.Path)
 }
 
+func translateMode(fileinfo fs.FileInfo) uint16 {
+	switch mode := fileinfo.Mode(); {
+	case mode.IsRegular(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()):
+		return fileapi.HashMapFileModeFile
+	case mode.IsDir():
+		return fileapi.HashMapFileModeDirectory
+	default:
+		return fileapi.HashMapFileModeUnknown
+	}
+}
+
 func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, action uint32, locationFn func(v *fileapi.InodeVal)) error {
 	l := logger.GetLogger()
 
@@ -443,66 +454,45 @@ func WalkPathRaw(matcher PathMatcher, rule uint32, store InodeStore, op uint32, 
 		}
 
 		switch mode := fileinfo.Mode(); {
-		case mode.IsRegular(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()):
-			key := fileapi.InodeKey{
-				Ino:      stat.Ino,
-				DevMajor: GetDevMajor(stat.Dev),
-				DevMinor: GetDevMinor(stat.Dev),
-			}
+		case mode.IsRegular(), IsBlockDevice(mode.Type()), IsCharDevice(mode.Type()), mode.IsDir():
+			break
+		case IsSymlink(mode):
+			l.Warn(path + " is still a symlink\n")
+		default:
+			CheckFileMode(mode, path)
+		}
 
-			switch op {
-			case AddToMap:
-				var val fileapi.InodeVal
+		key := fileapi.InodeKey{
+			Ino:      stat.Ino,
+			DevMajor: GetDevMajor(stat.Dev),
+			DevMinor: GetDevMinor(stat.Dev),
+		}
 
-				val.Action = action
-				val.PathSize = uint32(len(path))
-				copy(val.FullPath[:], path)
-				locationFn(&val)
-				val.RuleID = rule
-				val.Mode = fileapi.HashMapFileModeFile
-				val.Source = fileapi.InodeValSrcWalk
+		switch op {
+		case AddToMap:
+			var val fileapi.InodeVal
 
-				if err := store.AddInode(key, val); err != nil {
-					return fmt.Errorf("failed to call addFilePath: %w", err)
-				}
-			case RemoveFromMap:
-				store.RemoveInode(key)
-			}
-		case mode.IsDir():
-			key := fileapi.InodeKey{
-				Ino:      stat.Ino,
-				DevMajor: GetDevMajor(stat.Dev),
-				DevMinor: GetDevMinor(stat.Dev),
-			}
-
-			switch op {
-			case AddToMap:
-				var val fileapi.InodeVal
-
+			if mode.IsDir() {
 				// We should have all directory names to end with "/"
 				// Check if this is the case, otherwise add it.
 				if path[len(path)-1:] != "/" {
 					path += "/"
 				}
-
-				val.Action = action
-				val.PathSize = uint32(len(path))
-				copy(val.FullPath[:], path)
-				locationFn(&val)
-				val.RuleID = rule
-				val.Mode = fileapi.HashMapFileModeDirectory
-				val.Source = fileapi.InodeValSrcWalk
-
-				if err := store.AddInode(key, val); err != nil {
-					return fmt.Errorf("failed to call addDirPath: %w", err)
-				}
-			case RemoveFromMap:
-				store.RemoveInode(key)
 			}
-		case IsSymlink(mode):
-			l.Warn(path + " is still a symlink\n")
-		default:
-			CheckFileMode(mode, path)
+
+			val.Action = action
+			val.PathSize = uint32(len(path))
+			copy(val.FullPath[:], path)
+			locationFn(&val)
+			val.RuleID = rule
+			val.Mode = translateMode(fileinfo)
+			val.Source = fileapi.InodeValSrcWalk
+
+			if err := store.AddInode(key, val); err != nil {
+				return fmt.Errorf("failed to call addFilePath: %w", err)
+			}
+		case RemoveFromMap:
+			store.RemoveInode(key)
 		}
 
 		return nil
