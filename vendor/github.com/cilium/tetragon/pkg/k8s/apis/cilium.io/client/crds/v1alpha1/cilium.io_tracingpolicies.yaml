@@ -594,6 +594,8 @@ spec:
                                   - FILE_SYMLINK
                                   - FILE_OPENRAW
                                   - FILE_UNIX_SOCKET_CONNECT
+                                  - FILE_UNIX_SOCKET_CREATE
+                                  - FILE_UNIX_SOCKET_DELETE
                                   type: string
                                 type: array
                             required:
