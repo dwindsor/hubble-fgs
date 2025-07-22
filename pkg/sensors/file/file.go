@@ -315,6 +315,7 @@ var (
 		}},
 		{"kprobe", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link.o", "security_inode_link", fm.NewSet(FileAction_REQUIRED)}}},
 		{"kprobe", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open.o", "security_file_open", fm.NewSet(tetragon.FileAction_FILE_OPEN)}}},
+		{"kprobe", "security_unix_stream_connect", []FimFunc{{"security_unix_stream_connect(struct sock*, struct sock*, struct sock*)", "bpf_security_unix_stream_connect.o", "security_unix_stream_connect", fm.NewSet(tetragon.FileAction_FILE_UNIX_SOCKET_CONNECT)}}},
 	}
 
 	FimHooksMmapObserve = [...]FimHook{
@@ -362,6 +363,7 @@ var (
 		}},
 		{"fmod_ret", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_fmod.o", "security_inode_link", fm.NewSet(FileAction_REQUIRED)}}},
 		{"fmod_ret", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_fmod.o", "security_file_open", fm.NewSet(tetragon.FileAction_FILE_OPEN)}}},
+		{"fmod_ret", "security_unix_stream_connect", []FimFunc{{"security_unix_stream_connect(struct sock*, struct sock*, struct sock*)", "bpf_security_unix_stream_connect_enforce_fmod.o", "security_unix_stream_connect", fm.NewSet(tetragon.FileAction_FILE_UNIX_SOCKET_CONNECT)}}},
 	}
 
 	FimHooksFmodRetExec = FimHook{"fmod_ret", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_fmod.o", "security_bprm_check", fm.NewSet(tetragon.FileAction_FILE_EXEC)}}}
@@ -403,6 +405,7 @@ var (
 		}},
 		{"lsm", "security_inode_link", []FimFunc{{"security_inode_link(struct dentry*, struct inode*, struct dentry*)", "bpf_security_inode_link_enforce_lsm.o", "inode_link", fm.NewSet(FileAction_REQUIRED)}}},
 		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "bpf_security_file_open_enforce_lsm.o", "file_open", fm.NewSet(tetragon.FileAction_FILE_OPEN)}}},
+		{"lsm", "security_unix_stream_connect", []FimFunc{{"security_unix_stream_connect(struct sock*, struct sock*, struct sock*)", "bpf_security_unix_stream_connect_enforce_lsm.o", "unix_stream_connect", fm.NewSet(tetragon.FileAction_FILE_UNIX_SOCKET_CONNECT)}}},
 	}
 
 	FimHooksLsmExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "bpf_security_bprm_check_enforce_lsm.o", "bprm_check_security", fm.NewSet(tetragon.FileAction_FILE_EXEC)}}}
@@ -1935,23 +1938,24 @@ func fixProgName(p string) string {
 	}
 
 	needsReplace := map[string]string{
-		"bpf_vfs_rename.o":               "bpf_vfs_rename_v419.o",
-		"bpf_filemap_fault.o":            "bpf_filemap_fault_v419.o",
-		"bpf_filemap_map_pages.o":        "bpf_filemap_map_pages_v419.o",
-		"bpf_filemap_page_mkwrite.o":     "bpf_filemap_page_mkwrite_v419.o",
-		"bpf_security_file_permission.o": "bpf_security_file_permission_v419.o",
-		"bpf_vfs_unlink.o":               "bpf_vfs_unlink_v419.o",
-		"bpf_security_inode_setattr.o":   "bpf_security_inode_setattr_v419.o",
-		"bpf_vfs_fallocate.o":            "bpf_vfs_fallocate_v419.o",
-		"bpf_finish_open.o":              "bpf_finish_open_v419.o",
-		"bpf_vfs_open.o":                 "bpf_vfs_open_v419.o",
-		"bpf_security_inode_rmdir.o":     "bpf_security_inode_rmdir_v419.o",
-		"bpf_vfs_mkdir.o":                "bpf_vfs_mkdir_v419.o",
-		"bpf_iterate_dir.o":              "bpf_iterate_dir_v419.o",
-		"bpf_security_bprm_check.o":      "bpf_security_bprm_check_v419.o",
-		"bpf_security_path_rename.o":     "bpf_security_path_rename_v419.o",
-		"bpf_security_inode_link.o":      "bpf_security_inode_link_v419.o",
-		"bpf_security_file_open.o":       "bpf_security_file_open_v419.o",
+		"bpf_vfs_rename.o":                   "bpf_vfs_rename_v419.o",
+		"bpf_filemap_fault.o":                "bpf_filemap_fault_v419.o",
+		"bpf_filemap_map_pages.o":            "bpf_filemap_map_pages_v419.o",
+		"bpf_filemap_page_mkwrite.o":         "bpf_filemap_page_mkwrite_v419.o",
+		"bpf_security_file_permission.o":     "bpf_security_file_permission_v419.o",
+		"bpf_vfs_unlink.o":                   "bpf_vfs_unlink_v419.o",
+		"bpf_security_inode_setattr.o":       "bpf_security_inode_setattr_v419.o",
+		"bpf_vfs_fallocate.o":                "bpf_vfs_fallocate_v419.o",
+		"bpf_finish_open.o":                  "bpf_finish_open_v419.o",
+		"bpf_vfs_open.o":                     "bpf_vfs_open_v419.o",
+		"bpf_security_inode_rmdir.o":         "bpf_security_inode_rmdir_v419.o",
+		"bpf_vfs_mkdir.o":                    "bpf_vfs_mkdir_v419.o",
+		"bpf_iterate_dir.o":                  "bpf_iterate_dir_v419.o",
+		"bpf_security_bprm_check.o":          "bpf_security_bprm_check_v419.o",
+		"bpf_security_path_rename.o":         "bpf_security_path_rename_v419.o",
+		"bpf_security_inode_link.o":          "bpf_security_inode_link_v419.o",
+		"bpf_security_file_open.o":           "bpf_security_file_open_v419.o",
+		"bpf_security_unix_stream_connect.o": "bpf_security_unix_stream_connect_v419.o",
 	}
 
 	r, ok := needsReplace[p]
