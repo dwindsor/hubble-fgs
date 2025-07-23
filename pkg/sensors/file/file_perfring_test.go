@@ -18,10 +18,13 @@ package file
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
+	"sync"
 	"syscall"
 	"testing"
 
@@ -986,4 +989,179 @@ func TestMatchOpenrawOps(t *testing.T) {
 	for ev, cnt := range expectedEvents {
 		require.Equal(t, 1, cnt, "all events should appear exactly once: %s", ev)
 	}
+}
+
+func runUnixSocketTest(t *testing.T, dir string) {
+	socket, err := net.Listen("unix", path.Join(dir, "echo.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(path.Join(dir, "echo.sock"))
+
+	var wg sync.WaitGroup
+	wg.Add(2) // one goroutine for the server and one for the client
+
+	go func() { // server
+		defer wg.Done()
+
+		conn, err := socket.Accept()
+		if err != nil {
+			t.Error("server accept error:", err)
+			return
+		}
+		defer conn.Close()
+
+		buf := make([]byte, 4096)
+		n, err := conn.Read(buf)
+		if err != nil {
+			t.Error("server read error:", err)
+			return
+		}
+
+		_, err = conn.Write(buf[:n])
+		if err != nil {
+			t.Error("server write error:", err)
+			return
+		}
+	}()
+
+	go func() { // client
+		defer wg.Done()
+
+		c, err := net.Dial("unix", path.Join(dir, "echo.sock"))
+		if err != nil {
+			t.Error("client dial error:", err)
+			return
+		}
+		defer c.Close()
+
+		_, err = c.Write([]byte("hi"))
+		if err != nil {
+			t.Error("client write error:", err)
+			return
+		}
+
+		buf := make([]byte, 4096)
+		_, err = c.Read(buf)
+		if err != nil {
+			t.Error("client read error:", err)
+			return
+		}
+	}()
+
+	wg.Wait()
+}
+
+type UnixSocketTestCase struct {
+	Path   string
+	TpName string
+	Action tetragon.FileAction
+}
+
+func TestUnixSockets(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
+	tus.LoadInitialSensor(t)
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tuo.GetTestSensorManager(t)
+
+	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, testDir)
+
+	fileTracingPolicy := tracingpolicy.GenericTracingPolicy{
+		Metadata: v1api.ObjectMeta{
+			Name: "file-monitoring-unix-socket",
+		},
+		Spec: v1alpha1.TracingPolicySpec{
+			FileMonitoring: v1alpha1.FileSpec{
+				PathsPatterns: []v1alpha1.FilePathPattern{
+					{
+						Type: "PathPrefix",
+						PathPrefix: &v1alpha1.PathPrefixPattern{
+							Prefix: testDir + "/",
+						},
+					},
+				},
+				MonitorHostFiles: true,
+				Selectors: []v1alpha1.FileSelector{
+					{
+						MatchOperations: []v1alpha1.OperationSelector{
+							{
+								Operator: "In",
+								Values: []string{
+									"FILE_UNIX_SOCKET_CREATE",
+									"FILE_UNIX_SOCKET_DELETE",
+									"FILE_UNIX_SOCKET_CONNECT",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicy)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	expectedEvents := map[UnixSocketTestCase]int{
+		{
+			Path:   path.Join(testDir, "echo.sock"),
+			TpName: fileTracingPolicy.Metadata.Name,
+			Action: tetragon.FileAction_FILE_UNIX_SOCKET_CREATE,
+		}: 0,
+		{
+			Path:   path.Join(testDir, "echo.sock"),
+			TpName: fileTracingPolicy.Metadata.Name,
+			Action: tetragon.FileAction_FILE_UNIX_SOCKET_DELETE,
+		}: 0,
+		{
+			Path:   path.Join(testDir, "echo.sock"),
+			TpName: fileTracingPolicy.Metadata.Name,
+			Action: tetragon.FileAction_FILE_UNIX_SOCKET_CONNECT,
+		}: 0,
+	}
+
+	unexpectedEvents := 0
+	eventFn := func(ev notify.Message) error {
+		if file, ok := ev.(*grpc.MsgFileEventUnix); ok {
+			e := UnixSocketTestCase{
+				Path:   file.Path,
+				TpName: file.TpName,
+				Action: tetragon.FileAction(file.Msg.Action),
+			}
+
+			if _, ok := expectedEvents[e]; ok {
+				expectedEvents[e]++
+			} else {
+				unexpectedEvents++
+			}
+		}
+		return nil
+	}
+
+	ops := func() {
+		runUnixSocketTest(t, testDir)
+	}
+
+	perfring.RunTest(t, ctx, ops, eventFn)
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	for ev, cnt := range expectedEvents {
+		require.Equal(t, 1, cnt, "all events should appear exactly once: %s", ev)
+	}
+	require.Zero(t, unexpectedEvents, "we don't expect to see any non-unix-socket events")
 }
