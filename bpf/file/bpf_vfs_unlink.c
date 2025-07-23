@@ -18,7 +18,7 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 	struct inode_val *file_val = 0;
 	unsigned int i_nlink = 0;
 	bool remove_entry = false;
-	__u32 operation = 0, msg_id = 0;
+	__u32 action = 0, operation = 0, msg_id = 0;
 
 	if (!policy_filter_match())
 		return 0;
@@ -54,16 +54,18 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 				     msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;
-	if (file_val->mode != HASH_MAP_FILE_MODE_FILE) // we care only for files here
+	if (file_val->mode != HASH_MAP_FILE_MODE_FILE && file_val->mode != HASH_MAP_FILE_MODE_SOCKET) // we care only for files and sockets here
 		return 0;
 	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR) // we don't care about that so after the map cleanup we can return
 		goto ignore_unlink;
+
+	action = (file_val->mode == HASH_MAP_FILE_MODE_FILE) ? (action_delete) : (action_unix_socket_delete);
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// In these events we will update any internal maps.
-	operation = eval_selectors((struct sel_args){ action_delete, 0 }, 0, (struct sel_path){ 0, 0 }, &msg_id);
+	operation = eval_selectors((struct sel_args){ action, 0 }, 0, (struct sel_path){ 0, 0 }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		goto ignore_unlink;
 
@@ -78,7 +80,7 @@ static inline __attribute__((always_inline)) int kprobe_vfs_unlink(void *ctx, st
 	msg->uid[0] = msg->uid[1] = 0;
 	msg->gid[0] = msg->gid[1] = 0;
 
-	msg->action = action_delete;
+	msg->action = action;
 	msg->hook = hook;
 	msg->ktime = tg_get_ktime();
 	msg->mnt_ns = get_mnt_ns();
