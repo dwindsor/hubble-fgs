@@ -142,6 +142,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.layer3.tcp.enabled | bool | `false` |  |
 | tetragon.layer3.tcp.rtt.enabled | bool | `false` |  |
 | tetragon.layer3.udp.enabled | bool | `false` |  |
+| tetragon.layer3.udp.idleSocketTimeout | string | `"2m"` |  |
 | tetragon.livenessProbe | object | `{}` | Overrides the default livenessProbe for the tetragon container. |
 | tetragon.metadata.enabled | bool | `false` |  |
 | tetragon.metadata.image.imagePullPolicy | string | `"Always"` |  |

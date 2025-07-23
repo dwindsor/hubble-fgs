@@ -92,6 +92,8 @@ type config struct {
 	EnableDNS       bool
 	Layer3CLIEnable bool
 
+	UDPIdleSocketTimeout time.Duration
+
 	EnableNetworkEvents bool
 
 	EnableAlertProfiling bool

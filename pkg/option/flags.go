@@ -79,6 +79,7 @@ const (
 	keyEnableICMP                         = "enable-icmp"
 	keyEnableRawsock                      = "enable-rawsock"
 	keyEnableDNS                          = "enable-dns"
+	keyUDPIdleSocketTimeout               = "udp-idle-socket-timeout"
 	keyEnableNetworkEvents                = "enable-network-events"
 	keyEnableAlertsProfiling              = "enable-alerts-profiling"
 
@@ -173,6 +174,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableICMP, false, "Enable ICMP observability")
 	flags.Bool(keyEnableRawsock, false, "Enable raw socket observability")
 	flags.Bool(keyEnableDNS, false, "Enable DNS observability")
+	flags.Duration(keyUDPIdleSocketTimeout, 2*time.Minute, "How long a UDP socket should be idle to be considered closed")
 	flags.Bool(keyEnableNetworkEvents, true, "Enable Network Events from BPF to userspace")
 	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
 }
@@ -242,6 +244,7 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableICMP = viper.GetBool(keyEnableICMP)
 	Config.EnableRawsock = viper.GetBool(keyEnableRawsock)
 	Config.EnableDNS = viper.GetBool(keyEnableDNS)
+	Config.UDPIdleSocketTimeout = viper.GetDuration(keyUDPIdleSocketTimeout)
 	Config.EnableNetworkEvents = viper.GetBool(keyEnableNetworkEvents)
 	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
