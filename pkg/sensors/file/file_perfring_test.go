@@ -1061,6 +1061,8 @@ type UnixSocketTestCase struct {
 func TestUnixSockets(t *testing.T) {
 	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
+	supportPathBased := utils.SupportFmodRet() && utils.SupportLSM() && (probeBpfLoop() == nil)
+
 	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
 	defer cancel()
 
@@ -1074,9 +1076,9 @@ func TestUnixSockets(t *testing.T) {
 	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	createTestDir(t, testDir)
 
-	fileTracingPolicy := tracingpolicy.GenericTracingPolicy{
+	inodeTracingPolicy := tracingpolicy.GenericTracingPolicy{
 		Metadata: v1api.ObjectMeta{
-			Name: "file-monitoring-unix-socket",
+			Name: "file-monitoring-unix-socket-inode",
 		},
 		Spec: v1alpha1.TracingPolicySpec{
 			FileMonitoring: v1alpha1.FileSpec{
@@ -1107,8 +1109,41 @@ func TestUnixSockets(t *testing.T) {
 		},
 	}
 
-	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicy)
+	pathTracingPolicy := tracingpolicy.GenericTracingPolicy{
+		Metadata: v1api.ObjectMeta{
+			Name: "file-monitoring-unix-socket-path",
+		},
+		Spec: v1alpha1.TracingPolicySpec{
+			FileMonitoring: v1alpha1.FileSpec{
+				PathsPatterns: []v1alpha1.FilePathPattern{
+					{
+						Type: "AllFileOps",
+					},
+				},
+				MonitorHostFiles: true,
+				Selectors: []v1alpha1.FileSelector{
+					{
+						MatchOperations: []v1alpha1.OperationSelector{
+							{
+								Operator: "In",
+								Values: []string{
+									"FILE_UNIX_SOCKET_CONNECT",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := sm.Manager.AddTracingPolicy(ctx, &inodeTracingPolicy)
 	assert.NoError(t, err)
+
+	if supportPathBased {
+		err := sm.Manager.AddTracingPolicy(ctx, &pathTracingPolicy)
+		assert.NoError(t, err)
+	}
 
 	t.Cleanup(func() {
 		TerminateFsScanner()
@@ -1118,19 +1153,27 @@ func TestUnixSockets(t *testing.T) {
 	expectedEvents := map[UnixSocketTestCase]int{
 		{
 			Path:   path.Join(testDir, "echo.sock"),
-			TpName: fileTracingPolicy.Metadata.Name,
+			TpName: inodeTracingPolicy.Metadata.Name,
 			Action: tetragon.FileAction_FILE_UNIX_SOCKET_CREATE,
 		}: 0,
 		{
 			Path:   path.Join(testDir, "echo.sock"),
-			TpName: fileTracingPolicy.Metadata.Name,
+			TpName: inodeTracingPolicy.Metadata.Name,
 			Action: tetragon.FileAction_FILE_UNIX_SOCKET_DELETE,
 		}: 0,
 		{
 			Path:   path.Join(testDir, "echo.sock"),
-			TpName: fileTracingPolicy.Metadata.Name,
+			TpName: inodeTracingPolicy.Metadata.Name,
 			Action: tetragon.FileAction_FILE_UNIX_SOCKET_CONNECT,
 		}: 0,
+	}
+
+	if supportPathBased {
+		expectedEvents[UnixSocketTestCase{
+			Path:   path.Join(testDir, "echo.sock"),
+			TpName: pathTracingPolicy.Metadata.Name,
+			Action: tetragon.FileAction_FILE_UNIX_SOCKET_CONNECT,
+		}] = 0
 	}
 
 	unexpectedEvents := 0
@@ -1157,8 +1200,13 @@ func TestUnixSockets(t *testing.T) {
 
 	perfring.RunTest(t, ctx, ops, eventFn)
 
-	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	err = sm.Manager.DeleteTracingPolicy(ctx, inodeTracingPolicy.Metadata.Name, "")
 	assert.NoError(t, err)
+
+	if supportPathBased {
+		err = sm.Manager.DeleteTracingPolicy(ctx, pathTracingPolicy.Metadata.Name, "")
+		assert.NoError(t, err)
+	}
 
 	for ev, cnt := range expectedEvents {
 		require.Equal(t, 1, cnt, "all events should appear exactly once: %s", ev)
