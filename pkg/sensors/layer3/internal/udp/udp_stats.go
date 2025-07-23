@@ -32,6 +32,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/udpconfig"
 )
 
@@ -344,17 +345,23 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 		if udpValue.Pid != 0 && !DisableCloseEvents {
 			emitCloseEvent(udpKey, udpValue)
 		}
-		stats.Remove(udpStatsKey)
-		pseudoSocketsUpdate.Lock()
-		pseudoKey := cookieVer{Cookie: udpKey.Cookie, Version: udpKey.Version}
-		if pseudoSockets[pseudoKey] != nil {
-			delete(pseudoSockets[pseudoKey], udpPseudoSocket{SAddr: udpKey.Tuple.SAddr, SPort: udpKey.Tuple.SPort,
-				DAddr: udpKey.Tuple.DAddr, DPort: udpKey.Tuple.DPort, IPv6: udpKey.Tuple.IPv6, PsVersion: udpValue.PsVersion})
-			if len(pseudoSockets[pseudoKey]) == 0 {
-				delete(pseudoSockets, pseudoKey)
-			}
+		if udpStatsEnable {
+			stats.Remove(udpStatsKey)
 		}
-		pseudoSocketsUpdate.Unlock()
+		// We only need to manage the pseudosockets lists if we have received connect events
+		// from BPF. If we have not, then these lists will be empty.
+		if !option.Config.EnableNetworkEvents {
+			pseudoSocketsUpdate.Lock()
+			pseudoKey := cookieVer{Cookie: udpKey.Cookie, Version: udpKey.Version}
+			if pseudoSockets[pseudoKey] != nil {
+				delete(pseudoSockets[pseudoKey], udpPseudoSocket{SAddr: udpKey.Tuple.SAddr, SPort: udpKey.Tuple.SPort,
+					DAddr: udpKey.Tuple.DAddr, DPort: udpKey.Tuple.DPort, IPv6: udpKey.Tuple.IPv6, PsVersion: udpValue.PsVersion})
+				if len(pseudoSockets[pseudoKey]) == 0 {
+					delete(pseudoSockets, pseudoKey)
+				}
+			}
+			pseudoSocketsUpdate.Unlock()
+		}
 		deleteLastKey = udpKey.Copy()
 	}
 }
@@ -387,7 +394,9 @@ func runUdpGC() {
 	deleteLast(m)
 
 	// Check if we have any stale entries
-	removeStaleEntries(m)
+	if !option.Config.EnableNetworkEvents {
+		removeStaleEntries(m)
+	}
 }
 
 // The pseudosocket map contains an entry per pseudosocket observed in BPF.
