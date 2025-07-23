@@ -1076,9 +1076,12 @@ func TestUDPCLISwitch(t *testing.T) {
 	enterpriseOption.Config.EnableUDP = true
 	oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
 	enterpriseOption.Config.Layer3CLIEnable = true
+	oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
+	enterpriseOption.Config.EnableNetworkEvents = true
 	t.Cleanup(func() {
 		enterpriseOption.Config.EnableICMP = oldEnableUDPValue
 		enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
+		enterpriseOption.Config.EnableNetworkEvents = oldEnableNetworkEventsValue
 	})
 
 	server := getNCCommand(t, "nc.openbsd")
@@ -1133,9 +1136,12 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 		enterpriseOption.Config.EnableUDP = true
 		oldLayer3CLIEnableValue := enterpriseOption.Config.Layer3CLIEnable
 		enterpriseOption.Config.Layer3CLIEnable = true
+		oldEnableNetworkEventsValue := enterpriseOption.Config.EnableNetworkEvents
+		enterpriseOption.Config.EnableNetworkEvents = true
 		t.Cleanup(func() {
 			enterpriseOption.Config.EnableICMP = oldEnableUDPValue
 			enterpriseOption.Config.Layer3CLIEnable = oldLayer3CLIEnableValue
+			enterpriseOption.Config.EnableNetworkEvents = oldEnableNetworkEventsValue
 		})
 		layer3.EnableLayer3Progs()
 	}

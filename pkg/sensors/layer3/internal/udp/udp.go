@@ -199,6 +199,24 @@ func ConfigureMaps(mapDir string, mapName string, config networkapi.UdpConfigVal
 	}
 	defer m.Close()
 
+	// If this is a CLI configuration lets inherit the network events
+	// configuration as well.
+	config.DisableConnectEvents = 0
+	config.DisableCloseEvents = 0
+	if enterpriseOption.Config.Layer3CLIEnable && !enterpriseOption.Config.EnableNetworkEvents {
+		DisableConnectEvents = true
+		DisableCloseEvents = true
+		DisableListenEvents = true
+		config.DisableConnectEvents = 1
+		config.DisableCloseEvents = 1
+	}
+	logger.GetLogger().Warn("ConfigureMaps", "config.DisableConnectEvents", config.DisableConnectEvents)
+	// DisableListenEvents can operate independently of disabling all network events.
+	config.DisableListenEvents = 0
+	if DisableListenEvents {
+		config.DisableListenEvents = 1
+	}
+
 	key := &networkapi.UdpConfigKey{
 		Zero: uint32(0),
 	}

@@ -123,5 +123,6 @@ var (
 		EnableFimDispatcher:            false,
 		BPFDNSParserMaxPendingRequests: 1024,
 		EnableAlertProfiling:           false,
+		EnableNetworkEvents:            true,
 	}
 )

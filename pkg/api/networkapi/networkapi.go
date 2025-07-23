@@ -317,7 +317,9 @@ type UdpConfigValue struct {
 	DnsReportQuestions            uint8                       `align:"dns_report_questions"`
 	WatermarksEnable              uint8                       `align:"watermarks_enable"`
 	DisableListenEvents           uint8                       `align:"disable_listen_events"`
-	Pad                           [4]uint8                    `align:"pad"`
+	DisableConnectEvents          uint8                       `align:"disable_connect_events"`
+	DisableCloseEvents            uint8                       `align:"disable_close_events"`
+	Pad                           [2]uint8                    `align:"pad"`
 	WatermarksAvgWindowSizeMs     uint64                      `align:"watermarks_avg_window_size_ms"`
 	WatermarksWindowSize          uint64                      `align:"watermarks_window_size"`
 	WatermarksBurstTriggerPercent uint64                      `align:"watermarks_burst_trigger_percent"`
@@ -331,11 +333,14 @@ func (v *UdpConfigValue) String() string {
 		"dnsStatsPerSocket: %d, "+
 		"dnsReportQuestions: %d, "+
 		"watermarkEnable: %d, "+
+		"disableListenEvents: %d, "+
+		"disableConnectEvents: %d, "+
+		"disableCloseEvents: %d, "+
 		"watermarkAvgWindowSizeMs: %d, "+
 		"watermarkWindowSize: %d, "+
 		"watermarkBurstTriggerPercent: %d, "+
 		"watermarkDipTriggerPercent: %d",
-		v.DnsPorts, v.DnsStatsPerSocket, v.DnsReportQuestions, v.WatermarksEnable, v.WatermarksAvgWindowSizeMs, v.WatermarksWindowSize, v.WatermarksBurstTriggerPercent,
+		v.DnsPorts, v.DnsStatsPerSocket, v.DnsReportQuestions, v.WatermarksEnable, v.DisableListenEvents, v.DisableConnectEvents, v.DisableCloseEvents, v.WatermarksAvgWindowSizeMs, v.WatermarksWindowSize, v.WatermarksBurstTriggerPercent,
 		v.WatermarksDipTriggerPercent)
 }
 
