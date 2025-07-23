@@ -2520,6 +2520,7 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | FILE_OPEN | 12 |  |
 | FILE_SYMLINK | 13 |  |
 | FILE_OPENRAW | 14 |  |
+| FILE_UNIX_CONNECT | 15 |  |
 
 
 
