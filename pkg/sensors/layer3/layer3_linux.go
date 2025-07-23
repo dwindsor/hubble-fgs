@@ -767,7 +767,12 @@ func StartLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 	if err != nil {
 		return err
 	}
-	return RunLayer3Progs(ctx, sm)
+	err = RunLayer3Progs(ctx, sm)
+	if err != nil {
+		return err
+	}
+	udp.StartIdleSocketGC()
+	return nil
 }
 
 var reportFuncOnce sync.Once

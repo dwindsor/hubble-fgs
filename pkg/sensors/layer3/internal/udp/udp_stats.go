@@ -67,7 +67,8 @@ var (
 
 	stats *lru.Cache[udpStatsKey, api.UdpInfoValue]
 
-	gcTimer = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
+	gcTimer        = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
+	gcTimerRunning = false
 
 	pseudoSockets       = make(map[cookieVer](map[udpPseudoSocket]bool))
 	pseudoSocketsUpdate sync.Mutex

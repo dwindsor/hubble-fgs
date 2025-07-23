@@ -211,13 +211,32 @@ func ConfigureSensor() error {
 	ip.LoadSockets(fdCallback, syscall.IPPROTO_UDP, 0)
 	udpconfig.UdpMapRemoves = 0
 	if udpGcInterval > 0 {
+		if gcTimerRunning {
+			gcTimer.Stop()
+		}
 		gcTimer.Start(udpGcInterval)
+		gcTimerRunning = true
 	}
 	return nil
 }
 
+func StartIdleSocketGC() {
+	if enterpriseOption.Config.EnableUDP && enterpriseOption.Config.UDPIdleSocketTimeout > 0 {
+		UdpDeleteInterval = enterpriseOption.Config.UDPIdleSocketTimeout
+		gcTimer.Start(UdpDeleteInterval)
+		gcTimerRunning = true
+	}
+}
+
 func UnloadSensor() error {
-	gcTimer.Stop()
+	if gcTimerRunning {
+		gcTimer.Stop()
+		gcTimerRunning = false
+	}
+	udpStatsEnable = false
+	// If we enabled via CLI switches, run the GC so it can reap idle
+	// pseudo-sockets.
+	StartIdleSocketGC()
 	TimestampEnabled = false
 	networklatency.Stop(syscall.IPPROTO_UDP)
 	if WatermarksEnabled {
@@ -321,7 +340,7 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error
 	 * statsInterval < deleteIntervaInterval. This is a bit squishy, to be
 	 * cleaned up and clarrified in docs at some point.
 	 */
-	var interval = time.Duration(UdpGCIntervalDefault)
+	var interval = time.Duration(0)
 	if spec.Parser.Udp != nil && spec.Parser.Udp.StatsInterval > 0 {
 		interval = time.Duration(spec.Parser.Udp.StatsInterval) * time.Second
 		udpStatsEnable = true
@@ -329,11 +348,12 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, time.Duration, error
 		udpStatsEnable = false
 	}
 
+	UdpDeleteInterval = enterpriseOption.Config.UDPIdleSocketTimeout
 	if spec.Parser.Udp != nil && spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
 		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
-		if !udpStatsEnable {
-			interval = UdpDeleteInterval
-		}
+	}
+	if !udpStatsEnable {
+		interval = UdpDeleteInterval
 	}
 	Config, udpconfig.LatencyConfig = ParseUdpSpec(spec)
 	udpLatencyEnable := spec.Parser.Udp != nil && spec.Parser.Udp.Latency.Enable
