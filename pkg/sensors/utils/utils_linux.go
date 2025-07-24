@@ -27,6 +27,14 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
+
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
+
+	"golang.org/x/sys/unix"
+)
+
+const (
+	fgsCgroupPath = "/run/tetragon/cgroup2"
 )
 
 var (
@@ -41,6 +49,9 @@ var (
 	checkUDPBindNeedsDummies = sync.OnceValue(_checkUDPBindNeedsDummies)
 
 	checkSockopsSupportsCgAncestorHelper = sync.OnceValue(_checkSockopsSupportsCgAncestorHelper)
+
+	checkBPFTimerAvailable = sync.OnceValue(_checkBPFTimerAvailable)
+	checkBPFTimerUsable    = sync.OnceValue(_checkBPFTimerUsable)
 )
 
 // SkSkbParserRequired returns whether the underlying kernel requires skskb
@@ -423,6 +434,169 @@ func _checkUDPBindNeedsDummies() bool {
 	return value == 0
 }
 
+// CheckBPFTimerAvailable checks if the kernel supports CGroup/SKB programs, has support for large programs,
+// and the CGroup/SKB programs have the bpf_timer_init helper (and therefore the other bpf_timer_* helpers).
+func CheckBPFTimerAvailable() bool {
+	return checkBPFTimerAvailable()
+}
+
+func _checkBPFTimerAvailable() bool {
+	err := features.HaveProgramType(ebpf.CGroupSKB)
+	if err != nil {
+		return false
+	}
+	err = features.HaveLargeInstructions()
+	if err != nil {
+		return false
+	}
+	err = features.HaveProgramHelper(ebpf.CGroupSKB, asm.FnTimerSetCallback)
+	return err == nil
+}
+
+// CheckBPFTimerUsable checks if the kernel will load a program that sets a timer callback, while also using
+// certain atomics.
+// A case in point is kernel v5.15 on ARM: it has the timer helpers, but it will only let us set a callback
+// if the program is JITed, but it can't JIT a program with certain atomic instructions. Tested separately,
+// the kernel supports timers, supports the atomic instructions, and lets a callback be set on a timer.
+// This function tests them together, which will result in a non-JITed program (due to the atomic), which
+// then can't be verified for callback usage because it isn't JITed.
+func CheckBPFTimerUsable() bool {
+	return checkBPFTimerUsable()
+}
+
+func _checkBPFTimerUsable() bool {
+	// Map to store our timer.
+	mapSpec := &ebpf.MapSpec{
+		Name:       "tg_timer_probe",
+		Type:       ebpf.Array,
+		KeySize:    4,
+		ValueSize:  32,
+		MaxEntries: 1,
+		Pinning:    ebpf.PinByName,
+		Key: &btf.Int{
+			Size: 4,
+		},
+		Value: &btf.Struct{
+			Size: 32,
+			Members: []btf.Member{
+				{
+					Name: "expires",
+					Type: &btf.Struct{
+						Name: "bpf_timer",
+						Size: 16,
+					},
+				},
+				{
+					Name: "count",
+					Type: &btf.Int{
+						Size: 8,
+					},
+				},
+				{
+					Name: "total",
+					Type: &btf.Int{
+						Size: 8,
+					},
+				},
+			},
+		},
+	}
+	tempMapDir := filepath.Join(defaults.DefaultMapRoot, "tg_timer_probe")
+	opts := ebpf.MapOptions{
+		PinPath: tempMapDir,
+	}
+	os.MkdirAll(tempMapDir, 0700)
+	defer os.Remove(tempMapDir)
+	m, err := ebpf.NewMapWithOptions(mapSpec, opts)
+	if err != nil {
+		logger.GetLogger().Debug("CheckBPFTimerUsable failed NewMapWithOptions", logfields.Error, err)
+		return false
+	}
+	defer m.Unpin()
+	defer m.Close()
+
+	mainFn := &btf.Func{
+		Name: "timer_probe",
+		Type: &btf.FuncProto{
+			Return: &btf.Int{Size: 4},
+			Params: []btf.FuncParam{},
+		},
+		Linkage: btf.GlobalFunc,
+	}
+
+	callbackFn := &btf.Func{
+		Name: "timer_callback",
+		Type: &btf.FuncProto{
+			Return: &btf.Int{Size: 4},
+			Params: []btf.FuncParam{},
+		},
+		Linkage: btf.StaticFunc,
+	}
+
+	ins := asm.Instructions{
+		// Store u32(0) on stack
+		btf.WithFuncMetadata(asm.Mov.Imm(asm.R1, 0), mainFn).WithSymbol("timer_probe").WithSource(asm.Comment("timer_probe(struct __sk_buff *skb)")),
+		asm.StoreMem(asm.RFP, -4, asm.R1, asm.Word),
+		// tmr = map_lookup_elem(m.FD(), &zero)
+		asm.Mov.Reg(asm.R2, asm.RFP),
+		asm.Add.Imm(asm.R2, -4),
+		asm.LoadMapPtr(asm.R1, m.FD()),
+		asm.FnMapLookupElem.Call(),
+		// if (!r0) goto error
+		asm.JEq.Imm(asm.R0, 0, "error"),
+		// res = timer_set_callback(&tmr->expires, timer_callback)
+		asm.Mov.Reg(asm.R1, asm.R0),
+		asm.Instruction{OpCode: asm.LoadImmOp(asm.DWord), Dst: asm.R2, Src: asm.PseudoFunc, Constant: -1}.WithReference("timer_callback"), // Constant=-1 indicates BPF2BPF Fn ref
+		asm.Mov.Reg(asm.R6, asm.R0),
+		asm.FnTimerSetCallback.Call(),
+		// tmr->total = sync_fetch_and_add(&tmr->count, res)
+		asm.Instruction{OpCode: asm.StoreXAddOp(asm.DWord), Dst: asm.R6, Src: asm.R0, Offset: 16, Constant: 1}, // Constant=1 sets the FETCH bit
+		asm.StoreMem(asm.R6, 24, asm.R0, asm.DWord),
+		// return 1
+		asm.Mov.Imm(asm.R0, 1).WithSymbol("error"),
+		asm.Return(),
+		// fn timer_callback
+		// return 0
+		btf.WithFuncMetadata(asm.Mov.Imm(asm.R0, 0), callbackFn).WithSymbol("timer_callback").WithSource(asm.Comment("	return 0;")),
+		asm.Return(),
+	}
+
+	spec := &ebpf.ProgramSpec{
+		Type:         ebpf.CGroupSKB,
+		AttachType:   ebpf.AttachCGroupInetIngress,
+		AttachTo:     "cgroup_ingress",
+		Instructions: ins,
+		License:      "GPL",
+	}
+
+	var prog *ebpf.Program
+	prog, err = ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
+		LogDisabled: false,
+	})
+	if err != nil {
+		logger.GetLogger().Debug("CheckBPFTimerUsable failed NewProgramWithOptions", logfields.Error, err)
+		return false
+	}
+	defer prog.Close()
+
+	fgsCgroupFD, err := unix.Open(fgsCgroupPath, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		logger.GetLogger().Debug("failed to open CGroup path", "path", fgsCgroupPath, "err", err)
+		return false
+	}
+	defer unix.Close(fgsCgroupFD)
+
+	attachFunc := cgroup.CGroupAttachWithFlags(fgsCgroupFD, unix.BPF_F_ALLOW_MULTI)
+	unloader, err := attachFunc(nil, nil, prog, spec)
+	if err != nil {
+		logger.GetLogger().Debug("attachFunc failed", "err", err)
+		return false
+	}
+	unloader.Unload(true)
+
+	return true
+}
+
 func LogLayer3Features() string {
 	// once we have detected all features, flush the BTF spec
 	// we cache all values so calling again a Has* function will
@@ -430,10 +604,10 @@ func LogLayer3Features() string {
 	defer btf.FlushKernelSpec()
 	return fmt.Sprintf("packet: %t, packet_mem: %t, add_and_fetch: %t, current_task_btf: %t, process_tree: %t, "+
 		"func_by_func_verif: %t, global_func_ptr_args: %t, raw_sockets: %t, RTT_hook: %t, fentry: %t, udp_bind_needs_dummies: %t, "+
-		"sockops_cgroup_ancestor: %t",
+		"sockops_cgroup_ancestor: %t, timer_avail: %t, timer_usable: %t",
 		CGroupSKBAvailable(), SupportCGroupSKBProbeRead(), SupportAddAndFetch(), SupportCurrentTaskBTF(), SupportProcessTree(),
 		SupportFuncByFuncVerif(), SupportGlobalFuncPtrArgs(), RawHooksAvailable(), RTTHookAvailable(), SupportFentry(), UDPBindNeedsDummies(),
-		SockopsSupportsCgroupAncestorHelper())
+		SockopsSupportsCgroupAncestorHelper(), CheckBPFTimerAvailable(), CheckBPFTimerUsable())
 }
 
 // SockopsSupportsCgroupAncestorHelper checks if the kernel supports calling
