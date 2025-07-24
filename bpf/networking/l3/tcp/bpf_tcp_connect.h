@@ -20,7 +20,7 @@
 #include "parsers/tls/tls_map.h"
 #include "bpf_fd_to_sk.h"
 #include "bpf_tracing.h"
-#include "../bpf_network_event_config.h"
+#include "bpf_tcp_event_config.h"
 #include "bpf_tcp_info.h"
 #include "bpf_network_helpers.h"
 #include "bpf_tcp_state.h"

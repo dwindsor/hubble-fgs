@@ -22,7 +22,7 @@
 #include "bpf_tracing.h"
 #include "parsers/http/http.h"
 #include "parsers/bottle.h"
-#include "../bpf_network_event_config.h"
+#include "bpf_tcp_event_config.h"
 #include "bpf_tcp_state.h"
 
 static inline __attribute__((always_inline)) int
