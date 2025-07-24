@@ -17,6 +17,7 @@
 #include "../bpf_network_helpers.h"
 #include "bpf_tracing.h"
 #include "../l3/tcp/bpf_tcp_close.h"
+#include "../l3/udp/bpf_udp_config.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -120,6 +121,7 @@ store_socket(void *ctx, u64 cookie, u8 protocol)
 static inline __attribute__((always_inline)) int
 destroy_socket(void *ctx, u64 cookie)
 {
+	struct udp_sensor_config *udp_cfg;
 	struct tcpsocketmap_value *socket;
 	struct socketmap_value *process;
 	struct cfg_value *cfg;
@@ -129,11 +131,14 @@ destroy_socket(void *ctx, u64 cookie)
 	if (!process)
 		return 0;
 
+	udp_cfg = get_udp_config();
 	cfg = (struct cfg_value *)map_lookup_elem(&tg_l3_cfg, &zero);
 	if (cfg) {
 		switch (process->protocol) {
 		case IPPROTO_UDP:
-			if (cfg->udp_report_close)
+			// UDP close events can be disabled by either disabling the UDP protocol,
+			// or specifically disabling close events in the UDP config.
+			if (cfg->udp_report_close && udp_cfg && !udp_cfg->disable_close_events)
 				emit_sk_event(ctx, process, cookie, ISO_MSG_OP_UDPCLOSE);
 			break;
 		case IPPROTO_RAW:

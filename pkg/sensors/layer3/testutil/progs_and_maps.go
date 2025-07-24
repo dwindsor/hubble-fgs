@@ -157,10 +157,8 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 		SensorMapByProgName(sensorProgs, "tg_l3_udpsk_cnt", []string{
 			cgroupEgressProg, cgroupIngressProg,
 		}),
-		SensorMapByProgName(sensorProgs, "tg_l3_udp_cfg", []string{
-			cgroupEgressProg, cgroupIngressProg, udpBindProg,
-		}),
 	}...)
+	UDPCfgMap := SensorMapByProgName(sensorProgs, "tg_l3_udp_cfg", []string{cgroupEgressProg, cgroupIngressProg, udpBindProg})
 
 	socketTupleMap.Progs = append(socketTupleMap.Progs, getMapIndicesByName(sensorProgs, []string{
 		cgroupEgressProg, cgroupIngressProg, fdLookupProg,
@@ -252,6 +250,7 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	execveMap.Progs = MergeIntoMap(execveMap.Progs, GetMapProgs(sockMaps, execveMap.Name), ni)
 	tcpMonMap.Progs = MergeIntoMap(tcpMonMap.Progs, GetMapProgs(sockMaps, tcpMonMap.Name), ni)
 	cfgMap.Progs = MergeIntoMap(cfgMap.Progs, GetMapProgs(sockMaps, cfgMap.Name), ni)
+	UDPCfgMap.Progs = MergeIntoMap(UDPCfgMap.Progs, GetMapProgs(sockMaps, UDPCfgMap.Name), ni)
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
 	confMap := SensorMapByProgName(sensorProgs, "tg_conf_map", []string{})
@@ -271,6 +270,7 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 		tcpMonMap,
 		latencyConfigMap,
 		cfgMap,
+		UDPCfgMap,
 		verMap,
 		confMap,
 		acceptMap,
@@ -387,6 +387,8 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		})...)
 	}
 
+	var UDPCfgMap tus.SensorMap
+
 	if !utils.CGroupSKBAvailable() { // 4.19 - <5.4
 		sensorMaps = append(sensorMaps, []tus.SensorMap{
 			SensorMapByProgName(sensorProgs, "tg_l3_udpsk", []string{
@@ -395,10 +397,8 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 			SensorMapByProgName(sensorProgs, "tg_l3_udpsk_cnt", []string{
 				udpInetLazySendProg,
 			}),
-			SensorMapByProgName(sensorProgs, "tg_l3_udp_cfg", []string{
-				udpInetLazySendProg, udpBindProg,
-			}),
 		}...)
+		UDPCfgMap = SensorMapByProgName(sensorProgs, "tg_l3_udp_cfg", []string{udpInetLazySendProg, udpBindProg})
 
 		execveMap.Progs = append(execveMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			udpInetLazySendProg,
@@ -420,10 +420,8 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 			SensorMapByProgName(sensorProgs, "tg_l3_udpsk_cnt", []string{
 				cgroupEgressProg, cgroupIngressProg,
 			}),
-			SensorMapByProgName(sensorProgs, "tg_l3_udp_cfg", []string{
-				cgroupEgressProg, cgroupIngressProg, udpBindProg,
-			}),
 		}...)
+		UDPCfgMap = SensorMapByProgName(sensorProgs, "tg_l3_udp_cfg", []string{cgroupEgressProg, cgroupIngressProg, udpBindProg})
 
 		socketTupleMap.Progs = append(socketTupleMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			cgroupEgressProg, cgroupIngressProg,
@@ -516,6 +514,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 	execveMap.Progs = MergeIntoMap(execveMap.Progs, GetMapProgs(sockMaps, execveMap.Name), ni)
 	tcpMonMap.Progs = MergeIntoMap(tcpMonMap.Progs, GetMapProgs(sockMaps, tcpMonMap.Name), ni)
 	cfgMap.Progs = MergeIntoMap(cfgMap.Progs, GetMapProgs(sockMaps, cfgMap.Name), ni)
+	UDPCfgMap.Progs = MergeIntoMap(UDPCfgMap.Progs, GetMapProgs(sockMaps, UDPCfgMap.Name), ni)
 	verMap.Progs = MergeIntoMap(verMap.Progs, GetMapProgs(sockMaps, verMap.Name), ni)
 
 	sensorMaps = append(sensorMaps, []tus.SensorMap{
@@ -532,6 +531,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		tcpMonMap,
 		latencyConfigMap,
 		cfgMap,
+		UDPCfgMap,
 		verMap,
 		fdLookupConfigMap,
 	}...)
