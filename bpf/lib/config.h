@@ -63,6 +63,7 @@ struct udp_sensor_config {
 	u64 watermarks_dip_trigger_percent;
 	u64 seq_check_app_id;
 	u16 seq_check_ports[8];
+	u64 idle_timeout; // idle socket expiry duration in ns
 };
 
 struct cgroup_dispatch_cfg {

@@ -397,6 +397,7 @@ type UdpConfigValue struct {
 	WatermarksDipTriggerPercent   uint64                      `align:"watermarks_dip_trigger_percent"`
 	SeqCheckAppId                 uint64                      `align:"seq_check_app_id"`
 	SeqCheckPorts                 [UdpMaxSeqCheckPorts]uint16 `align:"seq_check_ports"`
+	IdleTimeout                   uint64                      `align:"idle_timeout"`
 }
 
 func (v *UdpConfigValue) String() string {

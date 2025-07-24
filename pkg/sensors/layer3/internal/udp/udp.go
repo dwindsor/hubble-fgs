@@ -197,12 +197,14 @@ func SetConfig(cfg *networkapi.Layer3ConfigValue) error {
 	// configuration as well.
 	cfg.UDP.DisableConnectEvents = 0
 	cfg.UDP.DisableCloseEvents = 0
+	cfg.UDP.IdleTimeout = 0 // disabled
 	if enterpriseOption.Config.Layer3CLIEnable && !enterpriseOption.Config.EnableNetworkEvents {
 		DisableConnectEvents = true
 		DisableCloseEvents = true
 		DisableListenEvents = true
 		cfg.UDP.DisableConnectEvents = 1
 		cfg.UDP.DisableCloseEvents = 1
+		cfg.UDP.IdleTimeout = uint64(enterpriseOption.Config.UDPIdleSocketTimeout.Nanoseconds())
 	}
 	// DisableListenEvents can operate independently of disabling all network events.
 	cfg.UDP.DisableListenEvents = 0

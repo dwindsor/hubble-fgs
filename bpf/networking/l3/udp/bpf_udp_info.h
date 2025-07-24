@@ -47,6 +47,20 @@ struct {
 	__uint(max_entries, 1);
 } tg_l3_udpsk_cnt SEC(".maps");
 
+#ifdef USE_BPF_TIMER
+// Store timers to expire the tg_l3_udpsk entries
+struct udp_timer_value {
+	struct bpf_timer expires;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__type(key, struct udp_info_key);
+	__type(value, struct udp_timer_value);
+	__uint(max_entries, MAX_UDP_ENDPOINTS);
+} tg_l3_udp_tmr SEC(".maps");
+#endif
+
 /* Store the latest pseudo-socket version number. Each pseudo-socket receives a
  * new global version number, unique to each pseudo-socket.
  */
