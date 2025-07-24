@@ -429,6 +429,10 @@ options:
     - name: udp-idle-socket-timeout
       default_value: 2m0s
       usage: How long a UDP socket should be idle to be considered closed
+    - name: udp-in-kernel-managed
+      default_value: "false"
+      usage: |
+        Enable in-kernel management for UDP maps. A 5.8.0+ kernel is required.
     - name: username-metadata
       default_value: disabled
       usage: |

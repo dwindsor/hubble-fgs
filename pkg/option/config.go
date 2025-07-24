@@ -98,6 +98,7 @@ type config struct {
 	Layer3CLIEnable bool
 
 	UDPIdleSocketTimeout time.Duration
+	UDPInKernelManaged   bool
 
 	EnableNetworkEvents bool
 
@@ -134,6 +135,7 @@ var (
 		BPFDNSParserMaxPendingRequests: 1024,
 		EnableAlertProfiling:           false,
 		EnableNetworkEvents:            true,
+		UDPInKernelManaged:             false,
 	}
 )
 

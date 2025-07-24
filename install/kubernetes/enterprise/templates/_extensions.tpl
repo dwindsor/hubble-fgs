@@ -41,6 +41,7 @@ enable-icmp: {{ .Values.tetragon.layer3.icmp.enabled | quote }}
 enable-rawsock: {{ .Values.tetragon.layer3.rawsock.enabled | quote }}
 enable-dns: {{ .Values.tetragon.dns.enabled | quote }}
 udp-idle-socket-timeout: {{ .Values.tetragon.layer3.udp.idleSocketTimeout | quote }}
+udp-in-kernel-managed: {{ .Values.tetragon.layer3.udp.inKernelManaged | quote }}
 enable-network-events: {{ .Values.tetragon.enableEvents.network | quote }}
 {{- if .Values.tetragon.awsSonar.enabled }}
 enable-aws-sonar: "true"

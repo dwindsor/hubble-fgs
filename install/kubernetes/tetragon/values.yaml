@@ -302,6 +302,7 @@ tetragon:
     udp:
       enabled: false
       idleSocketTimeout: 2m
+      inKernelManaged: false
     icmp:
       enabled: false
     rawsock:
