@@ -146,6 +146,14 @@ var (
 		"cgrp_egress",
 	)
 
+	EgressDispatcherProcessTreeTimer = program.Builder(
+		"bpf_cgroup_net_pstree_timer.o",
+		"cgroup_egress",
+		"cgroup_skb/egress",
+		"tg_cgroup_egress",
+		"cgrp_egress",
+	)
+
 	IngressDispatcher = program.Builder(
 		"bpf_cgroup_net.o",
 		"cgroup_ingress",
@@ -170,25 +178,34 @@ var (
 		"cgrp_ingress",
 	)
 
-	dispatcherProgs            = []*program.Program{EgressDispatcher, IngressDispatcher}
-	dispatcherNoProbeReadProgs = []*program.Program{EgressDispatcherNoProbeRead, IngressDispatcherNoProbeRead}
-	dispatcherProcessTreeProgs = []*program.Program{EgressDispatcherProcessTree, IngressDispatcherProcessTree}
+	IngressDispatcherProcessTreeTimer = program.Builder(
+		"bpf_cgroup_net_pstree_timer.o",
+		"cgroup_ingress",
+		"cgroup_skb/ingress",
+		"tg_cgroup_ingress",
+		"cgrp_ingress",
+	)
+
+	dispatcherProgs                 = []*program.Program{EgressDispatcher, IngressDispatcher}
+	dispatcherNoProbeReadProgs      = []*program.Program{EgressDispatcherNoProbeRead, IngressDispatcherNoProbeRead}
+	dispatcherProcessTreeProgs      = []*program.Program{EgressDispatcherProcessTree, IngressDispatcherProcessTree}
+	dispatcherProcessTreeTimerProgs = []*program.Program{EgressDispatcherProcessTreeTimer, IngressDispatcherProcessTreeTimer}
 
 	// Dispatcher Latency maps; could be problematic from an ownership perspective. Solve another day.
-	latencyConfigMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher, IngressDispatcherNoProbeRead, IngressDispatcherProcessTree)
+	latencyConfigMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher, IngressDispatcherNoProbeRead, IngressDispatcherProcessTree, IngressDispatcherProcessTreeTimer)
 
 	// Dispatcher UDP maps, built here because they are only used by the dispatcher
-	udpMap      = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
-	udpMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
+	udpMap      = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
+	udpMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
 	udpMaps     = []*program.Map{udpMap, udpMapStats, latencyConfigMap, protoCfgMap}
 
 	// DNS Parser maps
 	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.14
-	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
-	DNSDomainMap      = program.MapBuilder(dnsparser.DomainToIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
-	DNSDomainMapRev   = program.MapBuilder(dnsparser.IDToDomainMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
-	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
-	RequestIDMapName  = program.MapBuilder(dnsparser.RequestIDMapName, IngressDispatcherProcessTree, EgressDispatcherProcessTree)
+	DNSParserErrorMap = program.MapBuilder(dnsparser.ErrorMapName, IngressDispatcherProcessTree, IngressDispatcherProcessTreeTimer, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
+	DNSDomainMap      = program.MapBuilder(dnsparser.DomainToIDMapName, IngressDispatcherProcessTree, IngressDispatcherProcessTreeTimer, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
+	DNSDomainMapRev   = program.MapBuilder(dnsparser.IDToDomainMapName, IngressDispatcherProcessTree, IngressDispatcherProcessTreeTimer, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
+	DNSGlobalIDMap    = program.MapBuilder(dnsparser.GlobalDNSIDMapName, IngressDispatcherProcessTree, IngressDispatcherProcessTreeTimer, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
+	RequestIDMapName  = program.MapBuilder(dnsparser.RequestIDMapName, IngressDispatcherProcessTree, IngressDispatcherProcessTreeTimer, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
 	// This map is shared between the DNS parser and the process tree: the fdlookup and tcpsockops progs
 	DNSIPToIDMaps        = program.MapUserFrom(ip.DNSIPToIDMaps)
 	AllocationIDMap      = program.MapUserFrom(ip.AllocationIDMap)

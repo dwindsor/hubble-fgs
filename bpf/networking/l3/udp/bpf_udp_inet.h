@@ -98,6 +98,9 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 			update_rx_value(value, payload_sz);
 			add_latency(latency_config, value->buckets, &value->latency_sum, latency);
 		}
+#ifdef USE_BPF_TIMER
+		update_udp_timer();
+#endif
 		return value;
 	}
 

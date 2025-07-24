@@ -26,6 +26,10 @@
  */
 #define MAX_UDP_ENDPOINTS 32768
 
+/* Clock is defined in linux/time.h */
+#define CLOCK_REALTIME	0
+#define CLOCK_MONOTONIC 1
+
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
@@ -271,6 +275,100 @@ update_rx_value(struct udp_info_value *v, u32 len)
 	WRITE_ONCE(v->ktime, tg_get_ktime());
 }
 
+#ifdef USE_BPF_TIMER
+static int remove_udp_entry(void *map, struct udp_info_key *k, struct udp_info_value *v)
+{
+	int err = map_delete_elem(&tg_l3_udpsk, k);
+	int zero = 0;
+	__s64 *cntr;
+
+	if (!err) {
+		cntr = (__s64 *)map_lookup_elem(&tg_l3_udpsk_cnt, &zero);
+		if (cntr)
+			*cntr = *cntr - 1;
+	}
+
+	map_delete_elem(map, k);
+	return 0;
+}
+
+static inline __attribute__((always_inline)) void
+__init_timer(void *map, struct bpf_timer *timer)
+{
+	if (timer_init(timer, map, CLOCK_MONOTONIC) < 0)
+		return;
+	timer_set_callback(timer, remove_udp_entry);
+}
+
+static inline __attribute__((always_inline)) void
+__set_timer(void *map, struct bpf_timer *timer, u64 nsec)
+{
+	if (timer_start(timer, nsec, 0) < 0) {
+		__init_timer(map, timer);
+		timer_start(timer, nsec, 0);
+	}
+}
+
+__attribute__((noinline)) int
+update_udp_timer()
+{
+	struct udp_timer_value init_timer = {};
+	struct cfg_value *l3cfg = getl3cfg();
+	struct udp_sensor_config *udp_cfg;
+	struct udp_timer_value *timer;
+	struct udp_info_key *k;
+	int zero = 0;
+
+	k = (struct udp_info_key *)map_lookup_elem(&tg_p_l3_udp_key, &zero);
+	if (!k)
+		return 0;
+
+	if (!l3cfg)
+		return 0;
+	udp_cfg = &l3cfg->udp;
+	if (!udp_cfg->idle_timeout)
+		return 0;
+	timer = map_lookup_elem(&tg_l3_udp_tmr, k);
+	if (!timer) {
+		map_update_elem(&tg_l3_udp_tmr, k, &init_timer, 0);
+		timer = map_lookup_elem(&tg_l3_udp_tmr, k);
+		if (!timer)
+			return 0;
+	}
+	__set_timer(&tg_l3_udp_tmr, (struct bpf_timer *)&timer->expires, udp_cfg->idle_timeout);
+	return 0;
+}
+
+__attribute__((noinline)) int
+set_udp_timer()
+{
+	struct udp_timer_value init_timer = {};
+	struct cfg_value *l3cfg = getl3cfg();
+	struct udp_sensor_config *udp_cfg;
+	struct udp_timer_value *timer;
+	struct udp_info_key *k;
+	int zero = 0;
+
+	k = (struct udp_info_key *)map_lookup_elem(&tg_p_l3_udp_key, &zero);
+	if (!k)
+		return 0;
+
+	if (!l3cfg)
+		return 0;
+	udp_cfg = &l3cfg->udp;
+	if (!udp_cfg->idle_timeout)
+		return 0;
+	map_update_elem(&tg_l3_udp_tmr, k, &init_timer, 0);
+	timer = (struct udp_timer_value *)map_lookup_elem(&tg_l3_udp_tmr, k);
+	if (!timer)
+		return 0;
+	__init_timer(&tg_l3_udp_tmr, (struct bpf_timer *)&timer->expires);
+	__set_timer(&tg_l3_udp_tmr, (struct bpf_timer *)&timer->expires, udp_cfg->idle_timeout);
+
+	return 0;
+}
+#endif
+
 static inline __attribute__((always_inline)) void
 add_udp_map(struct udp_info_key *key, struct udp_info_value *value)
 {
@@ -282,6 +380,9 @@ add_udp_map(struct udp_info_key *key, struct udp_info_value *value)
 	err = map_update_elem(&tg_l3_udpsk, key, value, 0);
 	if (!err && !existing && (cntr = (__s64 *)map_lookup_elem(&tg_l3_udpsk_cnt, &zero)))
 		*cntr = *cntr + 1;
+#ifdef USE_BPF_TIMER
+	set_udp_timer();
+#endif
 }
 
 #endif
