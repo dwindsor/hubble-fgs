@@ -27,7 +27,6 @@
 #include "dns/bpf_dns.h"
 #include "bpf_udp_info.h"
 #include "parsers/dns/parser.h"
-#include "../bpf_network_event_config.h"
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 {
