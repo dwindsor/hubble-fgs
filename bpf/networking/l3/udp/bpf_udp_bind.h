@@ -18,7 +18,6 @@
 #include "bpf_task.h"
 #include "bpf_cookie.h"
 #include "bpf_tracing.h"
-#include "../bpf_network_event_config.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -30,7 +29,6 @@ struct {
 static inline __attribute__((always_inline)) int
 __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
 {
-	struct event_disable_config *event_cfg;
 	struct udp_sensor_config *config;
 	struct socketmap_value *process;
 	struct msg_ip_event *event;
@@ -88,15 +86,8 @@ __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
 
 	event->version = process->version;
 
-	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_l3_tcp_dsble, &zero);
-	if (!event_cfg)
-		return 0;
-
-	if (!event_cfg->disableListen) {
-		size = sizeof(struct msg_ip_event);
-		perf_event_output_metric(ctx, ISO_MSG_OP_UDPLISTEN, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
-	}
+	size = sizeof(struct msg_ip_event);
+	perf_event_output_metric(ctx, ISO_MSG_OP_UDPLISTEN, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 	return 1;
 }
 
