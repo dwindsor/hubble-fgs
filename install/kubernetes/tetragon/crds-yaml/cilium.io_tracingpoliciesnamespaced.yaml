@@ -768,7 +768,7 @@ spec:
                                   - FILE_OPEN
                                   - FILE_SYMLINK
                                   - FILE_OPENRAW
-                                  - FILE_UNIX_CONNECT
+                                  - FILE_UNIX_SOCKET_CONNECT
                                   type: string
                                 type: array
                             required:

@@ -29,11 +29,11 @@ static inline __attribute__((always_inline)) __u32 unix_stream_connect(void *ctx
 
 	generate_path(&msg->path, _(&unix_sock->path));
 
-	operation = eval_selectors((struct sel_args){ action_unix_connect, 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
+	operation = eval_selectors((struct sel_args){ action_unix_socket_connect, 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 
-	complete_msg(msg, action_unix_connect, hook_security_unix_stream_connect, operation, rule_id, 0, msg_id);
+	complete_msg(msg, action_unix_socket_connect, hook_security_unix_stream_connect, operation, rule_id, 0, msg_id);
 
 	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
 

@@ -249,7 +249,7 @@ var (
 
 	FimPathBasedGetnameFlagsHook = FimHook{"fexit", "getname_flags", []FimFunc{{"struct filename* getname_flags(const int*, int)", "fexit_getname_flags.o", "getname_flags", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}}
 
-	FimPathBasedSecurityUnixStreamConnect = FimHook{"lsm", "security_unix_stream_connect", []FimFunc{{"security_unix_stream_connect(struct sock*, struct sock*, struct sock*)", "lsm_security_unix_stream_connect.o", "unix_stream_connect", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_UNIX_CONNECT}...)}}}
+	FimPathBasedSecurityUnixStreamConnect = FimHook{"lsm", "security_unix_stream_connect", []FimFunc{{"security_unix_stream_connect(struct sock*, struct sock*, struct sock*)", "lsm_security_unix_stream_connect.o", "unix_stream_connect", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_UNIX_SOCKET_CONNECT}...)}}}
 
 	FimPathBasedTailCallHooks = [...]FimHook{
 		{"fmod_ret", "tail_call", []FimFunc{{"", "fmod_security_file_permission.o", "security_file_permission", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_READ, tetragon.FileAction_FILE_WRITE}...)}}},
@@ -2045,7 +2045,7 @@ func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, m
 			if _, err := fgsBTF.GetFuncProto(spec, "security_unix_stream_connect", false); err == nil {
 				hooks = append(hooks, FimPathBasedSecurityUnixStreamConnect)
 			} else {
-				logger.GetLogger().Warn("FileMonitoring hook security_unix_stream_connect not found. Will not generate FILE_UNIX_CONNECT events")
+				logger.GetLogger().Warn("FileMonitoring hook security_unix_stream_connect not found. Will not generate FILE_UNIX_SOCKET_CONNECT events")
 			}
 			hooks = append(hooks, FimPathBasedArchHooks[:]...)
 			m = "path-based"

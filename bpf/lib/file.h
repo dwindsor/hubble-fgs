@@ -50,7 +50,7 @@ enum {
 	action_open = 12,
 	action_symlink = 13,
 	action_openraw = 14,
-	action_unix_connect = 15,
+	action_unix_socket_connect = 15,
 };
 
 // this should match the map in pkg/grpc/file/file.go
