@@ -166,6 +166,11 @@ func SupportProcessTree() bool {
 	return SupportAddAndFetch() && SupportCurrentTaskBTF() && SupportGlobalFuncPtrArgs()
 }
 
+// SupportTimers checks if the kernel supports timers and that they are usable (when combined with atomic instructions)
+func SupportTimers() bool {
+	return CheckBPFTimerAvailable() && checkBPFTimerUsable()
+}
+
 // SupportFuncByFuncVerif checks if the kernel supports function-by-function verification
 func SupportFuncByFuncVerif() bool {
 	err := checkFuncByFuncVerif()

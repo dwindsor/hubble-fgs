@@ -308,7 +308,13 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 				progsCollectStats = append(progsCollectStats, dispatcherProgs...)
 				maps = append(maps, dispatcherMaps...)
 			} else {
-				for _, prog := range dispatcherProcessTreeProgs {
+				var ourDispatcherProcessTreeProgs []*program.Program
+				if !utils.SupportTimers() {
+					ourDispatcherProcessTreeProgs = dispatcherProcessTreeProgs
+				} else {
+					ourDispatcherProcessTreeProgs = dispatcherProcessTreeTimerProgs
+				}
+				for _, prog := range ourDispatcherProcessTreeProgs {
 					prog.RewriteConstants[dnsparser.ParserEnabledName] = enterpriseOption.Config.EnableBPFDNSParser
 					err := dnsparser.RewriteConstants(prog.RewriteConstants)
 					if err != nil {
@@ -316,7 +322,7 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 						logger.GetLogger().Error("Failed to rewrite DNS parser constants", logfields.Error, err)
 					}
 				}
-				progsCollectStats = append(progsCollectStats, dispatcherProcessTreeProgs...)
+				progsCollectStats = append(progsCollectStats, ourDispatcherProcessTreeProgs...)
 				maps = append(maps, dispatcherProcessTreeMaps...)
 			}
 		} else {
