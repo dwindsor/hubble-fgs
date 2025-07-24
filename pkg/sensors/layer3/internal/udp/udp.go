@@ -205,7 +205,9 @@ func SetConfig(cfg *networkapi.Layer3ConfigValue) error {
 		DisableListenEvents = true
 		cfg.UDP.DisableConnectEvents = 1
 		cfg.UDP.DisableCloseEvents = 1
-		cfg.UDP.IdleTimeout = uint64(enterpriseOption.Config.UDPIdleSocketTimeout.Nanoseconds())
+		if enterpriseOption.Config.UDPInKernelManaged {
+			cfg.UDP.IdleTimeout = uint64(enterpriseOption.Config.UDPIdleSocketTimeout.Nanoseconds())
+		}
 	}
 	// DisableListenEvents can operate independently of disabling all network events.
 	cfg.UDP.DisableListenEvents = 0
@@ -220,7 +222,7 @@ func SetConfig(cfg *networkapi.Layer3ConfigValue) error {
 func ConfigureSensor() error {
 	ip.LoadSockets(fdCallback, syscall.IPPROTO_UDP, 0)
 	udpconfig.UdpMapRemoves = 0
-	if udpGcInterval > 0 {
+	if !enterpriseOption.Config.UDPInKernelManaged && udpGcInterval > 0 {
 		if gcTimerRunning {
 			gcTimer.Stop()
 		}
@@ -231,7 +233,7 @@ func ConfigureSensor() error {
 }
 
 func StartIdleSocketGC() {
-	if enterpriseOption.Config.EnableUDP && enterpriseOption.Config.UDPIdleSocketTimeout > 0 {
+	if enterpriseOption.Config.EnableUDP && enterpriseOption.Config.UDPIdleSocketTimeout > 0 && !enterpriseOption.Config.UDPInKernelManaged {
 		UdpDeleteInterval = enterpriseOption.Config.UDPIdleSocketTimeout
 		gcTimer.Start(UdpDeleteInterval)
 		gcTimerRunning = true

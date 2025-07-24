@@ -757,6 +757,9 @@ func EnableLayer3Progs() error {
 	}
 	if enterpriseOption.Config.EnableUDP {
 		udpEnabled = true
+		if enterpriseOption.Config.UDPInKernelManaged && (!utils.SupportProcessTree() || !utils.SupportTimers()) {
+			return fmt.Errorf("UDP in kernel management requires process tree and bpf timer support")
+		}
 	}
 	if enterpriseOption.Config.EnableICMP {
 		icmpEnabled = true
