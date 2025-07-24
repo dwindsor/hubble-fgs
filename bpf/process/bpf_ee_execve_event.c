@@ -14,7 +14,7 @@
 #include "policy_filter.h"
 #include "process_tree.h"
 
-#ifdef __V611_BPF_PROG
+#ifdef __V612_BPF_PROG
 
 int execve_rate(void *ctx);
 int ee_execve_send(void *ctx);
@@ -72,4 +72,4 @@ struct {
 #define OVERRIDE_TAILCALL
 #include "bpf_execve_event.c"
 
-#endif /* __V611_BPF_PROG */
+#endif /* __V612_BPF_PROG */

@@ -25,8 +25,8 @@ func GetDefaultPrograms() []*program.Program {
 		ExecveBprmCommit,
 		ExecveMapUpdate,
 	}
-	if EnableV611Progs() {
-		progs = append(progs, ExecveV611)
+	if EnableV612Progs() {
+		progs = append(progs, ExecveV612)
 	} else if config.EnableV61Progs() {
 		progs = append(progs, ExecveV61)
 	} else if utils.EnableV511Progs() {

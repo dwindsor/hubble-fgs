@@ -72,8 +72,8 @@ var (
 		"execve",
 	).SetPolicy(basePolicy)
 
-	ExecveV611 = program.Builder(
-		"bpf_execve_event_v611.o",
+	ExecveV612 = program.Builder(
+		"bpf_execve_event_v612.o",
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
 		"event_execve",
@@ -121,10 +121,10 @@ var (
 	).SetPolicy(basePolicy)
 
 	/* Event Ring map */
-	TCPMonMap = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	TCPMonMap = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 
 	/* Networking and Process Monitoring maps */
-	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, Fork, Exit, ExecveBprmCommit, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry, ExecveMapUpdate)
+	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, Fork, Exit, ExecveBprmCommit, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry, ExecveMapUpdate)
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_pn_watermarks_map", Exit)
 	SocketMap                   = program.MapBuilder(socktrackmaps.SocketMapName, Exit)
 	SocketStats                 = program.MapBuilder(socktrackmaps.SocketStatsName, Exit)
@@ -138,35 +138,35 @@ var (
 	TcpSocketMapStats           = program.MapBuilder("tg_tcpsocket_map_stats", Exit)
 	DNSEndpointIDMap            = program.MapBuilder(dnsparser.DNSEndpointIDMapName, Exit)
 
-	ExecveTailCallsMap  = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	ExecveTailCallsMap  = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 	ExecveMapUpdateData = program.MapBuilder("execve_map_update_data", ExecveMapUpdate)
 
 	ExecveJoinMap = program.MapBuilder("tg_execve_joined_info_map", ExecveBprmCommit)
 
 	/* Tetragon runtime configuration */
-	TetragonConfMap = program.MapBuilder("tg_conf_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
+	TetragonConfMap = program.MapBuilder("tg_conf_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
 
 	/* Internal statistics for debugging */
-	ExecveStats          = program.MapBuilder("execve_map_stats", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	ExecveStats          = program.MapBuilder("execve_map_stats", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 	PNWatermarksMapStats = program.MapBuilder("tg_pn_watermarks_map_stats", Exit)
 	ExecveJoinMapStats   = program.MapBuilder("tg_execve_joined_info_map_stats", ExecveBprmCommit)
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 
 	/* In BPF memory aggregated data */
-	PidDataMap               = program.MapBuilder("tg_ee_pid_data", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, SysEnterProg, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
-	ProcessTreeId            = program.MapBuilder("tg_tree_id", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
-	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
-	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
-	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
-	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
-	Addr6LpmMap              = program.MapBuilder(lpm.Addr6lpmMapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
-	Addr4LpmMap              = program.MapBuilder(lpm.Addr4lpmMapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
-	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
-	ListenEndpointMap        = program.MapBuilder("listen_endpoint_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
-	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Execve, ExecveV53, ExecveV61, ExecveV611)
+	PidDataMap               = program.MapBuilder("tg_ee_pid_data", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, SysEnterProg, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
+	ProcessTreeId            = program.MapBuilder("tg_tree_id", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
+	ProcessTreeMap           = program.MapBuilder("process_tree_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
+	ProcessTreeBinaryUUIDMap = program.MapBuilder("process_tree_binary_uid_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
+	ProcessTreeUUIDBinaryMap = program.MapBuilder("process_tree_uid_binary_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
+	EndpointIdMap            = program.MapBuilder("tg_endpoint_id_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
+	Addr6LpmMap              = program.MapBuilder(lpm.Addr6lpmMapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
+	Addr4LpmMap              = program.MapBuilder(lpm.Addr4lpmMapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
+	DestinationEndpointMap   = program.MapBuilder("destination_endpoint_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
+	ListenEndpointMap        = program.MapBuilder("listen_endpoint_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
+	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Execve, ExecveV53, ExecveV61, ExecveV612)
 	ProcessTreeConfigMap     = program.MapBuilder("tg_process_tree_config_map", Execve, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
 	MatchBinariesSetMap      = program.MapBuilder(mbset.MapName, Execve)
-	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV611)
+	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 	SyscallsMap              = program.MapBuilder("tg_syscall_map", SysEnterProg)
 	NsIDMap                  = program.MapBuilder("tg_cgroup_namespace_map", Execve, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
 )
@@ -295,7 +295,7 @@ func ConfigureMapSizes() {
 	}
 }
 
-func EnableV611Progs() bool {
+func EnableV612Progs() bool {
 	if option.Config.ForceSmallProgs {
 		return false
 	}

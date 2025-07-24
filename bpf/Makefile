@@ -52,7 +52,7 @@ RAWSOCK = bpf_rawsock_create.o bpf_rawsock_create_fentry.o
 
 TIMESTAMP =  bpf_timestamp.o
 
-PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_execve_event_v611.o bpf_fork.o bpf_exit.o bpf_generic_kprobe.o \
+PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_execve_event_v612.o bpf_fork.o bpf_exit.o bpf_generic_kprobe.o \
 	  bpf_execve_bprm_commit_creds.o \
 	  bpf_generic_kprobe_v53.o bpf_generic_retkprobe.o bpf_generic_retkprobe_v53.o \
 	  bpf_multi_kprobe_v53.o bpf_multi_retkprobe_v53.o \
@@ -381,7 +381,7 @@ objs/%_fmod_v63.o:
 $(DEPSDIR)%_fmod_v63.d:
 	$(call rule_d,-D__LARGE_BPF_PROG -D__FILE_ENFORCE_FMOD -D__V63_BPF_PROG)
 
-objs/bpf_execve_event_v611.o: $(ISOPROCESS)/bpf_ee_execve_event.c
+objs/bpf_execve_event_v612.o: $(ISOPROCESS)/bpf_ee_execve_event.c
 objs/bpf_execve_event_v511.o: $(ISOPROCESS)/bpf_ee_execve_event.c
 objs/bpf_execve_event_v53.o: $(ISOPROCESS)/bpf_ee_execve_event.c
 objs/bpf_generic_kprobe_v53.o: $(PROCESSDIR)/bpf_generic_kprobe.c
@@ -424,8 +424,8 @@ objs/%_v53.o:
 objs/%_v511.o:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -D__V511_BPF_PROG -c $< -o $@
 
-objs/%_v611.o:
-	$(call rule_o,-D__V611_BPF_PROG -D__V61_BPF_PROG -D__LARGE_BPF_PROG)
+objs/%_v612.o:
+	$(call rule_o,-D__V612_BPF_PROG -D__V61_BPF_PROG -D__LARGE_BPF_PROG)
 
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 	$(rule_d)
@@ -513,7 +513,7 @@ objs/bpf_multi_kprobe_v511.o objs/bpf_multi_retkprobe_v511.o:
 objs/%_v511.o:
 	$(call rule_o,-D__V511_BPF_PROG -D__LARGE_BPF_PROG -D__V511_BPF_PROG)
 
-objs/bpf_execve_event_v611.o: $(ISOPROCESS)/bpf_ee_execve_event.c
+objs/bpf_execve_event_v612.o: $(ISOPROCESS)/bpf_ee_execve_event.c
 objs/bpf_execve_event_v61.o: $(ISOPROCESS)/bpf_ee_execve_event.c
 objs/bpf_generic_kprobe_v61.o: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_retkprobe_v61.o: $(PROCESSDIR)/bpf_generic_retkprobe.c
@@ -528,7 +528,7 @@ objs/bpf_multi_kprobe_v61.o objs/bpf_multi_retkprobe_v61.o:
 objs/%_v61.o:
 	$(call rule_o,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG)
 
-deps/bpf_execve_event_v611.d: $(ISOPROCESS)/bpf_ee_execve_event.c
+deps/bpf_execve_event_v612.d: $(ISOPROCESS)/bpf_ee_execve_event.c
 deps/bpf_execve_event_v61.d: $(ISOPROCESS)/bpf_ee_execve_event.c
 deps/bpf_generic_kprobe_v61.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_retkprobe_v61.d: $(PROCESSDIR)/bpf_generic_retkprobe.c

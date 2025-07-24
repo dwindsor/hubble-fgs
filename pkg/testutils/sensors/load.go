@@ -14,7 +14,7 @@ import (
 
 func CheckSensorLoad(sensors []*sensorsoss.Sensor, sensorMaps []tus.SensorMap, sensorProgs []tus.SensorProg, t *testing.T) {
 	send := "execve_send"
-	if base.EnableV611Progs() {
+	if base.EnableV612Progs() {
 		send = "ee_execve_send"
 	}
 
