@@ -52,29 +52,53 @@ RAWSOCK = bpf_rawsock_create.o bpf_rawsock_create_fentry.o
 
 TIMESTAMP =  bpf_timestamp.o
 
-PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_execve_event_v612.o bpf_fork.o bpf_exit.o bpf_generic_kprobe.o \
-	  bpf_execve_bprm_commit_creds.o \
-	  bpf_generic_kprobe_v53.o bpf_generic_retkprobe.o bpf_generic_retkprobe_v53.o \
-	  bpf_multi_kprobe_v53.o bpf_multi_retkprobe_v53.o \
-	  bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o \
-	  bpf_generic_uprobe.o bpf_generic_uprobe_v53.o bpf_generic_uprobe_v511.o bpf_generic_uprobe_v61.o \
-	  bpf_execve_event_v61.o bpf_generic_kprobe_v61.o bpf_generic_retkprobe_v61.o \
-	  bpf_generic_tracepoint_v61.o \
-	  bpf_multi_kprobe_v61.o bpf_multi_retkprobe_v61.o \
-	  bpf_multi_kprobe_v61.o bpf_multi_retkprobe_v61.o \
-	  bpf_execve_event_v511.o \
-	  bpf_generic_kprobe_v511.o bpf_generic_retkprobe_v511.o \
-	  bpf_generic_tracepoint_v511.o \
-	  bpf_multi_kprobe_v511.o bpf_multi_retkprobe_v511.o \
-	  bpf_loader.o \
+# generic sensors
+PROCESS = bpf_loader.o \
 	  bpf_enforcer.o bpf_multi_enforcer.o bpf_fmodret_enforcer.o \
 	  bpf_cgroup.o \
 	  bpf_syscall.o \
 	  bpf_procfs_walk.o \
 	  bpf_procfs_walk_fentry.o \
-	  bpf_prog_iter.o \
-	  bpf_procfs_walk_fentry.o \
-	  bpf_execve_map_update.o bpf_execve_map_update_v53.o bpf_execve_map_update_v511.o
+	  bpf_prog_iter.o
+
+# v4.19
+# base sensor
+PROCESS += bpf_execve_event.o bpf_fork.o bpf_exit.o bpf_execve_bprm_commit_creds.o
+# generic probes
+PROCESS += bpf_generic_kprobe.o bpf_generic_retkprobe.o bpf_generic_tracepoint.o \
+           bpf_generic_uprobe.o
+
+# v5.3
+# base sensor
+PROCESS += bpf_execve_event_v53.o
+# generic probes
+PROCESS += bpf_generic_kprobe_v53.o bpf_generic_retkprobe_v53.o \
+	   bpf_multi_kprobe_v53.o bpf_multi_retkprobe_v53.o \
+	   bpf_generic_tracepoint_v53.o bpf_generic_uprobe_v53.o
+
+# v5.11
+# base sensor
+PROCESS += bpf_execve_event_v511.o
+# generic probes
+PROCESS += bpf_generic_kprobe_v511.o bpf_generic_retkprobe_v511.o \
+	   bpf_multi_kprobe_v511.o bpf_multi_retkprobe_v511.o \
+	   bpf_generic_tracepoint_v511.o bpf_generic_uprobe_v511.o
+
+# v6.1
+# base sensor
+PROCESS += bpf_execve_event_v61.o
+# generic probes
+PROCESS += bpf_generic_kprobe_v61.o bpf_generic_retkprobe_v61.o \
+	   bpf_multi_kprobe_v61.o bpf_multi_retkprobe_v61.o \
+	   bpf_generic_tracepoint_v61.o bpf_generic_uprobe_v61.o
+
+# v6.12
+# base sensor
+PROCESS += bpf_execve_event_v612.o
+
+# execve_map update
+PROCESS += bpf_execve_map_update.o bpf_execve_map_update_v53.o bpf_execve_map_update_v511.o
+
 
 FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_filemap_map_pages_v419.o bpf_filemap_page_mkwrite.o bpf_filemap_page_mkwrite_v419.o bpf_finish_open.o bpf_finish_open_v419.o \
 	  bpf_security_file_permission.o bpf_security_file_permission_v419.o bpf_vfs_unlink.o bpf_vfs_unlink_v419.o bpf_vfs_fallocate.o bpf_vfs_fallocate_v419.o bpf_vfs_open.o bpf_vfs_open_v419.o \
