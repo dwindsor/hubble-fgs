@@ -386,6 +386,9 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		return fmt.Errorf("failed to init cached BTF: %w", err)
 	}
 
+	// needs BTF, so caling it after InitCachedBTF
+	log.Info("BPF detected features: " + bpf.LogFeatures())
+
 	if err := observer.InitDataCache(option.Config.DataCacheSize); err != nil {
 		return err
 	}
