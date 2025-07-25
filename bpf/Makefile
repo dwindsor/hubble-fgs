@@ -93,7 +93,7 @@ PROCESS += bpf_execve_event_v61.o
 PROCESS += bpf_generic_kprobe_v61.o bpf_generic_retkprobe_v61.o \
 	   bpf_multi_kprobe_v61.o bpf_multi_retkprobe_v61.o \
 	   bpf_generic_tracepoint_v61.o bpf_generic_uprobe_v61.o \
-	   bpf_generic_rawtp_v61.o
+	   bpf_generic_rawtp_v61.o bpf_multi_uprobe_v61.o
 
 # v6.12
 # base sensor
@@ -102,7 +102,7 @@ PROCESS += bpf_execve_event_v612.o
 PROCESS += bpf_generic_kprobe_v612.o bpf_generic_retkprobe_v612.o \
            bpf_multi_kprobe_v612.o bpf_multi_retkprobe_v612.o \
            bpf_generic_tracepoint_v612.o bpf_generic_uprobe_v612.o \
-           bpf_generic_rawtp_v612.o
+           bpf_generic_rawtp_v612.o bpf_multi_uprobe_v612.o
 
 # execve_map update
 PROCESS += bpf_execve_map_update.o bpf_execve_map_update_v53.o bpf_execve_map_update_v511.o \
@@ -183,9 +183,11 @@ CFLAGS_bpf_multi_retkprobe_v53.o  = -D__MULTI_KPROBE
 CFLAGS_bpf_multi_kprobe_v511.o    = -D__MULTI_KPROBE
 CFLAGS_bpf_multi_retkprobe_v511.o = -D__MULTI_KPROBE
 CFLAGS_bpf_multi_kprobe_v61.o     = -D__MULTI_KPROBE
+CFLAGS_bpf_multi_uprobe_v61.o     = -D__MULTI_KPROBE
 CFLAGS_bpf_multi_retkprobe_v61.o  = -D__MULTI_KPROBE
 CFLAGS_bpf_multi_kprobe_v612.o    = -D__MULTI_KPROBE
 CFLAGS_bpf_multi_retkprobe_v612.o = -D__MULTI_KPROBE
+CFLAGS_bpf_multi_uprobe_v612.o    = -D__MULTI_KPROBE
 
 MTARGET = $(patsubst $(DEPSDIR)%.d,$(OBJSDIR)%.o,$@)
 
@@ -561,6 +563,7 @@ objs/bpf_multi_retkprobe_v61.o: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v61.o: $(PROCESSDIR)/bpf_generic_tracepoint.c
 objs/bpf_generic_rawtp_v61.o: $(PROCESSDIR)/bpf_generic_rawtp.c
 objs/bpf_generic_uprobe_v61.o: $(PROCESSDIR)/bpf_generic_uprobe.c
+objs/bpf_multi_uprobe_v61.o: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 objs/bpf_multi_kprobe_v61.o objs/bpf_multi_retkprobe_v61.o:
 	$(call rule_o,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG -D__MULTI_KPROBE)
@@ -576,6 +579,7 @@ deps/bpf_multi_retkprobe_v61.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_tracepoint_v61.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_generic_rawtp_v61.d: $(PROCESSDIR)/bpf_generic_rawtp.c
 deps/bpf_generic_uprobe_v61.d: $(PROCESSDIR)/bpf_generic_uprobe.c
+deps/bpf_multi_uprobe_v61.d: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 $(DEPSDIR)%_v61.d:
 	$(call rule_d,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG)
@@ -588,6 +592,7 @@ objs/bpf_multi_retkprobe_v612.o: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v612.o: $(PROCESSDIR)/bpf_generic_tracepoint.c
 objs/bpf_generic_rawtp_v612.o: $(PROCESSDIR)/bpf_generic_rawtp.c
 objs/bpf_generic_uprobe_v612.o: $(PROCESSDIR)/bpf_generic_uprobe.c
+objs/bpf_multi_uprobe_v612.o: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 objs/bpf_multi_kprobe_v612.o objs/bpf_multi_retkprobe_v612.o:
 	$(call rule_o,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG -D__V612_BPF_PROG -D__MULTI_KPROBE)
@@ -603,6 +608,7 @@ deps/bpf_multi_retkprobe_v612.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_tracepoint_v612.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_generic_rawtp_v612.d: $(PROCESSDIR)/bpf_generic_rawtp.c
 deps/bpf_generic_uprobe_v612.d: $(PROCESSDIR)/bpf_generic_uprobe.c
+deps/bpf_multi_uprobe_v612.d: $(PROCESSDIR)/bpf_generic_uprobe.c
 objs/bpf_execve_map_update_v612.d: $(PROCESSDIR)/bpf_execve_map_update.c
 
 $(DEPSDIR)%_v612.d:
