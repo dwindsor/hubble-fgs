@@ -15,6 +15,7 @@
 #include "iso_msg_types.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
+#include "bpf_ktime.h"
 #include "../bpf_sockops.h"
 #include "../parser.h"
 #include "http.h"
@@ -818,7 +819,7 @@ post_http_event_cont(ctx_md *msg, struct msg_http_event *http)
 	else
 		http->request.send_cntr++;
 
-	http->common.ktime = ktime_get_ns();
+	http->common.ktime = tg_get_ktime();
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event) + http->request.url_length;
 	http->socket_cookie = cookie;
@@ -874,7 +875,7 @@ __attribute__((noinline)) int post_http_event(ctx_md *msg)
 		http->request.send_cntr++;
 
 	http->request.flags &= ~HTTP_MORE_HEADERS_NEEDED;
-	http->common.ktime = ktime_get_ns();
+	http->common.ktime = tg_get_ktime();
 	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event) + http->request.url_length;
 	http->socket_cookie = cookie;

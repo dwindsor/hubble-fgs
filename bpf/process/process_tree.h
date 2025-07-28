@@ -20,6 +20,7 @@
 #include "bpf_process_event.h"
 #include "bpf_helpers.h"
 #include "bpf_rate.h"
+#include "bpf_ktime.h"
 #include "networking/l3/tcp/bpf_tcp_info.h"
 
 #include "bpf_tracing.h"
@@ -162,8 +163,8 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 
 		old->in_init_tree = curr->flags & EVENT_IN_INIT_TREE;
 		old->in_container = curr->nspid != 0;
-		old->ktime_last_exec = ktime_get_ns();
-		old->ktime_first_exec = ktime_get_ns();
+		old->ktime_last_exec = tg_get_ktime();
+		old->ktime_first_exec = tg_get_ktime();
 		old->cgid = cgid;
 		old->maybe_missing_nsid = 0;
 		if (k->nsid == 0 && old->in_container) {
@@ -178,7 +179,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		// old != NULL on some kernels.
 		old->in_init_tree = curr->flags & EVENT_IN_INIT_TREE;
 		old->in_container = curr->nspid != 0;
-		old->ktime_last_exec = ktime_get_ns();
+		old->ktime_last_exec = tg_get_ktime();
 		old->cgid = cgid;
 		if (k->nsid == 0 && old->in_container) {
 			// inform userspace that we might need to update the nsid mapping for this process when it becomes available
@@ -324,7 +325,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->policy = 0;
 		destvalue->rule = 0;
 		destvalue->ipv6 = tuple->ipv6;
-		destvalue->ktime_create = ktime_get_ns();
+		destvalue->ktime_create = tg_get_ktime();
 		destvalue->addr_create[0] = tuple->daddr[0];
 		destvalue->addr_create[1] = tuple->daddr[1];
 		destvalue->port = tuple->dport;
@@ -507,7 +508,7 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			if (!destvalue)
 				return 0;
 
-			destvalue->ktime_create = ktime_get_ns();
+			destvalue->ktime_create = tg_get_ktime();
 			destvalue->addr_create[0] = tuple->daddr[0];
 			destvalue->addr_create[1] = tuple->daddr[1];
 			destvalue->ipv6 = tuple->ipv6;
@@ -790,7 +791,7 @@ static inline __attribute__((always_inline)) int qos(struct destination_endpoint
 	 * it 100% correctly. All this is write_once so values are not going
 	 * to be corrupted.
 	 */
-	now = ktime_get_ns();
+	now = tg_get_ktime();
 	if (dest->ktime_tx_reset && (now - dest->ktime_last_reset > dest->ktime_tx_reset)) {
 		atomic_xchg(&dest->tx_quota, 0);
 		atomic_xchg(&dest->ktime_last_reset, now);
@@ -837,7 +838,7 @@ static __attribute__((noinline)) int qos_from_key(struct destination_endpoint_ke
 	 * it 100% correctly. All this is write_once so values are not going
 	 * to be corrupted.
 	 */
-	now = ktime_get_ns();
+	now = tg_get_ktime();
 	if (dest->ktime_tx_reset && (now - dest->ktime_last_reset > dest->ktime_tx_reset)) {
 		atomic_xchg(&dest->tx_quota, 0);
 		atomic_xchg(&dest->ktime_last_reset, now);

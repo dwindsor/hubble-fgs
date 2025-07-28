@@ -93,7 +93,7 @@ build_udp_payload_event(struct udp_info_key *k, struct udp_info_value *v, u64 co
 
 	val->event.common.op = ISO_MSG_OP_UNDEF;
 	val->event.common.size = size;
-	val->event.common.ktime = ktime_get_ns();
+	val->event.common.ktime = tg_get_ktime();
 	val->event.key.pid = v->pid;
 	val->event.key.ktime = v->pid_ktime;
 	val->event.tuple.ipv6 = k->tuple.ipv6;

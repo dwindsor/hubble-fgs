@@ -137,7 +137,7 @@ kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
 	// create the event
 	msg->action = action_mkdir;
 	msg->hook = hook_vfs_mkdir;
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->mnt_ns = get_mnt_ns();
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;

@@ -41,7 +41,7 @@ static struct msg_file_openraw_ops *get_msg_openraw_init()
 
 	msg->common.op = ISO_MSG_OP_FILE_OPENRAW;
 	msg->common.size = sizeof(struct msg_file_openraw_ops);
-	msg->common.ktime = ktime_get_ns();
+	msg->common.ktime = tg_get_ktime();
 
 	enter = event_find_curr(&ppid, &walker);
 	if (enter) {
@@ -155,7 +155,7 @@ static inline __attribute__((always_inline)) int handle_open_raw(void *ctx, int 
 
 	msg->action = action_openraw;
 	msg->hook = hook;
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
 	msg->rule_id = rule_id;

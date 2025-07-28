@@ -267,7 +267,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, int offset)
 
 		post->common.op = ISO_MSG_OP_TLS;
 		post->common.size = sizeof(struct msg_tls_event);
-		post->common.ktime = ktime_get_ns();
+		post->common.ktime = tg_get_ktime();
 
 		post->execve = socket->key;
 		post->socket_cookie = cookie;

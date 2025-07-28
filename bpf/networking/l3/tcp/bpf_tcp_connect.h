@@ -46,7 +46,7 @@ static inline __attribute__((always_inline)) struct msg_ip_with_tnp_event init_m
 {
 	return (struct msg_ip_with_tnp_event){
 		.common.op = ISO_MSG_OP_TCPCONNECTRET,
-		.common.ktime = ktime_get_ns(),
+		.common.ktime = tg_get_ktime(),
 		.common.size = sizeof(struct msg_ip_with_tnp_event),
 		.key.pid = key->pid,
 		.key.ktime = key->ktime,

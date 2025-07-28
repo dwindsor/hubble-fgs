@@ -111,7 +111,7 @@ link_create(void *ctx, struct dentry *old_dentry, struct inode *dir, struct dent
 
 	msg->action = action_link;
 	msg->hook = hook_security_inode_link;
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();

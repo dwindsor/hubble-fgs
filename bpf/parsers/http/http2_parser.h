@@ -246,7 +246,7 @@ post_http2_event(ctx_md *msg, struct msg_http_event *event)
 	if (size > sizeof(struct msg_http_event))
 		size = sizeof(struct msg_http_event);
 
-	event->common.ktime = ktime_get_ns();
+	event->common.ktime = tg_get_ktime();
 	event->common.op = ISO_MSG_OP_HTTP;
 	event->common.size = size;
 	event->socket_cookie = cookie;

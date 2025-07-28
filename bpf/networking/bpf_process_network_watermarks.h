@@ -150,7 +150,7 @@ process_watermarks_map_delete(void *ctx, __u32 tgid)
 			.common.op = ISO_MSG_OP_PROCESS_NETWORK_WATERMARK,
 			.common.size =
 				sizeof(struct msg_process_network_watermarks_event),
-			.common.ktime = ktime_get_ns(),
+			.common.ktime = tg_get_ktime(),
 			.key.pid = tgid,
 			.key.ktime = process->key.ktime,
 			.protocol = 0,
@@ -232,7 +232,7 @@ process_network_watermarks(void *ctx, struct socketmap_value *process, u64 proto
 	struct process_network_watermarks_log *watermarks_log;
 	u64 watermarks_key;
 
-	u64 current_time_ns = ktime_get_ns();
+	u64 current_time_ns = tg_get_ktime();
 
 	if (execve_map_get_noinit(process->key.pid) == 0)
 		// If the process is not in the execve map, then this means the

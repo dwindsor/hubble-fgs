@@ -224,7 +224,7 @@ __proc_task_name(void *ctx, struct task_struct *p)
 		// Store the create time as the current time (e.g. Tetragon start up time).
 		// This is far from perfect, but at least the discovered flag will indicate
 		// how we found this create time in case we want to exclude these.
-		sockmap_process.create_time = ktime_get_ns();
+		sockmap_process.create_time = tg_get_ktime();
 		sockmap_process.protocol = required_protocol;
 		sockmap_process.version = cookie_inc_version();
 		config->sockversion = sockmap_process.version;
@@ -234,7 +234,7 @@ __proc_task_name(void *ctx, struct task_struct *p)
 	} else {
 		socket->key.pid = value->key.pid;
 		socket->key.ktime = value->key.ktime;
-		socket->create_time = ktime_get_ns();
+		socket->create_time = tg_get_ktime();
 		socket->protocol = required_protocol;
 		config->sockversion = socket->version;
 	}

@@ -14,6 +14,7 @@
 #include "iso_msg_types.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
+#include "bpf_ktime.h"
 #include "../bpf_sockops.h"
 #include "tls_map.h"
 #include "tls_parser.h"
@@ -32,7 +33,7 @@ egress_post_event(ctx_md *ctx, __u64 socket_cookie, struct tcpsocketmap_value *s
 	post->tuple = socket->tuple;
 	post->common.op = ISO_MSG_OP_TLS;
 	post->common.size = sizeof(struct msg_tls_event);
-	post->common.ktime = ktime_get_ns();
+	post->common.ktime = tg_get_ktime();
 	perf_event_output_metric(ctx, ISO_MSG_OP_TLS, &tcpmon_map, BPF_F_CURRENT_CPU, post,
 				 sizeof(struct msg_tls_event));
 }

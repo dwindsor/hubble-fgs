@@ -63,7 +63,7 @@ __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
 
 	*event = (struct msg_ip_event){
 		.common.size = sizeof(struct msg_ip_event),
-		.common.ktime = ktime_get_ns(),
+		.common.ktime = tg_get_ktime(),
 		.common.op = ISO_MSG_OP_UDPLISTEN,
 		.key.pid = process->key.pid,
 		.key.ktime = process->key.ktime,

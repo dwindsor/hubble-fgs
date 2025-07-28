@@ -13,6 +13,7 @@
 
 #include "vmlinux.h"
 #include "bpf_helpers.h"
+#include "bpf_ktime.h"
 
 /* Applying 'packed' attribute to structs causes clang to write to the
  * members byte-by-byte, as offsets may not be aligned. This is bad for
@@ -96,7 +97,7 @@ static inline __attribute__((always_inline)) s64
 calc_latency(u64 bootns, u64 ts_low, u64 ts_high)
 {
 	/* Get time in microseconds. */
-	u64 curr_time = (ktime_get_ns() + bootns + 500) / 1000;
+	u64 curr_time = (tg_get_ktime() + bootns + 500) / 1000;
 	/* Clear bit 31 on both timestamps. High needs shifting by 31 bits */
 	u64 ts = (ts_low & 0x7fffffff) | ((ts_high & 0x7fffffff) << 31);
 

@@ -220,7 +220,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	// create the event
 	v->msg.action = action_rename;
 	v->msg.hook = hook_vfs_rename;
-	v->msg.ktime = ktime_get_ns();
+	v->msg.ktime = tg_get_ktime();
 	v->msg.mnt_ns = get_mnt_ns();
 	v->msg.tid = (__u32)get_current_pid_tgid();
 

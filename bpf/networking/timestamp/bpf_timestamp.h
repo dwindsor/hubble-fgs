@@ -15,6 +15,7 @@
 #include "api.h"
 #include "bpf_event.h"
 #include "bpf_task.h"
+#include "bpf_ktime.h"
 #include "../bpf_latency.h"
 #include "bpf_tracing.h"
 
@@ -234,7 +235,7 @@ egress_timestamp4(struct __sk_buff *skb, void *data, void *data_end,
 	opt->pointer = IPO_PTR;
 	opt->flag = IPO_FLAG;
 	opt->magic = bpf_ntohl(IPO_MAGIC_W);
-	timestamp = ((ktime_get_ns() + latency_config->boot_ns) + 500) /
+	timestamp = ((tg_get_ktime() + latency_config->boot_ns) + 500) /
 		    1000; // rounded microseconds
 	opt->timestamp_low = bpf_ntohl(
 		(timestamp & 0x7fffffff) |

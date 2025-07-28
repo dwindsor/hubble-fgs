@@ -14,6 +14,7 @@
 #include "types/basic.h"
 #include "process/policy_filter.h"
 #include "bpf_overlay.h"
+#include "bpf_ktime.h"
 
 #ifdef __ENABLE_GLOB_SUPPORT
 #include "bpf_glob.h"
@@ -1183,7 +1184,7 @@ static inline __attribute__((always_inline)) int check_match_proc_dur(__u32 sel_
 	if (!val) // no matchProcessDuration for this selector -- match
 		return 1;
 
-	curr_time = ktime_get_ns();
+	curr_time = tg_get_ktime();
 	if (curr_time < execve->key.ktime) // current time should always be greater than process init time
 		return 0;
 
@@ -1519,7 +1520,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 	msg->common.pad[0] = 0;
 	msg->common.pad[1] = 0;
 	msg->common.size = sizeof(struct msg_file_ops);
-	msg->common.ktime = ktime_get_ns();
+	msg->common.ktime = tg_get_ktime();
 
 	enter = event_find_curr(&ppid, &walker);
 	if (enter) {
@@ -1860,7 +1861,7 @@ complete_msg(struct msg_file_ops *msg, __u32 action, __u32 hook, __u32 operation
 {
 	msg->action = action;
 	msg->hook = hook;
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
@@ -2054,7 +2055,7 @@ init_rename_msg(struct msg_file_rename_ops *msg)
 	msg->common.pad[0] = 0;
 	msg->common.pad[1] = 0;
 	msg->common.size = sizeof(struct msg_file_rename_ops);
-	msg->common.ktime = ktime_get_ns();
+	msg->common.ktime = tg_get_ktime();
 
 	enter = event_find_curr(&ppid, &walker);
 	if (enter) {

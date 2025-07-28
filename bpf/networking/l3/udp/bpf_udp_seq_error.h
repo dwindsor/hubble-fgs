@@ -166,7 +166,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 
 	e->common.op = ISO_MSG_OP_UDP_SEQ_ERROR;
 	e->common.size = sizeof(struct msg_udp_seq_error_event);
-	e->common.ktime = ktime_get_ns();
+	e->common.ktime = tg_get_ktime();
 	if (process) {
 		e->key.pid = process->key.pid;
 		e->key.ktime = process->key.ktime;

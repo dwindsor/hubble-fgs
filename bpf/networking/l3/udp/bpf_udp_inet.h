@@ -124,7 +124,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	 * support multiple pseudo-connections (using sendto()) and we shouldn't
 	 * consider each to have been created when the actual socket was created.
 	 * We should use the 'connect' time instead. */
-	value->create_time = ktime_get_ns();
+	value->create_time = tg_get_ktime();
 
 	/* Update process binding and generate connect event */
 	if (process) {

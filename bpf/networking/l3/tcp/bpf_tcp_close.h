@@ -66,7 +66,7 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 
 	*val = (struct msg_ip_with_stats_event){
 		.common.size = sizeof(struct msg_ip_with_stats_event),
-		.common.ktime = ktime_get_ns(),
+		.common.ktime = tg_get_ktime(),
 
 		.socket_cookie = cookie,
 		.version = socket->version,
@@ -76,7 +76,7 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	val->key.pid = socket->key.pid;
 	val->key.ktime = socket->key.ktime;
 	val->create_time = socket->stats.create_time;
-	val->close_time = ktime_get_ns();
+	val->close_time = tg_get_ktime();
 	val->socket_flags = socket->socket_flags;
 	if (old_state == TCP_SYN_SENT)
 		val->socket_flags |= SOCKFLAGS_CONNECT_FAILED;

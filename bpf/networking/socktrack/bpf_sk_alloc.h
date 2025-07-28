@@ -37,7 +37,7 @@ emit_sk_event(void *ctx, struct socketmap_value *process, u64 cookie, u8 op)
 
 	e->common.op = op;
 	e->common.size = sizeof(struct msg_ip_event);
-	e->common.ktime = ktime_get_ns();
+	e->common.ktime = tg_get_ktime();
 	e->key.pid = process->key.pid;
 	e->key.ktime = process->key.ktime;
 	e->socket_cookie = cookie;
@@ -101,7 +101,7 @@ store_socket(void *ctx, u64 cookie, u8 protocol)
 				    0, 0, 0, IP_ERROR_SOCK_CREATE_NO_PROCESS);
 		return 1;
 	}
-	process.create_time = ktime_get_ns();
+	process.create_time = tg_get_ktime();
 	process.protocol = protocol;
 	process.version = cookie_inc_version();
 	// Don't update the tuple map here because the socket hasn't yet

@@ -112,7 +112,7 @@ get_tcp_stats(struct msg_socket_stats *stats, struct sock *sk)
 	probe_read_kernel(&tcp, sizeof(tcp), &sk);
 
 	/* Set the time the stats were obtained to allow checking of event ordering */
-	stats->ktime = ktime_get_ns();
+	stats->ktime = tg_get_ktime();
 
 	/* Older kernels will not have these statistics. To get a full set of
 	 * stats run 4.19 or higher.
@@ -471,7 +471,7 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 
 	val->common.op = ISO_MSG_OP_IP_ERROR;
 	val->common.size = sizeof(struct msg_ip_event);
-	val->common.ktime = ktime_get_ns();
+	val->common.ktime = tg_get_ktime();
 	if (process) {
 		val->key.pid = process->key.pid;
 		val->key.ktime = process->key.ktime;

@@ -13,6 +13,7 @@
 
 #include "networkmsg.h"
 #include "bpf_udp_config.h"
+#include "bpf_ktime.h"
 
 /* UDP Info maintains the statistics associated with a UDP "session".
  * Here we have the map and helper routines to setup keys and values.
@@ -192,7 +193,7 @@ udp_info_init(struct udp_info_value *v)
 	v->pid = 0;
 	v->pid_ktime = 0;
 	v->sk_drops = 0;
-	WRITE_ONCE(v->ktime, ktime_get_ns());
+	WRITE_ONCE(v->ktime, tg_get_ktime());
 	v->create_time = 0;
 #pragma unroll
 	for (int i = 0; i < 8; i++) {
@@ -231,7 +232,7 @@ update_tx_value(struct udp_info_value *v, u32 len)
 {
 	__sync_fetch_and_add(&v->tx_bytes, len);
 	__sync_fetch_and_add(&v->segs_out, 1);
-	WRITE_ONCE(v->ktime, ktime_get_ns());
+	WRITE_ONCE(v->ktime, tg_get_ktime());
 }
 
 static inline __attribute__((always_inline)) void
@@ -239,7 +240,7 @@ update_rx_value(struct udp_info_value *v, u32 len)
 {
 	__sync_fetch_and_add(&v->rx_bytes, len);
 	__sync_fetch_and_add(&v->segs_in, 1);
-	WRITE_ONCE(v->ktime, ktime_get_ns());
+	WRITE_ONCE(v->ktime, tg_get_ktime());
 }
 
 static inline __attribute__((always_inline)) void

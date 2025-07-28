@@ -94,7 +94,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	msg->path.flags = 0;
 
 	msg->action = msg->hook = 0xFFFFFFFF;
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->operation = operation;
 

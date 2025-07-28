@@ -18,6 +18,7 @@
 #include "../lib/tlsmsg.h"
 #include "l3/icmp/bpf_icmp_cookie.h"
 #include "l3/udp/bpf_udp_info.h"
+#include "bpf_ktime.h"
 
 struct socketmap_value {
 	struct msg_execve_key key;
@@ -211,14 +212,14 @@ update_socketmap(u64 *cookie, u32 pid, u16 protocol, struct msg_ip_tuple *tuple)
 				return false;
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
-			process->create_time = ktime_get_ns();
+			process->create_time = tg_get_ktime();
 			process->version = cookie_inc_version();
 			process->protocol = protocol;
 			add_socketmap(cookie, process, tuple, true);
 		} else {
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
-			process->create_time = ktime_get_ns();
+			process->create_time = tg_get_ktime();
 			process->version = cookie_inc_version();
 			process->protocol = protocol;
 		}

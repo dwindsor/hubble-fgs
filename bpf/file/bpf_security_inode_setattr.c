@@ -52,7 +52,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 	msg->uid[OLDVAL] = msg->uid[NEWVAL] = 0xFFFFFFFF; // UINT32_MAX
 	msg->gid[OLDVAL] = msg->gid[NEWVAL] = 0xFFFFFFFF; // UINT32_MAX
 
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->mnt_ns = get_mnt_ns();
 	msg->tp_id = get_tp_id();
 	msg->rule_id = file_val->rule_id;

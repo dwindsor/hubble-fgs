@@ -61,7 +61,7 @@ static inline __attribute__((always_inline)) int kprobe_security_inode_rmdir(voi
 
 	msg->action = action_rmdir;
 	msg->hook = hook_security_inode_rmdir;
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();

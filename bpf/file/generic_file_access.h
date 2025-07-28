@@ -94,7 +94,7 @@ handle_generic_file_access(void *ctx, struct file *file, int action, int hook_ty
 
 	msg->action = action;
 	msg->hook = hook_type;
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();

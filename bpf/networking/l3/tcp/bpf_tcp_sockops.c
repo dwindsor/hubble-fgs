@@ -13,13 +13,14 @@
 #include "bpf_tcp_connect.h"
 #include "bpf_tcp_state.h"
 #include "bpf_tcp_listen.h"
+#include "bpf_ktime.h"
 #include "parsers/http/http_parser.h"
 #include "parsers/bottle.h"
 
 int skops_socket(u64 cookie, struct msg_ip_event *val, struct socketmap_value *socket)
 {
 	val->common.size = sizeof(struct msg_ip_event);
-	val->common.ktime = ktime_get_ns();
+	val->common.ktime = tg_get_ktime();
 	val->socket_cookie = cookie;
 	val->socket_flags = 0;
 	val->version = socket->version;
@@ -33,7 +34,7 @@ int skops_socket(u64 cookie, struct msg_ip_event *val, struct socketmap_value *s
 int skops_tcpsocket(u64 cookie, struct msg_ip_event *val, struct tcpsocketmap_value *socket)
 {
 	val->common.size = sizeof(struct msg_ip_event);
-	val->common.ktime = ktime_get_ns();
+	val->common.ktime = tg_get_ktime();
 	val->socket_cookie = cookie;
 	val->version = socket->version;
 	val->key.pid = socket->key.pid;
@@ -248,7 +249,7 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	if (old_state == TCP_SYN_SENT)
 		val->socket_flags |= SOCKFLAGS_CONNECT_FAILED;
 	get_socket_stats((struct sock *)cookie, socket, &val->stats);
-	val->close_time = ktime_get_ns();
+	val->close_time = tg_get_ktime();
 	socket->closed = 1;
 
 	event_cfg = (struct event_disable_config *)map_lookup_elem(

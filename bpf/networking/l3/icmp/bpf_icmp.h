@@ -150,7 +150,7 @@ send_icmp_event(void *ctx, struct msg_icmp_event *val, u64 *cookie, struct sk_bu
 		val->key.pid = 0;
 		val->key.ktime = 1;
 	}
-	val->common.ktime = ktime_get_ns();
+	val->common.ktime = tg_get_ktime();
 	val->common.size = sizeof(struct msg_icmp_event);
 	val->socket_cookie = *cookie;
 	perf_event_output_metric(ctx, ISO_MSG_OP_ICMP, &tcpmon_map, BPF_F_CURRENT_CPU, val,

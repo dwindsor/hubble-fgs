@@ -73,7 +73,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	struct event_disable_config *event_cfg;
 	struct tcpsocketmap_value *accept_socket;
 	struct msg_ip_event *event;
-	u64 now = ktime_get_ns();
+	u64 now = tg_get_ktime();
 	u16 family, protocol;
 	u32 zero = 0;
 
@@ -116,7 +116,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 			return 0;
 		listen_process->key.pid = value->key.pid;
 		listen_process->key.ktime = value->key.ktime;
-		listen_process->create_time = ktime_get_ns();
+		listen_process->create_time = tg_get_ktime();
 		listen_process->version = 0;
 		listen_process->protocol = IPPROTO_TCP;
 		memset(&listen_process->pad, 0, 7);

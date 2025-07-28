@@ -88,7 +88,7 @@ __event_sys_listen(void *ctx, struct sock *skp)
 		.tuple.dport = 0,
 		.tuple.proto = IPPROTO_TCP,
 		.common.op = ISO_MSG_OP_LISTEN,
-		.common.ktime = ktime_get_ns(),
+		.common.ktime = tg_get_ktime(),
 		.common.size = sizeof(struct msg_ip_event),
 		.key.pid = pid,
 		.key.ktime = key->ktime,

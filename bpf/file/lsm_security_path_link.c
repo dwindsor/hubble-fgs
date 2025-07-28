@@ -28,7 +28,7 @@ static struct msg_file_link_ops *get_msg_link_init()
 
 	msg->common.op = ISO_MSG_OP_FILE_LINK;
 	msg->common.size = sizeof(struct msg_file_link_ops);
-	msg->common.ktime = ktime_get_ns();
+	msg->common.ktime = tg_get_ktime();
 
 	enter = event_find_curr(&ppid, &walker);
 	if (enter) {
@@ -121,7 +121,7 @@ static inline __attribute__((always_inline)) __u32 path_link(void *ctx, struct d
 
 	msg->action = action_link;
 	msg->hook = hook_security_path_link;
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();

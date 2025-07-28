@@ -118,7 +118,7 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 
 	msg->action = action_rename;
 	msg->hook = hook_security_path_rename;
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();

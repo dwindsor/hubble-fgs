@@ -95,7 +95,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 
 	msg->action = action_exec;
 	msg->hook = hook_security_bprm_check;
-	msg->ktime = ktime_get_ns();
+	msg->ktime = tg_get_ktime();
 	msg->mnt_ns = get_mnt_ns();
 	msg->operation = operation;
 	msg->tp_id = get_tp_id();
