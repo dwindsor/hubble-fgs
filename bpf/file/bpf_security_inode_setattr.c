@@ -38,7 +38,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *generic_chattr
 				     msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;
-	if (file_val->action == FILTER_IGNORE)
+	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR)
 		return 0;
 
 	memcpy(msg->path.str, file_val->path, 256);

@@ -59,7 +59,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_inode_alloc, msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;
-	if (file_val->action == FILTER_IGNORE)
+	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR)
 		return 0;
 
 #ifdef __FILE_DIGEST_LSM

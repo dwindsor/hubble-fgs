@@ -71,7 +71,7 @@ file_open(void *ctx, struct file *file)
 	if (!file_val)
 		goto check_dir;
 	// we don't care for anything inside this directory
-	if (file_val->action == FILTER_IGNORE)
+	if (file_val->action == FILTER_IGNORE || file_val->action == FILTER_MONITOR)
 		return 0;
 
 	memcpy(msg->path.str, file_val->path, 256);
