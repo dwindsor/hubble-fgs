@@ -157,6 +157,13 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 			cgroupEgressProg, cgroupIngressProg,
 		}),
 	}...)
+	if utils.SupportTimers() {
+		sensorMaps = append(sensorMaps, []tus.SensorMap{
+			SensorMapByProgName(sensorProgs, "tg_l3_udp_tmr", []string{
+				cgroupEgressProg, cgroupIngressProg,
+			}),
+		}...)
+	}
 	cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{udpBindProg})...)
 
 	socketTupleMap.Progs = append(socketTupleMap.Progs, getMapIndicesByName(sensorProgs, []string{

@@ -197,6 +197,7 @@ var (
 	// Dispatcher UDP maps, built here because they are only used by the dispatcher
 	udpMap      = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
 	udpMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
+	udpTimerMap = program.MapBuilder(udp.UdpTimerMapName, EgressDispatcherProcessTreeTimer)
 	udpMaps     = []*program.Map{udpMap, udpMapStats, latencyConfigMap, protoCfgMap}
 
 	// DNS Parser maps
@@ -229,7 +230,8 @@ var (
 			program.MapUserFrom(base.Addr6LpmMap),
 			program.MapUserFrom(base.Addr4LpmMap),
 		}...)
-	dispatcherMaps = udpMaps
+	dispatcherProcessTreeTimerMaps = append(dispatcherProcessTreeMaps, udpTimerMap)
+	dispatcherMaps                 = udpMaps
 )
 
 func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*program.Program, []*program.Map) {
@@ -311,8 +313,10 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 				var ourDispatcherProcessTreeProgs []*program.Program
 				if !utils.SupportTimers() {
 					ourDispatcherProcessTreeProgs = dispatcherProcessTreeProgs
+					maps = append(maps, dispatcherProcessTreeMaps...)
 				} else {
 					ourDispatcherProcessTreeProgs = dispatcherProcessTreeTimerProgs
+					maps = append(maps, dispatcherProcessTreeTimerMaps...)
 				}
 				for _, prog := range ourDispatcherProcessTreeProgs {
 					prog.RewriteConstants[dnsparser.ParserEnabledName] = enterpriseOption.Config.EnableBPFDNSParser
@@ -323,7 +327,6 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 					}
 				}
 				progsCollectStats = append(progsCollectStats, ourDispatcherProcessTreeProgs...)
-				maps = append(maps, dispatcherProcessTreeMaps...)
 			}
 		} else {
 			logger.GetLogger().Info("Cgroup support requires a later kernel (v5.4+ or RHEL equivalent)")

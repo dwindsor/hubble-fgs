@@ -48,7 +48,8 @@ import (
 )
 
 const (
-	UdpMapName = "tg_l3_udpsk"
+	UdpMapName      = "tg_l3_udpsk"
+	UdpTimerMapName = "tg_l3_udp_tmr"
 
 	MissingStatsErrorInterval = time.Hour
 )
