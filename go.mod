@@ -19,7 +19,7 @@ require (
 	github.com/containerd/containerd/v2 v2.1.3
 	github.com/containernetworking/plugins v1.7.1
 	github.com/cri-o/cri-o v1.33.2
-	github.com/docker/docker v28.3.2+incompatible
+	github.com/docker/docker v28.3.3+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
 	github.com/gdamore/tcell/v2 v2.8.1
