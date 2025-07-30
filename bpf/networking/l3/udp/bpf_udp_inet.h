@@ -69,16 +69,20 @@ static inline __attribute__((always_inline)) struct udp_info_value *
 __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	   s64 latency, struct udphdr *udp, int payload_sz,
 	   struct latency_protocol_config *latency_config, u64 send,
-	   struct socketmap_value *process,
-	   struct udp_info_key *key)
+	   struct socketmap_value *process)
 {
 	struct udp_info_value *value;
 	bool dns_combined = false;
+	struct udp_info_key *key;
 	u64 cookie_ver = 0;
+	int zero = 0;
 
 	if (process)
 		cookie_ver = process->version;
 
+	key = (struct udp_info_key *)map_lookup_elem(&tg_p_l3_udp_key, &zero);
+	if (!key)
+		return 0;
 	udp_key(key, &dns_combined, cookie, cookie_ver, ip, ipv6, udp, send);
 
 	value = (struct udp_info_value *)map_lookup_elem(&tg_l3_udpsk, key);
@@ -98,8 +102,6 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	}
 
 	if (!value) {
-		int zero = 0;
-
 		value = (struct udp_info_value *)map_lookup_elem(&tg_h_udp_value, &zero);
 		if (!value)
 			return 0;
@@ -166,9 +168,6 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	s64 latency = 0;
 	int zero = 0;
 
-	key = (struct udp_info_key *)map_lookup_elem(&tg_h_udp_key, &zero);
-	if (!key)
-		return 1;
 	if (!send) {
 		latency_config = (struct latency_config *)map_lookup_elem(&tg_l3_lat_cfg, &zero);
 		if (!latency_config)
@@ -190,8 +189,12 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		process = 0;
 	}
 
-	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, udp_latency, send, process, key);
+	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, udp_latency, send, process);
 	if (!value)
+		return 1;
+
+	key = (struct udp_info_key *)map_lookup_elem(&tg_p_l3_udp_key, &zero);
+	if (!key)
 		return 1;
 
 	/* Only check sequence numbers on recevied packets. */

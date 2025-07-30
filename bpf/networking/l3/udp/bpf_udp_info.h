@@ -27,6 +27,13 @@
 #define MAX_UDP_ENDPOINTS 32768
 
 struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct udp_info_key);
+	__uint(max_entries, 1);
+} tg_p_l3_udp_key SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__type(key, struct udp_info_key);
 	__type(value, struct udp_info_value);
