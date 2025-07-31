@@ -34,8 +34,8 @@ const (
 	ErrorMapName = "tg_dns_error_map"
 
 	// Process tree related maps
-	DomainToIDMapName  = "tg_bpf_domain_map"
-	IDToDomainMapName  = "tg_bpf_domain_rev_map"
+	DomainToIDMapName  = "tg_dns_fqdn_id"
+	IDToDomainMapName  = "tg_dns_id_fqdn"
 	IPToIDMapsName     = "tg_dns_ip_id"
 	GlobalDNSIDMapName = "tg_glb_dns_id"
 

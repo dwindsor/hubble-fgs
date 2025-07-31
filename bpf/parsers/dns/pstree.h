@@ -58,7 +58,7 @@ struct {
 	__uint(max_entries, 1); // will be resized by user space
 	__type(key, char[DNS_MAX_NAME_SIZE + 1]);
 	__type(value, struct dns_endpoint_id_value);
-} tg_bpf_domain_map SEC(".maps");
+} tg_dns_fqdn_id SEC(".maps");
 
 // ID -> domain_string, same as the above map but for debugging and printing purposes.
 struct {
@@ -66,7 +66,7 @@ struct {
 	__uint(max_entries, 1); // will be resized by user space
 	__type(key, struct dns_endpoint_id_value);
 	__type(value, char[DNS_MAX_NAME_SIZE + 1]);
-} tg_bpf_domain_rev_map SEC(".maps");
+} tg_dns_id_fqdn SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -93,7 +93,7 @@ FUNC_INLINE int assign_dns_id_mapping(struct ip_addr *ip, char *domain)
 	uint32_t zero = 0;
 
 	// build ID for domain
-	id_val = map_lookup_elem(&tg_bpf_domain_map, domain);
+	id_val = map_lookup_elem(&tg_dns_fqdn_id, domain);
 	if (id_val) {
 		// If the ID is not coming from userspace or the DNS parser BPF
 		// side, the map was malformed with a wrong source. Note that
@@ -115,8 +115,8 @@ FUNC_INLINE int assign_dns_id_mapping(struct ip_addr *ip, char *domain)
 
 		DEBUG("ID generated: %d", id_val->id);
 
-		map_update_elem(&tg_bpf_domain_map, domain, id_val, BPF_ANY);
-		map_update_elem(&tg_bpf_domain_rev_map, id_val, domain, BPF_ANY);
+		map_update_elem(&tg_dns_fqdn_id, domain, id_val, BPF_ANY);
+		map_update_elem(&tg_dns_id_fqdn, id_val, domain, BPF_ANY);
 	}
 
 	ip_id_map = map_lookup_elem(&tg_dns_ip_id, &zero);
