@@ -369,40 +369,6 @@ func handleFileTotalActionEvents(tetragonEvent *tetragon.ProcessFile, tpName, tp
 	)
 }
 
-func handleFileExecTotalActionEvents(tetragonEvent *tetragon.ProcessFileExec, execFile, execDigest string) {
-	if tetragonEvent == nil || tetragonEvent.Process == nil { // we don't expect these
-		return
-	}
-
-	if len(tetragonEvent.Operations) != 1 { // for now we will always have a single operation
-		return
-	}
-
-	opr, ok := tetragon.FileOperation_name[int32(tetragonEvent.Operations[0])]
-	if !ok {
-		return
-	}
-
-	namespace := "<host>" // this refers to host, < and > are not valid characters for namespace names and thus we can distinguish a namespace named "host"
-	workload := "<host>"  // this refers to host, < and > are not valid characters for namespace names and thus we can distinguish a namespace named "host"
-	pod := "<host>"       // this refers to host, < and > are not valid characters for namespace names and thus we can distinguish a namespace named "host"
-	if tetragonEvent.Process.Pod != nil {
-		namespace = tetragonEvent.Process.Pod.Namespace
-		workload = tetragonEvent.Process.Pod.Workload
-		pod = tetragonEvent.Process.Pod.Name
-	}
-
-	filemetrics.FileExecTotalActionEventsInc(
-		node.GetNodeNameForExport(),
-		namespace,
-		workload,
-		pod,
-		execFile,
-		execDigest,
-		opr,
-	)
-}
-
 func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
@@ -685,69 +651,6 @@ func GetProcessFileOpenraw(event *MsgFileOpenrawEventUnix) *tetragon.ProcessFile
 	return tetragonEvent
 }
 
-func GetProcessFileExec(event *MsgFileEventUnix) *tetragon.ProcessFileExec {
-	var tetragonParent, tetragonProcess *tetragon.Process
-
-	internal, parent := process.GetParentProcessInternal(event.Msg.ProcessKey.Pid, event.Msg.ProcessKey.Ktime)
-	if internal == nil {
-		tetragonProcess = &tetragon.Process{
-			Pid:       &wrapperspb.UInt32Value{Value: event.Msg.ProcessKey.Pid},
-			StartTime: ktime.ToProto(event.Msg.ProcessKey.Ktime),
-		}
-	} else {
-		tetragonProcess = internal.UnsafeGetProcess()
-	}
-	if parent != nil {
-		tetragonParent = parent.UnsafeGetProcess()
-	}
-
-	tetragonEvent := &tetragon.ProcessFileExec{
-		Process:    tetragonProcess,
-		Parent:     tetragonParent,
-		Operations: []tetragon.FileOperation{normalizeOp(event.Msg.Operation)},
-	}
-
-	tetragonEvent.File = &tetragon.FileDetails{
-		Filename: &tetragon.FileDetails_Str{Str: event.Path},
-		Inode: &tetragon.Inode{
-			Number: event.Msg.Ino,
-			Fs:     createFileSystem(event.Fs, event.Msg.Fs.SDev),
-		},
-		ParentInode: &tetragon.Inode{
-			Number: event.Msg.ParentIno,
-			Fs:     createFileSystem(event.ParentFs, event.Msg.ParentFs.SDev),
-		},
-	}
-
-	if event.Msg.Digest.Ok != 0 {
-		tetragonEvent.Digest = &tetragon.FileDigest{
-			Hash:  event.Digest.Hash,
-			Algo:  tetragon.DigestAlgo(event.Msg.Digest.Algo),
-			Error: int64(event.Digest.Error),
-		}
-	}
-
-	filemetrics.FileExecTotalEventsInc()
-
-	ec := eventcache.Get()
-	if ec != nil && (ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
-		filemetrics.FileExecTotalCacheInEventsInc()
-		ec.Add(nil, tetragonEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
-		return nil
-	}
-
-	if internal != nil {
-		tetragonEvent.Process = internal.GetProcessCopy()
-		process.UpdateEventProcessTid(tetragonEvent.Process, &event.Msg.Tid)
-	}
-	handleFileExecTotalActionEvents(
-		tetragonEvent,
-		tetragonEvent.File.GetStr(),
-		fmt.Sprintf("%s:%s", tetragon.DigestAlgo_name[event.Msg.Digest.Algo], tetragonEvent.Digest.Hash),
-	)
-	return tetragonEvent
-}
-
 type MsgFsInfoUnix struct {
 	SName string
 	SId   string
@@ -777,8 +680,6 @@ func handleFileEventCacheRetryMetrics(ev notify.Event, msg *MsgFileEventUnix) {
 	switch e := event.(type) {
 	case *tetragon.GetEventsResponse_ProcessFile:
 		handleFileTotalActionEvents(e.ProcessFile, msg.TpName, msg.TpRule)
-	case *tetragon.GetEventsResponse_ProcessFileExec:
-		handleFileExecTotalActionEvents(e.ProcessFileExec, msg.Path, fmt.Sprintf("%s:%s", tetragon.DigestAlgo_name[msg.Msg.Digest.Algo], msg.Digest.Hash))
 	default:
 		filemetrics.FileTotalErrorsInc(filemetrics.GrpcEventcacheRetry)
 	}
@@ -828,29 +729,11 @@ func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.
 }
 
 func (msg *MsgFileEventUnix) Notify() bool {
-	if !msg.isFileExecEvent() {
-		filemetrics.FileTotalCacheOutEventsInc()
-	} else {
-		filemetrics.FileExecTotalCacheOutEventsInc()
-	}
+	filemetrics.FileTotalCacheOutEventsInc()
 	return true
 }
 
-func (msg *MsgFileEventUnix) isFileExecEvent() bool {
-	return msg.Msg.Action == 0xFFFFFFFF && msg.Msg.Hook == 0xFFFFFFFF
-}
-
 func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
-	if msg.isFileExecEvent() {
-		f := GetProcessFileExec(msg)
-		if f == nil {
-			return nil
-		}
-		return &tetragon.GetEventsResponse{
-			Event: &tetragon.GetEventsResponse_ProcessFileExec{ProcessFileExec: f},
-			Time:  ktime.ToProto(msg.Msg.Common.Ktime),
-		}
-	}
 	f := GetProcessFile(msg)
 	if f == nil {
 		return nil

@@ -532,13 +532,6 @@ struct {
 } file_config_map SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__uint(max_entries, 1);
-	__type(key, __u32);
-	__type(value, struct file_exec_config_map_value);
-} file_exec_config_map SEC(".maps");
-
-struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__type(key, struct io_uring_op_key);
 	__type(value, struct io_uring_op_val);
@@ -1413,61 +1406,6 @@ eval_selectors(struct sel_args args, struct digest_key *digest, struct sel_path 
 	}
 #endif /* __V61_BPF_PROG */
 	return 0; // not selector matches
-}
-
-static inline __attribute__((always_inline)) __u32
-__eval_exec_selectors(__u32 sel_idx, struct digest_key *digest, struct execve_map_value *execve)
-{
-	struct file_actions_val *act = 0;
-
-	if (!check_match_binaries(sel_idx, execve))
-		return 0;
-	if (!check_match_digests(sel_idx, digest, action_exec))
-		return 0;
-	if (!check_match_capabilities(sel_idx))
-		return 0;
-	if (!check_match_namespaces(sel_idx))
-		return 0;
-
-	act = map_lookup_elem(&file_actions_map, &sel_idx);
-	if (act)
-		return act->val;
-	return 0;
-}
-
-static inline __attribute__((always_inline)) __u32
-eval_exec_selectors(struct digest_key *digest)
-{
-	__u32 ppid, i, val = 0, zero = 0;
-	struct file_exec_config_map_value *conf;
-	struct execve_map_value *execve;
-	bool walker = 0;
-
-	conf = map_lookup_elem(&file_exec_config_map, &zero);
-	if (!conf)
-		return 0;
-
-	// no selectors, post all events
-	if (conf->num_selectors == 0)
-		return FILE_OP_POST;
-
-	/*
-	 * Do this outside of the loop in order to reduce the number of instructions
-	 * and make that work on 4.19 kernels. The check for != 0 is done close to
-	 * the use as we don't know here if the selector that uses that has matchBinaries
-	 * selector.
-	 */
-	execve = event_find_curr(&ppid, &walker);
-
-	for (i = 0; i < MAX_FIM_SELECTORS; ++i) {
-		if (i >= conf->num_selectors) // no need to check more selectors
-			break;
-		val = __eval_exec_selectors(i, digest, execve);
-		if (val) // we return the value from the first selector that matches
-			return val;
-	}
-
-	return conf->default_action;
 }
 
 static inline __attribute__((always_inline)) int get_tp_id()

@@ -1577,32 +1577,6 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 	return kernelSelectors, nil
 }
 
-func InitKernelExecSelectorState(fileSel []v1alpha1.FileExecSelector) (*KernelSelectorState, error) {
-	if len(fileSel) > MaxFimSelectors {
-		return nil, fmt.Errorf("file monitoring supports up to %d selectors", MaxFimSelectors)
-	}
-	kernelSelectors := NewKernelSelectorState()
-	for i, s := range fileSel {
-		if err := selectors.ParseMatchBinaries(&kernelSelectors.KernelSelectorState, s.MatchBinaries, i); err != nil {
-			return nil, fmt.Errorf("parseMatchBinaries error: %w", err)
-		}
-		if err := ParseLinuxMatchCapabilities(kernelSelectors, s.MatchCapabilities, i); err != nil {
-			return nil, fmt.Errorf("parseMatchLinuxCapabilities error: %w", err)
-		}
-		if err := ParseLinuxMatchNamespaces(kernelSelectors, s.MatchNamespaces, i); err != nil {
-			return nil, fmt.Errorf("parseMatchLinuxNamespaces error: %w", err)
-		}
-		if err := ParseMatchDigests(kernelSelectors, s.MatchDigests, i); err != nil {
-			return nil, fmt.Errorf("parseMatchDigests error: %w", err)
-		}
-		if err := ParseMatchActions(kernelSelectors, s.MatchActions, i); err != nil {
-			return nil, fmt.Errorf("parseMatchActions error: %w", err)
-		}
-	}
-	kernelSelectors.num = uint32(len(fileSel))
-	return kernelSelectors, nil
-}
-
 func populateStringPrefixFilterMap(
 	pinPathPrefix string,
 	outerMap *ebpf.Map,

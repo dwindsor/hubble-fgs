@@ -30,15 +30,6 @@ linters:
       - linters:
           - revive
         text: "var-naming:"
-      - linters:
-          - staticcheck
-        text: "SA1019: tetragon.ProcessFileExec is deprecated"
-      - linters:
-          - staticcheck
-        text: "SA1019: e.ProcessFileExec is deprecated"
-      - linters:
-          - staticcheck
-        text: "SA1019: response.GetProcessFileExec is deprecated"
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

@@ -102,9 +102,6 @@ type TracingPolicySpec struct {
 	// File monitoring policy specification.
 	FileMonitoring FileSpec `json:"file"`
 	// +kubebuilder:validation:Optional
-	// File exec monitoring policy specification.
-	FileExecMonitoring FileExecSpec `json:"exec"`
-	// +kubebuilder:validation:Optional
 	// Enable loader events
 	Loader bool `json:"loader"`
 	// +kubebuilder:validation:Optional
@@ -432,37 +429,6 @@ type FileNamespaceSelector struct {
 	// +kubebuilder:default=All
 	// Namespace selector filter type.
 	Filter string `json:"filter"`
-}
-
-// FileExecSelector selects file operations.
-type FileExecSelector struct {
-	// +kubebuilder:validation:Optional
-	// A list of binary exec name filters.
-	MatchBinaries []BinarySelector `json:"matchBinaries,omitempty"`
-	// +kubebuilder:validation:Optional
-	// A list of operation filters.
-	MatchDigests []DigestSelector `json:"matchDigests,omitempty"`
-	// +kubebuilder:validation:Optional
-	// A list of namespaces and IDs
-	MatchNamespaces []FileNamespaceSelector `json:"matchLinuxNamespaces,omitempty"`
-	// +kubebuilder:validation:Optional
-	// A list of capabilities and IDs
-	MatchCapabilities []FileCapabilitiesSelector `json:"matchLinuxCapabilities,omitempty"`
-	// +kubebuilder:validation:Optional
-	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
-	MatchActions []FileActionSelector `json:"matchActions,omitempty"`
-}
-
-type FileExecSpec struct {
-	// +kubebuilder:default=false
-	// Enables process_file_exec events
-	Enable bool `json:"enable"`
-	// +kubebuilder:validation:Optional
-	// Sets the default actions (i.e. what to do if we have selectors and none macthed)
-	DefaultActions []FileActionSelector `json:"defaultActions,omitempty"`
-	// +kubebuilder:validation:Optional
-	// Selectors to apply before producing trace output. Selectors are ORed.
-	Selectors []FileExecSelector `json:"selectors,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
