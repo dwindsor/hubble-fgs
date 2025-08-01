@@ -10,7 +10,9 @@ permissions:
   contents: write
   # For creating a PR to update the OLM catalog
   pull-requests: write
-
+  # Required for the GitHub Action to authenticate to Vault
+  id-token: write 
+ 
 jobs:
   build-and-push:
     uses: ./.github/workflows/build-images-base.yml
