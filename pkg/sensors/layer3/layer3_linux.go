@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
+	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
@@ -518,6 +519,16 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		err = dnsparser.PopulateDNSMapsWithLocalhost()
 		if err != nil {
 			return fmt.Errorf("failed to populate the DNS maps: %w", err)
+		}
+
+		// Program the QuotasInitDNSDomainMappings
+		var dnsDomainMap dnsparser.DomainMap
+		defer dnsDomainMap.CloseMaps()
+		for endpoint, id := range datapath.QuotasInitDNSDomainMappings {
+			err := dnsDomainMap.Update(endpoint.Dns, id)
+			if err != nil {
+				return fmt.Errorf("failed to write BPF domain maps with endpoint %s and id %d: %w", endpoint, id, err)
+			}
 		}
 	}
 	if icmpEnabled && (spec == nil || spec.Parser.Icmp != nil) {
