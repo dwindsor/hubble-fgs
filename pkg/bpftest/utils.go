@@ -56,12 +56,17 @@ func StartMinimalTetragonModel(ctx context.Context, t *testing.T) *model.Server 
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		observer.RemoveSensors(ctx)
+		observer.ResetSensorManager()
 		cgroup.DetachTetragonCgroups(true, true)
 	})
 
 	err = btf.InitCachedBTF(option.Config.HubbleLib, "")
 	require.NoError(t, err)
-	err = base.LoadDefault(option.Config.BpfDir)
+	// GetInitialSensorTest registers a cleanup for unloading the base
+	// sensor because it is special and won't be removed by above
+	// observer.RemoveSensors(ctx)
+	baseSensor := base.GetInitialSensorTest(t)
+	err = baseSensor.Load(option.Config.BpfDir)
 	require.NoError(t, err)
 	err = layer3.StartLayer3Progs(ctx, nil)
 	require.NoError(t, err)

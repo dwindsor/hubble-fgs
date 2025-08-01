@@ -241,7 +241,7 @@ func initBaseSensorFn() func(tb testing.TB) *sensors.Sensor {
 		if s == nil {
 			s = initBaseSensor()
 			tb.Cleanup(func() {
-				tb.Logf("cleanup: unloading base sensor")
+				tb.Log("cleanup: unloading base sensor")
 				s.Unload(true)
 				s = nil
 			})
