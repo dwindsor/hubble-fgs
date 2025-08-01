@@ -19,33 +19,25 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper/docker"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/bpftest"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/checker"
 	"github.com/isovalent/hubble-fgs/pkg/model/server"
-	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
-	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensorinit"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 )
-
-var testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
-
-func TestMain(m *testing.M) {
-	ec := runner.TestSensorsRun(m, "ModelServer")
-	os.Exit(ec)
-}
 
 var tests = []processTree{
 	{
@@ -138,34 +130,6 @@ type appModelPrinter struct {
 func (printer appModelPrinter) String() string {
 	b, _ := json.Marshal(printer.model)
 	return string(b)
-}
-
-func setupProcessTreeEnable(t *testing.T, ctx context.Context, doneWG *sync.WaitGroup, policy string) { //nolint:revive
-	bpf.CheckOrMountCgroup2()
-
-	var readyWG sync.WaitGroup
-
-	if err := observertesthelper.WriteConfigFile(testConfigFile, policy); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	option.Config.EnableApplicationModel = true
-	option.Config.EnableSyscallTracking = true
-	option.Config.EnableBPFDNSParser = true
-
-	base := base.GetInitialSensor()
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, sensors.ConfigDefaults.TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-
-	_, err = server.DefaultNewServer()
-	if err != nil {
-		t.Fatalf("Default NewServer  error: %s", err)
-	}
-
-	observertesthelper.LoopEvents(ctx, t, doneWG, &readyWG, obs)
-	readyWG.Wait()
 }
 
 type testStep interface {
@@ -293,22 +257,8 @@ func TestProcessTree(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), sensors.ConfigDefaults.CmdWaitTime)
 	defer cancel()
 
-	const policy = `
-apiversion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "layer3"
-spec:
-  parser:
-    tcp:
-      enable: true
-    udp:
-      enable: true
-    dns:
-      enable: false
-`
-
-	setupProcessTreeEnable(t, ctx, &doneWG, policy)
+	option.Config.EnableSyscallTracking = true
+	bpftest.StartMinimalTetragonModel(ctx, t)
 
 	for _, e := range tests {
 		t.Run(e.Name, func(t *testing.T) {
@@ -338,9 +288,11 @@ spec:
 			}
 		})
 	}
+
+	t.Run("DNSPolicy", testDNSQuotaPolicy)
 }
 
-func TestProcessTree_DNSPolicy(t *testing.T) {
+func testDNSQuotaPolicy(t *testing.T) {
 	if !utils.SupportDNSParser() || !utils.SupportProcessTree() {
 		t.Skip()
 	}
@@ -365,9 +317,6 @@ func TestProcessTree_DNSPolicy(t *testing.T) {
 	var doneWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), sensors.ConfigDefaults.CmdWaitTime)
-	defer cancel()
-
 	// Note that right now, we don't transmit the port information to the
 	// BPF side so, putting port: [] would result in the same as port: [any]
 	const policy = `
@@ -378,7 +327,6 @@ metadata:
 spec:
   parser:
     tcp:
-      enable: true
       qos:
         quotaReset: "5m"
         quotaLimits:
@@ -388,7 +336,14 @@ spec:
           quota: "1"
 `
 
-	setupProcessTreeEnable(t, ctx, &doneWG, policy)
+	tp, err := tracingpolicy.FromYAML(policy)
+	require.NoError(t, err)
+	err = observer.GetSensorManager().AddTracingPolicy(t.Context(), tp)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err = observer.GetSensorManager().DeleteTracingPolicy(context.Background(), tp.TpName(), "")
+		require.NoError(t, err)
+	})
 
 	// We are forced to manually do a DNS request on localhost to populate
 	// the DNS parser cache because curl no longer does it and automatically
