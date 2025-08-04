@@ -148,7 +148,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyDetatchOldBPF, false, "Detach old cgroup programs from their interfaces when loading Tetragon. Disabled by default.")
 
 	// Provide option to enable extra socket tracking for ICMP matching.
-	flags.Bool(keyEnableIcmpTracking, true, "Enable additional socket tracking for ICMP")
+	flags.Bool(keyEnableIcmpTracking, false, "Enable additional socket tracking for ICMP")
 
 	flags.Bool(keyEnablePolicyK8sWatcher, true, "Enable watching Kubernetes API server for all supported policy resources, unless some of the features are disabled by other options, or Kubernetes API server is disabled entirely by `--enable-k8s-api=false`.")
 	flags.Bool(keyEnableSandboxPolicies, true, "Enable sandboxpolicies")
