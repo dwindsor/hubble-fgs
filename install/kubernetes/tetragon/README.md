@@ -72,7 +72,7 @@ Helm chart for Tetragon Enterprise
 | serviceAccount.create | bool | `true` |  |
 | serviceAccount.name | string | `""` |  |
 | serviceLabelsOverride | object | `{}` |  |
-| tetragon.alerts.enabled | bool | `false` | Enable alerts. |
+| tetragon.alerts.enabled | bool | `true` | Enable alerts. |
 | tetragon.alerts.exportDirectory | string | `"/var/run/cilium/tetragon"` | Directory for alert JSON export (filenames will be retrieved from alert rule names). |
 | tetragon.applicationModelCacheSize | int | `65536` | Cache size for application model. |
 | tetragon.applicationModelExportFilename | string | `""` | Export filename for application model (e.g "application-model.log"). Set to empty to disable exporting the application model. |
