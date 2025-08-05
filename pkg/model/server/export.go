@@ -115,7 +115,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 	// *Writer is an interface so we can't nil check it and we drop back to
 	// the enterprise option the source of truth. Although its annoying for
 	// CI.
-	if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
+	if enterpriseOption.Config.TelemetryExportFilename != "" {
 		telemetry = json.NewEncoder(flatWriter)
 	}
 

@@ -23,8 +23,8 @@ type config struct {
 	ApplicationModelExportInterval time.Duration
 	ApplicationModelExportFilename string
 
-	ApplicationModelDiffExportFilename string
-	ConnectionLogFileName              string
+	TelemetryExportFilename string
+	ConnectionLogFileName   string
 
 	DnsCacheSize         int
 	ProcessTreeCacheSize int

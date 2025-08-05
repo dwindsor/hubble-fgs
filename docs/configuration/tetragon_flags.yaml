@@ -10,9 +10,6 @@ options:
       default_value: "65536"
       usage: |
         Set the size of the BPF data structure to store application model and statistics. Higher values enable Tetragon to keep track of more processes before evicting old ones
-    - name: application-model-diff-export-filename
-      usage: |
-        Filename for application flat model JSON export. Set to "" to disable.
     - name: application-model-export-filename
       usage: |
         Filename for application model JSON export. Set to "" to disable.
@@ -422,6 +419,9 @@ options:
       default_value: "32768"
       usage: |
         Set the size of the internal TCP cache. Higher values enable Tetragon to keep track of more concurrent TCP sessions before evicting old ones
+    - name: telemetry-export-filename
+      usage: |
+        Filename for telemetry JSON export. Set to "" to disable. To enable telemetry export, --enable-application-model flag must be set to true. Telemetry export uses the export interval specified by --application-model-export-interval flag.
     - name: tls-cache-size
       default_value: "1024"
       usage: |

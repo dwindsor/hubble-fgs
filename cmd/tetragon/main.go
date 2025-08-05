@@ -920,9 +920,9 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 		}
 	}
 
-	if enterpriseOption.Config.ApplicationModelDiffExportFilename != "" {
+	if enterpriseOption.Config.TelemetryExportFilename != "" {
 		flatWriter, err = getWriter(
-			enterpriseOption.Config.ApplicationModelDiffExportFilename,
+			enterpriseOption.Config.TelemetryExportFilename,
 			option.Config.ExportFileMaxSizeMB,
 			option.Config.ExportFileMaxBackups,
 			option.Config.ExportFileCompress,
