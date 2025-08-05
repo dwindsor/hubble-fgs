@@ -157,7 +157,6 @@ jobs:
       - name: Catalog update PR
         run: |
           git checkout master
-          make oss-checkout
           git checkout -b pr/release-wf/catalog-${{ steps.tag.outputs.tag }}
           export DOCKER_IMAGE_TAG=${{ steps.tag.outputs.tag }}
           make olm-index-add
