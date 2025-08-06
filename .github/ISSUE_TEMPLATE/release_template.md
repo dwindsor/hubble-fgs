@@ -151,7 +151,6 @@ To create a `X.Y` branch:
   - [ ] resources usage
   - [ ] any suspicious patterns
 - [ ] Check in Grafana if Timescape is ingesting Tetragon events: [Timescape Ingestion](https://grafana.staging.tetragon.isovalent.com/d/XDyOH21Vk/timescape-ingestion). TODO: link a dashboard specific to Tetragon events.
-- [ ] Check in Hubble UI if the [Process Ancestry Tree](https://hubble-ui.staging.tetragon.isovalent.com/ps-tree) is rendered correctly. Select a few sample namespaces/pods.
 - [ ] Check in Hubble UI if the [Service Map](https://hubble-ui.staging.tetragon.isovalent.com/service-map) is rendered correctly. Uncheck the "Live View" toggle (this enables the Timescape mode) and select a few sample namespaces.
 - [ ] Check in Grafana Timescape queries for Tetragon events: [Timescape Queries](https://grafana.staging.tetragon.isovalent.com/d/8v3KZJ14k/timescape-server). TODO: link a dashboard specific to Tetragon events.
 
