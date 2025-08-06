@@ -125,6 +125,13 @@ To create a `X.Y` branch:
   the draft is available in the [releases page]:
   - [ ] Use `tgt-notes` from [tetragon-github-tools](https://github.com/isovalent/tetragon-github-tools/)
         to generate a first version of the release notes based on `release-note/` tags and PR messages.
+    
+    `./tgt-notes --head=$RELEASE --ee  > $RELEASE.md`
+
+    If you have a recent enough version of `gh` installed, you can use
+    `GITHUB_TOKEN=$(gh auth token)` to set the authentication token before
+    running the command.
+
   - [ ] Copy upgrade notes from `contrib/upgrade-notes/vX.Y.Z.md` file into the release notes.
         - Skip if there are no upgrade notes - it's quite likely for patch releases.
         - Review upgrade notes from the corresponding OSS release. Copy them to release notes too if relevant for
