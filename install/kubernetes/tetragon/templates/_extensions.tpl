@@ -17,9 +17,12 @@ enable-policy-k8swatcher: {{ .Values.tetragon.k8sWatcher.policy.enabled | quote 
 enable-sandboxpolicies: {{ .Values.tetragon.enableSandboxpolicies | quote }}
 enable-application-model: {{ .Values.tetragon.enableApplicationModel | quote }}
 application-model-cache-size: {{ .Values.tetragon.applicationModelCacheSize | quote }}
+application-model-export-interval: {{ .Values.tetragon.applicationModelExportInterval | quote }}
 {{- if .Values.tetragon.applicationModelExportFilename }}
 application-model-export-filename: {{ .Values.exportDirectory }}/{{ .Values.tetragon.applicationModelExportFilename }}
-application-model-export-interval: {{ .Values.tetragon.applicationModelExportInterval | quote }}
+{{- end }}
+{{- if .Values.tetragon.telemetryExportFilename }}
+telemetry-export-filename: {{ .Values.exportDirectory }}/{{ .Values.tetragon.telemetryExportFilename }}
 {{- end }}
 {{- if .Values.tetragon.enableSyscallTracking }}
 {{- if .Values.tetragon.enableApplicationModel }}

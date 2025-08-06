@@ -106,6 +106,11 @@ tetragon:
   applicationModelExportFilename: ""
   # -- Interval at which to export application model.
   applicationModelExportInterval: 60s
+  # -- Export filename for telemetry data (e.g "telemetry.log"). Set to empty
+  # to disable. Note that tetragon.enableApplicationModel must be set to true
+  # for Telemetry export to take effect. Telemetry export uses the export
+  # interval specified by tetragon.applicationModelExportInterval value.
+  telemetryExportFilename: ""
 # Tetragon Aggregator settings
 tetragonAggregator:
   # -- Enables the Tetragon Aggregator.
