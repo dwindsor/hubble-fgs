@@ -14,7 +14,7 @@ The following is a release checklist that should be followed when cutting a new 
 
  - [ ] Set the major and minor version numbers in a `BRANCH` variable:
    ```
-   export BRANCH=v1.15
+   export BRANCH=v1.17
    ```
 
  - [ ] Check out the latest version of https://github.com/isovalent/hubble-fgs/
@@ -56,7 +56,7 @@ The following is a release checklist that should be followed when cutting a new 
 
 - [ ] Set `RELEASE` environment variable to the next patch release:
   ```
-  RELEASE=v1.15.1
+  RELEASE=v1.17.1
   ```
 
   You can use the following command to get a list of the previous patch releases:

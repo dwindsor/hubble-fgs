@@ -37,18 +37,18 @@ To create a `X.Y` branch:
  - [ ] Branch out
    ```
    git fetch
-   export BRANCH=v1.14
+   export BRANCH=v1.18
    git switch -c $BRANCH origin/master # here we pick latest commit. Change it if needed
    ```
 
  - [ ] Change the OSS submodule to follow the corresponding OSS branch. For example, if releasing
-   EE `v1.14` that follows OSS `v1.2`:
+   EE `v1.18` that follows OSS `v1.2`:
    ```
    git submodule set-branch -b v1.2 modules/tetragon-oss
    git add .gitmodules
    git commit --signoff -m 'oss: update branch to v1.2'
 
- - [ ] Copy the file `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml` from the previous release branch, e.g. from `1.13` if branching `1.14`.
+ - [ ] Copy the file `install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml` from the previous release branch, e.g. from `1.13` if branching `1.18`.
    ```
    git fetch origin v1.13
    git show origin/v1.13:install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml > install/olm/bundle/manifests/tetragon-operator.clusterserviceversion.yaml
@@ -58,7 +58,7 @@ To create a `X.Y` branch:
 
  - [ ] Push the new version
    ```
-   git push origin v1.14 # push the new branch
+   git push origin v1.18 # push the new branch
    ```
  - [ ] Do an OSS sync (if needed) and create a PR
 
@@ -84,9 +84,9 @@ To create a `X.Y` branch:
       dependency (preferred) or work with [#sig-security](https://isovalent.slack.com/archives/CHAA21WJU)
       to triage the issue and add it to the [Tetragon VEX doc](https://github.com/isovalent/hubble-fgs/blob/master/.github/.openvex.json),
       which will exclude it from the scan results if it is a false positive.
-- [ ] Set `RELEASE` environment variable to the next -rc. For example, if you are releasing `v1.14.0`:
+- [ ] Set `RELEASE` environment variable to the next -rc. For example, if you are releasing `v1.18.0`:
   ```
-  export RELEASE=v1.14.0-rc.X
+  export RELEASE=v1.18.0-rc.X
   ```
 - [ ] Open a pull request to update the Helm chart and docs:
   ```
@@ -103,9 +103,9 @@ To create a `X.Y` branch:
   git commit -s -m "Prepare for $RELEASE release"
   git push origin HEAD
   ```
-- [ ] Set the `BRANCH` environment variable to the major/minor version branch. For example, if you are releasing `v1.14.0`:
+- [ ] Set the `BRANCH` environment variable to the major/minor version branch. For example, if you are releasing `v1.18.0`:
   ```
-  export BRANCH=v1.14
+  export BRANCH=v1.18
   ```
 - [ ] Check that there are no open PRs (that need to be urgently merged) targeting `$BRANCH`
   ```
