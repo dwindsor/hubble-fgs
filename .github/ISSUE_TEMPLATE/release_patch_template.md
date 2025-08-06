@@ -103,27 +103,27 @@ The following is a release checklist that should be followed when cutting a new 
   - [ ] Review the release notes and update them as needed.
   - [ ] Click on "Publish Release" at the bottom.
 
-### Deploy the new release to tetragon-dev
+### Deploy the new release to tetragon-staging
 
-- [ ] Navigate to the [cilium-enterprise-dogfooding] repo and file a PR to update the Tetragon Enterprise version in tetragon-dev
-  - [ ] Edit the `infra/df-tetragon-dev-ce-01/apps/tetragon/kustomization.yaml` file and change the Helm chart version.
-  - [ ] If the `infra/df-tetragon-dev-ce-01/apps/tetragon/values.yaml` file overwrites the agent or operator image, remove the overwrite.
-  - [ ] Make sure that the `infra/df-tetragon-dev-ce-01/apps/tracing-policies/templates/` directory contains relevant TracingPolicies.
+- [ ] Navigate to the [cilium-enterprise-dogfooding] repo and file a PR to update the Tetragon Enterprise version in tetragon-staging
+  - [ ] Edit the `infra/df-tetragon-staging-ce-01/apps/tetragon/kustomization.yaml` file and change the Helm chart version.
+  - [ ] If the `infra/df-tetragon-staging-ce-01/apps/tetragon/values.yaml` file overwrites the agent or operator image, remove the overwrite.
+  - [ ] Make sure that the `infra/df-tetragon-staging-ce-01/apps/tracing-policies/templates/` directory contains relevant TracingPolicies.
 - [ ] Merge the PR and wait for the new release to be deployed.
 
-### Validate the new release in tetragon-dev
+### Validate the new release in tetragon-staging
 
 - [ ] Check that all Tetragon pods are up and running. Refer to the [cilium-enterprise-dogfooding] README for the access instructions.
-- [ ] Check the [Tetragon Health](https://grafana.dev.tetragon.isovalent.com/d/f4589e8b-6b8b-4431-9a8a-82616810d76b/tetragon-health) dashboard in Grafana
+- [ ] Check the [Tetragon Health](https://grafana.staging.tetragon.isovalent.com/d/adtue3swqycxsb/tetragon-high-level-health) dashboard in Grafana
   - [ ] error logs
   - [ ] resources usage
   - [ ] any suspicious patterns
-- [ ] Check in Grafana if Timescape is ingesting Tetragon events: [Timescape Ingestion](https://grafana.dev.tetragon.isovalent.com/d/XDyOH21Vk/timescape-ingestion). TODO: link a dashboard specific to Tetragon events.
-- [ ] Check in Hubble UI if the [Process Ancestry Tree](https://hubble-ui.dev.tetragon.isovalent.com/ps-tree) is rendered correctly. Select a few sample namespaces/pods.
-- [ ] Check in Hubble UI if the [Service Map](https://hubble-ui.dev.tetragon.isovalent.com/service-map) is rendered correctly. Uncheck the "Live View" toggle (this enables the Timescape mode) and select a few sample namespaces.
-- [ ] Check in Grafana Timescape queries for Tetragon events: [Timescape Queries](https://grafana.dev.tetragon.isovalent.com/d/8v3KZJ14k/timescape-server). TODO: link a dashboard specific to Tetragon events.
+- [ ] Check in Grafana if Timescape is ingesting Tetragon events: [Timescape Ingestion](https://grafana.staging.tetragon.isovalent.com/d/XDyOH21Vk/timescape-ingestion). TODO: link a dashboard specific to Tetragon events.
+- [ ] Check in Hubble UI if the [Process Ancestry Tree](https://hubble-ui.staging.tetragon.isovalent.com/ps-tree) is rendered correctly. Select a few sample namespaces/pods.
+- [ ] Check in Hubble UI if the [Service Map](https://hubble-ui.staging.tetragon.isovalent.com/service-map) is rendered correctly. Uncheck the "Live View" toggle (this enables the Timescape mode) and select a few sample namespaces.
+- [ ] Check in Grafana Timescape queries for Tetragon events: [Timescape Queries](https://grafana.staging.tetragon.isovalent.com/d/8v3KZJ14k/timescape-server). TODO: link a dashboard specific to Tetragon events.
 
-Issues found when validating the release in tetragon-dev might not block the release, but should be communicated and documented.
+Issues found when validating the release in tetragon-staging might not block the release, but should be communicated and documented.
 
 ### Update of the OLM manifests and publication of the OLM bundle and catalog index
 
