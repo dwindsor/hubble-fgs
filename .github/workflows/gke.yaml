@@ -88,7 +88,8 @@ jobs:
         run: |
           gcloud container clusters create ${{ steps.vars.outputs.clusterName }} \
             --preemptible \
-            --labels "usage=pr,owner=${{ github.event.pull_request.number }},creation=$(date +'%Y-%m-%d'),expiry=$(date -d tomorrow +"%Y-%m-%d")" \
+            --labels "usage=pr,owner=${{ github.event.pull_request.number }},creation=$(date +'%Y-%m-%d'),expiry=$(date -d tomorrow +"%Y-%m-%d"),svic_falco_supported=no" \
+            --node-labels "svic_osquery_supported=no" \
             --enable-ip-alias \
             --cluster-ipv4-cidr="/21" \
             --services-ipv4-cidr="/24" \
