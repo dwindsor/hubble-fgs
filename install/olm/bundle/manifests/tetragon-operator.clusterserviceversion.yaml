@@ -41,7 +41,7 @@ metadata:
         * Start the Tetragon Lab at [isovalent.com/labs](https://isovalent.com/labs/security-observability-with-ebpf-and-cilium-tetragon/)
         * Try our quickstart at [tetragon.io](https://tetragon.io/docs/getting-started/).
         * See our user documentation at [tetragon.io/docs](https://tetragon.io/docs/).
-  name: tetragon-operator.v1.17.0-rc.2
+  name: tetragon-operator.v1.17.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -261,22 +261,22 @@ spec:
                       - --config-dir=/etc/tetragon/operator.conf.d/
                     env:
                       - name: TETRAGON_IMAGE
-                        value: "quay.io/isovalent/tetragon:v1.17.0-rc.2@sha256:47409ee9e163646e4841b06d97b9eb9fd72f68b86b1fa6ba28c9e984dc31fcad"
+                        value: "quay.io/isovalent/tetragon:v1.17.0@sha256:f73289bec69bf7e9b9719bac32467620f88f99896f8fbd2222bfac282c765c7c"
                       - name: EXPORT_IMAGE
                         value: "quay.io/isovalent/hubble-export-stdout:v1.0.4"
                       - name: TETRAGON_RTHOOKS_IMAGE
                         value: "quay.io/cilium/tetragon-rthooks:v0.5@sha256:41265564c800b0c2d2e615fa698615b48631c0e1cee13be7cee2bf81f2ab0798"
                       - name: TETRAGON_METADATA_IMAGE
-                        value: "quay.io/isovalent/hubble-enterprise-metadata:v1.17.0-rc.2@sha256:71cbb44a41b60ab64c6eae99f819796868a57234a5ff210598bd23b73b3b02c7"
+                        value: "quay.io/isovalent/hubble-enterprise-metadata:v1.17.0@sha256:71cbb44a41b60ab64c6eae99f819796868a57234a5ff210598bd23b73b3b02c7"
                       - name: TETRAGON_AGGREGATOR_IMAGE
-                        value: "quay.io/isovalent/tetragon-aggregator:v1.17.0-rc.2@sha256:ae3298d463108d4f9d5df12d1efabafc04a266c0175a5e96867cb2486b7e1ee0"
+                        value: "quay.io/isovalent/tetragon-aggregator:v1.17.0@sha256:2ea012ca57cd556dc4d9438e06d91511de78673a159646019ac95c53ad2ad9d9"
                       - name: TETRAGON_OPERATOR_MANAGE_AGENT
                         value: "true"
                       - name: TETRAGON_OPERATOR_NAMESPACE
                         valueFrom:
                           fieldRef:
                             fieldPath: metadata.namespace
-                    image: "quay.io/isovalent/tetragon-operator:v1.17.0-rc.2@sha256:c4a8623c4b74ac0f7ae3408891160edb2bbef7c402607c0d822bf296c7c94f7b"
+                    image: "quay.io/isovalent/tetragon-operator:v1.17.0@sha256:119df52f821ad32f73088dfcd01b6077e33a2add5b57fb7139c4f0075b32aa48"
                     imagePullPolicy: IfNotPresent
                     volumeMounts:
                       - mountPath: /etc/tetragon/operator.conf.d/
@@ -340,5 +340,5 @@ spec:
   provider:
     name: Isovalent
     url: "https://isovalent.com"
-  version: 1.17.0-rc.2
-  replaces: tetragon-operator.v1.17.0-pre.8
+  version: 1.17.0
+  replaces: tetragon-operator.v1.17.0-rc.2
