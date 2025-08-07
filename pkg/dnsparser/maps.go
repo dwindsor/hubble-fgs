@@ -43,6 +43,8 @@ const (
 
 	RequestIDMapName = "tg_dns_req_id_map"
 
+	AllocationIDMapName = "tg_dns_alloc_id"
+
 	dnsMaxNameSize = 255
 
 	MaxEntriesOuterMaps = 1024

@@ -82,6 +82,15 @@ struct {
 	__type(value, uint64_t);
 } tg_glb_dns_id SEC(".maps");
 
+// The global counter for the allocation ID which are the links between the
+// cgroup ID and the Pods.
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, uint32_t);
+	__type(value, uint32_t);
+} tg_dns_alloc_id SEC(".maps");
+
 // Assigns an ID from the ip and domain. Most of the time it generates a new ID
 // from BPF side but, in the case a quota policy was parsed by userspace, reuses
 // an existing userspace generated ID. This is only used in the BPF DNS parser.

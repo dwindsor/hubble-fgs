@@ -117,7 +117,8 @@ var (
 	TcpSocketMapStats = program.MapUserFrom(base.TcpSocketMapStats)
 
 	// DNS parsers maps, shared between process tree and the parser
-	DNSIPToIDMaps = program.MapBuilder(dnsparser.IPToIDMapsName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
+	DNSIPToIDMaps   = program.MapBuilder(dnsparser.IPToIDMapsName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
+	AllocationIDMap = program.MapBuilder(dnsparser.AllocationIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 )
 
 func Enable() ([]*program.Program, []*program.Map) {
@@ -224,6 +225,7 @@ func getFdLookupMaps() []*program.Map {
 		TcpSocketMap,
 		TcpSocketMapStats,
 		DNSIPToIDMaps,
+		AllocationIDMap,
 	}
 
 	if utils.SupportProcessTree() {
