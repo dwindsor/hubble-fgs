@@ -2,13 +2,10 @@ package datapath
 
 import (
 	"fmt"
-	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
@@ -50,57 +47,11 @@ var (
 	dnsDomainMap = dnsparser.DomainMap{}
 )
 
-func initMap() {
-	var err error
-
-	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
-	dstMap, err = ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("failed to pin DestinationMap (%s): %v", file, err))
-	}
-
-	file = filepath.Join(bpf.MapPrefixPath(), processTreeBinaryUUIDMap)
-	binaryMap, err = ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
-	}
-
-	file = filepath.Join(bpf.MapPrefixPath(), processTreeUUIDBinaryMap)
-	uidBpfMap, err = ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
-	}
-
-	lpmMap, err = lpm.NewLPM()
-	if err != nil {
-		logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)
-	}
-}
-
 func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool) error {
 	for _, r := range records {
 		p.AddSingleRecord(r, force)
 	}
 	return nil
-}
-
-func scheduleDomainMapFlush() {
-	var err error
-	retries := 10
-
-	for i := 0; i < retries; i++ {
-		for endpoint, id := range QuotasInitDNSDomainMappings {
-			if err = dnsDomainMap.Update(endpoint.Dns, id); err != nil {
-				break
-			}
-		}
-		if err == nil {
-			return
-		}
-		logger.GetLogger().Debug("retry domain mapping", logfields.Error, err)
-		time.Sleep(time.Duration(i) * time.Second)
-	}
-	logger.GetLogger().Warn("failed to program domain map policy incomplete")
 }
 
 func conflictUpdateMap(key *types.DestinationEndpointKey, value *types.DestinationEndpointValue) error {

@@ -5,12 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 )
@@ -37,27 +35,6 @@ const (
 type LPMMap struct {
 	addr6 *ebpf.Map
 	addr4 *ebpf.Map
-}
-
-func NewLPM() (*LPMMap, error) {
-	fileLpm4 := filepath.Join(bpf.MapPrefixPath(), Addr4lpmMapName)
-	addr4lpm, err := ebpf.LoadPinnedMap(fileLpm4, nil)
-	if err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("failed to pin addr4 LPM Map (%s)", fileLpm4), logfields.Error, err)
-		return nil, err
-	}
-
-	fileLpm6 := filepath.Join(bpf.MapPrefixPath(), Addr6lpmMapName)
-	addr6lpm, err := ebpf.LoadPinnedMap(fileLpm6, nil)
-	if err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("failed to pin addr6 LPM Map (%s)", fileLpm6), logfields.Error, err)
-		return nil, err
-	}
-
-	return &LPMMap{
-		addr6: addr6lpm,
-		addr4: addr4lpm,
-	}, nil
 }
 
 func (lpm *LPMMap) writeIp4(ip string, id uint64) error {
