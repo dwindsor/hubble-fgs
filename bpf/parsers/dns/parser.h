@@ -225,7 +225,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		ip.af_inet6 = 0;
 		DEBUG("A Record: %d.%d.%d.%d", ip.addr[0] & 0xFF, (ip.addr[0] >> 8) & 0xFF, (ip.addr[0] >> 16) & 0xFF, ip.addr[0] >> 24);
 
-		if (assign_dns_id_mapping(&ip, name) < 0)
+		if (assign_dns_id_mapping(skb, &ip, name) < 0)
 			return -36;
 
 		return offset + sizeof(u32);
@@ -249,7 +249,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		      bpf_htons(addr[7]));
 #endif
 
-		if (assign_dns_id_mapping(&ip, name) < 0)
+		if (assign_dns_id_mapping(skb, &ip, name) < 0)
 			return -38;
 
 		return offset + sizeof(u128);
@@ -382,10 +382,6 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 		error = -16;
 		goto done;
 	}
-
-#ifdef TETRAGON_BPF_DEBUG
-	DEBUG("domain: %s", name);
-#endif
 
 	// Parse QType and QClass
 	if (data + sizeof(u16) * 2 > data_end) {

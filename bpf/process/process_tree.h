@@ -550,7 +550,6 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	int zero = 0;
 	__u64 *nsid, uid;
 
-	struct dns_endpoint_id_value *dns_value;
 	struct endpoint_id_value *value;
 	struct endpoint_id_key key;
 	struct ip_addr ip_key = {};
@@ -599,14 +598,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	ip_key.af_inet6 = tuple->ipv6;
 
 	/* Check for DNS generated IDs */
-	void *tg_dns_ip_id_map = map_lookup_elem(&tg_dns_ip_id, &zero);
-	if (tg_dns_ip_id_map) {
-		dns_value = map_lookup_elem(tg_dns_ip_id_map, &ip_key);
-		if (dns_value) {
-			dnskey->destination_id = dns_value->id;
-			dnskey->source = dns_value->source;
-		}
-	}
+	find_dns_key(dnskey, ip_key);
 
 	// Check for Userspace generated IDs to objects
 	value = map_lookup_elem(&tg_endpoint_id_map, &key);

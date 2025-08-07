@@ -18,6 +18,9 @@
 #include "dns.h"
 #include "process/process_endpoint.h"
 
+static __u64 BPF_FUNC(sk_cgroup_id, void *sk);
+static __u64 BPF_FUNC(sk_ancestor_cgroup_id, void *sk, int ancestor_level);
+
 // DNS needs source in its endpoint_id_value because these IDs can come from the
 // BPF side; from the parser that reads DNS answers or from the userspace side,
 // from the parser of the quota policies.
@@ -109,15 +112,144 @@ struct {
 
 volatile __CONST __u8 DNS_PARSER_PER_POD_ENABLED;
 
+#define MAX_CGROUP_DEPTH 30
+
+// find_parent_cgroupid_network walk the cgroup hierarchy from root to the sk
+// cgroup to find the kubepods.slice cgroup, if found it returns the parent of
+// the sk cgroup, if not found (or in case of error) it returns zero.
+//
+// This function has a twin tracing function named find_parent_cgroupid_tracing
+// that should be updated if this code is changed.
+FUNC_INLINE uint64_t find_parent_cgroupid_network(struct bpf_sock *sk)
+{
+	uint64_t cgid, previous_cgid, own_cgid, *kubepods_cgid;
+	uint32_t zero = 0;
+	uint8_t kubepods_found = false;
+
+	if (!sk)
+		return 0;
+
+	own_cgid = sk_cgroup_id(sk);
+
+	kubepods_cgid = map_lookup_elem(&tg_kpod_cgid, &zero);
+	//  if kubepods_cgid == 0, it means the setup failed
+	if (!kubepods_cgid || *kubepods_cgid == 0)
+		return 0;
+
+	previous_cgid = 0;
+	for (size_t i = 0; i < MAX_CGROUP_DEPTH; i++) {
+		cgid = sk_ancestor_cgroup_id(sk, i);
+
+		if (cgid == *kubepods_cgid)
+			kubepods_found = true;
+
+		if (cgid == own_cgid) {
+			if (kubepods_found)
+				return previous_cgid;
+			else
+				return 0;
+		}
+
+		previous_cgid = cgid;
+	}
+
+	return 0;
+}
+
+// find_parent_cgroupid_tracing is the tracing version of the network
+// find_parent_cgroupid_network function. Make sure all changes are reflected to
+// the other function as well.
+FUNC_INLINE uint64_t find_parent_cgroupid_tracing()
+{
+	uint64_t cgid, previous_cgid, own_cgid, *kubepods_cgid;
+	uint32_t zero = 0;
+	uint8_t kubepods_found = false;
+
+	kubepods_cgid = map_lookup_elem(&tg_kpod_cgid, &zero);
+	if (!kubepods_cgid || *kubepods_cgid == 0)
+		return 0;
+
+	own_cgid = get_current_cgroup_id();
+
+	previous_cgid = 0;
+	for (size_t i = 0; i < MAX_CGROUP_DEPTH; i++) {
+		cgid = get_current_ancestor_cgroup_id(i);
+
+		if (cgid == *kubepods_cgid)
+			kubepods_found = true;
+
+		if (cgid == own_cgid) {
+			if (kubepods_found)
+				return previous_cgid;
+			else
+				return 0;
+		}
+
+		previous_cgid = cgid;
+	}
+
+	return 0;
+}
+
+FUNC_INLINE int find_alloc_id(uint64_t cgroup_id)
+{
+	uint32_t *alloc_id;
+	uint32_t zero = 0;
+
+	// if cgroup_id is equal to zero, that means either that the process
+	// does not belong to a Pod (is a "host process") or that the cgroup ID
+	// lookup failed. In both cases, default to alloc ID zero.
+	if (cgroup_id != 0 && DNS_PARSER_PER_POD_ENABLED) {
+		alloc_id = map_lookup_elem(&tg_dns_cgid_aid, &cgroup_id);
+		if (!alloc_id) {
+			// lookup the global variable counter
+			alloc_id = map_lookup_elem(&tg_dns_alloc_id, &zero);
+			if (unlikely(!alloc_id))
+				return -1;
+
+			__sync_add_and_fetch(alloc_id, 1);
+
+			// bind the cgid to an alloc_id
+			if (map_update_elem(&tg_dns_cgid_aid, &cgroup_id, alloc_id, 0) < 0)
+				return -1; // TODO(mtardy) monitor this closely, this is important
+		}
+		return *alloc_id;
+	}
+
+	return 0;
+}
+
+FUNC_INLINE void find_dns_key(struct destination_endpoint_key *key, struct ip_addr ip_key)
+{
+	int alloc_id = 0;
+	struct dns_endpoint_id_value *dns_value;
+
+	if (DNS_PARSER_PER_POD_ENABLED)
+		alloc_id = find_alloc_id(find_parent_cgroupid_tracing());
+
+	if (alloc_id >= 0) {
+		void *tg_dns_ip_id_map = map_lookup_elem(&tg_dns_ip_id, &alloc_id);
+		if (tg_dns_ip_id_map) {
+			dns_value = map_lookup_elem(tg_dns_ip_id_map, &ip_key);
+			if (dns_value) {
+				key->destination_id = dns_value->id;
+				key->source = dns_value->source;
+			}
+		}
+		// TODO(mtardy) monitor the case in which no maps are here for the alloc ID
+	}
+}
+
 // Assigns an ID from the ip and domain. Most of the time it generates a new ID
 // from BPF side but, in the case a quota policy was parsed by userspace, reuses
 // an existing userspace generated ID. This is only used in the BPF DNS parser.
-FUNC_INLINE int assign_dns_id_mapping(struct ip_addr *ip, char *domain)
+FUNC_INLINE int assign_dns_id_mapping(struct __sk_buff *skb, struct ip_addr *ip, char *domain)
 {
 	struct dns_endpoint_id_value *id_val;
 	void *ip_id_map;
 	uint64_t *global_id;
 	uint32_t zero = 0;
+	int alloc_id = 0;
 
 	// build ID for domain
 	id_val = map_lookup_elem(&tg_dns_fqdn_id, domain);
@@ -146,9 +278,17 @@ FUNC_INLINE int assign_dns_id_mapping(struct ip_addr *ip, char *domain)
 		map_update_elem(&tg_dns_id_fqdn, id_val, domain, BPF_ANY);
 	}
 
-	ip_id_map = map_lookup_elem(&tg_dns_ip_id, &zero);
+	if (DNS_PARSER_PER_POD_ENABLED) {
+		alloc_id = find_alloc_id(find_parent_cgroupid_network(skb->sk));
+		if (alloc_id < 0) {
+			return -1;
+		}
+	}
+
+	ip_id_map = map_lookup_elem(&tg_dns_ip_id, &alloc_id);
 	if (!ip_id_map)
-		return -1;
+		return -1; // TODO(mtardy) monitor this case
+
 	map_update_elem(ip_id_map, ip, id_val, BPF_ANY);
 
 	return 0;
