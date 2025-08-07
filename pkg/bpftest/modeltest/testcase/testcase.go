@@ -12,6 +12,7 @@ package testcase
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -55,7 +56,11 @@ func (tc *TestCase) Run(ctx context.Context, tb testing.TB, server *server.Serve
 }
 
 func (tc *TestCase) modelCheck(tb testing.TB, model *v1alpha.ApplicationModel) {
-	fmt.Println(model.String())
+	m, err := json.Marshal(model)
+	if err != nil {
+		tb.Logf("warning: failed to marshal app model: %s", err)
+	}
+	fmt.Println(m)
 
 	assert.True(tb, checkProcesses(tb, tc.Host, model.Host.Processes), "host process checks failed")
 	assert.True(tb, checkNamespaces(tb, tc.Namespaces, model.Namespaces), "namespace checks failed")
