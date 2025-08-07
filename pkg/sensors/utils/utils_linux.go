@@ -365,7 +365,8 @@ func _checkUDPBindNeedsDummies() bool {
 			asm.JEq.Imm(asm.R0, 0, "error"),
 
 			// Write a 1 to the map
-			asm.StoreImm(asm.R0, 0, 1, asm.DWord),
+			asm.Mov.Imm(asm.R1, 1),
+			asm.StoreMem(asm.R0, 0, asm.R1, asm.DWord),
 
 			// return 0
 			asm.LoadImm(asm.R0, 0, asm.DWord).WithSymbol("error"),
