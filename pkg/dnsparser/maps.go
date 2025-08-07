@@ -43,12 +43,15 @@ const (
 
 	RequestIDMapName = "tg_dns_req_id_map"
 
-	AllocationIDMapName = "tg_dns_alloc_id"
+	AllocationIDMapName      = "tg_dns_alloc_id"
+	CgroupIDToAllocIDMapName = "tg_dns_cgid_aid"
 
 	dnsMaxNameSize = 255
 
-	MaxEntriesOuterMaps = 1024
-	DefaultInnerMapID   = 0
+	// The max number of pod for the IPToID map resize and the cgidToAllocid.
+	// The IPToID index 0 is reserved for the (default) host map.
+	MaxNumberOfPods   = 1024
+	DefaultInnerMapID = 0
 )
 
 type IpMap struct {

@@ -117,8 +117,9 @@ var (
 	TcpSocketMapStats = program.MapUserFrom(base.TcpSocketMapStats)
 
 	// DNS parsers maps, shared between process tree and the parser
-	DNSIPToIDMaps   = program.MapBuilder(dnsparser.IPToIDMapsName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
-	AllocationIDMap = program.MapBuilder(dnsparser.AllocationIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
+	DNSIPToIDMaps        = program.MapBuilder(dnsparser.IPToIDMapsName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
+	AllocationIDMap      = program.MapBuilder(dnsparser.AllocationIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
+	CgroupIDToAllocIDMap = program.MapBuilder(dnsparser.CgroupIDToAllocIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 )
 
 func Enable() ([]*program.Program, []*program.Map) {
@@ -226,6 +227,7 @@ func getFdLookupMaps() []*program.Map {
 		TcpSocketMapStats,
 		DNSIPToIDMaps,
 		AllocationIDMap,
+		CgroupIDToAllocIDMap,
 	}
 
 	if utils.SupportProcessTree() {
@@ -245,7 +247,11 @@ func getFdLookupMaps() []*program.Map {
 	}
 
 	if enterpriseOption.Config.EnableBPFDNSParser {
-		DNSIPToIDMaps.SetMaxEntries(dnsparser.MaxEntriesOuterMaps)
+		DNSIPToIDMaps.SetMaxEntries(dnsparser.MaxNumberOfPods)
+
+		if enterpriseOption.Config.EnableBPFDNSPerPod {
+			CgroupIDToAllocIDMap.SetMaxEntries(dnsparser.MaxNumberOfPods)
+		}
 	}
 
 	return maps
