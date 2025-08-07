@@ -1,0 +1,27 @@
+apiVersion: cilium.io/v1alpha1
+kind: TetragonNetworkPolicy
+metadata:
+  name: "example-label-segmentation"
+  annotations:
+    author: "IsovalentQATeam"
+spec:
+  defaultAction: "allow"
+  rules:
+  - description: "connectAllowRule"
+    hook: "connect"
+    action: "deny"
+    destination:
+    - ipBlock:
+        cidr: "127.0.0.1/32"
+      ports:
+        protocol: "TCP"
+    - ipBlock:
+        cidr: "142.250.217.78/24" # google
+      ports:
+        protocol: "TCP"
+    - FQDN:
+      - "ebpf.io"
+      - "tetragon.io"
+      ports:
+        protocol: "TCP"
+        ports: [80, 8080]
