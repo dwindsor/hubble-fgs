@@ -69,6 +69,7 @@ const (
 	KeyProcessCacheStaleInterval      = "process-cache-stale-interval"
 	keyEnableBPFDNSParser             = "enable-bpf-dns-parser"
 	keyBPFDNSParserMaxPendingRequests = "bpf-dns-parser-max-pending-requests"
+	KeyEnableBPFDNSPerPod             = "enable-bpf-dns-parser-per-pod"
 	keyDNSStatsPerSocket              = "dns-stats-per-socket"
 	KeyEnableFimDispatcher            = "fim-enable-dispatcher"
 	KeyMandateURL                     = "mandate-url"
@@ -159,6 +160,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyEnableCiliumAPI, false, "Associate IP addresses in Tetragon's networking events with Kubernetes pods using Cilium's IP cache")
 	flags.Bool(keyEnableBPFDNSParser, false, "Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.")
 	flags.Uint32(keyBPFDNSParserMaxPendingRequests, 1024, "Size of the BPF DNS parser pending requests ID map.")
+	flags.Bool(KeyEnableBPFDNSPerPod, false, "Enable in-kernel BPF DNS parser maps per Pod partitioning.")
 	flags.Bool(keyDNSStatsPerSocket, false, "If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported")
 	flags.Bool(KeyEnableFimDispatcher, false, "Enable FIM dispatcher when supported")
 	flags.String(KeyMandateURL, "", "Set a URL for a Tetragon Mandate file")
@@ -228,6 +230,7 @@ func readAndSetEnterpriseFlags() {
 	Config.ProcessCacheStaleInterval = viper.GetDuration(KeyProcessCacheStaleInterval)
 	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser)
 	Config.BPFDNSParserMaxPendingRequests = viper.GetUint32(keyBPFDNSParserMaxPendingRequests)
+	Config.EnableBPFDNSPerPod = viper.GetBool(KeyEnableBPFDNSPerPod)
 	Config.DNSStatsPerSocket = viper.GetBool(keyDNSStatsPerSocket)
 
 	Config.EnableFimDispatcher = viper.GetBool(KeyEnableFimDispatcher)
