@@ -60,7 +60,7 @@ func (tc *TestCase) modelCheck(tb testing.TB, model *v1alpha.ApplicationModel) {
 	if err != nil {
 		tb.Logf("warning: failed to marshal app model: %s", err)
 	}
-	fmt.Println(m)
+	fmt.Println(string(m))
 
 	assert.True(tb, checkProcesses(tb, tc.Host, model.Host.Processes), "host process checks failed")
 	assert.True(tb, checkNamespaces(tb, tc.Namespaces, model.Namespaces), "namespace checks failed")
