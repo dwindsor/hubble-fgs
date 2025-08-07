@@ -210,7 +210,6 @@ func ConfigureMaps(mapDir string, mapName string, config networkapi.UdpConfigVal
 		config.DisableConnectEvents = 1
 		config.DisableCloseEvents = 1
 	}
-	logger.GetLogger().Warn("ConfigureMaps", "config.DisableConnectEvents", config.DisableConnectEvents)
 	// DisableListenEvents can operate independently of disabling all network events.
 	config.DisableListenEvents = 0
 	if DisableListenEvents {
