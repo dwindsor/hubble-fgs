@@ -59,8 +59,7 @@ func TestMain(m *testing.M) {
 	//    supported by all nodes and set this as a variable in the test context.
 	//
 	// 3. Register a hook at the start of every test that installs Cilium into the
-	//    cluster with some default options (unless -tetragon.install-cilium=false is set
-	//    on the command line).
+	//    cluster with some default options
 	//
 	// 4. Register a hook at the start of every test that installs Tetragon into the
 	//    cluster with some default options.
@@ -73,7 +72,7 @@ func TestMain(m *testing.M) {
 	//    cluster and running event checkers. This information is only dumped if the test
 	//    fails or if -tetragon.keep-export=true is set on the command line.
 	//
-	runner = runners.NewRunner().NoInstallCilium().
+	runner = runners.NewRunner().
 		WithInstallTetragon(
 			install.WithHelmOptions(map[string]string{
 				"tetragon.exportAllowList": "",

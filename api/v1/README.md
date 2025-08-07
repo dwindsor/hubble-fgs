@@ -54,6 +54,7 @@
     - [ProcessLsm](#tetragon-ProcessLsm)
     - [ProcessTracepoint](#tetragon-ProcessTracepoint)
     - [ProcessUprobe](#tetragon-ProcessUprobe)
+    - [ProcessUsdt](#tetragon-ProcessUsdt)
     - [RuntimeHookRequest](#tetragon-RuntimeHookRequest)
     - [RuntimeHookResponse](#tetragon-RuntimeHookResponse)
     - [SecurityContext](#tetragon-SecurityContext)
@@ -1304,6 +1305,30 @@ loader sensor event triggered for loaded binary/library
 | ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
 | offset | [uint64](#uint64) |  | uprobe offset (mutualy exclusive with symbol) |
 | ref_ctr_offset | [uint64](#uint64) |  | uprobe ref_ctr_offset |
+
+
+
+
+
+
+<a name="tetragon-ProcessUsdt"></a>
+
+### ProcessUsdt
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| path | [string](#string) |  |  |
+| provider | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| policy_name | [string](#string) |  | Name of the policy that created that uprobe. |
+| message | [string](#string) |  | Short message of the Tracing Policy to inform users what is going on. |
+| args | [KprobeArgument](#tetragon-KprobeArgument) | repeated | Arguments definition of the observed uprobe. |
+| tags | [string](#string) | repeated | Tags of the Tracing Policy to categorize the event. |
+| ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
 
 
 
@@ -2983,6 +3008,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_sandbox_syscall | [ProcessSandboxSyscall](#tetragon-ProcessSandboxSyscall) |  |  |
 | process_throttle | [ProcessThrottle](#tetragon-ProcessThrottle) |  |  |
 | process_lsm | [ProcessLsm](#tetragon-ProcessLsm) |  |  |
+| process_usdt | [ProcessUsdt](#tetragon-ProcessUsdt) |  |  |
 | test | [Test](#tetragon-Test) |  |  |
 | rate_limit_info | [RateLimitInfo](#tetragon-RateLimitInfo) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
@@ -3104,6 +3130,7 @@ GetEventsResponse event oneof.
 | PROCESS_SANDBOX_SYSCALL | 26 |  |
 | PROCESS_THROTTLE | 27 |  |
 | PROCESS_LSM | 28 |  |
+| PROCESS_USDT | 29 |  |
 | TEST | 40000 |  |
 | RATE_LIMIT_INFO | 40001 |  |
 

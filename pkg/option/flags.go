@@ -95,10 +95,6 @@ func FixUpOSSFlags(flags *pflag.FlagSet) {
 	flags.Lookup(option.KeyCompatibilitySyscall64SizeType).Usage =
 		"syscall64 type will produce output of type size (compatibility flag, will be removed in v1.16)"
 
-	flags.Lookup(option.KeyEnableProcessKprobeAncestors).Hidden = true
-	flags.Lookup(option.KeyEnableProcessTracepointAncestors).Hidden = true
-	flags.Lookup(option.KeyEnableProcessUprobeAncestors).Hidden = true
-	flags.Lookup(option.KeyEnableProcessLsmAncestors).Hidden = true
 	flags.Lookup(option.KeyEnableTracingPolicyCRD).Hidden = true
 }
 

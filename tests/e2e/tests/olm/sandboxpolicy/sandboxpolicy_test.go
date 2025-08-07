@@ -36,7 +36,6 @@ var runner *runners.Runner
 func TestMain(m *testing.M) {
 	runner = runners.
 		NewRunner().
-		NoInstallCilium().
 		WithInstallTetragonFn(olm.TetragonInstall(
 			install.WithHelmOptions(map[string]string{
 				"tetragon.exportAllowList":       "",

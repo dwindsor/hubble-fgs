@@ -11,13 +11,8 @@
 package option
 
 import (
-	"github.com/cilium/tetragon/pkg/option"
 	"github.com/spf13/pflag"
 )
 
-func AddOSSpecificFlags(flags *pflag.FlagSet) {
-	// some fixes to defaults related to https://github.com/cilium/tetragon/pull/2938
-	flags.Lookup(option.KeyEnableProcessAncestors).Usage = "Include ancestors in process exec events"
-	flags.Lookup(option.KeyEnableProcessAncestors).Value = newBoolValue(false, &option.Config.EnableProcessAncestors)
-	flags.Lookup(option.KeyEnableProcessAncestors).DefValue = "false"
+func AddOSSpecificFlags(_ *pflag.FlagSet) {
 }
