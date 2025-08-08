@@ -193,7 +193,7 @@ func runStandardQuery(t *testing.T, tq testQuery, prog *ebpf.Program, ipToDomain
 		wantIPMaps[ip] = tq.wantDomain
 	}
 
-	actualIP, err := ipToDomainMap.Values()
+	actualIP, err := ipToDomainMap.Values(DefaultInnerMapID)
 	if err != nil {
 		t.Fatalf("failed to retrieve values out of IP map: %s", err)
 	}

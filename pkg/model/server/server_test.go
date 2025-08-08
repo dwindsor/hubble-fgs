@@ -367,7 +367,7 @@ spec:
 
 	ipMap := dnsparser.NewIPToDomainMap(ipToIDMaps, idToDomainMap)
 
-	values, err := ipMap.Values()
+	values, err := ipMap.Values(dnsparser.DefaultInnerMapID)
 	require.NoError(t, err)
 	domain, ok := values[netip.AddrFrom4([4]byte{127, 0, 0, 1})]
 	require.True(t, ok, "BPF DNS parser maps are missing the 127.0.0.1 -> localhost entry")

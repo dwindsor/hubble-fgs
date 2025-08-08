@@ -73,7 +73,8 @@ func (c *Cache) LookupDomains(ip string) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert IP %q: %w", ip, err)
 		}
-		domain, err := c.ipToDomainMap.Lookup(nIP)
+		//  TODO, can't really use the default inner map here
+		domain, err := c.ipToDomainMap.Lookup(dnsparser.DefaultInnerMapID, nIP)
 		if err != nil {
 			return nil, fmt.Errorf("failed to lookup domain in BPF maps: %w", err)
 		}

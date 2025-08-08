@@ -515,6 +515,18 @@ func (m IPToIDMaps) Update(mapID uint32, ip netip.Addr, id DNSID) error {
 	return nil
 }
 
+func (m IPToIDMaps) InnerMapExist(mapID uint32) (bool, error) {
+	var innerMapID ebpf.MapID
+	err := m.ipToIDMaps.Lookup(mapID, &innerMapID)
+	if err != nil {
+		if errors.Is(err, ebpf.ErrKeyNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to lookup inner map %d: %w", mapID, err)
+	}
+	return true, nil
+}
+
 // DomainMap combines domainToID and idToDomain maps for operation that needs to
 // be done on both objects.
 type DomainMap struct {
@@ -677,15 +689,15 @@ func (m IPToDomainMap) Clear() error {
 	return errors.Join(err1, err2)
 }
 
-func (m IPToDomainMap) Values() (map[netip.Addr]string, error) {
-	ipToID, err := m.ipToIDMaps.Values(DefaultInnerMapID)
+func (m IPToDomainMap) Values(mapID uint32) (map[netip.Addr]string, error) {
+	ipToID, err := m.ipToIDMaps.Values(mapID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve values of ip to ID map: %w", err)
+		return nil, fmt.Errorf("failed to retrieve values of IP to ID map: %w", err)
 	}
 
 	idToDomain, err := m.idToDomainMap.Values()
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve values of id to domain map: %w", err)
+		return nil, fmt.Errorf("failed to retrieve values of ID to domain map: %w", err)
 	}
 
 	ipToDomain := map[netip.Addr]string{}
@@ -695,8 +707,8 @@ func (m IPToDomainMap) Values() (map[netip.Addr]string, error) {
 	return ipToDomain, nil
 }
 
-func (m IPToDomainMap) Lookup(ip netip.Addr) (string, error) {
-	id, err := m.ipToIDMaps.Lookup(DefaultInnerMapID, ip)
+func (m IPToDomainMap) Lookup(mapID uint32, ip netip.Addr) (string, error) {
+	id, err := m.ipToIDMaps.Lookup(mapID, ip)
 	if err != nil {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			return "", nil
@@ -708,6 +720,10 @@ func (m IPToDomainMap) Lookup(ip netip.Addr) (string, error) {
 		return "", fmt.Errorf("failed to find domain associated with ID %d: %w", id, err)
 	}
 	return domain, nil
+}
+
+func (m IPToDomainMap) InnerMapExist(mapID uint32) (bool, error) {
+	return m.ipToIDMaps.InnerMapExist(mapID)
 }
 
 type GlobalDNSIDMap struct {
