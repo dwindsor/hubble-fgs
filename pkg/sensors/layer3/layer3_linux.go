@@ -531,13 +531,19 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		l3cfg.udp6Enabled = 1
 	}
 	if udpEnabled && enterpriseOption.Config.EnableBPFDNSParser && enterpriseOption.Config.EnableApplicationModel {
-		err := dnsparser.InitializeIPToIDMap()
+		err := dnsparser.PopulateDomainMapsWithLocalhost()
+		if err != nil {
+			return fmt.Errorf("failed to populate the DNS domains maps with localhost: %w", err)
+		}
+
+		err = dnsparser.CreatePreallocInnerIPToIDMaps()
 		if err != nil {
 			return fmt.Errorf("failed to initialize the DNS maps: %w", err)
 		}
-		err = dnsparser.PopulateDNSMapsWithLocalhost()
+
+		err = dnsparser.PopulateIPToIDMapsWithLocalhost()
 		if err != nil {
-			return fmt.Errorf("failed to populate the DNS maps: %w", err)
+			return fmt.Errorf("failed to populate the DNS IP to ID maps with localhost: %w", err)
 		}
 
 		if enterpriseOption.Config.EnableBPFDNSPerPod {

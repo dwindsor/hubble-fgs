@@ -31,7 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 const (
@@ -55,9 +55,12 @@ const (
 
 	// The max number of pod for the IPToID map resize and the cgidToAllocid.
 	// The IPToID index 0 is reserved for the (default) host map.
-	MaxNumberOfPods   = 1024
-	DefaultInnerMapID = 0
+	MaxNumberOfPods      = 1024
+	IPToIDMapsToPrealloc = 10
+	DefaultInnerMapID    = 0
 )
+
+var IPToIDMapsAllocated uint32
 
 type IpMap struct {
 	ipMap *ebpf.Map
@@ -107,8 +110,9 @@ func PopulateKubepodsCgroupIDMap() error {
 	return nil
 }
 
-// PopulateDNSMapsWithLocalhost fills the DNS map with localhost related
-// entries. Indeed, RFC 6761 specifies in its section 6.3 that:
+// These functions (this one plus the IP to ID related one) fill the DNS map
+// with localhost related entries. Indeed, RFC 6761 specifies in its section 6.3
+// that:
 //
 // Users are free to use localhost names as they would any other domain names.
 // Users may assume that IPv4 and IPv6 address queries for localhost names will
@@ -117,35 +121,10 @@ func PopulateKubepodsCgroupIDMap() error {
 // Most well implemented software will not resolve localhost (like curl, see
 // https://daniel.haxx.se/blog/2021/05/31/curl-localhost-as-a-local-host/), so
 // we need to pre-fill those information since we might not see the DNS pkt.
-func PopulateDNSMapsWithLocalhost() error {
-	// The ID must come from userspace, and as such, this will only work if
-	// the application model is enabled (otherwise the userspace endpoint
-	// cache isn't enabled)
-	userspaceEndpointCache := endpoint.MustGet()
-	id, err := userspaceEndpointCache.AddEndpoint(endpoint.Endpoint{
-		Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
-		Dns:  "localhost",
-	})
+func PopulateDomainMapsWithLocalhost() error {
+	id, err := createOrGetLocalhostID()
 	if err != nil {
-		return fmt.Errorf("failed to add the localhost endpoint: %w", err)
-	}
-
-	// Update the IP to ID link
-	IPToIDMapsFile := filepath.Join(bpf.MapPrefixPath(), IPToIDMapsName)
-	IPToIDMapsRaw, err := ebpf.LoadPinnedMap(IPToIDMapsFile, nil)
-	if err != nil {
-		return fmt.Errorf("failed loading %s map: %w", IPToIDMapsFile, err)
-	}
-	defer IPToIDMapsRaw.Close()
-	dnsIPToIDMaps := NewIPToIDMaps(IPToIDMapsRaw)
-
-	err = dnsIPToIDMaps.Update(DefaultInnerMapID, netip.MustParseAddr("127.0.0.1"), DNSID{id, types.DestinationSourceUser})
-	if err != nil {
-		return fmt.Errorf("failed adding the 127.0.0.1 IP as localhost endpoint: %w", err)
-	}
-	err = dnsIPToIDMaps.Update(DefaultInnerMapID, netip.MustParseAddr("::1"), DNSID{id, types.DestinationSourceUser})
-	if err != nil {
-		return fmt.Errorf("failed adding the ::1 IP as localhost endpoint: %w", err)
+		return err
 	}
 
 	// Update the domain maps (direct and reverse using DomainMap)
@@ -155,40 +134,25 @@ func PopulateDNSMapsWithLocalhost() error {
 		return fmt.Errorf("failed updating the domain<->ID maps with localhost: %w", err)
 	}
 	dnsDomainMap.CloseMaps()
-
 	return nil
 }
 
-func initializeIPToIDMap(m *ebpf.Map) error {
-	// Create the default map
-	// Key and value needs to be defined for kernels before (at min)
-	// 6.6. For recent versions, KeySize and ValueSize are enough.
-	innerDefault, err := ebpf.NewMap(&ebpf.MapSpec{
-		Name:    "tg_dns_ip_id_0",
-		Type:    ebpf.LRUHash,
-		KeySize: uint32(unsafe.Sizeof(dnsapi.IPAddr{})),
-		Key: &btf.Struct{
-			Size: uint32(unsafe.Sizeof(dnsapi.IPAddr{})),
-		},
-		ValueSize: uint32(unsafe.Sizeof(DNSID{})),
-		Value: &btf.Struct{
-			Size: uint32(unsafe.Sizeof(DNSID{})),
-		},
-		MaxEntries: uint32(enterpriseOption.Config.ProcessTreeCacheSize),
+func createOrGetLocalhostID() (uint64, error) {
+	// The ID must come from userspace, and as such, this will only work if
+	// the application model is enabled (otherwise the userspace endpoint
+	// cache isn't enabled)
+	userspaceEndpointCache := endpoint.MustGet()
+	id, err := userspaceEndpointCache.AddEndpoint(endpoint.Endpoint{
+		Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
+		Dns:  "localhost",
 	})
-
 	if err != nil {
-		return fmt.Errorf("error creating a new inner DNSIPToID map: %w", err)
+		return 0, fmt.Errorf("failed to add the localhost endpoint: %w", err)
 	}
-
-	err = m.Put(uint32(0), uint32(innerDefault.FD()))
-	if err != nil {
-		return fmt.Errorf("error putting the new inner DNSIPToID map: %w", err)
-	}
-	return nil
+	return id, nil
 }
 
-func InitializeIPToIDMap() error {
+func CreatePreallocInnerIPToIDMaps() error {
 	ipToIDMapsFile := filepath.Join(bpf.MapPrefixPath(), IPToIDMapsName)
 	ipToIDMapsRaw, err := ebpf.LoadPinnedMap(ipToIDMapsFile, nil)
 	if err != nil {
@@ -196,7 +160,20 @@ func InitializeIPToIDMap() error {
 	}
 	defer ipToIDMapsRaw.Close()
 
-	return initializeIPToIDMap(ipToIDMapsRaw)
+	ipToIDMaps := NewIPToIDMaps(ipToIDMapsRaw)
+	return ipToIDMaps.createPreallocMaps()
+}
+
+func PopulateIPToIDMapsWithLocalhost() error {
+	ipToIDMapsFile := filepath.Join(bpf.MapPrefixPath(), IPToIDMapsName)
+	ipToIDMapsRaw, err := ebpf.LoadPinnedMap(ipToIDMapsFile, nil)
+	if err != nil {
+		return fmt.Errorf("failed to load %q map: %w", ipToIDMapsFile, err)
+	}
+	defer ipToIDMapsRaw.Close()
+
+	ipToIDMaps := NewIPToIDMaps(ipToIDMapsRaw)
+	return ipToIDMaps.populateWithLocalhostPreallocMaps()
 }
 
 func NewErrorMap(m *ebpf.Map) ErrorMap {
@@ -377,6 +354,86 @@ func NewIPToIDMaps(ipToIDMaps *ebpf.Map) IPToIDMaps {
 	return IPToIDMaps{
 		ipToIDMaps: ipToIDMaps,
 	}
+}
+
+func (m IPToIDMaps) populateWithLocalhost(mapID uint32) error {
+	id, err := createOrGetLocalhostID()
+	if err != nil {
+		return err
+	}
+
+	// Update the IP to ID link
+	err = m.Update(mapID, netip.MustParseAddr("127.0.0.1"), DNSID{id, types.DestinationSourceUser})
+	if err != nil {
+		return fmt.Errorf("failed adding the 127.0.0.1 IP as localhost endpoint: %w", err)
+	}
+	err = m.Update(mapID, netip.MustParseAddr("::1"), DNSID{id, types.DestinationSourceUser})
+	if err != nil {
+		return fmt.Errorf("failed adding the ::1 IP as localhost endpoint: %w", err)
+	}
+
+	return nil
+}
+
+func (m IPToIDMaps) injectNewInnerMap(mapID uint32) error {
+	// Key and value needs to be defined for kernels before (at min)
+	// 6.6. For recent versions, KeySize and ValueSize are enough.
+	innerDefault, err := ebpf.NewMap(&ebpf.MapSpec{
+		Name:    fmt.Sprintf("tg_dns_ip_id_%d", mapID),
+		Type:    ebpf.LRUHash,
+		KeySize: uint32(unsafe.Sizeof(dnsapi.IPAddr{})),
+		Key: &btf.Struct{
+			Size: uint32(unsafe.Sizeof(dnsapi.IPAddr{})),
+		},
+		ValueSize: uint32(unsafe.Sizeof(DNSID{})),
+		Value: &btf.Struct{
+			Size: uint32(unsafe.Sizeof(DNSID{})),
+		},
+		MaxEntries: uint32(option.Config.ProcessTreeCacheSize),
+	})
+
+	if err != nil {
+		return fmt.Errorf("error creating a new inner DNSIPToID map: %w", err)
+	}
+
+	err = m.ipToIDMaps.Put(mapID, uint32(innerDefault.FD()))
+	if err != nil {
+		return fmt.Errorf("error putting the new inner DNSIPToID map: %w", err)
+	}
+	return nil
+}
+
+func (m IPToIDMaps) createPreallocMaps() error {
+	mapsToPrealloc := uint32(1)
+	if option.Config.EnableBPFDNSPerPod {
+		mapsToPrealloc = IPToIDMapsToPrealloc
+	}
+
+	for i := uint32(0); i < mapsToPrealloc; i++ {
+		err := m.injectNewInnerMap(i)
+		if err != nil {
+			return fmt.Errorf("failed to create the IP to ID inner map with alloc ID %d: %w", i, err)
+		}
+		IPToIDMapsAllocated++
+	}
+
+	return nil
+}
+
+func (m IPToIDMaps) populateWithLocalhostPreallocMaps() error {
+	mapsToPrealloc := uint32(1)
+	if option.Config.EnableBPFDNSPerPod {
+		mapsToPrealloc = IPToIDMapsToPrealloc
+	}
+
+	for i := uint32(0); i < mapsToPrealloc; i++ {
+		err := m.populateWithLocalhost(i)
+		if err != nil {
+			return fmt.Errorf("failed to populate the DNS maps with localhost: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (m IPToIDMaps) openInnerMap(mapID uint32) (*ebpf.Map, error) {
