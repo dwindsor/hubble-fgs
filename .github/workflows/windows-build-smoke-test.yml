@@ -2,13 +2,16 @@ name: Windows Build and Smoke
 on:
   pull_request:
     paths-ignore:
-      - docs/**
+      - "**.md"
+      - "contrib/grafana/**"
+
   push:
     branches:
       - main
       - v*
     paths-ignore:
-      - docs/**
+      - "**.md"
+      - "contrib/grafana/**"
 jobs:
   windows-ebpf-prog-build:
     name: Build Windows ebpf programs
