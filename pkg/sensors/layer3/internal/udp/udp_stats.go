@@ -350,7 +350,7 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 		}
 		// We only need to manage the pseudosockets lists if we have received connect events
 		// from BPF. If we have not, then these lists will be empty.
-		if !option.Config.EnableNetworkEvents {
+		if option.Config.EnableNetworkEvents {
 			pseudoSocketsUpdate.Lock()
 			pseudoKey := cookieVer{Cookie: udpKey.Cookie, Version: udpKey.Version}
 			if pseudoSockets[pseudoKey] != nil {
@@ -394,7 +394,7 @@ func runUdpGC() {
 	deleteLast(m)
 
 	// Check if we have any stale entries
-	if !option.Config.EnableNetworkEvents {
+	if option.Config.EnableNetworkEvents {
 		removeStaleEntries(m)
 	}
 }
