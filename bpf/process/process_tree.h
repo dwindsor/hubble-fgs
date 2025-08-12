@@ -59,22 +59,21 @@ static int atomic_xchg(__u64 *cnt, __u64 val)
 	return __atomic_exchange_n(cnt, val, __ATOMIC_SEQ_CST);
 }
 
-static struct tree_id get_new_tree_id()
+static void get_tree_id(struct tree_id *id)
 {
 	u32 zero = 0;
 	u64 *counter;
-	struct tree_id id;
 
 	counter = map_lookup_elem(&tg_tree_id, &zero);
 	if (!counter) {
-		id.uid = 0;
-		return id;
+		id->uid = 0;
+		return;
 	}
 
-	id.uid = ++(*counter);
-	id.cpu = get_smp_processor_id();
-	DEBUG("ID: %d.%d\n", id.cpu, id.uid);
-	return id;
+	id->uid = ++(*counter);
+	id->cpu = get_smp_processor_id();
+	DEBUG("ID: %d.%d\n", id->cpu, id->uid);
+	return;
 }
 
 char global_zero[MAXARGLENGTH] = { 0 };
@@ -112,7 +111,7 @@ static inline __attribute__((always_inline)) uint64_t __find_my_self(struct exec
 		return ((uint64_t)self_uid->cpu << 32) | (uint64_t)self_uid->uid;
 	}
 
-	new_uid = get_new_tree_id();
+	get_tree_id(&new_uid);
 	if (!new_uid.uid)
 		return 0;
 	map_update_elem(&process_tree_uid_binary_map, &new_uid, tree_key, 0);
