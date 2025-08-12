@@ -14,6 +14,7 @@ import (
 	"context"
 
 	ossOption "github.com/cilium/tetragon/pkg/option"
+
 	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )

@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +23,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 )
 
 func TestReconcile(t *testing.T) {

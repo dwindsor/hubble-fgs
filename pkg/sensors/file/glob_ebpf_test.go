@@ -31,10 +31,11 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	ossTestUtils "github.com/cilium/tetragon/pkg/testutils"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
-	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
+
+	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 type StrVal struct {

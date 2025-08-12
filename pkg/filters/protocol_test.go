@@ -13,10 +13,11 @@ package filters
 import (
 	"testing"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 func TestGetProtocol(t *testing.T) {

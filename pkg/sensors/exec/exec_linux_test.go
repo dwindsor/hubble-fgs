@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/cilium/ebpf"
-	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	api "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/cgroups"
@@ -24,10 +23,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 
 	tu "github.com/cilium/tetragon/pkg/testutils"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"

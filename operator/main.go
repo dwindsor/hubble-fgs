@@ -11,9 +11,10 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/cilium/tetragon/operator/cmd"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	logging "github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 
 	"github.com/isovalent/hubble-fgs/operator/agent"
 	"github.com/isovalent/hubble-fgs/operator/options"

@@ -15,11 +15,12 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/stacktracetree"
 	"github.com/cilium/tetragon/cmd/tetra/status"
 	"github.com/cilium/tetragon/cmd/tetra/version"
+	"github.com/spf13/cobra"
+
 	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/getevents"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/network"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/record"
-	"github.com/spf13/cobra"
 )
 
 // addBaseCommands adds commands that build and make sense on all platform:

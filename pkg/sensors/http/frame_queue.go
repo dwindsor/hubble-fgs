@@ -15,6 +15,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/logger"
+
 	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 )
 

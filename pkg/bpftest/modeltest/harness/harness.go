@@ -17,13 +17,9 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/podhelpers"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/google/uuid"
-	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
-	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
-	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,6 +28,12 @@ import (
 	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	"sigs.k8s.io/e2e-framework/third_party/kind"
+
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
+	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
+	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 )
 
 const clientCreateTimeout = 1 * time.Minute

@@ -22,12 +22,14 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/cilium/tetragon/pkg/filters"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/server"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )

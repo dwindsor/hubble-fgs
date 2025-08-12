@@ -23,9 +23,10 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/google/go-cmp/cmp"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+
 	"github.com/isovalent/hubble-fgs/pkg/common"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
-	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 )
 
 func prettyWorkloadKind(kind appModelV1.WorkloadKind) string {

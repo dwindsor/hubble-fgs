@@ -14,8 +14,9 @@ package ciphers
 import (
 	"testing"
 
-	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/stretchr/testify/assert"
+
+	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 )
 
 func TestGetTLSCipher(t *testing.T) {

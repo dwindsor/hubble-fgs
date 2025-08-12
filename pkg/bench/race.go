@@ -25,7 +25,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
@@ -42,8 +41,11 @@ import (
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/isovalent/hubble-fgs/pkg/cilium"
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/isovalent/hubble-fgs/pkg/cilium"
 
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"

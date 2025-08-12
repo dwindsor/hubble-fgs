@@ -7,13 +7,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"github.com/isovalent/hubble-fgs/tests/compliance"
-	"github.com/isovalent/hubble-fgs/tests/compliance/config"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
+	"github.com/isovalent/hubble-fgs/tests/compliance"
+	"github.com/isovalent/hubble-fgs/tests/compliance/config"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensorinit"
 )

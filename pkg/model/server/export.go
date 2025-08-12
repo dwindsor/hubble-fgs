@@ -18,13 +18,14 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/networkmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
-	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection *json.Encoder, newModel, lastModel *appModelV1.ApplicationModel) (time.Time, error) {

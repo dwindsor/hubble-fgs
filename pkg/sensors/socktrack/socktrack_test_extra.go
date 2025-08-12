@@ -13,6 +13,7 @@ package socktrack
 
 import (
 	"github.com/cilium/ebpf"
+
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"

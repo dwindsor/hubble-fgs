@@ -21,9 +21,10 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/google/uuid"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/filemetrics"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
-	v1 "k8s.io/api/core/v1"
 )
 
 type ContInit struct {

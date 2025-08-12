@@ -22,6 +22,11 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
+	"github.com/moby/go-archive"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/yaml"
+
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
@@ -29,10 +34,6 @@ import (
 	"github.com/isovalent/hubble-fgs/tests/compliance/config"
 	"github.com/isovalent/hubble-fgs/tests/compliance/testcontext"
 	"github.com/isovalent/hubble-fgs/tests/compliance/util"
-	"github.com/moby/go-archive"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/stretchr/testify/assert"
-	"sigs.k8s.io/yaml"
 
 	// Needed to initialize custom sensor handlers
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors"

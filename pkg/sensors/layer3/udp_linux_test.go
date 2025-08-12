@@ -34,8 +34,6 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/api/v1/tetragon"
-	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/matchers/durationmatcher"
@@ -45,7 +43,11 @@ import (
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	osstestutils "github.com/cilium/tetragon/pkg/testutils"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
@@ -61,9 +63,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
-	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 const udpConfigLegacy = `

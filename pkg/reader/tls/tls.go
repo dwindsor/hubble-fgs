@@ -10,9 +10,10 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+	"github.com/yalue/native_endian"
+
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
-	"github.com/yalue/native_endian"
 )
 
 func GetTLSSession(flv *api.FLV64) (s string) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 

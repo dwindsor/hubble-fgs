@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/matchers/durationmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
@@ -30,9 +29,12 @@ import (
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	osstestutils "github.com/cilium/tetragon/pkg/testutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"

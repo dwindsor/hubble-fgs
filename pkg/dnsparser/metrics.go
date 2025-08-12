@@ -24,8 +24,9 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/isovalent/hubble-fgs/pkg/api"
 )
 
 var dnsParserErrorMetric = metrics.MustNewCustomCounter(

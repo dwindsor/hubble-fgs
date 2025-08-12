@@ -4,7 +4,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -12,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/isovalent/ipa/ocsf/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 func processToOCSF(p *tetragon.Process) *v1alpha.Process {

@@ -13,9 +13,10 @@ package filters
 import (
 	"context"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 // ProtocolFilter filters by the protocol field on event types that support it.

@@ -15,12 +15,13 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 func TestNetworkMonitorKey_String(t *testing.T) {

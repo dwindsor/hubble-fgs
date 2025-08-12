@@ -12,6 +12,7 @@ package sockops
 
 import (
 	"github.com/cilium/tetragon/pkg/sensors"
+
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 )
 

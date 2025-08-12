@@ -17,9 +17,10 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/bench"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
+
+	"github.com/isovalent/hubble-fgs/pkg/bench"
 )
 
 const (

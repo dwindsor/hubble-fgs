@@ -13,8 +13,9 @@ package config
 import (
 	"os"
 
-	"github.com/isovalent/hubble-fgs/pkg/recorder"
 	"sigs.k8s.io/yaml"
+
+	"github.com/isovalent/hubble-fgs/pkg/recorder"
 )
 
 // Metadata for a GenericRecorderConf

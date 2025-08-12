@@ -5,9 +5,11 @@ import (
 	"net/netip"
 	"sync"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	lru "github.com/hashicorp/golang-lru/v2"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"

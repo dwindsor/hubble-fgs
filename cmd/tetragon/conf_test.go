@@ -8,11 +8,12 @@ import (
 
 	"github.com/cilium/tetragon/pkg/defaults"
 	opt "github.com/cilium/tetragon/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 type confInput struct {

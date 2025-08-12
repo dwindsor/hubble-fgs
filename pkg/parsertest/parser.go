@@ -24,8 +24,9 @@ import (
 	"text/scanner"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/yalue/native_endian"
+
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 )
 
 //

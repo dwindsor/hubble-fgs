@@ -21,9 +21,10 @@ import (
 	"time"
 
 	// Fix up OSS configuration defaults.
+	"sigs.k8s.io/e2e-framework/pkg/envconf"
+
 	_ "github.com/isovalent/hubble-fgs/tests/e2e/enterprise"
 	"github.com/isovalent/hubble-fgs/tests/e2e/tests/common/fileDispatcher"
-	"sigs.k8s.io/e2e-framework/pkg/envconf"
 
 	"github.com/cilium/tetragon/tests/e2e/helpers"
 	"github.com/cilium/tetragon/tests/e2e/helpers/grpc"

@@ -15,7 +15,9 @@ import (
 	"path"
 
 	"github.com/cilium/ebpf"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 )
 

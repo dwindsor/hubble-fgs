@@ -15,11 +15,12 @@ import (
 	"fmt"
 	stdNet "net"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
 	"k8s.io/utils/net"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 // IPCIDRFilter filters on any IP field, including ProcessListen.ip

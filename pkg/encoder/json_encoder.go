@@ -25,15 +25,17 @@ import (
 	"github.com/cilium/cilium/api/v1/observer"
 	"github.com/cilium/cilium/pkg/identity"
 	"github.com/cilium/cilium/pkg/labels"
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	jsonEncoder "github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/isovalent/hubble-fgs/pkg/ocsf"
 	"github.com/isovalent/ipa/ocsf/v1alpha"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
+	"github.com/isovalent/hubble-fgs/pkg/ocsf"
 )
 
 // JSONEncoder is a shim encoder that wraps ProtoJsonEncoder.

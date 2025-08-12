@@ -20,9 +20,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/spf13/cobra"
+
+	"github.com/isovalent/hubble-fgs/pkg/model"
 )
 
 var queue = make(chan *v1alpha.ApplicationModelEvent, 100)

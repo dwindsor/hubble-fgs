@@ -16,9 +16,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"

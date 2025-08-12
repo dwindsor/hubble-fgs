@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/metrics"
+
 	"github.com/isovalent/hubble-fgs/pkg/sensors/networklatency"
 )
 

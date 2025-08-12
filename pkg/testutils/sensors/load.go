@@ -8,6 +8,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	sensorsoss "github.com/cilium/tetragon/pkg/sensors"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )

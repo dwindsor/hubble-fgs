@@ -23,9 +23,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml"
 	"github.com/cilium/tetragon/pkg/crdutils"
 	"github.com/cilium/tetragon/pkg/eventcheckertests/yamlhelpers"
+
+	"github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml"
+
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
 )

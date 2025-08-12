@@ -10,8 +10,9 @@ import (
 
 	ossprobe "github.com/cilium/tetragon/cmd/tetra/probe"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/spf13/cobra"
+
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 func newNet() *cobra.Command {

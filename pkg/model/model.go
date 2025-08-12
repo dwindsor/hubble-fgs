@@ -20,10 +20,11 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/google/uuid"
-	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 const (

@@ -14,8 +14,9 @@ import (
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/metrics"
-	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 )
 
 var (

@@ -1,10 +1,12 @@
 package test
 
 import (
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/testapi"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 )
 

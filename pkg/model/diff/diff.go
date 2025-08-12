@@ -8,11 +8,12 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/isovalent/hubble-fgs/pkg/model"
-	"github.com/isovalent/hubble-fgs/pkg/node/local"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/isovalent/hubble-fgs/pkg/model"
+	"github.com/isovalent/hubble-fgs/pkg/node/local"
 )
 
 func StatsZero(a *appModelV1.ConnectionStats) bool {

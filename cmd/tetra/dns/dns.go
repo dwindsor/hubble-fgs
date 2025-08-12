@@ -14,8 +14,9 @@ import (
 	"fmt"
 	"text/tabwriter"
 
-	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/spf13/cobra"
+
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 )
 
 func NewDNSCmd() *cobra.Command {

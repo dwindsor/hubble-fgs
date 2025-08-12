@@ -16,8 +16,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/vishvananda/netns"
+
+	"github.com/isovalent/hubble-fgs/pkg/constants"
 )
 
 type CPUPercentages struct {

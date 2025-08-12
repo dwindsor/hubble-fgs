@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
 

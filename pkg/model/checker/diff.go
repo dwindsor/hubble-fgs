@@ -17,11 +17,12 @@ import (
 	"unicode"
 
 	"github.com/breml/jsondiffprinter"
-	"github.com/isovalent/hubble-fgs/pkg/model"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	fieldmask_utils "github.com/mennanov/fieldmask-utils"
 	"github.com/wI2L/jsondiff"
 	"google.golang.org/protobuf/encoding/protojson"
+
+	"github.com/isovalent/hubble-fgs/pkg/model"
 )
 
 func getOptions(opts []Option) *options {

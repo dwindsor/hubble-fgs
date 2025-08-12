@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"

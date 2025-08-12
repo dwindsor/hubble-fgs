@@ -13,9 +13,10 @@ package sandboxpolicy
 import (
 	"testing"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
+
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 )
 
 func TestValidationDuplicateActions(t *testing.T) {

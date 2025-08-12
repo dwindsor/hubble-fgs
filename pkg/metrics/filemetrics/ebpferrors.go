@@ -15,9 +15,10 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	pol "github.com/isovalent/hubble-fgs/pkg/sensors/file/policy"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (

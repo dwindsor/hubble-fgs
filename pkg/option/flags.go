@@ -17,9 +17,10 @@ import (
 
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/option"
-	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
 
 const (

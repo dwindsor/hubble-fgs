@@ -29,9 +29,10 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/google/gopacket/pcapgo"
+	"golang.org/x/sys/unix"
+
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-	"golang.org/x/sys/unix"
 )
 
 const (

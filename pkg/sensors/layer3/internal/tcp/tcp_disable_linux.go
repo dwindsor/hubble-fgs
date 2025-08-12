@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 )
 

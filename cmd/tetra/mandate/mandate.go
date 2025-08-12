@@ -15,8 +15,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
 	eecommon "github.com/isovalent/hubble-fgs/cmd/tetra/common"
 	"github.com/isovalent/hubble-fgs/pkg/mandate"

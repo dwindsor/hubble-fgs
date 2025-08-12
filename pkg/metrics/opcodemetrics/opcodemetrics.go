@@ -16,8 +16,9 @@ package opcodemetrics
 
 import (
 	"github.com/cilium/tetragon/pkg/metrics/opcodemetrics"
-	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 )
 
 // Get a new handle on a msgOpsCount metric for an OpCode

@@ -8,6 +8,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	lru "github.com/hashicorp/golang-lru/v2"
+
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 

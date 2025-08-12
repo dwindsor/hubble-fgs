@@ -14,9 +14,10 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 )
 
 func tpNs(tp tracingpolicy.TracingPolicy) string {

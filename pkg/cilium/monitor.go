@@ -15,6 +15,7 @@ import (
 	"github.com/cilium/cilium/pkg/monitor/payload"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+
 	"github.com/isovalent/hubble-fgs/pkg/oldhubble/cilium"
 )
 

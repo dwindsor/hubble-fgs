@@ -22,8 +22,9 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
-	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/moby/go-archive"
+
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
 
 const dockerAPIVersion = "1.47"

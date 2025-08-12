@@ -6,20 +6,22 @@ package tetragon
 import (
 	"context"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	ossAlignchecker "github.com/cilium/tetragon/pkg/alignchecker"
 	"github.com/cilium/tetragon/pkg/btf"
 	ossconfig "github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	"google.golang.org/grpc"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base/procfs"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
-	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
-	"google.golang.org/grpc"
 )
 
 func logCurrentSecurityContext() {

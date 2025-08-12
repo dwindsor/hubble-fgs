@@ -3,11 +3,12 @@ package ocsf
 import (
 	"testing"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/ipa/ocsf/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 var (

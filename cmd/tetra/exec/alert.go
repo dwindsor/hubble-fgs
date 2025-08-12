@@ -13,10 +13,12 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/getevents"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	ossEncoder "github.com/cilium/tetragon/pkg/encoder"
+
 	"github.com/isovalent/hubble-fgs/pkg/encoder"
 )
 

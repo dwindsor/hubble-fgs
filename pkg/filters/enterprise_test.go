@@ -5,11 +5,12 @@ import (
 
 	oss "github.com/cilium/tetragon/pkg/filters"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 func TestParseFilterList(t *testing.T) {

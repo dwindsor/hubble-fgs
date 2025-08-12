@@ -13,11 +13,12 @@ package dnsmetrics
 import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/net/dns/dnsmessage"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/net/dns/dnsmessage"
 )
 
 var (

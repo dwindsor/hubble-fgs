@@ -16,8 +16,10 @@ import (
 	"fmt"
 	"io"
 
-	api "github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/fatih/color"
+
+	api "github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/attempt"
 )
 

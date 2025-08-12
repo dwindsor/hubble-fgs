@@ -26,14 +26,16 @@ import (
 	"testing"
 
 	"github.com/cilium/ebpf"
-	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/sensors"
 
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -48,6 +50,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 )
 

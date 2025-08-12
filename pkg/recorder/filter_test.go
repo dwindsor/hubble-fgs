@@ -15,9 +15,10 @@ import (
 	"fmt"
 	"testing"
 
-	ecYaml "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml"
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/yaml"
+
+	ecYaml "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml"
 )
 
 func TestFieldFilters(t *testing.T) {

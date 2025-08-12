@@ -9,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 

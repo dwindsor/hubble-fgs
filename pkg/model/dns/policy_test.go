@@ -6,8 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 func testFQDNPolicy(name string) *types.TetragonNetworkPolicy {

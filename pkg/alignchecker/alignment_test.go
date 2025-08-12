@@ -6,8 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/isovalent/hubble-fgs/pkg/alignchecker"
 
 	tetragonAlignchecker "github.com/cilium/tetragon/pkg/alignchecker"
 )

@@ -17,10 +17,12 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/manager"
 	"github.com/cilium/tetragon/pkg/sensors"
+
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 )
 

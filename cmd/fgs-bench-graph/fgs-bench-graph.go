@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/bench"
 	"golang.org/x/sys/unix"
+
+	"github.com/isovalent/hubble-fgs/pkg/bench"
 )
 
 var (

@@ -3,8 +3,10 @@ package nscache
 import (
 	"fmt"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	lru "github.com/hashicorp/golang-lru/v2"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 

@@ -16,11 +16,12 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/dustin/go-humanize"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/miekg/dns"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 const rfc3339Nano = "2006-01-02T15:04:05.000000000Z07:00"

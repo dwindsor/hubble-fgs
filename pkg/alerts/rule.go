@@ -17,10 +17,12 @@ import (
 	"github.com/google/cel-go/cel"
 
 	"github.com/cilium/tetragon/pkg/filters"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
 	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 )

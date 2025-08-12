@@ -19,9 +19,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/bench"
 	"github.com/spf13/viper"
 	"golang.org/x/sys/unix"
+
+	"github.com/isovalent/hubble-fgs/pkg/bench"
 )
 
 // Command-line flags

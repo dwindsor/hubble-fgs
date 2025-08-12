@@ -23,14 +23,16 @@ import (
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 )
 

@@ -3,9 +3,10 @@ package dns
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
-	"github.com/stretchr/testify/assert"
 )
 
 // These transformations seems a bit unnecessary, but lets just allow

@@ -1,11 +1,13 @@
 package sockinfo
 
 import (
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func GetTupleV4(tuple *networkapi.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo {

@@ -19,9 +19,10 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/process"
-	metrics "github.com/isovalent/hubble-fgs/pkg/metrics/processcacheclean"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
+
+	metrics "github.com/isovalent/hubble-fgs/pkg/metrics/processcacheclean"
 )
 
 func createFakeProcess(pid uint32) *processapi.MsgExecveEventUnix {

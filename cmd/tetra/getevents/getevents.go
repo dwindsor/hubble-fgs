@@ -13,14 +13,14 @@ package getevents
 import (
 	"io"
 
+	"github.com/spf13/cobra"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ossGetevents "github.com/cilium/tetragon/cmd/tetra/getevents"
 	ossEncoder "github.com/cilium/tetragon/pkg/encoder"
-	"github.com/isovalent/hubble-fgs/pkg/encoder"
 
-	// append enterprise filters
-	_ "github.com/isovalent/hubble-fgs/pkg/filters"
-	"github.com/spf13/cobra"
+	"github.com/isovalent/hubble-fgs/pkg/encoder"
+	_ "github.com/isovalent/hubble-fgs/pkg/filters" // append enterprise filters
 )
 
 // GetEncoder returns an encoder for an event stream based on configuration options.

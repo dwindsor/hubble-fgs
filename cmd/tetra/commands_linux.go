@@ -18,6 +18,8 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/policyfilter"
 	"github.com/cilium/tetragon/cmd/tetra/rthooks"
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
+	"github.com/spf13/cobra"
+
 	"github.com/isovalent/hubble-fgs/cmd/tetra/dns"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/exec"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/file"
@@ -25,7 +27,6 @@ import (
 	"github.com/isovalent/hubble-fgs/cmd/tetra/probe"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/sandboxpolicy"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/syscallentries"
-	"github.com/spf13/cobra"
 )
 
 func addCommands(rootCmd *cobra.Command) {

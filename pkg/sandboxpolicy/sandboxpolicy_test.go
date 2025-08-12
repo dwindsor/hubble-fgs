@@ -23,15 +23,18 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
 	"github.com/cilium/tetragon/pkg/testutils"
+
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors"
 	testsensor "github.com/cilium/tetragon/pkg/sensors/test"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/sandbox"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/perfring"
 	testprogs "github.com/isovalent/hubble-fgs/pkg/testutils/progs"

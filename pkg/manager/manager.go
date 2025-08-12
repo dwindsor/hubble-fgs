@@ -16,19 +16,21 @@ import (
 	"net"
 	"sync"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
-	enterpriseClient "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/manager"
 	"github.com/cilium/tetragon/pkg/option"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	enterpriseClient "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint/controllers"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (

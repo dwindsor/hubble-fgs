@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
+
 	"github.com/isovalent/hubble-fgs/tests/compliance/config"
 	"github.com/isovalent/hubble-fgs/tests/compliance/testcontext"
 )

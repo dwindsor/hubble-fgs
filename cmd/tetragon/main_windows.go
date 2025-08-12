@@ -6,9 +6,10 @@ package tetragon
 import (
 	"context"
 
+	"google.golang.org/grpc"
+
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
-	"google.golang.org/grpc"
 )
 
 func logCurrentSecurityContext() {

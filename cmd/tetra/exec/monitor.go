@@ -24,14 +24,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
-	"github.com/isovalent/hubble-fgs/pkg/encoder"
-	"github.com/isovalent/hubble-fgs/pkg/model"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
+	"github.com/isovalent/hubble-fgs/pkg/encoder"
+	"github.com/isovalent/hubble-fgs/pkg/model"
 )
 
 func s3Monitor(bucket string, interval time.Duration, namespaces []string) error {

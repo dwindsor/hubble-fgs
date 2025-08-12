@@ -14,7 +14,6 @@ import (
 
 	"github.com/cilium/cilium/pkg/container/set"
 	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/ktime"
@@ -22,6 +21,11 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/process"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/common"
@@ -32,8 +36,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/option"
-	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (

@@ -18,16 +18,18 @@ import (
 	"os"
 
 	"github.com/cilium/tetragon/pkg/logger/logfields"
-	"github.com/isovalent/hubble-fgs/pkg/recorder"
-	"github.com/isovalent/hubble-fgs/pkg/recorder/config"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"sigs.k8s.io/yaml"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/isovalent/hubble-fgs/pkg/recorder"
+	"github.com/isovalent/hubble-fgs/pkg/recorder/config"
+
 	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/logger"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 var (

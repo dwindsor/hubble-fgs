@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
+
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 )
 

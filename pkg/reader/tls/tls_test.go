@@ -3,8 +3,9 @@ package tls
 import (
 	"testing"
 
-	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/stretchr/testify/assert"
+
+	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 )
 
 func TestGetTLSSupportedVersions(t *testing.T) {

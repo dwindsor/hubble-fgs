@@ -19,8 +19,9 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 )
 
 // bpfCollector implements prometheus.Collector. It collects metrics directly from BPF maps.

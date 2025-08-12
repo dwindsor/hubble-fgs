@@ -13,11 +13,12 @@ package controllers
 import (
 	"context"
 
-	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 )
 
 // ServiceReconciler is responsible for keeping service entries in the endpoint

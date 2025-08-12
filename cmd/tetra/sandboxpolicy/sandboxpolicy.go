@@ -21,7 +21,9 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/cilium/tetragon/cmd/tetra/common"
+
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
 	eecommon "github.com/isovalent/hubble-fgs/cmd/tetra/common"
 	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 )

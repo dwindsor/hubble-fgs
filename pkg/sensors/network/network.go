@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
@@ -27,6 +26,8 @@ import (
 	"github.com/cilium/tetragon/pkg/timer"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/vishvananda/netlink"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"

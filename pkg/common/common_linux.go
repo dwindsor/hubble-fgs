@@ -14,10 +14,11 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/syscallinfo"
 	"golang.org/x/sys/unix"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 func InitHostNamespaces() (*tetragon.Namespaces, error) {

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	api "github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/mandate"
 
 	"google.golang.org/grpc/codes"

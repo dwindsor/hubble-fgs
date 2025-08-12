@@ -25,8 +25,9 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"golang.org/x/sys/unix"
+
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
 
 // This is what syscall-tester will execute.

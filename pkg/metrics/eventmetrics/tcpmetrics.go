@@ -14,6 +14,7 @@ import (
 	"strconv"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
 )

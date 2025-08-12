@@ -14,6 +14,7 @@ package file
 
 import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
 

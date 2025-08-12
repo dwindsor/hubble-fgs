@@ -12,9 +12,10 @@ package iperrormetrics
 
 import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 type IpError int

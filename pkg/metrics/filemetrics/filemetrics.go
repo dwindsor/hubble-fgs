@@ -11,12 +11,14 @@
 package filemetrics
 
 import (
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	enterpriseMetrics "github.com/isovalent/hubble-fgs/pkg/metrics"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (

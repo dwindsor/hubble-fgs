@@ -26,7 +26,6 @@ import (
 	"testing"
 
 	// NB: we need to load these two so that the policy handlers are loaded
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -36,23 +35,28 @@ import (
 	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
 	ossTestUtils "github.com/cilium/tetragon/pkg/testutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
+	"github.com/stretchr/testify/require"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
-	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	testsensor "github.com/cilium/tetragon/pkg/sensors/test"
 	tuo "github.com/cilium/tetragon/pkg/testutils/observer"
 	"github.com/cilium/tetragon/pkg/testutils/perfring"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
-	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/file"
 	v1api "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
+	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/file"
 )
 
 func TestFileSuffixPattern(t *testing.T) {

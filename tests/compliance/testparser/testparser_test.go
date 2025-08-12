@@ -5,8 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/tests/compliance/testparser"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/isovalent/hubble-fgs/tests/compliance/testparser"
 )
 
 func TestPerlTestHarnessParser_Simple(t *testing.T) {

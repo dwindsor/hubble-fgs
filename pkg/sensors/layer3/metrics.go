@@ -13,9 +13,10 @@ package layer3
 import (
 	"context"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/udp"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 func InitUDPHealthMetrics(registry *prometheus.Registry) {

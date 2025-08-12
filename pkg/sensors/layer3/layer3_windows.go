@@ -16,6 +16,7 @@ import (
 	"github.com/cilium/tetragon/pkg/constants"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/tcp"
 )
 

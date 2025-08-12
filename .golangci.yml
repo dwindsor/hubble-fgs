@@ -46,6 +46,10 @@ issues:
 formatters:
   enable:
     - goimports
+  settings:
+    goimports:
+      local-prefixes:
+      - github.com/isovalent/hubble-fgs
 run:
   build-tags:
     - e2e_tests

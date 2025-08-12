@@ -15,10 +15,12 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	ossTestutils "github.com/cilium/tetragon/pkg/testutils"
-	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
 
 func Test_GetEvents_Namespace(t *testing.T) {

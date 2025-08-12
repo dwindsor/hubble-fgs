@@ -15,12 +15,13 @@ import (
 	_ "embed"
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/checker"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/isovalent/hubble-fgs/pkg/model/checker"
 )
 
 //go:embed testdata/model.json

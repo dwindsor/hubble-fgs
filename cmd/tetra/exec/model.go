@@ -33,12 +33,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/gdamore/tcell/v2"
-	"github.com/isovalent/hubble-fgs/pkg/model"
-	"github.com/isovalent/hubble-fgs/pkg/model/checker"
-	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
@@ -46,6 +42,12 @@ import (
 	"github.com/xlab/treeprint"
 	"golang.org/x/term"
 	"google.golang.org/protobuf/encoding/protojson"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
+	"github.com/isovalent/hubble-fgs/pkg/model"
+	"github.com/isovalent/hubble-fgs/pkg/model/checker"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 var (

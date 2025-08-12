@@ -14,11 +14,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
+	"gopkg.in/yaml.v3"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
-	"gopkg.in/yaml.v3"
 )
 
 type NetworkPolicyManager struct {

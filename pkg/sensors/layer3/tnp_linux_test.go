@@ -17,16 +17,18 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
-	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
-	"github.com/isovalent/hubble-fgs/pkg/netpol"
-	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+
+	"github.com/isovalent/hubble-fgs/pkg/netpol"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
 const curlTNPAllow = `

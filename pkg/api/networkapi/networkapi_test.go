@@ -3,8 +3,9 @@ package networkapi
 import (
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 )
 
 func Test_TupleAddrString(t *testing.T) {

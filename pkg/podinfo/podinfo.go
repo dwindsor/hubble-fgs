@@ -3,13 +3,15 @@ package podinfo
 import (
 	"net"
 
+	"github.com/cilium/tetragon/pkg/option"
+	coreV1 "k8s.io/api/core/v1"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/option"
+
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/manager"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
-	coreV1 "k8s.io/api/core/v1"
 )
 
 func getExecCommand(probe *coreV1.Probe) []string {

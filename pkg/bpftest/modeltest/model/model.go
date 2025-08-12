@@ -17,8 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
 )
 
 const defaultCmdTimeout = 1 * time.Minute

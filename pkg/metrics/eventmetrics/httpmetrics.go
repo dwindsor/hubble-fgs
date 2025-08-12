@@ -14,6 +14,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http/httpconfig"
 )

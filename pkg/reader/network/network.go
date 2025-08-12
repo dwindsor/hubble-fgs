@@ -2,6 +2,7 @@ package network
 
 import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 )

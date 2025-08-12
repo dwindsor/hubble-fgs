@@ -18,6 +18,7 @@ import (
 
 	// Import flags from OSS so they get initialized here.
 	_ "github.com/cilium/tetragon/tests/e2e/flags"
+
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
 

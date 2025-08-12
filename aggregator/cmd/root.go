@@ -11,9 +11,10 @@
 package cmd
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/isovalent/hubble-fgs/aggregator/cmd/aggregate"
 	"github.com/isovalent/hubble-fgs/aggregator/cmd/validate"
-	"github.com/spf13/cobra"
 )
 
 func New() *cobra.Command {

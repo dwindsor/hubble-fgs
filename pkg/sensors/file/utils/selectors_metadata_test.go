@@ -16,9 +16,10 @@ package file
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGetSelectorsMetadata1(t *testing.T) {

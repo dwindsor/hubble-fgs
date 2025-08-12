@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/policyfilter"
-	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 type policyCalcTest struct {

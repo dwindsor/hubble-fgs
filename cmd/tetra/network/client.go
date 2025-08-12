@@ -16,8 +16,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 type clientWithContext struct {

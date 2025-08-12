@@ -16,8 +16,9 @@ import (
 	"strings"
 	"time"
 
-	api "github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/fatih/color"
+
+	api "github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 var (

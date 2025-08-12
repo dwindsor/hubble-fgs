@@ -17,9 +17,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/reader/exec"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 // NB(kkourt): this package is in a somewhat unstable state since I'm

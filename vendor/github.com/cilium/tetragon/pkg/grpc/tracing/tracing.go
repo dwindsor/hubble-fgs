@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
@@ -29,7 +31,6 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/reader/path"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func getProcessParent(key *processapi.MsgExecveKey, flags uint8) (*process.ProcessInternal, *process.ProcessInternal, *tetragon.Process, *tetragon.Process) {
@@ -928,8 +929,8 @@ func GetProcessUsdt(event *MsgGenericUsdtUnix) *tetragon.ProcessUsdt {
 
 	proc, parent, tetragonProcess, tetragonParent := getProcessParent(&event.Msg.ProcessKey, event.Msg.Common.Flags)
 
-	// Set the ancestors only if --enable-process-uprobe-ancestors flag is set.
-	if option.Config.EnableProcessUprobeAncestors && proc.NeededAncestors() {
+	// Set the ancestors only if --enable-ancestors flag includes 'usdt'.
+	if option.Config.EnableProcessUsdtAncestors && proc.NeededAncestors() {
 		ancestors, _ = process.GetAncestorProcessesInternal(tetragonProcess.ParentExecId)
 		for _, ancestor := range ancestors {
 			tetragonAncestors = append(tetragonAncestors, ancestor.UnsafeGetProcess())
@@ -961,7 +962,7 @@ func GetProcessUsdt(event *MsgGenericUsdtUnix) *tetragon.ProcessUsdt {
 	if ec := eventcache.Get(); ec != nil && !isUnknown(tetragonProcess) &&
 		(ec.Needed(tetragonProcess) ||
 			(tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent)) ||
-			(option.Config.EnableProcessUprobeAncestors && ec.NeededAncestors(parent, ancestors))) {
+			(option.Config.EnableProcessUsdtAncestors && ec.NeededAncestors(parent, ancestors))) {
 		ec.Add(nil, tetragonEvent, event.Msg.Common.Ktime, event.Msg.ProcessKey.Ktime, event)
 		return nil
 	}

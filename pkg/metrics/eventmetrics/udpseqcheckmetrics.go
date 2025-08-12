@@ -11,8 +11,10 @@
 package eventmetrics
 
 import (
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 )
 

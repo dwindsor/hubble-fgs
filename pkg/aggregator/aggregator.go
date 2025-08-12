@@ -20,9 +20,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 type Aggregator struct {

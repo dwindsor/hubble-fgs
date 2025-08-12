@@ -13,8 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 func getS3Alerts(ctx context.Context, s3Client *s3.Client, bucket, lastKey string) (map[string][]*tetragon.Alert, map[string]int, error) {

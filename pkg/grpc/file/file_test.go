@@ -16,8 +16,9 @@ package file
 import (
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/isovalent/hubble-fgs/pkg/constants"
 )
 
 func TestOpenFlagsParsing(t *testing.T) {

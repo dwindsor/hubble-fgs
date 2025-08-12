@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/modelapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )

@@ -12,15 +12,17 @@ import (
 	"testing"
 	"time"
 
-	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/testutils"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/stretchr/testify/assert"
+
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+
 	_ "github.com/isovalent/hubble-fgs/pkg/sensorinit"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {

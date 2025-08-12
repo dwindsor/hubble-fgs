@@ -12,6 +12,8 @@ package metricsconfig
 
 import (
 	oss "github.com/cilium/tetragon/pkg/metricsconfig"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsparsermetrics"
@@ -28,7 +30,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 func initAllDNSHealthMetrics(registry *prometheus.Registry) {

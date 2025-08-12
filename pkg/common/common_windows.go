@@ -15,11 +15,13 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/constants"
 	"github.com/cilium/tetragon/pkg/ktime"
-	consts "github.com/isovalent/hubble-fgs/pkg/constants"
 	"golang.org/x/sys/windows"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+
+	consts "github.com/isovalent/hubble-fgs/pkg/constants"
 )
 
 var (

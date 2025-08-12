@@ -14,8 +14,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	"github.com/spf13/cobra"
+
+	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 )
 
 func New() *cobra.Command {

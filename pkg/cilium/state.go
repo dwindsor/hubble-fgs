@@ -9,6 +9,7 @@ import (
 
 	"github.com/cilium/cilium/api/v1/models"
 	"github.com/cilium/tetragon/pkg/logger"
+
 	"github.com/isovalent/hubble-fgs/pkg/oldhubble/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/oldhubble/cilium/client"
 	"github.com/isovalent/hubble-fgs/pkg/oldhubble/ipcache"

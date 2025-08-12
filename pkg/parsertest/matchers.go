@@ -11,8 +11,9 @@ import (
 	"text/scanner"
 	"unsafe"
 
-	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/yalue/native_endian"
+
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 )
 
 // AnnMatcher is an annotated matcher that includes line

@@ -21,8 +21,9 @@ import (
 
 	"github.com/cilium/tetragon/pkg/policyconf"
 	"github.com/cilium/tetragon/pkg/testutils"
-	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 	"github.com/stretchr/testify/require"
+
+	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 )
 
 func TestManager(t *testing.T) {

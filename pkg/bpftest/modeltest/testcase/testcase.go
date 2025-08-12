@@ -18,13 +18,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/isovalent/ipa/application_model/v1alpha"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/checklist"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/harness"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/server"
-	"github.com/isovalent/ipa/application_model/v1alpha"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestCase defines a single model test case.

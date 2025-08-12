@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	monitorAPI "github.com/cilium/cilium/pkg/monitor/api"
+
 	"github.com/isovalent/hubble-fgs/pkg/oldhubble/cilium/client"
 	"github.com/isovalent/hubble-fgs/pkg/oldhubble/ipcache"
 )

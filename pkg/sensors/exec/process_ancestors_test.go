@@ -20,15 +20,17 @@ import (
 	"testing"
 	"time"
 
-	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/stretchr/testify/assert"
 
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
+
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"

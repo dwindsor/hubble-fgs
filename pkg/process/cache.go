@@ -11,9 +11,10 @@
 package process
 
 import (
-	tetragon "github.com/cilium/tetragon/api/v1/tetragon"
 	pc "github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/timer"
+
+	tetragon "github.com/cilium/tetragon/api/v1/tetragon"
 
 	metrics "github.com/isovalent/hubble-fgs/pkg/metrics/processcacheclean"
 	"github.com/isovalent/hubble-fgs/pkg/option"

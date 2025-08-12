@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/event"
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 type URIRegexFilter struct{}

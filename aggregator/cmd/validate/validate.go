@@ -17,9 +17,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/checker"
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/spf13/cobra"
+
+	"github.com/isovalent/hubble-fgs/pkg/model/checker"
 )
 
 var (

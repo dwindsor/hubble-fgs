@@ -13,8 +13,9 @@ package common
 import (
 	"fmt"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 
 	"github.com/spf13/cobra"
 )
