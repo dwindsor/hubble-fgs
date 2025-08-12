@@ -173,8 +173,8 @@ jobs:
                   # 400 even though the request is well formated. So here we suppose that if we
                   # receive a 400 error, it is because the cluster is being created and we want to
                   # retry in order to cleanup properly and not leak resources.
-                  printf "gcloud returned an error and the code is equal to 400, retrying in %ds...\n" "$delay"
-                  sleep $delay
+                  printf "gcloud returned an error and the code is equal to 400, retrying in %ds...\n" "$attempt_delay"
+                  sleep $attempt_delay
               else
                   break
               fi
