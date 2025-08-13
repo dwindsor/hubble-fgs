@@ -321,14 +321,25 @@ func getDestination(d *appModelV1.Destination) (string, string, string, appModel
 	return name, ns, wlName, wlKind
 }
 
-func ApplicationModelToProcessFlat(_ context.Context, a *appModelV1.ApplicationModel) ([]*appModelV1.ProcessTelemetry, error) {
+func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.ApplicationModel) ([]*appModelV1.ProcessTelemetry, error) {
 	t := []*appModelV1.ProcessTelemetry{}
 	node := node.GetNodeNameForExport()
 	cluster := option.Config.ClusterName
 	time := timestamppb.Now()
+	labels := make(map[string]string)
 
 	if a == nil {
 		return nil, nil
+	}
+
+	nodeMetadata, err := local.GetMetadataService()
+	if err != nil {
+		logger.GetLogger().Warn("Failed to get metadata service. node_labels field will be empty", logfields.Error, err)
+	} else {
+		labels, err = nodeMetadata.GetLabels(ctx)
+		if err != nil {
+			logger.GetLogger().Warn("Failed to get node labels. node_labels field will be empty", logfields.Error, err)
+		}
 	}
 
 	for _, ns := range a.Namespaces {
@@ -337,6 +348,7 @@ func ApplicationModelToProcessFlat(_ context.Context, a *appModelV1.ApplicationM
 				entry := &appModelV1.ProcessTelemetry{
 					ClusterName:            cluster,
 					NodeName:               node,
+					NodeLabels:             labels,
 					EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_PROCESS,
 					Time:                   time,
 					KubernetesNamespace:    ns.Name,
@@ -356,6 +368,7 @@ func ApplicationModelToProcessFlat(_ context.Context, a *appModelV1.ApplicationM
 			entry := &appModelV1.ProcessTelemetry{
 				ClusterName:        cluster,
 				NodeName:           node,
+				NodeLabels:         labels,
 				EventType:          appModelV1.TelemetryType_TELEMETRY_TYPE_PROCESS,
 				Time:               time,
 				ProcessName:        p.Name,
