@@ -787,3 +787,32 @@ func (m RequestIDMap) KeyMissing(id uint32) (bool, error) {
 func (m RequestIDMap) Clear() error {
 	return Clear[uint32](m.requestIDMap)
 }
+
+type CgroupIDToAllocIDMap struct {
+	cgroupIDToAllocIDMap *ebpf.Map
+}
+
+func NewCgroupIDToAllocIDMap(cgroupIDToAllocIDMap *ebpf.Map) CgroupIDToAllocIDMap {
+	return CgroupIDToAllocIDMap{
+		cgroupIDToAllocIDMap: cgroupIDToAllocIDMap,
+	}
+}
+
+func (m CgroupIDToAllocIDMap) Values() (map[uint64]uint32, error) {
+	entries := m.cgroupIDToAllocIDMap.Iterate()
+
+	var key uint64
+	var value uint32
+
+	out := make(map[uint64]uint32)
+	for entries.Next(&key, &value) {
+		out[key] = value
+	}
+
+	if err := entries.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate over entries: %w", err)
+	}
+
+	return out, nil
+
+}
