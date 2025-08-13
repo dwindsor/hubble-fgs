@@ -11,11 +11,20 @@
 package dns
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"io/fs"
 	"math"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/cgroups"
 	"github.com/spf13/cobra"
 
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
@@ -36,6 +45,90 @@ func findAllocsIDs(ipMap dnsparser.IPToDomainMap) ([]uint32, error) {
 		ids++
 	}
 	return allocIDs, nil
+}
+
+func getPIDsFromCgroupV2(path string) ([]int, error) {
+	f, err := os.Open(filepath.Join(path, "cgroup.procs"))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var pids []int
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		if pid, err := strconv.Atoi(sc.Text()); err == nil {
+			pids = append(pids, pid)
+		}
+	}
+	return pids, sc.Err()
+}
+
+func getExeBase(pid int) (string, error) {
+	link, err := os.Readlink(filepath.Join("/proc", strconv.Itoa(pid), "exe"))
+	if err != nil {
+		return "", err
+	}
+	return filepath.Base(link), nil
+}
+
+func getCgroupIDToAllocID() (map[uint64]uint32, error) {
+	mapPath := bpf.MapPath(dnsparser.CgroupIDToAllocIDMapName)
+	mapRaw, err := ebpf.LoadPinnedMap(mapPath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load the cgroup ID to alloc ID map: %w", err)
+	}
+	defer mapRaw.Close()
+	m := dnsparser.NewCgroupIDToAllocIDMap(mapRaw)
+	cgroupIDToAllocID, err := m.Values()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the values from the cgroup ID to alloc ID map: %w", err)
+	}
+	return cgroupIDToAllocID, nil
+}
+
+func findCgroupPIDsByVisiting[K any](cgroupIDs map[uint64]K) (map[uint64][]int, error) {
+	rootPath, err := cgroups.HostCgroupRoot()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find the host cgroup root: %w", err)
+	}
+
+	done := errors.New("found target file")
+	cgroupIDToPIDs := map[uint64][]int{}
+	err = filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !d.IsDir() {
+			return nil
+		}
+
+		cgroupID, err := cgroups.GetCgroupIdFromPath(path)
+		if err != nil {
+			return fmt.Errorf("failed retrieving the cgroup ID from path: %w", err)
+		}
+
+		if _, found := cgroupIDs[cgroupID]; found {
+			pids, err := getPIDsFromCgroupV2(path)
+			if err != nil {
+				return fmt.Errorf("failed retrieving PIDs from the cgroup path: %w", err)
+			}
+			cgroupIDToPIDs[cgroupID] = pids
+		}
+
+		if len(cgroupIDToPIDs) == len(cgroupIDs) {
+			return done
+		}
+
+		return nil
+	})
+
+	if err != nil && !errors.Is(err, done) {
+		return nil, fmt.Errorf("failed walking the cgroup hierarchy: %w", err)
+	}
+
+	return cgroupIDToPIDs, nil
 }
 
 func NewDNSCmd() *cobra.Command {
@@ -77,10 +170,44 @@ Examples:
 				}
 			}
 
+			cgroupIDToAllocID, err := getCgroupIDToAllocID()
+			if err != nil {
+				return err
+			}
+
+			// Create the reverse map
+			allocIDToCgroupID := map[uint32]uint64{}
+			for cgroupID, allocID := range cgroupIDToAllocID {
+				allocIDToCgroupID[allocID] = cgroupID
+			}
+
+			// Search the corresponding PIDs from the cgroupIDs
+			cgroupIDToPIDs, err := findCgroupPIDsByVisiting(cgroupIDToAllocID)
+			if err != nil {
+				// let's just skip this if we fail for whatever reason
+				cmd.PrintErr(fmt.Errorf("warning: failed to find the PIDs from Cgroup IDs: %w", err))
+			}
+
 			for _, mapID := range allocIDs {
-				if len(allocIDs) > 1 {
-					cmd.Printf("MapID:%d\n", mapID)
+				// First print an info on mapID, cgroupID and the PIDs in the cgroup
+				var cgInfo strings.Builder
+				cgroupID := allocIDToCgroupID[mapID]
+				fmt.Fprintf(&cgInfo, "MapID:%d CgroupID:%d", mapID, cgroupID)
+				if len(cgroupIDToPIDs[cgroupID]) != 0 {
+					fmt.Fprint(&cgInfo, " PIDs:")
 				}
+				for i, pid := range cgroupIDToPIDs[cgroupID] {
+					exeBase, err := getExeBase(pid)
+					if err != nil {
+						// do not return an error here, just try your best
+						cmd.PrintErr(fmt.Errorf("failed retrieving exe base for pid %d: %w", pid, err))
+					}
+					fmt.Fprintf(&cgInfo, "%d(%s)", pid, exeBase)
+					if i < len(cgroupIDToPIDs[cgroupID])-1 {
+						fmt.Fprint(&cgInfo, ",")
+					}
+				}
+				cmd.Println(cgInfo.String())
 
 				// Then print the actual array of IP and domain
 				values, err := ipMap.Values(mapID)
