@@ -7,8 +7,7 @@ on:
 
   push:
     branches:
-      - main
-      - v*
+      - master
     paths-ignore:
       - "**.md"
       - "contrib/grafana/**"
@@ -158,8 +157,9 @@ jobs:
           retention-days: 5
 
   windows-tetragon-build:
-    name: Build and Uplod Windows Tetragon and Tetra Binaries
+    name: Build, Unit Test and Upload Windows Tetragon and Tetra Binaries
     runs-on: windows-2022
+    needs: windows-ebpf-prog-build
     timeout-minutes: 15
     env:
       TEMP: D:\temp
@@ -167,21 +167,101 @@ jobs:
       GOOS: windows
 
     steps:
-      - name: Create Temp Directory
-        run: mkdir D:\temp
-        shell: pwsh
-
       - name: Install Go
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version: '1.24.3'
 
+      - name: Create Temp Directory
+        run: mkdir D:\temp
+        shell: powershell
+      
+      - name: Create Temp Staging Directory
+        run: mkdir D:\temp\test
+        shell: powershell
+
+      - name: Download and Install eBPF for Windows
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip" -OutFile "$env:TEMP\efw.zip"
+          Expand-Archive -Path "$env:TEMP\efw.zip" -DestinationPath "$env:TEMP"
+          Rename-Item -Path "$env:TEMP\Build-native-only NativeOnlyRelease x64" -NewName "$env:TEMP\ebpf"
+          $setupScript = Get-ChildItem -Path "$env:TEMP\ebpf" -Filter "setup-ebpf.ps1" -Recurse | Select-Object -First 1
+          if ($setupScript) {
+            Write-Host "Found setup script: $($setupScript.FullName)"
+            Set-Location -Path $setupScript.DirectoryName
+            Write-Host "Changed directory to: $(Get-Location)"
+            & $setupScript.FullName
+          } else {
+            Write-Error "Setup script not found in the extracted package"
+            exit 1
+          }
+
+      - name: Add eBPF for Windows to PATH
+        shell: pwsh
+        run: echo "C:\Program Files\ebpf-for-windows\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Download ntosebpfext-build-output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: ${{ env.TEMP }}\test
+          name: ntosebpfext-build-output
+    
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: go/src/github.com/isovalent/hubble-fgs
           submodules: true
       
+      - name: Install ntosebpfext
+        working-directory: ${{ env.TEMP }}\test
+        shell: powershell
+        run: |
+          $zipPath = Join-Path -Path ${{ env.TEMP }}\test -ChildPath "build-x64.Release.zip"
+          Get-ChildItem -Path ${{ env.TEMP }}\test
+          if (Test-Path -Path $zipPath) {
+            Expand-Archive -Path $zipPath -DestinationPath ${{ env.TEMP }}\test
+            Get-ChildItem -Path ${{ env.TEMP }}\test
+
+            $ntosebpfextDir = "${{ env.TEMP }}\test"
+            
+            if (Test-Path -Path $ntosebpfextDir) {
+              Write-Host "Extracted ntosebpfext to: $ntosebpfextDir"
+              Get-ChildItem -Path $ntosebpfextDir
+              New-Item -ItemType Directory -Path "${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\objs" -Force
+
+              Copy-Item -Path "$ntosebpfextDir\Release\process_monitor_km\process_monitor.sys" -destination "${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\objs\" -Force
+
+              Copy-Item -Path "$ntosebpfextDir\Release\tcp_connect.sys" -destination "${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\objs\" -Force
+
+              Start-Process -FilePath "$ntosebpfextDir\Release\ntos_ebpf_ext_export_program_info.exe" -ArgumentList "--clear" -Wait
+              Start-Process -FilePath "C:\Program Files\ebpf-for-windows\export_program_info.exe" -ArgumentList "--clear" -Wait
+
+              Start-Process -FilePath "$ntosebpfextDir\Release\ntos_ebpf_ext_export_program_info.exe" -Wait
+              Start-Process -FilePath "C:\Program Files\ebpf-for-windows\export_program_info.exe" -Wait
+
+              sc.exe delete "ntosebpfext"
+              sc.exe create ntosebpfext type= kernel start= demand binPath= "$ntosebpfextDir\Release\ntosebpfext\ntosebpfext.sys"
+              sc.exe start ntosebpfext
+            } else {
+              Write-Error "ntosebpfext directory not found after extraction"
+              exit 1
+            }
+          } else {
+            Write-Error "ntosebpfext build output zip not found at: $zipPath"
+            exit 1
+          }
+
+
+      - name: Run Unit Tests
+        working-directory: ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\pkg\bpftest\recordtest
+        shell: powershell
+        run: |
+
+          Get-ChildItem -Recurse -Path "${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\objs"
+          go test ./ -v
+
+
       - name: Build and Zip tetragon Windows binaries
         working-directory: ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs
         shell: powershell
