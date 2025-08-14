@@ -16,6 +16,7 @@
 #include "lib/networkmsg.h"
 #include "bpf_cookie.h"
 #include "l3/tcp/bpf_tcp_info.h"
+#include "bpf_event_map.h"
 
 #define IP_HEADER_ERROR			       0
 #define IP_ERROR_NO_HEAP		       1
@@ -76,13 +77,6 @@
 #define IP_ERROR_TCP_RTT_NO_TIMESTAMP	       56
 #define IP_ERROR_TCP_RTT_DELTA_TOO_BIG	       57
 #define IP_ERROR_INET_READ_TCP		       58
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct msg_ip_event);
-	__uint(max_entries, 1);
-} tg_h_l3_iperr SEC(".maps");
 
 struct handler_vars {
 	struct iphdr ip;
@@ -459,7 +453,7 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	struct msg_ip_event *val;
 	int zero = 0;
 
-	val = map_lookup_elem(&tg_h_l3_iperr, &zero);
+	val = map_lookup_elem(&tg_h_event, &zero);
 	if (!val)
 		return;
 

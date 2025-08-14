@@ -14,6 +14,8 @@
 #include "networkmsg.h"
 #include "bpf_udp_config.h"
 #include "bpf_ktime.h"
+#include "bpf_cookie.h"
+#include "bpf_event_map.h"
 
 /* UDP Info maintains the statistics associated with a UDP "session".
  * Here we have the map and helper routines to setup keys and values.

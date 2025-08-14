@@ -21,6 +21,7 @@
 #include "lib/config.h"
 #include "bpf_icmp_cookie.h"
 #include "bpf_tracing.h"
+#include "bpf_event_map.h"
 
 #define ICMP_HDR_LEN	  4
 #define ICMP_HDR_DATA_OFF 4
@@ -49,13 +50,6 @@
 #define ICMPV6_INFOMSG_MASK 0x80
 #define ICMPV6_ECHO_REQUEST 128
 #define ICMPV6_ECHO_REPLY   129
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct msg_icmp_event);
-	__uint(max_entries, 1);
-} tg_h_icmp_ev SEC(".maps");
 
 struct icmp_config {
 	u8 v6_info;
@@ -183,7 +177,7 @@ int icmp_handler_ip4(struct __sk_buff *skb, int send)
 	else
 		ip = (struct iphdr *)data;
 
-	val = (struct msg_icmp_event *)map_lookup_elem(&tg_h_icmp_ev, &zero);
+	val = (struct msg_icmp_event *)map_lookup_elem(&tg_h_event, &zero);
 	if (!val)
 		return SK_PASS;
 
@@ -312,7 +306,7 @@ int icmp_handler_ip6(struct __sk_buff *skb, u16 off, int send)
 		return SK_PASS;
 	}
 
-	val = (struct msg_icmp_event *)map_lookup_elem(&tg_h_icmp_ev, &zero);
+	val = (struct msg_icmp_event *)map_lookup_elem(&tg_h_event, &zero);
 	if (!val)
 		return SK_PASS;
 

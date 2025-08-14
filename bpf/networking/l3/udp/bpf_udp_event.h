@@ -17,6 +17,7 @@
 #include "bpf_latency.h"
 #include "bpf_tracing.h"
 #include "bpf_udp_info.h"
+#include "bpf_event_map.h"
 
 /* Applying 'packed' attribute to structs causes clang to write to the
  * members byte-by-byte, as offsets may not be aligned. This is bad for
@@ -29,11 +30,6 @@
  * process info (should be much smaller that MAX_UDP_ENDPOINTS).
  */
 #define MAX_UDP_PAYLOADS 512
-
-struct msg_udp_event {
-	struct msg_ip_event event;
-	char payload[2048];
-};
 
 struct udp_packet_details {
 	union {
@@ -57,13 +53,6 @@ struct {
 	__type(key, int);
 	__type(value, struct msg_udp_event);
 	__uint(max_entries, 1);
-} tg_h_udp_ev SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct msg_udp_event);
-	__uint(max_entries, 1);
 } tg_h_udp_payld SEC(".maps");
 
 struct {
@@ -79,7 +68,7 @@ build_udp_payload_event(struct udp_info_key *k, struct udp_info_value *v, u64 co
 	struct msg_udp_event *val;
 	int z = 0;
 
-	val = (struct msg_udp_event *)map_lookup_elem(&tg_h_udp_ev, &z);
+	val = (struct msg_udp_event *)map_lookup_elem(&tg_h_event, &z);
 	if (!val)
 		return 0;
 

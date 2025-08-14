@@ -59,7 +59,7 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	if (socket->closed)
 		return 0;
 
-	val = (struct msg_ip_with_stats_event *)map_lookup_elem(&tg_h_tcpcls_ev,
+	val = (struct msg_ip_with_stats_event *)map_lookup_elem(&tg_h_event,
 								&zero);
 	if (!val)
 		return 0;

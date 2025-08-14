@@ -24,6 +24,7 @@
 #include "bpf_tcp_info.h"
 #include "bpf_network_helpers.h"
 #include "bpf_tcp_state.h"
+#include "bpf_event_map.h"
 
 #ifdef PROCESS_TREE
 #include "process/process_tree.h"
@@ -34,13 +35,6 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, __u32);
-	__type(value, struct msg_ip_with_tnp_event);
-	__uint(max_entries, 1);
-} tg_h_tcpconn_ev SEC(".maps");
 
 static inline __attribute__((always_inline)) struct msg_ip_with_tnp_event init_msg_ip_with_tnp_event(struct msg_execve_key *key, u64 cookie)
 {
@@ -116,7 +110,7 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 		key = &process->key;
 	}
 
-	val = (struct msg_ip_with_tnp_event *)map_lookup_elem(&tg_h_tcpconn_ev,
+	val = (struct msg_ip_with_tnp_event *)map_lookup_elem(&tg_h_event,
 							      &zero);
 	if (!val) {
 		return 0;

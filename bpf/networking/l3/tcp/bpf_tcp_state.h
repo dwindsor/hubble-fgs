@@ -21,13 +21,6 @@
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, __u32);
-	__type(value, struct msg_ip_with_stats_event);
-	__uint(max_entries, 1);
-} tg_h_tcpcls_ev SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, __u32);
 	__type(value, struct tcpsocketmap_value);
 	__uint(max_entries, 1);
 } tg_h_tcpsk SEC(".maps");

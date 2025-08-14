@@ -43,7 +43,7 @@ icmp_rcv(void *ctx, struct sk_buff *skb)
 
 	version = get_ip_version(&network_header_off, &skb_head, skb);
 
-	val = (struct msg_icmp_event *)map_lookup_elem(&tg_h_icmp_ev, &zero);
+	val = (struct msg_icmp_event *)map_lookup_elem(&tg_h_event, &zero);
 	if (!val)
 		return 0;
 

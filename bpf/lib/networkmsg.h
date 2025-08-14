@@ -101,6 +101,11 @@ struct msg_ip_with_stats_event {
 	struct msg_socket_stats stats;
 }; // All fields aligned so no 'packed' attribute.
 
+struct msg_udp_event {
+	struct msg_ip_event event;
+	char payload[2048];
+};
+
 struct msg_icmp_event {
 	struct msg_common common;
 	struct msg_ip_tuple tuple;

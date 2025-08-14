@@ -18,13 +18,8 @@
 #include "bpf_task.h"
 #include "bpf_cookie.h"
 #include "bpf_tracing.h"
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, __u32);
-	__type(value, struct msg_ip_event);
-	__uint(max_entries, 1);
-} tg_h_udpbind_ev SEC(".maps");
+#include "bpf_udp_config.h"
+#include "bpf_event_map.h"
 
 static inline __attribute__((always_inline)) int
 __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
@@ -51,7 +46,7 @@ __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
 	if (protocol != IPPROTO_UDP)
 		return 0;
 
-	event = (struct msg_ip_event *)map_lookup_elem(&tg_h_udpbind_ev, &zero);
+	event = (struct msg_ip_event *)map_lookup_elem(&tg_h_event, &zero);
 	if (!event)
 		return 0;
 

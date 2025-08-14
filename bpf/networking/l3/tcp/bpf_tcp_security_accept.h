@@ -22,6 +22,7 @@
 #include "socktrack/bpf_sk_alloc.h"
 #include "lib/address_family.h"
 #include "bpf_tcp_listen.h"
+#include "bpf_event_map.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -29,13 +30,6 @@ struct {
 	__type(value, struct socketmap_value);
 	__uint(max_entries, 1);
 } tg_h_tcplstn_ps SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, __u32);
-	__type(value, struct msg_ip_event);
-	__uint(max_entries, 1);
-} tg_h_tcpacc_ev SEC(".maps");
 
 /* Theory of Operations: The kernel does not at the moment have a hook that
  * is reliable to capture both the listen sock and the new sock from the
@@ -161,7 +155,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	if (!event_cfg->disableAccept) {
 		size_t size = sizeof(struct msg_ip_event);
 
-		event = (struct msg_ip_event *)map_lookup_elem(&tg_h_tcpacc_ev,
+		event = (struct msg_ip_event *)map_lookup_elem(&tg_h_event,
 							       &zero);
 		if (!event)
 			return 0;

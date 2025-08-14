@@ -27,13 +27,7 @@
 #include "bpf_tcp_info.h"
 #include "bpf_network_helpers.h"
 #include "bpf_tcp_state.h"
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, __u32);
-	__type(value, struct msg_ip_event);
-	__uint(max_entries, 1);
-} tg_h_tcplstn_ev SEC(".maps");
+#include "bpf_event_map.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -76,7 +70,7 @@ __event_sys_listen(void *ctx, struct sock *skp)
 		key = &process->key;
 	}
 
-	val = (struct msg_ip_event *)map_lookup_elem(&tg_h_tcplstn_ev,
+	val = (struct msg_ip_event *)map_lookup_elem(&tg_h_event,
 						     &zero);
 	if (!val) {
 		return 0;

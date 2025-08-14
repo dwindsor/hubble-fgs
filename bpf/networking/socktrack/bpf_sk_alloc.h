@@ -18,13 +18,7 @@
 #include "bpf_tracing.h"
 #include "../l3/tcp/bpf_tcp_close.h"
 #include "../l3/udp/bpf_udp_config.h"
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, __u32);
-	__type(value, struct msg_ip_event);
-	__uint(max_entries, 1);
-} tg_h_sk_ev SEC(".maps");
+#include "bpf_event_map.h"
 
 static inline __attribute__((always_inline)) void
 emit_sk_event(void *ctx, struct socketmap_value *process, u64 cookie, u8 op)
@@ -32,7 +26,7 @@ emit_sk_event(void *ctx, struct socketmap_value *process, u64 cookie, u8 op)
 	struct msg_ip_event *e;
 	int zero = 0;
 
-	e = (struct msg_ip_event *)map_lookup_elem(&tg_h_sk_ev, &zero);
+	e = (struct msg_ip_event *)map_lookup_elem(&tg_h_event, &zero);
 	if (!e)
 		return;
 
