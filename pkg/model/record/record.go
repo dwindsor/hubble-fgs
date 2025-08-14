@@ -30,6 +30,8 @@ type recordKey struct {
 	Self     uint64
 	Port     uint32
 	EP       endpoint.Endpoint
+	SrcIp    string
+	SrcPort  uint32
 }
 
 type DatapathAction struct {
@@ -130,26 +132,39 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 	bMap := make(map[recordKey]*DatapathRecord)
 
 	for _, r := range B {
-		key := recordKey{
-			CgroupId: r.Src.NSID,
-			Self:     r.Src.Self,
+		key := recordKey{}
+
+		if r.Src != nil {
+			key.CgroupId = r.Src.NSID
+			key.Self = r.Src.Self
 		}
+
 		if r.Endpoint.EP != nil {
 			key.EP = *r.Endpoint.EP
 			key.Port = r.Endpoint.Port
 		}
+
+		key.SrcIp = r.L3Src.Ip
+		key.SrcPort = r.L3Src.Port
+
 		bMap[key] = r
 	}
 
 	for _, r := range A {
-		key := recordKey{
-			CgroupId: r.Src.NSID,
-			Self:     r.Src.Self,
+		key := recordKey{}
+
+		if r.Src != nil {
+			key.CgroupId = r.Src.NSID
+			key.Self = r.Src.Self
 		}
 		if r.Endpoint.EP != nil {
 			key.EP = *r.Endpoint.EP
 			key.Port = r.Endpoint.Port
 		}
+
+		key.SrcIp = r.L3Src.Ip
+		key.SrcPort = r.L3Src.Port
+
 		_, ok := bMap[key]
 		if !ok {
 			C = append(C, r)
