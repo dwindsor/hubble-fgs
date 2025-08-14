@@ -70,6 +70,13 @@ type DatapathEndpoint struct {
 	Port uint32
 }
 
+func (r DatapathSource) String() string {
+	if r.Port != 0 {
+		return fmt.Sprintf("%s : %d", r.Ip, r.Port)
+	}
+	return fmt.Sprint(r.Ip)
+}
+
 func (r DatapathEndpoint) String() string {
 	if r.EP == nil {
 		return "nil"
@@ -107,12 +114,13 @@ func (r *DatapathRecord) String() string {
 		src = fmt.Sprintf("%d:%d", r.Src.NSID, r.Src.Self)
 	}
 
+	l3src := fmt.Sprintf(r.L3Src.String())
 	ep := fmt.Sprint(r.Endpoint.String())
 
 	if r.Action != nil {
 		action = r.Action.String()
 	}
-	return fmt.Sprintf("Policy %s Src %s Endpoint %s Action %s", r.Policy.Name, src, ep, action)
+	return fmt.Sprintf("Policy %s Src %s L3 %s -> %s Action %s", r.Policy.Name, src, l3src, ep, action)
 }
 
 // Set difference operator, A - B. We burn some memory and have to
