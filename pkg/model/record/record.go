@@ -30,6 +30,8 @@ type recordKey struct {
 	Self     uint64
 	Port     uint32
 	EP       endpoint.Endpoint
+	SrcVrf   string
+	SrcVlan  uint32
 	SrcIp    string
 	SrcPort  uint32
 }
@@ -61,6 +63,8 @@ func (a *DatapathAction) String() string {
 // would tell us (and they would be correct) to extend Src key directly, but
 // hacking a new field type keeps separate things separate for the time being.
 type DatapathSource struct {
+	Vrf  string
+	Vlan uint32
 	Ip   string
 	Port uint32
 }
@@ -71,10 +75,18 @@ type DatapathEndpoint struct {
 }
 
 func (r DatapathSource) String() string {
-	if r.Port != 0 {
-		return fmt.Sprintf("%s : %d", r.Ip, r.Port)
+	s := ""
+
+	if r.Vrf != "" {
+		s = fmt.Sprintf("%s ", r.Vrf)
+	} else if r.Vlan != 0 {
+		s = fmt.Sprintf("%d ", r.Vlan)
 	}
-	return fmt.Sprint(r.Ip)
+
+	if r.Port != 0 {
+		return fmt.Sprintf("%s%s:%d", s, r.Ip, r.Port)
+	}
+	return fmt.Sprintf("%s%s", s, r.Ip)
 }
 
 func (r DatapathEndpoint) String() string {
@@ -114,7 +126,7 @@ func (r *DatapathRecord) String() string {
 		src = fmt.Sprintf("%d:%d", r.Src.NSID, r.Src.Self)
 	}
 
-	l3src := fmt.Sprintf(r.L3Src.String())
+	l3src := r.L3Src.String()
 	ep := fmt.Sprint(r.Endpoint.String())
 
 	if r.Action != nil {
@@ -154,6 +166,8 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 
 		key.SrcIp = r.L3Src.Ip
 		key.SrcPort = r.L3Src.Port
+		key.SrcVrf = r.L3Src.Vrf
+		key.SrcVlan = r.L3Src.Vlan
 
 		bMap[key] = r
 	}
@@ -172,6 +186,8 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 
 		key.SrcIp = r.L3Src.Ip
 		key.SrcPort = r.L3Src.Port
+		key.SrcVrf = r.L3Src.Vrf
+		key.SrcVlan = r.L3Src.Vlan
 
 		_, ok := bMap[key]
 		if !ok {

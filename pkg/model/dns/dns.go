@@ -618,7 +618,9 @@ func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
 			}
 
 			ds := &record.DatapathSource{
-				Ip: l3.Policy.Source.CIDR.CIDR,
+				Ip:   l3.Policy.Source.CIDR.CIDR,
+				Vrf:  l3.Policy.Subject.LogicalNetwork.VRF,
+				Vlan: l3.Policy.Subject.LogicalNetwork.VLAN,
 			}
 
 			if len(l3.Policy.Source.Ports) == 0 {
