@@ -45,15 +45,22 @@ func toSubject(np *v1alpha1.TetragonNetworkPolicy) (types.TetragonNetworkSubject
 		Workload: types.TetragonWorkloadNetworkSubject{},
 	}
 
-	if np.Spec.PodSelector != nil {
+	// Note: Network Policy does not support MatchExpressions as of now, if
+	// we do we need to update how we check that selectors are empty above
+	if (np.Spec.PodSelector == nil || np.Spec.PodSelector.MatchLabels == nil) &&
+		np.Spec.NamespaceSelector == nil || np.Spec.NamespaceSelector.MatchLabels == nil {
+		// If there's no PodSelector and no NamespaceSelector in a policy,
+		// assume the user intended to target the host of the agent itself
+		subj.Labels = types.TetragonNetworkLabels{
+			Equal: map[string]string{dns.InternalLabelKey: dns.InternalHostName},
+		}
+	} else if np.Spec.PodSelector != nil && np.Spec.PodSelector.MatchLabels != nil {
 		subj.Labels = types.TetragonNetworkLabels{
 			Equal: np.Spec.PodSelector.MatchLabels,
 		}
 	} else {
-		// If there's no PodSelector in a policy, assume the user
-		// intended to target the host of the agent itself
 		subj.Labels = types.TetragonNetworkLabels{
-			Equal: map[string]string{dns.InternalLabelKey: dns.InternalHostName},
+			Equal: map[string]string{},
 		}
 	}
 
