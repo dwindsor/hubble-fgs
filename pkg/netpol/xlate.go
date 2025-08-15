@@ -132,11 +132,6 @@ func toDestination(d *v1alpha1.NetworkDestination) types.TetragonNetworkDestinat
 	labels := types.TetragonNetworkLabels{}
 	if d.PodSelector != nil {
 		labels.Equal = d.PodSelector.MatchLabels
-	} else {
-		// As for the top level PodSelector, assume no
-		// PodSelector means to target the agent host
-		// itself
-		labels.Equal = map[string]string{dns.InternalLabelKey: dns.InternalHostName}
 	}
 
 	ports := make([]uint32, 0, len(d.Ports.Ports))
