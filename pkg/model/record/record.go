@@ -132,7 +132,7 @@ func (r *DatapathRecord) String() string {
 	if r.Action != nil {
 		action = r.Action.String()
 	}
-	return fmt.Sprintf("Policy %s Src %s L3 %s -> %s Action %s", r.Policy.Name, src, l3src, ep, action)
+	return fmt.Sprintf("Policy %s:%s Src %s L3 %s -> %s Action %s", r.Policy.Name, r.Policy.Rule, src, l3src, ep, action)
 }
 
 // Set difference operator, A - B. We burn some memory and have to
