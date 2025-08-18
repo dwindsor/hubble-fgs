@@ -18,6 +18,22 @@ Write-Host "Process terminated with PID: $notepadPID"
 
 Invoke-WebRequest -Uri "https://www.google.com"
 
+#Check blocking
+$success = $false
+try {
+    $response = Invoke-WebRequest -Uri "http://142.250.217.78" -TimeoutSec 5
+    if ($response.StatusCode -eq 200) {
+		$success = $false
+	}
+} catch {
+    Write-Host "Block Success: Web request to 142.250.217.78 failed: $($_.Exception.Message)"
+	$success = $true
+}
+
+if ($success -eq $false) {
+	throw "Url could not be blocked"
+}
+
 Write-Host "Process $PID made a web request"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

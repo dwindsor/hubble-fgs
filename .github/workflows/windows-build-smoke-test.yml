@@ -360,7 +360,7 @@ jobs:
           $tetragonProcess = "C:\Program Files\Tetragon\cmd\tetragon.exe"
 
           # Start the process in the background and capture its PID
-          $tetragonBackgroundProcess = Start-Process -FilePath "$tetragonProcess" -ArgumentList "--enable-tcp --export-filename ""$jsonFilePath""" -RedirectStandardOutput "C:\Program Files\Tetragon\tetragon.log" -NoNewWindow -PassThru
+          $tetragonBackgroundProcess = Start-Process -FilePath "$tetragonProcess" -ArgumentList "--enable-tcp --enable-application-model --network-policy ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\examples\tetragonnetworkpolicy\example.yaml --export-filename ""$jsonFilePath""" -RedirectStandardOutput "C:\Program Files\Tetragon\tetragon.log" -NoNewWindow -PassThru
           Start-Sleep -Seconds 5
           if(Get-Process -id $tetragonBackgroundProcess.Id) {
             Write-Host "Tetragon is Running "
