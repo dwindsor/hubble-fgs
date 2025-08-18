@@ -251,6 +251,17 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	return 0;
 }
 
+struct renamedata___new {
+	struct mnt_idmap *old_mnt_idmap;
+	struct dentry *old_parent;
+	struct dentry *old_dentry;
+	struct mnt_idmap *new_mnt_idmap;
+	struct dentry *new_parent;
+	struct dentry *new_dentry;
+	struct inode **delegated_inode;
+	unsigned int flags;
+} __attribute__((preserve_access_index));
+
 #ifdef __LARGE_BPF_PROG
 SEC("kprobe/vfs_rename/512")
 int BPF_KPROBE(vfs_rename_v512, struct renamedata *rd)
@@ -260,11 +271,20 @@ int BPF_KPROBE(vfs_rename_v512, struct renamedata *rd)
 	int err;
 
 	if (bpf_core_type_exists(struct renamedata)) {
-		old_dir = BPF_CORE_READ(rd, old_dir);
-		old_dentry = BPF_CORE_READ(rd, old_dentry);
-		new_dir = BPF_CORE_READ(rd, new_dir);
-		new_dentry = BPF_CORE_READ(rd, new_dentry);
-		delegated_inode = BPF_CORE_READ(rd, delegated_inode);
+		if (bpf_core_field_exists(rd->old_dir)) {
+			old_dir = BPF_CORE_READ(rd, old_dir);
+			old_dentry = BPF_CORE_READ(rd, old_dentry);
+			new_dir = BPF_CORE_READ(rd, new_dir);
+			new_dentry = BPF_CORE_READ(rd, new_dentry);
+			delegated_inode = BPF_CORE_READ(rd, delegated_inode);
+		} else {
+			struct renamedata___new *rd_new = (void *)rd;
+			old_dir = BPF_CORE_READ(rd_new, old_parent, d_inode);
+			old_dentry = BPF_CORE_READ(rd_new, old_dentry);
+			new_dir = BPF_CORE_READ(rd_new, new_parent, d_inode);
+			new_dentry = BPF_CORE_READ(rd_new, new_dentry);
+			delegated_inode = BPF_CORE_READ(rd_new, delegated_inode);
+		}
 	}
 
 	err = kprobe_vfs_rename(ctx, old_dir, old_dentry, new_dir,
