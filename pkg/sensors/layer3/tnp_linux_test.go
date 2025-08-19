@@ -28,6 +28,7 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
@@ -194,7 +195,7 @@ func testTNPDefaultDeny(t *testing.T, readyWG *sync.WaitGroup) {
 }
 
 func TestTNP(t *testing.T) {
-	if !kernels.MinKernelVersion("5.15.0") {
+	if !kernels.MinKernelVersion("5.15.0") || !utils.SupportAddAndFetch() {
 		t.Skip()
 	}
 
