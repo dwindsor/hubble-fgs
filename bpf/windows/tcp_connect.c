@@ -165,26 +165,36 @@ raise_ip_event(bpf_sock_addr_t *ctx, int eventCode, int ipv6, int is_accept)
 SEC("cgroup/connect4")
 int tcp_connect4(bpf_sock_addr_t *ctx)
 {
-	if (ctx->protocol != IPPROTO_TCP) {
+	int eventCode = 0;
+	if (ctx->protocol == IPPROTO_TCP) {
+		eventCode = 2;
+	} else if (ctx->protocol == IPPROTO_UDP) {
+		eventCode = 18;
+	} else {
 		return BPF_SOCK_ADDR_VERDICT_PROCEED;
 	}
 	if (!allow_connection(ctx, 0, 0)) {
 		return BPF_SOCK_ADDR_VERDICT_REJECT;
 	}
-	raise_ip_event(ctx, 2, 0, 0);
+	raise_ip_event(ctx, eventCode, 0, 0);
 	return BPF_SOCK_ADDR_VERDICT_PROCEED;
 }
 
 SEC("cgroup/connect6")
 int tcp_connect6(bpf_sock_addr_t *ctx)
 {
-	if (ctx->protocol != IPPROTO_TCP) {
+	int eventCode = 0;
+	if (ctx->protocol == IPPROTO_TCP) {
+		eventCode = 2;
+	} else if (ctx->protocol == IPPROTO_UDP) {
+		eventCode = 18;
+	} else {
 		return BPF_SOCK_ADDR_VERDICT_PROCEED;
 	}
-	if (!allow_connection(ctx, 1, 0)) {
+	if (!allow_connection(ctx, 0, 0)) {
 		return BPF_SOCK_ADDR_VERDICT_REJECT;
 	}
-	raise_ip_event(ctx, 2, 1, 0);
+	raise_ip_event(ctx, eventCode, 1, 0);
 	return BPF_SOCK_ADDR_VERDICT_PROCEED;
 }
 
@@ -217,15 +227,19 @@ int tcp_accept6(bpf_sock_addr_t *ctx)
 SEC("sockops")
 int sockops_monitor(bpf_sock_ops_t *ctx)
 {
-	if ((ctx->protocol != IPPROTO_TCP) ||
-	    (ctx->op != BPF_SOCK_OPS_CONNECTION_DELETED_CB)) {
+	int eventCode = 0;
+	if (ctx->protocol == IPPROTO_TCP) {
+		eventCode = 8;
+	} else if (ctx->protocol == IPPROTO_UDP) {
+		eventCode = 17;
+	} else {
 		return 0;
 	}
 	int result = 0;
 	uint64_t ptid = bpf_get_current_pid_tgid();
 
 	struct msg_ip_with_stats_event event = { 0 };
-	event.common.op = 8;
+	event.common.op = eventCode;
 	event.socket_cookie = 0;
 	event.common.ktime = bpf_ktime_get_boot_ns();
 	event.key.pid = ptid >> 32;

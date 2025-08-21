@@ -111,7 +111,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	return events, err
 }
 
-func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
+func handleTcpUdp(r *bytes.Reader) ([]observer.Event, error) {
 	m := networkapi.MsgIPEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
@@ -123,8 +123,24 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{tcp}, nil
 }
 
+func handleTcpUdpClose(r *bytes.Reader) ([]observer.Event, error) {
+	m := networkapi.MsgIPWithStatsEvent{}
+	var err error
+	err = binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		return nil, err
+	}
+	m.Common.Ktime = common.KTimeToWindowsEpoch(m.Common.Ktime)
+	udp := ip.MsgToIPWithStatsUnix(&m)
+	events := []observer.Event{udp}
+	return events, err
+}
+
 func init() {
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECTRET, handleTcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ACCEPT, handleTcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCLOSE, handleTcpClose)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECTRET, handleTcpUdp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ACCEPT, handleTcpUdp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCLOSE, handleTcpUdpClose)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCONNECT, handleTcpUdp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCLOSE, handleTcpUdpClose)
+
 }
