@@ -106,6 +106,8 @@ alerts-export-dir: {{ .Values.tetragon.alerts.exportDirectory | quote }}
 {{- end }}
 {{- end }}
 
+{{- define "containers.extra" -}}{{- end }}
+
 {{- define "tetragon-aggregator.selectorLabels" -}}
 app.kubernetes.io/name: "tetragon-aggregator"
 app.kubernetes.io/instance: {{ .Release.Name }}

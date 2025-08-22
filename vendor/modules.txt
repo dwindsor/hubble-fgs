@@ -280,7 +280,7 @@ github.com/cilium/ebpf/rlimit
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
 # github.com/cilium/tetragon v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss
-## explicit; go 1.24.0
+## explicit; go 1.25.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
 github.com/cilium/tetragon/cmd/tetra/common
@@ -438,6 +438,7 @@ github.com/cilium/tetragon/pkg/tracingpolicy/generate
 github.com/cilium/tetragon/pkg/unixlisten
 github.com/cilium/tetragon/pkg/version
 github.com/cilium/tetragon/pkg/watcher
+github.com/cilium/tetragon/pkg/watcher/conf
 github.com/cilium/tetragon/pkg/watcher/crdwatcher
 github.com/cilium/tetragon/tests/e2e/checker
 github.com/cilium/tetragon/tests/e2e/flags
@@ -454,16 +455,16 @@ github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/helpers
 github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/imports
 github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/types
 # github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss/pkg/k8s
-## explicit; go 1.24.0
+## explicit; go 1.25.0
 github.com/cilium/tetragon-oss/pkg/k8s/crdutils
 # github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000 => ./api
-## explicit; go 1.24.0
+## explicit; go 1.25.0
 github.com/cilium/tetragon/api/v1/tetragon
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml
 github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers
 # github.com/cilium/tetragon/pkg/k8s v0.0.0-20230821215247-e2d83592833f => ./pkg/k8s
-## explicit; go 1.24.0
+## explicit; go 1.25.0
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1

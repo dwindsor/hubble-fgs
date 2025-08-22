@@ -1268,6 +1268,11 @@ func ParseMatchBinary(k *KernelSelectorState, b *v1alpha1.BinarySelector, selIdx
 		return fmt.Errorf("matchBinary error: %w", err)
 	}
 
+	// ignore matchBinaries selectors with no values
+	if len(b.Values) == 0 {
+		return nil
+	}
+
 	// prepare the selector options
 	sel := MatchBinariesSelectorOptions{}
 	sel.Op = op
@@ -1490,6 +1495,18 @@ func HasFilter(selectors []v1alpha1.KProbeSelector, index uint32) bool {
 	for _, s := range selectors {
 		for _, a := range s.MatchArgs {
 			if a.Index == index {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// HasNotifyEnforcerAction returns true if any selector in the KProbeSpec has a NotifyEnforcer action
+func HasNotifyEnforcerAction(kspec *v1alpha1.KProbeSpec) bool {
+	for _, s := range kspec.Selectors {
+		for _, action := range s.MatchActions {
+			if action.Action == "NotifyEnforcer" {
 				return true
 			}
 		}
