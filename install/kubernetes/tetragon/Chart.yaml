@@ -23,7 +23,7 @@ icon: https://tetragon.io/images/tetragon-shield.png
 appVersion: "0.0.0-dev"
 dependencies:
   - name: grafana
-    version: "9.3.2"
+    version: "9.3.4"
     repository: https://grafana.github.io/helm-charts
     condition: integratedGrafana.enabled
   - name: kube-state-metrics
