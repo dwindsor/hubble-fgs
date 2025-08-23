@@ -9,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	k8sTypes "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -296,11 +297,11 @@ func getType(d *appModelV1.Destination) appModelV1.DestinationType {
 	return t
 }
 
-func getDestination(d *appModelV1.Destination) (string, string, string, appModelV1.WorkloadKind) {
+func getDestination(d *appModelV1.Destination) (string, string, string, k8sTypes.WorkloadKind) {
 	name := ""
 	ns := ""
 	wlName := ""
-	var wlKind appModelV1.WorkloadKind
+	var wlKind k8sTypes.WorkloadKind
 
 	switch at := d.Type.(type) {
 	case *appModelV1.Destination_Dns:
@@ -446,7 +447,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 						DestinationPort:                   uint32(c.Destination.Port),
 						DestinationKubernetesNamespace:    dns,
 						DestinationKubernetesWorkloadKind: dkind,
-						DestinationKubernetesWorkloadName: dname,
+						DestinationKubernetesResourceName: dname,
 						TxBytes:                           c.Stats.TxBytes,
 						RxBytes:                           c.Stats.RxBytes,
 						NodeLabels:                        labels,
@@ -484,7 +485,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					DestinationPort:                   uint32(c.Destination.Port),
 					DestinationKubernetesNamespace:    dns,
 					DestinationKubernetesWorkloadKind: dkind,
-					DestinationKubernetesWorkloadName: dname,
+					DestinationKubernetesResourceName: dname,
 					TxBytes:                           c.Stats.TxBytes,
 					RxBytes:                           c.Stats.RxBytes,
 					NodeLabels:                        labels,
@@ -500,20 +501,20 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 	return n, nil
 }
 
-func appModelToGraphWorkloadType(wlKind appModelV1.WorkloadKind) graphV1.KubernetesWorkloadType {
+func appModelToGraphWorkloadType(wlKind k8sTypes.WorkloadKind) k8sTypes.WorkloadKind {
 	switch wlKind {
-	case appModelV1.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT:
-		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT
-	case appModelV1.WorkloadKind_WORKLOAD_KIND_STATEFULSET:
-		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_STATEFUL_SET
-	case appModelV1.WorkloadKind_WORKLOAD_KIND_DAEMONSET:
-		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_DAEMON_SET
-	case appModelV1.WorkloadKind_WORKLOAD_KIND_JOB:
-		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_JOB
-	case appModelV1.WorkloadKind_WORKLOAD_KIND_CRONJOB:
-		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_CRON_JOB
+	case k8sTypes.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT:
+		return k8sTypes.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT
+	case k8sTypes.WorkloadKind_WORKLOAD_KIND_STATEFULSET:
+		return k8sTypes.WorkloadKind_WORKLOAD_KIND_STATEFULSET
+	case k8sTypes.WorkloadKind_WORKLOAD_KIND_DAEMONSET:
+		return k8sTypes.WorkloadKind_WORKLOAD_KIND_DAEMONSET
+	case k8sTypes.WorkloadKind_WORKLOAD_KIND_JOB:
+		return k8sTypes.WorkloadKind_WORKLOAD_KIND_JOB
+	case k8sTypes.WorkloadKind_WORKLOAD_KIND_CRONJOB:
+		return k8sTypes.WorkloadKind_WORKLOAD_KIND_CRONJOB
 	default:
-		return graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_UNSPECIFIED
+		return k8sTypes.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
 	}
 }
 
@@ -529,8 +530,8 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 				NodeName:             telemetry.NodeName,
 				PodName:              "",
 				ContainerName:        "",
-				ServiceType:          0,
-				WorkloadType:         appModelToGraphWorkloadType(telemetry.KubernetesWorkloadKind),
+				ServiceKind:          0,
+				WorkloadKind:         appModelToGraphWorkloadType(telemetry.KubernetesWorkloadKind),
 				Ip:                   "",
 				ApplicationModelUuid: telemetry.ApplicationModelId,
 			},
@@ -546,8 +547,8 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 	link := &graphV1.Edge{
 		Type: &graphV1.Edge_NetworkTelemetry{
 			NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
-				TxBytes: telemetry.TxBytes,
-				RxBytes: telemetry.RxBytes,
+				NetworkTransmitBytesTotal: telemetry.TxBytes,
+				NetworkReceiveBytesTotal:  telemetry.RxBytes,
 			},
 		},
 	}

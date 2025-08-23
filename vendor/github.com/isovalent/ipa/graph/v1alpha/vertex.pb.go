@@ -15,6 +15,7 @@
 package v1alpha
 
 import (
+	v1alpha "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -28,124 +29,6 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
-
-// KubernetesServiceType represents the various Kubernetes service types.
-type KubernetesServiceType int32
-
-const (
-	KubernetesServiceType_KUBERNETES_SERVICE_TYPE_UNSPECIFIED   KubernetesServiceType = 0
-	KubernetesServiceType_KUBERNETES_SERVICE_TYPE_CLUSTER_IP    KubernetesServiceType = 1
-	KubernetesServiceType_KUBERNETES_SERVICE_TYPE_NODE_PORT     KubernetesServiceType = 2
-	KubernetesServiceType_KUBERNETES_SERVICE_TYPE_LOAD_BALANCER KubernetesServiceType = 3
-	KubernetesServiceType_KUBERNETES_SERVICE_TYPE_EXTERNAL_NAME KubernetesServiceType = 4
-)
-
-// Enum value maps for KubernetesServiceType.
-var (
-	KubernetesServiceType_name = map[int32]string{
-		0: "KUBERNETES_SERVICE_TYPE_UNSPECIFIED",
-		1: "KUBERNETES_SERVICE_TYPE_CLUSTER_IP",
-		2: "KUBERNETES_SERVICE_TYPE_NODE_PORT",
-		3: "KUBERNETES_SERVICE_TYPE_LOAD_BALANCER",
-		4: "KUBERNETES_SERVICE_TYPE_EXTERNAL_NAME",
-	}
-	KubernetesServiceType_value = map[string]int32{
-		"KUBERNETES_SERVICE_TYPE_UNSPECIFIED":   0,
-		"KUBERNETES_SERVICE_TYPE_CLUSTER_IP":    1,
-		"KUBERNETES_SERVICE_TYPE_NODE_PORT":     2,
-		"KUBERNETES_SERVICE_TYPE_LOAD_BALANCER": 3,
-		"KUBERNETES_SERVICE_TYPE_EXTERNAL_NAME": 4,
-	}
-)
-
-func (x KubernetesServiceType) Enum() *KubernetesServiceType {
-	p := new(KubernetesServiceType)
-	*p = x
-	return p
-}
-
-func (x KubernetesServiceType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (KubernetesServiceType) Descriptor() protoreflect.EnumDescriptor {
-	return file_graph_v1alpha_vertex_proto_enumTypes[0].Descriptor()
-}
-
-func (KubernetesServiceType) Type() protoreflect.EnumType {
-	return &file_graph_v1alpha_vertex_proto_enumTypes[0]
-}
-
-func (x KubernetesServiceType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use KubernetesServiceType.Descriptor instead.
-func (KubernetesServiceType) EnumDescriptor() ([]byte, []int) {
-	return file_graph_v1alpha_vertex_proto_rawDescGZIP(), []int{0}
-}
-
-// KubernetesWorkloadType represents the various Kubernetes workload types.
-type KubernetesWorkloadType int32
-
-const (
-	KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_UNSPECIFIED  KubernetesWorkloadType = 0
-	KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT   KubernetesWorkloadType = 1
-	KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_REPLICA_SET  KubernetesWorkloadType = 2
-	KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_STATEFUL_SET KubernetesWorkloadType = 3
-	KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_DAEMON_SET   KubernetesWorkloadType = 4
-	KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_JOB          KubernetesWorkloadType = 5
-	KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_CRON_JOB     KubernetesWorkloadType = 6
-)
-
-// Enum value maps for KubernetesWorkloadType.
-var (
-	KubernetesWorkloadType_name = map[int32]string{
-		0: "KUBERNETES_WORKLOAD_TYPE_UNSPECIFIED",
-		1: "KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT",
-		2: "KUBERNETES_WORKLOAD_TYPE_REPLICA_SET",
-		3: "KUBERNETES_WORKLOAD_TYPE_STATEFUL_SET",
-		4: "KUBERNETES_WORKLOAD_TYPE_DAEMON_SET",
-		5: "KUBERNETES_WORKLOAD_TYPE_JOB",
-		6: "KUBERNETES_WORKLOAD_TYPE_CRON_JOB",
-	}
-	KubernetesWorkloadType_value = map[string]int32{
-		"KUBERNETES_WORKLOAD_TYPE_UNSPECIFIED":  0,
-		"KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT":   1,
-		"KUBERNETES_WORKLOAD_TYPE_REPLICA_SET":  2,
-		"KUBERNETES_WORKLOAD_TYPE_STATEFUL_SET": 3,
-		"KUBERNETES_WORKLOAD_TYPE_DAEMON_SET":   4,
-		"KUBERNETES_WORKLOAD_TYPE_JOB":          5,
-		"KUBERNETES_WORKLOAD_TYPE_CRON_JOB":     6,
-	}
-)
-
-func (x KubernetesWorkloadType) Enum() *KubernetesWorkloadType {
-	p := new(KubernetesWorkloadType)
-	*p = x
-	return p
-}
-
-func (x KubernetesWorkloadType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (KubernetesWorkloadType) Descriptor() protoreflect.EnumDescriptor {
-	return file_graph_v1alpha_vertex_proto_enumTypes[1].Descriptor()
-}
-
-func (KubernetesWorkloadType) Type() protoreflect.EnumType {
-	return &file_graph_v1alpha_vertex_proto_enumTypes[1]
-}
-
-func (x KubernetesWorkloadType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use KubernetesWorkloadType.Descriptor instead.
-func (KubernetesWorkloadType) EnumDescriptor() ([]byte, []int) {
-	return file_graph_v1alpha_vertex_proto_rawDescGZIP(), []int{1}
-}
 
 // A vertex represents a set of properties of a connection source or
 // destination.
@@ -256,32 +139,36 @@ type VertexFamilyKubernetes struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// UID is the unique in time and space value of the Kubernetes object.
 	Uid string `protobuf:"bytes,1,opt,name=uid,proto3" json:"uid,omitempty"`
+	// resource_kind defines the type of Kubernetes resource.
+	ResourceKind v1alpha.ResourceKind `protobuf:"varint,2,opt,name=resource_kind,json=resourceKind,proto3,enum=common.k8s.type.v1alpha.ResourceKind" json:"resource_kind,omitempty"`
 	// resource_version is an opaque value that represents the internal version
 	// of the Kubernetes object.
-	ResourceVersion string `protobuf:"bytes,2,opt,name=resource_version,json=resourceVersion,proto3" json:"resource_version,omitempty"`
+	ResourceVersion string `protobuf:"bytes,3,opt,name=resource_version,json=resourceVersion,proto3" json:"resource_version,omitempty"`
 	// resource_name is the name of the Kubernetes object which is unique within
 	// a namespace.
-	ResourceName string `protobuf:"bytes,3,opt,name=resource_name,json=resourceName,proto3" json:"resource_name,omitempty"`
+	ResourceName string `protobuf:"bytes,4,opt,name=resource_name,json=resourceName,proto3" json:"resource_name,omitempty"`
 	// cluster_name is the name of the Kubernetes cluster.
-	ClusterName string `protobuf:"bytes,4,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	ClusterName string `protobuf:"bytes,5,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
 	// namespace is the space within which each resource name is unique.
-	Namespace string `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Namespace string `protobuf:"bytes,6,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// node_name is the name of the Kubernetes node.
-	NodeName string `protobuf:"bytes,6,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
+	NodeName string `protobuf:"bytes,7,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
 	// pod_name is the name of the Kubernetes pod.
-	PodName string `protobuf:"bytes,7,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
+	PodName string `protobuf:"bytes,8,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
 	// container_name is the name of the container.
-	ContainerName string `protobuf:"bytes,8,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
-	// service_type represents the type of the Kubernetes service.
-	ServiceType KubernetesServiceType `protobuf:"varint,9,opt,name=service_type,json=serviceType,proto3,enum=graph.v1alpha.KubernetesServiceType" json:"service_type,omitempty"`
-	// workload_type represents the type of the Kubernetes workload.
-	WorkloadType KubernetesWorkloadType `protobuf:"varint,10,opt,name=workload_type,json=workloadType,proto3,enum=graph.v1alpha.KubernetesWorkloadType" json:"workload_type,omitempty"`
+	ContainerName string `protobuf:"bytes,9,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
+	// service_kind represents the type of the Kubernetes service.
+	ServiceKind v1alpha.ServiceKind `protobuf:"varint,10,opt,name=service_kind,json=serviceKind,proto3,enum=common.k8s.type.v1alpha.ServiceKind" json:"service_kind,omitempty"`
+	// workload_kind represents the type of the Kubernetes workload.
+	WorkloadKind v1alpha.WorkloadKind `protobuf:"varint,11,opt,name=workload_kind,json=workloadKind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"workload_kind,omitempty"`
 	// ip is a network address that can be associated with the Kubernetes
 	// resource and the connection.
-	Ip string `protobuf:"bytes,11,opt,name=ip,proto3" json:"ip,omitempty"`
+	Ip string `protobuf:"bytes,12,opt,name=ip,proto3" json:"ip,omitempty"`
+	// port is the network port associated with the ip address.
+	Port uint32 `protobuf:"varint,13,opt,name=port,proto3" json:"port,omitempty"`
 	// application_model_uuid is a unique identifier that identifies the
 	// application model associated with the Kubernetes resource.
-	ApplicationModelUuid string `protobuf:"bytes,12,opt,name=application_model_uuid,json=applicationModelUuid,proto3" json:"application_model_uuid,omitempty"`
+	ApplicationModelUuid string `protobuf:"bytes,14,opt,name=application_model_uuid,json=applicationModelUuid,proto3" json:"application_model_uuid,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -321,6 +208,13 @@ func (x *VertexFamilyKubernetes) GetUid() string {
 		return x.Uid
 	}
 	return ""
+}
+
+func (x *VertexFamilyKubernetes) GetResourceKind() v1alpha.ResourceKind {
+	if x != nil {
+		return x.ResourceKind
+	}
+	return v1alpha.ResourceKind(0)
 }
 
 func (x *VertexFamilyKubernetes) GetResourceVersion() string {
@@ -372,18 +266,18 @@ func (x *VertexFamilyKubernetes) GetContainerName() string {
 	return ""
 }
 
-func (x *VertexFamilyKubernetes) GetServiceType() KubernetesServiceType {
+func (x *VertexFamilyKubernetes) GetServiceKind() v1alpha.ServiceKind {
 	if x != nil {
-		return x.ServiceType
+		return x.ServiceKind
 	}
-	return KubernetesServiceType_KUBERNETES_SERVICE_TYPE_UNSPECIFIED
+	return v1alpha.ServiceKind(0)
 }
 
-func (x *VertexFamilyKubernetes) GetWorkloadType() KubernetesWorkloadType {
+func (x *VertexFamilyKubernetes) GetWorkloadKind() v1alpha.WorkloadKind {
 	if x != nil {
-		return x.WorkloadType
+		return x.WorkloadKind
 	}
-	return KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_UNSPECIFIED
+	return v1alpha.WorkloadKind(0)
 }
 
 func (x *VertexFamilyKubernetes) GetIp() string {
@@ -391,6 +285,13 @@ func (x *VertexFamilyKubernetes) GetIp() string {
 		return x.Ip
 	}
 	return ""
+}
+
+func (x *VertexFamilyKubernetes) GetPort() uint32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
 }
 
 func (x *VertexFamilyKubernetes) GetApplicationModelUuid() string {
@@ -405,7 +306,12 @@ func (x *VertexFamilyKubernetes) GetApplicationModelUuid() string {
 type VertexFamilyNetworkDevice struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// name is the name of the network device.
-	Name          string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// ip is a network address that can be associated with the network device and
+	// the connection.
+	Ip string `protobuf:"bytes,2,opt,name=ip,proto3" json:"ip,omitempty"`
+	// port is the network port associated with the ip address.
+	Port          uint32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -447,15 +353,31 @@ func (x *VertexFamilyNetworkDevice) GetName() string {
 	return ""
 }
 
+func (x *VertexFamilyNetworkDevice) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+func (x *VertexFamilyNetworkDevice) GetPort() uint32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
 // VertexFamilyWorldEntity represents a broad set of network elements outside
 // of a specific network boundary.
 type VertexFamilyWorldEntity struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// dns_name is the DNS name that can be associated with the world entity.
 	DnsName string `protobuf:"bytes,1,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
-	// cidr_block is an IP network associated with the world entity in the form
-	// `<ip>/<bits>`.
-	CidrBlock     string `protobuf:"bytes,2,opt,name=cidr_block,json=cidrBlock,proto3" json:"cidr_block,omitempty"`
+	// ip is a network address that can be associated with the world entity and
+	// the connection.
+	Ip string `protobuf:"bytes,2,opt,name=ip,proto3" json:"ip,omitempty"`
+	// port is the network port associated with the ip address.
+	Port          uint32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -497,59 +419,56 @@ func (x *VertexFamilyWorldEntity) GetDnsName() string {
 	return ""
 }
 
-func (x *VertexFamilyWorldEntity) GetCidrBlock() string {
+func (x *VertexFamilyWorldEntity) GetIp() string {
 	if x != nil {
-		return x.CidrBlock
+		return x.Ip
 	}
 	return ""
+}
+
+func (x *VertexFamilyWorldEntity) GetPort() uint32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
 }
 
 var File_graph_v1alpha_vertex_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	"\n" +
-	"\x1agraph/v1alpha/vertex.proto\x12\rgraph.v1alpha\"\xfb\x01\n" +
+	"\x1agraph/v1alpha/vertex.proto\x12\rgraph.v1alpha\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\"\xfb\x01\n" +
 	"\x06Vertex\x12G\n" +
 	"\n" +
 	"kubernetes\x18\x01 \x01(\v2%.graph.v1alpha.VertexFamilyKubernetesH\x00R\n" +
 	"kubernetes\x12Q\n" +
 	"\x0enetwork_device\x18\x02 \x01(\v2(.graph.v1alpha.VertexFamilyNetworkDeviceH\x00R\rnetworkDevice\x12K\n" +
 	"\fworld_entity\x18\x03 \x01(\v2&.graph.v1alpha.VertexFamilyWorldEntityH\x00R\vworldEntityB\b\n" +
-	"\x06family\"\xf5\x03\n" +
+	"\x06family\"\xd5\x04\n" +
 	"\x16VertexFamilyKubernetes\x12\x10\n" +
-	"\x03uid\x18\x01 \x01(\tR\x03uid\x12)\n" +
-	"\x10resource_version\x18\x02 \x01(\tR\x0fresourceVersion\x12#\n" +
-	"\rresource_name\x18\x03 \x01(\tR\fresourceName\x12!\n" +
-	"\fcluster_name\x18\x04 \x01(\tR\vclusterName\x12\x1c\n" +
-	"\tnamespace\x18\x05 \x01(\tR\tnamespace\x12\x1b\n" +
-	"\tnode_name\x18\x06 \x01(\tR\bnodeName\x12\x19\n" +
-	"\bpod_name\x18\a \x01(\tR\apodName\x12%\n" +
-	"\x0econtainer_name\x18\b \x01(\tR\rcontainerName\x12G\n" +
-	"\fservice_type\x18\t \x01(\x0e2$.graph.v1alpha.KubernetesServiceTypeR\vserviceType\x12J\n" +
-	"\rworkload_type\x18\n" +
-	" \x01(\x0e2%.graph.v1alpha.KubernetesWorkloadTypeR\fworkloadType\x12\x0e\n" +
-	"\x02ip\x18\v \x01(\tR\x02ip\x124\n" +
-	"\x16application_model_uuid\x18\f \x01(\tR\x14applicationModelUuid\"/\n" +
+	"\x03uid\x18\x01 \x01(\tR\x03uid\x12J\n" +
+	"\rresource_kind\x18\x02 \x01(\x0e2%.common.k8s.type.v1alpha.ResourceKindR\fresourceKind\x12)\n" +
+	"\x10resource_version\x18\x03 \x01(\tR\x0fresourceVersion\x12#\n" +
+	"\rresource_name\x18\x04 \x01(\tR\fresourceName\x12!\n" +
+	"\fcluster_name\x18\x05 \x01(\tR\vclusterName\x12\x1c\n" +
+	"\tnamespace\x18\x06 \x01(\tR\tnamespace\x12\x1b\n" +
+	"\tnode_name\x18\a \x01(\tR\bnodeName\x12\x19\n" +
+	"\bpod_name\x18\b \x01(\tR\apodName\x12%\n" +
+	"\x0econtainer_name\x18\t \x01(\tR\rcontainerName\x12G\n" +
+	"\fservice_kind\x18\n" +
+	" \x01(\x0e2$.common.k8s.type.v1alpha.ServiceKindR\vserviceKind\x12J\n" +
+	"\rworkload_kind\x18\v \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\fworkloadKind\x12\x0e\n" +
+	"\x02ip\x18\f \x01(\tR\x02ip\x12\x12\n" +
+	"\x04port\x18\r \x01(\rR\x04port\x124\n" +
+	"\x16application_model_uuid\x18\x0e \x01(\tR\x14applicationModelUuid\"S\n" +
 	"\x19VertexFamilyNetworkDevice\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"S\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x0e\n" +
+	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x12\n" +
+	"\x04port\x18\x03 \x01(\rR\x04port\"X\n" +
 	"\x17VertexFamilyWorldEntity\x12\x19\n" +
-	"\bdns_name\x18\x01 \x01(\tR\adnsName\x12\x1d\n" +
-	"\n" +
-	"cidr_block\x18\x02 \x01(\tR\tcidrBlock*\xe5\x01\n" +
-	"\x15KubernetesServiceType\x12'\n" +
-	"#KUBERNETES_SERVICE_TYPE_UNSPECIFIED\x10\x00\x12&\n" +
-	"\"KUBERNETES_SERVICE_TYPE_CLUSTER_IP\x10\x01\x12%\n" +
-	"!KUBERNETES_SERVICE_TYPE_NODE_PORT\x10\x02\x12)\n" +
-	"%KUBERNETES_SERVICE_TYPE_LOAD_BALANCER\x10\x03\x12)\n" +
-	"%KUBERNETES_SERVICE_TYPE_EXTERNAL_NAME\x10\x04*\xb2\x02\n" +
-	"\x16KubernetesWorkloadType\x12(\n" +
-	"$KUBERNETES_WORKLOAD_TYPE_UNSPECIFIED\x10\x00\x12'\n" +
-	"#KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT\x10\x01\x12(\n" +
-	"$KUBERNETES_WORKLOAD_TYPE_REPLICA_SET\x10\x02\x12)\n" +
-	"%KUBERNETES_WORKLOAD_TYPE_STATEFUL_SET\x10\x03\x12'\n" +
-	"#KUBERNETES_WORKLOAD_TYPE_DAEMON_SET\x10\x04\x12 \n" +
-	"\x1cKUBERNETES_WORKLOAD_TYPE_JOB\x10\x05\x12%\n" +
-	"!KUBERNETES_WORKLOAD_TYPE_CRON_JOB\x10\x06B(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
+	"\bdns_name\x18\x01 \x01(\tR\adnsName\x12\x0e\n" +
+	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x12\n" +
+	"\x04port\x18\x03 \x01(\rR\x04portB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
 
 var (
 	file_graph_v1alpha_vertex_proto_rawDescOnce sync.Once
@@ -563,27 +482,28 @@ func file_graph_v1alpha_vertex_proto_rawDescGZIP() []byte {
 	return file_graph_v1alpha_vertex_proto_rawDescData
 }
 
-var file_graph_v1alpha_vertex_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_graph_v1alpha_vertex_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_graph_v1alpha_vertex_proto_goTypes = []any{
-	(KubernetesServiceType)(0),        // 0: graph.v1alpha.KubernetesServiceType
-	(KubernetesWorkloadType)(0),       // 1: graph.v1alpha.KubernetesWorkloadType
-	(*Vertex)(nil),                    // 2: graph.v1alpha.Vertex
-	(*VertexFamilyKubernetes)(nil),    // 3: graph.v1alpha.VertexFamilyKubernetes
-	(*VertexFamilyNetworkDevice)(nil), // 4: graph.v1alpha.VertexFamilyNetworkDevice
-	(*VertexFamilyWorldEntity)(nil),   // 5: graph.v1alpha.VertexFamilyWorldEntity
+	(*Vertex)(nil),                    // 0: graph.v1alpha.Vertex
+	(*VertexFamilyKubernetes)(nil),    // 1: graph.v1alpha.VertexFamilyKubernetes
+	(*VertexFamilyNetworkDevice)(nil), // 2: graph.v1alpha.VertexFamilyNetworkDevice
+	(*VertexFamilyWorldEntity)(nil),   // 3: graph.v1alpha.VertexFamilyWorldEntity
+	(v1alpha.ResourceKind)(0),         // 4: common.k8s.type.v1alpha.ResourceKind
+	(v1alpha.ServiceKind)(0),          // 5: common.k8s.type.v1alpha.ServiceKind
+	(v1alpha.WorkloadKind)(0),         // 6: common.k8s.type.v1alpha.WorkloadKind
 }
 var file_graph_v1alpha_vertex_proto_depIdxs = []int32{
-	3, // 0: graph.v1alpha.Vertex.kubernetes:type_name -> graph.v1alpha.VertexFamilyKubernetes
-	4, // 1: graph.v1alpha.Vertex.network_device:type_name -> graph.v1alpha.VertexFamilyNetworkDevice
-	5, // 2: graph.v1alpha.Vertex.world_entity:type_name -> graph.v1alpha.VertexFamilyWorldEntity
-	0, // 3: graph.v1alpha.VertexFamilyKubernetes.service_type:type_name -> graph.v1alpha.KubernetesServiceType
-	1, // 4: graph.v1alpha.VertexFamilyKubernetes.workload_type:type_name -> graph.v1alpha.KubernetesWorkloadType
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	1, // 0: graph.v1alpha.Vertex.kubernetes:type_name -> graph.v1alpha.VertexFamilyKubernetes
+	2, // 1: graph.v1alpha.Vertex.network_device:type_name -> graph.v1alpha.VertexFamilyNetworkDevice
+	3, // 2: graph.v1alpha.Vertex.world_entity:type_name -> graph.v1alpha.VertexFamilyWorldEntity
+	4, // 3: graph.v1alpha.VertexFamilyKubernetes.resource_kind:type_name -> common.k8s.type.v1alpha.ResourceKind
+	5, // 4: graph.v1alpha.VertexFamilyKubernetes.service_kind:type_name -> common.k8s.type.v1alpha.ServiceKind
+	6, // 5: graph.v1alpha.VertexFamilyKubernetes.workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_graph_v1alpha_vertex_proto_init() }
@@ -601,14 +521,13 @@ func file_graph_v1alpha_vertex_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_graph_v1alpha_vertex_proto_rawDesc), len(file_graph_v1alpha_vertex_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      0,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_graph_v1alpha_vertex_proto_goTypes,
 		DependencyIndexes: file_graph_v1alpha_vertex_proto_depIdxs,
-		EnumInfos:         file_graph_v1alpha_vertex_proto_enumTypes,
 		MessageInfos:      file_graph_v1alpha_vertex_proto_msgTypes,
 	}.Build()
 	File_graph_v1alpha_vertex_proto = out.File

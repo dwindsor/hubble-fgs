@@ -35,7 +35,6 @@
     - [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType)
     - [PolicyVerdict](#application_model-v1alpha-PolicyVerdict)
     - [TelemetryType](#application_model-v1alpha-TelemetryType)
-    - [WorkloadKind](#application_model-v1alpha-WorkloadKind)
   
     - [ApplicationModelService](#application_model-v1alpha-ApplicationModelService)
   
@@ -703,7 +702,7 @@ the following criteria:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
-| kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  |  |
+| kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  |  |
 | processes | [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup) | repeated | A list of process groups in the workload. See ApplicationProcessGroup for the definition of a process group. |
 
 
@@ -792,7 +791,7 @@ the following criteria:
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | namespace | [string](#string) |  |  |
-| kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  |  |
+| kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  |  |
 
 
 
@@ -845,7 +844,7 @@ the following criteria:
 | node_name | [string](#string) |  | Name of the node that transmitted this telemetry event. |
 | node_labels | [NetworkConnectTelemetry.NodeLabelsEntry](#application_model-v1alpha-NetworkConnectTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
 | kubernetes_namespace | [string](#string) |  | Kubernetes namespace in which the process that received this policy verdict is running. This field is set if and only if the process belongs to a Kubernetes workload. |
-| kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  | Kubernetes workload kind of the process that received this policy verdict. This field is set if and only if the process belongs to a Kubernetes workload. |
+| kubernetes_workload_kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  | Kubernetes workload kind of the process that received this policy verdict. This field is set if and only if the process belongs to a Kubernetes workload. |
 | kubernetes_workload_name | [string](#string) |  | Kubernetes workload name of the process that received this policy verdict. This field is set if and only if the process belongs to a Kubernetes workload. |
 | process_hash | [string](#string) |  | Hash of the process that received this policy verdict. TODO: Document how the hash is calculated. |
 | process_name | [string](#string) |  | Name of the process that received this policy verdict. |
@@ -854,8 +853,10 @@ the following criteria:
 | destination_type | [DestinationType](#application_model-v1alpha-DestinationType) |  | Destination type of the connection that received this network connect policy verdict. |
 | destination_port | [uint32](#uint32) |  | Destination port of the connection that received this network connect policy verdict. |
 | destination_kubernetes_namespace | [string](#string) |  | Kubernetes namespace of the destination workload. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
-| destination_kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  | Kubernetes workload kind of the destination. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
-| destination_kubernetes_workload_name | [string](#string) |  | Kubernetes workload name of the destination. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
+| destination_kubernetes_resource_kind | [common.k8s.type.v1alpha.ResourceKind](#common-k8s-type-v1alpha-ResourceKind) |  | Kubernetes resource kind of the process that received the policy verdict. |
+| destination_kubernetes_resource_name | [string](#string) |  | Kubernetes workload name of the destination. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
+| destination_kubernetes_service_kind | [common.k8s.type.v1alpha.ServiceKind](#common-k8s-type-v1alpha-ServiceKind) |  | Kubernetes service kind of the process that received this policy verdict. This field is set if and only if the process resource kind is service. |
+| destination_kubernetes_workload_kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  | Kubernetes workload kind of the destination. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
 | protocol | [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType) |  | Network protocol of the connection that received this network connect policy verdict. |
 | verdict | [PolicyVerdict](#application_model-v1alpha-PolicyVerdict) |  | Policy verdict. If the connections don&#39;t have corresponding policy rules, this field is set to POLICY_VERDICT_UNSPECIFIED. |
 | policy_name | [string](#string) |  | Name of the Tetragon network connect policy that made this verdict. If the connections don&#39;t have corresponding policy rules, this field is not set. |
@@ -917,7 +918,7 @@ the following criteria:
 | time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
 | kubernetes_namespace | [string](#string) |  |  |
 | kubernetes_workload_name | [string](#string) |  |  |
-| kubernetes_workload_kind | [WorkloadKind](#application_model-v1alpha-WorkloadKind) |  |  |
+| kubernetes_workload_kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  |  |
 | process_hash | [string](#string) |  |  |
 | process_name | [string](#string) |  |  |
 | process_arguments | [string](#string) |  |  |
@@ -1032,25 +1033,6 @@ the following criteria:
 | TELEMETRY_TYPE_UNSPECIFIED | 0 |  |
 | TELEMETRY_TYPE_PROCESS | 1 |  |
 | TELEMETRY_TYPE_NETWORK_CONNECT | 2 |  |
-
-
-
-<a name="application_model-v1alpha-WorkloadKind"></a>
-
-### WorkloadKind
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| WORKLOAD_KIND_UNSPECIFIED | 0 |  |
-| WORKLOAD_KIND_POD | 1 |  |
-| WORKLOAD_KIND_DEPLOYMENT | 2 |  |
-| WORKLOAD_KIND_DAEMONSET | 3 |  |
-| WORKLOAD_KIND_STATEFULSET | 4 |  |
-| WORKLOAD_KIND_JOB | 5 |  |
-| WORKLOAD_KIND_CRONJOB | 6 |  |
-| WORKLOAD_KIND_REPLICASET | 7 |  |
-| WORKLOAD_KIND_SERVICE | 8 |  |
 
 
  

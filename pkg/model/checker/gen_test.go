@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -72,7 +73,7 @@ func TestGenerate(t *testing.T) {
 					Workloads: []*appModelV1.ApplicationWorkload{
 						{
 							Name: "quxbaz",
-							Kind: appModelV1.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+							Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
 							Processes: []*appModelV1.ApplicationProcessGroup{
 								{
 									Name: "/bin/bash",

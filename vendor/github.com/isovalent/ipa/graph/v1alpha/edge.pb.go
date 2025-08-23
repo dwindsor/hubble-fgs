@@ -45,6 +45,7 @@ type Edge struct {
 	//
 	//	*Edge_NetworkTelemetry
 	//	*Edge_RoutingTelemetry
+	//	*Edge_L7Telemetry
 	Type          isEdge_Type `protobuf_oneof:"type"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -105,6 +106,15 @@ func (x *Edge) GetRoutingTelemetry() *EdgeTypeRoutingTelemetry {
 	return nil
 }
 
+func (x *Edge) GetL7Telemetry() *EdgeTypeL7Telemetry {
+	if x != nil {
+		if x, ok := x.Type.(*Edge_L7Telemetry); ok {
+			return x.L7Telemetry
+		}
+	}
+	return nil
+}
+
 type isEdge_Type interface {
 	isEdge_Type()
 }
@@ -117,28 +127,36 @@ type Edge_RoutingTelemetry struct {
 	RoutingTelemetry *EdgeTypeRoutingTelemetry `protobuf:"bytes,2,opt,name=routing_telemetry,json=routingTelemetry,proto3,oneof"`
 }
 
+type Edge_L7Telemetry struct {
+	L7Telemetry *EdgeTypeL7Telemetry `protobuf:"bytes,3,opt,name=l7_telemetry,json=l7Telemetry,proto3,oneof"`
+}
+
 func (*Edge_NetworkTelemetry) isEdge_Type() {}
 
 func (*Edge_RoutingTelemetry) isEdge_Type() {}
+
+func (*Edge_L7Telemetry) isEdge_Type() {}
 
 // EdgeTypeNetworkTelemetry provides telemetry information regarding a network
 // connection.
 type EdgeTypeNetworkTelemetry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// tx_packets is the number of packets transferred.
-	TxPackets uint64 `protobuf:"varint,1,opt,name=tx_packets,json=txPackets,proto3" json:"tx_packets,omitempty"`
-	// tx_bytes is the number of bytes transferred.
-	TxBytes uint64 `protobuf:"varint,2,opt,name=tx_bytes,json=txBytes,proto3" json:"tx_bytes,omitempty"`
-	// tx_drops is the number of packets dropped during transmission.
-	TxDrops uint64 `protobuf:"varint,3,opt,name=tx_drops,json=txDrops,proto3" json:"tx_drops,omitempty"`
-	// rx_packets is the number of packets received.
-	RxPackets uint64 `protobuf:"varint,4,opt,name=rx_packets,json=rxPackets,proto3" json:"rx_packets,omitempty"`
-	// rx_bytes is the number of bytes received.
-	RxBytes uint64 `protobuf:"varint,5,opt,name=rx_bytes,json=rxBytes,proto3" json:"rx_bytes,omitempty"`
-	// rx_drops is the number of packets that are received but discarded.
-	RxDrops       uint64 `protobuf:"varint,6,opt,name=rx_drops,json=rxDrops,proto3" json:"rx_drops,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// network_transmit_packets_total is the number of packets transferred.
+	NetworkTransmitPacketsTotal uint64 `protobuf:"varint,1,opt,name=network_transmit_packets_total,json=networkTransmitPacketsTotal,proto3" json:"network_transmit_packets_total,omitempty"`
+	// network_transmit_bytes_total is the number of bytes transferred.
+	NetworkTransmitBytesTotal uint64 `protobuf:"varint,2,opt,name=network_transmit_bytes_total,json=networkTransmitBytesTotal,proto3" json:"network_transmit_bytes_total,omitempty"`
+	// network_transmit_drop_total is the number of packets dropped during
+	// transmission.
+	NetworkTransmitDropTotal uint64 `protobuf:"varint,3,opt,name=network_transmit_drop_total,json=networkTransmitDropTotal,proto3" json:"network_transmit_drop_total,omitempty"`
+	// network_receive_packets_total is the number of packets received.
+	NetworkReceivePacketsTotal uint64 `protobuf:"varint,4,opt,name=network_receive_packets_total,json=networkReceivePacketsTotal,proto3" json:"network_receive_packets_total,omitempty"`
+	// network_receive_bytes_total is the number of bytes received.
+	NetworkReceiveBytesTotal uint64 `protobuf:"varint,5,opt,name=network_receive_bytes_total,json=networkReceiveBytesTotal,proto3" json:"network_receive_bytes_total,omitempty"`
+	// network_receive_drop_total is the number of packets that are received but
+	// discarded.
+	NetworkReceiveDropTotal uint64 `protobuf:"varint,6,opt,name=network_receive_drop_total,json=networkReceiveDropTotal,proto3" json:"network_receive_drop_total,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *EdgeTypeNetworkTelemetry) Reset() {
@@ -171,44 +189,44 @@ func (*EdgeTypeNetworkTelemetry) Descriptor() ([]byte, []int) {
 	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *EdgeTypeNetworkTelemetry) GetTxPackets() uint64 {
+func (x *EdgeTypeNetworkTelemetry) GetNetworkTransmitPacketsTotal() uint64 {
 	if x != nil {
-		return x.TxPackets
+		return x.NetworkTransmitPacketsTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeNetworkTelemetry) GetTxBytes() uint64 {
+func (x *EdgeTypeNetworkTelemetry) GetNetworkTransmitBytesTotal() uint64 {
 	if x != nil {
-		return x.TxBytes
+		return x.NetworkTransmitBytesTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeNetworkTelemetry) GetTxDrops() uint64 {
+func (x *EdgeTypeNetworkTelemetry) GetNetworkTransmitDropTotal() uint64 {
 	if x != nil {
-		return x.TxDrops
+		return x.NetworkTransmitDropTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeNetworkTelemetry) GetRxPackets() uint64 {
+func (x *EdgeTypeNetworkTelemetry) GetNetworkReceivePacketsTotal() uint64 {
 	if x != nil {
-		return x.RxPackets
+		return x.NetworkReceivePacketsTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeNetworkTelemetry) GetRxBytes() uint64 {
+func (x *EdgeTypeNetworkTelemetry) GetNetworkReceiveBytesTotal() uint64 {
 	if x != nil {
-		return x.RxBytes
+		return x.NetworkReceiveBytesTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeNetworkTelemetry) GetRxDrops() uint64 {
+func (x *EdgeTypeNetworkTelemetry) GetNetworkReceiveDropTotal() uint64 {
 	if x != nil {
-		return x.RxDrops
+		return x.NetworkReceiveDropTotal
 	}
 	return 0
 }
@@ -217,30 +235,30 @@ func (x *EdgeTypeNetworkTelemetry) GetRxDrops() uint64 {
 // decisions.
 type EdgeTypeRoutingTelemetry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// forwarded_count is the number of network flows that have been forwarded to
-	// the next processing entity.
-	ForwardedCount uint64 `protobuf:"varint,1,opt,name=forwarded_count,json=forwardedCount,proto3" json:"forwarded_count,omitempty"`
-	// dropped_count is the number of network flows that have been dropped.
-	// Reasons for dropping data may be due to a malformed packet, rejection by a
-	// network policy, etc.
-	DroppedCount uint64 `protobuf:"varint,2,opt,name=dropped_count,json=droppedCount,proto3" json:"dropped_count,omitempty"`
-	// error_count is the number of flows where an error occurred during
+	// routing_forwarded_total is the number of network flows that have been
+	// forwarded to the next processing entity.
+	RoutingForwardedTotal uint64 `protobuf:"varint,1,opt,name=routing_forwarded_total,json=routingForwardedTotal,proto3" json:"routing_forwarded_total,omitempty"`
+	// routing_dropped_total is the number of network flows that have been
+	// dropped. Reasons for dropping data may be due to a malformed packet,
+	// rejection by a network policy, etc.
+	RoutingDroppedTotal uint64 `protobuf:"varint,2,opt,name=routing_dropped_total,json=routingDroppedTotal,proto3" json:"routing_dropped_total,omitempty"`
+	// routing_error_total is the number of flows where an error occurred during
 	// processing.
-	ErrorCount uint64 `protobuf:"varint,3,opt,name=error_count,json=errorCount,proto3" json:"error_count,omitempty"`
-	// audit_count is the number of times a flow would have been dropped if a
-	// network policy that applies to it was enforced.
-	AuditCount uint64 `protobuf:"varint,4,opt,name=audit_count,json=auditCount,proto3" json:"audit_count,omitempty"`
-	// redirected_count is the number of flows which have been redirected, for
-	// instance to a local proxy.
-	RedirectedCount uint64 `protobuf:"varint,5,opt,name=redirected_count,json=redirectedCount,proto3" json:"redirected_count,omitempty"`
-	// traced_count is the number of flows that have been observed at a trace
-	// point.
-	TracedCount uint64 `protobuf:"varint,6,opt,name=traced_count,json=tracedCount,proto3" json:"traced_count,omitempty"`
-	// translated_count is the number of flows where are address has been
+	RoutingErrorTotal uint64 `protobuf:"varint,3,opt,name=routing_error_total,json=routingErrorTotal,proto3" json:"routing_error_total,omitempty"`
+	// routing_audit_total is the number of times a flow would have been dropped
+	// if a network policy that applies to it was enforced.
+	RoutingAuditTotal uint64 `protobuf:"varint,4,opt,name=routing_audit_total,json=routingAuditTotal,proto3" json:"routing_audit_total,omitempty"`
+	// routing_redirected_total is the number of flows which have been
+	// redirected, for instance to a local proxy.
+	RoutingRedirectedTotal uint64 `protobuf:"varint,5,opt,name=routing_redirected_total,json=routingRedirectedTotal,proto3" json:"routing_redirected_total,omitempty"`
+	// routing_traced_total is the number of flows that have been observed at a
+	// trace point.
+	RoutingTracedTotal uint64 `protobuf:"varint,6,opt,name=routing_traced_total,json=routingTracedTotal,proto3" json:"routing_traced_total,omitempty"`
+	// routing_translated_total is the number of flows where are address has been
 	// translated.
-	TranslatedCount uint64 `protobuf:"varint,7,opt,name=translated_count,json=translatedCount,proto3" json:"translated_count,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	RoutingTranslatedTotal uint64 `protobuf:"varint,7,opt,name=routing_translated_total,json=routingTranslatedTotal,proto3" json:"routing_translated_total,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *EdgeTypeRoutingTelemetry) Reset() {
@@ -273,51 +291,122 @@ func (*EdgeTypeRoutingTelemetry) Descriptor() ([]byte, []int) {
 	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *EdgeTypeRoutingTelemetry) GetForwardedCount() uint64 {
+func (x *EdgeTypeRoutingTelemetry) GetRoutingForwardedTotal() uint64 {
 	if x != nil {
-		return x.ForwardedCount
+		return x.RoutingForwardedTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeRoutingTelemetry) GetDroppedCount() uint64 {
+func (x *EdgeTypeRoutingTelemetry) GetRoutingDroppedTotal() uint64 {
 	if x != nil {
-		return x.DroppedCount
+		return x.RoutingDroppedTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeRoutingTelemetry) GetErrorCount() uint64 {
+func (x *EdgeTypeRoutingTelemetry) GetRoutingErrorTotal() uint64 {
 	if x != nil {
-		return x.ErrorCount
+		return x.RoutingErrorTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeRoutingTelemetry) GetAuditCount() uint64 {
+func (x *EdgeTypeRoutingTelemetry) GetRoutingAuditTotal() uint64 {
 	if x != nil {
-		return x.AuditCount
+		return x.RoutingAuditTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeRoutingTelemetry) GetRedirectedCount() uint64 {
+func (x *EdgeTypeRoutingTelemetry) GetRoutingRedirectedTotal() uint64 {
 	if x != nil {
-		return x.RedirectedCount
+		return x.RoutingRedirectedTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeRoutingTelemetry) GetTracedCount() uint64 {
+func (x *EdgeTypeRoutingTelemetry) GetRoutingTracedTotal() uint64 {
 	if x != nil {
-		return x.TracedCount
+		return x.RoutingTracedTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeRoutingTelemetry) GetTranslatedCount() uint64 {
+func (x *EdgeTypeRoutingTelemetry) GetRoutingTranslatedTotal() uint64 {
 	if x != nil {
-		return x.TranslatedCount
+		return x.RoutingTranslatedTotal
+	}
+	return 0
+}
+
+// EdgeTypeL7Telemetry provides telemetry information regarding a network
+// connection at the application layer.
+type EdgeTypeL7Telemetry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// http_requests_total is the number of HTTP requests that occurred during
+	// the selected time window. In conjunction with http_server_errors_total
+	// and http_client_errors_total, one can determine the error rate as a
+	// percent of requests that are failing from the total number of requests.
+	// One can also measure throughput in terms of HTTP requests per second.
+	HttpRequestsTotal uint64 `protobuf:"varint,1,opt,name=http_requests_total,json=httpRequestsTotal,proto3" json:"http_requests_total,omitempty"`
+	// http_server_errors_total is the number of HTTP server errors (5xx) that
+	// occurred during the selected time window.
+	HttpServerErrorsTotal uint64 `protobuf:"varint,2,opt,name=http_server_errors_total,json=httpServerErrorsTotal,proto3" json:"http_server_errors_total,omitempty"`
+	// http_client_errors_total is the number of HTTP client errors (4xx) that
+	// occurred during the selected time window.
+	HttpClientErrorsTotal uint64 `protobuf:"varint,3,opt,name=http_client_errors_total,json=httpClientErrorsTotal,proto3" json:"http_client_errors_total,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *EdgeTypeL7Telemetry) Reset() {
+	*x = EdgeTypeL7Telemetry{}
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EdgeTypeL7Telemetry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EdgeTypeL7Telemetry) ProtoMessage() {}
+
+func (x *EdgeTypeL7Telemetry) ProtoReflect() protoreflect.Message {
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EdgeTypeL7Telemetry.ProtoReflect.Descriptor instead.
+func (*EdgeTypeL7Telemetry) Descriptor() ([]byte, []int) {
+	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *EdgeTypeL7Telemetry) GetHttpRequestsTotal() uint64 {
+	if x != nil {
+		return x.HttpRequestsTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeL7Telemetry) GetHttpServerErrorsTotal() uint64 {
+	if x != nil {
+		return x.HttpServerErrorsTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeL7Telemetry) GetHttpClientErrorsTotal() uint64 {
+	if x != nil {
+		return x.HttpClientErrorsTotal
 	}
 	return 0
 }
@@ -326,30 +415,31 @@ var File_graph_v1alpha_edge_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	"\n" +
-	"\x18graph/v1alpha/edge.proto\x12\rgraph.v1alpha\"\xbe\x01\n" +
+	"\x18graph/v1alpha/edge.proto\x12\rgraph.v1alpha\"\x87\x02\n" +
 	"\x04Edge\x12V\n" +
 	"\x11network_telemetry\x18\x01 \x01(\v2'.graph.v1alpha.EdgeTypeNetworkTelemetryH\x00R\x10networkTelemetry\x12V\n" +
-	"\x11routing_telemetry\x18\x02 \x01(\v2'.graph.v1alpha.EdgeTypeRoutingTelemetryH\x00R\x10routingTelemetryB\x06\n" +
-	"\x04type\"\xc4\x01\n" +
-	"\x18EdgeTypeNetworkTelemetry\x12\x1d\n" +
-	"\n" +
-	"tx_packets\x18\x01 \x01(\x04R\ttxPackets\x12\x19\n" +
-	"\btx_bytes\x18\x02 \x01(\x04R\atxBytes\x12\x19\n" +
-	"\btx_drops\x18\x03 \x01(\x04R\atxDrops\x12\x1d\n" +
-	"\n" +
-	"rx_packets\x18\x04 \x01(\x04R\trxPackets\x12\x19\n" +
-	"\brx_bytes\x18\x05 \x01(\x04R\arxBytes\x12\x19\n" +
-	"\brx_drops\x18\x06 \x01(\x04R\arxDrops\"\xa3\x02\n" +
-	"\x18EdgeTypeRoutingTelemetry\x12'\n" +
-	"\x0fforwarded_count\x18\x01 \x01(\x04R\x0eforwardedCount\x12#\n" +
-	"\rdropped_count\x18\x02 \x01(\x04R\fdroppedCount\x12\x1f\n" +
-	"\verror_count\x18\x03 \x01(\x04R\n" +
-	"errorCount\x12\x1f\n" +
-	"\vaudit_count\x18\x04 \x01(\x04R\n" +
-	"auditCount\x12)\n" +
-	"\x10redirected_count\x18\x05 \x01(\x04R\x0fredirectedCount\x12!\n" +
-	"\ftraced_count\x18\x06 \x01(\x04R\vtracedCount\x12)\n" +
-	"\x10translated_count\x18\a \x01(\x04R\x0ftranslatedCountB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
+	"\x11routing_telemetry\x18\x02 \x01(\v2'.graph.v1alpha.EdgeTypeRoutingTelemetryH\x00R\x10routingTelemetry\x12G\n" +
+	"\fl7_telemetry\x18\x03 \x01(\v2\".graph.v1alpha.EdgeTypeL7TelemetryH\x00R\vl7TelemetryB\x06\n" +
+	"\x04type\"\x9e\x03\n" +
+	"\x18EdgeTypeNetworkTelemetry\x12C\n" +
+	"\x1enetwork_transmit_packets_total\x18\x01 \x01(\x04R\x1bnetworkTransmitPacketsTotal\x12?\n" +
+	"\x1cnetwork_transmit_bytes_total\x18\x02 \x01(\x04R\x19networkTransmitBytesTotal\x12=\n" +
+	"\x1bnetwork_transmit_drop_total\x18\x03 \x01(\x04R\x18networkTransmitDropTotal\x12A\n" +
+	"\x1dnetwork_receive_packets_total\x18\x04 \x01(\x04R\x1anetworkReceivePacketsTotal\x12=\n" +
+	"\x1bnetwork_receive_bytes_total\x18\x05 \x01(\x04R\x18networkReceiveBytesTotal\x12;\n" +
+	"\x1anetwork_receive_drop_total\x18\x06 \x01(\x04R\x17networkReceiveDropTotal\"\x8c\x03\n" +
+	"\x18EdgeTypeRoutingTelemetry\x126\n" +
+	"\x17routing_forwarded_total\x18\x01 \x01(\x04R\x15routingForwardedTotal\x122\n" +
+	"\x15routing_dropped_total\x18\x02 \x01(\x04R\x13routingDroppedTotal\x12.\n" +
+	"\x13routing_error_total\x18\x03 \x01(\x04R\x11routingErrorTotal\x12.\n" +
+	"\x13routing_audit_total\x18\x04 \x01(\x04R\x11routingAuditTotal\x128\n" +
+	"\x18routing_redirected_total\x18\x05 \x01(\x04R\x16routingRedirectedTotal\x120\n" +
+	"\x14routing_traced_total\x18\x06 \x01(\x04R\x12routingTracedTotal\x128\n" +
+	"\x18routing_translated_total\x18\a \x01(\x04R\x16routingTranslatedTotal\"\xb7\x01\n" +
+	"\x13EdgeTypeL7Telemetry\x12.\n" +
+	"\x13http_requests_total\x18\x01 \x01(\x04R\x11httpRequestsTotal\x127\n" +
+	"\x18http_server_errors_total\x18\x02 \x01(\x04R\x15httpServerErrorsTotal\x127\n" +
+	"\x18http_client_errors_total\x18\x03 \x01(\x04R\x15httpClientErrorsTotalB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
 
 var (
 	file_graph_v1alpha_edge_proto_rawDescOnce sync.Once
@@ -363,20 +453,22 @@ func file_graph_v1alpha_edge_proto_rawDescGZIP() []byte {
 	return file_graph_v1alpha_edge_proto_rawDescData
 }
 
-var file_graph_v1alpha_edge_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_graph_v1alpha_edge_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_graph_v1alpha_edge_proto_goTypes = []any{
 	(*Edge)(nil),                     // 0: graph.v1alpha.Edge
 	(*EdgeTypeNetworkTelemetry)(nil), // 1: graph.v1alpha.EdgeTypeNetworkTelemetry
 	(*EdgeTypeRoutingTelemetry)(nil), // 2: graph.v1alpha.EdgeTypeRoutingTelemetry
+	(*EdgeTypeL7Telemetry)(nil),      // 3: graph.v1alpha.EdgeTypeL7Telemetry
 }
 var file_graph_v1alpha_edge_proto_depIdxs = []int32{
 	1, // 0: graph.v1alpha.Edge.network_telemetry:type_name -> graph.v1alpha.EdgeTypeNetworkTelemetry
 	2, // 1: graph.v1alpha.Edge.routing_telemetry:type_name -> graph.v1alpha.EdgeTypeRoutingTelemetry
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: graph.v1alpha.Edge.l7_telemetry:type_name -> graph.v1alpha.EdgeTypeL7Telemetry
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_graph_v1alpha_edge_proto_init() }
@@ -387,6 +479,7 @@ func file_graph_v1alpha_edge_proto_init() {
 	file_graph_v1alpha_edge_proto_msgTypes[0].OneofWrappers = []any{
 		(*Edge_NetworkTelemetry)(nil),
 		(*Edge_RoutingTelemetry)(nil),
+		(*Edge_L7Telemetry)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -394,7 +487,7 @@ func file_graph_v1alpha_edge_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_graph_v1alpha_edge_proto_rawDesc), len(file_graph_v1alpha_edge_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

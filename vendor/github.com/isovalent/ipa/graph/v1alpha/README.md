@@ -5,6 +5,7 @@
 
 - [graph/v1alpha/edge.proto](#graph_v1alpha_edge-proto)
     - [Edge](#graph-v1alpha-Edge)
+    - [EdgeTypeL7Telemetry](#graph-v1alpha-EdgeTypeL7Telemetry)
     - [EdgeTypeNetworkTelemetry](#graph-v1alpha-EdgeTypeNetworkTelemetry)
     - [EdgeTypeRoutingTelemetry](#graph-v1alpha-EdgeTypeRoutingTelemetry)
   
@@ -13,9 +14,6 @@
     - [VertexFamilyKubernetes](#graph-v1alpha-VertexFamilyKubernetes)
     - [VertexFamilyNetworkDevice](#graph-v1alpha-VertexFamilyNetworkDevice)
     - [VertexFamilyWorldEntity](#graph-v1alpha-VertexFamilyWorldEntity)
-  
-    - [KubernetesServiceType](#graph-v1alpha-KubernetesServiceType)
-    - [KubernetesWorkloadType](#graph-v1alpha-KubernetesWorkloadType)
   
 - [graph/v1alpha/connection.proto](#graph_v1alpha_connection-proto)
     - [Connection](#graph-v1alpha-Connection)
@@ -53,6 +51,25 @@ An edge represents aggregatable properties of a given connection.
 | ----- | ---- | ----- | ----------- |
 | network_telemetry | [EdgeTypeNetworkTelemetry](#graph-v1alpha-EdgeTypeNetworkTelemetry) |  |  |
 | routing_telemetry | [EdgeTypeRoutingTelemetry](#graph-v1alpha-EdgeTypeRoutingTelemetry) |  |  |
+| l7_telemetry | [EdgeTypeL7Telemetry](#graph-v1alpha-EdgeTypeL7Telemetry) |  |  |
+
+
+
+
+
+
+<a name="graph-v1alpha-EdgeTypeL7Telemetry"></a>
+
+### EdgeTypeL7Telemetry
+EdgeTypeL7Telemetry provides telemetry information regarding a network
+connection at the application layer.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| http_requests_total | [uint64](#uint64) |  | http_requests_total is the number of HTTP requests that occurred during the selected time window. In conjunction with http_server_errors_total and http_client_errors_total, one can determine the error rate as a percent of requests that are failing from the total number of requests. One can also measure throughput in terms of HTTP requests per second. |
+| http_server_errors_total | [uint64](#uint64) |  | http_server_errors_total is the number of HTTP server errors (5xx) that occurred during the selected time window. |
+| http_client_errors_total | [uint64](#uint64) |  | http_client_errors_total is the number of HTTP client errors (4xx) that occurred during the selected time window. |
 
 
 
@@ -68,12 +85,12 @@ connection.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| tx_packets | [uint64](#uint64) |  | tx_packets is the number of packets transferred. |
-| tx_bytes | [uint64](#uint64) |  | tx_bytes is the number of bytes transferred. |
-| tx_drops | [uint64](#uint64) |  | tx_drops is the number of packets dropped during transmission. |
-| rx_packets | [uint64](#uint64) |  | rx_packets is the number of packets received. |
-| rx_bytes | [uint64](#uint64) |  | rx_bytes is the number of bytes received. |
-| rx_drops | [uint64](#uint64) |  | rx_drops is the number of packets that are received but discarded. |
+| network_transmit_packets_total | [uint64](#uint64) |  | network_transmit_packets_total is the number of packets transferred. |
+| network_transmit_bytes_total | [uint64](#uint64) |  | network_transmit_bytes_total is the number of bytes transferred. |
+| network_transmit_drop_total | [uint64](#uint64) |  | network_transmit_drop_total is the number of packets dropped during transmission. |
+| network_receive_packets_total | [uint64](#uint64) |  | network_receive_packets_total is the number of packets received. |
+| network_receive_bytes_total | [uint64](#uint64) |  | network_receive_bytes_total is the number of bytes received. |
+| network_receive_drop_total | [uint64](#uint64) |  | network_receive_drop_total is the number of packets that are received but discarded. |
 
 
 
@@ -89,13 +106,13 @@ decisions.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| forwarded_count | [uint64](#uint64) |  | forwarded_count is the number of network flows that have been forwarded to the next processing entity. |
-| dropped_count | [uint64](#uint64) |  | dropped_count is the number of network flows that have been dropped. Reasons for dropping data may be due to a malformed packet, rejection by a network policy, etc. |
-| error_count | [uint64](#uint64) |  | error_count is the number of flows where an error occurred during processing. |
-| audit_count | [uint64](#uint64) |  | audit_count is the number of times a flow would have been dropped if a network policy that applies to it was enforced. |
-| redirected_count | [uint64](#uint64) |  | redirected_count is the number of flows which have been redirected, for instance to a local proxy. |
-| traced_count | [uint64](#uint64) |  | traced_count is the number of flows that have been observed at a trace point. |
-| translated_count | [uint64](#uint64) |  | translated_count is the number of flows where are address has been translated. |
+| routing_forwarded_total | [uint64](#uint64) |  | routing_forwarded_total is the number of network flows that have been forwarded to the next processing entity. |
+| routing_dropped_total | [uint64](#uint64) |  | routing_dropped_total is the number of network flows that have been dropped. Reasons for dropping data may be due to a malformed packet, rejection by a network policy, etc. |
+| routing_error_total | [uint64](#uint64) |  | routing_error_total is the number of flows where an error occurred during processing. |
+| routing_audit_total | [uint64](#uint64) |  | routing_audit_total is the number of times a flow would have been dropped if a network policy that applies to it was enforced. |
+| routing_redirected_total | [uint64](#uint64) |  | routing_redirected_total is the number of flows which have been redirected, for instance to a local proxy. |
+| routing_traced_total | [uint64](#uint64) |  | routing_traced_total is the number of flows that have been observed at a trace point. |
+| routing_translated_total | [uint64](#uint64) |  | routing_translated_total is the number of flows where are address has been translated. |
 
 
 
@@ -146,6 +163,7 @@ Kubernetes context.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | uid | [string](#string) |  | UID is the unique in time and space value of the Kubernetes object. |
+| resource_kind | [common.k8s.type.v1alpha.ResourceKind](#common-k8s-type-v1alpha-ResourceKind) |  | resource_kind defines the type of Kubernetes resource. |
 | resource_version | [string](#string) |  | resource_version is an opaque value that represents the internal version of the Kubernetes object. |
 | resource_name | [string](#string) |  | resource_name is the name of the Kubernetes object which is unique within a namespace. |
 | cluster_name | [string](#string) |  | cluster_name is the name of the Kubernetes cluster. |
@@ -153,9 +171,10 @@ Kubernetes context.
 | node_name | [string](#string) |  | node_name is the name of the Kubernetes node. |
 | pod_name | [string](#string) |  | pod_name is the name of the Kubernetes pod. |
 | container_name | [string](#string) |  | container_name is the name of the container. |
-| service_type | [KubernetesServiceType](#graph-v1alpha-KubernetesServiceType) |  | service_type represents the type of the Kubernetes service. |
-| workload_type | [KubernetesWorkloadType](#graph-v1alpha-KubernetesWorkloadType) |  | workload_type represents the type of the Kubernetes workload. |
+| service_kind | [common.k8s.type.v1alpha.ServiceKind](#common-k8s-type-v1alpha-ServiceKind) |  | service_kind represents the type of the Kubernetes service. |
+| workload_kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  | workload_kind represents the type of the Kubernetes workload. |
 | ip | [string](#string) |  | ip is a network address that can be associated with the Kubernetes resource and the connection. |
+| port | [uint32](#uint32) |  | port is the network port associated with the ip address. |
 | application_model_uuid | [string](#string) |  | application_model_uuid is a unique identifier that identifies the application model associated with the Kubernetes resource. |
 
 
@@ -173,6 +192,8 @@ network device.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  | name is the name of the network device. |
+| ip | [string](#string) |  | ip is a network address that can be associated with the network device and the connection. |
+| port | [uint32](#uint32) |  | port is the network port associated with the ip address. |
 
 
 
@@ -189,45 +210,14 @@ of a specific network boundary.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | dns_name | [string](#string) |  | dns_name is the DNS name that can be associated with the world entity. |
-| cidr_block | [string](#string) |  | cidr_block is an IP network associated with the world entity in the form `&lt;ip&gt;/&lt;bits&gt;`. |
+| ip | [string](#string) |  | ip is a network address that can be associated with the world entity and the connection. |
+| port | [uint32](#uint32) |  | port is the network port associated with the ip address. |
 
 
 
 
 
  
-
-
-<a name="graph-v1alpha-KubernetesServiceType"></a>
-
-### KubernetesServiceType
-KubernetesServiceType represents the various Kubernetes service types.
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| KUBERNETES_SERVICE_TYPE_UNSPECIFIED | 0 |  |
-| KUBERNETES_SERVICE_TYPE_CLUSTER_IP | 1 |  |
-| KUBERNETES_SERVICE_TYPE_NODE_PORT | 2 |  |
-| KUBERNETES_SERVICE_TYPE_LOAD_BALANCER | 3 |  |
-| KUBERNETES_SERVICE_TYPE_EXTERNAL_NAME | 4 |  |
-
-
-
-<a name="graph-v1alpha-KubernetesWorkloadType"></a>
-
-### KubernetesWorkloadType
-KubernetesWorkloadType represents the various Kubernetes workload types.
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| KUBERNETES_WORKLOAD_TYPE_UNSPECIFIED | 0 |  |
-| KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT | 1 |  |
-| KUBERNETES_WORKLOAD_TYPE_REPLICA_SET | 2 |  |
-| KUBERNETES_WORKLOAD_TYPE_STATEFUL_SET | 3 |  |
-| KUBERNETES_WORKLOAD_TYPE_DAEMON_SET | 4 |  |
-| KUBERNETES_WORKLOAD_TYPE_JOB | 5 |  |
-| KUBERNETES_WORKLOAD_TYPE_CRON_JOB | 6 |  |
-
 
  
 

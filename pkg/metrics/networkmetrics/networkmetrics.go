@@ -15,6 +15,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -53,8 +54,8 @@ var (
 		DestinationType:                   appModelV1.DestinationType_DESTINATION_TYPE_KUBERNETES,
 		DestinationPort:                   443,
 		DestinationKubernetesNamespace:    "default",
-		DestinationKubernetesWorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_SERVICE,
-		DestinationKubernetesWorkloadName: "kubernetes",
+		DestinationKubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED, //common.WorkloadKind_WORKLOAD_KIND_SERVICE,
+		DestinationKubernetesResourceName: "kubernetes",
 		Protocol:                          appModelV1.NetworkProtocolType_NETWORK_PROTOCOL_TYPE_TCP,
 		PolicyName:                        "my-network-policy",
 		RuleName:                          "Allow TCP traffic to Kubernetes API server on port 443",
@@ -96,7 +97,7 @@ func Collect(event *appModelV1.NetworkConnectTelemetry) {
 		"destination_name":      event.DestinationName,
 		"destination_port":      strconv.Itoa(int(event.DestinationPort)),
 		"destination_namespace": event.DestinationKubernetesNamespace,
-		"destination_workload":  event.DestinationKubernetesWorkloadName,
+		"destination_workload":  event.DestinationKubernetesResourceName,
 		"protocol":              event.Protocol.String(),
 	}
 	if event.Verdict == appModelV1.PolicyVerdict_POLICY_VERDICT_DROP {

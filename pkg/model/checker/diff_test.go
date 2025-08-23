@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/isovalent/ipa/application_model/v1alpha"
+	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -68,7 +69,7 @@ func TestDiffComplex(t *testing.T) {
 			{Name: "foo", Workloads: []*v1alpha.ApplicationWorkload{
 				{
 					Name: "workload1",
-					Kind: v1alpha.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+					Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
 					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/bash",
@@ -80,7 +81,7 @@ func TestDiffComplex(t *testing.T) {
 				},
 				{
 					Name: "workload2",
-					Kind: v1alpha.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+					Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
 					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/foo",
@@ -98,7 +99,7 @@ func TestDiffComplex(t *testing.T) {
 			{Name: "foo", Workloads: []*v1alpha.ApplicationWorkload{
 				{
 					Name: "workload2",
-					Kind: v1alpha.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+					Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
 					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/foo",
@@ -110,7 +111,7 @@ func TestDiffComplex(t *testing.T) {
 				},
 				{
 					Name: "workload1",
-					Kind: v1alpha.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+					Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
 					Processes: []*v1alpha.ApplicationProcessGroup{
 						{
 							Name: "/bin/fish",

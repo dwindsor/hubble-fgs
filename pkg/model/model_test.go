@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,7 +75,7 @@ func TestModelToMonitorData(t *testing.T) {
 				Workloads: []*appModelV1.ApplicationWorkload{
 					{
 						Name: "workload1",
-						Kind: appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
+						Kind: common.WorkloadKind_WORKLOAD_KIND_POD,
 						Processes: []*appModelV1.ApplicationProcessGroup{
 							{
 								Name:      "process1",
@@ -142,7 +143,7 @@ func TestModelToMonitorData(t *testing.T) {
 	expectedNMD := NetworkMonitorData{
 		NetworkKey{
 			SourceNamespace:    "default",
-			SourceWorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
+			SourceWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_POD,
 			SourceWorkloadName: "workload1",
 			SourceProcessName:  "process1",
 			SourceProcessArgs:  "arg1",
@@ -154,7 +155,7 @@ func TestModelToMonitorData(t *testing.T) {
 		},
 		NetworkKey{
 			SourceNamespace:    HostNamespace,
-			SourceWorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
+			SourceWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			SourceWorkloadName: HostWorkload,
 			SourceProcessName:  "hostprocess1",
 			SourceProcessArgs:  "arg1",
@@ -169,28 +170,28 @@ func TestModelToMonitorData(t *testing.T) {
 	expectedPMD := ProcessMonitorData{
 		ProcessKey{
 			Namespace:    "default",
-			WorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
+			WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_POD,
 			WorkloadName: "workload1",
 			Name:         "process1",
 			Args:         "arg1",
 		}: ProcessValue{},
 		ProcessKey{
 			Namespace:    "default",
-			WorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
+			WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_POD,
 			WorkloadName: "workload1",
 			Name:         "process2",
 			Args:         "arg2",
 		}: ProcessValue{},
 		ProcessKey{
 			Namespace:    HostNamespace,
-			WorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
+			WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			WorkloadName: HostWorkload,
 			Name:         "hostprocess1",
 			Args:         "arg1",
 		}: ProcessValue{},
 		ProcessKey{
 			Namespace:    HostNamespace,
-			WorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
+			WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			WorkloadName: HostWorkload,
 			Name:         "hostprocess2",
 			Args:         "arg2",

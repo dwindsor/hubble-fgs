@@ -15,6 +15,7 @@
 package v1alpha
 
 import (
+	v1alpha "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -230,73 +231,6 @@ func (TelemetryType) EnumDescriptor() ([]byte, []int) {
 	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{3}
 }
 
-type WorkloadKind int32
-
-const (
-	WorkloadKind_WORKLOAD_KIND_UNSPECIFIED WorkloadKind = 0
-	WorkloadKind_WORKLOAD_KIND_POD         WorkloadKind = 1
-	WorkloadKind_WORKLOAD_KIND_DEPLOYMENT  WorkloadKind = 2
-	WorkloadKind_WORKLOAD_KIND_DAEMONSET   WorkloadKind = 3
-	WorkloadKind_WORKLOAD_KIND_STATEFULSET WorkloadKind = 4
-	WorkloadKind_WORKLOAD_KIND_JOB         WorkloadKind = 5
-	WorkloadKind_WORKLOAD_KIND_CRONJOB     WorkloadKind = 6
-	WorkloadKind_WORKLOAD_KIND_REPLICASET  WorkloadKind = 7
-	WorkloadKind_WORKLOAD_KIND_SERVICE     WorkloadKind = 8
-)
-
-// Enum value maps for WorkloadKind.
-var (
-	WorkloadKind_name = map[int32]string{
-		0: "WORKLOAD_KIND_UNSPECIFIED",
-		1: "WORKLOAD_KIND_POD",
-		2: "WORKLOAD_KIND_DEPLOYMENT",
-		3: "WORKLOAD_KIND_DAEMONSET",
-		4: "WORKLOAD_KIND_STATEFULSET",
-		5: "WORKLOAD_KIND_JOB",
-		6: "WORKLOAD_KIND_CRONJOB",
-		7: "WORKLOAD_KIND_REPLICASET",
-		8: "WORKLOAD_KIND_SERVICE",
-	}
-	WorkloadKind_value = map[string]int32{
-		"WORKLOAD_KIND_UNSPECIFIED": 0,
-		"WORKLOAD_KIND_POD":         1,
-		"WORKLOAD_KIND_DEPLOYMENT":  2,
-		"WORKLOAD_KIND_DAEMONSET":   3,
-		"WORKLOAD_KIND_STATEFULSET": 4,
-		"WORKLOAD_KIND_JOB":         5,
-		"WORKLOAD_KIND_CRONJOB":     6,
-		"WORKLOAD_KIND_REPLICASET":  7,
-		"WORKLOAD_KIND_SERVICE":     8,
-	}
-)
-
-func (x WorkloadKind) Enum() *WorkloadKind {
-	p := new(WorkloadKind)
-	*p = x
-	return p
-}
-
-func (x WorkloadKind) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (WorkloadKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_application_model_v1alpha_application_model_proto_enumTypes[4].Descriptor()
-}
-
-func (WorkloadKind) Type() protoreflect.EnumType {
-	return &file_application_model_v1alpha_application_model_proto_enumTypes[4]
-}
-
-func (x WorkloadKind) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use WorkloadKind.Descriptor instead.
-func (WorkloadKind) EnumDescriptor() ([]byte, []int) {
-	return file_application_model_v1alpha_application_model_proto_rawDescGZIP(), []int{4}
-}
-
 type ProcessTelemetry struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
 	ClusterName            string                 `protobuf:"bytes,1,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
@@ -305,7 +239,7 @@ type ProcessTelemetry struct {
 	Time                   *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=time,proto3" json:"time,omitempty"`
 	KubernetesNamespace    string                 `protobuf:"bytes,5,opt,name=kubernetes_namespace,json=kubernetesNamespace,proto3" json:"kubernetes_namespace,omitempty"`
 	KubernetesWorkloadName string                 `protobuf:"bytes,6,opt,name=kubernetes_workload_name,json=kubernetesWorkloadName,proto3" json:"kubernetes_workload_name,omitempty"`
-	KubernetesWorkloadKind WorkloadKind           `protobuf:"varint,7,opt,name=kubernetes_workload_kind,json=kubernetesWorkloadKind,proto3,enum=application_model.v1alpha.WorkloadKind" json:"kubernetes_workload_kind,omitempty"`
+	KubernetesWorkloadKind v1alpha.WorkloadKind   `protobuf:"varint,7,opt,name=kubernetes_workload_kind,json=kubernetesWorkloadKind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"kubernetes_workload_kind,omitempty"`
 	ProcessHash            string                 `protobuf:"bytes,8,opt,name=process_hash,json=processHash,proto3" json:"process_hash,omitempty"`
 	ProcessName            string                 `protobuf:"bytes,9,opt,name=process_name,json=processName,proto3" json:"process_name,omitempty"`
 	ProcessArguments       string                 `protobuf:"bytes,10,opt,name=process_arguments,json=processArguments,proto3" json:"process_arguments,omitempty"`
@@ -397,11 +331,11 @@ func (x *ProcessTelemetry) GetKubernetesWorkloadName() string {
 	return ""
 }
 
-func (x *ProcessTelemetry) GetKubernetesWorkloadKind() WorkloadKind {
+func (x *ProcessTelemetry) GetKubernetesWorkloadKind() v1alpha.WorkloadKind {
 	if x != nil {
 		return x.KubernetesWorkloadKind
 	}
-	return WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
+	return v1alpha.WorkloadKind(0)
 }
 
 func (x *ProcessTelemetry) GetProcessHash() string {
@@ -484,7 +418,7 @@ type NetworkConnectTelemetry struct {
 	KubernetesNamespace string `protobuf:"bytes,7,opt,name=kubernetes_namespace,json=kubernetesNamespace,proto3" json:"kubernetes_namespace,omitempty"`
 	// Kubernetes workload kind of the process that received this policy verdict.
 	// This field is set if and only if the process belongs to a Kubernetes workload.
-	KubernetesWorkloadKind WorkloadKind `protobuf:"varint,8,opt,name=kubernetes_workload_kind,json=kubernetesWorkloadKind,proto3,enum=application_model.v1alpha.WorkloadKind" json:"kubernetes_workload_kind,omitempty"`
+	KubernetesWorkloadKind v1alpha.WorkloadKind `protobuf:"varint,8,opt,name=kubernetes_workload_kind,json=kubernetesWorkloadKind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"kubernetes_workload_kind,omitempty"`
 	// Kubernetes workload name of the process that received this policy verdict.
 	// This field is set if and only if the process belongs to a Kubernetes workload.
 	KubernetesWorkloadName string `protobuf:"bytes,9,opt,name=kubernetes_workload_name,json=kubernetesWorkloadName,proto3" json:"kubernetes_workload_name,omitempty"`
@@ -507,36 +441,41 @@ type NetworkConnectTelemetry struct {
 	// Kubernetes namespace of the destination workload. This field is set if
 	// and only if destination_type is `DESTINATION_TYPE_KUBERNETES`.
 	DestinationKubernetesNamespace string `protobuf:"bytes,16,opt,name=destination_kubernetes_namespace,json=destinationKubernetesNamespace,proto3" json:"destination_kubernetes_namespace,omitempty"`
-	// Kubernetes workload kind of the destination. This field is set if and only
-	// if destination_type is `DESTINATION_TYPE_KUBERNETES`.
-	DestinationKubernetesWorkloadKind WorkloadKind `protobuf:"varint,17,opt,name=destination_kubernetes_workload_kind,json=destinationKubernetesWorkloadKind,proto3,enum=application_model.v1alpha.WorkloadKind" json:"destination_kubernetes_workload_kind,omitempty"`
+	// Kubernetes resource kind of the process that received the policy verdict.
+	DestinationKubernetesResourceKind v1alpha.ResourceKind `protobuf:"varint,17,opt,name=destination_kubernetes_resource_kind,json=destinationKubernetesResourceKind,proto3,enum=common.k8s.type.v1alpha.ResourceKind" json:"destination_kubernetes_resource_kind,omitempty"`
 	// Kubernetes workload name of the destination. This field is set if and only
 	// if destination_type is `DESTINATION_TYPE_KUBERNETES`.
-	DestinationKubernetesWorkloadName string `protobuf:"bytes,18,opt,name=destination_kubernetes_workload_name,json=destinationKubernetesWorkloadName,proto3" json:"destination_kubernetes_workload_name,omitempty"`
+	DestinationKubernetesResourceName string `protobuf:"bytes,18,opt,name=destination_kubernetes_resource_name,json=destinationKubernetesResourceName,proto3" json:"destination_kubernetes_resource_name,omitempty"`
+	// Kubernetes service kind of the process that received this policy verdict.
+	// This field is set if and only if the process resource kind is service.
+	DestinationKubernetesServiceKind v1alpha.ServiceKind `protobuf:"varint,19,opt,name=destination_kubernetes_service_kind,json=destinationKubernetesServiceKind,proto3,enum=common.k8s.type.v1alpha.ServiceKind" json:"destination_kubernetes_service_kind,omitempty"`
+	// Kubernetes workload kind of the destination. This field is set if and only
+	// if destination_type is `DESTINATION_TYPE_KUBERNETES`.
+	DestinationKubernetesWorkloadKind v1alpha.WorkloadKind `protobuf:"varint,20,opt,name=destination_kubernetes_workload_kind,json=destinationKubernetesWorkloadKind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"destination_kubernetes_workload_kind,omitempty"`
 	// Network protocol of the connection that received this network connect
 	// policy verdict.
-	Protocol NetworkProtocolType `protobuf:"varint,19,opt,name=protocol,proto3,enum=application_model.v1alpha.NetworkProtocolType" json:"protocol,omitempty"`
+	Protocol NetworkProtocolType `protobuf:"varint,21,opt,name=protocol,proto3,enum=application_model.v1alpha.NetworkProtocolType" json:"protocol,omitempty"`
 	// Policy verdict. If the connections don't have corresponding policy rules,
 	// this field is set to POLICY_VERDICT_UNSPECIFIED.
-	Verdict PolicyVerdict `protobuf:"varint,20,opt,name=verdict,proto3,enum=application_model.v1alpha.PolicyVerdict" json:"verdict,omitempty"`
+	Verdict PolicyVerdict `protobuf:"varint,22,opt,name=verdict,proto3,enum=application_model.v1alpha.PolicyVerdict" json:"verdict,omitempty"`
 	// Name of the Tetragon network connect policy that made this verdict.
 	// If the connections don't have corresponding policy rules, this field is not set.
-	PolicyName string `protobuf:"bytes,21,opt,name=policy_name,json=policyName,proto3" json:"policy_name,omitempty"`
+	PolicyName string `protobuf:"bytes,23,opt,name=policy_name,json=policyName,proto3" json:"policy_name,omitempty"`
 	// Name of the Tetragon network connect policy rule that made this verdict.
 	// If the connections don't have corresponding policy rules, this field is not set.
 	// If the connections were allowed by the default allow rule, this field is set to
 	// "tetragon:default-allow".
 	// If the connections were dropped by the default drop rule, this field is set to
 	// "tetragon:default-drop".
-	RuleName string `protobuf:"bytes,22,opt,name=rule_name,json=ruleName,proto3" json:"rule_name,omitempty"`
+	RuleName string `protobuf:"bytes,24,opt,name=rule_name,json=ruleName,proto3" json:"rule_name,omitempty"`
 	// tx_bytes allowed or dropped.
 	// For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of
 	// transmit bytes from connections allowed by the policy rule.
 	// For `POLICY_VERDICT_DROP` verdict events, this field is set to zero.
-	TxBytes uint64 `protobuf:"varint,23,opt,name=tx_bytes,json=txBytes,proto3" json:"tx_bytes,omitempty"`
+	TxBytes uint64 `protobuf:"varint,25,opt,name=tx_bytes,json=txBytes,proto3" json:"tx_bytes,omitempty"`
 	// The number of receive bytes from connections allowed by the policy rule. This
 	// field is not set for `POLICY_VERDICT_DROP` verdict events.
-	RxBytes uint64 `protobuf:"varint,24,opt,name=rx_bytes,json=rxBytes,proto3" json:"rx_bytes,omitempty"`
+	RxBytes uint64 `protobuf:"varint,26,opt,name=rx_bytes,json=rxBytes,proto3" json:"rx_bytes,omitempty"`
 	// The number of TCP connections / UDP sessions.
 	// For `POLICY_VERDICT_UNSPECIFIED` verdict events, this field specifies the
 	// number of TCP connections / UDP sessions created.
@@ -544,9 +483,9 @@ type NetworkConnectTelemetry struct {
 	// TCP connections / UDP sessions allowed by this policy rule.
 	// For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of
 	// dropped TCP connections / UDP sessions dropped by this policy rule.
-	Sessions uint64 `protobuf:"varint,25,opt,name=sessions,proto3" json:"sessions,omitempty"`
+	Sessions uint64 `protobuf:"varint,27,opt,name=sessions,proto3" json:"sessions,omitempty"`
 	// The ID of the application model from which this telemetry data got derived.
-	ApplicationModelId string `protobuf:"bytes,26,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
+	ApplicationModelId string `protobuf:"bytes,28,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -630,11 +569,11 @@ func (x *NetworkConnectTelemetry) GetKubernetesNamespace() string {
 	return ""
 }
 
-func (x *NetworkConnectTelemetry) GetKubernetesWorkloadKind() WorkloadKind {
+func (x *NetworkConnectTelemetry) GetKubernetesWorkloadKind() v1alpha.WorkloadKind {
 	if x != nil {
 		return x.KubernetesWorkloadKind
 	}
-	return WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
+	return v1alpha.WorkloadKind(0)
 }
 
 func (x *NetworkConnectTelemetry) GetKubernetesWorkloadName() string {
@@ -693,18 +632,32 @@ func (x *NetworkConnectTelemetry) GetDestinationKubernetesNamespace() string {
 	return ""
 }
 
-func (x *NetworkConnectTelemetry) GetDestinationKubernetesWorkloadKind() WorkloadKind {
+func (x *NetworkConnectTelemetry) GetDestinationKubernetesResourceKind() v1alpha.ResourceKind {
+	if x != nil {
+		return x.DestinationKubernetesResourceKind
+	}
+	return v1alpha.ResourceKind(0)
+}
+
+func (x *NetworkConnectTelemetry) GetDestinationKubernetesResourceName() string {
+	if x != nil {
+		return x.DestinationKubernetesResourceName
+	}
+	return ""
+}
+
+func (x *NetworkConnectTelemetry) GetDestinationKubernetesServiceKind() v1alpha.ServiceKind {
+	if x != nil {
+		return x.DestinationKubernetesServiceKind
+	}
+	return v1alpha.ServiceKind(0)
+}
+
+func (x *NetworkConnectTelemetry) GetDestinationKubernetesWorkloadKind() v1alpha.WorkloadKind {
 	if x != nil {
 		return x.DestinationKubernetesWorkloadKind
 	}
-	return WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
-}
-
-func (x *NetworkConnectTelemetry) GetDestinationKubernetesWorkloadName() string {
-	if x != nil {
-		return x.DestinationKubernetesWorkloadName
-	}
-	return ""
+	return v1alpha.WorkloadKind(0)
 }
 
 func (x *NetworkConnectTelemetry) GetProtocol() NetworkProtocolType {
@@ -993,7 +946,7 @@ func (x *ApplicationNamespace) GetWorkloads() []*ApplicationWorkload {
 type ApplicationWorkload struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Kind  WorkloadKind           `protobuf:"varint,2,opt,name=kind,proto3,enum=application_model.v1alpha.WorkloadKind" json:"kind,omitempty"`
+	Kind  v1alpha.WorkloadKind   `protobuf:"varint,2,opt,name=kind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"kind,omitempty"`
 	// A list of process groups in the workload. See ApplicationProcessGroup for
 	// the definition of a process group.
 	Processes     []*ApplicationProcessGroup `protobuf:"bytes,3,rep,name=processes,proto3" json:"processes,omitempty"`
@@ -1038,11 +991,11 @@ func (x *ApplicationWorkload) GetName() string {
 	return ""
 }
 
-func (x *ApplicationWorkload) GetKind() WorkloadKind {
+func (x *ApplicationWorkload) GetKind() v1alpha.WorkloadKind {
 	if x != nil {
 		return x.Kind
 	}
-	return WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
+	return v1alpha.WorkloadKind(0)
 }
 
 func (x *ApplicationWorkload) GetProcesses() []*ApplicationProcessGroup {
@@ -1585,7 +1538,7 @@ type DestinationWorkload struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Namespace     string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Kind          WorkloadKind           `protobuf:"varint,3,opt,name=kind,proto3,enum=application_model.v1alpha.WorkloadKind" json:"kind,omitempty"`
+	Kind          v1alpha.WorkloadKind   `protobuf:"varint,3,opt,name=kind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1634,11 +1587,11 @@ func (x *DestinationWorkload) GetNamespace() string {
 	return ""
 }
 
-func (x *DestinationWorkload) GetKind() WorkloadKind {
+func (x *DestinationWorkload) GetKind() v1alpha.WorkloadKind {
 	if x != nil {
 		return x.Kind
 	}
-	return WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
+	return v1alpha.WorkloadKind(0)
 }
 
 type DestinationIP struct {
@@ -1977,7 +1930,7 @@ var File_application_model_v1alpha_application_model_proto protoreflect.FileDesc
 
 const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\n" +
-	"1application_model/v1alpha/application_model.proto\x12\x19application_model.v1alpha\x1a(application_model/v1alpha/syscalls.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xb7\x06\n" +
+	"1application_model/v1alpha/application_model.proto\x12\x19application_model.v1alpha\x1a(application_model/v1alpha/syscalls.proto\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xb5\x06\n" +
 	"\x10ProcessTelemetry\x12!\n" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1b\n" +
 	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x12G\n" +
@@ -1985,8 +1938,8 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"event_type\x18\x03 \x01(\x0e2(.application_model.v1alpha.TelemetryTypeR\teventType\x12.\n" +
 	"\x04time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x121\n" +
 	"\x14kubernetes_namespace\x18\x05 \x01(\tR\x13kubernetesNamespace\x128\n" +
-	"\x18kubernetes_workload_name\x18\x06 \x01(\tR\x16kubernetesWorkloadName\x12a\n" +
-	"\x18kubernetes_workload_kind\x18\a \x01(\x0e2'.application_model.v1alpha.WorkloadKindR\x16kubernetesWorkloadKind\x12!\n" +
+	"\x18kubernetes_workload_name\x18\x06 \x01(\tR\x16kubernetesWorkloadName\x12_\n" +
+	"\x18kubernetes_workload_kind\x18\a \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\x16kubernetesWorkloadKind\x12!\n" +
 	"\fprocess_hash\x18\b \x01(\tR\vprocessHash\x12!\n" +
 	"\fprocess_name\x18\t \x01(\tR\vprocessName\x12+\n" +
 	"\x11process_arguments\x18\n" +
@@ -2000,7 +1953,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x14application_model_id\x18\x0f \x01(\tR\x12applicationModelId\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xdd\v\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc6\r\n" +
 	"\x17NetworkConnectTelemetry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x04time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12G\n" +
@@ -2010,8 +1963,8 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\tnode_name\x18\x05 \x01(\tR\bnodeName\x12c\n" +
 	"\vnode_labels\x18\x06 \x03(\v2B.application_model.v1alpha.NetworkConnectTelemetry.NodeLabelsEntryR\n" +
 	"nodeLabels\x121\n" +
-	"\x14kubernetes_namespace\x18\a \x01(\tR\x13kubernetesNamespace\x12a\n" +
-	"\x18kubernetes_workload_kind\x18\b \x01(\x0e2'.application_model.v1alpha.WorkloadKindR\x16kubernetesWorkloadKind\x128\n" +
+	"\x14kubernetes_namespace\x18\a \x01(\tR\x13kubernetesNamespace\x12_\n" +
+	"\x18kubernetes_workload_kind\x18\b \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\x16kubernetesWorkloadKind\x128\n" +
 	"\x18kubernetes_workload_name\x18\t \x01(\tR\x16kubernetesWorkloadName\x12!\n" +
 	"\fprocess_hash\x18\n" +
 	" \x01(\tR\vprocessHash\x12!\n" +
@@ -2020,18 +1973,20 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x10destination_name\x18\r \x01(\tR\x0fdestinationName\x12U\n" +
 	"\x10destination_type\x18\x0e \x01(\x0e2*.application_model.v1alpha.DestinationTypeR\x0fdestinationType\x12)\n" +
 	"\x10destination_port\x18\x0f \x01(\rR\x0fdestinationPort\x12H\n" +
-	" destination_kubernetes_namespace\x18\x10 \x01(\tR\x1edestinationKubernetesNamespace\x12x\n" +
-	"$destination_kubernetes_workload_kind\x18\x11 \x01(\x0e2'.application_model.v1alpha.WorkloadKindR!destinationKubernetesWorkloadKind\x12O\n" +
-	"$destination_kubernetes_workload_name\x18\x12 \x01(\tR!destinationKubernetesWorkloadName\x12J\n" +
-	"\bprotocol\x18\x13 \x01(\x0e2..application_model.v1alpha.NetworkProtocolTypeR\bprotocol\x12B\n" +
-	"\averdict\x18\x14 \x01(\x0e2(.application_model.v1alpha.PolicyVerdictR\averdict\x12\x1f\n" +
-	"\vpolicy_name\x18\x15 \x01(\tR\n" +
+	" destination_kubernetes_namespace\x18\x10 \x01(\tR\x1edestinationKubernetesNamespace\x12v\n" +
+	"$destination_kubernetes_resource_kind\x18\x11 \x01(\x0e2%.common.k8s.type.v1alpha.ResourceKindR!destinationKubernetesResourceKind\x12O\n" +
+	"$destination_kubernetes_resource_name\x18\x12 \x01(\tR!destinationKubernetesResourceName\x12s\n" +
+	"#destination_kubernetes_service_kind\x18\x13 \x01(\x0e2$.common.k8s.type.v1alpha.ServiceKindR destinationKubernetesServiceKind\x12v\n" +
+	"$destination_kubernetes_workload_kind\x18\x14 \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR!destinationKubernetesWorkloadKind\x12J\n" +
+	"\bprotocol\x18\x15 \x01(\x0e2..application_model.v1alpha.NetworkProtocolTypeR\bprotocol\x12B\n" +
+	"\averdict\x18\x16 \x01(\x0e2(.application_model.v1alpha.PolicyVerdictR\averdict\x12\x1f\n" +
+	"\vpolicy_name\x18\x17 \x01(\tR\n" +
 	"policyName\x12\x1b\n" +
-	"\trule_name\x18\x16 \x01(\tR\bruleName\x12\x19\n" +
-	"\btx_bytes\x18\x17 \x01(\x04R\atxBytes\x12\x19\n" +
-	"\brx_bytes\x18\x18 \x01(\x04R\arxBytes\x12\x1a\n" +
-	"\bsessions\x18\x19 \x01(\x04R\bsessions\x120\n" +
-	"\x14application_model_id\x18\x1a \x01(\tR\x12applicationModelId\x1a=\n" +
+	"\trule_name\x18\x18 \x01(\tR\bruleName\x12\x19\n" +
+	"\btx_bytes\x18\x19 \x01(\x04R\atxBytes\x12\x19\n" +
+	"\brx_bytes\x18\x1a \x01(\x04R\arxBytes\x12\x1a\n" +
+	"\bsessions\x18\x1b \x01(\x04R\bsessions\x120\n" +
+	"\x14application_model_id\x18\x1c \x01(\tR\x12applicationModelId\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe1\x01\n" +
@@ -2050,10 +2005,10 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\tprocesses\x18\x01 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"x\n" +
 	"\x14ApplicationNamespace\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12L\n" +
-	"\tworkloads\x18\x02 \x03(\v2..application_model.v1alpha.ApplicationWorkloadR\tworkloads\"\xb8\x01\n" +
+	"\tworkloads\x18\x02 \x03(\v2..application_model.v1alpha.ApplicationWorkloadR\tworkloads\"\xb6\x01\n" +
 	"\x13ApplicationWorkload\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12;\n" +
-	"\x04kind\x18\x02 \x01(\x0e2'.application_model.v1alpha.WorkloadKindR\x04kind\x12P\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x129\n" +
+	"\x04kind\x18\x02 \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\x04kind\x12P\n" +
 	"\tprocesses\x18\x03 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"\xc7\x04\n" +
 	"\x17ApplicationProcessGroup\x12\x12\n" +
 	"\x04hash\x18\x01 \x01(\tR\x04hash\x12\x12\n" +
@@ -2094,11 +2049,11 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x04port\x18\xe9\a \x01(\x04R\x04portB\x06\n" +
 	"\x04type\"=\n" +
 	"\x0eDestinationDns\x12+\n" +
-	"\x11destination_names\x18\x01 \x03(\tR\x10destinationNames\"\x84\x01\n" +
+	"\x11destination_names\x18\x01 \x03(\tR\x10destinationNames\"\x82\x01\n" +
 	"\x13DestinationWorkload\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
-	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12;\n" +
-	"\x04kind\x18\x03 \x01(\x0e2'.application_model.v1alpha.WorkloadKindR\x04kind\"\x1f\n" +
+	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x129\n" +
+	"\x04kind\x18\x03 \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\x04kind\"\x1f\n" +
 	"\rDestinationIP\x12\x0e\n" +
 	"\x02ip\x18\x01 \x01(\tR\x02ip\"\x83\x01\n" +
 	"\x13ApplicationSyscalls\x12:\n" +
@@ -2136,17 +2091,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\rTelemetryType\x12\x1e\n" +
 	"\x1aTELEMETRY_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16TELEMETRY_TYPE_PROCESS\x10\x01\x12\"\n" +
-	"\x1eTELEMETRY_TYPE_NETWORK_CONNECT\x10\x02*\x89\x02\n" +
-	"\fWorkloadKind\x12\x1d\n" +
-	"\x19WORKLOAD_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
-	"\x11WORKLOAD_KIND_POD\x10\x01\x12\x1c\n" +
-	"\x18WORKLOAD_KIND_DEPLOYMENT\x10\x02\x12\x1b\n" +
-	"\x17WORKLOAD_KIND_DAEMONSET\x10\x03\x12\x1d\n" +
-	"\x19WORKLOAD_KIND_STATEFULSET\x10\x04\x12\x15\n" +
-	"\x11WORKLOAD_KIND_JOB\x10\x05\x12\x19\n" +
-	"\x15WORKLOAD_KIND_CRONJOB\x10\x06\x12\x1c\n" +
-	"\x18WORKLOAD_KIND_REPLICASET\x10\a\x12\x19\n" +
-	"\x15WORKLOAD_KIND_SERVICE\x10\b2\xfe\x01\n" +
+	"\x1eTELEMETRY_TYPE_NETWORK_CONNECT\x10\x022\xfe\x01\n" +
 	"\x17ApplicationModelService\x12e\n" +
 	"\bGetModel\x12*.application_model.v1alpha.GetModelRequest\x1a+.application_model.v1alpha.GetModelResponse\"\x00\x12|\n" +
 	"\x0fStreamTelemetry\x121.application_model.v1alpha.StreamTelemetryRequest\x1a2.application_model.v1alpha.StreamTelemetryResponse\"\x000\x01B4Z2github.com/isovalent/ipa/application_model/v1alphab\x06proto3"
@@ -2163,92 +2108,96 @@ func file_application_model_v1alpha_application_model_proto_rawDescGZIP() []byte
 	return file_application_model_v1alpha_application_model_proto_rawDescData
 }
 
-var file_application_model_v1alpha_application_model_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_application_model_v1alpha_application_model_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_application_model_v1alpha_application_model_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_application_model_v1alpha_application_model_proto_goTypes = []any{
 	(PolicyVerdict)(0),              // 0: application_model.v1alpha.PolicyVerdict
 	(NetworkProtocolType)(0),        // 1: application_model.v1alpha.NetworkProtocolType
 	(DestinationType)(0),            // 2: application_model.v1alpha.DestinationType
 	(TelemetryType)(0),              // 3: application_model.v1alpha.TelemetryType
-	(WorkloadKind)(0),               // 4: application_model.v1alpha.WorkloadKind
-	(*ProcessTelemetry)(nil),        // 5: application_model.v1alpha.ProcessTelemetry
-	(*NetworkConnectTelemetry)(nil), // 6: application_model.v1alpha.NetworkConnectTelemetry
-	(*ApplicationModelEvent)(nil),   // 7: application_model.v1alpha.ApplicationModelEvent
-	(*ApplicationModel)(nil),        // 8: application_model.v1alpha.ApplicationModel
-	(*ApplicationHost)(nil),         // 9: application_model.v1alpha.ApplicationHost
-	(*ApplicationNamespace)(nil),    // 10: application_model.v1alpha.ApplicationNamespace
-	(*ApplicationWorkload)(nil),     // 11: application_model.v1alpha.ApplicationWorkload
-	(*ApplicationProcessGroup)(nil), // 12: application_model.v1alpha.ApplicationProcessGroup
-	(*NetworkPolicy)(nil),           // 13: application_model.v1alpha.NetworkPolicy
-	(*ApplicationConnection)(nil),   // 14: application_model.v1alpha.ApplicationConnection
-	(*ConnectionStats)(nil),         // 15: application_model.v1alpha.ConnectionStats
-	(*Destination)(nil),             // 16: application_model.v1alpha.Destination
-	(*DestinationDns)(nil),          // 17: application_model.v1alpha.DestinationDns
-	(*DestinationWorkload)(nil),     // 18: application_model.v1alpha.DestinationWorkload
-	(*DestinationIP)(nil),           // 19: application_model.v1alpha.DestinationIP
-	(*ApplicationSyscalls)(nil),     // 20: application_model.v1alpha.ApplicationSyscalls
-	(*GetModelRequest)(nil),         // 21: application_model.v1alpha.GetModelRequest
-	(*GetModelResponse)(nil),        // 22: application_model.v1alpha.GetModelResponse
-	(*StreamTelemetryRequest)(nil),  // 23: application_model.v1alpha.StreamTelemetryRequest
-	(*StreamTelemetryResponse)(nil), // 24: application_model.v1alpha.StreamTelemetryResponse
-	nil,                             // 25: application_model.v1alpha.ProcessTelemetry.NodeLabelsEntry
-	nil,                             // 26: application_model.v1alpha.NetworkConnectTelemetry.NodeLabelsEntry
-	(*timestamppb.Timestamp)(nil),   // 27: google.protobuf.Timestamp
-	(*wrapperspb.BoolValue)(nil),    // 28: google.protobuf.BoolValue
-	(Sys)(0),                        // 29: application_model.v1alpha.Sys
-	(Abi)(0),                        // 30: application_model.v1alpha.Abi
+	(*ProcessTelemetry)(nil),        // 4: application_model.v1alpha.ProcessTelemetry
+	(*NetworkConnectTelemetry)(nil), // 5: application_model.v1alpha.NetworkConnectTelemetry
+	(*ApplicationModelEvent)(nil),   // 6: application_model.v1alpha.ApplicationModelEvent
+	(*ApplicationModel)(nil),        // 7: application_model.v1alpha.ApplicationModel
+	(*ApplicationHost)(nil),         // 8: application_model.v1alpha.ApplicationHost
+	(*ApplicationNamespace)(nil),    // 9: application_model.v1alpha.ApplicationNamespace
+	(*ApplicationWorkload)(nil),     // 10: application_model.v1alpha.ApplicationWorkload
+	(*ApplicationProcessGroup)(nil), // 11: application_model.v1alpha.ApplicationProcessGroup
+	(*NetworkPolicy)(nil),           // 12: application_model.v1alpha.NetworkPolicy
+	(*ApplicationConnection)(nil),   // 13: application_model.v1alpha.ApplicationConnection
+	(*ConnectionStats)(nil),         // 14: application_model.v1alpha.ConnectionStats
+	(*Destination)(nil),             // 15: application_model.v1alpha.Destination
+	(*DestinationDns)(nil),          // 16: application_model.v1alpha.DestinationDns
+	(*DestinationWorkload)(nil),     // 17: application_model.v1alpha.DestinationWorkload
+	(*DestinationIP)(nil),           // 18: application_model.v1alpha.DestinationIP
+	(*ApplicationSyscalls)(nil),     // 19: application_model.v1alpha.ApplicationSyscalls
+	(*GetModelRequest)(nil),         // 20: application_model.v1alpha.GetModelRequest
+	(*GetModelResponse)(nil),        // 21: application_model.v1alpha.GetModelResponse
+	(*StreamTelemetryRequest)(nil),  // 22: application_model.v1alpha.StreamTelemetryRequest
+	(*StreamTelemetryResponse)(nil), // 23: application_model.v1alpha.StreamTelemetryResponse
+	nil,                             // 24: application_model.v1alpha.ProcessTelemetry.NodeLabelsEntry
+	nil,                             // 25: application_model.v1alpha.NetworkConnectTelemetry.NodeLabelsEntry
+	(*timestamppb.Timestamp)(nil),   // 26: google.protobuf.Timestamp
+	(v1alpha.WorkloadKind)(0),       // 27: common.k8s.type.v1alpha.WorkloadKind
+	(v1alpha.ResourceKind)(0),       // 28: common.k8s.type.v1alpha.ResourceKind
+	(v1alpha.ServiceKind)(0),        // 29: common.k8s.type.v1alpha.ServiceKind
+	(*wrapperspb.BoolValue)(nil),    // 30: google.protobuf.BoolValue
+	(Sys)(0),                        // 31: application_model.v1alpha.Sys
+	(Abi)(0),                        // 32: application_model.v1alpha.Abi
 }
 var file_application_model_v1alpha_application_model_proto_depIdxs = []int32{
 	3,  // 0: application_model.v1alpha.ProcessTelemetry.event_type:type_name -> application_model.v1alpha.TelemetryType
-	27, // 1: application_model.v1alpha.ProcessTelemetry.time:type_name -> google.protobuf.Timestamp
-	4,  // 2: application_model.v1alpha.ProcessTelemetry.kubernetes_workload_kind:type_name -> application_model.v1alpha.WorkloadKind
-	25, // 3: application_model.v1alpha.ProcessTelemetry.node_labels:type_name -> application_model.v1alpha.ProcessTelemetry.NodeLabelsEntry
-	27, // 4: application_model.v1alpha.NetworkConnectTelemetry.time:type_name -> google.protobuf.Timestamp
+	26, // 1: application_model.v1alpha.ProcessTelemetry.time:type_name -> google.protobuf.Timestamp
+	27, // 2: application_model.v1alpha.ProcessTelemetry.kubernetes_workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	24, // 3: application_model.v1alpha.ProcessTelemetry.node_labels:type_name -> application_model.v1alpha.ProcessTelemetry.NodeLabelsEntry
+	26, // 4: application_model.v1alpha.NetworkConnectTelemetry.time:type_name -> google.protobuf.Timestamp
 	3,  // 5: application_model.v1alpha.NetworkConnectTelemetry.event_type:type_name -> application_model.v1alpha.TelemetryType
-	26, // 6: application_model.v1alpha.NetworkConnectTelemetry.node_labels:type_name -> application_model.v1alpha.NetworkConnectTelemetry.NodeLabelsEntry
-	4,  // 7: application_model.v1alpha.NetworkConnectTelemetry.kubernetes_workload_kind:type_name -> application_model.v1alpha.WorkloadKind
+	25, // 6: application_model.v1alpha.NetworkConnectTelemetry.node_labels:type_name -> application_model.v1alpha.NetworkConnectTelemetry.NodeLabelsEntry
+	27, // 7: application_model.v1alpha.NetworkConnectTelemetry.kubernetes_workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
 	2,  // 8: application_model.v1alpha.NetworkConnectTelemetry.destination_type:type_name -> application_model.v1alpha.DestinationType
-	4,  // 9: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_workload_kind:type_name -> application_model.v1alpha.WorkloadKind
-	1,  // 10: application_model.v1alpha.NetworkConnectTelemetry.protocol:type_name -> application_model.v1alpha.NetworkProtocolType
-	0,  // 11: application_model.v1alpha.NetworkConnectTelemetry.verdict:type_name -> application_model.v1alpha.PolicyVerdict
-	27, // 12: application_model.v1alpha.ApplicationModelEvent.time:type_name -> google.protobuf.Timestamp
-	8,  // 13: application_model.v1alpha.ApplicationModelEvent.application_model:type_name -> application_model.v1alpha.ApplicationModel
-	10, // 14: application_model.v1alpha.ApplicationModel.namespaces:type_name -> application_model.v1alpha.ApplicationNamespace
-	9,  // 15: application_model.v1alpha.ApplicationModel.host:type_name -> application_model.v1alpha.ApplicationHost
-	12, // 16: application_model.v1alpha.ApplicationHost.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
-	11, // 17: application_model.v1alpha.ApplicationNamespace.workloads:type_name -> application_model.v1alpha.ApplicationWorkload
-	4,  // 18: application_model.v1alpha.ApplicationWorkload.kind:type_name -> application_model.v1alpha.WorkloadKind
-	12, // 19: application_model.v1alpha.ApplicationWorkload.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
-	12, // 20: application_model.v1alpha.ApplicationProcessGroup.children:type_name -> application_model.v1alpha.ApplicationProcessGroup
-	14, // 21: application_model.v1alpha.ApplicationProcessGroup.connections:type_name -> application_model.v1alpha.ApplicationConnection
-	28, // 22: application_model.v1alpha.ApplicationProcessGroup.in_init_tree:type_name -> google.protobuf.BoolValue
-	20, // 23: application_model.v1alpha.ApplicationProcessGroup.syscall_info:type_name -> application_model.v1alpha.ApplicationSyscalls
-	27, // 24: application_model.v1alpha.ApplicationProcessGroup.latest_start_time:type_name -> google.protobuf.Timestamp
-	27, // 25: application_model.v1alpha.ApplicationProcessGroup.latest_exit_time:type_name -> google.protobuf.Timestamp
-	0,  // 26: application_model.v1alpha.NetworkPolicy.verdict:type_name -> application_model.v1alpha.PolicyVerdict
-	16, // 27: application_model.v1alpha.ApplicationConnection.destination:type_name -> application_model.v1alpha.Destination
-	15, // 28: application_model.v1alpha.ApplicationConnection.stats:type_name -> application_model.v1alpha.ConnectionStats
-	13, // 29: application_model.v1alpha.ApplicationConnection.policy:type_name -> application_model.v1alpha.NetworkPolicy
-	27, // 30: application_model.v1alpha.ConnectionStats.last_quota_reset:type_name -> google.protobuf.Timestamp
-	27, // 31: application_model.v1alpha.ConnectionStats.next_quota_reset:type_name -> google.protobuf.Timestamp
-	17, // 32: application_model.v1alpha.Destination.dns:type_name -> application_model.v1alpha.DestinationDns
-	18, // 33: application_model.v1alpha.Destination.workload:type_name -> application_model.v1alpha.DestinationWorkload
-	19, // 34: application_model.v1alpha.Destination.ip:type_name -> application_model.v1alpha.DestinationIP
-	4,  // 35: application_model.v1alpha.DestinationWorkload.kind:type_name -> application_model.v1alpha.WorkloadKind
-	29, // 36: application_model.v1alpha.ApplicationSyscalls.syscalls:type_name -> application_model.v1alpha.Sys
-	30, // 37: application_model.v1alpha.ApplicationSyscalls.abi:type_name -> application_model.v1alpha.Abi
-	7,  // 38: application_model.v1alpha.GetModelResponse.model:type_name -> application_model.v1alpha.ApplicationModelEvent
-	5,  // 39: application_model.v1alpha.StreamTelemetryResponse.process:type_name -> application_model.v1alpha.ProcessTelemetry
-	6,  // 40: application_model.v1alpha.StreamTelemetryResponse.network_connect:type_name -> application_model.v1alpha.NetworkConnectTelemetry
-	21, // 41: application_model.v1alpha.ApplicationModelService.GetModel:input_type -> application_model.v1alpha.GetModelRequest
-	23, // 42: application_model.v1alpha.ApplicationModelService.StreamTelemetry:input_type -> application_model.v1alpha.StreamTelemetryRequest
-	22, // 43: application_model.v1alpha.ApplicationModelService.GetModel:output_type -> application_model.v1alpha.GetModelResponse
-	24, // 44: application_model.v1alpha.ApplicationModelService.StreamTelemetry:output_type -> application_model.v1alpha.StreamTelemetryResponse
-	43, // [43:45] is the sub-list for method output_type
-	41, // [41:43] is the sub-list for method input_type
-	41, // [41:41] is the sub-list for extension type_name
-	41, // [41:41] is the sub-list for extension extendee
-	0,  // [0:41] is the sub-list for field type_name
+	28, // 9: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_resource_kind:type_name -> common.k8s.type.v1alpha.ResourceKind
+	29, // 10: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_service_kind:type_name -> common.k8s.type.v1alpha.ServiceKind
+	27, // 11: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	1,  // 12: application_model.v1alpha.NetworkConnectTelemetry.protocol:type_name -> application_model.v1alpha.NetworkProtocolType
+	0,  // 13: application_model.v1alpha.NetworkConnectTelemetry.verdict:type_name -> application_model.v1alpha.PolicyVerdict
+	26, // 14: application_model.v1alpha.ApplicationModelEvent.time:type_name -> google.protobuf.Timestamp
+	7,  // 15: application_model.v1alpha.ApplicationModelEvent.application_model:type_name -> application_model.v1alpha.ApplicationModel
+	9,  // 16: application_model.v1alpha.ApplicationModel.namespaces:type_name -> application_model.v1alpha.ApplicationNamespace
+	8,  // 17: application_model.v1alpha.ApplicationModel.host:type_name -> application_model.v1alpha.ApplicationHost
+	11, // 18: application_model.v1alpha.ApplicationHost.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
+	10, // 19: application_model.v1alpha.ApplicationNamespace.workloads:type_name -> application_model.v1alpha.ApplicationWorkload
+	27, // 20: application_model.v1alpha.ApplicationWorkload.kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	11, // 21: application_model.v1alpha.ApplicationWorkload.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
+	11, // 22: application_model.v1alpha.ApplicationProcessGroup.children:type_name -> application_model.v1alpha.ApplicationProcessGroup
+	13, // 23: application_model.v1alpha.ApplicationProcessGroup.connections:type_name -> application_model.v1alpha.ApplicationConnection
+	30, // 24: application_model.v1alpha.ApplicationProcessGroup.in_init_tree:type_name -> google.protobuf.BoolValue
+	19, // 25: application_model.v1alpha.ApplicationProcessGroup.syscall_info:type_name -> application_model.v1alpha.ApplicationSyscalls
+	26, // 26: application_model.v1alpha.ApplicationProcessGroup.latest_start_time:type_name -> google.protobuf.Timestamp
+	26, // 27: application_model.v1alpha.ApplicationProcessGroup.latest_exit_time:type_name -> google.protobuf.Timestamp
+	0,  // 28: application_model.v1alpha.NetworkPolicy.verdict:type_name -> application_model.v1alpha.PolicyVerdict
+	15, // 29: application_model.v1alpha.ApplicationConnection.destination:type_name -> application_model.v1alpha.Destination
+	14, // 30: application_model.v1alpha.ApplicationConnection.stats:type_name -> application_model.v1alpha.ConnectionStats
+	12, // 31: application_model.v1alpha.ApplicationConnection.policy:type_name -> application_model.v1alpha.NetworkPolicy
+	26, // 32: application_model.v1alpha.ConnectionStats.last_quota_reset:type_name -> google.protobuf.Timestamp
+	26, // 33: application_model.v1alpha.ConnectionStats.next_quota_reset:type_name -> google.protobuf.Timestamp
+	16, // 34: application_model.v1alpha.Destination.dns:type_name -> application_model.v1alpha.DestinationDns
+	17, // 35: application_model.v1alpha.Destination.workload:type_name -> application_model.v1alpha.DestinationWorkload
+	18, // 36: application_model.v1alpha.Destination.ip:type_name -> application_model.v1alpha.DestinationIP
+	27, // 37: application_model.v1alpha.DestinationWorkload.kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	31, // 38: application_model.v1alpha.ApplicationSyscalls.syscalls:type_name -> application_model.v1alpha.Sys
+	32, // 39: application_model.v1alpha.ApplicationSyscalls.abi:type_name -> application_model.v1alpha.Abi
+	6,  // 40: application_model.v1alpha.GetModelResponse.model:type_name -> application_model.v1alpha.ApplicationModelEvent
+	4,  // 41: application_model.v1alpha.StreamTelemetryResponse.process:type_name -> application_model.v1alpha.ProcessTelemetry
+	5,  // 42: application_model.v1alpha.StreamTelemetryResponse.network_connect:type_name -> application_model.v1alpha.NetworkConnectTelemetry
+	20, // 43: application_model.v1alpha.ApplicationModelService.GetModel:input_type -> application_model.v1alpha.GetModelRequest
+	22, // 44: application_model.v1alpha.ApplicationModelService.StreamTelemetry:input_type -> application_model.v1alpha.StreamTelemetryRequest
+	21, // 45: application_model.v1alpha.ApplicationModelService.GetModel:output_type -> application_model.v1alpha.GetModelResponse
+	23, // 46: application_model.v1alpha.ApplicationModelService.StreamTelemetry:output_type -> application_model.v1alpha.StreamTelemetryResponse
+	45, // [45:47] is the sub-list for method output_type
+	43, // [43:45] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_application_model_v1alpha_application_model_proto_init() }
@@ -2271,7 +2220,7 @@ func file_application_model_v1alpha_application_model_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_application_model_v1alpha_application_model_proto_rawDesc), len(file_application_model_v1alpha_application_model_proto_rawDesc)),
-			NumEnums:      5,
+			NumEnums:      4,
 			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,

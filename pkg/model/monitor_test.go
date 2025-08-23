@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/isovalent/ipa/application_model/v1alpha"
+	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -32,7 +32,7 @@ func TestNetworkMonitorKey_String(t *testing.T) {
 	}
 	assert.Equal(t, "host > cisco.com:443", key.String())
 	key.SourceNamespace = "kube-system"
-	key.SourceWorkloadKind = v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT
+	key.SourceWorkloadKind = common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT
 	key.SourceWorkloadName = "nginx"
 	assert.Equal(t, "kube-system/Deployment:nginx > cisco.com:443", key.String())
 }
@@ -156,22 +156,22 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 		},
 		NetworkKey{
 			SourceNamespace:              "client",
-			SourceWorkloadKind:           v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			SourceWorkloadName:           "my-app",
 			DestinationWorkloadName:      "kubernetes",
 			DestinationWorkloadNamespace: "default",
-			DestinationWorkloadKind:      v1alpha.WorkloadKind_WORKLOAD_KIND_SERVICE,
+			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			DestinationPort:              443,
 		}: NetworkMonitorValue{
 			TXBytes: 300,
 			RXBytes: 500,
 		}, NetworkKey{
 			SourceNamespace:              "client",
-			SourceWorkloadKind:           v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			SourceWorkloadName:           "my-app",
 			DestinationWorkloadName:      "nginx",
 			DestinationWorkloadNamespace: "server",
-			DestinationWorkloadKind:      v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
 			TXBytes: 200,
@@ -181,11 +181,11 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 	expectedQuota := NetworkQuotaData{
 		NetworkKey{
 			SourceNamespace:              "client",
-			SourceWorkloadKind:           v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			SourceWorkloadName:           "my-app",
 			DestinationWorkloadName:      "nginx",
 			DestinationWorkloadNamespace: "server",
-			DestinationWorkloadKind:      v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 		}: NetworkQuotaValue{
 			TXBytes:   200,
 			RXBytes:   400,
@@ -212,11 +212,11 @@ func TestDiff(t *testing.T) {
 		},
 		NetworkKey{
 			SourceNamespace:              "client",
-			SourceWorkloadKind:           v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			SourceWorkloadName:           "my-app",
 			DestinationWorkloadName:      "nginx",
 			DestinationWorkloadNamespace: "server",
-			DestinationWorkloadKind:      v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
 			TXBytes: 100,
@@ -236,11 +236,11 @@ func TestDiff(t *testing.T) {
 		// an existing entry with updated stats
 		NetworkKey{
 			SourceNamespace:              "client",
-			SourceWorkloadKind:           v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			SourceWorkloadName:           "my-app",
 			DestinationWorkloadName:      "nginx",
 			DestinationWorkloadNamespace: "server",
-			DestinationWorkloadKind:      v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
 			TXBytes: 1000,
@@ -249,7 +249,7 @@ func TestDiff(t *testing.T) {
 		// new entry
 		NetworkKey{
 			SourceNamespace:    "client",
-			SourceWorkloadKind: v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			SourceWorkloadName: "another-app",
 			DestinationNames:   "isovalent.com",
 			DestinationPort:    80,
@@ -262,11 +262,11 @@ func TestDiff(t *testing.T) {
 	assert.Equal(t, NetworkMonitorData{
 		NetworkKey{
 			SourceNamespace:              "client",
-			SourceWorkloadKind:           v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			SourceWorkloadName:           "my-app",
 			DestinationWorkloadName:      "nginx",
 			DestinationWorkloadNamespace: "server",
-			DestinationWorkloadKind:      v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
 			TXBytes: 900,
@@ -274,7 +274,7 @@ func TestDiff(t *testing.T) {
 		},
 		NetworkKey{
 			SourceNamespace:    "client",
-			SourceWorkloadKind: v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 			SourceWorkloadName: "another-app",
 			DestinationNames:   "isovalent.com",
 			DestinationPort:    80,
@@ -287,7 +287,7 @@ func TestDiff(t *testing.T) {
 func Test_sortNetworkKeys(t *testing.T) {
 	a := NetworkKey{
 		SourceNamespace:    "a",
-		SourceWorkloadKind: v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+		SourceWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 		SourceWorkloadName: "a",
 		SourceProcessName:  "a",
 		DestinationNames:   "a",
@@ -304,9 +304,9 @@ func Test_sortNetworkKeys(t *testing.T) {
 	require.Equal(t, CompareNetworkKeys(a, b), 0)
 
 	// workload kind
-	b.SourceWorkloadKind = v1alpha.WorkloadKind_WORKLOAD_KIND_REPLICASET
+	b.SourceWorkloadKind = common.WorkloadKind_WORKLOAD_KIND_REPLICASET
 	assert.Less(t, CompareNetworkKeys(a, b), 0)
-	b.SourceWorkloadKind = v1alpha.WorkloadKind_WORKLOAD_KIND_DAEMONSET
+	b.SourceWorkloadKind = common.WorkloadKind_WORKLOAD_KIND_DAEMONSET
 	assert.Greater(t, CompareNetworkKeys(a, b), 0)
 	b.SourceWorkloadKind = a.SourceWorkloadKind
 	require.Equal(t, CompareNetworkKeys(a, b), 0)
@@ -362,7 +362,7 @@ func TestProcessKey_String(t *testing.T) {
 	assert.Equal(t, "host bash -c ls", key.String())
 
 	key.Namespace = "default"
-	key.WorkloadKind = v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT
+	key.WorkloadKind = common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT
 	key.WorkloadName = "my-app"
 	assert.Equal(t, "default/Deployment:my-app bash -c ls", key.String())
 }
@@ -370,7 +370,7 @@ func TestProcessKey_String(t *testing.T) {
 func Test_sortProcessKeys(t *testing.T) {
 	a := ProcessKey{
 		Namespace:    "a",
-		WorkloadKind: v1alpha.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+		WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 		WorkloadName: "a",
 		Name:         "a",
 		Args:         "a",
@@ -387,9 +387,9 @@ func Test_sortProcessKeys(t *testing.T) {
 	b.Namespace = a.Namespace
 
 	// workload kind
-	b.WorkloadKind = v1alpha.WorkloadKind_WORKLOAD_KIND_REPLICASET
+	b.WorkloadKind = common.WorkloadKind_WORKLOAD_KIND_REPLICASET
 	assert.Less(t, CompareProcessKeys(a, b), 0)
-	b.WorkloadKind = v1alpha.WorkloadKind_WORKLOAD_KIND_DAEMONSET
+	b.WorkloadKind = common.WorkloadKind_WORKLOAD_KIND_DAEMONSET
 	assert.Greater(t, CompareProcessKeys(a, b), 0)
 	b.WorkloadKind = a.WorkloadKind
 

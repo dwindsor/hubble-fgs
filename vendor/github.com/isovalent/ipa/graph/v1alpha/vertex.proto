@@ -10,6 +10,10 @@ syntax = "proto3";
 
 package graph.v1alpha;
 
+import "common/k8s/type/v1alpha/resource.proto";
+import "common/k8s/type/v1alpha/service.proto";
+import "common/k8s/type/v1alpha/workload.proto";
+
 option go_package = "github.com/isovalent/ipa/graph/v1alpha";
 
 // A vertex represents a set of properties of a connection source or
@@ -29,52 +33,36 @@ message Vertex {
 message VertexFamilyKubernetes {
   // UID is the unique in time and space value of the Kubernetes object.
   string uid = 1;
+  // resource_kind defines the type of Kubernetes resource.
+  common.k8s.type.v1alpha.ResourceKind resource_kind = 2;
   // resource_version is an opaque value that represents the internal version
   // of the Kubernetes object.
-  string resource_version = 2;
+  string resource_version = 3;
   // resource_name is the name of the Kubernetes object which is unique within
   // a namespace.
-  string resource_name = 3;
+  string resource_name = 4;
   // cluster_name is the name of the Kubernetes cluster.
-  string cluster_name = 4;
+  string cluster_name = 5;
   // namespace is the space within which each resource name is unique.
-  string namespace = 5;
+  string namespace = 6;
   // node_name is the name of the Kubernetes node.
-  string node_name = 6;
+  string node_name = 7;
   // pod_name is the name of the Kubernetes pod.
-  string pod_name = 7;
+  string pod_name = 8;
   // container_name is the name of the container.
-  string container_name = 8;
-  // service_type represents the type of the Kubernetes service.
-  KubernetesServiceType service_type = 9;
-  // workload_type represents the type of the Kubernetes workload.
-  KubernetesWorkloadType workload_type = 10;
+  string container_name = 9;
+  // service_kind represents the type of the Kubernetes service.
+  common.k8s.type.v1alpha.ServiceKind service_kind = 10;
+  // workload_kind represents the type of the Kubernetes workload.
+  common.k8s.type.v1alpha.WorkloadKind workload_kind = 11;
   // ip is a network address that can be associated with the Kubernetes
   // resource and the connection.
-  string ip = 11;
+  string ip = 12;
+  // port is the network port associated with the ip address.
+  uint32 port = 13;
   // application_model_uuid is a unique identifier that identifies the
   // application model associated with the Kubernetes resource.
-  string application_model_uuid = 12;
-}
-
-// KubernetesServiceType represents the various Kubernetes service types.
-enum KubernetesServiceType {
-  KUBERNETES_SERVICE_TYPE_UNSPECIFIED = 0;
-  KUBERNETES_SERVICE_TYPE_CLUSTER_IP = 1;
-  KUBERNETES_SERVICE_TYPE_NODE_PORT = 2;
-  KUBERNETES_SERVICE_TYPE_LOAD_BALANCER = 3;
-  KUBERNETES_SERVICE_TYPE_EXTERNAL_NAME = 4;
-}
-
-// KubernetesWorkloadType represents the various Kubernetes workload types.
-enum KubernetesWorkloadType {
-  KUBERNETES_WORKLOAD_TYPE_UNSPECIFIED = 0;
-  KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT = 1;
-  KUBERNETES_WORKLOAD_TYPE_REPLICA_SET = 2;
-  KUBERNETES_WORKLOAD_TYPE_STATEFUL_SET = 3;
-  KUBERNETES_WORKLOAD_TYPE_DAEMON_SET = 4;
-  KUBERNETES_WORKLOAD_TYPE_JOB = 5;
-  KUBERNETES_WORKLOAD_TYPE_CRON_JOB = 6;
+  string application_model_uuid = 14;
 }
 
 // VertexFamilyNetworkDevice represents vertex properties that are related to a
@@ -82,6 +70,11 @@ enum KubernetesWorkloadType {
 message VertexFamilyNetworkDevice {
   // name is the name of the network device.
   string name = 1;
+  // ip is a network address that can be associated with the network device and
+  // the connection.
+  string ip = 2;
+  // port is the network port associated with the ip address.
+  uint32 port = 3;
 }
 
 // VertexFamilyWorldEntity represents a broad set of network elements outside
@@ -89,7 +82,9 @@ message VertexFamilyNetworkDevice {
 message VertexFamilyWorldEntity {
   // dns_name is the DNS name that can be associated with the world entity.
   string dns_name = 1;
-  // cidr_block is an IP network associated with the world entity in the form
-  // `<ip>/<bits>`.
-  string cidr_block = 2;
+  // ip is a network address that can be associated with the world entity and
+  // the connection.
+  string ip = 2;
+  // port is the network port associated with the ip address.
+  uint32 port = 3;
 }

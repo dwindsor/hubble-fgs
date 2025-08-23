@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/google/uuid"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	"github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -40,7 +41,7 @@ type namespaceKey struct {
 
 type workloadKey struct {
 	name string
-	kind appModelV1.WorkloadKind
+	kind v1alpha.WorkloadKind
 }
 
 type processKey struct {
@@ -132,14 +133,14 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 
 // translateWorkloadKind translates the process model workload kind into an app
 // model workload kind enum.
-func translateWorkloadKind(kind string) appModelV1.WorkloadKind {
+func translateWorkloadKind(kind string) v1alpha.WorkloadKind {
 	key := fmt.Sprintf("WORKLOAD_KIND_%s", strings.ToUpper(kind))
-	val, ok := appModelV1.WorkloadKind_value[key]
+	val, ok := v1alpha.WorkloadKind_value[key]
 	if ok {
-		return appModelV1.WorkloadKind(val)
+		return v1alpha.WorkloadKind(val)
 	}
 	// <host-kind> will fall through to here
-	return appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
+	return v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
 }
 
 func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool) *appModelV1.ApplicationModelEvent {
@@ -268,7 +269,7 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 	for _, ps := range app.GetHost().GetProcesses() {
 		pmk := ProcessKey{
 			Namespace:    HostNamespace,
-			WorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
+			WorkloadKind: v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			WorkloadName: HostWorkload,
 			Name:         ps.GetName(),
 			Args:         ps.GetArguments(),
@@ -277,7 +278,7 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 		for _, conn := range ps.GetConnections() {
 			nmk := NetworkKey{
 				SourceNamespace:    HostNamespace,
-				SourceWorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
+				SourceWorkloadKind: v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 				SourceWorkloadName: HostWorkload,
 				SourceProcessName:  ps.GetName(),
 				SourceProcessArgs:  ps.GetArguments(),

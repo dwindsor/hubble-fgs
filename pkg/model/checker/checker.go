@@ -21,6 +21,7 @@ import (
 	"github.com/google/cel-go/checker/decls"
 	"github.com/google/cel-go/ext"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	"github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
@@ -122,7 +123,7 @@ func NewApplicationModelChecker() (*ApplicationModelChecker, error) {
 		ext.Sets(),
 	}
 
-	options = append(options, cel.Declarations(exportConsts(appModelV1.WorkloadKind_value)...))
+	options = append(options, cel.Declarations(exportConsts(v1alpha.WorkloadKind_value)...))
 
 	// Convenience aliases for system calls.
 	options = append(options, cel.Declarations(exportConsts(appModelV1.Sys_value)...))

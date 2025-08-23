@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -94,7 +95,7 @@ func destC() *appModelV1.Destination {
 			Workload: &appModelV1.DestinationWorkload{
 				Name:      "foo",
 				Namespace: "fooNS",
-				Kind:      appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
+				Kind:      common.WorkloadKind_WORKLOAD_KIND_POD,
 			},
 		},
 		Port: 80,
@@ -250,13 +251,13 @@ func workloads() []*appModelV1.ApplicationWorkload {
 
 	a[0] = &appModelV1.ApplicationWorkload{
 		Name:      "workload2",
-		Kind:      appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
+		Kind:      common.WorkloadKind_WORKLOAD_KIND_POD,
 		Processes: ps0,
 	}
 
 	a[1] = &appModelV1.ApplicationWorkload{
 		Name:      "workload1",
-		Kind:      appModelV1.WorkloadKind_WORKLOAD_KIND_POD,
+		Kind:      common.WorkloadKind_WORKLOAD_KIND_POD,
 		Processes: ps1,
 	}
 	return a
@@ -532,19 +533,20 @@ func TestToNetworkFlatHost(t *testing.T) {
 	assert.Equal(t, aModel.Id, f[0].ApplicationModelId)
 }
 
+// This is broken after IPA upgrades the UNSPECIFIED should be a service.
 func Test_getDestination(t *testing.T) {
 	dest := appModelV1.Destination{
 		Type: &appModelV1.Destination_Workload{
 			Workload: &appModelV1.DestinationWorkload{
 				Name:      "kubernetes",
 				Namespace: "default",
-				Kind:      appModelV1.WorkloadKind_WORKLOAD_KIND_SERVICE,
+				Kind:      common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
 			},
 		},
 		Port: 1234,
 	}
 	name, namespace, workloadName, workloadKind := getDestination(&dest)
-	assert.Equal(t, "default:WORKLOAD_KIND_SERVICE:kubernetes", name)
+	assert.Equal(t, "default:WORKLOAD_KIND_UNSPECIFIED:kubernetes", name)
 	assert.Equal(t, dest.GetWorkload().GetNamespace(), namespace)
 	assert.Equal(t, dest.GetWorkload().GetName(), workloadName)
 	assert.Equal(t, dest.GetWorkload().GetKind(), workloadKind)
@@ -556,7 +558,7 @@ func TestTelemetryToConnection(t *testing.T) {
 		ClusterName:            "my-cluster",
 		NodeName:               "my-node",
 		KubernetesNamespace:    "tetragon",
-		KubernetesWorkloadKind: appModelV1.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+		KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 		KubernetesWorkloadName: "tetragon-grafana",
 		DestinationName:        "grafana.com",
 		DestinationType:        appModelV1.DestinationType_DESTINATION_TYPE_DNS,
@@ -573,7 +575,7 @@ func TestTelemetryToConnection(t *testing.T) {
 					ClusterName:          telemetry.ClusterName,
 					Namespace:            telemetry.KubernetesNamespace,
 					NodeName:             telemetry.NodeName,
-					WorkloadType:         graphV1.KubernetesWorkloadType_KUBERNETES_WORKLOAD_TYPE_DEPLOYMENT,
+					WorkloadKind:         common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 					ApplicationModelUuid: telemetry.ApplicationModelId,
 				},
 			},
@@ -589,7 +591,7 @@ func TestTelemetryToConnection(t *testing.T) {
 			{
 				Type: &graphV1.Edge_NetworkTelemetry{
 					NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
-						TxBytes: 1234,
+						NetworkTransmitBytesTotal: 1234,
 					},
 				},
 			},

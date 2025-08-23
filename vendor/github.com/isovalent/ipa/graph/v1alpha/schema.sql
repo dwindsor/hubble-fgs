@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS connections
     `source/family` UInt8, -- corresponds to the proto ID of the vertex family
     -- kubernetes family source vertex
     `source/kubernetes/uid` String,
+    `source/kubernetes/resource_kind` UInt8,
     `source/kubernetes/resource_version` String,
     `source/kubernetes/resource_name` String,
     `source/kubernetes/cluster_name` LowCardinality(String),
@@ -21,8 +22,8 @@ CREATE TABLE IF NOT EXISTS connections
     `source/kubernetes/node_name` String,
     `source/kubernetes/pod_name` String,
     `source/kubernetes/container_name` String,
-    `source/kubernetes/service_type` UInt8,
-    `source/kubernetes/workload_type` UInt8,
+    `source/kubernetes/service_kind` UInt8,
+    `source/kubernetes/workload_kind` UInt8,
     `source/kubernetes/ipv4` IPv4,
     `source/kubernetes/ipv6` IPv6,
     `source/kubernetes/application_model_uuid` UUID,
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS connections
     `destination/family` UInt8, -- corresponds to the proto ID of the vertex family
     -- kubernetes family destination vertex
     `destination/kubernetes/uid` String,
+    `destination/kubernetes/resource_kind` UInt8,
     `destination/kubernetes/resource_version` String,
     `destination/kubernetes/resource_name` String,
     `destination/kubernetes/cluster_name` LowCardinality(String),
@@ -43,8 +45,8 @@ CREATE TABLE IF NOT EXISTS connections
     `destination/kubernetes/node_name` String,
     `destination/kubernetes/pod_name` String,
     `destination/kubernetes/container_name` String,
-    `destination/kubernetes/service_type` UInt8,
-    `destination/kubernetes/workload_type` UInt8,
+    `destination/kubernetes/service_kind` UInt8,
+    `destination/kubernetes/workload_kind` UInt8,
     `destination/kubernetes/ipv4` IPv4,
     `destination/kubernetes/ipv6` IPv6,
     `destination/kubernetes/application_model_uuid` UUID,

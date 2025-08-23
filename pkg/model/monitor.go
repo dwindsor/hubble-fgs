@@ -24,19 +24,20 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/google/go-cmp/cmp"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	"github.com/isovalent/ipa/common/k8s/type/v1alpha"
 
 	"github.com/isovalent/hubble-fgs/pkg/common"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
-func prettyWorkloadKind(kind appModelV1.WorkloadKind) string {
+func prettyWorkloadKind(kind v1alpha.WorkloadKind) string {
 	caser := cases.Title(language.English)
 	return caser.String(strings.TrimPrefix(kind.String(), "WORKLOAD_KIND_"))
 }
 
 type NetworkKey struct {
 	SourceNamespace    string
-	SourceWorkloadKind appModelV1.WorkloadKind
+	SourceWorkloadKind v1alpha.WorkloadKind
 	SourceWorkloadName string
 	SourceProcessName  string
 	SourceProcessArgs  string
@@ -48,7 +49,7 @@ type NetworkKey struct {
 	// Workload
 	DestinationWorkloadName      string
 	DestinationWorkloadNamespace string
-	DestinationWorkloadKind      appModelV1.WorkloadKind
+	DestinationWorkloadKind      v1alpha.WorkloadKind
 }
 
 func DestinationName(nk *NetworkKey) string {
@@ -231,7 +232,7 @@ type ProcessMonitorData map[ProcessKey]ProcessValue
 
 type ProcessKey struct {
 	Namespace    string
-	WorkloadKind appModelV1.WorkloadKind
+	WorkloadKind v1alpha.WorkloadKind
 	WorkloadName string
 	Name         string
 	Args         string
@@ -295,7 +296,7 @@ func addDestinationInfo(dst *types.Destination, nwKey *NetworkKey) {
 	} else if dst.DestinationService != nil {
 		nwKey.DestinationWorkloadName = dst.DestinationService.Name
 		nwKey.DestinationWorkloadNamespace = dst.DestinationService.Namespace
-		nwKey.DestinationWorkloadKind = appModelV1.WorkloadKind_WORKLOAD_KIND_SERVICE
+		nwKey.DestinationWorkloadKind = v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED // workload_kind_service does not exist
 	}
 
 	nwKey.DestinationPort = dst.Port

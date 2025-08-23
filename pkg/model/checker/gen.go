@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	"github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"google.golang.org/protobuf/reflect/protopath"
 	"google.golang.org/protobuf/reflect/protorange"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -225,7 +226,7 @@ func (gen *codegen) DoPush(p protopath.Values) error {
 	case protoreflect.EnumNumber:
 		gen.maybeEmitAnd()
 		path.Push(string(fd.Name()))
-		gen.out.WriteString(fmt.Sprintf("%s == %s", gen.formatPath(), appModelV1.WorkloadKind_name[int32(v)]))
+		gen.out.WriteString(fmt.Sprintf("%s == %s", gen.formatPath(), v1alpha.WorkloadKind_name[int32(v)]))
 		path.Pop()
 	case string, []byte:
 		gen.maybeEmitAnd()
