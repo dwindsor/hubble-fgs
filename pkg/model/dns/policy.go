@@ -463,44 +463,75 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 	return allPolicy
 }
 
+func (state *PolicyState) GetRecords() ([]*record.DatapathRecord, error) {
+	calculatorRecords := []*record.DatapathRecord{}
+	currentPolicy := state.getAllExistingPolicy()
+	calculatorState := NewPolicyState()
+
+	uidGenerator := make(map[string]int, len(currentPolicy))
+
+	// Add Policy to calculator state
+	for _, p := range currentPolicy {
+		id, ok := uidGenerator[p.Name]
+		if !ok {
+			id = 0
+			uidGenerator[p.Name] = 0
+		} else {
+			id++
+			uidGenerator[p.Name] = id
+		}
+
+		uid := fmt.Sprintf("%s_%d", p.Name, id)
+		library.Link(p.Name, uid)
+		err := calculatorState.CreateMatchLabelsPolicy(uid, p)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Calculate current records of before making state change
+	for _, p := range state.localObjects {
+		r, err := calculatorState.objectAdd(p)
+		if err != nil {
+			return nil, err
+		}
+		calculatorRecords = append(calculatorRecords, r...)
+	}
+
+	for _, p := range state.remoteObjects {
+		r, err := calculatorState.objectAdd(p)
+		if err != nil {
+			return nil, err
+		}
+		calculatorRecords = append(calculatorRecords, r...)
+	}
+
+	for k, uid := range state.networkL3Objects {
+		r, err := calculatorState.l3Add(k)
+		if err != nil {
+			return nil, err
+		}
+		calculatorState.networkL3Objects[k] = uid
+		calculatorRecords = append(calculatorRecords, r...)
+	}
+	return calculatorRecords, nil
+}
+
 // createMatchLabelsPolicySet computes the records generated from the current
 // state and policies, then computes the records generated from a fresh state
 // contaning the current and new policies. It then returns the new state, the
 // records to add and the records to remove (which are the diff between the
 // current computed records and the new ones).
+//
+// Todo, this has lots of low hanging fruit for optimizing duplicate calculations.
 func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
 	// Entry point to Policy state create
 	// Collect existing policy set
 	currentState := GetRealizedState()
 	currentPolicy := currentState.getAllExistingPolicy()
-
-	calculatorRecords := []*record.DatapathRecord{}
-	calculatorState := NewPolicyState()
-
-	// Calculate current records of before making state change
-	for _, p := range currentState.localObjects {
-		r, err := calculatorState.objectAdd(p)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		calculatorRecords = append(calculatorRecords, r...)
-	}
-
-	for _, p := range currentState.remoteObjects {
-		r, err := calculatorState.objectAdd(p)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		calculatorRecords = append(calculatorRecords, r...)
-	}
-
-	for k, uid := range currentState.networkL3Objects {
-		r, err := calculatorState.l3Add(k)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		calculatorState.networkL3Objects[k] = uid
-		calculatorRecords = append(calculatorRecords, r...)
+	calculatorRecords, err := currentState.GetRecords()
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	// Building new state with extended policy set
