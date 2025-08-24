@@ -2,6 +2,7 @@ package dns
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -128,6 +129,14 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *type
 
 	subject := state.Src[uid]
 
+	l3id := ""
+	if policy.Subject.LogicalNetwork.VRF != "" {
+		l3id = policy.Subject.LogicalNetwork.VRF
+	} else if policy.Subject.LogicalNetwork.VLAN != 0 {
+		l3id = policy.Subject.LogicalNetwork.VRF
+	}
+	l3 := state.L3[uid]
+
 	var beforeSubjs []*record.DatapathRecord
 	var afterSubjs []*record.DatapathRecord
 
@@ -143,8 +152,18 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *type
 		}
 	}
 
+	if l3 != nil {
+		records, err := state.l3Add(l3id)
+		if err != nil {
+			logger.GetLogger().Warn("Remove policy failure: ", "policyName", l3.Name)
+		} else {
+			beforeSubjs = append(beforeSubjs, records...)
+		}
+	}
+
 	state.Src.Remove(uid)
 	state.Dst.Remove(uid)
+	state.L3.Remove(uid)
 
 	for _, v := range state.Src {
 		if v == nil {
@@ -157,6 +176,15 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *type
 				continue
 			}
 			afterSubjs = append(afterSubjs, sRecords...)
+		}
+	}
+
+	if l3 != nil {
+		records, err := state.l3Add(l3id)
+		if err != nil {
+			logger.GetLogger().Warn("Error on policy remove, failed to build new state:", "logicalNetwork", l3id)
+		} else {
+			afterSubjs = append(afterSubjs, records...)
 		}
 	}
 
@@ -360,7 +388,40 @@ func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.T
 	state.Src.Add(uid, ls)
 }
 
+// Create L3NetworkPolicy to add a new logical network policy
+func (state *PolicyState) CreateNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+	state.L3Lock.Lock()
+	defer state.L3Lock.Unlock()
+
+	labels := make(map[string]string)
+	if policy.Subject.LogicalNetwork.VLAN != 0 {
+		s := strconv.FormatUint(uint64(policy.Subject.LogicalNetwork.VLAN), 10)
+		labels["vlan"] = s
+	} else {
+		labels["vrf"] = policy.Subject.LogicalNetwork.VRF
+	}
+
+	ls := &matchLabels.LabelSet{
+		Name:   uid,
+		Labels: labels,
+		Policy: policy,
+	}
+
+	if policy.Subject.LogicalNetwork.VLAN != 0 {
+		return fmt.Errorf("l2 not implemented") //state.L2.Add(uid, ls)
+	}
+
+	state.L3.Add(uid, ls)
+	return nil
+}
+
 func (state *PolicyState) CreateMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+	// This is a L3 or L2 network firewall policy. For now we handle
+	// it here as a special case.
+	if policy.Source != nil {
+		state.CreateNetworkPolicy(uid, policy)
+	}
+
 	if len(policy.Destination.Labels.Equal) > 0 {
 		state.CreateDstMatchLabelsPolicy(uid, policy)
 	}
@@ -393,6 +454,12 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 			allPolicy = append(allPolicy, p.Policy)
 		}
 	}
+	for _, p := range state.L3 {
+		if _, ok := uniquePolicyMap[p.Name]; !ok {
+			uniquePolicyMap[p.Name] = p.Policy
+			allPolicy = append(allPolicy, p.Policy)
+		}
+	}
 	return allPolicy
 }
 
@@ -410,6 +477,7 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 	calculatorRecords := []*record.DatapathRecord{}
 	calculatorState := NewPolicyState()
 
+	// Calculate current records of before making state change
 	for _, p := range currentState.localObjects {
 		r, err := calculatorState.objectAdd(p)
 		if err != nil {
@@ -423,6 +491,15 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		calculatorRecords = append(calculatorRecords, r...)
+	}
+
+	for k, uid := range currentState.networkL3Objects {
+		r, err := calculatorState.l3Add(k)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		calculatorState.networkL3Objects[k] = uid
 		calculatorRecords = append(calculatorRecords, r...)
 	}
 
@@ -463,6 +540,15 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		addRecordsSet = append(addRecordsSet, r...)
+	}
+	// Walk existing L3 networks and create new []record from new policy
+	for k, uid := range currentState.networkL3Objects {
+		r, err := newState.l3Add(k)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		newState.networkL3Objects[k] = uid
 		addRecordsSet = append(addRecordsSet, r...)
 	}
 

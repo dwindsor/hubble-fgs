@@ -54,6 +54,15 @@ func (a *DatapathAction) String() string {
 	return fmt.Sprintf("Quota %d Reset %d Policy %s", a.QuotaLimit, a.ResetTime, policy)
 }
 
+// For now only expose IP:Port because we only have a middlebox user at the
+// moment. VM and K8s use cases are specified using the Src key. The purist
+// would tell us (and they would be correct) to extend Src key directly, but
+// hacking a new field type keeps separate things separate for the time being.
+type DatapathSource struct {
+	Ip   string
+	Port uint32
+}
+
 type DatapathEndpoint struct {
 	EP   *endpoint.Endpoint
 	Port uint32
@@ -82,6 +91,7 @@ func (p Policy) String() string {
 type DatapathRecord struct {
 	Policy   Policy
 	Src      *types.ProcessTreeKey
+	L3Src    DatapathSource
 	Endpoint DatapathEndpoint
 	Action   *DatapathAction
 	Init     bool // temporary field until we fix order-of-ops on DNS, UDP, TCP sensors

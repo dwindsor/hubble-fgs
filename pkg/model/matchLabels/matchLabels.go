@@ -12,6 +12,7 @@ type LabelSet struct {
 	Name      string
 	Labels    map[string]string
 	Policy    *types.TetragonNetworkPolicy
+	Source    []*endpoint.Source
 	Endpoints []*endpoint.Endpoint
 	Subjects  []*types.ProcessTreeKey
 	Ports     []uint32

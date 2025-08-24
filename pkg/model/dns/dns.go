@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	InternalHostName = "_host"
-	InternalLabelKey = "_internal"
+	InternalFirewallName = "_firewall"
+	InternalHostName     = "_host"
+	InternalLabelKey     = "_internal"
 )
 
 var (
@@ -138,14 +139,20 @@ func GetDesiredState() *PolicyState {
 }
 
 type PolicyState struct {
+	// Policy objects organized by qualifier
 	Dst matchLabels.PolicyList
 	Src matchLabels.PolicyList
+	L3  matchLabels.PolicyList
 
-	localObjects  map[k8stypes.UID]metav1.Object
-	remoteObjects map[k8stypes.UID]metav1.Object
+	// Objects in the system, these are pods, nodes, logical networks, etc.
+	localObjects     map[k8stypes.UID]metav1.Object
+	remoteObjects    map[k8stypes.UID]metav1.Object
+	networkL3Objects map[string]uint32
+	// TBD networkL2Objects map[uint32]bool
 
 	DstLock sync.Mutex
 	SrcLock sync.Mutex
+	L3Lock  sync.Mutex
 
 	Reader sync.RWMutex
 }
@@ -154,6 +161,7 @@ func NewPolicyState() *PolicyState {
 	s := &PolicyState{}
 	s.Dst = make(map[string]*matchLabels.LabelSet)
 	s.Src = make(map[string]*matchLabels.LabelSet)
+	s.L3 = make(map[string]*matchLabels.LabelSet)
 
 	s.localObjects = make(map[k8stypes.UID]metav1.Object)
 	// Initialize the new state with a local object representing the host
@@ -167,10 +175,13 @@ func NewPolicyState() *PolicyState {
 			Labels: map[string]string{InternalLabelKey: InternalHostName},
 		},
 	}
+
 	s.remoteObjects = make(map[k8stypes.UID]metav1.Object)
+	s.networkL3Objects = make(map[string]uint32)
 
 	s.DstLock = sync.Mutex{}
 	s.SrcLock = sync.Mutex{}
+	s.L3Lock = sync.Mutex{}
 
 	s.Reader = sync.RWMutex{}
 	return s
@@ -549,6 +560,91 @@ func addNamespaceLabels(endpointObject metav1.Object, ml *matchLabels.LabelSet) 
 		ml.Labels[tnpKey] = v
 	}
 	return nil
+}
+
+// These three functions Add, Get, Delete are meant to be used by NXOS code to
+// manage the logical network state.
+func (state *PolicyState) AddL3Network(name string, uid uint32) {
+	state.networkL3Objects[name] = uid
+}
+
+func (state *PolicyState) GetL3NetworkID(name string) uint32 {
+	return state.networkL3Objects[name]
+}
+
+func (state *PolicyState) DelL3NetworkID(name string) {
+	delete(state.networkL3Objects, name)
+}
+
+func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
+	records := []*record.DatapathRecord{}
+
+	ml := &matchLabels.LabelSet{}
+	ml.Labels = make(map[string]string, 1)
+	ml.Labels["vrf"] = name
+
+	// Find all policy with key pair vrf:name
+	l3s := state.L3.Collection(ml)
+
+	// Generate a record set for each policy we found because each
+	// policy includes the full tuple in IP form (we have no
+	// labels in middleboxes... yet.).
+	for _, l3 := range l3s {
+		policy := record.Policy{
+			Name: l3.Name,
+			Rule: l3.Policy.Rule,
+		}
+
+		action, err := calculateAction(&l3.Policy.Action)
+		if err != nil {
+			logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
+			continue
+		}
+
+		ep := &endpoint.Endpoint{
+			Ip: l3.Policy.Destination.CIDR.CIDR,
+		}
+
+		// TBD Support wildcarding destination ports
+
+		// Ports get flattened here. We've so far avoided it at
+		// higher level in case we have a datapath that wants to
+		// consume an array. So far it hasn't been useful so we
+		// might move it up the stack.
+		for _, dport := range l3.Policy.Destination.Ports {
+			de := &record.DatapathEndpoint{
+				EP:   ep,
+				Port: uint32(dport),
+			}
+
+			ds := &record.DatapathSource{
+				Ip: l3.Policy.Source.CIDR.CIDR,
+			}
+
+			if len(l3.Policy.Source.Ports) == 0 {
+				records = append(records, &record.DatapathRecord{
+					Policy:   policy,
+					L3Src:    *ds,
+					Endpoint: *de,
+					Action:   action,
+				})
+			}
+
+			// This is the somewhat odd case of firewalling what
+			// would typically be ephemeral ports, but we can
+			// allow at least at the policy side.
+			for _, sport := range l3.Policy.Source.Ports {
+				ds.Port = uint32(sport)
+				records = append(records, &record.DatapathRecord{
+					Policy:   policy,
+					L3Src:    *ds,
+					Endpoint: *de,
+					Action:   action,
+				})
+			}
+		}
+	}
+	return records, nil
 }
 
 func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]*record.DatapathRecord, error) {

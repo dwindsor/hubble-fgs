@@ -21,6 +21,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
+type Source struct {
+	Ip string
+}
+
 type Endpoint struct {
 	Type      tetragon.EndpointType
 	Dns       string
