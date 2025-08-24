@@ -118,10 +118,16 @@ type TetragonWorkloadNetworkSubject struct {
 
 const TetragonBinaryPathMaxLen = 256
 
+type TetragonLogicalNetworkSubject struct {
+	VRF  string
+	VLAN uint32
+}
+
 type TetragonNetworkSubject struct {
-	Labels        TetragonNetworkLabels
-	Workload      TetragonWorkloadNetworkSubject
-	InProcessName []string
+	Labels         TetragonNetworkLabels
+	Workload       TetragonWorkloadNetworkSubject
+	InProcessName  []string
+	LogicalNetwork TetragonLogicalNetworkSubject
 }
 
 type TetragonNetworkFQDN struct {
@@ -134,6 +140,12 @@ type TetragonNetworkLabels struct {
 
 type TetragonNetworkCIDR struct {
 	CIDR string `json:"cidr"`
+}
+
+// For now firewall only knows CIDR:Port
+type TetragonNetworkSource struct {
+	CIDR  *TetragonNetworkCIDR
+	Ports []uint32
 }
 
 type TetragonNetworkDestination struct {
@@ -162,6 +174,7 @@ type TetragonNetworkPolicy struct {
 	Name        string
 	Rule        string
 	Subject     TetragonNetworkSubject
+	Source      *TetragonNetworkSource
 	Destination TetragonNetworkDestination
 	Action      TetragonNetworkAction
 	Default     TetragonNetworkAction
