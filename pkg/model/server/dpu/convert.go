@@ -1,0 +1,106 @@
+package dpu
+
+import (
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+
+	"github.com/isovalent/hubble-fgs/pkg/model/record"
+)
+
+// This converts the datapath record to the stream response that is sent
+// to the peer DPUs. We should merge DatapathRecords into these objects
+// so at some point we can remove this unnecessary translation.
+func recordToDPUPolicyRule(r *record.DatapathRecord, update bool) *DPUPolicyRule {
+	act := v1alpha.PolicyAction_POLICY_ACTION_UNSPECIFIED
+	switch r.Action.Action {
+	case record.PolicyNone:
+		act = v1alpha.PolicyAction_POLICY_ACTION_UNSPECIFIED
+	case record.PolicyAllow:
+		act = v1alpha.PolicyAction_POLICY_ACTION_ALLOW
+	case record.PolicyDeny:
+		act = v1alpha.PolicyAction_POLICY_ACTION_DENY
+	}
+
+	var operation v1alpha.PolicyOperation
+	if update {
+		operation = v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT
+	} else {
+		operation = v1alpha.PolicyOperation_POLICY_OPERATION_DELETE
+	}
+
+	return &DPUPolicyRule{
+		Oper: operation,
+		Policy: &DPURule{
+			PolicyName: r.Policy.Name,
+			RuleName:   r.Policy.Rule,
+			Action:     act,
+			Source: DPUSubject{
+				Cidr:     r.L3Src.Ip,
+				MinPort:  r.L3Src.Port,
+				MaxPort:  r.L3Src.Port,
+				Vlan:     r.L3Src.Vlan,
+				Vrf:      r.L3Src.Vrf,
+				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+			},
+			// The current policy resolution does not include destinatoin
+			// Vlan and VRF this will be added soon.
+			Destination: DPUSubject{
+				Cidr:     r.Endpoint.EP.Ip,
+				MinPort:  r.Endpoint.Port,
+				MaxPort:  r.Endpoint.Port,
+				Vlan:     0,
+				Vrf:      "",
+				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+			},
+		},
+	}
+}
+
+func dpuRuleToResponse(rule *DPUPolicyRule) *v1alpha.Streaml3L4NetworkPolicyResponse {
+	r := rule.Policy
+
+	source := &v1alpha.PolicySubject{
+		Network: &v1alpha.L3L4NetworkSubject{
+			Cidr:     r.Source.Cidr,
+			MinPort:  r.Source.MinPort,
+			MaxPort:  r.Source.MaxPort,
+			Vlan:     r.Source.Vlan,
+			Vrf:      r.Source.Vrf,
+			Protocol: r.Source.Protocol,
+		},
+	}
+	dest := &v1alpha.PolicySubject{
+		Network: &v1alpha.L3L4NetworkSubject{
+			Cidr:     r.Destination.Cidr,
+			MinPort:  r.Destination.MinPort,
+			MaxPort:  r.Destination.MaxPort,
+			Vlan:     r.Destination.Vlan,
+			Vrf:      r.Destination.Vrf,
+			Protocol: r.Destination.Protocol,
+		},
+	}
+	policy := &v1alpha.PolicyRule{
+		PolicyName:  r.PolicyName,
+		RuleName:    r.RuleName,
+		Action:      r.Action,
+		Source:      source,
+		Destination: dest,
+	}
+	return &v1alpha.Streaml3L4NetworkPolicyResponse{
+		Oper:   rule.Oper,
+		Policy: policy,
+	}
+}
+
+func reportRequestToDPU(req *v1alpha.ReportStatusRequest) *DPUReportStatus {
+	return &DPUReportStatus{
+		AgentUid:       req.Status.AgentUid,
+		DpVersion:      req.Status.DpVersion,
+		AgentVersion:   req.Status.AgentVersion,
+		PolicyChecksum: req.Status.PolicyChecksum,
+		Hostname:       req.Status.Hostname,
+		Architecture:   req.Status.Architecture,
+		OS:             req.Status.Os,
+		Type:           req.Status.Type,
+		SerialNumber:   req.Status.SerialNumber,
+	}
+}

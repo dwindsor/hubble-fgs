@@ -1,0 +1,139 @@
+// NOTICE: All information contained herein is, and remains the property of
+// Isovalent Inc and its suppliers, if any. The intellectual and technical
+// concepts contained herein are proprietary to Isovalent Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law.  Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from Isovalent Inc.
+
+syntax = "proto3";
+
+package l3l4networkpolicy.v1alpha;
+
+option go_package = "github.com/isovalent/ipa/l3l4networkpolicy/v1alpha";
+
+enum PolicyProtocol {
+  POLICY_PROTOCOL_UNSPECIFIED = 0;
+  POLICY_PROTOCOL_TCP = 1;
+  POLICY_PROTOCOL_UDP = 2;
+  POLICY_PROTOCOL_ICMP = 3;
+}
+
+// Policy action to apply when the rule is matched.
+enum PolicyAction {
+  // Unspecificied or unknown verdict.
+  POLICY_ACTION_UNSPECIFIED = 0;
+  // Allow the packet or connection
+  POLICY_ACTION_ALLOW = 1;
+  // Deny the packet or connection by blocking the connection or dropping the packet.
+  POLICY_ACTION_DENY = 2;
+}
+
+// L3Network subjects are endpoints (destination or source) that specify a L3 endpoint.
+message L3L4NetworkSubject {
+  // CIDR of the subject, e.g. "1.2.3.4/24"
+  string cidr = 1;
+  // Minimum port of the subject
+  uint32 min_port = 2;
+  // Maximum port of the subject
+  uint32 max_port = 3;
+  // VLAN of the subject may be empty when unused
+  uint32 vlan = 4;
+  // VRF of the subject may be empty when unused
+  string vrf = 5;
+  // Protocol of the network subject, e.g. "TCP", "UDP"
+  PolicyProtocol protocol = 6;
+}
+
+// Policy Subjects are used for selectors, source, or destinations.
+message PolicySubject {
+  // L3 Network specifier.
+  L3L4NetworkSubject network = 1;
+}
+
+// Policy rule is the definition used to populate the datapath table either
+// Tetragon or smartswitch at the moment. Note a single policy may map to many
+// rules. These are intended to be easily mapped 1:1 by the specific backend
+// into a table based datastructures. For L3/L4 most obvious implementation is
+// an LPM.
+message PolicyRule {
+  // Kubernetes resource version of the corresponding Tetragon Network Policy resource
+  string k8s_resource_version = 1;
+  // Kubernetes resource UID of the corresponding Tetragon Network Policy resource
+  string k8s_uid = 2;
+  // Name of the policy that create the rule
+  string policy_name = 3;
+  // The specific rule that created the rule
+  string rule_name = 4;
+  // The verdict (action) to apply to any match
+  PolicyAction action = 5;
+  // The source to apply the rule against.
+  PolicySubject source = 6;
+  // The destination to apply the rule against.
+  PolicySubject destination = 7;
+}
+
+// Policy operation is the instruction telling the backeend what to do with a
+// PolicyRule.
+enum PolicyOperation {
+  // Unspecified or unknown operation
+  POLICY_OPERATION_UNSPECIFIED = 0;
+  // Add the associated policy rule. If the policy exists it should be updated with any changes.
+  POLICY_OPERATION_UPSERT = 1;
+  // Delete the associated policy rule.
+  POLICY_OPERATION_DELETE = 2;
+}
+
+enum AgentType {
+  // Agent type unspecified
+  AGENT_TYPE_UNSPECIFIED = 0;
+  // Agent is AGW managing a DPU
+  AGENT_TYPE_DPU_AGW = 1;
+  // Agent is Tetragon
+  AGENT_TYPE_TETRAGON = 2;
+}
+
+message Streaml3l4NetworkPolicyRequest {
+  string agent_uid = 1;
+}
+
+message Streaml3l4NetworkPolicyResponse {
+  PolicyOperation oper = 1;
+  PolicyRule policy = 2;
+}
+
+// Report status request.
+message ReportStatusRequest {
+  ReportStatus status = 1;
+}
+
+// Report status response.
+message ReportStatusResponse {}
+
+// Status event to report basic information about the agent and current policy
+// checksum.
+message ReportStatus {
+  // Node local UID of the agent, useful when multiple agents are colocated
+  string agent_uid = 1;
+  // Datapath version
+  string dp_version = 2;
+  // Agent version
+  string agent_version = 3;
+  // Checksum of the currently running policy
+  string policy_checksum = 4;
+  // Hostname of the system the agent running
+  string hostname = 5;
+  // Architecture the agent is running on
+  string architecture = 6;
+  // Operating system the agent is running on
+  string os = 7;
+  // Agent type
+  AgentType type = 8;
+  // The Serial number of the hardware, useful for physical assets
+  string serial_number = 9;
+}
+
+service L3L4NetworkPolicyService {
+  rpc Streaml3l4NetworkPolicy(Streaml3l4NetworkPolicyRequest) returns (stream Streaml3l4NetworkPolicyResponse) {}
+  rpc ReportStatus(ReportStatusRequest) returns (ReportStatusResponse) {}
+}

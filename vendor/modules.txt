@@ -913,6 +913,7 @@ github.com/inconshreveable/mousetrap
 github.com/isovalent/ipa/application_model/v1alpha
 github.com/isovalent/ipa/common/k8s/type/v1alpha
 github.com/isovalent/ipa/graph/v1alpha
+github.com/isovalent/ipa/l3l4networkpolicy/v1alpha
 github.com/isovalent/ipa/ocsf/v1alpha
 # github.com/isovalent/metricstool v0.1.4
 ## explicit; go 1.22.0
