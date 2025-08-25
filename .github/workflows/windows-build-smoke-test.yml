@@ -183,9 +183,19 @@ jobs:
       - name: Download and Install eBPF for Windows
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip" -OutFile "$env:TEMP\efw.zip"
+          $maxRetries = 2
+          $retryCount = 0
+          while (!(Test-Path "$env:TEMP\efw.zip") -and $retryCount -lt $maxRetries) {
+              Start-Sleep -Seconds 2
+              Invoke-WebRequest -Uri "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip" -OutFile "$env:TEMP\efw.zip"
+              $retryCount++
+          }
+          if (!(Test-Path "$env:TEMP\efw.zip")) {
+              throw "Download failed after $maxRetries attempts."
+          }
           Expand-Archive -Path "$env:TEMP\efw.zip" -DestinationPath "$env:TEMP"
           Rename-Item -Path "$env:TEMP\Build-native-only NativeOnlyRelease x64" -NewName "$env:TEMP\ebpf"
+          
           $setupScript = Get-ChildItem -Path "$env:TEMP\ebpf" -Filter "setup-ebpf.ps1" -Recurse | Select-Object -First 1
           if ($setupScript) {
             Write-Host "Found setup script: $($setupScript.FullName)"
@@ -193,6 +203,7 @@ jobs:
             Write-Host "Changed directory to: $(Get-Location)"
             & $setupScript.FullName
           } else {
+            Get-ChildItem -Path "$env:TEMP\ebpf" -Recurse 
             Write-Error "Setup script not found in the extracted package"
             exit 1
           }
