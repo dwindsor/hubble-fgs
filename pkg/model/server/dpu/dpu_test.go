@@ -285,3 +285,18 @@ func TestHashLogic(t *testing.T) {
 	assert.Equal(t, hexCsum1, hexCsum2)
 	assert.Equal(t, hexCsum2, hexCsum3)
 }
+
+// Attempt to delete policy that doesn't exist.
+func TestOOOPolicy(t *testing.T) {
+	dpu1 := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu1.SubmitDeleteToDPU(record1)
+	dpu1.SubmitUpdateToDPU(record1)
+	assert.Equal(t, len(dpu.ruleSet), 1)
+
+	dpu2 := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu2.SubmitDeleteToDPU(record1)
+	dpu2.SubmitUpdateToDPU(record1)
+	dpu2.SubmitDeleteToDPU(record1)
+	dpu2.SubmitDeleteToDPU(record1)
+	assert.Equal(t, len(dpu.ruleSet), 0)
+}
