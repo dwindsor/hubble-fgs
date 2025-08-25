@@ -23,7 +23,7 @@ jobs:
       - name: Pull Docker image
         run: docker pull quay.io/isovalent-dev/${{ matrix.image }}:${{ matrix.branch }}-latest
       - name: Checkout latest VEX data
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           sparse-checkout: |
             .github/.grype.yaml
@@ -32,7 +32,7 @@ jobs:
           path: vex
       - name: Download Grype
         id: grype
-        uses: anchore/scan-action/download-grype@2c901ab7378897c01b8efaa2d0c9bf519cc64b9e # v6.2.0
+        uses: anchore/scan-action/download-grype@1638637db639e0ade3258b51db49a9a137574c3e # v6.5.1
       - name: Scan image
         id: scan-image
         run: |

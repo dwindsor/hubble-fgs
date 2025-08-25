@@ -31,13 +31,13 @@ jobs:
         shell: pwsh
 
       - name: Checkout Tetragon Repo 
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           path: go/src/github.com/isovalent/hubble-fgs
           submodules: true
       - name: Cache chocolatey packages
         if: steps.skip_check.outputs.should_skip != 'true'
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
+        uses: actions/cache@638ed79f9dc94c1de1baef91bcab5edaa19451f4
         env:
           cache-name: cache-choco-packages
         with:
@@ -149,7 +149,7 @@ jobs:
           Compress-Archive -Path ${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} -DestinationPath .\build-${{env.BUILD_PLATFORM}}.${{env.BUILD_CONFIGURATION}}.zip
 
       - name: Upload Build Output
-        uses: actions/upload-artifact@6027e3dd177782cd8ab9af838c04fd81a07f1d47
+        uses: actions/upload-artifact@de65e23aa2b7e23d713bb51fbfcb6d502f8667d8
         with:
           working-directory: ${{ env.TEMP }}\ntosebpfext
           name: ntosebpfext-build-output
@@ -208,7 +208,7 @@ jobs:
           name: ntosebpfext-build-output
     
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           path: go/src/github.com/isovalent/hubble-fgs
           submodules: true
@@ -275,7 +275,7 @@ jobs:
           Get-ChildItem -Recurse ${{ env.TEMP }} 
 
       - name: Upload Tetragon Windows binaries
-        uses: actions/upload-artifact@6027e3dd177782cd8ab9af838c04fd81a07f1d47
+        uses: actions/upload-artifact@de65e23aa2b7e23d713bb51fbfcb6d502f8667d8
         with:
           name: tetragon-windows-build-output
           path: ${{ env.TEMP }}\Tetragon-Windows.zip
@@ -338,7 +338,7 @@ jobs:
           name: ntosebpfext-build-output
     
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           path: go/src/github.com/isovalent/hubble-fgs/
 

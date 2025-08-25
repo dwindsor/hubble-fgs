@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Get Github App Credentials
-        uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
+        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b # v3.4.0
         env:
           SECRETS_PATH: secret/data/org/${{ github.repository_owner }}
         with:
@@ -27,7 +27,7 @@ jobs:
 
       - name: Generate Github App Token
         id: generate-token
-        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        uses: actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b # v2.1.1
         with:
           app-id: ${{ env.HELM_REPO_APP_ID }}
           private-key: ${{ env.HELM_REPO_APP_PEM }}

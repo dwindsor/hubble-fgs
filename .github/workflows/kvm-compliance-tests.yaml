@@ -53,13 +53,13 @@ jobs:
           # NB: it doesn't make sense to test the http parser on kernels <5.10
     steps:
       - name: Checkout Git Repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           path: hubble-fgs
           submodules: true
 
       - name: Provision LVH VM
-        uses: cilium/little-vm-helper@e87948476ca97050b1f149ab2aec379d0de19b84 # v0.0.23
+        uses: cilium/little-vm-helper@9c1f3a549af06e213863d034c13ba1c5d1e3c667 # v0.0.26
         with:
           test-name: tetragon-compliance-tests
           host-mount: ./
@@ -89,7 +89,7 @@ jobs:
             ln -vsnf /boot/btf-\$(uname -r) bpf/objs/btf
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@e87948476ca97050b1f149ab2aec379d0de19b84 # v0.0.23
+        uses: cilium/little-vm-helper@9c1f3a549af06e213863d034c13ba1c5d1e3c667 # v0.0.26
         id: runTests
         with:
           test-name: tetragon-compliance-tests
