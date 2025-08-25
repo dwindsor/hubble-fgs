@@ -1,3 +1,5 @@
+
+#include "compiler.h"
 #include "bpf_endian.h"
 #include "bpf_helpers.h"
 #include "net/ip.h"
@@ -53,7 +55,22 @@ struct {
 	__type(value, struct lpm_endpoint_id_value);
 } addr6lpm_map SEC(".maps");
 
-static inline __attribute__((always_inline)) uint64_t
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct cfg_value);
+	__uint(max_entries, 1);
+} tg_l3_cfg SEC(".maps");
+
+FUNC_INLINE bool bpf_udp_enabled()
+{
+	int zero = 0;
+	struct cfg_value *cfg;
+	cfg = (struct cfg_value *)bpf_map_lookup_elem(&tg_l3_cfg, &zero);
+	return (cfg && cfg->udp_enabled);
+}
+
+FUNC_INLINE uint64_t
 lpm_ipkey_lookup(bpf_sock_addr_t *ctx, int ipv6, int is_accept)
 {
 	struct lpm_endpoint_id_value *val;
@@ -81,7 +98,7 @@ lpm_ipkey_lookup(bpf_sock_addr_t *ctx, int ipv6, int is_accept)
 	return val->id;
 }
 
-static inline __attribute__((always_inline)) uint64_t
+FUNC_INLINE uint64_t
 allow_connection(bpf_sock_addr_t *ctx, int ipv6, int is_accept)
 {
 	struct destination_endpoint_key lpmkey = { 0 };
@@ -110,7 +127,7 @@ uint16_t swap_bytes(uint16_t in)
 	return (in << 8) | (in >> 8);
 }
 
-static inline __attribute__((always_inline)) int
+FUNC_INLINE int
 raise_ip_event(bpf_sock_addr_t *ctx, int eventCode, int ipv6, int is_accept)
 {
 	uint64_t ptid = bpf_get_current_pid_tgid();
@@ -168,7 +185,7 @@ int tcp_connect4(bpf_sock_addr_t *ctx)
 	int eventCode = 0;
 	if (ctx->protocol == IPPROTO_TCP) {
 		eventCode = 2;
-	} else if (ctx->protocol == IPPROTO_UDP) {
+	} else if ((ctx->protocol == IPPROTO_UDP) && bpf_udp_enabled()) {
 		eventCode = 18;
 	} else {
 		return BPF_SOCK_ADDR_VERDICT_PROCEED;
@@ -186,7 +203,7 @@ int tcp_connect6(bpf_sock_addr_t *ctx)
 	int eventCode = 0;
 	if (ctx->protocol == IPPROTO_TCP) {
 		eventCode = 2;
-	} else if (ctx->protocol == IPPROTO_UDP) {
+	} else if ((ctx->protocol == IPPROTO_UDP) && bpf_udp_enabled()) {
 		eventCode = 18;
 	} else {
 		return BPF_SOCK_ADDR_VERDICT_PROCEED;
@@ -230,7 +247,7 @@ int sockops_monitor(bpf_sock_ops_t *ctx)
 	int eventCode = 0;
 	if (ctx->protocol == IPPROTO_TCP) {
 		eventCode = 8;
-	} else if (ctx->protocol == IPPROTO_UDP) {
+	} else if ((ctx->protocol == IPPROTO_UDP) && bpf_udp_enabled()) {
 		eventCode = 17;
 	} else {
 		return 0;

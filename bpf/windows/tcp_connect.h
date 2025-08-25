@@ -175,6 +175,16 @@ struct destination_endpoint_value {
 	__u64 port;
 };
 
+struct cfg_value {
+	uint8_t udp_enabled;
+	uint8_t reserved1;
+	uint8_t reserved2;
+	uint8_t reserved3;
+	uint8_t reserved4;
+	uint8_t reserved5;
+	uint8_t pad[2];
+};
+
 #define SOCKFLAGS_TYPE_UNKNOWN 0x0
 #define SOCKFLAGS_TYPE_CONNECT 0x1
 #define SOCKFLAGS_TYPE_ACCEPT  0x2

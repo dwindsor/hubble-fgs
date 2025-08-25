@@ -14,7 +14,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
+	"fmt"
 
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -78,7 +81,41 @@ var (
 	}
 )
 
-func ConfigureSensor() error {
+type WinConfigKey struct {
+	Zero uint32
+}
+type WinConfigValue struct {
+	EnableUDP uint8
+	Reserved1 uint8
+	Reserved2 uint8
+	Reserved3 uint8
+	Reserved4 uint8
+	Reserved5 uint8
+	Pad       [2]uint8
+}
+
+func configureSensor() error {
+	if enterpriseOption.Config.EnableUDP {
+		coll, _ := bpf.GetCollection("tcp_connect4")
+		if coll == nil {
+			return errors.New("tcp preload collection is nil")
+		}
+		m := coll.Maps["tg_l3_cfg"]
+		if m == nil {
+			return errors.New("failed to load tg_l3_cfg map from collection")
+		}
+		key := &WinConfigKey{
+			Zero: uint32(0),
+		}
+		value := &WinConfigValue{
+			EnableUDP: 1,
+		}
+		err := m.Put(key, value)
+		if err != nil {
+			fmt.Println("Error setting value for tg_l3_cfg map:", err)
+			return errors.New("failed to set tg_l3_cfg map value")
+		}
+	}
 	return nil
 }
 
@@ -95,7 +132,9 @@ func LoadWinTCPSensor(ctx context.Context) error {
 	if err := mgr.AddSensor(ctx, initialTCPSensor.Name, initialTCPSensor); err != nil {
 		return err
 	}
-	return mgr.EnableSensor(ctx, initialTCPSensor.Name)
+	err := mgr.EnableSensor(ctx, initialTCPSensor.Name)
+	configureSensor()
+	return err
 }
 
 func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
