@@ -104,7 +104,6 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
-	/* test tbd
 	record2 = &record.DatapathRecord{
 		Policy: record.Policy{
 			Name: "record2",
@@ -125,7 +124,26 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	*/
+	record3 = &record.DatapathRecord{
+		Policy: record.Policy{
+			Name: "record3",
+			Rule: "rule2",
+		},
+		L3Src: record.DatapathSource{
+			Vrf: "vrf-b",
+			Ip:  "192.5.0.1/16",
+		},
+		Endpoint: record.DatapathEndpoint{
+			EP: &endpoint.Endpoint{
+				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
+				Ip:   "192.6.0.1/16",
+			},
+			Port: uint32(9090),
+		},
+		Action: &record.DatapathAction{
+			Action: record.PolicyDeny,
+		},
+	}
 )
 
 func checkStatus(t *testing.T, checksum string, expected, saved DPUReportStatus) {
@@ -234,4 +252,36 @@ func TestReportBeforeAdd(t *testing.T) {
 	checkStatus(t, "", *p1SR, dpu.peerGroup[t1].lastStatus)
 	p1 := dpu.addPeer(t1)
 	checkStatus(t, "", *p1SR, dpu.peerGroup[p1.uid].lastStatus)
+}
+
+// Add/Remove Policy in different orders and ensure we get the same hash
+func TestHashLogic(t *testing.T) {
+	dpu1 := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu1.SubmitUpdateToDPU(record1)
+	dpu1.SubmitUpdateToDPU(record2)
+	dpu1.SubmitUpdateToDPU(record3)
+	assert.Equal(t, len(dpu.ruleSet), 3)
+	csum1 := dpu1.Checksum()
+	hexCsum1 := hex.EncodeToString(csum1[:])
+
+	dpu2 := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu2.SubmitUpdateToDPU(record3)
+	dpu2.SubmitUpdateToDPU(record2)
+	dpu2.SubmitUpdateToDPU(record1)
+	assert.Equal(t, len(dpu.ruleSet), 3)
+	csum2 := dpu2.Checksum()
+	hexCsum2 := hex.EncodeToString(csum2[:])
+
+	dpu3 := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu3.SubmitUpdateToDPU(record3)
+	dpu3.SubmitUpdateToDPU(record2)
+	dpu3.SubmitUpdateToDPU(record1)
+	dpu3.SubmitDeleteToDPU(record1)
+	dpu3.SubmitUpdateToDPU(record1)
+	assert.Equal(t, len(dpu.ruleSet), 3)
+	csum3 := dpu3.Checksum()
+	hexCsum3 := hex.EncodeToString(csum3[:])
+
+	assert.Equal(t, hexCsum1, hexCsum2)
+	assert.Equal(t, hexCsum2, hexCsum3)
 }
