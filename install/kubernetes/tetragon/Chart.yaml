@@ -20,6 +20,7 @@ icon: https://tetragon.io/images/tetragon-shield.png
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
+# renovate: datasource=docker depName=quay.io/cilium/tetragon
 appVersion: "0.0.0-dev"
 dependencies:
   - name: grafana

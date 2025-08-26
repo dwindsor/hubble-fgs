@@ -134,6 +134,8 @@ app.kubernetes.io/component: aggregator
     - watch
 {{- end }}
 
+{{- define "role.extra" -}}{{- end }}
+
 {{- define "operatorconfigmap.extra" -}}
 skip-policysandbox-crd: {{ not .Values.tetragon.enableSandboxpolicies | quote }}
 {{- end }}

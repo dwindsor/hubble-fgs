@@ -41,11 +41,11 @@ func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUn
 		},
 		Msg: &networkapi.MsgIPEvent{
 			Common: tetragonAPI.MsgCommon{
-				Op:     ops.MSG_OP_TCPCONNECTRET,
-				Flags:  0,
-				Pad_v2: [2]uint8{0, 0},
-				Size:   40,
-				Ktime:  0,
+				Op:    ops.MSG_OP_TCPCONNECTRET,
+				Flags: 0,
+				PadV2: [2]uint8{0, 0},
+				Size:  40,
+				Ktime: 0,
 			},
 			ProcessKey: tetragonAPI.MsgExecveKey{
 				Pid:   Pid,
@@ -64,11 +64,11 @@ func CreateConnectEvents(Pid uint32, Ktime uint64, Docker string) (*MsgIPEventUn
 		Msg: &networkapi.MsgIPWithStatsEvent{
 			MsgIPEvent: networkapi.MsgIPEvent{
 				Common: tetragonAPI.MsgCommon{
-					Op:     ops.MSG_OP_TCPCLOSE,
-					Flags:  0,
-					Pad_v2: [2]uint8{0, 0},
-					Size:   40,
-					Ktime:  0,
+					Op:    ops.MSG_OP_TCPCLOSE,
+					Flags: 0,
+					PadV2: [2]uint8{0, 0},
+					Size:  40,
+					Ktime: 0,
 				},
 				ProcessKey: tetragonAPI.MsgExecveKey{
 					Pid:   Pid,
@@ -182,11 +182,11 @@ func createExecEvent(Pid uint32, Ktime uint64, ParentPid uint32, ParentKtime uin
 	tmpEv := tetragonAPI.MsgExecveEventUnix{
 		Msg: &tetragonAPI.MsgExecveEvent{
 			Common: tetragonAPI.MsgCommon{
-				Op:     ops.MSG_OP_EXECVE,
-				Flags:  0,
-				Pad_v2: [2]uint8{0, 0},
-				Size:   326,
-				Ktime:  0,
+				Op:    ops.MSG_OP_EXECVE,
+				Flags: 0,
+				PadV2: [2]uint8{0, 0},
+				Size:  326,
+				Ktime: 0,
 			},
 			Kube: tetragonAPI.MsgK8s{
 				Cgrpid: 0,
@@ -219,11 +219,11 @@ func createExecEvent(Pid uint32, Ktime uint64, ParentPid uint32, ParentKtime uin
 func createExitEvent(Pid uint32, Ktime uint64) *exec.MsgExitEventUnix {
 	tmpEv := tetragonAPI.MsgExitEvent{
 		Common: tetragonAPI.MsgCommon{
-			Op:     ops.MSG_OP_EXIT,
-			Flags:  0,
-			Pad_v2: [2]uint8{0, 0},
-			Size:   40,
-			Ktime:  0,
+			Op:    ops.MSG_OP_EXIT,
+			Flags: 0,
+			PadV2: [2]uint8{0, 0},
+			Size:  40,
+			Ktime: 0,
 		},
 		ProcessKey: tetragonAPI.MsgExecveKey{
 			Pid:   Pid,
