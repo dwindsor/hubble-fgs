@@ -18,11 +18,12 @@ import (
 	"strings"
 
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/decls"
+	"github.com/google/cel-go/common/types"
+
 	"github.com/google/cel-go/ext"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/isovalent/ipa/common/k8s/type/v1alpha"
-	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 	celk8s "k8s.io/apiserver/pkg/cel/library"
@@ -85,9 +86,9 @@ func compile(env *cel.Env, expr string) (*cel.Ast, error) {
 	return ast, nil
 }
 
-func exportConsts(mapping map[string]int32) (declarations []*exprpb.Decl) {
+func exportConsts(mapping map[string]int32) (declarations []*decls.VariableDecl) {
 	for name, id := range mapping {
-		declarations = append(declarations, decls.NewConst(name, decls.Int, &exprpb.Constant{ConstantKind: &exprpb.Constant_Int64Value{Int64Value: int64(id)}}))
+		declarations = append(declarations, decls.NewConstant(name, types.IntType, types.Int(int64(id))))
 	}
 	return declarations
 }
@@ -123,13 +124,13 @@ func NewApplicationModelChecker() (*ApplicationModelChecker, error) {
 		ext.Sets(),
 	}
 
-	options = append(options, cel.Declarations(exportConsts(v1alpha.WorkloadKind_value)...))
+	options = append(options, cel.VariableDecls(exportConsts(v1alpha.WorkloadKind_value)...))
 
 	// Convenience aliases for system calls.
-	options = append(options, cel.Declarations(exportConsts(appModelV1.Sys_value)...))
+	options = append(options, cel.VariableDecls(exportConsts(appModelV1.Sys_value)...))
 
 	// Convenience aliases for ABIs.
-	options = append(options, cel.Declarations(exportConsts(appModelV1.Abi_value)...))
+	options = append(options, cel.VariableDecls(exportConsts(appModelV1.Abi_value)...))
 
 	celEnv, err := cel.NewEnv(options...)
 	if err != nil {
