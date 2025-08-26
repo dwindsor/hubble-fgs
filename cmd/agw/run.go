@@ -14,11 +14,14 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/commands"
 	"github.com/isovalent/hubble-fgs/pkg/fwa"
+	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
 )
 
 func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error {
 	logger.GetLogger().Info("Agent starting")
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	// Configuring agent
 	err := agent.Config(ctx, configPath)
@@ -36,6 +39,18 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 		}
 	}
 
+	// Setup server to listen for DPUs
+	go func() {
+		server := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
+		err := server.Start()
+		if err != nil {
+			logger.GetLogger().Error("aborting DPU listener failed",
+				logfields.Error, err)
+			cancel()
+		}
+	}()
+
+	// Setup callback to yell if DPUs are out of sync
 	go agent.DpuHealthCheck(ctx)
 
 	// Original code had an agent.Ready for now skip if its necessary we can

@@ -45,6 +45,7 @@ func Execute() error {
 	flags.BoolVar(&Config.EnableKubernetes, keyEnableK8s, true, "Enable Kubernetes control plane")
 	flags.BoolVar(&Config.EnableNXOS, keyEnableNXOS, true, "Enable Nexus smartswitch")
 	flags.StringSliceVar(&Config.NetworkPolicies, keyNetworkPolicy, []string{}, "network policy files")
+	flags.StringVar(&Config.DPUServerAddress, keyDPUServerAddress, "", "DPU server address")
 	return rootCmd.Execute()
 }
 

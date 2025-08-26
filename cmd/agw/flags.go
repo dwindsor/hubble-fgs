@@ -5,6 +5,7 @@ type config struct {
 	NetworkPolicies  []string
 	EnableKubernetes bool
 	EnableNXOS       bool
+	DPUServerAddress string
 }
 
 var (
@@ -13,12 +14,14 @@ var (
 		NetworkPolicies:  []string{},
 		EnableKubernetes: true,
 		EnableNXOS:       true,
+		DPUServerAddress: "127.0.0.1:9090",
 	}
 )
 
 const (
-	keyDafConfig     = "config" // The original AGW config!
-	keyNetworkPolicy = "network-policy"
-	keyEnableK8s     = "enable-k8s"
-	keyEnableNXOS    = "enable-nxos"
+	keyDafConfig        = "config" // The original AGW config!
+	keyNetworkPolicy    = "network-policy"
+	keyEnableK8s        = "enable-k8s"
+	keyEnableNXOS       = "enable-nxos"
+	keyDPUServerAddress = "dpu-server-address"
 )
