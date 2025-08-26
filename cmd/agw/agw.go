@@ -40,6 +40,8 @@ func executeAGW() {
 	// Waiting for threads to finish
 	<-ctx.Done()
 	logger.GetLogger().Info("AGW graceful shutdown: Exiting")
-	nxos.Nexus.GnmiClose(ctx)
+	if Config.EnableNXOS {
+		nxos.Nexus.GnmiClose(ctx)
+	}
 	os.Exit(200)
 }

@@ -149,7 +149,6 @@ func (fwa *FWAgent) Config(_ context.Context, path string) error {
 }
 
 func (fwa *FWAgent) Setup(ctx context.Context) error {
-	go fwa.DpuHealthCheck(ctx)
 	err := nxos.Nexus.Setup(ctx, fwa.dpuPortLow, fwa.dpuPortHigh)
 	if err != nil {
 		logger.Fatal(logger.GetLogger(), "NXOS setup fails")

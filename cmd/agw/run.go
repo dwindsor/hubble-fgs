@@ -27,11 +27,16 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 	}
 
 	// Setting up agent local state
-	err = agent.Setup(ctx)
-	if err != nil {
-		logger.GetLogger().Error("Failed to setup agent", logfields.Error, err)
-		return err
+	if Config.EnableNXOS {
+		err = agent.Setup(ctx)
+		if err != nil {
+			logger.GetLogger().Error("Failed to setup agent",
+				logfields.Error, err)
+			return err
+		}
 	}
+
+	go agent.DpuHealthCheck(ctx)
 
 	// Original code had an agent.Ready for now skip if its necessary we can
 	// add it back.
