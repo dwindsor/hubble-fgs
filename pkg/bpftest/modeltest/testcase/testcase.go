@@ -48,23 +48,29 @@ func (tc *TestCase) Run(ctx context.Context, tb testing.TB, server *server.Serve
 
 	require.NoError(tb, tc.modelSetup(ctx, tb, harness), "failed to set up application model")
 
+	tb.Logf("DEBUG: Calling server.GetModel()...")
 	model, err := server.GetModel(ctx, &v1alpha.GetModelRequest{
 		Host: true,
 	})
 	require.NoError(tb, err, "failed to get model")
 
+	tb.Logf("DEBUG: Starting model check...")
 	tc.modelCheck(tb, model.GetModel().GetApplicationModel())
 }
 
 func (tc *TestCase) modelCheck(tb testing.TB, model *v1alpha.ApplicationModel) {
+	tb.Logf("DEBUG: In modelCheck function...")
 	m, err := json.Marshal(model)
 	if err != nil {
 		tb.Logf("warning: failed to marshal app model: %s", err)
 	}
 	fmt.Println(string(m))
 
+	tb.Logf("DEBUG: Starting host process checks...")
 	assert.True(tb, checkProcesses(tb, tc.Host, model.Host.Processes), "host process checks failed")
+	tb.Logf("DEBUG: Starting namespace checks...")
 	assert.True(tb, checkNamespaces(tb, tc.Namespaces, model.Namespaces), "namespace checks failed")
+	tb.Logf("DEBUG: Model check complete")
 }
 
 func checkNamespaces(tb testing.TB, checks model.Namespaces, namespaces []*v1alpha.ApplicationNamespace) bool {
@@ -140,10 +146,31 @@ func checkProcesses(tb testing.TB, checks []model.Binary, processes []*v1alpha.A
 			args = append(args, arg)
 		}
 
+		expectedArgs := strings.Join(args, " ")
+		tb.Logf("DEBUG: Looking for process: binary=%q expectedArgs=%q", binary, expectedArgs)
+
 		numChecked := 0
 		for _, process := range processes {
 			numChecked++
-			if process.Name == binary && process.Arguments == strings.Join(args, " ") {
+			match := process.Name == binary && process.Arguments == expectedArgs
+			tb.Logf("DEBUG: Checking process: name=%q arguments=%q match=%v", process.Name, process.Arguments, match)
+			if process.Name == binary {
+				tb.Logf("DEBUG: Binary matches! Comparing arguments:")
+				tb.Logf("DEBUG:   Expected: %q (len=%d)", expectedArgs, len(expectedArgs))
+				tb.Logf("DEBUG:   Actual:   %q (len=%d)", process.Arguments, len(process.Arguments))
+				if process.Arguments != expectedArgs {
+					tb.Logf("DEBUG: Arguments differ!")
+					for i := 0; i < len(expectedArgs) && i < len(process.Arguments); i++ {
+						if expectedArgs[i] != process.Arguments[i] {
+							tb.Logf("DEBUG:   Differ at position %d: expected %q (%d) vs actual %q (%d)",
+								i, string(expectedArgs[i]), int(expectedArgs[i]),
+								string(process.Arguments[i]), int(process.Arguments[i]))
+							break
+						}
+					}
+				}
+			}
+			if process.Name == binary && process.Arguments == expectedArgs {
 				found = true
 			}
 		}

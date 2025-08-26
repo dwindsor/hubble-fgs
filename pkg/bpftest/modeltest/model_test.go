@@ -30,7 +30,7 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 	"BasicModel": {
 		Host: model.Binaries{
 			{
-				Cmd:  "bash",
+				Cmd:  "/usr/bin/bash",
 				Args: []string{"-c", "echo hello world"},
 			},
 		},
@@ -41,7 +41,7 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 						"test-container": {
 							ImageSource: image.Pull("ubuntu:latest", true),
 							Cmd: model.Binary{
-								Cmd:  "sleep",
+								Cmd:  "/usr/bin/sleep",
 								Args: []string{"infinity"},
 							},
 						},
