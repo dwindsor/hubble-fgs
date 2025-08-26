@@ -120,6 +120,14 @@ clean: tarball-clean
 
 ##@ Build and install
 
+.PHONY: agw
+agw: ## Compile smartswitch agent
+	$(GO_BUILD) -tags nxos,fwa ./cmd/agw
+
+.PHONY: agwctl
+agwctl: ## Compile smartswitch agent CLI
+	$(GO_BUILD) ./cmd/agwctl
+
 .PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
 	$(GO_BUILD) ./cmd/bin/tetragon
