@@ -73,6 +73,24 @@ Helm chart for Tetragon Enterprise
 | serviceAccount.create | bool | `true` |  |
 | serviceAccount.name | string | `""` |  |
 | serviceLabelsOverride | object | `{}` |  |
+| splunk_hec.disable_compression | bool | `false` |  |
+| splunk_hec.enabled | bool | `false` |  |
+| splunk_hec.endpoint.secretKey | string | `"hec-endpoint"` |  |
+| splunk_hec.endpoint.secretName | string | `"splunk-hec"` |  |
+| splunk_hec.image.override | string | `nil` |  |
+| splunk_hec.image.pullPolicy | string | `"IfNotPresent"` |  |
+| splunk_hec.image.repository | string | `"quay.io/isovalent/opentelemetry-collector-contrib"` |  |
+| splunk_hec.image.tag | string | `"0.133.0"` |  |
+| splunk_hec.index | string | `nil` |  |
+| splunk_hec.namespace | string | `nil` | Namespace to create the otel collector ConfigMaps in. Defaults to namespace of the Helm release. |
+| splunk_hec.resources.limits.cpu | string | `"500m"` |  |
+| splunk_hec.resources.limits.memory | string | `"512Mi"` |  |
+| splunk_hec.resources.requests.cpu | string | `"200m"` |  |
+| splunk_hec.resources.requests.memory | string | `"256Mi"` |  |
+| splunk_hec.timeout | string | `"10s"` |  |
+| splunk_hec.tls.insecureSkipVerify | bool | `false` |  |
+| splunk_hec.token.secretKey | string | `"hec-token"` |  |
+| splunk_hec.token.secretName | string | `"splunk-hec"` |  |
 | tetragon.alerts.enabled | bool | `true` | Enable alerts. |
 | tetragon.alerts.exportDirectory | string | `"/var/run/cilium/tetragon"` | Directory for alert JSON export (filenames will be retrieved from alert rule names). |
 | tetragon.applicationModelCacheSize | int | `65536` | Cache size for application model. |

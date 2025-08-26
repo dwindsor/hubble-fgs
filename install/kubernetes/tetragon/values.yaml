@@ -730,3 +730,34 @@ kube-state-metrics:
     requests:
       cpu: 10m
       memory: 32Mi
+splunk_hec:
+  enabled: false
+  # -- Namespace to create the otel collector ConfigMaps in. Defaults to namespace of the Helm release.
+  namespace: ~
+  image:
+    override: ~
+    repository: quay.io/isovalent/opentelemetry-collector-contrib
+    tag: 0.133.0
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  # URL to a Splunk instance to send data to.
+  endpoint:
+    secretName: "splunk-hec"
+    secretKey: "hec-endpoint"
+  token:
+    secretName: "splunk-hec"
+    secretKey: "hec-token"
+  index: ~
+  # Disables gzip compression over HTTP.
+  disable_compression: false
+  # HTTP timeout when sending data. Defaults to 10s.
+  timeout: 10s
+  tls:
+    # Whether to skip checking the certificate of the HEC endpoint when sending data over HTTPS. Defaults to false.
+    insecureSkipVerify: false

@@ -1,0 +1,15 @@
+{{ if .Values.splunk_hec.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-otel-agent-conf
+  namespace: {{ .Values.splunk_hec.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "opentelemetry-collector.labels" . | nindent 4 }}
+    {{- with index .Values "splunk_hec" "extraLabels" }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+data:
+  otel-agent-config: |
+{{ tpl (.Files.Get "files/otel-config.yaml") . | indent 4 }}
+{{ end }}

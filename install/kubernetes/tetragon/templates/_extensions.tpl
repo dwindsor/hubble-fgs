@@ -68,6 +68,16 @@ alerts-export-dir: {{ .Values.tetragon.alerts.exportDirectory | quote }}
     path: /var/lib/cloud/data
     type: Directory
 {{- end }}
+{{- if .Values.splunk_hec.enabled }}
+- configMap:
+    name: {{ .Release.Name }}-otel-agent-conf
+    items:
+      - key: otel-agent-config
+        path: otel-agent-config.yaml
+  name: otel-agent-config-vol
+- name: file-storage
+  emptyDir: {}
+{{- end }}
 {{- end }}
 
 {{- define "tetragon.volumemounts.extra" -}}
@@ -110,7 +120,50 @@ alerts-export-dir: {{ .Values.tetragon.alerts.exportDirectory | quote }}
 {{- end }}
 {{- end }}
 
-{{- define "containers.extra" -}}{{- end }}
+{{- define "containers.extra" -}}
+{{- if .Values.splunk_hec.enabled }}
+- command:
+    - "/otelcol-contrib"
+    - "--config=/conf/otel-agent-config.yaml"
+  image: "{{ if .Values.splunk_hec.image.override }}{{ .Values.splunk_hec.image.override }}{{ else }}{{ .Values.splunk_hec.image.repository }}:{{ .Values.splunk_hec.image.tag }}{{ end}}"
+  name: {{ include "container.tetragon.name" . }}-otel-agent
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsUser: 0
+    runAsGroup: 0
+  {{- with .Values.splunk_hec.resources }}
+  resources:
+    {{- toYaml . | trim | nindent 4 }}
+  {{- end }}
+  env:
+    - name: SPLUNK_HEC_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: {{ .Values.splunk_hec.token.secretName | quote }}
+          key: {{ .Values.splunk_hec.token.secretKey | quote }}
+    - name: SPLUNK_HEC_ENDPOINT
+      valueFrom:
+        secretKeyRef:
+          name: {{ .Values.splunk_hec.endpoint.secretName | quote }}
+          key: {{ .Values.splunk_hec.endpoint.secretKey | quote }}
+    - name: K8S_NODE
+      valueFrom:
+        fieldRef: { fieldPath: spec.nodeName }
+  volumeMounts:
+    - name: otel-agent-config-vol
+      mountPath: /conf
+      readOnly: true
+    - name: export-logs
+      mountPath: {{ .Values.exportDirectory }}
+      readOnly: true
+    - name: file-storage
+      mountPath: /var/lib/otelcol/file-storage
+{{- end }}
+{{- end }}
 
 {{- define "tetragon-aggregator.selectorLabels" -}}
 app.kubernetes.io/name: "tetragon-aggregator"
@@ -122,6 +175,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{ include "commonLabels" . }}
 app.kubernetes.io/component: aggregator
 {{- end }}
+
+{{- define "opentelemetry-collector.labels" -}}
+{{ include "commonLabels" . }}
+{{- end }}
+
 
 {{- define "clusterrole.extra" -}}
 - apiGroups:
@@ -157,7 +215,18 @@ app.kubernetes.io/component: aggregator
   - patch
 {{- end }}
 
-{{- define "role.extra" -}}{{- end }}
+{{- define "role.extra" -}}
+{{ if .Values.splunk_hec.enabled }}
+- apiGroups:
+    - ""
+  resources:
+    - secrets
+  verbs:
+    - get
+    - list
+    - watch
+{{- end }}
+{{- end }}
 
 {{- define "operatorconfigmap.extra" -}}
 skip-policysandbox-crd: {{ not .Values.tetragon.enableSandboxpolicies | quote }}
