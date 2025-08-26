@@ -26,6 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/harness"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/server"
+	"github.com/isovalent/hubble-fgs/pkg/protoutils"
 )
 
 // TestCase defines a single model test case.
@@ -60,11 +61,21 @@ func (tc *TestCase) Run(ctx context.Context, tb testing.TB, server *server.Serve
 
 func (tc *TestCase) modelCheck(tb testing.TB, model *v1alpha.ApplicationModel) {
 	tb.Logf("DEBUG: In modelCheck function...")
-	m, err := json.Marshal(model)
+
+	// Sanitize invalid UTF-8 to get valuable debugging output even when args contain invalid UTF-8.
+	m, err := protoutils.SanitizeUTF8AndMarshalJSON(model)
 	if err != nil {
-		tb.Logf("warning: failed to marshal app model: %s", err)
+		tb.Logf("warning: failed to sanitize and marshal app model: %s", err)
+		// Fallback to regular marshaling if sanitization fails
+		m, err = json.Marshal(model)
+		if err != nil {
+			tb.Logf("warning: failed to marshal app model: %s", err)
+		} else {
+			fmt.Println(string(m))
+		}
+	} else {
+		fmt.Println(string(m))
 	}
-	fmt.Println(string(m))
 
 	tb.Logf("DEBUG: Starting host process checks...")
 	assert.True(tb, checkProcesses(tb, tc.Host, model.Host.Processes), "host process checks failed")
