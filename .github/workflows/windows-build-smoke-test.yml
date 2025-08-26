@@ -35,17 +35,8 @@ jobs:
         with:
           path: go/src/github.com/isovalent/hubble-fgs
           submodules: true
-      - name: Cache chocolatey packages
-        if: steps.skip_check.outputs.should_skip != 'true'
-        uses: actions/cache@638ed79f9dc94c1de1baef91bcab5edaa19451f4
-        env:
-          cache-name: cache-choco-packages
-        with:
-          path: C:\ProgramData\chocolatey
-          key: ${{ runner.os }}-choco-llvm-18.1.8
 
       - name: Install LLVM 18.1.8
-        if: steps.skip_check.outputs.should_skip != 'true'
         run: |
           # Install LLVM 18.1.8 to ensure consistent version across runners
           try {
@@ -102,7 +93,6 @@ jobs:
         shell: powershell
 
       - name: Configuring repo for first build
-        if: steps.skip_check.outputs.should_skip != 'true'
         working-directory: ${{ env.TEMP }}\ntosebpfext
         env:
           CXXFLAGS: /ZH:SHA_256 ${{ env.CXX_FLAGS }}
@@ -179,6 +169,13 @@ jobs:
       - name: Create Temp Staging Directory
         run: mkdir D:\temp\test
         shell: powershell
+
+      - name: Cache eBPF for Windows installer
+        id: cache-ebpf-installer
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: D:\temp\efw.zip
+          key: ${{ runner.os }}-ebpf-installer-v0.21.0
 
       - name: Download and Install eBPF for Windows
         shell: powershell
@@ -315,12 +312,29 @@ jobs:
         run: mkdir D:\temp\test
         shell: powershell
 
+      - name: Cache eBPF for Windows installer
+        id: cache-ebpf-installer
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: D:\temp\efw.zip
+          key: ${{ runner.os }}-ebpf-installer-v0.21.0
+
       - name: Download and Install eBPF for Windows
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip" -OutFile "$env:TEMP\efw.zip"
+          $maxRetries = 2
+          $retryCount = 0
+          while (!(Test-Path "$env:TEMP\efw.zip") -and $retryCount -lt $maxRetries) {
+              Start-Sleep -Seconds 2
+              Invoke-WebRequest -Uri "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip" -OutFile "$env:TEMP\efw.zip"
+              $retryCount++
+          }
+          if (!(Test-Path "$env:TEMP\efw.zip")) {
+              throw "Download failed after $maxRetries attempts."
+          }
           Expand-Archive -Path "$env:TEMP\efw.zip" -DestinationPath "$env:TEMP"
           Rename-Item -Path "$env:TEMP\Build-native-only NativeOnlyRelease x64" -NewName "$env:TEMP\ebpf"
+          
           $setupScript = Get-ChildItem -Path "$env:TEMP\ebpf" -Filter "setup-ebpf.ps1" -Recurse | Select-Object -First 1
           if ($setupScript) {
             Write-Host "Found setup script: $($setupScript.FullName)"
@@ -328,6 +342,7 @@ jobs:
             Write-Host "Changed directory to: $(Get-Location)"
             & $setupScript.FullName
           } else {
+            Get-ChildItem -Path "$env:TEMP\ebpf" -Recurse 
             Write-Error "Setup script not found in the extracted package"
             exit 1
           }
