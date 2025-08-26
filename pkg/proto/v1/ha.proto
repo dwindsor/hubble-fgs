@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package proto.v1.ha;
+
+option go_package = "github.com/isovalent/hubble-fgs/pkg/proto/v1/ha";
+
+service Ha {
+    rpc Adjacency(AdjRequest) returns (AdjResponse) {}
+}
+
+enum ADJ_RESPONSE_STATUS {
+    ADJ_SUCCESS = 0;
+    ADJ_FAILURE = 1;
+    // add more errors here 
+}
+
+enum  FLOW_SYNC_STATE {
+    SYNC_UNKNOWN = 0;
+    SYNC_SUCCESS = 1;
+    SYNC_FAILURE = 2;
+}
+
+enum SERVICE_STATE {
+    SVC_UNKNOWN = 0;
+    SVC_SUCCESS = 1;
+    SVC_FAILURE = 2;
+}
+
+enum HA_STATE {
+    HA_UNKNOWN = 0;
+    HA_READY = 1;
+    HA_NOTREADY = 2;
+    HA_SWITCHOVER = 3;
+}
+
+message VrfInfo {
+    string name = 1;
+    uint32 id = 2;
+    uint32 dpu = 3;
+}
+
+message VlanInfo {
+    uint32 id = 1;
+    uint32 dpu = 2;
+}
+
+message HaInfo {
+    FLOW_SYNC_STATE flow_sync = 1;
+    SERVICE_STATE service = 2;
+    HA_STATE ha = 3;
+}
+
+message DpuVer {
+    string name = 1;
+    string version = 2;
+}
+
+message SysInfo {
+    string ser_num = 1;
+    string model = 2;
+    string sw_ver = 3;
+    string cpa = 4;
+    repeated DpuVer dpus = 5;
+}
+
+message PolInfo {
+    bool watching = 1;
+    string revision = 2;
+    string hash = 3;
+}
+
+message MbrInfo {
+    SysInfo sys_info = 1;
+    PolInfo pol_info = 2;
+    HaInfo ha_info = 3;
+    repeated VrfInfo vrf_info = 4;
+    repeated VlanInfo vlan_info = 5;
+}
+
+message AdjRequest {
+    string trace_id = 1;
+    string ha_ip = 2;
+    MbrInfo mbr_info = 3;
+}
+
+message AdjResponse {
+    ADJ_RESPONSE_STATUS status = 1;
+    string details = 2; // status details if error
+    string trace_id = 3;
+    MbrInfo mbr_info = 4;
+}

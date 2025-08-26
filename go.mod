@@ -33,6 +33,8 @@ require (
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.68
 	github.com/moby/go-archive v0.1.0
+	github.com/openconfig/gnmi v0.11.0
+	github.com/openconfig/gnmic/pkg/api v0.1.9
 	github.com/openconfig/goyang v1.6.0
 	github.com/openconfig/ygot v0.29.20
 	github.com/operator-framework/api v0.33.0
@@ -52,6 +54,7 @@ require (
 	github.com/xlab/treeprint v1.2.0
 	github.com/yalue/native_endian v1.0.2
 	go.opentelemetry.io/proto/otlp v1.7.1
+	golang.design/x/chann v0.1.2
 	golang.org/x/net v0.43.0
 	golang.org/x/sys v0.35.0
 	golang.org/x/time v0.12.0
@@ -76,6 +79,7 @@ require (
 	cel.dev/expr v0.24.0 // indirect
 	cloud.google.com/go/auth v0.16.5 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
+	github.com/AlekSi/pointer v1.2.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/hcsshim v0.13.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
@@ -94,6 +98,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.38.0 // indirect
 	github.com/aws/smithy-go v1.22.5 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/bufbuild/protocompile v0.13.0 // indirect
 	github.com/cilium/hive v0.0.0-20250611195437-5a5dacdfb354 // indirect
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000 // indirect
 	github.com/containerd/cgroups/v3 v3.0.5 // indirect
@@ -125,6 +130,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/isovalent/metricstool v0.1.4 // indirect
+	github.com/jhump/protoreflect v1.16.0 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
@@ -141,7 +147,7 @@ require (
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/openconfig/gnmi v0.14.1 // indirect
+	github.com/openconfig/grpctunnel v0.1.0 // indirect
 	github.com/opencontainers/runtime-spec v1.2.1 // indirect
 	github.com/opencontainers/selinux v1.12.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
