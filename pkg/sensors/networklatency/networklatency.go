@@ -42,14 +42,14 @@ const (
 
 var (
 	enabled              = make(map[uint16]bool)
-	clockUpdateTimer     = timer.NewPeriodicTimer("Clock Update Timer", checkClock, true)
+	clockUpdateTimer     = timer.NewPeriodicTimer("Clock Update Timer", checkClock, false)
 	clockCheckInterval   = uint32(0)
 	clockMaxSkew         = uint32(0)
 	interfaces           = make(map[uint16][]string)
 	tcAttachedInterfaces = make(map[*program.Program]map[tc.NamespaceInterface]bool)
 	tcAttaching          sync.Mutex
 	tcList               []sensors.LoadProbeArgs
-	tcCheckTimer         = timer.NewPeriodicTimer("TC Check Timer", runTcCheck, true)
+	tcCheckTimer         = timer.NewPeriodicTimer("TC Check Timer", runTcCheck, false)
 	tcCheckInterval      = time.Duration(0)
 	refCnt               = 0
 	refCntMu             sync.Mutex

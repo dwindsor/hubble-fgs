@@ -53,7 +53,7 @@ const (
 )
 
 var (
-	watermarksExitTimer = timer.NewPeriodicTimer("Network watermarks event exit gen", checkAndAddWatermarksEndEvents, true)
+	watermarksExitTimer = timer.NewPeriodicTimer("Network watermarks event exit gen", checkAndAddWatermarksEndEvents, false)
 	watermarksMap       *ebpf.Map
 	refCount            = 0
 	refCountMu          sync.Mutex
