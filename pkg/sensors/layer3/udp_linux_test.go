@@ -1134,6 +1134,8 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
+	layer3.BaseLoaded = false
+
 	if CLISwitches {
 		oldEnableUDPValue := enterpriseOption.Config.EnableUDP
 		enterpriseOption.Config.EnableUDP = true
