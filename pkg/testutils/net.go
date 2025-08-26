@@ -11,8 +11,9 @@
 package testutils
 
 import (
-	"errors"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -20,15 +21,15 @@ import (
 // replies to request with 128 null bytes. This registers a callback on cleanup
 // to close the server.
 func StartSimpleHTTPServer(t *testing.T, address string) {
-	server := &http.Server{Addr: address, Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Write(make([]byte, 128))
-	})}
-	go func() {
-		err := server.ListenAndServe()
-		if !errors.Is(err, http.ErrServerClosed) {
-			panic(err) // can't call t.Fatal from another goroutine
-		}
-	}()
+	}))
+	server.Listener = listener
+	server.Start()
 	t.Cleanup(func() {
 		server.Close()
 	})
