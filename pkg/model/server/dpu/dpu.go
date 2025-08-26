@@ -73,8 +73,7 @@ func (p *peer) String() string {
 
 type DPUListener struct {
 	ctx       context.Context
-	port      int
-	host      string
+	address   string
 	peerGroup map[string]*peer
 	ruleSet   map[[sha256.Size]byte]*DPURule
 }
@@ -85,11 +84,10 @@ var (
 	dpu *DPUListener
 )
 
-func NewDPUListener(ctx context.Context, host string, port int) *DPUListener {
+func NewDPUListener(ctx context.Context, address string) *DPUListener {
 	dpu = &DPUListener{
 		ctx:       ctx,
-		port:      port,
-		host:      host,
+		address:   address,
 		peerGroup: make(map[string]*peer),
 		ruleSet:   make(map[[sha256.Size]byte]*DPURule),
 	}
@@ -101,7 +99,7 @@ func GetDPUListener() *DPUListener {
 }
 
 func (dpu *DPUListener) Start() error {
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", dpu.host, dpu.port))
+	lis, err := net.Listen("tcp", dpu.address)
 	if err != nil {
 		return fmt.Errorf("policy server failed: %s", err)
 	}

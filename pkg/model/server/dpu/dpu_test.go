@@ -158,7 +158,7 @@ func checkStatus(t *testing.T, checksum string, expected, saved DPUReportStatus)
 }
 
 func TestBasicWorkflow(t *testing.T) {
-	dpu := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu := NewDPUListener(context.Background(), "127.0.0.1:8080")
 
 	// Add some peers and assert we create some unique objects
 	p1 := dpu.addPeer(t1)
@@ -246,7 +246,7 @@ func TestBasicWorkflow(t *testing.T) {
 }
 
 func TestReportBeforeAdd(t *testing.T) {
-	dpu := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu := NewDPUListener(context.Background(), "127.0.0.1:8080")
 	p1SR := reportRequestToDPU(&p1StatusRequest)
 	dpu.ReportStatus(p1SR)
 	checkStatus(t, "", *p1SR, dpu.peerGroup[t1].lastStatus)
@@ -256,7 +256,7 @@ func TestReportBeforeAdd(t *testing.T) {
 
 // Add/Remove Policy in different orders and ensure we get the same hash
 func TestHashLogic(t *testing.T) {
-	dpu1 := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu1 := NewDPUListener(context.Background(), "127.0.0.1:8080")
 	dpu1.SubmitUpdateToDPU(record1)
 	dpu1.SubmitUpdateToDPU(record2)
 	dpu1.SubmitUpdateToDPU(record3)
@@ -264,7 +264,7 @@ func TestHashLogic(t *testing.T) {
 	csum1 := dpu1.Checksum()
 	hexCsum1 := hex.EncodeToString(csum1[:])
 
-	dpu2 := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu2 := NewDPUListener(context.Background(), "127.0.0.1:8080")
 	dpu2.SubmitUpdateToDPU(record3)
 	dpu2.SubmitUpdateToDPU(record2)
 	dpu2.SubmitUpdateToDPU(record1)
@@ -272,7 +272,7 @@ func TestHashLogic(t *testing.T) {
 	csum2 := dpu2.Checksum()
 	hexCsum2 := hex.EncodeToString(csum2[:])
 
-	dpu3 := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu3 := NewDPUListener(context.Background(), "127.0.0.1:8080")
 	dpu3.SubmitUpdateToDPU(record3)
 	dpu3.SubmitUpdateToDPU(record2)
 	dpu3.SubmitUpdateToDPU(record1)
@@ -288,12 +288,12 @@ func TestHashLogic(t *testing.T) {
 
 // Attempt to delete policy that doesn't exist.
 func TestOOOPolicy(t *testing.T) {
-	dpu1 := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu1 := NewDPUListener(context.Background(), "127.0.0.1:8080")
 	dpu1.SubmitDeleteToDPU(record1)
 	dpu1.SubmitUpdateToDPU(record1)
 	assert.Equal(t, len(dpu.ruleSet), 1)
 
-	dpu2 := NewDPUListener(context.Background(), "127.0.0.1", 8080)
+	dpu2 := NewDPUListener(context.Background(), "127.0.0.1:8080")
 	dpu2.SubmitDeleteToDPU(record1)
 	dpu2.SubmitUpdateToDPU(record1)
 	dpu2.SubmitDeleteToDPU(record1)
