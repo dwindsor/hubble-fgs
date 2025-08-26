@@ -107,7 +107,7 @@ func (em *EnterpriseManager) GetControllerManager() *manager.ControllerManager {
 
 func Get() KubernetesManager {
 	once.Do(func() {
-		if option.Config.EnableK8s {
+		if option.K8SControlPlaneEnabled() {
 			var err error
 			logger.GetLogger().Info("Enabling Kubernetes controller-runtime manager")
 			instance, err = New(context.Background())
