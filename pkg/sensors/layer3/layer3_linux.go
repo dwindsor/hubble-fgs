@@ -62,6 +62,8 @@ var (
 	reportRawClose          = false
 	udpCGroup               = false
 
+	BaseLoaded = false
+
 	lastInitProg   *program.Program
 	firstStatsProg *program.Program
 )
@@ -209,11 +211,15 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 
 	needDispatcher := false
 
-	progsInitSock, maps := socktrack.EnableSocktrack()
+	var progsInitSock, progsCollectStats []*program.Program
+	var maps []*program.Map
+
+	socktrackProgs, socktrackMaps := socktrack.EnableSocktrack()
 	fdLookupProgs, fdLookupMaps := ip.Enable()
-	progsInitSock = append(progsInitSock, fdLookupProgs...)
-	maps = append(maps, fdLookupMaps...)
-	var progsCollectStats []*program.Program
+	maps = append(socktrackMaps, fdLookupMaps...)
+	if !BaseLoaded {
+		progsInitSock = append(socktrackProgs, fdLookupProgs...)
+	}
 
 	if tcpEnabled {
 		tcpProgsInit, tcpProgsStats, tcpMaps := tcp.EnableTcp(tcpTimestampEnable)
@@ -779,12 +785,14 @@ func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 }
 
 func StartLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
+	BaseLoaded = false
 	ReportFunctionality()
 	err := EnableLayer3Progs()
 	if err != nil {
 		return err
 	}
 	err = RunLayer3Progs(ctx, sm)
+	BaseLoaded = true
 	if err != nil {
 		return err
 	}

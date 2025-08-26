@@ -45,6 +45,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/testutil"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -283,6 +284,7 @@ func getNoConfigObserver(t *testing.T, ctx context.Context, filtered bool) *obse
 
 func TestLoadLayer3Sensor(t *testing.T) {
 	var l3Config string
+	layer3.BaseLoaded = false
 	rawHooksAvailable := utils.CGroupSKBAvailable() && utils.RawHooksAvailable()
 	l3Config = layer3Config(utils.RTTHookAvailable(), utils.CGroupSKBAvailable(), rawHooksAvailable)
 	if err := observertesthelper.WriteConfigFile(testConfigFile, l3Config); err != nil {
@@ -304,6 +306,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 		sensi = append(sensi, s)
 	}
 	sensors.UnloadSensors(sensi)
+	layer3.BaseLoaded = false
 }
 
 func ipToHexstring(addr net.IP) string {
