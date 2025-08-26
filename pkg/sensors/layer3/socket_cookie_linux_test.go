@@ -27,6 +27,7 @@ import (
 
 	enterpriseoth "github.com/isovalent/hubble-fgs/pkg/observer/observertesthelper"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
@@ -63,7 +64,7 @@ func socketCookieTest(_ *testing.T) (ec.MultiEventChecker, error) {
 		if cookie == 0 {
 			socket, err := ip.GetAndAddSocketViaProc(uint32(os.Getpid()), uint32(fd), unix.IPPROTO_TCP, nil)
 			if err != nil {
-				return 0, 0, fmt.Errorf("failed to get socket from proc")
+				return 0, 0, fmt.Errorf("failed to get socket from proc: %w", err)
 			}
 			cookie = socket.Sockaddr
 		}
@@ -128,6 +129,8 @@ func TestSocketCookie(t *testing.T) {
 	if err := observertesthelper.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
+
+	layer3.BaseLoaded = false
 	base := base.GetInitialSensorTest(t)
 	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
 	if err != nil {
