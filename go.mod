@@ -33,6 +33,8 @@ require (
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.68
 	github.com/moby/go-archive v0.1.0
+	github.com/openconfig/goyang v1.6.0
+	github.com/openconfig/ygot v0.29.20
 	github.com/operator-framework/api v0.33.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.0
 	github.com/prometheus/client_golang v1.23.0
@@ -113,6 +115,7 @@ require (
 	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
+	github.com/golang/glog v1.2.5 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
@@ -138,6 +141,7 @@ require (
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
+	github.com/openconfig/gnmi v0.14.1 // indirect
 	github.com/opencontainers/runtime-spec v1.2.1 // indirect
 	github.com/opencontainers/selinux v1.12.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

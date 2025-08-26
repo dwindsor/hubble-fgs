@@ -790,6 +790,11 @@ github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
 github.com/gogo/protobuf/protoc-gen-gogo/descriptor
 github.com/gogo/protobuf/sortkeys
+# github.com/golang/glog v1.2.5
+## explicit; go 1.19
+github.com/golang/glog
+github.com/golang/glog/internal/logsink
+github.com/golang/glog/internal/stackdump
 # github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 ## explicit; go 1.20
 github.com/golang/groupcache/lru
@@ -951,6 +956,7 @@ github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/kylelemons/godebug v1.1.0
 ## explicit; go 1.11
 github.com/kylelemons/godebug/diff
+github.com/kylelemons/godebug/pretty
 # github.com/lucasb-eyer/go-colorful v1.2.0
 ## explicit; go 1.12
 github.com/lucasb-eyer/go-colorful
@@ -1035,6 +1041,22 @@ github.com/mxk/go-flowrate/flowrate
 # github.com/oklog/ulid v1.3.1
 ## explicit
 github.com/oklog/ulid
+# github.com/openconfig/gnmi v0.14.1
+## explicit; go 1.22.0
+github.com/openconfig/gnmi/errlist
+github.com/openconfig/gnmi/proto/gnmi
+github.com/openconfig/gnmi/proto/gnmi_ext
+github.com/openconfig/gnmi/value
+# github.com/openconfig/goyang v1.6.0
+## explicit; go 1.14
+github.com/openconfig/goyang/pkg/indent
+github.com/openconfig/goyang/pkg/yang
+# github.com/openconfig/ygot v0.29.20
+## explicit; go 1.18
+github.com/openconfig/ygot/internal/yreflect
+github.com/openconfig/ygot/util
+github.com/openconfig/ygot/ygot
+github.com/openconfig/ygot/ytypes
 # github.com/opencontainers/go-digest v1.0.0
 ## explicit; go 1.13
 github.com/opencontainers/go-digest
