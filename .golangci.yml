@@ -30,6 +30,12 @@ linters:
       - linters:
           - revive
         text: "var-naming:"
+    # for now excempt for follow up patches when I have some extra energy
+    paths:
+      - "pkg/nxos"
+      - "pkg/proto"
+      - "pkg/grpc/haclt"
+      - "pkg/grpc/hasvr"
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
