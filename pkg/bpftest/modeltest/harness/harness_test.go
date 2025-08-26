@@ -25,7 +25,7 @@ func TestAddPod(t *testing.T) {
 	harness := New(t)
 	harness.AddPod(t, "foo", "bar", model.Containers{
 		"qux": {
-			ImageSource: image.Pull("busybox:latest", false),
+			ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", false),
 		},
 	})
 }

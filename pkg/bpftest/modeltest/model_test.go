@@ -39,9 +39,9 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 				"testificate": {
 					Containers: model.Containers{
 						"test-container": {
-							ImageSource: image.Pull("ubuntu:latest", true),
+							ImageSource: image.Pull("quay.io/isovalent/busybox:1.37.0", true),
 							Cmd: model.Binary{
-								Cmd:  "/usr/bin/sleep",
+								Cmd:  "/bin/sleep",
 								Args: []string{"infinity"},
 							},
 						},
