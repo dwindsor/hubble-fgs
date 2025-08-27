@@ -153,6 +153,10 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 func deleteNetworkPolicyObj(obj any) {
 	name := ""
 
+	if dfsu, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+		obj = dfsu.Obj
+	}
+
 	switch np := obj.(type) {
 	case *v1alpha1.TetragonNetworkPolicy:
 		name = np.Name
