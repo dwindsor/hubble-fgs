@@ -254,18 +254,26 @@ func parseFirewallPolicy(np *v1alpha1.TetragonNetworkPolicy, r *v1alpha1.Network
 
 // Normalize K8s Tetragon Network Policy into internal representation
 func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.TetragonNetworkPolicy, error) {
+	result := []*types.TetragonNetworkPolicy{}
 	for _, r := range np.Spec.Rules {
 		switch r.Hook {
 		case "connect":
-			return parseConnectPolicy(np, &r)
+			rulePolicy, err := parseConnectPolicy(np, &r)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, rulePolicy...)
 		case "firewall":
-			return parseFirewallPolicy(np, &r)
+			rulePolicy, err := parseFirewallPolicy(np, &r)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, rulePolicy...)
 		default:
 			return nil, fmt.Errorf("unsupported hook type (%s)", r.Hook)
 		}
 	}
-	// A policy with no Rules is valid, but not very useful.
-	return nil, nil
+	return result, nil
 }
 
 func ToTetragonNetworkPolicyNamespaced(_ *v1alpha1.TetragonNetworkPolicyNamespaced) ([]*types.TetragonNetworkPolicy, error) {

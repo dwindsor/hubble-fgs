@@ -24,6 +24,16 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 			},
 		},
 	}
+	rule2 := v1alpha1.NetworkPolicyRule{
+		Hook:        "connect",
+		Description: "Allows HTTP connection to 8.8.4.4",
+		Destination: []v1alpha1.NetworkDestination{
+			{
+				IPBlock: &v1alpha1.NetworkDestinationCIDR{CIDR: "8.8.4.4/32"},
+				Ports:   v1alpha1.NetworkDestinationPorts{Protocol: "TCP", Ports: []uint32{80}},
+			},
+		},
+	}
 
 	tests := []struct {
 		name    string
@@ -85,6 +95,51 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 					Destination: types.TetragonNetworkDestination{
 						CIDR:  &types.TetragonNetworkCIDR{CIDR: rule.Destination[0].IPBlock.CIDR},
 						Ports: []uint32{rule.Destination[0].Ports.Ports[0]},
+					},
+					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Deny: true}},
+					Action:  types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{}},
+				},
+			},
+		},
+		{
+			name: "Two rules result in two policies",
+			policy: v1alpha1.TetragonNetworkPolicy{
+				Spec: v1alpha1.NetworkPolicySpec{
+					PodSelector: &v1.LabelSelector{},
+					NamespaceSelector: &v1.LabelSelector{
+						MatchLabels: map[string]v1.MatchLabelsValue{"kubernetes.io/metadata.name": "default"},
+					},
+					ProcessSelector: &v1alpha1.BinarySelector{
+						Operator: "In",
+						Values:   []string{"/usr/bin/curl"},
+					},
+					DefaultAction: "deny",
+					Rules:         []v1alpha1.NetworkPolicyRule{rule, rule2},
+				},
+			},
+			want: []*types.TetragonNetworkPolicy{
+				{
+					Rule: rule.Description,
+					Subject: types.TetragonNetworkSubject{
+						Labels:        types.TetragonNetworkLabels{Equal: map[string]string{"_tnp_kubernetes.io/metadata.name": "default"}},
+						InProcessName: []string{"/usr/bin/curl"},
+					},
+					Destination: types.TetragonNetworkDestination{
+						CIDR:  &types.TetragonNetworkCIDR{CIDR: rule.Destination[0].IPBlock.CIDR},
+						Ports: []uint32{rule.Destination[0].Ports.Ports[0]},
+					},
+					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Deny: true}},
+					Action:  types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{}},
+				},
+				{
+					Rule: rule2.Description,
+					Subject: types.TetragonNetworkSubject{
+						Labels:        types.TetragonNetworkLabels{Equal: map[string]string{"_tnp_kubernetes.io/metadata.name": "default"}},
+						InProcessName: []string{"/usr/bin/curl"},
+					},
+					Destination: types.TetragonNetworkDestination{
+						CIDR:  &types.TetragonNetworkCIDR{CIDR: rule2.Destination[0].IPBlock.CIDR},
+						Ports: []uint32{rule2.Destination[0].Ports.Ports[0]},
 					},
 					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Deny: true}},
 					Action:  types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{}},
