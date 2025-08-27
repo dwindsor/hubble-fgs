@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
+	"os"
 
 	enterpriseClient "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 
@@ -86,13 +88,23 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 }
 
 func cliServer(ctx context.Context) error {
-	// Create a socket for agwctl
 	serverPath := commands.CLI_SOCK
+
+	// Clean up any old socket file before listening
+	if _, err := os.Stat(serverPath); err == nil {
+		if err := os.Remove(serverPath); err != nil {
+			log.Fatalf("Error removing old socket: %v", err)
+		}
+	}
+
+	// Create a socket for agwctl
 	listener, err := net.Listen("unix", serverPath)
 	if err != nil {
 		return err
 	}
+	defer listener.Close()
 
+	logger.GetLogger().Info("CLI server listening", "path", serverPath)
 	for {
 		select {
 		case <-ctx.Done():
