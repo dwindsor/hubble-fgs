@@ -18,6 +18,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/commands"
 	"github.com/isovalent/hubble-fgs/pkg/fwa"
+	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
@@ -28,6 +29,8 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// Set the datapath to use DPU
+	dns.SetDatapath(&datapath.DPUProgrammer{})
 	s := dns.NewPolicyState()
 	for _, nameGID := range Config.VrfMap {
 		name := strings.Split(nameGID, ":")
