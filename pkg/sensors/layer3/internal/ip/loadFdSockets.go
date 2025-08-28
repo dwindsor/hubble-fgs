@@ -120,6 +120,7 @@ var (
 	DNSIPToIDMaps        = program.MapBuilder(dnsparser.IPToIDMapsName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 	AllocationIDMap      = program.MapBuilder(dnsparser.AllocationIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 	CgroupIDToAllocIDMap = program.MapBuilder(dnsparser.CgroupIDToAllocIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
+	KubepodsCgroupIDMap  = program.MapBuilder(dnsparser.KubepodsCgroupIDMapName, FdLookupKprobeProcessTree, FdLookupFentryProcessTree)
 )
 
 func Enable() ([]*program.Program, []*program.Map) {
@@ -228,6 +229,7 @@ func getFdLookupMaps() []*program.Map {
 		DNSIPToIDMaps,
 		AllocationIDMap,
 		CgroupIDToAllocIDMap,
+		KubepodsCgroupIDMap,
 	}
 
 	if utils.SupportProcessTree() {

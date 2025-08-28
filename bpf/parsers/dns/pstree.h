@@ -91,6 +91,13 @@ struct {
 	__type(value, uint32_t);
 } tg_dns_alloc_id SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, uint32_t);
+	__type(value, uint64_t);
+} tg_kpod_cgid SEC(".maps");
+
 // The link between the cgroup IDs and the allocation IDs.
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);

@@ -188,6 +188,7 @@ var (
 	DNSIPToIDMaps        = program.MapUserFrom(ip.DNSIPToIDMaps)
 	AllocationIDMap      = program.MapUserFrom(ip.AllocationIDMap)
 	CgroupIDToAllocIDMap = program.MapUserFrom(ip.CgroupIDToAllocIDMap)
+	KubepodsCgroupIDMap  = program.MapUserFrom(ip.KubepodsCgroupIDMap)
 
 	// LPM maps
 	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)
@@ -252,6 +253,7 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 			maps = append(maps, RequestIDMapName)
 			maps = append(maps, AllocationIDMap)
 			maps = append(maps, CgroupIDToAllocIDMap)
+			maps = append(maps, KubepodsCgroupIDMap)
 		}
 	}
 
@@ -531,6 +533,13 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		err = dnsparser.PopulateDNSMapsWithLocalhost()
 		if err != nil {
 			return fmt.Errorf("failed to populate the DNS maps: %w", err)
+		}
+
+		if enterpriseOption.Config.EnableBPFDNSPerPod {
+			err = dnsparser.PopulateKubepodsCgroupIDMap()
+			if err != nil {
+				return fmt.Errorf("failed to populate kubepods cgroupID map needed for option %s, is kubelet running on this node?: %w", enterpriseOption.KeyEnableBPFDNSPerPod, err)
+			}
 		}
 
 		// Program the QuotasInitDNSDomainMappings

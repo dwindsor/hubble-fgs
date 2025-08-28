@@ -22,6 +22,8 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/cgroups"
+	"github.com/cilium/tetragon/pkg/cgroups/fsscan"
 	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -45,6 +47,7 @@ const (
 
 	AllocationIDMapName      = "tg_dns_alloc_id"
 	CgroupIDToAllocIDMapName = "tg_dns_cgid_aid"
+	KubepodsCgroupIDMapName  = "tg_kpod_cgid"
 
 	dnsMaxNameSize = 255
 
@@ -65,6 +68,41 @@ type ErrorMap struct {
 type DNSID struct {
 	ID     uint64
 	Source uint64
+}
+
+// PopulateKubepodsCgroupIDMap scans the filesystem for the "kubepods.slice"
+// cgroup directory and writes its cgroup ID into the appropriate map for
+// datapath use.
+func PopulateKubepodsCgroupIDMap() error {
+	mapFile := filepath.Join(bpf.MapPrefixPath(), KubepodsCgroupIDMapName)
+	kpodCgidMap, err := ebpf.LoadPinnedMap(mapFile, nil)
+	if err != nil {
+		return fmt.Errorf("failed to load %q map: %w", mapFile, err)
+	}
+	defer kpodCgidMap.Close()
+
+	fsscanner := fsscan.New()
+	podDir, err := fsscanner.FindPodPath("kubepods.slice")
+	if err != nil {
+		return fmt.Errorf("failed to find kubepods.slice cgroup directory: %w", err)
+	}
+
+	if podDir == "" {
+		return errors.New("kubepods.slice was not found in the cgroup hierarchy")
+	}
+
+	cgid, err := cgroups.GetCgroupIdFromPath(podDir)
+	if err != nil {
+		return fmt.Errorf("failed getting the cgroup ID from the cgroup directory: %w", err)
+	}
+
+	var zero uint32
+	err = kpodCgidMap.Update(zero, cgid, 0)
+	if err != nil {
+		return fmt.Errorf("failed to update the kubepods cgroupID map with cgid: %w", err)
+	}
+
+	return nil
 }
 
 // PopulateDNSMapsWithLocalhost fills the DNS map with localhost related
