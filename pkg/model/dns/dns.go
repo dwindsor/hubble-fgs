@@ -33,7 +33,7 @@ const (
 var (
 	RealizedState *PolicyState
 	DesiredState  *PolicyState
-	// Programmer for BPF dataplane
+	// Programmer for dataplane default to BPF
 	prog datapath.Interface = &datapath.BpfProgrammer{}
 )
 
@@ -47,6 +47,10 @@ var (
 func init() {
 	s := NewPolicyState()
 	SetRealizedState(s)
+}
+
+func SetDatapath(dp datapath.Interface) {
+	prog = dp
 }
 
 // Legacy policy add for quotas
