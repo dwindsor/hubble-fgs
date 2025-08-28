@@ -46,6 +46,7 @@ func Execute() error {
 	flags.BoolVar(&Config.EnableNXOS, keyEnableNXOS, true, "Enable Nexus smartswitch")
 	flags.StringSliceVar(&Config.NetworkPolicies, keyNetworkPolicy, []string{}, "network policy files")
 	flags.StringVar(&Config.DPUServerAddress, keyDPUServerAddress, "", "DPU server address")
+	flags.StringSliceVar(&Config.VrfMap, keyVrfMap, []string{}, "Prepopulate VRF map")
 	return rootCmd.Execute()
 }
 

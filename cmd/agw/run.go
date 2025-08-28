@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 
 	enterpriseClient "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 
@@ -16,6 +18,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/commands"
 	"github.com/isovalent/hubble-fgs/pkg/fwa"
+	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
 )
@@ -24,6 +27,14 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 	logger.GetLogger().Info("Agent starting")
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	s := dns.NewPolicyState()
+	for _, nameGID := range Config.VrfMap {
+		name := strings.Split(nameGID, ":")
+		gid, _ := strconv.Atoi(name[1])
+		s.AddL3Network(name[0], uint32(gid))
+	}
+	dns.SetRealizedState(s)
 
 	// Configuring agent
 	err := agent.Config(ctx, configPath)

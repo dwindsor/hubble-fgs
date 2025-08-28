@@ -6,6 +6,7 @@ type config struct {
 	EnableKubernetes bool
 	EnableNXOS       bool
 	DPUServerAddress string
+	VrfMap           []string
 }
 
 var (
@@ -15,6 +16,7 @@ var (
 		EnableKubernetes: true,
 		EnableNXOS:       true,
 		DPUServerAddress: "127.0.0.1:9090",
+		VrfMap:           []string{},
 	}
 )
 
@@ -24,4 +26,5 @@ const (
 	keyEnableK8s        = "enable-k8s"
 	keyEnableNXOS       = "enable-nxos"
 	keyDPUServerAddress = "dpu-server-address"
+	keyVrfMap           = "vrf-map"
 )
