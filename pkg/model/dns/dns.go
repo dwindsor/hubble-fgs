@@ -565,6 +565,7 @@ func addNamespaceLabels(endpointObject metav1.Object, ml *matchLabels.LabelSet) 
 // These three functions Add, Get, Delete are meant to be used by NXOS code to
 // manage the logical network state.
 func (state *PolicyState) AddL3Network(name string, uid uint32) {
+	logger.GetLogger().Info("Add Logical Network", "vrf", name, "gid", uid)
 	state.networkL3Objects[name] = uid
 }
 
