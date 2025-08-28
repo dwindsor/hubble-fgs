@@ -47,6 +47,26 @@ func findAllocsIDs(ipMap dnsparser.IPToDomainMap) ([]uint32, error) {
 	return allocIDs, nil
 }
 
+func FindSubDirs(root string) ([]string, error) {
+	var dirs []string
+	f, err := os.Open(root)
+	if err != nil {
+		return nil, err
+	}
+	fileInfo, err := f.Readdir(-1)
+	f.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range fileInfo {
+		if file.IsDir() {
+			dirs = append(dirs, file.Name())
+		}
+	}
+	return dirs, nil
+}
+
 func getPIDsFromCgroupV2(path string) ([]int, error) {
 	f, err := os.Open(filepath.Join(path, "cgroup.procs"))
 	if err != nil {
@@ -112,9 +132,28 @@ func findCgroupPIDsByVisiting[K any](cgroupIDs map[uint64]K) (map[uint64][]int, 
 		if _, found := cgroupIDs[cgroupID]; found {
 			pids, err := getPIDsFromCgroupV2(path)
 			if err != nil {
-				return fmt.Errorf("failed retrieving PIDs from the cgroup path: %w", err)
+				return fmt.Errorf("failed retrieving PIDs from the cgroup path %s: %w", path, err)
 			}
+
+			// visit the direct subdirectories
+			subdirs, err := FindSubDirs(path)
+			if err != nil {
+				return fmt.Errorf("failed to list subdir of cgroup path %s: %w", path, err)
+			}
+			for _, subdir := range subdirs {
+				subPids, err := getPIDsFromCgroupV2(filepath.Join(path, subdir))
+				if err != nil {
+					return fmt.Errorf("failed retrieving PIDs from the cgroup path %s: %w", subdir, err)
+				}
+				pids = append(pids, subPids...)
+			}
+
 			cgroupIDToPIDs[cgroupID] = pids
+
+			// we already visited the direct subdirectories (we
+			// don't support more nested cgroup) so we skip this
+			// branch
+			return filepath.SkipDir
 		}
 
 		if len(cgroupIDToPIDs) == len(cgroupIDs) {
