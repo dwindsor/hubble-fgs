@@ -22,3 +22,4 @@ spec:
         cidr: "10.2.0.1/16"
       ports:
         protocol: "TCP"
+        ports: [80,8080]
