@@ -1,11 +1,11 @@
-FROM --platform=${BUILDPLATFORM} golang:1.24.4 AS build
+FROM --platform=${BUILDPLATFORM} golang:1.24.4@sha256:20a022e5112a144aa7b7aeb3f22ebf2cdaefcc4aac0d64e8deeee8cdc18b9c0f AS build
 
 RUN apt-get update && apt-get install make -y
 
 WORKDIR /usr/src/app
 
 # First collect gmni used for testing
-FROM --platform=${BUILDPLATFORM} docker.io/gnmic/gnmic:latest AS gnmic
+FROM --platform=${BUILDPLATFORM} docker.io/gnmic/gnmic:latest@sha256:bdb580e17e4b804a9c7f1e9833274182878bccaab8b8f108da5c1c92b7321ed4 AS gnmic
 ARG TARGETARCH
 
 # Second builder (cross-)compile:
