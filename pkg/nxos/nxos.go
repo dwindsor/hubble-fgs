@@ -14,6 +14,7 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 
 	"github.com/openconfig/gnmic/pkg/api"
@@ -30,6 +31,8 @@ const (
 	waitForDpuInterval    = 10  // in second
 	waitForInSyncInterval = 30  // in second
 	notifTimeout          = 900 // in second
+
+	dpuStatusCheckTimer = 1 // in second
 )
 
 const (
@@ -303,12 +306,72 @@ func (n *Nxos) waitForDpu(ctx context.Context) (uint16, error) {
 
 	for {
 		select {
+		case <-ctx.Done():
+			logger.GetLogger().Info("Aborting wait for DPU.")
+			return 0, fmt.Errorf("no DPUs discovered")
 		case wait := <-n.Wait.Out():
 			logger.GetLogger().Debug("Waked up", "time", wait)
 			num, ok := n.isAllDpuCounted(ctx)
 			if ok {
 				return num, nil
 			}
+		}
+	}
+}
+
+func (n *Nxos) checkDPUVersion(status []dpu.DPUReportStatus) error {
+	var err error
+
+	if n.Update.Persist.Id == "" {
+		return nil
+	}
+
+	n.Update.HasRes = true
+	for _, s := range status {
+		// The NA is a NXOS bug workaround. Once fixed (is it fixed) we can remove.
+		if n.Update.Persist.Version != s.DpVersion && s.DpVersion != "NA" {
+			logger.GetLogger().Debug("persisted version does not match dpu version", "persistent", n.Update.Persist.Version, "dpuVersion", s.DpVersion)
+			n.Update.Result.ErrCode = int(1)
+			n.Update.Result.ErrMsg = "Not running updated DPU firmware"
+			err = fmt.Errorf("NXOS expected '%s' DPU version '%s' mismatch", n.Update.Persist.Version, s.DpVersion)
+			break
+		}
+	}
+	if n.Update.Result.ErrMsg == "" {
+		n.Update.Result.Success = true
+	}
+	return err
+}
+
+func (n *Nxos) waitForDpuAgent(ctx context.Context, expected int) error {
+	currTimer := dpuStatusCheckTimer * time.Second
+	maxDPUAgentBackoff := 10 * time.Second
+
+	server := dpu.GetDPUListener()
+	for {
+		select {
+		case <-ctx.Done():
+			logger.GetLogger().Info("Aborting, DPU status check")
+			return fmt.Errorf("no DPU agents found")
+		// linear backoff up to 10s, we really do want this to connect to
+		// the DPUs otherwise our firewall is unhealthy.
+		case <-time.After(currTimer):
+			status, err := server.GetDPUStatus()
+			if err != nil || len(status) != expected {
+				if currTimer < maxDPUAgentBackoff {
+					currTimer = currTimer + time.Second
+				}
+				logger.GetLogger().Warn("Waiting for DPUs to connect", "expected", expected, "online", len(status))
+				continue
+			}
+			logger.GetLogger().Info("Discovered DPU agents", "count", len(status))
+
+			err = n.checkDPUVersion(status)
+			if err != nil {
+				logger.GetLogger().Warn("Incorrect DPU version", logfields.Error, err)
+			}
+
+			return nil
 		}
 	}
 }
@@ -474,38 +537,12 @@ func (n *Nxos) Setup(ctx context.Context, low, high uint16) error {
 		logger.GetLogger().Error("Fail to wait for dpu", logfields.Error, err)
 		return err
 	}
-	// I don't see any reason to wait for the DPUs to announce. Let the system come
-	// online and we will deal with missing DPUs. I gather from waitForDpu above
-	// the switch knows they exist.
-	/*
-		if !n.SkipDpu {
-			for {
-				fwaCnt := deploy.GetFwaCount(ctx)
-				logger.GetLogger().Debug("FWACount", "dpu", dpuCnt, "fwa", fwaCnt)
-				if int(dpuCnt) == fwaCnt {
-					break
-				}
-				time.Sleep(waitForDpuInterval * time.Second)
-			}
-		}
-	*/
 
-	// set update result
-	if n.Update.Persist.Id != "" {
-		n.Update.HasRes = true
-		for _, dpu := range n.Dpus {
-			if n.Update.Persist.Version != dpu.Version && dpu.Version != "NA" {
-				logger.GetLogger().Debug("persisted version does not match dpu version", "persistent", n.Update.Persist.Version, "dpuVersion", dpu.Version)
-				n.Update.Result.ErrCode = int(1)
-				n.Update.Result.ErrMsg = "Not running updated DPU firmware"
-				break
-			}
-		}
-		if n.Update.Result.ErrMsg == "" {
-			n.Update.Result.Success = true
-		}
+	err = n.waitForDpuAgent(ctx, int(dpuCnt))
+	if err != nil {
+		logger.GetLogger().Error("Failed to connect to dpu Agent", logfields.Error, err)
+		return err
 	}
-	logger.GetLogger().Debug("DPU ready:", "cnt", dpuCnt)
 
 	if !n.SkipCtrlr {
 		ht := haveTokens(ctx)
