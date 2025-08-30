@@ -56,8 +56,9 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 	}
 
 	// Setup server to listen for DPUs
+	server := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
+
 	go func() {
-		server := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
 		err := server.Start()
 		if err != nil {
 			logger.GetLogger().Error("aborting DPU listener failed",
