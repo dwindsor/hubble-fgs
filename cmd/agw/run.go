@@ -45,20 +45,20 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 		return err
 	}
 
-	// Setting up agent local state
-	if Config.EnableNXOS {
-		err = agent.Setup(ctx)
-		if err != nil {
-			logger.GetLogger().Error("Failed to setup agent",
-				logfields.Error, err)
-			return err
-		}
-	}
-
 	// Setup server to listen for DPUs
 	server := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
 
 	go func() {
+		// Setting up agent local state
+		if Config.EnableNXOS {
+			err = agent.Setup(ctx)
+			if err != nil {
+				logger.GetLogger().Error("Failed to setup agent",
+					logfields.Error, err)
+				cancel()
+			}
+		}
+
 		err := server.Start()
 		if err != nil {
 			logger.GetLogger().Error("aborting DPU listener failed",
