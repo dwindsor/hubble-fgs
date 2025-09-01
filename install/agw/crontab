@@ -1,0 +1,1 @@
+15 * * * * /usr/sbin/logrotate /etc/logrotate.d/hs
