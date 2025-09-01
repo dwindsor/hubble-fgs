@@ -5,6 +5,7 @@ INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 DOCKER_IMAGE_TAG ?= latest
 TETRAGON_IMAGE_NAME ?= isovalent/tetragon
+AGW_IMAGE_NAME ?= isovalent/agw
 TETRAGON_SLIM_IMAGE_NAME ?= isovalent/tetragon-slim
 AGGREGATOR_IMAGE_NAME ?= isovalent/tetragon-aggregator
 OPERATOR_IMAGE_NAME ?= isovalent/tetragon-operator
@@ -249,6 +250,12 @@ image-clang:
 	$(CONTAINER_ENGINE) build -f Dockerfile.clang -t "cilium/clang:${DOCKER_IMAGE_TAG}" .
 	@echo "Push like this when ready:"
 	@echo "${CONTAINER_ENGINE} push cilium/clang:$(DOCKER_IMAGE_TAG)"
+
+.PHONY: image-agw
+image-agw:
+	$(CONTAINER_ENGINE) build -f Dockerfile.agw -t "${AGW_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} .
+	@echo "Push like this when ready:"
+	@echo "${CONTAINER_ENGINE} push ${AGW_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
 ##@ Packages
 
