@@ -735,7 +735,6 @@ func AddLayer3() {
 	sensors.RegisterPolicyHandlerAtInit(l3.name, l3)
 
 	sensors.RegisterProbeType("layer3_sensor", l3)
-	sensors.RegisterProbeType("layer3Sockops", l3)
 	sensors.RegisterProbeType("cgrp_ingress", l3)
 	sensors.RegisterProbeType("cgrp_egress", l3)
 	sensors.RegisterProbeType("cgrp_inet4_bind", l3)
