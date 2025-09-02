@@ -7,6 +7,7 @@ type config struct {
 	EnableNXOS       bool
 	DPUServerAddress string
 	VrfMap           []string
+	Debug            bool
 }
 
 var (
@@ -17,6 +18,7 @@ var (
 		EnableNXOS:       true,
 		DPUServerAddress: "127.0.0.1:9090",
 		VrfMap:           []string{},
+		Debug:            false,
 	}
 )
 
@@ -27,4 +29,5 @@ const (
 	keyEnableNXOS       = "enable-nxos"
 	keyDPUServerAddress = "dpu-server-address"
 	keyVrfMap           = "vrf-map"
+	keyDebug            = "debug"
 )

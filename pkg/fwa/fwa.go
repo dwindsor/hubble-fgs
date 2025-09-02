@@ -203,6 +203,10 @@ func (fwa *FWAgent) ShowPolicies(_ context.Context) string {
 func (fwa *FWAgent) ShowDpu(_ context.Context) string {
 	logger.GetLogger().Debug("Show dpu")
 	server := dpu.GetDPUListener()
+	if server == nil {
+		logger.GetLogger().Debug("Empty server")
+		return ""
+	}
 	return server.StatusReportString()
 }
 

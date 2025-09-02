@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/spf13/cobra"
 
@@ -28,7 +27,7 @@ func Execute() error {
 			cmd.Help()
 		},
 		PersistentPreRun: func(_ *cobra.Command, _ []string) {
-			if common.Debug {
+			if Config.Debug {
 				logger.SetLogLevel(slog.LevelDebug)
 			}
 		},
@@ -47,6 +46,7 @@ func Execute() error {
 	flags.StringSliceVar(&Config.NetworkPolicies, keyNetworkPolicy, []string{}, "network policy files")
 	flags.StringVar(&Config.DPUServerAddress, keyDPUServerAddress, "", "DPU server address")
 	flags.StringSliceVar(&Config.VrfMap, keyVrfMap, []string{}, "Prepopulate VRF map")
+	flags.BoolVar(&Config.Debug, keyDebug, false, "Enable debug")
 	return rootCmd.Execute()
 }
 

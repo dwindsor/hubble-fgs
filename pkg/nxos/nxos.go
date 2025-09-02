@@ -388,6 +388,9 @@ func (n *Nxos) waitForToken(ctx context.Context) error {
 		return err
 	}
 
+	// HACK: return before iso token integratation
+	return nil
+
 	if n.isTokenAvail(ctx) {
 		return nil
 	}
