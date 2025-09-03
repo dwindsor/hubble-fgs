@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-push:
     uses: ./.github/workflows/build-images-base.yml
+    permissions:
+      contents: read
     with:
       sha: "${{ github.sha }}"
       tag: latest
