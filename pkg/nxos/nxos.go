@@ -91,17 +91,7 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	}
 
 	// set up signal handling
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGTERM)
-	go func() {
-		sig := <-sigs
-		logger.GetLogger().Debug("Received signal:", "sig", sig)
-		n.RLock()
-		n.cleanup(ctx)
-		n.RUnlock()
-		n.GnmiClose(ctx)
-		os.Exit(201)
-	}()
+	n.setupSignalHandler(ctx)
 
 	// create a target
 	tg, err := api.NewTarget(
@@ -265,6 +255,68 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	go n.haSetup(ctx)
 
 	return nil
+}
+
+// setupSignalHandler sets up signal handling for graceful shutdown.
+func (n *Nxos) setupSignalHandler(ctx context.Context) {
+	logger.GetLogger().Debug("Setting up signal handler")
+
+	sigs := make(chan os.Signal, 1)
+	// Notify the sigs channel whenever the process receives a SIGTERM.
+	signal.Notify(sigs, syscall.SIGTERM)
+	go func() {
+		sig := <-sigs
+		logger.GetLogger().Debug(fmt.Sprintf("Received signal: %v", sig))
+
+		// get agent state
+		agentState, err := n.getAgentState(ctx)
+		if err != nil || agentState == model.Cisco_NX_OSDevice_Sas_SasAgentStateE_unknown {
+			logger.GetLogger().Error("Failed to get agent state. No action performed.")
+			return
+		}
+		if agentState == model.Cisco_NX_OSDevice_Sas_SasAgentStateE_install_in_progress {
+			// skip cleanup for install in progress
+			logger.GetLogger().Debug("Skip cleanup for install_in_progress")
+		} else {
+			n.RLock()
+			n.cleanup(ctx)
+			n.RUnlock()
+		}
+		n.GnmiClose(ctx)
+		os.Exit(201)
+	}()
+}
+
+// getAgentState retrieves the agent state from /System/sas-items/state-items/agent-items.
+func (n *Nxos) getAgentState(ctx context.Context) (model.E_Cisco_NX_OSDevice_Sas_SasAgentStateE, error) {
+	logger.GetLogger().Debug("Retrieving agent state")
+
+	agentState := model.Cisco_NX_OSDevice_Sas_SasAgentStateE_unknown
+	jstrs, err := n.gnmiGet(ctx, "/System/sas-items/state-items/agent-items")
+	if err != nil {
+		logger.GetLogger().Error("Fail to get agent-items", logfields.Error, err)
+		return agentState, err
+	}
+	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
+		items := &model.Cisco_NX_OSDevice_System_SasItems_StateItems_AgentItems{}
+		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
+		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
+		if err != nil {
+			logger.GetLogger().Error("Fail to unmarshal agent-items", logfields.Error, err)
+		} else {
+			// Only the first "hypershield" entry is considered.
+			for svc, agent := range items.SasAgentList {
+				if svc != "hypershield" {
+					logger.GetLogger().Debug("Unexpected service", "svc", svc)
+					continue
+				}
+				logger.GetLogger().Debug("Agent State", "state", agent.AgentState.String())
+				return agent.AgentState, nil
+			}
+		}
+	}
+	// Fallback: if no valid agent state is found for "hypershield", return unknown agent state.
+	return agentState, nil
 }
 
 // unsubscribe all above gnmi subscriptions
