@@ -31,8 +31,7 @@ type ConfigValue struct {
 	RawEnabled         uint8
 	RawReportClose     uint8
 	UdpReportClose     uint8
-	EnableBPFDNSParser uint8
-	Pad                [2]uint8
+	Pad                [3]uint8
 }
 
 func (v *ConfigValue) String() string {
@@ -78,18 +77,12 @@ func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 		udpReportClose = 1
 	}
 
-	enableBPFDNSParser := uint8(0)
-	if enterpriseOption.Config.EnableBPFDNSParser {
-		enableBPFDNSParser = 1
-	}
-
 	value := &ConfigValue{
 		EnableIcmpTracking: icmpTracking,
 		IcmpNetMatch:       icmpNetMatch,
 		RawEnabled:         rawEnabled,
 		RawReportClose:     rawReportClose,
 		UdpReportClose:     udpReportClose,
-		EnableBPFDNSParser: enableBPFDNSParser,
 	}
 	err = m.Put(key, value)
 	if err != nil {

@@ -49,6 +49,7 @@ const (
 	CgroupIDToAllocIDMapName = "tg_dns_cgid_aid"
 	KubepodsCgroupIDMapName  = "tg_kpod_cgid"
 
+	ParserEnabledName = "DNS_PARSER_ENABLED"
 	PerPodFeatureName = "DNS_PARSER_PER_POD_ENABLED"
 
 	dnsMaxNameSize = 255

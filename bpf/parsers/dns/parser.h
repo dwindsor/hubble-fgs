@@ -22,12 +22,7 @@
 
 uint32_t zero = 0;
 
-FUNC_INLINE bool bpf_dns_parser_enabled()
-{
-	struct cfg_value *cfg;
-	cfg = (struct cfg_value *)map_lookup_elem(&tg_l3_cfg, &zero);
-	return cfg && cfg->enable_bpf_dns_parser;
-}
+volatile __CONST __u8 DNS_PARSER_ENABLED;
 
 // parse_dns_name_label parses a label in a uncompressed DNS name and write it
 // into the name heap map. If skip is true, nothing is written in the domain
