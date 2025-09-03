@@ -12,7 +12,6 @@
 #include "../../modules/tetragon-oss/bpf/process/bpf_exit.h"
 #include "../networking/l3/tcp/bpf_tcp_info.h"
 #include "../networking/bpf_process_network_watermarks.h"
-#include "../parsers/dns/pstree.h"
 #include "bpf_tracing.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";

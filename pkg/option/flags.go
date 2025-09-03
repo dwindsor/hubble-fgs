@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/viper"
 
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 const (
@@ -258,6 +259,25 @@ func validateConfig(config config) error {
 		// The BPF DNS parser is loaded alongside the UDP sensor
 		if !config.EnableUDP {
 			return fmt.Errorf("the BPF DNS parser requires --%s", keyEnableUDP)
+		}
+
+	}
+
+	if config.EnableBPFDNSPerPod {
+		if !config.EnableBPFDNSParser {
+			return fmt.Errorf("the BPF DNS parser per Pod map feature requires --%s", keyEnableBPFDNSParser)
+		}
+
+		// SupportProcessTree is used to discriminate against using the
+		// sockops or tracing program. The issue is that sockops don't
+		// support the cgroup ancestor helper between 5.15 and 6.4 and
+		// thus these can't be combined.
+		//
+		// As a workaround if needed, fentry could be used to replace
+		// sockops reliably for 5.15 to 6.4.
+		if utils.SupportProcessTree() && !utils.SockopsSupportsCgroupAncestorHelper() {
+			return fmt.Errorf("the BPF DNS parser per Pod map feature requires sockops to support bpf_get_current_ancestor_cgroup_id (from v6.4)")
+
 		}
 	}
 

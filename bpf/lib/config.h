@@ -14,6 +14,15 @@
 #include "vmlinux.h"
 #include "bpf_helpers.h"
 
+// __CONST is conditionally defined to avoid failing on old kernels with
+// "failed: map .rodata: map create: read- and write-only maps not supported
+// (requires >= v5.2)"
+#ifndef IS_KPROBE
+#define __CONST const
+#else
+#define __CONST
+#endif
+
 struct cfg_value {
 	__u8 icmp_tracking_enabled;
 	__u8 icmp_net_match;

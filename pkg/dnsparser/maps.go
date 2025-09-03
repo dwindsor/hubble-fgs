@@ -49,6 +49,8 @@ const (
 	CgroupIDToAllocIDMapName = "tg_dns_cgid_aid"
 	KubepodsCgroupIDMapName  = "tg_kpod_cgid"
 
+	PerPodFeatureName = "DNS_PARSER_PER_POD_ENABLED"
+
 	dnsMaxNameSize = 255
 
 	// The max number of pod for the IPToID map resize and the cgidToAllocid.

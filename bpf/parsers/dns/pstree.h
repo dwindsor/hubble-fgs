@@ -13,6 +13,7 @@
 
 #include "vmlinux.h"
 #include "bpf_task.h"
+#include "config.h"
 
 #include "dns.h"
 #include "process/process_endpoint.h"
@@ -105,6 +106,8 @@ struct {
 	__type(key, uint64_t);
 	__type(value, uint32_t);
 } tg_dns_cgid_aid SEC(".maps");
+
+volatile __CONST __u8 DNS_PARSER_PER_POD_ENABLED;
 
 // Assigns an ID from the ip and domain. Most of the time it generates a new ID
 // from BPF side but, in the case a quota policy was parsed by userspace, reuses

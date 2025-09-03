@@ -29,6 +29,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
 	"github.com/isovalent/hubble-fgs/pkg/model/policy"
@@ -178,6 +179,10 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	// Kernels before 5.5 don't support Fentry, so use kprobes here.
 	// These can be unreliable as they can be preempted.
 	if utils.SupportProcessTree() {
+		// Note: if we want this feature for <6.4, we need to enable as well in tracing progs
+		tcpconfig.TcpSockops.RewriteConstants = map[string]any{
+			dnsparser.PerPodFeatureName: enterpriseOption.Config.EnableBPFDNSPerPod && utils.SockopsSupportsCgroupAncestorHelper(),
+		}
 		progsInitSock = append(progsInitSock, tcpconfig.TcpSockops)
 		maps = append(maps, processModelMapsEnable()...)
 	} else if utils.SupportFentry() {

@@ -327,8 +327,9 @@ deps/bpf_exit.d: $(ISOPROCESS)bpf_exit.c
 	$(rule_d)
 
 # bpf_ee_execve_event: special case because the enterprise version is different than OSS
+# IS_KPROBE is needed for const define on old kernels (see lib/config.h)
 objs/bpf_execve_event.o: $(ISOPROCESS)bpf_ee_execve_event.c
-	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	$(CLANG) $(CLANG_FLAGS) -DIS_KPROBE -c $< -o $@
 
 deps/bpf_execve_event.d: $(ISOPROCESS)bpf_ee_execve_event.c
 	$(rule_d)

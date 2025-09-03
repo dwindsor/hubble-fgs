@@ -8,6 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+#define IS_KPROBE 1
 #include "bpf_fd_lookup.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";

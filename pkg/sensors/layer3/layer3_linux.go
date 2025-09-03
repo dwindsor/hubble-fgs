@@ -286,6 +286,11 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 				progsCollectStats = append(progsCollectStats, dispatcherProgs...)
 				maps = append(maps, dispatcherMaps...)
 			} else {
+				for _, prog := range dispatcherProcessTreeProgs {
+					prog.RewriteConstants = map[string]any{
+						dnsparser.PerPodFeatureName: enterpriseOption.Config.EnableBPFDNSPerPod && utils.SockopsSupportsCgroupAncestorHelper(),
+					}
+				}
 				progsCollectStats = append(progsCollectStats, dispatcherProcessTreeProgs...)
 				maps = append(maps, dispatcherProcessTreeMaps...)
 			}
