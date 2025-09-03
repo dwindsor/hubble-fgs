@@ -25,3 +25,7 @@ func SupportFmodRet() bool {
 func SupportLSM() bool {
 	return false
 }
+
+func SockopsSupportsCgroupAncestorHelper() bool {
+	return false
+}

@@ -39,6 +39,8 @@ var (
 	checkRawHooksAvailable   = sync.OnceValue(_checkRawHooksAvailable)
 	checkRTTHookAvailable    = sync.OnceValue(_checkRTTHookAvailable)
 	checkUDPBindNeedsDummies = sync.OnceValue(_checkUDPBindNeedsDummies)
+
+	checkSockopsSupportsCgAncestorHelper = sync.OnceValue(_checkSockopsSupportsCgAncestorHelper)
 )
 
 // SkSkbParserRequired returns whether the underlying kernel requires skskb
@@ -427,7 +429,47 @@ func LogLayer3Features() string {
 	// not load the BTF again
 	defer btf.FlushKernelSpec()
 	return fmt.Sprintf("packet: %t, packet_mem: %t, add_and_fetch: %t, current_task_btf: %t, process_tree: %t, "+
-		"func_by_func_verif: %t, global_func_ptr_args: %t, raw_sockets: %t, RTT_hook: %t, fentry: %t, udp_bind_needs_dummies: %t",
+		"func_by_func_verif: %t, global_func_ptr_args: %t, raw_sockets: %t, RTT_hook: %t, fentry: %t, udp_bind_needs_dummies: %t, "+
+		"sockops_cgroup_ancestor: %t",
 		CGroupSKBAvailable(), SupportCGroupSKBProbeRead(), SupportAddAndFetch(), SupportCurrentTaskBTF(), SupportProcessTree(),
-		SupportFuncByFuncVerif(), SupportGlobalFuncPtrArgs(), RawHooksAvailable(), RTTHookAvailable(), SupportFentry(), UDPBindNeedsDummies())
+		SupportFuncByFuncVerif(), SupportGlobalFuncPtrArgs(), RawHooksAvailable(), RTTHookAvailable(), SupportFentry(), UDPBindNeedsDummies(),
+		SockopsSupportsCgroupAncestorHelper())
+}
+
+// SockopsSupportsCgroupAncestorHelper checks if the kernel supports calling
+// the bpf_get_current_ancestor_cgroup_id_proto helper on sockops programs.
+//
+// The support was essentially added from v6.4 by the following patch
+// https://lore.kernel.org/all/ZAD8QyoszMZiTzBY@slm.duckdns.org/
+func SockopsSupportsCgroupAncestorHelper() bool {
+	err := checkSockopsSupportsCgAncestorHelper()
+	if err != nil {
+		fmt.Println(err)
+	}
+	return err == nil
+}
+
+func _checkSockopsSupportsCgAncestorHelper() error {
+	spec := &ebpf.ProgramSpec{
+		Type:       ebpf.SockOps,
+		AttachType: ebpf.AttachCGroupSockOps,
+		License:    "GPL",
+		Instructions: asm.Instructions{
+			// Load the ancestor_level argument (e.g., 0 for the root cgroup) into R1.
+			asm.LoadImm(asm.R1, 0, asm.DWord),
+			asm.FnGetCurrentAncestorCgroupId.Call(),
+			asm.LoadImm(asm.R0, 0, asm.DWord),
+			asm.Return(),
+		},
+	}
+
+	prog, err := ebpf.NewProgramWithOptions(spec, ebpf.ProgramOptions{
+		LogDisabled: false,
+	})
+	if err != nil {
+		return err
+	}
+	prog.Close()
+
+	return nil
 }
