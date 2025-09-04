@@ -46,7 +46,7 @@ func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool)
 	return nil
 }
 
-func (p *BpfProgrammer) conflictUpdateMap(key *types.DestinationEndpointKey, value *types.DestinationEndpointValue) error {
+func (p *BpfProgrammer) conflictUpdateMap(key types.DestinationEndpointKey, value types.DestinationEndpointValue) error {
 
 	lookupValue := &types.DestinationEndpointValue{}
 	if err := p.dstMap.Lookup(key, lookupValue); err == nil {
@@ -61,7 +61,7 @@ func (p *BpfProgrammer) conflictUpdateMap(key *types.DestinationEndpointKey, val
 }
 
 // This call will destroy key and value they can not be used after this.
-func (p *BpfProgrammer) populateStatEntry(key *types.DestinationEndpointKey, value *types.DestinationEndpointValue) error {
+func (p *BpfProgrammer) populateStatEntry(key types.DestinationEndpointKey, value types.DestinationEndpointValue) error {
 	value.TxAction = record.PolicyNone // we want rules for stats, not to impact verdict
 
 	// 2  (src,  *  , local_id, destination, local_nsid).TX += skb->len
@@ -151,7 +151,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		logger.GetLogger().Warn("programmer unable to map policy rule to ID", "Policy", r.Policy.Name, "Rule", r.Policy.Rule)
 	}
 
-	key := &types.DestinationEndpointKey{
+	key := types.DestinationEndpointKey{
 		LocalId:           r.Src.Self,
 		LocalNSId:         r.Src.NSID,
 		DestinationId:     dst,
@@ -159,7 +159,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		DestinationPort:   uint64(r.Endpoint.Port),
 	}
 
-	value := &types.DestinationEndpointValue{
+	value := types.DestinationEndpointValue{
 		TxQuota:        0,
 		TxLimit:        r.Action.QuotaLimit,
 		TxDrops:        0,
@@ -260,7 +260,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	// TxLimit fields. Unfortunately its hard to do a partial update without doing multiple
 	// reads. So for now zero entry, but keep the key/value in the map its not obvious
 	// to me that we need to move it given the connection is likely still around.
-	key := &types.DestinationEndpointKey{
+	key := types.DestinationEndpointKey{
 		LocalId:           src.Self,
 		LocalNSId:         src.NSID,
 		DestinationId:     dst,
@@ -268,7 +268,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 		DestinationPort:   uint64(r.Endpoint.Port),
 	}
 
-	value := &types.DestinationEndpointValue{
+	value := types.DestinationEndpointValue{
 		TxQuota:        0,
 		TxLimit:        0,
 		TxDrops:        0,
@@ -322,9 +322,17 @@ type processTreeBinaryUIDKey struct {
 	args   [256]byte
 }
 
+func (k processTreeBinaryUIDKey) String() string {
+	return fmt.Sprintf("processTreeBinaryUIDKey: %s-%s", k.binary, k.args)
+}
+
 type processTreeID struct {
 	uid uint32
 	cpu uint32
+}
+
+func (id processTreeID) String() string {
+	return fmt.Sprintf("processTreeID: %d-%d", id.uid, id.cpu)
 }
 
 func (p *BpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
@@ -335,7 +343,7 @@ func (p *BpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
 
 	p.initMap()
 
-	uidKey := &processTreeBinaryUIDKey{
+	uidKey := processTreeBinaryUIDKey{
 		binary: process,
 		args:   zero,
 	}
@@ -349,7 +357,7 @@ func (p *BpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
 	}
 
 	userUID++
-	processID := &processTreeID{}
+	processID := processTreeID{}
 	processID.uid = userUID
 	processID.cpu = userCPU
 	if err := p.binaryMap.Update(uidKey, processID, ebpf.UpdateAny); err != nil {

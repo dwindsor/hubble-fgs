@@ -6,6 +6,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 
@@ -16,10 +17,11 @@ func (p *BpfProgrammer) initMap() {
 		if coll == nil {
 			logger.GetLogger().Error(fmt.Sprintf("tcp preload collection is nil"))
 		}
-		p.dstMap = coll.Maps[destinationEndpointMap]
-		if p.dstMap == nil {
+		dstMap := coll.Maps[destinationEndpointMap]
+		if dstMap == nil {
 			logger.GetLogger().Error(fmt.Sprintf("failed to load destination endpoint map from collection"))
 		}
+		p.dstMap = NewTypedMap[types.DestinationEndpointKey, types.DestinationEndpointValue](dstMap)
 
 		p.lpmMap, err = lpm.NewLPM()
 		if err != nil {

@@ -3,8 +3,8 @@ package datapath
 import (
 	"sync"
 
-	"github.com/cilium/ebpf"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 
@@ -27,11 +27,6 @@ type Interface interface {
 	GetBinaryId(binary string) (uint64, error)
 }
 
-type mapInterface interface {
-	Lookup(key, result any) error
-	Update(key, value any, flags ebpf.MapUpdateFlags) error
-}
-
 type BpfProgrammer struct {
 	Add      uint64
 	AddError uint64
@@ -39,8 +34,8 @@ type BpfProgrammer struct {
 	DelError uint64
 
 	initProgrammerOnce sync.Once
-	dstMap             mapInterface
-	binaryMap          mapInterface
-	uidBpfMap          mapInterface
+	dstMap             mapInterfaceTyped[types.DestinationEndpointKey, types.DestinationEndpointValue]
+	binaryMap          mapInterfaceTyped[processTreeBinaryUIDKey, processTreeID]
+	uidBpfMap          mapInterfaceTyped[processTreeID, processTreeBinaryUIDKey]
 	lpmMap             lpm.LPMMap
 }

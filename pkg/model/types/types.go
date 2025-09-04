@@ -10,6 +10,8 @@
 
 package types
 
+import "fmt"
+
 type ProcessExecveKey struct {
 	Pid   uint32
 	Pad   uint32
@@ -46,6 +48,10 @@ type DestinationEndpointKey struct {
 	DestinationId     uint64
 	DestinationSource uint64
 	DestinationPort   uint64
+}
+
+func (v DestinationEndpointKey) String() string {
+	return fmt.Sprintf("DestinationEndpointKey: %d-%d-%d-%d-%d", v.LocalId, v.LocalNSId, v.DestinationId, v.DestinationSource, v.DestinationPort)
 }
 
 type DestinationEndpointValue struct {

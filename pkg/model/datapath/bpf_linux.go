@@ -10,6 +10,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 
@@ -18,22 +19,25 @@ func (p *BpfProgrammer) initMap() {
 		var err error
 
 		file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
-		p.dstMap, err = ebpf.LoadPinnedMap(file, nil)
+		dstMap, err := ebpf.LoadPinnedMap(file, nil)
 		if err != nil {
 			logger.GetLogger().Error(fmt.Sprintf("failed to pin DestinationMap (%s): %v", file, err))
 		}
+		p.dstMap = NewTypedMap[types.DestinationEndpointKey, types.DestinationEndpointValue](dstMap)
 
 		file = filepath.Join(bpf.MapPrefixPath(), processTreeBinaryUUIDMap)
-		p.binaryMap, err = ebpf.LoadPinnedMap(file, nil)
+		binaryMap, err := ebpf.LoadPinnedMap(file, nil)
 		if err != nil {
 			logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
 		}
+		p.binaryMap = NewTypedMap[processTreeBinaryUIDKey, processTreeID](binaryMap)
 
 		file = filepath.Join(bpf.MapPrefixPath(), processTreeUUIDBinaryMap)
-		p.uidBpfMap, err = ebpf.LoadPinnedMap(file, nil)
+		uidBpfMap, err := ebpf.LoadPinnedMap(file, nil)
 		if err != nil {
 			logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
 		}
+		p.uidBpfMap = NewTypedMap[processTreeID, processTreeBinaryUIDKey](uidBpfMap)
 
 		p.lpmMap, err = lpm.NewLPM()
 		if err != nil {
