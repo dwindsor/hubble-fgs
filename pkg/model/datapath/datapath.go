@@ -1,7 +1,11 @@
 package datapath
 
 import (
+	"sync"
+
+	"github.com/cilium/ebpf"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 
 type Interface interface {
@@ -28,4 +32,10 @@ type BpfProgrammer struct {
 	AddError uint64
 	Del      uint64
 	DelError uint64
+
+	initProgrammerOnce sync.Once
+	dstMap             *ebpf.Map
+	binaryMap          *ebpf.Map
+	uidBpfMap          *ebpf.Map
+	lpmMap             *lpm.LPMMap
 }

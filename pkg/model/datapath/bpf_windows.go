@@ -9,21 +9,24 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 
-func initMap() {
-	var err error
-	coll, err := bpf.GetCollection("tcp_connect4")
-	if coll == nil {
-		logger.GetLogger().Error(fmt.Sprintf("tcp preload collection is nil"))
-	}
-	dstMap = coll.Maps[destinationEndpointMap]
-	if dstMap == nil {
-		logger.GetLogger().Error(fmt.Sprintf("failed to load destination endpoint map from collection"))
-	}
+func (p *BpfProgrammer) initMap() {
+	p.initProgrammerOnce.Do(func() {
+		var err error
+		coll, err := bpf.GetCollection("tcp_connect4")
+		if coll == nil {
+			logger.GetLogger().Error(fmt.Sprintf("tcp preload collection is nil"))
+		}
+		p.dstMap = coll.Maps[destinationEndpointMap]
+		if p.dstMap == nil {
+			logger.GetLogger().Error(fmt.Sprintf("failed to load destination endpoint map from collection"))
+		}
 
-	lpmMap, err = lpm.NewLPM()
-	if err != nil {
-		logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)
-	}
+		p.lpmMap, err = lpm.NewLPM()
+		if err != nil {
+			logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)
+		}
+	})
+
 }
 
 func scheduleDomainMapFlush() {

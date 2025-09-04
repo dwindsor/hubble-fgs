@@ -13,31 +13,33 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 
-func initMap() {
-	var err error
+func (p *BpfProgrammer) initMap() {
+	p.initProgrammerOnce.Do(func() {
+		var err error
 
-	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
-	dstMap, err = ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("failed to pin DestinationMap (%s): %v", file, err))
-	}
+		file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
+		p.dstMap, err = ebpf.LoadPinnedMap(file, nil)
+		if err != nil {
+			logger.GetLogger().Error(fmt.Sprintf("failed to pin DestinationMap (%s): %v", file, err))
+		}
 
-	file = filepath.Join(bpf.MapPrefixPath(), processTreeBinaryUUIDMap)
-	binaryMap, err = ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
-	}
+		file = filepath.Join(bpf.MapPrefixPath(), processTreeBinaryUUIDMap)
+		p.binaryMap, err = ebpf.LoadPinnedMap(file, nil)
+		if err != nil {
+			logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
+		}
 
-	file = filepath.Join(bpf.MapPrefixPath(), processTreeUUIDBinaryMap)
-	uidBpfMap, err = ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
-	}
+		file = filepath.Join(bpf.MapPrefixPath(), processTreeUUIDBinaryMap)
+		p.uidBpfMap, err = ebpf.LoadPinnedMap(file, nil)
+		if err != nil {
+			logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
+		}
 
-	lpmMap, err = lpm.NewLPM()
-	if err != nil {
-		logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)
-	}
+		p.lpmMap, err = lpm.NewLPM()
+		if err != nil {
+			logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)
+		}
+	})
 }
 
 func scheduleDomainMapFlush() {

@@ -14,15 +14,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
-)
-
-var (
-	dstMap             *ebpf.Map
-	binaryMap          *ebpf.Map
-	uidBpfMap          *ebpf.Map
-	initProgrammerOnce sync.Once
-	lpmMap             *lpm.LPMMap
 )
 
 var (
@@ -55,10 +46,10 @@ func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool)
 	return nil
 }
 
-func conflictUpdateMap(key *types.DestinationEndpointKey, value *types.DestinationEndpointValue) error {
+func (p *BpfProgrammer) conflictUpdateMap(key *types.DestinationEndpointKey, value *types.DestinationEndpointValue) error {
 
 	lookupValue := &types.DestinationEndpointValue{}
-	if err := dstMap.Lookup(key, lookupValue); err == nil {
+	if err := p.dstMap.Lookup(key, lookupValue); err == nil {
 		lookupAction := lookupValue.TxAction & record.PolicyMask
 		valueAction := value.TxAction & record.PolicyMask
 		if lookupAction >= valueAction {
@@ -66,18 +57,18 @@ func conflictUpdateMap(key *types.DestinationEndpointKey, value *types.Destinati
 		}
 	}
 
-	return dstMap.Update(key, value, 0)
+	return p.dstMap.Update(key, value, 0)
 }
 
 // This call will destroy key and value they can not be used after this.
-func populateStatEntry(key *types.DestinationEndpointKey, value *types.DestinationEndpointValue) error {
+func (p *BpfProgrammer) populateStatEntry(key *types.DestinationEndpointKey, value *types.DestinationEndpointValue) error {
 	value.TxAction = record.PolicyNone // we want rules for stats, not to impact verdict
 
 	// 2  (src,  *  , local_id, destination, local_nsid).TX += skb->len
 	if key.DestinationPort != 0 {
 		key.DestinationPort = 0
 		value.Port = 0
-		if err := conflictUpdateMap(key, value); err != nil {
+		if err := p.conflictUpdateMap(key, value); err != nil {
 			return err
 		}
 	}
@@ -85,7 +76,7 @@ func populateStatEntry(key *types.DestinationEndpointKey, value *types.Destinati
 	// 3  (src,  *  ,    *    , destination, local_nsid).TX += skb->len
 	if key.LocalId != 0 {
 		key.LocalId = 0
-		if err := conflictUpdateMap(key, value); err != nil {
+		if err := p.conflictUpdateMap(key, value); err != nil {
 			return err
 		}
 	}
@@ -93,7 +84,7 @@ func populateStatEntry(key *types.DestinationEndpointKey, value *types.Destinati
 	// 4  (src,  *  ,    *    , *, local_nsid).TX += skb->len
 	if key.DestinationId != 0 {
 		key.DestinationId = 0
-		if err := conflictUpdateMap(key, value); err != nil {
+		if err := p.conflictUpdateMap(key, value); err != nil {
 			return err
 		}
 	}
@@ -108,7 +99,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	var dst uint64
 	var err error
 
-	initProgrammerOnce.Do(func() { initMap() })
+	p.initMap()
 
 	if r.Endpoint.EP != nil {
 		c := endpoint.MustGet()
@@ -144,7 +135,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	}
 
 	if r.Endpoint.EP != nil && r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
-		if err := lpmMap.Write(r.Endpoint.EP.Ip, dst); err != nil {
+		if err := p.lpmMap.Write(r.Endpoint.EP.Ip, dst); err != nil {
 			logger.GetLogger().Warn("Failed to create LPM id", logfields.Error, err)
 			return err
 		}
@@ -186,7 +177,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	}
 
 	lookupValue := &types.DestinationEndpointValue{}
-	err = dstMap.Lookup(key, lookupValue)
+	err = p.dstMap.Lookup(key, lookupValue)
 	if err == nil {
 		lookupAction := lookupValue.TxAction & record.PolicyMask
 		valueAction := value.TxAction & record.PolicyMask
@@ -202,7 +193,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		}
 	}
 
-	if err := dstMap.Update(key, value, 0); err != nil {
+	if err := p.dstMap.Update(key, value, 0); err != nil {
 		p.AddError++
 		return err
 	}
@@ -215,18 +206,18 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	// The normal path captures Userspace sources.
 	if dst == uint64(0) {
 		key.DestinationSource = types.DestinationSourceBPF
-		if err := conflictUpdateMap(key, value); err != nil {
+		if err := p.conflictUpdateMap(key, value); err != nil {
 			p.AddError++
 			return err
 		}
 
 		key.DestinationSource = types.DestinationSourceDNS
-		if err := conflictUpdateMap(key, value); err != nil {
+		if err := p.conflictUpdateMap(key, value); err != nil {
 			p.AddError++
 			return err
 		}
 	} else if !force {
-		if err := populateStatEntry(key, value); err != nil {
+		if err := p.populateStatEntry(key, value); err != nil {
 			p.AddError++
 			return err
 		}
@@ -241,7 +232,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	src := r.Src
 	ep := r.Endpoint.EP
 
-	initProgrammerOnce.Do(func() { initMap() })
+	p.initMap()
 
 	dst := uint64(0)
 	if ep != nil {
@@ -257,7 +248,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	}
 
 	if r.Endpoint.EP != nil && r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
-		if err := lpmMap.Delete(r.Endpoint.EP.Ip); err != nil {
+		if err := p.lpmMap.Delete(r.Endpoint.EP.Ip); err != nil {
 			logger.GetLogger().Warn("Failed to delete LPM entry", logfields.Error, err)
 			return err
 		}
@@ -295,7 +286,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	}
 
 	// We can't delete this just because the policy is lost we still want to kep stats.
-	if err := dstMap.Update(key, value, 0); err != nil {
+	if err := p.dstMap.Update(key, value, 0); err != nil {
 		p.DelError++
 		return err
 	}
@@ -304,13 +295,13 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	// any source (EPBF, Userspace, DNS) so we need some extra records.
 	if dst == uint64(0) {
 		key.DestinationSource = types.DestinationSourceBPF
-		if err := dstMap.Update(key, value, 0); err != nil {
+		if err := p.dstMap.Update(key, value, 0); err != nil {
 			p.DelError++
 			return err
 		}
 
 		key.DestinationSource = types.DestinationSourceDNS
-		if err := dstMap.Update(key, value, 0); err != nil {
+		if err := p.dstMap.Update(key, value, 0); err != nil {
 			p.DelError++
 			return err
 		}
@@ -342,7 +333,7 @@ func (p *BpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
 
 	copy(process[:], binaryName)
 
-	initProgrammerOnce.Do(func() { initMap() })
+	p.initMap()
 
 	uidKey := &processTreeBinaryUIDKey{
 		binary: process,
@@ -361,11 +352,11 @@ func (p *BpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
 	processID := &processTreeID{}
 	processID.uid = userUID
 	processID.cpu = userCPU
-	if err := binaryMap.Update(uidKey, processID, ebpf.UpdateAny); err != nil {
+	if err := p.binaryMap.Update(uidKey, processID, ebpf.UpdateAny); err != nil {
 		return uint64(0), fmt.Errorf("failed to update the bpf binary map: %w", err)
 	}
 
-	if err := uidBpfMap.Update(processID, uidKey, ebpf.UpdateAny); err != nil {
+	if err := p.uidBpfMap.Update(processID, uidKey, ebpf.UpdateAny); err != nil {
 		return uint64(0), fmt.Errorf("failed to update the bpf uid map: %w", err)
 	}
 
