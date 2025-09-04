@@ -73,7 +73,7 @@ jobs:
       - name: Upload Docker image tar artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          name: hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}
           path: ${{ steps.create-tar.outputs.artifact_path }}
           retention-days: 1
       - name: Image digest summary
@@ -82,7 +82,7 @@ jobs:
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
           echo "| Repository | hubble-fgs |" >> $GITHUB_STEP_SUMMARY
-          echo "| Tag | ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | ${{ needs.init.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
 
   trigger-hypershield-codedrop-workflow:
     name: Trigger Hypershield Cross-Org Workflow to Push the artifact to Code Drop
@@ -110,7 +110,7 @@ jobs:
                 "repo": "${{ github.repository }}",
                 "run_id": "${{ github.run_id }}",
                 "workflow_file": "build-images-agw.yml",
-                "artifact_name": "hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
+                "artifact_name": "hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}"
               }
             }'
       - name: Cross-Org Workflow Summary
@@ -121,4 +121,4 @@ jobs:
           echo "| Target Organization | cisco-hypershield |" >> $GITHUB_STEP_SUMMARY
           echo "| Target Repository | hs-actions |" >> $GITHUB_STEP_SUMMARY
           echo "| Target Workflow | code-drop-isovalent.yaml |" >> $GITHUB_STEP_SUMMARY
-          echo "| Artifact Name | hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact Name | hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
