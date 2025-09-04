@@ -8,10 +8,9 @@ import (
 )
 
 const (
-	OTP    = "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImJzTllfQ1FUYWpZVFJJTjhTc3R3YTMzejZjUSJ9.eyJ0ZW5hbnRJZCI6IjJkZDhhNjcwLWFlOGItNGYxOS05NzlmLTg5NDljOWMxZGU4ZSIsImVudGl0eUlkIjoiYTVkYjYyZTEtODBkYy00YmZiLTg2YWUtNzhiOWMyOGQwNjNhIiwiZW50aXR5VHlwZSI6ImZ3IiwiY29udHJvbGxlclVybCI6Imh0dHBzOi8vc3RhZ2luZy5jb250cm9sbGVyLmRhZmlyZXdhbGwuY29tIiwicm9sZXMiOlsiUk9MRV9EQUZfT1RQIl0sImlhdCI6MTcxNjU4NjU2MywibmJmIjoxNzE2NTg2NTYzLCJleHAiOjE3MTkwMDU3NjMsImlzcyI6ImRhZi1hcGkiLCJzdWIiOiJhNWRiNjJlMS04MGRjLTRiZmItODZhZS03OGI5YzI4ZDA2M2EifQ.7m4RiFrD3kkDdiX1BqnHujo1SM3lFOyCxpZmne4VT3IIfNPgc4NpakGvcJidkVfFrT9Y07fPhhiCmM2xM4E6AYzyvVW177dAMaR5D66XdG-9-lQY7uwvwRwp9tRnCMwI"
-	TENANT = "2dd8a670-ae8b-4f19-979f-8949c9c1de8e"
-	AGENT  = "a5db62e1-80dc-4bfb-86ae-78b9c28d063a"
-	URL    = "https://staging.controller.dafirewall.com"
+	OTP   = "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImJzTllfQ1FUYWpZVFJJTjhTc3R3YTMzejZjUSJ9.eyJ0ZW5hbnRJZCI6IjJkZDhhNjcwLWFlOGItNGYxOS05NzlmLTg5NDljOWMxZGU4ZSIsImVudGl0eUlkIjoiYTVkYjYyZTEtODBkYy00YmZiLTg2YWUtNzhiOWMyOGQwNjNhIiwiZW50aXR5VHlwZSI6ImZ3IiwiY29udHJvbGxlclVybCI6Imh0dHBzOi8vc3RhZ2luZy5jb250cm9sbGVyLmRhZmlyZXdhbGwuY29tIiwicm9sZXMiOlsiUk9MRV9EQUZfT1RQIl0sImlhdCI6MTcxNjU4NjU2MywibmJmIjoxNzE2NTg2NTYzLCJleHAiOjE3MTkwMDU3NjMsImlzcyI6ImRhZi1hcGkiLCJzdWIiOiJhNWRiNjJlMS04MGRjLTRiZmItODZhZS03OGI5YzI4ZDA2M2EifQ.7m4RiFrD3kkDdiX1BqnHujo1SM3lFOyCxpZmne4VT3IIfNPgc4NpakGvcJidkVfFrT9Y07fPhhiCmM2xM4E6AYzyvVW177dAMaR5D66XdG-9-lQY7uwvwRwp9tRnCMwI"
+	AGENT = "a5db62e1-80dc-4bfb-86ae-78b9c28d063a"
+	URL   = "https://staging.controller.dafirewall.com"
 )
 
 // TestConfig tests the Init, Update, and Save functions of the Config struct.
@@ -24,20 +23,14 @@ func TestConfig(t *testing.T) {
 	// Write test configuration to the temporary file
 	configData := []byte(`{
 		"control_plane": {
-			"controller_url": "https://staging.controller.dafirewall.com",
 			"agent_id": "a5db62e1-80dc-4bfb-86ae-78b9c28d063a",
-			"tenant_id": "2dd8a670-ae8b-4f19-979f-8949c9c1de8e",
 			"token": "test_token",
 			"ca_cert": "test_ca_cert",
 			"client_cert": "test_client_cert",
 			"client_key": "test_client_key",
-			"collector_port": 1234,
-			"deploy_port": 5678,
-			"swarm_port": 9101,
 			"keepalive_interval": 60,
 			"pd_sock_file": "/path/to/pd_sock_file",
 			"dp_state_file": "/path/to/dp_state_file",
-			"logger_config_path": "custom_logger_config.yaml",
 			"logger_service_path": "custom/logger/service/path"
 		},
 		"dataplane0": {
@@ -75,11 +68,7 @@ func TestConfig(t *testing.T) {
 	// Manually set fields that might be overridden or not correctly read via viper/OTP
 	c.Controller.Url = URL
 	c.Agent.AgentId = AGENT
-	c.Agent.TenantId = TENANT
 	// Also manually construct the full URLs for Controller as they might not be formed if Url is set directly
-	c.Controller.Swarm = URL + ":" + "9101"
-	c.Controller.Deploy = URL + ":" + "5678"
-	c.Controller.Collector = URL + ":" + "1234"
 
 	// Verify the values read from the config file
 	expectedEnv := Environment{
@@ -101,75 +90,32 @@ func TestConfig(t *testing.T) {
 	}
 
 	expectedController := Controller{
-		Url:           URL,
-		collectorPort: 1234,
-		deployPort:    5678,
-		swarmPort:     9101,
-		Collector:     URL + ":1234",
-		Deploy:        URL + ":5678",
-		Swarm:         URL + ":9101",
-		Debug:         false, // Default value
+		Url:   URL,
+		Debug: false, // Default value
 	}
 	if !reflect.DeepEqual(c.Controller, expectedController) {
 		t.Errorf("Unexpected value for Controller: got %+v, want %+v", c.Controller, expectedController)
 	}
 
 	expectedAgent := Agent{
-		AgentId:               AGENT,
-		TenantId:              TENANT,
-		KeepAliveInterval:     60,
-		SnapshotCount:         1,                                            // Default value, overridden by test JSON if present
-		VerificationDuration:  60,                                           // Default value, overridden by test JSON if present
-		SnapshotInterval:      60,                                           // Default value, overridden by test JSON if present
-		VerificationQueuePath: "/opt/cisco/daf/etc/verification_queue.json", // Default value
-		FsmStatePath:          "/opt/cisco/daf/etc/fsm_state.json",          // Default value
-		DataplaneType:         "dual",                                       // Default value
-		LoggerConfigPath:      "custom_logger_config.yaml",
-		LoggerServicePath:     "custom/logger/service/path",
+		AgentId:              AGENT,
+		KeepAliveInterval:    60,
+		VerificationDuration: 60, // Default value, overridden by test JSON if present
 	}
 	if !reflect.DeepEqual(c.Agent, expectedAgent) {
 		t.Errorf("Unexpected value for Agent: got %+v, want %+v", c.Agent, expectedAgent)
-	}
-
-	expectedDispatcher := Dispatcher{
-		SockFile:    "/path/to/pd_sock_file",
-		StateFile:   "/path/to/dp_state_file",
-		ServicePath: "/opt/cisco/daf/var/s6/services/pd", // Default value
-		CliSockFile: "",                                  // Not set in test JSON, no explicit default in setDefaults for this specific field
-	}
-	if !reflect.DeepEqual(c.Dispatcher, expectedDispatcher) {
-		t.Errorf("Unexpected value for Dispatcher: got %+v, want %+v", c.Dispatcher, expectedDispatcher)
 	}
 
 	expectedDataplanes := map[string]Dataplane{
 		"0": {
 			VppSockFile: "/path/to/dataplane0_api_sockfile",
 			ServicePath: "/opt/cisco/daf/var/s6/services/dp0", // Default value
-			Mode:        "dual",                               // Default value
-			PolicyPath:  "/opt/cisco/daf/etc/dp0-policy.json", // Default value
-			CpaSockFile: "",                                   // Not set in test JSON or defaults
-			CliSockFile: "",                                   // Not set in test JSON or defaults
-		},
-		"1": {
-			VppSockFile: "/path/to/dataplane1_api_sockfile",
-			ServicePath: "/opt/cisco/daf/var/s6/services/dp1", // Default value
-			Mode:        "dual",                               // Default value
-			PolicyPath:  "/opt/cisco/daf/etc/dp1-policy.json", // Default value
 			CpaSockFile: "",                                   // Not set in test JSON or defaults
 			CliSockFile: "",                                   // Not set in test JSON or defaults
 		},
 	}
 	if !reflect.DeepEqual(c.Dataplanes, expectedDataplanes) {
 		t.Errorf("Unexpected value for Dataplanes: got %+v, want %+v", c.Dataplanes, expectedDataplanes)
-	}
-
-	expectedGraphEngine := GraphEngine{
-		SocketFile: "/tmp/graph.sock",                                                                                                              // Default value
-		BinaryPath: "/opt/cisco/daf/bin/hs-ge",                                                                                                     // Default value
-		BinaryArgs: "--stand_alone=0 --load_generated_policy=0 --log_file_level=1 --start_tetragon=1 --query_docker=0 --graph_update_interval=300", // Default value
-	}
-	if !reflect.DeepEqual(c.GraphEngine, expectedGraphEngine) {
-		t.Errorf("Unexpected value for GraphEngine: got %+v, want %+v", c.GraphEngine, expectedGraphEngine)
 	}
 
 	// Write new configuration data to the temporary file for Update() and Save() tests
@@ -179,13 +125,9 @@ func TestConfig(t *testing.T) {
 			"ca_cert": "new_test_ca_cert",
 			"client_cert": "new_test_client_cert",
 			"client_key": "new_test_client_key",
-			"collector_port": 4321,
-			"deploy_port": 8765,
-			"swarm_port": 1019,
 			"keepalive_interval": 30,
 			"pd_sock_file": "/new_path/to/pd_sock_file",
 			"dp_state_file": "/new_path/to/dp_state_file",
-			"logger_config_path": "updated_logger_config.yaml",
 			"logger_service_path": "updated/logger/service/path"
 		},
 		"dataplane0": {
@@ -216,15 +158,6 @@ func TestConfig(t *testing.T) {
 	}
 	if c.Env.ClientCa != "new_test_ca_cert" {
 		t.Errorf("ClientCa not updated: got %s, want new_test_ca_cert", c.Env.ClientCa)
-	}
-	if c.Controller.collectorPort != 4321 {
-		t.Errorf("collectorPort not updated: got %d, want 4321", c.Controller.collectorPort)
-	}
-	if c.Agent.LoggerConfigPath != "updated_logger_config.yaml" {
-		t.Errorf("LoggerConfigPath not updated from config: got %s, want updated_logger_config.yaml", c.Agent.LoggerConfigPath)
-	}
-	if c.Agent.LoggerServicePath != "updated/logger/service/path" {
-		t.Errorf("LoggerServicePath not updated from config: got %s, want updated/logger/service/path", c.Agent.LoggerServicePath)
 	}
 
 	// Save the configuration. The token used for AgentId, TenantId, Controller.Url will be derived from HYPERSHIELD_TOKEN env var if set.
