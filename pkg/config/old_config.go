@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"os"
 	"strings"
 
@@ -19,13 +18,11 @@ type Config struct {
 	Env        Environment
 	Controller Controller
 	Agent      Agent
-	Dataplanes map[string]Dataplane
+	Dataplane  Dataplane
 }
 
 type Environment struct {
 	// Build parameters
-	SkipAuth    bool
-	IsDpu       bool
 	IsContainer bool
 
 	// Cert paths
@@ -65,10 +62,6 @@ type Dataplane struct {
 	CliSockFile string // Fwactl unix socket path (for fwactl cli commands)
 }
 
-// Build time variables
-var SkipAuth string
-var IsDpu string
-
 // Init tries to read the config file at path.
 // If the file does not exist, it will create a new one with default values.
 // It will return false if the file existed and true if it was created.
@@ -76,7 +69,6 @@ var IsDpu string
 func (c *Config) Init(path string) (bool, error) {
 	c.path = path
 	c.file = viper.New()
-	c.Dataplanes = make(map[string]Dataplane)
 
 	// Reading configuration file
 	c.file.SetConfigFile(c.path)
@@ -95,23 +87,7 @@ func (c *Config) Init(path string) (bool, error) {
 		return created, err
 	}
 
-	// Setting build variables
-	if SkipAuth == "true" {
-		c.Env.SkipAuth = true
-		// Controller URL is usually found in the token, but since we are skipping auth, we need to set it here
-		c.Controller.Url = c.file.GetString("control_plane.controller_url")
-	} else {
-		c.Env.SkipAuth = false
-	}
-	if IsDpu == "true" {
-		c.Env.IsDpu = true
-		if !c.Env.SkipAuth {
-			err := errors.New("IsDpu and SkipAuth mismatch")
-			return created, err
-		}
-	} else {
-		c.Env.IsDpu = false
-	}
+	c.Controller.Url = c.file.GetString("control_plane.controller_url")
 
 	// Checking if running in a container
 	if hostPath, ok := os.LookupEnv("HOST_MOUNT_PATH"); ok {
@@ -216,7 +192,7 @@ func (c *Config) read() error {
 	c.Agent.KeepAliveInterval = c.file.GetInt("control_plane.keepalive_interval")
 
 	// Dataplanes
-	c.Dataplanes["0"] = Dataplane{
+	c.Dataplane = Dataplane{
 		ServicePath: c.file.GetString("dataplane0.service_path"),
 		VppSockFile: c.file.GetString("dataplane0.api_sockfile"),
 		CpaSockFile: c.file.GetString("dataplane0.cpa_sockfile"),
@@ -251,9 +227,9 @@ func (c *Config) setValues() error {
 	c.file.Set("control_plane.keepalive_interval", c.Agent.KeepAliveInterval)
 	c.file.Set("control_plane.verification_duration", c.Agent.VerificationDuration)
 
-	// Dataplanes
-	c.file.Set("dataplane0.api_sockfile", c.Dataplanes["0"].VppSockFile)
-	c.file.Set("dataplane0.cli_sockfile", c.Dataplanes["0"].CliSockFile)
+	// Dataplane
+	c.file.Set("dataplane0.api_sockfile", c.Dataplane.VppSockFile)
+	c.file.Set("dataplane0.cli_sockfile", c.Dataplane.CliSockFile)
 
 	return nil
 }
