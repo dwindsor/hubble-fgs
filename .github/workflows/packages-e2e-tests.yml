@@ -9,6 +9,8 @@ on:
 jobs:
   standalone-tarball-builds:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       matrix:
         include:
@@ -68,6 +70,8 @@ jobs:
   standalone-tarball-tests:
     needs: [standalone-tarball-builds]
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       matrix:
         include:
