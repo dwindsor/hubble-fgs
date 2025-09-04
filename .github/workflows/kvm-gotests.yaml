@@ -197,11 +197,13 @@ jobs:
         run: |
           # Make output dirs for logs
           mkdir -p logs/unit-tests
+          mkdir -p logs/model-test-dumps
 
           # Copy logs over
           scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
           scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/*.json' logs/unit-tests || true
           scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
+          scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/TestModel*' logs/model-test-dumps || true
 
       - name: Upload unit test logs
         if: ${{ failure() || cancelled() }}
@@ -209,6 +211,14 @@ jobs:
         with:
           name: tetragon-unit-tests-${{ matrix.kernel }}-${{ matrix.os }}
           path: logs/unit-tests
+          retention-days: 5
+
+      - name: Upload modeltest dumps
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: modeltest-json-${{ matrix.kernel }}-${{ matrix.os }}
+          path: logs/model-test-dumps
           retention-days: 5
 
       - name: Cleanup LVH mess

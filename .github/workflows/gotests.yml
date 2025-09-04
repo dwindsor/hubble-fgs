@@ -83,6 +83,14 @@ jobs:
         path: /tmp/tetragon-bugtool*
         retention-days: 5
 
+    - name: Upload modeltest dumps
+      if: failure()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: modeltest-json
+        path: /tmp/TestModel*
+        retention-days: 5
+
   # This job ensures that the plain vanilla "go test" command passes without any
   # external dependencies. It's a wonderful thing.
   unit-test:
