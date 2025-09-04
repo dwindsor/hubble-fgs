@@ -55,14 +55,35 @@ func (fa *FakeEndpointAdder) AddEndpoint(_ endpoint.Endpoint) (uint64, error) {
 	return 42, nil
 }
 
-func getNewFakeBPFProgrammer() *BpfProgrammer {
+type FakePolicyRepositoryIDReader struct {
+	policyMap map[string]uint64
+	ruleMap   map[string]map[string]uint64
+}
+
+func (f *FakePolicyRepositoryIDReader) GetId(name string) (uint64, bool) {
+	id, ok := f.policyMap[name]
+	return id, ok
+}
+
+func (f *FakePolicyRepositoryIDReader) GetRuleId(policy, rule string) (uint64, bool) {
+	id, ok := f.ruleMap[policy][rule]
+	return id, ok
+}
+
+func getNewFakeBPFProgrammer(fakePolicyRepo *FakePolicyRepositoryIDReader) *BpfProgrammer {
+	var repo library.PolicyRepositoryIDReader
+	if fakePolicyRepo == nil {
+		repo = library.GetRepository()
+	} else {
+		repo = fakePolicyRepo
+	}
 	ret := &BpfProgrammer{
 		dstMap:                   &fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue]{},
 		binaryMap:                &fakeBPFMap[processTreeBinaryUIDKey, processTreeID]{},
 		uidBpfMap:                &fakeBPFMap[processTreeID, processTreeBinaryUIDKey]{},
 		lpmMap:                   &fakeLPMMap{},
 		endpointAdder:            &FakeEndpointAdder{},
-		policyRepositoryIDReader: library.GetRepository(),
+		policyRepositoryIDReader: repo,
 	}
 	ret.initProgrammerOnce.Do(func() {})
 	return ret
@@ -90,7 +111,7 @@ func verifyDstMap(t *testing.T, bpfProgrammer *BpfProgrammer, expectedEntries []
 }
 
 func TestAddSingleRecordWithoutEndpoint(t *testing.T) {
-	bpfProgrammer := getNewFakeBPFProgrammer()
+	bpfProgrammer := getNewFakeBPFProgrammer(nil)
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
 			NSID:  1,
@@ -155,7 +176,7 @@ func TestAddSingleRecordWithoutEndpoint(t *testing.T) {
 }
 
 func TestAddSingleRecordWithEndpoint(t *testing.T) {
-	bpfProgrammer := getNewFakeBPFProgrammer()
+	bpfProgrammer := getNewFakeBPFProgrammer(nil)
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
 			NSID:  1,
@@ -227,6 +248,110 @@ func TestAddSingleRecordWithEndpoint(t *testing.T) {
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyNone,
 				Port:     0,
+			},
+		},
+	}
+
+	err := bpfProgrammer.AddSingleRecord(inputRecord, false)
+	require.NoError(t, err)
+	verifyDstMap(t, bpfProgrammer, expectedEntries)
+}
+
+func TestAddSingleRecordWithEndpointAndPolicy(t *testing.T) {
+	fakePolicyRepo := &FakePolicyRepositoryIDReader{
+		policyMap: map[string]uint64{
+			"test-policy": 32,
+		},
+		ruleMap: map[string]map[string]uint64{
+			"test-policy": {
+				"test-rule": 72,
+			},
+		},
+	}
+	bpfProgrammer := getNewFakeBPFProgrammer(fakePolicyRepo)
+	inputRecord := &record.DatapathRecord{
+		Src: &types.ProcessTreeKey{
+			NSID:  1,
+			Self:  18446744069414584321,
+			Depth: 0,
+		},
+		Endpoint: record.DatapathEndpoint{
+			EP: &endpoint.Endpoint{
+				Namespace: "test",
+				Name:      "test-ep",
+			},
+			Port: 80,
+		},
+		Action: &record.DatapathAction{
+			QuotaLimit: uint64(0),
+			ResetTime:  uint64(0),
+			Action:     record.PolicyDeny,
+		},
+		Policy: record.Policy{
+			Name: "test-policy",
+			Rule: "test-rule",
+		},
+	}
+	expectedEntries := []expectedEntry{
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           inputRecord.Src.Self,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     42,
+				DestinationSource: types.DestinationSourceUser,
+				DestinationPort:   uint64(inputRecord.Endpoint.Port),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyDeny,
+				Port:     80,
+				Policy:   32,
+				RuleID:   72,
+			},
+		},
+		// Wildcard entries below should have PolicyNone action and no PolicyID/RuleID
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           inputRecord.Src.Self,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     42,
+				DestinationSource: types.DestinationSourceUser,
+				DestinationPort:   uint64(0),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyNone,
+				Port:     0,
+				Policy:   0,
+				RuleID:   0,
+			},
+		},
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           0,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     42,
+				DestinationSource: types.DestinationSourceUser,
+				DestinationPort:   uint64(0),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyNone,
+				Port:     0,
+				Policy:   0,
+				RuleID:   0,
+			},
+		},
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           0,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     0,
+				DestinationSource: types.DestinationSourceUser,
+				DestinationPort:   uint64(0),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyNone,
+				Port:     0,
+				Policy:   0,
+				RuleID:   0,
 			},
 		},
 	}

@@ -71,6 +71,8 @@ func (p *BpfProgrammer) conflictUpdateMap(key types.DestinationEndpointKey, valu
 // This call will destroy key and value they can not be used after this.
 func (p *BpfProgrammer) populateStatEntry(key types.DestinationEndpointKey, value types.DestinationEndpointValue) error {
 	value.TxAction = record.PolicyNone // we want rules for stats, not to impact verdict
+	value.Policy = 0
+	// RuleId is already 0 from AddSingleRecord
 
 	// 2  (src,  *  , local_id, destination, local_nsid).TX += skb->len
 	if key.DestinationPort != 0 {
