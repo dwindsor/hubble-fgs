@@ -32,15 +32,13 @@ jobs:
       - name: Get version and set outputs
         id: get-version
         run: |
-          echo "version=1.2.0-hubble" >> $GITHUB_OUTPUT
+          echo "version=$(make version)" >> $GITHUB_OUTPUT
           echo "date=$(date -u +"%Y%m%d%H%M")" >> $GITHUB_OUTPUT
           echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "long_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
     outputs:
       version: ${{ steps.get-version.outputs.version }}
       date: ${{ steps.get-version.outputs.date }}
       sha: ${{ steps.get-version.outputs.sha }}
-      long_sha: ${{ steps.get-version.outputs.long_sha }}
 
   build-agw-image:
     needs: [ init ]
@@ -56,14 +54,14 @@ jobs:
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       - name: Build AGW image
         env:
-          DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}
           AGW_IMAGE_NAME: isovalent/agw
         run: |
-          make image-agw
+          DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG} make image-agw
       - name: Create tar file from Docker image
         id: create-tar
         env:
-          DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}
           AGW_IMAGE_NAME: isovalent/agw
         run: |
           FINAL_TAR_NAME="agw"
@@ -78,7 +76,6 @@ jobs:
           name: hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
           path: ${{ steps.create-tar.outputs.artifact_path }}
           retention-days: 1
-      
       - name: Image digest summary
         run: |
           echo "### AGW Image Published" >> $GITHUB_STEP_SUMMARY
@@ -87,15 +84,12 @@ jobs:
           echo "| Repository | hubble-fgs |" >> $GITHUB_STEP_SUMMARY
           echo "| Tag | ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
 
-  # New job that triggers the Hypershield workflow to process the Hubble FGS artifact
-  trigger-hypershield-workflow:
-    name: Trigger Hypershield Cross-Org Workflow
+  trigger-hypershield-codedrop-workflow:
+    name: Trigger Hypershield Cross-Org Workflow to Push the artifact to Code Drop
     needs: [ init, build-agw-image ]
-    runs-on: ubuntu-latest
-    # Only run this job if the build-agw-image job was successful
+    runs-on: ubuntu-latest-4cores-16gb
     if: ${{ needs.build-agw-image.result == 'success' }}
     steps:
-      # Generate GitHub App token for workflow operations
       - name: Generate GitHub App Token
         id: workflow-token
         uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
@@ -104,8 +98,6 @@ jobs:
           private-key: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
           owner: cisco-hypershield
           repositories: hs-actions
-      
-      # Trigger the workflow in cisco-hypershield organization
       - name: Trigger Hubble FGS Push to NXOS Code Drop
         run: |
           curl -X POST \
@@ -117,12 +109,10 @@ jobs:
               "client_payload": {
                 "repo": "${{ github.repository }}",
                 "run_id": "${{ github.run_id }}",
-                "workflow_file": "build-agw-image.yml",
+                "workflow_file": "build-images-agw.yml",
                 "artifact_name": "hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
               }
             }'
-      
-      # Add a summary of the triggered workflow
       - name: Cross-Org Workflow Summary
         run: |
           echo "### Cross-Organization Workflow Triggered" >> $GITHUB_STEP_SUMMARY
@@ -132,23 +122,3 @@ jobs:
           echo "| Target Repository | hs-actions |" >> $GITHUB_STEP_SUMMARY
           echo "| Target Workflow | code-drop-isovalent.yaml |" >> $GITHUB_STEP_SUMMARY
           echo "| Artifact Name | hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
-  
-  # Pushes the artifact to the repo: cisco-hypershield/hs-nxos-codedrop to get an agw artifact rpm signed
-  # trigger-code-drop:
-  #   needs: [ init, build-agw-image ]
-  #   if: ${{ needs.build-agw-image.result == 'success' && github.ref_name == 'pr/sripuran/agw-docker-codedrop' || github.event_name == 'workflow_dispatch' }}
-  #   uses: cisco-hypershield/hs-actions/.github/workflows/code-drop.yaml@main
-  #   secrets:
-  #     vault-approle-role-id: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}
-  #     vault-approle-secret-id: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}
-  #     ghcr-username: ${{ secrets.GHCR_USERNAME }}
-  #     ghcr-token: ${{ secrets.GHCR_TOKEN }}
-  #   with:
-  #     code-drop-repository: "cisco-hypershield/hs-nxos-codedrop"
-  #     code-drop-branch: "develop"
-  #     repository: ${{ github.repository }}
-  #     branch: ${{ github.ref }}
-  #     image-name: "hubble-fgs-agw"
-  #     image-tag: ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
-  #     ref-file: "nxos-ref-package.yaml"
-  #     ecr-enabled: true
