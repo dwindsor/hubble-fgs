@@ -32,12 +32,17 @@ const (
 	Addr6lpmMapName = "addr6lpm_map"
 )
 
-type LPMMap struct {
+type LPMMap interface {
+	Write(ip string, id uint64) error
+	Delete(ip string) error
+}
+
+type lpmMapImpl struct {
 	addr6 *ebpf.Map
 	addr4 *ebpf.Map
 }
 
-func (lpm *LPMMap) writeIp4(ip string, id uint64) error {
+func (lpm *lpmMapImpl) writeIp4(ip string, id uint64) error {
 	addr, maskLen, err := parseAddr(ip)
 	if err != nil {
 		return fmt.Errorf("writeIp4 can not parse %s: %w", ip, err)
@@ -50,7 +55,7 @@ func (lpm *LPMMap) writeIp4(ip string, id uint64) error {
 	return nil
 }
 
-func (lpm *LPMMap) writeIp6(ip string, id uint64) error {
+func (lpm *lpmMapImpl) writeIp6(ip string, id uint64) error {
 	addr, maskLen, err := parseAddr(ip)
 	if err != nil {
 		return fmt.Errorf("writeIp6 can not parse %s: %w", ip, err)
@@ -64,7 +69,7 @@ func (lpm *LPMMap) writeIp6(ip string, id uint64) error {
 	return nil
 }
 
-func (lpm *LPMMap) deleteIp4(ip string) error {
+func (lpm *lpmMapImpl) deleteIp4(ip string) error {
 	addr, maskLen, err := parseAddr(ip)
 	if err != nil {
 		return fmt.Errorf("writeIp4 can not parse %s: %w", ip, err)
@@ -77,7 +82,7 @@ func (lpm *LPMMap) deleteIp4(ip string) error {
 	return nil
 }
 
-func (lpm *LPMMap) deleteIp6(ip string) error {
+func (lpm *lpmMapImpl) deleteIp6(ip string) error {
 	addr, maskLen, err := parseAddr(ip)
 	if err != nil {
 		return fmt.Errorf("writeIp6 can not parse %s: %w", ip, err)
@@ -91,7 +96,7 @@ func (lpm *LPMMap) deleteIp6(ip string) error {
 	return nil
 }
 
-func (lpm *LPMMap) Write(ip string, id uint64) error {
+func (lpm *lpmMapImpl) Write(ip string, id uint64) error {
 	var err error
 
 	if strings.Contains(ip, ":") {
@@ -102,7 +107,7 @@ func (lpm *LPMMap) Write(ip string, id uint64) error {
 	return err
 }
 
-func (lpm *LPMMap) Delete(ip string) error {
+func (lpm *lpmMapImpl) Delete(ip string) error {
 	var err error
 
 	if strings.Contains(ip, ":") {

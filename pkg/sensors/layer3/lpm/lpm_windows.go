@@ -6,7 +6,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 )
 
-func NewLPM() (*LPMMap, error) {
+func NewLPM() (LPMMap, error) {
 	coll, err := bpf.GetCollection("tcp_connect4")
 	if coll == nil {
 		return nil, errors.New("tcp preload collection is nil")
@@ -20,7 +20,7 @@ func NewLPM() (*LPMMap, error) {
 		return nil, errors.New("failed to load addr6 LPM Map from collection")
 	}
 
-	return &LPMMap{
+	return &lpmMapImpl{
 		addr6: addr6lpm,
 		addr4: addr4lpm,
 	}, nil

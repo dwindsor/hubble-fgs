@@ -27,6 +27,11 @@ type Interface interface {
 	GetBinaryId(binary string) (uint64, error)
 }
 
+type mapInterface interface {
+	Lookup(key, result any) error
+	Update(key, value any, flags ebpf.MapUpdateFlags) error
+}
+
 type BpfProgrammer struct {
 	Add      uint64
 	AddError uint64
@@ -34,8 +39,8 @@ type BpfProgrammer struct {
 	DelError uint64
 
 	initProgrammerOnce sync.Once
-	dstMap             *ebpf.Map
-	binaryMap          *ebpf.Map
-	uidBpfMap          *ebpf.Map
-	lpmMap             *lpm.LPMMap
+	dstMap             mapInterface
+	binaryMap          mapInterface
+	uidBpfMap          mapInterface
+	lpmMap             lpm.LPMMap
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 )
 
-func NewLPM() (*LPMMap, error) {
+func NewLPM() (LPMMap, error) {
 	fileLpm4 := filepath.Join(bpf.MapPrefixPath(), Addr4lpmMapName)
 	addr4lpm, err := ebpf.LoadPinnedMap(fileLpm4, nil)
 	if err != nil {
@@ -25,7 +25,7 @@ func NewLPM() (*LPMMap, error) {
 		return nil, err
 	}
 
-	return &LPMMap{
+	return &lpmMapImpl{
 		addr6: addr6lpm,
 		addr4: addr4lpm,
 	}, nil
