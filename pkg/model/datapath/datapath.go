@@ -6,6 +6,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 
@@ -40,5 +41,6 @@ type BpfProgrammer struct {
 	uidBpfMap          mapInterfaceTyped[processTreeID, processTreeBinaryUIDKey]
 	lpmMap             lpm.LPMMap
 
-	endpointAdder endpoint.EndpointAdder
+	endpointAdder            endpoint.EndpointAdder
+	policyRepositoryIDReader library.PolicyRepositoryIDReader
 }

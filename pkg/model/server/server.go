@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cilium/cilium/pkg/container/set"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -23,6 +22,8 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/cilium/cilium/pkg/container/set"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
@@ -70,7 +71,7 @@ func (s *Server) GetDestinationMap(_ context.Context, _ *tetragon.GetDestination
 
 	iter := m.Iterate()
 	for iter.Next(&k, &v) {
-		title, _ := library.GetName(v.Policy)
+		title, _ := library.GetRepository().GetName(v.Policy)
 		d := &tetragon.DestinationEndpointDebug{
 			LocalId:           k.LocalId,
 			LocalNsId:         k.LocalNSId,
@@ -424,7 +425,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		}
 
 		if dstVal.Policy != 0 {
-			policy, ok := library.GetName(dstVal.Policy)
+			policy, ok := library.GetRepository().GetName(dstVal.Policy)
 			if !ok {
 				logger.GetLogger().Warn("unknown policy id in process model", "policyID", dstVal.Policy)
 			} else {
@@ -433,7 +434,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 			denyDefault := dstVal.DenyDefaultBytes > 0
 			allowDefault := dstVal.AllowDefaultBytes > 0
-			rule, ok := library.GetRule(policy, dstVal.RuleID, denyDefault, allowDefault)
+			rule, ok := library.GetRepository().GetRule(policy, dstVal.RuleID, denyDefault, allowDefault)
 			if !ok {
 				logger.GetLogger().Warn("unknown rule id in process model", "Policy", policy, "ruleID", dstVal.RuleID)
 

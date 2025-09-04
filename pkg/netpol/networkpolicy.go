@@ -102,13 +102,13 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 	}
 
 	oldName = fmt.Sprintf("__%s", newName)
-	oldStory, ok := library.Get(oldName)
+	oldStory, ok := library.GetRepository().Get(oldName)
 	if !ok {
 		t := newName
 		newName = oldName
 		oldName = t
 
-		oldStory, ok = library.Get(oldName)
+		oldStory, ok = library.GetRepository().Get(oldName)
 		if !ok {
 			logger.GetLogger().Debug("updateNetworkPolicy: update but policy does not exist",
 				"new title", newName,
@@ -128,7 +128,7 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 	// Policy update is slightly complicated to avoid having a gap
 	// in policy. First we create the updated policy and only then
 	// do we remove the previous policy.
-	library.Add(&library.PolicyStory{
+	library.GetRepository().Add(&library.PolicyStory{
 		Title:       newName,
 		Rules:       make(map[string]uint64),
 		CRDPolicy:   crd,
@@ -179,10 +179,10 @@ func deleteNetworkPolicyObj(obj any) {
 }
 
 func deleteNetworkPolicy(name string) error {
-	story, ok := library.Get(name)
+	story, ok := library.GetRepository().Get(name)
 	if !ok {
 		deleteName := fmt.Sprintf("__%s", name)
-		story, ok = library.Get(deleteName)
+		story, ok = library.GetRepository().Get(deleteName)
 		if !ok {
 			return fmt.Errorf("policy %q does not exist", name)
 		}
@@ -191,12 +191,12 @@ func deleteNetworkPolicy(name string) error {
 	if err := dns.RemoveNetworkPolicySet(name, story.IrPolicy); err != nil {
 		return fmt.Errorf("removing policy %q failed: %w", name, err)
 	}
-	library.Delete(name)
+	library.GetRepository().Delete(name)
 	if strings.HasPrefix(name, "__") {
-		library.Delete(name[len("__"):])
+		library.GetRepository().Delete(name[len("__"):])
 	} else {
 		n := fmt.Sprintf("__%s", name)
-		library.Delete(n)
+		library.GetRepository().Delete(n)
 	}
 	return nil
 }
@@ -221,20 +221,20 @@ func AddTetragonNetworkPolicyInformer(ctx context.Context, m *manager.Controller
 }
 
 func loadPolicy(policyStory *library.PolicyStory) error {
-	_, exist := library.Get(policyStory.Title)
+	_, exist := library.GetRepository().Get(policyStory.Title)
 	if exist {
 		return fmt.Errorf("loading policy story %s would overwrite existing network policy", policyStory.Title)
 	}
 
 	existTest := fmt.Sprintf("__%s", policyStory.Title)
-	_, exist = library.Get(existTest)
+	_, exist = library.GetRepository().Get(existTest)
 	if exist {
 		return fmt.Errorf("loading policy story %s would overwrite existing network policy", policyStory.Title)
 	}
 
-	library.Add(policyStory)
+	library.GetRepository().Add(policyStory)
 	for _, r := range policyStory.IrPolicy {
-		library.AddRule(policyStory, r.Rule)
+		library.GetRepository().AddRule(policyStory, r.Rule)
 	}
 
 	err := dns.CreateMatchLabelsPolicySet(policyStory.IrPolicy)

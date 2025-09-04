@@ -482,7 +482,7 @@ func (state *PolicyState) GetRecords() ([]*record.DatapathRecord, error) {
 		}
 
 		uid := fmt.Sprintf("%s_%d", p.Name, id)
-		library.Link(p.Name, uid)
+		library.GetRepository().Link(p.Name, uid)
 		err := calculatorState.CreateMatchLabelsPolicy(uid, p)
 		if err != nil {
 			return nil, err
@@ -550,7 +550,7 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 		}
 
 		uid := fmt.Sprintf("%s_%d", p.Name, id)
-		library.Link(p.Name, uid)
+		library.GetRepository().Link(p.Name, uid)
 		err := newState.CreateMatchLabelsPolicy(uid, p)
 		if err != nil {
 			return nil, nil, nil, err
@@ -624,7 +624,7 @@ func RemoveNetworkPolicySet(name string, policy []*types.TetragonNetworkPolicy) 
 		if err != nil {
 			return err
 		}
-		library.DelLink(uid)
+		library.GetRepository().DelLink(uid)
 	}
 	return nil
 }

@@ -129,7 +129,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 
 	// Fill out network policy information.
 	if event.PolicyId != 0 {
-		policyName, ok := library.GetName(event.PolicyId)
+		policyName, ok := library.GetRepository().GetName(event.PolicyId)
 		if ok {
 			var action tetragon.TNPAction
 			verdict := event.Verdict
@@ -147,7 +147,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 				}
 			}
 
-			ruleName, ok := library.GetRule(policyName, event.RuleId, verdict&record.PolicyDeny == record.PolicyDeny, verdict&record.PolicyAllow == record.PolicyAllow)
+			ruleName, ok := library.GetRepository().GetRule(policyName, event.RuleId, verdict&record.PolicyDeny == record.PolicyDeny, verdict&record.PolicyAllow == record.PolicyAllow)
 			if !ok {
 				logger.GetLogger().Warn("failed to get rule name for id", "policy", policyName, "id", event.RuleId)
 			}

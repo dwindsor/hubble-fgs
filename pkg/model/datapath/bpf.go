@@ -43,6 +43,7 @@ func (p *BpfProgrammer) initMaybe() {
 	p.initProgrammerOnce.Do(func() {
 		p.initMap()
 		p.endpointAdder = endpoint.MustGet()
+		p.policyRepositoryIDReader = library.GetRepository()
 	})
 }
 
@@ -147,12 +148,12 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		}
 	}
 
-	id, ok := library.GetId(r.Policy.Name)
+	id, ok := p.policyRepositoryIDReader.GetId(r.Policy.Name)
 	if !ok {
 		logger.GetLogger().Warn("programmer unable to map policy name to ID", "Policy", r.Policy.Name)
 	}
 
-	ruleID, ok := library.GetRuleId(r.Policy.Name, r.Policy.Rule)
+	ruleID, ok := p.policyRepositoryIDReader.GetRuleId(r.Policy.Name, r.Policy.Rule)
 	if !ok {
 		logger.GetLogger().Warn("programmer unable to map policy rule to ID", "Policy", r.Policy.Name, "Rule", r.Policy.Rule)
 	}

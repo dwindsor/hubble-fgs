@@ -2,6 +2,7 @@ package library
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
@@ -17,89 +18,119 @@ type PolicyStory struct {
 	IrPolicy    []*types.TetragonNetworkPolicy
 }
 
-var policyLibrary map[string]uint64
-var idLibrary map[uint64]*PolicyStory
-var policyId uint64
-var ruleId uint64
-
-func generateId() uint64 {
-	policyId++
-	return policyId
+type policyRepositoryImpl struct {
+	policyLibrary map[string]uint64
+	idLibrary     map[uint64]*PolicyStory
+	policyId      uint64
+	ruleId        uint64
 }
 
-func generateRuleId() uint64 {
-	ruleId++
-	return ruleId
+type PolicyRepository interface {
+	Get(name string) (*PolicyStory, bool)
+	Delete(name string)
+	Link(title string, ref string) error
+	DelLink(title string)
+	AddRule(p *PolicyStory, rule string)
+	Add(p *PolicyStory)
+	GetId(name string) (uint64, bool)
+	GetRuleId(policy, rule string) (uint64, bool)
+	GetName(id uint64) (string, bool)
+	GetRule(policy string, id uint64, deny, allow bool) (string, bool)
+	GetList() []string
 }
 
-func init() {
-	policyLibrary = make(map[string]uint64)
-	idLibrary = make(map[uint64]*PolicyStory)
+type PolicyRepositoryIDReader interface {
+	GetId(name string) (uint64, bool)
+	GetRuleId(policy, rule string) (uint64, bool)
 }
 
-func Get(name string) (*PolicyStory, bool) {
-	id, ok := policyLibrary[name]
+var (
+	repo            *policyRepositoryImpl
+	initGlobalCache sync.Once
+)
+
+func GetRepository() PolicyRepository {
+	initGlobalCache.Do(func() {
+		repo = &policyRepositoryImpl{}
+		repo.policyLibrary = make(map[string]uint64)
+		repo.idLibrary = make(map[uint64]*PolicyStory)
+	})
+	return repo
+}
+
+func (r *policyRepositoryImpl) generateId() uint64 {
+	r.policyId++
+	return r.policyId
+}
+
+func (r *policyRepositoryImpl) generateRuleId() uint64 {
+	r.ruleId++
+	return r.ruleId
+}
+
+func (r *policyRepositoryImpl) Get(name string) (*PolicyStory, bool) {
+	id, ok := r.policyLibrary[name]
 	if !ok {
 		return nil, ok
 	}
-	p := idLibrary[id]
+	p := r.idLibrary[id]
 	return p, true
 }
 
-func Delete(name string) {
-	id, ok := GetId(name)
-	delete(policyLibrary, name)
+func (r *policyRepositoryImpl) Delete(name string) {
+	id, ok := r.GetId(name)
+	delete(r.policyLibrary, name)
 	if ok {
-		delete(idLibrary, id)
+		delete(r.idLibrary, id)
 	}
-	for str, n := range policyLibrary {
+	for str, n := range r.policyLibrary {
 		if n == id {
-			DelLink(str)
+			r.DelLink(str)
 		}
 	}
 }
 
-func Link(title string, ref string) error {
-	id, ok := GetId(title)
+func (r *policyRepositoryImpl) Link(title string, ref string) error {
+	id, ok := r.GetId(title)
 	if !ok {
 		return fmt.Errorf("unknown link title: %s", title)
 	}
-	policyLibrary[ref] = id
+	r.policyLibrary[ref] = id
 	return nil
 }
 
-func DelLink(title string) {
-	delete(policyLibrary, title)
+func (r *policyRepositoryImpl) DelLink(title string) {
+	delete(r.policyLibrary, title)
 }
 
-func AddRule(p *PolicyStory, rule string) {
+func (r *policyRepositoryImpl) AddRule(p *PolicyStory, rule string) {
 	if _, ok := p.Rules[rule]; ok {
 		return
 	}
-	ruleID := generateRuleId()
+	ruleID := r.generateRuleId()
 	p.Rules[rule] = ruleID
 }
 
-func Add(p *PolicyStory) {
-	_, ok := policyLibrary[p.Title]
+func (r *policyRepositoryImpl) Add(p *PolicyStory) {
+	_, ok := r.policyLibrary[p.Title]
 	if ok {
 		return
 	}
-	p.Id = generateId()
-	idLibrary[p.Id] = p
-	policyLibrary[p.Title] = p.Id
+	p.Id = r.generateId()
+	r.idLibrary[p.Id] = p
+	r.policyLibrary[p.Title] = p.Id
 }
 
-func GetId(name string) (uint64, bool) {
-	id, ok := policyLibrary[name]
+func (r *policyRepositoryImpl) GetId(name string) (uint64, bool) {
+	id, ok := r.policyLibrary[name]
 	if !ok {
 		return uint64(0), ok
 	}
 	return id, true
 }
 
-func GetRuleId(policy, rule string) (uint64, bool) {
-	p, ok := Get(policy)
+func (r *policyRepositoryImpl) GetRuleId(policy, rule string) (uint64, bool) {
+	p, ok := r.Get(policy)
 	if !ok {
 		return uint64(0), ok
 	}
@@ -110,16 +141,16 @@ func GetRuleId(policy, rule string) (uint64, bool) {
 	return id, true
 }
 
-func GetName(id uint64) (string, bool) {
-	p, ok := idLibrary[id]
+func (r *policyRepositoryImpl) GetName(id uint64) (string, bool) {
+	p, ok := r.idLibrary[id]
 	if !ok {
 		return "", ok
 	}
 	return p.Title, ok
 }
 
-func GetRule(policy string, id uint64, deny, allow bool) (string, bool) {
-	p, ok := Get(policy)
+func (r *policyRepositoryImpl) GetRule(policy string, id uint64, deny, allow bool) (string, bool) {
+	p, ok := r.Get(policy)
 	if !ok {
 		return "", false
 	}
@@ -142,9 +173,9 @@ func GetRule(policy string, id uint64, deny, allow bool) (string, bool) {
 	return "", false
 }
 
-func GetList() []string {
+func (r *policyRepositoryImpl) GetList() []string {
 	names := []string{}
-	for _, story := range idLibrary {
+	for _, story := range r.idLibrary {
 		names = append(names, story.Title)
 	}
 	return names

@@ -10,6 +10,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 
 	"github.com/cilium/cilium/pkg/lock"
 )
@@ -56,11 +57,12 @@ func (fa *FakeEndpointAdder) AddEndpoint(_ endpoint.Endpoint) (uint64, error) {
 
 func getNewFakeBPFProgrammer() *BpfProgrammer {
 	ret := &BpfProgrammer{
-		dstMap:        &fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue]{},
-		binaryMap:     &fakeBPFMap[processTreeBinaryUIDKey, processTreeID]{},
-		uidBpfMap:     &fakeBPFMap[processTreeID, processTreeBinaryUIDKey]{},
-		lpmMap:        &fakeLPMMap{},
-		endpointAdder: &FakeEndpointAdder{},
+		dstMap:                   &fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue]{},
+		binaryMap:                &fakeBPFMap[processTreeBinaryUIDKey, processTreeID]{},
+		uidBpfMap:                &fakeBPFMap[processTreeID, processTreeBinaryUIDKey]{},
+		lpmMap:                   &fakeLPMMap{},
+		endpointAdder:            &FakeEndpointAdder{},
+		policyRepositoryIDReader: library.GetRepository(),
 	}
 	ret.initProgrammerOnce.Do(func() {})
 	return ret

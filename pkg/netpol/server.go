@@ -65,7 +65,7 @@ func (m *NetworkPolicyManager) AddNetworkPolicyFromYAML(_ context.Context, req *
 }
 
 func (m *NetworkPolicyManager) DeleteNetworkPolicy(_ context.Context, req *tetragon.DeleteNetworkPolicyRequest) (*tetragon.DeleteNetworkPolicyResponse, error) {
-	story, ok := library.Get(req.Name)
+	story, ok := library.GetRepository().Get(req.Name)
 	if !ok {
 		return nil, fmt.Errorf("policy does not exist")
 	}
@@ -77,7 +77,7 @@ func (m *NetworkPolicyManager) DeleteNetworkPolicy(_ context.Context, req *tetra
 		return nil, fmt.Errorf("abort removing policy failed")
 	}
 
-	library.Delete(req.Name)
+	library.GetRepository().Delete(req.Name)
 	logger.GetLogger().Info("network policy deleted", "title", req.Name)
 
 	return &tetragon.DeleteNetworkPolicyResponse{}, nil
@@ -85,7 +85,7 @@ func (m *NetworkPolicyManager) DeleteNetworkPolicy(_ context.Context, req *tetra
 
 func (m *NetworkPolicyManager) ListNetworkPolicy(context.Context, *tetragon.ListNetworkPolicyRequest) (*tetragon.ListNetworkPolicyResponse, error) {
 	npiList := []*tetragon.NetworkPolicyInfo{}
-	list := library.GetList()
+	list := library.GetRepository().GetList()
 	for _, n := range list {
 		npi := &tetragon.NetworkPolicyInfo{
 			Name: n,
@@ -98,7 +98,7 @@ func (m *NetworkPolicyManager) ListNetworkPolicy(context.Context, *tetragon.List
 }
 
 func (m *NetworkPolicyManager) GetNetworkPolicy(_ context.Context, req *tetragon.GetNetworkPolicyRequest) (*tetragon.GetNetworkPolicyResponse, error) {
-	policy, ok := library.Get(req.Name)
+	policy, ok := library.GetRepository().Get(req.Name)
 	if !ok {
 		return nil, fmt.Errorf("policy does not exist")
 	}
