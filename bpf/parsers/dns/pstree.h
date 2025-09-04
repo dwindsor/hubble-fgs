@@ -95,13 +95,6 @@ struct {
 	__type(value, uint32_t);
 } tg_dns_alloc_id SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__uint(max_entries, 1);
-	__type(key, uint32_t);
-	__type(value, uint64_t);
-} tg_kpod_cgid SEC(".maps");
-
 // The link between the cgroup IDs and the allocation IDs.
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -110,6 +103,7 @@ struct {
 	__type(value, uint32_t);
 } tg_dns_cgid_aid SEC(".maps");
 
+volatile __CONST uint64_t KUBEPODS_SLICE_CGID;
 volatile __CONST __u8 DNS_PARSER_PER_POD_ENABLED;
 
 #define MAX_CGROUP_DEPTH 30
@@ -122,8 +116,7 @@ volatile __CONST __u8 DNS_PARSER_PER_POD_ENABLED;
 // that should be updated if this code is changed.
 FUNC_INLINE uint64_t find_parent_cgroupid_network(struct bpf_sock *sk)
 {
-	uint64_t cgid, previous_cgid, own_cgid, *kubepods_cgid;
-	uint32_t zero = 0;
+	uint64_t cgid, previous_cgid, own_cgid;
 	uint8_t kubepods_found = false;
 
 	if (!sk)
@@ -131,16 +124,11 @@ FUNC_INLINE uint64_t find_parent_cgroupid_network(struct bpf_sock *sk)
 
 	own_cgid = sk_cgroup_id(sk);
 
-	kubepods_cgid = map_lookup_elem(&tg_kpod_cgid, &zero);
-	//  if kubepods_cgid == 0, it means the setup failed
-	if (!kubepods_cgid || *kubepods_cgid == 0)
-		return 0;
-
 	previous_cgid = 0;
 	for (size_t i = 0; i < MAX_CGROUP_DEPTH; i++) {
 		cgid = sk_ancestor_cgroup_id(sk, i);
 
-		if (cgid == *kubepods_cgid)
+		if (cgid == KUBEPODS_SLICE_CGID)
 			kubepods_found = true;
 
 		if (cgid == own_cgid) {
@@ -161,13 +149,8 @@ FUNC_INLINE uint64_t find_parent_cgroupid_network(struct bpf_sock *sk)
 // the other function as well.
 FUNC_INLINE uint64_t find_parent_cgroupid_tracing()
 {
-	uint64_t cgid, previous_cgid, own_cgid, *kubepods_cgid;
-	uint32_t zero = 0;
+	uint64_t cgid, previous_cgid, own_cgid;
 	uint8_t kubepods_found = false;
-
-	kubepods_cgid = map_lookup_elem(&tg_kpod_cgid, &zero);
-	if (!kubepods_cgid || *kubepods_cgid == 0)
-		return 0;
 
 	own_cgid = get_current_cgroup_id();
 
@@ -175,7 +158,7 @@ FUNC_INLINE uint64_t find_parent_cgroupid_tracing()
 	for (size_t i = 0; i < MAX_CGROUP_DEPTH; i++) {
 		cgid = get_current_ancestor_cgroup_id(i);
 
-		if (cgid == *kubepods_cgid)
+		if (cgid == KUBEPODS_SLICE_CGID)
 			kubepods_found = true;
 
 		if (cgid == own_cgid) {

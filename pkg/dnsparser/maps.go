@@ -32,6 +32,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 const (
@@ -47,7 +48,8 @@ const (
 
 	AllocationIDMapName      = "tg_dns_alloc_id"
 	CgroupIDToAllocIDMapName = "tg_dns_cgid_aid"
-	KubepodsCgroupIDMapName  = "tg_kpod_cgid"
+
+	KubepodsCgidConstName = "KUBEPODS_SLICE_CGID"
 
 	ParserEnabledName = "DNS_PARSER_ENABLED"
 	PerPodFeatureName = "DNS_PARSER_PER_POD_ENABLED"
@@ -76,39 +78,41 @@ type DNSID struct {
 	Source uint64
 }
 
-// PopulateKubepodsCgroupIDMap scans the filesystem for the "kubepods.slice"
-// cgroup directory and writes its cgroup ID into the appropriate map for
-// datapath use.
-func PopulateKubepodsCgroupIDMap() error {
-	mapFile := filepath.Join(bpf.MapPrefixPath(), KubepodsCgroupIDMapName)
-	kpodCgidMap, err := ebpf.LoadPinnedMap(mapFile, nil)
+// RewriteConstants writes constant value into the consts map input for the DNS
+// parser programs.
+func RewriteConstants(consts map[string]any) error {
+	kubepodsCgid, err := GetKubepodsSliceCgroupID()
 	if err != nil {
-		return fmt.Errorf("failed to load %q map: %w", mapFile, err)
+		return fmt.Errorf("failed to get kubepods.slice cgroupID: %w", err)
 	}
-	defer kpodCgidMap.Close()
+	consts[KubepodsCgidConstName] = kubepodsCgid
 
+	// Configuration validation should prevent EnableBPFDNSPerPod to be
+	// enabled if sockos does not support the cgroup ancestor helper
+	consts[PerPodFeatureName] = option.Config.EnableBPFDNSPerPod && utils.SockopsSupportsCgroupAncestorHelper()
+
+	return nil
+}
+
+// GetKubepodsSliceCgroupID scans the filesystem for the "kubepods.slice"
+// cgroup directory
+func GetKubepodsSliceCgroupID() (uint64, error) {
 	fsscanner := fsscan.New()
 	podDir, err := fsscanner.FindPodPath("kubepods.slice")
 	if err != nil {
-		return fmt.Errorf("failed to find kubepods.slice cgroup directory: %w", err)
+		return 0, fmt.Errorf("failed to find kubepods.slice cgroup directory: %w", err)
 	}
 
 	if podDir == "" {
-		return errors.New("kubepods.slice was not found in the cgroup hierarchy")
+		return 0, errors.New("kubepods.slice was not found in the cgroup hierarchy")
 	}
 
 	cgid, err := cgroups.GetCgroupIdFromPath(podDir)
 	if err != nil {
-		return fmt.Errorf("failed getting the cgroup ID from the cgroup directory: %w", err)
+		return 0, fmt.Errorf("failed getting the cgroup ID from the cgroup directory: %w", err)
 	}
 
-	var zero uint32
-	err = kpodCgidMap.Update(zero, cgid, 0)
-	if err != nil {
-		return fmt.Errorf("failed to update the kubepods cgroupID map with cgid: %w", err)
-	}
-
-	return nil
+	return cgid, nil
 }
 
 // These functions (this one plus the IP to ID related one) fill the DNS map

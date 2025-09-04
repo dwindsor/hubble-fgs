@@ -179,9 +179,10 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	// Kernels before 5.5 don't support Fentry, so use kprobes here.
 	// These can be unreliable as they can be preempted.
 	if utils.SupportProcessTree() {
-		// Note: if we want this feature for <6.4, we need to enable as well in tracing progs
-		tcpconfig.TcpSockops.RewriteConstants = map[string]any{
-			dnsparser.PerPodFeatureName: enterpriseOption.Config.EnableBPFDNSPerPod && utils.SockopsSupportsCgroupAncestorHelper(),
+		err := dnsparser.RewriteConstants(tcpconfig.TcpSockops.RewriteConstants)
+		if err != nil {
+			// TODO: when we remove enabling layer3 from CRD, return this error and stop init of sensor
+			logger.GetLogger().Error("Failed to rewrite DNS parser constants", logfields.Error, err)
 		}
 		progsInitSock = append(progsInitSock, tcpconfig.TcpSockops)
 		maps = append(maps, processModelMapsEnable()...)

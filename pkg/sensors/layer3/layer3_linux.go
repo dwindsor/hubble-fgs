@@ -188,7 +188,6 @@ var (
 	DNSIPToIDMaps        = program.MapUserFrom(ip.DNSIPToIDMaps)
 	AllocationIDMap      = program.MapUserFrom(ip.AllocationIDMap)
 	CgroupIDToAllocIDMap = program.MapUserFrom(ip.CgroupIDToAllocIDMap)
-	KubepodsCgroupIDMap  = program.MapUserFrom(ip.KubepodsCgroupIDMap)
 
 	// LPM maps
 	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)
@@ -253,7 +252,6 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 			maps = append(maps, RequestIDMapName)
 			maps = append(maps, AllocationIDMap)
 			maps = append(maps, CgroupIDToAllocIDMap)
-			maps = append(maps, KubepodsCgroupIDMap)
 		}
 	}
 
@@ -287,9 +285,11 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 				maps = append(maps, dispatcherMaps...)
 			} else {
 				for _, prog := range dispatcherProcessTreeProgs {
-					prog.RewriteConstants = map[string]any{
-						dnsparser.PerPodFeatureName: enterpriseOption.Config.EnableBPFDNSPerPod && utils.SockopsSupportsCgroupAncestorHelper(),
-						dnsparser.ParserEnabledName: enterpriseOption.Config.EnableBPFDNSParser,
+					prog.RewriteConstants[dnsparser.ParserEnabledName] = enterpriseOption.Config.EnableBPFDNSParser
+					err := dnsparser.RewriteConstants(prog.RewriteConstants)
+					if err != nil {
+						// TODO: when we remove enabling layer3 from CRD, return this error and stop init of sensor
+						logger.GetLogger().Error("Failed to rewrite DNS parser constants", logfields.Error, err)
 					}
 				}
 				progsCollectStats = append(progsCollectStats, dispatcherProcessTreeProgs...)
@@ -545,13 +545,6 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		err = dnsparser.PopulateIPToIDMapsWithLocalhost()
 		if err != nil {
 			return fmt.Errorf("failed to populate the DNS IP to ID maps with localhost: %w", err)
-		}
-
-		if enterpriseOption.Config.EnableBPFDNSPerPod {
-			err = dnsparser.PopulateKubepodsCgroupIDMap()
-			if err != nil {
-				return fmt.Errorf("failed to populate kubepods cgroupID map needed for option %s, is kubelet running on this node?: %w", enterpriseOption.KeyEnableBPFDNSPerPod, err)
-			}
 		}
 
 		// Program the QuotasInitDNSDomainMappings
