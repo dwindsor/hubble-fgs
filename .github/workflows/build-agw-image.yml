@@ -46,17 +46,6 @@ jobs:
     needs: [ init ]
     runs-on: ubuntu-latest-4cores-16gb
     steps:
-      # - name: Import Vault Secrets
-      #   uses: hashicorp/vault-action@v2.7.5
-      #   with:
-      #     url: ${{ vars.KEEPER_URL }}
-      #     method: approle
-      #     path: approle
-      #     roleId: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}
-      #     secretId: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}
-      #     namespace: ${{ vars.VAULT_HYPERSHIELD_NAMESPACE }}
-      #     secrets: |
-      #       secret/data/gitops/gha-creds  *  | GITHUB_ ;
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
@@ -68,9 +57,28 @@ jobs:
       - name: Build AGW image
         env:
           DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
-          AGW_IMAGE_NAME: ghcr.io/cisco-hypershield/hubble-fgs-agw
+          AGW_IMAGE_NAME: isovalent/agw
         run: |
           make image-agw
+      - name: Create tar file from Docker image
+        id: create-tar
+        env:
+          DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          AGW_IMAGE_NAME: isovalent/agw
+        run: |
+          FINAL_TAR_NAME="agw"
+          IMAGE_URI="${AGW_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+          docker save "$IMAGE_URI" -o "${FINAL_TAR_NAME}.tar" && gzip "${FINAL_TAR_NAME}.tar"
+          ARTIFACT="${FINAL_TAR_NAME}.tar.gz"
+          echo "artifact=$ARTIFACT" >> $GITHUB_OUTPUT
+          echo "artifact_path=$(pwd)/${ARTIFACT}" >> $GITHUB_OUTPUT
+      - name: Upload Docker image tar artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          path: ${{ steps.create-tar.outputs.artifact_path }}
+          retention-days: 1
+      
       - name: Image digest summary
         run: |
           echo "### AGW Image Published" >> $GITHUB_STEP_SUMMARY
@@ -79,6 +87,52 @@ jobs:
           echo "| Repository | hubble-fgs |" >> $GITHUB_STEP_SUMMARY
           echo "| Tag | ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
 
+  # New job that triggers the Hypershield workflow to process the Hubble FGS artifact
+  trigger-hypershield-workflow:
+    name: Trigger Hypershield Cross-Org Workflow
+    needs: [ init, build-agw-image ]
+    runs-on: ubuntu-latest
+    # Only run this job if the build-agw-image job was successful
+    if: ${{ needs.build-agw-image.result == 'success' }}
+    steps:
+      # Generate GitHub App token for workflow operations
+      - name: Generate GitHub App Token
+        id: workflow-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ vars.HYPERSHIELD_GH_APP_ID }}
+          private-key: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
+          owner: cisco-hypershield
+          repositories: hs-actions
+      
+      # Trigger the workflow in cisco-hypershield organization
+      - name: Trigger Hubble FGS Push to NXOS Code Drop
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ steps.workflow-token.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/cisco-hypershield/hs-actions/dispatches \
+            -d '{
+              "event_type": "push-hubble-fgs-to-nxos-codedrop",
+              "client_payload": {
+                "repo": "${{ github.repository }}",
+                "run_id": "${{ github.run_id }}",
+                "workflow_file": "build-agw-image.yml",
+                "artifact_name": "hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
+              }
+            }'
+      
+      # Add a summary of the triggered workflow
+      - name: Cross-Org Workflow Summary
+        run: |
+          echo "### Cross-Organization Workflow Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Organization | cisco-hypershield |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Repository | hs-actions |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Workflow | code-drop-isovalent.yaml |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact Name | hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
+  
   # Pushes the artifact to the repo: cisco-hypershield/hs-nxos-codedrop to get an agw artifact rpm signed
   # trigger-code-drop:
   #   needs: [ init, build-agw-image ]
