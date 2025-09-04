@@ -110,7 +110,8 @@ jobs:
                 "repo": "${{ github.repository }}",
                 "run_id": "${{ github.run_id }}",
                 "workflow_file": "build-images-agw.yml",
-                "artifact_name": "hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}"
+                "artifact_name": "hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}",
+                "token": "${{ steps.workflow-token.outputs.token }}"
               }
             }'
       - name: Cross-Org Workflow Summary
