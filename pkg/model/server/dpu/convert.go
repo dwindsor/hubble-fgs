@@ -55,6 +55,36 @@ func recordToDPUPolicyRule(r *record.DatapathRecord, update bool) *DPUPolicyRule
 	}
 }
 
+func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicyRule {
+	p := resp.Policy
+	rule := &DPURule{
+		PolicyName: p.PolicyName,
+		RuleName:   p.RuleName,
+		Action:     p.Action,
+		Source: DPUSubject{
+			Cidr:     p.Source.Network.Cidr,
+			MinPort:  p.Source.Network.MinPort,
+			MaxPort:  p.Source.Network.MaxPort,
+			Vlan:     p.Source.Network.Vlan,
+			Vrf:      p.Source.Network.Vrf,
+			Protocol: p.Source.Network.Protocol,
+		},
+		Destination: DPUSubject{
+			Cidr:     p.Destination.Network.Cidr,
+			MinPort:  p.Destination.Network.MinPort,
+			MaxPort:  p.Destination.Network.MaxPort,
+			Vlan:     p.Destination.Network.Vlan,
+			Vrf:      p.Destination.Network.Vrf,
+			Protocol: p.Destination.Network.Protocol,
+		},
+	}
+
+	return &DPUPolicyRule{
+		Oper:   resp.Oper,
+		Policy: rule,
+	}
+}
+
 func dpuRuleToResponse(rule *DPUPolicyRule) *v1alpha.Streaml3L4NetworkPolicyResponse {
 	r := rule.Policy
 

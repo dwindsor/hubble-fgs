@@ -129,6 +129,10 @@ agw: ## Compile smartswitch agent
 agwctl: ## Compile smartswitch agent CLI
 	$(GO_BUILD) ./cmd/agwctl
 
+.PHONY: fwa
+fwa: ## Compile smartswitch agent
+	$(GO_BUILD) ./cmd/fwa
+
 .PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
 	$(GO_BUILD) ./cmd/bin/tetragon

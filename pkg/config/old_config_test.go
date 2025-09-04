@@ -106,16 +106,14 @@ func TestConfig(t *testing.T) {
 		t.Errorf("Unexpected value for Agent: got %+v, want %+v", c.Agent, expectedAgent)
 	}
 
-	expectedDataplanes := map[string]Dataplane{
-		"0": {
-			VppSockFile: "/path/to/dataplane0_api_sockfile",
-			ServicePath: "/opt/cisco/daf/var/s6/services/dp0", // Default value
-			CpaSockFile: "",                                   // Not set in test JSON or defaults
-			CliSockFile: "",                                   // Not set in test JSON or defaults
-		},
+	expectedDataplane := Dataplane{
+		VppSockFile: "/path/to/dataplane0_api_sockfile",
+		ServicePath: "/opt/cisco/daf/var/s6/services/dp0", // Default value
+		CpaSockFile: "",                                   // Not set in test JSON or defaults
+		CliSockFile: "",                                   // Not set in test JSON or defaults
 	}
-	if !reflect.DeepEqual(c.Dataplanes, expectedDataplanes) {
-		t.Errorf("Unexpected value for Dataplanes: got %+v, want %+v", c.Dataplanes, expectedDataplanes)
+	if !reflect.DeepEqual(c.Dataplane, expectedDataplane) {
+		t.Errorf("Unexpected value for Dataplanes: got %+v, want %+v", c.Dataplane, expectedDataplane)
 	}
 
 	// Write new configuration data to the temporary file for Update() and Save() tests

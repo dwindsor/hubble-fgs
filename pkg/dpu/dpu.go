@@ -1,0 +1,353 @@
+package dpu
+
+import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/gob"
+	"encoding/hex"
+	"io"
+	"os"
+	"runtime"
+	"sort"
+	"sync/atomic"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/cilium/cilium/pkg/logging/logfields"
+	"github.com/cilium/tetragon/pkg/logger"
+
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+
+	"github.com/isovalent/hubble-fgs/pkg/config"
+	"github.com/isovalent/hubble-fgs/pkg/dpu/dataplane"
+	agentDPU "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/utils"
+)
+
+const (
+	BUFSIZE = 4096
+
+	// on firewall.*, use ens5. on real dpu, int_mnic0
+	DPU_INTERFACE = "int_mnic0"
+)
+
+type PolicyClient struct {
+	client v1alpha.L3L4NetworkPolicyServiceClient
+	ctx    context.Context
+	conn   *grpc.ClientConn
+	stream grpc.ServerStreamingClient[v1alpha.Streaml3L4NetworkPolicyResponse]
+}
+
+func NewDPUAgent(server string) *DPUAgent {
+	return &DPUAgent{
+		Cfg:          &config.Config{},
+		Retries:      5,
+		policyClient: &PolicyClient{},
+		// This uses the sha of the PolicyRule as the key. The value though is
+		// the message. We SHA256 the rule so that the operation matches for
+		// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
+		// of the concatenated strings in this map.
+		ruleSet:       make(map[[sha256.Size]byte]*agentDPU.DPUPolicyRule),
+		serverAddress: server,
+	}
+}
+
+type DPUAgent struct {
+	AgentId      string
+	TenantId     string
+	Name         string
+	version      string
+	Ip           string
+	Hostname     string
+	Architecture string
+	Os           string
+
+	serverAddress string
+
+	ReadyStatus      atomic.Bool
+	ConnectionStatus atomic.Bool
+
+	Dataplane dataplane.Dataplane
+
+	Cfg          *config.Config
+	Retries      int
+	policyClient *PolicyClient
+	// This uses the sha of the PolicyRule as the key. The value though is
+	// the message. We SHA256 the rule so that the operation matches for
+	// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
+	// of the concatenated strings in this map.
+	ruleSet map[[sha256.Size]byte]*agentDPU.DPUPolicyRule
+}
+
+func (dpu *DPUAgent) Id() string {
+	return dpu.AgentId
+}
+
+func (dpu *DPUAgent) Tenant() string {
+	return dpu.TenantId
+}
+
+func (dpu *DPUAgent) Version() string {
+	return dpu.version
+}
+
+func (dpu *DPUAgent) KeepAliveInterval() int {
+	return dpu.Cfg.Agent.KeepAliveInterval
+}
+
+func (dpu *DPUAgent) Config(_ context.Context, path string) error {
+	// Extracting logger and agent from context
+	// Collecting agent metadata
+	var err error
+
+	dpu.Ip, err = utils.GetOutboundIP()
+	if err != nil {
+		logger.GetLogger().Error("failed to get machine IP address", logfields.Error, err)
+	}
+	dpu.Hostname, err = os.Hostname()
+	if err != nil {
+		logger.GetLogger().Error("failed to get machine hostname", logfields.Error, err)
+	}
+	dpu.Architecture = runtime.GOARCH
+	dpu.Os = runtime.GOOS
+
+	// Setting up config
+	created, err := dpu.Cfg.Init(path)
+	if err != nil {
+		logger.GetLogger().Error("Failed to initialize config", logfields.Error, err)
+		return err
+	}
+	if created {
+		logger.GetLogger().Info("Config file not found, new config file created with default values", "logfile", path)
+	}
+	dpu.AgentId = dpu.Cfg.Agent.AgentId
+
+	id := "DP-APP"
+	apiPath := dpu.Cfg.Dataplane.ServicePath
+
+	dpu.Dataplane = dataplane.NewAcceleratedDataplane(id, apiPath, "")
+
+	logger.GetLogger().Info("configure DPU", "host", dpu.Hostname, "OS", dpu.Os, "Arch", dpu.Architecture, "IP", dpu.Ip)
+	dpuIp, err := utils.GetDpuIP(DPU_INTERFACE)
+	if err != nil {
+		logger.GetLogger().Error("Fail to get DPU IP, retry after 1 second", logfields.Error, err)
+		time.Sleep(time.Second)
+	} else {
+		dpu.AgentId = dpuIp
+		logger.GetLogger().Info("Using DPU IP as AgentId", "id", dpu.AgentId)
+	}
+	return nil
+}
+
+func (dpu *DPUAgent) Setup(ctx context.Context) error {
+	logger.GetLogger().Info("Setup Accelerated Dataplane")
+
+	dpu.Dataplane = dataplane.NewAcceleratedDataplane("dp0",
+		dpu.Cfg.Dataplane.CpaSockFile, "")
+
+	// Setting up dataplane
+	err := dpu.Dataplane.Connect(ctx, dpu.Cfg.Dataplane.ServicePath, dpu.Cfg.Controller.Debug)
+	if err != nil {
+		logger.GetLogger().Error("failed to setup connection",
+			logfields.Error, err)
+		return err
+	}
+	logger.GetLogger().Info("Connected to dataplane", "version", dpu.Dataplane.Version)
+
+	return nil
+}
+
+func (dpu *DPUAgent) Close(_ context.Context) error {
+	return nil
+}
+
+func (dpu *DPUAgent) Ready(_ context.Context) error {
+	// Setting agent ready
+	dpu.ReadyStatus.Store(true)
+	return nil
+}
+
+func (dpu *DPUAgent) Reconnect(_ context.Context) error {
+	// Extracting logger from context
+	logger.GetLogger().Debug("Reconnecting to controller")
+
+	return nil
+}
+
+// This abstraction is a bit broken we need a ruleSet object
+// that we can do work over to share code between client and
+// server agents. Will do after initial merge.
+func (dpu *DPUAgent) Checksum() [sha256.Size]byte {
+	var vals []string
+	var buf string
+
+	for csum := range dpu.ruleSet {
+		vals = append(vals, string(csum[:]))
+	}
+	sort.Strings(vals)
+	for _, v := range vals {
+		buf += v + ":"
+	}
+	return sha256.Sum256([]byte(buf))
+}
+
+func hashRule(rule *agentDPU.DPURule) ([sha256.Size]byte, error) {
+	var buf bytes.Buffer
+
+	// fixme
+	enc := gob.NewEncoder(&buf) // Will write to network.
+	err := enc.Encode(*rule)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	return sha256.Sum256(buf.Bytes()), nil
+}
+
+func (dpu *DPUAgent) upsertPolicyRule(rule *agentDPU.DPUPolicyRule) {
+	csum, err := hashRule(rule.Policy)
+	if err != nil {
+		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
+			logfields.Error, err, "rule", rule)
+		return
+	}
+	dpu.ruleSet[csum] = rule
+}
+
+func (dpu *DPUAgent) deletePolicyRule(rule *agentDPU.DPUPolicyRule) {
+	csum, err := hashRule(rule.Policy)
+	if err != nil {
+		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
+			logfields.Error, err)
+		return
+	}
+	delete(dpu.ruleSet, csum)
+}
+
+func (dpu *DPUAgent) EventLoop(ctx context.Context) error {
+	logger.GetLogger().Info("event Loop.")
+	for {
+		resp, err := dpu.policyClient.stream.Recv()
+		if err == io.EOF {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+
+		rule := agentDPU.ResponseToDPURule(resp)
+		policyList := []*agentDPU.DPUPolicyRule{rule}
+
+		switch resp.Oper {
+		case v1alpha.PolicyOperation_POLICY_OPERATION_UNSPECIFIED:
+			logger.GetLogger().Error("failed policy, unknown operation")
+		case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
+			dpu.upsertPolicyRule(rule)
+			err := dpu.Dataplane.PushPolicy(ctx, policyList)
+			if err != nil {
+				logger.GetLogger().Error("upsert failed", logfields.Error, err)
+			}
+		case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
+			dpu.deletePolicyRule(rule)
+			logger.GetLogger().Warn("delete not implemented")
+		}
+
+	}
+}
+
+func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
+	// arbitrarily chosen to be 1 second there are not many DPUs in
+	// the same node and this makes us overly responsive to rule set
+	// hashes which is nice.
+	keepAliveTimer := time.Second
+	for {
+		select {
+		case <-ctx.Done():
+			logger.GetLogger().Info("Stopping keep-alive")
+			return nil
+		case <-time.After(keepAliveTimer):
+			csum := dpu.Checksum()
+			status := &v1alpha.ReportStatus{
+				AgentUid:       dpu.AgentId,
+				DpVersion:      "dpVersion",
+				AgentVersion:   dpu.Version(),
+				PolicyChecksum: hex.EncodeToString(csum[:]),
+				Hostname:       dpu.Hostname,
+				Architecture:   dpu.Architecture,
+				Os:             dpu.Os,
+				Type:           v1alpha.AgentType_AGENT_TYPE_DPU_AGW,
+				SerialNumber:   "serialNumber",
+			}
+			req := &v1alpha.ReportStatusRequest{
+				Status: status,
+			}
+			_, err := dpu.policyClient.client.ReportStatus(ctx, req)
+			if err != nil {
+				logger.GetLogger().Error("keep alive report status error",
+					logfields.Error, err)
+			}
+		}
+	}
+
+}
+
+func (dpu *DPUAgent) Connect(ctx context.Context) error {
+	var err error
+
+	dpu.policyClient = &PolicyClient{}
+
+	logger.GetLogger().Info("Starting Streaming client")
+	dpu.policyClient.conn, err = grpc.NewClient(
+		dpu.serverAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		logger.GetLogger().Error("GRPC client create error", logfields.Error, err)
+		return err
+	}
+
+	dpu.policyClient.client = v1alpha.NewL3L4NetworkPolicyServiceClient(dpu.policyClient.conn)
+	dpu.policyClient.ctx = ctx
+
+	defer dpu.policyClient.conn.Close()
+	backoff := time.Second
+	attempts := 0
+
+	go func() {
+		dpu.KeepAlive(ctx)
+	}()
+
+	req := &v1alpha.Streaml3L4NetworkPolicyRequest{
+		AgentUid: dpu.AgentId,
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.GetLogger().Info("Client connection closed")
+			return nil
+		case <-time.After(backoff):
+			logger.GetLogger().Info("Connecting client")
+			dpu.policyClient.stream, err = dpu.policyClient.client.Streaml3L4NetworkPolicy(ctx, req)
+			logger.GetLogger().Info("Client connected")
+			if err != nil {
+				attempts++
+				logger.GetLogger().Error("Stream connection attempt failed, retrying...", "server-address", dpu.serverAddress, "attempts", attempts, "backoff", backoff, "error", err)
+				if attempts < dpu.Retries {
+					backoff *= 2
+				}
+				continue
+			}
+
+			attempts = 0
+			backoff = time.Second
+
+			logger.GetLogger().Info("Network Policy listening...")
+			if err := dpu.EventLoop(ctx); err != nil {
+				logger.GetLogger().Error("event loop aborted", logfields.Error, err)
+			}
+		}
+	}
+}
