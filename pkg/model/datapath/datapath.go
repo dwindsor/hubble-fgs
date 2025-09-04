@@ -3,6 +3,7 @@ package datapath
 import (
 	"sync"
 
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
@@ -38,4 +39,6 @@ type BpfProgrammer struct {
 	binaryMap          mapInterfaceTyped[processTreeBinaryUIDKey, processTreeID]
 	uidBpfMap          mapInterfaceTyped[processTreeID, processTreeBinaryUIDKey]
 	lpmMap             lpm.LPMMap
+
+	endpointAdder endpoint.EndpointAdder
 }

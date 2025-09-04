@@ -15,35 +15,33 @@ import (
 )
 
 func (p *BpfProgrammer) initMap() {
-	p.initProgrammerOnce.Do(func() {
-		var err error
+	var err error
 
-		file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
-		dstMap, err := ebpf.LoadPinnedMap(file, nil)
-		if err != nil {
-			logger.GetLogger().Error(fmt.Sprintf("failed to pin DestinationMap (%s): %v", file, err))
-		}
-		p.dstMap = NewTypedMap[types.DestinationEndpointKey, types.DestinationEndpointValue](dstMap)
+	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
+	dstMap, err := ebpf.LoadPinnedMap(file, nil)
+	if err != nil {
+		logger.GetLogger().Error(fmt.Sprintf("failed to pin DestinationMap (%s): %v", file, err))
+	}
+	p.dstMap = NewTypedMap[types.DestinationEndpointKey, types.DestinationEndpointValue](dstMap)
 
-		file = filepath.Join(bpf.MapPrefixPath(), processTreeBinaryUUIDMap)
-		binaryMap, err := ebpf.LoadPinnedMap(file, nil)
-		if err != nil {
-			logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
-		}
-		p.binaryMap = NewTypedMap[processTreeBinaryUIDKey, processTreeID](binaryMap)
+	file = filepath.Join(bpf.MapPrefixPath(), processTreeBinaryUUIDMap)
+	binaryMap, err := ebpf.LoadPinnedMap(file, nil)
+	if err != nil {
+		logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
+	}
+	p.binaryMap = NewTypedMap[processTreeBinaryUIDKey, processTreeID](binaryMap)
 
-		file = filepath.Join(bpf.MapPrefixPath(), processTreeUUIDBinaryMap)
-		uidBpfMap, err := ebpf.LoadPinnedMap(file, nil)
-		if err != nil {
-			logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
-		}
-		p.uidBpfMap = NewTypedMap[processTreeID, processTreeBinaryUIDKey](uidBpfMap)
+	file = filepath.Join(bpf.MapPrefixPath(), processTreeUUIDBinaryMap)
+	uidBpfMap, err := ebpf.LoadPinnedMap(file, nil)
+	if err != nil {
+		logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
+	}
+	p.uidBpfMap = NewTypedMap[processTreeID, processTreeBinaryUIDKey](uidBpfMap)
 
-		p.lpmMap, err = lpm.NewLPM()
-		if err != nil {
-			logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)
-		}
-	})
+	p.lpmMap, err = lpm.NewLPM()
+	if err != nil {
+		logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)
+	}
 }
 
 func scheduleDomainMapFlush() {

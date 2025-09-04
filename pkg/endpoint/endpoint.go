@@ -52,6 +52,10 @@ type EndpointCache interface {
 	DebugEndpointMap() ([]uint64, []*Endpoint)
 }
 
+type EndpointAdder interface {
+	AddEndpoint(ep Endpoint) (uint64, error)
+}
+
 type Cache struct {
 	cache       *lru.Cache[uint64, Endpoint]
 	revCache    *lru.Cache[Endpoint, uint64]

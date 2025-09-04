@@ -7,6 +7,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/stretchr/testify/require"
 
+	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 
@@ -46,18 +47,47 @@ func (fl *fakeLPMMap) Delete(_ string) error {
 	return nil
 }
 
+type FakeEndpointAdder struct {
+}
+
+func (fa *FakeEndpointAdder) AddEndpoint(_ endpoint.Endpoint) (uint64, error) {
+	return 42, nil
+}
+
 func getNewFakeBPFProgrammer() *BpfProgrammer {
 	ret := &BpfProgrammer{
-		dstMap:    &fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue]{},
-		binaryMap: &fakeBPFMap[processTreeBinaryUIDKey, processTreeID]{},
-		uidBpfMap: &fakeBPFMap[processTreeID, processTreeBinaryUIDKey]{},
-		lpmMap:    &fakeLPMMap{},
+		dstMap:        &fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue]{},
+		binaryMap:     &fakeBPFMap[processTreeBinaryUIDKey, processTreeID]{},
+		uidBpfMap:     &fakeBPFMap[processTreeID, processTreeBinaryUIDKey]{},
+		lpmMap:        &fakeLPMMap{},
+		endpointAdder: &FakeEndpointAdder{},
 	}
 	ret.initProgrammerOnce.Do(func() {})
 	return ret
 }
 
-func TestAddSingleRecord(t *testing.T) {
+type expectedEntry struct {
+	key   types.DestinationEndpointKey
+	value types.DestinationEndpointValue
+}
+
+func verifyDstMap(t *testing.T, bpfProgrammer *BpfProgrammer, expectedEntries []expectedEntry) {
+	length := 0
+	fakeDstMap := bpfProgrammer.dstMap.(*fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue])
+	for i, expected := range expectedEntries {
+		var actualValue types.DestinationEndpointValue
+		err := fakeDstMap.Lookup(expected.key, &actualValue)
+		require.NoError(t, err)
+		require.Equal(t, expected.value, actualValue, "index %d expected value for key %+v", i, expected.key)
+	}
+	fakeDstMap.Range(func(_ string, _ kvpair[types.DestinationEndpointKey, types.DestinationEndpointValue]) bool {
+		length++
+		return true
+	})
+	require.Equal(t, len(expectedEntries), length)
+}
+
+func TestAddSingleRecordWithoutEndpoint(t *testing.T) {
 	bpfProgrammer := getNewFakeBPFProgrammer()
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
@@ -75,31 +105,131 @@ func TestAddSingleRecord(t *testing.T) {
 			Action:     record.PolicyDeny,
 		},
 	}
+	expectedEntries := []expectedEntry{
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           inputRecord.Src.Self,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     0,
+				DestinationSource: types.DestinationSourceUser,
+				DestinationPort:   uint64(inputRecord.Endpoint.Port),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyDeny,
+				Port:     80,
+			},
+		},
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           inputRecord.Src.Self,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     0,
+				DestinationSource: types.DestinationSourceBPF,
+				DestinationPort:   uint64(inputRecord.Endpoint.Port),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyDeny,
+				Port:     80,
+			},
+		},
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           inputRecord.Src.Self,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     0,
+				DestinationSource: types.DestinationSourceDNS,
+				DestinationPort:   uint64(inputRecord.Endpoint.Port),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyDeny,
+				Port:     80,
+			},
+		},
+	}
 
 	err := bpfProgrammer.AddSingleRecord(inputRecord, false)
 	require.NoError(t, err)
+	verifyDstMap(t, bpfProgrammer, expectedEntries)
+}
 
-	fakeDstMap := bpfProgrammer.dstMap.(*fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue])
-	sources := []uint64{}
-	expectedKey := types.DestinationEndpointKey{
-		LocalId:           inputRecord.Src.Self,
-		LocalNSId:         inputRecord.Src.NSID,
-		DestinationId:     0,
-		DestinationSource: types.DestinationSourceBPF,
-		DestinationPort:   uint64(inputRecord.Endpoint.Port),
+func TestAddSingleRecordWithEndpoint(t *testing.T) {
+	bpfProgrammer := getNewFakeBPFProgrammer()
+	inputRecord := &record.DatapathRecord{
+		Src: &types.ProcessTreeKey{
+			NSID:  1,
+			Self:  18446744069414584321,
+			Depth: 0,
+		},
+		Endpoint: record.DatapathEndpoint{
+			EP: &endpoint.Endpoint{
+				Namespace: "test",
+				Name:      "test-ep",
+			},
+			Port: 80,
+		},
+		Action: &record.DatapathAction{
+			QuotaLimit: uint64(0),
+			ResetTime:  uint64(0),
+			Action:     record.PolicyDeny,
+		},
 	}
-	expectedValue := types.DestinationEndpointValue{
-		TxAction: record.PolicyDeny,
-		Port:     80,
+	expectedEntries := []expectedEntry{
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           inputRecord.Src.Self,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     42,
+				DestinationSource: types.DestinationSourceUser,
+				DestinationPort:   uint64(inputRecord.Endpoint.Port),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyDeny,
+				Port:     80,
+			},
+		},
+		// Wildcard entries below should have PolicyNone action
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           inputRecord.Src.Self,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     42,
+				DestinationSource: types.DestinationSourceUser,
+				DestinationPort:   uint64(0),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyNone,
+				Port:     0,
+			},
+		},
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           0,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     42,
+				DestinationSource: types.DestinationSourceUser,
+				DestinationPort:   uint64(0),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyNone,
+				Port:     0,
+			},
+		},
+		{
+			key: types.DestinationEndpointKey{
+				LocalId:           0,
+				LocalNSId:         inputRecord.Src.NSID,
+				DestinationId:     0,
+				DestinationSource: types.DestinationSourceUser,
+				DestinationPort:   uint64(0),
+			},
+			value: types.DestinationEndpointValue{
+				TxAction: record.PolicyNone,
+				Port:     0,
+			},
+		},
 	}
-	fakeDstMap.Range(func(key string, value kvpair[types.DestinationEndpointKey, types.DestinationEndpointValue]) bool {
-		sources = append(sources, value.a.DestinationSource)
-		// Ignore DestinationSource for comparison
-		expectedKey.DestinationSource = value.a.DestinationSource
-		require.Equal(t, expectedKey, value.a)
-		require.Equal(t, expectedValue, value.b)
-		return true
-	})
-	// We want to have 3 entries with 3 different sources
-	require.ElementsMatch(t, sources, []uint64{types.DestinationSourceBPF, types.DestinationSourceDNS, types.DestinationSourceUser})
+
+	err := bpfProgrammer.AddSingleRecord(inputRecord, false)
+	require.NoError(t, err)
+	verifyDstMap(t, bpfProgrammer, expectedEntries)
 }

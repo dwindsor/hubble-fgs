@@ -39,6 +39,13 @@ var (
 	dnsDomainMap = dnsparser.DomainMap{}
 )
 
+func (p *BpfProgrammer) initMaybe() {
+	p.initProgrammerOnce.Do(func() {
+		p.initMap()
+		p.endpointAdder = endpoint.MustGet()
+	})
+}
+
 func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool) error {
 	for _, r := range records {
 		p.AddSingleRecord(r, force)
@@ -99,11 +106,10 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	var dst uint64
 	var err error
 
-	p.initMap()
+	p.initMaybe()
 
 	if r.Endpoint.EP != nil {
-		c := endpoint.MustGet()
-		dst, err = c.AddEndpoint(*r.Endpoint.EP)
+		dst, err = p.endpointAdder.AddEndpoint(*r.Endpoint.EP)
 		if err != nil {
 			p.AddError++
 			logger.GetLogger().Warn("Failed to add endpoint for quota", logfields.Error, err)
@@ -232,14 +238,13 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	src := r.Src
 	ep := r.Endpoint.EP
 
-	p.initMap()
+	p.initMaybe()
 
 	dst := uint64(0)
 	if ep != nil {
 		var err error
 
-		c := endpoint.MustGet()
-		dst, err = c.AddEndpoint(*ep)
+		dst, err = p.endpointAdder.AddEndpoint(*ep)
 		if err != nil {
 			p.DelError++
 			logger.GetLogger().Warn("Failed to add endpoint for quota", logfields.Error, err)
@@ -341,7 +346,7 @@ func (p *BpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
 
 	copy(process[:], binaryName)
 
-	p.initMap()
+	p.initMaybe()
 
 	uidKey := processTreeBinaryUIDKey{
 		binary: process,
