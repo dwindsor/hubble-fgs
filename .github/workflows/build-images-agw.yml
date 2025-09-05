@@ -104,19 +104,17 @@ jobs:
       - name: Trigger Code Drop Workflow
         run: |
           gh auth login --with-token <<< "${{ steps.workflow-token.outputs.token }}"
-          gh workflow run code-drop.yaml \
+          gh workflow run code-drop-isovalent.yaml \
             --repo ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }} \
             --ref main \
-            --field code-drop-repository="cisco-hypershield/hs-nxos-codedrop" \
-            --field code-drop-branch="develop" \
             --field repository="${{ github.repository }}" \
             --field branch="${{ github.ref }}" \
-            --field image-name="${{ github.event.repository.name }}" \
+            --field image-name="hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}" \
             --field image-tag="${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}" \
             --field ref-file="nxos-ref-package.yaml" \
-            --field ecr-enabled="true" \
-            --raw-field vault-approle-role-id="${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}" \
-            --raw-field vault-approle-secret-id="${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}"
+            --field run-id="${{ github.run_id }}" \
+            --field vault-approle-role-id="${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}" \
+            --field vault-approle-secret-id="${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}"
       - name: Cross-Org Workflow Summary
         run: |
           echo "### Cross-Organization Workflow Triggered" >> $GITHUB_STEP_SUMMARY
