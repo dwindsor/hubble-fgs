@@ -249,6 +249,10 @@ func (n *Nxos) delServiceVb(ctx context.Context, isBd bool, vb VrfBd) error {
 	if isBd {
 		delete(n.Alloc.BdDpus, vb.Name)
 	} else {
+		gid, ok := n.Alloc.Gids[vb.Name]
+		if ok {
+			delete(n.GidsInUse, gid)
+		}
 		delete(n.Alloc.Gids, vb.Name)
 		delete(n.Alloc.VrfDpus, vb.Name)
 	}
@@ -981,6 +985,7 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(_ context.Context, items *mode
 				logger.GetLogger().Error("Unexpected number of peers")
 				return nil
 			}
+			pip = *peer.IpAddr
 			if peer.IpConfigState == model.Cisco_NX_OSDevice_Sas_PeerIpCfgStateE_success {
 				isOk = true
 			}
@@ -1103,14 +1108,48 @@ func (n *Nxos) doPinning(ctx context.Context, isBd bool, vb *VrfBd) {
 
 	// TBD: when HA is introduced, get from ctrlr
 	if !isBd {
+		var gid uint16
 		_, ok := n.Alloc.Gids[vb.Name]
 		if !ok {
-			gid, ok2 := n.AllocPrev.Gids[vb.Name]
-			if ok2 {
-				n.Alloc.Gids[vb.Name] = gid
+			if n.Ha.IsLeader {
+				gid, ok = n.AllocPrev.Gids[vb.Name]
+				if ok {
+					n.Alloc.Gids[vb.Name] = gid
+					n.GidsInUse[gid] = vb.Name
+				} else {
+					var found bool
+					for _, alloc := range n.Ha.Alloc {
+						gid, ok = alloc.Gids[vb.Name]
+						if ok {
+							_, ok = n.GidsInUse[gid]
+							if !ok {
+								n.Alloc.Gids[vb.Name] = gid
+								n.GidsInUse[gid] = vb.Name
+								found = true
+								break
+							}
+						}
+					}
+					if !found {
+						n.Alloc.Gids[vb.Name] = n.getGid(ctx, vb.Name)
+					}
+				}
 			} else {
-				n.Alloc.Gids[vb.Name] = n.Alloc.Next
-				n.Alloc.Next++
+				var ok bool
+				var gid uint16
+				for peer, alloc := range n.Ha.Alloc {
+					if peer < n.Ha.HaIp {
+						continue
+					}
+					gid, ok = alloc.Gids[vb.Name]
+					break
+				}
+				if ok {
+					n.Alloc.Gids[vb.Name] = gid
+					n.GidsInUse[gid] = vb.Name
+				} else {
+					n.Alloc.Gids[vb.Name] = n.getGid(ctx, vb.Name)
+				}
 			}
 		}
 		logger.GetLogger().Debug("VRF %s uses global id %d", "name", vb.Name, "id", n.Alloc.Gids[vb.Name])
@@ -1159,4 +1198,26 @@ func (n *Nxos) progRepinning(ctx context.Context, isBd bool, vbs []VrfBd) error 
 		return err
 	}
 	return nil
+}
+
+func (n *Nxos) getGid(ctx context.Context, vrf string) uint16 {
+	begin := n.Alloc.Next
+	gid := n.Alloc.Next
+	for {
+		_, ok := n.GidsInUse[gid]
+		if ok {
+			n.Alloc.Next++
+			if n.Alloc.Next == 4095 {
+				n.Alloc.Next = 10
+			}
+			if n.Alloc.Next == begin {
+				logger.GetLogger().Error("Running out of global IDs")
+				return 0
+			}
+			gid = n.Alloc.Next
+		} else {
+			n.GidsInUse[gid] = vrf
+			return gid
+		}
+	}
 }

@@ -1288,6 +1288,70 @@ func (n *Nxos) ActivateInactive(ctx context.Context, uid, utype, uver string) (b
 	return true, err
 }
 
+func (n *Nxos) setGlobalId(ctx context.Context, recon map[string]uint16) error {
+	logger.GetLogger().Debug("setGlobalId: ", "recon", recon)
+
+	serviceItems := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems{
+		ServiceList: map[string]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList{},
+	}
+
+	for nm, gid := range recon {
+		vrf, ok := n.Vrfs[nm]
+		if !ok {
+			err := errors.New("Not found: VRF " + vrf.Name)
+			logger.GetLogger().Error("", logfields.Error, err)
+			return err
+		}
+
+		svcEndPointDpuList := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems_SvcEndPointDpuList{
+			Vlan: &gid,
+		}
+		if n.isLbModePinning(ctx) {
+			svcEndPointDpuList.DpuNum = dpu2mod(ctx, vrf.DpuPinned)
+		} else {
+			svcEndPointDpuList.DpuNum = model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
+		}
+
+		dpuepItems := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems{
+			SvcEndPointDpuList: map[model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems_SvcEndPointDpuList{},
+		}
+
+		var pinned model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning
+		if n.isLbModePinning(ctx) {
+			pinned = dpu2mod(ctx, vrf.DpuPinned)
+		} else {
+			pinned = model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
+		}
+		dpuepItems.SvcEndPointDpuList[pinned] = &svcEndPointDpuList
+
+		name := fmt.Sprintf("__%s_dpu_redir", vrf.Name)
+		serviceList := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList{
+			Name:       &name,
+			DpuepItems: &dpuepItems,
+		}
+
+		serviceItems.ServiceList[name] = &serviceList
+	}
+
+	jstr, err := ygot.EmitJSON(&serviceItems, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("Fail to emit json", logfields.Error, err)
+		return err
+	}
+
+	path := "/System/serviceredir-items/inst-items/service-items"
+	err = n.gnmiSet(ctx, path, jstr)
+	if err != nil {
+		logger.GetLogger().Error("", logfields.Error, err)
+		return err
+	}
+	return nil
+}
+
 func dpu2mod(_ context.Context, dpu uint16) model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning {
 	logger.GetLogger().Debug("dpu2mod", "dpu", dpu)
 	switch dpu {

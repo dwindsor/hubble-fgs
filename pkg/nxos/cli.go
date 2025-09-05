@@ -118,17 +118,18 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 	}
 	status += fmt.Sprintf("\n HA enabled: %v", n.Ha.Enabled)
 	status += fmt.Sprintf("\n HA operational: %v", n.Ha.OperUp)
+	status += fmt.Sprintf("\n HA leader: %v", n.Ha.IsLeader)
 	status += fmt.Sprintf("\n Policy watching: %v, hash: %v, revision: %v",
 		n.Ha.Watching, n.Ha.PolHash, n.Ha.PolRev)
 	status += fmt.Sprintf("\n Local service functional: %v, updated at: %v",
 		n.Ha.Local.IsFunc, n.Ha.Local.Epoch)
-	status += "\n Criteria: "
+	status += "\n  Criteria: "
 	for crit, val := range n.Ha.Local.Criteria {
 		status += fmt.Sprintf("%v: %v, ", crit, val)
 	}
-	status += fmt.Sprintf("\nNX HA state: %v, updated at: %v",
+	status += fmt.Sprintf("\n NX HA state: %v, updated at: %v",
 		n.Ha.NxStates.HaState, n.Ha.NxStates.HaStateEpoch)
-	status += fmt.Sprintf("\nNX service state: %v, updated at: %v",
+	status += fmt.Sprintf("\n NX service state: %v, updated at: %v",
 		n.Ha.NxStates.SvcState, n.Ha.NxStates.SvcStateEpoch)
 	status += "\n Flow sync from "
 	for ip, val := range n.Ha.FlowSync {
@@ -166,10 +167,27 @@ func (n *Nxos) ShowMbr(_ context.Context) string {
 		status += fmt.Sprintf("\n IP: %v, updated at: %v, info: %+v",
 			ip, mbr.Epoch, mbr.Info)
 	}
-	status += "\n HA parteners:"
-	for ip := range n.Ha.Partners {
-		status += " " + ip
+	if len(n.Ha.Partners) > 0 {
+
+		status += "\n HA parteners:"
+		for ip := range n.Ha.Partners {
+			status += " " + ip
+		}
 	}
+	status += "\n"
+	return status
+}
+
+func (n *Nxos) ShowGid(_ context.Context) string {
+	logger.GetLogger().Debug("show global IDs")
+
+	n.RLock()
+	defer n.RUnlock()
+
+	var status string
+	status += fmt.Sprintf("\n local global ID allocation: %+v", n.Alloc.Gids)
+	status += fmt.Sprintf("\n local global ID in use: %+v", n.GidsInUse)
+	status += fmt.Sprintf("\n HA global ID allocation: %+v", n.Ha.Alloc)
 	status += "\n"
 	return status
 }

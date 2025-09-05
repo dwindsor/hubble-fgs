@@ -13,6 +13,13 @@ import (
 )
 
 const (
+	initRetryCount     = 60
+	initRetryInterval  = 10 // in second
+	notifRetryCount    = 60
+	notifRetryInterval = 30 // in second
+)
+
+const (
 	RegFailOtp = "invalid otp"
 	RegOk      = ""
 	ConnOk     = "connected ok with Hypershield controller"
@@ -66,6 +73,10 @@ type HaMbr struct {
 	Epoch int64 // in sec
 }
 
+type HaAlloc struct {
+	Gids map[string]uint16
+}
+
 type HaCrit string
 
 const (
@@ -103,6 +114,7 @@ type Ha struct {
 	// peer info: key peer ha ip
 	Adjacencies map[string]HaAdj
 	Members     map[string]HaMbr
+	Alloc       map[string]HaAlloc
 	FlowSync    map[string]bool // sync FROM peer ok
 
 	// local policy state
@@ -116,6 +128,10 @@ type Ha struct {
 
 	// states to nx
 	NxStates HaNxStates
+
+	// HA oper state
+	Start    int64
+	IsLeader bool
 }
 
 type Dpu struct {
@@ -207,6 +223,7 @@ type Nxos struct {
 	Reload        bool
 	Alloc         Alloc
 	AllocPrev     Alloc
+	GidsInUse     map[uint16]string
 	LastNotif     int64
 	InSync        []string
 	OutOfSync     []string

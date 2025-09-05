@@ -628,6 +628,16 @@ func (n *Nxos) Setup(ctx context.Context, low, high uint16) error {
 		}
 	}
 	logger.GetLogger().Debug("Token ready")
+	n.Stage = StageVrf
+
+	now := time.Now().Unix()
+	elapsed := now - n.Ha.Start
+	logger.GetLogger().Debug("time elapsed since HA starts: ", "time", elapsed)
+	if !n.Ha.IsLeader && elapsed < 2*haTimeout {
+		wait := 2*haTimeout - elapsed
+		logger.GetLogger().Debug("wait before service redir prog ", "seconds", wait)
+		time.Sleep(time.Duration(wait) * time.Second)
+	}
 
 	go n.checkNotif(ctx)
 	go n.setup(ctx, dpuCnt)
@@ -823,6 +833,11 @@ func (n *Nxos) reconcile(ctx context.Context) {
 			}
 		}
 	}
+
+	n.AllocPrev.Next = 0
+	n.AllocPrev.Gids = make(map[string]uint16)
+	n.AllocPrev.VrfDpus = make(map[string]uint16)
+	n.AllocPrev.BdDpus = make(map[string]uint16)
 }
 
 func (n *Nxos) checkNotif(_ context.Context) {

@@ -48,9 +48,19 @@ func RunServer(ctx context.Context, port uint16) {
 
 func (s *haServer) Adjacency(_ context.Context, req *hav1.AdjRequest) (*hav1.AdjResponse, error) {
 	logger.GetLogger().Debug("Received MbrInfo", "mbr", req.MbrInfo)
-	nxos.Nexus.HaSetMbrInfo(s.Ctx, req.HaIp, *req.MbrInfo)
 
+	if !nxos.Nexus.IsPeerOk(s.Ctx, req.HaIp) {
+		log.Printf("Unexpected peer: %s", req.HaIp)
+		return &hav1.AdjResponse{
+			Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE,
+			Details: "Unexpected peer",
+		}, nil
+	}
+
+	nxos.Nexus.HaSetMbrInfo(s.Ctx, req.HaIp, *req.MbrInfo)
+	nxos.Nexus.HaReconcile(s.Ctx, req.HaIp, *req.MbrInfo)
 	info := nxos.Nexus.HaGetMbrInfo(s.Ctx, req.HaIp)
+
 	return &hav1.AdjResponse{
 		Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS,
 		Details: "KeepAlive successful",

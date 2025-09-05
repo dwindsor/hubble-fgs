@@ -28,6 +28,12 @@ const (
 	CMD_TAC_PAC
 	CMD_PING_FWA
 	CMD_RESTART_FWA
+	CMD_LOAD_SYSLOG_CFG
+	CMD_SHOW_SYSLOG_CFG
+	CMD_SHOW_HA
+	CMD_SHOW_ADJ
+	CMD_SHOW_MBR
+	CMD_SHOW_GID
 )
 
 const (
@@ -64,7 +70,8 @@ func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCod
 		response.Data = data
 
 	case CMD_SHOW_POLICY:
-		pol := fwa.Agent.ShowPolicies(ctx)
+		// HACK: add back data once ready
+		pol := fwa.Agent.ShowPolicies(ctx /*, data*/)
 		response.ReturnCode = "ok"
 		response.Data = pol
 
@@ -120,6 +127,7 @@ func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCod
 			return response, nil
 		}
 		response.Data = string(out)
+
 		if head == total {
 			response.ReturnCode = "ok"
 			return response, nil
@@ -186,6 +194,57 @@ func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCod
 			response.ReturnCode = "ok"
 			response.Data = string(out)
 		}
+
+	case CMD_LOAD_SYSLOG_CFG:
+		/*cfg*/ _, err := os.ReadFile(data)
+		if err != nil {
+			response.ReturnCode = "fail"
+			response.Data = err.Error()
+			return response, nil
+		}
+
+		// HACK: pending future integration
+		err = nil /* fwa.Agent.LoadSyslog(ctx, string(cfg)) */
+		if err != nil {
+			response.ReturnCode = "fail"
+			response.Data = err.Error()
+			return response, nil
+		}
+		response.ReturnCode = "ok"
+		response.Data = "Syslog loaded"
+
+	case CMD_SHOW_SYSLOG_CFG:
+		// HACK: pending future integration
+		// out, err := fwa.Agent.GetSyslogConfig(ctx)
+		var err error
+		out := ""
+		if err != nil {
+			response.ReturnCode = "fail"
+			response.Data = err.Error()
+		} else {
+			response.ReturnCode = "ok"
+			response.Data = out
+		}
+
+	case CMD_SHOW_HA:
+		ha := nxos.Nexus.ShowHa(ctx)
+		response.ReturnCode = "ok"
+		response.Data = ha
+
+	case CMD_SHOW_ADJ:
+		adj := nxos.Nexus.ShowAdj(ctx)
+		response.ReturnCode = "ok"
+		response.Data = adj
+
+	case CMD_SHOW_MBR:
+		mbr := nxos.Nexus.ShowMbr(ctx)
+		response.ReturnCode = "ok"
+		response.Data = mbr
+
+	case CMD_SHOW_GID:
+		mbr := nxos.Nexus.ShowGid(ctx)
+		response.ReturnCode = "ok"
+		response.Data = mbr
 
 	default:
 		response.ReturnCode = "fail"

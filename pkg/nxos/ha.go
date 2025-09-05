@@ -9,7 +9,9 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/v1/ha"
+	"github.com/openconfig/ygot/ytypes"
 )
 
 const (
@@ -26,7 +28,12 @@ func (n *Nxos) haIsEnabled(_ context.Context, isLock bool) bool {
 		defer n.RUnlock()
 	}
 
-	logger.GetLogger().Debug("HaEnabled: ", "", n.Ha.Enabled)
+	enabled := false
+	// HACK: to deal with NXOS rel 44 breakage
+	if n.Ha.Enabled /*&& n.Ha.OperUp*/ {
+		enabled = true
+	}
+	logger.GetLogger().Debug("HaEnabled: ", "", enabled)
 	return n.Ha.Enabled && n.Ha.OperUp
 }
 
@@ -54,6 +61,11 @@ func (n *Nxos) HaSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo) {
 	logger.GetLogger().Debug("haSetMbrInfo:", "peer", peer, "mbrInfo", info)
 
+	if !n.haIsEnabled(ctx, false) {
+		logger.GetLogger().Debug("skip setting peer mbr info")
+		return
+	}
+
 	now := time.Now().Unix()
 	_, ok := n.Ha.Adjacencies[peer]
 	if !ok {
@@ -78,7 +90,11 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 
 	// skip vlan/vrf checking for now
 	var isDel bool
-	if info.SysInfo.Model != n.Model {
+	if info.SysInfo == nil || info.HaInfo == nil ||
+		info.PolInfo == nil {
+		logger.GetLogger().Debug("Empty info")
+		isDel = true
+	} else if info.SysInfo.Model != n.Model {
 		logger.GetLogger().Debug("Model mismatch:", "info", info.SysInfo.Model, "n", n.Model)
 		isDel = true
 	} else if info.SysInfo.SwVer != n.SwVer {
@@ -118,7 +134,7 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	n.HaUpdatePtnr(ctx, peer, isDel)
 
 	var polOk bool
-	if !n.Ha.Watching {
+	if !n.Ha.Watching && info.PolInfo != nil {
 		logger.GetLogger().Debug("Not Watching")
 		if info.PolInfo.Watching &&
 			n.Ha.PolRev == info.PolInfo.Revision {
@@ -137,11 +153,16 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	}
 }
 
-func (n *Nxos) HaGetMbrInfo(_ context.Context, peer string) hav1.MbrInfo {
+func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string) hav1.MbrInfo {
 	logger.GetLogger().Debug("HaGetMbrInfo")
 
 	n.RLock()
 	defer n.RUnlock()
+
+	if !n.haIsEnabled(ctx, false) {
+		logger.GetLogger().Debug("skip getting local mbr info")
+		return hav1.MbrInfo{}
+	}
 
 	pol := hav1.PolInfo{
 		Watching: n.Ha.Watching,
@@ -236,13 +257,13 @@ func (n *Nxos) HaGetMbrInfo(_ context.Context, peer string) hav1.MbrInfo {
 func (n *Nxos) haConnect(_ context.Context, peer string) {
 	logger.GetLogger().Debug("haConnect:", "local", n.Ha.HaIp, "peer", peer)
 
-	if n.Ha.HaIp < peer {
-		logger.GetLogger().Debug("haConnect: skip", "local", n.Ha.HaIp, "peer", peer)
-		return
-	}
-
 	n.Lock()
 	defer n.Unlock()
+
+	if !n.Ha.IsLeader {
+		logger.GetLogger().Debug("haConnect: not leader, skip")
+		return
+	}
 
 	p, ok := n.Ha.Peers[peer]
 	if !ok {
@@ -283,8 +304,8 @@ func (n *Nxos) haDisconnect(_ context.Context, peer string) {
 	delete(n.Ha.Adjacencies, peer)
 	delete(n.Ha.Members, peer)
 
-	if n.Ha.HaIp < peer {
-		logger.GetLogger().Debug("haDisconnect: skip", "localIP", n.Ha.HaIp, "peerIP", peer)
+	if !n.Ha.IsLeader {
+		logger.GetLogger().Debug("haDisconnect: not leader, skip")
 		return
 	}
 
@@ -299,13 +320,17 @@ func (n *Nxos) haDisconnect(_ context.Context, peer string) {
 func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	logger.GetLogger().Debug("haAdjacency:", "peer", peer)
 
-	if n.Ha.HaIp < peer {
-		logger.GetLogger().Debug("haAdjacency: skip", "localIP", n.Ha.HaIp, "peer", peer)
-		return
-	}
-
 	n.RLock()
 	defer n.RUnlock()
+
+	if !n.Ha.IsLeader {
+		logger.GetLogger().Debug("haAdjacency: not leader, skip")
+		return
+	}
+	if n.Ha.HaIp == "" {
+		logger.GetLogger().Debug("haAdjacency: HaIp not set yet")
+		return
+	}
 
 	adj, ok := n.Ha.Adjacencies[peer]
 	if !ok {
@@ -325,6 +350,17 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	} else {
 		logger.GetLogger().Debug("Adjacency response:", "rsp", rsp)
 		n.haSetMbrInfo(ctx, peer, *rsp.MbrInfo)
+
+		// construct ha alloc
+		alloc := map[string]uint16{}
+		for _, vrf := range rsp.MbrInfo.VrfInfo {
+			alloc[vrf.Name] = uint16(vrf.Id)
+		}
+		n.Ha.Alloc[peer] = HaAlloc{
+			Gids: alloc,
+		}
+		logger.GetLogger().Debug("HA alloc:", "alloc", alloc)
+
 	}
 }
 
@@ -333,9 +369,9 @@ func (n *Nxos) haGetPeers(_ context.Context) []string {
 	defer n.RUnlock()
 	var peers []string
 	for a := range n.Ha.Peers {
-		logger.GetLogger().Debug("Peer found:", "peer", a)
 		peers = append(peers, a)
 	}
+	logger.GetLogger().Debug("Peers found:", "peers", peers)
 	return peers
 }
 
@@ -482,52 +518,82 @@ func (n *Nxos) HaUpdatePtnr(ctx context.Context, ptnr string, isDel bool) {
 	}
 }
 
+func (n *Nxos) haInit(ctx context.Context) {
+	logger.GetLogger().Debug("haInit")
+
+	err := n.getHaIp(ctx)
+	if err != nil {
+		logger.GetLogger().Debug("haInit")
+		logger.GetLogger().Error("Failed to get HA IP", logfields.Error, err)
+		return
+	} else if n.Ha.HaIp == "" {
+		logger.GetLogger().Debug("Empty HA IP")
+		return
+	}
+
+	jstrs, err := n.gnmiGet(ctx, svcInst+"/ha-items")
+	if err != nil {
+		logger.GetLogger().Error("Failed to get ha-items", logfields.Error, err)
+		return
+	}
+	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
+		items := &model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems{}
+		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
+		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
+		n.updtSasSvcSvcinstSvcInstanceHa(ctx, items)
+
+		enabled := n.haIsEnabled(ctx, false)
+		if !enabled {
+			logger.GetLogger().Debug("haInit: HA not enabled")
+			return
+		}
+
+		for peer := range n.Ha.Peers {
+			logger.GetLogger().Debug("haInit: initial adj")
+			n.haConnect(ctx, peer)
+			if n.haIsConnected(ctx, peer) {
+				n.haAdjacency(ctx, peer)
+			}
+		}
+	}
+}
+
 func (n *Nxos) haSetup(ctx context.Context) {
-	logger.GetLogger().Debug("haSetup")
+	n.Ha.Start = time.Now().Unix()
+	logger.GetLogger().Debug("haSetup", "epoch", n.Ha.Start)
 
 	enabled := n.haIsEnabled(ctx, true)
 	for {
 		select {
 		case wait := <-n.WaitHa.Out():
 			logger.GetLogger().Debug("HA waked up", "wait", wait)
-			peers := n.haGetPeers(ctx)
-			if len(peers) == 0 {
-				logger.GetLogger().Debug("No peers configured")
-				break
-			} else if len(peers) > 1 {
-				logger.GetLogger().Debug("At most one peer: skip", "peers", peers)
-				break
-			} else {
-				logger.GetLogger().Debug("Peers found", "peers", peers)
-			}
 
+			n.haSetLeader(ctx)
+			peers := n.haGetPeers(ctx)
 			prevEnabled := enabled
 			enabled = n.haIsEnabled(ctx, true)
 			if prevEnabled && !enabled {
 				// shutdown
+				logger.GetLogger().Debug("HA disabled")
 				for _, peer := range peers {
 					n.haDisconnect(ctx, peer)
 				}
 			} else if !prevEnabled && enabled {
 				// connect
+				logger.GetLogger().Debug("HA enabled")
 				for _, peer := range peers {
 					n.haConnect(ctx, peer)
+					if n.haIsConnected(ctx, peer) {
+						n.haAdjacency(ctx, peer)
+					}
+
 				}
 			}
 
 		case <-time.After(haTimeout * time.Second):
+			logger.GetLogger().Debug("haTimeout at", "epoch", time.Now().Unix())
 			if enabled {
-				logger.GetLogger().Debug("haTimeout")
 				peers := n.haGetPeers(ctx)
-				if len(peers) == 0 {
-					break
-				} else if len(peers) > 1 {
-					logger.GetLogger().Debug("At most one peer: skip", "peers", peers)
-					break
-				} else {
-					logger.GetLogger().Debug("Peers found", "peers", peers)
-				}
-
 				for _, peer := range peers {
 					if !n.haIsConnected(ctx, peer) {
 						n.haConnect(ctx, peer)
@@ -541,4 +607,77 @@ func (n *Nxos) haSetup(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (n *Nxos) haSetLeader(ctx context.Context) {
+	n.RLock()
+	defer n.RUnlock()
+
+	isLeader := true
+	for peer := range n.Ha.Peers {
+		if n.Ha.HaIp < peer {
+			isLeader = false
+			break
+		}
+	}
+	n.Ha.IsLeader = isLeader
+	logger.GetLogger().Debug("haSetLeader:", "isLeader", isLeader)
+}
+
+func (n *Nxos) HaReconcile(ctx context.Context, peer string, info hav1.MbrInfo) {
+	logger.GetLogger().Debug("HaReconcile:", "peer", peer, "mbrInfo", info)
+
+	n.Lock()
+	defer n.Unlock()
+
+	// construct ha alloc
+	alloc := map[string]uint16{}
+	recon := map[string]uint16{}
+	for _, vrf := range info.VrfInfo {
+		alloc[vrf.Name] = uint16(vrf.Id)
+	}
+	for vrf, gid := range n.Alloc.Gids {
+		haGid, ok := alloc[vrf]
+		if ok && gid != haGid {
+			n.Alloc.Gids[vrf] = haGid
+			n.GidsInUse[haGid] = vrf
+			n.GidsInUse[gid] = ""
+			recon[vrf] = haGid
+		}
+	}
+	for vrf, gid := range n.Alloc.Gids {
+		_, ok := alloc[vrf]
+		if !ok {
+			vrf2, ok := n.GidsInUse[gid]
+			if ok && vrf != vrf2 {
+				gid2 := n.getGid(ctx, vrf)
+				n.Alloc.Gids[vrf] = gid2
+				recon[vrf] = gid2
+			}
+
+		}
+	}
+
+	n.Ha.Alloc[peer] = HaAlloc{
+		Gids: alloc,
+	}
+	logger.GetLogger().Debug("HA alloc:", "alloc", alloc)
+
+	// reconcil
+	if len(recon) > 0 {
+		logger.GetLogger().Debug("HA reconcile:", "recon", recon)
+		n.setGlobalId(ctx, recon)
+	}
+}
+
+func (n *Nxos) IsPeerOk(ctx context.Context, peer string) bool {
+	n.RLock()
+	defer n.RUnlock()
+
+	for p := range n.Ha.Peers {
+		if p == peer {
+			return true
+		}
+	}
+	return false
 }

@@ -9,6 +9,66 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/ipc"
 )
 
+var loadSyslogCmd = &cobra.Command{
+	Use:          "load_syslog_cfg <file>",
+	SilenceUsage: true,
+	Short:        "Load syslog export configuration from file and push to DPU agents",
+	Long: `Load syslog export configuration from file and push to DPU agents.  This replaces
+any existing syslog export configuration.  It is in the format:
+{
+  "123": {
+    "id": "123",
+    "name": "string",
+    "description": "string",
+    "type": "string",
+    "config": {
+      "host": "string",
+      "port": "string",
+      "mode": "string",
+      "tls": "bool"
+    },
+    "secrets": {
+      "ca": "string",
+      "cert": "string",
+      "key": "string",
+      "keyPassword": "string"
+    }
+  }
+}`,
+	RunE: func(_ *cobra.Command, args []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		if len(args) < 1 {
+			return errors.New("missing file")
+		}
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_LOAD_SYSLOG_CFG, args[0])
+		if err != nil {
+			return err
+		}
+		ipc.PrintResponse(ret, JSON)
+		return nil
+	},
+}
+
+var showSyslogCmd = &cobra.Command{
+	Use:          "show_syslog_cfg",
+	SilenceUsage: true,
+	Short:        "Show syslog export configuration for DPU agents",
+	Long:         `Show syslog export configuration for DPU agents.`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_SYSLOG_CFG, "")
+		if err != nil {
+			return err
+		}
+		ipc.PrintResponse(ret, JSON)
+		return nil
+	},
+}
+
 // load policy command
 var loadPolicyCmd = &cobra.Command{
 	Use:          "load_policy <file>",
@@ -32,15 +92,19 @@ var loadPolicyCmd = &cobra.Command{
 }
 
 var showPolicyCmd = &cobra.Command{
-	Use:          "show_policy",
+	Use:          "show_policy [pretty-print]",
 	SilenceUsage: true,
 	Short:        "Show policy from Hypershield controller",
 	Long:         "Show policy from Hypershield controller",
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_POLICY, "")
+		prettyPrint := ""
+		if len(args) > 0 && args[0] == "pretty-print" {
+			prettyPrint = args[0]
+		}
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_POLICY, prettyPrint)
 		if err != nil {
 			return err
 		}
@@ -273,6 +337,78 @@ var restartFwaCmd = &cobra.Command{
 	},
 }
 
+var showHaCmd = &cobra.Command{
+	Use:          "show_ha",
+	SilenceUsage: true,
+	Short:        "Show high availability",
+	Long:         "Show high availability",
+	RunE: func(_ *cobra.Command, _ []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_HA, "")
+		if err != nil {
+			return err
+		}
+		ipc.PrintResponse(ret, JSON)
+		return nil
+	},
+}
+
+var showAdjCmd = &cobra.Command{
+	Use:          "show_adj",
+	SilenceUsage: true,
+	Short:        "Show HA adjacencies",
+	Long:         "Show HA adjacencies",
+	RunE: func(_ *cobra.Command, _ []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_ADJ, "")
+		if err != nil {
+			return err
+		}
+		ipc.PrintResponse(ret, JSON)
+		return nil
+	},
+}
+
+var showMbrCmd = &cobra.Command{
+	Use:          "show_mbr",
+	SilenceUsage: true,
+	Short:        "Show HA members",
+	Long:         "Show HA members",
+	RunE: func(_ *cobra.Command, _ []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_MBR, "")
+		if err != nil {
+			return err
+		}
+		ipc.PrintResponse(ret, JSON)
+		return nil
+	},
+}
+
+var showGidCmd = &cobra.Command{
+	Use:          "show_gid",
+	SilenceUsage: true,
+	Short:        "Show global IDs",
+	Long:         "Show global IDs",
+	RunE: func(_ *cobra.Command, _ []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_GID, "")
+		if err != nil {
+			return err
+		}
+		ipc.PrintResponse(ret, JSON)
+		return nil
+	},
+}
+
 func init() {
 	RootCmd.AddCommand(loadPolicyCmd)
 	RootCmd.AddCommand(showPolicyCmd)
@@ -288,4 +424,10 @@ func init() {
 	RootCmd.AddCommand(tacPacCmd)
 	RootCmd.AddCommand(pingFwaCmd)
 	RootCmd.AddCommand(restartFwaCmd)
+	RootCmd.AddCommand(loadSyslogCmd)
+	RootCmd.AddCommand(showSyslogCmd)
+	RootCmd.AddCommand(showHaCmd)
+	RootCmd.AddCommand(showAdjCmd)
+	RootCmd.AddCommand(showMbrCmd)
+	RootCmd.AddCommand(showGidCmd)
 }
