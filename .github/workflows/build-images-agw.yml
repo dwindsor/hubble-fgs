@@ -85,21 +85,48 @@ jobs:
           echo "| Tag | ${{ needs.init.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
 
   trigger-code-drop:
+    name: Trigger Hypershield Code Drop Workflow
     needs: [ init, build-agw-image ]
+    runs-on: ubuntu-latest-4cores-16gb
     if: ${{ needs.build-agw-image.result == 'success' }}
-    uses: cisco-hypershield/hs-actions/.github/workflows/code-drop.yaml@main
-    secrets:
-      vault-approle-role-id: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}
-      vault-approle-secret-id: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}
-    with:
-      code-drop-repository: "cisco-hypershield/hs-nxos-codedrop"
-      code-drop-branch: "develop"
-      repository: ${{ github.repository }}
-      branch: ${{ github.ref }}
-      image-name: ${{ github.event.repository.name }}
-      image-tag: ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
-      ref-file: "nxos-ref-package.yaml"
-      ecr-enabled: true
+    env:
+      TARGET_ORG: cisco-hypershield
+      TARGET_REPO: hs-actions
+    steps:
+      - name: Generate GitHub App Token
+        id: workflow-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ vars.HYPERSHIELD_GH_APP_ID }}
+          private-key: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
+          owner: ${{ env.TARGET_ORG }}
+          repositories: ${{ env.TARGET_REPO }}
+      - name: Trigger Code Drop Workflow
+        run: |
+          gh auth login --with-token <<< "${{ steps.workflow-token.outputs.token }}"
+          gh workflow run code-drop.yaml \
+            --repo ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }} \
+            --ref main \
+            --field code-drop-repository="cisco-hypershield/hs-nxos-codedrop" \
+            --field code-drop-branch="develop" \
+            --field repository="${{ github.repository }}" \
+            --field branch="${{ github.ref }}" \
+            --field image-name="${{ github.event.repository.name }}" \
+            --field image-tag="${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}" \
+            --field ref-file="nxos-ref-package.yaml" \
+            --field ecr-enabled="true" \
+            --raw-field vault-approle-role-id="${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}" \
+            --raw-field vault-approle-secret-id="${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}"
+      - name: Cross-Org Workflow Summary
+        run: |
+          echo "### Cross-Organization Workflow Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Organization | ${{ env.TARGET_ORG }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Repository | ${{ env.TARGET_REPO }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Workflow | code-drop.yaml |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image Name | ${{ github.event.repository.name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image Tag | ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
   
   # trigger-hypershield-codedrop-workflow:
   #   name: Trigger Hypershield Cross-Org Workflow to Push the artifact to Code Drop
