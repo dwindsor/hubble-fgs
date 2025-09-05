@@ -122,105 +122,28 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	n.Agent.SystemState = SysStDpuPending
 
 	// get admission and connection states
-	jstrs, err := n.gnmiGet(ctx, svcInst+"/scontroller-items/ext-items")
+	err = n.getAdmissionAndConnectionStates(ctx)
 	if err != nil {
-		logger.GetLogger().Error("Fail to get scontroller-items/ext-items", logfields.Error, err)
 		return err
-	}
-	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
-		items := &model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_ScontrollerItems_ExtItems{}
-		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
-		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
-		if err != nil {
-			logger.GetLogger().Error("Fail to unmarshal scontroller-items/ext-items", logfields.Error, err)
-		} else {
-			logger.GetLogger().Debug("scontroller/ext-items:", "items", items)
-			n.Ctrlr.AdmissionStatus = items.AdmissionStatus
-			n.Ctrlr.ConnectionStatus = items.ConnectionStatus
-			if items.RejectReason != nil {
-				n.Ctrlr.RejectReason = *items.RejectReason
-			}
-			if items.Version != nil {
-				n.Ctrlr.Version = *items.Version
-			}
-		}
-	} else {
-		logger.GetLogger().Debug("Set admission and connection status to default")
-		n.Ctrlr.AdmissionStatus = model.Cisco_NX_OSDevice_Sas_CommonStateE_unknown
-		n.Ctrlr.ConnectionStatus = model.Cisco_NX_OSDevice_Sas_CommonStateE_unknown
 	}
 	n.ResetConn(ctx)
 
 	// get proxy config
-	jstrs, err = n.gnmiGet(ctx, svcInst+"/scontroller-items")
+	err = n.getProxyConfig(ctx)
 	if err != nil {
-		logger.GetLogger().Error("Fail to get scontroller-items", logfields.Error, err)
 		return err
-	}
-	// logger.GetLogger().Debug("jstrs: %v", jstrs)
-	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
-		items := &model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_ScontrollerItems{}
-		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
-		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
-		if err != nil {
-			logger.GetLogger().Error("Fail to unmarshal scontroller-items", logfields.Error, err)
-		} else {
-			// logger.GetLogger().Debug("scontroller-items: %+v", items)
-			if items.HttpsProxySvr != nil {
-				n.Ctrlr.ProxySvr = *items.HttpsProxySvr
-			}
-			if items.HttpsProxyPort != nil {
-				n.Ctrlr.ProxyPort = *items.HttpsProxyPort
-			}
-			n.setProxy(ctx)
-		}
 	}
 
 	// get model and nxos version
-	jstrs, err = n.gnmiGet(ctx, "/System/ch-items/supslot-items")
+	err = n.getModelAndVersion(ctx)
 	if err != nil {
-		logger.GetLogger().Error("Fail to get supslot-items", logfields.Error, err)
 		return err
-	}
-	// logger.GetLogger().Debug("jstrs: %v", jstrs)
-	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
-		items := &model.Cisco_NX_OSDevice_System_ChItems_SupslotItems{}
-		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
-		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
-		if err != nil {
-			logger.GetLogger().Error("Fail to unmarshal supslot-items", logfields.Error, err)
-		} else {
-			for _, list := range items.SupCSlotList {
-				if list.SupItems == nil {
-					continue
-				}
-				// logger.GetLogger().Debug("SupItems: %+v", list.SupItems)
-				if list.SupItems.Model != nil && list.SupItems.SwVer != nil {
-					n.Model = *list.SupItems.Model
-					n.SwVer = *list.SupItems.SwVer
-					logger.GetLogger().Debug("sswitch", "model", n.Model, "SwVer", n.SwVer)
-					break
-				}
-			}
-		}
 	}
 
-	jstrs, err = n.gnmiGet(ctx, "/System/ch-items/spbp-items/spcmn-items")
+	// get Serial number.
+	err = n.getSerialNum(ctx)
 	if err != nil {
-		logger.GetLogger().Error("Fail to get spcmn-items", logfields.Error, err)
 		return err
-	}
-	logger.GetLogger().Debug("jstrs", "jstrs", jstrs)
-	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
-		items := &model.Cisco_NX_OSDevice_System_ChItems_SpbpItems_SpcmnItems{}
-		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
-		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
-		if err != nil {
-			logger.GetLogger().Error("Fail to unmarshal spcmn-items", logfields.Error, err)
-		} else if items.SerNum != nil {
-			n.SerNum = *items.SerNum
-			logger.GetLogger().Debug("sswitch", "sernum", n.SerNum)
-		}
 	}
 
 	n.Stage = StageEnable
@@ -285,38 +208,6 @@ func (n *Nxos) setupSignalHandler(ctx context.Context) {
 		n.GnmiClose(ctx)
 		os.Exit(201)
 	}()
-}
-
-// getAgentState retrieves the agent state from /System/sas-items/state-items/agent-items.
-func (n *Nxos) getAgentState(ctx context.Context) (model.E_Cisco_NX_OSDevice_Sas_SasAgentStateE, error) {
-	logger.GetLogger().Debug("Retrieving agent state")
-
-	agentState := model.Cisco_NX_OSDevice_Sas_SasAgentStateE_unknown
-	jstrs, err := n.gnmiGet(ctx, "/System/sas-items/state-items/agent-items")
-	if err != nil {
-		logger.GetLogger().Error("Fail to get agent-items", logfields.Error, err)
-		return agentState, err
-	}
-	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
-		items := &model.Cisco_NX_OSDevice_System_SasItems_StateItems_AgentItems{}
-		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
-		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
-		if err != nil {
-			logger.GetLogger().Error("Fail to unmarshal agent-items", logfields.Error, err)
-		} else {
-			// Only the first "hypershield" entry is considered.
-			for svc, agent := range items.SasAgentList {
-				if svc != "hypershield" {
-					logger.GetLogger().Debug("Unexpected service", "svc", svc)
-					continue
-				}
-				logger.GetLogger().Debug("Agent State", "state", agent.AgentState.String())
-				return agent.AgentState, nil
-			}
-		}
-	}
-	// Fallback: if no valid agent state is found for "hypershield", return unknown agent state.
-	return agentState, nil
 }
 
 // unsubscribe all above gnmi subscriptions
