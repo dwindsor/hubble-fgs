@@ -180,11 +180,15 @@ func (fwa *FWAgent) DpuHealthCheck(ctx context.Context) {
 			if !ok {
 				retries++
 				if retries > maxRetries {
+					nxos.DpuInSync(ctx, false)
 					logger.GetLogger().Error("DPU out of sync!")
 				}
 			} else {
+				nxos.DpuInSync(ctx, true)
 				retries = 0
 			}
+			ok, cnt := server.HealthCheck()
+			nxos.DpuHealth(ctx, ok, cnt)
 		}
 	}
 }

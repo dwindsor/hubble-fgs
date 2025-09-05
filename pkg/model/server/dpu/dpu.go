@@ -10,6 +10,7 @@ import (
 	"net"
 	"sort"
 	"text/tabwriter"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
 
@@ -18,6 +19,10 @@ import (
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"google.golang.org/grpc"
+)
+
+const (
+	dpuTimeout = 6 // in second
 )
 
 type DPUSubject struct {
@@ -63,6 +68,7 @@ type peer struct {
 	uid        string
 	ch         chan *DPUPolicyRule
 	lastStatus DPUReportStatus
+	lastEpoch  int64
 }
 
 func (p *peer) String() string {
@@ -156,6 +162,19 @@ func (dpu *DPUListener) StateCheck() bool {
 	return true
 }
 
+func (dpu *DPUListener) HealthCheck() (bool, int) {
+	now := time.Now().Unix()
+	healthy := true
+	count := len(dpu.peerGroup)
+	for _, s := range dpu.peerGroup {
+		if now-s.lastEpoch > dpuTimeout {
+			healthy = false
+			break
+		}
+	}
+	return healthy, count
+}
+
 func (dpu *DPUListener) StatusReportString() string {
 	csum := dpu.Checksum()
 	hexChecksum := hex.EncodeToString(csum[:])
@@ -247,4 +266,5 @@ func (dpu *DPUListener) addPeer(uid string) *peer {
 func (dpu *DPUListener) ReportStatus(status *DPUReportStatus) {
 	peer := dpu.addPeer(status.AgentUid)
 	peer.lastStatus = *status
+	peer.lastEpoch = time.Now().Unix()
 }

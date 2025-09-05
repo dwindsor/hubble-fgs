@@ -985,3 +985,27 @@ func (n *Nxos) calcDpuPortRange(dpu uint16) string {
 	portHigh := n.DpuPortLow + portCount*(index+1) - 1
 	return fmt.Sprintf("%d-%d", portLow, portHigh)
 }
+
+func DpuInSync(ctx context.Context, inSync bool) {
+	logger.GetLogger().Debug("DpuInSync")
+
+	Nexus.Lock()
+	defer Nexus.Unlock()
+
+	if Nexus.Ha.Local.Criteria != nil {
+		Nexus.haUpdateCrit(ctx, HaCritDpuInSync, inSync)
+	}
+}
+
+func DpuHealth(ctx context.Context, healthy bool, count int) {
+	logger.GetLogger().Debug("DpuHealth", "ok", healthy, "count", count)
+
+	Nexus.Lock()
+	defer Nexus.Unlock()
+
+	if healthy && count == int(Nexus.NumDpu) && Nexus.Ha.Local.Criteria != nil {
+		Nexus.haUpdateCrit(ctx, HaCritDpuInSync, true)
+	} else if Nexus.Ha.Local.Criteria != nil {
+		Nexus.haUpdateCrit(ctx, HaCritDpuInSync, false)
+	}
+}
