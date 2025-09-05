@@ -30,7 +30,7 @@ UNAME_M := $(shell uname -m)
 ifeq ($(UNAME_M),x86_64)
 	TARGET_ARCH ?= amd64
 endif
-ifeq ($(UNAME_M),aarch64)
+ifeq ($(filter $(UNAME_M),aarch64 arm64),$(UNAME_M))
 	TARGET_ARCH ?= arm64
 endif
 TARGET_ARCH ?= amd64
@@ -130,8 +130,8 @@ agwctl: ## Compile smartswitch agent CLI
 	$(GO_BUILD) ./cmd/agwctl
 
 .PHONY: fwa
-fwa: ## Compile smartswitch agent
-	$(GO_BUILD) ./cmd/fwa
+fwa:    # Cross compile FWA agent for arm64 (aarch64) architecture in DPU and Simulator VM
+	GOOS=linux $(subst GOARCH=amd64,GOARCH=arm64,$(GO_BUILD)) ./cmd/fwa
 
 .PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
