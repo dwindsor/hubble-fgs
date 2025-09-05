@@ -1,14 +1,14 @@
-name: Build AGW Docker Image
+name: Build Hubble FGS AGW Docker Images
 
 on:
   push:
-    branches: [ master, pr/sripuran/agw-docker-codedrop ]
-  # pull_request:
-  #   branches: [ master, pr/sripuran/agw-docker-codedrop ]
-  #   types:
-  #     - opened
-  #     - synchronize
-  #     - reopened
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+    types:
+      - opened
+      - synchronize
+      - reopened
   workflow_dispatch:
 
 permissions:
