@@ -2,7 +2,7 @@ name: Build Hubble FGS AGW Docker Images
 
 on:
   push:
-    branches: [ master, pr/sripuran/agw-docker-codedrop ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
     types:
@@ -78,7 +78,6 @@ jobs:
           echo "| Tag | ${{ needs.init.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
 
   trigger-code-drop:
-    name: Trigger Hypershield Code Drop Workflow
     needs: [ init, build-agw-image ]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     if: ${{ needs.build-agw-image.result == 'success' }}
