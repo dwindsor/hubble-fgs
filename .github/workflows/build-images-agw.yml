@@ -2,14 +2,14 @@ name: Build Hubble FGS AGW Docker Images
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, pr/sripuran/agw-docker-codedrop ]
   pull_request:
     branches: [ master ]
     types:
       - opened
       - synchronize
       - reopened
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -22,12 +22,10 @@ concurrency:
 
 jobs:
   init:
-    runs-on: ubuntu-latest-4cores-16gb
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          ref: ${{ github.ref }}
-          fetch-depth: 0
           submodules: true
       - name: Get version and set outputs
         id: get-version
@@ -42,27 +40,22 @@ jobs:
 
   build-agw-image:
     needs: [ init ]
-    runs-on: ubuntu-latest-4cores-16gb
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    env:
+      DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}
+      AGW_IMAGE_NAME: isovalent/agw
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
-          ref: ${{ github.ref }}
-          fetch-depth: 0
           submodules: true
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
       - name: Build AGW image
-        env:
-          DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}
-          AGW_IMAGE_NAME: isovalent/agw
         run: |
-          DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG} make image-agw
+          make image-agw
       - name: Create tar file from Docker image
         id: create-tar
-        env:
-          DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}
-          AGW_IMAGE_NAME: isovalent/agw
         run: |
           FINAL_TAR_NAME="agw"
           IMAGE_URI="${AGW_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
@@ -87,7 +80,7 @@ jobs:
   trigger-code-drop:
     name: Trigger Hypershield Code Drop Workflow
     needs: [ init, build-agw-image ]
-    runs-on: ubuntu-latest-4cores-16gb
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     if: ${{ needs.build-agw-image.result == 'success' }}
     env:
       TARGET_ORG: cisco-hypershield
@@ -102,19 +95,43 @@ jobs:
           owner: ${{ env.TARGET_ORG }}
           repositories: ${{ env.TARGET_REPO }}
       - name: Trigger Code Drop Workflow
-        run: |
-          gh auth login --with-token <<< "${{ steps.workflow-token.outputs.token }}"
-          gh workflow run code-drop-isovalent.yaml \
-            --repo ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }} \
-            --ref main \
-            --field repository="${{ github.repository }}" \
-            --field branch="${{ github.ref }}" \
-            --field image-name="hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}" \
-            --field image-tag="${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}" \
-            --field ref-file="nxos-ref-package.yaml" \
-            --field run-id="${{ github.run_id }}" \
-            --field vault-approle-role-id="${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}" \
-            --field vault-approle-secret-id="${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}"
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          github-token: ${{ steps.workflow-token.outputs.token }}
+          script: |
+            const workflowFileName = 'code-drop-isovalent.yaml';
+            const inputs = {
+              'repository': context.payload.repository.full_name,
+              'branch': context.ref,
+              'image-name': `hubble-fgs-agw-docker-image-${process.env.VERSION}`,
+              'image-tag': `${process.env.VERSION}-${process.env.DATE}-${process.env.SHA}`,
+              'ref-file': 'nxos-ref-package.yaml',
+              'run-id': `${context.runId}`,
+              'vault-approle-role-id': process.env.VAULT_ROLE_ID,
+              'vault-approle-secret-id': process.env.VAULT_SECRET_ID
+            };
+            
+            console.log(`Triggering workflow ${workflowFileName} in ${process.env.TARGET_ORG}/${process.env.TARGET_REPO}`);
+            
+            try {
+              const result = await github.rest.actions.createWorkflowDispatch({
+                owner: process.env.TARGET_ORG,
+                repo: process.env.TARGET_REPO,
+                workflow_id: workflowFileName,
+                ref: 'main',
+                inputs: inputs
+              });
+              console.log('Workflow dispatch triggered successfully');
+            } catch (error) {
+              console.error('Error triggering workflow dispatch:', error);
+              core.setFailed(`Failed to trigger workflow: ${error.message}`);
+            }
+        env:
+          VERSION: ${{ needs.init.outputs.version }}
+          DATE: ${{ needs.init.outputs.date }}
+          SHA: ${{ needs.init.outputs.sha }}
+          VAULT_ROLE_ID: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}
+          VAULT_SECRET_ID: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}
       - name: Cross-Org Workflow Summary
         run: |
           echo "### Cross-Organization Workflow Triggered" >> $GITHUB_STEP_SUMMARY
@@ -122,6 +139,6 @@ jobs:
           echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
           echo "| Target Organization | ${{ env.TARGET_ORG }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Target Repository | ${{ env.TARGET_REPO }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Target Workflow | code-drop.yaml |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Workflow | code-drop-isovalent.yaml |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Name | ${{ github.event.repository.name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Tag | ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
