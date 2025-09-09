@@ -1055,6 +1055,7 @@ found.
 | ----- | ---- | ----- | ----------- |
 | namespace | [string](#string) |  | Kubernetes namespace of the Pod. |
 | name | [string](#string) |  | Name of the Pod. |
+| uid | [string](#string) |  | UID of the Pod. |
 | container | [Container](#tetragon-Container) |  | Container of the Pod from which the process that triggered the event originates. |
 | pod_labels | [Pod.PodLabelsEntry](#tetragon-Pod-PodLabelsEntry) | repeated | Contains all the labels of the pod. |
 | workload | [string](#string) |  | Kubernetes workload of the Pod. |
@@ -1215,6 +1216,7 @@ found.
 | tags | [string](#string) | repeated | Tags of the Tracing Policy to categorize the event. |
 | user_stack_trace | [StackTraceEntry](#tetragon-StackTraceEntry) | repeated | User-mode stack trace to the call. |
 | ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
+| data | [KprobeArgument](#tetragon-KprobeArgument) | repeated | Data definition of the observed kprobe. |
 
 
 
@@ -1329,6 +1331,8 @@ loader sensor event triggered for loaded binary/library
 | args | [KprobeArgument](#tetragon-KprobeArgument) | repeated | Arguments definition of the observed uprobe. |
 | tags | [string](#string) | repeated | Tags of the Tracing Policy to categorize the event. |
 | ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
+| action | [KprobeAction](#tetragon-KprobeAction) |  | Action performed when the USDT hook matched. |
+| flags | [string](#string) |  | Flags are for debugging purposes only and should not be considered a reliable source of information. |
 
 
 

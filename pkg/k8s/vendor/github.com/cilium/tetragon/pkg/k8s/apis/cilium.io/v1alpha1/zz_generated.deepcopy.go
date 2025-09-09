@@ -814,6 +814,13 @@ func (in *KProbeSelector) DeepCopyInto(out *KProbeSelector) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MatchData != nil {
+		in, out := &in.MatchData, &out.MatchData
+		*out = make([]ArgSelector, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.MatchActions != nil {
 		in, out := &in.MatchActions, &out.MatchActions
 		*out = make([]ActionSelector, len(*in))
@@ -887,6 +894,11 @@ func (in *KProbeSpec) DeepCopyInto(out *KProbeSpec) {
 	*out = *in
 	if in.Args != nil {
 		in, out := &in.Args, &out.Args
+		*out = make([]KProbeArg, len(*in))
+		copy(*out, *in)
+	}
+	if in.Data != nil {
+		in, out := &in.Data, &out.Data
 		*out = make([]KProbeArg, len(*in))
 		copy(*out, *in)
 	}
@@ -2530,6 +2542,13 @@ func (in *UsdtSpec) DeepCopyInto(out *UsdtSpec) {
 		in, out := &in.Args, &out.Args
 		*out = make([]KProbeArg, len(*in))
 		copy(*out, *in)
+	}
+	if in.Selectors != nil {
+		in, out := &in.Selectors, &out.Selectors
+		*out = make([]KProbeSelector, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 }
 

@@ -52,6 +52,8 @@ message Pod {
   string namespace = 1;
   // Name of the Pod.
   string name = 2;
+  // UID of the Pod.
+  string uid = 3;
   // Container of the Pod from which the process that triggered the event
   // originates.
   Container container = 4;
@@ -530,6 +532,8 @@ message ProcessKprobe {
   repeated StackTraceEntry user_stack_trace = 12;
   // Ancestors of the process beyond the immediate parent.
   repeated Process ancestors = 13;
+  // Data definition of the observed kprobe.
+  repeated KprobeArgument data = 14;
 }
 
 message ProcessTracepoint {
@@ -593,6 +597,11 @@ message ProcessUsdt {
   repeated string tags = 9;
   // Ancestors of the process beyond the immediate parent.
   repeated Process ancestors = 10;
+  // Action performed when the USDT hook matched.
+  KprobeAction action = 11;
+  // Flags are for debugging purposes only and should not be considered a
+  // reliable source of information.
+  string flags = 12;
 }
 
 message ProcessLsm {

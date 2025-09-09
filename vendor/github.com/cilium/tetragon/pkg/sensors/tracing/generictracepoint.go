@@ -345,12 +345,12 @@ func buildArgsRaw(info *tracepoint.Tracepoint, specArgs []v1alpha1.KProbeArg) ([
 			}
 			fn := "__bpf_trace_" + info.Event
 
-			lastBTFType, btfArg, err := resolveBTFArg(fn, tpArg, true)
+			lastBTFType, btfArg, err := resolveBTFArg(fn, &tpArg, true)
 			if err != nil {
 				return nil, fmt.Errorf("error on hook %q for index %d : %w", fn, tpArg.Index, err)
 			}
 			btf = btfArg
-			argType = findTypeFromBTFType(tpArg, lastBTFType)
+			argType = findTypeFromBTFType(&tpArg, lastBTFType)
 		}
 
 		arg.btf = btf
@@ -527,7 +527,7 @@ func createGenericTracepointSensor(
 			return nil, fmt.Errorf("failed to initialize tracepoint kernel selectors: %w", err)
 		}
 
-		has.fdInstall = selectorsHaveFDInstall(tp.Spec.Selectors)
+		has.fdInstall = selectors.HasFDInstall(tp.Spec.Selectors)
 
 		prog0.LoaderData = tp.tableId
 		progs = append(progs, prog0)
@@ -686,7 +686,7 @@ func (tp *genericTracepoint) InitKernelSelectors(lists []v1alpha1.ListSpec) erro
 		}
 	}
 
-	selectors, err := selectors.InitKernelSelectorState(selSelectors, selArgs, &tp.actionArgs, &listReader{lists}, nil)
+	selectors, err := selectors.InitKernelSelectorState(selSelectors, selArgs, []v1alpha1.KProbeArg{}, &tp.actionArgs, &listReader{lists}, nil)
 	if err != nil {
 		return err
 	}

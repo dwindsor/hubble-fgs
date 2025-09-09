@@ -125,9 +125,6 @@ type genericKprobe struct {
 	// for each kprobe when using single kprobes.
 	hasStackTrace bool
 
-	// is there ratelimit defined in the kprobe
-	hasRatelimit bool
-
 	customHandler eventhandler.Handler
 }
 
@@ -584,14 +581,9 @@ type hasMaps struct {
 func hasMapsSetup(spec *v1alpha1.TracingPolicySpec) hasMaps {
 	has := hasMaps{}
 	for _, kprobe := range spec.KProbes {
-		has.fdInstall = has.fdInstall || selectorsHaveFDInstall(kprobe.Selectors)
+		has.fdInstall = has.fdInstall || selectors.HasFDInstall(kprobe.Selectors)
 		has.enforcer = has.enforcer || len(spec.Enforcers) != 0
-		has.rateLimit = has.rateLimit || selectorsHaveRateLimit(kprobe.Selectors)
-
-		// check for early break
-		if has.fdInstall && has.enforcer {
-			break
-		}
+		has.rateLimit = has.rateLimit || selectors.HasRateLimit(kprobe.Selectors)
 	}
 	return has
 }
@@ -716,7 +708,6 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 	var argReturnPrinters []argPrinter
 	var setRetprobe bool
 	var argRetprobe *v1alpha1.KProbeArg
-	var argsBTFSet [api.MaxArgsSupported]bool
 	var allBTFArgs [api.EventConfigMaxArgs][api.MaxBTFArgDepth]api.ConfigBTFArg
 
 	errFn := func(err error) (idtable.EntryID, error) {
@@ -771,8 +762,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 
 	argRetprobe = nil // holds pointer to arg for return handler
 
-	// Parse Arguments
-	for j, a := range f.Args {
+	addArg := func(j int, a *v1alpha1.KProbeArg, data bool) error {
 		// First try userspace types
 		var argType int
 		userArgType := gt.GenericUserTypeFromString(a.Type)
@@ -786,18 +776,18 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 
 		if a.Resolve != "" && j < api.EventConfigMaxArgs {
 			if !bpf.HasProgramLargeSize() {
-				return errFn(errors.New("error: Resolve flag can't be used for your kernel version. Please update to version 5.4 or higher or disable Resolve flag"))
+				return errors.New("error: Resolve flag can't be used for your kernel version. Please update to version 5.4 or higher or disable Resolve flag")
 			}
 			lastBTFType, btfArg, err := resolveBTFArg(f.Call, a, false)
 			if err != nil {
-				return errFn(fmt.Errorf("error on hook %q for index %d : %w", f.Call, a.Index, err))
+				return fmt.Errorf("error on hook %q for index %d : %w", f.Call, a.Index, err)
 			}
 			allBTFArgs[j] = btfArg
 			argType = findTypeFromBTFType(a, lastBTFType)
 		}
 
 		if argType == gt.GenericInvalidType {
-			return errFn(fmt.Errorf("Arg(%d) type '%s' unsupported", j, a.Type))
+			return fmt.Errorf("Arg(%d) type '%s' unsupported", j, a.Type)
 		}
 
 		if a.MaxData {
@@ -808,27 +798,65 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 				logger.GetLogger().Warn("maxData flag is ignored (supported from large programs)")
 			}
 		}
-		argMValue, err := getMetaValue(&a)
+		argMValue, err := getMetaValue(a)
 		if err != nil {
-			return errFn(err)
+			return err
 		}
 		if argReturnCopy(argMValue) {
 			argRetprobe = &f.Args[j]
 		}
 		if a.Index > 4 {
-			return errFn(fmt.Errorf("error add arg: ArgType %s Index %d out of bounds",
-				a.Type, int(a.Index)))
+			return fmt.Errorf("error add arg: ArgType %s Index %d out of bounds",
+				a.Type, int(a.Index))
 		}
 		eventConfig.BTFArg = allBTFArgs
 		eventConfig.ArgType[j] = int32(argType)
 		eventConfig.ArgMeta[j] = uint32(argMValue)
 		eventConfig.ArgIndex[j] = int32(a.Index)
 
-		argsBTFSet[a.Index] = true
-		argP := argPrinter{index: int(a.Index), ty: argType, userType: userArgType, maxData: a.MaxData, label: a.Label}
+		argP := argPrinter{
+			index:    int(a.Index),
+			ty:       argType,
+			userType: userArgType,
+			maxData:  a.MaxData,
+			label:    a.Label,
+			data:     data,
+		}
 		argSigPrinters = append(argSigPrinters, argP)
 
 		pathArgWarning(a.Index, argType, f.Selectors)
+		return nil
+	}
+
+	if len(f.Args)+len(f.Data) > api.EventConfigMaxArgs {
+		return errFn(fmt.Errorf("too many arguments, max %d: args(%d) data(%d)", api.EventConfigMaxArgs, len(f.Args), len(f.Data)))
+	}
+
+	var j int
+
+	// Parse Arguments
+	for _, arg := range f.Args {
+		if arg.Source != "" {
+			return errFn(fmt.Errorf("standard argument is not allowed to have source configured, current value: '%s'", arg.Source))
+		}
+		if err := addArg(j, &arg, false); err != nil {
+			return errFn(err)
+		}
+		j = j + 1
+	}
+
+	// Parse Data
+	for _, data := range f.Data {
+		if !hasCurrentTaskSource(&data) {
+			return errFn(fmt.Errorf("data argument has wrong source '%s'", data.Source))
+		}
+		if data.Resolve == "" {
+			return errFn(errors.New("data argument missing 'resolve' setup"))
+		}
+		if err := addArg(j, &data, true); err != nil {
+			return errFn(err)
+		}
+		j = j + 1
 	}
 
 	// Parse ReturnArg, we have two types of return arg parsing. We
@@ -852,7 +880,6 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 			return errFn(fmt.Errorf("ReturnArg type '%s' unsupported", f.ReturnArg.Type))
 		}
 		eventConfig.ArgReturn = int32(argType)
-		argsBTFSet[api.ReturnArgIndex] = true
 		argP := argPrinter{index: api.ReturnArgIndex, ty: argType}
 		argReturnPrinters = append(argReturnPrinters, argP)
 	} else {
@@ -860,7 +887,6 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 	}
 
 	if argRetprobe != nil {
-		argsBTFSet[api.ReturnArgIndex] = true
 		setRetprobe = true
 
 		argType := gt.GenericTypeFromString(argRetprobe.Type)
@@ -902,12 +928,11 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		customHandler:     in.customHandler,
 		message:           msgField,
 		tags:              tagsField,
-		hasStackTrace:     selectorsHaveStackTrace(f.Selectors),
-		hasRatelimit:      selectorsHaveRateLimit(f.Selectors),
+		hasStackTrace:     selectors.HasStackTrace(f.Selectors),
 	}
 
 	// Parse Filters into kernel filter logic
-	kprobeEntry.loadArgs.selectors.entry, err = selectors.InitKernelSelectorState(f.Selectors, f.Args, &kprobeEntry.actionArgs, nil, in.selMaps)
+	kprobeEntry.loadArgs.selectors.entry, err = selectors.InitKernelSelectorState(f.Selectors, f.Args, f.Data, &kprobeEntry.actionArgs, nil, in.selMaps)
 	if err != nil {
 		return errFn(err)
 	}
@@ -1315,7 +1340,11 @@ func handleMsgGenericKprobe(m *api.MsgGenericKprobe, gk *genericKprobe, r *bytes
 		if arg == nil {
 			continue
 		}
-		unix.Args = append(unix.Args, arg)
+		if a.data {
+			unix.Data = append(unix.Data, arg)
+		} else {
+			unix.Args = append(unix.Args, arg)
+		}
 	}
 
 	// Cache return value on merge and run return filters below before
@@ -1408,39 +1437,4 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) *tracing.MsgGenericKpro
 
 func (k *observerKprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return loadGenericKprobeSensor(args.BPFDir, args.Load, args.Maps, args.Verbose)
-}
-
-func selectorsHaveRateLimit(selectors []v1alpha1.KProbeSelector) bool {
-	for _, selector := range selectors {
-		for _, matchAction := range selector.MatchActions {
-			if len(matchAction.RateLimit) > 0 {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func selectorsHaveStackTrace(selectors []v1alpha1.KProbeSelector) bool {
-	for _, selector := range selectors {
-		for _, matchAction := range selector.MatchActions {
-			if matchAction.KernelStackTrace || matchAction.UserStackTrace {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func selectorsHaveFDInstall(sel []v1alpha1.KProbeSelector) bool {
-	for _, selector := range sel {
-		for _, matchAction := range selector.MatchActions {
-			if a := selectors.ActionTypeFromString(matchAction.Action); a == selectors.ActionTypeFollowFd ||
-				a == selectors.ActionTypeUnfollowFd ||
-				a == selectors.ActionTypeCopyFd {
-				return true
-			}
-		}
-	}
-	return false
 }
