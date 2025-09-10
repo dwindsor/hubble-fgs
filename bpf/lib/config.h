@@ -40,4 +40,12 @@ struct {
 	__uint(max_entries, 1);
 } tg_l3_cfg SEC(".maps");
 
+static inline __attribute__((always_inline)) struct cfg_value *
+getl3cfg()
+{
+	int zero = 0;
+
+	return (struct cfg_value *)map_lookup_elem(&tg_l3_cfg, &zero);
+}
+
 #endif

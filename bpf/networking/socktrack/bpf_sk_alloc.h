@@ -58,7 +58,6 @@ store_socket(void *ctx, u64 cookie, u8 protocol)
 	struct socketmap_value process = { 0 };
 	struct execve_map_value *value;
 	struct cfg_value *cfg;
-	int zero = 0;
 	bool walked;
 	u32 ppid;
 
@@ -103,7 +102,7 @@ store_socket(void *ctx, u64 cookie, u8 protocol)
 	// been populated, and might be ICMP or raw without a tuple.
 	add_socketmap(&cookie, &process, 0, false);
 
-	cfg = map_lookup_elem(&tg_l3_cfg, &zero);
+	cfg = getl3cfg();
 	if (!cfg)
 		return 0;
 
@@ -119,14 +118,13 @@ destroy_socket(void *ctx, u64 cookie)
 	struct tcpsocketmap_value *socket;
 	struct socketmap_value *process;
 	struct cfg_value *cfg;
-	int zero = 0;
 
 	process = lookup_socketmap(&cookie);
 	if (!process)
 		return 0;
 
 	udp_cfg = get_udp_config();
-	cfg = (struct cfg_value *)map_lookup_elem(&tg_l3_cfg, &zero);
+	cfg = getl3cfg();
 	if (cfg) {
 		switch (process->protocol) {
 		case IPPROTO_UDP:
