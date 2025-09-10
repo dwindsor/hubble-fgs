@@ -1,7 +1,6 @@
-package layer3
+package layer3cfg
 
 import (
-	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -19,26 +19,7 @@ var (
 	confMutex sync.Mutex
 )
 
-type ConfigKey struct {
-	Zero uint32
-}
-
-func (k *ConfigKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
-
-type ConfigValue struct {
-	EnableIcmpTracking uint8
-	IcmpNetMatch       uint8
-	RawEnabled         uint8
-	RawReportClose     uint8
-	UdpReportClose     uint8
-	Pad                [3]uint8
-}
-
-func (v *ConfigValue) String() string {
-	return fmt.Sprintf("EnableIcmpTracking: %d", v.EnableIcmpTracking)
-}
-
-func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose bool) ConfigValue {
+func ConfigureSettings(enableRaw, enableRawReportClose, enableUdpReportClose bool) networkapi.ConfigValue {
 	icmpTracking := uint8(0)
 
 	if enterpriseOption.Config.EnableIcmpTracking {
@@ -65,7 +46,7 @@ func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 		udpReportClose = 1
 	}
 
-	value := &ConfigValue{
+	value := &networkapi.ConfigValue{
 		EnableIcmpTracking: icmpTracking,
 		IcmpNetMatch:       icmpNetMatch,
 		RawEnabled:         rawEnabled,
@@ -76,7 +57,7 @@ func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 	return *value
 }
 
-func writeSettings(value ConfigValue) error {
+func WriteSettings(value networkapi.ConfigValue) error {
 	confMutex.Lock()
 	defer confMutex.Unlock()
 	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), base.CfgMap.Name), nil)
@@ -86,7 +67,7 @@ func writeSettings(value ConfigValue) error {
 	}
 	defer m.Close()
 
-	key := &ConfigKey{
+	key := &networkapi.ConfigKey{
 		Zero: uint32(0),
 	}
 
@@ -95,7 +76,7 @@ func writeSettings(value ConfigValue) error {
 		logger.GetLogger().Warn("configureSettings couldn't update tg_l3_cfg", logfields.Error, err)
 		return err
 	}
-	var vOut ConfigValue
+	var vOut networkapi.ConfigValue
 	err = m.Lookup(key, &vOut)
 	if err != nil {
 		logger.GetLogger().Warn("configureSettings couldn't lookup tg_l3_cfg", logfields.Error, err)

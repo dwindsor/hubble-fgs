@@ -27,6 +27,7 @@ import (
 func CheckStructAlignments(pathToObj string) error {
 	alignments := map[string][]any{
 		// Layer 3
+		"cfg_value":               {networkapi.ConfigValue{}},
 		"msg_ip_tuple":            {networkapi.MsgIPTuple{}},
 		"msg_ip_event":            {networkapi.MsgIPEvent{}},
 		"msg_ip_with_tnp_event":   {networkapi.MsgIPWithTNPEvent{}},

@@ -38,6 +38,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	layer3cfg "github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/config"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/icmp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/rawsock"
@@ -516,7 +517,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	l3cfg := CgroupProtocolConfigValue{}
 
 	// If UDP is enabled then we need close events reported to maintain our maps.
-	config := configureSettings(rawEnabled, reportRawClose, udpEnabled)
+	config := layer3cfg.ConfigureSettings(rawEnabled, reportRawClose, udpEnabled)
 
 	if tcpEnabled && (spec == nil || spec.Parser.Tcp != nil) {
 		if err := tcp.ConfigureMaps(); err != nil {
@@ -596,7 +597,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		}
 	}
 
-	writeSettings(config)
+	layer3cfg.WriteSettings(config)
 
 	return nil
 }

@@ -303,6 +303,26 @@ func (t *TcpValue) String() string {
 		policy)
 }
 
+type ConfigKey struct {
+	Zero uint32
+}
+
+func (k *ConfigKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
+
+type ConfigValue struct {
+	EnableIcmpTracking uint8    `align:"icmp_tracking_enabled"`
+	IcmpNetMatch       uint8    `align:"icmp_net_match"`
+	RawEnabled         uint8    `align:"raw_enabled"`
+	RawReportClose     uint8    `align:"raw_report_close"`
+	UdpReportClose     uint8    `align:"udp_report_close"`
+	EnableBPFDNSParser uint8    `align:"enable_bpf_dns_parser"`
+	Pad                [2]uint8 `align:"pad"`
+}
+
+func (v *ConfigValue) String() string {
+	return fmt.Sprintf("EnableIcmpTracking: %d", v.EnableIcmpTracking)
+}
+
 type UdpConfigKey struct {
 	Zero uint32
 }
