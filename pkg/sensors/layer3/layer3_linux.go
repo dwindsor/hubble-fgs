@@ -516,7 +516,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	l3cfg := CgroupProtocolConfigValue{}
 
 	// If UDP is enabled then we need close events reported to maintain our maps.
-	configureSettings(rawEnabled, reportRawClose, udpEnabled)
+	config := configureSettings(rawEnabled, reportRawClose, udpEnabled)
 
 	if tcpEnabled && (spec == nil || spec.Parser.Tcp != nil) {
 		if err := tcp.ConfigureMaps(); err != nil {
@@ -595,6 +595,8 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 			return fmt.Errorf("failed to configure cgroup protocol config map: %w", err)
 		}
 	}
+
+	writeSettings(config)
 
 	return nil
 }

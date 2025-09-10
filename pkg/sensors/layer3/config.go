@@ -38,19 +38,7 @@ func (v *ConfigValue) String() string {
 	return fmt.Sprintf("EnableIcmpTracking: %d", v.EnableIcmpTracking)
 }
 
-func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose bool) error {
-	confMutex.Lock()
-	defer confMutex.Unlock()
-	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), base.CfgMap.Name), nil)
-	if err != nil {
-		// If no configuration map, then no configuration required!
-		return nil
-	}
-	defer m.Close()
-
-	key := &ConfigKey{
-		Zero: uint32(0),
-	}
+func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose bool) ConfigValue {
 	icmpTracking := uint8(0)
 
 	if enterpriseOption.Config.EnableIcmpTracking {
@@ -84,7 +72,25 @@ func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 		RawReportClose:     rawReportClose,
 		UdpReportClose:     udpReportClose,
 	}
-	err = m.Put(key, value)
+	logger.GetLogger().Info("Config", "enableIcmpTracking", icmpTracking)
+	return *value
+}
+
+func writeSettings(value ConfigValue) error {
+	confMutex.Lock()
+	defer confMutex.Unlock()
+	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), base.CfgMap.Name), nil)
+	if err != nil {
+		// If no configuration map, then no configuration required!
+		return nil
+	}
+	defer m.Close()
+
+	key := &ConfigKey{
+		Zero: uint32(0),
+	}
+
+	err = m.Put(key, &value)
 	if err != nil {
 		logger.GetLogger().Warn("configureSettings couldn't update tg_l3_cfg", logfields.Error, err)
 		return err
@@ -93,8 +99,6 @@ func configureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 	err = m.Lookup(key, &vOut)
 	if err != nil {
 		logger.GetLogger().Warn("configureSettings couldn't lookup tg_l3_cfg", logfields.Error, err)
-		return err
 	}
-	logger.GetLogger().Info("Config", "enableIcmpTracking", icmpTracking)
-	return nil
+	return err
 }
