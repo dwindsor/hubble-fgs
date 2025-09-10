@@ -22,9 +22,9 @@ icmp_rcv(void *ctx, struct sk_buff *skb)
 	u8 icmp_data[ICMP_HDR_LEN];
 	struct msg_icmp_event *val;
 	u16 transport_header_off;
-	struct icmp_config *cfg;
 	struct ipv6hdr *rep_ip6;
 	u16 network_header_off;
+	struct cfg_value *cfg;
 	struct iphdr *rep_ip4;
 	struct tcphdr *tcp;
 	void *skb_head = 0;
@@ -154,8 +154,8 @@ icmp_rcv(void *ctx, struct sk_buff *skb)
 			return 0;
 		val->icmp_code = icmp_data[1];
 
-		cfg = map_lookup_elem(&tg_l3_icmp_cfg, &zero);
-		if (cfg && !cfg->v6_info && val->icmp_type > ICMPV6_ECHO_REPLY)
+		cfg = getl3cfg();
+		if (cfg && !cfg->icmp_v6_info && val->icmp_type > ICMPV6_ECHO_REPLY)
 			return 0;
 
 		val->common.op = ISO_MSG_OP_ICMP;

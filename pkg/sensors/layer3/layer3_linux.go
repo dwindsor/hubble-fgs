@@ -583,9 +583,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		}
 	}
 	if icmpEnabled && (spec == nil || spec.Parser.Icmp != nil) {
-		if err := icmp.ConfigureMaps(bpf.MapPrefixPath(), icmp.ConfigMapName, icmp.Config); err != nil {
-			return fmt.Errorf("failed to configure ICMP maps: %w", err)
-		}
+		icmp.ConfigureMaps(&config)
 		l3cfg.icmp4Enabled = 1
 		l3cfg.icmp6Enabled = 1
 	}

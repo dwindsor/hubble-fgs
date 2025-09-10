@@ -310,13 +310,14 @@ type ConfigKey struct {
 func (k *ConfigKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
 
 type ConfigValue struct {
-	EnableIcmpTracking uint8    `align:"icmp_tracking_enabled"`
-	IcmpNetMatch       uint8    `align:"icmp_net_match"`
-	RawEnabled         uint8    `align:"raw_enabled"`
-	RawReportClose     uint8    `align:"raw_report_close"`
-	UdpReportClose     uint8    `align:"udp_report_close"`
-	EnableBPFDNSParser uint8    `align:"enable_bpf_dns_parser"`
-	Pad                [2]uint8 `align:"pad"`
+	EnableIcmpTracking uint8 `align:"icmp_tracking_enabled"`
+	IcmpNetMatch       uint8 `align:"icmp_net_match"`
+	RawEnabled         uint8 `align:"raw_enabled"`
+	RawReportClose     uint8 `align:"raw_report_close"`
+	UdpReportClose     uint8 `align:"udp_report_close"`
+	EnableBPFDNSParser uint8 `align:"enable_bpf_dns_parser"`
+	ICMPV6Info         uint8 `align:"icmp_v6_info"`
+	Pad                uint8 `align:"pad"`
 }
 
 func (v *ConfigValue) String() string {

@@ -14,12 +14,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"path/filepath"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/yalue/native_endian"
@@ -30,17 +26,14 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/constants"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/icmp"
-	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 var (
-	Config        ConfigValue
-	ConfigMapName = "tg_l3_icmp_cfg"
+	v6info = false
 )
-
 var (
 	// Ensure every program has a type defined by the layer3 sensor to force loading
 	// through our own LoadProbe function. This is essential for socket discovery.
@@ -104,23 +97,7 @@ var (
 	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
 	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
 	ConfigMap           = program.MapUserFrom(base.CfgMap)
-
-	// ICMP runtime maps
-	IcmpCfgMap = program.MapBuilder("tg_l3_icmp_cfg", IcmpRcvKprobe)
 )
-
-type sensorConfigKey struct {
-	Zero uint32
-}
-
-type ConfigValue struct {
-	v6info uint8
-	Pad    [7]uint8
-}
-
-func (v *ConfigValue) String() string {
-	return fmt.Sprintf("v6info: %d, ", v.v6info)
-}
 
 func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 	var progsInitSock []*program.Program
@@ -134,7 +111,6 @@ func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 		SocketTupleRevMap,
 		SocketTupleHintMap,
 		ConfigMap,
-		IcmpCfgMap,
 	}
 
 	if !utils.CGroupSKBAvailable() {
@@ -165,19 +141,11 @@ func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 	return progsInitSock, progsCollectStats, maps
 }
 
-func ConfigureMaps(mapDir string, mapName string, config ConfigValue) error {
-	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
-	if err != nil {
-		logger.GetLogger().Warn("LoadPinnedMap", logfields.Error, err)
-		return err
+func ConfigureMaps(cfg *networkapi.ConfigValue) {
+	cfg.ICMPV6Info = 0
+	if v6info {
+		cfg.ICMPV6Info = 1
 	}
-	defer m.Close()
-
-	key := &sensorConfigKey{
-		Zero: uint32(0),
-	}
-	m.Put(key, &config)
-	return nil
 }
 
 func ConfigureSensor() error {
@@ -186,10 +154,6 @@ func ConfigureSensor() error {
 }
 
 func UnloadSensor() error {
-	Config.v6info = 0
-	if enterpriseOption.Config.Layer3CLIEnable {
-		ConfigureMaps(bpf.MapPrefixPath(), ConfigMapName, Config)
-	}
 	return nil
 }
 
@@ -199,12 +163,10 @@ func PolicyHandler(spec *v1alpha1.TracingPolicySpec) error {
 		return fmt.Errorf("icmp support requires a later kernel (v5.4+ or RHEL equivalent)")
 	}
 
+	v6info = false
 	if spec.Parser.Icmp != nil && spec.Parser.Icmp.V6Info {
-		Config.v6info = 1
-	} else {
-		Config.v6info = 0
+		v6info = true
 	}
-
 	return nil
 }
 

@@ -22,6 +22,7 @@
 #include "bpf_icmp_cookie.h"
 #include "bpf_tracing.h"
 #include "bpf_event_map.h"
+#include "config.h"
 
 #define ICMP_HDR_LEN	  4
 #define ICMP_HDR_DATA_OFF 4
@@ -50,18 +51,6 @@
 #define ICMPV6_INFOMSG_MASK 0x80
 #define ICMPV6_ECHO_REQUEST 128
 #define ICMPV6_ECHO_REPLY   129
-
-struct icmp_config {
-	u8 v6_info;
-	u8 pad[7];
-};
-
-struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, int);
-	__type(value, struct icmp_config);
-	__uint(max_entries, 1);
-} tg_l3_icmp_cfg SEC(".maps");
 
 #define IPSKB_L3SLAVE  (1 << 7) // As defined in kernel
 #define IP6SKB_L3SLAVE 64 // As defined in kernel
@@ -287,8 +276,8 @@ int icmp_handler_ip6(struct __sk_buff *skb, u16 off, int send)
 	struct ipv6hdr *rep_ip6 = 0;
 	struct msg_icmp_event *val;
 	struct handler_vars *vars;
-	struct icmp_config *cfg;
 	struct tcphdr tcp_store;
+	struct cfg_value *cfg;
 	bool skb_read = false;
 	struct ipv6hdr *ip6;
 	struct tcphdr *tcp;
@@ -341,8 +330,8 @@ int icmp_handler_ip6(struct __sk_buff *skb, u16 off, int send)
 	val->icmp_type = icmp_data[0];
 	val->icmp_code = icmp_data[1];
 
-	cfg = map_lookup_elem(&tg_l3_icmp_cfg, &zero);
-	if (cfg && !cfg->v6_info && val->icmp_type > ICMPV6_ECHO_REPLY)
+	cfg = getl3cfg();
+	if (cfg && !cfg->icmp_v6_info && val->icmp_type > ICMPV6_ECHO_REPLY)
 		return SK_PASS;
 
 	val->common.op = ISO_MSG_OP_ICMP;
