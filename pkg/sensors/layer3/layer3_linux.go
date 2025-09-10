@@ -77,6 +77,8 @@ var (
 
 func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
 	// We want to make sure we stand configuration up when loading/unloading the programs.
+	config := layer3cfg.ConfigureSettings(false, false, false)
+
 	if !enterpriseOption.Config.Layer3CLIEnable {
 		cgrp_ingress_configured = false
 		cgrp_egress_configured = false
@@ -111,6 +113,7 @@ func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
 		rawEnabled = false
 	}
 
+	layer3cfg.WriteSettings(config)
 	return nil
 }
 

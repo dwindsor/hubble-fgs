@@ -32,7 +32,7 @@ func ConfigureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 	}
 
 	rawEnabled := uint8(0)
-	if enableRaw {
+	if enableRaw || enterpriseOption.Config.EnableRawsock {
 		rawEnabled = 1
 	}
 
