@@ -31,6 +31,7 @@ func CheckStructAlignments(pathToObj string) error {
 		"tcp_send_check_sample_cfg": {networkapi.TCPSockStatValue{}},
 		"tcp_event_disable_config":  {networkapi.TCPEventDisableValue{}},
 		"udp_sensor_config":         {networkapi.UdpConfigValue{}},
+		"cgroup_dispatch_cfg":       {networkapi.CgroupProtocolConfigValue{}},
 		"msg_ip_tuple":              {networkapi.MsgIPTuple{}},
 		"msg_ip_event":              {networkapi.MsgIPEvent{}},
 		"msg_ip_with_tnp_event":     {networkapi.MsgIPWithTNPEvent{}},

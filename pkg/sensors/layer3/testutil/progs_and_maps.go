@@ -347,7 +347,8 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 			tcpSendCheck4Prog, tcpSendCheck6Prog,
 		})...)
 		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{tcpSendCheck4Prog, tcpSendCheck6Prog})...)
-	} else {
+	}
+	if utils.CGroupSKBAvailable() {
 		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{cgroupEgressProg, cgroupIngressProg})...)
 	}
 

@@ -353,18 +353,45 @@ func (v *TCPEventDisableValue) String() string {
 		v.DisableConnect, v.DisableClose, v.DisableAccept, v.DisableListen)
 }
 
+type CgroupProtocolConfigValue struct {
+	ICMP4Enabled uint32 `align:"icmp4"`
+	ICMP6Enabled uint32 `align:"icmp6"`
+	TCP4Enabled  uint32 `align:"tcp4"`
+	TCP6Enabled  uint32 `align:"tcp6"`
+	UDP4Enabled  uint32 `align:"udp4"`
+	UDP6Enabled  uint32 `align:"udp6"`
+}
+
+func (v *CgroupProtocolConfigValue) String() string {
+	return fmt.Sprintf("CgroupProtocolConfigValue: "+
+		"icmp4Enabled: %d, "+
+		"icmp6Enabled: %d, "+
+		"tcp4Enabled: %d, "+
+		"tcp6Enabled: %d, "+
+		"udp4Enabled: %d, "+
+		"udp6Enabled: %d",
+		v.ICMP4Enabled,
+		v.ICMP6Enabled,
+		v.TCP4Enabled,
+		v.TCP6Enabled,
+		v.UDP4Enabled,
+		v.UDP6Enabled,
+	)
+}
+
 type ConfigValue struct {
-	EnableIcmpTracking uint8                `align:"icmp_tracking_enabled"`
-	IcmpNetMatch       uint8                `align:"icmp_net_match"`
-	RawEnabled         uint8                `align:"raw_enabled"`
-	RawReportClose     uint8                `align:"raw_report_close"`
-	UdpReportClose     uint8                `align:"udp_report_close"`
-	EnableBPFDNSParser uint8                `align:"enable_bpf_dns_parser"`
-	ICMPV6Info         uint8                `align:"icmp_v6_info"`
-	Pad                uint8                `align:"pad"`
-	TCP                TCPSockStatValue     `align:"tcp"`
-	TCPDisable         TCPEventDisableValue `align:"tcp_disable"`
-	UDP                UdpConfigValue       `align:"udp"`
+	EnableIcmpTracking uint8                     `align:"icmp_tracking_enabled"`
+	IcmpNetMatch       uint8                     `align:"icmp_net_match"`
+	RawEnabled         uint8                     `align:"raw_enabled"`
+	RawReportClose     uint8                     `align:"raw_report_close"`
+	UdpReportClose     uint8                     `align:"udp_report_close"`
+	EnableBPFDNSParser uint8                     `align:"enable_bpf_dns_parser"`
+	ICMPV6Info         uint8                     `align:"icmp_v6_info"`
+	Pad                uint8                     `align:"pad"`
+	TCP                TCPSockStatValue          `align:"tcp"`
+	TCPDisable         TCPEventDisableValue      `align:"tcp_disable"`
+	UDP                UdpConfigValue            `align:"udp"`
+	Proto              CgroupProtocolConfigValue `align:"proto"`
 }
 
 func (v *ConfigValue) String() string {

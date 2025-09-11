@@ -3,22 +3,7 @@
 #include "./icmp/bpf_icmp.h"
 #include "./udp/bpf_udp_inet.h"
 #include "./tcp/bpf_tcp_recv.h"
-
-struct cgroup_dispatch_cfg {
-	uint32_t icmp4;
-	uint32_t icmp6;
-	uint32_t tcp4;
-	uint32_t tcp6;
-	uint32_t udp4;
-	uint32_t udp6;
-};
-
-struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, int);
-	__type(value, struct cgroup_dispatch_cfg);
-	__uint(max_entries, 1);
-} tg_l3_proto SEC(".maps");
+#include "config.h"
 
 int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 {
@@ -26,6 +11,7 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 	void *data = (long *)(long)skb->data;
 	struct cgroup_dispatch_cfg *cfg;
 	struct handler_vars *vars;
+	struct cfg_value *l3cfg;
 	int ret = SK_PASS;
 	struct iphdr *ip;
 	u16 payload_off;
@@ -52,9 +38,10 @@ int tg_cgroup_dispatcher(struct __sk_buff *skb, int send)
 	} else
 		ip = (struct iphdr *)data;
 
-	cfg = (struct cgroup_dispatch_cfg *)map_lookup_elem(&tg_l3_proto, &zero);
-	if (!cfg)
+	l3cfg = getl3cfg();
+	if (!l3cfg)
 		return SK_PASS;
+	cfg = &l3cfg->proto;
 
 	switch (ip->version) {
 	case 4:

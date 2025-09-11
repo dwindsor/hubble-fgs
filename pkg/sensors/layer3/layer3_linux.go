@@ -13,12 +13,9 @@ package layer3
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -71,8 +68,7 @@ var (
 )
 
 var (
-	baseLayer3Policy            = "__base_layer3__"
-	CgroupProtocolConfigMapName = "tg_l3_proto"
+	baseLayer3Policy = "__base_layer3__"
 )
 
 func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
@@ -170,9 +166,6 @@ var (
 	dispatcherNoProbeReadProgs = []*program.Program{EgressDispatcherNoProbeRead, IngressDispatcherNoProbeRead}
 	dispatcherProcessTreeProgs = []*program.Program{EgressDispatcherProcessTree, IngressDispatcherProcessTree}
 
-	// Dispatcher protocol configuration map, built here because it is only used by the dispatcher
-	protoCfgMap = program.MapBuilder(CgroupProtocolConfigMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
-
 	// Dispatcher Latency maps; could be problematic from an ownership perspective. Solve another day.
 	latencyConfigMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher, IngressDispatcherNoProbeRead, IngressDispatcherProcessTree)
 
@@ -192,6 +185,8 @@ var (
 	DNSIPToIDMaps        = program.MapUserFrom(ip.DNSIPToIDMaps)
 	AllocationIDMap      = program.MapUserFrom(ip.AllocationIDMap)
 	CgroupIDToAllocIDMap = program.MapUserFrom(ip.CgroupIDToAllocIDMap)
+	// Layer3 configuration map, shared with many L3 programs
+	protoCfgMap = program.MapUserFrom(base.CfgMap)
 
 	// LPM maps
 	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)
@@ -463,61 +458,7 @@ func (l3 *l3Sensor) PolicyHandler(
 		udpCgroup, udpTimestampEnable, udpInterval), nil
 }
 
-type CgroupProtocolConfigValue struct {
-	icmp4Enabled uint32
-	icmp6Enabled uint32
-	tcp4Enabled  uint32
-	tcp6Enabled  uint32
-	udp4Enabled  uint32
-	udp6Enabled  uint32
-}
-
-func (v *CgroupProtocolConfigValue) String() string {
-	return fmt.Sprintf("CgroupProtocolConfigValue: "+
-		"icmp4Enabled: %d, "+
-		"icmp6Enabled: %d, "+
-		"tcp4Enabled: %d, "+
-		"tcp6Enabled: %d, "+
-		"udp4Enabled: %d, "+
-		"udp6Enabled: %d",
-		v.icmp4Enabled,
-		v.icmp6Enabled,
-		v.tcp4Enabled,
-		v.tcp6Enabled,
-		v.udp4Enabled,
-		v.udp6Enabled,
-	)
-}
-
-type CgroupProtocolConfigKey struct {
-	Zero uint32
-}
-
-func (k *CgroupProtocolConfigKey) String() string {
-	return fmt.Sprintf("Zero: %d", k.Zero)
-}
-
-func (l3 *l3Sensor) configureCgroupProtocolCfgMap(l3cfg CgroupProtocolConfigValue) error {
-	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), CgroupProtocolConfigMapName), nil)
-	if err != nil {
-		return fmt.Errorf("failed loading map %s: %w", CgroupProtocolConfigMapName, err)
-	}
-	defer m.Close()
-
-	key := &CgroupProtocolConfigKey{
-		Zero: uint32(0),
-	}
-	err = m.Put(key, &l3cfg)
-	if err != nil {
-		return fmt.Errorf("failed %s update: %w", CgroupProtocolConfigMapName, err)
-	}
-
-	return nil
-}
-
 func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
-	l3cfg := CgroupProtocolConfigValue{}
-
 	// If UDP is enabled then we need close events reported to maintain our maps.
 	config := layer3cfg.ConfigureSettings(rawEnabled, reportRawClose, udpEnabled)
 
@@ -525,15 +466,15 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		if err := tcp.ConfigureMaps(&config); err != nil {
 			return fmt.Errorf("failed to configure TCP maps: %w", err)
 		}
-		l3cfg.tcp4Enabled = 1
-		l3cfg.tcp6Enabled = 1
+		config.Proto.TCP4Enabled = 1
+		config.Proto.TCP6Enabled = 1
 	}
 	if udpEnabled && (spec == nil || spec.Parser.Udp != nil) {
 		if err := udp.ConfigureMaps(&config); err != nil {
 			return fmt.Errorf("failed to configure UDP maps: %w", err)
 		}
-		l3cfg.udp4Enabled = 1
-		l3cfg.udp6Enabled = 1
+		config.Proto.UDP4Enabled = 1
+		config.Proto.UDP6Enabled = 1
 	}
 	if udpEnabled && enterpriseOption.Config.EnableBPFDNSParser && enterpriseOption.Config.EnableApplicationModel {
 		err := dnsparser.PopulateDomainMapsWithLocalhost()
@@ -586,16 +527,10 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	}
 	if icmpEnabled && (spec == nil || spec.Parser.Icmp != nil) {
 		icmp.ConfigureMaps(&config)
-		l3cfg.icmp4Enabled = 1
-		l3cfg.icmp6Enabled = 1
+		config.Proto.ICMP4Enabled = 1
+		config.Proto.ICMP6Enabled = 1
 	}
 	// Rawsock has no config maps.
-
-	if utils.CGroupSKBAvailable() && (icmpEnabled || tcpEnabled || udpEnabled) {
-		if err := l3.configureCgroupProtocolCfgMap(l3cfg); err != nil {
-			return fmt.Errorf("failed to configure cgroup protocol config map: %w", err)
-		}
-	}
 
 	layer3cfg.WriteSettings(config)
 

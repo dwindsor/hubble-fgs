@@ -65,6 +65,15 @@ struct udp_sensor_config {
 	u16 seq_check_ports[8];
 };
 
+struct cgroup_dispatch_cfg {
+	uint32_t icmp4;
+	uint32_t icmp6;
+	uint32_t tcp4;
+	uint32_t tcp6;
+	uint32_t udp4;
+	uint32_t udp6;
+};
+
 struct cfg_value {
 	__u8 icmp_tracking_enabled;
 	__u8 icmp_net_match;
@@ -77,6 +86,7 @@ struct cfg_value {
 	struct tcp_send_check_sample_cfg tcp;
 	struct tcp_event_disable_config tcp_disable;
 	struct udp_sensor_config udp;
+	struct cgroup_dispatch_cfg proto;
 };
 
 struct {
