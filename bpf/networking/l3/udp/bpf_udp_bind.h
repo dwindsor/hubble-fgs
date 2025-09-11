@@ -18,7 +18,7 @@
 #include "bpf_task.h"
 #include "bpf_cookie.h"
 #include "bpf_tracing.h"
-#include "bpf_udp_config.h"
+#include "config.h"
 #include "bpf_event_map.h"
 
 static inline __attribute__((always_inline)) int
@@ -27,13 +27,17 @@ __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
 	struct udp_sensor_config *config;
 	struct socketmap_value *process;
 	struct msg_ip_event *event;
+	struct cfg_value *l3cfg;
 	struct sock *sk;
 	u16 protocol;
 	int zero = 0;
 	size_t size;
 
-	config = get_udp_config();
-	if (!config || config->disable_listen_events)
+	l3cfg = getl3cfg();
+	if (!l3cfg)
+		return 0;
+	config = &l3cfg->udp;
+	if (config->disable_listen_events)
 		return 0;
 
 	sk = (struct sock *)cookie;

@@ -92,7 +92,7 @@ func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
 		tcpEnabled = false
 	}
 	if udpEnabled {
-		err := udp.UnloadSensor()
+		err := udp.UnloadSensor(&config)
 		if err != nil {
 			return err
 		}
@@ -177,10 +177,9 @@ var (
 	latencyConfigMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher, IngressDispatcherNoProbeRead, IngressDispatcherProcessTree)
 
 	// Dispatcher UDP maps, built here because they are only used by the dispatcher
-	udpMap       = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
-	udpMapStats  = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
-	udpConfigMap = program.MapBuilder(udp.ConfigMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
-	udpMaps      = []*program.Map{udpMap, udpMapStats, udpConfigMap, latencyConfigMap, protoCfgMap}
+	udpMap      = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
+	udpMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree)
+	udpMaps     = []*program.Map{udpMap, udpMapStats, latencyConfigMap, protoCfgMap}
 
 	// DNS Parser maps
 	// Those maps are only used within the DNS parser that is included in the dispatcher and we assume >=5.14
@@ -530,7 +529,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		l3cfg.tcp6Enabled = 1
 	}
 	if udpEnabled && (spec == nil || spec.Parser.Udp != nil) {
-		if err := udp.ConfigureMaps(bpf.MapPrefixPath(), udp.ConfigMapName, udp.Config); err != nil {
+		if err := udp.ConfigureMaps(&config); err != nil {
 			return fmt.Errorf("failed to configure UDP maps: %w", err)
 		}
 		l3cfg.udp4Enabled = 1

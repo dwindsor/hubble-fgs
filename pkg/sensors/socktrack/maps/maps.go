@@ -19,5 +19,4 @@ const (
 	SocketTupleHintMapName = "tg_l3_sk_tuphnt"
 	SocketVersionMapName   = "tg_l3_sk_ver"
 	SocketCfgMapName       = "tg_l3_cfg"
-	UDPCfgMapName          = "tg_l3_udp_cfg"
 )

@@ -48,8 +48,7 @@ import (
 )
 
 const (
-	UdpMapName    = "tg_l3_udpsk"
-	ConfigMapName = "tg_l3_udp_cfg"
+	UdpMapName = "tg_l3_udpsk"
 
 	MissingStatsErrorInterval = time.Hour
 )
@@ -128,9 +127,8 @@ var (
 	PsVerMap            = program.MapBuilder("tg_l3_udpsk_ver", SkUdpBindKprobe)
 
 	// UDP maps
-	UdpMapLazyKprobe       = program.MapBuilder(UdpMapName, InetSendRecvLazy)
-	UdpMapStatsLazyKprobe  = program.MapBuilder(udpconfig.UdpMapStatsName, InetSendRecvLazy)
-	UdpConfigLazyMapKprobe = program.MapBuilder(ConfigMapName, InetSendRecvLazy)
+	UdpMapLazyKprobe      = program.MapBuilder(UdpMapName, InetSendRecvLazy)
+	UdpMapStatsLazyKprobe = program.MapBuilder(udpconfig.UdpMapStatsName, InetSendRecvLazy)
 
 	LatencyConfigMapLazyKprobe = program.MapBuilder(networklatency.ConfigMapName, InetSendRecvLazy)
 )
@@ -193,35 +191,26 @@ func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	observer.AllListeners(&udp)
 }
 
-func ConfigureMaps(mapDir string, mapName string, config networkapi.UdpConfigValue) error {
-	m, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
-	if err != nil {
-		return err
-	}
-	defer m.Close()
-
+func ConfigureMaps(cfg *networkapi.ConfigValue) error {
+	cfg.UDP = Config
 	// If this is a CLI configuration lets inherit the network events
 	// configuration as well.
-	config.DisableConnectEvents = 0
-	config.DisableCloseEvents = 0
+	cfg.UDP.DisableConnectEvents = 0
+	cfg.UDP.DisableCloseEvents = 0
 	if enterpriseOption.Config.Layer3CLIEnable && !enterpriseOption.Config.EnableNetworkEvents {
 		DisableConnectEvents = true
 		DisableCloseEvents = true
 		DisableListenEvents = true
-		config.DisableConnectEvents = 1
-		config.DisableCloseEvents = 1
+		cfg.UDP.DisableConnectEvents = 1
+		cfg.UDP.DisableCloseEvents = 1
 	}
 	// DisableListenEvents can operate independently of disabling all network events.
-	config.DisableListenEvents = 0
+	cfg.UDP.DisableListenEvents = 0
 	if DisableListenEvents {
-		config.DisableListenEvents = 1
+		cfg.UDP.DisableListenEvents = 1
 	}
 
-	key := &networkapi.UdpConfigKey{
-		Zero: uint32(0),
-	}
-	m.Put(key, &config)
-	logger.GetLogger().Info("Configured UDP sock statistic sampler", "config", config.String())
+	logger.GetLogger().Info("Configured UDP sock statistic sampler", "config", cfg.UDP.String())
 	return nil
 }
 
@@ -246,7 +235,7 @@ func StartIdleSocketGC() {
 	}
 }
 
-func UnloadSensor() error {
+func UnloadSensor(cfg *networkapi.ConfigValue) error {
 	if gcTimerRunning {
 		gcTimer.Stop()
 		gcTimerRunning = false
@@ -264,7 +253,7 @@ func UnloadSensor() error {
 	udpconfig.MetricsEnabled = false
 	Config = networkapi.UdpConfigValue{}
 	if enterpriseOption.Config.Layer3CLIEnable {
-		ConfigureMaps(bpf.MapPrefixPath(), ConfigMapName, Config)
+		ConfigureMaps(cfg)
 	}
 	return nil
 }
@@ -309,7 +298,6 @@ func EnableUdp(cgroup, timestampEnable bool) ([]*program.Program, []*program.Pro
 		maps = append(maps,
 			UdpMapLazyKprobe,
 			UdpMapStatsLazyKprobe,
-			UdpConfigLazyMapKprobe,
 			LatencyConfigMapLazyKprobe,
 		)
 	} else {

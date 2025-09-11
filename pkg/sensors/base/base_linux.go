@@ -57,7 +57,6 @@ func GetDefaultMaps() []*program.Map {
 		SocketTupleRevMap,
 		SocketTupleHintMap,
 		CfgMap,
-		UDPCfgMap,
 		TcpSocketMap,
 		TcpSocketMapStats,
 		ExecveTailCallsMap,

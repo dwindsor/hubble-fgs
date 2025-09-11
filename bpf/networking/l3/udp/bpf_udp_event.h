@@ -196,9 +196,13 @@ static inline __attribute__((always_inline)) void
 emit_udp_connect_event(void *ctx, u64 *cookie, u64 cookie_ver, u64 ps_ver, struct udp_info_key *k, struct udp_info_value *v)
 {
 	struct udp_sensor_config *udp_cfg;
+	struct cfg_value *l3cfg;
 
-	udp_cfg = get_udp_config();
-	if (udp_cfg && !udp_cfg->disable_connect_events)
+	l3cfg = getl3cfg();
+	if (!l3cfg)
+		return;
+	udp_cfg = &l3cfg->udp;
+	if (!udp_cfg->disable_connect_events)
 		emit_udp_event(ctx, ISO_MSG_OP_UDPCONNECT, cookie, cookie_ver, ps_ver, k, v);
 }
 #endif // __BPF_UDP_EVENT_H__

@@ -12,7 +12,7 @@
 #define __BPF_UDP_INFO_H_
 
 #include "networkmsg.h"
-#include "bpf_udp_config.h"
+#include "config.h"
 #include "bpf_ktime.h"
 #include "bpf_cookie.h"
 #include "bpf_event_map.h"
@@ -117,10 +117,15 @@ dns_source_port_match(u16 *ports, u16 port)
 static inline __attribute__((always_inline)) void
 udp_key(struct udp_info_key *key, bool *dns_combined, u64 *cookie, u64 version, struct iphdr *ip, bool ipv6, struct udphdr *udp, u64 send)
 {
-	struct udp_sensor_config *config = get_udp_config();
+	struct cfg_value *l3cfg = getl3cfg();
+	struct udp_sensor_config *config;
+
+	if (!l3cfg)
+		return;
+	config = &l3cfg->udp;
 
 	if (send) {
-		if (config && !config->dns_stats_per_socket && dns_source_port_match(config->dns_ports, bpf_ntohs(udp->source))) {
+		if (!config->dns_stats_per_socket && dns_source_port_match(config->dns_ports, bpf_ntohs(udp->source))) {
 			*dns_combined = true;
 			// For DNS we zero the remote IP address and remote port.
 			key->tuple.daddr[0] = 0;
@@ -151,7 +156,7 @@ udp_key(struct udp_info_key *key, bool *dns_combined, u64 *cookie, u64 version, 
 		if (!*dns_combined)
 			key->tuple.dport = bpf_ntohs(udp->dest);
 	} else {
-		if (config && !config->dns_stats_per_socket && dns_source_port_match(config->dns_ports, bpf_ntohs(udp->dest))) {
+		if (!config->dns_stats_per_socket && dns_source_port_match(config->dns_ports, bpf_ntohs(udp->dest))) {
 			*dns_combined = true;
 			// For DNS we zero the remote IP addresses and remote port.
 			key->tuple.daddr[0] = 0;

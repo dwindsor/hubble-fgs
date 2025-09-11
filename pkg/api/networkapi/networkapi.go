@@ -364,14 +364,11 @@ type ConfigValue struct {
 	Pad                uint8                `align:"pad"`
 	TCP                TCPSockStatValue     `align:"tcp"`
 	TCPDisable         TCPEventDisableValue `align:"tcp_disable"`
+	UDP                UdpConfigValue       `align:"udp"`
 }
 
 func (v *ConfigValue) String() string {
 	return fmt.Sprintf("EnableIcmpTracking: %d", v.EnableIcmpTracking)
-}
-
-type UdpConfigKey struct {
-	Zero uint32
 }
 
 const (

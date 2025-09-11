@@ -48,6 +48,23 @@ struct tcp_event_disable_config {
 	__u32 pad;
 };
 
+struct udp_sensor_config {
+	u16 dns_ports[4];
+	u8 dns_stats_per_socket;
+	u8 dns_report_questions;
+	u8 watermarks_enable;
+	u8 disable_listen_events;
+	u8 disable_connect_events;
+	u8 disable_close_events;
+	u8 pad[2];
+	u64 watermarks_avg_window_size_ms;
+	u64 watermarks_window_size;
+	u64 watermarks_burst_trigger_percent;
+	u64 watermarks_dip_trigger_percent;
+	u64 seq_check_app_id;
+	u16 seq_check_ports[8];
+};
+
 struct cfg_value {
 	__u8 icmp_tracking_enabled;
 	__u8 icmp_net_match;
@@ -59,6 +76,7 @@ struct cfg_value {
 	__u8 pad;
 	struct tcp_send_check_sample_cfg tcp;
 	struct tcp_event_disable_config tcp_disable;
+	struct udp_sensor_config udp;
 };
 
 struct {

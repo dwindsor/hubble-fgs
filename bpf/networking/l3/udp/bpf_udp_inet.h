@@ -16,7 +16,7 @@
 #include "bpf_event.h"
 #include "bpf_task.h"
 #include "bpf_udp_event.h"
-#include "bpf_udp_config.h"
+#include "config.h"
 #include "bpf_latency.h"
 #include "bpf_process_network_watermarks.h"
 #include "bpf_cookie.h"
@@ -213,11 +213,15 @@ udp_watermarks(void *ctx, u64 *cookie, struct iphdr *ip, int payload_sz, bool ip
 	struct process_network_watermarks_config *c;
 	struct udp_sensor_config *config;
 	struct socketmap_value *process;
+	struct cfg_value *l3cfg;
 	int zero = 0;
 	u64 __cookie;
 
-	config = get_udp_config();
-	if (!config || !config->watermarks_enable)
+	l3cfg = getl3cfg();
+	if (!l3cfg)
+		return;
+	config = &l3cfg->udp;
+	if (!config->watermarks_enable)
 		return;
 
 	c = (struct process_network_watermarks_config *)map_lookup_elem(&tg_h_l3_wtmk_c, &zero);

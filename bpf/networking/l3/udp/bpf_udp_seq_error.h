@@ -17,6 +17,7 @@
 #include "lib/iso_msg_types.h"
 #include "bpf_cookie.h"
 #include "bpf_tracing.h"
+#include "config.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -220,9 +221,14 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 		  struct udp_info_key *k, struct udp_info_value *v)
 {
 #ifndef IS_KPROBE
-	struct udp_sensor_config *config = get_udp_config();
+	struct cfg_value *l3cfg = getl3cfg();
+	struct udp_sensor_config *config;
 
-	if (!config || !config->seq_check_app_id)
+	if (!l3cfg)
+		return;
+	config = &l3cfg->udp;
+
+	if (!config->seq_check_app_id)
 		return;
 
 	if (!match_seq_check_ports(config->seq_check_ports, k->tuple.sport, k->tuple.dport))

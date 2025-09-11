@@ -39,15 +39,17 @@ udp_dns(struct __sk_buff *skb,
 	int payload_off,
 	int payload_sz)
 {
-	struct udp_sensor_config *config = get_udp_config();
+	struct cfg_value *l3cfg = getl3cfg();
+	struct udp_sensor_config *config;
 	bool store = true;
 	int isdns;
 #ifndef IS_KPROBE
 	u16 sport;
 #endif
 
-	if (!config)
+	if (!l3cfg)
 		return 0;
+	config = &l3cfg->udp;
 
 	if (config->dns_ports[0] == 0)
 		return 0;

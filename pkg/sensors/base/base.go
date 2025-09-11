@@ -134,7 +134,6 @@ var (
 	SocketTupleRevMap           = program.MapBuilder(socktrackmaps.SocketTupleRevMapName, Exit)
 	SocketTupleHintMap          = program.MapBuilder(socktrackmaps.SocketTupleHintMapName, Exit)
 	CfgMap                      = program.MapBuilder(socktrackmaps.SocketCfgMapName, Exit)
-	UDPCfgMap                   = program.MapBuilder(socktrackmaps.UDPCfgMapName, Exit)
 	TcpSocketMap                = program.MapBuilder("tg_l3_tcpsk", Exit)
 	TcpSocketMapStats           = program.MapBuilder("tg_l3_tcpsk_stats", Exit)
 

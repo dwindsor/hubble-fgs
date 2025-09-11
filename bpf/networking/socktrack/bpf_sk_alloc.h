@@ -17,7 +17,7 @@
 #include "../bpf_network_helpers.h"
 #include "bpf_tracing.h"
 #include "../l3/tcp/bpf_tcp_close.h"
-#include "../l3/udp/bpf_udp_config.h"
+#include "config.h"
 #include "bpf_event_map.h"
 
 static inline __attribute__((always_inline)) void
@@ -123,14 +123,14 @@ destroy_socket(void *ctx, u64 cookie)
 	if (!process)
 		return 0;
 
-	udp_cfg = get_udp_config();
 	cfg = getl3cfg();
 	if (cfg) {
+		udp_cfg = &cfg->udp;
 		switch (process->protocol) {
 		case IPPROTO_UDP:
 			// UDP close events can be disabled by either disabling the UDP protocol,
 			// or specifically disabling close events in the UDP config.
-			if (cfg->udp_report_close && udp_cfg && !udp_cfg->disable_close_events)
+			if (cfg->udp_report_close && !udp_cfg->disable_close_events)
 				emit_sk_event(ctx, process, cookie, ISO_MSG_OP_UDPCLOSE);
 			break;
 		case IPPROTO_RAW:

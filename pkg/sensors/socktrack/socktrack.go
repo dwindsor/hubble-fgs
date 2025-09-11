@@ -55,7 +55,6 @@ var (
 	SocketTupleRevMap   = program.MapUserFrom(base.SocketTupleRevMap)
 	SocketTupleHintMap  = program.MapUserFrom(base.SocketTupleHintMap)
 	ConfigMap           = program.MapUserFrom(base.CfgMap)
-	UDPConfigMap        = program.MapUserFrom(base.UDPCfgMap)
 )
 
 /* Enabled from the layer3 sensor */
@@ -73,7 +72,6 @@ func EnableSocktrack() ([]*program.Program, []*program.Map) {
 		SocketTupleRevMap,
 		SocketTupleHintMap,
 		ConfigMap,
-		UDPConfigMap,
 	}
 
 	if utils.SupportFentry() {
