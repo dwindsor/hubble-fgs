@@ -42,13 +42,6 @@ struct {
 	__uint(max_entries, 1);
 } tg_l3_sk_stats SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct socketmap_value);
-	__uint(max_entries, 1);
-} tg_h_l3_sk SEC(".maps");
-
 /* Store the latest cookie version number. Each socket receives a
  * new global version number, unique to each socket.
  */
@@ -185,48 +178,6 @@ static inline __attribute__((always_inline)) struct socketmap_value *
 lookup_socketmap(u64 *cookie)
 {
 	return (struct socketmap_value *)map_lookup_elem(&tg_l3_sk, cookie);
-}
-
-/* Check if the cookie->process(pid) already exists, and if not,
- * or if the cookie maps to a different process, add/update a
- * mapping from cookie to process(pid).
- */
-static inline __attribute__((always_inline)) bool
-update_socketmap(u64 *cookie, u32 pid, u16 protocol, struct msg_ip_tuple *tuple)
-{
-	struct socketmap_value *process;
-	struct execve_map_value *value;
-	int zero = 0;
-
-	if (!pid || !cookie || !*cookie)
-		return false;
-
-	process = lookup_socketmap(cookie);
-	if (!process || process->key.pid != pid) {
-		value = execve_map_get_noinit(pid);
-		if (!value)
-			return false;
-		if (!process) {
-			process = (struct socketmap_value *)map_lookup_elem(&tg_h_l3_sk, &zero);
-			if (!process)
-				return false;
-			process->key.pid = value->key.pid;
-			process->key.ktime = value->key.ktime;
-			process->create_time = tg_get_ktime();
-			process->version = cookie_inc_version();
-			process->protocol = protocol;
-			add_socketmap(cookie, process, tuple, true);
-		} else {
-			process->key.pid = value->key.pid;
-			process->key.ktime = value->key.ktime;
-			process->create_time = tg_get_ktime();
-			process->version = cookie_inc_version();
-			process->protocol = protocol;
-		}
-	} else {
-		process->protocol = protocol;
-	}
-	return true;
 }
 
 #endif
