@@ -27,16 +27,17 @@ import (
 func CheckStructAlignments(pathToObj string) error {
 	alignments := map[string][]any{
 		// Layer 3
-		"cfg_value":               {networkapi.ConfigValue{}},
-		"msg_ip_tuple":            {networkapi.MsgIPTuple{}},
-		"msg_ip_event":            {networkapi.MsgIPEvent{}},
-		"msg_ip_with_tnp_event":   {networkapi.MsgIPWithTNPEvent{}},
-		"msg_ip_with_stats_event": {networkapi.MsgIPWithStatsEvent{}},
-		"tcpsocketmap_value":      {networkapi.TcpValue{}},
-		"udp_info_key":            {networkapi.UdpInfoKey{}},
-		"udp_info_value":          {networkapi.UdpInfoValue{}},
-		"udp_sensor_config":       {networkapi.UdpConfigValue{}},
-		"msg_socket_stats":        {networkapi.MsgSocketStats{}},
+		"cfg_value":                 {networkapi.ConfigValue{}},
+		"tcp_send_check_sample_cfg": {networkapi.TCPSockStatValue{}},
+		"msg_ip_tuple":              {networkapi.MsgIPTuple{}},
+		"msg_ip_event":              {networkapi.MsgIPEvent{}},
+		"msg_ip_with_tnp_event":     {networkapi.MsgIPWithTNPEvent{}},
+		"msg_ip_with_stats_event":   {networkapi.MsgIPWithStatsEvent{}},
+		"tcpsocketmap_value":        {networkapi.TcpValue{}},
+		"udp_info_key":              {networkapi.UdpInfoKey{}},
+		"udp_info_value":            {networkapi.UdpInfoValue{}},
+		"udp_sensor_config":         {networkapi.UdpConfigValue{}},
+		"msg_socket_stats":          {networkapi.MsgSocketStats{}},
 
 		// Layer 7
 		"__msg_http_event":   {httpapi.MsgHttpEvent{}},

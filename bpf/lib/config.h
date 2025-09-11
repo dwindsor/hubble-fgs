@@ -22,6 +22,23 @@
 #else
 #define __CONST
 #endif
+struct tcp_send_check_sample_cfg {
+	__u8 watermarksEnable;
+	__u8 rttEnable;
+	__u8 pad[6];
+	__u64 watermarksAvgWindowSize;
+	__u64 watermarksWindowSizeNs;
+	__u64 watermarksBurstTriggerMult;
+	__u64 watermarksDipTriggerMult;
+	__u32 bucket00;
+	__u32 bucket01;
+	__u32 bucket10;
+	__u32 bucket25;
+	__u32 bucket50;
+	__u32 bucket75;
+	__u32 bucket90;
+	__u32 bucket99;
+};
 
 struct cfg_value {
 	__u8 icmp_tracking_enabled;
@@ -32,6 +49,7 @@ struct cfg_value {
 	__u8 enable_bpf_dns_parser;
 	__u8 icmp_v6_info;
 	__u8 pad;
+	struct tcp_send_check_sample_cfg tcp;
 };
 
 struct {

@@ -68,8 +68,9 @@ func StatsEnabled() bool {
 	return StatsInterval > 0
 }
 
-func ConfigureMaps() error {
-	ConfigureSockStatSampler(StatsInterval,
+func ConfigureMaps(cfg *networkapi.ConfigValue) error {
+	ConfigureSockStatSampler(cfg,
+		StatsInterval,
 		WatermarksEnable,
 		WatermarksWindowSize,
 		WatermarksBurstTriggerMult,
@@ -93,7 +94,7 @@ func ConfigureSensor() error {
 	return nil
 }
 
-func UnloadSensor(tp tracingpolicy.TracingPolicy) error {
+func UnloadSensor(cfg *networkapi.ConfigValue, tp tracingpolicy.TracingPolicy) error {
 	TimestampEnabled = false
 	var err error
 
@@ -125,7 +126,7 @@ func UnloadSensor(tp tracingpolicy.TracingPolicy) error {
 	DisableAccept = false
 	DisableListen = false
 	if enterpriseOption.Config.Layer3CLIEnable {
-		ConfigureMaps()
+		ConfigureMaps(cfg)
 	}
 	return err
 }
@@ -165,7 +166,6 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		tcpconfig.TLSContext,
 		tcpconfig.TLSBottles,
 		tcpconfig.TLSBottleStats,
-		tcpconfig.SendCheckSampler,
 		tcpconfig.ProcessNetworkWatermarksMap,
 		tcpconfig.FinRxMap,
 		tcpconfig.TcpSocketMap,

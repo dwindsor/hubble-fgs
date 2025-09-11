@@ -75,40 +75,6 @@ func (s *statsManager) disable() {
 	}
 }
 
-type SockStatKey struct {
-	Zero uint32
-}
-
-func (k *SockStatKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
-
-type SockStatValue struct {
-	WatermarksEnable           uint8
-	RTTEnable                  uint8
-	Pad                        [6]uint8
-	WatermarksAvgWindowSize    uint64
-	WatermarksWindowSizeNs     uint64
-	WatermarksBurstTriggerMult uint64
-	WatermarksDipTriggerMult   uint64
-	RttBucket0                 uint32
-	RttBucket1                 uint32
-	RttBucket2                 uint32
-	RttBucket3                 uint32
-	RttBucket4                 uint32
-	RttBucket5                 uint32
-	RttBucket6                 uint32
-	RttBucket7                 uint32
-}
-
-func (v *SockStatValue) String() string {
-	return fmt.Sprintf(
-		"WatermarksEnable: %d, "+
-			"WatermarksAvgWindowSize: %d, "+
-			"WatermarksWindowSizeNs: %d, "+
-			"WatermarksBurstTriggerMult: %d, "+
-			"WatermarksDipTriggerMult: %d",
-		v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
-}
-
 func socketStatsToIPWithStatsEventUnix(k *networkapi.TcpKey, v *networkapi.TcpValue, stats *networkapi.MsgSocketStats) *grpc.MsgIPWithStatsEventUnix {
 	unix := grpc.MsgIPWithStatsEventUnix{}
 	unix.Msg = &networkapi.MsgIPWithStatsEvent{}
@@ -353,17 +319,8 @@ func (s *statsManager) correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (gr
 	return newTcp, nil
 }
 
-func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, watermarksAvgWindowSize uint64,
+func ConfigureSockStatSampler(cfg *networkapi.ConfigValue, sampleRate time.Duration, watermarksEnable bool, watermarksAvgWindowSize uint64,
 	burstTriggerMult uint64, dipTriggerMult uint64, rttMax, rttMin uint32) error {
-	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), tcpconfig.SendCheckSampler.Name), nil)
-	if err != nil {
-		return err
-	}
-	defer m.Close()
-
-	key := &SockStatKey{
-		Zero: uint32(0),
-	}
 	watermarksEnableVar := uint8(0)
 	if watermarksEnable {
 		watermarksEnableVar = 1
@@ -377,7 +334,7 @@ func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 		rttEnable = 1
 	}
 
-	value := &SockStatValue{
+	cfg.TCP = networkapi.TCPSockStatValue{
 		WatermarksEnable:           watermarksEnableVar,
 		RTTEnable:                  rttEnable,
 		WatermarksAvgWindowSize:    watermarksAvgWindowSize,
@@ -393,7 +350,6 @@ func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 		RttBucket6:                 uint32((rttRange * .90) + fRttMin),
 		RttBucket7:                 uint32((rttRange * .99) + fRttMin),
 	}
-	m.Put(key, value)
 	logger.GetLogger().Info("Configured TCP sock statistic sampler", "time", sampleRate)
 	logger.GetLogger().Info("Configured TCP watermarks",
 		"enable", watermarksEnable,
@@ -403,14 +359,14 @@ func ConfigureSockStatSampler(sampleRate time.Duration, watermarksEnable bool, w
 	logger.GetLogger().Info("Configured RTT buckets",
 		"rttMin", rttMin,
 		"rttRange", rttRange,
-		"bucket0", value.RttBucket0,
-		"bucket1", value.RttBucket1,
-		"bucket2", value.RttBucket2,
-		"bucket3", value.RttBucket3,
-		"bucket4", value.RttBucket4,
-		"bucket5", value.RttBucket5,
-		"bucket6", value.RttBucket6,
-		"bucket7", value.RttBucket7)
+		"bucket0", cfg.TCP.RttBucket0,
+		"bucket1", cfg.TCP.RttBucket1,
+		"bucket2", cfg.TCP.RttBucket2,
+		"bucket3", cfg.TCP.RttBucket3,
+		"bucket4", cfg.TCP.RttBucket4,
+		"bucket5", cfg.TCP.RttBucket5,
+		"bucket6", cfg.TCP.RttBucket6,
+		"bucket7", cfg.TCP.RttBucket7)
 
 	// Configure the TCP stats collector that walks the TCP BPF map every
 	// time.Durations and post statistics about that connections. This is

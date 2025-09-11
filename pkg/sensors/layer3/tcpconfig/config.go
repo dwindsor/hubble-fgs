@@ -191,7 +191,6 @@ var (
 	TLSBottleStats = program.MapBuilder("tg_bottle_map_stats", TcpSockops)
 
 	// Maps for watermarks detection
-	SendCheckSampler            = program.MapBuilder("tg_l3_tcp_cfg", SendCheck4)
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_l3_wtmk", SendCheck4)
 
 	// Map for disabling events

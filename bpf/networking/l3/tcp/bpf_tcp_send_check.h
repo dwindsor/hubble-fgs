@@ -29,9 +29,9 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	struct socketmap_value process = { 0 };
 	struct tcp_send_check_sample_cfg *cfg;
 	struct tcpsocketmap_value *socket;
+	struct cfg_value *l3cfg;
 	struct tcp_sock *tcp;
 	__u32 rcv_wnd;
-	int zero = 0;
 	u32 txs = 0;
 	u64 cookie;
 	u8 state;
@@ -85,35 +85,38 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 	probe_read_kernel(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
 	probe_read_kernel(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
 
-	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_l3_tcp_cfg, &zero);
-	process.create_time = socket->stats.create_time;
-	process.key = socket->key;
-	process.protocol = socket->tuple.proto;
-	process.version = socket->version;
-	if (cfg && cfg->watermarksEnable && socket->key.pid != 0) {
-		struct process_network_watermarks_config c = {
-			.avg_window_size_ms =
-				cfg->watermarksAvgWindowSize,
-			.window_size =
-				cfg->watermarksWindowSizeNs,
-			.burst_trigger_mult =
-				cfg->watermarksBurstTriggerMult,
-			.dip_trigger_mult =
-				cfg->watermarksDipTriggerMult,
-		};
-		if (tcp_bytes_sent > socket->stats.bytes_sent) {
-			process_network_watermarks(
-				ctx, &process, IPPROTO_TCP,
-				WATERMARKS_KEY_SEND_EGRESS,
-				tcp_bytes_sent - socket->stats.bytes_sent,
-				&c);
-		}
-		if (tcp_bytes_received > socket->stats.bytes_received) {
-			process_network_watermarks(
-				ctx, &process, IPPROTO_TCP,
-				WATERMARKS_KEY_SEND_INGRESS,
-				tcp_bytes_received - socket->stats.bytes_received,
-				&c);
+	l3cfg = getl3cfg();
+	if (l3cfg) {
+		cfg = &l3cfg->tcp;
+		process.create_time = socket->stats.create_time;
+		process.key = socket->key;
+		process.protocol = socket->tuple.proto;
+		process.version = socket->version;
+		if (cfg->watermarksEnable && socket->key.pid != 0) {
+			struct process_network_watermarks_config c = {
+				.avg_window_size_ms =
+					cfg->watermarksAvgWindowSize,
+				.window_size =
+					cfg->watermarksWindowSizeNs,
+				.burst_trigger_mult =
+					cfg->watermarksBurstTriggerMult,
+				.dip_trigger_mult =
+					cfg->watermarksDipTriggerMult,
+			};
+			if (tcp_bytes_sent > socket->stats.bytes_sent) {
+				process_network_watermarks(
+					ctx, &process, IPPROTO_TCP,
+					WATERMARKS_KEY_SEND_EGRESS,
+					tcp_bytes_sent - socket->stats.bytes_sent,
+					&c);
+			}
+			if (tcp_bytes_received > socket->stats.bytes_received) {
+				process_network_watermarks(
+					ctx, &process, IPPROTO_TCP,
+					WATERMARKS_KEY_SEND_INGRESS,
+					tcp_bytes_received - socket->stats.bytes_received,
+					&c);
+			}
 		}
 	}
 	tcp_socketmap_stats(skp, socket);

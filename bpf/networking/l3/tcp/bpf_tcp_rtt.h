@@ -28,14 +28,16 @@ __tcp_ack_update_rtt(void *ctx, struct tcp_sock *skp, u32 flag, s64 seq_rtt_us, 
 	struct tcp_send_check_sample_cfg *cfg;
 	struct tcp_options_received rx_opt;
 	struct tcpsocketmap_value *socket;
+	struct cfg_value *l3cfg;
 	u64 tcp_time_stamp;
 	s64 rtt_us = -1;
-	int zero = 0;
 	u64 cookie;
 
-	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(
-		&tg_l3_tcp_cfg, &zero);
-	if (!cfg || !cfg->rttEnable)
+	l3cfg = getl3cfg();
+	if (!l3cfg)
+		return 0;
+	cfg = &l3cfg->tcp;
+	if (!cfg->rttEnable)
 		return 0;
 
 	/* In TCP we use the struct sock address as the socket cookie. */

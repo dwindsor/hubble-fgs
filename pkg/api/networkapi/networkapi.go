@@ -309,15 +309,44 @@ type ConfigKey struct {
 
 func (k *ConfigKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
 
+type TCPSockStatValue struct {
+	WatermarksEnable           uint8    `align:"watermarksEnable"`
+	RTTEnable                  uint8    `align:"rttEnable"`
+	Pad                        [6]uint8 `align:"pad"`
+	WatermarksAvgWindowSize    uint64   `align:"watermarksAvgWindowSize"`
+	WatermarksWindowSizeNs     uint64   `align:"watermarksWindowSizeNs"`
+	WatermarksBurstTriggerMult uint64   `align:"watermarksBurstTriggerMult"`
+	WatermarksDipTriggerMult   uint64   `align:"watermarksDipTriggerMult"`
+	RttBucket0                 uint32   `align:"bucket00"`
+	RttBucket1                 uint32   `align:"bucket01"`
+	RttBucket2                 uint32   `align:"bucket10"`
+	RttBucket3                 uint32   `align:"bucket25"`
+	RttBucket4                 uint32   `align:"bucket50"`
+	RttBucket5                 uint32   `align:"bucket75"`
+	RttBucket6                 uint32   `align:"bucket90"`
+	RttBucket7                 uint32   `align:"bucket99"`
+}
+
+func (v *TCPSockStatValue) String() string {
+	return fmt.Sprintf(
+		"WatermarksEnable: %d, "+
+			"WatermarksAvgWindowSize: %d, "+
+			"WatermarksWindowSizeNs: %d, "+
+			"WatermarksBurstTriggerMult: %d, "+
+			"WatermarksDipTriggerMult: %d",
+		v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
+}
+
 type ConfigValue struct {
-	EnableIcmpTracking uint8 `align:"icmp_tracking_enabled"`
-	IcmpNetMatch       uint8 `align:"icmp_net_match"`
-	RawEnabled         uint8 `align:"raw_enabled"`
-	RawReportClose     uint8 `align:"raw_report_close"`
-	UdpReportClose     uint8 `align:"udp_report_close"`
-	EnableBPFDNSParser uint8 `align:"enable_bpf_dns_parser"`
-	ICMPV6Info         uint8 `align:"icmp_v6_info"`
-	Pad                uint8 `align:"pad"`
+	EnableIcmpTracking uint8            `align:"icmp_tracking_enabled"`
+	IcmpNetMatch       uint8            `align:"icmp_net_match"`
+	RawEnabled         uint8            `align:"raw_enabled"`
+	RawReportClose     uint8            `align:"raw_report_close"`
+	UdpReportClose     uint8            `align:"udp_report_close"`
+	EnableBPFDNSParser uint8            `align:"enable_bpf_dns_parser"`
+	ICMPV6Info         uint8            `align:"icmp_v6_info"`
+	Pad                uint8            `align:"pad"`
+	TCP                TCPSockStatValue `align:"tcp"`
 }
 
 func (v *ConfigValue) String() string {

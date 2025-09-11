@@ -131,6 +131,7 @@ int tcp_handler_send(struct __sk_buff *skb)
 	struct tcp_send_check_sample_cfg *cfg;
 	struct tcpsocketmap_value *socket;
 	struct handler_vars *vars;
+	struct cfg_value *l3cfg;
 	struct tcp_sock *tcp;
 	struct sock *sk;
 	__u32 rcv_wnd;
@@ -175,36 +176,39 @@ int tcp_handler_send(struct __sk_buff *skb)
 	if (!rcv_wnd && state == TCP_ESTABLISHED)
 		socket->stats.zero_window++;
 
-	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_l3_tcp_cfg, &zero);
-	if (cfg && cfg->watermarksEnable && socket->key.pid != 0) {
-		struct socketmap_value process = {
-			.key.ktime = socket->key.ktime,
-			.key.pid = socket->key.pid,
-		};
-		struct process_network_watermarks_config c = {
-			.avg_window_size_ms =
-				cfg->watermarksAvgWindowSize,
-			.window_size =
-				cfg->watermarksWindowSizeNs,
-			.burst_trigger_mult =
-				cfg->watermarksBurstTriggerMult,
-			.dip_trigger_mult =
-				cfg->watermarksDipTriggerMult,
-		};
+	l3cfg = getl3cfg();
+	if (l3cfg) {
+		cfg = &l3cfg->tcp;
+		if (cfg->watermarksEnable && socket->key.pid != 0) {
+			struct socketmap_value process = {
+				.key.ktime = socket->key.ktime,
+				.key.pid = socket->key.pid,
+			};
+			struct process_network_watermarks_config c = {
+				.avg_window_size_ms =
+					cfg->watermarksAvgWindowSize,
+				.window_size =
+					cfg->watermarksWindowSizeNs,
+				.burst_trigger_mult =
+					cfg->watermarksBurstTriggerMult,
+				.dip_trigger_mult =
+					cfg->watermarksDipTriggerMult,
+			};
 
-		if (tcp_bytes_sent > socket->stats.bytes_sent) {
-			process_network_watermarks(
-				skb, &process, IPPROTO_TCP,
-				WATERMARKS_KEY_SEND_EGRESS,
-				tcp_bytes_sent - socket->stats.bytes_sent,
-				&c);
-		}
-		if (tcp_bytes_received > socket->stats.bytes_received) {
-			process_network_watermarks(
-				skb, &process, IPPROTO_TCP,
-				WATERMARKS_KEY_SEND_INGRESS,
-				tcp_bytes_received - socket->stats.bytes_received,
-				&c);
+			if (tcp_bytes_sent > socket->stats.bytes_sent) {
+				process_network_watermarks(
+					skb, &process, IPPROTO_TCP,
+					WATERMARKS_KEY_SEND_EGRESS,
+					tcp_bytes_sent - socket->stats.bytes_sent,
+					&c);
+			}
+			if (tcp_bytes_received > socket->stats.bytes_received) {
+				process_network_watermarks(
+					skb, &process, IPPROTO_TCP,
+					WATERMARKS_KEY_SEND_INGRESS,
+					tcp_bytes_received - socket->stats.bytes_received,
+					&c);
+			}
 		}
 	}
 	cgrp_tcp_socketmap_stats(sk, socket);

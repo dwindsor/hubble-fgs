@@ -85,7 +85,7 @@ func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
 		configured = false
 	}
 	if tcpEnabled {
-		err := tcp.UnloadSensor(policy)
+		err := tcp.UnloadSensor(&config, policy)
 		if err != nil {
 			return err
 		}
@@ -523,7 +523,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	config := layer3cfg.ConfigureSettings(rawEnabled, reportRawClose, udpEnabled)
 
 	if tcpEnabled && (spec == nil || spec.Parser.Tcp != nil) {
-		if err := tcp.ConfigureMaps(); err != nil {
+		if err := tcp.ConfigureMaps(&config); err != nil {
 			return fmt.Errorf("failed to configure TCP maps: %w", err)
 		}
 		l3cfg.tcp4Enabled = 1

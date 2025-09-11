@@ -116,10 +116,9 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 	socketTupleHintMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_tuphnt", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
 	tcpMonMap := SensorMapByProgName(sensorProgs, "tcpmon_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
 	execveMap := SensorMapByProgName(sensorProgs, "execve_map", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
-	cfgMap := SensorMapByProgName(sensorProgs, "tg_l3_cfg", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg})
+	cfgMap := SensorMapByProgName(sensorProgs, "tg_l3_cfg", []string{tcpSockopsProg, tcpSecurityGraft, fdLookupProg, cgroupEgressProg, cgroupIngressProg})
 	verMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_ver", []string{tcpSecurityGraft, fdLookupProg})
 	acceptMap := SensorMapByProgName(sensorProgs, "tg_l3_tcp_accsk", []string{tcpSecurityAccept, tcpSecurityGraft})
-	sendCheckSamplerMap := SensorMapByProgName(sensorProgs, "tg_l3_tcp_cfg", []string{cgroupEgressProg, cgroupIngressProg})
 	fdLookupConfigMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_lookup", []string{fdLookupProg})
 
 	if withRTT {
@@ -135,7 +134,7 @@ func sockopsSensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, withRaw
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpRttProg,
 		})...)
-		sendCheckSamplerMap.Progs = append(sendCheckSamplerMap.Progs, getMapIndicesByName(sensorProgs, []string{
+		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpRttProg,
 		})...)
 	}
@@ -326,7 +325,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 	})
 
 	cfgMap := SensorMapByProgName(sensorProgs, "tg_l3_cfg", []string{
-		tcpConnectProg, tcpListenProg, tcpSecurityGraft, fdLookupProg,
+		tcpConnectProg, tcpCloseProg, tcpListenProg, tcpSecurityGraft, fdLookupProg,
 	})
 
 	verMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_ver", []string{
@@ -338,8 +337,6 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 	})
 
 	fdLookupConfigMap := SensorMapByProgName(sensorProgs, "tg_l3_sk_lookup", []string{fdLookupProg})
-
-	var sendCheckSamplerMap tus.SensorMap
 
 	if !utils.SupportCGroupSKBProbeRead() { // <=5.4 special snowflake
 		socketMap.Progs = append(socketMap.Progs, getMapIndicesByName(sensorProgs, []string{
@@ -354,9 +351,9 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		tcpSocketMap.Progs = append(tcpSocketMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpSendCheck4Prog, tcpSendCheck6Prog,
 		})...)
-		sendCheckSamplerMap = SensorMapByProgName(sensorProgs, "tg_l3_tcp_cfg", []string{tcpSendCheck4Prog, tcpSendCheck6Prog})
+		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{tcpSendCheck4Prog, tcpSendCheck6Prog})...)
 	} else {
-		sendCheckSamplerMap = SensorMapByProgName(sensorProgs, "tg_l3_tcp_cfg", []string{cgroupEgressProg, cgroupIngressProg})
+		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{cgroupEgressProg, cgroupIngressProg})...)
 	}
 
 	if withRTT {
@@ -372,7 +369,7 @@ func kprobeOrFentrySensorMaps(withRTT bool, withUdpLatency bool, withIcmp bool, 
 		tcpMonMap.Progs = append(tcpMonMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpRttProg,
 		})...)
-		sendCheckSamplerMap.Progs = append(sendCheckSamplerMap.Progs, getMapIndicesByName(sensorProgs, []string{
+		cfgMap.Progs = append(cfgMap.Progs, getMapIndicesByName(sensorProgs, []string{
 			tcpRttProg,
 		})...)
 	}

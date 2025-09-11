@@ -164,7 +164,7 @@ get_socket_stats(struct sock *sk,
 		 struct msg_socket_stats *stats)
 {
 	struct tcp_send_check_sample_cfg *cfg;
-	__u32 zero = 0;
+	struct cfg_value *l3cfg;
 	int i;
 
 	get_tcp_stats(stats, sk);
@@ -175,24 +175,24 @@ get_socket_stats(struct sock *sk,
 	//stats->tozerowin populated in-band TCP hook watching for zero window
 	stats->zero_window = socket->stats.zero_window;
 
-	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tg_l3_tcp_cfg, &zero);
-	if (cfg && cfg->rttEnable) {
+	l3cfg = getl3cfg();
+	if (l3cfg) {
+		cfg = &l3cfg->tcp;
+		if (cfg->rttEnable) {
 #pragma unroll
-		for (i = 0; i < 8; i++) {
-			stats->rtt_buckets[i] = socket->stats.rtt_buckets[i];
-		}
-		stats->rtt_sum = socket->stats.rtt_sum;
-	} else {
+			for (i = 0; i < 8; i++)
+				stats->rtt_buckets[i] = socket->stats.rtt_buckets[i];
+			stats->rtt_sum = socket->stats.rtt_sum;
+		} else {
 #pragma unroll
-		for (i = 0; i < 8; i++) {
-			stats->rtt_buckets[i] = 0;
+			for (i = 0; i < 8; i++)
+				stats->rtt_buckets[i] = 0;
+			stats->rtt_sum = 0;
 		}
-		stats->rtt_sum = 0;
 	}
 #pragma unroll
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < 8; i++)
 		stats->latency_buckets[i] = socket->stats.latency_buckets[i];
-	}
 	stats->latency_sum = socket->stats.latency_sum;
 }
 
