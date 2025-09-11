@@ -11,6 +11,8 @@
 package tetra
 
 import (
+	"context"
+
 	"github.com/cilium/tetragon/cmd/tetra/bugtool"
 	"github.com/cilium/tetragon/cmd/tetra/cgtracker"
 	"github.com/cilium/tetragon/cmd/tetra/debug"
@@ -18,7 +20,13 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/policyfilter"
 	"github.com/cilium/tetragon/cmd/tetra/rthooks"
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
+	bugtoolpkg "github.com/cilium/tetragon/pkg/bugtool"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/spf13/cobra"
+
+	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/common"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/network"
 
 	"github.com/isovalent/hubble-fgs/cmd/tetra/dns"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/exec"
@@ -31,7 +39,13 @@ import (
 
 func addCommands(rootCmd *cobra.Command) {
 	addBaseCommands(rootCmd)
-	rootCmd.AddCommand(bugtool.New().Command())
+	rootCmd.AddCommand(bugtool.New().
+		WithCommandAction(ifConfig).
+		WithGRPCAction(listAlertRules).
+		WithGRPCAction(getAppModel).
+		WithGRPCAction(listSandboxPolicies).
+		WithGRPCAction(listNetworkPolicies).
+		Command())
 	rootCmd.AddCommand(tracingpolicy.New())
 	rootCmd.AddCommand(file.New())
 	rootCmd.AddCommand(policyfilter.New())
@@ -48,4 +62,51 @@ func addCommands(rootCmd *cobra.Command) {
 	debugCmd.AddCommand(dns.NewDNSCmd())
 	rootCmd.AddCommand(debugCmd)
 	rootCmd.AddCommand(mandate.New())
+}
+
+func ifConfig(commander bugtoolpkg.Commander) error {
+	return commander.ExecCmd("ifconfig.out", "ifconfig", "-a")
+}
+
+func listAlertRules(grpcer bugtoolpkg.GRPCer) error {
+	res, err := alertrule.ListAlertRules()
+	if err != nil {
+		return err
+	}
+	fname := "alert_rules.json"
+	return grpcer.TarAddJson(fname, res)
+}
+
+func getAppModel(grpcer bugtoolpkg.GRPCer) error {
+	c, err := exec.NewApplicationModelClient(context.Background())
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	res, err := c.Client.GetModel(c.Ctx, &appModelV1.GetModelRequest{})
+	if err != nil {
+		return err
+	}
+
+	fname := "app_model.json"
+	return grpcer.TarAddJson(fname, res)
+}
+
+func listSandboxPolicies(grpcer bugtoolpkg.GRPCer) error {
+	res, err := common.ListTetragonPolicies()
+	if err != nil {
+		return err
+	}
+	fname := "tracing_policies.json"
+	return grpcer.TarAddJson(fname, res)
+}
+
+func listNetworkPolicies(grpcer bugtoolpkg.GRPCer) error {
+	res, err := network.ListNetworkPolicies()
+	if err != nil {
+		return err
+	}
+	fname := "network_policies.json"
+	return grpcer.TarAddJson(fname, res)
 }

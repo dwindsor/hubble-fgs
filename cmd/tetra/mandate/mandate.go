@@ -82,7 +82,7 @@ func statusCmd() *cobra.Command {
 				if output == "text" {
 					fmt.Printf("alerts:\n")
 				}
-				alertrule.ListAlertRules(cmd, output, mandate.OrigAlertName)
+				alertrule.ListAlerts(cmd, output, mandate.OrigAlertName)
 			}
 
 			return nil

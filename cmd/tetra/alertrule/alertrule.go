@@ -83,7 +83,7 @@ func New() *cobra.Command {
 		Short: "list loaded alert rules",
 		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return ListAlertRules(
+			return ListAlerts(
 				cmd, "text",
 				func(n string) (string, bool) { return n, true },
 			)
@@ -129,7 +129,7 @@ func New() *cobra.Command {
 	return cmd
 }
 
-func PrintAlertRules(
+func printAlertRules(
 	output io.Writer,
 	rules []*tetragon.AlertRule,
 ) {
@@ -146,20 +146,14 @@ func PrintAlertRules(
 }
 
 // ListAlerts is a helper to list a subset of the alert rules
-func ListAlertRules(
+func ListAlerts(
 	cmd *cobra.Command,
 	output string,
 	mapName func(name string) (string, bool), // mapName filters and renames policies
 ) error {
-	c, err := newClient()
+	res, err := ListAlertRules()
 	if err != nil {
-		return fmt.Errorf("failed to create gRPC client: %w", err)
-	}
-	defer c.close()
-
-	res, err := c.client.ListAlertRules(c.ctx, &tetragon.ListAlertRulesRequest{})
-	if err != nil || res == nil {
-		return fmt.Errorf("failed to list alert rules: %w", err)
+		return err
 	}
 
 	// keep only the rules we want in the list, and change their name
@@ -181,7 +175,21 @@ func ListAlertRules(
 		}
 		cmd.Println(string(b))
 	case "text":
-		PrintAlertRules(cmd.OutOrStdout(), res.Rules)
+		printAlertRules(cmd.OutOrStdout(), res.Rules)
 	}
 	return nil
+}
+
+func ListAlertRules() (*tetragon.ListAlertRulesResponse, error) {
+	c, err := newClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
+	}
+	defer c.close()
+
+	res, err := c.client.ListAlertRules(c.ctx, &tetragon.ListAlertRulesRequest{})
+	if err != nil || res == nil {
+		return nil, fmt.Errorf("failed to list alert rules: %w", err)
+	}
+	return res, nil
 }

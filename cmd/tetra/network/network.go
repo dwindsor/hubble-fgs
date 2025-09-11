@@ -141,15 +141,9 @@ func ListNetworkPolicy(
 	output string,
 	mapName func(name string) (string, bool), // mapName filters and renames policies
 ) error {
-	c, err := newClient()
+	res, err := ListNetworkPolicies()
 	if err != nil {
-		return fmt.Errorf("failed to create gRPC client: %w", err)
-	}
-	defer c.close()
-
-	res, err := c.client.ListNetworkPolicy(c.ctx, &tetragon.ListNetworkPolicyRequest{})
-	if err != nil || res == nil {
-		return fmt.Errorf("failed to list network policy: %w", err)
+		return err
 	}
 
 	// keep only the rules we want in the list, and change their name
@@ -174,4 +168,18 @@ func ListNetworkPolicy(
 		PrintNetworkPolicy(cmd.OutOrStdout(), res.Info)
 	}
 	return nil
+}
+
+func ListNetworkPolicies() (*tetragon.ListNetworkPolicyResponse, error) {
+	c, err := newClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
+	}
+	defer c.close()
+
+	res, err := c.client.ListNetworkPolicy(c.ctx, &tetragon.ListNetworkPolicyRequest{})
+	if err != nil || res == nil {
+		return nil, fmt.Errorf("failed to list network policy: %w", err)
+	}
+	return res, nil
 }

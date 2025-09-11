@@ -26,15 +26,9 @@ func ListPolicies(
 	output string,
 	mapName func(name string) (string, bool), // mapName filters and renames policies
 ) error {
-	c, err := common.NewClientWithDefaultContextAndAddress()
+	res, err := ListTetragonPolicies()
 	if err != nil {
-		return fmt.Errorf("failed to create gRPC client: %w", err)
-	}
-	defer c.Close()
-
-	res, err := c.Client.ListTracingPolicies(c.Ctx, &tetragon.ListTracingPoliciesRequest{})
-	if err != nil || res == nil {
-		return fmt.Errorf("failed to list tracing policies: %w", err)
+		return err
 	}
 
 	// keep only the policies we want in the list, and change their name
@@ -63,4 +57,18 @@ func ListPolicies(
 		)
 	}
 	return nil
+}
+
+func ListTetragonPolicies() (*tetragon.ListTracingPoliciesResponse, error) {
+	c, err := common.NewClientWithDefaultContextAndAddress()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
+	}
+	defer c.Close()
+
+	res, err := c.Client.ListTracingPolicies(c.Ctx, &tetragon.ListTracingPoliciesRequest{})
+	if err != nil || res == nil {
+		return nil, fmt.Errorf("failed to list tracing policies: %w", err)
+	}
+	return res, nil
 }
