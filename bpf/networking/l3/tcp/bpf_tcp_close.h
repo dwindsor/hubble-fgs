@@ -22,15 +22,16 @@
 #include "bpf_tracing.h"
 #include "parsers/http/http.h"
 #include "parsers/bottle.h"
-#include "bpf_tcp_event_config.h"
 #include "bpf_tcp_state.h"
+#include "config.h"
 
 static inline __attribute__((always_inline)) int
 __event_tcp_close(void *ctx, struct sock *skp, int state)
 {
-	struct event_disable_config *event_cfg;
+	struct tcp_event_disable_config *event_cfg;
 	struct msg_ip_with_stats_event *val;
 	struct tcpsocketmap_value *socket;
+	struct cfg_value *l3cfg;
 	unsigned char old_state;
 	u32 zero = 0;
 	size_t size;
@@ -85,10 +86,10 @@ __event_tcp_close(void *ctx, struct sock *skp, int state)
 	get_socket_stats(skp, socket, &val->stats);
 	socket->closed = 1;
 
-	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_l3_tcp_dsble, &zero);
-	if (!event_cfg)
+	l3cfg = getl3cfg();
+	if (!l3cfg)
 		return 0;
+	event_cfg = &l3cfg->tcp_disable;
 
 	size = sizeof(struct msg_ip_with_stats_event);
 	if (!event_cfg->disableClose) {

@@ -337,16 +337,33 @@ func (v *TCPSockStatValue) String() string {
 		v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
 }
 
+type TCPEventDisableValue struct {
+	DisableConnect uint8    `align:"disableConnect"`
+	DisableClose   uint8    `align:"disableClose"`
+	DisableAccept  uint8    `align:"disableAccept"`
+	DisableListen  uint8    `align:"disableListen"`
+	Pad            [4]uint8 `align:"pad"` // Pad to 64bit boundary for sanity.
+}
+
+func (v *TCPEventDisableValue) String() string {
+	return fmt.Sprintf("DisableConnect: %d, "+
+		"DisableClose: %d "+
+		"DisableAccept: %d, "+
+		"DisableListen: %d, ",
+		v.DisableConnect, v.DisableClose, v.DisableAccept, v.DisableListen)
+}
+
 type ConfigValue struct {
-	EnableIcmpTracking uint8            `align:"icmp_tracking_enabled"`
-	IcmpNetMatch       uint8            `align:"icmp_net_match"`
-	RawEnabled         uint8            `align:"raw_enabled"`
-	RawReportClose     uint8            `align:"raw_report_close"`
-	UdpReportClose     uint8            `align:"udp_report_close"`
-	EnableBPFDNSParser uint8            `align:"enable_bpf_dns_parser"`
-	ICMPV6Info         uint8            `align:"icmp_v6_info"`
-	Pad                uint8            `align:"pad"`
-	TCP                TCPSockStatValue `align:"tcp"`
+	EnableIcmpTracking uint8                `align:"icmp_tracking_enabled"`
+	IcmpNetMatch       uint8                `align:"icmp_net_match"`
+	RawEnabled         uint8                `align:"raw_enabled"`
+	RawReportClose     uint8                `align:"raw_report_close"`
+	UdpReportClose     uint8                `align:"udp_report_close"`
+	EnableBPFDNSParser uint8                `align:"enable_bpf_dns_parser"`
+	ICMPV6Info         uint8                `align:"icmp_v6_info"`
+	Pad                uint8                `align:"pad"`
+	TCP                TCPSockStatValue     `align:"tcp"`
+	TCPDisable         TCPEventDisableValue `align:"tcp_disable"`
 }
 
 func (v *ConfigValue) String() string {

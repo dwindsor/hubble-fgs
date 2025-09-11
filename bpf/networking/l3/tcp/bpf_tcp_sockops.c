@@ -16,6 +16,7 @@
 #include "bpf_ktime.h"
 #include "parsers/http/http_parser.h"
 #include "parsers/bottle.h"
+#include "config.h"
 
 int skops_socket(u64 cookie, struct msg_ip_event *val, struct socketmap_value *socket)
 {
@@ -86,10 +87,11 @@ int skops_tuple_with_stats(u64 cookie, struct msg_ip_with_stats_event *val, stru
 
 int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 {
-	struct event_disable_config *event_cfg;
+	struct tcp_event_disable_config *event_cfg;
 	struct socketmap_value *socket = 0;
 	struct tcpsocketmap_value *v;
 	struct msg_ip_event *val;
+	struct cfg_value *l3cfg;
 	u64 cookie, __cookie;
 	u32 zero = 0;
 
@@ -118,10 +120,10 @@ int event_tcp_sockops_listen(struct bpf_sock_ops *skops)
 	skops_socket(cookie, val, socket);
 	skops_tuple(cookie, val, skops);
 
-	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_l3_tcp_dsble, &zero);
-	if (!event_cfg)
+	l3cfg = getl3cfg();
+	if (!l3cfg)
 		return 0;
+	event_cfg = &l3cfg->tcp_disable;
 
 	if (!event_cfg->disableListen) {
 		perf_event_output_metric(skops, ISO_MSG_OP_LISTEN, &tcpmon_map, BPF_F_CURRENT_CPU, val,
@@ -140,8 +142,8 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 {
 	struct destination_endpoint_value *dest;
 	struct socketmap_value *socket = 0;
-	struct msg_execve_key *key;
 	struct msg_ip_with_tnp_event *val;
+	struct msg_execve_key *key;
 	u64 cookie, __cookie;
 	__u32 zero = 0;
 
@@ -204,9 +206,10 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 
 int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 {
-	struct event_disable_config *event_cfg;
+	struct tcp_event_disable_config *event_cfg;
 	struct msg_ip_with_stats_event *val;
 	struct tcpsocketmap_value *socket;
+	struct cfg_value *l3cfg;
 	int old_state, state;
 	u64 cookie, __cookie;
 	u32 zero = 0;
@@ -252,10 +255,10 @@ int event_tcp_close_sockops(struct bpf_sock_ops *skops)
 	val->close_time = tg_get_ktime();
 	socket->closed = 1;
 
-	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_l3_tcp_dsble, &zero);
-	if (!event_cfg)
+	l3cfg = getl3cfg();
+	if (!l3cfg)
 		return 0;
+	event_cfg = &l3cfg->tcp_disable;
 
 	size = sizeof(struct msg_ip_with_stats_event);
 	if (!event_cfg->disableClose) {

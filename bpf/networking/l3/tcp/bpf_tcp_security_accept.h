@@ -23,6 +23,7 @@
 #include "lib/address_family.h"
 #include "bpf_tcp_listen.h"
 #include "bpf_event_map.h"
+#include "config.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -57,10 +58,11 @@ static inline __attribute__((always_inline)) int
 __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 {
 	struct socketmap_value *listen_process = 0;
-	struct event_disable_config *event_cfg;
+	struct tcp_event_disable_config *event_cfg;
 	struct tcpsocketmap_value *accept_socket;
 	struct msg_ip_event *event;
 	u64 now = tg_get_ktime();
+	struct cfg_value *l3cfg;
 	u16 family, protocol;
 	u32 zero = 0;
 
@@ -148,9 +150,10 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	// Don't need to add the tuple because add_socketmap() will already have done so.
 	add_tcpsocketmap(&newcookie, accept_socket, false);
 
-	event_cfg = (struct event_disable_config *)map_lookup_elem(&tg_l3_tcp_dsble, &zero);
-	if (!event_cfg)
+	l3cfg = getl3cfg();
+	if (!l3cfg)
 		return 0;
+	event_cfg = &l3cfg->tcp_disable;
 
 	if (!event_cfg->disableAccept) {
 		size_t size = sizeof(struct msg_ip_event);

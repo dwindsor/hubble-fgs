@@ -193,9 +193,6 @@ var (
 	// Maps for watermarks detection
 	ProcessNetworkWatermarksMap = program.MapBuilder("tg_l3_wtmk", SendCheck4)
 
-	// Map for disabling events
-	EventDisableConfig = program.MapBuilder("tg_l3_tcp_dsble", ConnectKprobe, ConnectFentry, TcpSockops)
-
 	// LPM maps, created in internal/ip
 	Addr6LpmMap = program.MapUserFrom(base.Addr6LpmMap)
 	Addr4LpmMap = program.MapUserFrom(base.Addr4LpmMap)

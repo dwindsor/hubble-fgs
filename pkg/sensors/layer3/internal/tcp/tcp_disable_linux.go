@@ -11,47 +11,12 @@
 package tcp
 
 import (
-	"fmt"
-	"path/filepath"
-
-	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 
-	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/tcpconfig"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 )
 
-type EventDisableKey struct {
-	Zero uint32
-}
-
-func (k *EventDisableKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
-
-type EventDisableValue struct {
-	DisableConnect uint8
-	DisableClose   uint8
-	DisableAccept  uint8
-	DisableListen  uint8
-}
-
-func (v *EventDisableValue) String() string {
-	return fmt.Sprintf("DisableConnect: %d, "+
-		"DisableClose: %d "+
-		"DisableAccept: %d, "+
-		"DisableListen: %d, ",
-		v.DisableConnect, v.DisableClose, v.DisableAccept, v.DisableListen)
-}
-
-func ConfigureTCPDisableEvents(disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) error {
-	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), tcpconfig.EventDisableConfig.Name), nil)
-	if err != nil {
-		return err
-	}
-	defer m.Close()
-
-	key := &EventDisableKey{
-		Zero: uint32(0),
-	}
+func ConfigureTCPDisableEvents(cfg *networkapi.ConfigValue, disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) {
 	disableConnectVar := uint8(0)
 	disableCloseVar := uint8(0)
 	disableAcceptVar := uint8(0)
@@ -70,17 +35,15 @@ func ConfigureTCPDisableEvents(disableConnect bool, disableClose bool, disableAc
 		disableListenVar = 1
 	}
 
-	value := &EventDisableValue{
+	cfg.TCPDisable = networkapi.TCPEventDisableValue{
 		DisableConnect: disableConnectVar,
 		DisableClose:   disableCloseVar,
 		DisableAccept:  disableAcceptVar,
 		DisableListen:  disableListenVar,
 	}
-	m.Put(key, value)
 	logger.GetLogger().Info("Event config:",
 		"disableConnect", disableConnectVar,
 		"disableClose", disableCloseVar,
 		"disableAccept", disableAcceptVar,
 		"disableListen", disableListenVar)
-	return nil
 }

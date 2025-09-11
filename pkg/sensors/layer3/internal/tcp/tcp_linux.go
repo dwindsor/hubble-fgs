@@ -85,7 +85,7 @@ func ConfigureMaps(cfg *networkapi.ConfigValue) error {
 		DisableAccept = !enterpriseOption.Config.EnableNetworkEvents
 		DisableListen = !enterpriseOption.Config.EnableNetworkEvents
 	}
-	ConfigureTCPDisableEvents(DisableConnect, DisableClose, DisableAccept, DisableListen)
+	ConfigureTCPDisableEvents(cfg, DisableConnect, DisableClose, DisableAccept, DisableListen)
 	return nil
 }
 
@@ -169,7 +169,6 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 		tcpconfig.ProcessNetworkWatermarksMap,
 		tcpconfig.FinRxMap,
 		tcpconfig.TcpSocketMap,
-		tcpconfig.EventDisableConfig,
 		tcpconfig.TLSMapStats,
 	}
 

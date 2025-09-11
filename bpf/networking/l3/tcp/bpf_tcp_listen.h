@@ -22,7 +22,7 @@
 #include "lib/tlsmsg.h"
 #include "bpf_fd_to_sk.h"
 #include "bpf_tracing.h"
-#include "bpf_tcp_event_config.h"
+#include "config.h"
 #include "lib/address_family.h"
 #include "bpf_tcp_info.h"
 #include "bpf_network_helpers.h"
@@ -39,13 +39,14 @@ struct {
 static inline __attribute__((always_inline)) int
 __event_sys_listen(void *ctx, struct sock *skp)
 {
-	struct event_disable_config *event_cfg;
+	struct tcp_event_disable_config *event_cfg;
 	struct execve_map_value *process = 0;
 	struct socketmap_value *socket = 0;
 	struct tcpsocketmap_value *v = 0;
 	struct msg_execve_key *key = 0;
 	__u32 pid, ppid = 0, zero = 0;
 	struct msg_ip_event *val;
+	struct cfg_value *l3cfg;
 	bool walker = 0;
 	u16 family;
 	u64 cookie;
@@ -110,10 +111,10 @@ __event_sys_listen(void *ctx, struct sock *skp)
 		probe_read_kernel(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
 				  _(&(skp->__sk_common.skc_v6_rcv_saddr)));
 	}
-	event_cfg = (struct event_disable_config *)map_lookup_elem(
-		&tg_l3_tcp_dsble, &zero);
-	if (!event_cfg)
+	l3cfg = getl3cfg();
+	if (!l3cfg)
 		return 0;
+	event_cfg = &l3cfg->tcp_disable;
 
 	if (!event_cfg->disableListen) {
 		perf_event_output_metric(ctx, ISO_MSG_OP_LISTEN, &tcpmon_map, BPF_F_CURRENT_CPU, val,

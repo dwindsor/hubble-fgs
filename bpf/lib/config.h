@@ -40,6 +40,14 @@ struct tcp_send_check_sample_cfg {
 	__u32 bucket99;
 };
 
+struct tcp_event_disable_config {
+	__u8 disableConnect;
+	__u8 disableClose;
+	__u8 disableAccept;
+	__u8 disableListen;
+	__u32 pad;
+};
+
 struct cfg_value {
 	__u8 icmp_tracking_enabled;
 	__u8 icmp_net_match;
@@ -50,6 +58,7 @@ struct cfg_value {
 	__u8 icmp_v6_info;
 	__u8 pad;
 	struct tcp_send_check_sample_cfg tcp;
+	struct tcp_event_disable_config tcp_disable;
 };
 
 struct {
