@@ -139,6 +139,8 @@ type FimProg struct {
 var mapTypes = map[string]MapType{
 	".rodata":        SkipMap, // possibly due to PATH_BASED_MATCHER and USE_BPF_D_PATH_HELPER
 	".rodata.str1.1": SkipMap,
+	// NB(kkourt): skip this map for now until a better fix exists.
+	"policy_stats": SkipMap,
 
 	"execve_map":         BaseMap,
 	"policy_filter_maps": BaseMap,
