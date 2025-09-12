@@ -431,6 +431,149 @@ func (*ListTracingPoliciesRequest) Descriptor() ([]byte, []int) {
 	return file_tetragon_sensors_proto_rawDescGZIP(), []int{3}
 }
 
+type TracingPolicyActionCounters struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// number of post events generated from the policy
+	Post uint64 `protobuf:"varint,1,opt,name=post,proto3" json:"post,omitempty"`
+	// number of signals sent from the policy
+	Signal uint64 `protobuf:"varint,2,opt,name=signal,proto3" json:"signal,omitempty"`
+	// number of signals that were not sent because the policy was in monitor mode
+	MonitorSignal uint64 `protobuf:"varint,3,opt,name=monitor_signal,json=monitorSignal,proto3" json:"monitor_signal,omitempty"`
+	// number of return overrides
+	Override uint64 `protobuf:"varint,4,opt,name=override,proto3" json:"override,omitempty"`
+	// number of return overrides that did not occur because the policy was in monitor mode
+	MonitorOverride uint64 `protobuf:"varint,5,opt,name=monitor_override,json=monitorOverride,proto3" json:"monitor_override,omitempty"`
+	// number of enforcer notifications triggered from the policy
+	NotifyEnforcer uint64 `protobuf:"varint,6,opt,name=notify_enforcer,json=notifyEnforcer,proto3" json:"notify_enforcer,omitempty"`
+	// number of enforcer notifications that did not occur because the policy was in monitor mode
+	MonitorNotifyEnforcer uint64 `protobuf:"varint,7,opt,name=monitor_notify_enforcer,json=monitorNotifyEnforcer,proto3" json:"monitor_notify_enforcer,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *TracingPolicyActionCounters) Reset() {
+	*x = TracingPolicyActionCounters{}
+	mi := &file_tetragon_sensors_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TracingPolicyActionCounters) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TracingPolicyActionCounters) ProtoMessage() {}
+
+func (x *TracingPolicyActionCounters) ProtoReflect() protoreflect.Message {
+	mi := &file_tetragon_sensors_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TracingPolicyActionCounters.ProtoReflect.Descriptor instead.
+func (*TracingPolicyActionCounters) Descriptor() ([]byte, []int) {
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *TracingPolicyActionCounters) GetPost() uint64 {
+	if x != nil {
+		return x.Post
+	}
+	return 0
+}
+
+func (x *TracingPolicyActionCounters) GetSignal() uint64 {
+	if x != nil {
+		return x.Signal
+	}
+	return 0
+}
+
+func (x *TracingPolicyActionCounters) GetMonitorSignal() uint64 {
+	if x != nil {
+		return x.MonitorSignal
+	}
+	return 0
+}
+
+func (x *TracingPolicyActionCounters) GetOverride() uint64 {
+	if x != nil {
+		return x.Override
+	}
+	return 0
+}
+
+func (x *TracingPolicyActionCounters) GetMonitorOverride() uint64 {
+	if x != nil {
+		return x.MonitorOverride
+	}
+	return 0
+}
+
+func (x *TracingPolicyActionCounters) GetNotifyEnforcer() uint64 {
+	if x != nil {
+		return x.NotifyEnforcer
+	}
+	return 0
+}
+
+func (x *TracingPolicyActionCounters) GetMonitorNotifyEnforcer() uint64 {
+	if x != nil {
+		return x.MonitorNotifyEnforcer
+	}
+	return 0
+}
+
+type TracingPolicyStats struct {
+	state          protoimpl.MessageState       `protogen:"open.v1"`
+	ActionCounters *TracingPolicyActionCounters `protobuf:"bytes,1,opt,name=action_counters,json=actionCounters,proto3" json:"action_counters,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TracingPolicyStats) Reset() {
+	*x = TracingPolicyStats{}
+	mi := &file_tetragon_sensors_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TracingPolicyStats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TracingPolicyStats) ProtoMessage() {}
+
+func (x *TracingPolicyStats) ProtoReflect() protoreflect.Message {
+	mi := &file_tetragon_sensors_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TracingPolicyStats.ProtoReflect.Descriptor instead.
+func (*TracingPolicyStats) Descriptor() ([]byte, []int) {
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *TracingPolicyStats) GetActionCounters() *TracingPolicyActionCounters {
+	if x != nil {
+		return x.ActionCounters
+	}
+	return nil
+}
+
 type TracingPolicyStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// id is the id of the policy
@@ -456,14 +599,16 @@ type TracingPolicyStatus struct {
 	// the amount of kernel memory in bytes used by policy's sensors non-shared BPF maps (memlock)
 	KernelMemoryBytes uint64 `protobuf:"varint,10,opt,name=kernel_memory_bytes,json=kernelMemoryBytes,proto3" json:"kernel_memory_bytes,omitempty"`
 	// current mode of the tracing policy
-	Mode          TracingPolicyMode `protobuf:"varint,11,opt,name=mode,proto3,enum=tetragon.TracingPolicyMode" json:"mode,omitempty"`
+	Mode TracingPolicyMode `protobuf:"varint,11,opt,name=mode,proto3,enum=tetragon.TracingPolicyMode" json:"mode,omitempty"`
+	// stats of the tracing policy
+	Stats         *TracingPolicyStats `protobuf:"bytes,12,opt,name=stats,proto3,oneof" json:"stats,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TracingPolicyStatus) Reset() {
 	*x = TracingPolicyStatus{}
-	mi := &file_tetragon_sensors_proto_msgTypes[4]
+	mi := &file_tetragon_sensors_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -475,7 +620,7 @@ func (x *TracingPolicyStatus) String() string {
 func (*TracingPolicyStatus) ProtoMessage() {}
 
 func (x *TracingPolicyStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[4]
+	mi := &file_tetragon_sensors_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -488,7 +633,7 @@ func (x *TracingPolicyStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TracingPolicyStatus.ProtoReflect.Descriptor instead.
 func (*TracingPolicyStatus) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{4}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *TracingPolicyStatus) GetId() uint64 {
@@ -569,6 +714,13 @@ func (x *TracingPolicyStatus) GetMode() TracingPolicyMode {
 	return TracingPolicyMode_TP_MODE_UNKNOWN
 }
 
+func (x *TracingPolicyStatus) GetStats() *TracingPolicyStats {
+	if x != nil {
+		return x.Stats
+	}
+	return nil
+}
+
 type ListTracingPoliciesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Policies      []*TracingPolicyStatus `protobuf:"bytes,1,rep,name=policies,proto3" json:"policies,omitempty"`
@@ -578,7 +730,7 @@ type ListTracingPoliciesResponse struct {
 
 func (x *ListTracingPoliciesResponse) Reset() {
 	*x = ListTracingPoliciesResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[5]
+	mi := &file_tetragon_sensors_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -590,7 +742,7 @@ func (x *ListTracingPoliciesResponse) String() string {
 func (*ListTracingPoliciesResponse) ProtoMessage() {}
 
 func (x *ListTracingPoliciesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[5]
+	mi := &file_tetragon_sensors_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -603,7 +755,7 @@ func (x *ListTracingPoliciesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTracingPoliciesResponse.ProtoReflect.Descriptor instead.
 func (*ListTracingPoliciesResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{5}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListTracingPoliciesResponse) GetPolicies() []*TracingPolicyStatus {
@@ -622,7 +774,7 @@ type AddTracingPolicyRequest struct {
 
 func (x *AddTracingPolicyRequest) Reset() {
 	*x = AddTracingPolicyRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[6]
+	mi := &file_tetragon_sensors_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -634,7 +786,7 @@ func (x *AddTracingPolicyRequest) String() string {
 func (*AddTracingPolicyRequest) ProtoMessage() {}
 
 func (x *AddTracingPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[6]
+	mi := &file_tetragon_sensors_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -647,7 +799,7 @@ func (x *AddTracingPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddTracingPolicyRequest.ProtoReflect.Descriptor instead.
 func (*AddTracingPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{6}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AddTracingPolicyRequest) GetYaml() string {
@@ -665,7 +817,7 @@ type AddTracingPolicyResponse struct {
 
 func (x *AddTracingPolicyResponse) Reset() {
 	*x = AddTracingPolicyResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[7]
+	mi := &file_tetragon_sensors_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -677,7 +829,7 @@ func (x *AddTracingPolicyResponse) String() string {
 func (*AddTracingPolicyResponse) ProtoMessage() {}
 
 func (x *AddTracingPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[7]
+	mi := &file_tetragon_sensors_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -690,7 +842,7 @@ func (x *AddTracingPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddTracingPolicyResponse.ProtoReflect.Descriptor instead.
 func (*AddTracingPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{7}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{9}
 }
 
 type DeleteTracingPolicyRequest struct {
@@ -703,7 +855,7 @@ type DeleteTracingPolicyRequest struct {
 
 func (x *DeleteTracingPolicyRequest) Reset() {
 	*x = DeleteTracingPolicyRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[8]
+	mi := &file_tetragon_sensors_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -715,7 +867,7 @@ func (x *DeleteTracingPolicyRequest) String() string {
 func (*DeleteTracingPolicyRequest) ProtoMessage() {}
 
 func (x *DeleteTracingPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[8]
+	mi := &file_tetragon_sensors_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -728,7 +880,7 @@ func (x *DeleteTracingPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTracingPolicyRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTracingPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{8}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DeleteTracingPolicyRequest) GetName() string {
@@ -753,7 +905,7 @@ type DeleteTracingPolicyResponse struct {
 
 func (x *DeleteTracingPolicyResponse) Reset() {
 	*x = DeleteTracingPolicyResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[9]
+	mi := &file_tetragon_sensors_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -765,7 +917,7 @@ func (x *DeleteTracingPolicyResponse) String() string {
 func (*DeleteTracingPolicyResponse) ProtoMessage() {}
 
 func (x *DeleteTracingPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[9]
+	mi := &file_tetragon_sensors_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -778,7 +930,7 @@ func (x *DeleteTracingPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTracingPolicyResponse.ProtoReflect.Descriptor instead.
 func (*DeleteTracingPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{9}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{11}
 }
 
 type EnableTracingPolicyRequest struct {
@@ -791,7 +943,7 @@ type EnableTracingPolicyRequest struct {
 
 func (x *EnableTracingPolicyRequest) Reset() {
 	*x = EnableTracingPolicyRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[10]
+	mi := &file_tetragon_sensors_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -803,7 +955,7 @@ func (x *EnableTracingPolicyRequest) String() string {
 func (*EnableTracingPolicyRequest) ProtoMessage() {}
 
 func (x *EnableTracingPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[10]
+	mi := &file_tetragon_sensors_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -816,7 +968,7 @@ func (x *EnableTracingPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnableTracingPolicyRequest.ProtoReflect.Descriptor instead.
 func (*EnableTracingPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{10}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *EnableTracingPolicyRequest) GetName() string {
@@ -841,7 +993,7 @@ type EnableTracingPolicyResponse struct {
 
 func (x *EnableTracingPolicyResponse) Reset() {
 	*x = EnableTracingPolicyResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[11]
+	mi := &file_tetragon_sensors_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -853,7 +1005,7 @@ func (x *EnableTracingPolicyResponse) String() string {
 func (*EnableTracingPolicyResponse) ProtoMessage() {}
 
 func (x *EnableTracingPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[11]
+	mi := &file_tetragon_sensors_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -866,7 +1018,7 @@ func (x *EnableTracingPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnableTracingPolicyResponse.ProtoReflect.Descriptor instead.
 func (*EnableTracingPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{11}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{13}
 }
 
 type DisableTracingPolicyRequest struct {
@@ -879,7 +1031,7 @@ type DisableTracingPolicyRequest struct {
 
 func (x *DisableTracingPolicyRequest) Reset() {
 	*x = DisableTracingPolicyRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[12]
+	mi := &file_tetragon_sensors_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -891,7 +1043,7 @@ func (x *DisableTracingPolicyRequest) String() string {
 func (*DisableTracingPolicyRequest) ProtoMessage() {}
 
 func (x *DisableTracingPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[12]
+	mi := &file_tetragon_sensors_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -904,7 +1056,7 @@ func (x *DisableTracingPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableTracingPolicyRequest.ProtoReflect.Descriptor instead.
 func (*DisableTracingPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{12}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DisableTracingPolicyRequest) GetName() string {
@@ -929,7 +1081,7 @@ type DisableTracingPolicyResponse struct {
 
 func (x *DisableTracingPolicyResponse) Reset() {
 	*x = DisableTracingPolicyResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[13]
+	mi := &file_tetragon_sensors_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -941,7 +1093,7 @@ func (x *DisableTracingPolicyResponse) String() string {
 func (*DisableTracingPolicyResponse) ProtoMessage() {}
 
 func (x *DisableTracingPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[13]
+	mi := &file_tetragon_sensors_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -954,7 +1106,7 @@ func (x *DisableTracingPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableTracingPolicyResponse.ProtoReflect.Descriptor instead.
 func (*DisableTracingPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{13}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{15}
 }
 
 type ConfigureTracingPolicyRequest struct {
@@ -969,7 +1121,7 @@ type ConfigureTracingPolicyRequest struct {
 
 func (x *ConfigureTracingPolicyRequest) Reset() {
 	*x = ConfigureTracingPolicyRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[14]
+	mi := &file_tetragon_sensors_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -981,7 +1133,7 @@ func (x *ConfigureTracingPolicyRequest) String() string {
 func (*ConfigureTracingPolicyRequest) ProtoMessage() {}
 
 func (x *ConfigureTracingPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[14]
+	mi := &file_tetragon_sensors_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -994,7 +1146,7 @@ func (x *ConfigureTracingPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigureTracingPolicyRequest.ProtoReflect.Descriptor instead.
 func (*ConfigureTracingPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{14}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ConfigureTracingPolicyRequest) GetName() string {
@@ -1033,7 +1185,7 @@ type ConfigureTracingPolicyResponse struct {
 
 func (x *ConfigureTracingPolicyResponse) Reset() {
 	*x = ConfigureTracingPolicyResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[15]
+	mi := &file_tetragon_sensors_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1045,7 +1197,7 @@ func (x *ConfigureTracingPolicyResponse) String() string {
 func (*ConfigureTracingPolicyResponse) ProtoMessage() {}
 
 func (x *ConfigureTracingPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[15]
+	mi := &file_tetragon_sensors_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1058,7 +1210,7 @@ func (x *ConfigureTracingPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigureTracingPolicyResponse.ProtoReflect.Descriptor instead.
 func (*ConfigureTracingPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{15}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{17}
 }
 
 type RemoveSensorRequest struct {
@@ -1070,7 +1222,7 @@ type RemoveSensorRequest struct {
 
 func (x *RemoveSensorRequest) Reset() {
 	*x = RemoveSensorRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[16]
+	mi := &file_tetragon_sensors_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1082,7 +1234,7 @@ func (x *RemoveSensorRequest) String() string {
 func (*RemoveSensorRequest) ProtoMessage() {}
 
 func (x *RemoveSensorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[16]
+	mi := &file_tetragon_sensors_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1095,7 +1247,7 @@ func (x *RemoveSensorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveSensorRequest.ProtoReflect.Descriptor instead.
 func (*RemoveSensorRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{16}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RemoveSensorRequest) GetName() string {
@@ -1113,7 +1265,7 @@ type RemoveSensorResponse struct {
 
 func (x *RemoveSensorResponse) Reset() {
 	*x = RemoveSensorResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[17]
+	mi := &file_tetragon_sensors_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1125,7 +1277,7 @@ func (x *RemoveSensorResponse) String() string {
 func (*RemoveSensorResponse) ProtoMessage() {}
 
 func (x *RemoveSensorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[17]
+	mi := &file_tetragon_sensors_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1138,7 +1290,7 @@ func (x *RemoveSensorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveSensorResponse.ProtoReflect.Descriptor instead.
 func (*RemoveSensorResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{17}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{19}
 }
 
 type EnableSensorRequest struct {
@@ -1150,7 +1302,7 @@ type EnableSensorRequest struct {
 
 func (x *EnableSensorRequest) Reset() {
 	*x = EnableSensorRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[18]
+	mi := &file_tetragon_sensors_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1162,7 +1314,7 @@ func (x *EnableSensorRequest) String() string {
 func (*EnableSensorRequest) ProtoMessage() {}
 
 func (x *EnableSensorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[18]
+	mi := &file_tetragon_sensors_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1175,7 +1327,7 @@ func (x *EnableSensorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnableSensorRequest.ProtoReflect.Descriptor instead.
 func (*EnableSensorRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{18}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *EnableSensorRequest) GetName() string {
@@ -1193,7 +1345,7 @@ type EnableSensorResponse struct {
 
 func (x *EnableSensorResponse) Reset() {
 	*x = EnableSensorResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[19]
+	mi := &file_tetragon_sensors_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1205,7 +1357,7 @@ func (x *EnableSensorResponse) String() string {
 func (*EnableSensorResponse) ProtoMessage() {}
 
 func (x *EnableSensorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[19]
+	mi := &file_tetragon_sensors_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1218,7 +1370,7 @@ func (x *EnableSensorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnableSensorResponse.ProtoReflect.Descriptor instead.
 func (*EnableSensorResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{19}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{21}
 }
 
 type DisableSensorRequest struct {
@@ -1230,7 +1382,7 @@ type DisableSensorRequest struct {
 
 func (x *DisableSensorRequest) Reset() {
 	*x = DisableSensorRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[20]
+	mi := &file_tetragon_sensors_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1242,7 +1394,7 @@ func (x *DisableSensorRequest) String() string {
 func (*DisableSensorRequest) ProtoMessage() {}
 
 func (x *DisableSensorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[20]
+	mi := &file_tetragon_sensors_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1255,7 +1407,7 @@ func (x *DisableSensorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableSensorRequest.ProtoReflect.Descriptor instead.
 func (*DisableSensorRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{20}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *DisableSensorRequest) GetName() string {
@@ -1273,7 +1425,7 @@ type DisableSensorResponse struct {
 
 func (x *DisableSensorResponse) Reset() {
 	*x = DisableSensorResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[21]
+	mi := &file_tetragon_sensors_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1285,7 +1437,7 @@ func (x *DisableSensorResponse) String() string {
 func (*DisableSensorResponse) ProtoMessage() {}
 
 func (x *DisableSensorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[21]
+	mi := &file_tetragon_sensors_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1298,7 +1450,7 @@ func (x *DisableSensorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableSensorResponse.ProtoReflect.Descriptor instead.
 func (*DisableSensorResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{21}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{23}
 }
 
 type GetStackTraceTreeRequest struct {
@@ -1310,7 +1462,7 @@ type GetStackTraceTreeRequest struct {
 
 func (x *GetStackTraceTreeRequest) Reset() {
 	*x = GetStackTraceTreeRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[22]
+	mi := &file_tetragon_sensors_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1322,7 +1474,7 @@ func (x *GetStackTraceTreeRequest) String() string {
 func (*GetStackTraceTreeRequest) ProtoMessage() {}
 
 func (x *GetStackTraceTreeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[22]
+	mi := &file_tetragon_sensors_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1335,7 +1487,7 @@ func (x *GetStackTraceTreeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStackTraceTreeRequest.ProtoReflect.Descriptor instead.
 func (*GetStackTraceTreeRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{22}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetStackTraceTreeRequest) GetName() string {
@@ -1354,7 +1506,7 @@ type GetStackTraceTreeResponse struct {
 
 func (x *GetStackTraceTreeResponse) Reset() {
 	*x = GetStackTraceTreeResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[23]
+	mi := &file_tetragon_sensors_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1366,7 +1518,7 @@ func (x *GetStackTraceTreeResponse) String() string {
 func (*GetStackTraceTreeResponse) ProtoMessage() {}
 
 func (x *GetStackTraceTreeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[23]
+	mi := &file_tetragon_sensors_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1379,7 +1531,7 @@ func (x *GetStackTraceTreeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStackTraceTreeResponse.ProtoReflect.Descriptor instead.
 func (*GetStackTraceTreeResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{23}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetStackTraceTreeResponse) GetRoot() *StackTraceNode {
@@ -1397,7 +1549,7 @@ type GetVersionRequest struct {
 
 func (x *GetVersionRequest) Reset() {
 	*x = GetVersionRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[24]
+	mi := &file_tetragon_sensors_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1409,7 +1561,7 @@ func (x *GetVersionRequest) String() string {
 func (*GetVersionRequest) ProtoMessage() {}
 
 func (x *GetVersionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[24]
+	mi := &file_tetragon_sensors_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1422,7 +1574,7 @@ func (x *GetVersionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVersionRequest.ProtoReflect.Descriptor instead.
 func (*GetVersionRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{24}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{26}
 }
 
 type GetVersionResponse struct {
@@ -1434,7 +1586,7 @@ type GetVersionResponse struct {
 
 func (x *GetVersionResponse) Reset() {
 	*x = GetVersionResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[25]
+	mi := &file_tetragon_sensors_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1446,7 +1598,7 @@ func (x *GetVersionResponse) String() string {
 func (*GetVersionResponse) ProtoMessage() {}
 
 func (x *GetVersionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[25]
+	mi := &file_tetragon_sensors_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1459,7 +1611,7 @@ func (x *GetVersionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVersionResponse.ProtoReflect.Descriptor instead.
 func (*GetVersionResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{25}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetVersionResponse) GetVersion() string {
@@ -1479,7 +1631,7 @@ type DumpProcessCacheReqArgs struct {
 
 func (x *DumpProcessCacheReqArgs) Reset() {
 	*x = DumpProcessCacheReqArgs{}
-	mi := &file_tetragon_sensors_proto_msgTypes[26]
+	mi := &file_tetragon_sensors_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1491,7 +1643,7 @@ func (x *DumpProcessCacheReqArgs) String() string {
 func (*DumpProcessCacheReqArgs) ProtoMessage() {}
 
 func (x *DumpProcessCacheReqArgs) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[26]
+	mi := &file_tetragon_sensors_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1504,7 +1656,7 @@ func (x *DumpProcessCacheReqArgs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DumpProcessCacheReqArgs.ProtoReflect.Descriptor instead.
 func (*DumpProcessCacheReqArgs) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{26}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *DumpProcessCacheReqArgs) GetSkipZeroRefcnt() bool {
@@ -1541,7 +1693,7 @@ type ProcessInternal struct {
 
 func (x *ProcessInternal) Reset() {
 	*x = ProcessInternal{}
-	mi := &file_tetragon_sensors_proto_msgTypes[27]
+	mi := &file_tetragon_sensors_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1553,7 +1705,7 @@ func (x *ProcessInternal) String() string {
 func (*ProcessInternal) ProtoMessage() {}
 
 func (x *ProcessInternal) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[27]
+	mi := &file_tetragon_sensors_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1566,7 +1718,7 @@ func (x *ProcessInternal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessInternal.ProtoReflect.Descriptor instead.
 func (*ProcessInternal) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{27}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ProcessInternal) GetProcess() *Process {
@@ -1606,7 +1758,7 @@ type DumpProcessCacheResArgs struct {
 
 func (x *DumpProcessCacheResArgs) Reset() {
 	*x = DumpProcessCacheResArgs{}
-	mi := &file_tetragon_sensors_proto_msgTypes[28]
+	mi := &file_tetragon_sensors_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1618,7 +1770,7 @@ func (x *DumpProcessCacheResArgs) String() string {
 func (*DumpProcessCacheResArgs) ProtoMessage() {}
 
 func (x *DumpProcessCacheResArgs) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[28]
+	mi := &file_tetragon_sensors_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1631,7 +1783,7 @@ func (x *DumpProcessCacheResArgs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DumpProcessCacheResArgs.ProtoReflect.Descriptor instead.
 func (*DumpProcessCacheResArgs) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{28}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *DumpProcessCacheResArgs) GetProcesses() []*ProcessInternal {
@@ -1654,7 +1806,7 @@ type GetDebugRequest struct {
 
 func (x *GetDebugRequest) Reset() {
 	*x = GetDebugRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[29]
+	mi := &file_tetragon_sensors_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1666,7 +1818,7 @@ func (x *GetDebugRequest) String() string {
 func (*GetDebugRequest) ProtoMessage() {}
 
 func (x *GetDebugRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[29]
+	mi := &file_tetragon_sensors_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1679,7 +1831,7 @@ func (x *GetDebugRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDebugRequest.ProtoReflect.Descriptor instead.
 func (*GetDebugRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{29}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetDebugRequest) GetFlag() ConfigFlag {
@@ -1729,7 +1881,7 @@ type GetDebugResponse struct {
 
 func (x *GetDebugResponse) Reset() {
 	*x = GetDebugResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[30]
+	mi := &file_tetragon_sensors_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1741,7 +1893,7 @@ func (x *GetDebugResponse) String() string {
 func (*GetDebugResponse) ProtoMessage() {}
 
 func (x *GetDebugResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[30]
+	mi := &file_tetragon_sensors_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1754,7 +1906,7 @@ func (x *GetDebugResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDebugResponse.ProtoReflect.Descriptor instead.
 func (*GetDebugResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{30}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetDebugResponse) GetFlag() ConfigFlag {
@@ -1818,7 +1970,7 @@ type SetDebugRequest struct {
 
 func (x *SetDebugRequest) Reset() {
 	*x = SetDebugRequest{}
-	mi := &file_tetragon_sensors_proto_msgTypes[31]
+	mi := &file_tetragon_sensors_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1830,7 +1982,7 @@ func (x *SetDebugRequest) String() string {
 func (*SetDebugRequest) ProtoMessage() {}
 
 func (x *SetDebugRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[31]
+	mi := &file_tetragon_sensors_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1843,7 +1995,7 @@ func (x *SetDebugRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDebugRequest.ProtoReflect.Descriptor instead.
 func (*SetDebugRequest) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{31}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *SetDebugRequest) GetFlag() ConfigFlag {
@@ -1892,7 +2044,7 @@ type SetDebugResponse struct {
 
 func (x *SetDebugResponse) Reset() {
 	*x = SetDebugResponse{}
-	mi := &file_tetragon_sensors_proto_msgTypes[32]
+	mi := &file_tetragon_sensors_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1904,7 +2056,7 @@ func (x *SetDebugResponse) String() string {
 func (*SetDebugResponse) ProtoMessage() {}
 
 func (x *SetDebugResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_sensors_proto_msgTypes[32]
+	mi := &file_tetragon_sensors_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1917,7 +2069,7 @@ func (x *SetDebugResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDebugResponse.ProtoReflect.Descriptor instead.
 func (*SetDebugResponse) Descriptor() ([]byte, []int) {
-	return file_tetragon_sensors_proto_rawDescGZIP(), []int{32}
+	return file_tetragon_sensors_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *SetDebugResponse) GetFlag() ConfigFlag {
@@ -1967,7 +2119,17 @@ const file_tetragon_sensors_proto_rawDesc = "" +
 	"collection\"G\n" +
 	"\x13ListSensorsResponse\x120\n" +
 	"\asensors\x18\x01 \x03(\v2\x16.tetragon.SensorStatusR\asensors\"\x1c\n" +
-	"\x1aListTracingPoliciesRequest\"\xeb\x02\n" +
+	"\x1aListTracingPoliciesRequest\"\x98\x02\n" +
+	"\x1bTracingPolicyActionCounters\x12\x12\n" +
+	"\x04post\x18\x01 \x01(\x04R\x04post\x12\x16\n" +
+	"\x06signal\x18\x02 \x01(\x04R\x06signal\x12%\n" +
+	"\x0emonitor_signal\x18\x03 \x01(\x04R\rmonitorSignal\x12\x1a\n" +
+	"\boverride\x18\x04 \x01(\x04R\boverride\x12)\n" +
+	"\x10monitor_override\x18\x05 \x01(\x04R\x0fmonitorOverride\x12'\n" +
+	"\x0fnotify_enforcer\x18\x06 \x01(\x04R\x0enotifyEnforcer\x126\n" +
+	"\x17monitor_notify_enforcer\x18\a \x01(\x04R\x15monitorNotifyEnforcer\"d\n" +
+	"\x12TracingPolicyStats\x12N\n" +
+	"\x0faction_counters\x18\x01 \x01(\v2%.tetragon.TracingPolicyActionCountersR\x0eactionCounters\"\xae\x03\n" +
 	"\x13TracingPolicyStatus\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x04R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1c\n" +
@@ -1980,7 +2142,9 @@ const file_tetragon_sensors_proto_rawDesc = "" +
 	"\x05state\x18\t \x01(\x0e2\x1c.tetragon.TracingPolicyStateR\x05state\x12.\n" +
 	"\x13kernel_memory_bytes\x18\n" +
 	" \x01(\x04R\x11kernelMemoryBytes\x12/\n" +
-	"\x04mode\x18\v \x01(\x0e2\x1b.tetragon.TracingPolicyModeR\x04mode\"X\n" +
+	"\x04mode\x18\v \x01(\x0e2\x1b.tetragon.TracingPolicyModeR\x04mode\x127\n" +
+	"\x05stats\x18\f \x01(\v2\x1c.tetragon.TracingPolicyStatsH\x00R\x05stats\x88\x01\x01B\b\n" +
+	"\x06_stats\"X\n" +
 	"\x1bListTracingPoliciesResponse\x129\n" +
 	"\bpolicies\x18\x01 \x03(\v2\x1d.tetragon.TracingPolicyStatusR\bpolicies\"-\n" +
 	"\x17AddTracingPolicyRequest\x12\x12\n" +
@@ -2110,7 +2274,7 @@ func file_tetragon_sensors_proto_rawDescGZIP() []byte {
 }
 
 var file_tetragon_sensors_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_tetragon_sensors_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_tetragon_sensors_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_tetragon_sensors_proto_goTypes = []any{
 	(TracingPolicyState)(0),                // 0: tetragon.TracingPolicyState
 	(TracingPolicyMode)(0),                 // 1: tetragon.TracingPolicyMode
@@ -2120,105 +2284,109 @@ var file_tetragon_sensors_proto_goTypes = []any{
 	(*SensorStatus)(nil),                   // 5: tetragon.SensorStatus
 	(*ListSensorsResponse)(nil),            // 6: tetragon.ListSensorsResponse
 	(*ListTracingPoliciesRequest)(nil),     // 7: tetragon.ListTracingPoliciesRequest
-	(*TracingPolicyStatus)(nil),            // 8: tetragon.TracingPolicyStatus
-	(*ListTracingPoliciesResponse)(nil),    // 9: tetragon.ListTracingPoliciesResponse
-	(*AddTracingPolicyRequest)(nil),        // 10: tetragon.AddTracingPolicyRequest
-	(*AddTracingPolicyResponse)(nil),       // 11: tetragon.AddTracingPolicyResponse
-	(*DeleteTracingPolicyRequest)(nil),     // 12: tetragon.DeleteTracingPolicyRequest
-	(*DeleteTracingPolicyResponse)(nil),    // 13: tetragon.DeleteTracingPolicyResponse
-	(*EnableTracingPolicyRequest)(nil),     // 14: tetragon.EnableTracingPolicyRequest
-	(*EnableTracingPolicyResponse)(nil),    // 15: tetragon.EnableTracingPolicyResponse
-	(*DisableTracingPolicyRequest)(nil),    // 16: tetragon.DisableTracingPolicyRequest
-	(*DisableTracingPolicyResponse)(nil),   // 17: tetragon.DisableTracingPolicyResponse
-	(*ConfigureTracingPolicyRequest)(nil),  // 18: tetragon.ConfigureTracingPolicyRequest
-	(*ConfigureTracingPolicyResponse)(nil), // 19: tetragon.ConfigureTracingPolicyResponse
-	(*RemoveSensorRequest)(nil),            // 20: tetragon.RemoveSensorRequest
-	(*RemoveSensorResponse)(nil),           // 21: tetragon.RemoveSensorResponse
-	(*EnableSensorRequest)(nil),            // 22: tetragon.EnableSensorRequest
-	(*EnableSensorResponse)(nil),           // 23: tetragon.EnableSensorResponse
-	(*DisableSensorRequest)(nil),           // 24: tetragon.DisableSensorRequest
-	(*DisableSensorResponse)(nil),          // 25: tetragon.DisableSensorResponse
-	(*GetStackTraceTreeRequest)(nil),       // 26: tetragon.GetStackTraceTreeRequest
-	(*GetStackTraceTreeResponse)(nil),      // 27: tetragon.GetStackTraceTreeResponse
-	(*GetVersionRequest)(nil),              // 28: tetragon.GetVersionRequest
-	(*GetVersionResponse)(nil),             // 29: tetragon.GetVersionResponse
-	(*DumpProcessCacheReqArgs)(nil),        // 30: tetragon.DumpProcessCacheReqArgs
-	(*ProcessInternal)(nil),                // 31: tetragon.ProcessInternal
-	(*DumpProcessCacheResArgs)(nil),        // 32: tetragon.DumpProcessCacheResArgs
-	(*GetDebugRequest)(nil),                // 33: tetragon.GetDebugRequest
-	(*GetDebugResponse)(nil),               // 34: tetragon.GetDebugResponse
-	(*SetDebugRequest)(nil),                // 35: tetragon.SetDebugRequest
-	(*SetDebugResponse)(nil),               // 36: tetragon.SetDebugResponse
-	nil,                                    // 37: tetragon.ProcessInternal.RefcntOpsEntry
-	(*StackTraceNode)(nil),                 // 38: tetragon.StackTraceNode
-	(*Process)(nil),                        // 39: tetragon.Process
-	(*wrapperspb.UInt32Value)(nil),         // 40: google.protobuf.UInt32Value
-	(*GetEventsRequest)(nil),               // 41: tetragon.GetEventsRequest
-	(*GetHealthStatusRequest)(nil),         // 42: tetragon.GetHealthStatusRequest
-	(*RuntimeHookRequest)(nil),             // 43: tetragon.RuntimeHookRequest
-	(*GetEventsResponse)(nil),              // 44: tetragon.GetEventsResponse
-	(*GetHealthStatusResponse)(nil),        // 45: tetragon.GetHealthStatusResponse
-	(*RuntimeHookResponse)(nil),            // 46: tetragon.RuntimeHookResponse
+	(*TracingPolicyActionCounters)(nil),    // 8: tetragon.TracingPolicyActionCounters
+	(*TracingPolicyStats)(nil),             // 9: tetragon.TracingPolicyStats
+	(*TracingPolicyStatus)(nil),            // 10: tetragon.TracingPolicyStatus
+	(*ListTracingPoliciesResponse)(nil),    // 11: tetragon.ListTracingPoliciesResponse
+	(*AddTracingPolicyRequest)(nil),        // 12: tetragon.AddTracingPolicyRequest
+	(*AddTracingPolicyResponse)(nil),       // 13: tetragon.AddTracingPolicyResponse
+	(*DeleteTracingPolicyRequest)(nil),     // 14: tetragon.DeleteTracingPolicyRequest
+	(*DeleteTracingPolicyResponse)(nil),    // 15: tetragon.DeleteTracingPolicyResponse
+	(*EnableTracingPolicyRequest)(nil),     // 16: tetragon.EnableTracingPolicyRequest
+	(*EnableTracingPolicyResponse)(nil),    // 17: tetragon.EnableTracingPolicyResponse
+	(*DisableTracingPolicyRequest)(nil),    // 18: tetragon.DisableTracingPolicyRequest
+	(*DisableTracingPolicyResponse)(nil),   // 19: tetragon.DisableTracingPolicyResponse
+	(*ConfigureTracingPolicyRequest)(nil),  // 20: tetragon.ConfigureTracingPolicyRequest
+	(*ConfigureTracingPolicyResponse)(nil), // 21: tetragon.ConfigureTracingPolicyResponse
+	(*RemoveSensorRequest)(nil),            // 22: tetragon.RemoveSensorRequest
+	(*RemoveSensorResponse)(nil),           // 23: tetragon.RemoveSensorResponse
+	(*EnableSensorRequest)(nil),            // 24: tetragon.EnableSensorRequest
+	(*EnableSensorResponse)(nil),           // 25: tetragon.EnableSensorResponse
+	(*DisableSensorRequest)(nil),           // 26: tetragon.DisableSensorRequest
+	(*DisableSensorResponse)(nil),          // 27: tetragon.DisableSensorResponse
+	(*GetStackTraceTreeRequest)(nil),       // 28: tetragon.GetStackTraceTreeRequest
+	(*GetStackTraceTreeResponse)(nil),      // 29: tetragon.GetStackTraceTreeResponse
+	(*GetVersionRequest)(nil),              // 30: tetragon.GetVersionRequest
+	(*GetVersionResponse)(nil),             // 31: tetragon.GetVersionResponse
+	(*DumpProcessCacheReqArgs)(nil),        // 32: tetragon.DumpProcessCacheReqArgs
+	(*ProcessInternal)(nil),                // 33: tetragon.ProcessInternal
+	(*DumpProcessCacheResArgs)(nil),        // 34: tetragon.DumpProcessCacheResArgs
+	(*GetDebugRequest)(nil),                // 35: tetragon.GetDebugRequest
+	(*GetDebugResponse)(nil),               // 36: tetragon.GetDebugResponse
+	(*SetDebugRequest)(nil),                // 37: tetragon.SetDebugRequest
+	(*SetDebugResponse)(nil),               // 38: tetragon.SetDebugResponse
+	nil,                                    // 39: tetragon.ProcessInternal.RefcntOpsEntry
+	(*StackTraceNode)(nil),                 // 40: tetragon.StackTraceNode
+	(*Process)(nil),                        // 41: tetragon.Process
+	(*wrapperspb.UInt32Value)(nil),         // 42: google.protobuf.UInt32Value
+	(*GetEventsRequest)(nil),               // 43: tetragon.GetEventsRequest
+	(*GetHealthStatusRequest)(nil),         // 44: tetragon.GetHealthStatusRequest
+	(*RuntimeHookRequest)(nil),             // 45: tetragon.RuntimeHookRequest
+	(*GetEventsResponse)(nil),              // 46: tetragon.GetEventsResponse
+	(*GetHealthStatusResponse)(nil),        // 47: tetragon.GetHealthStatusResponse
+	(*RuntimeHookResponse)(nil),            // 48: tetragon.RuntimeHookResponse
 }
 var file_tetragon_sensors_proto_depIdxs = []int32{
 	5,  // 0: tetragon.ListSensorsResponse.sensors:type_name -> tetragon.SensorStatus
-	0,  // 1: tetragon.TracingPolicyStatus.state:type_name -> tetragon.TracingPolicyState
-	1,  // 2: tetragon.TracingPolicyStatus.mode:type_name -> tetragon.TracingPolicyMode
-	8,  // 3: tetragon.ListTracingPoliciesResponse.policies:type_name -> tetragon.TracingPolicyStatus
-	1,  // 4: tetragon.ConfigureTracingPolicyRequest.mode:type_name -> tetragon.TracingPolicyMode
-	38, // 5: tetragon.GetStackTraceTreeResponse.root:type_name -> tetragon.StackTraceNode
-	39, // 6: tetragon.ProcessInternal.process:type_name -> tetragon.Process
-	40, // 7: tetragon.ProcessInternal.refcnt:type_name -> google.protobuf.UInt32Value
-	37, // 8: tetragon.ProcessInternal.refcnt_ops:type_name -> tetragon.ProcessInternal.RefcntOpsEntry
-	31, // 9: tetragon.DumpProcessCacheResArgs.processes:type_name -> tetragon.ProcessInternal
-	2,  // 10: tetragon.GetDebugRequest.flag:type_name -> tetragon.ConfigFlag
-	30, // 11: tetragon.GetDebugRequest.dump:type_name -> tetragon.DumpProcessCacheReqArgs
-	2,  // 12: tetragon.GetDebugResponse.flag:type_name -> tetragon.ConfigFlag
-	3,  // 13: tetragon.GetDebugResponse.level:type_name -> tetragon.LogLevel
-	32, // 14: tetragon.GetDebugResponse.processes:type_name -> tetragon.DumpProcessCacheResArgs
-	2,  // 15: tetragon.SetDebugRequest.flag:type_name -> tetragon.ConfigFlag
-	3,  // 16: tetragon.SetDebugRequest.level:type_name -> tetragon.LogLevel
-	2,  // 17: tetragon.SetDebugResponse.flag:type_name -> tetragon.ConfigFlag
-	3,  // 18: tetragon.SetDebugResponse.level:type_name -> tetragon.LogLevel
-	41, // 19: tetragon.FineGuidanceSensors.GetEvents:input_type -> tetragon.GetEventsRequest
-	42, // 20: tetragon.FineGuidanceSensors.GetHealth:input_type -> tetragon.GetHealthStatusRequest
-	10, // 21: tetragon.FineGuidanceSensors.AddTracingPolicy:input_type -> tetragon.AddTracingPolicyRequest
-	12, // 22: tetragon.FineGuidanceSensors.DeleteTracingPolicy:input_type -> tetragon.DeleteTracingPolicyRequest
-	7,  // 23: tetragon.FineGuidanceSensors.ListTracingPolicies:input_type -> tetragon.ListTracingPoliciesRequest
-	18, // 24: tetragon.FineGuidanceSensors.ConfigureTracingPolicy:input_type -> tetragon.ConfigureTracingPolicyRequest
-	14, // 25: tetragon.FineGuidanceSensors.EnableTracingPolicy:input_type -> tetragon.EnableTracingPolicyRequest
-	16, // 26: tetragon.FineGuidanceSensors.DisableTracingPolicy:input_type -> tetragon.DisableTracingPolicyRequest
-	4,  // 27: tetragon.FineGuidanceSensors.ListSensors:input_type -> tetragon.ListSensorsRequest
-	22, // 28: tetragon.FineGuidanceSensors.EnableSensor:input_type -> tetragon.EnableSensorRequest
-	24, // 29: tetragon.FineGuidanceSensors.DisableSensor:input_type -> tetragon.DisableSensorRequest
-	20, // 30: tetragon.FineGuidanceSensors.RemoveSensor:input_type -> tetragon.RemoveSensorRequest
-	26, // 31: tetragon.FineGuidanceSensors.GetStackTraceTree:input_type -> tetragon.GetStackTraceTreeRequest
-	28, // 32: tetragon.FineGuidanceSensors.GetVersion:input_type -> tetragon.GetVersionRequest
-	43, // 33: tetragon.FineGuidanceSensors.RuntimeHook:input_type -> tetragon.RuntimeHookRequest
-	33, // 34: tetragon.FineGuidanceSensors.GetDebug:input_type -> tetragon.GetDebugRequest
-	35, // 35: tetragon.FineGuidanceSensors.SetDebug:input_type -> tetragon.SetDebugRequest
-	44, // 36: tetragon.FineGuidanceSensors.GetEvents:output_type -> tetragon.GetEventsResponse
-	45, // 37: tetragon.FineGuidanceSensors.GetHealth:output_type -> tetragon.GetHealthStatusResponse
-	11, // 38: tetragon.FineGuidanceSensors.AddTracingPolicy:output_type -> tetragon.AddTracingPolicyResponse
-	13, // 39: tetragon.FineGuidanceSensors.DeleteTracingPolicy:output_type -> tetragon.DeleteTracingPolicyResponse
-	9,  // 40: tetragon.FineGuidanceSensors.ListTracingPolicies:output_type -> tetragon.ListTracingPoliciesResponse
-	19, // 41: tetragon.FineGuidanceSensors.ConfigureTracingPolicy:output_type -> tetragon.ConfigureTracingPolicyResponse
-	15, // 42: tetragon.FineGuidanceSensors.EnableTracingPolicy:output_type -> tetragon.EnableTracingPolicyResponse
-	17, // 43: tetragon.FineGuidanceSensors.DisableTracingPolicy:output_type -> tetragon.DisableTracingPolicyResponse
-	6,  // 44: tetragon.FineGuidanceSensors.ListSensors:output_type -> tetragon.ListSensorsResponse
-	23, // 45: tetragon.FineGuidanceSensors.EnableSensor:output_type -> tetragon.EnableSensorResponse
-	25, // 46: tetragon.FineGuidanceSensors.DisableSensor:output_type -> tetragon.DisableSensorResponse
-	21, // 47: tetragon.FineGuidanceSensors.RemoveSensor:output_type -> tetragon.RemoveSensorResponse
-	27, // 48: tetragon.FineGuidanceSensors.GetStackTraceTree:output_type -> tetragon.GetStackTraceTreeResponse
-	29, // 49: tetragon.FineGuidanceSensors.GetVersion:output_type -> tetragon.GetVersionResponse
-	46, // 50: tetragon.FineGuidanceSensors.RuntimeHook:output_type -> tetragon.RuntimeHookResponse
-	34, // 51: tetragon.FineGuidanceSensors.GetDebug:output_type -> tetragon.GetDebugResponse
-	36, // 52: tetragon.FineGuidanceSensors.SetDebug:output_type -> tetragon.SetDebugResponse
-	36, // [36:53] is the sub-list for method output_type
-	19, // [19:36] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	8,  // 1: tetragon.TracingPolicyStats.action_counters:type_name -> tetragon.TracingPolicyActionCounters
+	0,  // 2: tetragon.TracingPolicyStatus.state:type_name -> tetragon.TracingPolicyState
+	1,  // 3: tetragon.TracingPolicyStatus.mode:type_name -> tetragon.TracingPolicyMode
+	9,  // 4: tetragon.TracingPolicyStatus.stats:type_name -> tetragon.TracingPolicyStats
+	10, // 5: tetragon.ListTracingPoliciesResponse.policies:type_name -> tetragon.TracingPolicyStatus
+	1,  // 6: tetragon.ConfigureTracingPolicyRequest.mode:type_name -> tetragon.TracingPolicyMode
+	40, // 7: tetragon.GetStackTraceTreeResponse.root:type_name -> tetragon.StackTraceNode
+	41, // 8: tetragon.ProcessInternal.process:type_name -> tetragon.Process
+	42, // 9: tetragon.ProcessInternal.refcnt:type_name -> google.protobuf.UInt32Value
+	39, // 10: tetragon.ProcessInternal.refcnt_ops:type_name -> tetragon.ProcessInternal.RefcntOpsEntry
+	33, // 11: tetragon.DumpProcessCacheResArgs.processes:type_name -> tetragon.ProcessInternal
+	2,  // 12: tetragon.GetDebugRequest.flag:type_name -> tetragon.ConfigFlag
+	32, // 13: tetragon.GetDebugRequest.dump:type_name -> tetragon.DumpProcessCacheReqArgs
+	2,  // 14: tetragon.GetDebugResponse.flag:type_name -> tetragon.ConfigFlag
+	3,  // 15: tetragon.GetDebugResponse.level:type_name -> tetragon.LogLevel
+	34, // 16: tetragon.GetDebugResponse.processes:type_name -> tetragon.DumpProcessCacheResArgs
+	2,  // 17: tetragon.SetDebugRequest.flag:type_name -> tetragon.ConfigFlag
+	3,  // 18: tetragon.SetDebugRequest.level:type_name -> tetragon.LogLevel
+	2,  // 19: tetragon.SetDebugResponse.flag:type_name -> tetragon.ConfigFlag
+	3,  // 20: tetragon.SetDebugResponse.level:type_name -> tetragon.LogLevel
+	43, // 21: tetragon.FineGuidanceSensors.GetEvents:input_type -> tetragon.GetEventsRequest
+	44, // 22: tetragon.FineGuidanceSensors.GetHealth:input_type -> tetragon.GetHealthStatusRequest
+	12, // 23: tetragon.FineGuidanceSensors.AddTracingPolicy:input_type -> tetragon.AddTracingPolicyRequest
+	14, // 24: tetragon.FineGuidanceSensors.DeleteTracingPolicy:input_type -> tetragon.DeleteTracingPolicyRequest
+	7,  // 25: tetragon.FineGuidanceSensors.ListTracingPolicies:input_type -> tetragon.ListTracingPoliciesRequest
+	20, // 26: tetragon.FineGuidanceSensors.ConfigureTracingPolicy:input_type -> tetragon.ConfigureTracingPolicyRequest
+	16, // 27: tetragon.FineGuidanceSensors.EnableTracingPolicy:input_type -> tetragon.EnableTracingPolicyRequest
+	18, // 28: tetragon.FineGuidanceSensors.DisableTracingPolicy:input_type -> tetragon.DisableTracingPolicyRequest
+	4,  // 29: tetragon.FineGuidanceSensors.ListSensors:input_type -> tetragon.ListSensorsRequest
+	24, // 30: tetragon.FineGuidanceSensors.EnableSensor:input_type -> tetragon.EnableSensorRequest
+	26, // 31: tetragon.FineGuidanceSensors.DisableSensor:input_type -> tetragon.DisableSensorRequest
+	22, // 32: tetragon.FineGuidanceSensors.RemoveSensor:input_type -> tetragon.RemoveSensorRequest
+	28, // 33: tetragon.FineGuidanceSensors.GetStackTraceTree:input_type -> tetragon.GetStackTraceTreeRequest
+	30, // 34: tetragon.FineGuidanceSensors.GetVersion:input_type -> tetragon.GetVersionRequest
+	45, // 35: tetragon.FineGuidanceSensors.RuntimeHook:input_type -> tetragon.RuntimeHookRequest
+	35, // 36: tetragon.FineGuidanceSensors.GetDebug:input_type -> tetragon.GetDebugRequest
+	37, // 37: tetragon.FineGuidanceSensors.SetDebug:input_type -> tetragon.SetDebugRequest
+	46, // 38: tetragon.FineGuidanceSensors.GetEvents:output_type -> tetragon.GetEventsResponse
+	47, // 39: tetragon.FineGuidanceSensors.GetHealth:output_type -> tetragon.GetHealthStatusResponse
+	13, // 40: tetragon.FineGuidanceSensors.AddTracingPolicy:output_type -> tetragon.AddTracingPolicyResponse
+	15, // 41: tetragon.FineGuidanceSensors.DeleteTracingPolicy:output_type -> tetragon.DeleteTracingPolicyResponse
+	11, // 42: tetragon.FineGuidanceSensors.ListTracingPolicies:output_type -> tetragon.ListTracingPoliciesResponse
+	21, // 43: tetragon.FineGuidanceSensors.ConfigureTracingPolicy:output_type -> tetragon.ConfigureTracingPolicyResponse
+	17, // 44: tetragon.FineGuidanceSensors.EnableTracingPolicy:output_type -> tetragon.EnableTracingPolicyResponse
+	19, // 45: tetragon.FineGuidanceSensors.DisableTracingPolicy:output_type -> tetragon.DisableTracingPolicyResponse
+	6,  // 46: tetragon.FineGuidanceSensors.ListSensors:output_type -> tetragon.ListSensorsResponse
+	25, // 47: tetragon.FineGuidanceSensors.EnableSensor:output_type -> tetragon.EnableSensorResponse
+	27, // 48: tetragon.FineGuidanceSensors.DisableSensor:output_type -> tetragon.DisableSensorResponse
+	23, // 49: tetragon.FineGuidanceSensors.RemoveSensor:output_type -> tetragon.RemoveSensorResponse
+	29, // 50: tetragon.FineGuidanceSensors.GetStackTraceTree:output_type -> tetragon.GetStackTraceTreeResponse
+	31, // 51: tetragon.FineGuidanceSensors.GetVersion:output_type -> tetragon.GetVersionResponse
+	48, // 52: tetragon.FineGuidanceSensors.RuntimeHook:output_type -> tetragon.RuntimeHookResponse
+	36, // 53: tetragon.FineGuidanceSensors.GetDebug:output_type -> tetragon.GetDebugResponse
+	38, // 54: tetragon.FineGuidanceSensors.SetDebug:output_type -> tetragon.SetDebugResponse
+	38, // [38:55] is the sub-list for method output_type
+	21, // [21:38] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_sensors_proto_init() }
@@ -2229,18 +2397,19 @@ func file_tetragon_sensors_proto_init() {
 	file_tetragon_events_proto_init()
 	file_tetragon_stack_proto_init()
 	file_tetragon_tetragon_proto_init()
-	file_tetragon_sensors_proto_msgTypes[14].OneofWrappers = []any{}
-	file_tetragon_sensors_proto_msgTypes[29].OneofWrappers = []any{
+	file_tetragon_sensors_proto_msgTypes[6].OneofWrappers = []any{}
+	file_tetragon_sensors_proto_msgTypes[16].OneofWrappers = []any{}
+	file_tetragon_sensors_proto_msgTypes[31].OneofWrappers = []any{
 		(*GetDebugRequest_Dump)(nil),
 	}
-	file_tetragon_sensors_proto_msgTypes[30].OneofWrappers = []any{
+	file_tetragon_sensors_proto_msgTypes[32].OneofWrappers = []any{
 		(*GetDebugResponse_Level)(nil),
 		(*GetDebugResponse_Processes)(nil),
 	}
-	file_tetragon_sensors_proto_msgTypes[31].OneofWrappers = []any{
+	file_tetragon_sensors_proto_msgTypes[33].OneofWrappers = []any{
 		(*SetDebugRequest_Level)(nil),
 	}
-	file_tetragon_sensors_proto_msgTypes[32].OneofWrappers = []any{
+	file_tetragon_sensors_proto_msgTypes[34].OneofWrappers = []any{
 		(*SetDebugResponse_Level)(nil),
 	}
 	type x struct{}
@@ -2249,7 +2418,7 @@ func file_tetragon_sensors_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tetragon_sensors_proto_rawDesc), len(file_tetragon_sensors_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   34,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

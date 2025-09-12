@@ -404,6 +404,7 @@ github.com/cilium/tetragon/pkg/podhooks
 github.com/cilium/tetragon/pkg/policyconf
 github.com/cilium/tetragon/pkg/policyfilter
 github.com/cilium/tetragon/pkg/policyfilter/rthooks
+github.com/cilium/tetragon/pkg/policystats
 github.com/cilium/tetragon/pkg/process
 github.com/cilium/tetragon/pkg/procsyms
 github.com/cilium/tetragon/pkg/ratelimit
