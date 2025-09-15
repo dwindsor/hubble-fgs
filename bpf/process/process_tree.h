@@ -513,36 +513,23 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 	return 0;
 }
 
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct destination_endpoint_key);
-	__uint(max_entries, 1);
-} tg_h_ps_dnskey SEC(".maps");
+struct destination_endpoint_keys_heap {
+	struct destination_endpoint_key dnskey;
+	struct destination_endpoint_key lpmkey;
+	struct destination_endpoint_key usrkey;
+	struct destination_endpoint_key dstkey;
+};
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);
-	__type(value, struct destination_endpoint_key);
+	__type(value, struct destination_endpoint_keys_heap);
 	__uint(max_entries, 1);
-} tg_h_ps_lpmkey SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct destination_endpoint_key);
-	__uint(max_entries, 1);
-} tg_h_ps_usrkey SEC(".maps");
-
-struct {
-	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__type(key, int);
-	__type(value, struct destination_endpoint_key);
-	__uint(max_entries, 1);
-} tg_h_ps_dstkey SEC(".maps");
+} tg_h_ps_keys SEC(".maps");
 
 static inline __attribute__((always_inline)) int __process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
+	struct destination_endpoint_keys_heap *heap_keys;
 	struct destination_endpoint_key *dnskey, *lpmkey, *usrkey, *destkey;
 	struct process_tree_config *cfg;
 	struct msg_execve_key zero_uid;
@@ -555,10 +542,14 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	struct ip_addr ip_key = {};
 	uint64_t lpm_id;
 
-	dnskey = map_lookup_elem(&tg_h_ps_dnskey, &zero);
-	lpmkey = map_lookup_elem(&tg_h_ps_lpmkey, &zero);
-	usrkey = map_lookup_elem(&tg_h_ps_usrkey, &zero);
-	destkey = map_lookup_elem(&tg_h_ps_dstkey, &zero);
+	heap_keys = map_lookup_elem(&tg_h_ps_keys, &zero);
+	if (!heap_keys)
+		return 0;
+
+	dnskey = &heap_keys->dnskey;
+	lpmkey = &heap_keys->lpmkey;
+	usrkey = &heap_keys->usrkey;
+	destkey = &heap_keys->dstkey;
 
 	if (!dnskey || !lpmkey || !usrkey || !destkey)
 		return 0;
