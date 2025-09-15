@@ -61,4 +61,9 @@ type AlertRuleSpec struct {
 	// +listType=set
 	// +kubebuilder:validation:Optional
 	Tags []string `json:"tags,omitempty"`
+
+	// Risk score of the alert, ranging from 0 to 100. 0 means no risk, and
+	// 100 means the highest risk.
+	// +kubebuilder:validation:Optional
+	RiskScore int `json:"risk_score,omitempty"`
 }

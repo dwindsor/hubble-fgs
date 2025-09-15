@@ -51,6 +51,11 @@ spec:
                   fields in generic TracingPolicy.
                 maxLength: 256
                 type: string
+              risk_score:
+                description: |-
+                  Risk score of the alert, ranging from 0 to 100. 0 means no risk, and
+                  100 means the highest risk.
+                type: integer
               severity:
                 default: info
                 enum:
