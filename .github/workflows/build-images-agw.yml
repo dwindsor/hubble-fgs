@@ -32,12 +32,6 @@ jobs:
       - name: Get version and set outputs
         id: get-version
         run: |
-          echo "=== Git Status and Info ==="
-          git tag -l
-          git describe --tags
-          git status
-          
-          echo "=== Attempting to get version ==="
           VERSION=$(make version)
           echo "Version from make: $VERSION"
           
@@ -105,7 +99,7 @@ jobs:
   trigger-code-drop:
     needs: [ init, build-agw-image ]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
-    if: ${{ needs.build-agw-image.result == 'success' }}
+    if: ${{ needs.build-agw-image.result == 'success' && github.ref == 'refs/heads/master' }}
     env:
       TARGET_ORG: cisco-hypershield
       TARGET_REPO: hs-actions
