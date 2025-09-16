@@ -30,7 +30,9 @@ jobs:
       - name: Get version and set outputs
         id: get-version
         run: |
-          echo "version=$(make version)" >> $GITHUB_OUTPUT
+          VERSION=$(make version)
+          echo "Version from make: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "date=$(date -u +"%Y%m%d%H%M")" >> $GITHUB_OUTPUT
           echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
     outputs:
@@ -84,6 +86,9 @@ jobs:
     env:
       TARGET_ORG: cisco-hypershield
       TARGET_REPO: hs-actions
+      VERSION: ${{ needs.init.outputs.version }}
+      DATE: ${{ needs.init.outputs.date }}
+      SHA: ${{ needs.init.outputs.sha }}
     steps:
       - name: Generate GitHub App Token
         id: workflow-token
