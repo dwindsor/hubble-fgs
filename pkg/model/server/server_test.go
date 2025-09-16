@@ -267,6 +267,9 @@ func TestProcessTree(t *testing.T) {
 				step.Step(t)
 			}
 
+			// Add a small delay here to account for any races when fetching the application model.
+			time.Sleep(1 * time.Second)
+
 			res, err := server.GetProcessModel([]string{}, false)
 			if err != nil {
 				t.Fatalf("getProcessModel error: %s", err)
