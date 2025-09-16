@@ -13,9 +13,6 @@ app:
     initial_delay_seconds: 30
     period_seconds: 60
     script: /usr/src/app/health.sh
-  post_upgrade:
-    initial_wait_time: 30
-    post_script: /usr/src/app/post.sh
   resources:
     container-size: 32
     cpu: 14000
