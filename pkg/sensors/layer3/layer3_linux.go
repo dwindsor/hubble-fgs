@@ -537,12 +537,20 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 			return fmt.Errorf("failed to populate the DNS domains maps with localhost: %w", err)
 		}
 
-		err = dnsparser.CreatePreallocInnerIPToIDMaps()
+		ipToIDMapsFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.IPToIDMapsName)
+		ipToIDMapsRaw, err := ebpf.LoadPinnedMap(ipToIDMapsFile, nil)
+		if err != nil {
+			return fmt.Errorf("failed to load %q map: %w", ipToIDMapsFile, err)
+		}
+		// Not closing this map as it will be potentially used by the reconciler
+		ipToIDMaps := dnsparser.NewIPToIDMaps(ipToIDMapsRaw)
+
+		err = ipToIDMaps.CreatePreallocMaps()
 		if err != nil {
 			return fmt.Errorf("failed to initialize the DNS maps: %w", err)
 		}
 
-		err = dnsparser.PopulateIPToIDMapsWithLocalhost()
+		err = ipToIDMaps.PopulatePreallocMapsWithLocalhost()
 		if err != nil {
 			return fmt.Errorf("failed to populate the DNS IP to ID maps with localhost: %w", err)
 		}
