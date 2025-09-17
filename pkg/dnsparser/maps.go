@@ -803,6 +803,15 @@ func NewCgroupIDToAllocIDMap(cgroupIDToAllocIDMap *ebpf.Map) CgroupIDToAllocIDMa
 	}
 }
 
+func (m CgroupIDToAllocIDMap) Lookup(cgroupID uint64) (uint32, error) {
+	var value uint32
+	err := m.cgroupIDToAllocIDMap.Lookup(&cgroupID, &value)
+	if err != nil {
+		return 0, fmt.Errorf("failed to find allocation ID from cgroup ID %d: %w", cgroupID, err)
+	}
+	return value, nil
+}
+
 func (m CgroupIDToAllocIDMap) Values() (map[uint64]uint32, error) {
 	entries := m.cgroupIDToAllocIDMap.Iterate()
 
