@@ -48,6 +48,7 @@ aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}
 {{- end }}
 dns-stats-per-socket: {{ .Values.tetragon.dnsStatsPerSocket | quote }}
 enable-bpf-dns-parser: {{ (or .Values.tetragon.bpfDNSParser.enabled .Values.tetragon.enableBPFDNSParser) | quote }}
+enable-bpf-dns-parser-per-pod: {{ .Values.tetragon.bpfDNSParser.perPod | quote }}
 enable-alerts: {{ .Values.tetragon.alerts.enabled | quote }}
 alerts-export-dir: {{ .Values.tetragon.alerts.exportDirectory | quote }}
 {{- end }}

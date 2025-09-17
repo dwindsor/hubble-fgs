@@ -320,6 +320,8 @@ tetragon:
   bpfDNSParser:
     # -- Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.
     enabled: false
+    # -- Enable in-kernel BPF DNS parser maps per Pod partitioning.
+    perPod: false
   # -- Enable application model.
   enableApplicationModel: false
   # -- Cache size for application model.
