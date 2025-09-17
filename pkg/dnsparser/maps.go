@@ -821,3 +821,23 @@ func (m CgroupIDToAllocIDMap) Values() (map[uint64]uint32, error) {
 	return out, nil
 
 }
+
+type AllocationIDMap struct {
+	allocationIDmap *ebpf.Map
+}
+
+func NewAllocationIDMap(allocationIDMap *ebpf.Map) AllocationIDMap {
+	return AllocationIDMap{
+		allocationIDmap: allocationIDMap,
+	}
+}
+
+func (m AllocationIDMap) Value() (uint32, error) {
+	var zero uint32
+	var value uint32
+	err := m.allocationIDmap.Lookup(&zero, &value)
+	if err != nil {
+		return 0, fmt.Errorf("failed to lookup allocation ID map: %w", err)
+	}
+	return value, nil
+}
