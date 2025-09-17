@@ -85,6 +85,7 @@ const (
 	keyUDPIdleSocketTimeout           = "udp-idle-socket-timeout"
 	keyEnableNetworkEvents            = "enable-network-events"
 	keyEnableAlertsProfiling          = "enable-alerts-profiling"
+	keyK8sServiceAccountAuth          = "k8s-service-account-auth"
 
 	EnvironmentAWS        = "aws"
 	EnvironmentKubernetes = "kubernetes"
@@ -92,7 +93,22 @@ const (
 
 var (
 	environments = []string{EnvironmentAWS, EnvironmentKubernetes}
+
+	redactedKeys = []string{
+		keyK8sServiceAccountAuth,
+	}
 )
+
+// RedactedSettings returns all settings with sensitive keys redacted.
+func RedactedSettings() map[string]any {
+	res := viper.AllSettings()
+	for _, k := range redactedKeys {
+		if _, ok := res[k]; ok {
+			res[k] = "[redacted]"
+		}
+	}
+	return res
+}
 
 func FixUpOSSFlags(flags *pflag.FlagSet) {
 	flags.Lookup(option.KeyCompatibilitySyscall64SizeType).Usage =
@@ -176,6 +192,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Duration(keyUDPIdleSocketTimeout, 2*time.Minute, "How long a UDP socket should be idle to be considered closed")
 	flags.Bool(keyEnableNetworkEvents, true, "Enable Network Events from BPF to userspace")
 	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
+	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
+	flags.MarkHidden(keyK8sServiceAccountAuth)
 }
 
 func ReadAndValidateEnterpriseFlags() error {
@@ -252,6 +270,8 @@ func readAndSetEnterpriseFlags() {
 	if Config.EnableTCP || Config.EnableUDP || Config.EnableICMP || Config.EnableRawsock || Config.EnableDNS {
 		Config.Layer3CLIEnable = true
 	}
+
+	Config.K8sServiceAccountAuth = viper.GetString(keyK8sServiceAccountAuth)
 }
 
 func validateConfig(config config) error {

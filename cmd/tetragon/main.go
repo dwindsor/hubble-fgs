@@ -223,7 +223,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	}
 
 	log.Info("Starting Tetragon Enterprise", "version", version.Version)
-	log.Info("config settings", "config", viper.AllSettings())
+	log.Info("config settings", "config", enterpriseOption.RedactedSettings())
 
 	// Log early security context in case something fails
 	logCurrentSecurityContext()
@@ -426,7 +426,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Start Kubernetes manager. Note this doesn't have to be in the if block
 	// below. If Kubernetes is not enabled, this call returns a fake manager.
 	kubernetesManager := manager.Get()
-	if option.K8SControlPlaneEnabled() && option.InClusterControlPlaneEnabled() {
+	if enterpriseOption.K8SControlPlaneEnabled() && enterpriseOption.InClusterControlPlaneEnabled() {
 		log.Info("Enabling Kubernetes API")
 		podAccessor = kubernetesManager.GetControllerManager()
 	} else {
@@ -566,7 +566,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Initialize a k8s watcher used to manage policies. This should happen
 	// after the sensors are loaded, otherwise existing policies will fail to
 	// load on the first attempt.
-	if option.K8SControlPlaneEnabled() {
+	if enterpriseOption.K8SControlPlaneEnabled() {
 		log.Info("Enabling policy watcher")
 
 		// add informers for all resources
@@ -676,7 +676,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	deleteOldBpfDir(oldBpfDir)
 
 	// k8s should have metrics, so periodically log only in a non k8s
-	if !option.K8SControlPlaneEnabled() {
+	if !enterpriseOption.K8SControlPlaneEnabled() {
 		go logStatus(ctx, obs)
 	}
 

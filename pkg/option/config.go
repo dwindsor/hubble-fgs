@@ -6,6 +6,8 @@ package option
 import (
 	"time"
 
+	"github.com/cilium/tetragon/pkg/option"
+
 	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 )
 
@@ -98,6 +100,11 @@ type config struct {
 	EnableNetworkEvents bool
 
 	EnableAlertProfiling bool
+
+	// K8sServiceAccountAuth is the base64 string for authenticating with k8s control plane
+	// when Tetragon is running outside of k8s cluster.
+	// The value must be in the below format "API_SERVER|TOKEN|CA"
+	K8sServiceAccountAuth string
 }
 
 var (
@@ -127,3 +134,11 @@ var (
 		EnableNetworkEvents:            true,
 	}
 )
+
+func K8SControlPlaneEnabled() bool {
+	return option.K8SControlPlaneEnabled() || len(Config.K8sServiceAccountAuth) > 0
+}
+
+func InClusterControlPlaneEnabled() bool {
+	return option.InClusterControlPlaneEnabled() && len(Config.K8sServiceAccountAuth) == 0
+}

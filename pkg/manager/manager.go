@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/manager"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/watcher/conf"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,6 +32,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint/controllers"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
 
 const (
@@ -65,13 +67,16 @@ type EnterpriseManager struct {
 }
 
 func New(ctx context.Context) (KubernetesManager, error) {
+	// Overwrite the k8s config in oss watcher conf with the one from enterprise
+	// So that we can extend k8s auth mechanisms for switches
+	conf.K8sConfig = enterpriseConf.K8sConfig
 	ossManager := manager.Get()
 	// This looks a bit off, starting controller-runtime manager before adding
 	// controllers, but we need to start the manager to be able to start an
 	// informer for CRDs. Adding controllers after starting the manager is ok
 	// according to https://github.com/kubernetes-sigs/controller-runtime/issues/1994.
 	ossManager.Start(ctx)
-	if !option.InClusterControlPlaneEnabled() {
+	if !enterpriseOption.InClusterControlPlaneEnabled() {
 		return &EnterpriseManager{ossManager}, nil
 	}
 	// Wait for tetragon-operator to create CRDs
@@ -110,7 +115,7 @@ func (em *EnterpriseManager) GetControllerManager() *manager.ControllerManager {
 
 func Get() KubernetesManager {
 	once.Do(func() {
-		if option.K8SControlPlaneEnabled() {
+		if enterpriseOption.K8SControlPlaneEnabled() {
 			var err error
 			logger.GetLogger().Info("Enabling Kubernetes controller-runtime manager")
 			instance, err = New(context.Background())
