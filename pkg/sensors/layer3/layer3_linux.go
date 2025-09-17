@@ -34,6 +34,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
+	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -563,6 +564,21 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 			if err != nil {
 				return fmt.Errorf("failed to write BPF domain maps with endpoint %s and id %d: %w", endpoint, id, err)
 			}
+		}
+
+		if enterpriseOption.Config.EnableBPFDNSPerPod {
+			m := manager.Get().GetControllerManager().Manager
+			reconciler, err := dnsparser.NewPodReconciler(m.GetClient(), ipToIDMaps)
+			if err != nil {
+				return fmt.Errorf("failed to create a new Pod reconciler for the DNS parser per Pod feature: %w", err)
+			}
+			if err = reconciler.SetupWithManager(m); err != nil {
+				return fmt.Errorf("failed to setup the Pod reconciler for the DNS parser per Pod feature: %w", err)
+			}
+		} else {
+			// If the reconciler does not manage this map, let's
+			// close the raw map as the wrapper will be GCed
+			ipToIDMapsRaw.Close()
 		}
 	}
 	if icmpEnabled && (spec == nil || spec.Parser.Icmp != nil) {

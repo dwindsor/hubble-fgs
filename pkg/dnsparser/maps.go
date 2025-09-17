@@ -61,6 +61,7 @@ const (
 	// The IPToID index 0 is reserved for the (default) host map.
 	MaxNumberOfPods      = 1024
 	IPToIDMapsToPrealloc = 10
+	IPToIDMapsMargin     = 5
 	DefaultInnerMapID    = 0
 )
 
