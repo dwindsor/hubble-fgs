@@ -78,6 +78,7 @@ Helm chart for Tetragon Enterprise
 | tetragon.applicationModelExportFilename | string | `""` | Export filename for application model (e.g "application-model.log"). Set to empty to disable exporting the application model. |
 | tetragon.applicationModelExportInterval | string | `"60s"` | Interval at which to export application model. |
 | tetragon.argsOverride | list | `[]` | Override the arguments. For advanced users only. |
+| tetragon.bpfDNSParser.enabled | bool | `false` | Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required. |
 | tetragon.btf | string | `""` |  |
 | tetragon.cgidmap | object | `{"enabled":false}` | Enabling cgidmap instructs the Tetragon agent to use cgroup ids (instead of cgroup names) for pod association. This feature depends on cri being enabled. |
 | tetragon.clusterName | string | `""` | Name of the cluster where Tetragon is installed. Tetragon uses this value to set the cluster_name field in GetEventsResponse messages. |
@@ -88,7 +89,6 @@ Helm chart for Tetragon Enterprise
 | tetragon.dns.enabled | bool | `false` |  |
 | tetragon.dnsStatsPerSocket | bool | `false` |  |
 | tetragon.enableApplicationModel | bool | `false` | Enable application model. |
-| tetragon.enableBPFDNSParser | bool | `false` | Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required. |
 | tetragon.enableCiliumAPI | bool | `false` | Access Cilium API to associate Tetragon events with Cilium DNS cache. |
 | tetragon.enableEvents.network | bool | `true` |  |
 | tetragon.enableK8sAPI | bool | `true` | Access Kubernetes API to associate Tetragon events with Kubernetes pods. |

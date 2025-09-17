@@ -47,7 +47,7 @@ enable-aws-sonar: "true"
 aws-sonar-region: {{ .Values.tetragon.awsSonar.region }}
 {{- end }}
 dns-stats-per-socket: {{ .Values.tetragon.dnsStatsPerSocket | quote }}
-enable-bpf-dns-parser: {{ .Values.tetragon.enableBPFDNSParser | quote }}
+enable-bpf-dns-parser: {{ (or .Values.tetragon.bpfDNSParser.enabled .Values.tetragon.enableBPFDNSParser) | quote }}
 enable-alerts: {{ .Values.tetragon.alerts.enabled | quote }}
 alerts-export-dir: {{ .Values.tetragon.alerts.exportDirectory | quote }}
 {{- end }}
