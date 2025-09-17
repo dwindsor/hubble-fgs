@@ -426,7 +426,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	// Start Kubernetes manager. Note this doesn't have to be in the if block
 	// below. If Kubernetes is not enabled, this call returns a fake manager.
 	kubernetesManager := manager.Get()
-	if option.K8SControlPlaneEnabled() {
+	if option.K8SControlPlaneEnabled() && option.InClusterControlPlaneEnabled() {
 		log.Info("Enabling Kubernetes API")
 		podAccessor = kubernetesManager.GetControllerManager()
 	} else {

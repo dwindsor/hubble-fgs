@@ -71,6 +71,9 @@ func New(ctx context.Context) (KubernetesManager, error) {
 	// informer for CRDs. Adding controllers after starting the manager is ok
 	// according to https://github.com/kubernetes-sigs/controller-runtime/issues/1994.
 	ossManager.Start(ctx)
+	if !option.InClusterControlPlaneEnabled() {
+		return &EnterpriseManager{ossManager}, nil
+	}
 	// Wait for tetragon-operator to create CRDs
 	enabledCRDs := getEnabledCRDs()
 	if len(enabledCRDs) > 0 {
