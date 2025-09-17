@@ -10,6 +10,9 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: read
     timeout-minutes: 60
     strategy:
       matrix:
@@ -84,6 +87,8 @@ jobs:
   # external dependencies. It's a wonderful thing.
   unit-test:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     timeout-minutes: 10
     steps:
     - name: Checkout code

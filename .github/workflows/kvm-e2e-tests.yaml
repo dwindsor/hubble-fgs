@@ -19,6 +19,8 @@ env:
 jobs:
   ensure-image-available:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -60,6 +62,9 @@ jobs:
     needs: ensure-image-available
     runs-on:
       - majestic-ketchup-light
+    permissions:
+      contents: read
+      actions: read
     timeout-minutes: 60
     strategy:
       fail-fast: false

@@ -48,6 +48,9 @@ jobs:
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
             kernel: "rhel8.9-20241218.004849" # currently not supported on ARM64
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Checkout Git Repo
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
