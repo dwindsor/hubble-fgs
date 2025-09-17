@@ -78,6 +78,10 @@ func getPIDsFromCgroupV2(path string) ([]int, error) {
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		if pid, err := strconv.Atoi(sc.Text()); err == nil {
+			// PID 0 should be ignored
+			if pid == 0 {
+				continue
+			}
 			pids = append(pids, pid)
 		}
 	}
