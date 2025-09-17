@@ -32,17 +32,15 @@ import (
 
 func findAllocsIDs(ipMap dnsparser.IPToDomainMap) ([]uint32, error) {
 	allocIDs := []uint32{}
-	ids := uint32(0)
-	for {
+	for ids := range uint32(dnsparser.MaxNumberOfPods) {
 		exist, err := ipMap.InnerMapExist(ids)
 		if err != nil {
 			return nil, fmt.Errorf("failed finding if inner map exist: %w", err)
 		}
 		if !exist {
-			break
+			continue
 		}
 		allocIDs = append(allocIDs, ids)
-		ids++
 	}
 	return allocIDs, nil
 }
