@@ -18,6 +18,8 @@ on:
 jobs:
   renovate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       buildx_version: 'v0.10.5'
     steps:

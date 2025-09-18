@@ -10,6 +10,8 @@ on:
 jobs:
   build-and-push-catalog:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       # https://github.com/docker/setup-buildx-action
       - name: Set up Docker Buildx

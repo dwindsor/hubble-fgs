@@ -11,6 +11,9 @@ env:
 jobs:
   install-and-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     timeout-minutes: 75
     strategy:
       matrix:
