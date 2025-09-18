@@ -27,6 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 // requeueTiming is the wait time between reconciliation retry when we find a
@@ -136,8 +138,8 @@ func AllocateMapsIfNeeded(ipToIDMaps ipToIDMapsInterface, allocID uint32) error 
 	// accounts for removed maps) - the current alloc ID + 1.
 	mapUsed := allocID + 1
 	freeMaps := int(ipToIDMaps.MapCount()) - int(mapUsed)
-	if freeMaps < int(IPToIDMapsMargin) {
-		for range int(IPToIDMapsMargin) - freeMaps {
+	if freeMaps < int(option.Config.BPFDNSPerPodThresold) {
+		for range int(option.Config.BPFDNSPerPodThresold) - freeMaps {
 			err := ipToIDMaps.AppendAndPopulateNewInnerMap()
 			if err != nil {
 				return fmt.Errorf("failed allocating new map: %w", err)

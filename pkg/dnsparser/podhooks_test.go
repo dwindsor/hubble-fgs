@@ -15,6 +15,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 type FakeIPToIDMaps struct {
@@ -41,14 +43,14 @@ func TestAllocateMapsIfNeeded(t *testing.T) {
 	fakeMap := FakeIPToIDMaps{}
 
 	// Simulate initial preallocation like in the layer3 sensor init
-	IPToIDMapsToPrealloc = 10
-	for range IPToIDMapsToPrealloc {
+	option.Config.BPFDNSPerPodPrealloc = 10
+	for range option.Config.BPFDNSPerPodPrealloc {
 		err := fakeMap.AppendAndPopulateNewInnerMap()
 		require.NoError(t, err)
 	}
 
 	// We will need a margin of 5
-	IPToIDMapsMargin = 5
+	option.Config.BPFDNSPerPodThresold = 5
 
 	// We have 10 maps, 0 used
 	allocationID := uint32(8)

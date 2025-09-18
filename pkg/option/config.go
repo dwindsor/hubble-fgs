@@ -79,6 +79,8 @@ type config struct {
 	EnableBPFDNSParser             bool
 	BPFDNSParserMaxPendingRequests uint32
 	EnableBPFDNSPerPod             bool
+	BPFDNSPerPodPrealloc           uint32
+	BPFDNSPerPodThresold           uint32
 
 	DNSStatsPerSocket bool
 

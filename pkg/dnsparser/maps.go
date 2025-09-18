@@ -63,12 +63,6 @@ const (
 	DefaultInnerMapID = 0
 )
 
-var (
-	// Those are theoritically constants but are keep as vars for testing purposes
-	IPToIDMapsToPrealloc = uint32(10)
-	IPToIDMapsMargin     = uint32(5)
-)
-
 type IpMap struct {
 	ipMap *ebpf.Map
 }
@@ -425,7 +419,7 @@ func (m *IPToIDMaps) RemoveInnerMap(mapID uint32) error {
 func (m *IPToIDMaps) CreatePreallocMaps() error {
 	mapsToPrealloc := uint32(1)
 	if option.Config.EnableBPFDNSPerPod {
-		mapsToPrealloc = IPToIDMapsToPrealloc
+		mapsToPrealloc = option.Config.BPFDNSPerPodPrealloc
 	}
 
 	for range mapsToPrealloc {
@@ -441,7 +435,7 @@ func (m *IPToIDMaps) CreatePreallocMaps() error {
 func (m IPToIDMaps) PopulatePreallocMapsWithLocalhost() error {
 	mapsToPrealloc := uint32(1)
 	if option.Config.EnableBPFDNSPerPod {
-		mapsToPrealloc = IPToIDMapsToPrealloc
+		mapsToPrealloc = option.Config.BPFDNSPerPodPrealloc
 	}
 
 	for i := uint32(0); i < mapsToPrealloc; i++ {

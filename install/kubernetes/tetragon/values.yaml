@@ -322,6 +322,10 @@ tetragon:
     enabled: false
     # -- Enable in-kernel BPF DNS parser maps per Pod partitioning.
     perPod: false
+    # -- Number of maps to preallocate at startup for BPF DNS parser maps per Pod partitioning.
+    perPodPrealloc: 15
+    # -- Threshold of free maps to keep at runtime for the BPF DNS parser maps per Pod partitioning.
+    perPodThreshold: 5
   # -- Enable application model.
   enableApplicationModel: false
   # -- Cache size for application model.

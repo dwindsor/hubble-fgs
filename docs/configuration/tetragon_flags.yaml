@@ -22,6 +22,14 @@ options:
     - name: bpf-dns-parser-max-pending-requests
       default_value: "1024"
       usage: Size of the BPF DNS parser pending requests ID map.
+    - name: bpf-dns-parser-per-pod-prealloc
+      default_value: "15"
+      usage: |
+        Number of maps to preallocate at startup for BPF DNS parser maps per Pod partitioning.
+    - name: bpf-dns-parser-per-pod-threshold
+      default_value: "5"
+      usage: |
+        Threshold of free maps to keep at runtime for the BPF DNS parser maps per Pod partitioning.
     - name: bpf-endpoint-cache-size
       default_value: "65536"
       usage: |

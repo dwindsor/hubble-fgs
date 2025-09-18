@@ -80,6 +80,8 @@ Helm chart for Tetragon Enterprise
 | tetragon.argsOverride | list | `[]` | Override the arguments. For advanced users only. |
 | tetragon.bpfDNSParser.enabled | bool | `false` | Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required. |
 | tetragon.bpfDNSParser.perPod | bool | `false` | Enable in-kernel BPF DNS parser maps per Pod partitioning. |
+| tetragon.bpfDNSParser.perPodPrealloc | int | `15` | Number of maps to preallocate at startup for BPF DNS parser maps per Pod partitioning. |
+| tetragon.bpfDNSParser.perPodThreshold | int | `5` | Threshold of free maps to keep at runtime for the BPF DNS parser maps per Pod partitioning. |
 | tetragon.btf | string | `""` |  |
 | tetragon.cgidmap | object | `{"enabled":false}` | Enabling cgidmap instructs the Tetragon agent to use cgroup ids (instead of cgroup names) for pod association. This feature depends on cri being enabled. |
 | tetragon.clusterName | string | `""` | Name of the cluster where Tetragon is installed. Tetragon uses this value to set the cluster_name field in GetEventsResponse messages. |
