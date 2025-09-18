@@ -568,7 +568,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 
 		if enterpriseOption.Config.EnableBPFDNSPerPod {
 			m := manager.Get().GetControllerManager().Manager
-			reconciler, err := dnsparser.NewPodReconciler(m.GetClient(), ipToIDMaps)
+			reconciler, err := dnsparser.NewPodReconciler(m.GetClient(), &ipToIDMaps)
 			if err != nil {
 				return fmt.Errorf("failed to create a new Pod reconciler for the DNS parser per Pod feature: %w", err)
 			}

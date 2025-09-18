@@ -59,10 +59,14 @@ const (
 
 	// The max number of pod for the IPToID map resize and the cgidToAllocid.
 	// The IPToID index 0 is reserved for the (default) host map.
-	MaxNumberOfPods      = 1024
-	IPToIDMapsToPrealloc = 10
-	IPToIDMapsMargin     = 5
-	DefaultInnerMapID    = 0
+	MaxNumberOfPods   = 1024
+	DefaultInnerMapID = 0
+)
+
+var (
+	// Those are theoritically constants but are keep as vars for testing purposes
+	IPToIDMapsToPrealloc = uint32(10)
+	IPToIDMapsMargin     = uint32(5)
 )
 
 type IpMap struct {

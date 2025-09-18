@@ -64,6 +64,16 @@ func (s *PodStore) Store(name types.NamespacedName, allocID allocID) {
 	s.mutex.Unlock()
 }
 
+type ipToIDMapsInterface interface {
+	// AppendAndPopulateNewInnerMap pushes a new map at the end of the array
+	// and populate it with localhost entries
+	AppendAndPopulateNewInnerMap() error
+	// RemoveInnerMap removes the map in the array of map at index mapID
+	RemoveInnerMap(mapID uint32) error
+	// MapCount returns the number of allocated maps
+	MapCount() uint32
+}
+
 type PodReconciler struct {
 	client.Client
 
@@ -78,7 +88,7 @@ type PodReconciler struct {
 
 	// ipToIDMaps is the state the controller will manage, adding or
 	// removing new inner maps by watching the local Pods
-	ipToIDMaps IPToIDMaps
+	ipToIDMaps ipToIDMapsInterface
 	// allocationIDMap is to read the current allocationID (and thus know
 	// how many maps we are currently using)
 	allocationIDMap AllocationIDMap
@@ -86,7 +96,7 @@ type PodReconciler struct {
 
 // NewPodReconciler takes ipToIDMaps as input instead of recreating that object
 // because this wrapper is stateful and needs to be shared across execution.
-func NewPodReconciler(client client.Client, ipToIDMaps IPToIDMaps) (PodReconciler, error) {
+func NewPodReconciler(client client.Client, ipToIDMaps ipToIDMapsInterface) (PodReconciler, error) {
 	cgidToAllocIDFile := filepath.Join(bpf.MapPrefixPath(), CgroupIDToAllocIDMapName)
 	cgidToAllocIDRaw, err := ebpf.LoadPinnedMap(cgidToAllocIDFile, nil)
 	if err != nil {
@@ -121,7 +131,7 @@ func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func AllocateMapsIfNeeded(ipToIDMaps *IPToIDMaps, allocID uint32) error {
+func AllocateMapsIfNeeded(ipToIDMaps ipToIDMapsInterface, allocID uint32) error {
 	// The number of free maps is the number of allocated maps (which
 	// accounts for removed maps) - the current alloc ID + 1.
 	mapUsed := allocID + 1
@@ -170,7 +180,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to lookup the current allocation ID: %w", err)
 	}
-	err = AllocateMapsIfNeeded(&r.ipToIDMaps, currentAllocID)
+	err = AllocateMapsIfNeeded(r.ipToIDMaps, currentAllocID)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
