@@ -240,6 +240,124 @@ func (AgentType) EnumDescriptor() ([]byte, []int) {
 	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{3}
 }
 
+type ConfigType int32
+
+const (
+	// Unspecified or unknown config type
+	ConfigType_CONFIG_TYPE_UNSPECIFIED ConfigType = 0
+	// DPU configuration
+	ConfigType_CONFIG_TYPE_DPU ConfigType = 1
+	// Log export syslog configuration
+	ConfigType_CONFIG_TYPE_LOG_SYSLOG ConfigType = 2
+	// Log export IPFIX configuration
+	ConfigType_CONFIG_TYPE_LOG_IPFIX ConfigType = 3
+	// Log export timescape configuration
+	ConfigType_CONFIG_TYPE_LOG_TIMESCAPE ConfigType = 4
+	// Log export splunk configuration
+	ConfigType_CONFIG_TYPE_LOG_SPLUNK ConfigType = 5
+)
+
+// Enum value maps for ConfigType.
+var (
+	ConfigType_name = map[int32]string{
+		0: "CONFIG_TYPE_UNSPECIFIED",
+		1: "CONFIG_TYPE_DPU",
+		2: "CONFIG_TYPE_LOG_SYSLOG",
+		3: "CONFIG_TYPE_LOG_IPFIX",
+		4: "CONFIG_TYPE_LOG_TIMESCAPE",
+		5: "CONFIG_TYPE_LOG_SPLUNK",
+	}
+	ConfigType_value = map[string]int32{
+		"CONFIG_TYPE_UNSPECIFIED":   0,
+		"CONFIG_TYPE_DPU":           1,
+		"CONFIG_TYPE_LOG_SYSLOG":    2,
+		"CONFIG_TYPE_LOG_IPFIX":     3,
+		"CONFIG_TYPE_LOG_TIMESCAPE": 4,
+		"CONFIG_TYPE_LOG_SPLUNK":    5,
+	}
+)
+
+func (x ConfigType) Enum() *ConfigType {
+	p := new(ConfigType)
+	*p = x
+	return p
+}
+
+func (x ConfigType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ConfigType) Descriptor() protoreflect.EnumDescriptor {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[4].Descriptor()
+}
+
+func (ConfigType) Type() protoreflect.EnumType {
+	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[4]
+}
+
+func (x ConfigType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ConfigType.Descriptor instead.
+func (ConfigType) EnumDescriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{4}
+}
+
+// Config operation is the instruction telling the backend what to do with a
+// ConfigObject.
+type ConfigOperation int32
+
+const (
+	// Unspecified or unknown operation
+	ConfigOperation_CONFIG_OPERATION_UNSPECIFIED ConfigOperation = 0
+	// Add the associated config object. If the config object exists it should be replaced with the new object.
+	ConfigOperation_CONFIG_OPERATION_UPSERT ConfigOperation = 1
+	// Delete the associated config object.
+	ConfigOperation_CONFIG_OPERATION_DELETE ConfigOperation = 2
+)
+
+// Enum value maps for ConfigOperation.
+var (
+	ConfigOperation_name = map[int32]string{
+		0: "CONFIG_OPERATION_UNSPECIFIED",
+		1: "CONFIG_OPERATION_UPSERT",
+		2: "CONFIG_OPERATION_DELETE",
+	}
+	ConfigOperation_value = map[string]int32{
+		"CONFIG_OPERATION_UNSPECIFIED": 0,
+		"CONFIG_OPERATION_UPSERT":      1,
+		"CONFIG_OPERATION_DELETE":      2,
+	}
+)
+
+func (x ConfigOperation) Enum() *ConfigOperation {
+	p := new(ConfigOperation)
+	*p = x
+	return p
+}
+
+func (x ConfigOperation) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ConfigOperation) Descriptor() protoreflect.EnumDescriptor {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[5].Descriptor()
+}
+
+func (ConfigOperation) Type() protoreflect.EnumType {
+	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[5]
+}
+
+func (x ConfigOperation) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ConfigOperation.Descriptor instead.
+func (ConfigOperation) EnumDescriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{5}
+}
+
 // L3Network subjects are endpoints (destination or source) that specify a L3 endpoint.
 type L3L4NetworkSubject struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -778,6 +896,659 @@ func (x *ReportStatus) GetSerialNumber() string {
 	return ""
 }
 
+// Object to store NX configuration
+// CONFIG_TYPE_DPU
+type DpuConfig struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ServiceIp     string                 `protobuf:"bytes,1,opt,name=service_ip,json=serviceIp,proto3" json:"service_ip,omitempty"`
+	ServiceMac    string                 `protobuf:"bytes,2,opt,name=service_mac,json=serviceMac,proto3" json:"service_mac,omitempty"`
+	PortLow       uint32                 `protobuf:"varint,3,opt,name=port_low,json=portLow,proto3" json:"port_low,omitempty"`
+	PortHigh      uint32                 `protobuf:"varint,4,opt,name=port_high,json=portHigh,proto3" json:"port_high,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DpuConfig) Reset() {
+	*x = DpuConfig{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DpuConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DpuConfig) ProtoMessage() {}
+
+func (x *DpuConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DpuConfig.ProtoReflect.Descriptor instead.
+func (*DpuConfig) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *DpuConfig) GetServiceIp() string {
+	if x != nil {
+		return x.ServiceIp
+	}
+	return ""
+}
+
+func (x *DpuConfig) GetServiceMac() string {
+	if x != nil {
+		return x.ServiceMac
+	}
+	return ""
+}
+
+func (x *DpuConfig) GetPortLow() uint32 {
+	if x != nil {
+		return x.PortLow
+	}
+	return 0
+}
+
+func (x *DpuConfig) GetPortHigh() uint32 {
+	if x != nil {
+		return x.PortHigh
+	}
+	return 0
+}
+
+// Object to store log export configuration
+type LogConfig struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	// IPv4 only
+	Host string `protobuf:"bytes,4,opt,name=host,proto3" json:"host,omitempty"`
+	// Collector target port
+	Port string `protobuf:"bytes,5,opt,name=port,proto3" json:"port,omitempty"`
+	// Protocol, only TCP or UDP
+	Mode string `protobuf:"bytes,6,opt,name=mode,proto3" json:"mode,omitempty"`
+	// Turns TLS on or off
+	Tls bool `protobuf:"varint,7,opt,name=tls,proto3" json:"tls,omitempty"`
+	// Secret/Auth fields are only relevant if TLS is true
+	// Token for Splunk or Timescape
+	Token string `protobuf:"bytes,8,opt,name=token,proto3" json:"token,omitempty"`
+	// Username for Splunk or Timescape
+	Username string `protobuf:"bytes,9,opt,name=username,proto3" json:"username,omitempty"`
+	// Password for Splunk or Timescape
+	Password string `protobuf:"bytes,10,opt,name=password,proto3" json:"password,omitempty"`
+	// CA cert as a string
+	Ca string `protobuf:"bytes,11,opt,name=ca,proto3" json:"ca,omitempty"`
+	// Client cert as a string
+	Cert string `protobuf:"bytes,12,opt,name=cert,proto3" json:"cert,omitempty"`
+	// Client private key as a string
+	Key string `protobuf:"bytes,13,opt,name=key,proto3" json:"key,omitempty"`
+	// Key password to apply to the persisted client private key
+	KeyPassword   string `protobuf:"bytes,14,opt,name=key_password,json=keyPassword,proto3" json:"key_password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogConfig) Reset() {
+	*x = LogConfig{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogConfig) ProtoMessage() {}
+
+func (x *LogConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogConfig.ProtoReflect.Descriptor instead.
+func (*LogConfig) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *LogConfig) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *LogConfig) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *LogConfig) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *LogConfig) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *LogConfig) GetPort() string {
+	if x != nil {
+		return x.Port
+	}
+	return ""
+}
+
+func (x *LogConfig) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *LogConfig) GetTls() bool {
+	if x != nil {
+		return x.Tls
+	}
+	return false
+}
+
+func (x *LogConfig) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *LogConfig) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *LogConfig) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *LogConfig) GetCa() string {
+	if x != nil {
+		return x.Ca
+	}
+	return ""
+}
+
+func (x *LogConfig) GetCert() string {
+	if x != nil {
+		return x.Cert
+	}
+	return ""
+}
+
+func (x *LogConfig) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *LogConfig) GetKeyPassword() string {
+	if x != nil {
+		return x.KeyPassword
+	}
+	return ""
+}
+
+// Object to store a list of syslog configuration
+// CONFIG_TYPE_LOG_SYSLOG
+type LogConfigSyslog struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Configs       map[string]*LogConfig  `protobuf:"bytes,1,rep,name=configs,proto3" json:"configs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogConfigSyslog) Reset() {
+	*x = LogConfigSyslog{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogConfigSyslog) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogConfigSyslog) ProtoMessage() {}
+
+func (x *LogConfigSyslog) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogConfigSyslog.ProtoReflect.Descriptor instead.
+func (*LogConfigSyslog) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *LogConfigSyslog) GetConfigs() map[string]*LogConfig {
+	if x != nil {
+		return x.Configs
+	}
+	return nil
+}
+
+// Object to store a list of ipfix configuration
+// CONFIG_TYPE_LOG_IPFIX
+type LogConfigIpfix struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Configs       map[string]*LogConfig  `protobuf:"bytes,1,rep,name=configs,proto3" json:"configs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogConfigIpfix) Reset() {
+	*x = LogConfigIpfix{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogConfigIpfix) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogConfigIpfix) ProtoMessage() {}
+
+func (x *LogConfigIpfix) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogConfigIpfix.ProtoReflect.Descriptor instead.
+func (*LogConfigIpfix) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *LogConfigIpfix) GetConfigs() map[string]*LogConfig {
+	if x != nil {
+		return x.Configs
+	}
+	return nil
+}
+
+// Object to store a list of timescape configuration
+// CONFIG_TYPE_LOG_TIMESCAPE
+type LogConfigTimescape struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Configs       map[string]*LogConfig  `protobuf:"bytes,1,rep,name=configs,proto3" json:"configs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogConfigTimescape) Reset() {
+	*x = LogConfigTimescape{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogConfigTimescape) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogConfigTimescape) ProtoMessage() {}
+
+func (x *LogConfigTimescape) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogConfigTimescape.ProtoReflect.Descriptor instead.
+func (*LogConfigTimescape) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *LogConfigTimescape) GetConfigs() map[string]*LogConfig {
+	if x != nil {
+		return x.Configs
+	}
+	return nil
+}
+
+// Object to store a list of splunk configuration
+// CONFIG_TYPE_LOG_SPLUNK
+type LogConfigSplunk struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Configs       map[string]*LogConfig  `protobuf:"bytes,1,rep,name=configs,proto3" json:"configs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogConfigSplunk) Reset() {
+	*x = LogConfigSplunk{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogConfigSplunk) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogConfigSplunk) ProtoMessage() {}
+
+func (x *LogConfigSplunk) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogConfigSplunk.ProtoReflect.Descriptor instead.
+func (*LogConfigSplunk) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *LogConfigSplunk) GetConfigs() map[string]*LogConfig {
+	if x != nil {
+		return x.Configs
+	}
+	return nil
+}
+
+// ConfigObject is a generic config object, which can be extended by adding additional configuration types
+type ConfigObject struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Type of the json encoded config, used to unmarshal the json object.
+	Type ConfigType `protobuf:"varint,1,opt,name=type,proto3,enum=l3l4networkpolicy.v1alpha.ConfigType" json:"type,omitempty"`
+	// The configuration object encoded in json.
+	//
+	// Types that are valid to be assigned to Config:
+	//
+	//	*ConfigObject_ConfigDpu
+	//	*ConfigObject_ConfigLogSyslog
+	//	*ConfigObject_ConfigLogIpfix
+	//	*ConfigObject_ConfigLogTimescape
+	//	*ConfigObject_ConfigLogSplunk
+	Config        isConfigObject_Config `protobuf_oneof:"config"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConfigObject) Reset() {
+	*x = ConfigObject{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConfigObject) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConfigObject) ProtoMessage() {}
+
+func (x *ConfigObject) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConfigObject.ProtoReflect.Descriptor instead.
+func (*ConfigObject) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ConfigObject) GetType() ConfigType {
+	if x != nil {
+		return x.Type
+	}
+	return ConfigType_CONFIG_TYPE_UNSPECIFIED
+}
+
+func (x *ConfigObject) GetConfig() isConfigObject_Config {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+func (x *ConfigObject) GetConfigDpu() *DpuConfig {
+	if x != nil {
+		if x, ok := x.Config.(*ConfigObject_ConfigDpu); ok {
+			return x.ConfigDpu
+		}
+	}
+	return nil
+}
+
+func (x *ConfigObject) GetConfigLogSyslog() *LogConfigSyslog {
+	if x != nil {
+		if x, ok := x.Config.(*ConfigObject_ConfigLogSyslog); ok {
+			return x.ConfigLogSyslog
+		}
+	}
+	return nil
+}
+
+func (x *ConfigObject) GetConfigLogIpfix() *LogConfigIpfix {
+	if x != nil {
+		if x, ok := x.Config.(*ConfigObject_ConfigLogIpfix); ok {
+			return x.ConfigLogIpfix
+		}
+	}
+	return nil
+}
+
+func (x *ConfigObject) GetConfigLogTimescape() *LogConfigTimescape {
+	if x != nil {
+		if x, ok := x.Config.(*ConfigObject_ConfigLogTimescape); ok {
+			return x.ConfigLogTimescape
+		}
+	}
+	return nil
+}
+
+func (x *ConfigObject) GetConfigLogSplunk() *LogConfigSplunk {
+	if x != nil {
+		if x, ok := x.Config.(*ConfigObject_ConfigLogSplunk); ok {
+			return x.ConfigLogSplunk
+		}
+	}
+	return nil
+}
+
+type isConfigObject_Config interface {
+	isConfigObject_Config()
+}
+
+type ConfigObject_ConfigDpu struct {
+	ConfigDpu *DpuConfig `protobuf:"bytes,2,opt,name=config_dpu,json=configDpu,proto3,oneof"`
+}
+
+type ConfigObject_ConfigLogSyslog struct {
+	ConfigLogSyslog *LogConfigSyslog `protobuf:"bytes,3,opt,name=config_log_syslog,json=configLogSyslog,proto3,oneof"`
+}
+
+type ConfigObject_ConfigLogIpfix struct {
+	ConfigLogIpfix *LogConfigIpfix `protobuf:"bytes,4,opt,name=config_log_ipfix,json=configLogIpfix,proto3,oneof"`
+}
+
+type ConfigObject_ConfigLogTimescape struct {
+	ConfigLogTimescape *LogConfigTimescape `protobuf:"bytes,5,opt,name=config_log_timescape,json=configLogTimescape,proto3,oneof"`
+}
+
+type ConfigObject_ConfigLogSplunk struct {
+	ConfigLogSplunk *LogConfigSplunk `protobuf:"bytes,6,opt,name=config_log_splunk,json=configLogSplunk,proto3,oneof"`
+}
+
+func (*ConfigObject_ConfigDpu) isConfigObject_Config() {}
+
+func (*ConfigObject_ConfigLogSyslog) isConfigObject_Config() {}
+
+func (*ConfigObject_ConfigLogIpfix) isConfigObject_Config() {}
+
+func (*ConfigObject_ConfigLogTimescape) isConfigObject_Config() {}
+
+func (*ConfigObject_ConfigLogSplunk) isConfigObject_Config() {}
+
+type StreamDatapathConfigRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentUid      string                 `protobuf:"bytes,1,opt,name=agent_uid,json=agentUid,proto3" json:"agent_uid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StreamDatapathConfigRequest) Reset() {
+	*x = StreamDatapathConfigRequest{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StreamDatapathConfigRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StreamDatapathConfigRequest) ProtoMessage() {}
+
+func (x *StreamDatapathConfigRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StreamDatapathConfigRequest.ProtoReflect.Descriptor instead.
+func (*StreamDatapathConfigRequest) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *StreamDatapathConfigRequest) GetAgentUid() string {
+	if x != nil {
+		return x.AgentUid
+	}
+	return ""
+}
+
+type StreamDatapathConfigResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Oper          ConfigOperation        `protobuf:"varint,1,opt,name=oper,proto3,enum=l3l4networkpolicy.v1alpha.ConfigOperation" json:"oper,omitempty"`
+	Config        *ConfigObject          `protobuf:"bytes,2,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StreamDatapathConfigResponse) Reset() {
+	*x = StreamDatapathConfigResponse{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StreamDatapathConfigResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StreamDatapathConfigResponse) ProtoMessage() {}
+
+func (x *StreamDatapathConfigResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StreamDatapathConfigResponse.ProtoReflect.Descriptor instead.
+func (*StreamDatapathConfigResponse) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *StreamDatapathConfigResponse) GetOper() ConfigOperation {
+	if x != nil {
+		return x.Oper
+	}
+	return ConfigOperation_CONFIG_OPERATION_UNSPECIFIED
+}
+
+func (x *StreamDatapathConfigResponse) GetConfig() *ConfigObject {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
 var File_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto protoreflect.FileDescriptor
 
 const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
@@ -820,7 +1591,64 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\farchitecture\x18\x06 \x01(\tR\farchitecture\x12\x0e\n" +
 	"\x02os\x18\a \x01(\tR\x02os\x128\n" +
 	"\x04type\x18\b \x01(\x0e2$.l3l4networkpolicy.v1alpha.AgentTypeR\x04type\x12#\n" +
-	"\rserial_number\x18\t \x01(\tR\fserialNumber*}\n" +
+	"\rserial_number\x18\t \x01(\tR\fserialNumber\"\x83\x01\n" +
+	"\tDpuConfig\x12\x1d\n" +
+	"\n" +
+	"service_ip\x18\x01 \x01(\tR\tserviceIp\x12\x1f\n" +
+	"\vservice_mac\x18\x02 \x01(\tR\n" +
+	"serviceMac\x12\x19\n" +
+	"\bport_low\x18\x03 \x01(\rR\aportLow\x12\x1b\n" +
+	"\tport_high\x18\x04 \x01(\rR\bportHigh\"\xc6\x02\n" +
+	"\tLogConfig\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x12\n" +
+	"\x04host\x18\x04 \x01(\tR\x04host\x12\x12\n" +
+	"\x04port\x18\x05 \x01(\tR\x04port\x12\x12\n" +
+	"\x04mode\x18\x06 \x01(\tR\x04mode\x12\x10\n" +
+	"\x03tls\x18\a \x01(\bR\x03tls\x12\x14\n" +
+	"\x05token\x18\b \x01(\tR\x05token\x12\x1a\n" +
+	"\busername\x18\t \x01(\tR\busername\x12\x1a\n" +
+	"\bpassword\x18\n" +
+	" \x01(\tR\bpassword\x12\x0e\n" +
+	"\x02ca\x18\v \x01(\tR\x02ca\x12\x12\n" +
+	"\x04cert\x18\f \x01(\tR\x04cert\x12\x10\n" +
+	"\x03key\x18\r \x01(\tR\x03key\x12!\n" +
+	"\fkey_password\x18\x0e \x01(\tR\vkeyPassword\"\xc6\x01\n" +
+	"\x0fLogConfigSyslog\x12Q\n" +
+	"\aconfigs\x18\x01 \x03(\v27.l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntryR\aconfigs\x1a`\n" +
+	"\fConfigsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12:\n" +
+	"\x05value\x18\x02 \x01(\v2$.l3l4networkpolicy.v1alpha.LogConfigR\x05value:\x028\x01\"\xc4\x01\n" +
+	"\x0eLogConfigIpfix\x12P\n" +
+	"\aconfigs\x18\x01 \x03(\v26.l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntryR\aconfigs\x1a`\n" +
+	"\fConfigsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12:\n" +
+	"\x05value\x18\x02 \x01(\v2$.l3l4networkpolicy.v1alpha.LogConfigR\x05value:\x028\x01\"\xcc\x01\n" +
+	"\x12LogConfigTimescape\x12T\n" +
+	"\aconfigs\x18\x01 \x03(\v2:.l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntryR\aconfigs\x1a`\n" +
+	"\fConfigsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12:\n" +
+	"\x05value\x18\x02 \x01(\v2$.l3l4networkpolicy.v1alpha.LogConfigR\x05value:\x028\x01\"\xc6\x01\n" +
+	"\x0fLogConfigSplunk\x12Q\n" +
+	"\aconfigs\x18\x01 \x03(\v27.l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntryR\aconfigs\x1a`\n" +
+	"\fConfigsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12:\n" +
+	"\x05value\x18\x02 \x01(\v2$.l3l4networkpolicy.v1alpha.LogConfigR\x05value:\x028\x01\"\x88\x04\n" +
+	"\fConfigObject\x129\n" +
+	"\x04type\x18\x01 \x01(\x0e2%.l3l4networkpolicy.v1alpha.ConfigTypeR\x04type\x12E\n" +
+	"\n" +
+	"config_dpu\x18\x02 \x01(\v2$.l3l4networkpolicy.v1alpha.DpuConfigH\x00R\tconfigDpu\x12X\n" +
+	"\x11config_log_syslog\x18\x03 \x01(\v2*.l3l4networkpolicy.v1alpha.LogConfigSyslogH\x00R\x0fconfigLogSyslog\x12U\n" +
+	"\x10config_log_ipfix\x18\x04 \x01(\v2).l3l4networkpolicy.v1alpha.LogConfigIpfixH\x00R\x0econfigLogIpfix\x12a\n" +
+	"\x14config_log_timescape\x18\x05 \x01(\v2-.l3l4networkpolicy.v1alpha.LogConfigTimescapeH\x00R\x12configLogTimescape\x12X\n" +
+	"\x11config_log_splunk\x18\x06 \x01(\v2*.l3l4networkpolicy.v1alpha.LogConfigSplunkH\x00R\x0fconfigLogSplunkB\b\n" +
+	"\x06config\":\n" +
+	"\x1bStreamDatapathConfigRequest\x12\x1b\n" +
+	"\tagent_uid\x18\x01 \x01(\tR\bagentUid\"\x9f\x01\n" +
+	"\x1cStreamDatapathConfigResponse\x12>\n" +
+	"\x04oper\x18\x01 \x01(\x0e2*.l3l4networkpolicy.v1alpha.ConfigOperationR\x04oper\x12?\n" +
+	"\x06config\x18\x02 \x01(\v2'.l3l4networkpolicy.v1alpha.ConfigObjectR\x06config*}\n" +
 	"\x0ePolicyProtocol\x12\x1f\n" +
 	"\x1bPOLICY_PROTOCOL_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13POLICY_PROTOCOL_TCP\x10\x01\x12\x17\n" +
@@ -837,10 +1665,23 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\tAgentType\x12\x1a\n" +
 	"\x16AGENT_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12AGENT_TYPE_DPU_AGW\x10\x01\x12\x17\n" +
-	"\x13AGENT_TYPE_TETRAGON\x10\x022\xa4\x02\n" +
+	"\x13AGENT_TYPE_TETRAGON\x10\x02*\xb0\x01\n" +
+	"\n" +
+	"ConfigType\x12\x1b\n" +
+	"\x17CONFIG_TYPE_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fCONFIG_TYPE_DPU\x10\x01\x12\x1a\n" +
+	"\x16CONFIG_TYPE_LOG_SYSLOG\x10\x02\x12\x19\n" +
+	"\x15CONFIG_TYPE_LOG_IPFIX\x10\x03\x12\x1d\n" +
+	"\x19CONFIG_TYPE_LOG_TIMESCAPE\x10\x04\x12\x1a\n" +
+	"\x16CONFIG_TYPE_LOG_SPLUNK\x10\x05*m\n" +
+	"\x0fConfigOperation\x12 \n" +
+	"\x1cCONFIG_OPERATION_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17CONFIG_OPERATION_UPSERT\x10\x01\x12\x1b\n" +
+	"\x17CONFIG_OPERATION_DELETE\x10\x022\xb2\x03\n" +
 	"\x18L3L4NetworkPolicyService\x12\x94\x01\n" +
 	"\x17Streaml3l4NetworkPolicy\x129.l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest\x1a:.l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse\"\x000\x01\x12q\n" +
-	"\fReportStatus\x12..l3l4networkpolicy.v1alpha.ReportStatusRequest\x1a/.l3l4networkpolicy.v1alpha.ReportStatusResponse\"\x00B4Z2github.com/isovalent/ipa/l3l4networkpolicy/v1alphab\x06proto3"
+	"\fReportStatus\x12..l3l4networkpolicy.v1alpha.ReportStatusRequest\x1a/.l3l4networkpolicy.v1alpha.ReportStatusResponse\"\x00\x12\x8b\x01\n" +
+	"\x14StreamDatapathConfig\x126.l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest\x1a7.l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse\"\x000\x01B4Z2github.com/isovalent/ipa/l3l4networkpolicy/v1alphab\x06proto3"
 
 var (
 	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescOnce sync.Once
@@ -854,41 +1695,74 @@ func file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP() []byte
 	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescData
 }
 
-var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_goTypes = []any{
 	(PolicyProtocol)(0),                     // 0: l3l4networkpolicy.v1alpha.PolicyProtocol
 	(PolicyAction)(0),                       // 1: l3l4networkpolicy.v1alpha.PolicyAction
 	(PolicyOperation)(0),                    // 2: l3l4networkpolicy.v1alpha.PolicyOperation
 	(AgentType)(0),                          // 3: l3l4networkpolicy.v1alpha.AgentType
-	(*L3L4NetworkSubject)(nil),              // 4: l3l4networkpolicy.v1alpha.L3L4NetworkSubject
-	(*PolicySubject)(nil),                   // 5: l3l4networkpolicy.v1alpha.PolicySubject
-	(*PolicyRule)(nil),                      // 6: l3l4networkpolicy.v1alpha.PolicyRule
-	(*Streaml3L4NetworkPolicyRequest)(nil),  // 7: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
-	(*Streaml3L4NetworkPolicyResponse)(nil), // 8: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
-	(*ReportStatusRequest)(nil),             // 9: l3l4networkpolicy.v1alpha.ReportStatusRequest
-	(*ReportStatusResponse)(nil),            // 10: l3l4networkpolicy.v1alpha.ReportStatusResponse
-	(*ReportStatus)(nil),                    // 11: l3l4networkpolicy.v1alpha.ReportStatus
+	(ConfigType)(0),                         // 4: l3l4networkpolicy.v1alpha.ConfigType
+	(ConfigOperation)(0),                    // 5: l3l4networkpolicy.v1alpha.ConfigOperation
+	(*L3L4NetworkSubject)(nil),              // 6: l3l4networkpolicy.v1alpha.L3L4NetworkSubject
+	(*PolicySubject)(nil),                   // 7: l3l4networkpolicy.v1alpha.PolicySubject
+	(*PolicyRule)(nil),                      // 8: l3l4networkpolicy.v1alpha.PolicyRule
+	(*Streaml3L4NetworkPolicyRequest)(nil),  // 9: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
+	(*Streaml3L4NetworkPolicyResponse)(nil), // 10: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
+	(*ReportStatusRequest)(nil),             // 11: l3l4networkpolicy.v1alpha.ReportStatusRequest
+	(*ReportStatusResponse)(nil),            // 12: l3l4networkpolicy.v1alpha.ReportStatusResponse
+	(*ReportStatus)(nil),                    // 13: l3l4networkpolicy.v1alpha.ReportStatus
+	(*DpuConfig)(nil),                       // 14: l3l4networkpolicy.v1alpha.DpuConfig
+	(*LogConfig)(nil),                       // 15: l3l4networkpolicy.v1alpha.LogConfig
+	(*LogConfigSyslog)(nil),                 // 16: l3l4networkpolicy.v1alpha.LogConfigSyslog
+	(*LogConfigIpfix)(nil),                  // 17: l3l4networkpolicy.v1alpha.LogConfigIpfix
+	(*LogConfigTimescape)(nil),              // 18: l3l4networkpolicy.v1alpha.LogConfigTimescape
+	(*LogConfigSplunk)(nil),                 // 19: l3l4networkpolicy.v1alpha.LogConfigSplunk
+	(*ConfigObject)(nil),                    // 20: l3l4networkpolicy.v1alpha.ConfigObject
+	(*StreamDatapathConfigRequest)(nil),     // 21: l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
+	(*StreamDatapathConfigResponse)(nil),    // 22: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
+	nil,                                     // 23: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
+	nil,                                     // 24: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
+	nil,                                     // 25: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
+	nil,                                     // 26: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
 }
 var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_depIdxs = []int32{
 	0,  // 0: l3l4networkpolicy.v1alpha.L3L4NetworkSubject.protocol:type_name -> l3l4networkpolicy.v1alpha.PolicyProtocol
-	4,  // 1: l3l4networkpolicy.v1alpha.PolicySubject.network:type_name -> l3l4networkpolicy.v1alpha.L3L4NetworkSubject
+	6,  // 1: l3l4networkpolicy.v1alpha.PolicySubject.network:type_name -> l3l4networkpolicy.v1alpha.L3L4NetworkSubject
 	1,  // 2: l3l4networkpolicy.v1alpha.PolicyRule.action:type_name -> l3l4networkpolicy.v1alpha.PolicyAction
-	5,  // 3: l3l4networkpolicy.v1alpha.PolicyRule.source:type_name -> l3l4networkpolicy.v1alpha.PolicySubject
-	5,  // 4: l3l4networkpolicy.v1alpha.PolicyRule.destination:type_name -> l3l4networkpolicy.v1alpha.PolicySubject
+	7,  // 3: l3l4networkpolicy.v1alpha.PolicyRule.source:type_name -> l3l4networkpolicy.v1alpha.PolicySubject
+	7,  // 4: l3l4networkpolicy.v1alpha.PolicyRule.destination:type_name -> l3l4networkpolicy.v1alpha.PolicySubject
 	2,  // 5: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse.oper:type_name -> l3l4networkpolicy.v1alpha.PolicyOperation
-	6,  // 6: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse.policy:type_name -> l3l4networkpolicy.v1alpha.PolicyRule
-	11, // 7: l3l4networkpolicy.v1alpha.ReportStatusRequest.status:type_name -> l3l4networkpolicy.v1alpha.ReportStatus
+	8,  // 6: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse.policy:type_name -> l3l4networkpolicy.v1alpha.PolicyRule
+	13, // 7: l3l4networkpolicy.v1alpha.ReportStatusRequest.status:type_name -> l3l4networkpolicy.v1alpha.ReportStatus
 	3,  // 8: l3l4networkpolicy.v1alpha.ReportStatus.type:type_name -> l3l4networkpolicy.v1alpha.AgentType
-	7,  // 9: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:input_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
-	9,  // 10: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:input_type -> l3l4networkpolicy.v1alpha.ReportStatusRequest
-	8,  // 11: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:output_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
-	10, // 12: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:output_type -> l3l4networkpolicy.v1alpha.ReportStatusResponse
-	11, // [11:13] is the sub-list for method output_type
-	9,  // [9:11] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	23, // 9: l3l4networkpolicy.v1alpha.LogConfigSyslog.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
+	24, // 10: l3l4networkpolicy.v1alpha.LogConfigIpfix.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
+	25, // 11: l3l4networkpolicy.v1alpha.LogConfigTimescape.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
+	26, // 12: l3l4networkpolicy.v1alpha.LogConfigSplunk.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
+	4,  // 13: l3l4networkpolicy.v1alpha.ConfigObject.type:type_name -> l3l4networkpolicy.v1alpha.ConfigType
+	14, // 14: l3l4networkpolicy.v1alpha.ConfigObject.config_dpu:type_name -> l3l4networkpolicy.v1alpha.DpuConfig
+	16, // 15: l3l4networkpolicy.v1alpha.ConfigObject.config_log_syslog:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog
+	17, // 16: l3l4networkpolicy.v1alpha.ConfigObject.config_log_ipfix:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix
+	18, // 17: l3l4networkpolicy.v1alpha.ConfigObject.config_log_timescape:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape
+	19, // 18: l3l4networkpolicy.v1alpha.ConfigObject.config_log_splunk:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk
+	5,  // 19: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.oper:type_name -> l3l4networkpolicy.v1alpha.ConfigOperation
+	20, // 20: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.config:type_name -> l3l4networkpolicy.v1alpha.ConfigObject
+	15, // 21: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	15, // 22: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	15, // 23: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	15, // 24: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	9,  // 25: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:input_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
+	11, // 26: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:input_type -> l3l4networkpolicy.v1alpha.ReportStatusRequest
+	21, // 27: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:input_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
+	10, // 28: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:output_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
+	12, // 29: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:output_type -> l3l4networkpolicy.v1alpha.ReportStatusResponse
+	22, // 30: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:output_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
+	28, // [28:31] is the sub-list for method output_type
+	25, // [25:28] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() }
@@ -896,13 +1770,20 @@ func file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() {
 	if File_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto != nil {
 		return
 	}
+	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[14].OneofWrappers = []any{
+		(*ConfigObject_ConfigDpu)(nil),
+		(*ConfigObject_ConfigLogSyslog)(nil),
+		(*ConfigObject_ConfigLogIpfix)(nil),
+		(*ConfigObject_ConfigLogTimescape)(nil),
+		(*ConfigObject_ConfigLogSplunk)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc), len(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   8,
+			NumEnums:      6,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

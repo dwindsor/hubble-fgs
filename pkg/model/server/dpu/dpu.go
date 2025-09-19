@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"sync"
 	"text/tabwriter"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 
@@ -23,6 +25,12 @@ import (
 
 const (
 	dpuTimeout = 6 // in second
+
+	// DPU IP mappings
+	AgentIdDpu1 = "169.254.24.1"
+	AgentIdDpu2 = "169.254.28.1"
+	AgentIdDpu3 = "169.254.32.1"
+	AgentIdDpu4 = "169.254.36.1"
 )
 
 type DPUSubject struct {
@@ -66,9 +74,12 @@ type DPUReportStatus struct {
 // engines.
 type peer struct {
 	uid        string
-	ch         chan *DPUPolicyRule
+	polCh      chan *DPUPolicyRule
+	cfgCh      chan *v1alpha.StreamDatapathConfigResponse
+	cfgSet     map[v1alpha.ConfigType]*v1alpha.ConfigObject
 	lastStatus DPUReportStatus
 	lastEpoch  int64
+	mtx        sync.RWMutex
 }
 
 func (p *peer) String() string {
@@ -82,6 +93,7 @@ type DPUListener struct {
 	address   string
 	peerGroup map[string]*peer
 	ruleSet   map[[sha256.Size]byte]*DPURule
+	mtx       sync.RWMutex
 }
 
 var (
@@ -121,13 +133,16 @@ func (dpu *DPUListener) Start() error {
 		default:
 			grpcServer := grpc.NewServer()
 			v1alpha.RegisterL3L4NetworkPolicyServiceServer(grpcServer, newServer())
-			logger.GetLogger().Info("DPU listener starting")
+			logger.GetLogger().Info("DPU listener starting", "address", dpu.address)
 			grpcServer.Serve(lis)
 		}
 	}
 }
 
 func (dpu *DPUListener) Checksum() [sha256.Size]byte {
+	dpu.mtx.RLock()
+	defer dpu.mtx.RUnlock()
+
 	var vals []string
 	var buf string
 
@@ -142,6 +157,9 @@ func (dpu *DPUListener) Checksum() [sha256.Size]byte {
 }
 
 func (dpu *DPUListener) GetDPUStatus() ([]DPUReportStatus, error) {
+	dpu.mtx.RLock()
+	defer dpu.mtx.RUnlock()
+
 	stats := make([]DPUReportStatus, 0)
 
 	for _, p := range dpu.peerGroup {
@@ -154,6 +172,8 @@ func (dpu *DPUListener) StateCheck() bool {
 	csum := dpu.Checksum()
 	hexChecksum := hex.EncodeToString(csum[:])
 
+	dpu.mtx.RLock()
+	defer dpu.mtx.RUnlock()
 	for _, s := range dpu.peerGroup {
 		if s.lastStatus.PolicyChecksum != hexChecksum {
 			return false
@@ -163,6 +183,9 @@ func (dpu *DPUListener) StateCheck() bool {
 }
 
 func (dpu *DPUListener) HealthCheck() (bool, int) {
+	dpu.mtx.RLock()
+	defer dpu.mtx.RUnlock()
+
 	now := time.Now().Unix()
 	healthy := true
 	count := len(dpu.peerGroup)
@@ -182,9 +205,22 @@ func (dpu *DPUListener) StatusReportString() string {
 	buf := new(bytes.Buffer)
 	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
 	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "UID\tHost\tAgent\tDatapath\tPolicySync")
+	fmt.Fprintln(w, "LastPing\tUID\tHost\tAgent\tDatapath\tPolicySync")
+	dpu.mtx.RLock()
+	defer dpu.mtx.RUnlock()
 	//fixme
 	for _, s := range dpu.peerGroup {
+		now := time.Now().Unix()
+		epochDiff := now - s.lastEpoch
+		var timeStatus string
+		if epochDiff < 60 {
+			timeStatus = fmt.Sprintf("%ds", epochDiff)
+		} else {
+			minutes := epochDiff / 60
+			seconds := epochDiff % 60
+			timeStatus = fmt.Sprintf("%dm %ds", minutes, seconds)
+		}
+
 		status := s.lastStatus
 		sync := ""
 		if status.PolicyChecksum == hexChecksum {
@@ -193,7 +229,8 @@ func (dpu *DPUListener) StatusReportString() string {
 			sync = fmt.Sprintf("false (%x != %s)", string(csum[:]), status.PolicyChecksum)
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			timeStatus,
 			status.AgentUid,
 			status.Hostname,
 			status.AgentVersion,
@@ -217,19 +254,29 @@ func hashRule(rule *DPURule) ([sha256.Size]byte, error) {
 }
 
 func (dpu *DPUListener) SubmitUpdateToDPU(record *record.DatapathRecord) error {
+	dpu.mtx.Lock()
+	defer dpu.mtx.Unlock()
+
 	rule := recordToDPUPolicyRule(record, true)
 	csum, err := hashRule(rule.Policy)
 	if err != nil {
 		return err
 	}
 	dpu.ruleSet[csum] = rule.Policy
+
+	// If a peer DPU disconnects after being created, this loop could block on the channel
+	// until the DPU reconnects, which would block policy updates across all DPUs.
+	// If any locks are acquired by any calling functions, it could result in deadlock.
 	for _, dpu := range dpu.peerGroup {
-		dpu.ch <- rule
+		dpu.polCh <- rule
 	}
 	return nil
 }
 
 func (dpu *DPUListener) SubmitDeleteToDPU(record *record.DatapathRecord) error {
+	dpu.mtx.Lock()
+	defer dpu.mtx.Unlock()
+
 	rule := recordToDPUPolicyRule(record, false)
 	csum, err := hashRule(rule.Policy)
 	if err != nil {
@@ -238,12 +285,15 @@ func (dpu *DPUListener) SubmitDeleteToDPU(record *record.DatapathRecord) error {
 	delete(dpu.ruleSet, csum)
 
 	for _, peer := range dpu.peerGroup {
-		peer.ch <- rule
+		peer.polCh <- rule
 	}
 	return nil
 }
 
 func (dpu *DPUListener) addPeer(uid string) *peer {
+	dpu.mtx.Lock()
+	defer dpu.mtx.Unlock()
+
 	p, ok := dpu.peerGroup[uid]
 	if !ok {
 		p = &peer{
@@ -253,9 +303,18 @@ func (dpu *DPUListener) addPeer(uid string) *peer {
 		logger.GetLogger().Info("Added peer DPU", "uid", uid)
 	}
 
-	if p.ch == nil {
+	if p.polCh == nil {
 		logger.GetLogger().Info("Added peer DPU l3l4 netpol channel", "uid", uid)
-		p.ch = make(chan *DPUPolicyRule)
+		p.polCh = make(chan *DPUPolicyRule)
+	}
+
+	if p.cfgCh == nil {
+		logger.GetLogger().Info("Added peer DPU config channel", "uid", uid)
+		p.cfgCh = make(chan *v1alpha.StreamDatapathConfigResponse)
+	}
+
+	if p.cfgSet == nil {
+		p.cfgSet = make(map[v1alpha.ConfigType]*v1alpha.ConfigObject)
 	}
 	return p
 }
@@ -265,6 +324,84 @@ func (dpu *DPUListener) addPeer(uid string) *peer {
 // abstraction, but at the moment this is simple and we can test it.
 func (dpu *DPUListener) ReportStatus(status *DPUReportStatus) {
 	peer := dpu.addPeer(status.AgentUid)
+	peer.mtx.Lock()
+	defer peer.mtx.Unlock()
 	peer.lastStatus = *status
 	peer.lastEpoch = time.Now().Unix()
+}
+
+// Implements the callback function defined as config/library.ConfigCallback.  This is passed as a callback function
+// for any configuration that needs to be transparently passed to DPUs.
+func (dpu *DPUListener) SubscribeConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
+	// Building the response object based on the old and new config objects
+	resp := v1alpha.StreamDatapathConfigResponse{}
+	if newCfg == nil { // Config was deleted
+		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE
+		resp.Config = oldCfg
+	} else {
+		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT
+		resp.Config = newCfg
+	}
+
+	// Push the response to all peers
+	dpu.mtx.RLock()
+	defer dpu.mtx.RUnlock()
+	for _, peer := range dpu.peerGroup {
+		peer.cfgCh <- &resp
+	}
+	return nil
+}
+
+// DPU Config is unique per DPU peer, so it needs extra logic to handle.  This is a custom callback function
+// that is handles only library.ConfigTypeDpu type of config objects.
+func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
+	// Building the response operation based on the old and new config objects and extracting the dpu object
+	resp := v1alpha.StreamDatapathConfigResponse{}
+	fullCfg := &v1alpha.DpuConfig{}
+	if newCfg == nil && oldCfg != nil {
+		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE
+		fullCfg = oldCfg.GetConfigDpu()
+	} else if newCfg != nil {
+		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT
+		fullCfg = newCfg.GetConfigDpu()
+	} else {
+		logger.GetLogger().Error("dpu config callback function failed", logfields.Error, "both config objects are nil")
+		return nil
+	}
+
+	// Iterating through all peers, building the config response, and pushing it
+	dpu.mtx.RLock()
+	defer dpu.mtx.RUnlock()
+	for _, peer := range dpu.peerGroup {
+		peer.mtx.RLock()
+		defer peer.mtx.RUnlock()
+		// Divides the port range into equal parts mapped to each DPU by IP
+		dpuCfg := v1alpha.DpuConfig{
+			ServiceMac: fullCfg.ServiceMac,
+			ServiceIp:  fullCfg.ServiceIp,
+		}
+		portCount := int(fullCfg.PortHigh-fullCfg.PortLow+1) / len(dpu.peerGroup)
+		index := 0
+		switch peer.uid {
+		case AgentIdDpu1:
+			index = 0
+		case AgentIdDpu2:
+			index = 1
+		case AgentIdDpu3:
+			index = 2
+		case AgentIdDpu4:
+			index = 3
+		}
+		dpuCfg.PortLow = fullCfg.PortLow + uint32(portCount*index)
+		dpuCfg.PortHigh = fullCfg.PortLow + uint32(portCount*(index+1)) - 1
+
+		// Push the response to the peer
+		resp.Config = &v1alpha.ConfigObject{
+			Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+			Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuCfg},
+		}
+		peer.cfgCh <- &resp
+	}
+
+	return nil
 }

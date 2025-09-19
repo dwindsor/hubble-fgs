@@ -6,7 +6,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/grpc/haclt"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
-	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/v1/ha"
+	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 
 	"github.com/openconfig/gnmic/pkg/api/target"
 	"golang.design/x/chann"
@@ -247,7 +247,7 @@ type Nxos struct {
 	Update     Update
 	LbMode     model.E_Cisco_NX_OSDevice_Sas_LbModeType
 	DpuVersion string
-	ServiceIp  string
+	serviceIp  string
 	Model      string
 	SwVer      string
 	CpaVer     string
@@ -260,6 +260,7 @@ type INxos interface {
 	SetRegOk(context.Context, string)
 	SetConnFail(context.Context, string)
 	IsSkipReg() (bool, bool, string)
+	SetServiceIp(string)
 	GetServiceIp() string
 	ShowStatus(context.Context) string
 	ShowDpu(context.Context) string

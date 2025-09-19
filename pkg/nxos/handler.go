@@ -780,8 +780,8 @@ func (n *Nxos) updtSasStateAgent(_ context.Context, items *model.Cisco_NX_OSDevi
 			continue
 		}
 		if agent.AgentSrcIntfAddr != nil {
-			n.ServiceIp = *agent.AgentSrcIntfAddr
-			logger.GetLogger().Debug("Service IP", "ip", n.ServiceIp)
+			n.SetServiceIp(*agent.AgentSrcIntfAddr)
+			logger.GetLogger().Debug("Service IP", "ip", n.GetServiceIp())
 		}
 		if agent.AgentHaSrcIntfAddr != nil {
 			n.Ha.HaIp = *agent.AgentHaSrcIntfAddr

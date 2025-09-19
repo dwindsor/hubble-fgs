@@ -306,6 +306,316 @@ export declare type ReportStatus = Message<"l3l4networkpolicy.v1alpha.ReportStat
 export declare const ReportStatusSchema: GenMessage<ReportStatus>;
 
 /**
+ * Object to store NX configuration
+ * CONFIG_TYPE_DPU
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.DpuConfig
+ */
+export declare type DpuConfig = Message<"l3l4networkpolicy.v1alpha.DpuConfig"> & {
+  /**
+   * @generated from field: string service_ip = 1;
+   */
+  serviceIp: string;
+
+  /**
+   * @generated from field: string service_mac = 2;
+   */
+  serviceMac: string;
+
+  /**
+   * @generated from field: uint32 port_low = 3;
+   */
+  portLow: number;
+
+  /**
+   * @generated from field: uint32 port_high = 4;
+   */
+  portHigh: number;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.DpuConfig.
+ * Use `create(DpuConfigSchema)` to create a new message.
+ */
+export declare const DpuConfigSchema: GenMessage<DpuConfig>;
+
+/**
+ * Object to store log export configuration
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.LogConfig
+ */
+export declare type LogConfig = Message<"l3l4networkpolicy.v1alpha.LogConfig"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description: string;
+
+  /**
+   * IPv4 only
+   *
+   * @generated from field: string host = 4;
+   */
+  host: string;
+
+  /**
+   * Collector target port
+   *
+   * @generated from field: string port = 5;
+   */
+  port: string;
+
+  /**
+   * Protocol, only TCP or UDP
+   *
+   * @generated from field: string mode = 6;
+   */
+  mode: string;
+
+  /**
+   * Turns TLS on or off
+   *
+   * @generated from field: bool tls = 7;
+   */
+  tls: boolean;
+
+  /**
+   * Secret/Auth fields are only relevant if TLS is true
+   * Token for Splunk or Timescape
+   *
+   * @generated from field: string token = 8;
+   */
+  token: string;
+
+  /**
+   * Username for Splunk or Timescape
+   *
+   * @generated from field: string username = 9;
+   */
+  username: string;
+
+  /**
+   * Password for Splunk or Timescape
+   *
+   * @generated from field: string password = 10;
+   */
+  password: string;
+
+  /**
+   * CA cert as a string
+   *
+   * @generated from field: string ca = 11;
+   */
+  ca: string;
+
+  /**
+   * Client cert as a string
+   *
+   * @generated from field: string cert = 12;
+   */
+  cert: string;
+
+  /**
+   * Client private key as a string
+   *
+   * @generated from field: string key = 13;
+   */
+  key: string;
+
+  /**
+   * Key password to apply to the persisted client private key
+   *
+   * @generated from field: string key_password = 14;
+   */
+  keyPassword: string;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.LogConfig.
+ * Use `create(LogConfigSchema)` to create a new message.
+ */
+export declare const LogConfigSchema: GenMessage<LogConfig>;
+
+/**
+ * Object to store a list of syslog configuration
+ * CONFIG_TYPE_LOG_SYSLOG
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.LogConfigSyslog
+ */
+export declare type LogConfigSyslog = Message<"l3l4networkpolicy.v1alpha.LogConfigSyslog"> & {
+  /**
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.LogConfig> configs = 1;
+   */
+  configs: { [key: string]: LogConfig };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.LogConfigSyslog.
+ * Use `create(LogConfigSyslogSchema)` to create a new message.
+ */
+export declare const LogConfigSyslogSchema: GenMessage<LogConfigSyslog>;
+
+/**
+ * Object to store a list of ipfix configuration
+ * CONFIG_TYPE_LOG_IPFIX
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.LogConfigIpfix
+ */
+export declare type LogConfigIpfix = Message<"l3l4networkpolicy.v1alpha.LogConfigIpfix"> & {
+  /**
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.LogConfig> configs = 1;
+   */
+  configs: { [key: string]: LogConfig };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.LogConfigIpfix.
+ * Use `create(LogConfigIpfixSchema)` to create a new message.
+ */
+export declare const LogConfigIpfixSchema: GenMessage<LogConfigIpfix>;
+
+/**
+ * Object to store a list of timescape configuration
+ * CONFIG_TYPE_LOG_TIMESCAPE
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.LogConfigTimescape
+ */
+export declare type LogConfigTimescape = Message<"l3l4networkpolicy.v1alpha.LogConfigTimescape"> & {
+  /**
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.LogConfig> configs = 1;
+   */
+  configs: { [key: string]: LogConfig };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.LogConfigTimescape.
+ * Use `create(LogConfigTimescapeSchema)` to create a new message.
+ */
+export declare const LogConfigTimescapeSchema: GenMessage<LogConfigTimescape>;
+
+/**
+ * Object to store a list of splunk configuration
+ * CONFIG_TYPE_LOG_SPLUNK
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.LogConfigSplunk
+ */
+export declare type LogConfigSplunk = Message<"l3l4networkpolicy.v1alpha.LogConfigSplunk"> & {
+  /**
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.LogConfig> configs = 1;
+   */
+  configs: { [key: string]: LogConfig };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.LogConfigSplunk.
+ * Use `create(LogConfigSplunkSchema)` to create a new message.
+ */
+export declare const LogConfigSplunkSchema: GenMessage<LogConfigSplunk>;
+
+/**
+ * ConfigObject is a generic config object, which can be extended by adding additional configuration types
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.ConfigObject
+ */
+export declare type ConfigObject = Message<"l3l4networkpolicy.v1alpha.ConfigObject"> & {
+  /**
+   * Type of the json encoded config, used to unmarshal the json object.
+   *
+   * @generated from field: l3l4networkpolicy.v1alpha.ConfigType type = 1;
+   */
+  type: ConfigType;
+
+  /**
+   * The configuration object encoded in json.
+   *
+   * @generated from oneof l3l4networkpolicy.v1alpha.ConfigObject.config
+   */
+  config: {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.DpuConfig config_dpu = 2;
+     */
+    value: DpuConfig;
+    case: "configDpu";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigSyslog config_log_syslog = 3;
+     */
+    value: LogConfigSyslog;
+    case: "configLogSyslog";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigIpfix config_log_ipfix = 4;
+     */
+    value: LogConfigIpfix;
+    case: "configLogIpfix";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigTimescape config_log_timescape = 5;
+     */
+    value: LogConfigTimescape;
+    case: "configLogTimescape";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigSplunk config_log_splunk = 6;
+     */
+    value: LogConfigSplunk;
+    case: "configLogSplunk";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.ConfigObject.
+ * Use `create(ConfigObjectSchema)` to create a new message.
+ */
+export declare const ConfigObjectSchema: GenMessage<ConfigObject>;
+
+/**
+ * @generated from message l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
+ */
+export declare type StreamDatapathConfigRequest = Message<"l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest"> & {
+  /**
+   * @generated from field: string agent_uid = 1;
+   */
+  agentUid: string;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest.
+ * Use `create(StreamDatapathConfigRequestSchema)` to create a new message.
+ */
+export declare const StreamDatapathConfigRequestSchema: GenMessage<StreamDatapathConfigRequest>;
+
+/**
+ * @generated from message l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
+ */
+export declare type StreamDatapathConfigResponse = Message<"l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse"> & {
+  /**
+   * @generated from field: l3l4networkpolicy.v1alpha.ConfigOperation oper = 1;
+   */
+  oper: ConfigOperation;
+
+  /**
+   * @generated from field: l3l4networkpolicy.v1alpha.ConfigObject config = 2;
+   */
+  config?: ConfigObject;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.
+ * Use `create(StreamDatapathConfigResponseSchema)` to create a new message.
+ */
+export declare const StreamDatapathConfigResponseSchema: GenMessage<StreamDatapathConfigResponse>;
+
+/**
  * @generated from enum l3l4networkpolicy.v1alpha.PolicyProtocol
  */
 export enum PolicyProtocol {
@@ -434,6 +744,92 @@ export enum AgentType {
 export declare const AgentTypeSchema: GenEnum<AgentType>;
 
 /**
+ * @generated from enum l3l4networkpolicy.v1alpha.ConfigType
+ */
+export enum ConfigType {
+  /**
+   * Unspecified or unknown config type
+   *
+   * @generated from enum value: CONFIG_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * DPU configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_DPU = 1;
+   */
+  DPU = 1,
+
+  /**
+   * Log export syslog configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_LOG_SYSLOG = 2;
+   */
+  LOG_SYSLOG = 2,
+
+  /**
+   * Log export IPFIX configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_LOG_IPFIX = 3;
+   */
+  LOG_IPFIX = 3,
+
+  /**
+   * Log export timescape configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_LOG_TIMESCAPE = 4;
+   */
+  LOG_TIMESCAPE = 4,
+
+  /**
+   * Log export splunk configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_LOG_SPLUNK = 5;
+   */
+  LOG_SPLUNK = 5,
+}
+
+/**
+ * Describes the enum l3l4networkpolicy.v1alpha.ConfigType.
+ */
+export declare const ConfigTypeSchema: GenEnum<ConfigType>;
+
+/**
+ * Config operation is the instruction telling the backend what to do with a
+ * ConfigObject.
+ *
+ * @generated from enum l3l4networkpolicy.v1alpha.ConfigOperation
+ */
+export enum ConfigOperation {
+  /**
+   * Unspecified or unknown operation
+   *
+   * @generated from enum value: CONFIG_OPERATION_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Add the associated config object. If the config object exists it should be replaced with the new object.
+   *
+   * @generated from enum value: CONFIG_OPERATION_UPSERT = 1;
+   */
+  UPSERT = 1,
+
+  /**
+   * Delete the associated config object.
+   *
+   * @generated from enum value: CONFIG_OPERATION_DELETE = 2;
+   */
+  DELETE = 2,
+}
+
+/**
+ * Describes the enum l3l4networkpolicy.v1alpha.ConfigOperation.
+ */
+export declare const ConfigOperationSchema: GenEnum<ConfigOperation>;
+
+/**
  * @generated from service l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService
  */
 export declare const L3L4NetworkPolicyService: GenService<{
@@ -452,6 +848,14 @@ export declare const L3L4NetworkPolicyService: GenService<{
     methodKind: "unary";
     input: typeof ReportStatusRequestSchema;
     output: typeof ReportStatusResponseSchema;
+  },
+  /**
+   * @generated from rpc l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig
+   */
+  streamDatapathConfig: {
+    methodKind: "server_streaming";
+    input: typeof StreamDatapathConfigRequestSchema;
+    output: typeof StreamDatapathConfigResponseSchema;
   },
 }>;
 

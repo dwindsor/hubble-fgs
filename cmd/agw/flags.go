@@ -1,6 +1,6 @@
 package main
 
-type config struct {
+type cliConfig struct {
 	DafConfig        string
 	NetworkPolicies  []string
 	EnableKubernetes bool
@@ -11,7 +11,7 @@ type config struct {
 }
 
 var (
-	Config = config{
+	Config = cliConfig{
 		DafConfig:        "/opt/cisco/daf/etc/dafconfig",
 		NetworkPolicies:  []string{},
 		EnableKubernetes: true,

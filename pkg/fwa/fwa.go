@@ -3,17 +3,22 @@ package fwa
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+
 	"github.com/isovalent/hubble-fgs/pkg/config"
+	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
@@ -22,18 +27,20 @@ const (
 	BUFSIZE   = 4096
 	ENV_TOKEN = "HYPERSHIELD_TOKEN"
 
-	dpuTimeout = 300 // in second
-	AgentCount = 4
-
-	AgentIdDpu1 = "169.254.24.1"
-	AgentIdDpu2 = "169.254.28.1"
-	AgentIdDpu3 = "169.254.32.1"
-	AgentIdDpu4 = "169.254.36.1"
+	// dpuTimeout = 300 // in second
 )
 
 var (
-	Agent = newAgent()
+	agent           *FWAgent
+	initGlobalCache sync.Once
 )
+
+func GetAgent() *FWAgent {
+	initGlobalCache.Do(func() {
+		agent = newAgent()
+	})
+	return agent
+}
 
 func newAgent() *FWAgent {
 	mac := os.Getenv("NX_SAS_RMAC")
@@ -58,6 +65,31 @@ func newAgent() *FWAgent {
 		highStr = "29695"
 	}
 	cpaHigh, _ := strconv.Atoi(highStr)
+
+	// Adding config callbacks
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_DPU, dpu.GetDPUListener().SubscribeDpuConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, dpu.GetDPUListener().SubscribeConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, dpu.GetDPUListener().SubscribeConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, dpu.GetDPUListener().SubscribeConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK, dpu.GetDPUListener().SubscribeConfig)
+
+	// Getting latest dpu config in case it was updated
+	var dpuConfig v1alpha.DpuConfig
+	err := library.GetRepository().GetConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, &dpuConfig)
+	if err != nil && !library.IsConfigNotFound(err) {
+		logger.GetLogger().Error("Failed to get dpu config, requires restart", "error", err)
+	}
+
+	// Setting up dpu config
+	// dpuConfig.ServiceIp is populated by nxos package
+	dpuConfig.ServiceMac = mac
+	dpuConfig.PortLow = uint32(dpuLow)
+	dpuConfig.PortHigh = uint32(dpuHigh)
+	configObj := &v1alpha.ConfigObject{
+		Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+		Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuConfig},
+	}
+	library.GetRepository().AddConfig(configObj)
 
 	return &FWAgent{
 		Cfg:         &config.Config{},
@@ -145,6 +177,7 @@ func (fwa *FWAgent) Config(_ context.Context, path string) error {
 	fwa.AgentId = fwa.Cfg.Agent.AgentId
 	// HACK for cpa container scheduling/resource issue
 	fwa.Cfg.Agent.KeepAliveInterval = 10
+
 	return nil
 }
 
@@ -176,6 +209,7 @@ func (fwa *FWAgent) DpuHealthCheck(ctx context.Context) {
 			logger.GetLogger().Info("Stop DPU health checker")
 			return
 		case <-time.After(healthCheckTimer):
+			logger.GetLogger().Debug("DPU health check")
 			ok := server.StateCheck()
 			if !ok {
 				retries++
@@ -229,43 +263,135 @@ func (fwa *FWAgent) ShowTokens(_ context.Context) string {
 	return ""
 }
 
-type DpuConfig struct {
-	ServiceIp  string `json:"serviceIp"`
-	ServiceMac string `json:"serviceMac"`
-	PortLow    uint16 `json:"portLow"`
-	PortHigh   uint16 `json:"portHigh"`
+func (fwa *FWAgent) ShowSyslog(_ context.Context) (string, error) {
+	logger.GetLogger().Debug("Show syslog")
+
+	// Pulling log config from config repository
+	configObj, ok := library.GetRepository().GetConfigObject(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG)
+	if !ok {
+		return "", errors.New("log config not found")
+	}
+
+	// Convert config object to JSON
+	syslogConfig := configObj.GetConfigLogSyslog()
+	if syslogConfig == nil {
+		return "", errors.New("syslog config is nil")
+	}
+	jsonData, err := json.MarshalIndent(syslogConfig, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonData), nil
 }
 
-func (fwa *FWAgent) GetDpuConfig(_ context.Context, agentId string) []byte {
-	portCount := (fwa.dpuPortHigh - fwa.dpuPortLow + 1) / AgentCount
-	conf := DpuConfig{
-		ServiceMac: fwa.serviceMac,
-		ServiceIp:  nxos.Nexus.GetServiceIp(),
-	}
-	var index uint16
-	switch agentId {
-	case AgentIdDpu1:
-		index = 0
+func (fwa *FWAgent) LoadSyslog(_ context.Context, syslog string) error {
+	logger.GetLogger().Debug("Load syslog", "syslog", syslog)
 
-	case AgentIdDpu2:
-		index = 1
-
-	case AgentIdDpu3:
-		index = 2
-
-	case AgentIdDpu4:
-		index = 3
-
-	default:
-		return []byte{}
-	}
-	conf.PortLow = fwa.dpuPortLow + portCount*index
-	conf.PortHigh = fwa.dpuPortLow + portCount*(index+1) - 1
-
-	jstr, err := json.Marshal(conf)
+	// Unmarshal the JSON string into LogList
+	var logList LogList
+	err := json.Unmarshal([]byte(syslog), &logList)
 	if err != nil {
-		logger.GetLogger().Error("Fail to marshal", logfields.Error, err)
-		return []byte{}
+		logger.GetLogger().Error("Failed to unmarshal syslog JSON", "error", err)
+		return err
 	}
-	return jstr
+
+	// If empty list, delete config
+	if len(logList) == 0 {
+		err = library.GetRepository().DeleteConfig(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG)
+		if err != nil {
+			logger.GetLogger().Error("Failed to delete syslog config", "error", err)
+			return err
+		}
+		return nil
+	}
+
+	// Validate and apply defaults to each log configuration
+	for id, logConfig := range logList {
+		validatedConfig, err := validateLogConfig(id, logConfig)
+		if err != nil {
+			logger.GetLogger().Error("Failed to validate syslog config", "error", err)
+			return err
+		}
+		logList[id] = validatedConfig
+	}
+
+	// Convert to syslog config object
+	syslogConfig := v1alpha.LogConfigSyslog{
+		Configs: make(map[string]*v1alpha.LogConfig),
+	}
+	for _, logConfig := range logList {
+		syslogConfig.Configs[logConfig.Id] = &v1alpha.LogConfig{
+			Id:          logConfig.Id,
+			Name:        logConfig.Name,
+			Description: logConfig.Description,
+			Host:        logConfig.Config.Host,
+			Port:        logConfig.Config.Port,
+			Mode:        logConfig.Config.Mode,
+			Tls:         logConfig.Config.Tls,
+			Token:       logConfig.Secrets.Token,
+			Username:    logConfig.Secrets.Username,
+			Password:    logConfig.Secrets.Password,
+			Ca:          logConfig.Secrets.CA,
+			Cert:        logConfig.Secrets.Cert,
+			Key:         logConfig.Secrets.Key,
+			KeyPassword: logConfig.Secrets.KeyPassword,
+		}
+	}
+
+	// Store the validated configuration in the repository
+	configObj := &v1alpha.ConfigObject{
+		Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
+		Config: &v1alpha.ConfigObject_ConfigLogSyslog{ConfigLogSyslog: &syslogConfig},
+	}
+
+	if err := library.GetRepository().AddConfig(configObj); err != nil {
+		logger.GetLogger().Error("Failed to store syslog config", "error", err)
+		return err
+	}
+
+	logger.GetLogger().Info("Successfully loaded and validated syslog configuration", "count", len(logList))
+	return nil
+}
+
+// validateLogConfig validates and applies default values to a LogConfigData
+func validateLogConfig(id string, config LogConfigData) (LogConfigData, error) {
+	// Apply defaults for main fields
+	if config.Id == "" {
+		config.Id = id // Use the map key as default ID
+	}
+	if config.Type == "" {
+		return config, errors.New("log type is required")
+	}
+	if config.Type != LogTypeSyslog &&
+		config.Type != LogTypeTimescape &&
+		config.Type != LogTypeSplunk &&
+		config.Type != LogTypeIpfix {
+		return config, errors.New("log type is invalid")
+	}
+
+	// Check host
+	ip := net.ParseIP(config.Config.Host)
+	if ip == nil || ip.To4() == nil {
+		return config, errors.New("invalid host: must be a valid IPv4 address")
+	}
+
+	// Check port
+	port, err := strconv.Atoi(config.Config.Port)
+	if err != nil {
+		return config, errors.New("invalid port: must be a valid integer")
+	}
+	if port < 1 || port > 65535 {
+		return config, errors.New("invalid port: must be between 1 and 65535")
+	}
+
+	// Check mode
+	if config.Config.Mode == "" {
+		return config, errors.New("log mode is required")
+	}
+	if strings.ToLower(config.Config.Mode) != "tcp" && strings.ToLower(config.Config.Mode) != "udp" {
+		return config, errors.New("invalid mode: must be 'tcp' or 'udp'")
+	}
+
+	return config, nil
 }

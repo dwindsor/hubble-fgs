@@ -29,6 +29,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	L3L4NetworkPolicyService_Streaml3L4NetworkPolicy_FullMethodName = "/l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService/Streaml3l4NetworkPolicy"
 	L3L4NetworkPolicyService_ReportStatus_FullMethodName            = "/l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService/ReportStatus"
+	L3L4NetworkPolicyService_StreamDatapathConfig_FullMethodName    = "/l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService/StreamDatapathConfig"
 )
 
 // L3L4NetworkPolicyServiceClient is the client API for L3L4NetworkPolicyService service.
@@ -37,6 +38,7 @@ const (
 type L3L4NetworkPolicyServiceClient interface {
 	Streaml3L4NetworkPolicy(ctx context.Context, in *Streaml3L4NetworkPolicyRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Streaml3L4NetworkPolicyResponse], error)
 	ReportStatus(ctx context.Context, in *ReportStatusRequest, opts ...grpc.CallOption) (*ReportStatusResponse, error)
+	StreamDatapathConfig(ctx context.Context, in *StreamDatapathConfigRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamDatapathConfigResponse], error)
 }
 
 type l3L4NetworkPolicyServiceClient struct {
@@ -76,12 +78,32 @@ func (c *l3L4NetworkPolicyServiceClient) ReportStatus(ctx context.Context, in *R
 	return out, nil
 }
 
+func (c *l3L4NetworkPolicyServiceClient) StreamDatapathConfig(ctx context.Context, in *StreamDatapathConfigRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamDatapathConfigResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &L3L4NetworkPolicyService_ServiceDesc.Streams[1], L3L4NetworkPolicyService_StreamDatapathConfig_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamDatapathConfigRequest, StreamDatapathConfigResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type L3L4NetworkPolicyService_StreamDatapathConfigClient = grpc.ServerStreamingClient[StreamDatapathConfigResponse]
+
 // L3L4NetworkPolicyServiceServer is the server API for L3L4NetworkPolicyService service.
 // All implementations must embed UnimplementedL3L4NetworkPolicyServiceServer
 // for forward compatibility.
 type L3L4NetworkPolicyServiceServer interface {
 	Streaml3L4NetworkPolicy(*Streaml3L4NetworkPolicyRequest, grpc.ServerStreamingServer[Streaml3L4NetworkPolicyResponse]) error
 	ReportStatus(context.Context, *ReportStatusRequest) (*ReportStatusResponse, error)
+	StreamDatapathConfig(*StreamDatapathConfigRequest, grpc.ServerStreamingServer[StreamDatapathConfigResponse]) error
 	mustEmbedUnimplementedL3L4NetworkPolicyServiceServer()
 }
 
@@ -97,6 +119,9 @@ func (UnimplementedL3L4NetworkPolicyServiceServer) Streaml3L4NetworkPolicy(*Stre
 }
 func (UnimplementedL3L4NetworkPolicyServiceServer) ReportStatus(context.Context, *ReportStatusRequest) (*ReportStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReportStatus not implemented")
+}
+func (UnimplementedL3L4NetworkPolicyServiceServer) StreamDatapathConfig(*StreamDatapathConfigRequest, grpc.ServerStreamingServer[StreamDatapathConfigResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamDatapathConfig not implemented")
 }
 func (UnimplementedL3L4NetworkPolicyServiceServer) mustEmbedUnimplementedL3L4NetworkPolicyServiceServer() {
 }
@@ -149,6 +174,17 @@ func _L3L4NetworkPolicyService_ReportStatus_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _L3L4NetworkPolicyService_StreamDatapathConfig_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamDatapathConfigRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(L3L4NetworkPolicyServiceServer).StreamDatapathConfig(m, &grpc.GenericServerStream[StreamDatapathConfigRequest, StreamDatapathConfigResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type L3L4NetworkPolicyService_StreamDatapathConfigServer = grpc.ServerStreamingServer[StreamDatapathConfigResponse]
+
 // L3L4NetworkPolicyService_ServiceDesc is the grpc.ServiceDesc for L3L4NetworkPolicyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -165,6 +201,11 @@ var L3L4NetworkPolicyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Streaml3l4NetworkPolicy",
 			Handler:       _L3L4NetworkPolicyService_Streaml3L4NetworkPolicy_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "StreamDatapathConfig",
+			Handler:       _L3L4NetworkPolicyService_StreamDatapathConfig_Handler,
 			ServerStreams: true,
 		},
 	},

@@ -170,10 +170,10 @@ func TestBasicWorkflow(t *testing.T) {
 	assert.Equal(t, p2.uid, t2)
 	assert.Equal(t, p3.uid, t3)
 	assert.Equal(t, p4.uid, t4)
-	assert.NotNil(t, p1.ch)
-	assert.NotNil(t, p2.ch)
-	assert.NotNil(t, p3.ch)
-	assert.NotNil(t, p4.ch)
+	assert.NotNil(t, p1.polCh)
+	assert.NotNil(t, p2.polCh)
+	assert.NotNil(t, p3.polCh)
+	assert.NotNil(t, p4.polCh)
 
 	// Report some status with no Policy
 
@@ -194,7 +194,7 @@ func TestBasicWorkflow(t *testing.T) {
 	// dev null the channel
 	for _, pg := range dpu.peerGroup {
 		go func() {
-			<-pg.ch
+			<-pg.polCh
 		}()
 	}
 

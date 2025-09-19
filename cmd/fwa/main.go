@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/logger"
 )
 
@@ -23,7 +22,7 @@ func Execute() error {
 			cmd.Help()
 		},
 		PersistentPreRun: func(_ *cobra.Command, _ []string) {
-			if common.Debug {
+			if Config.Debug {
 				logger.SetLogLevel(slog.LevelDebug)
 			}
 		},
@@ -39,6 +38,7 @@ func Execute() error {
 	flags.StringVar(&Config.DafConfig, keyDafConfig, "/opt/cisco/daf/etc/dafconfig", "Path to config file")
 	flags.StringSliceVar(&Config.NetworkPolicies, keyNetworkPolicy, []string{}, "network policy files")
 	flags.StringVar(&Config.ServerAddress, keyServerAddress, "", "server address")
+	flags.BoolVar(&Config.Debug, keyDebug, false, "debug level")
 	return rootCmd.Execute()
 }
 

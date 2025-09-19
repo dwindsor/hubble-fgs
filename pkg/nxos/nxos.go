@@ -14,8 +14,10 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"github.com/openconfig/gnmic/pkg/api"
 	"github.com/openconfig/ygot/ytypes"
@@ -1012,7 +1014,28 @@ func (n *Nxos) GetServiceIp() string {
 	n.RLock()
 	defer n.RUnlock()
 
-	return n.ServiceIp
+	return n.serviceIp
+}
+
+func (n *Nxos) SetServiceIp(ip string) {
+	n.Lock()
+	defer n.Unlock()
+
+	// Setting ServiceIp locally
+	n.serviceIp = ip
+
+	// Updating service ip in the dpu config
+	var dpuConfig v1alpha.DpuConfig
+	err := library.GetRepository().GetConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, &dpuConfig)
+	if err != nil && !library.IsConfigNotFound(err) {
+		logger.GetLogger().Error("Failed to get dpu config", "error", err)
+	}
+	dpuConfig.ServiceIp = ip
+	configObj := &v1alpha.ConfigObject{
+		Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+		Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuConfig},
+	}
+	library.GetRepository().AddConfig(configObj)
 }
 
 func (n *Nxos) calcDpuPortRange(dpu uint16) string {

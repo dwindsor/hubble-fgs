@@ -123,11 +123,11 @@ clean: tarball-clean
 
 .PHONY: agw
 agw: ## Compile smartswitch agent
-	$(GO_BUILD) -tags nxos,fwa ./cmd/agw
+	GOOS=linux $(GO_BUILD) -tags nxos,fwa ./cmd/agw
 
 .PHONY: agwctl
 agwctl: ## Compile smartswitch agent CLI
-	$(GO_BUILD) ./cmd/agwctl
+	GOOS=linux $(GO_BUILD) ./cmd/agwctl
 
 .PHONY: fwa
 fwa:    # Cross compile FWA agent for arm64 (aarch64) architecture in DPU and Simulator VM

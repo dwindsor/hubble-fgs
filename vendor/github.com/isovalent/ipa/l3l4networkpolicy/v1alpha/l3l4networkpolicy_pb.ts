@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto.
  */
 export const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy: GenFile = /*@__PURE__*/
-  fileDesc("CjFsM2w0bmV0d29ya3BvbGljeS92MWFscGhhL2wzbDRuZXR3b3JrcG9saWN5LnByb3RvEhlsM2w0bmV0d29ya3BvbGljeS52MWFscGhhIp4BChJMM0w0TmV0d29ya1N1YmplY3QSDAoEY2lkchgBIAEoCRIQCghtaW5fcG9ydBgCIAEoDRIQCghtYXhfcG9ydBgDIAEoDRIMCgR2bGFuGAQgASgNEgsKA3ZyZhgFIAEoCRI7Cghwcm90b2NvbBgGIAEoDjIpLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUG9saWN5UHJvdG9jb2wiTwoNUG9saWN5U3ViamVjdBI+CgduZXR3b3JrGAEgASgLMi0ubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5MM0w0TmV0d29ya1N1YmplY3QilQIKClBvbGljeVJ1bGUSHAoUazhzX3Jlc291cmNlX3ZlcnNpb24YASABKAkSDwoHazhzX3VpZBgCIAEoCRITCgtwb2xpY3lfbmFtZRgDIAEoCRIRCglydWxlX25hbWUYBCABKAkSNwoGYWN0aW9uGAUgASgOMicubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lBY3Rpb24SOAoGc291cmNlGAYgASgLMigubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lTdWJqZWN0Ej0KC2Rlc3RpbmF0aW9uGAcgASgLMigubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lTdWJqZWN0IjMKHlN0cmVhbWwzbDROZXR3b3JrUG9saWN5UmVxdWVzdBIRCglhZ2VudF91aWQYASABKAkikgEKH1N0cmVhbWwzbDROZXR3b3JrUG9saWN5UmVzcG9uc2USOAoEb3BlchgBIAEoDjIqLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUG9saWN5T3BlcmF0aW9uEjUKBnBvbGljeRgCIAEoCzIlLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUG9saWN5UnVsZSJOChNSZXBvcnRTdGF0dXNSZXF1ZXN0EjcKBnN0YXR1cxgBIAEoCzInLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUmVwb3J0U3RhdHVzIhYKFFJlcG9ydFN0YXR1c1Jlc3BvbnNlIuQBCgxSZXBvcnRTdGF0dXMSEQoJYWdlbnRfdWlkGAEgASgJEhIKCmRwX3ZlcnNpb24YAiABKAkSFQoNYWdlbnRfdmVyc2lvbhgDIAEoCRIXCg9wb2xpY3lfY2hlY2tzdW0YBCABKAkSEAoIaG9zdG5hbWUYBSABKAkSFAoMYXJjaGl0ZWN0dXJlGAYgASgJEgoKAm9zGAcgASgJEjIKBHR5cGUYCCABKA4yJC5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkFnZW50VHlwZRIVCg1zZXJpYWxfbnVtYmVyGAkgASgJKn0KDlBvbGljeVByb3RvY29sEh8KG1BPTElDWV9QUk9UT0NPTF9VTlNQRUNJRklFRBAAEhcKE1BPTElDWV9QUk9UT0NPTF9UQ1AQARIXChNQT0xJQ1lfUFJPVE9DT0xfVURQEAISGAoUUE9MSUNZX1BST1RPQ09MX0lDTVAQAypeCgxQb2xpY3lBY3Rpb24SHQoZUE9MSUNZX0FDVElPTl9VTlNQRUNJRklFRBAAEhcKE1BPTElDWV9BQ1RJT05fQUxMT1cQARIWChJQT0xJQ1lfQUNUSU9OX0RFTlkQAiptCg9Qb2xpY3lPcGVyYXRpb24SIAocUE9MSUNZX09QRVJBVElPTl9VTlNQRUNJRklFRBAAEhsKF1BPTElDWV9PUEVSQVRJT05fVVBTRVJUEAESGwoXUE9MSUNZX09QRVJBVElPTl9ERUxFVEUQAipYCglBZ2VudFR5cGUSGgoWQUdFTlRfVFlQRV9VTlNQRUNJRklFRBAAEhYKEkFHRU5UX1RZUEVfRFBVX0FHVxABEhcKE0FHRU5UX1RZUEVfVEVUUkFHT04QAjKkAgoYTDNMNE5ldHdvcmtQb2xpY3lTZXJ2aWNlEpQBChdTdHJlYW1sM2w0TmV0d29ya1BvbGljeRI5LmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuU3RyZWFtbDNsNE5ldHdvcmtQb2xpY3lSZXF1ZXN0GjoubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5TdHJlYW1sM2w0TmV0d29ya1BvbGljeVJlc3BvbnNlIgAwARJxCgxSZXBvcnRTdGF0dXMSLi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlJlcG9ydFN0YXR1c1JlcXVlc3QaLy5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlJlcG9ydFN0YXR1c1Jlc3BvbnNlIgBCNFoyZ2l0aHViLmNvbS9pc292YWxlbnQvaXBhL2wzbDRuZXR3b3JrcG9saWN5L3YxYWxwaGFiBnByb3RvMw");
+  fileDesc("CjFsM2w0bmV0d29ya3BvbGljeS92MWFscGhhL2wzbDRuZXR3b3JrcG9saWN5LnByb3RvEhlsM2w0bmV0d29ya3BvbGljeS52MWFscGhhIp4BChJMM0w0TmV0d29ya1N1YmplY3QSDAoEY2lkchgBIAEoCRIQCghtaW5fcG9ydBgCIAEoDRIQCghtYXhfcG9ydBgDIAEoDRIMCgR2bGFuGAQgASgNEgsKA3ZyZhgFIAEoCRI7Cghwcm90b2NvbBgGIAEoDjIpLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUG9saWN5UHJvdG9jb2wiTwoNUG9saWN5U3ViamVjdBI+CgduZXR3b3JrGAEgASgLMi0ubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5MM0w0TmV0d29ya1N1YmplY3QilQIKClBvbGljeVJ1bGUSHAoUazhzX3Jlc291cmNlX3ZlcnNpb24YASABKAkSDwoHazhzX3VpZBgCIAEoCRITCgtwb2xpY3lfbmFtZRgDIAEoCRIRCglydWxlX25hbWUYBCABKAkSNwoGYWN0aW9uGAUgASgOMicubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lBY3Rpb24SOAoGc291cmNlGAYgASgLMigubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lTdWJqZWN0Ej0KC2Rlc3RpbmF0aW9uGAcgASgLMigubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lTdWJqZWN0IjMKHlN0cmVhbWwzbDROZXR3b3JrUG9saWN5UmVxdWVzdBIRCglhZ2VudF91aWQYASABKAkikgEKH1N0cmVhbWwzbDROZXR3b3JrUG9saWN5UmVzcG9uc2USOAoEb3BlchgBIAEoDjIqLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUG9saWN5T3BlcmF0aW9uEjUKBnBvbGljeRgCIAEoCzIlLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUG9saWN5UnVsZSJOChNSZXBvcnRTdGF0dXNSZXF1ZXN0EjcKBnN0YXR1cxgBIAEoCzInLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUmVwb3J0U3RhdHVzIhYKFFJlcG9ydFN0YXR1c1Jlc3BvbnNlIuQBCgxSZXBvcnRTdGF0dXMSEQoJYWdlbnRfdWlkGAEgASgJEhIKCmRwX3ZlcnNpb24YAiABKAkSFQoNYWdlbnRfdmVyc2lvbhgDIAEoCRIXCg9wb2xpY3lfY2hlY2tzdW0YBCABKAkSEAoIaG9zdG5hbWUYBSABKAkSFAoMYXJjaGl0ZWN0dXJlGAYgASgJEgoKAm9zGAcgASgJEjIKBHR5cGUYCCABKA4yJC5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkFnZW50VHlwZRIVCg1zZXJpYWxfbnVtYmVyGAkgASgJIlkKCURwdUNvbmZpZxISCgpzZXJ2aWNlX2lwGAEgASgJEhMKC3NlcnZpY2VfbWFjGAIgASgJEhAKCHBvcnRfbG93GAMgASgNEhEKCXBvcnRfaGlnaBgEIAEoDSLhAQoJTG9nQ29uZmlnEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkSDAoEaG9zdBgEIAEoCRIMCgRwb3J0GAUgASgJEgwKBG1vZGUYBiABKAkSCwoDdGxzGAcgASgIEg0KBXRva2VuGAggASgJEhAKCHVzZXJuYW1lGAkgASgJEhAKCHBhc3N3b3JkGAogASgJEgoKAmNhGAsgASgJEgwKBGNlcnQYDCABKAkSCwoDa2V5GA0gASgJEhQKDGtleV9wYXNzd29yZBgOIAEoCSKxAQoPTG9nQ29uZmlnU3lzbG9nEkgKB2NvbmZpZ3MYASADKAsyNy5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ1N5c2xvZy5Db25maWdzRW50cnkaVAoMQ29uZmlnc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnOgI4ASKvAQoOTG9nQ29uZmlnSXBmaXgSRwoHY29uZmlncxgBIAMoCzI2LmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnSXBmaXguQ29uZmlnc0VudHJ5GlQKDENvbmZpZ3NFbnRyeRILCgNrZXkYASABKAkSMwoFdmFsdWUYAiABKAsyJC5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZzoCOAEitwEKEkxvZ0NvbmZpZ1RpbWVzY2FwZRJLCgdjb25maWdzGAEgAygLMjoubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWdUaW1lc2NhcGUuQ29uZmlnc0VudHJ5GlQKDENvbmZpZ3NFbnRyeRILCgNrZXkYASABKAkSMwoFdmFsdWUYAiABKAsyJC5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZzoCOAEisQEKD0xvZ0NvbmZpZ1NwbHVuaxJICgdjb25maWdzGAEgAygLMjcubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWdTcGx1bmsuQ29uZmlnc0VudHJ5GlQKDENvbmZpZ3NFbnRyeRILCgNrZXkYASABKAkSMwoFdmFsdWUYAiABKAsyJC5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZzoCOAEisQMKDENvbmZpZ09iamVjdBIzCgR0eXBlGAEgASgOMiUubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Db25maWdUeXBlEjoKCmNvbmZpZ19kcHUYAiABKAsyJC5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkRwdUNvbmZpZ0gAEkcKEWNvbmZpZ19sb2dfc3lzbG9nGAMgASgLMioubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWdTeXNsb2dIABJFChBjb25maWdfbG9nX2lwZml4GAQgASgLMikubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWdJcGZpeEgAEk0KFGNvbmZpZ19sb2dfdGltZXNjYXBlGAUgASgLMi0ubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWdUaW1lc2NhcGVIABJHChFjb25maWdfbG9nX3NwbHVuaxgGIAEoCzIqLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnU3BsdW5rSABCCAoGY29uZmlnIjAKG1N0cmVhbURhdGFwYXRoQ29uZmlnUmVxdWVzdBIRCglhZ2VudF91aWQYASABKAkikQEKHFN0cmVhbURhdGFwYXRoQ29uZmlnUmVzcG9uc2USOAoEb3BlchgBIAEoDjIqLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuQ29uZmlnT3BlcmF0aW9uEjcKBmNvbmZpZxgCIAEoCzInLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuQ29uZmlnT2JqZWN0Kn0KDlBvbGljeVByb3RvY29sEh8KG1BPTElDWV9QUk9UT0NPTF9VTlNQRUNJRklFRBAAEhcKE1BPTElDWV9QUk9UT0NPTF9UQ1AQARIXChNQT0xJQ1lfUFJPVE9DT0xfVURQEAISGAoUUE9MSUNZX1BST1RPQ09MX0lDTVAQAypeCgxQb2xpY3lBY3Rpb24SHQoZUE9MSUNZX0FDVElPTl9VTlNQRUNJRklFRBAAEhcKE1BPTElDWV9BQ1RJT05fQUxMT1cQARIWChJQT0xJQ1lfQUNUSU9OX0RFTlkQAiptCg9Qb2xpY3lPcGVyYXRpb24SIAocUE9MSUNZX09QRVJBVElPTl9VTlNQRUNJRklFRBAAEhsKF1BPTElDWV9PUEVSQVRJT05fVVBTRVJUEAESGwoXUE9MSUNZX09QRVJBVElPTl9ERUxFVEUQAipYCglBZ2VudFR5cGUSGgoWQUdFTlRfVFlQRV9VTlNQRUNJRklFRBAAEhYKEkFHRU5UX1RZUEVfRFBVX0FHVxABEhcKE0FHRU5UX1RZUEVfVEVUUkFHT04QAiqwAQoKQ29uZmlnVHlwZRIbChdDT05GSUdfVFlQRV9VTlNQRUNJRklFRBAAEhMKD0NPTkZJR19UWVBFX0RQVRABEhoKFkNPTkZJR19UWVBFX0xPR19TWVNMT0cQAhIZChVDT05GSUdfVFlQRV9MT0dfSVBGSVgQAxIdChlDT05GSUdfVFlQRV9MT0dfVElNRVNDQVBFEAQSGgoWQ09ORklHX1RZUEVfTE9HX1NQTFVOSxAFKm0KD0NvbmZpZ09wZXJhdGlvbhIgChxDT05GSUdfT1BFUkFUSU9OX1VOU1BFQ0lGSUVEEAASGwoXQ09ORklHX09QRVJBVElPTl9VUFNFUlQQARIbChdDT05GSUdfT1BFUkFUSU9OX0RFTEVURRACMrIDChhMM0w0TmV0d29ya1BvbGljeVNlcnZpY2USlAEKF1N0cmVhbWwzbDROZXR3b3JrUG9saWN5EjkubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5TdHJlYW1sM2w0TmV0d29ya1BvbGljeVJlcXVlc3QaOi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlN0cmVhbWwzbDROZXR3b3JrUG9saWN5UmVzcG9uc2UiADABEnEKDFJlcG9ydFN0YXR1cxIuLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUmVwb3J0U3RhdHVzUmVxdWVzdBovLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUmVwb3J0U3RhdHVzUmVzcG9uc2UiABKLAQoUU3RyZWFtRGF0YXBhdGhDb25maWcSNi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlN0cmVhbURhdGFwYXRoQ29uZmlnUmVxdWVzdBo3LmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuU3RyZWFtRGF0YXBhdGhDb25maWdSZXNwb25zZSIAMAFCNFoyZ2l0aHViLmNvbS9pc292YWxlbnQvaXBhL2wzbDRuZXR3b3JrcG9saWN5L3YxYWxwaGFiBnByb3RvMw");
 
 /**
  * L3Network subjects are endpoints (destination or source) that specify a L3 endpoint.
@@ -316,6 +316,325 @@ export const ReportStatusSchema: GenMessage<ReportStatus> = /*@__PURE__*/
   messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 7);
 
 /**
+ * Object to store NX configuration
+ * CONFIG_TYPE_DPU
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.DpuConfig
+ */
+export type DpuConfig = Message<"l3l4networkpolicy.v1alpha.DpuConfig"> & {
+  /**
+   * @generated from field: string service_ip = 1;
+   */
+  serviceIp: string;
+
+  /**
+   * @generated from field: string service_mac = 2;
+   */
+  serviceMac: string;
+
+  /**
+   * @generated from field: uint32 port_low = 3;
+   */
+  portLow: number;
+
+  /**
+   * @generated from field: uint32 port_high = 4;
+   */
+  portHigh: number;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.DpuConfig.
+ * Use `create(DpuConfigSchema)` to create a new message.
+ */
+export const DpuConfigSchema: GenMessage<DpuConfig> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 8);
+
+/**
+ * Object to store log export configuration
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.LogConfig
+ */
+export type LogConfig = Message<"l3l4networkpolicy.v1alpha.LogConfig"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description: string;
+
+  /**
+   * IPv4 only
+   *
+   * @generated from field: string host = 4;
+   */
+  host: string;
+
+  /**
+   * Collector target port
+   *
+   * @generated from field: string port = 5;
+   */
+  port: string;
+
+  /**
+   * Protocol, only TCP or UDP
+   *
+   * @generated from field: string mode = 6;
+   */
+  mode: string;
+
+  /**
+   * Turns TLS on or off
+   *
+   * @generated from field: bool tls = 7;
+   */
+  tls: boolean;
+
+  /**
+   * Secret/Auth fields are only relevant if TLS is true
+   * Token for Splunk or Timescape
+   *
+   * @generated from field: string token = 8;
+   */
+  token: string;
+
+  /**
+   * Username for Splunk or Timescape
+   *
+   * @generated from field: string username = 9;
+   */
+  username: string;
+
+  /**
+   * Password for Splunk or Timescape
+   *
+   * @generated from field: string password = 10;
+   */
+  password: string;
+
+  /**
+   * CA cert as a string
+   *
+   * @generated from field: string ca = 11;
+   */
+  ca: string;
+
+  /**
+   * Client cert as a string
+   *
+   * @generated from field: string cert = 12;
+   */
+  cert: string;
+
+  /**
+   * Client private key as a string
+   *
+   * @generated from field: string key = 13;
+   */
+  key: string;
+
+  /**
+   * Key password to apply to the persisted client private key
+   *
+   * @generated from field: string key_password = 14;
+   */
+  keyPassword: string;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.LogConfig.
+ * Use `create(LogConfigSchema)` to create a new message.
+ */
+export const LogConfigSchema: GenMessage<LogConfig> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 9);
+
+/**
+ * Object to store a list of syslog configuration
+ * CONFIG_TYPE_LOG_SYSLOG
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.LogConfigSyslog
+ */
+export type LogConfigSyslog = Message<"l3l4networkpolicy.v1alpha.LogConfigSyslog"> & {
+  /**
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.LogConfig> configs = 1;
+   */
+  configs: { [key: string]: LogConfig };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.LogConfigSyslog.
+ * Use `create(LogConfigSyslogSchema)` to create a new message.
+ */
+export const LogConfigSyslogSchema: GenMessage<LogConfigSyslog> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 10);
+
+/**
+ * Object to store a list of ipfix configuration
+ * CONFIG_TYPE_LOG_IPFIX
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.LogConfigIpfix
+ */
+export type LogConfigIpfix = Message<"l3l4networkpolicy.v1alpha.LogConfigIpfix"> & {
+  /**
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.LogConfig> configs = 1;
+   */
+  configs: { [key: string]: LogConfig };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.LogConfigIpfix.
+ * Use `create(LogConfigIpfixSchema)` to create a new message.
+ */
+export const LogConfigIpfixSchema: GenMessage<LogConfigIpfix> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 11);
+
+/**
+ * Object to store a list of timescape configuration
+ * CONFIG_TYPE_LOG_TIMESCAPE
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.LogConfigTimescape
+ */
+export type LogConfigTimescape = Message<"l3l4networkpolicy.v1alpha.LogConfigTimescape"> & {
+  /**
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.LogConfig> configs = 1;
+   */
+  configs: { [key: string]: LogConfig };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.LogConfigTimescape.
+ * Use `create(LogConfigTimescapeSchema)` to create a new message.
+ */
+export const LogConfigTimescapeSchema: GenMessage<LogConfigTimescape> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 12);
+
+/**
+ * Object to store a list of splunk configuration
+ * CONFIG_TYPE_LOG_SPLUNK
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.LogConfigSplunk
+ */
+export type LogConfigSplunk = Message<"l3l4networkpolicy.v1alpha.LogConfigSplunk"> & {
+  /**
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.LogConfig> configs = 1;
+   */
+  configs: { [key: string]: LogConfig };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.LogConfigSplunk.
+ * Use `create(LogConfigSplunkSchema)` to create a new message.
+ */
+export const LogConfigSplunkSchema: GenMessage<LogConfigSplunk> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 13);
+
+/**
+ * ConfigObject is a generic config object, which can be extended by adding additional configuration types
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.ConfigObject
+ */
+export type ConfigObject = Message<"l3l4networkpolicy.v1alpha.ConfigObject"> & {
+  /**
+   * Type of the json encoded config, used to unmarshal the json object.
+   *
+   * @generated from field: l3l4networkpolicy.v1alpha.ConfigType type = 1;
+   */
+  type: ConfigType;
+
+  /**
+   * The configuration object encoded in json.
+   *
+   * @generated from oneof l3l4networkpolicy.v1alpha.ConfigObject.config
+   */
+  config: {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.DpuConfig config_dpu = 2;
+     */
+    value: DpuConfig;
+    case: "configDpu";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigSyslog config_log_syslog = 3;
+     */
+    value: LogConfigSyslog;
+    case: "configLogSyslog";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigIpfix config_log_ipfix = 4;
+     */
+    value: LogConfigIpfix;
+    case: "configLogIpfix";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigTimescape config_log_timescape = 5;
+     */
+    value: LogConfigTimescape;
+    case: "configLogTimescape";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigSplunk config_log_splunk = 6;
+     */
+    value: LogConfigSplunk;
+    case: "configLogSplunk";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.ConfigObject.
+ * Use `create(ConfigObjectSchema)` to create a new message.
+ */
+export const ConfigObjectSchema: GenMessage<ConfigObject> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 14);
+
+/**
+ * @generated from message l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
+ */
+export type StreamDatapathConfigRequest = Message<"l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest"> & {
+  /**
+   * @generated from field: string agent_uid = 1;
+   */
+  agentUid: string;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest.
+ * Use `create(StreamDatapathConfigRequestSchema)` to create a new message.
+ */
+export const StreamDatapathConfigRequestSchema: GenMessage<StreamDatapathConfigRequest> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 15);
+
+/**
+ * @generated from message l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
+ */
+export type StreamDatapathConfigResponse = Message<"l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse"> & {
+  /**
+   * @generated from field: l3l4networkpolicy.v1alpha.ConfigOperation oper = 1;
+   */
+  oper: ConfigOperation;
+
+  /**
+   * @generated from field: l3l4networkpolicy.v1alpha.ConfigObject config = 2;
+   */
+  config?: ConfigObject;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.
+ * Use `create(StreamDatapathConfigResponseSchema)` to create a new message.
+ */
+export const StreamDatapathConfigResponseSchema: GenMessage<StreamDatapathConfigResponse> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 16);
+
+/**
  * @generated from enum l3l4networkpolicy.v1alpha.PolicyProtocol
  */
 export enum PolicyProtocol {
@@ -448,6 +767,94 @@ export const AgentTypeSchema: GenEnum<AgentType> = /*@__PURE__*/
   enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 3);
 
 /**
+ * @generated from enum l3l4networkpolicy.v1alpha.ConfigType
+ */
+export enum ConfigType {
+  /**
+   * Unspecified or unknown config type
+   *
+   * @generated from enum value: CONFIG_TYPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * DPU configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_DPU = 1;
+   */
+  DPU = 1,
+
+  /**
+   * Log export syslog configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_LOG_SYSLOG = 2;
+   */
+  LOG_SYSLOG = 2,
+
+  /**
+   * Log export IPFIX configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_LOG_IPFIX = 3;
+   */
+  LOG_IPFIX = 3,
+
+  /**
+   * Log export timescape configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_LOG_TIMESCAPE = 4;
+   */
+  LOG_TIMESCAPE = 4,
+
+  /**
+   * Log export splunk configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_LOG_SPLUNK = 5;
+   */
+  LOG_SPLUNK = 5,
+}
+
+/**
+ * Describes the enum l3l4networkpolicy.v1alpha.ConfigType.
+ */
+export const ConfigTypeSchema: GenEnum<ConfigType> = /*@__PURE__*/
+  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 4);
+
+/**
+ * Config operation is the instruction telling the backend what to do with a
+ * ConfigObject.
+ *
+ * @generated from enum l3l4networkpolicy.v1alpha.ConfigOperation
+ */
+export enum ConfigOperation {
+  /**
+   * Unspecified or unknown operation
+   *
+   * @generated from enum value: CONFIG_OPERATION_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Add the associated config object. If the config object exists it should be replaced with the new object.
+   *
+   * @generated from enum value: CONFIG_OPERATION_UPSERT = 1;
+   */
+  UPSERT = 1,
+
+  /**
+   * Delete the associated config object.
+   *
+   * @generated from enum value: CONFIG_OPERATION_DELETE = 2;
+   */
+  DELETE = 2,
+}
+
+/**
+ * Describes the enum l3l4networkpolicy.v1alpha.ConfigOperation.
+ */
+export const ConfigOperationSchema: GenEnum<ConfigOperation> = /*@__PURE__*/
+  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 5);
+
+/**
  * @generated from service l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService
  */
 export const L3L4NetworkPolicyService: GenService<{
@@ -466,6 +873,14 @@ export const L3L4NetworkPolicyService: GenService<{
     methodKind: "unary";
     input: typeof ReportStatusRequestSchema;
     output: typeof ReportStatusResponseSchema;
+  },
+  /**
+   * @generated from rpc l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig
+   */
+  streamDatapathConfig: {
+    methodKind: "server_streaming";
+    input: typeof StreamDatapathConfigRequestSchema;
+    output: typeof StreamDatapathConfigResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 0);

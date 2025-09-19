@@ -4,16 +4,31 @@
 ## Table of Contents
 
 - [l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto](#l3l4networkpolicy_v1alpha_l3l4networkpolicy-proto)
+    - [ConfigObject](#l3l4networkpolicy-v1alpha-ConfigObject)
+    - [DpuConfig](#l3l4networkpolicy-v1alpha-DpuConfig)
     - [L3L4NetworkSubject](#l3l4networkpolicy-v1alpha-L3L4NetworkSubject)
+    - [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig)
+    - [LogConfigIpfix](#l3l4networkpolicy-v1alpha-LogConfigIpfix)
+    - [LogConfigIpfix.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigIpfix-ConfigsEntry)
+    - [LogConfigSplunk](#l3l4networkpolicy-v1alpha-LogConfigSplunk)
+    - [LogConfigSplunk.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigSplunk-ConfigsEntry)
+    - [LogConfigSyslog](#l3l4networkpolicy-v1alpha-LogConfigSyslog)
+    - [LogConfigSyslog.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigSyslog-ConfigsEntry)
+    - [LogConfigTimescape](#l3l4networkpolicy-v1alpha-LogConfigTimescape)
+    - [LogConfigTimescape.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigTimescape-ConfigsEntry)
     - [PolicyRule](#l3l4networkpolicy-v1alpha-PolicyRule)
     - [PolicySubject](#l3l4networkpolicy-v1alpha-PolicySubject)
     - [ReportStatus](#l3l4networkpolicy-v1alpha-ReportStatus)
     - [ReportStatusRequest](#l3l4networkpolicy-v1alpha-ReportStatusRequest)
     - [ReportStatusResponse](#l3l4networkpolicy-v1alpha-ReportStatusResponse)
+    - [StreamDatapathConfigRequest](#l3l4networkpolicy-v1alpha-StreamDatapathConfigRequest)
+    - [StreamDatapathConfigResponse](#l3l4networkpolicy-v1alpha-StreamDatapathConfigResponse)
     - [Streaml3l4NetworkPolicyRequest](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyRequest)
     - [Streaml3l4NetworkPolicyResponse](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyResponse)
   
     - [AgentType](#l3l4networkpolicy-v1alpha-AgentType)
+    - [ConfigOperation](#l3l4networkpolicy-v1alpha-ConfigOperation)
+    - [ConfigType](#l3l4networkpolicy-v1alpha-ConfigType)
     - [PolicyAction](#l3l4networkpolicy-v1alpha-PolicyAction)
     - [PolicyOperation](#l3l4networkpolicy-v1alpha-PolicyOperation)
     - [PolicyProtocol](#l3l4networkpolicy-v1alpha-PolicyProtocol)
@@ -31,6 +46,45 @@
 
 
 
+<a name="l3l4networkpolicy-v1alpha-ConfigObject"></a>
+
+### ConfigObject
+ConfigObject is a generic config object, which can be extended by adding additional configuration types
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [ConfigType](#l3l4networkpolicy-v1alpha-ConfigType) |  | Type of the json encoded config, used to unmarshal the json object. |
+| config_dpu | [DpuConfig](#l3l4networkpolicy-v1alpha-DpuConfig) |  |  |
+| config_log_syslog | [LogConfigSyslog](#l3l4networkpolicy-v1alpha-LogConfigSyslog) |  |  |
+| config_log_ipfix | [LogConfigIpfix](#l3l4networkpolicy-v1alpha-LogConfigIpfix) |  |  |
+| config_log_timescape | [LogConfigTimescape](#l3l4networkpolicy-v1alpha-LogConfigTimescape) |  |  |
+| config_log_splunk | [LogConfigSplunk](#l3l4networkpolicy-v1alpha-LogConfigSplunk) |  |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-DpuConfig"></a>
+
+### DpuConfig
+Object to store NX configuration
+CONFIG_TYPE_DPU
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| service_ip | [string](#string) |  |  |
+| service_mac | [string](#string) |  |  |
+| port_low | [uint32](#uint32) |  |  |
+| port_high | [uint32](#uint32) |  |  |
+
+
+
+
+
+
 <a name="l3l4networkpolicy-v1alpha-L3L4NetworkSubject"></a>
 
 ### L3L4NetworkSubject
@@ -45,6 +99,162 @@ L3Network subjects are endpoints (destination or source) that specify a L3 endpo
 | vlan | [uint32](#uint32) |  | VLAN of the subject may be empty when unused |
 | vrf | [string](#string) |  | VRF of the subject may be empty when unused |
 | protocol | [PolicyProtocol](#l3l4networkpolicy-v1alpha-PolicyProtocol) |  | Protocol of the network subject, e.g. &#34;TCP&#34;, &#34;UDP&#34; |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-LogConfig"></a>
+
+### LogConfig
+Object to store log export configuration
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| description | [string](#string) |  |  |
+| host | [string](#string) |  | IPv4 only |
+| port | [string](#string) |  | Collector target port |
+| mode | [string](#string) |  | Protocol, only TCP or UDP |
+| tls | [bool](#bool) |  | Turns TLS on or off |
+| token | [string](#string) |  | Secret/Auth fields are only relevant if TLS is true Token for Splunk or Timescape |
+| username | [string](#string) |  | Username for Splunk or Timescape |
+| password | [string](#string) |  | Password for Splunk or Timescape |
+| ca | [string](#string) |  | CA cert as a string |
+| cert | [string](#string) |  | Client cert as a string |
+| key | [string](#string) |  | Client private key as a string |
+| key_password | [string](#string) |  | Key password to apply to the persisted client private key |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-LogConfigIpfix"></a>
+
+### LogConfigIpfix
+Object to store a list of ipfix configuration
+CONFIG_TYPE_LOG_IPFIX
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| configs | [LogConfigIpfix.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigIpfix-ConfigsEntry) | repeated |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-LogConfigIpfix-ConfigsEntry"></a>
+
+### LogConfigIpfix.ConfigsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig) |  |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-LogConfigSplunk"></a>
+
+### LogConfigSplunk
+Object to store a list of splunk configuration
+CONFIG_TYPE_LOG_SPLUNK
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| configs | [LogConfigSplunk.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigSplunk-ConfigsEntry) | repeated |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-LogConfigSplunk-ConfigsEntry"></a>
+
+### LogConfigSplunk.ConfigsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig) |  |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-LogConfigSyslog"></a>
+
+### LogConfigSyslog
+Object to store a list of syslog configuration
+CONFIG_TYPE_LOG_SYSLOG
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| configs | [LogConfigSyslog.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigSyslog-ConfigsEntry) | repeated |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-LogConfigSyslog-ConfigsEntry"></a>
+
+### LogConfigSyslog.ConfigsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig) |  |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-LogConfigTimescape"></a>
+
+### LogConfigTimescape
+Object to store a list of timescape configuration
+CONFIG_TYPE_LOG_TIMESCAPE
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| configs | [LogConfigTimescape.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigTimescape-ConfigsEntry) | repeated |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-LogConfigTimescape-ConfigsEntry"></a>
+
+### LogConfigTimescape.ConfigsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig) |  |  |
 
 
 
@@ -140,6 +350,37 @@ Report status response.
 
 
 
+<a name="l3l4networkpolicy-v1alpha-StreamDatapathConfigRequest"></a>
+
+### StreamDatapathConfigRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| agent_uid | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-StreamDatapathConfigResponse"></a>
+
+### StreamDatapathConfigResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| oper | [ConfigOperation](#l3l4networkpolicy-v1alpha-ConfigOperation) |  |  |
+| config | [ConfigObject](#l3l4networkpolicy-v1alpha-ConfigObject) |  |  |
+
+
+
+
+
+
 <a name="l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyRequest"></a>
 
 ### Streaml3l4NetworkPolicyRequest
@@ -183,6 +424,36 @@ Report status response.
 | AGENT_TYPE_UNSPECIFIED | 0 | Agent type unspecified |
 | AGENT_TYPE_DPU_AGW | 1 | Agent is AGW managing a DPU |
 | AGENT_TYPE_TETRAGON | 2 | Agent is Tetragon |
+
+
+
+<a name="l3l4networkpolicy-v1alpha-ConfigOperation"></a>
+
+### ConfigOperation
+Config operation is the instruction telling the backend what to do with a
+ConfigObject.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CONFIG_OPERATION_UNSPECIFIED | 0 | Unspecified or unknown operation |
+| CONFIG_OPERATION_UPSERT | 1 | Add the associated config object. If the config object exists it should be replaced with the new object. |
+| CONFIG_OPERATION_DELETE | 2 | Delete the associated config object. |
+
+
+
+<a name="l3l4networkpolicy-v1alpha-ConfigType"></a>
+
+### ConfigType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CONFIG_TYPE_UNSPECIFIED | 0 | Unspecified or unknown config type |
+| CONFIG_TYPE_DPU | 1 | DPU configuration |
+| CONFIG_TYPE_LOG_SYSLOG | 2 | Log export syslog configuration |
+| CONFIG_TYPE_LOG_IPFIX | 3 | Log export IPFIX configuration |
+| CONFIG_TYPE_LOG_TIMESCAPE | 4 | Log export timescape configuration |
+| CONFIG_TYPE_LOG_SPLUNK | 5 | Log export splunk configuration |
 
 
 
@@ -240,6 +511,7 @@ PolicyRule.
 | ----------- | ------------ | ------------- | ------------|
 | Streaml3l4NetworkPolicy | [Streaml3l4NetworkPolicyRequest](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyRequest) | [Streaml3l4NetworkPolicyResponse](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyResponse) stream |  |
 | ReportStatus | [ReportStatusRequest](#l3l4networkpolicy-v1alpha-ReportStatusRequest) | [ReportStatusResponse](#l3l4networkpolicy-v1alpha-ReportStatusResponse) |  |
+| StreamDatapathConfig | [StreamDatapathConfigRequest](#l3l4networkpolicy-v1alpha-StreamDatapathConfigRequest) | [StreamDatapathConfigResponse](#l3l4networkpolicy-v1alpha-StreamDatapathConfigResponse) stream |  |
 
  
 

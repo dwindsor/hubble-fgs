@@ -9,7 +9,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 
-	"github.com/isovalent/hubble-fgs/pkg/fwa"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
 
@@ -34,7 +33,7 @@ func executeAGW() {
 	// Launch daemon logic
 	done := make(chan error)
 	go func() {
-		done <- RunOnPrem(ctx, fwa.Agent, Config.DafConfig)
+		done <- RunOnPrem(ctx, Config.DafConfig)
 	}()
 
 	// Waiting for threads to finish

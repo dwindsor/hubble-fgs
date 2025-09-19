@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/tetragon/pkg/manager"
 
 	"github.com/isovalent/hubble-fgs/pkg/commands"
+	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/fwa"
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
@@ -24,8 +25,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
 )
 
-func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error {
-	logger.GetLogger().Info("Agent starting")
+func RunOnPrem(ctx context.Context, configPath string) error {
+	logger.GetLogger().Info("Agent starting...")
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -39,19 +40,19 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 	}
 	dns.SetRealizedState(s)
 
+	// Setup server to listen for DPUs
+	server := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
+
 	// Configuring agent
-	err := agent.Config(ctx, configPath)
+	err := fwa.GetAgent().Config(ctx, configPath)
 	if err != nil {
 		return err
 	}
 
-	// Setup server to listen for DPUs
-	server := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
-
 	go func() {
 		// Setting up agent local state
 		if Config.EnableNXOS {
-			err = agent.Setup(ctx)
+			err = fwa.GetAgent().Setup(ctx)
 			if err != nil {
 				logger.GetLogger().Error("Failed to setup agent",
 					logfields.Error, err)
@@ -68,7 +69,7 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 	}()
 
 	// Setup callback to yell if DPUs are out of sync
-	go agent.DpuHealthCheck(ctx)
+	go fwa.GetAgent().DpuHealthCheck(ctx)
 
 	// Original code had an agent.Ready for now skip if its necessary we can
 	// add it back.
@@ -87,6 +88,13 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 		kubernetesManager := manager.Get()
 		kubernetesManager.Start(ctx)
 
+		// TODO: Wait for configmap to be ready
+		err = config.AddConfigMapInformer(ctx, kubernetesManager)
+		if err != nil {
+			logger.GetLogger().Error("configmap failed")
+			return err
+		}
+
 		crds := make(map[string]struct{})
 		crds[enterpriseClient.TetragonNetworkPolicyCRD.ResName] = struct{}{}
 		if len(crds) > 0 {
@@ -97,6 +105,8 @@ func RunOnPrem(ctx context.Context, agent *fwa.FWAgent, configPath string) error
 		}
 		netpol.AddTetragonNetworkPolicyInformer(ctx, kubernetesManager)
 	}
+
+	logger.GetLogger().Info("Agent startup complete.")
 
 	<-ctx.Done()
 	return nil

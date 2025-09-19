@@ -11,7 +11,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
-	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/v1/ha"
+	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 )
 
 // Ha server object

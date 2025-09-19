@@ -28,6 +28,7 @@ any existing syslog export configuration.  It is in the format:
       "tls": "bool"
     },
     "secrets": {
+	  "token": "string",
       "ca": "string",
       "cert": "string",
       "key": "string",

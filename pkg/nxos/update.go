@@ -10,7 +10,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
-	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/v1/ha"
+	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 
 	"github.com/openconfig/ygot/ygot"
 	"github.com/openconfig/ygot/ytypes"

@@ -5,7 +5,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/cert"
 	"github.com/isovalent/hubble-fgs/pkg/config"
-	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/v1/ha"
+	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

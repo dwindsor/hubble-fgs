@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"github.com/isovalent/hubble-fgs/pkg/config"
+	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/dpu/dataplane"
 	agentDPU "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/utils"
@@ -34,18 +35,19 @@ const (
 	DPU_INTERFACE = "int_mnic0"
 )
 
-type PolicyClient struct {
-	client v1alpha.L3L4NetworkPolicyServiceClient
-	ctx    context.Context
-	conn   *grpc.ClientConn
-	stream grpc.ServerStreamingClient[v1alpha.Streaml3L4NetworkPolicyResponse]
+type StreamClient struct {
+	client       v1alpha.L3L4NetworkPolicyServiceClient
+	ctx          context.Context
+	conn         *grpc.ClientConn
+	policyStream grpc.ServerStreamingClient[v1alpha.Streaml3L4NetworkPolicyResponse]
+	configStream grpc.ServerStreamingClient[v1alpha.StreamDatapathConfigResponse]
 }
 
 func NewDPUAgent(server string) *DPUAgent {
 	return &DPUAgent{
 		Cfg:          &config.Config{},
 		Retries:      5,
-		policyClient: &PolicyClient{},
+		streamClient: &StreamClient{},
 		// This uses the sha of the PolicyRule as the key. The value though is
 		// the message. We SHA256 the rule so that the operation matches for
 		// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
@@ -74,7 +76,7 @@ type DPUAgent struct {
 
 	Cfg          *config.Config
 	Retries      int
-	policyClient *PolicyClient
+	streamClient *StreamClient
 	// This uses the sha of the PolicyRule as the key. The value though is
 	// the message. We SHA256 the rule so that the operation matches for
 	// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
@@ -157,6 +159,8 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	}
 	logger.GetLogger().Info("Connected to dataplane", "version", dpu.Dataplane.Version)
 
+	// FIXME: Add callback functions here
+
 	return nil
 }
 
@@ -226,10 +230,10 @@ func (dpu *DPUAgent) deletePolicyRule(rule *agentDPU.DPUPolicyRule) {
 	delete(dpu.ruleSet, csum)
 }
 
-func (dpu *DPUAgent) EventLoop(ctx context.Context) error {
-	logger.GetLogger().Info("event Loop.")
+func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
+	logger.GetLogger().Info("policy event loop")
 	for {
-		resp, err := dpu.policyClient.stream.Recv()
+		resp, err := dpu.streamClient.policyStream.Recv()
 		if err == io.EOF {
 			return err
 		}
@@ -254,6 +258,38 @@ func (dpu *DPUAgent) EventLoop(ctx context.Context) error {
 			logger.GetLogger().Warn("delete not implemented")
 		}
 
+	}
+}
+
+func (dpu *DPUAgent) ConfigEventLoop(_ context.Context) error {
+	logger.GetLogger().Info("config event loop")
+	for {
+		resp, err := dpu.streamClient.configStream.Recv()
+		if err == io.EOF {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+
+		switch resp.Oper {
+		case v1alpha.ConfigOperation_CONFIG_OPERATION_UNSPECIFIED:
+			logger.GetLogger().Error("failed config, unknown operation")
+		case v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT:
+			err = library.GetRepository().AddConfig(resp.Config)
+			if err != nil {
+				logger.GetLogger().Error("failed config, could not upsert", logfields.Error, err)
+				continue
+			}
+			logger.GetLogger().Info("upserted config", "config", resp.Config) // FIXME:
+		case v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE:
+			err = library.GetRepository().DeleteConfig(v1alpha.ConfigType(resp.Config.Type))
+			if err != nil {
+				logger.GetLogger().Error("failed config, could not delete", logfields.Error, err)
+				continue
+			}
+			logger.GetLogger().Info("deleted config", "config", resp.Config) // FIXME:
+		}
 	}
 }
 
@@ -283,23 +319,96 @@ func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
 			req := &v1alpha.ReportStatusRequest{
 				Status: status,
 			}
-			_, err := dpu.policyClient.client.ReportStatus(ctx, req)
+			_, err := dpu.streamClient.client.ReportStatus(ctx, req)
 			if err != nil {
 				logger.GetLogger().Error("keep alive report status error",
 					logfields.Error, err)
 			}
 		}
 	}
+}
 
+func (dpu *DPUAgent) PolicyConnect(ctx context.Context) error {
+	policyReq := &v1alpha.Streaml3L4NetworkPolicyRequest{
+		AgentUid: dpu.AgentId,
+	}
+
+	backoff := time.Second
+	attempts := 0
+	for {
+		select {
+		case <-ctx.Done():
+			logger.GetLogger().Info("Policy client connection closed")
+			return nil
+		case <-time.After(backoff):
+			logger.GetLogger().Info("Connecting policy client...")
+			var err error
+			dpu.streamClient.policyStream, err = dpu.streamClient.client.Streaml3L4NetworkPolicy(ctx, policyReq)
+			if err != nil {
+				attempts++
+				logger.GetLogger().Error("Policy stream connection attempt failed, retrying...", "server-address", dpu.serverAddress, "attempts", attempts, "backoff", backoff, "error", err)
+				if attempts < dpu.Retries {
+					backoff *= 2
+				}
+				continue
+			}
+			logger.GetLogger().Info("Policy client connected.")
+
+			attempts = 0
+			backoff = time.Second
+
+			logger.GetLogger().Info("Network Policy listening...")
+			if err := dpu.PolicyEventLoop(ctx); err != nil {
+				logger.GetLogger().Error("policy event loop aborted", logfields.Error, err)
+			}
+		}
+	}
+}
+
+func (dpu *DPUAgent) ConfigConnect(ctx context.Context) error {
+	configReq := &v1alpha.StreamDatapathConfigRequest{
+		AgentUid: dpu.AgentId,
+	}
+
+	backoff := time.Second
+	attempts := 0
+	for {
+		select {
+		case <-ctx.Done():
+			logger.GetLogger().Info("Config client connection closed")
+			return nil
+		case <-time.After(backoff):
+			logger.GetLogger().Info("Connecting config client...")
+			var err error
+			dpu.streamClient.configStream, err = dpu.streamClient.client.StreamDatapathConfig(ctx, configReq)
+			if err != nil {
+				attempts++
+				logger.GetLogger().Error("Config stream connection attempt failed, retrying...", "server-address", dpu.serverAddress, "attempts", attempts, "backoff", backoff, "error", err)
+				if attempts < dpu.Retries {
+					backoff *= 2
+				}
+				continue
+			}
+			logger.GetLogger().Info("Config client connected.")
+
+			attempts = 0
+			backoff = time.Second
+
+			logger.GetLogger().Info("Config listening...")
+			if err := dpu.ConfigEventLoop(ctx); err != nil {
+				logger.GetLogger().Error("config event loop aborted", logfields.Error, err)
+			}
+		}
+	}
 }
 
 func (dpu *DPUAgent) Connect(ctx context.Context) error {
 	var err error
 
-	dpu.policyClient = &PolicyClient{}
+	dpu.streamClient = &StreamClient{}
 
 	logger.GetLogger().Info("Starting Streaming client")
-	dpu.policyClient.conn, err = grpc.NewClient(
+	dpu.streamClient.conn, err = grpc.NewClient(
 		dpu.serverAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
@@ -308,46 +417,23 @@ func (dpu *DPUAgent) Connect(ctx context.Context) error {
 		return err
 	}
 
-	dpu.policyClient.client = v1alpha.NewL3L4NetworkPolicyServiceClient(dpu.policyClient.conn)
-	dpu.policyClient.ctx = ctx
-
-	defer dpu.policyClient.conn.Close()
-	backoff := time.Second
-	attempts := 0
+	dpu.streamClient.client = v1alpha.NewL3L4NetworkPolicyServiceClient(dpu.streamClient.conn)
+	dpu.streamClient.ctx = ctx
+	defer dpu.streamClient.conn.Close()
 
 	go func() {
 		dpu.KeepAlive(ctx)
 	}()
 
-	req := &v1alpha.Streaml3L4NetworkPolicyRequest{
-		AgentUid: dpu.AgentId,
-	}
+	go func() {
+		dpu.PolicyConnect(ctx)
+	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			logger.GetLogger().Info("Client connection closed")
-			return nil
-		case <-time.After(backoff):
-			logger.GetLogger().Info("Connecting client")
-			dpu.policyClient.stream, err = dpu.policyClient.client.Streaml3L4NetworkPolicy(ctx, req)
-			logger.GetLogger().Info("Client connected")
-			if err != nil {
-				attempts++
-				logger.GetLogger().Error("Stream connection attempt failed, retrying...", "server-address", dpu.serverAddress, "attempts", attempts, "backoff", backoff, "error", err)
-				if attempts < dpu.Retries {
-					backoff *= 2
-				}
-				continue
-			}
+	go func() {
+		dpu.ConfigConnect(ctx)
+	}()
 
-			attempts = 0
-			backoff = time.Second
-
-			logger.GetLogger().Info("Network Policy listening...")
-			if err := dpu.EventLoop(ctx); err != nil {
-				logger.GetLogger().Error("event loop aborted", logfields.Error, err)
-			}
-		}
-	}
+	<-ctx.Done()
+	logger.GetLogger().Info("Streaming client connection closed")
+	return nil
 }
