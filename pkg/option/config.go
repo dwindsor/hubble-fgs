@@ -64,6 +64,8 @@ type config struct {
 	NetworkPolicies    []string
 	NetworkPoliciesDir string
 
+	PoliciesDir string
+
 	EnableAlerts    bool
 	AlertsExportDir string
 

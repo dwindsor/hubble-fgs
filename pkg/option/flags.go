@@ -89,6 +89,7 @@ const (
 	keyEnableNetworkEvents            = "enable-network-events"
 	keyEnableAlertsProfiling          = "enable-alerts-profiling"
 	keyK8sServiceAccountAuth          = "k8s-service-account-auth"
+	KeyPolicyDir                      = "policy-dir"
 
 	EnvironmentAWS        = "aws"
 	EnvironmentKubernetes = "kubernetes"
@@ -200,6 +201,11 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
 	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
 	flags.MarkHidden(keyK8sServiceAccountAuth)
+
+	flags.String(KeyPolicyDir, "", "Directory for all kind of policies to load at startup. Only single depth level files are supported")
+	// Mark other policiesDir options as deprecated
+	_ = flags.MarkDeprecated(option.KeyTracingPolicyDir, "Deprecated in v1.18.0, to be removed in v1.20.0. Use "+KeyPolicyDir+"instead.")
+	_ = flags.MarkDeprecated(keyNetworkPolicyDir, "Deprecated in v1.18.0, to be removed in v1.20.0. Use "+KeyPolicyDir+"instead.")
 }
 
 func ReadAndValidateEnterpriseFlags() error {
@@ -245,6 +251,7 @@ func readAndSetEnterpriseFlags() {
 	Config.SandboxPolicies = viper.GetStringSlice(keySandboxPolicy)
 	Config.NetworkPolicies = viper.GetStringSlice(keyNetworkPolicy)
 	Config.NetworkPoliciesDir = viper.GetString(keyNetworkPolicyDir)
+	Config.PoliciesDir = viper.GetString(KeyPolicyDir)
 	Config.EnableAlerts = viper.GetBool(keyEnableAlerts)
 	Config.AlertsExportDir = viper.GetString(keyAlertsExportDir)
 	Config.DebugX = viper.GetStringSlice(keyDebugX)
