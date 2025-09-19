@@ -3,7 +3,6 @@ package tetragon
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -14,7 +13,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -25,7 +23,8 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/rthooks"
-	"github.com/cilium/tetragon/pkg/tracingpolicy"
+
+	"github.com/isovalent/hubble-fgs/pkg/policies"
 
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
@@ -42,7 +41,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -217,6 +215,11 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		logger.Fatal(log, fmt.Sprintf("Failed path specified by --tracing-policy-dir '%q' is not absolute", option.Config.TracingPolicyDir))
 	}
 	option.Config.TracingPolicyDir = filepath.Clean(option.Config.TracingPolicyDir)
+
+	if !filepath.IsAbs(enterpriseOption.Config.PoliciesDir) {
+		logger.Fatal(log, fmt.Sprintf("Failed path specified by --policy-dir '%q' is not absolute", enterpriseOption.Config.PoliciesDir))
+	}
+	enterpriseOption.Config.PoliciesDir = filepath.Clean(enterpriseOption.Config.PoliciesDir)
 
 	if option.Config.RBSize != 0 && option.Config.RBSizeTotal != 0 {
 		logger.Fatal(log, "Can't specify --rb-size and --rb-size-total together")
@@ -632,44 +635,8 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	processcacheclean.Start()
 	defer processcacheclean.Stop()
 
-	err = loadTpFromDir(ctx, option.Config.TracingPolicyDir)
-	if err != nil {
+	if err = policies.Load(ctx, alertsManager, log); err != nil {
 		return err
-	}
-
-	err = netpol.AddFromDir(enterpriseOption.Config.NetworkPoliciesDir)
-	if err != nil {
-		return err
-	}
-
-	if len(option.Config.TracingPolicy) > 0 {
-		err = addTracingPolicy(ctx, option.Config.TracingPolicy)
-		if err != nil {
-			return fmt.Errorf("add TracingPolicy failed: %w", err)
-		}
-	}
-
-	if len(enterpriseOption.Config.NetworkPolicies) > 0 {
-		for _, f := range enterpriseOption.Config.NetworkPolicies {
-			err = netpol.AddFromFile(f)
-			if err != nil {
-				return fmt.Errorf("add TetragonNetworkPolicy failed: %w", err)
-			}
-		}
-	}
-
-	if len(enterpriseOption.Config.SandboxPolicies) > 0 {
-		if enterpriseOption.Config.EnableSandboxPolicies {
-			sm := observer.GetSensorManager()
-			for _, fname := range enterpriseOption.Config.SandboxPolicies {
-				err = sandboxpolicy.AddSandboxPolicyFromYAML(ctx, log, sm, fname)
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			logger.Fatal(log, "Sandbox policies specified but the feature is disabled", "sandboxpolicies", enterpriseOption.Config.SandboxPolicies)
-		}
 	}
 
 	// Remove previous tetragon instance if detected
@@ -681,77 +648,6 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	}
 
 	return obs.StartReady(ctx, ready)
-}
-
-func loadTpFromDir(ctx context.Context, dir string) error {
-	tpMaxDepth := 1
-	tpFS := os.DirFS(dir)
-
-	if dir == defaults.DefaultTpDir {
-		// If the default directory does not exist then do not fail
-		// Probably tetragon not fully installed, users did not create
-		// /etc/tetragon/tetragon.tp.d/
-		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			log.Info("Loading Tracing Policies from directory ignored, directory does not exist", "tracing-policy-dir", dir)
-			return nil
-		}
-	}
-
-	err := fs.WalkDir(tpFS, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if d.IsDir() {
-			if strings.Count(path, string(os.PathSeparator)) >= tpMaxDepth {
-				return fs.SkipDir
-			}
-			return nil
-		}
-
-		file := filepath.Join(dir, path)
-		st, err := os.Stat(file)
-		if err != nil {
-			return err
-		}
-
-		if !st.Mode().IsRegular() {
-			return nil
-		}
-
-		return addTracingPolicy(ctx, file)
-	})
-
-	return err
-}
-
-func addTracingPolicy(ctx context.Context, file string) error {
-	f, err := filepath.Abs(filepath.Clean(file))
-	if err != nil {
-		return err
-	}
-
-	tp, err := tracingpolicy.FromFile(f)
-	if err != nil {
-		return fmt.Errorf("failed to read (%s) tracing policy: %w", file, err)
-	}
-
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
-	if err != nil {
-		return fmt.Errorf("failed to get sensors from (%s) parser policy: %w", file, err)
-	}
-
-	namespace := ""
-	if tpNs, ok := tp.(tracingpolicy.TracingPolicyNamespaced); ok {
-		namespace = tpNs.TpNamespace()
-	}
-
-	logger.GetLogger().Info("Added TracingPolicy with success",
-		"TracingPolicy", file,
-		"metadata.namespace", namespace,
-		"metadata.name", tp.TpName())
-
-	return nil
 }
 
 // Periodically log current status every 24 hours. For lost or error
