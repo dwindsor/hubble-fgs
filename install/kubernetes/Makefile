@@ -16,7 +16,7 @@ HELMDOCS_IMAGE = docker.io/jnorwood/helm-docs:v1.14.2@sha256:7e562b49ab6b1dbc50c
 # renovate: datasource=docker
 PYTHON_IMAGE = docker.io/python:3.13-slim-bookworm
 # renovate: datasource=docker
-YQ_IMAGE = docker.io/mikefarah/yq:4.47.1@sha256:b9285dd3b0bea3c34d0c54415dd48d767dabd9644d489bd6e253660847b58419
+YQ_IMAGE = docker.io/mikefarah/yq:4.47.2@sha256:76def1f56f456ecc1c3173ea275218ee17139bc2018c5a07887b15afd88ec03e
 # renovate: datasource=docker
 JQ_IMAGE = ghcr.io/jqlang/jq:1.8.1@sha256:4f34c6d23f4b1372ac789752cc955dc67c2ae177eb1b5860b75cdc5091ce6f91
 
