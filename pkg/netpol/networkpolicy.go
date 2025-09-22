@@ -3,7 +3,6 @@ package netpol
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
@@ -69,18 +68,32 @@ func addTetragonNetworkPolicy(obj any) {
 	logger.GetLogger().Info("addNetworkPolicy: completed successfully", "title", name, "network rules", len(policies), "network policy", policies)
 }
 
+func getCurrentNameAndAltName(resourceName string) (string, bool, string) {
+	altName := "__" + resourceName
+	_, ok := library.GetRepository().Get(resourceName)
+	if ok {
+		return resourceName, true, altName
+	}
+
+	_, ok = library.GetRepository().Get(altName)
+	if ok {
+		return altName, true, resourceName
+	}
+
+	return resourceName, false, altName
+}
+
 func updateTetragonNetworkPolicy(_, newObj any) {
 	var newPolicy []*types.TetragonNetworkPolicy
 	var crd *v1alpha1.TetragonNetworkPolicy
 	var crdNS *v1alpha1.TetragonNetworkPolicyNamespaced
 	var err error
 
-	newName := ""
-	oldName := ""
+	resourceName := ""
 
 	switch np := newObj.(type) {
 	case *v1alpha1.TetragonNetworkPolicy:
-		newName = np.Name
+		resourceName = np.Name
 		crd = np
 		newPolicy, err = ToTetragonNetworkPolicies(np)
 		if err != nil {
@@ -101,20 +114,12 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 		return
 	}
 
-	oldName = fmt.Sprintf("__%s", newName)
-	oldStory, ok := library.GetRepository().Get(oldName)
+	oldName, ok, newName := getCurrentNameAndAltName(resourceName)
 	if !ok {
-		t := newName
-		newName = oldName
-		oldName = t
-
-		oldStory, ok = library.GetRepository().Get(oldName)
-		if !ok {
-			logger.GetLogger().Debug("updateNetworkPolicy: update but policy does not exist",
-				"new title", newName,
-				"old title", oldName,
-				"network rules", len(newPolicy))
-		}
+		logger.GetLogger().Debug("updateNetworkPolicy: update but policy does not exist",
+			"new title", newName,
+			"old title", oldName,
+			"network rules", len(newPolicy))
 	}
 
 	// rename policy to secondary name so we can have both old and
@@ -141,7 +146,7 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 			"new title", newName, "old title", oldName, "network rules", len(newPolicy))
 	}
 
-	if err := dns.RemoveNetworkPolicySet(oldName, oldStory.IrPolicy); err != nil {
+	if err := deleteNetworkPolicy(oldName); err != nil {
 		logger.GetLogger().Warn("updateNetworkPolicy: failed to remove old state in an update to Tetragon network policy command",
 			logfields.Error, err, "new name", newName, "old name", oldName)
 	}
@@ -151,7 +156,7 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 }
 
 func deleteNetworkPolicyObj(obj any) {
-	name := ""
+	resourceName := ""
 
 	if dfsu, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 		obj = dfsu.Obj
@@ -159,7 +164,7 @@ func deleteNetworkPolicyObj(obj any) {
 
 	switch np := obj.(type) {
 	case *v1alpha1.TetragonNetworkPolicy:
-		name = np.Name
+		resourceName = np.Name
 
 	case *v1alpha1.TetragonNetworkPolicyNamespaced:
 		logger.GetLogger().Warn("deleteNetworkPolicy: namespaced policy currently not supported", "obj", obj,
@@ -170,34 +175,29 @@ func deleteNetworkPolicyObj(obj any) {
 		return
 	}
 
-	err := deleteNetworkPolicy(name)
+	currentName, ok, _ := getCurrentNameAndAltName(resourceName)
+	if !ok {
+		logger.GetLogger().Warn("TetragonNetworkPolicy deletion failed, policy does not exist", "name", resourceName)
+		return
+	}
+
+	err := deleteNetworkPolicy(currentName)
 	if err != nil {
 		logger.GetLogger().Warn("TetragonNetworkPolicy deletion failed", logfields.Error, err)
 	}
-	logger.GetLogger().Info("TetragonNetworkPolicy successfully deleted", "name", name)
+	logger.GetLogger().Info("TetragonNetworkPolicy successfully deleted", "name", resourceName)
 
 }
 
 func deleteNetworkPolicy(name string) error {
 	story, ok := library.GetRepository().Get(name)
 	if !ok {
-		deleteName := fmt.Sprintf("__%s", name)
-		story, ok = library.GetRepository().Get(deleteName)
-		if !ok {
-			return fmt.Errorf("policy %q does not exist", name)
-		}
-		name = deleteName
+		return fmt.Errorf("policy %q does not exist", name)
 	}
 	if err := dns.RemoveNetworkPolicySet(name, story.IrPolicy); err != nil {
 		return fmt.Errorf("removing policy %q failed: %w", name, err)
 	}
 	library.GetRepository().Delete(name)
-	if strings.HasPrefix(name, "__") {
-		library.GetRepository().Delete(name[len("__"):])
-	} else {
-		n := fmt.Sprintf("__%s", name)
-		library.GetRepository().Delete(n)
-	}
 	return nil
 }
 
