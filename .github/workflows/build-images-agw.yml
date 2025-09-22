@@ -194,6 +194,10 @@ jobs:
               'branch': context.ref,
               'run-id': `${context.runId}`,
               'artifact-name-with-full-image-tag': `hubble-fgs-agw-docker-image-${process.env.VERSION}+${process.env.AGW_IMAGE_NAME}-${process.env.VERSION}-${process.env.DATE}-${process.env.SHA}`,
+              'corona-product-name': 'Hypershield-SmartSwitch',
+              'corona-product-id': '16529',
+              'corona-release-version': '360139',
+              'corona-csdl-id': '245071',
               'vault-approle-role-id': process.env.VAULT_ROLE_ID,
               'vault-approle-secret-id': process.env.VAULT_SECRET_ID
             };
