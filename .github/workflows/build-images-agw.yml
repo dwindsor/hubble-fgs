@@ -17,8 +17,11 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.event_name == 'push' && format('{0}-{1}', github.workflow, github.ref) || github.event_name == 'pull_request' && format('{0}-pr-{1}-{2}', github.workflow, github.event.pull_request.number, github.event.action) || format('{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: true
+
+env:
+  AGW_IMAGE_NAME: isovalent/agw
 
 jobs:
   init:
@@ -62,7 +65,6 @@ jobs:
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     env:
       DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}
-      AGW_IMAGE_NAME: isovalent/agw
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -131,9 +133,7 @@ jobs:
               'vault-approle-role-id': process.env.VAULT_ROLE_ID,
               'vault-approle-secret-id': process.env.VAULT_SECRET_ID
             };
-            
             console.log(`Triggering workflow ${workflowFileName} in ${process.env.TARGET_ORG}/${process.env.TARGET_REPO}`);
-            
             try {
               const result = await github.rest.actions.createWorkflowDispatch({
                 owner: process.env.TARGET_ORG,
@@ -163,3 +163,67 @@ jobs:
           echo "| Target Workflow | code-drop-isovalent.yaml |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Name | ${{ github.event.repository.name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Tag | ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
+  
+  trigger-corona-scan:
+    needs: [ init, build-agw-image ]
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    if: ${{ needs.build-agw-image.result == 'success' }}
+    env:
+      TARGET_ORG: cisco-hypershield
+      TARGET_REPO: hs-actions
+      VERSION: ${{ needs.init.outputs.version }}
+      DATE: ${{ needs.init.outputs.date }}
+      SHA: ${{ needs.init.outputs.sha }}
+    steps:
+      - name: Generate GitHub App Token
+        id: workflow-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ vars.HYPERSHIELD_GH_APP_ID }}
+          private-key: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
+          owner: ${{ env.TARGET_ORG }}
+          repositories: ${{ env.TARGET_REPO }}
+      - name: Trigger Corona Scan Workflow
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          github-token: ${{ steps.workflow-token.outputs.token }}
+          script: |
+            const workflowFileName = 'corona-blackduck-scan-isovalent.yaml';
+            const inputs = {
+              'repository': context.payload.repository.full_name,
+              'branch': context.ref,
+              'run-id': `${context.runId}`,
+              'artifact-name-with-full-image-tag': `hubble-fgs-agw-docker-image-${process.env.VERSION}+${process.env.AGW_IMAGE_NAME}-${process.env.VERSION}-${process.env.DATE}-${process.env.SHA}`,
+              'vault-approle-role-id': process.env.VAULT_ROLE_ID,
+              'vault-approle-secret-id': process.env.VAULT_SECRET_ID
+            };
+            console.log(`Triggering Corona scan workflow in ${process.env.TARGET_ORG}/${process.env.TARGET_REPO}`);
+            try {
+              const result = await github.rest.actions.createWorkflowDispatch({
+                owner: process.env.TARGET_ORG,
+                repo: process.env.TARGET_REPO,
+                workflow_id: workflowFileName,
+                ref: 'main',
+                inputs: inputs
+              });
+              console.log('Corona scan workflow triggered successfully');
+            } catch (error) {
+              console.error('Error triggering Corona scan workflow:', error);
+              core.setFailed(`Failed to trigger workflow: ${error.message}`);
+            }
+        env:
+          VERSION: ${{ needs.init.outputs.version }}
+          DATE: ${{ needs.init.outputs.date }}
+          SHA: ${{ needs.init.outputs.sha }}
+          VAULT_ROLE_ID: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}
+          VAULT_SECRET_ID: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}
+      - name: Corona Scan Workflow Summary
+        run: |
+          echo "### Corona Scan Workflow Triggered" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Organization | ${{ env.TARGET_ORG }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Repository | ${{ env.TARGET_REPO }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Target Workflow | corona-blackduck-scan-isovalent.yaml |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image Name | ${{ env.AGW_IMAGE_NAME }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image Tag | ${{ needs.init.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
