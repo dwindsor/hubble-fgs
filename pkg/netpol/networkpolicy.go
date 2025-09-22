@@ -233,9 +233,6 @@ func loadPolicy(policyStory *library.PolicyStory) error {
 	}
 
 	library.GetRepository().Add(policyStory)
-	for _, r := range policyStory.IrPolicy {
-		library.GetRepository().AddRule(policyStory, r.Rule)
-	}
 
 	err := dns.CreateMatchLabelsPolicySet(policyStory.IrPolicy)
 	if err != nil {

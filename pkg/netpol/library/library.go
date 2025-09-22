@@ -30,7 +30,6 @@ type PolicyRepository interface {
 	Delete(name string)
 	Link(title string, ref string) error
 	DelLink(title string)
-	AddRule(p *PolicyStory, rule string)
 	Add(p *PolicyStory)
 	GetId(name string) (uint64, bool)
 	GetRuleId(policy, rule string) (uint64, bool)
@@ -103,22 +102,20 @@ func (r *policyRepositoryImpl) DelLink(title string) {
 	delete(r.policyLibrary, title)
 }
 
-func (r *policyRepositoryImpl) AddRule(p *PolicyStory, rule string) {
-	if _, ok := p.Rules[rule]; ok {
-		return
-	}
-	ruleID := r.generateRuleId()
-	p.Rules[rule] = ruleID
-}
-
 func (r *policyRepositoryImpl) Add(p *PolicyStory) {
 	_, ok := r.policyLibrary[p.Title]
-	if ok {
-		return
+	if !ok {
+		p.Id = r.generateId()
+		r.idLibrary[p.Id] = p
+		r.policyLibrary[p.Title] = p.Id
 	}
-	p.Id = r.generateId()
-	r.idLibrary[p.Id] = p
-	r.policyLibrary[p.Title] = p.Id
+	for _, policy := range p.IrPolicy {
+		if _, ok := p.Rules[policy.Rule]; ok {
+			return
+		}
+		ruleID := r.generateRuleId()
+		p.Rules[policy.Rule] = ruleID
+	}
 }
 
 func (r *policyRepositoryImpl) GetId(name string) (uint64, bool) {
