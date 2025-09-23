@@ -401,6 +401,9 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		if DisableConnectEvents {
 			return []observer.Event{}, nil
 		}
+		return []observer.Event{msgUnix}, nil
+	case ops.MSG_OP_UDPLISTEN:
+		return []observer.Event{msgUnix}, nil
 	case ops.MSG_OP_UDPCLOSE:
 		// Close event contains the socket cookie that was closed. We use this
 		// along with the cookie version as a key into the pseudoSockets map
@@ -509,7 +512,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		pseudoSocketsUpdate.Unlock()
 		return closeEvents, nil
 	}
-	return []observer.Event{msgUnix}, nil
+	return nil, fmt.Errorf("handleUdp unrecognised event type")
 }
 
 func MsgToUdpSeqErrorUnix(m *networkapi.MsgUdpSeqCheckErrorEvent) *udp_seq_check_error.MsgUdpSeqCheckErrorEventUnix {
