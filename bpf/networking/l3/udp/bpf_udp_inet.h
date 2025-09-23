@@ -77,8 +77,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	u64 cookie_ver = 0;
 	int zero = 0;
 
-	if (process)
-		cookie_ver = process->version;
+	cookie_ver = process->version;
 
 	key = (struct udp_info_key *)map_lookup_elem(&tg_p_l3_udp_key, &zero);
 	if (!key)
@@ -91,7 +90,7 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	 * on a known process/socket binding then simply account for bytes
 	 * and any other statistics needed.
 	 */
-	if (process && value && value->pid == process->key.pid) {
+	if (value && value->pid == process->key.pid) {
 		if (send)
 			update_tx_value(value, payload_sz);
 		else {
@@ -108,9 +107,6 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 		value = (struct udp_info_value *)map_lookup_elem(&tg_h_udp_value, &zero);
 		if (!value)
 			return 0;
-
-		value->pid = 0;
-		value->pid_ktime = 0;
 	}
 
 	/* Otherwise this is a new UDP key over an existing socket or the
@@ -131,19 +127,17 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	value->create_time = tg_get_ktime();
 
 	/* Update process binding and generate connect event */
-	if (process) {
-		value->pid = process->key.pid;
-		value->pid_ktime = process->key.ktime;
-		process->protocol = IPPROTO_UDP;
-		emit_udp_connect_event(skb, cookie, cookie_ver, value->ps_version, key, value);
+	value->pid = process->key.pid;
+	value->pid_ktime = process->key.ktime;
+	process->protocol = IPPROTO_UDP;
+	emit_udp_connect_event(skb, cookie, cookie_ver, value->ps_version, key, value);
 #ifndef IS_KPROBE
 #ifdef TRACK_ICMP_FROM_SKB
-		add_socket_tuple_map_from_skb(cookie, skb, IPPROTO_UDP);
+	add_socket_tuple_map_from_skb(cookie, skb, IPPROTO_UDP);
 #else
-		add_socket_tuple_map(&key->tuple, cookie);
+	add_socket_tuple_map(&key->tuple, cookie);
 #endif
 #endif
-	}
 
 	add_udp_map(key, value);
 	return value;
@@ -164,7 +158,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 {
 	struct latency_protocol_config *udp_latency = 0;
 	struct latency_config *latency_config = 0;
-	struct socketmap_value *process;
+	struct socketmap_value *process = 0;
 	struct udp_info_value *value;
 	struct udp_info_key *key;
 	u64 cookie_ver = 0;
@@ -188,8 +182,10 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	if (*cookie) {
 		__u64 c = *cookie;
 		process = lookup_socketmap(&c);
-	} else {
-		process = 0;
+	}
+	if (!process) {
+		// Not having a process means this is a kernel socket datagram.
+		return 1;
 	}
 
 	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, udp_latency, send, process);
@@ -205,8 +201,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		udp_seq_err_check(skb, skb_head, ip, ipv6, cookie, payload_off,
 				  payload_sz, process, key, value);
 
-	if (process)
-		cookie_ver = process->version;
+	cookie_ver = process->version;
 
 	if (dns_send_userspace)
 		udp_dns(skb, skb_head, key, value, ip, ipv6, send, cookie, cookie_ver, payload_off, payload_sz);
