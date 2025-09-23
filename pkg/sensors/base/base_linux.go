@@ -80,6 +80,7 @@ func GetDefaultMaps() []*program.Map {
 		BpfEndpointIdMap,
 		ProcessTreeConfigMap,
 		MatchBinariesSetMap,
+		MatchBinariesGenMap,
 		ErrMetricsMap,
 	}
 	if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.EnableSyscallTracking {

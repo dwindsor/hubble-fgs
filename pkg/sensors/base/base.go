@@ -165,6 +165,7 @@ var (
 	BpfEndpointIdMap         = program.MapBuilder("tg_bpf_endpoint_id_map", Execve, ExecveV53, ExecveV61, ExecveV612)
 	ProcessTreeConfigMap     = program.MapBuilder("tg_process_tree_config_map", Execve, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
 	MatchBinariesSetMap      = program.MapBuilder(mbset.MapName, Execve)
+	MatchBinariesGenMap      = program.MapBuilder(mbset.GenName, Execve)
 	ErrMetricsMap            = program.MapBuilder(errmetrics.MapName, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 	SyscallsMap              = program.MapBuilder("tg_syscall_map", SysEnterProg)
 	NsIDMap                  = program.MapBuilder("tg_cgroup_namespace_map", Execve, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry)
