@@ -547,18 +547,6 @@ func (n *Nxos) Setup(ctx context.Context, low, high uint16) error {
 		return err
 	}
 
-	if !n.SkipCtrlr {
-		ht := haveTokens(ctx)
-		if !ht {
-			// wait for OTP from NXOS
-			err = n.waitForToken(ctx)
-			if err != nil {
-				logger.GetLogger().Error("Fail to wait for token", logfields.Error, err)
-				return err
-			}
-		}
-	}
-	logger.GetLogger().Debug("Token ready")
 	n.Stage = StageVrf
 
 	now := time.Now().Unix()
@@ -573,13 +561,7 @@ func (n *Nxos) Setup(ctx context.Context, low, high uint16) error {
 	go n.checkNotif(ctx)
 	go n.setup(ctx, dpuCnt)
 
-	if n.SkipCtrlr {
-		logger.GetLogger().Debug("Skip connecting to controller")
-		for {
-			time.Sleep(time.Hour)
-		}
-	}
-
+	logger.GetLogger().Info("NXOS setup complete")
 	return nil
 }
 
