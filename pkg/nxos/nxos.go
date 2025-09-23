@@ -601,7 +601,7 @@ func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {
 		logger.GetLogger().Error("Fail to set fw policy state", logfields.Error, err)
 		return
 	}
-	logger.GetLogger().Debug("VRF pinning ready")
+	logger.GetLogger().Info("VRF pinning ready")
 
 	// notify NXOS of service redir
 	err = n.setServiceRedirAll(ctx, true)
