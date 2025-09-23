@@ -50,6 +50,15 @@ func RunOnPrem(ctx context.Context, configPath string) error {
 	}
 
 	go func() {
+		err := server.Start()
+		if err != nil {
+			logger.GetLogger().Error("aborting DPU listener failed",
+				logfields.Error, err)
+			cancel()
+		}
+	}()
+
+	go func() {
 		// Setting up agent local state
 		if Config.EnableNXOS {
 			err = fwa.GetAgent().Setup(ctx)
@@ -58,13 +67,6 @@ func RunOnPrem(ctx context.Context, configPath string) error {
 					logfields.Error, err)
 				cancel()
 			}
-		}
-
-		err := server.Start()
-		if err != nil {
-			logger.GetLogger().Error("aborting DPU listener failed",
-				logfields.Error, err)
-			cancel()
 		}
 	}()
 
