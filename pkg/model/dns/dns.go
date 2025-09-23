@@ -189,7 +189,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 
 			for _, subject := range s.Subjects {
 				for _, process := range s.Policy.Subject.InProcessName {
-					self, err := prog.GetBinaryId(process)
+					self, err := prog.GetBinaryId(process, true) // DNS policies do not include args for now
 					if err != nil {
 						logger.GetLogger().Warn("process policy remove error", logfields.Error, err)
 						continue
@@ -270,7 +270,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 				})
 			}
 			for _, process := range s.Policy.Subject.InProcessName {
-				self, err := prog.GetBinaryId(process)
+				self, err := prog.GetBinaryId(process, true) // DNS policies do not include args for now
 				if err != nil {
 					logger.GetLogger().Warn("pod remove endpoint binary id error", logfields.Error, err)
 					continue
@@ -341,7 +341,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 				Port: 0,
 			}
 			for _, process := range s.Policy.Subject.InProcessName {
-				self, err := prog.GetBinaryId(process)
+				self, err := prog.GetBinaryId(process, true) // DNS policies do not include args for now
 				if err != nil {
 					logger.GetLogger().Warn("pod remove FQDN binary id error", logfields.Error, err)
 					continue
@@ -415,7 +415,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 
 			if len(policyList.Policy.Subject.InProcessName) > 0 {
 				for _, process := range policyList.Policy.Subject.InProcessName {
-					self, err := prog.GetBinaryId(process)
+					self, err := prog.GetBinaryId(process, true) // DNS policies do not include args for now
 					if err != nil {
 						logger.GetLogger().Warn("process policy remove error", logfields.Error, err)
 						continue

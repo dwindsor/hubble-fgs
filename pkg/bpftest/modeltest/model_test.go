@@ -51,6 +51,19 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 		},
 	},
 
+	"MissingArgumentsRegression": {
+		Host: model.Binaries{
+			{
+				Cmd:  "/usr/bin/ls",
+				Args: []string{},
+			},
+			{
+				Cmd:  "/usr/bin/ls",
+				Args: []string{"-la"},
+			},
+		},
+	},
+
 	"LongArg": {
 		Skip: "TODO: app model currently does not support args longer than 255",
 		Host: model.Binaries{

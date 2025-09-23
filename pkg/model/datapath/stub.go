@@ -40,7 +40,7 @@ func (p *DummyBpfProgrammer) RemoveRecords(_ []*record.DatapathRecord) error {
 	return nil
 }
 
-func (p *DummyBpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
+func (p *DummyBpfProgrammer) GetBinaryId(binaryName string, ignoreArgs bool) (uint64, error) {
 	dummyUserCPU := uint32(0xffffffff)
 
 	dummyProcessLock.Lock()
@@ -52,8 +52,15 @@ func (p *DummyBpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
 	}
 
 	dummyUserUID++
-	fmt.Printf("dummy ID %s->%d\n", binaryName, dummyUserUID)
-	id = uint64(uint64(dummyUserUID) | (uint64(dummyUserCPU) << 32))
+	fmt.Printf("dummy ID %s->%d (ignore_args=%v)\n", binaryName, dummyUserUID, ignoreArgs)
+
+	// Set the cpu field with the ignore_args bit
+	cpu := dummyUserCPU & 0x7FFFFFFF // Clear the top bit
+	if ignoreArgs {
+		cpu |= 0x80000000 // Set the top bit for ignore_args
+	}
+
+	id = uint64(uint64(dummyUserUID) | (uint64(cpu) << 32))
 	dummyUIDMap[binaryName] = id
 	return id, nil
 }

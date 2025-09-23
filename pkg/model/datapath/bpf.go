@@ -336,14 +336,38 @@ func (k processTreeBinaryUIDKey) String() string {
 
 type processTreeID struct {
 	uid uint32
-	cpu uint32
+	cpu uint32 // Contains both cpu (31 bits) and ignore_args (1 bit)
+}
+
+// SetCPU sets the CPU value (31 bits), preserving the ignore_args bit
+func (id *processTreeID) SetCPU(cpu uint32) {
+	id.cpu = (id.cpu & 0x80000000) | (cpu & 0x7FFFFFFF)
+}
+
+// GetCPU returns the CPU value (31 bits)
+func (id *processTreeID) GetCPU() uint32 {
+	return id.cpu & 0x7FFFFFFF
+}
+
+// SetIgnoreArgs sets the ignore_args bit
+func (id *processTreeID) SetIgnoreArgs(ignoreArgs bool) {
+	if ignoreArgs {
+		id.cpu |= 0x80000000
+	} else {
+		id.cpu &= 0x7FFFFFFF
+	}
+}
+
+// GetIgnoreArgs returns the ignore_args bit
+func (id *processTreeID) GetIgnoreArgs() bool {
+	return (id.cpu & 0x80000000) != 0
 }
 
 func (id processTreeID) String() string {
-	return fmt.Sprintf("processTreeID: %d-%d", id.uid, id.cpu)
+	return fmt.Sprintf("processTreeID: %d-%d (ignore_args: %v)", id.uid, id.GetCPU(), id.GetIgnoreArgs())
 }
 
-func (p *BpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
+func (p *BpfProgrammer) GetBinaryId(binaryName string, ignoreArgs bool) (uint64, error) {
 	var process = [256]byte{0}
 	var zero = [256]byte{0}
 
@@ -367,7 +391,9 @@ func (p *BpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
 	userUID++
 	processID := processTreeID{}
 	processID.uid = userUID
-	processID.cpu = userCPU
+	processID.SetCPU(userCPU)
+	processID.SetIgnoreArgs(ignoreArgs)
+
 	if err := p.binaryMap.Update(uidKey, processID, ebpf.UpdateAny); err != nil {
 		return uint64(0), fmt.Errorf("failed to update the bpf binary map: %w", err)
 	}
@@ -376,7 +402,7 @@ func (p *BpfProgrammer) GetBinaryId(binaryName string) (uint64, error) {
 		return uint64(0), fmt.Errorf("failed to update the bpf uid map: %w", err)
 	}
 
-	id = uint64(uint64(userUID) | (uint64(userCPU) << 32))
+	id = uint64(uint64(userUID) | (uint64(processID.cpu) << 32))
 	uidMap[binaryName] = id
 	return id, nil
 }

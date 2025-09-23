@@ -69,8 +69,31 @@ struct {
 
 struct tree_id {
 	uint32_t uid;
+	/* cpu stores full 32-bit value; highest bit (TREE_ID_IGNORE_ARGS_BIT) used as ignore_args flag */
 	uint32_t cpu;
 };
+
+#define TREE_ID_IGNORE_ARGS_BIT (1U << 31)
+#define TREE_ID_CPU_MASK	(0x7FFFFFFFU)
+
+static inline __attribute__((always_inline)) void tree_id_clear(struct tree_id *id)
+{
+	id->uid = 0;
+	id->cpu = 0; /* also clears ignore_args */
+}
+
+static inline __attribute__((always_inline)) void tree_id_set_ignore_args(struct tree_id *id, bool ignore)
+{
+	if (ignore)
+		id->cpu |= TREE_ID_IGNORE_ARGS_BIT;
+	else
+		id->cpu &= ~TREE_ID_IGNORE_ARGS_BIT;
+}
+
+static inline __attribute__((always_inline)) bool tree_id_get_ignore_args(const struct tree_id *id)
+{
+	return !!(id->cpu & TREE_ID_IGNORE_ARGS_BIT);
+}
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);

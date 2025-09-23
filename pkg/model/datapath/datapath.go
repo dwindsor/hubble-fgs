@@ -26,7 +26,7 @@ type Interface interface {
 	RemoveRecords(record []*record.DatapathRecord) error
 
 	// Binray UID are sync'd with the datapath.
-	GetBinaryId(binary string) (uint64, error)
+	GetBinaryId(binary string, ignoreArgs bool) (uint64, error)
 }
 
 type BpfProgrammer struct {

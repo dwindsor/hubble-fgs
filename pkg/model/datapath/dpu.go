@@ -67,6 +67,6 @@ func (p *DPUProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
 	return nil
 }
 
-func (p *DPUProgrammer) GetBinaryId(_ string) (uint64, error) {
+func (p *DPUProgrammer) GetBinaryId(_ string, _ bool) (uint64, error) {
 	return 0, fmt.Errorf("not supported on DPU offload engine")
 }

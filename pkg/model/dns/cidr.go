@@ -66,7 +66,7 @@ func addDestCIDRRecords(
 	records := []*record.DatapathRecord{}
 
 	for _, process := range subject.InProcessName {
-		self, err := prog.GetBinaryId(process)
+		self, err := prog.GetBinaryId(process, true) // CIDR policies do not include args for now
 		if err != nil {
 			logger.GetLogger().Warn("add cidr binary id error", logfields.Error, err)
 			continue

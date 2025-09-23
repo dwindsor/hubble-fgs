@@ -67,11 +67,13 @@ static void get_tree_id(struct tree_id *id)
 	counter = map_lookup_elem(&tg_tree_id, &zero);
 	if (!counter) {
 		id->uid = 0;
+		tree_id_set_ignore_args(id, false);
 		return;
 	}
 
 	id->uid = ++(*counter);
 	id->cpu = get_smp_processor_id();
+	/* ignore_args cleared via tree_id_set_ignore_args earlier */
 	DEBUG("ID: %d.%d\n", id->cpu, id->uid);
 	return;
 }
@@ -101,14 +103,22 @@ static inline __attribute__((always_inline)) uint64_t __find_my_self(struct exec
 	probe_read_kernel(&tree_key->binary, BINARY_PATH_MAX_LEN, curr->bin.path);
 	probe_read_kernel(&tree_key->args, MAXARGLENGTH, global_zero);
 	self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
-	if (!self_uid) {
+	// In cases where a process already exists with no arguments, it might look
+	// like a uid that has been created by a policy that does not specify args.
+	// If ignore_args == 0, we know that this is such a case and proceed as
+	// if we hadn't found a match. If this process also doesn't have args, it
+	// will match in the next step regardless.
+	if (!self_uid || !tree_id_get_ignore_args(self_uid)) {
+		DEBUG("%s: second lookup with args, ignore_args=%d",
+		      __func__, self_uid ? tree_id_get_ignore_args(self_uid) : -1);
 		probe_read_kernel(&tree_key->args, MAXARGLENGTH, curr->bin.args);
 		self_uid = map_lookup_elem(&process_tree_binary_uid_map, tree_key);
 	}
 
 	if (self_uid) {
 		map_lookup_elem(&process_tree_uid_binary_map, self_uid);
-		return ((uint64_t)self_uid->cpu << 32) | (uint64_t)self_uid->uid;
+		uint64_t result = ((uint64_t)self_uid->cpu << 32) | (uint64_t)self_uid->uid;
+		return result;
 	}
 
 	get_tree_id(&new_uid);
@@ -116,7 +126,10 @@ static inline __attribute__((always_inline)) uint64_t __find_my_self(struct exec
 		return 0;
 	map_update_elem(&process_tree_uid_binary_map, &new_uid, tree_key, 0);
 	map_update_elem(&process_tree_binary_uid_map, tree_key, &new_uid, 0);
-	return ((uint64_t)new_uid.cpu << 32) | (uint64_t)new_uid.uid;
+	uint64_t result = ((uint64_t)new_uid.cpu << 32) | (uint64_t)new_uid.uid;
+
+	DEBUG("%s: generated new tree_id=%llu", __func__, result);
+	return result;
 }
 
 /* tree_id is a u64 don't worry about returning it directly */
@@ -152,7 +165,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	struct process_tree_config *cfg;
 	struct process_tree_value *old;
 	struct execve_map_value *curr;
-	__u64 zero = 0, uid;
+	__u64 zero = 0, uid = 0;
 
 	cfg = map_lookup_elem(&tg_process_tree_config_map, &zero);
 	if (!cfg || !cfg->enableProcessTree)
@@ -173,19 +186,22 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		k->depth = index + 1;
 	} else {
 		k->depth = 0;
-		k->path[0].uid = 0;
-		k->path[1].uid = 0;
-		k->path[2].uid = 0;
-		k->path[3].uid = 0;
-		k->path[4].uid = 0;
-		k->path[5].uid = 0;
-		k->path[6].uid = 0;
-		k->path[7].uid = 0;
+		tree_id_clear(&k->path[0]);
+		tree_id_clear(&k->path[1]);
+		tree_id_clear(&k->path[2]);
+		tree_id_clear(&k->path[3]);
+		tree_id_clear(&k->path[4]);
+		tree_id_clear(&k->path[5]);
+		tree_id_clear(&k->path[6]);
+		tree_id_clear(&k->path[7]);
 	}
 
-	uid = __find_my_self(curr, pid);
+	/* Obtain (and potentially allocate) a tree id for this process. */
+	uid = find_my_self(pid);
+	if (!uid)
+		return 0;
 	k->self.uid = uid & 0xffffffff;
-	k->self.cpu = uid >> 32;
+	k->self.cpu = uid >> 32; /* retains ignore_args bit in high bit */
 	k->nsid = find_my_nsid(cgid);
 
 	map_update_elem(&tg_ee_pid_data, &pid, &local, 0);
@@ -296,6 +312,7 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 	uid = find_my_self(v->key.pid);
 	value->self.uid = uid & 0xffffffff;
 	value->self.cpu = uid >> 32;
+	tree_id_set_ignore_args(&value->self, false);
 	value->accepted = 0;
 	value->tx_bytes = 0;
 	value->rx_bytes = 0;
@@ -307,6 +324,7 @@ int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tupl
 static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple *tuple)
 {
 	struct destination_endpoint_value *dest;
+	DEBUG("%s: port=%d", __func__, key->port);
 	struct destination_endpoint_value *destvalue;
 	int exists = 0, zero = 0;
 	struct tree_id self;
@@ -355,12 +373,14 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		key->port = tuple->dport;
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		DEBUG("%s: found policy deny=0x%llx", __func__, dest->deny);
 		return dest->deny;
 	}
 
 	self = key->local_id;
 	key->local_id.uid = 0;
 	key->local_id.cpu = 0;
+	/* wildcard local_id ignore_args cleared */
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	key->local_id = self; // restore local_id for caller
 	key->port = tuple->dport; // restore port for caller
@@ -369,6 +389,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->rule = dest->rule;
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		DEBUG("%s: found policy local_id=0 deny=0x%llx", __func__, dest->deny);
 		return dest->deny;
 	}
 	if (!exists)
@@ -399,6 +420,9 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 	destv = find_key(destkey, tuple);
 
 	orv = (dnsv | lpmv | usrv | destv);
+	DEBUG("%s: orv=0x%llx", __func__, orv);
+	DEBUG("%s: port=%d", __func__, tuple->dport);
+
 	if (orv & TNP_POLICY_DENY) {
 		if (dnsv & TNP_POLICY_DENY) {
 			v->dst_key = *dnskey;
@@ -450,6 +474,7 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 		dfltkey->destination_id = 0;
 		dfltkey->local_id.uid = 0;
 		dfltkey->local_id.cpu = 0;
+		/* default key ignore_args cleared */
 		dfltkey->port = 0;
 
 		/* If there is no explicit policy we want to do accounting
@@ -569,6 +594,7 @@ static inline __attribute__((always_inline)) int __process_socketmap_add(struct 
 	uid = find_my_self(v->key.pid);
 	self_uid.uid = uid & 0xffffffff;
 	self_uid.cpu = uid >> 32;
+	/* preserve ignore_args bit from uid (stored in high bit of cpu) */
 
 	/* Appease the verifier on AKS 5.15.180 kernels I've had trouble with
 	 * this recently I think they missed some fixes to verifier or something.
@@ -798,6 +824,7 @@ static __attribute__((noinline)) int qos_from_key(struct destination_endpoint_ke
 	// QOS keys are per Pod and do not include process level information.
 	k.local_id.uid = 0;
 	k.local_id.cpu = 0;
+	tree_id_set_ignore_args(&k.local_id, false);
 	k.local_nsid = key->local_nsid;
 	k.destination_id = key->destination_id;
 	k.source = key->source;
