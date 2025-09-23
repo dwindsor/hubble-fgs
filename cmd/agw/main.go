@@ -47,6 +47,7 @@ func Execute() error {
 	flags.StringVar(&Config.DPUServerAddress, keyDPUServerAddress, "", "DPU server address")
 	flags.StringSliceVar(&Config.VrfMap, keyVrfMap, []string{}, "Prepopulate VRF map")
 	flags.BoolVar(&Config.Debug, keyDebug, false, "Enable debug")
+	flags.StringVar(&Config.K8sServiceAccountAuth, keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
 	return rootCmd.Execute()
 }
 

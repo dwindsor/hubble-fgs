@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	enterpriseClient "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
+	"github.com/cilium/tetragon/pkg/watcher/conf"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -23,6 +24,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
 
 func RunOnPrem(ctx context.Context, configPath string) error {
@@ -87,6 +90,13 @@ func RunOnPrem(ctx context.Context, configPath string) error {
 	}
 
 	if Config.EnableKubernetes {
+		// Set up k8s client configuration in enterpriseOption.Config.
+		// Ensure that Config.K8sServiceAccountAuth and enterpriseOption.Config.K8sServiceAccountAuth remain compatible.
+		conf.K8sConfig = enterpriseConf.K8sConfig
+		if err := setK8sServiceAccountAuth(Config.K8sServiceAccountAuth); err != nil {
+			logger.GetLogger().Error("Failed to set K8sServiceAccountAuth value")
+		}
+		logger.GetLogger().Info("Initializing Kubernetes Manager for on-prem deployment")
 		kubernetesManager := manager.Get()
 		kubernetesManager.Start(ctx)
 
@@ -111,6 +121,16 @@ func RunOnPrem(ctx context.Context, configPath string) error {
 	logger.GetLogger().Info("Agent startup complete.")
 
 	<-ctx.Done()
+	return nil
+}
+
+func setK8sServiceAccountAuth(val interface{}) error {
+	// If both configs expect a string, assert and assign.
+	strVal, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("K8sServiceAccountAuth must be a string, got %T", val)
+	}
+	enterpriseOption.Config.K8sServiceAccountAuth = strVal
 	return nil
 }
 
