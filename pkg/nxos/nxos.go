@@ -1001,9 +1001,6 @@ func (n *Nxos) GetServiceIp() string {
 }
 
 func (n *Nxos) SetServiceIp(ip string) {
-	n.Lock()
-	defer n.Unlock()
-
 	// Setting ServiceIp locally
 	n.serviceIp = ip
 
