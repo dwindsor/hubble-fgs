@@ -154,6 +154,7 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	n.Stage = StageEnable
 	n.Wait = chann.New[string]()
 	n.WaitHa = chann.New[string]()
+	n.GidsInUse = make(map[uint16]string)
 	n.Dpus = make(map[string]Dpu)
 	n.Vrfs = make(map[string]VrfBd)
 	n.Bds = make(map[string]VrfBd)
