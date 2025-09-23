@@ -72,7 +72,9 @@ var (
 	gcTimer        = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
 	gcTimerRunning = false
 
-	pseudoSockets       = make(map[cookieVer](map[udpPseudoSocket]bool))
+	pseudoSockets = make(map[cookieVer](map[udpPseudoSocket]bool))
+
+	// This mutex protects against concurrent access to the pseudoSockets map of maps.
 	pseudoSocketsUpdate sync.Mutex
 )
 

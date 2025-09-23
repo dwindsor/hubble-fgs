@@ -410,15 +410,6 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		// to retrieve the list of pseudo-sockets. Then we send a stats event
 		// and a close event for each one, before deleting them from the maps.
 
-		// Access to stats is protected by atomic operations we don't want to
-		// serialize handlers on this lock. For mostly error cases.
-		pseudoSocketsUpdate.Lock()
-		pseudoSocketList := pseudoSockets[pseudoKey]
-		pseudoSocketsUpdate.Unlock()
-		if len(pseudoSocketList) == 0 {
-			return nil, nil
-		}
-
 		mapFile := filepath.Join(bpf.MapPrefixPath(), UdpMapName)
 		udpMap, err := ebpf.LoadPinnedMap(mapFile, nil)
 		if err != nil {
@@ -433,6 +424,15 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			return nil, fmt.Errorf("failed to open udp info map stats")
 		}
 		defer udpMapStats.Close()
+
+		// Access to stats is protected by atomic operations we don't want to
+		// serialize handlers on this lock. For mostly error cases.
+		pseudoSocketsUpdate.Lock()
+		defer pseudoSocketsUpdate.Unlock()
+		pseudoSocketList := pseudoSockets[pseudoKey]
+		if len(pseudoSocketList) == 0 {
+			return nil, nil
+		}
 
 		closeEvents := []observer.Event{}
 
@@ -507,9 +507,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			}
 		}
 
-		pseudoSocketsUpdate.Lock()
 		delete(pseudoSockets, pseudoKey)
-		pseudoSocketsUpdate.Unlock()
 		return closeEvents, nil
 	}
 	return nil, fmt.Errorf("handleUdp unrecognised event type")
