@@ -27,10 +27,16 @@ int _version __attribute__((section(("version")), used)) =
 __attribute__((section("kprobe/security_sk_alloc"), used)) int
 tg_security_sk_alloc(struct pt_regs *ctx)
 {
+	int priority = (int)PT_REGS_PARM3(ctx);
 	u64 cookie = (u64)PT_REGS_PARM1(ctx);
 	int family = (int)PT_REGS_PARM2(ctx);
 	u16 skc_num = 0;
 
+	/* Only handle user space sockets.
+	 * GFP_KERNEL enums to 0 (include/linux/types.h)
+	 */
+	if (!priority)
+		return 0;
 	/* Only handle IPv4, IPv6 and raw sockets. */
 	if (family != AF_INET && family != AF_INET6 && family != AF_PACKET)
 		return 0;

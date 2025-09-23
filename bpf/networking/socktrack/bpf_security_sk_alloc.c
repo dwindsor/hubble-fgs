@@ -31,6 +31,11 @@ int BPF_PROG(tg_security_sk_alloc, struct sock *sk, int family, int priority)
 	u64 cookie = (u64)sk;
 	u16 skc_num = 0;
 
+	/* Only handle user space sockets.
+	 * GFP_KERNEL enums to 0 (include/linux/types.h)
+	 */
+	if (!priority)
+		return 0;
 	/* Only handle IPv4, IPv6 and raw sockets. */
 	if (family != AF_INET && family != AF_INET6 && family != AF_PACKET)
 		return 0;
