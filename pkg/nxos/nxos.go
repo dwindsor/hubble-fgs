@@ -994,9 +994,6 @@ func deleteUpdateRpms(_ context.Context) {
 }
 
 func (n *Nxos) GetServiceIp() string {
-	n.RLock()
-	defer n.RUnlock()
-
 	return n.serviceIp
 }
 
