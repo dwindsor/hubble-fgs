@@ -572,8 +572,12 @@ func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {
 		for {
 			time.Sleep(waitForInSyncInterval * time.Second)
 			n.RLock()
-			logger.GetLogger().Debug("In Sync FWA", "count", len(n.InSync))
-			if len(n.InSync) == int(dpuCnt) {
+
+			logger.GetLogger().Debug("Check for DPU InSync")
+
+			inSync := n.Ha.Local.Criteria[HaCritDpuInSync]
+			if inSync {
+				logger.GetLogger().Debug("DPU InSync")
 				n.RUnlock()
 				break
 			}
