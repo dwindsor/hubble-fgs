@@ -76,10 +76,5 @@ func WriteSettings(value networkapi.ConfigValue) error {
 		logger.GetLogger().Warn("configureSettings couldn't update tg_l3_cfg", logfields.Error, err)
 		return err
 	}
-	var vOut networkapi.ConfigValue
-	err = m.Lookup(key, &vOut)
-	if err != nil {
-		logger.GetLogger().Warn("configureSettings couldn't lookup tg_l3_cfg", logfields.Error, err)
-	}
 	return err
 }
