@@ -10,6 +10,8 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/hubble-fgs/pkg/fwa"
+	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
 
@@ -28,9 +30,19 @@ func executeAGW() {
 		cancel()
 	}()
 
+	dpuListener := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
+	fwaAgent := fwa.NewAgent(dpuListener)
+	err := fwaAgent.Config(ctx, Config.DafConfig)
+
+	if err != nil {
+		logger.GetLogger().Error("Configuring FWAgent failed",
+			logfields.Error, err)
+		return
+	}
+
 	// start CLI handler
 	go func() {
-		err := cliServer(ctx)
+		err := cliServer(ctx, fwaAgent)
 		if err != nil {
 			logger.GetLogger().Error("starting CLI server failed",
 				logfields.Error, err)
@@ -41,7 +53,7 @@ func executeAGW() {
 	// Launch daemon logic
 	done := make(chan error)
 	go func() {
-		done <- RunOnPrem(ctx, Config.DafConfig)
+		done <- RunOnPrem(ctx, fwaAgent, dpuListener)
 	}()
 
 	// Waiting for threads to finish

@@ -14,10 +14,11 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
-	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"github.com/openconfig/gnmic/pkg/api"
 	"github.com/openconfig/ygot/ytypes"
@@ -350,7 +351,6 @@ func (n *Nxos) waitForDpuAgent(ctx context.Context, expected int) error {
 	currTimer := dpuStatusCheckTimer * time.Second
 	maxDPUAgentBackoff := 10 * time.Second
 
-	server := dpu.GetDPUListener()
 	for {
 		select {
 		case <-ctx.Done():
@@ -359,7 +359,7 @@ func (n *Nxos) waitForDpuAgent(ctx context.Context, expected int) error {
 		// linear backoff up to 10s, we really do want this to connect to
 		// the DPUs otherwise our firewall is unhealthy.
 		case <-time.After(currTimer):
-			status, err := server.GetDPUStatus()
+			status, err := n.dpuListener.GetDPUStatus()
 			if err != nil || len(status) != expected {
 				if currTimer < maxDPUAgentBackoff {
 					currTimer = currTimer + time.Second
@@ -505,10 +505,11 @@ func (n *Nxos) setServiceRedirAll(ctx context.Context, isLock bool) error {
 	return nil
 }
 
-func (n *Nxos) Setup(ctx context.Context, low, high uint16) error {
+func (n *Nxos) Setup(ctx context.Context, low, high uint16, dpuListener *dpu.DPUListener) error {
 
 	n.DpuPortLow = low
 	n.DpuPortHigh = high
+	n.dpuListener = dpuListener
 
 	logger.GetLogger().Debug("Initiating CPA")
 	err := n.initiate(ctx)

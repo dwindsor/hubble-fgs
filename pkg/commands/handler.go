@@ -41,7 +41,7 @@ const (
 	logTail = 500
 )
 
-func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCode, error) {
+func Handler(ctx context.Context, fwaAgent *fwa.FWAgent, command map[string]interface{}) (ipc.ReturnCode, error) {
 	response := ipc.ReturnCode{}
 	cmd, ok := command["command"].(float64)
 	if !ok {
@@ -65,13 +65,13 @@ func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCod
 			return response, nil
 		}
 
-		data := fwa.GetAgent().LoadPolicies(ctx, string(pols))
+		data := fwaAgent.LoadPolicies(ctx, string(pols))
 		response.ReturnCode = "ok"
 		response.Data = data
 
 	case CMD_SHOW_POLICY:
 		// HACK: add back data once ready
-		pol := fwa.GetAgent().ShowPolicies(ctx /*, data*/)
+		pol := fwaAgent.ShowPolicies(ctx /*, data*/)
 		response.ReturnCode = "ok"
 		response.Data = pol
 
@@ -85,7 +85,7 @@ func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCod
 		response.Data = status
 
 	case CMD_SHOW_DPU:
-		dpu := fwa.GetAgent().ShowDpu(ctx)
+		dpu := fwaAgent.ShowDpu(ctx)
 		response.ReturnCode = "ok"
 		response.Data = dpu
 
@@ -152,7 +152,7 @@ func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCod
 		response.Data = rsp
 
 	case CMD_SHOW_TOKENS:
-		tokens := fwa.GetAgent().ShowTokens(ctx)
+		tokens := fwaAgent.ShowTokens(ctx)
 		response.ReturnCode = "ok"
 		response.Data = tokens
 
@@ -162,9 +162,9 @@ func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCod
 		response.Data = claims
 
 	case CMD_SHOW_TECH:
-		pol := fwa.GetAgent().ShowPolicies(ctx)
+		pol := fwaAgent.ShowPolicies(ctx)
 		status := nxos.Nexus.ShowStatus(ctx)
-		dpu := fwa.GetAgent().ShowDpu(ctx)
+		dpu := fwaAgent.ShowDpu(ctx)
 		vrf := nxos.Nexus.ShowVrf(ctx)
 		response.ReturnCode = "ok"
 		response.Data = status + "\n" + pol + "\n" +
@@ -181,7 +181,7 @@ func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCod
 		}
 
 	case CMD_PING_FWA:
-		out := fwa.GetAgent().PingFwa(ctx, data)
+		out := fwaAgent.PingFwa(ctx, data)
 		response.ReturnCode = "ok"
 		response.Data = out
 
@@ -203,7 +203,7 @@ func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCod
 			return response, nil
 		}
 
-		err = fwa.GetAgent().LoadSyslog(ctx, string(cfg))
+		err = fwaAgent.LoadSyslog(ctx, string(cfg))
 		if err != nil {
 			response.ReturnCode = "fail"
 			response.Data = err.Error()
@@ -213,7 +213,7 @@ func Handler(ctx context.Context, command map[string]interface{}) (ipc.ReturnCod
 		response.Data = "Syslog loaded"
 
 	case CMD_SHOW_SYSLOG_CFG:
-		out, err := fwa.GetAgent().ShowSyslog(ctx)
+		out, err := fwaAgent.ShowSyslog(ctx)
 		if err != nil {
 			response.ReturnCode = "fail"
 			response.Data = err.Error()

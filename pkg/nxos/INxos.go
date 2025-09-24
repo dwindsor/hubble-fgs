@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/isovalent/hubble-fgs/pkg/grpc/haclt"
+	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 
@@ -252,6 +253,8 @@ type Nxos struct {
 	SwVer      string
 	CpaVer     string
 	SerNum     string
+
+	dpuListener *dpu.DPUListener
 }
 
 type INxos interface {

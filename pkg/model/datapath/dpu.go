@@ -17,6 +17,8 @@ type DPUProgrammer struct {
 	AddError uint64
 	Del      uint64
 	DelError uint64
+
+	DpuListener *dpu.DPUListener
 }
 
 func (p *DPUProgrammer) initDPU() error {
@@ -35,8 +37,7 @@ func (p *DPUProgrammer) AddRecords(records []*record.DatapathRecord, force bool)
 func (p *DPUProgrammer) AddSingleRecord(r *record.DatapathRecord, _ bool) error {
 	initDPUProgrammerOnce.Do(func() { p.initDPU() })
 
-	s := dpu.GetDPUListener()
-	s.SubmitUpdateToDPU(r)
+	p.DpuListener.SubmitUpdateToDPU(r)
 
 	// Its not obvious to me that we need to do anything special for the
 	// Default rule case in DPU, but leaving a note here in case we need
@@ -49,8 +50,7 @@ func (p *DPUProgrammer) AddSingleRecord(r *record.DatapathRecord, _ bool) error 
 func (p *DPUProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	initDPUProgrammerOnce.Do(func() { p.initDPU() })
 
-	s := dpu.GetDPUListener()
-	s.SubmitDeleteToDPU(r)
+	p.DpuListener.SubmitDeleteToDPU(r)
 
 	// Its not obvious to me that we need to do anything special for the
 	// Default rule case in DPU, but leaving a note here in case we need

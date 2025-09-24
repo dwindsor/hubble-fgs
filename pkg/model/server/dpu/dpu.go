@@ -96,24 +96,13 @@ type DPUListener struct {
 	mtx       sync.RWMutex
 }
 
-var (
-	// DPU Listener is a singleton there is one and only one AGW/Tetragon
-	// agent and many DPUs.
-	dpu *DPUListener
-)
-
 func NewDPUListener(ctx context.Context, address string) *DPUListener {
-	dpu = &DPUListener{
+	return &DPUListener{
 		ctx:       ctx,
 		address:   address,
 		peerGroup: make(map[string]*peer),
 		ruleSet:   make(map[[sha256.Size]byte]*DPURule),
 	}
-	return dpu
-}
-
-func GetDPUListener() *DPUListener {
-	return dpu
 }
 
 func (dpu *DPUListener) Start() error {
@@ -132,7 +121,7 @@ func (dpu *DPUListener) Start() error {
 			return nil
 		default:
 			grpcServer := grpc.NewServer()
-			v1alpha.RegisterL3L4NetworkPolicyServiceServer(grpcServer, newServer())
+			v1alpha.RegisterL3L4NetworkPolicyServiceServer(grpcServer, newServer(dpu))
 			logger.GetLogger().Info("DPU listener starting", "address", dpu.address)
 			grpcServer.Serve(lis)
 		}

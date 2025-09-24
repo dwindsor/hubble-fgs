@@ -30,19 +30,7 @@ const (
 	// dpuTimeout = 300 // in second
 )
 
-var (
-	agent           *FWAgent
-	initGlobalCache sync.Once
-)
-
-func GetAgent() *FWAgent {
-	initGlobalCache.Do(func() {
-		agent = newAgent()
-	})
-	return agent
-}
-
-func newAgent() *FWAgent {
+func NewAgent(dpuListener *dpu.DPUListener) *FWAgent {
 	mac := os.Getenv("NX_SAS_RMAC")
 	lowStr, ok := os.LookupEnv("NX_DPU_PORT_START")
 	if !ok {
@@ -67,11 +55,11 @@ func newAgent() *FWAgent {
 	cpaHigh, _ := strconv.Atoi(highStr)
 
 	// Adding config callbacks
-	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_DPU, dpu.GetDPUListener().SubscribeDpuConfig)
-	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, dpu.GetDPUListener().SubscribeConfig)
-	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, dpu.GetDPUListener().SubscribeConfig)
-	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, dpu.GetDPUListener().SubscribeConfig)
-	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK, dpu.GetDPUListener().SubscribeConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_DPU, dpuListener.SubscribeDpuConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, dpuListener.SubscribeConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, dpuListener.SubscribeConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, dpuListener.SubscribeConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK, dpuListener.SubscribeConfig)
 
 	// Getting latest dpu config in case it was updated
 	var dpuConfig v1alpha.DpuConfig
@@ -98,6 +86,7 @@ func newAgent() *FWAgent {
 		dpuPortHigh: uint16(dpuHigh),
 		cpaPortLow:  uint16(cpaLow),
 		cpaPortHigh: uint16(cpaHigh),
+		dpuListener: dpuListener,
 	}
 }
 
@@ -119,6 +108,8 @@ type FWAgent struct {
 	dpuPortHigh uint16
 	cpaPortLow  uint16
 	cpaPortHigh uint16
+
+	dpuListener *dpu.DPUListener
 
 	sync.RWMutex
 }
@@ -182,7 +173,7 @@ func (fwa *FWAgent) Config(_ context.Context, path string) error {
 }
 
 func (fwa *FWAgent) Setup(ctx context.Context) error {
-	err := nxos.Nexus.Setup(ctx, fwa.dpuPortLow, fwa.dpuPortHigh)
+	err := nxos.Nexus.Setup(ctx, fwa.dpuPortLow, fwa.dpuPortHigh, fwa.dpuListener)
 	if err != nil {
 		logger.Fatal(logger.GetLogger(), "NXOS setup fails")
 	}
@@ -198,7 +189,6 @@ func (fwa *FWAgent) Register(ctx context.Context) error {
 
 // --------------------- DPU related
 func (fwa *FWAgent) DpuHealthCheck(ctx context.Context) {
-	server := dpu.GetDPUListener()
 	retries := 0
 	maxRetries := 6
 	healthCheckTimer := 10 * time.Second
@@ -210,7 +200,7 @@ func (fwa *FWAgent) DpuHealthCheck(ctx context.Context) {
 			return
 		case <-time.After(healthCheckTimer):
 			logger.GetLogger().Debug("DPU health check")
-			ok := server.StateCheck()
+			ok := fwa.dpuListener.StateCheck()
 			if !ok {
 				retries++
 				if retries > maxRetries {
@@ -221,7 +211,7 @@ func (fwa *FWAgent) DpuHealthCheck(ctx context.Context) {
 				nxos.DpuInSync(ctx, true)
 				retries = 0
 			}
-			ok, cnt := server.HealthCheck()
+			ok, cnt := fwa.dpuListener.HealthCheck()
 			nxos.DpuHealth(ctx, ok, cnt)
 		}
 	}
@@ -240,12 +230,7 @@ func (fwa *FWAgent) ShowPolicies(_ context.Context) string {
 
 func (fwa *FWAgent) ShowDpu(_ context.Context) string {
 	logger.GetLogger().Debug("Show dpu")
-	server := dpu.GetDPUListener()
-	if server == nil {
-		logger.GetLogger().Debug("Empty server")
-		return ""
-	}
-	return server.StatusReportString()
+	return fwa.dpuListener.StatusReportString()
 }
 
 func (fwa *FWAgent) PingFwa(_ context.Context, dpu string) string {

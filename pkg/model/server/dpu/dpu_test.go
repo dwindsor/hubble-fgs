@@ -260,7 +260,7 @@ func TestHashLogic(t *testing.T) {
 	dpu1.SubmitUpdateToDPU(record1)
 	dpu1.SubmitUpdateToDPU(record2)
 	dpu1.SubmitUpdateToDPU(record3)
-	assert.Equal(t, len(dpu.ruleSet), 3)
+	assert.Equal(t, len(dpu1.ruleSet), 3)
 	csum1 := dpu1.Checksum()
 	hexCsum1 := hex.EncodeToString(csum1[:])
 
@@ -268,7 +268,7 @@ func TestHashLogic(t *testing.T) {
 	dpu2.SubmitUpdateToDPU(record3)
 	dpu2.SubmitUpdateToDPU(record2)
 	dpu2.SubmitUpdateToDPU(record1)
-	assert.Equal(t, len(dpu.ruleSet), 3)
+	assert.Equal(t, len(dpu2.ruleSet), 3)
 	csum2 := dpu2.Checksum()
 	hexCsum2 := hex.EncodeToString(csum2[:])
 
@@ -278,7 +278,7 @@ func TestHashLogic(t *testing.T) {
 	dpu3.SubmitUpdateToDPU(record1)
 	dpu3.SubmitDeleteToDPU(record1)
 	dpu3.SubmitUpdateToDPU(record1)
-	assert.Equal(t, len(dpu.ruleSet), 3)
+	assert.Equal(t, len(dpu3.ruleSet), 3)
 	csum3 := dpu3.Checksum()
 	hexCsum3 := hex.EncodeToString(csum3[:])
 
@@ -291,12 +291,12 @@ func TestOOOPolicy(t *testing.T) {
 	dpu1 := NewDPUListener(context.Background(), "127.0.0.1:8080")
 	dpu1.SubmitDeleteToDPU(record1)
 	dpu1.SubmitUpdateToDPU(record1)
-	assert.Equal(t, len(dpu.ruleSet), 1)
+	assert.Equal(t, len(dpu1.ruleSet), 1)
 
 	dpu2 := NewDPUListener(context.Background(), "127.0.0.1:8080")
 	dpu2.SubmitDeleteToDPU(record1)
 	dpu2.SubmitUpdateToDPU(record1)
 	dpu2.SubmitDeleteToDPU(record1)
 	dpu2.SubmitDeleteToDPU(record1)
-	assert.Equal(t, len(dpu.ruleSet), 0)
+	assert.Equal(t, len(dpu2.ruleSet), 0)
 }

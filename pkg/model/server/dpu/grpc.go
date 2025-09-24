@@ -12,25 +12,25 @@ import (
 
 type FWAServer struct {
 	v1alpha.UnimplementedL3L4NetworkPolicyServiceServer
+
+	dpuListener *DPUListener
 }
 
 func (s *FWAServer) ReportStatus(_ context.Context, req *v1alpha.ReportStatusRequest) (*v1alpha.ReportStatusResponse, error) {
-	server := GetDPUListener()
 	status := reportRequestToDPU(req)
-	server.ReportStatus(status)
+	s.dpuListener.ReportStatus(status)
 	return &v1alpha.ReportStatusResponse{}, nil
 }
 
 func (s *FWAServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicyRequest, stream grpc.ServerStreamingServer[v1alpha.Streaml3L4NetworkPolicyResponse]) error {
-	server := GetDPUListener()
-	peer := server.addPeer(req.AgentUid)
+	peer := s.dpuListener.addPeer(req.AgentUid)
 
 	// The peer on reconnect needs to diff its current set with this set
 	// and create the valid policy otherwise subsequent policy hash checks will
 	// fail. If the peer builds on top of its current state without this check
 	// then we could potentially leave policy rules orphaned in the peers
 	// datapath.
-	for _, r := range server.ruleSet {
+	for _, r := range s.dpuListener.ruleSet {
 		policyRule := &DPUPolicyRule{
 			Oper:   v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
 			Policy: r,
@@ -45,7 +45,7 @@ func (s *FWAServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 
 	for {
 		select {
-		case <-server.ctx.Done():
+		case <-s.dpuListener.ctx.Done():
 			logger.GetLogger().Info("Client connection lost", "clientID", peer.uid)
 			return nil
 		case rule := <-peer.polCh:
@@ -61,8 +61,7 @@ func (s *FWAServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 }
 
 func (s *FWAServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigRequest, stream grpc.ServerStreamingServer[v1alpha.StreamDatapathConfigResponse]) error {
-	server := GetDPUListener()
-	peer := server.addPeer(req.AgentUid)
+	peer := s.dpuListener.addPeer(req.AgentUid)
 
 	// The peer on reconnect needs to diff its current set with this set
 	// and create the valid config otherwise subsequent config hash checks will
@@ -83,7 +82,7 @@ func (s *FWAServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 
 	for {
 		select {
-		case <-server.ctx.Done():
+		case <-s.dpuListener.ctx.Done():
 			logger.GetLogger().Info("Client connection lost", "clientID", peer.uid)
 			return nil
 		case resp := <-peer.cfgCh:
@@ -111,6 +110,8 @@ func (s *FWAServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 	}
 }
 
-func newServer() *FWAServer {
-	return &FWAServer{}
+func newServer(dpuListener *DPUListener) *FWAServer {
+	return &FWAServer{
+		dpuListener: dpuListener,
+	}
 }

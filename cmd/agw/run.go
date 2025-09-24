@@ -28,13 +28,15 @@ import (
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
 
-func RunOnPrem(ctx context.Context, configPath string) error {
+func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUListener) error {
 	logger.GetLogger().Info("Agent starting...")
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	// Set the datapath to use DPU
-	dns.SetDatapath(&datapath.DPUProgrammer{})
+	dns.SetDatapath(&datapath.DPUProgrammer{
+		DpuListener: dpuListener,
+	})
 	s := dns.NewPolicyState()
 	for _, nameGID := range Config.VrfMap {
 		name := strings.Split(nameGID, ":")
@@ -43,17 +45,8 @@ func RunOnPrem(ctx context.Context, configPath string) error {
 	}
 	dns.SetRealizedState(s)
 
-	// Setup server to listen for DPUs
-	server := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
-
-	// Configuring agent
-	err := fwa.GetAgent().Config(ctx, configPath)
-	if err != nil {
-		return err
-	}
-
 	go func() {
-		err := server.Start()
+		err := dpuListener.Start()
 		if err != nil {
 			logger.GetLogger().Error("aborting DPU listener failed",
 				logfields.Error, err)
@@ -64,7 +57,7 @@ func RunOnPrem(ctx context.Context, configPath string) error {
 	go func() {
 		// Setting up agent local state
 		if Config.EnableNXOS {
-			err = fwa.GetAgent().Setup(ctx)
+			err := fwaAgent.Setup(ctx)
 			if err != nil {
 				logger.GetLogger().Error("Failed to setup agent",
 					logfields.Error, err)
@@ -74,7 +67,7 @@ func RunOnPrem(ctx context.Context, configPath string) error {
 	}()
 
 	// Setup callback to yell if DPUs are out of sync
-	go fwa.GetAgent().DpuHealthCheck(ctx)
+	go fwaAgent.DpuHealthCheck(ctx)
 
 	// Original code had an agent.Ready for now skip if its necessary we can
 	// add it back.
@@ -82,7 +75,7 @@ func RunOnPrem(ctx context.Context, configPath string) error {
 	// Add Network Policy
 	if len(Config.NetworkPolicies) > 0 {
 		for _, f := range Config.NetworkPolicies {
-			err = netpol.AddFromFile(f)
+			err := netpol.AddFromFile(f)
 			if err != nil {
 				return fmt.Errorf("add TetragonNetworkPolicy failed: %w", err)
 			}
@@ -101,7 +94,7 @@ func RunOnPrem(ctx context.Context, configPath string) error {
 		kubernetesManager.Start(ctx)
 
 		// TODO: Wait for configmap to be ready
-		err = config.AddConfigMapInformer(ctx, kubernetesManager)
+		err := config.AddConfigMapInformer(ctx, kubernetesManager)
 		if err != nil {
 			logger.GetLogger().Error("configmap failed")
 			return err
@@ -134,7 +127,7 @@ func setK8sServiceAccountAuth(val interface{}) error {
 	return nil
 }
 
-func cliServer(ctx context.Context) error {
+func cliServer(ctx context.Context, fwaAgent *fwa.FWAgent) error {
 	serverPath := commands.CLI_SOCK
 
 	// Clean up any old socket file before listening
@@ -177,7 +170,7 @@ func cliServer(ctx context.Context) error {
 			}
 			logger.GetLogger().Debug("Received JSON:", "json", rxJson)
 
-			msg, err := commands.Handler(ctx, rxJson)
+			msg, err := commands.Handler(ctx, fwaAgent, rxJson)
 			if err != nil {
 				logger.GetLogger().Error("Failed to handle command", logfields.Error, err)
 				conn.Close()
