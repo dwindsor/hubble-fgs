@@ -6,7 +6,6 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -48,7 +47,6 @@ func ConfigureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 		RawReportClose:     rawReportClose,
 		UdpReportClose:     udpReportClose,
 	}
-	logger.GetLogger().Info("Config", "enableIcmpTracking", icmpTracking)
 	return *value
 }
 
