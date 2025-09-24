@@ -3,7 +3,6 @@ package layer3cfg
 import (
 	"fmt"
 	"path/filepath"
-	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -13,10 +12,6 @@ import (
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
-)
-
-var (
-	confMutex sync.Mutex
 )
 
 func ConfigureSettings(enableRaw, enableRawReportClose, enableUdpReportClose bool) networkapi.ConfigValue {
@@ -59,9 +54,6 @@ func ConfigureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 
 // UpdateMap flushes all the values from the config struct to the BPF map
 func UpdateMap(value networkapi.ConfigValue) error {
-	confMutex.Lock()
-	defer confMutex.Unlock()
-
 	configMapFile := filepath.Join(bpf.MapPrefixPath(), base.CfgMap.Name)
 	m, err := ebpf.LoadPinnedMap(configMapFile, nil)
 	if err != nil {
