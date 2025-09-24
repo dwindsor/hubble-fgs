@@ -282,7 +282,10 @@ func (dpu *DPUListener) SubmitDeleteToDPU(record *record.DatapathRecord) error {
 func (dpu *DPUListener) addPeer(uid string) *peer {
 	dpu.mtx.Lock()
 	defer dpu.mtx.Unlock()
+	return dpu.addPeerLocked(uid)
+}
 
+func (dpu *DPUListener) addPeerLocked(uid string) *peer {
 	p, ok := dpu.peerGroup[uid]
 	if !ok {
 		p = &peer{
