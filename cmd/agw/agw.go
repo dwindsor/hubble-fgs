@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"syscall"
 
+	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
@@ -28,7 +29,14 @@ func executeAGW() {
 	}()
 
 	// start CLI handler
-	go cliServer(ctx)
+	go func() {
+		err := cliServer(ctx)
+		if err != nil {
+			logger.GetLogger().Error("starting CLI server failed",
+				logfields.Error, err)
+			cancel()
+		}
+	}()
 
 	// Launch daemon logic
 	done := make(chan error)
