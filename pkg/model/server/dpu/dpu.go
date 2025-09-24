@@ -112,20 +112,23 @@ func (dpu *DPUListener) Start() error {
 	}
 
 	logger.GetLogger().Info("DPU listener online")
+	grpcServer := grpc.NewServer()
+	v1alpha.RegisterL3L4NetworkPolicyServiceServer(grpcServer, newServer(dpu))
+	logger.GetLogger().Info("DPU listener starting", "address", dpu.address)
 
-	for {
-		select {
-		case <-dpu.ctx.Done():
-			lis.Close()
-			logger.GetLogger().Info("DPU listener closing")
-			return nil
-		default:
-			grpcServer := grpc.NewServer()
-			v1alpha.RegisterL3L4NetworkPolicyServiceServer(grpcServer, newServer(dpu))
-			logger.GetLogger().Info("DPU listener starting", "address", dpu.address)
-			grpcServer.Serve(lis)
-		}
-	}
+	go func() {
+		<-dpu.ctx.Done()
+		logger.GetLogger().Info("DPU listener graceful shutdown")
+		timer := time.AfterFunc(10*time.Second, func() {
+			logger.GetLogger().Warn("DPU listener couldn't stop gracefully in time. Doing force stop.")
+			grpcServer.Stop()
+		})
+		defer timer.Stop()
+		grpcServer.GracefulStop()
+		logger.GetLogger().Info("DPU listener closed gracefully")
+	}()
+
+	return grpcServer.Serve(lis)
 }
 
 func (dpu *DPUListener) Checksum() [sha256.Size]byte {
