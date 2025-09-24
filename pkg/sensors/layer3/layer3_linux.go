@@ -112,7 +112,10 @@ func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
 		rawEnabled = false
 	}
 
-	layer3cfg.UpdateMap(config)
+	err := layer3cfg.UpdateMap(config)
+	if err != nil {
+		return fmt.Errorf("failed to write layer3 config to map: %w", err)
+	}
 	return nil
 }
 
@@ -535,7 +538,10 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	}
 	// Rawsock has no config maps.
 
-	layer3cfg.UpdateMap(config)
+	err := layer3cfg.UpdateMap(config)
+	if err != nil {
+		return fmt.Errorf("failed to write the layer3 config: %w", err)
+	}
 
 	return nil
 }

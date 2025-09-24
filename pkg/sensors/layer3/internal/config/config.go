@@ -1,13 +1,13 @@
 package layer3cfg
 
 import (
+	"fmt"
 	"path/filepath"
 	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/logger/logfields"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -61,10 +61,11 @@ func ConfigureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 func UpdateMap(value networkapi.ConfigValue) error {
 	confMutex.Lock()
 	defer confMutex.Unlock()
-	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), base.CfgMap.Name), nil)
+
+	configMapFile := filepath.Join(bpf.MapPrefixPath(), base.CfgMap.Name)
+	m, err := ebpf.LoadPinnedMap(configMapFile, nil)
 	if err != nil {
-		// If no configuration map, then no configuration required!
-		return nil
+		return fmt.Errorf("failed to load the config map %s: %w", configMapFile, err)
 	}
 	defer m.Close()
 
@@ -74,8 +75,8 @@ func UpdateMap(value networkapi.ConfigValue) error {
 
 	err = m.Put(key, &value)
 	if err != nil {
-		logger.GetLogger().Warn("configureSettings couldn't update tg_l3_cfg", logfields.Error, err)
-		return err
+		return fmt.Errorf("failed to put value into the layer3 config map: %w", err)
 	}
-	return err
+
+	return nil
 }
