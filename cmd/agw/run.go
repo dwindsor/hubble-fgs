@@ -144,45 +144,61 @@ func cliServer(ctx context.Context, fwaAgent *fwa.FWAgent) error {
 	}
 	defer listener.Close()
 
+	go func() {
+		<-ctx.Done()
+		listener.Close()
+	}()
+
 	logger.GetLogger().Info("CLI server listening", "path", serverPath)
-	for {
+
+	isCtxDone := func(ctx context.Context) bool {
 		select {
 		case <-ctx.Done():
-			listener.Close()
-			logger.GetLogger().Info("Context cancelled, shutting down gracefully")
-			return nil
+			return true
 		default:
-			conn, err := listener.Accept()
-			if err != nil {
-				logger.GetLogger().Error("Failed to accept connection", logfields.Error, err)
-				continue
-			}
-
-			decode := json.NewDecoder(conn)
-			encode := json.NewEncoder(conn)
-
-			var rxJson map[string]interface{}
-			err = decode.Decode(&rxJson)
-			if err != nil {
-				logger.GetLogger().Error("Failed to decode JSON", logfields.Error, err)
-				conn.Close()
-				continue
-			}
-			logger.GetLogger().Debug("Received JSON:", "json", rxJson)
-
-			msg, err := commands.Handler(ctx, fwaAgent, rxJson)
-			if err != nil {
-				logger.GetLogger().Error("Failed to handle command", logfields.Error, err)
-				conn.Close()
-				continue
-			}
-			err = encode.Encode(msg)
-			if err != nil {
-				logger.GetLogger().Error("Failed to encode JSON", logfields.Error, err)
-				conn.Close()
-				continue
-			}
-			conn.Close()
+			return false
 		}
 	}
+
+	for !isCtxDone(ctx) {
+		conn, err := listener.Accept()
+		switch {
+		case isCtxDone(ctx):
+			if conn != nil {
+				conn.Close()
+			}
+			return nil
+		case err != nil:
+			logger.GetLogger().Error("Failed to accept connection", logfields.Error, err)
+			continue
+		}
+
+		decode := json.NewDecoder(conn)
+		encode := json.NewEncoder(conn)
+
+		var rxJson map[string]interface{}
+		err = decode.Decode(&rxJson)
+		if err != nil {
+			logger.GetLogger().Error("Failed to decode JSON", logfields.Error, err)
+			conn.Close()
+			continue
+		}
+		logger.GetLogger().Debug("Received JSON:", "json", rxJson)
+
+		msg, err := commands.Handler(ctx, fwaAgent, rxJson)
+		if err != nil {
+			logger.GetLogger().Error("Failed to handle command", logfields.Error, err)
+			conn.Close()
+			continue
+		}
+		err = encode.Encode(msg)
+		if err != nil {
+			logger.GetLogger().Error("Failed to encode JSON", logfields.Error, err)
+			conn.Close()
+			continue
+		}
+		conn.Close()
+	}
+
+	return nil
 }
