@@ -303,12 +303,6 @@ func (t *TcpValue) String() string {
 		policy)
 }
 
-type ConfigKey struct {
-	Zero uint32
-}
-
-func (k *ConfigKey) String() string { return fmt.Sprintf("Zero: %d", k.Zero) }
-
 type TCPSockStatValue struct {
 	WatermarksEnable           uint8    `align:"watermarksEnable"`
 	RTTEnable                  uint8    `align:"rttEnable"`
