@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"runtime"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/isovalent/hubble-fgs/pkg/fwa"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
@@ -30,6 +32,7 @@ func executeAGW() {
 		cancel()
 	}()
 
+	waitGroup, ctx := errgroup.WithContext(ctx)
 	dpuListener := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
 	fwaAgent := fwa.NewAgent(dpuListener)
 	err := fwaAgent.Config(ctx, Config.DafConfig)
@@ -40,25 +43,28 @@ func executeAGW() {
 		return
 	}
 
-	// start CLI handler
-	go func() {
+	waitGroup.Go(func() error {
 		err := cliServer(ctx, fwaAgent)
 		if err != nil {
-			logger.GetLogger().Error("starting CLI server failed",
-				logfields.Error, err)
-			cancel()
+			return fmt.Errorf("starting CLI server failed: %w", err)
 		}
-	}()
+		return nil
+	})
 
 	// Launch daemon logic
-	done := make(chan error)
-	go func() {
-		done <- RunOnPrem(ctx, fwaAgent, dpuListener)
-	}()
+	waitGroup.Go(func() error {
+		err := RunOnPrem(ctx, fwaAgent, dpuListener)
+		if err != nil {
+			return fmt.Errorf("running on-prem failed: %w", err)
+		}
+		return nil
+	})
 
-	// Waiting for threads to finish
-	<-ctx.Done()
-	logger.GetLogger().Info("AGW graceful shutdown: Exiting")
+	if err := waitGroup.Wait(); err != nil {
+		logger.GetLogger().Error("AGW failed", logfields.Error, err)
+	} else {
+		logger.GetLogger().Info("AGW graceful shutdown: Exiting")
+	}
 	if Config.EnableNXOS {
 		nxos.Nexus.GnmiClose(ctx)
 	}

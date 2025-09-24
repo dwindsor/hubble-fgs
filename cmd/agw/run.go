@@ -12,6 +12,7 @@ import (
 
 	enterpriseClient "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	"github.com/cilium/tetragon/pkg/watcher/conf"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -30,8 +31,7 @@ import (
 
 func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUListener) error {
 	logger.GetLogger().Info("Agent starting...")
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	waitGroup, ctx := errgroup.WithContext(ctx)
 
 	// Set the datapath to use DPU
 	dns.SetDatapath(&datapath.DPUProgrammer{
@@ -45,29 +45,30 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 	}
 	dns.SetRealizedState(s)
 
-	go func() {
+	waitGroup.Go(func() error {
 		err := dpuListener.Start()
 		if err != nil {
-			logger.GetLogger().Error("aborting DPU listener failed",
-				logfields.Error, err)
-			cancel()
+			return fmt.Errorf("DPU listener failed: %w", err)
 		}
-	}()
+		return nil
+	})
 
-	go func() {
+	waitGroup.Go(func() error {
 		// Setting up agent local state
 		if Config.EnableNXOS {
 			err := fwaAgent.Setup(ctx)
 			if err != nil {
-				logger.GetLogger().Error("Failed to setup agent",
-					logfields.Error, err)
-				cancel()
+				return fmt.Errorf("FWAgent setup failed: %w", err)
 			}
 		}
-	}()
+		return nil
+	})
 
 	// Setup callback to yell if DPUs are out of sync
-	go fwaAgent.DpuHealthCheck(ctx)
+	waitGroup.Go(func() error {
+		fwaAgent.DpuHealthCheck(ctx)
+		return nil
+	})
 
 	// Original code had an agent.Ready for now skip if its necessary we can
 	// add it back.
@@ -113,8 +114,7 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 
 	logger.GetLogger().Info("Agent startup complete.")
 
-	<-ctx.Done()
-	return nil
+	return waitGroup.Wait()
 }
 
 func setK8sServiceAccountAuth(val interface{}) error {
