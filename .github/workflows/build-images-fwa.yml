@@ -1,0 +1,176 @@
+name: Build Hubble FGS FWA Images
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.event_name == 'push' && format('{0}-{1}', github.workflow, github.ref) || github.event_name == 'pull_request' && format('{0}-pr-{1}-{2}', github.workflow, github.event.pull_request.number, github.event.action) || format('{0}-{1}', github.workflow, github.ref) }}
+  cancel-in-progress: true
+
+jobs:
+  init:
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          submodules: true
+          fetch-tags: true
+          fetch-depth: 0
+      - name: Get version and set outputs
+        id: get-version
+        run: |
+          VERSION=$(make version)
+          if [[ -z "$VERSION" || "$VERSION" =~ ^[a-f0-9]{7,}$ ]]; then
+            echo "WARNING: Version appears to be empty or a SHA. Using tag from git describe instead."
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "date=$(date -u +"%Y%m%d%H%M")" >> $GITHUB_OUTPUT
+          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      date: ${{ steps.get-version.outputs.date }}
+      sha: ${{ steps.get-version.outputs.sha }}
+
+  build-fwa-image:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+          - arch: arm64
+            runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_ARM64 }}
+      fail-fast: false
+    runs-on: ${{ matrix.runs-on }}
+    needs: [ init ]
+    if: ${{ needs.init.result == 'success' }}
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          submodules: true
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - name: Build fwa image
+        run: |
+          echo "Building for architecture: ${{ matrix.arch }}"
+          make package-fwa
+      - name: Prepare artifact
+        id: prepare-artifact
+        run: |
+          echo "artifact_path=$(pwd)/build/${{ matrix.arch }}/fwa" >> $GITHUB_OUTPUT
+      - name: Upload fwa image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fwa-image-${{ matrix.arch }}-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          path: ${{ steps.prepare-artifact.outputs.artifact_path }}
+          retention-days: 1
+  
+  combine-artifacts:
+    needs: [ init, build-fwa-image ]
+    if: ${{ always() && !cancelled() && needs.build-fwa-image.result == 'success' }}
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 5
+    outputs:
+      artifact_dir: ${{ steps.prepare-artifacts.outputs.artifact_dir }}
+    steps:
+      - name: Download AMD fwa artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: "fwa-image-amd64-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
+          path: "./combined-artifacts/amd64"
+      - name: Download ARM fwa artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: "fwa-image-arm64-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
+          path: "./combined-artifacts/arm64"
+      - name: List downloaded artifacts
+        run: |
+          echo "AMD64 artifacts:"
+          find ./combined-artifacts/amd64 -type f | sort
+          echo "\nARM64 artifacts:"
+          find ./combined-artifacts/arm64 -type f | sort
+      - name: Prepare artifacts for GitHub release
+        id: prepare-artifacts
+        run: |
+          mkdir -p ./release-artifacts
+          tar -czf ./release-artifacts/fwa-amd64-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/amd64 .
+          tar -czf ./release-artifacts/fwa-arm64-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/arm64 .
+          cd ./release-artifacts
+          sha256sum *.tar.gz > SHA256SUMS.txt
+          echo "artifact_dir=$(pwd)" >> $GITHUB_OUTPUT
+      - name: Upload prepared artifacts for release job
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          path: ./release-artifacts
+          retention-days: 1
+  
+  create-github-release:
+    needs: [init, combine-artifacts]
+    if: ${{ github.event_name == 'push' &&  github.ref == 'refs/heads/master' }}
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Download release artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
+          path: "./release-artifacts"
+      - name: List release artifacts
+        run: |
+          ls -la ./release-artifacts
+      - name: Determine release type
+        id: release-type
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "is_draft=false" >> $GITHUB_OUTPUT
+            echo "tag_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "release_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "is_draft=true" >> $GITHUB_OUTPUT
+            echo "tag_name=${{ needs.init.outputs.version }}" >> $GITHUB_OUTPUT
+            echo "release_name=Hubble FGS FWA ${{ needs.init.outputs.version }} ($(date +'%Y-%m-%d'))" >> $GITHUB_OUTPUT
+          fi
+      - name: Create GitHub Release 
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.release-type.outputs.tag_name }}
+          name: ${{ steps.release-type.outputs.release_name }}
+          draft: ${{ steps.release-type.outputs.is_draft }}
+          generate_release_notes: true
+          body: |
+            ## Hubble FGS FWA Release ${{ needs.init.outputs.version }}
+            
+            This release contains Hubble FGS FWA images built for compatibility with DPUs in the smart switch.
+            
+            ### Build Information
+            - Version: ${{ needs.init.outputs.version }}
+            - Date: ${{ needs.init.outputs.date }}
+            - Commit: ${{ needs.init.outputs.sha }}
+            
+            ### Instructions
+            - Download the appropriate architecture archive (AMD64 or ARM64)
+            - Extract the archive to access the built artifacts
+            - See documentation for integration details
+          files: |
+            ./release-artifacts/*
