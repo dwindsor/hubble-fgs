@@ -57,7 +57,8 @@ func ConfigureSettings(enableRaw, enableRawReportClose, enableUdpReportClose boo
 	return *value
 }
 
-func WriteSettings(value networkapi.ConfigValue) error {
+// UpdateMap flushes all the values from the config struct to the BPF map
+func UpdateMap(value networkapi.ConfigValue) error {
 	confMutex.Lock()
 	defer confMutex.Unlock()
 	m, err := ebpf.LoadPinnedMap(filepath.Join(bpf.MapPrefixPath(), base.CfgMap.Name), nil)
