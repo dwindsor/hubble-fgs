@@ -575,11 +575,11 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 	}
 	// Walk existing L3 networks and create new []record from new policy
 	for k, uid := range currentState.networkL3Objects {
+		newState.networkL3Objects[k] = uid
 		r, err := newState.l3Add(k)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		newState.networkL3Objects[k] = uid
 		addRecordsSet = append(addRecordsSet, r...)
 	}
 
