@@ -1115,6 +1115,10 @@ static inline __attribute__((always_inline)) int check_match_openraw_result(__u3
 	if (action != action_openraw)
 		return 1;
 
+	// skip that selector due to enforcement
+	if (result == 0x7FFFFFFF) // INT32_MAX
+		return 1;
+
 	sel_res = map_lookup_elem(&file_openraw_result_map, &sel);
 	if (!sel_res) // no matchOpenrawResult for this selector -- match
 		return 1;

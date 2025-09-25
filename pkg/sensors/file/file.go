@@ -210,6 +210,7 @@ var mapTypes = map[string]MapType{
 	"policy_id_to_tail_index":    SharedMap,
 	"file_openraw_result_map":    SharedMap,
 	"open_user_to_kernel_path":   SharedMap,
+	"file_openraw_enforce_map":   SharedMap,
 }
 
 // this is used for inode-based programs that modify the inode map and thus do not using them will result in corrupted inode map contents
@@ -245,6 +246,11 @@ var (
 		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RENAME}...)}}},
 		{"lsm", "security_path_symlink", []FimFunc{{"security_path_symlink(const struct path*, struct dentry*, const int*)", "lsm_security_path_symlink.o", "path_symlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_SYMLINK}...)}}},
 		{"fexit", "io_openat2", []FimFunc{{"int io_openat2(struct io_kiocb*, int)", "fexit_sys_open.o", "io_openat2", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}},
+	}
+
+	FimPathBasedOpenRawEnforceHooks = [...]FimHook{
+		{"fentry", "do_open", []FimFunc{{"do_open(struct nameidata*, struct file*, const struct open_flags*)", "openraw_enforcer.o", "do_open", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}},
+		{"lsm", "security_file_open", []FimFunc{{"security_file_open(struct file*)", "openraw_enforcer.o", "file_open", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}},
 	}
 
 	FimPathBasedGetnameHook = FimHook{"fexit", "getname", []FimFunc{{"struct filename* getname(const int*)", "fexit_getname.o", "getname", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}}
@@ -2089,6 +2095,11 @@ func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, m
 				hooks = append(hooks, FimPathBasedSecurityUnixStreamConnect)
 			} else {
 				logger.GetLogger().Warn("FileMonitoring hook security_unix_stream_connect not found. Will not generate FILE_UNIX_SOCKET_CONNECT events")
+			}
+			if _, err := fgsBTF.GetFuncProto(spec, "do_open", false); err == nil {
+				hooks = append(hooks, FimPathBasedOpenRawEnforceHooks[:]...)
+			} else {
+				logger.GetLogger().Warn("FileMonitoring hook do_open not found. Will not support enforcement for FILE_OPENRAW events")
 			}
 			hooks = append(hooks, FimPathBasedArchHooks[:]...)
 			m = "path-based"
