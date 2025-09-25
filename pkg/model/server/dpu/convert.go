@@ -11,13 +11,17 @@ import (
 // so at some point we can remove this unnecessary translation.
 func recordToDPUPolicyRule(r *record.DatapathRecord, update bool) *DPUPolicyRule {
 	act := v1alpha.PolicyAction_POLICY_ACTION_UNSPECIFIED
-	switch r.Action.Action {
-	case record.PolicyNone:
+	if r.Action != nil {
+		switch r.Action.Action {
+		case record.PolicyNone:
+			act = v1alpha.PolicyAction_POLICY_ACTION_UNSPECIFIED
+		case record.PolicyAllow:
+			act = v1alpha.PolicyAction_POLICY_ACTION_ALLOW
+		case record.PolicyDeny:
+			act = v1alpha.PolicyAction_POLICY_ACTION_DENY
+		}
+	} else {
 		act = v1alpha.PolicyAction_POLICY_ACTION_UNSPECIFIED
-	case record.PolicyAllow:
-		act = v1alpha.PolicyAction_POLICY_ACTION_ALLOW
-	case record.PolicyDeny:
-		act = v1alpha.PolicyAction_POLICY_ACTION_DENY
 	}
 
 	var operation v1alpha.PolicyOperation
