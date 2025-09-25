@@ -106,7 +106,6 @@ jobs:
         working-directory: ${{ env.TEMP }}\ntosebpfext
         run: msbuild -target:Tools\process_monitor_bpf:Rebuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{env.BUILD_PLATFORM}} /bl:${{env.BUILD_PLATFORM}}_${{env.BUILD_CONFIGURATION}}\build_logs\build.binlog ${{env.BUILD_OPTIONS}} ${{env.SOLUTION_FILE_PATH}}
 
-
       - name: Download efw nuget package 
         working-directory: ${{ env.TEMP }}
         shell: powershell
@@ -120,7 +119,6 @@ jobs:
         run:
             '"c:\Program Files\llvm\bin\clang.exe" -g -target bpf -O2 -Werror -I${{ env.TEMP }}\ntosebpfext\packages\eBPF-for-Windows.0.18.0\build\native\include -c .\tcp_connect.c -o tcp_connect.o'
 
-
       - name: Link  tcp_connect monitor ebpf program
         shell: powershell
         working-directory: ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\windows
@@ -133,7 +131,6 @@ jobs:
         working-directory: ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\windows
         run:
             Copy-Item -Path ${{ github.workspace }}\go\src\github.com\isovalent\hubble-fgs\bpf\windows\tcp_connect.sys -Destination ${{ env.TEMP }}\ntosebpfext\${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} -Force
-
 
       - name: Zip Build Output
         working-directory: ${{ env.TEMP }}\ntosebpfext
@@ -169,7 +166,9 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version: '1.24.3'
+          # renovate: datasource=golang-version depName=go
+          go-version: '1.25.1'
+
 
       - name: Create Temp Directory
         run: mkdir D:\temp
