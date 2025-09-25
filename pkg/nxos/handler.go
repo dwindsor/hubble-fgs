@@ -1144,6 +1144,9 @@ func (n *Nxos) doPinning(ctx context.Context, isBd bool, vb *VrfBd) {
 					gid, ok = alloc.Gids[vb.Name]
 					break
 				}
+				if !ok {
+					gid, ok = n.AllocPrev.Gids[vb.Name]
+				}
 				if ok {
 					n.Alloc.Gids[vb.Name] = gid
 					n.GidsInUse[gid] = vb.Name
