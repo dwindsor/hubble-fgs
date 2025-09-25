@@ -321,16 +321,6 @@ type TCPSockStatValue struct {
 	RttBucket7                 uint32   `align:"bucket99"`
 }
 
-func (v *TCPSockStatValue) String() string {
-	return fmt.Sprintf(
-		"WatermarksEnable: %d, "+
-			"WatermarksAvgWindowSize: %d, "+
-			"WatermarksWindowSizeNs: %d, "+
-			"WatermarksBurstTriggerMult: %d, "+
-			"WatermarksDipTriggerMult: %d",
-		v.WatermarksEnable, v.WatermarksAvgWindowSize, v.WatermarksWindowSizeNs, v.WatermarksBurstTriggerMult, v.WatermarksDipTriggerMult)
-}
-
 type TCPEventDisableValue struct {
 	DisableConnect uint8    `align:"disableConnect"`
 	DisableClose   uint8    `align:"disableClose"`
@@ -385,10 +375,6 @@ type ConfigValue struct {
 	TCPDisable         TCPEventDisableValue      `align:"tcp_disable"`
 	UDP                UdpConfigValue            `align:"udp"`
 	Proto              CgroupProtocolConfigValue `align:"proto"`
-}
-
-func (v *ConfigValue) String() string {
-	return fmt.Sprintf("EnableIcmpTracking: %d", v.EnableIcmpTracking)
 }
 
 const (
