@@ -192,6 +192,14 @@ func (n *Nxos) procDelete(ctx context.Context, del *gnmi.Path) error {
 	case "/System/sas-items/svc-items/svcinst-items/SvcInstance-list/fwpolicy-items":
 		n.delSvcFw(ctx)
 
+	case "/System/sas-items/svc-items/svcinst-items/SvcInstance-list/ha-items/peer-items/HaPeer-list":
+		key := elem.GetKey()
+		peer := key["ipAddr"]
+		n.delPeer(ctx, peer)
+
+	case "/System/sas-items/svc-items/svcinst-items/SvcInstance-list/ha-items":
+		n.delHa(ctx)
+
 	default:
 		logger.GetLogger().Debug("Ignore delete", "path", path)
 	}

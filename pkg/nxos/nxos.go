@@ -173,6 +173,7 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	n.Ha.Peers = make(map[string]HaPeer)
 	n.Ha.Adjacencies = make(map[string]HaAdj)
 	n.Ha.Members = make(map[string]HaMbr)
+	n.Ha.Alloc = make(map[string]HaAlloc)
 	n.Ha.FlowSync = make(map[string]bool)
 	n.Ha.Local.Criteria = make(map[HaCrit]bool)
 	n.Ha.Local.Criteria[HaCritDpuHealth] = false
@@ -181,7 +182,9 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	// HACK: set to true until integration with new policy
 	n.Ha.Local.Criteria[HaCritPolicy] = true
 	n.Ha.Partners = make(map[string]struct{})
+	n.Ha.IsLeader = true
 
+	n.haInit(ctx)
 	go n.haSetup(ctx)
 
 	return nil
@@ -462,6 +465,11 @@ func (n *Nxos) setFwPolicyStateAll(ctx context.Context) error {
 // for now use a fixed filter. will tune later
 func (n *Nxos) setServiceRedirAll(ctx context.Context, isLock bool) error {
 	logger.GetLogger().Debug("setServiceRedirAll:", "isLock", isLock)
+	if n.Stage != StageVrf && n.Stage != StageNormal {
+		logger.GetLogger().Debug("Skip service redir prog:", "stage", n.Stage)
+		return nil
+	}
+
 	defer func() { n.Stage = StageNormal }()
 
 	err := n.setAccessList(ctx)

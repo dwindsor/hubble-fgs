@@ -29,12 +29,11 @@ func (n *Nxos) haIsEnabled(_ context.Context, isLock bool) bool {
 	}
 
 	enabled := false
-	// HACK: to deal with NXOS rel 44 breakage
-	if n.Ha.Enabled /*&& n.Ha.OperUp*/ {
+	if n.Ha.Enabled && n.Ha.OperUp {
 		enabled = true
 	}
 	logger.GetLogger().Debug("HaEnabled: ", "", enabled)
-	return n.Ha.Enabled && n.Ha.OperUp
+	return enabled
 }
 
 func (n *Nxos) haIsConnected(_ context.Context, peer string) bool {
@@ -78,8 +77,9 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	mbr, ok := n.Ha.Members[peer]
 	if !ok {
 		notify = true
-	} else if mbr.Info.HaInfo.Ha != info.HaInfo.Ha ||
-		mbr.Info.HaInfo.Service != info.HaInfo.Service {
+	} else if info.HaInfo != nil && (mbr.Info.HaInfo == nil ||
+		mbr.Info.HaInfo.Ha != info.HaInfo.Ha ||
+		mbr.Info.HaInfo.Service != info.HaInfo.Service) {
 		notify = true
 	}
 
@@ -335,7 +335,7 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	adj, ok := n.Ha.Adjacencies[peer]
 	if !ok {
 		n.Ha.Adjacencies[peer] = HaAdj{}
-		adj = n.Ha.Adjacencies[peer]
+		adj, _ = n.Ha.Adjacencies[peer]
 	}
 
 	info := n.HaGetMbrInfo(ctx, peer)
@@ -345,7 +345,7 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	}
 	logger.GetLogger().Debug("Adjacency request:", "req", req)
 	rsp, err := adj.GrpcClient.Client.Adjacency(ctx, req)
-	if err != nil {
+	if err != nil || rsp.Status == hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE {
 		logger.GetLogger().Error("Adjacency fails", logfields.Error, err)
 	} else {
 		logger.GetLogger().Debug("Adjacency response:", "rsp", rsp)
@@ -368,8 +368,8 @@ func (n *Nxos) haGetPeers(_ context.Context) []string {
 	n.RLock()
 	defer n.RUnlock()
 	var peers []string
-	for a := range n.Ha.Peers {
-		peers = append(peers, a)
+	for peer := range n.Ha.Peers {
+		peers = append(peers, peer)
 	}
 	logger.GetLogger().Debug("Peers found:", "peers", peers)
 	return peers
@@ -418,6 +418,7 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 			logger.GetLogger().Debug("Adjacency timed out", "ip", ip)
 			delete(n.Ha.Adjacencies, ip)
 			n.HaUpdatePtnr(ctx, ip, true)
+			n.setRemoteStatesAdjDown(ctx, ip)
 		}
 	}
 	for ip, mbr := range n.Ha.Members {

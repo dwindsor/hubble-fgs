@@ -1158,10 +1158,71 @@ func (n *Nxos) setRemoteStates(ctx context.Context, ip string) error {
 	return nil
 }
 
-func (n *Nxos) setLocalHaState(_ context.Context) error {
+func (n *Nxos) setRemoteStatesAdjDown(ctx context.Context, ip string) error {
+	logger.GetLogger().Debug("setRemoteStatesAdjDown:", "ip", ip)
+
+	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems{
+		HaPeerExtList: map[string]*model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{},
+	}
+
+	list := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{
+		IpAddr: &ip,
+	}
+	list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_unknown
+	list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_no_ha
+
+	items.HaPeerExtList[ip] = &list
+	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("fail to emit json", logfields.Error, err)
+		return err
+	}
+	path := svcInst + "/ha-items/ext-items/peer-items"
+	err = n.gnmiSet(ctx, path, jstr)
+	if err != nil {
+		logger.GetLogger().Error("fail in gnmiSet", logfields.Error, err)
+		return err
+	}
+	return nil
+}
+
+func (n *Nxos) setLocalHaState(ctx context.Context) error {
 	logger.GetLogger().Debug("setHaState", "state", n.Ha.NxStates.HaState)
 
-	// HACK: skip until NX MO is ready
+	var items model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems
+	switch n.Ha.NxStates.HaState {
+	case hav1.HA_STATE_HA_UNKNOWN:
+		logger.GetLogger().Debug("skip unknown state")
+		return nil
+
+	case hav1.HA_STATE_HA_READY:
+		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_ready
+
+	case hav1.HA_STATE_HA_NOTREADY:
+		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_not_ready
+
+	case hav1.HA_STATE_HA_SWITCHOVER:
+		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_switchover
+	}
+	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("fail to emit json", logfields.Error, err)
+		return err
+	}
+	path := svcInst + "/ha-items/ext-items"
+	err = n.gnmiSet(ctx, path, jstr)
+	if err != nil {
+		logger.GetLogger().Error("fail in gnmiSet", logfields.Error, err)
+		return err
+	}
 	return nil
 }
 

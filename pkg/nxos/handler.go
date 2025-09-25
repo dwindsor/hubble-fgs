@@ -963,6 +963,35 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHa(ctx context.Context, items *model.
 	return nil
 }
 
+func (n *Nxos) delHa(ctx context.Context) {
+	logger.GetLogger().Debug("delete high availability")
+
+	n.Ha.HaIp = ""
+	n.Ha.Enabled = false
+	n.Ha.OperUp = false
+	n.Ha.Peers = make(map[string]HaPeer)
+	n.Ha.Adjacencies = make(map[string]HaAdj)
+	n.Ha.Members = make(map[string]HaMbr)
+	n.Ha.Alloc = make(map[string]HaAlloc)
+	n.Ha.FlowSync = make(map[string]bool)
+	n.Ha.Partners = make(map[string]struct{})
+	n.Ha.NxStates.HaStateEpoch = 0
+	n.Ha.NxStates.SvcStateEpoch = 0
+	n.Ha.IsLeader = false
+}
+
+func (n *Nxos) delPeer(ctx context.Context, peer string) {
+	logger.GetLogger().Debug("delete peer:", "peer", peer)
+
+	n.Ha.Adjacencies = make(map[string]HaAdj)
+	n.Ha.Members = make(map[string]HaMbr)
+	n.Ha.Peers = make(map[string]HaPeer)
+	n.Ha.Alloc = make(map[string]HaAlloc)
+	n.Ha.FlowSync = make(map[string]bool)
+	n.Ha.Partners = make(map[string]struct{})
+	n.WaitHa.In() <- WakeHa
+}
+
 func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(_ context.Context, items *model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_PeerItems) error {
 	logger.GetLogger().Debug("updtSasSvcSvcinstSvcInstanceHaPeer", "item", *items)
 
