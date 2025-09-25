@@ -70,10 +70,12 @@ jobs:
       - name: Build fwa image
         run: |
           echo "Building for architecture: ${{ matrix.arch }}"
-          make package-fwa
+          TARGET_ARCH=${{ matrix.arch }} make package-fwa
       - name: Prepare artifact
         id: prepare-artifact
         run: |
+          mkdir -p $(pwd)/build/${{ matrix.arch }}/fwa
+          cp -r $(pwd)/install/fwa/dist/* $(pwd)/build/${{ matrix.arch }}/fwa/ || echo "Warning: No artifacts found in install/fwa/dist"
           echo "artifact_path=$(pwd)/build/${{ matrix.arch }}/fwa" >> $GITHUB_OUTPUT
       - name: Upload fwa image
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
