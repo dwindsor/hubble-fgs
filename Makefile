@@ -133,9 +133,9 @@ agwctl: ## Compile smartswitch agent CLI
 fwa:    # Cross compile FWA agent for arm64 (aarch64) architecture in DPU and Simulator VM
 	GOOS=linux $(GO_BUILD) ./cmd/fwa
 
-# .PHONY: fwactl
-# fwactl: ## Compile FWA agent CLI
-# 	GOOS=linux $(GO_BUILD) ./cmd/fwactl
+.PHONY: fwactl
+fwactl: ## Compile FWA agent CLI
+	GOOS=linux $(GO_BUILD) ./cmd/fwactl
 
 .PHONY: package-fwa
 package-fwa: ## Build FWA agent docker image for elba

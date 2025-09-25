@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/dpu/dataplane"
+	"github.com/isovalent/hubble-fgs/pkg/dpu/exporter"
 	agentDPU "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/utils"
 )
@@ -33,6 +34,8 @@ const (
 
 	// on firewall.*, use ens5. on real dpu, int_mnic0
 	DPU_INTERFACE = "int_mnic0"
+
+	EXPORTER_CONFIG_PATH = "/data/hypershield/daflogger.yaml" // HACK: need to update config to pass this path
 )
 
 type StreamClient struct {
@@ -72,7 +75,8 @@ type DPUAgent struct {
 	ReadyStatus      atomic.Bool
 	ConnectionStatus atomic.Bool
 
-	Dataplane dataplane.Dataplane
+	Dataplane   dataplane.Dataplane
+	LogExporter exporter.Exporter
 
 	Cfg          *config.Config
 	Retries      int
@@ -105,10 +109,6 @@ func (dpu *DPUAgent) Config(_ context.Context, path string) error {
 	// Collecting agent metadata
 	var err error
 
-	dpu.Ip, err = utils.GetOutboundIP()
-	if err != nil {
-		logger.GetLogger().Error("failed to get machine IP address", logfields.Error, err)
-	}
 	dpu.Hostname, err = os.Hostname()
 	if err != nil {
 		logger.GetLogger().Error("failed to get machine hostname", logfields.Error, err)
@@ -139,8 +139,13 @@ func (dpu *DPUAgent) Config(_ context.Context, path string) error {
 		time.Sleep(time.Second)
 	} else {
 		dpu.AgentId = dpuIp
+		dpu.Ip = dpuIp
 		logger.GetLogger().Info("Using DPU IP as AgentId", "id", dpu.AgentId)
 	}
+
+	// Setting up log exporter
+	dpu.LogExporter = exporter.NewAcceleratedFluentbitExporter("", EXPORTER_CONFIG_PATH)
+
 	return nil
 }
 
@@ -159,7 +164,42 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	}
 	logger.GetLogger().Info("Connected to dataplane", "version", dpu.Dataplane.Version)
 
-	// FIXME: Add callback functions here
+	// Setting up exporter
+	err = dpu.LogExporter.Init(ctx)
+	if err != nil {
+		logger.GetLogger().Error("failed to initialize logger", logfields.Error, err)
+		return err
+	}
+
+	// Creating custom callback functions
+	logConfigCallback := func(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
+		err = dpu.LogExporter.RefreshConfig(oldCfg, newCfg)
+		if err != nil {
+			return err
+		}
+		err := dpu.Dataplane.RefreshConfig(oldCfg, newCfg)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	dpuConfigCallback := func(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
+		err := dpu.Dataplane.RefreshConfig(oldCfg, newCfg)
+		if err != nil {
+			return err
+		}
+		err = dpu.LogExporter.RefreshConfig(oldCfg, newCfg)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Adding config callbacks
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_DPU, dpuConfigCallback)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, logConfigCallback)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, logConfigCallback)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, logConfigCallback)
 
 	return nil
 }

@@ -7,14 +7,21 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"sync/atomic"
 	"time"
 
+	"github.com/vishvananda/netlink"
+
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	dpAppPolicy "github.com/isovalent/hubble-fgs/pkg/dpu/policy"
 	"github.com/isovalent/hubble-fgs/pkg/dpu/socket"
@@ -48,6 +55,8 @@ type AcceleratedDataplaneProcess struct {
 	PersistPath string
 	Version     string
 	ServicePath string
+	NpuIp       string
+	NpuMac      string
 	WatchPath   string
 	Status      atomic.Bool
 
@@ -185,6 +194,62 @@ func (dp *AcceleratedDataplaneProcess) LoadFirewallPolicies(ctx context.Context,
 	return nil
 }
 
+func (dp *AcceleratedDataplaneProcess) SendLogConfig(logConfigs map[string]*v1alpha.LogConfig) error {
+	// Building config object
+	logConfig := LogConfig{}
+	if dp.NpuIp == "" || dp.NpuMac == "" || len(logConfigs) == 0 {
+		logConfig.LogEnabled = false
+		logConfig.DataplaneLevel = "info"
+		logConfig.Collector = []LogCollector{}
+	} else {
+		logConfig.LogEnabled = true
+		logConfig.DataplaneLevel = "info"
+		logConfig.NpuIP = dp.NpuIp
+		logConfig.NpuMAC = dp.NpuMac
+		for _, log := range logConfigs {
+			port, err := strconv.Atoi(log.Port)
+			if err != nil {
+				return fmt.Errorf("failed to convert syslog port to int: %w", err)
+			}
+			logConfig.Collector = append(logConfig.Collector, LogCollector{
+				IP:   log.Host,
+				Port: port,
+			})
+		}
+	}
+	data, err := json.Marshal(logConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal log config: %w", err)
+	}
+
+	logger.GetLogger().Info("sending log config to dp-app", "config", string(data))
+
+	// Sending log configuration to the accelerated dataplane
+	msg := &socket.ControlMessage{
+		Command: Dataplane_LogConfig,
+		Type:    socket.DATAPLANE,
+		Data:    data,
+	}
+	dpsocket := socket.NewDataplaneSocket(dp.ApiPath, UDS_TIMEOUT*time.Second)
+	err = dpsocket.Connect()
+	if err != nil {
+		return err
+	}
+	defer dpsocket.Close()
+	err = dpsocket.Send(msg)
+	if err != nil {
+		return err
+	}
+	rc, err := dpsocket.Receive()
+	if err != nil {
+		return err
+	}
+	if rc.ReturnCode < socket.SUCCESS {
+		return errors.New(rc.ReturnCode.String())
+	}
+	return nil
+}
+
 // -----------------------------------------------------------------------------
 // Accelerated Dataplane Implementation
 // -----------------------------------------------------------------------------
@@ -244,6 +309,100 @@ func (dp *AcceleratedDataplane) RemovePolicy(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
+	// Checking config object
+	cfg := newCfg
+	if newCfg == nil {
+		cfg = oldCfg
+	}
+	if cfg == nil {
+		return errors.New("nil config object in dataplane config callback")
+	}
+
+	switch cfg.Type {
+	case v1alpha.ConfigType_CONFIG_TYPE_DPU:
+		// Parsing out the dpu configuration
+		dpuConfig := cfg.GetConfigDpu()
+
+		// Getting all IPv4 IPs on the exporter interface (there should only be 1, but if there are
+		// more we only use the first) and flushing all of the IPs that are on the interface.
+		link, err := netlink.LinkByName(EXPORTER_INTERFACE)
+		if err != nil {
+			return fmt.Errorf("failed to get %s interface: %w", EXPORTER_INTERFACE, err)
+		}
+		addrsV4, err := netlink.AddrList(link, netlink.FAMILY_V4)
+		if err != nil {
+			return fmt.Errorf("failed to list IPv4 addresses on %s: %w", EXPORTER_INTERFACE, err)
+		}
+		var intIP net.IP
+		for _, a := range addrsV4 {
+			if a.IPNet != nil && a.IP != nil {
+				ip := a.IP.To4()
+				if ip != nil && intIP != nil {
+					intIP = ip
+				}
+			}
+			err := netlink.AddrDel(link, &a)
+			if err != nil {
+				return fmt.Errorf("failed to delete IPv4 address %s from %s: %w", a.String(), EXPORTER_INTERFACE, err)
+			}
+		}
+
+		// Checking that an interface IP was found
+		if intIP == nil {
+			return errors.New("failed to get exporter interface IP")
+		}
+
+		// Adding the relevant IP address back to the exporter interface
+		addr32, err := netlink.ParseAddr(intIP.String() + "/32")
+		if err != nil {
+			return fmt.Errorf("failed to parse address %s/32: %w", intIP.String(), err)
+		}
+		if err := netlink.AddrAdd(link, addr32); err != nil {
+			return fmt.Errorf("failed to add %s IP %s to %s: %w", EXPORTER_INTERFACE, intIP.String(), EXPORTER_INTERFACE, err)
+		}
+
+		// Setting the source port range that is reserved for log export
+		portRangeContent := fmt.Sprintf("%d   %d\n", dpuConfig.PortLow, dpuConfig.PortLow+LOGGER_PORT_COUNT)
+		err = os.WriteFile("/proc/sys/net/ipv4/ip_local_port_range", []byte(portRangeContent), 0644)
+		if err != nil {
+			return fmt.Errorf("failed to set port range: %w", err)
+		}
+
+		// Setting NPU IP and MAC
+		dp.Accelerated.NpuIp = dpuConfig.ServiceIp
+		dp.Accelerated.NpuMac = dpuConfig.ServiceMac
+		return nil
+	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
+		// Switching on config type
+		var logConfigs map[string]*v1alpha.LogConfig
+		switch cfg.Type {
+		case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG:
+			logConfigs = cfg.GetConfigLogSyslog().Configs
+		case v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX:
+			logConfigs = cfg.GetConfigLogIpfix().Configs
+		case v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE:
+			logConfigs = cfg.GetConfigLogTimescape().Configs
+		case v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
+			logConfigs = cfg.GetConfigLogSplunk().Configs
+		}
+
+		// Checking for deletion
+		if newCfg == nil {
+			logConfigs = make(map[string]*v1alpha.LogConfig)
+		}
+
+		// Sending log config update message to dataplane
+		err := dp.Accelerated.SendLogConfig(logConfigs)
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		return errors.New("invalid config type")
+	}
 }
 
 func (dp *AcceleratedDataplane) Init(_ context.Context, acceleratedServicePath string, _ string) error {

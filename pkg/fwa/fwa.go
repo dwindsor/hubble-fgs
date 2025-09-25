@@ -72,6 +72,7 @@ func NewAgent(dpuListener *dpu.DPUListener) *FWAgent {
 
 	// Setting up dpu config
 	// dpuConfig.ServiceIp is populated by nxos package
+	dpuConfig.ServiceIp = "169.251.31.135" // FIXME:
 	dpuConfig.ServiceMac = mac
 	dpuConfig.PortLow = uint32(dpuLow)
 	dpuConfig.PortHigh = uint32(dpuHigh)

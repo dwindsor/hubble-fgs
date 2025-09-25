@@ -21,7 +21,7 @@ configure_file(install/servicedir.sh.in ${CMAKE_CURRENT_BINARY_DIR}/servicedir.s
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/servicedir.sh DESTINATION bin)
 
 # Utilities
-# install(PROGRAMS ../fwactl RENAME fwactl DESTINATION bin)
+install(PROGRAMS ../fwactl RENAME fwactl DESTINATION bin)
 
 # Always include Cpack at the end
 include(CPack)

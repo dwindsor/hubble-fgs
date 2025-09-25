@@ -3,8 +3,9 @@ package config
 import (
 	"reflect"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/google/go-cmp/cmp"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 // DiffConfigSets computes the difference between two config sets and returns the map of config objects to add and remove
@@ -33,23 +34,51 @@ func DiffConfigSets(oldSet map[v1alpha.ConfigType]*v1alpha.ConfigObject, newSet 
 
 // compareConfigObjects compares two config objects for equality
 func compareConfigObjects(a, b *v1alpha.ConfigObject) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
 	if a.Type != b.Type {
 		return false
 	}
 	switch a.Type {
 	case v1alpha.ConfigType_CONFIG_TYPE_DPU:
-		return proto.Equal(a.GetConfigDpu(), b.GetConfigDpu())
+		return cmp.Equal(a.GetConfigDpu(), b.GetConfigDpu(), protocmp.Transform())
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG:
-		return proto.Equal(a.GetConfigLogSyslog(), b.GetConfigLogSyslog())
+		return cmp.Equal(a.GetConfigLogSyslog(), b.GetConfigLogSyslog(), protocmp.Transform())
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX:
-		return proto.Equal(a.GetConfigLogIpfix(), b.GetConfigLogIpfix())
+		return cmp.Equal(a.GetConfigLogIpfix(), b.GetConfigLogIpfix(), protocmp.Transform())
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE:
-		return proto.Equal(a.GetConfigLogTimescape(), b.GetConfigLogTimescape())
+		return cmp.Equal(a.GetConfigLogTimescape(), b.GetConfigLogTimescape(), protocmp.Transform())
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
-		return proto.Equal(a.GetConfigLogSplunk(), b.GetConfigLogSplunk())
+		return cmp.Equal(a.GetConfigLogSplunk(), b.GetConfigLogSplunk(), protocmp.Transform())
 	default:
 		return false
 	}
+}
+
+func DiffLogConfigMaps(oldLogConfigs, newLogConfigs map[string]*v1alpha.LogConfig) (logConfigAdds map[string]*v1alpha.LogConfig, logConfigRemoves map[string]*v1alpha.LogConfig) {
+	logConfigAdds = make(map[string]*v1alpha.LogConfig)
+	logConfigRemoves = make(map[string]*v1alpha.LogConfig)
+
+	// Check for new or modified configs in newLogConfigs
+	for key, newConfig := range newLogConfigs {
+		oldConfig, exists := oldLogConfigs[key]
+		if !exists || !cmp.Equal(oldConfig, newConfig, protocmp.Transform()) {
+			logConfigAdds[key] = newConfig
+		}
+	}
+
+	// Check for configs that exist in oldLogConfigs but not in newLogConfigs
+	for key, oldConfig := range oldLogConfigs {
+		_, exists := newLogConfigs[key]
+		if !exists {
+			logConfigRemoves[key] = oldConfig
+		}
+	}
+	return logConfigAdds, logConfigRemoves
 }
 
 // IsNil checks if an interface is nil or points to nil

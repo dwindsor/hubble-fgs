@@ -39,6 +39,12 @@ func executeFWA() error {
 		return err
 	}
 
+	logger.GetLogger().Info("Setting up agent")
+	if err := agent.Setup(ctx); err != nil {
+		logger.GetLogger().Error("failed to setup agent", logfields.Error, err)
+		return err
+	}
+
 	logger.GetLogger().Info("Marking agent as ready")
 	err := agent.Ready(ctx)
 	if err != nil {

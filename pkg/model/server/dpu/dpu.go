@@ -27,10 +27,14 @@ const (
 	dpuTimeout = 6 // in second
 
 	// DPU IP mappings
-	AgentIdDpu1 = "169.254.24.1"
-	AgentIdDpu2 = "169.254.28.1"
-	AgentIdDpu3 = "169.254.32.1"
-	AgentIdDpu4 = "169.254.36.1"
+	AgentIdDpu1 = "169.254.28.1"
+	AgentIdDpu2 = "169.254.24.1"
+	AgentIdDpu3 = "169.254.36.1"
+	AgentIdDpu4 = "169.254.32.1"
+)
+
+var (
+	dpuCount = 4 // HACK: need to configure this to change to 2 for deschutes
 )
 
 type DPUSubject struct {
@@ -353,7 +357,7 @@ func (dpu *DPUListener) SubscribeConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1
 func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
 	// Building the response operation based on the old and new config objects and extracting the dpu object
 	resp := v1alpha.StreamDatapathConfigResponse{}
-	fullCfg := &v1alpha.DpuConfig{}
+	var fullCfg *v1alpha.DpuConfig
 	if newCfg == nil && oldCfg != nil {
 		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE
 		fullCfg = oldCfg.GetConfigDpu()
@@ -371,30 +375,16 @@ func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg 
 	for _, peer := range dpu.peerGroup {
 		peer.mtx.RLock()
 		defer peer.mtx.RUnlock()
-		// Divides the port range into equal parts mapped to each DPU by IP
-		dpuCfg := v1alpha.DpuConfig{
-			ServiceMac: fullCfg.ServiceMac,
-			ServiceIp:  fullCfg.ServiceIp,
+		dpuCfg, err := getPerDpuConfig(fullCfg, peer.uid)
+		if err != nil {
+			logger.GetLogger().Error("dpu config callback function failed", logfields.Error, err)
+			continue
 		}
-		portCount := int(fullCfg.PortHigh-fullCfg.PortLow+1) / len(dpu.peerGroup)
-		index := 0
-		switch peer.uid {
-		case AgentIdDpu1:
-			index = 0
-		case AgentIdDpu2:
-			index = 1
-		case AgentIdDpu3:
-			index = 2
-		case AgentIdDpu4:
-			index = 3
-		}
-		dpuCfg.PortLow = fullCfg.PortLow + uint32(portCount*index)
-		dpuCfg.PortHigh = fullCfg.PortLow + uint32(portCount*(index+1)) - 1
 
 		// Push the response to the peer
 		resp.Config = &v1alpha.ConfigObject{
 			Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
-			Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuCfg},
+			Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuCfg},
 		}
 		peer.cfgCh <- &resp
 	}

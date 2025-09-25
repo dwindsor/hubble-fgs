@@ -18,7 +18,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/manager"
 
-	"github.com/isovalent/hubble-fgs/pkg/commands"
+	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/fwa"
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
@@ -160,7 +160,7 @@ func setK8sServiceAccountAuth(val interface{}) error {
 }
 
 func cliServer(ctx context.Context, fwaAgent *fwa.FWAgent) error {
-	serverPath := commands.CLI_SOCK
+	serverPath := agwctl.CLI_SOCK
 
 	// Clean up any old socket file before listening
 	if _, err := os.Stat(serverPath); err == nil {
@@ -217,7 +217,7 @@ func cliServer(ctx context.Context, fwaAgent *fwa.FWAgent) error {
 		}
 		logger.GetLogger().Debug("Received JSON:", "json", rxJson)
 
-		msg, err := commands.Handler(ctx, fwaAgent, rxJson)
+		msg, err := agwctl.Handler(ctx, fwaAgent, rxJson)
 		if err != nil {
 			logger.GetLogger().Error("Failed to handle command", logfields.Error, err)
 			conn.Close()

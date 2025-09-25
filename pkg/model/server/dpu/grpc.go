@@ -4,10 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"google.golang.org/grpc"
+
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
-	"google.golang.org/grpc"
+
+	"github.com/isovalent/hubble-fgs/pkg/config"
+	"github.com/isovalent/hubble-fgs/pkg/config/library"
 )
 
 type FWAServer struct {
@@ -75,19 +80,59 @@ func (s *FWAServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 func (s *FWAServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigRequest, stream grpc.ServerStreamingServer[v1alpha.StreamDatapathConfigResponse]) error {
 	peer := s.dpuListener.addPeer(req.AgentUid)
 
-	// The peer on reconnect needs to diff its current set with this set
-	// and create the valid config otherwise subsequent config hash checks will
-	// fail. If the peer builds on top of its current state without this check
-	// then we could potentially leave config orphaned in the peers
-	// datapath.
-	for _, r := range peer.cfgSet {
+	// Diffing the peer's config set with the current latest config set to be able
+	// to pass down changes to the peer that just connected.
+	configList := library.GetRepository().GetConfigObjects()
+	adds, removes := config.DiffConfigSets(peer.cfgSet, configList)
+
+	// Making sure that the dpu config object is passed down first, as it sets
+	// some of the service configuration that is required for other configs.
+	dpuConfigObj, ok := adds[v1alpha.ConfigType_CONFIG_TYPE_DPU]
+	if ok {
+		dpuCfg, err := getPerDpuConfig(dpuConfigObj.GetConfigDpu(), peer.uid)
+		if err != nil {
+			logger.GetLogger().Error("failed to pass down dpu config to dpu", logfields.Error, err)
+		} else {
+			obj := &v1alpha.ConfigObject{
+				Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+				Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuCfg},
+			}
+			peer.cfgSet[v1alpha.ConfigType_CONFIG_TYPE_DPU] = obj
+			resp := v1alpha.StreamDatapathConfigResponse{
+				Oper:   v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT,
+				Config: obj,
+			}
+			err := stream.Send(&resp)
+			if err != nil {
+				logger.GetLogger().Warn("Client send failed", "clientID", peer.uid, logfields.Error, err)
+				return nil
+			}
+		}
+		delete(adds, v1alpha.ConfigType_CONFIG_TYPE_DPU)
+	}
+
+	// Iterating through all the adds and deletes and passing the messages to the DPU peer.
+	for typ, obj := range adds {
+		peer.cfgSet[typ] = obj
 		resp := v1alpha.StreamDatapathConfigResponse{
 			Oper:   v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT,
-			Config: r,
+			Config: obj,
 		}
 		err := stream.Send(&resp)
 		if err != nil {
-			logger.GetLogger().Warn("Client send failed", "clientID", peer.uid, logfields.Error, err)
+			logger.GetLogger().Warn("Client send config upsert failed", "clientID", peer.uid, logfields.Error, err)
+			return nil
+		}
+	}
+	for typ, obj := range removes {
+		peer.cfgSet[typ] = obj
+		resp := v1alpha.StreamDatapathConfigResponse{
+			Oper:   v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE,
+			Config: obj,
+		}
+		err := stream.Send(&resp)
+		if err != nil {
+			logger.GetLogger().Warn("Client send config delete failed", "clientID", peer.uid, logfields.Error, err)
 			return nil
 		}
 	}

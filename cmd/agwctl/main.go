@@ -1,7 +1,7 @@
 package main
 
-import "github.com/isovalent/hubble-fgs/pkg/commands"
+import "github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 
 func main() {
-	commands.Execute()
+	agwctl.Execute()
 }

@@ -133,3 +133,270 @@ func TestDenyOperDeleteRecordToDPUVlan(t *testing.T) {
 	testPolicySubject(t, r.Source, srcCidr, noVrf, 0, srcVlan)
 	testPolicySubject(t, r.Destination, dstCidr, noVrf, 8080, dstVlan)
 }
+
+func TestGetPerDpuConfig(t *testing.T) {
+	tests := []struct {
+		name        string
+		fullCfg     *v1alpha.DpuConfig
+		id          string
+		expectError bool
+		expectedCfg *v1alpha.DpuConfig
+	}{
+		{
+			name: "Valid DPU1 config",
+			fullCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1000,
+				PortHigh:   1999,
+			},
+			id:          AgentIdDpu1,
+			expectError: false,
+			expectedCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1000,
+				PortHigh:   1249,
+			},
+		},
+		{
+			name: "Valid DPU2 config",
+			fullCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1000,
+				PortHigh:   1999,
+			},
+			id:          AgentIdDpu2,
+			expectError: false,
+			expectedCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1250,
+				PortHigh:   1499,
+			},
+		},
+		{
+			name: "Valid DPU3 config",
+			fullCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1000,
+				PortHigh:   1999,
+			},
+			id:          AgentIdDpu3,
+			expectError: false,
+			expectedCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1500,
+				PortHigh:   1749,
+			},
+		},
+		{
+			name: "Valid DPU4 config",
+			fullCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1000,
+				PortHigh:   1999,
+			},
+			id:          AgentIdDpu4,
+			expectError: false,
+			expectedCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1750,
+				PortHigh:   1999,
+			},
+		},
+		{
+			name:        "Nil fullCfg",
+			fullCfg:     nil,
+			id:          AgentIdDpu1,
+			expectError: true,
+			expectedCfg: nil,
+		},
+		{
+			name: "Empty ID string treated as DPU1",
+			fullCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1000,
+				PortHigh:   1999,
+			},
+			id:          "",
+			expectError: false,
+			expectedCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1000,
+				PortHigh:   1249,
+			},
+		},
+		{
+			name: "Invalid ID string treated as DPU1",
+			fullCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1000,
+				PortHigh:   1999,
+			},
+			id:          "invalid-dpu-id",
+			expectError: false,
+			expectedCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1000,
+				PortHigh:   1249,
+			},
+		},
+		{
+			name: "Empty ServiceMac and ServiceIp",
+			fullCfg: &v1alpha.DpuConfig{
+				ServiceMac: "",
+				ServiceIp:  "",
+				PortLow:    1000,
+				PortHigh:   1999,
+			},
+			id:          AgentIdDpu1,
+			expectError: false,
+			expectedCfg: &v1alpha.DpuConfig{
+				ServiceMac: "",
+				ServiceIp:  "",
+				PortLow:    1000,
+				PortHigh:   1249,
+			},
+		},
+		{
+			name: "Single port range",
+			fullCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    8080,
+				PortHigh:   8083,
+			},
+			id:          AgentIdDpu1,
+			expectError: false,
+			expectedCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    8080,
+				PortHigh:   8080,
+			},
+		},
+		{
+			name: "Zero port range (PortHigh < PortLow)",
+			fullCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    1000,
+				PortHigh:   999,
+			},
+			id:          AgentIdDpu1,
+			expectError: true,
+		},
+		{
+			name: "Large port range",
+			fullCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    0,
+				PortHigh:   65535,
+			},
+			id:          AgentIdDpu2,
+			expectError: false,
+			expectedCfg: &v1alpha.DpuConfig{
+				ServiceMac: "aa:bb:cc:dd:ee:ff",
+				ServiceIp:  "192.168.1.1",
+				PortLow:    16384,
+				PortHigh:   32767,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Handle nil fullCfg case separately to avoid panic
+			if tt.fullCfg == nil {
+				assert.Panics(t, func() {
+					getPerDpuConfig(tt.fullCfg, tt.id)
+				}, "Expected panic when fullCfg is nil")
+				return
+			}
+
+			result, err := getPerDpuConfig(tt.fullCfg, tt.id)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, result)
+				if tt.expectedCfg != nil {
+					assert.Equal(t, tt.expectedCfg.ServiceMac, result.ServiceMac)
+					assert.Equal(t, tt.expectedCfg.ServiceIp, result.ServiceIp)
+					assert.Equal(t, tt.expectedCfg.PortLow, result.PortLow)
+					assert.Equal(t, tt.expectedCfg.PortHigh, result.PortHigh)
+				}
+			}
+		})
+	}
+}
+
+func TestGetPerDpuConfig_DpuCountVariants(t *testing.T) {
+	original := dpuCount
+	defer func() { dpuCount = original }()
+
+	fullCfg := &v1alpha.DpuConfig{
+		ServiceMac: "aa:bb:cc:dd:ee:ff",
+		ServiceIp:  "192.168.1.1",
+		PortLow:    1000,
+		PortHigh:   1999,
+	}
+
+	t.Run("2-DPUs mapping and out-of-range", func(t *testing.T) {
+		dpuCount = 2
+
+		// DPU1 slice
+		cfg, err := getPerDpuConfig(fullCfg, AgentIdDpu1)
+		assert.NoError(t, err)
+		assert.NotNil(t, cfg)
+		assert.Equal(t, uint32(1000), cfg.PortLow)
+		assert.Equal(t, uint32(1499), cfg.PortHigh)
+		assert.Equal(t, fullCfg.ServiceMac, cfg.ServiceMac)
+		assert.Equal(t, fullCfg.ServiceIp, cfg.ServiceIp)
+
+		// DPU2 slice
+		cfg, err = getPerDpuConfig(fullCfg, AgentIdDpu2)
+		assert.NoError(t, err)
+		assert.NotNil(t, cfg)
+		assert.Equal(t, uint32(1500), cfg.PortLow)
+		assert.Equal(t, uint32(1999), cfg.PortHigh)
+
+		// Unknown ID maps to index 0 (treated as DPU1)
+		cfg, err = getPerDpuConfig(fullCfg, "unknown-id")
+		assert.NoError(t, err)
+		assert.NotNil(t, cfg)
+		assert.Equal(t, uint32(1000), cfg.PortLow)
+		assert.Equal(t, uint32(1499), cfg.PortHigh)
+
+		// Out-of-range IDs for 2 DPUs
+		cfg, err = getPerDpuConfig(fullCfg, AgentIdDpu3)
+		assert.Error(t, err)
+		assert.Nil(t, cfg)
+
+		cfg, err = getPerDpuConfig(fullCfg, AgentIdDpu4)
+		assert.Error(t, err)
+		assert.Nil(t, cfg)
+	})
+
+	t.Run("4-DPUs mapping check DPU4", func(t *testing.T) {
+		dpuCount = 4
+		cfg, err := getPerDpuConfig(fullCfg, AgentIdDpu4)
+		assert.NoError(t, err)
+		assert.NotNil(t, cfg)
+		assert.Equal(t, uint32(1750), cfg.PortLow)
+		assert.Equal(t, uint32(1999), cfg.PortHigh)
+	})
+}

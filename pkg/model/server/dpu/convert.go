@@ -1,6 +1,8 @@
 package dpu
 
 import (
+	"fmt"
+
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
@@ -143,4 +145,35 @@ func reportRequestToDPU(req *v1alpha.ReportStatusRequest) *DPUReportStatus {
 		Type:           req.Status.Type,
 		SerialNumber:   req.Status.SerialNumber,
 	}
+}
+
+// Passes the full DpuConfig from the agw and returns the port mapped DPU specific
+// DpuConfig object.
+func getPerDpuConfig(fullCfg *v1alpha.DpuConfig, id string) (*v1alpha.DpuConfig, error) {
+	// Divides the port range into equal parts mapped to each DPU by IP
+	dpuCfg := v1alpha.DpuConfig{
+		ServiceMac: fullCfg.ServiceMac,
+		ServiceIp:  fullCfg.ServiceIp,
+	}
+	portCount := int(fullCfg.PortHigh-fullCfg.PortLow+1) / dpuCount
+	if portCount < 1 {
+		return nil, fmt.Errorf("dpu config creation failed, unable to assign each dpu a port")
+	}
+	index := 0
+	switch id {
+	case AgentIdDpu1:
+		index = 0
+	case AgentIdDpu2:
+		index = 1
+	case AgentIdDpu3:
+		index = 2
+	case AgentIdDpu4:
+		index = 3
+	}
+	if index >= dpuCount {
+		return nil, fmt.Errorf("incompatible port range for dpu %s with a total dpu count of %d", id, dpuCount)
+	}
+	dpuCfg.PortLow = fullCfg.PortLow + uint32(portCount*index)
+	dpuCfg.PortHigh = fullCfg.PortLow + uint32(portCount*(index+1)) - 1
+	return &dpuCfg, nil
 }
