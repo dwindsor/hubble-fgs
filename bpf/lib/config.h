@@ -80,9 +80,8 @@ struct cfg_value {
 	__u8 raw_enabled;
 	__u8 raw_report_close;
 	__u8 udp_report_close;
-	__u8 enable_bpf_dns_parser;
 	__u8 icmp_v6_info;
-	__u8 pad;
+	__u8 pad[2];
 	struct tcp_send_check_sample_cfg tcp;
 	struct tcp_event_disable_config tcp_disable;
 	struct udp_sensor_config udp;
