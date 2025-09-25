@@ -206,9 +206,9 @@ jobs:
           $maxRetries = 3
           $retryCount = 0
           $downloadUrl = "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip"
-          $zipPath = "$env:TEMP\efw.zip"
-          $extractPath = "$env:TEMP"
-          $ebpfPath = "$env:TEMP\ebpf"
+          $zipPath = "D:\temp\efw.zip"
+          $extractPath = "D:\temp"
+          $ebpfPath = "D:\temp\ebpf"
 
           while ($retryCount -lt $maxRetries) {
               try {
@@ -265,7 +265,7 @@ jobs:
           }
 
           # Rename the extracted directory
-          $originalPath = "$env:TEMP\Build-native-only NativeOnlyRelease x64"
+          $originalPath = "D:\temp\Build-native-only NativeOnlyRelease x64"
           if (Test-Path $originalPath) {
               try {
                   Rename-Item -Path $originalPath -NewName $ebpfPath -ErrorAction Stop
@@ -438,30 +438,134 @@ jobs:
       - name: Download and Install eBPF for Windows
         shell: powershell
         run: |
-          $maxRetries = 2
-          $retryCount = 0
-          while (!(Test-Path "$env:TEMP\efw.zip") -and $retryCount -lt $maxRetries) {
-              Start-Sleep -Seconds 2
-              Invoke-WebRequest -Uri "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip" -OutFile "$env:TEMP\efw.zip"
-              $retryCount++
+          function Test-ZipFile {
+              param([string]$FilePath)
+              try {
+                  Add-Type -AssemblyName System.IO.Compression.FileSystem
+                  $zip = [System.IO.Compression.ZipFile]::OpenRead($FilePath)
+                  $isValid = $zip.Entries.Count -ge 0
+                  $zip.Dispose()
+                  return $isValid
+              }
+              catch {
+                  return $false
+              }
           }
-          if (!(Test-Path "$env:TEMP\efw.zip")) {
+
+          $maxRetries = 3
+          $retryCount = 0
+          $downloadUrl = "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip"
+          $zipPath = "D:\temp\efw.zip"
+          $extractPath = "D:\temp"
+          $ebpfPath = "D:\temp\ebpf"
+
+          while ($retryCount -lt $maxRetries) {
+              try {
+                  Write-Host "Download attempt $($retryCount + 1) of $maxRetries..."
+                  
+                  # Use WebClient instead of Invoke-WebRequest
+                  $webClient = New-Object System.Net.WebClient
+                  $webClient.Headers.Add("User-Agent", "PowerShell/5.1")
+                  $webClient.DownloadFile($downloadUrl, $zipPath)
+                  $webClient.Dispose()
+                  
+                  # Validate the download
+                  if (Test-Path $zipPath) {
+                      $fileInfo = Get-Item $zipPath
+                      Write-Host "Downloaded file size: $($fileInfo.Length) bytes"
+                      
+                      if (Test-ZipFile $zipPath) {
+                          break
+                      } else {
+                          Write-Warning "Invalid or corrupted ZIP file detected"
+                          Remove-Item $zipPath -Force
+                      }
+                  } else {
+                      Write-Warning "Download file not found after download attempt"
+                  }
+              }
+              catch {
+                  Write-Warning "Download attempt failed: $($_.Exception.Message)"
+                  if ($webClient) { $webClient.Dispose() }
+                  if (Test-Path $zipPath) {
+                      Remove-Item $zipPath -Force
+                  }
+              }
+              
+              $retryCount++
+              if ($retryCount -lt $maxRetries) {
+                  Write-Host "Waiting 5 seconds before retry..."
+                  Start-Sleep -Seconds 5
+              }
+          }
+
+          # Final validation before proceeding
+          if (!(Test-Path $zipPath)) {
               throw "Download failed after $maxRetries attempts."
           }
-          Expand-Archive -Path "$env:TEMP\efw.zip" -DestinationPath "$env:TEMP"
-          Rename-Item -Path "$env:TEMP\Build-native-only NativeOnlyRelease x64" -NewName "$env:TEMP\ebpf"
-          
-          $setupScript = Get-ChildItem -Path "$env:TEMP\ebpf" -Filter "setup-ebpf.ps1" -Recurse | Select-Object -First 1
-          if ($setupScript) {
-            Write-Host "Found setup script: $($setupScript.FullName)"
-            Set-Location -Path $setupScript.DirectoryName
-            Write-Host "Changed directory to: $(Get-Location)"
-            & $setupScript.FullName
-          } else {
-            Get-ChildItem -Path "$env:TEMP\ebpf" -Recurse 
-            Write-Error "Setup script not found in the extracted package"
-            exit 1
+
+          try {
+              Write-Host "Extracting archive to $extractPath..."
+              Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force -ErrorAction Stop
           }
+          catch {
+              Write-Error "Failed to extract archive: $($_.Exception.Message)"
+              throw
+          }
+
+          # Rename the extracted directory
+          $originalPath = "D:\temp\Build-native-only NativeOnlyRelease x64"
+          if (Test-Path $originalPath) {
+              try {
+                  Rename-Item -Path $originalPath -NewName $ebpfPath -ErrorAction Stop
+              }
+              catch {
+                  Write-Error "Failed to rename directory: $($_.Exception.Message)"
+                  throw
+              }
+          } else {
+              Write-Error "Expected directory not found: $originalPath"
+              Get-ChildItem -Path $extractPath -Directory | ForEach-Object { Write-Host "Found directory: $($_.FullName)" }
+              throw "Extraction directory structure is not as expected"
+          }
+
+          # Find and execute the setup script
+          Write-Host "Searching for setup script..."
+          $setupScript = Get-ChildItem -Path $ebpfPath -Filter "setup-ebpf.ps1" -Recurse | Select-Object -First 1
+
+          if ($setupScript) {
+              Write-Host "Found setup script: $($setupScript.FullName)"
+              
+              # Change to the script directory
+              $originalLocation = Get-Location
+              try {
+                  Set-Location -Path $setupScript.DirectoryName
+                  Write-Host "Changed directory to: $(Get-Location)"
+                  
+                  # Execute the setup script
+                  Write-Host "Executing setup script..."
+                  & $setupScript.FullName
+                  
+                  Write-Host "Setup script execution completed"
+              }
+              catch {
+                  Write-Error "Failed to execute setup script: $($_.Exception.Message)"
+                  throw
+              }
+              finally {
+                  # Restore original location
+                  Set-Location -Path $originalLocation
+              }
+          } else {
+              Write-Error "Setup script 'setup-ebpf.ps1' not found in the extracted package"
+              Write-Host "Directory contents:"
+              Get-ChildItem -Path $ebpfPath -Recurse | ForEach-Object { 
+                  Write-Host "  $($_.FullName)" 
+              }
+              throw
+          }
+
+          Write-Host "Script execution completed successfully"
 
       - name: Add eBPF for Windows to PATH
         shell: pwsh
