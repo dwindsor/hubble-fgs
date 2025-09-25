@@ -202,14 +202,28 @@ jobs:
               }
           }
 
+          $zipPath = "D:\temp\efw.zip"
+          $zipCached = $false
+
+          if (Test-Path $zipPath) {
+              $fileInfo = Get-Item $zipPath
+              Write-Host "Cached ZIP file found, size: $($fileInfo.Length) bytes"
+              
+              if (Test-ZipFile $zipPath) {
+                  $zipCached = $true
+              } else {
+                  Write-Warning "Invalid or corrupted cached ZIP file found, removing"
+                  Remove-Item $zipPath -Force
+              }
+          }
+
           $maxRetries = 3
           $retryCount = 0
           $downloadUrl = "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip"
-          $zipPath = "D:\temp\efw.zip"
           $extractPath = "D:\temp"
           $ebpfPath = "D:\temp\ebpf"
 
-          while ($retryCount -lt $maxRetries) {
+          while (-not $zipCached -and ($retryCount -lt $maxRetries)) {
               try {
                   Write-Host "Download attempt $($retryCount + 1) of $maxRetries..."
                   
@@ -225,6 +239,7 @@ jobs:
                       Write-Host "Downloaded file size: $($fileInfo.Length) bytes"
                       
                       if (Test-ZipFile $zipPath) {
+                          $zipCached = $true
                           break
                       } else {
                           Write-Warning "Invalid or corrupted ZIP file detected"
@@ -250,7 +265,7 @@ jobs:
           }
 
           # Final validation before proceeding
-          if (!(Test-Path $zipPath)) {
+          if (-not (Test-Path $zipPath)) {
               throw "Download failed after $maxRetries attempts."
           }
 
@@ -451,14 +466,28 @@ jobs:
               }
           }
 
+          $zipPath = "D:\temp\efw.zip"
+          $zipCached = $false
+
+          if (Test-Path $zipPath) {
+              $fileInfo = Get-Item $zipPath
+              Write-Host "Cached ZIP file found, size: $($fileInfo.Length) bytes"
+              
+              if (Test-ZipFile $zipPath) {
+                  $zipCached = $true
+              } else {
+                  Write-Warning "Invalid or corrupted cached ZIP file found, removing"
+                  Remove-Item $zipPath -Force
+              }
+          }
+
           $maxRetries = 3
           $retryCount = 0
           $downloadUrl = "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip"
-          $zipPath = "D:\temp\efw.zip"
           $extractPath = "D:\temp"
           $ebpfPath = "D:\temp\ebpf"
 
-          while ($retryCount -lt $maxRetries) {
+          while (-not $zipCached -and ($retryCount -lt $maxRetries)) {
               try {
                   Write-Host "Download attempt $($retryCount + 1) of $maxRetries..."
                   
@@ -474,6 +503,7 @@ jobs:
                       Write-Host "Downloaded file size: $($fileInfo.Length) bytes"
                       
                       if (Test-ZipFile $zipPath) {
+                          $zipCached = $true
                           break
                       } else {
                           Write-Warning "Invalid or corrupted ZIP file detected"
@@ -499,7 +529,7 @@ jobs:
           }
 
           # Final validation before proceeding
-          if (!(Test-Path $zipPath)) {
+          if (-not (Test-Path $zipPath)) {
               throw "Download failed after $maxRetries attempts."
           }
 
