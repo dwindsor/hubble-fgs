@@ -110,8 +110,8 @@ jobs:
         id: prepare-artifacts
         run: |
           mkdir -p ./release-artifacts
-          tar -czf ./release-artifacts/fwa-amd64-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/amd64 .
-          tar -czf ./release-artifacts/fwa-arm64-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/arm64 .
+          tar -czf ./release-artifacts/fwa-elba-amd64-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/amd64 .
+          tar -czf ./release-artifacts/fwa-elba-arm64-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/arm64 .
           cd ./release-artifacts
           sha256sum *.tar.gz > SHA256SUMS.txt
           echo "artifact_dir=$(pwd)" >> $GITHUB_OUTPUT
