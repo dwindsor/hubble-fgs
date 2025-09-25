@@ -79,7 +79,7 @@ func (r DatapathSource) String() string {
 	s := ""
 
 	if r.Vrf != "" {
-		s = fmt.Sprintf("%s ", r.Vrf)
+		s = fmt.Sprintf("%s [%d] ", r.Vrf, r.VrfId)
 	} else if r.Vlan != 0 {
 		s = fmt.Sprintf("%d ", r.Vlan)
 	}
