@@ -222,7 +222,7 @@ func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, policies []*dpuP
 	// Applying policy to the accelerated dataplane
 	err := dp.Accelerated.UpdateFirewallPolicies(ctx, policyMsg)
 	if err != nil {
-		logger.GetLogger().Error("Failed to push policy to accelerated dataplane", logfields.Error, err)
+		logger.GetLogger().Error("Failed to push policy to accelerated dataplane", logfields.Error, err, "policy", fwPolicy)
 		return err
 	}
 	logger.GetLogger().Info("policy update", "policy", fwPolicy)
