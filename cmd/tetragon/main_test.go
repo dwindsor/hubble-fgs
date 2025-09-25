@@ -19,6 +19,9 @@ import (
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 	"github.com/stretchr/testify/assert"
 
+	eedefaults "github.com/isovalent/hubble-fgs/pkg/defaults"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensorinit"
@@ -43,6 +46,7 @@ func TestGeneratedExecEvents(t *testing.T) {
 	option.Config.BpfDir = defaults.DefaultMapPrefix
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.TracingPolicyDir = defaults.DefaultTpDir
+	enterpriseOption.Config.PoliciesDir = eedefaults.DefaultPoliciesDir
 
 	// Configure export file
 	f, err := testutils.CreateExportFile(t)
@@ -57,21 +61,31 @@ func TestGeneratedExecEvents(t *testing.T) {
 	}
 	option.Config.ExportFilename = fname
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	var readyWg, pidWg sync.WaitGroup
+	readyCalled := false
+	// readyWg is for the `ready` callback
+	readyWg.Add(1)
 	ready := func() {
-		wg.Done()
+		readyWg.Done()
+		readyCalled = true
 	}
+
+	// pidWg is for the tetragon process goroutine
+	pidWg.Add(1)
 
 	// Start tetragon in separate process so we can keep the whole
 	// export/server machinery running until we get expected results.
 	go func() {
+		defer pidWg.Done()
 		err = tetragonExecuteCtx(ctx, cancel, ready)
+		if !readyCalled {
+			ready()
+		}
 		assert.NoError(t, err)
 	}()
 
 	// Wait till tetragon's observer is up and running
-	wg.Wait()
+	readyWg.Wait()
 
 	// Make sure exec event with pid 1 was generated
 	checker := ec.NewUnorderedEventChecker(
@@ -91,5 +105,7 @@ func TestGeneratedExecEvents(t *testing.T) {
 	}
 
 	cancel()
+	// Wait till tetragon's goroutine exits
+	pidWg.Wait()
 	assert.NoError(t, err)
 }
