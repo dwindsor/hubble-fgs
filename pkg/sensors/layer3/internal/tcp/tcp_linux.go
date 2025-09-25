@@ -68,7 +68,7 @@ func StatsEnabled() bool {
 	return StatsInterval > 0
 }
 
-func ConfigureMaps(cfg *networkapi.ConfigValue) error {
+func ConfigureMaps(cfg *networkapi.Layer3ConfigValue) error {
 	ConfigureSockStatSampler(cfg,
 		StatsInterval,
 		WatermarksEnable,
@@ -94,7 +94,7 @@ func ConfigureSensor() error {
 	return nil
 }
 
-func UnloadSensor(cfg *networkapi.ConfigValue, tp tracingpolicy.TracingPolicy) error {
+func UnloadSensor(cfg *networkapi.Layer3ConfigValue, tp tracingpolicy.TracingPolicy) error {
 	TimestampEnabled = false
 	var err error
 

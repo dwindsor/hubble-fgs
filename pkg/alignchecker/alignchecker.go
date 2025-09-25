@@ -27,7 +27,7 @@ import (
 func CheckStructAlignments(pathToObj string) error {
 	alignments := map[string][]any{
 		// Layer 3
-		"cfg_value":                 {networkapi.ConfigValue{}},
+		"cfg_value":                 {networkapi.Layer3ConfigValue{}},
 		"tcp_send_check_sample_cfg": {networkapi.TCPSockStatValue{}},
 		"tcp_event_disable_config":  {networkapi.TCPEventDisableValue{}},
 		"udp_sensor_config":         {networkapi.UdpConfigValue{}},

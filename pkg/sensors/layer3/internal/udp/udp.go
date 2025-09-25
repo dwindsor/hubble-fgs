@@ -191,7 +191,7 @@ func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 	observer.AllListeners(&udp)
 }
 
-func ConfigureMaps(cfg *networkapi.ConfigValue) error {
+func ConfigureMaps(cfg *networkapi.Layer3ConfigValue) error {
 	cfg.UDP = Config
 	// If this is a CLI configuration lets inherit the network events
 	// configuration as well.
@@ -235,7 +235,7 @@ func StartIdleSocketGC() {
 	}
 }
 
-func UnloadSensor(cfg *networkapi.ConfigValue) error {
+func UnloadSensor(cfg *networkapi.Layer3ConfigValue) error {
 	if gcTimerRunning {
 		gcTimer.Stop()
 		gcTimerRunning = false

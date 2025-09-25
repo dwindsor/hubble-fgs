@@ -319,7 +319,7 @@ func (s *statsManager) correctedStatsEvent(tcp grpc.MsgIPWithStatsEventUnix) (gr
 	return newTcp, nil
 }
 
-func ConfigureSockStatSampler(cfg *networkapi.ConfigValue, sampleRate time.Duration, watermarksEnable bool, watermarksAvgWindowSize uint64,
+func ConfigureSockStatSampler(cfg *networkapi.Layer3ConfigValue, sampleRate time.Duration, watermarksEnable bool, watermarksAvgWindowSize uint64,
 	burstTriggerMult uint64, dipTriggerMult uint64, rttMax, rttMin uint32) error {
 	watermarksEnableVar := uint8(0)
 	if watermarksEnable {

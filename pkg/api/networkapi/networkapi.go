@@ -363,7 +363,7 @@ func (v *CgroupProtocolConfigValue) String() string {
 	)
 }
 
-type ConfigValue struct {
+type Layer3ConfigValue struct {
 	EnableIcmpTracking uint8                     `align:"icmp_tracking_enabled"`
 	IcmpNetMatch       uint8                     `align:"icmp_net_match"`
 	RawEnabled         uint8                     `align:"raw_enabled"`

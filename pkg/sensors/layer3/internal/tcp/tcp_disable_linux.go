@@ -16,7 +16,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 )
 
-func ConfigureTCPDisableEvents(cfg *networkapi.ConfigValue, disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) {
+func ConfigureTCPDisableEvents(cfg *networkapi.Layer3ConfigValue, disableConnect bool, disableClose bool, disableAccept bool, disableListen bool) {
 	disableConnectVar := uint8(0)
 	disableCloseVar := uint8(0)
 	disableAcceptVar := uint8(0)
