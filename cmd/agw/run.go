@@ -37,7 +37,7 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 	dns.SetDatapath(&datapath.DPUProgrammer{
 		DpuListener: dpuListener,
 	})
-	s := dns.NewPolicyState()
+	s := dns.GetRealizedState()
 	for _, nameGID := range Config.VrfMap {
 		name := strings.Split(nameGID, ":")
 		gid, _ := strconv.Atoi(name[1])
