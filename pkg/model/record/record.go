@@ -63,10 +63,11 @@ func (a *DatapathAction) String() string {
 // would tell us (and they would be correct) to extend Src key directly, but
 // hacking a new field type keeps separate things separate for the time being.
 type DatapathSource struct {
-	Vrf  string
-	Vlan uint32
-	Ip   string
-	Port uint32
+	Vrf   string
+	VrfId uint32
+	Vlan  uint32
+	Ip    string
+	Port  uint32
 }
 
 type DatapathEndpoint struct {

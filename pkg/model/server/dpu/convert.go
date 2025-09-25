@@ -43,6 +43,7 @@ func recordToDPUPolicyRule(r *record.DatapathRecord, update bool) *DPUPolicyRule
 				MaxPort:  r.L3Src.Port,
 				Vlan:     r.L3Src.Vlan,
 				Vrf:      r.L3Src.Vrf,
+				VrfId:    r.L3Src.VrfId,
 				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 			},
 			// The current policy resolution does not include destinatoin
@@ -53,6 +54,7 @@ func recordToDPUPolicyRule(r *record.DatapathRecord, update bool) *DPUPolicyRule
 				MaxPort:  r.Endpoint.Port,
 				Vlan:     0,
 				Vrf:      "",
+				VrfId:    0,
 				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 			},
 		},
@@ -71,6 +73,7 @@ func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicy
 			MaxPort:  p.Source.Network.MaxPort,
 			Vlan:     p.Source.Network.Vlan,
 			Vrf:      p.Source.Network.Vrf,
+			VrfId:    p.Source.Network.VrfId,
 			Protocol: p.Source.Network.Protocol,
 		},
 		Destination: DPUSubject{
@@ -79,6 +82,7 @@ func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicy
 			MaxPort:  p.Destination.Network.MaxPort,
 			Vlan:     p.Destination.Network.Vlan,
 			Vrf:      p.Destination.Network.Vrf,
+			VrfId:    p.Destination.Network.VrfId,
 			Protocol: p.Destination.Network.Protocol,
 		},
 	}
@@ -99,6 +103,7 @@ func dpuRuleToResponse(rule *DPUPolicyRule) *v1alpha.Streaml3L4NetworkPolicyResp
 			MaxPort:  r.Source.MaxPort,
 			Vlan:     r.Source.Vlan,
 			Vrf:      r.Source.Vrf,
+			VrfId:    r.Source.VrfId,
 			Protocol: r.Source.Protocol,
 		},
 	}
@@ -109,6 +114,7 @@ func dpuRuleToResponse(rule *DPUPolicyRule) *v1alpha.Streaml3L4NetworkPolicyResp
 			MaxPort:  r.Destination.MaxPort,
 			Vlan:     r.Destination.Vlan,
 			Vrf:      r.Destination.Vrf,
+			VrfId:    r.Source.VrfId,
 			Protocol: r.Destination.Protocol,
 		},
 	}

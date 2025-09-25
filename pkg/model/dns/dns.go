@@ -622,10 +622,13 @@ func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
 				Port: uint32(dport),
 			}
 
+			vrfId := state.GetL3NetworkID(l3.Policy.Subject.LogicalNetwork.VRF)
+
 			ds := &record.DatapathSource{
-				Ip:   l3.Policy.Source.CIDR.CIDR,
-				Vrf:  l3.Policy.Subject.LogicalNetwork.VRF,
-				Vlan: l3.Policy.Subject.LogicalNetwork.VLAN,
+				Ip:    l3.Policy.Source.CIDR.CIDR,
+				Vrf:   l3.Policy.Subject.LogicalNetwork.VRF,
+				VrfId: vrfId,
+				Vlan:  l3.Policy.Subject.LogicalNetwork.VLAN,
 			}
 
 			if len(l3.Policy.Source.Ports) == 0 {

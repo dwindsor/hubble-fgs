@@ -38,6 +38,7 @@ type DPUSubject struct {
 	MinPort  uint32
 	MaxPort  uint32
 	Vlan     uint32
+	VrfId    uint32
 	Vrf      string
 	Protocol v1alpha.PolicyProtocol
 }

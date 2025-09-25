@@ -25,7 +25,7 @@ func ruleToJSON(rule *dpu.DPURule) FwPolicyV2 {
 	source := EndpointV2{
 		Ip:       rule.Source.Cidr,
 		Vlan:     int(rule.Source.Vlan),
-		Vrf:      1, //rule.Source.Vrf,
+		Vrf:      int(rule.Source.VrfId),
 		PortHigh: uint16(rule.Source.MaxPort),
 		PortLow:  uint16(rule.Source.MinPort),
 	}
@@ -35,7 +35,7 @@ func ruleToJSON(rule *dpu.DPURule) FwPolicyV2 {
 		PortHigh: uint16(rule.Destination.MaxPort),
 		PortLow:  uint16(rule.Destination.MinPort),
 		Vlan:     int(rule.Destination.Vlan),
-		Vrf:      1, //rule.Destination.Vrf,
+		Vrf:      0, // Currently destination VRFs are wildcards
 	}
 
 	return FwPolicyV2{
