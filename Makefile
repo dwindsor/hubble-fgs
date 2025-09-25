@@ -131,7 +131,15 @@ agwctl: ## Compile smartswitch agent CLI
 
 .PHONY: fwa
 fwa:    # Cross compile FWA agent for arm64 (aarch64) architecture in DPU and Simulator VM
-	GOOS=linux $(subst GOARCH=amd64,GOARCH=arm64,$(GO_BUILD)) ./cmd/fwa
+	GOOS=linux $(GO_BUILD) ./cmd/fwa
+
+# .PHONY: fwactl
+# fwactl: ## Compile FWA agent CLI
+# 	GOOS=linux $(GO_BUILD) ./cmd/fwactl
+
+.PHONY: package-fwa
+package-fwa: ## Build FWA agent docker image for elba
+	$(MAKE) -C install/fwa docker-dist-elba
 
 .PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.

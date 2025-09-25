@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -e
+
+DAF_HOME=@DAF_HOME@
+INST_HOME=@DAF_PKG_ROOT@
+
+# Link in new version
+ln -sf $INST_HOME/bin/daf-cpa $DAF_HOME/bin/daf-cpa
+ln -sf $INST_HOME/bin/fwactl $DAF_HOME/bin/fwactl
+ln -sf $INST_HOME/bin/finish $DAF_HOME/bin/daf-cpa-finish
+ln -sf $INST_HOME/bin/run $DAF_HOME/bin/daf-cpa-run
+ln -sf $INST_HOME/bin/log $DAF_HOME/bin/daf-cpa-log
+
+# Make sure the log directory is present
+mkdir -p $DAF_HOME/log
+
+# Link in the service
+$INST_HOME/bin/servicedir.sh 
+
+exit 0

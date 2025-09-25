@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Set path adding our sbin
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:@DAF_HOME@/sbin
+
+# Try to the service
+PATH=$PATH s6-svc -wD -d @DAF_HOME@/var/s6/services/cpa 2> /dev/null
+
+# Unlink the service
+rm -rf @DAF_HOME@/var/s6/services/cpa
+
+# Remove binary links
+rm -f @DAF_BIN@/daf-cpa
+rm -f @DAF_BIN@/daf-cpa-run
+rm -f @DAF_BIN@/daf-cpa-finish
+rm -f @DAF_BIN@/daf-cpa-log
+rm -f @DAF_BIN@/fwactl
+
+exit 0

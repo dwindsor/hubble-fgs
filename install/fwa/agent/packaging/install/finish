@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# Create crash reports directory
+mkdir -p /opt/cisco/daf/var/s6/services/cpa/crash-reports
+
+# Redirect stderr to stdout
+exec 2>&1
+
+echo "############################################################"
+echo "#                                                          #"
+printf "#                CPA Service Stopped                       #\n"
+printf "#                    Exit Code: %-26s #\n" "$1"
+printf "#                    Signal: %-29s #\n" "$2"
+printf "#                    Process Group ID: %-19s #\n" "$4"
+echo "#                                                          #"
+echo "############################################################"
+
+# Run cpa-finish with the same arguments
+# exec /opt/cisco/daf/bin/cpa-finish "$@"
+s6-ftrig-notify /opt/cisco/daf/var/s6/services/cpa/crash "C"

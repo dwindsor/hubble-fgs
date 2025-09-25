@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+HS_HOME=@DAF_HOME@
+# Set path adding our sbin
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${HS_HOME}/sbin"
+
+SERVICE_DIR="${HS_HOME}/var/s6/services/cpa"
+SERVICE_RUN="${HS_HOME}/bin/daf-cpa-run"
+SERVICE_FINISH="${HS_HOME}/bin/daf-cpa-finish"
+SERVICE_LOG="${HS_HOME}/bin/daf-cpa-log"
+LOG_DIR="${HS_HOME}/log/cpa"
+
+# This script is used to create the service directory for the agent
+mkdir -p "${SERVICE_DIR}"
+mkdir -p "${SERVICE_DIR}/log"
+echo "3" > "${SERVICE_DIR}/notification-fd"
+echo "3" > "${SERVICE_DIR}/log/notification-fd"
+echo "30000" > "${SERVICE_DIR}/timeout-kill"
+PATH=${PATH} s6-mkfifodir "${SERVICE_DIR}/crash"
+ln -sf "${SERVICE_RUN}" "${SERVICE_DIR}/run"
+ln -sf "${SERVICE_FINISH}" "${SERVICE_DIR}/finish"
+ln -sf "${SERVICE_LOG}" "${SERVICE_DIR}/log/run"
