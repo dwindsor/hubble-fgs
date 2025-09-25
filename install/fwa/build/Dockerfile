@@ -72,8 +72,9 @@ WORKDIR /hubble-fgs
 RUN --mount=type=ssh ./install/fwa/build/scripts/create_known_hosts.sh
 RUN --mount=type=ssh make fwa
 # RUN --mount=type=ssh make fwactl
-COPY fwa /src/agent
-# COPY fwactl /src/agent
+# Move the compiled binary instead of copying from host
+RUN mkdir -p /src/agent && cp /hubble-fgs/fwa /src/agent/
+# RUN mkdir -p /src/agent && cp /hubble-fgs/fwactl /src/agent/
 COPY ./install/fwa/agent /src/agent
 COPY ./install/fwa/Makefile /src/Makefile
 WORKDIR /src/agent
