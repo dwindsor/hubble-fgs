@@ -32,6 +32,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/manager"
@@ -76,7 +77,8 @@ var (
 
 func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
 	// We want to make sure we stand configuration up when loading/unloading the programs.
-	config := layer3cfg.ConfigureSettings(false, false, false)
+	config := networkapi.Layer3ConfigValue{}
+	layer3cfg.SetConfig(&config, false, false, false)
 
 	if !enterpriseOption.Config.Layer3CLIEnable {
 		cgrp_ingress_configured = false
@@ -466,7 +468,8 @@ func (l3 *l3Sensor) PolicyHandler(
 
 func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	// If UDP is enabled then we need close events reported to maintain our maps.
-	config := layer3cfg.ConfigureSettings(rawEnabled, reportRawClose, udpEnabled)
+	config := networkapi.Layer3ConfigValue{}
+	layer3cfg.SetConfig(&config, rawEnabled, reportRawClose, udpEnabled)
 
 	if tcpEnabled && (spec == nil || spec.Parser.Tcp != nil) {
 		if err := tcp.ConfigureMaps(&config); err != nil {

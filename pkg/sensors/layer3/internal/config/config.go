@@ -13,41 +13,26 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
-func ConfigureSettings(enableRaw, enableRawReportClose, enableUdpReportClose bool) networkapi.Layer3ConfigValue {
-	icmpTracking := uint8(0)
-
+func SetConfig(config *networkapi.Layer3ConfigValue, enableRaw, enableRawReportClose, enableUdpReportClose bool) {
 	if enterpriseOption.Config.EnableIcmpTracking {
-		icmpTracking = 1
+		config.EnableIcmpTracking = 1
 	}
 
-	icmpNetMatch := uint8(1)
-	if !utils.SupportCGroupSKBProbeRead() {
-		icmpNetMatch = 0
+	if utils.SupportCGroupSKBProbeRead() {
+		config.IcmpNetMatch = 1
 	}
 
-	rawEnabled := uint8(0)
 	if enableRaw || enterpriseOption.Config.EnableRawsock {
-		rawEnabled = 1
+		config.RawEnabled = 1
 	}
 
-	rawReportClose := uint8(0)
 	if enableRawReportClose {
-		rawReportClose = 1
+		config.RawReportClose = 1
 	}
 
-	udpReportClose := uint8(0)
 	if enableUdpReportClose {
-		udpReportClose = 1
+		config.UdpReportClose = 1
 	}
-
-	value := &networkapi.Layer3ConfigValue{
-		EnableIcmpTracking: icmpTracking,
-		IcmpNetMatch:       icmpNetMatch,
-		RawEnabled:         rawEnabled,
-		RawReportClose:     rawReportClose,
-		UdpReportClose:     udpReportClose,
-	}
-	return *value
 }
 
 // UpdateMap flushes all the values from the config struct to the BPF map
