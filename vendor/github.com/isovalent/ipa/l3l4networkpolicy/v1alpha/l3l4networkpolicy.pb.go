@@ -369,10 +369,13 @@ type L3L4NetworkSubject struct {
 	MaxPort uint32 `protobuf:"varint,3,opt,name=max_port,json=maxPort,proto3" json:"max_port,omitempty"`
 	// VLAN of the subject may be empty when unused
 	Vlan uint32 `protobuf:"varint,4,opt,name=vlan,proto3" json:"vlan,omitempty"`
-	// VRF of the subject may be empty when unused
+	// VRF name of the subject may be empty when unused
 	Vrf string `protobuf:"bytes,5,opt,name=vrf,proto3" json:"vrf,omitempty"`
+	// unique ID associated with the VRF Name. This is used by datapaths to encode
+	// the vrf name into packet headers.
+	VrfId uint32 `protobuf:"varint,6,opt,name=vrf_id,json=vrfId,proto3" json:"vrf_id,omitempty"`
 	// Protocol of the network subject, e.g. "TCP", "UDP"
-	Protocol      PolicyProtocol `protobuf:"varint,6,opt,name=protocol,proto3,enum=l3l4networkpolicy.v1alpha.PolicyProtocol" json:"protocol,omitempty"`
+	Protocol      PolicyProtocol `protobuf:"varint,7,opt,name=protocol,proto3,enum=l3l4networkpolicy.v1alpha.PolicyProtocol" json:"protocol,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -440,6 +443,13 @@ func (x *L3L4NetworkSubject) GetVrf() string {
 		return x.Vrf
 	}
 	return ""
+}
+
+func (x *L3L4NetworkSubject) GetVrfId() uint32 {
+	if x != nil {
+		return x.VrfId
+	}
+	return 0
 }
 
 func (x *L3L4NetworkSubject) GetProtocol() PolicyProtocol {
@@ -1553,14 +1563,15 @@ var File_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto protoreflect.FileDesc
 
 const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\n" +
-	"1l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto\x12\x19l3l4networkpolicy.v1alpha\"\xcb\x01\n" +
+	"1l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto\x12\x19l3l4networkpolicy.v1alpha\"\xe2\x01\n" +
 	"\x12L3L4NetworkSubject\x12\x12\n" +
 	"\x04cidr\x18\x01 \x01(\tR\x04cidr\x12\x19\n" +
 	"\bmin_port\x18\x02 \x01(\rR\aminPort\x12\x19\n" +
 	"\bmax_port\x18\x03 \x01(\rR\amaxPort\x12\x12\n" +
 	"\x04vlan\x18\x04 \x01(\rR\x04vlan\x12\x10\n" +
-	"\x03vrf\x18\x05 \x01(\tR\x03vrf\x12E\n" +
-	"\bprotocol\x18\x06 \x01(\x0e2).l3l4networkpolicy.v1alpha.PolicyProtocolR\bprotocol\"X\n" +
+	"\x03vrf\x18\x05 \x01(\tR\x03vrf\x12\x15\n" +
+	"\x06vrf_id\x18\x06 \x01(\rR\x05vrfId\x12E\n" +
+	"\bprotocol\x18\a \x01(\x0e2).l3l4networkpolicy.v1alpha.PolicyProtocolR\bprotocol\"X\n" +
 	"\rPolicySubject\x12G\n" +
 	"\anetwork\x18\x01 \x01(\v2-.l3l4networkpolicy.v1alpha.L3L4NetworkSubjectR\anetwork\"\xe4\x02\n" +
 	"\n" +

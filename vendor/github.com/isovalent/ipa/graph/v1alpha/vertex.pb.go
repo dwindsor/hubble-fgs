@@ -311,7 +311,13 @@ type VertexFamilyNetworkDevice struct {
 	// the connection.
 	Ip string `protobuf:"bytes,2,opt,name=ip,proto3" json:"ip,omitempty"`
 	// port is the network port associated with the ip address.
-	Port          uint32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	Port uint32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	// vlan is an ID in the range 1 to 4094 that defines a broadcast domain at
+	// the data link layer.
+	Vlan uint32 `protobuf:"varint,4,opt,name=vlan,proto3" json:"vlan,omitempty"`
+	// vrf is the name of a virtual routing and forwarding segement that is the
+	// equivalent of a VLAN but at the network layer.
+	Vrf           string `protobuf:"bytes,5,opt,name=vrf,proto3" json:"vrf,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -365,6 +371,20 @@ func (x *VertexFamilyNetworkDevice) GetPort() uint32 {
 		return x.Port
 	}
 	return 0
+}
+
+func (x *VertexFamilyNetworkDevice) GetVlan() uint32 {
+	if x != nil {
+		return x.Vlan
+	}
+	return 0
+}
+
+func (x *VertexFamilyNetworkDevice) GetVrf() string {
+	if x != nil {
+		return x.Vrf
+	}
+	return ""
 }
 
 // VertexFamilyWorldEntity represents a broad set of network elements outside
@@ -460,11 +480,13 @@ const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	"\rworkload_kind\x18\v \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\fworkloadKind\x12\x0e\n" +
 	"\x02ip\x18\f \x01(\tR\x02ip\x12\x12\n" +
 	"\x04port\x18\r \x01(\rR\x04port\x124\n" +
-	"\x16application_model_uuid\x18\x0e \x01(\tR\x14applicationModelUuid\"S\n" +
+	"\x16application_model_uuid\x18\x0e \x01(\tR\x14applicationModelUuid\"y\n" +
 	"\x19VertexFamilyNetworkDevice\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x0e\n" +
 	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x12\n" +
-	"\x04port\x18\x03 \x01(\rR\x04port\"X\n" +
+	"\x04port\x18\x03 \x01(\rR\x04port\x12\x12\n" +
+	"\x04vlan\x18\x04 \x01(\rR\x04vlan\x12\x10\n" +
+	"\x03vrf\x18\x05 \x01(\tR\x03vrf\"X\n" +
 	"\x17VertexFamilyWorldEntity\x12\x19\n" +
 	"\bdns_name\x18\x01 \x01(\tR\adnsName\x12\x0e\n" +
 	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x12\n" +

@@ -75,6 +75,12 @@ message VertexFamilyNetworkDevice {
   string ip = 2;
   // port is the network port associated with the ip address.
   uint32 port = 3;
+  // vlan is an ID in the range 1 to 4094 that defines a broadcast domain at
+  // the data link layer.
+  uint32 vlan = 4;
+  // vrf is the name of a virtual routing and forwarding segement that is the
+  // equivalent of a VLAN but at the network layer.
+  string vrf = 5;
 }
 
 // VertexFamilyWorldEntity represents a broad set of network elements outside

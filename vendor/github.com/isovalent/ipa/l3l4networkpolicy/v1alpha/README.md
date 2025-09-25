@@ -97,7 +97,8 @@ L3Network subjects are endpoints (destination or source) that specify a L3 endpo
 | min_port | [uint32](#uint32) |  | Minimum port of the subject |
 | max_port | [uint32](#uint32) |  | Maximum port of the subject |
 | vlan | [uint32](#uint32) |  | VLAN of the subject may be empty when unused |
-| vrf | [string](#string) |  | VRF of the subject may be empty when unused |
+| vrf | [string](#string) |  | VRF name of the subject may be empty when unused |
+| vrf_id | [uint32](#uint32) |  | unique ID associated with the VRF Name. This is used by datapaths to encode the vrf name into packet headers. |
 | protocol | [PolicyProtocol](#l3l4networkpolicy-v1alpha-PolicyProtocol) |  | Protocol of the network subject, e.g. &#34;TCP&#34;, &#34;UDP&#34; |
 
 

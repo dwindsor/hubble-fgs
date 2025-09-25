@@ -29,7 +29,7 @@ require (
 	github.com/google/gops v0.3.28
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/isovalent/ipa v1.18.0-pre.3.0.20250920214611-a41330c559e2
+	github.com/isovalent/ipa v1.18.0-pre.4.0.20250925005721-a57f22970a94
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.68
 	github.com/moby/go-archive v0.1.0

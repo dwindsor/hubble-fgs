@@ -929,7 +929,7 @@ github.com/iceber/iouring-go/syscall
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/isovalent/ipa v1.18.0-pre.3.0.20250920214611-a41330c559e2
+# github.com/isovalent/ipa v1.18.0-pre.4.0.20250925005721-a57f22970a94
 ## explicit; go 1.25.0
 github.com/isovalent/ipa/application_model/v1alpha
 github.com/isovalent/ipa/common/k8s/type/v1alpha

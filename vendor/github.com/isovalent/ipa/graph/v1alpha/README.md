@@ -5,6 +5,7 @@
 
 - [graph/v1alpha/edge.proto](#graph_v1alpha_edge-proto)
     - [Edge](#graph-v1alpha-Edge)
+    - [EdgeTypeBasic](#graph-v1alpha-EdgeTypeBasic)
     - [EdgeTypeL7Telemetry](#graph-v1alpha-EdgeTypeL7Telemetry)
     - [EdgeTypeNetworkTelemetry](#graph-v1alpha-EdgeTypeNetworkTelemetry)
     - [EdgeTypeRoutingTelemetry](#graph-v1alpha-EdgeTypeRoutingTelemetry)
@@ -49,9 +50,20 @@ An edge represents aggregatable properties of a given connection.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| basic | [EdgeTypeBasic](#graph-v1alpha-EdgeTypeBasic) |  |  |
 | network_telemetry | [EdgeTypeNetworkTelemetry](#graph-v1alpha-EdgeTypeNetworkTelemetry) |  |  |
 | routing_telemetry | [EdgeTypeRoutingTelemetry](#graph-v1alpha-EdgeTypeRoutingTelemetry) |  |  |
 | l7_telemetry | [EdgeTypeL7Telemetry](#graph-v1alpha-EdgeTypeL7Telemetry) |  |  |
+
+
+
+
+
+
+<a name="graph-v1alpha-EdgeTypeBasic"></a>
+
+### EdgeTypeBasic
+EdgeTypeBasic is a base edge that does not carry any information.
 
 
 
@@ -194,6 +206,8 @@ network device.
 | name | [string](#string) |  | name is the name of the network device. |
 | ip | [string](#string) |  | ip is a network address that can be associated with the network device and the connection. |
 | port | [uint32](#uint32) |  | port is the network port associated with the ip address. |
+| vlan | [uint32](#uint32) |  | vlan is an ID in the range 1 to 4094 that defines a broadcast domain at the data link layer. |
+| vrf | [string](#string) |  | vrf is the name of a virtual routing and forwarding segement that is the equivalent of a VLAN but at the network layer. |
 
 
 

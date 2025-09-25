@@ -39,10 +39,13 @@ message L3L4NetworkSubject {
   uint32 max_port = 3;
   // VLAN of the subject may be empty when unused
   uint32 vlan = 4;
-  // VRF of the subject may be empty when unused
+  // VRF name of the subject may be empty when unused
   string vrf = 5;
+  // unique ID associated with the VRF Name. This is used by datapaths to encode
+  // the vrf name into packet headers.
+  uint32 vrf_id = 6;
   // Protocol of the network subject, e.g. "TCP", "UDP"
-  PolicyProtocol protocol = 6;
+  PolicyProtocol protocol = 7;
 }
 
 // Policy Subjects are used for selectors, source, or destinations.
