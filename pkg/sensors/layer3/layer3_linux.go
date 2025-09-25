@@ -472,14 +472,14 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 	layer3cfg.SetConfig(&config, rawEnabled, reportRawClose, udpEnabled)
 
 	if tcpEnabled && (spec == nil || spec.Parser.Tcp != nil) {
-		if err := tcp.ConfigureMaps(&config); err != nil {
+		if err := tcp.SetConfig(&config); err != nil {
 			return fmt.Errorf("failed to configure TCP maps: %w", err)
 		}
 		config.Proto.TCP4Enabled = 1
 		config.Proto.TCP6Enabled = 1
 	}
 	if udpEnabled && (spec == nil || spec.Parser.Udp != nil) {
-		if err := udp.ConfigureMaps(&config); err != nil {
+		if err := udp.SetConfig(&config); err != nil {
 			return fmt.Errorf("failed to configure UDP maps: %w", err)
 		}
 		config.Proto.UDP4Enabled = 1
@@ -535,7 +535,7 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		}
 	}
 	if icmpEnabled && (spec == nil || spec.Parser.Icmp != nil) {
-		icmp.ConfigureMaps(&config)
+		icmp.SetConfig(&config)
 		config.Proto.ICMP4Enabled = 1
 		config.Proto.ICMP6Enabled = 1
 	}

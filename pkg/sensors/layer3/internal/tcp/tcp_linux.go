@@ -68,7 +68,7 @@ func StatsEnabled() bool {
 	return StatsInterval > 0
 }
 
-func ConfigureMaps(cfg *networkapi.Layer3ConfigValue) error {
+func SetConfig(cfg *networkapi.Layer3ConfigValue) error {
 	ConfigureSockStatSampler(cfg,
 		StatsInterval,
 		WatermarksEnable,
@@ -126,7 +126,7 @@ func UnloadSensor(cfg *networkapi.Layer3ConfigValue, tp tracingpolicy.TracingPol
 	DisableAccept = false
 	DisableListen = false
 	if enterpriseOption.Config.Layer3CLIEnable {
-		ConfigureMaps(cfg)
+		SetConfig(cfg)
 	}
 	return err
 }

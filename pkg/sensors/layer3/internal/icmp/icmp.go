@@ -141,7 +141,7 @@ func EnableIcmp() ([]*program.Program, []*program.Program, []*program.Map) {
 	return progsInitSock, progsCollectStats, maps
 }
 
-func ConfigureMaps(cfg *networkapi.Layer3ConfigValue) {
+func SetConfig(cfg *networkapi.Layer3ConfigValue) {
 	cfg.ICMPV6Info = 0
 	if v6info {
 		cfg.ICMPV6Info = 1
