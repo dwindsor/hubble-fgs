@@ -2,6 +2,7 @@ package dns
 
 import (
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -463,9 +464,8 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 	return allPolicy
 }
 
-func (state *PolicyState) GetRecords() ([]*record.DatapathRecord, error) {
+func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, error) {
 	calculatorRecords := []*record.DatapathRecord{}
-	currentPolicy := state.getAllExistingPolicy()
 	calculatorState := NewPolicyState()
 
 	uidGenerator := make(map[string]int, len(currentPolicy))
@@ -485,7 +485,7 @@ func (state *PolicyState) GetRecords() ([]*record.DatapathRecord, error) {
 		library.GetRepository().Link(p.Name, uid)
 		err := calculatorState.CreateMatchLabelsPolicy(uid, p)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -493,7 +493,7 @@ func (state *PolicyState) GetRecords() ([]*record.DatapathRecord, error) {
 	for _, p := range state.localObjects {
 		r, err := calculatorState.objectAdd(p)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		calculatorRecords = append(calculatorRecords, r...)
 	}
@@ -501,7 +501,7 @@ func (state *PolicyState) GetRecords() ([]*record.DatapathRecord, error) {
 	for _, p := range state.remoteObjects {
 		r, err := calculatorState.objectAdd(p)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		calculatorRecords = append(calculatorRecords, r...)
 	}
@@ -510,11 +510,11 @@ func (state *PolicyState) GetRecords() ([]*record.DatapathRecord, error) {
 		calculatorState.networkL3Objects[k] = uid
 		r, err := calculatorState.l3Add(k)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		calculatorRecords = append(calculatorRecords, r...)
 	}
-	return calculatorRecords, nil
+	return calculatorState, calculatorRecords, nil
 }
 
 // createMatchLabelsPolicySet computes the records generated from the current
@@ -525,67 +525,32 @@ func (state *PolicyState) GetRecords() ([]*record.DatapathRecord, error) {
 //
 // Todo, this has lots of low hanging fruit for optimizing duplicate calculations.
 func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
-	// Entry point to Policy state create
-	// Collect existing policy set
-	currentState := GetRealizedState()
-	currentPolicy := currentState.getAllExistingPolicy()
-	calculatorRecords, err := currentState.GetRecords()
+	// Entry point to Policy state create collect records for current
+	// policy state.
+	preState := GetRealizedState()
+	currentPolicy := preState.getAllExistingPolicy()
+	_, preRecords, err := preState.GetRecords(currentPolicy)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	// Building new state with extended policy set
-	newState := NewPolicyState()
-	allPolicy := append(currentPolicy, policy...)
-	uidGenerator := make(map[string]int, len(allPolicy))
+	// Building new policy set with additional policy
+	newPolicy := append(currentPolicy, policy...)
 
-	for _, p := range allPolicy {
-		id, ok := uidGenerator[p.Name]
-		if !ok {
-			id = 0
-			uidGenerator[p.Name] = 0
-		} else {
-			id++
-			uidGenerator[p.Name] = id
-		}
-
-		uid := fmt.Sprintf("%s_%d", p.Name, id)
-		library.GetRepository().Link(p.Name, uid)
-		err := newState.CreateMatchLabelsPolicy(uid, p)
-		if err != nil {
-			return nil, nil, nil, err
-		}
+	// Recalculate records using new state with new policy.
+	postState := NewPolicyState()
+	postState.localObjects = maps.Clone(preState.localObjects)
+	postState.remoteObjects = maps.Clone(preState.remoteObjects)
+	postState.networkL3Objects = maps.Clone(preState.networkL3Objects)
+	postState, postRecords, err := postState.GetRecords(newPolicy)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
-	// Walk existing pods and create new []record from new policy
-	addRecordsSet := []*record.DatapathRecord{}
-	for _, p := range currentState.localObjects {
-		r, err := newState.objectAdd(p)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		addRecordsSet = append(addRecordsSet, r...)
-	}
-	for _, p := range currentState.remoteObjects {
-		r, err := newState.objectAdd(p)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		addRecordsSet = append(addRecordsSet, r...)
-	}
-	// Walk existing L3 networks and create new []record from new policy
-	for k, uid := range currentState.networkL3Objects {
-		newState.networkL3Objects[k] = uid
-		r, err := newState.l3Add(k)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		addRecordsSet = append(addRecordsSet, r...)
-	}
-
-	// If the record no longer exists remove it.
-	removeRecordsSet := record.Diff(calculatorRecords, addRecordsSet)
-	return newState, addRecordsSet, removeRecordsSet, nil
+	// Find datapath record for new policy and the set of records
+	// we need to remove.
+	removeRecordsSet := record.Diff(preRecords, postRecords)
+	return postState, postRecords, removeRecordsSet, nil
 }
 
 func CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) error {
