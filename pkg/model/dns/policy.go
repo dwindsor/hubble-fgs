@@ -507,11 +507,11 @@ func (state *PolicyState) GetRecords() ([]*record.DatapathRecord, error) {
 	}
 
 	for k, uid := range state.networkL3Objects {
+		calculatorState.networkL3Objects[k] = uid
 		r, err := calculatorState.l3Add(k)
 		if err != nil {
 			return nil, err
 		}
-		calculatorState.networkL3Objects[k] = uid
 		calculatorRecords = append(calculatorRecords, r...)
 	}
 	return calculatorRecords, nil
