@@ -215,3 +215,112 @@ func TestBasicIntraVRFPolicy(t *testing.T) {
 	assert.NoError(t, errSet)
 	SetRealizedState(state)
 }
+
+func findVrf(t *testing.T, vrf string, id uint32) {
+	s := GetRealizedState()
+	for k, v := range s.networkL3Objects {
+		if k == vrf {
+			assert.Equal(t, v, id)
+			return
+		}
+	}
+	assert.Fail(t, "find VRF could not find a matching VRF name.")
+}
+
+func TestAddVRFWithNoPolicy(t *testing.T) {
+	s := NewPolicyState()
+	SetRealizedState(s)
+	s = GetRealizedState()
+
+	vrfMap := make(map[string]uint32)
+	vrfMap["red"] = 1
+	vrfMap["blue"] = 2
+	vrfMap["green"] = 3
+	s.SetL3NetworkMap(vrfMap)
+
+	// Check get state has update
+	s = GetRealizedState()
+	assert.Equal(t, len(s.networkL3Objects), 3)
+	findVrf(t, "red", 1)
+	findVrf(t, "blue", 2)
+	findVrf(t, "green", 3)
+}
+
+func TestAddVRFAfterPolicy(t *testing.T) {
+	var err error
+
+	state := NewPolicyState()
+	SetRealizedState(state)
+
+	// Add a red policy no records should be created until we have a VRF map.
+	netpolR := smartswitchTestVrfPolicy("redPolicy", "singleton", "red", "10.1.0.0/16", "10.2.0.0/16")
+	netpolSetR := []*types.TetragonNetworkPolicy{netpolR}
+	state, addSet, removeSet, errSet := createMatchLabelsPolicySet(netpolSetR)
+	assert.Zero(t, len(addSet))
+	assert.Zero(t, len(removeSet))
+	assert.NoError(t, errSet)
+	SetRealizedState(state)
+
+	// Add a blue policy with overlapping cidrs until we have a VRF map no records should be created.
+	netpolB := smartswitchTestVrfPolicy("bluePolicy", "singleton", "blue", "10.1.0.0/16", "10.2.0.0/16")
+	netpolSetB := []*types.TetragonNetworkPolicy{netpolB}
+	state, addSet, removeSet, errSet = createMatchLabelsPolicySet(netpolSetB)
+	assert.Zero(t, len(addSet))
+	assert.Zero(t, len(removeSet))
+	assert.NoError(t, errSet)
+	SetRealizedState(state)
+
+	// Add some colors with existing policy.
+	vrfMap := make(map[string]uint32)
+	vrfMap["red"] = 1
+	vrfMap["blue"] = 2
+	vrfMap["green"] = 3
+	state, addSet, removeSet, err = state.setL3NetworkMap(vrfMap)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(addSet))
+	err = findRecords(addSet, "redPolicy", "singleton", "red", "10.1.0.0/16", "10.2.0.0/16", uint32(443))
+	assert.NoError(t, err)
+	err = findRecords(addSet, "redPolicy", "singleton", "red", "10.1.0.0/16", "10.2.0.0/16", uint32(80))
+	assert.NoError(t, err)
+	err = findRecords(addSet, "bluePolicy", "singleton", "blue", "10.1.0.0/16", "10.2.0.0/16", uint32(443))
+	assert.NoError(t, err)
+	err = findRecords(addSet, "bluePolicy", "singleton", "blue", "10.1.0.0/16", "10.2.0.0/16", uint32(80))
+	assert.NoError(t, err)
+	assert.Zero(t, len(removeSet))
+
+	// Remove a single VRF and check update, delete. Also check we can reuse the deleted id to be sure
+	// nothing unexpected happens.
+	vrfMap = make(map[string]uint32)
+	vrfMap["red"] = 1
+	vrfMap["green"] = 2
+	state, addSet, removeSet, err = state.setL3NetworkMap(vrfMap)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(addSet))
+	err = findRecords(addSet, "redPolicy", "singleton", "red", "10.1.0.0/16", "10.2.0.0/16", uint32(443))
+	assert.NoError(t, err)
+	err = findRecords(addSet, "redPolicy", "singleton", "red", "10.1.0.0/16", "10.2.0.0/16", uint32(80))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, len(removeSet))
+	err = findRecords(removeSet, "bluePolicy", "singleton", "blue", "10.1.0.0/16", "10.2.0.0/16", uint32(443))
+	assert.NoError(t, err)
+	err = findRecords(removeSet, "bluePolicy", "singleton", "blue", "10.1.0.0/16", "10.2.0.0/16", uint32(80))
+	assert.NoError(t, err)
+
+	// Remove all the VRFs that are referenced by a policy so that we remove the remaining records.
+	vrfMap = make(map[string]uint32)
+	vrfMap["green"] = 2
+	state, addSet, removeSet, err = state.setL3NetworkMap(vrfMap)
+	assert.NoError(t, err)
+
+	assert.Zero(t, len(addSet))
+
+	assert.Equal(t, 2, len(removeSet))
+	err = findRecords(removeSet, "redPolicy", "singleton", "red", "10.1.0.0/16", "10.2.0.0/16", uint32(443))
+	assert.NoError(t, err)
+	err = findRecords(removeSet, "redPolicy", "singleton", "red", "10.1.0.0/16", "10.2.0.0/16", uint32(80))
+	assert.NoError(t, err)
+
+	SetRealizedState(state)
+}
