@@ -4,6 +4,7 @@ package dns
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -566,14 +567,41 @@ func addNamespaceLabels(endpointObject metav1.Object, ml *matchLabels.LabelSet) 
 	return nil
 }
 
+func (state *PolicyState) setL3NetworkMap(vrfMap map[string]uint32) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
+	currentPolicy := state.getAllExistingPolicy()
+	_, preRecords, err := state.GetRecords(currentPolicy)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Recalculate records using new state with new vrf Map.
+	postState := NewPolicyState()
+	postState.networkL3Objects = make(map[string]uint32)
+	for name, uid := range vrfMap {
+		logger.GetLogger().Info("Add Logical Network", "vrf", name, "gid", uid)
+		postState.networkL3Objects[name] = uid
+	}
+	postState.localObjects = maps.Clone(state.localObjects)
+	postState.remoteObjects = maps.Clone(state.remoteObjects)
+	postState, postRecords, err := postState.GetRecords(currentPolicy)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	removeRecordsSet := record.Diff(preRecords, postRecords)
+	return postState, postRecords, removeRecordsSet, nil
+}
+
 // These three functions Add, Get, Delete are meant to be used by NXOS code to
 // manage the logical network state.
 func (state *PolicyState) SetL3NetworkMap(vrfMap map[string]uint32) error {
-	state.networkL3Objects = make(map[string]uint32)
-	for name, uid := range vrfMap {
-		logger.GetLogger().Info("Add Logical Network", "vrf", name, "gid", uid)
-		state.networkL3Objects[name] = uid
+	newState, addRecords, removeRecords, err := state.setL3NetworkMap(vrfMap)
+	if err != nil {
+		return err
 	}
+	prog.AddRecords(addRecords, false)
+	prog.RemoveRecords(removeRecords)
+	SetRealizedState(newState)
 	return nil
 }
 
