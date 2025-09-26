@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path"
 	"testing"
 	"time"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	ossTestUtils "github.com/cilium/tetragon/pkg/testutils"
@@ -55,7 +55,10 @@ func runEbpfGlob(t *testing.T, pattern, str string) (bool, uint64, error) {
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 
 	objFile := "lsm_test_glob.o"
-	objPath := path.Join(option.Config.HubbleLib, objFile)
+	objPath, err := config.FindProgramFile(objFile)
+	if err != nil {
+		return false, 0, fmt.Errorf("runEbpfGlob: FindProgramFile: %w", err)
+	}
 	spec, err := ebpf.LoadCollectionSpec(objPath)
 	if err != nil {
 		return false, 0, fmt.Errorf("runEbpfGlob: ebpf.LoadCollectionSpec: %w", err)

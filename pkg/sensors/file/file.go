@@ -37,6 +37,7 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	ossBTF "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cgtracker"
+	ossconfig "github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
@@ -1523,7 +1524,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
 	for _, h := range fimProgs {
 		load := program.Builder(
-			path.Join(option.Config.HubbleLib, h.progName),
+			h.progName,
 			h.name,
 			fmt.Sprintf("%s/%s", h.tp, h.progSection),
 			pinName(h),
@@ -1582,7 +1583,11 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 
 		progs = append(progs, load)
 
-		spec, err := ebpf.LoadCollectionSpec(load.Name)
+		objPath, err := ossconfig.FindProgramFile(load.Name)
+		if err != nil {
+			return nil, err
+		}
+		spec, err := ebpf.LoadCollectionSpec(objPath)
 		if err != nil {
 			return nil, fmt.Errorf("addFileMonitoringSensor: ebpf.LoadCollectionSpec(%s): %w", load.Name, err)
 		}

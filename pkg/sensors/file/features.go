@@ -17,12 +17,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
 	"sync"
 	"syscall"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/option"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -79,7 +79,10 @@ func SupportDigests() bool {
 }
 
 func _probeProg(objFile, progName string, lnkFn func(prog *ebpf.Program) (link.Link, error)) error {
-	objPath := path.Join(option.Config.HubbleLib, objFile)
+	objPath, err := config.FindProgramFile(objFile)
+	if err != nil {
+		return err
+	}
 	spec, err := ebpf.LoadCollectionSpec(objPath)
 	if err != nil {
 		return err
@@ -123,7 +126,10 @@ func _probeProg(objFile, progName string, lnkFn func(prog *ebpf.Program) (link.L
 // In contrast with the other probe functions in this file this function is exported as it
 // it also used by tetra to probe support in machines that do not run FIM yet.
 func ProbeImaEnabledAlgo(objDir string, exePath string, exeArgs ...string) (string, error) {
-	objPath := path.Join(objDir, "probe_bpf_ima_file_hash.o")
+	objPath, err := config.FindProgramFileUnderLocations("probe_bpf_ima_file_hash.o", objDir)
+	if err != nil {
+		return "", err
+	}
 	spec, err := ebpf.LoadCollectionSpec(objPath)
 	if err != nil {
 		return "", fmt.Errorf("checkLSMHooks: ebpf.LoadCollectionSpec: %w", err)
