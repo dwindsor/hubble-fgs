@@ -122,9 +122,11 @@ func TestBasicIntraVRFPolicy(t *testing.T) {
 	s = GetRealizedState()
 
 	// Bug wth two policy on "red" wit different CIDRS.
-	s.AddL3Network("red", 1)
-	s.AddL3Network("blue", 2)
-	s.AddL3Network("green", 3)
+	vrfMap := make(map[string]uint32)
+	vrfMap["red"] = 1
+	vrfMap["blue"] = 2
+	vrfMap["green"] = 3
+	s.SetL3NetworkMap(vrfMap)
 
 	// Add a red policy and ensure we generate correct records for each port
 	netpolR := smartswitchTestVrfPolicy("redPolicy", "singleton", "red", "10.1.0.0/16", "10.2.0.0/16")

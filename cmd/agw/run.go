@@ -38,11 +38,13 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu
 		DpuListener: dpuListener,
 	})
 	s := dns.GetRealizedState()
+	vrfMap := make(map[string]uint32)
 	for _, nameGID := range Config.VrfMap {
 		name := strings.Split(nameGID, ":")
 		gid, _ := strconv.Atoi(name[1])
-		s.AddL3Network(name[0], uint32(gid))
+		vrfMap[name[0]] = uint32(gid)
 	}
+	s.SetL3NetworkMap(vrfMap)
 	dns.SetRealizedState(s)
 
 	waitGroup.Go(func() error {

@@ -568,17 +568,13 @@ func addNamespaceLabels(endpointObject metav1.Object, ml *matchLabels.LabelSet) 
 
 // These three functions Add, Get, Delete are meant to be used by NXOS code to
 // manage the logical network state.
-func (state *PolicyState) AddL3Network(name string, uid uint32) {
-	logger.GetLogger().Info("Add Logical Network", "vrf", name, "gid", uid)
-	state.networkL3Objects[name] = uid
-}
-
-func (state *PolicyState) GetL3NetworkID(name string) uint32 {
-	return state.networkL3Objects[name]
-}
-
-func (state *PolicyState) DelL3NetworkID(name string) {
-	delete(state.networkL3Objects, name)
+func (state *PolicyState) SetL3NetworkMap(vrfMap map[string]uint32) error {
+	state.networkL3Objects = make(map[string]uint32)
+	for name, uid := range vrfMap {
+		logger.GetLogger().Info("Add Logical Network", "vrf", name, "gid", uid)
+		state.networkL3Objects[name] = uid
+	}
+	return nil
 }
 
 func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
@@ -622,7 +618,7 @@ func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
 				Port: uint32(dport),
 			}
 
-			vrfId := state.GetL3NetworkID(l3.Policy.Subject.LogicalNetwork.VRF)
+			vrfId := state.networkL3Objects[l3.Policy.Subject.LogicalNetwork.VRF]
 
 			ds := &record.DatapathSource{
 				Ip:    l3.Policy.Source.CIDR.CIDR,
