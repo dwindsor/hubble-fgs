@@ -39,6 +39,11 @@ jobs:
             echo "WARNING: Version appears to be empty or a SHA. Using tag from git describe instead."
             VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           fi
+
+          # Simplify version to match format like 1.18.0-pre.1-95 or 1.15.4-some-string
+          # Keep semantic version and any first hyphenated suffix, but remove git commit info
+          VERSION=$(echo "$VERSION" | sed -E 's/^(v?[0-9]+\.[0-9]+\.[0-9]+(-[^-]+)?).*/\1/')
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "date=$(date -u +"%Y%m%d%H%M")" >> $GITHUB_OUTPUT
           echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -144,8 +149,8 @@ jobs:
         id: release-type
         run: |
           echo "is_draft=false" >> $GITHUB_OUTPUT
-          echo "tag_name=${{ needs.init.outputs.version }}" >> $GITHUB_OUTPUT
-          echo "release_name=${{ needs.init.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "tag_name=${{ needs.init.outputs.version }}-${{ needs.init.outputs.sha }}" >> $GITHUB_OUTPUT
+          echo "release_name=${{ needs.init.outputs.version }}-${{ needs.init.outputs.sha }}" >> $GITHUB_OUTPUT
       - name: Create GitHub Release 
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2
         with:
