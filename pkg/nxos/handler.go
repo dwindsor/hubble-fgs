@@ -12,6 +12,7 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 
 	"github.com/openconfig/gnmi/proto/gnmi"
@@ -263,6 +264,7 @@ func (n *Nxos) delServiceVb(ctx context.Context, isBd bool, vb VrfBd) error {
 
 func (n *Nxos) updtInstList(ctx context.Context, instList []*model.Cisco_NX_OSDevice_System_InstItems_InstList) error {
 	// logger.GetLogger().Debug("updtInstList: %+v", *list)
+	policyMapUpdate := false
 
 	vrfs := []VrfBd{}
 	for _, list := range instList {
@@ -284,6 +286,7 @@ func (n *Nxos) updtInstList(ctx context.Context, instList []*model.Cisco_NX_OSDe
 			v.IsGlobal = true
 			if v.IsService {
 				n.doPinning(ctx, false, &v)
+				policyMapUpdate = true
 			}
 			n.Vrfs[name] = v
 
@@ -299,6 +302,11 @@ func (n *Nxos) updtInstList(ctx context.Context, instList []*model.Cisco_NX_OSDe
 			}
 		}
 	}
+
+	if policyMapUpdate {
+		n.doVRFPolicyMapUpdate()
+	}
+
 	if len(vrfs) > 0 {
 		return n.addServiceVb(ctx, false, vrfs, nil)
 	}
@@ -339,6 +347,7 @@ func (n *Nxos) updtBdBd(ctx context.Context, items *model.Cisco_NX_OSDevice_Syst
 
 func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDevice_System_BdItems_BdItems_BDList) error {
 	logger.GetLogger().Debug("updtBdBdBDList", "bd", bdList)
+	policyMapUpdate := false
 
 	bds := []VrfBd{}
 	for _, bd := range bdList {
@@ -360,6 +369,7 @@ func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDe
 			b.IsGlobal = true
 			if b.IsService {
 				n.doPinning(ctx, true, &b)
+				policyMapUpdate = true
 			}
 			n.Bds[name] = b
 
@@ -377,6 +387,10 @@ func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDe
 	}
 	if len(bds) > 0 {
 		return n.addServiceVb(ctx, true, bds, nil)
+	}
+
+	if policyMapUpdate {
+		n.doVRFPolicyMapUpdate()
 	}
 
 	return nil
@@ -596,8 +610,19 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceFwpolicyIpvrfDom(ctx context.Context,
 	return nil
 }
 
+func (n *Nxos) doVRFPolicyMapUpdate() {
+	vrfPolicyMap := make(map[string]uint32)
+	for name, vid := range n.Alloc.Gids {
+		vrfPolicyMap[name] = uint32(vid)
+	}
+	state := dns.GetRealizedState()
+	state.SetL3NetworkMap(vrfPolicyMap)
+	dns.SetRealizedState(state)
+}
+
 func (n *Nxos) addVbService(ctx context.Context, isBd bool, names []*string, affinities []*uint16) error {
 	logger.GetLogger().Debug("addVbService: isBd", "isBd", isBd)
+	policyMapUpdate := false
 
 	noRps := []VrfBd{}
 	rps := []VrfBd{}
@@ -645,6 +670,7 @@ func (n *Nxos) addVbService(ctx context.Context, isBd bool, names []*string, aff
 					logger.GetLogger().Debug("Skip svc redir reprog")
 					skip = true
 				}
+				policyMapUpdate = true
 			}
 
 			var fname string
@@ -671,6 +697,11 @@ func (n *Nxos) addVbService(ctx context.Context, isBd bool, names []*string, aff
 			}
 		}
 	}
+
+	if policyMapUpdate {
+		n.doVRFPolicyMapUpdate()
+	}
+
 	return n.addServiceVb(ctx, isBd, noRps, rps)
 }
 
