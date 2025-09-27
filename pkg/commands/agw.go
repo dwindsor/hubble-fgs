@@ -240,24 +240,6 @@ var showTokensCmd = &cobra.Command{
 	},
 }
 
-var showClaimsCmd = &cobra.Command{
-	Use:          "show_claims",
-	SilenceUsage: true,
-	Short:        "Show claims",
-	Long:         "Show claims",
-	RunE: func(_ *cobra.Command, _ []string) error {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_CLAIMS, "")
-		if err != nil {
-			return err
-		}
-		ipc.PrintResponse(ret, JSON)
-		return nil
-	},
-}
-
 var showTechCmd = &cobra.Command{
 	Use:          "show_tech",
 	SilenceUsage: true,
@@ -420,7 +402,6 @@ func init() {
 	RootCmd.AddCommand(showLogCmd)
 	RootCmd.AddCommand(delTokensCmd)
 	RootCmd.AddCommand(showTokensCmd)
-	RootCmd.AddCommand(showClaimsCmd)
 	RootCmd.AddCommand(showTechCmd)
 	RootCmd.AddCommand(tacPacCmd)
 	RootCmd.AddCommand(pingFwaCmd)

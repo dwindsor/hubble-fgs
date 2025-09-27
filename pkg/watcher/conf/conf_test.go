@@ -58,7 +58,7 @@ func Test_parseServiceAccountAuth(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			apiServer, token, ca, err := parseServiceAccountAuth(tt.args.details)
+			apiServer, token, ca, err := ParseServiceAccountAuth(tt.args.details)
 			require.True(t, (err != nil) == tt.wantErr)
 			require.Equal(t, tt.apiServer, apiServer)
 			require.Equal(t, tt.token, token)

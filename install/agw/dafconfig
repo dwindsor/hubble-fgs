@@ -18,7 +18,7 @@
     "server_key": "",
     "temp_dir": "",
     "token": "token123",
-    "token_path": "/iox_data/cpa_tokens",
+    "token_path": "/iox_data/k8s_apiserver_token",
     "verification_duration": 60
   },
   "dataplane": {

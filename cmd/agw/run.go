@@ -84,14 +84,46 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 	}
 
 	if Config.EnableKubernetes {
+		// Wait for agent token to be ready before proceeding
+		var token string
+		if Config.K8sServiceAccountAuth != "" {
+			token = Config.K8sServiceAccountAuth
+			// Set the initial k8s auth token to NXOS if provided via command line option.
+			if err := fwaAgent.SetK8sCtlrAuthToken(Config.K8sServiceAccountAuth); err != nil {
+				return fmt.Errorf("agw: failed to set agent token: %w", err)
+			}
+		} else {
+			if Config.EnableNXOS {
+				// Load the auth from file.
+				// If auth is empty, the agent will wait for NXOS to provide the token
+				// before starting the k8s controller.
+				var err error
+				token, err = fwaAgent.LoadK8sAuth(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to wait for agent token: %w", err)
+				}
+			} else {
+				return fmt.Errorf("k8s auth token can be provided via --k8s-service-account-auth when NXOS integration is disabled")
+			}
+		}
+
 		// Set up k8s client configuration in enterpriseOption.Config.
 		// Ensure that Config.K8sServiceAccountAuth and enterpriseOption.Config.K8sServiceAccountAuth remain compatible.
 		conf.K8sConfig = enterpriseConf.K8sConfig
-		if err := setK8sServiceAccountAuth(Config.K8sServiceAccountAuth); err != nil {
-			logger.GetLogger().Error("Failed to set K8sServiceAccountAuth value")
+		if err := setK8sServiceAccountAuth(token); err != nil {
+			logger.GetLogger().Error("failed to set K8sServiceAccountAuth value")
 		}
+
+		// TODO: Temporary fix to set https proxy for k8s calls.
+		// This is due to a race condition where the NXOS CLI proxy is not set before k8s client initialization,
+		// causing connection failures. This workaround should be removed once a retry mechanism is implemented
+		// in the k8s client connection logic to handle delayed proxy availability.
+		os.Setenv("HTTPS_PROXY", "https://proxy.esl.cisco.com:80")
+
 		logger.GetLogger().Info("Initializing Kubernetes Manager for on-prem deployment")
 		kubernetesManager := manager.Get()
+		// Set the register status to ok for the successful connection.
+		fwaAgent.Register(ctx)
 		kubernetesManager.Start(ctx)
 
 		// TODO: Wait for configmap to be ready

@@ -1233,7 +1233,7 @@ func (n *Nxos) SetRegFail(ctx context.Context, reason string) {
 
 	n.setControllerStatus(ctx, true,
 		model.Cisco_NX_OSDevice_Sas_CommonStateE_failure, reason, "")
-	if reason == RegFailOtp {
+	if reason == RegFailK8sAuth {
 		n.setSkipReg(ctx, reason)
 	}
 }

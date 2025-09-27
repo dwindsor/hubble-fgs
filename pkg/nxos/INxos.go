@@ -21,9 +21,9 @@ const (
 )
 
 const (
-	RegFailOtp = "invalid otp"
-	RegOk      = ""
-	ConnOk     = "connected ok with Hypershield controller"
+	RegFailK8sAuth = "invalid k8s service account token"
+	RegOk          = ""
+	ConnOk         = "connected ok with Hypershield controller"
 )
 
 const (

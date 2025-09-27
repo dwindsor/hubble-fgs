@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"runtime"
@@ -21,11 +22,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
+	"github.com/isovalent/hubble-fgs/pkg/token"
 )
 
 const (
-	BUFSIZE   = 4096
-	ENV_TOKEN = "HYPERSHIELD_TOKEN"
+	BUFSIZE        = 4096
+	TOKEN_INTERVAL = 2
 
 	// dpuTimeout = 300 // in second
 )
@@ -81,6 +83,7 @@ func NewAgent(dpuListener *dpu.DPUListener) *FWAgent {
 
 	return &FWAgent{
 		Cfg:         &config.Config{},
+		Token:       &token.AgentToken{},
 		serviceMac:  mac,
 		dpuPortLow:  uint16(dpuLow),
 		dpuPortHigh: uint16(dpuHigh),
@@ -100,7 +103,8 @@ type FWAgent struct {
 	Os           string
 	SerialNumber string
 
-	Cfg *config.Config
+	Cfg   *config.Config
+	Token *token.AgentToken
 
 	//serviceIp   string // looks necessary but not used yet
 	serviceMac  string
@@ -120,6 +124,10 @@ func (fwa *FWAgent) Id() string {
 
 func (fwa *FWAgent) Version() string {
 	return fwa.version
+}
+
+func (fwa *FWAgent) SkipAuth() bool {
+	return fwa.Cfg.Env.SkipAuth
 }
 
 func (fwa *FWAgent) KeepAliveInterval() int {
@@ -175,16 +183,152 @@ func (fwa *FWAgent) Config(_ context.Context, path string) error {
 func (fwa *FWAgent) Setup(ctx context.Context) error {
 	err := nxos.Nexus.Setup(ctx, fwa.dpuPortLow, fwa.dpuPortHigh, fwa.dpuListener)
 	if err != nil {
-		logger.Fatal(logger.GetLogger(), "NXOS setup fails")
+		logger.Fatal(logger.GetLogger(), "NXOS setup failed")
 	}
 
 	return nil
 }
 
 func (fwa *FWAgent) Register(ctx context.Context) error {
-	// Extracting logger and agent from context
 	nxos.Nexus.SetRegOk(ctx, nxos.RegOk)
 	return nil
+}
+
+// SetK8sCtlrAuthToken sets the Kubernetes controller authentication token in both the AgentToken and Nxos structs,
+// and persists the token if possible. Returns an error if the operation fails.
+func (fwa *FWAgent) SetK8sCtlrAuthToken(token string) error {
+	logger.GetLogger().Debug("setting k8s auth token")
+
+	// Set the token in both the AgentToken and Nxos structs
+	if err := nxos.Nexus.SetToken(token); err != nil {
+		return fmt.Errorf("failed to set nxos k8s auth token: %w", err)
+	}
+
+	if fwa.Token != nil {
+		// Set the token path if not already set.
+		if fwa.Cfg.Env.TokenPath == "" {
+			return fmt.Errorf("config TokenPath is not set")
+		} else if fwa.Cfg.Env.TokenPath != fwa.Token.K8sAuthPath() {
+			fwa.Token.SetK8sAuthPath(fwa.Cfg.Env.TokenPath)
+		}
+		// Set and persist the token.
+		fwa.Token.SetK8sAuthToken(token)
+		if err := fwa.Token.Persist(); err != nil {
+			return fmt.Errorf("failed to persist token: %w", err)
+		}
+	} else {
+		return fmt.Errorf("failed to set AgentToken")
+	}
+
+	return nil
+}
+
+// LoadK8sAuth retrieves the Kubernetes authentication token from NXOS,
+// waiting if necessary until the token is available or the context is canceled.
+// Returns the token string if successful, or an error if the wait fails or the token remains unavailable.
+func (fwa *FWAgent) LoadK8sAuth(ctx context.Context) (string, error) {
+	logger.GetLogger().Debug("getting or waiting for K8s auth token from switch")
+
+	ok, err := fwa.LoadAuth(ctx)
+	if err != nil {
+		return "", err
+	}
+	var token string
+	if ok {
+		logger.GetLogger().Info("token ready")
+		// Cache the token after waiting to avoid redundant calls.
+		token = fwa.Token.K8sAuthToken()
+		if token == "" {
+			return "", fmt.Errorf("token is still empty after waiting")
+		}
+		return token, nil
+	}
+
+	return "", fmt.Errorf("token was not loaded")
+}
+
+// LoadAuth attempts to load authentication data for the FWAgent.
+// It sets the Kubernetes authentication token path from the configuration,
+// then repeatedly tries to load or authenticate using Kubernetes until successful
+// or until the provided context is cancelled. If the token path is not set in the
+// configuration, it returns an error immediately. The function returns true if
+// authentication data is loaded successfully, or false and an error otherwise.
+func (fwa *FWAgent) LoadAuth(ctx context.Context) (bool, error) {
+	logger.GetLogger().Debug("loading authentication data")
+	// Setting token path.
+	if fwa.Cfg.Env.TokenPath != "" {
+		fwa.Token.SetK8sAuthPath(fwa.Cfg.Env.TokenPath)
+	} else {
+		return false, fmt.Errorf("config TokenPath is empty")
+	}
+
+	// Finding and setting Token.
+	registered := make(chan bool)
+	go func() {
+		for {
+			for {
+				reg, err := fwa.tryLoadK8sAuth()
+				if err == nil {
+					registered <- reg
+					return
+				}
+				break
+			}
+			time.Sleep(TOKEN_INTERVAL * time.Second)
+		}
+	}()
+
+	// Waiting for tokens to be loaded.
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err()
+	case reg := <-registered:
+		return reg, nil
+	}
+}
+
+func (fwa *FWAgent) tryLoadK8sAuth() (bool, error) {
+	// Try loading the token
+	valid, err := fwa.Token.Load()
+	if err != nil {
+		logger.GetLogger().Error("failed to load tokens from file", logfields.Error, err)
+		return false, err
+	}
+
+	if !valid {
+		logger.GetLogger().Info("token file missing, getting K8sAuth from environment")
+		err = fwa.Token.LoadK8sAuthFromEnv()
+		if err != nil {
+			logger.GetLogger().Error("failed to get K8sAuth from environment",
+				logfields.Error, err)
+			return false, err
+		}
+	}
+
+	if valid := fwa.Token.ValidK8sAuth(); !valid {
+		logger.GetLogger().Error("failed to parse k8s auth token", logfields.Error, err)
+		return false, err
+	}
+
+	logger.GetLogger().Debug("token parsed and validated successfully")
+	if fwa.Token != nil {
+		// Set the token path if not already set.
+		if fwa.Cfg.Env.TokenPath == "" {
+			return false, fmt.Errorf("config TokenPath is empty")
+		} else if fwa.Cfg.Env.TokenPath != fwa.Token.K8sAuthPath() {
+			fwa.Token.SetK8sAuthPath(fwa.Cfg.Env.TokenPath)
+		}
+		// Persist the token.
+		if err := fwa.Token.Persist(); err != nil {
+			return false, fmt.Errorf("failed to persist token: %w", err)
+		}
+	}
+
+	if err := fwa.Cfg.Reload(); err != nil {
+		logger.GetLogger().Error("failed to reload config", logfields.Error, err)
+		return false, err
+	}
+	return true, nil
 }
 
 // --------------------- DPU related
@@ -244,7 +388,17 @@ func (fwa *FWAgent) Reopen(_ context.Context) string {
 }
 
 func (fwa *FWAgent) ShowTokens(_ context.Context) string {
-	logger.GetLogger().Debug("Show tokens")
+	logger.GetLogger().Info("Show tokens")
+	fwa.RLock()
+	defer fwa.RUnlock()
+
+	if fwa.Token != nil {
+		at := fwa.Token.K8sAuthToken()
+		if at != "" {
+			return at
+		}
+	}
+
 	return ""
 }
 

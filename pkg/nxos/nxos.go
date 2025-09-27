@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
+	enterpriseConfig "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 
 	"github.com/openconfig/gnmic/pkg/api"
 	"github.com/openconfig/ygot/ytypes"
@@ -30,7 +31,7 @@ const (
 	svcInst = "System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]"
 	seqNum  = 10
 
-	TokenFile             = "/iox_data/cpa_tokens"
+	TokenFile             = "/iox_data/k8sauth_token"
 	waitForDpuInterval    = 10  // in second
 	waitForInSyncInterval = 30  // in second
 	notifTimeout          = 900 // in second
@@ -392,17 +393,8 @@ func (n *Nxos) isTokenAvail(_ context.Context) bool {
 
 // wait for HS controller token
 func (n *Nxos) waitForToken(ctx context.Context) error {
-	logger.GetLogger().Debug("Wait for token")
+	logger.GetLogger().Debug("wait for K8s auth token")
 	defer func() { n.Stage = StageVrf }()
-
-	if n.Stage != StageToken {
-		err := errors.New("unexpected stage")
-		logger.GetLogger().Error("stage", logfields.Error, err, "state", n.Stage)
-		return err
-	}
-
-	// HACK: return before iso token integratation
-	return nil
 
 	if n.isTokenAvail(ctx) {
 		return nil
@@ -413,6 +405,7 @@ func (n *Nxos) waitForToken(ctx context.Context) error {
 		case wait := <-n.Wait.Out():
 			logger.GetLogger().Debug("Waked up", "time", wait)
 			if n.isTokenAvail(ctx) {
+				logger.GetLogger().Debug("waitForToken: K8s auth token is available")
 				return nil
 			}
 		}
@@ -572,6 +565,49 @@ func (n *Nxos) Setup(ctx context.Context, low, high uint16, dpuListener *dpu.DPU
 	go n.setup(ctx, dpuCnt)
 
 	logger.GetLogger().Info("NXOS setup complete")
+	return nil
+}
+
+// GetToken returns the Kubernetes controller authentication token.
+// It acquires a read lock to ensure thread-safe access to the controller token.
+func (n *Nxos) GetToken() string {
+	n.RLock()
+	defer n.RUnlock()
+
+	return n.Ctrlr.Token
+}
+
+// SetToken sets the Kubernetes controller authentication token in the Nxos instance.
+// It parses the provided service account token to extract the API server host, token, and CA certificate.
+// Returns an error if parsing fails or if any required value (host, token, or CA cert) is empty.
+func (n *Nxos) SetToken(token string) error {
+	// Parse the token to extract host, token, and CA cert, to validate the token.
+	host, parsedToken, ca, err := enterpriseConfig.ParseServiceAccountAuth(token)
+	if err != nil {
+		return err
+	}
+	if len(host) == 0 {
+		return fmt.Errorf("api server cannot be empty")
+	}
+	if len(parsedToken) == 0 {
+		return fmt.Errorf("service account token cannot be empty")
+	}
+	if len(ca) == 0 {
+		return fmt.Errorf("ca cert cannot be empty")
+	}
+
+	prev := n.Ctrlr.Token
+	if prev != token {
+		// Set it in the struct and env variable.
+		n.Ctrlr.Token = token
+		err := os.Setenv(envToken, n.Ctrlr.Token)
+		if err != nil {
+			return fmt.Errorf("fail to set K8s token to env: %w", err)
+		}
+		logger.GetLogger().Debug("K8s auth token is set")
+		return nil
+	}
+	logger.GetLogger().Info("K8s auth token is unchanged")
 	return nil
 }
 
@@ -910,15 +946,12 @@ func (n *Nxos) setProxy(ctx context.Context) {
 	n.store(ctx, ctrlrFname, n.Ctrlr)
 }
 
-func (n *Nxos) GetOtp() string {
-	return n.Ctrlr.Token
-}
-
-func haveTokens(_ context.Context) bool {
+func haveToken(_ context.Context) bool {
 
 	finfo, err := os.Stat(TokenFile)
 	if err != nil {
-		logger.GetLogger().Error("Fail to stat token file", logfields.Error, err)
+		logger.GetLogger().Error("fail to stat token file", logfields.Error, err,
+			"file", TokenFile)
 		return false
 	}
 	if finfo.Size() == 0 {

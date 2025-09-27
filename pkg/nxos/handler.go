@@ -383,7 +383,7 @@ func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDe
 }
 
 func (n *Nxos) updtSas(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SasItems) error {
-	// logger.GetLogger().Debug("updtSas")
+	logger.GetLogger().Debug("updtSas")
 
 	if items.DpuItems != nil {
 		err := n.updtSasDpu(ctx, items.DpuItems)
@@ -425,7 +425,7 @@ func (n *Nxos) updtSas(ctx context.Context, items *model.Cisco_NX_OSDevice_Syste
 }
 
 func (n *Nxos) updtSasSvc(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SasItems_SvcItems) error {
-	// logger.GetLogger().Debug("updtSasSvc")
+	logger.GetLogger().Debug("updtSasSvc")
 
 	if items.SvcinstItems != nil {
 		err := n.updtSasSvcSvcinst(ctx, items.SvcinstItems)
@@ -438,7 +438,7 @@ func (n *Nxos) updtSasSvc(ctx context.Context, items *model.Cisco_NX_OSDevice_Sy
 }
 
 func (n *Nxos) updtSasSvcSvcinst(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems) error {
-	// logger.GetLogger().Debug("updtSasSvcinst")
+	logger.GetLogger().Debug("updtSasSvcinst")
 
 	for k, v := range items.SvcInstanceList {
 		if k != "hypershield" {
@@ -503,21 +503,6 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstance(ctx context.Context, items *model.Ci
 	//if items.FwpolicystateItems != nil {
 	//}
 	return nil
-}
-
-func (n *Nxos) setToken(_ context.Context, token string) bool {
-
-	prev := n.Ctrlr.Token
-	if prev != token {
-		n.Ctrlr.Token = token
-		err := os.Setenv(envToken, n.Ctrlr.Token)
-		if err != nil {
-			logger.GetLogger().Error("Fail to set OTP")
-			return false
-		}
-		return true
-	}
-	return false
 }
 
 func (n *Nxos) updtSasSvcSvcinstSvcInstanceScontroller(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_ScontrollerItems) error {
@@ -1074,13 +1059,20 @@ func (n *Nxos) updtSasVolatiledataAgent(ctx context.Context, items *model.Cisco_
 			continue
 		}
 		if data.ConnToken != nil {
-			modified := n.setToken(ctx, *data.ConnToken)
-			if modified {
-				logger.GetLogger().Debug("token updated")
+			// Set token in envToken var for agw to use
+			// and save in ctrlr for restart use.
+			logger.GetLogger().Info("ConnToken received", "len", len(*data.ConnToken))
+			err := n.SetToken(*data.ConnToken)
+			if err == nil {
+				logger.GetLogger().Info("token updated")
+				// TODO: Revisit n.Stage usage.
+				// StageToken is set in the waitForDpu. Is it still required?
+				n.Stage = StageToken
 				if n.Stage == StageToken {
+					logger.GetLogger().Debug("WakeToken")
 					n.Wait.In() <- WakeToken
 				} else if n.Stage == StageNormal {
-					if n.SkipReg && n.SkipRegReason == RegFailOtp {
+					if n.SkipReg && n.SkipRegReason == RegFailK8sAuth {
 						n.unsetSkipReg(ctx, true)
 					}
 				}

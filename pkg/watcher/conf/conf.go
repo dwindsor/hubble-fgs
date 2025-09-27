@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -37,13 +38,12 @@ func K8sConfig() (*rest.Config, bool, error) {
 		cfg, err := externalClusterSAConfig(enterpriseOption.Config.K8sServiceAccountAuth)
 		return cfg, false, err
 	}
-
 	cfg, err := rest.InClusterConfig()
 	return cfg, true, err
 }
 
 func externalClusterSAConfig(details string) (*rest.Config, error) {
-	host, token, ca, err := parseServiceAccountAuth(details)
+	host, token, ca, err := ParseServiceAccountAuth(details)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse service account auth details: %w", err)
 	}
@@ -66,7 +66,8 @@ func externalClusterSAConfig(details string) (*rest.Config, error) {
 	}, nil
 }
 
-func parseServiceAccountAuth(details string) (string, string, string, error) {
+func ParseServiceAccountAuth(details string) (string, string, string, error) {
+	logger.GetLogger().Info("Parsing service account auth details")
 	decode := func(s string) (string, error) {
 		data, err := base64.StdEncoding.DecodeString(s)
 		if err != nil {

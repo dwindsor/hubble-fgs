@@ -97,7 +97,7 @@ func (n *Nxos) ShowVrf(ctx context.Context) string {
 func (n *Nxos) DelTokens(_ context.Context) string {
 	logger.GetLogger().Debug("del tokens")
 
-	err := os.Remove("/iox_data/cpa_tokens")
+	err := os.Remove("/iox_data/k8sauth_token")
 	if err != nil {
 		logger.GetLogger().Error("", logfields.Error, err)
 		return err.Error()

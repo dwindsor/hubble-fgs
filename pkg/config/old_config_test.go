@@ -76,7 +76,7 @@ func TestConfig(t *testing.T) {
 		ClientCa:   "test_ca_cert",
 		ClientCert: "test_client_cert",
 		ClientKey:  "test_client_key",
-		TokenPath:  "/opt/cisco/daf/etc/cpa_tokens", // Default value
+		TokenPath:  "/opt/cisco/daf/etc/k8sauth_token", // Default value
 	}
 	// Create a temporary Env struct for comparison, excluding fields not set by test or defaults we care about here
 	actualEnvForCompare := Environment{

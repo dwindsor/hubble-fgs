@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/spf13/viper"
 )
 
@@ -23,6 +24,7 @@ type Config struct {
 
 type Environment struct {
 	// Build parameters
+	SkipAuth    bool
 	IsContainer bool
 
 	// Cert paths
@@ -99,6 +101,7 @@ func (c *Config) Init(path string) (bool, error) {
 	}
 
 	// Reading config to overwrite defaults
+	logger.GetLogger().Info("Reading config file", "path", path)
 	err = c.read()
 	if err != nil {
 		return created, err
@@ -238,6 +241,6 @@ func (c *Config) setDefaults() {
 	c.file.SetDefault("control_plane.debug", false)
 	c.file.SetDefault("control_plane.keepalive_interval", 30)
 	c.file.SetDefault("control_plane.verification_duration", 60)
-	c.file.SetDefault("control_plane.token_path", "/opt/cisco/daf/etc/cpa_tokens")
+	c.file.SetDefault("control_plane.token_path", "/opt/cisco/daf/etc/k8sauth_token")
 	c.file.SetDefault("dataplane0.service_path", "/opt/cisco/daf/var/s6/services/dp0")
 }

@@ -23,7 +23,6 @@ const (
 	CMD_HEALTH
 	CMD_SHOW_LOG
 	CMD_SHOW_TOKENS
-	CMD_SHOW_CLAIMS
 	CMD_SHOW_TECH
 	CMD_TAC_PAC
 	CMD_PING_FWA
@@ -155,11 +154,6 @@ func Handler(ctx context.Context, fwaAgent *fwa.FWAgent, command map[string]inte
 		tokens := fwaAgent.ShowTokens(ctx)
 		response.ReturnCode = "ok"
 		response.Data = tokens
-
-	case CMD_SHOW_CLAIMS:
-		claims := ""
-		response.ReturnCode = "ok"
-		response.Data = claims
 
 	case CMD_SHOW_TECH:
 		pol := fwaAgent.ShowPolicies(ctx)
