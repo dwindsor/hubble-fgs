@@ -103,7 +103,7 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 					return fmt.Errorf("failed to wait for agent token: %w", err)
 				}
 			} else {
-				return fmt.Errorf("k8s auth token can be provided via --k8s-service-account-auth when NXOS integration is disabled")
+				logger.GetLogger().Error("k8s auth token can be provided via --k8s-service-account-auth when NXOS integration is disabled")
 			}
 		}
 
@@ -118,7 +118,7 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 		// This is due to a race condition where the NXOS CLI proxy is not set before k8s client initialization,
 		// causing connection failures. This workaround should be removed once a retry mechanism is implemented
 		// in the k8s client connection logic to handle delayed proxy availability.
-		os.Setenv("HTTPS_PROXY", "https://proxy.esl.cisco.com:80")
+		os.Setenv("HTTPS_PROXY", "http://proxy.esl.cisco.com:80")
 
 		logger.GetLogger().Info("Initializing Kubernetes Manager for on-prem deployment")
 		kubernetesManager := manager.Get()

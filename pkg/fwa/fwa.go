@@ -191,6 +191,7 @@ func (fwa *FWAgent) Setup(ctx context.Context) error {
 
 func (fwa *FWAgent) Register(ctx context.Context) error {
 	nxos.Nexus.SetRegOk(ctx, nxos.RegOk)
+	nxos.Nexus.SetConnOk(ctx, nxos.ConnOk)
 	return nil
 }
 
@@ -266,13 +267,10 @@ func (fwa *FWAgent) LoadAuth(ctx context.Context) (bool, error) {
 	registered := make(chan bool)
 	go func() {
 		for {
-			for {
-				reg, err := fwa.tryLoadK8sAuth()
-				if err == nil {
-					registered <- reg
-					return
-				}
-				break
+			reg, err := fwa.tryLoadK8sAuth()
+			if err == nil {
+				registered <- reg
+				return
 			}
 			time.Sleep(TOKEN_INTERVAL * time.Second)
 		}

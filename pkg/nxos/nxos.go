@@ -569,11 +569,7 @@ func (n *Nxos) Setup(ctx context.Context, low, high uint16, dpuListener *dpu.DPU
 }
 
 // GetToken returns the Kubernetes controller authentication token.
-// It acquires a read lock to ensure thread-safe access to the controller token.
 func (n *Nxos) GetToken() string {
-	n.RLock()
-	defer n.RUnlock()
-
 	return n.Ctrlr.Token
 }
 
@@ -582,6 +578,7 @@ func (n *Nxos) GetToken() string {
 // Returns an error if parsing fails or if any required value (host, token, or CA cert) is empty.
 func (n *Nxos) SetToken(token string) error {
 	// Parse the token to extract host, token, and CA cert, to validate the token.
+	logger.GetLogger().Info("parsing and setting K8s auth token")
 	host, parsedToken, ca, err := enterpriseConfig.ParseServiceAccountAuth(token)
 	if err != nil {
 		return err

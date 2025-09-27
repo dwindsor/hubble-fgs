@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -67,7 +66,6 @@ func externalClusterSAConfig(details string) (*rest.Config, error) {
 }
 
 func ParseServiceAccountAuth(details string) (string, string, string, error) {
-	logger.GetLogger().Info("Parsing service account auth details")
 	decode := func(s string) (string, error) {
 		data, err := base64.StdEncoding.DecodeString(s)
 		if err != nil {

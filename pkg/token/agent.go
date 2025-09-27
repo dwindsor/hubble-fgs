@@ -203,14 +203,14 @@ func (a *AgentToken) LoadK8sAuthFromEnv() error {
 		// Checking if the token could be stored in an .env file
 		fileName := "/opt/cisco/hypershield/etc/.k8s_auth"
 		if err := godotenv.Load(fileName); err != nil {
-			logger.GetLogger().Warn("failed to load k8s_auth", logfields.Error, err, "file", fileName)
+			logger.GetLogger().Info("failed to load k8s_auth", logfields.Error, err, "file", fileName)
 		}
 		token = os.Getenv(EnvToken)
 		if token == "" {
 			// Checking alternative path for .env file.
 			fileName = "/opt/cisco/daf/etc/.k8s_auth"
 			if err := godotenv.Load(fileName); err != nil {
-				logger.GetLogger().Warn("failed to load k8s_auth", logfields.Error, err, "file", fileName)
+				logger.GetLogger().Info("failed to load k8s_auth", logfields.Error, err, "file", fileName)
 			}
 			token = os.Getenv(EnvToken)
 			if token == "" {
