@@ -8,11 +8,12 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/cilium/cilium/pkg/logging/logfields"
-	"github.com/cilium/tetragon/pkg/logger"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/isovalent/hubble-fgs/pkg/fwa"
+	"github.com/cilium/cilium/pkg/logging/logfields"
+	"github.com/cilium/tetragon/pkg/logger"
+
+	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
@@ -34,8 +35,8 @@ func executeAGW() {
 
 	waitGroup, ctx := errgroup.WithContext(ctx)
 	dpuListener := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
-	fwaAgent := fwa.NewAgent(dpuListener)
-	err := fwaAgent.Config(ctx, Config.DafConfig)
+	agwAgent := agw.NewAgent(dpuListener)
+	err := agwAgent.Config(ctx, Config.DafConfig)
 
 	if err != nil {
 		logger.GetLogger().Error("Configuring FWAgent failed",
@@ -44,7 +45,7 @@ func executeAGW() {
 	}
 
 	waitGroup.Go(func() error {
-		err := cliServer(ctx, fwaAgent)
+		err := cliServer(ctx, agwAgent)
 		if err != nil {
 			return fmt.Errorf("starting CLI server failed: %w", err)
 		}
@@ -53,7 +54,7 @@ func executeAGW() {
 
 	// Launch daemon logic
 	waitGroup.Go(func() error {
-		err := RunOnPrem(ctx, fwaAgent, dpuListener)
+		err := RunOnPrem(ctx, agwAgent, dpuListener)
 		if err != nil {
 			return fmt.Errorf("running on-prem failed: %w", err)
 		}

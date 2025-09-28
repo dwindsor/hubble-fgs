@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/isovalent/hubble-fgs/pkg/fwa"
+	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/ipc"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
@@ -40,7 +40,7 @@ const (
 	logTail = 500
 )
 
-func Handler(ctx context.Context, fwaAgent *fwa.FWAgent, command map[string]interface{}) (ipc.ReturnCode, error) {
+func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string]interface{}) (ipc.ReturnCode, error) {
 	response := ipc.ReturnCode{}
 	cmd, ok := command["command"].(float64)
 	if !ok {
@@ -64,13 +64,13 @@ func Handler(ctx context.Context, fwaAgent *fwa.FWAgent, command map[string]inte
 			return response, nil
 		}
 
-		data := fwaAgent.LoadPolicies(ctx, string(pols))
+		data := agwAgent.LoadPolicies(ctx, string(pols))
 		response.ReturnCode = "ok"
 		response.Data = data
 
 	case CMD_SHOW_POLICY:
 		// HACK: add back data once ready
-		pol := fwaAgent.ShowPolicies(ctx /*, data*/)
+		pol := agwAgent.ShowPolicies(ctx /*, data*/)
 		response.ReturnCode = "ok"
 		response.Data = pol
 
@@ -84,7 +84,7 @@ func Handler(ctx context.Context, fwaAgent *fwa.FWAgent, command map[string]inte
 		response.Data = status
 
 	case CMD_SHOW_DPU:
-		dpu := fwaAgent.ShowDpu(ctx)
+		dpu := agwAgent.ShowDpu(ctx)
 		response.ReturnCode = "ok"
 		response.Data = dpu
 
@@ -151,14 +151,14 @@ func Handler(ctx context.Context, fwaAgent *fwa.FWAgent, command map[string]inte
 		response.Data = rsp
 
 	case CMD_SHOW_TOKENS:
-		tokens := fwaAgent.ShowTokens(ctx)
+		tokens := agwAgent.ShowTokens(ctx)
 		response.ReturnCode = "ok"
 		response.Data = tokens
 
 	case CMD_SHOW_TECH:
-		pol := fwaAgent.ShowPolicies(ctx)
+		pol := agwAgent.ShowPolicies(ctx)
 		status := nxos.Nexus.ShowStatus(ctx)
-		dpu := fwaAgent.ShowDpu(ctx)
+		dpu := agwAgent.ShowDpu(ctx)
 		vrf := nxos.Nexus.ShowVrf(ctx)
 		response.ReturnCode = "ok"
 		response.Data = status + "\n" + pol + "\n" +
@@ -175,7 +175,7 @@ func Handler(ctx context.Context, fwaAgent *fwa.FWAgent, command map[string]inte
 		}
 
 	case CMD_PING_FWA:
-		out := fwaAgent.PingFwa(ctx, data)
+		out := agwAgent.PingFwa(ctx, data)
 		response.ReturnCode = "ok"
 		response.Data = out
 
@@ -197,7 +197,7 @@ func Handler(ctx context.Context, fwaAgent *fwa.FWAgent, command map[string]inte
 			return response, nil
 		}
 
-		err = fwaAgent.LoadSyslog(ctx, string(cfg))
+		err = agwAgent.LoadSyslog(ctx, string(cfg))
 		if err != nil {
 			response.ReturnCode = "fail"
 			response.Data = err.Error()
@@ -207,7 +207,7 @@ func Handler(ctx context.Context, fwaAgent *fwa.FWAgent, command map[string]inte
 		response.Data = "Syslog loaded"
 
 	case CMD_SHOW_SYSLOG_CFG:
-		out, err := fwaAgent.ShowSyslog(ctx)
+		out, err := agwAgent.ShowSyslog(ctx)
 		if err != nil {
 			response.ReturnCode = "fail"
 			response.Data = err.Error()

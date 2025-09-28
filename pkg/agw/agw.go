@@ -1,4 +1,4 @@
-package fwa
+package agw
 
 import (
 	"context"
@@ -32,7 +32,7 @@ const (
 	// dpuTimeout = 300 // in second
 )
 
-func NewAgent(dpuListener *dpu.DPUListener) *FWAgent {
+func NewAgent(dpuListener *dpu.DPUListener) *AgentGateway {
 	mac := os.Getenv("NX_SAS_RMAC")
 	lowStr, ok := os.LookupEnv("NX_DPU_PORT_START")
 	if !ok {
@@ -82,7 +82,7 @@ func NewAgent(dpuListener *dpu.DPUListener) *FWAgent {
 	}
 	library.GetRepository().AddConfig(configObj)
 
-	return &FWAgent{
+	return &AgentGateway{
 		Cfg:         &config.Config{},
 		Token:       &token.AgentToken{},
 		serviceMac:  mac,
@@ -94,7 +94,7 @@ func NewAgent(dpuListener *dpu.DPUListener) *FWAgent {
 	}
 }
 
-type FWAgent struct {
+type AgentGateway struct {
 	AgentId      string
 	Name         string
 	version      string
@@ -119,20 +119,20 @@ type FWAgent struct {
 	sync.RWMutex
 }
 
-func (fwa *FWAgent) Id() string {
-	return fwa.AgentId
+func (agw *AgentGateway) Id() string {
+	return agw.AgentId
 }
 
-func (fwa *FWAgent) Version() string {
-	return fwa.version
+func (agw *AgentGateway) Version() string {
+	return agw.version
 }
 
-func (fwa *FWAgent) SkipAuth() bool {
-	return fwa.Cfg.Env.SkipAuth
+func (agw *AgentGateway) SkipAuth() bool {
+	return agw.Cfg.Env.SkipAuth
 }
 
-func (fwa *FWAgent) KeepAliveInterval() int {
-	return fwa.Cfg.Agent.KeepAliveInterval
+func (agw *AgentGateway) KeepAliveInterval() int {
+	return agw.Cfg.Agent.KeepAliveInterval
 }
 
 // Get preferred outbound ip of this machine
@@ -148,22 +148,22 @@ func getOutboundIP() (string, error) {
 	return localAddr.IP.String(), nil
 }
 
-func (fwa *FWAgent) Config(_ context.Context, path string) error {
+func (agw *AgentGateway) Config(_ context.Context, path string) error {
 	// Collecting agent metadata
 	var err error
-	fwa.Ip, err = getOutboundIP()
+	agw.Ip, err = getOutboundIP()
 	if err != nil {
 		logger.GetLogger().Error("Failed to get machine IP address", logfields.Error, err)
 	}
-	fwa.Hostname, err = os.Hostname()
+	agw.Hostname, err = os.Hostname()
 	if err != nil {
 		logger.GetLogger().Error("Failed to get machine hostname", logfields.Error, err)
 	}
-	fwa.Architecture = runtime.GOARCH
-	fwa.Os = runtime.GOOS
+	agw.Architecture = runtime.GOARCH
+	agw.Os = runtime.GOOS
 
 	// Setting up config
-	created, err := fwa.Cfg.Init(path)
+	created, err := agw.Cfg.Init(path)
 	if err != nil {
 		logger.GetLogger().Error("Failed to initialize config", logfields.Error, err)
 		return err
@@ -174,15 +174,15 @@ func (fwa *FWAgent) Config(_ context.Context, path string) error {
 		logger.GetLogger().Info("Config file found", "path", path)
 	}
 
-	fwa.AgentId = fwa.Cfg.Agent.AgentId
+	agw.AgentId = agw.Cfg.Agent.AgentId
 	// HACK for cpa container scheduling/resource issue
-	fwa.Cfg.Agent.KeepAliveInterval = 10
+	agw.Cfg.Agent.KeepAliveInterval = 10
 
 	return nil
 }
 
-func (fwa *FWAgent) Setup(ctx context.Context) error {
-	err := nxos.Nexus.Setup(ctx, fwa.dpuPortLow, fwa.dpuPortHigh, fwa.dpuListener)
+func (agw *AgentGateway) Setup(ctx context.Context) error {
+	err := nxos.Nexus.Setup(ctx, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener)
 	if err != nil {
 		logger.Fatal(logger.GetLogger(), "NXOS setup failed")
 	}
@@ -190,7 +190,7 @@ func (fwa *FWAgent) Setup(ctx context.Context) error {
 	return nil
 }
 
-func (fwa *FWAgent) Register(ctx context.Context) error {
+func (agw *AgentGateway) Register(ctx context.Context) error {
 	nxos.Nexus.SetRegOk(ctx, nxos.RegOk)
 	nxos.Nexus.SetConnOk(ctx, nxos.ConnOk)
 	return nil
@@ -198,7 +198,7 @@ func (fwa *FWAgent) Register(ctx context.Context) error {
 
 // SetK8sCtlrAuthToken sets the Kubernetes controller authentication token in both the AgentToken and Nxos structs,
 // and persists the token if possible. Returns an error if the operation fails.
-func (fwa *FWAgent) SetK8sCtlrAuthToken(token string) error {
+func (agw *AgentGateway) SetK8sCtlrAuthToken(token string) error {
 	logger.GetLogger().Debug("setting k8s auth token")
 
 	// Set the token in both the AgentToken and Nxos structs
@@ -206,16 +206,16 @@ func (fwa *FWAgent) SetK8sCtlrAuthToken(token string) error {
 		return fmt.Errorf("failed to set nxos k8s auth token: %w", err)
 	}
 
-	if fwa.Token != nil {
+	if agw.Token != nil {
 		// Set the token path if not already set.
-		if fwa.Cfg.Env.TokenPath == "" {
+		if agw.Cfg.Env.TokenPath == "" {
 			return fmt.Errorf("config TokenPath is not set")
-		} else if fwa.Cfg.Env.TokenPath != fwa.Token.K8sAuthPath() {
-			fwa.Token.SetK8sAuthPath(fwa.Cfg.Env.TokenPath)
+		} else if agw.Cfg.Env.TokenPath != agw.Token.K8sAuthPath() {
+			agw.Token.SetK8sAuthPath(agw.Cfg.Env.TokenPath)
 		}
 		// Set and persist the token.
-		fwa.Token.SetK8sAuthToken(token)
-		if err := fwa.Token.Persist(); err != nil {
+		agw.Token.SetK8sAuthToken(token)
+		if err := agw.Token.Persist(); err != nil {
 			return fmt.Errorf("failed to persist token: %w", err)
 		}
 	} else {
@@ -228,10 +228,10 @@ func (fwa *FWAgent) SetK8sCtlrAuthToken(token string) error {
 // LoadK8sAuth retrieves the Kubernetes authentication token from NXOS,
 // waiting if necessary until the token is available or the context is canceled.
 // Returns the token string if successful, or an error if the wait fails or the token remains unavailable.
-func (fwa *FWAgent) LoadK8sAuth(ctx context.Context) (string, error) {
+func (agw *AgentGateway) LoadK8sAuth(ctx context.Context) (string, error) {
 	logger.GetLogger().Debug("getting or waiting for K8s auth token from switch")
 
-	ok, err := fwa.LoadAuth(ctx)
+	ok, err := agw.LoadAuth(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -239,7 +239,7 @@ func (fwa *FWAgent) LoadK8sAuth(ctx context.Context) (string, error) {
 	if ok {
 		logger.GetLogger().Info("token ready")
 		// Cache the token after waiting to avoid redundant calls.
-		token = fwa.Token.K8sAuthToken()
+		token = agw.Token.K8sAuthToken()
 		if token == "" {
 			return "", fmt.Errorf("token is still empty after waiting")
 		}
@@ -249,17 +249,17 @@ func (fwa *FWAgent) LoadK8sAuth(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("token was not loaded")
 }
 
-// LoadAuth attempts to load authentication data for the FWAgent.
+// LoadAuth attempts to load authentication data for the AgentGateway.
 // It sets the Kubernetes authentication token path from the configuration,
 // then repeatedly tries to load or authenticate using Kubernetes until successful
 // or until the provided context is cancelled. If the token path is not set in the
 // configuration, it returns an error immediately. The function returns true if
 // authentication data is loaded successfully, or false and an error otherwise.
-func (fwa *FWAgent) LoadAuth(ctx context.Context) (bool, error) {
+func (agw *AgentGateway) LoadAuth(ctx context.Context) (bool, error) {
 	logger.GetLogger().Debug("loading authentication data")
 	// Setting token path.
-	if fwa.Cfg.Env.TokenPath != "" {
-		fwa.Token.SetK8sAuthPath(fwa.Cfg.Env.TokenPath)
+	if agw.Cfg.Env.TokenPath != "" {
+		agw.Token.SetK8sAuthPath(agw.Cfg.Env.TokenPath)
 	} else {
 		return false, fmt.Errorf("config TokenPath is empty")
 	}
@@ -268,7 +268,7 @@ func (fwa *FWAgent) LoadAuth(ctx context.Context) (bool, error) {
 	registered := make(chan bool)
 	go func() {
 		for {
-			reg, err := fwa.tryLoadK8sAuth()
+			reg, err := agw.tryLoadK8sAuth()
 			if err == nil {
 				registered <- reg
 				return
@@ -286,9 +286,9 @@ func (fwa *FWAgent) LoadAuth(ctx context.Context) (bool, error) {
 	}
 }
 
-func (fwa *FWAgent) tryLoadK8sAuth() (bool, error) {
+func (agw *AgentGateway) tryLoadK8sAuth() (bool, error) {
 	// Try loading the token
-	valid, err := fwa.Token.Load()
+	valid, err := agw.Token.Load()
 	if err != nil {
 		logger.GetLogger().Error("failed to load tokens from file", logfields.Error, err)
 		return false, err
@@ -296,7 +296,7 @@ func (fwa *FWAgent) tryLoadK8sAuth() (bool, error) {
 
 	if !valid {
 		logger.GetLogger().Info("token file missing, getting K8sAuth from environment")
-		err = fwa.Token.LoadK8sAuthFromEnv()
+		err = agw.Token.LoadK8sAuthFromEnv()
 		if err != nil {
 			logger.GetLogger().Error("failed to get K8sAuth from environment",
 				logfields.Error, err)
@@ -304,26 +304,26 @@ func (fwa *FWAgent) tryLoadK8sAuth() (bool, error) {
 		}
 	}
 
-	if valid := fwa.Token.ValidK8sAuth(); !valid {
+	if valid := agw.Token.ValidK8sAuth(); !valid {
 		logger.GetLogger().Error("failed to parse k8s auth token", logfields.Error, err)
 		return false, err
 	}
 
 	logger.GetLogger().Debug("token parsed and validated successfully")
-	if fwa.Token != nil {
+	if agw.Token != nil {
 		// Set the token path if not already set.
-		if fwa.Cfg.Env.TokenPath == "" {
+		if agw.Cfg.Env.TokenPath == "" {
 			return false, fmt.Errorf("config TokenPath is empty")
-		} else if fwa.Cfg.Env.TokenPath != fwa.Token.K8sAuthPath() {
-			fwa.Token.SetK8sAuthPath(fwa.Cfg.Env.TokenPath)
+		} else if agw.Cfg.Env.TokenPath != agw.Token.K8sAuthPath() {
+			agw.Token.SetK8sAuthPath(agw.Cfg.Env.TokenPath)
 		}
 		// Persist the token.
-		if err := fwa.Token.Persist(); err != nil {
+		if err := agw.Token.Persist(); err != nil {
 			return false, fmt.Errorf("failed to persist token: %w", err)
 		}
 	}
 
-	if err := fwa.Cfg.Reload(); err != nil {
+	if err := agw.Cfg.Reload(); err != nil {
 		logger.GetLogger().Error("failed to reload config", logfields.Error, err)
 		return false, err
 	}
@@ -331,7 +331,7 @@ func (fwa *FWAgent) tryLoadK8sAuth() (bool, error) {
 }
 
 // --------------------- DPU related
-func (fwa *FWAgent) DpuHealthCheck(ctx context.Context) {
+func (agw *AgentGateway) DpuHealthCheck(ctx context.Context) {
 	retries := 0
 	maxRetries := 6
 	healthCheckTimer := 10 * time.Second
@@ -343,7 +343,7 @@ func (fwa *FWAgent) DpuHealthCheck(ctx context.Context) {
 			return
 		case <-time.After(healthCheckTimer):
 			logger.GetLogger().Debug("DPU health check")
-			ok := fwa.dpuListener.StateCheck()
+			ok := agw.dpuListener.StateCheck()
 			if !ok {
 				retries++
 				if retries > maxRetries {
@@ -354,45 +354,45 @@ func (fwa *FWAgent) DpuHealthCheck(ctx context.Context) {
 				nxos.DpuInSync(ctx, true)
 				retries = 0
 			}
-			ok, cnt := fwa.dpuListener.HealthCheck()
+			ok, cnt := agw.dpuListener.HealthCheck()
 			nxos.DpuHealth(ctx, ok, cnt)
 		}
 	}
 }
 
-func (fwa *FWAgent) LoadPolicies(_ context.Context, pols string) string {
+func (agw *AgentGateway) LoadPolicies(_ context.Context, pols string) string {
 	logger.GetLogger().Debug("Loading policies:", "policy", pols)
 
 	return "TBD"
 }
 
-func (fwa *FWAgent) ShowPolicies(_ context.Context) string {
+func (agw *AgentGateway) ShowPolicies(_ context.Context) string {
 	logger.GetLogger().Debug("Show policies")
 	return "TBD"
 }
 
-func (fwa *FWAgent) ShowDpu(_ context.Context) string {
+func (agw *AgentGateway) ShowDpu(_ context.Context) string {
 	logger.GetLogger().Debug("Show dpu")
-	return fwa.dpuListener.StatusReportString()
+	return agw.dpuListener.StatusReportString()
 }
 
-func (fwa *FWAgent) PingFwa(_ context.Context, dpu string) string {
+func (agw *AgentGateway) PingFwa(_ context.Context, dpu string) string {
 	logger.GetLogger().Debug("Ping DPU", "uid", dpu)
 	return ""
 }
 
-func (fwa *FWAgent) Reopen(_ context.Context) string {
+func (agw *AgentGateway) Reopen(_ context.Context) string {
 	logger.GetLogger().Debug("Reopen")
 	return "Reopen ok"
 }
 
-func (fwa *FWAgent) ShowTokens(_ context.Context) string {
+func (agw *AgentGateway) ShowTokens(_ context.Context) string {
 	logger.GetLogger().Info("Show tokens")
-	fwa.RLock()
-	defer fwa.RUnlock()
+	agw.RLock()
+	defer agw.RUnlock()
 
-	if fwa.Token != nil {
-		at := fwa.Token.K8sAuthToken()
+	if agw.Token != nil {
+		at := agw.Token.K8sAuthToken()
 		if at != "" {
 			return at
 		}
@@ -401,7 +401,7 @@ func (fwa *FWAgent) ShowTokens(_ context.Context) string {
 	return ""
 }
 
-func (fwa *FWAgent) ShowSyslog(_ context.Context) (string, error) {
+func (agw *AgentGateway) ShowSyslog(_ context.Context) (string, error) {
 	logger.GetLogger().Debug("Show syslog")
 
 	// Pulling log config from config repository
@@ -423,7 +423,7 @@ func (fwa *FWAgent) ShowSyslog(_ context.Context) (string, error) {
 	return string(jsonData), nil
 }
 
-func (fwa *FWAgent) LoadSyslog(_ context.Context, syslog string) error {
+func (agw *AgentGateway) LoadSyslog(_ context.Context, syslog string) error {
 	logger.GetLogger().Debug("Load syslog", "syslog", syslog)
 
 	// Unmarshal the JSON string into LogList

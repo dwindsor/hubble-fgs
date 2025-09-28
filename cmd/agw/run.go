@@ -18,9 +18,9 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/manager"
 
+	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 	"github.com/isovalent/hubble-fgs/pkg/config"
-	"github.com/isovalent/hubble-fgs/pkg/fwa"
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
@@ -29,7 +29,7 @@ import (
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
 
-func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUListener) error {
+func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu.DPUListener) error {
 	logger.GetLogger().Info("Agent starting...")
 	waitGroup, ctx := errgroup.WithContext(ctx)
 
@@ -56,7 +56,7 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 	waitGroup.Go(func() error {
 		// Setting up agent local state
 		if Config.EnableNXOS {
-			err := fwaAgent.Setup(ctx)
+			err := agwAgent.Setup(ctx)
 			if err != nil {
 				return fmt.Errorf("FWAgent setup failed: %w", err)
 			}
@@ -66,7 +66,7 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 
 	// Setup callback to yell if DPUs are out of sync
 	waitGroup.Go(func() error {
-		fwaAgent.DpuHealthCheck(ctx)
+		agwAgent.DpuHealthCheck(ctx)
 		return nil
 	})
 
@@ -89,7 +89,7 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 		if Config.K8sServiceAccountAuth != "" {
 			token = Config.K8sServiceAccountAuth
 			// Set the initial k8s auth token to NXOS if provided via command line option.
-			if err := fwaAgent.SetK8sCtlrAuthToken(Config.K8sServiceAccountAuth); err != nil {
+			if err := agwAgent.SetK8sCtlrAuthToken(Config.K8sServiceAccountAuth); err != nil {
 				return fmt.Errorf("agw: failed to set agent token: %w", err)
 			}
 		} else {
@@ -98,7 +98,7 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 				// If auth is empty, the agent will wait for NXOS to provide the token
 				// before starting the k8s controller.
 				var err error
-				token, err = fwaAgent.LoadK8sAuth(ctx)
+				token, err = agwAgent.LoadK8sAuth(ctx)
 				if err != nil {
 					return fmt.Errorf("failed to wait for agent token: %w", err)
 				}
@@ -123,7 +123,7 @@ func RunOnPrem(ctx context.Context, fwaAgent *fwa.FWAgent, dpuListener *dpu.DPUL
 		logger.GetLogger().Info("Initializing Kubernetes Manager for on-prem deployment")
 		kubernetesManager := manager.Get()
 		// Set the register status to ok for the successful connection.
-		fwaAgent.Register(ctx)
+		agwAgent.Register(ctx)
 		kubernetesManager.Start(ctx)
 
 		// TODO: Wait for configmap to be ready
@@ -159,7 +159,7 @@ func setK8sServiceAccountAuth(val interface{}) error {
 	return nil
 }
 
-func cliServer(ctx context.Context, fwaAgent *fwa.FWAgent) error {
+func cliServer(ctx context.Context, agwAgent *agw.AgentGateway) error {
 	serverPath := agwctl.CLI_SOCK
 
 	// Clean up any old socket file before listening
@@ -217,7 +217,7 @@ func cliServer(ctx context.Context, fwaAgent *fwa.FWAgent) error {
 		}
 		logger.GetLogger().Debug("Received JSON:", "json", rxJson)
 
-		msg, err := agwctl.Handler(ctx, fwaAgent, rxJson)
+		msg, err := agwctl.Handler(ctx, agwAgent, rxJson)
 		if err != nil {
 			logger.GetLogger().Error("Failed to handle command", logfields.Error, err)
 			conn.Close()
