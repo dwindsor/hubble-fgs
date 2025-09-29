@@ -14,6 +14,9 @@ import (
 	oss "github.com/cilium/tetragon/pkg/metricsconfig"
 	"github.com/prometheus/client_golang/prometheus"
 
+	// errmetrics registers the enterprise file IDs for OSS metrics
+	_ "github.com/isovalent/hubble-fgs/pkg/errmetrics"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsparsermetrics"

@@ -9,3 +9,16 @@
 // permission is obtained from Isovalent Inc.
 
 package errmetrics
+
+import (
+	"maps"
+
+	"github.com/cilium/tetragon/pkg/errmetrics"
+)
+
+// Keep in sync with bpf/errmetrics/fileids.h.
+var Files = map[uint8]string{}
+
+func init() {
+	maps.Insert(errmetrics.Files, maps.All(Files))
+}
