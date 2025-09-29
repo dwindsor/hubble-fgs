@@ -804,6 +804,7 @@ spec:
                             - net_device
                             - bpf_cmd
                             - dentry
+                            - bpf_prog
                             type: string
                         required:
                         - index
@@ -904,6 +905,7 @@ spec:
                             - net_device
                             - bpf_cmd
                             - dentry
+                            - bpf_prog
                             type: string
                         required:
                         - index
@@ -1017,6 +1019,7 @@ spec:
                           - net_device
                           - bpf_cmd
                           - dentry
+                          - bpf_prog
                           type: string
                       required:
                       - index
@@ -1727,6 +1730,7 @@ spec:
                             - net_device
                             - bpf_cmd
                             - dentry
+                            - bpf_prog
                             type: string
                         required:
                         - index
@@ -3183,6 +3187,7 @@ spec:
                             - net_device
                             - bpf_cmd
                             - dentry
+                            - bpf_prog
                             type: string
                         required:
                         - index
@@ -3868,6 +3873,7 @@ spec:
                             - net_device
                             - bpf_cmd
                             - dentry
+                            - bpf_prog
                             type: string
                         required:
                         - index
@@ -4563,6 +4569,7 @@ spec:
                             - net_device
                             - bpf_cmd
                             - dentry
+                            - bpf_prog
                             type: string
                         required:
                         - index
