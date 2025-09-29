@@ -74,6 +74,36 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 			},
 		},
 		{
+			name: "Empty NamespaceSelector",
+			policy: v1alpha1.TetragonNetworkPolicy{
+				Spec: v1alpha1.NetworkPolicySpec{
+					PodSelector:       &v1.LabelSelector{MatchLabels: map[string]v1.MatchLabelsValue{"app": "frontend"}},
+					NamespaceSelector: nil,
+					ProcessSelector: &v1alpha1.BinarySelector{
+						Operator: "In",
+						Values:   []string{"/usr/bin/curl"},
+					},
+					DefaultAction: "deny",
+					Rules:         []v1alpha1.NetworkPolicyRule{rule},
+				},
+			},
+			want: []*types.TetragonNetworkPolicy{
+				{
+					Rule: rule.Description,
+					Subject: types.TetragonNetworkSubject{
+						Labels:        types.TetragonNetworkLabels{Equal: map[string]string{"app": "frontend"}},
+						InProcessName: []string{"/usr/bin/curl"},
+					},
+					Destination: types.TetragonNetworkDestination{
+						CIDR:  &types.TetragonNetworkCIDR{CIDR: rule.Destination[0].IPBlock.CIDR},
+						Ports: []uint32{rule.Destination[0].Ports.Ports[0]},
+					},
+					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Deny: true}},
+					Action:  types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{}},
+				},
+			},
+		},
+		{
 			name: "Implicit subject is host",
 			policy: v1alpha1.TetragonNetworkPolicy{
 				Spec: v1alpha1.NetworkPolicySpec{
