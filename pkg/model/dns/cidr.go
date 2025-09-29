@@ -54,7 +54,7 @@ func (state *PolicyState) addDestSrcCIDRRecords(
 			Port: 0,
 		}
 		return []*record.DatapathRecord{
-			&record.DatapathRecord{
+			{
 				Policy:   *policy,
 				Src:      src,
 				Endpoint: endpoint,
