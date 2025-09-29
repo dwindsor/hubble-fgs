@@ -33,7 +33,6 @@ const (
 
 var (
 	RealizedState *PolicyState
-	DesiredState  *PolicyState
 	// Programmer for dataplane default to BPF
 	prog datapath.Interface = &datapath.BpfProgrammer{}
 )
@@ -139,10 +138,6 @@ func GetRealizedState() *PolicyState {
 	return RealizedState
 }
 
-func GetDesiredState() *PolicyState {
-	return DesiredState
-}
-
 type PolicyState struct {
 	// Policy objects organized by qualifier
 	Dst matchLabels.PolicyList
@@ -194,14 +189,6 @@ func NewPolicyState() *PolicyState {
 
 func SetRealizedState(s *PolicyState) {
 	RealizedState = s
-}
-
-func (state *PolicyState) DestroyState() {
-	state.Dst = nil
-	state.Src = nil
-
-	state.localObjects = nil
-	state.remoteObjects = nil
 }
 
 // Top level handler to remove pod: performance bouns, this op requires 2 matchLabel
