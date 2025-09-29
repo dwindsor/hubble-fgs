@@ -10,6 +10,7 @@ jobs:
     uses: ./.github/workflows/build-images-base.yml
     permissions:
       contents: read
+      actions: read
     with:
       sha: "${{ github.sha }}"
       tag: latest
