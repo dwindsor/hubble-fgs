@@ -26,9 +26,8 @@ import (
 )
 
 const (
-	InternalFirewallName = "_firewall"
-	InternalHostName     = "_host"
-	InternalLabelKey     = "_internal"
+	InternalHostName = "_host"
+	InternalLabelKey = "_internal"
 )
 
 var (
