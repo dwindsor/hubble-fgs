@@ -11,7 +11,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
-func (state *PolicyState) progRemoveCIDRDest(
+func progRemoveCIDRDest(
 	cidr *types.TetragonNetworkCIDR,
 	src *types.ProcessTreeKey,
 ) error {
@@ -36,7 +36,7 @@ func (state *PolicyState) progRemoveCIDRDest(
 	return nil
 }
 
-func (state *PolicyState) addDestSrcCIDRRecords(
+func addDestSrcCIDRRecords(
 	policy *record.Policy,
 	dest *types.TetragonNetworkDestination,
 	src *types.ProcessTreeKey,
@@ -81,7 +81,7 @@ func (state *PolicyState) addDestSrcCIDRRecords(
 	return records, nil
 }
 
-func (state *PolicyState) addDestCIDRRecords(
+func addDestCIDRRecords(
 	policy *record.Policy,
 	dest *types.TetragonNetworkDestination,
 	subject *types.TetragonNetworkSubject,
@@ -102,7 +102,7 @@ func (state *PolicyState) addDestCIDRRecords(
 			Self:  self,
 			Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 		}
-		r, err := state.addDestSrcCIDRRecords(policy, dest, processSrc, action, true)
+		r, err := addDestSrcCIDRRecords(policy, dest, processSrc, action, true)
 		if err != nil {
 			logger.GetLogger().Warn("add DestCIDR recrods failed", logfields.Error, err)
 		} else {
@@ -111,7 +111,7 @@ func (state *PolicyState) addDestCIDRRecords(
 	}
 
 	if len(subject.InProcessName) == 0 {
-		r, err := state.addDestSrcCIDRRecords(policy, dest, podSubject, action, true)
+		r, err := addDestSrcCIDRRecords(policy, dest, podSubject, action, true)
 		if err != nil {
 			logger.GetLogger().Warn("add DestCIDR recrods failed", logfields.Error, err)
 		} else {

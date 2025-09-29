@@ -55,7 +55,7 @@ func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.Proces
 	var err error
 
 	if d.CIDR != nil {
-		state.progRemoveCIDRDest(d.CIDR, src)
+		progRemoveCIDRDest(d.CIDR, src)
 	}
 
 	if d.FQDN != nil {
@@ -273,7 +273,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 	}
 
 	if policy.Destination.CIDR != nil {
-		r, err := state.addDestSrcCIDRRecords(&recordPolicy, &policy.Destination, src, action, init)
+		r, err := addDestSrcCIDRRecords(&recordPolicy, &policy.Destination, src, action, init)
 		if err != nil {
 			logger.GetLogger().Warn("CIDR policy record error", logfields.Error, err, "CIDR", policy.Destination.CIDR)
 		}
