@@ -316,10 +316,12 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 				}
 				for _, prog := range ourDispatcherProcessTreeProgs {
 					prog.RewriteConstants[dnsparser.ParserEnabledName] = enterpriseOption.Config.EnableBPFDNSParser
-					err := dnsparser.RewriteConstants(prog.RewriteConstants)
-					if err != nil {
-						// TODO: when we remove enabling layer3 from CRD, return this error and stop init of sensor
-						logger.GetLogger().Error("Failed to rewrite DNS parser constants", logfields.Error, err)
+					if enterpriseOption.Config.EnableBPFDNSPerPod {
+						err := dnsparser.RewritePerPodConstants(prog.RewriteConstants)
+						if err != nil {
+							// TODO: when we remove enabling layer3 from CRD, return this error and stop init of sensor
+							logger.GetLogger().Error("Failed to rewrite DNS parser constants", logfields.Error, err)
+						}
 					}
 				}
 				progsCollectStats = append(progsCollectStats, ourDispatcherProcessTreeProgs...)

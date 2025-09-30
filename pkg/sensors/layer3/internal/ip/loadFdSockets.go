@@ -202,10 +202,12 @@ func getFdLookupPrograms() []*program.Program {
 		}
 	} else {
 		if utils.SupportFentry() {
-			err := dnsparser.RewriteConstants(FdLookupFentryProcessTree.RewriteConstants)
-			if err != nil {
-				// TODO: when we remove enabling layer3 from CRD, return this error and stop init of sensor
-				logger.GetLogger().Error("Failed to rewrite DNS parser constants", logfields.Error, err)
+			if enterpriseOption.Config.EnableBPFDNSPerPod {
+				err := dnsparser.RewritePerPodConstants(FdLookupFentryProcessTree.RewriteConstants)
+				if err != nil {
+					// TODO: when we remove enabling layer3 from CRD, return this error and stop init of sensor
+					logger.GetLogger().Error("Failed to rewrite DNS parser constants", logfields.Error, err)
+				}
 			}
 			progs = append(progs, FdLookupFentryProcessTree)
 		} else {

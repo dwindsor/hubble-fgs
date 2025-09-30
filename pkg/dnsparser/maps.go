@@ -76,9 +76,9 @@ type DNSID struct {
 	Source uint64
 }
 
-// RewriteConstants writes constant value into the consts map input for the DNS
-// parser programs.
-func RewriteConstants(consts map[string]any) error {
+// RewritePerPodConstants writes constant value into the consts map input for
+// the DNS parser programs.
+func RewritePerPodConstants(consts map[string]any) error {
 	kubepodsCgid, err := GetKubepodsSliceCgroupID()
 	if err != nil {
 		return fmt.Errorf("failed to get kubepods.slice cgroupID: %w", err)
