@@ -17,6 +17,7 @@
 
 #include "dns.h"
 #include "process/process_endpoint.h"
+#include "errmetrics.h"
 
 static __u64 BPF_FUNC(sk_cgroup_id, void *sk);
 static __u64 BPF_FUNC(sk_ancestor_cgroup_id, void *sk, int ancestor_level);
@@ -219,8 +220,10 @@ FUNC_INLINE void find_dns_key(struct destination_endpoint_key *key, struct ip_ad
 				key->destination_id = dns_value->id;
 				key->source = dns_value->source;
 			}
+		} else {
+			// Monitor the case in which no maps are here for the alloc ID
+			errmetrics(EAGAIN); // EAGAIN: Resource temporarily unavailable
 		}
-		// TODO(mtardy) monitor the case in which no maps are here for the alloc ID
 	}
 }
 
