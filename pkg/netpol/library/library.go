@@ -26,7 +26,7 @@ type policyRepositoryImpl struct {
 }
 
 type PolicyRepository interface {
-	Get(name string) (*PolicyStory, bool)
+	Get(name string) *PolicyStory
 	Delete(name string)
 	Link(title string, ref string) error
 	DelLink(title string)
@@ -67,13 +67,12 @@ func (r *policyRepositoryImpl) generateRuleId() uint64 {
 	return r.ruleId
 }
 
-func (r *policyRepositoryImpl) Get(name string) (*PolicyStory, bool) {
+func (r *policyRepositoryImpl) Get(name string) *PolicyStory {
 	id, ok := r.policyLibrary[name]
 	if !ok {
-		return nil, ok
+		return nil
 	}
-	p := r.idLibrary[id]
-	return p, true
+	return r.idLibrary[id]
 }
 
 func (r *policyRepositoryImpl) Delete(name string) {
@@ -127,13 +126,13 @@ func (r *policyRepositoryImpl) GetId(name string) (uint64, bool) {
 }
 
 func (r *policyRepositoryImpl) GetRuleId(policy, rule string) (uint64, bool) {
-	p, ok := r.Get(policy)
-	if !ok {
-		return uint64(0), ok
+	p := r.Get(policy)
+	if p == nil {
+		return uint64(0), false
 	}
 	id, ok := p.Rules[rule]
 	if !ok {
-		return uint64(0), ok
+		return uint64(0), false
 	}
 	return id, true
 }
@@ -147,8 +146,8 @@ func (r *policyRepositoryImpl) GetName(id uint64) (string, bool) {
 }
 
 func (r *policyRepositoryImpl) GetRule(policy string, id uint64, deny, allow bool) (string, bool) {
-	p, ok := r.Get(policy)
-	if !ok {
+	p := r.Get(policy)
+	if p == nil {
 		return "", false
 	}
 

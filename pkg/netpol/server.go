@@ -65,10 +65,7 @@ func (m *NetworkPolicyManager) AddNetworkPolicyFromYAML(_ context.Context, req *
 }
 
 func (m *NetworkPolicyManager) DeleteNetworkPolicy(_ context.Context, req *tetragon.DeleteNetworkPolicyRequest) (*tetragon.DeleteNetworkPolicyResponse, error) {
-	story, ok := library.GetRepository().Get(req.Name)
-	if !ok {
-		return nil, fmt.Errorf("policy does not exist")
-	}
+	story := library.GetRepository().Get(req.Name)
 	if story == nil {
 		return nil, fmt.Errorf("policy does not exist")
 	}
@@ -98,8 +95,8 @@ func (m *NetworkPolicyManager) ListNetworkPolicy(context.Context, *tetragon.List
 }
 
 func (m *NetworkPolicyManager) GetNetworkPolicy(_ context.Context, req *tetragon.GetNetworkPolicyRequest) (*tetragon.GetNetworkPolicyResponse, error) {
-	policy, ok := library.GetRepository().Get(req.Name)
-	if !ok {
+	policy := library.GetRepository().Get(req.Name)
+	if policy == nil {
 		return nil, fmt.Errorf("policy does not exist")
 	}
 

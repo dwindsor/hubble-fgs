@@ -70,13 +70,13 @@ func addTetragonNetworkPolicy(obj any) {
 
 func getCurrentNameAndAltName(resourceName string) (string, bool, string) {
 	altName := "__" + resourceName
-	_, ok := library.GetRepository().Get(resourceName)
-	if ok {
+	policy := library.GetRepository().Get(resourceName)
+	if policy != nil {
 		return resourceName, true, altName
 	}
 
-	_, ok = library.GetRepository().Get(altName)
-	if ok {
+	policy = library.GetRepository().Get(altName)
+	if policy != nil {
 		return altName, true, resourceName
 	}
 
@@ -190,8 +190,8 @@ func deleteNetworkPolicyObj(obj any) {
 }
 
 func deleteNetworkPolicy(name string) error {
-	story, ok := library.GetRepository().Get(name)
-	if !ok {
+	story := library.GetRepository().Get(name)
+	if story == nil {
 		return fmt.Errorf("policy %q does not exist", name)
 	}
 	if err := dns.RemoveNetworkPolicySet(name, story.IrPolicy); err != nil {
@@ -221,14 +221,12 @@ func AddTetragonNetworkPolicyInformer(ctx context.Context, m *manager.Controller
 }
 
 func loadPolicy(policyStory *library.PolicyStory) error {
-	_, exist := library.GetRepository().Get(policyStory.Title)
-	if exist {
+	if library.GetRepository().Get(policyStory.Title) != nil {
 		return fmt.Errorf("loading policy story %s would overwrite existing network policy", policyStory.Title)
 	}
 
 	existTest := fmt.Sprintf("__%s", policyStory.Title)
-	_, exist = library.GetRepository().Get(existTest)
-	if exist {
+	if library.GetRepository().Get(existTest) != nil {
 		return fmt.Errorf("loading policy story %s would overwrite existing network policy", policyStory.Title)
 	}
 
