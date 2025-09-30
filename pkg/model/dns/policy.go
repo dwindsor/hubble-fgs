@@ -372,7 +372,7 @@ func (state *PolicyState) CreateDstMatchLabelsPolicy(uid string, policy *types.T
 		Ports:  policy.Destination.Ports,
 	}
 
-	state.Dst.Add(uid, ls)
+	state.Dst.Add(ls)
 }
 
 // Create SrcMatchLAbelsPolicy to add new Network Policy
@@ -386,7 +386,7 @@ func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.T
 		Policy: policy,
 	}
 
-	state.Src.Add(uid, ls)
+	state.Src.Add(ls)
 }
 
 // Create L3NetworkPolicy to add a new logical network policy
@@ -412,7 +412,7 @@ func (state *PolicyState) CreateNetworkPolicy(uid string, policy *types.Tetragon
 		return fmt.Errorf("l2 not implemented") //state.L2.Add(uid, ls)
 	}
 
-	state.L3.Add(uid, ls)
+	state.L3.Add(ls)
 	return nil
 }
 

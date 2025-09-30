@@ -32,6 +32,7 @@ func TestSinglePolicy(t *testing.T) {
 	p := &PolicyList{}
 
 	s := &LabelSet{
+		Name:   "s",
 		Labels: make(map[string]string),
 		Policy: netpol,
 	}
@@ -41,7 +42,7 @@ func TestSinglePolicy(t *testing.T) {
 	s.Labels["D"] = "d"
 	s.Labels["E"] = "e"
 
-	p.Add("s", s)
+	p.Add(s)
 	match := p.Exists(s)
 	assert.True(t, match, "keyset should exist")
 
@@ -81,6 +82,7 @@ func TestFlushPolicy(t *testing.T) {
 	p := &PolicyList{}
 
 	s := &LabelSet{
+		Name:   "s",
 		Labels: make(map[string]string),
 		Policy: netpol,
 	}
@@ -90,7 +92,7 @@ func TestFlushPolicy(t *testing.T) {
 	s.Labels["D"] = "d"
 	s.Labels["E"] = "e"
 
-	p.Add("s", s)
+	p.Add(s)
 	match := p.Exists(s)
 	assert.True(t, match, "keyset should exist")
 
@@ -104,6 +106,7 @@ func TestDeletePolicy(t *testing.T) {
 	p := &PolicyList{}
 
 	s := &LabelSet{
+		Name:   "s",
 		Labels: make(map[string]string),
 		Policy: netpol,
 	}
@@ -113,7 +116,7 @@ func TestDeletePolicy(t *testing.T) {
 	s.Labels["D"] = "d"
 	s.Labels["E"] = "e"
 
-	p.Add("s", s)
+	p.Add(s)
 	match := p.Exists(s)
 	assert.True(t, match, "keyset should exist")
 
@@ -130,11 +133,12 @@ func TestManySimplePolicy(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d", i)
 		s := &LabelSet{
+			Name:   is,
 			Labels: make(map[string]string),
 			Policy: netpol,
 		}
 		s.Labels[is] = is
-		p.Add(is, s)
+		p.Add(s)
 	}
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d", i)
@@ -156,11 +160,12 @@ func TestManyLongerPolicy(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d", i)
 		s := &LabelSet{
+			Name:   is,
 			Labels: make(map[string]string),
 			Policy: netpol,
 		}
 		s.Labels[is] = is
-		p.Add(is, s)
+		p.Add(s)
 	}
 	s := &LabelSet{
 		Labels: make(map[string]string),
@@ -180,10 +185,12 @@ func TestCollectionPolicy(t *testing.T) {
 	p := &PolicyList{}
 
 	s1 := &LabelSet{
+		Name:   "s1",
 		Labels: make(map[string]string),
 		Policy: netpol,
 	}
 	s2 := &LabelSet{
+		Name:   "s2",
 		Labels: make(map[string]string),
 		Policy: netpol,
 	}
@@ -194,8 +201,8 @@ func TestCollectionPolicy(t *testing.T) {
 	s2.Labels["B"] = "b"
 	s2.Labels["C"] = "c"
 
-	p.Add("s1", s1)
-	p.Add("s2", s2)
+	p.Add(s1)
+	p.Add(s2)
 
 	search := &LabelSet{
 		Labels: make(map[string]string),
@@ -238,7 +245,8 @@ func BenchmarkMatchPolicy(b *testing.B) {
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d%+200s", i, " ")
 		s.Labels[is] = is
-		p.Add(is, s)
+		s.Name = is
+		p.Add(s)
 	}
 
 	find := &LabelSet{
@@ -268,7 +276,8 @@ func BenchmarkCollection(b *testing.B) {
 	for i := 0; i < 100; i++ {
 		is := fmt.Sprintf("%d%+20s", i, " ")
 		s.Labels[is] = is
-		p.Add(is, s)
+		s.Name = is
+		p.Add(s)
 	}
 
 	find := &LabelSet{

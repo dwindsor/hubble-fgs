@@ -105,9 +105,8 @@ func (policy *PolicyList) MergedCollection(l *LabelSet) *LabelSet {
 
 // Careful this is not a copy() so you can't reuse
 // l after this.
-func (policy PolicyList) Add(name string, l *LabelSet) {
-	l.Name = name
-	policy[name] = l
+func (policy PolicyList) Add(l *LabelSet) {
+	policy[l.Name] = l
 }
 
 func (policy PolicyList) Flush() {
