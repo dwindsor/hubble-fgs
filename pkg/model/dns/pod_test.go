@@ -118,32 +118,6 @@ func testPod(t *testing.T, id, ns, name, kind, matchLabels string) *v1alpha1.Pod
 	return podInfo
 }
 
-func TestCheckWorkloadExists(t *testing.T) {
-	name := "testName"
-
-	s := NewPolicyState()
-
-	test1Id := nextId()
-	addPod(t, test1Id, name, "A=a")
-
-	policy := testFQDNPolicy(name)
-	key, err := createSrcPolicy(policy)
-	assert.NoError(t, err)
-	assert.NotNil(t, key)
-	assert.NotZero(t, key.NSID)
-	assert.Equal(t, 0, len(queueWl))
-
-	pod := testPod(t, "1", "testNamespace", "testNameFoo", "Pod", "")
-	err = checkWorkloadQuotaPolicy(pod)
-	assert.NoError(t, err)
-
-	err = s.RemoveNetworkPolicy(name, policy)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(queueWl))
-
-	delPod(t, test1Id)
-}
-
 // This tests assumes NSID space is incrementing every addPolicyFilter
 // which allows us to check cgroupID
 func TestSrcKeyLookup(t *testing.T) {
@@ -166,46 +140,6 @@ func TestSrcKeyLookup(t *testing.T) {
 	delPod(t, test1Id)
 	delPod(t, test2Id)
 
-}
-
-func TestSrcPolicyLookup(t *testing.T) {
-	s := NewPolicyState()
-
-	name1 := "testName1"
-	name2 := "testName2"
-
-	test1Id := nextId()
-	test2Id := nextId()
-
-	addPod(t, test1Id, name1, "A=a")
-	addPod(t, test2Id, name2, "A=a")
-
-	policy1 := testFQDNPolicy(name1)
-	policy1.Subject.Workload.Name = name1
-	key, err := createSrcPolicy(policy1)
-	assert.NoError(t, err)
-	assert.NotNil(t, key)
-	assert.NotZero(t, key.NSID)
-	assert.Equal(t, 0, len(queueWl))
-
-	policy2 := testFQDNPolicy(name2)
-	policy2.Subject.Workload.Name = name2
-	key, err = createSrcPolicy(policy2)
-	assert.NoError(t, err)
-	assert.NotNil(t, key)
-	assert.NotZero(t, key.NSID)
-	assert.Equal(t, 0, len(queueWl))
-
-	err = s.RemoveNetworkPolicy(name1, policy1)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(queueWl))
-
-	err = s.RemoveNetworkPolicy(name2, policy2)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(queueWl))
-
-	delPod(t, test1Id)
-	delPod(t, test2Id)
 }
 
 func TestCheckMatchLabelsPolicy(t *testing.T) {

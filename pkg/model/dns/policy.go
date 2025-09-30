@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"maps"
 	"strconv"
-	"strings"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
@@ -18,111 +17,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 )
-
-// Legacy workload add for FQDN quota policy soon to be removed
-func AddNetworkPolicy(policy *types.TetragonNetworkPolicy, init bool) error {
-	// The matchLabels case and wl="",kind="" case will fall throuh to queueWorkloadQuotaPolicy
-	src, err := createSrcPolicy(policy)
-	if err != nil {
-		return err
-	}
-	if src == nil {
-		return nil
-	}
-
-	records, err := GetRealizedState().AddSrcPolicy(policy.Name, src, policy, init)
-	if err != nil {
-		return err
-	}
-	if err := prog.AddRecords(records, false); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func queueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
-	queueWl[policy.Subject.Workload] = policy
-}
-
-func QueueWorkloadNetworkPolicy(policy *types.TetragonNetworkPolicy) {
-	queueWlLock.Lock()
-	queueWorkloadNetworkPolicy(policy)
-	queueWlLock.Unlock()
-}
-
-func (state *PolicyState) progRemoveNetworkPolicy(name string, src *types.ProcessTreeKey, d *types.TetragonNetworkDestination) error {
-	var err error
-
-	if d.CIDR != nil {
-		progRemoveCIDRDest(d.CIDR, src)
-	}
-
-	if d.FQDN != nil {
-		for _, entry := range d.FQDN.Names {
-			ep := &endpoint.Endpoint{
-				Type: tetragon.EndpointType_ENDPOINT_TYPE_DNS,
-				Dns:  entry,
-			}
-			endpoint := record.DatapathEndpoint{
-				EP:   ep,
-				Port: 0,
-			}
-			record := &record.DatapathRecord{
-				Src:      src,
-				Endpoint: endpoint,
-			}
-			if err := prog.RemoveSingleRecord(record); err != nil {
-				logger.GetLogger().Error("TCP quota remove Failed", logfields.Error, err, "cgid", src.NSID, "self", src.Self, "dest", entry)
-			}
-		}
-		logger.GetLogger().Debug("TCP quota removed", "cgid", src.NSID, "self", src.Self, "dest", strings.Join(d.FQDN.Names, " "))
-	}
-
-	ls, ok := state.Dst[name]
-	if !ok {
-		return nil
-	}
-
-	for _, ep := range ls.Endpoints {
-		endpoint := record.DatapathEndpoint{
-			EP:   ep,
-			Port: 0,
-		}
-		record := &record.DatapathRecord{
-			Src:      src,
-			Endpoint: endpoint,
-		}
-		if prog.RemoveSingleRecord(record); err != nil {
-			logger.GetLogger().Error("TCP quota labels endpoint remove Failed", logfields.Error, err, "cgid", src.NSID, "self", src.Self)
-			continue
-		}
-		logger.GetLogger().Debug("TCP DNS labels endpoint quota removed", "cgid", src.NSID, "self", src.Self)
-	}
-
-	return nil
-}
-
-func (state *PolicyState) RemoveNetworkPolicy(name string, policy *types.TetragonNetworkPolicy) error {
-	queueWlLock.Lock()
-	defer queueWlLock.Unlock()
-
-	s := &policy.Subject.Workload
-	d := &policy.Destination
-
-	delete(queueWl, policy.Subject.Workload)
-
-	src, err := createSrcKey(s.Namespace, s.Name, s.Kind)
-	if err != nil {
-		// Remove should not throw an error if the policy doesn't exist
-		return nil
-	}
-	if src == nil {
-		return nil
-	}
-
-	return state.progRemoveNetworkPolicy(name, src, d)
-}
 
 func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, []*record.DatapathRecord, error) {
 	state.SrcLock.Lock()
@@ -206,26 +100,6 @@ func (state *PolicyState) RemoveMatchLabelNetworkPolicy(uid string, policy *type
 	prog.AddRecords(updateSet, true)
 	prog.RemoveRecords(zombieSet)
 	return nil
-}
-
-func createSrcPolicy(policy *types.TetragonNetworkPolicy) (*types.ProcessTreeKey, error) {
-	queueWlLock.Lock()
-	defer queueWlLock.Unlock()
-
-	s := &policy.Subject.Workload
-
-	src, err := createSrcKey(s.Namespace, s.Name, s.Kind)
-	if err != nil {
-		return nil, err
-	}
-
-	// If the src does not yet exist we watch for it and create the policy
-	// once an ID has been generated.
-	if src == nil {
-		queueWorkloadNetworkPolicy(policy)
-		return nil, nil
-	}
-	return src, nil
 }
 
 func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
@@ -581,11 +455,7 @@ func RemoveNetworkPolicySet(name string, policy []*types.TetragonNetworkPolicy) 
 
 	for i, p := range policy {
 		uid := fmt.Sprintf("%s_%d", name, i)
-		err := s.RemoveNetworkPolicy(uid, p)
-		if err != nil {
-			return err
-		}
-		err = s.RemoveMatchLabelNetworkPolicy(uid, p)
+		err := s.RemoveMatchLabelNetworkPolicy(uid, p)
 		if err != nil {
 			return err
 		}

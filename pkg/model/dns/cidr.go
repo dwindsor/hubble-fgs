@@ -11,31 +11,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
-func progRemoveCIDRDest(
-	cidr *types.TetragonNetworkCIDR,
-	src *types.ProcessTreeKey,
-) error {
-	ep := &endpoint.Endpoint{
-		Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-		Ip:   cidr.CIDR,
-	}
-	endpoint := record.DatapathEndpoint{
-		EP:   ep,
-		Port: 0,
-	}
-	record := &record.DatapathRecord{
-		Src:      src,
-		Endpoint: endpoint,
-	}
-	if err := prog.RemoveSingleRecord(record); err != nil {
-		logger.GetLogger().Error("TCP CIDR remove Failed", logfields.Error, err,
-			"cgid", src.NSID, "self", src.Self, "dest", cidr.CIDR)
-		return err
-	}
-	logger.GetLogger().Debug("TCP CIDR removed", "cgid", src.NSID, "self", src.Self, "dest", cidr.CIDR)
-	return nil
-}
-
 func addDestSrcCIDRRecords(
 	policy *record.Policy,
 	dest *types.TetragonNetworkDestination,

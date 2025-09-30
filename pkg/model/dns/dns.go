@@ -36,12 +36,6 @@ var (
 	prog datapath.Interface = &datapath.BpfProgrammer{}
 )
 
-// Legacy policy is handled as global state
-var (
-	queueWl     = make(map[types.TetragonWorkloadNetworkSubject]*types.TetragonNetworkPolicy)
-	queueWlLock = sync.Mutex{}
-)
-
 // At init we build an empty realized state
 func init() {
 	s := NewPolicyState()
@@ -50,43 +44,6 @@ func init() {
 
 func SetDatapath(dp datapath.Interface) {
 	prog = dp
-}
-
-// Legacy policy add for quotas
-func checkWorkloadQuotaPolicy(endpointObject metav1.Object) error {
-	var s types.TetragonWorkloadNetworkSubject
-	switch o := endpointObject.(type) {
-	case *v1alpha1.PodInfo:
-		s.Name = o.WorkloadObject.Name
-		s.Namespace = o.WorkloadObject.Namespace
-		s.Kind = o.WorkloadType.Kind
-	case *corev1.Node:
-		s.Name = endpointObject.GetName()
-		s.Namespace = endpointObject.GetNamespace()
-		s.Kind = o.Kind
-	default:
-		return fmt.Errorf("object %s has unsupported type", o.GetName())
-	}
-
-	queueWlLock.Lock()
-	policy, ok := queueWl[s]
-	if !ok {
-		/* Check for Namespace policy */
-		namespaceSubject := types.TetragonWorkloadNetworkSubject{
-			Namespace: s.Namespace,
-			Kind:      "",
-			Name:      "",
-		}
-		policy, ok = queueWl[namespaceSubject]
-		if !ok {
-			queueWlLock.Unlock()
-			return nil
-		}
-	} else {
-		delete(queueWl, s)
-	}
-	queueWlLock.Unlock()
-	return AddNetworkPolicy(policy, true)
 }
 
 func createObjectEndpoint(object metav1.Object) *endpoint.Endpoint {
@@ -680,11 +637,6 @@ func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]*record.Dat
 	ep := createObjectEndpoint(endpointObject)
 
 	epRecords := state.EndpointAdd(ep, ml, true)
-
-	// tbd fold this into policy xlate layer
-	if err := checkWorkloadQuotaPolicy(endpointObject); err != nil {
-		return epRecords, err
-	}
 
 	src, err := createObjectSrcKey(endpointObject)
 	if err != nil {

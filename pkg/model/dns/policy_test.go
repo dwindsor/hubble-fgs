@@ -11,30 +11,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
-func testFQDNPolicy(name string) *types.TetragonNetworkPolicy {
-	wl := types.TetragonWorkloadNetworkSubject{
-		Namespace: "testNamespace",
-		Name:      "testName",
-		Kind:      "testKind",
-	}
-	s := types.TetragonNetworkSubject{
-		Workload: wl,
-	}
-	f := &types.TetragonNetworkFQDN{
-		Names: []string{"test.io", "test.com"},
-	}
-	d := types.TetragonNetworkDestination{
-		FQDN: f,
-	}
-
-	policy := &types.TetragonNetworkPolicy{
-		Name:        name,
-		Subject:     s,
-		Destination: d,
-	}
-	return policy
-}
-
 func testMatchSrcLabelsPolicy(name, labels string) *types.TetragonNetworkPolicy {
 	ml := make(map[string]string)
 	for _, l := range strings.Split(labels, ",") {
@@ -128,63 +104,6 @@ func testMatchPortCIDRDstProcessLabelsDenyPolicy(name, src, dst, action, cidr st
 	}
 
 	return netpol
-}
-
-func TestQueueWorkloadPolicy(t *testing.T) {
-	s := NewPolicyState()
-	name := "test"
-	policy := testFQDNPolicy(name)
-
-	QueueWorkloadNetworkPolicy(policy)
-	assert.Equal(t, 1, len(queueWl))
-
-	err := s.RemoveNetworkPolicy(name, policy)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(queueWl))
-}
-
-func TestCreateSrcKeyNoState(t *testing.T) {
-	s := NewPolicyState()
-	name := "test"
-	policy := testFQDNPolicy(name)
-	_, err := createSrcPolicy(policy)
-	assert.NoError(t, err)
-	err = s.RemoveNetworkPolicy(name, policy)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(queueWl))
-}
-
-func TestCreateSrcKeyNamespaceNoState(t *testing.T) {
-	s := NewPolicyState()
-	name := "test"
-	policy := testFQDNPolicy(name)
-	policy.Subject.Workload.Name = ""
-	policy.Subject.Workload.Kind = ""
-	key, err := createSrcPolicy(policy)
-	assert.NoError(t, err)
-	assert.Nil(t, key)
-
-	err = s.RemoveNetworkPolicy(name, policy)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(queueWl))
-}
-
-func TestCreatSrcKeyGlobal(t *testing.T) {
-	s := NewPolicyState()
-	name := "test"
-	policy := testFQDNPolicy(name)
-	policy.Subject.Workload.Namespace = ""
-	policy.Subject.Workload.Name = ""
-	policy.Subject.Workload.Kind = ""
-	key, err := createSrcPolicy(policy)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(0), key.NSID)
-	assert.Equal(t, uint64(0), key.Depth)
-	assert.Equal(t, uint64(0), key.Self)
-
-	err = s.RemoveNetworkPolicy(name, policy)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(queueWl))
 }
 
 func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
