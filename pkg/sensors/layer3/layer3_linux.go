@@ -544,13 +544,17 @@ func (l3 *l3Sensor) configureMaps(spec *v1alpha1.TracingPolicySpec) error {
 		}
 
 		if enterpriseOption.Config.EnableBPFDNSPerPod {
-			m := manager.Get().GetControllerManager().Manager
-			reconciler, err := dnsparser.NewPodReconciler(m.GetClient(), &ipToIDMaps)
-			if err != nil {
-				return fmt.Errorf("failed to create a new Pod reconciler for the DNS parser per Pod feature: %w", err)
-			}
-			if err = reconciler.SetupWithManager(m); err != nil {
-				return fmt.Errorf("failed to setup the Pod reconciler for the DNS parser per Pod feature: %w", err)
+			controllerManager := manager.Get().GetControllerManager()
+			// Start the reconciler only if there is a k8s control plane
+			if controllerManager != nil {
+				m := controllerManager.Manager
+				reconciler, err := dnsparser.NewPodReconciler(m.GetClient(), &ipToIDMaps)
+				if err != nil {
+					return fmt.Errorf("failed to create a new Pod reconciler for the DNS parser per Pod feature: %w", err)
+				}
+				if err = reconciler.SetupWithManager(m); err != nil {
+					return fmt.Errorf("failed to setup the Pod reconciler for the DNS parser per Pod feature: %w", err)
+				}
 			}
 		} else {
 			// If the reconciler does not manage this map, let's
