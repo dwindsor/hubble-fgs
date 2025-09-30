@@ -71,10 +71,6 @@ var (
 	firstStatsProg *program.Program
 )
 
-var (
-	baseLayer3Policy = "__base_layer3__"
-)
-
 func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
 	// We want to make sure we stand configuration up when loading/unloading the programs.
 	config := networkapi.Layer3ConfigValue{}
@@ -794,7 +790,7 @@ func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 		mgr = observer.GetSensorManager()
 	}
 	initialLayer3Sensor := &sensors.Sensor{
-		Name:  baseLayer3Policy,
+		Name:  api.BaseLayer3Policy,
 		Progs: progs,
 		Maps:  maps,
 	}

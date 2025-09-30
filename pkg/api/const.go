@@ -12,4 +12,5 @@ package api
 
 const (
 	Layer3SensorName = "layer3_sensors"
+	BaseLayer3Policy = "__base_layer3__"
 )

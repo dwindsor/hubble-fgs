@@ -57,7 +57,7 @@ func collect(ch chan<- prometheus.Metric) {
 	// Checking if the layer3 sensors is loaded otherwise we generate error
 	// log messages while the sensor is loading and we fetch the metrics
 	if sensorList == nil || !slices.ContainsFunc(*sensorList, func(s sensors.SensorStatus) bool {
-		return s.Name == api.Layer3SensorName && s.Enabled
+		return s.Enabled && (s.Name == api.Layer3SensorName || s.Name == api.BaseLayer3Policy)
 	}) {
 		return
 	}
