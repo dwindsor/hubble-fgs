@@ -26,7 +26,7 @@
 #include "bpf_tracing.h"
 #include "dns/bpf_dns.h"
 #include "bpf_udp_info.h"
-#include "parsers/dns/parser.h"
+#include "parsers/dns/dns_parser.h"
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 {
@@ -404,6 +404,7 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 	struct iphdr *ip;
 	u8 udp_off;
 	int err;
+	uint32_t zero = 0;
 
 	if (!skb)
 		return SK_PASS;
@@ -477,6 +478,7 @@ int udp_handler_ip6(struct __sk_buff *skb, u16 udp_off, int send)
 	struct handler_vars *vars;
 	struct udphdr *udp, cpy;
 	struct ipv6hdr *ip6;
+	uint32_t zero = 0;
 
 	if (!skb)
 		return SK_PASS;

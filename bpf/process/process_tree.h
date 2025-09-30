@@ -32,7 +32,7 @@
 #include "process_endpoint.h"
 #include "lpm.h"
 
-#include "parsers/dns/pstree.h"
+#include "parsers/dns/dns_pstree.h"
 
 struct process_tree_config {
 	uint64_t enableProcessTree;

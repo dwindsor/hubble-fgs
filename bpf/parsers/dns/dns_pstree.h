@@ -147,7 +147,7 @@ FUNC_INLINE uint64_t find_parent_cgroupid_network(struct bpf_sock *sk)
 // find_parent_cgroupid_tracing is the tracing version of the network
 // find_parent_cgroupid_network function. Make sure all changes are reflected to
 // the other function as well.
-FUNC_INLINE uint64_t find_parent_cgroupid_tracing()
+FUNC_INLINE uint64_t find_parent_cgroupid_tracing(void)
 {
 	uint64_t cgid, previous_cgid, own_cgid;
 	uint8_t kubepods_found = false;
@@ -206,12 +206,13 @@ FUNC_INLINE void find_dns_key(struct destination_endpoint_key *key, struct ip_ad
 {
 	int alloc_id = 0;
 	struct dns_endpoint_id_value *dns_value;
+	void *tg_dns_ip_id_map;
 
 	if (DNS_PARSER_PER_POD_ENABLED)
 		alloc_id = find_alloc_id(find_parent_cgroupid_tracing());
 
 	if (alloc_id >= 0) {
-		void *tg_dns_ip_id_map = map_lookup_elem(&tg_dns_ip_id, &alloc_id);
+		tg_dns_ip_id_map = map_lookup_elem(&tg_dns_ip_id, &alloc_id);
 		if (tg_dns_ip_id_map) {
 			dns_value = map_lookup_elem(tg_dns_ip_id_map, &ip_key);
 			if (dns_value) {
@@ -263,9 +264,8 @@ FUNC_INLINE int assign_dns_id_mapping(struct __sk_buff *skb, struct ip_addr *ip,
 
 	if (DNS_PARSER_PER_POD_ENABLED) {
 		alloc_id = find_alloc_id(find_parent_cgroupid_network(skb->sk));
-		if (alloc_id < 0) {
+		if (alloc_id < 0)
 			return -1;
-		}
 	}
 
 	ip_id_map = map_lookup_elem(&tg_dns_ip_id, &alloc_id);

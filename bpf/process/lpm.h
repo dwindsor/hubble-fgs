@@ -1,7 +1,7 @@
 #ifndef __PROCESS_LPM__
 #define __PROCESS_LPM__
 
-#include "parsers/dns/pstree.h"
+#include "parsers/dns/dns_pstree.h"
 
 struct addr4_lpm_trie {
 	__u32 prefix;

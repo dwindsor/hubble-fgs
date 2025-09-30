@@ -15,12 +15,10 @@
 #include "bpf_task.h"
 
 #include "dns.h"
-#include "pstree.h"
+#include "dns_pstree.h"
 #include "lib/address_family.h"
 #include "lib/config.h"
 #include "lib/strncmp.h"
-
-uint32_t zero = 0;
 
 volatile __CONST __u8 DNS_PARSER_ENABLED;
 
@@ -35,11 +33,12 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start, int ski
 {
 	__u8 name_offset, label_length;
 	char *data, *data_end, *name;
+	uint32_t zero = 0;
 
 	data_end = (void *)(long)skb->data_end;
-	if (off > SKB_DATA_MAX_SIZE) {
+	if (off > SKB_DATA_MAX_SIZE)
 		return -20;
-	}
+
 	data = (void *)(long)skb->data + off;
 
 	// This is the total current length of the name, check that it does not overflow
@@ -103,7 +102,8 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 {
 	int8_t ret;
 	uint16_t init_offset = offset_start;
-	char *data_end;
+	char *data_end, *name;
+	uint32_t zero = 0;
 
 	data_end = (char *)(long)skb->data_end;
 	// Note that data could be recomputed from skb->data + offset but that
@@ -112,9 +112,10 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 
 	// Even though we NULL byte end the string, it will be used as a key so it needs to be cleared
 	if (!skip) {
-		char *name = map_lookup_elem(&tg_h_dns_name, &zero);
+		name = map_lookup_elem(&tg_h_dns_name, &zero);
 		if (!name)
 			return -25;
+
 		memset((uint64_t *)name, 0, DNS_MAX_NAME_SIZE + 1);
 	}
 
@@ -126,9 +127,9 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 	// writing 'if (ret == 0 ) break;' inside the loop increases the complexity
 	for (int i = 0; i < (MAX_NUMBER_LABEL + 1) && data + sizeof(u8) * 3 <= data_end && ret > 0; i++) {
 		ret = parse_dns_name_label(skb, offset_start, data, skip);
-		if (ret < 0) {
+		if (ret < 0)
 			return ret;
-		}
+
 		offset_start += ret;
 	}
 	// Skip the null byte at the end of the name
@@ -147,16 +148,16 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 	int name_len;
 	struct ip_addr ip = { 0 };
 	char *data, *data_end, *name;
+	uint32_t zero = 0;
 
 	data_end = (void *)(long)skb->data_end;
-	if (off < 0 || off > SKB_DATA_MAX_SIZE) {
+	if (off < 0 || off > SKB_DATA_MAX_SIZE)
 		return -28;
-	}
+
 	data = (void *)(long)skb->data + off;
 
-	if (!data) {
+	if (!data)
 		return -29;
-	}
 
 	// Light parse the compressed DNS name: do not actually retrieve the offset
 	// from the pointer, just make sure it's a valid compressed name starting
@@ -233,6 +234,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		ip.af_inet6 = 1;
 #ifdef TETRAGON_BPF_DEBUG
 		__u16 *addr = (__u16 *)ip.addr;
+
 		DEBUG("AAAA Record: %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 		      bpf_htons(addr[0]),
 		      bpf_htons(addr[1]),
@@ -266,7 +268,9 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 	void *id_found;
 	int name_len;
 	int8_t error, ret;
+	uint16_t qtype;
 	uint32_t error_idx, *counter, transaction_id;
+	uint32_t zero = 0;
 
 	if (offset > UDP_MAX_SIZE)
 		offset = UDP_MAX_SIZE;
@@ -383,7 +387,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 		error = -17;
 		goto done;
 	}
-	__u16 qtype = bpf_ntohs(*(__u16 *)data);
+	qtype = bpf_ntohs(*(uint16_t *)data);
 	if (qtype != A_RECORD && qtype != AAAA_RECORD) {
 		error = -18;
 		goto done;
