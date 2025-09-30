@@ -364,7 +364,7 @@ func (m IPToIDMaps) PopulateWithLocalhost(mapID uint32) error {
 
 func (m *IPToIDMaps) AppendAndPopulateNewInnerMap() error {
 	index := m.mapIndex
-	err := m.AppendNewInnerMap()
+	err := m.appendNewInnerMap(true)
 	if err != nil {
 		return fmt.Errorf("failed to create new inner IP to ID map with index %d: %w", index, err)
 	}
@@ -375,11 +375,12 @@ func (m *IPToIDMaps) AppendAndPopulateNewInnerMap() error {
 	return nil
 }
 
-func (m *IPToIDMaps) AppendNewInnerMap() error {
+func (m *IPToIDMaps) appendNewInnerMap(pin bool) error {
 	// Key and value needs to be defined for kernels before (at min)
 	// 6.6. For recent versions, KeySize and ValueSize are enough.
-	innerDefault, err := ebpf.NewMap(&ebpf.MapSpec{
-		Name:    fmt.Sprintf("tg_dns_ip_id_%d", m.mapIndex),
+	newInnerMapName := fmt.Sprintf("%s_%d", IPToIDMapsName, m.mapIndex)
+	newInnerMap, err := ebpf.NewMap(&ebpf.MapSpec{
+		Name:    newInnerMapName,
 		Type:    ebpf.LRUHash,
 		KeySize: uint32(unsafe.Sizeof(dnsapi.IPAddr{})),
 		Key: &btf.Struct{
@@ -391,15 +392,24 @@ func (m *IPToIDMaps) AppendNewInnerMap() error {
 		},
 		MaxEntries: uint32(option.Config.ProcessTreeCacheSize),
 	})
-
 	if err != nil {
 		return fmt.Errorf("error creating a new inner DNSIPToID map: %w", err)
 	}
+	defer newInnerMap.Close()
 
-	err = m.ipToIDMaps.Put(m.mapIndex, uint32(innerDefault.FD()))
+	err = m.ipToIDMaps.Put(m.mapIndex, uint32(newInnerMap.FD()))
 	if err != nil {
+		// map should be GCed as there's no reference to it
 		return fmt.Errorf("error putting the new inner DNSIPToID map: %w", err)
 	}
+
+	if pin {
+		err = newInnerMap.Pin(filepath.Join(bpf.MapPrefixPath(), newInnerMapName))
+		if err != nil {
+			return fmt.Errorf("failed pinning the new inner DNSIPToID map: %w", err)
+		}
+	}
+
 	atomic.AddUint32(&m.mapCount, 1)
 	atomic.AddUint32(&m.mapIndex, 1)
 	return nil
@@ -414,16 +424,24 @@ func (m *IPToIDMaps) RemoveInnerMap(mapID uint32) error {
 	return nil
 }
 
+func (m *IPToIDMaps) CreatePreallocMaps() error {
+	return m.createPreallocMaps(true)
+}
+
+func (m *IPToIDMaps) CreatePreallocMapsForUnitTests() error {
+	return m.createPreallocMaps(false)
+}
+
 // CreatePreallocMaps is not merged with PopulatePreallocMapsWithLocalhost
 // because testing needs to create empty maps.
-func (m *IPToIDMaps) CreatePreallocMaps() error {
+func (m *IPToIDMaps) createPreallocMaps(pin bool) error {
 	mapsToPrealloc := uint32(1)
 	if option.Config.EnableBPFDNSPerPod {
 		mapsToPrealloc = option.Config.BPFDNSPerPodPrealloc
 	}
 
 	for range mapsToPrealloc {
-		err := m.AppendNewInnerMap()
+		err := m.appendNewInnerMap(pin)
 		if err != nil {
 			return fmt.Errorf("failed to create the IP to ID inner map with alloc ID %d: %w", m.mapIndex, err)
 		}
