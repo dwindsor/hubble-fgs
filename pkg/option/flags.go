@@ -290,10 +290,6 @@ func validateConfig(config config) error {
 			return fmt.Errorf("the BPF DNS parser requires --%s", keyEnableUDP)
 		}
 
-		if !config.EnableApplicationModel {
-			return fmt.Errorf("the BPF DNS parser only use case is the NetworkPolicy which requires --%s", KeyEnableApplicationModel)
-		}
-
 	}
 
 	if config.EnableBPFDNSPerPod {
