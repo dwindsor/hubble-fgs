@@ -33,7 +33,10 @@ var dnsParserErrorMetric = metrics.MustNewCustomCounter(
 	metrics.NewOpts(
 		consts.MetricsNamespace, "dns_parser", "error_total",
 		"The total and type of errors encountered while parsing DNS answers. Internal use only.",
-		nil, nil, []metrics.UnconstrainedLabel{{Name: "error_number", ExampleValue: "1"}}, // could be constrained
+		nil, nil, []metrics.UnconstrainedLabel{
+			{Name: "error_number", ExampleValue: "2"},
+			{Name: "error_name", ExampleValue: "DNS_ERR_UNEXPECTED_RESPONSE"},
+		},
 	),
 )
 
@@ -79,10 +82,10 @@ func collect(ch chan<- prometheus.Metric) {
 	}
 
 	for index, value := range values {
-		ch <- dnsParserErrorMetric.MustMetric(float64(value), fmt.Sprint(index))
+		ch <- dnsParserErrorMetric.MustMetric(float64(value), fmt.Sprint(index), Errors[index])
 	}
 }
 
 func collectForDocs(ch chan<- prometheus.Metric) {
-	ch <- dnsParserErrorMetric.MustMetric(0, "0")
+	ch <- dnsParserErrorMetric.MustMetric(1, "2", "DNS_ERR_UNEXPECTED_RESPONSE")
 }

@@ -37,18 +37,18 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start, int ski
 
 	data_end = (void *)(long)skb->data_end;
 	if (off > SKB_DATA_MAX_SIZE)
-		return -20;
+		return -DNS_ERR_LABEL_OFFSET_OVERFLOW;
 
 	data = (void *)(long)skb->data + off;
 
 	// This is the total current length of the name, check that it does not overflow
 	if (data - data_start > DNS_MAX_NAME_SIZE)
-		return -21;
+		return -DNS_ERR_LABEL_NAME_OVERFLOW;
 
 	name_offset = data - data_start;
 
 	if (data + 1 > data_end)
-		return -22;
+		return -DNS_ERR_LABEL_LENGTH_OVERFLOW;
 
 	// Regular label, read the label length and skip the label
 	label_length = *((__u8 *)data) & DNS_MAX_LABEL_SIZE; // Max length is 63
@@ -56,8 +56,8 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start, int ski
 
 	if (!skip) {
 		name = map_lookup_elem(&tg_h_dns_name, &zero);
-		if (!name)
-			return -23;
+		if (unlikely(!name))
+			return -DNS_ERR_ZERO_ELEM_NULL;
 	}
 
 	if (name_offset > 0) {
@@ -84,7 +84,7 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start, int ski
 			// the check every iteration. It's not optimal to read one byte at a time
 			// but it's still better than doing probe_read_kernel.
 			if (data + (i + 1) > data_end)
-				return -24;
+				return -DNS_ERR_LABEL_COPY_OVERFLOW;
 
 			name[name_offset + i] = data[i];
 		}
@@ -113,8 +113,8 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 	// Even though we NULL byte end the string, it will be used as a key so it needs to be cleared
 	if (!skip) {
 		name = map_lookup_elem(&tg_h_dns_name, &zero);
-		if (!name)
-			return -25;
+		if (unlikely(!name))
+			return -DNS_ERR_ZERO_ELEM_NULL;
 
 		memset((uint64_t *)name, 0, DNS_MAX_NAME_SIZE + 1);
 	}
@@ -145,19 +145,18 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 {
 	__u8 first_byte, offset;
 	__u16 type, data_len;
-	int name_len;
+	int name_len, assign;
 	struct ip_addr ip = { 0 };
 	char *data, *data_end, *name;
 	uint32_t zero = 0;
 
 	data_end = (void *)(long)skb->data_end;
 	if (off < 0 || off > SKB_DATA_MAX_SIZE)
-		return -28;
+		return -DNS_ERR_ANSWER_MAX_OVERFLOW;
 
 	data = (void *)(long)skb->data + off;
-
 	if (!data)
-		return -29;
+		return -DNS_ERR_ANSWER_OFFSET_OVERFLOW;
 
 	// Light parse the compressed DNS name: do not actually retrieve the offset
 	// from the pointer, just make sure it's a valid compressed name starting
@@ -172,7 +171,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 	// | 1  1|                OFFSET                   |
 	// +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 	if (data + sizeof(u8) * 2 > data_end)
-		return -30;
+		return -DNS_ERR_ANSWER_COMPRESSED_OVERFLOW;
 
 	first_byte = *((__u8 *)data);
 	if ((first_byte & COMPRESSED_MSG_MASK) == COMPRESSED_MSG_MASK) {
@@ -184,10 +183,10 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		// Might be not using message compression
 		name_len = parse_dns_name(skb, data, off, true);
 		if (name_len < 0)
-			return -31;
+			return -DNS_ERR_ANSWER_PARSENAME;
 
 		if (name_len > SKB_DATA_MAX_SIZE)
-			return -32;
+			return -DNS_ERR_ANSWER_PARSENAME_NAME_OVERFLOW;
 
 		offset = name_len;
 		data += offset;
@@ -195,7 +194,7 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 
 	// The answer should contain type, class, TTL and data_len
 	if (data + (sizeof(u16) * 2 + sizeof(u32) + sizeof(u16)) > data_end)
-		return -33;
+		return -DNS_ERR_ANSWER_TYPE_CLASS_TTL_LEN_OVERFLOW;
 
 	type = bpf_ntohs(*(__u16 *)data);
 	data_len = bpf_ntohs(*(__u16 *)(data + sizeof(u16) * 2 + sizeof(u32)));
@@ -204,30 +203,31 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 
 	// Skip non A and AAAA records
 	if (type != A_RECORD && type != AAAA_RECORD) {
-		data_len &= 255; // TODO this is a incorrect approximation
+		data_len &= 255; // TODO this is an incorrect approximation
 		return offset + data_len;
 	}
 
 	name = map_lookup_elem(&tg_h_dns_name, &zero);
-	if (!name)
-		return -34;
+	if (unlikely(!name))
+		return -DNS_ERR_ZERO_ELEM_NULL;
 
 	if (data_len == sizeof(u32) && type == (A_RECORD)) {
 		if (data + sizeof(u32) > data_end)
-			return -35;
+			return -DNS_ERR_ANSWER_IPV4_OVERFLOW;
 
 		ip.addr[0] = *(__u32 *)data;
 		ip.addr[1] = 0;
 		ip.af_inet6 = 0;
 		DEBUG("A Record: %d.%d.%d.%d", ip.addr[0] & 0xFF, (ip.addr[0] >> 8) & 0xFF, (ip.addr[0] >> 16) & 0xFF, ip.addr[0] >> 24);
 
-		if (assign_dns_id_mapping(skb, &ip, name) < 0)
-			return -36;
+		assign = assign_dns_id_mapping(skb, &ip, name);
+		if (assign < 0)
+			return assign;
 
 		return offset + sizeof(u32);
 	} else if (data_len == sizeof(u128) && type == (AAAA_RECORD)) {
 		if (data + sizeof(u128) > data_end)
-			return -37;
+			return -DNS_ERR_ANSWER_IPV6_OVERFLOW;
 
 		ip.addr[0] = *(__u64 *)data;
 		ip.addr[1] = *(__u64 *)(data + sizeof(u64));
@@ -246,14 +246,15 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 		      bpf_htons(addr[7]));
 #endif
 
-		if (assign_dns_id_mapping(skb, &ip, name) < 0)
-			return -38;
+		assign = assign_dns_id_mapping(skb, &ip, name);
+		if (assign < 0)
+			return assign;
 
 		return offset + sizeof(u128);
 	}
 
 	// We should never arrive here
-	return -39;
+	return -DNS_ERR_ANSWER_UNREACH;
 }
 
 // parse_dns parses a DNS query response, it assumes checks have been made that
@@ -318,7 +319,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 		id_found = map_lookup_elem(&tg_dns_req_id_map, &transaction_id);
 		if (!id_found) {
 			// Didn't expect a response with this ID.
-			error = -10;
+			error = -DNS_ERR_UNEXPECTED_RESPONSE;
 			goto done;
 		}
 	}
@@ -334,7 +335,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 	// "In the DNS, QDCOUNT Is (Usually) One"
 	// https://datatracker.ietf.org/doc/rfc9619/
 	if (bpf_ntohs(dns->qdcount) != 1) {
-		error = -11;
+		error = -DNS_ERR_INVALID_QDCOUNT;
 		goto done;
 	}
 
@@ -346,50 +347,52 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 	}
 
 	if (name_len > SKB_DATA_MAX_SIZE) {
-		error = -12;
+		error = -DNS_ERR_NAME_OVERFLOW;
 		goto done;
 	}
 	data += name_len;
 
 	// Record the request ID or verify the response domain is correct with the ID.
 	name = map_lookup_elem(&tg_h_dns_name, &zero);
-	if (!name)
-		return DNS_PARSER_SKIP;
+	if (unlikely(!name)) {
+		error = -DNS_ERR_ZERO_ELEM_NULL;
+		goto done;
+	}
 
 	if (!(bpf_ntohs(dns->flags) & BIT(15))) { // request
 		if (map_update_elem(&tg_dns_req_id_map, &transaction_id, name, BPF_ANY))
-			error = -13;
+			error = -DNS_ERR_REQID_UPDATE_FAILED;
 		// End of the request parsing.
 		goto done;
 	}
 
 	// Rest of the execution is for parsing responses content.
 	req_name = map_lookup_elem(&tg_dns_req_id_map, &transaction_id);
-	if (!req_name) {
-		// This should never happen as it was already checked
-		// before parsing the questions.
-		error = -14;
+	// This should never happen as it was already checked before parsing the
+	// questions.
+	if (unlikely(!req_name)) {
+		error = -DNS_ERR_UNEXPECTED_RESPONSE;
 		goto done;
 	}
 
 	if (strncmp_truncated(req_name, DNS_MAX_NAME_SIZE, name)) {
-		error = -15;
+		error = -DNS_ERR_NAME_MISMATCH;
 		goto done;
 	}
 
 	if (map_delete_elem(&tg_dns_req_id_map, &transaction_id)) {
-		error = -16;
+		error = -DNS_ERR_REQID_DELETE_FAILED;
 		goto done;
 	}
 
 	// Parse QType and QClass
 	if (data + sizeof(u16) * 2 > data_end) {
-		error = -17;
+		error = -DNS_ERR_QTYPE_QCLASS_OVERFLOW;
 		goto done;
 	}
 	qtype = bpf_ntohs(*(uint16_t *)data);
 	if (qtype != A_RECORD && qtype != AAAA_RECORD) {
-		error = -18;
+		error = -DNS_ERR_INVALID_QTYPE;
 		goto done;
 	}
 	data += sizeof(u16) * 2;
@@ -404,7 +407,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 		}
 		// Skip the parsed answer
 		if (data + ret > data_end) {
-			error = -19;
+			error = -DNS_ERR_PARSED_ANSWER_OVERFLOW;
 			goto done;
 		}
 		data += ret;

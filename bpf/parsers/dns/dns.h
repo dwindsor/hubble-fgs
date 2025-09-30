@@ -65,7 +65,46 @@
 // because labels are restricted to 63 octets or less.
 #define COMPRESSED_MSG_MASK 0b11000000
 
-#define MAX_ERROR_CODE 40
+// Errors related to DNS parsing
+//
+// IMPORTANT: Keep in sync with pkg/dnsparser/errors.go:Errors
+#define DNS_ERR_SUCCESS		       0
+#define DNS_ERR_ZERO_ELEM_NULL	       1
+#define DNS_ERR_UNEXPECTED_RESPONSE    2
+#define DNS_ERR_INVALID_QDCOUNT	       3
+#define DNS_ERR_NAME_OVERFLOW	       4
+#define DNS_ERR_PACKET_MALFORMED       5
+#define DNS_ERR_PARSED_ANSWER_OVERFLOW 6
+#define DNS_ERR_REQID_UPDATE_FAILED    7
+#define DNS_ERR_NAME_MISMATCH	       8
+#define DNS_ERR_REQID_DELETE_FAILED    9
+#define DNS_ERR_QTYPE_QCLASS_OVERFLOW  10
+#define DNS_ERR_INVALID_QTYPE	       11
+// Errors related to parsing labels
+#define DNS_ERR_LABEL_OFFSET_OVERFLOW 12
+#define DNS_ERR_LABEL_NAME_OVERFLOW   13
+#define DNS_ERR_LABEL_LENGTH_OVERFLOW 14
+#define DNS_ERR_LABEL_COPY_OVERFLOW   15
+// Errors related to parsing answers
+#define DNS_ERR_ANSWER_MAX_OVERFLOW		   16
+#define DNS_ERR_ANSWER_OFFSET_OVERFLOW		   17
+#define DNS_ERR_ANSWER_COMPRESSED_OVERFLOW	   18
+#define DNS_ERR_ANSWER_PARSENAME		   19
+#define DNS_ERR_ANSWER_PARSENAME_NAME_OVERFLOW	   20
+#define DNS_ERR_ANSWER_TYPE_CLASS_TTL_LEN_OVERFLOW 21
+#define DNS_ERR_ANSWER_IPV4_OVERFLOW		   22
+#define DNS_ERR_ANSWER_IPV6_OVERFLOW		   23
+#define DNS_ERR_ANSWER_UNREACH			   24
+// Errors related to assigning the DNS ID mappings
+#define DNS_ERR_ASSIGN_INVALID_SOURCE	    25
+#define DNS_ERR_ASSIGN_FQDNID_UPDATE_FAILED 26
+#define DNS_ERR_ASSIGN_IDFQDN_UPDATE_FAILED 27
+#define DNS_ERR_ASSIGN_INNER_MISSING	    28
+#define DNS_ERR_ASSIGN_IPID_UPDATE_FAILED   29
+// Errors related to finding the alloc ID
+#define DNS_ERR_ALLOCID_BIND 30
+// Maximum DNS error
+#define DNS_ERR_MAX 31
 
 #define DNS_PARSER_SKIP	   1
 #define DNS_PARSER_SUCCESS 0
@@ -95,7 +134,7 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-	__uint(max_entries, MAX_ERROR_CODE);
+	__uint(max_entries, DNS_ERR_MAX);
 	__type(key, __u32);
 	__type(value, __u32);
 } tg_dns_error_map SEC(".maps");

@@ -188,13 +188,13 @@ FUNC_INLINE int find_alloc_id(uint64_t cgroup_id)
 			// lookup the global variable counter
 			alloc_id = map_lookup_elem(&tg_dns_alloc_id, &zero);
 			if (unlikely(!alloc_id))
-				return -1;
+				return -DNS_ERR_ZERO_ELEM_NULL;
 
 			__sync_add_and_fetch(alloc_id, 1);
 
 			// bind the cgid to an alloc_id
 			if (map_update_elem(&tg_dns_cgid_aid, &cgroup_id, alloc_id, 0) < 0)
-				return -1; // TODO(mtardy) monitor this closely, this is important
+				return -DNS_ERR_ALLOCID_BIND;
 		}
 		return *alloc_id;
 	}
@@ -243,36 +243,39 @@ FUNC_INLINE int assign_dns_id_mapping(struct __sk_buff *skb, struct ip_addr *ip,
 		// SOURCE_DNS should still write into tg_dns_ip_id
 		// because we can have many IPs to the same domain.
 		if (id_val->source != DESTINATION_SOURCE_USERSPACE && id_val->source != DESTINATION_SOURCE_DNS)
-			return -1;
+			return -DNS_ERR_ASSIGN_INVALID_SOURCE;
 	} else {
 		// Generate a new ID from BPF side
 		id_val = map_lookup_elem(&tg_h_dns_epid, &zero);
-		if (!id_val)
-			return -1;
+		if (unlikely(!id_val))
+			return -DNS_ERR_ZERO_ELEM_NULL;
 		global_id = map_lookup_elem(&tg_glb_dns_id, &zero);
-		if (!global_id)
-			return -1;
+		if (unlikely(!global_id))
+			return -DNS_ERR_ZERO_ELEM_NULL;
 
 		id_val->id = __sync_add_and_fetch(global_id, 1);
 		id_val->source = DESTINATION_SOURCE_DNS;
 
 		DEBUG("ID generated: %d", id_val->id);
 
-		map_update_elem(&tg_dns_fqdn_id, domain, id_val, BPF_ANY);
-		map_update_elem(&tg_dns_id_fqdn, id_val, domain, BPF_ANY);
+		if (map_update_elem(&tg_dns_fqdn_id, domain, id_val, BPF_ANY) < 0)
+			return -DNS_ERR_ASSIGN_FQDNID_UPDATE_FAILED;
+		if (map_update_elem(&tg_dns_id_fqdn, id_val, domain, BPF_ANY))
+			return -DNS_ERR_ASSIGN_IDFQDN_UPDATE_FAILED;
 	}
 
 	if (DNS_PARSER_PER_POD_ENABLED) {
 		alloc_id = find_alloc_id(find_parent_cgroupid_network(skb->sk));
 		if (alloc_id < 0)
-			return -1;
+			return alloc_id;
 	}
 
 	ip_id_map = map_lookup_elem(&tg_dns_ip_id, &alloc_id);
 	if (!ip_id_map)
-		return -1; // TODO(mtardy) monitor this case
+		return -DNS_ERR_ASSIGN_INNER_MISSING;
 
-	map_update_elem(ip_id_map, ip, id_val, BPF_ANY);
+	if (map_update_elem(ip_id_map, ip, id_val, BPF_ANY))
+		return -DNS_ERR_ASSIGN_IPID_UPDATE_FAILED;
 
 	return 0;
 }

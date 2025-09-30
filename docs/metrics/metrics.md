@@ -1818,7 +1818,8 @@ The total and type of errors encountered while parsing DNS answers. Internal use
 
 | label | values |
 | ----- | ------ |
-| `error_number` | `    0` |
+| `error_name` | `DNS_ERR_UNEXPECTED_RESPONSE` |
+| `error_number` | `    2` |
 
 ## Tetragon Alerts Metrics
 
