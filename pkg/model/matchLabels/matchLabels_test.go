@@ -6,9 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
-
-	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
@@ -227,59 +224,6 @@ func TestCollectionPolicy(t *testing.T) {
 	search.Labels["A"] = "A"
 	collection = p.Collection(search)
 	assert.Equal(t, 0, len(collection))
-	p.Flush()
-}
-
-func TestPodAdd(t *testing.T) {
-	name := "netpol"
-	netpol := &types.TetragonNetworkPolicy{}
-	p := PolicyList{}
-
-	s := &LabelSet{
-		Name:   name,
-		Labels: make(map[string]string),
-		Policy: netpol,
-	}
-	s.Labels["A"] = "a"
-	s.Labels["B"] = "b"
-	s.Labels["C"] = "c"
-	s.Labels["D"] = "d"
-	s.Labels["E"] = "e"
-
-	p.Add(name, s)
-	match := p.Exists(s)
-	assert.True(t, match, "keyset should exist")
-
-	epPod1 := &endpoint.Endpoint{
-		Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
-		Kind:      "kindTest",
-		Namespace: "workloadNamespace",
-		Name:      "workloadTest1",
-	}
-
-	epPod2 := &endpoint.Endpoint{
-		Type:      tetragon.EndpointType_ENDPOINT_TYPE_POD,
-		Kind:      "kindTest",
-		Namespace: "workloadNamespace",
-		Name:      "workloadTest2",
-	}
-
-	err := p.AddPod(name, epPod1)
-	assert.NoError(t, err)
-	ls, ok := p[name]
-	assert.True(t, ok)
-	assert.Equal(t, ls.Name, name)
-	assert.Equal(t, ls.Policy, netpol)
-	assert.Equal(t, 1, len(ls.Endpoints))
-
-	err = p.AddPod(name, epPod2)
-	ls, ok = p[name]
-	assert.True(t, ok)
-	assert.NoError(t, err)
-	assert.Equal(t, ls.Name, name)
-	assert.Equal(t, ls.Policy, netpol)
-	assert.Equal(t, 2, len(ls.Endpoints))
-
 	p.Flush()
 }
 

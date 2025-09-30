@@ -1,7 +1,6 @@
 package matchLabels
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
@@ -71,15 +70,6 @@ func (policy PolicyList) Exists(l *LabelSet) bool {
 		}
 	}
 	return false
-}
-
-func (policy PolicyList) AddPod(name string, ep *endpoint.Endpoint) error {
-	p, ok := policy[name]
-	if !ok {
-		return fmt.Errorf("policy name (%s) does not exist", name)
-	}
-	p.Endpoints = append(p.Endpoints, ep)
-	return nil
 }
 
 func (policy PolicyList) Collection(l *LabelSet) []*LabelSet {
