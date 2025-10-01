@@ -66,11 +66,8 @@ const (
 
 	MSG_OP_GENERIC_KPROBE     = 13
 	MSG_OP_GENERIC_TRACEPOINT = 14
-
-	// MSG_OP_TCPSTATS event report socket stats for TCP sockets.
-	MSG_OP_TCPSTATS = 15
-
-	MSG_OP_HTTP = 16
+	MSG_OP_GENERIC_UPROBE     = 15
+	MSG_OP_GENERIC_LSM        = 16
 
 	MSG_OP_UDPCLOSE   = 17
 	MSG_OP_UDPCONNECT = 18
@@ -87,10 +84,13 @@ const (
 
 	MSG_OP_DATA = 24
 
-	// MSG_OP_EXIT event indicates a network namespace is being destroyed.
-	MSG_OP_NETNS_EXIT = 25
+	MSG_OP_CGROUP = 25
+
+	MSG_OP_LOADER = 26
 
 	MSG_OP_THROTTLE = 27
+
+	MSG_OP_GENERIC_USDT = 28
 
 	// just for testing
 	MSG_OP_TEST = 254
@@ -119,6 +119,14 @@ const (
 	MSG_OP_FILE_LINK    = 139
 	MSG_OP_FILE_SYMLINK = 140
 	MSG_OP_FILE_OPENRAW = 141
+
+	// MSG_OP_TCPSTATS event report socket stats for TCP sockets.
+	MSG_OP_TCPSTATS = 142
+
+	MSG_OP_HTTP = 143
+
+	// MSG_OP_EXIT event indicates a network namespace is being destroyed.
+	MSG_OP_NETNS_EXIT = 144
 )
 
 var OpCodeStrings = map[OpCode]string{
