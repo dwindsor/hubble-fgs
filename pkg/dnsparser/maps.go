@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"maps"
 	"net/netip"
 	"path/filepath"
 	"runtime"
@@ -79,16 +80,20 @@ type DNSID struct {
 // RewritePerPodConstants writes constant value into the consts map input for
 // the DNS parser programs.
 func RewritePerPodConstants(consts map[string]any) error {
+	toWrite := map[string]any{}
+
 	kubepodsCgid, err := GetKubepodsSliceCgroupID()
 	if err != nil {
 		return fmt.Errorf("failed to get kubepods.slice cgroupID: %w", err)
 	}
-	consts[KubepodsCgidConstName] = kubepodsCgid
+	toWrite[KubepodsCgidConstName] = kubepodsCgid
 
 	// Configuration validation should prevent EnableBPFDNSPerPod to be
 	// enabled if sockos does not support the cgroup ancestor helper
-	consts[PerPodFeatureName] = option.Config.EnableBPFDNSPerPod && utils.SockopsSupportsCgroupAncestorHelper()
+	toWrite[PerPodFeatureName] = option.Config.EnableBPFDNSPerPod && utils.SockopsSupportsCgroupAncestorHelper()
 
+	// Copy at the very end to avoid partial write in case of error
+	maps.Copy(consts, toWrite)
 	return nil
 }
 
