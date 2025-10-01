@@ -35,7 +35,10 @@ func testMatchSrcLabelsPolicy(name, labels string) *types.TetragonNetworkPolicy 
 		QuotaAction: quota,
 	}
 	policy := &types.TetragonNetworkPolicy{
-		Name:        name,
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: name,
+			RuleName:   "rule1",
+		},
 		Subject:     s,
 		Destination: d,
 		Action:      a,
@@ -109,14 +112,13 @@ func testMatchPortCIDRDstProcessLabelsDenyPolicy(name, src, dst, action, cidr st
 func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
 	s := NewPolicyState()
 	name := "testName"
-	uid := "testName"
 
 	policy := testMatchSrcLabelsPolicy(name, "A=a,B=b")
-	s.CreateSrcMatchLabelsPolicy(uid, policy)
+	s.CreateSrcMatchLabelsPolicy(policy)
 
 	assert.Equal(t, 1, len(s.Src))
 
-	err := s.RemoveMatchLabelNetworkPolicy(uid, policy)
+	err := s.RemoveMatchLabelNetworkPolicy(policy)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(s.Src))
@@ -125,16 +127,15 @@ func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
 func TestCreateDstMatchLabelsPolicy(t *testing.T) {
 	s := NewPolicyState()
 	name := "testName"
-	uid := "testName"
 
 	nextId()
 
 	policy := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	s.CreateDstMatchLabelsPolicy(uid, policy)
+	s.CreateDstMatchLabelsPolicy(policy)
 
 	assert.Equal(t, 1, len(s.Dst))
 
-	err := s.RemoveMatchLabelNetworkPolicy(uid, policy)
+	err := s.RemoveMatchLabelNetworkPolicy(policy)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(s.Dst))
@@ -179,13 +180,16 @@ func TestCreateSrcKey(t *testing.T) {
 	}
 
 	netpol := &types.TetragonNetworkPolicy{
-		Name:        "testNetpol",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testUID",
+			RuleName:   "rule1",
+		},
 		Subject:     subject,
 		Destination: dest,
 		Action:      action,
 	}
 
-	s.CreateSrcMatchLabelsPolicy("testUID", netpol)
+	s.CreateSrcMatchLabelsPolicy(netpol)
 	assert.Equal(t, 1, len(s.Src))
 }
 
@@ -193,8 +197,8 @@ func CreateDstMatchLabels(t *testing.T) {
 	s := NewPolicyState()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	s.CreateDstMatchLabelsPolicy(name, netpol)
-	d := s.Dst[name]
+	s.CreateDstMatchLabelsPolicy(netpol)
+	d := s.Dst[netpol.PolicyUID]
 	assert.Equal(t, "d1", d.Labels["D1"])
 	assert.Equal(t, "d2", d.Labels["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
@@ -204,8 +208,8 @@ func CreateSrcMatchLabels(t *testing.T) {
 	s := NewPolicyState()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	s.CreateSrcMatchLabelsPolicy(name, netpol)
-	src := s.Src[name]
+	s.CreateSrcMatchLabelsPolicy(netpol)
+	src := s.Src[netpol.PolicyUID]
 	assert.NotNil(t, src)
 	assert.Equal(t, "a", src.Labels["A"])
 	assert.Equal(t, "b", src.Labels["B"])
@@ -216,14 +220,14 @@ func TestAddNetworkPolicy(t *testing.T) {
 	s := NewPolicyState()
 	name := "testPol"
 	netpol := testMatchDstLabelsPolicy(name, "A=a,B=b", "D1=d1,D2=d2")
-	err := s.CreateMatchLabelsPolicy(name, netpol)
+	err := s.CreateMatchLabelsPolicy(netpol)
 	assert.NoError(t, err)
-	d := s.Dst[name]
+	d := s.Dst[netpol.PolicyUID]
 	assert.NotNil(t, d)
 	assert.Equal(t, "d1", d.Labels["D1"])
 	assert.Equal(t, "d2", d.Labels["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
-	src := s.Src[name]
+	src := s.Src[netpol.PolicyUID]
 	assert.NotNil(t, src)
 	assert.Equal(t, "a", src.Labels["A"])
 	assert.Equal(t, "b", src.Labels["B"])
@@ -234,14 +238,14 @@ func testAddNetworkActionPolicy(t *testing.T, action string) {
 	s := NewPolicyState()
 	name := "testPol"
 	netpol := testMatchDstLabelsDenyPolicy(name, "A=a,B=b", "D1=d1,D2=d2", action)
-	err := s.CreateMatchLabelsPolicy(name, netpol)
+	err := s.CreateMatchLabelsPolicy(netpol)
 	assert.NoError(t, err)
-	d := s.Dst[name]
+	d := s.Dst[netpol.PolicyUID]
 	assert.NotNil(t, d)
 	assert.Equal(t, "d1", d.Labels["D1"])
 	assert.Equal(t, "d2", d.Labels["D2"])
 	assert.Equal(t, 0, len(d.Endpoints)) // no pods yet so no endpoints
-	src := s.Src[name]
+	src := s.Src[netpol.PolicyUID]
 	assert.NotNil(t, src)
 	assert.Equal(t, "a", src.Labels["A"])
 	assert.Equal(t, "b", src.Labels["B"])

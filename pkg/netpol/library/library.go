@@ -4,35 +4,40 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/cilium/cilium/pkg/container/set"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
+type datapathRuleID uint64
+type datapathPolicyID uint64
+
 type PolicyStory struct {
-	Title       string
-	Id          uint64
-	Rules       map[string]uint64
+	Title string
+
 	CRDPolicy   *v1alpha1.TetragonNetworkPolicy
 	CRDNSPolicy *v1alpha1.TetragonNetworkPolicyNamespaced
 	IrPolicy    []*types.TetragonNetworkPolicy
+
+	// Internal fields for repository use only
+	rules map[types.TetragonPolicyUniqueID]datapathRuleID
+	id    datapathPolicyID
 }
 
 type policyRepositoryImpl struct {
-	policyLibrary map[string]uint64
-	idLibrary     map[uint64]*PolicyStory
-	policyId      uint64
-	ruleId        uint64
+	policyLibrary map[string]datapathPolicyID
+	idLibrary     map[datapathPolicyID]*PolicyStory
+	policyId      datapathPolicyID
+	ruleId        datapathRuleID
 }
 
 type PolicyRepository interface {
 	Get(name string) *PolicyStory
 	Delete(name string)
-	Link(title string, ref string) error
-	DelLink(title string)
 	Add(p *PolicyStory)
 	GetId(name string) (uint64, bool)
-	GetRuleId(policy, rule string) (uint64, bool)
+	GetRuleId(ruleId types.TetragonPolicyUniqueID) (uint64, bool)
 	GetName(id uint64) (string, bool)
 	GetRule(policy string, id uint64, deny, allow bool) (string, bool)
 	GetList() []string
@@ -40,7 +45,7 @@ type PolicyRepository interface {
 
 type PolicyRepositoryIDReader interface {
 	GetId(name string) (uint64, bool)
-	GetRuleId(policy, rule string) (uint64, bool)
+	GetRuleId(ruleId types.TetragonPolicyUniqueID) (uint64, bool)
 }
 
 var (
@@ -51,18 +56,18 @@ var (
 func GetRepository() PolicyRepository {
 	initGlobalCache.Do(func() {
 		repo = &policyRepositoryImpl{}
-		repo.policyLibrary = make(map[string]uint64)
-		repo.idLibrary = make(map[uint64]*PolicyStory)
+		repo.policyLibrary = make(map[string]datapathPolicyID)
+		repo.idLibrary = make(map[datapathPolicyID]*PolicyStory)
 	})
 	return repo
 }
 
-func (r *policyRepositoryImpl) generateId() uint64 {
+func (r *policyRepositoryImpl) generateId() datapathPolicyID {
 	r.policyId++
 	return r.policyId
 }
 
-func (r *policyRepositoryImpl) generateRuleId() uint64 {
+func (r *policyRepositoryImpl) generateRuleId() datapathRuleID {
 	r.ruleId++
 	return r.ruleId
 }
@@ -76,44 +81,33 @@ func (r *policyRepositoryImpl) Get(name string) *PolicyStory {
 }
 
 func (r *policyRepositoryImpl) Delete(name string) {
-	id, ok := r.GetId(name)
+	id := r.policyLibrary[name]
 	delete(r.policyLibrary, name)
-	if ok {
-		delete(r.idLibrary, id)
-	}
-	for str, n := range r.policyLibrary {
-		if n == id {
-			r.DelLink(str)
-		}
-	}
-}
-
-func (r *policyRepositoryImpl) Link(title string, ref string) error {
-	id, ok := r.GetId(title)
-	if !ok {
-		return fmt.Errorf("unknown link title: %s", title)
-	}
-	r.policyLibrary[ref] = id
-	return nil
-}
-
-func (r *policyRepositoryImpl) DelLink(title string) {
-	delete(r.policyLibrary, title)
+	delete(r.idLibrary, id)
 }
 
 func (r *policyRepositoryImpl) Add(p *PolicyStory) {
 	_, ok := r.policyLibrary[p.Title]
 	if !ok {
-		p.Id = r.generateId()
-		r.idLibrary[p.Id] = p
-		r.policyLibrary[p.Title] = p.Id
+		p.id = r.generateId()
+		r.idLibrary[p.id] = p
+		r.policyLibrary[p.Title] = p.id
 	}
+	p.rules = make(map[types.TetragonPolicyUniqueID]datapathRuleID)
+	uniqueDescriptions := set.Set[string]{}
 	for _, policy := range p.IrPolicy {
-		if _, ok := p.Rules[policy.Rule]; ok {
-			return
-		}
 		ruleID := r.generateRuleId()
-		p.Rules[policy.Rule] = ruleID
+		policy.PolicyUID.PolicyName = p.Title
+
+		if uniqueDescriptions.Has(policy.RuleDescription) {
+			// This means we have a conflicting rule descriptions
+			policy.PolicyUID.RuleName = fmt.Sprintf("%s#%d", policy.PolicyUID.RuleName, ruleID)
+		} else {
+			policy.PolicyUID.RuleName = policy.RuleDescription
+		}
+		uniqueDescriptions.Insert(policy.PolicyUID.RuleName)
+
+		p.rules[policy.PolicyUID] = ruleID
 	}
 }
 
@@ -122,23 +116,23 @@ func (r *policyRepositoryImpl) GetId(name string) (uint64, bool) {
 	if !ok {
 		return uint64(0), ok
 	}
-	return id, true
+	return uint64(id), true
 }
 
-func (r *policyRepositoryImpl) GetRuleId(policy, rule string) (uint64, bool) {
-	p := r.Get(policy)
+func (r *policyRepositoryImpl) GetRuleId(ruleId types.TetragonPolicyUniqueID) (uint64, bool) {
+	p := r.Get(ruleId.PolicyName)
 	if p == nil {
 		return uint64(0), false
 	}
-	id, ok := p.Rules[rule]
+	id, ok := p.rules[ruleId]
 	if !ok {
 		return uint64(0), false
 	}
-	return id, true
+	return uint64(id), true
 }
 
 func (r *policyRepositoryImpl) GetName(id uint64) (string, bool) {
-	p, ok := r.idLibrary[id]
+	p, ok := r.idLibrary[datapathPolicyID(id)]
 	if !ok {
 		return "", ok
 	}
@@ -161,9 +155,9 @@ func (r *policyRepositoryImpl) GetRule(policy string, id uint64, deny, allow boo
 		return "", true
 	}
 
-	for k, v := range p.Rules {
-		if v == id {
-			return k, true
+	for k, v := range p.rules {
+		if v == datapathRuleID(id) {
+			return k.RuleName, true
 		}
 	}
 	return "", false

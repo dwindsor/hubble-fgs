@@ -15,14 +15,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
-	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 )
 
-func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, []*record.DatapathRecord, error) {
+func (state *PolicyState) removeMatchLabelNetworkPolicy(policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, []*record.DatapathRecord, error) {
 	state.SrcLock.Lock()
 	defer state.SrcLock.Unlock()
 
-	subject := state.Src[uid]
+	subject := state.Src[policy.PolicyUID]
 
 	l3id := ""
 	if policy.Subject.LogicalNetwork.VRF != "" {
@@ -30,7 +29,7 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *type
 	} else if policy.Subject.LogicalNetwork.VLAN != 0 {
 		l3id = policy.Subject.LogicalNetwork.VRF
 	}
-	l3 := state.L3[uid]
+	l3 := state.L3[policy.PolicyUID]
 
 	var beforeSubjs []*record.DatapathRecord
 	var afterSubjs []*record.DatapathRecord
@@ -50,22 +49,22 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *type
 	if l3 != nil {
 		records, err := state.l3Add(l3id)
 		if err != nil {
-			logger.GetLogger().Warn("Remove policy failure: ", "policyName", l3.Name)
+			logger.GetLogger().Warn("Remove policy failure: ", "policyUID", l3.Policy.PolicyUID)
 		} else {
 			beforeSubjs = append(beforeSubjs, records...)
 		}
 	}
 
-	state.Src.Remove(uid)
-	state.Dst.Remove(uid)
-	state.L3.Remove(uid)
+	state.Src.Remove(policy.PolicyUID)
+	state.Dst.Remove(policy.PolicyUID)
+	state.L3.Remove(policy.PolicyUID)
 
 	for _, v := range state.Src {
 		if v == nil {
 			continue
 		}
 		for _, src := range v.Subjects {
-			sRecords, err := state.AddSrcPolicy(v.Name, src, v.Policy, true)
+			sRecords, err := state.AddSrcPolicy(src, v.Policy, true)
 			if err != nil {
 				logger.GetLogger().Warn("AddSrcPolicy error", logfields.Error, err, "src", src)
 				continue
@@ -90,8 +89,8 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(uid string, policy *type
 	return zombieSet, afterSubjs, nil
 }
 
-func (state *PolicyState) RemoveMatchLabelNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
-	zombieSet, updateSet, err := state.removeMatchLabelNetworkPolicy(uid, policy)
+func (state *PolicyState) RemoveMatchLabelNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
+	zombieSet, updateSet, err := state.removeMatchLabelNetworkPolicy(policy)
 	if err != nil {
 		return err
 	}
@@ -139,15 +138,11 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 	}, nil
 }
 
-func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKey, action *record.DatapathAction, policy *types.TetragonNetworkPolicy, init bool) []*record.DatapathRecord {
+func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *record.DatapathAction, policy *types.TetragonNetworkPolicy, init bool) []*record.DatapathRecord {
 	records := []*record.DatapathRecord{}
-	recordPolicy := record.Policy{
-		Name: uid,
-		Rule: policy.Rule,
-	}
 
 	if policy.Destination.CIDR != nil {
-		r, err := addDestSrcCIDRRecords(&recordPolicy, &policy.Destination, src, action, init)
+		r, err := addDestSrcCIDRRecords(policy.PolicyUID, &policy.Destination, src, action, init)
 		if err != nil {
 			logger.GetLogger().Warn("CIDR policy record error", logfields.Error, err, "CIDR", policy.Destination.CIDR)
 		}
@@ -166,11 +161,11 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 					Port: 0,
 				}
 				records = append(records, &record.DatapathRecord{
-					Policy:   recordPolicy,
-					Src:      src,
-					Endpoint: endpoint,
-					Action:   action,
-					Init:     init,
+					PolicyUID: policy.PolicyUID,
+					Src:       src,
+					Endpoint:  endpoint,
+					Action:    action,
+					Init:      init,
 				})
 			}
 
@@ -184,17 +179,17 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 					Port: port,
 				}
 				records = append(records, &record.DatapathRecord{
-					Policy:   recordPolicy,
-					Src:      src,
-					Endpoint: endpoint,
-					Action:   action,
-					Init:     init,
+					PolicyUID: policy.PolicyUID,
+					Src:       src,
+					Endpoint:  endpoint,
+					Action:    action,
+					Init:      init,
 				})
 			}
 		}
 	}
 
-	ls := state.Dst[uid]
+	ls := state.Dst[policy.PolicyUID]
 	if ls != nil {
 		for _, ep := range ls.Endpoints {
 			if len(ls.Policy.Destination.Ports) == 0 {
@@ -204,11 +199,11 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 				}
 
 				records = append(records, &record.DatapathRecord{
-					Policy:   recordPolicy,
-					Src:      src,
-					Endpoint: endpoint,
-					Action:   action,
-					Init:     init,
+					PolicyUID: policy.PolicyUID,
+					Src:       src,
+					Endpoint:  endpoint,
+					Action:    action,
+					Init:      init,
 				})
 			}
 			for _, port := range ls.Policy.Destination.Ports {
@@ -218,11 +213,11 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 				}
 
 				records = append(records, &record.DatapathRecord{
-					Policy:   recordPolicy,
-					Src:      src,
-					Endpoint: endpoint,
-					Action:   action,
-					Init:     init,
+					PolicyUID: policy.PolicyUID,
+					Src:       src,
+					Endpoint:  endpoint,
+					Action:    action,
+					Init:      init,
 				})
 			}
 		}
@@ -231,7 +226,7 @@ func (state *PolicyState) policyDestRecords(uid string, src *types.ProcessTreeKe
 }
 
 // Create DstMatchLAbelsPolicy to add new Network Policy
-func (state *PolicyState) CreateDstMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) {
+func (state *PolicyState) CreateDstMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) {
 	state.DstLock.Lock()
 	defer state.DstLock.Unlock()
 
@@ -240,7 +235,6 @@ func (state *PolicyState) CreateDstMatchLabelsPolicy(uid string, policy *types.T
 	}
 
 	ls := &matchLabels.LabelSet{
-		Name:   uid,
 		Labels: policy.Destination.Labels.Equal,
 		Policy: policy,
 		Ports:  policy.Destination.Ports,
@@ -250,12 +244,11 @@ func (state *PolicyState) CreateDstMatchLabelsPolicy(uid string, policy *types.T
 }
 
 // Create SrcMatchLAbelsPolicy to add new Network Policy
-func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) {
+func (state *PolicyState) CreateSrcMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) {
 	state.SrcLock.Lock()
 	defer state.SrcLock.Unlock()
 
 	ls := &matchLabels.LabelSet{
-		Name:   uid,
 		Labels: policy.Subject.Labels.Equal,
 		Policy: policy,
 	}
@@ -264,7 +257,7 @@ func (state *PolicyState) CreateSrcMatchLabelsPolicy(uid string, policy *types.T
 }
 
 // Create L3NetworkPolicy to add a new logical network policy
-func (state *PolicyState) CreateNetworkPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+func (state *PolicyState) CreateNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
 	state.L3Lock.Lock()
 	defer state.L3Lock.Unlock()
 
@@ -277,7 +270,6 @@ func (state *PolicyState) CreateNetworkPolicy(uid string, policy *types.Tetragon
 	}
 
 	ls := &matchLabels.LabelSet{
-		Name:   uid,
 		Labels: labels,
 		Policy: policy,
 	}
@@ -290,15 +282,15 @@ func (state *PolicyState) CreateNetworkPolicy(uid string, policy *types.Tetragon
 	return nil
 }
 
-func (state *PolicyState) CreateMatchLabelsPolicy(uid string, policy *types.TetragonNetworkPolicy) error {
+func (state *PolicyState) CreateMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) error {
 	// This is a L3 or L2 network firewall policy. For now we handle
 	// it here as a special case.
 	if policy.Source != nil {
-		state.CreateNetworkPolicy(uid, policy)
+		state.CreateNetworkPolicy(policy)
 	}
 
 	if len(policy.Destination.Labels.Equal) > 0 {
-		state.CreateDstMatchLabelsPolicy(uid, policy)
+		state.CreateDstMatchLabelsPolicy(policy)
 	}
 
 	// There are a few possibilities for possible scope.
@@ -307,31 +299,31 @@ func (state *PolicyState) CreateMatchLabelsPolicy(uid string, policy *types.Tetr
 	// 2. namespace scoped policy e.g. just namespace
 	// 3. host scope, no namespace
 	if len(policy.Subject.Labels.Equal) > 0 {
-		state.CreateSrcMatchLabelsPolicy(uid, policy)
+		state.CreateSrcMatchLabelsPolicy(policy)
 	}
 
 	return nil
 }
 
 func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy {
-	uniquePolicyMap := make(map[string]*types.TetragonNetworkPolicy)
+	uniquePolicyMap := make(map[types.TetragonPolicyUniqueID]*types.TetragonNetworkPolicy)
 	allPolicy := make([]*types.TetragonNetworkPolicy, 0)
 
 	for _, p := range state.Src {
-		if _, ok := uniquePolicyMap[p.Name]; !ok {
-			uniquePolicyMap[p.Name] = p.Policy
+		if _, ok := uniquePolicyMap[p.Policy.PolicyUID]; !ok {
+			uniquePolicyMap[p.Policy.PolicyUID] = p.Policy
 			allPolicy = append(allPolicy, p.Policy)
 		}
 	}
 	for _, p := range state.Dst {
-		if _, ok := uniquePolicyMap[p.Name]; !ok {
-			uniquePolicyMap[p.Name] = p.Policy
+		if _, ok := uniquePolicyMap[p.Policy.PolicyUID]; !ok {
+			uniquePolicyMap[p.Policy.PolicyUID] = p.Policy
 			allPolicy = append(allPolicy, p.Policy)
 		}
 	}
 	for _, p := range state.L3 {
-		if _, ok := uniquePolicyMap[p.Name]; !ok {
-			uniquePolicyMap[p.Name] = p.Policy
+		if _, ok := uniquePolicyMap[p.Policy.PolicyUID]; !ok {
+			uniquePolicyMap[p.Policy.PolicyUID] = p.Policy
 			allPolicy = append(allPolicy, p.Policy)
 		}
 	}
@@ -342,22 +334,9 @@ func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolic
 	calculatorRecords := []*record.DatapathRecord{}
 	calculatorState := NewPolicyState()
 
-	uidGenerator := make(map[string]int, len(currentPolicy))
-
 	// Add Policy to calculator state
 	for _, p := range currentPolicy {
-		id, ok := uidGenerator[p.Name]
-		if !ok {
-			id = 0
-			uidGenerator[p.Name] = 0
-		} else {
-			id++
-			uidGenerator[p.Name] = id
-		}
-
-		uid := fmt.Sprintf("%s_%d", p.Name, id)
-		library.GetRepository().Link(p.Name, uid)
-		err := calculatorState.CreateMatchLabelsPolicy(uid, p)
+		err := calculatorState.CreateMatchLabelsPolicy(p)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -450,16 +429,14 @@ func CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) error {
 }
 
 // Entry point to Policy state remove
-func RemoveNetworkPolicySet(name string, policy []*types.TetragonNetworkPolicy) error {
+func RemoveNetworkPolicySet(policy []*types.TetragonNetworkPolicy) error {
 	s := GetRealizedState()
 
-	for i, p := range policy {
-		uid := fmt.Sprintf("%s_%d", name, i)
-		err := s.RemoveMatchLabelNetworkPolicy(uid, p)
+	for _, p := range policy {
+		err := s.RemoveMatchLabelNetworkPolicy(p)
 		if err != nil {
 			return err
 		}
-		library.GetRepository().DelLink(uid)
 	}
 	return nil
 }

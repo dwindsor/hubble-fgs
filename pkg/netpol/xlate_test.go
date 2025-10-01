@@ -59,7 +59,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 			},
 			want: []*types.TetragonNetworkPolicy{
 				{
-					Rule: rule.Description,
+					RuleDescription: rule.Description,
 					Subject: types.TetragonNetworkSubject{
 						Labels:        types.TetragonNetworkLabels{Equal: map[string]string{"_tnp_kubernetes.io/metadata.name": "default"}},
 						InProcessName: []string{"/usr/bin/curl"},
@@ -89,7 +89,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 			},
 			want: []*types.TetragonNetworkPolicy{
 				{
-					Rule: rule.Description,
+					RuleDescription: rule.Description,
 					Subject: types.TetragonNetworkSubject{
 						Labels:        types.TetragonNetworkLabels{Equal: map[string]string{"app": "frontend"}},
 						InProcessName: []string{"/usr/bin/curl"},
@@ -117,7 +117,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 			},
 			want: []*types.TetragonNetworkPolicy{
 				{
-					Rule: rule.Description,
+					RuleDescription: rule.Description,
 					Subject: types.TetragonNetworkSubject{
 						Labels:        types.TetragonNetworkLabels{Equal: map[string]string{dns.InternalLabelKey: dns.InternalHostName}},
 						InProcessName: []string{"/usr/bin/curl"},
@@ -149,7 +149,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 			},
 			want: []*types.TetragonNetworkPolicy{
 				{
-					Rule: rule.Description,
+					RuleDescription: rule.Description,
 					Subject: types.TetragonNetworkSubject{
 						Labels:        types.TetragonNetworkLabels{Equal: map[string]string{"_tnp_kubernetes.io/metadata.name": "default"}},
 						InProcessName: []string{"/usr/bin/curl"},
@@ -162,7 +162,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 					Action:  types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{}},
 				},
 				{
-					Rule: rule2.Description,
+					RuleDescription: rule2.Description,
 					Subject: types.TetragonNetworkSubject{
 						Labels:        types.TetragonNetworkLabels{Equal: map[string]string{"_tnp_kubernetes.io/metadata.name": "default"}},
 						InProcessName: []string{"/usr/bin/curl"},

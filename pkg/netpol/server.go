@@ -50,7 +50,6 @@ func (m *NetworkPolicyManager) AddNetworkPolicyFromYAML(_ context.Context, req *
 
 	err = loadPolicy(&library.PolicyStory{
 		Title:       np.Name,
-		Rules:       make(map[string]uint64),
 		CRDPolicy:   np,
 		CRDNSPolicy: nil,
 		IrPolicy:    policies,
@@ -70,7 +69,7 @@ func (m *NetworkPolicyManager) DeleteNetworkPolicy(_ context.Context, req *tetra
 		return nil, fmt.Errorf("policy does not exist")
 	}
 
-	if err := dns.RemoveNetworkPolicySet(req.Name, story.IrPolicy); err != nil {
+	if err := dns.RemoveNetworkPolicySet(story.IrPolicy); err != nil {
 		return nil, fmt.Errorf("abort removing policy failed")
 	}
 

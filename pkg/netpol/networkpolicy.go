@@ -54,7 +54,6 @@ func addTetragonNetworkPolicy(obj any) {
 
 	err = loadPolicy(&library.PolicyStory{
 		Title:       name,
-		Rules:       make(map[string]uint64),
 		CRDPolicy:   crd,
 		CRDNSPolicy: crdNS,
 		IrPolicy:    policies,
@@ -122,20 +121,11 @@ func updateTetragonNetworkPolicy(_, newObj any) {
 			"network rules", len(newPolicy))
 	}
 
-	// rename policy to secondary name so we can have both old and
-	// new policy in the datapath simultaneously with unique names.
-	// names are used to generate UIDs so we must do this or naming
-	// collisions will happen.
-	for _, p := range newPolicy {
-		p.Name = newName
-	}
-
 	// Policy update is slightly complicated to avoid having a gap
 	// in policy. First we create the updated policy and only then
 	// do we remove the previous policy.
 	library.GetRepository().Add(&library.PolicyStory{
 		Title:       newName,
-		Rules:       make(map[string]uint64),
 		CRDPolicy:   crd,
 		CRDNSPolicy: crdNS,
 		IrPolicy:    newPolicy,
@@ -194,7 +184,7 @@ func deleteNetworkPolicy(name string) error {
 	if story == nil {
 		return fmt.Errorf("policy %q does not exist", name)
 	}
-	if err := dns.RemoveNetworkPolicySet(name, story.IrPolicy); err != nil {
+	if err := dns.RemoveNetworkPolicySet(story.IrPolicy); err != nil {
 		return fmt.Errorf("removing policy %q failed: %w", name, err)
 	}
 	library.GetRepository().Delete(name)

@@ -101,22 +101,13 @@ func (r DatapathEndpoint) String() string {
 	return fmt.Sprint(r.EP)
 }
 
-type Policy struct {
-	Name string
-	Rule string
-}
-
-func (p Policy) String() string {
-	return fmt.Sprint(p.Name)
-}
-
 type DatapathRecord struct {
-	Policy   Policy
-	Src      *types.ProcessTreeKey
-	L3Src    DatapathSource
-	Endpoint DatapathEndpoint
-	Action   *DatapathAction
-	Init     bool // temporary field until we fix order-of-ops on DNS, UDP, TCP sensors
+	PolicyUID types.TetragonPolicyUniqueID
+	Src       *types.ProcessTreeKey
+	L3Src     DatapathSource
+	Endpoint  DatapathEndpoint
+	Action    *DatapathAction
+	Init      bool // temporary field until we fix order-of-ops on DNS, UDP, TCP sensors
 }
 
 func (r *DatapathRecord) String() string {
@@ -133,7 +124,7 @@ func (r *DatapathRecord) String() string {
 	if r.Action != nil {
 		action = r.Action.String()
 	}
-	return fmt.Sprintf("Policy %s:%s Src %s L3 %s -> %s Action %s", r.Policy.Name, r.Policy.Rule, src, l3src, ep, action)
+	return fmt.Sprintf("Policy %s:%s Src %s L3 %s -> %s Action %s", r.PolicyUID.PolicyName, r.PolicyUID.RuleName, src, l3src, ep, action)
 }
 
 // Set difference operator, A - B. We burn some memory and have to

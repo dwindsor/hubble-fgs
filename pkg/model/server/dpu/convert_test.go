@@ -7,6 +7,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
@@ -29,9 +30,9 @@ var (
 	//dstVlan = 200 unsupported in initial PR
 	dstVlan = 0
 
-	policy = record.Policy{
-		Name: name,
-		Rule: rule,
+	policy = types.TetragonPolicyUniqueID{
+		PolicyName: name,
+		RuleName:   rule,
 	}
 	dpSrcVrf = record.DatapathSource{
 		Vrf: srcVrf,
@@ -53,18 +54,18 @@ var (
 		Action: record.PolicyAllow,
 	}
 	testRecordVrf = record.DatapathRecord{
-		Policy:   policy,
-		Src:      nil,
-		L3Src:    dpSrcVrf,
-		Endpoint: dpEndpoint,
-		Action:   action,
+		PolicyUID: policy,
+		Src:       nil,
+		L3Src:     dpSrcVrf,
+		Endpoint:  dpEndpoint,
+		Action:    action,
 	}
 	testRecordVlan = record.DatapathRecord{
-		Policy:   policy,
-		Src:      nil,
-		L3Src:    dpSrcVlan,
-		Endpoint: dpEndpoint,
-		Action:   action,
+		PolicyUID: policy,
+		Src:       nil,
+		L3Src:     dpSrcVlan,
+		Endpoint:  dpEndpoint,
+		Action:    action,
 	}
 )
 

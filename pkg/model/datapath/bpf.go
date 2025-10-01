@@ -150,14 +150,14 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		}
 	}
 
-	id, ok := p.policyRepositoryIDReader.GetId(r.Policy.Name)
+	id, ok := p.policyRepositoryIDReader.GetId(r.PolicyUID.PolicyName)
 	if !ok {
-		logger.GetLogger().Warn("programmer unable to map policy name to ID", "Policy", r.Policy.Name)
+		logger.GetLogger().Warn("programmer unable to map policy name to ID", "Policy", r.PolicyUID.PolicyName)
 	}
 
-	ruleID, ok := p.policyRepositoryIDReader.GetRuleId(r.Policy.Name, r.Policy.Rule)
+	ruleID, ok := p.policyRepositoryIDReader.GetRuleId(r.PolicyUID)
 	if !ok {
-		logger.GetLogger().Warn("programmer unable to map policy rule to ID", "Policy", r.Policy.Name, "Rule", r.Policy.Rule)
+		logger.GetLogger().Warn("programmer unable to map policy rule to ID", "Policy", r.PolicyUID.PolicyName, "Rule", r.PolicyUID.RuleName)
 	}
 
 	key := types.DestinationEndpointKey{
@@ -191,8 +191,11 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		lookupAction := lookupValue.TxAction & record.PolicyMask
 		valueAction := value.TxAction & record.PolicyMask
 
-		// key exist and the action is the same, ignore
-		if lookupAction == valueAction {
+		// key exist and the action is the same,
+		// policy and rule assosciated are the same, nothing to do
+		if lookupAction == valueAction &&
+			lookupValue.Policy == value.Policy &&
+			lookupValue.RuleID == value.RuleID {
 			return nil
 		}
 		// key exists, we don't force, and the existing action is

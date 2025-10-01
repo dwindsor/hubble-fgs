@@ -12,6 +12,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 var (
@@ -85,9 +86,9 @@ var (
 	}
 
 	record1 = &record.DatapathRecord{
-		Policy: record.Policy{
-			Name: "record1",
-			Rule: "rule1",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "record1",
+			RuleName:   "rule1",
 		},
 		L3Src: record.DatapathSource{
 			Vrf: "vrf-a",
@@ -105,9 +106,9 @@ var (
 		},
 	}
 	record2 = &record.DatapathRecord{
-		Policy: record.Policy{
-			Name: "record2",
-			Rule: "rule2",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "record2",
+			RuleName:   "rule2",
 		},
 		L3Src: record.DatapathSource{
 			Vrf: "vrf-b",
@@ -125,9 +126,9 @@ var (
 		},
 	}
 	record3 = &record.DatapathRecord{
-		Policy: record.Policy{
-			Name: "record3",
-			Rule: "rule2",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "record3",
+			RuleName:   "rule2",
 		},
 		L3Src: record.DatapathSource{
 			Vrf: "vrf-b",

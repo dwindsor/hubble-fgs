@@ -36,8 +36,8 @@ func recordToDPUPolicyRule(r *record.DatapathRecord, update bool) *DPUPolicyRule
 	return &DPUPolicyRule{
 		Oper: operation,
 		Policy: &DPURule{
-			PolicyName: r.Policy.Name,
-			RuleName:   r.Policy.Rule,
+			PolicyName: r.PolicyUID.PolicyName,
+			RuleName:   r.PolicyUID.RuleName,
 			Action:     act,
 			Source: DPUSubject{
 				Cidr:     r.L3Src.Ip,

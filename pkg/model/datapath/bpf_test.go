@@ -65,8 +65,8 @@ func (f *FakePolicyRepositoryIDReader) GetId(name string) (uint64, bool) {
 	return id, ok
 }
 
-func (f *FakePolicyRepositoryIDReader) GetRuleId(policy, rule string) (uint64, bool) {
-	id, ok := f.ruleMap[policy][rule]
+func (f *FakePolicyRepositoryIDReader) GetRuleId(ruleId types.TetragonPolicyUniqueID) (uint64, bool) {
+	id, ok := f.ruleMap[ruleId.PolicyName][ruleId.RuleName]
 	return id, ok
 }
 
@@ -287,9 +287,9 @@ func TestAddSingleRecordWithEndpointAndPolicy(t *testing.T) {
 			ResetTime:  uint64(0),
 			Action:     record.PolicyDeny,
 		},
-		Policy: record.Policy{
-			Name: "test-policy",
-			Rule: "test-rule",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "test-policy",
+			RuleName:   "test-rule",
 		},
 	}
 	expectedEntries := []expectedEntry{

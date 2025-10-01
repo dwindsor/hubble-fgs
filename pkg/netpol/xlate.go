@@ -205,12 +205,11 @@ func parseConnectPolicy(np *v1alpha1.TetragonNetworkPolicy, r *v1alpha1.NetworkP
 	for _, d := range r.Destination {
 		dest := toDestination(&d)
 		policy = append(policy, &types.TetragonNetworkPolicy{
-			Name:        np.Name,
-			Rule:        r.Description,
-			Subject:     subj,
-			Destination: dest,
-			Action:      act,
-			Default:     dfltAction,
+			RuleDescription: r.Description,
+			Subject:         subj,
+			Destination:     dest,
+			Action:          act,
+			Default:         dfltAction,
 		})
 	}
 
@@ -238,13 +237,12 @@ func parseFirewallPolicy(np *v1alpha1.TetragonNetworkPolicy, r *v1alpha1.Network
 			}
 
 			policy = append(policy, &types.TetragonNetworkPolicy{
-				Name:        np.Name,
-				Rule:        r.Description,
-				Subject:     subj,
-				Source:      source,
-				Destination: *dest,
-				Action:      act,
-				Default:     dfltAction,
+				RuleDescription: r.Description,
+				Subject:         subj,
+				Source:          source,
+				Destination:     *dest,
+				Action:          act,
+				Default:         dfltAction,
 			})
 		}
 	}

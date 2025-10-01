@@ -115,9 +115,9 @@ type PolicyState struct {
 
 func NewPolicyState() *PolicyState {
 	s := &PolicyState{}
-	s.Dst = make(map[string]*matchLabels.LabelSet)
-	s.Src = make(map[string]*matchLabels.LabelSet)
-	s.L3 = make(map[string]*matchLabels.LabelSet)
+	s.Dst = make(map[types.TetragonPolicyUniqueID]*matchLabels.LabelSet)
+	s.Src = make(map[types.TetragonPolicyUniqueID]*matchLabels.LabelSet)
+	s.L3 = make(map[types.TetragonPolicyUniqueID]*matchLabels.LabelSet)
 
 	s.localObjects = make(map[k8stypes.UID]metav1.Object)
 	// Initialize the new state with a local object representing the host
@@ -158,9 +158,7 @@ func SetRealizedState(s *PolicyState) {
 func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
 	var records []*record.DatapathRecord
 
-	policy := record.Policy{
-		Name: "", // empty name on Remove is OK.
-	}
+	policy := types.TetragonPolicyUniqueID{} // empty policyUID on Remove is OK.
 
 	ml := &matchLabels.LabelSet{
 		Labels: pod.Labels,
@@ -175,7 +173,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 	if dests != nil {
 		podEP := createObjectEndpoint(pod)
 		for _, d := range dests {
-			s := state.Src[d.Name]
+			s := state.Src[d.Policy.PolicyUID]
 			action, err := calculateAction(&s.Policy.Action)
 			if err != nil {
 				logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
@@ -202,18 +200,18 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 						Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 					}
 					records = append(records, &record.DatapathRecord{
-						Policy:   policy,
-						Src:      processSrc,
-						Endpoint: ep,
-						Action:   action,
+						PolicyUID: policy,
+						Src:       processSrc,
+						Endpoint:  ep,
+						Action:    action,
 					})
 				}
 				if len(s.Policy.Subject.InProcessName) == 0 {
 					records = append(records, &record.DatapathRecord{
-						Policy:   policy,
-						Src:      subject,
-						Endpoint: ep,
-						Action:   action,
+						PolicyUID: policy,
+						Src:       subject,
+						Endpoint:  ep,
+						Action:    action,
 					})
 				}
 			}
@@ -255,7 +253,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 			logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
 			continue
 		}
-		d := state.Dst[s.Name]
+		d := state.Dst[s.Policy.PolicyUID]
 		for _, ep := range d.Endpoints {
 			dpEndpoint := record.DatapathEndpoint{
 				EP: ep,
@@ -263,10 +261,10 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 
 			if len(s.Policy.Subject.InProcessName) == 0 {
 				records = append(records, &record.DatapathRecord{
-					Policy:   policy,
-					Src:      subject,
-					Endpoint: dpEndpoint,
-					Action:   action,
+					PolicyUID: policy,
+					Src:       subject,
+					Endpoint:  dpEndpoint,
+					Action:    action,
 				})
 			}
 			for _, process := range s.Policy.Subject.InProcessName {
@@ -282,10 +280,10 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 					Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 				}
 				records = append(records, &record.DatapathRecord{
-					Policy:   policy,
-					Src:      processSrc,
-					Endpoint: dpEndpoint,
-					Action:   action,
+					PolicyUID: policy,
+					Src:       processSrc,
+					Endpoint:  dpEndpoint,
+					Action:    action,
 				})
 			}
 		}
@@ -299,8 +297,8 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 		if s.Policy.Default.EnforceAction != nil {
 			// Action is not part of the default action key so we just need Src field
 			records = append(records, &record.DatapathRecord{
-				Policy: policy,
-				Src:    subject,
+				PolicyUID: policy,
+				Src:       subject,
 				Endpoint: record.DatapathEndpoint{
 					EP:   nil,
 					Port: 0,
@@ -310,7 +308,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 
 		if s.Policy.Destination.CIDR != nil {
 			r, err := addDestCIDRRecords(
-				&policy,
+				policy,
 				&s.Policy.Destination,
 				&s.Policy.Subject,
 				subject,
@@ -354,18 +352,18 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 				}
 
 				records = append(records, &record.DatapathRecord{
-					Policy:   policy,
-					Src:      processSrc,
-					Endpoint: endpoint,
-					Action:   action,
+					PolicyUID: policy,
+					Src:       processSrc,
+					Endpoint:  endpoint,
+					Action:    action,
 				})
 			}
 			if len(s.Policy.Subject.InProcessName) == 0 {
 				records = append(records, &record.DatapathRecord{
-					Policy:   policy,
-					Src:      subject,
-					Endpoint: endpoint,
-					Action:   action,
+					PolicyUID: policy,
+					Src:       subject,
+					Endpoint:  endpoint,
+					Action:    action,
 				})
 			}
 		}
@@ -400,16 +398,13 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 		// For dest dest label selector we need to create src->dst binding
 		// to do this walk all subjects and add the new dst. Merge conflicts
 		// are resolved by BPF datapath.
-		policyList := state.Src[d.Name]
-		policy := record.Policy{
-			Name: policyList.Name,
-			Rule: policyList.Policy.Rule,
-		}
+		policyList := state.Src[d.Policy.PolicyUID]
+		policy := policyList.Policy.PolicyUID
 		for _, subject := range policyList.Subjects {
 			action, err := calculateAction(&policyList.Policy.Action)
 			if err != nil {
 				logger.GetLogger().Warn("could not calcluate actions, skipping action",
-					logfields.Error, err, "policyName", d.Name, "action", d.Policy.Action)
+					logfields.Error, err, "policyName", d.Policy.PolicyUID, "action", d.Policy.Action)
 				continue
 			}
 
@@ -432,10 +427,10 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 							Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 						}
 						records = append(records, &record.DatapathRecord{
-							Policy:   policy,
-							Src:      processSrc,
-							Endpoint: endpoint,
-							Action:   action,
+							PolicyUID: policy,
+							Src:       processSrc,
+							Endpoint:  endpoint,
+							Action:    action,
 						})
 					}
 					for _, port := range policyList.Policy.Destination.Ports {
@@ -450,10 +445,10 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 							Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 						}
 						records = append(records, &record.DatapathRecord{
-							Policy:   policy,
-							Src:      processSrc,
-							Endpoint: endpoint,
-							Action:   action,
+							PolicyUID: policy,
+							Src:       processSrc,
+							Endpoint:  endpoint,
+							Action:    action,
 						})
 					}
 				}
@@ -464,10 +459,10 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 				}
 
 				records = append(records, &record.DatapathRecord{
-					Policy:   policy,
-					Src:      subject,
-					Endpoint: endpoint,
-					Action:   action,
+					PolicyUID: policy,
+					Src:       subject,
+					Endpoint:  endpoint,
+					Action:    action,
 				})
 			}
 		}
@@ -483,7 +478,7 @@ func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.Labe
 		if newSrc {
 			s.AddSubject(src)
 		}
-		sRecords, err := state.AddSrcPolicy(s.Name, src, s.Policy, true)
+		sRecords, err := state.AddSrcPolicy(src, s.Policy, true)
 		if err != nil {
 			logger.GetLogger().Warn("ProgAddNetwork failed", logfields.Error, err, "src", src)
 		}
@@ -562,10 +557,7 @@ func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
 	// policy includes the full tuple in IP form (we have no
 	// labels in middleboxes... yet.).
 	for _, l3 := range l3s {
-		policy := record.Policy{
-			Name: l3.Name,
-			Rule: l3.Policy.Rule,
-		}
+		policy := l3.Policy.PolicyUID
 
 		action, err := calculateAction(&l3.Policy.Action)
 		if err != nil {
@@ -592,10 +584,10 @@ func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
 			}
 
 			records = append(records, &record.DatapathRecord{
-				Policy:   policy,
-				L3Src:    *ds,
-				Endpoint: *de,
-				Action:   action,
+				PolicyUID: policy,
+				L3Src:     *ds,
+				Endpoint:  *de,
+				Action:    action,
 			})
 		}
 
@@ -618,10 +610,10 @@ func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
 
 			if len(l3.Policy.Source.Ports) == 0 {
 				records = append(records, &record.DatapathRecord{
-					Policy:   policy,
-					L3Src:    *ds,
-					Endpoint: *de,
-					Action:   action,
+					PolicyUID: policy,
+					L3Src:     *ds,
+					Endpoint:  *de,
+					Action:    action,
 				})
 			}
 
@@ -631,10 +623,10 @@ func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
 			for _, sport := range l3.Policy.Source.Ports {
 				ds.Port = uint32(sport)
 				records = append(records, &record.DatapathRecord{
-					Policy:   policy,
-					L3Src:    *ds,
-					Endpoint: *de,
-					Action:   action,
+					PolicyUID: policy,
+					L3Src:     *ds,
+					Endpoint:  *de,
+					Action:    action,
 				})
 			}
 		}

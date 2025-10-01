@@ -8,20 +8,20 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
-func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) AddSrcPolicy(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]*record.DatapathRecord, error) {
 	records := []*record.DatapathRecord{}
 
 	dfltAction, err := calculateAction(&policy.Default)
 	if err != nil {
 		logger.GetLogger().Error("policy has unsupported or invalid default action", logfields.Error, err,
-			"uid", uid, "name", policy.Name, "action", policy.Action)
+			"uid", policy.PolicyUID, "action", policy.Action)
 		return records, err
 	}
 
 	action, err := calculateAction(&policy.Action)
 	if err != nil {
 		logger.GetLogger().Error("policy has unsupported or invalid action", logfields.Error, err,
-			"uid", uid, "name", policy.Name, "action", policy.Action)
+			"uid", policy.PolicyUID, "action", policy.Action)
 		return records, err
 	}
 
@@ -32,7 +32,7 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 		for _, process := range policy.Subject.InProcessName {
 			self, err := prog.GetBinaryId(process, true) // DNS policies do not include args for now
 			if err != nil {
-				logger.GetLogger().Warn("Failed to create record", logfields.Error, err, "uid", uid, "process", process)
+				logger.GetLogger().Warn("Failed to create record", logfields.Error, err, "uid", policy.PolicyUID, "process", process)
 				return records, err
 			}
 
@@ -43,11 +43,11 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 				Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 			}
 
-			r := state.policyDestRecords(uid, processSrc, action, policy, init)
+			r := state.policyDestRecords(processSrc, action, policy, init)
 			records = append(records, r...)
 		}
 	} else {
-		r := state.policyDestRecords(uid, src, action, policy, init)
+		r := state.policyDestRecords(src, action, policy, init)
 		records = append(records, r...)
 	}
 
@@ -56,16 +56,12 @@ func (state *PolicyState) AddSrcPolicy(uid string, src *types.ProcessTreeKey, po
 		EP:   nil,
 		Port: 0,
 	}
-	recordPolicy := record.Policy{
-		Name: uid,
-		Rule: policy.Rule,
-	}
 	dfltRecord := &record.DatapathRecord{
-		Policy:   recordPolicy,
-		Src:      src,
-		Endpoint: endpoint,
-		Action:   dfltAction,
-		Init:     init,
+		PolicyUID: policy.PolicyUID,
+		Src:       src,
+		Endpoint:  endpoint,
+		Action:    dfltAction,
+		Init:      init,
 	}
 	records = append(records, dfltRecord)
 

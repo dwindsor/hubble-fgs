@@ -67,8 +67,10 @@ func testVrfPolicy(name, rule, color, src, dst string, def, deny bool) *types.Te
 	defAction := defAction(def)
 
 	return &types.TetragonNetworkPolicy{
-		Name:        name,
-		Rule:        rule,
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: name,
+			RuleName:   rule,
+		},
 		Subject:     subject,
 		Source:      source,
 		Destination: dest,
@@ -84,10 +86,10 @@ func smartswitchTestVrfPolicy(name, rule, color, src, dst string) *types.Tetrago
 func findRecords(records []*record.DatapathRecord, name, rule, color, src, dst string, dport uint32) error {
 	for _, r := range records {
 		// Policy names have a unique id postfix
-		if !strings.HasPrefix(r.Policy.Name, name) {
+		if !strings.HasPrefix(r.PolicyUID.PolicyName, name) {
 			continue
 		}
-		if r.Policy.Rule != rule {
+		if r.PolicyUID.RuleName != rule {
 			continue
 		}
 		if r.L3Src.Ip != src {
@@ -183,7 +185,7 @@ func TestBasicIntraVRFPolicy(t *testing.T) {
 	// Removes need to use the unique idea assigned at create* time. The caller to this code will
 	// track that policy user name to the internal unique id. We can test that separately, but
 	// for now we know its a monotonic counter so we can just fake it.
-	removeSet, addSet, errSet = state.removeMatchLabelNetworkPolicy("redPolicy_0", netpolR)
+	removeSet, addSet, errSet = state.removeMatchLabelNetworkPolicy(netpolR)
 	assert.Equal(t, 2, len(addSet))
 	assert.Equal(t, 2, len(removeSet))
 	err = findRecords(removeSet, "red", "singleton", "red", "10.1.0.0/16", "10.2.0.0/16", uint32(443))
@@ -194,7 +196,7 @@ func TestBasicIntraVRFPolicy(t *testing.T) {
 	SetRealizedState(state)
 
 	// Remove blue policy and ensure we generate removal records for each port
-	removeSet, addSet, errSet = state.removeMatchLabelNetworkPolicy("bluePolicy_0", netpolB)
+	removeSet, addSet, errSet = state.removeMatchLabelNetworkPolicy(netpolB)
 	assert.Equal(t, 0, len(addSet))
 	assert.Equal(t, 2, len(removeSet))
 	err = findRecords(removeSet, "blue", "singleton", "red", "10.1.0.0/16", "10.2.0.0/16", uint32(443))
@@ -205,7 +207,7 @@ func TestBasicIntraVRFPolicy(t *testing.T) {
 	SetRealizedState(state)
 
 	// Remove remaining red policy and ensure we generate removal records for each port
-	removeSet, addSet, errSet = state.removeMatchLabelNetworkPolicy("redPolicy2_0", netpolR2)
+	removeSet, addSet, errSet = state.removeMatchLabelNetworkPolicy(netpolR2)
 	assert.Equal(t, 0, len(addSet))
 	assert.Equal(t, 2, len(removeSet))
 	err = findRecords(removeSet, "redPolicy2", "singleton2", "red", "10.3.0.0/16", "10.2.0.0/16", uint32(443))

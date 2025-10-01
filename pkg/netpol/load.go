@@ -155,7 +155,6 @@ func Add(np *v1alpha1.TetragonNetworkPolicy) error {
 
 	err = loadPolicy(&library.PolicyStory{
 		Title:       np.Name,
-		Rules:       make(map[string]uint64),
 		CRDPolicy:   np,
 		CRDNSPolicy: nil,
 		IrPolicy:    policies,

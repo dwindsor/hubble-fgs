@@ -12,7 +12,7 @@ import (
 )
 
 func addDestSrcCIDRRecords(
-	policy *record.Policy,
+	policy types.TetragonPolicyUniqueID,
 	dest *types.TetragonNetworkDestination,
 	src *types.ProcessTreeKey,
 	action *record.DatapathAction,
@@ -30,11 +30,11 @@ func addDestSrcCIDRRecords(
 		}
 		return []*record.DatapathRecord{
 			{
-				Policy:   *policy,
-				Src:      src,
-				Endpoint: endpoint,
-				Action:   action,
-				Init:     init,
+				PolicyUID: policy,
+				Src:       src,
+				Endpoint:  endpoint,
+				Action:    action,
+				Init:      init,
 			},
 		}, nil
 	}
@@ -46,18 +46,18 @@ func addDestSrcCIDRRecords(
 			Port: port,
 		}
 		records = append(records, &record.DatapathRecord{
-			Policy:   *policy,
-			Src:      src,
-			Endpoint: endpoint,
-			Action:   action,
-			Init:     init,
+			PolicyUID: policy,
+			Src:       src,
+			Endpoint:  endpoint,
+			Action:    action,
+			Init:      init,
 		})
 	}
 	return records, nil
 }
 
 func addDestCIDRRecords(
-	policy *record.Policy,
+	policy types.TetragonPolicyUniqueID,
 	dest *types.TetragonNetworkDestination,
 	subject *types.TetragonNetworkSubject,
 	podSubject *types.ProcessTreeKey,

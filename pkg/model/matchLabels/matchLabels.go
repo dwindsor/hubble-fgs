@@ -8,7 +8,6 @@ import (
 )
 
 type LabelSet struct {
-	Name      string
 	Labels    map[string]string
 	Policy    *types.TetragonNetworkPolicy
 	Source    []*endpoint.Source
@@ -61,7 +60,7 @@ func (l *LabelSet) AddSubject(s *types.ProcessTreeKey) {
 	l.Subjects = append(l.Subjects, s)
 }
 
-type PolicyList map[string]*LabelSet
+type PolicyList map[types.TetragonPolicyUniqueID]*LabelSet
 
 func (policy PolicyList) Exists(l *LabelSet) bool {
 	for _, p := range policy {
@@ -106,7 +105,7 @@ func (policy *PolicyList) MergedCollection(l *LabelSet) *LabelSet {
 // Careful this is not a copy() so you can't reuse
 // l after this.
 func (policy PolicyList) Add(l *LabelSet) {
-	policy[l.Name] = l
+	policy[l.Policy.PolicyUID] = l
 }
 
 func (policy PolicyList) Flush() {
@@ -115,6 +114,6 @@ func (policy PolicyList) Flush() {
 	}
 }
 
-func (policy PolicyList) Remove(name string) {
-	delete(policy, name)
+func (policy PolicyList) Remove(policyUID types.TetragonPolicyUniqueID) {
+	delete(policy, policyUID)
 }

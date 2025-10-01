@@ -176,12 +176,17 @@ type TetragonNetworkAction struct {
 	EnforceAction *TetragonEnforceAction
 }
 
+type TetragonPolicyUniqueID struct {
+	PolicyName string
+	RuleName   string
+}
+
 type TetragonNetworkPolicy struct {
-	Name        string
-	Rule        string
-	Subject     TetragonNetworkSubject
-	Source      *TetragonNetworkSource
-	Destination TetragonNetworkDestination
-	Action      TetragonNetworkAction
-	Default     TetragonNetworkAction
+	PolicyUID       TetragonPolicyUniqueID
+	RuleDescription string
+	Subject         TetragonNetworkSubject
+	Source          *TetragonNetworkSource
+	Destination     TetragonNetworkDestination
+	Action          TetragonNetworkAction
+	Default         TetragonNetworkAction
 }

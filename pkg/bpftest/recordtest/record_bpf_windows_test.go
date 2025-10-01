@@ -15,12 +15,13 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
+	"github.com/stretchr/testify/require"
+
 	"github.com/isovalent/hubble-fgs/pkg/bpftest"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
-	"github.com/stretchr/testify/require"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 )
@@ -50,9 +51,9 @@ var (
 	}
 
 	ipLo1Policy = &record.DatapathRecord{
-		Policy: record.Policy{
-			Name: "testPolicy1",
-			Rule: "testRule1",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicy1",
+			RuleName:   "testRule1",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -67,9 +68,9 @@ var (
 		},
 	}
 	ipLo1AllowPolicy = &record.DatapathRecord{
-		Policy: record.Policy{
-			Name: "testPolicyAllow1",
-			Rule: "testRuleAllow1",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicyAllow1",
+			RuleName:   "testRuleAllow1",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -84,9 +85,9 @@ var (
 		},
 	}
 	ipLo2Policy = &record.DatapathRecord{
-		Policy: record.Policy{
-			Name: "testPolicy2",
-			Rule: "testRule2",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicy2",
+			RuleName:   "testRule2",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -101,9 +102,9 @@ var (
 		},
 	}
 	ipLo2AllowPolicy = &record.DatapathRecord{
-		Policy: record.Policy{
-			Name: "testPolicyAllow2",
-			Rule: "testRuleAllow2",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicyAllow2",
+			RuleName:   "testRuleAllow2",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -118,9 +119,9 @@ var (
 		},
 	}
 	ipLo3Policy = &record.DatapathRecord{
-		Policy: record.Policy{
-			Name: "testPolicy3",
-			Rule: "testRule3",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicy3",
+			RuleName:   "testRule3",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{
@@ -135,9 +136,9 @@ var (
 		},
 	}
 	ipLo3AllowPolicy = &record.DatapathRecord{
-		Policy: record.Policy{
-			Name: "testPolicyAllow3",
-			Rule: "testRuleAllow3",
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicyAllow3",
+			RuleName:   "testRuleAllow3",
 		},
 		Src: wildcardSrc,
 		Endpoint: record.DatapathEndpoint{

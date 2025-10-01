@@ -10,9 +10,13 @@ import (
 )
 
 func TestGetLabels(t *testing.T) {
-	netpol := &types.TetragonNetworkPolicy{}
+	netpol := &types.TetragonNetworkPolicy{
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicy",
+			RuleName:   "rule1",
+		},
+	}
 	s1 := &LabelSet{
-		Name:   "netpol",
 		Labels: make(map[string]string),
 		Policy: netpol,
 	}
@@ -28,11 +32,15 @@ func TestGetLabels(t *testing.T) {
 }
 
 func TestSinglePolicy(t *testing.T) {
-	netpol := &types.TetragonNetworkPolicy{}
+	netpol := &types.TetragonNetworkPolicy{
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicy",
+			RuleName:   "rule1",
+		},
+	}
 	p := &PolicyList{}
 
 	s := &LabelSet{
-		Name:   "s",
 		Labels: make(map[string]string),
 		Policy: netpol,
 	}
@@ -78,11 +86,15 @@ func TestSinglePolicy(t *testing.T) {
 }
 
 func TestFlushPolicy(t *testing.T) {
-	netpol := &types.TetragonNetworkPolicy{}
+	netpol := &types.TetragonNetworkPolicy{
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicy",
+			RuleName:   "rule1",
+		},
+	}
 	p := &PolicyList{}
 
 	s := &LabelSet{
-		Name:   "s",
 		Labels: make(map[string]string),
 		Policy: netpol,
 	}
@@ -102,11 +114,16 @@ func TestFlushPolicy(t *testing.T) {
 }
 
 func TestDeletePolicy(t *testing.T) {
-	netpol := &types.TetragonNetworkPolicy{}
+	policyUID := types.TetragonPolicyUniqueID{
+		PolicyName: "testPolicy",
+		RuleName:   "rule1",
+	}
+	netpol := &types.TetragonNetworkPolicy{
+		PolicyUID: policyUID,
+	}
 	p := &PolicyList{}
 
 	s := &LabelSet{
-		Name:   "s",
 		Labels: make(map[string]string),
 		Policy: netpol,
 	}
@@ -120,20 +137,25 @@ func TestDeletePolicy(t *testing.T) {
 	match := p.Exists(s)
 	assert.True(t, match, "keyset should exist")
 
-	p.Remove("s")
+	p.Remove(policyUID)
 	match = p.Exists(s)
 	assert.False(t, match, "keyset should have been removed")
 	p.Flush()
 }
 
 func TestManySimplePolicy(t *testing.T) {
-	netpol := &types.TetragonNetworkPolicy{}
+
 	p := &PolicyList{}
 
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d", i)
+		netpol := &types.TetragonNetworkPolicy{
+			PolicyUID: types.TetragonPolicyUniqueID{
+				PolicyName: is,
+				RuleName:   "rule1",
+			},
+		}
 		s := &LabelSet{
-			Name:   is,
 			Labels: make(map[string]string),
 			Policy: netpol,
 		}
@@ -144,7 +166,6 @@ func TestManySimplePolicy(t *testing.T) {
 		is := fmt.Sprintf("%d", i)
 		s := &LabelSet{
 			Labels: make(map[string]string),
-			Policy: netpol,
 		}
 		s.Labels[is] = is
 		match := p.Exists(s)
@@ -154,13 +175,17 @@ func TestManySimplePolicy(t *testing.T) {
 }
 
 func TestManyLongerPolicy(t *testing.T) {
-	netpol := &types.TetragonNetworkPolicy{}
 	p := &PolicyList{}
 
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d", i)
+		netpol := &types.TetragonNetworkPolicy{
+			PolicyUID: types.TetragonPolicyUniqueID{
+				PolicyName: is,
+				RuleName:   "rule1",
+			},
+		}
 		s := &LabelSet{
-			Name:   is,
 			Labels: make(map[string]string),
 			Policy: netpol,
 		}
@@ -169,7 +194,6 @@ func TestManyLongerPolicy(t *testing.T) {
 	}
 	s := &LabelSet{
 		Labels: make(map[string]string),
-		Policy: netpol,
 	}
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d", i)
@@ -181,18 +205,25 @@ func TestManyLongerPolicy(t *testing.T) {
 }
 
 func TestCollectionPolicy(t *testing.T) {
-	netpol := &types.TetragonNetworkPolicy{}
 	p := &PolicyList{}
 
 	s1 := &LabelSet{
-		Name:   "s1",
 		Labels: make(map[string]string),
-		Policy: netpol,
+		Policy: &types.TetragonNetworkPolicy{
+			PolicyUID: types.TetragonPolicyUniqueID{
+				PolicyName: "s1",
+				RuleName:   "rule1",
+			},
+		},
 	}
 	s2 := &LabelSet{
-		Name:   "s2",
 		Labels: make(map[string]string),
-		Policy: netpol,
+		Policy: &types.TetragonNetworkPolicy{
+			PolicyUID: types.TetragonPolicyUniqueID{
+				PolicyName: "s2",
+				RuleName:   "rule1",
+			},
+		},
 	}
 
 	s1.Labels["A"] = "a"
@@ -206,7 +237,6 @@ func TestCollectionPolicy(t *testing.T) {
 
 	search := &LabelSet{
 		Labels: make(map[string]string),
-		Policy: netpol,
 	}
 	search.Labels["D"] = "D"
 	// No overlap expect empty set
@@ -235,23 +265,31 @@ func TestCollectionPolicy(t *testing.T) {
 }
 
 func BenchmarkMatchPolicy(b *testing.B) {
-	netpol := &types.TetragonNetworkPolicy{}
 	p := PolicyList{}
 
-	s := &LabelSet{
-		Labels: make(map[string]string),
-		Policy: netpol,
-	}
+	// I am not sure it makes sense, but this is what was
+	// happening here before.
 	for i := 0; i < 1000; i++ {
-		is := fmt.Sprintf("%d%+200s", i, " ")
-		s.Labels[is] = is
-		s.Name = is
+		s := &LabelSet{
+			Labels: make(map[string]string),
+			Policy: &types.TetragonNetworkPolicy{
+				PolicyUID: types.TetragonPolicyUniqueID{
+					PolicyName: fmt.Sprintf("%d", i),
+					RuleName:   "rule1",
+				},
+			},
+		}
+
+		for j := 0; j <= i; j++ {
+			is := fmt.Sprintf("%d%+200s", i, " ")
+			s.Labels[is] = is
+		}
+
 		p.Add(s)
 	}
 
 	find := &LabelSet{
 		Labels: make(map[string]string),
-		Policy: netpol,
 	}
 	for i := 0; i < 1000; i++ {
 		is := fmt.Sprintf("%d%+100s", i, " ")
@@ -265,24 +303,28 @@ func BenchmarkMatchPolicy(b *testing.B) {
 }
 
 func BenchmarkCollection(b *testing.B) {
-	netpol := &types.TetragonNetworkPolicy{}
 	p := PolicyList{}
 
-	s := &LabelSet{
-		Labels: make(map[string]string),
-		Policy: netpol,
-	}
-
 	for i := 0; i < 100; i++ {
-		is := fmt.Sprintf("%d%+20s", i, " ")
-		s.Labels[is] = is
-		s.Name = is
+		s := &LabelSet{
+			Labels: make(map[string]string),
+			Policy: &types.TetragonNetworkPolicy{
+				PolicyUID: types.TetragonPolicyUniqueID{
+					PolicyName: fmt.Sprintf("%d", i),
+					RuleName:   "rule1",
+				},
+			},
+		}
+		for j := 0; j <= i; j++ {
+			is := fmt.Sprintf("%d%+20s", i, " ")
+			s.Labels[is] = is
+		}
+
 		p.Add(s)
 	}
 
 	find := &LabelSet{
 		Labels: make(map[string]string),
-		Policy: netpol,
 	}
 	for i := 0; i < 100; i++ {
 		is := fmt.Sprintf("%d%+20s", i, " ")
