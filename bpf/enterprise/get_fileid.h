@@ -12,7 +12,7 @@ get_fileid__(const char *const fname)
 #define fileid__(f, id)                  \
 	if (!__builtin_strcmp(f, fname)) \
 		return id;
-#include "../modules/tetragon-oss/bpf/tetragon/fileids.h"
+#include "../modules/tetragon-oss/bpf/errmetrics/fileids.h"
 #undef fileid__
 
 	return 0;

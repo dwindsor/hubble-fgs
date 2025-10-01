@@ -2,6 +2,18 @@
 
 ## Tetragon Health Metrics
 
+### `tetragon_bpf_error_metrics_total`
+
+The total and type of errors encountered exposed via the BPF error metrics API. Internal use only.
+
+| label | values |
+| ----- | ------ |
+| `error` | `   22` |
+| `error_name` | `EINVAL` |
+| `file_name` | `bpf_d_path.h` |
+| `helper_func` | `FnProbeRead` |
+| `line_number` | `  166` |
+
 ### `tetragon_bpf_missed_events_total`
 
 Number of Tetragon perf events that are failed to be sent from the kernel.

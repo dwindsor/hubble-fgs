@@ -9,32 +9,3 @@
 // permission is obtained from Isovalent Inc.
 
 package errmetrics
-
-import (
-	"path/filepath"
-
-	"github.com/cilium/tetragon/pkg/errmetrics"
-)
-
-var (
-	ossPath = "modules/tetragon-oss/bpf"
-)
-
-func init() {
-	ossGetFileIDs := errmetrics.GetFileIDs
-	errmetrics.GetFileIDs = func() (map[int]string, error) {
-		ret, err := ossGetFileIDs()
-		if err != nil {
-			return nil, err
-		}
-
-		for k, v := range ret {
-			if v != errmetrics.UnknownFname {
-				ret[k] = filepath.Join(ossPath, v)
-			}
-			// NB: once we have ee ids, we can fill in filenames here
-		}
-
-		return ret, nil
-	}
-}
