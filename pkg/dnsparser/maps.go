@@ -97,9 +97,12 @@ func RewritePerPodConstants(consts map[string]any) error {
 	return nil
 }
 
-// GetKubepodsSliceCgroupID scans the filesystem for the "kubepods.slice"
+// GetKubepodsSliceCgroupID is a global var that can be set for testing purposes.
+var GetKubepodsSliceCgroupID = getKubepodsSliceCgroupID
+
+// getKubepodsSliceCgroupID scans the filesystem for the "kubepods.slice"
 // cgroup directory
-func GetKubepodsSliceCgroupID() (uint64, error) {
+func getKubepodsSliceCgroupID() (uint64, error) {
 	fsscanner := fsscan.New()
 	podDir, err := fsscanner.FindPodPath("kubepods.slice")
 	if err != nil {
