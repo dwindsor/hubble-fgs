@@ -101,6 +101,7 @@ RUN addgroup hubble	       && \
     mkdir libs		       && \
     mkdir -p /etc/tetragon/tetragon.conf.d/ && \
     mkdir -p /etc/tetragon/tetragon.tp.d/ && \
+    mkdir -p /etc/tetragon/tetragon.policies.d/ && \
     apk add --no-cache --update bash
 RUN apk upgrade --no-cache
 COPY --from=tetragon-builder /go/src/github.com/isovalent/hubble-fgs/tetragon /usr/bin/

@@ -14,6 +14,7 @@ cp -vf /usr/local/lib/tetragon/systemd/tetragon-enterprise.service /usr/lib/syst
 
 install -d /etc/tetragon/tetragon.conf.d/
 install -d /etc/tetragon/tetragon.tp.d/
+install -d /etc/tetragon/tetragon.policies.d/
 
 systemctl daemon-reload
 systemctl enable tetragon-enterprise

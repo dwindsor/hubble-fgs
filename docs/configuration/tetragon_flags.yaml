@@ -371,6 +371,7 @@ options:
     - name: ocsf-export-server
       usage: Server for OCSF JSON export. Disabled by default
     - name: policy-dir
+      default_value: /etc/tetragon/tetragon.policies.d
       usage: |
         Directory for all kind of policies to load at startup. Only single depth level files are supported
     - name: pprof-address

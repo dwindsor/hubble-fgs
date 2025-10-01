@@ -35,6 +35,7 @@ Write-Host "Tetragon archive extracted to: $tetragonBinaries"
 New-Item -ItemType Directory -Path "C:\Program Files\Tetragon\cmd" -Force
 New-Item -ItemType Directory -Path "C:\Program Files\Tetragon\BPF" -Force
 New-Item -ItemType Directory -Path "C:\Program Files\Tetragon\tetragon.tp.d" -Force
+New-Item -ItemType Directory -Path "C:\Program Files\Tetragon\tetragon.policies.d" -Force
 
 Copy-Item -Path $tetragonBinaries\*.exe -destination "C:\Program Files\tetragon\cmd\" -Force
 

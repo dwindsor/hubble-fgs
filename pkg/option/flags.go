@@ -20,6 +20,8 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	eedefaults "github.com/isovalent/hubble-fgs/pkg/defaults"
+
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -202,7 +204,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
 	flags.MarkHidden(keyK8sServiceAccountAuth)
 
-	flags.String(KeyPolicyDir, "", "Directory for all kind of policies to load at startup. Only single depth level files are supported")
+	flags.String(KeyPolicyDir, eedefaults.DefaultPoliciesDir, "Directory for all kind of policies to load at startup. Only single depth level files are supported")
 	// Mark other policiesDir options as deprecated
 	_ = flags.MarkDeprecated(option.KeyTracingPolicyDir, "Deprecated in v1.18.0, to be removed in v1.20.0. Use "+KeyPolicyDir+"instead.")
 	_ = flags.MarkDeprecated(keyNetworkPolicyDir, "Deprecated in v1.18.0, to be removed in v1.20.0. Use "+KeyPolicyDir+"instead.")
