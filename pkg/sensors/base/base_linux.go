@@ -13,6 +13,7 @@ package base
 import (
 	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -21,8 +22,6 @@ import (
 
 func GetDefaultPrograms() []*program.Program {
 	progs := []*program.Program{
-		Exit,
-		Fork,
 		ExecveBprmCommit,
 		ExecveMapUpdate,
 	}
@@ -36,6 +35,11 @@ func GetDefaultPrograms() []*program.Program {
 		progs = append(progs, ExecveV53)
 	} else {
 		progs = append(progs, Execve)
+	}
+	if config.EnableV511Progs() {
+		progs = append(progs, ForkV511, ExitV511)
+	} else {
+		progs = append(progs, Fork, Exit)
 	}
 	if enterpriseOption.Config.EnableApplicationModel && enterpriseOption.Config.EnableSyscallTracking {
 		logger.GetLogger().Info("Enable syscall tracking")
@@ -88,6 +92,12 @@ func GetDefaultMaps() []*program.Map {
 	}
 	if enterpriseOption.Config.EnableApplicationModel {
 		maps = append(maps, NsIDMap)
+	}
+	// The BPF ring buffer is available from v5.8, but rather than add another set of
+	// kernel-version-specific objects, let's set the gate at v5.11 as we already have
+	// objects for that version number. We can revisit this of course.
+	if config.EnableV511Progs() && !option.Config.UsePerfRingBuffer {
+		maps = append(maps, RingBufEvents)
 	}
 
 	ConfigureMapSizes()

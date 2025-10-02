@@ -37,6 +37,10 @@ import (
 	socktrackmaps "github.com/isovalent/hubble-fgs/pkg/sensors/socktrack/maps"
 )
 
+const (
+	RingBufMapName = "tg_rb_events"
+)
+
 var (
 	basePolicy = "__base__"
 
@@ -104,8 +108,24 @@ var (
 		"kprobe",
 	).SetPolicy(basePolicy)
 
+	ExitV511 = program.Builder(
+		"bpf_exit_v511.o",
+		"acct_process",
+		"kprobe/acct_process",
+		"event_exit",
+		"kprobe",
+	).SetPolicy(basePolicy)
+
 	Fork = program.Builder(
 		"bpf_fork.o",
+		"wake_up_new_task",
+		"kprobe/wake_up_new_task",
+		"kprobe_pid_clear",
+		"kprobe",
+	).SetPolicy(basePolicy)
+
+	ForkV511 = program.Builder(
+		"bpf_fork_v511.o",
 		"wake_up_new_task",
 		"kprobe/wake_up_new_task",
 		"kprobe_pid_clear",
@@ -121,21 +141,22 @@ var (
 	).SetPolicy(basePolicy)
 
 	/* Event Ring map */
-	TCPMonMap = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
+	TCPMonMap     = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
+	RingBufEvents = program.MapBuilder(RingBufMapName, ExecveV511, ExecveV61, ExecveV612, ExitV511, ForkV511)
 
 	/* Networking and Process Monitoring maps */
-	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, Fork, Exit, ExecveBprmCommit, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry, ExecveMapUpdate)
-	ProcessNetworkWatermarksMap = program.MapBuilder("tg_l3_wtmk", Exit)
-	SocketMap                   = program.MapBuilder(socktrackmaps.SocketMapName, Exit)
-	SocketStats                 = program.MapBuilder(socktrackmaps.SocketStatsName, Exit)
-	SocketVersionMap            = program.MapBuilder(socktrackmaps.SocketVersionMapName, Exit)
-	SocketTupleMap              = program.MapBuilder(socktrackmaps.SocketTupleMapName, Exit)
-	SocketTupleStats            = program.MapBuilder(socktrackmaps.SocketTupleStatsName, Exit)
-	SocketTupleRevMap           = program.MapBuilder(socktrackmaps.SocketTupleRevMapName, Exit)
-	SocketTupleHintMap          = program.MapBuilder(socktrackmaps.SocketTupleHintMapName, Exit)
-	CfgMap                      = program.MapBuilder(socktrackmaps.SocketCfgMapName, Exit)
-	TcpSocketMap                = program.MapBuilder("tg_l3_tcpsk", Exit)
-	TcpSocketMapStats           = program.MapBuilder("tg_l3_tcpsk_stats", Exit)
+	ExecveMap                   = program.MapBuilder("execve_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612, Fork, ForkV511, Exit, ExitV511, ExecveBprmCommit, procfs.ProcFSWalkKprobe, procfs.ProcFSWalkFentry, ExecveMapUpdate)
+	ProcessNetworkWatermarksMap = program.MapBuilder("tg_l3_wtmk", Exit, ExitV511)
+	SocketMap                   = program.MapBuilder(socktrackmaps.SocketMapName, Exit, ExitV511)
+	SocketStats                 = program.MapBuilder(socktrackmaps.SocketStatsName, Exit, ExitV511)
+	SocketVersionMap            = program.MapBuilder(socktrackmaps.SocketVersionMapName, Exit, ExitV511)
+	SocketTupleMap              = program.MapBuilder(socktrackmaps.SocketTupleMapName, Exit, ExitV511)
+	SocketTupleStats            = program.MapBuilder(socktrackmaps.SocketTupleStatsName, Exit, ExitV511)
+	SocketTupleRevMap           = program.MapBuilder(socktrackmaps.SocketTupleRevMapName, Exit, ExitV511)
+	SocketTupleHintMap          = program.MapBuilder(socktrackmaps.SocketTupleHintMapName, Exit, ExitV511)
+	CfgMap                      = program.MapBuilder(socktrackmaps.SocketCfgMapName, Exit, ExitV511)
+	TcpSocketMap                = program.MapBuilder("tg_l3_tcpsk", Exit, ExitV511)
+	TcpSocketMapStats           = program.MapBuilder("tg_l3_tcpsk_stats", Exit, ExitV511)
 
 	ExecveTailCallsMap  = program.MapBuilderType("execve_calls", program.MapTypeProgram, Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
 	ExecveMapUpdateData = program.MapBuilder("execve_map_update_data", ExecveMapUpdate)
@@ -147,7 +168,7 @@ var (
 
 	/* Internal statistics for debugging */
 	ExecveStats          = program.MapBuilder("execve_map_stats", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
-	PNWatermarksMapStats = program.MapBuilder("tg_l3_wtmk_stats", Exit)
+	PNWatermarksMapStats = program.MapBuilder("tg_l3_wtmk_stats", Exit, ExitV511)
 	ExecveJoinMapStats   = program.MapBuilder("tg_execve_joined_info_map_stats", ExecveBprmCommit)
 	StatsMap             = program.MapBuilder("tg_stats_map", Execve)
 
@@ -187,9 +208,13 @@ func setupSensor() {
 		if has_acct_process {
 			Exit.Attach = "acct_process"
 			Exit.Label = "kprobe/acct_process"
+			ExitV511.Attach = "acct_process"
+			ExitV511.Label = "kprobe/acct_process"
 		} else if has_disassociate_ctty {
 			Exit.Attach = "disassociate_ctty"
 			Exit.Label = "kprobe/disassociate_ctty"
+			ExitV511.Attach = "disassociate_ctty"
+			ExitV511.Label = "kprobe/disassociate_ctty"
 		} else {
 			log.Fatal("Failed to detect exit probe symbol.")
 		}
@@ -272,6 +297,11 @@ func LoadDefault(bpfDir string) error {
 }
 
 func ConfigureMapSizes() {
+	if config.EnableV511Progs() && !option.Config.UsePerfRingBuffer {
+		rbSize := config.GetRBSize()
+		RingBufEvents.SetMaxEntries(rbSize)
+		logger.GetLogger().Info("BPF ring buffer size (bytes)", "total", strutils.SizeWithSuffix(rbSize))
+	}
 	// If Process Tree Modeling is enabled also set maps to minimal size
 	// to avoid unnecessary memory usage.
 	if !enterpriseOption.Config.EnableApplicationModel {
