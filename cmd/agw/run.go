@@ -45,7 +45,6 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu
 		vrfMap[name[0]] = uint32(gid)
 	}
 	s.SetL3NetworkMap(vrfMap)
-	dns.SetRealizedState(s)
 
 	waitGroup.Go(func() error {
 		err := dpuListener.Start()

@@ -617,7 +617,6 @@ func (n *Nxos) doVRFPolicyMapUpdate() {
 	}
 	state := dns.GetRealizedState()
 	state.SetL3NetworkMap(vrfPolicyMap)
-	dns.SetRealizedState(state)
 }
 
 func (n *Nxos) addVbService(ctx context.Context, isBd bool, names []*string, affinities []*uint16) error {
