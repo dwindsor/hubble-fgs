@@ -32,12 +32,12 @@ func NewTestAlertManager() *TestAlertManager {
 
 // NB: note that the aactual Alert implementation does not return an error if the user tries to add
 // an alert with a name that already exists. It's useful to have this behavior for testing.
-func (am *TestAlertManager) AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error {
+func (am *TestAlertManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 	name := ar.GetName()
 	if _, exists := am.alerts[name]; exists {
 		return fmt.Errorf("alert named %q already exists", name)
 	}
-	am.alerts[name] = testAlert{fname}
+	am.alerts[name] = testAlert{ar.Spec.Export.Filename}
 	return nil
 }
 

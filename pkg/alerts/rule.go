@@ -11,10 +11,12 @@
 package alerts
 
 import (
+	"fmt"
 	"path/filepath"
 	"sync"
 
 	"github.com/google/cel-go/cel"
+	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -45,16 +47,6 @@ type rule struct {
 type RuleManager interface {
 	AddAlertRule(ar *v1alpha1.AlertRule) error
 	DeleteAlertRule(name string)
-
-	// Add an alert rule that writes on a specific filename.
-	//
-	// NB(kkourt): The mandate code uses this function so that it can install two alert rules
-	// with the same name. In the future, we might expose the ability to specify a filename in
-	// the alert rule in the spec as well.
-	//
-	// WARNING: If the fname argument is ever provided by the user, we need to validate it
-	// (e.g., using ValidateDNS1123Subdomain) before calling this function.
-	AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error
 }
 
 type ruleManager struct {
@@ -79,13 +71,8 @@ func newRuleManager() *ruleManager {
 }
 
 // Add an alert rule that writes on a specific filename.
-// This is useful for the mandate code. If you want to call this function, ensure that fname is
-// sanitized if it comes from the user (e.g., using ValidateDNS1123Subdomain)
-func (r *ruleManager) AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error {
-	if ar == nil {
-		return nil
-	}
-
+// This is an internal helper method.
+func (r *ruleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error {
 	name := ar.GetName()
 	celProgram, eventNames, err := cef.CompileCEL(ar.Spec.Expression)
 	if err != nil {
@@ -150,7 +137,17 @@ func (r *ruleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 	if ar == nil {
 		return nil
 	}
-	return r.AddAlertRuleWithFilename(ar, ar.GetName()+".log")
+	fname := ar.GetName() + ".log"
+	if ar.Spec.Export.Filename != "" {
+		// This input comes directly from the user.
+		// Handle with **extra** care!
+		fname = ar.Spec.Export.Filename
+		errs := validation.IsDNS1123Subdomain(fname)
+		if len(errs) > 0 {
+			return fmt.Errorf("AlertRule (%q) export.filename (%q) wrong value: %v", ar.GetName(), ar.Spec.Export.Filename, errs)
+		}
+	}
+	return r.addAlertRuleWithFilename(ar, fname)
 }
 
 // updateRuleMetrics calculates and updates metrics for alerting rules by severity

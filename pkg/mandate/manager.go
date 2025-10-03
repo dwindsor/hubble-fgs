@@ -33,7 +33,7 @@ type SensorManager interface {
 }
 
 type AlertRuleManager interface {
-	AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error
+	AddAlertRule(ar *v1alpha1.AlertRule) error
 	DeleteAlertRule(name string)
 }
 

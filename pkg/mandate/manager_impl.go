@@ -358,7 +358,11 @@ func (m *manager) attemptLoadAlert(
 		ty:       alertPolTy,
 	}
 	ar.SetName(pol.name)
-	err = m.alertRuleMgr.AddAlertRuleWithFilename(ar, pol.origName+".log")
+	// Force-set the origName log file if needed.
+	if ar.Spec.Export.Filename == "" {
+		ar.Spec.Export.Filename = pol.origName + ".log"
+	}
+	err = m.alertRuleMgr.AddAlertRule(ar)
 	if err != nil {
 		err = fmt.Errorf("failed to add alert rule: %w", err)
 		return

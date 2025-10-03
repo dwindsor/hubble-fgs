@@ -46,6 +46,9 @@ var updatedAR = &v1alpha1.AlertRule{
 		Message:    "Curl is curling in /usr/bin.",
 		Tags:       []string{"http"},
 		Severity:   "info",
+		Export: struct {
+			Filename string `json:"filename"`
+		}{Filename: "test.log"},
 	},
 }
 
@@ -58,6 +61,9 @@ var anotherAR = &v1alpha1.AlertRule{
 		Message:    "Looks like shell.",
 		Tags:       []string{"shell"},
 		Severity:   "warning",
+		Export: struct {
+			Filename string `json:"filename"`
+		}{Filename: "test.log"},
 	},
 }
 
@@ -154,11 +160,11 @@ func TestAddFilanameRule(t *testing.T) {
 	rm := newRuleManager()
 
 	ruleName := exampleAR.GetName()
-	err := rm.AddAlertRuleWithFilename(exampleAR, "pizza")
+	err := rm.addAlertRuleWithFilename(exampleAR, "pizza")
 	assert.NoError(t, err)
 
 	anotherRuleName := anotherAR.GetName()
-	err = rm.AddAlertRuleWithFilename(anotherAR, "burger")
+	err = rm.addAlertRuleWithFilename(anotherAR, "burger")
 	assert.NoError(t, err)
 
 	assert.Len(t, rm.rules, 2)
@@ -197,12 +203,12 @@ func TestAddSameFilenameRule(t *testing.T) {
 
 	// add one rule
 	ruleName := exampleAR.GetName()
-	err := rm.AddAlertRuleWithFilename(exampleAR, "pizza")
+	err := rm.addAlertRuleWithFilename(exampleAR, "pizza")
 	assert.NoError(t, err)
 
 	// add a second rule, with the same filename
 	anotherRuleName := anotherAR.GetName()
-	err = rm.AddAlertRuleWithFilename(anotherAR, "pizza")
+	err = rm.addAlertRuleWithFilename(anotherAR, "pizza")
 	assert.NoError(t, err)
 
 	// now we have two rules

@@ -96,7 +96,10 @@ func (p *defaultLoader) OnAlertRule(bytes []byte, fname string) error {
 	if !ok {
 		return fmt.Errorf("unexpected object type: %T", obj)
 	}
-	return p.alertsManager.AddAlertRuleWithFilename(ar, fname)
+	if ar.Spec.Export.Filename == "" {
+		ar.Spec.Export.Filename = fname + ".log"
+	}
+	return p.alertsManager.AddAlertRule(ar)
 }
 
 func loadFromDir(ctx context.Context, dir string, loader Loader) error {
