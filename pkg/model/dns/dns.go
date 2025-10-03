@@ -577,7 +577,27 @@ func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
 			Ip: l3.Policy.Destination.CIDR.CIDR,
 		}
 
-		// TBD Support wildcarding destination ports
+		vrfId := state.networkL3Objects[l3.Policy.Subject.LogicalNetwork.VRF]
+
+		if len(l3.Policy.Destination.Ports) == 0 {
+			de := &record.DatapathEndpoint{
+				EP: ep,
+			}
+
+			ds := &record.DatapathSource{
+				Ip:    l3.Policy.Source.CIDR.CIDR,
+				Vrf:   l3.Policy.Subject.LogicalNetwork.VRF,
+				VrfId: vrfId,
+				Vlan:  l3.Policy.Subject.LogicalNetwork.VLAN,
+			}
+
+			records = append(records, &record.DatapathRecord{
+				Policy:   policy,
+				L3Src:    *ds,
+				Endpoint: *de,
+				Action:   action,
+			})
+		}
 
 		// Ports get flattened here. We've so far avoided it at
 		// higher level in case we have a datapath that wants to
@@ -588,8 +608,6 @@ func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
 				EP:   ep,
 				Port: uint32(dport),
 			}
-
-			vrfId := state.networkL3Objects[l3.Policy.Subject.LogicalNetwork.VRF]
 
 			ds := &record.DatapathSource{
 				Ip:    l3.Policy.Source.CIDR.CIDR,
