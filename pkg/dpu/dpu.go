@@ -128,7 +128,7 @@ func (dpu *DPUAgent) Config(_ context.Context, path string) error {
 	dpu.AgentId = dpu.Cfg.Agent.AgentId
 
 	id := "DP-APP"
-	apiPath := dpu.Cfg.Dataplane.ServicePath
+	apiPath := dpu.Cfg.Dataplane.CpaSockFile
 
 	dpu.Dataplane = dataplane.NewAcceleratedDataplane(id, apiPath, "")
 
