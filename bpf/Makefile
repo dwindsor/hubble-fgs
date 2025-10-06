@@ -80,12 +80,13 @@ PROCESS += bpf_generic_kprobe_v53.o bpf_generic_retkprobe_v53.o \
 
 # v5.11
 # base sensor
-PROCESS += bpf_execve_event_v511.o
+PROCESS += bpf_execve_event_v511.o bpf_exit_v511.o bpf_fork_v511.o
 # generic probes
 PROCESS += bpf_generic_kprobe_v511.o bpf_generic_retkprobe_v511.o \
 	   bpf_multi_kprobe_v511.o bpf_multi_retkprobe_v511.o \
 	   bpf_generic_tracepoint_v511.o bpf_generic_uprobe_v511.o \
-	   bpf_generic_rawtp_v511.o
+	   bpf_multi_uprobe_v511.o \
+	   bpf_generic_rawtp_v511.o \
 PROCESS += bpf_generic_lsm_core_v511.o bpf_generic_lsm_output_v511.o \
 	bpf_generic_lsm_ima_file_v511.o bpf_generic_lsm_ima_bprm_v511.o
 
@@ -147,6 +148,7 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 CGROUP = bpf_cgtracker.o
 
 BPFTEST = bpf_lseek.o
+BPFTEST += bpf_lseek_v511.o
 
 OBJSDIR       := objs/
 DEPSDIR       := deps/
@@ -338,6 +340,12 @@ objs/bpf_exit.o: $(ISOPROCESS)bpf_exit.c
 deps/bpf_exit.d: $(ISOPROCESS)bpf_exit.c
 	$(rule_d)
 
+objs/bpf_exit_v511.o: $(ISOPROCESS)bpf_exit.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+deps/bpf_exit_511.d: $(ISOPROCESS)bpf_exit.c
+	$(rule_d)
+
 # bpf_ee_execve_event: special case because the enterprise version is different than OSS
 # IS_KPROBE is needed for const define on old kernels (see lib/config.h)
 objs/bpf_execve_event.o: $(ISOPROCESS)bpf_ee_execve_event.c
@@ -434,6 +442,7 @@ $(DEPSDIR)%_fmod_v63.d:
 objs/bpf_execve_event_v612.o: $(ISOPROCESS)/bpf_ee_execve_event.c
 objs/bpf_execve_event_v511.o: $(ISOPROCESS)/bpf_ee_execve_event.c
 objs/bpf_execve_event_v53.o: $(ISOPROCESS)/bpf_ee_execve_event.c
+objs/bpf_fork_v511.o: $(PROCESSDIR)/bpf_fork.c
 objs/bpf_generic_kprobe_v53.o: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_retkprobe_v53.o: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_multi_kprobe_v53.o: $(PROCESSDIR)/bpf_generic_kprobe.c
@@ -497,6 +506,7 @@ deps/bpf_generic_retkprobe_v511.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_multi_kprobe_v511.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_multi_retkprobe_v511.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_uprobe_v511.d: $(PROCESSDIR)/bpf_generic_uprobe.c
+deps/bpf_multi_uprobe_v511.d: $(PROCESSDIR)/bpf_generic_uprobe.c
 deps/bpf_generic_tracepoint_v511.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 deps/bpf_generic_rawtp_v511.d: $(PROCESSDIR)/bpf_generic_rawtp.c
 deps/bpf_execve_event_v53.d: $(ISOPROCESS)/bpf_ee_execve_event.c
@@ -579,6 +589,7 @@ objs/bpf_multi_retkprobe_v511.o: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v511.o: $(PROCESSDIR)/bpf_generic_tracepoint.c
 objs/bpf_generic_rawtp_v511.o: $(PROCESSDIR)/bpf_generic_rawtp.c
 objs/bpf_generic_uprobe_v511.o: $(PROCESSDIR)/bpf_generic_uprobe.c
+objs/bpf_multi_uprobe_v511.o: $(PROCESSDIR)/bpf_generic_uprobe.c
 
 objs/bpf_multi_kprobe_v511.o objs/bpf_multi_retkprobe_v511.o:
 	$(call rule_o,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__MULTI_KPROBE)
@@ -662,9 +673,11 @@ $(DEPSDIR)%_v612.d:
 	$(call rule_d,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG -D__V612_BPF_PROG)
 
 # BPFTESTDIR
+objs/bpf_lseek_v511.o: $(BPFTESTDIR)bpf_lseek.c
 objs/%.o: $(BPFTESTDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
+deps/bpf_lseek_v511.d: $(BPFTESTDIR)bpf_lseek.c
 $(DEPSDIR)%.d: $(BPFTESTDIR)%.c
 	$(rule_d)
 
