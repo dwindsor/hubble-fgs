@@ -519,8 +519,12 @@ crds: ## Generate kubebuilder files.
 	# YAML CRDs also live in the helm charts, so update them as well.
 	$(MAKE) -C install/kubernetes
 
+.PHONY: depfix
+depfix: ## Update go.mod to match upstream dependencies
+	./contrib/build/depfix
+
 .PHONY: vendor
-vendor: ## Tidy and vendor Go modules.
+vendor: depfix ## Tidy and vendor Go modules.
 	$(MAKE) -C api vendor
 	$(MAKE) -C pkg/k8s vendor
 	$(GO) mod tidy
