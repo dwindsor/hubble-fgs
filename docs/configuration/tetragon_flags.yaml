@@ -316,6 +316,10 @@ options:
       shorthand: h
       default_value: "false"
       usage: help for tetragon
+    - name: k8s-controlplane-retry
+      default_value: "1"
+      usage: |
+        Number of attempts for Kubernetes control plane connection (negative for infinite, zero is invalid, positive for max attempts)
     - name: k8s-kubeconfig-path
       usage: Absolute path of the kubernetes kubeconfig file
     - name: k8s-service-account-auth
@@ -396,11 +400,11 @@ options:
     - name: rb-size
       default_value: "0"
       usage: |
-        Set perf ring buffer size for single cpu (default 65k, allows K/M/G suffix)
+        Set ring buffer size for single cpu (default 65k, allows K/M/G suffix)
     - name: rb-size-total
       default_value: "0"
       usage: |
-        Set perf ring buffer size in total for all cpus (default 65k per cpu, allows K/M/G suffix)
+        Set ring buffer size in total for all cpus (default 65k per cpu, allows K/M/G suffix)
     - name: redaction-filters
       usage: Redaction filters for events
     - name: release-pinned-bpf
@@ -437,6 +441,9 @@ options:
       default_value: "false"
       usage: |
         Enable in-kernel management for UDP maps. A 5.8.0+ kernel is required.
+    - name: use-perf-ring-buffer
+      default_value: "false"
+      usage: Use the perf ring buffer instead of the bpf ring buffer
     - name: username-metadata
       default_value: disabled
       usage: |
