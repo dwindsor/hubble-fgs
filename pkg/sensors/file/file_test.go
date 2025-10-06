@@ -38,7 +38,9 @@ import (
 	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
@@ -1103,6 +1105,8 @@ func TestFileEnforceCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		pol.ResetFIMTracingPolicies()
@@ -1161,6 +1165,8 @@ func TestFileEnforceWrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		pol.ResetFIMTracingPolicies()
@@ -1224,6 +1230,8 @@ func TestFileEnforceExec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		pol.ResetFIMTracingPolicies()
@@ -2790,6 +2798,8 @@ func TestFileOps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		pol.ResetFIMTracingPolicies()
@@ -2881,7 +2891,11 @@ func TestFileUserDefinedMapSizes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
-	t.Cleanup(func() { TerminateFsScanner() })
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
+	t.Cleanup(func() {
+		TerminateFsScanner()
+	})
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -2948,6 +2962,8 @@ func TestFileRenameDirSuffix(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		pol.ResetFIMTracingPolicies()
@@ -3001,6 +3017,8 @@ func TestFileLinkOnTmpFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	t.Cleanup(func() {
 		TerminateFsScanner()
 		pol.ResetFIMTracingPolicies()
