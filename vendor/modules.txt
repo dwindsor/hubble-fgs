@@ -283,6 +283,7 @@ github.com/cilium/ebpf/internal/unix
 github.com/cilium/ebpf/link
 github.com/cilium/ebpf/perf
 github.com/cilium/ebpf/pin
+github.com/cilium/ebpf/ringbuf
 github.com/cilium/ebpf/rlimit
 # github.com/cilium/hive v0.0.0-20250611195437-5a5dacdfb354
 ## explicit; go 1.21.3

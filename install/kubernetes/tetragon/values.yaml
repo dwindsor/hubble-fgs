@@ -247,6 +247,7 @@ tetragon:
   # pod association. This feature depends on cri being enabled.
   cgidmap:
     enabled: false
+  usePerfRingBuffer: false
   metadata:
     enabled: false
     image:
@@ -480,6 +481,8 @@ crds:
 rthooks:
   # -- Enable the Tetragon rthooks daemonset
   enabled: false
+  # -- tetragon-rthooks name override
+  nameOverride: ""
   # -- Method to use for installing  rthooks. Values:
   #
   #    "oci-hooks":

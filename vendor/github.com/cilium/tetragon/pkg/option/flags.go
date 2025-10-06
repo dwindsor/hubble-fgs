@@ -40,8 +40,9 @@ const (
 	KeyLogLevel  = "log-level"
 	KeyLogFormat = "log-format"
 
-	KeyEnableK8sAPI      = "enable-k8s-api"
-	KeyK8sKubeConfigPath = "k8s-kubeconfig-path"
+	KeyEnableK8sAPI         = "enable-k8s-api"
+	KeyK8sKubeConfigPath    = "k8s-kubeconfig-path"
+	KeyK8sControlPlaneRetry = "k8s-controlplane-retry"
 
 	KeyEnablePodAnnotations = "enable-pod-annotations"
 
@@ -83,9 +84,10 @@ const (
 	KeyDisableKprobeMulti = "disable-kprobe-multi"
 	KeyDisableUprobeMulti = "disable-uprobe-multi"
 
-	KeyRBSize      = "rb-size"
-	KeyRBSizeTotal = "rb-size-total"
-	KeyRBQueueSize = "rb-queue-size"
+	KeyUsePerfRingBuffer = "use-perf-ring-buffer"
+	KeyRBSize            = "rb-size"
+	KeyRBSizeTotal       = "rb-size-total"
+	KeyRBQueueSize       = "rb-queue-size"
 
 	KeyEventQueueSize = "event-queue-size"
 
@@ -163,12 +165,14 @@ func ReadAndSetFlags() error {
 	Config.EnableProcessNs = viper.GetBool(KeyEnableProcessNs)
 	Config.EnableK8s = viper.GetBool(KeyEnableK8sAPI)
 	Config.K8sKubeConfigPath = viper.GetString(KeyK8sKubeConfigPath)
+	Config.K8sControlPlaneRetry = viper.GetInt(KeyK8sControlPlaneRetry)
 
 	Config.DisableKprobeMulti = viper.GetBool(KeyDisableKprobeMulti)
 
 	var err error
 	var enableAncestors []string
 
+	Config.UsePerfRingBuffer = viper.GetBool(KeyUsePerfRingBuffer)
 	if Config.RBSize, err = strutils.ParseSize(viper.GetString(KeyRBSize)); err != nil {
 		return fmt.Errorf("failed to parse rb-size value: %w", err)
 	}
@@ -371,6 +375,7 @@ func AddFlags(flags *pflag.FlagSet) {
 	flags.String(KeyLogFormat, "text", "Set log format")
 	flags.Bool(KeyEnableK8sAPI, false, "Access Kubernetes API to associate Tetragon events with Kubernetes pods")
 	flags.String(KeyK8sKubeConfigPath, "", "Absolute path of the kubernetes kubeconfig file")
+	flags.Int(KeyK8sControlPlaneRetry, 1, "Number of attempts for Kubernetes control plane connection (negative for infinite, zero is invalid, positive for max attempts)")
 	flags.String(KeyMetricsServer, "", "Metrics server address (e.g. ':2112'). Disabled by default")
 	flags.String(KeyMetricsLabelFilter, "namespace,workload,pod,binary", "Comma-separated list of enabled metrics labels. Unknown labels will be ignored.")
 	flags.String(KeyServerAddress, "localhost:54321", "gRPC server address (e.g. 'localhost:54321' or 'unix:///var/run/tetragon/tetragon.sock'). An empty address disables the gRPC server")
@@ -416,9 +421,11 @@ func AddFlags(flags *pflag.FlagSet) {
 	// Allow to disable kprobe multi interface
 	flags.Bool(KeyDisableKprobeMulti, false, "Allow to disable kprobe multi interface")
 
-	// Allow to specify perf ring buffer size
-	flags.String(KeyRBSizeTotal, "0", "Set perf ring buffer size in total for all cpus (default 65k per cpu, allows K/M/G suffix)")
-	flags.String(KeyRBSize, "0", "Set perf ring buffer size for single cpu (default 65k, allows K/M/G suffix)")
+	// Allow to specify ring buffer
+	flags.Bool(KeyUsePerfRingBuffer, false, "Use the perf ring buffer instead of the bpf ring buffer")
+	// Allow to specify ring buffer size
+	flags.String(KeyRBSizeTotal, "0", "Set ring buffer size in total for all cpus (default 65k per cpu, allows K/M/G suffix)")
+	flags.String(KeyRBSize, "0", "Set ring buffer size for single cpu (default 65k, allows K/M/G suffix)")
 
 	// Provide option to remove existing pinned BPF programs and maps in Tetragon's
 	// observer dir on startup. Useful for doing upgrades/downgrades. Set to false to
