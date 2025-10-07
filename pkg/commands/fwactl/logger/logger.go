@@ -24,7 +24,7 @@ var LoggerCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		DpuAgent = dpu.NewDPUAgent("")
-		err := DpuAgent.Config(ctx, fwactl.CONFIG)
+		err := DpuAgent.Config(ctx, fwactl.CONFIG, fwactl.DP_SOCKET_PATH)
 		if err != nil {
 			return err
 		}

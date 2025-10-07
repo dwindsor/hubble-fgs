@@ -15,9 +15,10 @@ const (
 )
 
 var (
-	JSON        = false
-	CONFIG_LIST = []string{"/tmp/fwactl.json", "/opt/cisco/daf/etc/dafconfig", "/opt/cisco/hypershield/etc/dafconfig", "/nic/conf/hypershield/firewall.json"}
-	CONFIG      = "/tmp/fwactl.json"
+	JSON           = false
+	CONFIG_LIST    = []string{"/tmp/fwactl.json", "/opt/cisco/daf/etc/dafconfig", "/opt/cisco/hypershield/etc/dafconfig", "/nic/conf/hypershield/firewall.json"}
+	CONFIG         = "/tmp/fwactl.json"
+	DP_SOCKET_PATH = "/tmp/daf_dp0_cpa.sock"
 )
 
 // rootCmd represents the base command when called without any subcommands
