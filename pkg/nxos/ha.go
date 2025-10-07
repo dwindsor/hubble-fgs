@@ -476,6 +476,10 @@ func (n *Nxos) HaUpdateCrit(ctx context.Context, crit HaCrit, val bool) {
 }
 
 func (n *Nxos) haUpdateCrit(ctx context.Context, crit HaCrit, val bool) {
+	if n.SkipDpu && (crit == HaCritDpuHealth || crit == HaCritDpuInSync) {
+		logger.GetLogger().Debug("in dpuless mode, ignore", "crit", crit)
+		return
+	}
 	now := time.Now().Unix()
 	prev := n.Ha.Local.Criteria[crit]
 	var updated bool

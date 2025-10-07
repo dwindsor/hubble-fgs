@@ -177,8 +177,13 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	n.Ha.Alloc = make(map[string]HaAlloc)
 	n.Ha.FlowSync = make(map[string]bool)
 	n.Ha.Local.Criteria = make(map[HaCrit]bool)
-	n.Ha.Local.Criteria[HaCritDpuHealth] = false
-	n.Ha.Local.Criteria[HaCritDpuInSync] = false
+	if n.SkipDpu {
+		n.Ha.Local.Criteria[HaCritDpuHealth] = true
+		n.Ha.Local.Criteria[HaCritDpuInSync] = true
+	} else {
+		n.Ha.Local.Criteria[HaCritDpuHealth] = false
+		n.Ha.Local.Criteria[HaCritDpuInSync] = false
+	}
 	n.Ha.Local.Criteria[HaCritSvcRedir] = false
 	// HACK: set to true until integration with new policy
 	n.Ha.Local.Criteria[HaCritPolicy] = true
