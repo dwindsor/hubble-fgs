@@ -143,11 +143,11 @@ func (s *EventLogger) Log(message EventLogMessage) error {
 	// 	}
 	// }
 
-	// // Update last activity time and timestamp
-	// s.lastActivity = time.Now()
-	// message.Timebuf = s.lastActivity.Format("2006-01-02T15:04:05.000Z")
+	// Update last activity time and timestamp
+	s.lastActivity = time.Now()
+	message.Timebuf = s.lastActivity.Format("2006-01-02T15:04:05.000Z")
 
-	// // Reset the timeout timer
+	// Reset the timeout timer
 	// s.startTimeoutTimer()
 
 	// Convert the message to JSON
@@ -156,17 +156,11 @@ func (s *EventLogger) Log(message EventLogMessage) error {
 		return err
 	}
 
-	// // Write the message
-	// _, err = s.conn.Write(jsonMessage)
-	// if err != nil {
-	// 	// If there's an error writing, close the connection and return the error
-	// 	s.closeConnection()
-	// 	return err
-	// }
-
 	// Write the message
 	_, err = s.conn.Write(jsonMessage)
 	if err != nil {
+		// If there's an error writing, close the connection and return the error
+		// s.closeConnection()
 		return err
 	}
 

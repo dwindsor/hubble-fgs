@@ -27,11 +27,13 @@ type EventLogMessage struct {
 
 	// Additional fields that are formatted into RFC5424 message field
 	// Config
-	OldConfigHash string `json:"old_config_hash"`
-	NewConfigHash string `json:"new_config_hash"`
+	ConfigOperation string `json:"config_operation"`
+	ConfigType      string `json:"config_type"`
+	ConfigValue     string `json:"config_value"`
 	// Policy
-	OldPolicyHash string `json:"old_policy_hash"`
-	NewPolicyHash string `json:"new_policy_hash"`
+	PolicyOperation string `json:"policy_operation"`
+	PolicyId        string `json:"policy_id"`
+	PolicyValue     string `json:"policy_value"`
 }
 
 func NewEventLogMessage(typ int, id string) EventLogMessage {

@@ -197,7 +197,10 @@ func (dp *AcceleratedDataplaneProcess) LoadFirewallPolicies(ctx context.Context,
 func (dp *AcceleratedDataplaneProcess) SendLogConfig(logConfigs map[string]*v1alpha.LogConfig) error {
 	// Building config object
 	logConfig := LogConfig{}
-	if dp.NpuIp == "" || dp.NpuMac == "" || len(logConfigs) == 0 {
+	if dp.NpuIp == "" || dp.NpuMac == "" {
+		logger.GetLogger().Error("failed to send log config", "npuIp", dp.NpuIp, "npuMac", dp.NpuMac)
+		return fmt.Errorf("failed to send log config")
+	} else if len(logConfigs) == 0 {
 		logConfig.LogEnabled = false
 		logConfig.DataplaneLevel = "info"
 		logConfig.Collector = []LogCollector{}

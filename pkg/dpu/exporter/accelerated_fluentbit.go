@@ -246,6 +246,9 @@ func (fb *AcceleratedFluentbitExporter) RefreshConfig(oldCfg *v1alpha.ConfigObje
 
 	switch cfg.Type {
 	case v1alpha.ConfigType_CONFIG_TYPE_DPU:
+		if newCfg == nil {
+			return nil // Doing nothing if the config is deleted
+		}
 		// Parsing out the dpu configuration
 		dpuConfig := cfg.GetConfigDpu()
 		fb.Fluentbit.NpuIP = dpuConfig.ServiceIp
@@ -292,15 +295,15 @@ func (fb *AcceleratedFluentbitExporter) RefreshConfig(oldCfg *v1alpha.ConfigObje
 		logConfigAdds, logConfigRemoves := config.DiffLogConfigMaps(oldLogConfigs, newLogConfigs)
 		newConfig := fb.Fluentbit.Config
 		var err error
+		for id := range logConfigRemoves {
+			newConfig = flb.RemoveLogConfig(newConfig, id)
+		}
 		for _, logConfig := range logConfigAdds {
 			newConfig, err = flb.AddLogConfig(newConfig, cfg.Type, logConfig)
 			if err != nil {
 				logger.GetLogger().Error("failed to apply log export config", logfields.Error, err, "type", cfg.Type)
 				return err
 			}
-		}
-		for id := range logConfigRemoves {
-			newConfig = flb.RemoveLogConfig(newConfig, id)
 		}
 
 		// Updating the fluentbit config

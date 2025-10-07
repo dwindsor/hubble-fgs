@@ -54,6 +54,15 @@ func AddLogConfig(fbc FluentBitConfig, typ v1alpha.ConfigType, logCfg *v1alpha.L
 		}
 	}
 
+	// Checking if the output alias already exists and replacing it if it does, or just appending to the end
+	for i, val := range fbc.Pipeline.Outputs {
+		if val.Alias == logOutput.Alias {
+			// Deleting value, order doesn't matter so moving last index to replace deleted index
+			fbc.Pipeline.Outputs[i] = fbc.Pipeline.Outputs[len(fbc.Pipeline.Outputs)-1]
+			fbc.Pipeline.Outputs = fbc.Pipeline.Outputs[:len(fbc.Pipeline.Outputs)-1]
+			break
+		}
+	}
 	fbc.Pipeline.Outputs = append(fbc.Pipeline.Outputs, logOutput)
 	return fbc, nil
 }

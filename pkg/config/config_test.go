@@ -1,7 +1,6 @@
 package config
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -731,7 +730,7 @@ func TestDiffLogConfigMaps(t *testing.T) {
 					t.Errorf("Expected remove for key '%s' not found", key)
 					continue
 				}
-				if !reflect.DeepEqual(expectedConfig, actualConfig) {
+				if !cmp.Equal(expectedConfig, actualConfig, protocmp.Transform()) {
 					t.Errorf("Removed config for key '%s' does not match expected", key)
 				}
 			}

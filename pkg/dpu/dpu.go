@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/dpu/dataplane"
+	"github.com/isovalent/hubble-fgs/pkg/dpu/events"
 	"github.com/isovalent/hubble-fgs/pkg/dpu/exporter"
 	agentDPU "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/utils"
@@ -35,7 +36,8 @@ const (
 	// on firewall.*, use ens5. on real dpu, int_mnic0
 	DPU_INTERFACE = "int_mnic0"
 
-	EXPORTER_CONFIG_PATH = "/data/hypershield/daflogger.yaml" // HACK: need to update config to pass this path
+	EXPORTER_CONFIG_PATH    = "/data/hypershield/daflogger.yaml" // HACK: need to update config to pass this path
+	EVENTLOGGER_SOCKET_PATH = "/tmp/fluentbit_fwa.sock"          // HACK: need to pass through config
 )
 
 type StreamClient struct {
@@ -49,6 +51,7 @@ type StreamClient struct {
 func NewDPUAgent(server string) *DPUAgent {
 	return &DPUAgent{
 		Cfg:          &config.Config{},
+		EventLogger:  &events.EventLogger{},
 		Retries:      5,
 		streamClient: &StreamClient{},
 		// This uses the sha of the PolicyRule as the key. The value though is
@@ -79,6 +82,7 @@ type DPUAgent struct {
 	LogExporter exporter.Exporter
 
 	Cfg          *config.Config
+	EventLogger  *events.EventLogger
 	Retries      int
 	streamClient *StreamClient
 	// This uses the sha of the PolicyRule as the key. The value though is
@@ -195,6 +199,9 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, logConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, logConfigCallback)
 
+	// Setting up event exporter
+	dpu.EventLogger = events.NewEventLogger(EVENTLOGGER_SOCKET_PATH)
+
 	return nil
 }
 
@@ -286,10 +293,23 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			err := dpu.Dataplane.PushPolicy(ctx, policyList)
 			if err != nil {
 				logger.GetLogger().Error("upsert failed", logfields.Error, err)
+				continue
 			}
+
+			// Log event
+			msg := events.NewEventLogMessage(events.MSGCODE_POLICY, dpu.AgentId)
+			msg.PolicyOperation = "upsert"
+			msg.PolicyId = rule.Policy.PolicyName
+			dpu.EventLogger.Log(msg)
 		case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
 			dpu.deletePolicyRule(rule)
 			logger.GetLogger().Warn("delete not implemented")
+
+			// Log event
+			msg := events.NewEventLogMessage(events.MSGCODE_POLICY, dpu.AgentId)
+			msg.PolicyOperation = "delete"
+			msg.PolicyId = rule.Policy.PolicyName
+			dpu.EventLogger.Log(msg)
 		}
 
 	}
@@ -315,14 +335,26 @@ func (dpu *DPUAgent) ConfigEventLoop(_ context.Context) error {
 				logger.GetLogger().Error("failed config, could not upsert", logfields.Error, err)
 				continue
 			}
-			logger.GetLogger().Info("upserted config", "config", resp.Config) // FIXME:
+			logger.GetLogger().Info("upserted config", "config", resp.Config) // FIXME: remove sensitive fields
+
+			// Log event
+			msg := events.NewEventLogMessage(events.MSGCODE_CONFIG, dpu.AgentId)
+			msg.ConfigOperation = "upsert"
+			msg.ConfigType = resp.Config.Type.String()
+			dpu.EventLogger.Log(msg)
 		case v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE:
 			err = library.GetRepository().DeleteConfig(v1alpha.ConfigType(resp.Config.Type))
 			if err != nil {
 				logger.GetLogger().Error("failed config, could not delete", logfields.Error, err)
 				continue
 			}
-			logger.GetLogger().Info("deleted config", "config", resp.Config) // FIXME:
+			logger.GetLogger().Info("deleted config", "config", resp.Config) // FIXME: remove sensitive fields
+
+			// Log event
+			msg := events.NewEventLogMessage(events.MSGCODE_CONFIG, dpu.AgentId)
+			msg.ConfigOperation = "delete"
+			msg.ConfigType = resp.Config.Type.String()
+			dpu.EventLogger.Log(msg)
 		}
 	}
 }
