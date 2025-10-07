@@ -41,6 +41,8 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	osstestutils "github.com/cilium/tetragon/pkg/testutils"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -493,6 +495,8 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -732,6 +736,8 @@ func TestUdpSeqCheck(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -832,6 +838,8 @@ func (suite *UDPBasic) SetupSuite() {
 	suite.startExistingUDPServices()
 
 	obs := getBasicUdpObserver(suite.T(), suite.ctx)
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(suite.ctx, suite.T(), &suite.doneWG, &suite.readyWG, obs)
 }
 
@@ -1113,6 +1121,8 @@ func TestUDPCLISwitch(t *testing.T) {
 
 	obs := getNoConfigObserver(t, ctx, true)
 	layer3.StartLayer3Progs(ctx, nil)
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -1196,6 +1206,8 @@ func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConne
 	if CLISwitches {
 		layer3.RunLayer3Progs(ctx, nil)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -1383,6 +1395,8 @@ func TestUdpDetectLatency4(t *testing.T) {
 	)
 
 	obs := getUdpObserverWithLatencyDetection(t, ctx)
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -1776,6 +1790,8 @@ func testDnsEvents(t *testing.T, withQuestions bool) {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1925,6 +1941,8 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -2012,6 +2030,8 @@ func testDisableListenConfig(t *testing.T, disableListen bool) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -2072,6 +2092,8 @@ func testGC(t *testing.T, defaultInterval bool, interval int, numExpectedGCRuns 
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
