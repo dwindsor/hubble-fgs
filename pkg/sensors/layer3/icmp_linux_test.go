@@ -30,6 +30,7 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	testsensor "github.com/cilium/tetragon/pkg/sensors/test"
 	"github.com/cilium/tetragon/pkg/testutils"
 	tuo "github.com/cilium/tetragon/pkg/testutils/observer"
@@ -239,6 +240,8 @@ func TestICMPCLISwitchPerfRing(t *testing.T) {
 
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 	option.Config.BpfDir = bpf.MapPrefixPath()
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
 	tus.LoadSensor(t, base.GetInitialSensorTest(t))
 
 	if err := procevents.GetRunningProcs(); err != nil {
