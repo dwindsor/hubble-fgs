@@ -104,7 +104,7 @@ func (dpu *DPUAgent) KeepAliveInterval() int {
 	return dpu.Cfg.Agent.KeepAliveInterval
 }
 
-func (dpu *DPUAgent) Config(_ context.Context, path string) error {
+func (dpu *DPUAgent) Config(_ context.Context, path string, dpSocketPath string) error {
 	// Extracting logger and agent from context
 	// Collecting agent metadata
 	var err error
@@ -127,12 +127,9 @@ func (dpu *DPUAgent) Config(_ context.Context, path string) error {
 	}
 	dpu.AgentId = dpu.Cfg.Agent.AgentId
 
-	id := "DP-APP"
-	apiPath := dpu.Cfg.Dataplane.CpaSockFile
+	dpu.Dataplane = dataplane.NewAcceleratedDataplane("dp-app", dpSocketPath, "")
 
-	dpu.Dataplane = dataplane.NewAcceleratedDataplane(id, apiPath, "")
-
-	logger.GetLogger().Info("configure DPU", "host", dpu.Hostname, "OS", dpu.Os, "Arch", dpu.Architecture, "IP", dpu.Ip)
+	logger.GetLogger().Info("configure DPU", "host", dpu.Hostname, "OS", dpu.Os, "Arch", dpu.Architecture)
 	dpuIp, err := utils.GetDpuIP(DPU_INTERFACE)
 	if err != nil {
 		logger.GetLogger().Error("Fail to get DPU IP, retry after 1 second", logfields.Error, err)
@@ -151,9 +148,6 @@ func (dpu *DPUAgent) Config(_ context.Context, path string) error {
 
 func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	logger.GetLogger().Info("Setup Accelerated Dataplane")
-
-	dpu.Dataplane = dataplane.NewAcceleratedDataplane("dp0",
-		dpu.Cfg.Dataplane.CpaSockFile, "")
 
 	// Setting up dataplane
 	err := dpu.Dataplane.Connect(ctx, dpu.Cfg.Dataplane.ServicePath, dpu.Cfg.Controller.Debug)

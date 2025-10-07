@@ -35,10 +35,11 @@ func Execute() error {
 	rootCmd.SetOut(os.Stdout)
 
 	flags := rootCmd.PersistentFlags()
-	flags.StringVar(&Config.DafConfig, keyDafConfig, "/opt/cisco/daf/etc/dafconfig", "Path to config file")
-	flags.StringSliceVar(&Config.NetworkPolicies, keyNetworkPolicy, []string{}, "network policy files")
-	flags.StringVar(&Config.ServerAddress, keyServerAddress, "", "server address")
-	flags.BoolVar(&Config.Debug, keyDebug, false, "debug level")
+	flags.StringVar(&Config.DafConfig, keyDafConfig, Config.DafConfig, "Path to config file")
+	flags.StringSliceVar(&Config.NetworkPolicies, keyNetworkPolicy, Config.NetworkPolicies, "network policy files")
+	flags.StringVar(&Config.ServerAddress, keyServerAddress, Config.ServerAddress, "server address")
+	flags.StringVar(&Config.DpSocketPath, keyDpSocketPath, Config.DpSocketPath, "dp-app socket path")
+	flags.BoolVar(&Config.Debug, keyDebug, Config.Debug, "debug level")
 	return rootCmd.Execute()
 }
 

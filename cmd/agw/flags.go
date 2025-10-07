@@ -19,7 +19,7 @@ var (
 		NetworkPolicies:       []string{},
 		EnableKubernetes:      true,
 		EnableNXOS:            true,
-		DPUServerAddress:      "127.0.0.1:9090",
+		DPUServerAddress:      "0.0.0.0:8880",
 		VrfMap:                []string{},
 		Debug:                 false,
 		K8sServiceAccountAuth: viper.GetString(keyK8sServiceAccountAuth),
