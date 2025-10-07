@@ -10,7 +10,7 @@ syntax = "proto3";
 
 package graph.v1alpha;
 
-import "google/protobuf/timestamp.proto";
+import "common/time/v1alpha/range.proto";
 import "graph/v1alpha/edge.proto";
 
 option go_package = "github.com/isovalent/ipa/graph/v1alpha";
@@ -25,16 +25,14 @@ service GraphService {
 // GetConnectionsRequest allows for specifying the type of connections that
 // should be returned.
 message GetConnectionsRequest {
-  // Window start is the start time of the time window. A time window SHOULD
-  // be provided to limit the number of connections returned.
-  google.protobuf.Timestamp window_start = 1;
-  // Window end is the end time of the time window. A time window SHOULD be
-  // provided to limit the number of connections returned.
-  google.protobuf.Timestamp window_end = 2;
+  // A time range allows to specify a time window to consider for the request.
+  // A time window SHOULD be provided to limit the number of connections
+  // returned
+  common.time.v1alpha.Range window = 1;
 
   // The link type MUST be provided. It corresponds to the protobuf tag of the
   // desired edge type of the link.
-  uint32 link_type = 3;
+  uint32 link_type = 2;
 
   // A CEL expression MAY be used to filter connections.
   //
@@ -44,19 +42,19 @@ message GetConnectionsRequest {
   //   has(link.network_telemetry) && link.network_telemetry.tx_packets > 0 &&
   //   has(source.kubernetes) && source.kubernetes.cluster_name == "df-hubble-demo-ce-01" &&
   //   has(destination.kubernetes) && destination.kubernetes.cluster_name = "df-hubble-dev-ce-01"
-  string filter = 4;
+  string filter = 3;
 
   // Field keys by which the source vertex should be grouped. At least one
   // field MUST be provided.
   // Example:
   //   ["source.kubernetes.cluster_name", "source.kubernetes.node_name"]
-  repeated string group_by_source = 5;
+  repeated string group_by_source = 4;
 
   // Field keys by which the destination vertex should be grouped. At least
   // one field MUST be provided.
   // Example:
   //   ["destination.kubernetes.cluster_name", "destination.kubernetes.node_name"]
-  repeated string group_by_destination = 7;
+  repeated string group_by_destination = 5;
 }
 
 // GetConnectionsResponse is the response provided by the GetConnections endpoint.

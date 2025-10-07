@@ -206,8 +206,9 @@ network device.
 | name | [string](#string) |  | name is the name of the network device. |
 | ip | [string](#string) |  | ip is a network address that can be associated with the network device and the connection. |
 | port | [uint32](#uint32) |  | port is the network port associated with the ip address. |
-| vlan | [uint32](#uint32) |  | vlan is an ID in the range 1 to 4094 that defines a broadcast domain at the data link layer. |
-| vrf | [string](#string) |  | vrf is the name of a virtual routing and forwarding segement that is the equivalent of a VLAN but at the network layer. |
+| vlan_name | [string](#string) |  | vlan_name is a human readable name associated with a VLAN ID. |
+| vlan_id | [uint32](#uint32) |  | vlan_id is an ID in the range 1 to 4094 that defines a broadcast domain at the data link layer. |
+| vrf_name | [string](#string) |  | vrf_name is the name of a virtual routing and forwarding segement that is the equivalent of a VLAN but at the network layer. |
 
 
 
@@ -282,6 +283,7 @@ ConnectionLog events SHOULD NOT have overlapping time windows.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| uuid | [string](#string) |  | Uuid is a universally unique identifier for this event. |
 | emitter | [Emitter](#graph-v1alpha-Emitter) |  | An emitter is the source that observes connection information. The emitter typically observes data at the source of the connection. |
 | window_start | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Window start is the time at which the emitter started collecting information regarding the observed connections. |
 | window_end | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Window end is the time at which the emitter stopped collecting information regarding the observed connections. |
@@ -379,8 +381,7 @@ should be returned.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| window_start | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Window start is the start time of the time window. A time window SHOULD be provided to limit the number of connections returned. |
-| window_end | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Window end is the end time of the time window. A time window SHOULD be provided to limit the number of connections returned. |
+| window | [common.time.v1alpha.Range](#common-time-v1alpha-Range) |  | A time range allows to specify a time window to consider for the request. A time window SHOULD be provided to limit the number of connections returned |
 | link_type | [uint32](#uint32) |  | The link type MUST be provided. It corresponds to the protobuf tag of the desired edge type of the link. |
 | filter | [string](#string) |  | A CEL expression MAY be used to filter connections.
 

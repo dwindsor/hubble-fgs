@@ -167,11 +167,11 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 
 	// Creating custom callback functions
 	logConfigCallback := func(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
-		err = dpu.LogExporter.RefreshConfig(oldCfg, newCfg)
+		err := dpu.LogExporter.RefreshConfig(oldCfg, newCfg)
 		if err != nil {
 			return err
 		}
-		err := dpu.Dataplane.RefreshConfig(oldCfg, newCfg)
+		err = dpu.Dataplane.RefreshConfig(oldCfg, newCfg)
 		if err != nil {
 			return err
 		}

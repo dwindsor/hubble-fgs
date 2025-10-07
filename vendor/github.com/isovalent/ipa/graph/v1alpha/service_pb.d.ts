@@ -12,7 +12,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import type { Range } from "../../common/time/v1alpha/range_pb";
 import type { Edge } from "./edge_pb";
 
 /**
@@ -28,26 +28,19 @@ export declare const file_graph_v1alpha_service: GenFile;
  */
 export declare type GetConnectionsRequest = Message<"graph.v1alpha.GetConnectionsRequest"> & {
   /**
-   * Window start is the start time of the time window. A time window SHOULD
-   * be provided to limit the number of connections returned.
+   * A time range allows to specify a time window to consider for the request.
+   * A time window SHOULD be provided to limit the number of connections
+   * returned
    *
-   * @generated from field: google.protobuf.Timestamp window_start = 1;
+   * @generated from field: common.time.v1alpha.Range window = 1;
    */
-  windowStart?: Timestamp;
-
-  /**
-   * Window end is the end time of the time window. A time window SHOULD be
-   * provided to limit the number of connections returned.
-   *
-   * @generated from field: google.protobuf.Timestamp window_end = 2;
-   */
-  windowEnd?: Timestamp;
+  window?: Range;
 
   /**
    * The link type MUST be provided. It corresponds to the protobuf tag of the
    * desired edge type of the link.
    *
-   * @generated from field: uint32 link_type = 3;
+   * @generated from field: uint32 link_type = 2;
    */
   linkType: number;
 
@@ -61,7 +54,7 @@ export declare type GetConnectionsRequest = Message<"graph.v1alpha.GetConnection
    *   has(source.kubernetes) && source.kubernetes.cluster_name == "df-hubble-demo-ce-01" &&
    *   has(destination.kubernetes) && destination.kubernetes.cluster_name = "df-hubble-dev-ce-01"
    *
-   * @generated from field: string filter = 4;
+   * @generated from field: string filter = 3;
    */
   filter: string;
 
@@ -71,7 +64,7 @@ export declare type GetConnectionsRequest = Message<"graph.v1alpha.GetConnection
    * Example:
    *   ["source.kubernetes.cluster_name", "source.kubernetes.node_name"]
    *
-   * @generated from field: repeated string group_by_source = 5;
+   * @generated from field: repeated string group_by_source = 4;
    */
   groupBySource: string[];
 
@@ -81,7 +74,7 @@ export declare type GetConnectionsRequest = Message<"graph.v1alpha.GetConnection
    * Example:
    *   ["destination.kubernetes.cluster_name", "destination.kubernetes.node_name"]
    *
-   * @generated from field: repeated string group_by_destination = 7;
+   * @generated from field: repeated string group_by_destination = 5;
    */
   groupByDestination: string[];
 };

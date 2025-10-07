@@ -340,7 +340,7 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 		for _, a := range addrsV4 {
 			if a.IPNet != nil && a.IP != nil {
 				ip := a.IP.To4()
-				if ip != nil && intIP != nil {
+				if ip != nil {
 					intIP = ip
 				}
 			}

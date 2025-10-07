@@ -60,7 +60,7 @@ func (c *graphServiceClient) GetConnections(ctx context.Context, in *GetConnecti
 }
 
 // GraphServiceServer is the server API for GraphService service.
-// All implementations must embed UnimplementedGraphServiceServer
+// All implementations should embed UnimplementedGraphServiceServer
 // for forward compatibility.
 //
 // The graph services allows querying connections information that are
@@ -68,10 +68,9 @@ func (c *graphServiceClient) GetConnections(ctx context.Context, in *GetConnecti
 type GraphServiceServer interface {
 	// GetConnections returns a set of connections that match the query criteria.
 	GetConnections(context.Context, *GetConnectionsRequest) (*GetConnectionsResponse, error)
-	mustEmbedUnimplementedGraphServiceServer()
 }
 
-// UnimplementedGraphServiceServer must be embedded to have
+// UnimplementedGraphServiceServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
@@ -81,8 +80,7 @@ type UnimplementedGraphServiceServer struct{}
 func (UnimplementedGraphServiceServer) GetConnections(context.Context, *GetConnectionsRequest) (*GetConnectionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetConnections not implemented")
 }
-func (UnimplementedGraphServiceServer) mustEmbedUnimplementedGraphServiceServer() {}
-func (UnimplementedGraphServiceServer) testEmbeddedByValue()                      {}
+func (UnimplementedGraphServiceServer) testEmbeddedByValue() {}
 
 // UnsafeGraphServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to GraphServiceServer will

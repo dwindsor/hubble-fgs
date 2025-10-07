@@ -98,16 +98,15 @@ func (c *l3L4NetworkPolicyServiceClient) StreamDatapathConfig(ctx context.Contex
 type L3L4NetworkPolicyService_StreamDatapathConfigClient = grpc.ServerStreamingClient[StreamDatapathConfigResponse]
 
 // L3L4NetworkPolicyServiceServer is the server API for L3L4NetworkPolicyService service.
-// All implementations must embed UnimplementedL3L4NetworkPolicyServiceServer
+// All implementations should embed UnimplementedL3L4NetworkPolicyServiceServer
 // for forward compatibility.
 type L3L4NetworkPolicyServiceServer interface {
 	Streaml3L4NetworkPolicy(*Streaml3L4NetworkPolicyRequest, grpc.ServerStreamingServer[Streaml3L4NetworkPolicyResponse]) error
 	ReportStatus(context.Context, *ReportStatusRequest) (*ReportStatusResponse, error)
 	StreamDatapathConfig(*StreamDatapathConfigRequest, grpc.ServerStreamingServer[StreamDatapathConfigResponse]) error
-	mustEmbedUnimplementedL3L4NetworkPolicyServiceServer()
 }
 
-// UnimplementedL3L4NetworkPolicyServiceServer must be embedded to have
+// UnimplementedL3L4NetworkPolicyServiceServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
@@ -122,8 +121,6 @@ func (UnimplementedL3L4NetworkPolicyServiceServer) ReportStatus(context.Context,
 }
 func (UnimplementedL3L4NetworkPolicyServiceServer) StreamDatapathConfig(*StreamDatapathConfigRequest, grpc.ServerStreamingServer[StreamDatapathConfigResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method StreamDatapathConfig not implemented")
-}
-func (UnimplementedL3L4NetworkPolicyServiceServer) mustEmbedUnimplementedL3L4NetworkPolicyServiceServer() {
 }
 func (UnimplementedL3L4NetworkPolicyServiceServer) testEmbeddedByValue() {}
 

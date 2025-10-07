@@ -77,15 +77,14 @@ func (c *applicationModelServiceClient) StreamTelemetry(ctx context.Context, in 
 type ApplicationModelService_StreamTelemetryClient = grpc.ServerStreamingClient[StreamTelemetryResponse]
 
 // ApplicationModelServiceServer is the server API for ApplicationModelService service.
-// All implementations must embed UnimplementedApplicationModelServiceServer
+// All implementations should embed UnimplementedApplicationModelServiceServer
 // for forward compatibility.
 type ApplicationModelServiceServer interface {
 	GetModel(context.Context, *GetModelRequest) (*GetModelResponse, error)
 	StreamTelemetry(*StreamTelemetryRequest, grpc.ServerStreamingServer[StreamTelemetryResponse]) error
-	mustEmbedUnimplementedApplicationModelServiceServer()
 }
 
-// UnimplementedApplicationModelServiceServer must be embedded to have
+// UnimplementedApplicationModelServiceServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
@@ -97,8 +96,6 @@ func (UnimplementedApplicationModelServiceServer) GetModel(context.Context, *Get
 }
 func (UnimplementedApplicationModelServiceServer) StreamTelemetry(*StreamTelemetryRequest, grpc.ServerStreamingServer[StreamTelemetryResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method StreamTelemetry not implemented")
-}
-func (UnimplementedApplicationModelServiceServer) mustEmbedUnimplementedApplicationModelServiceServer() {
 }
 func (UnimplementedApplicationModelServiceServer) testEmbeddedByValue() {}
 

@@ -28,6 +28,7 @@
   
     - [AgentType](#l3l4networkpolicy-v1alpha-AgentType)
     - [ConfigOperation](#l3l4networkpolicy-v1alpha-ConfigOperation)
+    - [ConfigSource](#l3l4networkpolicy-v1alpha-ConfigSource)
     - [ConfigType](#l3l4networkpolicy-v1alpha-ConfigType)
     - [PolicyAction](#l3l4networkpolicy-v1alpha-PolicyAction)
     - [PolicyOperation](#l3l4networkpolicy-v1alpha-PolicyOperation)
@@ -55,6 +56,7 @@ ConfigObject is a generic config object, which can be extended by adding additio
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | type | [ConfigType](#l3l4networkpolicy-v1alpha-ConfigType) |  | Type of the json encoded config, used to unmarshal the json object. |
+| source | [ConfigSource](#l3l4networkpolicy-v1alpha-ConfigSource) |  | Source of the config, helpful when managing local and remote configurations. |
 | config_dpu | [DpuConfig](#l3l4networkpolicy-v1alpha-DpuConfig) |  |  |
 | config_log_syslog | [LogConfigSyslog](#l3l4networkpolicy-v1alpha-LogConfigSyslog) |  |  |
 | config_log_ipfix | [LogConfigIpfix](#l3l4networkpolicy-v1alpha-LogConfigIpfix) |  |  |
@@ -439,6 +441,19 @@ ConfigObject.
 | CONFIG_OPERATION_UNSPECIFIED | 0 | Unspecified or unknown operation |
 | CONFIG_OPERATION_UPSERT | 1 | Add the associated config object. If the config object exists it should be replaced with the new object. |
 | CONFIG_OPERATION_DELETE | 2 | Delete the associated config object. |
+
+
+
+<a name="l3l4networkpolicy-v1alpha-ConfigSource"></a>
+
+### ConfigSource
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CONFIG_SOURCE_UNSPECIFIED | 0 | Unspecified or unknown config source |
+| CONFIG_SOURCE_LOCAL | 1 | Config from the local machine |
+| CONFIG_SOURCE_CONFIGMAP | 2 | Config from the connected configmap |
 
 
 

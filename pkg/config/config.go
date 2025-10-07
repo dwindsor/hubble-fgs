@@ -8,6 +8,23 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
+// DiffConfigSetsBySource does the same as DiffConfigSets, but filters the map of config objects to add and remove by source.
+// This can be used to only make changes to a specific source of config, like when updating config from a configmap.
+func DiffConfigSetsBySource(oldSet map[v1alpha.ConfigType]*v1alpha.ConfigObject, newSet map[v1alpha.ConfigType]*v1alpha.ConfigObject, source v1alpha.ConfigSource) (configsToAdd map[v1alpha.ConfigType]*v1alpha.ConfigObject, configsToRemove map[v1alpha.ConfigType]*v1alpha.ConfigObject) {
+	configsToAdd, configsToRemove = DiffConfigSets(oldSet, newSet)
+	for configType, config := range configsToAdd {
+		if config.Source != source {
+			delete(configsToAdd, configType)
+		}
+	}
+	for configType, config := range configsToRemove {
+		if config.Source != source {
+			delete(configsToRemove, configType)
+		}
+	}
+	return configsToAdd, configsToRemove
+}
+
 // DiffConfigSets computes the difference between two config sets and returns the map of config objects to add and remove
 // to the old set to match the new set. It compares the actual content of the objects, not just their existence.
 func DiffConfigSets(oldSet map[v1alpha.ConfigType]*v1alpha.ConfigObject, newSet map[v1alpha.ConfigType]*v1alpha.ConfigObject) (configsToAdd map[v1alpha.ConfigType]*v1alpha.ConfigObject, configsToRemove map[v1alpha.ConfigType]*v1alpha.ConfigObject) {

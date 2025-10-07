@@ -15,9 +15,9 @@
 package v1alpha
 
 import (
+	v1alpha "github.com/isovalent/ipa/common/time/v1alpha"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -34,15 +34,13 @@ const (
 // should be returned.
 type GetConnectionsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Window start is the start time of the time window. A time window SHOULD
-	// be provided to limit the number of connections returned.
-	WindowStart *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=window_start,json=windowStart,proto3" json:"window_start,omitempty"`
-	// Window end is the end time of the time window. A time window SHOULD be
-	// provided to limit the number of connections returned.
-	WindowEnd *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=window_end,json=windowEnd,proto3" json:"window_end,omitempty"`
+	// A time range allows to specify a time window to consider for the request.
+	// A time window SHOULD be provided to limit the number of connections
+	// returned
+	Window *v1alpha.Range `protobuf:"bytes,1,opt,name=window,proto3" json:"window,omitempty"`
 	// The link type MUST be provided. It corresponds to the protobuf tag of the
 	// desired edge type of the link.
-	LinkType uint32 `protobuf:"varint,3,opt,name=link_type,json=linkType,proto3" json:"link_type,omitempty"`
+	LinkType uint32 `protobuf:"varint,2,opt,name=link_type,json=linkType,proto3" json:"link_type,omitempty"`
 	// A CEL expression MAY be used to filter connections.
 	//
 	// The filtering expression may use the `link` (type: Edge), `source` and
@@ -52,19 +50,19 @@ type GetConnectionsRequest struct {
 	//	has(link.network_telemetry) && link.network_telemetry.tx_packets > 0 &&
 	//	has(source.kubernetes) && source.kubernetes.cluster_name == "df-hubble-demo-ce-01" &&
 	//	has(destination.kubernetes) && destination.kubernetes.cluster_name = "df-hubble-dev-ce-01"
-	Filter string `protobuf:"bytes,4,opt,name=filter,proto3" json:"filter,omitempty"`
+	Filter string `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
 	// Field keys by which the source vertex should be grouped. At least one
 	// field MUST be provided.
 	// Example:
 	//
 	//	["source.kubernetes.cluster_name", "source.kubernetes.node_name"]
-	GroupBySource []string `protobuf:"bytes,5,rep,name=group_by_source,json=groupBySource,proto3" json:"group_by_source,omitempty"`
+	GroupBySource []string `protobuf:"bytes,4,rep,name=group_by_source,json=groupBySource,proto3" json:"group_by_source,omitempty"`
 	// Field keys by which the destination vertex should be grouped. At least
 	// one field MUST be provided.
 	// Example:
 	//
 	//	["destination.kubernetes.cluster_name", "destination.kubernetes.node_name"]
-	GroupByDestination []string `protobuf:"bytes,7,rep,name=group_by_destination,json=groupByDestination,proto3" json:"group_by_destination,omitempty"`
+	GroupByDestination []string `protobuf:"bytes,5,rep,name=group_by_destination,json=groupByDestination,proto3" json:"group_by_destination,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -99,16 +97,9 @@ func (*GetConnectionsRequest) Descriptor() ([]byte, []int) {
 	return file_graph_v1alpha_service_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GetConnectionsRequest) GetWindowStart() *timestamppb.Timestamp {
+func (x *GetConnectionsRequest) GetWindow() *v1alpha.Range {
 	if x != nil {
-		return x.WindowStart
-	}
-	return nil
-}
-
-func (x *GetConnectionsRequest) GetWindowEnd() *timestamppb.Timestamp {
-	if x != nil {
-		return x.WindowEnd
+		return x.Window
 	}
 	return nil
 }
@@ -271,15 +262,13 @@ var File_graph_v1alpha_service_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1bgraph/v1alpha/service.proto\x12\rgraph.v1alpha\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x18graph/v1alpha/edge.proto\"\xa0\x02\n" +
-	"\x15GetConnectionsRequest\x12=\n" +
-	"\fwindow_start\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\vwindowStart\x129\n" +
-	"\n" +
-	"window_end\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\twindowEnd\x12\x1b\n" +
-	"\tlink_type\x18\x03 \x01(\rR\blinkType\x12\x16\n" +
-	"\x06filter\x18\x04 \x01(\tR\x06filter\x12&\n" +
-	"\x0fgroup_by_source\x18\x05 \x03(\tR\rgroupBySource\x120\n" +
-	"\x14group_by_destination\x18\a \x03(\tR\x12groupByDestination\"]\n" +
+	"\x1bgraph/v1alpha/service.proto\x12\rgraph.v1alpha\x1a\x1fcommon/time/v1alpha/range.proto\x1a\x18graph/v1alpha/edge.proto\"\xda\x01\n" +
+	"\x15GetConnectionsRequest\x122\n" +
+	"\x06window\x18\x01 \x01(\v2\x1a.common.time.v1alpha.RangeR\x06window\x12\x1b\n" +
+	"\tlink_type\x18\x02 \x01(\rR\blinkType\x12\x16\n" +
+	"\x06filter\x18\x03 \x01(\tR\x06filter\x12&\n" +
+	"\x0fgroup_by_source\x18\x04 \x03(\tR\rgroupBySource\x120\n" +
+	"\x14group_by_destination\x18\x05 \x03(\tR\x12groupByDestination\"]\n" +
 	"\x16GetConnectionsResponse\x12C\n" +
 	"\vconnections\x18\x01 \x03(\v2!.graph.v1alpha.ConnectionResponseR\vconnections\"\x87\x03\n" +
 	"\x12ConnectionResponse\x12'\n" +
@@ -314,23 +303,22 @@ var file_graph_v1alpha_service_proto_goTypes = []any{
 	(*ConnectionResponse)(nil),     // 2: graph.v1alpha.ConnectionResponse
 	nil,                            // 3: graph.v1alpha.ConnectionResponse.SourceFieldsEntry
 	nil,                            // 4: graph.v1alpha.ConnectionResponse.DestinationFieldsEntry
-	(*timestamppb.Timestamp)(nil),  // 5: google.protobuf.Timestamp
+	(*v1alpha.Range)(nil),          // 5: common.time.v1alpha.Range
 	(*Edge)(nil),                   // 6: graph.v1alpha.Edge
 }
 var file_graph_v1alpha_service_proto_depIdxs = []int32{
-	5, // 0: graph.v1alpha.GetConnectionsRequest.window_start:type_name -> google.protobuf.Timestamp
-	5, // 1: graph.v1alpha.GetConnectionsRequest.window_end:type_name -> google.protobuf.Timestamp
-	2, // 2: graph.v1alpha.GetConnectionsResponse.connections:type_name -> graph.v1alpha.ConnectionResponse
-	6, // 3: graph.v1alpha.ConnectionResponse.link:type_name -> graph.v1alpha.Edge
-	3, // 4: graph.v1alpha.ConnectionResponse.source_fields:type_name -> graph.v1alpha.ConnectionResponse.SourceFieldsEntry
-	4, // 5: graph.v1alpha.ConnectionResponse.destination_fields:type_name -> graph.v1alpha.ConnectionResponse.DestinationFieldsEntry
-	0, // 6: graph.v1alpha.GraphService.GetConnections:input_type -> graph.v1alpha.GetConnectionsRequest
-	1, // 7: graph.v1alpha.GraphService.GetConnections:output_type -> graph.v1alpha.GetConnectionsResponse
-	7, // [7:8] is the sub-list for method output_type
-	6, // [6:7] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 0: graph.v1alpha.GetConnectionsRequest.window:type_name -> common.time.v1alpha.Range
+	2, // 1: graph.v1alpha.GetConnectionsResponse.connections:type_name -> graph.v1alpha.ConnectionResponse
+	6, // 2: graph.v1alpha.ConnectionResponse.link:type_name -> graph.v1alpha.Edge
+	3, // 3: graph.v1alpha.ConnectionResponse.source_fields:type_name -> graph.v1alpha.ConnectionResponse.SourceFieldsEntry
+	4, // 4: graph.v1alpha.ConnectionResponse.destination_fields:type_name -> graph.v1alpha.ConnectionResponse.DestinationFieldsEntry
+	0, // 5: graph.v1alpha.GraphService.GetConnections:input_type -> graph.v1alpha.GetConnectionsRequest
+	1, // 6: graph.v1alpha.GraphService.GetConnections:output_type -> graph.v1alpha.GetConnectionsResponse
+	6, // [6:7] is the sub-list for method output_type
+	5, // [5:6] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_graph_v1alpha_service_proto_init() }

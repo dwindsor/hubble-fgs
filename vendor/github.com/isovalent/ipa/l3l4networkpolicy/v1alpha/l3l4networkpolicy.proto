@@ -151,6 +151,15 @@ enum ConfigType {
   CONFIG_TYPE_LOG_SPLUNK = 5;
 }
 
+enum ConfigSource {
+  // Unspecified or unknown config source
+  CONFIG_SOURCE_UNSPECIFIED = 0;
+  // Config from the local machine
+  CONFIG_SOURCE_LOCAL = 1;
+  // Config from the connected configmap
+  CONFIG_SOURCE_CONFIGMAP = 2;
+}
+
 // Object to store NX configuration
 // CONFIG_TYPE_DPU
 message DpuConfig {
@@ -220,13 +229,16 @@ message LogConfigSplunk {
 message ConfigObject {
   // Type of the json encoded config, used to unmarshal the json object.
   ConfigType type = 1;
+  // Source of the config, helpful when managing local and remote configurations.
+  ConfigSource source = 2;
+
   // The configuration object encoded in json.
   oneof config {
-    DpuConfig config_dpu = 2;
-    LogConfigSyslog config_log_syslog = 3;
-    LogConfigIpfix config_log_ipfix = 4;
-    LogConfigTimescape config_log_timescape = 5;
-    LogConfigSplunk config_log_splunk = 6;
+    DpuConfig config_dpu = 20;
+    LogConfigSyslog config_log_syslog = 21;
+    LogConfigIpfix config_log_ipfix = 22;
+    LogConfigTimescape config_log_timescape = 23;
+    LogConfigSplunk config_log_splunk = 24;
   }
 }
 

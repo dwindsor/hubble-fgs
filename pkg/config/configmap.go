@@ -78,12 +78,12 @@ func updateConfigMap(oldObj any, newObj any) {
 
 	// Parse configmap values and reconcile them with the current config library
 	configObjMap := ParseConfigMap(newCm)
-	configsToAdd, configsToRemove := DiffConfigSets(library.GetRepository().GetConfigObjects(), configObjMap)
-	for _, obj := range configsToAdd {
-		library.GetRepository().AddConfig(obj)
-	}
+	configsToAdd, configsToRemove := DiffConfigSetsBySource(library.GetRepository().GetConfigObjects(), configObjMap, v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP)
 	for _, obj := range configsToRemove {
 		library.GetRepository().DeleteConfig(obj.Type)
+	}
+	for _, obj := range configsToAdd {
+		library.GetRepository().AddConfig(obj)
 	}
 }
 
@@ -110,17 +110,8 @@ func ParseConfigMap(cm *v1.ConfigMap) map[v1alpha.ConfigType]*v1alpha.ConfigObje
 
 	// Iterate through all key-value pairs in the ConfigMap
 	for cType, jsonData := range cm.Data {
-		configObj := &v1alpha.ConfigObject{}
+		configObj := &v1alpha.ConfigObject{Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP}
 		switch cType {
-		case "dpu":
-			configObj.Type = v1alpha.ConfigType_CONFIG_TYPE_DPU
-			var dpuCfg v1alpha.DpuConfig
-			err := json.Unmarshal([]byte(jsonData), &dpuCfg)
-			if err != nil {
-				logger.GetLogger().Error("Failed to parse DPU config", "type", cType, "json", jsonData)
-				continue
-			}
-			configObj.Config = &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuCfg}
 		case "log_syslog":
 			configObj.Type = v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG
 			var syslogCfg v1alpha.LogConfigSyslog

@@ -543,37 +543,44 @@ export declare type ConfigObject = Message<"l3l4networkpolicy.v1alpha.ConfigObje
   type: ConfigType;
 
   /**
+   * Source of the config, helpful when managing local and remote configurations.
+   *
+   * @generated from field: l3l4networkpolicy.v1alpha.ConfigSource source = 2;
+   */
+  source: ConfigSource;
+
+  /**
    * The configuration object encoded in json.
    *
    * @generated from oneof l3l4networkpolicy.v1alpha.ConfigObject.config
    */
   config: {
     /**
-     * @generated from field: l3l4networkpolicy.v1alpha.DpuConfig config_dpu = 2;
+     * @generated from field: l3l4networkpolicy.v1alpha.DpuConfig config_dpu = 20;
      */
     value: DpuConfig;
     case: "configDpu";
   } | {
     /**
-     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigSyslog config_log_syslog = 3;
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigSyslog config_log_syslog = 21;
      */
     value: LogConfigSyslog;
     case: "configLogSyslog";
   } | {
     /**
-     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigIpfix config_log_ipfix = 4;
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigIpfix config_log_ipfix = 22;
      */
     value: LogConfigIpfix;
     case: "configLogIpfix";
   } | {
     /**
-     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigTimescape config_log_timescape = 5;
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigTimescape config_log_timescape = 23;
      */
     value: LogConfigTimescape;
     case: "configLogTimescape";
   } | {
     /**
-     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigSplunk config_log_splunk = 6;
+     * @generated from field: l3l4networkpolicy.v1alpha.LogConfigSplunk config_log_splunk = 24;
      */
     value: LogConfigSplunk;
     case: "configLogSplunk";
@@ -802,6 +809,37 @@ export enum ConfigType {
  * Describes the enum l3l4networkpolicy.v1alpha.ConfigType.
  */
 export declare const ConfigTypeSchema: GenEnum<ConfigType>;
+
+/**
+ * @generated from enum l3l4networkpolicy.v1alpha.ConfigSource
+ */
+export enum ConfigSource {
+  /**
+   * Unspecified or unknown config source
+   *
+   * @generated from enum value: CONFIG_SOURCE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Config from the local machine
+   *
+   * @generated from enum value: CONFIG_SOURCE_LOCAL = 1;
+   */
+  LOCAL = 1,
+
+  /**
+   * Config from the connected configmap
+   *
+   * @generated from enum value: CONFIG_SOURCE_CONFIGMAP = 2;
+   */
+  CONFIGMAP = 2,
+}
+
+/**
+ * Describes the enum l3l4networkpolicy.v1alpha.ConfigSource.
+ */
+export declare const ConfigSourceSchema: GenEnum<ConfigSource>;
 
 /**
  * Config operation is the instruction telling the backend what to do with a

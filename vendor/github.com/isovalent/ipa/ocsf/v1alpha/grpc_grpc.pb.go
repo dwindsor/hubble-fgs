@@ -51,14 +51,13 @@ func (c *eventServiceClient) ProcessEvents(ctx context.Context, opts ...grpc.Cal
 type EventService_ProcessEventsClient = grpc.ClientStreamingClient[ProcessEventsRequest, ProcessEventsResponse]
 
 // EventServiceServer is the server API for EventService service.
-// All implementations must embed UnimplementedEventServiceServer
+// All implementations should embed UnimplementedEventServiceServer
 // for forward compatibility.
 type EventServiceServer interface {
 	ProcessEvents(grpc.ClientStreamingServer[ProcessEventsRequest, ProcessEventsResponse]) error
-	mustEmbedUnimplementedEventServiceServer()
 }
 
-// UnimplementedEventServiceServer must be embedded to have
+// UnimplementedEventServiceServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
@@ -68,8 +67,7 @@ type UnimplementedEventServiceServer struct{}
 func (UnimplementedEventServiceServer) ProcessEvents(grpc.ClientStreamingServer[ProcessEventsRequest, ProcessEventsResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method ProcessEvents not implemented")
 }
-func (UnimplementedEventServiceServer) mustEmbedUnimplementedEventServiceServer() {}
-func (UnimplementedEventServiceServer) testEmbeddedByValue()                      {}
+func (UnimplementedEventServiceServer) testEmbeddedByValue() {}
 
 // UnsafeEventServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to EventServiceServer will

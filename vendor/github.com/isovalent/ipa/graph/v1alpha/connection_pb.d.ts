@@ -32,10 +32,17 @@ export declare const file_graph_v1alpha_connection: GenFile;
  */
 export declare type ConnectionLog = Message<"graph.v1alpha.ConnectionLog"> & {
   /**
+   * Uuid is a universally unique identifier for this event.
+   *
+   * @generated from field: string uuid = 1;
+   */
+  uuid: string;
+
+  /**
    * An emitter is the source that observes connection information. The emitter
    * typically observes data at the source of the connection.
    *
-   * @generated from field: graph.v1alpha.Emitter emitter = 1;
+   * @generated from field: graph.v1alpha.Emitter emitter = 2;
    */
   emitter: Emitter;
 
@@ -43,7 +50,7 @@ export declare type ConnectionLog = Message<"graph.v1alpha.ConnectionLog"> & {
    * Window start is the time at which the emitter started collecting
    * information regarding the observed connections.
    *
-   * @generated from field: google.protobuf.Timestamp window_start = 2;
+   * @generated from field: google.protobuf.Timestamp window_start = 3;
    */
   windowStart?: Timestamp;
 
@@ -51,7 +58,7 @@ export declare type ConnectionLog = Message<"graph.v1alpha.ConnectionLog"> & {
    * Window end is the time at which the emitter stopped collecting information
    * regarding the observed connections.
    *
-   * @generated from field: google.protobuf.Timestamp window_end = 3;
+   * @generated from field: google.protobuf.Timestamp window_end = 4;
    */
   windowEnd?: Timestamp;
 
@@ -59,7 +66,7 @@ export declare type ConnectionLog = Message<"graph.v1alpha.ConnectionLog"> & {
    * Connections is a list of all connections that were tracked during the
    * given time window.
    *
-   * @generated from field: repeated graph.v1alpha.Connection connections = 4;
+   * @generated from field: repeated graph.v1alpha.Connection connections = 5;
    */
   connections: Connection[];
 };

@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file graph/v1alpha/vertex.proto.
  */
 export const file_graph_v1alpha_vertex: GenFile = /*@__PURE__*/
-  fileDesc("ChpncmFwaC92MWFscGhhL3ZlcnRleC5wcm90bxINZ3JhcGgudjFhbHBoYSLTAQoGVmVydGV4EjsKCmt1YmVybmV0ZXMYASABKAsyJS5ncmFwaC52MWFscGhhLlZlcnRleEZhbWlseUt1YmVybmV0ZXNIABJCCg5uZXR3b3JrX2RldmljZRgCIAEoCzIoLmdyYXBoLnYxYWxwaGEuVmVydGV4RmFtaWx5TmV0d29ya0RldmljZUgAEj4KDHdvcmxkX2VudGl0eRgDIAEoCzImLmdyYXBoLnYxYWxwaGEuVmVydGV4RmFtaWx5V29ybGRFbnRpdHlIAEIICgZmYW1pbHkirgMKFlZlcnRleEZhbWlseUt1YmVybmV0ZXMSCwoDdWlkGAEgASgJEjwKDXJlc291cmNlX2tpbmQYAiABKA4yJS5jb21tb24uazhzLnR5cGUudjFhbHBoYS5SZXNvdXJjZUtpbmQSGAoQcmVzb3VyY2VfdmVyc2lvbhgDIAEoCRIVCg1yZXNvdXJjZV9uYW1lGAQgASgJEhQKDGNsdXN0ZXJfbmFtZRgFIAEoCRIRCgluYW1lc3BhY2UYBiABKAkSEQoJbm9kZV9uYW1lGAcgASgJEhAKCHBvZF9uYW1lGAggASgJEhYKDmNvbnRhaW5lcl9uYW1lGAkgASgJEjoKDHNlcnZpY2Vfa2luZBgKIAEoDjIkLmNvbW1vbi5rOHMudHlwZS52MWFscGhhLlNlcnZpY2VLaW5kEjwKDXdvcmtsb2FkX2tpbmQYCyABKA4yJS5jb21tb24uazhzLnR5cGUudjFhbHBoYS5Xb3JrbG9hZEtpbmQSCgoCaXAYDCABKAkSDAoEcG9ydBgNIAEoDRIeChZhcHBsaWNhdGlvbl9tb2RlbF91dWlkGA4gASgJIl4KGVZlcnRleEZhbWlseU5ldHdvcmtEZXZpY2USDAoEbmFtZRgBIAEoCRIKCgJpcBgCIAEoCRIMCgRwb3J0GAMgASgNEgwKBHZsYW4YBCABKA0SCwoDdnJmGAUgASgJIkUKF1ZlcnRleEZhbWlseVdvcmxkRW50aXR5EhAKCGRuc19uYW1lGAEgASgJEgoKAmlwGAIgASgJEgwKBHBvcnQYAyABKA1CKFomZ2l0aHViLmNvbS9pc292YWxlbnQvaXBhL2dyYXBoL3YxYWxwaGFiBnByb3RvMw", [file_common_k8s_type_v1alpha_resource, file_common_k8s_type_v1alpha_service, file_common_k8s_type_v1alpha_workload]);
+  fileDesc("ChpncmFwaC92MWFscGhhL3ZlcnRleC5wcm90bxINZ3JhcGgudjFhbHBoYSLTAQoGVmVydGV4EjsKCmt1YmVybmV0ZXMYASABKAsyJS5ncmFwaC52MWFscGhhLlZlcnRleEZhbWlseUt1YmVybmV0ZXNIABJCCg5uZXR3b3JrX2RldmljZRgCIAEoCzIoLmdyYXBoLnYxYWxwaGEuVmVydGV4RmFtaWx5TmV0d29ya0RldmljZUgAEj4KDHdvcmxkX2VudGl0eRgDIAEoCzImLmdyYXBoLnYxYWxwaGEuVmVydGV4RmFtaWx5V29ybGRFbnRpdHlIAEIICgZmYW1pbHkirgMKFlZlcnRleEZhbWlseUt1YmVybmV0ZXMSCwoDdWlkGAEgASgJEjwKDXJlc291cmNlX2tpbmQYAiABKA4yJS5jb21tb24uazhzLnR5cGUudjFhbHBoYS5SZXNvdXJjZUtpbmQSGAoQcmVzb3VyY2VfdmVyc2lvbhgDIAEoCRIVCg1yZXNvdXJjZV9uYW1lGAQgASgJEhQKDGNsdXN0ZXJfbmFtZRgFIAEoCRIRCgluYW1lc3BhY2UYBiABKAkSEQoJbm9kZV9uYW1lGAcgASgJEhAKCHBvZF9uYW1lGAggASgJEhYKDmNvbnRhaW5lcl9uYW1lGAkgASgJEjoKDHNlcnZpY2Vfa2luZBgKIAEoDjIkLmNvbW1vbi5rOHMudHlwZS52MWFscGhhLlNlcnZpY2VLaW5kEjwKDXdvcmtsb2FkX2tpbmQYCyABKA4yJS5jb21tb24uazhzLnR5cGUudjFhbHBoYS5Xb3JrbG9hZEtpbmQSCgoCaXAYDCABKAkSDAoEcG9ydBgNIAEoDRIeChZhcHBsaWNhdGlvbl9tb2RlbF91dWlkGA4gASgJInkKGVZlcnRleEZhbWlseU5ldHdvcmtEZXZpY2USDAoEbmFtZRgBIAEoCRIKCgJpcBgCIAEoCRIMCgRwb3J0GAMgASgNEhEKCXZsYW5fbmFtZRgEIAEoCRIPCgd2bGFuX2lkGAUgASgNEhAKCHZyZl9uYW1lGAYgASgJIkUKF1ZlcnRleEZhbWlseVdvcmxkRW50aXR5EhAKCGRuc19uYW1lGAEgASgJEgoKAmlwGAIgASgJEgwKBHBvcnQYAyABKA1CKFomZ2l0aHViLmNvbS9pc292YWxlbnQvaXBhL2dyYXBoL3YxYWxwaGFiBnByb3RvMw", [file_common_k8s_type_v1alpha_resource, file_common_k8s_type_v1alpha_service, file_common_k8s_type_v1alpha_workload]);
 
 /**
  * A vertex represents a set of properties of a connection source or
@@ -214,20 +214,27 @@ export type VertexFamilyNetworkDevice = Message<"graph.v1alpha.VertexFamilyNetwo
   port: number;
 
   /**
-   * vlan is an ID in the range 1 to 4094 that defines a broadcast domain at
-   * the data link layer.
+   * vlan_name is a human readable name associated with a VLAN ID.
    *
-   * @generated from field: uint32 vlan = 4;
+   * @generated from field: string vlan_name = 4;
    */
-  vlan: number;
+  vlanName: string;
 
   /**
-   * vrf is the name of a virtual routing and forwarding segement that is the
-   * equivalent of a VLAN but at the network layer.
+   * vlan_id is an ID in the range 1 to 4094 that defines a broadcast domain at
+   * the data link layer.
    *
-   * @generated from field: string vrf = 5;
+   * @generated from field: uint32 vlan_id = 5;
    */
-  vrf: string;
+  vlanId: number;
+
+  /**
+   * vrf_name is the name of a virtual routing and forwarding segement that is
+   * the equivalent of a VLAN but at the network layer.
+   *
+   * @generated from field: string vrf_name = 6;
+   */
+  vrfName: string;
 };
 
 /**

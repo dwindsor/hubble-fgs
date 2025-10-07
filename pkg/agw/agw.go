@@ -72,12 +72,12 @@ func NewAgent(dpuListener *dpu.DPUListener) *AgentGateway {
 
 	// Setting up dpu config
 	// dpuConfig.ServiceIp is populated by nxos package
-	dpuConfig.ServiceIp = "169.251.31.135" // FIXME:
 	dpuConfig.ServiceMac = mac
 	dpuConfig.PortLow = uint32(dpuLow)
 	dpuConfig.PortHigh = uint32(dpuHigh)
 	configObj := &v1alpha.ConfigObject{
 		Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+		Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
 		Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuConfig},
 	}
 	library.GetRepository().AddConfig(configObj)

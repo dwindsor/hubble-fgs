@@ -384,6 +384,7 @@ func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg 
 		// Push the response to the peer
 		resp.Config = &v1alpha.ConfigObject{
 			Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
 			Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuCfg},
 		}
 		peer.cfgCh <- &resp

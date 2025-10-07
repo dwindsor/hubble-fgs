@@ -207,20 +207,27 @@ export declare type VertexFamilyNetworkDevice = Message<"graph.v1alpha.VertexFam
   port: number;
 
   /**
-   * vlan is an ID in the range 1 to 4094 that defines a broadcast domain at
-   * the data link layer.
+   * vlan_name is a human readable name associated with a VLAN ID.
    *
-   * @generated from field: uint32 vlan = 4;
+   * @generated from field: string vlan_name = 4;
    */
-  vlan: number;
+  vlanName: string;
 
   /**
-   * vrf is the name of a virtual routing and forwarding segement that is the
-   * equivalent of a VLAN but at the network layer.
+   * vlan_id is an ID in the range 1 to 4094 that defines a broadcast domain at
+   * the data link layer.
    *
-   * @generated from field: string vrf = 5;
+   * @generated from field: uint32 vlan_id = 5;
    */
-  vrf: string;
+  vlanId: number;
+
+  /**
+   * vrf_name is the name of a virtual routing and forwarding segement that is
+   * the equivalent of a VLAN but at the network layer.
+   *
+   * @generated from field: string vrf_name = 6;
+   */
+  vrfName: string;
 };
 
 /**

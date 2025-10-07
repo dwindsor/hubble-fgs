@@ -9,6 +9,312 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
+func TestDiffConfigSetsBySource(t *testing.T) {
+	tests := []struct {
+		name            string
+		source          v1alpha.ConfigSource
+		oldSet          map[v1alpha.ConfigType]*v1alpha.ConfigObject
+		newSet          map[v1alpha.ConfigType]*v1alpha.ConfigObject
+		expectedAdds    map[v1alpha.ConfigType]*v1alpha.ConfigObject
+		expectedRemoves map[v1alpha.ConfigType]*v1alpha.ConfigObject
+	}{
+		{
+			name:            "empty sets",
+			source:          v1alpha.ConfigSource_CONFIG_SOURCE_UNSPECIFIED,
+			oldSet:          map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			newSet:          map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedAdds:    map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+		},
+		{
+			name:   "add config with matching source",
+			source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			newSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.1"},
+					},
+				},
+			},
+			expectedAdds: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.1"},
+					},
+				},
+			},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+		},
+		{
+			name:   "add config with non-matching source - filtered out",
+			source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			newSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.1"},
+					},
+				},
+			},
+			expectedAdds:    map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+		},
+		{
+			name:   "remove config with matching source",
+			source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigLogSyslog{
+						ConfigLogSyslog: &v1alpha.LogConfigSyslog{},
+					},
+				},
+			},
+			newSet:       map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedAdds: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigLogSyslog{
+						ConfigLogSyslog: &v1alpha.LogConfigSyslog{},
+					},
+				},
+			},
+		},
+		{
+			name:   "remove config with non-matching source - filtered out",
+			source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+					Config: &v1alpha.ConfigObject_ConfigLogSyslog{
+						ConfigLogSyslog: &v1alpha.LogConfigSyslog{},
+					},
+				},
+			},
+			newSet:          map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedAdds:    map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+		},
+		{
+			name:   "mixed sources - only matching source included",
+			source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.1"},
+					},
+				},
+			},
+			newSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigLogSyslog{
+						ConfigLogSyslog: &v1alpha.LogConfigSyslog{},
+					},
+				},
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+					Config: &v1alpha.ConfigObject_ConfigLogIpfix{
+						ConfigLogIpfix: &v1alpha.LogConfigIpfix{},
+					},
+				},
+			},
+			expectedAdds: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigLogSyslog{
+						ConfigLogSyslog: &v1alpha.LogConfigSyslog{},
+					},
+				},
+			},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+		},
+		{
+			name:   "modify config with matching source",
+			source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.1"},
+					},
+				},
+			},
+			newSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.2"},
+					},
+				},
+			},
+			expectedAdds: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.2"},
+					},
+				},
+			},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+		},
+		{
+			name:   "modify config with non-matching source - filtered out",
+			source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.1"},
+					},
+				},
+			},
+			newSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.2"},
+					},
+				},
+			},
+			expectedAdds:    map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+		},
+		{
+			name:   "multiple configs with different sources - complex scenario",
+			source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.1"},
+					},
+				},
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+					Config: &v1alpha.ConfigObject_ConfigLogSyslog{
+						ConfigLogSyslog: &v1alpha.LogConfigSyslog{},
+					},
+				},
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigLogIpfix{
+						ConfigLogIpfix: &v1alpha.LogConfigIpfix{},
+					},
+				},
+			},
+			newSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.2"},
+					},
+				},
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+					Config: &v1alpha.ConfigObject_ConfigLogSyslog{
+						ConfigLogSyslog: &v1alpha.LogConfigSyslog{},
+					},
+				},
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigLogTimescape{
+						ConfigLogTimescape: &v1alpha.LogConfigTimescape{},
+					},
+				},
+			},
+			expectedAdds: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_DPU: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigDpu{
+						ConfigDpu: &v1alpha.DpuConfig{ServiceIp: "192.168.1.2"},
+					},
+				},
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigLogTimescape{
+						ConfigLogTimescape: &v1alpha.LogConfigTimescape{},
+					},
+				},
+			},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX: {
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX,
+					Source: v1alpha.ConfigSource_CONFIG_SOURCE_CONFIGMAP,
+					Config: &v1alpha.ConfigObject_ConfigLogIpfix{
+						ConfigLogIpfix: &v1alpha.LogConfigIpfix{},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			adds, removes := DiffConfigSetsBySource(tt.oldSet, tt.newSet, tt.source)
+
+			// Check adds
+			if len(adds) != len(tt.expectedAdds) {
+				t.Errorf("Expected %d adds, got %d", len(tt.expectedAdds), len(adds))
+			}
+			for configType, expectedConfig := range tt.expectedAdds {
+				actualConfig, exists := adds[configType]
+				if !exists {
+					t.Errorf("Expected add for config type %v not found", configType)
+					continue
+				}
+				if !compareConfigObjects(actualConfig, expectedConfig) {
+					t.Errorf("Added config for type %v does not match expected", configType)
+				}
+			}
+
+			// Check removes
+			if len(removes) != len(tt.expectedRemoves) {
+				t.Errorf("Expected %d removes, got %d", len(tt.expectedRemoves), len(removes))
+			}
+			for configType, expectedConfig := range tt.expectedRemoves {
+				actualConfig, exists := removes[configType]
+				if !exists {
+					t.Errorf("Expected remove for config type %v not found", configType)
+					continue
+				}
+				if !compareConfigObjects(actualConfig, expectedConfig) {
+					t.Errorf("Removed config for type %v does not match expected", configType)
+				}
+			}
+		})
+	}
+}
+
 func TestDiffConfigSets(t *testing.T) {
 	tests := []struct {
 		name            string

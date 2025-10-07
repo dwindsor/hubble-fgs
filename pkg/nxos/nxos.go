@@ -1053,6 +1053,7 @@ func (n *Nxos) SetServiceIp(ip string) {
 	dpuConfig.ServiceIp = ip
 	configObj := &v1alpha.ConfigObject{
 		Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+		Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
 		Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuConfig},
 	}
 	library.GetRepository().AddConfig(configObj)
