@@ -8,5 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+//go:build sudo_tests
+
 // modelest contains unit tests for the application model.
 package modeltest
