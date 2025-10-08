@@ -29,7 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
 
-const dockerAPIVersion = "1.47"
+const dockerAPIVersion = "1.45"
 
 type ImageSource func(ctx context.Context) (string, error)
 
