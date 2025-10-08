@@ -115,12 +115,6 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu
 			logger.GetLogger().Error("failed to set K8sServiceAccountAuth value")
 		}
 
-		// TODO: Temporary fix to set https proxy for k8s calls.
-		// This is due to a race condition where the NXOS CLI proxy is not set before k8s client initialization,
-		// causing connection failures. This workaround should be removed once a retry mechanism is implemented
-		// in the k8s client connection logic to handle delayed proxy availability.
-		os.Setenv("HTTPS_PROXY", "http://proxy.esl.cisco.com:80")
-
 		logger.GetLogger().Info("Initializing Kubernetes Manager for on-prem deployment")
 		kubernetesManager := manager.Get()
 		// Set the register status to ok for the successful connection.
