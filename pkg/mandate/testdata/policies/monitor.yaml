@@ -6,4 +6,4 @@ spec:
   options:
   - name: "policy-mode"
     value: "monitor"
-  kprobes:
+  kprobes: []

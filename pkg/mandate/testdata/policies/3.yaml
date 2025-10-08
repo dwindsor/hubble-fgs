@@ -3,4 +3,4 @@ kind: TracingPolicy
 metadata:
   name: "policy-3"
 spec:
-  kprobes:
+  kprobes: []
