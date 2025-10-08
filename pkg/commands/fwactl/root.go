@@ -8,10 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cilium/tetragon/pkg/logger"
-)
-
-const (
-	version = "0.0.1"
+	"github.com/cilium/tetragon/pkg/version"
 )
 
 var (
@@ -21,11 +18,18 @@ var (
 	DP_SOCKET_PATH = "/tmp/daf_dp0_cpa.sock"
 )
 
+func getVersion() string {
+	if version.Version == "" {
+		return "dev"
+	}
+	return version.Version
+}
+
 // rootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:          "fwactl",
 	SilenceUsage: true,
-	Version:      version,
+	Version:      getVersion(),
 	Short:        "Interact directly with the Hypershield packet dispatcher and dataplanes",
 	Long: `
 +--------------------------------------------------------------+

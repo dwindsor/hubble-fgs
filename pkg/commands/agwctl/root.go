@@ -4,10 +4,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-)
 
-const (
-	version = "0.0.1"
+	"github.com/cilium/tetragon/pkg/version"
 )
 
 var (
@@ -16,16 +14,22 @@ var (
 	CLI_SOCK = "/run/agw.sock"
 )
 
+func getVersion() string {
+	if version.Version == "" {
+		return "dev"
+	}
+	return version.Version
+}
+
 // rootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:          "agwctl",
 	SilenceUsage: true,
-	Version:      version,
+	Version:      getVersion(),
 	Short:        "Interact directly with the Hypershield SmartSwitch agent",
 	Long: `agwctl is a command line tool used to interact with the
  Hypershield SmartSwitch Agent. It can send control messages to the agent and 
  apply policy directly.
-
 `,
 }
 

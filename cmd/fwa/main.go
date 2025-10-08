@@ -8,16 +8,25 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/version"
 )
 
 var (
 	rootCmd *cobra.Command
 )
 
+func getVersion() string {
+	if version.Version == "" {
+		return "dev"
+	}
+	return version.Version
+}
+
 func Execute() error {
 	rootCmd = &cobra.Command{
-		Use:   "fwa",
-		Short: "Hypershield FWA",
+		Use:     "fwa",
+		Short:   "Hypershield FWA",
+		Version: getVersion(),
 		Run: func(cmd *cobra.Command, _ []string) {
 			cmd.Help()
 		},
@@ -27,6 +36,7 @@ func Execute() error {
 			}
 		},
 		RunE: func(_ *cobra.Command, _ []string) error {
+			logger.GetLogger().Info("Starting SmartSwitch FWA", "version", version.Version)
 			executeFWA()
 			return nil
 		},

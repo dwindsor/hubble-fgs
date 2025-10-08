@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/spf13/cobra"
+
+	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/version"
 
 	_ "github.com/isovalent/hubble-fgs/operator/agent" // needed to init network policy schema
 )
@@ -19,10 +21,18 @@ var (
 	rootCmd *cobra.Command
 )
 
+func getVersion() string {
+	if version.Version == "" {
+		return "dev"
+	}
+	return version.Version
+}
+
 func Execute() error {
 	rootCmd = &cobra.Command{
-		Use:   "agw",
-		Short: "Hypershield AGW",
+		Use:     "agw",
+		Short:   "Hypershield AGW",
+		Version: getVersion(),
 		Run: func(cmd *cobra.Command, _ []string) {
 			cmd.Help()
 		},
@@ -32,6 +42,7 @@ func Execute() error {
 			}
 		},
 		RunE: func(_ *cobra.Command, _ []string) error {
+			logger.GetLogger().Info("Starting SmartSwitch AGW", "version", version.Version)
 			executeAGW()
 			return nil
 		},
