@@ -421,7 +421,7 @@ spec:
   - hook: "connect"
     description: "connectAllowRule"
     action: "allow"
-    destination:
+    destination: []
 `
 	tnp, err := FromYAML(policy)
 	assert.NoError(t, err)
