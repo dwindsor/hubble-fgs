@@ -2720,43 +2720,6 @@ spec:
                               type: string
                             type: array
                         type: object
-                      qos:
-                        description: TCP QOS policy specification
-                        properties:
-                          quotaLimits:
-                            items:
-                              properties:
-                                destination:
-                                  properties:
-                                    dns:
-                                      items:
-                                        type: string
-                                      type: array
-                                    port:
-                                      items:
-                                        format: int32
-                                        type: integer
-                                      type: array
-                                  required:
-                                  - dns
-                                  type: object
-                                matchLabels:
-                                  items:
-                                    type: string
-                                  type: array
-                                namespace:
-                                  type: string
-                                quota:
-                                  type: string
-                                workload:
-                                  type: string
-                                workloadKind:
-                                  type: string
-                              type: object
-                            type: array
-                          quotaReset:
-                            type: string
-                        type: object
                       statsInterval:
                         description: Configures the Stat collection interval in seconds
                         format: int32

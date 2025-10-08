@@ -21,7 +21,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/sys/unix"
 
@@ -31,10 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
-	"github.com/isovalent/hubble-fgs/pkg/model/policy"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
-	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/internal/ip"
@@ -94,7 +90,7 @@ func ConfigureSensor() error {
 	return nil
 }
 
-func UnloadSensor(cfg *networkapi.Layer3ConfigValue, tp tracingpolicy.TracingPolicy) error {
+func UnloadSensor(cfg *networkapi.Layer3ConfigValue) error {
 	TimestampEnabled = false
 	var err error
 
@@ -107,18 +103,6 @@ func UnloadSensor(cfg *networkapi.Layer3ConfigValue, tp tracingpolicy.TracingPol
 	if StatsEnabled() {
 		stats.disable()
 		StatsInterval = 0
-	}
-
-	spec := tp.TpSpec()
-	name := tp.TpName()
-
-	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Qos != nil {
-		qos := spec.Parser.Tcp.Qos
-
-		for _, p := range qos.QuotaPolicySpec {
-			networkPolicy := qosSpecToPolicy(&p, qos.QuotaResetLimits)
-			err = policy.ClearDnsPolicy(name, networkPolicy)
-		}
 	}
 
 	DisableConnect = false
@@ -242,68 +226,8 @@ func EnableTcp(timestampEnable bool) ([]*program.Program, []*program.Program, []
 	return progsInitSock, progsCollectStats, maps
 }
 
-func qosSpecToPolicy(p *v1alpha1.QuotaPolicySpec, resetLimits string) *types.TetragonNetworkPolicy {
-	mlEqual := matchLabels.LabelSet{
-		Labels: make(map[string]string),
-	}
-	if len(p.MatchLabels) > 0 {
-		mlEqual.ParseEquals(p.MatchLabels)
-	}
-
-	workload := types.TetragonWorkloadNetworkSubject{
-		Namespace: p.Namespace,
-		Name:      p.Workload,
-		Kind:      p.WorkloadKind,
-	}
-	subject := types.TetragonNetworkSubject{
-		Labels:   types.TetragonNetworkLabels{Equal: mlEqual.GetLabels()},
-		Workload: workload,
-	}
-	fqdn := &types.TetragonNetworkFQDN{
-		Names: p.Destination.Dns,
-	}
-	dest := types.TetragonNetworkDestination{
-		FQDN: fqdn,
-	}
-	quota := &types.TetragonQuotaAction{
-		Quota: p.Quota,
-		Reset: resetLimits,
-	}
-	action := types.TetragonNetworkAction{
-		QuotaAction: quota,
-	}
-	return &types.TetragonNetworkPolicy{
-		Subject:     subject,
-		Destination: dest,
-		Action:      action,
-	}
-}
-
-func configureQos(qos *v1alpha1.QosPolicySpec) error {
-	for _, p := range qos.QuotaPolicySpec {
-		if len(p.Destination.Dns) > 0 {
-			networkPolicy := qosSpecToPolicy(&p, qos.QuotaResetLimits)
-			err := policy.AddUnsafeNetworkPolicy("", networkPolicy)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func PolicyHandler(spec *v1alpha1.TracingPolicySpec) (bool, error) {
 	model.DefaultNewServer()
-
-	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Qos != nil {
-		if !enterpriseOption.Config.EnableApplicationModel {
-			return false, fmt.Errorf("failed to load quota policy. Requires enable process tree")
-		}
-
-		if err := configureQos(spec.Parser.Tcp.Qos); err != nil {
-			return false, err
-		}
-	}
 
 	if spec.Parser.Tcp != nil && spec.Parser.Tcp.Metrics != nil {
 		tcpconfig.MetricsEnabled = spec.Parser.Tcp.Metrics.Enable

@@ -7,28 +7,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/netip"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper/docker"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
-	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpftest"
-	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/checker"
 	"github.com/isovalent/hubble-fgs/pkg/model/server"
@@ -292,96 +284,4 @@ func TestProcessTree(t *testing.T) {
 			}
 		})
 	}
-
-	t.Run("DNSPolicy", testDNSQuotaPolicy)
-}
-
-func testDNSQuotaPolicy(t *testing.T) {
-	t.Skip()
-	if !utils.SupportDNSParser() || !utils.SupportProcessTree() {
-		t.Skip()
-	}
-
-	// Start an HTTP server serving 128 null bytes on localhost:8080
-	testutils.StartSimpleHTTPServer(t, ":8080")
-
-	// Specifying --ipv4 to ask curl not to fallback to IPv6 when IPv4
-	// failed on dual stack host, otherwise we escape the quota limitation
-	// which is not yet ready for IPv6.
-	curlArg := []string{"--max-time", "0.1", "--ipv4", "localhost:8080"}
-
-	// Check that curl to the domain works
-	// Note: wanted to use the Go HTTP request directly but the issue is
-	// that the socket is reused between this test and the one after
-	// tetragon started
-	curlCmd := exec.Command("curl", curlArg...)
-	err := curlCmd.Run()
-	require.NoError(t, err)
-
-	// Now start tetragon with a quota policy
-	var doneWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	// Note that right now, we don't transmit the port information to the
-	// BPF side so, putting port: [] would result in the same as port: [any]
-	const policy = `
-apiversion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "layer3"
-spec:
-  parser:
-    tcp:
-      qos:
-        quotaReset: "5m"
-        quotaLimits:
-        - destination:
-            dns: ["localhost"]
-            port: [8080]
-          quota: "1"
-`
-
-	tp, err := tracingpolicy.FromYAML(policy)
-	require.NoError(t, err)
-	err = observer.GetSensorManager().AddTracingPolicy(t.Context(), tp)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err = observer.GetSensorManager().DeleteTracingPolicy(context.Background(), tp.TpName(), "")
-		require.NoError(t, err)
-	})
-
-	// We are forced to manually do a DNS request on localhost to populate
-	// the DNS parser cache because curl no longer does it and automatically
-	// hardcode localhost to 127.0.0.1 according to the RFC. See more at
-	// https://daniel.haxx.se/blog/2021/05/31/curl-localhost-as-a-local-host/
-	digCmd := exec.Command("dig", "localhost")
-	err = digCmd.Run()
-	require.NoError(t, err)
-
-	// Verify that the BPF DNS parser was filled with the entry
-	ipToIDMapsFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.IPToIDMapsName)
-	ipToIDMaps, err := ebpf.LoadPinnedMap(ipToIDMapsFile, nil)
-	require.NoError(t, err)
-	defer ipToIDMaps.Close()
-
-	idToDomainMapFile := filepath.Join(bpf.MapPrefixPath(), dnsparser.IDToDomainMapName)
-	idToDomainMap, err := ebpf.LoadPinnedMap(idToDomainMapFile, nil)
-	require.NoError(t, err)
-	defer idToDomainMap.Close()
-
-	ipMap := dnsparser.NewIPToDomainMap(ipToIDMaps, idToDomainMap)
-
-	values, err := ipMap.Values(dnsparser.DefaultInnerMapID)
-	require.NoError(t, err)
-	domain, ok := values[netip.AddrFrom4([4]byte{127, 0, 0, 1})]
-	require.True(t, ok, "BPF DNS parser maps are missing the 127.0.0.1 -> localhost entry")
-	assert.Equal(t, "localhost", domain, "127.0.0.1 does not point to the localhost domain")
-
-	// Check that the response is now blocked by the policy
-	curlCmd = exec.Command("curl", curlArg...)
-	err = curlCmd.Run()
-	require.Error(t, err)
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
-	assert.Equal(t, 28, exitErr.ExitCode(), "wrong exit code: curl should exit with 28 (timeout)")
 }

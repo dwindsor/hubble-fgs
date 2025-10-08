@@ -71,7 +71,7 @@ var (
 	firstStatsProg *program.Program
 )
 
-func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
+func unloadLayer3Sensor() error {
 	// We want to make sure we stand configuration up when loading/unloading the programs.
 	config := networkapi.Layer3ConfigValue{}
 	layer3cfg.SetConfig(&config, false, false, false)
@@ -82,7 +82,7 @@ func unloadLayer3Sensor(policy tracingpolicy.TracingPolicy) error {
 		configured = false
 	}
 	if tcpEnabled {
-		err := tcp.UnloadSensor(&config, policy)
+		err := tcp.UnloadSensor(&config)
 		if err != nil {
 			return err
 		}
@@ -382,7 +382,7 @@ func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestam
 
 	l3Sensor := sensors.SensorBuilder(policy, api.Layer3SensorName, progs, maps)
 	l3Sensor.PreUnloadHook = func() error {
-		unloadLayer3Sensor(policy)
+		unloadLayer3Sensor()
 		return nil
 	}
 	return l3Sensor
