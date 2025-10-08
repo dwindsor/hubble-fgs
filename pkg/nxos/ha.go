@@ -572,6 +572,8 @@ func (n *Nxos) haSetup(ctx context.Context) {
 		select {
 		case wait := <-n.WaitHa.Out():
 			logger.GetLogger().Debug("HA waked up", "wait", wait)
+			n.setLocalHaState(ctx)
+			n.setLocalSvcState(ctx)
 
 			n.haSetLeader(ctx)
 			peers := n.haGetPeers(ctx)
@@ -607,9 +609,9 @@ func (n *Nxos) haSetup(ctx context.Context) {
 						n.haAdjacency(ctx, peer)
 					}
 				}
-				n.haUpdateNx(ctx)
 				n.haCheckAdjMbr(ctx)
 			}
+			n.haUpdateNx(ctx)
 		}
 	}
 }

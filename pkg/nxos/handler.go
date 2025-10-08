@@ -941,18 +941,14 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHa(ctx context.Context, items *model.
 	logger.GetLogger().Debug("updtSasSvcSvcinstSvcInstanceHa", "item", *items)
 
 	// hard coded enabled. ignore mo for now
-	prev := n.Ha.Enabled
 	if items.AdminState == model.Cisco_NX_OSDevice_Sas_SvcHaAdminStateE_enabled {
 		n.Ha.Enabled = true
 	} else if items.AdminState == model.Cisco_NX_OSDevice_Sas_SvcHaAdminStateE_disabled {
 		n.Ha.Enabled = false
 	}
-	if prev != n.Ha.Enabled {
-		logger.GetLogger().Debug("Ha Enabled updated", "enabled", n.Ha.Enabled)
-		n.WaitHa.In() <- WakeHa
-	}
+	logger.GetLogger().Debug("Ha Enabled updated", "enabled", n.Ha.Enabled)
+	n.WaitHa.In() <- WakeHa
 
-	prev = n.Ha.OperUp
 	if items.NxHaOperState == model.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_ready {
 		n.Ha.OperUp = true
 	} else if items.NxHaOperState == model.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_not_initialized ||
@@ -961,10 +957,8 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHa(ctx context.Context, items *model.
 		items.NxHaOperState == model.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_ip_unavailable {
 		n.Ha.OperUp = false
 	}
-	if prev != n.Ha.OperUp {
-		logger.GetLogger().Debug("Ha OperUp updated", "oper", n.Ha.OperUp)
-		n.WaitHa.In() <- WakeHa
-	}
+	logger.GetLogger().Debug("Ha OperUp updated", "oper", n.Ha.OperUp)
+	n.WaitHa.In() <- WakeHa
 
 	if items.PeerItems != nil {
 		err := n.updtSasSvcSvcinstSvcInstanceHaPeer(ctx, items.PeerItems)
