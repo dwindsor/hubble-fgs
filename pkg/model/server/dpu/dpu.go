@@ -251,15 +251,26 @@ func hashRule(rule *DPURule) ([sha256.Size]byte, error) {
 }
 
 func (dpu *DPUListener) SubmitUpdateToDPU(record *record.DatapathRecord) error {
+	rule := recordToDPUPolicyRule(record, true)
+	return dpu.SubmitDPURuleToDPU(rule)
+}
+
+func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 	dpu.mtx.Lock()
 	defer dpu.mtx.Unlock()
 
-	rule := recordToDPUPolicyRule(record, true)
 	csum, err := hashRule(rule.Policy)
 	if err != nil {
 		return err
 	}
-	dpu.ruleSet[csum] = rule.Policy
+	if rule.Oper == v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT {
+		dpu.ruleSet[csum] = rule.Policy
+
+	} else if rule.Oper == v1alpha.PolicyOperation_POLICY_OPERATION_DELETE {
+		delete(dpu.ruleSet, csum)
+	} else {
+		return fmt.Errorf("unknown operation type %d", rule.Oper)
+	}
 
 	// If a peer DPU disconnects after being created, this loop could block on the channel
 	// until the DPU reconnects, which would block policy updates across all DPUs.
@@ -267,24 +278,13 @@ func (dpu *DPUListener) SubmitUpdateToDPU(record *record.DatapathRecord) error {
 	for _, dpu := range dpu.peerGroup {
 		dpu.polCh <- rule
 	}
+
 	return nil
 }
 
 func (dpu *DPUListener) SubmitDeleteToDPU(record *record.DatapathRecord) error {
-	dpu.mtx.Lock()
-	defer dpu.mtx.Unlock()
-
 	rule := recordToDPUPolicyRule(record, false)
-	csum, err := hashRule(rule.Policy)
-	if err != nil {
-		return err
-	}
-	delete(dpu.ruleSet, csum)
-
-	for _, peer := range dpu.peerGroup {
-		peer.polCh <- rule
-	}
-	return nil
+	return dpu.SubmitDPURuleToDPU(rule)
 }
 
 func (dpu *DPUListener) addPeer(uid string) *peer {

@@ -4,14 +4,12 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
-
-	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var (
