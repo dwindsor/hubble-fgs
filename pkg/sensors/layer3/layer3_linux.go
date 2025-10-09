@@ -53,6 +53,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
+const (
+	CgroupProbeReadName = "CGROUP_PROBE_READ"
+)
+
 var (
 	cgrp_ingress_configured = false
 	cgrp_egress_configured  = false
@@ -126,14 +130,6 @@ var (
 		"cgrp_egress",
 	)
 
-	EgressDispatcherNoProbeRead = program.Builder(
-		"bpf_cgroup_net_no_probe_read.o",
-		"cgroup_egress",
-		"cgroup_skb/egress",
-		"tg_cgroup_egress",
-		"cgrp_egress",
-	)
-
 	EgressDispatcherProcessTree = program.Builder(
 		"bpf_cgroup_net_pstree.o",
 		"cgroup_egress",
@@ -158,14 +154,6 @@ var (
 		"cgrp_ingress",
 	)
 
-	IngressDispatcherNoProbeRead = program.Builder(
-		"bpf_cgroup_net_no_probe_read.o",
-		"cgroup_ingress",
-		"cgroup_skb/ingress",
-		"tg_cgroup_ingress",
-		"cgrp_ingress",
-	)
-
 	IngressDispatcherProcessTree = program.Builder(
 		"bpf_cgroup_net_pstree.o",
 		"cgroup_ingress",
@@ -183,16 +171,15 @@ var (
 	)
 
 	dispatcherProgs                 = []*program.Program{EgressDispatcher, IngressDispatcher}
-	dispatcherNoProbeReadProgs      = []*program.Program{EgressDispatcherNoProbeRead, IngressDispatcherNoProbeRead}
 	dispatcherProcessTreeProgs      = []*program.Program{EgressDispatcherProcessTree, IngressDispatcherProcessTree}
 	dispatcherProcessTreeTimerProgs = []*program.Program{EgressDispatcherProcessTreeTimer, IngressDispatcherProcessTreeTimer}
 
 	// Dispatcher Latency maps; could be problematic from an ownership perspective. Solve another day.
-	latencyConfigMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher, IngressDispatcherNoProbeRead, IngressDispatcherProcessTree, IngressDispatcherProcessTreeTimer)
+	latencyConfigMap = program.MapBuilder(networklatency.ConfigMapName, IngressDispatcher, IngressDispatcherProcessTree, IngressDispatcherProcessTreeTimer)
 
 	// Dispatcher UDP maps, built here because they are only used by the dispatcher
-	udpMap      = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
-	udpMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherNoProbeRead, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
+	udpMap      = program.MapBuilder(udp.UdpMapName, EgressDispatcher, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
+	udpMapStats = program.MapBuilder(udpconfig.UdpMapStatsName, EgressDispatcher, EgressDispatcherProcessTree, EgressDispatcherProcessTreeTimer)
 	udpTimerMap = program.MapBuilder(udp.UdpTimerMapName, EgressDispatcherProcessTreeTimer)
 	udpMaps     = []*program.Map{udpMap, udpMapStats, latencyConfigMap, protoCfgMap}
 
@@ -299,10 +286,7 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 
 	if needDispatcher {
 		if utils.CGroupSKBAvailable() {
-			if !utils.SupportCGroupSKBProbeRead() {
-				progsCollectStats = append(progsCollectStats, dispatcherNoProbeReadProgs...)
-				maps = append(maps, dispatcherMaps...)
-			} else if !utils.SupportProcessTree() {
+			if !utils.SupportProcessTree() {
 				progsCollectStats = append(progsCollectStats, dispatcherProgs...)
 				maps = append(maps, dispatcherMaps...)
 			} else {
@@ -325,6 +309,11 @@ func ProgsAndMaps(tcpTimestampEnable, cgroup, udpTimestampEnable bool) ([]*progr
 					}
 				}
 				progsCollectStats = append(progsCollectStats, ourDispatcherProcessTreeProgs...)
+			}
+			for _, prog := range progsCollectStats {
+				if prog.Attach == "cgroup_egress" || prog.Attach == "cgroup_ingress" {
+					prog.RewriteConstants[CgroupProbeReadName] = utils.SupportCGroupSKBProbeRead()
+				}
 			}
 		} else {
 			logger.GetLogger().Info("Cgroup support requires a later kernel (v5.4+ or RHEL equivalent)")

@@ -25,6 +25,8 @@
 #include "bpf_tcp_info.h"
 #include "process/process_tree.h"
 
+extern volatile __CONST bool CGROUP_PROBE_READ;
+
 static inline __attribute__((always_inline)) bool
 get_tcp_fin(struct __sk_buff *skb, void *ip, __u64 tcp_offset, __u64 *cookie, bool ipv6)
 {
@@ -276,59 +278,52 @@ int tcp_handler_ip4_recv(struct __sk_buff *skb)
 	return SK_PASS;
 }
 
-#ifdef NO_CGROUP_PROBE_READ
 int tcp_handler_ip4(struct __sk_buff *skb, int send)
 {
-	if (send)
+	if (send) {
+		if (CGROUP_PROBE_READ)
+			return tcp_handler_send(skb);
 		return SK_PASS;
-	return tcp_handler_ip4_recv(skb);
-}
+	}
 
-int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
-{
-	return SK_PASS;
-}
-#else
-int tcp_handler_ip4(struct __sk_buff *skb, int send)
-{
-	void *data_end = (void *)(long)skb->data_end;
-	void *data = (long *)(long)skb->data;
-	struct handler_vars *vars;
-	struct iphdr *ip;
-	int zero = 0;
+	if (CGROUP_PROBE_READ) {
+		void *data_end = (void *)(long)skb->data_end;
+		void *data = (long *)(long)skb->data;
+		struct handler_vars *vars;
+		struct iphdr *ip;
+		int zero = 0;
 
-	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
-	if (!vars)
-		return SK_PASS;
+		vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
+		if (!vars)
+			return SK_PASS;
 
-	if (data + sizeof(struct iphdr) > data_end)
-		ip = &vars->ip;
-	else
-		ip = (struct iphdr *)data;
+		if (data + sizeof(struct iphdr) > data_end)
+			ip = &vars->ip;
+		else
+			ip = (struct iphdr *)data;
 
-	if (send)
-		return tcp_handler_send(skb);
-
-	tcp_check_fin_rx(skb, ip, ip->ihl * sizeof(__u32), &vars->cookie, false);
+		tcp_check_fin_rx(skb, ip, ip->ihl * sizeof(__u32), &vars->cookie, false);
+	}
 	return tcp_handler_ip4_recv(skb);
 }
 int tcp_handler_ip6(struct __sk_buff *skb, u16 payload_off, int send)
 {
-	struct handler_vars *vars;
-	struct ipv6hdr *ip6;
-	int zero = 0;
+	if (CGROUP_PROBE_READ) {
+		struct handler_vars *vars;
+		struct ipv6hdr *ip6;
+		int zero = 0;
 
-	vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
-	if (!vars)
-		return SK_PASS;
-	ip6 = &vars->ip6;
+		vars = (struct handler_vars *)map_lookup_elem(&tg_p_l3_dsptchr, &zero);
+		if (!vars)
+			return SK_PASS;
+		ip6 = &vars->ip6;
 
-	if (send)
-		return tcp_handler_send(skb);
+		if (send)
+			return tcp_handler_send(skb);
 
-	tcp_check_fin_rx(skb, ip6, payload_off, &vars->cookie, true);
+		tcp_check_fin_rx(skb, ip6, payload_off, &vars->cookie, true);
+	}
 	return SK_PASS;
 }
-#endif
 
 #endif //__BPF_TCP_RECV_H_

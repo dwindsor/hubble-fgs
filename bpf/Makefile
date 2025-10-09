@@ -46,7 +46,7 @@ L2 = bpf_net_ns_net_exit.o
 
 ICMP = bpf_icmp_rcv.o bpf_icmp_rcv_fentry.o
 PING = bpf_pingsock_create.o bpf_pingsock_create_fentry.o
-L3 = bpf_cgroup_net.o bpf_cgroup_net_no_probe_read.o bpf_cgroup_net_pstree.o bpf_cgroup_net_pstree_timer.o
+L3 = bpf_cgroup_net.o bpf_cgroup_net_pstree.o bpf_cgroup_net_pstree_timer.o
 
 RAWSOCK = bpf_rawsock_create.o bpf_rawsock_create_fentry.o
 

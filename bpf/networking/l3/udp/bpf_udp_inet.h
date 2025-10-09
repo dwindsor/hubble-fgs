@@ -28,6 +28,8 @@
 #include "bpf_udp_info.h"
 #include "parsers/dns/dns_parser.h"
 
+extern volatile __CONST bool CGROUP_PROBE_READ;
+
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 {
 	u8 ip_off;
@@ -132,11 +134,10 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	process->protocol = IPPROTO_UDP;
 	emit_udp_connect_event(skb, cookie, cookie_ver, value->ps_version, key, value);
 #ifndef IS_KPROBE
-#ifdef TRACK_ICMP_FROM_SKB
-	add_socket_tuple_map_from_skb(cookie, skb, IPPROTO_UDP);
-#else
-	add_socket_tuple_map(&key->tuple, cookie);
-#endif
+	if (CGROUP_PROBE_READ)
+		add_socket_tuple_map(&key->tuple, cookie);
+	else
+		add_socket_tuple_map_from_skb(cookie, skb, IPPROTO_UDP);
 #endif
 
 	add_udp_map(key, value);
