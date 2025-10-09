@@ -200,7 +200,8 @@ func TestTlsConnectionsSucceed(t *testing.T) {
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
-  name: "base"`,
+  name: "base"
+spec: {}`,
 			},
 			numConnections: 10_000,
 		},
