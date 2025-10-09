@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/deps"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
 )
 
@@ -55,21 +56,42 @@ type Binary struct {
 	Args             []string
 	Timeout          time.Duration
 	ConnectionChecks ConnectionChecks
+	// Optional RunID for tracking this process in dependencies
+	RunID string
+	// Dependencies that must be satisfied before running this binary
+	Dependencies []deps.Dependency
 }
 
 func (b Binary) String() string {
 	return strings.Join(append([]string{b.Cmd}, b.Args...), " ")
 }
 
-func (b *Binary) Run(ctx context.Context, statusChan chan CmdResult) {
+func (b *Binary) Run(ctx context.Context, registry *deps.ProcessRegistry, statusChan chan CmdResult) {
 	if b.Timeout == 0 {
 		b.Timeout = defaultCmdTimeout
+	}
+
+	// Check dependencies first
+	if len(b.Dependencies) > 0 {
+		if err := deps.CheckDependencies(ctx, b.Dependencies, registry, deps.DefaultDependencyTimeout); err != nil {
+			statusChan <- CmdResult{
+				Err:  err,
+				Cmd:  b.Cmd,
+				Args: b.Args,
+			}
+			return
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, b.Timeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, b.Cmd, b.Args...)
+
+	// Register this process if it has a RunID
+	if b.RunID != "" {
+		registry.Register(b.RunID)
+	}
 
 	err := cmd.Run()
 	statusChan <- CmdResult{

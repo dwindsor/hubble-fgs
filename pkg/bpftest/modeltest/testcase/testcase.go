@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/checklist"
+	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/deps"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/harness"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/utils"
@@ -192,11 +193,16 @@ func (tc *TestCase) modelSetup(ctx context.Context, tb testing.TB, harness *harn
 }
 
 func (tc *TestCase) runHostBinaries(ctx context.Context) error {
+	if len(tc.Host) == 0 {
+		return nil
+	}
+
 	statusChan := make(chan model.CmdResult, len(tc.Host))
+	registry := deps.NewProcessRegistry()
 
 	// Run binaries in parallel
 	for _, binary := range tc.Host {
-		go binary.Run(ctx, statusChan)
+		go binary.Run(ctx, registry, statusChan)
 	}
 
 	// Collect results

@@ -20,6 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpftest"
+	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/deps"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/harness"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/image"
 	"github.com/isovalent/hubble-fgs/pkg/bpftest/modeltest/model"
@@ -54,12 +55,16 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 	"MissingArgumentsRegression": {
 		Host: model.Binaries{
 			{
-				Cmd:  "/usr/bin/ls",
-				Args: []string{},
+				Cmd:   "/usr/bin/ls",
+				Args:  []string{},
+				RunID: "ls-no-args",
 			},
 			{
 				Cmd:  "/usr/bin/ls",
 				Args: []string{"-la"},
+				Dependencies: []deps.Dependency{
+					deps.NewProcessStarted("ls-no-args"),
+				},
 			},
 		},
 	},
