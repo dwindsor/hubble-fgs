@@ -27,8 +27,6 @@ jobs:
   build-and-push:
     permissions:
       contents: read
-      # Required to generate OIDC tokens for `sigstore/cosign-installer` authentication
-      id-token: write
     runs-on: ubuntu-latest-4cores-16gb
     strategy:
       matrix:
