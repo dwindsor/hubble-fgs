@@ -10,6 +10,9 @@ jobs:
     uses: ./.github/workflows/build-images-base.yml
     permissions:
       contents: read
+      actions: read
+      # Required to generate OIDC tokens for `sigstore/cosign-installer` authentication
+      id-token: write
     with:
       sha: "${{ github.sha }}"
       tag: "${{ github.ref_name }}-latest"

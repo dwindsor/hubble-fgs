@@ -16,6 +16,8 @@ jobs:
     permissions:
       contents: read
       actions: read
+      # Required to generate OIDC tokens for `sigstore/cosign-installer` authentication
+      id-token: write
     with:
       sha: "${{ github.event.pull_request.head.sha }}"
     secrets:
