@@ -15,9 +15,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	stdNet "net"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -105,12 +109,52 @@ func (b *Binary) Run(ctx context.Context, registry *deps.ProcessRegistry, status
 		cmd.Stdin = bytes.NewBufferString(b.Stdin)
 	}
 
+	// Get the command name for prefixing
+	cmdName := filepath.Base(b.Cmd)
+
+	// Set up stdout and stderr pipes
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		statusChan <- CmdResult{
+			Err:  fmt.Errorf("failed to create stdout pipe: %w", err),
+			Cmd:  b.Cmd,
+			Args: b.Args,
+		}
+		return
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		statusChan <- CmdResult{
+			Err:  fmt.Errorf("failed to create stderr pipe: %w", err),
+			Cmd:  b.Cmd,
+			Args: b.Args,
+		}
+		return
+	}
+
 	// Register this process if it has a RunID
 	if b.RunID != "" {
 		registry.Register(b.RunID)
 	}
 
-	err := cmd.Run()
+	// Start the process
+	err = cmd.Start()
+	if err != nil {
+		statusChan <- CmdResult{
+			Err:  err,
+			Cmd:  b.Cmd,
+			Args: b.Args,
+		}
+		return
+	}
+
+	// Start goroutines to forward stdout and stderr
+	go forwardOutput(stdout, cmdName, "stdout")
+	go forwardOutput(stderr, cmdName, "stderr")
+
+	// Wait for the process to complete
+	err = cmd.Wait()
 
 	// If TimeoutExpected is true and the error is due to context timeout/signal kill, treat as success
 	if b.TimeoutExpected && err != nil {
@@ -414,4 +458,61 @@ func UInt64Exactly(exact uint64) UInt64Checker {
 		}
 		return nil
 	}
+}
+
+// forwardOutput reads from the given reader and forwards to stderr with prefix
+// Handles both line-by-line output and progress indicators with carriage returns
+func forwardOutput(reader io.ReadCloser, cmdName, streamType string) {
+	defer reader.Close()
+
+	// Use a mutex to ensure atomic output per command
+	var mu sync.Mutex
+
+	// Buffer for handling carriage returns
+	var currentLine strings.Builder
+
+	// Read byte by byte to handle carriage returns properly
+	buf := make([]byte, 1)
+	for {
+		n, err := reader.Read(buf)
+		if n == 0 || err != nil {
+			if err != nil && err != io.EOF {
+				mu.Lock()
+				fmt.Fprintf(os.Stderr, "%s> [error reading %s: %v]\n", cmdName, streamType, err)
+				mu.Unlock()
+			}
+			break
+		}
+
+		char := buf[0]
+
+		mu.Lock()
+		switch char {
+		case '\n':
+			// End of line - print what we have
+			if currentLine.Len() > 0 {
+				fmt.Fprintf(os.Stderr, "%s> %s\n", cmdName, currentLine.String())
+				currentLine.Reset()
+			} else {
+				fmt.Fprintf(os.Stderr, "%s>\n", cmdName)
+			}
+		case '\r':
+			// Carriage return - print current line and reset (for progress indicators)
+			if currentLine.Len() > 0 {
+				fmt.Fprintf(os.Stderr, "%s> %s\n", cmdName, currentLine.String())
+				currentLine.Reset()
+			}
+		default:
+			// Regular character - add to current line
+			currentLine.WriteByte(char)
+		}
+		mu.Unlock()
+	}
+
+	// Print any remaining content
+	mu.Lock()
+	if currentLine.Len() > 0 {
+		fmt.Fprintf(os.Stderr, "%s> %s\n", cmdName, currentLine.String())
+	}
+	mu.Unlock()
 }
