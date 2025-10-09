@@ -13,7 +13,6 @@ package testcase
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -49,24 +48,19 @@ func (tc *TestCase) Run(ctx context.Context, tb testing.TB, server *server.Serve
 
 	require.NoError(tb, tc.modelSetup(ctx, tb, harness), "failed to set up application model")
 
-	tb.Logf("DEBUG: Calling server.GetModel()...")
 	model, err := server.GetModel(ctx, &v1alpha.GetModelRequest{
 		Host: true,
 	})
 	require.NoError(tb, err, "failed to get model")
 
-	tb.Logf("DEBUG: Starting model check...")
 	tc.modelCheck(tb, model.GetModel().GetApplicationModel())
 }
 
 func (tc *TestCase) modelCheck(tb testing.TB, model *v1alpha.ApplicationModel) {
 	utils.RegisterModelDump(tb, model)
 
-	tb.Logf("DEBUG: Starting host process checks...")
-	assert.True(tb, checkProcesses(tb, tc.Host, model.Host.Processes), "host process checks failed")
-	tb.Logf("DEBUG: Starting namespace checks...")
+	assert.True(tb, checkProcesses(tb, tc.Host, model.Host.Processes, false), "host process checks failed")
 	assert.True(tb, checkNamespaces(tb, tc.Namespaces, model.Namespaces), "namespace checks failed")
-	tb.Logf("DEBUG: Model check complete")
 }
 
 func checkNamespaces(tb testing.TB, checks model.Namespaces, namespaces []*v1alpha.ApplicationNamespace) bool {
@@ -109,7 +103,7 @@ func checkWorkloads(tb testing.TB, checks model.Pods, workloads []*v1alpha.Appli
 func checkContainers(tb testing.TB, checks model.Containers, processes []*v1alpha.ApplicationProcessGroup) bool {
 	cl := checklist.New("container", checks)
 	for containerName, check := range checks {
-		if !assert.True(tb, checkProcesses(tb, []model.Binary{check.Cmd}, processes), "cmd check failed in container %q", containerName) {
+		if !assert.True(tb, checkProcesses(tb, []model.Binary{check.Cmd}, processes, true), "cmd check failed in container %q", containerName) {
 			continue
 		}
 		cl.Check(containerName)
@@ -117,7 +111,7 @@ func checkContainers(tb testing.TB, checks model.Containers, processes []*v1alph
 	return cl.AssertComplete(tb)
 }
 
-func checkProcesses(tb testing.TB, checks []model.Binary, processes []*v1alpha.ApplicationProcessGroup) bool {
+func checkProcesses(tb testing.TB, checks []model.Binary, processes []*v1alpha.ApplicationProcessGroup, isContainer bool) bool {
 	binaryKeys := make(map[string]struct{})
 	for _, check := range checks {
 		binaryKeys[check.String()] = struct{}{}
@@ -127,11 +121,13 @@ func checkProcesses(tb testing.TB, checks []model.Binary, processes []*v1alpha.A
 	for _, check := range checks {
 		found := false
 
-		// Resolve binary if possible, otherwise fall back to original value
-		binary, err := exec.LookPath(check.Cmd)
-		if err != nil {
+		var binary string
+		if !isContainer {
+			binary = utils.FixupBinaryPathname(check.Cmd)
+		} else {
 			binary = check.Cmd
 		}
+
 		// Fixup args containing spaces to match app model encoding
 		var args []string
 		for _, arg := range check.Args {
@@ -143,24 +139,14 @@ func checkProcesses(tb testing.TB, checks []model.Binary, processes []*v1alpha.A
 		}
 
 		expectedArgs := strings.Join(args, " ")
-		tb.Logf("DEBUG: Looking for process: binary=%q expectedArgs=%q", binary, expectedArgs)
 
 		numChecked := 0
 		for _, process := range processes {
 			numChecked++
-			match := process.Name == binary && process.Arguments == expectedArgs
-			tb.Logf("DEBUG: Checking process: name=%q arguments=%q match=%v", process.Name, process.Arguments, match)
 			if process.Name == binary {
-				tb.Logf("DEBUG: Binary matches! Comparing arguments:")
-				tb.Logf("DEBUG:   Expected: %q (len=%d)", expectedArgs, len(expectedArgs))
-				tb.Logf("DEBUG:   Actual:   %q (len=%d)", process.Arguments, len(process.Arguments))
 				if process.Arguments != expectedArgs {
-					tb.Logf("DEBUG: Arguments differ!")
 					for i := 0; i < len(expectedArgs) && i < len(process.Arguments); i++ {
 						if expectedArgs[i] != process.Arguments[i] {
-							tb.Logf("DEBUG:   Differ at position %d: expected %q (%d) vs actual %q (%d)",
-								i, string(expectedArgs[i]), int(expectedArgs[i]),
-								string(process.Arguments[i]), int(process.Arguments[i]))
 							break
 						}
 					}
@@ -168,6 +154,7 @@ func checkProcesses(tb testing.TB, checks []model.Binary, processes []*v1alpha.A
 			}
 			if process.Name == binary && process.Arguments == expectedArgs {
 				found = true
+				assert.True(tb, check.CheckConnections(tb, process.Connections))
 			}
 		}
 

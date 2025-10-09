@@ -36,6 +36,19 @@ func New[K comparable, V any](name string, items map[K]V) *Checklist[K, V] {
 	}
 }
 
+// NewFromList creates a new Checklist from the provided list.
+func NewFromList[K comparable](name string, items []K) *Checklist[K, struct{}] {
+	itemsMap := make(map[K]struct{}, len(items))
+	for _, item := range items {
+		itemsMap[item] = struct{}{}
+	}
+
+	return &Checklist[K, struct{}]{
+		items: itemsMap,
+		name:  name,
+	}
+}
+
 // Check marks an item as completed by removing it from the checklist.
 // Returns true if the item existed and was removed, false otherwise.
 func (c *Checklist[K, V]) Check(key K) bool {

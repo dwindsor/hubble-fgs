@@ -15,6 +15,7 @@ package modeltest
 import (
 	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -64,6 +65,72 @@ var tests map[string]testcase.TestCase = map[string]testcase.TestCase{
 				Args: []string{"-la"},
 				Dependencies: []deps.Dependency{
 					deps.NewProcessStarted("ls-no-args"),
+				},
+			},
+		},
+	},
+
+	"HTTPServerSimple": {
+		Host: model.Binaries{
+			// HTTP server process
+			{
+				Cmd:             "python3",
+				Args:            []string{"-m", "http.server", "8080"},
+				Timeout:         10 * time.Second,
+				TimeoutExpected: true,
+			},
+			// Listener process that depends on port 8080 being open
+			{
+				Cmd:  "curl",
+				Args: []string{"-4", "http://localhost:8080"},
+				Dependencies: []deps.Dependency{
+					deps.NewTCPPortOpen(8080),
+				},
+				Timeout: 10 * time.Second,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names: []string{"localhost"},
+						Port:  model.UInt64Exactly(8080),
+						Stats: model.StatsCheck{
+							TxBytes: model.UInt64GreaterThan(0),
+							RxBytes: model.UInt64GreaterThan(0),
+							TxDrops: model.UInt64Exactly(0),
+						},
+					},
+				},
+			},
+		},
+	},
+
+	"NetcatMessage": {
+		Host: model.Binaries{
+			// Netcat server listening on port 9999
+			{
+				Cmd:             "nc",
+				Args:            []string{"-4", "-l", "-p", "9999"},
+				Timeout:         10 * time.Second,
+				TimeoutExpected: true,
+			},
+			// Client that sends a simple message to netcat
+			{
+				Cmd:  "nc",
+				Args: []string{"-4", "localhost", "9999"},
+				Dependencies: []deps.Dependency{
+					deps.NewTCPPortOpen(9999),
+				},
+				Stdin:   "hello netcat",
+				Timeout: 10 * time.Second,
+				ConnectionChecks: model.ConnectionChecks{
+					&model.DNSConnectionCheck{
+						Names: []string{"localhost"},
+						Port:  model.UInt64Exactly(9999),
+						Stats: model.StatsCheck{
+							// Exact lengths as reported
+							TxBytes: model.UInt64GreaterThan(0),
+							RxBytes: model.UInt64GreaterThan(0),
+							TxDrops: model.UInt64Exactly(0),
+						},
+					},
 				},
 			},
 		},
