@@ -234,6 +234,7 @@ apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "noconfig"
+spec: {}
 `
 
 func layer3Config(withRTT, withICMP, withRaw bool) string {

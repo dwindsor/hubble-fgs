@@ -246,6 +246,7 @@ metadata:
 spec:
   parser:
     udp:
+      enable: false
       cgroup: true
       statsInterval: 2
       latency:

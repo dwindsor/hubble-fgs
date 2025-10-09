@@ -132,6 +132,7 @@ metadata:
 spec:
   parser:
     tcp:
+      enable: false
 `
 
 // Setting TCP RTT max to 1,000,000 means 1% equates to
