@@ -392,7 +392,7 @@ func (p ExactPathFileMatcher) MatchPath(path string, mode fs.FileMode, _ *uint32
 	if mode.IsDir() {
 		return true
 	}
-	if !mode.IsRegular() {
+	if !mode.IsRegular() && !IsSocket(mode.Type()) {
 		return false
 	}
 	return path == p.Path
