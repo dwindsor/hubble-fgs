@@ -599,7 +599,6 @@ func (n *Nxos) SetToken(ctx context.Context, k8sToken string) (bool, error) {
 		return restartNeeded, err
 	}
 	// Persist the token.
-	logger.GetLogger().Info("token", "prev", prev, "new", k8sToken)
 	if err := agentToken.SetAndPersistK8sAuthToken(k8sToken); err != nil {
 		logger.GetLogger().Error("failed", logfields.Error, err)
 		return restartNeeded, err
