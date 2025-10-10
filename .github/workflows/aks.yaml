@@ -90,7 +90,9 @@ jobs:
             --location ${{ env.location }} \
             --node-count 2 \
             ${{ env.costReduction }} \
-            --generate-ssh-keys
+            --generate-ssh-keys \
+            --tags svic_falco_supported=no \
+            --nodepool-tags svic_osquery_supported=no
 
       - name: Get cluster credentials
         run: |
