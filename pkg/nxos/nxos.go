@@ -19,7 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
-	enterpriseConfig "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
+	"github.com/isovalent/hubble-fgs/pkg/token"
 
 	"github.com/openconfig/gnmic/pkg/api"
 	"github.com/openconfig/ygot/ytypes"
@@ -577,39 +577,57 @@ func (n *Nxos) GetToken() string {
 	return n.Ctrlr.Token
 }
 
-// SetToken sets the Kubernetes controller authentication token in the Nxos instance.
-// It parses the provided service account token to extract the API server host, token, and CA certificate.
-// Returns an error if parsing fails or if any required value (host, token, or CA cert) is empty.
-func (n *Nxos) SetToken(token string) error {
-	// Parse the token to extract host, token, and CA cert, to validate the token.
+// SetToken parses and sets the Kubernetes controller authentication token.
+// If the token is different from the existing one, it persists the new token
+// and indicates if agw restart is needed.
+func (n *Nxos) SetToken(ctx context.Context, k8sToken string) (bool, error) {
 	logger.GetLogger().Info("parsing and setting K8s auth token")
-	host, parsedToken, ca, err := enterpriseConfig.ParseServiceAccountAuth(token)
-	if err != nil {
-		return err
-	}
-	if len(host) == 0 {
-		return fmt.Errorf("api server cannot be empty")
-	}
-	if len(parsedToken) == 0 {
-		return fmt.Errorf("service account token cannot be empty")
-	}
-	if len(ca) == 0 {
-		return fmt.Errorf("ca cert cannot be empty")
-	}
+	restartNeeded := false
 
-	prev := n.Ctrlr.Token
-	if prev != token {
-		// Set it in the struct and env variable.
-		n.Ctrlr.Token = token
-		err := os.Setenv(envToken, n.Ctrlr.Token)
-		if err != nil {
-			return fmt.Errorf("fail to set K8s token to env: %w", err)
-		}
-		logger.GetLogger().Debug("K8s auth token is set")
-		return nil
+	agentToken := token.GetAgentToken()
+	if agentToken == nil {
+		return restartNeeded, fmt.Errorf("AgentToken instance is nil")
 	}
-	logger.GetLogger().Info("K8s auth token is unchanged")
-	return nil
+	// If provided token is same as existing token, no action needed.
+	prev := n.Ctrlr.Token
+	if prev == k8sToken {
+		logger.GetLogger().Debug("K8s auth token is unchanged")
+		return restartNeeded, nil
+	}
+	// If different token, validate the provided token.
+	if err := agentToken.ValidK8sAuth(k8sToken); err != nil {
+		return restartNeeded, err
+	}
+	// Persist the token.
+	logger.GetLogger().Info("token", "prev", prev, "new", k8sToken)
+	if err := agentToken.SetAndPersistK8sAuthToken(k8sToken); err != nil {
+		logger.GetLogger().Error("failed", logfields.Error, err)
+		return restartNeeded, err
+	}
+	// Set the environment variable for the token.
+	if err := os.Setenv(envToken, k8sToken); err != nil {
+		return restartNeeded, fmt.Errorf("fail to set K8s token to env: %w", err)
+	}
+	// Set the token in the Nxos struct.
+	n.Ctrlr.Token = k8sToken
+	logger.GetLogger().Debug("K8s auth token is set")
+	// Only set restartNeeded to true, if everything above succeeded.
+	if prev != "" {
+		// If previous token is empty, it means token is set for the first time,
+		//  where no restart is needed.
+		// If previous token is not empty and different, restart is needed to
+		//  pick up the new token.
+		logger.GetLogger().Info("K8s auth token changed, restart needed")
+		restartNeeded = true
+	}
+	return restartNeeded, nil
+}
+
+func (n *Nxos) RestartAgent(ctx context.Context) {
+	logger.GetLogger().Info("restarting agent")
+	n.GnmiClose(ctx)
+	// As per init.sh script, exiting with code 200 will cause the agent to restart.
+	os.Exit(200)
 }
 
 func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {

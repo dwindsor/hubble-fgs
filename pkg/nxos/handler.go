@@ -1086,7 +1086,7 @@ func (n *Nxos) updtSasVolatiledataAgent(ctx context.Context, items *model.Cisco_
 			// Set token in envToken var for agw to use
 			// and save in ctrlr for restart use.
 			logger.GetLogger().Info("ConnToken received", "len", len(*data.ConnToken))
-			err := n.SetToken(*data.ConnToken)
+			restartAgent, err := n.SetToken(ctx, *data.ConnToken)
 			if err == nil {
 				logger.GetLogger().Info("token updated")
 				// TODO: Revisit n.Stage usage.
@@ -1101,6 +1101,12 @@ func (n *Nxos) updtSasVolatiledataAgent(ctx context.Context, items *model.Cisco_
 					}
 				}
 				n.store(ctx, ctrlrFname, n.Ctrlr)
+				if restartAgent {
+					// Restart agent to use new token after cleaning up existing state
+					// and deregistering if needed.
+					n.ResetReg(ctx)
+					n.RestartAgent(ctx)
+				}
 			}
 		}
 	}

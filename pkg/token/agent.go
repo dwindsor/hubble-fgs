@@ -28,6 +28,19 @@ type AgentToken struct {
 	k8sAuthPath  string
 }
 
+var (
+	agentTokenInstance *AgentToken
+	once               sync.Once
+)
+
+// GetAgentToken returns the singleton instance of AgentToken.
+func GetAgentToken() *AgentToken {
+	once.Do(func() {
+		agentTokenInstance = &AgentToken{}
+	})
+	return agentTokenInstance
+}
+
 // K8sAuthToken returns the Kubernetes authentication token associated with the AgentToken.
 // It acquires a read lock to ensure thread-safe access to the token.
 func (a *AgentToken) K8sAuthToken() string {
@@ -66,18 +79,6 @@ func (a *AgentToken) SetK8sAuthPath(path string) {
 	a.k8sAuthPath = path
 }
 
-// ValidK8sAuth checks whether the Kubernetes authentication token associated with the AgentToken
-// is valid. It logs an error if the token is invalid.
-// Returns true if the token is valid, otherwise returns false.
-func (a *AgentToken) ValidK8sAuth() bool {
-	err := isValidK8sAuth(a.K8sAuthToken())
-	if err != nil {
-		logger.GetLogger().Error("Invalid k8s auth token", logfields.Error, err)
-		return false
-	}
-	return true
-}
-
 // Persist saves the Kubernetes authentication token to a file in JSON format.
 // The file is created or overwritten at the path returned by K8sAuthPath(), and contains
 // the token under the "k8s_auth" key. After writing, the file permissions are set to 0600
@@ -86,6 +87,10 @@ func (a *AgentToken) ValidK8sAuth() bool {
 func (a *AgentToken) Persist() error {
 	at := a.K8sAuthToken()
 	path := a.K8sAuthPath()
+
+	if path == "" {
+		return fmt.Errorf("k8s auth path is not set")
+	}
 
 	// Writing tokens to file
 	v := viper.New()
@@ -182,7 +187,7 @@ func (a *AgentToken) Load() (bool, error) {
 	}
 
 	// Checking if tokens are valid.
-	if err = isValidK8sAuth(at); err != nil {
+	if err = a.ValidK8sAuth(at); err != nil {
 		return false, fmt.Errorf("invalid k8s auth token in file: %w", err)
 	}
 	// Setting tokens in AgentToken object.
@@ -218,7 +223,7 @@ func (a *AgentToken) LoadK8sAuthFromEnv() error {
 			}
 		}
 		// Checking if token is valid.
-		if err := isValidK8sAuth(token); err != nil {
+		if err := a.ValidK8sAuth(token); err != nil {
 			return fmt.Errorf("invalid k8s auth token format in environment: %w", err)
 		}
 	}
@@ -228,10 +233,10 @@ func (a *AgentToken) LoadK8sAuthFromEnv() error {
 	return nil
 }
 
-// isValidK8sAuth validates a Kubernetes service account authentication token string.
+// ValidK8sAuth validates a Kubernetes service account authentication token string.
 // It parses the token to extract the API server URL, service account token, and CA certificate.
 // Returns an error if parsing fails or if any of the required fields are empty.
-func isValidK8sAuth(tknStr string) error {
+func (a *AgentToken) ValidK8sAuth(tknStr string) error {
 	logger.GetLogger().Debug("Validating token")
 	apiServer, serviceAccountToken, caCert, err := enterpriseConfig.ParseServiceAccountAuth(tknStr)
 	if err != nil {
@@ -247,5 +252,23 @@ func isValidK8sAuth(tknStr string) error {
 		return fmt.Errorf("field 'caCert' cannot be empty")
 	}
 
+	return nil
+}
+
+// SetAndPersistK8sAuthToken sets the Kubernetes authentication token in the AgentToken instance
+// and persists it to the configured file path.
+// Parameters:
+//   - token: The Kubernetes authentication token to be set and persisted.
+//
+// Returns an error if persisting the token fails, otherwise returns nil.
+func (a *AgentToken) SetAndPersistK8sAuthToken(token string) error {
+	if token == "" {
+		return fmt.Errorf("token is empty")
+	}
+	a.SetK8sAuthToken(token)
+	err := a.Persist()
+	if err != nil {
+		return fmt.Errorf("failed to persist k8s auth token: %w", err)
+	}
 	return nil
 }

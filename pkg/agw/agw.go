@@ -84,7 +84,7 @@ func NewAgent(dpuListener *dpu.DPUListener) *AgentGateway {
 
 	return &AgentGateway{
 		Cfg:         &config.Config{},
-		Token:       &token.AgentToken{},
+		Token:       token.GetAgentToken(),
 		serviceMac:  mac,
 		dpuPortLow:  uint16(dpuLow),
 		dpuPortHigh: uint16(dpuHigh),
@@ -198,13 +198,9 @@ func (agw *AgentGateway) Register(ctx context.Context) error {
 
 // SetK8sCtlrAuthToken sets the Kubernetes controller authentication token in both the AgentToken and Nxos structs,
 // and persists the token if possible. Returns an error if the operation fails.
-func (agw *AgentGateway) SetK8sCtlrAuthToken(token string) error {
+// This function is invoked when the user provides a token in agw command line option, which takes precedence.
+func (agw *AgentGateway) SetK8sCtlrAuthToken(ctx context.Context, token string) error {
 	logger.GetLogger().Debug("setting k8s auth token")
-
-	// Set the token in both the AgentToken and Nxos structs
-	if err := nxos.Nexus.SetToken(token); err != nil {
-		return fmt.Errorf("failed to set nxos k8s auth token: %w", err)
-	}
 
 	if agw.Token != nil {
 		// Set the token path if not already set.
@@ -213,13 +209,14 @@ func (agw *AgentGateway) SetK8sCtlrAuthToken(token string) error {
 		} else if agw.Cfg.Env.TokenPath != agw.Token.K8sAuthPath() {
 			agw.Token.SetK8sAuthPath(agw.Cfg.Env.TokenPath)
 		}
-		// Set and persist the token.
-		agw.Token.SetK8sAuthToken(token)
-		if err := agw.Token.Persist(); err != nil {
-			return fmt.Errorf("failed to persist token: %w", err)
-		}
 	} else {
 		return fmt.Errorf("failed to set AgentToken")
+	}
+	// Set the token in both the AgentToken and Nxos structs.
+	// Ignore restart request from nxos.SetToken, since token is set via agw command line.
+	_, err := nxos.Nexus.SetToken(ctx, token)
+	if err != nil {
+		return fmt.Errorf("failed to set nxos k8s auth token: %w", err)
 	}
 
 	return nil
@@ -302,11 +299,6 @@ func (agw *AgentGateway) tryLoadK8sAuth() (bool, error) {
 				logfields.Error, err)
 			return false, err
 		}
-	}
-
-	if valid := agw.Token.ValidK8sAuth(); !valid {
-		logger.GetLogger().Error("failed to parse k8s auth token", logfields.Error, err)
-		return false, err
 	}
 
 	logger.GetLogger().Debug("token parsed and validated successfully")

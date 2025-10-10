@@ -12,7 +12,7 @@ type IAgentToken interface {
 	SetK8sAuthToken(token string)
 	K8sAuthPath() string
 	SetK8sAuthPath(path string)
-	ValidK8sAuth() bool
+	ValidK8sAuth() error
 	Persist() error
 	Delete() error
 	Load() (bool, error)
