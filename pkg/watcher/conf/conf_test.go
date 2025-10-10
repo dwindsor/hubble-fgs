@@ -66,3 +66,9 @@ func Test_parseServiceAccountAuth(t *testing.T) {
 		})
 	}
 }
+
+func TestK8sConfigRetry(t *testing.T) {
+	got := K8sConfigRetry()
+	expected := -1 // the expected value returned by K8sConfigRetry
+	require.Equal(t, expected, got)
+}

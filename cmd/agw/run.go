@@ -115,10 +115,17 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu
 			logger.GetLogger().Error("failed to set K8sServiceAccountAuth value")
 		}
 
-		logger.GetLogger().Info("Initializing Kubernetes Manager for on-prem deployment")
+		// Set the retry attempt, so manager will retry until successful connection
+		// to the k8s control plane.
+		conf.K8sConfigRetry = enterpriseConf.K8sConfigRetry
+
+		// Initialize and connect to K8s controller manager
+		logger.GetLogger().Info("initializing Kubernetes Manager for on-prem deployment")
 		kubernetesManager := manager.Get()
 		// Set the register status to ok for the successful connection.
 		agwAgent.Register(ctx)
+		// Start the K8s controller manager
+		logger.GetLogger().Info("starting Kubernetes Manager for on-prem deployment")
 		kubernetesManager.Start(ctx)
 
 		// TODO: Wait for configmap to be ready

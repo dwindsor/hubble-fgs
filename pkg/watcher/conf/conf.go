@@ -86,3 +86,10 @@ func ParseServiceAccountAuth(details string) (string, string, string, error) {
 
 	return parts[0], parts[1], parts[2], nil
 }
+
+// K8sConfigRetry returns the number of retry attempts for establishing a connection
+// to the Kubernetes control plane. A return value of -1 indicates that retries
+// should continue indefinitely until a successful connection is made.
+func K8sConfigRetry() int {
+	return -1
+}
