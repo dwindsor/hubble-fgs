@@ -20,7 +20,7 @@ type diffToApply struct {
 	toDel map[ruleID]*dpu.DPUPolicyRule
 }
 
-func NewDiffToApply() diffToApply {
+func newDiffToApply() diffToApply {
 	return diffToApply{
 		toAdd: make(map[ruleID]*dpu.DPUPolicyRule),
 		toDel: make(map[ruleID]*dpu.DPUPolicyRule),
@@ -63,7 +63,7 @@ func NewState() *State {
 	return &State{
 		policyByRuleId:   make(map[ruleID]*SwitchPolicy),
 		policyByVRFName:  make(map[VrfName]map[ruleID]*SwitchPolicy),
-		diff:             NewDiffToApply(),
+		diff:             newDiffToApply(),
 		networkL3Objects: NewL3Networks(),
 	}
 }
@@ -186,7 +186,7 @@ func (s *State) RemoveL3Network(name VrfName) error {
 func (s *State) GetDeltaToApply() []*dpu.DPUPolicyRule {
 	delta := s.diff.getDiff()
 
-	s.diff = NewDiffToApply()
+	s.diff = newDiffToApply()
 	return delta
 }
 

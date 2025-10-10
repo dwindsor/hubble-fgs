@@ -263,12 +263,12 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 	if err != nil {
 		return err
 	}
-	if rule.Oper == v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT {
+	switch rule.Oper {
+	case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
 		dpu.ruleSet[csum] = rule.Policy
-
-	} else if rule.Oper == v1alpha.PolicyOperation_POLICY_OPERATION_DELETE {
+	case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
 		delete(dpu.ruleSet, csum)
-	} else {
+	default:
 		return fmt.Errorf("unknown operation type %d", rule.Oper)
 	}
 
