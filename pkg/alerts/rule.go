@@ -85,11 +85,11 @@ func (r *ruleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 	var newEncoder bool
 	// use an existing encoder if one exists
 	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	encoder = r.encoders[fname]
 	if encoder != nil {
 		encoder.IncRef()
 	}
-	r.mutex.Unlock()
 
 	// if no existing encoder exists, let's create a new one by openning a new file
 	if eeOption.Config.AlertsExportDir != "" && encoder == nil {
@@ -103,7 +103,6 @@ func (r *ruleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 	}
 
 	severity := ar.Spec.Severity
-	r.mutex.Lock()
 	// if we are replacing a rule, decref its encoder and update metrics
 	if oldRule, ok := r.rules[name]; ok {
 		r.encoderDecref(oldRule)
@@ -129,7 +128,6 @@ func (r *ruleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 
 	// Update metrics after adding new rule
 	r.updateRuleMetrics()
-	r.mutex.Unlock()
 	return nil
 }
 
