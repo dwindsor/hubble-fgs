@@ -159,6 +159,30 @@ func (s *State) SetL3Networks(l3 *L3Networks) error {
 	return nil
 }
 
+func (s *State) AddL3Network(name VrfName, gid VrfGID) error {
+	err := s.networkL3Objects.Add(name, gid)
+	if err != nil {
+		return err
+	}
+	err = s.SetL3Networks(s.networkL3Objects)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *State) RemoveL3Network(name VrfName) error {
+	err := s.networkL3Objects.Remove(name)
+	if err != nil {
+		return err
+	}
+	err = s.SetL3Networks(s.networkL3Objects)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *State) GetDeltaToApply() []*dpu.DPUPolicyRule {
 	delta := s.diff.getDiff()
 

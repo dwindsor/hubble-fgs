@@ -11,7 +11,7 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/dns"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 
 	"github.com/openconfig/gnmi/proto/gnmi"
@@ -302,7 +302,11 @@ func (n *Nxos) updtInstList(ctx context.Context, instList []*model.Cisco_NX_OSDe
 	}
 
 	if policyMapUpdate {
-		n.doVRFPolicyMapUpdate()
+		err := n.doVRFPolicyMapUpdate()
+		if err != nil {
+			logger.GetLogger().Error("Fail to update VRF policy map", logfields.Error, err)
+			return err
+		}
 	}
 
 	if len(vrfs) > 0 {
@@ -388,7 +392,11 @@ func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDe
 	}
 
 	if policyMapUpdate {
-		n.doVRFPolicyMapUpdate()
+		err := n.doVRFPolicyMapUpdate()
+		if err != nil {
+			logger.GetLogger().Error("Fail to update VRF policy map", logfields.Error, err)
+			return err
+		}
 	}
 
 	return nil
@@ -606,13 +614,21 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceFwpolicyIpvrfDom(ctx context.Context,
 	return nil
 }
 
-func (n *Nxos) doVRFPolicyMapUpdate() {
-	vrfPolicyMap := make(map[string]uint32)
+func (n *Nxos) doVRFPolicyMapUpdate() error {
+	vrfMap := switchpolicy.NewL3Networks()
 	for name, vid := range n.Alloc.Gids {
-		vrfPolicyMap[name] = uint32(vid)
+		vrfName := switchpolicy.VrfName(name)
+		vrfId := switchpolicy.VrfGID(vid)
+		err := vrfMap.Add(vrfName, vrfId)
+		if err != nil {
+			return err
+		}
 	}
-	state := dns.GetRealizedState()
-	state.SetL3NetworkMap(vrfPolicyMap)
+	err := n.policyHandler.SetL3Networks(vrfMap)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (n *Nxos) addVbService(ctx context.Context, isBd bool, names []*string, affinities []*uint16) error {
@@ -694,7 +710,11 @@ func (n *Nxos) addVbService(ctx context.Context, isBd bool, names []*string, aff
 	}
 
 	if policyMapUpdate {
-		n.doVRFPolicyMapUpdate()
+		err := n.doVRFPolicyMapUpdate()
+		if err != nil {
+			logger.GetLogger().Error("Fail to update VRF policy map", logfields.Error, err)
+			return err
+		}
 	}
 
 	return n.addServiceVb(ctx, isBd, noRps, rps)

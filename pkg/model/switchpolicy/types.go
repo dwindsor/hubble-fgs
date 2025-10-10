@@ -1,5 +1,11 @@
 package switchpolicy
 
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/gob"
+)
+
 type PolicyUniqueID struct {
 	PolicyName string
 	RuleName   string
@@ -10,6 +16,16 @@ type SmartSwitchNetworkPolicy struct {
 	Destination SmartSwitchNetworkDestination
 	Action      SmartSwitchNetworkAction
 	Default     SmartSwitchNetworkAction
+}
+
+func (s *SmartSwitchNetworkPolicy) Hash() ([sha256.Size]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(*s)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	return sha256.Sum256(buf.Bytes()), nil
 }
 
 type SmartSwitchNetworkProtocolPorts struct {

@@ -15,6 +15,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
 
@@ -36,7 +37,7 @@ func executeAGW() {
 
 	waitGroup, ctx := errgroup.WithContext(ctx)
 	dpuListener := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
-	agwAgent := agw.NewAgent(dpuListener)
+	agwAgent := agw.NewAgent(dpuListener, switchpolicy.NewPolicyHandler(dpuListener))
 	err := agwAgent.Config(ctx, Config.DafConfig)
 
 	if err != nil {

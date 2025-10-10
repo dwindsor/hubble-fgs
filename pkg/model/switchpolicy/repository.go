@@ -8,6 +8,10 @@ type ResourceID struct {
 	name      string
 }
 
+func (r *ResourceID) String() string {
+	return fmt.Sprintf("%s/%s/%s", r.kind, r.namespace, r.name)
+}
+
 func NewResourceID(kind, namespace, name string) ResourceID {
 	return ResourceID{
 		kind:      kind,

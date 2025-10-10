@@ -6,6 +6,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/grpc/haclt"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 
@@ -259,8 +260,10 @@ type Nxos struct {
 	CpaVer     string
 	SerNum     string
 
-	dpuListener *dpu.DPUListener
-	cancel      context.CancelFunc
+	// smartswitch management
+	policyHandler switchpolicy.PolicyHandler
+	dpuListener   *dpu.DPUListener
+	cancel        context.CancelFunc
 }
 
 type INxos interface {

@@ -21,9 +21,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 	"github.com/isovalent/hubble-fgs/pkg/config"
-	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
-	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
@@ -33,18 +32,30 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 	logger.GetLogger().Info("Agent starting...")
 	waitGroup, ctx := errgroup.WithContext(ctx)
 
-	// Set the datapath to use DPU
-	dns.SetDatapath(&datapath.DPUProgrammer{
-		DpuListener: dpuListener,
-	})
-	s := dns.GetRealizedState()
-	vrfMap := make(map[string]uint32)
+	// Vrf mapping if provided using CLI
+	vrfMap := switchpolicy.NewL3Networks()
 	for _, nameGID := range Config.VrfMap {
 		name := strings.Split(nameGID, ":")
-		gid, _ := strconv.Atoi(name[1])
-		vrfMap[name[0]] = uint32(gid)
+		if len(name) < 2 {
+			logger.GetLogger().Error("invalid value passed in vrfmap", "vrf", nameGID)
+			continue
+		}
+		gid, err := strconv.Atoi(name[1])
+		if err != nil {
+			logger.GetLogger().Error("invalid id passed in vrfmap", logfields.Error, err, "vrf", nameGID)
+			continue
+		}
+		vrfName := switchpolicy.VrfName(name[0])
+		vrfId := switchpolicy.VrfGID(gid)
+		err = vrfMap.Add(vrfName, vrfId)
+		if err != nil {
+			logger.GetLogger().Error("failed to add vrf to vrfmap", logfields.Error, err, "vrf", nameGID)
+		}
 	}
-	s.SetL3NetworkMap(vrfMap)
+	err := agwAgent.PolicyHandler.SetL3Networks(vrfMap)
+	if err != nil {
+		logger.GetLogger().Error("failed to set CLI configured vrfmap", logfields.Error, err, "vrfmap", Config.VrfMap)
+	}
 
 	waitGroup.Go(func() error {
 		err := dpuListener.Start()

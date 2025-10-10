@@ -20,8 +20,9 @@ func NewFakeDPUProgrammer() *FakeDPUProgrammer {
 	}
 }
 
-func (f *FakeDPUProgrammer) SubmitDPURuleToDPU(rule *dpu.DPUPolicyRule) {
+func (f *FakeDPUProgrammer) SubmitDPURuleToDPU(rule *dpu.DPUPolicyRule) error {
 	f.rules = append(f.rules, rule)
+	return nil
 }
 
 func (f *FakeDPUProgrammer) Clear() {
@@ -40,7 +41,7 @@ func TestPolicyHandlerAddRemovePolicy(t *testing.T) {
 	require.NoError(t, err)
 
 	resourceID := NewResourceID("ns", "default", "test-policy")
-	newPolicyHandler.UpsertPolicy(
+	err = newPolicyHandler.UpsertPolicy(
 		resourceID,
 		K8sRulesList{
 			NewPolicyRule(
@@ -84,7 +85,7 @@ func TestPolicyHandlerRemoveL3Network(t *testing.T) {
 	require.NoError(t, err)
 
 	resourceID := NewResourceID("ns", "default", "test-policy")
-	newPolicyHandler.UpsertPolicy(
+	err = newPolicyHandler.UpsertPolicy(
 		resourceID,
 		K8sRulesList{
 			NewPolicyRule(

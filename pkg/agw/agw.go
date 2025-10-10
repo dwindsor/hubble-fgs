@@ -23,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
 	netpollibrary "github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
@@ -36,7 +37,7 @@ const (
 	// dpuTimeout = 300 // in second
 )
 
-func NewAgent(dpuListener *dpu.DPUListener) *AgentGateway {
+func NewAgent(dpuListener *dpu.DPUListener, policyHandler switchpolicy.PolicyHandler) *AgentGateway {
 	mac := os.Getenv("NX_SAS_RMAC")
 	lowStr, ok := os.LookupEnv("NX_DPU_PORT_START")
 	if !ok {
@@ -87,14 +88,15 @@ func NewAgent(dpuListener *dpu.DPUListener) *AgentGateway {
 	library.GetRepository().AddConfig(configObj)
 
 	return &AgentGateway{
-		Cfg:         &config.Config{},
-		Token:       token.GetAgentToken(),
-		serviceMac:  mac,
-		dpuPortLow:  uint16(dpuLow),
-		dpuPortHigh: uint16(dpuHigh),
-		cpaPortLow:  uint16(cpaLow),
-		cpaPortHigh: uint16(cpaHigh),
-		dpuListener: dpuListener,
+		Cfg:           &config.Config{},
+		Token:         token.GetAgentToken(),
+		serviceMac:    mac,
+		dpuPortLow:    uint16(dpuLow),
+		dpuPortHigh:   uint16(dpuHigh),
+		cpaPortLow:    uint16(cpaLow),
+		cpaPortHigh:   uint16(cpaHigh),
+		dpuListener:   dpuListener,
+		PolicyHandler: policyHandler,
 	}
 }
 
@@ -118,7 +120,8 @@ type AgentGateway struct {
 	cpaPortLow  uint16
 	cpaPortHigh uint16
 
-	dpuListener *dpu.DPUListener
+	dpuListener   *dpu.DPUListener
+	PolicyHandler switchpolicy.PolicyHandler
 
 	sync.RWMutex
 }
@@ -190,7 +193,7 @@ func (agw *AgentGateway) GetNxHeadlessMode() bool {
 }
 
 func (agw *AgentGateway) Setup(ctx context.Context, cancel context.CancelFunc) error {
-	err := nxos.Nexus.Setup(ctx, cancel, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener)
+	err := nxos.Nexus.Setup(ctx, cancel, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener, agw.PolicyHandler)
 	if err != nil {
 		logger.Fatal(logger.GetLogger(), "NXOS setup failed")
 	}

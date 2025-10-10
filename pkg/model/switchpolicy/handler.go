@@ -15,7 +15,7 @@ type PolicyHandler interface {
 }
 
 type DPUProgrammer interface {
-	SubmitDPURuleToDPU(rule *dpu.DPUPolicyRule)
+	SubmitDPURuleToDPU(rule *dpu.DPUPolicyRule) error
 }
 
 type policyHandler struct {
@@ -99,6 +99,9 @@ func (h *policyHandler) SetL3Networks(networks *L3Networks) error {
 func (h *policyHandler) applyDelta() {
 	diffForDPU := h.state.GetDeltaToApply()
 	for _, dpuRule := range diffForDPU {
-		h.dpuProgrammer.SubmitDPURuleToDPU(dpuRule)
+		err := h.dpuProgrammer.SubmitDPURuleToDPU(dpuRule)
+		if err != nil {
+			logger.GetLogger().Error("failed to submit rule to DPU, DPUs now out of sync", "rule", dpuRule, "err", err)
+		}
 	}
 }

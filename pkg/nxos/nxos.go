@@ -19,6 +19,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	"github.com/isovalent/hubble-fgs/pkg/token"
 
@@ -548,11 +549,12 @@ func (n *Nxos) setServiceRedirAll(ctx context.Context, isLock bool) error {
 	return nil
 }
 
-func (n *Nxos) Setup(ctx context.Context, cancel context.CancelFunc, low, high uint16, dpuListener *dpu.DPUListener) error {
+func (n *Nxos) Setup(ctx context.Context, cancel context.CancelFunc, low, high uint16, dpuListener *dpu.DPUListener, policyHandler switchpolicy.PolicyHandler) error {
 
 	n.DpuPortLow = low
 	n.DpuPortHigh = high
 	n.dpuListener = dpuListener
+	n.policyHandler = policyHandler
 
 	// set the cancel function for any nxos initiated context cancellation
 	// to other goroutines
