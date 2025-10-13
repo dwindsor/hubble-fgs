@@ -24,6 +24,8 @@ import (
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/spf13/cobra"
 
+	"github.com/isovalent/hubble-fgs/cmd/tetra/policies"
+
 	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/common"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/network"
@@ -62,6 +64,7 @@ func addCommands(rootCmd *cobra.Command) {
 	debugCmd.AddCommand(dns.NewDNSCmd())
 	rootCmd.AddCommand(debugCmd)
 	rootCmd.AddCommand(mandate.New())
+	rootCmd.AddCommand(policies.New())
 }
 
 func ifConfig(commander bugtoolpkg.Commander) error {
