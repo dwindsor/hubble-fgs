@@ -16,11 +16,13 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/stretchr/testify/assert"
@@ -50,6 +52,10 @@ func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
 func testAncestorsN(t *testing.T, numAncestors int) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
+
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
 	defer cancel()
