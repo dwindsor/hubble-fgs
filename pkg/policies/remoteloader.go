@@ -1,0 +1,72 @@
+package policies
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"sigs.k8s.io/yaml"
+
+	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
+)
+
+type remoteLoader struct {
+	alertRuleService     tetragon.AlertServiceClient
+	networkPolicyService tetragon.NetworkPolicyServiceClient
+	tracingPolicyService tetragon.FineGuidanceSensorsClient
+}
+
+func (r remoteLoader) OnTracingPolicy(ctx context.Context, _ string, bytes []byte) error {
+	_, err := r.tracingPolicyService.AddTracingPolicy(ctx, &tetragon.AddTracingPolicyRequest{Yaml: string(bytes)})
+	return err
+}
+
+func (r remoteLoader) OnSandboxPolicy(ctx context.Context, fname string, bytes []byte) error {
+	pol, err := sandboxpolicy.FromYAML(string(bytes))
+	if err != nil {
+		return err
+	}
+
+	var tp interface{}
+	switch sp := pol.(type) {
+	case *v1alpha1.SandboxPolicy:
+		tp, err = sandboxpolicy.ToTracingPolicy(sp)
+		if err != nil {
+			return err
+		}
+	case *v1alpha1.SandboxPolicyNamespaced:
+		tp, err = sandboxpolicy.ToTracingPolicyNamespaced(sp)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unexpected parsing result of %s", fname)
+	}
+	out, err := yaml.Marshal(tp)
+	if err != nil {
+		return err
+	}
+
+	return r.OnTracingPolicy(ctx, fname, out)
+}
+
+func (r remoteLoader) OnNetworkPolicy(ctx context.Context, _ string, bytes []byte) error {
+	_, err := r.networkPolicyService.AddNetworkPolicyFromYAML(ctx, &tetragon.AddNetworkPolicyFromYAMLRequest{Yaml: string(bytes)})
+	return err
+}
+
+func (r remoteLoader) OnAlertRule(ctx context.Context, _ string, bytes []byte) error {
+	_, err := r.alertRuleService.AddAlertRuleFromYAML(ctx, &tetragon.AddAlertRuleFromYAMLRequest{Yaml: string(bytes)})
+	return err
+}
+
+func NewRemoteLoader(alertRuleService tetragon.AlertServiceClient,
+	networkPolicyService tetragon.NetworkPolicyServiceClient,
+	tracingPolicyService tetragon.FineGuidanceSensorsClient) Loader {
+	return &remoteLoader{
+		alertRuleService:     alertRuleService,
+		networkPolicyService: networkPolicyService,
+		tracingPolicyService: tracingPolicyService,
+	}
+}
