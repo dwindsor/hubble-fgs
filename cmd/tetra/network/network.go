@@ -32,18 +32,18 @@ func New() *cobra.Command {
 		Short: "add Tetragon network policy",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := newClient()
+			c, err := NewClient()
 			if err != nil {
 				return fmt.Errorf("failed to create client: %w", err)
 			}
-			defer c.close()
+			defer c.Close()
 
 			yamlb, err := os.ReadFile(args[0])
 			if err != nil {
 				return fmt.Errorf("failed to read yaml file %s: %w", args[0], err)
 			}
 
-			_, err = c.client.AddNetworkPolicyFromYAML(c.ctx, &tetragon.AddNetworkPolicyFromYAMLRequest{
+			_, err = c.Client.AddNetworkPolicyFromYAML(c.ctx, &tetragon.AddNetworkPolicyFromYAMLRequest{
 				Yaml: string(yamlb),
 			})
 			if err != nil {
@@ -60,13 +60,13 @@ func New() *cobra.Command {
 		Short: "delete Tetragon network policy",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := newClient()
+			c, err := NewClient()
 			if err != nil {
 				return fmt.Errorf("failed to create client: %w", err)
 			}
-			defer c.close()
+			defer c.Close()
 
-			_, err = c.client.DeleteNetworkPolicy(c.ctx, &tetragon.DeleteNetworkPolicyRequest{
+			_, err = c.Client.DeleteNetworkPolicy(c.ctx, &tetragon.DeleteNetworkPolicyRequest{
 				Name: args[0],
 			})
 			if err != nil {
@@ -95,13 +95,13 @@ func New() *cobra.Command {
 		Short: "get Tetragon network policy",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := newClient()
+			c, err := NewClient()
 			if err != nil {
 				return fmt.Errorf("failed to create client: %w", err)
 			}
-			defer c.close()
+			defer c.Close()
 
-			res, err := c.client.GetNetworkPolicy(c.ctx, &tetragon.GetNetworkPolicyRequest{
+			res, err := c.Client.GetNetworkPolicy(c.ctx, &tetragon.GetNetworkPolicyRequest{
 				Name: args[0],
 			})
 			if err != nil || res == nil {
@@ -171,13 +171,13 @@ func ListNetworkPolicy(
 }
 
 func ListNetworkPolicies() (*tetragon.ListNetworkPolicyResponse, error) {
-	c, err := newClient()
+	c, err := NewClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
-	defer c.close()
+	defer c.Close()
 
-	res, err := c.client.ListNetworkPolicy(c.ctx, &tetragon.ListNetworkPolicyRequest{})
+	res, err := c.Client.ListNetworkPolicy(c.ctx, &tetragon.ListNetworkPolicyRequest{})
 	if err != nil || res == nil {
 		return nil, fmt.Errorf("failed to list network policy: %w", err)
 	}

@@ -32,18 +32,18 @@ func New() *cobra.Command {
 		Short: "add/update alert rule",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := newClient()
+			c, err := NewClient()
 			if err != nil {
 				return fmt.Errorf("failed to create client: %w", err)
 			}
-			defer c.close()
+			defer c.Close()
 
 			yamlb, err := os.ReadFile(args[0])
 			if err != nil {
 				return fmt.Errorf("failed to read yaml file %s: %w", args[0], err)
 			}
 
-			_, err = c.client.AddAlertRuleFromYAML(c.ctx, &tetragon.AddAlertRuleFromYAMLRequest{
+			_, err = c.Client.AddAlertRuleFromYAML(c.ctx, &tetragon.AddAlertRuleFromYAMLRequest{
 				Yaml: string(yamlb),
 			})
 			if err != nil {
@@ -60,13 +60,13 @@ func New() *cobra.Command {
 		Short: "delete alert rule",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := newClient()
+			c, err := NewClient()
 			if err != nil {
 				return fmt.Errorf("failed to create client: %w", err)
 			}
-			defer c.close()
+			defer c.Close()
 
-			_, err = c.client.DeleteAlertRule(c.ctx, &tetragon.DeleteAlertRuleRequest{
+			_, err = c.Client.DeleteAlertRule(c.ctx, &tetragon.DeleteAlertRuleRequest{
 				Name: args[0],
 			})
 			if err != nil {
@@ -95,13 +95,13 @@ func New() *cobra.Command {
 		Short: "get alert rule",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := newClient()
+			c, err := NewClient()
 			if err != nil {
 				return fmt.Errorf("failed to create client: %w", err)
 			}
-			defer c.close()
+			defer c.Close()
 
-			res, err := c.client.GetAlertRule(c.ctx, &tetragon.GetAlertRuleRequest{
+			res, err := c.Client.GetAlertRule(c.ctx, &tetragon.GetAlertRuleRequest{
 				Name: args[0],
 			})
 			if err != nil || res == nil {
@@ -181,13 +181,13 @@ func ListAlerts(
 }
 
 func ListAlertRules() (*tetragon.ListAlertRulesResponse, error) {
-	c, err := newClient()
+	c, err := NewClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
-	defer c.close()
+	defer c.Close()
 
-	res, err := c.client.ListAlertRules(c.ctx, &tetragon.ListAlertRulesRequest{})
+	res, err := c.Client.ListAlertRules(c.ctx, &tetragon.ListAlertRulesRequest{})
 	if err != nil || res == nil {
 		return nil, fmt.Errorf("failed to list alert rules: %w", err)
 	}

@@ -21,20 +21,20 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
-type clientWithContext struct {
+type ClientWithContext struct {
 	conn          *grpc.ClientConn
-	client        tetragon.AlertServiceClient
+	Client        tetragon.AlertServiceClient
 	ctx           context.Context
 	timeoutCancel context.CancelFunc
 }
 
-func (c clientWithContext) close() {
+func (c ClientWithContext) Close() {
 	c.conn.Close()
 	c.timeoutCancel()
 }
 
-func newClient() (*clientWithContext, error) {
-	c := &clientWithContext{}
+func NewClient() (*ClientWithContext, error) {
+	c := &ClientWithContext{}
 	c.ctx, c.timeoutCancel = context.WithTimeout(context.Background(), common.Timeout)
 
 	var err error
@@ -46,7 +46,7 @@ func newClient() (*clientWithContext, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.client = tetragon.NewAlertServiceClient(c.conn)
+	c.Client = tetragon.NewAlertServiceClient(c.conn)
 
 	return c, nil
 }
