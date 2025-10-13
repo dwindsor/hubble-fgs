@@ -70,22 +70,22 @@ type testPolicyLoad struct {
 	numAlert   int
 }
 
-func (t *testPolicyLoad) OnTracingPolicy(_ context.Context, _ string) error {
+func (t *testPolicyLoad) OnTracingPolicy(_ context.Context, _ string, _ []byte) error {
 	t.numTracing++
 	return nil
 }
 
-func (t *testPolicyLoad) OnSandboxPolicy(_ context.Context, _ string) error {
+func (t *testPolicyLoad) OnSandboxPolicy(_ context.Context, _ string, _ []byte) error {
 	t.numSandbox++
 	return nil
 }
 
-func (t *testPolicyLoad) OnNetworkPolicy(_ []byte) error {
+func (t *testPolicyLoad) OnNetworkPolicy(_ context.Context, _ string, _ []byte) error {
 	t.numNetwork++
 	return nil
 }
 
-func (t *testPolicyLoad) OnAlertRule(_ []byte, _ string) error {
+func (t *testPolicyLoad) OnAlertRule(_ context.Context, _ string, _ []byte) error {
 	t.numAlert++
 	return nil
 }
@@ -113,7 +113,7 @@ func TestLoadFromDir(t *testing.T) {
 	assert.NoError(t, err)
 
 	loader := testPolicyLoad{}
-	err = loadFromDir(context.Background(), policyDir, &loader)
+	err = LoadFromDir(context.Background(), policyDir, &loader)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, loader.numAlert)

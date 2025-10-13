@@ -635,7 +635,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	processcacheclean.Start()
 	defer processcacheclean.Stop()
 
-	if err = policies.Load(ctx, alertsManager, log); err != nil {
+	if err = policies.LoadFromConfig(ctx, alertsManager, log); err != nil {
 		return err
 	}
 

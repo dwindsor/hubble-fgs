@@ -30,10 +30,10 @@ import (
 
 // Mocked by cmd/tetragon/TestLoadPolicies()
 type Loader interface {
-	OnTracingPolicy(ctx context.Context, fname string) error
-	OnSandboxPolicy(ctx context.Context, fname string) error
-	OnNetworkPolicy(bytes []byte) error
-	OnAlertRule(bytes []byte, fname string) error
+	OnTracingPolicy(ctx context.Context, fname string, bytes []byte) error
+	OnSandboxPolicy(ctx context.Context, fname string, bytes []byte) error
+	OnNetworkPolicy(ctx context.Context, fname string, bytes []byte) error
+	OnAlertRule(ctx context.Context, fname string, bytes []byte) error
 }
 
 type defaultLoader struct {
@@ -50,7 +50,7 @@ func NewDefaultLoader(alertsManager alerts.RuleManager, sm *sensors.Manager, log
 	}
 }
 
-func (p *defaultLoader) OnTracingPolicy(ctx context.Context, fname string) error {
+func (p *defaultLoader) OnTracingPolicy(ctx context.Context, fname string, _ []byte) error {
 	f, err := filepath.Abs(filepath.Clean(fname))
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (p *defaultLoader) OnTracingPolicy(ctx context.Context, fname string) error
 		return fmt.Errorf("failed to read (%s) tracing policy: %w", fname, err)
 	}
 
-	err = observer.GetSensorManager().AddTracingPolicy(ctx, tp)
+	err = p.sm.AddTracingPolicy(ctx, tp)
 	if err != nil {
 		return fmt.Errorf("failed to get sensors from (%s) parser policy: %w", fname, err)
 	}
@@ -79,15 +79,15 @@ func (p *defaultLoader) OnTracingPolicy(ctx context.Context, fname string) error
 	return nil
 }
 
-func (p *defaultLoader) OnSandboxPolicy(ctx context.Context, fname string) error {
+func (p *defaultLoader) OnSandboxPolicy(ctx context.Context, fname string, _ []byte) error {
 	return sandboxpolicy.AddSandboxPolicyFromYAML(ctx, p.log, p.sm, fname)
 }
 
-func (p *defaultLoader) OnNetworkPolicy(bytes []byte) error {
+func (p *defaultLoader) OnNetworkPolicy(_ context.Context, _ string, bytes []byte) error {
 	return netpol.AddFromYAML(string(bytes))
 }
 
-func (p *defaultLoader) OnAlertRule(bytes []byte, fname string) error {
+func (p *defaultLoader) OnAlertRule(_ context.Context, fname string, bytes []byte) error {
 	obj, err := alerts.FromYAML(string(bytes))
 	if err != nil {
 		return err
@@ -102,9 +102,7 @@ func (p *defaultLoader) OnAlertRule(bytes []byte, fname string) error {
 	return p.alertsManager.AddAlertRule(ar)
 }
 
-func loadFromDir(ctx context.Context, dir string, loader Loader) error {
-	var err error
-
+func LoadFromDir(ctx context.Context, dir string, loader Loader) error {
 	items, dirErr := os.ReadDir(dir)
 	if dirErr != nil {
 		return fmt.Errorf("policies dir is not readable: %w", dirErr)
@@ -112,47 +110,54 @@ func loadFromDir(ctx context.Context, dir string, loader Loader) error {
 	for _, item := range items {
 		// Skip directories (avoid recursive hell)
 		if !item.IsDir() {
-			fname := filepath.Join(dir, item.Name())
-			bytes, readErr := os.ReadFile(fname)
-			if readErr != nil {
-				return fmt.Errorf("failed to read policy file %q: %w", fname, readErr)
-			}
-			// Discover policy kind
-			var unstr unstructured.Unstructured
-			if policyErr := yaml.UnmarshalStrict(bytes, &unstr); policyErr != nil {
-				return fmt.Errorf("failed to parse policy file %q: %w", fname, policyErr)
-			}
-			kind := unstr.GetKind()
-			switch kind {
-			case "TracingPolicy", "TracingPolicyNamespaced":
-				err = loader.OnTracingPolicy(ctx, fname)
-				if err != nil {
-					return fmt.Errorf("add "+kind+" failed: %w", err)
-				}
-			case "SandboxPolicy", "SandboxPolicyNamespaced":
-				err = loader.OnSandboxPolicy(ctx, fname)
-				if err != nil {
-					return fmt.Errorf("add "+kind+" failed: %w", err)
-				}
-			case "TetragonNetworkPolicy":
-				err = loader.OnNetworkPolicy(bytes)
-				if err != nil {
-					return fmt.Errorf("add "+kind+" failed: %w", err)
-				}
-			case "AlertRule":
-				err = loader.OnAlertRule(bytes, fname)
-				if err != nil {
-					return fmt.Errorf("add "+kind+" failed: %w", err)
-				}
-			default:
-				return fmt.Errorf("unknown kind: %s", kind)
+			err := LoadFromFile(ctx, filepath.Join(dir, item.Name()), loader)
+			if err != nil {
+				return err
 			}
 		}
 	}
 	return nil
 }
 
-func Load(ctx context.Context, alertsManager alerts.RuleManager, log *slog.Logger) error {
+func LoadFromFile(ctx context.Context, fname string, loader Loader) error {
+	bytes, err := os.ReadFile(fname)
+	if err != nil {
+		return fmt.Errorf("failed to read policy file %q: %w", fname, err)
+	}
+	// Discover policy kind
+	var unstr unstructured.Unstructured
+	if policyErr := yaml.UnmarshalStrict(bytes, &unstr); policyErr != nil {
+		return fmt.Errorf("failed to parse policy file %q: %w", fname, policyErr)
+	}
+	kind := unstr.GetKind()
+	switch kind {
+	case "TracingPolicy", "TracingPolicyNamespaced":
+		err = loader.OnTracingPolicy(ctx, fname, bytes)
+		if err != nil {
+			return fmt.Errorf("add "+kind+" failed: %w", err)
+		}
+	case "SandboxPolicy", "SandboxPolicyNamespaced":
+		err = loader.OnSandboxPolicy(ctx, fname, bytes)
+		if err != nil {
+			return fmt.Errorf("add "+kind+" failed: %w", err)
+		}
+	case "TetragonNetworkPolicy":
+		err = loader.OnNetworkPolicy(ctx, fname, bytes)
+		if err != nil {
+			return fmt.Errorf("add "+kind+" failed: %w", err)
+		}
+	case "AlertRule":
+		err = loader.OnAlertRule(ctx, fname, bytes)
+		if err != nil {
+			return fmt.Errorf("add "+kind+" failed: %w", err)
+		}
+	default:
+		return fmt.Errorf("unknown kind: %s", kind)
+	}
+	return nil
+}
+
+func LoadFromConfig(ctx context.Context, alertsManager alerts.RuleManager, log *slog.Logger) error {
 	sm := observer.GetSensorManager()
 	loader := NewDefaultLoader(alertsManager, sm, log)
 
@@ -167,7 +172,7 @@ func Load(ctx context.Context, alertsManager alerts.RuleManager, log *slog.Logge
 	}
 
 	if len(option.Config.TracingPolicy) > 0 {
-		err = loader.OnTracingPolicy(ctx, option.Config.TracingPolicy)
+		err = loader.OnTracingPolicy(ctx, option.Config.TracingPolicy, nil)
 		if err != nil {
 			return fmt.Errorf("add TracingPolicy failed: %w", err)
 		}
@@ -185,7 +190,7 @@ func Load(ctx context.Context, alertsManager alerts.RuleManager, log *slog.Logge
 	if len(enterpriseOption.Config.SandboxPolicies) > 0 {
 		if enterpriseOption.Config.EnableSandboxPolicies {
 			for _, fname := range enterpriseOption.Config.SandboxPolicies {
-				err = loader.OnSandboxPolicy(ctx, fname)
+				err = loader.OnSandboxPolicy(ctx, fname, nil)
 				if err != nil {
 					return err
 				}
@@ -205,7 +210,7 @@ func Load(ctx context.Context, alertsManager alerts.RuleManager, log *slog.Logge
 				return nil
 			}
 		}
-		return loadFromDir(ctx, enterpriseOption.Config.PoliciesDir, loader)
+		return LoadFromDir(ctx, enterpriseOption.Config.PoliciesDir, loader)
 	}
 	return nil
 }
@@ -246,7 +251,7 @@ func loadTpFromDir(ctx context.Context, dir string, loader Loader, log *slog.Log
 			return nil
 		}
 
-		return loader.OnTracingPolicy(ctx, file)
+		return loader.OnTracingPolicy(ctx, file, nil)
 	})
 
 	return err
