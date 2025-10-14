@@ -17,6 +17,7 @@ COPY . ./
 ARG TARGETARCH
 ARG DEBUG
 RUN make tetragon-bpf LOCAL_CLANG=1 TARGET_ARCH=$TARGETARCH DEBUG=$DEBUG
+RUN apt-get install -y llvm && llvm-strip -g bpf/objs/*.o
 RUN gzip bpf/objs/*.o
 
 # Second builder (cross-)compile:
