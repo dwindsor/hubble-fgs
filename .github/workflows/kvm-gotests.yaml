@@ -26,7 +26,7 @@ jobs:
           - splendid-metal-arm64
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "rhel8.9-20241218.004849"
+          # - "rhel8.9-20241218.004849"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "bpf-next-20250923.075842"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
@@ -40,7 +40,7 @@ jobs:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "5.4-20250923.075842"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "4.19-20250812.093650"
+          # - "4.19-20250812.093650"
         # TODO: temporarily disable testing for 4.19 and 5.4 kernels
         # The excluded kernels require more test failure investigation
         exclude:
