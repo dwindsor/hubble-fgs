@@ -34,6 +34,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -374,6 +375,10 @@ func (suite *TCPDocker) stopDockerTCPServices() {
 }
 
 func (suite *TCPBasic) TestFailedConnectEvent4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
@@ -409,6 +414,10 @@ func (suite *TCPBasic) TestFailedConnectEvent4() {
 }
 
 func testDisableConfigConnect4(t *testing.T, CLISwitches bool, disableConnect bool) {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -486,6 +495,10 @@ func TestNoDisableConnectEvent4NoCLI(t *testing.T) {
 }
 
 func (suite *TCPBasic) TestExecEventClone4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	orig := "nc.openbsd"
 	server := orig
 	client := server
@@ -560,6 +573,10 @@ func (suite *TCPBasic) TestExecEventClone4() {
 }
 
 func (suite *TCPBasic) TestExistingListenEvent4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -592,6 +609,10 @@ func (suite *TCPBasic) TestExistingListenEvent4() {
 }
 
 func (suite *TCPBasic) TestExistingAcceptEvent4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
@@ -640,6 +661,10 @@ func (suite *TCPBasic) TestExistingAcceptEvent4() {
 }
 
 func (suite *TCPBasic) TestExistingRootCWDListenEvent4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -673,6 +698,10 @@ func (suite *TCPBasic) TestExistingRootCWDListenEvent4() {
 }
 
 func (suite *TCPBasic) TestListenAcceptClose4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
@@ -739,6 +768,10 @@ func (suite *TCPBasic) TestListenAcceptClose4() {
 }
 
 func testDisableConfigListenAcceptClose4(t *testing.T, port uint16, CLISwitches bool, disableListen bool, disableAccept bool, disableClose bool) {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -882,6 +915,10 @@ func TestNoDisableListenAcceptClose4NoCLI(t *testing.T) {
 }
 
 func (suite *TCPDocker) TestDockerExistingListenEvent4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		suite.T().Skipf("docker not available. skipping test: %s", err)
 	}
@@ -923,6 +960,10 @@ func (suite *TCPDocker) TestDockerExistingListenEvent4() {
 }
 
 func (suite *TCPDocker) TestDockerListenConnect4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		suite.T().Skipf("docker not available. skipping test: %s", err)
 	}
@@ -1104,6 +1145,9 @@ func testTcpWatermarks(t *testing.T, legacy bool) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
 
 	bpf.CheckOrMountCgroup2()
 
@@ -1371,6 +1415,10 @@ func TestDetectLatency4(t *testing.T) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
@@ -1453,6 +1501,9 @@ func (suite *TCPRTT) TestDetectRTT4() {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	suite.T().Skipf("Test disabled due to unreliable timing in CI")
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
 
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
@@ -1522,6 +1573,9 @@ func (suite *TCPRTT) TestDetectSRTT4() {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	suite.T().Skipf("Test disabled due to unreliable timing in CI")
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
 
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
@@ -1623,6 +1677,10 @@ func (suite *TCPRTT) TestDetectSRTT4() {
 }
 
 func (suite *TCPBasic) TestFailedConnectEvent6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
@@ -1658,6 +1716,10 @@ func (suite *TCPBasic) TestFailedConnectEvent6() {
 }
 
 func (suite *TCPBasic) TestExecEventClone6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	orig := "nc.openbsd"
 	server := orig
 	client := server
@@ -1732,6 +1794,10 @@ func (suite *TCPBasic) TestExecEventClone6() {
 }
 
 func (suite *TCPBasic) TestExistingListenEvent6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -1764,6 +1830,10 @@ func (suite *TCPBasic) TestExistingListenEvent6() {
 }
 
 func (suite *TCPBasic) TestExistingAcceptEvent6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
@@ -1811,6 +1881,10 @@ func (suite *TCPBasic) TestExistingAcceptEvent6() {
 }
 
 func (suite *TCPBasic) TestExistingRootCWDListenEvent6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -1845,6 +1919,10 @@ func (suite *TCPBasic) TestExistingRootCWDListenEvent6() {
 }
 
 func (suite *TCPBasic) TestListenAcceptClose6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
@@ -1911,6 +1989,10 @@ func (suite *TCPBasic) TestListenAcceptClose6() {
 }
 
 func (suite *TCPDocker) TestDockerExistingListenEvent6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		suite.T().Skipf("docker not available. skipping test: %s", err)
 	}
@@ -1952,6 +2034,10 @@ func (suite *TCPDocker) TestDockerExistingListenEvent6() {
 }
 
 func (suite *TCPDocker) TestDockerListenConnect6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		suite.T().Skipf("docker not available. skipping test: %s", err)
 	}
@@ -2026,6 +2112,9 @@ func (suite *TCPRTT) TestDetectRTT6() {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	suite.T().Skipf("Test disabled due to unreliable timing in CI")
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
 
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
@@ -2096,6 +2185,10 @@ func (suite *TCPRTT) TestDetectSRTT6() {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	suite.T().Skipf("Test disabled due to unreliable timing in CI")
+
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
 
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server

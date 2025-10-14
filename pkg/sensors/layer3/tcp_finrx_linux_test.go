@@ -18,9 +18,11 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"runtime"
 	"syscall"
 	"testing"
 
+	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
 	osstestutils "github.com/cilium/tetragon/pkg/testutils"
@@ -48,6 +50,10 @@ func waitForSocket(s *bufio.Scanner) {
 func (suite *TCPFinRx) testFinRx(port uint32, serverIterations, clientIterations int,
 	serverPattern, clientPattern string, serverSignal, clientSignal syscall.Signal,
 	serverBytes, clientBytes uint64) {
+
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
 
 	client := testutils.RepoRootPath("contrib/tester-progs/net/tcp_client")
 	server := testutils.RepoRootPath("contrib/tester-progs/net/tcp_server")

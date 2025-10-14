@@ -35,6 +35,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/matchers/durationmatcher"
 	"github.com/cilium/tetragon/pkg/matchers/listmatcher"
@@ -369,6 +370,10 @@ func testUdpWatermarks(t *testing.T, legacy bool) {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	clientProcess := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
 		WithArguments(sm.Full("-udpWatermarksClient"))
@@ -664,6 +669,10 @@ func TestUdpSeqCheck(t *testing.T) {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	t.Skip("UDP Seq Checking disabled.")
 
 	clientProcess := ec.NewProcessChecker().
@@ -884,6 +893,10 @@ func (suite *UDPBasic) stopExistingUDPServices() {
 }
 
 func (suite *UDPBasic) TestUdpConnectEvent4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
@@ -1037,6 +1050,10 @@ func (suite *UDPBasic) TestUdpConnectEvent4() {
 }
 
 func (suite *UDPBasic) TestListenEvent4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -1076,6 +1093,10 @@ func (suite *UDPBasic) TestListenEvent4() {
 func TestUDPCLISwitch(t *testing.T) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -1139,6 +1160,10 @@ func TestUDPCLISwitch(t *testing.T) {
 }
 
 func testDisableConnectStatsConfig4(t *testing.T, CLISwitches bool, disableConnect bool, disableStats bool) {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -1257,6 +1282,10 @@ func TestNoDisableConnectStats4NoCLI(t *testing.T) {
 }
 
 func (suite *UDPBasic) TestConnectAfterStartEvent4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
@@ -1331,6 +1360,10 @@ func TestUdpDetectLatency4(t *testing.T) {
 	// timing related tests are unreliable currently. In lieu of a solution, let's
 	// disable these tests.
 	t.Skipf("Test disabled due to unreliable timing in CI")
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -1423,6 +1456,10 @@ func TestUdpDetectLatency4(t *testing.T) {
 }
 
 func (suite *UDPBasic) TestUdpMulticast4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getSocatCommand(suite.T(), "socat")
 	client := server
 
@@ -1504,6 +1541,10 @@ func (suite *UDPBasic) TestUdpMulticast4() {
 }
 
 func (suite *UDPBasic) TestUdpConnectEvent6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
@@ -1658,6 +1699,10 @@ func (suite *UDPBasic) TestUdpConnectEvent6() {
 }
 
 func (suite *UDPBasic) TestListenEvent6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
@@ -1695,6 +1740,10 @@ func (suite *UDPBasic) TestListenEvent6() {
 }
 
 func (suite *UDPBasic) TestConnectAfterStartEvent6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	server := getNCCommand(suite.T(), "nc.openbsd")
 	client := server
 
@@ -1768,6 +1817,10 @@ func (suite *UDPBasic) TestConnectAfterStartEvent6() {
 func testDnsEvents(t *testing.T, withQuestions bool) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -1916,6 +1969,10 @@ func TestDnsEventsWithoutQuestions(t *testing.T) {
 }
 
 func testDisableCloseConfig(t *testing.T, disableClose bool) {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	bpf.CheckOrMountCgroup2()
 
 	serverProcess := ec.NewProcessChecker().
@@ -2005,6 +2062,10 @@ func TestNoDisableClose(t *testing.T) {
 }
 
 func testDisableListenConfig(t *testing.T, disableListen bool) {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	bpf.CheckOrMountCgroup2()
 
 	serverProcess := ec.NewProcessChecker().

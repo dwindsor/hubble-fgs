@@ -17,12 +17,14 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"runtime"
 	"sync"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/matchers/durationmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -147,6 +149,10 @@ func getRawsockObserverWithEnable(t *testing.T, ctx context.Context) *observer.O
 
 func (suite *rawTests) testRawsockCreateClose(ty rawTest) {
 	suite.readyWG.Wait()
+
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
 
 	rawsockBinary := testutils.RepoRootPath("contrib/tester-progs/net/rawsock")
 	rawTestStr := fmt.Sprintf("%d", ty)

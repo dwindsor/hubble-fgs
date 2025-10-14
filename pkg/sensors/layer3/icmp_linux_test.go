@@ -19,12 +19,14 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -160,6 +162,10 @@ func (suite *ICMPUDP) TearDownSuite() {
 }
 
 func (suite *ICMPBasic) TestPingOutbound4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -219,6 +225,10 @@ func parseArgs(a string) string {
 func TestICMPCLISwitchPerfRing(t *testing.T) {
 	if !utils.CGroupSKBAvailable() {
 		t.Skipf("This test requires CGroup/SKB, skipping")
+	}
+
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
 	}
 
 	testutils.CaptureLog(t, logger.GetLogger())
@@ -316,6 +326,10 @@ func TestICMPCLISwitchTetragon(t *testing.T) {
 		t.Skipf("This test requires CGroup/SKB, skipping")
 	}
 
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		t.Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -382,6 +396,10 @@ func TestICMPCLISwitchTetragon(t *testing.T) {
 }
 
 func (suite *ICMPBasic) TestPingInAndOutbound4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -450,6 +468,10 @@ func (suite *ICMPBasic) TestPingInAndOutbound4() {
 }
 
 func (suite *ICMPUDP) TestInboundDestUnreach4() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	cmd := "nc"
 
 	selfChecker := ec.NewProcessChecker().
@@ -503,6 +525,10 @@ func (suite *ICMPUDP) TestInboundDestUnreach4() {
 }
 
 func (suite *ICMPBasic) TestPingOutbound6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -550,6 +576,10 @@ func (suite *ICMPBasic) TestPingOutbound6() {
 }
 
 func (suite *ICMPBasic) TestPingInAndOutbound6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	cmd := "ping"
 
 	selfChecker := ec.NewProcessChecker().
@@ -618,6 +648,10 @@ func (suite *ICMPBasic) TestPingInAndOutbound6() {
 }
 
 func (suite *ICMPUDP) TestInboundDestUnreach6() {
+	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
+		suite.T().Skip("Test requires amd64 or kernel >=5.8")
+	}
+
 	cmd := "nc"
 
 	selfChecker := ec.NewProcessChecker().
