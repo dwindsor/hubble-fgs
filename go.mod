@@ -11,7 +11,7 @@ require (
 	github.com/cilium/cilium v1.18.2
 	github.com/cilium/ebpf v0.19.0
 	github.com/cilium/lumberjack/v2 v2.4.1
-	github.com/cilium/tetragon v1.6.0-pre.0.0.20251006135505-433c53569a49
+	github.com/cilium/tetragon v1.6.0-pre.0.0.20251008153442-be913d589890
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20250918082237-cd6738676a61
 	github.com/containerd/containerd/v2 v2.1.4
@@ -61,7 +61,7 @@ require (
 	golang.org/x/sys v0.36.0
 	golang.org/x/time v0.13.0
 	google.golang.org/api v0.249.0
-	google.golang.org/grpc v1.75.1
+	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.34.1
