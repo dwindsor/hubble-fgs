@@ -117,6 +117,7 @@ type AgentGateway struct {
 	dpuListener *dpu.DPUListener
 
 	sync.RWMutex
+	cancel context.CancelFunc
 }
 
 func (agw *AgentGateway) Id() string {
@@ -181,8 +182,8 @@ func (agw *AgentGateway) Config(_ context.Context, path string) error {
 	return nil
 }
 
-func (agw *AgentGateway) Setup(ctx context.Context) error {
-	err := nxos.Nexus.Setup(ctx, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener)
+func (agw *AgentGateway) Setup(ctx context.Context, cancel context.CancelFunc) error {
+	err := nxos.Nexus.Setup(ctx, cancel, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener)
 	if err != nil {
 		logger.Fatal(logger.GetLogger(), "NXOS setup failed")
 	}
@@ -190,10 +191,16 @@ func (agw *AgentGateway) Setup(ctx context.Context) error {
 	return nil
 }
 
-func (agw *AgentGateway) Register(ctx context.Context) error {
-	nxos.Nexus.SetRegOk(ctx, nxos.RegOk)
-	nxos.Nexus.SetConnOk(ctx, nxos.ConnOk)
-	return nil
+func (agw *AgentGateway) RegisterStatus(ctx context.Context, status bool) {
+	logger.GetLogger().Debug("Setting registration status", "status", status)
+	nxos.Nexus.ResetReg(ctx)
+	if !status {
+		nxos.Nexus.SetRegFail(ctx, nxos.RegFailK8sAuth)
+		nxos.Nexus.SetConnFail(ctx, nxos.ConnFailed)
+	} else {
+		nxos.Nexus.SetRegOk(ctx, nxos.RegOk)
+		nxos.Nexus.SetConnOk(ctx, nxos.ConnOk)
+	}
 }
 
 // SetK8sCtlrAuthToken sets the Kubernetes controller authentication token in both the AgentToken and Nxos structs,

@@ -24,6 +24,7 @@ const (
 	RegFailK8sAuth = "invalid k8s service account token"
 	RegOk          = ""
 	ConnOk         = "connected ok with Hypershield controller"
+	ConnFailed     = "failed to connect with Hypershield controller"
 )
 
 const (
@@ -255,6 +256,7 @@ type Nxos struct {
 	SerNum     string
 
 	dpuListener *dpu.DPUListener
+	cancel      context.CancelFunc
 }
 
 type INxos interface {

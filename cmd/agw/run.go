@@ -29,7 +29,7 @@ import (
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
 
-func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu.DPUListener) error {
+func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.AgentGateway, dpuListener *dpu.DPUListener) error {
 	logger.GetLogger().Info("Agent starting...")
 	waitGroup, ctx := errgroup.WithContext(ctx)
 
@@ -57,7 +57,7 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu
 	waitGroup.Go(func() error {
 		// Setting up agent local state
 		if Config.EnableNXOS {
-			err := agwAgent.Setup(ctx)
+			err := agwAgent.Setup(ctx, cancel)
 			if err != nil {
 				return fmt.Errorf("FWAgent setup failed: %w", err)
 			}
@@ -122,8 +122,11 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu
 		// Initialize and connect to K8s controller manager
 		logger.GetLogger().Info("initializing Kubernetes Manager for on-prem deployment")
 		kubernetesManager := manager.Get()
+		if kubernetesManager == nil {
+			return fmt.Errorf("kubernetes manager not created")
+		}
 		// Set the register status to ok for the successful connection.
-		agwAgent.Register(ctx)
+		agwAgent.RegisterStatus(ctx, true)
 		// Start the K8s controller manager
 		logger.GetLogger().Info("starting Kubernetes Manager for on-prem deployment")
 		kubernetesManager.Start(ctx)
@@ -180,6 +183,7 @@ func cliServer(ctx context.Context, agwAgent *agw.AgentGateway) error {
 
 	go func() {
 		<-ctx.Done()
+		logger.GetLogger().Info("Context done, shutting down CLI server")
 		listener.Close()
 	}()
 
@@ -188,6 +192,7 @@ func cliServer(ctx context.Context, agwAgent *agw.AgentGateway) error {
 	isCtxDone := func(ctx context.Context) bool {
 		select {
 		case <-ctx.Done():
+			logger.GetLogger().Info("Context done, shutting down CLI server")
 			return true
 		default:
 			return false

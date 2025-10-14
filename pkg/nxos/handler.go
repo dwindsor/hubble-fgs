@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -175,17 +174,16 @@ func (n *Nxos) delSvcInstance(ctx context.Context, elem *gnmi.PathElem) {
 
 	n.delDpuPortRange(ctx)
 	n.remove(ctx, allocFname)
-	n.GnmiClose(ctx)
-	os.Exit(200)
+	// Do a graceful restart of the agent, without service redirect cleanp.
+	n.GracefulRestartAgent(ctx, false)
 }
 
 func (n *Nxos) delSvcFw(ctx context.Context) {
 	logger.GetLogger().Debug("Delete service firewall")
 
 	n.remove(ctx, allocFname)
-	n.cleanup(ctx)
-	n.GnmiClose(ctx)
-	os.Exit(200)
+	// Do a graceful restart of the agent, with cleanup.
+	n.GracefulRestartAgent(ctx, true)
 }
 
 func (n *Nxos) updtInst(ctx context.Context, items *model.Cisco_NX_OSDevice_System_InstItems) error {
@@ -523,13 +521,11 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceScontroller(ctx context.Context, item
 
 	if items.HttpsProxySvr != nil && n.Ctrlr.ProxySvr != *items.HttpsProxySvr {
 		logger.GetLogger().Debug("proxy svr updated: restart agw")
-		n.GnmiClose(ctx)
-		os.Exit(200)
+		n.GracefulRestartAgent(ctx, false)
 	}
 	if items.HttpsProxyPort != nil && n.Ctrlr.ProxyPort != *items.HttpsProxyPort {
 		logger.GetLogger().Debug("proxy port updated: restart agw")
-		n.GnmiClose(ctx)
-		os.Exit(200)
+		n.GracefulRestartAgent(ctx, false)
 	}
 	return nil
 }
@@ -555,9 +551,8 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceFwpolicy(ctx context.Context, items *
 		modified := n.setInService(ctx, false)
 		if modified {
 			logger.GetLogger().Debug("Hypershield is disabled")
-			n.cleanup(ctx)
-			n.GnmiClose(ctx)
-			os.Exit(200)
+			// Graceful restart the agent with cleanup.
+			n.GracefulRestartAgent(ctx, true)
 		}
 	}
 
@@ -1105,7 +1100,7 @@ func (n *Nxos) updtSasVolatiledataAgent(ctx context.Context, items *model.Cisco_
 					// Restart agent to use new token after cleaning up existing state
 					// and deregistering if needed.
 					n.ResetReg(ctx)
-					n.RestartAgent(ctx)
+					n.GracefulRestartAgent(ctx, true)
 				}
 			}
 		}

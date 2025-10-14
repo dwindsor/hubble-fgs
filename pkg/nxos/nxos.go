@@ -15,6 +15,7 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
@@ -205,7 +206,7 @@ func (n *Nxos) setupSignalHandler(ctx context.Context) {
 	signal.Notify(sigs, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
-		logger.GetLogger().Debug(fmt.Sprintf("Received signal: %v", sig))
+		logger.GetLogger().Info(fmt.Sprintf("setupSignalHandler: Received signal: %v", sig))
 
 		// get agent state
 		agentState, err := n.getAgentState(ctx)
@@ -215,13 +216,16 @@ func (n *Nxos) setupSignalHandler(ctx context.Context) {
 		}
 		if agentState == model.Cisco_NX_OSDevice_Sas_SasAgentStateE_install_in_progress {
 			// skip cleanup for install in progress
-			logger.GetLogger().Debug("Skip cleanup for install_in_progress")
+			logger.GetLogger().Info("setupSignalHandler: Skip cleanup for install_in_progress")
 		} else {
 			n.RLock()
 			n.cleanup(ctx)
 			n.RUnlock()
 		}
+		n.cancel()
 		n.GnmiClose(ctx)
+		// os.Exit is an immediate, unconditional program termination,
+		// For graceful shutdown, send cancel to all the waitGroups goroutines and wait.
 		os.Exit(201)
 	}()
 }
@@ -511,11 +515,15 @@ func (n *Nxos) setServiceRedirAll(ctx context.Context, isLock bool) error {
 	return nil
 }
 
-func (n *Nxos) Setup(ctx context.Context, low, high uint16, dpuListener *dpu.DPUListener) error {
+func (n *Nxos) Setup(ctx context.Context, cancel context.CancelFunc, low, high uint16, dpuListener *dpu.DPUListener) error {
 
 	n.DpuPortLow = low
 	n.DpuPortHigh = high
 	n.dpuListener = dpuListener
+
+	// set the cancel function for any nxos initiated context cancellation
+	// to other goroutines
+	n.cancel = cancel
 
 	logger.GetLogger().Debug("Initiating CPA")
 	err := n.initiate(ctx)
@@ -622,8 +630,20 @@ func (n *Nxos) SetToken(ctx context.Context, k8sToken string) (bool, error) {
 	return restartNeeded, nil
 }
 
-func (n *Nxos) RestartAgent(ctx context.Context) {
-	logger.GetLogger().Info("restarting agent")
+func (n *Nxos) GracefulRestartAgent(ctx context.Context, cleanup bool) {
+	logger.GetLogger().Info("restarting agw agent...")
+	if cleanup {
+		// Cleanup service redirects before exit.
+		n.cleanup(ctx)
+		logger.GetLogger().Debug("Graceful restart with cleanup")
+	}
+	// send cancel to all goroutines, and wait on waitGroups to complete.
+	n.cancel()
+	waitGroup, _ := errgroup.WithContext(ctx)
+	if err := waitGroup.Wait(); err != nil {
+		logger.GetLogger().Error("Error waiting for goroutines", logfields.Error, err)
+	}
+	// Close Nxos gNMI connection.
 	n.GnmiClose(ctx)
 	// As per init.sh script, exiting with code 200 will cause the agent to restart.
 	os.Exit(200)

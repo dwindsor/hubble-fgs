@@ -30,6 +30,7 @@ func executeAGW() {
 
 	go func() {
 		<-signals
+		logger.GetLogger().Info("Received termination signal, canceling context and exiting...")
 		cancel()
 	}()
 
@@ -54,7 +55,7 @@ func executeAGW() {
 
 	// Launch daemon logic
 	waitGroup.Go(func() error {
-		err := RunOnPrem(ctx, agwAgent, dpuListener)
+		err := RunOnPrem(ctx, cancel, agwAgent, dpuListener)
 		if err != nil {
 			return fmt.Errorf("running on-prem failed: %w", err)
 		}
