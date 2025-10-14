@@ -206,7 +206,7 @@ func (n *Nxos) setupSignalHandler(ctx context.Context) {
 	signal.Notify(sigs, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
-		logger.GetLogger().Info(fmt.Sprintf("setupSignalHandler: Received signal: %v", sig))
+		logger.GetLogger().Info(fmt.Sprintf("Received signal: %v", sig))
 
 		// get agent state
 		agentState, err := n.getAgentState(ctx)
@@ -216,16 +216,19 @@ func (n *Nxos) setupSignalHandler(ctx context.Context) {
 		}
 		if agentState == model.Cisco_NX_OSDevice_Sas_SasAgentStateE_install_in_progress {
 			// skip cleanup for install in progress
-			logger.GetLogger().Info("setupSignalHandler: Skip cleanup for install_in_progress")
+			logger.GetLogger().Info("Skip cleanup for install_in_progress")
 		} else {
 			n.RLock()
 			n.cleanup(ctx)
 			n.RUnlock()
 		}
+		// send cancel to all the goroutines.
 		n.cancel()
+		waitGroup, _ := errgroup.WithContext(ctx)
+		if err := waitGroup.Wait(); err != nil {
+			logger.GetLogger().Error("signalhandler: Error waiting for goroutines", logfields.Error, err)
+		}
 		n.GnmiClose(ctx)
-		// os.Exit is an immediate, unconditional program termination,
-		// For graceful shutdown, send cancel to all the waitGroups goroutines and wait.
 		os.Exit(201)
 	}()
 }

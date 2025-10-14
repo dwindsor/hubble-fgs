@@ -117,7 +117,6 @@ type AgentGateway struct {
 	dpuListener *dpu.DPUListener
 
 	sync.RWMutex
-	cancel context.CancelFunc
 }
 
 func (agw *AgentGateway) Id() string {

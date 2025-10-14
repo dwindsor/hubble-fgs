@@ -183,7 +183,6 @@ func cliServer(ctx context.Context, agwAgent *agw.AgentGateway) error {
 
 	go func() {
 		<-ctx.Done()
-		logger.GetLogger().Info("Context done, shutting down CLI server")
 		listener.Close()
 	}()
 
@@ -192,7 +191,6 @@ func cliServer(ctx context.Context, agwAgent *agw.AgentGateway) error {
 	isCtxDone := func(ctx context.Context) bool {
 		select {
 		case <-ctx.Done():
-			logger.GetLogger().Info("Context done, shutting down CLI server")
 			return true
 		default:
 			return false
