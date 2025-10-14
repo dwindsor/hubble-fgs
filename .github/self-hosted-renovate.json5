@@ -32,6 +32,5 @@
     "^go mod vendor$",
     "^install-tool golang \\$\\(grep -oP '\\^toolchain go\\\\K\\.\\+\\$' go.mod \\|\\| grep -oP '\\^go \\\\K\\.\\+\\$' go.mod\\)$",
     "^install-tool golang \\$\\(grep -oP '\\^go \\\\K\\.\\+' go\\.mod\\)$",
-    "^make gen-docs-references$",
   ],
 }
