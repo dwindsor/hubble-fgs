@@ -1,6 +1,6 @@
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.25.3@sha256:6ea52a02734dd15e943286b048278da1e04eca196a564578d718c7720433dbbe AS build
 
-RUN apt-get update && apt-get install make -y
+RUN apt-get update && apt-get upgrade -y && apt-get install make -y && apt-get autoremove -y && apt-get clean
 
 WORKDIR /usr/src/app
 
@@ -14,7 +14,7 @@ ARG TARGETARCH
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.25.3@sha256:6ea52a02734dd15e943286b048278da1e04eca196a564578d718c7720433dbbe AS agw-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 ARG TARGETARCH BUILDARCH
-RUN apt-get update
+RUN apt-get update && apt-get upgrade -y
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
     then apt-get install -y libelf-dev zlib1g-dev crossbuild-essential-$TARGETARCH; \
     else apt-get install -y libelf-dev zlib1g-dev; fi
@@ -23,21 +23,24 @@ COPY . ./
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
     then make agw agwctl TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
     else make agw agwctl TARGET_ARCH=$TARGETARCH; fi
+RUN apt-get autoremove -y && apt-get clean
 
 # Third builder (cross-)compile a stripped gops
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.25.3-alpine@sha256:aee43c3ccbf24fdffb7295693b6e33b21e01baec1b2a55acc351fde345e9ec34 AS gops
 ARG TARGETARCH
-RUN apk add --no-cache binutils git \
+RUN apk update && apk upgrade && apk add --no-cache binutils git \
  && git clone https://github.com/google/gops /go/src/github.com/google/gops \
  && cd /go/src/github.com/google/gops \
  && git checkout -b v0.3.27 v0.3.27 \
  && GOARCH=$TARGETARCH go build -ldflags="-s -w" .
+RUN apk cache clean
 
 # Final step run on target platform
 FROM docker.io/library/alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412 AS base-build
-RUN apk upgrade --no-cache
+RUN apk update && apk upgrade --no-cache
 # John cut these: iptables tcpdump vim-tiny and replaced ntp->chrony cron->cronie
 RUN apk add --no-cache net-tools iproute2 netcat-openbsd curl openssh-client bind-tools iputils-ping logrotate cronie chrony sshpass openntpd
+RUN apk cache clean
 RUN mkdir -p /usr/src/app
 RUN mkdir -p /opt/cisco/daf/etc
 RUN mkdir -p /opt/cisco/daf/log
