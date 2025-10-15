@@ -525,7 +525,7 @@ func TestFileGlobMatch(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, capturedEvents, 6, "we expect to have 6 events")
+	assert.Equal(t, capturedEvents, 8, "we expect to have 8 events")
 	assert.Equal(t, capturedLinkEvents, 1, "we expect to have 1 link event")
 	assert.Equal(t, capturedSymlinkEvents, 1, "we expect to have 1 symlink event")
 }
@@ -1229,4 +1229,104 @@ func TestUnixSockets(t *testing.T) {
 		require.Equal(t, 1, cnt, "all events should appear exactly once: %s", ev)
 	}
 	require.Zero(t, unexpectedEvents, "we don't expect to see any non-unix-socket events")
+}
+
+func TestFileCreateEnforce(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
+
+	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
+		t.Skip("File monitoring patterns with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observer.InitDataCache(16384); err != nil {
+		t.Fatalf("observer.InitDataCache: %s", err)
+	}
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
+	tus.LoadInitialSensor(t)
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tuo.GetTestSensorManager(t)
+
+	testDir := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
+	createTestDir(t, testDir)
+	testFile := filepath.Join(testDir, "a.txt")
+
+	fileTracingPolicy := tracingpolicy.GenericTracingPolicy{
+		Metadata: v1api.ObjectMeta{
+			Name: "file-monitoring-enforce-create",
+		},
+		Spec: v1alpha1.TracingPolicySpec{
+			FileMonitoring: v1alpha1.FileSpec{
+				PathsPatterns: []v1alpha1.FilePathPattern{
+					{
+						Type: "AllFileOps",
+					},
+				},
+				MonitorHostFiles: true,
+				Selectors: []v1alpha1.FileSelector{
+					{
+						MatchFilename: []v1alpha1.FilePathGlobSelector{
+							{
+								Operator: "InPattern",
+								Values: []v1alpha1.GlobPattern{
+									testFile,
+								},
+							},
+						},
+						MatchOperations: []v1alpha1.OperationSelector{
+							{
+								Operator: "In",
+								Values: []string{
+									"FILE_CREATE",
+								},
+							},
+						},
+						MatchActions: []v1alpha1.FileActionSelector{
+							{
+								Action: "Block",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicy)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	events := perfring.RunTestEvents(t, ctx, func() {
+		cmd := exec.Command("/usr/bin/touch", testFile)
+		assert.Error(t, cmd.Run()) // this should fail
+	})
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicy.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	fileEvents := []*grpc.MsgFileEventUnix{}
+	for _, ev := range events {
+		if file, ok := ev.(*grpc.MsgFileEventUnix); ok {
+			fileEvents = append(fileEvents, file)
+		}
+	}
+
+	assert.Equal(t, len(fileEvents), 1, "we expect one event")
+
+	ev := fileEvents[0]
+	require.Equal(t, testFile, ev.Path)
+	require.Equal(t, tetragon.FileAction_FILE_CREATE, tetragon.FileAction(ev.Msg.Action))
+	require.Equal(t, tetragon.FileOperation_FILE_OP_BLOCK|tetragon.FileOperation_FILE_OP_POST, tetragon.FileOperation(ev.Msg.Operation))
+	require.Equal(t, fileTracingPolicy.Metadata.Name, ev.TpName)
 }
