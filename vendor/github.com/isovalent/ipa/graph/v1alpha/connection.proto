@@ -48,6 +48,8 @@ enum Emitter {
   EMITTER_HUBBLE = 1;
   // The source of the data is Tetragon.
   EMITTER_TETRAGON = 2;
+  // The source of the data is a smart switch.
+  EMITTER_SMARTSWITCH = 3;
 }
 
 // A connection is a simple directed graph where an edge links two vertices in

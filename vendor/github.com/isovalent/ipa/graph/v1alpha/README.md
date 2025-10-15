@@ -306,6 +306,7 @@ Emitter is a list of all known connection log data sources.
 | EMITTER_UNSPECIFIED | 0 | The source of the data is unspecified. |
 | EMITTER_HUBBLE | 1 | The source of the data is Hubble. |
 | EMITTER_TETRAGON | 2 | The source of the data is Tetragon. |
+| EMITTER_SMARTSWITCH | 3 | The source of the data is a smart switch. |
 
 
  
@@ -386,6 +387,7 @@ should be returned.
 | filter | [string](#string) |  | A CEL expression MAY be used to filter connections.
 
 The filtering expression may use the `link` (type: Edge), `source` and `destination` variables (type: Vertex). Example: has(link.network_telemetry) &amp;&amp; link.network_telemetry.tx_packets &gt; 0 &amp;&amp; has(source.kubernetes) &amp;&amp; source.kubernetes.cluster_name == &#34;df-hubble-demo-ce-01&#34; &amp;&amp; has(destination.kubernetes) &amp;&amp; destination.kubernetes.cluster_name = &#34;df-hubble-dev-ce-01&#34; |
+| emitter | [Emitter](#graph-v1alpha-Emitter) | repeated | Emitter may be specified to limit the results to events emitted by specific data producers. |
 | group_by_source | [string](#string) | repeated | Field keys by which the source vertex should be grouped. At least one field MUST be provided. Example: [&#34;source.kubernetes.cluster_name&#34;, &#34;source.kubernetes.node_name&#34;] |
 | group_by_destination | [string](#string) | repeated | Field keys by which the destination vertex should be grouped. At least one field MUST be provided. Example: [&#34;destination.kubernetes.cluster_name&#34;, &#34;destination.kubernetes.node_name&#34;] |
 

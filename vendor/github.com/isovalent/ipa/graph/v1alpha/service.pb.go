@@ -51,18 +51,21 @@ type GetConnectionsRequest struct {
 	//	has(source.kubernetes) && source.kubernetes.cluster_name == "df-hubble-demo-ce-01" &&
 	//	has(destination.kubernetes) && destination.kubernetes.cluster_name = "df-hubble-dev-ce-01"
 	Filter string `protobuf:"bytes,3,opt,name=filter,proto3" json:"filter,omitempty"`
+	// Emitter may be specified to limit the results to events emitted by
+	// specific data producers.
+	Emitter []Emitter `protobuf:"varint,4,rep,packed,name=emitter,proto3,enum=graph.v1alpha.Emitter" json:"emitter,omitempty"`
 	// Field keys by which the source vertex should be grouped. At least one
 	// field MUST be provided.
 	// Example:
 	//
 	//	["source.kubernetes.cluster_name", "source.kubernetes.node_name"]
-	GroupBySource []string `protobuf:"bytes,4,rep,name=group_by_source,json=groupBySource,proto3" json:"group_by_source,omitempty"`
+	GroupBySource []string `protobuf:"bytes,5,rep,name=group_by_source,json=groupBySource,proto3" json:"group_by_source,omitempty"`
 	// Field keys by which the destination vertex should be grouped. At least
 	// one field MUST be provided.
 	// Example:
 	//
 	//	["destination.kubernetes.cluster_name", "destination.kubernetes.node_name"]
-	GroupByDestination []string `protobuf:"bytes,5,rep,name=group_by_destination,json=groupByDestination,proto3" json:"group_by_destination,omitempty"`
+	GroupByDestination []string `protobuf:"bytes,6,rep,name=group_by_destination,json=groupByDestination,proto3" json:"group_by_destination,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -116,6 +119,13 @@ func (x *GetConnectionsRequest) GetFilter() string {
 		return x.Filter
 	}
 	return ""
+}
+
+func (x *GetConnectionsRequest) GetEmitter() []Emitter {
+	if x != nil {
+		return x.Emitter
+	}
+	return nil
 }
 
 func (x *GetConnectionsRequest) GetGroupBySource() []string {
@@ -262,13 +272,14 @@ var File_graph_v1alpha_service_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1bgraph/v1alpha/service.proto\x12\rgraph.v1alpha\x1a\x1fcommon/time/v1alpha/range.proto\x1a\x18graph/v1alpha/edge.proto\"\xda\x01\n" +
+	"\x1bgraph/v1alpha/service.proto\x12\rgraph.v1alpha\x1a\x1fcommon/time/v1alpha/range.proto\x1a\x1egraph/v1alpha/connection.proto\x1a\x18graph/v1alpha/edge.proto\"\x8c\x02\n" +
 	"\x15GetConnectionsRequest\x122\n" +
 	"\x06window\x18\x01 \x01(\v2\x1a.common.time.v1alpha.RangeR\x06window\x12\x1b\n" +
 	"\tlink_type\x18\x02 \x01(\rR\blinkType\x12\x16\n" +
-	"\x06filter\x18\x03 \x01(\tR\x06filter\x12&\n" +
-	"\x0fgroup_by_source\x18\x04 \x03(\tR\rgroupBySource\x120\n" +
-	"\x14group_by_destination\x18\x05 \x03(\tR\x12groupByDestination\"]\n" +
+	"\x06filter\x18\x03 \x01(\tR\x06filter\x120\n" +
+	"\aemitter\x18\x04 \x03(\x0e2\x16.graph.v1alpha.EmitterR\aemitter\x12&\n" +
+	"\x0fgroup_by_source\x18\x05 \x03(\tR\rgroupBySource\x120\n" +
+	"\x14group_by_destination\x18\x06 \x03(\tR\x12groupByDestination\"]\n" +
 	"\x16GetConnectionsResponse\x12C\n" +
 	"\vconnections\x18\x01 \x03(\v2!.graph.v1alpha.ConnectionResponseR\vconnections\"\x87\x03\n" +
 	"\x12ConnectionResponse\x12'\n" +
@@ -304,21 +315,23 @@ var file_graph_v1alpha_service_proto_goTypes = []any{
 	nil,                            // 3: graph.v1alpha.ConnectionResponse.SourceFieldsEntry
 	nil,                            // 4: graph.v1alpha.ConnectionResponse.DestinationFieldsEntry
 	(*v1alpha.Range)(nil),          // 5: common.time.v1alpha.Range
-	(*Edge)(nil),                   // 6: graph.v1alpha.Edge
+	(Emitter)(0),                   // 6: graph.v1alpha.Emitter
+	(*Edge)(nil),                   // 7: graph.v1alpha.Edge
 }
 var file_graph_v1alpha_service_proto_depIdxs = []int32{
 	5, // 0: graph.v1alpha.GetConnectionsRequest.window:type_name -> common.time.v1alpha.Range
-	2, // 1: graph.v1alpha.GetConnectionsResponse.connections:type_name -> graph.v1alpha.ConnectionResponse
-	6, // 2: graph.v1alpha.ConnectionResponse.link:type_name -> graph.v1alpha.Edge
-	3, // 3: graph.v1alpha.ConnectionResponse.source_fields:type_name -> graph.v1alpha.ConnectionResponse.SourceFieldsEntry
-	4, // 4: graph.v1alpha.ConnectionResponse.destination_fields:type_name -> graph.v1alpha.ConnectionResponse.DestinationFieldsEntry
-	0, // 5: graph.v1alpha.GraphService.GetConnections:input_type -> graph.v1alpha.GetConnectionsRequest
-	1, // 6: graph.v1alpha.GraphService.GetConnections:output_type -> graph.v1alpha.GetConnectionsResponse
-	6, // [6:7] is the sub-list for method output_type
-	5, // [5:6] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6, // 1: graph.v1alpha.GetConnectionsRequest.emitter:type_name -> graph.v1alpha.Emitter
+	2, // 2: graph.v1alpha.GetConnectionsResponse.connections:type_name -> graph.v1alpha.ConnectionResponse
+	7, // 3: graph.v1alpha.ConnectionResponse.link:type_name -> graph.v1alpha.Edge
+	3, // 4: graph.v1alpha.ConnectionResponse.source_fields:type_name -> graph.v1alpha.ConnectionResponse.SourceFieldsEntry
+	4, // 5: graph.v1alpha.ConnectionResponse.destination_fields:type_name -> graph.v1alpha.ConnectionResponse.DestinationFieldsEntry
+	0, // 6: graph.v1alpha.GraphService.GetConnections:input_type -> graph.v1alpha.GetConnectionsRequest
+	1, // 7: graph.v1alpha.GraphService.GetConnections:output_type -> graph.v1alpha.GetConnectionsResponse
+	7, // [7:8] is the sub-list for method output_type
+	6, // [6:7] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_graph_v1alpha_service_proto_init() }
@@ -326,6 +339,7 @@ func file_graph_v1alpha_service_proto_init() {
 	if File_graph_v1alpha_service_proto != nil {
 		return
 	}
+	file_graph_v1alpha_connection_proto_init()
 	file_graph_v1alpha_edge_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{

@@ -103,3 +103,12 @@ type SmartSwitchNetworkPolicy struct {
 	// +optional
 	Rules []SmartSwitchNetworkPolicyRule `json:"rules,omitempty,omitzero"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// SmartSwitchNetworkPolicyList contains a list of SmartSwitchNetworkPolicy
+type SmartSwitchNetworkPolicyList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []SmartSwitchNetworkPolicy `json:"items,omitempty"`
+}

@@ -171,12 +171,14 @@ func (dpu *DPUListener) StateCheck() bool {
 
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
+	stateCheck := true
 	for _, s := range dpu.peerGroup {
 		if s.lastStatus.PolicyChecksum != hexChecksum {
-			return false
+			logger.GetLogger().Error("failed state check", "dpu", s.uid, "expectedChecksum", hexChecksum, "actualChecksum", s.lastStatus.PolicyChecksum)
+			stateCheck = false
 		}
 	}
-	return true
+	return stateCheck
 }
 
 func (dpu *DPUListener) HealthCheck() (bool, int) {
@@ -272,11 +274,13 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 		return fmt.Errorf("unknown operation type %d", rule.Oper)
 	}
 
-	// If a peer DPU disconnects after being created, this loop could block on the channel
-	// until the DPU reconnects, which would block policy updates across all DPUs.
-	// If any locks are acquired by any calling functions, it could result in deadlock.
+	// Trying to send the rule into the peer channel, but timing out after 3 seconds
 	for _, dpu := range dpu.peerGroup {
-		dpu.polCh <- rule
+		select {
+		case dpu.polCh <- rule:
+		case <-time.After(3 * time.Second):
+			logger.GetLogger().Error("peer timed out, cannot submit rule", "peer", dpu.uid, "rule", rule)
+		}
 	}
 
 	return nil

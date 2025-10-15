@@ -41,7 +41,7 @@ func init() {
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(GroupVersion,
 		&SmartSwitch{}, &SmartSwitchList{},
-		&SmartSwitch{}, &SmartSwitchNetworkPolicy{},
+		&SmartSwitchNetworkPolicy{}, &SmartSwitchNetworkPolicyList{},
 		&TetragonNode{}, &TetragonNodeList{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)

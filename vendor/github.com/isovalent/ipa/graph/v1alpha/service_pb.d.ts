@@ -13,6 +13,7 @@
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 import type { Range } from "../../common/time/v1alpha/range_pb";
+import type { Emitter } from "./connection_pb";
 import type { Edge } from "./edge_pb";
 
 /**
@@ -59,12 +60,20 @@ export declare type GetConnectionsRequest = Message<"graph.v1alpha.GetConnection
   filter: string;
 
   /**
+   * Emitter may be specified to limit the results to events emitted by
+   * specific data producers.
+   *
+   * @generated from field: repeated graph.v1alpha.Emitter emitter = 4;
+   */
+  emitter: Emitter[];
+
+  /**
    * Field keys by which the source vertex should be grouped. At least one
    * field MUST be provided.
    * Example:
    *   ["source.kubernetes.cluster_name", "source.kubernetes.node_name"]
    *
-   * @generated from field: repeated string group_by_source = 4;
+   * @generated from field: repeated string group_by_source = 5;
    */
   groupBySource: string[];
 
@@ -74,7 +83,7 @@ export declare type GetConnectionsRequest = Message<"graph.v1alpha.GetConnection
    * Example:
    *   ["destination.kubernetes.cluster_name", "destination.kubernetes.node_name"]
    *
-   * @generated from field: repeated string group_by_destination = 5;
+   * @generated from field: repeated string group_by_destination = 6;
    */
   groupByDestination: string[];
 };

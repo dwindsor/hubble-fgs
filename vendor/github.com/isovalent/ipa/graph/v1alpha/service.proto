@@ -11,6 +11,7 @@ syntax = "proto3";
 package graph.v1alpha;
 
 import "common/time/v1alpha/range.proto";
+import "graph/v1alpha/connection.proto";
 import "graph/v1alpha/edge.proto";
 
 option go_package = "github.com/isovalent/ipa/graph/v1alpha";
@@ -44,17 +45,21 @@ message GetConnectionsRequest {
   //   has(destination.kubernetes) && destination.kubernetes.cluster_name = "df-hubble-dev-ce-01"
   string filter = 3;
 
+  // Emitter may be specified to limit the results to events emitted by
+  // specific data producers.
+  repeated Emitter emitter = 4;
+
   // Field keys by which the source vertex should be grouped. At least one
   // field MUST be provided.
   // Example:
   //   ["source.kubernetes.cluster_name", "source.kubernetes.node_name"]
-  repeated string group_by_source = 4;
+  repeated string group_by_source = 5;
 
   // Field keys by which the destination vertex should be grouped. At least
   // one field MUST be provided.
   // Example:
   //   ["destination.kubernetes.cluster_name", "destination.kubernetes.node_name"]
-  repeated string group_by_destination = 5;
+  repeated string group_by_destination = 6;
 }
 
 // GetConnectionsResponse is the response provided by the GetConnections endpoint.

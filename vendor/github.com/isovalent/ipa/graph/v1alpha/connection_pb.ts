@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file graph/v1alpha/connection.proto.
  */
 export const file_graph_v1alpha_connection: GenFile = /*@__PURE__*/
-  fileDesc("Ch5ncmFwaC92MWFscGhhL2Nvbm5lY3Rpb24ucHJvdG8SDWdyYXBoLnYxYWxwaGEi2AEKDUNvbm5lY3Rpb25Mb2cSDAoEdXVpZBgBIAEoCRInCgdlbWl0dGVyGAIgASgOMhYuZ3JhcGgudjFhbHBoYS5FbWl0dGVyEjAKDHdpbmRvd19zdGFydBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKd2luZG93X2VuZBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoLY29ubmVjdGlvbnMYBSADKAsyGS5ncmFwaC52MWFscGhhLkNvbm5lY3Rpb24igwEKCkNvbm5lY3Rpb24SJQoGc291cmNlGAEgASgLMhUuZ3JhcGgudjFhbHBoYS5WZXJ0ZXgSKgoLZGVzdGluYXRpb24YAiABKAsyFS5ncmFwaC52MWFscGhhLlZlcnRleBIiCgVsaW5rcxgDIAMoCzITLmdyYXBoLnYxYWxwaGEuRWRnZSpMCgdFbWl0dGVyEhcKE0VNSVRURVJfVU5TUEVDSUZJRUQQABISCg5FTUlUVEVSX0hVQkJMRRABEhQKEEVNSVRURVJfVEVUUkFHT04QAkIoWiZnaXRodWIuY29tL2lzb3ZhbGVudC9pcGEvZ3JhcGgvdjFhbHBoYWIGcHJvdG8z", [file_google_protobuf_timestamp, file_graph_v1alpha_edge, file_graph_v1alpha_vertex]);
+  fileDesc("Ch5ncmFwaC92MWFscGhhL2Nvbm5lY3Rpb24ucHJvdG8SDWdyYXBoLnYxYWxwaGEi2AEKDUNvbm5lY3Rpb25Mb2cSDAoEdXVpZBgBIAEoCRInCgdlbWl0dGVyGAIgASgOMhYuZ3JhcGgudjFhbHBoYS5FbWl0dGVyEjAKDHdpbmRvd19zdGFydBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKd2luZG93X2VuZBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoLY29ubmVjdGlvbnMYBSADKAsyGS5ncmFwaC52MWFscGhhLkNvbm5lY3Rpb24igwEKCkNvbm5lY3Rpb24SJQoGc291cmNlGAEgASgLMhUuZ3JhcGgudjFhbHBoYS5WZXJ0ZXgSKgoLZGVzdGluYXRpb24YAiABKAsyFS5ncmFwaC52MWFscGhhLlZlcnRleBIiCgVsaW5rcxgDIAMoCzITLmdyYXBoLnYxYWxwaGEuRWRnZSplCgdFbWl0dGVyEhcKE0VNSVRURVJfVU5TUEVDSUZJRUQQABISCg5FTUlUVEVSX0hVQkJMRRABEhQKEEVNSVRURVJfVEVUUkFHT04QAhIXChNFTUlUVEVSX1NNQVJUU1dJVENIEANCKFomZ2l0aHViLmNvbS9pc292YWxlbnQvaXBhL2dyYXBoL3YxYWxwaGFiBnByb3RvMw", [file_google_protobuf_timestamp, file_graph_v1alpha_edge, file_graph_v1alpha_vertex]);
 
 /**
  * A connection log is a message that a source emits periodically and which
@@ -153,6 +153,13 @@ export enum Emitter {
    * @generated from enum value: EMITTER_TETRAGON = 2;
    */
   TETRAGON = 2,
+
+  /**
+   * The source of the data is a smart switch.
+   *
+   * @generated from enum value: EMITTER_SMARTSWITCH = 3;
+   */
+  SMARTSWITCH = 3,
 }
 
 /**

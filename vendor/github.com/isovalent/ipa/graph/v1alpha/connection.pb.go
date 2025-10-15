@@ -40,6 +40,8 @@ const (
 	Emitter_EMITTER_HUBBLE Emitter = 1
 	// The source of the data is Tetragon.
 	Emitter_EMITTER_TETRAGON Emitter = 2
+	// The source of the data is a smart switch.
+	Emitter_EMITTER_SMARTSWITCH Emitter = 3
 )
 
 // Enum value maps for Emitter.
@@ -48,11 +50,13 @@ var (
 		0: "EMITTER_UNSPECIFIED",
 		1: "EMITTER_HUBBLE",
 		2: "EMITTER_TETRAGON",
+		3: "EMITTER_SMARTSWITCH",
 	}
 	Emitter_value = map[string]int32{
 		"EMITTER_UNSPECIFIED": 0,
 		"EMITTER_HUBBLE":      1,
 		"EMITTER_TETRAGON":    2,
+		"EMITTER_SMARTSWITCH": 3,
 	}
 )
 
@@ -262,11 +266,12 @@ const file_graph_v1alpha_connection_proto_rawDesc = "" +
 	"Connection\x12-\n" +
 	"\x06source\x18\x01 \x01(\v2\x15.graph.v1alpha.VertexR\x06source\x127\n" +
 	"\vdestination\x18\x02 \x01(\v2\x15.graph.v1alpha.VertexR\vdestination\x12)\n" +
-	"\x05links\x18\x03 \x03(\v2\x13.graph.v1alpha.EdgeR\x05links*L\n" +
+	"\x05links\x18\x03 \x03(\v2\x13.graph.v1alpha.EdgeR\x05links*e\n" +
 	"\aEmitter\x12\x17\n" +
 	"\x13EMITTER_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eEMITTER_HUBBLE\x10\x01\x12\x14\n" +
-	"\x10EMITTER_TETRAGON\x10\x02B(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
+	"\x10EMITTER_TETRAGON\x10\x02\x12\x17\n" +
+	"\x13EMITTER_SMARTSWITCH\x10\x03B(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
 
 var (
 	file_graph_v1alpha_connection_proto_rawDescOnce sync.Once

@@ -305,7 +305,7 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			dpu.EventLogger.Log(msg)
 		case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
 			dpu.deletePolicyRule(rule)
-			logger.GetLogger().Warn("delete not implemented")
+			logger.GetLogger().Warn("delete not implemented", "policy", *rule)
 
 			// Log event
 			msg := events.NewEventLogMessage(events.MSGCODE_POLICY, dpu.AgentId)

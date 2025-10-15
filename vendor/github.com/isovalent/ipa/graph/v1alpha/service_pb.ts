@@ -14,6 +14,8 @@ import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegen
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Range } from "../../common/time/v1alpha/range_pb";
 import { file_common_time_v1alpha_range } from "../../common/time/v1alpha/range_pb";
+import type { Emitter } from "./connection_pb";
+import { file_graph_v1alpha_connection } from "./connection_pb";
 import type { Edge } from "./edge_pb";
 import { file_graph_v1alpha_edge } from "./edge_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -22,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file graph/v1alpha/service.proto.
  */
 export const file_graph_v1alpha_service: GenFile = /*@__PURE__*/
-  fileDesc("ChtncmFwaC92MWFscGhhL3NlcnZpY2UucHJvdG8SDWdyYXBoLnYxYWxwaGEinQEKFUdldENvbm5lY3Rpb25zUmVxdWVzdBIqCgZ3aW5kb3cYASABKAsyGi5jb21tb24udGltZS52MWFscGhhLlJhbmdlEhEKCWxpbmtfdHlwZRgCIAEoDRIOCgZmaWx0ZXIYAyABKAkSFwoPZ3JvdXBfYnlfc291cmNlGAQgAygJEhwKFGdyb3VwX2J5X2Rlc3RpbmF0aW9uGAUgAygJIlAKFkdldENvbm5lY3Rpb25zUmVzcG9uc2USNgoLY29ubmVjdGlvbnMYASADKAsyIS5ncmFwaC52MWFscGhhLkNvbm5lY3Rpb25SZXNwb25zZSLIAgoSQ29ubmVjdGlvblJlc3BvbnNlEiEKBGxpbmsYASABKAsyEy5ncmFwaC52MWFscGhhLkVkZ2USSgoNc291cmNlX2ZpZWxkcxgCIAMoCzIzLmdyYXBoLnYxYWxwaGEuQ29ubmVjdGlvblJlc3BvbnNlLlNvdXJjZUZpZWxkc0VudHJ5ElQKEmRlc3RpbmF0aW9uX2ZpZWxkcxgDIAMoCzI4LmdyYXBoLnYxYWxwaGEuQ29ubmVjdGlvblJlc3BvbnNlLkRlc3RpbmF0aW9uRmllbGRzRW50cnkaMwoRU291cmNlRmllbGRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARo4ChZEZXN0aW5hdGlvbkZpZWxkc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEybwoMR3JhcGhTZXJ2aWNlEl8KDkdldENvbm5lY3Rpb25zEiQuZ3JhcGgudjFhbHBoYS5HZXRDb25uZWN0aW9uc1JlcXVlc3QaJS5ncmFwaC52MWFscGhhLkdldENvbm5lY3Rpb25zUmVzcG9uc2UiAEIoWiZnaXRodWIuY29tL2lzb3ZhbGVudC9pcGEvZ3JhcGgvdjFhbHBoYWIGcHJvdG8z", [file_common_time_v1alpha_range, file_graph_v1alpha_edge]);
+  fileDesc("ChtncmFwaC92MWFscGhhL3NlcnZpY2UucHJvdG8SDWdyYXBoLnYxYWxwaGEixgEKFUdldENvbm5lY3Rpb25zUmVxdWVzdBIqCgZ3aW5kb3cYASABKAsyGi5jb21tb24udGltZS52MWFscGhhLlJhbmdlEhEKCWxpbmtfdHlwZRgCIAEoDRIOCgZmaWx0ZXIYAyABKAkSJwoHZW1pdHRlchgEIAMoDjIWLmdyYXBoLnYxYWxwaGEuRW1pdHRlchIXCg9ncm91cF9ieV9zb3VyY2UYBSADKAkSHAoUZ3JvdXBfYnlfZGVzdGluYXRpb24YBiADKAkiUAoWR2V0Q29ubmVjdGlvbnNSZXNwb25zZRI2Cgtjb25uZWN0aW9ucxgBIAMoCzIhLmdyYXBoLnYxYWxwaGEuQ29ubmVjdGlvblJlc3BvbnNlIsgCChJDb25uZWN0aW9uUmVzcG9uc2USIQoEbGluaxgBIAEoCzITLmdyYXBoLnYxYWxwaGEuRWRnZRJKCg1zb3VyY2VfZmllbGRzGAIgAygLMjMuZ3JhcGgudjFhbHBoYS5Db25uZWN0aW9uUmVzcG9uc2UuU291cmNlRmllbGRzRW50cnkSVAoSZGVzdGluYXRpb25fZmllbGRzGAMgAygLMjguZ3JhcGgudjFhbHBoYS5Db25uZWN0aW9uUmVzcG9uc2UuRGVzdGluYXRpb25GaWVsZHNFbnRyeRozChFTb3VyY2VGaWVsZHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBGjgKFkRlc3RpbmF0aW9uRmllbGRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ATJvCgxHcmFwaFNlcnZpY2USXwoOR2V0Q29ubmVjdGlvbnMSJC5ncmFwaC52MWFscGhhLkdldENvbm5lY3Rpb25zUmVxdWVzdBolLmdyYXBoLnYxYWxwaGEuR2V0Q29ubmVjdGlvbnNSZXNwb25zZSIAQihaJmdpdGh1Yi5jb20vaXNvdmFsZW50L2lwYS9ncmFwaC92MWFscGhhYgZwcm90bzM", [file_common_time_v1alpha_range, file_graph_v1alpha_connection, file_graph_v1alpha_edge]);
 
 /**
  * GetConnectionsRequest allows for specifying the type of connections that
@@ -63,12 +65,20 @@ export type GetConnectionsRequest = Message<"graph.v1alpha.GetConnectionsRequest
   filter: string;
 
   /**
+   * Emitter may be specified to limit the results to events emitted by
+   * specific data producers.
+   *
+   * @generated from field: repeated graph.v1alpha.Emitter emitter = 4;
+   */
+  emitter: Emitter[];
+
+  /**
    * Field keys by which the source vertex should be grouped. At least one
    * field MUST be provided.
    * Example:
    *   ["source.kubernetes.cluster_name", "source.kubernetes.node_name"]
    *
-   * @generated from field: repeated string group_by_source = 4;
+   * @generated from field: repeated string group_by_source = 5;
    */
   groupBySource: string[];
 
@@ -78,7 +88,7 @@ export type GetConnectionsRequest = Message<"graph.v1alpha.GetConnectionsRequest
    * Example:
    *   ["destination.kubernetes.cluster_name", "destination.kubernetes.node_name"]
    *
-   * @generated from field: repeated string group_by_destination = 5;
+   * @generated from field: repeated string group_by_destination = 6;
    */
   groupByDestination: string[];
 };

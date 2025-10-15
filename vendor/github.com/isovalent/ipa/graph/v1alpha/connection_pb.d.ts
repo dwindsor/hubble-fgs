@@ -146,6 +146,13 @@ export enum Emitter {
    * @generated from enum value: EMITTER_TETRAGON = 2;
    */
   TETRAGON = 2,
+
+  /**
+   * The source of the data is a smart switch.
+   *
+   * @generated from enum value: EMITTER_SMARTSWITCH = 3;
+   */
+  SMARTSWITCH = 3,
 }
 
 /**

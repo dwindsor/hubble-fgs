@@ -10,9 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	enterpriseClient "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	"github.com/cilium/tetragon/pkg/watcher/conf"
+	ipav1alpha1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 	"golang.org/x/sync/errgroup"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -147,10 +148,13 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		if kubernetesManager == nil {
 			return fmt.Errorf("kubernetes manager not created")
 		}
+
 		// Set the register status to ok for the successful connection.
 		agwAgent.RegisterStatus(ctx, true)
+
 		// Start the K8s controller manager
 		logger.GetLogger().Info("starting Kubernetes Manager for on-prem deployment")
+		utilruntime.Must(ipav1alpha1.AddToScheme(kubernetesManager.Manager.GetScheme()))
 		kubernetesManager.Start(ctx)
 
 		// TODO: Wait for configmap to be ready
@@ -161,14 +165,18 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		}
 
 		crds := make(map[string]struct{})
-		crds[enterpriseClient.TetragonNetworkPolicyCRD.ResName] = struct{}{}
+		crds["smartswitchnetworkpolicies"+"."+ipav1alpha1.GroupVersion.Group] = struct{}{} // HACK: CRD name should be used from IPA repo
 		if len(crds) > 0 {
 			err = kubernetesManager.WaitCRDs(ctx, crds)
 			if err != nil {
 				return err
 			}
 		}
-		netpol.AddTetragonNetworkPolicyInformer(ctx, kubernetesManager)
+		err = switchpolicy.AddSmartSwitchNetworkPolicyInformer(ctx, kubernetesManager, agwAgent.PolicyHandler)
+		if err != nil {
+			logger.GetLogger().Error("failed to watch smartswitch policy crd", logfields.Error, err)
+			return err
+		}
 	}
 
 	logger.GetLogger().Info("Agent startup complete.")
