@@ -109,7 +109,9 @@ jobs:
 
       - name: Sign Container Image
         run: |
-          cosign sign -y ${{ steps.tags.outputs.tags }}@${{ steps.build-and-push.outputs.digest }}
+          # Sign with first tag and digest to avoid multi-line expansion issues
+          first_tag=$(echo "${{ steps.tags.outputs.tags }}" | head -n1)
+          cosign sign -y "${first_tag}@${{ steps.build-and-push.outputs.digest }}"
 
       - name: Generate SBOM
         uses: anchore/sbom-action@f8bdd1d8ac5e901a77a92f111440fdb1b593736b # v0.20.6
@@ -121,7 +123,9 @@ jobs:
 
       - name: Attach SBOM attestation to container image
         run: |
-          cosign attest -y --predicate sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json --type spdxjson ${{ steps.tags.outputs.tags }}@${{ steps.build-and-push.outputs.digest }}
+          # Attest with first tag and digest to avoid multi-line expansion issues
+          first_tag=$(echo "${{ steps.tags.outputs.tags }}" | head -n1)
+          cosign attest -y --predicate sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json --type spdxjson "${first_tag}@${{ steps.build-and-push.outputs.digest }}"
 
       - name: Image Release Digest
         shell: bash
