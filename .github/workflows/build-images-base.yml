@@ -104,28 +104,30 @@ jobs:
           tags: |
             ${{ steps.tags.outputs.tags }}
 
+      - name: Get first tag for subsequent steps
+        id: first-tag
+        run: |
+          first_tag=$(echo "${{ steps.tags.outputs.tags }}" | head -n1)
+          echo "tag=${first_tag}" >> $GITHUB_OUTPUT
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
 
       - name: Sign Container Image
         run: |
-          # Sign with first tag and digest to avoid multi-line expansion issues
-          first_tag=$(echo "${{ steps.tags.outputs.tags }}" | head -n1)
-          cosign sign -y "${first_tag}@${{ steps.build-and-push.outputs.digest }}"
+          cosign sign -y "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}"
 
       - name: Generate SBOM
         uses: anchore/sbom-action@f8bdd1d8ac5e901a77a92f111440fdb1b593736b # v0.20.6
         with:
           artifact-name: sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json
           output-file: ./sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json
-          image: ${{ steps.tags.outputs.tags }}
+          image: ${{ steps.first-tag.outputs.tag }}
           upload-release-assets: false
 
       - name: Attach SBOM attestation to container image
         run: |
-          # Attest with first tag and digest to avoid multi-line expansion issues
-          first_tag=$(echo "${{ steps.tags.outputs.tags }}" | head -n1)
-          cosign attest -y --predicate sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json --type spdxjson "${first_tag}@${{ steps.build-and-push.outputs.digest }}"
+          cosign attest -y --predicate sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json --type spdxjson "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}"
 
       - name: Image Release Digest
         shell: bash
@@ -138,7 +140,7 @@ jobs:
 
           echo "### $job_name" > image-digest/$job_name.txt
           echo "" >> image-digest/$job_name.txt
-          echo "${{ steps.tags.outputs.tags }}@${{ steps.build-and-push.outputs.digest }}" >> image-digest/$job_name.txt
+          echo "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}" >> image-digest/$job_name.txt
           echo "" >> image-digest/$job_name.txt
 
       - name: Upload artifact digests
