@@ -32,6 +32,7 @@ message AlertRuleMeta {
   Severity severity = 2;
   string message = 3;
   repeated string tags = 4;
+  int32 risk_score = 5;
 }
 
 message AlertRule {

@@ -3246,6 +3246,7 @@ Determins the behaviour of a field filter
 | severity | [AlertRuleMeta.Severity](#tetragon-AlertRuleMeta-Severity) |  |  |
 | message | [string](#string) |  |  |
 | tags | [string](#string) | repeated |  |
+| risk_score | [int32](#int32) |  |  |
 
 
 

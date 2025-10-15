@@ -186,10 +186,11 @@ func eventToAlert(event *tetragon.GetEventsResponse, r *rule) *tetragon.Alert {
 
 func ruleToMeta(r *rule) *tetragon.AlertRuleMeta {
 	return &tetragon.AlertRuleMeta{
-		Name:     r.name,
-		Severity: tetragon.AlertRuleMeta_Severity(tetragon.AlertRuleMeta_Severity_value[strings.ToUpper(r.severity)]),
-		Message:  r.message,
-		Tags:     r.tags,
+		Name:      r.name,
+		Severity:  tetragon.AlertRuleMeta_Severity(tetragon.AlertRuleMeta_Severity_value[strings.ToUpper(r.severity)]),
+		Message:   r.message,
+		Tags:      r.tags,
+		RiskScore: int32(r.riskScore),
 	}
 }
 
@@ -215,10 +216,11 @@ func (a *alerter) AddAlertRuleFromYAML(_ context.Context, req *tetragon.AddAlert
 	return &tetragon.AddAlertRuleResponse{
 		Rule: &tetragon.AlertRule{
 			Meta: &tetragon.AlertRuleMeta{
-				Name:     ar.Name,
-				Severity: tetragon.AlertRuleMeta_Severity(tetragon.AlertRuleMeta_Severity_value[strings.ToUpper(ar.Spec.Severity)]),
-				Message:  ar.Spec.Message,
-				Tags:     ar.Spec.Tags,
+				Name:      ar.Name,
+				Severity:  tetragon.AlertRuleMeta_Severity(tetragon.AlertRuleMeta_Severity_value[strings.ToUpper(ar.Spec.Severity)]),
+				Message:   ar.Spec.Message,
+				Tags:      ar.Spec.Tags,
+				RiskScore: int32(ar.Spec.RiskScore),
 			},
 		},
 	}, nil

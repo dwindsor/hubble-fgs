@@ -90,6 +90,7 @@ type AlertRuleMeta struct {
 	Severity      AlertRuleMeta_Severity `protobuf:"varint,2,opt,name=severity,proto3,enum=tetragon.AlertRuleMeta_Severity" json:"severity,omitempty"`
 	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
 	Tags          []string               `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty"`
+	RiskScore     int32                  `protobuf:"varint,5,opt,name=risk_score,json=riskScore,proto3" json:"risk_score,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -150,6 +151,13 @@ func (x *AlertRuleMeta) GetTags() []string {
 		return x.Tags
 	}
 	return nil
+}
+
+func (x *AlertRuleMeta) GetRiskScore() int32 {
+	if x != nil {
+		return x.RiskScore
+	}
+	return 0
 }
 
 type AlertRule struct {
@@ -252,12 +260,14 @@ var File_tetragon_alert_proto protoreflect.FileDescriptor
 
 const file_tetragon_alert_proto_rawDesc = "" +
 	"\n" +
-	"\x14tetragon/alert.proto\x12\btetragon\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x12tetragon/dns.proto\x1a\x15tetragon/events.proto\x1a\x12tetragon/fgs.proto\x1a\x16tetragon/sandbox.proto\x1a\x17tetragon/tetragon.proto\"\xd1\x01\n" +
+	"\x14tetragon/alert.proto\x12\btetragon\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x12tetragon/dns.proto\x1a\x15tetragon/events.proto\x1a\x12tetragon/fgs.proto\x1a\x16tetragon/sandbox.proto\x1a\x17tetragon/tetragon.proto\"\xf0\x01\n" +
 	"\rAlertRuleMeta\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12<\n" +
 	"\bseverity\x18\x02 \x01(\x0e2 .tetragon.AlertRuleMeta.SeverityR\bseverity\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12\x12\n" +
-	"\x04tags\x18\x04 \x03(\tR\x04tags\"@\n" +
+	"\x04tags\x18\x04 \x03(\tR\x04tags\x12\x1d\n" +
+	"\n" +
+	"risk_score\x18\x05 \x01(\x05R\triskScore\"@\n" +
 	"\bSeverity\x12\x0f\n" +
 	"\vUNSPECIFIED\x10\x00\x12\b\n" +
 	"\x04INFO\x10\x01\x12\v\n" +

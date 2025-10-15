@@ -38,6 +38,7 @@ type rule struct {
 	message     string
 	tags        []string
 	severity    string
+	riskScore   int32
 	jsonEncoder *jsonEncoder
 }
 
@@ -132,6 +133,7 @@ func (r *ruleManager) AddAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 		message:     ar.Spec.Message,
 		tags:        ar.Spec.Tags,
 		severity:    severity,
+		riskScore:   int32(ar.Spec.RiskScore),
 		jsonEncoder: encoder,
 	}
 	if newEncoder {
