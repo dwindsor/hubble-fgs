@@ -245,6 +245,7 @@ var (
 		{"lsm", "security_path_chown", []FimFunc{{"security_path_chown(const struct path*, kuid_t, kgid_t)", "lsm_security_path_chown.o", "path_chown", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CHATTR}...)}}},
 		{"lsm", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "lsm_security_path_rename.o", "path_rename", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_RENAME}...)}}},
 		{"lsm", "security_path_symlink", []FimFunc{{"security_path_symlink(const struct path*, struct dentry*, const int*)", "lsm_security_path_symlink.o", "path_symlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_SYMLINK}...)}}},
+		{"lsm", "security_path_mknod", []FimFunc{{"security_path_mknod(const struct path*, struct dentry*, umode_t, int)", "lsm_security_path_mknod.o", "path_mknod", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_CREATE}...)}}},
 		{"fexit", "io_openat2", []FimFunc{{"int io_openat2(struct io_kiocb*, int)", "fexit_sys_open.o", "io_openat2", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_OPENRAW}...)}}},
 	}
 
@@ -1554,7 +1555,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			checkReWrite = probeDpathSecurityFileOpen
 		case "lsm_security_path_link.o", "lsm_security_path_symlink.o", "lsm_security_path_mkdir.o", "lsm_security_path_rmdir.o", "lsm_security_path_unlink.o", "lsm_security_path_truncate.o", "lsm_security_path_chmod.o", "lsm_security_path_chown.o", "lsm_security_path_rename.o":
 			checkReWrite = probeDpathSecurityPathTruncate
-		case "lsm_security_unix_stream_connect.o":
+		case "lsm_security_unix_stream_connect.o", "lsm_security_path_mknod.o":
 			checkReWrite = func() error { return errors.New("bpf_d_path not supported") }
 		}
 		if checkReWrite != nil {

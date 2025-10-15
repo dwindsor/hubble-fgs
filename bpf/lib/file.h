@@ -106,7 +106,8 @@ enum {
 	hook_security_unix_stream_connect = 46,
 	hook_security_inode_mknod = 47,
 	hook_vfs_mknod = 48,
-	hook_max = 49,
+	hook_security_path_mknod = 49,
+	hook_max = 50,
 };
 
 enum {

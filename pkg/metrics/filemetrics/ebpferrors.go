@@ -72,6 +72,7 @@ var (
 		fileapi.FileHookSecurityUnixStreamConnect: "security_unix_stream_connect",
 		fileapi.FileHookSecurityInodeMknod:        "security_inode_mknod",
 		fileapi.FileHookVfsMknod:                  "vfs_mknod",
+		fileapi.FileHookSecurityMknod:             "security_path_mknod",
 	}
 
 	fileErrorReasonMap = map[int]string{

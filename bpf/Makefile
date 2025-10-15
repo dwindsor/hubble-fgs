@@ -143,7 +143,7 @@ FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_
 	  lsm_dispatcher_path_link.o lsm_dispatcher_path_symlink.o lsm_dispatcher_path_rename.o lsm_dispatcher_path_truncate.o lsm_dispatcher_file_open.o lsm_dispatcher_mmap_file.o lsm_dispatcher_path_chown.o lsm_dispatcher_path_mkdir.o \
 	  lsm_dispatcher_path_rmdir.o lsm_dispatcher_path_unlink.o fexit_getname_flags.o fexit_getname.o fexit_sys_open.o lsm_security_unix_stream_connect.o \
 	  bpf_security_unix_stream_connect.o bpf_security_unix_stream_connect_v419.o bpf_security_unix_stream_connect_enforce_lsm.o bpf_security_unix_stream_connect_enforce_fmod.o \
-	  bpf_vfs_mknod.o bpf_vfs_mknod_v419.o bpf_vfs_mknod_enforce_lsm.o bpf_vfs_mknod_enforce_fmod.o openraw_enforcer.o
+	  bpf_vfs_mknod.o bpf_vfs_mknod_v419.o bpf_vfs_mknod_enforce_lsm.o bpf_vfs_mknod_enforce_fmod.o openraw_enforcer.o lsm_security_path_mknod.o
 
 CGROUP = bpf_cgtracker.o
 
