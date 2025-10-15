@@ -69,8 +69,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.Data = data
 
 	case CMD_SHOW_POLICY:
-		// HACK: add back data once ready
-		pol := agwAgent.ShowPolicies(ctx /*, data*/)
+		pol := agwAgent.ShowPolicies(ctx, data) // data is just the name filter
 		response.ReturnCode = "ok"
 		response.Data = pol
 
@@ -156,7 +155,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.Data = tokens
 
 	case CMD_SHOW_TECH:
-		pol := agwAgent.ShowPolicies(ctx)
+		pol := agwAgent.ShowPolicies(ctx, "")
 		status := nxos.Nexus.ShowStatus(ctx)
 		dpu := agwAgent.ShowDpu(ctx)
 		vrf := nxos.Nexus.ShowVrf(ctx)

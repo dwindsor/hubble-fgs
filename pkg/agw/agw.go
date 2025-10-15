@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
@@ -21,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	netpollibrary "github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 	"github.com/isovalent/hubble-fgs/pkg/token"
 )
@@ -364,9 +367,180 @@ func (agw *AgentGateway) LoadPolicies(_ context.Context, pols string) string {
 	return "TBD"
 }
 
-func (agw *AgentGateway) ShowPolicies(_ context.Context) string {
-	logger.GetLogger().Debug("Show policies")
-	return "TBD"
+func (agw *AgentGateway) ShowPolicies(_ context.Context, nameFilter string) string {
+	logger.GetLogger().Debug("Show policies", "nameFilter", nameFilter)
+
+	repo := netpollibrary.GetRepository()
+	policyNames := repo.GetList()
+
+	// Filter policies by name pattern
+	policyNames = filterPolicyNames(policyNames, nameFilter)
+
+	if len(policyNames) == 0 {
+		return formatNoPoliciesMessage(nameFilter)
+	}
+
+	// Text output only
+	var result strings.Builder
+	result.WriteString(formatSummaryHeader(len(policyNames), nameFilter))
+
+	// Iterate over policyNames slice to get each policy from the repository.
+	// name is the policy name, idx is the index in the slice.
+	// We use idx+1 to start numbering from 1 instead of 0.
+	for idx, name := range policyNames {
+		story := repo.Get(name)
+		if story == nil {
+			continue
+		}
+		id, ok := repo.GetId(name)
+		if !ok {
+			continue
+		}
+		result.WriteString(formatPolicy(idx+1, story, id))
+	}
+	return result.String()
+}
+
+func filterPolicyNames(policyNames []string, nameFilter string) []string {
+	if nameFilter == "" || nameFilter == "{}" {
+		return policyNames
+	}
+	filtered := make([]string, 0, len(policyNames))
+	for _, name := range policyNames {
+		if matchPolicyPattern(name, nameFilter) {
+			filtered = append(filtered, name)
+		}
+	}
+	return filtered
+}
+
+func formatNoPoliciesMessage(nameFilter string) string {
+	if nameFilter != "" && nameFilter != "{}" {
+		return fmt.Sprintf("No policies found matching '%s'", nameFilter)
+	}
+	return "No policies loaded\n"
+}
+
+func formatSummaryHeader(policyCount int, nameFilter string) string {
+	var b strings.Builder
+	b.WriteString("\n╔═══════════════════════════════════════════════════════════════╗\n")
+	b.WriteString(fmt.Sprintf("║  Total Policies: %-44d ║\n", policyCount))
+	if nameFilter != "" && nameFilter != "{}" {
+		b.WriteString(fmt.Sprintf("║  Filter: %-52s ║\n", nameFilter))
+	}
+	b.WriteString("╚═══════════════════════════════════════════════════════════════╝\n\n")
+	return b.String()
+}
+
+// Replace PolicyStory with the actual type
+func formatPolicy(idx int, story *netpollibrary.PolicyStory, id uint64) string {
+	var b strings.Builder
+	b.WriteString("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+	b.WriteString(fmt.Sprintf("Policy #%d: %s\n", idx, story.Title))
+	b.WriteString("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+	b.WriteString(fmt.Sprintf("  Policy ID:      %d\n", id))
+
+	if story.CRDPolicy != nil {
+		b.WriteString(formatCRDPolicy(story.CRDPolicy))
+	}
+	b.WriteString("\n")
+	return b.String()
+}
+
+// Replace CRD Policy type with the actual type
+func formatCRDPolicy(crd *v1alpha1.TetragonNetworkPolicy) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("  VRF:            %s\n", crd.Spec.LogicalNetworkSelector.VRF))
+	b.WriteString(fmt.Sprintf("  Default Action: %s\n", crd.Spec.DefaultAction))
+	b.WriteString(fmt.Sprintf("  Total Rules:    %d\n\n", len(crd.Spec.Rules)))
+	for i, rule := range crd.Spec.Rules {
+		b.WriteString(formatRule(i+1, &rule, i < len(crd.Spec.Rules)-1))
+	}
+	return b.String()
+}
+
+// Replace Rule type with the actual type
+func formatRule(idx int, rule *v1alpha1.NetworkPolicyRule, addSpacer bool) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("  ┌─ Rule %d ─────────────────────────────────────────────────────\n", idx))
+	b.WriteString(fmt.Sprintf("  │ Action:      %s\n", rule.Action))
+	b.WriteString(fmt.Sprintf("  │ Hook:        %s\n", rule.Hook))
+	if rule.Description != "" {
+		b.WriteString(fmt.Sprintf("  │ Description: %s\n", rule.Description))
+	}
+	b.WriteString("  │\n")
+	b.WriteString(formatSourceEndpoints("Source", rule.Source))
+	b.WriteString(formatDestEndpoints("Destination", rule.Destination))
+	b.WriteString("  └───────────────────────────────────────────────────────────────\n")
+	if addSpacer {
+		b.WriteString("  │\n")
+	}
+	return b.String()
+}
+
+func formatSourceEndpoints(label string, endpoints []v1alpha1.NetworkSource) string {
+	if len(endpoints) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("  │ %s:\n", label))
+	for _, ep := range endpoints {
+		if ep.IPBlock != nil {
+			b.WriteString(fmt.Sprintf("  │   • CIDR: %s\n", ep.IPBlock.CIDR))
+		}
+		if ep.Ports.Protocol != "" {
+			b.WriteString(fmt.Sprintf("  │   • Protocol: %s\n", ep.Ports.Protocol))
+			if len(ep.Ports.Ports) > 0 {
+				b.WriteString(fmt.Sprintf("  │   • Ports: %v\n", ep.Ports.Ports))
+			}
+		}
+	}
+	b.WriteString("  │\n")
+	return b.String()
+}
+
+func formatDestEndpoints(label string, endpoints []v1alpha1.NetworkDestination) string {
+	if len(endpoints) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("  │ %s:\n", label))
+	for _, ep := range endpoints {
+		if ep.IPBlock != nil {
+			b.WriteString(fmt.Sprintf("  │   • CIDR: %s\n", ep.IPBlock.CIDR))
+		}
+		if ep.Ports.Protocol != "" {
+			b.WriteString(fmt.Sprintf("  │   • Protocol: %s\n", ep.Ports.Protocol))
+			if len(ep.Ports.Ports) > 0 {
+				b.WriteString(fmt.Sprintf("  │   • Ports: %v\n", ep.Ports.Ports))
+			}
+		}
+	}
+	b.WriteString("  │\n")
+	return b.String()
+}
+
+func matchPolicyPattern(name, pattern string) bool {
+	if !strings.Contains(pattern, "*") {
+		return strings.Contains(strings.ToLower(name), strings.ToLower(pattern))
+	}
+
+	pattern = strings.ToLower(pattern)
+	name = strings.ToLower(name)
+
+	// Escape all regex special characters using QuoteMeta
+	pattern = regexp.QuoteMeta(pattern)
+
+	// Convert escaped \* back to .* for wildcard matching
+	pattern = strings.ReplaceAll(pattern, "\\*", ".*")
+	pattern = "^" + pattern + "$"
+
+	matched, err := regexp.MatchString(pattern, name)
+	if err != nil {
+		logger.GetLogger().Error("invalid pattern in matchPolicyPattern", "pattern", pattern, "error", err)
+		return false
+	}
+	return matched
 }
 
 func (agw *AgentGateway) ShowDpu(_ context.Context) string {

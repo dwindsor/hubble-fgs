@@ -93,19 +93,17 @@ var loadPolicyCmd = &cobra.Command{
 }
 
 var showPolicyCmd = &cobra.Command{
-	Use:          "show_policy [pretty-print]",
+	Use:          "show_policy",
 	SilenceUsage: true,
 	Short:        "Show policy from Hypershield controller",
 	Long:         "Show policy from Hypershield controller",
-	RunE: func(_ *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		prettyPrint := ""
-		if len(args) > 0 && args[0] == "pretty-print" {
-			prettyPrint = args[0]
-		}
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_POLICY, prettyPrint)
+		nameFilter, _ := cmd.Flags().GetString("name")
+
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_POLICY, nameFilter)
 		if err != nil {
 			return err
 		}
@@ -395,6 +393,7 @@ var showGidCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(loadPolicyCmd)
 	RootCmd.AddCommand(showPolicyCmd)
+	showPolicyCmd.Flags().String("name", "", "Filter policies by name (supports wildcards like *vrf*)")
 	RootCmd.AddCommand(healthCmd)
 	RootCmd.AddCommand(showStatusCmd)
 	RootCmd.AddCommand(showDpuCmd)
