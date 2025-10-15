@@ -172,6 +172,7 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	n.LastNotif = time.Now().Unix()
 	n.SkipDpu = skipDpu
 	n.SkipCtrlr = skipCtrlr
+	n.LbMode = model.Cisco_NX_OSDevice_Sas_LbModeType_symmetric_hash
 	n.Ha.Peers = make(map[string]HaPeer)
 	n.Ha.Adjacencies = make(map[string]HaAdj)
 	n.Ha.Members = make(map[string]HaMbr)
