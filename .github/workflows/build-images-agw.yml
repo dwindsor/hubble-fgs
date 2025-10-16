@@ -155,8 +155,7 @@ jobs:
             const inputs = {
               'repository': context.payload.repository.full_name,
               'branch': context.ref,
-              'image-name': `hubble-fgs-agw-docker-image-${process.env.VERSION}`,
-              'binary-name': `hubble-fgs-agw-binaries-${process.env.VERSION}`,
+              'artifact-names': `hubble-fgs-agw-docker-image-${process.env.VERSION},hubble-fgs-agw-binaries-${process.env.VERSION}`,
               'image-tag': `${process.env.VERSION}-${process.env.DATE}-${process.env.SHA}`,
               'ref-file': 'nxos-ref-package.yaml',
               'run-id': `${context.runId}`,
