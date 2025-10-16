@@ -75,13 +75,17 @@ jobs:
       - name: Build AGW binary
         run: |
           make agw
+          echo "Files in current directory after make agw:"
+          ls -la agw* || echo "No agw binary found"
           mkdir -p binaries/agw
-          cp cmd/agw/agw binaries/agw/
+          cp agw binaries/agw/
       - name: Build AGWctl binary
         run: |
           make agwctl
+          echo "Files in current directory after make agwctl:"
+          ls -la agwctl* || echo "No agwctl binary found"
           mkdir -p binaries/agwctl
-          cp cmd/agwctl/agwctl binaries/agwctl/
+          cp agwctl binaries/agwctl/
       - name: Upload AGW binaries artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
