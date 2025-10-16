@@ -16,23 +16,19 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/logger/logfields"
 )
 
 func NewLPM() (LPMMap, error) {
 	fileLpm4 := filepath.Join(bpf.MapPrefixPath(), Addr4lpmMapName)
 	addr4lpm, err := ebpf.LoadPinnedMap(fileLpm4, nil)
 	if err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("failed to pin addr4 LPM Map (%s)", fileLpm4), logfields.Error, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to load addr4 LPM map from pin %s: %w", fileLpm4, err)
 	}
 
 	fileLpm6 := filepath.Join(bpf.MapPrefixPath(), Addr6lpmMapName)
 	addr6lpm, err := ebpf.LoadPinnedMap(fileLpm6, nil)
 	if err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("failed to pin addr6 LPM Map (%s)", fileLpm6), logfields.Error, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to load addr6 LPM map from pin %s: %w", fileLpm4, err)
 	}
 
 	return &lpmMapImpl{
