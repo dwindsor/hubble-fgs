@@ -60,6 +60,35 @@ jobs:
       date: ${{ steps.get-version.outputs.date }}
       sha: ${{ steps.get-version.outputs.sha }}
 
+  build-agw-binaries:
+    needs: [ init ]
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          submodules: true
+      - name: Set up Go
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: 'go.mod'
+      - name: Build AGW binary
+        run: |
+          make agw
+          mkdir -p binaries/agw
+          cp cmd/agw/agw binaries/agw/
+      - name: Build AGWctl binary
+        run: |
+          make agwctl
+          mkdir -p binaries/agwctl
+          cp cmd/agwctl/agwctl binaries/agwctl/
+      - name: Upload AGW binaries artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hubble-fgs-agw-binaries-${{ needs.init.outputs.version }}
+          path: binaries/
+          retention-days: 1
+
   build-agw-image:
     needs: [ init ]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
@@ -99,9 +128,9 @@ jobs:
           echo "| Tag | ${{ needs.init.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
 
   trigger-code-drop:
-    needs: [ init, build-agw-image ]
+    needs: [ init, build-agw-image, build-agw-binaries ]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
-    if: ${{ needs.build-agw-image.result == 'success' && github.ref == 'refs/heads/master' }}
+    if: ${{ needs.build-agw-image.result == 'success' && needs.build-agw-binaries.result == 'success' && github.ref == 'refs/heads/master' }}
     env:
       TARGET_ORG: cisco-hypershield
       TARGET_REPO: hs-actions
@@ -127,6 +156,7 @@ jobs:
               'repository': context.payload.repository.full_name,
               'branch': context.ref,
               'image-name': `hubble-fgs-agw-docker-image-${process.env.VERSION}`,
+              'binary-name': `hubble-fgs-agw-binaries-${process.env.VERSION}`,
               'image-tag': `${process.env.VERSION}-${process.env.DATE}-${process.env.SHA}`,
               'ref-file': 'nxos-ref-package.yaml',
               'run-id': `${context.runId}`,
