@@ -19,8 +19,6 @@ import (
 	"strings"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/logger/logfields"
 )
 
 type KernelLPMTrie4 struct {
@@ -55,12 +53,12 @@ type lpmMapImpl struct {
 func (lpm *lpmMapImpl) writeIP4(ip string, id uint64) error {
 	addr, maskLen, err := parseAddr(ip)
 	if err != nil {
-		return fmt.Errorf("writeIp4 can not parse %s: %w", ip, err)
+		return fmt.Errorf("failed parsing IP4 %s: %w", ip, err)
 	}
 	ip4 := binary.LittleEndian.Uint32(addr)
 	val := KernelLPMTrie4{prefix: maskLen, addr: ip4}
 	if err := lpm.addr4.Update(val, id, 0); err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("Failed to program LPM4 %s->%d", ip, id), logfields.Error, err)
+		return fmt.Errorf("failed to update the addr4 LPM with %s->%d: %w", ip, id, err)
 	}
 	return nil
 }
@@ -68,13 +66,13 @@ func (lpm *lpmMapImpl) writeIP4(ip string, id uint64) error {
 func (lpm *lpmMapImpl) writeIP6(ip string, id uint64) error {
 	addr, maskLen, err := parseAddr(ip)
 	if err != nil {
-		return fmt.Errorf("writeIp6 can not parse %s: %w", ip, err)
+		return fmt.Errorf("failed parsing IP6 %s: %w", ip, err)
 	}
 	var addrSlice [16]byte
 	copy(addrSlice[:], addr)
 	val := KernelLPMTrie6{prefix: maskLen, addr: addrSlice}
 	if err := lpm.addr6.Update(val, id, 0); err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("Failed to program LPM6 %s->%d", ip, id), logfields.Error, err)
+		return fmt.Errorf("failed to update the addr6 LPM with %s->%d: %w", ip, id, err)
 	}
 	return nil
 }
@@ -82,12 +80,12 @@ func (lpm *lpmMapImpl) writeIP6(ip string, id uint64) error {
 func (lpm *lpmMapImpl) deleteIP4(ip string) error {
 	addr, maskLen, err := parseAddr(ip)
 	if err != nil {
-		return fmt.Errorf("writeIp4 can not parse %s: %w", ip, err)
+		return fmt.Errorf("failed parsing IP4 %s: %w", ip, err)
 	}
 	ip4 := binary.LittleEndian.Uint32(addr)
 	val := KernelLPMTrie4{prefix: maskLen, addr: ip4}
 	if err := lpm.addr4.Delete(val); err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("Failed to delete LPM4 %s", ip), logfields.Error, err)
+		return fmt.Errorf("failed to delete entry %s in LPM4: %w", ip, err)
 	}
 	return nil
 }
@@ -95,13 +93,13 @@ func (lpm *lpmMapImpl) deleteIP4(ip string) error {
 func (lpm *lpmMapImpl) deleteIP6(ip string) error {
 	addr, maskLen, err := parseAddr(ip)
 	if err != nil {
-		return fmt.Errorf("writeIp6 can not parse %s: %w", ip, err)
+		return fmt.Errorf("failed parsing IP6 %s: %w", ip, err)
 	}
 	var addrSlice [16]byte
 	copy(addrSlice[:], addr)
 	val := KernelLPMTrie6{prefix: maskLen, addr: addrSlice}
 	if err := lpm.addr6.Delete(val); err != nil {
-		logger.GetLogger().Error(fmt.Sprintf("Failed to delete LPM6 %s", ip), logfields.Error, err)
+		return fmt.Errorf("failed to delete entry %s in LPM6: %w", ip, err)
 	}
 	return nil
 }
