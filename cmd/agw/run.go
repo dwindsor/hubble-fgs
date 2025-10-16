@@ -30,7 +30,7 @@ import (
 )
 
 func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.AgentGateway, dpuListener *dpu.DPUListener) error {
-	logger.GetLogger().Info("Agent starting...")
+	logger.GetLogger().Info("Agent starting", "config", Config)
 	waitGroup, ctx := errgroup.WithContext(ctx)
 
 	// Vrf mapping if provided using CLI
@@ -127,7 +127,7 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 					return fmt.Errorf("failed to wait for agent token: %w", err)
 				}
 			} else {
-				logger.GetLogger().Error("k8s auth token can be provided via --k8s-service-account-auth when NXOS integration is disabled")
+				logger.GetLogger().Warn("k8s auth token can be provided via --k8s-service-account-auth when NXOS integration is disabled")
 			}
 		}
 
@@ -149,8 +149,10 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 			return fmt.Errorf("kubernetes manager not created")
 		}
 
-		// Set the register status to ok for the successful connection.
-		agwAgent.RegisterStatus(ctx, true)
+		// Set the nxos register status to ok for the successful connection.
+		if Config.EnableNXOS {
+			agwAgent.RegisterStatus(ctx, true)
+		}
 
 		// Start the K8s controller manager
 		logger.GetLogger().Info("starting Kubernetes Manager for on-prem deployment")

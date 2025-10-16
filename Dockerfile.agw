@@ -1,9 +1,3 @@
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.25.3@sha256:6ea52a02734dd15e943286b048278da1e04eca196a564578d718c7720433dbbe AS build
-
-RUN apt-get update && apt-get upgrade -y && apt-get install make -y && apt-get autoremove -y && apt-get clean
-
-WORKDIR /usr/src/app
-
 # First collect gmni used for testing
 FROM --platform=$BUILDPLATFORM ghcr.io/openconfig/gnmic:0.42.1@sha256:3e135878f555772653a278742d2c7460b47c20e2907e07f611ecf4cc5a2261cf AS gnmic
 ARG TARGETARCH
@@ -66,3 +60,55 @@ COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/rest
 RUN chmod 600 /etc/logrotate.d/hs
 EXPOSE 8880 8881 8882
 ENTRYPOINT ["./init.sh"]
+
+# Test container for headless testing (no NXOS dependencies)
+# It container env vars for all AGW configuration flags, which can be overwritten at runtime
+FROM docker.io/library/alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412 AS agw-test
+ENV AGW_CONFIG="" \
+    AGW_NETWORK_POLICY="" \
+    AGW_ENABLE_K8S="false" \
+    AGW_ENABLE_NXOS="false" \
+    AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
+    AGW_VRF_MAP="" \
+    AGW_DEBUG="false" \
+    AGW_K8S_SERVICE_ACCOUNT_AUTH=""
+RUN apk update && apk upgrade --no-cache
+EXPOSE 8880
+WORKDIR /usr/src/app
+COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agw ./
+COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agwctl ./
+RUN mkdir -p /opt/cisco/daf/etc
+COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/dafconfig /opt/cisco/daf/etc
+RUN cat > /usr/src/app/entrypoint.sh << 'EOF'
+#!/bin/sh
+set -e
+ARGS=""
+if [ -n "$AGW_CONFIG" ]; then
+    ARGS="$ARGS --config=$AGW_CONFIG"
+fi
+if [ -n "$AGW_NETWORK_POLICY" ]; then
+    ARGS="$ARGS --network-policy=$AGW_NETWORK_POLICY"
+fi
+if [ "$AGW_ENABLE_K8S" = "false" ]; then
+    ARGS="$ARGS --enable-k8s=false"
+fi
+if [ "$AGW_ENABLE_NXOS" = "false" ]; then
+    ARGS="$ARGS --enable-nxos=false"
+fi
+if [ -n "$AGW_DPU_SERVER_ADDRESS" ]; then
+    ARGS="$ARGS --dpu-server-address=$AGW_DPU_SERVER_ADDRESS"
+fi
+if [ -n "$AGW_VRF_MAP" ]; then
+    ARGS="$ARGS --vrf-map=$AGW_VRF_MAP"
+fi
+if [ "$AGW_DEBUG" = "true" ]; then
+    ARGS="$ARGS --debug"
+fi
+if [ -n "$AGW_K8S_SERVICE_ACCOUNT_AUTH" ]; then
+    ARGS="$ARGS --k8s-service-account-auth=$AGW_K8S_SERVICE_ACCOUNT_AUTH"
+fi
+echo "Starting AGW with arguments:$ARGS"
+exec /usr/src/app/agw $ARGS
+EOF
+RUN chmod +x /usr/src/app/entrypoint.sh
+ENTRYPOINT ["/usr/src/app/entrypoint.sh"]

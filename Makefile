@@ -265,7 +265,13 @@ image-clang:
 
 .PHONY: image-agw
 image-agw:
-	$(CONTAINER_ENGINE) build -f Dockerfile.agw -t "${AGW_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} .
+	$(CONTAINER_ENGINE) build -f Dockerfile.agw -t "${AGW_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} --target=base-build .
+	@echo "Push like this when ready:"
+	@echo "${CONTAINER_ENGINE} push ${AGW_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
+
+.PHONY: image-agw-test
+image-agw-test:
+	$(CONTAINER_ENGINE) build -f Dockerfile.agw -t "${AGW_IMAGE_NAME}-test:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} --target=agw-test .
 	@echo "Push like this when ready:"
 	@echo "${CONTAINER_ENGINE} push ${AGW_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
