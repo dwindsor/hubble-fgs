@@ -10,20 +10,25 @@ on:
       - master
 
 concurrency:
-  group: ${{ github.ref }}-kvm-gotests
+  group: ${{ github.ref }}-${{ github.workflow_ref }}
   cancel-in-progress: true
 
 jobs:
-  run-tests:
-    env:
-      SHARED_FOLDER: /home/runners
+  run-kvm-gotests:
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        os: 
-          - majestic-ketchup-light 
-          - splendid-metal-arm64
+        arch:
+          - amd64
+          - arm64
+        include:
+          - arch: amd64
+            runner_labels:
+              - majestic-ketchup-light
+          - arch: arm64
+            runner_labels:
+              - splendid-metal-lite
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           # - "rhel8.9-20241218.004849"
@@ -44,10 +49,10 @@ jobs:
         # TODO: temporarily disable testing for 4.19 and 5.4 kernels
         # The excluded kernels require more test failure investigation
         exclude:
-          - os: splendid-metal-arm64
+          - arch: arm64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
             kernel: "rhel8.9-20241218.004849" # currently not supported on ARM64
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner_labels }}
     permissions:
       contents: read
       actions: read
@@ -58,76 +63,33 @@ jobs:
           path: hubble-fgs
           submodules: true
 
-      - name: Set up job variables
-        id: vars
+      - name: Get CPU and Memory
+        id: get-cpu-mem
         run: |
-          if [[ "${{ matrix.os }}" == "splendid-metal-arm64" ]]
-          then
-            # this is racy but it should be fine
-            ssh_port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
-            echo metal_arm64=true >> $GITHUB_OUTPUT
-            echo lvh_install_deps=false >> $GITHUB_OUTPUT
-            echo lvh_kernel="${{ env.SHARED_FOLDER }}/vmlinuz-${{ matrix.kernel }}" >> $GITHUB_OUTPUT
-            echo ssh_port=$ssh_port >> $GITHUB_OUTPUT
-            echo unit_test_log="tetragon-unit-tests-${{ matrix.kernel }}-arm64" >> $GITHUB_OUTPUT
-            echo arch=arm64 >> $GITHUB_OUTPUT
-          else
-            echo metal_arm64=false >> $GITHUB_OUTPUT
-            echo lvh_install_deps=true >> $GITHUB_OUTPUT
-            echo lvh_kernel="" >> $GITHUB_OUTPUT
-            echo ssh_port=2222 >> $GITHUB_OUTPUT
-            echo unit_test_log="tetragon-unit-tests-${{ matrix.kernel }}" >> $GITHUB_OUTPUT
-            echo arch=amd64 >> $GITHUB_OUTPUT
-          fi
-
-      - name: Install GO
-        if: steps.vars.outputs.metal_arm64 == 'true'
-        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
-        with:
-          go-version: '1.23.2'
-
-      - name: Install LVH CLI
-        if: steps.vars.outputs.metal_arm64 == 'true'
-        run: |
-          go install github.com/cilium/little-vm-helper/cmd/lvh@latest
-          sudo install $(go env GOPATH)/bin/lvh /usr/local/bin/ || echo "skip because of race (see https://unix.stackexchange.com/a/116281/604289)"
-
-      # Local caching mechanism since we run on the same runner, we could use GitHub cache also
-      - name: Download the kernel
-        if: steps.vars.outputs.metal_arm64 == 'true'
-        run: |
-          if [ ! -e "$SHARED_FOLDER/vmlinuz-${{ matrix.kernel }}" ]; then
-            lvh kernel pull ${{ matrix.kernel }}
-            mkdir -p $SHARED_FOLDER
-            mv ${{ matrix.kernel }}/boot/vmlinuz* $SHARED_FOLDER/vmlinuz-${{ matrix.kernel }}
-            rm -rf ${{ matrix.kernel }}
-          fi
+          echo "cpu=$(( $(nproc) / 2 ))" >> $GITHUB_OUTPUT
+          echo "mem=$(cat /proc/meminfo | awk '/^MemTotal:/{print int($2/1024/1024/2)}')G" >> $GITHUB_OUTPUT
 
       - name: Provision LVH VM
         uses: cilium/little-vm-helper@9c1f3a549af06e213863d034c13ba1c5d1e3c667 # v0.0.26
         with:
-          install-dependencies: ${{ steps.vars.outputs.lvh_install_deps }}
+          install-dependencies: true
           test-name: tetragon-unit-tests
           image: kind
           image-version: '${{ matrix.kernel }}'
-          images-folder-parent: '${{ env.SHARED_FOLDER }}'
-          kernel-path: '${{ steps.vars.outputs.lvh_kernel }}'
+          images-folder-parent:  ${{ github.workspace }}/.github/lvh-action-cache
+          kernel-version: ${{ matrix.arch == 'arm64' && matrix.kernel || '' }}
           host-mount: ./
-          ssh-port: ${{ steps.vars.outputs.ssh_port }}
-          mem: 4G
-          cpu: 2
+          mem: ${{ steps.get-cpu-mem.outputs.mem }}
+          cpu: ${{ steps.get-cpu-mem.outputs.cpu }}
           cpu-kind: host
-          arch: ${{ steps.vars.outputs.arch }}
+          arch: ${{ matrix.arch }}
           cmd: |
             set -eux
             cd /host/hubble-fgs
             git config --global --add safe.directory /host/hubble-fgs
 
-            if [[ "${{ steps.vars.outputs.metal_arm64 }}" == "false" ]]
-            then
-              systemd-detect-virt
-              (systemd-detect-virt | grep -q -i kvm) || { echo 'No KVM support detected! Bailing out...'; exit 1; }
-            fi
+            systemd-detect-virt
+            systemd-detect-virt | grep -Eiq 'kvm|qemu' || { echo 'No KVM or QEMU support detected! Bailing out...'; exit 1; }
 
             # copy btf file
             mkdir -p bpf/objs
@@ -145,7 +107,7 @@ jobs:
             # TODO remove bind9-dnsutils package once image version is >= 20250214.144547
             DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd socat iproute2 net-tools bind9-dnsutils
 
-            if [[ "${{ steps.vars.outputs.metal_arm64 }}" == "false" ]]
+            if [[ "${{ matrix.arch }}" == "amd64" ]]
             then
               DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libc6-dev-i386
             else
@@ -158,15 +120,18 @@ jobs:
       - name: Run Tests
         uses: cilium/little-vm-helper@9c1f3a549af06e213863d034c13ba1c5d1e3c667 # v0.0.26
         with:
+          test-name: tetragon-unit-tests
+          host-mount: ./
           provision: 'false'
-          ssh-port: ${{ steps.vars.outputs.ssh_port }}
+          arch: ${{ matrix.arch }}
+          kernel-version: ${{ matrix.arch == 'arm64' && matrix.kernel || '' }}
           cmd: |
             set -eux
             cd /host/hubble-fgs
 
             mkdir /build
             export GOTMPDIR=/build
-            
+
             export KVM_CI=true
             export SUDO=
             # FIXME: TestCGTLS13 test fails bpf-next kernels
@@ -200,16 +165,16 @@ jobs:
           mkdir -p logs/model-test-dumps
 
           # Copy logs over
-          scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
-          scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/*.json' logs/unit-tests || true
-          scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
-          scp -P ${{ steps.vars.outputs.ssh_port }} 'root@localhost:/tmp/TestModel*' logs/model-test-dumps || true
+          scp -P 2222 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
+          scp -P 2222 'root@localhost:/tmp/*.json' logs/unit-tests || true
+          scp -P 2222 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
+          scp -P 2222 'root@localhost:/tmp/TestModel*' logs/model-test-dumps || true
 
       - name: Upload unit test logs
         if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: tetragon-unit-tests-${{ matrix.kernel }}-${{ matrix.os }}
+          name: tetragon-unit-tests-${{ matrix.kernel }}-${{ matrix.arch }}
           path: logs/unit-tests
           retention-days: 5
 
@@ -217,22 +182,6 @@ jobs:
         if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: modeltest-json-${{ matrix.kernel }}-${{ matrix.os }}
+          name: modeltest-json-${{ matrix.kernel }}-${{ matrix.arch }}
           path: logs/model-test-dumps
           retention-days: 5
-
-      - name: Cleanup LVH mess
-        if: ${{ always() }} && steps.vars.outputs.metal_arm64 == 'true'
-        run: |
-          set +e
-          # stop our VM
-          ssh -p ${{ steps.vars.outputs.ssh_port }} -o ConnectTimeout=5 root@localhost poweroff
-          # cleanup work folder as root (because we created a symbolic link as
-          # root in the VM while the fs was mounted)
-          sudo rm -rf ~/runner/_work/hubble-fgs/hubble-fgs/hubble-fgs
-          # cleanup my images
-          find /home/runners -user $(whoami) -type f -iname '*.qcow2' -delete
-          find /home/runners -user $(whoami) -type f -iname '*.zst' -delete
-          # cleanup shared folder cache, trash all files older than 7 days
-          find /home/runners -mtime +7 -type f -exec rm {} \;
-
