@@ -16,10 +16,12 @@ handle_sigterm() {
 
 trap 'handle_sigterm' SIGTERM
 
-# Start background services: ntpd and cron.
-ntpd&
-/etc/init.d/cron start
+echo "Starting HypershieldAgent init script"
+# Start background services: chronyd and crond.
+chronyd &
+crond
 # Load crontab file.
+mkdir -p /root/.cache
 cat /usr/src/app/crontab | crontab -
 # Create necessary directories if they don't exist.
 mkdir -p /data/volatile/logs
