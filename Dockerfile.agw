@@ -66,4 +66,4 @@ COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/rest
 RUN chmod 600 /etc/logrotate.d/hs
 EXPOSE 8880 8881 8882
 #ENTRYPOINT["/usr/bin/sh"]
-#CMD ["./init.sh"]
+CMD ["./init.sh"]
