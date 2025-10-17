@@ -37,8 +37,7 @@ func Execute() error {
 		},
 		RunE: func(_ *cobra.Command, _ []string) error {
 			logger.GetLogger().Info("Starting SmartSwitch FWA", "version", version.Version)
-			executeFWA()
-			return nil
+			return executeFWA()
 		},
 	}
 

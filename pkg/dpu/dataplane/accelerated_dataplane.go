@@ -71,6 +71,27 @@ func (dp *AcceleratedDataplaneProcess) Start(ctx context.Context) error {
 	// Setting status to true
 	dp.Status.Store(true)
 
+	// Wait for dataplane unix socket to be created
+	backoff := 100 * time.Millisecond
+	maxBackoff := 5 * time.Second
+	for {
+		_, err := os.Stat(dp.ApiPath)
+		if err == nil {
+			break
+		}
+		logger.GetLogger().Info("Waiting for dataplane unix socket to be created", "path", dp.ApiPath, "error", err, "backoff", backoff)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(backoff):
+		}
+		// Exponential backoff with max cap
+		backoff *= 2
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+	}
+
 	// Loading policies
 	err := dp.LoadFirewallPolicies(ctx, dp.PersistPath)
 	if err != nil {
