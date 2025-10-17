@@ -23,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/netpol"
 	netpollibrary "github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 	"github.com/isovalent/hubble-fgs/pkg/token"
@@ -362,9 +363,11 @@ func (agw *AgentGateway) DpuHealthCheck(ctx context.Context) {
 }
 
 func (agw *AgentGateway) LoadPolicies(_ context.Context, pols string) string {
-	logger.GetLogger().Debug("Loading policies:", "policy", pols)
-
-	return "TBD"
+	err := netpol.AddFromYAML(pols)
+	if err != nil {
+		return fmt.Sprintf("failed to load policy: %s", err)
+	}
+	return "policy loaded"
 }
 
 func (agw *AgentGateway) ShowPolicies(_ context.Context, nameFilter string) string {
