@@ -28,9 +28,10 @@ func New() *cobra.Command {
 	}
 
 	addCmd := &cobra.Command{
-		Use:   "add <yaml_file>",
-		Short: "add/update alert rule",
-		Args:  cobra.ExactArgs(1),
+		Use:        "add <yaml_file>",
+		Short:      "add/update alert rule",
+		Deprecated: `This command is deprecated and replaced by "policies add" command`,
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := NewClient()
 			if err != nil {
@@ -56,9 +57,10 @@ func New() *cobra.Command {
 	}
 
 	delCmd := &cobra.Command{
-		Use:   "delete <name>",
-		Short: "delete alert rule",
-		Args:  cobra.ExactArgs(1),
+		Use:        "delete <name>",
+		Short:      "delete alert rule",
+		Deprecated: `This command is deprecated and replaced by "policies delete" command`,
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := NewClient()
 			if err != nil {
@@ -79,9 +81,10 @@ func New() *cobra.Command {
 	}
 
 	listCmd := &cobra.Command{
-		Use:   "list",
-		Short: "list loaded alert rules",
-		Args:  cobra.ExactArgs(0),
+		Use:        "list",
+		Short:      "list loaded alert rules",
+		Deprecated: `This command is deprecated and replaced by "policies list" command`,
+		Args:       cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return ListAlerts(
 				cmd, "text",
@@ -91,9 +94,10 @@ func New() *cobra.Command {
 	}
 
 	getCmd := &cobra.Command{
-		Use:   "get <name>",
-		Short: "get alert rule",
-		Args:  cobra.ExactArgs(1),
+		Use:        "get <name>",
+		Short:      "get alert rule",
+		Deprecated: `This command is deprecated and replaced by "policies get" command`,
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := NewClient()
 			if err != nil {

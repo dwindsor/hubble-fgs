@@ -32,10 +32,11 @@ func listCmd() *cobra.Command {
 	var spListOutputFlag string
 
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "list loaded sandbox policies",
-		Long:  "List loaded sandbox policies, use the JSON output format for full output.",
-		Args:  cobra.ExactArgs(0),
+		Use:        "list",
+		Short:      "list loaded sandbox policies",
+		Long:       "List loaded sandbox policies, use the JSON output format for full output.",
+		Deprecated: `This command is deprecated and replaced by "policies list" command`,
+		Args:       cobra.ExactArgs(0),
 		PreRunE: func(_ *cobra.Command, _ []string) error {
 			if spListOutputFlag != "json" && spListOutputFlag != "text" {
 				return fmt.Errorf("invalid value for %q flag: %s", common.KeyOutput, spListOutputFlag)
