@@ -16,9 +16,10 @@ function Extract-ZipFile {
     }
 
     New-Item -ItemType Directory -Path $destinationPath
+    Expand-Archive -Path $zipPath -DestinationPath $destinationPath -Force
     
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $destinationPath)
+    # Add-Type -AssemblyName System.IO.Compression.FileSystem
+    # [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $destinationPath)
 }
 
 $buildZip = $ntosebpfextZip
