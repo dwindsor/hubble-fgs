@@ -102,6 +102,13 @@ jobs:
             cat agwctl_build.log
             exit 1
           fi
+      - name: Copy AGW install files
+        run: |
+          echo "Copying AGW install files..."
+          mkdir -p binaries/install/agw
+          cp -r install/agw/* binaries/install/agw/
+          echo "Install files copied:"
+          ls -la binaries/install/agw/
       - name: Upload AGW binaries artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
