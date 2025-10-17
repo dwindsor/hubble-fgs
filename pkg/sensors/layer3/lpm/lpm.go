@@ -12,11 +12,8 @@ package lpm
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
-	"net"
-	"strconv"
-	"strings"
+	"net/netip"
 
 	"github.com/cilium/ebpf"
 )
@@ -41,8 +38,8 @@ const (
 )
 
 type LPMMap interface {
-	Write(ip string, id uint64) error
-	Delete(ip string) error
+	Write(cidr netip.Prefix, id uint64) error
+	Delete(cidr netip.Prefix) error
 }
 
 type lpmMapImpl struct {
@@ -50,120 +47,62 @@ type lpmMapImpl struct {
 	addr4 *ebpf.Map
 }
 
-func (lpm *lpmMapImpl) writeIP4(ip string, id uint64) error {
-	addr, maskLen, err := parseAddr(ip)
-	if err != nil {
-		return fmt.Errorf("failed parsing IP4 %s: %w", ip, err)
+func (lpm *lpmMapImpl) writeIP4(cidr netip.Prefix, id uint64) error {
+	val := KernelLPMTrie4{
+		prefix: uint32(cidr.Bits()),
+		addr:   binary.LittleEndian.Uint32(cidr.Addr().AsSlice()),
 	}
-	ip4 := binary.LittleEndian.Uint32(addr)
-	val := KernelLPMTrie4{prefix: maskLen, addr: ip4}
 	if err := lpm.addr4.Update(val, id, 0); err != nil {
-		return fmt.Errorf("failed to update the addr4 LPM with %s->%d: %w", ip, id, err)
+		return fmt.Errorf("failed to update the addr4 LPM with %s->%d: %w", cidr, id, err)
 	}
 	return nil
 }
 
-func (lpm *lpmMapImpl) writeIP6(ip string, id uint64) error {
-	addr, maskLen, err := parseAddr(ip)
-	if err != nil {
-		return fmt.Errorf("failed parsing IP6 %s: %w", ip, err)
-	}
-	var addrSlice [16]byte
-	copy(addrSlice[:], addr)
-	val := KernelLPMTrie6{prefix: maskLen, addr: addrSlice}
+func (lpm *lpmMapImpl) writeIP6(cidr netip.Prefix, id uint64) error {
+	val := KernelLPMTrie6{prefix: uint32(cidr.Bits()), addr: cidr.Addr().As16()}
 	if err := lpm.addr6.Update(val, id, 0); err != nil {
-		return fmt.Errorf("failed to update the addr6 LPM with %s->%d: %w", ip, id, err)
+		return fmt.Errorf("failed to update the addr6 LPM with %s->%d: %w", cidr, id, err)
 	}
 	return nil
 }
 
-func (lpm *lpmMapImpl) deleteIP4(ip string) error {
-	addr, maskLen, err := parseAddr(ip)
-	if err != nil {
-		return fmt.Errorf("failed parsing IP4 %s: %w", ip, err)
+func (lpm *lpmMapImpl) deleteIP4(cidr netip.Prefix) error {
+	val := KernelLPMTrie4{
+		prefix: uint32(cidr.Bits()),
+		addr:   binary.LittleEndian.Uint32(cidr.Addr().AsSlice()),
 	}
-	ip4 := binary.LittleEndian.Uint32(addr)
-	val := KernelLPMTrie4{prefix: maskLen, addr: ip4}
 	if err := lpm.addr4.Delete(val); err != nil {
-		return fmt.Errorf("failed to delete entry %s in LPM4: %w", ip, err)
+		return fmt.Errorf("failed to delete entry %s in LPM4: %w", cidr, err)
 	}
 	return nil
 }
 
-func (lpm *lpmMapImpl) deleteIP6(ip string) error {
-	addr, maskLen, err := parseAddr(ip)
-	if err != nil {
-		return fmt.Errorf("failed parsing IP6 %s: %w", ip, err)
-	}
-	var addrSlice [16]byte
-	copy(addrSlice[:], addr)
-	val := KernelLPMTrie6{prefix: maskLen, addr: addrSlice}
+func (lpm *lpmMapImpl) deleteIP6(cidr netip.Prefix) error {
+	val := KernelLPMTrie6{prefix: uint32(cidr.Bits()), addr: cidr.Addr().As16()}
 	if err := lpm.addr6.Delete(val); err != nil {
-		return fmt.Errorf("failed to delete entry %s in LPM6: %w", ip, err)
+		return fmt.Errorf("failed to delete entry %s in LPM6: %w", cidr, err)
 	}
 	return nil
 }
 
-func (lpm *lpmMapImpl) Write(ip string, id uint64) error {
+func (lpm *lpmMapImpl) Write(cidr netip.Prefix, id uint64) error {
 	var err error
 
-	if strings.Contains(ip, ":") {
-		err = lpm.writeIP6(ip, id)
+	if cidr.Addr().Is6() {
+		err = lpm.writeIP6(cidr, id)
 	} else {
-		err = lpm.writeIP4(ip, id)
+		err = lpm.writeIP4(cidr, id)
 	}
 	return err
 }
 
-func (lpm *lpmMapImpl) Delete(ip string) error {
+func (lpm *lpmMapImpl) Delete(cidr netip.Prefix) error {
 	var err error
 
-	if strings.Contains(ip, ":") {
-		err = lpm.deleteIP6(ip)
+	if cidr.Addr().Is6() {
+		err = lpm.deleteIP6(cidr)
 	} else {
-		err = lpm.deleteIP4(ip)
+		err = lpm.deleteIP4(cidr)
 	}
 	return err
-}
-
-func parseAddr(v string) ([]byte, uint32, error) {
-	ipaddr := net.ParseIP(v)
-	if ipaddr != nil {
-		ipaddr4 := ipaddr.To4()
-		if ipaddr4 != nil {
-			return ipaddr4, 32, nil
-		}
-		ipaddr6 := ipaddr.To16()
-		if ipaddr6 != nil {
-			return ipaddr6, 128, nil
-		}
-		return nil, 0, errors.New("IP address is not valid: does not parse as IPv4 or IPv6")
-	}
-	vParts := strings.Split(v, "/")
-	if len(vParts) != 2 {
-		return nil, 0, errors.New("IP address is not valid: should be in format ADDR or ADDR/MASKLEN")
-	}
-	ipaddr = net.ParseIP(vParts[0])
-	if ipaddr == nil {
-		return nil, 0, errors.New("IP CIDR is not valid: address part does not parse as IPv4 or IPv6")
-	}
-	maskLen, err := strconv.ParseUint(vParts[1], 10, 32)
-	if err != nil {
-		return nil, 0, errors.New("IP CIDR is not valid: mask part does not parse")
-	}
-	ipaddr4 := ipaddr.To4()
-	if ipaddr4 != nil {
-		if maskLen <= 32 {
-			return ipaddr4, uint32(maskLen), nil
-		}
-		return nil, 0, errors.New("IP CIDR is not valid: IPv4 mask len must be <= 32")
-	}
-	ipaddr6 := ipaddr.To16()
-	if ipaddr6 != nil {
-		if maskLen <= 128 {
-			return ipaddr6, uint32(maskLen), nil
-		}
-		return nil, 0, errors.New("IP CIDR is not valid: IPv6 mask len must be <= 128")
-	}
-	return nil, 0, errors.New("IP CIDR is not valid: address part does not parse")
 }

@@ -12,6 +12,7 @@ package netpol
 
 import (
 	"encoding/json"
+	"net/netip"
 	"reflect"
 	"testing"
 
@@ -34,6 +35,8 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 			},
 		},
 	}
+	cidr := netip.MustParsePrefix(rule.Destination[0].IPBlock.CIDR)
+
 	rule2 := v1alpha1.NetworkPolicyRule{
 		Hook:        "connect",
 		Description: "Allows HTTP connection to 8.8.4.4",
@@ -75,7 +78,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 						InProcessName: []string{"/usr/bin/curl"},
 					},
 					Destination: types.TetragonNetworkDestination{
-						CIDR:  &types.TetragonNetworkCIDR{CIDR: rule.Destination[0].IPBlock.CIDR},
+						CIDR:  cidr,
 						Ports: []uint32{rule.Destination[0].Ports.Ports[0]},
 					},
 					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Deny: true}},
@@ -105,7 +108,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 						InProcessName: []string{"/usr/bin/curl"},
 					},
 					Destination: types.TetragonNetworkDestination{
-						CIDR:  &types.TetragonNetworkCIDR{CIDR: rule.Destination[0].IPBlock.CIDR},
+						CIDR:  cidr,
 						Ports: []uint32{rule.Destination[0].Ports.Ports[0]},
 					},
 					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Deny: true}},
@@ -133,7 +136,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 						InProcessName: []string{"/usr/bin/curl"},
 					},
 					Destination: types.TetragonNetworkDestination{
-						CIDR:  &types.TetragonNetworkCIDR{CIDR: rule.Destination[0].IPBlock.CIDR},
+						CIDR:  cidr,
 						Ports: []uint32{rule.Destination[0].Ports.Ports[0]},
 					},
 					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Deny: true}},
@@ -165,7 +168,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 						InProcessName: []string{"/usr/bin/curl"},
 					},
 					Destination: types.TetragonNetworkDestination{
-						CIDR:  &types.TetragonNetworkCIDR{CIDR: rule.Destination[0].IPBlock.CIDR},
+						CIDR:  cidr,
 						Ports: []uint32{rule.Destination[0].Ports.Ports[0]},
 					},
 					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Deny: true}},
@@ -178,7 +181,7 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 						InProcessName: []string{"/usr/bin/curl"},
 					},
 					Destination: types.TetragonNetworkDestination{
-						CIDR:  &types.TetragonNetworkCIDR{CIDR: rule2.Destination[0].IPBlock.CIDR},
+						CIDR:  netip.MustParsePrefix(rule2.Destination[0].IPBlock.CIDR),
 						Ports: []uint32{rule2.Destination[0].Ports.Ports[0]},
 					},
 					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Deny: true}},

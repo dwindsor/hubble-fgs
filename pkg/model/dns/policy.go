@@ -122,7 +122,7 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *record.DatapathAction, policy *types.TetragonNetworkPolicy, init bool) []*record.DatapathRecord {
 	records := []*record.DatapathRecord{}
 
-	if policy.Destination.CIDR != nil {
+	if policy.Destination.CIDR.IsValid() {
 		r, err := addDestSrcCIDRRecords(policy.PolicyUID, &policy.Destination, src, action, init)
 		if err != nil {
 			logger.GetLogger().Warn("CIDR policy record error", logfields.Error, err, "CIDR", policy.Destination.CIDR)

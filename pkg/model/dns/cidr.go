@@ -30,7 +30,7 @@ func addDestSrcCIDRRecords(
 ) ([]*record.DatapathRecord, error) {
 	ep := &endpoint.Endpoint{
 		Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-		Ip:   dest.CIDR.CIDR,
+		CIDR: dest.CIDR,
 	}
 
 	if len(dest.Ports) == 0 {

@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/netip"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -271,7 +272,7 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 			Kind:      e.Kind,
 			Namespace: e.Namespace,
 			Name:      e.Name,
-			Ip:        e.Ip,
+			Ip:        e.CIDR.String(),
 		}
 
 		endptToId[id] = v
@@ -398,9 +399,17 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				}
 
 			} else {
+				addr, ok := netip.AddrFromSlice(ip)
+				if !ok {
+					return nil, fmt.Errorf("failed to convert net.IP to netip.Addr, this shouldn't happen")
+				}
+				prefixLen := 32
+				if addr.Is6() {
+					prefixLen = 128
+				}
 				ep = endpoint.Endpoint{
 					Type: tetragon.EndpointType_ENDPOINT_TYPE_IP,
-					Ip:   ip.String(),
+					CIDR: netip.PrefixFrom(addr, prefixLen),
 				}
 			}
 		case types.DestinationSourceUser:
@@ -498,7 +507,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_IP:
 			d = &types.Destination{
-				DestinationNames: strings.Split(ep.Ip, ","),
+				DestinationNames: []string{ep.CIDR.String()},
 				Port:             dstVal.Port,
 				Stats:            stats,
 			}
@@ -530,7 +539,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			}
 		case tetragon.EndpointType_ENDPOINT_TYPE_CIDR:
 			d = &types.Destination{
-				DestinationNames: []string{ep.Ip},
+				DestinationNames: []string{ep.CIDR.String()},
 				Port:             dstVal.Port,
 				Stats:            stats,
 			}

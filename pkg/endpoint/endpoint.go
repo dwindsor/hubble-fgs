@@ -14,6 +14,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"net/netip"
 	"strings"
 	"sync"
 
@@ -41,11 +42,11 @@ type Endpoint struct {
 	Kind      string
 	Namespace string
 	Name      string
-	Ip        string
+	CIDR      netip.Prefix
 }
 
 func (e *Endpoint) String() string {
-	return fmt.Sprintf("wl(%s:%s:%s) dns(%s) ip(%s)", e.Kind, e.Namespace, e.Name, e.Dns, e.Ip)
+	return fmt.Sprintf("wl(%s:%s:%s) dns(%s) cidr(%s)", e.Kind, e.Namespace, e.Name, e.Dns, e.CIDR)
 }
 
 var _ EndpointCache = &Cache{}

@@ -10,7 +10,10 @@
 
 package types
 
-import "fmt"
+import (
+	"fmt"
+	"net/netip"
+)
 
 type ProcessExecveKey struct {
 	Pid   uint32
@@ -159,7 +162,7 @@ type TetragonNetworkSource struct {
 type TetragonNetworkDestination struct {
 	FQDN   *TetragonNetworkFQDN
 	Labels TetragonNetworkLabels
-	CIDR   *TetragonNetworkCIDR
+	CIDR   netip.Prefix
 	Ports  []uint32
 }
 

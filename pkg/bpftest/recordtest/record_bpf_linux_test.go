@@ -15,6 +15,7 @@ package recordbpftest
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"os/exec"
 	"runtime"
 	"testing"
@@ -72,7 +73,7 @@ var (
 		Endpoint: record.DatapathEndpoint{
 			EP: &endpoint.Endpoint{
 				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-				Ip:   "127.0.0.1/32",
+				CIDR: netip.MustParsePrefix("127.0.0.1/32"),
 			},
 			Port: 0,
 		},
@@ -89,7 +90,7 @@ var (
 		Endpoint: record.DatapathEndpoint{
 			EP: &endpoint.Endpoint{
 				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-				Ip:   "127.0.0.1/32",
+				CIDR: netip.MustParsePrefix("127.0.0.1/32"),
 			},
 			Port: 0,
 		},
@@ -106,7 +107,7 @@ var (
 		Endpoint: record.DatapathEndpoint{
 			EP: &endpoint.Endpoint{
 				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-				Ip:   "127.0.0.2/32",
+				CIDR: netip.MustParsePrefix("127.0.0.2/32"),
 			},
 			Port: 0,
 		},
@@ -123,7 +124,7 @@ var (
 		Endpoint: record.DatapathEndpoint{
 			EP: &endpoint.Endpoint{
 				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-				Ip:   "127.0.0.2/32",
+				CIDR: netip.MustParsePrefix("127.0.0.2/32"),
 			},
 			Port: 0,
 		},
@@ -140,7 +141,7 @@ var (
 		Endpoint: record.DatapathEndpoint{
 			EP: &endpoint.Endpoint{
 				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-				Ip:   "127.0.0.0/24",
+				CIDR: netip.MustParsePrefix("127.0.0.0/24"),
 			},
 			Port: 0,
 		},
@@ -157,7 +158,7 @@ var (
 		Endpoint: record.DatapathEndpoint{
 			EP: &endpoint.Endpoint{
 				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-				Ip:   "127.0.0.0/24",
+				CIDR: netip.MustParsePrefix("127.0.0.0/24"),
 			},
 			Port: 0,
 		},

@@ -154,7 +154,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	}
 
 	if r.Endpoint.EP != nil && r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
-		if err := p.lpmMap.Write(r.Endpoint.EP.Ip, dst); err != nil {
+		if err := p.lpmMap.Write(r.Endpoint.EP.CIDR, dst); err != nil {
 			logger.GetLogger().Warn("Failed to create LPM id", logfields.Error, err)
 			return err
 		}
@@ -269,7 +269,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 	}
 
 	if r.Endpoint.EP != nil && r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
-		if err := p.lpmMap.Delete(r.Endpoint.EP.Ip); err != nil {
+		if err := p.lpmMap.Delete(r.Endpoint.EP.CIDR); err != nil {
 			logger.GetLogger().Warn("Failed to delete LPM entry", logfields.Error, err)
 			return err
 		}

@@ -13,6 +13,7 @@
 package dns
 
 import (
+	"net/netip"
 	"strings"
 	"testing"
 
@@ -112,10 +113,7 @@ func testMatchPortDstProcessLabelsDenyPolicy(name, src, dst, action string) *typ
 
 func testMatchPortCIDRDstProcessLabelsDenyPolicy(name, src, dst, action, cidr string) *types.TetragonNetworkPolicy {
 	netpol := testMatchPortDstProcessLabelsDenyPolicy(name, src, dst, action)
-	netpol.Destination.CIDR = &types.TetragonNetworkCIDR{
-		CIDR: cidr,
-	}
-
+	netpol.Destination.CIDR = netip.MustParsePrefix(cidr)
 	return netpol
 }
 

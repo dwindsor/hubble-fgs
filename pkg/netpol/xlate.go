@@ -12,6 +12,7 @@ package netpol
 
 import (
 	"fmt"
+	"net/netip"
 	"strings"
 
 	"github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
@@ -121,9 +122,26 @@ func toAction(r *v1alpha1.NetworkPolicyRule) types.TetragonNetworkAction {
 	}
 }
 
-func toDestination(d *v1alpha1.NetworkDestination) types.TetragonNetworkDestination {
+func ensureCIDR(ipBlock string) string {
+	if strings.Contains(ipBlock, "/") {
+		return ipBlock
+	}
+
+	ip, err := netip.ParseAddr(ipBlock)
+	if err != nil {
+		// Invalid IP address, return as-is
+		return ipBlock
+	}
+
+	if ip.Is4() {
+		return ipBlock + "/32"
+	}
+	return ipBlock + "/128"
+}
+
+func toDestination(d *v1alpha1.NetworkDestination) (types.TetragonNetworkDestination, error) {
 	var f *types.TetragonNetworkFQDN
-	var ip *types.TetragonNetworkCIDR
+	var cidr netip.Prefix
 
 	if len(d.FQDN) > 0 {
 		f = &types.TetragonNetworkFQDN{
@@ -134,8 +152,10 @@ func toDestination(d *v1alpha1.NetworkDestination) types.TetragonNetworkDestinat
 	}
 
 	if d.IPBlock != nil {
-		ip = &types.TetragonNetworkCIDR{
-			CIDR: d.IPBlock.CIDR,
+		var err error
+		cidr, err = netip.ParsePrefix(ensureCIDR(d.IPBlock.CIDR))
+		if err != nil {
+			return types.TetragonNetworkDestination{}, fmt.Errorf("failed to parse CIDR %s: %w", d.IPBlock.CIDR, err)
 		}
 	}
 
@@ -150,9 +170,9 @@ func toDestination(d *v1alpha1.NetworkDestination) types.TetragonNetworkDestinat
 	return types.TetragonNetworkDestination{
 		FQDN:   f,
 		Labels: labels,
-		CIDR:   ip,
+		CIDR:   cidr,
 		Ports:  ports,
-	}
+	}, nil
 }
 
 func toFirewallDestination(d *v1alpha1.NetworkDestination) (*types.TetragonNetworkDestination, error) {
@@ -169,8 +189,9 @@ func toFirewallDestination(d *v1alpha1.NetworkDestination) (*types.TetragonNetwo
 		return nil, fmt.Errorf("firewall wildcard destination rules not supported")
 	}
 
-	ip := &types.TetragonNetworkCIDR{
-		CIDR: d.IPBlock.CIDR,
+	cidr, err := netip.ParsePrefix(d.IPBlock.CIDR)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CIDR %s: %w", d.IPBlock.CIDR, err)
 	}
 
 	ports := make([]uint32, 0, len(d.Ports.Ports))
@@ -179,7 +200,7 @@ func toFirewallDestination(d *v1alpha1.NetworkDestination) (*types.TetragonNetwo
 	return &types.TetragonNetworkDestination{
 		FQDN:   f,
 		Labels: labels,
-		CIDR:   ip,
+		CIDR:   cidr,
 		Ports:  ports,
 	}, nil
 }
@@ -213,7 +234,11 @@ func parseConnectPolicy(np *v1alpha1.TetragonNetworkPolicy, r *v1alpha1.NetworkP
 	dfltAction := toDefaultAction(np)
 	act := toAction(r)
 	for _, d := range r.Destination {
-		dest := toDestination(&d)
+		dest, err := toDestination(&d)
+		if err != nil {
+			return nil, fmt.Errorf("failed to translate destination %v: %w", d, err)
+		}
+
 		policy = append(policy, &types.TetragonNetworkPolicy{
 			RuleDescription: r.Description,
 			Subject:         subj,

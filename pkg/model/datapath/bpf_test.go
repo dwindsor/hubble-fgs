@@ -12,6 +12,7 @@ package datapath
 
 import (
 	"fmt"
+	"net/netip"
 	"testing"
 
 	"github.com/cilium/ebpf"
@@ -50,11 +51,11 @@ func (fm *fakeBPFMap[K, V]) Update(key K, value V, _ ebpf.MapUpdateFlags) error 
 type fakeLPMMap struct {
 }
 
-func (fl *fakeLPMMap) Write(_ string, _ uint64) error {
+func (fl *fakeLPMMap) Write(_ netip.Prefix, _ uint64) error {
 	return nil
 }
 
-func (fl *fakeLPMMap) Delete(_ string) error {
+func (fl *fakeLPMMap) Delete(_ netip.Prefix) error {
 	return nil
 }
 
