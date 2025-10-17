@@ -165,8 +165,7 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	// Setting up exporter
 	err = dpu.LogExporter.Init(ctx)
 	if err != nil {
-		logger.GetLogger().Error("failed to initialize logger", logfields.Error, err)
-		return err
+		logger.GetLogger().Error("failed to initialize logger, continue without exporter", logfields.Error, err)
 	}
 
 	// Creating custom callback functions
