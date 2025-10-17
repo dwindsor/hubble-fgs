@@ -74,18 +74,34 @@ jobs:
           go-version-file: 'go.mod'
       - name: Build AGW binary
         run: |
-          make agw
-          echo "Files in current directory after make agw:"
-          ls -la agw* || echo "No agw binary found"
-          mkdir -p binaries/agw
-          cp agw binaries/agw/
+          echo "Building AGW binary..."
+          if make agw 2>&1 | tee agw_build.log; then
+            echo "✅ AGW build successful"
+            echo "Files in current directory after make agw:"
+            ls -la agw* || echo "No agw binary found"
+            mkdir -p binaries/agw
+            cp agw binaries/agw/
+          else
+            echo "❌ AGW build failed"
+            echo "Build error output:"
+            cat agw_build.log
+            exit 1
+          fi
       - name: Build AGWctl binary
         run: |
-          make agwctl
-          echo "Files in current directory after make agwctl:"
-          ls -la agwctl* || echo "No agwctl binary found"
-          mkdir -p binaries/agwctl
-          cp agwctl binaries/agwctl/
+          echo "Building AGWctl binary..."
+          if make agwctl 2>&1 | tee agwctl_build.log; then
+            echo "✅ AGWctl build successful"
+            echo "Files in current directory after make agwctl:"
+            ls -la agwctl* || echo "No agwctl binary found"
+            mkdir -p binaries/agwctl
+            cp agwctl binaries/agwctl/
+          else
+            echo "❌ AGWctl build failed"
+            echo "Build error output:"
+            cat agwctl_build.log
+            exit 1
+          fi
       - name: Upload AGW binaries artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
