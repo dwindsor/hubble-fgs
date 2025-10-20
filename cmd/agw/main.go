@@ -42,7 +42,7 @@ func Execute() error {
 			}
 		},
 		RunE: func(_ *cobra.Command, _ []string) error {
-			logger.GetLogger().Info("Starting SmartSwitch AGW", "version", version.Version)
+			logger.GetLogger().Info("Starting SmartSwitch AGW", "version", getVersion())
 			executeAGW()
 			return nil
 		},
