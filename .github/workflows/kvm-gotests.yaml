@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run-kvm-gotests:
+  run-tests:
     timeout-minutes: 120
     strategy:
       fail-fast: false
@@ -24,11 +24,9 @@ jobs:
           - arm64
         include:
           - arch: amd64
-            runner_labels:
-              - majestic-ketchup-light
+            runner_labels: ${{ vars.KVM_GH_RUNNER_AMD64 }}
           - arch: arm64
-            runner_labels:
-              - splendid-metal-lite
+            runner_labels: ${{ vars.KVM_GH_RUNNER_ARM64 }}
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           # - "rhel8.9-20241218.004849"
