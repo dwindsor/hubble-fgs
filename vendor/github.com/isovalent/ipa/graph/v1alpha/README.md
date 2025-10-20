@@ -206,6 +206,8 @@ network device.
 | name | [string](#string) |  | name is the name of the network device. |
 | ip | [string](#string) |  | ip is a network address that can be associated with the network device and the connection. |
 | port | [uint32](#uint32) |  | port is the network port associated with the ip address. |
+| protocol | [common.net.v1alpha.IPProtocol](#common-net-v1alpha-IPProtocol) |  | protocol is the protocol that is used for the connection at the L3/L4 layer. |
+| application_protocol | [string](#string) |  | application_protocol is the layer 7 protocol used for the connection. |
 | vlan_name | [string](#string) |  | vlan_name is a human readable name associated with a VLAN ID. |
 | vlan_id | [uint32](#uint32) |  | vlan_id is an ID in the range 1 to 4094 that defines a broadcast domain at the data link layer. |
 | vrf_name | [string](#string) |  | vrf_name is the name of a virtual routing and forwarding segement that is the equivalent of a VLAN but at the network layer. |

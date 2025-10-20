@@ -545,6 +545,10 @@ depfix: ## Update go.mod to match upstream dependencies
 .PHONY: vendor
 vendor: depfix ## Tidy and vendor Go modules.
 	$(MAKE) -C api vendor
+	# Need to call vendor twice here, once before and once after generate, the reason
+	# being we need to grab changes first plus pull in whatever gets generated here.
+	$(MAKE) -C pkg/k8s vendor
+	$(MAKE) -C pkg/k8s
 	$(MAKE) -C pkg/k8s vendor
 	$(GO) mod tidy
 	$(GO) mod vendor

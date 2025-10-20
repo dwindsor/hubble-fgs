@@ -23,7 +23,7 @@ func TestTXBytesTotal(t *testing.T) {
 	Collect(&allowExample)
 	expected := strings.NewReader(`# HELP tetragon_network_txbytes_total Number of bytes transmitted.
 # TYPE tetragon_network_txbytes_total counter
-tetragon_network_txbytes_total{destination_name="default:WORKLOAD_KIND_SERVICE:kubernetes",destination_namespace="default",destination_port="443",destination_type="DESTINATION_TYPE_KUBERNETES",destination_workload="kubernetes",namespace="example-namespace",policy="my-network-policy",protocol="NETWORK_PROTOCOL_TYPE_TCP",rule="Allow TCP traffic to Kubernetes API server on port 443",workload="example-workload"} 1
+tetragon_network_txbytes_total{destination_name="default:WORKLOAD_KIND_SERVICE:kubernetes",destination_namespace="default",destination_port="443",destination_type="DESTINATION_TYPE_KUBERNETES",destination_workload="kubernetes",namespace="example-namespace",policy="my-network-policy",protocol="IP_PROTOCOL_TCP",rule="Allow TCP traffic to Kubernetes API server on port 443",workload="example-workload"} 1
 `)
 	assert.NoError(t, testutil.CollectAndCompare(txBytesTotal, expected))
 }
@@ -33,7 +33,7 @@ func TestDroppedSessionsTotal(t *testing.T) {
 	Collect(&dropExample)
 	expected := strings.NewReader(`# HELP tetragon_network_dropped_sessions_total Number of sessions that got dropped by a Tetragon network policy rule.
 # TYPE tetragon_network_dropped_sessions_total counter
-tetragon_network_dropped_sessions_total{destination_name="bad.example.com",destination_namespace="",destination_port="80",destination_type="DESTINATION_TYPE_DNS",destination_workload="",namespace="example-namespace",policy="my-network-policy",protocol="NETWORK_PROTOCOL_TYPE_TCP",rule="Drop TCP traffic to bad.example.com on port 80",workload="example-workload"} 0
+tetragon_network_dropped_sessions_total{destination_name="bad.example.com",destination_namespace="",destination_port="80",destination_type="DESTINATION_TYPE_DNS",destination_workload="",namespace="example-namespace",policy="my-network-policy",protocol="IP_PROTOCOL_TCP",rule="Drop TCP traffic to bad.example.com on port 80",workload="example-workload"} 0
 `)
 	assert.NoError(t, testutil.CollectAndCompare(droppedSessionsTotal, expected))
 }

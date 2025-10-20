@@ -32,7 +32,6 @@
     - [StreamTelemetryResponse](#application_model-v1alpha-StreamTelemetryResponse)
   
     - [DestinationType](#application_model-v1alpha-DestinationType)
-    - [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType)
     - [PolicyVerdict](#application_model-v1alpha-PolicyVerdict)
     - [TelemetryType](#application_model-v1alpha-TelemetryType)
   
@@ -857,7 +856,7 @@ the following criteria:
 | destination_kubernetes_resource_name | [string](#string) |  | Kubernetes workload name of the destination. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
 | destination_kubernetes_service_kind | [common.k8s.type.v1alpha.ServiceKind](#common-k8s-type-v1alpha-ServiceKind) |  | Kubernetes service kind of the process that received this policy verdict. This field is set if and only if the process resource kind is service. |
 | destination_kubernetes_workload_kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  | Kubernetes workload kind of the destination. This field is set if and only if destination_type is `DESTINATION_TYPE_KUBERNETES`. |
-| protocol | [NetworkProtocolType](#application_model-v1alpha-NetworkProtocolType) |  | Network protocol of the connection that received this network connect policy verdict. |
+| protocol | [common.net.v1alpha.IPProtocol](#common-net-v1alpha-IPProtocol) |  | Network protocol of the connection that received this network connect policy verdict. |
 | verdict | [PolicyVerdict](#application_model-v1alpha-PolicyVerdict) |  | Policy verdict. If the connections don&#39;t have corresponding policy rules, this field is set to POLICY_VERDICT_UNSPECIFIED. |
 | policy_name | [string](#string) |  | Name of the Tetragon network connect policy that made this verdict. If the connections don&#39;t have corresponding policy rules, this field is not set. |
 | rule_name | [string](#string) |  | Name of the Tetragon network connect policy rule that made this verdict. If the connections don&#39;t have corresponding policy rules, this field is not set. If the connections were allowed by the default allow rule, this field is set to &#34;tetragon:default-allow&#34;. If the connections were dropped by the default drop rule, this field is set to &#34;tetragon:default-drop&#34;. |
@@ -994,19 +993,6 @@ the following criteria:
 | DESTINATION_TYPE_DNS | 1 |  |
 | DESTINATION_TYPE_CIDR | 2 |  |
 | DESTINATION_TYPE_KUBERNETES | 3 |  |
-
-
-
-<a name="application_model-v1alpha-NetworkProtocolType"></a>
-
-### NetworkProtocolType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NETWORK_PROTOCOL_TYPE_UNSPECIFIED | 0 |  |
-| NETWORK_PROTOCOL_TYPE_TCP | 1 |  |
-| NETWORK_PROTOCOL_TYPE_UDP | 2 |  |
 
 
 

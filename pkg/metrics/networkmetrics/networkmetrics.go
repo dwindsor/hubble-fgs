@@ -16,6 +16,7 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics/consts"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
+	netV1alpha "github.com/isovalent/ipa/common/net/v1alpha"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -56,7 +57,7 @@ var (
 		DestinationKubernetesNamespace:    "default",
 		DestinationKubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED, //common.WorkloadKind_WORKLOAD_KIND_SERVICE,
 		DestinationKubernetesResourceName: "kubernetes",
-		Protocol:                          appModelV1.NetworkProtocolType_NETWORK_PROTOCOL_TYPE_TCP,
+		Protocol:                          netV1alpha.IPProtocol_IP_PROTOCOL_TCP,
 		PolicyName:                        "my-network-policy",
 		RuleName:                          "Allow TCP traffic to Kubernetes API server on port 443",
 		Verdict:                           appModelV1.PolicyVerdict_POLICY_VERDICT_ALLOW,
@@ -68,7 +69,7 @@ var (
 		DestinationName:        "bad.example.com",
 		DestinationType:        appModelV1.DestinationType_DESTINATION_TYPE_DNS,
 		DestinationPort:        80,
-		Protocol:               appModelV1.NetworkProtocolType_NETWORK_PROTOCOL_TYPE_TCP,
+		Protocol:               netV1alpha.IPProtocol_IP_PROTOCOL_TCP,
 		PolicyName:             "my-network-policy",
 		RuleName:               "Drop TCP traffic to bad.example.com on port 80",
 		Verdict:                appModelV1.PolicyVerdict_POLICY_VERDICT_DROP,

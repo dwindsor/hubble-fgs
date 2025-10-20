@@ -17,6 +17,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/k8s/crdutils"
+
+	isovalentClient "github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/client"
 )
 
 // NB(kkourt): We cannot do TracingPolicyCRD = ossclient.TracingPolicyCRD because the policies are
@@ -99,16 +101,20 @@ var (
 		crdsv1Alpha1AlertRule,
 	)
 
-	AllCRDs = []crdutils.CRD{
-		TracingPolicyCRD,
-		TracingPolicyNamespacedCRD,
-		PodInfoCRD,
-		SandboxPolicyCRD,
-		SandboxPolicyNamespacedCRD,
-		TetragonNetworkPolicyCRD,
-		TetragonNetworkPolicyNamespacedCRD,
-		AlertRuleCRD,
-	}
+	AllCRDs = append(
+		[]crdutils.CRD{
+			TracingPolicyCRD,
+			TracingPolicyNamespacedCRD,
+			PodInfoCRD,
+			SandboxPolicyCRD,
+			SandboxPolicyNamespacedCRD,
+			TetragonNetworkPolicyCRD,
+			TetragonNetworkPolicyNamespacedCRD,
+			AlertRuleCRD,
+		},
+		// (tam): Add isovalent CRDs to the list of all CRDs here to avoid OSS changes
+		isovalentClient.AllCRDs...,
+	)
 )
 
 func RemoveSandboxPolicyCRDs() {

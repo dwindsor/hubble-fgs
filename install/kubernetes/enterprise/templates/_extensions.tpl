@@ -136,6 +136,25 @@ app.kubernetes.io/component: aggregator
     - get
     - list
     - watch
+- apiGroups:
+    - isovalent.com
+  resources:
+    - tetragonnodes
+  verbs:
+    - create
+    - update
+    - get
+    - list
+    - watch
+    - delete
+    - patch
+- apiGroups:
+    - isovalent.com
+  resources:
+    - tetragonnodes/status
+  verbs:
+  - update
+  - patch
 {{- end }}
 
 {{- define "role.extra" -}}{{- end }}
@@ -163,6 +182,9 @@ skip-policysandbox-crd: {{ not .Values.tetragon.enableSandboxpolicies | quote }}
     - alertrules.cilium.io
     - tetragonnetworkpolicies.cilium.io
     - tetragonnetworkpoliciesnamespaced.cilium.io
+    - tetragonnodes.isovalent.com
+    - smartswitches.isovalent.com
+    - smartswitchnetworkpolicies.isovalent.com
   verbs:
     - update
     - get

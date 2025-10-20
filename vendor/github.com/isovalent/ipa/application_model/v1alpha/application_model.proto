@@ -14,6 +14,7 @@ import "application_model/v1alpha/syscalls.proto";
 import "common/k8s/type/v1alpha/resource.proto";
 import "common/k8s/type/v1alpha/service.proto";
 import "common/k8s/type/v1alpha/workload.proto";
+import "common/net/v1alpha/protocol.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
@@ -103,7 +104,7 @@ message NetworkConnectTelemetry {
   common.k8s.type.v1alpha.WorkloadKind destination_kubernetes_workload_kind = 20;
   // Network protocol of the connection that received this network connect
   // policy verdict.
-  NetworkProtocolType protocol = 21;
+  common.net.v1alpha.IPProtocol protocol = 21;
   // Policy verdict. If the connections don't have corresponding policy rules,
   // this field is set to POLICY_VERDICT_UNSPECIFIED.
   PolicyVerdict verdict = 22;
@@ -141,12 +142,6 @@ enum PolicyVerdict {
   POLICY_VERDICT_UNSPECIFIED = 0;
   POLICY_VERDICT_ALLOW = 1;
   POLICY_VERDICT_DROP = 2;
-}
-
-enum NetworkProtocolType {
-  NETWORK_PROTOCOL_TYPE_UNSPECIFIED = 0;
-  NETWORK_PROTOCOL_TYPE_TCP = 1;
-  NETWORK_PROTOCOL_TYPE_UDP = 2;
 }
 
 enum DestinationType {

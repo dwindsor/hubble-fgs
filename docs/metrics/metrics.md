@@ -1017,7 +1017,7 @@ Number of sessions that got dropped by a Tetragon network policy rule.
 | `destination_workload` | `     ` |
 | `namespace` | `example-namespace` |
 | `policy` | `my-network-policy` |
-| `protocol` | `NETWORK_PROTOCOL_TYPE_TCP` |
+| `protocol` | `IP_PROTOCOL_TCP` |
 | `rule ` | `Drop TCP traffic to bad.example.com on port 80` |
 | `workload` | `example-workload` |
 
@@ -1034,7 +1034,7 @@ Number of bytes transmitted.
 | `destination_workload` | `kubernetes` |
 | `namespace` | `example-namespace` |
 | `policy` | `my-network-policy` |
-| `protocol` | `NETWORK_PROTOCOL_TYPE_TCP` |
+| `protocol` | `IP_PROTOCOL_TCP` |
 | `rule ` | `Allow TCP traffic to Kubernetes API server on port 443` |
 | `workload` | `example-workload` |
 

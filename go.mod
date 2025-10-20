@@ -30,8 +30,8 @@ require (
 	github.com/google/gops v0.3.28
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/isovalent/ipa v1.18.0-pre.9.0.20251024003328-799831357a43
-	github.com/isovalent/ipa/k8s v1.18.0-pre.9.0.20251024003328-799831357a43
+	github.com/isovalent/ipa v1.18.0-pre.9.0.20251027104726-dd82fc26a981
+	github.com/isovalent/ipa/k8s v1.18.0-pre.9.0.20251027104726-dd82fc26a981
 	github.com/joho/godotenv v1.5.1
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.68
@@ -132,6 +132,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
+	github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 // indirect
 	github.com/isovalent/metricstool v0.1.4 // indirect
 	github.com/jhump/protoreflect v1.16.0 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
