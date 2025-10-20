@@ -68,6 +68,7 @@ jobs:
           echo "mem=$(cat /proc/meminfo | awk '/^MemTotal:/{print int($2/1024/1024/2)}')G" >> $GITHUB_OUTPUT
 
       - name: Provision LVH VM
+        id: provision-lvh-vm
         uses: cilium/little-vm-helper@9c1f3a549af06e213863d034c13ba1c5d1e3c667 # v0.0.26
         with:
           install-dependencies: true
@@ -167,6 +168,12 @@ jobs:
           scp -P 2222 'root@localhost:/tmp/*.json' logs/unit-tests || true
           scp -P 2222 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
           scp -P 2222 'root@localhost:/tmp/TestModel*' logs/model-test-dumps || true
+
+      # AWS Baremetal Instances do not honor shutdown signals when QEMU VMs are running
+      # Cleanup by force killing QEMU processes
+      - name: Delete LVH VM
+        if: ${{ always() && steps.provision-lvh-vm.outcome == 'success' }}
+        run: sudo pkill -9 qemu-system
 
       - name: Upload unit test logs
         if: ${{ failure() || cancelled() }}
