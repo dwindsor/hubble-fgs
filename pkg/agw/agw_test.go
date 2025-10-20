@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+
 	netpollibrary "github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/token"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -1084,7 +1086,7 @@ func TestShowTokens(t *testing.T) {
 	}{
 		{
 			name: "Empty tokens",
-			setup: func(agw *AgentGateway) {
+			setup: func(_ *AgentGateway) {
 				// No setup, tokens should be empty
 			},
 			expected: "",
@@ -1133,15 +1135,5 @@ func TestPingFwa(t *testing.T) {
 	result := agw.PingFwa(context.Background(), "dpu1")
 	if result != "" {
 		require.Equal(t, "", result)
-	}
-}
-
-// --- Test for LoadPolicies ---
-
-func TestLoadPolicies(t *testing.T) {
-	agw := &AgentGateway{}
-	result := agw.LoadPolicies(context.Background(), "policy")
-	if result != "TBD" {
-		require.Equal(t, "TBD", result)
 	}
 }

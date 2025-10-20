@@ -531,36 +531,89 @@ func formatDestEndpoints(label string, endpoints []v1alpha1.NetworkDestination) 
 	return b.String()
 }
 
+// matchPolicyPattern checks if the given name matches the specified pattern.
+// The pattern can be:
+//   - An empty string or "{}", which matches all names.
+//   - A regular expression (if it contains regex special characters).
+//   - A wildcard pattern using '*' (case-insensitive).
+//   - Patterns like "*abc*" match substrings.
+//   - Patterns like "*abc" match suffixes.
+//   - Patterns like "abc*" match prefixes.
+//   - Patterns like "ab*cd" match names starting with "ab" and ending with "cd".
+//   - Patterns with multiple '*' wildcards require all parts to appear in order.
+//   - An exact match (case-insensitive) if no wildcards or regex characters are present.
+//
+// Returns true if the name matches the pattern, false otherwise.
 func matchPolicyPattern(name, pattern string) bool {
-	patternLower := strings.ToLower(pattern)
+	if pattern == "" || pattern == "{}" {
+		return true
+	}
+
+	if isRegexPattern(pattern) {
+		return matchRegex(name, pattern)
+	}
+
 	nameLower := strings.ToLower(name)
+	patternLower := strings.ToLower(pattern)
 
-	// If the pattern looks like a regex (contains '[', ']', '{', '}', '(', ')', '+', '?', '|', '\\', or starts with ".*")
-	if strings.ContainsAny(pattern, "[]{}()+?|\\") || strings.HasPrefix(pattern, ".*") {
-		matched, err := regexp.MatchString(pattern, name)
-		if err != nil {
-			logger.GetLogger().Error("invalid pattern in matchPolicyPattern", "pattern", pattern, "error", err)
-			return false
-		}
-		return matched
+	if !strings.Contains(patternLower, "*") {
+		return nameLower == patternLower
 	}
 
-	// Wildcard support: convert '*' to '.*' and anchor the regex
-	if strings.Contains(pattern, "*") {
-		// Escape all regex special characters using QuoteMeta
-		re := "^" + regexp.QuoteMeta(patternLower)
-		// Convert escaped \* back to .* for wildcard matching
-		re = strings.ReplaceAll(re, "\\*", ".*") + "$"
-		matched, err := regexp.MatchString(re, nameLower)
-		if err != nil {
-			logger.GetLogger().Error("invalid pattern in matchPolicyPattern", "pattern", pattern, "error", err)
-			return false
-		}
-		return matched
-	}
+	return matchWildcardPattern(nameLower, patternLower)
+}
 
-	// Default: case-insensitive substring match
-	return strings.Contains(nameLower, patternLower)
+func isRegexPattern(pattern string) bool {
+	regexSpecialChars := []rune{'.', '^', '$', '[', ']', '(', ')', '+', '?', '{', '}', '|', '\\'}
+	for _, ch := range pattern {
+		for _, special := range regexSpecialChars {
+			if ch == special {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func matchRegex(name, pattern string) bool {
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return false
+	}
+	return re.MatchString(name)
+}
+
+func matchWildcardPattern(nameLower, patternLower string) bool {
+	parts := strings.Split(patternLower, "*")
+
+	switch {
+	case strings.HasPrefix(patternLower, "*") && strings.HasSuffix(patternLower, "*") && len(parts) > 2:
+		substr := strings.Join(parts[1:len(parts)-1], "*")
+		return strings.Contains(nameLower, substr)
+	case strings.HasPrefix(patternLower, "*") && len(parts) == 2:
+		suffix := parts[1]
+		return strings.HasSuffix(nameLower, suffix)
+	case strings.HasSuffix(patternLower, "*") && len(parts) == 2:
+		prefix := parts[0]
+		return strings.HasPrefix(nameLower, prefix)
+	case len(parts) == 2:
+		prefix := parts[0]
+		suffix := parts[1]
+		return strings.HasPrefix(nameLower, prefix) && strings.HasSuffix(nameLower, suffix)
+	default:
+		idx := 0
+		for _, part := range parts {
+			if part == "" {
+				continue
+			}
+			pos := strings.Index(nameLower[idx:], part)
+			if pos == -1 {
+				return false
+			}
+			idx += pos + len(part)
+		}
+		return true
+	}
 }
 
 func (agw *AgentGateway) ShowDpu(_ context.Context) string {
