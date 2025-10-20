@@ -1001,39 +1001,41 @@ func (n *Nxos) delServiceRedir(ctx context.Context, isBd bool, name string) erro
 func (n *Nxos) setPkgAction(ctx context.Context, isFile bool, fpath string) error {
 	logger.GetLogger().Debug("SetPkgAction", "isFile", isFile, "fpath", fpath)
 
-	var url string
-	if isFile {
-		url = "appmgr://HypershieldAgent" + fpath
-	} else {
-		url = fpath
-	}
-	isProcessed := uint32(0)
-	items := model.Cisco_NX_OSDevice_System_SwpkgsItems_RpmactionItems{
-		IsProcessed: &isProcessed,
-		Url:         &url,
-	}
-	if isFile {
-		items.PkgAction = model.Cisco_NX_OSDevice_Swpkgs_PackageAction_add_activate
-	} else {
-		items.PkgAction = model.Cisco_NX_OSDevice_Swpkgs_PackageAction_activate
-	}
+	/*
+		var url string
+		if isFile {
+			url = "appmgr://HypershieldAgent" + fpath
+		} else {
+			url = fpath
+		}
+		isProcessed := uint32(0)
+		items := model.Cisco_NX_OSDevice_System_SwpkgsItems_RpmactionItems{
+			IsProcessed: &isProcessed,
+			Url:         &url,
+		}
+		if isFile {
+			items.PkgAction = model.Cisco_NX_OSDevice_Swpkgs_PackageAction_add_activate
+		} else {
+			items.PkgAction = model.Cisco_NX_OSDevice_Swpkgs_PackageAction_activate
+		}
 
-	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
-		Format:        ygot.RFC7951,
-		Indent:        "  ",
-		RFC7951Config: &ygot.RFC7951JSONConfig{},
-	})
-	if err != nil {
-		logger.GetLogger().Error("Fail to emit json", logfields.Error, err)
-		return err
-	}
+		jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
+			Format:        ygot.RFC7951,
+			Indent:        "  ",
+			RFC7951Config: &ygot.RFC7951JSONConfig{},
+		})
+		if err != nil {
+			logger.GetLogger().Error("Fail to emit json", logfields.Error, err)
+			return err
+		}
 
-	path := "/System/swpkgs-items/rpmaction-items"
-	err = n.gnmiSet(ctx, path, jstr)
-	if err != nil {
-		logger.GetLogger().Error("", logfields.Error, err)
-		return err
-	}
+		path := "/System/swpkgs-items/rpmaction-items"
+		err = n.gnmiSet(ctx, path, jstr)
+		if err != nil {
+			logger.GetLogger().Error("", logfields.Error, err)
+			return err
+		}
+	*/
 	return nil
 }
 

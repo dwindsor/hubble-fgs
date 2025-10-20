@@ -1111,16 +1111,19 @@ func (n *Nxos) updtSasVolatiledataAgent(ctx context.Context, items *model.Cisco_
 func (n *Nxos) updtSwpkgs(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SwpkgsItems) error {
 	logger.GetLogger().Debug("updtSwpkgs")
 
-	if items.RpmactionItems != nil {
-		err := n.updtSwpkgsRpmaction(ctx, items.RpmactionItems)
-		if err != nil {
-			logger.GetLogger().Error("", logfields.Error, err)
-			return err
+	/*
+		if items.RpmactionItems != nil {
+			err := n.updtSwpkgsRpmaction(ctx, items.RpmactionItems)
+			if err != nil {
+				logger.GetLogger().Error("", logfields.Error, err)
+				return err
+			}
 		}
-	}
+	*/
 	return nil
 }
 
+/*
 func (n *Nxos) updtSwpkgsRpmaction(_ context.Context, items *model.Cisco_NX_OSDevice_System_SwpkgsItems_RpmactionItems) error {
 	logger.GetLogger().Debug("updtSwpkgsRpmaction")
 
@@ -1137,6 +1140,7 @@ func (n *Nxos) updtSwpkgsRpmaction(_ context.Context, items *model.Cisco_NX_OSDe
 	}
 	return nil
 }
+*/
 
 func (n *Nxos) doPinning(ctx context.Context, isBd bool, vb *VrfBd) {
 	logger.GetLogger().Debug("doPinning: isBd", "bd", isBd)
