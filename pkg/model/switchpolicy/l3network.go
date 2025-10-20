@@ -10,10 +10,16 @@ type L3Networks struct {
 	byGID  map[VrfGID]VrfName
 }
 
+// All L3Networks are initialized with an empty string vrf name (no vrf) mapped to
+// the vrf id value of 0.  This ensures that rules with no vrf are always applied.
 func NewL3Networks() *L3Networks {
 	return &L3Networks{
-		byName: make(map[VrfName]VrfGID),
-		byGID:  make(map[VrfGID]VrfName),
+		byName: map[VrfName]VrfGID{
+			"": 0,
+		},
+		byGID: map[VrfGID]VrfName{
+			0: "",
+		},
 	}
 }
 

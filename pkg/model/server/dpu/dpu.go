@@ -240,7 +240,7 @@ func (dpu *DPUListener) StatusReportString() string {
 	return buf.String()
 }
 
-func hashRule(rule *DPURule) ([sha256.Size]byte, error) {
+func HashRule(rule *DPURule) ([sha256.Size]byte, error) {
 	var buf bytes.Buffer
 
 	// fixme
@@ -261,7 +261,7 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 	dpu.mtx.Lock()
 	defer dpu.mtx.Unlock()
 
-	csum, err := hashRule(rule.Policy)
+	csum, err := HashRule(rule.Policy)
 	if err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 		select {
 		case dpu.polCh <- rule:
 		case <-time.After(3 * time.Second):
-			logger.GetLogger().Error("peer timed out, cannot submit rule", "peer", dpu.uid, "rule", rule)
+			logger.GetLogger().Error("peer timed out, cannot submit rule", "peer", dpu.uid, "rule", *rule)
 		}
 	}
 

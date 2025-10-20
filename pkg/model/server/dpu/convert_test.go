@@ -133,6 +133,45 @@ func TestDenyOperDeleteRecordToDPUVlan(t *testing.T) {
 	testPolicySubject(t, r.Destination, dstCidr, noVrf, 8080, dstVlan)
 }
 
+func TestDpuRuleToResponseHashes(t *testing.T) {
+	rule := &DPURule{
+		K8SResourceVersion: "",
+		K8SUid:             "",
+		PolicyName:         name,
+		RuleName:           rule,
+		Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
+		Source: DPUSubject{
+			Cidr:     srcCidr,
+			MinPort:  0,
+			MaxPort:  0,
+			Vlan:     0,
+			Vrf:      srcVrf,
+			VrfId:    0,
+			Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+		},
+		Destination: DPUSubject{
+			Cidr:     dstCidr,
+			MinPort:  8080,
+			MaxPort:  8080,
+			Vlan:     0,
+			Vrf:      dstVrf,
+			VrfId:    0,
+			Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+		},
+	}
+	firstHash, err := HashRule(rule)
+	if err != nil {
+		t.Errorf("failed to hash rule")
+	}
+	response := dpuRuleToResponse(&DPUPolicyRule{Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, Policy: rule})
+	testRule := ResponseToDPURule(response)
+	secondHash, err := HashRule(testRule.Policy)
+	if err != nil {
+		t.Errorf("failed to hash rule")
+	}
+	assert.Equal(t, firstHash, secondHash)
+}
+
 func TestGetPerDpuConfig(t *testing.T) {
 	tests := []struct {
 		name        string

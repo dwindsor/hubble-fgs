@@ -84,7 +84,7 @@ func (s *FWAServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 				fmt.Printf("send error %s\n", err)
 				return nil
 			}
-			logger.GetLogger().Debug("Pushed policy to client", "clientID", initializedPeer.uid, "policy", rule)
+			logger.GetLogger().Debug("Pushed policy to client", "clientID", initializedPeer.uid, "policy", *rule)
 		}
 	}
 }

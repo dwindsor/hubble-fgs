@@ -20,7 +20,16 @@ func ruleToJSON(rule *dpu.DPURule) FwPolicyV2 {
 		effect = "deny"
 	}
 
-	proto := []string{"tcp"}
+	// Protocol is only being picked up from the destination
+	proto := []string{}
+	switch rule.Destination.Protocol {
+	case v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP:
+		proto = append(proto, "tcp")
+	case v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP:
+		proto = append(proto, "udp")
+	case v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP:
+		proto = append(proto, "icmp")
+	}
 
 	source := EndpointV2{
 		Ip:       rule.Source.Cidr,

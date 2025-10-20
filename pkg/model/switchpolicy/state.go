@@ -95,7 +95,7 @@ func (s *State) RemoveRuleByID(id ruleID) error {
 }
 
 func (s *State) AddRule(id ruleID, policy *SwitchPolicy) error {
-	logger.GetLogger().Info("Adding rule to state", "id", id, "policy", policy)
+	logger.GetLogger().Info("Adding rule to state", "id", id, "policy", *policy)
 	if _, ok := s.policyByRuleId[id]; ok {
 		return fmt.Errorf("rule with id %d already exists", id)
 	}
@@ -105,9 +105,6 @@ func (s *State) AddRule(id ruleID, policy *SwitchPolicy) error {
 	s.policyByRuleId[id] = policy
 
 	vrfName := VrfName(policy.Policy.Source.Endpoint.VRF)
-	if vrfName == "" {
-		return fmt.Errorf("cannot add rule with id %d: VRF name is empty", id)
-	}
 	if _, ok := s.policyByVRFName[vrfName]; !ok {
 		s.policyByVRFName[vrfName] = make(map[ruleID]*SwitchPolicy)
 	}

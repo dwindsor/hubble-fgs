@@ -1,10 +1,8 @@
 package dpu
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/gob"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -59,7 +57,7 @@ func NewDPUAgent(server string) *DPUAgent {
 		// the message. We SHA256 the rule so that the operation matches for
 		// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
 		// of the concatenated strings in this map.
-		ruleSet:       make(map[[sha256.Size]byte]*agentDPU.DPUPolicyRule),
+		ruleSet:       make(map[[sha256.Size]byte]*agentDPU.DPURule),
 		serverAddress: server,
 	}
 }
@@ -90,7 +88,7 @@ type DPUAgent struct {
 	// the message. We SHA256 the rule so that the operation matches for
 	// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
 	// of the concatenated strings in this map.
-	ruleSet map[[sha256.Size]byte]*agentDPU.DPUPolicyRule
+	ruleSet map[[sha256.Size]byte]*agentDPU.DPURule
 }
 
 func (dpu *DPUAgent) Id() string {
@@ -241,30 +239,18 @@ func (dpu *DPUAgent) Checksum() [sha256.Size]byte {
 	return sha256.Sum256([]byte(buf))
 }
 
-func hashRule(rule *agentDPU.DPURule) ([sha256.Size]byte, error) {
-	var buf bytes.Buffer
-
-	// fixme
-	enc := gob.NewEncoder(&buf) // Will write to network.
-	err := enc.Encode(*rule)
-	if err != nil {
-		return [sha256.Size]byte{}, err
-	}
-	return sha256.Sum256(buf.Bytes()), nil
-}
-
 func (dpu *DPUAgent) upsertPolicyRule(rule *agentDPU.DPUPolicyRule) {
-	csum, err := hashRule(rule.Policy)
+	csum, err := agentDPU.HashRule(rule.Policy)
 	if err != nil {
 		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
 			logfields.Error, err, "rule", rule)
 		return
 	}
-	dpu.ruleSet[csum] = rule
+	dpu.ruleSet[csum] = rule.Policy
 }
 
 func (dpu *DPUAgent) deletePolicyRule(rule *agentDPU.DPUPolicyRule) {
-	csum, err := hashRule(rule.Policy)
+	csum, err := agentDPU.HashRule(rule.Policy)
 	if err != nil {
 		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
 			logfields.Error, err)

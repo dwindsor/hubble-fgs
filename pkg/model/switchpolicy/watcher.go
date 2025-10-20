@@ -48,7 +48,7 @@ func (w *smartSwitchNetworkPolicyWatcher) addSmartSwitchNetworkPolicy(obj any) {
 	for _, pol := range policies {
 		hash, err := pol.Hash()
 		if err != nil {
-			logger.GetLogger().Error("failed to calculate policy checksum, corrupted policy rule", logfields.Error, err, "title", resourceID, "policy rule", pol)
+			logger.GetLogger().Error("failed to calculate policy checksum, corrupted policy rule", logfields.Error, err, "title", resourceID, "policy rule", *pol)
 			continue
 		}
 		k8sRulesList = append(k8sRulesList, NewPolicyRule(hex.EncodeToString(hash[:]), pol))
@@ -93,7 +93,7 @@ func (w *smartSwitchNetworkPolicyWatcher) updateSmartSwitchNetworkPolicy(_, newO
 	for _, pol := range policies {
 		hash, err := pol.Hash()
 		if err != nil {
-			logger.GetLogger().Error("failed to calculate policy checksum, corrupted policy rule", logfields.Error, err, "title", resourceID, "policy rule", pol)
+			logger.GetLogger().Error("failed to calculate policy checksum, corrupted policy rule", logfields.Error, err, "title", resourceID, "policy rule", *pol)
 			continue
 		}
 		k8sRulesList = append(k8sRulesList, NewPolicyRule(hex.EncodeToString(hash[:]), pol))
