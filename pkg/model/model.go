@@ -17,13 +17,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/google/uuid"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/reader/node"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
@@ -54,9 +55,12 @@ type connectionKey struct {
 }
 
 type processValue struct {
-	connections connectionMap
-	inInitTree  bool
-	syscalls    *appModelV1.ApplicationSyscalls
+	connections     connectionMap
+	inInitTree      bool
+	syscalls        *appModelV1.ApplicationSyscalls
+	firstStartTime  *time.Time
+	latestStartTime *time.Time
+	latestExitTime  *time.Time
 }
 
 type connectionMap map[connectionKey]*appModelV1.ApplicationConnection
@@ -124,9 +128,12 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 	}
 	if _, ok := nsMap[nsKey][wlkey][pskey]; !ok {
 		nsMap[nsKey][wlkey][pskey] = processValue{
-			connections: make(connectionMap),
-			inInitTree:  psval.InInitTree,
-			syscalls:    psval.Syscalls,
+			connections:     make(connectionMap),
+			inInitTree:      psval.InInitTree,
+			syscalls:        psval.Syscalls,
+			firstStartTime:  psval.FirstStartTime,
+			latestStartTime: psval.LatestStartTime,
+			latestExitTime:  psval.LatestExitTime,
 		}
 	}
 }
@@ -163,11 +170,14 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 			for _, wlval := range val {
 				for pskey, psval := range wlval {
 					ps := &appModelV1.ApplicationProcessGroup{
-						Name:        pskey.name,
-						Arguments:   pskey.arguments,
-						Connections: slices.Collect(maps.Values(psval.connections)),
-						InInitTree:  wrapperspb.Bool(psval.inInitTree),
-						SyscallInfo: psval.syscalls,
+						Name:            pskey.name,
+						Arguments:       pskey.arguments,
+						Connections:     slices.Collect(maps.Values(psval.connections)),
+						InInitTree:      wrapperspb.Bool(psval.inInitTree),
+						SyscallInfo:     psval.syscalls,
+						FirstStartTime:  maybeTimeToTimestamp(psval.firstStartTime),
+						LatestStartTime: maybeTimeToTimestamp(psval.latestStartTime),
+						LatestExitTime:  maybeTimeToTimestamp(psval.latestExitTime),
 					}
 					result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, ps)
 				}
@@ -183,11 +193,14 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 				}
 				for pskey, psval := range wlval {
 					ps := &appModelV1.ApplicationProcessGroup{
-						Name:        pskey.name,
-						Arguments:   pskey.arguments,
-						Connections: slices.Collect(maps.Values(psval.connections)),
-						InInitTree:  wrapperspb.Bool(psval.inInitTree),
-						SyscallInfo: psval.syscalls,
+						Name:            pskey.name,
+						Arguments:       pskey.arguments,
+						Connections:     slices.Collect(maps.Values(psval.connections)),
+						InInitTree:      wrapperspb.Bool(psval.inInitTree),
+						SyscallInfo:     psval.syscalls,
+						FirstStartTime:  maybeTimeToTimestamp(psval.firstStartTime),
+						LatestStartTime: maybeTimeToTimestamp(psval.latestStartTime),
+						LatestExitTime:  maybeTimeToTimestamp(psval.latestExitTime),
 					}
 					wl.Processes = append(wl.Processes, ps)
 				}

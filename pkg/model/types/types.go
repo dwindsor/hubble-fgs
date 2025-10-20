@@ -28,6 +28,7 @@ type ProcessTreeKey struct {
 type ProcessTreeValue struct {
 	KtimeFirstExec   uint64
 	KtimeLastExec    uint64
+	KtimeLatestExit  uint64
 	CgroupID         uint64
 	Pad0             [5]uint8
 	MaybeMissingNSID bool

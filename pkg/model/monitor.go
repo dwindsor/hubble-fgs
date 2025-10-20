@@ -17,14 +17,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
+
 	"github.com/google/go-cmp/cmp"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/isovalent/ipa/common/k8s/type/v1alpha"
+
+	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/hubble-fgs/pkg/common"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -239,8 +241,11 @@ type ProcessKey struct {
 }
 
 type ProcessValue struct {
-	InInitTree bool
-	Syscalls   *appModelV1.ApplicationSyscalls
+	InInitTree      bool
+	Syscalls        *appModelV1.ApplicationSyscalls
+	FirstStartTime  *time.Time
+	LatestStartTime *time.Time
+	LatestExitTime  *time.Time
 }
 
 func (pk ProcessKey) String() string {
@@ -419,8 +424,11 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 			}
 
 			proc[processKey] = ProcessValue{
-				InInitTree: process.InInitTree,
-				Syscalls:   syscalls,
+				InInitTree:      process.InInitTree,
+				Syscalls:        syscalls,
+				FirstStartTime:  process.FirstStartTime,
+				LatestStartTime: process.LatestStartTime,
+				LatestExitTime:  process.LatestExitTime,
 			}
 			continue
 		}
@@ -431,15 +439,17 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 					result[key] = NetworkMonitorValue{}
 				}
 				currentValue := result[key]
-				currentValue.PolicyName = dst.Stats.Policy
-				currentValue.RuleName = dst.Stats.RuleName
-				currentValue.TXBytes += dst.Stats.TxBytes
-				currentValue.RXBytes += dst.Stats.RxBytes
-				currentValue.AllowDefaultBytes += dst.Stats.DefaultAllowBytes
-				currentValue.DenyDefaultBytes += dst.Stats.DefaultDenyBytes
-				currentValue.TXDrops += dst.Stats.TxDrops
+				if dst.Stats != nil {
+					currentValue.PolicyName = dst.Stats.Policy
+					currentValue.RuleName = dst.Stats.RuleName
+					currentValue.TXBytes += dst.Stats.TxBytes
+					currentValue.RXBytes += dst.Stats.RxBytes
+					currentValue.AllowDefaultBytes += dst.Stats.DefaultAllowBytes
+					currentValue.DenyDefaultBytes += dst.Stats.DefaultDenyBytes
+					currentValue.TXDrops += dst.Stats.TxDrops
+				}
 				result[key] = currentValue
-			} else if process.Binary == "" && dst.Stats.TxLimit > 0 {
+			} else if process.Binary == "" && dst.Stats != nil && dst.Stats.TxLimit > 0 {
 				// This is quota-related stats.
 				quota[key] = getNetworkQuotaValue(dst)
 			}

@@ -96,6 +96,14 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 			}
 			continue
 		}
+		// No changes in connections, but check if latestStartTime changed
+		if p.LatestStartTime != nil && b.LatestStartTime != nil && p.LatestStartTime.AsTime().After(b.LatestStartTime.AsTime()) {
+			psDiff = append(psDiff, p)
+			if len(p.Connections) > 0 {
+				connDiff = append(connDiff, p)
+			}
+			continue
+		}
 
 		d := &appModelV1.ApplicationProcessGroup{
 			Hash:            p.Hash,
@@ -103,9 +111,11 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 			Arguments:       p.Arguments,
 			Children:        p.Children,    // children are additive so use latest count
 			InInitTree:      p.InInitTree,  // this field is likely buggy or at least not well understood
-			SyscallInfo:     p.SyscallInfo, // proppage latest syscall and process totals
+			SyscallInfo:     p.SyscallInfo, // propagate latest syscall and process totals
 			ProcessCount:    p.ProcessCount,
+			FirstStartTime:  p.FirstStartTime,  // propagate first start time
 			LatestStartTime: p.LatestStartTime, // propagate latest start time
+			LatestExitTime:  p.LatestExitTime,  // propagate latest exit time
 		}
 
 		// What we care about is new connections.
@@ -359,6 +369,8 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 					ProcessName:            p.Name,
 					ProcessArguments:       p.Arguments,
 					ApplicationModelId:     a.Id,
+					FirstStartTime:         p.FirstStartTime,
+					LatestStartTime:        p.LatestStartTime,
 				}
 				t = append(t, entry)
 			}
@@ -376,6 +388,8 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 				ProcessName:        p.Name,
 				ProcessArguments:   p.Arguments,
 				ApplicationModelId: a.Id,
+				FirstStartTime:     p.FirstStartTime,
+				LatestStartTime:    p.LatestStartTime,
 			}
 			t = append(t, entry)
 		}

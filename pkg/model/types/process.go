@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -93,7 +95,10 @@ type ProcessModel struct {
 	// process tree rooted at pid=1 in its PID namespace. This is useful if,
 	// for example, you wish to discern whether a process was spawned using a
 	// tool like nsenter or kubectl exec.
-	InInitTree bool
-	Syscalls   []uint32
-	Abi        string
+	InInitTree      bool
+	Syscalls        []uint32
+	Abi             string
+	FirstStartTime  *time.Time
+	LatestStartTime *time.Time
+	LatestExitTime  *time.Time
 }

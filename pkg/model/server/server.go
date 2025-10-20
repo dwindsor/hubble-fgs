@@ -13,6 +13,9 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/ktime"
@@ -20,8 +23,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/process"
-	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/cilium/cilium/pkg/container/set"
 
@@ -48,6 +49,23 @@ const (
 	syscallMap             = "tg_syscall_map"
 	nsIDMapName            = "tg_cgroup_namespace_map"
 )
+
+// ktimeToTime converts a ktime value to *time.Time, returning nil for zero values
+func ktimeToTime(kt uint64) *time.Time {
+	if kt == 0 {
+		return nil
+	}
+	t, err := ktime.DecodeKtime(int64(kt), true)
+	if err != nil {
+		return nil
+	}
+	// There is some nanosecond precision loss in the ktime conversion,
+	// so truncate to microsecond precision to preserve consistency in diffs.
+	// Otherwise, you end up with consistently differing timestamps which leads to
+	// a stream of new telemetry events on every export tick.
+	t = t.Truncate(time.Microsecond)
+	return &t
+}
 
 type Server struct {
 	tetragon.UnimplementedProcessModelServiceServer
@@ -734,8 +752,11 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				Name: wl,
 				Kind: kind,
 			},
-			Dest:       dest,
-			InInitTree: inInitTree,
+			Dest:            dest,
+			InInitTree:      inInitTree,
+			FirstStartTime:  ktimeToTime(val.KtimeFirstExec),
+			LatestStartTime: ktimeToTime(val.KtimeLastExec),
+			LatestExitTime:  ktimeToTime(val.KtimeLatestExit),
 		})
 	}
 

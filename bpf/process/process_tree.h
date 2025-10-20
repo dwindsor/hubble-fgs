@@ -216,7 +216,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		old->in_init_tree = curr->flags & EVENT_IN_INIT_TREE;
 		old->in_container = curr->nspid != 0;
 		old->ktime_last_exec = tg_get_ktime();
-		old->ktime_first_exec = tg_get_ktime();
+		old->ktime_first_exec = old->ktime_last_exec;
 		old->cgid = cgid;
 		old->maybe_missing_nsid = 0;
 		if (k->nsid == 0 && old->in_container) {
