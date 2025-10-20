@@ -457,7 +457,11 @@ func formatPolicy(idx int, story *netpollibrary.PolicyStory, id uint64) string {
 // Replace CRD Policy type with the actual type
 func formatCRDPolicy(crd *v1alpha1.TetragonNetworkPolicy) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("  VRF:            %s\n", crd.Spec.LogicalNetworkSelector.VRF))
+	if crd.Spec.LogicalNetworkSelector == nil || crd.Spec.LogicalNetworkSelector.VRF == "" {
+		b.WriteString(fmt.Sprintf("  VRF:            %s\n", "<nil>"))
+	} else {
+		b.WriteString(fmt.Sprintf("  VRF:            %s\n", crd.Spec.LogicalNetworkSelector.VRF))
+	}
 	b.WriteString(fmt.Sprintf("  Default Action: %s\n", crd.Spec.DefaultAction))
 	b.WriteString(fmt.Sprintf("  Total Rules:    %d\n\n", len(crd.Spec.Rules)))
 	for i, rule := range crd.Spec.Rules {
@@ -528,26 +532,35 @@ func formatDestEndpoints(label string, endpoints []v1alpha1.NetworkDestination) 
 }
 
 func matchPolicyPattern(name, pattern string) bool {
-	if !strings.Contains(pattern, "*") {
-		return strings.Contains(strings.ToLower(name), strings.ToLower(pattern))
+	patternLower := strings.ToLower(pattern)
+	nameLower := strings.ToLower(name)
+
+	// If the pattern looks like a regex (contains '[', ']', '{', '}', '(', ')', '+', '?', '|', '\\', or starts with ".*")
+	if strings.ContainsAny(pattern, "[]{}()+?|\\") || strings.HasPrefix(pattern, ".*") {
+		matched, err := regexp.MatchString(pattern, name)
+		if err != nil {
+			logger.GetLogger().Error("invalid pattern in matchPolicyPattern", "pattern", pattern, "error", err)
+			return false
+		}
+		return matched
 	}
 
-	pattern = strings.ToLower(pattern)
-	name = strings.ToLower(name)
-
-	// Escape all regex special characters using QuoteMeta
-	pattern = regexp.QuoteMeta(pattern)
-
-	// Convert escaped \* back to .* for wildcard matching
-	pattern = strings.ReplaceAll(pattern, "\\*", ".*")
-	pattern = "^" + pattern + "$"
-
-	matched, err := regexp.MatchString(pattern, name)
-	if err != nil {
-		logger.GetLogger().Error("invalid pattern in matchPolicyPattern", "pattern", pattern, "error", err)
-		return false
+	// Wildcard support: convert '*' to '.*' and anchor the regex
+	if strings.Contains(pattern, "*") {
+		// Escape all regex special characters using QuoteMeta
+		re := "^" + regexp.QuoteMeta(patternLower)
+		// Convert escaped \* back to .* for wildcard matching
+		re = strings.ReplaceAll(re, "\\*", ".*") + "$"
+		matched, err := regexp.MatchString(re, nameLower)
+		if err != nil {
+			logger.GetLogger().Error("invalid pattern in matchPolicyPattern", "pattern", pattern, "error", err)
+			return false
+		}
+		return matched
 	}
-	return matched
+
+	// Default: case-insensitive substring match
+	return strings.Contains(nameLower, patternLower)
 }
 
 func (agw *AgentGateway) ShowDpu(_ context.Context) string {
@@ -567,8 +580,6 @@ func (agw *AgentGateway) Reopen(_ context.Context) string {
 
 func (agw *AgentGateway) ShowTokens(_ context.Context) string {
 	logger.GetLogger().Info("Show tokens")
-	agw.RLock()
-	defer agw.RUnlock()
 
 	if agw.Token != nil {
 		at := agw.Token.K8sAuthToken()
