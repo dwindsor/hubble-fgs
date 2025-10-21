@@ -237,7 +237,7 @@ type KernelSelectorState struct {
 
 func NewKernelSelectorState() *KernelSelectorState {
 	return &KernelSelectorState{
-		KernelSelectorState: *selectors.NewKernelSelectorState(nil, nil),
+		KernelSelectorState: *selectors.NewKernelSelectorState(nil, nil, false),
 		operations:          map[uint32]*SelOps{},
 		digests:             map[uint32]*SelDigests{},
 		capabilities:        map[uint32]*fileapi.SelCaps{},

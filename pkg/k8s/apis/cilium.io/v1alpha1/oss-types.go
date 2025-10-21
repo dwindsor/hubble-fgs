@@ -107,6 +107,11 @@ type KProbeArg struct {
 	// +kubebuilder:validation:Optional
 	// Source of the data, if missing the default if function arguments
 	Source string `json:"source"`
+	// +kubebuilder:validation:Optional
+	// Type of original argument. This is currenlty only used in UsdtSpecs for arguments with
+	// the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
+	// type.
+	BTFType string `json:"btfType,omitempty"`
 }
 
 type BinarySelector struct {
@@ -228,7 +233,7 @@ type ArgSelector struct {
 }
 
 type ActionSelector struct {
-	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill;CopyFD;Override;GetUrl;DnsLookup;NoPost;Signal;TrackSock;UntrackSock;NotifyEnforcer;CleanupEnforcerNotification
+	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill;CopyFD;Override;GetUrl;DnsLookup;NoPost;Signal;TrackSock;UntrackSock;NotifyEnforcer;CleanupEnforcerNotification;Set
 	// Action to execute.
 	// NOTE: actions FollowFD, UnfollowFD, and CopyFD are marked as deprecated and planned to
 	// be removed in version 1.5.
@@ -254,6 +259,15 @@ type ActionSelector struct {
 	// +kubebuilder:validation:Optional
 	// An arg index for the sock for trackSock and untrackSock actions
 	ArgSock uint32 `json:"argSock"`
+	// +kubebuilder:validation:Optional
+	// An arg index for the set action
+	ArgIndex uint32 `json:"argIndex"`
+	// +kubebuilder:validation:Optional
+	// An arg value for the set action
+	ArgValue uint32 `json:"argValue"`
+	// +kubebuilder:validation:Optional
+	// An arg value for the regs action
+	ArgRegs []string `json:"argRegs,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A time period within which repeated messages will not be posted. Can be
 	// specified in seconds (default or with 's' suffix), minutes ('m' suffix)
@@ -325,6 +339,9 @@ type UProbeSpec struct {
 	// List of the traced offsets
 	Offsets []uint64 `json:"offsets,omitempty"`
 	// +kubebuilder:validation:Optional
+	// List of the traced addresses
+	Addrs []uint64 `json:"addrs,omitempty"`
+	// +kubebuilder:validation:Optional
 	// List of the traced ref_ctr_offsets
 	RefCtrOffsets []uint64 `json:"refCtrOffsets,omitempty"`
 	// +kubebuilder:validation:Optional
@@ -347,6 +364,9 @@ type UProbeSpec struct {
 type UsdtSpec struct {
 	// Name of the traced binary
 	Path string `json:"path"`
+	// +kubebuilder:validation:optional
+	// path for a BTF file for the traced binary
+	BTFPath string `json:"btfPath,omitempty"`
 	// Usdt provider name
 	Provider string `json:"provider"`
 	// Usdt name

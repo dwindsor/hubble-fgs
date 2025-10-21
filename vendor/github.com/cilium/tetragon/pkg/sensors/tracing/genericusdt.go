@@ -106,17 +106,22 @@ func createGenericUsdtSensor(
 		useMulti:   !polInfo.specOpts.DisableUprobeMulti && bpf.HasUprobeMulti(),
 	}
 
+	hasSetAction := false
+
 	for _, usdt := range spec.Usdts {
 		ids, err = addUsdt(&usdt, &in, ids)
 		if err != nil {
 			return nil, err
 		}
+		hasSetAction = hasSetAction || selectors.HasSet(&usdt)
 	}
 
+	hasSleepableOffload := hasSetAction && config.EnableV61Progs()
+
 	if in.useMulti {
-		progs, maps, err = createMultiUsdtSensor(ids, polInfo.name)
+		progs, maps, err = createMultiUsdtSensor(ids, polInfo.name, hasSleepableOffload)
 	} else {
-		progs, maps, err = createSingleUsdtSensor(ids)
+		progs, maps, err = createSingleUsdtSensor(ids, hasSleepableOffload)
 	}
 
 	if err != nil {
@@ -137,7 +142,7 @@ func createGenericUsdtSensor(
 	}, nil
 }
 
-func createMultiUsdtSensor(multiIDs []idtable.EntryID, policyName string) ([]*program.Program, []*program.Map, error) {
+func createMultiUsdtSensor(multiIDs []idtable.EntryID, policyName string, hasSleepableOffload bool) ([]*program.Program, []*program.Map, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -152,6 +157,8 @@ func createMultiUsdtSensor(multiIDs []idtable.EntryID, policyName string) ([]*pr
 		SetLoaderData(multiIDs).
 		SetPolicy(policyName)
 
+	load.SleepableOffload = hasSleepableOffload
+
 	progs = append(progs, load)
 
 	configMap := program.MapBuilderProgram("config_map", load)
@@ -162,10 +169,17 @@ func createMultiUsdtSensor(multiIDs []idtable.EntryID, policyName string) ([]*pr
 
 	filterMap.SetMaxEntries(len(multiIDs))
 	configMap.SetMaxEntries(len(multiIDs))
+
+	if hasSleepableOffload {
+		sleepableOffloadMap := program.MapBuilderProgram("write_offload", load)
+		sleepableOffloadMap.SetMaxEntries(sleepableOffloadMaxEntries)
+		maps = append(maps, sleepableOffloadMap)
+	}
+
 	return progs, maps, nil
 }
 
-func createSingleUsdtSensor(ids []idtable.EntryID) ([]*program.Program, []*program.Map, error) {
+func createSingleUsdtSensor(ids []idtable.EntryID, hasSleepableOffload bool) ([]*program.Program, []*program.Map, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -174,14 +188,14 @@ func createSingleUsdtSensor(ids []idtable.EntryID) ([]*program.Program, []*progr
 		if err != nil {
 			return nil, nil, err
 		}
-		progs, maps = createUsdtSensorFromEntry(usdtEntry, progs, maps)
+		progs, maps = createUsdtSensorFromEntry(usdtEntry, progs, maps, hasSleepableOffload)
 	}
 
 	return progs, maps, nil
 }
 
 func createUsdtSensorFromEntry(usdtEntry *genericUsdt,
-	progs []*program.Program, maps []*program.Map) ([]*program.Program, []*program.Map) {
+	progs []*program.Program, maps []*program.Map, hasSleepableOffload bool) ([]*program.Program, []*program.Map) {
 
 	loadProgName := config.GenericUsdtObjs(false)
 
@@ -201,13 +215,23 @@ func createUsdtSensorFromEntry(usdtEntry *genericUsdt,
 		SetLoaderData(usdtEntry).
 		SetPolicy(usdtEntry.policyName)
 
+	load.SleepableOffload = hasSleepableOffload
+
 	progs = append(progs, load)
 
 	configMap := program.MapBuilderProgram("config_map", load)
 	tailCalls := program.MapBuilderProgram("usdt_calls", load)
 	filterMap := program.MapBuilderProgram("filter_map", load)
+
 	selMatchBinariesMap := program.MapBuilderProgram("tg_mb_sel_opts", load)
 	maps = append(maps, configMap, tailCalls, filterMap, selMatchBinariesMap)
+
+	if hasSleepableOffload {
+		sleepableOffloadMap := program.MapBuilderProgram("write_offload", load)
+		sleepableOffloadMap.SetMaxEntries(sleepableOffloadMaxEntries)
+		maps = append(maps, sleepableOffloadMap)
+	}
+
 	return progs, maps
 }
 
@@ -250,11 +274,45 @@ func addUsdt(spec *v1alpha1.UsdtSpec, in *addUsdtIn, ids []idtable.EntryID) ([]i
 		}
 
 		// Parse Filters into kernel filter logic
-		state, err := selectors.InitKernelSelectorState(spec.Selectors, spec.Args, []v1alpha1.KProbeArg{}, nil, nil, nil)
+		state, err := selectors.InitKernelSelectorState(&selectors.KernelSelectorArgs{
+			Selectors: spec.Selectors,
+			Args:      spec.Args,
+			Data:      []v1alpha1.KProbeArg{},
+		})
 		if err != nil {
 			return nil, err
 		}
 
+		// Validate argument for set action
+		if ok, idx := selectors.HasSetArgIndex(spec); ok {
+			// argument index is within usdt args in spec
+			if idx > uint32(len(spec.Args)) {
+				return nil, fmt.Errorf("failed to configured usdt '%s/%s', set action argument spec index %d out of bounds",
+					spec.Provider, spec.Name, idx)
+			}
+
+			// usdt spec argument points to existing usdt defined in elf note
+			arg := spec.Args[idx]
+			if arg.Index > uint32(len(target.Spec.Args)) {
+				return nil, fmt.Errorf("failed to configured usdt '%s/%s', argument index %d out of bounds",
+					spec.Provider, spec.Name, arg.Index)
+			}
+
+			// output argument must be 'deref' type
+			tgtArg := &target.Spec.Args[arg.Index]
+			if tgtArg.Type != elf.USDT_ARG_TYPE_REG_DEREF {
+				return nil, fmt.Errorf("failed to configured usdt '%s/%s', set action argument is not 'deref' type: '%s'",
+					spec.Provider, spec.Name, tgtArg.Str)
+			}
+
+			// output argument is only allowed to be exactly 4 bytes
+			if tgtArg.Size != 4 {
+				return nil, fmt.Errorf("failed to configured usdt '%s/%s', set action argument must have size of 4 bytes, current is: %d",
+					spec.Provider, spec.Name, tgtArg.Size)
+			}
+		}
+
+		var allBTFArgs [api.EventConfigMaxArgs][api.MaxBTFArgDepth]api.ConfigBTFArg
 		for cfgIdx, arg := range spec.Args {
 			tgtIdx := arg.Index
 			if tgtIdx > target.Spec.ArgsCnt {
@@ -271,13 +329,22 @@ func addUsdt(spec *v1alpha1.UsdtSpec, in *addUsdtIn, ids []idtable.EntryID) ([]i
 			cfgArg.Type = tgtArg.Type
 			cfgArg.Scale = tgtArg.Scale
 
+			argType := gt.GenericTypeFromString(arg.Type)
+			if arg.Resolve != "" {
+				lastBTFType, btfArg, err := resolveUserBTFArg(&arg, spec.BTFPath)
+				if err != nil {
+					return nil, err
+				}
+
+				allBTFArgs[cfgIdx] = btfArg
+				argType = findTypeFromBTFType(&arg, lastBTFType)
+			}
+
 			if tgtArg.Signed {
 				cfgArg.Signed = 1
 			} else {
 				cfgArg.Signed = 0
 			}
-
-			argType := gt.GenericTypeFromString(arg.Type)
 
 			config.ArgType[cfgIdx] = int32(argType)
 
@@ -285,6 +352,7 @@ func addUsdt(spec *v1alpha1.UsdtSpec, in *addUsdtIn, ids []idtable.EntryID) ([]i
 				argPrinter{index: int(arg.Index), ty: argType, label: arg.Label},
 			)
 		}
+		config.BTFArg = allBTFArgs
 
 		usdtEntry := &genericUsdt{
 			tableId:     idtable.UninitializedEntryID,

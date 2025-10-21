@@ -11,7 +11,7 @@ require (
 	github.com/cilium/cilium v1.18.2
 	github.com/cilium/ebpf v0.19.0
 	github.com/cilium/lumberjack/v2 v2.4.1
-	github.com/cilium/tetragon v1.6.0-pre.0.0.20251008153442-be913d589890
+	github.com/cilium/tetragon v1.6.0-pre.0.0.20251021090745-39915e66509d
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20250918082237-cd6738676a61
 	github.com/containerd/containerd/v2 v2.1.4
@@ -248,7 +248,7 @@ require (
 	go.mongodb.org/mongo-driver v1.17.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.43.0 // indirect
-	golang.org/x/mod v0.28.0 // indirect
+	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/oauth2 v0.31.0 // indirect
 	golang.org/x/sync v0.17.0
 	golang.org/x/term v0.36.0

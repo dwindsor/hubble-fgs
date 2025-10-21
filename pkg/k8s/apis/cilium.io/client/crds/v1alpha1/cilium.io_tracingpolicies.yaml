@@ -717,6 +717,12 @@ spec:
                         trace output.
                       items:
                         properties:
+                          btfType:
+                            description: |-
+                              Type of original argument. This is currenlty only used in UsdtSpecs for arguments with
+                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
+                              type.
+                            type: string
                           index:
                             description: Position of the argument.
                             format: int32
@@ -818,6 +824,12 @@ spec:
                       description: A list of data to include in the trace output.
                       items:
                         properties:
+                          btfType:
+                            description: |-
+                              Type of original argument. This is currenlty only used in UsdtSpecs for arguments with
+                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
+                              type.
+                            type: string
                           index:
                             description: Position of the argument.
                             format: int32
@@ -932,6 +944,12 @@ spec:
                     returnArg:
                       description: A return argument to include in the trace output.
                       properties:
+                        btfType:
+                          description: |-
+                            Type of original argument. This is currenlty only used in UsdtSpecs for arguments with
+                            the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
+                            type.
+                          type: string
                         index:
                           description: Position of the argument.
                           format: int32
@@ -1063,6 +1081,7 @@ spec:
                                   - UntrackSock
                                   - NotifyEnforcer
                                   - CleanupEnforcerNotification
+                                  - Set
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1077,11 +1096,20 @@ spec:
                                   description: A FQDN to lookup for the dnsLookup
                                     action
                                   type: string
+                                argIndex:
+                                  description: An arg index for the set action
+                                  format: int32
+                                  type: integer
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
                                   format: int32
                                   type: integer
+                                argRegs:
+                                  description: An arg value for the regs action
+                                  items:
+                                    type: string
+                                  type: array
                                 argSig:
                                   description: A signal number for signal action
                                   format: int32
@@ -1094,6 +1122,10 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                argValue:
+                                  description: An arg value for the set action
+                                  format: int32
+                                  type: integer
                                 imaHash:
                                   description: |-
                                     Enable collection of file hashes from integrity subsystem.
@@ -1461,6 +1493,7 @@ spec:
                                   - UntrackSock
                                   - NotifyEnforcer
                                   - CleanupEnforcerNotification
+                                  - Set
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1475,11 +1508,20 @@ spec:
                                   description: A FQDN to lookup for the dnsLookup
                                     action
                                   type: string
+                                argIndex:
+                                  description: An arg index for the set action
+                                  format: int32
+                                  type: integer
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
                                   format: int32
                                   type: integer
+                                argRegs:
+                                  description: An arg value for the regs action
+                                  items:
+                                    type: string
+                                  type: array
                                 argSig:
                                   description: A signal number for signal action
                                   format: int32
@@ -1492,6 +1534,10 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                argValue:
+                                  description: An arg value for the set action
+                                  format: int32
+                                  type: integer
                                 imaHash:
                                   description: |-
                                     Enable collection of file hashes from integrity subsystem.
@@ -1646,6 +1692,12 @@ spec:
                         trace output.
                       items:
                         properties:
+                          btfType:
+                            description: |-
+                              Type of original argument. This is currenlty only used in UsdtSpecs for arguments with
+                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
+                              type.
+                            type: string
                           index:
                             description: Position of the argument.
                             format: int32
@@ -1781,6 +1833,7 @@ spec:
                                   - UntrackSock
                                   - NotifyEnforcer
                                   - CleanupEnforcerNotification
+                                  - Set
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -1795,11 +1848,20 @@ spec:
                                   description: A FQDN to lookup for the dnsLookup
                                     action
                                   type: string
+                                argIndex:
+                                  description: An arg index for the set action
+                                  format: int32
+                                  type: integer
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
                                   format: int32
                                   type: integer
+                                argRegs:
+                                  description: An arg value for the regs action
+                                  items:
+                                    type: string
+                                  type: array
                                 argSig:
                                   description: A signal number for signal action
                                   format: int32
@@ -1812,6 +1874,10 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                argValue:
+                                  description: An arg value for the set action
+                                  format: int32
+                                  type: integer
                                 imaHash:
                                   description: |-
                                     Enable collection of file hashes from integrity subsystem.
@@ -2179,6 +2245,7 @@ spec:
                                   - UntrackSock
                                   - NotifyEnforcer
                                   - CleanupEnforcerNotification
+                                  - Set
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -2193,11 +2260,20 @@ spec:
                                   description: A FQDN to lookup for the dnsLookup
                                     action
                                   type: string
+                                argIndex:
+                                  description: An arg index for the set action
+                                  format: int32
+                                  type: integer
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
                                   format: int32
                                   type: integer
+                                argRegs:
+                                  description: An arg value for the regs action
+                                  items:
+                                    type: string
+                                  type: array
                                 argSig:
                                   description: A signal number for signal action
                                   format: int32
@@ -2210,6 +2286,10 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                argValue:
+                                  description: An arg value for the set action
+                                  format: int32
+                                  type: integer
                                 imaHash:
                                   description: |-
                                     Enable collection of file hashes from integrity subsystem.
@@ -3069,6 +3149,12 @@ spec:
                         trace output.
                       items:
                         properties:
+                          btfType:
+                            description: |-
+                              Type of original argument. This is currenlty only used in UsdtSpecs for arguments with
+                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
+                              type.
+                            type: string
                           index:
                             description: Position of the argument.
                             format: int32
@@ -3207,6 +3293,7 @@ spec:
                                   - UntrackSock
                                   - NotifyEnforcer
                                   - CleanupEnforcerNotification
+                                  - Set
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -3221,11 +3308,20 @@ spec:
                                   description: A FQDN to lookup for the dnsLookup
                                     action
                                   type: string
+                                argIndex:
+                                  description: An arg index for the set action
+                                  format: int32
+                                  type: integer
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
                                   format: int32
                                   type: integer
+                                argRegs:
+                                  description: An arg value for the regs action
+                                  items:
+                                    type: string
+                                  type: array
                                 argSig:
                                   description: A signal number for signal action
                                   format: int32
@@ -3238,6 +3334,10 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                argValue:
+                                  description: An arg value for the set action
+                                  format: int32
+                                  type: integer
                                 imaHash:
                                   description: |-
                                     Enable collection of file hashes from integrity subsystem.
@@ -3605,6 +3705,7 @@ spec:
                                   - UntrackSock
                                   - NotifyEnforcer
                                   - CleanupEnforcerNotification
+                                  - Set
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -3619,11 +3720,20 @@ spec:
                                   description: A FQDN to lookup for the dnsLookup
                                     action
                                   type: string
+                                argIndex:
+                                  description: An arg index for the set action
+                                  format: int32
+                                  type: integer
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
                                   format: int32
                                   type: integer
+                                argRegs:
+                                  description: An arg value for the regs action
+                                  items:
+                                    type: string
+                                  type: array
                                 argSig:
                                   description: A signal number for signal action
                                   format: int32
@@ -3636,6 +3746,10 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                argValue:
+                                  description: An arg value for the set action
+                                  format: int32
+                                  type: integer
                                 imaHash:
                                   description: |-
                                     Enable collection of file hashes from integrity subsystem.
@@ -3753,11 +3867,23 @@ spec:
                 description: A list of uprobe specs.
                 items:
                   properties:
+                    addrs:
+                      description: List of the traced addresses
+                      items:
+                        format: int64
+                        type: integer
+                      type: array
                     args:
                       description: A list of function arguments to include in the
                         trace output.
                       items:
                         properties:
+                          btfType:
+                            description: |-
+                              Type of original argument. This is currenlty only used in UsdtSpecs for arguments with
+                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
+                              type.
+                            type: string
                           index:
                             description: Position of the argument.
                             format: int32
@@ -3905,6 +4031,7 @@ spec:
                                   - UntrackSock
                                   - NotifyEnforcer
                                   - CleanupEnforcerNotification
+                                  - Set
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -3919,11 +4046,20 @@ spec:
                                   description: A FQDN to lookup for the dnsLookup
                                     action
                                   type: string
+                                argIndex:
+                                  description: An arg index for the set action
+                                  format: int32
+                                  type: integer
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
                                   format: int32
                                   type: integer
+                                argRegs:
+                                  description: An arg value for the regs action
+                                  items:
+                                    type: string
+                                  type: array
                                 argSig:
                                   description: A signal number for signal action
                                   format: int32
@@ -3936,6 +4072,10 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                argValue:
+                                  description: An arg value for the set action
+                                  format: int32
+                                  type: integer
                                 imaHash:
                                   description: |-
                                     Enable collection of file hashes from integrity subsystem.
@@ -4303,6 +4443,7 @@ spec:
                                   - UntrackSock
                                   - NotifyEnforcer
                                   - CleanupEnforcerNotification
+                                  - Set
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -4317,11 +4458,20 @@ spec:
                                   description: A FQDN to lookup for the dnsLookup
                                     action
                                   type: string
+                                argIndex:
+                                  description: An arg index for the set action
+                                  format: int32
+                                  type: integer
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
                                   format: int32
                                   type: integer
+                                argRegs:
+                                  description: An arg value for the regs action
+                                  items:
+                                    type: string
+                                  type: array
                                 argSig:
                                   description: A signal number for signal action
                                   format: int32
@@ -4334,6 +4484,10 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                argValue:
+                                  description: An arg value for the set action
+                                  format: int32
+                                  type: integer
                                 imaHash:
                                   description: |-
                                     Enable collection of file hashes from integrity subsystem.
@@ -4457,6 +4611,12 @@ spec:
                         trace output.
                       items:
                         properties:
+                          btfType:
+                            description: |-
+                              Type of original argument. This is currenlty only used in UsdtSpecs for arguments with
+                              the Resolve attribute set. It relies on the BTF file defined by BTFPath to extract the
+                              type.
+                            type: string
                           index:
                             description: Position of the argument.
                             format: int32
@@ -4551,6 +4711,9 @@ spec:
                         - type
                         type: object
                       type: array
+                    btfPath:
+                      description: path for a BTF file for the traced binary
+                      type: string
                     message:
                       description: |-
                         A short message of 256 characters max that will be included
@@ -4598,6 +4761,7 @@ spec:
                                   - UntrackSock
                                   - NotifyEnforcer
                                   - CleanupEnforcerNotification
+                                  - Set
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -4612,11 +4776,20 @@ spec:
                                   description: A FQDN to lookup for the dnsLookup
                                     action
                                   type: string
+                                argIndex:
+                                  description: An arg index for the set action
+                                  format: int32
+                                  type: integer
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
                                   format: int32
                                   type: integer
+                                argRegs:
+                                  description: An arg value for the regs action
+                                  items:
+                                    type: string
+                                  type: array
                                 argSig:
                                   description: A signal number for signal action
                                   format: int32
@@ -4629,6 +4802,10 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                argValue:
+                                  description: An arg value for the set action
+                                  format: int32
+                                  type: integer
                                 imaHash:
                                   description: |-
                                     Enable collection of file hashes from integrity subsystem.
@@ -4996,6 +5173,7 @@ spec:
                                   - UntrackSock
                                   - NotifyEnforcer
                                   - CleanupEnforcerNotification
+                                  - Set
                                   type: string
                                 argError:
                                   description: error value for override action
@@ -5010,11 +5188,20 @@ spec:
                                   description: A FQDN to lookup for the dnsLookup
                                     action
                                   type: string
+                                argIndex:
+                                  description: An arg index for the set action
+                                  format: int32
+                                  type: integer
                                 argName:
                                   description: An arg index for the filename for fdInstall
                                     action
                                   format: int32
                                   type: integer
+                                argRegs:
+                                  description: An arg value for the regs action
+                                  items:
+                                    type: string
+                                  type: array
                                 argSig:
                                   description: A signal number for signal action
                                   format: int32
@@ -5027,6 +5214,10 @@ spec:
                                 argUrl:
                                   description: A URL for the getUrl action
                                   type: string
+                                argValue:
+                                  description: An arg value for the set action
+                                  format: int32
+                                  type: integer
                                 imaHash:
                                   description: |-
                                     Enable collection of file hashes from integrity subsystem.

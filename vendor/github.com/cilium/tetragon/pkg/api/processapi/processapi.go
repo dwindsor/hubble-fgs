@@ -45,6 +45,7 @@ const (
 	MSG_COMMON_FLAG_USER_STACKTRACE   = 0x4
 	MSG_COMMON_FLAG_IMA_HASH          = 0x8
 	MSG_COMMON_FLAG_PROCESS_NOT_FOUND = 0x10
+	MSG_COMMON_FLAG_ACTION_FAILED     = 0x20
 
 	BINARY_PATH_MAX_LEN = 256
 	MAX_ARG_LENGTH      = 256
@@ -269,4 +270,13 @@ type CgroupRateValue struct {
 type CgroupRateOptions struct {
 	Events   uint64
 	Interval uint64
+}
+
+type RegAssignment struct {
+	Type uint8
+	Pad1 uint8
+	Src  uint16
+	Dst  uint16
+	Pad2 uint16
+	Off  uint64
 }

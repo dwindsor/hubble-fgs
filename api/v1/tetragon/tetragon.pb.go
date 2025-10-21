@@ -62,6 +62,8 @@ const (
 	KprobeAction_KPROBE_ACTION_NOTIFYENFORCER KprobeAction = 13
 	// CleanupEnforcerNotification action cleanups any state left by NotifyEnforcer
 	KprobeAction_KPROBE_ACTION_CLEANUPENFORCERNOTIFICATION KprobeAction = 14
+	// Set action sets first USDT argument
+	KprobeAction_KPROBE_ACTION_SET KprobeAction = 15
 )
 
 // Enum value maps for KprobeAction.
@@ -82,6 +84,7 @@ var (
 		12: "KPROBE_ACTION_UNTRACKSOCK",
 		13: "KPROBE_ACTION_NOTIFYENFORCER",
 		14: "KPROBE_ACTION_CLEANUPENFORCERNOTIFICATION",
+		15: "KPROBE_ACTION_SET",
 	}
 	KprobeAction_value = map[string]int32{
 		"KPROBE_ACTION_UNKNOWN":                     0,
@@ -99,6 +102,7 @@ var (
 		"KPROBE_ACTION_UNTRACKSOCK":                 12,
 		"KPROBE_ACTION_NOTIFYENFORCER":              13,
 		"KPROBE_ACTION_CLEANUPENFORCERNOTIFICATION": 14,
+		"KPROBE_ACTION_SET":                         15,
 	}
 )
 
@@ -3708,7 +3712,9 @@ type ProcessUprobe struct {
 	// uprobe offset (mutualy exclusive with symbol)
 	Offset uint64 `protobuf:"varint,10,opt,name=offset,proto3" json:"offset,omitempty"`
 	// uprobe ref_ctr_offset
-	RefCtrOffset  uint64 `protobuf:"varint,11,opt,name=ref_ctr_offset,json=refCtrOffset,proto3" json:"ref_ctr_offset,omitempty"`
+	RefCtrOffset uint64 `protobuf:"varint,11,opt,name=ref_ctr_offset,json=refCtrOffset,proto3" json:"ref_ctr_offset,omitempty"`
+	// Action performed when the uprobe hook matched.
+	Action        KprobeAction `protobuf:"varint,12,opt,name=action,proto3,enum=tetragon.KprobeAction" json:"action,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3818,6 +3824,13 @@ func (x *ProcessUprobe) GetRefCtrOffset() uint64 {
 		return x.RefCtrOffset
 	}
 	return 0
+}
+
+func (x *ProcessUprobe) GetAction() KprobeAction {
+	if x != nil {
+		return x.Action
+	}
+	return KprobeAction_KPROBE_ACTION_UNKNOWN
 }
 
 type ProcessUsdt struct {
@@ -5022,7 +5035,7 @@ const file_tetragon_tetragon_proto_rawDesc = "" +
 	"\amessage\x18\t \x01(\tR\amessage\x12\x12\n" +
 	"\x04tags\x18\n" +
 	" \x03(\tR\x04tags\x12/\n" +
-	"\tancestors\x18\v \x03(\v2\x11.tetragon.ProcessR\tancestors\"\xff\x02\n" +
+	"\tancestors\x18\v \x03(\v2\x11.tetragon.ProcessR\tancestors\"\xaf\x03\n" +
 	"\rProcessUprobe\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12\x12\n" +
@@ -5036,7 +5049,8 @@ const file_tetragon_tetragon_proto_rawDesc = "" +
 	"\tancestors\x18\t \x03(\v2\x11.tetragon.ProcessR\tancestors\x12\x16\n" +
 	"\x06offset\x18\n" +
 	" \x01(\x04R\x06offset\x12$\n" +
-	"\x0eref_ctr_offset\x18\v \x01(\x04R\frefCtrOffset\"\x9d\x03\n" +
+	"\x0eref_ctr_offset\x18\v \x01(\x04R\frefCtrOffset\x12.\n" +
+	"\x06action\x18\f \x01(\x0e2\x16.tetragon.KprobeActionR\x06action\"\x9d\x03\n" +
 	"\vProcessUsdt\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12\x12\n" +
@@ -5108,7 +5122,7 @@ const file_tetragon_tetragon_proto_rawDesc = "" +
 	"\aaddress\x18\x01 \x01(\x04R\aaddress\x12\x16\n" +
 	"\x06offset\x18\x02 \x01(\x04R\x06offset\x12\x16\n" +
 	"\x06symbol\x18\x03 \x01(\tR\x06symbol\x12\x16\n" +
-	"\x06module\x18\x04 \x01(\tR\x06module*\xc4\x03\n" +
+	"\x06module\x18\x04 \x01(\tR\x06module*\xdb\x03\n" +
 	"\fKprobeAction\x12\x19\n" +
 	"\x15KPROBE_ACTION_UNKNOWN\x10\x00\x12\x16\n" +
 	"\x12KPROBE_ACTION_POST\x10\x01\x12\x1a\n" +
@@ -5125,7 +5139,8 @@ const file_tetragon_tetragon_proto_rawDesc = "" +
 	"\x17KPROBE_ACTION_TRACKSOCK\x10\v\x12\x1d\n" +
 	"\x19KPROBE_ACTION_UNTRACKSOCK\x10\f\x12 \n" +
 	"\x1cKPROBE_ACTION_NOTIFYENFORCER\x10\r\x12-\n" +
-	")KPROBE_ACTION_CLEANUPENFORCERNOTIFICATION\x10\x0e*O\n" +
+	")KPROBE_ACTION_CLEANUPENFORCERNOTIFICATION\x10\x0e\x12\x15\n" +
+	"\x11KPROBE_ACTION_SET\x10\x0f*O\n" +
 	"\x10HealthStatusType\x12\x1c\n" +
 	"\x18HEALTH_STATUS_TYPE_UNDEF\x10\x00\x12\x1d\n" +
 	"\x19HEALTH_STATUS_TYPE_STATUS\x10\x01*|\n" +
@@ -5332,30 +5347,31 @@ var file_tetragon_tetragon_proto_depIdxs = []int32{
 	17,  // 104: tetragon.ProcessUprobe.parent:type_name -> tetragon.Process
 	36,  // 105: tetragon.ProcessUprobe.args:type_name -> tetragon.KprobeArgument
 	17,  // 106: tetragon.ProcessUprobe.ancestors:type_name -> tetragon.Process
-	17,  // 107: tetragon.ProcessUsdt.process:type_name -> tetragon.Process
-	17,  // 108: tetragon.ProcessUsdt.parent:type_name -> tetragon.Process
-	36,  // 109: tetragon.ProcessUsdt.args:type_name -> tetragon.KprobeArgument
-	17,  // 110: tetragon.ProcessUsdt.ancestors:type_name -> tetragon.Process
-	0,   // 111: tetragon.ProcessUsdt.action:type_name -> tetragon.KprobeAction
-	17,  // 112: tetragon.ProcessLsm.process:type_name -> tetragon.Process
-	17,  // 113: tetragon.ProcessLsm.parent:type_name -> tetragon.Process
-	36,  // 114: tetragon.ProcessLsm.args:type_name -> tetragon.KprobeArgument
-	0,   // 115: tetragon.ProcessLsm.action:type_name -> tetragon.KprobeAction
-	17,  // 116: tetragon.ProcessLsm.ancestors:type_name -> tetragon.Process
-	61,  // 117: tetragon.KernelModule.signature_ok:type_name -> google.protobuf.BoolValue
-	3,   // 118: tetragon.KernelModule.tainted:type_name -> tetragon.TaintedBitsType
-	1,   // 119: tetragon.GetHealthStatusRequest.event_set:type_name -> tetragon.HealthStatusType
-	1,   // 120: tetragon.HealthStatus.event:type_name -> tetragon.HealthStatusType
-	2,   // 121: tetragon.HealthStatus.status:type_name -> tetragon.HealthStatusResult
-	45,  // 122: tetragon.GetHealthStatusResponse.health_status:type_name -> tetragon.HealthStatus
-	17,  // 123: tetragon.ProcessLoader.process:type_name -> tetragon.Process
-	50,  // 124: tetragon.RuntimeHookRequest.createContainer:type_name -> tetragon.CreateContainer
-	54,  // 125: tetragon.CreateContainer.annotations:type_name -> tetragon.CreateContainer.AnnotationsEntry
-	126, // [126:126] is the sub-list for method output_type
-	126, // [126:126] is the sub-list for method input_type
-	126, // [126:126] is the sub-list for extension type_name
-	126, // [126:126] is the sub-list for extension extendee
-	0,   // [0:126] is the sub-list for field type_name
+	0,   // 107: tetragon.ProcessUprobe.action:type_name -> tetragon.KprobeAction
+	17,  // 108: tetragon.ProcessUsdt.process:type_name -> tetragon.Process
+	17,  // 109: tetragon.ProcessUsdt.parent:type_name -> tetragon.Process
+	36,  // 110: tetragon.ProcessUsdt.args:type_name -> tetragon.KprobeArgument
+	17,  // 111: tetragon.ProcessUsdt.ancestors:type_name -> tetragon.Process
+	0,   // 112: tetragon.ProcessUsdt.action:type_name -> tetragon.KprobeAction
+	17,  // 113: tetragon.ProcessLsm.process:type_name -> tetragon.Process
+	17,  // 114: tetragon.ProcessLsm.parent:type_name -> tetragon.Process
+	36,  // 115: tetragon.ProcessLsm.args:type_name -> tetragon.KprobeArgument
+	0,   // 116: tetragon.ProcessLsm.action:type_name -> tetragon.KprobeAction
+	17,  // 117: tetragon.ProcessLsm.ancestors:type_name -> tetragon.Process
+	61,  // 118: tetragon.KernelModule.signature_ok:type_name -> google.protobuf.BoolValue
+	3,   // 119: tetragon.KernelModule.tainted:type_name -> tetragon.TaintedBitsType
+	1,   // 120: tetragon.GetHealthStatusRequest.event_set:type_name -> tetragon.HealthStatusType
+	1,   // 121: tetragon.HealthStatus.event:type_name -> tetragon.HealthStatusType
+	2,   // 122: tetragon.HealthStatus.status:type_name -> tetragon.HealthStatusResult
+	45,  // 123: tetragon.GetHealthStatusResponse.health_status:type_name -> tetragon.HealthStatus
+	17,  // 124: tetragon.ProcessLoader.process:type_name -> tetragon.Process
+	50,  // 125: tetragon.RuntimeHookRequest.createContainer:type_name -> tetragon.CreateContainer
+	54,  // 126: tetragon.CreateContainer.annotations:type_name -> tetragon.CreateContainer.AnnotationsEntry
+	127, // [127:127] is the sub-list for method output_type
+	127, // [127:127] is the sub-list for method input_type
+	127, // [127:127] is the sub-list for extension type_name
+	127, // [127:127] is the sub-list for extension extendee
+	0,   // [0:127] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_tetragon_proto_init() }

@@ -84,12 +84,14 @@ type UprobeAttachData struct {
 	Path         string
 	Symbol       string
 	Address      uint64
+	Offset       uint64
 	RefCtrOffset uint64
 }
 
 type MultiUprobeAttachSymbolsCookies struct {
 	Symbols       []string
 	Addresses     []uint64
+	Offsets       []uint64
 	RefCtrOffsets []uint64
 	Cookies       []uint64
 }
@@ -125,6 +127,9 @@ type Program struct {
 	Override        bool
 	OverrideFmodRet bool
 
+	// Needs write offload bpf program
+	SleepableOffload bool
+
 	// Type is the type of BPF program. For example, tc, skb, tracepoint,
 	// etc.
 	Type      string
@@ -140,8 +145,9 @@ type Program struct {
 	MapLoad []*MapLoad
 
 	// unloader for the program. nil if not loaded.
-	unloader         unloader.Unloader
-	unloaderOverride unloader.Unloader
+	unloader                 unloader.Unloader
+	unloaderOverride         unloader.Unloader
+	unloaderSleepableOffload unloader.Unloader
 
 	PinMap map[string]*Map
 
@@ -212,8 +218,14 @@ func (p *Program) Unload(unpin bool) error {
 			return fmt.Errorf("failed to unload override: %w", err)
 		}
 	}
+	if p.unloaderSleepableOffload != nil {
+		if err := p.unloaderSleepableOffload.Unload(unpin); err != nil {
+			return fmt.Errorf("failed to unload override: %w", err)
+		}
+	}
 	p.unloader = nil
 	p.unloaderOverride = nil
+	p.unloaderSleepableOffload = nil
 	// The above unloader can succeed while not removing a pin to the program
 	// because of option.Config.KeepSensorsOnExit, and thus the maps remain.
 	if !p.Prog.IsPinned() {

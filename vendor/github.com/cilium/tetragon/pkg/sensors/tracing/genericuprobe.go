@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"strconv"
+	"strings"
 
 	"github.com/cilium/ebpf"
 
@@ -18,6 +20,7 @@ import (
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/config"
+	"github.com/cilium/tetragon/pkg/elf"
 	gt "github.com/cilium/tetragon/pkg/generictypes"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/idtable"
@@ -146,12 +149,53 @@ func loadSingleUprobeSensor(uprobeEntry *genericUprobe, args sensors.LoadProbeAr
 
 	load.MapLoad = append(load.MapLoad, mapLoad...)
 
+	if load.SleepableOffload {
+		load.MapLoad = append(load.MapLoad,
+			&program.MapLoad{
+				Name: "regs_map",
+				Load: func(m *ebpf.Map, _ string) error {
+					return populateUprobeRegs(m, uprobeEntry.selectors.Regs())
+				},
+			},
+		)
+	}
+
 	if err := program.LoadUprobeProgram(args.BPFDir, args.Load, args.Maps, args.Verbose); err != nil {
 		return err
 	}
 
 	logger.GetLogger().Info(fmt.Sprintf("Loaded generic uprobe program: %s -> %s [%s]", args.Load.Name, uprobeEntry.path, uprobeEntry.symbol))
 	return nil
+}
+
+func checkSymbol(sym string) error {
+	_, _, err := parseSymbol(sym)
+	return err
+}
+
+func resolveSymbol(sym string) (string, uint64) {
+	sym, off, err := parseSymbol(sym)
+	if err != nil {
+		logger.GetLogger().Warn("failed to parse symbol, this should not happen, please report this", logfields.Error, err)
+	}
+	return sym, off
+}
+
+func parseSymbol(sym string) (string, uint64, error) {
+	parts := strings.Split(sym, "+")
+	if len(parts) == 1 {
+		return sym, 0, nil
+	}
+	if len(parts) != 2 {
+		return parts[0], 0, fmt.Errorf("wrong symbol %q", sym)
+	}
+	sym = parts[0]
+	str := parts[1]
+	offset, err := strconv.ParseUint(str, 0, 0)
+	if err != nil {
+		return sym, 0, fmt.Errorf("wrong offset %q", str)
+	}
+	return sym, offset, nil
 }
 
 func loadMultiUprobeSensor(ids []idtable.EntryID, args sensors.LoadProbeArgs) error {
@@ -189,13 +233,26 @@ func loadMultiUprobeSensor(ids []idtable.EntryID, args sensors.LoadProbeArgs) er
 		}
 		load.MapLoad = append(load.MapLoad, mapLoad...)
 
+		if load.SleepableOffload {
+			load.MapLoad = append(load.MapLoad,
+				&program.MapLoad{
+					Name: "regs_map",
+					Load: func(m *ebpf.Map, _ string) error {
+						return populateUprobeRegs(m, uprobeEntry.selectors.Regs())
+					},
+				},
+			)
+		}
+
 		attach, ok := data.Attach[uprobeEntry.path]
 		if !ok {
 			attach = &program.MultiUprobeAttachSymbolsCookies{}
 		}
 
 		if uprobeEntry.symbol != "" {
-			attach.Symbols = append(attach.Symbols, uprobeEntry.symbol)
+			symbol, offset := resolveSymbol(uprobeEntry.symbol)
+			attach.Symbols = append(attach.Symbols, symbol)
+			attach.Offsets = append(attach.Offsets, offset)
 		} else {
 			attach.Addresses = append(attach.Addresses, uprobeEntry.address)
 		}
@@ -273,17 +330,23 @@ func createGenericUprobeSensor(
 		useMulti: !polInfo.specOpts.DisableUprobeMulti && bpf.HasUprobeMulti(),
 	}
 
+	hasRegsOverrideAction := false
+
 	for _, uprobe := range spec.UProbes {
 		ids, err = addUprobe(&uprobe, ids, &in)
 		if err != nil {
 			return nil, err
 		}
+
+		hasRegsOverrideAction = hasRegsOverrideAction || selectors.HasOverride(uprobe.Selectors)
 	}
 
+	hasSleepableOffload := hasRegsOverrideAction && bpf.HasUprobeRegsChange()
+
 	if in.useMulti {
-		progs, maps, err = createMultiUprobeSensor(name, ids, polInfo.name)
+		progs, maps, err = createMultiUprobeSensor(name, ids, polInfo.name, hasSleepableOffload)
 	} else {
-		progs, maps, err = createSingleUprobeSensor(ids)
+		progs, maps, err = createSingleUprobeSensor(ids, hasSleepableOffload)
 	}
 
 	if err != nil {
@@ -330,14 +393,15 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 
 	symbols := len(spec.Symbols)
 	offsets := len(spec.Offsets)
+	addrs := len(spec.Addrs)
 	refCtrOffsets := len(spec.RefCtrOffsets)
 
 	// uprobe definition spec usanity checks
-	if symbols == 0 && offsets == 0 {
-		return nil, errors.New("uprobe need either Symbols or Offsets defined")
+	if symbols == 0 && offsets == 0 && addrs == 0 {
+		return nil, errors.New("uprobe need either Symbols, Offsets or Addrs defined")
 	}
-	if symbols != 0 && offsets != 0 {
-		return nil, errors.New("uprobe is defined either only with Symbols or Offsets")
+	if symbols != 0 && offsets != 0 && addrs != 0 {
+		return nil, errors.New("uprobe is defined either only with Symbols, Offsets or Addrs")
 	}
 	if refCtrOffsets != 0 {
 		if symbols != 0 && symbols != refCtrOffsets {
@@ -354,8 +418,17 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		return nil, err
 	}
 
+	if selectors.HasOverride(spec.Selectors) && !bpf.HasUprobeRegsChange() {
+		return nil, errors.New("can't use override regs action, no kernel support")
+	}
+
 	// Parse Filters into kernel filter logic
-	uprobeSelectorState, err := selectors.InitKernelSelectorState(spec.Selectors, args, []v1alpha1.KProbeArg{}, nil, nil, nil)
+	uprobeSelectorState, err := selectors.InitKernelSelectorState(&selectors.KernelSelectorArgs{
+		Selectors: spec.Selectors,
+		Args:      args,
+		Data:      []v1alpha1.KProbeArg{},
+		IsUprobe:  true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -442,10 +515,27 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 
 	if symbols != 0 {
 		for idx, sym := range spec.Symbols {
+			if err := checkSymbol(sym); err != nil {
+				return nil, fmt.Errorf("failed to parse symbol: %w", err)
+			}
 			addUprobeEntry(sym, 0, idx)
 		}
-	} else {
+	} else if offsets != 0 {
 		for idx, off := range spec.Offsets {
+			addUprobeEntry("", off, idx)
+		}
+	} else if addrs != 0 {
+		f, err := elf.OpenSafeELFFile(spec.Path)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+
+		for idx, addr := range spec.Addrs {
+			off, err := f.OffsetFromAddr(addr)
+			if err != nil {
+				return nil, err
+			}
 			addUprobeEntry("", off, idx)
 		}
 	}
@@ -457,7 +547,7 @@ func multiUprobePinPath(sensorPath string) string {
 	return sensors.PathJoin(sensorPath, "multi_kprobe")
 }
 
-func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, policyName string) ([]*program.Program, []*program.Map, error) {
+func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, policyName string, hasSleepableOffload bool) ([]*program.Program, []*program.Map, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -474,6 +564,8 @@ func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, poli
 		SetLoaderData(multiIDs).
 		SetPolicy(policyName)
 
+	load.SleepableOffload = hasSleepableOffload
+
 	progs = append(progs, load)
 
 	configMap := program.MapBuilderProgram("config_map", load)
@@ -482,12 +574,19 @@ func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, poli
 
 	maps = append(maps, configMap, tailCalls, filterMap)
 
+	if hasSleepableOffload {
+		regsMap := program.MapBuilderProgram("regs_map", load)
+		sleepableOffloadMap := program.MapBuilderProgram("sleepable_offload", load)
+		sleepableOffloadMap.SetMaxEntries(sleepableOffloadMaxEntries)
+		maps = append(maps, regsMap)
+	}
+
 	filterMap.SetMaxEntries(len(multiIDs))
 	configMap.SetMaxEntries(len(multiIDs))
 	return progs, maps, nil
 }
 
-func createSingleUprobeSensor(ids []idtable.EntryID) ([]*program.Program, []*program.Map, error) {
+func createSingleUprobeSensor(ids []idtable.EntryID, hasSleepableOffload bool) ([]*program.Program, []*program.Map, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -496,20 +595,23 @@ func createSingleUprobeSensor(ids []idtable.EntryID) ([]*program.Program, []*pro
 		if err != nil {
 			return nil, nil, err
 		}
-		progs, maps = createUprobeSensorFromEntry(uprobeEntry, progs, maps)
+		progs, maps = createUprobeSensorFromEntry(uprobeEntry, progs, maps, hasSleepableOffload)
 	}
 
 	return progs, maps, nil
 }
 
 func createUprobeSensorFromEntry(uprobeEntry *genericUprobe,
-	progs []*program.Program, maps []*program.Map) ([]*program.Program, []*program.Map) {
+	progs []*program.Program, maps []*program.Map, hasSleepableOffload bool) ([]*program.Program, []*program.Map) {
 
 	loadProgName := config.GenericUprobeObjs(false)
 
+	symbol, offset := resolveSymbol(uprobeEntry.symbol)
+
 	attachData := &program.UprobeAttachData{
 		Path:         uprobeEntry.path,
-		Symbol:       uprobeEntry.symbol,
+		Symbol:       symbol,
+		Offset:       offset,
 		Address:      uprobeEntry.address,
 		RefCtrOffset: uprobeEntry.refCtrOffset,
 	}
@@ -524,6 +626,8 @@ func createUprobeSensorFromEntry(uprobeEntry *genericUprobe,
 		SetLoaderData(uprobeEntry).
 		SetPolicy(uprobeEntry.policyName)
 
+	load.SleepableOffload = hasSleepableOffload
+
 	progs = append(progs, load)
 
 	configMap := program.MapBuilderProgram("config_map", load)
@@ -531,5 +635,13 @@ func createUprobeSensorFromEntry(uprobeEntry *genericUprobe,
 	filterMap := program.MapBuilderProgram("filter_map", load)
 	selMatchBinariesMap := program.MapBuilderProgram("tg_mb_sel_opts", load)
 	maps = append(maps, configMap, tailCalls, filterMap, selMatchBinariesMap)
+
+	if hasSleepableOffload {
+		regsMap := program.MapBuilderProgram("regs_map", load)
+		sleepableOffloadMap := program.MapBuilderProgram("sleepable_offload", load)
+		sleepableOffloadMap.SetMaxEntries(sleepableOffloadMaxEntries)
+		maps = append(maps, regsMap, sleepableOffloadMap)
+	}
+
 	return progs, maps
 }

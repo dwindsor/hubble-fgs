@@ -1671,6 +1671,7 @@ type ProcessUprobeChecker struct {
 	Ancestors    *ProcessListMatcher          `json:"ancestors,omitempty"`
 	Offset       *uint64                      `json:"offset,omitempty"`
 	RefCtrOffset *uint64                      `json:"refCtrOffset,omitempty"`
+	Action       *KprobeActionChecker         `json:"action,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -1767,6 +1768,11 @@ func (checker *ProcessUprobeChecker) Check(event *tetragon.ProcessUprobe) error 
 				return fmt.Errorf("RefCtrOffset has value %d which does not match expected value %d", event.RefCtrOffset, *checker.RefCtrOffset)
 			}
 		}
+		if checker.Action != nil {
+			if err := checker.Action.Check(&event.Action); err != nil {
+				return fmt.Errorf("Action check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -1841,6 +1847,13 @@ func (checker *ProcessUprobeChecker) WithRefCtrOffset(check uint64) *ProcessUpro
 	return checker
 }
 
+// WithAction adds a Action check to the ProcessUprobeChecker
+func (checker *ProcessUprobeChecker) WithAction(check tetragon.KprobeAction) *ProcessUprobeChecker {
+	wrappedCheck := KprobeActionChecker(check)
+	checker.Action = &wrappedCheck
+	return checker
+}
+
 //FromProcessUprobe populates the ProcessUprobeChecker using data from a ProcessUprobe event
 func (checker *ProcessUprobeChecker) FromProcessUprobe(event *tetragon.ProcessUprobe) *ProcessUprobeChecker {
 	if event == nil {
@@ -1901,6 +1914,7 @@ func (checker *ProcessUprobeChecker) FromProcessUprobe(event *tetragon.ProcessUp
 		val := event.RefCtrOffset
 		checker.RefCtrOffset = &val
 	}
+	checker.Action = NewKprobeActionChecker(event.Action)
 	return checker
 }
 

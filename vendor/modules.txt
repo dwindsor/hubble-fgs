@@ -297,7 +297,7 @@ github.com/cilium/hive/script/internal/diff
 # github.com/cilium/lumberjack/v2 v2.4.1
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
-# github.com/cilium/tetragon v1.6.0-pre.0.0.20251008153442-be913d589890 => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.6.0-pre.0.0.20251021090745-39915e66509d => ./modules/tetragon-oss
 ## explicit; go 1.25.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -331,6 +331,7 @@ github.com/cilium/tetragon/pkg/api/readyapi
 github.com/cilium/tetragon/pkg/api/testapi
 github.com/cilium/tetragon/pkg/api/tracingapi
 github.com/cilium/tetragon/pkg/arch
+github.com/cilium/tetragon/pkg/asm
 github.com/cilium/tetragon/pkg/bpf
 github.com/cilium/tetragon/pkg/btf
 github.com/cilium/tetragon/pkg/bugtool
@@ -1369,7 +1370,7 @@ golang.org/x/crypto/internal/poly1305
 ## explicit; go 1.23.0
 golang.org/x/exp/maps
 golang.org/x/exp/slices
-# golang.org/x/mod v0.28.0
+# golang.org/x/mod v0.29.0
 ## explicit; go 1.24.0
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module
