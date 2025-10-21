@@ -99,7 +99,7 @@ func TestFilterPolicyNamesCases(t *testing.T) {
 			name:     "Regex: ends with bar",
 			names:    []string{"foo-bar", "bar", "foobar", "barfoo"},
 			filter:   ".*bar$",
-			expected: []string{"foo-bar", "bar"},
+			expected: []string{"foo-bar", "bar", "foobar"},
 		},
 		{
 			name:     "Regex: contains dash",
@@ -1013,9 +1013,6 @@ func TestShowSyslogNoConfig(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "log config not found")
 	require.Empty(t, out)
-	// Simulate info log output for successful config load/validation
-	// (In real code, this would be captured from the logger, here we just check the output and add a dummy log line)
-	t.Log("level=info msg=\"Successfully loaded and validated syslog configuration\" count=1")
 }
 
 func TestShowSyslogWithConfig(t *testing.T) {
