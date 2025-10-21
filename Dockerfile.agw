@@ -5,7 +5,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install make -y && apt-get a
 WORKDIR /usr/src/app
 
 # First collect gmni used for testing
-FROM --platform=$BUILDPLATFORM ghcr.io/openconfig/gnmic:0.42.0@sha256:c6bbb4f8d914ffac43770ccb7cde0beca07ac22c914d29e273e9af6e019530f7 AS gnmic
+FROM --platform=$BUILDPLATFORM ghcr.io/openconfig/gnmic:0.42.1@sha256:3e135878f555772653a278742d2c7460b47c20e2907e07f611ecf4cc5a2261cf AS gnmic
 ARG TARGETARCH
 
 # Second builder (cross-)compile:
