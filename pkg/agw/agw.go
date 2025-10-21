@@ -185,6 +185,10 @@ func (agw *AgentGateway) Config(_ context.Context, path string) error {
 	return nil
 }
 
+func (agw *AgentGateway) GetNxHeadlessMode() bool {
+	return nxos.Nexus.GetHeadlessMode()
+}
+
 func (agw *AgentGateway) Setup(ctx context.Context, cancel context.CancelFunc) error {
 	err := nxos.Nexus.Setup(ctx, cancel, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener)
 	if err != nil {

@@ -84,6 +84,17 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		}
 	}
 
+	// Determine if NXOS is in headless mode
+	if Config.EnableKubernetes {
+		// Get the headless mode status from NXOS
+		// If NXOS is in headless mode, disable Kubernetes control plane
+		headless := agwAgent.GetNxHeadlessMode()
+		if headless {
+			logger.GetLogger().Info("NXOS is in headless mode, disabling Kubernetes control plane")
+			Config.EnableKubernetes = false
+		}
+	}
+
 	if Config.EnableKubernetes {
 		// Wait for agent token to be ready before proceeding
 		var token string

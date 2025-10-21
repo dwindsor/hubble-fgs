@@ -78,12 +78,6 @@ func (n *Nxos) initiate(ctx context.Context) error {
 		skipDpu = true
 		logger.GetLogger().Debug("Skip DPUs")
 	}
-	var skipCtrlr bool
-	sc := viper.GetString("NX_AGENT_HEADLESS_MODE")
-	if sc == "1" {
-		skipCtrlr = true
-		logger.GetLogger().Debug("Headless mode")
-	}
 
 	// delete rpm files used for update
 	deleteUpdateRpms(ctx)
@@ -171,7 +165,6 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	n.Alloc.BdDpus = make(map[string]uint16)
 	n.LastNotif = time.Now().Unix()
 	n.SkipDpu = skipDpu
-	n.SkipCtrlr = skipCtrlr
 	n.LbMode = model.Cisco_NX_OSDevice_Sas_LbModeType_symmetric_hash
 	n.Ha.Peers = make(map[string]HaPeer)
 	n.Ha.Adjacencies = make(map[string]HaAdj)
@@ -196,6 +189,28 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	go n.haSetup(ctx)
 
 	return nil
+}
+
+// GetHeadlessMode checks if the agent should run in "headless mode", which means operating without a controller.
+// It reads the configuration from /etc/sas.cfg and sets SkipCtrlr accordingly.
+func (n *Nxos) GetHeadlessMode() bool {
+	n.SkipCtrlr = false
+
+	// read headless mode from config file
+	viper.SetConfigFile("/etc/sas.cfg")
+	viper.SetConfigType("env")
+	err := viper.ReadInConfig()
+	if err != nil {
+		logger.GetLogger().Error("ReadInConfig fails", logfields.Error, err)
+		return n.SkipCtrlr
+	}
+
+	sc := viper.GetString("NX_AGENT_HEADLESS_MODE")
+	if sc == "1" {
+		logger.GetLogger().Info("Headless mode set")
+		n.SkipCtrlr = true
+	}
+	return n.SkipCtrlr
 }
 
 // setupSignalHandler sets up signal handling for graceful shutdown.
