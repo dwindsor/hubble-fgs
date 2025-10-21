@@ -49,7 +49,7 @@ jobs:
       run: |
         docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
         sudo apt update -y
-        sudo apt install libelf-dev netcat-openbsd netcat-traditional socat libcap-dev libaio-dev liburing-dev iproute2 net-tools
+        sudo apt install libelf-dev netcat-openbsd netcat-traditional socat libcap-dev libaio-dev liburing-dev iproute2 net-tools pahole llvm
         export PATH=${GOPATH}/bin:${PATH}
         sudo -E echo "copy build tools from images"
         sudo sed -i '/secure_path/d' /etc/sudoers
