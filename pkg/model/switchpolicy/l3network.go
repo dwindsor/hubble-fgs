@@ -23,6 +23,7 @@ func NewL3Networks() *L3Networks {
 	}
 }
 
+// Duplicate vrf names or ids will fail to be added, so they must be removed first.
 func (l3 *L3Networks) Add(name VrfName, gid VrfGID) error {
 	if _, ok := l3.byName[name]; ok {
 		return fmt.Errorf("L3 network with name %s already exists", name)
