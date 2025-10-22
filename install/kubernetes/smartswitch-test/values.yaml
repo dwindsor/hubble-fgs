@@ -1,0 +1,165 @@
+# Default values for smartswitch-test.
+# This Helm chart deploys FWA and AGW test containers in a single pod for scale testing.
+# Both containers run in headless mode without hardware dependencies.
+
+# ============================================================================
+# Namespace Configuration
+# ============================================================================
+# Configurable namespace for deployment isolation and scale testing
+namespace:
+  # Set to true to deploy in a specific namespace
+  create: true
+  # Name of the namespace (will be created if it doesn't exist)
+  name: "smartswitch-test"
+
+# ============================================================================
+# Replica Configuration
+# ============================================================================
+# Number of pods to deploy (each pod contains both FWA and AGW containers)
+# Increase this value to simulate large-scale deployments
+replicaCount: 1
+
+# ============================================================================
+# AGW (Accelerated Gateway) Container Configuration
+# ============================================================================
+agw:
+  image:
+    # Repository containing the AGW test image
+    repository: "isovalent/agw-test"
+    # Image tag (use specific version or 'latest')
+    tag: "latest"
+    # Image pull policy
+    pullPolicy: IfNotPresent
+  
+  # AGW Environment Variables
+  # Path to AGW configuration file (empty for default)
+  config: ""
+  # Path to network policy file (empty for default)
+  networkPolicy: ""
+  # Enable Kubernetes integration (false for headless testing)
+  enableK8s: "true"
+  # Enable NXOS integration (false for headless testing)
+  enableNxos: "false"
+  # gRPC server address - listens on all interfaces within the pod
+  dpuServerAddress: "0.0.0.0:8880"
+  # VRF mapping configuration (empty for default)
+  vrfMap: ""
+  # Enable debug logging
+  debug: "true"
+  # Kubernetes service account authentication (empty for default)
+  k8sServiceAccountAuth: ""
+  
+  # Resource limits and requests for AGW container
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 250m
+    #   memory: 256Mi
+  
+  # Security context for AGW container
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+# ============================================================================
+# FWA (Firewall Agent) Container Configuration
+# ============================================================================
+fwa:
+  image:
+    # Repository containing the FWA test image
+    repository: "isovalent/fwa-test"
+    # Image tag (use specific version or 'latest')
+    tag: "latest"
+    # Image pull policy
+    pullPolicy: IfNotPresent
+  
+  # FWA Environment Variables
+  # Path to FWA configuration file (empty for default)
+  config: ""
+  # Path to network policy file (empty for default)
+  networkPolicy: ""
+  # Enable dataplane integration (false for headless testing)
+  enableDataplane: "false"
+  # Enable AGW client (true to connect to AGW container)
+  enableAgw: "true"
+  # Enable logger integration (false for headless testing)
+  enableLogger: "false"
+  # AGW server address - connects to AGW via localhost (same pod)
+  serverAddress: "127.0.0.1:8880"
+  # Dataplane socket path (empty for headless testing)
+  dpSocketPath: ""
+  # Enable debug logging
+  debug: "true"
+  
+  # Resource limits and requests for FWA container
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 250m
+    #   memory: 256Mi
+  
+  # Security context for FWA container
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+# ============================================================================
+# General Kubernetes Configuration
+# ============================================================================
+# Image pull secrets for private registries
+imagePullSecrets: []
+# - name: regcred
+
+# Override chart name
+nameOverride: ""
+fullnameOverride: ""
+
+# Service account configuration
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use
+  name: ""
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Pod security context
+podSecurityContext: {}
+  # fsGroup: 2000
+
+# Node selector for pod placement
+nodeSelector: {}
+
+# Tolerations for pod scheduling
+tolerations: []
+
+# Affinity rules for pod scheduling
+affinity: {}
+
+# ============================================================================
+# Autoscaling Configuration (Optional)
+# ============================================================================
+# Note: For scale testing, it's recommended to use replicaCount directly
+# rather than autoscaling to have precise control over pod count
+autoscaling:
+  enabled: false
