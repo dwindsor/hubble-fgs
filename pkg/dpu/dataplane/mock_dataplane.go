@@ -3,8 +3,9 @@ package dataplane
 import (
 	"context"
 
-	dpuPolicy "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+
+	dpuPolicy "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 )
 
 func NewMockDataplane() *MockDataplane {

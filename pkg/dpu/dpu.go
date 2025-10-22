@@ -133,7 +133,7 @@ func (dpu *DPUAgent) Config(ctx context.Context, configPath string, dpSocketPath
 	logger.GetLogger().Info("configure DPU", "host", dpu.Hostname, "OS", dpu.Os, "Arch", dpu.Architecture)
 
 	// Get DPU IP with retry - w/o a valid AgentId, the DPU cannot register with AGW
-	// GetDpuIP will retry with exponential backoff (1s -> 10s max) for up to 2 minutes
+	// GetDpuIP will retry with exponential backoff (.5s -> 5s max) for up to 30 seconds
 	// and respects context cancellation for graceful shutdown
 	dpuIp, err := utils.GetDpuIP(ctx, DPU_INTERFACE)
 	if err != nil {

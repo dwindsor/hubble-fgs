@@ -93,14 +93,13 @@ func GetInterfaces() ([]Interface, error) {
 // It will retry with exponential backoff until the IP is found, the context is
 // cancelled, or timeout (2 minutes) is exceeded. W/O a valid IP, the DPU cannot
 // register with AGW.
-// maxBackoff = 10 sec = maximum wait time between retry attempts
-// maxWaitTime = 2 min = maximum total wait time
-
+// maxBackoff = 5 sec = maximum wait time between retry attempts
+// maxWaitTime = 30 sec = maximum total wait time
 func GetDpuIP(ctx context.Context, ifname string) (string, error) {
 	logger.GetLogger().Info("Getting DPU IP from interface", "interface", ifname)
-	backoff := time.Second
-	maxBackoff := 10 * time.Second
-	maxWaitTime := 2 * time.Minute
+	backoff := 500 * time.Millisecond
+	maxBackoff := 5 * time.Second
+	maxWaitTime := 30 * time.Second
 	startTime := time.Now()
 
 	for {
@@ -139,8 +138,8 @@ func GetDpuIP(ctx context.Context, ifname string) (string, error) {
 		logger.GetLogger().Warn("Failed to get DPU IP, retrying",
 			"interface", ifname,
 			logfields.Error, errors.New("DPU IP not found"),
-			"backoff : ", backoff,
-			"elapsed : ", elapsed)
+			"backoff", backoff,
+			"elapsed", elapsed)
 
 		// Wait for backoff duration or context cancellation
 		select {

@@ -7,9 +7,12 @@
 # ============================================================================
 # Configurable namespace for deployment isolation and scale testing
 namespace:
-  # Set to true to deploy in a specific namespace
+  # Set to true to create a new namespace, false to use an existing one
+  # When using an existing service account (e.g., smartswitch), set this to false
+  # and deploy to the namespace where the service account exists using --namespace flag
   create: true
-  # Name of the namespace (will be created if it doesn't exist)
+  # Name of the namespace (will be created if create is true)
+  # This field is ignored when create is false (use --namespace flag instead)
   name: "smartswitch-test"
 
 # ============================================================================
@@ -128,13 +131,19 @@ fullnameOverride: ""
 
 # Service account configuration
 serviceAccount:
-  # Specifies whether a service account should be created
+  # Specifies whether a service account should be created by this chart
   create: true
   # Automatically mount a ServiceAccount's API credentials
   automount: true
-  # Annotations to add to the service account
+  # Annotations to add to the service account (only used when create: true)
   annotations: {}
-  # The name of the service account to use
+  # The name of the service account to use or create
+  # If not set and create is true, a name is generated using the fullname template
+  # If not set and create is false, the "default" service account is used
+  # To use an existing service account with specific permissions:
+  #   1. Set create: false
+  #   2. Set name to your pre-created service account name (e.g., "my-custom-sa")
+  # This allows the pod to inherit permissions from the specified service account
   name: ""
 
 # Pod annotations

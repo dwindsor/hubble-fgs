@@ -60,7 +60,7 @@ func (dp *AcceleratedDataplaneProcess) GetId() string {
 	return dp.Id
 }
 
-func (dp *AcceleratedDataplaneProcess) Init(ctx context.Context) error {
+func (dp *AcceleratedDataplaneProcess) Init(_ context.Context) error {
 	type fwaupdateObj struct {
 		MainFWA struct {
 			SystemImage struct {
@@ -69,14 +69,21 @@ func (dp *AcceleratedDataplaneProcess) Init(ctx context.Context) error {
 		} `json:"mainfwa"`
 	}
 
-	// Getting the software version of the DPU
+	// Getting the software version of the DPU, setting it to "missing" if it fails
 	version, err := runCommand("fwupdate", "-L")
 	if err != nil {
 		logger.GetLogger().Error("failed to get DPU software version", logfields.Error, err)
-		version = "missing"
+		dp.Version = "missing"
+		return nil
 	}
-	dp.Version = version
-
+	var fwaUpdate fwaupdateObj
+	err = json.Unmarshal([]byte(version), &fwaUpdate)
+	if err != nil {
+		logger.GetLogger().Error("failed to get DPU software version", logfields.Error, err)
+		dp.Version = "missing"
+		return nil
+	}
+	dp.Version = fwaUpdate.MainFWA.SystemImage.SoftwareVersion
 	return nil
 }
 
@@ -377,8 +384,11 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 	}
 }
 
-func (dp *AcceleratedDataplane) Init(_ context.Context) error {
-
+func (dp *AcceleratedDataplane) Init(ctx context.Context) error {
+	err := dp.Accelerated.Init(ctx)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
