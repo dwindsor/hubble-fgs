@@ -241,8 +241,7 @@ func (b *tpBuilder) finalizeSpec() {
 		{Name: "disable-kprobe-multi", Value: "1"},
 	}
 
-	// disabled due to: https://github.com/cilium/tetragon/issues/4217
-	if len(b.tpSpec.Enforcers) > 0 && false {
+	if len(b.tpSpec.Enforcers) > 0 {
 		b.tpSpec.Tracepoints = append(b.tpSpec.Tracepoints,
 			v1alpha1.TracepointSpec{
 				Subsystem: "raw_syscalls",
