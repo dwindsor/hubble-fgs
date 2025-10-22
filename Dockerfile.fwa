@@ -1,0 +1,88 @@
+# Main builder (cross-)compile:
+# - fwa
+# - fwactl
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.25.3@sha256:6ea52a02734dd15e943286b048278da1e04eca196a564578d718c7720433dbbe AS fwa-builder
+WORKDIR /go/src/github.com/isovalent/hubble-fgs
+ARG TARGETARCH BUILDARCH
+RUN apt-get update && apt-get upgrade -y
+RUN if [ $BUILDARCH != $TARGETARCH ]; \
+    then apt-get install -y libelf-dev zlib1g-dev crossbuild-essential-$TARGETARCH; \
+    else apt-get install -y libelf-dev zlib1g-dev; fi
+RUN ldconfig /usr/local/
+COPY . ./
+RUN if [ $BUILDARCH != $TARGETARCH ]; \
+    then make fwa fwactl TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
+    else make fwa fwactl TARGET_ARCH=$TARGETARCH; fi
+RUN apt-get autoremove -y && apt-get clean
+
+# Third builder (cross-)compile a stripped gops
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.25.3-alpine@sha256:aee43c3ccbf24fdffb7295693b6e33b21e01baec1b2a55acc351fde345e9ec34 AS gops
+ARG TARGETARCH
+RUN apk update && apk upgrade && apk add --no-cache binutils git \
+ && git clone https://github.com/google/gops /go/src/github.com/google/gops \
+ && cd /go/src/github.com/google/gops \
+ && git checkout -b v0.3.27 v0.3.27 \
+ && GOARCH=$TARGETARCH go build -ldflags="-s -w" .
+RUN apk cache clean
+
+# Final step run on target platform
+FROM docker.io/library/alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412 AS base-build
+RUN apk update && apk upgrade --no-cache
+RUN apk cache clean
+RUN mkdir -p /usr/src/app
+RUN mkdir -p /nic/conf/hypershield
+WORKDIR /usr/src/app
+COPY --from=fwa-builder /go/src/github.com/isovalent/hubble-fgs/fwa ./
+COPY --from=fwa-builder /go/src/github.com/isovalent/hubble-fgs/fwactl ./
+COPY --from=fwa-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/dafconfig /nic/conf/hypershield/firewall.json
+
+# Test container for headless testing (no dataplane dependencies)
+# It container env vars for all FWA configuration flags, which can be overwritten at runtime
+FROM docker.io/library/alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412 AS fwa-test
+ENV FWA_CONFIG="" \
+    FWA_NETWORK_POLICY="" \
+    FWA_ENABLE_DATAPLANE="false" \
+    FWA_ENABLE_AGW="true" \
+    FWA_ENABLE_LOGGER="false" \
+    FWA_SERVER_ADDRESS="127.0.0.1:8880" \
+    FWA_DP_SOCKET_PATH="" \
+    FWA_DEBUG="false"
+RUN apk update && apk upgrade --no-cache
+WORKDIR /usr/src/app
+COPY --from=fwa-builder /go/src/github.com/isovalent/hubble-fgs/fwa ./
+COPY --from=fwa-builder /go/src/github.com/isovalent/hubble-fgs/fwactl ./
+RUN mkdir -p /nic/conf/hypershield
+COPY --from=fwa-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/dafconfig /nic/conf/hypershield/firewall.json
+RUN cat > /usr/src/app/entrypoint.sh << 'EOF'
+#!/bin/sh
+set -e
+ARGS=""
+if [ -n "$FWA_CONFIG" ]; then
+    ARGS="$ARGS --config=$FWA_CONFIG"
+fi
+if [ -n "$FWA_NETWORK_POLICY" ]; then
+    ARGS="$ARGS --network-policy=$FWA_NETWORK_POLICY"
+fi
+if [ "$FWA_ENABLE_DATAPLANE" = "false" ]; then
+    ARGS="$ARGS --enable-dataplane=false"
+fi
+if [ "$FWA_ENABLE_AGW" = "false" ]; then
+    ARGS="$ARGS --enable-agw=false"
+fi
+if [ "$FWA_ENABLE_LOGGER" = "false" ]; then
+    ARGS="$ARGS --enable-logger=false"
+fi
+if [ -n "$FWA_SERVER_ADDRESS" ]; then
+    ARGS="$ARGS --server-address=$FWA_SERVER_ADDRESS"
+fi
+if [ "$FWA_DEBUG" = "true" ]; then
+    ARGS="$ARGS --debug"
+fi
+if [ -n "$FWA_DP_SOCKET_PATH" ]; then
+    ARGS="$ARGS --dp-socket-path=$FWA_DP_SOCKET_PATH"
+fi
+echo "Starting FWA with arguments:$ARGS"
+exec /usr/src/app/fwa $ARGS
+EOF
+RUN chmod +x /usr/src/app/entrypoint.sh
+ENTRYPOINT ["/usr/src/app/entrypoint.sh"]

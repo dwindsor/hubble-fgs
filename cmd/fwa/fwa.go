@@ -34,7 +34,7 @@ func executeFWA() error {
 	agent := dpu.NewDPUAgent(Config.ServerAddress)
 
 	logger.GetLogger().Info("Configuring agent")
-	if err := agent.Config(ctx, Config.DafConfig, Config.DpSocketPath); err != nil {
+	if err := agent.Config(ctx, Config.DafConfig, Config.DpSocketPath, Config.EnableDataplane, Config.EnableLogger); err != nil {
 		logger.GetLogger().Error("Failed to configure agent", logfields.Error, err)
 		return err
 	}
@@ -64,9 +64,11 @@ func executeFWA() error {
 			agent.Close(ctx)
 			return nil
 		default:
-			logger.GetLogger().Info("Connecting to controller...")
-			if err := agent.Connect(ctx); err != nil {
-				logger.GetLogger().Error("Failed to reach controller, continuing to run headless", logfields.Error, err)
+			if Config.EnableAgw {
+				logger.GetLogger().Info("Connecting to controller...")
+				if err := agent.Connect(ctx); err != nil {
+					logger.GetLogger().Error("Failed to reach controller, continuing to run headless", logfields.Error, err)
+				}
 			}
 		}
 	}

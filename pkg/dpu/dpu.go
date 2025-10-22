@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"os"
 	"runtime"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/version"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
@@ -66,7 +66,6 @@ type DPUAgent struct {
 	AgentId      string
 	TenantId     string
 	Name         string
-	version      string
 	Ip           string
 	Hostname     string
 	Architecture string
@@ -100,14 +99,10 @@ func (dpu *DPUAgent) Tenant() string {
 }
 
 func (dpu *DPUAgent) Version() string {
-	return dpu.version
+	return version.Version
 }
 
-func (dpu *DPUAgent) KeepAliveInterval() int {
-	return dpu.Cfg.Agent.KeepAliveInterval
-}
-
-func (dpu *DPUAgent) Config(ctx context.Context, path string, dpSocketPath string) error {
+func (dpu *DPUAgent) Config(ctx context.Context, configPath string, dpSocketPath string, enableDataplane bool, enableLogger bool) error {
 	// Extracting logger and agent from context
 	// Collecting agent metadata
 	var err error
@@ -120,17 +115,20 @@ func (dpu *DPUAgent) Config(ctx context.Context, path string, dpSocketPath strin
 	dpu.Os = runtime.GOOS
 
 	// Setting up config
-	created, err := dpu.Cfg.Init(path)
+	created, err := dpu.Cfg.Init(configPath)
 	if err != nil {
 		logger.GetLogger().Error("Failed to initialize config", logfields.Error, err)
 		return err
 	}
 	if created {
-		logger.GetLogger().Info("Config file not found, new config file created with default values", "logfile", path)
+		logger.GetLogger().Info("Config file not found, new config file created with default values", "logfile", configPath)
 	}
-	dpu.AgentId = dpu.Cfg.Agent.AgentId
 
-	dpu.Dataplane = dataplane.NewAcceleratedDataplane("dp-app", dpSocketPath, "")
+	if enableDataplane {
+		dpu.Dataplane = dataplane.NewAcceleratedDataplane("dp-app", dpSocketPath)
+	} else {
+		dpu.Dataplane = dataplane.NewMockDataplane()
+	}
 
 	logger.GetLogger().Info("configure DPU", "host", dpu.Hostname, "OS", dpu.Os, "Arch", dpu.Architecture)
 
@@ -139,14 +137,20 @@ func (dpu *DPUAgent) Config(ctx context.Context, path string, dpSocketPath strin
 	// and respects context cancellation for graceful shutdown
 	dpuIp, err := utils.GetDpuIP(ctx, DPU_INTERFACE)
 	if err != nil {
-		return fmt.Errorf("failed to get DPU IP from interface %s: %w", DPU_INTERFACE, err)
+		logger.GetLogger().Error("Fail to get DPU IP, setting to 127.0.0.1", logfields.Error, err)
+		dpuIp = "127.0.0.1"
 	}
 	dpu.AgentId = dpuIp
 	dpu.Ip = dpuIp
 	logger.GetLogger().Info("Using DPU IP as AgentId", "id", dpu.AgentId)
 
-	// Setting up log exporter
-	dpu.LogExporter = exporter.NewAcceleratedFluentbitExporter("", EXPORTER_CONFIG_PATH)
+	// Setting up log exporter and event logger
+	if enableLogger {
+		dpu.LogExporter = exporter.NewAcceleratedFluentbitExporter("", EXPORTER_CONFIG_PATH)
+		dpu.EventLogger = events.NewEventLogger(EVENTLOGGER_SOCKET_PATH)
+	} else {
+		dpu.LogExporter = exporter.NewMockExporter()
+	}
 
 	return nil
 }
@@ -155,18 +159,18 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	logger.GetLogger().Info("Setup Accelerated Dataplane")
 
 	// Setting up dataplane
-	err := dpu.Dataplane.Connect(ctx, dpu.Cfg.Dataplane.ServicePath, dpu.Cfg.Controller.Debug)
+	err := dpu.Dataplane.Connect(ctx)
 	if err != nil {
-		logger.GetLogger().Error("failed to setup connection",
+		logger.GetLogger().Error("failed to setup dataplane connection",
 			logfields.Error, err)
 		return err
 	}
-	logger.GetLogger().Info("Connected to dataplane", "version", dpu.Dataplane.Version)
+	logger.GetLogger().Info("Connected to dataplane", "type", dpu.Dataplane.Type(), "version", dpu.Dataplane.Version())
 
 	// Setting up exporter
 	err = dpu.LogExporter.Init(ctx)
 	if err != nil {
-		logger.GetLogger().Error("failed to initialize logger, continue without exporter", logfields.Error, err)
+		logger.GetLogger().Error("failed to initialize logger, continue without log exporter", logfields.Error, err)
 	}
 
 	// Creating custom callback functions
@@ -199,26 +203,21 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, logConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, logConfigCallback)
 
-	// Setting up event exporter
-	dpu.EventLogger = events.NewEventLogger(EVENTLOGGER_SOCKET_PATH)
-
 	return nil
 }
 
-func (dpu *DPUAgent) Close(_ context.Context) error {
+func (dpu *DPUAgent) Close(ctx context.Context) error {
+	dpu.Dataplane.Close(ctx)
+	if dpu.LogExporter != nil {
+		dpu.LogExporter.Close(ctx)
+	}
+	dpu.EventLogger.Close()
 	return nil
 }
 
 func (dpu *DPUAgent) Ready(_ context.Context) error {
 	// Setting agent ready
 	dpu.ReadyStatus.Store(true)
-	return nil
-}
-
-func (dpu *DPUAgent) Reconnect(_ context.Context) error {
-	// Extracting logger from context
-	logger.GetLogger().Debug("Reconnecting to controller")
-
 	return nil
 }
 
@@ -361,7 +360,7 @@ func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
 			csum := dpu.Checksum()
 			status := &v1alpha.ReportStatus{
 				AgentUid:       dpu.AgentId,
-				DpVersion:      "dpVersion",
+				DpVersion:      dpu.Dataplane.Version(),
 				AgentVersion:   dpu.Version(),
 				PolicyChecksum: hex.EncodeToString(csum[:]),
 				Hostname:       dpu.Hostname,

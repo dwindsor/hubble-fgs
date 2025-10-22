@@ -6,6 +6,7 @@ BINDIR ?= /usr/local/bin
 DOCKER_IMAGE_TAG ?= latest
 TETRAGON_IMAGE_NAME ?= isovalent/tetragon
 AGW_IMAGE_NAME ?= isovalent/agw
+FWA_IMAGE_NAME ?= isovalent/fwa
 TETRAGON_SLIM_IMAGE_NAME ?= isovalent/tetragon-slim
 AGGREGATOR_IMAGE_NAME ?= isovalent/tetragon-aggregator
 OPERATOR_IMAGE_NAME ?= isovalent/tetragon-operator
@@ -274,6 +275,18 @@ image-agw-test:
 	$(CONTAINER_ENGINE) build -f Dockerfile.agw -t "${AGW_IMAGE_NAME}-test:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} --target=agw-test .
 	@echo "Push like this when ready:"
 	@echo "${CONTAINER_ENGINE} push ${AGW_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
+
+.PHONY: image-fwa
+image-fwa:
+	$(CONTAINER_ENGINE) build -f Dockerfile.fwa -t "${FWA_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} --target=base-build .
+	@echo "Push like this when ready:"
+	@echo "${CONTAINER_ENGINE} push ${FWA_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
+
+.PHONY: image-fwa-test
+image-fwa-test:
+	$(CONTAINER_ENGINE) build -f Dockerfile.fwa -t "${FWA_IMAGE_NAME}-test:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} ${CONTAINER_ENGINE_ARGS} --target=fwa-test .
+	@echo "Push like this when ready:"
+	@echo "${CONTAINER_ENGINE} push ${FWA_IMAGE_NAME}:$(DOCKER_IMAGE_TAG)"
 
 ##@ Packages
 

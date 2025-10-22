@@ -48,6 +48,9 @@ func Execute() error {
 	flags.StringSliceVar(&Config.NetworkPolicies, keyNetworkPolicy, Config.NetworkPolicies, "network policy files")
 	flags.StringVar(&Config.ServerAddress, keyServerAddress, Config.ServerAddress, "server address")
 	flags.StringVar(&Config.DpSocketPath, keyDpSocketPath, Config.DpSocketPath, "dp-app socket path")
+	flags.BoolVar(&Config.EnableDataplane, keyEnableDataplane, Config.EnableDataplane, "Enable dataplane")
+	flags.BoolVar(&Config.EnableAgw, keyEnableAgw, Config.EnableAgw, "Enable AGW connection")
+	flags.BoolVar(&Config.EnableLogger, keyEnableLogger, Config.EnableLogger, "Enable fluentbit logger export")
 	flags.BoolVar(&Config.Debug, keyDebug, Config.Debug, "debug level")
 	return rootCmd.Execute()
 }

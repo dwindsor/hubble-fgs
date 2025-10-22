@@ -227,7 +227,7 @@ type AcceleratedFluentbitExporter struct {
 }
 
 func (fb *AcceleratedFluentbitExporter) Mode() ExporterType {
-	return ACCELERATED_FLUENTBIT
+	return ACCELERATED_FLUENTBIT_EXPORTER
 }
 
 func (fb *AcceleratedFluentbitExporter) Version() string {

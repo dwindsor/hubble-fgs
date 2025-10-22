@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
+	"os/exec"
 	"slices"
 	"strconv"
 	"sync/atomic"
@@ -26,7 +26,6 @@ import (
 	dpAppPolicy "github.com/isovalent/hubble-fgs/pkg/dpu/policy"
 	"github.com/isovalent/hubble-fgs/pkg/dpu/socket"
 	dpuPolicy "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
-	"github.com/isovalent/hubble-fgs/pkg/utils"
 )
 
 // Returns a newly created accelerated dataplane object
@@ -35,12 +34,11 @@ import (
 //   - id: string
 //   - apiPath: string
 //   - persistPath: string
-func NewAcceleratedDataplane(id, apiPath, persistPath string) *AcceleratedDataplane {
+func NewAcceleratedDataplane(id, apiPath string) *AcceleratedDataplane {
 	return &AcceleratedDataplane{
 		Accelerated: &AcceleratedDataplaneProcess{
-			Id:          id,
-			ApiPath:     apiPath,
-			PersistPath: persistPath,
+			Id:      id,
+			ApiPath: apiPath,
 		},
 	}
 }
@@ -50,21 +48,36 @@ func NewAcceleratedDataplane(id, apiPath, persistPath string) *AcceleratedDatapl
 // -----------------------------------------------------------------------------
 
 type AcceleratedDataplaneProcess struct {
-	Id          string
-	ApiPath     string
-	PersistPath string
-	Version     string
-	ServicePath string
-	NpuIp       string
-	NpuMac      string
-	WatchPath   string
-	Status      atomic.Bool
-
-	PolicyList []dpAppPolicy.FwPolicyV2 `json:"policy_list"`
+	Id      string
+	ApiPath string
+	Version string
+	NpuIp   string
+	NpuMac  string
+	Status  atomic.Bool
 }
 
 func (dp *AcceleratedDataplaneProcess) GetId() string {
 	return dp.Id
+}
+
+func (dp *AcceleratedDataplaneProcess) Init(ctx context.Context) error {
+	type fwaupdateObj struct {
+		MainFWA struct {
+			SystemImage struct {
+				SoftwareVersion string `json:"software_version"`
+			} `json:"system_image"`
+		} `json:"mainfwa"`
+	}
+
+	// Getting the software version of the DPU
+	version, err := runCommand("fwupdate", "-L")
+	if err != nil {
+		logger.GetLogger().Error("failed to get DPU software version", logfields.Error, err)
+		version = "missing"
+	}
+	dp.Version = version
+
+	return nil
 }
 
 func (dp *AcceleratedDataplaneProcess) Start(ctx context.Context) error {
@@ -90,12 +103,6 @@ func (dp *AcceleratedDataplaneProcess) Start(ctx context.Context) error {
 		if backoff > maxBackoff {
 			backoff = maxBackoff
 		}
-	}
-
-	// Loading policies
-	err := dp.LoadFirewallPolicies(ctx, dp.PersistPath)
-	if err != nil {
-		logger.GetLogger().Error("Failed to load policies from file for dataplane", logfields.Error, err)
 	}
 	return nil
 }
@@ -139,22 +146,6 @@ func (dp *AcceleratedDataplaneProcess) UpdateFirewallPolicies(_ context.Context,
 	return nil
 }
 
-func (dp *AcceleratedDataplaneProcess) StoreFirewallPolicies(ctx context.Context, path string) error {
-	// Creating file object
-	policyFile := &PolicyFile{
-		PolicyList: dp.PolicyList,
-	}
-
-	// Persisting policies in the dataplane
-	err := utils.StoreJsonFile(ctx, path, policyFile, 0644)
-	if err != nil {
-		logger.GetLogger().Error("Failed to persist policies for dataplane", logfields.Error, err)
-		return err
-	}
-	logger.GetLogger().Debug("Dataplane policies persisted", "path", path)
-	return nil
-}
-
 /* This is a nop function stubbed out here from hs-nep until its actually used */
 func calculateHash(policies []dpAppPolicy.FwPolicyV2) string {
 	// Creating an array of policy IDs
@@ -174,45 +165,6 @@ func calculateHash(policies []dpAppPolicy.FwPolicyV2) string {
 	}
 	hash := sha256.Sum256([]byte(idsString))
 	return hex.EncodeToString(hash[:])
-}
-
-func (dp *AcceleratedDataplaneProcess) LoadFirewallPolicies(ctx context.Context, path string) error {
-	// Loading policies from the dataplane
-	policyFile := &PolicyFile{}
-	err := utils.LoadJsonFile(ctx, path, policyFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			logger.GetLogger().Debug("no policy file found for dataplane")
-			policyMsg := &dpAppPolicy.FwPolicyMsgV2{
-				Hash:         calculateHash([]dpAppPolicy.FwPolicyV2{}),
-				Verification: false,
-				Policies:     []dpAppPolicy.FwPolicyV2{},
-			}
-			updateErr := dp.UpdateFirewallPolicies(ctx, policyMsg)
-			if updateErr != nil {
-				logger.GetLogger().Error("failed to apply empty policies to dataplane")
-				return errors.Join(err, updateErr)
-			}
-			return nil
-		}
-		logger.GetLogger().Error("failed to load policies for dataplane", logfields.Error, err)
-		return err
-	}
-	logger.GetLogger().Debug("Dataplane policies loaded", "path", path)
-
-	// Updating policies in dataplane object
-	policyMsg := &dpAppPolicy.FwPolicyMsgV2{
-		Hash:         calculateHash([]dpAppPolicy.FwPolicyV2{}),
-		Verification: false,
-		Policies:     policyFile.PolicyList,
-	}
-	err = dp.UpdateFirewallPolicies(ctx, policyMsg)
-	if err != nil {
-		logger.GetLogger().Error("Failed to apply loaded policies to dataplane", logfields.Error, err)
-		return err
-	}
-
-	return nil
 }
 
 func (dp *AcceleratedDataplaneProcess) SendLogConfig(logConfigs map[string]*v1alpha.LogConfig) error {
@@ -282,8 +234,8 @@ type AcceleratedDataplane struct {
 	Accelerated *AcceleratedDataplaneProcess
 }
 
-func (dp *AcceleratedDataplane) Mode() DataplaneType {
-	return ACCELERATED
+func (dp *AcceleratedDataplane) Type() DataplaneType {
+	return ACCELERATED_DP
 }
 
 func (dp *AcceleratedDataplane) Version() string {
@@ -292,10 +244,6 @@ func (dp *AcceleratedDataplane) Version() string {
 
 func (dp *AcceleratedDataplane) ApiPath() string {
 	return dp.Accelerated.ApiPath
-}
-
-func (dp *AcceleratedDataplane) PolicyList() []dpAppPolicy.FwPolicyV2 {
-	return dp.Accelerated.PolicyList
 }
 
 func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, policies []*dpuPolicy.DPUPolicyRule) error {
@@ -429,16 +377,14 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 	}
 }
 
-func (dp *AcceleratedDataplane) Init(_ context.Context, acceleratedServicePath string, _ string) error {
-	dp.Accelerated.ServicePath = acceleratedServicePath
-	dp.Accelerated.WatchPath = filepath.Join(dp.Accelerated.ServicePath, FIFODIR)
+func (dp *AcceleratedDataplane) Init(_ context.Context) error {
 
 	return nil
 }
 
-func (dp *AcceleratedDataplane) Connect(ctx context.Context, acceleratedServicePath string, _ bool) error {
+func (dp *AcceleratedDataplane) Connect(ctx context.Context) error {
 	// Initializing dataplane
-	err := dp.Init(ctx, acceleratedServicePath, "")
+	err := dp.Init(ctx)
 	if err != nil {
 		return err
 	}
@@ -454,7 +400,6 @@ func (dp *AcceleratedDataplane) Connect(ctx context.Context, acceleratedServiceP
 }
 
 func (dp *AcceleratedDataplane) Close(ctx context.Context) {
-	dp.Accelerated.StoreFirewallPolicies(ctx, dp.Accelerated.PersistPath)
 	dp.Stop(ctx)
 }
 
@@ -499,4 +444,18 @@ func (dp *AcceleratedDataplane) Restart(ctx context.Context) error {
 func (dp *AcceleratedDataplane) Status() bool {
 	// Returning status of the accelerated dataplane
 	return dp.Accelerated.Status.Load()
+}
+
+// -----------------------------------------------------------------------------
+// Helper Functions
+// -----------------------------------------------------------------------------
+
+// Runs the command and returns the combined stdout and stderr output
+func runCommand(name string, args ...string) (string, error) {
+	cmd := exec.Command(name, args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%s: %s", err, string(output))
+	}
+	return string(output), nil
 }

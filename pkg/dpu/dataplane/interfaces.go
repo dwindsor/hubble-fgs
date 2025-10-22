@@ -5,7 +5,6 @@ import (
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
-	"github.com/isovalent/hubble-fgs/pkg/dpu/policy"
 	dpuPolicy "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 )
 
@@ -21,7 +20,8 @@ const (
 type DataplaneType string
 
 const (
-	ACCELERATED DataplaneType = "accelerated"
+	ACCELERATED_DP DataplaneType = "accelerated"
+	MOCK_DP        DataplaneType = "mock"
 )
 
 // Dataplane command values
@@ -45,24 +45,12 @@ const (
 	ListPolicies
 )
 
-// Local file paths for dataplane and dispatcher
-var (
-	DATAPLANE_SERVICE = "daf-dp"
-	BINARY_DIR        = "/opt/cisco/daf/bin"
-	DATAPLANE_DIR     = "/opt/cisco/daf/bin/dp"
-	DATAPLANE_BINARY  = "/usr/bin/vpp"
-	CONFIGURE_SCRIPT  = "/bin/configure_dp.sh"
-	TEMP_DIR          = "/tmp/daf"
-	FIFODIR           = "crash"
-)
-
 // Dataplane Interface
 type Dataplane interface {
 	// Attributes
-	Mode() DataplaneType
+	Type() DataplaneType
 	Version() string
 	ApiPath() string
-	PolicyList() []policy.FwPolicyV2
 
 	// Commands
 	PushPolicy(context.Context, []*dpuPolicy.DPUPolicyRule) error
@@ -72,18 +60,13 @@ type Dataplane interface {
 	RefreshConfig(*v1alpha.ConfigObject, *v1alpha.ConfigObject) error
 
 	// Management
-	Init(context.Context, string, string) error
-	Connect(context.Context, string, bool) error
+	Init(context.Context) error
+	Connect(context.Context) error
 	Close(context.Context)
 	Start(context.Context) error
 	Stop(context.Context) error
 	Restart(context.Context) error
-	Status() bool // TODO: Needed?
-}
-
-// Policy File Object
-type PolicyFile struct {
-	PolicyList []policy.FwPolicyV2 `json:"policy_list"`
+	Status() bool
 }
 
 // Dataplane Log Configuration Object

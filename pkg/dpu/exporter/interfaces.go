@@ -18,7 +18,8 @@ const (
 type ExporterType string
 
 const (
-	ACCELERATED_FLUENTBIT ExporterType = "accelerated-fluentbit"
+	ACCELERATED_FLUENTBIT_EXPORTER ExporterType = "accelerated-fluentbit"
+	MOCK_EXPORTER                  ExporterType = "mock"
 )
 
 // Exporter Interface
