@@ -2,9 +2,7 @@ package recordbpftest
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"os/exec"
 	"runtime"
 	"testing"
@@ -22,6 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/datapath"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 )
@@ -198,11 +197,6 @@ var tests = []recordTest{
 	},
 }
 
-var (
-	str          string = "Hello, World!"
-	httpResponse []byte = []byte(str)
-)
-
 func loadRecords(r *recordTest, t *testing.T) {
 	for _, rec := range r.records {
 		if rec.Endpoint.EP == nil {
@@ -264,34 +258,8 @@ func TestRecords(t *testing.T) {
 		t.Skip()
 	}
 
-	// Start an HTTP server serving 128 null bytes on localhost:8080
-	server1 := &http.Server{Addr: ":8080", Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		w.Write(httpResponse)
-	})}
-	go func() {
-		err := server1.ListenAndServe()
-		if !errors.Is(err, http.ErrServerClosed) {
-			panic(err) // can't call t.Fatal from another goroutine
-		}
-	}()
-	defer server1.Close()
-
-	// Start an HTTP server serving 128 null bytes on localhost:8081
-	server2 := &http.Server{Addr: ":8081", Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		w.Write(httpResponse)
-
-	})}
-	go func() {
-		err := server2.ListenAndServe()
-		if !errors.Is(err, http.ErrServerClosed) {
-			panic(err) // can't call t.Fatal from another goroutine
-		}
-	}()
-	defer server2.Close()
+	testutils.StartSimpleHTTPServer(t, ":8080")
+	testutils.StartSimpleHTTPServer(t, ":8081")
 
 	ctx, cancel := context.WithTimeout(context.Background(), sensors.ConfigDefaults.CmdWaitTime)
 	defer cancel()

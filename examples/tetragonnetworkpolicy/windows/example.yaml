@@ -5,9 +5,13 @@ metadata:
   annotations:
     author: "IsovalentQATeam"
 spec:
+  processSelector:
+    operator: "In"
+    values:
+      - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
   defaultAction: "allow"
   rules:
-  - description: "connectAllowRule"
+  - description: "connectDenyRule"
     hook: "connect"
     action: "deny"
     destination:

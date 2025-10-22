@@ -51,10 +51,16 @@ func StartMinimalTetragonModel(ctx context.Context, t *testing.T) {
 	obs := observer.NewObserver()
 	err := obs.InitSensorManager()
 	require.NoError(t, err)
-	err = base.LoadDefault(option.Config.BpfDir)
 	require.NoError(t, err)
-	err = layer3.LoadWinTCPSensor(ctx)
+	t.Cleanup(func() {
+		observer.RemoveSensors(ctx)
+		observer.ResetSensorManager()
+	})
+	baseSensor := base.GetInitialSensorTest(t)
+	err = baseSensor.Load(option.Config.BpfDir)
 	require.NoError(t, err)
 	err = procevents.GetRunningProcs()
+	require.NoError(t, err)
+	err = layer3.LoadWinTCPSensor(ctx)
 	require.NoError(t, err)
 }
