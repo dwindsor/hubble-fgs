@@ -32,15 +32,6 @@ struct {
 	__type(value, struct endpoint_id_value);
 } tg_endpoint_id_map SEC(".maps");
 
-/* Maps a binary name to a unique ID (UID). Currently the key is simply
- * the binary name, but this may be extended as needed to define what
- * makes a unique process execution. Other attributes could include CWD,
- * arguments, etc. This map is read-write from BPF. Keys are guarenteed
- * to be unique by definiton {pid, ktime} however binary structs may
- * not be unique at a given time. On the rare case there is a race we
- * just accept the winner and accept values specific to the initial
- * condition may not be exact. Userspace is read-only.
- */
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
 	__uint(max_entries, 1); // will be resized by user space

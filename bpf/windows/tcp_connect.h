@@ -1,19 +1,5 @@
 #pragma once
 
-#define DESTINATION_SOURCE_UNKNOWN   0
-#define DESTINATION_SOURCE_BPF	     1
-#define DESTINATION_SOURCE_USERSPACE 2
-#define DESTINATION_SOURCE_DNS	     3
-#define DESTINATION_SOURCE_LPM	     4
-
-#define TNP_POLICY_UNKNOWN  0x00
-#define TNP_POLICY_ALLOW    0x01
-#define TNP_POLICY_DENY	    0x02
-#define TNP_POLICY_FALLTHRU 0x04
-#define TNP_POLICY_CACHED   0x08
-
-#define TNP_POLICY_REFRESH 0xC
-
 typedef enum _flags {
 	ADDRESS_BLOCK = 0,
 	ADDRESS_PERMIT = 1,
@@ -116,14 +102,6 @@ struct msg_ip_with_stats_event {
 	struct msg_socket_stats stats;
 }; // All fields aligned so no 'packed' attribute.
 
-struct endpoint_id_key {
-	uint64_t addr[2];
-};
-
-struct endpoint_id_value {
-	uint64_t id;
-};
-
 struct addr4_lpm_trie {
 	__u32 prefix;
 	__u32 addr;
@@ -136,43 +114,6 @@ struct addr6_lpm_trie {
 
 struct lpm_endpoint_id_value {
 	uint64_t id;
-};
-
-struct tree_id {
-	uint32_t uid;
-	uint32_t cpu;
-};
-/* Somewhat counter-intuitively destinations are scoped by local
- * id and/or local ns_id. This ensures that if two processes in
- * the same network namespace sending to a destination will have
- * separate stats. Similarly if the same process in different
- * pods will have multiple stat records.
- */
-struct destination_endpoint_key {
-	struct tree_id local_id;
-	uint64_t local_nsid;
-	uint64_t destination_id; // unwrapped endpoint_id_value
-	uint64_t source;
-	uint64_t port;
-};
-
-struct destination_endpoint_value {
-	__u64 tx_quota;
-	__u64 tx_limit;
-	__u64 tx_drops;
-	__u64 allow_default;
-	__u64 deny_default;
-	__u64 deny;
-	__u64 ktime_last_reset;
-	__u64 ktime_tx_reset;
-	__u64 tx_bytes;
-	__u64 rx_bytes;
-	__u64 policy;
-	__u64 rule;
-	__u64 ipv6;
-	__u64 ktime_create;
-	__u64 addr_create[2];
-	__u64 port;
 };
 
 struct cfg_value {
