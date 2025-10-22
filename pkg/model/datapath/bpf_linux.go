@@ -14,6 +14,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3/lpm"
 )
 
+const PATH_SIZE = 256
+
 func (p *BpfProgrammer) initMap() {
 	var err error
 

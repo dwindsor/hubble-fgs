@@ -329,8 +329,8 @@ func (p *BpfProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
 }
 
 type processTreeBinaryUIDKey struct {
-	binary [256]byte
-	args   [256]byte
+	binary [PATH_SIZE]byte
+	args   [PATH_SIZE]byte
 }
 
 func (k processTreeBinaryUIDKey) String() string {
@@ -371,8 +371,8 @@ func (id processTreeID) String() string {
 }
 
 func (p *BpfProgrammer) GetBinaryId(binaryName string, ignoreArgs bool) (uint64, error) {
-	var process = [256]byte{0}
-	var zero = [256]byte{0}
+	var process = [PATH_SIZE]byte{0}
+	var zero = [PATH_SIZE]byte{0}
 
 	copy(process[:], binaryName)
 
