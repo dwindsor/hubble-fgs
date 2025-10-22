@@ -458,6 +458,8 @@ func (n *Nxos) haUpdateNx(ctx context.Context) {
 
 		case hav1.SERVICE_STATE_SVC_SUCCESS:
 			logger.GetLogger().Debug("Program service redir")
+			n.setSystemState(ctx)
+			n.setFwPolicyStateAll(ctx, false)
 			n.setServiceRedirAll(ctx, false)
 			n.setLocalSvcState(ctx)
 

@@ -461,10 +461,12 @@ func fnv1a(buf []byte) uint64 {
 	return hash.Sum64()
 }
 
-func (n *Nxos) setFwPolicyStateAll(ctx context.Context) error {
+func (n *Nxos) setFwPolicyStateAll(ctx context.Context, isLock bool) error {
 
-	n.RLock()
-	defer n.RUnlock()
+	if isLock {
+		n.RLock()
+		defer n.RUnlock()
+	}
 
 	vrfs := []VrfBd{}
 	for _, vrf := range n.Vrfs {
@@ -703,7 +705,7 @@ func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {
 	n.reconcile(ctx)
 
 	// notify NXOS of VRF pinning
-	err = n.setFwPolicyStateAll(ctx)
+	err = n.setFwPolicyStateAll(ctx, true)
 	if err != nil {
 		logger.GetLogger().Error("Fail to set fw policy state", logfields.Error, err)
 		return
