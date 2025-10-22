@@ -10,7 +10,7 @@ metadata:
   annotations:
     author: "Isovalent"
   labels:
-    app.kubernetes.io/version: 1.18.0-pre.2
+    app.kubernetes.io/version: 1.18.0-rc.1
 spec:
   kprobes:
     # Automatic module loading detection
