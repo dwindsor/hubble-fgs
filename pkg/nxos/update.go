@@ -1042,12 +1042,8 @@ func (n *Nxos) setPkgAction(ctx context.Context, isFile bool, fpath string) erro
 func (n *Nxos) setLocalSvcState(ctx context.Context) error {
 	logger.GetLogger().Debug("setLocalSvcState", "state", n.Ha.NxStates.SvcState)
 
-	var items model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems
+	var items model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_ExtItems
 	switch n.Ha.NxStates.SvcState {
-	case hav1.SERVICE_STATE_SVC_UNKNOWN:
-		logger.GetLogger().Debug("Skip unknown state")
-		return nil
-
 	case hav1.SERVICE_STATE_SVC_SUCCESS:
 		items.LocalSvcState = model.Cisco_NX_OSDevice_SasSvcStateE_ready
 
@@ -1063,7 +1059,7 @@ func (n *Nxos) setLocalSvcState(ctx context.Context) error {
 		logger.GetLogger().Error("Fail to emit json", logfields.Error, err)
 		return err
 	}
-	path := svcInst + "/ha-items/ext-items"
+	path := svcInst + "/fwpolicystate-items/ext-items"
 	err = n.gnmiSet(ctx, path, jstr)
 	if err != nil {
 		logger.GetLogger().Error("", logfields.Error, err)
@@ -1075,7 +1071,7 @@ func (n *Nxos) setLocalSvcState(ctx context.Context) error {
 func (n *Nxos) setLocalSvcStateToFailure(ctx context.Context) error {
 	logger.GetLogger().Debug("setLocalSvcStateToFailure")
 
-	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems{
+	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_ExtItems{
 		LocalSvcState: model.Cisco_NX_OSDevice_SasSvcStateE_not_ready,
 	}
 	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
@@ -1087,7 +1083,7 @@ func (n *Nxos) setLocalSvcStateToFailure(ctx context.Context) error {
 		logger.GetLogger().Error("Fail to emit json", logfields.Error, err)
 		return err
 	}
-	path := svcInst + "/ha-items/ext-items"
+	path := svcInst + "/fwpolicystate-items/ext-items"
 	err = n.gnmiSet(ctx, path, jstr)
 	if err != nil {
 		logger.GetLogger().Error("", logfields.Error, err)
@@ -1096,8 +1092,55 @@ func (n *Nxos) setLocalSvcStateToFailure(ctx context.Context) error {
 	return nil
 }
 
-func (n *Nxos) setRemoteStates(ctx context.Context, ip string) error {
-	logger.GetLogger().Debug("setRemoteStates", "ip", ip)
+func (n *Nxos) setRemoteMbrState(ctx context.Context, ip string) error {
+	peer, ok := n.Ha.Peers[ip]
+	if !ok {
+		logger.GetLogger().Error("Member missing")
+		return nil
+	}
+
+	logger.GetLogger().Debug("setRemoteMbrState", "peer", peer.State)
+
+	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems{
+		HaPeerExtList: map[string]*model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{},
+	}
+
+	list := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{
+		IpAddr: &ip,
+	}
+
+	switch peer.State {
+	case hav1.MBR_STATE_HA_NA:
+		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_no_ha
+
+	case hav1.MBR_STATE_HA_OK:
+		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_ok
+
+	case hav1.MBR_STATE_HA_FAIL:
+		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_fail
+	}
+
+	items.HaPeerExtList[ip] = &list
+	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("Fail to emit json", logfields.Error, err)
+		return err
+	}
+	path := svcInst + "/ha-items/ext-items/peer-items"
+	err = n.gnmiSet(ctx, path, jstr)
+	if err != nil {
+		logger.GetLogger().Error("", logfields.Error, err)
+		return err
+	}
+	return nil
+}
+
+func (n *Nxos) setRemoteSvcState(ctx context.Context, ip string) error {
+	logger.GetLogger().Debug("setRemoteSvcState", "ip", ip)
 
 	mbr, ok := n.Ha.Members[ip]
 	if !ok {
@@ -1105,9 +1148,7 @@ func (n *Nxos) setRemoteStates(ctx context.Context, ip string) error {
 		return nil
 	}
 
-	logger.GetLogger().Debug("setRemoteStates",
-		"svc", mbr.Info.HaInfo.Service,
-		"ha", mbr.Info.HaInfo.Ha)
+	logger.GetLogger().Debug("setRemoteSvcState", "svc", mbr.Info.HaInfo.Service)
 
 	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems{
 		HaPeerExtList: map[string]*model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{},
@@ -1117,28 +1158,11 @@ func (n *Nxos) setRemoteStates(ctx context.Context, ip string) error {
 		IpAddr: &ip,
 	}
 	switch mbr.Info.HaInfo.Service {
-	case hav1.SERVICE_STATE_SVC_UNKNOWN:
-		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_unknown
-
 	case hav1.SERVICE_STATE_SVC_SUCCESS:
 		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_ready
 
 	case hav1.SERVICE_STATE_SVC_FAILURE:
 		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
-	}
-
-	switch mbr.Info.HaInfo.Ha {
-	case hav1.HA_STATE_HA_UNKNOWN:
-		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_UNSET
-
-	case hav1.HA_STATE_HA_READY:
-		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_ok
-
-	case hav1.HA_STATE_HA_NOTREADY:
-		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_no_ha
-
-	case hav1.HA_STATE_HA_SWITCHOVER:
-		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_fail
 	}
 
 	items.HaPeerExtList[ip] = &list
@@ -1170,7 +1194,7 @@ func (n *Nxos) setRemoteStatesAdjDown(ctx context.Context, ip string) error {
 	list := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{
 		IpAddr: &ip,
 	}
-	list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_unknown
+	list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
 	list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_no_ha
 
 	items.HaPeerExtList[ip] = &list
@@ -1197,8 +1221,8 @@ func (n *Nxos) setLocalHaState(ctx context.Context) error {
 
 	var items model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems
 	switch n.Ha.NxStates.HaState {
-	case hav1.HA_STATE_HA_UNKNOWN:
-		logger.GetLogger().Debug("skip unknown state")
+	case hav1.HA_STATE_NO_HA:
+		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_no_ha
 		return nil
 
 	case hav1.HA_STATE_HA_READY:
@@ -1210,6 +1234,29 @@ func (n *Nxos) setLocalHaState(ctx context.Context) error {
 	case hav1.HA_STATE_HA_SWITCHOVER:
 		items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_switchover
 	}
+	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("fail to emit json", logfields.Error, err)
+		return err
+	}
+	path := svcInst + "/ha-items/ext-items"
+	err = n.gnmiSet(ctx, path, jstr)
+	if err != nil {
+		logger.GetLogger().Error("fail in gnmiSet", logfields.Error, err)
+		return err
+	}
+	return nil
+}
+
+func (n *Nxos) setLocalHaStateToNotReady(ctx context.Context) error {
+	logger.GetLogger().Debug("setLocalHaStateToNotReady")
+
+	var items model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems
+	items.AgentHaState = model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_not_ready
 	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
 		Format:        ygot.RFC7951,
 		Indent:        "  ",

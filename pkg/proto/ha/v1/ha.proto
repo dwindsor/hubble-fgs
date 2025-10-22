@@ -21,16 +21,21 @@ enum  FLOW_SYNC_STATE {
 }
 
 enum SERVICE_STATE {
-    SVC_UNKNOWN = 0;
-    SVC_SUCCESS = 1;
-    SVC_FAILURE = 2;
+    SVC_SUCCESS = 0;
+    SVC_FAILURE = 1;
 }
 
 enum HA_STATE {
-    HA_UNKNOWN = 0;
+    NO_HA = 0;
     HA_READY = 1;
     HA_NOTREADY = 2;
     HA_SWITCHOVER = 3;
+}
+
+enum MBR_STATE {
+    HA_NA = 0;
+    HA_OK = 1;
+    HA_FAIL = 2;
 }
 
 message VrfInfo {

@@ -539,6 +539,7 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceSagent(_ context.Context, items *mode
 
 func (n *Nxos) updtSasSvcSvcinstSvcInstanceFwpolicy(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicyItems) error {
 
+	n.Configured = true
 	if items.OperState == model.Cisco_NX_OSDevice_Sas_SasInstState_in_service {
 		modified := n.setInService(ctx, true)
 		if modified {
@@ -935,6 +936,7 @@ func (n *Nxos) updtSasDpuInstInstExt(_ context.Context, items *model.Cisco_NX_OS
 func (n *Nxos) updtSasSvcSvcinstSvcInstanceHa(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems) error {
 	logger.GetLogger().Debug("updtSasSvcSvcinstSvcInstanceHa", "item", *items)
 
+	n.Ha.Configured = true
 	// hard coded enabled. ignore mo for now
 	if items.AdminState == model.Cisco_NX_OSDevice_Sas_SvcHaAdminStateE_enabled {
 		n.Ha.Enabled = true
@@ -971,6 +973,7 @@ func (n *Nxos) delHa(ctx context.Context) {
 	logger.GetLogger().Debug("delete high availability")
 
 	n.Ha.HaIp = ""
+	n.Ha.Configured = false
 	n.Ha.Enabled = false
 	n.Ha.OperUp = false
 	n.Ha.Peers = make(map[string]HaPeer)

@@ -271,6 +271,18 @@ func (n *Nxos) subscribe(ctx context.Context) {
 	go n.gnmiSubscribe(ctx, "nxos", paths)
 }
 
+func (n *Nxos) isConfigured(_ context.Context, isLock bool) bool {
+
+	if isLock {
+		n.RLock()
+		defer n.RUnlock()
+	}
+
+	c := n.Ha.Configured // to be revisited: n.Configured
+	logger.GetLogger().Debug("Configured:", "", c)
+	return c
+}
+
 func (n *Nxos) isInService(_ context.Context) bool {
 
 	n.RLock()
@@ -779,7 +791,7 @@ func (n *Nxos) cleanup(ctx context.Context) {
 
 	n.remove(ctx, allocFname)
 
-	if n.haIsEnabled(ctx, false) {
+	if n.isConfigured(ctx, false) {
 		n.setLocalSvcStateToFailure(ctx)
 	}
 }

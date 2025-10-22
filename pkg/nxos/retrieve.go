@@ -6,6 +6,7 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
+	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 	"github.com/openconfig/ygot/ytypes"
 )
 
@@ -186,4 +187,74 @@ func (n *Nxos) getSerialNum(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (n *Nxos) getLocalSvcState(ctx context.Context) {
+	n.Ha.NxStates.SvcState = hav1.SERVICE_STATE_SVC_FAILURE
+	jstrs, err := n.gnmiGet(ctx, svcInst+"/fwpolicystate-items/ext-items")
+	if err != nil {
+		logger.GetLogger().Error("Fail to get fwpolicystate-items/ext-items",
+			logfields.Error, err)
+		return
+	}
+	logger.GetLogger().Debug("jstrs", "", jstrs)
+	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
+		items := &model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_ExtItems{}
+		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
+		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
+		if err != nil {
+			logger.GetLogger().Error("Fail to unmarshal ext-items",
+				logfields.Error, err)
+			return
+		} else {
+			logger.GetLogger().Debug("LocalSvcState", "", items.LocalSvcState)
+			switch items.LocalSvcState {
+			case model.Cisco_NX_OSDevice_SasSvcStateE_ready:
+				n.Ha.NxStates.SvcState = hav1.SERVICE_STATE_SVC_SUCCESS
+
+			case model.Cisco_NX_OSDevice_SasSvcStateE_not_ready:
+
+			default:
+				logger.GetLogger().Debug("unexpected LocalSvcState")
+			}
+		}
+	}
+}
+
+func (n *Nxos) getLocalHaState(ctx context.Context) {
+	n.Ha.NxStates.HaState = hav1.HA_STATE_NO_HA
+	jstrs, err := n.gnmiGet(ctx, svcInst+"/ha-items/ext-items")
+	if err != nil {
+		logger.GetLogger().Error("Fail to get ha-items/ext-items",
+			logfields.Error, err)
+		return
+	}
+	logger.GetLogger().Debug("jstrs", "", jstrs)
+	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
+		items := &model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems{}
+		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
+		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
+		if err != nil {
+			logger.GetLogger().Error("Fail to unmarshal ext-items",
+				logfields.Error, err)
+			return
+		} else {
+			logger.GetLogger().Debug("LocalHaState", "", items.AgentHaState)
+			switch items.AgentHaState {
+			case model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_ready:
+				n.Ha.NxStates.HaState = hav1.HA_STATE_HA_READY
+
+			case model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_not_ready:
+				n.Ha.NxStates.HaState = hav1.HA_STATE_HA_NOTREADY
+
+			case model.Cisco_NX_OSDevice_SasAgentHaStateE_ha_switchover:
+				n.Ha.NxStates.HaState = hav1.HA_STATE_HA_SWITCHOVER
+
+			case model.Cisco_NX_OSDevice_SasAgentHaStateE_no_ha:
+
+			default:
+				logger.GetLogger().Debug("unexpected LocalHaState")
+			}
+		}
+	}
 }

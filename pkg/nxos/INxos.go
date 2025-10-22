@@ -62,6 +62,8 @@ type Alloc struct {
 type HaPeer struct {
 	SkipAuth   bool
 	IpConfigOk bool
+	// revisit for N switch group proto
+	State hav1.MBR_STATE
 }
 
 type HaAdj struct {
@@ -109,9 +111,10 @@ type Ha struct {
 	ClientKey  string
 
 	// config from nxos
-	Enabled bool
-	OperUp  bool
-	Peers   map[string]HaPeer
+	Configured bool
+	Enabled    bool
+	OperUp     bool
+	Peers      map[string]HaPeer
 
 	// peer info: key peer ha ip
 	Adjacencies map[string]HaAdj
@@ -238,6 +241,7 @@ type Nxos struct {
 	NumDpu uint16
 
 	// configuration from NXOS
+	Configured bool
 	InService  bool
 	Ctrlr      Ctrlr
 	Agent      Agent

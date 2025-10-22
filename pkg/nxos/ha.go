@@ -36,6 +36,16 @@ func (n *Nxos) haIsEnabled(_ context.Context, isLock bool) bool {
 	return enabled
 }
 
+func (n *Nxos) haIsConfigured(_ context.Context, isLock bool) bool {
+	if isLock {
+		n.RLock()
+		defer n.RUnlock()
+	}
+
+	logger.GetLogger().Debug("HaConfigured: ", "", n.Ha.Configured)
+	return n.Ha.Configured
+}
+
 func (n *Nxos) haIsConnected(_ context.Context, peer string) bool {
 	logger.GetLogger().Debug("haIsConnected: ", "peer", peer)
 
@@ -149,7 +159,7 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 		n.haUpdateCrit(ctx, HaCritPolicy, true)
 	}
 	if notify {
-		n.setRemoteStates(ctx, peer)
+		n.setRemoteSvcState(ctx, peer)
 	}
 }
 
@@ -301,7 +311,6 @@ func (n *Nxos) haDisconnect(_ context.Context, peer string) {
 	n.Lock()
 	defer n.Unlock()
 
-	delete(n.Ha.Adjacencies, peer)
 	delete(n.Ha.Members, peer)
 
 	if !n.Ha.IsLeader {
@@ -315,6 +324,7 @@ func (n *Nxos) haDisconnect(_ context.Context, peer string) {
 		return
 	}
 	adj.GrpcClient.Close()
+	delete(n.Ha.Adjacencies, peer)
 }
 
 func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
@@ -392,7 +402,7 @@ func (n *Nxos) haUpdateNxState(_ context.Context) {
 		svcState = hav1.SERVICE_STATE_SVC_FAILURE
 		haState = hav1.HA_STATE_HA_SWITCHOVER
 	}
-	// logger.GetLogger().Debug("svcState %v haState %v", svcState, haState)
+	logger.GetLogger().Debug("Derived states", "svcState", svcState, "haState", haState)
 
 	if n.Ha.NxStates.HaState != haState {
 		logger.GetLogger().Debug("update haState", "prev", n.Ha.NxStates.HaState, "next", haState)
@@ -417,6 +427,11 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 		if now-adj.Epoch > adjTimeout {
 			logger.GetLogger().Debug("Adjacency timed out", "ip", ip)
 			delete(n.Ha.Adjacencies, ip)
+			peer, ok := n.Ha.Peers[ip]
+			if ok {
+				peer.State = hav1.MBR_STATE_HA_NA
+				n.Ha.Peers[ip] = peer
+			}
 			n.HaUpdatePtnr(ctx, ip, true)
 			n.setRemoteStatesAdjDown(ctx, ip)
 		}
@@ -431,41 +446,37 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 }
 
 func (n *Nxos) haUpdateNx(ctx context.Context) {
-	/*
-		logger.GetLogger().Debug("haUpdateNx: haState %v epoch %v svcState %v epoch %v",
-			n.Ha.NxStates.HaState, n.Ha.NxStates.HaStateEpoch,
-			n.Ha.NxStates.SvcState, n.Ha.NxStates.SvcStateEpoch)
-	*/
-
-	now := time.Now().Unix()
-
 	n.Lock()
 	defer n.Unlock()
 
-	if n.Ha.NxStates.HaStateEpoch != 0 &&
-		now-n.Ha.NxStates.HaStateEpoch > nxUpdateTimeout {
-		n.Ha.NxStates.HaStateEpoch = 0
-		// update nx
-		n.setLocalHaState(ctx)
+	now := time.Now().Unix()
+	if n.haIsConfigured(ctx, false) {
+		if n.Ha.NxStates.HaStateEpoch != 0 &&
+			now-n.Ha.NxStates.HaStateEpoch > nxUpdateTimeout {
+			logger.GetLogger().Debug("haUpdateNx:", "haState",
+				n.Ha.NxStates.HaState, "epoch",
+				n.Ha.NxStates.HaStateEpoch)
+			n.Ha.NxStates.HaStateEpoch = 0
+			// update nx
+			n.setLocalHaState(ctx)
+		}
 	}
-	if n.Ha.NxStates.SvcStateEpoch != 0 &&
-		now-n.Ha.NxStates.SvcStateEpoch > nxUpdateTimeout {
-		n.Ha.NxStates.SvcStateEpoch = 0
+	if n.isConfigured(ctx, false) {
+		if n.Ha.NxStates.SvcStateEpoch != 0 &&
+			now-n.Ha.NxStates.SvcStateEpoch > nxUpdateTimeout {
+			n.Ha.NxStates.SvcStateEpoch = 0
+			switch n.Ha.NxStates.SvcState {
+			case hav1.SERVICE_STATE_SVC_SUCCESS:
+				logger.GetLogger().Debug("Program service redir")
+				n.setSystemState(ctx)
+				n.setFwPolicyStateAll(ctx, false)
+				n.setServiceRedirAll(ctx, false)
+				n.setLocalSvcState(ctx)
 
-		switch n.Ha.NxStates.SvcState {
-		case hav1.SERVICE_STATE_SVC_UNKNOWN:
-			logger.GetLogger().Debug("Skip unknown state")
-
-		case hav1.SERVICE_STATE_SVC_SUCCESS:
-			logger.GetLogger().Debug("Program service redir")
-			n.setSystemState(ctx)
-			n.setFwPolicyStateAll(ctx, false)
-			n.setServiceRedirAll(ctx, false)
-			n.setLocalSvcState(ctx)
-
-		case hav1.SERVICE_STATE_SVC_FAILURE:
-			logger.GetLogger().Debug("Cleanup service redir")
-			n.cleanup(ctx)
+			case hav1.SERVICE_STATE_SVC_FAILURE:
+				logger.GetLogger().Debug("Cleanup service redir")
+				n.cleanup(ctx)
+			}
 		}
 	}
 }
@@ -515,7 +526,23 @@ func (n *Nxos) haUpdateCrit(ctx context.Context, crit HaCrit, val bool) {
 func (n *Nxos) HaUpdatePtnr(ctx context.Context, ptnr string, isDel bool) {
 	logger.GetLogger().Debug("HaUpdatePtnr", "ptnr", ptnr, "isDel", isDel)
 
-	_, ok := n.Ha.Partners[ptnr]
+	peer, ok := n.Ha.Peers[ptnr]
+	if ok {
+		prev := peer.State
+		if isDel {
+			peer.State = hav1.MBR_STATE_HA_FAIL
+		} else {
+			peer.State = hav1.MBR_STATE_HA_OK
+		}
+		if peer.State != prev {
+			n.Ha.Peers[ptnr] = peer
+			n.setRemoteMbrState(ctx, ptnr)
+		}
+	} else {
+		logger.GetLogger().Debug("Peer not found")
+	}
+
+	_, ok = n.Ha.Partners[ptnr]
 	if isDel && ok {
 		delete(n.Ha.Partners, ptnr)
 		n.haUpdateNxState(ctx)
@@ -528,6 +555,8 @@ func (n *Nxos) HaUpdatePtnr(ctx context.Context, ptnr string, isDel bool) {
 func (n *Nxos) haInit(ctx context.Context) {
 	logger.GetLogger().Debug("haInit")
 
+	n.getLocalSvcState(ctx)
+	n.getLocalHaState(ctx)
 	err := n.getHaIp(ctx)
 	if err != nil {
 		logger.GetLogger().Debug("haInit")
@@ -574,9 +603,8 @@ func (n *Nxos) haSetup(ctx context.Context) {
 		select {
 		case wait := <-n.WaitHa.Out():
 			logger.GetLogger().Debug("HA waked up", "wait", wait)
-			n.setLocalHaState(ctx)
-			n.setLocalSvcState(ctx)
 
+			n.setLocalHaState(ctx)
 			n.haSetLeader(ctx)
 			peers := n.haGetPeers(ctx)
 			prevEnabled := enabled
@@ -600,7 +628,8 @@ func (n *Nxos) haSetup(ctx context.Context) {
 			}
 
 		case <-time.After(haTimeout * time.Second):
-			logger.GetLogger().Debug("haTimeout at", "epoch", time.Now().Unix())
+			// logger.GetLogger().Debug("haTimeout at", "epoch", time.Now().Unix())
+			n.haUpdateNx(ctx)
 			if enabled {
 				peers := n.haGetPeers(ctx)
 				for _, peer := range peers {
@@ -613,7 +642,6 @@ func (n *Nxos) haSetup(ctx context.Context) {
 				}
 				n.haCheckAdjMbr(ctx)
 			}
-			n.haUpdateNx(ctx)
 		}
 	}
 }
