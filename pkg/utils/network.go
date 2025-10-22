@@ -1,8 +1,13 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"net"
+	"time"
+
+	"github.com/cilium/cilium/pkg/logging/logfields"
+	"github.com/cilium/tetragon/pkg/logger"
 )
 
 type Interface struct {
@@ -84,27 +89,71 @@ func GetInterfaces() ([]Interface, error) {
 	return result, nil
 }
 
-func GetDpuIP(ifname string) (string, error) {
-	intfs, err := net.Interfaces()
-	if err != nil {
-		return "", err
-	}
+// GetDpuIP retrieves the IP addr from the specified interface with retry.
+// It will retry with exponential backoff until the IP is found, the context is
+// cancelled, or timeout (2 minutes) is exceeded. W/O a valid IP, the DPU cannot
+// register with AGW.
+// maxBackoff = 10 sec = maximum wait time between retry attempts
+// maxWaitTime = 2 min = maximum total wait time
 
-	for _, intf := range intfs {
-		if intf.Name != ifname {
-			continue
-		}
-		addrs, err := intf.Addrs()
+func GetDpuIP(ctx context.Context, ifname string) (string, error) {
+	logger.GetLogger().Info("Getting DPU IP from interface", "interface", ifname)
+	backoff := time.Second
+	maxBackoff := 10 * time.Second
+	maxWaitTime := 2 * time.Minute
+	startTime := time.Now()
+
+	for {
+		// Try to get the IP from the interface
+		intfs, err := net.Interfaces()
 		if err != nil {
 			return "", err
 		}
-		for _, addr := range addrs {
-			ipnet, ok := addr.(*net.IPNet)
-			if ok && ipnet.IP.To4() != nil {
-				return ipnet.IP.String(), nil
+		// Look for IP
+		for _, intf := range intfs {
+			if intf.Name != ifname {
+				continue
+			}
+			addrs, err := intf.Addrs()
+			if err != nil {
+				return "", err
+			}
+			for _, addr := range addrs {
+				ipnet, ok := addr.(*net.IPNet)
+				if ok && ipnet.IP.To4() != nil {
+					dpuIP := ipnet.IP.String()
+					logger.GetLogger().Info("DPU IP obtained", "ip", dpuIP, "elapsed", time.Since(startTime))
+					return dpuIP, nil
+				}
 			}
 		}
+
+		// IP not found yet
+		elapsed := time.Since(startTime)
+
+		// Check if we've exceeded the maximum wait time
+		if elapsed > maxWaitTime {
+			return "", errors.New("timeout waiting for DPU IP from interface " + ifname)
+		}
+
+		logger.GetLogger().Warn("Failed to get DPU IP, retrying",
+			"interface", ifname,
+			logfields.Error, errors.New("DPU IP not found"),
+			"backoff : ", backoff,
+			"elapsed : ", elapsed)
+
+		// Wait for backoff duration or context cancellation
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(backoff):
+			// Continue to next iteration
+		}
+
+		// Exponential backoff with max cap
+		backoff *= 2
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
 	}
-	err = errors.New("DPU IP not found")
-	return "", err
 }

@@ -22,12 +22,24 @@ type FWAServer struct {
 }
 
 func (s *FWAServer) ReportStatus(_ context.Context, req *v1alpha.ReportStatusRequest) (*v1alpha.ReportStatusResponse, error) {
+	// Validate AgentUid is not empty
+	if req.Status != nil && req.Status.AgentUid == "" {
+		logger.GetLogger().Error("Rejecting DPU status report with empty AgentUid")
+		return nil, fmt.Errorf("AgentUid cannot be empty")
+	}
+
 	status := reportRequestToDPU(req)
 	s.dpuListener.ReportStatus(status)
 	return &v1alpha.ReportStatusResponse{}, nil
 }
 
 func (s *FWAServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicyRequest, stream grpc.ServerStreamingServer[v1alpha.Streaml3L4NetworkPolicyResponse]) error {
+	// Validate AgentUid is not empty
+	if req.AgentUid == "" {
+		logger.GetLogger().Error("Rejecting DPU connection with empty AgentUid")
+		return fmt.Errorf("AgentUid cannot be empty")
+	}
+
 	initializedPeer := func() *peer {
 		s.dpuListener.mtx.Lock()
 		defer s.dpuListener.mtx.Unlock()
@@ -78,6 +90,12 @@ func (s *FWAServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 }
 
 func (s *FWAServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigRequest, stream grpc.ServerStreamingServer[v1alpha.StreamDatapathConfigResponse]) error {
+	// Validate AgentUid is not empty
+	if req.AgentUid == "" {
+		logger.GetLogger().Error("Rejecting DPU config conn with empty AgentUid")
+		return fmt.Errorf("AgentUid cannot be empty")
+	}
+
 	peer := s.dpuListener.addPeer(req.AgentUid)
 
 	// Diffing the peer's config set with the current latest config set to be able

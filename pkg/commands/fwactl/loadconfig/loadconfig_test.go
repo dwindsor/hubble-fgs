@@ -1,6 +1,7 @@
 package loadconfig
 
 import (
+	"net"
 	"os"
 	"testing"
 
@@ -17,7 +18,22 @@ func TestRunE(t *testing.T) {
 		t.Errorf("Expected missing filepath error, got: %v", err)
 	}
 
-	// Test successful run
+	// Test successful run - skip if DPU interface doesn't exist (e.g., in CI)
+	intfs, err := net.Interfaces()
+	if err != nil {
+		t.Skipf("Cannot get network interfaces: %v", err)
+	}
+	hasInterface := false
+	for _, intf := range intfs {
+		if intf.Name == "int_mnic0" {
+			hasInterface = true
+			break
+		}
+	}
+	if !hasInterface {
+		t.Skip("Skipping test: int_mnic0 interface not found (not on DPU hardware)")
+	}
+
 	cfgFile, err := os.CreateTemp("", "*.json")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)

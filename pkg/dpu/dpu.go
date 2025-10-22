@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/gob"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"runtime"
@@ -108,7 +109,7 @@ func (dpu *DPUAgent) KeepAliveInterval() int {
 	return dpu.Cfg.Agent.KeepAliveInterval
 }
 
-func (dpu *DPUAgent) Config(_ context.Context, path string, dpSocketPath string) error {
+func (dpu *DPUAgent) Config(ctx context.Context, path string, dpSocketPath string) error {
 	// Extracting logger and agent from context
 	// Collecting agent metadata
 	var err error
@@ -134,15 +135,17 @@ func (dpu *DPUAgent) Config(_ context.Context, path string, dpSocketPath string)
 	dpu.Dataplane = dataplane.NewAcceleratedDataplane("dp-app", dpSocketPath, "")
 
 	logger.GetLogger().Info("configure DPU", "host", dpu.Hostname, "OS", dpu.Os, "Arch", dpu.Architecture)
-	dpuIp, err := utils.GetDpuIP(DPU_INTERFACE)
+
+	// Get DPU IP with retry - w/o a valid AgentId, the DPU cannot register with AGW
+	// GetDpuIP will retry with exponential backoff (1s -> 10s max) for up to 2 minutes
+	// and respects context cancellation for graceful shutdown
+	dpuIp, err := utils.GetDpuIP(ctx, DPU_INTERFACE)
 	if err != nil {
-		logger.GetLogger().Error("Fail to get DPU IP, retry after 1 second", logfields.Error, err)
-		time.Sleep(time.Second)
-	} else {
-		dpu.AgentId = dpuIp
-		dpu.Ip = dpuIp
-		logger.GetLogger().Info("Using DPU IP as AgentId", "id", dpu.AgentId)
+		return fmt.Errorf("failed to get DPU IP from interface %s: %w", DPU_INTERFACE, err)
 	}
+	dpu.AgentId = dpuIp
+	dpu.Ip = dpuIp
+	logger.GetLogger().Info("Using DPU IP as AgentId", "id", dpu.AgentId)
 
 	// Setting up log exporter
 	dpu.LogExporter = exporter.NewAcceleratedFluentbitExporter("", EXPORTER_CONFIG_PATH)
