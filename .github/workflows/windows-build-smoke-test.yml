@@ -14,7 +14,7 @@ on:
 jobs:
   windows-ebpf-prog-build:
     name: Build Windows ebpf programs
-    runs-on: windows-2022
+    runs-on: windows-2025
     permissions:
       contents: read
     timeout-minutes: 25
@@ -146,7 +146,7 @@ jobs:
 
   windows-tetragon-build:
     name: Build, Unit Test and Upload Windows Tetragon and Tetra Binaries
-    runs-on: windows-2022
+    runs-on: windows-2025
     permissions:
       contents: read
       actions: read
@@ -418,7 +418,7 @@ jobs:
 
   windows-smoke-test:
     name: Deploy and Test tetragon for Windows 
-    runs-on: windows-2022
+    runs-on: windows-2025
     permissions:
       contents: read
       actions: read
