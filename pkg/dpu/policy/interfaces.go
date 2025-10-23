@@ -51,8 +51,9 @@ type FwPolicyMsgV2 struct {
 type FwPolicyV2 struct {
 	Id          string     `json:"id"`
 	Name        string     `json:"name"`
-	Effect      string     `json:"effect"`   // permit/allow or deny
-	Protocol    []string   `json:"protocol"` // any or udp or tcp or icmp
+	Operation   uint16     `json:"operation"` // OPERATION_UPDATE|DELETE
+	Effect      string     `json:"effect"`    // permit/allow or deny
+	Protocol    []string   `json:"protocol"`  // any or udp or tcp or icmp
 	Source      EndpointV2 `json:"source"`
 	Destination EndpointV2 `json:"destination"`
 }

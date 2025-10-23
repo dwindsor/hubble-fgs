@@ -11,7 +11,9 @@ const (
 	DENY  = "forbid"
 )
 
-func ruleToJSON(rule *dpu.DPURule) FwPolicyV2 {
+func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
+	var fwop uint16
+
 	name := rule.PolicyName + rule.RuleName
 	uid := rule.K8SResourceVersion + ":" + rule.K8SUid + ":" + rule.PolicyName + ":" + rule.RuleName
 
@@ -29,6 +31,15 @@ func ruleToJSON(rule *dpu.DPURule) FwPolicyV2 {
 		proto = append(proto, "udp")
 	case v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP:
 		proto = append(proto, "icmp")
+	}
+
+	switch op {
+	case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
+		fwop = 0
+	case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
+		fwop = 1
+	default:
+		fwop = 0
 	}
 
 	source := EndpointV2{
@@ -50,6 +61,7 @@ func ruleToJSON(rule *dpu.DPURule) FwPolicyV2 {
 	return FwPolicyV2{
 		Id:          uid,
 		Name:        name,
+		Operation:   fwop,
 		Effect:      effect,
 		Protocol:    proto,
 		Source:      source,
@@ -57,11 +69,11 @@ func ruleToJSON(rule *dpu.DPURule) FwPolicyV2 {
 	}
 }
 
-func DPURuleToJSON(policySet []*dpu.DPUPolicyRule) []FwPolicyV2 {
+func DPURuleToJSON(op v1alpha.PolicyOperation, policySet []*dpu.DPUPolicyRule) []FwPolicyV2 {
 	fwSet := []FwPolicyV2{}
 
 	for _, p := range policySet {
-		json := ruleToJSON(p.Policy)
+		json := ruleToJSON(op, p.Policy)
 		fwSet = append(fwSet, json)
 	}
 

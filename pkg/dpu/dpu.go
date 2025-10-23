@@ -277,7 +277,7 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			logger.GetLogger().Error("failed policy, unknown operation")
 		case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
 			dpu.upsertPolicyRule(rule)
-			err := dpu.Dataplane.PushPolicy(ctx, policyList)
+			err := dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, policyList)
 			if err != nil {
 				logger.GetLogger().Error("upsert failed", logfields.Error, err)
 				continue
@@ -290,7 +290,11 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			dpu.EventLogger.Log(msg)
 		case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
 			dpu.deletePolicyRule(rule)
-			logger.GetLogger().Warn("delete not implemented", "policy", *rule)
+			err := dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, policyList)
+			if err != nil {
+				logger.GetLogger().Error("upsert failed", logfields.Error, err)
+				continue
+			}
 
 			// Log event
 			msg := events.NewEventLogMessage(events.MSGCODE_POLICY, dpu.AgentId)

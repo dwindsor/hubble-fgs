@@ -53,7 +53,7 @@ type Dataplane interface {
 	ApiPath() string
 
 	// Commands
-	PushPolicy(context.Context, []*dpuPolicy.DPUPolicyRule) error
+	PushPolicy(context.Context, v1alpha.PolicyOperation, []*dpuPolicy.DPUPolicyRule) error
 	RemovePolicy(context.Context) error
 
 	// Configuration

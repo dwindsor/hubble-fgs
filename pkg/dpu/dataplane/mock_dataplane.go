@@ -29,7 +29,7 @@ func (m *MockDataplane) ApiPath() string {
 	return ""
 }
 
-func (m *MockDataplane) PushPolicy(_ context.Context, _ []*dpuPolicy.DPUPolicyRule) error {
+func (m *MockDataplane) PushPolicy(_ context.Context, _ v1alpha.PolicyOperation, _ []*dpuPolicy.DPUPolicyRule) error {
 	return nil
 }
 

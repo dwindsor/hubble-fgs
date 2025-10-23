@@ -253,8 +253,8 @@ func (dp *AcceleratedDataplane) ApiPath() string {
 	return dp.Accelerated.ApiPath
 }
 
-func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, policies []*dpuPolicy.DPUPolicyRule) error {
-	fwPolicy := dpAppPolicy.DPURuleToJSON(policies)
+func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, fwop v1alpha.PolicyOperation, policies []*dpuPolicy.DPUPolicyRule) error {
+	fwPolicy := dpAppPolicy.DPURuleToJSON(fwop, policies)
 
 	// Creating policy message
 	policyMsg := &dpAppPolicy.FwPolicyMsgV2{
