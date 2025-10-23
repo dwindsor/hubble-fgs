@@ -1107,16 +1107,14 @@ func (n *Nxos) updtSasVolatiledataAgent(ctx context.Context, items *model.Cisco_
 			restartAgent, err := n.SetToken(ctx, *data.ConnToken)
 			if err == nil {
 				logger.GetLogger().Info("token updated")
-				// TODO: Revisit n.Stage usage.
-				// StageToken is set in the waitForDpu. Is it still required?
-				n.Stage = StageToken
-				if n.Stage == StageToken {
-					logger.GetLogger().Debug("WakeToken")
-					n.Wait.In() <- WakeToken
-				} else if n.Stage == StageNormal {
+				if n.Stage == StageNormal {
 					if n.SkipReg && n.SkipRegReason == RegFailK8sAuth {
 						n.unsetSkipReg(ctx, true)
 					}
+				} else {
+					// Wake up anyone waiting for token
+					logger.GetLogger().Debug("WakeToken")
+					n.Wait.In() <- WakeToken
 				}
 				n.store(ctx, ctrlrFname, n.Ctrlr)
 				if restartAgent {

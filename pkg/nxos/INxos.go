@@ -181,7 +181,6 @@ type Stage string
 const (
 	StageEnable Stage = "enable stage"
 	StageDpu    Stage = "dpu stage"
-	StageToken  Stage = "token stage"
 	StageVrf    Stage = "vrf stage"
 	StageNormal Stage = "normal stage"
 )

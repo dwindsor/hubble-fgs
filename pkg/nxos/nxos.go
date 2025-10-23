@@ -335,7 +335,7 @@ func (n *Nxos) isAllDpuCounted(_ context.Context) (uint16, bool) {
 func (n *Nxos) waitForDpu(ctx context.Context) (uint16, error) {
 	logger.GetLogger().Debug("Wait for DPUs")
 	defer func() {
-		n.Stage = StageToken
+		n.Stage = StageVrf
 	}()
 
 	if n.SkipDpu {
@@ -429,27 +429,6 @@ func (n *Nxos) isTokenAvail(_ context.Context) bool {
 	defer n.RUnlock()
 
 	return n.Ctrlr.Token != ""
-}
-
-// wait for HS controller token
-func (n *Nxos) waitForToken(ctx context.Context) error {
-	logger.GetLogger().Debug("wait for K8s auth token")
-	defer func() { n.Stage = StageVrf }()
-
-	if n.isTokenAvail(ctx) {
-		return nil
-	}
-
-	for {
-		select {
-		case wait := <-n.Wait.Out():
-			logger.GetLogger().Debug("Waked up", "time", wait)
-			if n.isTokenAvail(ctx) {
-				logger.GetLogger().Debug("waitForToken: K8s auth token is available")
-				return nil
-			}
-		}
-	}
 }
 
 // currently only handle VRF change
@@ -596,8 +575,6 @@ func (n *Nxos) Setup(ctx context.Context, cancel context.CancelFunc, low, high u
 		logger.GetLogger().Error("Failed to connect to dpu Agent", logfields.Error, err)
 		return err
 	}
-
-	n.Stage = StageVrf
 
 	now := time.Now().Unix()
 	elapsed := now - n.Ha.Start
