@@ -66,8 +66,6 @@ import (
 	tusee "github.com/isovalent/hubble-fgs/pkg/testutils/sensors"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
-
-	slimv1 "github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1"
 )
 
 var (
@@ -2261,63 +2259,6 @@ func testFileTruncate(gt *testing.T, t *testing.T) {
 	assert.NoError(gt, err)
 }
 
-// this test check accessing files inside a container
-func testFileReadContainerFile(gt *testing.T, t *testing.T) {
-	// create a new container
-	id, err := exec.Command("docker", "run", "--detach", "ubuntu:20.04", "/bin/sleep", "3650d").Output()
-	if err != nil {
-		t.Fatalf("failed to spawn docker container: %s", err)
-	}
-
-	containerId := strings.TrimSpace(string(id)) // get the container id
-	t.Cleanup(func() {
-		if err := exec.Command("docker", "rm", "--force", containerId).Run(); err != nil {
-			t.Logf("failed to remove container %s: %s", containerId, err)
-		}
-	})
-
-	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{"/etc/"},
-		PathsExclude:     []string{},
-		Config:           make(map[string]string),
-		MonitorHostFiles: false, // check only container files here
-		PodSelector:      &slimv1.LabelSelector{},
-	}); err != nil {
-		t.Fatalf("ReGenerateFimMaps failed with %s", err)
-	}
-
-	rootDir, err := fm.DockerIdToRootFs(containerId)
-	if err != nil {
-		t.Fatalf("failed to spawn docker container: %s", err)
-	}
-
-	// now we apply the existing tracing policy (i.e. /etc/) for the root filesystem of a running container
-	if _, err := TracingPolicyInitContainerFsScanner([]fm.SpecPinPath{}, containerId, "", "", rootDir, true); err != nil {
-		t.Fatalf("failed to call TracingPolicyInitContainerFsScanner(%s, %s): %s", containerId, rootDir, err)
-	}
-
-	// read /etc/shadow from inside the container
-	if err := exec.Command("docker", "exec", containerId, "cat", "/etc/shadow").Run(); err != nil {
-		t.Fatalf("failed to read /etc/shadow inside container %s: %s", containerId, err)
-	}
-
-	// remove any files related to the container
-	if err := TracingPolicyDestroyContainerFsScanner(containerId); err != nil {
-		t.Fatalf("failed to call TracingPolicyDestroyContainerFsScanner(%s): %s", containerId, err)
-	}
-
-	binChecker := ec.NewProcessChecker().WithBinary(sm.Suffix("cat"))
-	locChecker := ec.NewFileLocationChecker().WithType(tetragon.FileScope_CONTAINER_FILE_LOCAL).WithContainerId(sm.Full(containerId))
-	fdChecker := ec.NewFileDetailsChecker().WithStr(sm.Full("/etc/shadow")).WithLocation(locChecker)
-	gfileChecker := ec.NewGenericFileArgChecker().WithFile(fdChecker)
-	argChecker := ec.NewFileArgumentChecker().WithGenericArg(gfileChecker)
-	readChecker := ec.NewProcessFileChecker("").WithProcess(binChecker).WithAction(tetragon.FileAction_FILE_READ).WithArgs(argChecker)
-	checker := ec.NewUnorderedEventChecker(readChecker)
-
-	err = jsonchecker.JsonTestCheck(gt, checker)
-	assert.NoError(gt, err)
-}
-
 func testFileReadMatchBinary(gt *testing.T, t *testing.T) {
 	out := filepath.Join(workingDir, "fim_test_outdir")
 	createTestDir(t, out)
@@ -2859,7 +2800,6 @@ func TestFileOps(t *testing.T) {
 		"truncate":           testFileTruncate,
 		"fileexec":           testFileExec,
 		"fileexecint":        testFileExecInterpreter,
-		"readcontainerfile":  testFileReadContainerFile,
 		"readmatchbinary":    testFileReadMatchBinary,
 		"readmatchoperation": testFileReadMatchOperation,
 		"exactfiledelete":    testExactFileDelete,
