@@ -63,6 +63,14 @@ func Execute() error {
 }
 
 func main() {
+	// setup logging format
+	o := make(map[string]string)
+	o[logger.FormatOpt] = "text-ts"
+	if err := logger.SetupLogging(o, false); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
 	if err := Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
