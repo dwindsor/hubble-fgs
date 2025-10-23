@@ -193,8 +193,7 @@ func (n *Nxos) getLocalSvcState(ctx context.Context) {
 	n.Ha.NxStates.SvcState = hav1.SERVICE_STATE_SVC_FAILURE
 	jstrs, err := n.gnmiGet(ctx, svcInst+"/fwpolicystate-items/ext-items")
 	if err != nil {
-		logger.GetLogger().Error("Fail to get fwpolicystate-items/ext-items",
-			logfields.Error, err)
+		logger.GetLogger().Debug("Fail to get fwpolicystate-items/ext-items", "error", err.Error())
 		return
 	}
 	logger.GetLogger().Debug("jstrs", "", jstrs)
@@ -225,8 +224,7 @@ func (n *Nxos) getLocalHaState(ctx context.Context) {
 	n.Ha.NxStates.HaState = hav1.HA_STATE_NO_HA
 	jstrs, err := n.gnmiGet(ctx, svcInst+"/ha-items/ext-items")
 	if err != nil {
-		logger.GetLogger().Error("Fail to get ha-items/ext-items",
-			logfields.Error, err)
+		logger.GetLogger().Debug("Fail to get ha-items/ext-items", "error", err.Error())
 		return
 	}
 	logger.GetLogger().Debug("jstrs", "", jstrs)
