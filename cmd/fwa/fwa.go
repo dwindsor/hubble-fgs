@@ -30,7 +30,7 @@ func executeFWA() error {
 		cancel()
 	}()
 
-	logger.GetLogger().Info("Agent starting")
+	logger.GetLogger().Info("Agent starting", "config", redactedConfig())
 	agent := dpu.NewDPUAgent(Config.ServerAddress)
 
 	logger.GetLogger().Info("Configuring agent")

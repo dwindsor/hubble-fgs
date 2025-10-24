@@ -1,6 +1,6 @@
 package main
 
-type config struct {
+type cliConfig struct {
 	DafConfig       string
 	NetworkPolicies []string
 	ServerAddress   string
@@ -12,7 +12,7 @@ type config struct {
 }
 
 var (
-	Config = config{
+	Config = cliConfig{
 		DafConfig:       "/nic/conf/hypershield/firewall.json",
 		NetworkPolicies: []string{},
 		ServerAddress:   "169.254.101.2:8880",
@@ -34,3 +34,9 @@ const (
 	keyEnableLogger    = "enable-logger"
 	keyDebug           = "debug"
 )
+
+// redactedConfig returns a copy of the Config with sensitive fields redacted.
+func redactedConfig() cliConfig {
+	redacted := Config
+	return redacted
+}

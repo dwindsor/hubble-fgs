@@ -36,3 +36,12 @@ const (
 	keyDebug                 = "debug"
 	keyK8sServiceAccountAuth = "k8s-service-account-auth"
 )
+
+// redactedConfig returns a copy of the Config with sensitive fields redacted.
+func redactedConfig() cliConfig {
+	redacted := Config
+	if Config.K8sServiceAccountAuth != "" {
+		redacted.K8sServiceAccountAuth = "[redacted]"
+	}
+	return redacted
+}

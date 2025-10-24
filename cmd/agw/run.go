@@ -30,7 +30,7 @@ import (
 )
 
 func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.AgentGateway, dpuListener *dpu.DPUListener) error {
-	logger.GetLogger().Info("Agent starting", "config", Config)
+	logger.GetLogger().Info("Agent starting", "config", redactedConfig())
 	waitGroup, ctx := errgroup.WithContext(ctx)
 
 	// Vrf mapping if provided using CLI
