@@ -155,9 +155,8 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 			polOk = true
 		}
 	}
-	if polOk {
-		n.haUpdateCrit(ctx, HaCritPolicy, true)
-	}
+	n.haUpdateCrit(ctx, HaCritPolicy, polOk)
+
 	if notify {
 		n.setRemoteSvcState(ctx, peer)
 	}
@@ -717,4 +716,52 @@ func (n *Nxos) IsPeerOk(ctx context.Context, peer string) bool {
 		}
 	}
 	return false
+}
+
+func (n *Nxos) NotifyWatching(ctx context.Context, watching bool) {
+	logger.GetLogger().Debug("NotifyWatching", "watching", watching)
+
+	n.Lock()
+	defer n.Unlock()
+
+	prev := n.Ha.Watching
+	if watching != prev {
+		logger.GetLogger().Debug("Watching changed")
+		n.Ha.Watching = watching
+
+		polOk := true
+		if !watching {
+			for _, mbr := range n.Ha.Members {
+				if mbr.Info.PolInfo.Watching {
+					if n.Ha.PolRev != mbr.Info.PolInfo.Revision {
+						logger.GetLogger().Debug("Peer has diff revision")
+
+						polOk = false
+					}
+					break
+				} else if mbr.Info.PolInfo.Revision > n.Ha.PolRev {
+					logger.GetLogger().Debug("Peer has higher revision")
+					polOk = false
+					break
+				}
+			}
+		}
+		n.haUpdateCrit(ctx, HaCritPolicy, polOk)
+	}
+}
+
+func (n *Nxos) NotifPolRev(ctx context.Context, rev string) {
+	logger.GetLogger().Debug("NotifyPolRev", "revision", rev)
+
+	n.Lock()
+	defer n.Unlock()
+
+	prev := n.Ha.PolRev
+	if rev != prev {
+		logger.GetLogger().Debug("Policy revision changed")
+		n.Ha.PolRev = rev
+
+		// revision change can happen only if watching
+		n.haUpdateCrit(ctx, HaCritPolicy, true)
+	}
 }
