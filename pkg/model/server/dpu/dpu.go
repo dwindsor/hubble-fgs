@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/gob"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net"
 	"sort"
 	"sync"
@@ -241,15 +242,93 @@ func (dpu *DPUListener) StatusReportString() string {
 }
 
 func HashRule(rule *DPURule) ([sha256.Size]byte, error) {
-	var buf bytes.Buffer
+	h := sha256.New()
 
-	// fixme
-	enc := gob.NewEncoder(&buf) // Will write to network.
-	err := enc.Encode(*rule)
+	// Write all fields in fixed order
+	_, err := io.WriteString(h, rule.K8SResourceVersion)
 	if err != nil {
 		return [sha256.Size]byte{}, err
 	}
-	return sha256.Sum256(buf.Bytes()), nil
+	_, err = io.WriteString(h, rule.K8SUid)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	_, err = io.WriteString(h, rule.PolicyName)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	_, err = io.WriteString(h, rule.RuleName)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Action)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+
+	// Source
+	_, err = io.WriteString(h, rule.Source.Cidr)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Source.MinPort)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Source.MaxPort)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Source.Vlan)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Source.VrfId)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	_, err = io.WriteString(h, rule.Source.Vrf)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Source.Protocol)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+
+	// Destination
+	_, err = io.WriteString(h, rule.Destination.Cidr)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Destination.MinPort)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Destination.MaxPort)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Destination.Vlan)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Destination.VrfId)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	_, err = io.WriteString(h, rule.Destination.Vrf)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, rule.Destination.Protocol)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+
+	var result [sha256.Size]byte
+	copy(result[:], h.Sum(nil))
+	return result, nil
 }
 
 func (dpu *DPUListener) SubmitUpdateToDPU(record *record.DatapathRecord) error {
