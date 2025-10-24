@@ -33,6 +33,9 @@ const (
 	CMD_SHOW_ADJ
 	CMD_SHOW_MBR
 	CMD_SHOW_GID
+	CMD_POLICIES_SHOW
+	CMD_POLICIES_ADD
+	CMD_POLICIES_DEL
 )
 
 const (
@@ -57,21 +60,12 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 
 	switch int(cmd) {
 	case CMD_LOAD_POLICY:
-		pols, err := os.ReadFile(data)
-		if err != nil {
-			response.ReturnCode = "fail"
-			response.Data = err.Error()
-			return response, nil
-		}
-
-		data := agwAgent.LoadPolicies(ctx, string(pols))
 		response.ReturnCode = "ok"
-		response.Data = data
+		response.Data = "Not implemented"
 
 	case CMD_SHOW_POLICY:
-		pol := agwAgent.ShowPolicies(ctx, data) // data is just the name filter
 		response.ReturnCode = "ok"
-		response.Data = pol
+		response.Data = "Not implemented"
 
 	case CMD_HEALTH:
 		response.ReturnCode = "ok"
@@ -155,7 +149,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.Data = tokens
 
 	case CMD_SHOW_TECH:
-		pol := agwAgent.ShowPolicies(ctx, "")
+		pol := agwAgent.PoliciesShow(ctx, "")
 		status := nxos.Nexus.ShowStatus(ctx)
 		dpu := agwAgent.ShowDpu(ctx)
 		vrf := nxos.Nexus.ShowVrf(ctx)
@@ -234,6 +228,21 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		mbr := nxos.Nexus.ShowGid(ctx)
 		response.ReturnCode = "ok"
 		response.Data = mbr
+
+	case CMD_POLICIES_ADD:
+		res := agwAgent.PoliciesAdd(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_POLICIES_DEL:
+		res := agwAgent.PoliciesRemove(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_POLICIES_SHOW:
+		pols := agwAgent.PoliciesShow(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = pols
 
 	default:
 		response.ReturnCode = "fail"

@@ -1,7 +1,6 @@
 package switchpolicy
 
 import (
-	_ "embed"
 	"log/slog"
 	"sync"
 

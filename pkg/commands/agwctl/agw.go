@@ -74,8 +74,8 @@ var showSyslogCmd = &cobra.Command{
 var loadPolicyCmd = &cobra.Command{
 	Use:          "load_policy <file>",
 	SilenceUsage: true,
-	Short:        "Load policy from file and push to DPU agents",
-	Long:         `Load policy from file and push to DPU agents.`,
+	Short:        "Deprecated, use 'agwctl policies add' instead",
+	Long:         `Deprecated, use 'agwctl policies add' instead.`,
 	RunE: func(_ *cobra.Command, args []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -95,8 +95,8 @@ var loadPolicyCmd = &cobra.Command{
 var showPolicyCmd = &cobra.Command{
 	Use:          "show_policy",
 	SilenceUsage: true,
-	Short:        "Show policy from Hypershield controller",
-	Long:         "Show policy from Hypershield controller",
+	Short:        "Deprecated, use 'agwctl policies show' instead",
+	Long:         "Deprecated, use 'agwctl policies show' instead.",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -15,7 +14,6 @@ import (
 	"time"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
@@ -24,8 +22,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
-	"github.com/isovalent/hubble-fgs/pkg/netpol"
-	netpollibrary "github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 	"github.com/isovalent/hubble-fgs/pkg/token"
 )
@@ -369,254 +365,64 @@ func (agw *AgentGateway) DpuHealthCheck(ctx context.Context) {
 	}
 }
 
-func (agw *AgentGateway) LoadPolicies(_ context.Context, pols string) string {
-	err := netpol.AddFromYAML(pols)
+func (agw *AgentGateway) PoliciesAdd(_ context.Context, filePath string) string {
+	logger.GetLogger().Debug("Add policies", "file", filePath)
+
+	// Adding policies from file
+	err := switchpolicy.AddFromFile(filePath, agw.PolicyHandler)
 	if err != nil {
-		return fmt.Sprintf("failed to load policy: %s", err)
+		return fmt.Sprintf("Failed to add policies from file: %v", err)
 	}
-	return "policy loaded"
+	return "Policies added successfully"
 }
 
-func (agw *AgentGateway) ShowPolicies(_ context.Context, nameFilter string) string {
+func (agw *AgentGateway) PoliciesRemove(_ context.Context, filePath string) string {
+	logger.GetLogger().Debug("Remove policies", "file", filePath)
+
+	// Removing policies from file
+	err := switchpolicy.DeleteFromFile(filePath, agw.PolicyHandler)
+	if err != nil {
+		return fmt.Sprintf("Failed to remove policies from file: %v", err)
+	}
+	return "Policies removed successfully"
+}
+
+func (agw *AgentGateway) PoliciesShow(_ context.Context, nameFilter string) string {
 	logger.GetLogger().Debug("Show policies", "nameFilter", nameFilter)
 
-	repo := netpollibrary.GetRepository()
-	policyNames := repo.GetList()
-
 	// Filter policies by name pattern
-	policyNames = filterPolicyNames(policyNames, nameFilter)
+	policyMap := agw.PolicyHandler.ListPolicies()
+	var policyNames []string
+	for resourceId := range policyMap {
+		policyNames = append(policyNames, resourceId.String())
+	}
+	filteredNames := filterPolicyNames(policyNames, nameFilter)
 
-	if len(policyNames) == 0 {
+	if len(filteredNames) == 0 {
 		return formatNoPoliciesMessage(nameFilter)
 	}
 
 	// Text output only
 	var result strings.Builder
-	result.WriteString(formatSummaryHeader(len(policyNames), nameFilter))
+	result.WriteString(formatSummaryHeader(len(filteredNames), nameFilter))
 
-	// Iterate over policyNames slice to get each policy from the repository.
-	// name is the policy name, idx is the index in the slice.
-	// We use idx+1 to start numbering from 1 instead of 0.
-	for idx, name := range policyNames {
-		story := repo.Get(name)
-		if story == nil {
+	// Iterate over filtered policy names and get each policy from the policyMap
+	for resourceId, rulesList := range policyMap {
+		policyName := resourceId.String()
+		// Check if this policy matches the filter
+		isFiltered := false
+		for _, filteredName := range filteredNames {
+			if policyName == filteredName {
+				isFiltered = true
+				break
+			}
+		}
+		if !isFiltered {
 			continue
 		}
-		id, ok := repo.GetId(name)
-		if !ok {
-			continue
-		}
-		result.WriteString(formatPolicy(idx+1, story, id))
+		result.WriteString(formatSwitchPolicy(resourceId, rulesList))
 	}
 	return result.String()
-}
-
-func filterPolicyNames(policyNames []string, nameFilter string) []string {
-	if nameFilter == "" || nameFilter == "{}" {
-		return policyNames
-	}
-	filtered := make([]string, 0, len(policyNames))
-	for _, name := range policyNames {
-		if matchPolicyPattern(name, nameFilter) {
-			filtered = append(filtered, name)
-		}
-	}
-	return filtered
-}
-
-func formatNoPoliciesMessage(nameFilter string) string {
-	if nameFilter != "" && nameFilter != "{}" {
-		return fmt.Sprintf("No policies found matching '%s'", nameFilter)
-	}
-	return "No policies loaded\n"
-}
-
-func formatSummaryHeader(policyCount int, nameFilter string) string {
-	var b strings.Builder
-	b.WriteString("\n╔═══════════════════════════════════════════════════════════════╗\n")
-	b.WriteString(fmt.Sprintf("║  Total Policies: %-44d ║\n", policyCount))
-	if nameFilter != "" && nameFilter != "{}" {
-		b.WriteString(fmt.Sprintf("║  Filter: %-52s ║\n", nameFilter))
-	}
-	b.WriteString("╚═══════════════════════════════════════════════════════════════╝\n\n")
-	return b.String()
-}
-
-// Replace PolicyStory with the actual type
-func formatPolicy(idx int, story *netpollibrary.PolicyStory, id uint64) string {
-	var b strings.Builder
-	b.WriteString("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
-	b.WriteString(fmt.Sprintf("Policy #%d: %s\n", idx, story.Title))
-	b.WriteString("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
-	b.WriteString(fmt.Sprintf("  Policy ID:      %d\n", id))
-
-	if story.CRDPolicy != nil {
-		b.WriteString(formatCRDPolicy(story.CRDPolicy))
-	}
-	b.WriteString("\n")
-	return b.String()
-}
-
-// Replace CRD Policy type with the actual type
-func formatCRDPolicy(crd *v1alpha1.TetragonNetworkPolicy) string {
-	var b strings.Builder
-	if crd.Spec.LogicalNetworkSelector == nil || crd.Spec.LogicalNetworkSelector.VRF == "" {
-		b.WriteString(fmt.Sprintf("  VRF:            %s\n", "<nil>"))
-	} else {
-		b.WriteString(fmt.Sprintf("  VRF:            %s\n", crd.Spec.LogicalNetworkSelector.VRF))
-	}
-	b.WriteString(fmt.Sprintf("  Default Action: %s\n", crd.Spec.DefaultAction))
-	b.WriteString(fmt.Sprintf("  Total Rules:    %d\n\n", len(crd.Spec.Rules)))
-	for i, rule := range crd.Spec.Rules {
-		b.WriteString(formatRule(i+1, &rule, i < len(crd.Spec.Rules)-1))
-	}
-	return b.String()
-}
-
-// Replace Rule type with the actual type
-func formatRule(idx int, rule *v1alpha1.NetworkPolicyRule, addSpacer bool) string {
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("  ┌─ Rule %d ─────────────────────────────────────────────────────\n", idx))
-	b.WriteString(fmt.Sprintf("  │ Action:      %s\n", rule.Action))
-	b.WriteString(fmt.Sprintf("  │ Hook:        %s\n", rule.Hook))
-	if rule.Description != "" {
-		b.WriteString(fmt.Sprintf("  │ Description: %s\n", rule.Description))
-	}
-	b.WriteString("  │\n")
-	b.WriteString(formatSourceEndpoints("Source", rule.Source))
-	b.WriteString(formatDestEndpoints("Destination", rule.Destination))
-	b.WriteString("  └───────────────────────────────────────────────────────────────\n")
-	if addSpacer {
-		b.WriteString("  │\n")
-	}
-	return b.String()
-}
-
-func formatSourceEndpoints(label string, endpoints []v1alpha1.NetworkSource) string {
-	if len(endpoints) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("  │ %s:\n", label))
-	for _, ep := range endpoints {
-		if ep.IPBlock != nil {
-			b.WriteString(fmt.Sprintf("  │   • CIDR: %s\n", ep.IPBlock.CIDR))
-		}
-		if ep.Ports.Protocol != "" {
-			b.WriteString(fmt.Sprintf("  │   • Protocol: %s\n", ep.Ports.Protocol))
-			if len(ep.Ports.Ports) > 0 {
-				b.WriteString(fmt.Sprintf("  │   • Ports: %v\n", ep.Ports.Ports))
-			}
-		}
-	}
-	b.WriteString("  │\n")
-	return b.String()
-}
-
-func formatDestEndpoints(label string, endpoints []v1alpha1.NetworkDestination) string {
-	if len(endpoints) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("  │ %s:\n", label))
-	for _, ep := range endpoints {
-		if ep.IPBlock != nil {
-			b.WriteString(fmt.Sprintf("  │   • CIDR: %s\n", ep.IPBlock.CIDR))
-		}
-		if ep.Ports.Protocol != "" {
-			b.WriteString(fmt.Sprintf("  │   • Protocol: %s\n", ep.Ports.Protocol))
-			if len(ep.Ports.Ports) > 0 {
-				b.WriteString(fmt.Sprintf("  │   • Ports: %v\n", ep.Ports.Ports))
-			}
-		}
-	}
-	b.WriteString("  │\n")
-	return b.String()
-}
-
-// matchPolicyPattern checks if the given name matches the specified pattern.
-// The pattern can be:
-//   - An empty string or "{}", which matches all names.
-//   - A regular expression (if it contains regex special characters).
-//   - A wildcard pattern using '*' (case-insensitive).
-//   - Patterns like "*abc*" match substrings.
-//   - Patterns like "*abc" match suffixes.
-//   - Patterns like "abc*" match prefixes.
-//   - Patterns like "ab*cd" match names starting with "ab" and ending with "cd".
-//   - Patterns with multiple '*' wildcards require all parts to appear in order.
-//   - An exact match (case-insensitive) if no wildcards or regex characters are present.
-//
-// Returns true if the name matches the pattern, false otherwise.
-func matchPolicyPattern(name, pattern string) bool {
-	if pattern == "" || pattern == "{}" {
-		return true
-	}
-
-	if isRegexPattern(pattern) {
-		return matchRegex(name, pattern)
-	}
-
-	nameLower := strings.ToLower(name)
-	patternLower := strings.ToLower(pattern)
-
-	if !strings.Contains(patternLower, "*") {
-		return nameLower == patternLower
-	}
-
-	return matchWildcardPattern(nameLower, patternLower)
-}
-
-func isRegexPattern(pattern string) bool {
-	regexSpecialChars := []rune{'.', '^', '$', '[', ']', '(', ')', '+', '?', '{', '}', '|', '\\'}
-	for _, ch := range pattern {
-		for _, special := range regexSpecialChars {
-			if ch == special {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func matchRegex(name, pattern string) bool {
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		return false
-	}
-	return re.MatchString(name)
-}
-
-func matchWildcardPattern(nameLower, patternLower string) bool {
-	parts := strings.Split(patternLower, "*")
-
-	switch {
-	case strings.HasPrefix(patternLower, "*") && strings.HasSuffix(patternLower, "*") && len(parts) > 2:
-		substr := strings.Join(parts[1:len(parts)-1], "*")
-		return strings.Contains(nameLower, substr)
-	case strings.HasPrefix(patternLower, "*") && len(parts) == 2:
-		suffix := parts[1]
-		return strings.HasSuffix(nameLower, suffix)
-	case strings.HasSuffix(patternLower, "*") && len(parts) == 2:
-		prefix := parts[0]
-		return strings.HasPrefix(nameLower, prefix)
-	case len(parts) == 2:
-		prefix := parts[0]
-		suffix := parts[1]
-		return strings.HasPrefix(nameLower, prefix) && strings.HasSuffix(nameLower, suffix)
-	default:
-		idx := 0
-		for _, part := range parts {
-			if part == "" {
-				continue
-			}
-			pos := strings.Index(nameLower[idx:], part)
-			if pos == -1 {
-				return false
-			}
-			idx += pos + len(part)
-		}
-		return true
-	}
 }
 
 func (agw *AgentGateway) ShowDpu(_ context.Context) string {
