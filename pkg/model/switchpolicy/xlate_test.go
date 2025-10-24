@@ -20,29 +20,31 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 		{
 			name: "Single rule with VRF source and destination",
 			policy: isovalentv1.SmartSwitchNetworkPolicy{
-				Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
-					{
-						Description: "Allow traffic from internal VRF to external VRF",
-						Action:      "allow",
-						Source: isovalentv1.SmartSwitchNetworkSource{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "10.0.0.0/8",
-									VRF:  "internal",
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow traffic from internal VRF to external VRF",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+										VRF:  "internal",
+									},
 								},
 							},
-						},
-						Destination: isovalentv1.SmartSwitchNetworkDestination{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "8.8.8.8/32",
-									VRF:  "external",
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "8.8.8.8/32",
+										VRF:  "external",
+									},
 								},
-							},
-							ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
-								{
-									Port:     443,
-									Protocol: "tcp",
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     443,
+										Protocol: "tcp",
+									},
 								},
 							},
 						},
@@ -79,29 +81,31 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 		{
 			name: "Single rule with VLAN source and destination",
 			policy: isovalentv1.SmartSwitchNetworkPolicy{
-				Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
-					{
-						Description: "Deny traffic between VLANs",
-						Action:      "deny",
-						Source: isovalentv1.SmartSwitchNetworkSource{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "192.168.1.0/24",
-									VLAN: 100,
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Deny traffic between VLANs",
+							Action:      "deny",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.0/24",
+										VLAN: 100,
+									},
 								},
 							},
-						},
-						Destination: isovalentv1.SmartSwitchNetworkDestination{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "192.168.2.0/24",
-									VLAN: 200,
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.2.0/24",
+										VLAN: 200,
+									},
 								},
-							},
-							ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
-								{
-									Port:     80,
-									Protocol: "tcp",
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     80,
+										Protocol: "tcp",
+									},
 								},
 							},
 						},
@@ -138,41 +142,43 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 		{
 			name: "Multiple sources and destinations create cross product",
 			policy: isovalentv1.SmartSwitchNetworkPolicy{
-				Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
-					{
-						Description: "Allow HTTP and HTTPS from multiple sources",
-						Action:      "allow",
-						Source: isovalentv1.SmartSwitchNetworkSource{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "10.0.1.0/24",
-									VRF:  "vrf-1",
-								},
-								{
-									CIDR: "10.0.2.0/24",
-									VRF:  "vrf-1",
-								},
-							},
-						},
-						Destination: isovalentv1.SmartSwitchNetworkDestination{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "192.168.1.100/32",
-									VRF:  "vrf-2",
-								},
-								{
-									CIDR: "192.168.1.101/32",
-									VRF:  "vrf-2",
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow HTTP and HTTPS from multiple sources",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.1.0/24",
+										VRF:  "vrf-1",
+									},
+									{
+										CIDR: "10.0.2.0/24",
+										VRF:  "vrf-1",
+									},
 								},
 							},
-							ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
-								{
-									Port:     80,
-									Protocol: "tcp",
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.100/32",
+										VRF:  "vrf-2",
+									},
+									{
+										CIDR: "192.168.1.101/32",
+										VRF:  "vrf-2",
+									},
 								},
-								{
-									Port:     443,
-									Protocol: "tcp",
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     80,
+										Protocol: "tcp",
+									},
+									{
+										Port:     443,
+										Protocol: "tcp",
+									},
 								},
 							},
 						},
@@ -385,51 +391,53 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 		{
 			name: "Multiple rules result in multiple policies",
 			policy: isovalentv1.SmartSwitchNetworkPolicy{
-				Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
-					{
-						Description: "Allow HTTPS",
-						Action:      "allow",
-						Source: isovalentv1.SmartSwitchNetworkSource{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "10.0.0.0/8",
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow HTTPS",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+									},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "8.8.8.8/32",
+									},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     443,
+										Protocol: "tcp",
+									},
 								},
 							},
 						},
-						Destination: isovalentv1.SmartSwitchNetworkDestination{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "8.8.8.8/32",
+						{
+							Description: "Allow DNS",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+									},
 								},
 							},
-							ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
-								{
-									Port:     443,
-									Protocol: "tcp",
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "8.8.4.4/32",
+									},
 								},
-							},
-						},
-					},
-					{
-						Description: "Allow DNS",
-						Action:      "allow",
-						Source: isovalentv1.SmartSwitchNetworkSource{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "10.0.0.0/8",
-								},
-							},
-						},
-						Destination: isovalentv1.SmartSwitchNetworkDestination{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "8.8.4.4/32",
-								},
-							},
-							ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
-								{
-									Port:     53,
-									Protocol: "udp",
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     53,
+										Protocol: "udp",
+									},
 								},
 							},
 						},
@@ -486,30 +494,32 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 		{
 			name: "Port range support",
 			policy: isovalentv1.SmartSwitchNetworkPolicy{
-				Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
-					{
-						Description: "Allow port range 8000-8080",
-						Action:      "allow",
-						Source: isovalentv1.SmartSwitchNetworkSource{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "10.0.0.0/8",
-									VLAN: 100,
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow port range 8000-8080",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+										VLAN: 100,
+									},
 								},
 							},
-						},
-						Destination: isovalentv1.SmartSwitchNetworkDestination{
-							IPBlock: []isovalentv1.SmartSwitchNetwork{
-								{
-									CIDR: "192.168.1.0/24",
-									VLAN: 200,
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.0/24",
+										VLAN: 200,
+									},
 								},
-							},
-							ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
-								{
-									Port:     8000,
-									EndPort:  8080,
-									Protocol: "tcp",
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     8000,
+										EndPort:  8080,
+										Protocol: "tcp",
+									},
 								},
 							},
 						},
@@ -547,7 +557,9 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 		{
 			name: "Empty rules list",
 			policy: isovalentv1.SmartSwitchNetworkPolicy{
-				Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{},
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{},
+				},
 			},
 			want: []*SmartSwitchNetworkPolicy{},
 		},

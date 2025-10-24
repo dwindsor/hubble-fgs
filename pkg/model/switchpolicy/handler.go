@@ -10,6 +10,7 @@ import (
 
 type PolicyHandler interface {
 	SetL3Networks(networks *L3Networks) error
+	ListPolicies() map[ResourceID]K8sRulesList
 	UpsertPolicy(resourceId ResourceID, rules K8sRulesList) error
 	DeletePolicy(resourceId ResourceID) error
 }
@@ -19,7 +20,7 @@ type DPUProgrammer interface {
 }
 
 type policyHandler struct {
-	mutex sync.Mutex
+	mutex sync.RWMutex
 
 	dpuProgrammer DPUProgrammer
 	state         *State
@@ -32,6 +33,12 @@ func NewPolicyHandler(dpuProgrammer DPUProgrammer) PolicyHandler {
 		state:         NewState(),
 		repository:    NewRepository(),
 	}
+}
+
+func (h *policyHandler) ListPolicies() map[ResourceID]K8sRulesList {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.repository.ListPolicies()
 }
 
 func (h *policyHandler) UpsertPolicy(resourceId ResourceID, rules K8sRulesList) error {
@@ -56,7 +63,7 @@ func (h *policyHandler) applyRules(rules K8sRulesList) {
 	for _, rule := range rules {
 		err := h.state.AddRule(rule.ruleId, &SwitchPolicy{
 			UID:    rule.uid,
-			Policy: rule.switchPolicy,
+			Policy: rule.SwitchPolicy,
 		})
 		if err != nil {
 			logger.GetLogger().Error("failed to add rule to state", "rule", rule, "err", err)

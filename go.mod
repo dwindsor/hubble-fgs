@@ -12,6 +12,7 @@ require (
 	github.com/cilium/ebpf v0.19.0
 	github.com/cilium/lumberjack/v2 v2.4.1
 	github.com/cilium/tetragon v1.6.0
+	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251010110610-9e02513e02f1
 	github.com/containerd/containerd/v2 v2.1.4
@@ -29,8 +30,8 @@ require (
 	github.com/google/gops v0.3.28
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/isovalent/ipa v1.18.0-pre.8.0.20251016203423-47eae7dabf46
-	github.com/isovalent/ipa/k8s v1.18.0-pre.8.0.20251016203423-47eae7dabf46
+	github.com/isovalent/ipa v1.18.0-pre.9.0.20251024003328-799831357a43
+	github.com/isovalent/ipa/k8s v1.18.0-pre.9.0.20251024003328-799831357a43
 	github.com/joho/godotenv v1.5.1
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.68
@@ -103,7 +104,6 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bufbuild/protocompile v0.13.0 // indirect
 	github.com/cilium/hive v0.0.0-20250611195437-5a5dacdfb354 // indirect
-	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000 // indirect
 	github.com/containerd/cgroups/v3 v3.0.5 // indirect
 	github.com/containerd/containerd/api v1.9.0 // indirect
 	github.com/containerd/continuity v0.4.5 // indirect

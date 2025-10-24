@@ -71,7 +71,7 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 
 func ToSmartSwitchNetworkPolicies(np *isovalentv1.SmartSwitchNetworkPolicy) ([]*SmartSwitchNetworkPolicy, error) {
 	result := []*SmartSwitchNetworkPolicy{}
-	for _, r := range np.Rules {
+	for _, r := range np.Spec.Rules {
 		rulePolicy, err := parseSmartSwitchPolicy(np, &r)
 		if err != nil {
 			return nil, err

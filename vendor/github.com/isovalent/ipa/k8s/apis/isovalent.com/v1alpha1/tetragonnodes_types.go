@@ -77,6 +77,12 @@ type TetragonNode struct {
 	Status TetragonNodeStatus `json:"status,omitempty,omitzero"`
 }
 
+// Implement crdutils.CRDObject interface, required for working with CRDs
+// outside of Kubernetes context.
+func (tn *TetragonNode) GetObjectMetaStruct() *metav1.ObjectMeta {
+	return &tn.ObjectMeta
+}
+
 // +kubebuilder:object:root=true
 
 // TetragonNodeList contains a list of TetragonNode

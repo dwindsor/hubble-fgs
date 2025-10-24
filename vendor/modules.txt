@@ -935,7 +935,7 @@ github.com/iceber/iouring-go/syscall
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/isovalent/ipa v1.18.0-pre.8.0.20251016203423-47eae7dabf46
+# github.com/isovalent/ipa v1.18.0-pre.9.0.20251024003328-799831357a43
 ## explicit; go 1.25.0
 github.com/isovalent/ipa/application_model/v1alpha
 github.com/isovalent/ipa/common/k8s/type/v1alpha
@@ -943,8 +943,10 @@ github.com/isovalent/ipa/common/time/v1alpha
 github.com/isovalent/ipa/graph/v1alpha
 github.com/isovalent/ipa/l3l4networkpolicy/v1alpha
 github.com/isovalent/ipa/ocsf/v1alpha
-# github.com/isovalent/ipa/k8s v1.18.0-pre.8.0.20251016203423-47eae7dabf46
+# github.com/isovalent/ipa/k8s v1.18.0-pre.9.0.20251024003328-799831357a43
 ## explicit; go 1.25.0
+github.com/isovalent/ipa/k8s
+github.com/isovalent/ipa/k8s/apis/isovalent.com
 github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1
 # github.com/isovalent/metricstool v0.1.4
 ## explicit; go 1.22.0

@@ -10,38 +10,31 @@
 
 package v1alpha1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
-type DPUStatus struct {
-	// ID of the DPU that is unique within the SmartSwitch.
-	ID string `json:"id,omitempty"`
-	// ManagementIP is the management IP address of this DPU.
-	ManagementIP string `json:"management_ip,omitempty"`
-	// PortLow is the low end of the port range assigned to this DPU.
-	PortLow uint16 `json:"port_low,omitempty"`
-	// PortHigh is the high end of the port range assigned to this DPU.
-	PortHigh uint16 `json:"port_high,omitempty"`
-	// HardwareModel is the DPU hardware model (e.g. "Elba", "Giglio").
-	HardwareModel string `json:"hardware_model,omitempty"`
-	// SoftwareVersion is the version of the software running on this DPU.
-	SoftwareVersion string `json:"software_version,omitempty"`
-}
+const (
+	// SmartSwitch
 
-// SmartSwitchStatus defines the observed state of SmartSwitch.
-type SmartSwitchStatus struct {
-	// ServiceIP is the service IP address of the SmartSwitch.
-	ServiceIP string `json:"service_ip,omitempty"`
-	// ServiceMAC is the service MAC address of the SmartSwitch.
-	ServiceMAC string `json:"service_mac,omitempty"`
-	// BiosVersion is the BIOS version of the SmartSwitch.
-	BiosVersion string `json:"bios_version,omitempty,omitzero"`
-	// SerialNumber is the serial number of the SmartSwitch.
-	SerialNumber string `json:"serial_number,omitempty,omitzero"`
-	// SoftwareVersion is the version of the agent software running on this
-	// SmartSwitch which reports SmartSwitchStatus.
-	SoftwareVersion string `json:"software_version,omitempty,omitzero"`
-	// DPUStatuses is the statuses of DPUs associated with this SmartSwitch.
-	DPUStatuses []DPUStatus `json:"dpu_statuses,omitempty,omitzero"`
+	// SmartSwitchPluralName is the plural name of SmartSwitch
+	SmartSwitchPluralName = "smartswitches"
+
+	// SmartSwitchKindDefinition is the kind name of SmartSwitch
+	SmartSwitchKindDefinition = "SmartSwitch"
+
+	// SmartSwitchName is the full name of SmartSwitch
+	SmartSwitchName = SmartSwitchPluralName + "." + isovalentcom.GroupName
+)
+
+// +kubebuilder:object:root=true
+
+// SmartSwitchList contains a list of SmartSwitch
+type SmartSwitchList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []SmartSwitch `json:"items"`
 }
 
 // +kubebuilder:object:root=true
@@ -63,11 +56,40 @@ type SmartSwitch struct {
 	Status SmartSwitchStatus `json:"status,omitempty,omitzero"`
 }
 
-// +kubebuilder:object:root=true
+// Implement crdutils.CRDObject interface, required for working with CRDs
+// outside of Kubernetes context.
+func (s *SmartSwitch) GetObjectMetaStruct() *metav1.ObjectMeta {
+	return &s.ObjectMeta
+}
 
-// SmartSwitchList contains a list of SmartSwitch
-type SmartSwitchList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []SmartSwitch `json:"items"`
+type DPUStatus struct {
+	// ID of the DPU that is unique within the SmartSwitch.
+	ID string `json:"id,omitempty"`
+	// ManagementIP is the management IP address of this DPU.
+	ManagementIP string `json:"managementIP,omitempty"`
+	// PortLow is the low end of the port range assigned to this DPU.
+	PortLow uint16 `json:"portLow,omitempty"`
+	// PortHigh is the high end of the port range assigned to this DPU.
+	PortHigh uint16 `json:"portHigh,omitempty"`
+	// HardwareModel is the DPU hardware model (e.g. "Elba", "Giglio").
+	HardwareModel string `json:"hardwareModel,omitempty"`
+	// SoftwareVersion is the version of the software running on this DPU.
+	SoftwareVersion string `json:"softwareVersion,omitempty"`
+}
+
+// SmartSwitchStatus defines the observed state of SmartSwitch.
+type SmartSwitchStatus struct {
+	// ServiceIP is the service IP address of the SmartSwitch.
+	ServiceIP string `json:"serviceIP,omitempty"`
+	// ServiceMAC is the service MAC address of the SmartSwitch.
+	ServiceMAC string `json:"serviceMAC,omitempty"`
+	// BiosVersion is the BIOS version of the SmartSwitch.
+	BiosVersion string `json:"biosVersion,omitempty,omitzero"`
+	// SerialNumber is the serial number of the SmartSwitch.
+	SerialNumber string `json:"serialNumber,omitempty,omitzero"`
+	// SoftwareVersion is the version of the agent software running on this
+	// SmartSwitch which reports SmartSwitchStatus.
+	SoftwareVersion string `json:"softwareVersion,omitempty,omitzero"`
+	// DPUStatuses is the statuses of DPUs associated with this SmartSwitch.
+	DPUStatuses []DPUStatus `json:"dpuStatuses,omitempty,omitzero"`
 }

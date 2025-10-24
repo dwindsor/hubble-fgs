@@ -30,8 +30,8 @@ type UniqueID struct {
 }
 
 type PolicyRule struct {
-	ruleName     string
-	switchPolicy *SmartSwitchNetworkPolicy
+	RuleName     string
+	SwitchPolicy *SmartSwitchNetworkPolicy
 
 	// Internal fields for repository to track rules
 	ruleId ruleID
@@ -40,14 +40,15 @@ type PolicyRule struct {
 
 func NewPolicyRule(ruleName string, switchPolicy *SmartSwitchNetworkPolicy) *PolicyRule {
 	return &PolicyRule{
-		ruleName:     ruleName,
-		switchPolicy: switchPolicy,
+		RuleName:     ruleName,
+		SwitchPolicy: switchPolicy,
 	}
 }
 
 type K8sRulesList []*PolicyRule
 
 type Repository interface {
+	ListPolicies() map[ResourceID]K8sRulesList
 	UpsertPolicy(resourceId ResourceID, rules K8sRulesList) (newRules, previousPolicy K8sRulesList, err error)
 	DeletePolicy(resourceId ResourceID) (deletedPolicy K8sRulesList, err error)
 }
@@ -64,6 +65,10 @@ func NewRepository() Repository {
 	}
 }
 
+func (r *repository) ListPolicies() map[ResourceID]K8sRulesList {
+	return r.policyByResourceID
+}
+
 func (r *repository) UpsertPolicy(resourceId ResourceID, rules K8sRulesList) (newRules, previousPolicy K8sRulesList, err error) {
 	if existingPolicy, ok := r.policyByResourceID[resourceId]; ok {
 		previousPolicy = existingPolicy
@@ -74,7 +79,7 @@ func (r *repository) UpsertPolicy(resourceId ResourceID, rules K8sRulesList) (ne
 
 		rule.uid = UniqueID{
 			PolicyName: fmt.Sprintf("%s/%s/%s", resourceId.kind, resourceId.namespace, resourceId.name),
-			RuleName:   fmt.Sprintf("%s/%d", rule.ruleName, rule.ruleId),
+			RuleName:   fmt.Sprintf("%s/%d", rule.RuleName, rule.ruleId),
 		}
 	}
 

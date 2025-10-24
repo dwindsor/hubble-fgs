@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/watcher/conf"
+	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
 	ipav1alpha1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 	"golang.org/x/sync/errgroup"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -24,7 +25,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
-	"github.com/isovalent/hubble-fgs/pkg/netpol"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
@@ -89,7 +89,7 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 	// Add Network Policy
 	if len(Config.NetworkPolicies) > 0 {
 		for _, f := range Config.NetworkPolicies {
-			err := netpol.AddFromFile(f)
+			err := switchpolicy.AddFromFile(f, agwAgent.PolicyHandler)
 			if err != nil {
 				return fmt.Errorf("add TetragonNetworkPolicy failed: %w", err)
 			}
@@ -167,7 +167,7 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		}
 
 		crds := make(map[string]struct{})
-		crds["smartswitchnetworkpolicies"+"."+ipav1alpha1.GroupVersion.Group] = struct{}{} // HACK: CRD name should be used from IPA repo
+		crds["smartswitchnetworkpolicies"+"."+isovalentcom.GroupName] = struct{}{} // HACK: CRD name should be used from IPA repo
 		if len(crds) > 0 {
 			err = kubernetesManager.WaitCRDs(ctx, crds)
 			if err != nil {

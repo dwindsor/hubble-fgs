@@ -11,8 +11,60 @@
 package v1alpha1
 
 import (
+	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const (
+	// SmartSwitch Network Policy (SNP)
+
+	// SNPPluralName is the plural name of SmartSwitch Network Policy
+	SNPPluralName = "smartswitchnetworkpolicies"
+
+	// SNPKindDefinition is the kind name of SmartSwitch Network Policy
+	SNPKindDefinition = "SmartSwitchNetworkPolicy"
+
+	// SNPName is the full name of SmartSwitch Network Policy
+	SNPName = SNPPluralName + "." + isovalentcom.GroupName
+)
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type SmartSwitchNetworkPolicyList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []SmartSwitchNetworkPolicy `json:"items,omitempty"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:resource:categories={smartswitch},singular="smartswitchnetworkpolicy",path="smartswitchnetworkpolicies",scope="Namespaced",shortName={snp}
+
+// SmartSwitchNetworkPolicy is the Schema for the smartswitches netops API
+type SmartSwitchNetworkPolicy struct {
+	metav1.TypeMeta `json:",inline"`
+
+	// metadata is a standard object metadata
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty,omitzero"`
+
+	// Spec specifies network policy rules for SmartSwitch.
+	// +kubebuilder:validation:Required
+	Spec SmartSwitchNetworkPolicySpec `json:"spec"`
+}
+
+// SmartSwitchNetworkPolicySpec specifies network policy rules.
+type SmartSwitchNetworkPolicySpec struct {
+	// Rules defines the network policy rules for SmartSwitch
+	// +optional
+	Rules []SmartSwitchNetworkPolicyRule `json:"rules,omitempty,omitzero"`
+}
+
+// Implement crdutils.CRDObject interface, required for working with CRDs
+// outside of Kubernetes context.
+func (snp *SmartSwitchNetworkPolicy) GetObjectMetaStruct() *metav1.ObjectMeta {
+	return &snp.ObjectMeta
+}
 
 // SmartSwitchNetwork consists of a CIDR and the logical Network
 // the CIDR is associated with. If the logical network is omitted
@@ -86,29 +138,4 @@ type SmartSwitchNetworkPolicyRule struct {
 	Source SmartSwitchNetworkSource `json:"source"`
 	// +kubebuilder:validation:Required
 	Destination SmartSwitchNetworkDestination `json:"destination"`
-}
-
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-
-// SmartSwitchNetworkPolicy is the Schema for the smartswitches netops API
-type SmartSwitchNetworkPolicy struct {
-	metav1.TypeMeta `json:",inline"`
-
-	// metadata is a standard object metadata
-	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty,omitzero"`
-
-	// rules defines the network ops of the SmartSwitch
-	// +optional
-	Rules []SmartSwitchNetworkPolicyRule `json:"rules,omitempty,omitzero"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// SmartSwitchNetworkPolicyList contains a list of SmartSwitchNetworkPolicy
-type SmartSwitchNetworkPolicyList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []SmartSwitchNetworkPolicy `json:"items,omitempty"`
 }
