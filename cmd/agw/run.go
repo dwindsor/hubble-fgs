@@ -91,7 +91,7 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		for _, f := range Config.NetworkPolicies {
 			err := switchpolicy.AddFromFile(f, agwAgent.PolicyHandler)
 			if err != nil {
-				return fmt.Errorf("add TetragonNetworkPolicy failed: %w", err)
+				return fmt.Errorf("add SmartSwitchNetworkPolicy failed: %w", err)
 			}
 		}
 	}
