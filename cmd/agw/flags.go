@@ -8,6 +8,7 @@ type cliConfig struct {
 	EnableKubernetes      bool
 	EnableNXOS            bool
 	DPUServerAddress      string
+	GopsAddr              string
 	VrfMap                []string
 	Debug                 bool
 	K8sServiceAccountAuth string
@@ -20,6 +21,7 @@ var (
 		EnableKubernetes:      true,
 		EnableNXOS:            true,
 		DPUServerAddress:      "0.0.0.0:8880",
+		GopsAddr:              "localhost:8118",
 		VrfMap:                []string{},
 		Debug:                 false,
 		K8sServiceAccountAuth: viper.GetString(keyK8sServiceAccountAuth),
@@ -28,6 +30,7 @@ var (
 
 const (
 	keyDafConfig             = "config" // The original AGW config!
+	keyGopsAddress           = "gops-address"
 	keyNetworkPolicy         = "network-policy"
 	keyEnableK8s             = "enable-k8s"
 	keyEnableNXOS            = "enable-nxos"

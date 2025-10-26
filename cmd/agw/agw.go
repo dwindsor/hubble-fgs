@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"syscall"
 
+	gops "github.com/google/gops/agent"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -19,11 +20,32 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
 
+func startGopsServer() error {
+	if Config.GopsAddr == "" {
+		return nil
+	}
+
+	if err := gops.Listen(gops.Options{
+		Addr:                   Config.GopsAddr,
+		ReuseSocketAddrAndPort: true,
+	}); err != nil {
+		return err
+	}
+
+	logger.GetLogger().Info("Starting gops server", "addr", Config.GopsAddr)
+
+	return nil
+}
+
 func executeAGW() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	runtime.GOMAXPROCS(MaxProcs)
+
+	if err := startGopsServer(); err != nil {
+		logger.GetLogger().Error("Failed to start gops server", logfields.Error, err)
+	}
 
 	// Setting up logger and context
 	ctx, cancel := context.WithCancel(context.Background())
