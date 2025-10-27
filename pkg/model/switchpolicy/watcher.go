@@ -24,6 +24,9 @@ func (w *smartSwitchNetworkPolicyWatcher) addSmartSwitchNetworkPolicy(obj any) {
 
 	switch np := obj.(type) {
 	case *isovalentv1.SmartSwitchNetworkPolicy:
+		if isStagingPolicy(np) {
+			return
+		}
 		resourceID = NewResourceID(np.Kind, np.Namespace, np.Name)
 		policies, err = ToSmartSwitchNetworkPolicies(np)
 		if err != nil {
@@ -69,6 +72,9 @@ func (w *smartSwitchNetworkPolicyWatcher) updateSmartSwitchNetworkPolicy(_, newO
 
 	switch np := newObj.(type) {
 	case *isovalentv1.SmartSwitchNetworkPolicy:
+		if isStagingPolicy(np) {
+			return
+		}
 		resourceID = NewResourceID(np.Kind, np.Namespace, np.Name)
 		policies, err = ToSmartSwitchNetworkPolicies(np)
 		if err != nil {
@@ -117,6 +123,9 @@ func (w *smartSwitchNetworkPolicyWatcher) deleteSmartSwitchNetworkPolicy(obj any
 
 	switch np := obj.(type) {
 	case *isovalentv1.SmartSwitchNetworkPolicy:
+		if isStagingPolicy(np) {
+			return
+		}
 		resourceID = NewResourceID(np.Kind, np.Namespace, np.Name)
 
 	// case *isovalentv1.SmartSwitchNetworkPolicyNamespaced:
@@ -154,4 +163,12 @@ func AddSmartSwitchNetworkPolicyInformer(ctx context.Context, m *manager.Control
 				watcher.deleteSmartSwitchNetworkPolicy(obj)
 			}})
 	return err
+}
+
+func isStagingPolicy(np *isovalentv1.SmartSwitchNetworkPolicy) bool {
+	if ann := np.GetAnnotations(); ann != nil {
+		_, found := ann[AnnotationStaging]
+		return found
+	}
+	return false
 }
