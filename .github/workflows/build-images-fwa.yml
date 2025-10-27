@@ -87,7 +87,7 @@ jobs:
           cp -r $(pwd)/install/fwa/dist/* $(pwd)/build/${{ matrix.arch }}/fwa/ || echo "Warning: No artifacts found in install/fwa/dist"
           echo "artifact_path=$(pwd)/build/${{ matrix.arch }}/fwa" >> $GITHUB_OUTPUT
       - name: Upload fwa image
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: fwa-image-${{ matrix.arch }}-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
           path: ${{ steps.prepare-artifact.outputs.artifact_path }}
@@ -127,7 +127,7 @@ jobs:
           sha256sum *.tar.gz > SHA256SUMS.txt
           echo "artifact_dir=$(pwd)" >> $GITHUB_OUTPUT
       - name: Upload prepared artifacts for release job
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
           path: ./release-artifacts

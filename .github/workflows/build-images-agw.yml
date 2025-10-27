@@ -110,7 +110,7 @@ jobs:
           echo "Install files copied:"
           ls -la binaries/install/agw/
       - name: Upload AGW binaries artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: hubble-fgs-agw-binaries-${{ needs.init.outputs.version }}
           path: binaries/
@@ -141,7 +141,7 @@ jobs:
           echo "artifact=$ARTIFACT" >> $GITHUB_OUTPUT
           echo "artifact_path=$(pwd)/${ARTIFACT}" >> $GITHUB_OUTPUT
       - name: Upload Docker image tar artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}
           path: ${{ steps.create-tar.outputs.artifact_path }}
