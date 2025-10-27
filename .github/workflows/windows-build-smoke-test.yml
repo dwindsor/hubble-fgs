@@ -138,7 +138,7 @@ jobs:
           Compress-Archive -Path ${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} -DestinationPath .\build-${{env.BUILD_PLATFORM}}.${{env.BUILD_CONFIGURATION}}.zip
 
       - name: Upload Build Output
-        uses: actions/upload-artifact@2848b2cda0e5190984587ec6bb1f36730ca78d50
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: ntosebpfext-build-output
           path: ${{ env.TEMP }}\ntosebpfext\build-${{env.BUILD_PLATFORM}}.${{env.BUILD_CONFIGURATION}}.zip
@@ -410,7 +410,7 @@ jobs:
           Get-ChildItem -Recurse ${{ env.TEMP }} 
 
       - name: Upload Tetragon Windows binaries
-        uses: actions/upload-artifact@2848b2cda0e5190984587ec6bb1f36730ca78d50
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: tetragon-windows-build-output
           path: ${{ env.TEMP }}\Tetragon-Windows.zip
