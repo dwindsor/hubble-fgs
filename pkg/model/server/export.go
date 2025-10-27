@@ -17,21 +17,37 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/version"
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	commonV1 "github.com/isovalent/ipa/common/v1alpha"
 	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger/logfields"
+
 	"github.com/isovalent/hubble-fgs/pkg/metrics/networkmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
-func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection *json.Encoder, newModel, lastModel *appModelV1.ApplicationModel) (time.Time, error) {
+// BuildParentMap creates a parent map from process models for telemetry export.
+func BuildParentMap(processModels []*types.ProcessModel) map[string][]string {
+	_, _, processData := model.ConvertToMonitorData(processModels, false)
+
+	parentMap := make(map[string][]string)
+	for processKey, processValue := range processData {
+		key := processKey.Name + processKey.Args
+		if len(processValue.Parents) > 0 {
+			parentMap[key] = processValue.Parents
+		}
+	}
+	return parentMap
+}
+
+func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection *json.Encoder, newModel, lastModel *appModelV1.ApplicationModel, parentMap map[string][]string) (time.Time, error) {
 	now := time.Now()
 
 	networkDiffModel, processDiffModel, err := diff.ApplicationModelDiff(newModel, lastModel)
@@ -46,7 +62,7 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 	}
 
 	if telemetry != nil {
-		procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel)
+		procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel, parentMap)
 		if err != nil {
 			logger.GetLogger().Error("Failed to decode application model to process telemetry", logfields.Error, err)
 			return last, err
@@ -141,7 +157,9 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 				return
 			}
 
+			// Convert to ApplicationModel and build parent map for telemetry
 			newModel := model.ProcessModelToApplicationModel(res, emptyFilter)
+			parentMap := BuildParentMap(res)
 
 			if enterpriseOption.Config.ApplicationModelExportFilename != "" {
 				if err := encoder.Encode(newModel); err != nil {
@@ -151,7 +169,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			}
 
 			if telemetry != nil || connection != nil {
-				lastTime, _ = exportTelemetry(ctx, lastTime, telemetry, connection, newModel.ApplicationModel, lastModel.ApplicationModel)
+				lastTime, _ = exportTelemetry(ctx, lastTime, telemetry, connection, newModel.ApplicationModel, lastModel.ApplicationModel, parentMap)
 				lastModel = newModel
 			}
 		case <-ctx.Done():

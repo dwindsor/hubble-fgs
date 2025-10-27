@@ -105,6 +105,9 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 			continue
 		}
 
+		// Note: Since ApplicationProcessGroup doesn't have ParentNames field, we can't directly check for new parents here.
+		// However, a new parent implies a new process, which would be captured by LatestStartTime change above.
+
 		d := &appModelV1.ApplicationProcessGroup{
 			Hash:            p.Hash,
 			Name:            p.Name,
@@ -333,7 +336,7 @@ func getDestination(d *appModelV1.Destination) (string, string, string, k8sTypes
 	return name, ns, wlName, wlKind
 }
 
-func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.ApplicationModel) ([]*appModelV1.ProcessTelemetry, error) {
+func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.ApplicationModel, parentMap map[string][]string) ([]*appModelV1.ProcessTelemetry, error) {
 	t := []*appModelV1.ProcessTelemetry{}
 	node := node.GetNodeNameForExport()
 	cluster := option.Config.ClusterName
@@ -342,6 +345,10 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 
 	if a == nil {
 		return nil, nil
+	}
+
+	if parentMap == nil {
+		parentMap = make(map[string][]string)
 	}
 
 	nodeMetadata, err := local.GetMetadataService()
@@ -357,6 +364,9 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 	for _, ns := range a.Namespaces {
 		for _, wl := range ns.Workloads {
 			for _, p := range wl.Processes {
+				processKey := p.Name + p.Arguments
+				parents := parentMap[processKey]
+
 				entry := &appModelV1.ProcessTelemetry{
 					ClusterName:            cluster,
 					NodeName:               node,
@@ -371,6 +381,7 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 					ApplicationModelId:     a.Id,
 					FirstStartTime:         p.FirstStartTime,
 					LatestStartTime:        p.LatestStartTime,
+					ParentNames:            parents,
 				}
 				t = append(t, entry)
 			}
@@ -379,6 +390,9 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 
 	if a.Host != nil {
 		for _, p := range a.Host.Processes {
+			processKey := p.Name + p.Arguments
+			parents := parentMap[processKey]
+
 			entry := &appModelV1.ProcessTelemetry{
 				ClusterName:        cluster,
 				NodeName:           node,
@@ -390,6 +404,7 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 				ApplicationModelId: a.Id,
 				FirstStartTime:     p.FirstStartTime,
 				LatestStartTime:    p.LatestStartTime,
+				ParentNames:        parents,
 			}
 			t = append(t, entry)
 		}

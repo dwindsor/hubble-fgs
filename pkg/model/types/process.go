@@ -88,6 +88,7 @@ type ProcessModel struct {
 	BinaryArgs string
 	Parent     string
 	ParentArgs string
+	Parents    []string // All unique immediate parent names for this binary/args tuple
 	Namespace  string
 	Workload   *Workload
 	Dest       []*Destination

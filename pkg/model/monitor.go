@@ -243,6 +243,7 @@ type ProcessKey struct {
 type ProcessValue struct {
 	InInitTree      bool
 	Syscalls        *appModelV1.ApplicationSyscalls
+	Parents         []string // All unique immediate parent names for this binary/args tuple
 	FirstStartTime  *time.Time
 	LatestStartTime *time.Time
 	LatestExitTime  *time.Time
@@ -357,10 +358,18 @@ func nwKeyToDestination(nwKey *NetworkKey) *appModelV1.Destination {
 }
 
 func getProcessMonitorKey(process *types.ProcessModel) ProcessKey {
+	var workloadName string
+	var workloadKind v1alpha.WorkloadKind
+
+	if process.Workload != nil {
+		workloadName = process.Workload.Name
+		workloadKind = translateWorkloadKind(process.Workload.Kind)
+	}
+
 	return ProcessKey{
 		Namespace:    process.Namespace,
-		WorkloadName: process.Workload.Name,
-		WorkloadKind: translateWorkloadKind(process.Workload.Kind),
+		WorkloadName: workloadName,
+		WorkloadKind: workloadKind,
 		Name:         process.Binary,
 		Args:         process.BinaryArgs,
 	}
@@ -412,26 +421,25 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 	result := NetworkMonitorData{}
 	quota := NetworkQuotaData{}
 	proc := ProcessMonitorData{}
-	for _, process := range processModel {
-		if len(process.Dest) == 0 {
-			processKey := getProcessMonitorKey(process)
-			syscalls, err := getSyscallInfo(process.Abi, process.Syscalls)
-			if err != nil {
-				if !warnOnce {
-					logger.GetLogger().Debug("failed to populate system call data for process", logfields.Error, err)
-					warnOnce = true
-				}
-			}
 
-			proc[processKey] = ProcessValue{
-				InInitTree:      process.InInitTree,
-				Syscalls:        syscalls,
-				FirstStartTime:  process.FirstStartTime,
-				LatestStartTime: process.LatestStartTime,
-				LatestExitTime:  process.LatestExitTime,
-			}
-			continue
+	// Track unique parents for each process key
+	processParents := make(map[ProcessKey]map[string]bool)
+
+	// First pass: collect all parents and network data
+	for _, process := range processModel {
+		processKey := getProcessMonitorKey(process)
+
+		// Initialize parents map for this process key if not exists
+		if _, ok := processParents[processKey]; !ok {
+			processParents[processKey] = make(map[string]bool)
 		}
+
+		// Add parent to the set if it exists
+		if process.Parent != "" {
+			processParents[processKey][process.Parent] = true
+		}
+
+		// Handle network destinations
 		for _, dst := range process.Dest {
 			key := getNetworkMonitorKey(process, dst, includeProcess)
 			if dst.Port != 0 {
@@ -455,6 +463,40 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 			}
 		}
 	}
+
+	// Second pass: create ProcessValue entries with aggregated parents
+	processInfoMap := make(map[ProcessKey]*types.ProcessModel)
+	for _, process := range processModel {
+		processKey := getProcessMonitorKey(process)
+		processInfoMap[processKey] = process
+	}
+
+	for processKey, process := range processInfoMap {
+		syscalls, err := getSyscallInfo(process.Abi, process.Syscalls)
+		if err != nil {
+			if !warnOnce {
+				logger.GetLogger().Debug("failed to populate system call data for process", logfields.Error, err)
+				warnOnce = true
+			}
+		}
+
+		// Convert parents map to sorted slice
+		parentsList := make([]string, 0, len(processParents[processKey]))
+		for parent := range processParents[processKey] {
+			parentsList = append(parentsList, parent)
+		}
+		slices.Sort(parentsList)
+
+		proc[processKey] = ProcessValue{
+			InInitTree:      process.InInitTree,
+			Syscalls:        syscalls,
+			Parents:         parentsList,
+			FirstStartTime:  process.FirstStartTime,
+			LatestStartTime: process.LatestStartTime,
+			LatestExitTime:  process.LatestExitTime,
+		}
+	}
+
 	return result, quota, proc
 }
 

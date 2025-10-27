@@ -704,8 +704,11 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		parentPath := ""
 		parentArgs := ""
 		if key.Depth > 0 {
-			parent := uint32(key.Path[key.Depth-1])
-			err = uidMap.Lookup(&parent, &uidValue)
+			parentUID := key.Path[key.Depth-1]
+
+			var parentKey types.ProcessTreeBinaryUUIDKey
+			parentKey.Id = parentUID
+			err = uidMap.Lookup(&parentKey, &uidValue)
 			if err == nil {
 				n = bytes.IndexByte(uidValue.Binary[:], 0)
 				parentPath = string(uidValue.Binary[:n])
@@ -740,11 +743,18 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			}
 		}
 
+		// Initialize parents slice with immediate parent if it exists
+		var parents []string
+		if parentPath != "" {
+			parents = []string{parentPath}
+		}
+
 		processModel = append(processModel, &types.ProcessModel{
 			Binary:     selfStr,
 			BinaryArgs: selfArgs,
 			Parent:     parentPath,
 			ParentArgs: parentArgs,
+			Parents:    parents,
 			Namespace:  ns,
 			Syscalls:   syscalls.AsSlice(),
 			Abi:        abi,
