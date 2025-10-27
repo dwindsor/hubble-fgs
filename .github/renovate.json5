@@ -19,6 +19,7 @@
       "enabled": false,
       "matchPackagePatterns": ["*"],
       "matchBaseBranches": [
+        "v1.18",
         "v1.17",
         "v1.16",
         "v1.15",
@@ -29,9 +30,22 @@
       "enabled": true,
       "matchPackageNames": ["docker.io/library/alpine"],
       "matchBaseBranches": [
+        "v1.18",
         "v1.17",
         "v1.16",
         "v1.15",
+      ]
+    },
+    {
+      "enabled": true,
+      "groupName": "Go",
+      "matchPackageNames": [
+        "docker.io/library/golang",
+        "go"
+      ],
+      "allowedVersions": "/^1\\.25\\.[0-9]+-?(alpine)?$/",
+      "matchBaseBranches": [
+        "v1.18",
       ]
     },
     {
