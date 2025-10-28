@@ -1,17 +1,13 @@
 package dataplane
 
 import (
-	"cmp"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
-	"slices"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -153,25 +149,36 @@ func (dp *AcceleratedDataplaneProcess) UpdateFirewallPolicies(_ context.Context,
 	return nil
 }
 
-/* This is a nop function stubbed out here from hs-nep until its actually used */
-func calculateHash(policies []dpAppPolicy.FwPolicyV2) string {
-	// Creating an array of policy IDs
-	ids := []string{}
-	for _, p := range policies {
-		ids = append(ids, p.Id)
+func (dp *AcceleratedDataplaneProcess) ClearFirewallPolicies(_ context.Context) error {
+	// Clearing policy to the dataplane
+	msg := &socket.ControlMessage{
+		Command: ClearPolicy,
+		Type:    socket.POLICY,
 	}
 
-	// Calculating hash
-	// Hash = Policies Sorted by ID Ascending then MD5 all the IDs concatenated together
-	slices.SortFunc(ids, func(a, b string) int {
-		return cmp.Compare(a, b)
-	})
-	var idsString string
-	for _, id := range ids {
-		idsString += id
+	dpsocket := socket.NewDataplaneSocket(dp.ApiPath, UDS_TIMEOUT*time.Second)
+	err := dpsocket.Connect()
+	if err != nil {
+		logger.GetLogger().Error("failed to connect to dataplane", logfields.Error, err)
+		return err
 	}
-	hash := sha256.Sum256([]byte(idsString))
-	return hex.EncodeToString(hash[:])
+	defer dpsocket.Close()
+	err = dpsocket.Send(msg)
+	if err != nil {
+		logger.GetLogger().Error("failed to send clear policy to dataplane", logfields.Error, err)
+		return err
+	}
+	rc, err := dpsocket.Receive()
+	if err != nil {
+		logger.GetLogger().Error("failed to receive response from dataplane", logfields.Error, err)
+		return err
+	}
+	if rc.ReturnCode < socket.SUCCESS {
+		logger.GetLogger().Error("failed to clear policies from dataplane", "errorCode", rc.ReturnCode.String())
+		return errors.New(rc.ReturnCode.String())
+	}
+	logger.GetLogger().Debug("dataplane policy cleared")
+	return nil
 }
 
 func (dp *AcceleratedDataplaneProcess) SendLogConfig(logConfigs map[string]*v1alpha.LogConfig) error {
@@ -258,7 +265,7 @@ func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, fwop v1alpha.Pol
 
 	// Creating policy message
 	policyMsg := &dpAppPolicy.FwPolicyMsgV2{
-		Hash:         calculateHash([]dpAppPolicy.FwPolicyV2{}),
+		Hash:         "deprecated",
 		Verification: false,
 		Policies:     fwPolicy,
 	}
@@ -273,20 +280,14 @@ func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, fwop v1alpha.Pol
 	return nil
 }
 
-func (dp *AcceleratedDataplane) RemovePolicy(ctx context.Context) error {
-	// Creating policy message
-	policyMsg := &dpAppPolicy.FwPolicyMsgV2{
-		Hash:         calculateHash([]dpAppPolicy.FwPolicyV2{}),
-		Verification: false,
-		Policies:     []dpAppPolicy.FwPolicyV2{},
-	}
-
+func (dp *AcceleratedDataplane) ClearPolicy(ctx context.Context) error {
 	// Applying policy to the accelerated dataplane
-	err := dp.Accelerated.UpdateFirewallPolicies(ctx, policyMsg)
+	err := dp.Accelerated.ClearFirewallPolicies(ctx)
 	if err != nil {
-		logger.GetLogger().Error("Failed to remove policy to accelerated dataplane", logfields.Error, err)
+		logger.GetLogger().Error("Failed to clear policy from accelerated dataplane", logfields.Error, err)
 		return err
 	}
+	logger.GetLogger().Info("policy cleared")
 	return nil
 }
 

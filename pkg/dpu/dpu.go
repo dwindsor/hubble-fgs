@@ -167,6 +167,14 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	}
 	logger.GetLogger().Info("Connected to dataplane", "type", dpu.Dataplane.Type(), "version", dpu.Dataplane.Version())
 
+	// Clearing all dataplane policies on startup
+	err = dpu.Dataplane.ClearPolicy(ctx)
+	if err != nil {
+		logger.GetLogger().Error("failed to clear dataplane policies", logfields.Error, err)
+		return err
+	}
+	logger.GetLogger().Info("Cleared all dataplane policies")
+
 	// Setting up exporter
 	err = dpu.LogExporter.Init(ctx)
 	if err != nil {

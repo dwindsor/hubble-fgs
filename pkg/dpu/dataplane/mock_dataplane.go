@@ -33,7 +33,7 @@ func (m *MockDataplane) PushPolicy(_ context.Context, _ v1alpha.PolicyOperation,
 	return nil
 }
 
-func (m *MockDataplane) RemovePolicy(_ context.Context) error {
+func (m *MockDataplane) ClearPolicy(_ context.Context) error {
 	return nil
 }
 

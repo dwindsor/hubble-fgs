@@ -40,9 +40,10 @@ const (
 
 // Policy command values
 const (
-	UpdatePolicy int = iota
-	RemovePolicy
-	ListPolicies
+	UpdatePolicy = 0
+	RemovePolicy = 1
+	ListPolicies = 2
+	ClearPolicy  = 4
 )
 
 // Dataplane Interface
@@ -54,7 +55,7 @@ type Dataplane interface {
 
 	// Commands
 	PushPolicy(context.Context, v1alpha.PolicyOperation, []*dpuPolicy.DPUPolicyRule) error
-	RemovePolicy(context.Context) error
+	ClearPolicy(context.Context) error
 
 	// Configuration
 	RefreshConfig(*v1alpha.ConfigObject, *v1alpha.ConfigObject) error
