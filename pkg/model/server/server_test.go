@@ -55,14 +55,14 @@ var tests = []processTree{
 	{
 		Name: "testInInitTree",
 		Steps: []testStep{
-			newDockerCreateStep("test-in-init-tree", "bash:5.2.37", "bash", "-c", "sleep infinity"),
+			newDockerCreateStep("test-in-init-tree", "quay.io/isovalent/busybox:1.37.0", "sh", "-c", "sleep infinity"),
 			newDockerStartStep("test-in-init-tree"),
 			newSleepStep(1 * time.Second),
-			newDockerExecStep("test-in-init-tree", "bash", "-c", "echo testificate"),
+			newDockerExecStep("test-in-init-tree", "sh", "-c", "echo testificate"),
 		},
 		Checks: []string{
-			`model.host.processes.exists(p, p.name.matches("bash") && p.arguments.matches("-c \"sleep infinity\"") && p.in_init_tree)`,
-			`model.host.processes.exists(p, p.name.matches("bash") && p.arguments.matches("-c \"echo testificate\"") && !p.in_init_tree)`,
+			`model.host.processes.exists(p, p.name.matches("sh") && p.arguments.matches("-c \"sleep infinity\"") && p.in_init_tree)`,
+			`model.host.processes.exists(p, p.name.matches("sh") && p.arguments.matches("-c \"echo testificate\"") && !p.in_init_tree)`,
 		},
 	},
 	{
