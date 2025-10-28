@@ -96,6 +96,14 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		}
 	}
 
+	// Add Network Policy Dir
+	if Config.NetworkPoliciesDir != "" {
+		err := switchpolicy.AddFromDir(Config.NetworkPoliciesDir, agwAgent.PolicyHandler)
+		if err != nil {
+			return fmt.Errorf("add SmartSwitchNetworkPolicy failed: %w", err)
+		}
+	}
+
 	// Determine if NXOS is in headless mode
 	if Config.EnableKubernetes {
 		// Get the headless mode status from NXOS

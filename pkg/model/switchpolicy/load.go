@@ -3,8 +3,10 @@ package switchpolicy
 import (
 	"encoding/hex"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -50,6 +52,42 @@ func FromFile(path string) (*v1alpha1.SmartSwitchNetworkPolicy, error) {
 	}
 
 	return FromYAML(string(data))
+}
+
+func AddFromDir(dir string, policyHandler PolicyHandler) error {
+	if dir == "" {
+		return nil
+	}
+
+	tpMaxDepth := 1
+	npFS := os.DirFS(dir)
+
+	err := fs.WalkDir(npFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			if strings.Count(path, string(os.PathSeparator)) >= tpMaxDepth {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
+		file := filepath.Join(dir, path)
+		st, err := os.Stat(file)
+		if err != nil {
+			return err
+		}
+
+		if !st.Mode().IsRegular() {
+			return nil
+		}
+
+		return AddFromFile(file, policyHandler)
+	})
+
+	return err
 }
 
 func AddFromYAML(data string, policyHandler PolicyHandler) error {

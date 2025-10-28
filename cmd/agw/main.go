@@ -55,6 +55,7 @@ func Execute() error {
 	flags.BoolVar(&Config.EnableKubernetes, keyEnableK8s, Config.EnableKubernetes, "Enable Kubernetes control plane")
 	flags.BoolVar(&Config.EnableNXOS, keyEnableNXOS, Config.EnableNXOS, "Enable Nexus smartswitch")
 	flags.StringSliceVar(&Config.NetworkPolicies, keyNetworkPolicy, Config.NetworkPolicies, "network policy files")
+	flags.StringVar(&Config.NetworkPoliciesDir, keyNetworkPolicyDir, Config.NetworkPoliciesDir, "network policy dir")
 	flags.StringVar(&Config.DPUServerAddress, keyDPUServerAddress, Config.DPUServerAddress, "DPU server address")
 	flags.StringSliceVar(&Config.VrfMap, keyVrfMap, Config.VrfMap, "Prepopulate VRF map")
 	flags.StringVar(&Config.GopsAddr, keyGopsAddress, Config.GopsAddr, "Gops Address")

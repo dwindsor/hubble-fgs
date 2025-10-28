@@ -5,6 +5,7 @@ import "github.com/spf13/viper"
 type cliConfig struct {
 	DafConfig             string
 	NetworkPolicies       []string
+	NetworkPoliciesDir    string
 	EnableKubernetes      bool
 	EnableNXOS            bool
 	DPUServerAddress      string
@@ -18,6 +19,7 @@ var (
 	Config = cliConfig{
 		DafConfig:             "/opt/cisco/daf/etc/dafconfig",
 		NetworkPolicies:       []string{},
+		NetworkPoliciesDir:    "",
 		EnableKubernetes:      true,
 		EnableNXOS:            true,
 		DPUServerAddress:      "0.0.0.0:8880",
@@ -32,6 +34,7 @@ const (
 	keyDafConfig             = "config" // The original AGW config!
 	keyGopsAddress           = "gops-address"
 	keyNetworkPolicy         = "network-policy"
+	keyNetworkPolicyDir      = "network-policy-dir"
 	keyEnableK8s             = "enable-k8s"
 	keyEnableNXOS            = "enable-nxos"
 	keyDPUServerAddress      = "dpu-server-address"
