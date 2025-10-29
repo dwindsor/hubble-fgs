@@ -8,18 +8,18 @@ import (
 
 const (
 	ALLOW = "permit"
-	DENY  = "forbid"
+	DENY  = "deny"
 )
 
 func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
 	var fwop uint16
 
-	name := rule.PolicyName + rule.RuleName
+	name := rule.PolicyName + "/" + rule.RuleName
 	uid := rule.K8SResourceVersion + ":" + rule.K8SUid + ":" + rule.PolicyName + ":" + rule.RuleName
 
-	effect := "permit"
+	effect := ALLOW
 	if rule.Action == v1alpha.PolicyAction_POLICY_ACTION_DENY {
-		effect = "deny"
+		effect = DENY
 	}
 
 	// Protocol is only being picked up from the destination
