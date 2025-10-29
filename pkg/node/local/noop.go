@@ -17,27 +17,27 @@ import (
 type NoopMetadataService struct {
 }
 
-func (n *NoopMetadataService) GetHostname(ctx context.Context) (string, error) {
+func (n *NoopMetadataService) GetHostname(_ context.Context) (string, error) {
 	return "", nil
 }
 
-func (n *NoopMetadataService) GetInstanceId(ctx context.Context) (string, error) {
+func (n *NoopMetadataService) GetInstanceId(_ context.Context) (string, error) {
 	return "", nil
 }
 
-func (n *NoopMetadataService) GetInternalIP(ctx context.Context) (string, error) {
+func (n *NoopMetadataService) GetInternalIP(_ context.Context) (string, error) {
 	return "", nil
 }
 
-func (n *NoopMetadataService) GetExternalIP(ctx context.Context) (string, error) {
+func (n *NoopMetadataService) GetExternalIP(_ context.Context) (string, error) {
 	return "", nil
 }
 
-func (n *NoopMetadataService) GetInternalDNS(ctx context.Context) (string, error) {
+func (n *NoopMetadataService) GetInternalDNS(_ context.Context) (string, error) {
 	return "", nil
 }
 
-func (n *NoopMetadataService) GetExternalDNS(ctx context.Context) (string, error) {
+func (n *NoopMetadataService) GetExternalDNS(_ context.Context) (string, error) {
 	return "", nil
 }
 

@@ -37,6 +37,7 @@ import (
 	enterpriseMetricsConfig "github.com/isovalent/hubble-fgs/pkg/metricsconfig"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	"github.com/isovalent/hubble-fgs/pkg/netpol"
+	register "github.com/isovalent/hubble-fgs/pkg/node"
 	"github.com/isovalent/hubble-fgs/pkg/node/local"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
@@ -445,6 +446,16 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 			log.Warn("Failed to get node info. node_labels field will be empty", logfields.Error, err)
 		} else {
 			node.SetNodeLabels(labels)
+		}
+
+		// Register node for non-k8s environments
+		registerer, err := register.NewNodeRegisterer(nodeMetadata)
+		if err != nil {
+			log.Warn("Failed to get node registration service", logfields.Error, err)
+		} else {
+			if err := registerer.Register(ctx); err != nil {
+				log.Warn("Failed to register node", logfields.Error, err)
+			}
 		}
 	}
 

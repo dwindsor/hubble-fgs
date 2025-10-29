@@ -22,15 +22,15 @@ type KubernetesMetadataService struct {
 	node *corev1.Node
 }
 
-func (m *KubernetesMetadataService) GetHostname(ctx context.Context) (string, error) {
+func (m *KubernetesMetadataService) GetHostname(_ context.Context) (string, error) {
 	return m.node.GetName(), nil
 }
 
-func (m *KubernetesMetadataService) GetInstanceId(ctx context.Context) (string, error) {
+func (m *KubernetesMetadataService) GetInstanceId(_ context.Context) (string, error) {
 	return m.node.GetName(), nil
 }
 
-func (m *KubernetesMetadataService) GetInternalIP(ctx context.Context) (string, error) {
+func (m *KubernetesMetadataService) GetInternalIP(_ context.Context) (string, error) {
 	for _, addr := range m.node.Status.Addresses {
 		if addr.Type == corev1.NodeInternalIP {
 			return addr.Address, nil
@@ -39,7 +39,7 @@ func (m *KubernetesMetadataService) GetInternalIP(ctx context.Context) (string, 
 	return "", nil
 }
 
-func (m *KubernetesMetadataService) GetExternalIP(ctx context.Context) (string, error) {
+func (m *KubernetesMetadataService) GetExternalIP(_ context.Context) (string, error) {
 	for _, addr := range m.node.Status.Addresses {
 		if addr.Type == corev1.NodeExternalIP {
 			return addr.Address, nil
@@ -48,7 +48,7 @@ func (m *KubernetesMetadataService) GetExternalIP(ctx context.Context) (string, 
 	return "", nil
 }
 
-func (m *KubernetesMetadataService) GetInternalDNS(ctx context.Context) (string, error) {
+func (m *KubernetesMetadataService) GetInternalDNS(_ context.Context) (string, error) {
 	for _, addr := range m.node.Status.Addresses {
 		if addr.Type == corev1.NodeInternalDNS {
 			return addr.Address, nil
@@ -57,7 +57,7 @@ func (m *KubernetesMetadataService) GetInternalDNS(ctx context.Context) (string,
 	return "", nil
 }
 
-func (m *KubernetesMetadataService) GetExternalDNS(ctx context.Context) (string, error) {
+func (m *KubernetesMetadataService) GetExternalDNS(_ context.Context) (string, error) {
 	for _, addr := range m.node.Status.Addresses {
 		if addr.Type == corev1.NodeExternalDNS {
 			return addr.Address, nil
