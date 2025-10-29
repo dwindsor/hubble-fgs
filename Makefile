@@ -50,7 +50,7 @@ BPF_TARGET_ARCH ?= x86
 
 BUILD_PKG_DIR ?= $(CURDIR)/build/$(TARGET_ARCH)
 LIBBPF_INSTALL_DIR ?= ./lib
-VERSION=$(shell git describe --tags --always --exclude 'api/*')
+VERSION=$(shell git describe --tags --always --exclude 'api/*' 2>/dev/null || git describe --tags --always 2>/dev/null || git describe --always 2>/dev/null || echo "UNKNOWN_GIT_VERSION")
 
 FS_SCANNER_BIN=bpf/objs/tetragon-fs-scanner
 FS_SCANNER_RUNNER=bpf/objs/tetragon-runner 
