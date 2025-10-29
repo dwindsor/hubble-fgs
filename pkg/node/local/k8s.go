@@ -13,21 +13,68 @@ package local
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/isovalent/hubble-fgs/pkg/manager"
 )
 
 type KubernetesMetadataService struct {
-	manager manager.KubernetesManager
+	node *corev1.Node
+}
+
+func (m *KubernetesMetadataService) GetHostname(ctx context.Context) (string, error) {
+	return m.node.GetName(), nil
+}
+
+func (m *KubernetesMetadataService) GetInstanceId(ctx context.Context) (string, error) {
+	return m.node.GetName(), nil
+}
+
+func (m *KubernetesMetadataService) GetInternalIP(ctx context.Context) (string, error) {
+	for _, addr := range m.node.Status.Addresses {
+		if addr.Type == corev1.NodeInternalIP {
+			return addr.Address, nil
+		}
+	}
+	return "", nil
+}
+
+func (m *KubernetesMetadataService) GetExternalIP(ctx context.Context) (string, error) {
+	for _, addr := range m.node.Status.Addresses {
+		if addr.Type == corev1.NodeExternalIP {
+			return addr.Address, nil
+		}
+	}
+	return "", nil
+}
+
+func (m *KubernetesMetadataService) GetInternalDNS(ctx context.Context) (string, error) {
+	for _, addr := range m.node.Status.Addresses {
+		if addr.Type == corev1.NodeInternalDNS {
+			return addr.Address, nil
+		}
+	}
+	return "", nil
+}
+
+func (m *KubernetesMetadataService) GetExternalDNS(ctx context.Context) (string, error) {
+	for _, addr := range m.node.Status.Addresses {
+		if addr.Type == corev1.NodeExternalDNS {
+			return addr.Address, nil
+		}
+	}
+	return "", nil
 }
 
 func NewKubernetesMetadataService(manager manager.KubernetesManager) (*KubernetesMetadataService, error) {
-	return &KubernetesMetadataService{manager}, nil
-}
-
-func (m *KubernetesMetadataService) GetLabels(_ context.Context) (map[string]string, error) {
-	node, err := m.manager.GetControllerManager().GetNode()
+	node, err := manager.GetControllerManager().GetNode()
 	if err != nil {
 		return nil, err
 	}
-	return node.GetLabels(), nil
+
+	return &KubernetesMetadataService{node: node}, nil
+}
+
+func (m *KubernetesMetadataService) GetLabels(_ context.Context) (map[string]string, error) {
+	return m.node.GetLabels(), nil
 }

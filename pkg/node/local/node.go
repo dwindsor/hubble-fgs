@@ -26,7 +26,13 @@ var (
 )
 
 type MetadataService interface {
+	GetHostname(ctx context.Context) (string, error)
 	GetLabels(ctx context.Context) (map[string]string, error)
+	GetInstanceId(ctx context.Context) (string, error)
+	GetInternalIP(ctx context.Context) (string, error)
+	GetExternalIP(ctx context.Context) (string, error)
+	GetInternalDNS(ctx context.Context) (string, error)
+	GetExternalDNS(ctx context.Context) (string, error)
 }
 
 func GetMetadataService() (MetadataService, error) {
