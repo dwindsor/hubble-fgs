@@ -12,6 +12,7 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 
@@ -23,9 +24,12 @@ const (
 )
 
 type AgentToken struct {
-	lock         sync.RWMutex
-	k8sAuthToken string
-	k8sAuthPath  string
+	lock              sync.RWMutex
+	k8sAuthToken      string
+	k8sAuthPath       string
+	k8sNamespace      string
+	k8sServiceAccount string
+	k8sControllerURL  string
 }
 
 var (
@@ -50,6 +54,7 @@ func (a *AgentToken) K8sAuthToken() string {
 }
 
 // SetK8sAuthToken sets the Kubernetes authentication token for the AgentToken instance.
+// It also updates the namespace and service account based on the provided token.
 // It acquires a lock to ensure thread-safe access when updating the token.
 //
 // Parameters:
@@ -58,6 +63,8 @@ func (a *AgentToken) SetK8sAuthToken(token string) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	a.k8sAuthToken = token
+	a.setNamespaceAndServiceAccount(token)
+	a.SetK8sControllerURL(token)
 }
 
 // K8sAuthPath returns the Kubernetes authentication path associated with the AgentToken.
@@ -77,6 +84,27 @@ func (a *AgentToken) SetK8sAuthPath(path string) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	a.k8sAuthPath = path
+}
+
+// SetNamespaceAndServiceAccount extracts and sets the namespace and service account from the token.
+func (a *AgentToken) setNamespaceAndServiceAccount(tokenString string) {
+	namespace, serviceAccount := a.extractNamespaceAndServiceAccount(tokenString)
+	a.k8sNamespace = namespace
+	a.k8sServiceAccount = serviceAccount
+}
+
+// K8sNamespace returns the Kubernetes namespace associated with the AgentToken.
+func (a *AgentToken) K8sNamespace() string {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.k8sNamespace
+}
+
+// K8sServiceAccount returns the Kubernetes service account associated with the AgentToken.
+func (a *AgentToken) K8sServiceAccount() string {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.k8sServiceAccount
 }
 
 // Persist saves the Kubernetes authentication token to a file in JSON format.
@@ -271,4 +299,75 @@ func (a *AgentToken) SetAndPersistK8sAuthToken(token string) error {
 		return fmt.Errorf("failed to persist k8s auth token: %w", err)
 	}
 	return nil
+}
+
+// extractNamespaceAndServiceAccount extracts the Kubernetes namespace and service account name
+// from a given JWT token string. It parses the token without verifying its signature and retrieves
+// the "kubernetes.io/serviceaccount/namespace" and "kubernetes.io/serviceaccount/service-account.name"
+// claims. If the token is empty, invalid, or the required claims are not found, it returns empty strings
+// for both values and logs the corresponding error.
+//
+// Parameters:
+//
+//	tokenString - the JWT token string to extract claims from.
+//
+// Returns:
+//
+//	namespace      - the extracted Kubernetes namespace, or an empty string if not found.
+//	serviceAccount - the extracted service account name, or an empty string if not found.
+func (a *AgentToken) extractNamespaceAndServiceAccount(tokenString string) (string, string) {
+	// Validating input.
+	if tokenString == "" {
+		logger.GetLogger().Debug("token is empty")
+		return "", ""
+	}
+
+	// Get the service account token from the full token string.
+	_, serviceAccountToken, _, err := enterpriseConfig.ParseServiceAccountAuth(tokenString)
+	if err != nil || serviceAccountToken == "" {
+		logger.GetLogger().Error("failed to parse service account auth", logfields.Error, err)
+		return "", ""
+	}
+
+	// Extracting namespace and service account from the token.
+	parser := jwt.Parser{}
+	tokenObj, _, err := parser.ParseUnverified(serviceAccountToken, jwt.MapClaims{})
+	if err != nil {
+		logger.GetLogger().Error("failed to parse token to get namespace and service account")
+		return "", ""
+	}
+	if tokenObj == nil {
+		logger.GetLogger().Error("jwt claims not found in token")
+		return "", ""
+	}
+	claims, ok := tokenObj.Claims.(jwt.MapClaims)
+	if !ok {
+		logger.GetLogger().Error("invalid jwt claims")
+		return "", ""
+	}
+	namespace, ok := claims["kubernetes.io/serviceaccount/namespace"].(string)
+	if !ok {
+		logger.GetLogger().Error("namespace not found in jwt claims")
+		return "", ""
+	}
+	serviceAccount, ok := claims["kubernetes.io/serviceaccount/service-account.name"].(string)
+	if !ok {
+		logger.GetLogger().Error("service-account name not found in jwt claims")
+		return "", ""
+	}
+	return namespace, serviceAccount
+}
+
+func (a *AgentToken) K8sControllerURL() string {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.k8sControllerURL
+}
+
+func (a *AgentToken) SetK8sControllerURL(tokenStr string) {
+	apiServer, _, _, err := enterpriseConfig.ParseServiceAccountAuth(tokenStr)
+	if err != nil {
+		a.k8sControllerURL = apiServer
+	}
+	a.k8sControllerURL = apiServer
 }

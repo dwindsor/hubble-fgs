@@ -432,7 +432,7 @@ func TestShowTokens(t *testing.T) {
 				agw.Token = token.GetAgentToken()
 				agw.Token.SetK8sAuthToken("token123")
 			},
-			expected: "token123",
+			expected: "k8s_controller_url=\nk8s_service_account=\nk8s_namespace=\nk8s_token=token123",
 		},
 		{
 			name: "Multiple tokens",
@@ -440,7 +440,7 @@ func TestShowTokens(t *testing.T) {
 				agw.Token = token.GetAgentToken()
 				agw.Token.SetK8sAuthToken("tokenA,tokenB")
 			},
-			expected: "tokenA,tokenB",
+			expected: "k8s_controller_url=\nk8s_service_account=\nk8s_namespace=\nk8s_token=tokenA,tokenB",
 		},
 	}
 	for _, tc := range cases {

@@ -213,6 +213,15 @@ func (n *Nxos) GetHeadlessMode() bool {
 	return n.SkipCtrlr
 }
 
+// GetSerialNum attempts to retrieve the serial number; returns an empty string on error.
+func (n *Nxos) GetSerialNum(ctx context.Context) string {
+	if err := n.getSerialNum(ctx); err != nil {
+		logger.GetLogger().Error("Failed to get serial number", logfields.Error, err)
+		return ""
+	}
+	return n.SerNum
+}
+
 // setupSignalHandler sets up signal handling for graceful shutdown.
 func (n *Nxos) setupSignalHandler(ctx context.Context) {
 	logger.GetLogger().Debug("Setting up signal handler")

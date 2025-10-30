@@ -168,6 +168,14 @@ func (n *Nxos) getModelAndVersion(ctx context.Context) error {
 // getSerialNum retrieves the serial number from the device.
 func (n *Nxos) getSerialNum(ctx context.Context) error {
 	logger.GetLogger().Debug("Retrieving serial number")
+	n.Lock()
+	serNumSet := n.SerNum != ""
+	n.Unlock()
+
+	if serNumSet {
+		logger.GetLogger().Debug("Serial number already set", "sernum", n.SerNum)
+		return nil
+	}
 
 	jstrs, err := n.gnmiGet(ctx, "/System/ch-items/spbp-items/spcmn-items")
 	if err != nil {
@@ -182,7 +190,9 @@ func (n *Nxos) getSerialNum(ctx context.Context) error {
 		if err != nil {
 			logger.GetLogger().Error("Fail to unmarshal spcmn-items", logfields.Error, err)
 		} else if items.SerNum != nil {
+			n.Lock()
 			n.SerNum = *items.SerNum
+			n.Unlock()
 			logger.GetLogger().Debug("sswitch", "sernum", n.SerNum)
 		}
 	}

@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchstatus"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
@@ -172,10 +173,20 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		utilruntime.Must(ipav1alpha1.AddToScheme(kubernetesManager.Manager.GetScheme()))
 		kubernetesManager.Start(ctx)
 
+		// Create the SmartSwitchInventory custom resource, if nxos is enabled.
+		if Config.EnableNXOS {
+			logger.GetLogger().Info("adding SmartSwitchInventory custom resource")
+			SmartSwitchInventory := agwAgent.GetSmartSwitchInventory(ctx)
+			if err = switchstatus.ApplySmartSwitchInventoryCR(ctx, kubernetesManager, SmartSwitchInventory); err != nil {
+				logger.GetLogger().Error("failed to apply SmartSwitchInventory CR", logfields.Error, err)
+				return err
+			}
+		}
+
 		// TODO: Wait for configmap to be ready
-		err := config.AddConfigMapInformer(ctx, kubernetesManager)
+		err = config.AddConfigMapInformer(ctx, kubernetesManager)
 		if err != nil {
-			logger.GetLogger().Error("configmap failed")
+			logger.GetLogger().Error("configmap failed", logfields.Error, err)
 			return err
 		}
 
