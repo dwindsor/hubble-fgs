@@ -96,7 +96,7 @@ type genericKprobe struct {
 	// the map, so that we can merge them when the return event is
 	// generated. The events are maintained in the map below, using
 	// the retprobe_id (thread_id) and the enter ktime as the key.
-	pendingEvents *lru.Cache[pendingEventKey, pendingEvent]
+	pendingEvents *lru.Cache[pendingEventKey, pendingEvent[*tracing.MsgGenericKprobeUnix]]
 
 	tableId idtable.EntryID
 
@@ -132,8 +132,8 @@ type genericKprobe struct {
 // This is needed for retprobe probes that generate two events: one at the
 // function entry, and one at the function return. We merge these events into
 // one, before returning it to the user.
-type pendingEvent struct {
-	ev          *tracing.MsgGenericKprobeUnix
+type pendingEvent[T evArgsRetriever] struct {
+	ev          T
 	returnEvent bool
 }
 
@@ -414,6 +414,33 @@ type kpValidateInfo struct {
 	ignore  bool
 }
 
+func validateOverride(
+	f *v1alpha1.KProbeSpec,
+	funcName string,
+	useMulti bool,
+) error {
+	isSecurityFunc := strings.HasPrefix(funcName, "security_")
+
+	if isSecurityFunc {
+		// LSM functions
+		if !bpf.HasModifyReturn() {
+			return errors.New("override action not supported on security_ hooks, fmod_ret not available")
+		}
+
+		if useMulti {
+			return fmt.Errorf("can't override '%s' function with kprobe_multi, use --%s option", funcName, option.KeyDisableKprobeMulti)
+		}
+	} else if f.Syscall {
+		if !bpf.HasOverrideHelper() {
+			return errors.New("override action not supported on syscalls, bpf_override_return helper not available")
+		}
+	} else {
+		return errors.New("override action can be used only with syscalls and security_ hooks")
+	}
+
+	return nil
+}
+
 func preValidateKprobe(
 	log logger.FieldLogger,
 	f *v1alpha1.KProbeSpec,
@@ -455,19 +482,6 @@ func preValidateKprobe(
 		for mid, matchAction := range selector.MatchActions {
 			if (matchAction.KernelStackTrace || matchAction.UserStackTrace) && matchAction.Action != "Post" {
 				return nil, fmt.Errorf("kernelStackTrace or userStackTrace can only be used along Post action: got (kernelStackTrace/userStackTrace) enabled in selectors[%d].matchActions[%d] with action '%s'", sid, mid, matchAction.Action)
-			}
-		}
-	}
-
-	if selectors.HasOverride(f.Selectors) {
-		if !bpf.HasOverrideHelper() {
-			return nil, errors.New("error override action not supported, bpf_override_return helper not available")
-		}
-		if !f.Syscall {
-			for idx := range calls {
-				if !strings.HasPrefix(calls[idx], "security_") {
-					return nil, errors.New("error override action can be used only with syscalls and security_ hooks")
-				}
 			}
 		}
 	}
@@ -741,16 +755,9 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		}
 	}
 
-	isSecurityFunc := strings.HasPrefix(funcName, "security_")
-
 	if selectors.HasOverride(f.Selectors) {
-		if isSecurityFunc && in.useMulti {
-			return errFn(fmt.Errorf("error: can't override '%s' function with kprobe_multi, use --disable-kprobe-multi option",
-				funcName))
-		}
-		if isSecurityFunc && !bpf.HasModifyReturn() {
-			return errFn(fmt.Errorf("error: can't override '%s' function without fmodret support",
-				funcName))
+		if err := validateOverride(f, funcName, in.useMulti); err != nil {
+			return errFn(fmt.Errorf("override validation failed: %w", err))
 		}
 	}
 
@@ -894,7 +901,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		argP := argPrinter{index: api.ReturnArgIndex, ty: argType}
 		argReturnPrinters = append(argReturnPrinters, argP)
 	} else {
-		eventConfig.ArgReturn = int32(0)
+		eventConfig.ArgReturn = int32(gt.GenericUnsetType)
 	}
 
 	if argRetprobe != nil {
@@ -906,7 +913,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		argP := argPrinter{index: int(argRetprobe.Index), ty: argType, label: argRetprobe.Label}
 		argReturnPrinters = append(argReturnPrinters, argP)
 	} else {
-		eventConfig.ArgReturnCopy = int32(0)
+		eventConfig.ArgReturnCopy = int32(gt.GenericUnsetType)
 	}
 
 	// Write attributes into BTF ptr for use with load
@@ -962,7 +969,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		}
 	}
 
-	kprobeEntry.pendingEvents, err = lru.New[pendingEventKey, pendingEvent](4096)
+	kprobeEntry.pendingEvents, err = lru.New[pendingEventKey, pendingEvent[*tracing.MsgGenericKprobeUnix]](4096)
 	if err != nil {
 		return errFn(err)
 	}
@@ -1375,18 +1382,22 @@ func handleMsgGenericKprobe(m *api.MsgGenericKprobe, gk *genericKprobe, r *bytes
 
 	// there are two events for this probe (entry and return)
 	if gk.loadArgs.retprobe {
-		// if an event exist already, try to merge them. Otherwise, add
-		// the one we have in the map.
-		curr := pendingEvent{ev: unix, returnEvent: returnEvent}
-		key := pendingEventKey{eventId: m.RetProbeId, ktimeEnter: ktimeEnter}
-
-		if prev, exists := gk.pendingEvents.Get(key); exists {
-			gk.pendingEvents.Remove(key)
-			unix = retprobeMerge(prev, curr)
-		} else {
-			gk.pendingEvents.Add(key, curr)
+		var (
+			other  *tracing.MsgGenericKprobeUnix
+			merged bool
+		)
+		merged, unix, other = retprobeMergeEvents[*tracing.MsgGenericKprobeUnix](
+			unix,
+			gk.pendingEvents,
+			returnEvent,
+			m.RetProbeId,
+			ktimeEnter,
+			reportKprobeMergeError)
+		if unix != nil {
+			kprobemetrics.MergeOkTotalInc()
+			unix.ReturnAction = other.Msg.ActionId
+		} else if !merged {
 			kprobemetrics.MergePushedInc()
-			unix = nil
 		}
 	}
 	if unix == nil {
@@ -1402,7 +1413,7 @@ func handleMsgGenericKprobe(m *api.MsgGenericKprobe, gk *genericKprobe, r *bytes
 	return []observer.Event{unix}, err
 }
 
-func reportMergeError(curr pendingEvent, prev pendingEvent) {
+func reportKprobeMergeError(curr pendingEvent[*tracing.MsgGenericKprobeUnix], prev pendingEvent[*tracing.MsgGenericKprobeUnix]) {
 	currFn := "UNKNOWN"
 	if curr.ev != nil {
 		currFn = curr.ev.FuncName
@@ -1429,9 +1440,18 @@ func reportMergeError(curr pendingEvent, prev pendingEvent) {
 		"prevType", prevType.String())
 }
 
+type reportMergeErorrFn[T evArgsRetriever] func(curr pendingEvent[T], prev pendingEvent[T])
+
+type evArgsRetriever interface {
+	GetArgs() *[]api.MsgGenericKprobeArg
+	// This constraint allows us to return nil from methods
+	*tracing.MsgGenericKprobeUnix | *tracing.MsgGenericUprobeUnix
+}
+
 // retprobeMerge merges the two events: the one from the entry probe with the one from the return probe
-func retprobeMerge(prev pendingEvent, curr pendingEvent) *tracing.MsgGenericKprobeUnix {
-	var retEv, enterEv *tracing.MsgGenericKprobeUnix
+func retprobeMerge[T evArgsRetriever](prev pendingEvent[T], curr pendingEvent[T],
+	onMergeError reportMergeErorrFn[T]) (T, T) {
+	var retEv, enterEv T
 
 	if prev.returnEvent && !curr.returnEvent {
 		retEv = prev.ev
@@ -1440,22 +1460,37 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) *tracing.MsgGenericKpro
 		retEv = curr.ev
 		enterEv = prev.ev
 	} else {
-		reportMergeError(curr, prev)
-		return nil
+		onMergeError(curr, prev)
+		return nil, nil
 	}
 
-	kprobemetrics.MergeOkTotalInc()
-
-	for _, retArg := range retEv.Args {
+	retArgs := retEv.GetArgs()
+	enterArgs := enterEv.GetArgs()
+	for _, retArg := range *retArgs {
 		index := retArg.GetIndex()
-		if uint64(len(enterEv.Args)) > index {
-			enterEv.Args[index] = retArg
+		if uint64(len(*enterArgs)) > index {
+			(*enterArgs)[index] = retArg
 		} else {
-			enterEv.Args = append(enterEv.Args, retArg)
+			*enterArgs = append(*enterArgs, retArg)
 		}
 	}
-	enterEv.ReturnAction = retEv.Msg.ActionId
-	return enterEv
+	return enterEv, retEv
+}
+
+func retprobeMergeEvents[T evArgsRetriever](unix T, pendingEvents *lru.Cache[pendingEventKey, pendingEvent[T]],
+	returnEvent bool, retprobeId, ktimeEnter uint64, onMergeError reportMergeErorrFn[T]) (bool, T, T) {
+	// if an event exist already, try to merge them. Otherwise, add
+	// the one we have in the map.
+	curr := pendingEvent[T]{ev: unix, returnEvent: returnEvent}
+	key := pendingEventKey{eventId: retprobeId, ktimeEnter: ktimeEnter}
+
+	if prev, exists := pendingEvents.Get(key); exists {
+		pendingEvents.Remove(key)
+		enter, exit := retprobeMerge[T](prev, curr, onMergeError)
+		return true, enter, exit
+	}
+	pendingEvents.Add(key, curr)
+	return false, nil, nil
 }
 
 func (k *observerKprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {

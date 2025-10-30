@@ -98,7 +98,7 @@ func (args *Arguments) String() string {
 func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary, ready chan bool) {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
+	bpf.CheckOrMountTraceFS()
 	bpf.CheckOrMountCgroup2()
 
 	if args.FgsDebug {

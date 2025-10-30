@@ -297,7 +297,7 @@ github.com/cilium/hive/script/internal/diff
 # github.com/cilium/lumberjack/v2 v2.4.1
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
-# github.com/cilium/tetragon v1.7.0-pre.0.0.20251027174550-e83a3aea6076 => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.7.0-pre.0.0.20251030145147-d1c2c9daebdb => ./modules/tetragon-oss
 ## explicit; go 1.25.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker

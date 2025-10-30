@@ -35,7 +35,7 @@ import (
 func StartMinimalTetragonModel(ctx context.Context, t *testing.T) *model.Server {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
+	bpf.CheckOrMountTraceFS()
 	bpf.CheckOrMountCgroup2()
 
 	option.Config.HubbleLib = "../../../bpf/objs"

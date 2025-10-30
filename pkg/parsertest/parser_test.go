@@ -59,7 +59,7 @@ func init() {
 
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
+	bpf.CheckOrMountTraceFS()
 	bpf.CheckOrMountCgroup2()
 	bpf.SetMapPrefix("fgs-parsertest")
 	os.Mkdir(bpf.MapPrefixPath(), os.ModeDir)

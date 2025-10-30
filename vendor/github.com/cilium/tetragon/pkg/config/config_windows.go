@@ -25,8 +25,8 @@ func GenericKprobeObjs(_ bool) (string, string) {
 	return "", ""
 }
 
-func GenericUprobeObjs(_ bool) string {
-	return ""
+func GenericUprobeObjs(_ bool) (string, string) {
+	return "", ""
 }
 
 func GenericTracepointObjs(_ bool) string {
@@ -50,10 +50,6 @@ func CGroupRmdirObj() string {
 }
 
 func LoaderObj() string {
-	return ""
-}
-
-func LseekObj() string {
 	return ""
 }
 

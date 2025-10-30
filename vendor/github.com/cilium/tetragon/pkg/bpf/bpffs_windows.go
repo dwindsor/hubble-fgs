@@ -9,7 +9,7 @@ import (
 
 func CheckOrMountFS(_ string) {}
 
-func CheckOrMountDebugFS() error {
+func CheckOrMountTraceFS() error {
 	return constants.ErrWindowsNotSupported
 }
 

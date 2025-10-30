@@ -207,7 +207,7 @@ const (
 func runRaceFGS(ctx context.Context, ready chan bool) {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
+	bpf.CheckOrMountTraceFS()
 	bpf.CheckOrMountCgroup2()
 	bpf.SetMapPrefix("fgs-race")
 

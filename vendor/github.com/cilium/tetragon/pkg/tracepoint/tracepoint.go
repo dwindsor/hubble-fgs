@@ -14,10 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-)
-
-const (
-	tracepointsPath = "/sys/kernel/debug/tracing/events"
+	"sync"
 )
 
 // Tracepoint represents the information of a Linux tracepoint
@@ -52,7 +49,7 @@ func (tff *FieldFormat) ParseField() error {
 	return nil
 }
 
-// LoadFormat loads the format of a tracepoint from /sys/kernel/debug
+// LoadFormat loads the format of a tracepoint from /sys/kernel/tracing
 func (gt *Tracepoint) LoadFormat() error {
 	gtf, err := tracepointLoadFormat(gt.Subsys, gt.Event)
 	if err == nil {
@@ -61,10 +58,36 @@ func (gt *Tracepoint) LoadFormat() error {
 	return err
 }
 
+// GetTraceFSPath returns tracefs path if available,
+// otherwise it tries debugfs tracing folder.
+func GetTraceFSPath() (string, error) {
+	tracefs := sync.OnceValue(func() string {
+		if _, err := os.Stat("/sys/kernel/tracing"); err == nil {
+			return "/sys/kernel/tracing"
+		}
+		if _, err := os.Stat("/sys/kernel/debug/tracing"); err == nil {
+			return "/sys/kernel/debug/tracing"
+		}
+		return ""
+	})()
+	if tracefs == "" {
+		return tracefs, errors.New("neither tracefs nor debugfs are available")
+	}
+	return tracefs, nil
+}
+
+func tracepointsPath() (string, error) {
+	traceFs, err := GetTraceFSPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(traceFs, "events"), nil
+}
+
 // tracepointLoadFormat is the low-level function for loading the format of the given tracepoint
 //
 // For reference:
-// # cat /sys/kernel/debug/tracing/events/syscalls/sys_enter_lseek/format
+// # cat /sys/kernel/tracing/events/syscalls/sys_enter_lseek/format
 // name: sys_enter_lseek
 // ID: 682
 // format:
@@ -79,7 +102,11 @@ func (gt *Tracepoint) LoadFormat() error {
 //	field:off_t offset;     offset:24;      size:8; signed:0;
 //	field:unsigned int whence;      offset:32;      size:8; signed:0;
 func tracepointLoadFormat(subsys string, event string) (*Format, error) {
-	fname := fmt.Sprintf("%s/%s/%s/format", tracepointsPath, subsys, event)
+	tpPath, err := tracepointsPath()
+	if err != nil {
+		return nil, err
+	}
+	fname := fmt.Sprintf("%s/%s/%s/format", tpPath, subsys, event)
 	f, err := os.Open(fname)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse tracepoint format: %w", err)
@@ -188,9 +215,13 @@ FieldsLoop:
 // The Format field for this events is going to be empty. Callers can call LoadFormat() to fill it.
 func GetAllTracepoints() ([]Tracepoint, error) {
 	ret := []Tracepoint{}
-	err := filepath.Walk(tracepointsPath, func(path string, info fs.FileInfo, _ error) error {
+	tpPath, err := tracepointsPath()
+	if err != nil {
+		return nil, err
+	}
+	err = filepath.Walk(tpPath, func(path string, info fs.FileInfo, _ error) error {
 		if info.IsDir() {
-			name := strings.TrimPrefix(path, tracepointsPath+"/")
+			name := strings.TrimPrefix(path, tpPath+"/")
 			arr := strings.Split(name, "/")
 			if len(arr) == 2 {
 				ret = append(ret, Tracepoint{
