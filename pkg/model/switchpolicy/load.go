@@ -36,7 +36,7 @@ func FromYAML(data string) (*v1alpha1.SmartSwitchNetworkPolicy, error) {
 		}
 		return snp, nil
 	default:
-		return nil, nil
+		return nil, fmt.Errorf("invalid kind, cannot parse SmartSwitchNetworkPolicy")
 	}
 }
 

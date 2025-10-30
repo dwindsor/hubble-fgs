@@ -563,6 +563,458 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{},
 		},
+		{
+			name: "Protocol only without port - match all ports for protocol",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow all TCP traffic",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+									},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.0/24",
+									},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Protocol: "tcp",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []*SmartSwitchNetworkPolicy{
+				{
+					Source: SmartSwitchNetworkSource{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "10.0.0.0/8",
+						},
+					},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "192.168.1.0/24",
+						},
+						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
+							Protocol: "tcp",
+						},
+					},
+					Action: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Allow: true},
+					},
+					Default: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Deny: true},
+					},
+				},
+			},
+		},
+		{
+			name: "Multiple protocols without ports",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow TCP and UDP traffic",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+										VRF:  "internal",
+									},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.0/24",
+										VRF:  "external",
+									},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Protocol: "tcp",
+									},
+									{
+										Protocol: "udp",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []*SmartSwitchNetworkPolicy{
+				{
+					Source: SmartSwitchNetworkSource{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "10.0.0.0/8",
+							VRF:  "internal",
+						},
+					},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "192.168.1.0/24",
+							VRF:  "external",
+						},
+						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
+							Protocol: "tcp",
+						},
+					},
+					Action: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Allow: true},
+					},
+					Default: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Deny: true},
+					},
+				},
+				{
+					Source: SmartSwitchNetworkSource{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "10.0.0.0/8",
+							VRF:  "internal",
+						},
+					},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "192.168.1.0/24",
+							VRF:  "external",
+						},
+						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
+							Protocol: "udp",
+						},
+					},
+					Action: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Allow: true},
+					},
+					Default: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Deny: true},
+					},
+				},
+			},
+		},
+		{
+			name: "Port without protocol",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow port 443 any protocol",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+									},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.0/24",
+									},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port: 443,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []*SmartSwitchNetworkPolicy{
+				{
+					Source: SmartSwitchNetworkSource{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "10.0.0.0/8",
+						},
+					},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "192.168.1.0/24",
+						},
+						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
+							Port: 443,
+						},
+					},
+					Action: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Allow: true},
+					},
+					Default: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Deny: true},
+					},
+				},
+			},
+		},
+		{
+			name: "Empty source IPBlock array",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Rule with no sources",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.0/24",
+									},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     443,
+										Protocol: "tcp",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []*SmartSwitchNetworkPolicy{},
+		},
+		{
+			name: "Empty destination IPBlock array",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Rule with no destinations",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+									},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     443,
+										Protocol: "tcp",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []*SmartSwitchNetworkPolicy{},
+		},
+		{
+			name: "Mixed protocol specifications - some with ports, some without",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow specific TCP port and all UDP",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+									},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.0/24",
+									},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     443,
+										Protocol: "tcp",
+									},
+									{
+										Protocol: "udp",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []*SmartSwitchNetworkPolicy{
+				{
+					Source: SmartSwitchNetworkSource{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "10.0.0.0/8",
+						},
+					},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "192.168.1.0/24",
+						},
+						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
+							Port:     443,
+							Protocol: "tcp",
+						},
+					},
+					Action: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Allow: true},
+					},
+					Default: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Deny: true},
+					},
+				},
+				{
+					Source: SmartSwitchNetworkSource{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "10.0.0.0/8",
+						},
+					},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "192.168.1.0/24",
+						},
+						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
+							Protocol: "udp",
+						},
+					},
+					Action: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Allow: true},
+					},
+					Default: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Deny: true},
+					},
+				},
+			},
+		},
+		{
+			name: "Zero port value",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Rule with zero port",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+									},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.0/24",
+									},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     0,
+										Protocol: "tcp",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []*SmartSwitchNetworkPolicy{
+				{
+					Source: SmartSwitchNetworkSource{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "10.0.0.0/8",
+						},
+					},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "192.168.1.0/24",
+						},
+						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
+							Port:     0,
+							Protocol: "tcp",
+						},
+					},
+					Action: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Allow: true},
+					},
+					Default: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Deny: true},
+					},
+				},
+			},
+		},
+		{
+			name: "ICMP protocol without port",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow ICMP",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.0.0.0/8",
+										VRF:  "internal",
+									},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.0/24",
+										VRF:  "external",
+									},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Protocol: "icmp",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []*SmartSwitchNetworkPolicy{
+				{
+					Source: SmartSwitchNetworkSource{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "10.0.0.0/8",
+							VRF:  "internal",
+						},
+					},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "192.168.1.0/24",
+							VRF:  "external",
+						},
+						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
+							Protocol: "icmp",
+						},
+					},
+					Action: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Allow: true},
+					},
+					Default: SmartSwitchNetworkAction{
+						EnforceAction: SmartSwitchEnforceAction{Deny: true},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
