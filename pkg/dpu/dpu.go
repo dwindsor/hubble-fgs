@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -59,6 +60,7 @@ func NewDPUAgent(server string) *DPUAgent {
 		// of the concatenated strings in this map.
 		ruleSet:       make(map[[sha256.Size]byte]*agentDPU.DPURule),
 		serverAddress: server,
+		ruleSetLock:   sync.Mutex{},
 	}
 }
 
@@ -87,7 +89,8 @@ type DPUAgent struct {
 	// the message. We SHA256 the rule so that the operation matches for
 	// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
 	// of the concatenated strings in this map.
-	ruleSet map[[sha256.Size]byte]*agentDPU.DPURule
+	ruleSet     map[[sha256.Size]byte]*agentDPU.DPURule
+	ruleSetLock sync.Mutex
 }
 
 func (dpu *DPUAgent) Id() string {
@@ -236,6 +239,9 @@ func (dpu *DPUAgent) Checksum() [sha256.Size]byte {
 	var vals []string
 	var buf string
 
+	dpu.ruleSetLock.Lock()
+	defer dpu.ruleSetLock.Unlock()
+
 	for csum := range dpu.ruleSet {
 		vals = append(vals, string(csum[:]))
 	}
@@ -247,12 +253,16 @@ func (dpu *DPUAgent) Checksum() [sha256.Size]byte {
 }
 
 func (dpu *DPUAgent) upsertPolicyRule(rule *agentDPU.DPUPolicyRule) {
+
 	csum, err := agentDPU.HashRule(rule.Policy)
 	if err != nil {
 		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
 			logfields.Error, err, "rule", rule)
 		return
 	}
+
+	dpu.ruleSetLock.Lock()
+	defer dpu.ruleSetLock.Unlock()
 	dpu.ruleSet[csum] = rule.Policy
 }
 
@@ -263,6 +273,9 @@ func (dpu *DPUAgent) deletePolicyRule(rule *agentDPU.DPUPolicyRule) {
 			logfields.Error, err)
 		return
 	}
+
+	dpu.ruleSetLock.Lock()
+	defer dpu.ruleSetLock.Unlock()
 	delete(dpu.ruleSet, csum)
 }
 
