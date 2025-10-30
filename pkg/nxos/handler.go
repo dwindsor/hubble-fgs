@@ -349,7 +349,6 @@ func (n *Nxos) updtBdBd(ctx context.Context, items *model.Cisco_NX_OSDevice_Syst
 
 func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDevice_System_BdItems_BdItems_BDList) error {
 	logger.GetLogger().Debug("updtBdBdBDList", "bd", bdList)
-	policyMapUpdate := false
 
 	bds := []VrfBd{}
 	for _, bd := range bdList {
@@ -371,7 +370,6 @@ func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDe
 			b.IsGlobal = true
 			if b.IsService {
 				n.doPinning(ctx, true, &b)
-				policyMapUpdate = true
 			}
 			n.Bds[name] = b
 
@@ -389,14 +387,6 @@ func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDe
 	}
 	if len(bds) > 0 {
 		return n.addServiceVb(ctx, true, bds, nil)
-	}
-
-	if policyMapUpdate {
-		err := n.doVRFPolicyMapUpdate()
-		if err != nil {
-			logger.GetLogger().Error("Fail to update VRF policy map", logfields.Error, err)
-			return err
-		}
 	}
 
 	return nil
@@ -615,11 +605,14 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceFwpolicyIpvrfDom(ctx context.Context,
 }
 
 func (n *Nxos) doVRFPolicyMapUpdate() error {
+	logger.GetLogger().Debug("doVRFPolicyMapUpdate")
+
 	vrfMap := switchpolicy.NewL3Networks()
 	for name, vid := range n.Alloc.Gids {
 		vrfName := switchpolicy.VrfName(name)
 		vrfId := switchpolicy.VrfGID(vid)
 		err := vrfMap.Add(vrfName, vrfId)
+		logger.GetLogger().Debug("vrfMap add", "vrf", name, "gid", vid)
 		if err != nil {
 			return err
 		}
