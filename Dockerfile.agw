@@ -33,7 +33,8 @@ RUN apk cache clean
 FROM docker.io/library/alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412 AS base-build
 RUN apk update && apk upgrade --no-cache
 # John cut these: iptables tcpdump vim-tiny and replaced ntp->chrony cron->cronie
-RUN apk add --no-cache net-tools iproute2 netcat-openbsd curl openssh-client bind-tools iputils-ping logrotate cronie chrony sshpass openntpd bash
+RUN apk del openntpd
+RUN apk add --no-cache net-tools iproute2 netcat-openbsd curl openssh-client bind-tools iputils-ping logrotate cronie sshpass bash ntpsec
 RUN apk cache clean
 RUN mkdir -p /usr/src/app
 RUN mkdir -p /opt/cisco/daf/etc

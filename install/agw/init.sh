@@ -18,13 +18,14 @@ trap 'handle_sigterm' SIGTERM
 
 echo "Starting HypershieldAgent init script"
 # Start background services: chronyd and crond.
-chronyd &
+mkdir -p /data/volatile/logs
+mkdir -p /var/NTP
+ntpd -c /etc/ntpsec -l /data/volatile/logs/ntp.log
 crond
 # Load crontab file.
 mkdir -p /root/.cache
 cat /usr/src/app/crontab | crontab -
 # Create necessary directories if they don't exist.
-mkdir -p /data/volatile/logs
 mkdir -p /iox_data/states
 
 # Run agw process in the background.
