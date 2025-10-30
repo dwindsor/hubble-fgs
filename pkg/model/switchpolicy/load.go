@@ -1,8 +1,10 @@
 package switchpolicy
 
 import (
+	"bufio"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -17,30 +19,60 @@ import (
 	"github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 )
 
-func FromYAML(data string) (*v1alpha1.SmartSwitchNetworkPolicy, error) {
-	var unstr unstructured.Unstructured
-	if err := yaml.UnmarshalStrict([]byte(data), &unstr); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal unstructured SmartSwitch network policy YAML: %w", err)
-	}
+func FromYAML(data string) ([]*v1alpha1.SmartSwitchNetworkPolicy, error) {
+	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(data), 4096)
+	// crdctx needs the yaml as a string to parse and validate it, so we need a second yaml reader
+	// to go along with the decoder as the file is parsed
+	yamlReader := yaml.NewYAMLReader(bufio.NewReader(strings.NewReader(data)))
+	var policies []*v1alpha1.SmartSwitchNetworkPolicy
 
-	switch unstr.GetKind() {
-	case v1alpha1.SNPKindDefinition:
-		crdCtx, err := getSNPContext()
+	for {
+		var unstr unstructured.Unstructured
+		if err := decoder.Decode(&unstr); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("failed to unmarshal unstructured SmartSwitch network policy YAML: %w", err)
+		}
+		unstrBytes, err := yamlReader.Read()
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve CRD context for SmartSwitchNetworkPolicy: %w", err)
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("failed to read SmartSwitch network policy YAML: %w", err)
 		}
 
-		snp, err := crdCtx.FromYAML(data)
-		if err != nil {
-			return nil, err
+		// Skipping empty sections
+		if unstr.Object == nil {
+			continue
 		}
-		return snp, nil
-	default:
-		return nil, fmt.Errorf("invalid kind, cannot parse SmartSwitchNetworkPolicy")
+
+		switch unstr.GetKind() {
+		case v1alpha1.SNPKindDefinition:
+			crdCtx, err := getSNPContext()
+			if err != nil {
+				return nil, fmt.Errorf("failed to retrieve CRD context for SmartSwitchNetworkPolicy: %w", err)
+			}
+
+			snp, err := crdCtx.FromYAML(string(unstrBytes))
+			if err != nil {
+				return nil, err
+			}
+			policies = append(policies, snp)
+		default:
+			return nil, fmt.Errorf("invalid kind, cannot parse SmartSwitchNetworkPolicy")
+		}
 	}
+
+	// Returning an error if no policies were parsed
+	if len(policies) == 0 {
+		return nil, fmt.Errorf("no valid policies found")
+	}
+
+	return policies, nil
 }
 
-func FromFile(path string) (*v1alpha1.SmartSwitchNetworkPolicy, error) {
+func FromFile(path string) ([]*v1alpha1.SmartSwitchNetworkPolicy, error) {
 	cleanPath, err := filepath.Abs(filepath.Clean(path))
 	if err != nil {
 		return nil, err
@@ -91,51 +123,75 @@ func AddFromDir(dir string, policyHandler PolicyHandler) error {
 }
 
 func AddFromYAML(data string, policyHandler PolicyHandler) error {
-	policy, err := FromYAML(data)
+	policies, err := FromYAML(data)
 	if err != nil {
 		return fmt.Errorf("failed to parse SmartSwitchNetworkPolicy: %w", err)
 	}
-	if policy == nil {
+	if policies == nil {
 		return fmt.Errorf("failed loading policy, policy is nil")
 	}
 
-	return Add(policy, policyHandler)
+	for _, p := range policies {
+		err = Add(p, policyHandler)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func AddFromFile(path string, policyHandler PolicyHandler) error {
-	policy, err := FromFile(path)
+	policies, err := FromFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to parse SmartSwitchNetworkPolicy from file %q: %w", path, err)
 	}
-	if policy == nil {
+	if policies == nil {
 		return fmt.Errorf("failed loading policy from file %q, policy is nil", path)
 	}
 
-	return Add(policy, policyHandler)
+	for _, p := range policies {
+		err = Add(p, policyHandler)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func DeleteFromYAML(data string, policyHandler PolicyHandler) error {
-	policy, err := FromYAML(data)
+	policies, err := FromYAML(data)
 	if err != nil {
 		return fmt.Errorf("failed to parse SmartSwitchNetworkPolicy: %w", err)
 	}
-	if policy == nil {
+	if policies == nil {
 		return fmt.Errorf("failed loading policy, policy is nil")
 	}
 
-	return Delete(policy, policyHandler)
+	for _, p := range policies {
+		err = Delete(p, policyHandler)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func DeleteFromFile(path string, policyHandler PolicyHandler) error {
-	policy, err := FromFile(path)
+	policies, err := FromFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to parse SmartSwitchNetworkPolicy from file %q: %w", path, err)
 	}
-	if policy == nil {
+	if policies == nil {
 		return fmt.Errorf("failed loading policy from file %q, policy is nil", path)
 	}
 
-	return Delete(policy, policyHandler)
+	for _, p := range policies {
+		err = Delete(p, policyHandler)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func Add(np *v1alpha1.SmartSwitchNetworkPolicy, policyHandler PolicyHandler) error {
