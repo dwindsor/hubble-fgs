@@ -1,0 +1,75 @@
+name: "Download GitHub artifact"
+description: "Download artifact from GitHub Actions workflow run"
+
+inputs:
+  artifact-name:
+    description: "Name of the artifact to download"
+    required: true
+
+  download-dir:
+    description: "Directory to download artifact to"
+    required: true
+
+  run-id:
+    description: "Workflow run ID (defaults to current run)"
+    required: false
+    default: ""
+
+  repository:
+    description: "Repository in format owner/repo (defaults to current repo)"
+    required: false
+    default: ""
+
+outputs:
+  artifact-path:
+    description: "Path where the artifact was downloaded"
+    value: ${{ steps.setup.outputs.ARTIFACT_PATH }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup download path"
+      id: setup
+      shell: pwsh
+      run: |
+        $artifactName = "${{ inputs.artifact-name }}"
+        $downloadDir = "${{ inputs.download-dir }}"
+        $runId = if ("${{ inputs.run-id }}") { "${{ inputs.run-id }}" } else { "${{ github.run_id }}" }
+        $repo = if ("${{ inputs.repository }}") { "${{ inputs.repository }}" } else { "${{ github.repository }}" }
+
+        $artifactPath = Join-Path $downloadDir $artifactName
+        echo "ARTIFACT_PATH=$artifactPath" >> $env:GITHUB_OUTPUT
+
+        Write-Host "Artifact: $artifactName"
+        Write-Host "From: $repo (run $runId)"
+        Write-Host "Download path: $artifactPath"
+
+    - name: "Download artifact"
+      id: download
+      uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ steps.setup.outputs.ARTIFACT_PATH }}
+        run-id: ${{ inputs.run-id }}
+        repository: ${{ inputs.repository }}
+        # github-token: ${{ secrets.<PAT-with-actions-read> }} # required for other repositories
+
+    - name: "Verify artifact download"
+      id: verify
+      shell: pwsh
+      run: |
+        $artifactPath = "${{ steps.setup.outputs.ARTIFACT_PATH }}"
+
+        if (-not (Test-Path $artifactPath)) {
+          throw "Artifact directory not found: $artifactPath"
+        }
+
+        $files = Get-ChildItem -Path $artifactPath -Recurse -File
+        $filesCount = $files.Count
+
+        if ($filesCount -eq 0) {
+          throw "No files found in downloaded artifact"
+        }
+
+        Write-Host "✓ Artifact downloaded successfully"
+        Write-Host "Files downloaded: $filesCount"
