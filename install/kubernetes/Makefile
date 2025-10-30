@@ -37,9 +37,11 @@ EE_CHART = tetragon
 CHART_YAML_FILES := $(OSS_CHART)/Chart.yaml $(EE_PATCHES)/Chart.yaml
 VALUES_YAML_FILES := $(OSS_CHART)/values.yaml $(EE_PATCHES)/reset-export.yaml $(EE_PATCHES)/values.yaml
 CRDS_RELATIVE_DIR = pkg/k8s/apis/cilium.io/client/crds/v1alpha1
-ISOVALENT_CRDS_RELATIVE_DIR = vendor/github.com/isovalent/ipa/k8s/crds/isovalent.com/v1alpha1
+CILIUM_IPA_CRDS_RELATIVE_DIR = vendor/github.com/isovalent/ipa/k8s/crds/cilium.io/v1alpha1
+ISOVALENT_IPA_CRDS_RELATIVE_DIR = vendor/github.com/isovalent/ipa/k8s/crds/isovalent.com/v1alpha1
 CRDS := $(ROOT_DIR)/$(CRDS_RELATIVE_DIR)
-ISOVALENT_CRDS := $(ROOT_DIR)/$(ISOVALENT_CRDS_RELATIVE_DIR)
+CILIUM_IPA_CRDS := $(ROOT_DIR)/$(CILIUM_IPA_CRDS_RELATIVE_DIR)
+ISOVALENT_IPA_CRDS := $(ROOT_DIR)/$(ISOVALENT_IPA_CRDS_RELATIVE_DIR)
 JSON_SCHEMAS := $(ROOT_DIR)/install/kubernetes/schemas
 TARGET_MAX_CHAR_NUM = 25
 DASHBOARDS_DIR := $(EE_PATCHES)/dashboards
@@ -111,7 +113,8 @@ tetragon/values.yaml: ## Merge values.yaml from OSS and EE
 .PHONY: tetragon/templates
 tetragon/templates: $(CRDS) $(EE_PATCHES) ## Copy EE specific patched into the EE Helm chart (CRs, CRDs, etc.)
 	cp -rf $(CRDS)/. $(EE_CHART)/crds-yaml
-	cp -rf $(ISOVALENT_CRDS)/. $(EE_CHART)/crds-yaml
+	cp -rf $(CILIUM_IPA_CRDS)/. $(EE_CHART)/crds-yaml
+	cp -rf $(ISOVALENT_IPA_CRDS)/. $(EE_CHART)/crds-yaml
 	cp -rf $(EE_PATCHES)/default-policies/. $(EE_CHART)/default-policies
 	cp -rf $(EE_PATCHES)/files/. $(EE_CHART)/files
 	cp -rf $(EE_PATCHES)/templates/. $(EE_CHART)/templates

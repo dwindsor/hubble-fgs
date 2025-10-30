@@ -85,13 +85,16 @@ spec:
                             required:
                             - cidr
                             type: object
+                            x-kubernetes-validations:
+                            - message: at most one of the fields in [vrf vlan] may
+                                be set
+                              rule: '!(has(self.vrf) && has(self.vlan))'
                           type: array
                         protoPorts:
                           description: |-
                             ProtoPorts is an optional field to specify protocols and ports for a
                             policy rule. The policy rule applies to the cross product of IPBlock
-                            and ProtoPorts. If the field is not specified, the policy rule applies
-                            to all supported protocols and all ports.
+                            and ProtoPorts.
                           items:
                             description: |-
                               SmartSwitchProtocolPort provides the protocol to apply the policy
@@ -121,6 +124,7 @@ spec:
                           type: array
                       required:
                       - ipBlock
+                      - protoPorts
                       type: object
                     source:
                       description: |-
@@ -147,6 +151,10 @@ spec:
                             required:
                             - cidr
                             type: object
+                            x-kubernetes-validations:
+                            - message: at most one of the fields in [vrf vlan] may
+                                be set
+                              rule: '!(has(self.vrf) && has(self.vlan))'
                           type: array
                       required:
                       - ipBlock
@@ -156,7 +164,10 @@ spec:
                   - destination
                   - source
                   type: object
+                minItems: 1
                 type: array
+            required:
+            - rules
             type: object
         required:
         - spec

@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file graph/v1alpha/service.proto.
  */
 export const file_graph_v1alpha_service: GenFile = /*@__PURE__*/
-  fileDesc("ChtncmFwaC92MWFscGhhL3NlcnZpY2UucHJvdG8SDWdyYXBoLnYxYWxwaGEixgEKFUdldENvbm5lY3Rpb25zUmVxdWVzdBIqCgZ3aW5kb3cYASABKAsyGi5jb21tb24udGltZS52MWFscGhhLlJhbmdlEhEKCWxpbmtfdHlwZRgCIAEoDRIOCgZmaWx0ZXIYAyABKAkSJwoHZW1pdHRlchgEIAMoDjIWLmdyYXBoLnYxYWxwaGEuRW1pdHRlchIXCg9ncm91cF9ieV9zb3VyY2UYBSADKAkSHAoUZ3JvdXBfYnlfZGVzdGluYXRpb24YBiADKAkiUAoWR2V0Q29ubmVjdGlvbnNSZXNwb25zZRI2Cgtjb25uZWN0aW9ucxgBIAMoCzIhLmdyYXBoLnYxYWxwaGEuQ29ubmVjdGlvblJlc3BvbnNlIsgCChJDb25uZWN0aW9uUmVzcG9uc2USIQoEbGluaxgBIAEoCzITLmdyYXBoLnYxYWxwaGEuRWRnZRJKCg1zb3VyY2VfZmllbGRzGAIgAygLMjMuZ3JhcGgudjFhbHBoYS5Db25uZWN0aW9uUmVzcG9uc2UuU291cmNlRmllbGRzRW50cnkSVAoSZGVzdGluYXRpb25fZmllbGRzGAMgAygLMjguZ3JhcGgudjFhbHBoYS5Db25uZWN0aW9uUmVzcG9uc2UuRGVzdGluYXRpb25GaWVsZHNFbnRyeRozChFTb3VyY2VGaWVsZHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBGjgKFkRlc3RpbmF0aW9uRmllbGRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ATJvCgxHcmFwaFNlcnZpY2USXwoOR2V0Q29ubmVjdGlvbnMSJC5ncmFwaC52MWFscGhhLkdldENvbm5lY3Rpb25zUmVxdWVzdBolLmdyYXBoLnYxYWxwaGEuR2V0Q29ubmVjdGlvbnNSZXNwb25zZSIAQihaJmdpdGh1Yi5jb20vaXNvdmFsZW50L2lwYS9ncmFwaC92MWFscGhhYgZwcm90bzM", [file_common_time_v1alpha_range, file_graph_v1alpha_connection, file_graph_v1alpha_edge]);
+  fileDesc("ChtncmFwaC92MWFscGhhL3NlcnZpY2UucHJvdG8SDWdyYXBoLnYxYWxwaGEi1QEKFUdldENvbm5lY3Rpb25zUmVxdWVzdBIqCgZ3aW5kb3cYASABKAsyGi5jb21tb24udGltZS52MWFscGhhLlJhbmdlEhEKCWxpbmtfdHlwZRgCIAEoDRIOCgZmaWx0ZXIYAyABKAkSJwoHZW1pdHRlchgEIAMoDjIWLmdyYXBoLnYxYWxwaGEuRW1pdHRlchIXCg9ncm91cF9ieV9zb3VyY2UYBSADKAkSHAoUZ3JvdXBfYnlfZGVzdGluYXRpb24YBiADKAkSDQoFbGltaXQYByABKA0icgoWR2V0Q29ubmVjdGlvbnNSZXNwb25zZRI2Cgtjb25uZWN0aW9ucxgBIAMoCzIhLmdyYXBoLnYxYWxwaGEuQ29ubmVjdGlvblJlc3BvbnNlEg0KBWxpbWl0GAIgASgNEhEKCXRydW5jYXRlZBgDIAEoCCLIAgoSQ29ubmVjdGlvblJlc3BvbnNlEiEKBGxpbmsYASABKAsyEy5ncmFwaC52MWFscGhhLkVkZ2USSgoNc291cmNlX2ZpZWxkcxgCIAMoCzIzLmdyYXBoLnYxYWxwaGEuQ29ubmVjdGlvblJlc3BvbnNlLlNvdXJjZUZpZWxkc0VudHJ5ElQKEmRlc3RpbmF0aW9uX2ZpZWxkcxgDIAMoCzI4LmdyYXBoLnYxYWxwaGEuQ29ubmVjdGlvblJlc3BvbnNlLkRlc3RpbmF0aW9uRmllbGRzRW50cnkaMwoRU291cmNlRmllbGRzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARo4ChZEZXN0aW5hdGlvbkZpZWxkc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEybwoMR3JhcGhTZXJ2aWNlEl8KDkdldENvbm5lY3Rpb25zEiQuZ3JhcGgudjFhbHBoYS5HZXRDb25uZWN0aW9uc1JlcXVlc3QaJS5ncmFwaC52MWFscGhhLkdldENvbm5lY3Rpb25zUmVzcG9uc2UiAEIoWiZnaXRodWIuY29tL2lzb3ZhbGVudC9pcGEvZ3JhcGgvdjFhbHBoYWIGcHJvdG8z", [file_common_time_v1alpha_range, file_graph_v1alpha_connection, file_graph_v1alpha_edge]);
 
 /**
  * GetConnectionsRequest allows for specifying the type of connections that
@@ -91,6 +91,16 @@ export type GetConnectionsRequest = Message<"graph.v1alpha.GetConnectionsRequest
    * @generated from field: repeated string group_by_destination = 6;
    */
   groupByDestination: string[];
+
+  /**
+   * Limit is the maximum number of connections to return.
+   * If not set a default value will be used.
+   * If more connections could have been returned the `truncated` field
+   * in the response is set to true.
+   *
+   * @generated from field: uint32 limit = 7;
+   */
+  limit: number;
 };
 
 /**
@@ -115,6 +125,22 @@ export type GetConnectionsResponse = Message<"graph.v1alpha.GetConnectionsRespon
    * @generated from field: repeated graph.v1alpha.ConnectionResponse connections = 1;
    */
   connections: ConnectionResponse[];
+
+  /**
+   * The effective limit used. Either set to the `limit` field in the
+   * request or the default value.
+   *
+   * @generated from field: uint32 limit = 2;
+   */
+  limit: number;
+
+  /**
+   * Truncated is set to true if the number of matching connections
+   * exceeded the `limit`.
+   *
+   * @generated from field: bool truncated = 3;
+   */
+  truncated: boolean;
 };
 
 /**

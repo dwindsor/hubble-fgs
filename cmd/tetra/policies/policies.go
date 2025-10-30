@@ -8,18 +8,16 @@ import (
 	"text/tabwriter"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/cmd/tetra/common"
+	tetragonv1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	ipav1alpha1 "github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
 	"github.com/spf13/cobra"
 
-	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
-
-	common2 "github.com/isovalent/hubble-fgs/cmd/tetra/common"
-
-	"github.com/cilium/tetragon/cmd/tetra/common"
-
 	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
+	common2 "github.com/isovalent/hubble-fgs/cmd/tetra/common"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/network"
 	"github.com/isovalent/hubble-fgs/pkg/policies"
+	"github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
 )
 
 func addCmd() *cobra.Command {
@@ -92,7 +90,7 @@ func listCmd() *cobra.Command {
 				if namespace == "" {
 					namespace = "(global)"
 				}
-				policyKind := v1alpha1.TPKindDefinition
+				policyKind := tetragonv1alpha1.TPKindDefinition
 				policyName := pol.Name
 				name := sandboxpolicy.NameFromTPName(pol.Name)
 				if name != "" {
@@ -111,7 +109,7 @@ func listCmd() *cobra.Command {
 			for _, pol := range networkPolicies.GetInfo() {
 				fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n",
 					-1,
-					v1alpha1.TNPKindDefinition,
+					ipav1alpha1.TNPKindDefinition,
 					pol.Name,
 					"NONE",
 					"NONE",

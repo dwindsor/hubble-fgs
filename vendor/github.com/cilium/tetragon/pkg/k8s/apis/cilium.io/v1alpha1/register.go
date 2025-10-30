@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	ciliumio "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io"
+	ciliumiov1alpha1 "github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
 	isovalentv1alpha1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 )
 
@@ -48,6 +49,7 @@ func init() {
 
 	// (tam) Register isovalent.com types to avoid any OSS changes
 	localSchemeBuilder.Register(isovalentv1alpha1.AddToScheme)
+	localSchemeBuilder.Register(ciliumiov1alpha1.AddToScheme)
 }
 
 // Adds the list of known types to api.Scheme.
@@ -63,10 +65,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&SandboxPolicyList{},
 		&SandboxPolicyNamespaced{},
 		&SandboxPolicyNamespacedList{},
-		&TetragonNetworkPolicy{},
-		&TetragonNetworkPolicyList{},
-		&TetragonNetworkPolicyNamespaced{},
-		&TetragonNetworkPolicyNamespacedList{},
 		&AlertRule{},
 		&AlertRuleList{},
 	)

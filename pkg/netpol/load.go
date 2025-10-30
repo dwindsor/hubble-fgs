@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 )

@@ -66,8 +66,13 @@ type GetConnectionsRequest struct {
 	//
 	//	["destination.kubernetes.cluster_name", "destination.kubernetes.node_name"]
 	GroupByDestination []string `protobuf:"bytes,6,rep,name=group_by_destination,json=groupByDestination,proto3" json:"group_by_destination,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Limit is the maximum number of connections to return.
+	// If not set a default value will be used.
+	// If more connections could have been returned the `truncated` field
+	// in the response is set to true.
+	Limit         uint32 `protobuf:"varint,7,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetConnectionsRequest) Reset() {
@@ -142,6 +147,13 @@ func (x *GetConnectionsRequest) GetGroupByDestination() []string {
 	return nil
 }
 
+func (x *GetConnectionsRequest) GetLimit() uint32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
 // GetConnectionsResponse is the response provided by the GetConnections endpoint.
 type GetConnectionsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -149,7 +161,13 @@ type GetConnectionsResponse struct {
 	// criteria.
 	// There should be only one connection per unique vertex-edge-vertex.
 	// In other words, field values and time window are aggregated.
-	Connections   []*ConnectionResponse `protobuf:"bytes,1,rep,name=connections,proto3" json:"connections,omitempty"`
+	Connections []*ConnectionResponse `protobuf:"bytes,1,rep,name=connections,proto3" json:"connections,omitempty"`
+	// The effective limit used. Either set to the `limit` field in the
+	// request or the default value.
+	Limit uint32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Truncated is set to true if the number of matching connections
+	// exceeded the `limit`.
+	Truncated     bool `protobuf:"varint,3,opt,name=truncated,proto3" json:"truncated,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -189,6 +207,20 @@ func (x *GetConnectionsResponse) GetConnections() []*ConnectionResponse {
 		return x.Connections
 	}
 	return nil
+}
+
+func (x *GetConnectionsResponse) GetLimit() uint32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *GetConnectionsResponse) GetTruncated() bool {
+	if x != nil {
+		return x.Truncated
+	}
+	return false
 }
 
 // ConnectionResponse represents a specific connection.
@@ -272,16 +304,19 @@ var File_graph_v1alpha_service_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1bgraph/v1alpha/service.proto\x12\rgraph.v1alpha\x1a\x1fcommon/time/v1alpha/range.proto\x1a\x1egraph/v1alpha/connection.proto\x1a\x18graph/v1alpha/edge.proto\"\x8c\x02\n" +
+	"\x1bgraph/v1alpha/service.proto\x12\rgraph.v1alpha\x1a\x1fcommon/time/v1alpha/range.proto\x1a\x1egraph/v1alpha/connection.proto\x1a\x18graph/v1alpha/edge.proto\"\xa2\x02\n" +
 	"\x15GetConnectionsRequest\x122\n" +
 	"\x06window\x18\x01 \x01(\v2\x1a.common.time.v1alpha.RangeR\x06window\x12\x1b\n" +
 	"\tlink_type\x18\x02 \x01(\rR\blinkType\x12\x16\n" +
 	"\x06filter\x18\x03 \x01(\tR\x06filter\x120\n" +
 	"\aemitter\x18\x04 \x03(\x0e2\x16.graph.v1alpha.EmitterR\aemitter\x12&\n" +
 	"\x0fgroup_by_source\x18\x05 \x03(\tR\rgroupBySource\x120\n" +
-	"\x14group_by_destination\x18\x06 \x03(\tR\x12groupByDestination\"]\n" +
+	"\x14group_by_destination\x18\x06 \x03(\tR\x12groupByDestination\x12\x14\n" +
+	"\x05limit\x18\a \x01(\rR\x05limit\"\x91\x01\n" +
 	"\x16GetConnectionsResponse\x12C\n" +
-	"\vconnections\x18\x01 \x03(\v2!.graph.v1alpha.ConnectionResponseR\vconnections\"\x87\x03\n" +
+	"\vconnections\x18\x01 \x03(\v2!.graph.v1alpha.ConnectionResponseR\vconnections\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\rR\x05limit\x12\x1c\n" +
+	"\ttruncated\x18\x03 \x01(\bR\ttruncated\"\x87\x03\n" +
 	"\x12ConnectionResponse\x12'\n" +
 	"\x04link\x18\x01 \x01(\v2\x13.graph.v1alpha.EdgeR\x04link\x12X\n" +
 	"\rsource_fields\x18\x02 \x03(\v23.graph.v1alpha.ConnectionResponse.SourceFieldsEntryR\fsourceFields\x12g\n" +

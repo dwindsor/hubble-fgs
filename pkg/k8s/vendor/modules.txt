@@ -59,9 +59,11 @@ github.com/google/uuid
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/isovalent/ipa/k8s v1.18.0-pre.9.0.20251024003328-799831357a43
+# github.com/isovalent/ipa/k8s v1.18.0-rc.2
 ## explicit; go 1.25.0
 github.com/isovalent/ipa/k8s
+github.com/isovalent/ipa/k8s/apis/cilium.io
+github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1
 github.com/isovalent/ipa/k8s/apis/isovalent.com
 github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1
 # github.com/josharian/intern v1.0.0

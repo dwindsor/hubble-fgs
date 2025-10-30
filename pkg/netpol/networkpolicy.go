@@ -9,7 +9,7 @@ import (
 	"github.com/cilium/tetragon/pkg/manager"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"

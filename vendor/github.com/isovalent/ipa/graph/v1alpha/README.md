@@ -392,6 +392,7 @@ The filtering expression may use the `link` (type: Edge), `source` and `destinat
 | emitter | [Emitter](#graph-v1alpha-Emitter) | repeated | Emitter may be specified to limit the results to events emitted by specific data producers. |
 | group_by_source | [string](#string) | repeated | Field keys by which the source vertex should be grouped. At least one field MUST be provided. Example: [&#34;source.kubernetes.cluster_name&#34;, &#34;source.kubernetes.node_name&#34;] |
 | group_by_destination | [string](#string) | repeated | Field keys by which the destination vertex should be grouped. At least one field MUST be provided. Example: [&#34;destination.kubernetes.cluster_name&#34;, &#34;destination.kubernetes.node_name&#34;] |
+| limit | [uint32](#uint32) |  | Limit is the maximum number of connections to return. If not set a default value will be used. If more connections could have been returned the `truncated` field in the response is set to true. |
 
 
 
@@ -407,6 +408,8 @@ GetConnectionsResponse is the response provided by the GetConnections endpoint.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | connections | [ConnectionResponse](#graph-v1alpha-ConnectionResponse) | repeated | Connections is a list of all the connections that match the request criteria. There should be only one connection per unique vertex-edge-vertex. In other words, field values and time window are aggregated. |
+| limit | [uint32](#uint32) |  | The effective limit used. Either set to the `limit` field in the request or the default value. |
+| truncated | [bool](#bool) |  | Truncated is set to true if the number of matching connections exceeded the `limit`. |
 
 
 

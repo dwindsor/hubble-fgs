@@ -60,6 +60,12 @@ message GetConnectionsRequest {
   // Example:
   //   ["destination.kubernetes.cluster_name", "destination.kubernetes.node_name"]
   repeated string group_by_destination = 6;
+
+  // Limit is the maximum number of connections to return.
+  // If not set a default value will be used.
+  // If more connections could have been returned the `truncated` field
+  // in the response is set to true.
+  uint32 limit = 7;
 }
 
 // GetConnectionsResponse is the response provided by the GetConnections endpoint.
@@ -69,6 +75,14 @@ message GetConnectionsResponse {
   // There should be only one connection per unique vertex-edge-vertex.
   // In other words, field values and time window are aggregated.
   repeated ConnectionResponse connections = 1;
+
+  // The effective limit used. Either set to the `limit` field in the
+  // request or the default value.
+  uint32 limit = 2;
+
+  // Truncated is set to true if the number of matching connections
+  // exceeded the `limit`.
+  bool truncated = 3;
 }
 
 // ConnectionResponse represents a specific connection.

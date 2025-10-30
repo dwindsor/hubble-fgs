@@ -56,7 +56,8 @@ type SmartSwitchNetworkPolicy struct {
 // SmartSwitchNetworkPolicySpec specifies network policy rules.
 type SmartSwitchNetworkPolicySpec struct {
 	// Rules defines the network policy rules for SmartSwitch
-	// +optional
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
 	Rules []SmartSwitchNetworkPolicyRule `json:"rules,omitempty,omitzero"`
 }
 
@@ -71,6 +72,7 @@ func (snp *SmartSwitchNetworkPolicy) GetObjectMetaStruct() *metav1.ObjectMeta {
 // (no VRF or VLAN) then the policy applied against traffic that
 // does not belong to any logical network which may or may not
 // match any actual traffic depending on the switch configuration.
+// +kubebuilder:validation:XValidation:rule="!(has(self.vrf) && has(self.vlan))",message="at most one of the fields in [vrf vlan] may be set"
 type SmartSwitchNetwork struct {
 	// +kubebuilder:validation:Required
 	CIDR string `json:"cidr"`
@@ -117,9 +119,8 @@ type SmartSwitchNetworkDestination struct {
 	IPBlock []SmartSwitchNetwork `json:"ipBlock,omitempty"`
 	// ProtoPorts is an optional field to specify protocols and ports for a
 	// policy rule. The policy rule applies to the cross product of IPBlock
-	// and ProtoPorts. If the field is not specified, the policy rule applies
-	// to all supported protocols and all ports.
-	// +kubebuilder:validation:Optional
+	// and ProtoPorts.
+	// +kubebuilder:validation:Required
 	ProtoPorts []SmartSwitchProtocolPort `json:"protoPorts,omitempty"`
 }
 

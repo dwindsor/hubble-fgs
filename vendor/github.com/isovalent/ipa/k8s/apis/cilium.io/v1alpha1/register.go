@@ -4,26 +4,14 @@
 package v1alpha1
 
 import (
+	ciliumio "github.com/isovalent/ipa/k8s/apis/cilium.io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	ciliumio "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io"
-	ciliumiov1alpha1 "github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
-	isovalentv1alpha1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 )
 
 const (
 	CRDVersion = "v1alpha1"
-
-	// TPCRDName is the full name of the TracingPolicy CRD.
-	TPCRDName = TPKindDefinition + "/" + CRDVersion
-
-	// TPNamespacedCRDName is the full name of the TracingPolicy CRD.
-	TPNamespacedCRDName = TPNamespacedKindDefinition + "/" + CRDVersion
-
-	// PICRDName is the full name of the Tetragon Pod Info CRD.
-	PICRDName = PIKindDefinition + "/" + CRDVersion
 )
 
 // SchemeGroupVersion is group version used to register these objects
@@ -46,27 +34,15 @@ func init() {
 	// generated functions takes place in the generated files. The separation
 	// makes the code compile even when the generated files are missing.
 	localSchemeBuilder.Register(addKnownTypes)
-
-	// (tam) Register isovalent.com types to avoid any OSS changes
-	localSchemeBuilder.Register(isovalentv1alpha1.AddToScheme)
-	localSchemeBuilder.Register(ciliumiov1alpha1.AddToScheme)
 }
 
 // Adds the list of known types to api.Scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&TracingPolicy{},
-		&TracingPolicyList{},
-		&TracingPolicyNamespaced{},
-		&TracingPolicyNamespacedList{},
-		&PodInfo{},
-		&PodInfoList{},
-		&SandboxPolicy{},
-		&SandboxPolicyList{},
-		&SandboxPolicyNamespaced{},
-		&SandboxPolicyNamespacedList{},
-		&AlertRule{},
-		&AlertRuleList{},
+		&TetragonNetworkPolicy{},
+		&TetragonNetworkPolicyList{},
+		&TetragonNetworkPolicyNamespaced{},
+		&TetragonNetworkPolicyNamespacedList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

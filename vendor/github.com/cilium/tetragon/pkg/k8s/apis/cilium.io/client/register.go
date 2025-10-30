@@ -14,6 +14,7 @@ import (
 	"log/slog"
 
 	osscrdutils "github.com/cilium/tetragon-oss/pkg/k8s/crdutils"
+	ipak8s "github.com/isovalent/ipa/k8s"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/k8s/crdutils"
@@ -71,24 +72,18 @@ var (
 		crdsv1Alpha1SandboxPolicyNamespaced,
 	)
 
-	//go:embed crds/v1alpha1/cilium.io_tetragonnetworkpolicies.yaml
-	crdsv1Alpha1TetragonNetworkPolicy []byte
-
 	TetragonNetworkPolicyCRD = osscrdutils.NewCRDBytes(
 		slog.Default(),
 		"TetragonNetworkPolicy/v1alpha1",
 		"tetragonnetworkpolicies.cilium.io",
-		crdsv1Alpha1TetragonNetworkPolicy,
+		ipak8s.CRDsv1Alpha1TetragonNetworkPolicies,
 	)
-
-	//go:embed crds/v1alpha1/cilium.io_tetragonnetworkpoliciesnamespaced.yaml
-	crdsv1Alpha1TetragonNetworkPolicyNamespaced []byte
 
 	TetragonNetworkPolicyNamespacedCRD = osscrdutils.NewCRDBytes(
 		slog.Default(),
 		"TetragonNetworkPolicyNamespaced/v1alpha1",
 		"tetragonnetworkpoliciesnamespaced.cilium.io",
-		crdsv1Alpha1TetragonNetworkPolicyNamespaced,
+		ipak8s.CRDsv1Alpha1TetragonNetworkPoliciesNamespaced,
 	)
 
 	//go:embed crds/v1alpha1/cilium.io_alertrules.yaml

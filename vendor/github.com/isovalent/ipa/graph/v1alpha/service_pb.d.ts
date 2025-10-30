@@ -86,6 +86,16 @@ export declare type GetConnectionsRequest = Message<"graph.v1alpha.GetConnection
    * @generated from field: repeated string group_by_destination = 6;
    */
   groupByDestination: string[];
+
+  /**
+   * Limit is the maximum number of connections to return.
+   * If not set a default value will be used.
+   * If more connections could have been returned the `truncated` field
+   * in the response is set to true.
+   *
+   * @generated from field: uint32 limit = 7;
+   */
+  limit: number;
 };
 
 /**
@@ -109,6 +119,22 @@ export declare type GetConnectionsResponse = Message<"graph.v1alpha.GetConnectio
    * @generated from field: repeated graph.v1alpha.ConnectionResponse connections = 1;
    */
   connections: ConnectionResponse[];
+
+  /**
+   * The effective limit used. Either set to the `limit` field in the
+   * request or the default value.
+   *
+   * @generated from field: uint32 limit = 2;
+   */
+  limit: number;
+
+  /**
+   * Truncated is set to true if the number of matching connections
+   * exceeded the `limit`.
+   *
+   * @generated from field: bool truncated = 3;
+   */
+  truncated: boolean;
 };
 
 /**

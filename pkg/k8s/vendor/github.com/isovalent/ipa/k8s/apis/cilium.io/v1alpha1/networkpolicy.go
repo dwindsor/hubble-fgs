@@ -11,10 +11,9 @@
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	ciliumio "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io"
 	slimv1 "github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1"
+	ciliumio "github.com/isovalent/ipa/k8s/apis/cilium.io"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -27,13 +26,13 @@ const (
 	TNPKindDefinition = "TetragonNetworkPolicy"
 
 	// TPName is the full name of Cilium Egress NAT Policy
-	TNPName = TPPluralName + "." + ciliumio.GroupName
+	TNPName = TNPPluralName + "." + ciliumio.GroupName
 
 	// TPNamespacedPluralName is the plural name of Cilium Tracing Policy
 	TNPNamespacedPluralName = "tetragonnetworkpoliciesnamespaced"
 
 	// TPNamespacedName
-	TNPNamespacedName = TPNamespacedPluralName + "." + ciliumio.GroupName
+	TNPNamespacedName = TNPNamespacedPluralName + "." + ciliumio.GroupName
 
 	// TPKindDefinition is the kind name of Cilium Tracing Policy
 	TNPNamespacedKindDefinition = "TetragonNetworkPolicyNamespaced"
@@ -174,4 +173,16 @@ type NetworkPolicySpec struct {
 	DefaultAction string `json:"defaultAction"`
 	// Network Policy Spec defines a set of actions for network operations
 	Rules []NetworkPolicyRule `json:"rules,omitempty"`
+}
+
+type BinarySelector struct {
+	// +kubebuilder:validation:Enum=In;NotIn;Prefix;NotPrefix;Postfix;NotPostfix
+	// Filter operation.
+	Operator string `json:"operator"`
+	// Value to compare the argument against.
+	Values []string `json:"values"`
+	// In addition to binaries, match children processes of specified binaries.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	FollowChildren bool `json:"followChildren"`
 }
