@@ -1121,7 +1121,7 @@ func runTcpClient() {
 	}
 	randFile.Close()
 
-	socket, err := net.Dial(tcpProtocol, fmt.Sprintf("%s:%d", tcpHostname, tcpPortno))
+	socket, err := net.Dial(tcpProtocol, net.JoinHostPort(tcpHostname, fmt.Sprintf("%d", tcpPortno)))
 	if err != nil {
 		fmt.Printf("ERROR dialing socket\n")
 		panic(err)

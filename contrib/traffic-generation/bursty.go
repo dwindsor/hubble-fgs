@@ -120,7 +120,7 @@ func main() {
 	}
 	randFile.Close()
 
-	socket, _ = net.Dial(protocol, fmt.Sprintf("%s:%d", hostname, portno))
+	socket, _ = net.Dial(protocol, net.JoinHostPort(hostname, fmt.Sprintf("%d", portno)))
 
 	stepTimer := timer.NewPeriodicTimer("Step timer", sendStep, false)
 	stepTimer.Start(time.Duration(time.Second * time.Duration(stepDuration)))

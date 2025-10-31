@@ -9,7 +9,6 @@
 // permission is obtained from Isovalent Inc.
 
 //go:build linux && race_tests
-// +build linux,race_tests
 
 package bench
 

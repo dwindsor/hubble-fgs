@@ -344,7 +344,7 @@ func runUdpWatermarksClient() {
 	}
 	randFile.Close()
 
-	socket, err := net.Dial(udpProtocol, fmt.Sprintf("%s:%d", udpHostname, udpPortno))
+	socket, err := net.Dial(udpProtocol, net.JoinHostPort(udpHostname, fmt.Sprintf("%d", udpPortno)))
 	if err != nil {
 		fmt.Printf("ERROR dialing socket\n")
 		panic(err)
@@ -623,7 +623,7 @@ func runUdpLayer7Client() {
 	}
 	randFile.Close()
 
-	socket, err := net.Dial(udpProtocol, fmt.Sprintf("%s:%d", udpHostname, udpPortno))
+	socket, err := net.Dial(udpProtocol, net.JoinHostPort(udpHostname, fmt.Sprintf("%d", udpPortno)))
 	if err != nil {
 		fmt.Printf("ERROR dialing socket\n")
 		panic(err)
