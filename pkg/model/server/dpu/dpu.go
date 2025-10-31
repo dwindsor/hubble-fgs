@@ -94,6 +94,28 @@ func (p *peer) String() string {
 		l.AgentUid, l.Hostname, l.Architecture, l.OS, l.SerialNumber)
 }
 
+func (p *peer) SendPolicy(rule *DPUPolicyRule) error {
+	select {
+	case p.polCh <- rule:
+	// FIXME: this needs to be shorter than 1 second, as 1000 rules CANNOT take 1000 seconds to apply across DPUs
+	// but making it shorter runs the risk of skipping a rule because the channel is busy and right now we do not
+	// reconcile rules between FWA and AGW outside of the initial grpc connection, so if we skip a rule it is
+	// lost until the next reconnect
+	case <-time.After(1 * time.Second):
+		return fmt.Errorf("peer timed out, cannot submit policy rule")
+	}
+	return nil
+}
+
+func (p *peer) SendConfig(cfg *v1alpha.StreamDatapathConfigResponse) error {
+	select {
+	case p.cfgCh <- cfg:
+	case <-time.After(1 * time.Second):
+		return fmt.Errorf("peer timed out, cannot submit config object")
+	}
+	return nil
+}
+
 type DPUListener struct {
 	ctx       context.Context
 	address   string
@@ -353,12 +375,10 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 		return fmt.Errorf("unknown operation type %d", rule.Oper)
 	}
 
-	// Trying to send the rule into the peer channel, but timing out after 3 seconds
 	for _, dpu := range dpu.peerGroup {
-		select {
-		case dpu.polCh <- rule:
-		case <-time.After(3 * time.Second):
-			logger.GetLogger().Error("peer timed out, cannot submit rule", "peer", dpu.uid, "rule", *rule)
+		err := dpu.SendPolicy(rule)
+		if err != nil {
+			logger.GetLogger().Error("failed to send policy rule to peer", logfields.Error, err, "peer", dpu.uid, "rule", *rule)
 		}
 	}
 
@@ -430,7 +450,10 @@ func (dpu *DPUListener) SubscribeConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	for _, peer := range dpu.peerGroup {
-		peer.cfgCh <- &resp
+		err := peer.SendConfig(&resp)
+		if err != nil {
+			logger.GetLogger().Error("failed to send config object to peer", logfields.Error, err, "peer", peer.uid, "config", resp.Config.Config)
+		}
 	}
 	return nil
 }
@@ -470,7 +493,10 @@ func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg 
 			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
 			Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuCfg},
 		}
-		peer.cfgCh <- &resp
+		err = peer.SendConfig(&resp)
+		if err != nil {
+			logger.GetLogger().Error("failed to send config object to peer", logfields.Error, err, "peer", peer.uid, "config", resp.Config.Config)
+		}
 	}
 
 	return nil
