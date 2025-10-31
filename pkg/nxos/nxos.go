@@ -404,6 +404,11 @@ func (n *Nxos) waitForDpuAgent(ctx context.Context, expected int) error {
 		// linear backoff up to 10s, we really do want this to connect to
 		// the DPUs otherwise our firewall is unhealthy.
 		case <-time.After(currTimer):
+			// If skipDpu is set, skip DPU agent check and return immediately.
+			if n.SkipDpu {
+				logger.GetLogger().Info("SkipDpu is true, skipping DPU agent check")
+				return nil
+			}
 			status, err := n.dpuListener.GetDPUStatus()
 			if err != nil || len(status) != expected {
 				if currTimer < maxDPUAgentBackoff {
