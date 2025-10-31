@@ -13,9 +13,11 @@ package node
 import (
 	"context"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -82,6 +84,11 @@ func desiredNode(ctx context.Context, metadata local.MetadataService) (*v1alpha1
 	if err != nil {
 		return nil, err
 	}
+	validLables, invalidLabels := sanitizeLabels(labels)
+	if len(invalidLabels) > 0 {
+		logger.GetLogger().Warn("Skip these invalid labels were invalid in k8s TetragonNode resource",
+			"invalidLabels", invalidLabels)
+	}
 	id, err := metadata.GetInstanceId(ctx)
 	if err != nil {
 		return nil, err
@@ -111,7 +118,7 @@ func desiredNode(ctx context.Context, metadata local.MetadataService) (*v1alpha1
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: "default",
-			Labels:    labels,
+			Labels:    validLables,
 		},
 		Status: v1alpha1.TetragonNodeStatus{
 			Id:              id,
@@ -128,4 +135,23 @@ func desiredNode(ctx context.Context, metadata local.MetadataService) (*v1alpha1
 			},
 		},
 	}, nil
+}
+
+func sanitizeLabels(labels map[string]string) (map[string]string, map[string]string) {
+	sanitized := make(map[string]string)
+	invalid := make(map[string]string)
+	for k, v := range labels {
+		labelNameErrors := validation.IsQualifiedName(k)
+		labelValueErrors := validation.IsValidLabelValue(v)
+		if len(labelNameErrors) > 0 || len(labelValueErrors) > 0 {
+			logger.GetLogger().Warn("Ignored invalid label for TetragonNode",
+				"label", k, "value", v,
+				"nameErrors", labelNameErrors,
+				"valueErrors", labelValueErrors)
+			invalid[k] = v
+			continue
+		}
+		sanitized[k] = v
+	}
+	return sanitized, invalid
 }
