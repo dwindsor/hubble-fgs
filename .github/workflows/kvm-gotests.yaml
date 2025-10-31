@@ -29,7 +29,7 @@ jobs:
             runner_labels: ${{ vars.KVM_GH_RUNNER_ARM64 }}
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          # - "rhel8.9-20241218.004849"
+          - "rhel8.9-20251031.120020"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "bpf-next-20251031.120020"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
@@ -43,13 +43,13 @@ jobs:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "5.4-20251031.120020"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          # - "4.19-20251031.120020"
+          - "4.19-20251031.120020"
         # TODO: temporarily disable testing for 4.19 and 5.4 kernels
         # The excluded kernels require more test failure investigation
         exclude:
           - arch: arm64
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "rhel8.9-20241218.004849" # currently not supported on ARM64
+            kernel: "rhel8.9-20251031.120020" # currently not supported on ARM64
     runs-on: ${{ matrix.runner_labels }}
     permissions:
       contents: read
