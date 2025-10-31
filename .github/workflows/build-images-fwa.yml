@@ -62,7 +62,7 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     needs: [ init ]
     if: ${{ needs.init.result == 'success' }}
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - name: Checkout Repo
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
