@@ -26,6 +26,7 @@ env:
 jobs:
   init:
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 1
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
@@ -63,6 +64,7 @@ jobs:
   build-agw-binaries:
     needs: [ init ]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 3
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -121,6 +123,7 @@ jobs:
   build-agw-image:
     needs: [ init ]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 10
     env:
       DOCKER_IMAGE_TAG: ${{ needs.init.outputs.version }}
     steps:
@@ -161,6 +164,7 @@ jobs:
   trigger-code-drop:
     needs: [ init, build-agw-image, build-agw-binaries ]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 1
     if: ${{ needs.build-agw-image.result == 'success' && needs.build-agw-binaries.result == 'success' && github.ref == 'refs/heads/master' }}
     env:
       TARGET_ORG: cisco-hypershield
@@ -227,6 +231,7 @@ jobs:
   trigger-corona-scan:
     needs: [ init, build-agw-image ]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 1
     if: ${{ needs.build-agw-image.result == 'success' }}
     env:
       TARGET_ORG: cisco-hypershield

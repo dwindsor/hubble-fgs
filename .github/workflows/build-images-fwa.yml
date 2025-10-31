@@ -22,7 +22,7 @@ concurrency:
 jobs:
   init:
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
-    timeout-minutes: 5
+    timeout-minutes: 1
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
@@ -62,7 +62,7 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     needs: [ init ]
     if: ${{ needs.init.result == 'success' }}
-    timeout-minutes: 60
+    timeout-minutes: 35
     steps:
       - name: Checkout Repo
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -99,7 +99,7 @@ jobs:
     needs: [ init, build-fwa-image ]
     if: ${{ always() && !cancelled() && needs.build-fwa-image.result == 'success' }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
-    timeout-minutes: 5
+    timeout-minutes: 1
     outputs:
       artifact_dir: ${{ steps.prepare-artifacts.outputs.artifact_dir }}
     steps:
@@ -139,7 +139,7 @@ jobs:
     needs: [init, combine-artifacts]
     if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
-    timeout-minutes: 5
+    timeout-minutes: 1
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
