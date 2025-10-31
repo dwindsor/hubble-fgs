@@ -1,7 +1,7 @@
 KERNEL     ?=
 KERNEL_URL ?=
 # renovate: datasource=docker
-IMAGE      ?= quay.io/lvh-images/kind:6.1-20250923.075842@sha256:e456123c27d97e84cd3ee586495d8311579cab9faf3075d749018605d73eaced
+IMAGE      ?= quay.io/lvh-images/kind:6.1-20251031.120020@sha256:3665b60251cb2e99d81fca070565b2303a239110d6e866b9a2991ef8dfaf7ec3
 SSH_PORT   ?= 3333
 SSH_ARGS   ?=
 HOST_MOUNT ?= ../..
