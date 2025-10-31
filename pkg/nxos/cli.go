@@ -2,6 +2,7 @@ package nxos
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strconv"
@@ -26,8 +27,23 @@ func (n *Nxos) ShowStatus(_ context.Context) string {
 	if !n.SkipDpu {
 		status += "\n" + "Number of DPUs: " +
 			strconv.FormatInt(int64(n.NumDpu), 10)
+
+		// Calculating number of DPUs in sync for policy
+		inSync := 0
+		csum := n.dpuListener.Checksum()
+		hexChecksum := hex.EncodeToString(csum[:])
+		statuses, err := n.dpuListener.GetDPUStatus()
+		if err != nil {
+			logger.GetLogger().Error("failed to get dpu status", logfields.Error, err)
+		} else {
+			for _, s := range statuses {
+				if s.PolicyChecksum == hexChecksum {
+					inSync += 1
+				}
+			}
+		}
 		status += "\n" + "Number of DPUs in sync of policies: " +
-			strconv.FormatInt(int64(len(n.InSync)), 10)
+			strconv.FormatInt(int64(inSync), 10)
 	}
 	status += "\n" + "Next global ID to be allocated: " +
 		strconv.FormatUint(uint64(n.Alloc.Next), 10)
