@@ -26,16 +26,18 @@ import (
 
 const (
 	dpuTimeout = 6 // in second
-
-	// DPU IP mappings
-	AgentIdDpu1 = "169.254.28.1"
-	AgentIdDpu2 = "169.254.24.1"
-	AgentIdDpu3 = "169.254.36.1"
-	AgentIdDpu4 = "169.254.32.1"
 )
 
 var (
-	dpuCount = 4 // HACK: need to configure this to change to 2 for deschutes
+	// DPU IP mappings to DPU number
+	DPUMap = map[string]int{
+		"169.254.28.1":  1,
+		"169.254.24.1":  2,
+		"169.254.36.1":  3,
+		"169.254.32.1":  4,
+		"169.254.151.1": 1,
+		"169.254.159.1": 2,
+	}
 )
 
 type DPUSubject struct {
@@ -117,11 +119,15 @@ func (p *peer) SendConfig(cfg *v1alpha.StreamDatapathConfigResponse) error {
 }
 
 type DPUListener struct {
-	ctx       context.Context
-	address   string
-	peerGroup map[string]*peer
-	ruleSet   map[[sha256.Size]byte]*DPURule
-	mtx       sync.RWMutex
+	ctx     context.Context
+	address string
+
+	// peerGroupSize refers to the expected number of peers, not the current size of peerGroup map
+	peerGroupSize uint16
+	peerGroup     map[string]*peer
+
+	ruleSet map[[sha256.Size]byte]*DPURule
+	mtx     sync.RWMutex
 }
 
 func NewDPUListener(ctx context.Context, address string) *DPUListener {
@@ -157,6 +163,12 @@ func (dpu *DPUListener) Start() error {
 	}()
 
 	return grpcServer.Serve(lis)
+}
+
+func (dpu *DPUListener) SetPeerGroupSize(size uint16) {
+	dpu.mtx.Lock()
+	defer dpu.mtx.Unlock()
+	dpu.peerGroupSize = size
 }
 
 func (dpu *DPUListener) Checksum() [sha256.Size]byte {
@@ -227,7 +239,7 @@ func (dpu *DPUListener) StatusReportString() string {
 	buf := new(bytes.Buffer)
 	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
 	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "LastPing\tHealthy\tUID\tHost\tAgent\tDatapath\tPolicySync")
+	fmt.Fprintln(w, "LastPing\tHealthy\tDPU\tUID\tHost\tAgent\tDatapath\tPolicySync")
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	//fixme
@@ -243,11 +255,7 @@ func (dpu *DPUListener) StatusReportString() string {
 			timeStatus = fmt.Sprintf("%dm %ds", minutes, seconds)
 		}
 
-		healthy := "false"
-		if epochDiff <= dpuTimeout {
-			healthy = "true"
-		}
-
+		healthy := epochDiff <= dpuTimeout
 		status := s.lastStatus
 		sync := ""
 		if status.PolicyChecksum == hexChecksum {
@@ -256,10 +264,16 @@ func (dpu *DPUListener) StatusReportString() string {
 			sync = fmt.Sprintf("false (%x != %s)", string(csum[:]), status.PolicyChecksum)
 		}
 
+		dpuNumber, ok := DPUMap[status.AgentUid]
+		if !ok {
+			dpuNumber = -1
+		}
+
 		// Try to put policy sync last as it extends to a big string on failure
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%t\t%d\t%s\t%s\t%s\t%s\t%s\n",
 			timeStatus,
 			healthy,
+			dpuNumber,
 			status.AgentUid,
 			status.Hostname,
 			status.AgentVersion,
@@ -488,7 +502,7 @@ func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg 
 	for _, peer := range dpu.peerGroup {
 		peer.mtx.RLock()
 		defer peer.mtx.RUnlock()
-		dpuCfg, err := getPerDpuConfig(fullCfg, peer.uid)
+		dpuCfg, err := getPerDpuConfig(fullCfg, peer.uid, dpu.peerGroupSize)
 		if err != nil {
 			logger.GetLogger().Error("dpu config callback function failed", logfields.Error, err)
 			continue

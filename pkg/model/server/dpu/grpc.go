@@ -96,80 +96,90 @@ func (s *FWAServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 		return fmt.Errorf("AgentUid cannot be empty")
 	}
 
-	peer := s.dpuListener.addPeer(req.AgentUid)
+	initializedPeer := func() *peer {
+		s.dpuListener.mtx.Lock()
+		defer s.dpuListener.mtx.Unlock()
+		peer := s.dpuListener.addPeerLocked(req.AgentUid)
 
-	// Diffing the peer's config set with the current latest config set to be able
-	// to pass down changes to the peer that just connected.
-	configList := library.GetRepository().GetConfigObjects()
-	adds, removes := config.DiffConfigSets(peer.cfgSet, configList)
+		// Diffing the peer's config set with the current latest config set to be able
+		// to pass down changes to the peer that just connected.
+		configList := library.GetRepository().GetConfigObjects()
+		adds, removes := config.DiffConfigSets(peer.cfgSet, configList)
 
-	// Making sure that the dpu config object is passed down first, as it sets
-	// some of the service configuration that is required for other configs.
-	dpuConfigObj, ok := adds[v1alpha.ConfigType_CONFIG_TYPE_DPU]
-	if ok {
-		dpuCfg, err := getPerDpuConfig(dpuConfigObj.GetConfigDpu(), peer.uid)
-		if err != nil {
-			logger.GetLogger().Error("failed to pass down dpu config to dpu", logfields.Error, err)
-		} else {
-			obj := &v1alpha.ConfigObject{
-				Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
-				Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuCfg},
+		// Making sure that the dpu config object is passed down first, as it sets
+		// some of the service configuration that is required for other configs.
+		dpuConfigObj, ok := adds[v1alpha.ConfigType_CONFIG_TYPE_DPU]
+		if ok {
+			dpuCfg, err := getPerDpuConfig(dpuConfigObj.GetConfigDpu(), peer.uid, s.dpuListener.peerGroupSize)
+			if err != nil {
+				logger.GetLogger().Error("failed to pass down dpu config to dpu", logfields.Error, err)
+			} else {
+				obj := &v1alpha.ConfigObject{
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+					Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuCfg},
+				}
+				peer.cfgSet[v1alpha.ConfigType_CONFIG_TYPE_DPU] = obj
+				resp := v1alpha.StreamDatapathConfigResponse{
+					Oper:   v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT,
+					Config: obj,
+				}
+				err := stream.Send(&resp)
+				if err != nil {
+					logger.GetLogger().Warn("Client send failed", "clientID", peer.uid, logfields.Error, err)
+					return nil
+				}
 			}
-			peer.cfgSet[v1alpha.ConfigType_CONFIG_TYPE_DPU] = obj
+			delete(adds, v1alpha.ConfigType_CONFIG_TYPE_DPU)
+		}
+
+		// Iterating through all the adds and deletes and passing the messages to the DPU peer.
+		for typ, obj := range adds {
+			peer.cfgSet[typ] = obj
 			resp := v1alpha.StreamDatapathConfigResponse{
 				Oper:   v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT,
 				Config: obj,
 			}
 			err := stream.Send(&resp)
 			if err != nil {
-				logger.GetLogger().Warn("Client send failed", "clientID", peer.uid, logfields.Error, err)
+				logger.GetLogger().Warn("Client send config upsert failed", "clientID", peer.uid, logfields.Error, err)
 				return nil
 			}
 		}
-		delete(adds, v1alpha.ConfigType_CONFIG_TYPE_DPU)
-	}
+		for typ, obj := range removes {
+			peer.cfgSet[typ] = obj
+			resp := v1alpha.StreamDatapathConfigResponse{
+				Oper:   v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE,
+				Config: obj,
+			}
+			err := stream.Send(&resp)
+			if err != nil {
+				logger.GetLogger().Warn("Client send config delete failed", "clientID", peer.uid, logfields.Error, err)
+				return nil
+			}
+		}
 
-	// Iterating through all the adds and deletes and passing the messages to the DPU peer.
-	for typ, obj := range adds {
-		peer.cfgSet[typ] = obj
-		resp := v1alpha.StreamDatapathConfigResponse{
-			Oper:   v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT,
-			Config: obj,
-		}
-		err := stream.Send(&resp)
-		if err != nil {
-			logger.GetLogger().Warn("Client send config upsert failed", "clientID", peer.uid, logfields.Error, err)
-			return nil
-		}
-	}
-	for typ, obj := range removes {
-		peer.cfgSet[typ] = obj
-		resp := v1alpha.StreamDatapathConfigResponse{
-			Oper:   v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE,
-			Config: obj,
-		}
-		err := stream.Send(&resp)
-		if err != nil {
-			logger.GetLogger().Warn("Client send config delete failed", "clientID", peer.uid, logfields.Error, err)
-			return nil
-		}
+		return peer
+	}()
+
+	if initializedPeer == nil {
+		return nil
 	}
 
 	for {
 		select {
 		case <-s.dpuListener.ctx.Done():
-			logger.GetLogger().Info("Client connection lost", "clientID", peer.uid)
+			logger.GetLogger().Info("Client connection lost", "clientID", initializedPeer.uid)
 			return nil
-		case resp := <-peer.cfgCh:
+		case resp := <-initializedPeer.cfgCh:
 			// Updating cfgSet to save desired config state
 			// This is the only thread that writes to the CfgSet for this peer
 			switch resp.Oper {
 			case v1alpha.ConfigOperation_CONFIG_OPERATION_UNSPECIFIED:
 				logger.GetLogger().Warn("Unspecified operation, passing message through to datapath")
 			case v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT:
-				peer.cfgSet[v1alpha.ConfigType(resp.Config.Type)] = resp.Config
+				initializedPeer.cfgSet[v1alpha.ConfigType(resp.Config.Type)] = resp.Config
 			case v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE:
-				delete(peer.cfgSet, v1alpha.ConfigType(resp.Config.Type))
+				delete(initializedPeer.cfgSet, v1alpha.ConfigType(resp.Config.Type))
 			default:
 				logger.GetLogger().Error("Invalid operation, failed to send to datapath")
 				continue
@@ -177,10 +187,10 @@ func (s *FWAServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 
 			err := stream.Send(resp)
 			if err != nil {
-				logger.GetLogger().Warn("Client send failed", "clientID", peer.uid, logfields.Error, err)
+				logger.GetLogger().Warn("Client send failed", "clientID", initializedPeer.uid, logfields.Error, err)
 				return nil
 			}
-			logger.GetLogger().Debug("Pushed config to client", "clientID", peer.uid, "config", resp)
+			logger.GetLogger().Debug("Pushed config to client", "clientID", initializedPeer.uid, "config", resp)
 		}
 	}
 }

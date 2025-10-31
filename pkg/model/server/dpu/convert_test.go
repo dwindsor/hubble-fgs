@@ -177,6 +177,7 @@ func TestGetPerDpuConfig(t *testing.T) {
 		name        string
 		fullCfg     *v1alpha.DpuConfig
 		id          string
+		dpuCount    uint16
 		expectError bool
 		expectedCfg *v1alpha.DpuConfig
 	}{
@@ -188,7 +189,8 @@ func TestGetPerDpuConfig(t *testing.T) {
 				PortLow:    1000,
 				PortHigh:   1999,
 			},
-			id:          AgentIdDpu1,
+			id:          "169.254.28.1",
+			dpuCount:    4,
 			expectError: false,
 			expectedCfg: &v1alpha.DpuConfig{
 				ServiceMac: "aa:bb:cc:dd:ee:ff",
@@ -205,7 +207,8 @@ func TestGetPerDpuConfig(t *testing.T) {
 				PortLow:    1000,
 				PortHigh:   1999,
 			},
-			id:          AgentIdDpu2,
+			id:          "169.254.24.1",
+			dpuCount:    4,
 			expectError: false,
 			expectedCfg: &v1alpha.DpuConfig{
 				ServiceMac: "aa:bb:cc:dd:ee:ff",
@@ -222,7 +225,8 @@ func TestGetPerDpuConfig(t *testing.T) {
 				PortLow:    1000,
 				PortHigh:   1999,
 			},
-			id:          AgentIdDpu3,
+			id:          "169.254.36.1",
+			dpuCount:    4,
 			expectError: false,
 			expectedCfg: &v1alpha.DpuConfig{
 				ServiceMac: "aa:bb:cc:dd:ee:ff",
@@ -239,7 +243,8 @@ func TestGetPerDpuConfig(t *testing.T) {
 				PortLow:    1000,
 				PortHigh:   1999,
 			},
-			id:          AgentIdDpu4,
+			id:          "169.254.32.1",
+			dpuCount:    4,
 			expectError: false,
 			expectedCfg: &v1alpha.DpuConfig{
 				ServiceMac: "aa:bb:cc:dd:ee:ff",
@@ -251,12 +256,13 @@ func TestGetPerDpuConfig(t *testing.T) {
 		{
 			name:        "Nil fullCfg",
 			fullCfg:     nil,
-			id:          AgentIdDpu1,
+			id:          "169.254.28.1",
+			dpuCount:    4,
 			expectError: true,
 			expectedCfg: nil,
 		},
 		{
-			name: "Empty ID string treated as DPU1",
+			name: "Empty ID",
 			fullCfg: &v1alpha.DpuConfig{
 				ServiceMac: "aa:bb:cc:dd:ee:ff",
 				ServiceIp:  "192.168.1.1",
@@ -264,16 +270,12 @@ func TestGetPerDpuConfig(t *testing.T) {
 				PortHigh:   1999,
 			},
 			id:          "",
-			expectError: false,
-			expectedCfg: &v1alpha.DpuConfig{
-				ServiceMac: "aa:bb:cc:dd:ee:ff",
-				ServiceIp:  "192.168.1.1",
-				PortLow:    1000,
-				PortHigh:   1249,
-			},
+			dpuCount:    4,
+			expectError: true,
+			expectedCfg: nil,
 		},
 		{
-			name: "Invalid ID string treated as DPU1",
+			name: "Invalid ID",
 			fullCfg: &v1alpha.DpuConfig{
 				ServiceMac: "aa:bb:cc:dd:ee:ff",
 				ServiceIp:  "192.168.1.1",
@@ -281,13 +283,9 @@ func TestGetPerDpuConfig(t *testing.T) {
 				PortHigh:   1999,
 			},
 			id:          "invalid-dpu-id",
-			expectError: false,
-			expectedCfg: &v1alpha.DpuConfig{
-				ServiceMac: "aa:bb:cc:dd:ee:ff",
-				ServiceIp:  "192.168.1.1",
-				PortLow:    1000,
-				PortHigh:   1249,
-			},
+			dpuCount:    4,
+			expectError: true,
+			expectedCfg: nil,
 		},
 		{
 			name: "Empty ServiceMac and ServiceIp",
@@ -297,7 +295,8 @@ func TestGetPerDpuConfig(t *testing.T) {
 				PortLow:    1000,
 				PortHigh:   1999,
 			},
-			id:          AgentIdDpu1,
+			id:          "169.254.28.1",
+			dpuCount:    4,
 			expectError: false,
 			expectedCfg: &v1alpha.DpuConfig{
 				ServiceMac: "",
@@ -314,7 +313,8 @@ func TestGetPerDpuConfig(t *testing.T) {
 				PortLow:    8080,
 				PortHigh:   8083,
 			},
-			id:          AgentIdDpu1,
+			id:          "169.254.28.1",
+			dpuCount:    4,
 			expectError: false,
 			expectedCfg: &v1alpha.DpuConfig{
 				ServiceMac: "aa:bb:cc:dd:ee:ff",
@@ -331,7 +331,8 @@ func TestGetPerDpuConfig(t *testing.T) {
 				PortLow:    1000,
 				PortHigh:   999,
 			},
-			id:          AgentIdDpu1,
+			id:          "169.254.28.1",
+			dpuCount:    4,
 			expectError: true,
 		},
 		{
@@ -342,7 +343,8 @@ func TestGetPerDpuConfig(t *testing.T) {
 				PortLow:    0,
 				PortHigh:   65535,
 			},
-			id:          AgentIdDpu2,
+			id:          "169.254.24.1",
+			dpuCount:    4,
 			expectError: false,
 			expectedCfg: &v1alpha.DpuConfig{
 				ServiceMac: "aa:bb:cc:dd:ee:ff",
@@ -358,12 +360,12 @@ func TestGetPerDpuConfig(t *testing.T) {
 			// Handle nil fullCfg case separately to avoid panic
 			if tt.fullCfg == nil {
 				assert.Panics(t, func() {
-					getPerDpuConfig(tt.fullCfg, tt.id)
+					getPerDpuConfig(tt.fullCfg, tt.id, tt.dpuCount)
 				}, "Expected panic when fullCfg is nil")
 				return
 			}
 
-			result, err := getPerDpuConfig(tt.fullCfg, tt.id)
+			result, err := getPerDpuConfig(tt.fullCfg, tt.id, tt.dpuCount)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -383,9 +385,6 @@ func TestGetPerDpuConfig(t *testing.T) {
 }
 
 func TestGetPerDpuConfig_DpuCountVariants(t *testing.T) {
-	original := dpuCount
-	defer func() { dpuCount = original }()
-
 	fullCfg := &v1alpha.DpuConfig{
 		ServiceMac: "aa:bb:cc:dd:ee:ff",
 		ServiceIp:  "192.168.1.1",
@@ -394,10 +393,8 @@ func TestGetPerDpuConfig_DpuCountVariants(t *testing.T) {
 	}
 
 	t.Run("2-DPUs mapping and out-of-range", func(t *testing.T) {
-		dpuCount = 2
-
 		// DPU1 slice
-		cfg, err := getPerDpuConfig(fullCfg, AgentIdDpu1)
+		cfg, err := getPerDpuConfig(fullCfg, "169.254.151.1", 2)
 		assert.NoError(t, err)
 		assert.NotNil(t, cfg)
 		assert.Equal(t, uint32(1000), cfg.PortLow)
@@ -406,32 +403,29 @@ func TestGetPerDpuConfig_DpuCountVariants(t *testing.T) {
 		assert.Equal(t, fullCfg.ServiceIp, cfg.ServiceIp)
 
 		// DPU2 slice
-		cfg, err = getPerDpuConfig(fullCfg, AgentIdDpu2)
+		cfg, err = getPerDpuConfig(fullCfg, "169.254.159.1", 2)
 		assert.NoError(t, err)
 		assert.NotNil(t, cfg)
 		assert.Equal(t, uint32(1500), cfg.PortLow)
 		assert.Equal(t, uint32(1999), cfg.PortHigh)
 
-		// Unknown ID maps to index 0 (treated as DPU1)
-		cfg, err = getPerDpuConfig(fullCfg, "unknown-id")
-		assert.NoError(t, err)
-		assert.NotNil(t, cfg)
-		assert.Equal(t, uint32(1000), cfg.PortLow)
-		assert.Equal(t, uint32(1499), cfg.PortHigh)
-
-		// Out-of-range IDs for 2 DPUs
-		cfg, err = getPerDpuConfig(fullCfg, AgentIdDpu3)
+		// Unknown ID fails
+		cfg, err = getPerDpuConfig(fullCfg, "unknown-id", 2)
 		assert.Error(t, err)
 		assert.Nil(t, cfg)
 
-		cfg, err = getPerDpuConfig(fullCfg, AgentIdDpu4)
+		// Out-of-range IDs for 2 DPUs
+		cfg, err = getPerDpuConfig(fullCfg, "169.254.36.1", 2)
+		assert.Error(t, err)
+		assert.Nil(t, cfg)
+
+		cfg, err = getPerDpuConfig(fullCfg, "169.254.32.1", 2)
 		assert.Error(t, err)
 		assert.Nil(t, cfg)
 	})
 
 	t.Run("4-DPUs mapping check DPU4", func(t *testing.T) {
-		dpuCount = 4
-		cfg, err := getPerDpuConfig(fullCfg, AgentIdDpu4)
+		cfg, err := getPerDpuConfig(fullCfg, "169.254.32.1", 4)
 		assert.NoError(t, err)
 		assert.NotNil(t, cfg)
 		assert.Equal(t, uint32(1750), cfg.PortLow)

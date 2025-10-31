@@ -153,28 +153,22 @@ func reportRequestToDPU(req *v1alpha.ReportStatusRequest) *DPUReportStatus {
 
 // Passes the full DpuConfig from the agw and returns the port mapped DPU specific
 // DpuConfig object.
-func getPerDpuConfig(fullCfg *v1alpha.DpuConfig, id string) (*v1alpha.DpuConfig, error) {
+func getPerDpuConfig(fullCfg *v1alpha.DpuConfig, id string, dpuCount uint16) (*v1alpha.DpuConfig, error) {
 	// Divides the port range into equal parts mapped to each DPU by IP
 	dpuCfg := v1alpha.DpuConfig{
 		ServiceMac: fullCfg.ServiceMac,
 		ServiceIp:  fullCfg.ServiceIp,
 	}
-	portCount := int(fullCfg.PortHigh-fullCfg.PortLow+1) / dpuCount
+	portCount := int(fullCfg.PortHigh-fullCfg.PortLow+1) / int(dpuCount)
 	if portCount < 1 {
 		return nil, fmt.Errorf("dpu config creation failed, unable to assign each dpu a port")
 	}
-	index := 0
-	switch id {
-	case AgentIdDpu1:
-		index = 0
-	case AgentIdDpu2:
-		index = 1
-	case AgentIdDpu3:
-		index = 2
-	case AgentIdDpu4:
-		index = 3
+	dpuNum, ok := DPUMap[id]
+	if !ok {
+		return nil, fmt.Errorf("dpu config creation failed, unable to map id to dpu")
 	}
-	if index >= dpuCount {
+	index := dpuNum - 1
+	if index >= int(dpuCount) {
 		return nil, fmt.Errorf("incompatible port range for dpu %s with a total dpu count of %d", id, dpuCount)
 	}
 	dpuCfg.PortLow = fullCfg.PortLow + uint32(portCount*index)

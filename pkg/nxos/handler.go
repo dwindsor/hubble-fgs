@@ -855,6 +855,7 @@ func (n *Nxos) updtSasDpuExt(ctx context.Context, items *model.Cisco_NX_OSDevice
 
 	if items.NumDpus != nil {
 		n.NumDpu = *items.NumDpus
+		n.dpuListener.SetPeerGroupSize(n.NumDpu)
 		logger.GetLogger().Debug("Number of DPUs", "dpu", n.NumDpu)
 
 		for i := uint16(1); i <= n.NumDpu; i++ {
