@@ -227,7 +227,7 @@ func (dpu *DPUListener) StatusReportString() string {
 	buf := new(bytes.Buffer)
 	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
 	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "LastPing\tUID\tHost\tAgent\tDatapath\tPolicySync")
+	fmt.Fprintln(w, "LastPing\tHealthy\tUID\tHost\tAgent\tDatapath\tPolicySync")
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	//fixme
@@ -243,6 +243,11 @@ func (dpu *DPUListener) StatusReportString() string {
 			timeStatus = fmt.Sprintf("%dm %ds", minutes, seconds)
 		}
 
+		healthy := "false"
+		if epochDiff <= dpuTimeout {
+			healthy = "true"
+		}
+
 		status := s.lastStatus
 		sync := ""
 		if status.PolicyChecksum == hexChecksum {
@@ -251,8 +256,10 @@ func (dpu *DPUListener) StatusReportString() string {
 			sync = fmt.Sprintf("false (%x != %s)", string(csum[:]), status.PolicyChecksum)
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		// Try to put policy sync last as it extends to a big string on failure
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			timeStatus,
+			healthy,
 			status.AgentUid,
 			status.Hostname,
 			status.AgentVersion,
