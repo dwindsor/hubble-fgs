@@ -66,7 +66,7 @@ func (dp *AcceleratedDataplaneProcess) Init(_ context.Context) error {
 	}
 
 	// Getting the software version of the DPU, setting it to "missing" if it fails
-	version, err := runCommand("fwupdate", "-L")
+	version, err := runCommand("/nic/tools/fwupdate", "-L")
 	if err != nil {
 		logger.GetLogger().Error("failed to get DPU software version", logfields.Error, err)
 		dp.Version = "missing"
