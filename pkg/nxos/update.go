@@ -213,6 +213,8 @@ func (n *Nxos) setSystemState(ctx context.Context) error {
 	var state string
 	if n.Agent.SystemState == SysStDpuPending {
 		state = "0x1"
+	} else if n.Agent.SystemState == SysStConnPending {
+		state = "0x2"
 	} else if n.Agent.SystemState == (SysStDpuPending | SysStConnPending) {
 		state = "0x3"
 	} else if n.Agent.SystemState == SysStDpuReady {

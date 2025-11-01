@@ -129,7 +129,6 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	n.ResetConn(ctx)
 
 	// get proxy config
 	err = n.getProxyConfig(ctx)
@@ -562,8 +561,8 @@ func (n *Nxos) Setup(ctx context.Context, cancel context.CancelFunc, low, high u
 	}
 	logger.GetLogger().Debug("Service enabled")
 
-	// DPU inventory-done pending and controller connection pending
-	n.Agent.SystemState = SysStDpuPending | SysStConnPending
+	// DPU inventory-done pending
+	n.Agent.SystemState |= SysStDpuPending
 	err = n.setSystemState(ctx)
 	if err != nil {
 		logger.GetLogger().Error("Fail to set system state", logfields.Error, err)

@@ -209,6 +209,10 @@ func (agw *AgentGateway) RegisterStatus(ctx context.Context, status bool) {
 	}
 }
 
+func (agw *AgentGateway) ResetConnectionStatus(ctx context.Context) {
+	nxos.Nexus.ResetConn(ctx)
+}
+
 // SetK8sCtlrAuthToken sets the Kubernetes controller authentication token in both the AgentToken and Nxos structs,
 // and persists the token if possible. Returns an error if the operation fails.
 // This function is invoked when the user provides a token in agw command line option, which takes precedence.

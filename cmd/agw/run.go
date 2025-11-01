@@ -150,6 +150,11 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		// to the k8s control plane.
 		conf.K8sConfigRetry = enterpriseConf.K8sConfigRetry
 
+		// Reset NXOS connection status before starting K8s manager
+		if Config.EnableNXOS {
+			agwAgent.ResetConnectionStatus(ctx)
+		}
+
 		// Initialize and connect to K8s controller manager
 		logger.GetLogger().Info("initializing Kubernetes Manager for on-prem deployment")
 		kubernetesManager := manager.Get()
