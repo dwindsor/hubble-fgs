@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <?define ProductName = "Tetragon Enterprise" ?>
+  <?define ProductDir = "Tetragon" ?>
+  <?define Manufacturer = "Isovalent at Cisco" ?>
+
+  <!--
+    UpgradeCode must remain unchanged for the life of the family of
+    products that upgrade/replace each other 
+  -->
+  <?define UpgradeCode = "{B18064F8-9803-4E81-BE84-E849FA1768AE}" ?>
+
+</Include>

@@ -1,0 +1,94 @@
+﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Fragment>
+    <ComponentGroup Id="comp.TetragonBpfDrivers" Directory="dir.TetragonBpfDrivers">
+      <File Source="!(bindpath.staging)\Release\EbpfApi.dll"/>
+      <File Source="!(bindpath.staging)\Release\ntos_ebpf_ext_export_program_info.exe"/>
+      <File Source="!(bindpath.staging)\Release\ntosebpfext.inf"/>
+      <File Source="!(bindpath.staging)\Release\ntosebpfext.sys"/>
+      <File Source="!(bindpath.staging)\Release\ntosebpfext.pdb"/>
+      <File Source="!(bindpath.staging)\Release\ntosebpfext.wprp"/>
+      <File Source="!(bindpath.staging)\Release\process_monitor.sys" />
+      <File Source="!(bindpath.staging)\Release\tcp_connect.sys" />
+    </ComponentGroup>
+
+    <ComponentGroup Id="comp.TetragonBinaries" Directory="dir.TetragonBinaries">
+      <Files Include="!(bindpath.staging)\tetragon\*.exe" />
+    </ComponentGroup>
+
+    <Component Id="comp.TracingPolicyDir" Directory="dir.TracingPolicyDir" Guid="2de7c165-C5C0-5ee1-9df0-372069019d01">
+      <CreateFolder />
+      <RemoveFolder Id="dir.TracingPolicyDir" On="uninstall" />
+    </Component>
+
+    <Component Id="comp.OtherPolicyDir" Directory="dir.OtherPolicyDir" Guid="2de7c165-C5C0-5ee1-9df0-372069019d02">
+      <CreateFolder />
+      <RemoveFolder Id="dir.OtherPolicyDir" On="uninstall" />
+    </Component>
+
+    <!-- NtosEbpfExt -->
+    <CustomAction Id="NtosEbpfExt_Driver_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="NtosEbpfExt_Driver_install" Before="NtosEbpfExt_Driver_install" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe create NtosEbpfExt type=kernel start=auto binpath="[dir.TetragonBpfDrivers]NtosEbpfExt.sys"'/>
+
+    <CustomAction Id="NtosEbpfExt_Driver_install_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="NtosEbpfExt_Driver_install_rollback" Before="NtosEbpfExt_Driver_install_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe delete NtosEbpfExt'/>
+
+    <CustomAction Id="NtosEbpfExt_Driver_start" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="NtosEbpfExt_Driver_start" Before="NtosEbpfExt_Driver_start" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe start NtosEbpfExt'/>
+
+    <CustomAction Id="NtosEbpfExt_Driver_start_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="NtosEbpfExt_Driver_start_rollback" Before="NtosEbpfExt_Driver_start_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe stop NtosEbpfExt'/>
+
+    <CustomAction Id="NtosEbpfExt_Driver_stop" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="NtosEbpfExt_Driver_stop" Before="NtosEbpfExt_Driver_stop" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe stop NtosEbpfExt'/>
+
+    <CustomAction Id="NtosEbpfExt_Driver_stop_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="NtosEbpfExt_Driver_stop_rollback" Before="NtosEbpfExt_Driver_stop_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe start NtosEbpfExt'/>
+
+    <CustomAction Id="NtosEbpfExt_Driver_uninstall" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="NtosEbpfExt_Driver_uninstall" Before="NtosEbpfExt_Driver_uninstall" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe delete NtosEbpfExt'/>
+
+    <CustomAction Id="NtosEbpfExt_Driver_uninstall_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="NtosEbpfExt_Driver_uninstall_rollback" Before="NtosEbpfExt_Driver_uninstall_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe create NtosEbpfExt type=kernel start=auto binpath="[dir.TetragonBpfDrivers]NtosEbpfExt.sys"'/>
+
+
+    <!-- ntos_ebpf_ext_export_program_info -->
+    <?define TetraExportCmd = '"[%ComSpec]" /c "[dir.TetragonBpfDrivers]ntos_ebpf_ext_export_program_info.exe"' ?>
+    <CustomAction Id="Tetra_eBPF_store_clear_HKLM_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetra_eBPF_store_clear_HKLM_install" Before="Tetra_eBPF_store_clear_HKLM_install" Sequence="execute" Value='$(var.TetraExportCmd) --clear'/>
+
+    <CustomAction Id="Tetra_eBPF_store_clear_HKLM_install_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetra_eBPF_store_clear_HKLM_install_rollback" Before="Tetra_eBPF_store_clear_HKLM_install_rollback" Sequence="execute" Value='$(var.TetraExportCmd) --clear'/>
+
+    <CustomAction Id="Tetra_eBPF_store_setup_HKLM_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetra_eBPF_store_setup_HKLM_install" Before="Tetra_eBPF_store_setup_HKLM_install" Sequence="execute" Value='$(var.TetraExportCmd)'/>
+
+    <CustomAction Id="Tetra_eBPF_store_clear_HKLM_uninstall" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetra_eBPF_store_clear_HKLM_uninstall" Before="Tetra_eBPF_store_clear_HKLM_uninstall" Sequence="execute" Value='$(var.TetraExportCmd) --clear'/>
+
+
+    <CustomAction Id="Tetra_eBPF_store_clear_HKCU_install" Execute="deferred" Return="check" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetra_eBPF_store_clear_HKCU_install" Before="Tetra_eBPF_store_clear_HKCU_install" Sequence="execute" Value='$(var.TetraExportCmd) --clear'/>
+
+    <CustomAction Id="Tetra_eBPF_store_clear_HKCU_install_rollback" Execute="rollback" Return="ignore" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetra_eBPF_store_clear_HKCU_install_rollback" Before="Tetra_eBPF_store_clear_HKCU_install_rollback" Sequence="execute" Value='$(var.TetraExportCmd) --clear'/>
+
+    <CustomAction Id="Tetra_eBPF_store_setup_HKCU_install" Execute="deferred" Return="check" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetra_eBPF_store_setup_HKCU_install" Before="Tetra_eBPF_store_setup_HKCU_install" Sequence="execute" Value='$(var.TetraExportCmd)'/>
+
+    <CustomAction Id="Tetra_eBPF_store_clear_HKCU_uninstall" Execute="deferred" Return="ignore" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetra_eBPF_store_clear_HKCU_uninstall" Before="Tetra_eBPF_store_clear_HKCU_uninstall" Sequence="execute" Value='$(var.TetraExportCmd) --clear'/>
+
+  </Fragment>
+
+</Wix>

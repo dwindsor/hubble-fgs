@@ -1,0 +1,135 @@
+﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <?include Metadata.wxi ?>
+
+  <Package Name="$(ProductName)"
+           Manufacturer="$(Manufacturer)"
+           Version="$(ProductVersion)"
+           ProductCode="$(ProductCode)"
+           UpgradeCode="$(UpgradeCode)"
+           InstallerVersion="500"
+           Language="1033">
+
+    <util:QueryWindowsWellKnownSIDs />
+
+    <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
+
+    <MediaTemplate EmbedCab="yes"  />
+
+    <Icon Id="icon.TetragonShield" SourceFile="assets\tetragon-shield.ico" />
+
+    <Property Id="ARPCONTACT" Value="Isovalent at Cisco" />
+    <Property Id="ARPPRODUCTICON" Value="icon.TetragonShield" />
+    <Property Id="ARPHELPLINK" Value="https://isovalent.com" />
+
+    <!--<Property Id="REINSTALLMODE" Value="omus" />-->
+
+    <!--<ui:WixUI Id="WixUI_InstallDir" />-->
+    <ui:WixUI Id="WixUI_Minimal" />
+
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="assets\Cisco_General_Terms.rtf" />
+    
+    <WixVariable Id="WixUIBannerBmp" Value="assets\banner-top.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="assets\banner-dialog-background-enterprise.bmp" />
+
+    <Feature Id="TetragonOnWindows">
+      <ComponentGroupRef Id="comp.eBPFWindows" />
+      <ComponentGroupRef Id="comp.TetragonBpfDrivers" />
+      <ComponentGroupRef Id="comp.TetragonBinaries" />
+      <ComponentGroupRef Id="comp.ShawlServiceWrapper" />
+      <ComponentRef Id="comp.TracingPolicyDir" />
+      <ComponentRef Id="comp.OtherPolicyDir" />
+    </Feature>
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="dir.eBPFWindows" Name="ebpf-for-windows">
+        <Directory Id="dir.eBPFWindows.Drivers" Name="drivers"/>
+      </Directory>
+
+      <Directory Id="INSTALLFOLDER" Name="$(ProductDir)">
+        <Directory Id="dir.TetragonBinaries" Name="cmd" />
+        <Directory Id="dir.TetragonBpfDrivers" Name="BPF"/>
+        <Directory Id="dir.TracingPolicyDir" Name="tetragon.tp.d" />
+        <Directory Id="dir.OtherPolicyDir" Name="tetragon.policies.d" />
+      </Directory>
+    </StandardDirectory>
+
+    <InstallExecuteSequence>
+      <!-- eBPFCore -->
+      <Custom Action="eBPFCore_Driver_install" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="eBPFCore_Driver_install_rollback" Before="eBPFCore_Driver_install" Condition="NOT Installed" />
+      <Custom Action="eBPFCore_Driver_start" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPFCore_Driver_start_rollback" Before="eBPFCore_Driver_start" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPFCore_Driver_stop" After="InstallInitialize" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="eBPFCore_Driver_stop_rollback" Before="eBPFCore_Driver_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="eBPFCore_Driver_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="eBPFCore_Driver_uninstall_rollback" Before="eBPFCore_Driver_uninstall" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="eBPFCore_Driver_uninstall_flush" Before="InstallFinalize" />
+
+      <!-- NetEbpfExt -->
+      <Custom Action="NetEbpfExt_Driver_install" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="NetEbpfExt_Driver_install_rollback" Before="NetEbpfExt_Driver_install" Condition="NOT Installed" />
+      <Custom Action="NetEbpfExt_Driver_start" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="NetEbpfExt_Driver_start_rollback" Before="NetEbpfExt_Driver_start" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="NetEbpfExt_Driver_stop" After="InstallInitialize" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="NetEbpfExt_Driver_stop_rollback" Before="NetEbpfExt_Driver_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="NetEbpfExt_Driver_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="NetEbpfExt_Driver_uninstall_rollback" Before="NetEbpfExt_Driver_uninstall" Condition='Installed AND (REMOVE="ALL")' />
+
+      <!-- NtosEbpfExt -->
+      <Custom Action="NtosEbpfExt_Driver_install" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="NtosEbpfExt_Driver_install_rollback" Before="NtosEbpfExt_Driver_install" Condition="NOT Installed" />
+      <Custom Action="NtosEbpfExt_Driver_start" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="NtosEbpfExt_Driver_start_rollback" Before="NtosEbpfExt_Driver_start" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="NtosEbpfExt_Driver_stop" After="InstallInitialize" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="NtosEbpfExt_Driver_stop_rollback" Before="NtosEbpfExt_Driver_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="NtosEbpfExt_Driver_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="NtosEbpfExt_Driver_uninstall_rollback" Before="NtosEbpfExt_Driver_uninstall" Condition='Installed AND (REMOVE="ALL")' />
+
+      <!-- ebpfnetsh.dll -->
+      <Custom Action="ebpfnetsh_helper_install" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="ebpfnetsh_helper_install_rollback" Before="ebpfnetsh_helper_install" Condition="NOT Installed" />
+      <Custom Action="ebpfnetsh_helper_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="ebpfnetsh_helper_uninstall_rollback" Before="ebpfnetsh_helper_uninstall" Condition='Installed AND (REMOVE="ALL")' />
+
+      <!-- export_program_info -->
+      <Custom Action="eBPF_store_clear_HKLM_install" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPF_store_clear_HKLM_install_rollback" Before="eBPF_store_clear_HKLM_install" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPF_store_setup_HKLM_install" After="eBPF_store_clear_HKLM_install" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPF_store_clear_HKLM_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+
+      <Custom Action="eBPF_store_clear_HKCU_install" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPF_store_clear_HKCU_install_rollback" Before="eBPF_store_clear_HKCU_install" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPF_store_setup_HKCU_install" After="eBPF_store_clear_HKCU_install" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPF_store_clear_HKCU_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+
+      <!-- ntos_ebpf_ext_export_program_info -->
+      <Custom Action="Tetra_eBPF_store_clear_HKLM_install" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Tetra_eBPF_store_clear_HKLM_install_rollback" Before="Tetra_eBPF_store_clear_HKLM_install" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Tetra_eBPF_store_setup_HKLM_install" After="Tetra_eBPF_store_clear_HKLM_install" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Tetra_eBPF_store_clear_HKLM_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+
+      <Custom Action="Tetra_eBPF_store_clear_HKCU_install" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Tetra_eBPF_store_clear_HKCU_install_rollback" Before="Tetra_eBPF_store_clear_HKCU_install" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Tetra_eBPF_store_setup_HKCU_install" After="Tetra_eBPF_store_clear_HKCU_install" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Tetra_eBPF_store_clear_HKCU_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+
+      <!-- Shawl service wrapper -->
+      <Custom Action="Shawl_install" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="Shawl_install_rollback" Before="Shawl_install" Condition="NOT Installed" />
+      <Custom Action="Shawl_start" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Shawl_start_rollback" Before="Shawl_start" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Shawl_stop" After="InstallInitialize" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="Shawl_stop_rollback" Before="Shawl_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="Shawl_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Shawl_uninstall_rollback" Before="Shawl_uninstall" Condition='Installed AND (REMOVE="ALL")' />
+
+    </InstallExecuteSequence>
+
+  </Package>
+
+</Wix>

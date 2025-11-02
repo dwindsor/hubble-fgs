@@ -1,0 +1,10 @@
+﻿<Project>
+
+  <PropertyGroup>
+    <WixSdkVer>6.0.2</WixSdkVer>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <BaseOutputPath>..\build\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>..\build\obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+  
+</Project>

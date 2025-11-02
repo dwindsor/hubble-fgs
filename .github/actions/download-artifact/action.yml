@@ -25,6 +25,10 @@ outputs:
     description: "Path where the artifact was downloaded"
     value: ${{ steps.setup.outputs.ARTIFACT_PATH }}
 
+  artifact-single:
+    description: "Contains FullName of the file in the single-file artifact package"
+    value: ${{ steps.verify.outputs.ARTIFACT_SINGLE }}
+
 runs:
   using: "composite"
   steps:
@@ -71,5 +75,13 @@ runs:
           throw "No files found in downloaded artifact"
         }
 
+        if ($filesCount -eq 1) {
+          $fullName = $files[0].FullName
+          echo "ARTIFACT_SINGLE=$fullName" >> $env:GITHUB_OUTPUT
+        }
+
         Write-Host "✓ Artifact downloaded successfully"
         Write-Host "Files downloaded: $filesCount"
+        Write-Host "::group::Contents:"
+        $files | Select-Object Length, FullName | Format-Table
+        Write-Host "::endgroup::"

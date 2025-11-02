@@ -1,0 +1,14 @@
+<Solution>
+  <Configurations>
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/tools/">
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="local-build.ps1" />
+    <File Path="local-prep-staging.ps1" />
+  </Folder>
+  <Project Path="src/TetragonEnterprise.wixproj" Type="b7dd6f7e-def8-4e67-b5b7-07ef123db6f0" />
+</Solution>

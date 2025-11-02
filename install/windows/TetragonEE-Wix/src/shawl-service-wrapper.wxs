@@ -1,0 +1,65 @@
+﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Fragment>
+
+    <!-- Use Shawl (https://github.com/mtkennerly/shawl) to run Tetragon as a Windows service.
+         Once native Windows Service support is added, this will be removed. -->
+
+    <ComponentGroup Id="comp.ShawlServiceWrapper" Directory="dir.TetragonBinaries">
+      <File Source="!(bindpath.staging)\shawl\shawl.exe" />
+    </ComponentGroup>
+
+    <CustomAction Id="Shawl_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Shawl_install" Before="Shawl_install" Sequence="execute"
+                 Value='"[dir.TetragonBinaries]shawl.exe"
+  add
+  --name "TetragonEnterprise"
+  --log-cmd-as TetragonEnterprise
+  --log-dir "\\?\[INSTALLFOLDER]logs"
+  --cwd "\\?\[dir.TetragonBinaries]\"
+  --
+  "\\?\[dir.TetragonBinaries]Tetragon.exe" --enable-tcp
+'/>
+
+
+    <CustomAction Id="Shawl_install_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Shawl_install_rollback" Before="Shawl_install_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe delete TetragonEnterprise'/>
+
+    <CustomAction Id="Shawl_start" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Shawl_start" Before="Shawl_start" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe start TetragonEnterprise'/>
+
+    <CustomAction Id="Shawl_start_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Shawl_start_rollback" Before="Shawl_start_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe stop TetragonEnterprise'/>
+
+    <CustomAction Id="Shawl_stop" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Shawl_stop" Before="Shawl_stop" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe stop TetragonEnterprise'/>
+
+    <CustomAction Id="Shawl_stop_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Shawl_stop_rollback" Before="Shawl_stop_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe start TetragonEnterprise'/>
+
+    <CustomAction Id="Shawl_uninstall" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Shawl_uninstall" Before="Shawl_uninstall" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe delete TetragonEnterprise'/>
+
+    <CustomAction Id="Shawl_uninstall_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Shawl_uninstall_rollback" Before="Shawl_uninstall_rollback" Sequence="execute"
+                 Value='"[dir.TetragonBinaries]shawl.exe"
+  add
+  --name "TetragonEnterprise"
+  --log-cmd-as TetragonEnterprise
+  --log-dir "\\?\[INSTALLFOLDER]logs"
+  --cwd "\\?\[dir.TetragonBinaries]\"
+  --
+  "\\?\[dir.TetragonBinaries]Tetragon.exe" --enable-tcp
+'/>
+
+  </Fragment>
+
+</Wix>

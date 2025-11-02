@@ -1,0 +1,43 @@
+﻿<Project Sdk="WixToolset.Sdk/6.0.2">
+
+  <PropertyGroup>
+    <StagingRoot Condition="'$(CI)' != 'true' and '$(StagingRoot)' == ''">../staging</StagingRoot>
+    <ProductMsiName Condition="'$(CI)' != 'true' and '$(ProductMsiName)' == ''">TetragonEnterprise</ProductMsiName>
+    <ProductCode Condition="'$(CI)' != 'true' and '$(ProductCode)' == ''">DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF</ProductCode>
+    <ProductVersion Condition="'$(CI)' != 'true' and '$(ProductVersion)' == ''">9.9.9</ProductVersion>
+
+    <TargetName>$(ProductMsiName)-v$(ProductVersion)</TargetName>
+
+    <CompilerAdditionalOptions>
+      -cabcache $(StagingRoot)\cache
+    </CompilerAdditionalOptions>
+
+    <DefineConstants>
+      ProductVersion=$(ProductVersion);
+      ProductCode=$(ProductCode);
+      $(DefineConstants)
+    </DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DefineConstants>Debug;TRACE;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="metadata.wxi" />
+    <BindPath BindName="staging" Include="$(StagingRoot)\unpacked" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Util.wixext" Version="$(WixSdkVer)" />
+    <PackageReference Include="WixToolset.UI.wixext" Version="$(WixSdkVer)" />
+    <PackageReference Include="WixToolset.NetFx.wixext" Version="$(WixSdkVer)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="assets\banner-dialog-background-enterprise.bmp" />
+    <Content Include="assets\banner-top.bmp" />
+    <Content Include="assets\tetragon-shield.ico" />
+  </ItemGroup>
+
+</Project>

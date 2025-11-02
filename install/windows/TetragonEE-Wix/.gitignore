@@ -1,0 +1,11 @@
+.vs/
+bin/
+obj/
+build/
+
+staging/
+!staging/.gitkeep
+
+*.binlog
+*.wixpdb
+*.log

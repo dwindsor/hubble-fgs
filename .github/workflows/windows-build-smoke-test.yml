@@ -1,56 +1,77 @@
 name: Windows Build and Smoke
+
 on:
   pull_request:
     paths-ignore:
       - "**.md"
       - "contrib/grafana/**"
-
   push:
     branches:
       - master
     paths-ignore:
       - "**.md"
       - "contrib/grafana/**"
+
+env:
+  TEMP: D:\temp
+  GOARCH: amd64
+  GOOS: windows
+  GOCACHE: D:\gocache
+  GOMODCACHE: D:\gomodcache
+  BUILD_CONFIGURATION: Release
+  BUILD_PLATFORM: x64
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+
 jobs:
   windows-ebpf-prog-build:
     name: Build Windows ebpf programs
     runs-on: windows-2025
-    permissions:
-      contents: read
     timeout-minutes: 25
 
-    env:
-      GOCACHE: D:\gocache
-      GOMODCACHE: D:\gomodcache
-      TEMP: D:\temp
-      CI_EFW_VERSION: 0.20.0
-      BUILD_CONFIGURATION: Release
-      BUILD_PLATFORM: x64
+    permissions:
+      contents: read
 
     steps:
       - name: Create Temp Directory
-        run: mkdir D:\temp
         shell: pwsh
+        run: mkdir D:\temp
 
       - name: Checkout Tetragon Repo
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           submodules: true
 
+      - name: "Download LLVM 18.1.8"
+        id: download-llvm
+        uses: ./.github/actions/download-file
+        with:
+          file-url: "https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/LLVM-18.1.8-win64.exe"
+          download-dir: "${{ env.TEMP }}"
+
       - name: Install LLVM 18.1.8
+        shell: pwsh
         run: |
           # Install LLVM 18.1.8 to ensure consistent version across runners
-          try {
-            choco install llvm --version=18.1.8 --allow-downgrade --force -y
+          try { 
+            Start-Process -FilePath "${{ steps.download-llvm.outputs.downloaded-file }}" `
+                -ArgumentList "/S" `
+                -Wait `
+                -NoNewWindow `
+                -PassThru            
+
             # Add installed LLVM to PATH first so it takes precedence
             echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
             Write-Host "✓ Successfully installed LLVM 18.1.8"
-          } catch {
-            Write-Warning "Failed to install LLVM 18.1.8 via chocolatey: $($_.Exception.Message)"
+
+            Write-Host "Clang (LLVM):"
+            Write-Host "  $(& 'C:\Program Files\LLVM\bin\clang.exe' --version)"
+          } 
+          catch {
+            Write-Warning "✗ Failed to install LLVM 18.1.8:  $($_.Exception.Message)"
             Write-Host "Continuing with pre-installed LLVM version"
           }
 
-      - name: Set MSVC Environment Variables
+      - name: Set up Environment Variables
         shell: cmd
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
@@ -58,22 +79,17 @@ jobs:
           powershell.exe "echo 'msvc_tools_version=%VCToolsVersion%' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
           powershell.exe "echo 'ASAN_WIN_CONTINUE_ON_INTERCEPTION_FAILURE=true' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
           powershell.exe "echo 'VCINSTALLDIR=%VCINSTALLDIR%' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+          powershell.exe "echo '%VCINSTALLDIR%\tools\llvm\bin' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
         with:
           msbuild-architecture: x64
 
-      - name: Add Visual Studio LLVM to path
+      - name: Check clang version (MSVC)
+        shell: pwsh
         run: |
-          echo "$env:VCINSTALLDIR\tools\llvm\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Check for Clang version (MSVC)
-        run: clang.exe --version
-
-      - name: Check clang version (LLVM)
-        shell: cmd
-        run: '"c:\Program Files\llvm\bin\clang.exe" --version'
+          Write-Host "  $(& 'clang.exe' --version)"
 
       - name: Clone msft/ntosebpfext
         id: download-ntosebpfet
@@ -85,13 +101,14 @@ jobs:
           git checkout e7dc209a8be0da2ff5d75f5772a0ee0bf4a10383
 
       - name: Copy Process_monitor.c file
+        shell: pwsh
         run: |
           $sourcePath = "${{ github.workspace }}\modules\tetragon-oss\bpf\windows\process_monitor.c"
           $destinationPath = "${{ env.TEMP }}\ntosebpfext\tools\process_monitor_bpf\process_monitor.c"
           Copy-Item -Path $sourcePath -Destination $destinationPath -Force
-        shell: pwsh
 
       - name: Configuring repo for first build
+        shell: pwsh
         working-directory: ${{ env.TEMP }}\ntosebpfext
         env:
           CXXFLAGS: /ZH:SHA_256 ${{ env.CXX_FLAGS }}
@@ -100,8 +117,16 @@ jobs:
           .\scripts\initialize_repo.ps1
 
       - name: Build Process monitor ebpf program
+        shell: pwsh
         working-directory: ${{ env.TEMP }}\ntosebpfext
-        run: msbuild -target:Tools\process_monitor_bpf:Rebuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=${{env.BUILD_PLATFORM}} /bl:${{env.BUILD_PLATFORM}}_${{env.BUILD_CONFIGURATION}}\build_logs\build.binlog ${{env.BUILD_OPTIONS}} ${{env.SOLUTION_FILE_PATH}}
+        run: |
+          msbuild -target:Tools\process_monitor_bpf:Rebuild `
+            /m `
+            /p:Configuration=${{env.BUILD_CONFIGURATION}} `
+            /p:Platform=${{env.BUILD_PLATFORM}} `
+            /bl:${{env.BUILD_PLATFORM}}_${{env.BUILD_CONFIGURATION}}\build_logs\build.binlog `
+            ${{env.BUILD_OPTIONS}} `
+            ${{env.SOLUTION_FILE_PATH}}
 
       - name: "Download efw nuget package"
         id: download-ebpf-nuget
@@ -121,27 +146,50 @@ jobs:
           zip-file: "${{ env.TEMP }}/efw.zip"
           extract-dir: '${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0'
 
+      # TODO: This uses v0.18 of eBPF-for-windows
       - name: Build tcp_connect monitor ebpf program
-        shell: cmd
+        shell: pwsh
         working-directory: ${{ github.workspace }}\bpf\windows
-        run: '"c:\Program Files\llvm\bin\clang.exe" -g -target bpf -O2 -Werror -I${{ env.TEMP }}\ntosebpfext\packages\eBPF-for-Windows.0.18.0\build\native\include -c .\tcp_connect.c -o tcp_connect.o'
+        run: |
+          & 'C:\Program Files\LLVM\bin\clang.exe' -g -O2 -Werror -target bpf `
+            -I${{ env.TEMP }}\ntosebpfext\packages\eBPF-for-Windows.0.18.0\build\native\include `
+            -c .\tcp_connect.c `
+            -o tcp_connect.o
 
       - name: Link tcp_connect monitor ebpf program
         shell: pwsh
         working-directory: ${{ github.workspace }}\bpf\windows
         run: |
-          ${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0\build\native\bin\Convert-BpfToNative.ps1 -FileName tcp_connect -IncludeDir ${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0\build\native\include -Platform x64 -Configuration Release -KernelMode $True -Verbose -Packages ${{ env.TEMP }}\ntosebpfext\packages
-          Copy-Item -Path ${{ github.workspace }}\bpf\windows\tcp_connect.sys -Destination ${{ env.TEMP }}\ntosebpfext\${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} -Force
+          ${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0\build\native\bin\Convert-BpfToNative.ps1 `
+            -FileName tcp_connect `
+            -IncludeDir ${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0\build\native\include `
+            -Platform x64 `
+            -Configuration Release `
+            -KernelMode $True `
+            -Verbose `
+            -Packages ${{ env.TEMP }}\ntosebpfext\packages
+
+          Copy-Item `
+            -Path ${{ github.workspace }}\bpf\windows\tcp_connect.sys `
+            -Destination ${{ env.TEMP }}\ntosebpfext\${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} `
+            -Force
 
       - name: Stage tcp_connect monitor ebpf program
         shell: pwsh
         working-directory: ${{ github.workspace }}\bpf\windows
-        run: Copy-Item -Path ${{ github.workspace }}\bpf\windows\tcp_connect.sys -Destination ${{ env.TEMP }}\ntosebpfext\${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} -Force
+        run: |
+          Copy-Item `
+            -Path ${{ github.workspace }}\bpf\windows\tcp_connect.sys `
+            -Destination ${{ env.TEMP }}\ntosebpfext\${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} `
+            -Force
 
       - name: Zip Build Output
+        shell: pwsh
         working-directory: ${{ env.TEMP }}\ntosebpfext
         run: |
-          Compress-Archive -Path ${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} -DestinationPath .\build-${{env.BUILD_PLATFORM}}.${{env.BUILD_CONFIGURATION}}.zip
+          Compress-Archive `
+            -Path ${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} `
+            -DestinationPath .\build-${{env.BUILD_PLATFORM}}.${{env.BUILD_CONFIGURATION}}.zip
 
       - name: Upload Build Output
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
@@ -152,18 +200,9 @@ jobs:
 
   windows-tetragon-build:
     name: Build, Unit Test and Upload Windows Tetragon and Tetra Binaries
-    needs: windows-ebpf-prog-build
     runs-on: windows-2025
     timeout-minutes: 15
-
-    permissions:
-      contents: read
-      actions: read
-
-    env:
-      TEMP: D:\temp
-      GOARCH: amd64
-      GOOS: windows
+    needs: windows-ebpf-prog-build
 
     steps:
       - name: Checkout
@@ -207,7 +246,7 @@ jobs:
           $setupScript = Get-ChildItem -Path $ebpfPath -Filter "setup-ebpf.ps1" -Recurse | Select-Object -First 1
 
           if ($setupScript) {
-              Write-Host "Found setup script: $($setupScript.FullName)"
+              Write-Host "✓ Found setup script: $($setupScript.FullName)"
               
               try {
                   Push-Location -Path $setupScript.DirectoryName
@@ -218,7 +257,7 @@ jobs:
                   Write-Host "✓ Setup script execution completed"
               }
               catch {
-                  Write-Error "Failed to execute setup script: $($_.Exception.Message)"
+                  Write-Error "✗ Failed to execute setup script: $($_.Exception.Message)"
                   throw
               }
               finally {
@@ -226,7 +265,7 @@ jobs:
               }
           }
           else {
-              Write-Error "Setup script 'setup-ebpf.ps1' not found in the extracted package"
+              Write-Error "✗ Setup script 'setup-ebpf.ps1' not found in the extracted package"
               Write-Host "Directory contents:"
               Get-ChildItem -Path $ebpfPath -Recurse | ForEach-Object { 
                   Write-Host "  $($_.FullName)" 
@@ -236,9 +275,10 @@ jobs:
 
           Write-Host "✓ eBPF for Windows installed successfully"
 
-      - name: Add eBPF for Windows to PATH
+      - name: "Add eBPF for Windows to PATH"
         shell: pwsh
-        run: echo "C:\Program Files\ebpf-for-windows\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        run: |
+          echo "C:\Program Files\ebpf-for-windows\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Download ntosebpfext-build-output
         id: download-ntosebpfext-build-output
@@ -254,8 +294,8 @@ jobs:
           extract-dir: '${{ env.TEMP }}\test'
 
       - name: Install ntosebpfext
-        working-directory: ${{ env.TEMP }}\test
         shell: pwsh
+        working-directory: ${{ env.TEMP }}\test
         run: |
           $ntosebpfextDir = "${{ env.TEMP }}\test"
 
@@ -277,7 +317,7 @@ jobs:
             sc.exe create ntosebpfext type= kernel start= demand binPath= "$ntosebpfextDir\Release\ntosebpfext\ntosebpfext.sys"
             sc.exe start ntosebpfext
           } else {
-            Write-Error "ntosebpfext directory not found after extraction"
+            Write-Error "✗ ntosebpfext directory not found after extraction"
             exit 1
           }
 
@@ -307,130 +347,211 @@ jobs:
           path: ${{ env.TEMP }}\Tetragon-Windows.zip
           retention-days: 5
 
-  windows-smoke-test:
-    name: Deploy and Test tetragon for Windows
+  windows-build-msi:
+    name: "Build Tetragon EE MSI"
     runs-on: windows-2025
-    permissions:
-      contents: read
-      actions: read
-    needs:
-      - windows-tetragon-build
-      - windows-ebpf-prog-build
     timeout-minutes: 15
-    strategy:
-      matrix:
-        version:
-          - main
-    env:
-      TEMP: D:\temp
+    needs: windows-tetragon-build
 
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
-      - name: Create Temp Directory
-        run: mkdir D:\temp
-        shell: pwsh
-
-      - name: Create Temp Staging Directory
-        run: mkdir D:\temp\test
-        shell: pwsh
-
-      - name: "Download eBPF NativeOnlyRelease ZIP"
-        id: download-ebpf-nativeonly
+      - name: "Download Shawl ZIP"
+        id: download-shawl
         uses: ./.github/actions/download-file
         with:
-          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip"
-          download-dir: "${{ env.TEMP }}"
+          file-url: "https://github.com/mtkennerly/shawl/releases/download/v1.7.0/shawl-v1.7.0-win64.zip"
+          download-dir: '${{ runner.temp }}\staging'
 
-      - name: "Extract eBPF NativeOnlyRelease ZIP"
+      - name: "Extract Shawl ZIP"
         uses: ./.github/actions/extract-zip
         with:
-          zip-file: "${{ steps.download-ebpf-nativeonly.outputs.downloaded-file }}"
-          extract-dir: "${{ env.TEMP }}"
+          zip-file: "${{ steps.download-shawl.outputs.downloaded-file }}"
+          extract-dir: '${{ runner.temp }}\staging\unpacked\shawl'
 
-      - name: "Install eBPF for Windows"
-        shell: pwsh
-        run: |
-          $extractPath = "${{ env.TEMP }}\Build-native-only NativeOnlyRelease x64"
-          $ebpfPath = "${{ env.TEMP }}\ebpf"
-
-          Rename-Item -Path $extractPath -NewName $ebpfPath -ErrorAction Stop
-
-          # Find and execute the setup script
-          Write-Host "Searching for setup script..."
-          $setupScript = Get-ChildItem -Path $ebpfPath -Filter "setup-ebpf.ps1" -Recurse | Select-Object -First 1
-
-          if ($setupScript) {
-              Write-Host "Found setup script: $($setupScript.FullName)"
-              
-              try {
-                  Push-Location -Path $setupScript.DirectoryName
-                 
-                  Write-Host "Executing setup script..."
-                  & $setupScript.FullName
-                  
-                  Write-Host "✓ Setup script execution completed"
-              }
-              catch {
-                  Write-Error "Failed to execute setup script: $($_.Exception.Message)"
-                  throw
-              }
-              finally {
-                  Pop-Location
-              }
-          } else {
-              Write-Error "Setup script 'setup-ebpf.ps1' not found in the extracted package"
-              Write-Host "Directory contents:"
-              Get-ChildItem -Path $ebpfPath -Recurse | ForEach-Object { 
-                  Write-Host "  $($_.FullName)" 
-              }
-              throw
-          }
-
-          Write-Host "✓ eBPF for Windows installed successfully"
-
-      - name: Add eBPF for Windows to PATH
-        shell: pwsh
-        run: echo "C:\Program Files\ebpf-for-windows\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Download tetragon-windows-build-output
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+      - name: "Download eBPF MSI"
+        id: download-ebpf
+        uses: ./.github/actions/download-file
         with:
-          path: ${{ env.TEMP }}\test
-          name: tetragon-windows-build-output
+          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/ebpf-for-windows.x64.0.21.0.msi"
+          download-dir: '${{ runner.temp }}\staging'
+
+      - name: "Extract eBPF MSI"
+        uses: ./.github/actions/extract-msi
+        with:
+          msi-file: "${{ steps.download-ebpf.outputs.downloaded-file }}"
+          extract-dir: '${{ runner.temp }}\staging\unpacked'
+          log-file: '${{ runner.temp }}\staging\ebpf-for-win-install.log'
 
       - name: Download ntosebpfext-build-output
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        id: download-ntosebpfext-build-output
+        uses: ./.github/actions/download-artifact
         with:
-          path: ${{ env.TEMP }}\test
-          name: ntosebpfext-build-output
+          artifact-name: "ntosebpfext-build-output"
+          download-dir: '${{ runner.temp }}\staging'
 
-      - name: Setup Tetragon for Windows
-        working-directory: ${{ github.workspace }}
-        shell: pwsh
-        run: ${{ github.workspace }}\install\windows\setup-windows-ee.ps1 ${{ env.TEMP }}\test\Tetragon-Windows.zip ${{ env.TEMP }}\test\build-x64.Release.zip
+      - name: "Extract binaries from artifact"
+        uses: ./.github/actions/extract-zip
+        with:
+          zip-file: '${{ steps.download-ntosebpfext-build-output.outputs.artifact-path }}\build-x64.Release.zip'
+          extract-dir: '${{ runner.temp }}\staging\unpacked'
 
-      - name: Run Smoke test Windows
-        env:
-          TEMP: D:\temp
-          PATH: ${{ env.TEMP }};"C:\Program Files\ebpf-for-windows"
-        working-directory: C:\Program Files\Tetragon\cmd
+      - name: Download tetragon-windows-build-output
+        id: download-tetragon-windows-build-output
+        uses: ./.github/actions/download-artifact
+        with:
+          artifact-name: "tetragon-windows-build-output"
+          download-dir: '${{ runner.temp }}\staging'
+
+      - name: "Extract binaries from artifact"
+        uses: ./.github/actions/extract-zip
+        with:
+          zip-file: '${{ steps.download-tetragon-windows-build-output.outputs.artifact-path }}\Tetragon-Windows.zip'
+          extract-dir: '${{ runner.temp }}\staging\unpacked\tetragon'
+
+      - name: "Run WIX build"
+        id: wix-build
         shell: pwsh
         run: |
-          $jsonFilePath = "C:\Program Files\Tetragon\events.json"
+          # Start the build
+          $ErrorActionPreference = 'Stop'
 
-          # Define the path to the executable
-          $tetragonProcess = "C:\Program Files\Tetragon\cmd\tetragon.exe"
+          echo "::group::Sanity check: contents of staging root"
+          Get-ChildItem -Path "${{ runner.temp }}\staging" -Recurse -File | Select-Object Length, FullName | Format-Table
+          echo "::endgroup::"
+
+          echo "::group::Fetch tags"
+          git fetch origin 'refs/tags/v*:refs/tags/v*' --no-recurse-submodules
+          echo "::endgroup::"
+
+          # Compute Product Version
+          $tag = git for-each-ref --sort=-committerdate:short --format='%(refname:short) %(committerdate:short) %(objectname:short)' 'refs/tags/v*' --count 5 2>$null | sort -Descending -Top 1
+          Write-Host "✓ Latest tag: $tag"
+
+          if ($tag -match '^v(\d+\.\d+\.\d+)[^\s]+\s+(\d+-\d+-\d+)\s+([0-9a-f]+)') {
+            $tagVersion = $matches[1]
+            $tagDate = $matches[2]
+            $tagSHA = $matches[3]
+          } else {
+            throw "Error fetching version info from '$tag'"
+          }
+
+          Write-Host "✓ Tag version: $tagVersion"
+
+          $productVersion = $tagVersion + ".${{ github.run_number }}"
+          Write-Host "✓ Computed product version: $productVersion"
+
+          # Generate Product Code, must be new on every build
+          $productCode = [Guid]::NewGuid().ToString().ToUpper()
+          Write-Host "✓ MSI product code: $productCode"
+
+          $binlogFile = "${{ runner.temp }}\staging\msbuild-$productVersion.binlog"
+          "binlogFile=$binlogFile" >> $env:GITHUB_OUTPUT
+          Write-Host "✓ MSI build log: $binlogFile"
+
+          dotnet build ${{ github.workspace }}\install\windows\TetragonEE-Wix\TetragonEnterprise.slnx `
+              /p:StagingRoot=${{ runner.temp }}\staging `
+              /p:ProductMsiName="TetragonEnterprise" `
+              /p:ProductCode=$productCode `
+              /p:ProductVersion=$productVersion `
+              /p:Configuration=Release `
+              /p:Platform=x64 `
+              /bl:$binlogFile
+
+          if (!$?) {
+            $errcode = $LASTEXITCODE
+            Write-Host "✗ MSI Build failed"
+            exit $errcode
+          }
+
+          Write-Host "✓ MSI built successfully"
+
+      - name: Upload MSI
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: msi-package
+          path: ${{ github.workspace }}\install\windows\TetragonEE-Wix\build\bin\x64\Release\en-US\*.msi
+          retention-days: 5
+
+      - name: Upload MSI build log
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        if: always()
+        with:
+          name: msi-binlog
+          path: ${{ steps.wix-build.outputs.binlogFile }}
+          retention-days: 5
+
+  windows-smoke-test:
+    name: Deploy and Test tetragon for Windows
+    runs-on: windows-2025
+    timeout-minutes: 15
+    needs: windows-build-msi
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Create Temp Directories
+        shell: pwsh
+        run: |
+          mkdir D:\temp
+          mkdir D:\temp\test
+
+      - name: Download Tetragon EE MSI
+        id: download-tetragon-msi
+        uses: ./.github/actions/download-artifact
+        with:
+          artifact-name: "msi-package"
+          download-dir: "${{ runner.temp }}"
+
+      - name: "Install Tetragon EE MSI"
+        uses: ./.github/actions/install-msi
+        with:
+          msi-file: "${{ steps.download-tetragon-msi.outputs.artifact-single }}"
+          log-file: '${{ runner.temp }}\tetragon-ee-install.log'
+
+      - name: Update PATH
+        shell: pwsh
+        run: |
+          # MSI is not able to update the GH Runner environment
+          # Updated PATH cannot be used in the same step
+          echo "C:\Program Files\ebpf-for-windows" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          [Environment]::SetEnvironmentVariable("Path", "C:\Program Files\ebpf-for-windows;" + [Environment]::GetEnvironmentVariable("Path", "Machine"), "Machine")
+
+      - name: Run Smoke test Windows
+        shell: pwsh
+        run: |
+          # Tests
+          Write-Host "::group::PATH:"
+          $env:Path -split ';'
+          Write-Host "::endgroup::"
+
+          # Stop Running Tetragon Service, we need to change args
+          net.exe stop TetragonEnterprise
 
           # Start the process in the background and capture its PID
-          $tetragonBackgroundProcess = Start-Process -FilePath "$tetragonProcess" -ArgumentList "--enable-tcp --enable-application-model --network-policy ${{ github.workspace }}\examples\tetragonnetworkpolicy\example.yaml --export-filename ""$jsonFilePath""" -RedirectStandardOutput "C:\Program Files\Tetragon\tetragon.log" -NoNewWindow -PassThru
+          $TetragonArgs = @(
+            '--enable-tcp', 
+            '--enable-application-model',
+            '--network-policy ${{ github.workspace }}\examples\tetragonnetworkpolicy\example.yaml',
+            '--export-filename "C:\Program Files\Tetragon\events.json"'
+          )
+
+          $tetragonBackgroundProcess = Start-Process `
+            -FilePath "C:\Program Files\Tetragon\cmd\Tetragon.exe" `
+            -WorkingDirectory "C:\Program Files\Tetragon\cmd" `
+            -ArgumentList $TetragonArgs `
+            -RedirectStandardOutput "C:\Program Files\Tetragon\tetragon.log" `
+            -NoNewWindow `
+            -PassThru
+
           Start-Sleep -Seconds 5
           if(Get-Process -id $tetragonBackgroundProcess.Id) {
-            Write-Host "Tetragon is Running "
+            Write-Host "✓ Tetragon is Running "
           }
           else {
-            throw "Tetragon Could not be started"
+            throw "✗ Tetragon Could not be started"
           }
 
-          Start-Process -FilePath ${{ github.workspace }}\tests\e2e\windows\test-script.ps1
+          & "${{ github.workspace }}\tests\e2e\windows\test-script.ps1"

@@ -48,6 +48,10 @@ runs:
           $extractedFiles = Get-ChildItem -Path $extractDir -Recurse -File
           $filesCount = $extractedFiles.Count
           Write-Host "✓ Extracted $filesCount file(s)"
+
+          Write-Host "::group::Contents:"
+          $extractedFiles | Select-Object Length, FullName | Format-Table
+          Write-Host "::endgroup::"
         } catch {
           Write-Error "Failed to extract ZIP: $_"
           throw $_
