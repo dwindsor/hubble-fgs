@@ -27,7 +27,7 @@ func (w *smartSwitchNetworkPolicyWatcher) addSmartSwitchNetworkPolicy(obj any) {
 		if isStagingPolicy(np) {
 			return
 		}
-		resourceID = NewResourceID(np.Kind, np.Namespace, np.Name)
+		resourceID = NewResourceID(isovalentv1.SNPKindDefinition, np.Namespace, np.Name)
 		policies, err = ToSmartSwitchNetworkPolicies(np)
 		if err != nil {
 			logger.GetLogger().Warn("addNetworkPolicy: failed to convert SmartSwitchNetworkPolicy to SmartSwitch network policy", logfields.Error, err,
@@ -35,12 +35,6 @@ func (w *smartSwitchNetworkPolicyWatcher) addSmartSwitchNetworkPolicy(obj any) {
 				"network-policy-namespace", np.Namespace)
 			return
 		}
-
-	// case *isovalentv1.SmartSwitchNetworkPolicyNamespaced:
-	// 	logger.GetLogger().Warn("addNetworkPolicy: namespaced policy currently not supported",
-	// 		"obj", obj,
-	// 		"obj-type", fmt.Sprintf("%T", obj))
-	// 	return
 
 	default:
 		logger.GetLogger().Warn("addNetworkPolicy: invalid type", "obj", obj, "obj-type", fmt.Sprintf("%T", obj))
@@ -75,7 +69,7 @@ func (w *smartSwitchNetworkPolicyWatcher) updateSmartSwitchNetworkPolicy(_, newO
 		if isStagingPolicy(np) {
 			return
 		}
-		resourceID = NewResourceID(np.Kind, np.Namespace, np.Name)
+		resourceID = NewResourceID(isovalentv1.SNPKindDefinition, np.Namespace, np.Name)
 		policies, err = ToSmartSwitchNetworkPolicies(np)
 		if err != nil {
 			logger.GetLogger().Warn("updateNetworkPolicy: failed to convert SmartSwitchNetworkPolicy to SmartSwitch network policy", logfields.Error, err,
@@ -83,11 +77,6 @@ func (w *smartSwitchNetworkPolicyWatcher) updateSmartSwitchNetworkPolicy(_, newO
 				"network-policy-namespace", np.Namespace)
 			return
 		}
-
-	// case *isovalentv1.SmartSwitchNetworkPolicyNamespaced:
-	// 	logger.GetLogger().Warn("updateNetworkPolicy: namespaced policy currently not supported", "obj", newObj,
-	// 		"obj-type", fmt.Sprintf("%T", newObj))
-	// 	return
 
 	default:
 		logger.GetLogger().Warn("updateNetworkPolicy: invalid type", "obj", newObj,
@@ -126,11 +115,7 @@ func (w *smartSwitchNetworkPolicyWatcher) deleteSmartSwitchNetworkPolicy(obj any
 		if isStagingPolicy(np) {
 			return
 		}
-		resourceID = NewResourceID(np.Kind, np.Namespace, np.Name)
-
-	// case *isovalentv1.SmartSwitchNetworkPolicyNamespaced:
-	// 	logger.GetLogger().Warn("deleteNetworkPolicy: namespaced policy currently not supported", "obj", obj,
-	// 		"obj-type", fmt.Sprintf("%T", obj))
+		resourceID = NewResourceID(isovalentv1.SNPKindDefinition, np.Namespace, np.Name)
 
 	default:
 		logger.GetLogger().Warn("deleteNetworkPolicy: invalid type", "obj", obj, "obj-type", fmt.Sprintf("%T", obj))
