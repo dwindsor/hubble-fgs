@@ -1,4 +1,9 @@
-# Windows EE Installation using powershell script
+# Windows EE Installation using MSI
+
+MSI is built by the [Windows Build and Smoke Test workflow](https://github.com/isovalent/hubble-fgs/actions/workflows/windows-build-smoke-test.yml) and can be downloaded from the artifacts section of any run successfully completed within last 5 days (retention time). Artifact name is `msi-package`.
+
+
+# Windows EE Installation using powershell script (manual)
 
 To setup tetragon.exe on Windows, follow these steps:
 
@@ -7,3 +12,4 @@ To setup tetragon.exe on Windows, follow these steps:
 3. Unpack the downloaded archives and place the resulting `Tetragon-On-Windows.zip` and `build-x64.Release.zip` folders in the same parent folder
 4. Launch powershell as admin and launch `setup-windows-ee.ps1 <Path to Tetragon-On-Windows.zip> <Path to build-x64.Release.zip>`. This will install Tetragon.exe 
 5. From an admin powershell or command prompt, launch `C:\Program Files\Tetragon\cmd\Tetragon.exe` and (separately) launch `C:\Program Files\Tetragon\cmd\Tetra.exe` to view exec and exit events. 
+

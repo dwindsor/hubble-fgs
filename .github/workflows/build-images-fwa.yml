@@ -2,6 +2,8 @@ name: Build Hubble FGS FWA Images
 
 on:
   pull_request:
+    paths-ignore:
+      - "**.md"
     branches: [ master ]
     types:
       - opened
