@@ -1843,6 +1843,9 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 				// TODO: make this configurable
 				m.SetInnerMaxEntries((fm.GetMaxInnerEntriesPathMap(sel) * 32))
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
+					if len(allDigestMaps) == 0 {
+						return nil
+					}
 					algo, err := probeImaEnabled()
 					if err != nil {
 						return fmt.Errorf("failed to probe IMA: %w", err)
