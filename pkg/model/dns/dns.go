@@ -4,7 +4,6 @@ package dns
 
 import (
 	"fmt"
-	"maps"
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -98,17 +97,13 @@ type PolicyState struct {
 	// Policy objects organized by qualifier
 	Dst matchLabels.PolicyList
 	Src matchLabels.PolicyList
-	L3  matchLabels.PolicyList
 
-	// Objects in the system, these are pods, nodes, logical networks, etc.
-	localObjects     map[k8stypes.UID]metav1.Object
-	remoteObjects    map[k8stypes.UID]metav1.Object
-	networkL3Objects map[string]uint32
-	// TBD networkL2Objects map[uint32]bool
+	// Objects in the system, these are pods, nodes etc.
+	localObjects  map[k8stypes.UID]metav1.Object
+	remoteObjects map[k8stypes.UID]metav1.Object
 
 	DstLock sync.Mutex
 	SrcLock sync.Mutex
-	L3Lock  sync.Mutex
 
 	Reader sync.RWMutex
 }
@@ -117,7 +112,6 @@ func NewPolicyState() *PolicyState {
 	s := &PolicyState{}
 	s.Dst = make(map[types.TetragonPolicyUniqueID]*matchLabels.LabelSet)
 	s.Src = make(map[types.TetragonPolicyUniqueID]*matchLabels.LabelSet)
-	s.L3 = make(map[types.TetragonPolicyUniqueID]*matchLabels.LabelSet)
 
 	s.localObjects = make(map[k8stypes.UID]metav1.Object)
 	// Initialize the new state with a local object representing the host
@@ -133,11 +127,9 @@ func NewPolicyState() *PolicyState {
 	}
 
 	s.remoteObjects = make(map[k8stypes.UID]metav1.Object)
-	s.networkL3Objects = make(map[string]uint32)
 
 	s.DstLock = sync.Mutex{}
 	s.SrcLock = sync.Mutex{}
-	s.L3Lock = sync.Mutex{}
 
 	s.Reader = sync.RWMutex{}
 	return s
@@ -503,135 +495,6 @@ func addNamespaceLabels(endpointObject metav1.Object, ml *matchLabels.LabelSet) 
 		ml.Labels[tnpKey] = v
 	}
 	return nil
-}
-
-func (state *PolicyState) setL3NetworkMap(vrfMap map[string]uint32) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
-	currentPolicy := state.getAllExistingPolicy()
-	_, preRecords, err := state.GetRecords(currentPolicy)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	// Recalculate records using new state with new vrf Map.
-	postState := NewPolicyState()
-	postState.networkL3Objects = make(map[string]uint32)
-	for name, uid := range vrfMap {
-		logger.GetLogger().Info("Add Logical Network", "vrf", name, "gid", uid)
-		postState.networkL3Objects[name] = uid
-	}
-	postState.localObjects = maps.Clone(state.localObjects)
-	postState.remoteObjects = maps.Clone(state.remoteObjects)
-	postState, postRecords, err := postState.GetRecords(currentPolicy)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	removeRecordsSet := record.Diff(preRecords, postRecords)
-	return postState, postRecords, removeRecordsSet, nil
-}
-
-// These three functions Add, Get, Delete are meant to be used by NXOS code to
-// manage the logical network state.
-func (state *PolicyState) SetL3NetworkMap(vrfMap map[string]uint32) error {
-	newState, addRecords, removeRecords, err := state.setL3NetworkMap(vrfMap)
-	if err != nil {
-		return err
-	}
-	prog.AddRecords(addRecords, false)
-	prog.RemoveRecords(removeRecords)
-	SetRealizedState(newState)
-	return nil
-}
-
-func (state *PolicyState) l3Add(name string) ([]*record.DatapathRecord, error) {
-	records := []*record.DatapathRecord{}
-
-	ml := &matchLabels.LabelSet{}
-	ml.Labels = make(map[string]string, 1)
-	ml.Labels["vrf"] = name
-
-	// Find all policy with key pair vrf:name
-	l3s := state.L3.Collection(ml)
-
-	// Generate a record set for each policy we found because each
-	// policy includes the full tuple in IP form (we have no
-	// labels in middleboxes... yet.).
-	for _, l3 := range l3s {
-		policy := l3.Policy.PolicyUID
-
-		action, err := calculateAction(&l3.Policy.Action)
-		if err != nil {
-			logger.GetLogger().Warn("calculate action failed", logfields.Error, err)
-			continue
-		}
-
-		ep := &endpoint.Endpoint{
-			Ip: l3.Policy.Destination.CIDR.CIDR,
-		}
-
-		vrfId := state.networkL3Objects[l3.Policy.Subject.LogicalNetwork.VRF]
-
-		if len(l3.Policy.Destination.Ports) == 0 {
-			de := &record.DatapathEndpoint{
-				EP: ep,
-			}
-
-			ds := &record.DatapathSource{
-				Ip:    l3.Policy.Source.CIDR.CIDR,
-				Vrf:   l3.Policy.Subject.LogicalNetwork.VRF,
-				VrfId: vrfId,
-				Vlan:  l3.Policy.Subject.LogicalNetwork.VLAN,
-			}
-
-			records = append(records, &record.DatapathRecord{
-				PolicyUID: policy,
-				L3Src:     *ds,
-				Endpoint:  *de,
-				Action:    action,
-			})
-		}
-
-		// Ports get flattened here. We've so far avoided it at
-		// higher level in case we have a datapath that wants to
-		// consume an array. So far it hasn't been useful so we
-		// might move it up the stack.
-		for _, dport := range l3.Policy.Destination.Ports {
-			de := &record.DatapathEndpoint{
-				EP:   ep,
-				Port: uint32(dport),
-			}
-
-			ds := &record.DatapathSource{
-				Ip:    l3.Policy.Source.CIDR.CIDR,
-				Vrf:   l3.Policy.Subject.LogicalNetwork.VRF,
-				VrfId: vrfId,
-				Vlan:  l3.Policy.Subject.LogicalNetwork.VLAN,
-			}
-
-			if len(l3.Policy.Source.Ports) == 0 {
-				records = append(records, &record.DatapathRecord{
-					PolicyUID: policy,
-					L3Src:     *ds,
-					Endpoint:  *de,
-					Action:    action,
-				})
-			}
-
-			// This is the somewhat odd case of firewalling what
-			// would typically be ephemeral ports, but we can
-			// allow at least at the policy side.
-			for _, sport := range l3.Policy.Source.Ports {
-				ds.Port = uint32(sport)
-				records = append(records, &record.DatapathRecord{
-					PolicyUID: policy,
-					L3Src:     *ds,
-					Endpoint:  *de,
-					Action:    action,
-				})
-			}
-		}
-	}
-	return records, nil
 }
 
 func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]*record.DatapathRecord, error) {

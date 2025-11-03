@@ -1,9 +1,7 @@
 package dns
 
 import (
-	"fmt"
 	"maps"
-	"strconv"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
@@ -23,14 +21,6 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(policy *types.TetragonNe
 
 	subject := state.Src[policy.PolicyUID]
 
-	l3id := ""
-	if policy.Subject.LogicalNetwork.VRF != "" {
-		l3id = policy.Subject.LogicalNetwork.VRF
-	} else if policy.Subject.LogicalNetwork.VLAN != 0 {
-		l3id = policy.Subject.LogicalNetwork.VRF
-	}
-	l3 := state.L3[policy.PolicyUID]
-
 	var beforeSubjs []*record.DatapathRecord
 	var afterSubjs []*record.DatapathRecord
 
@@ -46,18 +36,8 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(policy *types.TetragonNe
 		}
 	}
 
-	if l3 != nil {
-		records, err := state.l3Add(l3id)
-		if err != nil {
-			logger.GetLogger().Warn("Remove policy failure: ", "policyUID", l3.Policy.PolicyUID)
-		} else {
-			beforeSubjs = append(beforeSubjs, records...)
-		}
-	}
-
 	state.Src.Remove(policy.PolicyUID)
 	state.Dst.Remove(policy.PolicyUID)
-	state.L3.Remove(policy.PolicyUID)
 
 	for _, v := range state.Src {
 		if v == nil {
@@ -70,15 +50,6 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(policy *types.TetragonNe
 				continue
 			}
 			afterSubjs = append(afterSubjs, sRecords...)
-		}
-	}
-
-	if l3 != nil {
-		records, err := state.l3Add(l3id)
-		if err != nil {
-			logger.GetLogger().Warn("Error on policy remove, failed to build new state:", "logicalNetwork", l3id)
-		} else {
-			afterSubjs = append(afterSubjs, records...)
 		}
 	}
 
@@ -256,39 +227,7 @@ func (state *PolicyState) CreateSrcMatchLabelsPolicy(policy *types.TetragonNetwo
 	state.Src.Add(ls)
 }
 
-// Create L3NetworkPolicy to add a new logical network policy
-func (state *PolicyState) CreateNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
-	state.L3Lock.Lock()
-	defer state.L3Lock.Unlock()
-
-	labels := make(map[string]string)
-	if policy.Subject.LogicalNetwork.VLAN != 0 {
-		s := strconv.FormatUint(uint64(policy.Subject.LogicalNetwork.VLAN), 10)
-		labels["vlan"] = s
-	} else {
-		labels["vrf"] = policy.Subject.LogicalNetwork.VRF
-	}
-
-	ls := &matchLabels.LabelSet{
-		Labels: labels,
-		Policy: policy,
-	}
-
-	if policy.Subject.LogicalNetwork.VLAN != 0 {
-		return fmt.Errorf("l2 not implemented") //state.L2.Add(uid, ls)
-	}
-
-	state.L3.Add(ls)
-	return nil
-}
-
 func (state *PolicyState) CreateMatchLabelsPolicy(policy *types.TetragonNetworkPolicy) error {
-	// This is a L3 or L2 network firewall policy. For now we handle
-	// it here as a special case.
-	if policy.Source != nil {
-		state.CreateNetworkPolicy(policy)
-	}
-
 	if len(policy.Destination.Labels.Equal) > 0 {
 		state.CreateDstMatchLabelsPolicy(policy)
 	}
@@ -316,12 +255,6 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 		}
 	}
 	for _, p := range state.Dst {
-		if _, ok := uniquePolicyMap[p.Policy.PolicyUID]; !ok {
-			uniquePolicyMap[p.Policy.PolicyUID] = p.Policy
-			allPolicy = append(allPolicy, p.Policy)
-		}
-	}
-	for _, p := range state.L3 {
 		if _, ok := uniquePolicyMap[p.Policy.PolicyUID]; !ok {
 			uniquePolicyMap[p.Policy.PolicyUID] = p.Policy
 			allPolicy = append(allPolicy, p.Policy)
@@ -359,14 +292,6 @@ func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolic
 		calculatorRecords = append(calculatorRecords, r...)
 	}
 
-	for k, uid := range state.networkL3Objects {
-		calculatorState.networkL3Objects[k] = uid
-		r, err := calculatorState.l3Add(k)
-		if err != nil {
-			return nil, nil, err
-		}
-		calculatorRecords = append(calculatorRecords, r...)
-	}
 	return calculatorState, calculatorRecords, nil
 }
 
@@ -394,7 +319,6 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 	postState := NewPolicyState()
 	postState.localObjects = maps.Clone(preState.localObjects)
 	postState.remoteObjects = maps.Clone(preState.remoteObjects)
-	postState.networkL3Objects = maps.Clone(preState.networkL3Objects)
 	postState, postRecords, err := postState.GetRecords(newPolicy)
 	if err != nil {
 		return nil, nil, nil, err
