@@ -52,7 +52,7 @@ func addCommands(rootCmd *cobra.Command) {
 	tpCmd := tracingpolicy.New()
 	for _, comm := range tpCmd.Commands() {
 		if comm.Name() == "add" || comm.Name() == "delete" || comm.Name() == "list" {
-			comm.Deprecated = `This command is deprecated and replaced by "policies "` + comm.Name() + ` command`
+			comm.Deprecated = `use "policies ` + comm.Name() + `" command instead`
 		}
 	}
 	rootCmd.AddCommand(tpCmd)

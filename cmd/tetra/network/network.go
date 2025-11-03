@@ -30,7 +30,7 @@ func New() *cobra.Command {
 	addCmd := &cobra.Command{
 		Use:        "add <yaml_file>",
 		Short:      "add Tetragon network policy",
-		Deprecated: `This command is deprecated and replaced by "policies add" command`,
+		Deprecated: `use "policies add" command instead`,
 		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := NewClient()
@@ -59,7 +59,7 @@ func New() *cobra.Command {
 	delCmd := &cobra.Command{
 		Use:        "delete <name>",
 		Short:      "delete Tetragon network policy",
-		Deprecated: `This command is deprecated and replaced by "policies delete" command`,
+		Deprecated: `use "policies delete" command instead`,
 		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := NewClient()
@@ -84,7 +84,7 @@ func New() *cobra.Command {
 		Use:        "list",
 		Short:      "list loaded Tetragon network policy",
 		Args:       cobra.ExactArgs(0),
-		Deprecated: `This command is deprecated and replaced by "policies list" command`,
+		Deprecated: `use "policies list" command instead`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return ListNetworkPolicy(
 				cmd, "text",
@@ -96,7 +96,7 @@ func New() *cobra.Command {
 	getCmd := &cobra.Command{
 		Use:        "get <name>",
 		Short:      "get Tetragon network policy",
-		Deprecated: `This command is deprecated and replaced by "policies get" command`,
+		Deprecated: `use "policies get" command instead`,
 		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := NewClient()
