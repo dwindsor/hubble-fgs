@@ -309,6 +309,8 @@ tarball: tarball-clean image ## Build Tetragon Enterprise compressed tarball.
 	cp "${BUILD_PKG_DIR}/docker/$$(jq -r '.[].Layers[0]' "${BUILD_PKG_DIR}/docker/manifest.json")" ${BUILD_PKG_DIR}/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar
 	@tar -tf ${BUILD_PKG_DIR}/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar | grep "/usr/local/bin/tetragon" - \
 		|| (echo "make: '$@' Error: could not find tetragon inside generated tarball"; exit 1)
+	@tar -tf ${BUILD_PKG_DIR}/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar | grep "/usr/local/lib/tetragon/bpf/.*\.o" - \
+		|| (echo "make: '$@' Error: could not find BPF files in /usr/local/lib/tetragon/bpf/ inside generated tarball"; exit 1)
 	@rm -fr $(BUILD_PKG_DIR)/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tmp.tar
 	gzip -6 $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar
 	@echo "tetragon tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz"
@@ -318,6 +320,33 @@ tarball-release: tarball ## Build Tetragon Enterprise release tarball.
 	mkdir -p release/
 	mv $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz release/
 	(cd release && sha256sum tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz > tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
+
+.PHONY: tarball-slim
+tarball-slim: tarball-clean image-slim ## Build Tetragon Slim compressed tarball.
+	$(CONTAINER_ENGINE) build --build-arg TETRAGON_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.slim.tarball -t "isovalent/tetragon-slim-tarball:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR)
+	$(CONTAINER_ENGINE) save isovalent/tetragon-slim-tarball:$(DOCKER_IMAGE_TAG) -o $(BUILD_PKG_DIR)/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	$(QUIET)rm -fr $(BUILD_PKG_DIR)/docker/
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/docker/
+	$(QUIET)rm -fr $(BUILD_PKG_DIR)/linux-tarball/
+	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/linux-tarball/
+	tar xC $(BUILD_PKG_DIR)/docker/ -f $(BUILD_PKG_DIR)/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	sync $(BUILD_PKG_DIR)/docker/manifest.json
+	cat $(BUILD_PKG_DIR)/docker/manifest.json
+	cp "${BUILD_PKG_DIR}/docker/$$(jq -r '.[].Layers[0]' "${BUILD_PKG_DIR}/docker/manifest.json")" ${BUILD_PKG_DIR}/linux-tarball/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar
+	@tar -tf ${BUILD_PKG_DIR}/linux-tarball/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar | grep "/usr/local/bin/tetragon" - \
+		|| (echo "make: '$@' Error: could not find tetragon inside generated tarball"; exit 1)
+	@tar -tf ${BUILD_PKG_DIR}/linux-tarball/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar | grep "/usr/local/lib/tetragon/bpf/.*\.o\.gz" - \
+		|| (echo "make: '$@' Error: could not find BPF files in /usr/local/lib/tetragon/bpf/ inside generated tarball"; exit 1)
+	@rm -fr $(BUILD_PKG_DIR)/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tmp.tar
+	gzip -6 $(BUILD_PKG_DIR)/linux-tarball/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar
+	@echo "tetragon slim tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar.gz"
+
+.PHONY: tarball-slim-release
+tarball-slim-release: tarball-slim ## Build Tetragon Slim release tarball.
+	mkdir -p release/
+	mv $(BUILD_PKG_DIR)/linux-tarball/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar.gz release/
+	(cd release && sha256sum tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar.gz > tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
 
 .PHONY: tarball-clean
 tarball-clean:
