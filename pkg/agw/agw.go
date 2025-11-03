@@ -473,6 +473,24 @@ func (agw *AgentGateway) PoliciesClear(_ context.Context) error {
 	return nil
 }
 
+func (agw *AgentGateway) Logging(_ context.Context, msgData ipc.MessageData) error {
+	levelStr, ok := msgData.Flags["level"]
+	if !ok || levelStr == "" {
+		return fmt.Errorf("level flag is required")
+	}
+
+	// Convert string to slog.Level
+	level, err := logger.ParseLevel(levelStr)
+	if err != nil {
+		return err
+	}
+
+	// Set the log level
+	logger.SetLogLevel(level)
+	logger.GetLogger().Info("Log level updated", "level", level.String())
+	return nil
+}
+
 func (agw *AgentGateway) ShowDpu(_ context.Context) string {
 	logger.GetLogger().Debug("Show dpu")
 	return agw.dpuListener.StatusReportString()
