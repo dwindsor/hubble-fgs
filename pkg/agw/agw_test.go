@@ -2,8 +2,10 @@ package agw
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/token"
 
 	"github.com/stretchr/testify/require"
@@ -458,5 +460,112 @@ func TestReopen(t *testing.T) {
 	result := agw.Reopen(context.Background())
 	if result != "Reopen ok" {
 		require.Equal(t, "Reopen ok", result)
+	}
+}
+
+// --- Mock PolicyHandler for testing ---
+
+type mockPolicyHandler struct {
+	policies      map[switchpolicy.ResourceID]switchpolicy.K8sRulesList
+	deleteError   error
+	deletedCalled []switchpolicy.ResourceID
+}
+
+func (m *mockPolicyHandler) ListPolicies() map[switchpolicy.ResourceID]switchpolicy.K8sRulesList {
+	return m.policies
+}
+
+func (m *mockPolicyHandler) DeletePolicy(resourceId switchpolicy.ResourceID) error {
+	m.deletedCalled = append(m.deletedCalled, resourceId)
+	if m.deleteError != nil {
+		return m.deleteError
+	}
+	delete(m.policies, resourceId)
+	return nil
+}
+
+func (m *mockPolicyHandler) UpsertPolicy(resourceId switchpolicy.ResourceID, rules switchpolicy.K8sRulesList) error {
+	if m.policies == nil {
+		m.policies = make(map[switchpolicy.ResourceID]switchpolicy.K8sRulesList)
+	}
+	m.policies[resourceId] = rules
+	return nil
+}
+
+func (m *mockPolicyHandler) SetL3Networks(_ *switchpolicy.L3Networks) error {
+	return nil
+}
+
+// --- Test for PoliciesClear ---
+
+func TestPoliciesClear(t *testing.T) {
+	cases := []struct {
+		name            string
+		initialPolicies map[switchpolicy.ResourceID]switchpolicy.K8sRulesList
+		deleteError     error
+		expectError     bool
+		errorMsg        string
+	}{
+		{
+			name: "Clear multiple policies successfully",
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("NetworkPolicy", "default", "policy1"):     {},
+				switchpolicy.NewResourceID("NetworkPolicy", "default", "policy2"):     {},
+				switchpolicy.NewResourceID("NetworkPolicy", "kube-system", "policy3"): {},
+			},
+			deleteError: nil,
+			expectError: false,
+		},
+		{
+			name:            "Clear when no policies exist",
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{},
+			deleteError:     nil,
+			expectError:     false,
+		},
+		{
+			name: "Error during policy deletion",
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("NetworkPolicy", "default", "failing-policy"): {},
+			},
+			deleteError: errors.New("failed to delete policy"),
+			expectError: true,
+			errorMsg:    "failed to delete policy",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create mock policy handler
+			mockHandler := &mockPolicyHandler{
+				policies:      tc.initialPolicies,
+				deleteError:   tc.deleteError,
+				deletedCalled: []switchpolicy.ResourceID{},
+			}
+
+			// Getting initial number of policies
+			initialSize := len(tc.initialPolicies)
+
+			// Create AgentGateway with mock handler
+			agw := &AgentGateway{
+				PolicyHandler: mockHandler,
+			}
+
+			// Call PoliciesClear
+			err := agw.PoliciesClear(context.Background())
+
+			// Verify expectations
+			if tc.expectError {
+				require.Error(t, err)
+				if tc.errorMsg != "" {
+					require.Contains(t, err.Error(), tc.errorMsg)
+				}
+			} else {
+				require.NoError(t, err)
+				// Verify all policies were attempted to be deleted
+				require.Len(t, mockHandler.deletedCalled, initialSize)
+				// Verify policies map is now empty (for success cases)
+				require.Empty(t, mockHandler.policies)
+			}
+		})
 	}
 }

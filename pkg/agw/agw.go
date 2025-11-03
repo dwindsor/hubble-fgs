@@ -13,12 +13,9 @@ import (
 	"sync"
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
-	"github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"github.com/isovalent/hubble-fgs/pkg/config"
@@ -399,16 +396,8 @@ func (agw *AgentGateway) PoliciesRemove(_ context.Context, msgData ipc.MessageDa
 		if len(values) != 3 {
 			return fmt.Sprintf("invalid resourceID format: %s", resourceID)
 		}
-		snp := v1alpha1.SmartSwitchNetworkPolicy{
-			TypeMeta: metav1.TypeMeta{
-				Kind: values[0],
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: values[1],
-				Name:      values[2],
-			},
-		}
-		err := switchpolicy.Delete(&snp, agw.PolicyHandler)
+		rid := switchpolicy.NewResourceID(values[0], values[1], values[2])
+		err := agw.PolicyHandler.DeletePolicy(rid)
 		if err != nil {
 			return fmt.Sprintf("Failed to remove policy %s: %v", resourceID, err)
 		}
@@ -460,6 +449,19 @@ func (agw *AgentGateway) PoliciesShow(_ context.Context, msgData ipc.MessageData
 		result.WriteString(formatSwitchPolicy(resourceId, rulesList))
 	}
 	return result.String()
+}
+
+func (agw *AgentGateway) PoliciesClear(_ context.Context) error {
+	logger.GetLogger().Warn("Clearing all policies")
+
+	policies := agw.PolicyHandler.ListPolicies()
+	for r := range policies {
+		err := agw.PolicyHandler.DeletePolicy(r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (agw *AgentGateway) ShowDpu(_ context.Context) string {

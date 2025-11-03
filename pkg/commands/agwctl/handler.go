@@ -37,6 +37,7 @@ const (
 	CMD_POLICIES_SHOW
 	CMD_POLICIES_ADD
 	CMD_POLICIES_DEL
+	CMD_POLICIES_CLEAR
 )
 
 const (
@@ -273,6 +274,16 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		pols := agwAgent.PoliciesShow(ctx, data)
 		response.ReturnCode = "ok"
 		response.Data = pols
+
+	case CMD_POLICIES_CLEAR:
+		err := agwAgent.PoliciesClear(ctx)
+		if err != nil {
+			response.ReturnCode = "fail"
+			response.Data = err.Error()
+			return response, nil
+		}
+		response.ReturnCode = "ok"
+		response.Data = "Policies cleared"
 
 	default:
 		response.ReturnCode = "fail"
