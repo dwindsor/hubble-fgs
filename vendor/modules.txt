@@ -483,7 +483,7 @@ github.com/cilium/tetragon/api/v1/tetragon
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker
 github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml
 github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers
-# github.com/cilium/tetragon/pkg/k8s v0.0.0-20251010110610-9e02513e02f1 => ./pkg/k8s
+# github.com/cilium/tetragon/pkg/k8s v0.0.0-20251031160646-dbc076c50cfc => ./pkg/k8s
 ## explicit; go 1.25.0
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client
@@ -938,16 +938,15 @@ github.com/inconshreveable/mousetrap
 # github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 => ./pkg/k8s-enterprise
 ## explicit; go 1.25.0
 github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/client
-# github.com/isovalent/ipa v1.18.0-rc.2
+# github.com/isovalent/ipa v1.19.0-pre.0.0.20251103202908-560b2471b3d4
 ## explicit; go 1.25.0
 github.com/isovalent/ipa/application_model/v1alpha
 github.com/isovalent/ipa/common/k8s/type/v1alpha
 github.com/isovalent/ipa/common/net/v1alpha
-github.com/isovalent/ipa/common/time/v1alpha
 github.com/isovalent/ipa/graph/v1alpha
 github.com/isovalent/ipa/l3l4networkpolicy/v1alpha
 github.com/isovalent/ipa/ocsf/v1alpha
-# github.com/isovalent/ipa/k8s v1.18.0-rc.2
+# github.com/isovalent/ipa/k8s v1.19.0-pre.0.0.20251103202908-560b2471b3d4
 ## explicit; go 1.25.0
 github.com/isovalent/ipa/k8s
 github.com/isovalent/ipa/k8s/apis/cilium.io

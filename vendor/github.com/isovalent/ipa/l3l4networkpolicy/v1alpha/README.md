@@ -322,6 +322,10 @@ checksum.
 | os | [string](#string) |  | Operating system the agent is running on |
 | type | [AgentType](#l3l4networkpolicy-v1alpha-AgentType) |  | Agent type |
 | serial_number | [string](#string) |  | The Serial number of the hardware, useful for physical assets |
+| mgmt_ip | [string](#string) |  | ManagementIP is the management IP address of this DPU |
+| port_low | [uint32](#uint32) |  | PortLow is the low end of the port range assigned to this DPU |
+| port_high | [uint32](#uint32) |  | PortHigh is the high end of the port range assigned to this DPU |
+| hardware_model | [string](#string) |  | HardwareModel is the DPU hardware model |
 
 
 

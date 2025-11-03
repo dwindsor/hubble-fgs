@@ -58,7 +58,7 @@ type SmartSwitchNetworkPolicySpec struct {
 	// Rules defines the network policy rules for SmartSwitch
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
-	Rules []SmartSwitchNetworkPolicyRule `json:"rules,omitempty,omitzero"`
+	Rules []SmartSwitchNetworkPolicyRule `json:"rules"`
 }
 
 // Implement crdutils.CRDObject interface, required for working with CRDs
@@ -77,9 +77,9 @@ type SmartSwitchNetwork struct {
 	// +kubebuilder:validation:Required
 	CIDR string `json:"cidr"`
 	// +kubebuilder:validation:Optional
-	VRF string `json:"vrf"`
+	VRF string `json:"vrf,omitempty"`
 	// +kubebuilder:validation:Optional
-	VLAN uint32 `json:"vlan"`
+	VLAN uint32 `json:"vlan,omitempty"`
 }
 
 // SmartSwitchProtocolPort provides the protocol to apply the policy
@@ -107,7 +107,7 @@ type SmartSwitchProtocolPort struct {
 // against all source ports.
 type SmartSwitchNetworkSource struct {
 	// +kubebuilder:validation:Required
-	IPBlock []SmartSwitchNetwork `json:"ipBlock,omitempty"`
+	IPBlock []SmartSwitchNetwork `json:"ipBlock"`
 }
 
 // SmartSwitchNetworkDestination matches a specific network with an
@@ -116,12 +116,13 @@ type SmartSwitchNetworkSource struct {
 // and all ports.
 type SmartSwitchNetworkDestination struct {
 	// +kubebuilder:validation:Required
-	IPBlock []SmartSwitchNetwork `json:"ipBlock,omitempty"`
+	IPBlock []SmartSwitchNetwork `json:"ipBlock"`
 	// ProtoPorts is an optional field to specify protocols and ports for a
 	// policy rule. The policy rule applies to the cross product of IPBlock
 	// and ProtoPorts.
 	// +kubebuilder:validation:Required
-	ProtoPorts []SmartSwitchProtocolPort `json:"protoPorts,omitempty"`
+	// +kubebuilder:validation:MinItems=1
+	ProtoPorts []SmartSwitchProtocolPort `json:"protoPorts"`
 }
 
 // SmartSwitchNetworkPolicyRule is specifies the action for a source and

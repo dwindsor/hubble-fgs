@@ -78,7 +78,7 @@ message VertexFamilyNetworkDevice {
   uint32 port = 3;
   // protocol is the protocol that is used for the connection at the L3/L4
   // layer.
-  common.net.v1alpha.IPProtocol protocol = 4;
+  common.net.v1alpha.IPProtocol ip_protocol = 4;
   // application_protocol is the layer 7 protocol used for the connection.
   string application_protocol = 5;
   reserved 6; // tunneling protocol?

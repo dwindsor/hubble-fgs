@@ -53,7 +53,7 @@ type SmartSwitch struct {
 
 	// status defines the observed state of SmartSwitch
 	// +optional
-	Status SmartSwitchStatus `json:"status,omitempty,omitzero"`
+	Status SmartSwitchInventory `json:"status,omitempty,omitzero"`
 }
 
 // Implement crdutils.CRDObject interface, required for working with CRDs
@@ -62,7 +62,7 @@ func (s *SmartSwitch) GetObjectMetaStruct() *metav1.ObjectMeta {
 	return &s.ObjectMeta
 }
 
-type DPUStatus struct {
+type DPUInventory struct {
 	// ID of the DPU that is unique within the SmartSwitch.
 	ID string `json:"id,omitempty"`
 	// ManagementIP is the management IP address of this DPU.
@@ -77,8 +77,8 @@ type DPUStatus struct {
 	SoftwareVersion string `json:"softwareVersion,omitempty"`
 }
 
-// SmartSwitchStatus defines the observed state of SmartSwitch.
-type SmartSwitchStatus struct {
+// SmartSwitchInventory defines the observed state of SmartSwitch.
+type SmartSwitchInventory struct {
 	// ServiceIP is the service IP address of the SmartSwitch.
 	ServiceIP string `json:"serviceIP,omitempty"`
 	// ServiceMAC is the service MAC address of the SmartSwitch.
@@ -88,8 +88,8 @@ type SmartSwitchStatus struct {
 	// SerialNumber is the serial number of the SmartSwitch.
 	SerialNumber string `json:"serialNumber,omitempty,omitzero"`
 	// SoftwareVersion is the version of the agent software running on this
-	// SmartSwitch which reports SmartSwitchStatus.
+	// SmartSwitch which reports SmartSwitchInventory.
 	SoftwareVersion string `json:"softwareVersion,omitempty,omitzero"`
-	// DPUStatuses is the statuses of DPUs associated with this SmartSwitch.
-	DPUStatuses []DPUStatus `json:"dpuStatuses,omitempty,omitzero"`
+	// DPUInventories is the inventory of DPUs associated with this SmartSwitch.
+	DPUInventories []DPUInventory `json:"dpuInventories,omitempty,omitzero"`
 }

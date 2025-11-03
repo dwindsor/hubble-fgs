@@ -860,7 +860,15 @@ type ReportStatus struct {
 	// Agent type
 	Type AgentType `protobuf:"varint,8,opt,name=type,proto3,enum=l3l4networkpolicy.v1alpha.AgentType" json:"type,omitempty"`
 	// The Serial number of the hardware, useful for physical assets
-	SerialNumber  string `protobuf:"bytes,9,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
+	SerialNumber string `protobuf:"bytes,9,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
+	// ManagementIP is the management IP address of this DPU
+	MgmtIp string `protobuf:"bytes,10,opt,name=mgmt_ip,json=mgmtIp,proto3" json:"mgmt_ip,omitempty"`
+	// PortLow is the low end of the port range assigned to this DPU
+	PortLow uint32 `protobuf:"varint,11,opt,name=port_low,json=portLow,proto3" json:"port_low,omitempty"`
+	// PortHigh is the high end of the port range assigned to this DPU
+	PortHigh uint32 `protobuf:"varint,12,opt,name=port_high,json=portHigh,proto3" json:"port_high,omitempty"`
+	// HardwareModel is the DPU hardware model
+	HardwareModel string `protobuf:"bytes,13,opt,name=hardware_model,json=hardwareModel,proto3" json:"hardware_model,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -954,6 +962,34 @@ func (x *ReportStatus) GetType() AgentType {
 func (x *ReportStatus) GetSerialNumber() string {
 	if x != nil {
 		return x.SerialNumber
+	}
+	return ""
+}
+
+func (x *ReportStatus) GetMgmtIp() string {
+	if x != nil {
+		return x.MgmtIp
+	}
+	return ""
+}
+
+func (x *ReportStatus) GetPortLow() uint32 {
+	if x != nil {
+		return x.PortLow
+	}
+	return 0
+}
+
+func (x *ReportStatus) GetPortHigh() uint32 {
+	if x != nil {
+		return x.PortHigh
+	}
+	return 0
+}
+
+func (x *ReportStatus) GetHardwareModel() string {
+	if x != nil {
+		return x.HardwareModel
 	}
 	return ""
 }
@@ -1652,7 +1688,7 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x06policy\x18\x02 \x01(\v2%.l3l4networkpolicy.v1alpha.PolicyRuleR\x06policy\"V\n" +
 	"\x13ReportStatusRequest\x12?\n" +
 	"\x06status\x18\x01 \x01(\v2'.l3l4networkpolicy.v1alpha.ReportStatusR\x06status\"\x16\n" +
-	"\x14ReportStatusResponse\"\xc7\x02\n" +
+	"\x14ReportStatusResponse\"\xbf\x03\n" +
 	"\fReportStatus\x12\x1b\n" +
 	"\tagent_uid\x18\x01 \x01(\tR\bagentUid\x12\x1d\n" +
 	"\n" +
@@ -1663,7 +1699,12 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\farchitecture\x18\x06 \x01(\tR\farchitecture\x12\x0e\n" +
 	"\x02os\x18\a \x01(\tR\x02os\x128\n" +
 	"\x04type\x18\b \x01(\x0e2$.l3l4networkpolicy.v1alpha.AgentTypeR\x04type\x12#\n" +
-	"\rserial_number\x18\t \x01(\tR\fserialNumber\"\x83\x01\n" +
+	"\rserial_number\x18\t \x01(\tR\fserialNumber\x12\x17\n" +
+	"\amgmt_ip\x18\n" +
+	" \x01(\tR\x06mgmtIp\x12\x19\n" +
+	"\bport_low\x18\v \x01(\rR\aportLow\x12\x1b\n" +
+	"\tport_high\x18\f \x01(\rR\bportHigh\x12%\n" +
+	"\x0ehardware_model\x18\r \x01(\tR\rhardwareModel\"\x83\x01\n" +
 	"\tDpuConfig\x12\x1d\n" +
 	"\n" +
 	"service_ip\x18\x01 \x01(\tR\tserviceIp\x12\x1f\n" +

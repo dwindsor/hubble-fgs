@@ -14,7 +14,7 @@ require (
 	github.com/cilium/tetragon v1.7.0-pre.0.0.20251030145147-d1c2c9daebdb
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
-	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251010110610-9e02513e02f1
+	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251031160646-dbc076c50cfc
 	github.com/containerd/containerd/v2 v2.1.4
 	github.com/containernetworking/plugins v1.8.0
 	github.com/cri-o/cri-o v1.34.1
@@ -30,8 +30,8 @@ require (
 	github.com/google/gops v0.3.28
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/isovalent/ipa v1.18.0-rc.2
-	github.com/isovalent/ipa/k8s v1.18.0-rc.2
+	github.com/isovalent/ipa v1.19.0-pre.0.0.20251103202908-560b2471b3d4
+	github.com/isovalent/ipa/k8s v1.19.0-pre.0.0.20251103202908-560b2471b3d4
 	github.com/joho/godotenv v1.5.1
 	github.com/mennanov/fieldmask-utils v1.1.2
 	github.com/miekg/dns v1.1.68

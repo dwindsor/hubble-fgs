@@ -305,6 +305,34 @@ export declare type ReportStatus = Message<"l3l4networkpolicy.v1alpha.ReportStat
    * @generated from field: string serial_number = 9;
    */
   serialNumber: string;
+
+  /**
+   * ManagementIP is the management IP address of this DPU
+   *
+   * @generated from field: string mgmt_ip = 10;
+   */
+  mgmtIp: string;
+
+  /**
+   * PortLow is the low end of the port range assigned to this DPU
+   *
+   * @generated from field: uint32 port_low = 11;
+   */
+  portLow: number;
+
+  /**
+   * PortHigh is the high end of the port range assigned to this DPU
+   *
+   * @generated from field: uint32 port_high = 12;
+   */
+  portHigh: number;
+
+  /**
+   * HardwareModel is the DPU hardware model
+   *
+   * @generated from field: string hardware_model = 13;
+   */
+  hardwareModel: string;
 };
 
 /**

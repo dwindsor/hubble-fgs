@@ -134,6 +134,14 @@ message ReportStatus {
   AgentType type = 8;
   // The Serial number of the hardware, useful for physical assets
   string serial_number = 9;
+  // ManagementIP is the management IP address of this DPU
+  string mgmt_ip = 10;
+  // PortLow is the low end of the port range assigned to this DPU
+  uint32 port_low = 11;
+  // PortHigh is the high end of the port range assigned to this DPU
+  uint32 port_high = 12;
+  // HardwareModel is the DPU hardware model
+  string hardware_model = 13;
 }
 
 enum ConfigType {

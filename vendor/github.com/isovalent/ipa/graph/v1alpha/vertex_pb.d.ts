@@ -211,9 +211,9 @@ export declare type VertexFamilyNetworkDevice = Message<"graph.v1alpha.VertexFam
    * protocol is the protocol that is used for the connection at the L3/L4
    * layer.
    *
-   * @generated from field: common.net.v1alpha.IPProtocol protocol = 4;
+   * @generated from field: common.net.v1alpha.IPProtocol ip_protocol = 4;
    */
-  protocol: IPProtocol;
+  ipProtocol: IPProtocol;
 
   /**
    * application_protocol is the layer 7 protocol used for the connection.
