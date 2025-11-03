@@ -11,9 +11,14 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 )
 
+type MessageData struct {
+	Args  []string          `json:"args"`
+	Flags map[string]string `json:"flags"`
+}
+
 type controlMessage struct {
-	Command int    `json:"command"`
-	Data    string `json:"data"`
+	Command int         `json:"command"`
+	Data    MessageData `json:"data"`
 }
 
 type ReturnCode struct {
@@ -35,15 +40,10 @@ func PrintResponse(ret *ReturnCode, raw_json bool) {
 	}
 }
 
-func SendCmd(_ context.Context, sock_file string, cmd int, data string) (*ReturnCode, error) {
+func SendCmd(_ context.Context, sock_file string, cmd int, data MessageData) (*ReturnCode, error) {
 	txJson := &controlMessage{
 		Command: cmd,
-	}
-
-	if data == "" {
-		txJson.Data = "{}"
-	} else {
-		txJson.Data = data
+		Data:    data,
 	}
 
 	ret, err := send(sock_file, txJson)
@@ -54,15 +54,10 @@ func SendCmd(_ context.Context, sock_file string, cmd int, data string) (*Return
 	return ret, nil
 }
 
-func SendCmdTimeout(ctx context.Context, sock_file string, cmd int, data string, timeout time.Duration) (*ReturnCode, error) {
+func SendCmdTimeout(ctx context.Context, sock_file string, cmd int, data MessageData, timeout time.Duration) (*ReturnCode, error) {
 	txJson := &controlMessage{
 		Command: cmd,
-	}
-
-	if data == "" {
-		txJson.Data = "{}"
-	} else {
-		txJson.Data = data
+		Data:    data,
 	}
 
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)
@@ -94,15 +89,10 @@ func SendCmdTimeout(ctx context.Context, sock_file string, cmd int, data string,
 	return &rxJson, nil
 }
 
-func SendReceieveMsgs(ctx context.Context, sock_file string, cmd int, data string, timeout time.Duration, num int) ([]map[string]interface{}, error) {
+func SendReceieveMsgs(ctx context.Context, sock_file string, cmd int, data MessageData, timeout time.Duration, num int) ([]map[string]interface{}, error) {
 	txJson := &controlMessage{
 		Command: cmd,
-	}
-
-	if data == "" {
-		txJson.Data = "{}"
-	} else {
-		txJson.Data = data
+		Data:    data,
 	}
 
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)

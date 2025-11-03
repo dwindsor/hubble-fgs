@@ -28,11 +28,17 @@ var showCmd = &cobra.Command{
 			return err
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_POLICIES_SHOW, filter)
+		data := ipc.MessageData{
+			Flags: map[string]string{
+				"filter": filter,
+			},
+		}
+
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_POLICIES_SHOW, data)
 		if err != nil {
 			return err
 		}
-		ipc.PrintResponse(ret, false)
+		ipc.PrintResponse(ret, agwctl.JSON)
 		return nil
 	},
 }

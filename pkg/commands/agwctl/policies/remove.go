@@ -11,16 +11,15 @@ import (
 
 func init() {
 	removeCmd.Flags().StringP("file", "f", "", "Path to policy YAML file")
-	removeCmd.MarkFlagRequired("file")
 	PoliciesCmd.AddCommand(removeCmd)
 }
 
 var removeCmd = &cobra.Command{
-	Use:          "remove",
+	Use:          "remove [resourceId]",
 	SilenceUsage: true,
-	Short:        "Remove a policy defined a YAML file",
-	Long:         `Remove a policy that is defined in a YAML file.`,
-	RunE: func(cmd *cobra.Command, _ []string) error {
+	Short:        "Remove a policy by resourceId or from a YAML file",
+	Long:         `Remove a policy by providing its resourceId as an argument, or from a YAML file using the --file flag.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -29,11 +28,18 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_POLICIES_DEL, filePath)
+		data := ipc.MessageData{
+			Args: args,
+			Flags: map[string]string{
+				"file": filePath,
+			},
+		}
+
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_POLICIES_DEL, data)
 		if err != nil {
 			return err
 		}
-		ipc.PrintResponse(ret, false)
+		ipc.PrintResponse(ret, agwctl.JSON)
 		return nil
 	},
 }

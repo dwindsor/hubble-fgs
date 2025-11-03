@@ -1,6 +1,8 @@
 package switchpolicy
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type ResourceID struct {
 	kind      string

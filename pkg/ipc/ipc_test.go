@@ -46,8 +46,11 @@ func TestSendCmd(t *testing.T) {
 		if txJson.Command != 123 {
 			t.Errorf("Expected command to be 123, got %d", txJson.Command)
 		}
-		if txJson.Data != "mock data" {
-			t.Errorf("Expected data to be 'mock data', got '%s'", txJson.Data)
+		if len(txJson.Data.Args) != 1 || txJson.Data.Args[0] != "test-arg" {
+			t.Errorf("Expected data.args to be ['test-arg'], got %v", txJson.Data.Args)
+		}
+		if txJson.Data.Flags["key"] != "value" {
+			t.Errorf("Expected data.flags['key'] to be 'value', got '%s'", txJson.Data.Flags["key"])
 		}
 
 		// Create a mock response
@@ -67,7 +70,11 @@ func TestSendCmd(t *testing.T) {
 	// Call the SendCommand function with the mock server address
 	sockFile := "/tmp/mock.sock"
 	cmd := 123
-	ret, err := SendCmd(GlobCtx, sockFile, cmd, "mock data")
+	msgData := MessageData{
+		Args:  []string{"test-arg"},
+		Flags: map[string]string{"key": "value"},
+	}
+	ret, err := SendCmd(GlobCtx, sockFile, cmd, msgData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,8 +178,11 @@ func TestSendCmdTimeout(t *testing.T) {
 		if txJson.Command != 123 {
 			t.Errorf("Expected command to be 123, got %d", txJson.Command)
 		}
-		if txJson.Data != "mock data" {
-			t.Errorf("Expected data to be 'mock data', got '%s'", txJson.Data)
+		if len(txJson.Data.Args) != 2 || txJson.Data.Args[0] != "arg1" || txJson.Data.Args[1] != "arg2" {
+			t.Errorf("Expected data.args to be ['arg1', 'arg2'], got %v", txJson.Data.Args)
+		}
+		if txJson.Data.Flags["timeout"] != "test" {
+			t.Errorf("Expected data.flags['timeout'] to be 'test', got '%s'", txJson.Data.Flags["timeout"])
 		}
 
 		// Create a mock response
@@ -196,7 +206,11 @@ func TestSendCmdTimeout(t *testing.T) {
 	sockFile := "/tmp/mock_timeout.sock"
 	cmd := 123
 	timeout := 2 * time.Second
-	ret, err := SendCmdTimeout(GlobCtx, sockFile, cmd, "mock data", timeout)
+	msgData := MessageData{
+		Args:  []string{"arg1", "arg2"},
+		Flags: map[string]string{"timeout": "test"},
+	}
+	ret, err := SendCmdTimeout(GlobCtx, sockFile, cmd, msgData, timeout)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +223,7 @@ func TestSendCmdTimeout(t *testing.T) {
 
 	// Test timeout
 	timeout = 500 * time.Millisecond
-	_, err = SendCmdTimeout(GlobCtx, sockFile, cmd, "mock data", timeout)
+	_, err = SendCmdTimeout(GlobCtx, sockFile, cmd, msgData, timeout)
 	if err == nil {
 		t.Error("Expected timeout error, got nil")
 	} else {

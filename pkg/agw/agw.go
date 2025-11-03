@@ -13,13 +13,17 @@ import (
 	"sync"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
+	"github.com/isovalent/hubble-fgs/pkg/ipc"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
@@ -369,7 +373,8 @@ func (agw *AgentGateway) DpuHealthCheck(ctx context.Context) {
 	}
 }
 
-func (agw *AgentGateway) PoliciesAdd(_ context.Context, filePath string) string {
+func (agw *AgentGateway) PoliciesAdd(_ context.Context, msgData ipc.MessageData) string {
+	filePath := msgData.Flags["file"]
 	logger.GetLogger().Debug("Add policies", "file", filePath)
 
 	// Adding policies from file
@@ -380,8 +385,35 @@ func (agw *AgentGateway) PoliciesAdd(_ context.Context, filePath string) string 
 	return "Policies added successfully"
 }
 
-func (agw *AgentGateway) PoliciesRemove(_ context.Context, filePath string) string {
-	logger.GetLogger().Debug("Remove policies", "file", filePath)
+func (agw *AgentGateway) PoliciesRemove(_ context.Context, msgData ipc.MessageData) string {
+	var resourceID string
+	if len(msgData.Args) >= 1 {
+		resourceID = msgData.Args[0]
+	}
+	filePath := msgData.Flags["file"]
+	logger.GetLogger().Debug("Remove policies", "file", filePath, "resourceID", resourceID)
+
+	// Passing resourceID argument has precedence to file flag, so checking for it first
+	if resourceID != "" {
+		values := strings.Split(resourceID, "/")
+		if len(values) != 3 {
+			return fmt.Sprintf("invalid resourceID format: %s", resourceID)
+		}
+		snp := v1alpha1.SmartSwitchNetworkPolicy{
+			TypeMeta: metav1.TypeMeta{
+				Kind: values[0],
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: values[1],
+				Name:      values[2],
+			},
+		}
+		err := switchpolicy.Delete(&snp, agw.PolicyHandler)
+		if err != nil {
+			return fmt.Sprintf("Failed to remove policy %s: %v", resourceID, err)
+		}
+		return "Policy " + resourceID + " removed successfully"
+	}
 
 	// Removing policies from file
 	err := switchpolicy.DeleteFromFile(filePath, agw.PolicyHandler)
@@ -391,7 +423,8 @@ func (agw *AgentGateway) PoliciesRemove(_ context.Context, filePath string) stri
 	return "Policies removed successfully"
 }
 
-func (agw *AgentGateway) PoliciesShow(_ context.Context, nameFilter string) string {
+func (agw *AgentGateway) PoliciesShow(_ context.Context, msgData ipc.MessageData) string {
+	nameFilter := msgData.Flags["filter"]
 	logger.GetLogger().Debug("Show policies", "nameFilter", nameFilter)
 
 	// Filter policies by name pattern
@@ -432,11 +465,6 @@ func (agw *AgentGateway) PoliciesShow(_ context.Context, nameFilter string) stri
 func (agw *AgentGateway) ShowDpu(_ context.Context) string {
 	logger.GetLogger().Debug("Show dpu")
 	return agw.dpuListener.StatusReportString()
-}
-
-func (agw *AgentGateway) PingFwa(_ context.Context, dpu string) string {
-	logger.GetLogger().Debug("Ping DPU", "uid", dpu)
-	return ""
 }
 
 func (agw *AgentGateway) Reopen(_ context.Context) string {

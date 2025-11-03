@@ -222,6 +222,7 @@ func Add(np *v1alpha1.SmartSwitchNetworkPolicy, policyHandler PolicyHandler) err
 	return nil
 }
 
+// Only the kind, namespace, and name of the policy need to be populated
 func Delete(np *v1alpha1.SmartSwitchNetworkPolicy, policyHandler PolicyHandler) error {
 	if np == nil {
 		return nil

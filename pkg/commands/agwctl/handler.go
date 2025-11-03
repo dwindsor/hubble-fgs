@@ -3,6 +3,7 @@ package agwctl
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"strconv"
@@ -51,8 +52,21 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.Data = "Invalid command format"
 		return response, nil
 	}
-	data, ok := command["data"].(string)
+	dataMap, ok := command["data"].(map[string]interface{})
 	if !ok {
+		response.ReturnCode = "fail"
+		response.Data = "Invalid data format"
+		return response, nil
+	}
+	datajson, err := json.Marshal(dataMap)
+	if err != nil {
+		response.ReturnCode = "fail"
+		response.Data = "Invalid data format"
+		return response, nil
+	}
+	var data ipc.MessageData
+	err = json.Unmarshal(datajson, &data)
+	if err != nil {
 		response.ReturnCode = "fail"
 		response.Data = "Invalid data format"
 		return response, nil
@@ -149,7 +163,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.Data = tokens
 
 	case CMD_SHOW_TECH:
-		pol := agwAgent.PoliciesShow(ctx, "")
+		pol := agwAgent.PoliciesShow(ctx, ipc.MessageData{})
 		status := nxos.Nexus.ShowStatus(ctx)
 		dpu := agwAgent.ShowDpu(ctx)
 		vrf := nxos.Nexus.ShowVrf(ctx)
@@ -168,12 +182,20 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		}
 
 	case CMD_PING_FWA:
-		out := agwAgent.PingFwa(ctx, data)
+		// out := agwAgent.PingFwa(ctx, data)
 		response.ReturnCode = "ok"
-		response.Data = out
+		response.Data = "Not implemented"
 
 	case CMD_RESTART_FWA:
-		out, err := exec.Command("/usr/src/app/restart-fwa.sh", "-i", data, "-p", "pen123", "-u", "root").Output()
+		var ip string
+		if len(data.Args) < 1 {
+			response.ReturnCode = "fail"
+			response.Data = "Invalid arguments"
+			return response, nil
+		}
+		ip = data.Args[0]
+
+		out, err := exec.Command("/usr/src/app/restart-fwa.sh", "-i", ip, "-p", "pen123", "-u", "root").Output()
 		if err != nil {
 			response.ReturnCode = "fail"
 			response.Data = err.Error() + "\n" + string(out)
@@ -183,7 +205,15 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		}
 
 	case CMD_LOAD_SYSLOG_CFG:
-		cfg, err := os.ReadFile(data)
+		var file string
+		if len(data.Args) < 1 {
+			response.ReturnCode = "fail"
+			response.Data = "Invalid arguments"
+			return response, nil
+		}
+		file = data.Args[0]
+
+		cfg, err := os.ReadFile(file)
 		if err != nil {
 			response.ReturnCode = "fail"
 			response.Data = err.Error()

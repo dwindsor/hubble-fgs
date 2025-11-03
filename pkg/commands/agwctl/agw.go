@@ -43,7 +43,7 @@ any existing syslog export configuration.  It is in the format:
 		if len(args) < 1 {
 			return errors.New("missing file")
 		}
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_LOAD_SYSLOG_CFG, args[0])
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_LOAD_SYSLOG_CFG, ipc.MessageData{Args: []string{args[0]}})
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ var showSyslogCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_SYSLOG_CFG, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_SYSLOG_CFG, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -76,6 +76,7 @@ var loadPolicyCmd = &cobra.Command{
 	SilenceUsage: true,
 	Short:        "Deprecated, use 'agwctl policies add' instead",
 	Long:         `Deprecated, use 'agwctl policies add' instead.`,
+	Deprecated:   "Deprecated, use 'agwctl policies add' instead",
 	RunE: func(_ *cobra.Command, args []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -83,7 +84,7 @@ var loadPolicyCmd = &cobra.Command{
 		if len(args) < 1 {
 			return errors.New("missing file")
 		}
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_LOAD_POLICY, args[0])
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_LOAD_POLICY, ipc.MessageData{Args: []string{args[0]}})
 		if err != nil {
 			return err
 		}
@@ -97,13 +98,14 @@ var showPolicyCmd = &cobra.Command{
 	SilenceUsage: true,
 	Short:        "Deprecated, use 'agwctl policies show' instead",
 	Long:         "Deprecated, use 'agwctl policies show' instead.",
+	Deprecated:   "Deprecated, use 'agwctl policies show' instead",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		nameFilter, _ := cmd.Flags().GetString("name")
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_POLICY, nameFilter)
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_POLICY, ipc.MessageData{Flags: map[string]string{"name": nameFilter}})
 		if err != nil {
 			return err
 		}
@@ -121,7 +123,7 @@ var healthCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_HEALTH, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_HEALTH, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -139,7 +141,7 @@ var showStatusCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_STATUS, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_STATUS, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -157,7 +159,7 @@ var showDpuCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_DPU, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_DPU, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -175,7 +177,7 @@ var showVrfCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_VRF, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_VRF, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -193,7 +195,7 @@ var showLogCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_LOG, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_LOG, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -211,7 +213,7 @@ var delTokensCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_DEL_TOKENS, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_DEL_TOKENS, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -229,7 +231,7 @@ var showTokensCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_TOKENS, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_TOKENS, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -247,7 +249,7 @@ var showTechCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_TECH, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_TECH, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -265,7 +267,7 @@ var tacPacCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_TAC_PAC, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_TAC_PAC, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -279,6 +281,7 @@ var pingFwaCmd = &cobra.Command{
 	SilenceUsage: true,
 	Short:        "ping FWA",
 	Long:         "ping FWA",
+	Deprecated:   "Deprecated, no longer applicable to hubble agw/fwa.",
 	RunE: func(_ *cobra.Command, args []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -287,7 +290,7 @@ var pingFwaCmd = &cobra.Command{
 			return errors.New("missing DPU")
 		}
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_PING_FWA, args[0])
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_PING_FWA, ipc.MessageData{Args: []string{args[0]}})
 		if err != nil {
 			return err
 		}
@@ -309,7 +312,7 @@ var restartFwaCmd = &cobra.Command{
 			return errors.New("missing DPU")
 		}
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_RESTART_FWA, args[0])
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_RESTART_FWA, ipc.MessageData{Args: []string{args[0]}})
 		if err != nil {
 			return err
 		}
@@ -327,7 +330,7 @@ var showHaCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_HA, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_HA, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -345,7 +348,7 @@ var showAdjCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_ADJ, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_ADJ, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -363,7 +366,7 @@ var showMbrCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_MBR, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_MBR, ipc.MessageData{})
 		if err != nil {
 			return err
 		}
@@ -381,7 +384,7 @@ var showGidCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_GID, "")
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_GID, ipc.MessageData{})
 		if err != nil {
 			return err
 		}

@@ -460,13 +460,3 @@ func TestReopen(t *testing.T) {
 		require.Equal(t, "Reopen ok", result)
 	}
 }
-
-// --- Test for PingFwa ---
-
-func TestPingFwa(t *testing.T) {
-	agw := &AgentGateway{}
-	result := agw.PingFwa(context.Background(), "dpu1")
-	if result != "" {
-		require.Equal(t, "", result)
-	}
-}

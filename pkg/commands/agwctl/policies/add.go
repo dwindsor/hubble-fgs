@@ -29,7 +29,13 @@ var addCmd = &cobra.Command{
 			return err
 		}
 
-		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_POLICIES_ADD, filePath)
+		data := ipc.MessageData{
+			Flags: map[string]string{
+				"file": filePath,
+			},
+		}
+
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_POLICIES_ADD, data)
 		if err != nil {
 			return err
 		}
