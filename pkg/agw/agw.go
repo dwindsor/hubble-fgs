@@ -536,6 +536,65 @@ func (agw *AgentGateway) ShowSyslog(_ context.Context) (string, error) {
 	return string(jsonData), nil
 }
 
+func validateDpuConfig(dpuConfig *DpuConfigData) error {
+	if dpuConfig == nil {
+		return errors.New("dpu config is nil")
+	}
+
+	ip := net.ParseIP(dpuConfig.ServiceIP)
+	if ip == nil || ip.To4() == nil {
+		logger.GetLogger().Debug("Invalid ipv4 format service_ip", "ip", dpuConfig.ServiceIP)
+		return errors.New("invalid ipv4 format for service_ip")
+	}
+	if dpuConfig.ServiceMAC == "" {
+		logger.GetLogger().Debug("Invalid mac address format service_mac", "mac", dpuConfig.ServiceMAC)
+		return errors.New("invalid mac address format for service_mac")
+	}
+
+	return nil
+}
+
+func (agw *AgentGateway) LoadConfigDpu(_ context.Context, dpu string) error {
+	logger.GetLogger().Debug("Load dpu", "dpu", dpu)
+
+	// Unmarshal the JSON string into DpuConfig
+	var dpuConfig DpuConfigData
+	err := json.Unmarshal([]byte(dpu), &dpuConfig)
+	if err != nil {
+		logger.GetLogger().Error("Failed to unmarshal dpu JSON", "error", err)
+		return err
+	}
+
+	// Validate dpu config
+	err = validateDpuConfig(&dpuConfig)
+	if err != nil {
+		logger.GetLogger().Error("Failed to validate dpu config", "error", err)
+		return err
+	}
+
+	// Convert to DPU config object
+	configObj := &v1alpha.ConfigObject{
+		Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+		Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+		Config: &v1alpha.ConfigObject_ConfigDpu{
+			ConfigDpu: &v1alpha.DpuConfig{
+				ServiceIp:  dpuConfig.ServiceIP,
+				ServiceMac: dpuConfig.ServiceMAC,
+				PortLow:    dpuConfig.PortLow,
+				PortHigh:   dpuConfig.PortHigh,
+			},
+		},
+	}
+
+	err = library.GetRepository().AddConfig(configObj)
+	if err != nil {
+		logger.GetLogger().Error("Failed to add dpu config", "error", err)
+		return err
+	}
+
+	return nil
+}
+
 func (agw *AgentGateway) LoadSyslog(_ context.Context, syslog string) error {
 	logger.GetLogger().Debug("Load syslog", "syslog", syslog)
 

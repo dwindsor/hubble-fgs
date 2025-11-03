@@ -36,6 +36,7 @@ const (
 	Dataplane_RemovePolicies
 	Dataplane_ListPolicies
 	Dataplane_LogConfig
+	Dataplane_DpuConfig = 20
 )
 
 // Policy command values
@@ -75,9 +76,12 @@ type LogConfig struct {
 	LogEnabled     bool           `json:"log_enabled"`
 	UnixPath       string         `json:"unix_path,omitempty"`
 	DataplaneLevel interface{}    `json:"dataplane_level,omitempty"`
-	NpuIP          string         `json:"npu_ip,omitempty"`
-	NpuMAC         string         `json:"npu_mac,omitempty"`
 	Collector      []LogCollector `json:"collector"`
+}
+
+type DataplaneDpuConfig struct {
+	NpuIP  string `json:"service_ip"`
+	NpuMAC string `json:"service_mac"`
 }
 
 type LogCollector struct {

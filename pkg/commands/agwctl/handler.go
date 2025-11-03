@@ -39,6 +39,7 @@ const (
 	CMD_POLICIES_DEL
 	CMD_POLICIES_CLEAR
 	CMD_LOGGING
+	CMD_LOAD_DPU_CFG
 )
 
 const (
@@ -205,6 +206,22 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 			response.ReturnCode = "ok"
 			response.Data = string(out)
 		}
+
+	case CMD_LOAD_DPU_CFG:
+		cfg, err := os.ReadFile(data.Args[0])
+		if err != nil {
+			response.ReturnCode = "fail"
+			response.Data = err.Error()
+			return response, nil
+		}
+		err = agwAgent.LoadConfigDpu(ctx, string(cfg))
+		if err != nil {
+			response.ReturnCode = "fail"
+			response.Data = err.Error()
+			return response, nil
+		}
+		response.ReturnCode = "ok"
+		response.Data = "DPU config loaded"
 
 	case CMD_LOAD_SYSLOG_CFG:
 		var file string

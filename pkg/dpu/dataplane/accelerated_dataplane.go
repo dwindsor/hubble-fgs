@@ -181,21 +181,59 @@ func (dp *AcceleratedDataplaneProcess) ClearFirewallPolicies(_ context.Context) 
 	return nil
 }
 
+func (dp *AcceleratedDataplaneProcess) SendDpuConfig(dpuConfig *v1alpha.DpuConfig) error {
+	cfg := DataplaneDpuConfig{
+		NpuIP:  dpuConfig.ServiceIp,
+		NpuMAC: dpuConfig.ServiceMac,
+	}
+	if cfg.NpuIP == "" || cfg.NpuMAC == "" {
+		logger.GetLogger().Error("failed to send dpu config", "npuIp", cfg.NpuIP, "npuMac", cfg.NpuMAC)
+		return fmt.Errorf("failed to send dpu config")
+	}
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		logger.GetLogger().Error("failed to marshal dpu config", logfields.Error, err)
+		return fmt.Errorf("failed to marshal dpu config")
+	}
+	logger.GetLogger().Info("sending dpu config to dp-app", "config", string(data))
+
+	// Sending dpu configuration to the accelerated dataplane
+	msg := &socket.ControlMessage{
+		Command: Dataplane_DpuConfig,
+		Type:    socket.DATAPLANE,
+		Data:    data,
+	}
+	dpsocket := socket.NewDataplaneSocket(dp.ApiPath, UDS_TIMEOUT*time.Second)
+	err = dpsocket.Connect()
+	if err != nil {
+		return err
+	}
+	defer dpsocket.Close()
+	err = dpsocket.Send(msg)
+	if err != nil {
+		return err
+	}
+	rc, err := dpsocket.Receive()
+	if err != nil {
+		return err
+	}
+	if rc.ReturnCode < socket.SUCCESS {
+		return errors.New(rc.ReturnCode.String())
+	}
+	logger.GetLogger().Debug("dataplane dpu config updated")
+	return nil
+}
+
 func (dp *AcceleratedDataplaneProcess) SendLogConfig(logConfigs map[string]*v1alpha.LogConfig) error {
 	// Building config object
 	logConfig := LogConfig{}
-	if dp.NpuIp == "" || dp.NpuMac == "" {
-		logger.GetLogger().Error("failed to send log config", "npuIp", dp.NpuIp, "npuMac", dp.NpuMac)
-		return fmt.Errorf("failed to send log config")
-	} else if len(logConfigs) == 0 {
+	if len(logConfigs) == 0 {
 		logConfig.LogEnabled = false
 		logConfig.DataplaneLevel = "info"
 		logConfig.Collector = []LogCollector{}
 	} else {
 		logConfig.LogEnabled = true
 		logConfig.DataplaneLevel = "info"
-		logConfig.NpuIP = dp.NpuIp
-		logConfig.NpuMAC = dp.NpuMac
 		for _, log := range logConfigs {
 			port, err := strconv.Atoi(log.Port)
 			if err != nil {
@@ -354,6 +392,11 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 		// Setting NPU IP and MAC
 		dp.Accelerated.NpuIp = dpuConfig.ServiceIp
 		dp.Accelerated.NpuMac = dpuConfig.ServiceMac
+		logger.GetLogger().Error("dpu config", "npuIp", dpuConfig.ServiceIp, "npuMac", dpuConfig.ServiceMac)
+		err = dp.Accelerated.SendDpuConfig(dpuConfig)
+		if err != nil {
+			return err
+		}
 		return nil
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
 		// Switching on config type
