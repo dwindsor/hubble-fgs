@@ -89,8 +89,10 @@ func (s *State) RemoveRuleByID(id ruleID) error {
 	} else {
 		return fmt.Errorf("cannot remove rule with id %d: policy is nil", id)
 	}
-	s.diff.Del(id, s.convertRuleToDPUPolicyRule(existingPolicy, false))
-
+	converted := s.convertRuleToDPUPolicyRule(existingPolicy, false)
+	if converted != nil {
+		s.diff.Del(id, converted)
+	}
 	return nil
 }
 
@@ -109,7 +111,10 @@ func (s *State) AddRule(id ruleID, policy *SwitchPolicy) error {
 		s.policyByVRFName[vrfName] = make(map[ruleID]*SwitchPolicy)
 	}
 	s.policyByVRFName[vrfName][id] = policy
-	s.diff.Add(id, s.convertRuleToDPUPolicyRule(policy, true))
+	converted := s.convertRuleToDPUPolicyRule(policy, true)
+	if converted != nil {
+		s.diff.Add(id, converted)
+	}
 
 	return nil
 }
@@ -136,7 +141,10 @@ func (s *State) SetL3Networks(l3 *L3Networks) error {
 			}
 			// Mark all rules for this VRF to be added
 			for ruleId, rule := range s.policyByVRFName[vrfName] {
-				s.diff.Add(ruleId, s.convertRuleToDPUPolicyRule(rule, true))
+				converted := s.convertRuleToDPUPolicyRule(rule, true)
+				if converted != nil {
+					s.diff.Add(ruleId, converted)
+				}
 			}
 		}
 	}
@@ -146,7 +154,10 @@ func (s *State) SetL3Networks(l3 *L3Networks) error {
 			// L3 network was removed, delete it
 			// First we need to prepare DPU rules
 			for ruleId, rule := range s.policyByVRFName[vrfName] {
-				s.diff.Del(ruleId, s.convertRuleToDPUPolicyRule(rule, false))
+				converted := s.convertRuleToDPUPolicyRule(rule, false)
+				if converted != nil {
+					s.diff.Del(ruleId, converted)
+				}
 			}
 			if err := s.networkL3Objects.Remove(vrfName); err != nil {
 				return fmt.Errorf("failed to remove L3 network %s: %w", vrfName, err)
@@ -203,8 +214,14 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *dpu
 	} else {
 		action = v1alpha.PolicyAction_POLICY_ACTION_UNSPECIFIED
 	}
-	sourceVRFId := s.networkL3Objects.byName[VrfName(rule.Policy.Source.Endpoint.VRF)]
-	destinationVRFId := s.networkL3Objects.byName[VrfName(rule.Policy.Destination.Endpoint.VRF)]
+	sourceVRFId, ok := s.networkL3Objects.byName[VrfName(rule.Policy.Source.Endpoint.VRF)]
+	if !ok {
+		return nil
+	}
+	destinationVRFId, ok := s.networkL3Objects.byName[VrfName(rule.Policy.Destination.Endpoint.VRF)]
+	if !ok {
+		return nil
+	}
 
 	dstProto := v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED
 	dstPorts := []dpu.DPUPorts{}
