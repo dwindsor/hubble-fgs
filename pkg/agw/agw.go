@@ -425,7 +425,16 @@ func (agw *AgentGateway) PoliciesShow(_ context.Context, msgData ipc.MessageData
 	filteredNames := filterPolicyNames(policyNames, nameFilter)
 
 	if len(filteredNames) == 0 {
+		if msgData.Flags["json"] == "true" {
+			return "{}"
+		}
 		return formatNoPoliciesMessage(nameFilter)
+	}
+
+	// If checking if the json flag was passed, so that policy can be formatted correctly
+	if msgData.Flags["json"] == "true" {
+		result := formatSwitchPoliciesJsonStringByName(filteredNames, policyMap)
+		return result
 	}
 
 	// Text output only

@@ -2,6 +2,7 @@ package policies
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -31,6 +32,7 @@ var showCmd = &cobra.Command{
 		data := ipc.MessageData{
 			Flags: map[string]string{
 				"filter": filter,
+				"json":   fmt.Sprintf("%t", agwctl.JSON),
 			},
 		}
 

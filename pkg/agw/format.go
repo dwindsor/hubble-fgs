@@ -1,6 +1,7 @@
 package agw
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -230,4 +231,32 @@ func matchWildcardPattern(nameLower, patternLower string) bool {
 		}
 		return true
 	}
+}
+
+// formatSwitchPoliciesJsonStringByName formats filtered policies as a JSON map string
+// where the key is the ResourceID and the value is the array of rules
+func formatSwitchPoliciesJsonStringByName(filteredNames []string, policyMap map[switchpolicy.ResourceID]switchpolicy.K8sRulesList) string {
+	// Create a map to hold the matching policies
+	policies := make(map[string]switchpolicy.K8sRulesList)
+
+	// Iterate through policyMap and find matching policies
+	for resourceID, rulesList := range policyMap {
+		policyName := resourceID.String()
+
+		// Check if this policy matches any of the filtered names
+		for _, filteredName := range filteredNames {
+			if policyName == filteredName {
+				policies[policyName] = rulesList
+				break
+			}
+		}
+	}
+
+	// Marshal to JSON
+	jsonData, err := json.Marshal(policies)
+	if err != nil {
+		return fmt.Sprintf(`{"error": "failed to marshal policies: %v"}`, err)
+	}
+
+	return string(jsonData)
 }

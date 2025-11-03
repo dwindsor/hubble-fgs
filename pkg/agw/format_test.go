@@ -1,6 +1,7 @@
 package agw
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -602,6 +603,118 @@ func TestFormatSwitchDestination(t *testing.T) {
 			for _, substr := range tc.expected {
 				if !contains(out, substr) {
 					require.Contains(t, out, substr)
+				}
+			}
+		})
+	}
+}
+
+// --- Tests for formatSwitchPoliciesJsonStringByName ---
+
+func TestFormatSwitchPoliciesJsonStringByName(t *testing.T) {
+	cases := []struct {
+		name          string
+		filteredNames []string
+		policyMap     map[switchpolicy.ResourceID]switchpolicy.K8sRulesList
+		expectCount   int
+	}{
+		{
+			name:          "Empty filtered names",
+			filteredNames: []string{},
+			policyMap: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("SmartSwitchNetworkPolicy", "default", "policy1"): {
+					switchpolicy.NewPolicyRule("hash1", &switchpolicy.SmartSwitchNetworkPolicy{
+						Action: switchpolicy.SmartSwitchNetworkAction{
+							EnforceAction: switchpolicy.SmartSwitchEnforceAction{Allow: true},
+						},
+					}),
+				},
+			},
+			expectCount: 0,
+		},
+		{
+			name:          "Single matching policy",
+			filteredNames: []string{"SmartSwitchNetworkPolicy/default/policy1"},
+			policyMap: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("SmartSwitchNetworkPolicy", "default", "policy1"): {
+					switchpolicy.NewPolicyRule("hash1", &switchpolicy.SmartSwitchNetworkPolicy{
+						Action: switchpolicy.SmartSwitchNetworkAction{
+							EnforceAction: switchpolicy.SmartSwitchEnforceAction{Allow: true},
+						},
+						Source: switchpolicy.SmartSwitchNetworkSource{
+							Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/24"},
+						},
+						Destination: switchpolicy.SmartSwitchNetworkDestination{
+							Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{CIDR: "192.168.0.0/24"},
+						},
+					}),
+				},
+			},
+			expectCount: 1,
+		},
+		{
+			name: "Multiple matching policies",
+			filteredNames: []string{
+				"SmartSwitchNetworkPolicy/default/policy1",
+				"SmartSwitchNetworkPolicy/default/policy2",
+			},
+			policyMap: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("SmartSwitchNetworkPolicy", "default", "policy1"): {
+					switchpolicy.NewPolicyRule("hash1", &switchpolicy.SmartSwitchNetworkPolicy{
+						Action: switchpolicy.SmartSwitchNetworkAction{
+							EnforceAction: switchpolicy.SmartSwitchEnforceAction{Allow: true},
+						},
+					}),
+				},
+				switchpolicy.NewResourceID("SmartSwitchNetworkPolicy", "default", "policy2"): {
+					switchpolicy.NewPolicyRule("hash2", &switchpolicy.SmartSwitchNetworkPolicy{
+						Action: switchpolicy.SmartSwitchNetworkAction{
+							EnforceAction: switchpolicy.SmartSwitchEnforceAction{Deny: true},
+						},
+					}),
+				},
+			},
+			expectCount: 2,
+		},
+		{
+			name:          "Filtered name not in policy map",
+			filteredNames: []string{"SmartSwitchNetworkPolicy/default/nonexistent"},
+			policyMap: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("SmartSwitchNetworkPolicy", "default", "policy1"): {
+					switchpolicy.NewPolicyRule("hash1", &switchpolicy.SmartSwitchNetworkPolicy{
+						Action: switchpolicy.SmartSwitchNetworkAction{
+							EnforceAction: switchpolicy.SmartSwitchEnforceAction{Allow: true},
+						},
+					}),
+				},
+			},
+			expectCount: 0,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := formatSwitchPoliciesJsonStringByName(tc.filteredNames, tc.policyMap)
+
+			// Verify it's valid JSON map
+			var policies map[string]interface{}
+			err := json.Unmarshal([]byte(result), &policies)
+			require.NoError(t, err, "Result should be valid JSON")
+
+			// Verify count
+			require.Equal(t, tc.expectCount, len(policies), "Should have expected number of policies")
+
+			// For non-empty results, verify that keys match filtered names that exist in policyMap
+			if tc.expectCount > 0 {
+				// Check that each filtered name that should match is in the result
+				for resourceID := range tc.policyMap {
+					policyName := resourceID.String()
+					for _, filteredName := range tc.filteredNames {
+						if policyName == filteredName {
+							require.Contains(t, policies, filteredName, "JSON should contain policy with resourceId: "+filteredName)
+							break
+						}
+					}
 				}
 			}
 		})
