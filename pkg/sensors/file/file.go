@@ -2235,6 +2235,7 @@ func probeFileMode(s *fm.KernelSelectorState, h TpMode) (ModeWithError, bool) {
 	logger.GetLogger().Info(fmt.Sprintf("HaveProgramType(ebpf.LSM) = %t", features.HaveProgramType(ebpf.LSM) == nil))
 
 	algo, err := probeImaEnabled()
+	isImaEnabled := (err == nil)
 	logger.GetLogger().Info("probeImaEnabled()", logfields.Error, err, "algo", algo)
 
 	supportBpfLoop := (probeBpfLoop() == nil)
@@ -2250,7 +2251,7 @@ func probeFileMode(s *fm.KernelSelectorState, h TpMode) (ModeWithError, bool) {
 		"security_kernel_read_file", probeDpathSecurityKernelReadFile() == nil,
 	)
 
-	digestSupport := supportLSM && supportImaFileHash
+	digestSupport := supportLSM && supportImaFileHash && isImaEnabled
 
 	var errs []error
 	if !supportTracing {
