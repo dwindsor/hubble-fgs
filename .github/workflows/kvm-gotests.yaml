@@ -31,19 +31,19 @@ jobs:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "rhel8.9-20251031.120020"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "bpf-next-20251031.120020"
+          - "bpf-next-20251103.013252"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.6-20251031.120020"
+          - "6.6-20251103.013252"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.1-20251031.120020"
+          - "6.1-20251103.013252"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.15-20251031.120020"
+          - "5.15-20251103.013252"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.10-20251031.120020"
+          - "5.10-20251103.013252"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.4-20251031.120020"
+          - "5.4-20251103.013252"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "4.19-20251031.120020"
+          - "4.19-20251103.013252"
         # TODO: temporarily disable testing for 4.19 and 5.4 kernels
         # The excluded kernels require more test failure investigation
         exclude:
