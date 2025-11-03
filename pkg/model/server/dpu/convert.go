@@ -4,73 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/record"
-
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
-
-// This converts the datapath record to the stream response that is sent
-// to the peer DPUs. We should merge DatapathRecords into these objects
-// so at some point we can remove this unnecessary translation.
-func recordToDPUPolicyRule(r *record.DatapathRecord, update bool) *DPUPolicyRule {
-	act := v1alpha.PolicyAction_POLICY_ACTION_UNSPECIFIED
-	if r.Action != nil {
-		switch r.Action.Action {
-		case record.PolicyNone:
-			act = v1alpha.PolicyAction_POLICY_ACTION_UNSPECIFIED
-		case record.PolicyAllow:
-			act = v1alpha.PolicyAction_POLICY_ACTION_ALLOW
-		case record.PolicyDeny:
-			act = v1alpha.PolicyAction_POLICY_ACTION_DENY
-		}
-	} else {
-		act = v1alpha.PolicyAction_POLICY_ACTION_UNSPECIFIED
-	}
-
-	var operation v1alpha.PolicyOperation
-	if update {
-		operation = v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT
-	} else {
-		operation = v1alpha.PolicyOperation_POLICY_OPERATION_DELETE
-	}
-
-	return &DPUPolicyRule{
-		Oper: operation,
-		Policy: &DPURule{
-			PolicyName: r.PolicyUID.PolicyName,
-			RuleName:   r.PolicyUID.RuleName,
-			Action:     act,
-			Source: DPUSubject{
-				Cidr: r.L3Src.Ip,
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  r.L3Src.Port,
-						MaxPort:  r.L3Src.Port,
-						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
-					},
-				},
-				Vlan:  r.L3Src.Vlan,
-				Vrf:   r.L3Src.Vrf,
-				VrfId: r.L3Src.VrfId,
-			},
-			// The current policy resolution does not include destinatoin
-			// Vlan and VRF this will be added soon.
-			Destination: DPUSubject{
-				Cidr: r.Endpoint.EP.Ip,
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  r.Endpoint.Port,
-						MaxPort:  r.Endpoint.Port,
-						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
-					},
-				},
-				Vlan:  0,
-				Vrf:   "",
-				VrfId: 0,
-			},
-		},
-	}
-}
 
 func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicyRule {
 	p := resp.Policy

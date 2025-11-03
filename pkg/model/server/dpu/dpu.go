@@ -17,8 +17,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/record"
-
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"google.golang.org/grpc"
@@ -385,11 +383,6 @@ func HashRule(rule *DPURule) ([sha256.Size]byte, error) {
 	return result, nil
 }
 
-func (dpu *DPUListener) SubmitUpdateToDPU(record *record.DatapathRecord) error {
-	rule := recordToDPUPolicyRule(record, true)
-	return dpu.SubmitDPURuleToDPU(rule)
-}
-
 func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 	dpu.mtx.Lock()
 	defer dpu.mtx.Unlock()
@@ -415,11 +408,6 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 	}
 
 	return nil
-}
-
-func (dpu *DPUListener) SubmitDeleteToDPU(record *record.DatapathRecord) error {
-	rule := recordToDPUPolicyRule(record, false)
-	return dpu.SubmitDPURuleToDPU(rule)
 }
 
 func (dpu *DPUListener) addPeer(uid string) *peer {

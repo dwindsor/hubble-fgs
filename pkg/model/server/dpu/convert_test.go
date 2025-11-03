@@ -3,13 +3,8 @@ package dpu
 import (
 	"testing"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/isovalent/hubble-fgs/pkg/endpoint"
-	"github.com/isovalent/hubble-fgs/pkg/model/record"
-	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 var (
@@ -28,47 +23,77 @@ var (
 	//dstVlan = 200 unsupported in initial PR
 	dstVlan = 0
 
-	policy = types.TetragonPolicyUniqueID{
-		PolicyName: name,
-		RuleName:   rule,
+	testVrfRule = &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			PolicyName: name,
+			RuleName:   rule,
+			Action:     v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
+			Source: DPUSubject{
+				Cidr: srcCidr,
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  0,
+						MaxPort:  0,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   srcVrf,
+				VrfId: 0,
+			},
+			Destination: DPUSubject{
+				Cidr: dstCidr,
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  8080,
+						MaxPort:  8080,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   dstVrf,
+				VrfId: 0,
+			},
+		},
 	}
-	dpSrcVrf = record.DatapathSource{
-		Vrf: srcVrf,
-		Ip:  srcCidr,
-	}
-	dpSrcVlan = record.DatapathSource{
-		Vlan: uint32(srcVlan),
-		Ip:   srcCidr,
-	}
-	ep = &endpoint.Endpoint{
-		Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-		Ip:   "198.2.0.1/16",
-	}
-	dpEndpoint = record.DatapathEndpoint{
-		EP:   ep,
-		Port: 8080,
-	}
-	action = &record.DatapathAction{
-		Action: record.PolicyAllow,
-	}
-	testRecordVrf = record.DatapathRecord{
-		PolicyUID: policy,
-		Src:       nil,
-		L3Src:     dpSrcVrf,
-		Endpoint:  dpEndpoint,
-		Action:    action,
-	}
-	testRecordVlan = record.DatapathRecord{
-		PolicyUID: policy,
-		Src:       nil,
-		L3Src:     dpSrcVlan,
-		Endpoint:  dpEndpoint,
-		Action:    action,
+	testVlanRule = &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
+			PolicyName: name,
+			RuleName:   rule,
+			Action:     v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
+			Source: DPUSubject{
+				Cidr: srcCidr,
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  0,
+						MaxPort:  0,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  uint32(srcVlan),
+				Vrf:   noVrf,
+				VrfId: 0,
+			},
+			Destination: DPUSubject{
+				Cidr: dstCidr,
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  8080,
+						MaxPort:  8080,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  uint32(dstVlan),
+				Vrf:   noVrf,
+				VrfId: 0,
+			},
+		},
 	}
 )
 
 func testSubjectNetwork(t *testing.T, l3 *v1alpha.L3L4NetworkSubject, cidr, vrf string, port, vlan int) {
-
 	assert.Equal(t, l3.Cidr, cidr)
 	assert.Equal(t, l3.Ports[0].MinPort, uint32(port))
 	assert.Equal(t, l3.Ports[0].MaxPort, uint32(port))
@@ -82,9 +107,7 @@ func testPolicySubject(t *testing.T, subj *v1alpha.PolicySubject, cidr, vrf stri
 }
 
 func TestDenyOperUpsertRecordToDPUVrf(t *testing.T) {
-	record := testRecordVrf
-	dpuRule := recordToDPUPolicyRule(&record, true)
-	response := dpuRuleToResponse(dpuRule)
+	response := dpuRuleToResponse(testVrfRule)
 	assert.Equal(t, response.Oper, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT)
 	r := response.Policy
 	assert.Equal(t, r.PolicyName, name)
@@ -95,9 +118,7 @@ func TestDenyOperUpsertRecordToDPUVrf(t *testing.T) {
 }
 
 func TestDenyOperUpsertRecordToDPUVlan(t *testing.T) {
-	record := testRecordVlan
-	dpuRule := recordToDPUPolicyRule(&record, true)
-	response := dpuRuleToResponse(dpuRule)
+	response := dpuRuleToResponse(testVlanRule)
 	assert.Equal(t, response.Oper, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT)
 	r := response.Policy
 	assert.Equal(t, r.PolicyName, name)
@@ -108,8 +129,10 @@ func TestDenyOperUpsertRecordToDPUVlan(t *testing.T) {
 }
 
 func TestDenyOperDeleteRecordToDPUVrf(t *testing.T) {
-	record := testRecordVrf
-	dpuRule := recordToDPUPolicyRule(&record, false)
+	dpuRule := &DPUPolicyRule{
+		Oper:   v1alpha.PolicyOperation_POLICY_OPERATION_DELETE,
+		Policy: testVrfRule.Policy,
+	}
 	response := dpuRuleToResponse(dpuRule)
 	assert.Equal(t, response.Oper, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE)
 	r := response.Policy
@@ -121,8 +144,10 @@ func TestDenyOperDeleteRecordToDPUVrf(t *testing.T) {
 }
 
 func TestDenyOperDeleteRecordToDPUVlan(t *testing.T) {
-	record := testRecordVlan
-	dpuRule := recordToDPUPolicyRule(&record, false)
+	dpuRule := &DPUPolicyRule{
+		Oper:   v1alpha.PolicyOperation_POLICY_OPERATION_DELETE,
+		Policy: testVlanRule.Policy,
+	}
 	response := dpuRuleToResponse(dpuRule)
 	assert.Equal(t, response.Oper, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE)
 	r := response.Policy

@@ -7,12 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
-
-	"github.com/isovalent/hubble-fgs/pkg/endpoint"
-	"github.com/isovalent/hubble-fgs/pkg/model/record"
-	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 var (
@@ -85,64 +80,106 @@ var (
 		Status: &p4Status,
 	}
 
-	record1 = &record.DatapathRecord{
-		PolicyUID: types.TetragonPolicyUniqueID{
+	rule1 = &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
 			PolicyName: "record1",
 			RuleName:   "rule1",
-		},
-		L3Src: record.DatapathSource{
-			Vrf: "vrf-a",
-			Ip:  "192.1.0.1/16",
-		},
-		Endpoint: record.DatapathEndpoint{
-			EP: &endpoint.Endpoint{
-				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-				Ip:   "192.2.0.1/16",
+			Action:     v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
+			Source: DPUSubject{
+				Cidr: "192.1.0.1/16",
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  0,
+						MaxPort:  0,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "vrf-a",
+				VrfId: 0,
 			},
-			Port: uint32(8080),
-		},
-		Action: &record.DatapathAction{
-			Action: record.PolicyAllow,
+			Destination: DPUSubject{
+				Cidr: "192.2.0.1/16",
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  8080,
+						MaxPort:  8080,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
+			},
 		},
 	}
-	record2 = &record.DatapathRecord{
-		PolicyUID: types.TetragonPolicyUniqueID{
+	rule2 = &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
 			PolicyName: "record2",
 			RuleName:   "rule2",
-		},
-		L3Src: record.DatapathSource{
-			Vrf: "vrf-b",
-			Ip:  "192.3.0.1/16",
-		},
-		Endpoint: record.DatapathEndpoint{
-			EP: &endpoint.Endpoint{
-				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-				Ip:   "192.4.0.1/16",
+			Action:     v1alpha.PolicyAction_POLICY_ACTION_DENY,
+			Source: DPUSubject{
+				Cidr: "192.3.0.1/16",
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  0,
+						MaxPort:  0,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "vrf-b",
+				VrfId: 0,
 			},
-			Port: uint32(9090),
-		},
-		Action: &record.DatapathAction{
-			Action: record.PolicyDeny,
+			Destination: DPUSubject{
+				Cidr: "192.4.0.1/16",
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  9090,
+						MaxPort:  9090,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
+			},
 		},
 	}
-	record3 = &record.DatapathRecord{
-		PolicyUID: types.TetragonPolicyUniqueID{
+	rule3 = &DPUPolicyRule{
+		Oper: v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
+		Policy: &DPURule{
 			PolicyName: "record3",
 			RuleName:   "rule2",
-		},
-		L3Src: record.DatapathSource{
-			Vrf: "vrf-b",
-			Ip:  "192.5.0.1/16",
-		},
-		Endpoint: record.DatapathEndpoint{
-			EP: &endpoint.Endpoint{
-				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
-				Ip:   "192.6.0.1/16",
+			Action:     v1alpha.PolicyAction_POLICY_ACTION_DENY,
+			Source: DPUSubject{
+				Cidr: "192.5.0.1/16",
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  0,
+						MaxPort:  0,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "vrf-b",
+				VrfId: 0,
 			},
-			Port: uint32(9090),
-		},
-		Action: &record.DatapathAction{
-			Action: record.PolicyDeny,
+			Destination: DPUSubject{
+				Cidr: "192.6.0.1/16",
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  9090,
+						MaxPort:  9090,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
+			},
 		},
 	}
 )
@@ -199,7 +236,7 @@ func TestBasicWorkflow(t *testing.T) {
 		}()
 	}
 
-	dpu.SubmitUpdateToDPU(record1)
+	dpu.SubmitDPURuleToDPU(rule1)
 	assert.Equal(t, len(dpu.ruleSet), 1)
 
 	// checksum state is out of sync because no status reports yet
@@ -258,27 +295,31 @@ func TestReportBeforeAdd(t *testing.T) {
 // Add/Remove Policy in different orders and ensure we get the same hash
 func TestHashLogic(t *testing.T) {
 	dpu1 := NewDPUListener(context.Background(), "127.0.0.1:8080")
-	dpu1.SubmitUpdateToDPU(record1)
-	dpu1.SubmitUpdateToDPU(record2)
-	dpu1.SubmitUpdateToDPU(record3)
+	dpu1.SubmitDPURuleToDPU(rule1)
+	dpu1.SubmitDPURuleToDPU(rule2)
+	dpu1.SubmitDPURuleToDPU(rule3)
 	assert.Equal(t, len(dpu1.ruleSet), 3)
 	csum1 := dpu1.Checksum()
 	hexCsum1 := hex.EncodeToString(csum1[:])
 
 	dpu2 := NewDPUListener(context.Background(), "127.0.0.1:8080")
-	dpu2.SubmitUpdateToDPU(record3)
-	dpu2.SubmitUpdateToDPU(record2)
-	dpu2.SubmitUpdateToDPU(record1)
+	dpu2.SubmitDPURuleToDPU(rule3)
+	dpu2.SubmitDPURuleToDPU(rule2)
+	dpu2.SubmitDPURuleToDPU(rule1)
 	assert.Equal(t, len(dpu2.ruleSet), 3)
 	csum2 := dpu2.Checksum()
 	hexCsum2 := hex.EncodeToString(csum2[:])
 
 	dpu3 := NewDPUListener(context.Background(), "127.0.0.1:8080")
-	dpu3.SubmitUpdateToDPU(record3)
-	dpu3.SubmitUpdateToDPU(record2)
-	dpu3.SubmitUpdateToDPU(record1)
-	dpu3.SubmitDeleteToDPU(record1)
-	dpu3.SubmitUpdateToDPU(record1)
+	dpu3.SubmitDPURuleToDPU(rule3)
+	dpu3.SubmitDPURuleToDPU(rule2)
+	dpu3.SubmitDPURuleToDPU(rule1)
+	record1Delete := &DPUPolicyRule{
+		Oper:   v1alpha.PolicyOperation_POLICY_OPERATION_DELETE,
+		Policy: rule1.Policy,
+	}
+	dpu3.SubmitDPURuleToDPU(record1Delete)
+	dpu3.SubmitDPURuleToDPU(rule1)
 	assert.Equal(t, len(dpu3.ruleSet), 3)
 	csum3 := dpu3.Checksum()
 	hexCsum3 := hex.EncodeToString(csum3[:])
@@ -290,14 +331,18 @@ func TestHashLogic(t *testing.T) {
 // Attempt to delete policy that doesn't exist.
 func TestOOOPolicy(t *testing.T) {
 	dpu1 := NewDPUListener(context.Background(), "127.0.0.1:8080")
-	dpu1.SubmitDeleteToDPU(record1)
-	dpu1.SubmitUpdateToDPU(record1)
+	record1Delete := &DPUPolicyRule{
+		Oper:   v1alpha.PolicyOperation_POLICY_OPERATION_DELETE,
+		Policy: rule1.Policy,
+	}
+	dpu1.SubmitDPURuleToDPU(record1Delete)
+	dpu1.SubmitDPURuleToDPU(rule1)
 	assert.Equal(t, len(dpu1.ruleSet), 1)
 
 	dpu2 := NewDPUListener(context.Background(), "127.0.0.1:8080")
-	dpu2.SubmitDeleteToDPU(record1)
-	dpu2.SubmitUpdateToDPU(record1)
-	dpu2.SubmitDeleteToDPU(record1)
-	dpu2.SubmitDeleteToDPU(record1)
+	dpu1.SubmitDPURuleToDPU(record1Delete)
+	dpu1.SubmitDPURuleToDPU(rule1)
+	dpu1.SubmitDPURuleToDPU(record1Delete)
+	dpu1.SubmitDPURuleToDPU(record1Delete)
 	assert.Equal(t, len(dpu2.ruleSet), 0)
 }
