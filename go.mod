@@ -41,7 +41,7 @@ require (
 	github.com/openconfig/gnmic/pkg/api v0.1.9
 	github.com/openconfig/goyang v1.6.3
 	github.com/openconfig/ygot v0.34.0
-	github.com/operator-framework/api v0.35.0
+	github.com/operator-framework/api v0.36.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
@@ -58,12 +58,12 @@ require (
 	github.com/wI2L/jsondiff v0.7.0
 	github.com/xlab/treeprint v1.2.0
 	github.com/yalue/native_endian v1.0.2
-	go.opentelemetry.io/proto/otlp v1.8.0
+	go.opentelemetry.io/proto/otlp v1.9.0
 	golang.design/x/chann v0.1.2
 	golang.org/x/net v0.46.0
 	golang.org/x/sys v0.37.0
 	golang.org/x/time v0.14.0
-	google.golang.org/api v0.254.0
+	google.golang.org/api v0.255.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 	gopkg.in/yaml.v3 v3.0.1
@@ -178,7 +178,7 @@ require (
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250825161204-c5933d9347a5 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251029180050-ab9386a59fda // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apiextensions-apiserver v0.34.1 // indirect
