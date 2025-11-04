@@ -24,8 +24,6 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/rthooks"
 
-	"github.com/isovalent/hubble-fgs/pkg/policies"
-
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
@@ -41,7 +39,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/node/local"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/policies"
 	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
+	"github.com/isovalent/hubble-fgs/pkg/rule"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -548,7 +548,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	netpolManager := netpol.New(ctx)
 
 	// Start gRPC server
-	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer, mandatesrv.New(mandateMgr), alerter, netpolManager); err != nil {
+	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer, mandatesrv.New(mandateMgr), alerter, netpolManager, rule.New(alertsManager, observer.GetSensorManager())); err != nil {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 
@@ -882,12 +882,13 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 
 func Serve(
 	ctx context.Context, listenAddr string,
-	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager) error {
+	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager, rule *rule.Server) error {
 	grpcServer := grpc.NewServer()
 	tetragon.RegisterFineGuidanceSensorsServer(grpcServer, srv)
 	registerProcessModelServiceServer(grpcServer, model)
 	tetragon.RegisterMandateServiceServer(grpcServer, mandate)
 	tetragon.RegisterAlertServiceServer(grpcServer, alerter)
+	tetragon.RegisterRuleServiceServer(grpcServer, rule)
 	tetragon.RegisterNetworkPolicyServiceServer(grpcServer, netpol)
 	registerApplicationModelServiceServer(grpcServer, model)
 
