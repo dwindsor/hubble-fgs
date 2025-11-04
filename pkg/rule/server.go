@@ -1,0 +1,138 @@
+package rule
+
+import (
+	"context"
+	"strings"
+
+	api "github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/sensors"
+
+	"github.com/isovalent/hubble-fgs/pkg/mandate"
+)
+
+const (
+	probeRuleTagPrefix  = "isovalent/rule:"
+	ruleVersionLabelKey = "isovalent/rule_version"
+)
+
+type alertRulesLister interface {
+	ListAlertRules() []*v1alpha1.AlertRule
+}
+
+type tracingpolicyCollectionsLister interface {
+	ListCollections(context.Context, bool) []*sensors.Collection
+}
+
+type Server struct {
+	alertRulesLister  alertRulesLister
+	collectionsLister tracingpolicyCollectionsLister
+	api.UnimplementedRuleServiceServer
+}
+
+func New(alertLister alertRulesLister, specsLister tracingpolicyCollectionsLister) *Server {
+	return &Server{
+		alertRulesLister:  alertLister,
+		collectionsLister: specsLister,
+	}
+}
+
+func (s *Server) ListRules(ctx context.Context, _ *api.ListRulesRequest) (*api.ListRulesResponse, error) {
+	rules := &api.RuleSet{
+		Node:  node.GetNodeName(),
+		Rules: make([]*api.Rule, 0),
+	}
+
+	alertRules := s.alertRulesLister.ListAlertRules()
+	collections := s.collectionsLister.ListCollections(ctx, true)
+
+	// First pass: (kprobe/uprobe/tp/lsm/usdt + alertrule) rules
+	// Since we may have (multiple probes + alertrule) rules,
+	// use a map<tag,alertrule> to collapse together
+	// multiple probes matching the same alertrule.
+	for _, col := range collections {
+		spec := col.TracingpolicySpec
+		tagProbes := make(map[string]*v1alpha1.AlertRule)
+		for _, kprobe := range spec.KProbes {
+			collectTagProbes(alertRules, tagProbes, kprobe.Tags)
+		}
+		for _, uprobe := range spec.UProbes {
+			collectTagProbes(alertRules, tagProbes, uprobe.Tags)
+		}
+		for _, lsm := range spec.LsmHooks {
+			collectTagProbes(alertRules, tagProbes, lsm.Tags)
+		}
+		for _, usdt := range spec.Usdts {
+			collectTagProbes(alertRules, tagProbes, usdt.Tags)
+		}
+		for _, tp := range spec.Tracepoints {
+			collectTagProbes(alertRules, tagProbes, tp.Tags)
+		}
+		// TODO: fim -> spec.FileMonitoring (no tags)
+
+		// Once we collected all probes -> alertrule tags,
+		// we can finally append to the return value.
+		for after, rule := range tagProbes {
+			var mode api.RuleMode
+			switch col.TracingpolicyMode {
+			case api.TracingPolicyMode_TP_MODE_ENFORCE:
+				mode = api.RuleMode_RULE_MODE_ENFORCEMENT
+			case api.TracingPolicyMode_TP_MODE_MONITOR:
+				mode = api.RuleMode_RULE_MODE_MONITORING
+			default:
+				mode = api.RuleMode_RULE_MODE_UNSPEC
+			}
+			rules.Rules = append(rules.Rules, &api.Rule{
+				Path: strings.Split(after, "-"),
+				Type: api.RuleType_RULE_TYPE_SHIELD,
+				Status: &api.RuleStatus{
+					Mode:    mode,
+					Loaded:  col.State == sensors.EnabledState || col.State == sensors.DisabledState,
+					LoadErr: col.Err,
+				},
+				Version: rule.Labels[ruleVersionLabelKey],
+			})
+		}
+
+	}
+
+	// Second pass: alertrule-only rules
+	for _, rule := range alertRules {
+		for _, tag := range rule.Spec.Tags {
+			if after, ok := strings.CutPrefix(tag, probeRuleTagPrefix); ok {
+				rules.Rules = append(rules.Rules, &api.Rule{
+					Path: strings.Split(after, "-"),
+					Type: api.RuleType_RULE_TYPE_MONITORING,
+					Status: &api.RuleStatus{
+						Mode:   api.RuleMode_RULE_MODE_MONITORING,
+						Loaded: true,
+					},
+					Version: rule.Labels[ruleVersionLabelKey],
+				})
+				break
+			}
+		}
+	}
+
+	return &api.ListRulesResponse{Rules: rules}, nil
+}
+
+func collectTagProbes(alertRules []*v1alpha1.AlertRule, tagProbes map[string]*v1alpha1.AlertRule, tags []string) {
+	for _, tag := range tags {
+		if after, ok := strings.CutPrefix(tag, probeRuleTagPrefix); ok {
+			for _, rule := range alertRules {
+				// We need to discover the non-mandate name (ie: with mandate+alert... removed)
+				preMandateName, ok := mandate.OrigAlertName(rule.Name)
+				if !ok {
+					preMandateName = rule.Name
+				}
+				if preMandateName == after {
+					tagProbes[after] = rule
+					break
+				}
+			}
+			break
+		}
+	}
+}
