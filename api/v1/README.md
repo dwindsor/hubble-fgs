@@ -224,6 +224,20 @@
     - [EndpointMapService](#tetragon-EndpointMapService)
     - [ProcessModelService](#tetragon-ProcessModelService)
   
+- [tetragon/rule.proto](#tetragon_rule-proto)
+    - [Rule](#tetragon-Rule)
+    - [RuleSet](#tetragon-RuleSet)
+    - [RuleStatus](#tetragon-RuleStatus)
+  
+    - [RuleMode](#tetragon-RuleMode)
+    - [RuleType](#tetragon-RuleType)
+  
+- [tetragon/ruleservice.proto](#tetragon_ruleservice-proto)
+    - [ListRulesRequest](#tetragon-ListRulesRequest)
+    - [ListRulesResponse](#tetragon-ListRulesResponse)
+  
+    - [RuleService](#tetragon-RuleService)
+  
 - [tetragon/stack.proto](#tetragon_stack-proto)
     - [StackAddress](#tetragon-StackAddress)
     - [StackTrace](#tetragon-StackTrace)
@@ -4090,6 +4104,155 @@ Determins the behaviour of a field filter
 | GetDestinationMap | [GetDestinationMapRequest](#tetragon-GetDestinationMapRequest) | [GetDestinationMapResponse](#tetragon-GetDestinationMapResponse) |  |
 | GetProcesses | [GetProcessModelRequest](#tetragon-GetProcessModelRequest) | [ProcessModel](#tetragon-ProcessModel) stream |  |
 | GetProcessMap | [GetProcessMapRequest](#tetragon-GetProcessMapRequest) | [GetProcessMapResponse](#tetragon-GetProcessMapResponse) |  |
+
+ 
+
+
+
+<a name="tetragon_rule-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/rule.proto
+
+
+
+<a name="tetragon-Rule"></a>
+
+### Rule
+active rule
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| version | [string](#string) |  | version of the ruleset that includes this rule |
+| path | [string](#string) | repeated | rule path, e.g., [&#34;path&#34;, &#34;release-agent&#34;] or [&#34;exec&#34;, &#34;all&#34;, &#34;execBinary&#34;, &#34;bulk-data-removal&#34;] NB(kkourt): there is some redundancy here because many rules will have a path prefix, but we want to keep things simple |
+| type | [RuleType](#tetragon-RuleType) |  | rule type |
+| status | [RuleStatus](#tetragon-RuleStatus) |  |  |
+
+
+
+
+
+
+<a name="tetragon-RuleSet"></a>
+
+### RuleSet
+active ruleset
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| node | [string](#string) |  | identifies node (tetragon agent instance) |
+| rules | [Rule](#tetragon-Rule) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-RuleStatus"></a>
+
+### RuleStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mode | [RuleMode](#tetragon-RuleMode) |  |  |
+| loaded | [bool](#bool) |  |  |
+| load_err | [string](#string) |  | set only if Loaded is false |
+
+
+
+
+
+ 
+
+
+<a name="tetragon-RuleMode"></a>
+
+### RuleMode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| RULE_MODE_UNSPEC | 0 |  |
+| RULE_MODE_MONITORING | 1 | rule is in monitoring mode |
+| RULE_MODE_ENFORCEMENT | 2 | rule is in enforcement mode |
+
+
+
+<a name="tetragon-RuleType"></a>
+
+### RuleType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| RULE_TYPE_UNSPEC | 0 |  |
+| RULE_TYPE_MONITORING | 1 | rule is monitoring only |
+| RULE_TYPE_SHIELD | 2 | rule is a shield: supports both monitoring and enforcement |
+
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="tetragon_ruleservice-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/ruleservice.proto
+
+
+
+<a name="tetragon-ListRulesRequest"></a>
+
+### ListRulesRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| version | [string](#string) |  | request only specific rule version |
+
+
+
+
+
+
+<a name="tetragon-ListRulesResponse"></a>
+
+### ListRulesResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rules | [RuleSet](#tetragon-RuleSet) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+
+<a name="tetragon-RuleService"></a>
+
+### RuleService
+
+
+| Method Name | Request Type | Response Type | Description |
+| ----------- | ------------ | ------------- | ------------|
+| ListRules | [ListRulesRequest](#tetragon-ListRulesRequest) | [ListRulesResponse](#tetragon-ListRulesResponse) |  |
 
  
 
