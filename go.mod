@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.89.0
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.18.3
-	github.com/cilium/ebpf v0.19.0
+	github.com/cilium/ebpf v0.20.0
 	github.com/cilium/lumberjack/v2 v2.4.1
 	github.com/cilium/tetragon v1.7.0-pre.0.0.20251030145147-d1c2c9daebdb
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
@@ -255,7 +255,7 @@ require (
 	golang.org/x/sync v0.17.0
 	golang.org/x/term v0.36.0
 	golang.org/x/text v0.30.0
-	golang.org/x/tools v0.37.0 // indirect
+	golang.org/x/tools v0.38.0 // indirect
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
