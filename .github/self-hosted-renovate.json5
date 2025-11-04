@@ -34,4 +34,7 @@
     "^install-tool golang \\$\\(grep -oP '\\^go \\\\K\\.\\+' go\\.mod\\)$",
 		"^make gen-docs-references$",
   ],
+  "customEnvVariables": {
+    "GOPRIVATE": "github.com/isovalent"
+  }
 }
