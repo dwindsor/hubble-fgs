@@ -225,9 +225,11 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *dpu
 	return &dpu.DPUPolicyRule{
 		Oper: operation,
 		Policy: &dpu.DPURule{
-			PolicyName: rule.UID.PolicyName,
-			RuleName:   rule.UID.RuleName,
-			Action:     action,
+			K8SResourceVersion: rule.Policy.K8SResourceVersion,
+			K8SUid:             rule.Policy.K8SUid,
+			PolicyName:         rule.UID.PolicyName,
+			RuleName:           rule.UID.RuleName,
+			Action:             action,
 			Source: dpu.DPUSubject{
 				Cidr:     rule.Policy.Source.Endpoint.CIDR,
 				MinPort:  0,

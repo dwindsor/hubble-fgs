@@ -1,9 +1,9 @@
 package switchpolicy
 
 import (
-	"bytes"
 	"crypto/sha256"
-	"encoding/gob"
+	"encoding/binary"
+	"io"
 )
 
 type PolicyUniqueID struct {
@@ -12,20 +12,94 @@ type PolicyUniqueID struct {
 }
 
 type SmartSwitchNetworkPolicy struct {
-	Source      SmartSwitchNetworkSource
-	Destination SmartSwitchNetworkDestination
-	Action      SmartSwitchNetworkAction
-	Default     SmartSwitchNetworkAction
+	K8SResourceVersion string
+	K8SUid             string
+	Source             SmartSwitchNetworkSource
+	Destination        SmartSwitchNetworkDestination
+	Action             SmartSwitchNetworkAction
+	Default            SmartSwitchNetworkAction
 }
 
 func (s *SmartSwitchNetworkPolicy) Hash() ([sha256.Size]byte, error) {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(*s)
+	h := sha256.New()
+
+	// Write all fields in fixed order
+	_, err := io.WriteString(h, s.K8SResourceVersion)
 	if err != nil {
 		return [sha256.Size]byte{}, err
 	}
-	return sha256.Sum256(buf.Bytes()), nil
+	_, err = io.WriteString(h, s.K8SUid)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+
+	// Source Endpoint
+	_, err = io.WriteString(h, s.Source.Endpoint.CIDR)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	_, err = io.WriteString(h, s.Source.Endpoint.VRF)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, s.Source.Endpoint.VLAN)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+
+	// Destination Endpoint
+	_, err = io.WriteString(h, s.Destination.Endpoint.CIDR)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	_, err = io.WriteString(h, s.Destination.Endpoint.VRF)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, s.Destination.Endpoint.VLAN)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+
+	// Destination ProtoPorts
+	if s.Destination.ProtoPorts != nil {
+		err = binary.Write(h, binary.BigEndian, s.Destination.ProtoPorts.Port)
+		if err != nil {
+			return [sha256.Size]byte{}, err
+		}
+		err = binary.Write(h, binary.BigEndian, s.Destination.ProtoPorts.EndPort)
+		if err != nil {
+			return [sha256.Size]byte{}, err
+		}
+		_, err = io.WriteString(h, s.Destination.ProtoPorts.Protocol)
+		if err != nil {
+			return [sha256.Size]byte{}, err
+		}
+	}
+
+	// Action
+	err = binary.Write(h, binary.BigEndian, s.Action.EnforceAction.Deny)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, s.Action.EnforceAction.Allow)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+
+	// Default
+	err = binary.Write(h, binary.BigEndian, s.Default.EnforceAction.Deny)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+	err = binary.Write(h, binary.BigEndian, s.Default.EnforceAction.Allow)
+	if err != nil {
+		return [sha256.Size]byte{}, err
+	}
+
+	var result [sha256.Size]byte
+	copy(result[:], h.Sum(nil))
+	return result, nil
 }
 
 type SmartSwitchNetworkProtocolPorts struct {

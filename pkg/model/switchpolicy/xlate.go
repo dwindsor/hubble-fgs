@@ -43,6 +43,11 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 		}
 		for _, d := range r.Destination.IPBlock {
 			for _, p := range r.Destination.ProtoPorts {
+				endPort := p.EndPort
+				if p.Port != 0 && p.EndPort == 0 {
+					endPort = p.Port
+				}
+
 				dest := SmartSwitchNetworkDestination{
 					Endpoint: SmartSwitchNetworkEndpoint{
 						CIDR: d.CIDR,
@@ -51,16 +56,18 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 					},
 					ProtoPorts: &SmartSwitchNetworkProtocolPorts{
 						Port:     p.Port,
-						EndPort:  p.EndPort,
+						EndPort:  endPort,
 						Protocol: p.Protocol,
 					},
 				}
 
 				policy = append(policy, &SmartSwitchNetworkPolicy{
-					Source:      source,
-					Destination: dest,
-					Action:      act,
-					Default:     dfltAction,
+					K8SResourceVersion: np.ResourceVersion,
+					K8SUid:             string(np.UID),
+					Source:             source,
+					Destination:        dest,
+					Action:             act,
+					Default:            dfltAction,
 				})
 			}
 		}
