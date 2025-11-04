@@ -2,7 +2,12 @@ ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 OSS_DIR := $(ROOT_DIR)/modules/tetragon-oss
 CONTAINER_ENGINE ?= docker
 
+# If you change GOPRIVATE, you also need to change:
+# - contrib/build/depfix and
+# - .github/self-hosted-renovate.json5
+GOPRIVATE := "github.com/isovalent"
 GO ?= go
+GO := GOPRIVATE=$(GOPRIVATE) $(GO)
 CONTAINER_ENGINE ?= docker
 
 BUF ?= buf

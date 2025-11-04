@@ -16,10 +16,12 @@ set -x
 
 OSS_GIT="./modules/tetragon-oss"
 
+GOPRIVATE="github.com/isovalent"
+
 function main() {
     version=$(GIT_DIR="$OSS_GIT/.git" git rev-parse HEAD)
 
-    go get "github.com/cilium/tetragon@$version"
+    GOPRIVATE=$GOPRIVATE go get "github.com/cilium/tetragon@$version"
 }
 
 main "$@"

@@ -1,6 +1,5 @@
 include Makefile.defs
 
-GO := go
 INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 DOCKER_IMAGE_TAG ?= latest
