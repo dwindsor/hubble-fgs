@@ -3,10 +3,10 @@ module github.com/isovalent/hubble-fgs
 go 1.25.0
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.39.4
-	github.com/aws/aws-sdk-go-v2/config v1.31.15
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.11
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.89.0
+	github.com/aws/aws-sdk-go-v2 v1.39.5
+	github.com/aws/aws-sdk-go-v2/config v1.31.16
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.12
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.89.1
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.18.3
 	github.com/cilium/ebpf v0.20.0
@@ -33,7 +33,7 @@ require (
 	github.com/isovalent/ipa v1.19.0-pre.0.0.20251103202908-560b2471b3d4
 	github.com/isovalent/ipa/k8s v1.19.0-pre.0.0.20251103202908-560b2471b3d4
 	github.com/joho/godotenv v1.5.1
-	github.com/mennanov/fieldmask-utils v1.1.2
+	github.com/mennanov/fieldmask-utils v1.1.3
 	github.com/miekg/dns v1.1.68
 	github.com/moby/go-archive v0.1.0
 	github.com/openconfig/gnmi v0.14.1
@@ -73,7 +73,7 @@ require (
 	k8s.io/code-generator v0.34.1
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
-	sigs.k8s.io/controller-runtime v0.22.3
+	sigs.k8s.io/controller-runtime v0.22.4
 	sigs.k8s.io/controller-tools v0.19.0
 	sigs.k8s.io/e2e-framework v0.6.0
 	sigs.k8s.io/yaml v1.6.0
@@ -88,18 +88,18 @@ require (
 	github.com/Microsoft/hcsshim v0.13.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.2 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.18.19 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.11 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.11 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.18.20 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.12 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.12 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.11 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.29.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.38.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.12 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.12 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.39.0 // indirect
 	github.com/aws/smithy-go v1.23.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bufbuild/protocompile v0.13.0 // indirect
@@ -239,7 +239,7 @@ require (
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/common v0.67.1
+	github.com/prometheus/common v0.67.2
 	github.com/prometheus/procfs v0.19.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect

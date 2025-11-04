@@ -121,6 +121,7 @@ spec:
                             required:
                             - protocol
                             type: object
+                          minItems: 1
                           type: array
                       required:
                       - ipBlock
