@@ -51,7 +51,7 @@ type Alerter interface {
 // sub-optimal. Refactor if needed.
 type alerter struct {
 	ctx         context.Context
-	ruleManager *ruleManager
+	ruleManager *AlertRuleManager
 	tetragon.UnimplementedAlertServiceServer
 }
 
@@ -60,7 +60,7 @@ func NewAlerter(ctx context.Context, r RuleManager) Alerter {
 }
 
 func newAlerter(ctx context.Context, r RuleManager) *alerter {
-	rm := r.(*ruleManager)
+	rm := r.(*AlertRuleManager)
 	return &alerter{
 		ruleManager: rm,
 		ctx:         ctx,

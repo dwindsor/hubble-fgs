@@ -26,7 +26,7 @@ func TestEvaluateRules(t *testing.T) {
 	t.Cleanup(func() {
 		option.Config.AlertsExportDir = ""
 	})
-	a := newAlerter(t.Context(), newRuleManager())
+	a := newAlerter(t.Context(), NewRuleManager())
 
 	// Add two alert rules, no JSON export
 	a.ruleManager.AddAlertRule(exampleAR)
@@ -109,7 +109,7 @@ spec:
 `
 
 func TestRPCAddAlertRuleFromYAML(t *testing.T) {
-	a := newAlerter(t.Context(), newRuleManager())
+	a := newAlerter(t.Context(), NewRuleManager())
 
 	expectedProtos := []*tetragon.AlertRule{
 		{
@@ -143,7 +143,7 @@ func TestRPCAddAlertRuleFromYAML(t *testing.T) {
 }
 
 func TestRPCAddAlertRuleFromYAMLUpdate(t *testing.T) {
-	a := newAlerter(t.Context(), newRuleManager())
+	a := newAlerter(t.Context(), NewRuleManager())
 
 	// Add two rules
 	a.ruleManager.AddAlertRule(exampleAR)
@@ -168,7 +168,7 @@ func TestRPCAddAlertRuleFromYAMLUpdate(t *testing.T) {
 }
 
 func TestRPCAddAlertRuleFromYAMLInvalid(t *testing.T) {
-	a := newAlerter(t.Context(), newRuleManager())
+	a := newAlerter(t.Context(), NewRuleManager())
 
 	for _, yaml := range []string{
 		"not a valid yaml",
@@ -183,7 +183,7 @@ func TestRPCAddAlertRuleFromYAMLInvalid(t *testing.T) {
 }
 
 func TestRPCDeleteAlertRule(t *testing.T) {
-	a := newAlerter(t.Context(), newRuleManager())
+	a := newAlerter(t.Context(), NewRuleManager())
 
 	// Add two rules
 	a.ruleManager.AddAlertRule(exampleAR)
@@ -202,7 +202,7 @@ func TestRPCDeleteAlertRule(t *testing.T) {
 }
 
 func TestRPCListAlertRules(t *testing.T) {
-	a := newAlerter(t.Context(), newRuleManager())
+	a := newAlerter(t.Context(), NewRuleManager())
 
 	// Add two rules
 	a.ruleManager.AddAlertRule(exampleAR)
@@ -236,7 +236,7 @@ func TestRPCListAlertRules(t *testing.T) {
 }
 
 func TestRPCGetAlertRule(t *testing.T) {
-	a := newAlerter(t.Context(), newRuleManager())
+	a := newAlerter(t.Context(), NewRuleManager())
 
 	// Add two rules
 	a.ruleManager.AddAlertRule(exampleAR)

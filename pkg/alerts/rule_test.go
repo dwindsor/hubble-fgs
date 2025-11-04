@@ -69,7 +69,7 @@ var anotherAR = &v1alpha1.AlertRule{
 }
 
 func TestAddAlertRule(t *testing.T) {
-	rm := newRuleManager()
+	rm := NewRuleManager()
 	for i, ar := range []*v1alpha1.AlertRule{exampleAR, anotherAR} {
 		// Add a rule
 		err := rm.AddAlertRule(ar)
@@ -91,7 +91,7 @@ func TestUpdateAlertRule(t *testing.T) {
 	// Set an alertsexportdir to trigger creation of encoders
 	eeOption.Config.AlertsExportDir = os.TempDir()
 
-	rm := newRuleManager()
+	rm := NewRuleManager()
 	// Add a rule
 	rm.AddAlertRule(exampleAR)
 	assert.Len(t, rm.rules, 1)
@@ -117,14 +117,14 @@ func TestUpdateAlertRule(t *testing.T) {
 }
 
 func TestAddNil(t *testing.T) {
-	rm := newRuleManager()
+	rm := NewRuleManager()
 	err := rm.AddAlertRule(nil)
 	assert.NoError(t, err)
 	assert.Len(t, rm.rules, 0)
 }
 
 func TestDeleteAlertRule(t *testing.T) {
-	rm := newRuleManager()
+	rm := NewRuleManager()
 	// Add a rule
 	rm.AddAlertRule(exampleAR)
 	assert.Len(t, rm.rules, 1)
@@ -142,7 +142,7 @@ func TestAddSameRule(t *testing.T) {
 	})
 
 	ruleName := exampleAR.GetName()
-	rm := newRuleManager()
+	rm := NewRuleManager()
 	err := rm.AddAlertRule(exampleAR)
 	assert.NoError(t, err)
 	err = rm.AddAlertRule(exampleAR)
@@ -164,7 +164,7 @@ func TestAddFilenameRule(t *testing.T) {
 		eeOption.Config.AlertsExportDir = oldVal
 	})
 
-	rm := newRuleManager()
+	rm := NewRuleManager()
 
 	ruleName := exampleAR.GetName()
 	err := rm.addAlertRuleWithFilename(exampleAR, "pizza")
@@ -206,7 +206,7 @@ func TestAddSameFilenameRule(t *testing.T) {
 		eeOption.Config.AlertsExportDir = oldVal
 	})
 
-	rm := newRuleManager()
+	rm := NewRuleManager()
 
 	// add one rule
 	ruleName := exampleAR.GetName()
@@ -267,7 +267,7 @@ func TestAddAlertRuleSameFilename(t *testing.T) {
 		eeOption.Config.AlertsExportDir = ""
 	})
 
-	rm := newRuleManager()
+	rm := NewRuleManager()
 	var rules []*rule
 	for i, ar := range []*v1alpha1.AlertRule{updatedAR, anotherAR} {
 		// Add a rule

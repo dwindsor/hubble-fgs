@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/google/cel-go/cel"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/cilium/tetragon/pkg/filters"
@@ -42,6 +43,7 @@ type rule struct {
 	severity    string
 	riskScore   int32
 	jsonEncoder *jsonEncoder
+	labels      map[string]string
 }
 
 type RuleManager interface {
@@ -49,19 +51,17 @@ type RuleManager interface {
 	DeleteAlertRule(name string)
 }
 
-type ruleManager struct {
+// AlertRuleManager is an exposed type without any exposed field.
+// Callers can only interact through implemented interfaces.
+type AlertRuleManager struct {
 	rules    map[string]*rule
 	encoders map[string]*jsonEncoder
 	eventMap map[string]any
 	mutex    sync.RWMutex
 }
 
-func NewRuleManager() RuleManager {
-	return newRuleManager()
-}
-
-func newRuleManager() *ruleManager {
-	return &ruleManager{
+func NewRuleManager() *AlertRuleManager {
+	return &AlertRuleManager{
 		rules:    make(map[string]*rule),
 		encoders: make(map[string]*jsonEncoder),
 		// Create a single empty (all values are nil) process event map
@@ -72,7 +72,7 @@ func newRuleManager() *ruleManager {
 
 // Add an alert rule that writes on a specific filename.
 // This is an internal helper method.
-func (r *ruleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error {
+func (r *AlertRuleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname string) error {
 	name := ar.GetName()
 	celProgram, eventNames, err := cef.CompileCEL(ar.Spec.Expression)
 	if err != nil {
@@ -121,6 +121,7 @@ func (r *ruleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 		severity:    severity,
 		riskScore:   int32(ar.Spec.RiskScore),
 		jsonEncoder: encoder,
+		labels:      ar.Labels,
 	}
 	if newEncoder {
 		r.encoders[fname] = encoder
@@ -131,7 +132,7 @@ func (r *ruleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fname str
 	return nil
 }
 
-func (r *ruleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
+func (r *AlertRuleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 	if ar == nil {
 		return nil
 	}
@@ -150,7 +151,7 @@ func (r *ruleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 
 // updateRuleMetrics calculates and updates metrics for alerting rules by severity
 // Note: This method assumes the caller holds r.mutex lock
-func (r *ruleManager) updateRuleMetrics() {
+func (r *AlertRuleManager) updateRuleMetrics() {
 	// Create a map to count rules by severity
 	severityCounts := make(map[string]int)
 
@@ -165,7 +166,7 @@ func (r *ruleManager) updateRuleMetrics() {
 	}
 }
 
-func (r *ruleManager) DeleteAlertRule(name string) {
+func (r *AlertRuleManager) DeleteAlertRule(name string) {
 	r.mutex.Lock()
 	if rule, ok := r.rules[name]; ok {
 		r.encoderDecref(rule)
@@ -183,9 +184,30 @@ func (r *ruleManager) DeleteAlertRule(name string) {
 	r.mutex.Unlock()
 }
 
+func (r *AlertRuleManager) ListAlertRules() []*v1alpha1.AlertRule {
+	r.mutex.Lock()
+	rules := make([]*v1alpha1.AlertRule, 0, len(r.rules))
+	for _, r := range r.rules {
+		rules = append(rules, &v1alpha1.AlertRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   r.name,
+				Labels: r.labels,
+			},
+			Spec: v1alpha1.AlertRuleSpec{
+				Severity:  r.severity,
+				Message:   r.message,
+				Tags:      r.tags,
+				RiskScore: int(r.riskScore),
+			},
+		})
+	}
+	r.mutex.Unlock()
+	return rules
+}
+
 // encoderDecref decreases the reference counter of rules jsonEncoder, and removes it from
 // r.encoders if the reference count is 0
-func (r *ruleManager) encoderDecref(rule *rule) {
+func (r *AlertRuleManager) encoderDecref(rule *rule) {
 	je := rule.jsonEncoder
 	if je == nil {
 		return
