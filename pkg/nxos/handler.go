@@ -1117,6 +1117,8 @@ func (n *Nxos) updtSasVolatiledataAgent(ctx context.Context, items *model.Cisco_
 					n.ResetReg(ctx)
 					n.GracefulRestartAgent(ctx, true)
 				}
+			} else {
+				logger.GetLogger().Error("failed", logfields.Error, err)
 			}
 		}
 	}

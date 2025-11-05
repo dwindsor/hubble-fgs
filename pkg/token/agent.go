@@ -240,7 +240,7 @@ func (a *AgentToken) ValidK8sAuth(tknStr string) error {
 	logger.GetLogger().Debug("Validating token")
 	apiServer, serviceAccountToken, caCert, err := enterpriseConfig.ParseServiceAccountAuth(tknStr)
 	if err != nil {
-		return err
+		return fmt.Errorf("validate token: %w", err)
 	}
 	if len(apiServer) == 0 {
 		return fmt.Errorf("field 'apiServer' cannot be empty")
