@@ -51,5 +51,5 @@ int BPF_PROG(lsm_security_unix_stream_connect, struct sock *sock, struct sock *o
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }

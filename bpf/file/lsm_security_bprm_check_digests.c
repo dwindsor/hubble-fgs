@@ -81,7 +81,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	}
 
 lsm_bprm_check_security_ret:
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 
 lsm_bprm_check_security_error:
 	inc_error(hook_security_bprm_check, -err);

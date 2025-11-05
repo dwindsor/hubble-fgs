@@ -16,5 +16,5 @@ int BPF_PROG(lsm_security_kernel_read_file, struct file *file, enum kernel_read_
 		return 0;
 	}
 
-	return handle_tail_call(ctx, err & FILE_OP_BLOCK ? -EPERM : 0);
+	return handle_tail_call(ctx, handle_enforcement(err));
 }

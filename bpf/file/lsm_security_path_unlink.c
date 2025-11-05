@@ -66,5 +66,5 @@ int BPF_PROG(lsm_security_path_unlink, const struct path *dir, struct dentry *de
 		return 0;
 	}
 
-	return handle_tail_call(ctx, err & FILE_OP_BLOCK ? -EPERM : 0);
+	return handle_tail_call(ctx, handle_enforcement(err));
 }

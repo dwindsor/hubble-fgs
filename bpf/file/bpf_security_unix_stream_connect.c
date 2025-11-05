@@ -92,7 +92,7 @@ int BPF_PROG(security_unix_stream_connect_lsm, struct sock *sock, struct sock *o
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif
 
@@ -111,6 +111,6 @@ int BPF_PROG(security_unix_stream_connect_fmod, struct sock *sock, struct sock *
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif

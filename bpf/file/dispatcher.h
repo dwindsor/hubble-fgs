@@ -112,7 +112,7 @@ static inline __attribute__((always_inline)) void do_tail_call_if_needed(void *c
 static inline __attribute__((always_inline)) int handle_tail_call(void *ctx, __s32 retval)
 {
 	do_tail_call_if_needed(ctx, retval);
-	return retval < 0 ? -EPERM : 0;
+	return handle_enforcement(retval < 0 ? FILE_OP_BLOCK : 0);
 }
 
 static long dispatcher_cb(void *map, const void *key, void *val, void *ctx)
@@ -152,7 +152,7 @@ static inline __attribute__((always_inline)) int handle_dispatcher(void *ctx)
 	if (dis_ctx->in_progress) {
 		// back from all tail calls
 		dis_ctx->in_progress = 0;
-		return dis_ctx->retval < 0 ? -EPERM : 0;
+		return handle_enforcement(dis_ctx->retval < 0 ? FILE_OP_BLOCK : 0);
 	}
 
 	// reset everything in dis_ctx

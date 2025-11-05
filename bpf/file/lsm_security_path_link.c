@@ -145,5 +145,5 @@ int BPF_PROG(lsm_security_path_link, struct dentry *old_dentry, const struct pat
 		return 0;
 	}
 
-	return handle_tail_call(ctx, err & FILE_OP_BLOCK ? -EPERM : 0);
+	return handle_tail_call(ctx, handle_enforcement(err));
 }

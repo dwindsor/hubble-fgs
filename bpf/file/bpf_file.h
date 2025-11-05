@@ -20,6 +20,8 @@
 #include "bpf_glob.h"
 #endif
 
+#include "policy_conf.h"
+
 #define FILTER_NOTFOUND -1
 #define FILTER_IGNORE	0
 #define FILTER_MATCH	1
@@ -1577,6 +1579,18 @@ static inline __attribute__((always_inline)) void inc_error(__u32 hook, int metr
 	valp = map_lookup_elem(&file_errors_map, &zero);
 	if (valp)
 		__sync_fetch_and_add(&valp->m[hook][metric], 1);
+}
+
+static inline __attribute__((always_inline)) int handle_enforcement(int err)
+{
+	struct policy_conf *pcnf;
+	__u32 zero = 0;
+
+	pcnf = map_lookup_elem(&policy_conf, &zero);
+	if (pcnf && pcnf->mode == POLICY_MODE_MONITOR)
+		return 0;
+
+	return err & FILE_OP_BLOCK ? -EPERM : 0;
 }
 
 // <  0 for error

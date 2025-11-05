@@ -29,7 +29,7 @@ int BPF_PROG(security_file_permission_lsm, struct file *file, int mask)
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif
 
@@ -49,6 +49,6 @@ int BPF_PROG(security_file_permission_fmod, struct file *file, int mask, int ret
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif

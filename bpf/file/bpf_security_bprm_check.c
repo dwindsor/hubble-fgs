@@ -175,7 +175,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif
 
@@ -194,6 +194,6 @@ int BPF_PROG(security_bprm_check_fmod, struct linux_binprm *bprm, int ret)
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif

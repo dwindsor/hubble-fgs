@@ -43,6 +43,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/podhooks"
+	"github.com/cilium/tetragon/pkg/policyconf"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/rthooks"
 	"github.com/cilium/tetragon/pkg/strutils"
@@ -211,6 +212,7 @@ var mapTypes = map[string]MapType{
 	"file_openraw_result_map":    SharedMap,
 	"open_user_to_kernel_path":   SharedMap,
 	"file_openraw_enforce_map":   SharedMap,
+	"policy_conf":                SharedMap,
 }
 
 // this is used for inode-based programs that modify the inode map and thus do not using them will result in corrupted inode map contents
@@ -1952,6 +1954,23 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			case "hash_map_inode_alloc_stats":
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					return m.Update(uint32(0), []int64{int64(len(allInodes))}, ebpf.UpdateAny)
+				}
+			case "policy_conf":
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
+					mode := policyconf.EnforceMode // default is enforce mode
+					for _, s := range policy.TpSpec().Options {
+						if s.Name == "policy-mode" {
+							mode, err = policyconf.ParseMode(s.Value) // override mode if this is provided by the user
+							if err != nil {
+								return fmt.Errorf("failed to parse policy-mode option: %w", err)
+							}
+						}
+					}
+					conf := policyconf.PolicyConf{
+						Mode: mode,
+					}
+					key := uint32(0)
+					return m.Update(key, &conf, ebpf.UpdateAny)
 				}
 			}
 

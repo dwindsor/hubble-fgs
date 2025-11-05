@@ -167,7 +167,7 @@ int BPF_PROG(security_inode_setattr_lsm, struct dentry *dentry, struct iattr *at
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif
 
@@ -192,6 +192,6 @@ int BPF_PROG(security_inode_setattr_fmod, struct dentry *dentry, struct iattr *a
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif

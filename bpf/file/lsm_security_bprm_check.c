@@ -62,5 +62,5 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 		return 0;
 	}
 
-	return handle_tail_call(ctx, err & FILE_OP_BLOCK ? -EPERM : 0);
+	return handle_tail_call(ctx, handle_enforcement(err));
 }

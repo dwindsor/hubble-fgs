@@ -159,7 +159,7 @@ int BPF_PROG(security_inode_unlink_lsm, struct inode *dir, struct dentry *dentry
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif
 
@@ -178,6 +178,6 @@ int BPF_PROG(security_inode_unlink_fmod, struct inode *dir, struct dentry *dentr
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif

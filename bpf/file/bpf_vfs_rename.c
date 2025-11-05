@@ -694,7 +694,7 @@ int BPF_PROG(security_inode_rename_lsm, struct inode *old_dir, struct dentry *ol
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif
 
@@ -713,6 +713,6 @@ int BPF_PROG(security_inode_rename_fmod, struct inode *old_dir, struct dentry *o
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }
 #endif

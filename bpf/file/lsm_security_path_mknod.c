@@ -61,5 +61,5 @@ int BPF_PROG(security_path_mknod, const struct path *dir, struct dentry *dentry,
 		return 0;
 	}
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	return handle_enforcement(err);
 }

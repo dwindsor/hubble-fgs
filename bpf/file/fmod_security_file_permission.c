@@ -20,5 +20,5 @@ int BPF_PROG(fmod_security_file_permission, struct file *file, int mask)
 		return 0;
 	}
 
-	return handle_tail_call(ctx, err & FILE_OP_BLOCK ? -EPERM : 0);
+	return handle_tail_call(ctx, handle_enforcement(err));
 }
