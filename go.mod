@@ -11,7 +11,7 @@ require (
 	github.com/cilium/cilium v1.18.3
 	github.com/cilium/ebpf v0.20.0
 	github.com/cilium/lumberjack/v2 v2.4.1
-	github.com/cilium/tetragon v1.7.0-pre.0.0.20251030145147-d1c2c9daebdb
+	github.com/cilium/tetragon v1.7.0-pre.0.0.20251105140316-c71bef61d8aa
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251031160646-dbc076c50cfc
@@ -241,7 +241,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/common v0.67.2
-	github.com/prometheus/procfs v0.19.1 // indirect
+	github.com/prometheus/procfs v0.19.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.5 // indirect
 	github.com/spf13/afero v1.15.0 // indirect

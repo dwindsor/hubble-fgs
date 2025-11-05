@@ -335,13 +335,13 @@ func ParseCgroupRate(rate string) CgroupRate {
 // StringToSliceHookFunc returns a DecodeHookFunc that converts string to []string
 // by splitting on the given sep and removing all leading and trailing white spaces.
 func stringToSliceHookFunc(sep string) mapstructure.DecodeHookFunc {
-	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+	return func(f reflect.Type, t reflect.Type, data any) (any, error) {
 		if f.Kind() != reflect.String || t != reflect.SliceOf(f) {
 			return data, nil
 		}
 
 		outSlice := []string{}
-		for _, s := range strings.Split(data.(string), sep) {
+		for s := range strings.SplitSeq(data.(string), sep) {
 			s = strings.TrimSpace(s)
 			outSlice = append(outSlice, s)
 		}

@@ -520,9 +520,25 @@ func (msg *MsgGenericTracepointUnix) HandleMessage() *tetragon.GetEventsResponse
 			tetragonArgs = append(tetragonArgs, &tetragon.KprobeArgument{Arg: &tetragon.KprobeArgument_UintArg{
 				UintArg: v,
 			}})
+		case uint16:
+			tetragonArgs = append(tetragonArgs, &tetragon.KprobeArgument{Arg: &tetragon.KprobeArgument_UintArg{
+				UintArg: uint32(v),
+			}})
+		case uint8:
+			tetragonArgs = append(tetragonArgs, &tetragon.KprobeArgument{Arg: &tetragon.KprobeArgument_UintArg{
+				UintArg: uint32(v),
+			}})
 		case int32:
 			tetragonArgs = append(tetragonArgs, &tetragon.KprobeArgument{Arg: &tetragon.KprobeArgument_IntArg{
 				IntArg: v,
+			}})
+		case int16:
+			tetragonArgs = append(tetragonArgs, &tetragon.KprobeArgument{Arg: &tetragon.KprobeArgument_IntArg{
+				IntArg: int32(v),
+			}})
+		case int8:
+			tetragonArgs = append(tetragonArgs, &tetragon.KprobeArgument{Arg: &tetragon.KprobeArgument_IntArg{
+				IntArg: int32(v),
 			}})
 		case string:
 			tetragonArgs = append(tetragonArgs, &tetragon.KprobeArgument{Arg: &tetragon.KprobeArgument_StringArg{
@@ -662,7 +678,7 @@ func (msg *MsgGenericTracepointUnix) HandleMessage() *tetragon.GetEventsResponse
 	}
 }
 
-func (msg *MsgGenericTracepointUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgGenericTracepointUnix) Cast(o any) notify.Message {
 	t := o.(MsgGenericTracepointUnix)
 	return &t
 }
@@ -714,7 +730,7 @@ func (msg *MsgGenericKprobeUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgGenericKprobeUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgGenericKprobeUnix) Cast(o any) notify.Message {
 	t := o.(MsgGenericKprobeUnix)
 	return &t
 }
@@ -800,7 +816,7 @@ func (msg *MsgProcessLoaderUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgProcessLoaderUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgProcessLoaderUnix) Cast(o any) notify.Message {
 	t := o.(MsgProcessLoaderUnix)
 	return &t
 }
@@ -912,7 +928,7 @@ func (msg *MsgGenericUprobeUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgGenericUprobeUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgGenericUprobeUnix) Cast(o any) notify.Message {
 	t := o.(MsgGenericUprobeUnix)
 	return &t
 }
@@ -1018,7 +1034,7 @@ func (msg *MsgGenericUsdtUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgGenericUsdtUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgGenericUsdtUnix) Cast(o any) notify.Message {
 	t := o.(MsgGenericUsdtUnix)
 	return &t
 }
@@ -1061,7 +1077,7 @@ func (msg *MsgGenericLsmUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgGenericLsmUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgGenericLsmUnix) Cast(o any) notify.Message {
 	t := o.(MsgGenericLsmUnix)
 	return &t
 }
@@ -1183,7 +1199,7 @@ func (msg *MsgProcessThrottleUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
-func (msg *MsgProcessThrottleUnix) Cast(o interface{}) notify.Message {
+func (msg *MsgProcessThrottleUnix) Cast(o any) notify.Message {
 	t := o.(MsgProcessThrottleUnix)
 	return &t
 }
