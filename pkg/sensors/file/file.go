@@ -627,6 +627,21 @@ func TracingPolicyPathDigestsContainerFsScanner(specPath []fm.SpecPinPath, conta
 		}
 	}
 
+	// check the policies if we need to get any digests for files
+	// this happens when we have matchFilename selector with operator InFileWithDigest
+	needDigests := false
+	for _, spec := range specPath {
+		if len(spec.DigestPaths) > 0 {
+			needDigests = true
+			break
+		}
+	}
+
+	// no need to get any digests for files so no need to send a message to fs-scanner
+	if !needDigests {
+		return make(map[string]string), nil
+	}
+
 	algo, err := probeImaEnabled()
 	if err != nil {
 		return nil, fmt.Errorf("failed to probe IMA: %w", err)
