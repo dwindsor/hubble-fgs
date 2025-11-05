@@ -500,8 +500,6 @@ func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg 
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	for _, peer := range dpu.peerGroup {
-		peer.mtx.RLock()
-		defer peer.mtx.RUnlock()
 		dpuCfg, err := getPerDpuConfig(fullCfg, peer.uid, dpu.peerGroupSize)
 		if err != nil {
 			logger.GetLogger().Error("dpu config callback function failed", logfields.Error, err)
