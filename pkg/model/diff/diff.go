@@ -501,23 +501,6 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 	return n, nil
 }
 
-func appModelToGraphWorkloadType(wlKind k8sTypes.WorkloadKind) k8sTypes.WorkloadKind {
-	switch wlKind {
-	case k8sTypes.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT:
-		return k8sTypes.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT
-	case k8sTypes.WorkloadKind_WORKLOAD_KIND_STATEFULSET:
-		return k8sTypes.WorkloadKind_WORKLOAD_KIND_STATEFULSET
-	case k8sTypes.WorkloadKind_WORKLOAD_KIND_DAEMONSET:
-		return k8sTypes.WorkloadKind_WORKLOAD_KIND_DAEMONSET
-	case k8sTypes.WorkloadKind_WORKLOAD_KIND_JOB:
-		return k8sTypes.WorkloadKind_WORKLOAD_KIND_JOB
-	case k8sTypes.WorkloadKind_WORKLOAD_KIND_CRONJOB:
-		return k8sTypes.WorkloadKind_WORKLOAD_KIND_CRONJOB
-	default:
-		return k8sTypes.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED
-	}
-}
-
 func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graphV1.Connection {
 	source := &graphV1.Vertex{
 		Family: &graphV1.Vertex_Kubernetes{
@@ -531,19 +514,50 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 				PodName:              "",
 				ContainerName:        "",
 				ServiceKind:          0,
-				WorkloadKind:         appModelToGraphWorkloadType(telemetry.KubernetesWorkloadKind),
+				WorkloadKind:         telemetry.KubernetesWorkloadKind,
 				Ip:                   "",
 				ApplicationModelUuid: telemetry.ApplicationModelId,
 			},
 		},
 	}
-	destination := &graphV1.Vertex{
-		Family: &graphV1.Vertex_WorldEntity{
-			WorldEntity: &graphV1.VertexFamilyWorldEntity{
-				DnsName: telemetry.DestinationName,
+
+	var destination *graphV1.Vertex
+	switch telemetry.DestinationType {
+	case appModelV1.DestinationType_DESTINATION_TYPE_KUBERNETES:
+		destination = &graphV1.Vertex{
+			Family: &graphV1.Vertex_Kubernetes{
+				Kubernetes: &graphV1.VertexFamilyKubernetes{
+					ResourceKind: telemetry.DestinationKubernetesResourceKind,
+					ResourceName: telemetry.DestinationKubernetesResourceName,
+					ClusterName:  telemetry.ClusterName,
+					Namespace:    telemetry.DestinationKubernetesNamespace,
+					ServiceKind:  telemetry.DestinationKubernetesServiceKind,
+					WorkloadKind: telemetry.DestinationKubernetesWorkloadKind,
+					Port:         telemetry.DestinationPort,
+				},
 			},
-		},
+		}
+
+	case appModelV1.DestinationType_DESTINATION_TYPE_CIDR:
+		destination = &graphV1.Vertex{
+			Family: &graphV1.Vertex_WorldEntity{
+				WorldEntity: &graphV1.VertexFamilyWorldEntity{
+					DnsName: telemetry.DestinationName,
+					Port:    telemetry.DestinationPort,
+				},
+			},
+		}
+	case appModelV1.DestinationType_DESTINATION_TYPE_DNS:
+		destination = &graphV1.Vertex{
+			Family: &graphV1.Vertex_WorldEntity{
+				WorldEntity: &graphV1.VertexFamilyWorldEntity{
+					DnsName: telemetry.DestinationName,
+					Port:    telemetry.DestinationPort,
+				},
+			},
+		}
 	}
+
 	link := &graphV1.Edge{
 		Type: &graphV1.Edge_NetworkTelemetry{
 			NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{

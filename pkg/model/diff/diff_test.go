@@ -553,49 +553,167 @@ func Test_getDestination(t *testing.T) {
 }
 
 func TestTelemetryToConnection(t *testing.T) {
-	telemetry := appModelV1.NetworkConnectTelemetry{
-		EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
-		ClusterName:            "my-cluster",
-		NodeName:               "my-node",
-		KubernetesNamespace:    "tetragon",
-		KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
-		KubernetesWorkloadName: "tetragon-grafana",
-		DestinationName:        "grafana.com",
-		DestinationType:        appModelV1.DestinationType_DESTINATION_TYPE_DNS,
-		DestinationPort:        443,
-		TxBytes:                1234,
-		ApplicationModelId:     "u-u-i-d",
-	}
-	connection := TelemetryToConnection(&telemetry)
-	expected := graphV1.Connection{
-		Source: &graphV1.Vertex{
-			Family: &graphV1.Vertex_Kubernetes{
-				Kubernetes: &graphV1.VertexFamilyKubernetes{
-					ResourceName:         telemetry.KubernetesWorkloadName,
-					ClusterName:          telemetry.ClusterName,
-					Namespace:            telemetry.KubernetesNamespace,
-					NodeName:             telemetry.NodeName,
-					WorkloadKind:         common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
-					ApplicationModelUuid: telemetry.ApplicationModelId,
+	tests := []struct {
+		name      string
+		telemetry *appModelV1.NetworkConnectTelemetry
+		expected  *graphV1.Connection
+	}{
+		{
+			name: "DNS destination type",
+			telemetry: &appModelV1.NetworkConnectTelemetry{
+				EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+				ClusterName:            "my-cluster",
+				NodeName:               "my-node",
+				KubernetesNamespace:    "tetragon",
+				KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+				KubernetesWorkloadName: "tetragon-grafana",
+				DestinationName:        "grafana.com",
+				DestinationType:        appModelV1.DestinationType_DESTINATION_TYPE_DNS,
+				DestinationPort:        443,
+				TxBytes:                1234,
+				ApplicationModelId:     "u-u-i-d",
+			},
+			expected: &graphV1.Connection{
+				Source: &graphV1.Vertex{
+					Family: &graphV1.Vertex_Kubernetes{
+						Kubernetes: &graphV1.VertexFamilyKubernetes{
+							ResourceName:         "tetragon-grafana",
+							ClusterName:          "my-cluster",
+							Namespace:            "tetragon",
+							NodeName:             "my-node",
+							WorkloadKind:         common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+							ApplicationModelUuid: "u-u-i-d",
+						},
+					},
+				},
+				Destination: &graphV1.Vertex{
+					Family: &graphV1.Vertex_WorldEntity{
+						WorldEntity: &graphV1.VertexFamilyWorldEntity{
+							DnsName: "grafana.com",
+							Port:    443,
+						},
+					},
+				},
+				Links: []*graphV1.Edge{
+					{
+						Type: &graphV1.Edge_NetworkTelemetry{
+							NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
+								NetworkTransmitBytesTotal: 1234,
+							},
+						},
+					},
 				},
 			},
 		},
-		Destination: &graphV1.Vertex{
-			Family: &graphV1.Vertex_WorldEntity{
-				WorldEntity: &graphV1.VertexFamilyWorldEntity{
-					DnsName: telemetry.DestinationName,
+		{
+			name: "CIDR destination type",
+			telemetry: &appModelV1.NetworkConnectTelemetry{
+				EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+				ClusterName:            "my-cluster",
+				NodeName:               "my-node",
+				KubernetesNamespace:    "tetragon",
+				KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+				KubernetesWorkloadName: "tetragon-grafana",
+				DestinationName:        "192.168.0.2",
+				DestinationType:        appModelV1.DestinationType_DESTINATION_TYPE_CIDR,
+				DestinationPort:        443,
+				TxBytes:                1234,
+				ApplicationModelId:     "u-u-i-d",
+			},
+			expected: &graphV1.Connection{
+				Source: &graphV1.Vertex{
+					Family: &graphV1.Vertex_Kubernetes{
+						Kubernetes: &graphV1.VertexFamilyKubernetes{
+							ResourceName:         "tetragon-grafana",
+							ClusterName:          "my-cluster",
+							Namespace:            "tetragon",
+							NodeName:             "my-node",
+							WorkloadKind:         common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+							ApplicationModelUuid: "u-u-i-d",
+						},
+					},
+				},
+				Destination: &graphV1.Vertex{
+					Family: &graphV1.Vertex_WorldEntity{
+						WorldEntity: &graphV1.VertexFamilyWorldEntity{
+							DnsName: "192.168.0.2",
+							Port:    443,
+						},
+					},
+				},
+				Links: []*graphV1.Edge{
+					{
+						Type: &graphV1.Edge_NetworkTelemetry{
+							NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
+								NetworkTransmitBytesTotal: 1234,
+							},
+						},
+					},
 				},
 			},
 		},
-		Links: []*graphV1.Edge{
-			{
-				Type: &graphV1.Edge_NetworkTelemetry{
-					NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
-						NetworkTransmitBytesTotal: 1234,
+		{
+			name: "k8s destination type",
+			telemetry: &appModelV1.NetworkConnectTelemetry{
+				EventType:                         appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+				ClusterName:                       "my-cluster",
+				NodeName:                          "my-node",
+				KubernetesNamespace:               "tetragon",
+				KubernetesWorkloadKind:            common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+				KubernetesWorkloadName:            "tetragon-grafana",
+				DestinationName:                   "192.168.0.2",
+				DestinationType:                   appModelV1.DestinationType_DESTINATION_TYPE_KUBERNETES,
+				DestinationKubernetesResourceKind: common.ResourceKind_RESOURCE_KIND_SERVICE,
+				DestinationKubernetesNamespace:    "another-namespace",
+				DestinationKubernetesResourceName: "another-service",
+				DestinationKubernetesServiceKind:  common.ServiceKind_SERVICE_KIND_CLUSTER_IP,
+				DestinationKubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+				DestinationPort:                   443,
+				TxBytes:                           1234,
+				ApplicationModelId:                "u-u-i-d",
+			},
+			expected: &graphV1.Connection{
+				Source: &graphV1.Vertex{
+					Family: &graphV1.Vertex_Kubernetes{
+						Kubernetes: &graphV1.VertexFamilyKubernetes{
+							ResourceName:         "tetragon-grafana",
+							ClusterName:          "my-cluster",
+							Namespace:            "tetragon",
+							NodeName:             "my-node",
+							WorkloadKind:         common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+							ApplicationModelUuid: "u-u-i-d",
+						},
+					},
+				},
+				Destination: &graphV1.Vertex{
+					Family: &graphV1.Vertex_Kubernetes{
+						Kubernetes: &graphV1.VertexFamilyKubernetes{
+							ResourceKind: common.ResourceKind_RESOURCE_KIND_SERVICE,
+							ResourceName: "another-service",
+							ClusterName:  "my-cluster",
+							Namespace:    "another-namespace",
+							ServiceKind:  common.ServiceKind_SERVICE_KIND_CLUSTER_IP,
+							WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+							Port:         443,
+						},
+					},
+				},
+				Links: []*graphV1.Edge{
+					{
+						Type: &graphV1.Edge_NetworkTelemetry{
+							NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
+								NetworkTransmitBytesTotal: 1234,
+							},
+						},
 					},
 				},
 			},
 		},
 	}
-	assert.EqualExportedValues(t, &expected, connection)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			connection := TelemetryToConnection(tt.telemetry)
+			assert.EqualExportedValues(t, tt.expected, connection)
+		})
+	}
 }
