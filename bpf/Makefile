@@ -612,7 +612,7 @@ objs/bpf_multi_retkprobe_v511.o: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v511.o: $(PROCESSDIR)/bpf_generic_tracepoint.c
 objs/bpf_generic_rawtp_v511.o: $(PROCESSDIR)/bpf_generic_rawtp.c
 objs/bpf_generic_uprobe_v511.o: $(PROCESSDIR)/bpf_generic_uprobe.c
-objs/bpf_generic_usdt_v511.o: $(PROCESSDIR)/bpf_generic_uprobe.c
+objs/bpf_generic_usdt_v511.o: $(PROCESSDIR)/bpf_generic_usdt.c
 objs/bpf_multi_uprobe_v511.o: $(PROCESSDIR)/bpf_generic_uprobe.c
 objs/bpf_generic_retuprobe_v511.o: $(PROCESSDIR)/bpf_generic_retuprobe.c
 objs/bpf_multi_retuprobe_v511.o: $(PROCESSDIR)/bpf_generic_retuprobe.c
