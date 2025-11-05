@@ -1,3 +1,4 @@
+#define HAS_POLICY_STATS
 #include "vmlinux.h"
 #include "api.h"
 #include "bpf_tracing.h"
@@ -21,6 +22,7 @@
 #endif
 
 #include "policy_conf.h"
+#include "policy_stats.h"
 
 #define FILTER_NOTFOUND -1
 #define FILTER_IGNORE	0
@@ -1583,14 +1585,31 @@ static inline __attribute__((always_inline)) void inc_error(__u32 hook, int metr
 
 static inline __attribute__((always_inline)) int handle_enforcement(int err)
 {
+	__u32 zero = 0, polacct = POLICY_INVALID_ACT_;
+	struct policy_stats *pstats;
 	struct policy_conf *pcnf;
-	__u32 zero = 0;
+	int retval = 0;
 
-	pcnf = map_lookup_elem(&policy_conf, &zero);
-	if (pcnf && pcnf->mode == POLICY_MODE_MONITOR)
+	// no need to override, so just return
+	if (!(err & FILE_OP_BLOCK))
 		return 0;
 
-	return err & FILE_OP_BLOCK ? -EPERM : 0;
+	pcnf = map_lookup_elem(&policy_conf, &zero);
+	if (pcnf && pcnf->mode == POLICY_MODE_MONITOR) {
+		retval = 0;
+		polacct = POLICY_MONITOR_OVERRIDE;
+	} else {
+		retval = -EPERM;
+		polacct = POLICY_OVERRIDE;
+	}
+
+	if (polacct != POLICY_INVALID_ACT_) {
+		pstats = map_lookup_elem(&policy_stats, &zero);
+		if (pstats)
+			lock_add(&pstats->act_cnt[polacct], 1);
+	}
+
+	return retval;
 }
 
 // <  0 for error

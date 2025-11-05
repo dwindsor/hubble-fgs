@@ -213,6 +213,7 @@ var mapTypes = map[string]MapType{
 	"open_user_to_kernel_path":   SharedMap,
 	"file_openraw_enforce_map":   SharedMap,
 	"policy_conf":                SharedMap,
+	"policy_stats":               SharedMap,
 }
 
 // this is used for inode-based programs that modify the inode map and thus do not using them will result in corrupted inode map contents
