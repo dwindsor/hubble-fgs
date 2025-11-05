@@ -21,6 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/cmd/tetra/getevents"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/network"
 	"github.com/isovalent/hubble-fgs/cmd/tetra/record"
+	"github.com/isovalent/hubble-fgs/cmd/tetra/rules"
 )
 
 // addBaseCommands adds commands that build and make sense on all platform:
@@ -34,6 +35,7 @@ func addBaseCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(record.New())
 	rootCmd.AddCommand(alertrule.New())
 	rootCmd.AddCommand(network.New())
+	rootCmd.AddCommand(rules.New())
 
 	// bugtool technically builds on darwin and windows but makes no sense since
 	// it's supposed to be run on the machine running Tetragon, using
