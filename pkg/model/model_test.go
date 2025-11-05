@@ -16,6 +16,9 @@ import (
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
 func TestMerge(t *testing.T) {
@@ -199,4 +202,135 @@ func TestModelToMonitorData(t *testing.T) {
 	}
 	assert.Equal(t, expectedNMD, nmd)
 	assert.Equal(t, expectedPMD, pmd)
+}
+
+func TestProcessModelToApplicationModel_ParentTracking(t *testing.T) {
+	// Test that parent information flows through the ProcessModel -> ApplicationModel conversion
+	// properly and maintains the parent aggregation
+	models := []*types.ProcessModel{
+		{
+			Binary:     "exa",
+			BinaryArgs: "-la",
+			Parent:     "bash",
+			Parents:    []string{"bash"},
+			Namespace:  HostNamespace,
+			Workload:   nil,
+		},
+		{
+			Binary:     "exa",
+			BinaryArgs: "-la",
+			Parent:     "zsh",
+			Parents:    []string{"zsh"},
+			Namespace:  HostNamespace,
+			Workload:   nil,
+		},
+		{
+			Binary:     "grep",
+			BinaryArgs: "test",
+			Parent:     "bash",
+			Parents:    []string{"bash"},
+			Namespace:  HostNamespace,
+			Workload:   nil,
+		},
+	}
+
+	emptyFilter := map[string]bool{}
+	result := ProcessModelToApplicationModel(models, emptyFilter)
+
+	// Check that we get the expected application model structure
+	require.NotNil(t, result.ApplicationModel)
+	require.NotNil(t, result.ApplicationModel.Host)
+	require.Len(t, result.ApplicationModel.Host.Processes, 2) // exa and grep
+
+	// Find the processes
+	var exaProcess, grepProcess *appModelV1.ApplicationProcessGroup
+	for _, proc := range result.ApplicationModel.Host.Processes {
+		if proc.Name == "exa" && proc.Arguments == "-la" {
+			exaProcess = proc
+		} else if proc.Name == "grep" && proc.Arguments == "test" {
+			grepProcess = proc
+		}
+	}
+
+	require.NotNil(t, exaProcess, "exa process should be present")
+	require.NotNil(t, grepProcess, "grep process should be present")
+
+	// Note: The ApplicationProcessGroup doesn't currently have a Parents field in the IPA schema,
+	// but we can verify that the parent information is properly tracked in the monitor data
+	// by converting back to monitor data
+	_, _, processData := ConvertToMonitorData(models, false)
+
+	exaKey := ProcessKey{
+		Namespace: HostNamespace,
+		Name:      "exa",
+		Args:      "-la",
+	}
+	grepKey := ProcessKey{
+		Namespace: HostNamespace,
+		Name:      "grep",
+		Args:      "test",
+	}
+
+	exaValue, found := processData[exaKey]
+	require.True(t, found, "exa process should be in monitor data")
+	assert.Equal(t, []string{"bash", "zsh"}, exaValue.Parents, "exa should have both bash and zsh as parents")
+
+	grepValue, found := processData[grepKey]
+	require.True(t, found, "grep process should be in monitor data")
+	assert.Equal(t, []string{"bash"}, grepValue.Parents, "grep should have bash as parent")
+}
+
+func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T) {
+	// Test parent tracking with workload processes
+	models := []*types.ProcessModel{
+		{
+			Binary:     "app",
+			BinaryArgs: "--config=/etc/app.conf",
+			Parent:     "systemd",
+			Parents:    []string{"systemd"},
+			Namespace:  "default",
+			Workload:   &types.Workload{Kind: "Deployment", Name: "my-app"},
+		},
+		{
+			Binary:     "app",
+			BinaryArgs: "--config=/etc/app.conf",
+			Parent:     "init",
+			Parents:    []string{"init"},
+			Namespace:  "default",
+			Workload:   &types.Workload{Kind: "Deployment", Name: "my-app"},
+		},
+	}
+
+	emptyFilter := map[string]bool{}
+	result := ProcessModelToApplicationModel(models, emptyFilter)
+
+	// Verify structure
+	require.NotNil(t, result.ApplicationModel)
+	require.Len(t, result.ApplicationModel.Namespaces, 1)
+	require.Equal(t, "default", result.ApplicationModel.Namespaces[0].Name)
+	require.Len(t, result.ApplicationModel.Namespaces[0].Workloads, 1)
+
+	workload := result.ApplicationModel.Namespaces[0].Workloads[0]
+	require.Equal(t, "my-app", workload.Name)
+	require.Equal(t, common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT, workload.Kind)
+	require.Len(t, workload.Processes, 1)
+
+	process := workload.Processes[0]
+	require.Equal(t, "app", process.Name)
+	require.Equal(t, "--config=/etc/app.conf", process.Arguments)
+
+	// Verify parent aggregation in monitor data
+	_, _, processData := ConvertToMonitorData(models, false)
+
+	appKey := ProcessKey{
+		Namespace:    "default",
+		WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+		WorkloadName: "my-app",
+		Name:         "app",
+		Args:         "--config=/etc/app.conf",
+	}
+
+	appValue, found := processData[appKey]
+	require.True(t, found, "app process should be in monitor data")
+	assert.Equal(t, []string{"init", "systemd"}, appValue.Parents, "app should have both init and systemd as parents")
 }

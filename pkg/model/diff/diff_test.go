@@ -2,13 +2,16 @@ package diff
 
 import (
 	"context"
+	"slices"
 	"testing"
+	"time"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	graphV1 "github.com/isovalent/ipa/graph/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func connStatsA() *appModelV1.ConnectionStats {
@@ -716,4 +719,318 @@ func TestTelemetryToConnection(t *testing.T) {
 			assert.EqualExportedValues(t, tt.expected, connection)
 		})
 	}
+}
+
+func TestApplicationModelToProcessFlat(t *testing.T) {
+	tests := []struct {
+		name      string
+		model     *appModelV1.ApplicationModel
+		parentMap map[string][]string
+		expected  []*appModelV1.ProcessTelemetry
+		wantErr   bool
+	}{
+		{
+			name: "host processes with parent map",
+			model: &appModelV1.ApplicationModel{
+				Id: "test-model-123",
+				Host: &appModelV1.ApplicationHost{
+					Processes: []*appModelV1.ApplicationProcessGroup{
+						{
+							Name:      "exa",
+							Arguments: "-la",
+						},
+						{
+							Name:      "grep",
+							Arguments: "test",
+						},
+					},
+				},
+			},
+			parentMap: map[string][]string{
+				"exa-la":   {"bash", "zsh"},
+				"greptest": {"bash"},
+			},
+			expected: []*appModelV1.ProcessTelemetry{
+				{
+					ProcessName:        "exa",
+					ProcessArguments:   "-la",
+					ParentNames:        []string{"bash", "zsh"},
+					ApplicationModelId: "test-model-123",
+				},
+				{
+					ProcessName:        "grep",
+					ProcessArguments:   "test",
+					ParentNames:        []string{"bash"},
+					ApplicationModelId: "test-model-123",
+				},
+			},
+		},
+		{
+			name: "workload processes with parent map",
+			model: &appModelV1.ApplicationModel{
+				Id: "test-model-456",
+				Namespaces: []*appModelV1.ApplicationNamespace{
+					{
+						Name: "default",
+						Workloads: []*appModelV1.ApplicationWorkload{
+							{
+								Name: "my-app",
+								Kind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+								Processes: []*appModelV1.ApplicationProcessGroup{
+									{
+										Name:      "app",
+										Arguments: "--config=/etc/app.conf",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			parentMap: map[string][]string{
+				"app--config=/etc/app.conf": {"systemd"},
+			},
+			expected: []*appModelV1.ProcessTelemetry{
+				{
+					KubernetesNamespace:    "default",
+					KubernetesWorkloadName: "my-app",
+					KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+					ProcessName:            "app",
+					ProcessArguments:       "--config=/etc/app.conf",
+					ParentNames:            []string{"systemd"},
+					ApplicationModelId:     "test-model-456",
+				},
+			},
+		},
+		{
+			name: "empty parent map",
+			model: &appModelV1.ApplicationModel{
+				Id: "test-model-789",
+				Host: &appModelV1.ApplicationHost{
+					Processes: []*appModelV1.ApplicationProcessGroup{
+						{
+							Name:      "init",
+							Arguments: "",
+						},
+					},
+				},
+			},
+			parentMap: map[string][]string{},
+			expected: []*appModelV1.ProcessTelemetry{
+				{
+					ProcessName:        "init",
+					ProcessArguments:   "",
+					ParentNames:        nil, // Should be nil when no parents in map
+					ApplicationModelId: "test-model-789",
+				},
+			},
+		},
+		{
+			name: "nil parent map",
+			model: &appModelV1.ApplicationModel{
+				Id: "test-model-nil",
+				Host: &appModelV1.ApplicationHost{
+					Processes: []*appModelV1.ApplicationProcessGroup{
+						{
+							Name:      "test",
+							Arguments: "",
+						},
+					},
+				},
+			},
+			parentMap: nil,
+			expected: []*appModelV1.ProcessTelemetry{
+				{
+					ProcessName:        "test",
+					ProcessArguments:   "",
+					ParentNames:        nil,
+					ApplicationModelId: "test-model-nil",
+				},
+			},
+		},
+		{
+			name: "process key not in parent map",
+			model: &appModelV1.ApplicationModel{
+				Id: "test-model-missing",
+				Host: &appModelV1.ApplicationHost{
+					Processes: []*appModelV1.ApplicationProcessGroup{
+						{
+							Name:      "orphan",
+							Arguments: "process",
+						},
+					},
+				},
+			},
+			parentMap: map[string][]string{
+				"different-process": {"parent"},
+			},
+			expected: []*appModelV1.ProcessTelemetry{
+				{
+					ProcessName:        "orphan",
+					ProcessArguments:   "process",
+					ParentNames:        nil, // Should be nil when key not found
+					ApplicationModelId: "test-model-missing",
+				},
+			},
+		},
+		{
+			name: "empty model",
+			model: &appModelV1.ApplicationModel{
+				Id: "empty-model",
+			},
+			parentMap: map[string][]string{},
+			expected:  []*appModelV1.ProcessTelemetry{},
+		},
+		{
+			name: "both host and workload processes",
+			model: &appModelV1.ApplicationModel{
+				Id: "mixed-model",
+				Host: &appModelV1.ApplicationHost{
+					Processes: []*appModelV1.ApplicationProcessGroup{
+						{
+							Name:      "curl",
+							Arguments: "https://api.github.com",
+						},
+					},
+				},
+				Namespaces: []*appModelV1.ApplicationNamespace{
+					{
+						Name: "kube-system",
+						Workloads: []*appModelV1.ApplicationWorkload{
+							{
+								Name: "kube-proxy",
+								Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+								Processes: []*appModelV1.ApplicationProcessGroup{
+									{
+										Name:      "kube-proxy",
+										Arguments: "--config=/var/lib/kube-proxy/config.conf",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			parentMap: map[string][]string{
+				"curlhttps://api.github.com":                         {"bash"},
+				"kube-proxy--config=/var/lib/kube-proxy/config.conf": {"systemd"},
+			},
+			expected: []*appModelV1.ProcessTelemetry{
+				{
+					ProcessName:        "curl",
+					ProcessArguments:   "https://api.github.com",
+					ParentNames:        []string{"bash"},
+					ApplicationModelId: "mixed-model",
+				},
+				{
+					KubernetesNamespace:    "kube-system",
+					KubernetesWorkloadName: "kube-proxy",
+					KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+					ProcessName:            "kube-proxy",
+					ProcessArguments:       "--config=/var/lib/kube-proxy/config.conf",
+					ParentNames:            []string{"systemd"},
+					ApplicationModelId:     "mixed-model",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			result, err := ApplicationModelToProcessFlat(ctx, tt.model, tt.parentMap)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, len(tt.expected), len(result), "unexpected number of telemetry entries")
+
+			// Sort both slices for comparison since order may vary
+			sortTelemetry := func(t []*appModelV1.ProcessTelemetry) {
+				// Sort by a combination of fields to ensure deterministic comparison
+				slices.SortFunc(t, func(a, b *appModelV1.ProcessTelemetry) int {
+					// Compare by namespace, workload, process name, then args
+					if a.KubernetesNamespace != b.KubernetesNamespace {
+						if a.KubernetesNamespace < b.KubernetesNamespace {
+							return -1
+						}
+						return 1
+					}
+					if a.KubernetesWorkloadName != b.KubernetesWorkloadName {
+						if a.KubernetesWorkloadName < b.KubernetesWorkloadName {
+							return -1
+						}
+						return 1
+					}
+					if a.ProcessName != b.ProcessName {
+						if a.ProcessName < b.ProcessName {
+							return -1
+						}
+						return 1
+					}
+					if a.ProcessArguments < b.ProcessArguments {
+						return -1
+					}
+					if a.ProcessArguments > b.ProcessArguments {
+						return 1
+					}
+					return 0
+				})
+			}
+
+			sortTelemetry(result)
+			sortTelemetry(tt.expected)
+
+			for i, expected := range tt.expected {
+				actual := result[i]
+
+				// Check core fields
+				assert.Equal(t, expected.ProcessName, actual.ProcessName, "process name mismatch at index %d", i)
+				assert.Equal(t, expected.ProcessArguments, actual.ProcessArguments, "process arguments mismatch at index %d", i)
+				assert.Equal(t, expected.KubernetesNamespace, actual.KubernetesNamespace, "kubernetes namespace mismatch at index %d", i)
+				assert.Equal(t, expected.KubernetesWorkloadName, actual.KubernetesWorkloadName, "kubernetes workload name mismatch at index %d", i)
+				assert.Equal(t, expected.KubernetesWorkloadKind, actual.KubernetesWorkloadKind, "kubernetes workload kind mismatch at index %d", i)
+				assert.Equal(t, expected.ApplicationModelId, actual.ApplicationModelId, "application model id mismatch at index %d", i)
+
+				// Check ParentNames (the main new field we're testing)
+				assert.Equal(t, expected.ParentNames, actual.ParentNames, "parent names mismatch at index %d", i)
+
+				// Sanity check that auto-populated fields are present (but don't require specific values in tests)
+				// ClusterName and NodeName may be empty in test environments
+				assert.NotNil(t, actual.ClusterName, "cluster name should not be nil")
+				assert.NotNil(t, actual.NodeName, "node name should not be nil")
+			}
+		})
+	}
+}
+
+func TestApplicationModelToProcessFlat_WithTimeFields(t *testing.T) {
+	// Test that timestamp fields are properly propagated
+	firstTime := timestamppb.New(time.Unix(1000, 0))
+	latestTime := timestamppb.New(time.Unix(2000, 0))
+
+	model := &appModelV1.ApplicationModel{
+		Id: "time-test",
+		Host: &appModelV1.ApplicationHost{
+			Processes: []*appModelV1.ApplicationProcessGroup{
+				{
+					Name:            "timestamped-process",
+					Arguments:       "",
+					FirstStartTime:  firstTime,
+					LatestStartTime: latestTime,
+				},
+			},
+		},
+	}
+
+	result, err := ApplicationModelToProcessFlat(context.Background(), model, nil)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+
+	telemetry := result[0]
+	assert.Equal(t, firstTime, telemetry.FirstStartTime, "first start time should be propagated")
+	assert.Equal(t, latestTime, telemetry.LatestStartTime, "latest start time should be propagated")
 }

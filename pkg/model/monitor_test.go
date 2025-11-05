@@ -414,3 +414,265 @@ func Test_sortProcessKeys(t *testing.T) {
 	assert.Greater(t, CompareProcessKeys(a, b), 0)
 	b.Args = a.Args
 }
+
+func TestConvertToMonitorData_ParentAggregation(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []*types.ProcessModel
+		expected ProcessMonitorData
+	}{
+		{
+			name: "single process with one parent",
+			input: []*types.ProcessModel{
+				{
+					Binary:     "exa",
+					BinaryArgs: "-la",
+					Parent:     "bash",
+					Parents:    []string{"bash"},
+					Namespace:  HostNamespace,
+					Abi:        "x64",
+					Syscalls:   []uint32{1, 2},
+				},
+			},
+			expected: ProcessMonitorData{
+				ProcessKey{
+					Namespace: HostNamespace,
+					Name:      "exa",
+					Args:      "-la",
+				}: ProcessValue{
+					Parents: []string{"bash"},
+				},
+			},
+		},
+		{
+			name: "multiple processes with same key but different parents",
+			input: []*types.ProcessModel{
+				{
+					Binary:     "exa",
+					BinaryArgs: "-la",
+					Parent:     "bash",
+					Parents:    []string{"bash"},
+					Namespace:  HostNamespace,
+					Abi:        "x64",
+					Syscalls:   []uint32{1, 2},
+				},
+				{
+					Binary:     "exa",
+					BinaryArgs: "-la",
+					Parent:     "zsh",
+					Parents:    []string{"zsh"},
+					Namespace:  HostNamespace,
+					Abi:        "x64",
+					Syscalls:   []uint32{1, 2},
+				},
+			},
+			expected: ProcessMonitorData{
+				ProcessKey{
+					Namespace: HostNamespace,
+					Name:      "exa",
+					Args:      "-la",
+				}: ProcessValue{
+					Parents: []string{"bash", "zsh"}, // Should be sorted and aggregated
+				},
+			},
+		},
+		{
+			name: "duplicate parents are deduped",
+			input: []*types.ProcessModel{
+				{
+					Binary:     "ls",
+					BinaryArgs: "",
+					Parent:     "bash",
+					Parents:    []string{"bash"},
+					Namespace:  HostNamespace,
+					Abi:        "x64",
+					Syscalls:   []uint32{1},
+				},
+				{
+					Binary:     "ls",
+					BinaryArgs: "",
+					Parent:     "bash",
+					Parents:    []string{"bash"},
+					Namespace:  HostNamespace,
+					Abi:        "x64",
+					Syscalls:   []uint32{1},
+				},
+			},
+			expected: ProcessMonitorData{
+				ProcessKey{
+					Namespace: HostNamespace,
+					Name:      "ls",
+					Args:      "",
+				}: ProcessValue{
+					Parents: []string{"bash"}, // Only one instance despite duplicates
+				},
+			},
+		},
+		{
+			name: "process with no parent",
+			input: []*types.ProcessModel{
+				{
+					Binary:     "init",
+					BinaryArgs: "",
+					Parent:     "",
+					Parents:    []string{},
+					Namespace:  HostNamespace,
+					Abi:        "x64",
+					Syscalls:   []uint32{1},
+				},
+			},
+			expected: ProcessMonitorData{
+				ProcessKey{
+					Namespace: HostNamespace,
+					Name:      "init",
+					Args:      "",
+				}: ProcessValue{
+					Parents: []string{}, // Empty parents list
+				},
+			},
+		},
+		{
+			name: "workload process with parent",
+			input: []*types.ProcessModel{
+				{
+					Binary:     "app",
+					BinaryArgs: "--config=/etc/app.conf",
+					Parent:     "systemd",
+					Parents:    []string{"systemd"},
+					Namespace:  "default",
+					Workload:   &types.Workload{Kind: "Deployment", Name: "my-app"},
+					Abi:        "x64",
+					Syscalls:   []uint32{1},
+				},
+			},
+			expected: ProcessMonitorData{
+				ProcessKey{
+					Namespace:    "default",
+					WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+					WorkloadName: "my-app",
+					Name:         "app",
+					Args:         "--config=/etc/app.conf",
+				}: ProcessValue{
+					Parents: []string{"systemd"},
+				},
+			},
+		},
+		{
+			name: "process with destinations",
+			input: []*types.ProcessModel{
+				{
+					Binary:     "curl",
+					BinaryArgs: "https://example.com",
+					Parent:     "bash",
+					Parents:    []string{"bash"},
+					Namespace:  HostNamespace,
+					Abi:        "x64",
+					Syscalls:   []uint32{1},
+					Dest: []*types.Destination{
+						{
+							DestinationNames: []string{"example.com"},
+							Port:             443,
+							Stats:            &types.DestinationStats{TxBytes: 10, RxBytes: 20},
+						},
+					},
+				},
+			},
+			expected: ProcessMonitorData{
+				ProcessKey{
+					Namespace:    HostNamespace,
+					WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
+					WorkloadName: "",
+					Name:         "curl",
+					Args:         "https://example.com",
+				}: ProcessValue{
+					Parents: []string{"bash"},
+				},
+			},
+		},
+		{
+			name: "process with destinations but nil stats (should not crash and should appear)",
+			input: []*types.ProcessModel{
+				{
+					Binary:     "curl",
+					BinaryArgs: "https://example.com",
+					Parent:     "bash",
+					Parents:    []string{"bash"},
+					Namespace:  HostNamespace,
+					Abi:        "x64",
+					Syscalls:   []uint32{1},
+					Dest: []*types.Destination{
+						{
+							DestinationNames: []string{"example.com"},
+							Port:             443,
+							Stats:            nil, // This should not cause a segfault
+						},
+					},
+				},
+			},
+			expected: ProcessMonitorData{
+				ProcessKey{
+					Namespace:    HostNamespace,
+					WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
+					WorkloadName: "",
+					Name:         "curl",
+					Args:         "https://example.com",
+				}: ProcessValue{
+					Parents: []string{"bash"},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, processData := ConvertToMonitorData(tt.input, false)
+
+			// Check that we got the expected number of process entries
+			assert.Equal(t, len(tt.expected), len(processData), "unexpected number of process entries")
+
+			// Check each expected entry
+			for expectedKey, expectedValue := range tt.expected {
+				actualValue, found := processData[expectedKey]
+				require.True(t, found, "expected process key not found: %v", expectedKey)
+
+				// Check parents (main thing we're testing)
+				assert.Equal(t, expectedValue.Parents, actualValue.Parents, "parents mismatch for key %v", expectedKey)
+
+				// Basic sanity checks on other fields
+				assert.NotNil(t, actualValue.Syscalls, "syscalls should not be nil")
+				assert.False(t, actualValue.InInitTree, "inInitTree should be false for test data")
+			}
+		})
+	}
+}
+
+func TestConvertToMonitorData_ParentWithWorkloadNil(t *testing.T) {
+	// Test the nil workload case that was causing segmentation faults
+	input := []*types.ProcessModel{
+		{
+			Binary:     "test-binary",
+			BinaryArgs: "",
+			Parent:     "parent-binary",
+			Parents:    []string{"parent-binary"},
+			Namespace:  HostNamespace,
+			Workload:   nil, // This was causing the segfault
+			Abi:        "x64",
+			Syscalls:   []uint32{1},
+		},
+	}
+
+	// This should not panic
+	_, _, processData := ConvertToMonitorData(input, false)
+
+	expected := ProcessKey{
+		Namespace:    HostNamespace,
+		WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED, // Default when workload is nil
+		WorkloadName: "",                                            // Empty when workload is nil
+		Name:         "test-binary",
+		Args:         "",
+	}
+
+	value, found := processData[expected]
+	require.True(t, found, "process should be found")
+	assert.Equal(t, []string{"parent-binary"}, value.Parents)
+}
