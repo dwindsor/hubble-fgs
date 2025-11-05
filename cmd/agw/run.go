@@ -244,14 +244,13 @@ func addSmartSwitchInventoryCR(ctx context.Context, kubernetesManager *manager.C
 			if i == 2 {
 				logger.GetLogger().Error("failed to apply SmartSwitchInventory CR", logfields.Error, err)
 				return err
-			} else {
-				logger.GetLogger().Warn(
-					fmt.Sprintf("error applying SmartSwitchInventory CR, will retry (attempt %d/%d)", i+1, 3),
-					logfields.Error, err,
-				)
 			}
+			logger.GetLogger().Warn(
+				fmt.Sprintf("error applying SmartSwitchInventory CR, will retry (attempt %d/%d)", i+1, 3),
+				logfields.Error, err,
+			)
 			// Add exponential backoff before retrying
-			backoff := time.Duration(1<<i) * time.Millisecond
+			backoff := time.Duration(1<<i) * time.Second
 			time.Sleep(backoff)
 		} else {
 			break
