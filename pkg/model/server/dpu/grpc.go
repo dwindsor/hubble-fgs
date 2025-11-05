@@ -15,13 +15,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 )
 
-type FWAServer struct {
+type AGWServer struct {
 	v1alpha.UnimplementedL3L4NetworkPolicyServiceServer
 
 	dpuListener *DPUListener
 }
 
-func (s *FWAServer) ReportStatus(_ context.Context, req *v1alpha.ReportStatusRequest) (*v1alpha.ReportStatusResponse, error) {
+func (s *AGWServer) ReportStatus(_ context.Context, req *v1alpha.ReportStatusRequest) (*v1alpha.ReportStatusResponse, error) {
 	// Validate AgentUid is not empty
 	if req.Status != nil && req.Status.AgentUid == "" {
 		logger.GetLogger().Error("Rejecting DPU status report with empty AgentUid")
@@ -33,7 +33,7 @@ func (s *FWAServer) ReportStatus(_ context.Context, req *v1alpha.ReportStatusReq
 	return &v1alpha.ReportStatusResponse{}, nil
 }
 
-func (s *FWAServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicyRequest, stream grpc.ServerStreamingServer[v1alpha.Streaml3L4NetworkPolicyResponse]) error {
+func (s *AGWServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicyRequest, stream grpc.ServerStreamingServer[v1alpha.Streaml3L4NetworkPolicyResponse]) error {
 	// Validate AgentUid is not empty
 	if req.AgentUid == "" {
 		logger.GetLogger().Error("Rejecting DPU connection with empty AgentUid")
@@ -89,7 +89,7 @@ func (s *FWAServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 	}
 }
 
-func (s *FWAServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigRequest, stream grpc.ServerStreamingServer[v1alpha.StreamDatapathConfigResponse]) error {
+func (s *AGWServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigRequest, stream grpc.ServerStreamingServer[v1alpha.StreamDatapathConfigResponse]) error {
 	// Validate AgentUid is not empty
 	if req.AgentUid == "" {
 		logger.GetLogger().Error("Rejecting DPU config conn with empty AgentUid")
@@ -195,8 +195,8 @@ func (s *FWAServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 	}
 }
 
-func newServer(dpuListener *DPUListener) *FWAServer {
-	return &FWAServer{
+func newServer(dpuListener *DPUListener) *AGWServer {
+	return &AGWServer{
 		dpuListener: dpuListener,
 	}
 }
