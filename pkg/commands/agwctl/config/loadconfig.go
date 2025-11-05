@@ -5,11 +5,12 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 	"github.com/isovalent/hubble-fgs/pkg/ipc"
+
 	"github.com/spf13/cobra"
 )
 
 var loadDpuConfigCmd = &cobra.Command{
-	Use:          "load_dpu_config <file>",
+	Use:          "load_dpu_config --file <file>",
 	SilenceUsage: true,
 	Short:        "Load DPU configuration from file",
 	Long: `Load DPU configuration from file.  This replaces
@@ -20,7 +21,7 @@ var loadDpuConfigCmd = &cobra.Command{
 						"port_low": 28501,
 						"port_high" : 28600
 					}`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -44,5 +45,7 @@ var loadDpuConfigCmd = &cobra.Command{
 }
 
 func init() {
+	loadDpuConfigCmd.Flags().StringP("file", "f", "", "DPU config file path")
+	loadDpuConfigCmd.MarkFlagRequired("file")
 	ConfigCmd.AddCommand(loadDpuConfigCmd)
 }

@@ -208,7 +208,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		}
 
 	case CMD_LOAD_DPU_CFG:
-		cfg, err := os.ReadFile(data.Args[0])
+		cfg, err := os.ReadFile(data.Flags["file"])
 		if err != nil {
 			response.ReturnCode = "fail"
 			response.Data = err.Error()

@@ -3,9 +3,9 @@ package dpu
 import (
 	"fmt"
 
-	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
-
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
+
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
 // This converts the datapath record to the stream response that is sent
@@ -165,8 +165,14 @@ func getPerDpuConfig(fullCfg *v1alpha.DpuConfig, id string, dpuCount uint16) (*v
 	}
 	dpuNum, ok := DPUMap[id]
 	if !ok {
-		return nil, fmt.Errorf("dpu config creation failed, unable to map id to dpu")
+		if dpuCount == 1 {
+			// Dev DSC testbed case
+			dpuNum = 1
+		} else {
+			return nil, fmt.Errorf("dpu config creation failed, unable to map id to dpu")
+		}
 	}
+
 	index := dpuNum - 1
 	if index >= int(dpuCount) {
 		return nil, fmt.Errorf("incompatible port range for dpu %s with a total dpu count of %d", id, dpuCount)

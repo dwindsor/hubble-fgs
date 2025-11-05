@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 	"github.com/spf13/cobra"
+
+	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 )
 
 func init() {

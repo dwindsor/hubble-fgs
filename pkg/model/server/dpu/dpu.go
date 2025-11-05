@@ -132,10 +132,11 @@ type DPUListener struct {
 
 func NewDPUListener(ctx context.Context, address string) *DPUListener {
 	return &DPUListener{
-		ctx:       ctx,
-		address:   address,
-		peerGroup: make(map[string]*peer),
-		ruleSet:   make(map[[sha256.Size]byte]*DPURule),
+		ctx:           ctx,
+		address:       address,
+		peerGroup:     make(map[string]*peer),
+		ruleSet:       make(map[[sha256.Size]byte]*DPURule),
+		peerGroupSize: 1,
 	}
 }
 
