@@ -69,7 +69,7 @@ jobs:
         env:
           LOG_LEVEL: ${{ github.event.inputs.renovate_log_level_debug == 'false' && 'INFO' || 'DEBUG' }}
           RENOVATE_SECRETS: "{APP_TOKEN: \"${{ steps.get_token.outputs.app_token }}\"}"
-          RENOVATE_CUSTOM_ENV_VARIABLES: "{GIT_CONFIG_COUNT: \"1\", GIT_CONFIG_KEY_0: \"url.https://x-access-token:{{ secrets.APP_TOKEN }}@github.com/isovalent/ipa.insteadOf\", GIT_CONFIG_VALUE_0: \"https://github.com/isovalent/ipa\"}"
+          RENOVATE_CUSTOM_ENV_VARIABLES: "{GIT_CONFIG_COUNT: \"1\", GIT_CONFIG_KEY_0: \"url.https://x-access-token:{{ secrets.APP_TOKEN }}@github.com/isovalent/ipa.insteadOf\", GIT_CONFIG_VALUE_0: \"https://github.com/isovalent/ipa\", GOPRIVATE: \"github.com/isovalent\"}"
         with:
           configurationFile: .github/self-hosted-renovate.json5
           token: '${{ steps.get_token.outputs.app_token }}'

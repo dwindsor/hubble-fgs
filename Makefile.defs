@@ -4,7 +4,7 @@ CONTAINER_ENGINE ?= docker
 
 # If you change GOPRIVATE, you also need to change:
 # - contrib/build/depfix and
-# - .github/self-hosted-renovate.json5
+# - .github/workflows/renovate.yaml
 GOPRIVATE := "github.com/isovalent"
 GO ?= go
 GO := GOPRIVATE=$(GOPRIVATE) $(GO)
