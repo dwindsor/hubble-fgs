@@ -73,7 +73,7 @@ spec:
           - cidr: 192.168.2.0/24
             vlan: 200
         protoPorts:
-          - protocol: tcp
+          - protocol: TCP
             port: 8080
 ---
 apiVersion: isovalent.com/v1alpha1
@@ -93,7 +93,7 @@ spec:
         ipBlock:
           - cidr: 0.0.0.0/0
         protoPorts:
-          - protocol: tcp
+          - protocol: TCP
             port: 8080
 `
 
@@ -117,7 +117,7 @@ spec:
           - cidr: 192.168.2.0/24
             vlan: 200
         protoPorts:
-          - protocol: tcp
+          - protocol: TCP
             port: 8080
 ---
 apiVersion: isovalent.com/v1alpha1
@@ -137,7 +137,7 @@ spec:
         ipBlock:
           - cidr: 0.0.0.0/0
         protoPorts:
-          - protocol: tcp
+          - protocol: TCP
             port: 8080
 ---
 ---
@@ -161,7 +161,7 @@ spec:
         ipBlock:
           - cidr: 0.0.0.0/0
         protoPorts:
-          - protocol: tcp
+          - protocol: TCP
             port: 8080
 `
 
@@ -184,7 +184,7 @@ spec:
           - cidr: 192.168.2.0/24
             vlan: 200
         protoPorts:
-          - protocol: tcp
+          - protocol: TCP
             port: 8080
 `
 
@@ -414,8 +414,8 @@ func TestFromYAMLMultiplePolicies(t *testing.T) {
 				require.Equal(t, "test-ns", policies[0].Namespace)
 				require.Len(t, policies[0].Spec.Rules, 1)
 				require.Equal(t, "deny", policies[0].Spec.Rules[0].Action)
-				require.Equal(t, uint32(100), policies[0].Spec.Rules[0].Source.IPBlock[0].VLAN)
-				require.Equal(t, uint32(200), policies[0].Spec.Rules[0].Destination.IPBlock[0].VLAN)
+				require.Equal(t, int32(100), policies[0].Spec.Rules[0].Source.IPBlock[0].VLAN)
+				require.Equal(t, int32(200), policies[0].Spec.Rules[0].Destination.IPBlock[0].VLAN)
 
 				// Check second policy (VRF policy)
 				require.Equal(t, "network-policy-l3", policies[1].Name)

@@ -116,7 +116,7 @@ func dpuRuleToResponse(rule *DPUPolicyRule) *v1alpha.Streaml3L4NetworkPolicyResp
 			Cidr:     r.Destination.Cidr,
 			MinPort:  r.Destination.MinPort,
 			MaxPort:  r.Destination.MaxPort,
-			Vlan:     r.Destination.Vlan,
+			Vlan:     uint32(r.Destination.Vlan),
 			Vrf:      r.Destination.Vrf,
 			VrfId:    r.Destination.VrfId,
 			Protocol: r.Destination.Protocol,

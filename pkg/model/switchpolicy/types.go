@@ -103,15 +103,15 @@ func (s *SmartSwitchNetworkPolicy) Hash() ([sha256.Size]byte, error) {
 }
 
 type SmartSwitchNetworkProtocolPorts struct {
-	Port     uint32
-	EndPort  uint32
+	Port     int32
+	EndPort  int32
 	Protocol string
 }
 
 type SmartSwitchNetworkEndpoint struct {
 	CIDR string
 	VRF  string
-	VLAN uint32
+	VLAN int32
 }
 
 type SmartSwitchNetworkSource struct {

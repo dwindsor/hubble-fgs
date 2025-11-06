@@ -670,6 +670,7 @@ the following criteria:
 | process_count | [uint64](#uint64) |  | Number of processes that are currently running in this process group. Implementations of this API may remove the process group from the application model if this count and the counts of all the descendant process groups are zero. |
 | latest_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The latest time at which a process in this process group was observed to start. |
 | latest_exit_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The latest time at which a process in this process group was observed to exit. |
+| first_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The first time a process in this process group was observed to start. |
 
 
 
@@ -926,6 +927,9 @@ the following criteria:
 | id | [string](#string) |  | An opaque identifier that is unique to this telemetry data across all the telemetry types. |
 | node_labels | [ProcessTelemetry.NodeLabelsEntry](#application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry) | repeated | Labels of the node that transmitted this telemetry event. For nodes that belong to a Kubernetes cluster, this field contains Kubernetes node labels. For cloud provider VMs (e.g. AWS, GCP, Azure) that do not belong to any Kubernetes cluster, this field may contain VM tags / labels. |
 | application_model_id | [string](#string) |  | The ID of the application model from which this telemetry data got derived. |
+| first_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The first time the process has been observed to run. |
+| latest_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The most recent time the process has been observed to run. |
+| parent_names | [string](#string) | repeated | Names of all processes that have been parents of this name/argument tuple. |
 
 
 

@@ -218,8 +218,8 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *dpu
 		case "icmp":
 			dstProto = v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP
 		}
-		dstMinPort = rule.Policy.Destination.ProtoPorts.Port
-		dstMaxPort = rule.Policy.Destination.ProtoPorts.EndPort
+		dstMinPort = uint32(rule.Policy.Destination.ProtoPorts.Port)
+		dstMaxPort = uint32(rule.Policy.Destination.ProtoPorts.EndPort)
 	}
 
 	return &dpu.DPUPolicyRule{
@@ -234,7 +234,7 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *dpu
 				Cidr:     rule.Policy.Source.Endpoint.CIDR,
 				MinPort:  0,
 				MaxPort:  65535,
-				Vlan:     rule.Policy.Source.Endpoint.VLAN,
+				Vlan:     uint32(rule.Policy.Source.Endpoint.VLAN),
 				Vrf:      rule.Policy.Source.Endpoint.VRF,
 				VrfId:    uint32(sourceVRFId),
 				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
@@ -245,7 +245,7 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *dpu
 				Cidr:     rule.Policy.Destination.Endpoint.CIDR,
 				MinPort:  dstMinPort,
 				MaxPort:  dstMaxPort,
-				Vlan:     rule.Policy.Destination.Endpoint.VLAN,
+				Vlan:     uint32(rule.Policy.Destination.Endpoint.VLAN),
 				Vrf:      rule.Policy.Destination.Endpoint.VRF,
 				VrfId:    uint32(destinationVRFId),
 				Protocol: dstProto,

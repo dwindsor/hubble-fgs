@@ -207,8 +207,14 @@ type ProcessTelemetry struct {
 	NodeLabels map[string]string `protobuf:"bytes,14,rep,name=node_labels,json=nodeLabels,proto3" json:"node_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// The ID of the application model from which this telemetry data got derived.
 	ApplicationModelId string `protobuf:"bytes,15,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The first time the process has been observed to run.
+	FirstStartTime *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=first_start_time,json=firstStartTime,proto3" json:"first_start_time,omitempty"`
+	// The most recent time the process has been observed to run.
+	LatestStartTime *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=latest_start_time,json=latestStartTime,proto3" json:"latest_start_time,omitempty"`
+	// Names of all processes that have been parents of this name/argument tuple.
+	ParentNames   []string `protobuf:"bytes,18,rep,name=parent_names,json=parentNames,proto3" json:"parent_names,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProcessTelemetry) Reset() {
@@ -344,6 +350,27 @@ func (x *ProcessTelemetry) GetApplicationModelId() string {
 		return x.ApplicationModelId
 	}
 	return ""
+}
+
+func (x *ProcessTelemetry) GetFirstStartTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FirstStartTime
+	}
+	return nil
+}
+
+func (x *ProcessTelemetry) GetLatestStartTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LatestStartTime
+	}
+	return nil
+}
+
+func (x *ProcessTelemetry) GetParentNames() []string {
+	if x != nil {
+		return x.ParentNames
+	}
+	return nil
 }
 
 type NetworkConnectTelemetry struct {
@@ -991,6 +1018,8 @@ type ApplicationProcessGroup struct {
 	// The latest time at which a process in this process group was observed to
 	// exit.
 	LatestExitTime *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=latest_exit_time,json=latestExitTime,proto3" json:"latest_exit_time,omitempty"`
+	// The first time a process in this process group was observed to start.
+	FirstStartTime *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=first_start_time,json=firstStartTime,proto3" json:"first_start_time,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1091,6 +1120,13 @@ func (x *ApplicationProcessGroup) GetLatestStartTime() *timestamppb.Timestamp {
 func (x *ApplicationProcessGroup) GetLatestExitTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.LatestExitTime
+	}
+	return nil
+}
+
+func (x *ApplicationProcessGroup) GetFirstStartTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FirstStartTime
 	}
 	return nil
 }
@@ -1882,7 +1918,7 @@ var File_application_model_v1alpha_application_model_proto protoreflect.FileDesc
 
 const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\n" +
-	"1application_model/v1alpha/application_model.proto\x12\x19application_model.v1alpha\x1a(application_model/v1alpha/syscalls.proto\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a!common/net/v1alpha/protocol.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xb5\x06\n" +
+	"1application_model/v1alpha/application_model.proto\x12\x19application_model.v1alpha\x1a(application_model/v1alpha/syscalls.proto\x1a&common/k8s/type/v1alpha/resource.proto\x1a%common/k8s/type/v1alpha/service.proto\x1a&common/k8s/type/v1alpha/workload.proto\x1a!common/net/v1alpha/protocol.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\xe6\a\n" +
 	"\x10ProcessTelemetry\x12!\n" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1b\n" +
 	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x12G\n" +
@@ -1902,7 +1938,10 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x02id\x18\r \x01(\tR\x02id\x12\\\n" +
 	"\vnode_labels\x18\x0e \x03(\v2;.application_model.v1alpha.ProcessTelemetry.NodeLabelsEntryR\n" +
 	"nodeLabels\x120\n" +
-	"\x14application_model_id\x18\x0f \x01(\tR\x12applicationModelId\x1a=\n" +
+	"\x14application_model_id\x18\x0f \x01(\tR\x12applicationModelId\x12D\n" +
+	"\x10first_start_time\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\x0efirstStartTime\x12F\n" +
+	"\x11latest_start_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\x0flatestStartTime\x12!\n" +
+	"\fparent_names\x18\x12 \x03(\tR\vparentNames\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb6\r\n" +
@@ -1961,7 +2000,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x13ApplicationWorkload\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x129\n" +
 	"\x04kind\x18\x02 \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\x04kind\x12P\n" +
-	"\tprocesses\x18\x03 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"\xc7\x04\n" +
+	"\tprocesses\x18\x03 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"\x8d\x05\n" +
 	"\x17ApplicationProcessGroup\x12\x12\n" +
 	"\x04hash\x18\x01 \x01(\tR\x04hash\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1c\n" +
@@ -1974,7 +2013,8 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\rprocess_count\x18\b \x01(\x04R\fprocessCount\x12F\n" +
 	"\x11latest_start_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x0flatestStartTime\x12D\n" +
 	"\x10latest_exit_time\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\x0elatestExitTime\"\x91\x01\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\x0elatestExitTime\x12D\n" +
+	"\x10first_start_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0efirstStartTime\"\x91\x01\n" +
 	"\rNetworkPolicy\x12B\n" +
 	"\averdict\x18\x14 \x01(\x0e2(.application_model.v1alpha.PolicyVerdictR\averdict\x12\x1f\n" +
 	"\vpolicy_name\x18\x15 \x01(\tR\n" +
@@ -2098,54 +2138,57 @@ var file_application_model_v1alpha_application_model_proto_depIdxs = []int32{
 	25, // 1: application_model.v1alpha.ProcessTelemetry.time:type_name -> google.protobuf.Timestamp
 	26, // 2: application_model.v1alpha.ProcessTelemetry.kubernetes_workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
 	23, // 3: application_model.v1alpha.ProcessTelemetry.node_labels:type_name -> application_model.v1alpha.ProcessTelemetry.NodeLabelsEntry
-	25, // 4: application_model.v1alpha.NetworkConnectTelemetry.time:type_name -> google.protobuf.Timestamp
-	2,  // 5: application_model.v1alpha.NetworkConnectTelemetry.event_type:type_name -> application_model.v1alpha.TelemetryType
-	24, // 6: application_model.v1alpha.NetworkConnectTelemetry.node_labels:type_name -> application_model.v1alpha.NetworkConnectTelemetry.NodeLabelsEntry
-	26, // 7: application_model.v1alpha.NetworkConnectTelemetry.kubernetes_workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
-	1,  // 8: application_model.v1alpha.NetworkConnectTelemetry.destination_type:type_name -> application_model.v1alpha.DestinationType
-	27, // 9: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_resource_kind:type_name -> common.k8s.type.v1alpha.ResourceKind
-	28, // 10: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_service_kind:type_name -> common.k8s.type.v1alpha.ServiceKind
-	26, // 11: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
-	29, // 12: application_model.v1alpha.NetworkConnectTelemetry.protocol:type_name -> common.net.v1alpha.IPProtocol
-	0,  // 13: application_model.v1alpha.NetworkConnectTelemetry.verdict:type_name -> application_model.v1alpha.PolicyVerdict
-	25, // 14: application_model.v1alpha.ApplicationModelEvent.time:type_name -> google.protobuf.Timestamp
-	6,  // 15: application_model.v1alpha.ApplicationModelEvent.application_model:type_name -> application_model.v1alpha.ApplicationModel
-	8,  // 16: application_model.v1alpha.ApplicationModel.namespaces:type_name -> application_model.v1alpha.ApplicationNamespace
-	7,  // 17: application_model.v1alpha.ApplicationModel.host:type_name -> application_model.v1alpha.ApplicationHost
-	10, // 18: application_model.v1alpha.ApplicationHost.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
-	9,  // 19: application_model.v1alpha.ApplicationNamespace.workloads:type_name -> application_model.v1alpha.ApplicationWorkload
-	26, // 20: application_model.v1alpha.ApplicationWorkload.kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
-	10, // 21: application_model.v1alpha.ApplicationWorkload.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
-	10, // 22: application_model.v1alpha.ApplicationProcessGroup.children:type_name -> application_model.v1alpha.ApplicationProcessGroup
-	12, // 23: application_model.v1alpha.ApplicationProcessGroup.connections:type_name -> application_model.v1alpha.ApplicationConnection
-	30, // 24: application_model.v1alpha.ApplicationProcessGroup.in_init_tree:type_name -> google.protobuf.BoolValue
-	18, // 25: application_model.v1alpha.ApplicationProcessGroup.syscall_info:type_name -> application_model.v1alpha.ApplicationSyscalls
-	25, // 26: application_model.v1alpha.ApplicationProcessGroup.latest_start_time:type_name -> google.protobuf.Timestamp
-	25, // 27: application_model.v1alpha.ApplicationProcessGroup.latest_exit_time:type_name -> google.protobuf.Timestamp
-	0,  // 28: application_model.v1alpha.NetworkPolicy.verdict:type_name -> application_model.v1alpha.PolicyVerdict
-	14, // 29: application_model.v1alpha.ApplicationConnection.destination:type_name -> application_model.v1alpha.Destination
-	13, // 30: application_model.v1alpha.ApplicationConnection.stats:type_name -> application_model.v1alpha.ConnectionStats
-	11, // 31: application_model.v1alpha.ApplicationConnection.policy:type_name -> application_model.v1alpha.NetworkPolicy
-	25, // 32: application_model.v1alpha.ConnectionStats.last_quota_reset:type_name -> google.protobuf.Timestamp
-	25, // 33: application_model.v1alpha.ConnectionStats.next_quota_reset:type_name -> google.protobuf.Timestamp
-	15, // 34: application_model.v1alpha.Destination.dns:type_name -> application_model.v1alpha.DestinationDns
-	16, // 35: application_model.v1alpha.Destination.workload:type_name -> application_model.v1alpha.DestinationWorkload
-	17, // 36: application_model.v1alpha.Destination.ip:type_name -> application_model.v1alpha.DestinationIP
-	26, // 37: application_model.v1alpha.DestinationWorkload.kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
-	31, // 38: application_model.v1alpha.ApplicationSyscalls.syscalls:type_name -> application_model.v1alpha.Sys
-	32, // 39: application_model.v1alpha.ApplicationSyscalls.abi:type_name -> application_model.v1alpha.Abi
-	5,  // 40: application_model.v1alpha.GetModelResponse.model:type_name -> application_model.v1alpha.ApplicationModelEvent
-	3,  // 41: application_model.v1alpha.StreamTelemetryResponse.process:type_name -> application_model.v1alpha.ProcessTelemetry
-	4,  // 42: application_model.v1alpha.StreamTelemetryResponse.network_connect:type_name -> application_model.v1alpha.NetworkConnectTelemetry
-	19, // 43: application_model.v1alpha.ApplicationModelService.GetModel:input_type -> application_model.v1alpha.GetModelRequest
-	21, // 44: application_model.v1alpha.ApplicationModelService.StreamTelemetry:input_type -> application_model.v1alpha.StreamTelemetryRequest
-	20, // 45: application_model.v1alpha.ApplicationModelService.GetModel:output_type -> application_model.v1alpha.GetModelResponse
-	22, // 46: application_model.v1alpha.ApplicationModelService.StreamTelemetry:output_type -> application_model.v1alpha.StreamTelemetryResponse
-	45, // [45:47] is the sub-list for method output_type
-	43, // [43:45] is the sub-list for method input_type
-	43, // [43:43] is the sub-list for extension type_name
-	43, // [43:43] is the sub-list for extension extendee
-	0,  // [0:43] is the sub-list for field type_name
+	25, // 4: application_model.v1alpha.ProcessTelemetry.first_start_time:type_name -> google.protobuf.Timestamp
+	25, // 5: application_model.v1alpha.ProcessTelemetry.latest_start_time:type_name -> google.protobuf.Timestamp
+	25, // 6: application_model.v1alpha.NetworkConnectTelemetry.time:type_name -> google.protobuf.Timestamp
+	2,  // 7: application_model.v1alpha.NetworkConnectTelemetry.event_type:type_name -> application_model.v1alpha.TelemetryType
+	24, // 8: application_model.v1alpha.NetworkConnectTelemetry.node_labels:type_name -> application_model.v1alpha.NetworkConnectTelemetry.NodeLabelsEntry
+	26, // 9: application_model.v1alpha.NetworkConnectTelemetry.kubernetes_workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	1,  // 10: application_model.v1alpha.NetworkConnectTelemetry.destination_type:type_name -> application_model.v1alpha.DestinationType
+	27, // 11: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_resource_kind:type_name -> common.k8s.type.v1alpha.ResourceKind
+	28, // 12: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_service_kind:type_name -> common.k8s.type.v1alpha.ServiceKind
+	26, // 13: application_model.v1alpha.NetworkConnectTelemetry.destination_kubernetes_workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	29, // 14: application_model.v1alpha.NetworkConnectTelemetry.protocol:type_name -> common.net.v1alpha.IPProtocol
+	0,  // 15: application_model.v1alpha.NetworkConnectTelemetry.verdict:type_name -> application_model.v1alpha.PolicyVerdict
+	25, // 16: application_model.v1alpha.ApplicationModelEvent.time:type_name -> google.protobuf.Timestamp
+	6,  // 17: application_model.v1alpha.ApplicationModelEvent.application_model:type_name -> application_model.v1alpha.ApplicationModel
+	8,  // 18: application_model.v1alpha.ApplicationModel.namespaces:type_name -> application_model.v1alpha.ApplicationNamespace
+	7,  // 19: application_model.v1alpha.ApplicationModel.host:type_name -> application_model.v1alpha.ApplicationHost
+	10, // 20: application_model.v1alpha.ApplicationHost.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
+	9,  // 21: application_model.v1alpha.ApplicationNamespace.workloads:type_name -> application_model.v1alpha.ApplicationWorkload
+	26, // 22: application_model.v1alpha.ApplicationWorkload.kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	10, // 23: application_model.v1alpha.ApplicationWorkload.processes:type_name -> application_model.v1alpha.ApplicationProcessGroup
+	10, // 24: application_model.v1alpha.ApplicationProcessGroup.children:type_name -> application_model.v1alpha.ApplicationProcessGroup
+	12, // 25: application_model.v1alpha.ApplicationProcessGroup.connections:type_name -> application_model.v1alpha.ApplicationConnection
+	30, // 26: application_model.v1alpha.ApplicationProcessGroup.in_init_tree:type_name -> google.protobuf.BoolValue
+	18, // 27: application_model.v1alpha.ApplicationProcessGroup.syscall_info:type_name -> application_model.v1alpha.ApplicationSyscalls
+	25, // 28: application_model.v1alpha.ApplicationProcessGroup.latest_start_time:type_name -> google.protobuf.Timestamp
+	25, // 29: application_model.v1alpha.ApplicationProcessGroup.latest_exit_time:type_name -> google.protobuf.Timestamp
+	25, // 30: application_model.v1alpha.ApplicationProcessGroup.first_start_time:type_name -> google.protobuf.Timestamp
+	0,  // 31: application_model.v1alpha.NetworkPolicy.verdict:type_name -> application_model.v1alpha.PolicyVerdict
+	14, // 32: application_model.v1alpha.ApplicationConnection.destination:type_name -> application_model.v1alpha.Destination
+	13, // 33: application_model.v1alpha.ApplicationConnection.stats:type_name -> application_model.v1alpha.ConnectionStats
+	11, // 34: application_model.v1alpha.ApplicationConnection.policy:type_name -> application_model.v1alpha.NetworkPolicy
+	25, // 35: application_model.v1alpha.ConnectionStats.last_quota_reset:type_name -> google.protobuf.Timestamp
+	25, // 36: application_model.v1alpha.ConnectionStats.next_quota_reset:type_name -> google.protobuf.Timestamp
+	15, // 37: application_model.v1alpha.Destination.dns:type_name -> application_model.v1alpha.DestinationDns
+	16, // 38: application_model.v1alpha.Destination.workload:type_name -> application_model.v1alpha.DestinationWorkload
+	17, // 39: application_model.v1alpha.Destination.ip:type_name -> application_model.v1alpha.DestinationIP
+	26, // 40: application_model.v1alpha.DestinationWorkload.kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	31, // 41: application_model.v1alpha.ApplicationSyscalls.syscalls:type_name -> application_model.v1alpha.Sys
+	32, // 42: application_model.v1alpha.ApplicationSyscalls.abi:type_name -> application_model.v1alpha.Abi
+	5,  // 43: application_model.v1alpha.GetModelResponse.model:type_name -> application_model.v1alpha.ApplicationModelEvent
+	3,  // 44: application_model.v1alpha.StreamTelemetryResponse.process:type_name -> application_model.v1alpha.ProcessTelemetry
+	4,  // 45: application_model.v1alpha.StreamTelemetryResponse.network_connect:type_name -> application_model.v1alpha.NetworkConnectTelemetry
+	19, // 46: application_model.v1alpha.ApplicationModelService.GetModel:input_type -> application_model.v1alpha.GetModelRequest
+	21, // 47: application_model.v1alpha.ApplicationModelService.StreamTelemetry:input_type -> application_model.v1alpha.StreamTelemetryRequest
+	20, // 48: application_model.v1alpha.ApplicationModelService.GetModel:output_type -> application_model.v1alpha.GetModelResponse
+	22, // 49: application_model.v1alpha.ApplicationModelService.StreamTelemetry:output_type -> application_model.v1alpha.StreamTelemetryResponse
+	48, // [48:50] is the sub-list for method output_type
+	46, // [46:48] is the sub-list for method input_type
+	46, // [46:46] is the sub-list for extension type_name
+	46, // [46:46] is the sub-list for extension extendee
+	0,  // [0:46] is the sub-list for field type_name
 }
 
 func init() { file_application_model_v1alpha_application_model_proto_init() }

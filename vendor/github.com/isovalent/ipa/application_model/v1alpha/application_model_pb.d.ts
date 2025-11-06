@@ -112,6 +112,27 @@ export declare type ProcessTelemetry = Message<"application_model.v1alpha.Proces
    * @generated from field: string application_model_id = 15;
    */
   applicationModelId: string;
+
+  /**
+   * The first time the process has been observed to run.
+   *
+   * @generated from field: google.protobuf.Timestamp first_start_time = 16;
+   */
+  firstStartTime?: Timestamp;
+
+  /**
+   * The most recent time the process has been observed to run.
+   *
+   * @generated from field: google.protobuf.Timestamp latest_start_time = 17;
+   */
+  latestStartTime?: Timestamp;
+
+  /**
+   * Names of all processes that have been parents of this name/argument tuple.
+   *
+   * @generated from field: repeated string parent_names = 18;
+   */
+  parentNames: string[];
 };
 
 /**
@@ -573,6 +594,13 @@ export declare type ApplicationProcessGroup = Message<"application_model.v1alpha
    * @generated from field: google.protobuf.Timestamp latest_exit_time = 10;
    */
   latestExitTime?: Timestamp;
+
+  /**
+   * The first time a process in this process group was observed to start.
+   *
+   * @generated from field: google.protobuf.Timestamp first_start_time = 11;
+   */
+  firstStartTime?: Timestamp;
 };
 
 /**

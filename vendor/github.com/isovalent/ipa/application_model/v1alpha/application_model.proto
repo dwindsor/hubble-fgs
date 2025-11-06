@@ -43,6 +43,12 @@ message ProcessTelemetry {
   map<string, string> node_labels = 14;
   // The ID of the application model from which this telemetry data got derived.
   string application_model_id = 15;
+  // The first time the process has been observed to run.
+  google.protobuf.Timestamp first_start_time = 16;
+  // The most recent time the process has been observed to run.
+  google.protobuf.Timestamp latest_start_time = 17;
+  // Names of all processes that have been parents of this name/argument tuple.
+  repeated string parent_names = 18;
 }
 
 message NetworkConnectTelemetry {
@@ -223,6 +229,8 @@ message ApplicationProcessGroup {
   // The latest time at which a process in this process group was observed to
   // exit.
   google.protobuf.Timestamp latest_exit_time = 10;
+  // The first time a process in this process group was observed to start.
+  google.protobuf.Timestamp first_start_time = 11;
 }
 
 message NetworkPolicy {
