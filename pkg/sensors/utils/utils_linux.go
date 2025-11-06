@@ -622,9 +622,6 @@ func LogLayer3Features() string {
 // https://lore.kernel.org/all/ZAD8QyoszMZiTzBY@slm.duckdns.org/
 func SockopsSupportsCgroupAncestorHelper() bool {
 	err := checkSockopsSupportsCgAncestorHelper()
-	if err != nil {
-		fmt.Println(err)
-	}
 	return err == nil
 }
 
