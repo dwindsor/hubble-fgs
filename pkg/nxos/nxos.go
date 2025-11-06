@@ -781,10 +781,6 @@ func (n *Nxos) cleanup(ctx context.Context) {
 	}
 
 	n.remove(ctx, allocFname)
-
-	if n.isConfigured(ctx, false) {
-		n.setLocalSvcStateToFailure(ctx)
-	}
 }
 
 func (n *Nxos) setSkipReg(_ context.Context, reason string) {
