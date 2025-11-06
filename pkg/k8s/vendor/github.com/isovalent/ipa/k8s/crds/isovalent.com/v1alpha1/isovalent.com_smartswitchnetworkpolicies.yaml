@@ -48,14 +48,17 @@ spec:
                 description: Rules defines the network policy rules for SmartSwitch
                 items:
                   description: |-
-                    SmartSwitchNetworkPolicyRule is specifies the action for a source and
+                    SmartSwitchNetworkPolicyRule specifies the action for a source and
                     destination pair. The cross product of the source and destination is
                     used to calculate the rules created in the datapath. A description is
-                    optional and informational only it is exported with any statistics and
+                    optional and informational only; it is exported with any statistics and
                     or events related to the rule, but is not actually used otherwise in
                     the datapath.
                   properties:
                     action:
+                      enum:
+                      - allow
+                      - deny
                       type: string
                     description:
                       type: string
@@ -76,9 +79,12 @@ spec:
                               match any actual traffic depending on the switch configuration.
                             properties:
                               cidr:
+                                format: cidr
                                 type: string
                               vlan:
                                 format: int32
+                                maximum: 4094
+                                minimum: 1
                                 type: integer
                               vrf:
                                 type: string
@@ -89,6 +95,7 @@ spec:
                             - message: at most one of the fields in [vrf vlan] may
                                 be set
                               rule: '!(has(self.vrf) && has(self.vlan))'
+                          minItems: 1
                           type: array
                         protoPorts:
                           description: |-
@@ -117,10 +124,24 @@ spec:
                                 minimum: 0
                                 type: integer
                               protocol:
+                                enum:
+                                - ICMP
+                                - TCP
+                                - UDP
                                 type: string
                             required:
                             - protocol
                             type: object
+                            x-kubernetes-validations:
+                            - message: endPort requires port to be set and non-zero
+                              rule: '!has(self.endPort) || (has(self.port) && self.port
+                                > 0)'
+                            - message: endPort must be greater than port
+                              rule: '!has(self.endPort) || self.endPort > self.port'
+                            - message: ICMP protocol does not support port numbers;
+                                port field must be omitted
+                              rule: self.protocol != 'ICMP' || !has(self.port)
+                          minItems: 1
                           type: array
                       required:
                       - ipBlock
@@ -142,9 +163,12 @@ spec:
                               match any actual traffic depending on the switch configuration.
                             properties:
                               cidr:
+                                format: cidr
                                 type: string
                               vlan:
                                 format: int32
+                                maximum: 4094
+                                minimum: 1
                                 type: integer
                               vrf:
                                 type: string
@@ -155,6 +179,7 @@ spec:
                             - message: at most one of the fields in [vrf vlan] may
                                 be set
                               rule: '!(has(self.vrf) && has(self.vlan))'
+                          minItems: 1
                           type: array
                       required:
                       - ipBlock

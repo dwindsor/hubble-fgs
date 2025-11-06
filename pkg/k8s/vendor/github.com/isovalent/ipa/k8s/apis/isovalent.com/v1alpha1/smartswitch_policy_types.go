@@ -58,7 +58,7 @@ type SmartSwitchNetworkPolicySpec struct {
 	// Rules defines the network policy rules for SmartSwitch
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
-	Rules []SmartSwitchNetworkPolicyRule `json:"rules,omitempty,omitzero"`
+	Rules []SmartSwitchNetworkPolicyRule `json:"rules"`
 }
 
 // Implement crdutils.CRDObject interface, required for working with CRDs
@@ -75,21 +75,27 @@ func (snp *SmartSwitchNetworkPolicy) GetObjectMetaStruct() *metav1.ObjectMeta {
 // +kubebuilder:validation:XValidation:rule="!(has(self.vrf) && has(self.vlan))",message="at most one of the fields in [vrf vlan] may be set"
 type SmartSwitchNetwork struct {
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Format=cidr
 	CIDR string `json:"cidr"`
 	// +kubebuilder:validation:Optional
-	VRF string `json:"vrf"`
+	VRF string `json:"vrf,omitempty"`
 	// +kubebuilder:validation:Optional
-	VLAN uint32 `json:"vlan"`
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=4094
+	VLAN int32 `json:"vlan,omitempty"`
 }
 
 // SmartSwitchProtocolPort provides the protocol to apply the policy
 // against with an optional port or a port range. When no ports are specified
 // the port is a wildcard and policy applies against any port.
+// +kubebuilder:validation:XValidation:rule="!has(self.endPort) || (has(self.port) && self.port > 0)",message="endPort requires port to be set and non-zero"
+// +kubebuilder:validation:XValidation:rule="!has(self.endPort) || self.endPort > self.port",message="endPort must be greater than port"
+// +kubebuilder:validation:XValidation:rule="self.protocol != 'ICMP' || !has(self.port)",message="ICMP protocol does not support port numbers; port field must be omitted"
 type SmartSwitchProtocolPort struct {
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
 	// +kubebuilder:validation:Optional
-	Port uint32 `json:"port"`
+	Port int32 `json:"port,omitempty"`
 	// EndPort is an optional field to indicate that the policy rule applies to
 	// a port range from Port to EndPort inclusive instead of an individual
 	// port. This field must not be set if the Port field is not set. The
@@ -97,8 +103,9 @@ type SmartSwitchProtocolPort struct {
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
 	// +kubebuilder:validation:Optional
-	EndPort uint32 `json:"endPort,omitempty"`
-	// +kubebuilder:validation:Required,Enum=icmp;tcp;udp
+	EndPort int32 `json:"endPort,omitempty"`
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=ICMP;TCP;UDP
 	Protocol string `json:"protocol"`
 }
 
@@ -107,7 +114,8 @@ type SmartSwitchProtocolPort struct {
 // against all source ports.
 type SmartSwitchNetworkSource struct {
 	// +kubebuilder:validation:Required
-	IPBlock []SmartSwitchNetwork `json:"ipBlock,omitempty"`
+	// +kubebuilder:validation:MinItems=1
+	IPBlock []SmartSwitchNetwork `json:"ipBlock"`
 }
 
 // SmartSwitchNetworkDestination matches a specific network with an
@@ -116,24 +124,27 @@ type SmartSwitchNetworkSource struct {
 // and all ports.
 type SmartSwitchNetworkDestination struct {
 	// +kubebuilder:validation:Required
-	IPBlock []SmartSwitchNetwork `json:"ipBlock,omitempty"`
+	// +kubebuilder:validation:MinItems=1
+	IPBlock []SmartSwitchNetwork `json:"ipBlock"`
 	// ProtoPorts is an optional field to specify protocols and ports for a
 	// policy rule. The policy rule applies to the cross product of IPBlock
 	// and ProtoPorts.
 	// +kubebuilder:validation:Required
-	ProtoPorts []SmartSwitchProtocolPort `json:"protoPorts,omitempty"`
+	// +kubebuilder:validation:MinItems=1
+	ProtoPorts []SmartSwitchProtocolPort `json:"protoPorts"`
 }
 
-// SmartSwitchNetworkPolicyRule is specifies the action for a source and
+// SmartSwitchNetworkPolicyRule specifies the action for a source and
 // destination pair. The cross product of the source and destination is
 // used to calculate the rules created in the datapath. A description is
-// optional and informational only it is exported with any statistics and
+// optional and informational only; it is exported with any statistics and
 // or events related to the rule, but is not actually used otherwise in
 // the datapath.
 type SmartSwitchNetworkPolicyRule struct {
 	// +kubebuilder:validation:Optional
 	Description string `json:"description"`
-	// +kubebuilder:validation:Required,Enum=allow;deny
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=allow;deny
 	Action string `json:"action"`
 	// +kubebuilder:validation:Required
 	Source SmartSwitchNetworkSource `json:"source"`

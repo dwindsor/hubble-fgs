@@ -45,9 +45,9 @@ spec:
               biosVersion:
                 description: BiosVersion is the BIOS version of the SmartSwitch.
                 type: string
-              dpuStatuses:
-                description: DPUStatuses is the statuses of DPUs associated with this
-                  SmartSwitch.
+              dpuInventories:
+                description: DPUInventories is the inventory of DPUs associated with
+                  this SmartSwitch.
                 items:
                   properties:
                     hardwareModel:
@@ -87,7 +87,7 @@ spec:
               softwareVersion:
                 description: |-
                   SoftwareVersion is the version of the agent software running on this
-                  SmartSwitch which reports SmartSwitchStatus.
+                  SmartSwitch which reports SmartSwitchInventory.
                 type: string
             type: object
         type: object
