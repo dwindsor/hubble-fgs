@@ -7,7 +7,6 @@ import (
 	"hash/fnv"
 	"io/ioutil"
 	"os"
-	"os/signal"
 	"strings"
 	"syscall"
 	"time"
@@ -92,9 +91,6 @@ func (n *Nxos) initiate(ctx context.Context) error {
 		logger.GetLogger().Debug("Persisted update info", "info", persist)
 		n.Update.Persist = persist
 	}
-
-	// set up signal handling
-	n.setupSignalHandler(ctx)
 
 	// create a target
 	tg, err := api.NewTarget(
@@ -222,40 +218,51 @@ func (n *Nxos) GetSerialNum(ctx context.Context) string {
 	return n.SerNum
 }
 
-// setupSignalHandler sets up signal handling for graceful shutdown.
-func (n *Nxos) setupSignalHandler(ctx context.Context) {
-	logger.GetLogger().Debug("Setting up signal handler")
+// CheckUpgradeState checks if the container is currently in an upgrade state.
+// It retrieves the agent upgrade state and determines if an upgrade is in progress.
+func (n *Nxos) CheckUpgradeState(ctx context.Context) (bool, error) {
+	agentUpgradeState, err := n.getAgentUpgradeState(ctx)
+	if err != nil || agentUpgradeState == model.Cisco_NX_OSDevice_SasAgentUpgradeStateE_UNSET {
+		logger.GetLogger().Debug("agent upgrade state is not in upgrade_in_progress")
+		return false, err
+	}
+	return agentUpgradeState == model.Cisco_NX_OSDevice_SasAgentUpgradeStateE_upgrade_in_progress, nil
+}
 
-	sigs := make(chan os.Signal, 1)
-	// Notify the sigs channel whenever the process receives a SIGTERM.
-	signal.Notify(sigs, syscall.SIGTERM)
-	go func() {
-		sig := <-sigs
-		logger.GetLogger().Info(fmt.Sprintf("Received signal: %v", sig))
+// Cleanup performs graceful shutdown cleanup
+func (n *Nxos) Cleanup(ctx context.Context) error {
+	n.RLock()
+	defer n.RUnlock()
+	n.cleanup(ctx)
+	return nil
+}
 
-		// get agent state
-		agentState, err := n.getAgentState(ctx)
-		if err != nil || agentState == model.Cisco_NX_OSDevice_Sas_SasAgentStateE_unknown {
-			logger.GetLogger().Error("Failed to get agent state. No action performed.")
-			return
-		}
-		if agentState == model.Cisco_NX_OSDevice_Sas_SasAgentStateE_install_in_progress {
-			// skip cleanup for install in progress
-			logger.GetLogger().Info("Skip cleanup for install_in_progress")
-		} else {
-			n.RLock()
-			n.cleanup(ctx)
-			n.RUnlock()
-		}
-		// send cancel to all the goroutines.
-		n.cancel()
-		waitGroup, _ := errgroup.WithContext(ctx)
-		if err := waitGroup.Wait(); err != nil {
-			logger.GetLogger().Error("signalhandler: Error waiting for goroutines", logfields.Error, err)
-		}
-		n.GnmiClose(ctx)
-		os.Exit(201)
-	}()
+// Close performs final resource cleanup
+func (n *Nxos) Close(ctx context.Context) error {
+	n.GnmiClose(ctx)
+	return nil
+}
+
+// GetExitCodeForSignal returns the appropriate exit code based on the received signal and upgrade state.
+//
+// Behavior:
+//   - During upgrade: Always returns 201 to prevent restart regardless of signal
+//   - SIGTERM: Returns 201 to terminate without restart
+//   - SIGINT: Returns 200 to allow restart
+//   - Default: Returns 200 to allow restart
+func (n *Nxos) GetExitCodeForSignal(sig os.Signal, inUpgrade bool) int {
+	if inUpgrade || sig == syscall.SIGTERM {
+		// During upgrade, never restart regardless of signal
+		return 201
+	}
+
+	// Normal operation
+	if sig == syscall.SIGINT {
+		// Manual interrupt - allow restart for debugging
+		return 200
+	}
+	// Default - restart
+	return 200
 }
 
 // unsubscribe all above gnmi subscriptions

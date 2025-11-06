@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"runtime"
-	"syscall"
 
 	gops "github.com/google/gops/agent"
 	"golang.org/x/sync/errgroup"
@@ -38,8 +36,6 @@ func startGopsServer() error {
 }
 
 func executeAGW() {
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	runtime.GOMAXPROCS(MaxProcs)
 
@@ -51,13 +47,14 @@ func executeAGW() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go func() {
-		<-signals
-		logger.GetLogger().Info("Received termination signal, canceling context and exiting...")
-		cancel()
-	}()
-
 	waitGroup, ctx := errgroup.WithContext(ctx)
+	// Create AGW signal handler
+	agwSignalHandler := &AGWSignalHandler{
+		enableNXOS: Config.EnableNXOS,
+	}
+	// Setup signal handling
+	agw.SetupSignalHandler(ctx, cancel, agwSignalHandler, waitGroup, 200)
+
 	dpuListener := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
 	agwAgent := agw.NewAgent(dpuListener, switchpolicy.NewPolicyHandler(dpuListener))
 	err := agwAgent.Config(ctx, Config.DafConfig)
@@ -94,4 +91,45 @@ func executeAGW() {
 		nxos.Nexus.GnmiClose(ctx)
 	}
 	os.Exit(200)
+}
+
+// Simple signal handler for AGW
+type AGWSignalHandler struct {
+	enableNXOS bool
+}
+
+func (s *AGWSignalHandler) CheckUpgradeState(ctx context.Context) (bool, error) {
+	if s.enableNXOS {
+		return nxos.Nexus.CheckUpgradeState(ctx)
+	}
+	// AGW doesn't have upgrade state logic, always return false
+	return false, nil
+}
+
+func (s *AGWSignalHandler) Cleanup(ctx context.Context) error {
+	if s.enableNXOS {
+		if err := nxos.Nexus.Cleanup(ctx); err != nil {
+			return err
+		}
+	}
+	// AGW-specific cleanup logic can be added here
+	logger.GetLogger().Debug("AGW cleanup completed")
+	return nil
+}
+
+func (s *AGWSignalHandler) Close(ctx context.Context) error {
+	// Close NXOS connection if enabled
+	if s.enableNXOS {
+		return nxos.Nexus.Close(ctx)
+	}
+	logger.GetLogger().Debug("AGW close completed")
+	return nil
+}
+
+func (s *AGWSignalHandler) GetExitCodeForSignal(sig os.Signal, inUpgrade bool) int {
+	if s.enableNXOS {
+		return nxos.Nexus.GetExitCodeForSignal(sig, inUpgrade)
+	}
+	// AGW prefers exit code 200 for normal shutdown (agw restart)
+	return 200
 }

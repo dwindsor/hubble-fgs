@@ -34,15 +34,15 @@ func (n *Nxos) getHaIp(ctx context.Context) error {
 	return nil
 }
 
-// getAgentState retrieves the agent state from /System/sas-items/state-items/agent-items.
-func (n *Nxos) getAgentState(ctx context.Context) (model.E_Cisco_NX_OSDevice_Sas_SasAgentStateE, error) {
-	logger.GetLogger().Debug("Retrieving agent state")
+// getAgentUpgradeState retrieves the agent state from /System/sas-items/state-items/agent-items.
+func (n *Nxos) getAgentUpgradeState(ctx context.Context) (model.E_Cisco_NX_OSDevice_SasAgentUpgradeStateE, error) {
+	logger.GetLogger().Debug("Retrieving agent upgrade state")
 
-	agentState := model.Cisco_NX_OSDevice_Sas_SasAgentStateE_unknown
+	upgradeState := model.Cisco_NX_OSDevice_SasAgentUpgradeStateE_UNSET
 	jstrs, err := n.gnmiGet(ctx, "/System/sas-items/state-items/agent-items")
 	if err != nil {
 		logger.GetLogger().Error("Fail to get agent-items", logfields.Error, err)
-		return agentState, err
+		return upgradeState, err
 	}
 	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
 		items := &model.Cisco_NX_OSDevice_System_SasItems_StateItems_AgentItems{}
@@ -57,13 +57,13 @@ func (n *Nxos) getAgentState(ctx context.Context) (model.E_Cisco_NX_OSDevice_Sas
 					logger.GetLogger().Debug("Unexpected service", "svc", svc)
 					continue
 				}
-				logger.GetLogger().Debug("Agent State", "state", agent.AgentState.String())
-				return agent.AgentState, nil
+				logger.GetLogger().Info("AgentUpgradeState", "state", agent.AgentUpgradeState.String())
+				return agent.AgentUpgradeState, nil
 			}
 		}
 	}
-	// Fallback: if no valid agent state is found for "hypershield", return unknown agent state.
-	return agentState, nil
+	// Fallback: if no valid agent upgrade state is found for "hypershield", return unknown agent upgrade state.
+	return upgradeState, nil
 }
 
 // getAdmissionAndConnectionStates retrieves the admission and connection states from the device.
