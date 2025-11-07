@@ -3,11 +3,11 @@ package ha
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 
 	"google.golang.org/grpc"
 
+	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
@@ -30,11 +30,11 @@ func newServer(ctx context.Context) *haServer {
 }
 
 // Starts running a gRPC server
-func RunServer(ctx context.Context, port uint16) {
+func RunServer(ctx context.Context, port uint16) error {
 	conn, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		log.Printf("Failed to listen: %v", err)
-		return
+		logger.GetLogger().Error("Fail to listen", logfields.Error, err)
+		return err
 	}
 
 	grpcServer := grpc.NewServer()
@@ -42,15 +42,17 @@ func RunServer(ctx context.Context, port uint16) {
 	hav1.RegisterHaServer(grpcServer, s)
 	err = grpcServer.Serve(conn)
 	if err != nil {
-		log.Printf("Failed to serve: %v", err)
+		logger.GetLogger().Error("Fail to serve", logfields.Error, err)
+		return err
 	}
+	return nil
 }
 
 func (s *haServer) Adjacency(_ context.Context, req *hav1.AdjRequest) (*hav1.AdjResponse, error) {
 	logger.GetLogger().Debug("Received MbrInfo", "mbr", req.MbrInfo)
 
 	if !nxos.Nexus.IsPeerOk(s.Ctx, req.HaIp) {
-		log.Printf("Unexpected peer: %s", req.HaIp)
+		logger.GetLogger().Debug("Unexpected peer", "peer", req.HaIp)
 		return &hav1.AdjResponse{
 			Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE,
 			Details: "Unexpected peer",

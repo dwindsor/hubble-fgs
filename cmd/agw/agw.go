@@ -13,9 +13,14 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/hubble-fgs/pkg/agw"
+	hasvr "github.com/isovalent/hubble-fgs/pkg/grpc/hasvr"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
+)
+
+const (
+	haServerPort = 8883
 )
 
 func startGopsServer() error {
@@ -63,6 +68,17 @@ func executeAGW() {
 		logger.GetLogger().Error("Configuring FWAgent failed",
 			logfields.Error, err)
 		return
+	}
+
+	if Config.Ha {
+		logger.GetLogger().Info("Starting HA service...")
+		waitGroup.Go(func() error {
+			err := hasvr.RunServer(ctx, haServerPort)
+			if err != nil {
+				return fmt.Errorf("starting HA server failed: %w", err)
+			}
+			return nil
+		})
 	}
 
 	waitGroup.Go(func() error {

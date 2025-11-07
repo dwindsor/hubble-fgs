@@ -61,6 +61,7 @@ func Execute() error {
 	flags.StringVar(&Config.GopsAddr, keyGopsAddress, Config.GopsAddr, "Gops Address")
 	flags.BoolVar(&Config.Debug, keyDebug, Config.Debug, "Enable debug")
 	flags.StringVar(&Config.K8sServiceAccountAuth, keyK8sServiceAccountAuth, Config.K8sServiceAccountAuth, "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
+	flags.BoolVar(&Config.Ha, keyHa, Config.Ha, "Enable HA service")
 	return rootCmd.Execute()
 }
 

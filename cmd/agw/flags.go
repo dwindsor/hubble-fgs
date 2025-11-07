@@ -13,6 +13,7 @@ type cliConfig struct {
 	VrfMap                []string
 	Debug                 bool
 	K8sServiceAccountAuth string
+	Ha                    bool
 }
 
 var (
@@ -27,6 +28,7 @@ var (
 		VrfMap:                []string{},
 		Debug:                 false,
 		K8sServiceAccountAuth: viper.GetString(keyK8sServiceAccountAuth),
+		Ha:                    false,
 	}
 )
 
@@ -40,6 +42,7 @@ const (
 	keyDPUServerAddress      = "dpu-server-address"
 	keyVrfMap                = "vrf-map"
 	keyDebug                 = "debug"
+	keyHa                    = "ha"
 	keyK8sServiceAccountAuth = "k8s-service-account-auth"
 )
 
