@@ -20,7 +20,7 @@ var (
 	Config = cliConfig{
 		DafConfig:             "/opt/cisco/daf/etc/dafconfig",
 		NetworkPolicies:       []string{},
-		NetworkPoliciesDir:    "",
+		NetworkPoliciesDir:    "/iox_data/isovalent/policy/",
 		EnableKubernetes:      true,
 		EnableNXOS:            true,
 		DPUServerAddress:      "0.0.0.0:8880",
