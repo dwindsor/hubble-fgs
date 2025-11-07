@@ -53,7 +53,7 @@ func executeAGW() {
 		enableNXOS: Config.EnableNXOS,
 	}
 	// Setup signal handling
-	agw.SetupSignalHandler(ctx, cancel, agwSignalHandler, waitGroup, 200)
+	SetupSignalHandler(ctx, cancel, agwSignalHandler, waitGroup, 200)
 
 	dpuListener := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
 	agwAgent := agw.NewAgent(dpuListener, switchpolicy.NewPolicyHandler(dpuListener))

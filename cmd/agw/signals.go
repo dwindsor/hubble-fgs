@@ -1,4 +1,4 @@
-package agw
+package main
 
 import (
 	"context"
