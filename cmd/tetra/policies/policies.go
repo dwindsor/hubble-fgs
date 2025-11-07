@@ -247,8 +247,9 @@ func delCmd() *cobra.Command {
 
 func New() *cobra.Command {
 	ret := &cobra.Command{
-		Use:   "policies",
-		Short: "manage policies of any kind",
+		Use:     "policies",
+		Aliases: []string{"policy"},
+		Short:   "manage policies of any kind",
 	}
 
 	ret.AddCommand(
