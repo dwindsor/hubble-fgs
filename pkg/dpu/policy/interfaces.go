@@ -53,17 +53,21 @@ type FwPolicyV2 struct {
 	Name        string     `json:"name"`
 	Operation   uint16     `json:"operation"` // OPERATION_UPDATE|DELETE
 	Effect      string     `json:"effect"`    // permit/allow or deny
-	Protocol    []string   `json:"protocol"`  // any or udp or tcp or icmp
 	Source      EndpointV2 `json:"source"`
 	Destination EndpointV2 `json:"destination"`
 }
 
+type PortV2 struct {
+	PortHigh uint16   `json:"port_high"`
+	PortLow  uint16   `json:"port_low"`
+	Protocol []string `json:"protocol"` // any or udp or tcp or icmp
+}
+
 type EndpointV2 struct {
-	Ip        string `json:"ip"`
-	PortHigh  uint16 `json:"port_high"` // Single port sets both values, all ports both are 0
-	PortLow   uint16 `json:"port_low"`
-	Vlan      int    `json:"vlan"`
-	Vrf       int    `json:"vrf"`
-	IpCount   uint64 `json:"-"` // This field is internal
-	PortCount uint64 `json:"-"` // This field is internal
+	Ip        string   `json:"ip"`
+	Ports     []PortV2 `json:"port"`
+	Vlan      int      `json:"vlan"`
+	Vrf       int      `json:"vrf"`
+	IpCount   uint64   `json:"-"` // This field is internal
+	PortCount uint64   `json:"-"` // This field is internal
 }

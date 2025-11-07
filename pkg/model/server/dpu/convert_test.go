@@ -70,11 +70,11 @@ var (
 func testSubjectNetwork(t *testing.T, l3 *v1alpha.L3L4NetworkSubject, cidr, vrf string, port, vlan int) {
 
 	assert.Equal(t, l3.Cidr, cidr)
-	assert.Equal(t, l3.MinPort, uint32(port))
-	assert.Equal(t, l3.MaxPort, uint32(port))
+	assert.Equal(t, l3.Ports[0].MinPort, uint32(port))
+	assert.Equal(t, l3.Ports[0].MaxPort, uint32(port))
 	assert.Equal(t, l3.Vlan, uint32(vlan))
 	assert.Equal(t, l3.Vrf, vrf)
-	assert.Equal(t, l3.Protocol, v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP)
+	assert.Equal(t, l3.Ports[0].Protocol, v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP)
 }
 
 func testPolicySubject(t *testing.T, subj *v1alpha.PolicySubject, cidr, vrf string, port, vlan int) {
@@ -141,22 +141,30 @@ func TestDpuRuleToResponseHashes(t *testing.T) {
 		RuleName:           rule,
 		Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 		Source: DPUSubject{
-			Cidr:     srcCidr,
-			MinPort:  0,
-			MaxPort:  0,
-			Vlan:     0,
-			Vrf:      srcVrf,
-			VrfId:    0,
-			Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+			Cidr: srcCidr,
+			Ports: []DPUPorts{
+				DPUPorts{
+					MinPort:  0,
+					MaxPort:  0,
+					Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+				},
+			},
+			Vlan:  0,
+			Vrf:   srcVrf,
+			VrfId: 0,
 		},
 		Destination: DPUSubject{
-			Cidr:     dstCidr,
-			MinPort:  8080,
-			MaxPort:  8080,
-			Vlan:     0,
-			Vrf:      dstVrf,
-			VrfId:    0,
-			Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+			Cidr: dstCidr,
+			Ports: []DPUPorts{
+				DPUPorts{
+					MinPort:  8080,
+					MaxPort:  8080,
+					Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+				},
+			},
+			Vlan:  0,
+			Vrf:   dstVrf,
+			VrfId: 0,
 		},
 	}
 	firstHash, err := HashRule(rule)

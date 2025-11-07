@@ -410,31 +410,90 @@ func (ConfigOperation) EnumDescriptor() ([]byte, []int) {
 	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{6}
 }
 
+type PolicyPorts struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Protocol of the network subject, e.g. "TCP", "UDP"
+	Protocol PolicyProtocol `protobuf:"varint,1,opt,name=protocol,proto3,enum=l3l4networkpolicy.v1alpha.PolicyProtocol" json:"protocol,omitempty"`
+	// Minimum port of the subject
+	MinPort uint32 `protobuf:"varint,2,opt,name=min_port,json=minPort,proto3" json:"min_port,omitempty"`
+	// Maximum port of the subject
+	MaxPort       uint32 `protobuf:"varint,3,opt,name=max_port,json=maxPort,proto3" json:"max_port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PolicyPorts) Reset() {
+	*x = PolicyPorts{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PolicyPorts) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PolicyPorts) ProtoMessage() {}
+
+func (x *PolicyPorts) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PolicyPorts.ProtoReflect.Descriptor instead.
+func (*PolicyPorts) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *PolicyPorts) GetProtocol() PolicyProtocol {
+	if x != nil {
+		return x.Protocol
+	}
+	return PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED
+}
+
+func (x *PolicyPorts) GetMinPort() uint32 {
+	if x != nil {
+		return x.MinPort
+	}
+	return 0
+}
+
+func (x *PolicyPorts) GetMaxPort() uint32 {
+	if x != nil {
+		return x.MaxPort
+	}
+	return 0
+}
+
 // L3Network subjects are endpoints (destination or source) that specify a L3 endpoint.
 type L3L4NetworkSubject struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// CIDR of the subject, e.g. "1.2.3.4/24"
 	Cidr string `protobuf:"bytes,1,opt,name=cidr,proto3" json:"cidr,omitempty"`
-	// Minimum port of the subject
-	MinPort uint32 `protobuf:"varint,2,opt,name=min_port,json=minPort,proto3" json:"min_port,omitempty"`
-	// Maximum port of the subject
-	MaxPort uint32 `protobuf:"varint,3,opt,name=max_port,json=maxPort,proto3" json:"max_port,omitempty"`
+	// Ports
+	Ports []*PolicyPorts `protobuf:"bytes,2,rep,name=ports,proto3" json:"ports,omitempty"`
 	// VLAN of the subject may be empty when unused
-	Vlan uint32 `protobuf:"varint,4,opt,name=vlan,proto3" json:"vlan,omitempty"`
+	Vlan uint32 `protobuf:"varint,3,opt,name=vlan,proto3" json:"vlan,omitempty"`
 	// VRF name of the subject may be empty when unused
-	Vrf string `protobuf:"bytes,5,opt,name=vrf,proto3" json:"vrf,omitempty"`
+	Vrf string `protobuf:"bytes,4,opt,name=vrf,proto3" json:"vrf,omitempty"`
 	// unique ID associated with the VRF Name. This is used by datapaths to encode
 	// the vrf name into packet headers.
-	VrfId uint32 `protobuf:"varint,6,opt,name=vrf_id,json=vrfId,proto3" json:"vrf_id,omitempty"`
-	// Protocol of the network subject, e.g. "TCP", "UDP"
-	Protocol      PolicyProtocol `protobuf:"varint,7,opt,name=protocol,proto3,enum=l3l4networkpolicy.v1alpha.PolicyProtocol" json:"protocol,omitempty"`
+	VrfId         uint32 `protobuf:"varint,5,opt,name=vrf_id,json=vrfId,proto3" json:"vrf_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *L3L4NetworkSubject) Reset() {
 	*x = L3L4NetworkSubject{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[0]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -446,7 +505,7 @@ func (x *L3L4NetworkSubject) String() string {
 func (*L3L4NetworkSubject) ProtoMessage() {}
 
 func (x *L3L4NetworkSubject) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[0]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -459,7 +518,7 @@ func (x *L3L4NetworkSubject) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use L3L4NetworkSubject.ProtoReflect.Descriptor instead.
 func (*L3L4NetworkSubject) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{0}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *L3L4NetworkSubject) GetCidr() string {
@@ -469,18 +528,11 @@ func (x *L3L4NetworkSubject) GetCidr() string {
 	return ""
 }
 
-func (x *L3L4NetworkSubject) GetMinPort() uint32 {
+func (x *L3L4NetworkSubject) GetPorts() []*PolicyPorts {
 	if x != nil {
-		return x.MinPort
+		return x.Ports
 	}
-	return 0
-}
-
-func (x *L3L4NetworkSubject) GetMaxPort() uint32 {
-	if x != nil {
-		return x.MaxPort
-	}
-	return 0
+	return nil
 }
 
 func (x *L3L4NetworkSubject) GetVlan() uint32 {
@@ -504,13 +556,6 @@ func (x *L3L4NetworkSubject) GetVrfId() uint32 {
 	return 0
 }
 
-func (x *L3L4NetworkSubject) GetProtocol() PolicyProtocol {
-	if x != nil {
-		return x.Protocol
-	}
-	return PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED
-}
-
 // Policy Subjects are used for selectors, source, or destinations.
 type PolicySubject struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -522,7 +567,7 @@ type PolicySubject struct {
 
 func (x *PolicySubject) Reset() {
 	*x = PolicySubject{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[1]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -534,7 +579,7 @@ func (x *PolicySubject) String() string {
 func (*PolicySubject) ProtoMessage() {}
 
 func (x *PolicySubject) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[1]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -547,7 +592,7 @@ func (x *PolicySubject) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicySubject.ProtoReflect.Descriptor instead.
 func (*PolicySubject) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{1}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *PolicySubject) GetNetwork() *L3L4NetworkSubject {
@@ -584,7 +629,7 @@ type PolicyRule struct {
 
 func (x *PolicyRule) Reset() {
 	*x = PolicyRule{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[2]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -596,7 +641,7 @@ func (x *PolicyRule) String() string {
 func (*PolicyRule) ProtoMessage() {}
 
 func (x *PolicyRule) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[2]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -609,7 +654,7 @@ func (x *PolicyRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyRule.ProtoReflect.Descriptor instead.
 func (*PolicyRule) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{2}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *PolicyRule) GetK8SResourceVersion() string {
@@ -670,7 +715,7 @@ type Streaml3L4NetworkPolicyRequest struct {
 
 func (x *Streaml3L4NetworkPolicyRequest) Reset() {
 	*x = Streaml3L4NetworkPolicyRequest{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[3]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -682,7 +727,7 @@ func (x *Streaml3L4NetworkPolicyRequest) String() string {
 func (*Streaml3L4NetworkPolicyRequest) ProtoMessage() {}
 
 func (x *Streaml3L4NetworkPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[3]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -695,7 +740,7 @@ func (x *Streaml3L4NetworkPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Streaml3L4NetworkPolicyRequest.ProtoReflect.Descriptor instead.
 func (*Streaml3L4NetworkPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{3}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Streaml3L4NetworkPolicyRequest) GetAgentUid() string {
@@ -715,7 +760,7 @@ type Streaml3L4NetworkPolicyResponse struct {
 
 func (x *Streaml3L4NetworkPolicyResponse) Reset() {
 	*x = Streaml3L4NetworkPolicyResponse{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[4]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -727,7 +772,7 @@ func (x *Streaml3L4NetworkPolicyResponse) String() string {
 func (*Streaml3L4NetworkPolicyResponse) ProtoMessage() {}
 
 func (x *Streaml3L4NetworkPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[4]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -740,7 +785,7 @@ func (x *Streaml3L4NetworkPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Streaml3L4NetworkPolicyResponse.ProtoReflect.Descriptor instead.
 func (*Streaml3L4NetworkPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{4}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Streaml3L4NetworkPolicyResponse) GetOper() PolicyOperation {
@@ -767,7 +812,7 @@ type ReportStatusRequest struct {
 
 func (x *ReportStatusRequest) Reset() {
 	*x = ReportStatusRequest{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[5]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -779,7 +824,7 @@ func (x *ReportStatusRequest) String() string {
 func (*ReportStatusRequest) ProtoMessage() {}
 
 func (x *ReportStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[5]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -792,7 +837,7 @@ func (x *ReportStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportStatusRequest.ProtoReflect.Descriptor instead.
 func (*ReportStatusRequest) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{5}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ReportStatusRequest) GetStatus() *ReportStatus {
@@ -811,7 +856,7 @@ type ReportStatusResponse struct {
 
 func (x *ReportStatusResponse) Reset() {
 	*x = ReportStatusResponse{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[6]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -823,7 +868,7 @@ func (x *ReportStatusResponse) String() string {
 func (*ReportStatusResponse) ProtoMessage() {}
 
 func (x *ReportStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[6]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -836,7 +881,7 @@ func (x *ReportStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportStatusResponse.ProtoReflect.Descriptor instead.
 func (*ReportStatusResponse) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{6}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{7}
 }
 
 // Status event to report basic information about the agent and current policy
@@ -875,7 +920,7 @@ type ReportStatus struct {
 
 func (x *ReportStatus) Reset() {
 	*x = ReportStatus{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[7]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -887,7 +932,7 @@ func (x *ReportStatus) String() string {
 func (*ReportStatus) ProtoMessage() {}
 
 func (x *ReportStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[7]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -900,7 +945,7 @@ func (x *ReportStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportStatus.ProtoReflect.Descriptor instead.
 func (*ReportStatus) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{7}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ReportStatus) GetAgentUid() string {
@@ -1008,7 +1053,7 @@ type DpuConfig struct {
 
 func (x *DpuConfig) Reset() {
 	*x = DpuConfig{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[8]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1020,7 +1065,7 @@ func (x *DpuConfig) String() string {
 func (*DpuConfig) ProtoMessage() {}
 
 func (x *DpuConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[8]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1033,7 +1078,7 @@ func (x *DpuConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DpuConfig.ProtoReflect.Descriptor instead.
 func (*DpuConfig) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{8}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DpuConfig) GetServiceIp() string {
@@ -1099,7 +1144,7 @@ type LogConfig struct {
 
 func (x *LogConfig) Reset() {
 	*x = LogConfig{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[9]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1111,7 +1156,7 @@ func (x *LogConfig) String() string {
 func (*LogConfig) ProtoMessage() {}
 
 func (x *LogConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[9]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1124,7 +1169,7 @@ func (x *LogConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogConfig.ProtoReflect.Descriptor instead.
 func (*LogConfig) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{9}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *LogConfig) GetId() string {
@@ -1236,7 +1281,7 @@ type LogConfigSyslog struct {
 
 func (x *LogConfigSyslog) Reset() {
 	*x = LogConfigSyslog{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[10]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1248,7 +1293,7 @@ func (x *LogConfigSyslog) String() string {
 func (*LogConfigSyslog) ProtoMessage() {}
 
 func (x *LogConfigSyslog) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[10]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1261,7 +1306,7 @@ func (x *LogConfigSyslog) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogConfigSyslog.ProtoReflect.Descriptor instead.
 func (*LogConfigSyslog) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{10}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *LogConfigSyslog) GetConfigs() map[string]*LogConfig {
@@ -1282,7 +1327,7 @@ type LogConfigIpfix struct {
 
 func (x *LogConfigIpfix) Reset() {
 	*x = LogConfigIpfix{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[11]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1294,7 +1339,7 @@ func (x *LogConfigIpfix) String() string {
 func (*LogConfigIpfix) ProtoMessage() {}
 
 func (x *LogConfigIpfix) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[11]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1307,7 +1352,7 @@ func (x *LogConfigIpfix) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogConfigIpfix.ProtoReflect.Descriptor instead.
 func (*LogConfigIpfix) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{11}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *LogConfigIpfix) GetConfigs() map[string]*LogConfig {
@@ -1328,7 +1373,7 @@ type LogConfigTimescape struct {
 
 func (x *LogConfigTimescape) Reset() {
 	*x = LogConfigTimescape{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[12]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1340,7 +1385,7 @@ func (x *LogConfigTimescape) String() string {
 func (*LogConfigTimescape) ProtoMessage() {}
 
 func (x *LogConfigTimescape) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[12]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1353,7 +1398,7 @@ func (x *LogConfigTimescape) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogConfigTimescape.ProtoReflect.Descriptor instead.
 func (*LogConfigTimescape) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{12}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *LogConfigTimescape) GetConfigs() map[string]*LogConfig {
@@ -1374,7 +1419,7 @@ type LogConfigSplunk struct {
 
 func (x *LogConfigSplunk) Reset() {
 	*x = LogConfigSplunk{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[13]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1386,7 +1431,7 @@ func (x *LogConfigSplunk) String() string {
 func (*LogConfigSplunk) ProtoMessage() {}
 
 func (x *LogConfigSplunk) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[13]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1399,7 +1444,7 @@ func (x *LogConfigSplunk) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogConfigSplunk.ProtoReflect.Descriptor instead.
 func (*LogConfigSplunk) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{13}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *LogConfigSplunk) GetConfigs() map[string]*LogConfig {
@@ -1432,7 +1477,7 @@ type ConfigObject struct {
 
 func (x *ConfigObject) Reset() {
 	*x = ConfigObject{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[14]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1444,7 +1489,7 @@ func (x *ConfigObject) String() string {
 func (*ConfigObject) ProtoMessage() {}
 
 func (x *ConfigObject) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[14]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1457,7 +1502,7 @@ func (x *ConfigObject) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigObject.ProtoReflect.Descriptor instead.
 func (*ConfigObject) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{14}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ConfigObject) GetType() ConfigType {
@@ -1569,7 +1614,7 @@ type StreamDatapathConfigRequest struct {
 
 func (x *StreamDatapathConfigRequest) Reset() {
 	*x = StreamDatapathConfigRequest{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[15]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1581,7 +1626,7 @@ func (x *StreamDatapathConfigRequest) String() string {
 func (*StreamDatapathConfigRequest) ProtoMessage() {}
 
 func (x *StreamDatapathConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[15]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1594,7 +1639,7 @@ func (x *StreamDatapathConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamDatapathConfigRequest.ProtoReflect.Descriptor instead.
 func (*StreamDatapathConfigRequest) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{15}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *StreamDatapathConfigRequest) GetAgentUid() string {
@@ -1614,7 +1659,7 @@ type StreamDatapathConfigResponse struct {
 
 func (x *StreamDatapathConfigResponse) Reset() {
 	*x = StreamDatapathConfigResponse{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[16]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1626,7 +1671,7 @@ func (x *StreamDatapathConfigResponse) String() string {
 func (*StreamDatapathConfigResponse) ProtoMessage() {}
 
 func (x *StreamDatapathConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[16]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1639,7 +1684,7 @@ func (x *StreamDatapathConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamDatapathConfigResponse.ProtoReflect.Descriptor instead.
 func (*StreamDatapathConfigResponse) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{16}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *StreamDatapathConfigResponse) GetOper() ConfigOperation {
@@ -1660,15 +1705,17 @@ var File_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto protoreflect.FileDesc
 
 const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\n" +
-	"1l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto\x12\x19l3l4networkpolicy.v1alpha\"\xe2\x01\n" +
-	"\x12L3L4NetworkSubject\x12\x12\n" +
-	"\x04cidr\x18\x01 \x01(\tR\x04cidr\x12\x19\n" +
+	"1l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto\x12\x19l3l4networkpolicy.v1alpha\"\x8a\x01\n" +
+	"\vPolicyPorts\x12E\n" +
+	"\bprotocol\x18\x01 \x01(\x0e2).l3l4networkpolicy.v1alpha.PolicyProtocolR\bprotocol\x12\x19\n" +
 	"\bmin_port\x18\x02 \x01(\rR\aminPort\x12\x19\n" +
-	"\bmax_port\x18\x03 \x01(\rR\amaxPort\x12\x12\n" +
-	"\x04vlan\x18\x04 \x01(\rR\x04vlan\x12\x10\n" +
-	"\x03vrf\x18\x05 \x01(\tR\x03vrf\x12\x15\n" +
-	"\x06vrf_id\x18\x06 \x01(\rR\x05vrfId\x12E\n" +
-	"\bprotocol\x18\a \x01(\x0e2).l3l4networkpolicy.v1alpha.PolicyProtocolR\bprotocol\"X\n" +
+	"\bmax_port\x18\x03 \x01(\rR\amaxPort\"\xa3\x01\n" +
+	"\x12L3L4NetworkSubject\x12\x12\n" +
+	"\x04cidr\x18\x01 \x01(\tR\x04cidr\x12<\n" +
+	"\x05ports\x18\x02 \x03(\v2&.l3l4networkpolicy.v1alpha.PolicyPortsR\x05ports\x12\x12\n" +
+	"\x04vlan\x18\x03 \x01(\rR\x04vlan\x12\x10\n" +
+	"\x03vrf\x18\x04 \x01(\tR\x03vrf\x12\x15\n" +
+	"\x06vrf_id\x18\x05 \x01(\rR\x05vrfId\"X\n" +
 	"\rPolicySubject\x12G\n" +
 	"\anetwork\x18\x01 \x01(\v2-.l3l4networkpolicy.v1alpha.L3L4NetworkSubjectR\anetwork\"\xe4\x02\n" +
 	"\n" +
@@ -1814,7 +1861,7 @@ func file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP() []byte
 }
 
 var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_goTypes = []any{
 	(PolicyProtocol)(0),                     // 0: l3l4networkpolicy.v1alpha.PolicyProtocol
 	(PolicyAction)(0),                       // 1: l3l4networkpolicy.v1alpha.PolicyAction
@@ -1823,66 +1870,68 @@ var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_goTypes = []any{
 	(ConfigType)(0),                         // 4: l3l4networkpolicy.v1alpha.ConfigType
 	(ConfigSource)(0),                       // 5: l3l4networkpolicy.v1alpha.ConfigSource
 	(ConfigOperation)(0),                    // 6: l3l4networkpolicy.v1alpha.ConfigOperation
-	(*L3L4NetworkSubject)(nil),              // 7: l3l4networkpolicy.v1alpha.L3L4NetworkSubject
-	(*PolicySubject)(nil),                   // 8: l3l4networkpolicy.v1alpha.PolicySubject
-	(*PolicyRule)(nil),                      // 9: l3l4networkpolicy.v1alpha.PolicyRule
-	(*Streaml3L4NetworkPolicyRequest)(nil),  // 10: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
-	(*Streaml3L4NetworkPolicyResponse)(nil), // 11: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
-	(*ReportStatusRequest)(nil),             // 12: l3l4networkpolicy.v1alpha.ReportStatusRequest
-	(*ReportStatusResponse)(nil),            // 13: l3l4networkpolicy.v1alpha.ReportStatusResponse
-	(*ReportStatus)(nil),                    // 14: l3l4networkpolicy.v1alpha.ReportStatus
-	(*DpuConfig)(nil),                       // 15: l3l4networkpolicy.v1alpha.DpuConfig
-	(*LogConfig)(nil),                       // 16: l3l4networkpolicy.v1alpha.LogConfig
-	(*LogConfigSyslog)(nil),                 // 17: l3l4networkpolicy.v1alpha.LogConfigSyslog
-	(*LogConfigIpfix)(nil),                  // 18: l3l4networkpolicy.v1alpha.LogConfigIpfix
-	(*LogConfigTimescape)(nil),              // 19: l3l4networkpolicy.v1alpha.LogConfigTimescape
-	(*LogConfigSplunk)(nil),                 // 20: l3l4networkpolicy.v1alpha.LogConfigSplunk
-	(*ConfigObject)(nil),                    // 21: l3l4networkpolicy.v1alpha.ConfigObject
-	(*StreamDatapathConfigRequest)(nil),     // 22: l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
-	(*StreamDatapathConfigResponse)(nil),    // 23: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
-	nil,                                     // 24: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
-	nil,                                     // 25: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
-	nil,                                     // 26: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
-	nil,                                     // 27: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
+	(*PolicyPorts)(nil),                     // 7: l3l4networkpolicy.v1alpha.PolicyPorts
+	(*L3L4NetworkSubject)(nil),              // 8: l3l4networkpolicy.v1alpha.L3L4NetworkSubject
+	(*PolicySubject)(nil),                   // 9: l3l4networkpolicy.v1alpha.PolicySubject
+	(*PolicyRule)(nil),                      // 10: l3l4networkpolicy.v1alpha.PolicyRule
+	(*Streaml3L4NetworkPolicyRequest)(nil),  // 11: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
+	(*Streaml3L4NetworkPolicyResponse)(nil), // 12: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
+	(*ReportStatusRequest)(nil),             // 13: l3l4networkpolicy.v1alpha.ReportStatusRequest
+	(*ReportStatusResponse)(nil),            // 14: l3l4networkpolicy.v1alpha.ReportStatusResponse
+	(*ReportStatus)(nil),                    // 15: l3l4networkpolicy.v1alpha.ReportStatus
+	(*DpuConfig)(nil),                       // 16: l3l4networkpolicy.v1alpha.DpuConfig
+	(*LogConfig)(nil),                       // 17: l3l4networkpolicy.v1alpha.LogConfig
+	(*LogConfigSyslog)(nil),                 // 18: l3l4networkpolicy.v1alpha.LogConfigSyslog
+	(*LogConfigIpfix)(nil),                  // 19: l3l4networkpolicy.v1alpha.LogConfigIpfix
+	(*LogConfigTimescape)(nil),              // 20: l3l4networkpolicy.v1alpha.LogConfigTimescape
+	(*LogConfigSplunk)(nil),                 // 21: l3l4networkpolicy.v1alpha.LogConfigSplunk
+	(*ConfigObject)(nil),                    // 22: l3l4networkpolicy.v1alpha.ConfigObject
+	(*StreamDatapathConfigRequest)(nil),     // 23: l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
+	(*StreamDatapathConfigResponse)(nil),    // 24: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
+	nil,                                     // 25: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
+	nil,                                     // 26: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
+	nil,                                     // 27: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
+	nil,                                     // 28: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
 }
 var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_depIdxs = []int32{
-	0,  // 0: l3l4networkpolicy.v1alpha.L3L4NetworkSubject.protocol:type_name -> l3l4networkpolicy.v1alpha.PolicyProtocol
-	7,  // 1: l3l4networkpolicy.v1alpha.PolicySubject.network:type_name -> l3l4networkpolicy.v1alpha.L3L4NetworkSubject
-	1,  // 2: l3l4networkpolicy.v1alpha.PolicyRule.action:type_name -> l3l4networkpolicy.v1alpha.PolicyAction
-	8,  // 3: l3l4networkpolicy.v1alpha.PolicyRule.source:type_name -> l3l4networkpolicy.v1alpha.PolicySubject
-	8,  // 4: l3l4networkpolicy.v1alpha.PolicyRule.destination:type_name -> l3l4networkpolicy.v1alpha.PolicySubject
-	2,  // 5: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse.oper:type_name -> l3l4networkpolicy.v1alpha.PolicyOperation
-	9,  // 6: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse.policy:type_name -> l3l4networkpolicy.v1alpha.PolicyRule
-	14, // 7: l3l4networkpolicy.v1alpha.ReportStatusRequest.status:type_name -> l3l4networkpolicy.v1alpha.ReportStatus
-	3,  // 8: l3l4networkpolicy.v1alpha.ReportStatus.type:type_name -> l3l4networkpolicy.v1alpha.AgentType
-	24, // 9: l3l4networkpolicy.v1alpha.LogConfigSyslog.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
-	25, // 10: l3l4networkpolicy.v1alpha.LogConfigIpfix.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
-	26, // 11: l3l4networkpolicy.v1alpha.LogConfigTimescape.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
-	27, // 12: l3l4networkpolicy.v1alpha.LogConfigSplunk.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
-	4,  // 13: l3l4networkpolicy.v1alpha.ConfigObject.type:type_name -> l3l4networkpolicy.v1alpha.ConfigType
-	5,  // 14: l3l4networkpolicy.v1alpha.ConfigObject.source:type_name -> l3l4networkpolicy.v1alpha.ConfigSource
-	15, // 15: l3l4networkpolicy.v1alpha.ConfigObject.config_dpu:type_name -> l3l4networkpolicy.v1alpha.DpuConfig
-	17, // 16: l3l4networkpolicy.v1alpha.ConfigObject.config_log_syslog:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog
-	18, // 17: l3l4networkpolicy.v1alpha.ConfigObject.config_log_ipfix:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix
-	19, // 18: l3l4networkpolicy.v1alpha.ConfigObject.config_log_timescape:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape
-	20, // 19: l3l4networkpolicy.v1alpha.ConfigObject.config_log_splunk:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk
-	6,  // 20: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.oper:type_name -> l3l4networkpolicy.v1alpha.ConfigOperation
-	21, // 21: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.config:type_name -> l3l4networkpolicy.v1alpha.ConfigObject
-	16, // 22: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	16, // 23: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	16, // 24: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	16, // 25: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	10, // 26: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:input_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
-	12, // 27: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:input_type -> l3l4networkpolicy.v1alpha.ReportStatusRequest
-	22, // 28: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:input_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
-	11, // 29: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:output_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
-	13, // 30: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:output_type -> l3l4networkpolicy.v1alpha.ReportStatusResponse
-	23, // 31: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:output_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
-	29, // [29:32] is the sub-list for method output_type
-	26, // [26:29] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	0,  // 0: l3l4networkpolicy.v1alpha.PolicyPorts.protocol:type_name -> l3l4networkpolicy.v1alpha.PolicyProtocol
+	7,  // 1: l3l4networkpolicy.v1alpha.L3L4NetworkSubject.ports:type_name -> l3l4networkpolicy.v1alpha.PolicyPorts
+	8,  // 2: l3l4networkpolicy.v1alpha.PolicySubject.network:type_name -> l3l4networkpolicy.v1alpha.L3L4NetworkSubject
+	1,  // 3: l3l4networkpolicy.v1alpha.PolicyRule.action:type_name -> l3l4networkpolicy.v1alpha.PolicyAction
+	9,  // 4: l3l4networkpolicy.v1alpha.PolicyRule.source:type_name -> l3l4networkpolicy.v1alpha.PolicySubject
+	9,  // 5: l3l4networkpolicy.v1alpha.PolicyRule.destination:type_name -> l3l4networkpolicy.v1alpha.PolicySubject
+	2,  // 6: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse.oper:type_name -> l3l4networkpolicy.v1alpha.PolicyOperation
+	10, // 7: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse.policy:type_name -> l3l4networkpolicy.v1alpha.PolicyRule
+	15, // 8: l3l4networkpolicy.v1alpha.ReportStatusRequest.status:type_name -> l3l4networkpolicy.v1alpha.ReportStatus
+	3,  // 9: l3l4networkpolicy.v1alpha.ReportStatus.type:type_name -> l3l4networkpolicy.v1alpha.AgentType
+	25, // 10: l3l4networkpolicy.v1alpha.LogConfigSyslog.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
+	26, // 11: l3l4networkpolicy.v1alpha.LogConfigIpfix.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
+	27, // 12: l3l4networkpolicy.v1alpha.LogConfigTimescape.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
+	28, // 13: l3l4networkpolicy.v1alpha.LogConfigSplunk.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
+	4,  // 14: l3l4networkpolicy.v1alpha.ConfigObject.type:type_name -> l3l4networkpolicy.v1alpha.ConfigType
+	5,  // 15: l3l4networkpolicy.v1alpha.ConfigObject.source:type_name -> l3l4networkpolicy.v1alpha.ConfigSource
+	16, // 16: l3l4networkpolicy.v1alpha.ConfigObject.config_dpu:type_name -> l3l4networkpolicy.v1alpha.DpuConfig
+	18, // 17: l3l4networkpolicy.v1alpha.ConfigObject.config_log_syslog:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog
+	19, // 18: l3l4networkpolicy.v1alpha.ConfigObject.config_log_ipfix:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix
+	20, // 19: l3l4networkpolicy.v1alpha.ConfigObject.config_log_timescape:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape
+	21, // 20: l3l4networkpolicy.v1alpha.ConfigObject.config_log_splunk:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk
+	6,  // 21: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.oper:type_name -> l3l4networkpolicy.v1alpha.ConfigOperation
+	22, // 22: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.config:type_name -> l3l4networkpolicy.v1alpha.ConfigObject
+	17, // 23: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	17, // 24: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	17, // 25: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	17, // 26: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	11, // 27: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:input_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
+	13, // 28: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:input_type -> l3l4networkpolicy.v1alpha.ReportStatusRequest
+	23, // 29: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:input_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
+	12, // 30: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:output_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
+	14, // 31: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:output_type -> l3l4networkpolicy.v1alpha.ReportStatusResponse
+	24, // 32: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:output_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
+	30, // [30:33] is the sub-list for method output_type
+	27, // [27:30] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() }
@@ -1890,7 +1939,7 @@ func file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() {
 	if File_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto != nil {
 		return
 	}
-	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[14].OneofWrappers = []any{
+	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[15].OneofWrappers = []any{
 		(*ConfigObject_ConfigDpu)(nil),
 		(*ConfigObject_ConfigLogSyslog)(nil),
 		(*ConfigObject_ConfigLogIpfix)(nil),
@@ -1903,7 +1952,7 @@ func file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc), len(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -29,23 +29,28 @@ enum PolicyAction {
   POLICY_ACTION_DENY = 2;
 }
 
-// L3Network subjects are endpoints (destination or source) that specify a L3 endpoint.
-message L3L4NetworkSubject {
-  // CIDR of the subject, e.g. "1.2.3.4/24"
-  string cidr = 1;
+message PolicyPorts {
+  // Protocol of the network subject, e.g. "TCP", "UDP"
+  PolicyProtocol protocol = 1;
   // Minimum port of the subject
   uint32 min_port = 2;
   // Maximum port of the subject
   uint32 max_port = 3;
+}
+
+// L3Network subjects are endpoints (destination or source) that specify a L3 endpoint.
+message L3L4NetworkSubject {
+  // CIDR of the subject, e.g. "1.2.3.4/24"
+  string cidr = 1;
+  // Ports
+  repeated PolicyPorts ports = 2;
   // VLAN of the subject may be empty when unused
-  uint32 vlan = 4;
+  uint32 vlan = 3;
   // VRF name of the subject may be empty when unused
-  string vrf = 5;
+  string vrf = 4;
   // unique ID associated with the VRF Name. This is used by datapaths to encode
   // the vrf name into packet headers.
-  uint32 vrf_id = 6;
-  // Protocol of the network subject, e.g. "TCP", "UDP"
-  PolicyProtocol protocol = 7;
+  uint32 vrf_id = 5;
 }
 
 // Policy Subjects are used for selectors, source, or destinations.

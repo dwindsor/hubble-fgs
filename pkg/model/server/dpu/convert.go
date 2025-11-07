@@ -40,24 +40,32 @@ func recordToDPUPolicyRule(r *record.DatapathRecord, update bool) *DPUPolicyRule
 			RuleName:   r.PolicyUID.RuleName,
 			Action:     act,
 			Source: DPUSubject{
-				Cidr:     r.L3Src.Ip,
-				MinPort:  r.L3Src.Port,
-				MaxPort:  r.L3Src.Port,
-				Vlan:     r.L3Src.Vlan,
-				Vrf:      r.L3Src.Vrf,
-				VrfId:    r.L3Src.VrfId,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+				Cidr: r.L3Src.Ip,
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  r.L3Src.Port,
+						MaxPort:  r.L3Src.Port,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  r.L3Src.Vlan,
+				Vrf:   r.L3Src.Vrf,
+				VrfId: r.L3Src.VrfId,
 			},
 			// The current policy resolution does not include destinatoin
 			// Vlan and VRF this will be added soon.
 			Destination: DPUSubject{
-				Cidr:     r.Endpoint.EP.Ip,
-				MinPort:  r.Endpoint.Port,
-				MaxPort:  r.Endpoint.Port,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+				Cidr: r.Endpoint.EP.Ip,
+				Ports: []DPUPorts{
+					DPUPorts{
+						MinPort:  r.Endpoint.Port,
+						MaxPort:  r.Endpoint.Port,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 		},
 	}
@@ -65,6 +73,24 @@ func recordToDPUPolicyRule(r *record.DatapathRecord, update bool) *DPUPolicyRule
 
 func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicyRule {
 	p := resp.Policy
+	srcPorts := []DPUPorts{}
+	dstPorts := []DPUPorts{}
+
+	for _, p := range p.Source.Network.Ports {
+		srcPorts = append(srcPorts, DPUPorts{
+			MinPort:  p.MinPort,
+			MaxPort:  p.MaxPort,
+			Protocol: p.Protocol,
+		})
+	}
+	for _, p := range p.Destination.Network.Ports {
+		dstPorts = append(dstPorts, DPUPorts{
+			MinPort:  p.MinPort,
+			MaxPort:  p.MaxPort,
+			Protocol: p.Protocol,
+		})
+	}
+
 	rule := &DPURule{
 		K8SResourceVersion: p.K8SResourceVersion,
 		K8SUid:             p.K8SUid,
@@ -72,22 +98,18 @@ func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicy
 		RuleName:           p.RuleName,
 		Action:             p.Action,
 		Source: DPUSubject{
-			Cidr:     p.Source.Network.Cidr,
-			MinPort:  p.Source.Network.MinPort,
-			MaxPort:  p.Source.Network.MaxPort,
-			Vlan:     p.Source.Network.Vlan,
-			Vrf:      p.Source.Network.Vrf,
-			VrfId:    p.Source.Network.VrfId,
-			Protocol: p.Source.Network.Protocol,
+			Cidr:  p.Source.Network.Cidr,
+			Ports: srcPorts,
+			Vlan:  p.Source.Network.Vlan,
+			Vrf:   p.Source.Network.Vrf,
+			VrfId: p.Source.Network.VrfId,
 		},
 		Destination: DPUSubject{
-			Cidr:     p.Destination.Network.Cidr,
-			MinPort:  p.Destination.Network.MinPort,
-			MaxPort:  p.Destination.Network.MaxPort,
-			Vlan:     p.Destination.Network.Vlan,
-			Vrf:      p.Destination.Network.Vrf,
-			VrfId:    p.Destination.Network.VrfId,
-			Protocol: p.Destination.Network.Protocol,
+			Cidr:  p.Destination.Network.Cidr,
+			Ports: dstPorts,
+			Vlan:  p.Destination.Network.Vlan,
+			Vrf:   p.Destination.Network.Vrf,
+			VrfId: p.Destination.Network.VrfId,
 		},
 	}
 
@@ -100,26 +122,41 @@ func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicy
 func dpuRuleToResponse(rule *DPUPolicyRule) *v1alpha.Streaml3L4NetworkPolicyResponse {
 	r := rule.Policy
 
+	srcPorts := []*v1alpha.PolicyPorts{}
+	dstPorts := []*v1alpha.PolicyPorts{}
+
+	for _, p := range r.Source.Ports {
+		srcPorts = append(srcPorts, &v1alpha.PolicyPorts{
+			MinPort:  p.MinPort,
+			MaxPort:  p.MaxPort,
+			Protocol: p.Protocol,
+		})
+	}
+
+	for _, p := range r.Destination.Ports {
+		dstPorts = append(dstPorts, &v1alpha.PolicyPorts{
+			MinPort:  p.MinPort,
+			MaxPort:  p.MaxPort,
+			Protocol: p.Protocol,
+		})
+	}
+
 	source := &v1alpha.PolicySubject{
 		Network: &v1alpha.L3L4NetworkSubject{
-			Cidr:     r.Source.Cidr,
-			MinPort:  r.Source.MinPort,
-			MaxPort:  r.Source.MaxPort,
-			Vlan:     r.Source.Vlan,
-			Vrf:      r.Source.Vrf,
-			VrfId:    r.Source.VrfId,
-			Protocol: r.Source.Protocol,
+			Cidr:  r.Source.Cidr,
+			Ports: srcPorts,
+			Vlan:  r.Source.Vlan,
+			Vrf:   r.Source.Vrf,
+			VrfId: r.Source.VrfId,
 		},
 	}
 	dest := &v1alpha.PolicySubject{
 		Network: &v1alpha.L3L4NetworkSubject{
-			Cidr:     r.Destination.Cidr,
-			MinPort:  r.Destination.MinPort,
-			MaxPort:  r.Destination.MaxPort,
-			Vlan:     uint32(r.Destination.Vlan),
-			Vrf:      r.Destination.Vrf,
-			VrfId:    r.Destination.VrfId,
-			Protocol: r.Destination.Protocol,
+			Cidr:  r.Destination.Cidr,
+			Ports: dstPorts,
+			Vlan:  uint32(r.Destination.Vlan),
+			Vrf:   r.Destination.Vrf,
+			VrfId: r.Destination.VrfId,
 		},
 	}
 	policy := &v1alpha.PolicyRule{

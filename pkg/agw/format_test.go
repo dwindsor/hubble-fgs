@@ -357,10 +357,12 @@ func TestFormatSwitchPolicyRule(t *testing.T) {
 					Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
 						CIDR: "10.1.0.0/16",
 					},
-					ProtoPorts: &switchpolicy.SmartSwitchNetworkProtocolPorts{
-						Protocol: "TCP",
-						Port:     80,
-						EndPort:  443,
+					ProtoPorts: []switchpolicy.SmartSwitchNetworkProtocolPorts{
+						switchpolicy.SmartSwitchNetworkProtocolPorts{
+							Protocol: "TCP",
+							Port:     80,
+							EndPort:  443,
+						},
 					},
 				},
 			}),
@@ -527,8 +529,10 @@ func TestFormatSwitchDestination(t *testing.T) {
 				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
 					CIDR: "10.0.0.0/24",
 				},
-				ProtoPorts: &switchpolicy.SmartSwitchNetworkProtocolPorts{
-					Protocol: "TCP",
+				ProtoPorts: []switchpolicy.SmartSwitchNetworkProtocolPorts{
+					switchpolicy.SmartSwitchNetworkProtocolPorts{
+						Protocol: "TCP",
+					},
 				},
 			},
 			expected: []string{
@@ -543,9 +547,11 @@ func TestFormatSwitchDestination(t *testing.T) {
 				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
 					CIDR: "172.16.0.0/16",
 				},
-				ProtoPorts: &switchpolicy.SmartSwitchNetworkProtocolPorts{
-					Protocol: "UDP",
-					Port:     53,
+				ProtoPorts: []switchpolicy.SmartSwitchNetworkProtocolPorts{
+					switchpolicy.SmartSwitchNetworkProtocolPorts{
+						Protocol: "UDP",
+						Port:     53,
+					},
 				},
 			},
 			expected: []string{
@@ -561,10 +567,12 @@ func TestFormatSwitchDestination(t *testing.T) {
 				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
 					CIDR: "10.1.0.0/16",
 				},
-				ProtoPorts: &switchpolicy.SmartSwitchNetworkProtocolPorts{
-					Protocol: "TCP",
-					Port:     80,
-					EndPort:  443,
+				ProtoPorts: []switchpolicy.SmartSwitchNetworkProtocolPorts{
+					switchpolicy.SmartSwitchNetworkProtocolPorts{
+						Protocol: "TCP",
+						Port:     80,
+						EndPort:  443,
+					},
 				},
 			},
 			expected: []string{
@@ -582,9 +590,11 @@ func TestFormatSwitchDestination(t *testing.T) {
 					VRF:  "vrf1",
 					VLAN: 200,
 				},
-				ProtoPorts: &switchpolicy.SmartSwitchNetworkProtocolPorts{
-					Protocol: "TCP",
-					Port:     8080,
+				ProtoPorts: []switchpolicy.SmartSwitchNetworkProtocolPorts{
+					switchpolicy.SmartSwitchNetworkProtocolPorts{
+						Protocol: "TCP",
+						Port:     8080,
+					},
 				},
 			},
 			expected: []string{

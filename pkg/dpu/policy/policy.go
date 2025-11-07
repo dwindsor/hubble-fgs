@@ -22,17 +22,6 @@ func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
 		effect = DENY
 	}
 
-	// Protocol is only being picked up from the destination
-	proto := []string{}
-	switch rule.Destination.Protocol {
-	case v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP:
-		proto = append(proto, "tcp")
-	case v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP:
-		proto = append(proto, "udp")
-	case v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP:
-		proto = append(proto, "icmp")
-	}
-
 	switch op {
 	case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
 		fwop = 0
@@ -42,20 +31,57 @@ func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
 		fwop = 0
 	}
 
+	srcPorts := []PortV2{}
+	dstPorts := []PortV2{}
+
+	for _, p := range rule.Destination.Ports {
+		// Protocol is only being picked up from the destination
+		proto := []string{}
+		switch p.Protocol {
+		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP:
+			proto = append(proto, "tcp")
+		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP:
+			proto = append(proto, "udp")
+		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP:
+			proto = append(proto, "icmp")
+		}
+		dstPorts = append(dstPorts, PortV2{
+			PortHigh: uint16(p.MaxPort),
+			PortLow:  uint16(p.MinPort),
+			Protocol: proto,
+		})
+	}
+
+	for _, p := range rule.Source.Ports {
+		// Protocol is only being picked up from the destination
+		proto := []string{}
+		switch p.Protocol {
+		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP:
+			proto = append(proto, "tcp")
+		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP:
+			proto = append(proto, "udp")
+		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP:
+			proto = append(proto, "icmp")
+		}
+		srcPorts = append(srcPorts, PortV2{
+			PortHigh: uint16(p.MaxPort),
+			PortLow:  uint16(p.MinPort),
+			Protocol: proto,
+		})
+	}
+
 	source := EndpointV2{
-		Ip:       rule.Source.Cidr,
-		Vlan:     int(rule.Source.Vlan),
-		Vrf:      int(rule.Source.VrfId),
-		PortHigh: uint16(rule.Source.MaxPort),
-		PortLow:  uint16(rule.Source.MinPort),
+		Ip:    rule.Source.Cidr,
+		Vlan:  int(rule.Source.Vlan),
+		Vrf:   int(rule.Source.VrfId),
+		Ports: srcPorts,
 	}
 
 	destination := EndpointV2{
-		Ip:       rule.Destination.Cidr,
-		PortHigh: uint16(rule.Destination.MaxPort),
-		PortLow:  uint16(rule.Destination.MinPort),
-		Vlan:     int(rule.Destination.Vlan),
-		Vrf:      0, // Currently destination VRFs are wildcards
+		Ip:    rule.Destination.Cidr,
+		Ports: dstPorts,
+		Vlan:  int(rule.Destination.Vlan),
+		Vrf:   0, // Currently destination VRFs are wildcards
 	}
 
 	return FwPolicyV2{
@@ -63,7 +89,6 @@ func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
 		Name:        name,
 		Operation:   fwop,
 		Effect:      effect,
-		Protocol:    proto,
 		Source:      source,
 		Destination: destination,
 	}

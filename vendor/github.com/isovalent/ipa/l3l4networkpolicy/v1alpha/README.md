@@ -16,6 +16,7 @@
     - [LogConfigSyslog.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigSyslog-ConfigsEntry)
     - [LogConfigTimescape](#l3l4networkpolicy-v1alpha-LogConfigTimescape)
     - [LogConfigTimescape.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigTimescape-ConfigsEntry)
+    - [PolicyPorts](#l3l4networkpolicy-v1alpha-PolicyPorts)
     - [PolicyRule](#l3l4networkpolicy-v1alpha-PolicyRule)
     - [PolicySubject](#l3l4networkpolicy-v1alpha-PolicySubject)
     - [ReportStatus](#l3l4networkpolicy-v1alpha-ReportStatus)
@@ -96,12 +97,10 @@ L3Network subjects are endpoints (destination or source) that specify a L3 endpo
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | cidr | [string](#string) |  | CIDR of the subject, e.g. &#34;1.2.3.4/24&#34; |
-| min_port | [uint32](#uint32) |  | Minimum port of the subject |
-| max_port | [uint32](#uint32) |  | Maximum port of the subject |
+| ports | [PolicyPorts](#l3l4networkpolicy-v1alpha-PolicyPorts) | repeated | Ports |
 | vlan | [uint32](#uint32) |  | VLAN of the subject may be empty when unused |
 | vrf | [string](#string) |  | VRF name of the subject may be empty when unused |
 | vrf_id | [uint32](#uint32) |  | unique ID associated with the VRF Name. This is used by datapaths to encode the vrf name into packet headers. |
-| protocol | [PolicyProtocol](#l3l4networkpolicy-v1alpha-PolicyProtocol) |  | Protocol of the network subject, e.g. &#34;TCP&#34;, &#34;UDP&#34; |
 
 
 
@@ -258,6 +257,23 @@ CONFIG_TYPE_LOG_TIMESCAPE
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig) |  |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-PolicyPorts"></a>
+
+### PolicyPorts
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| protocol | [PolicyProtocol](#l3l4networkpolicy-v1alpha-PolicyProtocol) |  | Protocol of the network subject, e.g. &#34;TCP&#34;, &#34;UDP&#34; |
+| min_port | [uint32](#uint32) |  | Minimum port of the subject |
+| max_port | [uint32](#uint32) |  | Maximum port of the subject |
 
 
 

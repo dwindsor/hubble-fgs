@@ -40,14 +40,18 @@ var (
 	}
 )
 
-type DPUSubject struct {
-	Cidr     string
+type DPUPorts struct {
 	MinPort  uint32
 	MaxPort  uint32
-	Vlan     uint32
-	VrfId    uint32
-	Vrf      string
 	Protocol v1alpha.PolicyProtocol
+}
+
+type DPUSubject struct {
+	Cidr  string
+	Ports []DPUPorts
+	Vlan  uint32
+	VrfId uint32
+	Vrf   string
 }
 
 type DPURule struct {
@@ -315,13 +319,19 @@ func HashRule(rule *DPURule) ([sha256.Size]byte, error) {
 	if err != nil {
 		return [sha256.Size]byte{}, err
 	}
-	err = binary.Write(h, binary.BigEndian, rule.Source.MinPort)
-	if err != nil {
-		return [sha256.Size]byte{}, err
-	}
-	err = binary.Write(h, binary.BigEndian, rule.Source.MaxPort)
-	if err != nil {
-		return [sha256.Size]byte{}, err
+	for _, p := range rule.Source.Ports {
+		err = binary.Write(h, binary.BigEndian, p.MinPort)
+		if err != nil {
+			return [sha256.Size]byte{}, err
+		}
+		err = binary.Write(h, binary.BigEndian, p.MaxPort)
+		if err != nil {
+			return [sha256.Size]byte{}, err
+		}
+		err = binary.Write(h, binary.BigEndian, p.Protocol)
+		if err != nil {
+			return [sha256.Size]byte{}, err
+		}
 	}
 	err = binary.Write(h, binary.BigEndian, rule.Source.Vlan)
 	if err != nil {
@@ -335,23 +345,25 @@ func HashRule(rule *DPURule) ([sha256.Size]byte, error) {
 	if err != nil {
 		return [sha256.Size]byte{}, err
 	}
-	err = binary.Write(h, binary.BigEndian, rule.Source.Protocol)
-	if err != nil {
-		return [sha256.Size]byte{}, err
-	}
 
 	// Destination
 	_, err = io.WriteString(h, rule.Destination.Cidr)
 	if err != nil {
 		return [sha256.Size]byte{}, err
 	}
-	err = binary.Write(h, binary.BigEndian, rule.Destination.MinPort)
-	if err != nil {
-		return [sha256.Size]byte{}, err
-	}
-	err = binary.Write(h, binary.BigEndian, rule.Destination.MaxPort)
-	if err != nil {
-		return [sha256.Size]byte{}, err
+	for _, p := range rule.Destination.Ports {
+		err = binary.Write(h, binary.BigEndian, p.MinPort)
+		if err != nil {
+			return [sha256.Size]byte{}, err
+		}
+		err = binary.Write(h, binary.BigEndian, p.MaxPort)
+		if err != nil {
+			return [sha256.Size]byte{}, err
+		}
+		err = binary.Write(h, binary.BigEndian, p.Protocol)
+		if err != nil {
+			return [sha256.Size]byte{}, err
+		}
 	}
 	err = binary.Write(h, binary.BigEndian, rule.Destination.Vlan)
 	if err != nil {
@@ -362,10 +374,6 @@ func HashRule(rule *DPURule) ([sha256.Size]byte, error) {
 		return [sha256.Size]byte{}, err
 	}
 	_, err = io.WriteString(h, rule.Destination.Vrf)
-	if err != nil {
-		return [sha256.Size]byte{}, err
-	}
-	err = binary.Write(h, binary.BigEndian, rule.Destination.Protocol)
 	if err != nil {
 		return [sha256.Size]byte{}, err
 	}

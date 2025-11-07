@@ -207,10 +207,11 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *dpu
 	destinationVRFId := s.networkL3Objects.byName[VrfName(rule.Policy.Destination.Endpoint.VRF)]
 
 	dstProto := v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED
-	dstMinPort := uint32(0)
-	dstMaxPort := uint32(65535)
-	if rule.Policy.Destination.ProtoPorts != nil {
-		switch strings.ToLower(rule.Policy.Destination.ProtoPorts.Protocol) {
+	dstPorts := []dpu.DPUPorts{}
+	srcPorts := []dpu.DPUPorts{} // unused until we add src port specifiers
+
+	for _, port := range rule.Policy.Destination.ProtoPorts {
+		switch strings.ToLower(port.Protocol) {
 		case "tcp":
 			dstProto = v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP
 		case "udp":
@@ -218,8 +219,12 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *dpu
 		case "icmp":
 			dstProto = v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP
 		}
-		dstMinPort = uint32(rule.Policy.Destination.ProtoPorts.Port)
-		dstMaxPort = uint32(rule.Policy.Destination.ProtoPorts.EndPort)
+
+		dstPorts = append(dstPorts, dpu.DPUPorts{
+			MinPort:  uint32(port.Port),
+			MaxPort:  uint32(port.EndPort),
+			Protocol: dstProto,
+		})
 	}
 
 	return &dpu.DPUPolicyRule{
@@ -231,24 +236,20 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *dpu
 			RuleName:           rule.UID.RuleName,
 			Action:             action,
 			Source: dpu.DPUSubject{
-				Cidr:     rule.Policy.Source.Endpoint.CIDR,
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     uint32(rule.Policy.Source.Endpoint.VLAN),
-				Vrf:      rule.Policy.Source.Endpoint.VRF,
-				VrfId:    uint32(sourceVRFId),
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr:  rule.Policy.Source.Endpoint.CIDR,
+				Ports: srcPorts,
+				Vlan:  uint32(rule.Policy.Source.Endpoint.VLAN),
+				Vrf:   rule.Policy.Source.Endpoint.VRF,
+				VrfId: uint32(sourceVRFId),
 			},
 			// The current policy resolution does not include destination
 			// Vlan and VRF this will be added soon.
 			Destination: dpu.DPUSubject{
-				Cidr:     rule.Policy.Destination.Endpoint.CIDR,
-				MinPort:  dstMinPort,
-				MaxPort:  dstMaxPort,
-				Vlan:     uint32(rule.Policy.Destination.Endpoint.VLAN),
-				Vrf:      rule.Policy.Destination.Endpoint.VRF,
-				VrfId:    uint32(destinationVRFId),
-				Protocol: dstProto,
+				Cidr:  rule.Policy.Destination.Endpoint.CIDR,
+				Ports: dstPorts,
+				Vlan:  uint32(rule.Policy.Destination.Endpoint.VLAN),
+				Vrf:   rule.Policy.Destination.Endpoint.VRF,
+				VrfId: uint32(destinationVRFId),
 			},
 		},
 	}

@@ -19,17 +19,15 @@ import type { Message } from "@bufbuild/protobuf";
 export declare const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy: GenFile;
 
 /**
- * L3Network subjects are endpoints (destination or source) that specify a L3 endpoint.
- *
- * @generated from message l3l4networkpolicy.v1alpha.L3L4NetworkSubject
+ * @generated from message l3l4networkpolicy.v1alpha.PolicyPorts
  */
-export declare type L3L4NetworkSubject = Message<"l3l4networkpolicy.v1alpha.L3L4NetworkSubject"> & {
+export declare type PolicyPorts = Message<"l3l4networkpolicy.v1alpha.PolicyPorts"> & {
   /**
-   * CIDR of the subject, e.g. "1.2.3.4/24"
+   * Protocol of the network subject, e.g. "TCP", "UDP"
    *
-   * @generated from field: string cidr = 1;
+   * @generated from field: l3l4networkpolicy.v1alpha.PolicyProtocol protocol = 1;
    */
-  cidr: string;
+  protocol: PolicyProtocol;
 
   /**
    * Minimum port of the subject
@@ -44,18 +42,45 @@ export declare type L3L4NetworkSubject = Message<"l3l4networkpolicy.v1alpha.L3L4
    * @generated from field: uint32 max_port = 3;
    */
   maxPort: number;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.PolicyPorts.
+ * Use `create(PolicyPortsSchema)` to create a new message.
+ */
+export declare const PolicyPortsSchema: GenMessage<PolicyPorts>;
+
+/**
+ * L3Network subjects are endpoints (destination or source) that specify a L3 endpoint.
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.L3L4NetworkSubject
+ */
+export declare type L3L4NetworkSubject = Message<"l3l4networkpolicy.v1alpha.L3L4NetworkSubject"> & {
+  /**
+   * CIDR of the subject, e.g. "1.2.3.4/24"
+   *
+   * @generated from field: string cidr = 1;
+   */
+  cidr: string;
+
+  /**
+   * Ports
+   *
+   * @generated from field: repeated l3l4networkpolicy.v1alpha.PolicyPorts ports = 2;
+   */
+  ports: PolicyPorts[];
 
   /**
    * VLAN of the subject may be empty when unused
    *
-   * @generated from field: uint32 vlan = 4;
+   * @generated from field: uint32 vlan = 3;
    */
   vlan: number;
 
   /**
    * VRF name of the subject may be empty when unused
    *
-   * @generated from field: string vrf = 5;
+   * @generated from field: string vrf = 4;
    */
   vrf: string;
 
@@ -63,16 +88,9 @@ export declare type L3L4NetworkSubject = Message<"l3l4networkpolicy.v1alpha.L3L4
    * unique ID associated with the VRF Name. This is used by datapaths to encode
    * the vrf name into packet headers.
    *
-   * @generated from field: uint32 vrf_id = 6;
+   * @generated from field: uint32 vrf_id = 5;
    */
   vrfId: number;
-
-  /**
-   * Protocol of the network subject, e.g. "TCP", "UDP"
-   *
-   * @generated from field: l3l4networkpolicy.v1alpha.PolicyProtocol protocol = 7;
-   */
-  protocol: PolicyProtocol;
 };
 
 /**

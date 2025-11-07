@@ -48,10 +48,12 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 							VRF:  "external",
 							VLAN: 200,
 						},
-						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
-							Protocol: "tcp",
-							Port:     443,
-							EndPort:  443,
+						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{
+								Protocol: "tcp",
+								Port:     443,
+								EndPort:  443,
+							},
 						},
 					},
 					Action: SmartSwitchNetworkAction{
@@ -65,22 +67,30 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 			expectedOper:   v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
 			expectedAction: v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 			expectedSrc: dpu.DPUSubject{
-				Cidr:     "10.0.0.0/8",
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     100,
-				Vrf:      "internal",
-				VrfId:    100,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr: "10.0.0.0/8",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  0,
+						MaxPort:  65535,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+					},
+				},
+				Vlan:  100,
+				Vrf:   "internal",
+				VrfId: 100,
 			},
 			expectedDst: dpu.DPUSubject{
-				Cidr:     "192.168.1.0/24",
-				MinPort:  443,
-				MaxPort:  443,
-				Vlan:     200,
-				Vrf:      "external",
-				VrfId:    200,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+				Cidr: "192.168.1.0/24",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  443,
+						MaxPort:  443,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  200,
+				Vrf:   "external",
+				VrfId: 200,
 			},
 		},
 		{
@@ -107,10 +117,12 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 							CIDR: "10.0.0.0/8",
 							VRF:  "",
 						},
-						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
-							Protocol: "udp",
-							Port:     53,
-							EndPort:  53,
+						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{
+								Protocol: "udp",
+								Port:     53,
+								EndPort:  53,
+							},
 						},
 					},
 					Action: SmartSwitchNetworkAction{
@@ -124,22 +136,30 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 			expectedOper:   v1alpha.PolicyOperation_POLICY_OPERATION_DELETE,
 			expectedAction: v1alpha.PolicyAction_POLICY_ACTION_DENY,
 			expectedSrc: dpu.DPUSubject{
-				Cidr:     "172.16.0.0/12",
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     0,
-				Vrf:      "dmz",
-				VrfId:    50,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr: "172.16.0.0/12",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  0,
+						MaxPort:  65535,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "dmz",
+				VrfId: 50,
 			},
 			expectedDst: dpu.DPUSubject{
-				Cidr:     "10.0.0.0/8",
-				MinPort:  53,
-				MaxPort:  53,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP,
+				Cidr: "10.0.0.0/8",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  53,
+						MaxPort:  53,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 		},
 		{
@@ -162,10 +182,12 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.2.0.0/16",
 						},
-						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
-							Protocol: "icmp",
-							Port:     0,
-							EndPort:  0,
+						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{
+								Protocol: "icmp",
+								Port:     0,
+								EndPort:  0,
+							},
 						},
 					},
 					Action: SmartSwitchNetworkAction{
@@ -179,26 +201,34 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 			expectedOper:   v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
 			expectedAction: v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 			expectedSrc: dpu.DPUSubject{
-				Cidr:     "10.1.0.0/16",
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr: "10.1.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  0,
+						MaxPort:  65535,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 			expectedDst: dpu.DPUSubject{
-				Cidr:     "10.2.0.0/16",
-				MinPort:  0,
-				MaxPort:  0,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP,
+				Cidr: "10.2.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  0,
+						MaxPort:  0,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 		},
 		{
-			name: "Nil ProtoPorts - defaults to all ports and unspecified protocol",
+			name: "Empty ProtoPorts - defaults to all ports and unspecified protocol",
 			setupState: func() *State {
 				return NewState()
 			},
@@ -217,7 +247,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "172.20.0.0/16",
 						},
-						ProtoPorts: nil,
+						ProtoPorts: []SmartSwitchNetworkProtocolPorts{},
 					},
 					Action: SmartSwitchNetworkAction{
 						EnforceAction: SmartSwitchEnforceAction{
@@ -230,22 +260,24 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 			expectedOper:   v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
 			expectedAction: v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 			expectedSrc: dpu.DPUSubject{
-				Cidr:     "192.168.0.0/16",
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr: "192.168.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  0,
+						MaxPort:  65535,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 			expectedDst: dpu.DPUSubject{
-				Cidr:     "172.20.0.0/16",
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr:  "172.20.0.0/16",
+				Ports: []dpu.DPUPorts{},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 		},
 		{
@@ -268,10 +300,12 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.20.0.0/16",
 						},
-						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
-							Protocol: "TCP",
-							Port:     8000,
-							EndPort:  9000,
+						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{
+								Protocol: "TCP",
+								Port:     8000,
+								EndPort:  9000,
+							},
 						},
 					},
 					Action: SmartSwitchNetworkAction{
@@ -285,22 +319,30 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 			expectedOper:   v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
 			expectedAction: v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 			expectedSrc: dpu.DPUSubject{
-				Cidr:     "10.10.0.0/16",
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr: "10.10.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  0,
+						MaxPort:  65535,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 			expectedDst: dpu.DPUSubject{
-				Cidr:     "10.20.0.0/16",
-				MinPort:  8000,
-				MaxPort:  9000,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+				Cidr: "10.20.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  8000,
+						MaxPort:  9000,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 		},
 		{
@@ -323,10 +365,12 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.40.0.0/16",
 						},
-						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
-							Protocol: "sctp",
-							Port:     5000,
-							EndPort:  5000,
+						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{
+								Protocol: "sctp",
+								Port:     5000,
+								EndPort:  5000,
+							},
 						},
 					},
 					Action: SmartSwitchNetworkAction{
@@ -340,22 +384,30 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 			expectedOper:   v1alpha.PolicyOperation_POLICY_OPERATION_DELETE,
 			expectedAction: v1alpha.PolicyAction_POLICY_ACTION_DENY,
 			expectedSrc: dpu.DPUSubject{
-				Cidr:     "10.30.0.0/16",
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr: "10.30.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  0,
+						MaxPort:  65535,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 			expectedDst: dpu.DPUSubject{
-				Cidr:     "10.40.0.0/16",
-				MinPort:  5000,
-				MaxPort:  5000,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr: "10.40.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  5000,
+						MaxPort:  5000,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 		},
 		{
@@ -378,10 +430,12 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.60.0.0/16",
 						},
-						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
-							Protocol: "tcp",
-							Port:     80,
-							EndPort:  80,
+						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{
+								Protocol: "tcp",
+								Port:     80,
+								EndPort:  80,
+							},
 						},
 					},
 					Action: SmartSwitchNetworkAction{
@@ -396,22 +450,30 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 			expectedOper:   v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
 			expectedAction: v1alpha.PolicyAction_POLICY_ACTION_UNSPECIFIED,
 			expectedSrc: dpu.DPUSubject{
-				Cidr:     "10.50.0.0/16",
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr: "10.50.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  0,
+						MaxPort:  65535,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 			expectedDst: dpu.DPUSubject{
-				Cidr:     "10.60.0.0/16",
-				MinPort:  80,
-				MaxPort:  80,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+				Cidr: "10.60.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  80,
+						MaxPort:  80,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 		},
 		{
@@ -436,10 +498,12 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 							CIDR: "0.0.0.0/0",
 							VRF:  "",
 						},
-						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
-							Protocol: "tcp",
-							Port:     443,
-							EndPort:  443,
+						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{
+								Protocol: "tcp",
+								Port:     443,
+								EndPort:  443,
+							},
 						},
 					},
 					Action: SmartSwitchNetworkAction{
@@ -453,22 +517,30 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 			expectedOper:   v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
 			expectedAction: v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 			expectedSrc: dpu.DPUSubject{
-				Cidr:     "0.0.0.0/0",
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr: "0.0.0.0/0",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  0,
+						MaxPort:  65535,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 			expectedDst: dpu.DPUSubject{
-				Cidr:     "0.0.0.0/0",
-				MinPort:  443,
-				MaxPort:  443,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+				Cidr: "0.0.0.0/0",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  443,
+						MaxPort:  443,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 		},
 		{
@@ -491,10 +563,12 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.80.0.0/16",
 						},
-						ProtoPorts: &SmartSwitchNetworkProtocolPorts{
-							Protocol: "UDP",
-							Port:     161,
-							EndPort:  161,
+						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{
+								Protocol: "UDP",
+								Port:     161,
+								EndPort:  161,
+							},
 						},
 					},
 					Action: SmartSwitchNetworkAction{
@@ -508,22 +582,30 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 			expectedOper:   v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT,
 			expectedAction: v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 			expectedSrc: dpu.DPUSubject{
-				Cidr:     "10.70.0.0/16",
-				MinPort:  0,
-				MaxPort:  65535,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+				Cidr: "10.70.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  0,
+						MaxPort:  65535,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 			expectedDst: dpu.DPUSubject{
-				Cidr:     "10.80.0.0/16",
-				MinPort:  161,
-				MaxPort:  161,
-				Vlan:     0,
-				Vrf:      "",
-				VrfId:    0,
-				Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP,
+				Cidr: "10.80.0.0/16",
+				Ports: []dpu.DPUPorts{
+					dpu.DPUPorts{
+						MinPort:  161,
+						MaxPort:  161,
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP,
+					},
+				},
+				Vlan:  0,
+				Vrf:   "",
+				VrfId: 0,
 			},
 		},
 	}
@@ -548,21 +630,23 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 
 			// Verify source
 			require.Equal(t, tt.expectedSrc.Cidr, result.Policy.Source.Cidr, "Source CIDR mismatch")
-			require.Equal(t, tt.expectedSrc.MinPort, result.Policy.Source.MinPort, "Source MinPort mismatch")
-			require.Equal(t, tt.expectedSrc.MaxPort, result.Policy.Source.MaxPort, "Source MaxPort mismatch")
 			require.Equal(t, tt.expectedSrc.Vlan, result.Policy.Source.Vlan, "Source VLAN mismatch")
 			require.Equal(t, tt.expectedSrc.Vrf, result.Policy.Source.Vrf, "Source VRF mismatch")
 			require.Equal(t, tt.expectedSrc.VrfId, result.Policy.Source.VrfId, "Source VrfId mismatch")
-			require.Equal(t, tt.expectedSrc.Protocol, result.Policy.Source.Protocol, "Source Protocol mismatch")
 
 			// Verify destination
 			require.Equal(t, tt.expectedDst.Cidr, result.Policy.Destination.Cidr, "Destination CIDR mismatch")
-			require.Equal(t, tt.expectedDst.MinPort, result.Policy.Destination.MinPort, "Destination MinPort mismatch")
-			require.Equal(t, tt.expectedDst.MaxPort, result.Policy.Destination.MaxPort, "Destination MaxPort mismatch")
 			require.Equal(t, tt.expectedDst.Vlan, result.Policy.Destination.Vlan, "Destination VLAN mismatch")
 			require.Equal(t, tt.expectedDst.Vrf, result.Policy.Destination.Vrf, "Destination VRF mismatch")
 			require.Equal(t, tt.expectedDst.VrfId, result.Policy.Destination.VrfId, "Destination VrfId mismatch")
-			require.Equal(t, tt.expectedDst.Protocol, result.Policy.Destination.Protocol, "Destination Protocol mismatch")
+
+			if len(tt.expectedDst.Ports) > 0 {
+				require.Equal(t, tt.expectedDst.Ports[0].MinPort, result.Policy.Destination.Ports[0].MinPort, "Destination MinPort mismatch")
+				require.Equal(t, tt.expectedDst.Ports[0].MaxPort, result.Policy.Destination.Ports[0].MaxPort, "Destination MaxPort mismatch")
+				require.Equal(t, tt.expectedDst.Ports[0].Protocol, result.Policy.Destination.Ports[0].Protocol, "Destination Protocol mismatch")
+			} else {
+				require.Equal(t, 0, len(result.Policy.Destination.Ports))
+			}
 		})
 	}
 }

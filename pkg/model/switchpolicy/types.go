@@ -62,18 +62,20 @@ func (s *SmartSwitchNetworkPolicy) Hash() ([sha256.Size]byte, error) {
 	}
 
 	// Destination ProtoPorts
-	if s.Destination.ProtoPorts != nil {
-		err = binary.Write(h, binary.BigEndian, s.Destination.ProtoPorts.Port)
-		if err != nil {
-			return [sha256.Size]byte{}, err
-		}
-		err = binary.Write(h, binary.BigEndian, s.Destination.ProtoPorts.EndPort)
-		if err != nil {
-			return [sha256.Size]byte{}, err
-		}
-		_, err = io.WriteString(h, s.Destination.ProtoPorts.Protocol)
-		if err != nil {
-			return [sha256.Size]byte{}, err
+	if len(s.Destination.ProtoPorts) > 0 {
+		for _, p := range s.Destination.ProtoPorts {
+			err = binary.Write(h, binary.BigEndian, p.Port)
+			if err != nil {
+				return [sha256.Size]byte{}, err
+			}
+			err = binary.Write(h, binary.BigEndian, p.EndPort)
+			if err != nil {
+				return [sha256.Size]byte{}, err
+			}
+			_, err = io.WriteString(h, p.Protocol)
+			if err != nil {
+				return [sha256.Size]byte{}, err
+			}
 		}
 	}
 
@@ -122,7 +124,7 @@ type SmartSwitchNetworkDestination struct {
 	// FQDN   *TetragonNetworkFQDN
 	// Labels TetragonNetworkLabels
 	Endpoint   SmartSwitchNetworkEndpoint
-	ProtoPorts *SmartSwitchNetworkProtocolPorts
+	ProtoPorts []SmartSwitchNetworkProtocolPorts
 }
 
 type SmartSwitchNetworkAction struct {
