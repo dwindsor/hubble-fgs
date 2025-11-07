@@ -73,6 +73,7 @@ To create a `X.Y` branch:
  - [ ] Once PR is merged, tag the first commit in master which is not in the `X.Y` branch as
    `vX.Y+1.0-pre.0`.
  - [ ] Add the stable branch to the renovate configuration
+ - [ ] Update `BUF_BREAKING_AGAINST_BRANCH` in `Makefile.defs` to point to `origin/X.Y` (i.e. `BUF_BREAKING_AGAINST_BRANCH ?= origin/v1.18`)
 
 ### Cutting the Tetragon Enterprise release
 
