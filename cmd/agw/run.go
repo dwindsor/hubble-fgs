@@ -185,10 +185,12 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 			}
 		}
 
+		// Create connection monitor for health checking
+		connMonitor := NewConnectionMonitor(agwAgent, Config.EnableNXOS, kubernetesManager)
 		// TODO: Wait for configmap to be ready
-		err = config.AddConfigMapInformer(ctx, kubernetesManager)
+		err = config.AddConfigMapInformer(ctx, kubernetesManager, connMonitor)
 		if err != nil {
-			logger.GetLogger().Error("configmap failed", logfields.Error, err)
+			logger.GetLogger().Error("configmap informer with connection monitoring failed", logfields.Error, err)
 			return err
 		}
 

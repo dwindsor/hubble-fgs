@@ -219,6 +219,20 @@ func (agw *AgentGateway) ResetConnectionStatus(ctx context.Context) {
 	nxos.Nexus.ResetConn(ctx)
 }
 
+func (agw *AgentGateway) SetConnectionStatus(ctx context.Context, status bool, nxosMode bool) {
+	logger.GetLogger().Debug("Setting connection status", "status", status)
+	if !nxosMode {
+		// Running in non-NXOS mode.
+		return
+	}
+
+	if status {
+		nxos.Nexus.SetConnOk(ctx, nxos.ConnOk)
+	} else {
+		nxos.Nexus.SetConnFail(ctx, nxos.ConnFailed)
+	}
+}
+
 // GetSmartSwitchInventory creates and returns a SmartSwitchInventory CR for the agent.
 func (agw *AgentGateway) GetSmartSwitchInventory(ctx context.Context) *v1alpha1.SmartSwitch {
 	logger.GetLogger().Debug("Creating SmartSwitchInventory resource")

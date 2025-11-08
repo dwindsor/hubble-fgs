@@ -19,25 +19,64 @@ const (
 	CONFIGMAP_NAME = "smartswitch-config"
 )
 
-func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager) error {
+// ConnectionMonitor interface for external connection monitoring
+type ConnectionMonitor interface {
+	StartMonitoring(ctx context.Context)
+	CreateEventHandlers(ctx context.Context) cache.ResourceEventHandlerFuncs
+}
+
+func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, connMonitor ConnectionMonitor) error {
 	// This watches all ConfigMaps, not just the specific smartswitch
 	// TODO: Narrow down this watcher to only get updates on smartswitch configmap
 	informer, err := m.Manager.GetCache().GetInformer(ctx, &v1.ConfigMap{})
 	if err != nil {
+		logger.GetLogger().Error("Failed to create ConfigMap informer", "error", err)
 		return err
 	}
-	_, err = informer.AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj any) {
-				addConfigMap(obj)
-			},
-			UpdateFunc: func(oldObj any, newObj any) {
-				updateConfigMap(oldObj, newObj)
-			},
-			DeleteFunc: func(obj any) {
-				deleteConfigMap(obj)
-			}})
-	return err
+
+	// Get event handlers from the connection monitor that handle both ConfigMap processing and connection monitoring
+	eventHandlers := connMonitor.CreateEventHandlers(ctx)
+
+	// Decorator pattern
+	// Wrap the event handlers to also process ConfigMaps
+	wrappedHandlers := cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj any) {
+			// Process ConfigMap first
+			addConfigMap(obj)
+			// Then call connection monitor
+			if eventHandlers.AddFunc != nil {
+				eventHandlers.AddFunc(obj)
+			}
+		},
+		UpdateFunc: func(oldObj, newObj any) {
+			// Process ConfigMap first
+			updateConfigMap(oldObj, newObj)
+			// Then call connection monitor
+			if eventHandlers.UpdateFunc != nil {
+				eventHandlers.UpdateFunc(oldObj, newObj)
+			}
+		},
+		DeleteFunc: func(obj any) {
+			// Process ConfigMap first
+			deleteConfigMap(obj)
+			// Then call connection monitor
+			if eventHandlers.DeleteFunc != nil {
+				eventHandlers.DeleteFunc(obj)
+			}
+		},
+	}
+
+	_, err = informer.AddEventHandler(wrappedHandlers)
+	if err != nil {
+		logger.GetLogger().Error("Failed to add event handler to ConfigMap informer", "error", err)
+		return err
+	}
+
+	// Start connection monitoring
+	connMonitor.StartMonitoring(ctx)
+
+	logger.GetLogger().Info("Connection monitoring with ConfigMap informer started")
+	return nil
 }
 
 func addConfigMap(obj any) {
