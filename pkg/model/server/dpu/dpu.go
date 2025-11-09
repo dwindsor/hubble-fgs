@@ -65,8 +65,9 @@ type DPURule struct {
 }
 
 type DPUPolicyRule struct {
-	Oper   v1alpha.PolicyOperation
-	Policy *DPURule
+	Oper      v1alpha.PolicyOperation
+	Timestamp time.Time
+	Policy    *DPURule
 }
 
 type DPUReportStatus struct {

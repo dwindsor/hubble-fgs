@@ -2,6 +2,7 @@ package dpu
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 
@@ -114,8 +115,9 @@ func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicy
 	}
 
 	return &DPUPolicyRule{
-		Oper:   resp.Oper,
-		Policy: rule,
+		Oper:      resp.Oper,
+		Timestamp: time.Now(),
+		Policy:    rule,
 	}
 }
 

@@ -39,6 +39,9 @@ const (
 
 	EXPORTER_CONFIG_PATH    = "/data/hypershield/daflogger.yaml" // HACK: need to update config to pass this path
 	EVENTLOGGER_SOCKET_PATH = "/tmp/fluentbit_fwa.sock"          // HACK: need to pass through config
+
+	STALE_POLICY_GC       = 120
+	STALE_POLICY_GC_RETRY = 3
 )
 
 type StreamClient struct {
@@ -59,7 +62,7 @@ func NewDPUAgent(server string) *DPUAgent {
 		// the message. We SHA256 the rule so that the operation matches for
 		// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
 		// of the concatenated strings in this map.
-		ruleSet:       make(map[[sha256.Size]byte]*agentDPU.DPURule),
+		ruleSet:       make(map[[sha256.Size]byte]*agentDPU.DPUPolicyRule),
 		serverAddress: server,
 		ruleSetLock:   sync.Mutex{},
 	}
@@ -90,7 +93,7 @@ type DPUAgent struct {
 	// the message. We SHA256 the rule so that the operation matches for
 	// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
 	// of the concatenated strings in this map.
-	ruleSet     map[[sha256.Size]byte]*agentDPU.DPURule
+	ruleSet     map[[sha256.Size]byte]*agentDPU.DPUPolicyRule
 	ruleSetLock sync.Mutex
 }
 
@@ -259,15 +262,16 @@ func (dpu *DPUAgent) upsertPolicyRule(rule *agentDPU.DPUPolicyRule) error {
 	if err != nil {
 		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
 			logfields.Error, err, "rule", rule)
-		return fmt.Errorf("Failed policy rule checksum, corrupted policy")
+		return fmt.Errorf("failed policy rule checksum, corrupted policy")
 	}
 
 	dpu.ruleSetLock.Lock()
 	defer dpu.ruleSetLock.Unlock()
-	if _, ok := dpu.ruleSet[csum]; ok {
+	if rule, ok := dpu.ruleSet[csum]; ok {
+		rule.Timestamp = time.Now()
 		return fmt.Errorf("policy exists")
 	}
-	dpu.ruleSet[csum] = rule.Policy
+	dpu.ruleSet[csum] = rule
 	return nil
 }
 
@@ -276,7 +280,7 @@ func (dpu *DPUAgent) deletePolicyRule(rule *agentDPU.DPUPolicyRule) error {
 	if err != nil {
 		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
 			logfields.Error, err)
-		return fmt.Errorf("Failed policy checksum");
+		return fmt.Errorf("failed policy checksum")
 	}
 
 	dpu.ruleSetLock.Lock()
@@ -419,6 +423,31 @@ func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
 	}
 }
 
+func (dpu *DPUAgent) stalePolicyGC(ctx context.Context, invokeTime time.Time) {
+	delList := []*agentDPU.DPUPolicyRule{}
+
+	dpu.ruleSetLock.Lock()
+	defer dpu.ruleSetLock.Unlock()
+	for csum, rule := range dpu.ruleSet {
+		if rule.Timestamp.Before(invokeTime) {
+			delete(dpu.ruleSet, csum)
+			delList = append(delList, rule)
+		}
+	}
+
+	// We need to keep the lock to avoid racing with someone readding
+	// an identical policy that we would then delete.
+	for i := 0; i < STALE_POLICY_GC_RETRY; i++ {
+		err := dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, delList)
+		if err != nil {
+			logger.GetLogger().Error("Failed to remove stale policy", "attempt", i)
+		} else {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+}
+
 func (dpu *DPUAgent) PolicyConnect(ctx context.Context) error {
 	policyReq := &v1alpha.Streaml3L4NetworkPolicyRequest{
 		AgentUid: dpu.AgentId,
@@ -448,10 +477,17 @@ func (dpu *DPUAgent) PolicyConnect(ctx context.Context) error {
 			attempts = 0
 			backoff = time.Second
 
+			delayDuration := STALE_POLICY_GC * time.Second
+			invokeTime := time.Now()
+			timer := time.AfterFunc(delayDuration, func() {
+				dpu.stalePolicyGC(ctx, invokeTime)
+			})
+
 			logger.GetLogger().Info("Network Policy listening...")
 			if err := dpu.PolicyEventLoop(ctx); err != nil {
 				logger.GetLogger().Error("policy event loop aborted", logfields.Error, err)
 			}
+			timer.Stop()
 		}
 	}
 }
