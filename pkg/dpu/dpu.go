@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"runtime"
@@ -252,31 +253,39 @@ func (dpu *DPUAgent) Checksum() [sha256.Size]byte {
 	return sha256.Sum256([]byte(buf))
 }
 
-func (dpu *DPUAgent) upsertPolicyRule(rule *agentDPU.DPUPolicyRule) {
+func (dpu *DPUAgent) upsertPolicyRule(rule *agentDPU.DPUPolicyRule) error {
 
 	csum, err := agentDPU.HashRule(rule.Policy)
 	if err != nil {
 		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
 			logfields.Error, err, "rule", rule)
-		return
+		return fmt.Errorf("Failed policy rule checksum, corrupted policy")
 	}
 
 	dpu.ruleSetLock.Lock()
 	defer dpu.ruleSetLock.Unlock()
+	if _, ok := dpu.ruleSet[csum]; ok {
+		return fmt.Errorf("policy exists")
+	}
 	dpu.ruleSet[csum] = rule.Policy
+	return nil
 }
 
-func (dpu *DPUAgent) deletePolicyRule(rule *agentDPU.DPUPolicyRule) {
+func (dpu *DPUAgent) deletePolicyRule(rule *agentDPU.DPUPolicyRule) error {
 	csum, err := agentDPU.HashRule(rule.Policy)
 	if err != nil {
 		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
 			logfields.Error, err)
-		return
+		return fmt.Errorf("Failed policy checksum");
 	}
 
 	dpu.ruleSetLock.Lock()
 	defer dpu.ruleSetLock.Unlock()
+	if _, ok := dpu.ruleSet[csum]; !ok {
+		return fmt.Errorf("policy does not exists")
+	}
 	delete(dpu.ruleSet, csum)
+	return nil
 }
 
 func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
@@ -297,7 +306,9 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 		case v1alpha.PolicyOperation_POLICY_OPERATION_UNSPECIFIED:
 			logger.GetLogger().Error("failed policy, unknown operation")
 		case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
-			dpu.upsertPolicyRule(rule)
+			if err := dpu.upsertPolicyRule(rule); err != nil {
+				continue
+			}
 			err := dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, policyList)
 			if err != nil {
 				logger.GetLogger().Error("upsert failed", logfields.Error, err)
@@ -310,8 +321,10 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			msg.PolicyId = rule.Policy.PolicyName
 			dpu.EventLogger.Log(msg)
 		case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
-			dpu.deletePolicyRule(rule)
-			err := dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, policyList)
+			if err := dpu.deletePolicyRule(rule); err != nil {
+				continue
+			}
+			err = dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, policyList)
 			if err != nil {
 				logger.GetLogger().Error("upsert failed", logfields.Error, err)
 				continue
