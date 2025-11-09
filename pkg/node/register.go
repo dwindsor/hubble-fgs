@@ -36,11 +36,14 @@ type Register interface {
 // registerer that uses the provided metadata service to register the node.
 // Otherwise, it returns a no-op registerer.
 func NewNodeRegisterer(metadata local.MetadataService) (Register, error) {
-	if option.Config.Environment == option.EnvironmentAWS && option.K8SControlPlaneEnabled() {
-		return &registerer{
-			metadata: metadata,
-			client:   manager.Get().GetControllerManager().Manager.GetClient(),
-		}, nil
+	if option.K8SControlPlaneEnabled() {
+		if option.Config.Environment == option.EnvironmentAWS ||
+			option.Config.Environment == option.EnvironmentGCloud {
+			return &registerer{
+				metadata: metadata,
+				client:   manager.Get().GetControllerManager().Manager.GetClient(),
+			}, nil
+		}
 	}
 	return &noOpsRegisterer{}, nil
 }
@@ -62,7 +65,10 @@ func (r *registerer) Register(ctx context.Context) error {
 		return err
 	}
 	temp := desired.DeepCopy()
-	res, err := controllerutil.CreateOrPatch(ctx, r.client, temp, nil)
+	res, err := controllerutil.CreateOrPatch(ctx, r.client, temp, func() error {
+		temp.Labels = desired.Labels
+		return nil
+	})
 	if err != nil {
 		return err
 	}
