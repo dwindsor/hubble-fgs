@@ -1,0 +1,101 @@
+# Default values for netpol.
+
+# ============================================================================
+# Replica Configuration
+# ============================================================================
+# Number of pods to deploy (each pod contains both FWA and AGW containers)
+# Increase this value to simulate large-scale deployments
+replicaCount: 1
+
+# The namespace to use
+namespace: default
+
+# ============================================================================
+# NetPol Container Configuration
+# ============================================================================
+netpol:
+  image:
+    repository: "quay.io/isovalent-dev/netpol-ci"
+    # Image tag (use specific version or 'latest')
+    tag: "latest"
+    # Image pull policy
+    pullPolicy: IfNotPresent
+
+  # Timescape gRPC server address
+  timescapeServer: "hubble-timescape.hubble-timescape:80"
+
+  # Default connection fetching history duration
+  duration: 10m
+  
+  # Resource limits and requests for netpol container
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 250m
+    #   memory: 256Mi
+  
+  # Security context for netpol container
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+# ============================================================================
+# General Kubernetes Configuration
+# ============================================================================
+# Image pull secrets for private registries
+imagePullSecrets: []
+# - name: regcred
+
+# Override chart name
+nameOverride: ""
+fullnameOverride: ""
+
+# Service account configuration
+serviceAccount:
+  # Specifies whether a service account should be created by this chart
+  create: true
+  # Automatically mount a ServiceAccount's API credentials
+  automount: true
+  # Annotations to add to the service account (only used when create: true)
+  annotations: {}
+  # The name of the service account to use or create
+  # If not set and create is true, a name is generated using the fullname template
+  # If not set and create is false, the "default" service account is used
+  # To use an existing service account with specific permissions:
+  #   1. Set create: false
+  #   2. Set name to your pre-created service account name (e.g., "my-custom-sa")
+  # This allows the pod to inherit permissions from the specified service account
+  name: ""
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Pod security context
+podSecurityContext: {}
+  # fsGroup: 2000
+
+# Node selector for pod placement
+nodeSelector: {}
+
+# Tolerations for pod scheduling
+tolerations: []
+
+# Affinity rules for pod scheduling
+affinity: {}
+
+# ============================================================================
+# Autoscaling Configuration (Optional)
+# ============================================================================
+# Note: For scale testing, it's recommended to use replicaCount directly
+# rather than autoscaling to have precise control over pod count
+autoscaling:
+  enabled: false
