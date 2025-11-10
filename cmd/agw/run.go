@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"os"
@@ -101,7 +103,9 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 	// Add Network Policy Dir
 	if Config.NetworkPoliciesDir != "" {
 		err := switchpolicy.AddFromDir(Config.NetworkPoliciesDir, agwAgent.PolicyHandler)
-		if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			logger.GetLogger().Info("smartSwitchNetworkPolicy dir does not exist", "network-policy-dir", Config.NetworkPoliciesDir)
+		} else if err != nil {
 			return fmt.Errorf("add SmartSwitchNetworkPolicy failed: %w", err)
 		}
 	}
