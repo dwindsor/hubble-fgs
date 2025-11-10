@@ -236,6 +236,7 @@ type Nxos struct {
 	SkipCtrlr     bool
 	DpuPortLow    uint16
 	DpuPortHigh   uint16
+	IsDelSvcFw    bool
 
 	// counters
 	NumDpu uint16

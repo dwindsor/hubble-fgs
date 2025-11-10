@@ -294,7 +294,7 @@ func (n *Nxos) isConfigured(_ context.Context, isLock bool) bool {
 		defer n.RUnlock()
 	}
 
-	c := n.Ha.Configured // to be revisited: n.Configured
+	c := n.Configured
 	logger.GetLogger().Debug("Configured:", "", c)
 	return c
 }
@@ -788,6 +788,10 @@ func (n *Nxos) cleanup(ctx context.Context) {
 	}
 
 	n.remove(ctx, allocFname)
+
+	if n.isConfigured(ctx, false) && !n.IsDelSvcFw {
+		n.setLocalSvcStateToFailure(ctx)
+	}
 }
 
 func (n *Nxos) setSkipReg(_ context.Context, reason string) {

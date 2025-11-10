@@ -180,6 +180,7 @@ func (n *Nxos) delSvcInstance(ctx context.Context, elem *gnmi.PathElem) {
 
 func (n *Nxos) delSvcFw(ctx context.Context) {
 	logger.GetLogger().Debug("Delete service firewall")
+	n.IsDelSvcFw = true
 
 	n.remove(ctx, allocFname)
 	// Do a graceful restart of the agent, with cleanup.
