@@ -206,6 +206,7 @@ type Rule struct {
 	// rule type
 	Type          RuleType    `protobuf:"varint,3,opt,name=type,proto3,enum=tetragon.RuleType" json:"type,omitempty"`
 	Status        *RuleStatus `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	Counter       uint64      `protobuf:"varint,5,opt,name=counter,proto3" json:"counter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -266,6 +267,13 @@ func (x *Rule) GetStatus() *RuleStatus {
 		return x.Status
 	}
 	return nil
+}
+
+func (x *Rule) GetCounter() uint64 {
+	if x != nil {
+		return x.Counter
+	}
+	return 0
 }
 
 // active ruleset
@@ -330,12 +338,13 @@ const file_tetragon_rule_proto_rawDesc = "" +
 	"RuleStatus\x12&\n" +
 	"\x04mode\x18\x01 \x01(\x0e2\x12.tetragon.RuleModeR\x04mode\x12\x16\n" +
 	"\x06loaded\x18\x02 \x01(\bR\x06loaded\x12\x19\n" +
-	"\bload_err\x18\x03 \x01(\tR\aloadErr\"\x8a\x01\n" +
+	"\bload_err\x18\x03 \x01(\tR\aloadErr\"\xa4\x01\n" +
 	"\x04Rule\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x12\n" +
 	"\x04path\x18\x02 \x03(\tR\x04path\x12&\n" +
 	"\x04type\x18\x03 \x01(\x0e2\x12.tetragon.RuleTypeR\x04type\x12,\n" +
-	"\x06status\x18\x04 \x01(\v2\x14.tetragon.RuleStatusR\x06status\"C\n" +
+	"\x06status\x18\x04 \x01(\v2\x14.tetragon.RuleStatusR\x06status\x12\x18\n" +
+	"\acounter\x18\x05 \x01(\x04R\acounter\"C\n" +
 	"\aRuleSet\x12\x12\n" +
 	"\x04node\x18\x01 \x01(\tR\x04node\x12$\n" +
 	"\x05rules\x18\x02 \x03(\v2\x0e.tetragon.RuleR\x05rules*P\n" +

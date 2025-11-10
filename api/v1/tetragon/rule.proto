@@ -54,6 +54,7 @@ message Rule {
   // rule type
   RuleType type = 3;
   RuleStatus status = 4;
+  uint64 counter = 5;
 }
 
 // active ruleset

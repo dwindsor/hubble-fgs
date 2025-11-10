@@ -4128,6 +4128,7 @@ active rule
 | path | [string](#string) | repeated | rule path, e.g., [&#34;path&#34;, &#34;release-agent&#34;] or [&#34;exec&#34;, &#34;all&#34;, &#34;execBinary&#34;, &#34;bulk-data-removal&#34;] NB(kkourt): there is some redundancy here because many rules will have a path prefix, but we want to keep things simple |
 | type | [RuleType](#tetragon-RuleType) |  | rule type |
 | status | [RuleStatus](#tetragon-RuleStatus) |  |  |
+| counter | [uint64](#uint64) |  |  |
 
 
 
