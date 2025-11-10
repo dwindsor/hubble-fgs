@@ -229,6 +229,10 @@ func (n *Nxos) gnmiSet(ctx context.Context, path string, jstr string) error {
 }
 
 func (n *Nxos) gnmiDel(ctx context.Context, path string) error {
+	if n.Target == nil {
+		return nil
+	}
+
 	logger.GetLogger().Debug("gnmi delete path", "path", path)
 	req, err := api.NewSetRequest(api.Delete(path))
 	if err != nil {
@@ -277,8 +281,10 @@ func (n *Nxos) gnmiGet(ctx context.Context, path string) ([]string, error) {
 func (n *Nxos) GnmiClose(_ context.Context) {
 	logger.GetLogger().Debug("Closing GNMI client")
 
-	err := n.Target.Close()
-	if err != nil {
-		logger.GetLogger().Error("Fail to close GNMI client", logfields.Error, err)
+	if n.Target != nil {
+		err := n.Target.Close()
+		if err != nil {
+			logger.GetLogger().Error("Fail to close GNMI client", logfields.Error, err)
+		}
 	}
 }
