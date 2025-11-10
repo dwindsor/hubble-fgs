@@ -47,12 +47,22 @@ const (
 	ClearPolicy  = 4
 )
 
+// DPU Board ID to Asic type mappings
+var (
+	dpuBoardMap = map[string]string{
+		"0x02820001": "elba",
+		"0x03610001": "giglio",
+		"0x03620001": "giglio",
+	}
+)
+
 // Dataplane Interface
 type Dataplane interface {
 	// Attributes
 	Type() DataplaneType
 	Version() string
 	ApiPath() string
+	HardwareModel() string
 
 	// Commands
 	PushPolicy(context.Context, v1alpha.PolicyOperation, []*dpuPolicy.DPUPolicyRule) error

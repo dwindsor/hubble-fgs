@@ -172,7 +172,7 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 			logfields.Error, err)
 		return err
 	}
-	logger.GetLogger().Info("Connected to dataplane", "type", dpu.Dataplane.Type(), "version", dpu.Dataplane.Version())
+	logger.GetLogger().Info("Connected to dataplane", "type", dpu.Dataplane.Type(), "version", dpu.Dataplane.Version(), "hardware", dpu.Dataplane.HardwareModel())
 
 	// Clearing all dataplane policies on startup
 	err = dpu.Dataplane.ClearPolicy(ctx)
@@ -410,6 +410,7 @@ func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
 				Os:             dpu.Os,
 				Type:           v1alpha.AgentType_AGENT_TYPE_DPU_AGW,
 				SerialNumber:   "serialNumber",
+				HardwareModel:  dpu.Dataplane.HardwareModel(),
 			}
 			req := &v1alpha.ReportStatusRequest{
 				Status: status,

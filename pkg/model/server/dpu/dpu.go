@@ -80,6 +80,7 @@ type DPUReportStatus struct {
 	OS             string
 	Type           v1alpha.AgentType
 	SerialNumber   string
+	HardwareModel  string
 }
 
 // Peer UID is unique in scope of agent so we never remove peers. And we expect
@@ -245,7 +246,7 @@ func (dpu *DPUListener) StatusReportString() string {
 	buf := new(bytes.Buffer)
 	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
 	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "LastPing\tHealthy\tDPU\tUID\tHost\tAgent\tDatapath\tPolicySync")
+	fmt.Fprintln(w, "LastPing\tHealthy\tDPU\tUID\tHardware\tAgent\tDatapath\tPolicySync")
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	//fixme
@@ -281,7 +282,7 @@ func (dpu *DPUListener) StatusReportString() string {
 			healthy,
 			dpuNumber,
 			status.AgentUid,
-			status.Hostname,
+			status.HardwareModel,
 			status.AgentVersion,
 			status.DpVersion,
 			sync)

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -47,6 +48,7 @@ type AcceleratedDataplaneProcess struct {
 	Id      string
 	ApiPath string
 	Version string
+	Asic    string
 	NpuIp   string
 	NpuMac  string
 	Status  atomic.Bool
@@ -57,29 +59,38 @@ func (dp *AcceleratedDataplaneProcess) GetId() string {
 }
 
 func (dp *AcceleratedDataplaneProcess) Init(_ context.Context) error {
-	type fwaupdateObj struct {
-		MainFWA struct {
-			SystemImage struct {
-				SoftwareVersion string `json:"software_version"`
-			} `json:"system_image"`
-		} `json:"mainfwa"`
+	type switchObj struct {
+		Sw struct {
+			Version string `json:"version"`
+		} `json:"sw"`
 	}
 
-	// Getting the software version of the DPU, setting it to "missing" if it fails
-	version, err := runCommand("/nic/tools/fwupdate", "-L")
+	// Getting the version of the DPU, setting it to "missing" if it fails
+	dp.Version = "missing"
+	versionFile, err := os.ReadFile("/nic/etc/VERSION.json")
 	if err != nil {
-		logger.GetLogger().Error("failed to get DPU software version", logfields.Error, err)
-		dp.Version = "missing"
-		return nil
+		logger.GetLogger().Error("failed to read DPU version file", logfields.Error, err)
+	} else {
+		var versionObj switchObj
+		err := json.Unmarshal(versionFile, &versionObj)
+		if err != nil {
+			logger.GetLogger().Error("failed to get DPU version", logfields.Error, err)
+		} else {
+			dp.Version = versionObj.Sw.Version
+		}
 	}
-	var fwaUpdate fwaupdateObj
-	err = json.Unmarshal([]byte(version), &fwaUpdate)
+
+	// Getting the DPU board type (can't get from asic field in the file above because it is not updated correctly)
+	dp.Asic = "missing"
+	boardType, err := runCommand("/nic/bin/board_config", "-b")
 	if err != nil {
-		logger.GetLogger().Error("failed to get DPU software version", logfields.Error, err)
-		dp.Version = "missing"
-		return nil
+		logger.GetLogger().Error("failed to get DPU board type", logfields.Error, err)
 	}
-	dp.Version = fwaUpdate.MainFWA.SystemImage.SoftwareVersion
+	boardType = strings.TrimSpace(boardType)
+	asic, ok := dpuBoardMap[boardType]
+	if ok {
+		dp.Asic = asic
+	}
 	return nil
 }
 
@@ -296,6 +307,10 @@ func (dp *AcceleratedDataplane) Version() string {
 
 func (dp *AcceleratedDataplane) ApiPath() string {
 	return dp.Accelerated.ApiPath
+}
+
+func (dp *AcceleratedDataplane) HardwareModel() string {
+	return dp.Accelerated.Asic
 }
 
 func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, fwop v1alpha.PolicyOperation, policies []*dpuPolicy.DPUPolicyRule) error {

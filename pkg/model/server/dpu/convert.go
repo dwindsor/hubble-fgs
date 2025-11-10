@@ -187,6 +187,7 @@ func reportRequestToDPU(req *v1alpha.ReportStatusRequest) *DPUReportStatus {
 		OS:             req.Status.Os,
 		Type:           req.Status.Type,
 		SerialNumber:   req.Status.SerialNumber,
+		HardwareModel:  req.Status.HardwareModel,
 	}
 }
 
