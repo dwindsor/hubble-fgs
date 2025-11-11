@@ -32,13 +32,12 @@
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
 
     <WixVariable Id="WixUILicenseRtf" Value="assets\Cisco_General_Terms.rtf" />
-    
+
     <WixVariable Id="WixUIBannerBmp" Value="assets\banner-top.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="assets\banner-dialog-background-enterprise.bmp" />
 
     <Feature Id="TetragonOnWindows">
-      <ComponentGroupRef Id="comp.eBPFWindows" />
-      <ComponentGroupRef Id="comp.eBPFWindows" />
+      <ComponentGroupRef Id="cgrp.eBPFWindows" />
       <ComponentGroupRef Id="comp.TetragonBpfDrivers" />
       <ComponentGroupRef Id="comp.TetragonBinaries" />
       <ComponentGroupRef Id="comp.ShawlServiceWrapper" />
@@ -129,6 +128,10 @@
       <Custom Action="Shawl_stop_rollback" Before="Shawl_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
       <Custom Action="Shawl_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
       <Custom Action="Shawl_uninstall_rollback" Before="Shawl_uninstall" Condition='Installed AND (REMOVE="ALL")' />
+
+      <!-- eBPFSvc -->
+      <Custom Action="eBPFSvc_start" Before="Shawl_start" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPFSvc_start_rollback" Before="Shawl_start_rollback" Condition="NOT Installed OR REINSTALL" />
 
     </InstallExecuteSequence>
 

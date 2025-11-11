@@ -43,8 +43,8 @@ runs:
         }
 
         $fileSize = (Get-Item $msiFile).Length
-        Write-Host "MSI file: $msiFile"
-        Write-Host "Size: $([math]::Round($fileSize / 1MB, 2)) MB"
+        Write-Output "MSI file: $msiFile"
+        Write-Output "Size: $([math]::Round($fileSize / 1MB, 2)) MB"
 
     - name: "Perform administrative installation"
       id: extract
@@ -55,9 +55,9 @@ runs:
         $logFile = "${{ inputs.log-file }}"
         $additionalProps = "${{ inputs.additional-properties }}"
 
-        Write-Host "Performing administrative installation..."
-        Write-Host "MSI: $msiFile"
-        Write-Host "Target: $extractDir"
+        Write-Output "Performing administrative installation..."
+        Write-Output "MSI: $msiFile"
+        Write-Output "Target: $extractDir"
 
         # Build msiexec command
         $msiexecArgs = @(
@@ -73,12 +73,12 @@ runs:
         }
         $msiexecArgs += "/l*vx"
         $msiexecArgs += "`"$logFile`""
-        Write-Host "Log file: $logFile"
+        Write-Output "Log file: $logFile"
 
         # Add additional properties if specified
         if ($additionalProps) {
           $msiexecArgs += $additionalProps.Split(' ')
-          Write-Host "Additional properties: $additionalProps"
+          Write-Output "Additional properties: $additionalProps"
         }
 
         # Execute msiexec
@@ -91,15 +91,15 @@ runs:
         $exitCode = $process.ExitCode
         echo "EXIT_CODE=$exitCode" >> $env:GITHUB_OUTPUT
 
-        Write-Host "MSI exit code: $exitCode"
+        Write-Output "MSI exit code: $exitCode"
 
-        Write-Host "::group::msiexec log file"
+        Write-Output "::group::msiexec log file"
         if ($logFile -and (Test-Path $logFile)) {
           Get-Content $logFile
         } else {
-          Write-Host "Error reading '$logFile'"
+          Write-Output "Error reading '$logFile'"
         }
-        Write-Host "::endgroup::"
+        Write-Output "::endgroup::"
 
         # -------------------------------
         # Check exit code
@@ -107,17 +107,17 @@ runs:
         # 3010 = Success, reboot required
         # -------------------------------
         if ($exitCode -eq 0 -or $exitCode -eq 3010) {
-          Write-Host "✓ Administrative installation completed successfully"
+          Write-Output "✓ Administrative installation completed successfully"
           
           # Verify extracted files
           if (Test-Path $extractDir) {
             $extractedFiles = Get-ChildItem -Path $extractDir -Recurse -File
             $filesCount = $extractedFiles.Count
-            Write-Host "✓ Extracted $filesCount file(s) to $extractDir"
+            Write-Output "✓ Extracted $filesCount file(s) to $extractDir"
 
-            Write-Host "::group::Contents:"
+            Write-Output "::group::Contents:"
             $extractedFiles | Select-Object Length, FullName | Format-Table
-            Write-Host "::endgroup::"
+            Write-Output "::endgroup::"
           }
         } else {
           $errorMsg = "MSI administrative installation failed with exit code: $exitCode"

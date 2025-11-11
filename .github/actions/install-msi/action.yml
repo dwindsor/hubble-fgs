@@ -39,8 +39,8 @@ runs:
         }
 
         $fileSize = (Get-Item $msiFile).Length
-        Write-Host "MSI file: $msiFile"
-        Write-Host "Size: $([math]::Round($fileSize / 1MB, 2)) MB"
+        Write-Output "MSI file: $msiFile"
+        Write-Output "Size: $([math]::Round($fileSize / 1MB, 2)) MB"
 
     - name: "Perform silent installation"
       id: install
@@ -50,8 +50,8 @@ runs:
         $logFile = "${{ inputs.log-file }}"
         $additionalProps = "${{ inputs.additional-properties }}"
 
-        Write-Host "Performing silent installation..."
-        Write-Host "MSI: $msiFile"
+        Write-Output "Performing silent installation..."
+        Write-Output "MSI: $msiFile"
 
         # Build msiexec command
         $msiexecArgs = @(
@@ -67,12 +67,12 @@ runs:
 
         $msiexecArgs += "/l*vx"
         $msiexecArgs += "`"$logFile`""
-        Write-Host "Log file: $logFile"
+        Write-Output "Log file: $logFile"
 
         # Add additional properties if specified
         if ($additionalProps) {
           $msiexecArgs += $additionalProps.Split(' ')
-          Write-Host "Additional properties: $additionalProps"
+          Write-Output "Additional properties: $additionalProps"
         }
 
         # Execute msiexec
@@ -85,16 +85,16 @@ runs:
         $exitCode = $process.ExitCode
         echo "EXIT_CODE=$exitCode" >> $env:GITHUB_OUTPUT
 
-        Write-Host "MSI exit code: $exitCode"
+        Write-Output "MSI exit code: $exitCode"
 
-        Write-Host "::group::msiexec log file"
+        Write-Output "::group::msiexec log file"
         if ($logFile -and (Test-Path $logFile)) {
           Get-Content $logFile
         }
         else {
-          Write-Host "Error reading '$logFile'"
+          Write-Output "Error reading '$logFile'"
         }
-        Write-Host "::endgroup::"
+        Write-Output "::endgroup::"
 
         # -------------------------------
         # Check exit code
@@ -102,7 +102,7 @@ runs:
         # 3010 = Success, reboot required
         # -------------------------------
         if ($exitCode -eq 0 -or $exitCode -eq 3010) {
-          Write-Host "✓ Silent installation completed successfully"
+          Write-Output "✓ Silent installation completed successfully"
         }
         else {
           $errorMsg = "MSI Silent installation failed with exit code: $exitCode"
@@ -130,28 +130,28 @@ runs:
                 $svc = Get-Service $_ -ErrorAction Stop
 
                 if ($svc.Status -eq 'Running') {
-                    Write-Host "✓ $_ is running"
+                    Write-Output "✓ $_ is running"
                 }
                 else {
-                    Write-Host "✗ $_ is $($svc.Status)"
+                    Write-Output "✗ $_ is $($svc.Status)"
                     $failed = $true
                 }
             }
             catch {
                 if ($_.Exception.Message -match 'Cannot find.*service') {
-                    Write-Host "⚠ $svcName is not installed"
+                    Write-Output "⚠ $svcName is not installed"
                 }
                 else {
-                    Write-Host "✗ $_ error: $($_.Exception.Message)"
+                    Write-Output "✗ $_ error: $($_.Exception.Message)"
                     $failed = $true
                 }
             }
         }
                     
         if ($failed) {
-            Write-Host "✗ Something went wront"
+            Write-Output "✗ Something went wront"
             exit 1
         }
         else {
-            Write-Host "✓ All services are running"
+            Write-Output "✓ All services are running"
         }

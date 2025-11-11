@@ -1,54 +1,84 @@
 ﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx">
+     xmlns:netfx="http://wixtoolset.org/schemas/v4/wxs/netfx"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <!-- For this release we bundle the test-signed eBPF-for-windows -->
 
   <Fragment>
-    
+
     <Component Id="comp.eBPFPATH" Guid="{C062B980-C5C0-4FC7-A4F9-A751C2B419FE}">
-        <Environment Id="env.eBPFPATH" Name="PATH" Value="[dir.eBPFWindows]" Permanent="no" Part="last" Action="set" System="yes" Separator=";" />
+      <Environment Id="env.eBPFPATH"
+                   Name="PATH"
+                   Value="[dir.eBPFWindows]"
+                   Permanent="no"
+                   Part="last"
+                   Action="set"
+                   System="yes"
+                   Separator=";" />
     </Component>
-    
-    <ComponentGroup Id="comp.eBPFWindows.Drivers" Directory="dir.eBPFWindows.Drivers">
+
+    <ComponentGroup Id="cgrp.eBPFWindows.Drivers" Directory="dir.eBPFWindows.Drivers">
       <Files Include="!(bindpath.staging)\ebpf-for-windows\drivers\*" />
     </ComponentGroup>
 
-    <ComponentGroup Id="comp.eBPFWindows.Jit" Directory="dir.eBPFWindows.Jit">
-      <Files Include="!(bindpath.staging)\ebpf-for-windows\JIT\*" />
+    <ComponentGroup Id="cgrp.eBPFWindows.Jit" Directory="dir.eBPFWindows.Jit">
+      <Files Include="!(bindpath.staging)\ebpf-for-windows\JIT\*.pdb" />
+
+      <!--Install/Uninstall the eBPF Service -->
+      <Component Id="comp.eBPFWindows.eBPFService" Guid="2de7c165-C5C0-5ee1-9df0-372069019d03">
+        <File Source="!(bindpath.staging)\ebpf-for-windows\JIT\ebpfsvc.exe" KeyPath="yes" />
+
+        <ServiceInstall Id="svci.eBPFWindows.eBPFService"
+                        Name="eBPFSvc"
+                        DisplayName="eBPF Service"
+                        Description="eBPF Service"
+                        ErrorControl="normal"
+                        Start="auto"
+                        Type="ownProcess"
+                        Account="[WIX_ACCOUNT_LOCALSERVICE]"
+                        Interactive="no" >
+
+          <ServiceConfig ServiceSid="restricted"
+                         OnInstall="yes"
+                         OnReinstall="yes" />
+
+          <util:ServiceConfig FirstFailureActionType="restart"
+                              SecondFailureActionType="restart"
+                              ThirdFailureActionType="restart" />
+        </ServiceInstall>
+
+        <ServiceControl Id="svcc.eBPFWindows.eBPFService.install"
+                        Name="eBPFSvc"
+                        Start="install"
+                        Wait="no" />
+
+        <ServiceControl Id="svcc.eBPFWindows.eBPFService.uninstall"
+                        Name="eBPFSvc"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
     </ComponentGroup>
 
-    <!--Install/Uninstall the eBPF Service -->
-		<ComponentGroup Id="comp.eBPFWindows.ebpfService" Directory="dir.eBPFWindows.Jit">
-			<Component Id="comp.eBPFWindows.ebpfService" Guid="{25F4F9A3-78EB-4598-9982-98FB65377A51}">
-				<File Source="C:\Program Files\ebpf-for-windows\JIT\ebpfsvc.exe" KeyPath="yes" />
-				<ServiceInstall Id="eBPFSvcInstaller" Name="eBPFSvc" DisplayName="eBPF Service" Description="eBPF Service"
-								Start="auto"
-								Type="ownProcess"
-								ErrorControl="normal"
-								Account="[WIX_ACCOUNT_LOCALSERVICE]"
-								Vital="yes"
-								Interactive="no">
-					<ServiceConfig ServiceSid="restricted" OnInstall="yes" OnReinstall="yes" />
-				</ServiceInstall>
-				<ServiceControl Id="ebpfService.Start" Name="eBPFSvc"
-								Start="install"
-								Wait="no" />
-				<ServiceControl Id="ebpfService.Stop" Name="eBPFSvc"
-								Remove="uninstall"
-								Stop="both"
-								Wait="yes" />
-			</Component>
-		</ComponentGroup>
 
-    <ComponentGroup Id="comp.eBPFWindows" Directory="dir.eBPFWindows">
+    <ComponentGroup Id="cgrp.eBPFWindows" Directory="dir.eBPFWindows">
       <ComponentRef Id="comp.eBPFPATH" />
-      <ComponentGroupRef Id="comp.eBPFWindows.Drivers" />
-      <ComponentGroupRef Id="comp.eBPFWindows.Jit" />
-      <ComponentGroupRef Id="comp.eBPFWindows.ebpfService" />
+      <ComponentGroupRef Id="cgrp.eBPFWindows.Drivers" />
+      <ComponentGroupRef Id="cgrp.eBPFWindows.Jit" />
       <Files Include="!(bindpath.staging)\ebpf-for-windows\*" />
     </ComponentGroup>
 
     
+    <!-- eBPFSvc -->
+    <CustomAction Id="eBPFSvc_start" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="eBPFSvc_start" Before="eBPFSvc_start" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe start eBPFSvc'/>
+
+    <CustomAction Id="eBPFSvc_start_rollback" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="eBPFSvc_start_rollback" Before="eBPFSvc_start_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe start eBPFSvc'/>
+
+
     <!-- eBPFCore -->
     <CustomAction Id="eBPFCore_Driver_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
     <SetProperty Id="eBPFCore_Driver_install" Before="eBPFCore_Driver_install" Sequence="execute"
@@ -120,7 +150,7 @@
     <SetProperty Id="NetEbpfExt_Driver_uninstall_rollback" Before="NetEbpfExt_Driver_uninstall_rollback" Sequence="execute"
                  Value='"[%ComSpec]" /c sc.exe create NetEbpfExt type=kernel start=auto binpath="[dir.eBPFWindows.Drivers]NetEbpfExt.sys"'/>
 
-    
+
     <!-- ebpfnetsh.dll -->
     <CustomAction Id="ebpfnetsh_helper_install" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
     <SetProperty Id="ebpfnetsh_helper_install" Before="ebpfnetsh_helper_install" Sequence="execute"
@@ -138,7 +168,7 @@
     <SetProperty Id="ebpfnetsh_helper_uninstall_rollback" Before="ebpfnetsh_helper_uninstall_rollback" Sequence="execute"
                  Value='"[%ComSpec]" /c netsh add helper ebpfnetsh.dll' />
 
-    
+
     <!-- export_program_info -->
     <?define ExportCmd = '"[%ComSpec]" /c "[dir.eBPFWindows]export_program_info.exe"' ?>
     <CustomAction Id="eBPF_store_clear_HKLM_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
@@ -153,7 +183,7 @@
     <CustomAction Id="eBPF_store_clear_HKLM_uninstall" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
     <SetProperty Id="eBPF_store_clear_HKLM_uninstall" Before="eBPF_store_clear_HKLM_uninstall" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
 
-    
+
     <CustomAction Id="eBPF_store_clear_HKCU_install" Execute="deferred" Return="check" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
     <SetProperty Id="eBPF_store_clear_HKCU_install" Before="eBPF_store_clear_HKCU_install" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
 
@@ -165,7 +195,7 @@
 
     <CustomAction Id="eBPF_store_clear_HKCU_uninstall" Execute="deferred" Return="ignore" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
     <SetProperty Id="eBPF_store_clear_HKCU_uninstall" Before="eBPF_store_clear_HKCU_uninstall" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
-  
+
   </Fragment>
 
 </Wix>

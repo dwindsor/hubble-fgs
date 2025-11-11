@@ -44,9 +44,9 @@ runs:
         $artifactPath = Join-Path $downloadDir $artifactName
         echo "ARTIFACT_PATH=$artifactPath" >> $env:GITHUB_OUTPUT
 
-        Write-Host "Artifact: $artifactName"
-        Write-Host "From: $repo (run $runId)"
-        Write-Host "Download path: $artifactPath"
+        Write-Output "Artifact: $artifactName"
+        Write-Output "From: $repo (run $runId)"
+        Write-Output "Download path: $artifactPath"
 
     - name: "Download artifact"
       id: download
@@ -80,8 +80,8 @@ runs:
           echo "ARTIFACT_SINGLE=$fullName" >> $env:GITHUB_OUTPUT
         }
 
-        Write-Host "✓ Artifact downloaded successfully"
-        Write-Host "Files downloaded: $filesCount"
-        Write-Host "::group::Contents:"
+        Write-Output "✓ Artifact downloaded successfully"
+        Write-Output "Files downloaded: $filesCount"
+        Write-Output "::group::Contents:"
         $files | Select-Object Length, FullName | Format-Table
-        Write-Host "::endgroup::"
+        Write-Output "::endgroup::"

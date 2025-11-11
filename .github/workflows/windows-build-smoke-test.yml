@@ -61,14 +61,14 @@ jobs:
 
             # Add installed LLVM to PATH first so it takes precedence
             echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            Write-Host "✓ Successfully installed LLVM 18.1.8"
+            Write-Output "✓ Successfully installed LLVM 18.1.8"
 
-            Write-Host "Clang (LLVM):"
-            Write-Host "  $(& 'C:\Program Files\LLVM\bin\clang.exe' --version)"
+            Write-Output "Clang (LLVM):"
+            Write-Output "  $(& 'C:\Program Files\LLVM\bin\clang.exe' --version)"
           } 
           catch {
             Write-Warning "✗ Failed to install LLVM 18.1.8:  $($_.Exception.Message)"
-            Write-Host "Continuing with pre-installed LLVM version"
+            Write-Output "Continuing with pre-installed LLVM version"
           }
 
       - name: Set up Environment Variables
@@ -86,18 +86,15 @@ jobs:
         with:
           msbuild-architecture: x64
 
-      - name: Add Visual Studio LLVM to path
+      - name: Check Clang version (MSVC)
+        shell: pwsh
         run: |
-          echo "$env:VCINSTALLDIR\tools\llvm\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Write-Output "  $(& 'clang.exe' --version)"
 
-      - name: Check for Clang version (MSVC)
-        run:
-          clang.exe --version
-
-      - name: Check clang version (LLVM)
-        shell: cmd
-        run:
-            '"c:\Program Files\llvm\bin\clang.exe" --version'
+      - name: Check Clang version (LLVM)
+        shell: pwsh
+        run: |
+          Write-Output "  $(& 'C:\Program Files\LLVM\bin\clang.exe' --version)"
 
       - name: Clone msft/ntosebpfext
         id: download-ntosebpfet
@@ -107,16 +104,17 @@ jobs:
           git clone --recursive https://github.com/microsoft/ntosebpfext.git
           cd ${{ env.TEMP }}\ntosebpfext
           git checkout tags/v0.6.0
-      
+
       - name: Copy Process_monitor.c file
         shell: pwsh
         run: |
-          $sourcePath = "${{ github.workspace }}\bpf\windows\process_monitor.c"
-          $destinationPath = "${{ env.TEMP }}\ntosebpfext\tools\process_monitor_bpf\process_monitor.c"
-          Copy-Item -Path $sourcePath -Destination $destinationPath -Force
-          $sourcePathHeader = "${{ github.workspace }}\bpf\windows\process.h"
-          $destinationPathHeader = "${{ env.TEMP }}\ntosebpfext\tools\process_monitor_bpf\process.h"
-          Copy-Item -Path $sourcePathHeader -Destination $destinationPathHeader -Force
+          Copy-Item -Path "${{ github.workspace }}\bpf\windows\process_monitor.c" `
+                    -Destination "${{ env.TEMP }}\ntosebpfext\tools\process_monitor_bpf\process_monitor.c" `
+                    -Force
+
+          Copy-Item -Path "${{ github.workspace }}\bpf\windows\process.h" `
+                    -Destination "${{ env.TEMP }}\ntosebpfext\tools\process_monitor_bpf\process.h" `
+                    -Force
 
       - name: Configuring repo for first build
         shell: pwsh
@@ -155,13 +153,16 @@ jobs:
         uses: ./.github/actions/extract-zip
         with:
           zip-file: "${{ env.TEMP }}/efw.zip"
-          extract-dir: '${{ env.TEMP }}\packages\eBPF-for-Windows.1.0.0-rc1'
+          extract-dir: "${{ env.TEMP }}/packages/eBPF-for-Windows.1.0.0-rc1"
 
       - name: Build tcp_connect monitor ebpf program
-        shell: cmd
+        shell: pwsh
         working-directory: ${{ github.workspace }}\bpf\windows
-        run:
-            '"c:\Program Files\llvm\bin\clang.exe" -g -target bpf -O2 -Werror -I${{ env.TEMP }}\packages\eBPF-for-Windows.1.0.0-rc1\build\native\include -c .\tcp_connect.c -o tcp_connect.o'
+        run: |
+          & 'C:\Program Files\LLVM\bin\clang.exe' -g -O2 -Werror -target bpf `
+            -I${{ env.TEMP }}\packages\eBPF-for-Windows.1.0.0-rc1\build\native\include `
+            -c .\tcp_connect.c `
+            -o tcp_connect.o
 
       - name: Link tcp_connect monitor ebpf program
         shell: pwsh
@@ -243,19 +244,19 @@ jobs:
           Rename-Item -Path $extractPath -NewName $ebpfPath -ErrorAction Stop
 
           # Find and execute the setup script
-          Write-Host "Searching for setup script..."
+          Write-Output "Searching for setup script..."
           $setupScript = Get-ChildItem -Path $ebpfPath -Filter "setup-ebpf.ps1" -Recurse | Select-Object -First 1
 
           if ($setupScript) {
-              Write-Host "✓ Found setup script: $($setupScript.FullName)"
+              Write-Output "✓ Found setup script: $($setupScript.FullName)"
               
               try {
                   Push-Location -Path $setupScript.DirectoryName
                  
-                  Write-Host "Executing setup script..."
+                  Write-Output "Executing setup script..."
                   & $setupScript.FullName
                   
-                  Write-Host "✓ Setup script execution completed"
+                  Write-Output "✓ Setup script execution completed"
               }
               catch {
                   Write-Error "✗ Failed to execute setup script: $($_.Exception.Message)"
@@ -267,14 +268,14 @@ jobs:
           }
           else {
               Write-Error "✗ Setup script 'setup-ebpf.ps1' not found in the extracted package"
-              Write-Host "Directory contents:"
+              Write-Output "Directory contents:"
               Get-ChildItem -Path $ebpfPath -Recurse | ForEach-Object { 
-                  Write-Host "  $($_.FullName)" 
+                  Write-Output "  $($_.FullName)" 
               }
               throw
           }
 
-          Write-Host "✓ eBPF for Windows installed successfully"
+          Write-Output "✓ eBPF for Windows installed successfully"
 
       - name: "Add eBPF for Windows to PATH"
         shell: pwsh
@@ -322,13 +323,13 @@ jobs:
             exit 1
           }
 
-
       - name: Run recordtest and netpoltest Unit Tests
         working-directory: ${{ github.workspace }}\pkg\bpftest
-        shell: powershell
+        shell: pwsh
         run: |
-
+          echo "::group::Sanity check: contents of bpf\objs"
           Get-ChildItem -Recurse -Path "${{ github.workspace }}\bpf\objs"
+          echo "::endgroup::"
           go test ./recordtest -v
           #go test ./netpoltest -v
 
@@ -430,7 +431,7 @@ jobs:
 
           # Compute Product Version
           $tag = git for-each-ref --sort=-committerdate:short --format='%(refname:short) %(committerdate:short) %(objectname:short)' 'refs/tags/v*' --count 5 2>$null | sort -Descending -Top 1
-          Write-Host "✓ Latest tag: $tag"
+          Write-Output "✓ Latest tag: $tag"
 
           if ($tag -match '^v(\d+\.\d+\.\d+)[^\s]+\s+(\d+-\d+-\d+)\s+([0-9a-f]+)') {
             $tagVersion = $matches[1]
@@ -440,18 +441,18 @@ jobs:
             throw "Error fetching version info from '$tag'"
           }
 
-          Write-Host "✓ Tag version: $tagVersion"
+          Write-Output "✓ Tag version: $tagVersion"
 
           $productVersion = $tagVersion + ".${{ github.run_number }}"
-          Write-Host "✓ Computed product version: $productVersion"
+          Write-Output "✓ Computed product version: $productVersion"
 
           # Generate Product Code, must be new on every build
           $productCode = [Guid]::NewGuid().ToString().ToUpper()
-          Write-Host "✓ MSI product code: $productCode"
+          Write-Output "✓ MSI product code: $productCode"
 
           $binlogFile = "${{ runner.temp }}\staging\msbuild-$productVersion.binlog"
           "binlogFile=$binlogFile" >> $env:GITHUB_OUTPUT
-          Write-Host "✓ MSI build log: $binlogFile"
+          Write-Output "✓ MSI build log: $binlogFile"
 
           dotnet build ${{ github.workspace }}\install\windows\TetragonEE-Wix\TetragonEnterprise.slnx `
               /p:StagingRoot=${{ runner.temp }}\staging `
@@ -464,11 +465,11 @@ jobs:
 
           if (!$?) {
             $errcode = $LASTEXITCODE
-            Write-Host "✗ MSI Build failed"
+            Write-Output "✗ MSI Build failed"
             exit $errcode
           }
 
-          Write-Host "✓ MSI built successfully"
+          Write-Output "✓ MSI built successfully"
 
       - name: Upload MSI
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
@@ -526,9 +527,9 @@ jobs:
         shell: pwsh
         run: |
           # Tests
-          Write-Host "::group::PATH:"
+          Write-Output "::group::PATH:"
           $env:Path -split ';'
-          Write-Host "::endgroup::"
+          Write-Output "::endgroup::"
 
           # Stop Running Tetragon Service, we need to change args
           net.exe stop TetragonEnterprise
@@ -551,7 +552,7 @@ jobs:
 
           Start-Sleep -Seconds 5
           if(Get-Process -id $tetragonBackgroundProcess.Id) {
-            Write-Host "✓ Tetragon is Running "
+            Write-Output "✓ Tetragon is Running "
           }
           else {
             throw "✗ Tetragon Could not be started"

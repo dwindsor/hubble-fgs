@@ -43,9 +43,9 @@ runs:
         echo "FILE_PATH=$filePath" >> $env:GITHUB_OUTPUT
         echo "FILE_NAME=$fileName" >> $env:GITHUB_OUTPUT
 
-        Write-Host "Cache key: $cacheKey"
-        Write-Host "Download path: $downloadPath"
-        Write-Host "File path: $filePath"
+        Write-Output "Cache key: $cacheKey"
+        Write-Output "Download path: $downloadPath"
+        Write-Output "File path: $filePath"
 
     - name: "Restore cache"
       id: cache
@@ -63,16 +63,16 @@ runs:
         $downloadPath = "${{ steps.setup.outputs.DOWNLOAD_PATH }}"
         $filePath = "${{ steps.setup.outputs.FILE_PATH }}"
 
-        Write-Host "Cache miss. Downloading from $url..."
+        Write-Output "Cache miss. Downloading from $url..."
         New-Item -ItemType Directory -Path $downloadPath -Force | Out-Null
 
         $maxAttempts = 4
         for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
           try {
-            Write-Host "Download attempt $attempt/$maxAttempts..."
+            Write-Output "Download attempt $attempt/$maxAttempts..."
             $webClient = New-Object System.Net.WebClient
             $webClient.DownloadFile($url, $filePath)
-            Write-Host "✓ Download successful"
+            Write-Output "✓ Download successful"
             break
           } catch {
             if ($attempt -eq $maxAttempts) {
@@ -92,7 +92,7 @@ runs:
         }
 
         $fileSize = (Get-Item $filePath).Length
-        Write-Host "Downloaded file size: $([math]::Round($fileSize / 1MB, 2)) MB"
+        Write-Output "Downloaded file size: $([math]::Round($fileSize / 1MB, 2)) MB"
 
     - name: "Set output path"
       id: output-path
@@ -102,9 +102,9 @@ runs:
         $cacheHit = "${{ steps.cache.outputs.cache-hit }}" -eq "true"
 
         if ($cacheHit) {
-          Write-Host "✓ Cache hit - using cached file at: $filePath"
+          Write-Output "✓ Cache hit - using cached file at: $filePath"
         } else {
-          Write-Host "✓ Download complete - file at: $filePath"
+          Write-Output "✓ Download complete - file at: $filePath"
         }
 
         # Verify file exists

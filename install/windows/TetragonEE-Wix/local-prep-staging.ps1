@@ -1,6 +1,6 @@
 $stagingDir = "$PSScriptRoot\staging"
 
-msiexec /qn /a $stagingDir\ebpf-for-windows.x64.0.21.0.msi TARGETDIR=$stagingDir\unpacked
+msiexec /qn /a $stagingDir\ebpf-for-windows.x64.1.0.0-rc1.msi TARGETDIR=$stagingDir\unpacked
 
 Expand-Archive -Path $stagingDir\ntosebpfext-build-output.zip -DestinationPath $stagingDir\unpacked -Force
 Expand-Archive -Path $stagingDir\unpacked\build-x64.Release.zip -DestinationPath $stagingDir\unpacked -Force
