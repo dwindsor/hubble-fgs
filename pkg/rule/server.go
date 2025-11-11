@@ -41,7 +41,7 @@ func New(alertLister alertRulesLister, specsLister tracingpolicyCollectionsListe
 	}
 }
 
-func (s *Server) ListRules(ctx context.Context, _ *api.ListRulesRequest) (*api.ListRulesResponse, error) {
+func (s *Server) ListRules(ctx context.Context, req *api.ListRulesRequest) (*api.ListRulesResponse, error) {
 	rules := &api.RuleSet{
 		Node:  node.GetNodeName(),
 		Rules: make([]*api.Rule, 0),
@@ -86,6 +86,10 @@ func (s *Server) ListRules(ctx context.Context, _ *api.ListRulesRequest) (*api.L
 			default:
 				mode = api.RuleMode_RULE_MODE_UNSPEC
 			}
+			version := rule.Labels[ruleVersionLabelKey]
+			if req.Version != "" && req.Version != version {
+				continue
+			}
 			rules.Rules = append(rules.Rules, &api.Rule{
 				Path: strings.Split(after, "-"),
 				Type: api.RuleType_RULE_TYPE_SHIELD,
@@ -94,7 +98,7 @@ func (s *Server) ListRules(ctx context.Context, _ *api.ListRulesRequest) (*api.L
 					Loaded:  col.State == sensors.EnabledState || col.State == sensors.DisabledState,
 					LoadErr: col.Err,
 				},
-				Version: rule.Labels[ruleVersionLabelKey],
+				Version: version,
 				Counter: getCounter(rule),
 			})
 		}
@@ -102,6 +106,10 @@ func (s *Server) ListRules(ctx context.Context, _ *api.ListRulesRequest) (*api.L
 
 	// Second pass: alertrule-only rules
 	for _, rule := range alertRules {
+		version := rule.Labels[ruleVersionLabelKey]
+		if req.Version != "" && req.Version != version {
+			continue
+		}
 		for _, tag := range rule.Spec.Tags {
 			if after, ok := strings.CutPrefix(tag, probeRuleTagPrefix); ok {
 				rules.Rules = append(rules.Rules, &api.Rule{
@@ -111,7 +119,7 @@ func (s *Server) ListRules(ctx context.Context, _ *api.ListRulesRequest) (*api.L
 						Mode:   api.RuleMode_RULE_MODE_MONITORING,
 						Loaded: true,
 					},
-					Version: rule.Labels[ruleVersionLabelKey],
+					Version: version,
 					Counter: getCounter(rule),
 				})
 				break
