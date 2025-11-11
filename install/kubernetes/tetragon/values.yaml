@@ -51,7 +51,7 @@ tetragon:
   image:
     override: ~
     repository: quay.io/isovalent/tetragon
-    tag: v1.18.0-rc.2
+    tag: v1.19.0-pre.1
   resources: {}
   extraArgs: {}
   extraEnv: []
@@ -420,7 +420,7 @@ tetragonOperator:
   image:
     override: ~
     repository: quay.io/isovalent/tetragon-operator
-    tag: v1.18.0-rc.2
+    tag: v1.19.0-pre.1
     pullPolicy: IfNotPresent
   # -- Extra volumes for the Tetragon Operator Deployment.
   extraVolumes: []
@@ -574,7 +574,7 @@ tetragonAggregator:
   image:
     override: ~
     repository: quay.io/isovalent/tetragon-aggregator
-    tag: v1.18.0-rc.2
+    tag: v1.19.0-pre.1
     pullPolicy: IfNotPresent
   # -- Extra volumes for the Tetragon Aggregator Deployment.
   extraVolumes: []
