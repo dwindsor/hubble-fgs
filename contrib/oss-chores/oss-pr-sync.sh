@@ -31,7 +31,7 @@ ossbranch="pr-${pr}"
 pushd $dir
 make oss-init
 git -C modules/tetragon-oss fetch -f origin refs/pull/${pr}/head:${ossbranch}
-./contrib/oss-chores/oss-sync.sh ${ossbranch}
+NO_OSS_DEPFIX=1 ./contrib/oss-chores/oss-sync.sh ${ossbranch}
 
 set +x
 echo "EE sync to OSS pr $pr created in $dir"

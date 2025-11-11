@@ -24,4 +24,6 @@ function main() {
     GOPRIVATE=$GOPRIVATE go get "github.com/cilium/tetragon@$version"
 }
 
-main "$@"
+if [ "${NO_OSS_DEPFIX:-0}" != 1 ]; then
+	main "$@"
+fi
