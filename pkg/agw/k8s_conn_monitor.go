@@ -1,4 +1,4 @@
-package main
+package agw
 
 import (
 	"context"
@@ -20,6 +20,8 @@ const (
 	CONNECTION_STATUS_UP = true
 	// CONNECTION_STATUS_DOWN represents a disconnected state
 	CONNECTION_STATUS_DOWN = false
+	// MAX_CONNECTION_RETRIES is the number of failed attempts before declaring connection down
+	MAX_CONNECTION_RETRIES = 3
 )
 
 // AGWAgent interface for updating NXOS connection status
@@ -29,13 +31,13 @@ type AGWAgent interface {
 
 // ConnectionMonitor manages Kubernetes connection health monitoring
 type ConnectionMonitor struct {
-	lastEventTime      time.Time
-	lastEventMu        sync.RWMutex
-	connectionStatus   bool
-	connectionStatusMu sync.RWMutex
-	agwAgent           AGWAgent
-	nxosMode           bool
-	manager            *manager.ControllerManager
+	mu               sync.RWMutex
+	lastEventTime    time.Time
+	connectionStatus bool
+	failedAttempts   int
+	agwAgent         AGWAgent
+	nxosMode         bool
+	manager          *manager.ControllerManager
 }
 
 // NewConnectionMonitor creates a new connection monitor
@@ -46,29 +48,30 @@ func NewConnectionMonitor(agwAgent AGWAgent, nxosMode bool, mgr *manager.Control
 		agwAgent:         agwAgent,
 		nxosMode:         nxosMode,
 		manager:          mgr,
+		failedAttempts:   0, // Start with no failed attempts
 	}
 }
 
 // UpdateLastEventTime updates the last event time to the current time in a thread-safe manner.
 func (cm *ConnectionMonitor) UpdateLastEventTime() {
-	cm.lastEventMu.Lock()
-	defer cm.lastEventMu.Unlock()
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 	cm.lastEventTime = time.Now()
 }
 
 // GetLastEventTime returns the timestamp of the most recent event.
 func (cm *ConnectionMonitor) GetLastEventTime() time.Time {
-	cm.lastEventMu.RLock()
-	defer cm.lastEventMu.RUnlock()
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
 	return cm.lastEventTime
 }
 
 // SetConnectionStatus updates the connection status in a thread-safe manner and only calls AGWAgent if status changed
 func (cm *ConnectionMonitor) SetConnectionStatus(ctx context.Context, status bool) {
-	cm.connectionStatusMu.Lock()
+	cm.mu.Lock()
 	currentStatus := cm.connectionStatus
 	cm.connectionStatus = status
-	cm.connectionStatusMu.Unlock()
+	cm.mu.Unlock()
 
 	// Only call AGWAgent if the status actually changed
 	if currentStatus != status && cm.agwAgent != nil {
@@ -79,9 +82,24 @@ func (cm *ConnectionMonitor) SetConnectionStatus(ctx context.Context, status boo
 
 // GetConnectionStatus returns the current connection status in a thread-safe manner
 func (cm *ConnectionMonitor) GetConnectionStatus() bool {
-	cm.connectionStatusMu.RLock()
-	defer cm.connectionStatusMu.RUnlock()
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
 	return cm.connectionStatus
+}
+
+// incrementFailedAttempts increments the failed attempts counter
+func (cm *ConnectionMonitor) incrementFailedAttempts() int {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	cm.failedAttempts++
+	return cm.failedAttempts
+}
+
+// resetFailedAttempts resets the failed attempts counter to zero
+func (cm *ConnectionMonitor) resetFailedAttempts() {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	cm.failedAttempts = 0
 }
 
 // StartMonitoring starts the connection monitoring goroutine
@@ -95,18 +113,24 @@ func (cm *ConnectionMonitor) CreateEventHandlers(ctx context.Context) cache.Reso
 		AddFunc: func(_ any) {
 			// Update last event time first
 			cm.UpdateLastEventTime()
+			// Reset failed attempts since we received an event
+			cm.resetFailedAttempts()
 			// Successfully received event - connection is up
 			cm.SetConnectionStatus(ctx, CONNECTION_STATUS_UP)
 		},
 		UpdateFunc: func(_ any, _ any) {
 			// Update last event time first
 			cm.UpdateLastEventTime()
+			// Reset failed attempts since we received an event
+			cm.resetFailedAttempts()
 			// Successfully received event - connection is up
 			cm.SetConnectionStatus(ctx, CONNECTION_STATUS_UP)
 		},
 		DeleteFunc: func(_ any) {
 			// Update last event time first
 			cm.UpdateLastEventTime()
+			// Reset failed attempts since we received an event
+			cm.resetFailedAttempts()
 			// Successfully received event - connection is up
 			cm.SetConnectionStatus(ctx, CONNECTION_STATUS_UP)
 		},
@@ -150,21 +174,34 @@ func (cm *ConnectionMonitor) monitorConnection(ctx context.Context) {
 					logger.GetLogger().Info("Setting connection status to success due to restored connection")
 					cm.SetConnectionStatus(ctx, CONNECTION_STATUS_UP)
 				}
+				// Reset failed attempts since we have recent events
+				cm.resetFailedAttempts()
 				continue
 			}
 
-			// No recent add/update/delete events from informer - test connection directly
+			// No recent add/update/delete events from informer - test k8s controller connection directly.
 			logger.GetLogger().Debug("No recent ConfigMap events - testing connection directly")
-			connected := cm.testKubernetesConnection(ctx)
+			connected := cm.testK8sControllerConnection(ctx)
 
 			if !connected {
-				if isConnected {
-					logger.GetLogger().Error("Kubernetes connection lost - setting status to down")
-					isConnected = false
-					cm.SetConnectionStatus(ctx, CONNECTION_STATUS_DOWN)
+				failedCount := cm.incrementFailedAttempts()
+				logger.GetLogger().Warn("K8s controller connection failed",
+					"attempts", failedCount,
+					"maxRetries", MAX_CONNECTION_RETRIES)
+
+				if failedCount >= MAX_CONNECTION_RETRIES {
+					if isConnected {
+						logger.GetLogger().Error("K8s controller connection lost after maximum retries - setting status to down",
+							"failedAttempts", failedCount)
+						isConnected = false
+						cm.SetConnectionStatus(ctx, CONNECTION_STATUS_DOWN)
+					}
+					// Reset failed attempts to avoid unbound growth of the counter.
+					cm.resetFailedAttempts()
 				}
-				logger.GetLogger().Error("Connection test failed")
 			} else {
+				// Connection successful - reset failed attempts
+				cm.resetFailedAttempts()
 				if !isConnected {
 					logger.GetLogger().Info("Kubernetes connection restored - setting status to up")
 					isConnected = true
@@ -175,9 +212,8 @@ func (cm *ConnectionMonitor) monitorConnection(ctx context.Context) {
 	}
 }
 
-// testKubernetesConnection tests the connection to Kubernetes API by attempting to list ConfigMaps
-func (cm *ConnectionMonitor) testKubernetesConnection(ctx context.Context) bool {
-	logger.GetLogger().Info("testing Kubernetes connection by listing ConfigMaps")
+// testK8sControllerConnection tests the connection to Kubernetes API by attempting to list ConfigMaps
+func (cm *ConnectionMonitor) testK8sControllerConnection(ctx context.Context) bool {
 	if cm.manager == nil || cm.manager.Manager == nil {
 		logger.GetLogger().Error("ControllerManager is nil - cannot test Kubernetes connection")
 		return false
@@ -216,6 +252,5 @@ func (cm *ConnectionMonitor) testKubernetesConnection(ctx context.Context) bool 
 		return false
 	}
 
-	logger.GetLogger().Debug("K8s connection test successful")
 	return true
 }

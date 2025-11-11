@@ -186,7 +186,7 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		}
 
 		// Create connection monitor for health checking
-		connMonitor := NewConnectionMonitor(agwAgent, Config.EnableNXOS, kubernetesManager)
+		connMonitor := agw.NewConnectionMonitor(agwAgent, Config.EnableNXOS, kubernetesManager)
 		// TODO: Wait for configmap to be ready
 		err = config.AddConfigMapInformer(ctx, kubernetesManager, connMonitor)
 		if err != nil {

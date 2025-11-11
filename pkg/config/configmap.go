@@ -19,13 +19,12 @@ const (
 	CONFIGMAP_NAME = "smartswitch-config"
 )
 
-// ConnectionMonitor interface for external connection monitoring
-type ConnectionMonitor interface {
+type IConnectionMonitor interface {
 	StartMonitoring(ctx context.Context)
 	CreateEventHandlers(ctx context.Context) cache.ResourceEventHandlerFuncs
 }
 
-func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, connMonitor ConnectionMonitor) error {
+func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, connMonitor IConnectionMonitor) error {
 	// This watches all ConfigMaps, not just the specific smartswitch
 	// TODO: Narrow down this watcher to only get updates on smartswitch configmap
 	informer, err := m.Manager.GetCache().GetInformer(ctx, &v1.ConfigMap{})
@@ -35,10 +34,15 @@ func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, con
 	}
 
 	// Get event handlers from the connection monitor that handle both ConfigMap processing and connection monitoring
-	eventHandlers := connMonitor.CreateEventHandlers(ctx)
+	var eventHandlers cache.ResourceEventHandlerFuncs
+	if connMonitor != nil {
+		eventHandlers = connMonitor.CreateEventHandlers(ctx)
+	}
 
-	// Decorator pattern
-	// Wrap the event handlers to also process ConfigMaps
+	// Decorator pattern:
+	// The following wraps the event handlers from the connection monitor so that
+	// ConfigMap processing (add, update, delete) always occurs before the connection
+	// monitoring logic is invoked.
 	wrappedHandlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			// Process ConfigMap first
@@ -73,9 +77,11 @@ func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, con
 	}
 
 	// Start connection monitoring
-	connMonitor.StartMonitoring(ctx)
+	if connMonitor != nil {
+		connMonitor.StartMonitoring(ctx)
+		logger.GetLogger().Info("Connection monitoring with ConfigMap informer started")
+	}
 
-	logger.GetLogger().Info("Connection monitoring with ConfigMap informer started")
 	return nil
 }
 
