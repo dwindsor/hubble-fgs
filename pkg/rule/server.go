@@ -82,12 +82,21 @@ func (s *Server) ListRules(ctx context.Context, req *api.ListRulesRequest) (*api
 		// Once we collected all probes -> alertrule tags,
 		// we can finally append to the return value.
 		for after, rule := range tagProbes {
-			var mode api.RuleMode
+			var (
+				mode    api.RuleMode
+				polType = api.RuleType_RULE_TYPE_SHIELD
+			)
 			switch col.TracingpolicyMode {
 			case api.TracingPolicyMode_TP_MODE_ENFORCE:
 				mode = api.RuleMode_RULE_MODE_ENFORCEMENT
 			case api.TracingPolicyMode_TP_MODE_MONITOR:
 				mode = api.RuleMode_RULE_MODE_MONITORING
+			case api.TracingPolicyMode_TP_MODE_MONITOR_ONLY:
+				// external mode is MONITORING;
+				// but let's also force the policy type to monitoring,
+				// since no enforcement can be enabled.
+				mode = api.RuleMode_RULE_MODE_MONITORING
+				polType = api.RuleType_RULE_TYPE_MONITORING
 			default:
 				mode = api.RuleMode_RULE_MODE_UNSPEC
 			}
@@ -97,7 +106,7 @@ func (s *Server) ListRules(ctx context.Context, req *api.ListRulesRequest) (*api
 			}
 			rules.Rules = append(rules.Rules, &api.Rule{
 				Path: strings.Split(after, "-"),
-				Type: api.RuleType_RULE_TYPE_SHIELD,
+				Type: polType,
 				Status: &api.RuleStatus{
 					Mode:    mode,
 					Loaded:  col.State == sensors.EnabledState || col.State == sensors.DisabledState,
