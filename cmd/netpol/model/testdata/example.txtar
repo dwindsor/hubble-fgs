@@ -1,0 +1,11 @@
+-- policy --
+Rule        Action  Proto  Src             SrcPort  Dst           DstPort
+http_1      deny    TCP    10.1.0.0/16     *        10.2.0.72/32  80
+http_2      deny    TCP    10.1.0.42/32    *        10.2.0.0/16   80
+http_3      allow   TCP    10.0.0.0/8      *        10.0.0.0/8    80
+
+-- flows --
+Src          SrcPort  Dst       DstPort  Proto  Verdict
+10.1.0.77    12345    10.2.0.77 80       TCP    allow
+10.1.0.77    12345    10.2.0.72 80       TCP    deny
+10.1.0.42    12345    10.2.0.1  80       TCP    deny

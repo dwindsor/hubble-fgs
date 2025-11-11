@@ -1,0 +1,20 @@
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: web
+  namespace: default
+spec:
+  rules:
+  - action: allow
+    description: Allow HTTP
+    destination:
+      ipBlock:
+      - cidr: 200.1.2.0/24
+        vrf: ext
+      protoPorts:
+      - protocol: tcp
+        port: 80
+    source:
+      ipBlock:
+      - cidr: 0.0.0.0/0
+        vrf: ext

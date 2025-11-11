@@ -1,0 +1,21 @@
+mkdir policies
+netpol convert table -o policies/policy.yaml
+netpol print policies -o actual
+cmp expected actual
+
+###
+
+-- expected --
+Rule             Proto  Src         SrcPort  SrcVLAN  SrcVRF  Dst          DstPort  DstVLAN  DstVRF  Action
+table/deny_http  TCP    0.0.0.0/0   *        1                0.0.0.0/0    80       1                deny
+table/smtp       TCP    0.0.0.0/0   *        1                10.0.0.0/8   25       1                allow
+table/http1      TCP    1.0.0.0/1   *        1                10.0.0.1/32  80       1                allow
+table/http2      TCP    1.0.0.0/1   *        1                10.0.0.1/32  80       1                allow
+table/smtp10     TCP    10.0.0.0/8  *        1                10.0.0.1/32  25       1                allow
+-- table --
+Rule      Proto  Src        SrcPort  SrcVLAN  Dst          DstPort  DstVLAN  Action
+deny_http TCP    0.0.0.0/0  *        1        0.0.0.0/0    80       1        deny
+http1     TCP    1.0.0.0/1  *        1        10.0.0.1/32  80       1        allow
+http2     TCP    1.0.0.0/1  *        1        10.0.0.1/32  80       1        allow
+smtp      TCP    0.0.0.0/0  *        1        10.0.0.0/8   25       1        allow
+smtp10    TCP    10.0.0.0/8 *        1        10.0.0.1/32  25       1        allow

@@ -1,0 +1,84 @@
+mkdir prod staging
+mv prod.yaml prod/prod.yaml
+mv staging.yaml staging/staging.yaml
+
+# With equal rules there's no difference
+netpol check --simulate=flows -o actual prod prod
+cmp actual expected-no-diff
+
+# With the staging rule narrowing from 192.168.0.0/16 => 192.168.0.0/24
+# the flow to 192.168.1.1 will have different verdict.
+netpol check --simulate=flows -o actual prod staging
+cmp actual expected-diff
+
+###
+
+-- expected-no-diff --
+No verdict differences found
+-- expected-diff --
+Src         SrcPort  SrcVLAN  SrcVRF      Dst          DstPort  DstVLAN  DstVRF      Proto  Old Verdict                   New Verdict
+172.16.0.1  10       0        management  192.168.1.1  22       0        management  TCP    allow (management/Allow_SSH)  no-match
+-- flows --
+source: 172.16.0.1
+sourceport: 10
+sourcevlan: 0
+sourcevrf: management
+destination: 192.168.0.1
+destinationport: 22
+destinationvlan: 0
+destinationvrf: management
+protocol: TCP
+---
+source: 172.16.0.1
+sourceport: 10
+sourcevlan: 0
+sourcevrf: management
+destination: 192.168.1.1
+destinationport: 22
+destinationvlan: 0
+destinationvrf: management
+protocol: TCP
+
+-- prod.yaml --
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: management
+  namespace: default
+spec:
+  rules:
+  - action: allow
+    description: Allow SSH
+    destination:
+      ipBlock:
+      - cidr: 192.168.0.0/16
+        vrf: management
+      protoPorts:
+      - protocol: tcp
+        port: 22
+    source:
+      ipBlock:
+      - cidr: 0.0.0.0/0
+        vrf: management
+
+-- staging.yaml --
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: management
+  namespace: default
+spec:
+  rules:
+  - action: allow
+    description: Allow SSH
+    destination:
+      ipBlock:
+      - cidr: 192.168.0.0/24
+        vrf: management
+      protoPorts:
+      - protocol: tcp
+        port: 22
+    source:
+      ipBlock:
+      - cidr: 0.0.0.0/0
+        vrf: management

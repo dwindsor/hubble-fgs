@@ -1,0 +1,95 @@
+mkdir prod staging
+mv prod.yaml prod/prod.yaml
+mv base.yaml prod/base.yaml
+mv staging.yaml staging/staging.yaml
+
+netpol diff -o actual prod staging
+cmp actual expected
+
+###
+
+-- expected --
+Verdict differences
+-------------------
+
+0.0.0.0/0:* -> 192.168.0.0/16:22
+     Rule                  Proto  Src        SrcPort  SrcVLAN  SrcVRF      Dst             DstPort  DstVLAN  DstVRF      Action
+  -  management/Allow_SSH  TCP    0.0.0.0/0  *        0        management  192.168.0.0/16  22       0        management  allow
+  +  management/Allow_SSH  TCP    0.0.0.0/0  *        0        management  192.168.0.0/24  22       0        management  allow
+
+Old policy for affected intervals
+---------------------------------
+
+Rule                  Proto  Src        SrcPort  SrcVLAN  SrcVRF      Dst             DstPort  DstVLAN  DstVRF      Action
+management/Allow_SSH  TCP    0.0.0.0/0  *        0        management  192.168.0.0/16  22       0        management  allow
+
+New policy for affected intervals
+---------------------------------
+
+Rule                  Proto  Src        SrcPort  SrcVLAN  SrcVRF      Dst             DstPort  DstVLAN  DstVRF      Action
+management/Allow_SSH  TCP    0.0.0.0/0  *        0        management  192.168.0.0/24  22       0        management  allow
+-- base.yaml --
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: base
+  namespace: default
+spec:
+  rules:
+  - action: allow
+    description: Allow HTTP
+    destination:
+      ipBlock:
+      - cidr: 0.0.0.0/0
+        vrf: management
+      protoPorts:
+      - protocol: tcp
+        port: 80
+    source:
+      ipBlock:
+      - cidr: 0.0.0.0/0
+        vrf: management
+
+-- prod.yaml --
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: management
+  namespace: default
+spec:
+  rules:
+  - action: allow
+    description: Allow SSH
+    destination:
+      ipBlock:
+      - cidr: 192.168.0.0/16
+        vrf: management
+      protoPorts:
+      - protocol: tcp
+        port: 22
+    source:
+      ipBlock:
+      - cidr: 0.0.0.0/0
+        vrf: management
+
+-- staging.yaml --
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: management
+  namespace: default
+spec:
+  rules:
+  - action: allow
+    description: Allow SSH
+    destination:
+      ipBlock:
+      - cidr: 192.168.0.0/24
+        vrf: management
+      protoPorts:
+      - protocol: tcp
+        port: 22
+    source:
+      ipBlock:
+      - cidr: 0.0.0.0/0
+        vrf: management
