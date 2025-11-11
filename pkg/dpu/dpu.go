@@ -37,6 +37,12 @@ const (
 	// on firewall.*, use ens5. on real dpu, int_mnic0
 	DPU_INTERFACE = "int_mnic0"
 
+	// arbitrarily chosen to be 1 second there are not many DPUs in
+	// the same node and this makes us overly responsive to rule set
+	// hashes which is nice.
+	KEEPALIVE_INTERVAL    = 1 * time.Second
+	MAX_KEEPALIVE_BACKOFF = 10 * time.Second
+
 	EXPORTER_CONFIG_PATH    = "/data/hypershield/daflogger.yaml" // HACK: need to update config to pass this path
 	EVENTLOGGER_SOCKET_PATH = "/tmp/fluentbit_fwa.sock"          // HACK: need to pass through config
 
@@ -389,16 +395,14 @@ func (dpu *DPUAgent) ConfigEventLoop(_ context.Context) error {
 }
 
 func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
-	// arbitrarily chosen to be 1 second there are not many DPUs in
-	// the same node and this makes us overly responsive to rule set
-	// hashes which is nice.
-	keepAliveTimer := time.Second
+	backoff := time.Second
+	attempts := 0
 	for {
 		select {
 		case <-ctx.Done():
 			logger.GetLogger().Info("Stopping keep-alive")
 			return nil
-		case <-time.After(keepAliveTimer):
+		case <-time.After(backoff):
 			csum := dpu.Checksum()
 			status := &v1alpha.ReportStatus{
 				AgentUid:       dpu.AgentId,
@@ -417,9 +421,15 @@ func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
 			}
 			_, err := dpu.streamClient.client.ReportStatus(ctx, req)
 			if err != nil {
-				logger.GetLogger().Error("keep alive report status error",
-					logfields.Error, err)
+				attempts++
+				logger.GetLogger().Error("Keepalive connection attempt failed, retrying...", "server-address", dpu.serverAddress, "attempts", attempts, "backoff", backoff, "error", err)
+				if attempts < dpu.Retries {
+					backoff *= 2
+				}
+				continue
 			}
+			attempts = 0
+			backoff = time.Second
 		}
 	}
 }
