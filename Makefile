@@ -438,7 +438,7 @@ test-compile: ## Compile Go tests.
 			continue; \
 		fi; \
 		echo -c ./$$localpkg -o go-tests/$$localtestfile; \
-	done | GOMAXPROCS=1 xargs -P $(JOBS) -L 1 $(GO) test -gcflags=$(GO_BUILD_GCFLAGS)
+	done | GOMAXPROCS=1 xargs -P $(JOBS) -I {} bash -c '$(GO) test -gcflags=$(GO_BUILD_GCFLAGS) {}'
 
 .PHONY: fetch-testdata
 fetch-testdata:
