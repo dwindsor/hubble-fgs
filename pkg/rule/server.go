@@ -77,7 +77,7 @@ func (s *Server) ListRules(ctx context.Context, req *api.ListRulesRequest) (*api
 		for _, tp := range spec.Tracepoints {
 			collectTagProbes(alertRules, tagProbes, tp.Tags)
 		}
-		// TODO: fim -> spec.FileMonitoring (no tags)
+		collectTagProbes(alertRules, tagProbes, spec.FileMonitoring.Tags)
 
 		// Once we collected all probes -> alertrule tags,
 		// we can finally append to the return value.
