@@ -2,6 +2,7 @@ package rule
 
 import (
 	"context"
+	"slices"
 	"strings"
 
 	api "github.com/cilium/tetragon/api/v1/tetragon"
@@ -126,6 +127,13 @@ func (s *Server) ListRules(ctx context.Context, req *api.ListRulesRequest) (*api
 			}
 		}
 	}
+
+	// Finally sort returned rules
+	slices.SortFunc(rules.Rules, func(a, b *api.Rule) int {
+		pathA := strings.Join(a.Path, "-")
+		pathB := strings.Join(b.Path, "-")
+		return strings.Compare(pathA, pathB)
+	})
 
 	return &api.ListRulesResponse{Rules: rules}, nil
 }
