@@ -108,7 +108,7 @@ jobs:
 
             if [[ "${{ matrix.arch }}" == "amd64" ]]
             then
-              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libc6-dev-i386
+              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libc6-dev-i386 gcc-multilib
             else
               DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf build-essential
             fi
