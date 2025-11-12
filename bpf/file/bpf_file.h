@@ -1456,8 +1456,17 @@ static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 	__u32 ppid;
 
 	msg = map_lookup_elem(&file_heap_map, &zero);
-	if (!msg)
+	if (!msg) {
+		// This map_lookup_elem is just used to add a reference to policy_conf map in all FIM programs to avoid warnings similar to:
+		// "failed to open bpf map /sys/fs/bpf/tetragon/fim-ro-protection-policy-proc-protection/policy_conf: no such file or directory"
+		// This is already used in all path-based programs and inode-based programs in enforcement mode, but we miss that in inode-based
+		// programs in observability mode.
+		//
+		// We add this in an error path to not having any overheads in the common path.:
+		map_lookup_elem(&policy_conf, &zero);
+
 		return 0;
+	}
 
 	memset(msg, 0, sizeof(struct msg_file_ops));
 
