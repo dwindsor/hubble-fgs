@@ -50,7 +50,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						},
 						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "tcp",
+								Protocol: "TCP",
 								Port:     443,
 								EndPort:  443,
 							},
@@ -119,7 +119,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						},
 						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "udp",
+								Protocol: "UDP",
 								Port:     53,
 								EndPort:  53,
 							},
@@ -184,7 +184,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						},
 						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "icmp",
+								Protocol: "ICMP",
 								Port:     0,
 								EndPort:  0,
 							},
@@ -367,7 +367,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						},
 						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "sctp",
+								Protocol: "SCTP",
 								Port:     5000,
 								EndPort:  5000,
 							},
@@ -432,7 +432,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						},
 						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "tcp",
+								Protocol: "TCP",
 								Port:     80,
 								EndPort:  80,
 							},
@@ -500,7 +500,7 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 						},
 						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "tcp",
+								Protocol: "TCP",
 								Port:     443,
 								EndPort:  443,
 							},

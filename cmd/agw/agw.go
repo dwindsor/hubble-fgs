@@ -61,7 +61,7 @@ func executeAGW() {
 	SetupSignalHandler(ctx, cancel, agwSignalHandler, waitGroup, 200)
 
 	dpuListener := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
-	agwAgent := agw.NewAgent(dpuListener, switchpolicy.NewPolicyHandler(dpuListener))
+	agwAgent := agw.NewAgent(dpuListener, switchpolicy.NewPolicyHandler(ctx, dpuListener))
 	err := agwAgent.Config(ctx, Config.DafConfig)
 
 	if err != nil {

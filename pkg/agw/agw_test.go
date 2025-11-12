@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/token"
-
-	"github.com/stretchr/testify/require"
 )
 
 // --- Tests for validateLogConfig ---
@@ -475,7 +475,7 @@ func (m *mockPolicyHandler) ListPolicies() map[switchpolicy.ResourceID]switchpol
 	return m.policies
 }
 
-func (m *mockPolicyHandler) DeletePolicy(resourceId switchpolicy.ResourceID) error {
+func (m *mockPolicyHandler) DeletePolicy(resourceId switchpolicy.ResourceID, _ string) error {
 	m.deletedCalled = append(m.deletedCalled, resourceId)
 	if m.deleteError != nil {
 		return m.deleteError
@@ -484,7 +484,7 @@ func (m *mockPolicyHandler) DeletePolicy(resourceId switchpolicy.ResourceID) err
 	return nil
 }
 
-func (m *mockPolicyHandler) UpsertPolicy(resourceId switchpolicy.ResourceID, rules switchpolicy.K8sRulesList) error {
+func (m *mockPolicyHandler) UpsertPolicy(resourceId switchpolicy.ResourceID, rules switchpolicy.K8sRulesList, _ string) error {
 	if m.policies == nil {
 		m.policies = make(map[switchpolicy.ResourceID]switchpolicy.K8sRulesList)
 	}
@@ -494,6 +494,10 @@ func (m *mockPolicyHandler) UpsertPolicy(resourceId switchpolicy.ResourceID, rul
 
 func (m *mockPolicyHandler) SetL3Networks(_ *switchpolicy.L3Networks) error {
 	return nil
+}
+
+func (m *mockPolicyHandler) ResourceVersion() (string, error) {
+	return "", nil
 }
 
 // --- Test for PoliciesClear ---

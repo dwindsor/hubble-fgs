@@ -1,11 +1,14 @@
 package switchpolicy
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	isovalentv1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
@@ -30,9 +33,51 @@ func (f *FakeDPUProgrammer) Clear() {
 	f.rules = make([]*dpu.DPUPolicyRule, 0)
 }
 
+// Helper function to create a minimal k8s policy object for testing
+func makeTestK8sPolicy(name, namespace string) *isovalentv1.SmartSwitchNetworkPolicy {
+	return &isovalentv1.SmartSwitchNetworkPolicy{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       isovalentv1.SNPKindDefinition,
+			APIVersion: isovalentv1.SNPName,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+			Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+				{
+					Description: "Test rule",
+					Action:      "allow",
+					Source: isovalentv1.SmartSwitchNetworkSource{
+						IPBlock: []isovalentv1.SmartSwitchNetwork{
+							{
+								CIDR: "10.0.0.0/8",
+							},
+						},
+					},
+					Destination: isovalentv1.SmartSwitchNetworkDestination{
+						IPBlock: []isovalentv1.SmartSwitchNetwork{
+							{
+								CIDR: "192.168.0.0/16",
+							},
+						},
+						ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+							{
+								Protocol: "TCP",
+								Port:     80,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func TestPolicyHandlerAddRemovePolicy(t *testing.T) {
 	fakeDPU := NewFakeDPUProgrammer()
-	newPolicyHandler := NewPolicyHandler(fakeDPU)
+	newPolicyHandler := NewPolicyHandler(context.Background(), fakeDPU)
 
 	l3Network := NewL3Networks()
 	l3Network.Add("red", 1)
@@ -41,7 +86,7 @@ func TestPolicyHandlerAddRemovePolicy(t *testing.T) {
 	err := newPolicyHandler.SetL3Networks(l3Network)
 	require.NoError(t, err)
 
-	resourceID := NewResourceID("ns", "default", "test-policy")
+	resourceID := NewResourceID("SmartSwitchNetworkPolicy", "default", "test-policy")
 	err = newPolicyHandler.UpsertPolicy(
 		resourceID,
 		K8sRulesList{
@@ -62,13 +107,13 @@ func TestPolicyHandlerAddRemovePolicy(t *testing.T) {
 					},
 				},
 			),
-		},
+		}, "",
 	)
 	require.NoError(t, err)
 	require.Len(t, fakeDPU.rules, 1)
 	require.Equal(t, fakeDPU.rules[0].Oper, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT)
 
-	err = newPolicyHandler.DeletePolicy(resourceID)
+	err = newPolicyHandler.DeletePolicy(resourceID, "")
 	require.NoError(t, err)
 	require.Len(t, fakeDPU.rules, 2)
 	require.Equal(t, fakeDPU.rules[1].Oper, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE)
@@ -76,7 +121,7 @@ func TestPolicyHandlerAddRemovePolicy(t *testing.T) {
 
 func TestPolicyHandlerRemoveL3Network(t *testing.T) {
 	fakeDPU := NewFakeDPUProgrammer()
-	newPolicyHandler := NewPolicyHandler(fakeDPU)
+	newPolicyHandler := NewPolicyHandler(context.Background(), fakeDPU)
 
 	l3Network := NewL3Networks()
 	l3Network.Add("red", 1)
@@ -85,7 +130,7 @@ func TestPolicyHandlerRemoveL3Network(t *testing.T) {
 	err := newPolicyHandler.SetL3Networks(l3Network)
 	require.NoError(t, err)
 
-	resourceID := NewResourceID("ns", "default", "test-policy")
+	resourceID := NewResourceID("SmartSwitchNetworkPolicy", "default", "test-policy")
 	err = newPolicyHandler.UpsertPolicy(
 		resourceID,
 		K8sRulesList{
@@ -106,7 +151,7 @@ func TestPolicyHandlerRemoveL3Network(t *testing.T) {
 					},
 				},
 			),
-		},
+		}, "",
 	)
 	require.NoError(t, err)
 	require.Len(t, fakeDPU.rules, 1)
@@ -122,18 +167,18 @@ func TestPolicyHandlerRemoveL3Network(t *testing.T) {
 	require.Len(t, fakeDPU.rules, 2)
 	require.Equal(t, fakeDPU.rules[1].Oper, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE)
 	require.Equal(t, fakeDPU.rules[1].Policy.RuleName, "allow-red-to-blue/1")
-	require.Equal(t, fakeDPU.rules[1].Policy.PolicyName, "ns/default/test-policy")
+	require.Equal(t, fakeDPU.rules[1].Policy.PolicyName, "SmartSwitchNetworkPolicy/default/test-policy")
 
 }
 
 func TestPolicyUpdatePolicy(t *testing.T) {
 	fakeDPU := NewFakeDPUProgrammer()
-	newPolicyHandler := NewPolicyHandler(fakeDPU)
+	newPolicyHandler := NewPolicyHandler(context.Background(), fakeDPU)
 
 	l3Network := NewL3Networks()
 	l3Network.Add("red", 1)
 	newPolicyHandler.SetL3Networks(l3Network)
-	resourceID := NewResourceID("ns", "default", "test-policy")
+	resourceID := NewResourceID("SmartSwitchNetworkPolicy", "default", "test-policy")
 	err := newPolicyHandler.UpsertPolicy(
 		resourceID,
 		K8sRulesList{
@@ -154,7 +199,7 @@ func TestPolicyUpdatePolicy(t *testing.T) {
 					},
 				},
 			),
-		},
+		}, "",
 	)
 	require.NoError(t, err)
 	require.Len(t, fakeDPU.rules, 1)
@@ -178,7 +223,7 @@ func TestPolicyUpdatePolicy(t *testing.T) {
 					},
 				},
 			),
-		},
+		}, "",
 	)
 	require.NoError(t, err)
 	// We want to receive two updates in this order:
@@ -187,10 +232,10 @@ func TestPolicyUpdatePolicy(t *testing.T) {
 	require.Len(t, fakeDPU.rules, 3)
 	require.Equal(t, fakeDPU.rules[1].Oper, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT)
 	require.Equal(t, fakeDPU.rules[1].Policy.RuleName, "allow-red-to-red/2")
-	require.Equal(t, fakeDPU.rules[1].Policy.PolicyName, "ns/default/test-policy")
+	require.Equal(t, fakeDPU.rules[1].Policy.PolicyName, "SmartSwitchNetworkPolicy/default/test-policy")
 	require.Equal(t, fakeDPU.rules[2].Oper, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE)
 	require.Equal(t, fakeDPU.rules[2].Policy.RuleName, "allow-red-to-red/1")
-	require.Equal(t, fakeDPU.rules[2].Policy.PolicyName, "ns/default/test-policy")
+	require.Equal(t, fakeDPU.rules[2].Policy.PolicyName, "SmartSwitchNetworkPolicy/default/test-policy")
 
 }
 
@@ -252,7 +297,7 @@ func findRuleByName(t *testing.T, fakeDPU *FakeDPUProgrammer, ruleName string) *
 
 func TestBasicIntraVRFPolicy(t *testing.T) {
 	fakeDPU := NewFakeDPUProgrammer()
-	newPolicyHandler := NewPolicyHandler(fakeDPU)
+	newPolicyHandler := NewPolicyHandler(context.Background(), fakeDPU)
 	l3Network := NewL3Networks()
 	l3Network.Add("red", 1)
 	l3Network.Add("blue", 2)
@@ -269,7 +314,7 @@ func TestBasicIntraVRFPolicy(t *testing.T) {
 			K8sRulesList{
 				createPolicyRule(fmt.Sprintf("allow-%s-to-%s-80", vrf, vrf), srcCIDR, dstCIDR, vrf, 80),
 				createPolicyRule(fmt.Sprintf("allow-%s-to-%s-443", vrf, vrf), srcCIDR, dstCIDR, vrf, 443),
-			},
+			}, "",
 		)
 		require.NoError(t, err)
 		require.Len(t, fakeDPU.rules, 2)
@@ -298,7 +343,7 @@ func TestBasicIntraVRFPolicy(t *testing.T) {
 	testPolicyDeletion := func(resourceID ResourceID, policyName, vrf string, ruleIdOffset int) {
 		fakeDPU.Clear()
 
-		err := newPolicyHandler.DeletePolicy(resourceID)
+		err := newPolicyHandler.DeletePolicy(resourceID, "")
 		require.NoError(t, err)
 
 		// Should have 2 additional delete operations
@@ -328,7 +373,7 @@ func TestBasicIntraVRFPolicy(t *testing.T) {
 
 func TestPolicyHandlerAddL3Network(t *testing.T) {
 	fakeDPU := NewFakeDPUProgrammer()
-	newPolicyHandler := NewPolicyHandler(fakeDPU)
+	newPolicyHandler := NewPolicyHandler(context.Background(), fakeDPU)
 	l3Network := NewL3Networks()
 	newPolicyHandler.SetL3Networks(l3Network)
 
@@ -338,7 +383,7 @@ func TestPolicyHandlerAddL3Network(t *testing.T) {
 		resourceID,
 		K8sRulesList{
 			createPolicyRule("allow-red-to-red-80", "10.1.0.0/16", "10.2.0.0/16", "red", 80),
-		},
+		}, "",
 	)
 	require.NoError(t, err)
 	require.Len(t, fakeDPU.rules, 0)
@@ -349,4 +394,61 @@ func TestPolicyHandlerAddL3Network(t *testing.T) {
 	require.Len(t, fakeDPU.rules, 1)
 	rule80 := findRuleByName(t, fakeDPU, "allow-red-to-red-80/1")
 	checkRule(t, rule80, "allow-red-to-red-80/1", "ns/default/redPolicy", "10.1.0.0/16", "10.2.0.0/16", "red", 7, 80)
+}
+
+func TestPolicyHandlerResourceVersion(t *testing.T) {
+	fakeDPU := NewFakeDPUProgrammer()
+	handler := NewPolicyHandler(context.Background(), fakeDPU)
+
+	l3Network := NewL3Networks()
+	l3Network.Add("red", 1)
+	err := handler.SetL3Networks(l3Network)
+	require.NoError(t, err)
+
+	// Initially, ResourceVersion should return error
+	_, err = handler.ResourceVersion()
+	require.Error(t, err, "Should error when no policy has been added")
+
+	// Add policy with ResourceVersion
+	resourceID := NewResourceID("SmartSwitchNetworkPolicy", "default", "test-policy")
+	k8sPolicy := makeTestK8sPolicy("test-policy", "default")
+	k8sPolicy.ResourceVersion = "12345"
+
+	err = handler.UpsertPolicy(
+		resourceID,
+		K8sRulesList{
+			NewPolicyRule(
+				"allow-red",
+				&SmartSwitchNetworkPolicy{
+					Source: SmartSwitchNetworkSource{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "172.1.0.0/24",
+							VRF:  "red",
+						},
+					},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{
+							CIDR: "172.2.0.0/24",
+							VRF:  "red",
+						},
+					},
+				},
+			),
+		}, k8sPolicy.ResourceVersion,
+	)
+	require.NoError(t, err)
+
+	// Now ResourceVersion should return the version
+	version, err := handler.ResourceVersion()
+	require.NoError(t, err)
+	require.Equal(t, "12345", version)
+
+	// Update with newer ResourceVersion
+	k8sPolicy.ResourceVersion = "67890"
+	err = handler.UpsertPolicy(resourceID, K8sRulesList{}, k8sPolicy.ResourceVersion)
+	require.NoError(t, err)
+
+	version, err = handler.ResourceVersion()
+	require.NoError(t, err)
+	require.Equal(t, "67890", version)
 }

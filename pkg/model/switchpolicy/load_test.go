@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 )
@@ -35,7 +37,7 @@ func (m *mockPolicyHandler) ListPolicies() map[ResourceID]K8sRulesList {
 	return m.policies
 }
 
-func (m *mockPolicyHandler) UpsertPolicy(resourceId ResourceID, rules K8sRulesList) error {
+func (m *mockPolicyHandler) UpsertPolicy(resourceId ResourceID, rules K8sRulesList, _ string) error {
 	m.upsertCalled = true
 	m.upsertCounter++
 	if m.upsertError != nil {
@@ -45,13 +47,17 @@ func (m *mockPolicyHandler) UpsertPolicy(resourceId ResourceID, rules K8sRulesLi
 	return nil
 }
 
-func (m *mockPolicyHandler) DeletePolicy(resourceId ResourceID) error {
+func (m *mockPolicyHandler) DeletePolicy(resourceId ResourceID, _ string) error {
 	m.deleteCalled = true
 	if m.deleteError != nil {
 		return m.deleteError
 	}
 	delete(m.policies, resourceId)
 	return nil
+}
+
+func (m *mockPolicyHandler) ResourceVersion() (string, error) {
+	return "", nil
 }
 
 var validMultiPolicy = `
@@ -207,7 +213,7 @@ spec:
         ipBlock:
           - cidr: 0.0.0.0/0
         protoPorts:
-          - protocol: tcp
+          - protocol: TCP
             port: 8080
 `
 
@@ -238,7 +244,7 @@ spec:
         ipBlock:
           - cidr: 192.168.1.0/24
         protoPorts:
-          - protocol: tcp
+          - protocol: TCP
 `
 
 var missingSpecYAML = `
@@ -276,23 +282,23 @@ spec:
           - cidr: 192.168.1.0/24
 `
 
-// var emptyProtoPortsYAML = `
-// apiVersion: isovalent.com/v1alpha1
-// kind: SmartSwitchNetworkPolicy
-// metadata:
-//   name: empty-protoports
-//   namespace: default
-// spec:
-//   rules:
-//     - action: allow
-//       source:
-//         ipBlock:
-//           - cidr: 10.0.0.0/8
-//       destination:
-//         ipBlock:
-//           - cidr: 192.168.1.0/24
-//         protoPorts: []
-// `
+var emptyProtoPortsYAML = `
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: empty-protoports
+  namespace: default
+spec:
+  rules:
+    - action: allow
+      source:
+        ipBlock:
+          - cidr: 10.0.0.0/8
+      destination:
+        ipBlock:
+          - cidr: 192.168.1.0/24
+        protoPorts: []
+`
 
 func TestFromYAML(t *testing.T) {
 	tests := []struct {
@@ -367,13 +373,12 @@ func TestFromYAML(t *testing.T) {
 			wantNil: false,
 			wantErr: false,
 		},
-		// FIXME: validation needs to be added to CRD definition
-		// {
-		// 	name:    "Empty protoPorts array should fail validation",
-		// 	yaml:    emptyProtoPortsYAML,
-		// 	wantNil: false,
-		// 	wantErr: true,
-		// },
+		{
+			name:    "Empty protoPorts array should fail validation",
+			yaml:    emptyProtoPortsYAML,
+			wantNil: false,
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1494,7 +1499,7 @@ func TestAdd(t *testing.T) {
 									{CIDR: "192.168.1.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
-									{Protocol: "tcp", Port: 443},
+									{Protocol: "TCP", Port: 443},
 								},
 							},
 						},
@@ -1523,7 +1528,7 @@ func TestAdd(t *testing.T) {
 									{CIDR: "192.168.1.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
-									{Protocol: "tcp", Port: 443},
+									{Protocol: "TCP", Port: 443},
 								},
 							},
 						},
@@ -1566,7 +1571,7 @@ func TestAdd(t *testing.T) {
 									{CIDR: "192.168.1.0/24", VRF: "external"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
-									{Protocol: "tcp", Port: 443},
+									{Protocol: "TCP", Port: 443},
 								},
 							},
 						},
@@ -1582,7 +1587,7 @@ func TestAdd(t *testing.T) {
 									{CIDR: "192.168.2.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
-									{Protocol: "tcp", Port: 80},
+									{Protocol: "TCP", Port: 80},
 								},
 							},
 						},
@@ -1650,7 +1655,7 @@ func TestDelete(t *testing.T) {
 									{CIDR: "192.168.1.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
-									{Protocol: "tcp", Port: 443},
+									{Protocol: "TCP", Port: 443},
 								},
 							},
 						},
@@ -1687,7 +1692,7 @@ func TestDelete(t *testing.T) {
 									{CIDR: "192.168.1.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
-									{Protocol: "tcp", Port: 443},
+									{Protocol: "TCP", Port: 443},
 								},
 							},
 						},
@@ -1718,7 +1723,7 @@ func TestDelete(t *testing.T) {
 									{CIDR: "192.168.1.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
-									{Protocol: "tcp", Port: 443},
+									{Protocol: "TCP", Port: 443},
 								},
 							},
 						},
@@ -1734,7 +1739,7 @@ func TestDelete(t *testing.T) {
 									{CIDR: "192.168.2.0/24"},
 								},
 								ProtoPorts: []v1alpha1.SmartSwitchProtocolPort{
-									{Protocol: "tcp", Port: 80},
+									{Protocol: "TCP", Port: 80},
 								},
 							},
 						},
@@ -1779,4 +1784,304 @@ func TestDelete(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCleanK8sMetadata(t *testing.T) {
+	now := metav1.Now()
+	gracePeriod := int64(30)
+	uid := "test-uid-12345"
+	tests := []struct {
+		name     string
+		meta     *metav1.ObjectMeta
+		validate func(t *testing.T, meta *metav1.ObjectMeta)
+	}{
+		{
+			name: "Removes all internal Kubernetes fields",
+			meta: &metav1.ObjectMeta{
+				Name:                       "test-policy",
+				Namespace:                  "test-ns",
+				UID:                        "test-uid-12345",
+				ResourceVersion:            "12345",
+				Generation:                 5,
+				CreationTimestamp:          now,
+				DeletionTimestamp:          &now,
+				DeletionGracePeriodSeconds: &gracePeriod,
+				Labels: map[string]string{
+					"app": "test",
+				},
+				Annotations: map[string]string{
+					"kubectl.kubernetes.io/last-applied-configuration": `{"some":"config"}`,
+					"user-annotation": "keep-me",
+				},
+				ManagedFields: []metav1.ManagedFieldsEntry{
+					{Manager: "kubectl", Operation: metav1.ManagedFieldsOperationApply},
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{Name: "owner", Kind: "Deployment"},
+				},
+				Finalizers: []string{"finalizer1", "finalizer2"},
+			},
+			validate: func(t *testing.T, meta *metav1.ObjectMeta) {
+				// Verify internal fields are cleared
+				require.Empty(t, meta.UID, "UID should be empty")
+				require.Empty(t, meta.ResourceVersion, "ResourceVersion should be empty")
+				require.Zero(t, meta.Generation, "Generation should be zero")
+				require.True(t, meta.CreationTimestamp.IsZero(), "CreationTimestamp should be zero")
+				require.Nil(t, meta.DeletionTimestamp, "DeletionTimestamp should be nil")
+				require.Nil(t, meta.DeletionGracePeriodSeconds, "DeletionGracePeriodSeconds should be nil")
+				require.Nil(t, meta.ManagedFields, "ManagedFields should be nil")
+				require.Nil(t, meta.OwnerReferences, "OwnerReferences should be nil")
+				require.Nil(t, meta.Finalizers, "Finalizers should be nil")
+				// Verify user fields are preserved
+				require.Equal(t, "test-policy", meta.Name, "Name should be preserved")
+				require.Equal(t, "test-ns", meta.Namespace, "Namespace should be preserved")
+				require.Equal(t, "test", meta.Labels["app"], "Labels should be preserved")
+				// Verify annotations are cleaned correctly
+				require.NotContains(t, meta.Annotations, "kubectl.kubernetes.io/last-applied-configuration",
+					"kubectl last-applied-configuration annotation should be removed")
+				require.Equal(t, "keep-me", meta.Annotations["user-annotation"],
+					"User annotations should be preserved")
+			},
+		},
+		{
+			name: "Handles nil ObjectMeta gracefully",
+			meta: nil,
+			validate: func(t *testing.T, meta *metav1.ObjectMeta) {
+				// Should not panic, meta remains nil
+				require.Nil(t, meta)
+			},
+		},
+		{
+			name: "Handles empty ObjectMeta",
+			meta: &metav1.ObjectMeta{},
+			validate: func(t *testing.T, meta *metav1.ObjectMeta) {
+				require.NotNil(t, meta)
+				require.Empty(t, meta.UID)
+				require.Empty(t, meta.ResourceVersion)
+				require.Zero(t, meta.Generation)
+			},
+		},
+		{
+			name: "Preserves user metadata without internal fields",
+			meta: &metav1.ObjectMeta{
+				Name:      "policy-name",
+				Namespace: "default",
+				Labels: map[string]string{
+					"env":  "prod",
+					"team": "platform",
+				},
+				Annotations: map[string]string{
+					"description": "My policy description",
+				},
+			},
+			validate: func(t *testing.T, meta *metav1.ObjectMeta) {
+				require.Equal(t, "policy-name", meta.Name)
+				require.Equal(t, "default", meta.Namespace)
+				require.Equal(t, "prod", meta.Labels["env"])
+				require.Equal(t, "platform", meta.Labels["team"])
+				require.Equal(t, "My policy description", meta.Annotations["description"])
+				require.Empty(t, meta.UID)
+				require.Empty(t, meta.ResourceVersion)
+			},
+		},
+		{
+			name: "Removes kubectl annotation but preserves other annotations",
+			meta: &metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"kubectl.kubernetes.io/last-applied-configuration": `{"apiVersion":"v1"}`,
+					"custom-annotation-1":                              "value1",
+					"custom-annotation-2":                              "value2",
+				},
+			},
+			validate: func(t *testing.T, meta *metav1.ObjectMeta) {
+				require.NotContains(t, meta.Annotations, "kubectl.kubernetes.io/last-applied-configuration")
+				require.Equal(t, "value1", meta.Annotations["custom-annotation-1"])
+				require.Equal(t, "value2", meta.Annotations["custom-annotation-2"])
+				require.Len(t, meta.Annotations, 2, "Should have 2 annotations after cleanup")
+			},
+		},
+		{
+			name: "Handles annotations being nil",
+			meta: &metav1.ObjectMeta{
+				Name:        "test",
+				UID:         types.UID(uid),
+				Annotations: nil,
+			},
+			validate: func(t *testing.T, meta *metav1.ObjectMeta) {
+				require.Empty(t, meta.UID)
+				require.Nil(t, meta.Annotations)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cleanK8sMetadata(tt.meta)
+			tt.validate(t, tt.meta)
+		})
+	}
+}
+func TestFromYAMLCleansMetadata(t *testing.T) {
+	policyWithK8sMetadata := `
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: test-policy
+  namespace: default
+  uid: "some-uid-12345"
+  resourceVersion: "67890"
+  generation: 3
+  creationTimestamp: "2024-01-01T00:00:00Z"
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"isovalent.com/v1alpha1","kind":"SmartSwitchNetworkPolicy"}
+    user-annotation: "should-be-kept"
+  labels:
+    app: myapp
+spec:
+  rules:
+    - action: allow
+      description: "Test rule"
+      source:
+        ipBlock:
+          - cidr: 10.0.0.0/8
+      destination:
+        ipBlock:
+          - cidr: 192.168.1.0/24
+        protoPorts:
+          - protocol: TCP
+            port: 443
+`
+	policies, err := FromYAML(policyWithK8sMetadata)
+	require.NoError(t, err, "Failed to parse policy with K8s metadata")
+	require.Len(t, policies, 1, "Expected 1 policy")
+	policy := policies[0]
+	// Verify internal K8s fields are removed
+	require.Empty(t, policy.UID, "UID should be removed")
+	require.Empty(t, policy.ResourceVersion, "ResourceVersion should be removed")
+	require.Zero(t, policy.Generation, "Generation should be zero")
+	require.True(t, policy.CreationTimestamp.IsZero(), "CreationTimestamp should be zero")
+	require.Nil(t, policy.DeletionTimestamp, "DeletionTimestamp should be nil")
+	require.Nil(t, policy.ManagedFields, "ManagedFields should be nil")
+	require.Nil(t, policy.OwnerReferences, "OwnerReferences should be nil")
+	// Verify kubectl annotation is removed
+	require.NotContains(t, policy.Annotations, "kubectl.kubernetes.io/last-applied-configuration",
+		"kubectl annotation should be removed")
+	// Verify user metadata is preserved
+	require.Equal(t, "test-policy", policy.Name, "Name should be preserved")
+	require.Equal(t, "default", policy.Namespace, "Namespace should be preserved")
+	require.Equal(t, "should-be-kept", policy.Annotations["user-annotation"],
+		"User annotations should be preserved")
+	require.Equal(t, "myapp", policy.Labels["app"], "Labels should be preserved")
+}
+func TestFromYAMLMultiplePoliciesCleansAllMetadata(t *testing.T) {
+	multiPolicyWithMetadata := `
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: policy1
+  namespace: ns1
+  uid: "uid-1"
+  resourceVersion: "100"
+  generation: 1
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: '{"some":"config"}'
+spec:
+  rules:
+    - action: allow
+      source:
+        ipBlock:
+          - cidr: 10.0.0.0/8
+      destination:
+        ipBlock:
+          - cidr: 192.168.1.0/24
+        protoPorts:
+          - protocol: TCP
+            port: 80
+---
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: policy2
+  namespace: ns2
+  uid: "uid-2"
+  resourceVersion: "200"
+  generation: 2
+  managedFields:
+    - manager: kubectl
+      operation: Apply
+spec:
+  rules:
+    - action: deny
+      source:
+        ipBlock:
+          - cidr: 172.16.0.0/12
+      destination:
+        ipBlock:
+          - cidr: 192.168.2.0/24
+        protoPorts:
+          - protocol: TCP
+            port: 443
+`
+	policies, err := FromYAML(multiPolicyWithMetadata)
+	require.NoError(t, err)
+	require.Len(t, policies, 2)
+	// Verify all policies have metadata cleaned
+	for i, policy := range policies {
+		t.Run(fmt.Sprintf("Policy %d", i+1), func(t *testing.T) {
+			require.Empty(t, policy.UID, "UID should be removed")
+			require.Empty(t, policy.ResourceVersion, "ResourceVersion should be removed")
+			require.Zero(t, policy.Generation, "Generation should be zero")
+			require.Nil(t, policy.ManagedFields, "ManagedFields should be nil")
+			require.NotContains(t, policy.Annotations, "kubectl.kubernetes.io/last-applied-configuration")
+		})
+	}
+}
+func TestFromFileCleansMetadata(t *testing.T) {
+	policyWithMetadata := `
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: file-policy
+  namespace: test-ns
+  uid: "file-uid-123"
+  resourceVersion: "999"
+  finalizers:
+    - finalizer.isovalent.com
+  ownerReferences:
+    - name: owner
+      apiVersion: v1
+      kind: Deployment
+      uid: 123
+spec:
+  rules:
+    - action: allow
+      source:
+        ipBlock:
+          - cidr: 10.0.0.0/8
+            vrf: default
+      destination:
+        ipBlock:
+          - cidr: 0.0.0.0/0
+        protoPorts:
+          - protocol: TCP
+            port: 8080
+`
+	f, err := os.CreateTemp("", "test-metadata-*.yaml")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Remove(f.Name()) })
+	_, err = f.WriteString(policyWithMetadata)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	policies, err := FromFile(f.Name())
+	require.NoError(t, err)
+	require.Len(t, policies, 1)
+	policy := policies[0]
+	// Verify metadata is cleaned
+	require.Empty(t, policy.UID)
+	require.Empty(t, policy.ResourceVersion)
+	require.Nil(t, policy.Finalizers, "Finalizers should be removed")
+	require.Nil(t, policy.OwnerReferences, "OwnerReferences should be removed")
+	// Verify user fields preserved
+	require.Equal(t, "file-policy", policy.Name)
+	require.Equal(t, "test-ns", policy.Namespace)
 }

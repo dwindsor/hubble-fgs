@@ -43,7 +43,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
 										Port:     443,
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 								},
 							},
@@ -68,7 +68,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 						},
 					},
@@ -107,7 +107,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
 										Port:     80,
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 								},
 							},
@@ -132,7 +132,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							SmartSwitchNetworkProtocolPorts{
 								Port:     80,
 								EndPort:  80,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 						},
 					},
@@ -179,11 +179,11 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
 										Port:     80,
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 									{
 										Port:     443,
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 								},
 							},
@@ -209,12 +209,12 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							SmartSwitchNetworkProtocolPorts{
 								Port:     80,
 								EndPort:  80,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 						},
 					},
@@ -242,12 +242,12 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							SmartSwitchNetworkProtocolPorts{
 								Port:     80,
 								EndPort:  80,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 						},
 					},
@@ -275,12 +275,12 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							SmartSwitchNetworkProtocolPorts{
 								Port:     80,
 								EndPort:  80,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 						},
 					},
@@ -308,12 +308,12 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							SmartSwitchNetworkProtocolPorts{
 								Port:     80,
 								EndPort:  80,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 						},
 					},
@@ -350,11 +350,11 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
 										Port:     443,
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 									{
 										Port:     53,
-										Protocol: "udp",
+										Protocol: "UDP",
 									},
 								},
 							},
@@ -377,12 +377,12 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 							SmartSwitchNetworkProtocolPorts{
 								Port:     53,
 								EndPort:  53,
-								Protocol: "udp",
+								Protocol: "UDP",
 							},
 						},
 					},
@@ -422,7 +422,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 									{
 										Port:     8000,
 										EndPort:  8080,
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 								},
 							},
@@ -447,7 +447,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							SmartSwitchNetworkProtocolPorts{
 								Port:     8000,
 								EndPort:  8080,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 						},
 					},
@@ -492,7 +492,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								},
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 								},
 							},
@@ -513,7 +513,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 						},
 						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 						},
 					},
@@ -551,10 +551,10 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								},
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 									{
-										Protocol: "udp",
+										Protocol: "UDP",
 									},
 								},
 							},
@@ -577,10 +577,10 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 						},
 						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "udp",
+								Protocol: "UDP",
 							},
 						},
 					},
@@ -671,7 +671,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
 										Port:     443,
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 								},
 							},
@@ -701,7 +701,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
 										Port:     443,
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 								},
 							},
@@ -735,10 +735,10 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
 										Port:     443,
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 									{
-										Protocol: "udp",
+										Protocol: "UDP",
 									},
 								},
 							},
@@ -761,10 +761,10 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "udp",
+								Protocol: "UDP",
 							},
 						},
 					},
@@ -801,7 +801,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
 										Port:     0,
-										Protocol: "tcp",
+										Protocol: "TCP",
 									},
 								},
 							},
@@ -823,7 +823,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     0,
-								Protocol: "tcp",
+								Protocol: "TCP",
 							},
 						},
 					},
@@ -861,7 +861,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 								},
 								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
 									{
-										Protocol: "icmp",
+										Protocol: "ICMP",
 									},
 								},
 							},
@@ -884,7 +884,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 						},
 						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "icmp",
+								Protocol: "ICMP",
 							},
 						},
 					},

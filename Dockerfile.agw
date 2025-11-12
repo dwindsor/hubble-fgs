@@ -45,6 +45,7 @@ RUN mkdir -p /opt/cisco/hypershield/etc
 RUN mkdir -p /etc/ssl/certs
 RUN mkdir -p /data/volatile
 RUN mkdir -p /iox_data
+RUN mkdir -p /iox_data/isovalent/policy
 WORKDIR /usr/src/app
 COPY --from=gnmic /app/gnmic ./
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agw ./

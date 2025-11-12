@@ -7,6 +7,9 @@ fi
 if [ -n "$AGW_NETWORK_POLICY" ]; then
     ARGS="$ARGS --network-policy=$AGW_NETWORK_POLICY"
 fi
+if [ -n "$AGW_NETWORK_POLICY_DIR" ]; then
+    ARGS="$ARGS --network-policy-dir=$AGW_NETWORK_POLICY_DIR"
+fi
 if [ "$AGW_ENABLE_K8S" = "false" ]; then
     ARGS="$ARGS --enable-k8s=false"
 fi
@@ -15,6 +18,9 @@ if [ "$AGW_ENABLE_NXOS" = "false" ]; then
 fi
 if [ -n "$AGW_DPU_SERVER_ADDRESS" ]; then
     ARGS="$ARGS --dpu-server-address=$AGW_DPU_SERVER_ADDRESS"
+fi
+if [ -n "$AGW_GOPS_ADDRESS" ]; then
+    ARGS="$ARGS --gops-address=$AGW_GOPS_ADDRESS"
 fi
 if [ -n "$AGW_VRF_MAP" ]; then
     ARGS="$ARGS --vrf-map=$AGW_VRF_MAP"

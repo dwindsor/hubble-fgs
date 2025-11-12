@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 
@@ -58,6 +59,9 @@ func FromYAML(data string) ([]*v1alpha1.SmartSwitchNetworkPolicy, error) {
 			if err != nil {
 				return nil, err
 			}
+
+			// Remove internal Kubernetes fields that should only be set by controller applied policy
+			cleanK8sMetadata(&snp.ObjectMeta)
 			policies = append(policies, snp)
 		default:
 			return nil, fmt.Errorf("invalid kind, cannot parse SmartSwitchNetworkPolicy")
@@ -213,7 +217,7 @@ func Add(np *v1alpha1.SmartSwitchNetworkPolicy, policyHandler PolicyHandler) err
 		}
 		k8sRulesList = append(k8sRulesList, NewPolicyRule(hex.EncodeToString(hash[:]), pol))
 	}
-	err = policyHandler.UpsertPolicy(resourceID, k8sRulesList)
+	err = policyHandler.UpsertPolicy(resourceID, k8sRulesList, np.ResourceVersion)
 	if err != nil {
 		return fmt.Errorf("failed to load SmartSwitchNetworkPolicy: %w", err)
 	}
@@ -228,10 +232,32 @@ func Delete(np *v1alpha1.SmartSwitchNetworkPolicy, policyHandler PolicyHandler) 
 		return nil
 	}
 	resourceID := NewResourceID(np.Kind, np.Namespace, np.Name)
-	err := policyHandler.DeletePolicy(resourceID)
+	err := policyHandler.DeletePolicy(resourceID, "")
 	if err != nil {
 		logger.GetLogger().Warn("SmartSwitchNetworkPolicy deletion failed", logfields.Error, err, "title", resourceID)
 		return err
 	}
 	return nil
+}
+
+// cleanK8sMetadata removes internal Kubernetes fields from ObjectMeta
+// These fields are managed by Kubernetes and should not be persisted
+func cleanK8sMetadata(meta *metav1.ObjectMeta) {
+	if meta == nil {
+		return
+	}
+	// Clear internal k8s fields
+	meta.ResourceVersion = ""
+	meta.UID = ""
+	meta.Generation = 0
+	meta.CreationTimestamp = metav1.Time{}
+	meta.DeletionTimestamp = nil
+	meta.DeletionGracePeriodSeconds = nil
+	meta.ManagedFields = nil
+	meta.OwnerReferences = nil
+	meta.Finalizers = nil
+	// Remove kubectl last-applied-configuration annotation
+	if meta.Annotations != nil {
+		delete(meta.Annotations, "kubectl.kubernetes.io/last-applied-configuration")
+	}
 }

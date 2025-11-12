@@ -476,7 +476,7 @@ func (agw *AgentGateway) PoliciesRemove(_ context.Context, msgData ipc.MessageDa
 			return fmt.Sprintf("invalid resourceID format: %s", resourceID)
 		}
 		rid := switchpolicy.NewResourceID(values[0], values[1], values[2])
-		err := agw.PolicyHandler.DeletePolicy(rid)
+		err := agw.PolicyHandler.DeletePolicy(rid, "")
 		if err != nil {
 			return fmt.Sprintf("Failed to remove policy %s: %v", resourceID, err)
 		}
@@ -544,7 +544,7 @@ func (agw *AgentGateway) PoliciesClear(_ context.Context) error {
 
 	policies := agw.PolicyHandler.ListPolicies()
 	for r := range policies {
-		err := agw.PolicyHandler.DeletePolicy(r)
+		err := agw.PolicyHandler.DeletePolicy(r, "")
 		if err != nil {
 			return err
 		}

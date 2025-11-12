@@ -106,6 +106,7 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		if errors.Is(err, fs.ErrNotExist) {
 			logger.GetLogger().Info("smartSwitchNetworkPolicy dir does not exist", "network-policy-dir", Config.NetworkPoliciesDir)
 		} else if err != nil {
+			logger.GetLogger().Error("failed to add smartSwitchNetworkPolicy from dir", "network-policy-dir", Config.NetworkPoliciesDir, logfields.Error, err)
 			return fmt.Errorf("add SmartSwitchNetworkPolicy failed: %w", err)
 		}
 	}
