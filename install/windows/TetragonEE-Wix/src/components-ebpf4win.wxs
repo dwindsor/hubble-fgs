@@ -13,9 +13,38 @@
       <Files Include="!(bindpath.staging)\ebpf-for-windows\drivers\*" />
     </ComponentGroup>
 
+    <ComponentGroup Id="comp.eBPFWindows.Jit" Directory="dir.eBPFWindows.Jit">
+      <Files Include="!(bindpath.staging)\ebpf-for-windows\JIT\*" />
+    </ComponentGroup>
+
+    <!--Install/Uninstall the eBPF Service -->
+		<ComponentGroup Id="comp.eBPFWindows.ebpfService" Directory="dir.eBPFWindows.Jit">
+			<Component Id="comp.eBPFWindows.ebpfService" Guid="{25F4F9A3-78EB-4598-9982-98FB65377A51}">
+				<File Source="C:\Program Files\ebpf-for-windows\JIT\ebpfsvc.exe" KeyPath="yes" />
+				<ServiceInstall Id="eBPFSvcInstaller" Name="eBPFSvc" DisplayName="eBPF Service" Description="eBPF Service"
+								Start="auto"
+								Type="ownProcess"
+								ErrorControl="normal"
+								Account="[WIX_ACCOUNT_LOCALSERVICE]"
+								Vital="yes"
+								Interactive="no">
+					<ServiceConfig ServiceSid="restricted" OnInstall="yes" OnReinstall="yes" />
+				</ServiceInstall>
+				<ServiceControl Id="ebpfService.Start" Name="eBPFSvc"
+								Start="install"
+								Wait="no" />
+				<ServiceControl Id="ebpfService.Stop" Name="eBPFSvc"
+								Remove="uninstall"
+								Stop="both"
+								Wait="yes" />
+			</Component>
+		</ComponentGroup>
+
     <ComponentGroup Id="comp.eBPFWindows" Directory="dir.eBPFWindows">
       <ComponentRef Id="comp.eBPFPATH" />
       <ComponentGroupRef Id="comp.eBPFWindows.Drivers" />
+      <ComponentGroupRef Id="comp.eBPFWindows.Jit" />
+      <ComponentGroupRef Id="comp.eBPFWindows.ebpfService" />
       <Files Include="!(bindpath.staging)\ebpf-for-windows\*" />
     </ComponentGroup>
 

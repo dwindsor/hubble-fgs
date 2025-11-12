@@ -38,6 +38,7 @@
 
     <Feature Id="TetragonOnWindows">
       <ComponentGroupRef Id="comp.eBPFWindows" />
+      <ComponentGroupRef Id="comp.eBPFWindows" />
       <ComponentGroupRef Id="comp.TetragonBpfDrivers" />
       <ComponentGroupRef Id="comp.TetragonBinaries" />
       <ComponentGroupRef Id="comp.ShawlServiceWrapper" />
@@ -48,6 +49,7 @@
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="dir.eBPFWindows" Name="ebpf-for-windows">
         <Directory Id="dir.eBPFWindows.Drivers" Name="drivers"/>
+        <Directory Id="dir.eBPFWindows.Jit" Name="JIT"/>
       </Directory>
 
       <Directory Id="INSTALLFOLDER" Name="$(ProductDir)">

@@ -36,7 +36,7 @@ var (
 		"tcp_connect.sys",
 		"cgroup/connect4",
 		"tcp_connect4",
-		"tcp::connect4",
+		"tcp__connect4",
 		"windows",
 	).SetPolicy(baseTCPConnectPolicy)
 
@@ -44,7 +44,7 @@ var (
 		"tcp_connect.sys",
 		"cgroup/connect6",
 		"tcp_connect6",
-		"tcp::connect6",
+		"tcp__connect6",
 		"windows",
 	).SetPolicy(baseTCPConnectPolicy)
 
@@ -52,7 +52,7 @@ var (
 		"tcp_connect.sys",
 		"cgroup/recv_accept4",
 		"tcp_accept4",
-		"tcp::accept4",
+		"tcp__accept4",
 		"windows",
 	).SetPolicy(baseTCPConnectPolicy)
 
@@ -60,7 +60,7 @@ var (
 		"tcp_connect.sys",
 		"cgroup/recv_accept6",
 		"tcp_accept6",
-		"tcp::accept6",
+		"tcp__accept6",
 		"windows",
 	).SetPolicy(baseTCPConnectPolicy)
 
@@ -68,7 +68,7 @@ var (
 		"tcp_connect.sys",
 		"sockops",
 		"sockops_monitor",
-		"tcp::sockops_monitor",
+		"tcp__sockops_monitor",
 		"windows",
 	).SetPolicy(baseTCPConnectPolicy)
 

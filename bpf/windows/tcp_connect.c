@@ -184,14 +184,14 @@ int tcp_connect4(bpf_sock_addr_t *ctx)
 	else if ((ctx->protocol == IPPROTO_UDP) && bpf_udp_enabled())
 		event_code = 18;
 	else
-		return BPF_SOCK_ADDR_VERDICT_PROCEED;
+		return BPF_SOCK_ADDR_VERDICT_PROCEED_SOFT;
 	uint64_t pid;
 
 	if (!allow_connection(ctx, 0, 0, &pid))
 		return BPF_SOCK_ADDR_VERDICT_REJECT;
 
 	raise_ip_event(ctx, event_code, 0, 0, pid);
-	return BPF_SOCK_ADDR_VERDICT_PROCEED;
+	return BPF_SOCK_ADDR_VERDICT_PROCEED_SOFT;
 }
 
 SEC("cgroup/connect6")
@@ -204,40 +204,40 @@ int tcp_connect6(bpf_sock_addr_t *ctx)
 	else if ((ctx->protocol == IPPROTO_UDP) && bpf_udp_enabled())
 		event_code = 18;
 	else
-		return BPF_SOCK_ADDR_VERDICT_PROCEED;
+		return BPF_SOCK_ADDR_VERDICT_PROCEED_SOFT;
 
 	uint64_t pid;
 
 	if (!allow_connection(ctx, 1, 0, &pid))
 		return BPF_SOCK_ADDR_VERDICT_REJECT;
 	raise_ip_event(ctx, event_code, 1, 0, pid);
-	return BPF_SOCK_ADDR_VERDICT_PROCEED;
+	return BPF_SOCK_ADDR_VERDICT_PROCEED_SOFT;
 }
 
 SEC("cgroup/recv_accept4")
 int tcp_accept4(bpf_sock_addr_t *ctx)
 {
 	if (ctx->protocol != IPPROTO_TCP)
-		return BPF_SOCK_ADDR_VERDICT_PROCEED;
+		return BPF_SOCK_ADDR_VERDICT_PROCEED_SOFT;
 	uint64_t pid;
 
 	if (!allow_connection(ctx, 0, 1, &pid))
 		return BPF_SOCK_ADDR_VERDICT_REJECT;
 	raise_ip_event(ctx, 9, 0, 1, pid);
-	return BPF_SOCK_ADDR_VERDICT_PROCEED;
+	return BPF_SOCK_ADDR_VERDICT_PROCEED_SOFT;
 }
 
 SEC("cgroup/recv_accept6")
 int tcp_accept6(bpf_sock_addr_t *ctx)
 {
 	if (ctx->protocol != IPPROTO_TCP)
-		return BPF_SOCK_ADDR_VERDICT_PROCEED;
+		return BPF_SOCK_ADDR_VERDICT_PROCEED_SOFT;
 	uint64_t pid;
 
 	if (!allow_connection(ctx, 1, 1, &pid))
 		return BPF_SOCK_ADDR_VERDICT_REJECT;
 	raise_ip_event(ctx, 9, 1, 1, pid);
-	return BPF_SOCK_ADDR_VERDICT_PROCEED;
+	return BPF_SOCK_ADDR_VERDICT_PROCEED_SOFT;
 }
 
 SEC("sockops")

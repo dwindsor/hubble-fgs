@@ -86,10 +86,18 @@ jobs:
         with:
           msbuild-architecture: x64
 
-      - name: Check clang version (MSVC)
-        shell: pwsh
+      - name: Add Visual Studio LLVM to path
         run: |
-          Write-Host "  $(& 'clang.exe' --version)"
+          echo "$env:VCINSTALLDIR\tools\llvm\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Check for Clang version (MSVC)
+        run:
+          clang.exe --version
+
+      - name: Check clang version (LLVM)
+        shell: cmd
+        run:
+            '"c:\Program Files\llvm\bin\clang.exe" --version'
 
       - name: Clone msft/ntosebpfext
         id: download-ntosebpfet
@@ -98,14 +106,17 @@ jobs:
         run: |
           git clone --recursive https://github.com/microsoft/ntosebpfext.git
           cd ${{ env.TEMP }}\ntosebpfext
-          git checkout e7dc209a8be0da2ff5d75f5772a0ee0bf4a10383
-
+          git checkout tags/v0.6.0
+      
       - name: Copy Process_monitor.c file
         shell: pwsh
         run: |
-          $sourcePath = "${{ github.workspace }}\modules\tetragon-oss\bpf\windows\process_monitor.c"
+          $sourcePath = "${{ github.workspace }}\bpf\windows\process_monitor.c"
           $destinationPath = "${{ env.TEMP }}\ntosebpfext\tools\process_monitor_bpf\process_monitor.c"
           Copy-Item -Path $sourcePath -Destination $destinationPath -Force
+          $sourcePathHeader = "${{ github.workspace }}\bpf\windows\process.h"
+          $destinationPathHeader = "${{ env.TEMP }}\ntosebpfext\tools\process_monitor_bpf\process.h"
+          Copy-Item -Path $sourcePathHeader -Destination $destinationPathHeader -Force
 
       - name: Configuring repo for first build
         shell: pwsh
@@ -132,7 +143,7 @@ jobs:
         id: download-ebpf-nuget
         uses: ./.github/actions/download-file
         with:
-          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/eBPF-for-Windows.x64.0.21.0.nupkg"
+          file-url: "https://www.nuget.org/api/v2/package/eBPF-for-Windows.x64/1.0.0-rc1"
           download-dir: "${{ env.TEMP }}"
 
       - name: "Rename .nuget -> .zip"
@@ -144,35 +155,25 @@ jobs:
         uses: ./.github/actions/extract-zip
         with:
           zip-file: "${{ env.TEMP }}/efw.zip"
-          extract-dir: '${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0'
+          extract-dir: '${{ env.TEMP }}\packages\eBPF-for-Windows.1.0.0-rc1'
 
-      # TODO: This uses v0.18 of eBPF-for-windows
       - name: Build tcp_connect monitor ebpf program
-        shell: pwsh
+        shell: cmd
         working-directory: ${{ github.workspace }}\bpf\windows
-        run: |
-          & 'C:\Program Files\LLVM\bin\clang.exe' -g -O2 -Werror -target bpf `
-            -I${{ env.TEMP }}\ntosebpfext\packages\eBPF-for-Windows.0.18.0\build\native\include `
-            -c .\tcp_connect.c `
-            -o tcp_connect.o
+        run:
+            '"c:\Program Files\llvm\bin\clang.exe" -g -target bpf -O2 -Werror -I${{ env.TEMP }}\packages\eBPF-for-Windows.1.0.0-rc1\build\native\include -c .\tcp_connect.c -o tcp_connect.o'
 
       - name: Link tcp_connect monitor ebpf program
         shell: pwsh
         working-directory: ${{ github.workspace }}\bpf\windows
         run: |
-          ${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0\build\native\bin\Convert-BpfToNative.ps1 `
+          ${{ env.TEMP }}\packages\eBPF-for-Windows.1.0.0-rc1\build\native\bin\Convert-BpfToNative.ps1 `
             -FileName tcp_connect `
-            -IncludeDir ${{ env.TEMP }}\packages\eBPF-for-Windows.0.21.0\build\native\include `
+            -IncludeDir ${{ env.TEMP }}\packages\eBPF-for-Windows.1.0.0-rc1\build\native\include `
             -Platform x64 `
             -Configuration Release `
             -KernelMode $True `
-            -Verbose `
-            -Packages ${{ env.TEMP }}\ntosebpfext\packages
-
-          Copy-Item `
-            -Path ${{ github.workspace }}\bpf\windows\tcp_connect.sys `
-            -Destination ${{ env.TEMP }}\ntosebpfext\${{env.BUILD_PLATFORM}}\${{env.BUILD_CONFIGURATION}} `
-            -Force
+            -Verbose
 
       - name: Stage tcp_connect monitor ebpf program
         shell: pwsh
@@ -224,7 +225,7 @@ jobs:
         id: download-ebpf-nativeonly
         uses: ./.github/actions/download-file
         with:
-          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/Build-native-only.NativeOnlyRelease.x64.zip"
+          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v1.0.0-rc1/Build-native-only.NativeOnlyRelease.x64.zip"
           download-dir: "${{ env.TEMP }}"
 
       - name: "Extract eBPF NativeOnlyRelease ZIP"
@@ -321,12 +322,15 @@ jobs:
             exit 1
           }
 
-      - name: Run Unit Tests
-        working-directory: ${{ github.workspace }}\pkg\bpftest\recordtest
-        shell: pwsh
+
+      - name: Run recordtest and netpoltest Unit Tests
+        working-directory: ${{ github.workspace }}\pkg\bpftest
+        shell: powershell
         run: |
+
           Get-ChildItem -Recurse -Path "${{ github.workspace }}\bpf\objs"
-          go test ./ -v
+          go test ./recordtest -v
+          #go test ./netpoltest -v
 
       - name: Build and Zip tetragon Windows binaries
         working-directory: ${{ github.workspace }}
@@ -334,7 +338,6 @@ jobs:
         run: |
           go build -o .\Tetra.exe .\cmd\bin\tetra\ 
           go build -o .\Tetragon.exe .\cmd\bin\tetragon\
-          Get-ChildItem
           New-Item -ItemType Directory -Path ${{ env.TEMP }}\Tetragon-Windows
           Copy-Item *.exe -Destination ${{ env.TEMP }}\Tetragon-Windows
           Compress-Archive -Path ${{ env.TEMP }}\Tetragon-Windows\* -DestinationPath ${{ env.TEMP }}\Tetragon-Windows.zip
@@ -374,7 +377,7 @@ jobs:
         id: download-ebpf
         uses: ./.github/actions/download-file
         with:
-          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v0.21.0/ebpf-for-windows.x64.0.21.0.msi"
+          file-url: "https://github.com/microsoft/ebpf-for-windows/releases/download/Release-v1.0.0-rc1/ebpf-for-windows.x64.1.0.0-rc1.msi"
           download-dir: '${{ runner.temp }}\staging'
 
       - name: "Extract eBPF MSI"
