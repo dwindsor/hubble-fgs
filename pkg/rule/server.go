@@ -8,6 +8,9 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/sensors"
+	dto "github.com/prometheus/client_model/go"
+
+	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 
 	"github.com/isovalent/hubble-fgs/pkg/mandate"
 )
@@ -92,9 +95,9 @@ func (s *Server) ListRules(ctx context.Context, _ *api.ListRulesRequest) (*api.L
 					LoadErr: col.Err,
 				},
 				Version: rule.Labels[ruleVersionLabelKey],
+				Counter: getCounter(rule),
 			})
 		}
-
 	}
 
 	// Second pass: alertrule-only rules
@@ -109,6 +112,7 @@ func (s *Server) ListRules(ctx context.Context, _ *api.ListRulesRequest) (*api.L
 						Loaded: true,
 					},
 					Version: rule.Labels[ruleVersionLabelKey],
+					Counter: getCounter(rule),
 				})
 				break
 			}
@@ -135,4 +139,10 @@ func collectTagProbes(alertRules []*v1alpha1.AlertRule, tagProbes map[string]*v1
 			break
 		}
 	}
+}
+
+func getCounter(rule *v1alpha1.AlertRule) uint64 {
+	var m = &dto.Metric{}
+	alertmetrics.AlertsTriggeredTotal.WithLabelValues(rule.GetName(), rule.Spec.Severity).Write(m)
+	return uint64(m.GetCounter().GetValue())
 }
