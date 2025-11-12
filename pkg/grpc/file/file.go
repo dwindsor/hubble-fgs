@@ -419,6 +419,7 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		TracingPolicy: event.TpName,
 		RuleMatched:   event.TpRule,
 		Message:       event.TpMessage,
+		Tags:          event.Tags,
 	}
 
 	if tetragonEvent.Action == tetragon.FileAction_FILE_CREATE {
@@ -500,6 +501,7 @@ func GetProcessFileLink(event *MsgFileLinkEventUnix) *tetragon.ProcessFile {
 		TracingPolicy: event.TpName,
 		RuleMatched:   event.TpRule,
 		Message:       event.TpMessage,
+		Tags:          event.Tags,
 	}
 
 	filemetrics.FileTotalEventsInc()
@@ -564,6 +566,7 @@ func GetProcessFileSymlink(event *MsgFileSymlinkEventUnix) *tetragon.ProcessFile
 		TracingPolicy: event.TpName,
 		RuleMatched:   event.TpRule,
 		Message:       event.TpMessage,
+		Tags:          event.Tags,
 	}
 
 	filemetrics.FileTotalEventsInc()
@@ -631,6 +634,7 @@ func GetProcessFileOpenraw(event *MsgFileOpenrawEventUnix) *tetragon.ProcessFile
 		TracingPolicy: event.TpName,
 		RuleMatched:   event.TpRule,
 		Message:       event.TpMessage,
+		Tags:          event.Tags,
 	}
 
 	filemetrics.FileTotalEventsInc()
@@ -673,6 +677,7 @@ type MsgFileEventUnix struct {
 	TpMessage   string
 	Digest      MsgDigest
 	OpenFlags   uint32
+	Tags        []string
 }
 
 func handleFileEventCacheRetryMetrics(ev notify.Event, msg *MsgFileEventUnix) {
@@ -759,6 +764,7 @@ type MsgFileLinkEventUnix struct {
 	TpName         string
 	TpRule         string
 	TpMessage      string
+	Tags           []string
 }
 
 func (msg *MsgFileLinkEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -803,6 +809,7 @@ type MsgFileSymlinkEventUnix struct {
 	TpName       string
 	TpRule       string
 	TpMessage    string
+	Tags         []string
 }
 
 func (msg *MsgFileSymlinkEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -847,6 +854,7 @@ type MsgFileOpenrawEventUnix struct {
 	TpName    string
 	TpRule    string
 	TpMessage string
+	Tags      []string
 }
 
 func (msg *MsgFileOpenrawEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -941,6 +949,7 @@ type MsgFileRenameEventUnix struct {
 	TpName    string
 	TpRule    string
 	TpMessage string
+	Tags      []string
 }
 
 func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
@@ -986,6 +995,7 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 		TracingPolicy: event.TpName,
 		RuleMatched:   event.TpRule,
 		Message:       event.TpMessage,
+		Tags:          event.Tags,
 	}
 
 	filemetrics.FileTotalEventsInc()

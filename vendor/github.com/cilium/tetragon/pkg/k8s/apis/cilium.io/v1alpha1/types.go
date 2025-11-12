@@ -406,6 +406,11 @@ type FileSpec struct {
 	// This is a label selector which selects Pods. This field follows standard label
 	// selector semantics; if present but empty, it selects all pods.
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
+	// +kubebuilder:validation:optional
+	// +kubebuilder:validation:MaxItems=16
+	// Tags to categorize the event, will be include in the event output.
+	// Maximum of 16 Tags are supported.
+	Tags []string `json:"tags,omitempty"`
 }
 
 type FileCapabilitiesSelector struct {

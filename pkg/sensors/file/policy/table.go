@@ -46,6 +46,7 @@ type FileMonitoring struct {
 	PathMetadata  map[string][]fm.DigestPathMetadata
 	UserInodeNum  int64
 	IsPathBased   bool
+	Tags          []string
 }
 
 type FimTable struct {

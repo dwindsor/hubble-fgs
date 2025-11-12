@@ -454,6 +454,8 @@ message ProcessFile {
   string rule_matched = 12;
   repeated Process ancestors = 13; // Not in use for now. Please rely on ancestors in ProcessExec.
   string message = 14;
+  // Tags of the FIM policy to categorize the event.
+  repeated string tags = 15;
 }
 
 // ProcessFileExec events provide (additional to ProcessExec) information about files being executed.

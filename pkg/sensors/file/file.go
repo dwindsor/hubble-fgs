@@ -46,6 +46,7 @@ import (
 	"github.com/cilium/tetragon/pkg/policyconf"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/rthooks"
+	"github.com/cilium/tetragon/pkg/sensors/tracing"
 	"github.com/cilium/tetragon/pkg/strutils"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
 	"k8s.io/client-go/tools/cache"
@@ -1003,6 +1004,12 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		}
 	}
 
+	s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
+	if err != nil {
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvTcId)
+		return nil, fmt.Errorf("failed to get fim table index: %w", err)
+	}
+
 	unix := &file.MsgFileEventUnix{
 		Msg:         &m,
 		Path:        str,
@@ -1014,6 +1021,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		TpMessage:   pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
 		Digest:      digest,
 		OpenFlags:   m.OpenFlags,
+		Tags:        s.Tags,
 	}
 
 	return []observer.Event{unix}, nil
@@ -1037,6 +1045,12 @@ func handleFileLinkOps(r *bytes.Reader) ([]observer.Event, error) {
 		linkStr = linkStr[:m.Link.Path.Size]
 	}
 
+	s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
+	if err != nil {
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvTcId)
+		return nil, fmt.Errorf("failed to get fim table index: %w", err)
+	}
+
 	unix := &file.MsgFileLinkEventUnix{
 		Msg:            &m,
 		TargetPath:     targetStr,
@@ -1048,6 +1062,7 @@ func handleFileLinkOps(r *bytes.Reader) ([]observer.Event, error) {
 		TpName:         pol.FileMonitoringTable.GetTpName(m.TpId),
 		TpRule:         pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
 		TpMessage:      pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
+		Tags:           s.Tags,
 	}
 
 	return []observer.Event{unix}, nil
@@ -1071,6 +1086,12 @@ func handleFileSymlinkOps(r *bytes.Reader) ([]observer.Event, error) {
 		targetStr = targetStr[:m.Target.Size]
 	}
 
+	s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
+	if err != nil {
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvTcId)
+		return nil, fmt.Errorf("failed to get fim table index: %w", err)
+	}
+
 	unix := &file.MsgFileSymlinkEventUnix{
 		Msg:          &m,
 		TargetPath:   targetStr,
@@ -1080,6 +1101,7 @@ func handleFileSymlinkOps(r *bytes.Reader) ([]observer.Event, error) {
 		TpName:       pol.FileMonitoringTable.GetTpName(m.TpId),
 		TpRule:       pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
 		TpMessage:    pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
+		Tags:         s.Tags,
 	}
 
 	return []observer.Event{unix}, nil
@@ -1104,6 +1126,12 @@ func handleFileOpenrawOps(r *bytes.Reader) ([]observer.Event, error) {
 	}
 	retval = -retval
 
+	s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
+	if err != nil {
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvTcId)
+		return nil, fmt.Errorf("failed to get fim table index: %w", err)
+	}
+
 	unix := &file.MsgFileOpenrawEventUnix{
 		Msg:       &m,
 		Path:      openPath,
@@ -1111,6 +1139,7 @@ func handleFileOpenrawOps(r *bytes.Reader) ([]observer.Event, error) {
 		TpName:    pol.FileMonitoringTable.GetTpName(m.TpId),
 		TpRule:    pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
 		TpMessage: pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
+		Tags:      s.Tags,
 	}
 
 	if m.IsRelativePath != 0 {
@@ -1172,13 +1201,12 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		dstCid = string(m.Dst.Path.ContainerID[:])
 	}
 
+	s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
+	if err != nil {
+		filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvTcId)
+		return nil, fmt.Errorf("failed to get fim table index: %w", err)
+	}
 	if hasFlag(m.Flags, fm.SRC_DIRECTORY) {
-		s, err := pol.FileMonitoringTable.GetFIM(m.TpId)
-		if err != nil {
-			filemetrics.FileTotalErrorsInc(filemetrics.SensorFileMvTcId)
-			return nil, fmt.Errorf("failed to get fim table index: %w", err)
-		}
-
 		renameCid := ""
 		if srcCid == "" && dstCid != "" { // use the non-empty
 			renameCid = dstCid
@@ -1238,6 +1266,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 		TpName:    pol.FileMonitoringTable.GetTpName(m.TpId),
 		TpRule:    pol.FileMonitoringTable.GetTpRule(m.TpId, m.RuleID),
 		TpMessage: pol.FileMonitoringTable.GetTpMessage(m.TpId, m.MessageId),
+		Tags:      s.Tags,
 	}
 
 	return []observer.Event{unix}, nil
@@ -1327,6 +1356,13 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 		PathMetadata:  sel.GetPathMetadata(),
 		IsPathBased:   mode == PathBasedTpMode,
 	}
+
+	tagsField, err := tracing.GetPolicyTags(kprobes.Tags)
+	if err != nil {
+		return nil, err
+	}
+	e.Tags = tagsField
+
 	// Add rules from file_paths with a unique number assosciated to each of them.
 	// No need to add file_paths_exclude as we will never get an event from these.
 	for i, p := range kprobes.PathsPatterns {

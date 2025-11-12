@@ -696,6 +696,14 @@ spec:
                           type: array
                       type: object
                     type: array
+                  tags:
+                    description: |-
+                      Tags to categorize the event, will be include in the event output.
+                      Maximum of 16 Tags are supported.
+                    items:
+                      type: string
+                    maxItems: 16
+                    type: array
                 type: object
                 x-kubernetes-validations:
                 - message: We support up to 32 entries with type FilePrefixSuffix

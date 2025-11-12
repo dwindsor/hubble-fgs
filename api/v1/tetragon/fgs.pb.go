@@ -3480,6 +3480,8 @@ type ProcessFile struct {
 	RuleMatched   string                 `protobuf:"bytes,12,opt,name=rule_matched,json=ruleMatched,proto3" json:"rule_matched,omitempty"`
 	Ancestors     []*Process             `protobuf:"bytes,13,rep,name=ancestors,proto3" json:"ancestors,omitempty"` // Not in use for now. Please rely on ancestors in ProcessExec.
 	Message       string                 `protobuf:"bytes,14,opt,name=message,proto3" json:"message,omitempty"`
+	// Tags of the FIM policy to categorize the event.
+	Tags          []string `protobuf:"bytes,15,rep,name=tags,proto3" json:"tags,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3610,6 +3612,13 @@ func (x *ProcessFile) GetMessage() string {
 		return x.Message
 	}
 	return ""
+}
+
+func (x *ProcessFile) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
 }
 
 // ProcessFileExec events provide (additional to ProcessExec) information about files being executed.
@@ -5183,7 +5192,7 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"symlinkArg\x127\n" +
 	"\vopenraw_arg\x18\a \x01(\v2\x14.tetragon.OpenRawArgH\x00R\n" +
 	"openrawArgB\x05\n" +
-	"\x03arg\"\x95\x04\n" +
+	"\x03arg\"\xa9\x04\n" +
 	"\vProcessFile\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12,\n" +
@@ -5199,7 +5208,8 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\x0etracing_policy\x18\v \x01(\tR\rtracingPolicy\x12!\n" +
 	"\frule_matched\x18\f \x01(\tR\vruleMatched\x12/\n" +
 	"\tancestors\x18\r \x03(\v2\x11.tetragon.ProcessR\tancestors\x12\x18\n" +
-	"\amessage\x18\x0e \x01(\tR\amessage\"\xb0\x02\n" +
+	"\amessage\x18\x0e \x01(\tR\amessage\x12\x12\n" +
+	"\x04tags\x18\x0f \x03(\tR\x04tags\"\xb0\x02\n" +
 	"\x0fProcessFileExec\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12)\n" +

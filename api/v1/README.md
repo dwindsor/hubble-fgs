@@ -2097,6 +2097,7 @@ HTTP PARSER
 | rule_matched | [string](#string) |  |  |
 | ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 | message | [string](#string) |  |  |
+| tags | [string](#string) | repeated | Tags of the FIM policy to categorize the event. |
 
 
 

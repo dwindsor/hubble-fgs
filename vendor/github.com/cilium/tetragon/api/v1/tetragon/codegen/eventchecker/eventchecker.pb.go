@@ -4889,6 +4889,7 @@ type ProcessFileChecker struct {
 	RuleMatched   *stringmatcher.StringMatcher       `json:"ruleMatched,omitempty"`
 	Ancestors     *ProcessListMatcher                `json:"ancestors,omitempty"`
 	Message       *stringmatcher.StringMatcher       `json:"message,omitempty"`
+	Tags          *StringListMatcher                 `json:"tags,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -5000,6 +5001,11 @@ func (checker *ProcessFileChecker) Check(event *tetragon.ProcessFile) error {
 				return fmt.Errorf("Message check failed: %w", err)
 			}
 		}
+		if checker.Tags != nil {
+			if err := checker.Tags.Check(event.Tags); err != nil {
+				return fmt.Errorf("Tags check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -5093,6 +5099,12 @@ func (checker *ProcessFileChecker) WithMessage(check *stringmatcher.StringMatche
 	return checker
 }
 
+// WithTags adds a Tags check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithTags(check *StringListMatcher) *ProcessFileChecker {
+	checker.Tags = check
+	return checker
+}
+
 //FromProcessFile populates the ProcessFileChecker using data from a ProcessFile event
 func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) *ProcessFileChecker {
 	if event == nil {
@@ -5141,6 +5153,17 @@ func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) 
 		checker.Ancestors = lm
 	}
 	checker.Message = stringmatcher.Full(event.Message)
+	{
+		var checks []*stringmatcher.StringMatcher
+		for _, check := range event.Tags {
+			var convertedCheck *stringmatcher.StringMatcher
+			convertedCheck = stringmatcher.Full(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewStringListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Tags = lm
+	}
 	return checker
 }
 
