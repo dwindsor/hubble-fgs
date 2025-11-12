@@ -94,12 +94,13 @@ const (
 	KeyPolicyDir                      = "policy-dir"
 
 	EnvironmentAWS        = "aws"
+	EnvironmentAzure      = "azure"
 	EnvironmentGCloud     = "gcloud"
 	EnvironmentKubernetes = "kubernetes"
 )
 
 var (
-	environments = []string{EnvironmentAWS, EnvironmentGCloud, EnvironmentKubernetes}
+	environments = []string{EnvironmentAWS, EnvironmentAzure, EnvironmentGCloud, EnvironmentKubernetes}
 
 	redactedKeys = []string{
 		keyK8sServiceAccountAuth,

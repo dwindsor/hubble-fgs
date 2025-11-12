@@ -19,7 +19,7 @@ import (
 func Test_validateConfig(t *testing.T) {
 	Config.Environment = "bad-env"
 	err := validateConfig(Config)
-	assert.EqualError(t, err, "invalid environment 'bad-env', valid values are [aws gcloud kubernetes]")
+	assert.EqualError(t, err, "invalid environment 'bad-env', valid values are [aws azure gcloud kubernetes]")
 	Config.Environment = EnvironmentKubernetes
 	assert.NoError(t, validateConfig(Config))
 }

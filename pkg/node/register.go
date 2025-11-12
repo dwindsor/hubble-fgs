@@ -38,6 +38,7 @@ type Register interface {
 func NewNodeRegisterer(metadata local.MetadataService) (Register, error) {
 	if option.K8SControlPlaneEnabled() {
 		if option.Config.Environment == option.EnvironmentAWS ||
+			option.Config.Environment == option.EnvironmentAzure ||
 			option.Config.Environment == option.EnvironmentGCloud {
 			return &registerer{
 				metadata: metadata,
