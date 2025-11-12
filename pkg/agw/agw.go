@@ -33,6 +33,7 @@ import (
 const (
 	BUFSIZE        = 4096
 	TOKEN_INTERVAL = 2
+	CHECK_INTERVAL = 3 // in second
 
 	// dpuTimeout = 300 // in second
 )
@@ -393,6 +394,26 @@ func (agw *AgentGateway) tryLoadK8sAuth() (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func (agw *AgentGateway) WaitForInService(ctx context.Context) {
+	logger.GetLogger().Debug("WaitForInService")
+
+	for {
+
+		if nxos.Nexus.IsInService(ctx) {
+			logger.GetLogger().Debug("Now is InService")
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			logger.GetLogger().Debug("Context done in WaitForInService")
+			return
+
+		case <-time.After(CHECK_INTERVAL * time.Second):
+		}
+	}
 }
 
 // --------------------- DPU related

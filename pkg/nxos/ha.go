@@ -386,7 +386,7 @@ func (n *Nxos) haGetPeers(_ context.Context) []string {
 
 func (n *Nxos) haUpdateNxState(_ context.Context) {
 	now := time.Now().Unix()
-	logger.GetLogger().Debug("haUpdateNxState:", "time", now)
+	logger.GetLogger().Debug("haUpdateNxState:", "timestamp", now)
 
 	var svcState hav1.SERVICE_STATE
 	var haState hav1.HA_STATE
@@ -417,7 +417,7 @@ func (n *Nxos) haUpdateNxState(_ context.Context) {
 
 func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 	now := time.Now().Unix()
-	logger.GetLogger().Debug("haCheckAdjMbr", "time", now)
+	logger.GetLogger().Debug("haCheckAdjMbr", "timestamp", now)
 
 	n.Lock()
 	defer n.Unlock()

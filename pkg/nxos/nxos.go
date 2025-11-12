@@ -35,6 +35,7 @@ const (
 	TokenFile             = "/iox_data/k8sauth_token"
 	waitForDpuInterval    = 10  // in second
 	waitForInSyncInterval = 30  // in second
+	waitForPolicyInterval = 30  // in second
 	notifTimeout          = 900 // in second
 
 	dpuStatusCheckTimer = 1 // in second
@@ -374,7 +375,7 @@ func (n *Nxos) waitForDpu(ctx context.Context) (uint16, error) {
 			logger.GetLogger().Info("Aborting wait for DPU.")
 			return 0, fmt.Errorf("no DPUs discovered")
 		case wait := <-n.Wait.Out():
-			logger.GetLogger().Debug("Waked up", "time", wait)
+			logger.GetLogger().Debug("Waked up", "timestamp", wait)
 			num, ok := n.isAllDpuCounted(ctx)
 			if ok {
 				return num, nil
@@ -598,7 +599,7 @@ func (n *Nxos) Setup(ctx context.Context, cancel context.CancelFunc, low, high u
 
 	now := time.Now().Unix()
 	elapsed := now - n.Ha.Start
-	logger.GetLogger().Debug("time elapsed since HA starts: ", "time", elapsed)
+	logger.GetLogger().Debug("time elapsed since HA starts: ", "timestamp", elapsed)
 	if !n.Ha.IsLeader && elapsed < 2*haTimeout {
 		wait := 2*haTimeout - elapsed
 		logger.GetLogger().Debug("wait before service redir prog ", "seconds", wait)
@@ -681,15 +682,15 @@ func (n *Nxos) GracefulRestartAgent(ctx context.Context, cleanup bool) {
 }
 
 func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {
+	logger.GetLogger().Debug("Waiting for policy from controller")
+	time.Sleep(waitForPolicyInterval * time.Second)
 
 	logger.GetLogger().Debug("Waiting for DPU in sync")
 	if !n.SkipDpu {
 		for {
-			time.Sleep(waitForInSyncInterval * time.Second)
-			n.RLock()
-
 			logger.GetLogger().Debug("Check for DPU InSync")
 
+			n.RLock()
 			inSync := n.Ha.Local.Criteria[HaCritDpuInSync]
 			if inSync {
 				logger.GetLogger().Debug("DPU InSync")
@@ -697,8 +698,11 @@ func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {
 				break
 			}
 			n.RUnlock()
+
+			time.Sleep(waitForInSyncInterval * time.Second)
 		}
 	}
+
 	// DPU sub-system ready for service firewall
 	if (n.Agent.SystemState & SysStConnPending) == SysStConnPending {
 		n.Agent.SystemState = SysStDpuReady | SysStConnPending
@@ -1162,4 +1166,11 @@ func DpuHealth(ctx context.Context, healthy bool, count int) {
 	} else if Nexus.Ha.Local.Criteria != nil {
 		Nexus.haUpdateCrit(ctx, HaCritDpuInSync, false)
 	}
+}
+
+func (n *Nxos) IsInService(_ context.Context) bool {
+	Nexus.Lock()
+	defer Nexus.Unlock()
+
+	return n.InService
 }
