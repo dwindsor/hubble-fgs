@@ -57,6 +57,10 @@ func (s *Server) ListRules(ctx context.Context, req *api.ListRulesRequest) (*api
 	// multiple probes matching the same alertrule.
 	for _, col := range collections {
 		spec := col.TracingpolicySpec
+		selectorLabels := make(map[string]string)
+		if spec.PodSelector != nil {
+			selectorLabels = spec.PodSelector.MatchLabels
+		}
 		tagProbes := make(map[string]*v1alpha1.AlertRule)
 		for _, kprobe := range spec.KProbes {
 			collectTagProbes(alertRules, tagProbes, kprobe.Tags)
@@ -99,8 +103,9 @@ func (s *Server) ListRules(ctx context.Context, req *api.ListRulesRequest) (*api
 					Loaded:  col.State == sensors.EnabledState || col.State == sensors.DisabledState,
 					LoadErr: col.Err,
 				},
-				Version: version,
-				Counter: getCounter(rule),
+				Version:           version,
+				Counter:           getCounter(rule),
+				PodSelectorLabels: selectorLabels,
 			})
 		}
 	}
