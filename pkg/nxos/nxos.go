@@ -126,12 +126,6 @@ func (n *Nxos) initiate(ctx context.Context) error {
 		return err
 	}
 
-	// get proxy config
-	err = n.getProxyConfig(ctx)
-	if err != nil {
-		return err
-	}
-
 	// get model and nxos version
 	err = n.getModelAndVersion(ctx)
 	if err != nil {
@@ -207,6 +201,12 @@ func (n *Nxos) GetHeadlessMode() bool {
 		n.SkipCtrlr = true
 	}
 	return n.SkipCtrlr
+}
+
+// GetProxyConfig retrieves the proxy configuration from the NXOS device.
+// It returns an error if the proxy configuration cannot be obtained.
+func (n *Nxos) GetProxyConfig(ctx context.Context) error {
+	return n.getProxyConfig(ctx)
 }
 
 // GetSerialNum attempts to retrieve the serial number; returns an empty string on error.

@@ -194,6 +194,11 @@ func (agw *AgentGateway) GetNxHeadlessMode() bool {
 	return nxos.Nexus.GetHeadlessMode()
 }
 
+// GetNxProxyConfig retrieves the proxy configuration from the Nexus system.
+func (agw *AgentGateway) GetNxProxyConfig(ctx context.Context) error {
+	return nxos.Nexus.GetProxyConfig(ctx)
+}
+
 func (agw *AgentGateway) Setup(ctx context.Context, cancel context.CancelFunc) error {
 	err := nxos.Nexus.Setup(ctx, cancel, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener, agw.PolicyHandler)
 	if err != nil {

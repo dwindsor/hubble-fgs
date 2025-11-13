@@ -156,9 +156,13 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 		// to the k8s control plane.
 		conf.K8sConfigRetry = enterpriseConf.K8sConfigRetry
 
-		// Reset NXOS connection status before starting K8s manager
+		// Reset NXOS connection status before starting K8s manager.
+		// Set the initial proxy configuration from NXOS.
 		if Config.EnableNXOS {
 			agwAgent.ResetConnectionStatus(ctx)
+			// ignore error here, as proxy may not be needed,
+			// or user can still configure later.
+			agwAgent.GetNxProxyConfig(ctx)
 		}
 
 		// Initialize and connect to K8s controller manager

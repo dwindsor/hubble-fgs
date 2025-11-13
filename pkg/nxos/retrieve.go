@@ -127,6 +127,8 @@ func (n *Nxos) getProxyConfig(ctx context.Context) error {
 			}
 			n.setProxy(ctx)
 		}
+	} else {
+		logger.GetLogger().Debug("No https-proxy configured")
 	}
 	return nil
 }
