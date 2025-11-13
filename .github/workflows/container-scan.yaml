@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         image: [tetragon-ci, tetragon-operator-ci]
-        branch: [v1.15, v1.16, v1.17]
+        branch: [v1.15, v1.16, v1.17, v1.18]
     steps:
       - name: Pull Docker image
         run: docker pull quay.io/isovalent-dev/${{ matrix.image }}:${{ matrix.branch }}-latest
