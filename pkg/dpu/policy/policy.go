@@ -44,6 +44,8 @@ func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
 			proto = append(proto, "udp")
 		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP:
 			proto = append(proto, "icmp")
+		default:
+			proto = append(proto, "any")
 		}
 		dstPorts = append(dstPorts, PortV2{
 			PortHigh: uint16(p.MaxPort),
@@ -62,6 +64,8 @@ func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
 			proto = append(proto, "udp")
 		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP:
 			proto = append(proto, "icmp")
+		default:
+			proto = append(proto, "any")
 		}
 		srcPorts = append(srcPorts, PortV2{
 			PortHigh: uint16(p.MaxPort),
