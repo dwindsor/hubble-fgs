@@ -330,8 +330,10 @@ jobs:
           echo "::group::Sanity check: contents of bpf\objs"
           Get-ChildItem -Recurse -Path "${{ github.workspace }}\bpf\objs"
           echo "::endgroup::"
-          go test ./recordtest -v
-          #go test ./netpoltest -v
+          cd recordtest
+          go test ./ -v
+          cd ../netpoltest
+          go test ./ -v
 
       - name: Build and Zip tetragon Windows binaries
         working-directory: ${{ github.workspace }}

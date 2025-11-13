@@ -21,8 +21,8 @@ func TestNetworkPolicyHostSupport(t *testing.T) {
 	testutils.StartSimpleHTTPServer(t, ":8080")
 	testutils.StartSimpleHTTPServer(t, ":8081")
 
-	pShellArgDenied := []string{"Invoke-WebRequest", "127.0.0.1:8081"}
-	pShellArgAllowed := []string{"Invoke-WebRequest", "127.0.0.1:8080"}
+	pShellArgDenied := []string{"Invoke-WebRequest", "127.0.0.1:8080"}
+	pShellArgAllowed := []string{"Invoke-WebRequest", "127.0.0.1:8081"}
 
 	pShellCmd := exec.Command("powershell.exe", pShellArgDenied...)
 	err := pShellCmd.Run()
@@ -32,7 +32,28 @@ func TestNetworkPolicyHostSupport(t *testing.T) {
 	err = pShellCmd.Run()
 	require.NoError(t, err, "no NetworkPolicy, packet should pass")
 
-	const policyYAML = `apiVersion: cilium.io/v1alpha1
+	const policyDenyYAML = `apiVersion: cilium.io/v1alpha1
+kind: TetragonNetworkPolicy
+metadata:
+  name: "host-support-test"
+spec:
+  processSelector:
+    operator: "In"
+    values:
+      - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+  defaultAction: "deny"
+  rules:
+  - description: "connectAllowRule"
+    hook: "connect"
+    action: "allow"
+    destination:
+    - ipBlock:
+        cidr: "127.0.0.1/32"
+      ports:
+        protocol: "TCP"
+        ports: [8081]`
+
+	const policyAllowYAML = `apiVersion: cilium.io/v1alpha1
 kind: TetragonNetworkPolicy
 metadata:
   name: "host-support-test"
@@ -51,21 +72,36 @@ spec:
         cidr: "127.0.0.1/32"
       ports:
         protocol: "TCP"
-        ports: [8081]`
+        ports: [8080]`
 
-	policy, err := netpol.FromYAML(policyYAML)
+	denyPolicy, err := netpol.FromYAML(policyDenyYAML)
 	require.NoError(t, err)
-	err = netpol.Add(policy)
+	err = netpol.Add(denyPolicy)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := netpol.Delete(policy)
-		require.NoError(t, err)
-	})
-	pShellCmd = exec.Command("powershell.exe", pShellArgAllowed...)
+
+	pShellCmd = exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", pShellArgAllowed...)
+
 	err = pShellCmd.Run()
 	require.NoError(t, err, "allow rule, packet should pass")
 
-	pShellCmd = exec.Command("powershell.exe", pShellArgDenied...)
+	pShellCmd = exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", pShellArgDenied...)
+	err = pShellCmd.Run()
+	require.Error(t, err, "default deny rule, packet should drop")
+
+	err = netpol.Delete(denyPolicy)
+	require.NoError(t, err)
+
+	allowPolicy, err := netpol.FromYAML(policyAllowYAML)
+	require.NoError(t, err)
+	err = netpol.Add(allowPolicy)
+	require.NoError(t, err)
+
+	pShellCmd = exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", pShellArgAllowed...)
+
+	err = pShellCmd.Run()
+	require.NoError(t, err, "allow rule, packet should pass")
+
+	pShellCmd = exec.Command("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", pShellArgDenied...)
 	err = pShellCmd.Run()
 	require.Error(t, err, "default deny rule, packet should drop")
 
