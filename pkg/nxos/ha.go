@@ -386,7 +386,7 @@ func (n *Nxos) haGetPeers(_ context.Context) []string {
 
 func (n *Nxos) haUpdateNxState(_ context.Context) {
 	now := time.Now().Unix()
-	logger.GetLogger().Debug("haUpdateNxState:", "timestamp", now)
+	logger.GetLogger().Debug("haUpdateNxState", "timestamp", now)
 
 	var svcState hav1.SERVICE_STATE
 	var haState hav1.HA_STATE

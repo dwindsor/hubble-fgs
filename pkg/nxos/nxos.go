@@ -375,7 +375,7 @@ func (n *Nxos) waitForDpu(ctx context.Context) (uint16, error) {
 			logger.GetLogger().Info("Aborting wait for DPU.")
 			return 0, fmt.Errorf("no DPUs discovered")
 		case wait := <-n.Wait.Out():
-			logger.GetLogger().Debug("Waked up", "timestamp", wait)
+			logger.GetLogger().Debug("Waked up", "wait_duration", wait)
 			num, ok := n.isAllDpuCounted(ctx)
 			if ok {
 				return num, nil
@@ -599,10 +599,10 @@ func (n *Nxos) Setup(ctx context.Context, cancel context.CancelFunc, low, high u
 
 	now := time.Now().Unix()
 	elapsed := now - n.Ha.Start
-	logger.GetLogger().Debug("time elapsed since HA starts: ", "timestamp", elapsed)
+	logger.GetLogger().Debug("time elapsed since HA starts", "timestamp", elapsed)
 	if !n.Ha.IsLeader && elapsed < 2*haTimeout {
 		wait := 2*haTimeout - elapsed
-		logger.GetLogger().Debug("wait before service redir prog ", "seconds", wait)
+		logger.GetLogger().Debug("wait before service redir prog", "wait_seconds", wait)
 		time.Sleep(time.Duration(wait) * time.Second)
 	}
 
