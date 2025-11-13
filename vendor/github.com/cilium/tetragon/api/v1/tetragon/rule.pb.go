@@ -204,11 +204,12 @@ type Rule struct {
 	// want to keep things simple
 	Path []string `protobuf:"bytes,2,rep,name=path,proto3" json:"path,omitempty"`
 	// rule type
-	Type          RuleType    `protobuf:"varint,3,opt,name=type,proto3,enum=tetragon.RuleType" json:"type,omitempty"`
-	Status        *RuleStatus `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	Counter       uint64      `protobuf:"varint,5,opt,name=counter,proto3" json:"counter,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Type              RuleType          `protobuf:"varint,3,opt,name=type,proto3,enum=tetragon.RuleType" json:"type,omitempty"`
+	Status            *RuleStatus       `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	Counter           uint64            `protobuf:"varint,5,opt,name=counter,proto3" json:"counter,omitempty"`
+	PodSelectorLabels map[string]string `protobuf:"bytes,6,rep,name=pod_selector_labels,json=podSelectorLabels,proto3" json:"pod_selector_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Rule) Reset() {
@@ -276,6 +277,13 @@ func (x *Rule) GetCounter() uint64 {
 	return 0
 }
 
+func (x *Rule) GetPodSelectorLabels() map[string]string {
+	if x != nil {
+		return x.PodSelectorLabels
+	}
+	return nil
+}
+
 // active ruleset
 type RuleSet struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -338,13 +346,17 @@ const file_tetragon_rule_proto_rawDesc = "" +
 	"RuleStatus\x12&\n" +
 	"\x04mode\x18\x01 \x01(\x0e2\x12.tetragon.RuleModeR\x04mode\x12\x16\n" +
 	"\x06loaded\x18\x02 \x01(\bR\x06loaded\x12\x19\n" +
-	"\bload_err\x18\x03 \x01(\tR\aloadErr\"\xa4\x01\n" +
+	"\bload_err\x18\x03 \x01(\tR\aloadErr\"\xc1\x02\n" +
 	"\x04Rule\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x12\n" +
 	"\x04path\x18\x02 \x03(\tR\x04path\x12&\n" +
 	"\x04type\x18\x03 \x01(\x0e2\x12.tetragon.RuleTypeR\x04type\x12,\n" +
 	"\x06status\x18\x04 \x01(\v2\x14.tetragon.RuleStatusR\x06status\x12\x18\n" +
-	"\acounter\x18\x05 \x01(\x04R\acounter\"C\n" +
+	"\acounter\x18\x05 \x01(\x04R\acounter\x12U\n" +
+	"\x13pod_selector_labels\x18\x06 \x03(\v2%.tetragon.Rule.PodSelectorLabelsEntryR\x11podSelectorLabels\x1aD\n" +
+	"\x16PodSelectorLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"C\n" +
 	"\aRuleSet\x12\x12\n" +
 	"\x04node\x18\x01 \x01(\tR\x04node\x12$\n" +
 	"\x05rules\x18\x02 \x03(\v2\x0e.tetragon.RuleR\x05rules*P\n" +
@@ -370,24 +382,26 @@ func file_tetragon_rule_proto_rawDescGZIP() []byte {
 }
 
 var file_tetragon_rule_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_tetragon_rule_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_tetragon_rule_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_tetragon_rule_proto_goTypes = []any{
 	(RuleType)(0),      // 0: tetragon.RuleType
 	(RuleMode)(0),      // 1: tetragon.RuleMode
 	(*RuleStatus)(nil), // 2: tetragon.RuleStatus
 	(*Rule)(nil),       // 3: tetragon.Rule
 	(*RuleSet)(nil),    // 4: tetragon.RuleSet
+	nil,                // 5: tetragon.Rule.PodSelectorLabelsEntry
 }
 var file_tetragon_rule_proto_depIdxs = []int32{
 	1, // 0: tetragon.RuleStatus.mode:type_name -> tetragon.RuleMode
 	0, // 1: tetragon.Rule.type:type_name -> tetragon.RuleType
 	2, // 2: tetragon.Rule.status:type_name -> tetragon.RuleStatus
-	3, // 3: tetragon.RuleSet.rules:type_name -> tetragon.Rule
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 3: tetragon.Rule.pod_selector_labels:type_name -> tetragon.Rule.PodSelectorLabelsEntry
+	3, // 4: tetragon.RuleSet.rules:type_name -> tetragon.Rule
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_rule_proto_init() }
@@ -406,7 +420,7 @@ func file_tetragon_rule_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tetragon_rule_proto_rawDesc), len(file_tetragon_rule_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

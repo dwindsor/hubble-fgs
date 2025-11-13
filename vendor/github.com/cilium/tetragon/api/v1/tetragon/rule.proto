@@ -55,6 +55,7 @@ message Rule {
   RuleType type = 3;
   RuleStatus status = 4;
   uint64 counter = 5;
+  map<string, string> pod_selector_labels = 6;
 }
 
 // active ruleset

@@ -226,6 +226,7 @@
   
 - [tetragon/rule.proto](#tetragon_rule-proto)
     - [Rule](#tetragon-Rule)
+    - [Rule.PodSelectorLabelsEntry](#tetragon-Rule-PodSelectorLabelsEntry)
     - [RuleSet](#tetragon-RuleSet)
     - [RuleStatus](#tetragon-RuleStatus)
   
@@ -4129,6 +4130,23 @@ active rule
 | type | [RuleType](#tetragon-RuleType) |  | rule type |
 | status | [RuleStatus](#tetragon-RuleStatus) |  |  |
 | counter | [uint64](#uint64) |  |  |
+| pod_selector_labels | [Rule.PodSelectorLabelsEntry](#tetragon-Rule-PodSelectorLabelsEntry) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-Rule-PodSelectorLabelsEntry"></a>
+
+### Rule.PodSelectorLabelsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
