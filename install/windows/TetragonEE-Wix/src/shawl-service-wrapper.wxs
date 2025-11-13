@@ -20,7 +20,7 @@
   --log-dir "\\?\[INSTALLFOLDER]logs"
   --cwd "\\?\[dir.TetragonBinaries]\"
   --
-  "\\?\[dir.TetragonBinaries]Tetragon.exe" --enable-tcp
+  "\\?\[dir.TetragonBinaries]Tetragon.exe" --enable-tcp --enable-udp --enable-application-model --export-filename "\\?\[INSTALLFOLDER]tetragon-events.json"
 '/>
 
 
@@ -57,7 +57,7 @@
   --log-dir "\\?\[INSTALLFOLDER]logs"
   --cwd "\\?\[dir.TetragonBinaries]\"
   --
-  "\\?\[dir.TetragonBinaries]Tetragon.exe" --enable-tcp
+  "\\?\[dir.TetragonBinaries]Tetragon.exe" --enable-tcp --enable-udp --enable-application-model --export-filename "\\?\[INSTALLFOLDER]tetragon-events.json"
 '/>
 
   </Fragment>
