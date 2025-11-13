@@ -107,4 +107,25 @@ struct {
 	__type(value, struct destination_endpoint_value);
 } destination_endpoint_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, uint32_t);
+	__type(value, struct destination_endpoint_value);
+} tg_h_ps_dstval SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, uint32_t);
+	__type(value, struct destination_endpoint_key);
+} tg_h_ps_dfltkey SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__uint(max_entries, 1);
+	__type(key, uint32_t);
+	__type(value, struct endpoint_id_value);
+} tg_h_ps_epid SEC(".maps");
+
 #endif //__PROCESS_ENDPOINTS_H__
