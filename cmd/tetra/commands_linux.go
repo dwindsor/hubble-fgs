@@ -24,6 +24,8 @@ import (
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/spf13/cobra"
 
+	sandboxpolicypkg "github.com/isovalent/hubble-fgs/pkg/sandboxpolicy"
+
 	"github.com/isovalent/hubble-fgs/cmd/tetra/policies"
 
 	"github.com/isovalent/hubble-fgs/cmd/tetra/alertrule"
@@ -108,7 +110,17 @@ func listSandboxPolicies(grpcer bugtoolpkg.GRPCer) error {
 	if err != nil {
 		return err
 	}
-	fname := "tracing_policies.json"
+	// keep only the sandbox policies in the list, and change their name
+	for i := 0; i < len(res.Policies); i++ {
+		pol := res.Policies[i]
+		name := sandboxpolicypkg.NameFromTPName(pol.Name)
+		if name == "" {
+			res.Policies = append(res.Policies[:i], res.Policies[i+1:]...)
+			i--
+		}
+		pol.Name = name
+	}
+	fname := "sandbox_policies.json"
 	return grpcer.TarAddJson(fname, res)
 }
 
