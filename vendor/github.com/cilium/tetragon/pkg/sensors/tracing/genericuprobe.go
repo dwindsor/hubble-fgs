@@ -364,8 +364,7 @@ func (k *observerUprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 
 func isValidUprobeSelectors(selectors []v1alpha1.KProbeSelector) error {
 	for _, s := range selectors {
-		if len(s.MatchArgs) > 0 ||
-			len(s.MatchReturnArgs) > 0 ||
+		if len(s.MatchReturnArgs) > 0 ||
 			len(s.MatchNamespaces) > 0 ||
 			len(s.MatchNamespaceChanges) > 0 ||
 			len(s.MatchCapabilities) > 0 ||
@@ -461,7 +460,6 @@ func createGenericUprobeSensor(
 }
 
 func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn) ([]idtable.EntryID, error) {
-	var args []v1alpha1.KProbeArg
 	var argRetprobe *v1alpha1.KProbeArg
 	var setRetprobe bool
 
@@ -499,7 +497,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 	// Parse Filters into kernel filter logic
 	uprobeSelectorState, err := selectors.InitKernelSelectorState(&selectors.KernelSelectorArgs{
 		Selectors: spec.Selectors,
-		Args:      args,
+		Args:      spec.Args,
 		Data:      []v1alpha1.KProbeArg{},
 		IsUprobe:  true,
 	})
@@ -533,14 +531,26 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		argReturnPrinters []argPrinter
 	)
 
-	tagsField, err := getPolicyTags(spec.Tags)
+	tagsField, err := GetPolicyTags(spec.Tags)
 	if err != nil {
 		return nil, err
 	}
 
+	var allBTFArgs [api.EventConfigMaxArgs][api.MaxBTFArgDepth]api.ConfigBTFArg
+
 	// Parse Arguments
 	for i, a := range spec.Args {
 		argType := gt.GenericTypeFromString(a.Type)
+		if a.Resolve != "" {
+			lastBTFType, btfArg, err := resolveUserBTFArg(&a, spec.BTFPath)
+			if err != nil {
+				return nil, err
+			}
+
+			allBTFArgs[i] = btfArg
+			argType = findTypeFromBTFType(&a, lastBTFType)
+		}
+
 		if argType == gt.GenericInvalidType {
 			return nil, fmt.Errorf("Arg(%d) type '%s' unsupported", i, a.Type)
 		}
@@ -556,9 +566,6 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 				a.Type, int(a.Index))
 		}
 
-		if a.Resolve != "" {
-			return nil, errors.New("resolving attributes for Uprobes is not supported")
-		}
 		argTypes[i] = int32(argType)
 		argMeta[i] = uint32(argMValue)
 		argIdx[i] = int32(a.Index)
@@ -618,6 +625,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		eventConfig.ArgType = argTypes
 		eventConfig.ArgMeta = argMeta
 		eventConfig.ArgIndex = argIdx
+		eventConfig.BTFArg = allBTFArgs
 
 		uprobeEntry := &genericUprobe{
 			loadArgs: uprobeLoadArgs{
@@ -641,7 +649,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 			pendingEvents:     nil,
 		}
 
-		uprobeEntry.pendingEvents, err = lru.New[pendingEventKey, pendingEvent[*tracing.MsgGenericUprobeUnix]](4096)
+		uprobeEntry.pendingEvents, err = lru.New[pendingEventKey, pendingEvent[*tracing.MsgGenericUprobeUnix]](option.Config.RetprobesCacheSize)
 		if err != nil {
 			return err
 		}

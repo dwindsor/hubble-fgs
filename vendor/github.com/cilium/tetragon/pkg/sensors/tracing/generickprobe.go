@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"path"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -265,7 +266,6 @@ func createMultiKprobeSensor(polInfo *policyInfo, multiIDs []idtable.EntryID, ha
 		gk.data = data
 
 		has.stackTrace = has.stackTrace || gk.hasStackTrace
-		has.override = has.override || gk.hasOverride
 	}
 
 	loadProgName, loadProgRetName := config.GenericKprobeObjs(true)
@@ -606,8 +606,13 @@ func hasMapsSetup(spec *v1alpha1.TracingPolicySpec) hasMaps {
 		has.enforcer = has.enforcer || len(spec.Enforcers) != 0
 		has.rateLimit = has.rateLimit || selectors.HasRateLimit(kprobe.Selectors)
 		has.sockTrack = has.sockTrack || selectors.HasSockTrack(&kprobe)
+		has.override = has.override || selectors.HasOverride(kprobe.Selectors)
 	}
 	return has
+}
+
+func isArm() bool {
+	return runtime.GOARCH == "arm64"
 }
 
 func createGenericKprobeSensor(
@@ -624,12 +629,19 @@ func createGenericKprobeSensor(
 
 	kprobes := spec.KProbes
 
+	has := hasMapsSetup(spec)
+
 	// use multi kprobe only if:
 	// - it's not disabled by spec option
 	// - it's not disabled by command line option
 	// - there's support detected
 	if !polInfo.specOpts.DisableKprobeMulti {
 		useMulti = !option.Config.DisableKprobeMulti && bpf.HasKprobeMulti()
+
+		// arm does not override on top of kprobe.multi
+		if isArm() && (has.enforcer || has.override) {
+			useMulti = false
+		}
 	}
 
 	if useMulti {
@@ -645,7 +657,6 @@ func createGenericKprobeSensor(
 		selMaps:       selMaps,
 	}
 
-	has := hasMapsSetup(spec)
 	dups := make(map[string]int)
 
 	for i := range kprobes {
@@ -773,7 +784,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		logger.GetLogger().Warn(fmt.Sprintf("TracingPolicy 'message' field too long, truncated to %d characters", TpMaxMessageLen), "policy-name", in.policyName)
 	}
 
-	tagsField, err := getPolicyTags(f.Tags)
+	tagsField, err := GetPolicyTags(f.Tags)
 	if err != nil {
 		return errFn(fmt.Errorf("error: '%w'", err))
 	}
@@ -827,7 +838,6 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 			return fmt.Errorf("error add arg: ArgType %s Index %d out of bounds",
 				a.Type, int(a.Index))
 		}
-		eventConfig.BTFArg = allBTFArgs
 		eventConfig.ArgType[j] = int32(argType)
 		eventConfig.ArgMeta[j] = uint32(argMValue)
 		eventConfig.ArgIndex[j] = int32(a.Index)
@@ -876,6 +886,8 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		}
 		j = j + 1
 	}
+
+	eventConfig.BTFArg = allBTFArgs
 
 	// Parse ReturnArg, we have two types of return arg parsing. We
 	// support populating a kprobe buffer from kretprobe hooks. This
@@ -969,7 +981,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		}
 	}
 
-	kprobeEntry.pendingEvents, err = lru.New[pendingEventKey, pendingEvent[*tracing.MsgGenericKprobeUnix]](4096)
+	kprobeEntry.pendingEvents, err = lru.New[pendingEventKey, pendingEvent[*tracing.MsgGenericKprobeUnix]](option.Config.RetprobesCacheSize)
 	if err != nil {
 		return errFn(err)
 	}

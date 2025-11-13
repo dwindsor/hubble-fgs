@@ -4541,6 +4541,78 @@ func (*RuntimeHookResponse) Descriptor() ([]byte, []int) {
 	return file_tetragon_tetragon_proto_rawDescGZIP(), []int{45}
 }
 
+type Mount struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Destination is the absolute path where the mount will be placed in the container.
+	Destination string `protobuf:"bytes,1,opt,name=destination,proto3" json:"destination,omitempty"`
+	// Type specifies the mount kind.
+	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	// Source specifies the source path of the mount.
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	// Options are fstab style mount options.
+	Options       []string `protobuf:"bytes,4,rep,name=options,proto3" json:"options,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Mount) Reset() {
+	*x = Mount{}
+	mi := &file_tetragon_tetragon_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Mount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Mount) ProtoMessage() {}
+
+func (x *Mount) ProtoReflect() protoreflect.Message {
+	mi := &file_tetragon_tetragon_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Mount.ProtoReflect.Descriptor instead.
+func (*Mount) Descriptor() ([]byte, []int) {
+	return file_tetragon_tetragon_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *Mount) GetDestination() string {
+	if x != nil {
+		return x.Destination
+	}
+	return ""
+}
+
+func (x *Mount) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *Mount) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *Mount) GetOptions() []string {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
 // CreateContainer informs the agent that a container was created
 // This is intented to be used by OCI hooks (but not limited to them) and corresponds to the
 // CreateContainer hook:
@@ -4572,13 +4644,15 @@ type CreateContainer struct {
 	PodNamespace string `protobuf:"bytes,8,opt,name=podNamespace,proto3" json:"podNamespace,omitempty"`
 	// containerImage is the full image location (repo + image)
 	ContainerImage string `protobuf:"bytes,9,opt,name=containerImage,proto3" json:"containerImage,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Mounts configures additional mounts (on top of Root).
+	Mounts        []*Mount `protobuf:"bytes,10,rep,name=mounts,proto3" json:"mounts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateContainer) Reset() {
 	*x = CreateContainer{}
-	mi := &file_tetragon_tetragon_proto_msgTypes[46]
+	mi := &file_tetragon_tetragon_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4590,7 +4664,7 @@ func (x *CreateContainer) String() string {
 func (*CreateContainer) ProtoMessage() {}
 
 func (x *CreateContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_tetragon_proto_msgTypes[46]
+	mi := &file_tetragon_tetragon_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4603,7 +4677,7 @@ func (x *CreateContainer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateContainer.ProtoReflect.Descriptor instead.
 func (*CreateContainer) Descriptor() ([]byte, []int) {
-	return file_tetragon_tetragon_proto_rawDescGZIP(), []int{46}
+	return file_tetragon_tetragon_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *CreateContainer) GetCgroupsPath() string {
@@ -4669,6 +4743,13 @@ func (x *CreateContainer) GetContainerImage() string {
 	return ""
 }
 
+func (x *CreateContainer) GetMounts() []*Mount {
+	if x != nil {
+		return x.Mounts
+	}
+	return nil
+}
+
 type StackTraceEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// linear address of the function in kernel or user space.
@@ -4685,7 +4766,7 @@ type StackTraceEntry struct {
 
 func (x *StackTraceEntry) Reset() {
 	*x = StackTraceEntry{}
-	mi := &file_tetragon_tetragon_proto_msgTypes[47]
+	mi := &file_tetragon_tetragon_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4697,7 +4778,7 @@ func (x *StackTraceEntry) String() string {
 func (*StackTraceEntry) ProtoMessage() {}
 
 func (x *StackTraceEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_tetragon_tetragon_proto_msgTypes[47]
+	mi := &file_tetragon_tetragon_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4710,7 +4791,7 @@ func (x *StackTraceEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StackTraceEntry.ProtoReflect.Descriptor instead.
 func (*StackTraceEntry) Descriptor() ([]byte, []int) {
-	return file_tetragon_tetragon_proto_rawDescGZIP(), []int{47}
+	return file_tetragon_tetragon_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *StackTraceEntry) GetAddress() uint64 {
@@ -5104,7 +5185,12 @@ const file_tetragon_tetragon_proto_rawDesc = "" +
 	"\x12RuntimeHookRequest\x12E\n" +
 	"\x0fcreateContainer\x18\x01 \x01(\v2\x19.tetragon.CreateContainerH\x00R\x0fcreateContainerB\a\n" +
 	"\x05event\"\x15\n" +
-	"\x13RuntimeHookResponse\"\xa1\x03\n" +
+	"\x13RuntimeHookResponse\"o\n" +
+	"\x05Mount\x12 \n" +
+	"\vdestination\x18\x01 \x01(\tR\vdestination\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\x12\x18\n" +
+	"\aoptions\x18\x04 \x03(\tR\aoptions\"\xca\x03\n" +
 	"\x0fCreateContainer\x12 \n" +
 	"\vcgroupsPath\x18\x01 \x01(\tR\vcgroupsPath\x12\x18\n" +
 	"\arootDir\x18\x02 \x01(\tR\arootDir\x12L\n" +
@@ -5114,7 +5200,9 @@ const file_tetragon_tetragon_proto_rawDesc = "" +
 	"\apodName\x18\x06 \x01(\tR\apodName\x12\x16\n" +
 	"\x06podUID\x18\a \x01(\tR\x06podUID\x12\"\n" +
 	"\fpodNamespace\x18\b \x01(\tR\fpodNamespace\x12&\n" +
-	"\x0econtainerImage\x18\t \x01(\tR\x0econtainerImage\x1a>\n" +
+	"\x0econtainerImage\x18\t \x01(\tR\x0econtainerImage\x12'\n" +
+	"\x06mounts\x18\n" +
+	" \x03(\v2\x0f.tetragon.MountR\x06mounts\x1a>\n" +
 	"\x10AnnotationsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"s\n" +
@@ -5173,7 +5261,7 @@ func file_tetragon_tetragon_proto_rawDescGZIP() []byte {
 }
 
 var file_tetragon_tetragon_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_tetragon_tetragon_proto_msgTypes = make([]protoimpl.MessageInfo, 51)
+var file_tetragon_tetragon_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
 var file_tetragon_tetragon_proto_goTypes = []any{
 	(KprobeAction)(0),               // 0: tetragon.KprobeAction
 	(HealthStatusType)(0),           // 1: tetragon.HealthStatusType
@@ -5225,31 +5313,32 @@ var file_tetragon_tetragon_proto_goTypes = []any{
 	(*ProcessLoader)(nil),           // 47: tetragon.ProcessLoader
 	(*RuntimeHookRequest)(nil),      // 48: tetragon.RuntimeHookRequest
 	(*RuntimeHookResponse)(nil),     // 49: tetragon.RuntimeHookResponse
-	(*CreateContainer)(nil),         // 50: tetragon.CreateContainer
-	(*StackTraceEntry)(nil),         // 51: tetragon.StackTraceEntry
-	nil,                             // 52: tetragon.Pod.PodLabelsEntry
-	nil,                             // 53: tetragon.Pod.PodAnnotationsEntry
-	nil,                             // 54: tetragon.CreateContainer.AnnotationsEntry
-	(*timestamppb.Timestamp)(nil),   // 55: google.protobuf.Timestamp
-	(*wrapperspb.UInt32Value)(nil),  // 56: google.protobuf.UInt32Value
-	(CapabilitiesType)(0),           // 57: tetragon.CapabilitiesType
-	(*wrapperspb.Int32Value)(nil),   // 58: google.protobuf.Int32Value
-	(SecureBitsType)(0),             // 59: tetragon.SecureBitsType
-	(ProcessPrivilegesChanged)(0),   // 60: tetragon.ProcessPrivilegesChanged
-	(*wrapperspb.BoolValue)(nil),    // 61: google.protobuf.BoolValue
-	(BpfCmd)(0),                     // 62: tetragon.BpfCmd
+	(*Mount)(nil),                   // 50: tetragon.Mount
+	(*CreateContainer)(nil),         // 51: tetragon.CreateContainer
+	(*StackTraceEntry)(nil),         // 52: tetragon.StackTraceEntry
+	nil,                             // 53: tetragon.Pod.PodLabelsEntry
+	nil,                             // 54: tetragon.Pod.PodAnnotationsEntry
+	nil,                             // 55: tetragon.CreateContainer.AnnotationsEntry
+	(*timestamppb.Timestamp)(nil),   // 56: google.protobuf.Timestamp
+	(*wrapperspb.UInt32Value)(nil),  // 57: google.protobuf.UInt32Value
+	(CapabilitiesType)(0),           // 58: tetragon.CapabilitiesType
+	(*wrapperspb.Int32Value)(nil),   // 59: google.protobuf.Int32Value
+	(SecureBitsType)(0),             // 60: tetragon.SecureBitsType
+	(ProcessPrivilegesChanged)(0),   // 61: tetragon.ProcessPrivilegesChanged
+	(*wrapperspb.BoolValue)(nil),    // 62: google.protobuf.BoolValue
+	(BpfCmd)(0),                     // 63: tetragon.BpfCmd
 }
 var file_tetragon_tetragon_proto_depIdxs = []int32{
 	4,   // 0: tetragon.Container.image:type_name -> tetragon.Image
-	55,  // 1: tetragon.Container.start_time:type_name -> google.protobuf.Timestamp
-	56,  // 2: tetragon.Container.pid:type_name -> google.protobuf.UInt32Value
+	56,  // 1: tetragon.Container.start_time:type_name -> google.protobuf.Timestamp
+	57,  // 2: tetragon.Container.pid:type_name -> google.protobuf.UInt32Value
 	5,   // 3: tetragon.Container.security_context:type_name -> tetragon.SecurityContext
 	6,   // 4: tetragon.Pod.container:type_name -> tetragon.Container
-	52,  // 5: tetragon.Pod.pod_labels:type_name -> tetragon.Pod.PodLabelsEntry
-	53,  // 6: tetragon.Pod.pod_annotations:type_name -> tetragon.Pod.PodAnnotationsEntry
-	57,  // 7: tetragon.Capabilities.permitted:type_name -> tetragon.CapabilitiesType
-	57,  // 8: tetragon.Capabilities.effective:type_name -> tetragon.CapabilitiesType
-	57,  // 9: tetragon.Capabilities.inheritable:type_name -> tetragon.CapabilitiesType
+	53,  // 5: tetragon.Pod.pod_labels:type_name -> tetragon.Pod.PodLabelsEntry
+	54,  // 6: tetragon.Pod.pod_annotations:type_name -> tetragon.Pod.PodAnnotationsEntry
+	58,  // 7: tetragon.Capabilities.permitted:type_name -> tetragon.CapabilitiesType
+	58,  // 8: tetragon.Capabilities.effective:type_name -> tetragon.CapabilitiesType
+	58,  // 9: tetragon.Capabilities.inheritable:type_name -> tetragon.CapabilitiesType
 	9,   // 10: tetragon.Namespaces.uts:type_name -> tetragon.Namespace
 	9,   // 11: tetragon.Namespaces.ipc:type_name -> tetragon.Namespace
 	9,   // 12: tetragon.Namespaces.mnt:type_name -> tetragon.Namespace
@@ -5260,53 +5349,53 @@ var file_tetragon_tetragon_proto_depIdxs = []int32{
 	9,   // 17: tetragon.Namespaces.time_for_children:type_name -> tetragon.Namespace
 	9,   // 18: tetragon.Namespaces.cgroup:type_name -> tetragon.Namespace
 	9,   // 19: tetragon.Namespaces.user:type_name -> tetragon.Namespace
-	58,  // 20: tetragon.UserNamespace.level:type_name -> google.protobuf.Int32Value
-	56,  // 21: tetragon.UserNamespace.uid:type_name -> google.protobuf.UInt32Value
-	56,  // 22: tetragon.UserNamespace.gid:type_name -> google.protobuf.UInt32Value
+	59,  // 20: tetragon.UserNamespace.level:type_name -> google.protobuf.Int32Value
+	57,  // 21: tetragon.UserNamespace.uid:type_name -> google.protobuf.UInt32Value
+	57,  // 22: tetragon.UserNamespace.gid:type_name -> google.protobuf.UInt32Value
 	9,   // 23: tetragon.UserNamespace.ns:type_name -> tetragon.Namespace
-	56,  // 24: tetragon.ProcessCredentials.uid:type_name -> google.protobuf.UInt32Value
-	56,  // 25: tetragon.ProcessCredentials.gid:type_name -> google.protobuf.UInt32Value
-	56,  // 26: tetragon.ProcessCredentials.euid:type_name -> google.protobuf.UInt32Value
-	56,  // 27: tetragon.ProcessCredentials.egid:type_name -> google.protobuf.UInt32Value
-	56,  // 28: tetragon.ProcessCredentials.suid:type_name -> google.protobuf.UInt32Value
-	56,  // 29: tetragon.ProcessCredentials.sgid:type_name -> google.protobuf.UInt32Value
-	56,  // 30: tetragon.ProcessCredentials.fsuid:type_name -> google.protobuf.UInt32Value
-	56,  // 31: tetragon.ProcessCredentials.fsgid:type_name -> google.protobuf.UInt32Value
-	59,  // 32: tetragon.ProcessCredentials.securebits:type_name -> tetragon.SecureBitsType
+	57,  // 24: tetragon.ProcessCredentials.uid:type_name -> google.protobuf.UInt32Value
+	57,  // 25: tetragon.ProcessCredentials.gid:type_name -> google.protobuf.UInt32Value
+	57,  // 26: tetragon.ProcessCredentials.euid:type_name -> google.protobuf.UInt32Value
+	57,  // 27: tetragon.ProcessCredentials.egid:type_name -> google.protobuf.UInt32Value
+	57,  // 28: tetragon.ProcessCredentials.suid:type_name -> google.protobuf.UInt32Value
+	57,  // 29: tetragon.ProcessCredentials.sgid:type_name -> google.protobuf.UInt32Value
+	57,  // 30: tetragon.ProcessCredentials.fsuid:type_name -> google.protobuf.UInt32Value
+	57,  // 31: tetragon.ProcessCredentials.fsgid:type_name -> google.protobuf.UInt32Value
+	60,  // 32: tetragon.ProcessCredentials.securebits:type_name -> tetragon.SecureBitsType
 	8,   // 33: tetragon.ProcessCredentials.caps:type_name -> tetragon.Capabilities
 	11,  // 34: tetragon.ProcessCredentials.user_ns:type_name -> tetragon.UserNamespace
-	56,  // 35: tetragon.InodeProperties.links:type_name -> google.protobuf.UInt32Value
+	57,  // 35: tetragon.InodeProperties.links:type_name -> google.protobuf.UInt32Value
 	13,  // 36: tetragon.FileProperties.inode:type_name -> tetragon.InodeProperties
-	56,  // 37: tetragon.BinaryProperties.setuid:type_name -> google.protobuf.UInt32Value
-	56,  // 38: tetragon.BinaryProperties.setgid:type_name -> google.protobuf.UInt32Value
-	60,  // 39: tetragon.BinaryProperties.privileges_changed:type_name -> tetragon.ProcessPrivilegesChanged
+	57,  // 37: tetragon.BinaryProperties.setuid:type_name -> google.protobuf.UInt32Value
+	57,  // 38: tetragon.BinaryProperties.setgid:type_name -> google.protobuf.UInt32Value
+	61,  // 39: tetragon.BinaryProperties.privileges_changed:type_name -> tetragon.ProcessPrivilegesChanged
 	14,  // 40: tetragon.BinaryProperties.file:type_name -> tetragon.FileProperties
-	56,  // 41: tetragon.Process.pid:type_name -> google.protobuf.UInt32Value
-	56,  // 42: tetragon.Process.uid:type_name -> google.protobuf.UInt32Value
-	55,  // 43: tetragon.Process.start_time:type_name -> google.protobuf.Timestamp
-	56,  // 44: tetragon.Process.auid:type_name -> google.protobuf.UInt32Value
+	57,  // 41: tetragon.Process.pid:type_name -> google.protobuf.UInt32Value
+	57,  // 42: tetragon.Process.uid:type_name -> google.protobuf.UInt32Value
+	56,  // 43: tetragon.Process.start_time:type_name -> google.protobuf.Timestamp
+	57,  // 44: tetragon.Process.auid:type_name -> google.protobuf.UInt32Value
 	7,   // 45: tetragon.Process.pod:type_name -> tetragon.Pod
 	8,   // 46: tetragon.Process.cap:type_name -> tetragon.Capabilities
 	10,  // 47: tetragon.Process.ns:type_name -> tetragon.Namespaces
-	56,  // 48: tetragon.Process.tid:type_name -> google.protobuf.UInt32Value
+	57,  // 48: tetragon.Process.tid:type_name -> google.protobuf.UInt32Value
 	12,  // 49: tetragon.Process.process_credentials:type_name -> tetragon.ProcessCredentials
 	15,  // 50: tetragon.Process.binary_properties:type_name -> tetragon.BinaryProperties
 	16,  // 51: tetragon.Process.user:type_name -> tetragon.UserRecord
-	61,  // 52: tetragon.Process.in_init_tree:type_name -> google.protobuf.BoolValue
+	62,  // 52: tetragon.Process.in_init_tree:type_name -> google.protobuf.BoolValue
 	17,  // 53: tetragon.ProcessExec.process:type_name -> tetragon.Process
 	17,  // 54: tetragon.ProcessExec.parent:type_name -> tetragon.Process
 	17,  // 55: tetragon.ProcessExec.ancestors:type_name -> tetragon.Process
 	17,  // 56: tetragon.ProcessExit.process:type_name -> tetragon.Process
 	17,  // 57: tetragon.ProcessExit.parent:type_name -> tetragon.Process
-	55,  // 58: tetragon.ProcessExit.time:type_name -> google.protobuf.Timestamp
+	56,  // 58: tetragon.ProcessExit.time:type_name -> google.protobuf.Timestamp
 	17,  // 59: tetragon.ProcessExit.ancestors:type_name -> tetragon.Process
-	57,  // 60: tetragon.KprobeCred.permitted:type_name -> tetragon.CapabilitiesType
-	57,  // 61: tetragon.KprobeCred.effective:type_name -> tetragon.CapabilitiesType
-	57,  // 62: tetragon.KprobeCred.inheritable:type_name -> tetragon.CapabilitiesType
-	58,  // 63: tetragon.KprobeCapability.value:type_name -> google.protobuf.Int32Value
-	58,  // 64: tetragon.KprobeUserNamespace.level:type_name -> google.protobuf.Int32Value
-	56,  // 65: tetragon.KprobeUserNamespace.owner:type_name -> google.protobuf.UInt32Value
-	56,  // 66: tetragon.KprobeUserNamespace.group:type_name -> google.protobuf.UInt32Value
+	58,  // 60: tetragon.KprobeCred.permitted:type_name -> tetragon.CapabilitiesType
+	58,  // 61: tetragon.KprobeCred.effective:type_name -> tetragon.CapabilitiesType
+	58,  // 62: tetragon.KprobeCred.inheritable:type_name -> tetragon.CapabilitiesType
+	59,  // 63: tetragon.KprobeCapability.value:type_name -> google.protobuf.Int32Value
+	59,  // 64: tetragon.KprobeUserNamespace.level:type_name -> google.protobuf.Int32Value
+	57,  // 65: tetragon.KprobeUserNamespace.owner:type_name -> google.protobuf.UInt32Value
+	57,  // 66: tetragon.KprobeUserNamespace.group:type_name -> google.protobuf.UInt32Value
 	9,   // 67: tetragon.KprobeUserNamespace.ns:type_name -> tetragon.Namespace
 	21,  // 68: tetragon.KprobeArgument.skb_arg:type_name -> tetragon.KprobeSkb
 	24,  // 69: tetragon.KprobeArgument.path_arg:type_name -> tetragon.KprobePath
@@ -5324,7 +5413,7 @@ var file_tetragon_tetragon_proto_depIdxs = []int32{
 	42,  // 81: tetragon.KprobeArgument.module_arg:type_name -> tetragon.KernelModule
 	28,  // 82: tetragon.KprobeArgument.linux_binprm_arg:type_name -> tetragon.KprobeLinuxBinprm
 	23,  // 83: tetragon.KprobeArgument.net_dev_arg:type_name -> tetragon.KprobeNetDev
-	62,  // 84: tetragon.KprobeArgument.bpf_cmd_arg:type_name -> tetragon.BpfCmd
+	63,  // 84: tetragon.KprobeArgument.bpf_cmd_arg:type_name -> tetragon.BpfCmd
 	35,  // 85: tetragon.KprobeArgument.syscall_id:type_name -> tetragon.SyscallId
 	22,  // 86: tetragon.KprobeArgument.sockaddr_arg:type_name -> tetragon.KprobeSockaddr
 	32,  // 87: tetragon.KprobeArgument.bpf_prog_arg:type_name -> tetragon.KprobeBpfProg
@@ -5333,9 +5422,9 @@ var file_tetragon_tetragon_proto_depIdxs = []int32{
 	36,  // 90: tetragon.ProcessKprobe.args:type_name -> tetragon.KprobeArgument
 	36,  // 91: tetragon.ProcessKprobe.return:type_name -> tetragon.KprobeArgument
 	0,   // 92: tetragon.ProcessKprobe.action:type_name -> tetragon.KprobeAction
-	51,  // 93: tetragon.ProcessKprobe.kernel_stack_trace:type_name -> tetragon.StackTraceEntry
+	52,  // 93: tetragon.ProcessKprobe.kernel_stack_trace:type_name -> tetragon.StackTraceEntry
 	0,   // 94: tetragon.ProcessKprobe.return_action:type_name -> tetragon.KprobeAction
-	51,  // 95: tetragon.ProcessKprobe.user_stack_trace:type_name -> tetragon.StackTraceEntry
+	52,  // 95: tetragon.ProcessKprobe.user_stack_trace:type_name -> tetragon.StackTraceEntry
 	17,  // 96: tetragon.ProcessKprobe.ancestors:type_name -> tetragon.Process
 	36,  // 97: tetragon.ProcessKprobe.data:type_name -> tetragon.KprobeArgument
 	17,  // 98: tetragon.ProcessTracepoint.process:type_name -> tetragon.Process
@@ -5358,20 +5447,21 @@ var file_tetragon_tetragon_proto_depIdxs = []int32{
 	36,  // 115: tetragon.ProcessLsm.args:type_name -> tetragon.KprobeArgument
 	0,   // 116: tetragon.ProcessLsm.action:type_name -> tetragon.KprobeAction
 	17,  // 117: tetragon.ProcessLsm.ancestors:type_name -> tetragon.Process
-	61,  // 118: tetragon.KernelModule.signature_ok:type_name -> google.protobuf.BoolValue
+	62,  // 118: tetragon.KernelModule.signature_ok:type_name -> google.protobuf.BoolValue
 	3,   // 119: tetragon.KernelModule.tainted:type_name -> tetragon.TaintedBitsType
 	1,   // 120: tetragon.GetHealthStatusRequest.event_set:type_name -> tetragon.HealthStatusType
 	1,   // 121: tetragon.HealthStatus.event:type_name -> tetragon.HealthStatusType
 	2,   // 122: tetragon.HealthStatus.status:type_name -> tetragon.HealthStatusResult
 	45,  // 123: tetragon.GetHealthStatusResponse.health_status:type_name -> tetragon.HealthStatus
 	17,  // 124: tetragon.ProcessLoader.process:type_name -> tetragon.Process
-	50,  // 125: tetragon.RuntimeHookRequest.createContainer:type_name -> tetragon.CreateContainer
-	54,  // 126: tetragon.CreateContainer.annotations:type_name -> tetragon.CreateContainer.AnnotationsEntry
-	127, // [127:127] is the sub-list for method output_type
-	127, // [127:127] is the sub-list for method input_type
-	127, // [127:127] is the sub-list for extension type_name
-	127, // [127:127] is the sub-list for extension extendee
-	0,   // [0:127] is the sub-list for field type_name
+	51,  // 125: tetragon.RuntimeHookRequest.createContainer:type_name -> tetragon.CreateContainer
+	55,  // 126: tetragon.CreateContainer.annotations:type_name -> tetragon.CreateContainer.AnnotationsEntry
+	50,  // 127: tetragon.CreateContainer.mounts:type_name -> tetragon.Mount
+	128, // [128:128] is the sub-list for method output_type
+	128, // [128:128] is the sub-list for method input_type
+	128, // [128:128] is the sub-list for extension type_name
+	128, // [128:128] is the sub-list for extension extendee
+	0,   // [0:128] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_tetragon_proto_init() }
@@ -5422,7 +5512,7 @@ func file_tetragon_tetragon_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tetragon_tetragon_proto_rawDesc), len(file_tetragon_tetragon_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   51,
+			NumMessages:   52,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
