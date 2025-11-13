@@ -81,7 +81,7 @@ func (n *Nxos) setFwPolicyStateVrf(ctx context.Context, vrfs []VrfBd) error {
 			PolicyStatus:       model.Cisco_NX_OSDevice_Sas_PolicyStatusE_success,
 			PolicyStatusReason: &reason,
 		}
-		if n.isLbModePinning(ctx) {
+		if n.IsLbModePinning(ctx) {
 			extItems.Affinity = dpu2mod(ctx, vrf.DpuPinned)
 		} else {
 			extItems.Affinity = model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
@@ -127,7 +127,7 @@ func (n *Nxos) setFwPolicyStateBd(ctx context.Context, bds []VrfBd) error {
 			PolicyStatus:       model.Cisco_NX_OSDevice_Sas_PolicyStatusE_success,
 			PolicyStatusReason: &reason,
 		}
-		if n.isLbModePinning(ctx) {
+		if n.IsLbModePinning(ctx) {
 			extItems.Affinity = dpu2mod(ctx, bd.DpuPinned)
 		} else {
 			extItems.Affinity = model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
@@ -466,7 +466,7 @@ func (n *Nxos) setDpuEndpointVrf(ctx context.Context, vrfs []VrfBd) error {
 		svcEndPointDpuList := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems_SvcEndPointDpuList{
 			Vlan: &gid,
 		}
-		if n.isLbModePinning(ctx) {
+		if n.IsLbModePinning(ctx) {
 			svcEndPointDpuList.DpuNum = dpu2mod(ctx, vrf.DpuPinned)
 		} else {
 			svcEndPointDpuList.DpuNum = model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
@@ -477,7 +477,7 @@ func (n *Nxos) setDpuEndpointVrf(ctx context.Context, vrfs []VrfBd) error {
 		}
 
 		var pinned model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning
-		if n.isLbModePinning(ctx) {
+		if n.IsLbModePinning(ctx) {
 			pinned = dpu2mod(ctx, vrf.DpuPinned)
 		} else {
 			pinned = model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
@@ -544,7 +544,7 @@ func (n *Nxos) setServiceEndpointVrf(ctx context.Context, vrfs []VrfBd) error {
 		svcEndPointDpuList := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems_SvcEndPointDpuList{
 			Vlan: &gid,
 		}
-		if n.isLbModePinning(ctx) {
+		if n.IsLbModePinning(ctx) {
 			svcEndPointDpuList.DpuNum = dpu2mod(ctx, vrf.DpuPinned)
 		} else {
 			svcEndPointDpuList.DpuNum = model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
@@ -554,7 +554,7 @@ func (n *Nxos) setServiceEndpointVrf(ctx context.Context, vrfs []VrfBd) error {
 			SvcEndPointDpuList: map[model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems_SvcEndPointDpuList{},
 		}
 		var pinned model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning
-		if n.isLbModePinning(ctx) {
+		if n.IsLbModePinning(ctx) {
 			pinned = dpu2mod(ctx, vrf.DpuPinned)
 		} else {
 			pinned = model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
@@ -875,7 +875,7 @@ func (n *Nxos) setPolicyEnfBd(ctx context.Context, bds []VrfBd) error {
 	for _, bd := range bds {
 		id := bd.Name
 		var pol string
-		if n.isLbModePinning(ctx) {
+		if n.IsLbModePinning(ctx) {
 			pol = dpu2name(ctx, bd.DpuPinned)
 		} else {
 			pol = dpu2name(ctx, allDpu)
@@ -1418,7 +1418,7 @@ func (n *Nxos) setGlobalId(ctx context.Context, recon map[string]uint16) error {
 		svcEndPointDpuList := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList_DpuepItems_SvcEndPointDpuList{
 			Vlan: &gid,
 		}
-		if n.isLbModePinning(ctx) {
+		if n.IsLbModePinning(ctx) {
 			svcEndPointDpuList.DpuNum = dpu2mod(ctx, vrf.DpuPinned)
 		} else {
 			svcEndPointDpuList.DpuNum = model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all
@@ -1429,7 +1429,7 @@ func (n *Nxos) setGlobalId(ctx context.Context, recon map[string]uint16) error {
 		}
 
 		var pinned model.E_Cisco_NX_OSDevice_Sas_SvcModulePinning
-		if n.isLbModePinning(ctx) {
+		if n.IsLbModePinning(ctx) {
 			pinned = dpu2mod(ctx, vrf.DpuPinned)
 		} else {
 			pinned = model.Cisco_NX_OSDevice_Sas_SvcModulePinning_all

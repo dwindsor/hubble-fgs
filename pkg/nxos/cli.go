@@ -52,64 +52,6 @@ func (n *Nxos) ShowStatus(_ context.Context) string {
 	return status
 }
 
-func (n *Nxos) ShowDpu(_ context.Context) map[string]string {
-	logger.GetLogger().Debug("show dpu")
-
-	n.RLock()
-	defer n.RUnlock()
-
-	dpus := map[string]string{}
-	for k, v := range n.Dpus {
-		var found bool
-		for _, ip := range n.InSync {
-			if ip == v.Ip {
-				found = true
-			}
-		}
-		if found {
-			dpus[v.Ip] = "IP " + v.Ip + ", Number " + k + ", InSync true"
-		} else {
-			dpus[v.Ip] = "IP " + v.Ip + ", Number " + k + ", InSync false"
-		}
-	}
-	return dpus
-}
-
-func (n *Nxos) ShowVrf(ctx context.Context) string {
-	logger.GetLogger().Debug("show vrf")
-
-	n.RLock()
-	defer n.RUnlock()
-
-	vrf := ""
-	for k, v := range n.Vrfs {
-		vrf += "\n" + "Name " + k
-		vrf += ", IsGlobal " + strconv.FormatBool(v.IsGlobal)
-		vrf += ", IsService " + strconv.FormatBool(v.IsService)
-		vrf += ", IsStaticPinned " + strconv.FormatBool(v.IsStatic)
-		if v.IsStatic {
-			vrf += ", StaticAffinity " +
-				strconv.FormatUint(uint64(v.Affinity), 10)
-		}
-		if v.IsGlobal && v.IsService {
-			if n.isLbModePinning(ctx) {
-				vrf += ", DPU pinned " +
-					strconv.FormatUint(uint64(v.DpuPinned), 10)
-			} else {
-				vrf += ", DPU pinned N/A (sh)"
-			}
-			gid, ok := n.Alloc.Gids[k]
-			if ok {
-				vrf += ", GloabId assigned " +
-					strconv.FormatUint(uint64(gid), 10)
-			}
-		}
-	}
-	vrf += "\n"
-
-	return vrf
-}
-
 func (n *Nxos) DelTokens(_ context.Context) string {
 	logger.GetLogger().Debug("del tokens")
 

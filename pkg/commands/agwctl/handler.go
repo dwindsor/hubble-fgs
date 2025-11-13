@@ -99,7 +99,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.Data = dpu
 
 	case CMD_SHOW_VRF:
-		vrf := nxos.Nexus.ShowVrf(ctx)
+		vrf := agwAgent.ShowVrf(ctx)
 		response.ReturnCode = "ok"
 		response.Data = vrf
 
@@ -169,7 +169,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		pol := agwAgent.PoliciesShow(ctx, ipc.MessageData{})
 		status := nxos.Nexus.ShowStatus(ctx)
 		dpu := agwAgent.ShowDpu(ctx)
-		vrf := nxos.Nexus.ShowVrf(ctx)
+		vrf := agwAgent.ShowVrf(ctx)
 		response.ReturnCode = "ok"
 		response.Data = status + "\n" + pol + "\n" +
 			dpu + "\n" + vrf

@@ -1,6 +1,7 @@
 package agw
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,9 +9,11 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"text/tabwriter"
 	"time"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -570,6 +573,75 @@ func (agw *AgentGateway) Logging(_ context.Context, msgData ipc.MessageData) err
 func (agw *AgentGateway) ShowDpu(_ context.Context) string {
 	logger.GetLogger().Debug("Show dpu")
 	return agw.dpuListener.StatusReportString()
+}
+
+func (agw *AgentGateway) ShowVrf(ctx context.Context) string {
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "Global ID\tName\tGlobal\tService\tStatic\tAffinity\tPinned")
+
+	vrfs := nxos.Nexus.GetVrfs()
+	gids := nxos.Nexus.GetGids()
+
+	// Temporary helper object for sorting
+	type vrfWithGid struct {
+		gid    uint16
+		hasGid bool
+		name   string
+		vrf    nxos.VrfBd
+	}
+	vrfList := make([]vrfWithGid, 0, len(vrfs))
+	for name, vrf := range vrfs {
+		gid, hasGid := gids[name]
+		vrfList = append(vrfList, vrfWithGid{gid: gid, hasGid: hasGid, name: name, vrf: vrf})
+	}
+
+	// Sort by global ID - VRFs with GIDs first (sorted by GID), then VRFs without GIDs (sorted by name)
+	sort.Slice(vrfList, func(i, j int) bool {
+		// If both have GIDs, sort by GID
+		if vrfList[i].hasGid && vrfList[j].hasGid {
+			return vrfList[i].gid < vrfList[j].gid
+		}
+		// If only i has GID, it comes first
+		if vrfList[i].hasGid {
+			return true
+		}
+		// If only j has GID, it comes first
+		if vrfList[j].hasGid {
+			return false
+		}
+		// Neither has GID, sort by name
+		return vrfList[i].name < vrfList[j].name
+	})
+
+	for _, v := range vrfList {
+		gidStr := ""
+		if v.hasGid {
+			gidStr = fmt.Sprintf("%d", v.gid)
+		}
+
+		affinityStr := ""
+		if v.vrf.Affinity != 0 && v.vrf.IsStatic {
+			affinityStr = fmt.Sprintf("%d", v.vrf.Affinity)
+		}
+
+		pinnedStr := "N/A"
+		if nxos.Nexus.IsLbModePinning(ctx) {
+			pinnedStr = fmt.Sprintf("%d", v.vrf.DpuPinned)
+		}
+
+		fmt.Fprintf(w, "%s\t%s\t%t\t%t\t%t\t%s\t%s\n",
+			gidStr,
+			v.name,
+			v.vrf.IsGlobal,
+			v.vrf.IsService,
+			v.vrf.IsStatic,
+			affinityStr,
+			pinnedStr)
+	}
+	w.Flush()
+	return buf.String()
 }
 
 func (agw *AgentGateway) Reopen(_ context.Context) string {

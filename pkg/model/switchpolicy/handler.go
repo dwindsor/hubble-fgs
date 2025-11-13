@@ -98,7 +98,10 @@ func (h *policyHandler) SetL3Networks(networks *L3Networks) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	h.state.SetL3Networks(networks)
+	err := h.state.SetL3Networks(networks)
+	if err != nil {
+		return err
+	}
 	h.applyDelta()
 	return nil
 }

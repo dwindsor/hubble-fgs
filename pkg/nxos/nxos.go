@@ -840,8 +840,8 @@ func (n *Nxos) reconcile(ctx context.Context) {
 			if err != nil {
 				logger.GetLogger().Error("Fail to reconcile")
 			}
-		} else if n.isLbModePinning(ctx) && d != dpu ||
-			!n.isLbModePinning(ctx) && d != allDpu {
+		} else if n.IsLbModePinning(ctx) && d != dpu ||
+			!n.IsLbModePinning(ctx) && d != allDpu {
 			// repinning happens, delete endpoint
 			err := n.delDpuEndpointVrf(ctx, vrf)
 			if err != nil {
@@ -859,8 +859,8 @@ func (n *Nxos) reconcile(ctx context.Context) {
 			if err != nil {
 				logger.GetLogger().Error("Fail to reconcile", logfields.Error, err)
 			}
-		} else if n.isLbModePinning(ctx) && d != dpu ||
-			!n.isLbModePinning(ctx) && d != allDpu {
+		} else if n.IsLbModePinning(ctx) && d != dpu ||
+			!n.IsLbModePinning(ctx) && d != allDpu {
 
 			// repinning happens, delete endpoint
 			err := n.delPolicyEnfBd(ctx, bd)
@@ -1074,12 +1074,12 @@ func (n *Nxos) CheckUpdateResult(ctx context.Context) (bool, bool, UpdatePersist
 	}
 }
 
-func (n *Nxos) isLbModePinning(_ context.Context) bool {
+func (n *Nxos) IsLbModePinning(_ context.Context) bool {
 	if n.LbMode == model.Cisco_NX_OSDevice_Sas_LbModeType_symmetric_hash {
-		logger.GetLogger().Debug("isLbModePinning: false")
+		logger.GetLogger().Debug("IsLbModePinning: false")
 		return false
 	}
-	logger.GetLogger().Debug("isLbModePinning: true")
+	logger.GetLogger().Debug("IsLbModePinning: true")
 	return true
 }
 
@@ -1134,6 +1134,34 @@ func (n *Nxos) SetServiceIp(ip string) {
 		Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuConfig},
 	}
 	library.GetRepository().AddConfig(configObj)
+}
+
+// Returns an editable copy of the map of vrf objects
+func (n *Nxos) GetVrfs() map[string]VrfBd {
+	n.RLock()
+	defer n.RUnlock()
+
+	// Create a copy of the Vrfs map
+	vrf := make(map[string]VrfBd, len(n.Vrfs))
+	for k, v := range n.Vrfs {
+		vrf[k] = v
+	}
+
+	return vrf
+}
+
+// Returns a copy of the global ID allocation map
+func (n *Nxos) GetGids() map[string]uint16 {
+	n.RLock()
+	defer n.RUnlock()
+
+	// Create a copy of the Gids map
+	gids := make(map[string]uint16, len(n.Alloc.Gids))
+	for k, v := range n.Alloc.Gids {
+		gids[k] = v
+	}
+
+	return gids
 }
 
 func (n *Nxos) calcDpuPortRange(dpu uint16) string {

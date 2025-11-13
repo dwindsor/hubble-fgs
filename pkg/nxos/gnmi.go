@@ -155,7 +155,7 @@ func (n *Nxos) procDelete(ctx context.Context, del *gnmi.Path) error {
 		name := key["name"]
 		err = n.delVbGlobal(ctx, false, name)
 		if err != nil {
-			logger.GetLogger().Error("", logfields.Error, err)
+			logger.GetLogger().Error("failed to delete global vrf", logfields.Error, err)
 			return err
 		}
 
@@ -164,7 +164,7 @@ func (n *Nxos) procDelete(ctx context.Context, del *gnmi.Path) error {
 		name := key["fabEncap"]
 		err = n.delVbGlobal(ctx, true, name)
 		if err != nil {
-			logger.GetLogger().Error("", logfields.Error, err)
+			logger.GetLogger().Error("failed to delete global vlan", logfields.Error, err)
 			return err
 		}
 
@@ -173,7 +173,7 @@ func (n *Nxos) procDelete(ctx context.Context, del *gnmi.Path) error {
 		name := key["name"]
 		err = n.delVbService(ctx, false, name)
 		if err != nil {
-			logger.GetLogger().Error("", logfields.Error, err)
+			logger.GetLogger().Error("failed to delete service vrf", logfields.Error, err)
 			return err
 		}
 
@@ -182,7 +182,7 @@ func (n *Nxos) procDelete(ctx context.Context, del *gnmi.Path) error {
 		name := key["vlanId"]
 		err = n.delVbService(ctx, true, name)
 		if err != nil {
-			logger.GetLogger().Error("", logfields.Error, err)
+			logger.GetLogger().Error("failed to delete service vlan", logfields.Error, err)
 			return err
 		}
 

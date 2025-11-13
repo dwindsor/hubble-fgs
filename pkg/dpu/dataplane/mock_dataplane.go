@@ -5,6 +5,8 @@ import (
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
+	"github.com/cilium/tetragon/pkg/logger"
+
 	dpuPolicy "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 )
 
@@ -29,7 +31,24 @@ func (m *MockDataplane) ApiPath() string {
 	return ""
 }
 
-func (m *MockDataplane) PushPolicy(_ context.Context, _ v1alpha.PolicyOperation, _ []*dpuPolicy.DPUPolicyRule) error {
+func (m *MockDataplane) HardwareModel() string {
+	return "mock"
+}
+
+func (m *MockDataplane) PushPolicy(_ context.Context, op v1alpha.PolicyOperation, rules []*dpuPolicy.DPUPolicyRule) error {
+	logger.GetLogger().Info("pushed policy", "op", op, "rules", len(rules))
+	var logStr string
+	switch op {
+	case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
+		logStr = "applying policy"
+	case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
+		logStr = "removing policy"
+	default:
+		logStr = "unknown policy"
+	}
+	for _, r := range rules {
+		logger.GetLogger().Debug(logStr, "rule", *r.Policy)
+	}
 	return nil
 }
 

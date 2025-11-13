@@ -100,6 +100,11 @@ func (n *Nxos) delVbGlobal(ctx context.Context, isBd bool, name string) error {
 			n.delServiceVb(ctx, isBd, vb)
 		}
 	}
+
+	err := n.doVRFPolicyMapUpdate()
+	if err != nil {
+		logger.GetLogger().Error("failed to remove service vrf", logfields.Error, err, "vrf-name", vb.Name)
+	}
 	return nil
 }
 
@@ -157,6 +162,11 @@ func (n *Nxos) delVbService(ctx context.Context, isBd bool, name string) error {
 		if n.Stage == StageNormal {
 			n.delServiceVb(ctx, isBd, vb)
 		}
+	}
+
+	err := n.doVRFPolicyMapUpdate()
+	if err != nil {
+		logger.GetLogger().Error("failed to remove service vrf", logfields.Error, err, "vrf-name", vb.Name)
 	}
 	return nil
 }
@@ -609,11 +619,19 @@ func (n *Nxos) doVRFPolicyMapUpdate() error {
 	logger.GetLogger().Debug("doVRFPolicyMapUpdate")
 
 	vrfMap := switchpolicy.NewL3Networks()
-	for name, vid := range n.Alloc.Gids {
-		vrfName := switchpolicy.VrfName(name)
+	for _, vrf := range n.Vrfs {
+		// VRFs are only active / ready for traffic if they are both global and service
+		if !vrf.IsGlobal || !vrf.IsService {
+			continue
+		}
+		vrfName := switchpolicy.VrfName(vrf.Name)
+		vid, ok := n.Alloc.Gids[vrf.Name]
+		if !ok {
+			continue
+		}
 		vrfId := switchpolicy.VrfGID(vid)
 		err := vrfMap.Add(vrfName, vrfId)
-		logger.GetLogger().Debug("vrfMap add", "vrf", name, "gid", vid)
+		logger.GetLogger().Debug("vrfMap add", "vrf", vrf.Name, "gid", vid)
 		if err != nil {
 			return err
 		}
@@ -1223,7 +1241,7 @@ func (n *Nxos) doPinning(ctx context.Context, isBd bool, vb *VrfBd) {
 				}
 			}
 		}
-		logger.GetLogger().Debug("VRF %s uses global id %d", "name", vb.Name, "id", n.Alloc.Gids[vb.Name])
+		logger.GetLogger().Debug("VRF uses global id", "name", vb.Name, "id", n.Alloc.Gids[vb.Name])
 	}
 	if isBd {
 		n.Alloc.BdDpus[vb.Name] = vb.DpuPinned
@@ -1242,7 +1260,7 @@ func (n *Nxos) progRepinning(ctx context.Context, isBd bool, vbs []VrfBd) error 
 		logger.GetLogger().Debug("program repinning for VRFs", "bd", vbs)
 	}
 
-	if !n.isLbModePinning(ctx) {
+	if !n.IsLbModePinning(ctx) {
 		logger.GetLogger().Debug("Unexpected repinning skipped")
 		return nil
 	}

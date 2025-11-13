@@ -316,10 +316,12 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 		case v1alpha.PolicyOperation_POLICY_OPERATION_UNSPECIFIED:
 			logger.GetLogger().Error("failed policy, unknown operation")
 		case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
-			if err := dpu.upsertPolicyRule(rule); err != nil {
+			err := dpu.upsertPolicyRule(rule)
+			if err != nil {
+				logger.GetLogger().Error("failed to upsert rule", logfields.Error, err)
 				continue
 			}
-			err := dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, policyList)
+			err = dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, policyList)
 			if err != nil {
 				logger.GetLogger().Error("upsert failed", logfields.Error, err)
 				continue
@@ -331,12 +333,14 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			msg.PolicyId = rule.Policy.PolicyName
 			dpu.EventLogger.Log(msg)
 		case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
-			if err := dpu.deletePolicyRule(rule); err != nil {
+			err := dpu.deletePolicyRule(rule)
+			if err != nil {
+				logger.GetLogger().Error("failed to delete rule", logfields.Error, err)
 				continue
 			}
 			err = dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, policyList)
 			if err != nil {
-				logger.GetLogger().Error("upsert failed", logfields.Error, err)
+				logger.GetLogger().Error("delete failed", logfields.Error, err)
 				continue
 			}
 

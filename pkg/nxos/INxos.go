@@ -275,7 +275,6 @@ type INxos interface {
 	SetServiceIp(string)
 	GetServiceIp() string
 	ShowStatus(context.Context) string
-	ShowDpu(context.Context) string
 	ShowVrf(context.Context) string
 	DelTokens(context.Context) string
 	CheckUpdate(context.Context) string
