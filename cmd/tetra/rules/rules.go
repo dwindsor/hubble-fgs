@@ -35,15 +35,16 @@ func New() *cobra.Command {
 				return err
 			}
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-			fmt.Fprintln(w, "PATH\tVERSION\tTYPE\tMODE\tLOADED\tCOUNTER")
+			fmt.Fprintln(w, "PATH\tVERSION\tTYPE\tMODE\tLOADED\tCOUNTER\tPOD_SELECTOR_LABELS")
 			for _, r := range res.Rules.Rules {
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%t\t%d\n",
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%t\t%d\t%v\n",
 					strings.Join(r.Path, "-"),
 					r.Version,
 					r.Type.String(),
 					r.Status.Mode.String(),
 					r.Status.Loaded,
-					r.Counter)
+					r.Counter,
+					r.PodSelectorLabels)
 			}
 			w.Flush()
 			return nil
