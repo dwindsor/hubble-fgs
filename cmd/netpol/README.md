@@ -149,7 +149,23 @@ The connections can be filtered with a regular expression. Either the
 "Filter flows" prompt at the bottom with your mouse or press Tab to
 focus it. Enter the filter term as a regular expression and press enter.
 
-Example usage: `netpol tui --timescape=server:4244 policies/production policies/staging`
+Example usage:
+```
+  $ mkdir -p policies/{production,staging}
+  $ kubectl get smartswitchnetworkpolicy/my-policy -o yaml > policies/production/my-policy.yaml
+  $ cp policies/production/my-policy.yaml policies/staging/my-policy.yaml
+
+  # Start port forwarding the Timescape server
+  $ kubectl -n hubble-timescape port-forward svc/hubble-timescape 4244:80
+
+  # Start the TUI (connects to localhost:4244 by default)
+  $ netpol tui policies/production policies/staging
+
+  # In another terminal start editing the staging policy.
+  # The UI shows the rule differences which initially is of course empty.
+  # Press Ctrl+R in UI to reload.
+  $ $EDITOR policies/staging/my-policy.yaml
+````
 
 netpol controller
 =================
@@ -157,4 +173,92 @@ netpol controller
 The controller command is similar to the `check` command, but performs the validation
 automatically against SmartSwitchNetworkPolicies in Kubernetes that have the
 `smartswitchnetworkpolicies.isovalent.com/staging` annotation set and pointing
-to the policy being modified.
+to the policy being modified. For now to validate a new policy an empty policy
+should be created first.
+
+Installation:
+
+```
+  $ helm install --wait netpol oci://quay.io/isovalent-charts-dev/netpol \
+      --version v1.19.0-pre.1-28-g173aafef8
+
+  # Check that the controller is running
+  $ kubectl get pod -l app.kubernetes.io/name=netpol
+  NAME                      READY   STATUS    RESTARTS   AGE
+  netpol-5645fb555b-pxktx   1/1     Running   0          10s
+
+  # Check that SmartSwitchNetworkPolicies are processed
+  $ kubectl exec -it deployments/netpol -- /netpol controller shell
+  netpol> db/show policies
+  Name                         Target  Result   Status
+  default/my-policy
+  
+  netpol> health
+  ...
+  job-populate-policies: level=OK message=Running error=
+  job-reconcile: level=OK message=OK, 2 object(s) error=
+
+  # Check logs if there are issues
+  $ kubectl logs deployments/netpol
+```
+
+See https://quay.io/repository/isovalent-charts-dev/netpol?tab=tags for
+the latest version.
+
+Usage:
+
+```
+  # Retrieve the policy you want to modify
+  $ kubectl get smartswitchnetworkpolicies/my-policy -o yaml > my-policy.yaml
+  $ cp my-policy.yaml my-policy-staging.yaml
+
+  $ $EDITOR my-policy-staging.yaml
+  $ diff my-policy.yaml my-policy-staging.yaml
+    metadata:
+  -   name: my-policy
+  +   name: my-policy-staging
+  ...
+      annotations:
+  +     smartswitchnetworkpolicies.isovalent.com/staging: my-policy
+    spec:
+      rules:
+  -     ...
+  +     ...
+
+  # Apply the staging policy. This will be only validated and not deployed.
+  $ kubectl apply -f my-policy-staging.yaml
+
+  # Retrieve the validation results
+  $ kubectl get smartswitchnetworkpolicies/my-policy-staging \
+      -o jsonpath \
+      --template="{.metadata.annotations['smartswitchnetworkpolicies\.isovalent\.com/validation']}" \
+      | jq
+  {
+    "TargetGeneration": 2,
+    "StagingGeneration": 4,
+    "AllowToDeny": 1,
+    "DenyToAllow": 0,
+    "Sample": [
+      "192.168.0.1:12345 -> 192.168.0.1:22 TCP deny | allow -> no-match"
+    ]
+  }
+
+  # Retrieve the latest version to modify policy further
+  $ kubectl get smartswitchnetworkpolicies/my-policy-staging -o yaml > my-policy-staging.yaml
+  $ $EDITOR my-policy-staging.yaml
+  ...
+```
+
+hacks
+=====
+
+For testing you can use 'cmd/netpol/hack/insert.sh' to directly insert connection
+logs into Timescape. The script is for Timescape Lite. Adjust it as needed to
+exec into the right ClickHouse container.
+
+Example:
+
+````
+  hack$ ./insert.sh 1 foo 192.168.0.1 1234 192.168.0.2 80
+  192.168.0.1:1234 -> 192.168.0.2:80 (vlan: 1, vrf: foo)
+````

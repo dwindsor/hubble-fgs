@@ -1,13 +1,22 @@
 #!/usr/bin/env bash
 
-vlan=$1
-srcIP=$2
-srcPort=$3
-dstIP=$4
-dstPort=$5
-echo "$srcIP:$srcPort -> $dstIP:$dstPort (vlan: $vlan)"
+if [ "$#" -ne 6 ]; then
+  echo "usage: insert.sh <vlan> <vrf> <srcIP> <srcPort> <dstIP> <dstPort>"
+  echo "example: ./insert.sh 0 mgmt 192.168.0.1 2348 192.168.0.2 80"
+  echo "NOTE: Assumes Timescape Lite! Edit insert.sh as needed."
+  exit 1
+fi
 
-clickhouse-client <<EOF
+vlan=$1
+vrf=$2
+srcIP=$3
+srcPort=$4
+dstIP=$5
+dstPort=$6
+echo "$srcIP:$srcPort -> $dstIP:$dstPort (vlan: $vlan, vrf: $vrf)"
+
+# clickhouse-client <<EOF
+kubectl exec -i -n hubble-timescape pod/hubble-timescape-lite-0 --container clickhouse -- clickhouse-client -u timescape_lite <<EOF
 INSERT INTO hubble.connection_logs (
   id, \`emitter/name\`,
   \`meta/inserted\`,
