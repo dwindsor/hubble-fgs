@@ -127,6 +127,12 @@ func (n *Nxos) initiate(ctx context.Context) error {
 		return err
 	}
 
+	// get proxy config
+	err = n.getProxyConfig(ctx)
+	if err != nil {
+		return err
+	}
+
 	// get model and nxos version
 	err = n.getModelAndVersion(ctx)
 	if err != nil {

@@ -104,6 +104,15 @@ func (n *Nxos) getAdmissionAndConnectionStates(ctx context.Context) error {
 // getProxyConfig retrieves the proxy configuration from the device.
 func (n *Nxos) getProxyConfig(ctx context.Context) error {
 	logger.GetLogger().Debug("Retrieving proxy configuration")
+	n.Lock()
+	proxySvr := n.Ctrlr.ProxySvr != ""
+	proxyPort := n.Ctrlr.ProxyPort != 0
+	n.Unlock()
+
+	if proxySvr && proxyPort {
+		logger.GetLogger().Debug("Proxy server and port already set", "proxySvr", n.Ctrlr.ProxySvr, "proxyPort", n.Ctrlr.ProxyPort)
+		return nil
+	}
 
 	jstrs, err := n.gnmiGet(ctx, svcInst+"/scontroller-items")
 	if err != nil {
@@ -119,6 +128,8 @@ func (n *Nxos) getProxyConfig(ctx context.Context) error {
 			logger.GetLogger().Error("Fail to unmarshal scontroller-items", logfields.Error, err)
 		} else {
 			// logger.GetLogger().Debug("scontroller-items: %+v", items)
+			n.Lock()
+			defer n.Unlock()
 			if items.HttpsProxySvr != nil {
 				n.Ctrlr.ProxySvr = *items.HttpsProxySvr
 			}
