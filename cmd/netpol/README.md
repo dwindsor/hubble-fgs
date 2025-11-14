@@ -1,7 +1,7 @@
 Network policy utility
 ----------------------
 
-The 'netpol' program helps checking and validating network policy changes.
+The `netpol` program helps checking and validating network policy changes.
 
 Most of these commands take as argument one or two policy directories.
 The policy directories should contain one or more SmartSwitchNetworkPolicy
@@ -20,6 +20,18 @@ with to staging/:
   $ cp production/http-policy.yaml staging/http-policy.yaml
   $ $EDITOR staging/http-policy.yaml
   $ netpol check --timescape=server:4244 production staging
+```
+
+Currently there is only a container image releases of `netpol`. To use `netpol`
+as a CLI utility we can define a bash function that calls it via `docker` with
+access to files in the current directory:
+
+```
+  function netpol() {
+    docker run -it --rm -v $PWD:/work -w /work --network=host \
+      quay.io/isovalent-dev/netpol-ci:v1.19.0-pre.1-28-g173aafef8 $*
+  }
+  $ netpol ...
 ```
 
 netpol print
