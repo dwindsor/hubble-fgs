@@ -10,6 +10,8 @@ syntax = "proto3";
 
 package l3l4networkpolicy.v1alpha;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/isovalent/ipa/l3l4networkpolicy/v1alpha";
 
 enum PolicyProtocol {
@@ -147,6 +149,18 @@ message ReportStatus {
   uint32 port_high = 12;
   // HardwareModel is the DPU hardware model
   string hardware_model = 13;
+  // DpuRestarts is the number of times the DPU has been restarted
+  uint32 dpu_restarts = 14;
+  // LastDpuRestart is the timestamp of the last time the DPU has been restarted
+  google.protobuf.Timestamp last_dpu_restart = 15;
+  // DataplaneRestarts is the number of times the Dataplane process has been restarted
+  uint32 dataplane_restarts = 16;
+  // LastDataplaneRestart is the timestamp of the last time the Dataplane process has been restarted
+  google.protobuf.Timestamp last_dataplane_restart = 17;
+  // Epoch is a counter that increments with every message, which is reset when
+  // the process restarts.  This will be used to detect a process restart from the
+  // server.
+  uint64 epoch = 18;
 }
 
 enum ConfigType {

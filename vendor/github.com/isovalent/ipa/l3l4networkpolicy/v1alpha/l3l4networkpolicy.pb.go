@@ -17,6 +17,7 @@ package v1alpha
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -914,6 +915,18 @@ type ReportStatus struct {
 	PortHigh uint32 `protobuf:"varint,12,opt,name=port_high,json=portHigh,proto3" json:"port_high,omitempty"`
 	// HardwareModel is the DPU hardware model
 	HardwareModel string `protobuf:"bytes,13,opt,name=hardware_model,json=hardwareModel,proto3" json:"hardware_model,omitempty"`
+	// DpuRestarts is the number of times the DPU has been restarted
+	DpuRestarts uint32 `protobuf:"varint,14,opt,name=dpu_restarts,json=dpuRestarts,proto3" json:"dpu_restarts,omitempty"`
+	// LastDpuRestart is the timestamp of the last time the DPU has been restarted
+	LastDpuRestart *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=last_dpu_restart,json=lastDpuRestart,proto3" json:"last_dpu_restart,omitempty"`
+	// DataplaneRestarts is the number of times the Dataplane process has been restarted
+	DataplaneRestarts uint32 `protobuf:"varint,16,opt,name=dataplane_restarts,json=dataplaneRestarts,proto3" json:"dataplane_restarts,omitempty"`
+	// LastDataplaneRestart is the timestamp of the last time the Dataplane process has been restarted
+	LastDataplaneRestart *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=last_dataplane_restart,json=lastDataplaneRestart,proto3" json:"last_dataplane_restart,omitempty"`
+	// Epoch is a counter that increments with every message, which is reset when
+	// the process restarts.  This will be used to detect a process restart from the
+	// server.
+	Epoch         uint64 `protobuf:"varint,18,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1037,6 +1050,41 @@ func (x *ReportStatus) GetHardwareModel() string {
 		return x.HardwareModel
 	}
 	return ""
+}
+
+func (x *ReportStatus) GetDpuRestarts() uint32 {
+	if x != nil {
+		return x.DpuRestarts
+	}
+	return 0
+}
+
+func (x *ReportStatus) GetLastDpuRestart() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastDpuRestart
+	}
+	return nil
+}
+
+func (x *ReportStatus) GetDataplaneRestarts() uint32 {
+	if x != nil {
+		return x.DataplaneRestarts
+	}
+	return 0
+}
+
+func (x *ReportStatus) GetLastDataplaneRestart() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastDataplaneRestart
+	}
+	return nil
+}
+
+func (x *ReportStatus) GetEpoch() uint64 {
+	if x != nil {
+		return x.Epoch
+	}
+	return 0
 }
 
 // Object to store NX configuration
@@ -1705,7 +1753,7 @@ var File_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto protoreflect.FileDesc
 
 const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\n" +
-	"1l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto\x12\x19l3l4networkpolicy.v1alpha\"\x8a\x01\n" +
+	"1l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto\x12\x19l3l4networkpolicy.v1alpha\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8a\x01\n" +
 	"\vPolicyPorts\x12E\n" +
 	"\bprotocol\x18\x01 \x01(\x0e2).l3l4networkpolicy.v1alpha.PolicyProtocolR\bprotocol\x12\x19\n" +
 	"\bmin_port\x18\x02 \x01(\rR\aminPort\x12\x19\n" +
@@ -1735,7 +1783,7 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x06policy\x18\x02 \x01(\v2%.l3l4networkpolicy.v1alpha.PolicyRuleR\x06policy\"V\n" +
 	"\x13ReportStatusRequest\x12?\n" +
 	"\x06status\x18\x01 \x01(\v2'.l3l4networkpolicy.v1alpha.ReportStatusR\x06status\"\x16\n" +
-	"\x14ReportStatusResponse\"\xbf\x03\n" +
+	"\x14ReportStatusResponse\"\xbf\x05\n" +
 	"\fReportStatus\x12\x1b\n" +
 	"\tagent_uid\x18\x01 \x01(\tR\bagentUid\x12\x1d\n" +
 	"\n" +
@@ -1751,7 +1799,12 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	" \x01(\tR\x06mgmtIp\x12\x19\n" +
 	"\bport_low\x18\v \x01(\rR\aportLow\x12\x1b\n" +
 	"\tport_high\x18\f \x01(\rR\bportHigh\x12%\n" +
-	"\x0ehardware_model\x18\r \x01(\tR\rhardwareModel\"\x83\x01\n" +
+	"\x0ehardware_model\x18\r \x01(\tR\rhardwareModel\x12!\n" +
+	"\fdpu_restarts\x18\x0e \x01(\rR\vdpuRestarts\x12D\n" +
+	"\x10last_dpu_restart\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\x0elastDpuRestart\x12-\n" +
+	"\x12dataplane_restarts\x18\x10 \x01(\rR\x11dataplaneRestarts\x12P\n" +
+	"\x16last_dataplane_restart\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\x14lastDataplaneRestart\x12\x14\n" +
+	"\x05epoch\x18\x12 \x01(\x04R\x05epoch\"\x83\x01\n" +
 	"\tDpuConfig\x12\x1d\n" +
 	"\n" +
 	"service_ip\x18\x01 \x01(\tR\tserviceIp\x12\x1f\n" +
@@ -1892,6 +1945,7 @@ var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_goTypes = []any{
 	nil,                                     // 26: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
 	nil,                                     // 27: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
 	nil,                                     // 28: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
+	(*timestamppb.Timestamp)(nil),           // 29: google.protobuf.Timestamp
 }
 var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_depIdxs = []int32{
 	0,  // 0: l3l4networkpolicy.v1alpha.PolicyPorts.protocol:type_name -> l3l4networkpolicy.v1alpha.PolicyProtocol
@@ -1904,34 +1958,36 @@ var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_depIdxs = []int32{
 	10, // 7: l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse.policy:type_name -> l3l4networkpolicy.v1alpha.PolicyRule
 	15, // 8: l3l4networkpolicy.v1alpha.ReportStatusRequest.status:type_name -> l3l4networkpolicy.v1alpha.ReportStatus
 	3,  // 9: l3l4networkpolicy.v1alpha.ReportStatus.type:type_name -> l3l4networkpolicy.v1alpha.AgentType
-	25, // 10: l3l4networkpolicy.v1alpha.LogConfigSyslog.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
-	26, // 11: l3l4networkpolicy.v1alpha.LogConfigIpfix.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
-	27, // 12: l3l4networkpolicy.v1alpha.LogConfigTimescape.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
-	28, // 13: l3l4networkpolicy.v1alpha.LogConfigSplunk.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
-	4,  // 14: l3l4networkpolicy.v1alpha.ConfigObject.type:type_name -> l3l4networkpolicy.v1alpha.ConfigType
-	5,  // 15: l3l4networkpolicy.v1alpha.ConfigObject.source:type_name -> l3l4networkpolicy.v1alpha.ConfigSource
-	16, // 16: l3l4networkpolicy.v1alpha.ConfigObject.config_dpu:type_name -> l3l4networkpolicy.v1alpha.DpuConfig
-	18, // 17: l3l4networkpolicy.v1alpha.ConfigObject.config_log_syslog:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog
-	19, // 18: l3l4networkpolicy.v1alpha.ConfigObject.config_log_ipfix:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix
-	20, // 19: l3l4networkpolicy.v1alpha.ConfigObject.config_log_timescape:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape
-	21, // 20: l3l4networkpolicy.v1alpha.ConfigObject.config_log_splunk:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk
-	6,  // 21: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.oper:type_name -> l3l4networkpolicy.v1alpha.ConfigOperation
-	22, // 22: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.config:type_name -> l3l4networkpolicy.v1alpha.ConfigObject
-	17, // 23: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	17, // 24: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	17, // 25: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	17, // 26: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
-	11, // 27: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:input_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
-	13, // 28: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:input_type -> l3l4networkpolicy.v1alpha.ReportStatusRequest
-	23, // 29: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:input_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
-	12, // 30: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:output_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
-	14, // 31: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:output_type -> l3l4networkpolicy.v1alpha.ReportStatusResponse
-	24, // 32: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:output_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
-	30, // [30:33] is the sub-list for method output_type
-	27, // [27:30] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	29, // 10: l3l4networkpolicy.v1alpha.ReportStatus.last_dpu_restart:type_name -> google.protobuf.Timestamp
+	29, // 11: l3l4networkpolicy.v1alpha.ReportStatus.last_dataplane_restart:type_name -> google.protobuf.Timestamp
+	25, // 12: l3l4networkpolicy.v1alpha.LogConfigSyslog.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
+	26, // 13: l3l4networkpolicy.v1alpha.LogConfigIpfix.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
+	27, // 14: l3l4networkpolicy.v1alpha.LogConfigTimescape.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
+	28, // 15: l3l4networkpolicy.v1alpha.LogConfigSplunk.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
+	4,  // 16: l3l4networkpolicy.v1alpha.ConfigObject.type:type_name -> l3l4networkpolicy.v1alpha.ConfigType
+	5,  // 17: l3l4networkpolicy.v1alpha.ConfigObject.source:type_name -> l3l4networkpolicy.v1alpha.ConfigSource
+	16, // 18: l3l4networkpolicy.v1alpha.ConfigObject.config_dpu:type_name -> l3l4networkpolicy.v1alpha.DpuConfig
+	18, // 19: l3l4networkpolicy.v1alpha.ConfigObject.config_log_syslog:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog
+	19, // 20: l3l4networkpolicy.v1alpha.ConfigObject.config_log_ipfix:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix
+	20, // 21: l3l4networkpolicy.v1alpha.ConfigObject.config_log_timescape:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape
+	21, // 22: l3l4networkpolicy.v1alpha.ConfigObject.config_log_splunk:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk
+	6,  // 23: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.oper:type_name -> l3l4networkpolicy.v1alpha.ConfigOperation
+	22, // 24: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.config:type_name -> l3l4networkpolicy.v1alpha.ConfigObject
+	17, // 25: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	17, // 26: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	17, // 27: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	17, // 28: l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
+	11, // 29: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:input_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
+	13, // 30: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:input_type -> l3l4networkpolicy.v1alpha.ReportStatusRequest
+	23, // 31: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:input_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
+	12, // 32: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:output_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
+	14, // 33: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:output_type -> l3l4networkpolicy.v1alpha.ReportStatusResponse
+	24, // 34: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:output_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
+	32, // [32:35] is the sub-list for method output_type
+	29, // [29:32] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() }

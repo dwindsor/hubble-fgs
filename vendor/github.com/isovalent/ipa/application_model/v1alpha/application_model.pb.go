@@ -465,8 +465,10 @@ type NetworkConnectTelemetry struct {
 	Sessions uint64 `protobuf:"varint,27,opt,name=sessions,proto3" json:"sessions,omitempty"`
 	// The ID of the application model from which this telemetry data got derived.
 	ApplicationModelId string `protobuf:"bytes,28,opt,name=application_model_id,json=applicationModelId,proto3" json:"application_model_id,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The number of dropped packets
+	TxDrops       uint64 `protobuf:"varint,29,opt,name=tx_drops,json=txDrops,proto3" json:"tx_drops,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NetworkConnectTelemetry) Reset() {
@@ -693,6 +695,13 @@ func (x *NetworkConnectTelemetry) GetApplicationModelId() string {
 		return x.ApplicationModelId
 	}
 	return ""
+}
+
+func (x *NetworkConnectTelemetry) GetTxDrops() uint64 {
+	if x != nil {
+		return x.TxDrops
+	}
+	return 0
 }
 
 type ApplicationModelEvent struct {
@@ -1944,7 +1953,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\fparent_names\x18\x12 \x03(\tR\vparentNames\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb6\r\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd1\r\n" +
 	"\x17NetworkConnectTelemetry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12.\n" +
 	"\x04time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12G\n" +
@@ -1977,7 +1986,8 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\btx_bytes\x18\x19 \x01(\x04R\atxBytes\x12\x19\n" +
 	"\brx_bytes\x18\x1a \x01(\x04R\arxBytes\x12\x1a\n" +
 	"\bsessions\x18\x1b \x01(\x04R\bsessions\x120\n" +
-	"\x14application_model_id\x18\x1c \x01(\tR\x12applicationModelId\x1a=\n" +
+	"\x14application_model_id\x18\x1c \x01(\tR\x12applicationModelId\x12\x19\n" +
+	"\btx_drops\x18\x1d \x01(\x04R\atxDrops\x1a=\n" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe1\x01\n" +

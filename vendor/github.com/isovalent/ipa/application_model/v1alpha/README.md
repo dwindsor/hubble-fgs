@@ -865,6 +865,7 @@ the following criteria:
 | rx_bytes | [uint64](#uint64) |  | The number of receive bytes from connections allowed by the policy rule. This field is not set for `POLICY_VERDICT_DROP` verdict events. |
 | sessions | [uint64](#uint64) |  | The number of TCP connections / UDP sessions. For `POLICY_VERDICT_UNSPECIFIED` verdict events, this field specifies the number of TCP connections / UDP sessions created. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of TCP connections / UDP sessions allowed by this policy rule. For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of dropped TCP connections / UDP sessions dropped by this policy rule. |
 | application_model_id | [string](#string) |  | The ID of the application model from which this telemetry data got derived. |
+| tx_drops | [uint64](#uint64) |  | The number of dropped packets |
 
 
 

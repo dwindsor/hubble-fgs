@@ -479,6 +479,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 						DestinationKubernetesResourceName: dname,
 						TxBytes:                           c.Stats.TxBytes,
 						RxBytes:                           c.Stats.RxBytes,
+						TxDrops:                           c.Stats.TxDrops,
 						NodeLabels:                        labels,
 						PolicyName:                        c.Policy.PolicyName,
 						RuleName:                          c.Policy.RuleName,
@@ -517,6 +518,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					DestinationKubernetesResourceName: dname,
 					TxBytes:                           c.Stats.TxBytes,
 					RxBytes:                           c.Stats.RxBytes,
+					TxDrops:                           c.Stats.TxDrops,
 					NodeLabels:                        labels,
 					PolicyName:                        c.Policy.PolicyName,
 					RuleName:                          c.Policy.RuleName,
@@ -591,7 +593,9 @@ func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graph
 		Type: &graphV1.Edge_NetworkTelemetry{
 			NetworkTelemetry: &graphV1.EdgeTypeNetworkTelemetry{
 				NetworkTransmitBytesTotal: telemetry.TxBytes,
+				NetworkTransmitDropTotal:  telemetry.TxDrops,
 				NetworkReceiveBytesTotal:  telemetry.RxBytes,
+				NetworkReceiveDropTotal:   0,
 			},
 		},
 	}

@@ -142,6 +142,8 @@ message NetworkConnectTelemetry {
   uint64 sessions = 27;
   // The ID of the application model from which this telemetry data got derived.
   string application_model_id = 28;
+  // The number of dropped packets
+  uint64 tx_drops = 29;
 }
 
 enum PolicyVerdict {
