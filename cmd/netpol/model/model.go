@@ -161,6 +161,8 @@ func (m *Model) Evaluate(flow types.Flow) (int, types.Action) {
 func Diff(m1, m2 *Model, flows iter.Seq[types.Flow]) (diff FlowDiff) {
 skip:
 	for flow := range flows {
+		diff.NumFlowsAnalyzed++
+
 		i1, v1 := m1.Evaluate(flow)
 		i2, v2 := m2.Evaluate(flow)
 
@@ -189,9 +191,10 @@ skip:
 }
 
 type FlowDiff struct {
-	AllowToDeny []types.Flow
-	DenyToAllow []types.Flow
-	Flows       []types.FlowDiff
+	AllowToDeny      []types.Flow
+	DenyToAllow      []types.Flow
+	Flows            []types.FlowDiff
+	NumFlowsAnalyzed int
 }
 
 const (

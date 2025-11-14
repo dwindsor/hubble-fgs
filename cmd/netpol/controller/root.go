@@ -25,12 +25,23 @@ var controllerCell = cell.Module(
 	"policy-controller",
 	"Network policy validation controller",
 
+	cell.Provide(timescape.NewClient),
+	cell.Config(Config{}),
+
 	cell.Provide(
 		NewPolicyTable,
 		shellCommands,
 
 		newManager,
 	),
+
+	cell.ProvidePrivate(
+		newPolicyPatchFunc,
+		func(tsClient *timescape.Client) timescapeGetConnections {
+			return tsClient
+		},
+	),
+
 	cell.Invoke(
 		// Populates Table[*Policy] from the SmartSwitchNetworkPolicy objects
 		registerPopulatePolicyTable,
@@ -65,53 +76,59 @@ func shellCommands(db *statedb.DB, policies statedb.RWTable[*Policy]) hive.Scrip
 	})
 }
 
-var controllerHive = hive.NewWithOptions(
-	hive.Options{
-		ModuleDecorators: cell.ModuleDecorators{
-			// Provide a cell.Health scoped to the module name
-			func(fmid cell.FullModuleID, h cell.Health) cell.Health {
-				return h.NewScope(fmid.String())
+func newControllerHive(cells ...cell.Cell) *hive.Hive {
+	extra := cell.Group(cells...)
+	return hive.NewWithOptions(
+		hive.Options{
+			ModuleDecorators: cell.ModuleDecorators{
+				// Provide a cell.Health scoped to the module name
+				func(fmid cell.FullModuleID, h cell.Health) cell.Health {
+					return h.NewScope(fmid.String())
+				},
 			},
-		},
-		ModulePrivateProviders: cell.ModulePrivateProviders{
-			// Provide a job.Group scoped to the module.
-			func(reg job.Registry, h cell.Health, l *slog.Logger, lc cell.Lifecycle, mid cell.ModuleID) job.Group {
-				return reg.NewGroup(h, lc,
-					job.WithLogger(l),
-					job.WithPprofLabels(pprof.Labels("cell", string(mid))))
+			ModulePrivateProviders: cell.ModulePrivateProviders{
+				// Provide a job.Group scoped to the module.
+				func(reg job.Registry, h cell.Health, l *slog.Logger, lc cell.Lifecycle, mid cell.ModuleID) job.Group {
+					return reg.NewGroup(h, lc,
+						job.WithLogger(l),
+						job.WithPprofLabels(pprof.Labels("cell", string(mid))))
+				},
 			},
+			StartTimeout: 5 * time.Second,
+			StopTimeout:  5 * time.Second,
 		},
-		StartTimeout: 5 * time.Second,
-		StopTimeout:  5 * time.Second,
-	},
 
-	cell.Provide(
-		cell.NewSimpleHealth,
-		func(sh *cell.SimpleHealth) hive.ScriptCmdOut {
-			return hive.NewScriptCmd("health", cell.SimpleHealthCmd(sh))
-		},
-	),
+		cell.Provide(
+			cell.NewSimpleHealth,
+			func(sh *cell.SimpleHealth) hive.ScriptCmdOut {
+				return hive.NewScriptCmd("health", cell.SimpleHealthCmd(sh))
+			},
+		),
 
-	cell.Config(Config{}),
+		cell.Config(timescape.Config{}),
 
-	cell.Config(timescape.Config{}),
-	cell.Provide(timescape.NewClient),
+		shell.ServerCell(shellSockPath),
 
-	shell.ServerCell(shellSockPath),
+		statedb.Cell,
+		job.Cell,
 
-	statedb.Cell,
-	job.Cell,
-	controllerCell,
-)
+		extra,
+	)
+}
+
+var controllerHive = newControllerHive(controllerCell)
 
 type Config struct {
-	KubeConfigPath string
-	Duration       time.Duration
+	KubeConfigPath           string
+	ConfidenceMinConnections int
+	Duration                 time.Duration
 }
 
 func (c Config) Flags(fs *pflag.FlagSet) {
 	fs.String("kube-config-path", path.Join(os.Getenv("HOME"), ".kube", "config"), "Path to kubeconfig")
 	fs.Duration("duration", 10*time.Minute, "How long in the past to go to look for matching connections")
+	fs.Int("confidence-min-connections", 100, "Minimum number of connections needed to calculate confidence")
+	fs.MarkHidden("confidence-min-connections")
 }
 
 const shellSockPath = "/tmp/netpol.sock"

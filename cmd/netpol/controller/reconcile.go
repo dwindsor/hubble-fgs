@@ -22,19 +22,22 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+type policyPatchFunc func(ctx context.Context, namespace, name string, patch []byte) (code int, err error)
+
+type timescapeGetConnections interface {
+	GetConnections(ctx context.Context, since, until time.Time, filter *model.Filter) (iter.Seq[types.Flow], error)
+}
+
 func registerPolicyReconciler(
 	lc cell.Lifecycle,
 	cfg Config,
-	mngr ctrl.Manager,
+	patchFunc policyPatchFunc,
 	params reconciler.Params,
-	tsClient *timescape.Client,
+	tsClient timescapeGetConnections,
 	policies statedb.RWTable[*Policy],
 ) error {
-	ops, err := newPolicyOps(params.Log, cfg, mngr, tsClient, policies)
-	if err != nil {
-		return err
-	}
-	_, err = reconciler.Register(
+	ops := newPolicyOps(params.Log, cfg, patchFunc, tsClient, policies)
+	_, err := reconciler.Register(
 		params,
 		policies,
 		(*Policy).Clone,
@@ -58,11 +61,11 @@ func registerPolicyReconciler(
 }
 
 type policyOps struct {
-	cfg      Config
-	log      *slog.Logger
-	tsClient *timescape.Client
-	client   rest.Interface
-	policies statedb.Table[*Policy]
+	cfg       Config
+	log       *slog.Logger
+	tsClient  timescapeGetConnections
+	patchFunc policyPatchFunc
+	policies  statedb.Table[*Policy]
 }
 
 // Delete implements reconciler.Operations.
@@ -101,33 +104,25 @@ func (r *policyOps) Update(ctx context.Context, txn statedb.ReadTxn, revision st
 		{
 			OP:    "replace",
 			Path:  path,
-			Value: result.SummaryString(),
+			Value: result.SummaryString(r.cfg),
 		},
 	}
-	patch, _ := json.Marshal(jsonPatch)
+	patch, _ := json.MarshalIndent(jsonPatch, "", "  ")
 	namespace, name, _ := strings.Cut(policy.Name, "/")
-	doResult := r.client.Patch(k8sTypes.JSONPatchType).
-		Resource(v1alpha1.SNPPluralName).
-		Namespace(namespace).
-		Name(name).
-		Body(patch).
-		Do(ctx)
 
-	var code int
-	doResult.StatusCode(&code)
+	code, err := r.patchFunc(ctx, namespace, name, patch)
 	r.log.Info(
 		"Update",
-		"result", result.SummaryString(),
-		"error", doResult.Error(),
-		"warnings", doResult.Warnings(),
+		"result", result.SummaryString(r.cfg),
+		"error", err,
 		"code", code,
 	)
-	return doResult.Error()
+	return err
 }
 
 var _ reconciler.Operations[*Policy] = &policyOps{}
 
-func newPolicyOps(log *slog.Logger, cfg Config, mngr ctrl.Manager, tsClient *timescape.Client, policies statedb.Table[*Policy]) (*policyOps, error) {
+func newPolicyPatchFunc(mngr ctrl.Manager) (policyPatchFunc, error) {
 	restConfig := *mngr.GetConfig()
 	restConfig.APIPath = "/apis"
 	restConfig.GroupVersion = &v1alpha1.SchemeGroupVersion
@@ -139,13 +134,26 @@ func newPolicyOps(log *slog.Logger, cfg Config, mngr ctrl.Manager, tsClient *tim
 	if err != nil {
 		return nil, err
 	}
+	return func(ctx context.Context, namespace, name string, patch []byte) (code int, err error) {
+		doResult := client.Patch(k8sTypes.JSONPatchType).
+			Resource(v1alpha1.SNPPluralName).
+			Namespace(namespace).
+			Name(name).
+			Body(patch).
+			Do(ctx)
+		doResult.StatusCode(&code)
+		return code, doResult.Error()
+	}, nil
+}
+
+func newPolicyOps(log *slog.Logger, cfg Config, patchFunc policyPatchFunc, tsClient timescapeGetConnections, policies statedb.Table[*Policy]) *policyOps {
 	return &policyOps{
-		log:      log,
-		cfg:      cfg,
-		client:   client,
-		tsClient: tsClient,
-		policies: policies,
-	}, err
+		log:       log,
+		cfg:       cfg,
+		patchFunc: patchFunc,
+		tsClient:  tsClient,
+		policies:  policies,
+	}
 }
 
 func (r *policyOps) validatePolicy(
@@ -209,6 +217,10 @@ func (r *policyOps) validatePolicy(
 	}
 	diff := model.Diff(m1, m2, conns)
 
-	policy.ReconciledResult = &Result{Old: target.Policy, New: policy.Policy, Diff: diff}
+	policy.ReconciledResult = &Result{
+		Old:  target.Policy,
+		New:  policy.Policy,
+		Diff: diff,
+	}
 	return *policy.ReconciledResult, nil
 }
