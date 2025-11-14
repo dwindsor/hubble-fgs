@@ -15,6 +15,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -553,6 +554,10 @@ func (dpu *DPUAgent) Connect(ctx context.Context) error {
 	dpu.streamClient.conn, err = grpc.NewClient(
 		dpu.serverAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:    10 * time.Second,
+			Timeout: 3 * time.Second,
+		}),
 	)
 	if err != nil {
 		logger.GetLogger().Error("GRPC client create error", logfields.Error, err)

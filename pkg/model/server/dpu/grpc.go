@@ -81,8 +81,8 @@ func (s *AGWServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 			resp := dpuRuleToResponse(rule)
 			err := stream.Send(resp)
 			if err != nil {
-				fmt.Printf("send error %s\n", err)
-				return nil
+				logger.GetLogger().Error("failed to send message", logfields.Error, err)
+				return err
 			}
 			logger.GetLogger().Debug("Pushed policy to client", "clientID", initializedPeer.uid, "policy", *rule)
 		}

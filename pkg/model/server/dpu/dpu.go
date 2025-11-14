@@ -20,6 +20,7 @@ import (
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 const (
@@ -151,7 +152,12 @@ func (dpu *DPUListener) Start() error {
 	}
 
 	logger.GetLogger().Info("DPU listener online")
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.KeepaliveParams(keepalive.ServerParameters{
+		Time:    1 * time.Second,
+		Timeout: 3 * time.Second,
+	}), grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+		MinTime: 1 * time.Second,
+	}))
 	v1alpha.RegisterL3L4NetworkPolicyServiceServer(grpcServer, newServer(dpu))
 	logger.GetLogger().Info("DPU listener starting", "address", dpu.address)
 
