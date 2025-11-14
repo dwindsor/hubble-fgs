@@ -11,6 +11,8 @@ on:
       - reopened
       - labeled
   workflow_dispatch: {}
+  schedule:
+    - cron: '0 5 * * *'  # 9 PM PST (5 AM UTC)
 
 permissions:
   contents: write
