@@ -159,8 +159,8 @@ jobs:
         id: release-type
         run: |
           echo "is_draft=false" >> $GITHUB_OUTPUT
-          echo "tag_name=${{ needs.init.outputs.version }}-${{ needs.init.outputs.sha }}-codedrop" >> $GITHUB_OUTPUT
-          echo "release_name=${{ needs.init.outputs.version }}-${{ needs.init.outputs.sha }}-codedrop" >> $GITHUB_OUTPUT
+          echo "tag_name=${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop" >> $GITHUB_OUTPUT
+          echo "release_name=${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop" >> $GITHUB_OUTPUT
       - name: Create GitHub Release 
         uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2
         with:
@@ -212,14 +212,14 @@ jobs:
           auto-merge: true
           auto-approve: true
           create-source-branch: true
-          custom-commit-message: "feat: Update FWA_LATEST to ${{ needs.init.outputs.version }}-${{ needs.init.outputs.sha }}-codedrop"
-          custom-branch-name: "feature/update-fwa-version-${{ needs.init.outputs.version }}-${{ needs.init.outputs.sha }}-codedrop"
+          custom-commit-message: "feat: Update FWA_LATEST to ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop"
+          custom-branch-name: "feature/update-fwa-version-${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop"
           makefile-update-data: |
             [
               {
                 "path": "Makefile",
                 "key": "FWA_LATEST",
-                "value": "${{ needs.init.outputs.version }}-${{ needs.init.outputs.sha }}-codedrop"
+                "value": "${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop"
               }
             ]
           keeper-url: ${{ vars.VAULT_URL }}
