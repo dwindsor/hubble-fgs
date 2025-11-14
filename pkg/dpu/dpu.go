@@ -7,8 +7,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,6 +20,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -100,8 +105,13 @@ type DPUAgent struct {
 	// the message. We SHA256 the rule so that the operation matches for
 	// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
 	// of the concatenated strings in this map.
-	ruleSet     map[[sha256.Size]byte]*agentDPU.DPUPolicyRule
-	ruleSetLock sync.Mutex
+	ruleSet      map[[sha256.Size]byte]*agentDPU.DPUPolicyRule
+	ruleSetLock  sync.Mutex
+	DpuReboot    uint32
+	DpuBootTime  time.Time
+	DpCrash      uint32
+	LastDpCrash  time.Time
+	LastFwaCrash time.Time
 }
 
 func (dpu *DPUAgent) Id() string {
@@ -114,6 +124,114 @@ func (dpu *DPUAgent) Tenant() string {
 
 func (dpu *DPUAgent) Version() string {
 	return version.Version
+}
+
+func ReadUintFromFile(path string) (uint32, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, err
+	}
+	trimmed := strings.TrimSpace(string(data))
+	val, err := strconv.ParseUint(trimmed, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse reboot count from %s: %w", path, err)
+	}
+	return uint32(val), nil
+}
+
+// This returns the modification time of a file
+func GetFileModifiedTime(path string) (time.Time, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return info.ModTime(), nil
+}
+
+// Extract bootcount and last time of core file creation
+// Format: core_<bootcount>__pds_dp_app_pds_dp_app_*.tar
+func (dpu *DPUAgent) checkForCoreDump() {
+
+	dpu.DpCrash = 0
+	dpu.LastDpCrash = time.Time{}
+	// Most recent core dump file created
+	cmd := exec.Command("sh", "-c", "ls -t /data/core/core_*__pds_dp_app_pds_dp_app_*.tar 2>/dev/null | head -n 1")
+	output, err := cmd.Output()
+	if err != nil || len(output) == 0 {
+		logger.GetLogger().Debug("No core dump files found")
+		return
+	}
+
+	filePath := strings.TrimSpace(string(output))
+
+	// Extract bootcount: core_<bootcount>__pds_dp_app_pds_dp_app_*.tar
+	re := regexp.MustCompile(`core_(\d+)__pds_dp_app_pds_dp_app_.*\.tar$`)
+	matches := re.FindStringSubmatch(filePath)
+	if len(matches) < 2 {
+		logger.GetLogger().Error("Failed to extract bootcount from filename", "file", filePath)
+		return
+	}
+
+	crashCount, err := strconv.ParseUint(matches[1], 10, 32)
+	if err != nil {
+		logger.GetLogger().Error("Failed to parse bootcount", "bootcount", matches[1], logfields.Error, err)
+		return
+	}
+
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		logger.GetLogger().Error("Failed to find time core dump file was created", logfields.Error, err, "file", filePath)
+		return
+	}
+
+	// Update DPU crash info
+	dpu.DpCrash = uint32(crashCount)
+	dpu.LastDpCrash = fileInfo.ModTime()
+}
+
+// Extract last time of FWA crash file creation
+// Format: core_<bootcount>__fwa_fwa_*.tar
+func (dpu *DPUAgent) checkForFwaCrash() {
+
+	dpu.LastFwaCrash = time.Time{}
+	// Most recent FWA crash file created
+	cmd := exec.Command("sh", "-c", "ls -t /data/core/core_*__fwa_fwa_*.tar 2>/dev/null | head -n 1")
+	output, err := cmd.Output()
+	if err != nil || len(output) == 0 {
+		logger.GetLogger().Debug("No FWA crash files found")
+		return
+	}
+
+	filePath := strings.TrimSpace(string(output))
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		logger.GetLogger().Error("Failed to find time FWA crash file was created", logfields.Error, err, "file", filePath)
+		return
+	}
+	// Update FWA crash time info
+	dpu.LastFwaCrash = fileInfo.ModTime()
+}
+
+func (dpu *DPUAgent) updateDpuRebootCrashInfo() {
+	bootCount, err := ReadUintFromFile("/obfl/boot_count.txt")
+	if err != nil {
+		logger.GetLogger().Error("Failed to read /obfl/boot_count.txt", logfields.Error, err)
+		return
+	}
+
+	// get the last boot time from the /obfl/boot_count.txt file
+	lastBootTime, err := GetFileModifiedTime("/obfl/boot_count.txt")
+	if err != nil {
+		logger.GetLogger().Error("Failed to get the modified time of /obfl/boot_count.txt", logfields.Error, err)
+		return
+	}
+	// Update the number of boots and last time of boot
+	dpu.DpuReboot = bootCount
+	dpu.DpuBootTime = lastBootTime
+	//Update the core info
+	dpu.checkForCoreDump()
+	//Update the FWA crash info
+	dpu.checkForFwaCrash()
 }
 
 func (dpu *DPUAgent) Config(ctx context.Context, configPath string, dpSocketPath string, enableDataplane bool, enableLogger bool) error {
@@ -165,6 +283,9 @@ func (dpu *DPUAgent) Config(ctx context.Context, configPath string, dpSocketPath
 	} else {
 		dpu.LogExporter = exporter.NewMockExporter()
 	}
+
+	// update dpu reboot and crash info
+	dpu.updateDpuRebootCrashInfo()
 
 	return nil
 }
@@ -410,20 +531,27 @@ func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
 		case <-time.After(backoff):
 			csum := dpu.Checksum()
 			status := &v1alpha.ReportStatus{
-				AgentUid:       dpu.AgentId,
-				DpVersion:      dpu.Dataplane.Version(),
-				AgentVersion:   dpu.Version(),
-				PolicyChecksum: hex.EncodeToString(csum[:]),
-				Hostname:       dpu.Hostname,
-				Architecture:   dpu.Architecture,
-				Os:             dpu.Os,
-				Type:           v1alpha.AgentType_AGENT_TYPE_DPU_AGW,
-				SerialNumber:   "serialNumber",
-				HardwareModel:  dpu.Dataplane.HardwareModel(),
+				AgentUid:             dpu.AgentId,
+				DpVersion:            dpu.Dataplane.Version(),
+				AgentVersion:         dpu.Version(),
+				PolicyChecksum:       hex.EncodeToString(csum[:]),
+				Hostname:             dpu.Hostname,
+				Architecture:         dpu.Architecture,
+				Os:                   dpu.Os,
+				Type:                 v1alpha.AgentType_AGENT_TYPE_DPU_AGW,
+				SerialNumber:         "serialNumber",
+				HardwareModel:        dpu.Dataplane.HardwareModel(),
+				DpuRestarts:          dpu.DpuReboot,
+				LastDpuRestart:       timestamppb.New(dpu.DpuBootTime),
+				DataplaneRestarts:    dpu.DpCrash,
+				LastDataplaneRestart: timestamppb.New(dpu.LastDpCrash),
+				LastFwaCrashTime:     timestamppb.New(dpu.LastFwaCrash),
 			}
+
 			req := &v1alpha.ReportStatusRequest{
 				Status: status,
 			}
+			//FWA calls this function to send keep alive report stats to AGW
 			_, err := dpu.streamClient.client.ReportStatus(ctx, req)
 			if err != nil {
 				attempts++

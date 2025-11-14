@@ -346,7 +346,7 @@ checksum.
 | last_dpu_restart | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | LastDpuRestart is the timestamp of the last time the DPU has been restarted |
 | dataplane_restarts | [uint32](#uint32) |  | DataplaneRestarts is the number of times the Dataplane process has been restarted |
 | last_dataplane_restart | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | LastDataplaneRestart is the timestamp of the last time the Dataplane process has been restarted |
-| epoch | [uint64](#uint64) |  | Epoch is a counter that increments with every message, which is reset when the process restarts. This will be used to detect a process restart from the server. |
+| last_fwa_crash_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | LastFwaCrashTime is the timestamp of the last time the FWA has crashed |
 
 
 

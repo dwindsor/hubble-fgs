@@ -15,7 +15,7 @@ require (
 	github.com/cilium/tetragon v1.7.0-pre.0.0.20251113082226-ef7b68c961b2
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
-	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251031160646-dbc076c50cfc
+	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
 	github.com/containerd/containerd/v2 v2.2.0
 	github.com/containernetworking/plugins v1.8.0
 	github.com/cri-o/cri-o v1.34.1
@@ -32,8 +32,8 @@ require (
 	github.com/google/gops v0.3.28
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/isovalent/ipa v1.19.0-pre.0.0.20251114090046-9fee09e1fabc
-	github.com/isovalent/ipa/k8s v1.19.0-pre.0.0.20251106111334-49d90e694dc2
+	github.com/isovalent/ipa v1.19.0-pre.1.0.20251118191240-f757da0ef30d
+	github.com/isovalent/ipa/k8s v1.19.0-pre.0.0.20251118191240-f757da0ef30d
 	github.com/joho/godotenv v1.5.1
 	github.com/mennanov/fieldmask-utils v1.1.3
 	github.com/miekg/dns v1.1.68
@@ -69,7 +69,7 @@ require (
 	google.golang.org/protobuf v1.36.10
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.34.1
-	k8s.io/apimachinery v0.34.1
+	k8s.io/apimachinery v0.34.2
 	k8s.io/apiserver v0.34.1
 	k8s.io/client-go v0.34.1
 	k8s.io/code-generator v0.34.1

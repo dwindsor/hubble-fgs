@@ -123,6 +123,11 @@ func reportRequestToDPU(req *v1alpha.ReportStatusRequest) *DPUReportStatus {
 		Type:           req.Status.Type,
 		SerialNumber:   req.Status.SerialNumber,
 		HardwareModel:  req.Status.HardwareModel,
+		DpuReboot:      req.Status.DpuRestarts,
+		LastDpuReboot:  req.Status.LastDpuRestart,
+		DpRestart:      req.Status.DataplaneRestarts,
+		LastDpCrash:    req.Status.LastDataplaneRestart,
+		LastFwaCrash:   req.Status.LastFwaCrashTime,
 	}
 }
 

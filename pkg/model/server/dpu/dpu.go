@@ -14,13 +14,14 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
 )
 
 const (
@@ -80,6 +81,11 @@ type DPUReportStatus struct {
 	Type           v1alpha.AgentType
 	SerialNumber   string
 	HardwareModel  string
+	DpuReboot      uint32                 // Complete DPU reboot
+	LastDpuReboot  *timestamppb.Timestamp // Last DPU reboot time
+	DpRestart      uint32                 // DP crash (corresponds to reboot time)
+	LastDpCrash    *timestamppb.Timestamp // Last DP crash time
+	LastFwaCrash   *timestamppb.Timestamp // Last FWA crash time
 }
 
 // Peer UID is unique in scope of agent so we never remove peers. And we expect
@@ -250,7 +256,7 @@ func (dpu *DPUListener) StatusReportString() string {
 	buf := new(bytes.Buffer)
 	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
 	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "LastPing\tHealthy\tDPU\tUID\tHardware\tAgent\tDatapath\tPolicySync")
+	fmt.Fprintln(w, "LastPing\tHealthy\tDPU\tUID\tHardware\tAgent\tDatapath\tDpuReboot\tLastDpuRebootTime\tDpCrash\tLastDpCrashTime\tLastFwaCrashTime\tPolicySync")
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	//fixme
@@ -280,8 +286,29 @@ func (dpu *DPUListener) StatusReportString() string {
 			dpuNumber = -1
 		}
 
+		var lastRebootStr string
+		if status.LastDpuReboot != nil {
+			lastRebootStr = status.LastDpuReboot.AsTime().Format(time.RFC3339)
+		} else {
+			lastRebootStr = "N/A"
+		}
+
+		var lastCrashStr string
+		if status.LastDpCrash != nil {
+			lastCrashStr = status.LastDpCrash.AsTime().Format(time.RFC3339)
+		} else {
+			lastCrashStr = "N/A"
+		}
+
+		var lastFwaCrashStr string
+		if status.LastFwaCrash != nil {
+			lastFwaCrashStr = status.LastFwaCrash.AsTime().Format(time.RFC3339)
+		} else {
+			lastFwaCrashStr = "N/A"
+		}
+
 		// Try to put policy sync last as it extends to a big string on failure
-		fmt.Fprintf(w, "%s\t%t\t%d\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%t\t%d\t%s\t%s\t%s\t%s\t%d\t%s\t%d\t%s\t%s\t%s\n",
 			timeStatus,
 			healthy,
 			dpuNumber,
@@ -289,6 +316,11 @@ func (dpu *DPUListener) StatusReportString() string {
 			status.HardwareModel,
 			status.AgentVersion,
 			status.DpVersion,
+			status.DpuReboot,
+			lastRebootStr,
+			status.DpRestart,
+			lastCrashStr,
+			lastFwaCrashStr,
 			sync)
 	}
 	w.Flush()

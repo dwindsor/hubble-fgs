@@ -382,13 +382,11 @@ export declare type ReportStatus = Message<"l3l4networkpolicy.v1alpha.ReportStat
   lastDataplaneRestart?: Timestamp;
 
   /**
-   * Epoch is a counter that increments with every message, which is reset when
-   * the process restarts.  This will be used to detect a process restart from the
-   * server.
+   * LastFwaCrashTime is the timestamp of the last time the FWA has crashed
    *
-   * @generated from field: uint64 epoch = 18;
+   * @generated from field: google.protobuf.Timestamp last_fwa_crash_time = 19;
    */
-  epoch: bigint;
+  lastFwaCrashTime?: Timestamp;
 };
 
 /**
