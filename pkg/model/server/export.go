@@ -102,7 +102,7 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 	if connection != nil && len(conns) > 0 {
 		log := graphV1.ConnectionLog{
 			Emitter: &commonV1.Emitter{
-				Name:    "TETRAGON",
+				Name:    "Tetragon",
 				Version: strings.TrimPrefix(version.Version, "v"),
 			},
 			WindowStart: timestamppb.New(last),
