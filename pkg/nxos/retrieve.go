@@ -104,10 +104,10 @@ func (n *Nxos) getAdmissionAndConnectionStates(ctx context.Context) error {
 // getProxyConfig retrieves the proxy configuration from the device.
 func (n *Nxos) getProxyConfig(ctx context.Context) error {
 	logger.GetLogger().Debug("Retrieving proxy configuration")
-	n.Lock()
+	n.RLock()
 	proxySvr := n.Ctrlr.ProxySvr != ""
 	proxyPort := n.Ctrlr.ProxyPort != 0
-	n.Unlock()
+	n.RUnlock()
 
 	if proxySvr && proxyPort {
 		logger.GetLogger().Debug("Proxy server and port already set", "proxySvr", n.Ctrlr.ProxySvr, "proxyPort", n.Ctrlr.ProxyPort)
@@ -181,9 +181,9 @@ func (n *Nxos) getModelAndVersion(ctx context.Context) error {
 // getSerialNum retrieves the serial number from the device.
 func (n *Nxos) getSerialNum(ctx context.Context) error {
 	logger.GetLogger().Debug("Retrieving serial number")
-	n.Lock()
+	n.RLock()
 	serNumSet := n.SerNum != ""
-	n.Unlock()
+	n.RUnlock()
 
 	if serNumSet {
 		logger.GetLogger().Debug("Serial number already set", "sernum", n.SerNum)
