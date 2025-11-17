@@ -38,6 +38,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/protoutils"
 )
 
 const (
@@ -694,12 +695,13 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		}
 		// uidValue.Binary is a fixed size byte array. Trim trailing null bytes.
 		n := bytes.IndexByte(uidValue.Binary[:], 0)
-		selfStr := string(uidValue.Binary[:n])
+		selfStr := protoutils.SanitizeString(string(uidValue.Binary[:n]))
 		m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
 		selfArgs := string(uidValue.Args[:m])
 		// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
 		// since args in process tree binary map does not contain CWD.
 		selfArgs, _ = process.ArgsDecoder(selfArgs, api.EventNoCWDSupport)
+		selfArgs = protoutils.SanitizeString(selfArgs)
 
 		parentPath := ""
 		parentArgs := ""
@@ -711,12 +713,13 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			err = uidMap.Lookup(&parentKey, &uidValue)
 			if err == nil {
 				n = bytes.IndexByte(uidValue.Binary[:], 0)
-				parentPath = string(uidValue.Binary[:n])
+				parentPath = protoutils.SanitizeString(string(uidValue.Binary[:n]))
 				m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
 				parentArgs = string(uidValue.Args[:m])
 				// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
 				// since args in process tree binary map does not contain CWD.
 				parentArgs, _ = process.ArgsDecoder(parentArgs, api.EventNoCWDSupport)
+				parentArgs = protoutils.SanitizeString(parentArgs)
 			}
 		}
 
