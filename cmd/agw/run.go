@@ -123,10 +123,6 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 	}
 
 	if Config.EnableKubernetes {
-		if Config.EnableNXOS {
-			agwAgent.WaitForInService(ctx)
-		}
-
 		// Wait for agent token to be ready before proceeding
 		var token string
 		if Config.K8sServiceAccountAuth != "" {
