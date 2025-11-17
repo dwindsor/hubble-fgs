@@ -21,8 +21,6 @@ import (
 	"testing"
 
 	"github.com/isovalent/ipa/application_model/v1alpha"
-
-	"github.com/isovalent/hubble-fgs/pkg/protoutils"
 )
 
 func RegisterModelDump(tb testing.TB, model *v1alpha.ApplicationModel) {
@@ -96,12 +94,12 @@ func dumpAppModel(tb testing.TB, model *v1alpha.ApplicationModel) {
 }
 
 func dumpApplicationModel(tb testing.TB, model *v1alpha.ApplicationModel, dumpDir string) error {
-	m, err := protoutils.SanitizeUTF8AndMarshalJSON(model)
+	m, err := json.Marshal(model)
 	if err != nil {
-		tb.Errorf("failed to sanitize and marshal model: %v", err)
+		tb.Errorf("failed to marshal model: %v", err)
 		tb.Errorf("dumping model string as a fallback:")
 		fmt.Println(model.String())
-		return fmt.Errorf("failed to sanitize and marshal model: %v", err)
+		return fmt.Errorf("failed to marshal model: %v", err)
 	}
 
 	modelFile := filepath.Join(dumpDir, "model.json")
