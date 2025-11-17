@@ -30,7 +30,7 @@ func TestInInitTreeProcfs(t *testing.T) {
 		t.Skipf("docker not available. skipping test: %s", err)
 	}
 
-	containerID := docker.Create(t, "--name", "procfs-in-init-tree-test", "bash", "bash", "-c", "sleep infinity")
+	containerID := docker.Create(t, "--name", "procfs-in-init-tree-test", "quay.io/isovalent/busybox:1.37.0", "sh", "-c", "sleep infinity")
 
 	docker.Start(t, "procfs-in-init-tree-test")
 	time.Sleep(1 * time.Second)
