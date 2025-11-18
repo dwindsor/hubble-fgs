@@ -28,6 +28,8 @@ import (
 	"github.com/cilium/tetragon/pkg/cgroups/fsscan"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/hubble-fgs/pkg/protoutils"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
@@ -235,7 +237,7 @@ func Values[K comparable](m *ebpf.Map) (map[K]string, error) {
 
 	for entries.Next(&key, value) {
 		str, _, _ := bytes.Cut(value, []byte("\x00"))
-		actualIPMaps[key] = string(str)
+		actualIPMaps[key] = protoutils.SanitizeString(string(str))
 	}
 
 	if err := entries.Err(); err != nil {
@@ -270,7 +272,7 @@ func (m IDToDomainMap) Lookup(id DNSID) (string, error) {
 		return "", err
 	}
 	str, _, _ := bytes.Cut(value, []byte("\x00"))
-	return string(str), nil
+	return protoutils.SanitizeString(string(str)), nil
 }
 
 func Clear[K comparable](m *ebpf.Map) error {
@@ -319,7 +321,7 @@ func (m DomainToIDMap) Values() (map[string]DNSID, error) {
 
 	for entries.Next(key, &value) {
 		str, _, _ := bytes.Cut(key, []byte("\x00"))
-		actualIPMaps[string(str)] = value
+		actualIPMaps[protoutils.SanitizeString(string(str))] = value
 	}
 
 	if err := entries.Err(); err != nil {
@@ -684,7 +686,7 @@ func (m *DomainMap) Domain(id uint64) (string, error) {
 		return "", fmt.Errorf("failed to lookup domain for id %d: %w", id, err)
 	}
 	domain, _, _ = bytes.Cut(domain, []byte("\x00"))
-	return string(domain), nil
+	return protoutils.SanitizeString(string(domain)), nil
 }
 
 type IPToDomainMap struct {
@@ -808,7 +810,7 @@ func (m RequestIDMap) Lookup(id uint32) (string, error) {
 		return "", fmt.Errorf("failed to lookup map with key %d: %w", id, err)
 	}
 	str, _, _ := bytes.Cut(value, []byte("\x00"))
-	return string(str), nil
+	return protoutils.SanitizeString(string(str)), nil
 }
 
 func (m RequestIDMap) KeyMissing(id uint32) (bool, error) {
