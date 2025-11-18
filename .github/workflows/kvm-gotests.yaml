@@ -56,7 +56,7 @@ jobs:
       actions: read
     steps:
       - name: Checkout Git Repo
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           path: hubble-fgs
           submodules: true
@@ -69,7 +69,7 @@ jobs:
 
       - name: Provision LVH VM
         id: provision-lvh-vm
-        uses: cilium/little-vm-helper@01debd6cb7e5514cfdb4a33e776bdc647bc5306e # v0.0.27
+        uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
         with:
           install-dependencies: true
           test-name: tetragon-unit-tests
@@ -117,7 +117,7 @@ jobs:
             service ssh restart
 
       - name: Run Tests
-        uses: cilium/little-vm-helper@01debd6cb7e5514cfdb4a33e776bdc647bc5306e # v0.0.27
+        uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
         with:
           test-name: tetragon-unit-tests
           host-mount: ./

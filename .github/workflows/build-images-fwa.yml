@@ -28,7 +28,7 @@ jobs:
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 1
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           submodules: true
           fetch-tags: true
@@ -69,7 +69,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           submodules: true
           fetch-tags: true
@@ -146,7 +146,7 @@ jobs:
     timeout-minutes: 1
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - name: Download release artifacts
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
@@ -162,7 +162,7 @@ jobs:
           echo "tag_name=${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop" >> $GITHUB_OUTPUT
           echo "release_name=${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop" >> $GITHUB_OUTPUT
       - name: Create GitHub Release 
-        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2
+        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ steps.release-type.outputs.tag_name }}

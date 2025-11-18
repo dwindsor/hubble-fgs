@@ -49,7 +49,7 @@ jobs:
     steps:
       # https://github.com/docker/setup-qemu-action
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
         with:
           platforms: arm64
 
@@ -65,7 +65,7 @@ jobs:
           password: ${{ secrets.QUAY_PASSWORD }}
 
       - name: Checkout Source Code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           ref: ${{ inputs.sha }}
           submodules: true
@@ -118,7 +118,7 @@ jobs:
           cosign sign -y "${{ steps.first-tag.outputs.tag }}@${{ steps.build-and-push.outputs.digest }}"
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@8e94d75ddd33f69f691467e42275782e4bfefe84 # v0.20.9
+        uses: anchore/sbom-action@fbfd9c6c189226748411491745178e0c2017392d # v0.20.10
         with:
           artifact-name: sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json
           output-file: ./sbom${{ inputs.is_release && '' || '_ci' }}_${{ matrix.name }}_${{ inputs.tag || inputs.sha }}.spdx.json
@@ -211,7 +211,7 @@ jobs:
     needs: build-and-push
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           ref: ${{ inputs.sha }}
           submodules: true
