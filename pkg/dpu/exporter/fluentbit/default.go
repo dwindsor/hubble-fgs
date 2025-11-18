@@ -119,6 +119,7 @@ func DefaultDpSyslogInput() InputSection {
 			.. " decision=" .. (record["policy_decision"] or "")
 			.. " policy_name=" .. (record["policy_name"] or "")
 			.. " severity=" .. (record["severity"] or "")
+			.. " count=" .. (record["count"] or "")
 	elseif record["msg_code"] == 2 then  -- SYSLOG_FLOW_DELETE
 		local reason = record["del_reason"] or "unknown"
 		formatted_message = "[FWDELETE] reason= " .. reason
@@ -128,6 +129,17 @@ func DefaultDpSyslogInput() InputSection {
 			.. " dst_port=" .. (record["dst_port"] or "")
 			.. " protocol=" .. (record["protocol"] or "")
 			.. " severity=" .. (record["severity"] or "")
+			.. " count=" .. (record["count"] or "")
+	elseif record["msg_code"] == 3 then  -- LOG_FLOW_ERROR
+        formatted_message = "[FWFLOWERROR] error= " .. (record["error_str"] or "")
+            .. " src_ip=" .. (record["src_ip"] or "")
+            .. " dst_ip=" .. (record["dst_ip"] or "")
+            .. " src_port=" .. (record["src_port"] or "")
+            .. " dst_port=" .. (record["dst_port"] or "")
+            .. " protocol=" .. (record["protocol"] or "")
+            .. " severity=" .. (record["severity"] or "")
+            .. " count=" .. (record["count"] or "")
+            .. " evt_code=" .. (record["evt_code"] or "")			
 	else
 		formatted_message = "[GENERIC] event_code=" .. (record["msg_code"] or "unknown")
 			.. " src_ip=" .. (record["src_ip"] or "")
@@ -140,6 +152,7 @@ func DefaultDpSyslogInput() InputSection {
 			.. " priority=" .. (record["priority"] or "")
 			.. " hostname=" .. (record["hostname"] or "")
 			.. " pid=" .. (record["pid"] or "")
+			.. " count=" .. (record["count"] or "")
 
 		if record["policy_decision"] then
 			formatted_message = formatted_message .. " decision=" .. record["policy_decision"]
