@@ -236,14 +236,14 @@ func (a *AgentToken) LoadK8sAuthFromEnv() error {
 		// Checking if the token could be stored in an .env file
 		fileName := "/opt/cisco/hypershield/etc/.k8s_auth"
 		if err := godotenv.Load(fileName); err != nil {
-			logger.GetLogger().Info("failed to load k8s_auth", logfields.Error, err, "file", fileName)
+			logger.GetLogger().Info("load k8s_auth", logfields.Error, err, "file", fileName)
 		}
 		token = os.Getenv(EnvToken)
 		if token == "" {
 			// Checking alternative path for .env file.
 			fileName = "/opt/cisco/daf/etc/.k8s_auth"
 			if err := godotenv.Load(fileName); err != nil {
-				logger.GetLogger().Info("failed to load k8s_auth", logfields.Error, err, "file", fileName)
+				logger.GetLogger().Info("load k8s_auth", logfields.Error, err, "file", fileName)
 			}
 			token = os.Getenv(EnvToken)
 			if token == "" {
@@ -302,10 +302,7 @@ func (a *AgentToken) SetAndPersistK8sAuthToken(token string) error {
 }
 
 // extractNamespaceAndServiceAccount extracts the Kubernetes namespace and service account name
-// from a given JWT token string. It parses the token without verifying its signature and retrieves
-// the "kubernetes.io/serviceaccount/namespace" and "kubernetes.io/serviceaccount/service-account.name"
-// claims. If the token is empty, invalid, or the required claims are not found, it returns empty strings
-// for both values and logs the corresponding error.
+// from a given JWT token string.
 //
 // Parameters:
 //
@@ -345,13 +342,42 @@ func (a *AgentToken) extractNamespaceAndServiceAccount(tokenString string) (stri
 		logger.GetLogger().Error("invalid jwt claims")
 		return "", ""
 	}
-	namespace, ok := claims["kubernetes.io/serviceaccount/namespace"].(string)
-	if !ok {
+
+	// The JWT token structure may use nested objects under "kubernetes.io" as per Kubernetes service account token projection,
+	// see: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection
+	// Extract namespace and service account from the nested structure.
+	var namespace, serviceAccount string
+
+	// Try the nested structure first (modern format: claims["kubernetes.io"] is a map with "namespace" and "serviceaccount" keys)
+	if k8sInfo, ok := claims["kubernetes.io"].(map[string]interface{}); ok {
+		if ns, ok := k8sInfo["namespace"].(string); ok {
+			namespace = ns
+		}
+		if saInfo, ok := k8sInfo["serviceaccount"].(map[string]interface{}); ok {
+			if saName, ok := saInfo["name"].(string); ok {
+				serviceAccount = saName
+			}
+		}
+		// Fall back to flat structure (legacy format) if needed.
+		// Some Kubernetes clusters or custom token issuers may use a flat claim structure
+		// instead of the nested "kubernetes.io" object. This legacy format is supported
+		// for backward compatibility with older clusters or non-standard token generators.
+		if namespace == "" {
+			if ns, ok := claims["kubernetes.io/serviceaccount/namespace"].(string); ok {
+				namespace = ns
+			}
+		}
+		if serviceAccount == "" {
+			if sa, ok := claims["kubernetes.io/serviceaccount/service-account.name"].(string); ok {
+				serviceAccount = sa
+			}
+		}
+	}
+	if namespace == "" {
 		logger.GetLogger().Error("namespace not found in jwt claims")
 		return "", ""
 	}
-	serviceAccount, ok := claims["kubernetes.io/serviceaccount/service-account.name"].(string)
-	if !ok {
+	if serviceAccount == "" {
 		logger.GetLogger().Error("service-account name not found in jwt claims")
 		return "", ""
 	}
