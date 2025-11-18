@@ -375,11 +375,9 @@ func (a *AgentToken) extractNamespaceAndServiceAccount(tokenString string) (stri
 	}
 	if namespace == "" {
 		logger.GetLogger().Error("namespace not found in jwt claims")
-		return "", ""
 	}
 	if serviceAccount == "" {
 		logger.GetLogger().Error("service-account name not found in jwt claims")
-		return "", ""
 	}
 	return namespace, serviceAccount
 }
@@ -393,7 +391,8 @@ func (a *AgentToken) K8sControllerURL() string {
 func (a *AgentToken) SetK8sControllerURL(tokenStr string) {
 	apiServer, _, _, err := enterpriseConfig.ParseServiceAccountAuth(tokenStr)
 	if err != nil {
-		a.k8sControllerURL = apiServer
+		a.k8sControllerURL = ""
+		return
 	}
 	a.k8sControllerURL = apiServer
 }
