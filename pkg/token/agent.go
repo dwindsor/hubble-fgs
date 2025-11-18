@@ -358,26 +358,25 @@ func (a *AgentToken) extractNamespaceAndServiceAccount(tokenString string) (stri
 				serviceAccount = saName
 			}
 		}
-		// Fall back to flat structure (legacy format) if needed.
-		// Some Kubernetes clusters or custom token issuers may use a flat claim structure
-		// instead of the nested "kubernetes.io" object. This legacy format is supported
-		// for backward compatibility with older clusters or non-standard token generators.
-		if namespace == "" {
-			if ns, ok := claims["kubernetes.io/serviceaccount/namespace"].(string); ok {
-				namespace = ns
-			}
-		}
-		if serviceAccount == "" {
-			if sa, ok := claims["kubernetes.io/serviceaccount/service-account.name"].(string); ok {
-				serviceAccount = sa
-			}
-		}
 	}
+
+	// Fall back to flat structure (legacy format) if needed.
+	// Some Kubernetes clusters or custom token issuers may use a flat claim structure
+	// instead of the nested "kubernetes.io" object. This legacy format is supported
+	// for backward compatibility with older clusters or non-standard token generators.
 	if namespace == "" {
-		logger.GetLogger().Error("namespace not found in jwt claims")
+		if ns, ok := claims["kubernetes.io/serviceaccount/namespace"].(string); ok {
+			namespace = ns
+		} else {
+			logger.GetLogger().Error("namespace not found in jwt claims")
+		}
 	}
 	if serviceAccount == "" {
-		logger.GetLogger().Error("service-account name not found in jwt claims")
+		if sa, ok := claims["kubernetes.io/serviceaccount/service-account.name"].(string); ok {
+			serviceAccount = sa
+		} else {
+			logger.GetLogger().Error("service-account name not found in jwt claims")
+		}
 	}
 	return namespace, serviceAccount
 }
