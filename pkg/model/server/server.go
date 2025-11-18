@@ -134,9 +134,9 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 	iter := uuid.Iterate()
 	for iter.Next(&key, &value) {
 		n := bytes.IndexByte(value.Binary[:], 0)
-		selfStr := string(value.Binary[:n])
+		selfStr := protoutils.SanitizeString(string(value.Binary[:n]))
 		m := bytes.Index(value.Args[:], []byte{0x00, 0x00})
-		selfArgs := string(value.Args[:m])
+		selfArgs := protoutils.SanitizeString(string(value.Args[:m]))
 		// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
 		// since args in process tree binary map does not contain CWD.
 		selfArgs, _ = process.ArgsDecoder(selfArgs, api.EventNoCWDSupport)
