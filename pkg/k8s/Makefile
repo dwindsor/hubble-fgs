@@ -1,7 +1,7 @@
 include ../../Makefile.defs
 
 # renovate: datasource=docker
-BUILDER_IMAGE=docker.io/library/golang:1.25.3@sha256:6ea52a02734dd15e943286b048278da1e04eca196a564578d718c7720433dbbe
+BUILDER_IMAGE=docker.io/library/golang:1.25.4@sha256:f60eaa87c79e604967c84d18fd3b151b3ee3f033bcdade4f3494e38411e60963
 GO ?= go
 
 all: generate
