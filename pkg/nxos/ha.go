@@ -144,14 +144,19 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	n.HaUpdatePtnr(ctx, peer, isDel)
 
 	var polOk bool
-	if !n.Ha.Watching && info.PolInfo != nil {
+	if !n.Ha.Watching {
 		logger.GetLogger().Debug("Not Watching")
-		if info.PolInfo.Watching &&
-			n.Ha.PolRev == info.PolInfo.Revision {
-			logger.GetLogger().Debug("Peer watching and revision matches")
-			polOk = true
-		} else if !info.PolInfo.Watching && n.Ha.PolRev > info.PolInfo.Revision {
-			logger.GetLogger().Debug("Peer not watching and revision lower")
+		if info.PolInfo != nil {
+			if info.PolInfo.Watching &&
+				n.Ha.PolRev == info.PolInfo.Revision {
+				logger.GetLogger().Debug("Peer watching and revision matches")
+				polOk = true
+			} else if !info.PolInfo.Watching && n.Ha.PolRev >= info.PolInfo.Revision {
+				logger.GetLogger().Debug("Peer not watching and revision not higher")
+				polOk = true
+			}
+		} else {
+			logger.GetLogger().Debug("Peer has no policyInfo")
 			polOk = true
 		}
 	}
@@ -750,7 +755,7 @@ func (n *Nxos) NotifyWatching(ctx context.Context, watching bool) {
 	}
 }
 
-func (n *Nxos) NotifPolRev(ctx context.Context, rev string) {
+func (n *Nxos) NotifyPolRev(ctx context.Context, rev string) {
 	logger.GetLogger().Debug("NotifyPolRev", "revision", rev)
 
 	n.Lock()
