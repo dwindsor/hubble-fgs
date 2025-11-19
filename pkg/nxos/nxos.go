@@ -14,7 +14,6 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
@@ -28,6 +27,17 @@ import (
 	"golang.design/x/chann"
 )
 
+// RestartCallback is a function type for restart callbacks
+type RestartCallback func(ctx context.Context, reason string)
+
+// Global restart callback that will be set by the agw package
+var GlobalRestart RestartCallback
+
+// SetRestartCallback sets the global restart function
+func SetRestartCallback(fn RestartCallback) {
+	GlobalRestart = fn
+}
+
 const (
 	svcInst = "System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]"
 	seqNum  = 10
@@ -39,6 +49,11 @@ const (
 	notifTimeout          = 900 // in second
 
 	dpuStatusCheckTimer = 1 // in second
+
+	// RestartExitCode is the exit code used to trigger AGW restart via init script
+	RestartExitCode = 200
+	// TerminateExitCode is the exit code used to terminate AGW without restart
+	TerminateExitCode = 201
 )
 
 const (
@@ -253,23 +268,23 @@ func (n *Nxos) Close(ctx context.Context) error {
 // GetExitCodeForSignal returns the appropriate exit code based on the received signal and upgrade state.
 //
 // Behavior:
-//   - During upgrade: Always returns 201 to prevent restart regardless of signal
-//   - SIGTERM: Returns 201 to terminate without restart
-//   - SIGINT: Returns 200 to allow restart
-//   - Default: Returns 200 to allow restart
+//   - During upgrade: Always returns TerminateExitCode to prevent restart regardless of signal
+//   - SIGTERM: Returns TerminateExitCode to terminate without restart
+//   - SIGINT: Returns RestartExitCode to allow restart
+//   - Default: Returns RestartExitCode to allow restart
 func (n *Nxos) GetExitCodeForSignal(sig os.Signal, inUpgrade bool) int {
 	if inUpgrade || sig == syscall.SIGTERM {
 		// During upgrade, never restart regardless of signal
-		return 201
+		return TerminateExitCode
 	}
 
 	// Normal operation
 	if sig == syscall.SIGINT {
 		// Manual interrupt - allow restart for debugging
-		return 200
+		return RestartExitCode
 	}
 	// Default - restart
-	return 200
+	return RestartExitCode
 }
 
 // unsubscribe all above gnmi subscriptions
@@ -668,6 +683,9 @@ func (n *Nxos) SetToken(ctx context.Context, k8sToken string) (bool, error) {
 	return restartNeeded, nil
 }
 
+// GracefulRestartAgent performs a graceful restart of the AGW (Application Gateway) agent.
+// It optionally cleans up service redirects before restarting and uses a centralized
+// restart mechanism to handle context cancellation, wait groups, and gNMI cleanup.
 func (n *Nxos) GracefulRestartAgent(ctx context.Context, cleanup bool) {
 	logger.GetLogger().Info("restarting agw agent...")
 	if cleanup {
@@ -675,16 +693,15 @@ func (n *Nxos) GracefulRestartAgent(ctx context.Context, cleanup bool) {
 		n.cleanup(ctx)
 		logger.GetLogger().Debug("Graceful restart with cleanup")
 	}
-	// send cancel to all goroutines, and wait on waitGroups to complete.
-	n.cancel()
-	waitGroup, _ := errgroup.WithContext(ctx)
-	if err := waitGroup.Wait(); err != nil {
-		logger.GetLogger().Error("Error waiting for goroutines", logfields.Error, err)
+	// Use centralized restart - it will handle context cancel, waitGroup, and gNMI cleanup
+	if GlobalRestart != nil {
+		GlobalRestart(ctx, "Graceful restart")
+	} else {
+		// This should never happen, but just in case
+		logger.GetLogger().Error("GlobalRestart not set, falling back to direct exit")
+		n.GnmiClose(ctx)
+		os.Exit(RestartExitCode)
 	}
-	// Close Nxos gNMI connection.
-	n.GnmiClose(ctx)
-	// As per init.sh script, exiting with code 200 will cause the agent to restart.
-	os.Exit(200)
 }
 
 func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {

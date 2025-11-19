@@ -50,15 +50,29 @@ func executeAGW() {
 
 	// Setting up logger and context
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	waitGroup, ctx := errgroup.WithContext(ctx)
+
 	// Create AGW signal handler
 	agwSignalHandler := &AGWSignalHandler{
 		enableNXOS: Config.EnableNXOS,
 	}
 	// Setup signal handling
-	SetupSignalHandler(ctx, cancel, agwSignalHandler, waitGroup, 200)
+	SetupSignalHandler(ctx, cancel, agwSignalHandler, waitGroup, agw.RestartExitCode)
+
+	// Initialize centralized shutdown manager
+	agw.InitializeShutdown(cancel, waitGroup)
+
+	if Config.EnableNXOS {
+		// Set the restart callback for NXOS
+		nxos.SetRestartCallback(agw.RestartAGW)
+
+		// Register NXOS cleanup if enabled
+		agw.RegisterCleanup(func(ctx context.Context) error {
+			nxos.Nexus.GnmiClose(ctx)
+			return nil
+		})
+	}
 
 	dpuListener := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
 	agwAgent := agw.NewAgent(dpuListener, switchpolicy.NewPolicyHandler(ctx, dpuListener))
@@ -98,15 +112,15 @@ func executeAGW() {
 		return nil
 	})
 
+	// Wait for all goroutines to complete
 	if err := waitGroup.Wait(); err != nil {
 		logger.GetLogger().Error("AGW failed", logfields.Error, err)
 	} else {
 		logger.GetLogger().Info("AGW graceful shutdown: Exiting")
 	}
-	if Config.EnableNXOS {
-		nxos.Nexus.GnmiClose(ctx)
-	}
-	os.Exit(200)
+
+	// Normal completion
+	os.Exit(agw.RestartExitCode)
 }
 
 // Simple signal handler for AGW
@@ -146,6 +160,6 @@ func (s *AGWSignalHandler) GetExitCodeForSignal(sig os.Signal, inUpgrade bool) i
 	if s.enableNXOS {
 		return nxos.Nexus.GetExitCodeForSignal(sig, inUpgrade)
 	}
-	// AGW prefers exit code 200 for normal shutdown (agw restart)
-	return 200
+	// AGW prefers RestartExitCode for normal shutdown (agw restart)
+	return agw.RestartExitCode
 }

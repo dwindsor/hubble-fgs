@@ -48,8 +48,15 @@ func (n *Nxos) gnmiSubscribe(ctx context.Context, name string, paths []string) {
 		case tgErr := <-errChan:
 			logger.GetLogger().Debug("Subscription %q stopped, restarting: %s",
 				tgErr.SubscriptionName, tgErr.Err.Error())
-			n.GnmiClose(ctx)
-			os.Exit(200)
+			// Use centralized restart - it will handle cleanup and shutdown properly
+			if GlobalRestart != nil {
+				GlobalRestart(ctx, "gNMI subscription error: "+tgErr.Err.Error())
+			} else {
+				// This should never happen, but just in case
+				logger.GetLogger().Error("GlobalRestart not set, falling back to direct exit")
+				n.GnmiClose(ctx)
+				os.Exit(RestartExitCode)
+			}
 		}
 	}
 }
