@@ -157,7 +157,7 @@ func collectTagProbes(alertRules []*v1alpha1.AlertRule, tagProbes map[string]*v1
 					break
 				}
 			}
-			break
+			/* A single spec can have multiple rule tags. Do not break. */
 		}
 	}
 }
