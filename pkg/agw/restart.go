@@ -95,7 +95,7 @@ func RestartAGW(ctx context.Context, reason string) {
 
 	logger.GetLogger().Debug("Running cleanup functions", "count", len(cleanupFuncs))
 	for i, cleanupFunc := range cleanupFuncs {
-		if err := cleanupFunc(context.Background()); err != nil {
+		if err := cleanupFunc(ctx); err != nil {
 			logger.GetLogger().Error("Cleanup function failed", "index", i, "error", err)
 		}
 	}
