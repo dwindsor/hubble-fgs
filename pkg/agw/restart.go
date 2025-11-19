@@ -90,7 +90,8 @@ func RestartAGW(ctx context.Context, reason string) {
 
 	// Step 3: Run all registered cleanup functions
 	globalShutdownManager.mu.Lock()
-	cleanupFuncs := globalShutdownManager.cleanupFuncs
+	cleanupFuncs := make([]func(context.Context) error, len(globalShutdownManager.cleanupFuncs))
+	copy(cleanupFuncs, globalShutdownManager.cleanupFuncs)
 	globalShutdownManager.mu.Unlock()
 
 	logger.GetLogger().Debug("Running cleanup functions", "count", len(cleanupFuncs))
