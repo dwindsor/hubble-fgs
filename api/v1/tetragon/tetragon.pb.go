@@ -3714,7 +3714,9 @@ type ProcessUprobe struct {
 	// uprobe ref_ctr_offset
 	RefCtrOffset uint64 `protobuf:"varint,11,opt,name=ref_ctr_offset,json=refCtrOffset,proto3" json:"ref_ctr_offset,omitempty"`
 	// Action performed when the uprobe hook matched.
-	Action        KprobeAction `protobuf:"varint,12,opt,name=action,proto3,enum=tetragon.KprobeAction" json:"action,omitempty"`
+	Action KprobeAction `protobuf:"varint,12,opt,name=action,proto3,enum=tetragon.KprobeAction" json:"action,omitempty"`
+	// Data definition of the observed uprobe.
+	Data          []*KprobeArgument `protobuf:"bytes,13,rep,name=data,proto3" json:"data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3831,6 +3833,13 @@ func (x *ProcessUprobe) GetAction() KprobeAction {
 		return x.Action
 	}
 	return KprobeAction_KPROBE_ACTION_UNKNOWN
+}
+
+func (x *ProcessUprobe) GetData() []*KprobeArgument {
+	if x != nil {
+		return x.Data
+	}
+	return nil
 }
 
 type ProcessUsdt struct {
@@ -5116,7 +5125,7 @@ const file_tetragon_tetragon_proto_rawDesc = "" +
 	"\amessage\x18\t \x01(\tR\amessage\x12\x12\n" +
 	"\x04tags\x18\n" +
 	" \x03(\tR\x04tags\x12/\n" +
-	"\tancestors\x18\v \x03(\v2\x11.tetragon.ProcessR\tancestors\"\xaf\x03\n" +
+	"\tancestors\x18\v \x03(\v2\x11.tetragon.ProcessR\tancestors\"\xdd\x03\n" +
 	"\rProcessUprobe\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12\x12\n" +
@@ -5131,7 +5140,8 @@ const file_tetragon_tetragon_proto_rawDesc = "" +
 	"\x06offset\x18\n" +
 	" \x01(\x04R\x06offset\x12$\n" +
 	"\x0eref_ctr_offset\x18\v \x01(\x04R\frefCtrOffset\x12.\n" +
-	"\x06action\x18\f \x01(\x0e2\x16.tetragon.KprobeActionR\x06action\"\x9d\x03\n" +
+	"\x06action\x18\f \x01(\x0e2\x16.tetragon.KprobeActionR\x06action\x12,\n" +
+	"\x04data\x18\r \x03(\v2\x18.tetragon.KprobeArgumentR\x04data\"\x9d\x03\n" +
 	"\vProcessUsdt\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12\x12\n" +
@@ -5437,31 +5447,32 @@ var file_tetragon_tetragon_proto_depIdxs = []int32{
 	36,  // 105: tetragon.ProcessUprobe.args:type_name -> tetragon.KprobeArgument
 	17,  // 106: tetragon.ProcessUprobe.ancestors:type_name -> tetragon.Process
 	0,   // 107: tetragon.ProcessUprobe.action:type_name -> tetragon.KprobeAction
-	17,  // 108: tetragon.ProcessUsdt.process:type_name -> tetragon.Process
-	17,  // 109: tetragon.ProcessUsdt.parent:type_name -> tetragon.Process
-	36,  // 110: tetragon.ProcessUsdt.args:type_name -> tetragon.KprobeArgument
-	17,  // 111: tetragon.ProcessUsdt.ancestors:type_name -> tetragon.Process
-	0,   // 112: tetragon.ProcessUsdt.action:type_name -> tetragon.KprobeAction
-	17,  // 113: tetragon.ProcessLsm.process:type_name -> tetragon.Process
-	17,  // 114: tetragon.ProcessLsm.parent:type_name -> tetragon.Process
-	36,  // 115: tetragon.ProcessLsm.args:type_name -> tetragon.KprobeArgument
-	0,   // 116: tetragon.ProcessLsm.action:type_name -> tetragon.KprobeAction
-	17,  // 117: tetragon.ProcessLsm.ancestors:type_name -> tetragon.Process
-	62,  // 118: tetragon.KernelModule.signature_ok:type_name -> google.protobuf.BoolValue
-	3,   // 119: tetragon.KernelModule.tainted:type_name -> tetragon.TaintedBitsType
-	1,   // 120: tetragon.GetHealthStatusRequest.event_set:type_name -> tetragon.HealthStatusType
-	1,   // 121: tetragon.HealthStatus.event:type_name -> tetragon.HealthStatusType
-	2,   // 122: tetragon.HealthStatus.status:type_name -> tetragon.HealthStatusResult
-	45,  // 123: tetragon.GetHealthStatusResponse.health_status:type_name -> tetragon.HealthStatus
-	17,  // 124: tetragon.ProcessLoader.process:type_name -> tetragon.Process
-	51,  // 125: tetragon.RuntimeHookRequest.createContainer:type_name -> tetragon.CreateContainer
-	55,  // 126: tetragon.CreateContainer.annotations:type_name -> tetragon.CreateContainer.AnnotationsEntry
-	50,  // 127: tetragon.CreateContainer.mounts:type_name -> tetragon.Mount
-	128, // [128:128] is the sub-list for method output_type
-	128, // [128:128] is the sub-list for method input_type
-	128, // [128:128] is the sub-list for extension type_name
-	128, // [128:128] is the sub-list for extension extendee
-	0,   // [0:128] is the sub-list for field type_name
+	36,  // 108: tetragon.ProcessUprobe.data:type_name -> tetragon.KprobeArgument
+	17,  // 109: tetragon.ProcessUsdt.process:type_name -> tetragon.Process
+	17,  // 110: tetragon.ProcessUsdt.parent:type_name -> tetragon.Process
+	36,  // 111: tetragon.ProcessUsdt.args:type_name -> tetragon.KprobeArgument
+	17,  // 112: tetragon.ProcessUsdt.ancestors:type_name -> tetragon.Process
+	0,   // 113: tetragon.ProcessUsdt.action:type_name -> tetragon.KprobeAction
+	17,  // 114: tetragon.ProcessLsm.process:type_name -> tetragon.Process
+	17,  // 115: tetragon.ProcessLsm.parent:type_name -> tetragon.Process
+	36,  // 116: tetragon.ProcessLsm.args:type_name -> tetragon.KprobeArgument
+	0,   // 117: tetragon.ProcessLsm.action:type_name -> tetragon.KprobeAction
+	17,  // 118: tetragon.ProcessLsm.ancestors:type_name -> tetragon.Process
+	62,  // 119: tetragon.KernelModule.signature_ok:type_name -> google.protobuf.BoolValue
+	3,   // 120: tetragon.KernelModule.tainted:type_name -> tetragon.TaintedBitsType
+	1,   // 121: tetragon.GetHealthStatusRequest.event_set:type_name -> tetragon.HealthStatusType
+	1,   // 122: tetragon.HealthStatus.event:type_name -> tetragon.HealthStatusType
+	2,   // 123: tetragon.HealthStatus.status:type_name -> tetragon.HealthStatusResult
+	45,  // 124: tetragon.GetHealthStatusResponse.health_status:type_name -> tetragon.HealthStatus
+	17,  // 125: tetragon.ProcessLoader.process:type_name -> tetragon.Process
+	51,  // 126: tetragon.RuntimeHookRequest.createContainer:type_name -> tetragon.CreateContainer
+	55,  // 127: tetragon.CreateContainer.annotations:type_name -> tetragon.CreateContainer.AnnotationsEntry
+	50,  // 128: tetragon.CreateContainer.mounts:type_name -> tetragon.Mount
+	129, // [129:129] is the sub-list for method output_type
+	129, // [129:129] is the sub-list for method input_type
+	129, // [129:129] is the sub-list for extension type_name
+	129, // [129:129] is the sub-list for extension extendee
+	0,   // [0:129] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_tetragon_proto_init() }
