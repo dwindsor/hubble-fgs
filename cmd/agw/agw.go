@@ -144,5 +144,5 @@ func (s *AGWSignalHandler) GetExitCodeForSignal(sig os.Signal, inUpgrade bool) i
 		return nxos.Nexus.GetExitCodeForSignal(sig, inUpgrade)
 	}
 	// AGW prefers RestartExitCode for normal shutdown (agw restart)
-	return agw.RestartExitCode
+	return shutdown.RestartExitCode
 }
