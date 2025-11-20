@@ -11,6 +11,7 @@ import (
 	"net"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"text/tabwriter"
 	"time"
 
@@ -25,7 +26,9 @@ import (
 )
 
 const (
-	dpuTimeout = 6 // in second
+	dpuTimeout        = 6  // in seconds
+	dpuSyncErrorCount = 18 // number of StateCheck() calls that need to fail to force reconnect peer (every 10 seconds)
+	// needs to be at least 180 seconds total
 )
 
 var (
@@ -94,13 +97,16 @@ type DPUReportStatus struct {
 // only some small reasonable number of peers because these are physical offload
 // engines.
 type peer struct {
-	uid        string
-	polCh      chan *DPUPolicyRule
-	cfgCh      chan *v1alpha.StreamDatapathConfigResponse
-	cfgSet     map[v1alpha.ConfigType]*v1alpha.ConfigObject
-	lastStatus DPUReportStatus
-	lastEpoch  int64
-	mtx        sync.RWMutex
+	uid            string
+	polCh          chan *DPUPolicyRule
+	polReconnectCh chan struct{}
+	cfgCh          chan *v1alpha.StreamDatapathConfigResponse
+	cfgReconnectCh chan struct{}
+	cfgSet         map[v1alpha.ConfigType]*v1alpha.ConfigObject
+	syncFailCount  atomic.Uint32
+	lastStatus     DPUReportStatus
+	lastEpoch      int64
+	mtx            sync.RWMutex
 }
 
 func (p *peer) String() string {
@@ -227,10 +233,21 @@ func (dpu *DPUListener) StateCheck() bool {
 	defer dpu.mtx.RUnlock()
 	stateCheck := true
 	for _, s := range dpu.peerGroup {
-		if s.lastStatus.PolicyChecksum != hexChecksum {
-			logger.GetLogger().Error("failed state check", "dpu", s.uid, "expectedChecksum", hexChecksum, "actualChecksum", s.lastStatus.PolicyChecksum)
-			stateCheck = false
+		if s.syncFailCount.Load() > dpuSyncErrorCount {
+			// Force policy reconnect by closing the channel
+			if s.polReconnectCh != nil {
+				close(s.polReconnectCh)
+				s.polReconnectCh = nil
+			}
+			logger.GetLogger().Warn("DPU sync timeout error, forcing policy reconnect", "uid", s.uid)
 		}
+		if s.lastStatus.PolicyChecksum != hexChecksum {
+			stateCheck = false
+			s.syncFailCount.Add(1)
+			logger.GetLogger().Error("failed state check", "dpu", s.uid, "failCount", s.syncFailCount.Load(), "expectedChecksum", hexChecksum, "actualChecksum", s.lastStatus.PolicyChecksum)
+			continue
+		}
+		s.syncFailCount.Store(0) // Resetting out of sync count to 0
 	}
 	return stateCheck
 }
@@ -471,9 +488,17 @@ func (dpu *DPUListener) addPeerLocked(uid string) *peer {
 		p.polCh = make(chan *DPUPolicyRule)
 	}
 
+	if p.polReconnectCh == nil {
+		p.polReconnectCh = make(chan struct{})
+	}
+
 	if p.cfgCh == nil {
 		logger.GetLogger().Info("Added peer DPU config channel", "uid", uid)
 		p.cfgCh = make(chan *v1alpha.StreamDatapathConfigResponse)
+	}
+
+	if p.cfgReconnectCh == nil {
+		p.cfgReconnectCh = make(chan struct{})
 	}
 
 	if p.cfgSet == nil {

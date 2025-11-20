@@ -44,6 +44,7 @@ func (s *AGWServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 		s.dpuListener.mtx.Lock()
 		defer s.dpuListener.mtx.Unlock()
 		peer := s.dpuListener.addPeerLocked(req.AgentUid)
+		peer.syncFailCount.Store(0) // Resetting sync count
 
 		// The peer on reconnect needs to diff its current set with this set
 		// and create the valid policy otherwise subsequent policy hash checks will
@@ -76,6 +77,9 @@ func (s *AGWServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 		select {
 		case <-s.dpuListener.ctx.Done():
 			logger.GetLogger().Info("Client connection lost", "clientID", initializedPeer.uid)
+			return nil
+		case <-initializedPeer.polReconnectCh:
+			logger.GetLogger().Info("Forcing client reconnect due to timeout", "clientID", initializedPeer.uid)
 			return nil
 		case rule := <-initializedPeer.polCh:
 			resp := dpuRuleToResponse(rule)
@@ -169,6 +173,9 @@ func (s *AGWServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 		select {
 		case <-s.dpuListener.ctx.Done():
 			logger.GetLogger().Info("Client connection lost", "clientID", initializedPeer.uid)
+			return nil
+		case <-initializedPeer.cfgReconnectCh:
+			logger.GetLogger().Info("Forcing client config reconnect due to timeout", "clientID", initializedPeer.uid)
 			return nil
 		case resp := <-initializedPeer.cfgCh:
 			// Updating cfgSet to save desired config state
