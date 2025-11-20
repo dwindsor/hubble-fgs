@@ -1995,11 +1995,17 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			case "policy_conf":
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					mode := policyconf.EnforceMode // default is enforce mode
-					for _, s := range policy.TpSpec().Options {
-						if s.Name == "policy-mode" {
-							mode, err = policyconf.ParseMode(s.Value) // override mode if this is provided by the user
-							if err != nil {
-								return fmt.Errorf("failed to parse policy-mode option: %w", err)
+					if !sel.NeedEnforcement() {
+						// Since this policy has no enforcement actions,
+						// force-set monitor mode and skip "policy-mode" option loading.
+						mode = policyconf.MonitorOnlyMode
+					} else {
+						for _, s := range policy.TpSpec().Options {
+							if s.Name == "policy-mode" {
+								mode, err = policyconf.ParseMode(s.Value) // override mode if this is provided by the user
+								if err != nil {
+									return fmt.Errorf("failed to parse policy-mode option: %w", err)
+								}
 							}
 						}
 					}
