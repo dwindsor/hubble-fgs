@@ -17,6 +17,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
+	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 )
 
 const (
@@ -53,26 +54,15 @@ func executeAGW() {
 
 	waitGroup, ctx := errgroup.WithContext(ctx)
 
+	// Setup centralized shutdown manager
+	shutdown.SetupShutdownManager(ctx, cancel, waitGroup)
+
 	// Create AGW signal handler
 	agwSignalHandler := &AGWSignalHandler{
 		enableNXOS: Config.EnableNXOS,
 	}
 	// Setup signal handling
-	SetupSignalHandler(ctx, cancel, agwSignalHandler, waitGroup, agw.RestartExitCode)
-
-	// Initialize centralized shutdown manager
-	agw.InitializeShutdown(cancel, waitGroup)
-
-	if Config.EnableNXOS {
-		// Set the restart callback for NXOS
-		nxos.SetRestartCallback(agw.RestartAGW)
-
-		// Register NXOS cleanup if enabled
-		agw.RegisterCleanup(func(ctx context.Context) error {
-			nxos.Nexus.GnmiClose(ctx)
-			return nil
-		})
-	}
+	SetupSignalHandler(ctx, cancel, agwSignalHandler, waitGroup, shutdown.RestartExitCode)
 
 	dpuListener := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
 	agwAgent := agw.NewAgent(dpuListener, switchpolicy.NewPolicyHandler(ctx, dpuListener))
@@ -105,22 +95,15 @@ func executeAGW() {
 
 	// Launch daemon logic
 	waitGroup.Go(func() error {
-		err := RunOnPrem(ctx, cancel, agwAgent, dpuListener)
+		err := RunOnPrem(ctx, agwAgent, dpuListener)
 		if err != nil {
 			return fmt.Errorf("running on-prem failed: %w", err)
 		}
 		return nil
 	})
 
-	// Wait for all goroutines to complete
-	if err := waitGroup.Wait(); err != nil {
-		logger.GetLogger().Error("AGW failed", logfields.Error, err)
-	} else {
-		logger.GetLogger().Info("AGW graceful shutdown: Exiting")
-	}
-
-	// Normal completion
-	os.Exit(agw.RestartExitCode)
+	// Wait for all goroutines to complete using shutdown manager
+	shutdown.Wait()
 }
 
 // Simple signal handler for AGW

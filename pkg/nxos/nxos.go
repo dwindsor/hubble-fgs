@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
+	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 	"github.com/isovalent/hubble-fgs/pkg/token"
 
 	"github.com/openconfig/gnmic/pkg/api"
@@ -26,17 +27,6 @@ import (
 	"github.com/spf13/viper"
 	"golang.design/x/chann"
 )
-
-// RestartCallback is a function type for restart callbacks
-type RestartCallback func(ctx context.Context, reason string)
-
-// Global restart callback that will be set by the agw package
-var GlobalRestart RestartCallback
-
-// SetRestartCallback sets the global restart function
-func SetRestartCallback(fn RestartCallback) {
-	GlobalRestart = fn
-}
 
 const (
 	svcInst = "System/sas-items/svc-items/svcinst-items/SvcInstance-list[name=hypershield]"
@@ -49,11 +39,6 @@ const (
 	notifTimeout          = 900 // in second
 
 	dpuStatusCheckTimer = 1 // in second
-
-	// RestartExitCode is the exit code used to trigger AGW restart via init script
-	RestartExitCode = 200
-	// TerminateExitCode is the exit code used to terminate AGW without restart
-	TerminateExitCode = 201
 )
 
 const (
@@ -65,7 +50,8 @@ var Nexus Nxos
 func (n *Nxos) initiate(ctx context.Context) error {
 	ip, ok := os.LookupEnv("NX_GRPC_IP")
 	if !ok {
-		logger.Fatal(logger.GetLogger(), "NX_GRPC_IP missing")
+		logger.GetLogger().Error("NX_GRPC_IP missing")
+		return fmt.Errorf("NX_GRPC_IP environment variable is required")
 	}
 	port, ok := os.LookupEnv("NX_GRPC_PORT")
 	if !ok {
@@ -82,11 +68,13 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	viper.SetConfigType("env")
 	err := viper.ReadInConfig()
 	if err != nil {
-		logger.Fatal(logger.GetLogger(), "ReadInConfig fails", logfields.Error, err)
+		logger.GetLogger().Error("ReadInConfig fails", logfields.Error, err)
+		return fmt.Errorf("failed to read config file: %w", err)
 	}
 	pass := viper.GetString("NX_GRPC_PASS")
 	if pass == "" {
-		logger.Fatal(logger.GetLogger(), "Fail to get NX_GRPC_PASS")
+		logger.GetLogger().Error("Fail to get NX_GRPC_PASS")
+		return fmt.Errorf("NX_GRPC_PASS not found in config")
 	}
 	var skipDpu bool
 	sd := viper.GetString("NX_AGENT_IGNORE_MODULES")
@@ -268,23 +256,25 @@ func (n *Nxos) Close(ctx context.Context) error {
 // GetExitCodeForSignal returns the appropriate exit code based on the received signal and upgrade state.
 //
 // Behavior:
-//   - During upgrade: Always returns TerminateExitCode to prevent restart regardless of signal
-//   - SIGTERM: Returns TerminateExitCode to terminate without restart
-//   - SIGINT: Returns RestartExitCode to allow restart
-//   - Default: Returns RestartExitCode to allow restart
+//   - During upgrade: Always returns shutdown.TerminateExitCode to prevent restart regardless of signal
+//   - SIGTERM: Returns shutdown.TerminateExitCode to terminate without restart
+//   - SIGINT: Returns shutdown.RestartExitCode to allow restart
+//   - Default: Returns shutdown.RestartExitCode to allow restart
+//
+// Note: For real error conditions (not signal-based), use shutdown.ErrorExitCode (255) directly
 func (n *Nxos) GetExitCodeForSignal(sig os.Signal, inUpgrade bool) int {
 	if inUpgrade || sig == syscall.SIGTERM {
 		// During upgrade, never restart regardless of signal
-		return TerminateExitCode
+		return shutdown.TerminateExitCode
 	}
 
 	// Normal operation
 	if sig == syscall.SIGINT {
 		// Manual interrupt - allow restart for debugging
-		return RestartExitCode
+		return shutdown.RestartExitCode
 	}
 	// Default - restart
-	return RestartExitCode
+	return shutdown.RestartExitCode
 }
 
 // unsubscribe all above gnmi subscriptions
@@ -352,6 +342,9 @@ func (n *Nxos) waitForEnable(ctx context.Context) error {
 			if n.isInService(ctx) {
 				return nil
 			}
+		case <-ctx.Done():
+			logger.GetLogger().Info("Context canceled while waiting for service enabling")
+			return ctx.Err()
 		}
 	}
 }
@@ -485,11 +478,17 @@ func (n *Nxos) waitForChange(ctx context.Context) error {
 	n.HaUpdateCrit(ctx, HaCritSvcRedir, true)
 
 	for {
-		time.Sleep(time.Hour)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Hour):
+			// Continue waiting...
+		}
 	}
 }
 
 func fnv1a(buf []byte) uint64 {
+
 	hash := fnv.New64a()
 	hash.Write(buf)
 	return hash.Sum64()
@@ -570,16 +569,18 @@ func (n *Nxos) setServiceRedirAll(ctx context.Context, isLock bool) error {
 	return nil
 }
 
-func (n *Nxos) Setup(ctx context.Context, cancel context.CancelFunc, low, high uint16, dpuListener *dpu.DPUListener, policyHandler switchpolicy.PolicyHandler) error {
+func (n *Nxos) Setup(ctx context.Context, low, high uint16, dpuListener *dpu.DPUListener, policyHandler switchpolicy.PolicyHandler) error {
 
 	n.DpuPortLow = low
 	n.DpuPortHigh = high
 	n.dpuListener = dpuListener
 	n.policyHandler = policyHandler
 
-	// set the cancel function for any nxos initiated context cancellation
-	// to other goroutines
-	n.cancel = cancel
+	// Register NXOS cleanup functions with the shutdown manager
+	// This ensures proper cleanup order and encapsulation
+	shutdown.RegisterCleanup(func(ctx context.Context) error {
+		return n.Close(ctx)
+	})
 
 	logger.GetLogger().Debug("Initiating CPA")
 	err := n.initiate(ctx)
@@ -693,15 +694,8 @@ func (n *Nxos) GracefulRestartAgent(ctx context.Context, cleanup bool) {
 		n.cleanup(ctx)
 		logger.GetLogger().Debug("Graceful restart with cleanup")
 	}
-	// Use centralized restart - it will handle context cancel, waitGroup, and gNMI cleanup
-	if GlobalRestart != nil {
-		GlobalRestart(ctx, "Graceful restart")
-	} else {
-		// This should never happen, but just in case
-		logger.GetLogger().Error("GlobalRestart not set, falling back to direct exit")
-		n.GnmiClose(ctx)
-		os.Exit(RestartExitCode)
-	}
+	// Use centralized shutdown manager with restart exit code
+	shutdown.TriggerShutdown(shutdown.RestartExitCode)
 }
 
 func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {
@@ -722,7 +716,13 @@ func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {
 			}
 			n.RUnlock()
 
-			time.Sleep(waitForInSyncInterval * time.Second)
+			select {
+			case <-ctx.Done():
+				logger.GetLogger().Info("Context canceled while waiting for DPU InSync")
+				return
+			case <-time.After(waitForInSyncInterval * time.Second):
+				// Continue after sleep
+			}
 		}
 	}
 
@@ -767,7 +767,10 @@ func (n *Nxos) setup(ctx context.Context, dpuCnt uint16) {
 	// handle incremental changes
 	err = n.waitForChange(ctx)
 	if err != nil {
-		logger.Fatal(logger.GetLogger(), "Fail to wait for change", logfields.Error, err)
+		logger.GetLogger().Info("Fail to wait for change", logfields.Error, err)
+		// Trigger shutdown since this is a goroutine and can't return errors
+		shutdown.TriggerShutdown(shutdown.ErrorExitCode)
+		return
 	}
 }
 
@@ -899,17 +902,22 @@ func (n *Nxos) reconcile(ctx context.Context) {
 	n.AllocPrev.BdDpus = make(map[string]uint16)
 }
 
-func (n *Nxos) checkNotif(_ context.Context) {
+func (n *Nxos) checkNotif(ctx context.Context) {
 	logger.GetLogger().Debug("Start to check notification liveness")
 
 	for {
-		now := time.Now().Unix()
-		logger.GetLogger().Debug("last notification", "now", now, "LastNotif", n.LastNotif)
-		if now-n.LastNotif > notifTimeout {
-			// right now just cry. TBD: graceful restart?
-			logger.GetLogger().Error("Notification liveness fails")
+		select {
+		case <-ctx.Done():
+			logger.GetLogger().Info("Context canceled, stopping notification liveness check")
+			return
+		case <-time.After(60 * time.Second):
+			now := time.Now().Unix()
+			logger.GetLogger().Debug("last notification", "now", now, "LastNotif", n.LastNotif)
+			if now-n.LastNotif > notifTimeout {
+				// right now just cry. TBD: graceful restart?
+				logger.GetLogger().Error("Notification liveness fails")
+			}
 		}
-		time.Sleep(60 * time.Second)
 	}
 }
 

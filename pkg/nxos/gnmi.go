@@ -2,13 +2,13 @@ package nxos
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
+	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 
 	"github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/gnmic/pkg/api"
@@ -46,17 +46,14 @@ func (n *Nxos) gnmiSubscribe(ctx context.Context, name string, paths []string) {
 			n.Unlock()
 
 		case tgErr := <-errChan:
-			logger.GetLogger().Debug("Subscription %q stopped, restarting: %s",
-				tgErr.SubscriptionName, tgErr.Err.Error())
-			// Use centralized restart - it will handle cleanup and shutdown properly
-			if GlobalRestart != nil {
-				GlobalRestart(ctx, "gNMI subscription error: "+tgErr.Err.Error())
-			} else {
-				// This should never happen, but just in case
-				logger.GetLogger().Error("GlobalRestart not set, falling back to direct exit")
-				n.GnmiClose(ctx)
-				os.Exit(RestartExitCode)
-			}
+			logger.GetLogger().Debug("Subscription stopped, restarting",
+				"subscription", tgErr.SubscriptionName, "error", tgErr.Err.Error())
+			shutdown.TriggerShutdown(shutdown.RestartExitCode)
+			return
+
+		case <-ctx.Done():
+			logger.GetLogger().Debug("GNMI subscription context canceled, exiting", "name", name)
+			return
 		}
 	}
 }

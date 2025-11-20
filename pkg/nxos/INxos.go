@@ -263,7 +263,6 @@ type Nxos struct {
 	// smartswitch management
 	policyHandler switchpolicy.PolicyHandler
 	dpuListener   *dpu.DPUListener
-	cancel        context.CancelFunc
 }
 
 type INxos interface {

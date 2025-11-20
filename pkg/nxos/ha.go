@@ -605,6 +605,9 @@ func (n *Nxos) haSetup(ctx context.Context) {
 	enabled := n.haIsEnabled(ctx, true)
 	for {
 		select {
+		case <-ctx.Done():
+			logger.GetLogger().Info("HA setup context canceled, exiting")
+			return
 		case wait := <-n.WaitHa.Out():
 			logger.GetLogger().Debug("HA waked up", "wait", wait)
 

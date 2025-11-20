@@ -30,6 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchstatus"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
+	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 	"github.com/isovalent/hubble-fgs/pkg/token"
 )
 
@@ -203,10 +204,13 @@ func (agw *AgentGateway) GetNxProxyConfig(ctx context.Context) error {
 	return nxos.Nexus.GetProxyConfig(ctx)
 }
 
-func (agw *AgentGateway) Setup(ctx context.Context, cancel context.CancelFunc) error {
-	err := nxos.Nexus.Setup(ctx, cancel, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener, agw.PolicyHandler)
+func (agw *AgentGateway) Setup(ctx context.Context) error {
+	err := nxos.Nexus.Setup(ctx, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener, agw.PolicyHandler)
 	if err != nil {
-		logger.Fatal(logger.GetLogger(), "NXOS setup failed")
+		// Removed GetLogger().Fatal to avoid immediate termination, use shutdown manager.
+		logger.GetLogger().Error("NXOS setup failed", "error", err)
+		shutdown.TriggerShutdown(shutdown.ErrorExitCode)
+		return err
 	}
 
 	return nil
@@ -342,12 +346,18 @@ func (agw *AgentGateway) LoadAuth(ctx context.Context) (bool, error) {
 	registered := make(chan bool)
 	go func() {
 		for {
-			reg, err := agw.tryLoadK8sAuth()
-			if err == nil {
-				registered <- reg
+			select {
+			case <-ctx.Done():
+				logger.GetLogger().Debug("Context canceled while trying to load K8s auth")
 				return
+			default:
+				reg, err := agw.tryLoadK8sAuth()
+				if err == nil {
+					registered <- reg
+					return
+				}
+				time.Sleep(TOKEN_INTERVAL * time.Second)
 			}
-			time.Sleep(TOKEN_INTERVAL * time.Second)
 		}
 	}()
 
@@ -431,7 +441,7 @@ func (agw *AgentGateway) DpuHealthCheck(ctx context.Context) {
 			logger.GetLogger().Info("Stop DPU health checker")
 			return
 		case <-time.After(healthCheckTimer):
-			logger.GetLogger().Debug("DPU health check")
+			logger.GetLogger().Debug("DPU health check - starting")
 			ok := agw.dpuListener.StateCheck()
 			if !ok {
 				retries++

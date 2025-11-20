@@ -1293,6 +1293,14 @@ func (n *Nxos) getGid(ctx context.Context, vrf string) uint16 {
 	begin := n.Alloc.Next
 	gid := n.Alloc.Next
 	for {
+		// Check context cancellation
+		select {
+		case <-ctx.Done():
+			logger.GetLogger().Info("Context canceled while allocating GID")
+			return 0
+		default:
+		}
+
 		_, ok := n.GidsInUse[gid]
 		if ok {
 			n.Alloc.Next++

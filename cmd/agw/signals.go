@@ -10,6 +10,8 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 )
 
 // SignalHandler interface defines cleanup operations for graceful shutdown
@@ -83,8 +85,7 @@ func SetupSignalHandler(ctx context.Context, cancel context.CancelFunc, handler 
 			}
 		}
 
-		// Exit with determined exit code
-		logger.GetLogger().Info("Exiting with code", "exitCode", finalExitCode)
-		os.Exit(finalExitCode)
+		// Exit using shutdown manager instead of direct os.Exit
+		shutdown.Exit(finalExitCode)
 	}()
 }

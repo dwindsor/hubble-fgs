@@ -33,7 +33,7 @@ import (
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
 
-func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.AgentGateway, dpuListener *dpu.DPUListener) error {
+func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu.DPUListener) error {
 	logger.GetLogger().Info("Agent starting", "config", redactedConfig())
 	waitGroup, ctx := errgroup.WithContext(ctx)
 
@@ -73,7 +73,7 @@ func RunOnPrem(ctx context.Context, cancel context.CancelFunc, agwAgent *agw.Age
 	waitGroup.Go(func() error {
 		// Setting up agent local state
 		if Config.EnableNXOS {
-			err := agwAgent.Setup(ctx, cancel)
+			err := agwAgent.Setup(ctx)
 			if err != nil {
 				return fmt.Errorf("FWAgent setup failed: %w", err)
 			}
