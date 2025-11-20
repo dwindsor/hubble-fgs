@@ -28,10 +28,9 @@ func New() *cobra.Command {
 	}
 
 	addCmd := &cobra.Command{
-		Use:        "add <yaml_file>",
-		Short:      "add Tetragon network policy",
-		Deprecated: `use "policies add" command instead`,
-		Args:       cobra.ExactArgs(1),
+		Use:   "add <yaml_file>",
+		Short: "add Tetragon network policy",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := NewClient()
 			if err != nil {
@@ -57,10 +56,9 @@ func New() *cobra.Command {
 	}
 
 	delCmd := &cobra.Command{
-		Use:        "delete <name>",
-		Short:      "delete Tetragon network policy",
-		Deprecated: `use "policies delete" command instead`,
-		Args:       cobra.ExactArgs(1),
+		Use:   "delete <name>",
+		Short: "delete Tetragon network policy",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := NewClient()
 			if err != nil {
@@ -81,10 +79,9 @@ func New() *cobra.Command {
 	}
 
 	listCmd := &cobra.Command{
-		Use:        "list",
-		Short:      "list loaded Tetragon network policy",
-		Args:       cobra.ExactArgs(0),
-		Deprecated: `use "policies list" command instead`,
+		Use:   "list",
+		Short: "list loaded Tetragon network policy",
+		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return ListNetworkPolicy(
 				cmd, "text",
@@ -94,10 +91,9 @@ func New() *cobra.Command {
 	}
 
 	getCmd := &cobra.Command{
-		Use:        "get <name>",
-		Short:      "get Tetragon network policy",
-		Deprecated: `use "policies get" command instead`,
-		Args:       cobra.ExactArgs(1),
+		Use:   "get <name>",
+		Short: "get Tetragon network policy",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c, err := NewClient()
 			if err != nil {
