@@ -50,14 +50,7 @@ func addCommands(rootCmd *cobra.Command) {
 		WithGRPCAction(listSandboxPolicies).
 		WithGRPCAction(listNetworkPolicies).
 		Command())
-	// Deprecate tracingpolicy new,delete,list commands
-	tpCmd := tracingpolicy.New()
-	for _, comm := range tpCmd.Commands() {
-		if comm.Name() == "add" || comm.Name() == "delete" || comm.Name() == "list" {
-			comm.Deprecated = `use "policies ` + comm.Name() + `" command instead`
-		}
-	}
-	rootCmd.AddCommand(tpCmd)
+	rootCmd.AddCommand(tracingpolicy.New())
 	rootCmd.AddCommand(file.New())
 	rootCmd.AddCommand(policyfilter.New())
 	rootCmd.AddCommand(rthooks.New())
