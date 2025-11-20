@@ -15,7 +15,7 @@ import (
 const (
 	RestartExitCode   = 200 // Triggers AGW restart via init script
 	TerminateExitCode = 201 // Terminates AGW without restart
-	ErrorExitCode     = 255 // Indicates an error condition
+	ErrorExitCode     = 1   // Indicates an error condition
 )
 
 // ShutdownManager handles centralized process shutdown with proper cleanup
@@ -51,6 +51,7 @@ func (sm *ShutdownManager) Register(cleanupFunc func(context.Context) error) {
 // Wait waits for shutdown signal or errgroup completion.
 // If any goroutine in errgroup returns error, context is canceled.
 // If shutdown channel receives signal, context is manually cancelled and all threads waited on.
+// Note: This method should be called only on the main thread.
 func (sm *ShutdownManager) Wait() {
 	sm.once.Do(func() {
 		go func() {

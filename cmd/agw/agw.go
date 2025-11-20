@@ -102,7 +102,7 @@ func executeAGW() {
 		return nil
 	})
 
-	// Wait for all goroutines to complete using shutdown manager
+	// main thread Wait for all goroutines to complete using shutdown manager
 	shutdown.Wait()
 }
 

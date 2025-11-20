@@ -345,18 +345,25 @@ func (agw *AgentGateway) LoadAuth(ctx context.Context) (bool, error) {
 	// Finding and setting Token.
 	registered := make(chan bool)
 	go func() {
+		// Try getting authentication immediately first
+		reg, err := agw.tryLoadK8sAuth()
+		if err == nil {
+			registered <- reg
+			return
+		}
+
+		// Then enter the retry loop with delays
 		for {
 			select {
 			case <-ctx.Done():
 				logger.GetLogger().Debug("Context canceled while trying to load K8s auth")
 				return
-			default:
+			case <-time.After(TOKEN_INTERVAL * time.Second):
 				reg, err := agw.tryLoadK8sAuth()
 				if err == nil {
 					registered <- reg
 					return
 				}
-				time.Sleep(TOKEN_INTERVAL * time.Second)
 			}
 		}
 	}()
