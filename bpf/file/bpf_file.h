@@ -1604,12 +1604,12 @@ static inline __attribute__((always_inline)) int handle_enforcement(int err)
 		return 0;
 
 	pcnf = map_lookup_elem(&policy_conf, &zero);
-	if (pcnf && pcnf->mode == POLICY_MODE_MONITOR) {
-		retval = 0;
-		polacct = POLICY_MONITOR_OVERRIDE;
-	} else {
+	if (pcnf && pcnf->mode == POLICY_MODE_ENFORCE) {
 		retval = -EPERM;
 		polacct = POLICY_OVERRIDE;
+	} else {
+		retval = 0;
+		polacct = POLICY_MONITOR_OVERRIDE;
 	}
 
 	if (polacct != POLICY_INVALID_ACT_) {
