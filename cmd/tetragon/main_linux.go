@@ -88,3 +88,12 @@ func registerProcessModelServiceServer(s *grpc.Server, model *model.Server) {
 func registerApplicationModelServiceServer(s *grpc.Server, model *model.Server) {
 	appModelV1.RegisterApplicationModelServiceServer(s, model)
 }
+
+func hubbleFGSExecute() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	return tetragonExecuteCtx(ctx, cancel, func() {})
+}
+
+func updateServiceStarting() {
+}

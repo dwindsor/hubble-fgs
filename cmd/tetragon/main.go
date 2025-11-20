@@ -196,12 +196,6 @@ func loadInitialSensor(ctx context.Context) error {
 	return mgr.EnableSensor(ctx, initialSensor.Name)
 }
 
-func hubbleFGSExecute() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	return tetragonExecuteCtx(ctx, cancel, func() {})
-}
-
 func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready func()) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, tgsyscall.SIGRTMIN_20,
@@ -211,6 +205,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if err := logger.SetupLogging(option.Config.LogOpts, option.Config.Debug); err != nil {
 		logger.Fatal(log, "Failed to setup logging", logfields.Error, err)
 	}
+	updateServiceStarting()
 
 	if !filepath.IsAbs(option.Config.TracingPolicyDir) {
 		logger.Fatal(log, fmt.Sprintf("Failed path specified by --tracing-policy-dir '%q' is not absolute", option.Config.TracingPolicyDir))
@@ -321,6 +316,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 
 	// Raise memory resource
 	bpf.ConfigureResourceLimits()
+	updateServiceStarting()
 
 	// Get observer bpf maps and programs directory
 	observerDir := getObserverDir()
@@ -399,6 +395,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if err := observer.InitDataCache(option.Config.DataCacheSize); err != nil {
 		return err
 	}
+	updateServiceStarting()
 
 	if option.Config.MetricsServer != "" {
 		go metricsconfig.EnableMetrics(option.Config.MetricsServer)
@@ -489,6 +486,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	defer cancel2()
 
 	hookRunner := rthooks.GlobalRunner().WithWatcher(podAccessor)
+	updateServiceStarting()
 
 	err = setRedactionFilters()
 	if err != nil {
@@ -576,6 +574,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 
 	obs.AddListener(pm)
 	saveInitInfo()
+	updateServiceStarting()
 
 	// Initialize a k8s watcher used to manage policies. This should happen
 	// after the sensors are loaded, otherwise existing policies will fail to
@@ -657,6 +656,7 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	if !enterpriseOption.K8SControlPlaneEnabled() {
 		go logStatus(ctx, obs)
 	}
+	updateServiceStarting()
 
 	return obs.StartReady(ctx, ready)
 }

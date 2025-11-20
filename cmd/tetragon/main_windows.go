@@ -6,8 +6,11 @@ package tetragon
 import (
 	"context"
 
+	"golang.org/x/sys/windows/svc"
+
 	"google.golang.org/grpc"
 
+	"github.com/cilium/tetragon/pkg/logger/logfields"
 	model "github.com/isovalent/hubble-fgs/pkg/model/server"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/layer3"
 )
@@ -67,4 +70,22 @@ func registerProcessModelServiceServer(_ *grpc.Server, _ *model.Server) {
 }
 
 func registerApplicationModelServiceServer(_ *grpc.Server, _ *model.Server) {
+}
+
+func isRunningAsWinService() bool {
+	inService, err := svc.IsWindowsService()
+	if err != nil {
+		log.Error("failed to determine if running as a service", logfields.Error, err)
+		return false
+	}
+	return inService
+}
+
+func hubbleFGSExecute() error {
+	if !isRunningAsWinService() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		return tetragonExecuteCtx(ctx, cancel, func() {})
+	}
+	return runAsWindowsService()
 }
