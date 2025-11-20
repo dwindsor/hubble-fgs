@@ -185,6 +185,138 @@ jobs:
           files: |
             ./release-artifacts/*
 
+  create-fwa-releases-repo-release:
+    needs: [init, combine-artifacts]
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/pr/sripuran/fwa-releases-new-repo') || (github.event_name == 'push' && github.ref == 'refs/heads/pr/sripuran/fwa-releases-new-repo') }}
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 5
+    env:
+      TARGET_ORG: isovalent
+      TARGET_REPO: hubble-fwa-releases
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        with:
+          app-id: ${{ vars.ISOVALENT_ARIANE_APP_ID }}
+          private-key: ${{ secrets.ISOVALENT_ARIANE_APP_PRIVATE_KEY }}
+          owner: ${{ env.TARGET_ORG }}
+          repositories: ${{ env.TARGET_REPO }}
+      - name: Checkout hubble-fwa-releases repo
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: ./fwa-releases-repo
+      - name: Download release artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
+          path: "./release-artifacts"
+      - name: List release artifacts
+        run: |
+          echo "Release artifacts to be published:"
+          ls -lah ./release-artifacts/
+          echo ""
+          echo "Checksums:"
+          cat ./release-artifacts/SHA256SUMS.txt
+      - name: Create release notes
+        run: |
+          cd ./fwa-releases-repo
+          mkdir -p docs/release-notes
+          
+          RELEASE_NOTES_FILE="docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}.md"
+          
+          cat > "$RELEASE_NOTES_FILE" << 'EOF'
+          # Release Notes: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          
+          **Release Date:** $(date -u +"%Y-%m-%d")
+          
+          ## Build Information
+          - **Version:** ${{ needs.init.outputs.version }}
+          - **Build Date:** ${{ needs.init.outputs.date }}
+          - **Commit SHA:** ${{ needs.init.outputs.sha }}
+          - **Source Repository:** [hubble-fgs](https://github.com/isovalent/hubble-fgs)
+          - **Source Commit:** https://github.com/isovalent/hubble-fgs/commit/${{ github.sha }}
+          
+          ## Artifacts
+          
+          ### AMD64
+          - `fwa-elba-amd64-${{ needs.init.outputs.version }}.tar.gz`
+          
+          ### ARM64
+          - `fwa-elba-arm64-${{ needs.init.outputs.version }}.tar.gz`
+          
+          ### Checksums
+          ```
+          $(cat ../release-artifacts/SHA256SUMS.txt)
+          ```
+          
+          ## Installation
+          
+          1. Download the appropriate architecture archive from the [Releases](../../releases) page
+          2. Extract: `tar -xzf fwa-elba-{arch}-${{ needs.init.outputs.version }}.tar.gz`
+          3. Load images: `docker load -i <image-file>.tar`
+          4. Deploy according to NXOS integration guide
+          
+          ## Compatibility
+          - **NXOS Version:** Compatible with latest NXOS releases
+          - **DPU Platform:** Elba (AMD64 and ARM64)
+          
+          ---
+          
+          For questions or issues, contact @cisco-hypershield/nxos
+          EOF
+          
+          echo "Created release notes at: $RELEASE_NOTES_FILE"
+      - name: Commit release notes
+        run: |
+          cd ./fwa-releases-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/release-notes/
+          git commit -m "docs: Add release notes for ${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}" || echo "No changes to commit"
+          git push origin main
+      - name: Create GitHub Release in hubble-fwa-releases
+        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}
+          tag_name: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          name: FWA Release ${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Hubble FGS FWA Release ${{ needs.init.outputs.version }}
+            
+            This release contains Hubble FGS FWA (Firewall Accelerator) images built for Elba DPU platform.
+            
+            ### Build Information
+            - **Version:** ${{ needs.init.outputs.version }}
+            - **Build Date:** ${{ needs.init.outputs.date }}
+            - **Commit SHA:** ${{ needs.init.outputs.sha }}
+            - **Source:** [hubble-fgs@${{ github.sha }}](https://github.com/isovalent/hubble-fgs/commit/${{ github.sha }})
+            
+            ### Artifacts
+            - `fwa-elba-amd64-${{ needs.init.outputs.version }}.tar.gz` - AMD64 architecture
+            - `fwa-elba-arm64-${{ needs.init.outputs.version }}.tar.gz` - ARM64 architecture
+            - `SHA256SUMS.txt` - Checksums for verification
+            
+            ### Installation
+            1. Download the appropriate architecture archive
+            2. Extract: `tar -xzf fwa-elba-{arch}-${{ needs.init.outputs.version }}.tar.gz`
+            3. Load images: `docker load -i <image-file>.tar`
+            4. Deploy according to NXOS integration documentation
+            
+            ### Release Notes
+            Full release notes: [docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}.md](https://github.com/isovalent/hubble-fwa-releases/blob/main/docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}.md)
+            
+            ---
+            
+            For questions or issues, contact @cisco-hypershield/nxos
+          files: |
+            ./release-artifacts/*
+
   update-fwa-version-dpu-pensando:
     needs: [init, create-github-release]
     if: ${{ needs.init.result == 'success' && needs.create-github-release.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master')) }}
