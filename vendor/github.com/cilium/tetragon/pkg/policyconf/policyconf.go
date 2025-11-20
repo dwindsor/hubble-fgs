@@ -4,6 +4,7 @@
 package policyconf
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -18,8 +19,9 @@ type Mode uint8
 const (
 	InvalidMode Mode = Mode(^uint8(0))
 	// NB: values below should match the ones in bpf/lib/policy_conf.h
-	EnforceMode Mode = 0
-	MonitorMode Mode = 1
+	EnforceMode     Mode = 0
+	MonitorMode     Mode = 1
+	MonitorOnlyMode Mode = 2 // monitor and cannot be updated to enforce
 
 	PolicyConfMapName = "policy_conf"
 )
@@ -79,6 +81,22 @@ func SetModeInBPFMap(fname string, mode Mode) error {
 }
 
 func SetPolicyMode(tp tracingpolicy.TracingPolicy, m Mode) error {
+	// While we will never be called by collection.go with monitor_only,
+	// enforce this anyway.
+	if m == MonitorOnlyMode {
+		return errors.New("cannot set monitor only policy mode")
+	}
+
+	// Check that the policy is not currently in monitor_only mode,
+	// otherwise reject the mode update.
+	currMode, err := PolicyMode(tp)
+	if err != nil {
+		return err
+	}
+	if currMode == MonitorOnlyMode {
+		return errors.New("cannot set policy mode on a policy that is monitor only")
+	}
+
 	fname := filepath.Join(bpf.MapPrefixPath(), tracingpolicy.PolicyDir(tracingpolicy.Namespace(tp), tp.TpName()), PolicyConfMapName)
 	return SetModeInBPFMap(fname, m)
 }

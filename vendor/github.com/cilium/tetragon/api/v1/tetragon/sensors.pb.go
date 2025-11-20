@@ -98,9 +98,10 @@ func (TracingPolicyState) EnumDescriptor() ([]byte, []int) {
 type TracingPolicyMode int32
 
 const (
-	TracingPolicyMode_TP_MODE_UNKNOWN TracingPolicyMode = 0
-	TracingPolicyMode_TP_MODE_ENFORCE TracingPolicyMode = 1
-	TracingPolicyMode_TP_MODE_MONITOR TracingPolicyMode = 2
+	TracingPolicyMode_TP_MODE_UNKNOWN      TracingPolicyMode = 0
+	TracingPolicyMode_TP_MODE_ENFORCE      TracingPolicyMode = 1
+	TracingPolicyMode_TP_MODE_MONITOR      TracingPolicyMode = 2
+	TracingPolicyMode_TP_MODE_MONITOR_ONLY TracingPolicyMode = 3
 )
 
 // Enum value maps for TracingPolicyMode.
@@ -109,11 +110,13 @@ var (
 		0: "TP_MODE_UNKNOWN",
 		1: "TP_MODE_ENFORCE",
 		2: "TP_MODE_MONITOR",
+		3: "TP_MODE_MONITOR_ONLY",
 	}
 	TracingPolicyMode_value = map[string]int32{
-		"TP_MODE_UNKNOWN": 0,
-		"TP_MODE_ENFORCE": 1,
-		"TP_MODE_MONITOR": 2,
+		"TP_MODE_UNKNOWN":      0,
+		"TP_MODE_ENFORCE":      1,
+		"TP_MODE_MONITOR":      2,
+		"TP_MODE_MONITOR_ONLY": 3,
 	}
 )
 
@@ -2224,11 +2227,12 @@ const file_tetragon_sensors_proto_rawDesc = "" +
 	"\x13TP_STATE_LOAD_ERROR\x10\x03\x12\x12\n" +
 	"\x0eTP_STATE_ERROR\x10\x04\x12\x14\n" +
 	"\x10TP_STATE_LOADING\x10\x05\x12\x16\n" +
-	"\x12TP_STATE_UNLOADING\x10\x06*R\n" +
+	"\x12TP_STATE_UNLOADING\x10\x06*l\n" +
 	"\x11TracingPolicyMode\x12\x13\n" +
 	"\x0fTP_MODE_UNKNOWN\x10\x00\x12\x13\n" +
 	"\x0fTP_MODE_ENFORCE\x10\x01\x12\x13\n" +
-	"\x0fTP_MODE_MONITOR\x10\x02*K\n" +
+	"\x0fTP_MODE_MONITOR\x10\x02\x12\x18\n" +
+	"\x14TP_MODE_MONITOR_ONLY\x10\x03*K\n" +
 	"\n" +
 	"ConfigFlag\x12\x19\n" +
 	"\x15CONFIG_FLAG_LOG_LEVEL\x10\x00\x12\"\n" +
