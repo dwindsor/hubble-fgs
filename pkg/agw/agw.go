@@ -244,6 +244,14 @@ func (agw *AgentGateway) SetConnectionStatus(ctx context.Context, status bool, n
 	} else {
 		nxos.Nexus.SetConnFail(ctx, nxos.ConnFailed)
 	}
+
+	notifyHA(ctx, status)
+}
+
+// notifyHA notifies the high availability system about
+// the controller connection current status.
+func notifyHA(ctx context.Context, status bool) {
+	nxos.Nexus.NotifyWatching(ctx, status)
 }
 
 // GetSmartSwitchInventory creates and returns a SmartSwitchInventory CR for the agent.

@@ -3,6 +3,7 @@ package agw
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -34,7 +35,7 @@ type ConnectionMonitor struct {
 	mu               sync.RWMutex
 	lastEventTime    time.Time
 	connectionStatus bool
-	failedAttempts   int
+	failedAttempts   atomic.Uint32
 	agwAgent         AGWAgent
 	nxosMode         bool
 	manager          *manager.ControllerManager
@@ -48,7 +49,7 @@ func NewConnectionMonitor(agwAgent AGWAgent, nxosMode bool, mgr *manager.Control
 		agwAgent:         agwAgent,
 		nxosMode:         nxosMode,
 		manager:          mgr,
-		failedAttempts:   0, // Start with no failed attempts
+		// failedAttempts will be zero-initialized automatically
 	}
 }
 
@@ -87,19 +88,14 @@ func (cm *ConnectionMonitor) GetConnectionStatus() bool {
 	return cm.connectionStatus
 }
 
-// incrementFailedAttempts increments the failed attempts counter
-func (cm *ConnectionMonitor) incrementFailedAttempts() int {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	cm.failedAttempts++
-	return cm.failedAttempts
+// incrementFailedAttempts atomically increments the failed attempts counter
+func (cm *ConnectionMonitor) incrementFailedAttempts() uint32 {
+	return cm.failedAttempts.Add(1)
 }
 
-// resetFailedAttempts resets the failed attempts counter to zero
+// resetFailedAttempts atomically resets the failed attempts counter to zero
 func (cm *ConnectionMonitor) resetFailedAttempts() {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-	cm.failedAttempts = 0
+	cm.failedAttempts.Store(0)
 }
 
 // StartMonitoring starts the connection monitoring goroutine
