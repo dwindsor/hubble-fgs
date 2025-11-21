@@ -167,7 +167,7 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu
 		}
 
 		// Initialize and connect to K8s controller manager
-		logger.GetLogger().Info("initializing Kubernetes Manager for on-prem deployment")
+		logger.GetLogger().Info("initializing Kubernetes Manager for on-prem deployment", "controller-url", agwAgent.Token.K8sControllerURL())
 		kubernetesManager := manager.Get()
 		if kubernetesManager == nil {
 			return fmt.Errorf("kubernetes manager not created")
@@ -197,6 +197,12 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu
 		if err != nil {
 			logger.GetLogger().Error("configmap informer with connection monitoring failed", logfields.Error, err)
 			return err
+		}
+
+		if Config.EnableNXOS {
+			logger.GetLogger().Debug("Waiting for NXOS to be InService before watching SmartSwitchNetworkPolicy CRD")
+			agwAgent.WaitForInService(ctx)
+			logger.GetLogger().Debug("Done NXOS InService is configured")
 		}
 
 		crds := make(map[string]struct{})
