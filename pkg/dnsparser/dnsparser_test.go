@@ -175,10 +175,10 @@ func runStandardQuery(t *testing.T, tq testQuery, prog *ebpf.Program, ipToDomain
 	}
 	if errValue != 0 {
 		if wantError {
-			t.Logf("got expected error %d", errValue)
+			t.Logf("got expected error %d %s", errValue, Errors[errValue])
 			return // success
 		}
-		t.Errorf("got error %d and want no error", errValue)
+		t.Errorf("got error %d %s and want no error", errValue, Errors[errValue])
 	} else {
 		if wantError {
 			t.Errorf("got no error and want error")
@@ -870,10 +870,10 @@ func Test_DNSParser_ProcessTree(t *testing.T) {
 				}
 				if errValue != 0 {
 					if tq.wantErr {
-						t.Logf("got expected error %d", errValue)
+						t.Logf("got expected error %d %s", errValue, Errors[errValue])
 						return // success
 					}
-					t.Errorf("got error %d and want no error", errValue)
+					t.Errorf("got error %d %s and want no error", errValue, Errors[errValue])
 				} else {
 					if tq.wantErr {
 						t.Errorf("got no error and want error")
@@ -1030,7 +1030,7 @@ func Test_DNSParser_FromPcap(t *testing.T) {
 				t.Fatal(err)
 			}
 			if errValue != 0 {
-				t.Errorf("got error %d and want no error", errValue)
+				t.Errorf("got error %d %s and want no error", errValue, Errors[errValue])
 			}
 		})
 	}
