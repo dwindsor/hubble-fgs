@@ -267,7 +267,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 	void *data, *data_end;
 	char *name, *req_name;
 	void *id_found;
-	int name_len;
+	int name_len, max_ancount;
 	int8_t error, ret;
 	uint16_t qtype;
 	uint32_t error_idx, *counter, transaction_id;
@@ -398,8 +398,9 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 	data += sizeof(u16) * 2;
 
 	// Parse Answer Section
+	max_ancount = bpf_ntohs(dns->ancount) > MAX_DNS_ANSWERS_UDP ? MAX_DNS_ANSWERS_UDP : bpf_ntohs(dns->ancount);
 	ret = 1;
-	for (int i = 0; i < MAX_DNS_ANSWERS_UDP && data + MIN_ANSWER_LEN <= data_end && ret > 0; i++) {
+	for (int i = 0; i < max_ancount && data + MIN_ANSWER_LEN <= data_end && ret > 0; i++) {
 		ret = parse_dns_answer(skb, (size_t)data - skb->data);
 		if (ret < 0) {
 			error = ret;
