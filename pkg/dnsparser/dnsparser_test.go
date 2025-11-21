@@ -66,7 +66,6 @@ func loadDNSTestCollection(t *testing.T) *ebpf.Collection {
 	}
 
 	// Resizing map (to an overkill size because it's LRU_HASH)
-	collSpec.Maps[IPToIDMapsName].MaxEntries = 1024
 	collSpec.Maps[DomainToIDMapName].MaxEntries = 1024
 	collSpec.Maps[IDToDomainMapName].MaxEntries = 1024
 	collSpec.Maps[RequestIDMapName].MaxEntries = 1024
@@ -989,6 +988,16 @@ func Test_DNSParser_FromPcap(t *testing.T) {
 		t.Fatalf("map %s not found", ErrorMapName)
 	}
 	errMap := NewErrorMap(rawErrMap)
+
+	rawIPToIDMaps, ok := coll.Maps[IPToIDMapsName]
+	if !ok {
+		t.Fatalf("map %s not found", IPToIDMapsName)
+	}
+	ipToIDMaps := NewIPToIDMaps(rawIPToIDMaps)
+	err = ipToIDMaps.CreatePreallocMapsForUnitTests()
+	if err != nil {
+		t.Fatalf("failed to initialize IPToIDMaps: %s", err)
+	}
 
 	for {
 		packet, _, err := handle.ReadPacketData()
