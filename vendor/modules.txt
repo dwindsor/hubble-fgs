@@ -971,7 +971,7 @@ github.com/isovalent/ipa/common/v1alpha
 github.com/isovalent/ipa/graph/v1alpha
 github.com/isovalent/ipa/l3l4networkpolicy/v1alpha
 github.com/isovalent/ipa/ocsf/v1alpha
-# github.com/isovalent/ipa/k8s v1.19.0-pre.0.0.20251118191240-f757da0ef30d
+# github.com/isovalent/ipa/k8s v1.19.0-pre.1
 ## explicit; go 1.25.0
 github.com/isovalent/ipa/k8s
 github.com/isovalent/ipa/k8s/apis/cilium.io

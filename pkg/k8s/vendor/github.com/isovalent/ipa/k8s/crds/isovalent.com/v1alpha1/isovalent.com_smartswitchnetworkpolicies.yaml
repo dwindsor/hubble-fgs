@@ -3,18 +3,14 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: smartswitchnetworkpolicies.isovalent.com
 spec:
   group: isovalent.com
   names:
-    categories:
-    - smartswitch
     kind: SmartSwitchNetworkPolicy
     listKind: SmartSwitchNetworkPolicyList
     plural: smartswitchnetworkpolicies
-    shortNames:
-    - snp
     singular: smartswitchnetworkpolicy
   scope: Namespaced
   versions:
@@ -133,9 +129,8 @@ spec:
                             - protocol
                             type: object
                             x-kubernetes-validations:
-                            - message: endPort requires port to be set and non-zero
-                              rule: '!has(self.endPort) || (has(self.port) && self.port
-                                > 0)'
+                            - message: endPort requires port to be set also
+                              rule: '!has(self.endPort) || has(self.port)'
                             - message: endPort must be greater than port
                               rule: '!has(self.endPort) || self.endPort > self.port'
                             - message: ICMP protocol does not support port numbers;

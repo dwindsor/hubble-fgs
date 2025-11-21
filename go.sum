@@ -312,8 +312,8 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/isovalent/ipa v1.19.0-pre.1.0.20251118191240-f757da0ef30d h1:2s8mahIzAtm6RNiraPXL/gTdcll08x8beFx9wrUcBOY=
 github.com/isovalent/ipa v1.19.0-pre.1.0.20251118191240-f757da0ef30d/go.mod h1:RBq9Yab4isjhGUaeeYitX4ubl4VPwAEYOTGGKouoeCY=
-github.com/isovalent/ipa/k8s v1.19.0-pre.0.0.20251118191240-f757da0ef30d h1:Bh33WhLepFKDZo5Qh+GPe9gd8mcgJ2A3/cMsYMp5Dio=
-github.com/isovalent/ipa/k8s v1.19.0-pre.0.0.20251118191240-f757da0ef30d/go.mod h1:abbaUToElZ6edYnx8+eRBXNP+pIxdMkYEdjoz/LL9pg=
+github.com/isovalent/ipa/k8s v1.19.0-pre.1 h1:FlkKqLlClS/eGdG8ny0toWfSWJn+g4rEMmWwReAS0JA=
+github.com/isovalent/ipa/k8s v1.19.0-pre.1/go.mod h1:abbaUToElZ6edYnx8+eRBXNP+pIxdMkYEdjoz/LL9pg=
 github.com/isovalent/metricstool v0.1.4 h1:+73vMhYhB8uDWLV/nuvV81XA5smLvGefKRJ2KIDbXP0=
 github.com/isovalent/metricstool v0.1.4/go.mod h1:U29qioTLC+X+fOmlhIUecWs/dJkh3APyhwZuUDFXVc4=
 github.com/jhump/protoreflect v1.16.0 h1:54fZg+49widqXYQ0b+usAFHbMkBGR4PpXrsHc8+TBDg=

@@ -38,7 +38,7 @@ type SmartSwitchNetworkPolicyList struct {
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:resource:categories={smartswitch},singular="smartswitchnetworkpolicy",path="smartswitchnetworkpolicies",scope="Namespaced",shortName={snp}
+// +kubebuilder:resource:singular="smartswitchnetworkpolicy",path="smartswitchnetworkpolicies",scope="Namespaced"
 
 // SmartSwitchNetworkPolicy is the Schema for the smartswitches netops API
 type SmartSwitchNetworkPolicy struct {
@@ -88,7 +88,7 @@ type SmartSwitchNetwork struct {
 // SmartSwitchProtocolPort provides the protocol to apply the policy
 // against with an optional port or a port range. When no ports are specified
 // the port is a wildcard and policy applies against any port.
-// +kubebuilder:validation:XValidation:rule="!has(self.endPort) || (has(self.port) && self.port > 0)",message="endPort requires port to be set and non-zero"
+// +kubebuilder:validation:XValidation:rule="!has(self.endPort) || has(self.port)",message="endPort requires port to be set also"
 // +kubebuilder:validation:XValidation:rule="!has(self.endPort) || self.endPort > self.port",message="endPort must be greater than port"
 // +kubebuilder:validation:XValidation:rule="self.protocol != 'ICMP' || !has(self.port)",message="ICMP protocol does not support port numbers; port field must be omitted"
 type SmartSwitchProtocolPort struct {

@@ -33,7 +33,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/isovalent/ipa v1.19.0-pre.1.0.20251118191240-f757da0ef30d
-	github.com/isovalent/ipa/k8s v1.19.0-pre.0.0.20251118191240-f757da0ef30d
+	github.com/isovalent/ipa/k8s v1.19.0-pre.1
 	github.com/joho/godotenv v1.5.1
 	github.com/mennanov/fieldmask-utils v1.1.3
 	github.com/miekg/dns v1.1.68
