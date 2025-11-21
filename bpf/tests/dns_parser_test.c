@@ -23,19 +23,19 @@ test_dns_parser(struct __sk_buff *skb)
 	case ETH_P_IP:
 		ip4 = (struct iphdr *)(long)skb->data;
 		if (ip4 + 1 > (void *)(long)skb->data_end) {
-			error = -2;
+			error = -64;
 			goto test_give_up;
 		}
 
 		if (ip4->protocol != IPPROTO_UDP) {
 			// Skip non-UDP packets.
-			error = -3;
+			error = -65;
 			goto test_give_up;
 		}
 
 		udp = (void *)ip4 + (ip4->ihl * sizeof(u32)); // ihl is in 32 bits words.
 		if (udp + 1 > (void *)(long)skb->data_end) {
-			error = -4;
+			error = -66;
 			goto test_give_up;
 		}
 		ip = ip4;
@@ -43,7 +43,7 @@ test_dns_parser(struct __sk_buff *skb)
 	case ETH_P_IPV6:
 		ip6 = (struct ipv6hdr *)(long)skb->data;
 		if (ip6 + 1 > (void *)(long)skb->data_end) {
-			error = -2;
+			error = -67;
 			goto test_give_up;
 		}
 
@@ -52,27 +52,27 @@ test_dns_parser(struct __sk_buff *skb)
 		// test cases for this
 		if (ip6->nexthdr != IPPROTO_UDP) {
 			// Skip non-UDP packets.
-			error = -3;
+			error = -68;
 			goto test_give_up;
 		}
 
 		udp = (void *)ip6 + sizeof(struct ipv6hdr); // ihl is in 32 bits words.
 		if (udp + 1 > (void *)(long)skb->data_end) {
-			error = -4;
+			error = -69;
 			goto test_give_up;
 		}
 		ip = ip6;
 		break;
 	default:
 		// skip non IP packets.
-		error = -1;
+		error = -70;
 		goto test_give_up;
 	}
 
 	// Verify if that source (answer) or dest (query) port is DNS.
 	if (udp->source != bpf_htons(DNS_PORT) && udp->dest != bpf_htons(DNS_PORT)) {
 		// Skip non-DNS packets.
-		error = -5;
+		error = -71;
 		goto test_give_up;
 	}
 

@@ -69,6 +69,8 @@ func loadDNSTestCollection(t *testing.T) *ebpf.Collection {
 	collSpec.Maps[DomainToIDMapName].MaxEntries = 1024
 	collSpec.Maps[IDToDomainMapName].MaxEntries = 1024
 	collSpec.Maps[RequestIDMapName].MaxEntries = 1024
+	// Normally, the max entries is DNS_ERR_MAX, but the testing harness uses more errors
+	collSpec.Maps[ErrorMapName].MaxEntries = 128
 
 	collOpts := ebpf.CollectionOptions{}
 	if verifierLogs != nil && *verifierLogs {
