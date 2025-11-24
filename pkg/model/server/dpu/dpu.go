@@ -122,7 +122,7 @@ func (p *peer) SendPolicy(rule *DPUPolicyRule) error {
 	// but making it shorter runs the risk of skipping a rule because the channel is busy and right now we do not
 	// reconcile rules between FWA and AGW outside of the initial grpc connection, so if we skip a rule it is
 	// lost until the next reconnect
-	case <-time.After(1 * time.Second):
+	case <-time.After(2 * time.Second):
 		return fmt.Errorf("peer timed out, cannot submit policy rule")
 	}
 	return nil
@@ -131,7 +131,7 @@ func (p *peer) SendPolicy(rule *DPUPolicyRule) error {
 func (p *peer) SendConfig(cfg *v1alpha.StreamDatapathConfigResponse) error {
 	select {
 	case p.cfgCh <- cfg:
-	case <-time.After(1 * time.Second):
+	case <-time.After(2 * time.Second):
 		return fmt.Errorf("peer timed out, cannot submit config object")
 	}
 	return nil
