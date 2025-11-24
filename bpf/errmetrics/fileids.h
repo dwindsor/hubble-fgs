@@ -12,3 +12,4 @@
 //
 // Enterprise file IDs should start at 128 as 0 to 128 is reserved for OSS files
 fileid__("dns_pstree.h", 128)
+fileid__("dns_parser.h", 129)

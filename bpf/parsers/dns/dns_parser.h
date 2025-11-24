@@ -420,6 +420,12 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 done:
 	if (error <= 0) {
 		error_idx = -error;
+
+		if (error_idx >= DNS_ERR_MAX) {
+			errmetrics(EINVAL);
+			return -DNS_ERR_MAX;
+		}
+
 		counter = map_lookup_elem(&tg_dns_error_map, &error_idx);
 		if (counter)
 			(*counter)++; // It's a per cpu array
