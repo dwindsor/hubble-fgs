@@ -20,7 +20,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/version"
 
-	"github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"github.com/isovalent/hubble-fgs/pkg/config"
@@ -92,7 +91,7 @@ func NewAgent(dpuListener *dpu.DPUListener, policyHandler switchpolicy.PolicyHan
 	}
 	library.GetRepository().AddConfig(configObj)
 
-	return &AgentGateway{
+	agw := &AgentGateway{
 		Cfg:           &config.Config{},
 		Token:         token.GetAgentToken(),
 		serviceMac:    mac,
@@ -103,6 +102,26 @@ func NewAgent(dpuListener *dpu.DPUListener, policyHandler switchpolicy.PolicyHan
 		dpuListener:   dpuListener,
 		PolicyHandler: policyHandler,
 	}
+
+	// Initialize the inventory handler with callback functions (no circular reference)
+	agw.InventoryHandler = switchstatus.NewInventoryHandler(
+		switchstatus.InventoryDataProvider{
+			GetDPUStatus: func() ([]dpu.DPUReportStatus, error) {
+				return agw.dpuListener.GetDPUStatus()
+			},
+			GetK8sNamespace: func() string {
+				if agw.Token == nil {
+					return ""
+				}
+				return agw.Token.K8sNamespace()
+			},
+			GetServiceMAC: func() string {
+				return agw.serviceMac
+			},
+		},
+	)
+
+	return agw
 }
 
 type AgentGateway struct {
@@ -124,8 +143,9 @@ type AgentGateway struct {
 	cpaPortLow  uint16
 	cpaPortHigh uint16
 
-	dpuListener   *dpu.DPUListener
-	PolicyHandler switchpolicy.PolicyHandler
+	dpuListener      *dpu.DPUListener
+	PolicyHandler    switchpolicy.PolicyHandler
+	InventoryHandler switchstatus.InventoryHandler
 
 	sync.RWMutex
 }
@@ -252,37 +272,6 @@ func (agw *AgentGateway) SetConnectionStatus(ctx context.Context, status bool, n
 // the controller connection current status.
 func notifyHA(ctx context.Context, status bool) {
 	nxos.Nexus.NotifyWatching(ctx, status)
-}
-
-// GetSmartSwitchInventory creates and returns a SmartSwitchInventory CR for the agent.
-func (agw *AgentGateway) GetSmartSwitchInventory(ctx context.Context) *v1alpha1.SmartSwitch {
-	logger.GetLogger().Debug("Creating SmartSwitchInventory resource")
-
-	// Get the serial number from NXOS. This is the name of the SmartSwitch CR.
-	serial := nxos.Nexus.GetSerialNum(ctx)
-	if serial == "" {
-		logger.GetLogger().Error("Failed to get serial number")
-		return nil
-	}
-	version := agw.Version()
-
-	// TODO: DPU statuses
-	ss := &switchstatus.SmartSwitchInventoryFields{
-		BiosVersion:     "",
-		ServiceIP:       agw.Ip,
-		ServiceMAC:      agw.serviceMac,
-		SerialNumber:    serial,
-		SoftwareVersion: version,
-		DPUInventories:  []switchstatus.DPUInventory{},
-	}
-
-	// Create the SmartSwitchInventory CR
-	sss, err := switchstatus.GetSmartSwitchInventory(serial, agw.Token.K8sNamespace(), ss)
-	if err != nil {
-		logger.GetLogger().Error("failed to create SmartSwitchInventory resource", logfields.Error, err)
-		return nil
-	}
-	return sss
 }
 
 // SetK8sCtlrAuthToken sets the Kubernetes controller authentication token in both the AgentToken and Nxos structs,

@@ -128,6 +128,8 @@ func reportRequestToDPU(req *v1alpha.ReportStatusRequest) *DPUReportStatus {
 		DpRestart:      req.Status.DataplaneRestarts,
 		LastDpCrash:    req.Status.LastDataplaneRestart,
 		LastFwaCrash:   req.Status.LastFwaCrashTime,
+		PortLow:        req.Status.PortLow,
+		PortHigh:       req.Status.PortHigh,
 	}
 }
 

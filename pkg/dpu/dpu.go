@@ -520,6 +520,24 @@ func (dpu *DPUAgent) ConfigEventLoop(_ context.Context) error {
 	}
 }
 
+// getPortRange retrieves the port range from DPU config in repository
+func (dpu *DPUAgent) getPortRange() (uint32, uint32) {
+	var dpuConfig v1alpha.DpuConfig
+	err := library.GetRepository().GetConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, &dpuConfig)
+	if err != nil && !library.IsConfigNotFound(err) {
+		logger.GetLogger().Error("Failed to get dpu config", "error", err)
+		return 0, 0
+	} else if dpuConfig.PortLow != 0 && dpuConfig.PortHigh != 0 {
+		// Use values from repository config
+		logger.GetLogger().Debug("Using port range from repository config", "portLow", dpuConfig.PortLow, "portHigh", dpuConfig.PortHigh)
+		return dpuConfig.PortLow, dpuConfig.PortHigh
+	} else {
+		// Error or Repository config exists but ports not set, use local config
+		logger.GetLogger().Debug("Repository config exists but ports not set, using local config", "portLow", 0, "portHigh", 0)
+		return 0, 0
+	}
+}
+
 func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
 	backoff := time.Second
 	attempts := 0
@@ -530,6 +548,10 @@ func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
 			return nil
 		case <-time.After(backoff):
 			csum := dpu.Checksum()
+
+			// getPortRange retrieves the port range from DPU config in repository
+			portLow, portHigh := dpu.getPortRange()
+
 			status := &v1alpha.ReportStatus{
 				AgentUid:             dpu.AgentId,
 				DpVersion:            dpu.Dataplane.Version(),
@@ -546,6 +568,8 @@ func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
 				DataplaneRestarts:    dpu.DpCrash,
 				LastDataplaneRestart: timestamppb.New(dpu.LastDpCrash),
 				LastFwaCrashTime:     timestamppb.New(dpu.LastFwaCrash),
+				PortLow:              portLow,
+				PortHigh:             portHigh,
 			}
 
 			req := &v1alpha.ReportStatusRequest{

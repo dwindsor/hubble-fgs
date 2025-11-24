@@ -86,6 +86,8 @@ type DPUReportStatus struct {
 	DpRestart      uint32                 // DP crash (corresponds to reboot time)
 	LastDpCrash    *timestamppb.Timestamp // Last DP crash time
 	LastFwaCrash   *timestamppb.Timestamp // Last FWA crash time
+	PortLow        uint32
+	PortHigh       uint32
 }
 
 // Peer UID is unique in scope of agent so we never remove peers. And we expect

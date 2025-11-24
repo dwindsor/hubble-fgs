@@ -11,7 +11,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/cilium/tetragon/pkg/watcher/conf"
 	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
@@ -28,7 +27,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
-	"github.com/isovalent/hubble-fgs/pkg/model/switchstatus"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
@@ -183,11 +181,16 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu
 		utilruntime.Must(ipav1alpha1.AddToScheme(kubernetesManager.Manager.GetScheme()))
 		kubernetesManager.Start(ctx)
 
-		// Create the SmartSwitchInventory custom resource, if nxos is enabled.
-		if Config.EnableNXOS {
-			if err := addSmartSwitchInventoryCR(ctx, kubernetesManager, agwAgent); err != nil {
-				return err
-			}
+		// Start SmartSwitch inventory handler in waitGroup
+		if Config.EnableNXOS && agwAgent.InventoryHandler != nil {
+			waitGroup.Go(func() error {
+				err := agwAgent.InventoryHandler.AddSmartSwitchInventoryCR(ctx, kubernetesManager)
+				if err != nil {
+					logger.GetLogger().Error("start inventory handler", logfields.Error, err)
+					return fmt.Errorf("inventory handler failed: %w", err)
+				}
+				return nil
+			})
 		}
 
 		// Create connection monitor for health checking
@@ -232,48 +235,6 @@ func setK8sServiceAccountAuth(val interface{}) error {
 		return fmt.Errorf("K8sServiceAccountAuth must be a string, got %T", val)
 	}
 	enterpriseOption.Config.K8sServiceAccountAuth = strVal
-	return nil
-}
-
-func addSmartSwitchInventoryCR(ctx context.Context, kubernetesManager *manager.ControllerManager, agwAgent *agw.AgentGateway) error {
-	logger.GetLogger().Info("adding SmartSwitchInventory custom resource")
-	// Check if kubernetesManager is nil
-	if kubernetesManager == nil {
-		return fmt.Errorf("kubernetes manager is nil")
-	}
-
-	// Ensure the SmartSwitchInventory CRD is present in the cluster.
-	ssCrd := make(map[string]struct{})
-	ssCrd["smartswitches"+"."+isovalentcom.GroupName] = struct{}{} // HACK: CRD name should be used from IPA repo
-	if len(ssCrd) > 0 {
-		err := kubernetesManager.WaitCRDs(ctx, ssCrd)
-		if err != nil {
-			logger.GetLogger().Error("failed to wait for SmartSwitch CRD", logfields.Error, err)
-			return err
-		}
-	}
-	// Create the SmartSwitchInventory resource.
-	SmartSwitchInventory := agwAgent.GetSmartSwitchInventory(ctx)
-	// Apply the SmartSwitchInventory CR to the cluster.
-	// Retry a few times in case of transient errors like API server hasn't refreshed.
-	for i := 0; i < 3; i++ {
-		if err := switchstatus.ApplySmartSwitchInventoryCR(ctx, kubernetesManager, SmartSwitchInventory); err != nil {
-			if i == 2 {
-				logger.GetLogger().Error("failed to apply SmartSwitchInventory CR", logfields.Error, err)
-				return err
-			}
-			logger.GetLogger().Warn(
-				fmt.Sprintf("error applying SmartSwitchInventory CR, will retry (attempt %d/%d)", i+1, 3),
-				logfields.Error, err,
-			)
-			// Add exponential backoff before retrying
-			backoff := time.Duration(1<<i) * time.Second
-			time.Sleep(backoff)
-		} else {
-			break
-		}
-	}
-	logger.GetLogger().Info("successfully applied SmartSwitchInventory CR")
 	return nil
 }
 
