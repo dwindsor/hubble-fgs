@@ -15,7 +15,7 @@ test_dns_parser(struct __sk_buff *skb)
 	struct ipv6hdr *ip6;
 	struct udphdr *udp;
 	struct dnshdr *dns;
-	int8_t error;
+	int8_t error = 0;
 	uint32_t error_idx, *counter;
 	int send;
 
@@ -86,14 +86,16 @@ test_dns_parser(struct __sk_buff *skb)
 	if (parser_ret < 0) {
 		DEBUG("parser failed with: %d", parser_ret);
 	}
-	return SK_PASS;
+
+	if (parser_ret == DNS_PARSER_SUCCESS)
+		return DNS_PARSER_SUCCESS;
 
 test_give_up:
-	if (error <= 0) {
+	if (error < 0) {
 		error_idx = -error;
 		counter = map_lookup_elem(&tg_dns_error_map, &error_idx);
 		if (counter)
 			(*counter)++; // It's a per cpu array
 	}
-	return SK_PASS;
+	return DNS_PARSER_SKIP;
 }
