@@ -140,7 +140,7 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 // parses the IPv4 given along an A-type answer and writes it into the domain
 // name to IP map. It returns the offset needed to advance into the data to skip
 // the answer on success and < 0 on failure.
-__attribute__((noinline)) int8_t
+__attribute__((noinline)) int
 parse_dns_answer(struct __sk_buff *skb, int16_t off)
 {
 	__u8 first_byte, offset;
@@ -267,8 +267,8 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 	void *data, *data_end;
 	char *name, *req_name;
 	void *id_found;
-	int name_len, max_ancount;
-	int8_t error, ret;
+	int name_len, max_ancount, ret;
+	int8_t error;
 	uint16_t qtype;
 	uint32_t error_idx, *counter, transaction_id;
 	uint32_t zero = 0;
