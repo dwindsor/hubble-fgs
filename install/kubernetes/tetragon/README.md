@@ -28,7 +28,7 @@ Helm chart for Tetragon Enterprise
 | dashboards.network.enabled | bool | `false` | Enable dashboards for layer 3/4 networking. |
 | dnsPolicy | string | `"Default"` | DNS policy for Tetragon pods.  https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy |
 | enabled | bool | `true` |  |
-| export | object | `{"argsOverride":[],"commandOverride":[],"extraArgs":{},"extraEnv":[],"extraVolumeMounts":[],"filenames":["tetragon.log"],"mode":"","securityContext":{},"stdout":{"image":{"override":null,"repository":"quay.io/isovalent/hubble-export-stdout","tag":"v1.1.0"}}}` | Tetragon events export settings |
+| export | object | `{"argsOverride":[],"commandOverride":[],"extraArgs":{},"extraEnv":[],"extraVolumeMounts":[],"filenames":["tetragon.log"],"mode":"","securityContext":{},"stdout":{"image":{"override":null,"repository":"quay.io/isovalent/hubble-export-stdout","tag":"v1.1.1"}}}` | Tetragon events export settings |
 | exportDirectory | string | `"/var/run/cilium/tetragon"` | Directory to put Tetragon JSON export files. |
 | extraConfigmapMounts | list | `[]` |  |
 | extraHostPathMounts | list | `[]` |  |

@@ -190,7 +190,7 @@ export:
     image:
       override: ~
       repository: quay.io/isovalent/hubble-export-stdout
-      tag: v1.1.0
+      tag: v1.1.1
 # -- Install tracing policies.
 # These options require the TracingPolicy CRD to be present in the cluster. Normally Tetragon CRDs are installed by
 # either the Tetragon operator (which is installed by the same Helm chart) or by the same Helm chart
