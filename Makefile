@@ -619,7 +619,7 @@ metrics-docs: tetragon-metrics-docs ## Generate metrics reference.
 	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):$(CURDIR) -w $(CURDIR) $(GO_IMAGE) ./tetragon-metrics-docs appmodel >> $(METRICS_DOCS_PATH)
 
 .PHONY: gen-docs-references
-	gen-docs-references: generate-flags metrics-docs tracing-policy-docs ## Convenience alias to generate all docs references.
+gen-docs-references: generate-flags metrics-docs ## Convenience alias to generate all docs references.
 
 .PHONY: validate
 validate: check format generate-flags metrics-docs ## Convenience target running linters, formatters and generators across the codebase.
