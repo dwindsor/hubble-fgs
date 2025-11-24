@@ -267,8 +267,7 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 	void *data, *data_end;
 	char *name, *req_name;
 	void *id_found;
-	int name_len, max_ancount, ret;
-	int8_t error;
+	int name_len, max_ancount, ret, error;
 	uint16_t qtype;
 	uint32_t error_idx, *counter, transaction_id;
 	uint32_t zero = 0;
