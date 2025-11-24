@@ -79,7 +79,7 @@ jobs:
       - name: Update ClusterServiceVersion
         env:
           # renovate: datasource=github-releases depName=mikefarah/yq
-          yq_version: 4.48.2
+          yq_version: 4.49.1
           # renovate: datasource=docker depName=quay.io/cilium/tetragon-rthooks
           rthooks_tag: v0.5
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
