@@ -11,7 +11,6 @@
     "v1.18",
     "v1.17",
     "v1.16",
-    "v1.15",
   ],
   "cloneSubmodules": true,
   "packageRules": [
@@ -23,7 +22,6 @@
         "v1.18",
         "v1.17",
         "v1.16",
-        "v1.15",
       ]
     },
     {
@@ -34,7 +32,6 @@
         "v1.18",
         "v1.17",
         "v1.16",
-        "v1.15",
       ]
     },
     {
@@ -60,19 +57,6 @@
       "matchBaseBranches": [
         "v1.17",
         "v1.16",
-      ]
-    },
-    {
-      "enabled": true,
-      "groupName": "Go",
-      "matchPackageNames": [
-        "docker.io/library/golang",
-        "go"
-      ],
-      "allowedVersions": "/^1\\.23\\.[0-9]+-?(alpine)?$/",
-      "matchBaseBranches": [
-        "v1.15",
-        "v1.14",
       ]
     },
     {
