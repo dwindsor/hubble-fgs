@@ -350,6 +350,18 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 	}
 	data += name_len;
 
+	// Parse QType and QClass
+	if (data + sizeof(u16) * 2 > data_end) {
+		error = -DNS_ERR_QTYPE_QCLASS_OVERFLOW;
+		goto done;
+	}
+	qtype = bpf_ntohs(*(uint16_t *)data);
+	// Skip non A or AAAA query types (also in standard query responses)
+	if (qtype != A_RECORD && qtype != AAAA_RECORD)
+		return DNS_PARSER_SKIP;
+
+	data += sizeof(u16) * 2;
+
 	// Record the request ID or verify the response domain is correct with the ID.
 	name = map_lookup_elem(&tg_h_dns_name, &zero);
 	if (unlikely(!name)) {
@@ -382,18 +394,6 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 		error = -DNS_ERR_REQID_DELETE_FAILED;
 		goto done;
 	}
-
-	// Parse QType and QClass
-	if (data + sizeof(u16) * 2 > data_end) {
-		error = -DNS_ERR_QTYPE_QCLASS_OVERFLOW;
-		goto done;
-	}
-	qtype = bpf_ntohs(*(uint16_t *)data);
-	if (qtype != A_RECORD && qtype != AAAA_RECORD) {
-		error = -DNS_ERR_INVALID_QTYPE;
-		goto done;
-	}
-	data += sizeof(u16) * 2;
 
 	// Parse Answer Section
 	max_ancount = bpf_ntohs(dns->ancount) > MAX_DNS_ANSWERS_UDP ? MAX_DNS_ANSWERS_UDP : bpf_ntohs(dns->ancount);

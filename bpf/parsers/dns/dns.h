@@ -79,7 +79,8 @@
 #define DNS_ERR_NAME_MISMATCH	       8
 #define DNS_ERR_REQID_DELETE_FAILED    9
 #define DNS_ERR_QTYPE_QCLASS_OVERFLOW  10
-#define DNS_ERR_INVALID_QTYPE	       11
+// Unused for now as we ignore non A and AAAA QType
+#define DNS_ERR_INVALID_QTYPE 11
 // Errors related to parsing labels
 #define DNS_ERR_LABEL_OFFSET_OVERFLOW 12
 #define DNS_ERR_LABEL_NAME_OVERFLOW   13
