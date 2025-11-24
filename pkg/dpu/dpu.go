@@ -525,17 +525,16 @@ func (dpu *DPUAgent) getPortRange() (uint32, uint32) {
 	var dpuConfig v1alpha.DpuConfig
 	err := library.GetRepository().GetConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, &dpuConfig)
 	if err != nil && !library.IsConfigNotFound(err) {
-		logger.GetLogger().Error("Failed to get dpu config", "error", err)
-		return 0, 0
-	} else if dpuConfig.PortLow != 0 && dpuConfig.PortHigh != 0 {
-		// Use values from repository config
-		logger.GetLogger().Debug("Using port range from repository config", "portLow", dpuConfig.PortLow, "portHigh", dpuConfig.PortHigh)
-		return dpuConfig.PortLow, dpuConfig.PortHigh
-	} else {
-		// Error or Repository config exists but ports not set, use local config
-		logger.GetLogger().Debug("Repository config exists but ports not set, using local config", "portLow", 0, "portHigh", 0)
+		logger.GetLogger().Error("get dpu config", logfields.Error, err)
 		return 0, 0
 	}
+	if dpuConfig.PortLow != 0 && dpuConfig.PortHigh != 0 {
+		// Use values from repository config
+		return dpuConfig.PortLow, dpuConfig.PortHigh
+	}
+	// Error or Repository config exists but ports not set, use local config
+	logger.GetLogger().Debug("Repository config exists but ports not set, using local config", "portLow", 0, "portHigh", 0)
+	return 0, 0
 }
 
 func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {

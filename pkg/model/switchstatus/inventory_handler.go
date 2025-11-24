@@ -86,8 +86,8 @@ func (h *inventoryHandler) periodicUpdateLoop(ctx context.Context, kubernetesMan
 				continue
 			}
 
-			// Check if NXOS connection is healthy before attempting update
-			if !h.isNXOSConnectionHealthy() {
+			// Check if controller connection is healthy before attempting update
+			if !h.isControllerConnectionHealthy() {
 				logger.GetLogger().Info("controller is not connected, skipping inventory update")
 				continue
 			}
@@ -100,9 +100,9 @@ func (h *inventoryHandler) periodicUpdateLoop(ctx context.Context, kubernetesMan
 	}
 }
 
-// isNXOSConnectionHealthy checks if the NXOS connection to controller is healthy
-func (h *inventoryHandler) isNXOSConnectionHealthy() bool {
-	// Check NXOS connection status directly
+// isControllerConnectionHealthy checks if the controller connection is healthy
+func (h *inventoryHandler) isControllerConnectionHealthy() bool {
+	// Check controller connection status directly
 	connectionStatus := nxos.Nexus.Ctrlr.ConnectionStatus
 
 	// Connection is healthy if status is success
@@ -174,7 +174,7 @@ func (h *inventoryHandler) updateInventory(ctx context.Context, kubernetesManage
 
 	// Apply the CR to the cluster with retry logic
 	for i := 0; i < MAX_INVENTORY_UPDATE_RETRIES; i++ {
-		if !h.isNXOSConnectionHealthy() {
+		if !h.isControllerConnectionHealthy() {
 			logger.GetLogger().Info("Controller is not connected before applying SmartSwitchInventory CR, skipping update and retries")
 			break
 		}
