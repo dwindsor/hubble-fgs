@@ -40,7 +40,6 @@
       <ComponentGroupRef Id="cgrp.eBPFWindows" />
       <ComponentGroupRef Id="comp.TetragonBpfDrivers" />
       <ComponentGroupRef Id="comp.TetragonBinaries" />
-      <ComponentGroupRef Id="comp.ShawlServiceWrapper" />
       <ComponentRef Id="comp.TracingPolicyDir" />
       <ComponentRef Id="comp.OtherPolicyDir" />
     </Feature>
@@ -119,19 +118,19 @@
       <Custom Action="Tetra_eBPF_store_setup_HKCU_install" After="Tetra_eBPF_store_clear_HKCU_install" Condition="NOT Installed OR REINSTALL" />
       <Custom Action="Tetra_eBPF_store_clear_HKCU_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
 
-      <!-- Shawl service wrapper -->
-      <Custom Action="Shawl_install" After="InstallFiles" Condition="NOT Installed" />
-      <Custom Action="Shawl_install_rollback" Before="Shawl_install" Condition="NOT Installed" />
-      <Custom Action="Shawl_start" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Shawl_start_rollback" Before="Shawl_start" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Shawl_stop" After="InstallInitialize" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="Shawl_stop_rollback" Before="Shawl_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="Shawl_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="Shawl_uninstall_rollback" Before="Shawl_uninstall" Condition='Installed AND (REMOVE="ALL")' />
+      <!-- Tetragon Service -->
+      <Custom Action="Tetragon_Service_install" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="Tetragon_Service_install_rollback" Before="Tetragon_Service_install" Condition="NOT Installed" />
+      <Custom Action="Tetragon_Service_start" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Tetragon_Service_start_rollback" Before="Tetragon_Service_start" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Tetragon_Service_stop" After="InstallInitialize" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="Tetragon_Service_stop_rollback" Before="Tetragon_Service_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="Tetragon_Service_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Tetragon_Service_uninstall_rollback" Before="Tetragon_Service_uninstall" Condition='Installed AND (REMOVE="ALL")' />
 
       <!-- eBPFSvc -->
-      <Custom Action="eBPFSvc_start" Before="Shawl_start" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="eBPFSvc_start_rollback" Before="Shawl_start_rollback" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPFSvc_start" Before="Tetragon_Service_start" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="eBPFSvc_start_rollback" Before="Tetragon_Service_start_rollback" Condition="NOT Installed OR REINSTALL" />
 
     </InstallExecuteSequence>
 

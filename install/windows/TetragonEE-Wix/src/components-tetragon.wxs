@@ -28,6 +28,40 @@
       <RemoveFolder Id="dir.OtherPolicyDir" On="uninstall" />
     </Component>
 
+    <!-- TetragonEnterprise Service-->
+    <CustomAction Id="Tetragon_Service_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetragon_Service_install" Before="Tetragon_Service_install" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe create TetragonEnterprise type=own start=auto binpath="\"[dir.TetragonBinaries]Tetragon.exe\" --enable-tcp --enable-udp --enable-application-model --export-filename \"[INSTALLFOLDER]tetragon-events.json\""'/>
+
+    <CustomAction Id="Tetragon_Service_install_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetragon_Service_install_rollback" Before="Tetragon_Service_install_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe delete TetragonEnterprise'/>
+
+    <CustomAction Id="Tetragon_Service_start" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetragon_Service_start" Before="Tetragon_Service_start" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe start TetragonEnterprise'/>
+
+    <CustomAction Id="Tetragon_Service_start_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetragon_Service_start_rollback" Before="Tetragon_Service_start_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe stop TetragonEnterprise'/>
+
+    <CustomAction Id="Tetragon_Service_stop" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetragon_Service_stop" Before="Tetragon_Service_stop" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe stop TetragonEnterprise'/>
+
+    <CustomAction Id="Tetragon_Service_stop_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetragon_Service_stop_rollback" Before="Tetragon_Service_stop_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c net.exe start TetragonEnterprise'/>
+
+    <CustomAction Id="Tetragon_Service_uninstall" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetragon_Service_uninstall" Before="Tetragon_Service_uninstall" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe delete TetragonEnterprise'/>
+
+    <CustomAction Id="Tetragon_Service_uninstall_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Tetragon_Service_uninstall_rollback" Before="Tetragon_Service_uninstall_rollback" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe create TetragonEnterprise type=own start=auto binpath="\"[dir.TetragonBinaries]Tetragon.exe\" --enable-tcp --enable-udp --enable-application-model --export-filename \"[INSTALLFOLDER]tetragon-events.json"'/>
+
+
     <!-- NtosEbpfExt -->
     <CustomAction Id="NtosEbpfExt_Driver_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
     <SetProperty Id="NtosEbpfExt_Driver_install" Before="NtosEbpfExt_Driver_install" Sequence="execute"
