@@ -16,11 +16,17 @@ COPY install/linux-tarball/systemd/tetragon-enterprise.service /usr/lib/systemd/
 COPY install/linux-tarball/systemd /usr/local/lib/tetragon/systemd
 
 # Our binaries
-COPY --from=tetragon-slim-release /usr/bin/tetragon /usr/local/bin/
-COPY --from=tetragon-slim-release /usr/bin/tetra /usr/local/bin/
+COPY --from=tetragon-slim-release /usr/bin/tetrabox /usr/local/bin/
 
 # BPF files and tetragon-fs-scanner
 COPY --from=tetragon-slim-release /var/lib/tetragon /usr/local/lib/tetragon/bpf
+
+# make symbolic links
+RUN --mount=type=bind,from=alpine,source=/bin,target=/bin \
+    --mount=type=bind,from=alpine,source=/lib,target=/lib \
+	ln -s /usr/local/bin/tetrabox /usr/local/bin/tetragon && \
+	ln -s /usr/local/bin/tetrabox /usr/local/bin/tetra    && \
+	ln -s /usr/local/bin/tetrabox /usr/local/lib/tetragon/tetragon-fs-scanner
 
 # We need one layer
 FROM scratch AS linux-tarball-2
