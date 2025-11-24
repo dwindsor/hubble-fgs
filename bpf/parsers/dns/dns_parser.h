@@ -203,7 +203,6 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 
 	// Skip non A and AAAA records
 	if (type != A_RECORD && type != AAAA_RECORD) {
-		data_len &= 255; // TODO this is an incorrect approximation
 		return offset + data_len;
 	}
 
