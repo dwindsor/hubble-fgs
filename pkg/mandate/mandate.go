@@ -49,9 +49,12 @@ func (p *Policy) init(m *Mandate) error {
 	}
 	inheritURL(p.url_, m.url_)
 
-	// if there is a mode set either in either the mandate or the poicy conf section, save it to
+	// if there is a mode set either in either the mandate or the policy conf section, save it to
 	// the policy
-	p.mode_ = policyMode(m, p)
+	p.mode_, err = policyMode(m, p)
+	if err != nil {
+		return fmt.Errorf("failed to parse policy mode %q: %s", p.mode_, err)
+	}
 	return nil
 }
 
@@ -63,11 +66,19 @@ func (p *Policy) ownMode() string {
 	return ""
 }
 
-func policyMode(m *Mandate, p *Policy) string {
+func policyMode(m *Mandate, p *Policy) (string, error) {
+	var mode string
 	if p.Conf != nil && p.Mode != "" {
-		return p.Mode
+		mode = p.Mode
+	} else {
+		mode = m.Conf.Mode
 	}
-	return m.Conf.Mode
+	switch mode {
+	case "", "enforce", "monitor":
+		return mode, nil
+	default:
+		return mode, fmt.Errorf("invalid mode: %q", mode)
+	}
 }
 
 type policyData = []byte
