@@ -19,12 +19,12 @@ import (
 )
 
 const (
-	// DPU inventory update interval (10 minute)
-	DPU_INVENTORY_UPDATE_INTERVAL = 10 * time.Minute
-	MAX_INVENTORY_UPDATE_RETRIES  = 3
+	// SmartSwitch inventory update interval (10 minute)
+	INVENTORY_UPDATE_INTERVAL    = 10 * time.Minute
+	MAX_INVENTORY_UPDATE_RETRIES = 3
 )
 
-// InventoryHandler manages periodic DPU inventory updates
+// InventoryHandler manages periodic SmartSwitch inventory updates
 type InventoryHandler interface {
 	AddSmartSwitchInventoryCR(ctx context.Context, kubernetesManager *manager.ControllerManager) error
 }
@@ -54,25 +54,27 @@ func NewInventoryHandler(dataProvider InventoryDataProvider) InventoryHandler {
 // AddSmartSwitchInventoryCR starts the periodic DPU inventory update process (blocking)
 func (h *inventoryHandler) AddSmartSwitchInventoryCR(ctx context.Context, kubernetesManager *manager.ControllerManager) error {
 	logger.GetLogger().Info("starting inventory handler with initial CR creation and periodic updates",
-		"interval", DPU_INVENTORY_UPDATE_INTERVAL)
+		"interval", INVENTORY_UPDATE_INTERVAL)
 
 	// First, ensure the SmartSwitch CRD is available and create initial CR
 	if err := h.createInitialSmartSwitchCR(ctx, kubernetesManager); err != nil {
-		logger.GetLogger().Error("failed to create initial SmartSwitch CR", "error", err)
-		return fmt.Errorf("create initial SmartSwitch CR: %w", err)
+		logger.GetLogger().Error("create initial SmartSwitch CR failed, retry...", logfields.Error, err)
+		// Not gating startup on failure to create initial SmartSwitch Inventory CR.
 	}
 
 	// Run the periodic loop directly (blocking until context is cancelled)
 	h.periodicUpdateLoop(ctx, kubernetesManager)
 
-	logger.GetLogger().Info("stopped periodic DPU inventory updates")
+	logger.GetLogger().Info("stopped periodic SmartSwitch inventory updates")
 	return nil
 }
 
 // periodicUpdateLoop runs the periodic update loop
 func (h *inventoryHandler) periodicUpdateLoop(ctx context.Context, kubernetesManager *manager.ControllerManager) {
-	ticker := time.NewTicker(DPU_INVENTORY_UPDATE_INTERVAL)
+	ticker := time.NewTicker(INVENTORY_UPDATE_INTERVAL)
 	defer ticker.Stop()
+
+	logger.GetLogger().Debug("Starting periodic inventory update loop", "interval", INVENTORY_UPDATE_INTERVAL)
 
 	for {
 		select {
@@ -93,7 +95,7 @@ func (h *inventoryHandler) periodicUpdateLoop(ctx context.Context, kubernetesMan
 			}
 
 			if err := h.updateInventory(ctx, kubernetesManager); err != nil {
-				logger.GetLogger().Error("failed to update inventory during periodic update",
+				logger.GetLogger().Error("update inventory during periodic update",
 					logfields.Error, err)
 			}
 		}
@@ -111,7 +113,7 @@ func (h *inventoryHandler) isControllerConnectionHealthy() bool {
 
 // updateInventory performs the actual inventory update
 func (h *inventoryHandler) updateInventory(ctx context.Context, kubernetesManager *manager.ControllerManager) error {
-	logger.GetLogger().Debug("updating DPU inventory")
+	logger.GetLogger().Debug("updating smartswitch inventory")
 
 	// Create DPU inventories from current DPU status
 	dpuInventories, err := h.createDPUInventories()
@@ -135,21 +137,9 @@ func (h *inventoryHandler) updateInventory(ctx context.Context, kubernetesManage
 		DPUInventories:  dpuInventories,
 	}
 
-	// Check if inventory has changed
+	// Check if inventory has changed (but don't update cache yet)
 	h.mu.Lock()
 	hasChanged := !h.inventoryFieldsEqual(h.lastInventory, newInventory)
-	if hasChanged {
-		// Update the cached last inventory
-		h.lastInventory = &SmartSwitchInventoryFields{
-			BiosVersion:     newInventory.BiosVersion,
-			ServiceIP:       newInventory.ServiceIP,
-			ServiceMAC:      newInventory.ServiceMAC,
-			SerialNumber:    newInventory.SerialNumber,
-			SoftwareVersion: newInventory.SoftwareVersion,
-			DPUInventories:  make([]DPUInventory, len(newInventory.DPUInventories)),
-		}
-		copy(h.lastInventory.DPUInventories, newInventory.DPUInventories)
-	}
 	h.mu.Unlock()
 
 	// Skip update if no changes detected
@@ -169,7 +159,7 @@ func (h *inventoryHandler) updateInventory(ctx context.Context, kubernetesManage
 	// Create the SmartSwitchInventory CR
 	smartSwitchInventory, err := GetSmartSwitchInventory(serial, h.dataProvider.GetK8sNamespace(), newInventory)
 	if err != nil {
-		return fmt.Errorf("failed to create SmartSwitchInventory resource: %w", err)
+		return err
 	}
 
 	// Apply the CR to the cluster with retry logic
@@ -182,6 +172,20 @@ func (h *inventoryHandler) updateInventory(ctx context.Context, kubernetesManage
 		err := ApplySmartSwitchInventoryCR(ctx, kubernetesManager, smartSwitchInventory)
 		if err == nil {
 			logger.GetLogger().Debug("successfully updated SmartSwitchInventory CR during periodic update")
+
+			// Only update cache AFTER successful CR application
+			h.mu.Lock()
+			h.lastInventory = &SmartSwitchInventoryFields{
+				BiosVersion:     newInventory.BiosVersion,
+				ServiceIP:       newInventory.ServiceIP,
+				ServiceMAC:      newInventory.ServiceMAC,
+				SerialNumber:    newInventory.SerialNumber,
+				SoftwareVersion: newInventory.SoftwareVersion,
+				DPUInventories:  make([]DPUInventory, len(newInventory.DPUInventories)),
+			}
+			copy(h.lastInventory.DPUInventories, newInventory.DPUInventories)
+			h.mu.Unlock()
+
 			return nil
 		}
 
@@ -263,7 +267,7 @@ func (h *inventoryHandler) createInitialSmartSwitchCR(ctx context.Context, kuber
 
 	// Create the initial SmartSwitchInventory CR by doing an immediate update
 	if err := h.updateInventory(ctx, kubernetesManager); err != nil {
-		return fmt.Errorf("failed to create initial SmartSwitch CR: %w", err)
+		return err
 	}
 
 	logger.GetLogger().Debug("successfully created initial SmartSwitchInventory CR")
