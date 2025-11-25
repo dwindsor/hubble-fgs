@@ -54,9 +54,10 @@ func externalClusterSAConfig(details string) (*rest.Config, error) {
 	}
 
 	tlsClientConfig := rest.TLSClientConfig{}
-	if _, err := certutil.NewPoolFromBytes([]byte(ca)); err == nil {
-		tlsClientConfig.CAData = []byte(ca)
+	if _, err := certutil.NewPoolFromBytes([]byte(ca)); err != nil {
+		return nil, fmt.Errorf("CA certificate parsing failure")
 	}
+	tlsClientConfig.CAData = []byte(ca)
 
 	return &rest.Config{
 		Host:            host,
