@@ -87,9 +87,15 @@ test_dns_parser(struct __sk_buff *skb)
 		DEBUG("parser failed with: %d", parser_ret);
 	}
 
-	if (parser_ret == DNS_PARSER_SUCCESS)
-		return DNS_PARSER_SUCCESS;
+	// Parsing was successful or skipped
+	if (parser_ret == DNS_PARSER_SUCCESS || parser_ret == DNS_PARSER_SKIP)
+		return parser_ret & 0x1;
 
+	// Parsing failed
+	if (parser_ret < 0)
+		return 2;
+
+	// This is not a the normal path, something went wrong in the test itself
 test_give_up:
 	if (error < 0) {
 		error_idx = -error;
@@ -97,5 +103,5 @@ test_give_up:
 		if (counter)
 			(*counter)++; // It's a per cpu array
 	}
-	return DNS_PARSER_SKIP;
+	return 3;
 }
