@@ -181,9 +181,9 @@ alerts-export-filename: {{ .Values.tetragon.alerts.exportFilename | quote }}
 {{- $useExt := and $extName (or $hasExtCA $hasExtCert $hasExtKey) }}
 {{- $useInline := or .Values.splunk_hec.tls.ca .Values.splunk_hec.tls.crt .Values.splunk_hec.tls.key }}
 {{- if or $useInline $useExt }}
-  - name: otel-splunk-tls
-    mountPath: /tls
-    readOnly: true
+    - name: otel-splunk-tls
+      mountPath: /tls
+      readOnly: true
 {{- end }}
 {{- end }}
 {{- end }}
