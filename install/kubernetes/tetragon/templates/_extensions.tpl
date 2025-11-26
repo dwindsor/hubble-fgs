@@ -78,6 +78,17 @@ alerts-export-filename: {{ .Values.tetragon.alerts.exportFilename | quote }}
   name: otel-agent-config-vol
 - name: file-storage
   emptyDir: {}
+{{- $extName := dig "splunk_hec" "tls" "secret" "name" "" .Values.AsMap }}
+{{- $hasExtCA := dig "splunk_hec" "tls" "secret" "keys" "ca_cert" "" .Values.AsMap }}
+{{- $hasExtCert := dig "splunk_hec" "tls" "secret" "keys" "client_cert" "" .Values.AsMap }}
+{{- $hasExtKey := dig "splunk_hec" "tls" "secret" "keys" "client_key" "" .Values.AsMap }}
+{{- $useExt := and $extName (or $hasExtCA $hasExtCert $hasExtKey) }}
+{{- $useInline := or .Values.splunk_hec.tls.ca .Values.splunk_hec.tls.crt .Values.splunk_hec.tls.key }}
+{{- if or $useInline $useExt }}
+- name: otel-splunk-tls
+  secret:
+    secretName: {{ if $useExt }}{{ $extName }}{{ else }}{{ include "tetragon.name" . }}-splunk-tls{{ end }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -163,6 +174,17 @@ alerts-export-filename: {{ .Values.tetragon.alerts.exportFilename | quote }}
       readOnly: true
     - name: file-storage
       mountPath: /var/lib/otelcol/file-storage
+{{- $extName := dig "splunk_hec" "tls" "secret" "name" "" .Values.AsMap }}
+{{- $hasExtCA := dig "splunk_hec" "tls" "secret" "keys" "ca_cert" "" .Values.AsMap }}
+{{- $hasExtCert := dig "splunk_hec" "tls" "secret" "keys" "client_cert" "" .Values.AsMap }}
+{{- $hasExtKey := dig "splunk_hec" "tls" "secret" "keys" "client_key" "" .Values.AsMap }}
+{{- $useExt := and $extName (or $hasExtCA $hasExtCert $hasExtKey) }}
+{{- $useInline := or .Values.splunk_hec.tls.ca .Values.splunk_hec.tls.crt .Values.splunk_hec.tls.key }}
+{{- if or $useInline $useExt }}
+  - name: otel-splunk-tls
+    mountPath: /tls
+    readOnly: true
+{{- end }}
 {{- end }}
 {{- end }}
 

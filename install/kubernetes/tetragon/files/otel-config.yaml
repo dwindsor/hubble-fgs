@@ -57,6 +57,24 @@ exporters:
     disable_compression: {{ .Values.splunk_hec.disable_compression }}
     timeout: {{ .Values.splunk_hec.timeout }}
     tls:
+      {{- $extCAKey := dig "splunk_hec" "tls" "secret" "keys" "ca_cert" "" .Values.AsMap }}
+      {{- $extCertKey := dig "splunk_hec" "tls" "secret" "keys" "client_cert" "" .Values.AsMap }}
+      {{- $extKeyKey := dig "splunk_hec" "tls" "secret" "keys" "client_key" "" .Values.AsMap }}
+      {{- if .Values.splunk_hec.tls.ca }}
+      ca_file: /tls/ca.crt
+      {{- else if $extCAKey }}
+      ca_file: /tls/{{ $extCAKey }}
+      {{- end }}
+      {{- if .Values.splunk_hec.tls.crt }}
+      cert_file: /tls/tls.crt
+      {{- else if $extCertKey }}
+      cert_file: /tls/{{ $extCertKey }}
+      {{- end }}
+      {{- if .Values.splunk_hec.tls.key }}
+      key_file: /tls/tls.key
+      {{- else if $extKeyKey }}
+      key_file: /tls/{{ $extKeyKey }}
+      {{- end }}
       insecure_skip_verify: {{ .Values.splunk_hec.tls.insecureSkipVerify }}
     sending_queue:
       enabled: true
