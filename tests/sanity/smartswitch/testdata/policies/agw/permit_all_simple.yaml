@@ -1,0 +1,29 @@
+apiVersion: isovalent.com/v1alpha1
+kind: SmartSwitchNetworkPolicy
+metadata:
+  name: "permit-all-simple"
+  namespace: default
+  annotations:
+    description: "Simple permit all policy - allows all traffic"
+spec:
+  rules:
+  - description: "Allow all TCP traffic"
+    action: "allow"
+    source:
+      ipBlock:
+      - cidr: "0.0.0.0/0"  # All IPv4 sources
+    destination:
+      ipBlock:
+      - cidr: "0.0.0.0/0"  # All IPv4 destinations
+      protoPorts:
+      - protocol: "TCP"
+  - description: "Allow all UDP traffic"
+    action: "allow"
+    source:
+      ipBlock:
+      - cidr: "0.0.0.0/0"
+    destination:
+      ipBlock:
+      - cidr: "0.0.0.0/0"
+      protoPorts:
+      - protocol: "UDP"

@@ -27,3 +27,10 @@ contrib/tester-progs/trigger-test-events
 tetra
 tetragon
 tetragon-alignchecker
+
+# Ignore sanity tests artifacts
+tests/sanity/smartswitch/dsc/
+tests/sanity/smartswitch/venv/
+tests/sanity/smartswitch/allure-results/
+tests/sanity/smartswitch/.pytest_cache/
+tests/sanity/smartswitch/__pycache__/
