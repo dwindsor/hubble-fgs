@@ -369,5 +369,24 @@ splunk_hec:
   # HTTP timeout when sending data. Defaults to 10s.
   timeout: 10s
   tls:
+    # Retrieve TLS/mTLS details from externally lifecycled secret (must already exist in the same namespace).
+    # defining the secret is mutually exclusive with including the ca, cert and key directly in the values file.
+    # secret:
+    #   name: "splunk-tls-user"
+    #   # Define the keynames in the secret for CA cert, mTLS Client cert and mTLS Client key respectively.
+    #   # CA Cert is required if TLS is enabled, insecureSkipVerify is false (Default) and Splunk endpoint cert is not signed by a trusted CA
+    #   # Client cert and key are both required if mTLS is enabled and required on the splunk endpoint.
+    #   keys:
+    #     ca_cert: ca.crt
+    #     client_cert: tls.crt
+    #     client_key: tls.key
+    # # Define ca cert to validate the HEC endpoint certificate when using HTTPS.  Specifying values inline is mutually exclusive with using the secret option.
+    # ca: |
+    #   -----BEGIN CERTIFICATE-----
+    # # Define crt and key for mTLS authentication (if required by Splunk)
+    # crt: |
+    #   -----BEGIN CERTIFICATE-----
+    # key: |
+    #   -----BEGIN PRIVATE KEY-----
     # Whether to skip checking the certificate of the HEC endpoint when sending data over HTTPS. Defaults to false.
     insecureSkipVerify: false
