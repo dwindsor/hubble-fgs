@@ -96,8 +96,10 @@ parse_dns_name_label(struct __sk_buff *skb, __u16 off, char *data_start, int ski
 // parse_dns_name is an inlined function looping to read the dns name labels
 // called by the parsing of the DNS question and the parsing of the DNS answers
 // in the case the packet doesn't use message compression. If skip is true,
-// nothing is written in the domain name buffer It returns the length of the
-// parsed name or an error.
+// nothing is written in the domain name buffer. It returns the length of the
+// parsed name or an error (which includes the bytes specifying the length of
+// the different labels and length of the labels themselves but not the NULL
+// byte at the end of the full name).
 FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_start, int skip)
 {
 	int8_t ret;
@@ -132,8 +134,37 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 
 		offset_start += ret;
 	}
-	// Skip the null byte at the end of the name
-	return offset_start + 1 - init_offset;
+	return offset_start - init_offset;
+}
+
+// Light parse the compressed DNS name: do not actually retrieve the offset
+// from the pointer, just make sure it's a valid compressed name starting
+// with the correct two bits and skipping the two bytes of the pointer.
+//
+// Simplification: we assume a DNS query response can contain at maximum one
+// question, so the domain should be unique. Even in case of canonical alias
+// we still consider the main domain is the correct one.
+//
+// A valid compressed name should be two bytes.
+// +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+// | 1  1|                OFFSET                   |
+// +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+FUNC_INLINE int shallow_parse_compression(char **data, char *data_end, uint8_t *offset)
+{
+	uint8_t first_byte;
+
+	if (*data + sizeof(u8) * 2 > data_end)
+		return -DNS_ERR_ANSWER_COMPRESSED_OVERFLOW;
+
+	first_byte = **((char **)data);
+	if ((first_byte & COMPRESSED_MSG_MASK) == COMPRESSED_MSG_MASK) {
+		// Potential TODO: verify the pointer is correct or give up
+		// Skip the pointer bytes
+		*offset += sizeof(u8) * 2;
+		*data += sizeof(u8) * 2;
+		return 1;
+	}
+	return 0;
 }
 
 // parse_dns_answer parses a DNS query answer, it skips any non A-type answer,
@@ -143,12 +174,12 @@ FUNC_INLINE int parse_dns_name(struct __sk_buff *skb, char *data, __u16 offset_s
 __attribute__((noinline)) int
 parse_dns_answer(struct __sk_buff *skb, int16_t off)
 {
-	__u8 first_byte, offset;
 	__u16 type, data_len;
-	int name_len, assign;
-	struct ip_addr ip = { 0 };
+	int name_len, assign, compressed;
 	char *data, *data_end, *name;
+	struct ip_addr ip = { 0 };
 	uint32_t zero = 0;
+	uint8_t offset = 0;
 
 	data_end = (void *)(long)skb->data_end;
 	if (off < 0 || off > SKB_DATA_MAX_SIZE)
@@ -158,29 +189,12 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 	if (!data)
 		return -DNS_ERR_ANSWER_OFFSET_OVERFLOW;
 
-	// Light parse the compressed DNS name: do not actually retrieve the offset
-	// from the pointer, just make sure it's a valid compressed name starting
-	// with the correct two bits and skipping the two bytes of the pointer.
-	//
-	// Simplification: we assume a DNS query response can contain at maximum one
-	// question, so the domain should be unique. Even in case of canonical alias
-	// we still consider the main domain is the correct one.
-	//
-	// A valid compressed name should be two bytes.
-	// +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-	// | 1  1|                OFFSET                   |
-	// +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-	if (data + sizeof(u8) * 2 > data_end)
-		return -DNS_ERR_ANSWER_COMPRESSED_OVERFLOW;
+	compressed = shallow_parse_compression(&data, data_end, &offset);
+	if (compressed < 0)
+		return compressed;
 
-	first_byte = *((__u8 *)data);
-	if ((first_byte & COMPRESSED_MSG_MASK) == COMPRESSED_MSG_MASK) {
-		// Potential TODO: verify the pointer is correct or give up
-		// Skip the pointer byte
-		offset = sizeof(u8) * 2;
-		data += offset;
-	} else {
-		// Might be not using message compression
+	if (!compressed) {
+		// Need to parse (skip) the name
 		name_len = parse_dns_name(skb, data, off, true);
 		if (name_len < 0)
 			return -DNS_ERR_ANSWER_PARSENAME;
@@ -190,6 +204,17 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 
 		offset = name_len;
 		data += offset;
+
+		// Partial compression: compression can be seen again here
+		compressed = shallow_parse_compression(&data, data_end, &offset);
+		if (compressed < 0)
+			return compressed;
+
+		if (!compressed) {
+			// Skip the NULL byte at the end of the name
+			offset++;
+			data++;
+		}
 	}
 
 	// The answer should contain type, class, TTL and data_len
@@ -342,6 +367,8 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 		error = name_len;
 		goto done;
 	}
+	// Skip the NULL byte at the end
+	name_len++;
 
 	if (name_len > SKB_DATA_MAX_SIZE) {
 		error = -DNS_ERR_NAME_OVERFLOW;
