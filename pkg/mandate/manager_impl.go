@@ -204,12 +204,11 @@ func (m *manager) refresh(ctx context.Context) {
 	var loadedPolicies, unloadPolicies []policy
 	var unloadMandateID string
 
-	loadedPolicies, err = m.fetchAndLoadPolicies(ctx, refrAtt, obj)
+	loadedPolicies, unloadPolicies, err = m.fetchAndLoadPolicies(ctx, refrAtt, obj)
 
 	if err == nil {
 		// success, unload existing policies (of old mandate)
 		if m.obj != nil {
-			unloadPolicies = m.loadedPolicies
 			unloadMandateID = m.obj.id()
 		}
 		// and replace object and loaded policy lists
@@ -218,7 +217,6 @@ func (m *manager) refresh(ctx context.Context) {
 		m.obj.loadedTime = time.Now()
 	} else {
 		// failure, unload new policies
-		unloadPolicies = loadedPolicies
 		unloadMandateID = obj.id()
 	}
 
@@ -233,13 +231,12 @@ func (m *manager) refresh(ctx context.Context) {
 				return err
 			})
 	}
-
 }
 
 // fetchAndLoadPolicies fetches and loads the policies in obj
-// It returns an error if something went wrong, and the list of policies that were loaded
-// Note that the list of loaded policies might be non-empty in case of an error.
-func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.InprAttempt, obj *Obj) ([]policy, error) {
+// It returns an error if something went wrong, plus the list of policies to be unloaded.
+// If everything goes well, it returns list of loaded policies, and the list of policies to be unloaded.
+func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.InprAttempt, obj *Obj) ([]policy, []policy, error) {
 	policyData := make([]policyData, len(obj.Mandate.Policies))
 
 	// first pass, attempt to fetch all the policies
@@ -249,7 +246,7 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 		pol := &obj.Mandate.Policies[i]
 		data, err := attemptFetchURL(refrAtt.NewAttempt("fetch policy"), pol.url_)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		policyData[i] = data
 	}
@@ -262,12 +259,13 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 		loadAtt := refrAtt.NewAttempt("load policy").WithInfo("url", pol.url_.String())
 		loadedPol, err := m.attemptLoadPolicy(ctx, loadAtt, pol, data)
 		if err != nil {
-			return loadedPolicies, fmt.Errorf("failed to load policy %q: %w", pol.url_, err)
+			// Return policies currently loaded as to-be-unloaded
+			return nil, loadedPolicies, fmt.Errorf("failed to load policy %q: %w", pol.url_, err)
 		}
 		loadedPolicies = append(loadedPolicies, loadedPol)
 	}
 
-	return loadedPolicies, nil
+	return loadedPolicies, m.loadedPolicies, nil
 }
 
 // attemptLoadMandateTracingPolicy attempts to load a mandate policy
