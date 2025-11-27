@@ -71,7 +71,7 @@ func loadDNSTestCollection(t *testing.T) *ebpf.Collection {
 	// Resizing map (to an overkill size because it's LRU_HASH)
 	collSpec.Maps[DomainToIDMapName].MaxEntries = 1024
 	collSpec.Maps[IDToDomainMapName].MaxEntries = 1024
-	collSpec.Maps[RequestIDMapName].MaxEntries = 1024
+	collSpec.Maps[RequestIDMapName].MaxEntries = 8192 // This is large for large PCAP testing
 	// Normally, the max entries is DNS_ERR_MAX, but the testing harness uses more errors
 	collSpec.Maps[ErrorMapName].MaxEntries = 128
 
