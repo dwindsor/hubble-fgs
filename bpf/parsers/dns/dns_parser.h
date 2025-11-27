@@ -202,9 +202,8 @@ parse_dns_answer(struct __sk_buff *skb, int16_t off)
 	data += sizeof(u16) * 2 + sizeof(u32) + sizeof(u16);
 
 	// Skip non A and AAAA records
-	if (type != A_RECORD && type != AAAA_RECORD) {
+	if (type != A_RECORD && type != AAAA_RECORD)
 		return offset + data_len;
-	}
 
 	name = map_lookup_elem(&tg_h_dns_name, &zero);
 	if (unlikely(!name))
@@ -411,10 +410,6 @@ __attribute__((noinline)) int parse_dns(struct __sk_buff *skb, __u64 offset, int
 		}
 		data += ret;
 	}
-
-	// For testing purposes, we want to know how many time the parser succeeded,
-	// so we use error = 0 as success, we might remove this and just return.
-	// return DNS_PARSER_SUCCESS;
 
 done:
 	if (error <= 0) {
