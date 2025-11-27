@@ -257,15 +257,13 @@ pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u64 copy)
 		"if %[len] < 1024 goto 7f;\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 1024;\n"
-		"if %[tmp] > %[end] goto 7f;\n" COPY256B COPY256B COPY256B
-			COPY256B "7:\n"
+		"if %[tmp] > %[end] goto 7f;\n" COPY256B COPY256B COPY256B COPY256B "7:\n"
 #endif
 		// 1024B case
 		"if %[len] < 1024 goto 6f;\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 1024;\n"
-		"if %[tmp] > %[end] goto 6f;\n" COPY256B COPY256B COPY256B
-			COPY256B "6:\n"
+		"if %[tmp] > %[end] goto 6f;\n" COPY256B COPY256B COPY256B COPY256B "6:\n"
 		// 512B case
 		"if %[len] < 512 goto 5f;\n"
 		"%[tmp] = %[ptr];\n"

@@ -11,7 +11,7 @@ AGGREGATOR_IMAGE_NAME ?= isovalent/tetragon-aggregator
 OPERATOR_IMAGE_NAME ?= isovalent/tetragon-operator
 LOCAL_CLANG ?= 0
 LOCAL_CLANG_FORMAT ?= 0
-FORMAT_FIND_FLAGS ?= -name '*.c' -o -name '*.h' -not -path 'bpf/include/vmlinux.h' -not -path 'bpf/include/api.h' -not -path 'bpf/libbpf/*'
+FORMAT_FIND_FLAGS ?= -name '*.c' -o -name '*.h'
 NOOPT ?= 0
 CLANG_IMAGE = quay.io/cilium/clang:b97f5b3d5c38da62fb009f21a53cd42aefd54a2f@sha256:e1c8ed0acd2e24ed05377f2861d8174af28e09bef3bbc79649c8eba165207df0
 METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
@@ -590,7 +590,7 @@ else
 clang-format:
 	$(CONTAINER_ENGINE) build -f Dockerfile.clang-format -t "isovalent/clang-format:${DOCKER_IMAGE_TAG}" .
 	find bpf $(FORMAT_FIND_FLAGS) | xargs -n 1000 \
-		$(CONTAINER_ENGINE) run -v $(shell realpath .):/fgs "isovalent/clang-format:${DOCKER_IMAGE_TAG}" -i -style=file
+		$(CONTAINER_ENGINE) run --user $(shell id -u):$(shell id -g) -v $(shell realpath .):/fgs "isovalent/clang-format:${DOCKER_IMAGE_TAG}" -i -style=file
 endif
 
 .PHONY: go-format

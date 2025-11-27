@@ -127,8 +127,8 @@ static inline __attribute__((always_inline)) struct inode *ovl_inode_lower(struc
 #define OS_IFREG 0100000
 #define OS_IFDIR 0040000
 
-#define OS_ISREG(m) (((m)&OS_IFMT) == OS_IFREG)
-#define OS_ISDIR(m) (((m)&OS_IFMT) == OS_IFDIR)
+#define OS_ISREG(m) (((m) & OS_IFMT) == OS_IFREG)
+#define OS_ISDIR(m) (((m) & OS_IFMT) == OS_IFDIR)
 
 static inline __attribute__((always_inline)) bool ovl_should_check_upperdata(struct inode *inode)
 {
@@ -196,9 +196,9 @@ static inline __attribute__((always_inline)) enum ovl_path_type ovl_path_type(st
 	return type;
 }
 
-#define OVL_TYPE_UPPER(type)  ((type)&__OVL_PATH_UPPER)
-#define OVL_TYPE_MERGE(type)  ((type)&__OVL_PATH_MERGE)
-#define OVL_TYPE_ORIGIN(type) ((type)&__OVL_PATH_ORIGIN)
+#define OVL_TYPE_UPPER(type)  ((type) & __OVL_PATH_UPPER)
+#define OVL_TYPE_MERGE(type)  ((type) & __OVL_PATH_MERGE)
+#define OVL_TYPE_ORIGIN(type) ((type) & __OVL_PATH_ORIGIN)
 
 static inline __attribute__((always_inline)) void ovl_path_lower(struct dentry *dentry, struct path *path)
 {

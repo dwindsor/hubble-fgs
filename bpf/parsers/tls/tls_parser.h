@@ -84,11 +84,11 @@ bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls,
 	u16 length;
 	u8 *data;
 
-#define READ_BE16()                                      \
-	({                                               \
-		u16 x = ((u16)*data) << 8 | *(data + 1); \
-		data += 2;                               \
-		x;                                       \
+#define READ_BE16()                                        \
+	({                                                 \
+		u16 x = ((u16) * data) << 8 | *(data + 1); \
+		data += 2;                                 \
+		x;                                         \
 	})
 #define BOUNDS(val, flag, mask)                   \
 	({                                        \
