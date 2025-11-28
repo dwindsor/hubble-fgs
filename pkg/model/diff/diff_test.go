@@ -1008,6 +1008,9 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 				// ClusterName and NodeName may be empty in test environments
 				assert.NotNil(t, actual.ClusterName, "cluster name should not be nil")
 				assert.NotNil(t, actual.NodeName, "node name should not be nil")
+
+				// Verify Id field is populated with a non-empty UUID
+				assert.NotEmpty(t, actual.Id, "telemetry Id should not be empty at index %d", i)
 			}
 		})
 	}
@@ -1039,4 +1042,45 @@ func TestApplicationModelToProcessFlat_WithTimeFields(t *testing.T) {
 	telemetry := result[0]
 	assert.Equal(t, firstTime, telemetry.FirstStartTime, "first start time should be propagated")
 	assert.Equal(t, latestTime, telemetry.LatestStartTime, "latest start time should be propagated")
+}
+
+func TestApplicationModelToProcessFlat_UniqueIds(t *testing.T) {
+	// Test that each ProcessTelemetry entry gets a unique Id
+	model := &appModelV1.ApplicationModel{
+		Id: "unique-id-test",
+		Host: &appModelV1.ApplicationHost{
+			Processes: []*appModelV1.ApplicationProcessGroup{
+				{Name: "process1", Arguments: ""},
+				{Name: "process2", Arguments: ""},
+				{Name: "process3", Arguments: ""},
+			},
+		},
+		Namespaces: []*appModelV1.ApplicationNamespace{
+			{
+				Name: "default",
+				Workloads: []*appModelV1.ApplicationWorkload{
+					{
+						Name: "workload1",
+						Kind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+						Processes: []*appModelV1.ApplicationProcessGroup{
+							{Name: "app1", Arguments: ""},
+							{Name: "app2", Arguments: ""},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result, err := ApplicationModelToProcessFlat(context.Background(), model, nil)
+	require.NoError(t, err)
+	require.Len(t, result, 5, "should have 5 process telemetry entries")
+
+	// Collect all Ids and verify they are unique
+	seenIds := make(map[string]bool)
+	for i, telemetry := range result {
+		assert.NotEmpty(t, telemetry.Id, "telemetry Id should not be empty at index %d", i)
+		assert.False(t, seenIds[telemetry.Id], "duplicate Id found: %s at index %d", telemetry.Id, i)
+		seenIds[telemetry.Id] = true
+	}
 }
