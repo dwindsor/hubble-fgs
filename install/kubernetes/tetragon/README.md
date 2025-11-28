@@ -8,7 +8,7 @@ Helm chart for Tetragon Enterprise
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://grafana.github.io/helm-charts | grafana | 10.1.5 |
+| https://grafana.github.io/helm-charts | grafana | 10.2.0 |
 | https://prometheus-community.github.io/helm-charts | kube-state-metrics | 6.4.2 |
 
 ## Values
