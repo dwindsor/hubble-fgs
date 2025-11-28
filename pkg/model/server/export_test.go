@@ -21,6 +21,20 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
+// buildParentMapFromProcessModels is a helper function for tests that builds the parent map
+// using the same logic as the model package.
+func buildParentMapFromProcessModels(processModels []*types.ProcessModel) map[string][]string {
+	emptyFilter := make(map[string]bool)
+	_, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter)
+	telemetryMap := model.BuildTelemetryMap(processData)
+	// Extract just the parent map for backward compatibility
+	parentMap := make(map[string][]string)
+	for key, val := range telemetryMap {
+		parentMap[key] = val.Parents
+	}
+	return parentMap
+}
+
 func TestBuildParentMap(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -163,10 +177,10 @@ func TestBuildParentMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parentMap := BuildParentMap(tt.processModels)
+			parentMap := buildParentMapFromProcessModels(tt.processModels)
 
 			// For tests expecting empty parents, we need to add them manually since
-			// BuildParentMap only includes entries with non-empty parents
+			// buildParentMapFromProcessModels only includes entries with non-empty parents
 			for expectedKey, expectedParents := range tt.expectedParentMap {
 				if len(expectedParents) == 0 {
 					if _, exists := parentMap[expectedKey]; !exists {
@@ -212,11 +226,16 @@ func TestExportParentMapWithApplicationModel(t *testing.T) {
 		},
 	}
 
-	// Convert to ApplicationModel
+	// Convert to ApplicationModel and build telemetry map
 	emptyFilter := map[string]bool{}
-	applicationModel := model.ProcessModelToApplicationModel(processModels, emptyFilter)
+	applicationModel, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter)
+	telemetryMap := model.BuildTelemetryMap(processData)
 
-	parentMap := BuildParentMap(processModels)
+	// Extract parent map for verification
+	parentMap := make(map[string][]string)
+	for key, val := range telemetryMap {
+		parentMap[key] = val.Parents
+	}
 
 	// Verify the parent map
 	expectedParentMap := map[string][]string{
@@ -307,7 +326,7 @@ func TestExportParentMapEdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// This should not panic
-			parentMap := BuildParentMap(tt.processModels)
+			parentMap := buildParentMapFromProcessModels(tt.processModels)
 
 			assert.Equal(t, tt.expectedCount, len(parentMap), tt.description)
 

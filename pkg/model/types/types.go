@@ -30,6 +30,7 @@ type ProcessTreeValue struct {
 	KtimeLastExec    uint64
 	KtimeLatestExit  uint64
 	CgroupID         uint64
+	ExecCount        uint64
 	Pad0             [5]uint8
 	MaybeMissingNSID bool
 	InContainer      bool

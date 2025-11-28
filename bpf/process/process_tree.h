@@ -218,6 +218,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		old->ktime_last_exec = tg_get_ktime();
 		old->ktime_first_exec = old->ktime_last_exec;
 		old->cgid = cgid;
+		old->exec_count = 1;
 		old->maybe_missing_nsid = 0;
 		if (k->nsid == 0 && old->in_container) {
 			// inform userspace that we might need to update the nsid mapping for this process when it becomes available
@@ -233,6 +234,7 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 		old->in_container = curr->nspid != 0;
 		old->ktime_last_exec = tg_get_ktime();
 		old->cgid = cgid;
+		__sync_fetch_and_add(&old->exec_count, 1);
 		if (k->nsid == 0 && old->in_container) {
 			// inform userspace that we might need to update the nsid mapping for this process when it becomes available
 			DEBUG("missing nsid pid=%d cgid=%d", pid, cgid);

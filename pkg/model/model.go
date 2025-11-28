@@ -100,8 +100,8 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 			TxDrops:           bc.GetTxDrops(),
 			TxQuota:           bc.GetTxQuota(),
 			TxQuotaUsage:      bc.GetTxUsage(),
-			LastQuotaReset:    maybeTimeToTimestamp(bc.GetLastReset()),
-			NextQuotaReset:    maybeTimeToTimestamp(bc.GetNextReset()),
+			LastQuotaReset:    MaybeTimeToTimestamp(bc.GetLastReset()),
+			NextQuotaReset:    MaybeTimeToTimestamp(bc.GetNextReset()),
 		},
 		Policy: &appModelV1.NetworkPolicy{
 			PolicyName: bc.GetPolicy(),
@@ -110,7 +110,9 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	}
 }
 
-func maybeTimeToTimestamp(t *time.Time) *timestamppb.Timestamp {
+// MaybeTimeToTimestamp converts a *time.Time to a *timestamppb.Timestamp.
+// Returns nil if the input is nil.
+func MaybeTimeToTimestamp(t *time.Time) *timestamppb.Timestamp {
 	if t == nil {
 		return nil
 	}
@@ -191,9 +193,9 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 						InInitTree:  wrapperspb.Bool(psval.inInitTree),
 						SyscallInfo: psval.syscalls,
 						// Parents:         psval.parents,  // TODO: Add when IPA schema includes Parents field
-						FirstStartTime:  maybeTimeToTimestamp(psval.firstStartTime),
-						LatestStartTime: maybeTimeToTimestamp(psval.latestStartTime),
-						LatestExitTime:  maybeTimeToTimestamp(psval.latestExitTime),
+						FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
+						LatestStartTime: MaybeTimeToTimestamp(psval.latestStartTime),
+						LatestExitTime:  MaybeTimeToTimestamp(psval.latestExitTime),
 					}
 					result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, ps)
 				}
@@ -215,9 +217,9 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 						InInitTree:  wrapperspb.Bool(psval.inInitTree),
 						SyscallInfo: psval.syscalls,
 						// Parents:         psval.parents,  // TODO: Add when IPA schema includes Parents field
-						FirstStartTime:  maybeTimeToTimestamp(psval.firstStartTime),
-						LatestStartTime: maybeTimeToTimestamp(psval.latestStartTime),
-						LatestExitTime:  maybeTimeToTimestamp(psval.latestExitTime),
+						FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
+						LatestStartTime: MaybeTimeToTimestamp(psval.latestStartTime),
+						LatestExitTime:  MaybeTimeToTimestamp(psval.latestExitTime),
 					}
 					wl.Processes = append(wl.Processes, ps)
 				}
@@ -232,6 +234,13 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 }
 
 func ProcessModelToApplicationModel(processModel []*types.ProcessModel, nsFilter map[string]bool) *appModelV1.ApplicationModelEvent {
+	appModel, _ := ProcessModelToApplicationModelWithProcessData(processModel, nsFilter)
+	return appModel
+}
+
+// ProcessModelToApplicationModelWithProcessData converts process models to an application model
+// and also returns the process monitor data for building telemetry maps.
+func ProcessModelToApplicationModelWithProcessData(processModel []*types.ProcessModel, nsFilter map[string]bool) (*appModelV1.ApplicationModelEvent, ProcessMonitorData) {
 	// Ignore quota info for now.
 	monitor, _, processes := ConvertToMonitorData(processModel, true)
 	nsMap := make(namespaceMap)
@@ -241,7 +250,24 @@ func ProcessModelToApplicationModel(processModel []*types.ProcessModel, nsFilter
 	for key, val := range processes {
 		handleProcessEvent(nsMap, key, val)
 	}
-	return namespaceMapToApplicationModel(nsMap, nsFilter)
+	return namespaceMapToApplicationModel(nsMap, nsFilter), processes
+}
+
+// TelemetryMap maps process keys (name + args) to their aggregated telemetry info.
+// We reuse ProcessValue since it already contains all the fields we need.
+type TelemetryMap map[string]*ProcessValue
+
+// BuildTelemetryMap creates a map from process key to telemetry info from process monitor data.
+// This is used for telemetry export to avoid redundant calls to ConvertToMonitorData.
+func BuildTelemetryMap(processData ProcessMonitorData) TelemetryMap {
+	result := make(TelemetryMap)
+
+	for processKey, processValue := range processData {
+		key := processKey.Name + processKey.Args
+		pv := processValue // Create a copy to take address of
+		result[key] = &pv
+	}
+	return result
 }
 
 func DestinationNameAppModel(dst *appModelV1.Destination) string {

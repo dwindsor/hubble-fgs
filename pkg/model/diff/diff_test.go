@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/isovalent/hubble-fgs/pkg/model"
 )
 
 func connStatsA() *appModelV1.ConnectionStats {
@@ -58,6 +60,11 @@ func connStatsEqual(t *testing.T, a, b *appModelV1.ConnectionStats) {
 	assert.Equal(t, a.TxQuotaUsage, b.TxQuotaUsage)
 	assert.Equal(t, a.DefaultDropBytes, b.DefaultDropBytes)
 	assert.Equal(t, a.DefaultAllowBytes, b.DefaultAllowBytes)
+}
+
+// ptrTime is a helper function that returns a pointer to a time.Time value
+func ptrTime(t time.Time) *time.Time {
+	return &t
 }
 
 func TestStatsDiff(t *testing.T) {
@@ -729,14 +736,14 @@ func TestTelemetryToConnection(t *testing.T) {
 
 func TestApplicationModelToProcessFlat(t *testing.T) {
 	tests := []struct {
-		name      string
-		model     *appModelV1.ApplicationModel
-		parentMap map[string][]string
-		expected  []*appModelV1.ProcessTelemetry
-		wantErr   bool
+		name         string
+		model        *appModelV1.ApplicationModel
+		telemetryMap model.TelemetryMap
+		expected     []*appModelV1.ProcessTelemetry
+		wantErr      bool
 	}{
 		{
-			name: "host processes with parent map",
+			name: "host processes with telemetry map",
 			model: &appModelV1.ApplicationModel{
 				Id: "test-model-123",
 				Host: &appModelV1.ApplicationHost{
@@ -752,9 +759,9 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 					},
 				},
 			},
-			parentMap: map[string][]string{
-				"exa-la":   {"bash", "zsh"},
-				"greptest": {"bash"},
+			telemetryMap: model.TelemetryMap{
+				"exa-la":   {Parents: []string{"bash", "zsh"}},
+				"greptest": {Parents: []string{"bash"}},
 			},
 			expected: []*appModelV1.ProcessTelemetry{
 				{
@@ -772,7 +779,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 			},
 		},
 		{
-			name: "workload processes with parent map",
+			name: "workload processes with telemetry map",
 			model: &appModelV1.ApplicationModel{
 				Id: "test-model-456",
 				Namespaces: []*appModelV1.ApplicationNamespace{
@@ -793,8 +800,8 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 					},
 				},
 			},
-			parentMap: map[string][]string{
-				"app--config=/etc/app.conf": {"systemd"},
+			telemetryMap: model.TelemetryMap{
+				"app--config=/etc/app.conf": {Parents: []string{"systemd"}},
 			},
 			expected: []*appModelV1.ProcessTelemetry{
 				{
@@ -809,7 +816,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 			},
 		},
 		{
-			name: "empty parent map",
+			name: "empty telemetry map",
 			model: &appModelV1.ApplicationModel{
 				Id: "test-model-789",
 				Host: &appModelV1.ApplicationHost{
@@ -821,7 +828,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 					},
 				},
 			},
-			parentMap: map[string][]string{},
+			telemetryMap: model.TelemetryMap{},
 			expected: []*appModelV1.ProcessTelemetry{
 				{
 					ProcessName:        "init",
@@ -832,7 +839,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 			},
 		},
 		{
-			name: "nil parent map",
+			name: "nil telemetry map",
 			model: &appModelV1.ApplicationModel{
 				Id: "test-model-nil",
 				Host: &appModelV1.ApplicationHost{
@@ -844,7 +851,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 					},
 				},
 			},
-			parentMap: nil,
+			telemetryMap: nil,
 			expected: []*appModelV1.ProcessTelemetry{
 				{
 					ProcessName:        "test",
@@ -855,7 +862,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 			},
 		},
 		{
-			name: "process key not in parent map",
+			name: "process key not in telemetry map",
 			model: &appModelV1.ApplicationModel{
 				Id: "test-model-missing",
 				Host: &appModelV1.ApplicationHost{
@@ -867,8 +874,8 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 					},
 				},
 			},
-			parentMap: map[string][]string{
-				"different-process": {"parent"},
+			telemetryMap: model.TelemetryMap{
+				"different-process": {Parents: []string{"parent"}},
 			},
 			expected: []*appModelV1.ProcessTelemetry{
 				{
@@ -884,8 +891,8 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 			model: &appModelV1.ApplicationModel{
 				Id: "empty-model",
 			},
-			parentMap: map[string][]string{},
-			expected:  []*appModelV1.ProcessTelemetry{},
+			telemetryMap: model.TelemetryMap{},
+			expected:     []*appModelV1.ProcessTelemetry{},
 		},
 		{
 			name: "both host and workload processes",
@@ -917,9 +924,9 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 					},
 				},
 			},
-			parentMap: map[string][]string{
-				"curlhttps://api.github.com":                         {"bash"},
-				"kube-proxy--config=/var/lib/kube-proxy/config.conf": {"systemd"},
+			telemetryMap: model.TelemetryMap{
+				"curlhttps://api.github.com":                         {Parents: []string{"bash"}},
+				"kube-proxy--config=/var/lib/kube-proxy/config.conf": {Parents: []string{"systemd"}},
 			},
 			expected: []*appModelV1.ProcessTelemetry{
 				{
@@ -944,7 +951,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			result, err := ApplicationModelToProcessFlat(ctx, tt.model, tt.parentMap)
+			result, err := ApplicationModelToProcessFlat(ctx, tt.model, tt.telemetryMap)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -1021,7 +1028,7 @@ func TestApplicationModelToProcessFlat_WithTimeFields(t *testing.T) {
 	firstTime := timestamppb.New(time.Unix(1000, 0))
 	latestTime := timestamppb.New(time.Unix(2000, 0))
 
-	model := &appModelV1.ApplicationModel{
+	appModel := &appModelV1.ApplicationModel{
 		Id: "time-test",
 		Host: &appModelV1.ApplicationHost{
 			Processes: []*appModelV1.ApplicationProcessGroup{
@@ -1035,7 +1042,15 @@ func TestApplicationModelToProcessFlat_WithTimeFields(t *testing.T) {
 		},
 	}
 
-	result, err := ApplicationModelToProcessFlat(context.Background(), model, nil)
+	// Create telemetry map for the process with time fields
+	telemetryMap := model.TelemetryMap{
+		"timestamped-process": {
+			FirstStartTime:  ptrTime(time.Unix(1000, 0)),
+			LatestStartTime: ptrTime(time.Unix(2000, 0)),
+		},
+	}
+
+	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, telemetryMap)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 
@@ -1046,7 +1061,7 @@ func TestApplicationModelToProcessFlat_WithTimeFields(t *testing.T) {
 
 func TestApplicationModelToProcessFlat_UniqueIds(t *testing.T) {
 	// Test that each ProcessTelemetry entry gets a unique Id
-	model := &appModelV1.ApplicationModel{
+	appModel := &appModelV1.ApplicationModel{
 		Id: "unique-id-test",
 		Host: &appModelV1.ApplicationHost{
 			Processes: []*appModelV1.ApplicationProcessGroup{
@@ -1072,7 +1087,7 @@ func TestApplicationModelToProcessFlat_UniqueIds(t *testing.T) {
 		},
 	}
 
-	result, err := ApplicationModelToProcessFlat(context.Background(), model, nil)
+	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, nil)
 	require.NoError(t, err)
 	require.Len(t, result, 5, "should have 5 process telemetry entries")
 
@@ -1083,4 +1098,75 @@ func TestApplicationModelToProcessFlat_UniqueIds(t *testing.T) {
 		assert.False(t, seenIds[telemetry.Id], "duplicate Id found: %s at index %d", telemetry.Id, i)
 		seenIds[telemetry.Id] = true
 	}
+}
+
+func TestApplicationModelToProcessFlat_ExecutionCount(t *testing.T) {
+	// Test that ExecutionCount is properly propagated from telemetryMap
+	appModel := &appModelV1.ApplicationModel{
+		Id: "exec-count-test",
+		Host: &appModelV1.ApplicationHost{
+			Processes: []*appModelV1.ApplicationProcessGroup{
+				{Name: "process1", Arguments: "-arg1"},
+				{Name: "process2", Arguments: ""},
+				{Name: "process3", Arguments: "-verbose"},
+			},
+		},
+		Namespaces: []*appModelV1.ApplicationNamespace{
+			{
+				Name: "default",
+				Workloads: []*appModelV1.ApplicationWorkload{
+					{
+						Name: "workload1",
+						Kind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+						Processes: []*appModelV1.ApplicationProcessGroup{
+							{Name: "app1", Arguments: "--config=/etc/app.conf"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	telemetryMap := model.TelemetryMap{
+		"process1-arg1":              {ExecCount: 5},
+		"process2":                   {ExecCount: 10},
+		"process3-verbose":           {ExecCount: 1},
+		"app1--config=/etc/app.conf": {ExecCount: 42},
+	}
+
+	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, telemetryMap)
+	require.NoError(t, err)
+	require.Len(t, result, 4, "should have 4 process telemetry entries")
+
+	// Build a map of process key to execution count from results
+	resultCounts := make(map[string]uint64)
+	for _, telemetry := range result {
+		key := telemetry.ProcessName + telemetry.ProcessArguments
+		resultCounts[key] = telemetry.ExecutionCount
+	}
+
+	// Verify execution counts match
+	assert.Equal(t, uint64(5), resultCounts["process1-arg1"], "process1 execution count mismatch")
+	assert.Equal(t, uint64(10), resultCounts["process2"], "process2 execution count mismatch")
+	assert.Equal(t, uint64(1), resultCounts["process3-verbose"], "process3 execution count mismatch")
+	assert.Equal(t, uint64(42), resultCounts["app1--config=/etc/app.conf"], "app1 execution count mismatch")
+}
+
+func TestApplicationModelToProcessFlat_ExecutionCountNilMap(t *testing.T) {
+	// Test that nil telemetryMap results in zero ExecutionCount values
+	appModel := &appModelV1.ApplicationModel{
+		Id: "nil-exec-count-test",
+		Host: &appModelV1.ApplicationHost{
+			Processes: []*appModelV1.ApplicationProcessGroup{
+				{Name: "process1", Arguments: ""},
+			},
+		},
+	}
+
+	result, err := ApplicationModelToProcessFlat(context.Background(), appModel, nil)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+
+	// ExecutionCount should be 0 when no execCountMap is provided
+	assert.Equal(t, uint64(0), result[0].ExecutionCount, "execution count should be 0 when map is nil")
 }

@@ -264,6 +264,7 @@ type ProcessValue struct {
 	FirstStartTime  *time.Time
 	LatestStartTime *time.Time
 	LatestExitTime  *time.Time
+	ExecCount       uint64
 }
 
 func (pk ProcessKey) String() string {
@@ -489,11 +490,39 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 		}
 	}
 
-	// Second pass: create ProcessValue entries with aggregated parents
+	// Second pass: create ProcessValue entries with aggregated parents, execution counts, and times
 	processInfoMap := make(map[ProcessKey]*types.ProcessModel)
+	processExecCounts := make(map[ProcessKey]uint64)
+	processFirstStartTimes := make(map[ProcessKey]*time.Time)
+	processLatestStartTimes := make(map[ProcessKey]*time.Time)
+	processLatestExitTimes := make(map[ProcessKey]*time.Time)
+
 	for _, process := range processModel {
 		processKey := getProcessMonitorKey(process)
 		processInfoMap[processKey] = process
+		// Sum execution counts across all entries with the same process key
+		processExecCounts[processKey] += process.ExecCount
+
+		// Track the earliest first start time (minimum)
+		if process.FirstStartTime != nil {
+			if existing := processFirstStartTimes[processKey]; existing == nil || process.FirstStartTime.Before(*existing) {
+				processFirstStartTimes[processKey] = process.FirstStartTime
+			}
+		}
+
+		// Track the latest start time (maximum)
+		if process.LatestStartTime != nil {
+			if existing := processLatestStartTimes[processKey]; existing == nil || process.LatestStartTime.After(*existing) {
+				processLatestStartTimes[processKey] = process.LatestStartTime
+			}
+		}
+
+		// Track the latest exit time (maximum)
+		if process.LatestExitTime != nil {
+			if existing := processLatestExitTimes[processKey]; existing == nil || process.LatestExitTime.After(*existing) {
+				processLatestExitTimes[processKey] = process.LatestExitTime
+			}
+		}
 	}
 
 	for processKey, process := range processInfoMap {
@@ -516,9 +545,10 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 			InInitTree:      process.InInitTree,
 			Syscalls:        syscalls,
 			Parents:         parentsList,
-			FirstStartTime:  process.FirstStartTime,
-			LatestStartTime: process.LatestStartTime,
-			LatestExitTime:  process.LatestExitTime,
+			FirstStartTime:  processFirstStartTimes[processKey],
+			LatestStartTime: processLatestStartTimes[processKey],
+			LatestExitTime:  processLatestExitTimes[processKey],
+			ExecCount:       processExecCounts[processKey],
 		}
 	}
 

@@ -118,6 +118,7 @@ struct process_tree_value {
 	__u64 ktime_last_exec;
 	__u64 ktime_latest_exit;
 	__u64 cgid;
+	__u64 exec_count;
 	__u8 pad[5];
 	bool maybe_missing_nsid;
 	bool in_container;

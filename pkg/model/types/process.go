@@ -102,4 +102,5 @@ type ProcessModel struct {
 	FirstStartTime  *time.Time
 	LatestStartTime *time.Time
 	LatestExitTime  *time.Time
+	ExecCount       uint64
 }

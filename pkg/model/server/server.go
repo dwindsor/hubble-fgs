@@ -770,6 +770,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			FirstStartTime:  ktimeToTime(val.KtimeFirstExec),
 			LatestStartTime: ktimeToTime(val.KtimeLastExec),
 			LatestExitTime:  ktimeToTime(val.KtimeLatestExit),
+			ExecCount:       val.ExecCount,
 		})
 	}
 

@@ -340,19 +340,19 @@ func getDestination(d *appModelV1.Destination) (string, string, string, k8sTypes
 	return name, ns, wlName, wlKind, resourceKind
 }
 
-func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.ApplicationModel, parentMap map[string][]string) ([]*appModelV1.ProcessTelemetry, error) {
+func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.ApplicationModel, telemetryMap model.TelemetryMap) ([]*appModelV1.ProcessTelemetry, error) {
 	t := []*appModelV1.ProcessTelemetry{}
 	node := node.GetNodeNameForExport()
 	cluster := option.Config.ClusterName
-	time := timestamppb.Now()
+	currentTime := timestamppb.Now()
 	labels := make(map[string]string)
 
 	if a == nil {
 		return nil, nil
 	}
 
-	if parentMap == nil {
-		parentMap = make(map[string][]string)
+	if telemetryMap == nil {
+		telemetryMap = make(model.TelemetryMap)
 	}
 
 	nodeMetadata, err := local.GetMetadataService()
@@ -369,7 +369,17 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 		for _, wl := range ns.Workloads {
 			for _, p := range wl.Processes {
 				processKey := p.Name + p.Arguments
-				parents := parentMap[processKey]
+				info := telemetryMap[processKey]
+
+				var parents []string
+				var execCount uint64
+				var firstStartTime, latestStartTime *timestamppb.Timestamp
+				if info != nil {
+					parents = info.Parents
+					execCount = info.ExecCount
+					firstStartTime = model.MaybeTimeToTimestamp(info.FirstStartTime)
+					latestStartTime = model.MaybeTimeToTimestamp(info.LatestStartTime)
+				}
 
 				entry := &appModelV1.ProcessTelemetry{
 					Id:                     uuid.NewString(),
@@ -377,16 +387,17 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 					NodeName:               node,
 					NodeLabels:             labels,
 					EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_PROCESS,
-					Time:                   time,
+					Time:                   currentTime,
 					KubernetesNamespace:    ns.Name,
 					KubernetesWorkloadName: wl.Name,
 					KubernetesWorkloadKind: wl.Kind,
 					ProcessName:            p.Name,
 					ProcessArguments:       p.Arguments,
 					ApplicationModelId:     a.Id,
-					FirstStartTime:         p.FirstStartTime,
-					LatestStartTime:        p.LatestStartTime,
+					FirstStartTime:         firstStartTime,
+					LatestStartTime:        latestStartTime,
 					ParentNames:            parents,
+					ExecutionCount:         execCount,
 				}
 				t = append(t, entry)
 			}
@@ -396,7 +407,17 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 	if a.Host != nil {
 		for _, p := range a.Host.Processes {
 			processKey := p.Name + p.Arguments
-			parents := parentMap[processKey]
+			info := telemetryMap[processKey]
+
+			var parents []string
+			var execCount uint64
+			var firstStartTime, latestStartTime *timestamppb.Timestamp
+			if info != nil {
+				parents = info.Parents
+				execCount = info.ExecCount
+				firstStartTime = model.MaybeTimeToTimestamp(info.FirstStartTime)
+				latestStartTime = model.MaybeTimeToTimestamp(info.LatestStartTime)
+			}
 
 			entry := &appModelV1.ProcessTelemetry{
 				Id:                 uuid.NewString(),
@@ -404,13 +425,14 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 				NodeName:           node,
 				NodeLabels:         labels,
 				EventType:          appModelV1.TelemetryType_TELEMETRY_TYPE_PROCESS,
-				Time:               time,
+				Time:               currentTime,
 				ProcessName:        p.Name,
 				ProcessArguments:   p.Arguments,
 				ApplicationModelId: a.Id,
-				FirstStartTime:     p.FirstStartTime,
-				LatestStartTime:    p.LatestStartTime,
+				FirstStartTime:     firstStartTime,
+				LatestStartTime:    latestStartTime,
 				ParentNames:        parents,
+				ExecutionCount:     execCount,
 			}
 			t = append(t, entry)
 		}
