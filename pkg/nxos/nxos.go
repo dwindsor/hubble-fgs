@@ -16,7 +16,6 @@ import (
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
-	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
@@ -398,7 +397,7 @@ func (n *Nxos) waitForDpu(ctx context.Context) (uint16, error) {
 	}
 }
 
-func (n *Nxos) checkDPUVersion(status []dpu.DPUReportStatus) error {
+func (n *Nxos) checkDPUVersion(status []switchpolicy.DPUReportStatus) error {
 	var err error
 
 	if n.Update.Persist.Id == "" {
@@ -569,7 +568,7 @@ func (n *Nxos) setServiceRedirAll(ctx context.Context, isLock bool) error {
 	return nil
 }
 
-func (n *Nxos) Setup(ctx context.Context, low, high uint16, dpuListener *dpu.DPUListener, policyHandler switchpolicy.PolicyHandler) error {
+func (n *Nxos) Setup(ctx context.Context, low, high uint16, dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.PolicyHandler) error {
 
 	n.DpuPortLow = low
 	n.DpuPortHigh = high

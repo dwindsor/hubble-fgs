@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/isovalent/hubble-fgs/pkg/grpc/haclt"
-	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
@@ -262,7 +261,7 @@ type Nxos struct {
 
 	// smartswitch management
 	policyHandler switchpolicy.PolicyHandler
-	dpuListener   *dpu.DPUListener
+	dpuListener   *switchpolicy.DPUListener
 }
 
 type INxos interface {

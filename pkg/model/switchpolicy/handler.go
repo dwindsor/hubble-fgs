@@ -8,8 +8,6 @@ import (
 	"sync/atomic"
 
 	"github.com/cilium/tetragon/pkg/logger"
-
-	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 )
 
 type PolicyHandler interface {
@@ -21,7 +19,7 @@ type PolicyHandler interface {
 }
 
 type DPUProgrammer interface {
-	SubmitDPURuleToDPU(rule *dpu.DPUPolicyRule) error
+	SubmitDPURuleToDPU(rule *DPUPolicyRule) error
 }
 
 type policyHandler struct {

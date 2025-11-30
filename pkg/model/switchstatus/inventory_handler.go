@@ -13,7 +13,7 @@ import (
 
 	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 	nxosmodel "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 )
@@ -31,7 +31,7 @@ type InventoryHandler interface {
 
 // InventoryDataProvider provides data needed for inventory updates
 type InventoryDataProvider struct {
-	GetDPUStatus    func() ([]dpu.DPUReportStatus, error)
+	GetDPUStatus    func() ([]switchpolicy.DPUReportStatus, error)
 	GetK8sNamespace func() string
 	GetServiceMAC   func() string
 }

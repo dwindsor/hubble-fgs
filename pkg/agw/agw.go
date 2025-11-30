@@ -25,7 +25,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/ipc"
-	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchstatus"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
@@ -41,7 +40,7 @@ const (
 	// dpuTimeout = 300 // in second
 )
 
-func NewAgent(dpuListener *dpu.DPUListener, policyHandler switchpolicy.PolicyHandler) *AgentGateway {
+func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.PolicyHandler) *AgentGateway {
 	mac := os.Getenv("NX_SAS_RMAC")
 	lowStr, ok := os.LookupEnv("NX_DPU_PORT_START")
 	if !ok {
@@ -106,7 +105,7 @@ func NewAgent(dpuListener *dpu.DPUListener, policyHandler switchpolicy.PolicyHan
 	// Initialize the inventory handler with callback functions (no circular reference)
 	agw.InventoryHandler = switchstatus.NewInventoryHandler(
 		switchstatus.InventoryDataProvider{
-			GetDPUStatus: func() ([]dpu.DPUReportStatus, error) {
+			GetDPUStatus: func() ([]switchpolicy.DPUReportStatus, error) {
 				return agw.dpuListener.GetDPUStatus()
 			},
 			GetK8sNamespace: func() string {
@@ -143,7 +142,7 @@ type AgentGateway struct {
 	cpaPortLow  uint16
 	cpaPortHigh uint16
 
-	dpuListener      *dpu.DPUListener
+	dpuListener      *switchpolicy.DPUListener
 	PolicyHandler    switchpolicy.PolicyHandler
 	InventoryHandler switchstatus.InventoryHandler
 

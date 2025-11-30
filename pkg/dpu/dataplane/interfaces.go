@@ -3,9 +3,9 @@ package dataplane
 import (
 	"context"
 
-	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 
-	dpuPolicy "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
 // Constant values
@@ -65,7 +65,7 @@ type Dataplane interface {
 	HardwareModel() string
 
 	// Commands
-	PushPolicy(context.Context, v1alpha.PolicyOperation, []*dpuPolicy.DPUPolicyRule) error
+	PushPolicy(context.Context, v1alpha.PolicyOperation, []*switchpolicy.DPUPolicyRule) error
 	ClearPolicy(context.Context) error
 
 	// Configuration

@@ -145,6 +145,7 @@ func AddFromYAML(data string, policyHandler PolicyHandler) error {
 }
 
 func AddFromFile(path string, policyHandler PolicyHandler) error {
+	logger.GetLogger().Info("Loading policy from file", "file", path)
 	policies, err := FromFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to parse SmartSwitchNetworkPolicy from file %q: %w", path, err)
@@ -153,12 +154,14 @@ func AddFromFile(path string, policyHandler PolicyHandler) error {
 		return fmt.Errorf("failed loading policy from file %q, policy is nil", path)
 	}
 
+	logger.GetLogger().Info("Loading policy from file", "file", path, "policies", len(policies))
 	for _, p := range policies {
 		err = Add(p, policyHandler)
 		if err != nil {
 			return err
 		}
 	}
+	logger.GetLogger().Info("Loading policy from file completed", "file", path, "policies", len(policies))
 	return nil
 }
 
@@ -222,7 +225,7 @@ func Add(np *v1alpha1.SmartSwitchNetworkPolicy, policyHandler PolicyHandler) err
 		return fmt.Errorf("failed to load SmartSwitchNetworkPolicy: %w", err)
 	}
 
-	logger.GetLogger().Info("Added SmartSwitchNetworkPolicy with success", "SmartSwitchNetworkPolicy", np.Name)
+	logger.GetLogger().Warn("Added SmartSwitchNetworkPolicy with success", "SmartSwitchNetworkPolicy", np.Name)
 	return nil
 }
 

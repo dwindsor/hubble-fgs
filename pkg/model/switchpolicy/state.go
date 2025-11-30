@@ -2,12 +2,8 @@ package switchpolicy
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
-
-	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 )
 
 type SwitchPolicy struct {
@@ -16,19 +12,19 @@ type SwitchPolicy struct {
 }
 
 type diffToApply struct {
-	toAdd map[ruleID]*dpu.DPUPolicyRule
-	toDel map[ruleID]*dpu.DPUPolicyRule
+	toAdd map[ruleID]*DPUPolicyRule
+	toDel map[ruleID]*DPUPolicyRule
 }
 
 func newDiffToApply() diffToApply {
 	return diffToApply{
-		toAdd: make(map[ruleID]*dpu.DPUPolicyRule),
-		toDel: make(map[ruleID]*dpu.DPUPolicyRule),
+		toAdd: make(map[ruleID]*DPUPolicyRule),
+		toDel: make(map[ruleID]*DPUPolicyRule),
 	}
 }
 
-func (d *diffToApply) getDiff() []*dpu.DPUPolicyRule {
-	diff := make([]*dpu.DPUPolicyRule, 0, len(d.toAdd)+len(d.toDel))
+func (d *diffToApply) getDiff() []*DPUPolicyRule {
+	diff := make([]*DPUPolicyRule, 0, len(d.toAdd)+len(d.toDel))
 	for _, rule := range d.toAdd {
 		diff = append(diff, rule)
 	}
@@ -38,12 +34,12 @@ func (d *diffToApply) getDiff() []*dpu.DPUPolicyRule {
 	return diff
 }
 
-func (d *diffToApply) Add(id ruleID, rule *dpu.DPUPolicyRule) {
+func (d *diffToApply) Add(id ruleID, rule *DPUPolicyRule) {
 	d.toAdd[id] = rule
 	delete(d.toDel, id)
 }
 
-func (d *diffToApply) Del(id ruleID, rule *dpu.DPUPolicyRule) {
+func (d *diffToApply) Del(id ruleID, rule *DPUPolicyRule) {
 	d.toDel[id] = rule
 	delete(d.toAdd, id)
 }
@@ -97,7 +93,6 @@ func (s *State) RemoveRuleByID(id ruleID) error {
 }
 
 func (s *State) AddRule(id ruleID, policy *SwitchPolicy) error {
-	logger.GetLogger().Info("Adding rule to state", "id", id, "policy", *policy)
 	if _, ok := s.policyByRuleId[id]; ok {
 		return fmt.Errorf("rule with id %d already exists", id)
 	}
@@ -191,14 +186,14 @@ func (s *State) RemoveL3Network(name VrfName) error {
 	return nil
 }
 
-func (s *State) GetDeltaToApply() []*dpu.DPUPolicyRule {
+func (s *State) GetDeltaToApply() []*DPUPolicyRule {
 	delta := s.diff.getDiff()
 
 	s.diff = newDiffToApply()
 	return delta
 }
 
-func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *dpu.DPUPolicyRule {
+func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *DPUPolicyRule {
 	var operation v1alpha.PolicyOperation
 	if upsert {
 		operation = v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT
@@ -223,47 +218,26 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *dpu
 		return nil
 	}
 
-	dstProto := v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED
-	dstPorts := []dpu.DPUPorts{}
-	srcPorts := []dpu.DPUPorts{} // unused until we add src port specifiers
-
-	for _, port := range rule.Policy.Destination.ProtoPorts {
-		switch strings.ToLower(port.Protocol) {
-		case "tcp":
-			dstProto = v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP
-		case "udp":
-			dstProto = v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP
-		case "icmp":
-			dstProto = v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP
-		}
-
-		dstPorts = append(dstPorts, dpu.DPUPorts{
-			MinPort:  uint32(port.Port),
-			MaxPort:  uint32(port.EndPort),
-			Protocol: dstProto,
-		})
-	}
-
-	return &dpu.DPUPolicyRule{
+	return &DPUPolicyRule{
 		Oper: operation,
-		Policy: &dpu.DPURule{
+		Policy: &DPURule{
 			K8SResourceVersion: rule.Policy.K8SResourceVersion,
 			K8SUid:             rule.Policy.K8SUid,
 			PolicyName:         rule.UID.PolicyName,
 			RuleName:           rule.UID.RuleName,
 			Action:             action,
-			Source: dpu.DPUSubject{
+			Source: DPUSubject{
 				Cidr:  rule.Policy.Source.Endpoint.CIDR,
-				Ports: srcPorts,
+				Ports: nil,
 				Vlan:  uint32(rule.Policy.Source.Endpoint.VLAN),
 				Vrf:   rule.Policy.Source.Endpoint.VRF,
 				VrfId: uint32(sourceVRFId),
 			},
 			// The current policy resolution does not include destination
 			// Vlan and VRF this will be added soon.
-			Destination: dpu.DPUSubject{
+			Destination: DPUSubject{
 				Cidr:  rule.Policy.Destination.Endpoint.CIDR,
-				Ports: dstPorts,
+				Ports: rule.Policy.Destination.ProtoPorts,
 				Vlan:  uint32(rule.Policy.Destination.Endpoint.VLAN),
 				Vrf:   rule.Policy.Destination.Endpoint.VRF,
 				VrfId: uint32(destinationVRFId),

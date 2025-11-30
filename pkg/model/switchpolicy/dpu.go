@@ -1,4 +1,4 @@
-package dpu
+package switchpolicy
 
 import (
 	"bytes"
@@ -51,7 +51,7 @@ type DPUPorts struct {
 
 type DPUSubject struct {
 	Cidr  string
-	Ports []DPUPorts
+	Ports *[]SmartSwitchNetworkProtocolPorts
 	Vlan  uint32
 	VrfId uint32
 	Vrf   string
@@ -376,20 +376,22 @@ func HashRule(rule *DPURule) ([sha256.Size]byte, error) {
 	if err != nil {
 		return [sha256.Size]byte{}, err
 	}
-	for _, p := range rule.Source.Ports {
-		err = binary.Write(h, binary.BigEndian, p.MinPort)
-		if err != nil {
-			return [sha256.Size]byte{}, err
+	/*
+		for _, p := range *rule.Source.Ports {
+			err = binary.Write(h, binary.BigEndian, p.Port)
+			if err != nil {
+				return [sha256.Size]byte{}, err
+			}
+			err = binary.Write(h, binary.BigEndian, p.EndPort)
+			if err != nil {
+				return [sha256.Size]byte{}, err
+			}
+			err = binary.Write(h, binary.BigEndian, p.Protocol)
+			if err != nil {
+				return [sha256.Size]byte{}, err
+			}
 		}
-		err = binary.Write(h, binary.BigEndian, p.MaxPort)
-		if err != nil {
-			return [sha256.Size]byte{}, err
-		}
-		err = binary.Write(h, binary.BigEndian, p.Protocol)
-		if err != nil {
-			return [sha256.Size]byte{}, err
-		}
-	}
+	*/
 	err = binary.Write(h, binary.BigEndian, rule.Source.Vlan)
 	if err != nil {
 		return [sha256.Size]byte{}, err
@@ -408,12 +410,12 @@ func HashRule(rule *DPURule) ([sha256.Size]byte, error) {
 	if err != nil {
 		return [sha256.Size]byte{}, err
 	}
-	for _, p := range rule.Destination.Ports {
-		err = binary.Write(h, binary.BigEndian, p.MinPort)
+	for _, p := range *rule.Destination.Ports {
+		err = binary.Write(h, binary.BigEndian, p.Port)
 		if err != nil {
 			return [sha256.Size]byte{}, err
 		}
-		err = binary.Write(h, binary.BigEndian, p.MaxPort)
+		err = binary.Write(h, binary.BigEndian, p.EndPort)
 		if err != nil {
 			return [sha256.Size]byte{}, err
 		}

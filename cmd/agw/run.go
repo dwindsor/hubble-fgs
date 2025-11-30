@@ -25,13 +25,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 	"github.com/isovalent/hubble-fgs/pkg/config"
-	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
 
-func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu.DPUListener) error {
+func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *switchpolicy.DPUListener) error {
 	logger.GetLogger().Info("Agent starting", "config", redactedConfig())
 	waitGroup, ctx := errgroup.WithContext(ctx)
 
@@ -106,6 +105,8 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *dpu
 		} else if err != nil {
 			logger.GetLogger().Error("failed to add smartSwitchNetworkPolicy from dir", "network-policy-dir", Config.NetworkPoliciesDir, logfields.Error, err)
 			return fmt.Errorf("add SmartSwitchNetworkPolicy failed: %w", err)
+		} else {
+			logger.GetLogger().Info("smartSwitchNetworkPolicy dir loaded", "network-policy-dir", Config.NetworkPoliciesDir)
 		}
 	}
 

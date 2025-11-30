@@ -1,9 +1,9 @@
 package policy
 
 import (
-	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 
-	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
 const (
@@ -11,7 +11,7 @@ const (
 	DENY  = "deny"
 )
 
-func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
+func ruleToJSON(op v1alpha.PolicyOperation, rule *switchpolicy.DPURule) FwPolicyV2 {
 	var fwop uint16
 
 	name := rule.PolicyName + "/" + rule.RuleName
@@ -34,7 +34,7 @@ func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
 	srcPorts := []PortV2{}
 	dstPorts := []PortV2{}
 
-	for _, p := range rule.Destination.Ports {
+	for _, p := range *rule.Destination.Ports {
 		// Protocol is only being picked up from the destination
 		proto := []string{}
 		switch p.Protocol {
@@ -48,30 +48,32 @@ func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
 			proto = append(proto, "any")
 		}
 		dstPorts = append(dstPorts, PortV2{
-			PortHigh: uint16(p.MaxPort),
-			PortLow:  uint16(p.MinPort),
+			PortHigh: uint16(p.EndPort),
+			PortLow:  uint16(p.Port),
 			Protocol: proto,
 		})
 	}
 
-	for _, p := range rule.Source.Ports {
-		// Protocol is only being picked up from the destination
-		proto := []string{}
-		switch p.Protocol {
-		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP:
-			proto = append(proto, "tcp")
-		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP:
-			proto = append(proto, "udp")
-		case v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP:
-			proto = append(proto, "icmp")
-		default:
-			proto = append(proto, "any")
+	if rule.Source.Ports != nil {
+		for _, p := range *rule.Source.Ports {
+			// Protocol is only being picked up from the destination
+			proto := []string{}
+			switch p.Protocol {
+			case v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP:
+				proto = append(proto, "tcp")
+			case v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP:
+				proto = append(proto, "udp")
+			case v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP:
+				proto = append(proto, "icmp")
+			default:
+				proto = append(proto, "any")
+			}
+			srcPorts = append(srcPorts, PortV2{
+				PortHigh: uint16(p.EndPort),
+				PortLow:  uint16(p.Port),
+				Protocol: proto,
+			})
 		}
-		srcPorts = append(srcPorts, PortV2{
-			PortHigh: uint16(p.MaxPort),
-			PortLow:  uint16(p.MinPort),
-			Protocol: proto,
-		})
 	}
 
 	source := EndpointV2{
@@ -98,7 +100,7 @@ func ruleToJSON(op v1alpha.PolicyOperation, rule *dpu.DPURule) FwPolicyV2 {
 	}
 }
 
-func DPURuleToJSON(op v1alpha.PolicyOperation, policySet []*dpu.DPUPolicyRule) []FwPolicyV2 {
+func DPURuleToJSON(op v1alpha.PolicyOperation, policySet []*switchpolicy.DPUPolicyRule) []FwPolicyV2 {
 	fwSet := []FwPolicyV2{}
 
 	for _, p := range policySet {

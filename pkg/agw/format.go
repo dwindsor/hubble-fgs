@@ -131,9 +131,9 @@ func formatSwitchDestination(dest switchpolicy.SmartSwitchNetworkDestination) st
 	if dest.Endpoint.VLAN > 0 {
 		b.WriteString(fmt.Sprintf("  │   • VLAN: %d\n", dest.Endpoint.VLAN))
 	}
-	for _, p := range dest.ProtoPorts {
-		if p.Protocol != "" {
-			b.WriteString(fmt.Sprintf("  │   • Protocol: %s\n", p.Protocol))
+	for _, p := range *dest.ProtoPorts {
+		if p.Protocol != 0 {
+			b.WriteString(fmt.Sprintf("  │   • Protocol: %s\n", p.Protocol.String()))
 		}
 		if p.Port > 0 {
 			if p.EndPort > 0 && p.EndPort != p.Port {

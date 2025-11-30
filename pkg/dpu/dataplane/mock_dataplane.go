@@ -3,11 +3,11 @@ package dataplane
 import (
 	"context"
 
-	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
-
 	"github.com/cilium/tetragon/pkg/logger"
 
-	dpuPolicy "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
+
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
 func NewMockDataplane() *MockDataplane {
@@ -35,8 +35,7 @@ func (m *MockDataplane) HardwareModel() string {
 	return "mock"
 }
 
-func (m *MockDataplane) PushPolicy(_ context.Context, op v1alpha.PolicyOperation, rules []*dpuPolicy.DPUPolicyRule) error {
-	logger.GetLogger().Info("pushed policy", "op", op, "rules", len(rules))
+func (m *MockDataplane) PushPolicy(_ context.Context, op v1alpha.PolicyOperation, rules []*switchpolicy.DPUPolicyRule) error {
 	var logStr string
 	switch op {
 	case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:

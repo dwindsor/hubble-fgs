@@ -1,4 +1,4 @@
-package dpu
+package switchpolicy
 
 import (
 	"fmt"
@@ -9,20 +9,20 @@ import (
 
 func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicyRule {
 	p := resp.Policy
-	srcPorts := []DPUPorts{}
-	dstPorts := []DPUPorts{}
+	srcPorts := []SmartSwitchNetworkProtocolPorts{}
+	dstPorts := []SmartSwitchNetworkProtocolPorts{}
 
 	for _, p := range p.Source.Network.Ports {
-		srcPorts = append(srcPorts, DPUPorts{
-			MinPort:  p.MinPort,
-			MaxPort:  p.MaxPort,
+		srcPorts = append(srcPorts, SmartSwitchNetworkProtocolPorts{
+			Port:     p.MinPort,
+			EndPort:  p.MaxPort,
 			Protocol: p.Protocol,
 		})
 	}
 	for _, p := range p.Destination.Network.Ports {
-		dstPorts = append(dstPorts, DPUPorts{
-			MinPort:  p.MinPort,
-			MaxPort:  p.MaxPort,
+		dstPorts = append(dstPorts, SmartSwitchNetworkProtocolPorts{
+			Port:     p.MinPort,
+			EndPort:  p.MaxPort,
 			Protocol: p.Protocol,
 		})
 	}
@@ -35,14 +35,14 @@ func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicy
 		Action:             p.Action,
 		Source: DPUSubject{
 			Cidr:  p.Source.Network.Cidr,
-			Ports: srcPorts,
+			Ports: &srcPorts,
 			Vlan:  p.Source.Network.Vlan,
 			Vrf:   p.Source.Network.Vrf,
 			VrfId: p.Source.Network.VrfId,
 		},
 		Destination: DPUSubject{
 			Cidr:  p.Destination.Network.Cidr,
-			Ports: dstPorts,
+			Ports: &dstPorts,
 			Vlan:  p.Destination.Network.Vlan,
 			Vrf:   p.Destination.Network.Vrf,
 			VrfId: p.Destination.Network.VrfId,
@@ -62,20 +62,22 @@ func dpuRuleToResponse(rule *DPUPolicyRule) *v1alpha.Streaml3L4NetworkPolicyResp
 	srcPorts := []*v1alpha.PolicyPorts{}
 	dstPorts := []*v1alpha.PolicyPorts{}
 
-	for _, p := range r.Source.Ports {
-		srcPorts = append(srcPorts, &v1alpha.PolicyPorts{
-			MinPort:  p.MinPort,
-			MaxPort:  p.MaxPort,
+	for _, p := range *r.Destination.Ports {
+		dstPorts = append(dstPorts, &v1alpha.PolicyPorts{
+			MinPort:  p.Port,
+			MaxPort:  p.EndPort,
 			Protocol: p.Protocol,
 		})
 	}
 
-	for _, p := range r.Destination.Ports {
-		dstPorts = append(dstPorts, &v1alpha.PolicyPorts{
-			MinPort:  p.MinPort,
-			MaxPort:  p.MaxPort,
-			Protocol: p.Protocol,
-		})
+	if r.Source.Ports != nil {
+		for _, p := range *r.Source.Ports {
+			srcPorts = append(srcPorts, &v1alpha.PolicyPorts{
+				MinPort:  p.Port,
+				MaxPort:  p.EndPort,
+				Protocol: p.Protocol,
+			})
+		}
 	}
 
 	source := &v1alpha.PolicySubject{

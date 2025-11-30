@@ -1,4 +1,4 @@
-package dpu
+package switchpolicy
 
 import (
 	"context"

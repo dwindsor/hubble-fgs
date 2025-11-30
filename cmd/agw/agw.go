@@ -14,7 +14,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	hasvr "github.com/isovalent/hubble-fgs/pkg/grpc/hasvr"
-	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
@@ -42,7 +41,6 @@ func startGopsServer() error {
 }
 
 func executeAGW() {
-
 	runtime.GOMAXPROCS(MaxProcs)
 
 	if err := startGopsServer(); err != nil {
@@ -64,7 +62,7 @@ func executeAGW() {
 	// Setup signal handling
 	SetupSignalHandler(ctx, cancel, agwSignalHandler, waitGroup, shutdown.RestartExitCode)
 
-	dpuListener := dpu.NewDPUListener(ctx, Config.DPUServerAddress)
+	dpuListener := switchpolicy.NewDPUListener(ctx, Config.DPUServerAddress)
 	agwAgent := agw.NewAgent(dpuListener, switchpolicy.NewPolicyHandler(ctx, dpuListener))
 	err := agwAgent.Config(ctx, Config.DafConfig)
 

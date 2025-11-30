@@ -28,8 +28,8 @@ func (l3 *L3Networks) Add(name VrfName, gid VrfGID) error {
 	if _, ok := l3.byName[name]; ok {
 		return fmt.Errorf("L3 network with name %s already exists", name)
 	}
-	if _, ok := l3.byGID[gid]; ok {
-		return fmt.Errorf("L3 network with GID %d already exists", gid)
+	if k, ok := l3.byGID[gid]; ok {
+		return fmt.Errorf("L3 network VRF %s with GID %d already exists", k, gid)
 	}
 	l3.byName[name] = gid
 	l3.byGID[gid] = name

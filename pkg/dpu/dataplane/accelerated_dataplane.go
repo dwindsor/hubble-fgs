@@ -22,7 +22,7 @@ import (
 
 	dpAppPolicy "github.com/isovalent/hubble-fgs/pkg/dpu/policy"
 	"github.com/isovalent/hubble-fgs/pkg/dpu/socket"
-	dpuPolicy "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 )
 
 // Returns a newly created accelerated dataplane object
@@ -313,7 +313,7 @@ func (dp *AcceleratedDataplane) HardwareModel() string {
 	return dp.Accelerated.Asic
 }
 
-func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, fwop v1alpha.PolicyOperation, policies []*dpuPolicy.DPUPolicyRule) error {
+func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, fwop v1alpha.PolicyOperation, policies []*switchpolicy.DPUPolicyRule) error {
 	fwPolicy := dpAppPolicy.DPURuleToJSON(fwop, policies)
 
 	// Creating policy message

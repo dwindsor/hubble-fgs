@@ -34,7 +34,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dpu/dataplane"
 	"github.com/isovalent/hubble-fgs/pkg/dpu/events"
 	"github.com/isovalent/hubble-fgs/pkg/dpu/exporter"
-	agentDPU "github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/utils"
 )
 
@@ -76,7 +76,7 @@ func NewDPUAgent(server string) *DPUAgent {
 		// the message. We SHA256 the rule so that the operation matches for
 		// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
 		// of the concatenated strings in this map.
-		ruleSet:       make(map[[sha256.Size]byte]*agentDPU.DPUPolicyRule),
+		ruleSet:       make(map[[sha256.Size]byte]*switchpolicy.DPUPolicyRule),
 		serverAddress: server,
 		ruleSetLock:   sync.RWMutex{},
 	}
@@ -107,7 +107,7 @@ type DPUAgent struct {
 	// the message. We SHA256 the rule so that the operation matches for
 	// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
 	// of the concatenated strings in this map.
-	ruleSet      map[[sha256.Size]byte]*agentDPU.DPUPolicyRule
+	ruleSet      map[[sha256.Size]byte]*switchpolicy.DPUPolicyRule
 	ruleSetLock  sync.RWMutex
 	DpuReboot    uint32
 	DpuBootTime  time.Time
@@ -387,9 +387,9 @@ func (dpu *DPUAgent) Checksum() [sha256.Size]byte {
 
 }
 
-func (dpu *DPUAgent) upsertPolicyRule(rule *agentDPU.DPUPolicyRule) error {
+func (dpu *DPUAgent) upsertPolicyRule(rule *switchpolicy.DPUPolicyRule) error {
 
-	csum, err := agentDPU.HashRule(rule.Policy)
+	csum, err := switchpolicy.HashRule(rule.Policy)
 	if err != nil {
 		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
 			logfields.Error, err, "rule", rule)
@@ -406,8 +406,8 @@ func (dpu *DPUAgent) upsertPolicyRule(rule *agentDPU.DPUPolicyRule) error {
 	return nil
 }
 
-func (dpu *DPUAgent) deletePolicyRule(rule *agentDPU.DPUPolicyRule) error {
-	csum, err := agentDPU.HashRule(rule.Policy)
+func (dpu *DPUAgent) deletePolicyRule(rule *switchpolicy.DPUPolicyRule) error {
+	csum, err := switchpolicy.HashRule(rule.Policy)
 	if err != nil {
 		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
 			logfields.Error, err)
@@ -434,8 +434,8 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			return err
 		}
 
-		rule := agentDPU.ResponseToDPURule(resp)
-		policyList := []*agentDPU.DPUPolicyRule{rule}
+		rule := switchpolicy.ResponseToDPURule(resp)
+		policyList := []*switchpolicy.DPUPolicyRule{rule}
 
 		switch resp.Oper {
 		case v1alpha.PolicyOperation_POLICY_OPERATION_UNSPECIFIED:
@@ -594,7 +594,7 @@ func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
 }
 
 func (dpu *DPUAgent) stalePolicyGC(ctx context.Context, invokeTime time.Time) {
-	delList := []*agentDPU.DPUPolicyRule{}
+	delList := []*switchpolicy.DPUPolicyRule{}
 
 	dpu.ruleSetLock.Lock()
 	defer dpu.ruleSetLock.Unlock()

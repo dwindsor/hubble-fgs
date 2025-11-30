@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"io"
+
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
 type PolicyUniqueID struct {
@@ -62,8 +64,8 @@ func (s *SmartSwitchNetworkPolicy) Hash() ([sha256.Size]byte, error) {
 	}
 
 	// Destination ProtoPorts
-	if len(s.Destination.ProtoPorts) > 0 {
-		for _, p := range s.Destination.ProtoPorts {
+	if len(*s.Destination.ProtoPorts) > 0 {
+		for _, p := range *s.Destination.ProtoPorts {
 			err = binary.Write(h, binary.BigEndian, p.Port)
 			if err != nil {
 				return [sha256.Size]byte{}, err
@@ -72,7 +74,7 @@ func (s *SmartSwitchNetworkPolicy) Hash() ([sha256.Size]byte, error) {
 			if err != nil {
 				return [sha256.Size]byte{}, err
 			}
-			_, err = io.WriteString(h, p.Protocol)
+			err = binary.Write(h, binary.BigEndian, p.Protocol)
 			if err != nil {
 				return [sha256.Size]byte{}, err
 			}
@@ -105,9 +107,9 @@ func (s *SmartSwitchNetworkPolicy) Hash() ([sha256.Size]byte, error) {
 }
 
 type SmartSwitchNetworkProtocolPorts struct {
-	Port     int32
-	EndPort  int32
-	Protocol string
+	Port     uint32
+	EndPort  uint32
+	Protocol v1alpha.PolicyProtocol
 }
 
 type SmartSwitchNetworkEndpoint struct {
@@ -124,7 +126,7 @@ type SmartSwitchNetworkDestination struct {
 	// FQDN   *TetragonNetworkFQDN
 	// Labels TetragonNetworkLabels
 	Endpoint   SmartSwitchNetworkEndpoint
-	ProtoPorts []SmartSwitchNetworkProtocolPorts
+	ProtoPorts *[]SmartSwitchNetworkProtocolPorts
 }
 
 type SmartSwitchNetworkAction struct {

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	isovalentv1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
 func toSmartSwitchDefaultAction(_ *isovalentv1.SmartSwitchNetworkPolicy) SmartSwitchNetworkAction {
@@ -33,6 +34,32 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 
 	dfltAction := toSmartSwitchDefaultAction(np)
 	act := toSmartSwitchAction(r)
+
+	protoports := make([]SmartSwitchNetworkProtocolPorts, len(r.Destination.ProtoPorts), len(r.Destination.ProtoPorts))
+	for _, p := range r.Destination.ProtoPorts {
+		if p.EndPort == 0 {
+			p.EndPort = p.Port
+		}
+
+		proto := v1alpha.PolicyProtocol_POLICY_PROTOCOL_UNSPECIFIED
+
+		switch p.Protocol {
+		case "TCP":
+			proto = v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP
+		case "UDP":
+			proto = v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP
+		case "ICMP":
+			proto = v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP
+		}
+
+		protoports = append(protoports,
+			SmartSwitchNetworkProtocolPorts{
+				Port:     uint32(p.Port),
+				EndPort:  uint32(p.EndPort),
+				Protocol: proto,
+			})
+	}
+
 	for _, s := range r.Source.IPBlock {
 		source := SmartSwitchNetworkSource{
 			Endpoint: SmartSwitchNetworkEndpoint{
@@ -41,26 +68,15 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 				VLAN: s.VLAN,
 			},
 		}
+
 		for _, d := range r.Destination.IPBlock {
-			protoports := []SmartSwitchNetworkProtocolPorts{}
-			for _, p := range r.Destination.ProtoPorts {
-				if p.EndPort == 0 {
-					p.EndPort = p.Port
-				}
-				protoports = append(protoports,
-					SmartSwitchNetworkProtocolPorts{
-						Port:     p.Port,
-						EndPort:  p.EndPort,
-						Protocol: p.Protocol,
-					})
-			}
 			dest := SmartSwitchNetworkDestination{
 				Endpoint: SmartSwitchNetworkEndpoint{
 					CIDR: d.CIDR,
 					VRF:  d.VRF,
 					VLAN: d.VLAN,
 				},
-				ProtoPorts: protoports,
+				ProtoPorts: &protoports,
 			}
 
 			policy = append(policy, &SmartSwitchNetworkPolicy{
