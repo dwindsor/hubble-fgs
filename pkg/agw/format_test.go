@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
+
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
 // --- Tests for filterPolicyNames and matchPolicyPattern ---
@@ -357,9 +359,9 @@ func TestFormatSwitchPolicyRule(t *testing.T) {
 					Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
 						CIDR: "10.1.0.0/16",
 					},
-					ProtoPorts: []switchpolicy.SmartSwitchNetworkProtocolPorts{
+					ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
 						switchpolicy.SmartSwitchNetworkProtocolPorts{
-							Protocol: "TCP",
+							Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							Port:     80,
 							EndPort:  443,
 						},
@@ -376,7 +378,7 @@ func TestFormatSwitchPolicyRule(t *testing.T) {
 				"│   • VLAN: 100",
 				"│ Destination:",
 				"│   • CIDR: 10.1.0.0/16",
-				"│   • Protocol: TCP",
+				"│   • Protocol: POLICY_PROTOCOL_TCP",
 				"│   • Ports: 80-443",
 			},
 		},
@@ -529,16 +531,16 @@ func TestFormatSwitchDestination(t *testing.T) {
 				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
 					CIDR: "10.0.0.0/24",
 				},
-				ProtoPorts: []switchpolicy.SmartSwitchNetworkProtocolPorts{
+				ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
 					switchpolicy.SmartSwitchNetworkProtocolPorts{
-						Protocol: "TCP",
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},
 			},
 			expected: []string{
 				"│ Destination:",
 				"│   • CIDR: 10.0.0.0/24",
-				"│   • Protocol: TCP",
+				"│   • Protocol: POLICY_PROTOCOL_TCP",
 			},
 		},
 		{
@@ -547,9 +549,9 @@ func TestFormatSwitchDestination(t *testing.T) {
 				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
 					CIDR: "172.16.0.0/16",
 				},
-				ProtoPorts: []switchpolicy.SmartSwitchNetworkProtocolPorts{
+				ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
 					switchpolicy.SmartSwitchNetworkProtocolPorts{
-						Protocol: "UDP",
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP,
 						Port:     53,
 					},
 				},
@@ -557,7 +559,7 @@ func TestFormatSwitchDestination(t *testing.T) {
 			expected: []string{
 				"│ Destination:",
 				"│   • CIDR: 172.16.0.0/16",
-				"│   • Protocol: UDP",
+				"│   • Protocol: POLICY_PROTOCOL_UDP",
 				"│   • Port: 53",
 			},
 		},
@@ -567,9 +569,9 @@ func TestFormatSwitchDestination(t *testing.T) {
 				Endpoint: switchpolicy.SmartSwitchNetworkEndpoint{
 					CIDR: "10.1.0.0/16",
 				},
-				ProtoPorts: []switchpolicy.SmartSwitchNetworkProtocolPorts{
+				ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
 					switchpolicy.SmartSwitchNetworkProtocolPorts{
-						Protocol: "TCP",
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 						Port:     80,
 						EndPort:  443,
 					},
@@ -578,7 +580,7 @@ func TestFormatSwitchDestination(t *testing.T) {
 			expected: []string{
 				"│ Destination:",
 				"│   • CIDR: 10.1.0.0/16",
-				"│   • Protocol: TCP",
+				"│   • Protocol: POLICY_PROTOCOL_TCP",
 				"│   • Ports: 80-443",
 			},
 		},
@@ -590,9 +592,9 @@ func TestFormatSwitchDestination(t *testing.T) {
 					VRF:  "vrf1",
 					VLAN: 200,
 				},
-				ProtoPorts: []switchpolicy.SmartSwitchNetworkProtocolPorts{
+				ProtoPorts: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
 					switchpolicy.SmartSwitchNetworkProtocolPorts{
-						Protocol: "TCP",
+						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 						Port:     8080,
 					},
 				},
@@ -602,7 +604,7 @@ func TestFormatSwitchDestination(t *testing.T) {
 				"│   • CIDR: 192.168.0.0/24",
 				"│   • VRF: vrf1",
 				"│   • VLAN: 200",
-				"│   • Protocol: TCP",
+				"│   • Protocol: POLICY_PROTOCOL_TCP",
 				"│   • Port: 8080",
 			},
 		},

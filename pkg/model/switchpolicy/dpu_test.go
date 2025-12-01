@@ -88,10 +88,10 @@ var (
 			Action:     v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 			Source: DPUSubject{
 				Cidr: "192.1.0.1/16",
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  0,
-						MaxPort:  0,
+				Ports: &[]SmartSwitchNetworkProtocolPorts{
+					{
+						Port:     0,
+						EndPort:  0,
 						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},
@@ -101,10 +101,10 @@ var (
 			},
 			Destination: DPUSubject{
 				Cidr: "192.2.0.1/16",
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  8080,
-						MaxPort:  8080,
+				Ports: &[]SmartSwitchNetworkProtocolPorts{
+					{
+						Port:     8080,
+						EndPort:  8080,
 						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},
@@ -122,10 +122,10 @@ var (
 			Action:     v1alpha.PolicyAction_POLICY_ACTION_DENY,
 			Source: DPUSubject{
 				Cidr: "192.3.0.1/16",
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  0,
-						MaxPort:  0,
+				Ports: &[]SmartSwitchNetworkProtocolPorts{
+					{
+						Port:     0,
+						EndPort:  0,
 						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},
@@ -135,10 +135,10 @@ var (
 			},
 			Destination: DPUSubject{
 				Cidr: "192.4.0.1/16",
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  9090,
-						MaxPort:  9090,
+				Ports: &[]SmartSwitchNetworkProtocolPorts{
+					{
+						Port:     9090,
+						EndPort:  9090,
 						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},
@@ -156,10 +156,10 @@ var (
 			Action:     v1alpha.PolicyAction_POLICY_ACTION_DENY,
 			Source: DPUSubject{
 				Cidr: "192.5.0.1/16",
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  0,
-						MaxPort:  0,
+				Ports: &[]SmartSwitchNetworkProtocolPorts{
+					{
+						Port:     0,
+						EndPort:  0,
 						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},
@@ -169,10 +169,10 @@ var (
 			},
 			Destination: DPUSubject{
 				Cidr: "192.6.0.1/16",
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  9090,
-						MaxPort:  9090,
+				Ports: &[]SmartSwitchNetworkProtocolPorts{
+					{
+						Port:     9090,
+						EndPort:  9090,
 						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},

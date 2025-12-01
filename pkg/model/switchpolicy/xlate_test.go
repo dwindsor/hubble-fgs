@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	isovalentv1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
 func TestToSmartSwitchNetworkPolicies(t *testing.T) {
@@ -64,11 +65,11 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							CIDR: "8.8.8.8/32",
 							VRF:  "external",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 						},
 					},
@@ -128,11 +129,11 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							CIDR: "192.168.2.0/24",
 							VLAN: 200,
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     80,
 								EndPort:  80,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 						},
 					},
@@ -205,16 +206,16 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							CIDR: "192.168.1.100/32",
 							VRF:  "vrf-2",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     80,
 								EndPort:  80,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 						},
 					},
@@ -238,16 +239,16 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							CIDR: "192.168.1.101/32",
 							VRF:  "vrf-2",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     80,
 								EndPort:  80,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 						},
 					},
@@ -271,16 +272,16 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							CIDR: "192.168.1.100/32",
 							VRF:  "vrf-2",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     80,
 								EndPort:  80,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 						},
 					},
@@ -304,16 +305,16 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							CIDR: "192.168.1.101/32",
 							VRF:  "vrf-2",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     80,
 								EndPort:  80,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 						},
 					},
@@ -373,16 +374,16 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "8.8.8.8/32",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 							SmartSwitchNetworkProtocolPorts{
 								Port:     53,
 								EndPort:  53,
-								Protocol: "UDP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP,
 							},
 						},
 					},
@@ -443,11 +444,11 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							CIDR: "192.168.1.0/24",
 							VLAN: 200,
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     8000,
 								EndPort:  8080,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 						},
 					},
@@ -511,9 +512,9 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "192.168.1.0/24",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 						},
 					},
@@ -575,12 +576,12 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							CIDR: "192.168.1.0/24",
 							VRF:  "external",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "UDP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP,
 							},
 						},
 					},
@@ -635,7 +636,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "192.168.1.0/24",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:    443,
 								EndPort: 443,
@@ -757,14 +758,14 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "192.168.1.0/24",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     443,
 								EndPort:  443,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "UDP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP,
 							},
 						},
 					},
@@ -820,10 +821,10 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "192.168.1.0/24",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
 								Port:     0,
-								Protocol: "TCP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 							},
 						},
 					},
@@ -882,9 +883,9 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 							CIDR: "192.168.1.0/24",
 							VRF:  "external",
 						},
-						ProtoPorts: []SmartSwitchNetworkProtocolPorts{
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{
-								Protocol: "ICMP",
+								Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP,
 							},
 						},
 					},

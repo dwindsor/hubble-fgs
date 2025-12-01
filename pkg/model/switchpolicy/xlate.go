@@ -35,7 +35,8 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 	dfltAction := toSmartSwitchDefaultAction(np)
 	act := toSmartSwitchAction(r)
 
-	protoports := make([]SmartSwitchNetworkProtocolPorts, len(r.Destination.ProtoPorts), len(r.Destination.ProtoPorts))
+	dprotoports := make([]SmartSwitchNetworkProtocolPorts, 0, len(r.Destination.ProtoPorts))
+
 	for _, p := range r.Destination.ProtoPorts {
 		if p.EndPort == 0 {
 			p.EndPort = p.Port
@@ -52,7 +53,7 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 			proto = v1alpha.PolicyProtocol_POLICY_PROTOCOL_ICMP
 		}
 
-		protoports = append(protoports,
+		dprotoports = append(dprotoports,
 			SmartSwitchNetworkProtocolPorts{
 				Port:     uint32(p.Port),
 				EndPort:  uint32(p.EndPort),
@@ -76,7 +77,7 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 					VRF:  d.VRF,
 					VLAN: d.VLAN,
 				},
-				ProtoPorts: &protoports,
+				ProtoPorts: &dprotoports,
 			}
 
 			policy = append(policy, &SmartSwitchNetworkPolicy{

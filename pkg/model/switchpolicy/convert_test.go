@@ -31,10 +31,10 @@ var (
 			Action:     v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 			Source: DPUSubject{
 				Cidr: srcCidr,
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  0,
-						MaxPort:  0,
+				Ports: &[]SmartSwitchNetworkProtocolPorts{
+					{
+						Port:     0,
+						EndPort:  0,
 						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},
@@ -44,10 +44,10 @@ var (
 			},
 			Destination: DPUSubject{
 				Cidr: dstCidr,
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  8080,
-						MaxPort:  8080,
+				Ports: &[]SmartSwitchNetworkProtocolPorts{
+					{
+						Port:     8080,
+						EndPort:  8080,
 						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},
@@ -65,10 +65,10 @@ var (
 			Action:     v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 			Source: DPUSubject{
 				Cidr: srcCidr,
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  0,
-						MaxPort:  0,
+				Ports: &[]SmartSwitchNetworkProtocolPorts{
+					{
+						Port:     0,
+						EndPort:  0,
 						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},
@@ -78,10 +78,10 @@ var (
 			},
 			Destination: DPUSubject{
 				Cidr: dstCidr,
-				Ports: []DPUPorts{
-					DPUPorts{
-						MinPort:  8080,
-						MaxPort:  8080,
+				Ports: &[]SmartSwitchNetworkProtocolPorts{
+					{
+						Port:     8080,
+						EndPort:  8080,
 						Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 					},
 				},
@@ -167,10 +167,10 @@ func TestDpuRuleToResponseHashes(t *testing.T) {
 		Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
 		Source: DPUSubject{
 			Cidr: srcCidr,
-			Ports: []DPUPorts{
-				DPUPorts{
-					MinPort:  0,
-					MaxPort:  0,
+			Ports: &[]SmartSwitchNetworkProtocolPorts{
+				{
+					Port:     0,
+					EndPort:  0,
 					Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 				},
 			},
@@ -180,10 +180,10 @@ func TestDpuRuleToResponseHashes(t *testing.T) {
 		},
 		Destination: DPUSubject{
 			Cidr: dstCidr,
-			Ports: []DPUPorts{
-				DPUPorts{
-					MinPort:  8080,
-					MaxPort:  8080,
+			Ports: &[]SmartSwitchNetworkProtocolPorts{
+				{
+					Port:     8080,
+					EndPort:  8080,
 					Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP,
 				},
 			},

@@ -10,27 +10,25 @@ import (
 
 	isovalentv1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
-
-	"github.com/isovalent/hubble-fgs/pkg/model/server/dpu"
 )
 
 type FakeDPUProgrammer struct {
-	rules []*dpu.DPUPolicyRule
+	rules []*DPUPolicyRule
 }
 
 func NewFakeDPUProgrammer() *FakeDPUProgrammer {
 	return &FakeDPUProgrammer{
-		rules: make([]*dpu.DPUPolicyRule, 0),
+		rules: make([]*DPUPolicyRule, 0),
 	}
 }
 
-func (f *FakeDPUProgrammer) SubmitDPURuleToDPU(rule *dpu.DPUPolicyRule) error {
+func (f *FakeDPUProgrammer) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 	f.rules = append(f.rules, rule)
 	return nil
 }
 
 func (f *FakeDPUProgrammer) Clear() {
-	f.rules = make([]*dpu.DPUPolicyRule, 0)
+	f.rules = make([]*DPUPolicyRule, 0)
 }
 
 // Helper function to create a minimal k8s policy object for testing
@@ -239,7 +237,7 @@ func TestPolicyUpdatePolicy(t *testing.T) {
 
 }
 
-func createPolicyRule(ruleName, srcCIDR, dstCIDR, vrf string, port int32) *PolicyRule {
+func createPolicyRule(ruleName, srcCIDR, dstCIDR, vrf string, port uint32) *PolicyRule {
 	return NewPolicyRule(
 		ruleName,
 		&SmartSwitchNetworkPolicy{
@@ -254,15 +252,15 @@ func createPolicyRule(ruleName, srcCIDR, dstCIDR, vrf string, port int32) *Polic
 			},
 			Destination: SmartSwitchNetworkDestination{
 				Endpoint: SmartSwitchNetworkEndpoint{CIDR: dstCIDR, VRF: vrf},
-				ProtoPorts: []SmartSwitchNetworkProtocolPorts{
-					{Port: port, Protocol: "TCP"},
+				ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
+					{Port: port, Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP},
 				},
 			},
 		},
 	)
 }
 
-func checkRule(t *testing.T, rule *dpu.DPUPolicyRule, expectedRuleName, expectedPolicyName, srcCIDR, dstCIDR, vrf string, vrfId, port uint32) {
+func checkRule(t *testing.T, rule *DPUPolicyRule, expectedRuleName, expectedPolicyName, srcCIDR, dstCIDR, vrf string, vrfId, port uint32) {
 	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, rule.Oper)
 	require.Equal(t, expectedRuleName, rule.Policy.RuleName)
 	require.Equal(t, expectedPolicyName, rule.Policy.PolicyName)
@@ -272,20 +270,22 @@ func checkRule(t *testing.T, rule *dpu.DPUPolicyRule, expectedRuleName, expected
 	require.Equal(t, vrf, rule.Policy.Source.Vrf)
 	require.Equal(t, vrfId, rule.Policy.Source.VrfId)
 	require.Equal(t, uint32(0), rule.Policy.Source.Vlan)
-	require.Len(t, rule.Policy.Source.Ports, 0)
+	sports := rule.Policy.Source.Ports
+	require.Nil(t, sports)
 
 	// Check destination properties
 	require.Equal(t, dstCIDR, rule.Policy.Destination.Cidr)
 	require.Equal(t, vrf, rule.Policy.Destination.Vrf)
 	require.Equal(t, vrfId, rule.Policy.Destination.VrfId)
 	require.Equal(t, uint32(0), rule.Policy.Destination.Vlan)
-	require.Len(t, rule.Policy.Destination.Ports, 1)
-	require.Equal(t, port, rule.Policy.Destination.Ports[0].MinPort)
-	require.Equal(t, uint32(0), rule.Policy.Destination.Ports[0].MaxPort)
-	require.Equal(t, v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP, rule.Policy.Destination.Ports[0].Protocol)
+	dports := *rule.Policy.Destination.Ports
+	require.Len(t, dports, 1)
+	require.Equal(t, port, dports[0].Port)
+	require.Equal(t, uint32(0), dports[0].EndPort)
+	require.Equal(t, v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP, dports[0].Protocol)
 }
 
-func findRuleByName(t *testing.T, fakeDPU *FakeDPUProgrammer, ruleName string) *dpu.DPUPolicyRule {
+func findRuleByName(t *testing.T, fakeDPU *FakeDPUProgrammer, ruleName string) *DPUPolicyRule {
 	for _, rule := range fakeDPU.rules {
 		if rule.Policy.RuleName == ruleName {
 			return rule

@@ -25,7 +25,7 @@ func TestL3Networks_AddVrfWithGID0(t *testing.T) {
 	}
 
 	// Verify the error message
-	expectedErr := "L3 network with GID 0 already exists"
+	expectedErr := "L3 network VRF  with GID 0 already exists"
 	if err != nil && err.Error() != expectedErr {
 		t.Errorf("Expected error message %q, got %q", expectedErr, err.Error())
 	}
