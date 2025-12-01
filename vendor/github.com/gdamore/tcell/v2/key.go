@@ -203,7 +203,7 @@ var KeyNames = map[Key]string{
 	KeyCtrlY:          "Ctrl-Y",
 	KeyCtrlZ:          "Ctrl-Z",
 	KeyCtrlLeftSq:     "Ctrl-[",
-	KeyCtrlRightSq:    "Ctrl-[",
+	KeyCtrlRightSq:    "Ctrl-]",
 	KeyCtrlBackslash:  "Ctrl-\\",
 	KeyCtrlCarat:      "Ctrl-^",
 	KeyCtrlUnderscore: "Ctrl-_",
@@ -257,19 +257,19 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 		// control characters and the DEL.
 		k = Key(ch)
 		if mod == ModNone && ch < ' ' {
-			switch Key(ch) {
+			switch k {
 			case KeyBackspace, KeyTab, KeyEsc, KeyEnter:
 				// these keys are directly typeable without CTRL
 			default:
 				// most likely entered with a CTRL keypress
 				mod = ModCtrl
-				ch = ch + '\x60'
 			}
+			ch = ch + '\x60'
 		}
 	}
-	if k == KeyRune && ch >= '@' && ch <= '_' && mod == ModCtrl {
+	if k == KeyRune && ch >= 'A' && ch <= 'Z' && mod == ModCtrl {
 		// We don't do Ctrl-[ or backslash or those specially.
-		k = KeyCtrlA + Key(ch-'@')
+		k = KeyCtrlA + Key(ch-'A')
 	}
 
 	// Might be lower case
@@ -282,6 +282,14 @@ func NewEventKey(k Key, ch rune, mod ModMask) *EventKey {
 	// with UNIX, lets harmonize this.
 	if k == KeyRune && mod == ModShift && ch != 0 {
 		mod = ModNone
+	}
+
+	if k >= KeyCtrlA && k <= KeyCtrlZ {
+		if mod&ModShift != 0 {
+			ch = rune((k - KeyCtrlA) + 'A')
+		} else {
+			ch = rune((k - KeyCtrlA) + 'a')
+		}
 	}
 
 	// Backspace2 is just another name for backspace.

@@ -7,10 +7,10 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.40.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.1
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.14
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.91.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.92.1
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.18.4
-	github.com/cilium/ebpf v0.20.1-0.20251113100258-98fde4270077
+	github.com/cilium/ebpf v0.20.1-0.20251127122423-f88f6095fad8
 	github.com/cilium/lumberjack/v2 v2.4.1
 	github.com/cilium/tetragon v1.7.0-pre.0.0.20251120150549-d35b6ab6d239
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
@@ -22,7 +22,7 @@ require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.18.0
-	github.com/gdamore/tcell/v2 v2.10.0
+	github.com/gdamore/tcell/v2 v2.13.1
 	github.com/go-logr/logr v1.4.3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang/protobuf v1.5.4
@@ -43,7 +43,7 @@ require (
 	github.com/openconfig/goyang v1.6.3
 	github.com/openconfig/ygot v0.34.0
 	github.com/operator-framework/api v0.36.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.2
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.87.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
 	github.com/rivo/tview v0.42.0
