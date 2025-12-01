@@ -47,6 +47,7 @@ func Execute() error {
 	flags.StringVar(&Config.DafConfig, keyDafConfig, Config.DafConfig, "Path to config file")
 	flags.StringSliceVar(&Config.NetworkPolicies, keyNetworkPolicy, Config.NetworkPolicies, "network policy files")
 	flags.StringVar(&Config.ServerAddress, keyServerAddress, Config.ServerAddress, "server address")
+	flags.StringVar(&Config.GopsAddr, keyGopsAddress, Config.GopsAddr, "gops address")
 	flags.StringVar(&Config.DpSocketPath, keyDpSocketPath, Config.DpSocketPath, "dp-app socket path")
 	flags.BoolVar(&Config.EnableDataplane, keyEnableDataplane, Config.EnableDataplane, "Enable dataplane")
 	flags.BoolVar(&Config.EnableAgw, keyEnableAgw, Config.EnableAgw, "Enable AGW connection")

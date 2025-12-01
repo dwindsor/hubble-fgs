@@ -9,6 +9,7 @@ type cliConfig struct {
 	EnableAgw       bool
 	EnableLogger    bool
 	Debug           bool
+	GopsAddr        string
 }
 
 var (
@@ -21,11 +22,13 @@ var (
 		EnableDataplane: true,
 		EnableAgw:       true,
 		EnableLogger:    true,
+		GopsAddr:        "localhost:8118",
 	}
 )
 
 const (
 	keyDafConfig       = "config" // The original AGW config!
+	keyGopsAddress     = "gops-address"
 	keyNetworkPolicy   = "network-policy"
 	keyServerAddress   = "server-address"
 	keyDpSocketPath    = "dp-socket-path"

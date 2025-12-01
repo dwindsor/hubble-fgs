@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"syscall"
 
+	gops "github.com/google/gops/agent"
+
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
@@ -16,6 +18,23 @@ import (
 const (
 	MaxProcs = 128
 )
+
+func startGopsServer() error {
+	if Config.GopsAddr == "" {
+		return nil
+	}
+
+	if err := gops.Listen(gops.Options{
+		Addr:                   Config.GopsAddr,
+		ReuseSocketAddrAndPort: true,
+	}); err != nil {
+		return err
+	}
+
+	logger.GetLogger().Info("Starting gops server", "addr", Config.GopsAddr)
+
+	return nil
+}
 
 func executeFWA() error {
 	signals := make(chan os.Signal, 1)
@@ -29,6 +48,10 @@ func executeFWA() error {
 		<-signals
 		cancel()
 	}()
+
+	if err := startGopsServer(); err != nil {
+		logger.GetLogger().Error("Failed to start gops server", logfields.Error, err)
+	}
 
 	logger.GetLogger().Info("Agent starting", "config", redactedConfig())
 	agent := dpu.NewDPUAgent(Config.ServerAddress)
