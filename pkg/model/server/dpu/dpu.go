@@ -200,17 +200,17 @@ func (dpu *DPUListener) Checksum() [sha256.Size]byte {
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 
-	var vals []string
-	var buf string
+	keys := make([][]byte, 0, len(dpu.ruleSet))
 
 	for csum := range dpu.ruleSet {
-		vals = append(vals, string(csum[:]))
+		keys = append(keys, csum[:])
 	}
-	sort.Strings(vals)
-	for _, v := range vals {
-		buf += v + ":"
-	}
-	return sha256.Sum256([]byte(buf))
+	sort.Slice(keys, func(x, y int) bool {
+		return bytes.Compare(keys[x], keys[y]) <= 0
+	})
+	sep := []byte(":")
+	joinedRules := bytes.Join(keys, sep)
+	return sha256.Sum256([]byte(joinedRules))
 }
 
 func (dpu *DPUListener) GetDPUStatus() ([]DPUReportStatus, error) {

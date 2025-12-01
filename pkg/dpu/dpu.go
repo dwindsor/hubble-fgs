@@ -1,6 +1,7 @@
 package dpu
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -76,7 +77,7 @@ func NewDPUAgent(server string) *DPUAgent {
 		// of the concatenated strings in this map.
 		ruleSet:       make(map[[sha256.Size]byte]*agentDPU.DPUPolicyRule),
 		serverAddress: server,
-		ruleSetLock:   sync.Mutex{},
+		ruleSetLock:   sync.RWMutex{},
 	}
 }
 
@@ -106,7 +107,7 @@ type DPUAgent struct {
 	// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
 	// of the concatenated strings in this map.
 	ruleSet      map[[sha256.Size]byte]*agentDPU.DPUPolicyRule
-	ruleSetLock  sync.Mutex
+	ruleSetLock  sync.RWMutex
 	DpuReboot    uint32
 	DpuBootTime  time.Time
 	DpCrash      uint32
@@ -368,20 +369,21 @@ func (dpu *DPUAgent) Ready(_ context.Context) error {
 // that we can do work over to share code between client and
 // server agents. Will do after initial merge.
 func (dpu *DPUAgent) Checksum() [sha256.Size]byte {
-	var vals []string
-	var buf string
+	dpu.ruleSetLock.RLock()
+	defer dpu.ruleSetLock.RUnlock()
 
-	dpu.ruleSetLock.Lock()
-	defer dpu.ruleSetLock.Unlock()
+	keys := make([][]byte, 0, len(dpu.ruleSet))
 
 	for csum := range dpu.ruleSet {
-		vals = append(vals, string(csum[:]))
+		keys = append(keys, csum[:])
 	}
-	sort.Strings(vals)
-	for _, v := range vals {
-		buf += v + ":"
-	}
-	return sha256.Sum256([]byte(buf))
+	sort.Slice(keys, func(x, y int) bool {
+		return bytes.Compare(keys[x], keys[y]) <= 0
+	})
+	sep := []byte(":")
+	joinedRules := bytes.Join(keys, sep)
+	return sha256.Sum256([]byte(joinedRules))
+
 }
 
 func (dpu *DPUAgent) upsertPolicyRule(rule *agentDPU.DPUPolicyRule) error {
