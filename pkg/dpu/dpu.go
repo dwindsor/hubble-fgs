@@ -44,11 +44,12 @@ const (
 	// on firewall.*, use ens5. on real dpu, int_mnic0
 	DPU_INTERFACE = "int_mnic0"
 
-	// arbitrarily chosen to be 1 second there are not many DPUs in
-	// the same node and this makes us overly responsive to rule set
-	// hashes which is nice.
-	KEEPALIVE_INTERVAL    = 1 * time.Second
-	MAX_KEEPALIVE_BACKOFF = 10 * time.Second
+	// chosen to be 30 seconds, this value needs to be sufficiently large
+	// because it blocks updates from AGW while running the Checksum. As
+	// the value gets larger it can significantly delay policy update when
+	// set to small values, such as 1 second.
+	KEEPALIVE_INTERVAL    = 30 * time.Second
+	MAX_KEEPALIVE_BACKOFF = 120 * time.Second
 
 	EXPORTER_CONFIG_PATH    = "/data/hypershield/daflogger.yaml" // HACK: need to update config to pass this path
 	EVENTLOGGER_SOCKET_PATH = "/tmp/fluentbit_fwa.sock"          // HACK: need to pass through config
@@ -540,7 +541,7 @@ func (dpu *DPUAgent) getPortRange() (uint32, uint32) {
 }
 
 func (dpu *DPUAgent) KeepAlive(ctx context.Context) error {
-	backoff := time.Second
+	backoff := KEEPALIVE_INTERVAL
 	attempts := 0
 	for {
 		select {
