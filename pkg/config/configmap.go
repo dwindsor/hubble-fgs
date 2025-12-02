@@ -15,16 +15,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 )
 
-const (
-	CONFIGMAP_NAME = "smartswitch-config"
-)
-
 type IConnectionMonitor interface {
 	StartMonitoring(ctx context.Context)
 	CreateEventHandlers(ctx context.Context) cache.ResourceEventHandlerFuncs
 }
 
-func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, connMonitor IConnectionMonitor) error {
+func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, configmapName string, connMonitor IConnectionMonitor) error {
 	// This watches all ConfigMaps, not just the specific smartswitch
 	// TODO: Narrow down this watcher to only get updates on smartswitch configmap
 	informer, err := m.Manager.GetCache().GetInformer(ctx, &v1.ConfigMap{})
@@ -46,7 +42,7 @@ func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, con
 	wrappedHandlers := cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			// Process ConfigMap first
-			addConfigMap(obj)
+			addConfigMap(obj, configmapName)
 			// Then call connection monitor
 			if eventHandlers.AddFunc != nil {
 				eventHandlers.AddFunc(obj)
@@ -54,7 +50,7 @@ func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, con
 		},
 		UpdateFunc: func(oldObj, newObj any) {
 			// Process ConfigMap first
-			updateConfigMap(oldObj, newObj)
+			updateConfigMap(oldObj, newObj, configmapName)
 			// Then call connection monitor
 			if eventHandlers.UpdateFunc != nil {
 				eventHandlers.UpdateFunc(oldObj, newObj)
@@ -62,7 +58,7 @@ func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, con
 		},
 		DeleteFunc: func(obj any) {
 			// Process ConfigMap first
-			deleteConfigMap(obj)
+			deleteConfigMap(obj, configmapName)
 			// Then call connection monitor
 			if eventHandlers.DeleteFunc != nil {
 				eventHandlers.DeleteFunc(obj)
@@ -85,12 +81,12 @@ func AddConfigMapInformer(ctx context.Context, m *manager.ControllerManager, con
 	return nil
 }
 
-func addConfigMap(obj any) {
+func addConfigMap(obj any, name string) {
 	cm, ok := obj.(*v1.ConfigMap)
 	if !ok {
 		return
 	}
-	if cm.Name != CONFIGMAP_NAME {
+	if cm.Name != name {
 		return
 	}
 
@@ -106,7 +102,7 @@ func addConfigMap(obj any) {
 	}
 }
 
-func updateConfigMap(oldObj any, newObj any) {
+func updateConfigMap(oldObj any, newObj any, name string) {
 	oldCm, ok := oldObj.(*v1.ConfigMap)
 	if !ok {
 		return
@@ -115,7 +111,7 @@ func updateConfigMap(oldObj any, newObj any) {
 	if !ok {
 		return
 	}
-	if oldCm.Name != CONFIGMAP_NAME || newCm.Name != CONFIGMAP_NAME || oldCm.Name != newCm.Name {
+	if oldCm.Name != name || newCm.Name != name || oldCm.Name != newCm.Name {
 		return
 	}
 
@@ -132,12 +128,12 @@ func updateConfigMap(oldObj any, newObj any) {
 	}
 }
 
-func deleteConfigMap(obj any) {
+func deleteConfigMap(obj any, name string) {
 	cm, ok := obj.(*v1.ConfigMap)
 	if !ok {
 		return
 	}
-	if cm.Name != CONFIGMAP_NAME {
+	if cm.Name != name {
 		return
 	}
 

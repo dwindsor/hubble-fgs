@@ -10,6 +10,7 @@ type cliConfig struct {
 	EnableNXOS            bool
 	DPUServerAddress      string
 	GopsAddr              string
+	ConfigMap             string
 	VrfMap                []string
 	Debug                 bool
 	K8sServiceAccountAuth string
@@ -25,6 +26,7 @@ var (
 		EnableNXOS:            true,
 		DPUServerAddress:      "0.0.0.0:8880",
 		GopsAddr:              "localhost:8118",
+		ConfigMap:             "smartswitch-config",
 		VrfMap:                []string{},
 		Debug:                 false,
 		K8sServiceAccountAuth: viper.GetString(keyK8sServiceAccountAuth),
@@ -40,6 +42,7 @@ const (
 	keyEnableK8s             = "enable-k8s"
 	keyEnableNXOS            = "enable-nxos"
 	keyDPUServerAddress      = "dpu-server-address"
+	keyConfigMap             = "configmap"
 	keyVrfMap                = "vrf-map"
 	keyDebug                 = "debug"
 	keyHa                    = "ha"
