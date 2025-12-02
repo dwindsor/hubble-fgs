@@ -62,13 +62,13 @@ func DefaultFwaSyslogInput() InputSection {
 	local formatted_message = ""
 
 	if record["msg_code"] == 1 then  -- SYSLOG_POLICY_CHANGE
-		formatted_message = "[FWPOLICY] policy_change"
-			.. " old_hash=" .. (record["old_policy_hash"] or "")
-			.. " new_hash=" .. (record["new_policy_hash"] or "")
+		formatted_message = "[FWPOLICY]"
+			.. " op=" .. (record["policy_operation"] or "")
+			.. " id=" .. (record["policy_id"] or "")
 	elseif record["msg_code"] == 2 then  -- SYSLOG_CONFIG_CHANGE
-		formatted_message = "[FWCONFIG] config_change"
-			.. " old_hash=" .. (record["old_config_hash"] or "")
-			.. " new_hash=" .. (record["new_config_hash"] or "")
+		formatted_message = "[FWCONFIG]"
+			.. " op=" .. (record["config_operation"] or "")
+			.. " type=" .. (record["config_type"] or "")
 	else
 		formatted_message = "[GENERIC] event_code=" .. (record["msg_code"] or "unknown")
 			.. " facility=" .. (record["facility"] or "")
