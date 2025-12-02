@@ -162,6 +162,7 @@ func (em *EnterpriseManager) GetSvcInfoOfIp(ip net.IP) *tetragon.Service {
 	return &tetragon.Service{
 		Name:           serviceList.Items[0].Name,
 		Namespace:      serviceList.Items[0].Namespace,
+		Type:           tetragon.ServiceKind_SERVICE_KIND_CLUSTER_IP,
 		SelectorLabels: serviceList.Items[0].Spec.Selector,
 	}
 }

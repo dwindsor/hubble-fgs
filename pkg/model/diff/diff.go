@@ -310,11 +310,12 @@ func getType(d *appModelV1.Destination) appModelV1.DestinationType {
 	return t
 }
 
-func getDestination(d *appModelV1.Destination) (string, string, string, k8sTypes.WorkloadKind) {
+func getDestination(d *appModelV1.Destination) (string, string, string, k8sTypes.WorkloadKind, k8sTypes.ResourceKind) {
 	name := ""
 	ns := ""
 	wlName := ""
 	var wlKind k8sTypes.WorkloadKind
+	var resourceKind k8sTypes.ResourceKind
 
 	switch at := d.Type.(type) {
 	case *appModelV1.Destination_Dns:
@@ -327,13 +328,14 @@ func getDestination(d *appModelV1.Destination) (string, string, string, k8sTypes
 		ns = at.Workload.Namespace
 		wlName = at.Workload.Name
 		wlKind = at.Workload.Kind
+		resourceKind = at.Workload.ResourceKind
 
 		name = fmt.Sprintf("%s:%s:%s", ns, wlKind, wlName)
 	default:
 		panic(fmt.Sprintf("unexpected v1alpha.isDestination_Type: %#v", d.Type))
 	}
 
-	return name, ns, wlName, wlKind
+	return name, ns, wlName, wlKind, resourceKind
 }
 
 func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.ApplicationModel, parentMap map[string][]string) ([]*appModelV1.ProcessTelemetry, error) {
@@ -455,7 +457,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 			for _, p := range wl.Processes {
 				for _, c := range p.Connections {
 					verdict := appModelV1.PolicyVerdict_POLICY_VERDICT_UNSPECIFIED
-					destName, dns, dname, dkind := getDestination(c.Destination)
+					destName, dns, dname, dkind, dres := getDestination(c.Destination)
 					dType := getType(c.Destination)
 
 					if c.Policy.PolicyName != "" {
@@ -477,6 +479,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 						DestinationKubernetesNamespace:    dns,
 						DestinationKubernetesWorkloadKind: dkind,
 						DestinationKubernetesResourceName: dname,
+						DestinationKubernetesResourceKind: dres,
 						TxBytes:                           c.Stats.TxBytes,
 						RxBytes:                           c.Stats.RxBytes,
 						TxDrops:                           c.Stats.TxDrops,
@@ -496,7 +499,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 		for _, p := range a.Host.Processes {
 			for _, c := range p.Connections {
 				verdict := appModelV1.PolicyVerdict_POLICY_VERDICT_UNSPECIFIED
-				destName, dns, dname, dkind := getDestination(c.Destination)
+				destName, dns, dname, dkind, dres := getDestination(c.Destination)
 				dType := getType(c.Destination)
 
 				if c.Policy.PolicyName != "" {
@@ -516,6 +519,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					DestinationKubernetesNamespace:    dns,
 					DestinationKubernetesWorkloadKind: dkind,
 					DestinationKubernetesResourceName: dname,
+					DestinationKubernetesResourceKind: dres,
 					TxBytes:                           c.Stats.TxBytes,
 					RxBytes:                           c.Stats.RxBytes,
 					TxDrops:                           c.Stats.TxDrops,
@@ -533,12 +537,17 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 }
 
 func TelemetryToConnection(telemetry *appModelV1.NetworkConnectTelemetry) *graphV1.Connection {
+	sResourceType := k8sTypes.ResourceKind_RESOURCE_KIND_UNSPECIFIED
+	if telemetry.KubernetesWorkloadKind != k8sTypes.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED {
+		sResourceType = k8sTypes.ResourceKind_RESOURCE_KIND_WORKLOAD
+	}
 	source := &graphV1.Vertex{
 		Family: &graphV1.Vertex_Kubernetes{
 			Kubernetes: &graphV1.VertexFamilyKubernetes{
 				Uid:                  "",
 				ResourceVersion:      "",
 				ResourceName:         telemetry.KubernetesWorkloadName,
+				ResourceKind:         sResourceType,
 				ClusterName:          telemetry.ClusterName,
 				Namespace:            telemetry.KubernetesNamespace,
 				NodeName:             telemetry.NodeName,

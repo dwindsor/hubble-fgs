@@ -37,13 +37,26 @@ func prettyWorkloadKind(kind v1alpha.WorkloadKind) string {
 	return caser.String(strings.TrimPrefix(kind.String(), "WORKLOAD_KIND_"))
 }
 
+func prettyWorkloadResourceKind(kind v1alpha.ResourceKind) string {
+	caser := cases.Title(language.English)
+	return caser.String(strings.TrimPrefix(kind.String(), "WORKLOAD_RESOURCE_KIND_"))
+}
+
+func prettyWorkloadDestination(kind v1alpha.WorkloadKind, resourceKind v1alpha.ResourceKind) string {
+	if resourceKind != v1alpha.ResourceKind_RESOURCE_KIND_UNSPECIFIED {
+		return prettyWorkloadResourceKind(resourceKind)
+	}
+	return prettyWorkloadKind(kind)
+}
+
 type NetworkKey struct {
-	SourceNamespace    string
-	SourceWorkloadKind v1alpha.WorkloadKind
-	SourceWorkloadName string
-	SourceProcessName  string
-	SourceProcessArgs  string
-	DestinationPort    uint64
+	SourceNamespace            string
+	SourceWorkloadKind         v1alpha.WorkloadKind
+	SourceWorkloadResourceKind v1alpha.ResourceKind
+	SourceWorkloadName         string
+	SourceProcessName          string
+	SourceProcessArgs          string
+	DestinationPort            uint64
 	// DNS
 	DestinationNames string
 	// IP
@@ -52,18 +65,22 @@ type NetworkKey struct {
 	DestinationWorkloadName      string
 	DestinationWorkloadNamespace string
 	DestinationWorkloadKind      v1alpha.WorkloadKind
+	DestinationResourceKind      v1alpha.ResourceKind
 }
 
 func DestinationName(nk *NetworkKey) string {
 	var name string
 
 	// Preamble
-	if nk.DestinationNames != "" {
+	if nk.DestinationWorkloadName != "" {
+		name = fmt.Sprintf("%s/%s:%s",
+			nk.DestinationWorkloadNamespace,
+			prettyWorkloadDestination(nk.DestinationWorkloadKind, nk.DestinationResourceKind),
+			nk.DestinationWorkloadName)
+	} else if nk.DestinationNames != "" {
 		name = nk.DestinationNames
 	} else if nk.DestinationIP != "" {
 		name = nk.DestinationIP
-	} else if nk.DestinationWorkloadName != "" {
-		name = fmt.Sprintf("%s/%s:%s", nk.DestinationWorkloadNamespace, prettyWorkloadKind(nk.DestinationWorkloadKind), nk.DestinationWorkloadName)
 	}
 
 	// Port
@@ -277,7 +294,9 @@ func getNetworkMonitorKey(process *types.ProcessModel, dst *types.Destination, i
 	if process.Workload != nil {
 		nwKey.SourceWorkloadName = process.Workload.Name
 		nwKey.SourceWorkloadKind = translateWorkloadKind(process.Workload.Kind)
-
+		if nwKey.SourceWorkloadKind != v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED {
+			nwKey.SourceWorkloadResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_WORKLOAD
+		}
 	}
 	if includeProcess {
 		nwKey.SourceProcessName = process.Binary
@@ -295,14 +314,18 @@ func addDestinationInfo(dst *types.Destination, nwKey *NetworkKey) {
 		} else {
 			nwKey.DestinationNames = strings.Join(dst.DestinationNames, ",")
 		}
-	} else if dst.DestinationPod != nil {
+	}
+	// Pod and Service can have its own DestinationNames
+	// https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+	if dst.DestinationPod != nil {
 		nwKey.DestinationWorkloadName = dst.DestinationPod.Workload
 		nwKey.DestinationWorkloadNamespace = dst.DestinationPod.Namespace
 		nwKey.DestinationWorkloadKind = translateWorkloadKind(dst.DestinationPod.WorkloadKind)
+		nwKey.DestinationResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_WORKLOAD
 	} else if dst.DestinationService != nil {
 		nwKey.DestinationWorkloadName = dst.DestinationService.Name
 		nwKey.DestinationWorkloadNamespace = dst.DestinationService.Namespace
-		nwKey.DestinationWorkloadKind = v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED // workload_kind_service does not exist
+		nwKey.DestinationResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_SERVICE
 	}
 
 	nwKey.DestinationPort = dst.Port
@@ -319,6 +342,7 @@ func addDestinationInfoAppModel(dst *appModelV1.Destination, nwKey *NetworkKey) 
 		nwKey.DestinationWorkloadName = dt.Workload.Name
 		nwKey.DestinationWorkloadNamespace = dt.Workload.Namespace
 		nwKey.DestinationWorkloadKind = dt.Workload.Kind
+		nwKey.DestinationResourceKind = dt.Workload.ResourceKind
 	default:
 		panic(fmt.Sprintf("unexpected v1alpha.isDestination_Type: %#v", dt))
 	}
@@ -347,9 +371,10 @@ func nwKeyToDestination(nwKey *NetworkKey) *appModelV1.Destination {
 	} else if nwKey.DestinationWorkloadName != "" {
 		res.Type = &appModelV1.Destination_Workload{
 			Workload: &appModelV1.DestinationWorkload{
-				Name:      nwKey.DestinationWorkloadName,
-				Namespace: nwKey.DestinationWorkloadNamespace,
-				Kind:      nwKey.DestinationWorkloadKind,
+				Name:         nwKey.DestinationWorkloadName,
+				Namespace:    nwKey.DestinationWorkloadNamespace,
+				Kind:         nwKey.DestinationWorkloadKind,
+				ResourceKind: nwKey.DestinationResourceKind,
 			},
 		}
 	}

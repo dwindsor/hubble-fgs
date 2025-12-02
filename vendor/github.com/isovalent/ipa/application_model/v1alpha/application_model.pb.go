@@ -1536,6 +1536,7 @@ type DestinationWorkload struct {
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Namespace     string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	Kind          v1alpha.WorkloadKind   `protobuf:"varint,3,opt,name=kind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"kind,omitempty"`
+	ResourceKind  v1alpha.ResourceKind   `protobuf:"varint,4,opt,name=resource_kind,json=resourceKind,proto3,enum=common.k8s.type.v1alpha.ResourceKind" json:"resource_kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1589,6 +1590,13 @@ func (x *DestinationWorkload) GetKind() v1alpha.WorkloadKind {
 		return x.Kind
 	}
 	return v1alpha.WorkloadKind(0)
+}
+
+func (x *DestinationWorkload) GetResourceKind() v1alpha.ResourceKind {
+	if x != nil {
+		return x.ResourceKind
+	}
+	return v1alpha.ResourceKind(0)
 }
 
 type DestinationIP struct {
@@ -2051,11 +2059,12 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x04port\x18\xe9\a \x01(\x04R\x04portB\x06\n" +
 	"\x04type\"=\n" +
 	"\x0eDestinationDns\x12+\n" +
-	"\x11destination_names\x18\x01 \x03(\tR\x10destinationNames\"\x82\x01\n" +
+	"\x11destination_names\x18\x01 \x03(\tR\x10destinationNames\"\xce\x01\n" +
 	"\x13DestinationWorkload\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x129\n" +
-	"\x04kind\x18\x03 \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\x04kind\"\x1f\n" +
+	"\x04kind\x18\x03 \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\x04kind\x12J\n" +
+	"\rresource_kind\x18\x04 \x01(\x0e2%.common.k8s.type.v1alpha.ResourceKindR\fresourceKind\"\x1f\n" +
 	"\rDestinationIP\x12\x0e\n" +
 	"\x02ip\x18\x01 \x01(\tR\x02ip\"\x83\x01\n" +
 	"\x13ApplicationSyscalls\x12:\n" +
@@ -2185,20 +2194,21 @@ var file_application_model_v1alpha_application_model_proto_depIdxs = []int32{
 	16, // 38: application_model.v1alpha.Destination.workload:type_name -> application_model.v1alpha.DestinationWorkload
 	17, // 39: application_model.v1alpha.Destination.ip:type_name -> application_model.v1alpha.DestinationIP
 	26, // 40: application_model.v1alpha.DestinationWorkload.kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
-	31, // 41: application_model.v1alpha.ApplicationSyscalls.syscalls:type_name -> application_model.v1alpha.Sys
-	32, // 42: application_model.v1alpha.ApplicationSyscalls.abi:type_name -> application_model.v1alpha.Abi
-	5,  // 43: application_model.v1alpha.GetModelResponse.model:type_name -> application_model.v1alpha.ApplicationModelEvent
-	3,  // 44: application_model.v1alpha.StreamTelemetryResponse.process:type_name -> application_model.v1alpha.ProcessTelemetry
-	4,  // 45: application_model.v1alpha.StreamTelemetryResponse.network_connect:type_name -> application_model.v1alpha.NetworkConnectTelemetry
-	19, // 46: application_model.v1alpha.ApplicationModelService.GetModel:input_type -> application_model.v1alpha.GetModelRequest
-	21, // 47: application_model.v1alpha.ApplicationModelService.StreamTelemetry:input_type -> application_model.v1alpha.StreamTelemetryRequest
-	20, // 48: application_model.v1alpha.ApplicationModelService.GetModel:output_type -> application_model.v1alpha.GetModelResponse
-	22, // 49: application_model.v1alpha.ApplicationModelService.StreamTelemetry:output_type -> application_model.v1alpha.StreamTelemetryResponse
-	48, // [48:50] is the sub-list for method output_type
-	46, // [46:48] is the sub-list for method input_type
-	46, // [46:46] is the sub-list for extension type_name
-	46, // [46:46] is the sub-list for extension extendee
-	0,  // [0:46] is the sub-list for field type_name
+	27, // 41: application_model.v1alpha.DestinationWorkload.resource_kind:type_name -> common.k8s.type.v1alpha.ResourceKind
+	31, // 42: application_model.v1alpha.ApplicationSyscalls.syscalls:type_name -> application_model.v1alpha.Sys
+	32, // 43: application_model.v1alpha.ApplicationSyscalls.abi:type_name -> application_model.v1alpha.Abi
+	5,  // 44: application_model.v1alpha.GetModelResponse.model:type_name -> application_model.v1alpha.ApplicationModelEvent
+	3,  // 45: application_model.v1alpha.StreamTelemetryResponse.process:type_name -> application_model.v1alpha.ProcessTelemetry
+	4,  // 46: application_model.v1alpha.StreamTelemetryResponse.network_connect:type_name -> application_model.v1alpha.NetworkConnectTelemetry
+	19, // 47: application_model.v1alpha.ApplicationModelService.GetModel:input_type -> application_model.v1alpha.GetModelRequest
+	21, // 48: application_model.v1alpha.ApplicationModelService.StreamTelemetry:input_type -> application_model.v1alpha.StreamTelemetryRequest
+	20, // 49: application_model.v1alpha.ApplicationModelService.GetModel:output_type -> application_model.v1alpha.GetModelResponse
+	22, // 50: application_model.v1alpha.ApplicationModelService.StreamTelemetry:output_type -> application_model.v1alpha.StreamTelemetryResponse
+	49, // [49:51] is the sub-list for method output_type
+	47, // [47:49] is the sub-list for method input_type
+	47, // [47:47] is the sub-list for extension type_name
+	47, // [47:47] is the sub-list for extension extendee
+	0,  // [0:47] is the sub-list for field type_name
 }
 
 func init() { file_application_model_v1alpha_application_model_proto_init() }

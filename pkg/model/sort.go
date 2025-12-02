@@ -207,6 +207,9 @@ func CompareNetworkKeys(a, b NetworkKey) int {
 	if result := strings.Compare(a.SourceWorkloadKind.String(), b.SourceWorkloadKind.String()); result != 0 {
 		return result
 	}
+	if result := strings.Compare(a.SourceWorkloadResourceKind.String(), b.SourceWorkloadResourceKind.String()); result != 0 {
+		return result
+	}
 	if result := strings.Compare(a.SourceWorkloadName, b.SourceWorkloadName); result != 0 {
 		return result
 	}
@@ -240,6 +243,9 @@ func CompareNetworkKeys(a, b NetworkKey) int {
 		return result
 	}
 	if result := strings.Compare(a.DestinationWorkloadKind.String(), b.DestinationWorkloadKind.String()); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.DestinationResourceKind.String(), b.DestinationResourceKind.String()); result != 0 {
 		return result
 	}
 	if result := cmp.Compare(a.DestinationPort, b.DestinationPort); result != 0 {

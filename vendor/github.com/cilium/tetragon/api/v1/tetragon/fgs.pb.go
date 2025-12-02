@@ -93,6 +93,62 @@ func (SocketProtocol) EnumDescriptor() ([]byte, []int) {
 	return file_tetragon_fgs_proto_rawDescGZIP(), []int{0}
 }
 
+// ServiceKind represents the various Kubernetes service types.
+type ServiceKind int32
+
+const (
+	ServiceKind_SERVICE_KIND_UNSPECIFIED   ServiceKind = 0
+	ServiceKind_SERVICE_KIND_CLUSTER_IP    ServiceKind = 1
+	ServiceKind_SERVICE_KIND_NODE_PORT     ServiceKind = 2
+	ServiceKind_SERVICE_KIND_LOAD_BALANCER ServiceKind = 3
+	ServiceKind_SERVICE_KIND_EXTERNAL_NAME ServiceKind = 4
+)
+
+// Enum value maps for ServiceKind.
+var (
+	ServiceKind_name = map[int32]string{
+		0: "SERVICE_KIND_UNSPECIFIED",
+		1: "SERVICE_KIND_CLUSTER_IP",
+		2: "SERVICE_KIND_NODE_PORT",
+		3: "SERVICE_KIND_LOAD_BALANCER",
+		4: "SERVICE_KIND_EXTERNAL_NAME",
+	}
+	ServiceKind_value = map[string]int32{
+		"SERVICE_KIND_UNSPECIFIED":   0,
+		"SERVICE_KIND_CLUSTER_IP":    1,
+		"SERVICE_KIND_NODE_PORT":     2,
+		"SERVICE_KIND_LOAD_BALANCER": 3,
+		"SERVICE_KIND_EXTERNAL_NAME": 4,
+	}
+)
+
+func (x ServiceKind) Enum() *ServiceKind {
+	p := new(ServiceKind)
+	*p = x
+	return p
+}
+
+func (x ServiceKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ServiceKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_tetragon_fgs_proto_enumTypes[1].Descriptor()
+}
+
+func (ServiceKind) Type() protoreflect.EnumType {
+	return &file_tetragon_fgs_proto_enumTypes[1]
+}
+
+func (x ServiceKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ServiceKind.Descriptor instead.
+func (ServiceKind) EnumDescriptor() ([]byte, []int) {
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{1}
+}
+
 type TNPAction int32
 
 const (
@@ -132,11 +188,11 @@ func (x TNPAction) String() string {
 }
 
 func (TNPAction) Descriptor() protoreflect.EnumDescriptor {
-	return file_tetragon_fgs_proto_enumTypes[1].Descriptor()
+	return file_tetragon_fgs_proto_enumTypes[2].Descriptor()
 }
 
 func (TNPAction) Type() protoreflect.EnumType {
-	return &file_tetragon_fgs_proto_enumTypes[1]
+	return &file_tetragon_fgs_proto_enumTypes[2]
 }
 
 func (x TNPAction) Number() protoreflect.EnumNumber {
@@ -145,7 +201,7 @@ func (x TNPAction) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TNPAction.Descriptor instead.
 func (TNPAction) EnumDescriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{1}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{2}
 }
 
 type FileAction int32
@@ -226,11 +282,11 @@ func (x FileAction) String() string {
 }
 
 func (FileAction) Descriptor() protoreflect.EnumDescriptor {
-	return file_tetragon_fgs_proto_enumTypes[2].Descriptor()
+	return file_tetragon_fgs_proto_enumTypes[3].Descriptor()
 }
 
 func (FileAction) Type() protoreflect.EnumType {
-	return &file_tetragon_fgs_proto_enumTypes[2]
+	return &file_tetragon_fgs_proto_enumTypes[3]
 }
 
 func (x FileAction) Number() protoreflect.EnumNumber {
@@ -239,7 +295,7 @@ func (x FileAction) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FileAction.Descriptor instead.
 func (FileAction) EnumDescriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{2}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{3}
 }
 
 type FileScope int32
@@ -278,11 +334,11 @@ func (x FileScope) String() string {
 }
 
 func (FileScope) Descriptor() protoreflect.EnumDescriptor {
-	return file_tetragon_fgs_proto_enumTypes[3].Descriptor()
+	return file_tetragon_fgs_proto_enumTypes[4].Descriptor()
 }
 
 func (FileScope) Type() protoreflect.EnumType {
-	return &file_tetragon_fgs_proto_enumTypes[3]
+	return &file_tetragon_fgs_proto_enumTypes[4]
 }
 
 func (x FileScope) Number() protoreflect.EnumNumber {
@@ -291,7 +347,7 @@ func (x FileScope) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FileScope.Descriptor instead.
 func (FileScope) EnumDescriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{3}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{4}
 }
 
 // from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_info.h
@@ -382,11 +438,11 @@ func (x DigestAlgo) String() string {
 }
 
 func (DigestAlgo) Descriptor() protoreflect.EnumDescriptor {
-	return file_tetragon_fgs_proto_enumTypes[4].Descriptor()
+	return file_tetragon_fgs_proto_enumTypes[5].Descriptor()
 }
 
 func (DigestAlgo) Type() protoreflect.EnumType {
-	return &file_tetragon_fgs_proto_enumTypes[4]
+	return &file_tetragon_fgs_proto_enumTypes[5]
 }
 
 func (x DigestAlgo) Number() protoreflect.EnumNumber {
@@ -395,7 +451,7 @@ func (x DigestAlgo) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DigestAlgo.Descriptor instead.
 func (DigestAlgo) EnumDescriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{4}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{5}
 }
 
 // // from https://elixir.bootlin.com/linux/v6.14.4/source/include/uapi/asm-generic/errno-base.h
@@ -528,11 +584,11 @@ func (x SysRetval) String() string {
 }
 
 func (SysRetval) Descriptor() protoreflect.EnumDescriptor {
-	return file_tetragon_fgs_proto_enumTypes[5].Descriptor()
+	return file_tetragon_fgs_proto_enumTypes[6].Descriptor()
 }
 
 func (SysRetval) Type() protoreflect.EnumType {
-	return &file_tetragon_fgs_proto_enumTypes[5]
+	return &file_tetragon_fgs_proto_enumTypes[6]
 }
 
 func (x SysRetval) Number() protoreflect.EnumNumber {
@@ -541,7 +597,7 @@ func (x SysRetval) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SysRetval.Descriptor instead.
 func (SysRetval) EnumDescriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{5}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{6}
 }
 
 type FileOperation int32
@@ -580,11 +636,11 @@ func (x FileOperation) String() string {
 }
 
 func (FileOperation) Descriptor() protoreflect.EnumDescriptor {
-	return file_tetragon_fgs_proto_enumTypes[6].Descriptor()
+	return file_tetragon_fgs_proto_enumTypes[7].Descriptor()
 }
 
 func (FileOperation) Type() protoreflect.EnumType {
-	return &file_tetragon_fgs_proto_enumTypes[6]
+	return &file_tetragon_fgs_proto_enumTypes[7]
 }
 
 func (x FileOperation) Number() protoreflect.EnumNumber {
@@ -593,7 +649,7 @@ func (x FileOperation) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FileOperation.Descriptor instead.
 func (FileOperation) EnumDescriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{6}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{7}
 }
 
 type TlsCertificateError int32
@@ -683,11 +739,11 @@ func (x TlsCertificateError) String() string {
 }
 
 func (TlsCertificateError) Descriptor() protoreflect.EnumDescriptor {
-	return file_tetragon_fgs_proto_enumTypes[7].Descriptor()
+	return file_tetragon_fgs_proto_enumTypes[8].Descriptor()
 }
 
 func (TlsCertificateError) Type() protoreflect.EnumType {
-	return &file_tetragon_fgs_proto_enumTypes[7]
+	return &file_tetragon_fgs_proto_enumTypes[8]
 }
 
 func (x TlsCertificateError) Number() protoreflect.EnumNumber {
@@ -696,7 +752,7 @@ func (x TlsCertificateError) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TlsCertificateError.Descriptor instead.
 func (TlsCertificateError) EnumDescriptor() ([]byte, []int) {
-	return file_tetragon_fgs_proto_rawDescGZIP(), []int{7}
+	return file_tetragon_fgs_proto_rawDescGZIP(), []int{8}
 }
 
 type HistogramBucket struct {
@@ -1133,6 +1189,7 @@ type Service struct {
 	Namespace string                 `protobuf:"bytes,2,opt,name=Namespace,proto3" json:"Namespace,omitempty"`
 	// Selector labels of this service.
 	SelectorLabels map[string]string `protobuf:"bytes,3,rep,name=selector_labels,json=selectorLabels,proto3" json:"selector_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Type           ServiceKind       `protobuf:"varint,4,opt,name=Type,proto3,enum=tetragon.ServiceKind" json:"Type,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1186,6 +1243,13 @@ func (x *Service) GetSelectorLabels() map[string]string {
 		return x.SelectorLabels
 	}
 	return nil
+}
+
+func (x *Service) GetType() ServiceKind {
+	if x != nil {
+		return x.Type
+	}
+	return ServiceKind_SERVICE_KIND_UNSPECIFIED
 }
 
 type ProcessConnect struct {
@@ -4967,11 +5031,12 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\x0esegs_submitted\x18\r \x01(\rR\rsegsSubmitted\x12,\n" +
 	"\x12skb_consume_misses\x18\x0e \x01(\rR\x10skbConsumeMisses\x12%\n" +
 	"\x03rtt\x18\x0f \x01(\v2\x13.tetragon.HistogramR\x03rtt\x12-\n" +
-	"\alatency\x18\x10 \x01(\v2\x13.tetragon.HistogramR\alatency\"\xce\x01\n" +
+	"\alatency\x18\x10 \x01(\v2\x13.tetragon.HistogramR\alatency\"\xf9\x01\n" +
 	"\aService\x12\x12\n" +
 	"\x04Name\x18\x01 \x01(\tR\x04Name\x12\x1c\n" +
 	"\tNamespace\x18\x02 \x01(\tR\tNamespace\x12N\n" +
-	"\x0fselector_labels\x18\x03 \x03(\v2%.tetragon.Service.SelectorLabelsEntryR\x0eselectorLabels\x1aA\n" +
+	"\x0fselector_labels\x18\x03 \x03(\v2%.tetragon.Service.SelectorLabelsEntryR\x0eselectorLabels\x12)\n" +
+	"\x04Type\x18\x04 \x01(\x0e2\x15.tetragon.ServiceKindR\x04Type\x1aA\n" +
 	"\x13SelectorLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x99\x05\n" +
@@ -5349,7 +5414,13 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\x03TCP\x10\x06\x12\a\n" +
 	"\x03UDP\x10\x11\x12\n" +
 	"\n" +
-	"\x06ICMPV6\x10:*\x89\x01\n" +
+	"\x06ICMPV6\x10:*\xa4\x01\n" +
+	"\vServiceKind\x12\x1c\n" +
+	"\x18SERVICE_KIND_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17SERVICE_KIND_CLUSTER_IP\x10\x01\x12\x1a\n" +
+	"\x16SERVICE_KIND_NODE_PORT\x10\x02\x12\x1e\n" +
+	"\x1aSERVICE_KIND_LOAD_BALANCER\x10\x03\x12\x1e\n" +
+	"\x1aSERVICE_KIND_EXTERNAL_NAME\x10\x04*\x89\x01\n" +
 	"\tTNPAction\x12\x16\n" +
 	"\x12TNP_POLICY_UNKNOWN\x10\x00\x12\x14\n" +
 	"\x10TNP_POLICY_ALLOW\x10\x01\x12\x13\n" +
@@ -5501,225 +5572,227 @@ func file_tetragon_fgs_proto_rawDescGZIP() []byte {
 	return file_tetragon_fgs_proto_rawDescData
 }
 
-var file_tetragon_fgs_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
+var file_tetragon_fgs_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
 var file_tetragon_fgs_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_tetragon_fgs_proto_goTypes = []any{
 	(SocketProtocol)(0),             // 0: tetragon.SocketProtocol
-	(TNPAction)(0),                  // 1: tetragon.TNPAction
-	(FileAction)(0),                 // 2: tetragon.FileAction
-	(FileScope)(0),                  // 3: tetragon.FileScope
-	(DigestAlgo)(0),                 // 4: tetragon.DigestAlgo
-	(SysRetval)(0),                  // 5: tetragon.SysRetval
-	(FileOperation)(0),              // 6: tetragon.FileOperation
-	(TlsCertificateError)(0),        // 7: tetragon.TlsCertificateError
-	(*HistogramBucket)(nil),         // 8: tetragon.HistogramBucket
-	(*Histogram)(nil),               // 9: tetragon.Histogram
-	(*InterfaceStats)(nil),          // 10: tetragon.InterfaceStats
-	(*SocketStats)(nil),             // 11: tetragon.SocketStats
-	(*Service)(nil),                 // 12: tetragon.Service
-	(*ProcessConnect)(nil),          // 13: tetragon.ProcessConnect
-	(*TNPInfo)(nil),                 // 14: tetragon.TNPInfo
-	(*ProcessClose)(nil),            // 15: tetragon.ProcessClose
-	(*ProcessListen)(nil),           // 16: tetragon.ProcessListen
-	(*ProcessAccept)(nil),           // 17: tetragon.ProcessAccept
-	(*ProcessRawsockCreate)(nil),    // 18: tetragon.ProcessRawsockCreate
-	(*ProcessRawsockClose)(nil),     // 19: tetragon.ProcessRawsockClose
-	(*ProcessIcmp)(nil),             // 20: tetragon.ProcessIcmp
-	(*ProcessIpError)(nil),          // 21: tetragon.ProcessIpError
-	(*FileSystem)(nil),              // 22: tetragon.FileSystem
-	(*Inode)(nil),                   // 23: tetragon.Inode
-	(*FileLocation)(nil),            // 24: tetragon.FileLocation
-	(*FileDetails)(nil),             // 25: tetragon.FileDetails
-	(*FileIO)(nil),                  // 26: tetragon.FileIO
-	(*FileDigest)(nil),              // 27: tetragon.FileDigest
-	(*GenericFileArg)(nil),          // 28: tetragon.GenericFileArg
-	(*RenameFileArg)(nil),           // 29: tetragon.RenameFileArg
-	(*ReadDirArg)(nil),              // 30: tetragon.ReadDirArg
-	(*AttrChange)(nil),              // 31: tetragon.AttrChange
-	(*FileAttr)(nil),                // 32: tetragon.FileAttr
-	(*AttrArg)(nil),                 // 33: tetragon.AttrArg
-	(*LinkArg)(nil),                 // 34: tetragon.LinkArg
-	(*SymlinkArg)(nil),              // 35: tetragon.SymlinkArg
-	(*PathDetails)(nil),             // 36: tetragon.PathDetails
-	(*OpenRawArg)(nil),              // 37: tetragon.OpenRawArg
-	(*FileArgument)(nil),            // 38: tetragon.FileArgument
-	(*ProcessFile)(nil),             // 39: tetragon.ProcessFile
-	(*ProcessFileExec)(nil),         // 40: tetragon.ProcessFileExec
-	(*SockInfo)(nil),                // 41: tetragon.SockInfo
-	(*ProcessSockStats)(nil),        // 42: tetragon.ProcessSockStats
-	(*Tls)(nil),                     // 43: tetragon.Tls
-	(*HttpHeader)(nil),              // 44: tetragon.HttpHeader
-	(*HttpRequest)(nil),             // 45: tetragon.HttpRequest
-	(*HttpResponse)(nil),            // 46: tetragon.HttpResponse
-	(*HttpInfo)(nil),                // 47: tetragon.HttpInfo
-	(*ProcessHttp)(nil),             // 48: tetragon.ProcessHttp
-	(*ProcessNetworkBurst)(nil),     // 49: tetragon.ProcessNetworkBurst
-	(*ProcessNetworkWatermark)(nil), // 50: tetragon.ProcessNetworkWatermark
-	(*ProcessUdpSeqCheckError)(nil), // 51: tetragon.ProcessUdpSeqCheckError
-	nil,                             // 52: tetragon.Service.SelectorLabelsEntry
-	(*Pod)(nil),                     // 53: tetragon.Pod
-	(*Process)(nil),                 // 54: tetragon.Process
-	(*wrapperspb.UInt32Value)(nil),  // 55: google.protobuf.UInt32Value
-	(*durationpb.Duration)(nil),     // 56: google.protobuf.Duration
-	(*Namespace)(nil),               // 57: tetragon.Namespace
-	(*wrapperspb.BoolValue)(nil),    // 58: google.protobuf.BoolValue
-	(*timestamppb.Timestamp)(nil),   // 59: google.protobuf.Timestamp
+	(ServiceKind)(0),                // 1: tetragon.ServiceKind
+	(TNPAction)(0),                  // 2: tetragon.TNPAction
+	(FileAction)(0),                 // 3: tetragon.FileAction
+	(FileScope)(0),                  // 4: tetragon.FileScope
+	(DigestAlgo)(0),                 // 5: tetragon.DigestAlgo
+	(SysRetval)(0),                  // 6: tetragon.SysRetval
+	(FileOperation)(0),              // 7: tetragon.FileOperation
+	(TlsCertificateError)(0),        // 8: tetragon.TlsCertificateError
+	(*HistogramBucket)(nil),         // 9: tetragon.HistogramBucket
+	(*Histogram)(nil),               // 10: tetragon.Histogram
+	(*InterfaceStats)(nil),          // 11: tetragon.InterfaceStats
+	(*SocketStats)(nil),             // 12: tetragon.SocketStats
+	(*Service)(nil),                 // 13: tetragon.Service
+	(*ProcessConnect)(nil),          // 14: tetragon.ProcessConnect
+	(*TNPInfo)(nil),                 // 15: tetragon.TNPInfo
+	(*ProcessClose)(nil),            // 16: tetragon.ProcessClose
+	(*ProcessListen)(nil),           // 17: tetragon.ProcessListen
+	(*ProcessAccept)(nil),           // 18: tetragon.ProcessAccept
+	(*ProcessRawsockCreate)(nil),    // 19: tetragon.ProcessRawsockCreate
+	(*ProcessRawsockClose)(nil),     // 20: tetragon.ProcessRawsockClose
+	(*ProcessIcmp)(nil),             // 21: tetragon.ProcessIcmp
+	(*ProcessIpError)(nil),          // 22: tetragon.ProcessIpError
+	(*FileSystem)(nil),              // 23: tetragon.FileSystem
+	(*Inode)(nil),                   // 24: tetragon.Inode
+	(*FileLocation)(nil),            // 25: tetragon.FileLocation
+	(*FileDetails)(nil),             // 26: tetragon.FileDetails
+	(*FileIO)(nil),                  // 27: tetragon.FileIO
+	(*FileDigest)(nil),              // 28: tetragon.FileDigest
+	(*GenericFileArg)(nil),          // 29: tetragon.GenericFileArg
+	(*RenameFileArg)(nil),           // 30: tetragon.RenameFileArg
+	(*ReadDirArg)(nil),              // 31: tetragon.ReadDirArg
+	(*AttrChange)(nil),              // 32: tetragon.AttrChange
+	(*FileAttr)(nil),                // 33: tetragon.FileAttr
+	(*AttrArg)(nil),                 // 34: tetragon.AttrArg
+	(*LinkArg)(nil),                 // 35: tetragon.LinkArg
+	(*SymlinkArg)(nil),              // 36: tetragon.SymlinkArg
+	(*PathDetails)(nil),             // 37: tetragon.PathDetails
+	(*OpenRawArg)(nil),              // 38: tetragon.OpenRawArg
+	(*FileArgument)(nil),            // 39: tetragon.FileArgument
+	(*ProcessFile)(nil),             // 40: tetragon.ProcessFile
+	(*ProcessFileExec)(nil),         // 41: tetragon.ProcessFileExec
+	(*SockInfo)(nil),                // 42: tetragon.SockInfo
+	(*ProcessSockStats)(nil),        // 43: tetragon.ProcessSockStats
+	(*Tls)(nil),                     // 44: tetragon.Tls
+	(*HttpHeader)(nil),              // 45: tetragon.HttpHeader
+	(*HttpRequest)(nil),             // 46: tetragon.HttpRequest
+	(*HttpResponse)(nil),            // 47: tetragon.HttpResponse
+	(*HttpInfo)(nil),                // 48: tetragon.HttpInfo
+	(*ProcessHttp)(nil),             // 49: tetragon.ProcessHttp
+	(*ProcessNetworkBurst)(nil),     // 50: tetragon.ProcessNetworkBurst
+	(*ProcessNetworkWatermark)(nil), // 51: tetragon.ProcessNetworkWatermark
+	(*ProcessUdpSeqCheckError)(nil), // 52: tetragon.ProcessUdpSeqCheckError
+	nil,                             // 53: tetragon.Service.SelectorLabelsEntry
+	(*Pod)(nil),                     // 54: tetragon.Pod
+	(*Process)(nil),                 // 55: tetragon.Process
+	(*wrapperspb.UInt32Value)(nil),  // 56: google.protobuf.UInt32Value
+	(*durationpb.Duration)(nil),     // 57: google.protobuf.Duration
+	(*Namespace)(nil),               // 58: tetragon.Namespace
+	(*wrapperspb.BoolValue)(nil),    // 59: google.protobuf.BoolValue
+	(*timestamppb.Timestamp)(nil),   // 60: google.protobuf.Timestamp
 }
 var file_tetragon_fgs_proto_depIdxs = []int32{
-	8,   // 0: tetragon.Histogram.buckets:type_name -> tetragon.HistogramBucket
-	53,  // 1: tetragon.InterfaceStats.pod:type_name -> tetragon.Pod
-	9,   // 2: tetragon.InterfaceStats.qlen:type_name -> tetragon.Histogram
-	9,   // 3: tetragon.SocketStats.rtt:type_name -> tetragon.Histogram
-	9,   // 4: tetragon.SocketStats.latency:type_name -> tetragon.Histogram
-	52,  // 5: tetragon.Service.selector_labels:type_name -> tetragon.Service.SelectorLabelsEntry
-	54,  // 6: tetragon.ProcessConnect.process:type_name -> tetragon.Process
-	54,  // 7: tetragon.ProcessConnect.parent:type_name -> tetragon.Process
-	55,  // 8: tetragon.ProcessConnect.source_port:type_name -> google.protobuf.UInt32Value
-	55,  // 9: tetragon.ProcessConnect.destination_port:type_name -> google.protobuf.UInt32Value
-	53,  // 10: tetragon.ProcessConnect.destination_pod:type_name -> tetragon.Pod
-	0,   // 11: tetragon.ProcessConnect.protocol:type_name -> tetragon.SocketProtocol
-	12,  // 12: tetragon.ProcessConnect.destination_service:type_name -> tetragon.Service
-	54,  // 13: tetragon.ProcessConnect.ancestors:type_name -> tetragon.Process
-	14,  // 14: tetragon.ProcessConnect.policy_info:type_name -> tetragon.TNPInfo
-	1,   // 15: tetragon.TNPInfo.action:type_name -> tetragon.TNPAction
-	54,  // 16: tetragon.ProcessClose.process:type_name -> tetragon.Process
-	54,  // 17: tetragon.ProcessClose.parent:type_name -> tetragon.Process
-	55,  // 18: tetragon.ProcessClose.source_port:type_name -> google.protobuf.UInt32Value
-	55,  // 19: tetragon.ProcessClose.destination_port:type_name -> google.protobuf.UInt32Value
-	11,  // 20: tetragon.ProcessClose.stats:type_name -> tetragon.SocketStats
-	53,  // 21: tetragon.ProcessClose.destination_pod:type_name -> tetragon.Pod
-	0,   // 22: tetragon.ProcessClose.protocol:type_name -> tetragon.SocketProtocol
-	56,  // 23: tetragon.ProcessClose.duration:type_name -> google.protobuf.Duration
-	12,  // 24: tetragon.ProcessClose.destination_service:type_name -> tetragon.Service
-	54,  // 25: tetragon.ProcessClose.ancestors:type_name -> tetragon.Process
-	54,  // 26: tetragon.ProcessListen.process:type_name -> tetragon.Process
-	54,  // 27: tetragon.ProcessListen.parent:type_name -> tetragon.Process
-	55,  // 28: tetragon.ProcessListen.port:type_name -> google.protobuf.UInt32Value
-	0,   // 29: tetragon.ProcessListen.protocol:type_name -> tetragon.SocketProtocol
-	54,  // 30: tetragon.ProcessListen.ancestors:type_name -> tetragon.Process
-	54,  // 31: tetragon.ProcessAccept.process:type_name -> tetragon.Process
-	54,  // 32: tetragon.ProcessAccept.parent:type_name -> tetragon.Process
-	55,  // 33: tetragon.ProcessAccept.source_port:type_name -> google.protobuf.UInt32Value
-	55,  // 34: tetragon.ProcessAccept.destination_port:type_name -> google.protobuf.UInt32Value
-	53,  // 35: tetragon.ProcessAccept.destination_pod:type_name -> tetragon.Pod
-	0,   // 36: tetragon.ProcessAccept.protocol:type_name -> tetragon.SocketProtocol
-	12,  // 37: tetragon.ProcessAccept.destination_service:type_name -> tetragon.Service
-	54,  // 38: tetragon.ProcessAccept.ancestors:type_name -> tetragon.Process
-	54,  // 39: tetragon.ProcessRawsockCreate.process:type_name -> tetragon.Process
-	54,  // 40: tetragon.ProcessRawsockCreate.parent:type_name -> tetragon.Process
-	54,  // 41: tetragon.ProcessRawsockCreate.ancestors:type_name -> tetragon.Process
-	54,  // 42: tetragon.ProcessRawsockClose.process:type_name -> tetragon.Process
-	54,  // 43: tetragon.ProcessRawsockClose.parent:type_name -> tetragon.Process
-	56,  // 44: tetragon.ProcessRawsockClose.duration:type_name -> google.protobuf.Duration
-	54,  // 45: tetragon.ProcessRawsockClose.ancestors:type_name -> tetragon.Process
-	54,  // 46: tetragon.ProcessIcmp.process:type_name -> tetragon.Process
-	54,  // 47: tetragon.ProcessIcmp.parent:type_name -> tetragon.Process
-	53,  // 48: tetragon.ProcessIcmp.destination_pod:type_name -> tetragon.Pod
-	0,   // 49: tetragon.ProcessIcmp.protocol:type_name -> tetragon.SocketProtocol
-	0,   // 50: tetragon.ProcessIcmp.icmp_ip_protocol:type_name -> tetragon.SocketProtocol
-	12,  // 51: tetragon.ProcessIcmp.destination_service:type_name -> tetragon.Service
-	54,  // 52: tetragon.ProcessIcmp.ancestors:type_name -> tetragon.Process
-	54,  // 53: tetragon.ProcessIpError.process:type_name -> tetragon.Process
-	54,  // 54: tetragon.ProcessIpError.parent:type_name -> tetragon.Process
-	53,  // 55: tetragon.ProcessIpError.destination_pod:type_name -> tetragon.Pod
-	12,  // 56: tetragon.ProcessIpError.destination_service:type_name -> tetragon.Service
-	54,  // 57: tetragon.ProcessIpError.ancestors:type_name -> tetragon.Process
-	22,  // 58: tetragon.Inode.fs:type_name -> tetragon.FileSystem
-	3,   // 59: tetragon.FileLocation.type:type_name -> tetragon.FileScope
-	53,  // 60: tetragon.FileLocation.pod:type_name -> tetragon.Pod
-	23,  // 61: tetragon.FileDetails.inode:type_name -> tetragon.Inode
-	23,  // 62: tetragon.FileDetails.parent_inode:type_name -> tetragon.Inode
-	24,  // 63: tetragon.FileDetails.location:type_name -> tetragon.FileLocation
-	4,   // 64: tetragon.FileDigest.algo:type_name -> tetragon.DigestAlgo
-	25,  // 65: tetragon.GenericFileArg.file:type_name -> tetragon.FileDetails
-	26,  // 66: tetragon.GenericFileArg.io:type_name -> tetragon.FileIO
-	57,  // 67: tetragon.GenericFileArg.mnt_ns:type_name -> tetragon.Namespace
-	27,  // 68: tetragon.GenericFileArg.digest:type_name -> tetragon.FileDigest
-	25,  // 69: tetragon.RenameFileArg.src:type_name -> tetragon.FileDetails
-	25,  // 70: tetragon.RenameFileArg.dst:type_name -> tetragon.FileDetails
-	57,  // 71: tetragon.RenameFileArg.mnt_ns:type_name -> tetragon.Namespace
-	25,  // 72: tetragon.ReadDirArg.file:type_name -> tetragon.FileDetails
-	57,  // 73: tetragon.ReadDirArg.mnt_ns:type_name -> tetragon.Namespace
-	31,  // 74: tetragon.FileAttr.permissions:type_name -> tetragon.AttrChange
-	31,  // 75: tetragon.FileAttr.uid:type_name -> tetragon.AttrChange
-	31,  // 76: tetragon.FileAttr.gid:type_name -> tetragon.AttrChange
-	25,  // 77: tetragon.AttrArg.file:type_name -> tetragon.FileDetails
-	32,  // 78: tetragon.AttrArg.attr:type_name -> tetragon.FileAttr
-	57,  // 79: tetragon.AttrArg.mnt_ns:type_name -> tetragon.Namespace
-	25,  // 80: tetragon.LinkArg.link:type_name -> tetragon.FileDetails
-	25,  // 81: tetragon.LinkArg.target:type_name -> tetragon.FileDetails
-	57,  // 82: tetragon.LinkArg.mnt_ns:type_name -> tetragon.Namespace
-	25,  // 83: tetragon.SymlinkArg.link:type_name -> tetragon.FileDetails
-	57,  // 84: tetragon.SymlinkArg.mnt_ns:type_name -> tetragon.Namespace
-	58,  // 85: tetragon.PathDetails.is_relative_path:type_name -> google.protobuf.BoolValue
-	36,  // 86: tetragon.OpenRawArg.path:type_name -> tetragon.PathDetails
-	25,  // 87: tetragon.OpenRawArg.dir:type_name -> tetragon.FileDetails
-	5,   // 88: tetragon.OpenRawArg.error_code:type_name -> tetragon.SysRetval
-	28,  // 89: tetragon.FileArgument.generic_arg:type_name -> tetragon.GenericFileArg
-	29,  // 90: tetragon.FileArgument.rename_arg:type_name -> tetragon.RenameFileArg
-	30,  // 91: tetragon.FileArgument.readdir_arg:type_name -> tetragon.ReadDirArg
-	33,  // 92: tetragon.FileArgument.attr_arg:type_name -> tetragon.AttrArg
-	34,  // 93: tetragon.FileArgument.link_arg:type_name -> tetragon.LinkArg
-	35,  // 94: tetragon.FileArgument.symlink_arg:type_name -> tetragon.SymlinkArg
-	37,  // 95: tetragon.FileArgument.openraw_arg:type_name -> tetragon.OpenRawArg
-	54,  // 96: tetragon.ProcessFile.process:type_name -> tetragon.Process
-	54,  // 97: tetragon.ProcessFile.parent:type_name -> tetragon.Process
-	2,   // 98: tetragon.ProcessFile.action:type_name -> tetragon.FileAction
-	38,  // 99: tetragon.ProcessFile.args:type_name -> tetragon.FileArgument
-	59,  // 100: tetragon.ProcessFile.time:type_name -> google.protobuf.Timestamp
-	6,   // 101: tetragon.ProcessFile.operation:type_name -> tetragon.FileOperation
-	54,  // 102: tetragon.ProcessFile.ancestors:type_name -> tetragon.Process
-	54,  // 103: tetragon.ProcessFileExec.process:type_name -> tetragon.Process
-	54,  // 104: tetragon.ProcessFileExec.parent:type_name -> tetragon.Process
-	25,  // 105: tetragon.ProcessFileExec.file:type_name -> tetragon.FileDetails
-	27,  // 106: tetragon.ProcessFileExec.digest:type_name -> tetragon.FileDigest
-	6,   // 107: tetragon.ProcessFileExec.operations:type_name -> tetragon.FileOperation
-	54,  // 108: tetragon.ProcessFileExec.ancestors:type_name -> tetragon.Process
-	55,  // 109: tetragon.SockInfo.source_port:type_name -> google.protobuf.UInt32Value
-	55,  // 110: tetragon.SockInfo.destination_port:type_name -> google.protobuf.UInt32Value
-	0,   // 111: tetragon.SockInfo.protocol:type_name -> tetragon.SocketProtocol
-	53,  // 112: tetragon.SockInfo.destination_pod:type_name -> tetragon.Pod
-	54,  // 113: tetragon.ProcessSockStats.process:type_name -> tetragon.Process
-	54,  // 114: tetragon.ProcessSockStats.parent:type_name -> tetragon.Process
-	41,  // 115: tetragon.ProcessSockStats.socket:type_name -> tetragon.SockInfo
-	11,  // 116: tetragon.ProcessSockStats.stats:type_name -> tetragon.SocketStats
-	54,  // 117: tetragon.ProcessSockStats.ancestors:type_name -> tetragon.Process
-	54,  // 118: tetragon.Tls.process:type_name -> tetragon.Process
-	55,  // 119: tetragon.Tls.source_port:type_name -> google.protobuf.UInt32Value
-	55,  // 120: tetragon.Tls.destination_port:type_name -> google.protobuf.UInt32Value
-	7,   // 121: tetragon.Tls.certificate_error:type_name -> tetragon.TlsCertificateError
-	54,  // 122: tetragon.Tls.parent:type_name -> tetragon.Process
-	54,  // 123: tetragon.Tls.ancestors:type_name -> tetragon.Process
-	59,  // 124: tetragon.HttpRequest.timestamp:type_name -> google.protobuf.Timestamp
-	55,  // 125: tetragon.HttpRequest.content_length:type_name -> google.protobuf.UInt32Value
-	44,  // 126: tetragon.HttpRequest.headers:type_name -> tetragon.HttpHeader
-	59,  // 127: tetragon.HttpResponse.timestamp:type_name -> google.protobuf.Timestamp
-	55,  // 128: tetragon.HttpResponse.content_length:type_name -> google.protobuf.UInt32Value
-	44,  // 129: tetragon.HttpResponse.headers:type_name -> tetragon.HttpHeader
-	45,  // 130: tetragon.HttpInfo.request:type_name -> tetragon.HttpRequest
-	46,  // 131: tetragon.HttpInfo.response:type_name -> tetragon.HttpResponse
-	56,  // 132: tetragon.HttpInfo.latency:type_name -> google.protobuf.Duration
-	54,  // 133: tetragon.ProcessHttp.process:type_name -> tetragon.Process
-	41,  // 134: tetragon.ProcessHttp.socket:type_name -> tetragon.SockInfo
-	47,  // 135: tetragon.ProcessHttp.http:type_name -> tetragon.HttpInfo
-	53,  // 136: tetragon.ProcessHttp.destination_pod:type_name -> tetragon.Pod
-	54,  // 137: tetragon.ProcessHttp.parent:type_name -> tetragon.Process
-	54,  // 138: tetragon.ProcessHttp.ancestors:type_name -> tetragon.Process
-	54,  // 139: tetragon.ProcessNetworkBurst.process:type_name -> tetragon.Process
-	54,  // 140: tetragon.ProcessNetworkBurst.parent:type_name -> tetragon.Process
-	54,  // 141: tetragon.ProcessNetworkBurst.ancestors:type_name -> tetragon.Process
-	54,  // 142: tetragon.ProcessNetworkWatermark.process:type_name -> tetragon.Process
-	54,  // 143: tetragon.ProcessNetworkWatermark.parent:type_name -> tetragon.Process
-	54,  // 144: tetragon.ProcessNetworkWatermark.ancestors:type_name -> tetragon.Process
-	54,  // 145: tetragon.ProcessUdpSeqCheckError.process:type_name -> tetragon.Process
-	54,  // 146: tetragon.ProcessUdpSeqCheckError.parent:type_name -> tetragon.Process
-	41,  // 147: tetragon.ProcessUdpSeqCheckError.socket:type_name -> tetragon.SockInfo
-	54,  // 148: tetragon.ProcessUdpSeqCheckError.ancestors:type_name -> tetragon.Process
-	149, // [149:149] is the sub-list for method output_type
-	149, // [149:149] is the sub-list for method input_type
-	149, // [149:149] is the sub-list for extension type_name
-	149, // [149:149] is the sub-list for extension extendee
-	0,   // [0:149] is the sub-list for field type_name
+	9,   // 0: tetragon.Histogram.buckets:type_name -> tetragon.HistogramBucket
+	54,  // 1: tetragon.InterfaceStats.pod:type_name -> tetragon.Pod
+	10,  // 2: tetragon.InterfaceStats.qlen:type_name -> tetragon.Histogram
+	10,  // 3: tetragon.SocketStats.rtt:type_name -> tetragon.Histogram
+	10,  // 4: tetragon.SocketStats.latency:type_name -> tetragon.Histogram
+	53,  // 5: tetragon.Service.selector_labels:type_name -> tetragon.Service.SelectorLabelsEntry
+	1,   // 6: tetragon.Service.Type:type_name -> tetragon.ServiceKind
+	55,  // 7: tetragon.ProcessConnect.process:type_name -> tetragon.Process
+	55,  // 8: tetragon.ProcessConnect.parent:type_name -> tetragon.Process
+	56,  // 9: tetragon.ProcessConnect.source_port:type_name -> google.protobuf.UInt32Value
+	56,  // 10: tetragon.ProcessConnect.destination_port:type_name -> google.protobuf.UInt32Value
+	54,  // 11: tetragon.ProcessConnect.destination_pod:type_name -> tetragon.Pod
+	0,   // 12: tetragon.ProcessConnect.protocol:type_name -> tetragon.SocketProtocol
+	13,  // 13: tetragon.ProcessConnect.destination_service:type_name -> tetragon.Service
+	55,  // 14: tetragon.ProcessConnect.ancestors:type_name -> tetragon.Process
+	15,  // 15: tetragon.ProcessConnect.policy_info:type_name -> tetragon.TNPInfo
+	2,   // 16: tetragon.TNPInfo.action:type_name -> tetragon.TNPAction
+	55,  // 17: tetragon.ProcessClose.process:type_name -> tetragon.Process
+	55,  // 18: tetragon.ProcessClose.parent:type_name -> tetragon.Process
+	56,  // 19: tetragon.ProcessClose.source_port:type_name -> google.protobuf.UInt32Value
+	56,  // 20: tetragon.ProcessClose.destination_port:type_name -> google.protobuf.UInt32Value
+	12,  // 21: tetragon.ProcessClose.stats:type_name -> tetragon.SocketStats
+	54,  // 22: tetragon.ProcessClose.destination_pod:type_name -> tetragon.Pod
+	0,   // 23: tetragon.ProcessClose.protocol:type_name -> tetragon.SocketProtocol
+	57,  // 24: tetragon.ProcessClose.duration:type_name -> google.protobuf.Duration
+	13,  // 25: tetragon.ProcessClose.destination_service:type_name -> tetragon.Service
+	55,  // 26: tetragon.ProcessClose.ancestors:type_name -> tetragon.Process
+	55,  // 27: tetragon.ProcessListen.process:type_name -> tetragon.Process
+	55,  // 28: tetragon.ProcessListen.parent:type_name -> tetragon.Process
+	56,  // 29: tetragon.ProcessListen.port:type_name -> google.protobuf.UInt32Value
+	0,   // 30: tetragon.ProcessListen.protocol:type_name -> tetragon.SocketProtocol
+	55,  // 31: tetragon.ProcessListen.ancestors:type_name -> tetragon.Process
+	55,  // 32: tetragon.ProcessAccept.process:type_name -> tetragon.Process
+	55,  // 33: tetragon.ProcessAccept.parent:type_name -> tetragon.Process
+	56,  // 34: tetragon.ProcessAccept.source_port:type_name -> google.protobuf.UInt32Value
+	56,  // 35: tetragon.ProcessAccept.destination_port:type_name -> google.protobuf.UInt32Value
+	54,  // 36: tetragon.ProcessAccept.destination_pod:type_name -> tetragon.Pod
+	0,   // 37: tetragon.ProcessAccept.protocol:type_name -> tetragon.SocketProtocol
+	13,  // 38: tetragon.ProcessAccept.destination_service:type_name -> tetragon.Service
+	55,  // 39: tetragon.ProcessAccept.ancestors:type_name -> tetragon.Process
+	55,  // 40: tetragon.ProcessRawsockCreate.process:type_name -> tetragon.Process
+	55,  // 41: tetragon.ProcessRawsockCreate.parent:type_name -> tetragon.Process
+	55,  // 42: tetragon.ProcessRawsockCreate.ancestors:type_name -> tetragon.Process
+	55,  // 43: tetragon.ProcessRawsockClose.process:type_name -> tetragon.Process
+	55,  // 44: tetragon.ProcessRawsockClose.parent:type_name -> tetragon.Process
+	57,  // 45: tetragon.ProcessRawsockClose.duration:type_name -> google.protobuf.Duration
+	55,  // 46: tetragon.ProcessRawsockClose.ancestors:type_name -> tetragon.Process
+	55,  // 47: tetragon.ProcessIcmp.process:type_name -> tetragon.Process
+	55,  // 48: tetragon.ProcessIcmp.parent:type_name -> tetragon.Process
+	54,  // 49: tetragon.ProcessIcmp.destination_pod:type_name -> tetragon.Pod
+	0,   // 50: tetragon.ProcessIcmp.protocol:type_name -> tetragon.SocketProtocol
+	0,   // 51: tetragon.ProcessIcmp.icmp_ip_protocol:type_name -> tetragon.SocketProtocol
+	13,  // 52: tetragon.ProcessIcmp.destination_service:type_name -> tetragon.Service
+	55,  // 53: tetragon.ProcessIcmp.ancestors:type_name -> tetragon.Process
+	55,  // 54: tetragon.ProcessIpError.process:type_name -> tetragon.Process
+	55,  // 55: tetragon.ProcessIpError.parent:type_name -> tetragon.Process
+	54,  // 56: tetragon.ProcessIpError.destination_pod:type_name -> tetragon.Pod
+	13,  // 57: tetragon.ProcessIpError.destination_service:type_name -> tetragon.Service
+	55,  // 58: tetragon.ProcessIpError.ancestors:type_name -> tetragon.Process
+	23,  // 59: tetragon.Inode.fs:type_name -> tetragon.FileSystem
+	4,   // 60: tetragon.FileLocation.type:type_name -> tetragon.FileScope
+	54,  // 61: tetragon.FileLocation.pod:type_name -> tetragon.Pod
+	24,  // 62: tetragon.FileDetails.inode:type_name -> tetragon.Inode
+	24,  // 63: tetragon.FileDetails.parent_inode:type_name -> tetragon.Inode
+	25,  // 64: tetragon.FileDetails.location:type_name -> tetragon.FileLocation
+	5,   // 65: tetragon.FileDigest.algo:type_name -> tetragon.DigestAlgo
+	26,  // 66: tetragon.GenericFileArg.file:type_name -> tetragon.FileDetails
+	27,  // 67: tetragon.GenericFileArg.io:type_name -> tetragon.FileIO
+	58,  // 68: tetragon.GenericFileArg.mnt_ns:type_name -> tetragon.Namespace
+	28,  // 69: tetragon.GenericFileArg.digest:type_name -> tetragon.FileDigest
+	26,  // 70: tetragon.RenameFileArg.src:type_name -> tetragon.FileDetails
+	26,  // 71: tetragon.RenameFileArg.dst:type_name -> tetragon.FileDetails
+	58,  // 72: tetragon.RenameFileArg.mnt_ns:type_name -> tetragon.Namespace
+	26,  // 73: tetragon.ReadDirArg.file:type_name -> tetragon.FileDetails
+	58,  // 74: tetragon.ReadDirArg.mnt_ns:type_name -> tetragon.Namespace
+	32,  // 75: tetragon.FileAttr.permissions:type_name -> tetragon.AttrChange
+	32,  // 76: tetragon.FileAttr.uid:type_name -> tetragon.AttrChange
+	32,  // 77: tetragon.FileAttr.gid:type_name -> tetragon.AttrChange
+	26,  // 78: tetragon.AttrArg.file:type_name -> tetragon.FileDetails
+	33,  // 79: tetragon.AttrArg.attr:type_name -> tetragon.FileAttr
+	58,  // 80: tetragon.AttrArg.mnt_ns:type_name -> tetragon.Namespace
+	26,  // 81: tetragon.LinkArg.link:type_name -> tetragon.FileDetails
+	26,  // 82: tetragon.LinkArg.target:type_name -> tetragon.FileDetails
+	58,  // 83: tetragon.LinkArg.mnt_ns:type_name -> tetragon.Namespace
+	26,  // 84: tetragon.SymlinkArg.link:type_name -> tetragon.FileDetails
+	58,  // 85: tetragon.SymlinkArg.mnt_ns:type_name -> tetragon.Namespace
+	59,  // 86: tetragon.PathDetails.is_relative_path:type_name -> google.protobuf.BoolValue
+	37,  // 87: tetragon.OpenRawArg.path:type_name -> tetragon.PathDetails
+	26,  // 88: tetragon.OpenRawArg.dir:type_name -> tetragon.FileDetails
+	6,   // 89: tetragon.OpenRawArg.error_code:type_name -> tetragon.SysRetval
+	29,  // 90: tetragon.FileArgument.generic_arg:type_name -> tetragon.GenericFileArg
+	30,  // 91: tetragon.FileArgument.rename_arg:type_name -> tetragon.RenameFileArg
+	31,  // 92: tetragon.FileArgument.readdir_arg:type_name -> tetragon.ReadDirArg
+	34,  // 93: tetragon.FileArgument.attr_arg:type_name -> tetragon.AttrArg
+	35,  // 94: tetragon.FileArgument.link_arg:type_name -> tetragon.LinkArg
+	36,  // 95: tetragon.FileArgument.symlink_arg:type_name -> tetragon.SymlinkArg
+	38,  // 96: tetragon.FileArgument.openraw_arg:type_name -> tetragon.OpenRawArg
+	55,  // 97: tetragon.ProcessFile.process:type_name -> tetragon.Process
+	55,  // 98: tetragon.ProcessFile.parent:type_name -> tetragon.Process
+	3,   // 99: tetragon.ProcessFile.action:type_name -> tetragon.FileAction
+	39,  // 100: tetragon.ProcessFile.args:type_name -> tetragon.FileArgument
+	60,  // 101: tetragon.ProcessFile.time:type_name -> google.protobuf.Timestamp
+	7,   // 102: tetragon.ProcessFile.operation:type_name -> tetragon.FileOperation
+	55,  // 103: tetragon.ProcessFile.ancestors:type_name -> tetragon.Process
+	55,  // 104: tetragon.ProcessFileExec.process:type_name -> tetragon.Process
+	55,  // 105: tetragon.ProcessFileExec.parent:type_name -> tetragon.Process
+	26,  // 106: tetragon.ProcessFileExec.file:type_name -> tetragon.FileDetails
+	28,  // 107: tetragon.ProcessFileExec.digest:type_name -> tetragon.FileDigest
+	7,   // 108: tetragon.ProcessFileExec.operations:type_name -> tetragon.FileOperation
+	55,  // 109: tetragon.ProcessFileExec.ancestors:type_name -> tetragon.Process
+	56,  // 110: tetragon.SockInfo.source_port:type_name -> google.protobuf.UInt32Value
+	56,  // 111: tetragon.SockInfo.destination_port:type_name -> google.protobuf.UInt32Value
+	0,   // 112: tetragon.SockInfo.protocol:type_name -> tetragon.SocketProtocol
+	54,  // 113: tetragon.SockInfo.destination_pod:type_name -> tetragon.Pod
+	55,  // 114: tetragon.ProcessSockStats.process:type_name -> tetragon.Process
+	55,  // 115: tetragon.ProcessSockStats.parent:type_name -> tetragon.Process
+	42,  // 116: tetragon.ProcessSockStats.socket:type_name -> tetragon.SockInfo
+	12,  // 117: tetragon.ProcessSockStats.stats:type_name -> tetragon.SocketStats
+	55,  // 118: tetragon.ProcessSockStats.ancestors:type_name -> tetragon.Process
+	55,  // 119: tetragon.Tls.process:type_name -> tetragon.Process
+	56,  // 120: tetragon.Tls.source_port:type_name -> google.protobuf.UInt32Value
+	56,  // 121: tetragon.Tls.destination_port:type_name -> google.protobuf.UInt32Value
+	8,   // 122: tetragon.Tls.certificate_error:type_name -> tetragon.TlsCertificateError
+	55,  // 123: tetragon.Tls.parent:type_name -> tetragon.Process
+	55,  // 124: tetragon.Tls.ancestors:type_name -> tetragon.Process
+	60,  // 125: tetragon.HttpRequest.timestamp:type_name -> google.protobuf.Timestamp
+	56,  // 126: tetragon.HttpRequest.content_length:type_name -> google.protobuf.UInt32Value
+	45,  // 127: tetragon.HttpRequest.headers:type_name -> tetragon.HttpHeader
+	60,  // 128: tetragon.HttpResponse.timestamp:type_name -> google.protobuf.Timestamp
+	56,  // 129: tetragon.HttpResponse.content_length:type_name -> google.protobuf.UInt32Value
+	45,  // 130: tetragon.HttpResponse.headers:type_name -> tetragon.HttpHeader
+	46,  // 131: tetragon.HttpInfo.request:type_name -> tetragon.HttpRequest
+	47,  // 132: tetragon.HttpInfo.response:type_name -> tetragon.HttpResponse
+	57,  // 133: tetragon.HttpInfo.latency:type_name -> google.protobuf.Duration
+	55,  // 134: tetragon.ProcessHttp.process:type_name -> tetragon.Process
+	42,  // 135: tetragon.ProcessHttp.socket:type_name -> tetragon.SockInfo
+	48,  // 136: tetragon.ProcessHttp.http:type_name -> tetragon.HttpInfo
+	54,  // 137: tetragon.ProcessHttp.destination_pod:type_name -> tetragon.Pod
+	55,  // 138: tetragon.ProcessHttp.parent:type_name -> tetragon.Process
+	55,  // 139: tetragon.ProcessHttp.ancestors:type_name -> tetragon.Process
+	55,  // 140: tetragon.ProcessNetworkBurst.process:type_name -> tetragon.Process
+	55,  // 141: tetragon.ProcessNetworkBurst.parent:type_name -> tetragon.Process
+	55,  // 142: tetragon.ProcessNetworkBurst.ancestors:type_name -> tetragon.Process
+	55,  // 143: tetragon.ProcessNetworkWatermark.process:type_name -> tetragon.Process
+	55,  // 144: tetragon.ProcessNetworkWatermark.parent:type_name -> tetragon.Process
+	55,  // 145: tetragon.ProcessNetworkWatermark.ancestors:type_name -> tetragon.Process
+	55,  // 146: tetragon.ProcessUdpSeqCheckError.process:type_name -> tetragon.Process
+	55,  // 147: tetragon.ProcessUdpSeqCheckError.parent:type_name -> tetragon.Process
+	42,  // 148: tetragon.ProcessUdpSeqCheckError.socket:type_name -> tetragon.SockInfo
+	55,  // 149: tetragon.ProcessUdpSeqCheckError.ancestors:type_name -> tetragon.Process
+	150, // [150:150] is the sub-list for method output_type
+	150, // [150:150] is the sub-list for method input_type
+	150, // [150:150] is the sub-list for extension type_name
+	150, // [150:150] is the sub-list for extension extendee
+	0,   // [0:150] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_fgs_proto_init() }
@@ -5748,7 +5821,7 @@ func file_tetragon_fgs_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tetragon_fgs_proto_rawDesc), len(file_tetragon_fgs_proto_rawDesc)),
-			NumEnums:      8,
+			NumEnums:      9,
 			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   0,

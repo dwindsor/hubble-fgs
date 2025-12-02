@@ -145,13 +145,14 @@ func TestModelToMonitorData(t *testing.T) {
 
 	expectedNMD := NetworkMonitorData{
 		NetworkKey{
-			SourceNamespace:    "default",
-			SourceWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_POD,
-			SourceWorkloadName: "workload1",
-			SourceProcessName:  "process1",
-			SourceProcessArgs:  "arg1",
-			DestinationNames:   "dest1",
-			DestinationPort:    80,
+			SourceNamespace:            "default",
+			SourceWorkloadKind:         common.WorkloadKind_WORKLOAD_KIND_POD,
+			SourceWorkloadResourceKind: common.ResourceKind_RESOURCE_KIND_WORKLOAD,
+			SourceWorkloadName:         "workload1",
+			SourceProcessName:          "process1",
+			SourceProcessArgs:          "arg1",
+			DestinationNames:           "dest1",
+			DestinationPort:            80,
 		}: NetworkMonitorValue{
 			TXBytes: 100,
 			RXBytes: 200,

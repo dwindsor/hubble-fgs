@@ -158,9 +158,13 @@ type VertexFamilyKubernetes struct {
 	PodName string `protobuf:"bytes,8,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
 	// container_name is the name of the container.
 	ContainerName string `protobuf:"bytes,9,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
-	// service_kind represents the type of the Kubernetes service.
+	// service_kind represents the type of the Kubernetes service. The
+	// service_kind field should be set when the resource_kind field is
+	// RESOURCE_KIND_SERVICE.
 	ServiceKind v1alpha.ServiceKind `protobuf:"varint,10,opt,name=service_kind,json=serviceKind,proto3,enum=common.k8s.type.v1alpha.ServiceKind" json:"service_kind,omitempty"`
-	// workload_kind represents the type of the Kubernetes workload.
+	// workload_kind represents the type of the Kubernetes workload. The
+	// workload_kind should be set when the resource_kind field is set to
+	// RESOURCE_KIND_WORKLOAD.
 	WorkloadKind v1alpha.WorkloadKind `protobuf:"varint,11,opt,name=workload_kind,json=workloadKind,proto3,enum=common.k8s.type.v1alpha.WorkloadKind" json:"workload_kind,omitempty"`
 	// ip is a network address that can be associated with the Kubernetes
 	// resource and the connection.

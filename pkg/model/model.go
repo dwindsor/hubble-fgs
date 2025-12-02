@@ -280,12 +280,17 @@ func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModel
 				}
 				pmd[pmk] = ProcessValue{}
 				for _, conn := range ps.GetConnections() {
+					resourceType := v1alpha.ResourceKind_RESOURCE_KIND_UNSPECIFIED
+					if wl.GetKind() != v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED {
+						resourceType = v1alpha.ResourceKind_RESOURCE_KIND_WORKLOAD
+					}
 					nmk := NetworkKey{
-						SourceNamespace:    ns.GetName(),
-						SourceWorkloadKind: wl.GetKind(),
-						SourceWorkloadName: wl.GetName(),
-						SourceProcessName:  ps.GetName(),
-						SourceProcessArgs:  ps.GetArguments(),
+						SourceNamespace:            ns.GetName(),
+						SourceWorkloadKind:         wl.GetKind(),
+						SourceWorkloadResourceKind: resourceType,
+						SourceWorkloadName:         wl.GetName(),
+						SourceProcessName:          ps.GetName(),
+						SourceProcessArgs:          ps.GetArguments(),
 					}
 					addDestinationInfoAppModel(conn.Destination, &nmk)
 					nmd[nmk] = NetworkMonitorValue{

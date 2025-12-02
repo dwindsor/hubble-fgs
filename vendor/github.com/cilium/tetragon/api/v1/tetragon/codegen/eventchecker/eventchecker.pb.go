@@ -12661,6 +12661,7 @@ type ServiceChecker struct {
 	Name           *stringmatcher.StringMatcher           `json:"Name,omitempty"`
 	Namespace      *stringmatcher.StringMatcher           `json:"Namespace,omitempty"`
 	SelectorLabels map[string]stringmatcher.StringMatcher `json:"selectorLabels,omitempty"`
+	Type           *ServiceKindChecker                    `json:"Type,omitempty"`
 }
 
 // NewServiceChecker creates a new ServiceChecker
@@ -12715,6 +12716,11 @@ func (checker *ServiceChecker) Check(event *tetragon.Service) error {
 				return fmt.Errorf("SelectorLabels unmatched: %v", unmatched)
 			}
 		}
+		if checker.Type != nil {
+			if err := checker.Type.Check(&event.Type); err != nil {
+				return fmt.Errorf("Type check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -12741,6 +12747,13 @@ func (checker *ServiceChecker) WithSelectorLabels(check map[string]stringmatcher
 	return checker
 }
 
+// WithType adds a Type check to the ServiceChecker
+func (checker *ServiceChecker) WithType(check tetragon.ServiceKind) *ServiceChecker {
+	wrappedCheck := ServiceKindChecker(check)
+	checker.Type = &wrappedCheck
+	return checker
+}
+
 //FromService populates the ServiceChecker using data from a Service field
 func (checker *ServiceChecker) FromService(event *tetragon.Service) *ServiceChecker {
 	if event == nil {
@@ -12749,6 +12762,7 @@ func (checker *ServiceChecker) FromService(event *tetragon.Service) *ServiceChec
 	checker.Name = stringmatcher.Full(event.Name)
 	checker.Namespace = stringmatcher.Full(event.Namespace)
 	// TODO: implement fromMap
+	checker.Type = NewServiceKindChecker(event.Type)
 	return checker
 }
 
@@ -15964,6 +15978,58 @@ func (enum *SocketProtocolChecker) Check(val *tetragon.SocketProtocol) error {
 	}
 	if *enum != SocketProtocolChecker(*val) {
 		return fmt.Errorf("SocketProtocolChecker: SocketProtocol has value %s which does not match expected value %s", (*val), tetragon.SocketProtocol(*enum))
+	}
+	return nil
+}
+
+// ServiceKindChecker checks a tetragon.ServiceKind
+type ServiceKindChecker tetragon.ServiceKind
+
+// MarshalJSON implements json.Marshaler interface
+func (enum ServiceKindChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.ServiceKind_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "SERVICE_KIND_")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown ServiceKind %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *ServiceKindChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.ServiceKind_value[str]; ok {
+		*enum = ServiceKindChecker(n)
+	} else if n, ok := tetragon.ServiceKind_value["SERVICE_KIND_"+str]; ok {
+		*enum = ServiceKindChecker(n)
+	} else {
+		return fmt.Errorf("Unknown ServiceKind %s", str)
+	}
+
+	return nil
+}
+
+// NewServiceKindChecker creates a new ServiceKindChecker
+func NewServiceKindChecker(val tetragon.ServiceKind) *ServiceKindChecker {
+	enum := ServiceKindChecker(val)
+	return &enum
+}
+
+// Check checks a ServiceKind against the checker
+func (enum *ServiceKindChecker) Check(val *tetragon.ServiceKind) error {
+	if val == nil {
+		return fmt.Errorf("ServiceKindChecker: ServiceKind is nil and does not match expected value %s", tetragon.ServiceKind(*enum))
+	}
+	if *enum != ServiceKindChecker(*val) {
+		return fmt.Errorf("ServiceKindChecker: ServiceKind has value %s which does not match expected value %s", (*val), tetragon.ServiceKind(*enum))
 	}
 	return nil
 }

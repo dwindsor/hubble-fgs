@@ -792,6 +792,7 @@ the following criteria:
 | name | [string](#string) |  |  |
 | namespace | [string](#string) |  |  |
 | kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  |  |
+| resource_kind | [common.k8s.type.v1alpha.ResourceKind](#common-k8s-type-v1alpha-ResourceKind) |  |  |
 
 
 

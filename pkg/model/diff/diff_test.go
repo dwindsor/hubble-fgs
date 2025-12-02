@@ -541,18 +541,20 @@ func Test_getDestination(t *testing.T) {
 	dest := appModelV1.Destination{
 		Type: &appModelV1.Destination_Workload{
 			Workload: &appModelV1.DestinationWorkload{
-				Name:      "kubernetes",
-				Namespace: "default",
-				Kind:      common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
+				Name:         "kubernetes",
+				Namespace:    "default",
+				Kind:         common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
+				ResourceKind: common.ResourceKind_RESOURCE_KIND_SERVICE,
 			},
 		},
 		Port: 1234,
 	}
-	name, namespace, workloadName, workloadKind := getDestination(&dest)
+	name, namespace, workloadName, workloadKind, resourceKind := getDestination(&dest)
 	assert.Equal(t, "default:WORKLOAD_KIND_UNSPECIFIED:kubernetes", name)
 	assert.Equal(t, dest.GetWorkload().GetNamespace(), namespace)
 	assert.Equal(t, dest.GetWorkload().GetName(), workloadName)
 	assert.Equal(t, dest.GetWorkload().GetKind(), workloadKind)
+	assert.Equal(t, dest.GetWorkload().GetResourceKind(), resourceKind)
 }
 
 func TestTelemetryToConnection(t *testing.T) {
@@ -564,23 +566,25 @@ func TestTelemetryToConnection(t *testing.T) {
 		{
 			name: "DNS destination type",
 			telemetry: &appModelV1.NetworkConnectTelemetry{
-				EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
-				ClusterName:            "my-cluster",
-				NodeName:               "my-node",
-				KubernetesNamespace:    "tetragon",
-				KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
-				KubernetesWorkloadName: "tetragon-grafana",
-				DestinationName:        "grafana.com",
-				DestinationType:        appModelV1.DestinationType_DESTINATION_TYPE_DNS,
-				DestinationPort:        443,
-				TxBytes:                1234,
-				ApplicationModelId:     "u-u-i-d",
+				EventType:                         appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+				ClusterName:                       "my-cluster",
+				NodeName:                          "my-node",
+				KubernetesNamespace:               "tetragon",
+				KubernetesWorkloadKind:            common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+				DestinationKubernetesResourceKind: common.ResourceKind_RESOURCE_KIND_WORKLOAD,
+				KubernetesWorkloadName:            "tetragon-grafana",
+				DestinationName:                   "grafana.com",
+				DestinationType:                   appModelV1.DestinationType_DESTINATION_TYPE_DNS,
+				DestinationPort:                   443,
+				TxBytes:                           1234,
+				ApplicationModelId:                "u-u-i-d",
 			},
 			expected: &graphV1.Connection{
 				Source: &graphV1.Vertex{
 					Family: &graphV1.Vertex_Kubernetes{
 						Kubernetes: &graphV1.VertexFamilyKubernetes{
 							ResourceName:         "tetragon-grafana",
+							ResourceKind:         common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 							ClusterName:          "my-cluster",
 							Namespace:            "tetragon",
 							NodeName:             "my-node",
@@ -628,6 +632,7 @@ func TestTelemetryToConnection(t *testing.T) {
 					Family: &graphV1.Vertex_Kubernetes{
 						Kubernetes: &graphV1.VertexFamilyKubernetes{
 							ResourceName:         "tetragon-grafana",
+							ResourceKind:         common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 							ClusterName:          "my-cluster",
 							Namespace:            "tetragon",
 							NodeName:             "my-node",
@@ -680,6 +685,7 @@ func TestTelemetryToConnection(t *testing.T) {
 					Family: &graphV1.Vertex_Kubernetes{
 						Kubernetes: &graphV1.VertexFamilyKubernetes{
 							ResourceName:         "tetragon-grafana",
+							ResourceKind:         common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 							ClusterName:          "my-cluster",
 							Namespace:            "tetragon",
 							NodeName:             "my-node",

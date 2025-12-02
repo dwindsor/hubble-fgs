@@ -816,6 +816,11 @@ export declare type DestinationWorkload = Message<"application_model.v1alpha.Des
    * @generated from field: common.k8s.type.v1alpha.WorkloadKind kind = 3;
    */
   kind: WorkloadKind;
+
+  /**
+   * @generated from field: common.k8s.type.v1alpha.ResourceKind resource_kind = 4;
+   */
+  resourceKind: ResourceKind;
 };
 
 /**

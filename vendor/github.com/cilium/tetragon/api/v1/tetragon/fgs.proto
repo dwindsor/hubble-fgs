@@ -88,11 +88,21 @@ enum SocketProtocol {
   ICMPV6 = 58;
 }
 
+// ServiceKind represents the various Kubernetes service types.
+enum ServiceKind {
+  SERVICE_KIND_UNSPECIFIED = 0;
+  SERVICE_KIND_CLUSTER_IP = 1;
+  SERVICE_KIND_NODE_PORT = 2;
+  SERVICE_KIND_LOAD_BALANCER = 3;
+  SERVICE_KIND_EXTERNAL_NAME = 4;
+}
+
 message Service {
   string Name = 1;
   string Namespace = 2;
   // Selector labels of this service.
   map<string, string> selector_labels = 3;
+  ServiceKind Type = 4;
 }
 
 message ProcessConnect {

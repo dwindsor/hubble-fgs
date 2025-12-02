@@ -172,8 +172,8 @@ Kubernetes context.
 | node_name | [string](#string) |  | node_name is the name of the Kubernetes node. |
 | pod_name | [string](#string) |  | pod_name is the name of the Kubernetes pod. |
 | container_name | [string](#string) |  | container_name is the name of the container. |
-| service_kind | [common.k8s.type.v1alpha.ServiceKind](#common-k8s-type-v1alpha-ServiceKind) |  | service_kind represents the type of the Kubernetes service. |
-| workload_kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  | workload_kind represents the type of the Kubernetes workload. |
+| service_kind | [common.k8s.type.v1alpha.ServiceKind](#common-k8s-type-v1alpha-ServiceKind) |  | service_kind represents the type of the Kubernetes service. The service_kind field should be set when the resource_kind field is RESOURCE_KIND_SERVICE. |
+| workload_kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  | workload_kind represents the type of the Kubernetes workload. The workload_kind should be set when the resource_kind field is set to RESOURCE_KIND_WORKLOAD. |
 | ip | [string](#string) |  | ip is a network address that can be associated with the Kubernetes resource and the connection. |
 | port | [uint32](#uint32) |  | port is the network port associated with the ip address. |
 | application_model_uuid | [string](#string) |  | application_model_uuid is a unique identifier that identifies the application model associated with the Kubernetes resource. |

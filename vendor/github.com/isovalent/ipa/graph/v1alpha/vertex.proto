@@ -52,9 +52,13 @@ message VertexFamilyKubernetes {
   string pod_name = 8;
   // container_name is the name of the container.
   string container_name = 9;
-  // service_kind represents the type of the Kubernetes service.
+  // service_kind represents the type of the Kubernetes service. The
+  // service_kind field should be set when the resource_kind field is
+  // RESOURCE_KIND_SERVICE.
   common.k8s.type.v1alpha.ServiceKind service_kind = 10;
-  // workload_kind represents the type of the Kubernetes workload.
+  // workload_kind represents the type of the Kubernetes workload. The
+  // workload_kind should be set when the resource_kind field is set to
+  // RESOURCE_KIND_WORKLOAD.
   common.k8s.type.v1alpha.WorkloadKind workload_kind = 11;
   // ip is a network address that can be associated with the Kubernetes
   // resource and the connection.

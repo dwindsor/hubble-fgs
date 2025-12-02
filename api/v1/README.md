@@ -122,6 +122,7 @@
     - [FileAction](#tetragon-FileAction)
     - [FileOperation](#tetragon-FileOperation)
     - [FileScope](#tetragon-FileScope)
+    - [ServiceKind](#tetragon-ServiceKind)
     - [SocketProtocol](#tetragon-SocketProtocol)
     - [SysRetval](#tetragon-SysRetval)
     - [TNPAction](#tetragon-TNPAction)
@@ -2405,6 +2406,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | Name | [string](#string) |  |  |
 | Namespace | [string](#string) |  |  |
 | selector_labels | [Service.SelectorLabelsEntry](#tetragon-Service-SelectorLabelsEntry) | repeated | Selector labels of this service. |
+| Type | [ServiceKind](#tetragon-ServiceKind) |  |  |
 
 
 
@@ -2640,6 +2642,21 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 | HOST_FILE | 1 | HOST_FILE means that the file is monitored as a host file, and the access happened from a container or the host |
 | CONTAINER_FILE_LOCAL | 2 | CONTAINER_FILE_LOCAL means that the file is monitored as a container file, and the access happened from the same container |
 | CONTAINER_FILE_REMOTE | 3 | CONTAINER_FILE_REMOTE means that the file is monitored as a container file, and the access happened from a different container or the host |
+
+
+
+<a name="tetragon-ServiceKind"></a>
+
+### ServiceKind
+ServiceKind represents the various Kubernetes service types.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SERVICE_KIND_UNSPECIFIED | 0 |  |
+| SERVICE_KIND_CLUSTER_IP | 1 |  |
+| SERVICE_KIND_NODE_PORT | 2 |  |
+| SERVICE_KIND_LOAD_BALANCER | 3 |  |
+| SERVICE_KIND_EXTERNAL_NAME | 4 |  |
 
 
 

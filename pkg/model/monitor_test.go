@@ -157,10 +157,12 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 		NetworkKey{
 			SourceNamespace:              "client",
 			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadResourceKind:   common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 			SourceWorkloadName:           "my-app",
 			DestinationWorkloadName:      "kubernetes",
 			DestinationWorkloadNamespace: "default",
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED,
+			DestinationResourceKind:      common.ResourceKind_RESOURCE_KIND_SERVICE,
 			DestinationPort:              443,
 		}: NetworkMonitorValue{
 			TXBytes: 300,
@@ -168,10 +170,12 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 		}, NetworkKey{
 			SourceNamespace:              "client",
 			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadResourceKind:   common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 			SourceWorkloadName:           "my-app",
 			DestinationWorkloadName:      "nginx",
 			DestinationWorkloadNamespace: "server",
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			DestinationResourceKind:      common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 			DestinationPort:              8080,
 		}: NetworkMonitorValue{
 			TXBytes: 200,
@@ -182,10 +186,12 @@ func TestConvertToNetworkMonitorData(t *testing.T) {
 		NetworkKey{
 			SourceNamespace:              "client",
 			SourceWorkloadKind:           common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			SourceWorkloadResourceKind:   common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 			SourceWorkloadName:           "my-app",
 			DestinationWorkloadName:      "nginx",
 			DestinationWorkloadNamespace: "server",
 			DestinationWorkloadKind:      common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
+			DestinationResourceKind:      common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 		}: NetworkQuotaValue{
 			TXBytes:   200,
 			RXBytes:   400,
