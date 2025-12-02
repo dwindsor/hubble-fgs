@@ -113,11 +113,9 @@ func DefaultDpSyslogInput() InputSection {
 		formatted_message = "[FWPOLICY] policy_match"
 			.. " src_ip=" .. (record["src_ip"] or "")
 			.. " dst_ip=" .. (record["dst_ip"] or "")
-			.. " src_port=" .. (record["src_port"] or "")
 			.. " dst_port=" .. (record["dst_port"] or "")
 			.. " protocol=" .. (record["protocol"] or "")
 			.. " decision=" .. (record["policy_decision"] or "")
-			.. " policy_name=" .. (record["policy_name"] or "")
 			.. " severity=" .. (record["severity"] or "")
 			.. " count=" .. (record["count"] or "")
 	elseif record["msg_code"] == 2 then  -- SYSLOG_FLOW_DELETE
@@ -125,16 +123,14 @@ func DefaultDpSyslogInput() InputSection {
 		formatted_message = "[FWDELETE] reason= " .. reason
 			.. " src_ip=" .. (record["src_ip"] or "")
 			.. " dst_ip=" .. (record["dst_ip"] or "")
-			.. " src_port=" .. (record["src_port"] or "")
 			.. " dst_port=" .. (record["dst_port"] or "")
 			.. " protocol=" .. (record["protocol"] or "")
 			.. " severity=" .. (record["severity"] or "")
 			.. " count=" .. (record["count"] or "")
-	elseif record["msg_code"] == 3 then  -- LOG_FLOW_ERROR
+	elseif record["msg_code"] == 3 or record["msg_code"] == 4 then  -- LOG_ERROR_FLOW or LOG_ERROR_SESSION
         formatted_message = "[FWFLOWERROR] error= " .. (record["error_str"] or "")
             .. " src_ip=" .. (record["src_ip"] or "")
             .. " dst_ip=" .. (record["dst_ip"] or "")
-            .. " src_port=" .. (record["src_port"] or "")
             .. " dst_port=" .. (record["dst_port"] or "")
             .. " protocol=" .. (record["protocol"] or "")
             .. " severity=" .. (record["severity"] or "")
@@ -144,7 +140,6 @@ func DefaultDpSyslogInput() InputSection {
 		formatted_message = "[GENERIC] event_code=" .. (record["msg_code"] or "unknown")
 			.. " src_ip=" .. (record["src_ip"] or "")
 			.. " dst_ip=" .. (record["dst_ip"] or "")
-			.. " src_port=" .. (record["src_port"] or "")
 			.. " dst_port=" .. (record["dst_port"] or "")
 			.. " protocol=" .. (record["protocol"] or "")
 			.. " facility=" .. (record["facility"] or "")
