@@ -76,11 +76,14 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	}
 
 	now := time.Now().Unix()
-	_, ok := n.Ha.Adjacencies[peer]
+	v, ok := n.Ha.Adjacencies[peer]
 	if !ok {
 		n.Ha.Adjacencies[peer] = HaAdj{
 			Epoch: now,
 		}
+	} else {
+		v.Epoch = now
+		n.Ha.Adjacencies[peer] = v
 	}
 
 	notify := false
