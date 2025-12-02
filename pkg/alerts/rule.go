@@ -14,10 +14,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/google/cel-go/cel"
+	"golang.org/x/time/rate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -96,7 +98,13 @@ func (r *AlertRuleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fnam
 		if err != nil {
 			return err
 		}
-		encoder = newJsonEncoder(lw, fname)
+		var rateLimiter *rate.Limiter
+		if ar.Spec.Export.RateLimit.MaxEvents != 0 && ar.Spec.Export.RateLimit.Window != "" {
+			// No need to check for error here since the string is pre-validated, see crd declaration.
+			dur, _ := time.ParseDuration(ar.Spec.Export.RateLimit.Window)
+			rateLimiter = rate.NewLimiter(rate.Every(dur), int(ar.Spec.Export.RateLimit.MaxEvents))
+		}
+		encoder = newRateLimitedJsonEncoder(lw, fname, rateLimiter)
 		newEncoder = true
 	}
 
