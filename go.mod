@@ -4,13 +4,13 @@ go 1.25.0
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
-	github.com/aws/aws-sdk-go-v2 v1.40.0
+	github.com/aws/aws-sdk-go-v2 v1.40.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.2
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.14
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.92.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.93.0
 	github.com/breml/jsondiffprinter v0.0.12
 	github.com/cilium/cilium v1.18.4
-	github.com/cilium/ebpf v0.20.1-0.20251127122423-f88f6095fad8
+	github.com/cilium/ebpf v0.20.1-0.20251201143148-3d4ca808756e
 	github.com/cilium/lumberjack/v2 v2.4.1
 	github.com/cilium/tetragon v1.7.0-pre.0.0.20251120150549-d35b6ab6d239
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
@@ -90,21 +90,21 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/hcsshim v0.14.0-rc.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.3 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.2 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.14 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.14 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.15 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.15 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.14 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.14 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.14 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.15 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.15 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.10 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.2 // indirect
-	github.com/aws/smithy-go v1.23.2 // indirect
+	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bufbuild/protocompile v0.13.0 // indirect
 	github.com/cilium/hive v0.0.0-20250611195437-5a5dacdfb354 // indirect
