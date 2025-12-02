@@ -47,9 +47,7 @@ var updatedAR = &v1alpha1.AlertRule{
 		Message:    "Curl is curling in /usr/bin.",
 		Tags:       []string{"http"},
 		Severity:   "info",
-		Export: struct {
-			Filename string `json:"filename"`
-		}{Filename: "test.log"},
+		Export:     v1alpha1.AlertExport{Filename: "test.log"},
 	},
 }
 
@@ -62,9 +60,7 @@ var anotherAR = &v1alpha1.AlertRule{
 		Message:    "Looks like shell.",
 		Tags:       []string{"shell"},
 		Severity:   "warning",
-		Export: struct {
-			Filename string `json:"filename"`
-		}{Filename: "test.log"},
+		Export:     v1alpha1.AlertExport{Filename: "test.log"},
 	},
 }
 
