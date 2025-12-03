@@ -16,10 +16,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
+	"github.com/cilium/tetragon/pkg/reader/caps"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -204,6 +206,26 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	args := &tetragon.GenericFileArg{
 		File:  fileDetails,
 		MntNs: createMntNs(event.Msg.MntNs),
+	}
+	if tetragon.FileAction(event.Msg.Action) == tetragon.FileAction_FILE_EXEC && event.Msg.SecureExec != 0 {
+		apiBinaryProp := &tetragon.BinaryProperties{}
+
+		// Do we have setuid? Show the effective uid.
+		if (event.Msg.SecureExec & processapi.ExecveSetuid) != 0 {
+			apiBinaryProp.Setuid = &wrapperspb.UInt32Value{Value: event.Msg.Uid[newId]}
+		}
+
+		// Do we have setgid? Show the effective gid.
+		if (event.Msg.SecureExec & processapi.ExecveSetgid) != 0 {
+			apiBinaryProp.Setgid = &wrapperspb.UInt32Value{Value: event.Msg.Gid[newId]}
+		}
+
+		apiBinaryProp.PrivilegesChanged = caps.GetPrivilegesChangedReasons(event.Msg.SecureExec)
+
+		// only set that if we have something to show
+		if apiBinaryProp.Setuid != nil || apiBinaryProp.Setgid != nil || len(apiBinaryProp.PrivilegesChanged) != 0 {
+			args.BinaryProperties = apiBinaryProp
+		}
 	}
 	if event.Msg.Digest.Ok != 0 {
 		args.Digest = &tetragon.FileDigest{
