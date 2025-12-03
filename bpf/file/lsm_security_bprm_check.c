@@ -5,7 +5,7 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, struct linux_binprm *bprm)
+FUNC_LOCAL __u32 path_file_exec(void *ctx, struct linux_binprm *bprm)
 {
 	__u32 operation, rule_id, msg_id = 0;
 	struct msg_file_ops *msg;
