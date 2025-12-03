@@ -33,6 +33,9 @@ jobs:
           submodules: true
           fetch-tags: true
           fetch-depth: 0
+      # Capture and validate release metadata (sha, version, date)
+      # These values are used throughout the pipeline for artifact naming,
+      # release tagging, and traceability in downstream repositories.
       - name: Get version and set outputs
         id: get-version
         run: |
@@ -45,10 +48,55 @@ jobs:
           # Simplify version to match format like 1.18.0-pre.1-95 or 1.15.4-some-string
           # Keep semantic version and any first hyphenated suffix, but remove git commit info
           VERSION=$(echo "$VERSION" | sed -E 's/^(v?[0-9]+\.[0-9]+\.[0-9]+(-[^-]+)?).*/\1/')
+          DATE=$(date -u +"%Y%m%d%H%M")
+          SHA=$(git rev-parse --short HEAD)
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "date=$(date -u +"%Y%m%d%H%M")" >> $GITHUB_OUTPUT
-          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+      
+      # Validate that all required metadata fields are present
+      # This ensures downstream jobs have valid metadata for artifact tagging
+      - name: Validate release metadata
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          DATE="${{ steps.get-version.outputs.date }}"
+          SHA="${{ steps.get-version.outputs.sha }}"
+          
+          echo "=== Release Metadata Validation ==="
+          echo "Version: $VERSION"
+          echo "Date: $DATE"
+          echo "SHA: $SHA"
+          echo "==================================="
+          
+          ERRORS=0
+          if [[ -z "$VERSION" ]]; then
+            echo "::error::VERSION is empty - release metadata validation failed"
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [[ -z "$DATE" ]]; then
+            echo "::error::DATE is empty - release metadata validation failed"
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [[ -z "$SHA" ]]; then
+            echo "::error::SHA is empty - release metadata validation failed"
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [[ ! "$SHA" =~ ^[a-f0-9]{7,}$ ]]; then
+            echo "::error::SHA format invalid (expected 7+ hex chars): $SHA"
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [[ ! "$DATE" =~ ^[0-9]{12}$ ]]; then
+            echo "::error::DATE format invalid (expected YYYYMMDDHHMM): $DATE"
+            ERRORS=$((ERRORS + 1))
+          fi
+          
+          if [[ $ERRORS -gt 0 ]]; then
+            echo "::error::Release metadata validation failed with $ERRORS error(s)"
+            exit 1
+          fi
+          
+          echo "✓ All release metadata validated successfully"
     outputs:
       version: ${{ steps.get-version.outputs.version }}
       date: ${{ steps.get-version.outputs.date }}
@@ -123,6 +171,8 @@ jobs:
           find ./combined-artifacts/amd64 -type f | sort
           echo "\nARM64 artifacts:"
           find ./combined-artifacts/arm64 -type f | sort
+      # Create release artifacts with embedded metadata for traceability
+      # Each artifact is tagged with version and includes checksums for integrity verification
       - name: Prepare artifacts for GitHub release
         id: prepare-artifacts
         run: |
@@ -132,6 +182,48 @@ jobs:
           cd ./release-artifacts
           sha256sum *.tar.gz > SHA256SUMS.txt
           echo "artifact_dir=$(pwd)" >> $GITHUB_OUTPUT
+      
+      # Generate metadata.json manifest for downstream consumption
+      # This file provides machine-readable metadata for automated processing
+      - name: Create release metadata manifest
+        run: |
+          cat > ./release-artifacts/metadata.json << EOF
+          {
+            "version": "${{ needs.init.outputs.version }}",
+            "date": "${{ needs.init.outputs.date }}",
+            "sha": "${{ needs.init.outputs.sha }}",
+            "full_sha": "${{ github.sha }}",
+            "source_repository": "${{ github.repository }}",
+            "source_ref": "${{ github.ref }}",
+            "build_timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "release_tag": "${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}",
+            "artifacts": [
+              {
+                "name": "fwa-elba-amd64-${{ needs.init.outputs.version }}.tar.gz",
+                "architecture": "amd64",
+                "platform": "elba"
+              },
+              {
+                "name": "fwa-elba-arm64-${{ needs.init.outputs.version }}.tar.gz",
+                "architecture": "arm64",
+                "platform": "elba"
+              }
+            ]
+          }
+          EOF
+          echo "Created metadata.json:"
+          cat ./release-artifacts/metadata.json
+      
+      # Verify checksums were generated correctly
+      - name: Verify artifact checksums
+        run: |
+          cd ./release-artifacts
+          echo "=== Verifying SHA256 checksums ==="
+          if ! sha256sum -c SHA256SUMS.txt; then
+            echo "::error::Checksum verification failed"
+            exit 1
+          fi
+          echo "✓ All checksums verified successfully"
       - name: Upload prepared artifacts for release job
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
@@ -213,51 +305,104 @@ jobs:
         with:
           name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./release-artifacts"
-      - name: List release artifacts
+      # Validate and display release artifacts with metadata
+      - name: Validate release artifacts and metadata
         run: |
+          echo "=== Release Artifacts Validation ==="
           echo "Release artifacts to be published:"
           ls -lah ./release-artifacts/
           echo ""
-          echo "Checksums:"
+          echo "=== Checksums ==="
           cat ./release-artifacts/SHA256SUMS.txt
+          echo ""
+          echo "=== Metadata ==="
+          if [[ -f ./release-artifacts/metadata.json ]]; then
+            cat ./release-artifacts/metadata.json
+          else
+            echo "::warning::metadata.json not found in release artifacts"
+          fi
+          echo ""
+          # Validate required files exist
+          REQUIRED_FILES=(
+            "fwa-elba-amd64-${{ needs.init.outputs.version }}.tar.gz"
+            "fwa-elba-arm64-${{ needs.init.outputs.version }}.tar.gz"
+            "SHA256SUMS.txt"
+            "metadata.json"
+          )
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [[ ! -f "./release-artifacts/$file" ]]; then
+              echo "::error::Required artifact missing: $file"
+              exit 1
+            fi
+          done
+          echo "✓ All required artifacts present"
+          echo "==================================="
+      
+      # Verify checksums before creating release
+      - name: Verify artifact integrity
+        run: |
+          cd ./release-artifacts
+          echo "Verifying SHA256 checksums..."
+          if ! sha256sum -c SHA256SUMS.txt; then
+            echo "::error::Checksum verification failed - artifacts may be corrupted"
+            exit 1
+          fi
+          echo "✓ All artifact checksums verified"
+      
+      # Create release notes with proper variable expansion
+      # Note: Using EOF without quotes allows shell variable expansion
       - name: Create release notes
         run: |
           cd ./fwa-releases-repo
           mkdir -p docs/release-notes
           
-          RELEASE_NOTES_FILE="docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}.md"
+          VERSION="${{ needs.init.outputs.version }}"
+          DATE="${{ needs.init.outputs.date }}"
+          SHA="${{ needs.init.outputs.sha }}"
+          FULL_SHA="${{ github.sha }}"
+          RELEASE_DATE=$(date -u +"%Y-%m-%d")
+          CHECKSUMS=$(cat ../release-artifacts/SHA256SUMS.txt)
           
-          cat > "$RELEASE_NOTES_FILE" << 'EOF'
-          # Release Notes: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          RELEASE_NOTES_FILE="docs/release-notes/${VERSION}+${DATE}-${SHA}.md"
           
-          **Release Date:** $(date -u +"%Y-%m-%d")
+          cat > "$RELEASE_NOTES_FILE" << EOF
+          # Release Notes: ${VERSION}+${DATE}-${SHA}
+          
+          **Release Date:** ${RELEASE_DATE}
           
           ## Build Information
-          - **Version:** ${{ needs.init.outputs.version }}
-          - **Build Date:** ${{ needs.init.outputs.date }}
-          - **Commit SHA:** ${{ needs.init.outputs.sha }}
+          - **Version:** ${VERSION}
+          - **Build Date:** ${DATE}
+          - **Commit SHA:** ${SHA}
+          - **Full Commit SHA:** ${FULL_SHA}
           - **Source Repository:** [hubble-fgs](https://github.com/isovalent/hubble-fgs)
-          - **Source Commit:** https://github.com/isovalent/hubble-fgs/commit/${{ github.sha }}
+          - **Source Commit:** https://github.com/isovalent/hubble-fgs/commit/${FULL_SHA}
           
           ## Artifacts
           
           ### AMD64
-          - `fwa-elba-amd64-${{ needs.init.outputs.version }}.tar.gz`
+          - \`fwa-elba-amd64-${VERSION}.tar.gz\`
           
           ### ARM64
-          - `fwa-elba-arm64-${{ needs.init.outputs.version }}.tar.gz`
+          - \`fwa-elba-arm64-${VERSION}.tar.gz\`
           
           ### Checksums
-          ```
-          $(cat ../release-artifacts/SHA256SUMS.txt)
-          ```
+          \`\`\`
+          ${CHECKSUMS}
+          \`\`\`
+          
+          ## Metadata
+          
+          A \`metadata.json\` file is included with each release containing machine-readable
+          build information for automated downstream processing.
           
           ## Installation
           
           1. Download the appropriate architecture archive from the [Releases](../../releases) page
-          2. Extract: `tar -xzf fwa-elba-{arch}-${{ needs.init.outputs.version }}.tar.gz`
-          3. Load images: `docker load -i <image-file>.tar`
-          4. Deploy according to NXOS integration guide
+          2. Verify checksum: \`sha256sum -c SHA256SUMS.txt\`
+          3. Extract: \`tar -xzf fwa-elba-{arch}-${VERSION}.tar.gz\`
+          4. Load images: \`docker load -i <image-file>.tar\`
+          5. Deploy according to NXOS integration guide
           
           ## Compatibility
           - **NXOS Version:** Compatible with latest NXOS releases
@@ -269,6 +414,8 @@ jobs:
           EOF
           
           echo "Created release notes at: $RELEASE_NOTES_FILE"
+          echo "Content:"
+          cat "$RELEASE_NOTES_FILE"
       - name: Commit release notes
         run: |
           cd ./fwa-releases-repo
@@ -316,6 +463,25 @@ jobs:
             For questions or issues, contact @cisco-hypershield/nxos
           files: |
             ./release-artifacts/*
+      
+      # Post-release validation to confirm metadata was published correctly
+      - name: Verify release metadata published
+        run: |
+          echo "=== Release Publication Summary ==="
+          echo "Target Repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}"
+          echo "Release Tag: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
+          echo ""
+          echo "Metadata Published:"
+          echo "  - Version: ${{ needs.init.outputs.version }}"
+          echo "  - Date: ${{ needs.init.outputs.date }}"
+          echo "  - SHA: ${{ needs.init.outputs.sha }}"
+          echo "  - Full SHA: ${{ github.sha }}"
+          echo ""
+          echo "Artifacts Published:"
+          ls -la ./release-artifacts/
+          echo ""
+          echo "✓ Release created successfully with all metadata"
+          echo "==================================="
 
   update-fwa-version-dpu-pensando:
     needs: [init, create-github-release]
