@@ -12,7 +12,6 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
-	"text/tabwriter"
 	"time"
 
 	"google.golang.org/grpc"
@@ -29,6 +28,7 @@ const (
 	dpuTimeout        = 6  // in seconds
 	dpuSyncErrorCount = 18 // number of StateCheck() calls that need to fail to force reconnect peer (every 10 seconds)
 	// needs to be at least 180 seconds total
+	missingFieldString = "N/A"
 )
 
 var (
@@ -74,39 +74,60 @@ type DPUPolicyRule struct {
 }
 
 type DPUReportStatus struct {
-	AgentUid       string
-	DpVersion      string
-	AgentVersion   string
-	PolicyChecksum string
-	Hostname       string
-	Architecture   string
-	OS             string
-	Type           v1alpha.AgentType
-	SerialNumber   string
-	HardwareModel  string
-	DpuReboot      uint32                 // Complete DPU reboot
-	LastDpuReboot  *timestamppb.Timestamp // Last DPU reboot time
-	DpRestart      uint32                 // DP crash (corresponds to reboot time)
-	LastDpCrash    *timestamppb.Timestamp // Last DP crash time
-	LastFwaCrash   *timestamppb.Timestamp // Last FWA crash time
-	PortLow        uint32
-	PortHigh       uint32
+	AgentUid       string                 `json:"agent_uid"`
+	DpVersion      string                 `json:"dp_version"`
+	AgentVersion   string                 `json:"agent_version"`
+	PolicyChecksum string                 `json:"policy_checksum"`
+	Hostname       string                 `json:"hostname"`
+	Architecture   string                 `json:"architecture"`
+	OS             string                 `json:"os"`
+	Type           v1alpha.AgentType      `json:"type"`
+	SerialNumber   string                 `json:"serial_number"`
+	HardwareModel  string                 `json:"hardware_model"`
+	DpuReboot      uint32                 `json:"dpu_reboot"`      // Complete DPU reboot
+	LastDpuReboot  *timestamppb.Timestamp `json:"last_dpu_reboot"` // Last DPU reboot time
+	DpRestart      uint32                 `json:"dp_restart"`      // DP crash (corresponds to reboot time)
+	LastDpCrash    *timestamppb.Timestamp `json:"last_dp_crash"`   // Last DP crash time
+	LastFwaCrash   *timestamppb.Timestamp `json:"last_fwa_crash"`  // Last FWA crash time
+	PortLow        uint32                 `json:"port_low"`
+	PortHigh       uint32                 `json:"port_high"`
+}
+
+// DPUDisplayStatus is a display-friendly version of DPU status with computed fields.
+// All fields have JSON tags for use with the generic table formatter.
+type DPUDisplayStatus struct {
+	LastPing          string `json:"lastPing"`
+	Healthy           bool   `json:"healthy"`
+	DPU               int    `json:"dpu"`
+	UID               string `json:"uid"`
+	Hardware          string `json:"hardware"`
+	Agent             string `json:"agent"`
+	Datapath          string `json:"datapath"`
+	DpuReboot         uint32 `json:"dpuReboot"`
+	LastDpuRebootTime string `json:"lastDpuRebootTime"`
+	DpCrash           uint32 `json:"dpCrash"`
+	LastDpCrashTime   string `json:"lastDpCrashTime"`
+	LastFwaCrashTime  string `json:"lastFwaCrashTime"`
+	DpuReconnects     uint32 `json:"dpuReconnects"`
+	PolicySync        string `json:"policySync"`
 }
 
 // Peer UID is unique in scope of agent so we never remove peers. And we expect
 // only some small reasonable number of peers because these are physical offload
 // engines.
 type peer struct {
-	uid            string
-	polCh          chan *DPUPolicyRule
-	polReconnectCh chan struct{}
-	cfgCh          chan *v1alpha.StreamDatapathConfigResponse
-	cfgReconnectCh chan struct{}
-	cfgSet         map[v1alpha.ConfigType]*v1alpha.ConfigObject
-	syncFailCount  atomic.Uint32
-	lastStatus     DPUReportStatus
-	lastEpoch      int64
-	mtx            sync.RWMutex
+	uid               string
+	polCh             chan *DPUPolicyRule
+	polReconnectCh    chan struct{}
+	polReconnectCount atomic.Uint32 // Count of policy stream reconnections
+	cfgCh             chan *v1alpha.StreamDatapathConfigResponse
+	cfgReconnectCh    chan struct{}
+	cfgReconnectCount atomic.Uint32 // Count of config stream reconnections
+	cfgSet            map[v1alpha.ConfigType]*v1alpha.ConfigObject
+	syncFailCount     atomic.Uint32
+	lastStatus        DPUReportStatus
+	lastEpoch         int64
+	mtx               sync.RWMutex
 }
 
 func (p *peer) String() string {
@@ -268,82 +289,93 @@ func (dpu *DPUListener) HealthCheck() (bool, int) {
 	return healthy, count
 }
 
-func (dpu *DPUListener) StatusReportString() string {
+// GetDisplayStatuses returns the display-friendly status for all DPU peers, sorted by DPU ID.
+func (dpu *DPUListener) GetDisplayStatuses() []DPUDisplayStatus {
 	csum := dpu.Checksum()
 	hexChecksum := hex.EncodeToString(csum[:])
 
-	buf := new(bytes.Buffer)
-	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "LastPing\tHealthy\tDPU\tUID\tHardware\tAgent\tDatapath\tDpuReboot\tLastDpuRebootTime\tDpCrash\tLastDpCrashTime\tLastFwaCrashTime\tPolicySync")
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
-	//fixme
+
+	displayStatuses := make([]DPUDisplayStatus, 0, len(dpu.peerGroup))
 	for _, s := range dpu.peerGroup {
-		now := time.Now().Unix()
-		epochDiff := now - s.lastEpoch
-		var timeStatus string
-		if epochDiff < 60 {
-			timeStatus = fmt.Sprintf("%ds", epochDiff)
-		} else {
-			minutes := epochDiff / 60
-			seconds := epochDiff % 60
-			timeStatus = fmt.Sprintf("%dm %ds", minutes, seconds)
-		}
-
-		healthy := epochDiff <= dpuTimeout
-		status := s.lastStatus
-		sync := ""
-		if status.PolicyChecksum == hexChecksum {
-			sync = "true"
-		} else {
-			sync = fmt.Sprintf("false (%x != %s)", string(csum[:]), status.PolicyChecksum)
-		}
-
-		dpuNumber, ok := DPUMap[status.AgentUid]
-		if !ok {
-			dpuNumber = -1
-		}
-
-		var lastRebootStr string
-		if status.LastDpuReboot != nil {
-			lastRebootStr = status.LastDpuReboot.AsTime().Format(time.RFC3339)
-		} else {
-			lastRebootStr = "N/A"
-		}
-
-		var lastCrashStr string
-		if status.LastDpCrash != nil {
-			lastCrashStr = status.LastDpCrash.AsTime().Format(time.RFC3339)
-		} else {
-			lastCrashStr = "N/A"
-		}
-
-		var lastFwaCrashStr string
-		if status.LastFwaCrash != nil {
-			lastFwaCrashStr = status.LastFwaCrash.AsTime().Format(time.RFC3339)
-		} else {
-			lastFwaCrashStr = "N/A"
-		}
-
-		// Try to put policy sync last as it extends to a big string on failure
-		fmt.Fprintf(w, "%s\t%t\t%d\t%s\t%s\t%s\t%s\t%d\t%s\t%d\t%s\t%s\t%s\n",
-			timeStatus,
-			healthy,
-			dpuNumber,
-			status.AgentUid,
-			status.HardwareModel,
-			status.AgentVersion,
-			status.DpVersion,
-			status.DpuReboot,
-			lastRebootStr,
-			status.DpRestart,
-			lastCrashStr,
-			lastFwaCrashStr,
-			sync)
+		displayStatuses = append(displayStatuses, dpu.toDisplayStatus(s, csum, hexChecksum))
 	}
-	w.Flush()
-	return buf.String()
+
+	// Sort by DPU ID for consistent ordering
+	sort.Slice(displayStatuses, func(i, j int) bool {
+		return displayStatuses[i].DPU < displayStatuses[j].DPU
+	})
+
+	return displayStatuses
+}
+
+// toDisplayStatus converts a peer to a DPUDisplayStatus for table display.
+func (dpu *DPUListener) toDisplayStatus(s *peer, csum [sha256.Size]byte, hexChecksum string) DPUDisplayStatus {
+	now := time.Now().Unix()
+	epochDiff := now - s.lastEpoch
+
+	var timeStatus string
+	if epochDiff < 60 {
+		timeStatus = fmt.Sprintf("%ds", epochDiff)
+	} else {
+		minutes := epochDiff / 60
+		seconds := epochDiff % 60
+		timeStatus = fmt.Sprintf("%dm %ds", minutes, seconds)
+	}
+
+	healthy := epochDiff <= dpuTimeout
+	status := s.lastStatus
+
+	var syncStatus string
+	if status.PolicyChecksum == hexChecksum {
+		syncStatus = "true"
+	} else {
+		syncStatus = fmt.Sprintf("false (%x != %s)", csum[:], status.PolicyChecksum)
+	}
+
+	dpuNumber, ok := DPUMap[status.AgentUid]
+	if !ok {
+		dpuNumber = -1
+	}
+
+	var lastRebootStr string
+	if status.LastDpuReboot != nil {
+		lastRebootStr = status.LastDpuReboot.AsTime().Format(time.RFC3339)
+	} else {
+		lastRebootStr = missingFieldString
+	}
+
+	var lastCrashStr string
+	if status.LastDpCrash != nil {
+		lastCrashStr = status.LastDpCrash.AsTime().Format(time.RFC3339)
+	} else {
+		lastCrashStr = missingFieldString
+	}
+
+	var lastFwaCrashStr string
+	if status.LastFwaCrash != nil {
+		lastFwaCrashStr = status.LastFwaCrash.AsTime().Format(time.RFC3339)
+	} else {
+		lastFwaCrashStr = missingFieldString
+	}
+
+	return DPUDisplayStatus{
+		LastPing:          timeStatus,
+		DpuReconnects:     s.polReconnectCount.Load() - 1, // Subtracting one for the first connection
+		Healthy:           healthy,
+		DPU:               dpuNumber,
+		UID:               status.AgentUid,
+		Hardware:          status.HardwareModel,
+		Agent:             status.AgentVersion,
+		Datapath:          status.DpVersion,
+		DpuReboot:         status.DpuReboot,
+		LastDpuRebootTime: lastRebootStr,
+		DpCrash:           status.DpRestart,
+		LastDpCrashTime:   lastCrashStr,
+		LastFwaCrashTime:  lastFwaCrashStr,
+		PolicySync:        syncStatus,
+	}
 }
 
 func HashRule(rule *DPURule) ([sha256.Size]byte, error) {

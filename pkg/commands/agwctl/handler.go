@@ -94,7 +94,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		response.Data = status
 
 	case CMD_SHOW_DPU:
-		dpu := agwAgent.ShowDpu(ctx)
+		dpu := agwAgent.ShowDpu(ctx, data)
 		response.ReturnCode = "ok"
 		response.Data = dpu
 
@@ -168,7 +168,7 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 	case CMD_SHOW_TECH:
 		pol := agwAgent.PoliciesShow(ctx, ipc.MessageData{})
 		status := nxos.Nexus.ShowStatus(ctx)
-		dpu := agwAgent.ShowDpu(ctx)
+		dpu := agwAgent.ShowDpu(ctx, ipc.MessageData{})
 		vrf := agwAgent.ShowVrf(ctx)
 		response.ReturnCode = "ok"
 		response.Data = status + "\n" + pol + "\n" +

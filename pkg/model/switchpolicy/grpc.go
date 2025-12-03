@@ -44,7 +44,8 @@ func (s *AGWServer) Streaml3L4NetworkPolicy(req *v1alpha.Streaml3L4NetworkPolicy
 		s.dpuListener.mtx.Lock()
 		defer s.dpuListener.mtx.Unlock()
 		peer := s.dpuListener.addPeerLocked(req.AgentUid)
-		peer.syncFailCount.Store(0) // Resetting sync count
+		peer.syncFailCount.Store(0)   // Resetting sync count
+		peer.polReconnectCount.Add(1) // Increment policy reconnect counter
 
 		// The peer on reconnect needs to diff its current set with this set
 		// and create the valid policy otherwise subsequent policy hash checks will
@@ -104,6 +105,7 @@ func (s *AGWServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 		s.dpuListener.mtx.Lock()
 		defer s.dpuListener.mtx.Unlock()
 		peer := s.dpuListener.addPeerLocked(req.AgentUid)
+		peer.cfgReconnectCount.Add(1) // Increment config reconnect counter
 
 		// Diffing the peer's config set with the current latest config set to be able
 		// to pass down changes to the peer that just connected.

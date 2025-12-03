@@ -583,9 +583,23 @@ func (agw *AgentGateway) Logging(_ context.Context, msgData ipc.MessageData) err
 	return nil
 }
 
-func (agw *AgentGateway) ShowDpu(_ context.Context) string {
+func (agw *AgentGateway) ShowDpu(_ context.Context, msgData ipc.MessageData) string {
 	logger.GetLogger().Debug("Show dpu")
-	return agw.dpuListener.StatusReportString()
+	statuses := agw.dpuListener.GetDisplayStatuses()
+
+	if msgData.Flags["json"] == "true" {
+		jsonData, err := json.Marshal(statuses)
+		if err != nil {
+			return fmt.Sprintf("Error marshaling JSON: %v", err)
+		}
+		return string(jsonData)
+	}
+
+	result, err := FormatTable(statuses)
+	if err != nil {
+		return fmt.Sprintf("Error formatting table: %v", err)
+	}
+	return result
 }
 
 func (agw *AgentGateway) ShowVrf(ctx context.Context) string {

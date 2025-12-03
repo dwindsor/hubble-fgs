@@ -3,6 +3,7 @@ package agwctl
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -159,7 +160,13 @@ var showDpuCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_DPU, ipc.MessageData{})
+		data := ipc.MessageData{
+			Flags: map[string]string{
+				"json": fmt.Sprintf("%t", JSON),
+			},
+		}
+
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_DPU, data)
 		if err != nil {
 			return err
 		}
