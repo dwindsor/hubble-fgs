@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+const (
+	MaxConnectRetry = 5
+)
+
 // Returns a newly created dataplane socket object
 //
 // Parameters:
@@ -32,21 +36,41 @@ type DataplaneSocket struct {
 	decode   *json.Decoder
 }
 
-func (s *DataplaneSocket) Connect() error {
+func (s *DataplaneSocket) Dial(ctx context.Context) error {
+	var err error
+	retries := 0
+	backoff := 1 * time.Second
+
 	// Resolving the socket address
 	addr, _ := net.ResolveUnixAddr("unix", s.sockFile)
 	dialer := net.Dialer{}
-	conn, err := dialer.Dial("unix", addr.String())
-	if err != nil {
+
+	for {
+		s.conn, err = dialer.Dial("unix", addr.String())
+		if err == nil {
+			return nil
+		}
+		retries++
+		if retries > MaxConnectRetry {
+			return fmt.Errorf("datpaplane connect failed")
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(backoff):
+		}
+	}
+}
+
+func (s *DataplaneSocket) Connect() error {
+	// Setting cancel channel for the connection
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+
+	if err := s.Dial(ctx); err != nil {
 		return err
 	}
-	s.conn = conn
-
-	// Setting timeout for the connection
-	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), s.timeout)
-	s.cancel = cancel
-	deadline, _ := ctxWithTimeout.Deadline()
-	s.conn.SetDeadline(deadline)
 
 	// Creating json encoder and decoder for the connection
 	s.encode = json.NewEncoder(s.conn)
