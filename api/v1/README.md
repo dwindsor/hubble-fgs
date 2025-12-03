@@ -1802,6 +1802,7 @@ Tainted bits to indicate if the kernel was tainted. For further details: https:/
 | digest | [FileDigest](#tetragon-FileDigest) |  |  |
 | is_exe_from_memfd | [bool](#bool) |  |  |
 | is_exe_upper_layer | [bool](#bool) |  |  |
+| binary_properties | [BinaryProperties](#tetragon-BinaryProperties) |  | Executed binary properties (only with FILE_EXEC action). |
 
 
 

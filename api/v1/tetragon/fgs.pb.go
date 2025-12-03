@@ -2730,13 +2730,14 @@ type GenericFileArg struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	File  *FileDetails           `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
 	// Deprecated: Marked as deprecated in tetragon/fgs.proto.
-	Io              *FileIO     `protobuf:"bytes,2,opt,name=io,proto3" json:"io,omitempty"`
-	MntNs           *Namespace  `protobuf:"bytes,3,opt,name=mnt_ns,json=mntNs,proto3" json:"mnt_ns,omitempty"`
-	Digest          *FileDigest `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
-	IsExeFromMemfd  bool        `protobuf:"varint,5,opt,name=is_exe_from_memfd,json=isExeFromMemfd,proto3" json:"is_exe_from_memfd,omitempty"`
-	IsExeUpperLayer bool        `protobuf:"varint,6,opt,name=is_exe_upper_layer,json=isExeUpperLayer,proto3" json:"is_exe_upper_layer,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	Io               *FileIO           `protobuf:"bytes,2,opt,name=io,proto3" json:"io,omitempty"`
+	MntNs            *Namespace        `protobuf:"bytes,3,opt,name=mnt_ns,json=mntNs,proto3" json:"mnt_ns,omitempty"`
+	Digest           *FileDigest       `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
+	IsExeFromMemfd   bool              `protobuf:"varint,5,opt,name=is_exe_from_memfd,json=isExeFromMemfd,proto3" json:"is_exe_from_memfd,omitempty"`
+	IsExeUpperLayer  bool              `protobuf:"varint,6,opt,name=is_exe_upper_layer,json=isExeUpperLayer,proto3" json:"is_exe_upper_layer,omitempty"`
+	BinaryProperties *BinaryProperties `protobuf:"bytes,7,opt,name=binary_properties,json=binaryProperties,proto3" json:"binary_properties,omitempty"` // Executed binary properties (only with FILE_EXEC action).
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GenericFileArg) Reset() {
@@ -2810,6 +2811,13 @@ func (x *GenericFileArg) GetIsExeUpperLayer() bool {
 		return x.IsExeUpperLayer
 	}
 	return false
+}
+
+func (x *GenericFileArg) GetBinaryProperties() *BinaryProperties {
+	if x != nil {
+		return x.BinaryProperties
+	}
+	return nil
 }
 
 type RenameFileArg struct {
@@ -5206,14 +5214,15 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"FileDigest\x12(\n" +
 	"\x04algo\x18\x01 \x01(\x0e2\x14.tetragon.DigestAlgoR\x04algo\x12\x12\n" +
 	"\x04hash\x18\x02 \x01(\tR\x04hash\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\x03R\x05error\"\x93\x02\n" +
+	"\x05error\x18\x03 \x01(\x03R\x05error\"\xdc\x02\n" +
 	"\x0eGenericFileArg\x12)\n" +
 	"\x04file\x18\x01 \x01(\v2\x15.tetragon.FileDetailsR\x04file\x12$\n" +
 	"\x02io\x18\x02 \x01(\v2\x10.tetragon.FileIOB\x02\x18\x01R\x02io\x12*\n" +
 	"\x06mnt_ns\x18\x03 \x01(\v2\x13.tetragon.NamespaceR\x05mntNs\x12,\n" +
 	"\x06digest\x18\x04 \x01(\v2\x14.tetragon.FileDigestR\x06digest\x12)\n" +
 	"\x11is_exe_from_memfd\x18\x05 \x01(\bR\x0eisExeFromMemfd\x12+\n" +
-	"\x12is_exe_upper_layer\x18\x06 \x01(\bR\x0fisExeUpperLayer\"\xa3\x01\n" +
+	"\x12is_exe_upper_layer\x18\x06 \x01(\bR\x0fisExeUpperLayer\x12G\n" +
+	"\x11binary_properties\x18\a \x01(\v2\x1a.tetragon.BinaryPropertiesR\x10binaryProperties\"\xa3\x01\n" +
 	"\rRenameFileArg\x12'\n" +
 	"\x03src\x18\x01 \x01(\v2\x15.tetragon.FileDetailsR\x03src\x12'\n" +
 	"\x03dst\x18\x02 \x01(\v2\x15.tetragon.FileDetailsR\x03dst\x12*\n" +
@@ -5647,8 +5656,9 @@ var file_tetragon_fgs_proto_goTypes = []any{
 	(*wrapperspb.UInt32Value)(nil),  // 56: google.protobuf.UInt32Value
 	(*durationpb.Duration)(nil),     // 57: google.protobuf.Duration
 	(*Namespace)(nil),               // 58: tetragon.Namespace
-	(*wrapperspb.BoolValue)(nil),    // 59: google.protobuf.BoolValue
-	(*timestamppb.Timestamp)(nil),   // 60: google.protobuf.Timestamp
+	(*BinaryProperties)(nil),        // 59: tetragon.BinaryProperties
+	(*wrapperspb.BoolValue)(nil),    // 60: google.protobuf.BoolValue
+	(*timestamppb.Timestamp)(nil),   // 61: google.protobuf.Timestamp
 }
 var file_tetragon_fgs_proto_depIdxs = []int32{
 	9,   // 0: tetragon.Histogram.buckets:type_name -> tetragon.HistogramBucket
@@ -5721,91 +5731,92 @@ var file_tetragon_fgs_proto_depIdxs = []int32{
 	27,  // 67: tetragon.GenericFileArg.io:type_name -> tetragon.FileIO
 	58,  // 68: tetragon.GenericFileArg.mnt_ns:type_name -> tetragon.Namespace
 	28,  // 69: tetragon.GenericFileArg.digest:type_name -> tetragon.FileDigest
-	26,  // 70: tetragon.RenameFileArg.src:type_name -> tetragon.FileDetails
-	26,  // 71: tetragon.RenameFileArg.dst:type_name -> tetragon.FileDetails
-	58,  // 72: tetragon.RenameFileArg.mnt_ns:type_name -> tetragon.Namespace
-	26,  // 73: tetragon.ReadDirArg.file:type_name -> tetragon.FileDetails
-	58,  // 74: tetragon.ReadDirArg.mnt_ns:type_name -> tetragon.Namespace
-	32,  // 75: tetragon.FileAttr.permissions:type_name -> tetragon.AttrChange
-	32,  // 76: tetragon.FileAttr.uid:type_name -> tetragon.AttrChange
-	32,  // 77: tetragon.FileAttr.gid:type_name -> tetragon.AttrChange
-	26,  // 78: tetragon.AttrArg.file:type_name -> tetragon.FileDetails
-	33,  // 79: tetragon.AttrArg.attr:type_name -> tetragon.FileAttr
-	58,  // 80: tetragon.AttrArg.mnt_ns:type_name -> tetragon.Namespace
-	26,  // 81: tetragon.LinkArg.link:type_name -> tetragon.FileDetails
-	26,  // 82: tetragon.LinkArg.target:type_name -> tetragon.FileDetails
-	58,  // 83: tetragon.LinkArg.mnt_ns:type_name -> tetragon.Namespace
-	26,  // 84: tetragon.SymlinkArg.link:type_name -> tetragon.FileDetails
-	58,  // 85: tetragon.SymlinkArg.mnt_ns:type_name -> tetragon.Namespace
-	59,  // 86: tetragon.PathDetails.is_relative_path:type_name -> google.protobuf.BoolValue
-	37,  // 87: tetragon.OpenRawArg.path:type_name -> tetragon.PathDetails
-	26,  // 88: tetragon.OpenRawArg.dir:type_name -> tetragon.FileDetails
-	6,   // 89: tetragon.OpenRawArg.error_code:type_name -> tetragon.SysRetval
-	29,  // 90: tetragon.FileArgument.generic_arg:type_name -> tetragon.GenericFileArg
-	30,  // 91: tetragon.FileArgument.rename_arg:type_name -> tetragon.RenameFileArg
-	31,  // 92: tetragon.FileArgument.readdir_arg:type_name -> tetragon.ReadDirArg
-	34,  // 93: tetragon.FileArgument.attr_arg:type_name -> tetragon.AttrArg
-	35,  // 94: tetragon.FileArgument.link_arg:type_name -> tetragon.LinkArg
-	36,  // 95: tetragon.FileArgument.symlink_arg:type_name -> tetragon.SymlinkArg
-	38,  // 96: tetragon.FileArgument.openraw_arg:type_name -> tetragon.OpenRawArg
-	55,  // 97: tetragon.ProcessFile.process:type_name -> tetragon.Process
-	55,  // 98: tetragon.ProcessFile.parent:type_name -> tetragon.Process
-	3,   // 99: tetragon.ProcessFile.action:type_name -> tetragon.FileAction
-	39,  // 100: tetragon.ProcessFile.args:type_name -> tetragon.FileArgument
-	60,  // 101: tetragon.ProcessFile.time:type_name -> google.protobuf.Timestamp
-	7,   // 102: tetragon.ProcessFile.operation:type_name -> tetragon.FileOperation
-	55,  // 103: tetragon.ProcessFile.ancestors:type_name -> tetragon.Process
-	55,  // 104: tetragon.ProcessFileExec.process:type_name -> tetragon.Process
-	55,  // 105: tetragon.ProcessFileExec.parent:type_name -> tetragon.Process
-	26,  // 106: tetragon.ProcessFileExec.file:type_name -> tetragon.FileDetails
-	28,  // 107: tetragon.ProcessFileExec.digest:type_name -> tetragon.FileDigest
-	7,   // 108: tetragon.ProcessFileExec.operations:type_name -> tetragon.FileOperation
-	55,  // 109: tetragon.ProcessFileExec.ancestors:type_name -> tetragon.Process
-	56,  // 110: tetragon.SockInfo.source_port:type_name -> google.protobuf.UInt32Value
-	56,  // 111: tetragon.SockInfo.destination_port:type_name -> google.protobuf.UInt32Value
-	0,   // 112: tetragon.SockInfo.protocol:type_name -> tetragon.SocketProtocol
-	54,  // 113: tetragon.SockInfo.destination_pod:type_name -> tetragon.Pod
-	55,  // 114: tetragon.ProcessSockStats.process:type_name -> tetragon.Process
-	55,  // 115: tetragon.ProcessSockStats.parent:type_name -> tetragon.Process
-	42,  // 116: tetragon.ProcessSockStats.socket:type_name -> tetragon.SockInfo
-	12,  // 117: tetragon.ProcessSockStats.stats:type_name -> tetragon.SocketStats
-	55,  // 118: tetragon.ProcessSockStats.ancestors:type_name -> tetragon.Process
-	55,  // 119: tetragon.Tls.process:type_name -> tetragon.Process
-	56,  // 120: tetragon.Tls.source_port:type_name -> google.protobuf.UInt32Value
-	56,  // 121: tetragon.Tls.destination_port:type_name -> google.protobuf.UInt32Value
-	8,   // 122: tetragon.Tls.certificate_error:type_name -> tetragon.TlsCertificateError
-	55,  // 123: tetragon.Tls.parent:type_name -> tetragon.Process
-	55,  // 124: tetragon.Tls.ancestors:type_name -> tetragon.Process
-	60,  // 125: tetragon.HttpRequest.timestamp:type_name -> google.protobuf.Timestamp
-	56,  // 126: tetragon.HttpRequest.content_length:type_name -> google.protobuf.UInt32Value
-	45,  // 127: tetragon.HttpRequest.headers:type_name -> tetragon.HttpHeader
-	60,  // 128: tetragon.HttpResponse.timestamp:type_name -> google.protobuf.Timestamp
-	56,  // 129: tetragon.HttpResponse.content_length:type_name -> google.protobuf.UInt32Value
-	45,  // 130: tetragon.HttpResponse.headers:type_name -> tetragon.HttpHeader
-	46,  // 131: tetragon.HttpInfo.request:type_name -> tetragon.HttpRequest
-	47,  // 132: tetragon.HttpInfo.response:type_name -> tetragon.HttpResponse
-	57,  // 133: tetragon.HttpInfo.latency:type_name -> google.protobuf.Duration
-	55,  // 134: tetragon.ProcessHttp.process:type_name -> tetragon.Process
-	42,  // 135: tetragon.ProcessHttp.socket:type_name -> tetragon.SockInfo
-	48,  // 136: tetragon.ProcessHttp.http:type_name -> tetragon.HttpInfo
-	54,  // 137: tetragon.ProcessHttp.destination_pod:type_name -> tetragon.Pod
-	55,  // 138: tetragon.ProcessHttp.parent:type_name -> tetragon.Process
-	55,  // 139: tetragon.ProcessHttp.ancestors:type_name -> tetragon.Process
-	55,  // 140: tetragon.ProcessNetworkBurst.process:type_name -> tetragon.Process
-	55,  // 141: tetragon.ProcessNetworkBurst.parent:type_name -> tetragon.Process
-	55,  // 142: tetragon.ProcessNetworkBurst.ancestors:type_name -> tetragon.Process
-	55,  // 143: tetragon.ProcessNetworkWatermark.process:type_name -> tetragon.Process
-	55,  // 144: tetragon.ProcessNetworkWatermark.parent:type_name -> tetragon.Process
-	55,  // 145: tetragon.ProcessNetworkWatermark.ancestors:type_name -> tetragon.Process
-	55,  // 146: tetragon.ProcessUdpSeqCheckError.process:type_name -> tetragon.Process
-	55,  // 147: tetragon.ProcessUdpSeqCheckError.parent:type_name -> tetragon.Process
-	42,  // 148: tetragon.ProcessUdpSeqCheckError.socket:type_name -> tetragon.SockInfo
-	55,  // 149: tetragon.ProcessUdpSeqCheckError.ancestors:type_name -> tetragon.Process
-	150, // [150:150] is the sub-list for method output_type
-	150, // [150:150] is the sub-list for method input_type
-	150, // [150:150] is the sub-list for extension type_name
-	150, // [150:150] is the sub-list for extension extendee
-	0,   // [0:150] is the sub-list for field type_name
+	59,  // 70: tetragon.GenericFileArg.binary_properties:type_name -> tetragon.BinaryProperties
+	26,  // 71: tetragon.RenameFileArg.src:type_name -> tetragon.FileDetails
+	26,  // 72: tetragon.RenameFileArg.dst:type_name -> tetragon.FileDetails
+	58,  // 73: tetragon.RenameFileArg.mnt_ns:type_name -> tetragon.Namespace
+	26,  // 74: tetragon.ReadDirArg.file:type_name -> tetragon.FileDetails
+	58,  // 75: tetragon.ReadDirArg.mnt_ns:type_name -> tetragon.Namespace
+	32,  // 76: tetragon.FileAttr.permissions:type_name -> tetragon.AttrChange
+	32,  // 77: tetragon.FileAttr.uid:type_name -> tetragon.AttrChange
+	32,  // 78: tetragon.FileAttr.gid:type_name -> tetragon.AttrChange
+	26,  // 79: tetragon.AttrArg.file:type_name -> tetragon.FileDetails
+	33,  // 80: tetragon.AttrArg.attr:type_name -> tetragon.FileAttr
+	58,  // 81: tetragon.AttrArg.mnt_ns:type_name -> tetragon.Namespace
+	26,  // 82: tetragon.LinkArg.link:type_name -> tetragon.FileDetails
+	26,  // 83: tetragon.LinkArg.target:type_name -> tetragon.FileDetails
+	58,  // 84: tetragon.LinkArg.mnt_ns:type_name -> tetragon.Namespace
+	26,  // 85: tetragon.SymlinkArg.link:type_name -> tetragon.FileDetails
+	58,  // 86: tetragon.SymlinkArg.mnt_ns:type_name -> tetragon.Namespace
+	60,  // 87: tetragon.PathDetails.is_relative_path:type_name -> google.protobuf.BoolValue
+	37,  // 88: tetragon.OpenRawArg.path:type_name -> tetragon.PathDetails
+	26,  // 89: tetragon.OpenRawArg.dir:type_name -> tetragon.FileDetails
+	6,   // 90: tetragon.OpenRawArg.error_code:type_name -> tetragon.SysRetval
+	29,  // 91: tetragon.FileArgument.generic_arg:type_name -> tetragon.GenericFileArg
+	30,  // 92: tetragon.FileArgument.rename_arg:type_name -> tetragon.RenameFileArg
+	31,  // 93: tetragon.FileArgument.readdir_arg:type_name -> tetragon.ReadDirArg
+	34,  // 94: tetragon.FileArgument.attr_arg:type_name -> tetragon.AttrArg
+	35,  // 95: tetragon.FileArgument.link_arg:type_name -> tetragon.LinkArg
+	36,  // 96: tetragon.FileArgument.symlink_arg:type_name -> tetragon.SymlinkArg
+	38,  // 97: tetragon.FileArgument.openraw_arg:type_name -> tetragon.OpenRawArg
+	55,  // 98: tetragon.ProcessFile.process:type_name -> tetragon.Process
+	55,  // 99: tetragon.ProcessFile.parent:type_name -> tetragon.Process
+	3,   // 100: tetragon.ProcessFile.action:type_name -> tetragon.FileAction
+	39,  // 101: tetragon.ProcessFile.args:type_name -> tetragon.FileArgument
+	61,  // 102: tetragon.ProcessFile.time:type_name -> google.protobuf.Timestamp
+	7,   // 103: tetragon.ProcessFile.operation:type_name -> tetragon.FileOperation
+	55,  // 104: tetragon.ProcessFile.ancestors:type_name -> tetragon.Process
+	55,  // 105: tetragon.ProcessFileExec.process:type_name -> tetragon.Process
+	55,  // 106: tetragon.ProcessFileExec.parent:type_name -> tetragon.Process
+	26,  // 107: tetragon.ProcessFileExec.file:type_name -> tetragon.FileDetails
+	28,  // 108: tetragon.ProcessFileExec.digest:type_name -> tetragon.FileDigest
+	7,   // 109: tetragon.ProcessFileExec.operations:type_name -> tetragon.FileOperation
+	55,  // 110: tetragon.ProcessFileExec.ancestors:type_name -> tetragon.Process
+	56,  // 111: tetragon.SockInfo.source_port:type_name -> google.protobuf.UInt32Value
+	56,  // 112: tetragon.SockInfo.destination_port:type_name -> google.protobuf.UInt32Value
+	0,   // 113: tetragon.SockInfo.protocol:type_name -> tetragon.SocketProtocol
+	54,  // 114: tetragon.SockInfo.destination_pod:type_name -> tetragon.Pod
+	55,  // 115: tetragon.ProcessSockStats.process:type_name -> tetragon.Process
+	55,  // 116: tetragon.ProcessSockStats.parent:type_name -> tetragon.Process
+	42,  // 117: tetragon.ProcessSockStats.socket:type_name -> tetragon.SockInfo
+	12,  // 118: tetragon.ProcessSockStats.stats:type_name -> tetragon.SocketStats
+	55,  // 119: tetragon.ProcessSockStats.ancestors:type_name -> tetragon.Process
+	55,  // 120: tetragon.Tls.process:type_name -> tetragon.Process
+	56,  // 121: tetragon.Tls.source_port:type_name -> google.protobuf.UInt32Value
+	56,  // 122: tetragon.Tls.destination_port:type_name -> google.protobuf.UInt32Value
+	8,   // 123: tetragon.Tls.certificate_error:type_name -> tetragon.TlsCertificateError
+	55,  // 124: tetragon.Tls.parent:type_name -> tetragon.Process
+	55,  // 125: tetragon.Tls.ancestors:type_name -> tetragon.Process
+	61,  // 126: tetragon.HttpRequest.timestamp:type_name -> google.protobuf.Timestamp
+	56,  // 127: tetragon.HttpRequest.content_length:type_name -> google.protobuf.UInt32Value
+	45,  // 128: tetragon.HttpRequest.headers:type_name -> tetragon.HttpHeader
+	61,  // 129: tetragon.HttpResponse.timestamp:type_name -> google.protobuf.Timestamp
+	56,  // 130: tetragon.HttpResponse.content_length:type_name -> google.protobuf.UInt32Value
+	45,  // 131: tetragon.HttpResponse.headers:type_name -> tetragon.HttpHeader
+	46,  // 132: tetragon.HttpInfo.request:type_name -> tetragon.HttpRequest
+	47,  // 133: tetragon.HttpInfo.response:type_name -> tetragon.HttpResponse
+	57,  // 134: tetragon.HttpInfo.latency:type_name -> google.protobuf.Duration
+	55,  // 135: tetragon.ProcessHttp.process:type_name -> tetragon.Process
+	42,  // 136: tetragon.ProcessHttp.socket:type_name -> tetragon.SockInfo
+	48,  // 137: tetragon.ProcessHttp.http:type_name -> tetragon.HttpInfo
+	54,  // 138: tetragon.ProcessHttp.destination_pod:type_name -> tetragon.Pod
+	55,  // 139: tetragon.ProcessHttp.parent:type_name -> tetragon.Process
+	55,  // 140: tetragon.ProcessHttp.ancestors:type_name -> tetragon.Process
+	55,  // 141: tetragon.ProcessNetworkBurst.process:type_name -> tetragon.Process
+	55,  // 142: tetragon.ProcessNetworkBurst.parent:type_name -> tetragon.Process
+	55,  // 143: tetragon.ProcessNetworkBurst.ancestors:type_name -> tetragon.Process
+	55,  // 144: tetragon.ProcessNetworkWatermark.process:type_name -> tetragon.Process
+	55,  // 145: tetragon.ProcessNetworkWatermark.parent:type_name -> tetragon.Process
+	55,  // 146: tetragon.ProcessNetworkWatermark.ancestors:type_name -> tetragon.Process
+	55,  // 147: tetragon.ProcessUdpSeqCheckError.process:type_name -> tetragon.Process
+	55,  // 148: tetragon.ProcessUdpSeqCheckError.parent:type_name -> tetragon.Process
+	42,  // 149: tetragon.ProcessUdpSeqCheckError.socket:type_name -> tetragon.SockInfo
+	55,  // 150: tetragon.ProcessUdpSeqCheckError.ancestors:type_name -> tetragon.Process
+	151, // [151:151] is the sub-list for method output_type
+	151, // [151:151] is the sub-list for method input_type
+	151, // [151:151] is the sub-list for extension type_name
+	151, // [151:151] is the sub-list for extension extendee
+	0,   // [0:151] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_fgs_proto_init() }

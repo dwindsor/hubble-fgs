@@ -13591,12 +13591,13 @@ func (checker *FileDigestChecker) FromFileDigest(event *tetragon.FileDigest) *Fi
 
 // GenericFileArgChecker implements a checker struct to check a GenericFileArg field
 type GenericFileArgChecker struct {
-	File            *FileDetailsChecker `json:"file,omitempty"`
-	Io              *FileIOChecker      `json:"io,omitempty"`
-	MntNs           *NamespaceChecker   `json:"mntNs,omitempty"`
-	Digest          *FileDigestChecker  `json:"digest,omitempty"`
-	IsExeFromMemfd  *bool               `json:"isExeFromMemfd,omitempty"`
-	IsExeUpperLayer *bool               `json:"isExeUpperLayer,omitempty"`
+	File             *FileDetailsChecker      `json:"file,omitempty"`
+	Io               *FileIOChecker           `json:"io,omitempty"`
+	MntNs            *NamespaceChecker        `json:"mntNs,omitempty"`
+	Digest           *FileDigestChecker       `json:"digest,omitempty"`
+	IsExeFromMemfd   *bool                    `json:"isExeFromMemfd,omitempty"`
+	IsExeUpperLayer  *bool                    `json:"isExeUpperLayer,omitempty"`
+	BinaryProperties *BinaryPropertiesChecker `json:"binaryProperties,omitempty"`
 }
 
 // NewGenericFileArgChecker creates a new GenericFileArgChecker
@@ -13646,6 +13647,11 @@ func (checker *GenericFileArgChecker) Check(event *tetragon.GenericFileArg) erro
 				return fmt.Errorf("IsExeUpperLayer has value %t which does not match expected value %t", event.IsExeUpperLayer, *checker.IsExeUpperLayer)
 			}
 		}
+		if checker.BinaryProperties != nil {
+			if err := checker.BinaryProperties.Check(event.BinaryProperties); err != nil {
+				return fmt.Errorf("BinaryProperties check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -13690,6 +13696,12 @@ func (checker *GenericFileArgChecker) WithIsExeUpperLayer(check bool) *GenericFi
 	return checker
 }
 
+// WithBinaryProperties adds a BinaryProperties check to the GenericFileArgChecker
+func (checker *GenericFileArgChecker) WithBinaryProperties(check *BinaryPropertiesChecker) *GenericFileArgChecker {
+	checker.BinaryProperties = check
+	return checker
+}
+
 //FromGenericFileArg populates the GenericFileArgChecker using data from a GenericFileArg field
 func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.GenericFileArg) *GenericFileArgChecker {
 	if event == nil {
@@ -13714,6 +13726,9 @@ func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.Generic
 	{
 		val := event.IsExeUpperLayer
 		checker.IsExeUpperLayer = &val
+	}
+	if event.BinaryProperties != nil {
+		checker.BinaryProperties = NewBinaryPropertiesChecker().FromBinaryProperties(event.BinaryProperties)
 	}
 	return checker
 }

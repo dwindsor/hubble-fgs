@@ -334,6 +334,7 @@ message GenericFileArg {
   FileDigest digest = 4;
   bool is_exe_from_memfd = 5;
   bool is_exe_upper_layer = 6;
+  BinaryProperties binary_properties = 7; // Executed binary properties (only with FILE_EXEC action).
 }
 
 message RenameFileArg {
