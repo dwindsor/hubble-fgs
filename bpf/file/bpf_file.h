@@ -1486,6 +1486,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 	msg->current.pad[1] = 0;
 	msg->current.pad[2] = 0;
 	msg->current.pad[3] = 0;
+	msg->secureexec = 0;
 
 	return msg;
 }

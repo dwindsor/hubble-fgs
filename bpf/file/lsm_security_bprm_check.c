@@ -2,17 +2,28 @@
 #define __ENABLE_GLOB_SUPPORT
 #include "bpf_file.h"
 #include "dispatcher.h"
+#include "bpf_secureexec.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct exec_key);
+	__type(value, struct msg_file_ops);
+	__uint(max_entries, 128);
+} exec_cred_map SEC(".maps");
+
 FUNC_LOCAL __u32 path_file_exec(void *ctx, struct linux_binprm *bprm)
 {
-	__u32 operation, rule_id, msg_id = 0;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
-	struct file *file;
 	union exec_flags flags;
-	int err;
+	struct exec_key key = {
+		.pid_tgid = get_current_pid_tgid(),
+		.bprm_ptr = (__u64)bprm,
+	};
+	__u32 operation, rule_id, msg_id = 0, err;
+	char header[2] = { 0, 0 };
 
 	if (!policy_filter_match())
 		return 0;
@@ -21,11 +32,7 @@ FUNC_LOCAL __u32 path_file_exec(void *ctx, struct linux_binprm *bprm)
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;
 
-	file = BPF_CORE_READ(bprm, file);
-	if (!file)
-		return -FILE_ERR_FILE_FROM_BPRM;
-
-	dentry = BPF_CORE_READ(file, f_path.dentry);
+	dentry = BPF_CORE_READ(bprm, file, f_path.dentry);
 	if (!dentry)
 		return -FILE_ERR_DENTRY_FROM_FILE;
 
@@ -33,14 +40,14 @@ FUNC_LOCAL __u32 path_file_exec(void *ctx, struct linux_binprm *bprm)
 	if (err < 0)
 		return err;
 
-	rule_id = run_matcher(BPF_CORE_READ(file, f_inode));
+	rule_id = run_matcher(BPF_CORE_READ(bprm, file, f_inode));
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
 	generate_path(&msg->path, _(&bprm->file->f_path));
 
-	msg->is_exe_from_memfd = is_memfd(file);
-	msg->is_exe_upper_layer = is_dentry_upper(file);
+	msg->is_exe_from_memfd = is_memfd(BPF_CORE_READ(bprm, file));
+	msg->is_exe_upper_layer = is_dentry_upper(BPF_CORE_READ(bprm, file));
 
 	flags.d8[EXEC_ATTR_MEMFD_IDX] = msg->is_exe_from_memfd;
 	flags.d8[EXEC_ATTR_UPPER_IDX] = msg->is_exe_upper_layer;
@@ -51,7 +58,13 @@ FUNC_LOCAL __u32 path_file_exec(void *ctx, struct linux_binprm *bprm)
 
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0, msg_id);
 
-	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+	// if we need to block *or* this is a script we need to send a message
+	// because the next hook (i.e. bprm_creds_from_file) will not be executed
+	probe_read_kernel(header, 2 * sizeof(char), _(&bprm->buf[0]));
+	if ((operation & FILE_OP_BLOCK) || ((header[0] == '#') && (header[1] == '!')))
+		perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+	else
+		map_update_elem(&exec_cred_map, &key, msg, 0);
 
 	return operation;
 }
@@ -68,4 +81,26 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	}
 
 	return handle_tail_call(ctx, handle_enforcement(err));
+}
+
+SEC("lsm/bprm_creds_from_file")
+int BPF_PROG(security_bprm_committing_creds_lsm, struct linux_binprm *bprm, struct file *file)
+{
+	struct msg_file_ops *msg;
+	struct exec_key key = {
+		.pid_tgid = get_current_pid_tgid(),
+		.bprm_ptr = (__u64)bprm,
+	};
+
+	msg = map_lookup_elem(&exec_cred_map, &key);
+	if (!msg)
+		return 0;
+
+	generate_secureexec(msg, bprm);
+
+	perf_event_output_metric(ctx, ISO_MSG_OP_FILE, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(struct msg_file_ops));
+
+	map_delete_elem(&exec_cred_map, &key);
+
+	return 0;
 }

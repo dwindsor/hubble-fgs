@@ -2,6 +2,7 @@
 #define __ENABLE_GLOB_SUPPORT
 #define __FILE_DIGEST_LSM
 #include "bpf_file.h"
+#include "bpf_secureexec.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 

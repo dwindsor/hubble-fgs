@@ -217,6 +217,7 @@ var mapTypes = map[string]MapType{
 	"file_openraw_enforce_map":   PinnedMap,
 	"policy_conf":                PinnedMap,
 	"policy_stats":               PinnedMap,
+	"exec_cred_map":              PinnedMap,
 }
 
 // this is used for inode-based programs that modify the inode map and thus do not using them will result in corrupted inode map contents
@@ -282,7 +283,13 @@ var (
 		{"lsm", "tail_call", []FimFunc{{"", "lsm_security_path_symlink.o", "path_symlink", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_SYMLINK}...)}}},
 	}
 
-	FimPathBasedHooksExec = FimHook{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)}}}
+	FimPathBasedHooksExec = [...]FimHook{
+		{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)}}},
+		{"lsm", "security_bprm_creds_from_file", []FimFunc{
+			{"security_bprm_creds_from_file(struct linux_binprm*, struct file*)", "lsm_security_bprm_check.o", "bprm_creds_from_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)},
+			{"security_bprm_creds_from_file(struct linux_binprm*, const struct file*)", "lsm_security_bprm_check.o", "bprm_creds_from_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)},
+		}},
+	}
 
 	FimPathBasedTailCallHooksExec = FimHook{"lsm", "tail_call", []FimFunc{{"", "lsm_security_bprm_check.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)}}}
 
@@ -2192,7 +2199,7 @@ func findHooks(config *fileapi.FileConfigMapValue, meta *fm.SelectorsMetadata, m
 				}
 				m += " with exec digests"
 			} else {
-				hooks = append(hooks, FimPathBasedHooksExec)
+				hooks = append(hooks, FimPathBasedHooksExec[:]...)
 			}
 		}
 		hooks = getIoUringHooks(spec, ioUringSupport, hooks)

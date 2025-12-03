@@ -3027,7 +3027,7 @@ func TestFileLinkOnTmpFile(t *testing.T) {
 }
 
 func TestBPFFilesExist(t *testing.T) {
-	for _, hks := range [][]FimHook{{FimPathBasedGetnameHook}, {FimPathBasedGetnameFlagsHook}, FimPathBasedArchHooks[:], FimPathBasedHooks[:], FimPathBasedTailCallHooks[:], {FimPathBasedHooksExec}, FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
+	for _, hks := range [][]FimHook{{FimPathBasedGetnameHook}, {FimPathBasedGetnameFlagsHook}, FimPathBasedArchHooks[:], FimPathBasedHooks[:], FimPathBasedTailCallHooks[:], FimPathBasedHooksExec[:], FimPathBasedHooksExecDigests[:], FimHooksObserve[:], {FimHooksObserveExec}, FimHooksFmodRet[:], {FimHooksFmodRetExec}, FimHooksLsm[:], {FimHooksLsmExec}, FimHooksLsmExecDigests[:], FimIoUringHooks[:], FimIoUringSingleHooks[:], FimHooksFileCreate[:], FimHooksFileCreate418[:]} {
 		for _, hk := range hks {
 			for _, of := range hk.prog {
 				objFile := filepath.Join(runner.Conf().TetragonLib, of.progName)

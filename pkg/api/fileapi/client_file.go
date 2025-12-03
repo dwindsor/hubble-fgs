@@ -154,7 +154,8 @@ type MsgFileEvent struct {
 	OpenFlags       uint32                  `align:"open_flags"`
 	IsExeUpperLayer uint8                   `align:"is_exe_upper_layer"`
 	IsExeFromMemfd  uint8                   `align:"is_exe_from_memfd"`
-	Pad             [6]uint8                `align:"pad"`
+	Pad             [2]uint8                `align:"pad"`
+	SecureExec      uint32                  `align:"secureexec"`
 	MessageId       uint32                  `align:"msg_id"`
 }
 
