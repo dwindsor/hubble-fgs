@@ -1933,9 +1933,41 @@ Number of errors during alert rule evaluation. Deleted if the respective alert r
 | ----- | ------ |
 | `rule ` | `example-alert-rule` |
 
+### `tetragon_alert_rules_events_exported_total`
+
+Number of events exported. Reset on Tetragon restart.
+
+| label | values |
+| ----- | ------ |
+| `rule ` | `example-alert-rule` |
+
 ### `tetragon_alert_rules_exported_bytes_total`
 
 Number of bytes exported for alert events. Reset on Tetragon restart.
+
+### `tetragon_alert_rules_rate_limit_active`
+
+Whether alert rule is being rate limited. Reset on Tetragon restart.
+
+| label | values |
+| ----- | ------ |
+| `rule ` | `example-alert-rule` |
+
+### `tetragon_alert_rules_rate_limit_drops_total`
+
+Number of alerts dropped events because of rate limiting. Reset on Tetragon restart.
+
+| label | values |
+| ----- | ------ |
+| `rule ` | `example-alert-rule` |
+
+### `tetragon_alert_rules_rate_limit_window_usage`
+
+Remaining events for active window for rate limited alerts. Reset on Tetragon restart.
+
+| label | values |
+| ----- | ------ |
+| `rule ` | `example-alert-rule` |
 
 ### `tetragon_alert_rules_total`
 

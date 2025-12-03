@@ -105,6 +105,50 @@ var (
 		},
 		[]string{"rule"},
 	)
+
+	// AlertRuleRateLimitActive will be 1 for rules that are currently rate limited, 0 otherwise
+	AlertRuleRateLimitActive = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace:   consts.MetricsNamespace,
+			Name:        "alert_rules_rate_limit_active",
+			Help:        "Whether alert rule is being rate limited. Reset on Tetragon restart.",
+			ConstLabels: nil,
+		},
+		[]string{"rule"},
+	)
+
+	// AlertRuleRateLimitDropsTotal counts the total number of dropped events because of rate limiting
+	AlertRuleRateLimitDropsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace:   consts.MetricsNamespace,
+			Name:        "alert_rules_rate_limit_drops_total",
+			Help:        "Number of alerts dropped events because of rate limiting. Reset on Tetragon restart.",
+			ConstLabels: nil,
+		},
+		[]string{"rule"},
+	)
+
+	// AlertRuleRateLimitWindowUsage will be set to the number of remaining events in active window for rate limiting
+	AlertRuleRateLimitWindowUsage = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace:   consts.MetricsNamespace,
+			Name:        "alert_rules_rate_limit_window_usage",
+			Help:        "Remaining events for active window for rate limited alerts. Reset on Tetragon restart.",
+			ConstLabels: nil,
+		},
+		[]string{"rule"},
+	)
+
+	// AlertsExportedTotal counts the number exported alert events
+	AlertsExportedTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace:   consts.MetricsNamespace,
+			Name:        "alert_rules_events_exported_total",
+			Help:        "Number of events exported. Reset on Tetragon restart.",
+			ConstLabels: nil,
+		},
+		[]string{"rule"},
+	)
 )
 
 // UpdateAlertRuleCount updates the gauge of currently loaded alert rules
@@ -147,6 +191,10 @@ func InitMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(AlertRuleCompilationErrors)
 	registry.MustRegister(AlertsEvaluatedTotal)
 	registry.MustRegister(AlertsEvaluatedTimeTotal)
+	registry.MustRegister(AlertRuleRateLimitActive)
+	registry.MustRegister(AlertRuleRateLimitDropsTotal)
+	registry.MustRegister(AlertRuleRateLimitWindowUsage)
+	registry.MustRegister(AlertsExportedTotal)
 }
 
 // InitMetricsForDocs registers metrics and adds example entries for documentation
@@ -162,6 +210,10 @@ func InitMetricsForDocs(registry *prometheus.Registry) {
 	AlertRuleCompilationErrors.WithLabelValues("example-alert-rule").Add(0)
 	AlertsEvaluatedTotal.WithLabelValues("example-alert-rule").Add(0)
 	AlertsEvaluatedTimeTotal.WithLabelValues("example-alert-rule").Add(0)
+	AlertRuleRateLimitActive.WithLabelValues("example-alert-rule").Add(0)
+	AlertRuleRateLimitDropsTotal.WithLabelValues("example-alert-rule").Add(0)
+	AlertRuleRateLimitWindowUsage.WithLabelValues("example-alert-rule").Add(0)
+	AlertsExportedTotal.WithLabelValues("example-alert-rule").Add(0)
 }
 
 // byteCounterWriter wraps an io.WriteCloser and tracks the number of bytes written

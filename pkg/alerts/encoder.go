@@ -75,16 +75,29 @@ func (e *jsonEncoder) encode(alert *tetragon.Alert) error {
 	//   log a message and send an event that wraps an alert with additional `rateLimitEnabled: true`.
 	// * OTHER ratelimited events -> set the AlertRuleRateLimitDropsTotal and skip the write.
 	if e.rateLimiter.Allow() {
+		if alert != nil && alert.Rule != nil {
+			alertmetrics.AlertRuleRateLimitWindowUsage.WithLabelValues(alert.Rule.Name).Set(e.rateLimiter.Tokens())
+			alertmetrics.AlertsExportedTotal.WithLabelValues(alert.Rule.Name).Inc()
+		}
 		if e.rateLimited {
 			e.rateLimited = false
+			if alert != nil && alert.Rule != nil {
+				alertmetrics.AlertRuleRateLimitActive.WithLabelValues(alert.Rule.Name).Set(float64(0))
+			}
 		}
 	} else {
 		if !e.rateLimited {
 			// First message rateLimited; send it anyway but wrap it to add the `rateLimitEnabled: true`
 			e.rateLimited = true
-			alert.Rule.RateLimitTriggered = true
+			if alert != nil && alert.Rule != nil {
+				alertmetrics.AlertRuleRateLimitActive.WithLabelValues(alert.Rule.Name).Set(float64(1))
+				alert.Rule.RateLimitTriggered = true
+			}
 		} else {
 			// Nothing to do. Skip encoding altogether.
+			if alert != nil && alert.Rule != nil {
+				alertmetrics.AlertRuleRateLimitDropsTotal.WithLabelValues(alert.Rule.Name).Inc()
+			}
 			return nil
 		}
 	}
