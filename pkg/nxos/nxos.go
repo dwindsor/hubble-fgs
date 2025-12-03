@@ -1017,7 +1017,7 @@ func (n *Nxos) buildProxy(_ context.Context) string {
 		logger.GetLogger().Debug("proxy not set")
 		return proxy
 	}
-	proxy = "https://" + n.Ctrlr.ProxySvr
+	proxy = "http://" + n.Ctrlr.ProxySvr
 	if n.Ctrlr.ProxyPort != 0 {
 		proxy += fmt.Sprintf(":%d", n.Ctrlr.ProxyPort)
 	}
