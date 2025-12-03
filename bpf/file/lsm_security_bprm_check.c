@@ -5,11 +5,12 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, struct file *file)
+static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, struct linux_binprm *bprm)
 {
 	__u32 operation, rule_id, msg_id = 0;
 	struct msg_file_ops *msg;
 	struct dentry *dentry;
+	struct file *file;
 	union exec_flags flags;
 	int err;
 
@@ -19,6 +20,10 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 	msg = get_msg_init();
 	if (!msg)
 		return -FILE_ERR_GET_MSG_HEAP;
+
+	file = BPF_CORE_READ(bprm, file);
+	if (!file)
+		return -FILE_ERR_FILE_FROM_BPRM;
 
 	dentry = BPF_CORE_READ(file, f_path.dentry);
 	if (!dentry)
@@ -32,7 +37,7 @@ static inline __attribute__((always_inline)) __u32 path_file_exec(void *ctx, str
 	if (rule_id == INVALID_RULE_ID)
 		return 0;
 
-	generate_path(&msg->path, _(&file->f_path));
+	generate_path(&msg->path, _(&bprm->file->f_path));
 
 	msg->is_exe_from_memfd = is_memfd(file);
 	msg->is_exe_upper_layer = is_dentry_upper(file);
@@ -56,7 +61,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 {
 	int err;
 
-	err = path_file_exec(ctx, _(bprm->file));
+	err = path_file_exec(ctx, bprm);
 	if (err < 0) {
 		inc_error(hook_security_bprm_check, -err);
 		return 0;
