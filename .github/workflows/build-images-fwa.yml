@@ -33,9 +33,6 @@ jobs:
           submodules: true
           fetch-tags: true
           fetch-depth: 0
-      # Capture and validate release metadata (sha, version, date)
-      # These values are used throughout the pipeline for artifact naming,
-      # release tagging, and traceability in downstream repositories.
       - name: Get version and set outputs
         id: get-version
         run: |
@@ -54,9 +51,6 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "date=$DATE" >> $GITHUB_OUTPUT
           echo "sha=$SHA" >> $GITHUB_OUTPUT
-      
-      # Validate that all required metadata fields are present
-      # This ensures downstream jobs have valid metadata for artifact tagging
       - name: Validate release metadata
         run: |
           VERSION="${{ steps.get-version.outputs.version }}"
@@ -90,12 +84,10 @@ jobs:
             echo "::error::DATE format invalid (expected YYYYMMDDHHMM): $DATE"
             ERRORS=$((ERRORS + 1))
           fi
-          
           if [[ $ERRORS -gt 0 ]]; then
             echo "::error::Release metadata validation failed with $ERRORS error(s)"
             exit 1
           fi
-          
           echo "✓ All release metadata validated successfully"
     outputs:
       version: ${{ steps.get-version.outputs.version }}
@@ -171,8 +163,6 @@ jobs:
           find ./combined-artifacts/amd64 -type f | sort
           echo "\nARM64 artifacts:"
           find ./combined-artifacts/arm64 -type f | sort
-      # Create release artifacts with embedded metadata for traceability
-      # Each artifact is tagged with version and includes checksums for integrity verification
       - name: Prepare artifacts for GitHub release
         id: prepare-artifacts
         run: |
@@ -182,9 +172,6 @@ jobs:
           cd ./release-artifacts
           sha256sum *.tar.gz > SHA256SUMS.txt
           echo "artifact_dir=$(pwd)" >> $GITHUB_OUTPUT
-      
-      # Generate metadata.json manifest for downstream consumption
-      # This file provides machine-readable metadata for automated processing
       - name: Create release metadata manifest
         run: |
           cat > ./release-artifacts/metadata.json << EOF
@@ -213,8 +200,6 @@ jobs:
           EOF
           echo "Created metadata.json:"
           cat ./release-artifacts/metadata.json
-      
-      # Verify checksums were generated correctly
       - name: Verify artifact checksums
         run: |
           cd ./release-artifacts
@@ -305,7 +290,6 @@ jobs:
         with:
           name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./release-artifacts"
-      # Validate and display release artifacts with metadata
       - name: Validate release artifacts and metadata
         run: |
           echo "=== Release Artifacts Validation ==="
@@ -337,8 +321,6 @@ jobs:
           done
           echo "✓ All required artifacts present"
           echo "==================================="
-      
-      # Verify checksums before creating release
       - name: Verify artifact integrity
         run: |
           cd ./release-artifacts
@@ -348,9 +330,6 @@ jobs:
             exit 1
           fi
           echo "✓ All artifact checksums verified"
-      
-      # Create release notes with proper variable expansion
-      # Note: Using EOF without quotes allows shell variable expansion
       - name: Create release notes
         run: |
           cd ./fwa-releases-repo
@@ -463,8 +442,6 @@ jobs:
             For questions or issues, contact @cisco-hypershield/nxos
           files: |
             ./release-artifacts/*
-      
-      # Post-release validation to confirm metadata was published correctly
       - name: Verify release metadata published
         run: |
           echo "=== Release Publication Summary ==="
