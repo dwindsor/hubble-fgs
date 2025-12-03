@@ -264,7 +264,7 @@ jobs:
 
   create-fwa-releases-repo-release:
     needs: [init, combine-artifacts]
-    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/pr/sripuran/fwa-releases-new-repo') || (github.event_name == 'push' && github.ref == 'refs/heads/pr/sripuran/fwa-releases-new-repo') }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/pr/sripuran/fwa-releases-new-repo') || (github.event_name == 'push' && github.ref == 'refs/heads/pr/sripuran/fwa-releases-new-repo') || (github.event_name == 'pull_request' && github.head_ref == 'pr/sripuran/fwa-releases-new-repo') }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
     env:
