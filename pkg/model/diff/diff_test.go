@@ -749,10 +749,12 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 				Host: &appModelV1.ApplicationHost{
 					Processes: []*appModelV1.ApplicationProcessGroup{
 						{
+							Hash:      "hash-exa-la",
 							Name:      "exa",
 							Arguments: "-la",
 						},
 						{
+							Hash:      "hash-grep-test",
 							Name:      "grep",
 							Arguments: "test",
 						},
@@ -767,12 +769,14 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 				{
 					ProcessName:        "exa",
 					ProcessArguments:   "-la",
+					ProcessHash:        "hash-exa-la",
 					ParentNames:        []string{"bash", "zsh"},
 					ApplicationModelId: "test-model-123",
 				},
 				{
 					ProcessName:        "grep",
 					ProcessArguments:   "test",
+					ProcessHash:        "hash-grep-test",
 					ParentNames:        []string{"bash"},
 					ApplicationModelId: "test-model-123",
 				},
@@ -791,6 +795,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 								Kind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 								Processes: []*appModelV1.ApplicationProcessGroup{
 									{
+										Hash:      "hash-app-config",
 										Name:      "app",
 										Arguments: "--config=/etc/app.conf",
 									},
@@ -810,6 +815,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 					KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 					ProcessName:            "app",
 					ProcessArguments:       "--config=/etc/app.conf",
+					ProcessHash:            "hash-app-config",
 					ParentNames:            []string{"systemd"},
 					ApplicationModelId:     "test-model-456",
 				},
@@ -1003,6 +1009,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 				// Check core fields
 				assert.Equal(t, expected.ProcessName, actual.ProcessName, "process name mismatch at index %d", i)
 				assert.Equal(t, expected.ProcessArguments, actual.ProcessArguments, "process arguments mismatch at index %d", i)
+				assert.Equal(t, expected.ProcessHash, actual.ProcessHash, "process hash mismatch at index %d", i)
 				assert.Equal(t, expected.KubernetesNamespace, actual.KubernetesNamespace, "kubernetes namespace mismatch at index %d", i)
 				assert.Equal(t, expected.KubernetesWorkloadName, actual.KubernetesWorkloadName, "kubernetes workload name mismatch at index %d", i)
 				assert.Equal(t, expected.KubernetesWorkloadKind, actual.KubernetesWorkloadKind, "kubernetes workload kind mismatch at index %d", i)
