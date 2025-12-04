@@ -100,7 +100,7 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	rename_copy_dname(old_dentry, &msg->src);
 
 	path = get_combined_path(&msg->src.path, &path_size);
-	src_op = eval_selectors((struct sel_args){ action_rename, msg->flags }, 0, (struct sel_path){ path, path_size }, &src_msg_id);
+	src_op = eval_selectors((struct sel_args){ .action = action_rename, .flags = msg->flags, .retval = 0 }, 0, (struct sel_path){ path, path_size }, &src_msg_id);
 
 	// get destination dir path
 	generate_path_rename(&msg->dst, (struct path *)new_dir);
@@ -109,7 +109,7 @@ path_rename(void *ctx, const struct path *old_dir, struct dentry *old_dentry, co
 	rename_copy_dname(new_dentry, &msg->dst);
 
 	path = get_combined_path(&msg->dst.path, &path_size);
-	dst_op = eval_selectors((struct sel_args){ action_rename, msg->flags }, 0, (struct sel_path){ path, path_size }, &dst_msg_id);
+	dst_op = eval_selectors((struct sel_args){ .action = action_rename, .flags = msg->flags, .retval = 0 }, 0, (struct sel_path){ path, path_size }, &dst_msg_id);
 
 	// check both the one non-zero operation
 	operation = src_op ? src_op : dst_op;

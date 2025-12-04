@@ -1340,7 +1340,7 @@ static long selectors_cb(u32 index, void *ununsed)
 	if (index >= ctx->num_selectors) // no need to check more selectors
 		return 1;
 
-	ctx->retval = __eval_selectors(index, (struct sel_args){ ctx->action, ctx->flags, ctx->ret }, ctx->digest, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
+	ctx->retval = __eval_selectors(index, (struct sel_args){ .action = ctx->action, .flags = ctx->flags, .retval = ctx->ret }, ctx->digest, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
 	if (ctx->retval) { // we return the value from the first selector that matches
 		return 1;
 	}
@@ -1979,7 +1979,7 @@ path_generic_file_access(void *ctx, struct file *file, int action, int hook_type
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors((struct sel_args){ action, 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
+	operation = eval_selectors((struct sel_args){ .action = action, .flags = 0, .retval = 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 

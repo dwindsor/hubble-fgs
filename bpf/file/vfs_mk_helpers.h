@@ -142,7 +142,7 @@ kprobe_vfs_mk(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry, __u
 	msg->tid = (__u32)get_current_pid_tgid();
 	msg->digest.ok = 0;
 
-	operation = eval_selectors((struct sel_args){ ev_action, 0 }, 0, (struct sel_path){ 0, 0 }, &msg_id);
+	operation = eval_selectors((struct sel_args){ .action = ev_action, .flags = 0, .retval = 0 }, 0, (struct sel_path){ 0, 0 }, &msg_id);
 	msg->msg_id = msg_id;
 
 	// create the mk_retprobe_map value and set it for the kretprobe

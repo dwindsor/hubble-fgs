@@ -36,7 +36,7 @@ static inline __attribute__((always_inline)) __u32 unix_stream_connect(void *ctx
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
-	operation = eval_selectors((struct sel_args){ action_unix_socket_connect, 0 }, 0, (struct sel_path){ 0, 0 }, &msg_id);
+	operation = eval_selectors((struct sel_args){ .action = action_unix_socket_connect, .flags = 0, .retval = 0 }, 0, (struct sel_path){ 0, 0 }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return 0;
 

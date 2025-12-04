@@ -44,7 +44,7 @@ static inline __attribute__((always_inline)) __u32 path_unlink(void *ctx, const 
 	// we can avoid creating the message.
 	// In these events we also have to update any internal maps,
 	// which is already done here.
-	operation = eval_selectors((struct sel_args){ action_delete, 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
+	operation = eval_selectors((struct sel_args){ .action = action_delete, .flags = 0, .retval = 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 

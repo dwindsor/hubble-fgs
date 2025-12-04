@@ -35,7 +35,7 @@ int BPF_PROG(do_open, struct nameidata *nd, struct file *file, const struct open
 	if (!kpath)
 		return 0;
 
-	operation = eval_selectors((struct sel_args){ action_openraw, flags, 0x7FFFFFFF /* INT32_MAX */ }, 0, (struct sel_path){ kpath->str, kpath->size }, 0);
+	operation = eval_selectors((struct sel_args){ .action = action_openraw, .flags = flags, .retval = 0x7FFFFFFF /* INT32_MAX */ }, 0, (struct sel_path){ kpath->str, kpath->size }, 0);
 	if (!(operation & FILE_OP_BLOCK))
 		return 0;
 

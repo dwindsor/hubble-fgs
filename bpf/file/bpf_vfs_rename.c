@@ -227,7 +227,7 @@ kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
 	// resolve any paths (if needed) for items outside of watched path
 	resolve_missed_paths(v, conf);
 
-	v->operation = eval_selectors((struct sel_args){ action_rename, v->msg.flags }, 0, (struct sel_path){ 0, 0 }, &msg_id);
+	v->operation = eval_selectors((struct sel_args){ .action = action_rename, .flags = v->msg.flags, .retval = 0 }, 0, (struct sel_path){ 0, 0 }, &msg_id);
 	v->msg.msg_id = msg_id;
 
 	/*

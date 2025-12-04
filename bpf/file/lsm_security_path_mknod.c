@@ -35,7 +35,7 @@ static inline __attribute__((always_inline)) __u32 path_mknod(void *ctx, const s
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
-	operation = eval_selectors((struct sel_args){ action_create, 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
+	operation = eval_selectors((struct sel_args){ .action = action_create, .flags = 0, .retval = 0 }, 0, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 

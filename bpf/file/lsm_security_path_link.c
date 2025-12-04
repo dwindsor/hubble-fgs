@@ -111,9 +111,9 @@ static inline __attribute__((always_inline)) __u32 path_link(void *ctx, struct d
 	new_path.mnt = BPF_CORE_READ(dir, mnt);
 	__get_path_local(&msg->target.path, &new_path);
 
-	link_op = eval_selectors((struct sel_args){ action_link, 0 }, 0, (struct sel_path){ msg->link.path.str, msg->link.path.size }, &link_msg_id);
+	link_op = eval_selectors((struct sel_args){ .action = action_link, .flags = 0, .retval = 0 }, 0, (struct sel_path){ msg->link.path.str, msg->link.path.size }, &link_msg_id);
 
-	target_op = eval_selectors((struct sel_args){ action_link, 0 }, 0, (struct sel_path){ msg->target.path.str, msg->target.path.size }, &target_msg_id);
+	target_op = eval_selectors((struct sel_args){ .action = action_link, .flags = 0, .retval = 0 }, 0, (struct sel_path){ msg->target.path.str, msg->target.path.size }, &target_msg_id);
 
 	operation = link_op ? link_op : target_op;
 	if (!(operation & FILE_OP_POST))
