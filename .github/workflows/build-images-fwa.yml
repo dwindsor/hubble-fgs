@@ -215,56 +215,10 @@ jobs:
           name: release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
           path: ./release-artifacts
           retention-days: 1
-  
-  create-github-release:
-    needs: [init, combine-artifacts]
-    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
-    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
-    timeout-minutes: 1
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-      - name: Download release artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
-        with:
-          name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
-          path: "./release-artifacts"
-      - name: List release artifacts
-        run: |
-          ls -la ./release-artifacts
-      - name: Determine release type
-        id: release-type
-        run: |
-          echo "is_draft=false" >> $GITHUB_OUTPUT
-          echo "tag_name=${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}" >> $GITHUB_OUTPUT
-          echo "release_name=${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}" >> $GITHUB_OUTPUT
-      - name: Create GitHub Release 
-        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ steps.release-type.outputs.tag_name }}
-          name: ${{ steps.release-type.outputs.release_name }}
-          draft: ${{ steps.release-type.outputs.is_draft }}
-          body: |
-            ## Hubble FGS FWA Release ${{ needs.init.outputs.version }}
-            
-            This release contains Hubble FGS FWA images built for compatibility with DPUs in the smart switch.
-            
-            ### Build Information
-            - Version: ${{ needs.init.outputs.version }}
-            - Date: ${{ needs.init.outputs.date }}
-            - Commit: ${{ needs.init.outputs.sha }}
-            
-            ### Instructions
-            - Download the appropriate architecture archive (AMD64 or ARM64)
-            - Extract the archive to access the built artifacts
-            - See documentation for integration details
-          files: |
-            ./release-artifacts/*
 
   create-fwa-releases-repo-release:
     needs: [init, combine-artifacts]
-    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/pr/sripuran/fwa-releases-new-repo') || (github.event_name == 'push' && github.ref == 'refs/heads/pr/sripuran/fwa-releases-new-repo') || (github.event_name == 'pull_request' && github.head_ref == 'pr/sripuran/fwa-releases-new-repo') }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
     env:
