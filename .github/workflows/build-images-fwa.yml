@@ -342,10 +342,10 @@ jobs:
           RELEASE_DATE=$(date -u +"%Y-%m-%d")
           CHECKSUMS=$(cat ../release-artifacts/SHA256SUMS.txt)
           
-          RELEASE_NOTES_FILE="docs/release-notes/${VERSION}+${DATE}-${SHA}.md"
+          RELEASE_NOTES_FILE="docs/release-notes/${VERSION}+${SHA}-codedrop.md"
           
           cat > "$RELEASE_NOTES_FILE" << EOF
-          # Release Notes: ${VERSION}+${DATE}-${SHA}
+          # Release Notes: ${VERSION}+${SHA}-codedrop
           
           **Release Date:** ${RELEASE_DATE}
           
@@ -377,7 +377,7 @@ jobs:
           
           ## Installation
           
-          1. Download the appropriate architecture archive from the [Releases](../../releases) page
+          1. Download the appropriate architecture archive from the [Releases](https://github.com/isovalent/hubble-fwa-releases/releases) page
           2. Verify checksum: \`sha256sum -c SHA256SUMS.txt\`
           3. Extract: \`tar -xzf fwa-elba-{arch}-${VERSION}.tar.gz\`
           4. Load images: \`docker load -i <image-file>.tar\`
@@ -401,15 +401,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/release-notes/
-          git commit -m "docs: Add release notes for ${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}" || echo "No changes to commit"
+          git commit -m "docs: Add release notes for ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop" || echo "No changes to commit"
           git push origin main
       - name: Create GitHub Release in hubble-fwa-releases
         uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
         with:
           token: ${{ steps.app-token.outputs.token }}
           repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}
-          tag_name: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
-          name: FWA Release ${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          tag_name: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop
+          name: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop
           draft: false
           prerelease: false
           body: |
@@ -435,7 +435,7 @@ jobs:
             4. Deploy according to NXOS integration documentation
             
             ### Release Notes
-            Full release notes: [docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}.md](https://github.com/isovalent/hubble-fwa-releases/blob/main/docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}.md)
+            Full release notes: [docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop.md](https://github.com/isovalent/hubble-fwa-releases/blob/main/docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop.md)
             
             ---
             
@@ -446,7 +446,7 @@ jobs:
         run: |
           echo "=== Release Publication Summary ==="
           echo "Target Repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}"
-          echo "Release Tag: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
+          echo "Release Tag: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop"
           echo ""
           echo "Metadata Published:"
           echo "  - Version: ${{ needs.init.outputs.version }}"
