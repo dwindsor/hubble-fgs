@@ -114,6 +114,13 @@ spec:
         - operator: "In" 
           values:
           - 0
+      matchBinaryProperties: # only for exec events
+      - privileges_changed:
+        - operator: "In"
+          values:
+          - "PRIVILEGES_RAISED_EXEC_FILE_SETUID"
+          - "PRIVILEGES_RAISED_EXEC_FILE_SETGID"
+          - "PRIVILEGES_RAISED_EXEC_FILE_CAP"
       matchProcessDuration: # match all processes that run for more than 2 seconds
       - operator: "GT"
         value: 2s
