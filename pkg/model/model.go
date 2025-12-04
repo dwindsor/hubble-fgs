@@ -11,6 +11,8 @@
 package model
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"maps"
 	"slices"
@@ -119,6 +121,15 @@ func MaybeTimeToTimestamp(t *time.Time) *timestamppb.Timestamp {
 	return timestamppb.New(*t)
 }
 
+// processGroupHash generates a hash to identify a process group.
+// The hash is a SHA256 of the process name and arguments.
+func processGroupHash(name, arguments string) string {
+	h := sha256.New()
+	h.Write([]byte(name))
+	h.Write([]byte(arguments))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
 func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 	nsKey := namespaceKey{name: pk.Namespace}
 	wlkey := workloadKey{name: pk.WorkloadName, kind: pk.WorkloadKind}
@@ -187,6 +198,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 			for _, wlval := range val {
 				for pskey, psval := range wlval {
 					ps := &appModelV1.ApplicationProcessGroup{
+						Hash:        processGroupHash(pskey.name, pskey.arguments),
 						Name:        pskey.name,
 						Arguments:   pskey.arguments,
 						Connections: slices.Collect(maps.Values(psval.connections)),
@@ -211,6 +223,7 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 				}
 				for pskey, psval := range wlval {
 					ps := &appModelV1.ApplicationProcessGroup{
+						Hash:        processGroupHash(pskey.name, pskey.arguments),
 						Name:        pskey.name,
 						Arguments:   pskey.arguments,
 						Connections: slices.Collect(maps.Values(psval.connections)),

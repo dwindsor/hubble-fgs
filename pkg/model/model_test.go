@@ -38,7 +38,7 @@ func TestMerge(t *testing.T) {
 	res.Id = "" // Clear the UUID for unit test.
 	merged, err := res.MarshalJSON()
 	assert.NoError(t, err)
-	expected := `{"host":{"processes":[{"in_init_tree":false,"name":"curl"},{"in_init_tree":false,"name":"wget"}]}}`
+	expected := `{"host":{"processes":[{"hash":"427e4b79b1f0fc90306cbe064b1297b21dc6835bfa656d3bf46bc156e3f24bb0","in_init_tree":false,"name":"curl"},{"hash":"570e342d0e4708dab94b2025f6b928845b659b405872d824b45473c4635d7b1d","in_init_tree":false,"name":"wget"}]}}`
 
 	assert.JSONEq(t, expected, string(merged))
 }
@@ -66,7 +66,7 @@ func TestMergeArgs(t *testing.T) {
 	res.Id = "" // Clear the UUID for unit test.
 	merged, err := res.MarshalJSON()
 	assert.NoError(t, err)
-	expected := `{"host":{"processes":[{"in_init_tree":false,"name":"curl", "arguments":"-v ebpf.io"},{"in_init_tree":false,"name":"curl", "arguments":"-v tetragon.io"},{"in_init_tree":false,"name":"wget"}]}}`
+	expected := `{"host":{"processes":[{"hash":"321311b99c11a3fa1048fb158670aab14355bf633dd302d3fed750f89e05f1c5","in_init_tree":false,"name":"curl", "arguments":"-v ebpf.io"},{"hash":"7d95c46e8e4ccede2e3963a1db6765819e2edd8546c012674d97103990e60164","in_init_tree":false,"name":"curl", "arguments":"-v tetragon.io"},{"hash":"570e342d0e4708dab94b2025f6b928845b659b405872d824b45473c4635d7b1d","in_init_tree":false,"name":"wget"}]}}`
 	assert.JSONEq(t, expected, string(merged))
 }
 
