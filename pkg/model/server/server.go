@@ -56,7 +56,11 @@ func ktimeToTime(kt uint64) *time.Time {
 	if kt == 0 {
 		return nil
 	}
-	t, err := ktime.DecodeKtime(int64(kt), true)
+	// Use CLOCK_BOOTTIME (monotonic=false) since BPF uses ktime_get_boot_ns() when available.
+	// This ensures correct timestamp conversion after system suspend/resume cycles.
+	// The application model requires modern kernels (5.x+) where ktime_get_boot_ns is
+	// always available, so CLOCK_BOOTTIME is the sensible default here.
+	t, err := ktime.DecodeKtime(int64(kt), false)
 	if err != nil {
 		return nil
 	}
