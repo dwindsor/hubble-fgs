@@ -236,8 +236,8 @@ jobs:
         id: release-type
         run: |
           echo "is_draft=false" >> $GITHUB_OUTPUT
-          echo "tag_name=${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop" >> $GITHUB_OUTPUT
-          echo "release_name=${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop" >> $GITHUB_OUTPUT
+          echo "tag_name=${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}" >> $GITHUB_OUTPUT
+          echo "release_name=${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}" >> $GITHUB_OUTPUT
       - name: Create GitHub Release 
         uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
         with:
@@ -342,10 +342,10 @@ jobs:
           RELEASE_DATE=$(date -u +"%Y-%m-%d")
           CHECKSUMS=$(cat ../release-artifacts/SHA256SUMS.txt)
           
-          RELEASE_NOTES_FILE="docs/release-notes/${VERSION}+${SHA}-codedrop.md"
+          RELEASE_NOTES_FILE="docs/release-notes/${VERSION}+${SHA}.md"
           
           cat > "$RELEASE_NOTES_FILE" << EOF
-          # Release Notes: ${VERSION}+${SHA}-codedrop
+          # Release Notes: ${VERSION}+${SHA}
           
           **Release Date:** ${RELEASE_DATE}
           
@@ -401,15 +401,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/release-notes/
-          git commit -m "docs: Add release notes for ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop" || echo "No changes to commit"
+          git commit -m "docs: Add release notes for ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}" || echo "No changes to commit"
           git push origin main
       - name: Create GitHub Release in hubble-fwa-releases
         uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
         with:
           token: ${{ steps.app-token.outputs.token }}
           repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}
-          tag_name: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop
-          name: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop
+          tag_name: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}
+          name: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}
           draft: false
           prerelease: false
           body: |
@@ -435,7 +435,7 @@ jobs:
             4. Deploy according to NXOS integration documentation
             
             ### Release Notes
-            Full release notes: [docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop.md](https://github.com/isovalent/hubble-fwa-releases/blob/main/docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop.md)
+            Full release notes: [docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md](https://github.com/isovalent/hubble-fwa-releases/blob/main/docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md)
             
             ---
             
@@ -446,7 +446,7 @@ jobs:
         run: |
           echo "=== Release Publication Summary ==="
           echo "Target Repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}"
-          echo "Release Tag: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop"
+          echo "Release Tag: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}"
           echo ""
           echo "Metadata Published:"
           echo "  - Version: ${{ needs.init.outputs.version }}"
@@ -487,14 +487,14 @@ jobs:
           auto-merge: true
           auto-approve: true
           create-source-branch: true
-          custom-commit-message: "feat: Update FWA_LATEST to ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop"
-          custom-branch-name: "feature/update-fwa-version-${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop"
+          custom-commit-message: "feat: Update FWA_LATEST to ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}"
+          custom-branch-name: "feature/update-fwa-version-${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}"
           makefile-update-data: |
             [
               {
                 "path": "Makefile",
                 "key": "FWA_LATEST",
-                "value": "${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}-codedrop"
+                "value": "${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}"
               }
             ]
           keeper-url: ${{ vars.VAULT_URL }}
