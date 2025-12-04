@@ -264,6 +264,23 @@ type ProcessDurationSelector struct {
 	Value string `json:"value"`
 }
 
+// +kubebuilder:validation:Enum=PRIVILEGES_RAISED_EXEC_FILE_CAP;PRIVILEGES_RAISED_EXEC_FILE_SETUID;PRIVILEGES_RAISED_EXEC_FILE_SETGID
+type PrivilegesChanged = string
+
+type PrivilegesChangedSelector struct {
+	// +kubebuilder:validation:Enum=In;NotIn
+	// Filter operation.
+	Operator string `json:"operator"`
+	// the types of privileges changed to match (ORed)
+	Values []PrivilegesChanged `json:"values,omitempty"`
+}
+
+type BinaryPropertiesSelector struct {
+	// +kubebuilder:validation:Optional
+	// Matches on privileges_changed value.
+	PrivilegesChanged []PrivilegesChangedSelector `json:"privileges_changed,omitempty"`
+}
+
 // FileSelector selects file operations.
 type FileSelector struct {
 	// +kubebuilder:validation:Optional
@@ -302,6 +319,9 @@ type FileSelector struct {
 	// +kubebuilder:validation:Optional
 	// Match on process duration.
 	MatchProcessDuration []ProcessDurationSelector `json:"matchProcessDuration,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Match on binary_properties. Valid only in PROCESS_EXEC events.
+	MatchBinaryProperties []BinaryPropertiesSelector `json:"matchBinaryProperties,omitempty"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches. For now we only support a single action and users can select either Post or Block. We use an array to potentially support additional actions in the future.
 	MatchActions []FileActionSelector `json:"matchActions,omitempty"`

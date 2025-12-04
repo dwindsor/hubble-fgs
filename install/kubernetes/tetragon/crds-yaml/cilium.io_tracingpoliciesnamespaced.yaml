@@ -379,6 +379,37 @@ spec:
                             - values
                             type: object
                           type: array
+                        matchBinaryProperties:
+                          description: Match on binary_properties. Valid only in PROCESS_EXEC
+                            events.
+                          items:
+                            properties:
+                              privileges_changed:
+                                description: Matches on privileges_changed value.
+                                items:
+                                  properties:
+                                    operator:
+                                      description: Filter operation.
+                                      enum:
+                                      - In
+                                      - NotIn
+                                      type: string
+                                    values:
+                                      description: the types of privileges changed
+                                        to match (ORed)
+                                      items:
+                                        enum:
+                                        - PRIVILEGES_RAISED_EXEC_FILE_CAP
+                                        - PRIVILEGES_RAISED_EXEC_FILE_SETUID
+                                        - PRIVILEGES_RAISED_EXEC_FILE_SETGID
+                                        type: string
+                                      type: array
+                                  required:
+                                  - operator
+                                  type: object
+                                type: array
+                            type: object
+                          type: array
                         matchDigests:
                           description: A list of operation filters.
                           items:
