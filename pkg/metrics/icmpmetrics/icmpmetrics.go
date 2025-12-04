@@ -22,5 +22,5 @@ var (
 		Name:      "icmp_datagrams_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "The number of sent/received ICMP datagrams",
-	}, []string{"namespace", "workload", "pod", "binary", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
+	}, []string{"namespace", "workload", "pod", "binary", "node_name", "dstnamespace", "dstworkload", "dstpod", "dstdns"})
 )

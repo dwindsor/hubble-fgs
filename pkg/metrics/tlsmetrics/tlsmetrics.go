@@ -69,7 +69,7 @@ func InitEventsMetricsForDocs(registry *prometheus.Registry) {
 	for _, v := range tlsapi.KnownTLSVersions {
 		// We could iterate over all known ciphers here, but that's a lot of ciphers.
 		// Let's initialize only with one example cipher.
-		processLabels := metrics.NewProcessLabels(consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary)
+		processLabels := metrics.NewProcessLabels(consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary, consts.ExampleNodeName)
 		TlsHandshakeTotal.WithLabelValues(processLabels, v, "TLS_EXAMPLE_CIPHER", enterpriseMetrics.ExampleDomain).Add(0)
 	}
 }

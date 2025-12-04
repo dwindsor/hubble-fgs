@@ -33,7 +33,7 @@ func (s HTTPLabels) Values() []string {
 
 func NewHTTPLabels(ns, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, host string) *HTTPLabels {
 	return &HTTPLabels{
-		ProcessLabels: *metrics.NewProcessLabels(ns, workload, pod, binary),
+		ProcessLabels: *metrics.NewProcessLabels(ns, workload, pod, binary, ""),
 		DstNamespace:  dstnamespace,
 		DstWorkload:   dstworkload,
 		DstPod:        dstpod,

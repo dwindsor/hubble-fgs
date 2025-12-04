@@ -78,7 +78,7 @@ func InitMetricsForDocs(registry *prometheus.Registry) {
 	InitMetrics(registry)
 
 	processLabels := metrics.NewProcessLabels(
-		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary, consts.ExampleNodeName,
 	)
 	dnsRequestTotal.WithLabelValues(processLabels, enterpriseMetrics.ExampleDNSNamesLabel, "", rrRequest.String()).Add(0)
 	for _, rcode := range rCodeNames {

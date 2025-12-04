@@ -30,7 +30,7 @@ func postIcmpStats(res *tetragon.ProcessIcmp) {
 	}
 	dstDNS := strings.Join(res.DestinationNames, ",")
 
-	icmpmetrics.IcmpStatsVol.WithLabelValues(ns, workload, pod, binary, dstns, dstworkload, dstpod, dstDNS).Inc()
+	icmpmetrics.IcmpStatsVol.WithLabelValues(ns, workload, pod, binary, "", dstns, dstworkload, dstpod, dstDNS).Inc()
 }
 
 func HandleIcmpEvent(res *tetragon.ProcessIcmp) {

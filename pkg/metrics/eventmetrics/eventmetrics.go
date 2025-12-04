@@ -36,7 +36,7 @@ func HandleOriginalEvent(originalEvent interface{}) {
 }
 
 func HandleProcessedEvent(processedEvent interface{}) {
-	var eventType, namespace, workload, pod, binary string
+	var eventType, namespace, workload, pod, binary, nodeName string
 	switch ev := processedEvent.(type) {
 	case *tetragon.GetEventsResponse:
 		binary, pod, workload, namespace = oss.GetProcessInfo(filters.GetProcess(&event.Event{Event: ev}))
@@ -46,9 +46,10 @@ func HandleProcessedEvent(processedEvent interface{}) {
 			logger.GetLogger().Warn("metrics: handleProcessedEvent: unhandled event", logfields.Error, err, "event", processedEvent)
 			eventType = "unhandled"
 		}
+		nodeName = ev.NodeName
 	default:
 		eventType = "unknown"
 	}
-	processLabels := option.CreateProcessLabels(namespace, workload, pod, binary)
+	processLabels := option.CreateProcessLabels(namespace, workload, pod, binary, nodeName)
 	oss.EventsProcessed.WithLabelValues(processLabels, eventType).Inc()
 }

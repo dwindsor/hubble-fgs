@@ -57,7 +57,7 @@ func getSocketInfo(processLabels *metrics.ProcessLabels, socket *tetragon.SockIn
 
 func createProcessLabels(labelFilter metrics.LabelFilter, res *tetragon.Process) *metrics.ProcessLabels {
 	binary, pod, workload, ns := oss.GetProcessInfo(res)
-	processLabels := metrics.NewProcessLabels(ns, workload, pod, binary)
+	processLabels := metrics.NewProcessLabels(ns, workload, pod, binary, "")
 
 	if !labelFilter["namespace"] {
 		processLabels.Namespace = ""

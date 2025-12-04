@@ -68,7 +68,7 @@ func InitTCPEventsMetricsForDocs(registry *prometheus.Registry) {
 
 	// Watermarks
 	srcSocketLabels := metrics.NewProcessLabels(
-		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary, consts.ExampleNodeName,
 	)
 	SocketStatsTxBursts.WithLabelValues(srcSocketLabels).Add(0)
 	SocketStatsTxDips.WithLabelValues(srcSocketLabels).Add(0)
@@ -168,7 +168,7 @@ func InitUDPEventsMetricsForDocs(registry *prometheus.Registry) {
 
 	// Watermarks
 	srcSocketLabels := metrics.NewProcessLabels(
-		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary, consts.ExampleNodeName,
 	)
 	SocketStatsUDPTxBursts.WithLabelValues(srcSocketLabels).Add(0)
 	SocketStatsUDPTxDips.WithLabelValues(srcSocketLabels).Add(0)
@@ -214,7 +214,7 @@ func InitRawSocketEventsMetricsForDocs(registry *prometheus.Registry) {
 	InitRawSocketEventsMetrics(registry)
 
 	srcSocketLabels := metrics.NewProcessLabels(
-		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary,
+		consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary, consts.ExampleNodeName,
 	)
 
 	RawsockCreateVol.WithLabelValues(srcSocketLabels).Add(0)

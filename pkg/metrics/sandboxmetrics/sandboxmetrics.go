@@ -35,12 +35,12 @@ func InitEventsMetrics(registry *prometheus.Registry) {
 
 func InitEventsMetricsForDocs(registry *prometheus.Registry) {
 	InitEventsMetrics(registry)
-	processLabels := metrics.NewProcessLabels(consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary)
+	processLabels := metrics.NewProcessLabels(consts.ExampleNamespace, consts.ExampleWorkload, consts.ExamplePod, consts.ExampleBinary, consts.ExampleNodeName)
 	eventsSyscalls.WithLabelValues(processLabels, "example-sandboxpolicy", "example_syscall").Add(0)
 }
 
 func HandleEvent(ev *tetragon.ProcessSandboxSyscall) {
 	binary, pod, workload, namespace := eventmetrics.GetProcessInfo(ev.Process)
-	processLabels := option.CreateProcessLabels(namespace, workload, pod, binary)
+	processLabels := option.CreateProcessLabels(namespace, workload, pod, binary, "")
 	eventsSyscalls.WithLabelValues(processLabels, ev.Policy, ev.Name)
 }

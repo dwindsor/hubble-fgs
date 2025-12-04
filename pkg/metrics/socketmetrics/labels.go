@@ -31,7 +31,7 @@ func (s SocketLabels) Values() []string {
 
 func NewSocketLabels(ns, workload, pod, binary, dstns, dstworkload, dstpod, dstdns, dstip string) *SocketLabels {
 	return &SocketLabels{
-		ProcessLabels: *metrics.NewProcessLabels(ns, workload, pod, binary),
+		ProcessLabels: *metrics.NewProcessLabels(ns, workload, pod, binary, ""),
 		DstNs:         dstns,
 		DstWorkload:   dstworkload,
 		DstPod:        dstpod,
@@ -51,7 +51,7 @@ type MulticastSocketLabels struct {
 
 func NewMulticastSocketLabels(ns, workload, pod, binary, srcmcast, dstns, dstworkload, dstpod, dstmcast string) *MulticastSocketLabels {
 	return &MulticastSocketLabels{
-		ProcessLabels: *metrics.NewProcessLabels(ns, workload, pod, binary),
+		ProcessLabels: *metrics.NewProcessLabels(ns, workload, pod, binary, ""),
 		SrcMcast:      srcmcast,
 		DstNs:         dstns,
 		DstWorkload:   dstworkload,

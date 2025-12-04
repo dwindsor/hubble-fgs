@@ -165,7 +165,7 @@ The total number of Tetragon flags. For internal use only.
 
 | label | values |
 | ----- | ------ |
-| `type ` | `clone, dataArgs, dataFilename, errorArgs, errorCWD, errorCgroupID, errorCgroupName, errorCgroupSubsys, errorCgroupSubsysCgrp, errorCgroups, errorFilename, errorPathResolutionCwd, execve, inInitTree, miss, nocwd, procFS, rootcwd, truncArgs, unknown` |
+| `type ` | `clone, dataArgs, dataFilename, errorArgs, errorCWD, errorCgroupID, errorCgroupName, errorCgroupSubsys, errorCgroupSubsysCgrp, errorCgroups, errorEnvs, errorFilename, errorPathResolutionCwd, execve, inInitTree, miss, nocwd, procFS, rootcwd, truncArgs, unknown` |
 
 ### `tetragon_generic_kprobe_merge_errors_total`
 
@@ -574,6 +574,7 @@ DNS question types total
 | `binary` | `example-binary` |
 | `names` | `example.com,www.example.com` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `qtype` | `TypeA, TypeAAAA, TypeALL, TypeAXFR, TypeCNAME, TypeHINFO, TypeMINFO, TypeMX, TypeNS, TypeOPT, TypePTR, TypeSOA, TypeSRV, TypeTXT, TypeWKS` |
 | `workload` | `example-workload` |
@@ -587,6 +588,7 @@ DNS response types total
 | `binary` | `example-binary` |
 | `names` | `example.com,www.example.com` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `rtype` | `TypeA, TypeAAAA, TypeALL, TypeAXFR, TypeCNAME, TypeHINFO, TypeMINFO, TypeMX, TypeNS, TypeOPT, TypePTR, TypeSOA, TypeSRV, TypeTXT, TypeWKS` |
 | `workload` | `example-workload` |
@@ -745,6 +747,7 @@ The total number of Tetragon events
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `type ` | `INTERFACE_STATS, PROCESS_ACCEPT, PROCESS_CLOSE, PROCESS_CONNECT, PROCESS_DNS, PROCESS_EXEC, PROCESS_EXIT, PROCESS_FILE, PROCESS_FILE_EXEC, PROCESS_HTTP, PROCESS_ICMP, PROCESS_IP_ERROR, PROCESS_KPROBE, PROCESS_LISTEN, PROCESS_LOADER, PROCESS_LSM, PROCESS_NETWORK_BURST, PROCESS_NETWORK_WATERMARK, PROCESS_RAWSOCK_CLOSE, PROCESS_RAWSOCK_CREATE, PROCESS_SANDBOX_SYSCALL, PROCESS_SOCKSTATS, PROCESS_THROTTLE, PROCESS_TLS, PROCESS_TRACEPOINT, PROCESS_UDP_SEQ_CHECK_ERROR, PROCESS_UPROBE, PROCESS_USDT, RATE_LIMIT_INFO` |
 | `workload` | `example-workload` |
@@ -758,6 +761,7 @@ Policy events calls observed.
 | `binary` | `example-binary` |
 | `hook ` | `example_kprobe` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `policy` | `example-tracingpolicy` |
 | `workload` | `example-workload` |
@@ -770,6 +774,7 @@ Sandboxpolicy syscall events observed.
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `policy` | `example-sandboxpolicy` |
 | `syscall` | `example_syscall` |
@@ -783,6 +788,7 @@ System calls observed.
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `syscall` | `example_syscall` |
 | `workload` | `example-workload` |
@@ -798,6 +804,7 @@ Dns request/response statistics
 | `binary` | `example-binary` |
 | `names` | `example.com,www.example.com` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `rcodes` | `FormatError, NameError, NotImplemented, Refused, ServerFailure, Success` |
 | `response` | `Request, Response` |
@@ -850,6 +857,7 @@ HTTP return code statistics
 | `dstworkload` | `example-workload` |
 | `host ` | `example.org` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -866,6 +874,7 @@ Duration of HTTP request processing.
 | `dstworkload` | `example-workload` |
 | `host ` | `example.org` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -883,6 +892,7 @@ The number of sent/received ICMP datagrams
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1061,6 +1071,7 @@ TCP socket socket drops statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1077,6 +1088,7 @@ TCP socket retransmit bytes statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1093,6 +1105,7 @@ TCP socket retransmit seg statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1104,6 +1117,7 @@ TCP socket RX watermarks state
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1115,6 +1129,7 @@ TCP socket RX bursts statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1131,6 +1146,7 @@ TCP socket RX bytes statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1142,6 +1158,7 @@ TCP socket RX dips statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1158,6 +1175,7 @@ TCP socket RX segment statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1174,6 +1192,7 @@ TCP socket smoothed RTT latency distribution in microseconds.
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1185,6 +1204,7 @@ TCP socket TX watermarks state
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1196,6 +1216,7 @@ TCP socket TX bursts statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1212,6 +1233,7 @@ TCP socket TX bytes statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1223,6 +1245,7 @@ TCP socket TX dips statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1239,6 +1262,7 @@ TCP socket TX segment statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1255,6 +1279,7 @@ TCP socket zero window events
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1272,6 +1297,7 @@ Histogram bucket for TCP socket latency in microseconds
 | `dstworkload` | `example-workload` |
 | `le   ` | `+Inf, 100, 1000, 2500, 5000, 7500, 9000, 9900` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1288,6 +1314,7 @@ Histogram count for TCP socket latency
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1304,6 +1331,7 @@ Histogram sum for TCP socket latency in microseconds
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1321,6 +1349,7 @@ Histogram bucket for TCP socket rtt in microseconds
 | `dstworkload` | `example-workload` |
 | `le   ` | `+Inf, 100, 1000, 2500, 5000, 7500, 9000, 9900` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1337,6 +1366,7 @@ Histogram count for TCP socket rtt
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1353,6 +1383,7 @@ Histogram sum for TCP socket rtt in microseconds
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1371,6 +1402,7 @@ UDP socket consume packet misses
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1387,6 +1419,7 @@ UDP socket drops statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1402,6 +1435,7 @@ UDP socket consume packet misses
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `srcmcast` | `10.1.0.0` |
 | `workload` | `example-workload` |
@@ -1418,6 +1452,7 @@ UDP socket drops statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `srcmcast` | `10.1.0.0` |
 | `workload` | `example-workload` |
@@ -1434,6 +1469,7 @@ UDP socket RX bytes statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `srcmcast` | `10.1.0.0` |
 | `workload` | `example-workload` |
@@ -1450,6 +1486,7 @@ UDP socket RX segment statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `srcmcast` | `10.1.0.0` |
 | `workload` | `example-workload` |
@@ -1466,6 +1503,7 @@ UDP socket TX bytes statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `srcmcast` | `10.1.0.0` |
 | `workload` | `example-workload` |
@@ -1482,6 +1520,7 @@ UDP socket TX segment statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `srcmcast` | `10.1.0.0` |
 | `workload` | `example-workload` |
@@ -1494,6 +1533,7 @@ UDP socket RX watermarks state
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1505,6 +1545,7 @@ UDP socket RX bursts statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1521,6 +1562,7 @@ UDP socket RX bytes statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1532,6 +1574,7 @@ UDP socket RX dips statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1548,6 +1591,7 @@ UDP socket RX segment statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1564,6 +1608,7 @@ UDP stack RX bytes statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1580,6 +1625,7 @@ UDP stack RX segment statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1596,6 +1642,7 @@ UDP stack TX bytes statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1612,6 +1659,7 @@ UDP stack TX segment statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1623,6 +1671,7 @@ UDP socket TX watermarks state
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1634,6 +1683,7 @@ UDP socket TX bursts statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1650,6 +1700,7 @@ UDP socket TX bytes statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1661,6 +1712,7 @@ UDP socket TX dips statistics
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1677,6 +1729,7 @@ UDP socket TX segment statistics
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1694,6 +1747,7 @@ Histogram bucket for UDP socket latency in microseconds
 | `dstworkload` | `example-workload` |
 | `le   ` | `+Inf, 100, 1000, 2500, 5000, 7500, 9000, 9900` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1710,6 +1764,7 @@ Histogram count for UDP socket latency
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1726,6 +1781,7 @@ Histogram sum for UDP socket latency in microseconds
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1742,6 +1798,7 @@ Histogram bucket for UDP socket multicast latency in microseconds
 | `dstworkload` | `example-workload` |
 | `le   ` | `+Inf, 100, 1000, 2500, 5000, 7500, 9000, 9900` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `srcmcast` | `10.1.0.0` |
 | `workload` | `example-workload` |
@@ -1758,6 +1815,7 @@ Histogram count for UDP socket multicast latency
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `srcmcast` | `10.1.0.0` |
 | `workload` | `example-workload` |
@@ -1774,6 +1832,7 @@ Histogram sum for UDP socket multicast latency in microseconds
 | `dstpod` | `example-pod` |
 | `dstworkload` | `example-workload` |
 | `namespace` | `example-namespace` |
+| `node_name` | `     ` |
 | `pod  ` | `example-pod` |
 | `srcmcast` | `10.1.0.0` |
 | `workload` | `example-workload` |
@@ -1788,6 +1847,7 @@ The number of raw sockets closed
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1799,6 +1859,7 @@ The number of raw sockets created
 | ----- | ------ |
 | `binary` | `example-binary` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `workload` | `example-workload` |
 
@@ -1813,6 +1874,7 @@ TLS handshake statistics
 | `binary` | `example-binary` |
 | `cipher` | `TLS_EXAMPLE_CIPHER` |
 | `namespace` | `example-namespace` |
+| `node_name` | `example-node-name` |
 | `pod  ` | `example-pod` |
 | `sni_name` | `example.org` |
 | `version` | `TLS1.0, TLS1.1, TLS1.2, TLS1.3` |

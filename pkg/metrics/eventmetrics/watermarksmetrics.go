@@ -37,7 +37,7 @@ func createTCPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 		b = ""
 	}
 
-	return metrics.NewProcessLabels(ns, w, p, b)
+	return metrics.NewProcessLabels(ns, w, p, b, "")
 }
 
 func createUDPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
@@ -56,7 +56,7 @@ func createUDPSrcSocketLabels(res *tetragon.Process) *metrics.ProcessLabels {
 		b = ""
 	}
 
-	return metrics.NewProcessLabels(ns, w, p, b)
+	return metrics.NewProcessLabels(ns, w, p, b, "")
 }
 
 func postUDPBurstStats(l *metrics.ProcessLabels, s *tetragon.ProcessNetworkBurst) {

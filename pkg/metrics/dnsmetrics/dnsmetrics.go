@@ -38,13 +38,13 @@ var (
 		Name:      "dns_qtypes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "DNS question types total",
-	}, []string{"namespace", "workload", "pod", "binary", "names", "qtype"})
+	}, []string{"namespace", "workload", "pod", "binary", "node_name", "names", "qtype"})
 
 	dnsRtypes = metrics.NewCounterVecWithPod(prometheus.CounterOpts{
 		Name:      "dns_rtypes_total",
 		Namespace: consts.MetricsNamespace,
 		Help:      "DNS response types total",
-	}, []string{"namespace", "workload", "pod", "binary", "names", "rtype"})
+	}, []string{"namespace", "workload", "pod", "binary", "node_name", "names", "rtype"})
 )
 
 func DnsCacheMisses() prometheus.Counter {

@@ -88,22 +88,22 @@ func Test_eventHandleProcessedEvent(t *testing.T) {
 
 	expected := strings.NewReader(`# HELP tetragon_events_total The total number of Tetragon events
 # TYPE tetragon_events_total counter
-tetragon_events_total{binary="",namespace="",pod="",type="PROCESS_CONNECT",workload=""} 1
-tetragon_events_total{binary="",namespace="",pod="",type="PROCESS_EXEC",workload=""} 1
-tetragon_events_total{binary="",namespace="",pod="",type="PROCESS_EXIT",workload=""} 1
-tetragon_events_total{binary="",namespace="",pod="",type="PROCESS_LISTEN",workload=""} 1
-tetragon_events_total{binary="",namespace="",pod="",type="PROCESS_TLS",workload=""} 1
-tetragon_events_total{binary="",namespace="",pod="",type="unknown",workload=""} 1
-tetragon_events_total{binary="binary_a",namespace="",pod="",type="PROCESS_CONNECT",workload=""} 1
-tetragon_events_total{binary="binary_a",namespace="namespace_a",pod="pod_a",type="PROCESS_CONNECT",workload="workload_a"} 1
-tetragon_events_total{binary="binary_b",namespace="",pod="",type="PROCESS_EXEC",workload=""} 1
-tetragon_events_total{binary="binary_b",namespace="namespace_b",pod="pod_b",type="PROCESS_EXEC",workload="workload_b"} 1
-tetragon_events_total{binary="binary_c",namespace="",pod="",type="PROCESS_LISTEN",workload=""} 1
-tetragon_events_total{binary="binary_c",namespace="namespace_c",pod="pod_c",type="PROCESS_LISTEN",workload="workload_c"} 1
-tetragon_events_total{binary="binary_d",namespace="",pod="",type="PROCESS_TLS",workload=""} 1
-tetragon_events_total{binary="binary_d",namespace="namespace_d",pod="pod_d",type="PROCESS_TLS",workload="workload_d"} 1
-tetragon_events_total{binary="binary_e",namespace="",pod="",type="PROCESS_EXIT",workload=""} 1
-tetragon_events_total{binary="binary_e",namespace="namespace_e",pod="pod_e",type="PROCESS_EXIT",workload="workload_e"} 1
+tetragon_events_total{binary="",namespace="",node_name="",pod="",type="PROCESS_CONNECT",workload=""} 1
+tetragon_events_total{binary="",namespace="",node_name="",pod="",type="PROCESS_EXEC",workload=""} 1
+tetragon_events_total{binary="",namespace="",node_name="",pod="",type="PROCESS_EXIT",workload=""} 1
+tetragon_events_total{binary="",namespace="",node_name="",pod="",type="PROCESS_LISTEN",workload=""} 1
+tetragon_events_total{binary="",namespace="",node_name="",pod="",type="PROCESS_TLS",workload=""} 1
+tetragon_events_total{binary="",namespace="",node_name="",pod="",type="unknown",workload=""} 1
+tetragon_events_total{binary="binary_a",namespace="",node_name="",pod="",type="PROCESS_CONNECT",workload=""} 1
+tetragon_events_total{binary="binary_a",namespace="namespace_a",node_name="",pod="pod_a",type="PROCESS_CONNECT",workload="workload_a"} 1
+tetragon_events_total{binary="binary_b",namespace="",node_name="",pod="",type="PROCESS_EXEC",workload=""} 1
+tetragon_events_total{binary="binary_b",namespace="namespace_b",node_name="",pod="pod_b",type="PROCESS_EXEC",workload="workload_b"} 1
+tetragon_events_total{binary="binary_c",namespace="",node_name="",pod="",type="PROCESS_LISTEN",workload=""} 1
+tetragon_events_total{binary="binary_c",namespace="namespace_c",node_name="",pod="pod_c",type="PROCESS_LISTEN",workload="workload_c"} 1
+tetragon_events_total{binary="binary_d",namespace="",node_name="",pod="",type="PROCESS_TLS",workload=""} 1
+tetragon_events_total{binary="binary_d",namespace="namespace_d",node_name="",pod="pod_d",type="PROCESS_TLS",workload="workload_d"} 1
+tetragon_events_total{binary="binary_e",namespace="",node_name="",pod="",type="PROCESS_EXIT",workload=""} 1
+tetragon_events_total{binary="binary_e",namespace="namespace_e",node_name="",pod="pod_e",type="PROCESS_EXIT",workload="workload_e"} 1
 `)
 	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.EventsProcessed, expected))
 }

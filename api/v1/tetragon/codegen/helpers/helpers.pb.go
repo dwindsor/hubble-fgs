@@ -202,6 +202,8 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessUsdt.Parent
 	case *tetragon.GetEventsResponse_ProcessLsm:
 		return ev.ProcessLsm.Parent
+	case *tetragon.GetEventsResponse_ProcessLoader:
+		return ev.ProcessLoader.Parent
 	case *tetragon.GetEventsResponse_ProcessConnect:
 		return ev.ProcessConnect.Parent
 	case *tetragon.GetEventsResponse_ProcessClose:
@@ -274,6 +276,8 @@ func ResponseInnerGetAncestors(event tetragon.IsGetEventsResponse_Event) []*tetr
 		return ev.ProcessUsdt.Ancestors
 	case *tetragon.GetEventsResponse_ProcessLsm:
 		return ev.ProcessLsm.Ancestors
+	case *tetragon.GetEventsResponse_ProcessLoader:
+		return ev.ProcessLoader.Ancestors
 	case *tetragon.GetEventsResponse_ProcessConnect:
 		return ev.ProcessConnect.Ancestors
 	case *tetragon.GetEventsResponse_ProcessClose:
