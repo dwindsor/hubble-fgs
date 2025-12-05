@@ -64,6 +64,7 @@ type processValue struct {
 	firstStartTime  *time.Time
 	latestStartTime *time.Time
 	latestExitTime  *time.Time
+	execCount       uint64
 }
 
 type connectionMap map[connectionKey]*appModelV1.ApplicationConnection
@@ -153,6 +154,7 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 			firstStartTime:  psval.FirstStartTime,
 			latestStartTime: psval.LatestStartTime,
 			latestExitTime:  psval.LatestExitTime,
+			execCount:       psval.ExecCount,
 		}
 	} else {
 		// Merge process data into existing entry (preserving connections)
@@ -162,6 +164,7 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 		existing.firstStartTime = psval.FirstStartTime
 		existing.latestStartTime = psval.LatestStartTime
 		existing.latestExitTime = psval.LatestExitTime
+		existing.execCount = psval.ExecCount
 		nsMap[nsKey][wlkey][pskey] = existing
 	}
 }
@@ -198,13 +201,13 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 			for _, wlval := range val {
 				for pskey, psval := range wlval {
 					ps := &appModelV1.ApplicationProcessGroup{
-						Hash:        processGroupHash(pskey.name, pskey.arguments),
-						Name:        pskey.name,
-						Arguments:   pskey.arguments,
-						Connections: slices.Collect(maps.Values(psval.connections)),
-						InInitTree:  wrapperspb.Bool(psval.inInitTree),
-						SyscallInfo: psval.syscalls,
-						// Parents:         psval.parents,  // TODO: Add when IPA schema includes Parents field
+						Hash:            processGroupHash(pskey.name, pskey.arguments),
+						Name:            pskey.name,
+						Arguments:       pskey.arguments,
+						Connections:     slices.Collect(maps.Values(psval.connections)),
+						InInitTree:      wrapperspb.Bool(psval.inInitTree),
+						SyscallInfo:     psval.syscalls,
+						ExecutionCount:  psval.execCount,
 						FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
 						LatestStartTime: MaybeTimeToTimestamp(psval.latestStartTime),
 						LatestExitTime:  MaybeTimeToTimestamp(psval.latestExitTime),
@@ -223,13 +226,13 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 				}
 				for pskey, psval := range wlval {
 					ps := &appModelV1.ApplicationProcessGroup{
-						Hash:        processGroupHash(pskey.name, pskey.arguments),
-						Name:        pskey.name,
-						Arguments:   pskey.arguments,
-						Connections: slices.Collect(maps.Values(psval.connections)),
-						InInitTree:  wrapperspb.Bool(psval.inInitTree),
-						SyscallInfo: psval.syscalls,
-						// Parents:         psval.parents,  // TODO: Add when IPA schema includes Parents field
+						Hash:            processGroupHash(pskey.name, pskey.arguments),
+						Name:            pskey.name,
+						Arguments:       pskey.arguments,
+						Connections:     slices.Collect(maps.Values(psval.connections)),
+						InInitTree:      wrapperspb.Bool(psval.inInitTree),
+						SyscallInfo:     psval.syscalls,
+						ExecutionCount:  psval.execCount,
 						FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
 						LatestStartTime: MaybeTimeToTimestamp(psval.latestStartTime),
 						LatestExitTime:  MaybeTimeToTimestamp(psval.latestExitTime),

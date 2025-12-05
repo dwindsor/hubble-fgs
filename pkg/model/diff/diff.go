@@ -92,14 +92,7 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 	for _, p := range a {
 		b, ok := psB[p.Name+p.Arguments]
 		if !ok {
-			psDiff = append(psDiff, p)
-			if len(p.Connections) > 0 {
-				connDiff = append(connDiff, p)
-			}
-			continue
-		}
-		// No changes in connections, but check if latestStartTime changed
-		if p.LatestStartTime != nil && b.LatestStartTime != nil && p.LatestStartTime.AsTime().After(b.LatestStartTime.AsTime()) {
+			// New process - add to diff
 			psDiff = append(psDiff, p)
 			if len(p.Connections) > 0 {
 				connDiff = append(connDiff, p)
@@ -107,8 +100,14 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 			continue
 		}
 
-		// Note: Since ApplicationProcessGroup doesn't have ParentNames field, we can't directly check for new parents here.
-		// However, a new parent implies a new process, which would be captured by LatestStartTime change above.
+		// Check if process_count (execution count) changed
+		if p.ExecutionCount > b.ExecutionCount {
+			psDiff = append(psDiff, p)
+			if len(p.Connections) > 0 {
+				connDiff = append(connDiff, p)
+			}
+			continue
+		}
 
 		d := &appModelV1.ApplicationProcessGroup{
 			Hash:            p.Hash,
