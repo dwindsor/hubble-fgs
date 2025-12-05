@@ -415,8 +415,8 @@ jobs:
           echo "==================================="
 
   update-fwa-version-dpu-pensando:
-    needs: [init, create-github-release]
-    if: ${{ needs.init.result == 'success' && needs.create-github-release.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master')) }}
+    needs: [init, create-fwa-releases-repo-release]
+    if: ${{ needs.init.result == 'success' && needs.create-fwa-releases-repo-release.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master')) }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
     env:
