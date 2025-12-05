@@ -1029,6 +1029,9 @@ type ApplicationProcessGroup struct {
 	LatestExitTime *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=latest_exit_time,json=latestExitTime,proto3" json:"latest_exit_time,omitempty"`
 	// The first time a process in this process group was observed to start.
 	FirstStartTime *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=first_start_time,json=firstStartTime,proto3" json:"first_start_time,omitempty"`
+	// The total number of times processes in this process group have been
+	// executed.
+	ExecutionCount uint64 `protobuf:"varint,12,opt,name=execution_count,json=executionCount,proto3" json:"execution_count,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1138,6 +1141,13 @@ func (x *ApplicationProcessGroup) GetFirstStartTime() *timestamppb.Timestamp {
 		return x.FirstStartTime
 	}
 	return nil
+}
+
+func (x *ApplicationProcessGroup) GetExecutionCount() uint64 {
+	if x != nil {
+		return x.ExecutionCount
+	}
+	return 0
 }
 
 type NetworkPolicy struct {
@@ -2018,7 +2028,7 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x13ApplicationWorkload\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x129\n" +
 	"\x04kind\x18\x02 \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\x04kind\x12P\n" +
-	"\tprocesses\x18\x03 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"\x8d\x05\n" +
+	"\tprocesses\x18\x03 \x03(\v22.application_model.v1alpha.ApplicationProcessGroupR\tprocesses\"\xb6\x05\n" +
 	"\x17ApplicationProcessGroup\x12\x12\n" +
 	"\x04hash\x18\x01 \x01(\tR\x04hash\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1c\n" +
@@ -2032,7 +2042,8 @@ const file_application_model_v1alpha_application_model_proto_rawDesc = "" +
 	"\x11latest_start_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x0flatestStartTime\x12D\n" +
 	"\x10latest_exit_time\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\x0elatestExitTime\x12D\n" +
-	"\x10first_start_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0efirstStartTime\"\x91\x01\n" +
+	"\x10first_start_time\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x0efirstStartTime\x12'\n" +
+	"\x0fexecution_count\x18\f \x01(\x04R\x0eexecutionCount\"\x91\x01\n" +
 	"\rNetworkPolicy\x12B\n" +
 	"\averdict\x18\x14 \x01(\x0e2(.application_model.v1alpha.PolicyVerdictR\averdict\x12\x1f\n" +
 	"\vpolicy_name\x18\x15 \x01(\tR\n" +

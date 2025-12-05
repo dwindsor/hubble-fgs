@@ -176,6 +176,7 @@ Kubernetes context.
 | workload_kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  | workload_kind represents the type of the Kubernetes workload. The workload_kind should be set when the resource_kind field is set to RESOURCE_KIND_WORKLOAD. |
 | ip | [string](#string) |  | ip is a network address that can be associated with the Kubernetes resource and the connection. |
 | port | [uint32](#uint32) |  | port is the network port associated with the ip address. |
+| ip_protocol | [common.net.v1alpha.IPProtocol](#common-net-v1alpha-IPProtocol) |  | protocol is the protocol that is used for the connection at the L3/L4 layer. |
 | application_model_uuid | [string](#string) |  | application_model_uuid is a unique identifier that identifies the application model associated with the Kubernetes resource. |
 
 

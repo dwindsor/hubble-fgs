@@ -233,6 +233,9 @@ message ApplicationProcessGroup {
   google.protobuf.Timestamp latest_exit_time = 10;
   // The first time a process in this process group was observed to start.
   google.protobuf.Timestamp first_start_time = 11;
+  // The total number of times processes in this process group have been
+  // executed.
+  uint64 execution_count = 12;
 }
 
 message NetworkPolicy {

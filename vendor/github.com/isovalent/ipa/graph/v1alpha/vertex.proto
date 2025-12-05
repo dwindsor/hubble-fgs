@@ -65,6 +65,9 @@ message VertexFamilyKubernetes {
   string ip = 12;
   // port is the network port associated with the ip address.
   uint32 port = 13;
+  // protocol is the protocol that is used for the connection at the L3/L4
+  // layer.
+  common.net.v1alpha.IPProtocol ip_protocol = 15;
   // application_model_uuid is a unique identifier that identifies the
   // application model associated with the Kubernetes resource.
   string application_model_uuid = 14;

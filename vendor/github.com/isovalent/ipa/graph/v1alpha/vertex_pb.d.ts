@@ -168,6 +168,14 @@ export declare type VertexFamilyKubernetes = Message<"graph.v1alpha.VertexFamily
   port: number;
 
   /**
+   * protocol is the protocol that is used for the connection at the L3/L4
+   * layer.
+   *
+   * @generated from field: common.net.v1alpha.IPProtocol ip_protocol = 15;
+   */
+  ipProtocol: IPProtocol;
+
+  /**
    * application_model_uuid is a unique identifier that identifies the
    * application model associated with the Kubernetes resource.
    *

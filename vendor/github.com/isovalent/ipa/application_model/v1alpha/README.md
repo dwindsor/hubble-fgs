@@ -671,6 +671,7 @@ the following criteria:
 | latest_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The latest time at which a process in this process group was observed to start. |
 | latest_exit_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The latest time at which a process in this process group was observed to exit. |
 | first_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The first time a process in this process group was observed to start. |
+| execution_count | [uint64](#uint64) |  | The total number of times processes in this process group have been executed. |
 
 
 

@@ -171,6 +171,9 @@ type VertexFamilyKubernetes struct {
 	Ip string `protobuf:"bytes,12,opt,name=ip,proto3" json:"ip,omitempty"`
 	// port is the network port associated with the ip address.
 	Port uint32 `protobuf:"varint,13,opt,name=port,proto3" json:"port,omitempty"`
+	// protocol is the protocol that is used for the connection at the L3/L4
+	// layer.
+	IpProtocol v1alpha1.IPProtocol `protobuf:"varint,15,opt,name=ip_protocol,json=ipProtocol,proto3,enum=common.net.v1alpha.IPProtocol" json:"ip_protocol,omitempty"`
 	// application_model_uuid is a unique identifier that identifies the
 	// application model associated with the Kubernetes resource.
 	ApplicationModelUuid string `protobuf:"bytes,14,opt,name=application_model_uuid,json=applicationModelUuid,proto3" json:"application_model_uuid,omitempty"`
@@ -297,6 +300,13 @@ func (x *VertexFamilyKubernetes) GetPort() uint32 {
 		return x.Port
 	}
 	return 0
+}
+
+func (x *VertexFamilyKubernetes) GetIpProtocol() v1alpha1.IPProtocol {
+	if x != nil {
+		return x.IpProtocol
+	}
+	return v1alpha1.IPProtocol(0)
 }
 
 func (x *VertexFamilyKubernetes) GetApplicationModelUuid() string {
@@ -497,7 +507,7 @@ const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	"kubernetes\x12Q\n" +
 	"\x0enetwork_device\x18\x02 \x01(\v2(.graph.v1alpha.VertexFamilyNetworkDeviceH\x00R\rnetworkDevice\x12K\n" +
 	"\fworld_entity\x18\x03 \x01(\v2&.graph.v1alpha.VertexFamilyWorldEntityH\x00R\vworldEntityB\b\n" +
-	"\x06family\"\xd5\x04\n" +
+	"\x06family\"\x96\x05\n" +
 	"\x16VertexFamilyKubernetes\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\tR\x03uid\x12J\n" +
 	"\rresource_kind\x18\x02 \x01(\x0e2%.common.k8s.type.v1alpha.ResourceKindR\fresourceKind\x12)\n" +
@@ -512,7 +522,9 @@ const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	" \x01(\x0e2$.common.k8s.type.v1alpha.ServiceKindR\vserviceKind\x12J\n" +
 	"\rworkload_kind\x18\v \x01(\x0e2%.common.k8s.type.v1alpha.WorkloadKindR\fworkloadKind\x12\x0e\n" +
 	"\x02ip\x18\f \x01(\tR\x02ip\x12\x12\n" +
-	"\x04port\x18\r \x01(\rR\x04port\x124\n" +
+	"\x04port\x18\r \x01(\rR\x04port\x12?\n" +
+	"\vip_protocol\x18\x0f \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\n" +
+	"ipProtocol\x124\n" +
 	"\x16application_model_uuid\x18\x0e \x01(\tR\x14applicationModelUuid\"\x9e\x02\n" +
 	"\x19VertexFamilyNetworkDevice\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x0e\n" +
@@ -559,12 +571,13 @@ var file_graph_v1alpha_vertex_proto_depIdxs = []int32{
 	4, // 3: graph.v1alpha.VertexFamilyKubernetes.resource_kind:type_name -> common.k8s.type.v1alpha.ResourceKind
 	5, // 4: graph.v1alpha.VertexFamilyKubernetes.service_kind:type_name -> common.k8s.type.v1alpha.ServiceKind
 	6, // 5: graph.v1alpha.VertexFamilyKubernetes.workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
-	7, // 6: graph.v1alpha.VertexFamilyNetworkDevice.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	7, // 6: graph.v1alpha.VertexFamilyKubernetes.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
+	7, // 7: graph.v1alpha.VertexFamilyNetworkDevice.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_graph_v1alpha_vertex_proto_init() }

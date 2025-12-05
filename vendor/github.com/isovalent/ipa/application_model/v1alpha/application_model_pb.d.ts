@@ -608,6 +608,14 @@ export declare type ApplicationProcessGroup = Message<"application_model.v1alpha
    * @generated from field: google.protobuf.Timestamp first_start_time = 11;
    */
   firstStartTime?: Timestamp;
+
+  /**
+   * The total number of times processes in this process group have been
+   * executed.
+   *
+   * @generated from field: uint64 execution_count = 12;
+   */
+  executionCount: bigint;
 };
 
 /**
