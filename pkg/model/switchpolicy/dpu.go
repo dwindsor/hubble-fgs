@@ -261,6 +261,12 @@ func (dpu *DPUListener) StateCheck() bool {
 				s.polReconnectCh = nil
 			}
 			logger.GetLogger().Warn("DPU sync timeout error, forcing policy reconnect", "uid", s.uid)
+			// On reset restore the fail count to zero so that we
+			// avoid going into a reset storm if it doesn't immediately
+			// get in sync. This happens with large policies where the
+			// time to sync may be larger or close to a single sync
+			// interval.
+			s.syncFailCount.Store(0)
 		}
 		if s.lastStatus.PolicyChecksum != hexChecksum {
 			stateCheck = false
@@ -268,7 +274,6 @@ func (dpu *DPUListener) StateCheck() bool {
 			logger.GetLogger().Error("failed state check", "dpu", s.uid, "failCount", s.syncFailCount.Load(), "expectedChecksum", hexChecksum, "actualChecksum", s.lastStatus.PolicyChecksum)
 			continue
 		}
-		s.syncFailCount.Store(0) // Resetting out of sync count to 0
 	}
 	return stateCheck
 }
