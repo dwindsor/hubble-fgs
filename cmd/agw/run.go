@@ -128,7 +128,7 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 			token = Config.K8sServiceAccountAuth
 			// Set the initial k8s auth token to NXOS if provided via command line option.
 			if err := agwAgent.SetK8sCtlrAuthToken(ctx, Config.K8sServiceAccountAuth); err != nil {
-				return fmt.Errorf("agw: failed to set agent token: %w", err)
+				return fmt.Errorf("agw failed to set agent token: %w", err)
 			}
 		} else {
 			if Config.EnableNXOS {

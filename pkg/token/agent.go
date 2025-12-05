@@ -216,7 +216,7 @@ func (a *AgentToken) Load() (bool, error) {
 
 	// Checking if tokens are valid.
 	if err = a.ValidK8sAuth(at); err != nil {
-		return false, fmt.Errorf("invalid k8s auth token in file: %w", err)
+		return false, fmt.Errorf("invalid k8s auth token: %w", err)
 	}
 	// Setting tokens in AgentToken object.
 	a.SetK8sAuthToken(at)
@@ -266,20 +266,11 @@ func (a *AgentToken) LoadK8sAuthFromEnv() error {
 // Returns an error if parsing fails or if any of the required fields are empty.
 func (a *AgentToken) ValidK8sAuth(tknStr string) error {
 	logger.GetLogger().Debug("Validating token")
-	apiServer, serviceAccountToken, caCert, err := enterpriseConfig.ParseServiceAccountAuth(tknStr)
+	_, err := enterpriseConfig.ExternalClusterSAConfig(tknStr)
 	if err != nil {
-		return fmt.Errorf("validate token: %w", err)
+		return err
 	}
-	if len(apiServer) == 0 {
-		return fmt.Errorf("field 'apiServer' cannot be empty")
-	}
-	if len(serviceAccountToken) == 0 {
-		return fmt.Errorf("field 'serviceAccountToken' cannot be empty")
-	}
-	if len(caCert) == 0 {
-		return fmt.Errorf("field 'caCert' cannot be empty")
-	}
-
+	logger.GetLogger().Debug("Validated token successfully")
 	return nil
 }
 
@@ -296,7 +287,8 @@ func (a *AgentToken) SetAndPersistK8sAuthToken(token string) error {
 	a.SetK8sAuthToken(token)
 	err := a.Persist()
 	if err != nil {
-		return fmt.Errorf("failed to persist k8s auth token: %w", err)
+		logger.GetLogger().Debug("failed to persist k8s token", logfields.Error, err)
+		return err
 	}
 	return nil
 }

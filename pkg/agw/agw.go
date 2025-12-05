@@ -293,7 +293,7 @@ func (agw *AgentGateway) SetK8sCtlrAuthToken(ctx context.Context, token string) 
 	// Ignore restart request from nxos.SetToken, since token is set via agw command line.
 	_, err := nxos.Nexus.SetToken(ctx, token)
 	if err != nil {
-		return fmt.Errorf("failed to set nxos k8s auth token: %w", err)
+		return err
 	}
 
 	return nil
@@ -401,7 +401,7 @@ func (agw *AgentGateway) tryLoadK8sAuth() (bool, error) {
 		}
 		// Persist the token.
 		if err := agw.Token.Persist(); err != nil {
-			return false, fmt.Errorf("failed to persist token: %w", err)
+			return false, err
 		}
 	}
 

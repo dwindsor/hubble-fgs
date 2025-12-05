@@ -34,14 +34,14 @@ func K8sConfig() (*rest.Config, bool, error) {
 	}
 
 	if enterpriseOption.Config.K8sServiceAccountAuth != "" {
-		cfg, err := externalClusterSAConfig(enterpriseOption.Config.K8sServiceAccountAuth)
+		cfg, err := ExternalClusterSAConfig(enterpriseOption.Config.K8sServiceAccountAuth)
 		return cfg, false, err
 	}
 	cfg, err := rest.InClusterConfig()
 	return cfg, true, err
 }
 
-func externalClusterSAConfig(details string) (*rest.Config, error) {
+func ExternalClusterSAConfig(details string) (*rest.Config, error) {
 	host, token, ca, err := ParseServiceAccountAuth(details)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse service account auth details: %w", err)
