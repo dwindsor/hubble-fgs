@@ -61,7 +61,7 @@ func (s *haServer) Adjacency(_ context.Context, req *hav1.AdjRequest) (*hav1.Adj
 
 	nxos.Nexus.HaSetMbrInfo(s.Ctx, req.HaIp, *req.MbrInfo)
 	nxos.Nexus.HaReconcile(s.Ctx, req.HaIp, *req.MbrInfo)
-	info := nxos.Nexus.HaGetMbrInfo(s.Ctx, req.HaIp)
+	info := nxos.Nexus.HaGetMbrInfo(s.Ctx, req.HaIp, true)
 
 	return &hav1.AdjResponse{
 		Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_SUCCESS,

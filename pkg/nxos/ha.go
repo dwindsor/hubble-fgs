@@ -170,11 +170,13 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 	}
 }
 
-func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string) hav1.MbrInfo {
+func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string, isLock bool) hav1.MbrInfo {
 	logger.GetLogger().Debug("HaGetMbrInfo")
 
-	n.RLock()
-	defer n.RUnlock()
+	if isLock {
+		n.RLock()
+		defer n.RUnlock()
+	}
 
 	if !n.haIsEnabled(ctx, false) {
 		logger.GetLogger().Debug("skip getting local mbr info")
@@ -355,7 +357,7 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 		adj, _ = n.Ha.Adjacencies[peer]
 	}
 
-	info := n.HaGetMbrInfo(ctx, peer)
+	info := n.HaGetMbrInfo(ctx, peer, false)
 	req := &hav1.AdjRequest{
 		HaIp:    n.Ha.HaIp,
 		MbrInfo: &info,
@@ -430,6 +432,13 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 	n.Lock()
 	defer n.Unlock()
 
+	for ip, mbr := range n.Ha.Members {
+		if now-mbr.Epoch > mbrTimeout {
+			logger.GetLogger().Debug("Member timed out", "ip", ip)
+			delete(n.Ha.Members, ip)
+			n.HaUpdatePtnr(ctx, ip, true)
+		}
+	}
 	for ip, adj := range n.Ha.Adjacencies {
 		if now-adj.Epoch > adjTimeout {
 			logger.GetLogger().Debug("Adjacency timed out", "ip", ip)
@@ -439,15 +448,7 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 				peer.State = hav1.MBR_STATE_HA_NA
 				n.Ha.Peers[ip] = peer
 			}
-			n.HaUpdatePtnr(ctx, ip, true)
 			n.setRemoteStatesAdjDown(ctx, ip)
-		}
-	}
-	for ip, mbr := range n.Ha.Members {
-		if now-mbr.Epoch > mbrTimeout {
-			logger.GetLogger().Debug("Member timed out", "ip", ip)
-			delete(n.Ha.Members, ip)
-			n.HaUpdatePtnr(ctx, ip, true)
 		}
 	}
 }
