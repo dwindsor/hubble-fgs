@@ -186,6 +186,11 @@ type UidGidVal struct {
 	gidVal uint32
 }
 
+type BinaryPropertiesVal struct {
+	secureexecOp  uint32
+	secureexecVal uint32
+}
+
 type ProcessDurationVal struct {
 	Op  uint32
 	Pad uint32
@@ -225,6 +230,9 @@ type KernelSelectorState struct {
 	// matchUidGid
 	uidgid map[uint32]*UidGidVal
 
+	// matchBinaryProperties
+	binaryProperties map[uint32]*BinaryPropertiesVal
+
 	// matchProcessDuration
 	processduration map[uint32]*ProcessDurationVal
 
@@ -248,6 +256,7 @@ func NewKernelSelectorState() *KernelSelectorState {
 		exec:                map[uint32]*MatchExecAttrs{},
 		openraw:             map[uint32]uint32{},
 		uidgid:              map[uint32]*UidGidVal{},
+		binaryProperties:    map[uint32]*BinaryPropertiesVal{},
 		processduration:     map[uint32]*ProcessDurationVal{},
 		action:              map[uint32]*ActionsVal{},
 	}
@@ -1474,6 +1483,69 @@ func GetUidGidMapSize(sel *KernelSelectorState) int {
 	return len(sel.uidgid)
 }
 
+func ParseMatchBinariesProperties(k *KernelSelectorState, op []v1alpha1.BinaryPropertiesSelector, selIdx int) error {
+	if len(op) > 1 {
+		return fmt.Errorf("only support a single operation inside a single selector")
+	}
+	if len(op) == 0 {
+		return nil
+	}
+
+	v := op[0].PrivilegesChanged
+	if len(v) > 1 {
+		return fmt.Errorf("privileges_changed error: only support a single entry")
+	}
+	if len(v) == 0 {
+		return nil
+	}
+
+	operator, err := selectors.SelectorOp(v[0].Operator)
+	if err != nil {
+		return fmt.Errorf("privileges_changed error: %v", err)
+	}
+
+	mask := uint32(0)
+	for _, m := range v[0].Values {
+		switch m {
+		case "PRIVILEGES_RAISED_EXEC_FILE_CAP":
+			mask |= uint32(processapi.ExecveFileCaps)
+		case "PRIVILEGES_RAISED_EXEC_FILE_SETUID":
+			mask |= uint32(processapi.ExecveSetuidRoot)
+		case "PRIVILEGES_RAISED_EXEC_FILE_SETGID":
+			mask |= uint32(processapi.ExecveSetgidRoot)
+		default:
+			return fmt.Errorf("privileges_changed error: unknown value %s", m)
+		}
+	}
+
+	val, ok := k.binaryProperties[uint32(selIdx)]
+	if !ok {
+		val = &BinaryPropertiesVal{}
+		k.binaryProperties[uint32(selIdx)] = val
+	}
+
+	val.secureexecOp = operator
+	val.secureexecVal = mask
+
+	return nil
+}
+
+func GenerateBinaryPropertiesMap(m *ebpf.Map, sel *KernelSelectorState) error {
+	for idx, result := range sel.binaryProperties {
+		if err := m.Update(idx, result, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetBinaryPropertiesMapSize(sel *KernelSelectorState) int {
+	if len(sel.binaryProperties) == 0 {
+		return 1
+	}
+	return len(sel.binaryProperties)
+}
+
 func ParseMatchProcessDuration(k *KernelSelectorState, op []v1alpha1.ProcessDurationSelector, selIdx int) error {
 	if len(op) > 1 {
 		return fmt.Errorf("only support a single operation inside a single selector")
@@ -1565,6 +1637,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 		}
 		if err := ParseMatchUidGid(kernelSelectors, s.MatchUidGid, i); err != nil {
 			return nil, fmt.Errorf("parseMatchUidGid error: %w", err)
+		}
+		if err := ParseMatchBinariesProperties(kernelSelectors, s.MatchBinaryProperties, i); err != nil {
+			return nil, fmt.Errorf("parseMatchBinariesProperties error: %w", err)
 		}
 		if err := ParseMatchProcessDuration(kernelSelectors, s.MatchProcessDuration, i); err != nil {
 			return nil, fmt.Errorf("parseMatchProcessDuration error: %w", err)

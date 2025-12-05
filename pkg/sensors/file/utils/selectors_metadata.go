@@ -22,20 +22,21 @@ import (
 )
 
 type SelectorsMetadata struct {
-	HasMatchBinaries        bool
-	HasMatchOperations      bool
-	OperationsSet           Set[tetragon.FileAction]
-	HasMatchDigests         bool
-	HasMatchNamespaces      bool
-	HasMatchCapabilities    bool
-	HasMatchRenameSrcType   bool
-	HasMatchOpenFlags       bool
-	HasMatchFilename        bool
-	HasMatchExecAttributes  bool
-	HasMatchOpenrawResult   bool
-	HasMatchUidGid          bool
-	HasMatchProcessDuration bool
-	HasMatchActions         bool
+	HasMatchBinaries         bool
+	HasMatchOperations       bool
+	OperationsSet            Set[tetragon.FileAction]
+	HasMatchDigests          bool
+	HasMatchNamespaces       bool
+	HasMatchCapabilities     bool
+	HasMatchRenameSrcType    bool
+	HasMatchOpenFlags        bool
+	HasMatchFilename         bool
+	HasMatchExecAttributes   bool
+	HasMatchOpenrawResult    bool
+	HasMatchUidGid           bool
+	HasMatchProcessDuration  bool
+	HasMatchBinaryProperties bool
+	HasMatchActions          bool
 }
 
 func If[T any](cond bool, vtrue, vfalse T) T {
@@ -72,20 +73,21 @@ func getAllOps() []tetragon.FileAction {
 
 func GetSelectorsMetadata(sel []v1alpha1.FileSelector) (*SelectorsMetadata, error) {
 	meta := &SelectorsMetadata{
-		HasMatchBinaries:        false,
-		HasMatchOperations:      false,
-		OperationsSet:           NewSet[tetragon.FileAction](),
-		HasMatchDigests:         false,
-		HasMatchNamespaces:      false,
-		HasMatchCapabilities:    false,
-		HasMatchRenameSrcType:   false,
-		HasMatchOpenFlags:       false,
-		HasMatchFilename:        false,
-		HasMatchExecAttributes:  false,
-		HasMatchOpenrawResult:   false,
-		HasMatchUidGid:          false,
-		HasMatchProcessDuration: false,
-		HasMatchActions:         false,
+		HasMatchBinaries:         false,
+		HasMatchOperations:       false,
+		OperationsSet:            NewSet[tetragon.FileAction](),
+		HasMatchDigests:          false,
+		HasMatchNamespaces:       false,
+		HasMatchCapabilities:     false,
+		HasMatchRenameSrcType:    false,
+		HasMatchOpenFlags:        false,
+		HasMatchFilename:         false,
+		HasMatchExecAttributes:   false,
+		HasMatchOpenrawResult:    false,
+		HasMatchUidGid:           false,
+		HasMatchProcessDuration:  false,
+		HasMatchBinaryProperties: false,
+		HasMatchActions:          false,
 	}
 
 	for _, s := range sel {
@@ -101,6 +103,7 @@ func GetSelectorsMetadata(sel []v1alpha1.FileSelector) (*SelectorsMetadata, erro
 		meta.HasMatchOpenrawResult = If(len(s.MatchOpenrawResult) > 0, true, meta.HasMatchOpenrawResult)
 		meta.HasMatchUidGid = If(len(s.MatchUidGid) > 0, true, meta.HasMatchUidGid)
 		meta.HasMatchProcessDuration = If(len(s.MatchProcessDuration) > 0, true, meta.HasMatchProcessDuration)
+		meta.HasMatchBinaryProperties = If(len(s.MatchBinaryProperties) > 0, true, meta.HasMatchBinaryProperties)
 		meta.HasMatchActions = If(len(s.MatchActions) > 0, true, meta.HasMatchActions)
 	}
 

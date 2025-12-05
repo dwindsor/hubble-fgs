@@ -80,7 +80,7 @@ static inline __attribute__((always_inline)) int handle_file_exec(void *ctx, str
 	// Now we can check for the selectors, if they do not match
 	// we can avoid creating the message.
 	// At these events we don't need to update any internal maps.
-	operation = eval_selectors((struct sel_args){ .action = action_exec, .flags = flags.d32, .retval = 0 }, digest, (struct sel_path){ 0, 0 }, &msg_id);
+	operation = eval_selectors((struct sel_args){ .action = action_exec, .flags = flags.d32, .retval = 0, .secureexec = INVALID_SECUREEXEC }, digest, (struct sel_path){ 0, 0 }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		return operation;
 

@@ -180,6 +180,7 @@ volatile const __u32 HAS_MATCH_EXEC_ATTRIBUTES = 1;
 volatile const __u32 HAS_MATCH_OPENRAW_RESULT = 1;
 volatile const __u32 HAS_MATCH_UID_GID = 1;
 volatile const __u32 HAS_MATCH_PROCESS_DURATION = 1;
+volatile const __u32 HAS_MATCH_BINARY_PROPERTIES = 1;
 
 #define INVALID_MATCHER	   0
 #define MATCH_ALL	   1
@@ -189,7 +190,8 @@ volatile const __u32 HAS_MATCH_PROCESS_DURATION = 1;
 volatile const __u32 PATH_BASED_MATCHER = 0;
 #endif /* __LARGE_BPF_PROG */
 
-#define INVALID_RULE_ID 0xffffffff // UINT32_MAX
+#define INVALID_RULE_ID	   0xffffffff // UINT32_MAX
+#define INVALID_SECUREEXEC 0xffffffff // UINT32_MAX
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -569,6 +571,7 @@ struct sel_args {
 	__u32 action;
 	__u32 flags;
 	__s32 retval;
+	__u32 secureexec;
 };
 
 #define SEL_OPENRAW_SUCCESS 0
@@ -594,6 +597,18 @@ struct {
 	__type(value, struct sel_uidgid); /* SEL_UIDGID_* */
 	__uint(max_entries, 1); /* the user will setup this */
 } file_uidgid_map SEC(".maps");
+
+struct sel_binprop {
+	__u32 secureexec_op;
+	__u32 secureexec_val;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u32);
+	__type(value, struct sel_binprop);
+	__uint(max_entries, 1); /* the user will setup this */
+} file_binprop_map SEC(".maps");
 
 struct sel_proc_dur {
 	__u32 op;
@@ -1168,6 +1183,33 @@ sel_check_gid:
 	return 1;
 }
 
+// returns 1 if it matches, 0 otherwise
+static inline __attribute__((always_inline)) int check_match_binary_properties(__u32 sel_idx, __u32 action, __u32 secureexec)
+{
+	__u32 sel = sel_idx;
+	struct sel_binprop *val = 0;
+
+	// only applicable to exec events
+	if (action != action_exec)
+		return 1;
+
+	// secureexec is not set
+	if (secureexec == INVALID_SECUREEXEC)
+		return 1;
+
+	val = map_lookup_elem(&file_binprop_map, &sel);
+	if (!val) // no matchBinaryProperties for this selector -- match
+		return 1;
+
+	if (val->secureexec_op == op_filter_in)
+		return (val->secureexec_val & secureexec) != 0;
+	else if (val->secureexec_op == op_filter_notin)
+		return (val->secureexec_val & secureexec) == 0;
+
+	// we should not reach this point (i.e. do not match)
+	return 0;
+}
+
 static inline __attribute__((always_inline)) bool has_match_proc_dur(__u32 selidx)
 {
 	return map_lookup_elem(&file_proc_dur_map, &selidx) != 0;
@@ -1214,6 +1256,14 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 	if (HAS_MATCH_UID_GID) {
 #endif
 		if (!check_match_uid_gid(sel_idx))
+			return 0;
+#ifdef __LARGE_BPF_PROG
+	}
+#endif
+#ifdef __LARGE_BPF_PROG
+	if (HAS_MATCH_BINARY_PROPERTIES) {
+#endif
+		if (!check_match_binary_properties(sel_idx, args.action, args.secureexec))
 			return 0;
 #ifdef __LARGE_BPF_PROG
 	}
@@ -1318,6 +1368,7 @@ struct selectors_ctx {
 	__s32 ret;
 	__u32 num_selectors;
 	__u32 msg_id;
+	__u32 secureexec;
 	struct digest_key *digest;
 };
 
@@ -1340,7 +1391,7 @@ static long selectors_cb(u32 index, void *ununsed)
 	if (index >= ctx->num_selectors) // no need to check more selectors
 		return 1;
 
-	ctx->retval = __eval_selectors(index, (struct sel_args){ .action = ctx->action, .flags = ctx->flags, .retval = ctx->ret }, ctx->digest, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
+	ctx->retval = __eval_selectors(index, (struct sel_args){ .action = ctx->action, .flags = ctx->flags, .retval = ctx->ret, .secureexec = ctx->secureexec }, ctx->digest, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
 	if (ctx->retval) { // we return the value from the first selector that matches
 		return 1;
 	}
@@ -1389,6 +1440,7 @@ eval_selectors(struct sel_args args, struct digest_key *digest, struct sel_path 
 	ctx->action = args.action;
 	ctx->flags = args.flags;
 	ctx->ret = args.retval;
+	ctx->secureexec = args.secureexec;
 	ctx->path = path.path;
 	ctx->len = path.len;
 	ctx->retval = 0;

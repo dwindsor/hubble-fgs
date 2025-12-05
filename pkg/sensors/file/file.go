@@ -205,6 +205,7 @@ var mapTypes = map[string]MapType{
 	"vfs_rename_info_heap":       PinnedMap,
 	"vr_retprobe_map":            PinnedMap,
 	"file_uidgid_map":            PinnedMap, // for matchUidGid
+	"file_binprop_map":           PinnedMap, // for matchBinaryProperties
 	"file_proc_dur_map":          PinnedMap,
 	"string_postfix_maps":        PinnedMap, // for matchBinaries Postfix/NoPostfix operator
 	"exec_attributes_map":        PinnedMap,
@@ -1649,6 +1650,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			load.RewriteConstants["HAS_MATCH_OPENRAW_RESULT"] = uint32(fm.If(meta.HasMatchOpenrawResult, 1, 0))
 			load.RewriteConstants["HAS_MATCH_UID_GID"] = uint32(fm.If(meta.HasMatchUidGid, 1, 0))
 			load.RewriteConstants["HAS_MATCH_PROCESS_DURATION"] = uint32(fm.If(meta.HasMatchProcessDuration, 1, 0))
+			load.RewriteConstants["HAS_MATCH_BINARY_PROPERTIES"] = uint32(fm.If(meta.HasMatchBinaryProperties, 1, 0))
 		}
 
 		progs = append(progs, load)
@@ -1757,6 +1759,14 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
 					if err := fm.GenerateUidGidMap(m, sel); err != nil {
 						return fmt.Errorf("file_uidgid_map: %w", err)
+					}
+					return nil
+				}
+			case "file_binprop_map":
+				m.SetMaxEntries(fm.GetBinaryPropertiesMapSize(sel))
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
+					if err := fm.GenerateBinaryPropertiesMap(m, sel); err != nil {
+						return fmt.Errorf("file_binprop_map: %w", err)
 					}
 					return nil
 				}
