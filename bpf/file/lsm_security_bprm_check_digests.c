@@ -20,6 +20,7 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 	struct dentry *dentry;
 	struct file *file;
 	int err;
+	char header[2] = { 0, 0 };
 
 	if (!policy_filter_match())
 		return 0;
@@ -70,15 +71,22 @@ int BPF_PROG(security_bprm_check_lsm, struct linux_binprm *bprm)
 
 	complete_msg(msg, action_exec, hook_security_bprm_check, operation, rule_id, 0, msg_id);
 
-	// Getting a file digest requires a sleepable LSM program.
-	// Sleepable programs can only use array, hash, ringbuf and local storage maps.
-	// To overcome this limitation we use an fexit program to call perf_event_output
-	// and send the event to the user-space. Fexit program always runs after
-	// the lsm.s program and they communicate through the exec_retprobe_map map.
-	err = map_update_elem(&exec_retprobe_map, &key, msg, 0);
-	if (err != 0) {
-		err = -FILE_ERR_UPDATE_EXEC_RETPROBE_MAP;
-		goto lsm_bprm_check_security_error;
+	// if we need to block *or* this is a script we need to send a message
+	// because the next hook (i.e. bprm_creds_from_file) will not be executed
+	probe_read_kernel(header, 2 * sizeof(char), _(&bprm->buf[0]));
+	if ((operation & FILE_OP_BLOCK) || ((header[0] == '#') && (header[1] == '!'))) {
+		// Getting a file digest requires a sleepable LSM program.
+		// Sleepable programs can only use array, hash, ringbuf and local storage maps.
+		// To overcome this limitation we use an fexit program to call perf_event_output
+		// and send the event to the user-space. Fexit program always runs after
+		// the lsm.s program and they communicate through the exec_retprobe_map map.
+		err = map_update_elem(&exec_retprobe_map, &key, msg, 0);
+		if (err != 0) {
+			err = -FILE_ERR_UPDATE_EXEC_RETPROBE_MAP;
+			goto lsm_bprm_check_security_error;
+		}
+	} else {
+		map_update_elem(&exec_cred_map, &key, msg, 0);
 	}
 
 lsm_bprm_check_security_ret:

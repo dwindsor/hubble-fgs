@@ -287,8 +287,8 @@ var (
 	FimPathBasedHooksExec = [...]FimHook{
 		{"lsm", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)}}},
 		{"lsm", "security_bprm_creds_from_file", []FimFunc{
-			{"security_bprm_creds_from_file(struct linux_binprm*, struct file*)", "lsm_security_bprm_check.o", "bprm_creds_from_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)},
-			{"security_bprm_creds_from_file(struct linux_binprm*, const struct file*)", "lsm_security_bprm_check.o", "bprm_creds_from_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)},
+			{"security_bprm_creds_from_file(struct linux_binprm*, struct file*)", "lsm_security_bprm_creds_from_file.o", "bprm_creds_from_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)},
+			{"security_bprm_creds_from_file(struct linux_binprm*, const struct file*)", "lsm_security_bprm_creds_from_file.o", "bprm_creds_from_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)},
 		}},
 	}
 
@@ -297,6 +297,10 @@ var (
 	FimPathBasedHooksExecDigests = [...]FimHook{
 		{"lsm.s", "security_bprm_check", []FimFunc{{"security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "bprm_check_security", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)}}},
 		{"fexit", "security_bprm_check", []FimFunc{{"int security_bprm_check(struct linux_binprm*)", "lsm_security_bprm_check_digests.o", "security_bprm_check", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)}}},
+		{"lsm", "security_bprm_creds_from_file", []FimFunc{
+			{"security_bprm_creds_from_file(struct linux_binprm*, struct file*)", "lsm_security_bprm_creds_from_file.o", "bprm_creds_from_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)},
+			{"security_bprm_creds_from_file(struct linux_binprm*, const struct file*)", "lsm_security_bprm_creds_from_file.o", "bprm_creds_from_file", fm.NewSet([]tetragon.FileAction{tetragon.FileAction_FILE_EXEC}...)},
+		}},
 	}
 
 	FimHooksObserve = [...]FimHook{
@@ -1615,7 +1619,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			checkReWrite = probeDpathSecurityFilePermission
 		case "lsm_security_kernel_read_file.o":
 			checkReWrite = probeDpathSecurityKernelReadFile
-		case "lsm_security_file_open.o", "lsm_security_mmap_file.o", "lsm_security_bprm_check.o", "lsm_security_bprm_check_digests.o":
+		case "lsm_security_file_open.o", "lsm_security_mmap_file.o", "lsm_security_bprm_check.o", "lsm_security_bprm_check_digests.o", "lsm_security_bprm_creds_from_file.o":
 			checkReWrite = probeDpathSecurityFileOpen
 		case "lsm_security_path_link.o", "lsm_security_path_symlink.o", "lsm_security_path_mkdir.o", "lsm_security_path_rmdir.o", "lsm_security_path_unlink.o", "lsm_security_path_truncate.o", "lsm_security_path_chmod.o", "lsm_security_path_chown.o", "lsm_security_path_rename.o":
 			checkReWrite = probeDpathSecurityPathTruncate

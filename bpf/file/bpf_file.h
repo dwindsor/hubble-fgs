@@ -459,6 +459,13 @@ struct {
 	__uint(max_entries, 1);
 } digest_heap_map SEC(".maps");
 
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct exec_key);
+	__type(value, struct msg_file_ops);
+	__uint(max_entries, 128);
+} exec_cred_map SEC(".maps");
+
 #define EXEC_ATTR_MEMFD_IDX 0
 #define EXEC_ATTR_UPPER_IDX 1
 
