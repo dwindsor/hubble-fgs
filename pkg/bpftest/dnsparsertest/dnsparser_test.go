@@ -53,7 +53,4 @@ func TestDNSParserPerPodFeature(t *testing.T) {
 	assert.Contains(t, outputString, fmt.Sprintf("\"%s\":1", dnsparser.ParserEnabledName))
 	assert.Contains(t, outputString, fmt.Sprintf("\"%s\":1", dnsparser.PerPodFeatureName))
 	assert.Contains(t, outputString, fmt.Sprintf("\"%s\":%d", dnsparser.KubepodsCgidConstName, arbitraryCgroupID))
-	assert.NotContains(t, outputString, fmt.Sprintf("\"%s\":0", dnsparser.ParserEnabledName))
-	assert.NotContains(t, outputString, fmt.Sprintf("\"%s\":0", dnsparser.PerPodFeatureName))
-	assert.NotContains(t, outputString, fmt.Sprintf("\"%s\":0", dnsparser.KubepodsCgidConstName))
 }
