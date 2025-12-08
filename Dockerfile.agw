@@ -47,7 +47,7 @@ RUN mkdir -p /data/volatile
 RUN mkdir -p /iox_data
 RUN mkdir -p /iox_data/isovalent/policy
 WORKDIR /usr/src/app
-COPY --from=gnmic /app/gnmic ./
+#COPY --from=gnmic /app/gnmic ./
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agw ./
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agwctl ./
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/agwctl.sh ./
