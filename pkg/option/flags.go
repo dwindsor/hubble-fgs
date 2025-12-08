@@ -95,6 +95,7 @@ const (
 	keyEnableNetworkEvents            = "enable-network-events"
 	keyEnableAlertsProfiling          = "enable-alerts-profiling"
 	keyK8sServiceAccountAuth          = "k8s-service-account-auth"
+	keyTetragonNodeNamespace          = "node-namespace"
 	KeyPolicyDir                      = "policy-dir"
 
 	EnvironmentAWS        = "aws"
@@ -212,6 +213,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
 	flags.MarkHidden(keyK8sServiceAccountAuth)
 
+	flags.String(keyTetragonNodeNamespace, "", "The namespace to register tetragon node if required")
 	flags.String(KeyPolicyDir, eedefaults.DefaultPoliciesDir, "Directory for all kind of policies to load at startup. Only single depth level files are supported")
 	// Mark other policiesDir options as deprecated
 	_ = flags.MarkDeprecated(option.KeyTracingPolicyDir, "Deprecated in v1.18.0, to be removed in v1.20.0. Use "+KeyPolicyDir+"instead.")
@@ -300,6 +302,7 @@ func readAndSetEnterpriseFlags() {
 	}
 
 	Config.K8sServiceAccountAuth = viper.GetString(keyK8sServiceAccountAuth)
+	Config.NodeNamespace = viper.GetString(keyTetragonNodeNamespace)
 }
 
 func validateConfig(config config) error {

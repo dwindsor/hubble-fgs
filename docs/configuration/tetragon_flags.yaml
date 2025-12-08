@@ -374,6 +374,8 @@ options:
       usage: Network policy file to load at startup
     - name: network-policy-dir
       usage: Directory for network policies to load at startup
+    - name: node-namespace
+      usage: The namespace to register tetragon node if required
     - name: ocsf-export-file-compress
       default_value: "false"
       usage: Compress rotated OCSF JSON export files

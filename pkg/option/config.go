@@ -121,6 +121,10 @@ type config struct {
 	// when Tetragon is running outside of k8s cluster.
 	// The value must be in the below format "API_SERVER|TOKEN|CA"
 	K8sServiceAccountAuth string
+
+	// NodeNamespace is the namespace for registering TetragonNode resource
+	// This is used when Tetragon agent is running outside but connecting to k8s cluster.
+	NodeNamespace string
 }
 
 var (

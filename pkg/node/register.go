@@ -24,6 +24,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/manager"
 	"github.com/isovalent/hubble-fgs/pkg/node/local"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	enterpriseConfig "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
+)
+
+const (
+	defaultNodeNamespace = "default"
 )
 
 // Register defines the interface for registering a TetragonNode.
@@ -125,7 +130,7 @@ func desiredNode(ctx context.Context, metadata local.MetadataService) (*v1alpha1
 	return &v1alpha1.TetragonNode{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: "default",
+			Namespace: getNodeNamespace(),
 			Labels:    validLables,
 		},
 		Status: v1alpha1.TetragonNodeStatus{
@@ -162,4 +167,22 @@ func sanitizeLabels(labels map[string]string) (map[string]string, map[string]str
 		sanitized[k] = v
 	}
 	return sanitized, invalid
+}
+
+// getNodeNamespace returns the namespace where the TetragonNode resource
+// should be created.
+// The node-namespace flag has the highest priority. If not set, and
+// k8s-service-account-auth is set, extract the namespace from the service
+// account auth string. Otherwise, return the default namespace
+func getNodeNamespace() string {
+	if len(option.Config.NodeNamespace) > 0 {
+		return option.Config.NodeNamespace
+	}
+	if len(option.Config.K8sServiceAccountAuth) > 0 {
+		ns, _ := enterpriseConfig.ExtractNamespaceAndServiceAccount(option.Config.K8sServiceAccountAuth)
+		if len(ns) > 0 {
+			return ns
+		}
+	}
+	return defaultNodeNamespace
 }
