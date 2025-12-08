@@ -690,6 +690,11 @@ func TestToNetworkFlat(t *testing.T) {
 	assert.Equal(t, uint64(1), f[1].RxBytes)
 	assert.Equal(t, aModel.Id, f[0].ApplicationModelId)
 	assert.Equal(t, aModel.Id, f[1].ApplicationModelId)
+
+	// Verify Id field is populated with unique UUIDs
+	assert.NotEmpty(t, f[0].Id, "network telemetry Id should not be empty")
+	assert.NotEmpty(t, f[1].Id, "network telemetry Id should not be empty")
+	assert.NotEqual(t, f[0].Id, f[1].Id, "network telemetry Ids should be unique")
 }
 
 func TestToNetworkFlatHost(t *testing.T) {
@@ -725,6 +730,9 @@ func TestToNetworkFlatHost(t *testing.T) {
 	assert.Equal(t, uint64(9), f[0].TxBytes)
 	assert.Equal(t, uint64(0), f[0].RxBytes)
 	assert.Equal(t, aModel.Id, f[0].ApplicationModelId)
+
+	// Verify Id field is populated
+	assert.NotEmpty(t, f[0].Id, "network telemetry Id should not be empty")
 }
 
 func TestToNetworkFlatProtocol(t *testing.T) {

@@ -590,6 +590,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 							verdict = policyVerdict(c.Stats)
 						}
 						entry := &appModelV1.NetworkConnectTelemetry{
+							Id:          uuid.NewString(),
 							ClusterName: cluster,
 							Container: &appModelV1.ApplicationContainer{
 								Id:    cont.Id,
@@ -640,6 +641,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 				}
 
 				entry := &appModelV1.NetworkConnectTelemetry{
+					Id:                                uuid.NewString(),
 					ClusterName:                       cluster,
 					NodeName:                          node,
 					EventType:                         appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
