@@ -88,6 +88,33 @@ get_scratch_space()
 	return scratch;
 }
 
+inline __attribute__((always_inline)) void str_to_lower_and_copy(void *dst, void *src, int len)
+{
+	char *d = (char *)dst;
+	char *s = (char *)src;
+
+	for (int i = 0; (i < len); i++) {
+		char p = s[i];
+
+		if (p >= 'A' && p <= 'Z')
+			p += 0x20;
+		d[i] = p;
+	}
+}
+
+inline __attribute__((always_inline)) void str_to_lower(void *src, int len)
+{
+	char *s = (char *)src;
+
+	for (int i = 0; (i < len); i++) {
+		char p = s[i];
+
+		if (p >= 'A' && p <= 'Z')
+			p += 0x20;
+		s[i] = p;
+	}
+}
+
 SEC("process")
 int ProcessMonitor(process_md_t *ctx)
 {
@@ -119,8 +146,7 @@ int ProcessMonitor(process_md_t *ctx)
 		if (command_length > (COMMAND_SCRATCH_SIZE - IMAGE_PATH_OFFSET - 1))
 			command_length = (COMMAND_SCRATCH_SIZE - IMAGE_PATH_OFFSET - 1);
 
-		// Use COMMAND_SCRATCH_SIZE -1 to ensure the last byte stays a 0 for null termination
-		memcpy_s(buffer, (COMMAND_SCRATCH_SIZE - IMAGE_PATH_OFFSET - 1) - 1, ctx->command_start, command_length);
+		str_to_lower_and_copy(buffer, ctx->command_start, command_length);
 
 		bpf_map_update_elem(&command_map, &process_create_info.process_id, buffer, BPF_ANY);
 
@@ -128,7 +154,11 @@ int ProcessMonitor(process_md_t *ctx)
 		memset(image_path_buf, 0, IMAGE_PATH_SIZE);
 
 		// Copy image path into the LRU hash.  Note we use IMAGE_PATH_SIZE - 1 to leave a guaranteed null terminator
-		bpf_process_get_image_path(ctx, image_path_buf, IMAGE_PATH_SIZE - 1);
+		int path_len = bpf_process_get_image_path(ctx, image_path_buf, IMAGE_PATH_SIZE - 1);
+
+		if (path_len > IMAGE_PATH_SIZE - 1)
+			path_len = IMAGE_PATH_SIZE - 1;
+		str_to_lower(image_path_buf, path_len);
 		bpf_map_update_elem(&process_map, &process_create_info.process_id, image_path_buf, BPF_ANY);
 		update_binary_uid_map(process_create_info.process_id, image_path_buf, buffer);
 		bpf_ringbuf_output(&process_ringbuf, &process_create_info, sizeof(process_create_info), 0);
@@ -150,7 +180,6 @@ int ProcessMonitor(process_md_t *ctx)
 		process_exit_info.common.size = size;
 		process_exit_info.exit_time = ctx->exit_time;
 		process_exit_info.process_exit_code = ctx->process_exit_code;
-		bpf_map_delete_elem(&pid_uid_map, pid);
 		bpf_map_delete_elem(&process_map, pid);
 		bpf_map_delete_elem(&command_map, pid);
 		bpf_ringbuf_output(&process_ringbuf, &process_exit_info, sizeof(process_exit_info), 0);

@@ -3,6 +3,7 @@ package dns
 import (
 	"bytes"
 	"io"
+	"strings"
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
@@ -17,12 +18,12 @@ func SanitizeWindowsPath(path string) string {
 	if len(path) < 4 {
 		return path
 	}
+	path = strings.ToLower(path)
 
 	// Prepend a \\??\\ to the path if it does not already exist
 	if path[0:4] != "\\??\\" {
 		path = "\\??\\" + path
 	}
-
 	// convert to Utf-16
 	encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
 
