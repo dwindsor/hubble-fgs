@@ -74,9 +74,41 @@ func TestManager(t *testing.T) {
 		status = mgr.Status()
 		require.Equal(t, 1, status.Log.Total-status.Log.Failures)
 
-		// change the mandate file to be a version that includes a broken policy
+		// change the mandate file to a new file without conf
 		oldFailures := status.Log.Failures
 		oldTotal := status.Log.Total
+		err = os.Rename(
+			filepath.Join(tmpDir, "mandate-noconf.yaml"),
+			filepath.Join(tmpDir, "mandate.yaml"),
+		)
+		require.NoError(t, err)
+		mgr.Refresh()
+		synctest.Wait()
+		status = mgr.Status()
+		require.NotNil(t, status.Mandate)
+		require.Equal(t, "", status.Mandate.Version)
+		require.Equal(t, status.Log.Total, oldTotal+1)
+		require.Equal(t, status.Log.Failures, oldFailures)
+
+		// change the mandate file to a new file with mode config
+		oldFailures = status.Log.Failures
+		oldTotal = status.Log.Total
+		err = os.Rename(
+			filepath.Join(tmpDir, "mandate-conf.yaml"),
+			filepath.Join(tmpDir, "mandate.yaml"),
+		)
+		require.NoError(t, err)
+		mgr.Refresh()
+		synctest.Wait()
+		status = mgr.Status()
+		require.NotNil(t, status.Mandate)
+		require.Equal(t, "", status.Mandate.Version)
+		require.Equal(t, status.Log.Total, oldTotal+1)
+		require.Equal(t, status.Log.Failures, oldFailures)
+
+		// change the mandate file to be a version that includes a broken policy
+		oldFailures = status.Log.Failures
+		oldTotal = status.Log.Total
 		err = os.Rename(
 			filepath.Join(tmpDir, "mandate-failure.yaml"),
 			filepath.Join(tmpDir, "mandate.yaml"),
@@ -86,7 +118,7 @@ func TestManager(t *testing.T) {
 		synctest.Wait()
 		status = mgr.Status()
 		require.NotNil(t, status.Mandate)
-		require.Equal(t, "1.0.0", status.Mandate.Version)
+		require.Equal(t, "", status.Mandate.Version)
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures+1)
 

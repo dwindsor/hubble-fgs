@@ -90,7 +90,14 @@ func (tsm *TestSensorManager) ConfigureTracingPolicy(_ context.Context, conf *te
 	}
 
 	if conf.Mode != nil {
-		val.mode = policyconf.Mode(*(conf.Mode))
+		switch *conf.Mode {
+		case tetragon.TracingPolicyMode_TP_MODE_ENFORCE:
+			val.mode = policyconf.EnforceMode
+		case tetragon.TracingPolicyMode_TP_MODE_MONITOR:
+			val.mode = policyconf.MonitorMode
+		default:
+			val.mode = policyconf.InvalidMode
+		}
 	}
 	tsm.pols[name] = val
 	return nil
