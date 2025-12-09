@@ -26,7 +26,6 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 
@@ -102,7 +101,7 @@ func (a *AgentToken) SetK8sAuthPath(path string) {
 
 // SetNamespaceAndServiceAccount extracts and sets the namespace and service account from the token.
 func (a *AgentToken) setNamespaceAndServiceAccount(tokenString string) {
-	namespace, serviceAccount := a.extractNamespaceAndServiceAccount(tokenString)
+	namespace, serviceAccount := enterpriseConfig.ExtractNamespaceAndServiceAccount(tokenString)
 	a.k8sNamespace = namespace
 	a.k8sServiceAccount = serviceAccount
 }
@@ -305,86 +304,6 @@ func (a *AgentToken) SetAndPersistK8sAuthToken(token string) error {
 		return err
 	}
 	return nil
-}
-
-// extractNamespaceAndServiceAccount extracts the Kubernetes namespace and service account name
-// from a given JWT token string.
-//
-// Parameters:
-//
-//	tokenString - the JWT token string to extract claims from.
-//
-// Returns:
-//
-//	namespace      - the extracted Kubernetes namespace, or an empty string if not found.
-//	serviceAccount - the extracted service account name, or an empty string if not found.
-func (a *AgentToken) extractNamespaceAndServiceAccount(tokenString string) (string, string) {
-	// Validating input.
-	if tokenString == "" {
-		logger.GetLogger().Debug("token is empty")
-		return "", ""
-	}
-
-	// Get the service account token from the full token string.
-	_, serviceAccountToken, _, err := enterpriseConfig.ParseServiceAccountAuth(tokenString)
-	if err != nil || serviceAccountToken == "" {
-		logger.GetLogger().Error("failed to parse service account auth", logfields.Error, err)
-		return "", ""
-	}
-
-	// Extracting namespace and service account from the token.
-	parser := jwt.Parser{}
-	tokenObj, _, err := parser.ParseUnverified(serviceAccountToken, jwt.MapClaims{})
-	if err != nil {
-		logger.GetLogger().Error("failed to parse token to get namespace and service account")
-		return "", ""
-	}
-	if tokenObj == nil {
-		logger.GetLogger().Error("jwt claims not found in token")
-		return "", ""
-	}
-	claims, ok := tokenObj.Claims.(jwt.MapClaims)
-	if !ok {
-		logger.GetLogger().Error("invalid jwt claims")
-		return "", ""
-	}
-
-	// The JWT token structure may use nested objects under "kubernetes.io" as per Kubernetes service account token projection,
-	// see: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-token-volume-projection
-	// Extract namespace and service account from the nested structure.
-	var namespace, serviceAccount string
-
-	// Try the nested structure first (modern format: claims["kubernetes.io"] is a map with "namespace" and "serviceaccount" keys)
-	if k8sInfo, ok := claims["kubernetes.io"].(map[string]interface{}); ok {
-		if ns, ok := k8sInfo["namespace"].(string); ok {
-			namespace = ns
-		}
-		if saInfo, ok := k8sInfo["serviceaccount"].(map[string]interface{}); ok {
-			if saName, ok := saInfo["name"].(string); ok {
-				serviceAccount = saName
-			}
-		}
-	}
-
-	// Fall back to flat structure (legacy format) if needed.
-	// Some Kubernetes clusters or custom token issuers may use a flat claim structure
-	// instead of the nested "kubernetes.io" object. This legacy format is supported
-	// for backward compatibility with older clusters or non-standard token generators.
-	if namespace == "" {
-		if ns, ok := claims["kubernetes.io/serviceaccount/namespace"].(string); ok {
-			namespace = ns
-		} else {
-			logger.GetLogger().Error("namespace not found in jwt claims")
-		}
-	}
-	if serviceAccount == "" {
-		if sa, ok := claims["kubernetes.io/serviceaccount/service-account.name"].(string); ok {
-			serviceAccount = sa
-		} else {
-			logger.GetLogger().Error("service-account name not found in jwt claims")
-		}
-	}
-	return namespace, serviceAccount
 }
 
 func (a *AgentToken) K8sControllerURL() string {
