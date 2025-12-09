@@ -1,5 +1,6 @@
 import logging
 import time
+import json
 from typing import Callable
 
 logger = logging.getLogger(__name__)
@@ -29,10 +30,12 @@ def retry_on_failure(func: Callable, max_retries: int = 3, delay: float = 1.0):
 
 def parse_json_output(output: str) -> dict:
     """Parse JSON output from command"""
-    import json
     try:
         return json.loads(output)
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse JSON: {e}")
         logger.error(f"Output was: {output}")
         raise
+
+def wait_for_timeout(timeout: int):
+    time.sleep(timeout)

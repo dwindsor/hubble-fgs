@@ -35,12 +35,12 @@ def cmd(config) -> CommandExecutor:
     return executor
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function", autouse=True)
 def clean_policies_and_flows(cmd):
-    """Optional cleanup fixture - only used if explicitly requested by a test.
+    """Automatic cleanup fixture - runs before every test.
     
-    Note: In CI environments, dpctl commands can hang. This fixture is disabled
-    by default. Tests should be designed to work without pre-test cleanup.
+    Clears policies from AGW and SIM containers before each test to ensure
+    a clean state. Flow clearing is skipped as it can hang in CI environments.
     """
     logger.info("Cleaning up policies and flows before test")
     
