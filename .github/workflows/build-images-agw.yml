@@ -1,4 +1,4 @@
-name: Build Hubble FGS AGW Docker Images
+name: Build Hubble FGS AGW Docker Images, Binaries and Test Images
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
   pull_request:
     paths-ignore:
       - "**.md"
+      - "contrib/grafana/**"
     branches: [ master ]
     types:
       - opened
@@ -17,6 +18,8 @@ permissions:
   contents: write
   id-token: write
   pull-requests: write
+  actions: read
+  pages: write
 
 concurrency:
   group: ${{ github.event_name == 'push' && format('{0}-{1}', github.workflow, github.ref) || github.event_name == 'pull_request' && format('{0}-pr-{1}-{2}', github.workflow, github.event.pull_request.number, github.event.action) || format('{0}-{1}', github.workflow, github.ref) }}
@@ -48,16 +51,53 @@ jobs:
             echo "Updated version to: $VERSION"
           fi
           
-          # Remove the -g<SHA> part if present
-          if [[ "$VERSION" =~ (.*)-g[a-f0-9]+ ]]; then
-            TRIMMED_VERSION="${BASH_REMATCH[1]}"
-            echo "Trimming git SHA suffix, updated version: $TRIMMED_VERSION"
-            VERSION="$TRIMMED_VERSION"
-          fi
+          # Simplify version to match format like 1.18.0-pre.1-95 or 1.15.4-some-string
+          # Keep semantic version and any first hyphenated suffix, but remove git commit info
+          VERSION=$(echo "$VERSION" | sed -E 's/^(v?[0-9]+\.[0-9]+\.[0-9]+(-[^-]+)?).*/\1/')
+          DATE=$(date -u +"%Y%m%d%H%M")
+          SHA=$(git rev-parse --short HEAD)
           
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "date=$(date -u +"%Y%m%d%H%M")" >> $GITHUB_OUTPUT
-          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+      - name: Validate release metadata
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          DATE="${{ steps.get-version.outputs.date }}"
+          SHA="${{ steps.get-version.outputs.sha }}"
+          
+          echo "=== Release Metadata Validation ==="
+          echo "Version: $VERSION"
+          echo "Date: $DATE"
+          echo "SHA: $SHA"
+          echo "==================================="
+          
+          ERRORS=0
+          if [[ -z "$VERSION" ]]; then
+            echo "::error::VERSION is empty - release metadata validation failed"
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [[ -z "$DATE" ]]; then
+            echo "::error::DATE is empty - release metadata validation failed"
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [[ -z "$SHA" ]]; then
+            echo "::error::SHA is empty - release metadata validation failed"
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [[ ! "$SHA" =~ ^[a-f0-9]{7,}$ ]]; then
+            echo "::error::SHA format invalid (expected 7+ hex chars): $SHA"
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [[ ! "$DATE" =~ ^[0-9]{12}$ ]]; then
+            echo "::error::DATE format invalid (expected YYYYMMDDHHMM): $DATE"
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [[ $ERRORS -gt 0 ]]; then
+            echo "::error::Release metadata validation failed with $ERRORS error(s)"
+            exit 1
+          fi
+          echo "✓ All release metadata validated successfully"
     outputs:
       version: ${{ steps.get-version.outputs.version }}
       date: ${{ steps.get-version.outputs.date }}
@@ -234,7 +274,7 @@ jobs:
     needs: [ init, build-agw-image ]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 1
-    if: ${{ needs.build-agw-image.result == 'success' }}
+    if: ${{ needs.build-agw-image.result == 'success' && github.ref == 'refs/heads/master' }}
     env:
       TARGET_ORG: cisco-hypershield
       TARGET_REPO: hs-actions
@@ -298,3 +338,352 @@ jobs:
           echo "| Target Workflow | corona-blackduck-scan-isovalent.yaml |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Name | ${{ env.AGW_IMAGE_NAME }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Tag | ${{ needs.init.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+
+  call-sanity-tests:
+    needs: [ init, build-agw-image ]
+    if: ${{ needs.build-agw-image.result == 'success' }}
+    uses: ./.github/workflows/agw-sanity-tests.yaml
+    with:
+      version: ${{ needs.init.outputs.version }}
+      date: ${{ needs.init.outputs.date }}
+      sha: ${{ needs.init.outputs.sha }}
+    secrets:
+      HYPERSHIELD_GH_APP_PEM: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
+
+  combine-artifacts:
+    needs: [ init, build-agw-image, build-agw-binaries, call-sanity-tests ]
+    if: ${{ always() && !cancelled() && needs.build-agw-image.result == 'success' && needs.build-agw-binaries.result == 'success' && needs.call-sanity-tests.result == 'success' }}
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 5
+    outputs:
+      artifact_dir: ${{ steps.prepare-artifacts.outputs.artifact_dir }}
+    steps:
+      - name: Download AGW Docker image artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: "hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}"
+          path: "./combined-artifacts/docker"
+      - name: Download AGW binaries artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: "hubble-fgs-agw-binaries-${{ needs.init.outputs.version }}"
+          path: "./combined-artifacts/binaries"
+      - name: Download test results artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        continue-on-error: true
+        with:
+          name: "agw-sanity-test-results"
+          path: "./combined-artifacts/test-results"
+      - name: List downloaded artifacts
+        run: |
+          echo "Docker artifacts:"
+          find ./combined-artifacts/docker -type f | sort
+          echo "\nBinaries artifacts:"
+          find ./combined-artifacts/binaries -type f | sort
+          echo "\nTest results:"
+          find ./combined-artifacts/test-results -type f 2>/dev/null | sort || echo "No test results found"
+      - name: Prepare artifacts for GitHub release
+        id: prepare-artifacts
+        run: |
+          mkdir -p ./release-artifacts
+          
+          # Package Docker image
+          cp ./combined-artifacts/docker/*.tar.gz ./release-artifacts/ 2>/dev/null || \
+            tar -czf ./release-artifacts/agw-docker-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/docker .
+          
+          # Package binaries
+          tar -czf ./release-artifacts/agw-binaries-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/binaries .
+          
+          # Package test results if available
+          if [ -d "./combined-artifacts/test-results" ] && [ "$(ls -A ./combined-artifacts/test-results 2>/dev/null)" ]; then
+            tar -czf ./release-artifacts/agw-test-results-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/test-results .
+          fi
+          
+          cd ./release-artifacts
+          sha256sum *.tar.gz > SHA256SUMS.txt
+          echo "artifact_dir=$(pwd)" >> $GITHUB_OUTPUT
+      - name: Create release metadata manifest
+        run: |
+          cat > ./release-artifacts/metadata.json << EOF
+          {
+            "version": "${{ needs.init.outputs.version }}",
+            "date": "${{ needs.init.outputs.date }}",
+            "sha": "${{ needs.init.outputs.sha }}",
+            "full_sha": "${{ github.sha }}",
+            "source_repository": "${{ github.repository }}",
+            "source_ref": "${{ github.ref }}",
+            "build_timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "release_tag": "${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}",
+            "artifacts": [
+              {
+                "name": "agw.tar.gz",
+                "type": "docker-image"
+              },
+              {
+                "name": "agw-binaries-${{ needs.init.outputs.version }}.tar.gz",
+                "type": "binaries"
+              }
+            ]
+          }
+          EOF
+          echo "Created metadata.json:"
+          cat ./release-artifacts/metadata.json
+      - name: Verify artifact checksums
+        run: |
+          cd ./release-artifacts
+          echo "=== Verifying SHA256 checksums ==="
+          if ! sha256sum -c SHA256SUMS.txt; then
+            echo "::error::Checksum verification failed"
+            exit 1
+          fi
+          echo "✓ All checksums verified successfully"
+      - name: Upload prepared artifacts for release job
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
+          path: ./release-artifacts
+          retention-days: 1
+
+  create-agw-releases-repo-release:
+    needs: [ init, combine-artifacts ]
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 5
+    env:
+      TARGET_ORG: isovalent
+      TARGET_REPO: agw-releases
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        with:
+          app-id: ${{ vars.HYPERSHIELD_GH_APP_ID }}
+          private-key: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
+          owner: ${{ env.TARGET_ORG }}
+          repositories: ${{ env.TARGET_REPO }}
+      - name: Checkout agw-releases repo
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: ./agw-releases-repo
+      - name: Download release artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
+          path: "./release-artifacts"
+      - name: Validate release artifacts and metadata
+        run: |
+          echo "=== Release Artifacts Validation ==="
+          echo "Release artifacts to be published:"
+          ls -lah ./release-artifacts/
+          echo ""
+          echo "=== Checksums ==="
+          cat ./release-artifacts/SHA256SUMS.txt
+          echo ""
+          echo "=== Metadata ==="
+          if [[ -f ./release-artifacts/metadata.json ]]; then
+            cat ./release-artifacts/metadata.json
+          else
+            echo "::warning::metadata.json not found in release artifacts"
+          fi
+          echo ""
+          # Validate required files exist
+          REQUIRED_FILES=(
+            "SHA256SUMS.txt"
+            "metadata.json"
+          )
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [[ ! -f "./release-artifacts/$file" ]]; then
+              echo "::error::Required artifact missing: $file"
+              exit 1
+            fi
+          done
+          echo "✓ All required artifacts present"
+          echo "==================================="
+      - name: Verify artifact integrity
+        run: |
+          cd ./release-artifacts
+          echo "Verifying SHA256 checksums..."
+          if ! sha256sum -c SHA256SUMS.txt; then
+            echo "::error::Checksum verification failed - artifacts may be corrupted"
+            exit 1
+          fi
+          echo "✓ All artifact checksums verified"
+      - name: Create release notes
+        run: |
+          cd ./agw-releases-repo
+          mkdir -p docs/release-notes
+          
+          VERSION="${{ needs.init.outputs.version }}"
+          DATE="${{ needs.init.outputs.date }}"
+          SHA="${{ needs.init.outputs.sha }}"
+          FULL_SHA="${{ github.sha }}"
+          RELEASE_DATE=$(date -u +"%Y-%m-%d")
+          CHECKSUMS=$(cat ../release-artifacts/SHA256SUMS.txt)
+          
+          RELEASE_NOTES_FILE="docs/release-notes/${VERSION}+${SHA}.md"
+          
+          cat > "$RELEASE_NOTES_FILE" << EOF
+          # Release Notes: ${VERSION}+${SHA}
+          
+          **Release Date:** ${RELEASE_DATE}
+          
+          ## Build Information
+          - **Version:** ${VERSION}
+          - **Build Date:** ${DATE}
+          - **Commit SHA:** ${SHA}
+          - **Full Commit SHA:** ${FULL_SHA}
+          - **Source Repository:** [hubble-fgs](https://github.com/isovalent/hubble-fgs)
+          - **Source Commit:** https://github.com/isovalent/hubble-fgs/commit/${FULL_SHA}
+          
+          ## Artifacts
+          
+          ### Docker Image
+          - \`agw.tar.gz\` - AGW Docker image
+          
+          ### Binaries
+          - \`agw-binaries-${VERSION}.tar.gz\` - AGW and AGWctl binaries
+          
+          ### Test Results
+          - \`agw-test-results-${VERSION}.tar.gz\` - Sanity test results (if available)
+          
+          ### Checksums
+          \`\`\`
+          ${CHECKSUMS}
+          \`\`\`
+          
+          ## Metadata
+          
+          A \`metadata.json\` file is included with each release containing machine-readable
+          build information for automated downstream processing.
+          
+          ## Installation
+          
+          1. Download the appropriate artifacts from the [Releases](https://github.com/isovalent/agw-releases/releases) page
+          2. Verify checksum: \`sha256sum -c SHA256SUMS.txt\`
+          3. Extract Docker image: \`tar -xzf agw.tar.gz && docker load -i agw.tar\`
+          4. Extract binaries: \`tar -xzf agw-binaries-${VERSION}.tar.gz\`
+          5. Deploy according to NXOS integration guide
+          
+          ## Compatibility
+          - **NXOS Version:** Compatible with latest NXOS releases
+          - **DPU Platform:** SmartSwitch
+          
+          ---
+          
+          For questions or issues, contact @cisco-hypershield/nxos
+          EOF
+          
+          echo "Created release notes at: $RELEASE_NOTES_FILE"
+          echo "Content:"
+          cat "$RELEASE_NOTES_FILE"
+      - name: Commit release notes
+        run: |
+          cd ./agw-releases-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/release-notes/
+          git commit -m "docs: Add release notes for ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}" || echo "No changes to commit"
+          git push origin main
+      - name: Create GitHub Release in agw-releases
+        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}
+          tag_name: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}
+          name: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Hubble FGS AGW Release ${{ needs.init.outputs.version }}
+            
+            This release contains Hubble FGS AGW (Application Gateway) Docker image and binaries.
+            
+            ### Build Information
+            - **Version:** ${{ needs.init.outputs.version }}
+            - **Build Date:** ${{ needs.init.outputs.date }}
+            - **Commit SHA:** ${{ needs.init.outputs.sha }}
+            - **Source:** [hubble-fgs@${{ github.sha }}](https://github.com/isovalent/hubble-fgs/commit/${{ github.sha }})
+            
+            ### Artifacts
+            - `agw.tar.gz` - AGW Docker image
+            - `agw-binaries-${{ needs.init.outputs.version }}.tar.gz` - AGW and AGWctl binaries
+            - `agw-test-results-${{ needs.init.outputs.version }}.tar.gz` - Sanity test results (if available)
+            - `SHA256SUMS.txt` - Checksums for verification
+            
+            ### Installation
+            1. Download the appropriate artifacts
+            2. Verify checksum: `sha256sum -c SHA256SUMS.txt`
+            3. Extract Docker image: `tar -xzf agw.tar.gz && docker load -i agw.tar`
+            4. Extract binaries: `tar -xzf agw-binaries-${{ needs.init.outputs.version }}.tar.gz`
+            5. Deploy according to NXOS integration documentation
+            
+            ### Release Notes
+            Full release notes: [docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md](https://github.com/isovalent/agw-releases/blob/main/docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md)
+            
+            ---
+            
+            For questions or issues, contact @cisco-hypershield/nxos
+          files: |
+            ./release-artifacts/*
+      - name: Verify release metadata published
+        run: |
+          echo "=== Release Publication Summary ==="
+          echo "Target Repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}"
+          echo "Release Tag: ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}"
+          echo ""
+          echo "Metadata Published:"
+          echo "  - Version: ${{ needs.init.outputs.version }}"
+          echo "  - Date: ${{ needs.init.outputs.date }}"
+          echo "  - SHA: ${{ needs.init.outputs.sha }}"
+          echo "  - Full SHA: ${{ github.sha }}"
+          echo ""
+          echo "Artifacts Published:"
+          ls -la ./release-artifacts/
+          echo ""
+          echo "✓ Release created successfully with all metadata"
+          echo "==================================="
+
+  update-agw-version-dpu-pensando:
+    needs: [ init, create-agw-releases-repo-release ]
+    if: ${{ needs.init.result == 'success' && needs.create-agw-releases-repo-release.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master')) }}
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 5
+    env:
+      TARGET_ORG: cisco-hypershield
+      TARGET_REPO: hs-actions
+      TARGET_DPU_REPO: hs-dpu-pensando
+    steps:
+      - name: Generate GitHub App Token
+        id: workflow-token
+        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
+        with:
+          app-id: ${{ vars.HYPERSHIELD_GH_APP_ID }}
+          private-key: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
+          owner: ${{ env.TARGET_ORG }}
+          repositories: ${{ env.TARGET_REPO }},${{ env.TARGET_DPU_REPO }}
+      - name: Update AGW version in hs-dpu-pensando
+        uses: cisco-hypershield/hs-actions/.github/actions/create-pull-request@main # legit:ignore
+        with:
+          repository: 'cisco-hypershield/hs-dpu-pensando'
+          target-branch: 'main'
+          cross-repo-github-token: ${{ steps.workflow-token.outputs.token }}
+          auto-merge: true
+          auto-approve: true
+          create-source-branch: true
+          custom-commit-message: "feat: Update AGW_LATEST to ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}"
+          custom-branch-name: "feature/update-agw-version-${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}"
+          makefile-update-data: |
+            [
+              {
+                "path": "Makefile",
+                "key": "AGW_LATEST",
+                "value": "${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}"
+              }
+            ]
+          keeper-url: ${{ vars.VAULT_URL }}
+          vault-namespace: ${{ vars.VAULT_HYPERSHIELD_NAMESPACE }}
+          vault-secret-path: secret/data/gitops/gha-creds
+          vault-approle-role-id: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}
+          vault-approle-secret-id: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}
