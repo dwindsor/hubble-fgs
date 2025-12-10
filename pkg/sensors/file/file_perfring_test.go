@@ -23,17 +23,20 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"sync"
 	"syscall"
 	"testing"
 
 	// NB: we need to load these two so that the policy handlers are loaded
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/reader/caps"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors/config/confmap"
 	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
@@ -1329,4 +1332,344 @@ func TestFileCreateEnforce(t *testing.T) {
 	require.Equal(t, tetragon.FileAction_FILE_CREATE, tetragon.FileAction(ev.Msg.Action))
 	require.Equal(t, tetragon.FileOperation_FILE_OP_BLOCK|tetragon.FileOperation_FILE_OP_POST, tetragon.FileOperation(ev.Msg.Operation))
 	require.Equal(t, fileTracingPolicy.Metadata.Name, ev.TpName)
+}
+
+func hasSetuid(file *grpc.MsgFileEventUnix) bool {
+	return (file.Msg.SecureExec & processapi.ExecveSetuid) != 0
+}
+
+func matchSetuid(file *grpc.MsgFileEventUnix, uid int) bool {
+	return hasSetuid(file) && (file.Msg.Uid[1] == uint32(uid))
+}
+
+func hasSetgid(file *grpc.MsgFileEventUnix) bool {
+	return (file.Msg.SecureExec & processapi.ExecveSetgid) != 0
+}
+
+func matchSetgid(file *grpc.MsgFileEventUnix, gid int) bool {
+	return hasSetgid(file) && (file.Msg.Gid[1] == uint32(gid))
+}
+
+func matchPrivChanged(file *grpc.MsgFileEventUnix, req []tetragon.ProcessPrivilegesChanged) bool {
+	diffPriv := caps.GetPrivilegesChangedReasons(file.Msg.SecureExec)
+	return slices.Equal(diffPriv, req)
+}
+
+func matchBinaryName(file *grpc.MsgFileEventUnix, path string) bool {
+	return filepath.Base(file.Path) == filepath.Base(path)
+}
+
+var fileTracingPolicyBinaryProp = tracingpolicy.GenericTracingPolicy{
+	Metadata: v1api.ObjectMeta{
+		Name: "file-monitoring-exec-binary-properties",
+	},
+	Spec: v1alpha1.TracingPolicySpec{
+		FileMonitoring: v1alpha1.FileSpec{
+			PathsPatterns: []v1alpha1.FilePathPattern{
+				{
+					Type: "AllFileOps",
+				},
+			},
+			MonitorHostFiles: true,
+			Selectors: []v1alpha1.FileSelector{
+				{
+					MatchOperations: []v1alpha1.OperationSelector{
+						{
+							Operator: "In",
+							Values: []string{
+								"FILE_EXEC",
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+}
+
+// inspired from https://github.com/cilium/tetragon/blob/6c92d8487b6af358b157da0da2a504260c2a580f/pkg/sensors/exec/exec_test.go#L1409
+func TestExecBinaryPropertiesSetuidChanges(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
+
+	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
+		t.Skip("File monitoring patterns with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observer.InitDataCache(16384); err != nil {
+		t.Fatalf("observer.InitDataCache: %s", err)
+	}
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
+	tus.LoadInitialSensor(t)
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tuo.GetTestSensorManager(t)
+
+	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicyBinaryProp)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	testBin := ossTestUtils.RepoRootPath("contrib/tester-progs/nop")
+	// The drop-privileges is a helper binary that drops privileges so we do not
+	// drop it inside this test which will break the test framework.
+	testDrop := ossTestUtils.RepoRootPath("contrib/tester-progs/drop-privileges")
+	testSu, err := exec.LookPath("su")
+	if err != nil {
+		t.Skip("Could not find 'su' binary skipping")
+	}
+	// We should be able to create suid on local mount point
+	// This binary will have setuid set to non root.
+	testSuid := ossTestUtils.RepoRootPath("contrib/tester-progs/suidnop")
+	if err := ossTestUtils.CopyFile(testSuid, testBin, 0755|os.ModeSetuid|os.ModeSetgid); err != nil {
+		t.Fatalf("Failed to copy binary: %s", err)
+	}
+	t.Cleanup(func() {
+		err := os.Remove(testSuid)
+		if err != nil {
+			t.Logf("Error failed to cleanup '%s'", testSuid)
+		}
+	})
+
+	gid := 1879048188
+	events := perfring.RunTestEvents(t, ctx, func() {
+		if err := os.Chown(testSuid, gid, gid); err != nil {
+			t.Fatalf("Chown() on '%s' binary error: %s\n", testSuid, err)
+		}
+
+		if err := os.Chmod(testSuid, 0755|os.ModeSetuid|os.ModeSetgid); err != nil {
+			t.Fatalf("Chown() on '%s' binary error: %s\n", testSuid, err)
+		}
+
+		if err := exec.Command(testSuid).Run(); err != nil {
+			t.Fatalf("Failed to execute suid '%s' binary: %s\n", testSuid, err)
+		}
+
+		// We use the testDrop to drop uid so we don't break the test framework by
+		// chaning the uid here. The testDrop binary will execute su binary as we are sure
+		// its path allows to exec into directory but also execute the su binary.
+		// The result is based on the su binary being detected as a privilege_changed execution.
+		testCmd := exec.CommandContext(ctx, testDrop, testSu, "--help")
+		if err := testCmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		if err := testCmd.Wait(); err != nil {
+			t.Fatalf("command failed with %s. Context error: %v", err, ctx.Err())
+		}
+	})
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicyBinaryProp.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	matchedSuidnop := false
+	matchedSu := false
+	for _, ev := range events {
+		if file, ok := ev.(*grpc.MsgFileEventUnix); ok {
+			if matchBinaryName(file, testSuid) && matchSetuid(file, gid) && matchSetgid(file, gid) && matchPrivChanged(file, []tetragon.ProcessPrivilegesChanged{}) {
+				matchedSuidnop = true
+			} else if matchBinaryName(file, testSu) && matchSetuid(file, 0) && !hasSetgid(file) && matchPrivChanged(file, []tetragon.ProcessPrivilegesChanged{tetragon.ProcessPrivilegesChanged_PRIVILEGES_RAISED_EXEC_FILE_SETUID}) {
+				matchedSu = true
+			}
+		}
+	}
+
+	require.True(t, matchedSuidnop)
+	require.True(t, matchedSu)
+}
+
+// inspired from https://github.com/cilium/tetragon/blob/6c92d8487b6af358b157da0da2a504260c2a580f/pkg/sensors/exec/exec_test.go#L1292
+func TestExecBinaryPropertiesSetgidChanges(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
+
+	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
+		t.Skip("File monitoring patterns with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observer.InitDataCache(16384); err != nil {
+		t.Fatalf("observer.InitDataCache: %s", err)
+	}
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
+	tus.LoadInitialSensor(t)
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tuo.GetTestSensorManager(t)
+
+	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicyBinaryProp)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	testBin := ossTestUtils.RepoRootPath("contrib/tester-progs/nop")
+	// We should be able to create suid on local mount point
+	testSuid := ossTestUtils.RepoRootPath("contrib/tester-progs/suidnop")
+	if err := ossTestUtils.CopyFile(testSuid, testBin, 0754|os.ModeSetuid|os.ModeSetgid); err != nil {
+		t.Fatalf("Failed to copy binary: %s", err)
+	}
+
+	oldGid := syscall.Getgid()
+	/* Executing a setgid to root with current gid as normal not root */
+	gid := 1879048188
+	if err := syscall.Setgid(gid); err != nil {
+		t.Fatalf("setgid(%d) error: %s", gid, err)
+	}
+	t.Cleanup(func() {
+		// Restore old gid
+		if err = syscall.Setgid(oldGid); err != nil {
+			t.Fatalf("Failed to restore gid to %d :  %s\n", oldGid, err)
+		}
+		err := os.Remove(testSuid)
+		if err != nil {
+			t.Logf("Error failed to cleanup '%s'", testSuid)
+		}
+	})
+
+	events := perfring.RunTestEvents(t, ctx, func() {
+		if err := exec.Command(testBin).Run(); err != nil {
+			t.Fatalf("Failed to execute '%s' binary: %s\n", testBin, err)
+		}
+
+		if err := os.Chown(testSuid, 0, 0); err != nil {
+			t.Fatalf("Chown() on '%s' binary error: %s\n", testSuid, err)
+		}
+		if err := os.Chmod(testSuid, 0754|os.ModeSetuid|os.ModeSetgid); err != nil {
+			t.Fatalf("Chown() on '%s' binary error: %s\n", testSuid, err)
+		}
+
+		if err := exec.Command(testSuid).Run(); err != nil {
+			t.Fatalf("Failed to execute '%s' suid binary: %s\n", testSuid, err)
+		}
+
+		/* Setuid to gid and Setgid to gid both are not root */
+		/* First restore gid to root */
+		if err := syscall.Setgid(0); err != nil {
+			t.Fatalf("setegid(%d) error: %s", gid, err)
+		}
+
+		if err := os.Chown(testSuid, gid, gid); err != nil {
+			t.Fatalf("Chown() on '%s' binary error: %s\n", testSuid, err)
+		}
+
+		if err := os.Chmod(testSuid, 0754|os.ModeSetuid|os.ModeSetgid); err != nil {
+			t.Fatalf("Chown() on '%s' binary error: %s\n", testSuid, err)
+		}
+
+		if err := exec.Command(testSuid).Run(); err != nil {
+			t.Fatalf("Failed to execute secound round suid '%s' binary: %s\n", testSuid, err)
+		}
+	})
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicyBinaryProp.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	matchedSuidnop := false
+	matchedSuid := false
+	for _, ev := range events {
+		if file, ok := ev.(*grpc.MsgFileEventUnix); ok {
+			if matchBinaryName(file, testSuid) && !hasSetuid(file) && matchSetgid(file, 0) && matchPrivChanged(file, []tetragon.ProcessPrivilegesChanged{tetragon.ProcessPrivilegesChanged_PRIVILEGES_RAISED_EXEC_FILE_SETGID}) {
+				matchedSuidnop = true
+			} else if matchBinaryName(file, testSuid) && matchSetuid(file, gid) && matchSetgid(file, gid) && matchPrivChanged(file, []tetragon.ProcessPrivilegesChanged{}) {
+				matchedSuid = true
+			}
+		}
+	}
+
+	require.True(t, matchedSuidnop)
+	require.True(t, matchedSuid)
+}
+
+// inspired from https://github.com/cilium/tetragon/blob/6c92d8487b6af358b157da0da2a504260c2a580f/pkg/sensors/exec/exec_test.go#L1502C6-L1502C46
+func TestExecBinaryPropertiesFileCapChanges(t *testing.T) {
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
+
+	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
+		t.Skip("File monitoring patterns with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observer.InitDataCache(16384); err != nil {
+		t.Fatalf("observer.InitDataCache: %s", err)
+	}
+
+	option.Config.HubbleLib = tus.Conf().TetragonLib
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	eeOption.Config.FimFifoLocalPath = fm.LocalScannerFifoPath
+	option.Config.UsePerfRingBuffer = true
+	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
+	tus.LoadInitialSensor(t)
+	tus.LoadSensor(t, testsensor.GetTestSensor())
+	sm := tuo.GetTestSensorManager(t)
+
+	err := sm.Manager.AddTracingPolicy(ctx, &fileTracingPolicyBinaryProp)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		TerminateFsScanner()
+		os.RemoveAll(option.Config.BpfDir)
+	})
+
+	// The drop-privileges is a helper binary that drops privileges so we do not
+	// drop it inside this test which will break the test framework.
+	testDrop := ossTestUtils.RepoRootPath("contrib/tester-progs/drop-privileges")
+	testPing, err := exec.LookPath("ping")
+	if err != nil {
+		t.Skipf("Skipping test could not find 'ping' binary: %v", err)
+	}
+
+	xattrs := make([]byte, 0)
+	ret, err := unix.Getxattr(testPing, "security.capability", xattrs)
+	if err != nil {
+		t.Skipf("Skipping test could 'security.capability' xattr of binary '%s' error: %v", testPing, err)
+	}
+	if ret == 0 {
+		t.Skipf("Skipping test 'security.capability' xattr is not set on binary '%s'", testPing)
+	}
+
+	events := perfring.RunTestEvents(t, ctx, func() {
+		// We use the testDrop to drop uid so we don't break the test framework by
+		// changing the uid here. The testDrop binary will execute ping binary as we are sure
+		// its path allows to exec into directory but also execute the ping binary.
+		// The result is based on the ping binary being detected as a privilege_changed execution.
+		testCmd := exec.CommandContext(ctx, testDrop, testPing, "-V")
+		if err := testCmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		if err := testCmd.Wait(); err != nil {
+			t.Fatalf("command failed with %s. Context error: %v", err, ctx.Err())
+		}
+	})
+
+	err = sm.Manager.DeleteTracingPolicy(ctx, fileTracingPolicyBinaryProp.Metadata.Name, "")
+	assert.NoError(t, err)
+
+	matchedPing := false
+	for _, ev := range events {
+		if file, ok := ev.(*grpc.MsgFileEventUnix); ok {
+			if matchBinaryName(file, testPing) && !hasSetuid(file) && !hasSetgid(file) && matchPrivChanged(file, []tetragon.ProcessPrivilegesChanged{tetragon.ProcessPrivilegesChanged_PRIVILEGES_RAISED_EXEC_FILE_CAP}) {
+				matchedPing = true
+			}
+		}
+	}
+
+	require.True(t, matchedPing)
 }
