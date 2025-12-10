@@ -16,7 +16,9 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"time"
 
+	"golang.org/x/time/rate"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/stretchr/testify/assert"
@@ -73,6 +75,27 @@ func TestJSONEncode(t *testing.T) {
 	assert.NoError(t, err)
 
 	expected := `{"event":{"process_exec":{"process":{"binary":"/usr/bin/curl","arguments":"ebpf.io"}},"time":"1970-01-01T00:00:00Z"},"rule":{"name":"curl","severity":"CRITICAL","message":"Curl is curling.","tags":["network"]}}`
+	expected += "\n"
+	assert.Equal(t, expected, normalizeJSON(buf.String()))
+}
+
+func TestJSONEncodeRateLimited(t *testing.T) {
+	var buf bytes.Buffer
+	wc := nopWriteCloser{&buf}
+
+	t.Cleanup(func() {
+		// Reset ratelimitenabled to its default value after the test
+		exampleAlert.Rule.RateLimitEnabled = false
+	})
+
+	// Create encoder, encode, check encoded JSON
+	dur, _ := time.ParseDuration("1ns")
+	rateLimiter := rate.NewLimiter(rate.Every(dur), 0)
+	encoder := newRateLimitedJsonEncoder(wc, "", rateLimiter)
+	err := encoder.encode(exampleAlert)
+	assert.NoError(t, err)
+
+	expected := `{"event":{"process_exec":{"process":{"binary":"/usr/bin/curl","arguments":"ebpf.io"}},"time":"1970-01-01T00:00:00Z"},"rule":{"name":"curl","severity":"CRITICAL","message":"Curl is curling.","tags":["network"],"rate_limit_triggered":true}}`
 	expected += "\n"
 	assert.Equal(t, expected, normalizeJSON(buf.String()))
 }
