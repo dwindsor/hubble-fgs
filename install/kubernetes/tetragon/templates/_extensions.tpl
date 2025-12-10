@@ -54,6 +54,7 @@ bpf-dns-parser-per-pod-prealloc: {{ .Values.tetragon.bpfDNSParser.perPodPrealloc
 bpf-dns-parser-per-pod-threshold: {{ .Values.tetragon.bpfDNSParser.perPodThreshold | quote }}
 enable-alerts: {{ .Values.tetragon.alerts.enabled | quote }}
 alerts-export-dir: {{ .Values.tetragon.alerts.exportDirectory | quote }}
+alerts-export-filename: {{ .Values.tetragon.alerts.exportFilename | quote }}
 {{- end }}
 
 {{- define "volumes.extra" -}}

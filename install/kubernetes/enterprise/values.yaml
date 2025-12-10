@@ -29,6 +29,8 @@ tetragon:
     enabled: true
     # -- Directory for alert JSON export (filenames will be retrieved from alert rule names).
     exportDirectory: "/var/run/cilium/tetragon"
+    # -- Global filename for alert JSON export (instead of retrieving it from alert rule names).
+    exportFilename: ""
   # -- EXPERIMENTAL: Enable Hubble flow export. When this value is not empty, Tetragon exports
   # ProcessConnect events as Hubble flow JSON in addition to exporting them as process_connect JSON.
   flowExportFilename: ""
