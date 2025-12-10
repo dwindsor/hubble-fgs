@@ -388,6 +388,8 @@ func (dpu *DPUAgent) Checksum() [sha256.Size]byte {
 }
 
 func (dpu *DPUAgent) upsertPolicyRule(rule *switchpolicy.DPUPolicyRule) error {
+	dpu.ruleSetLock.Lock()
+	defer dpu.ruleSetLock.Unlock()
 
 	csum, err := switchpolicy.HashRule(rule.Policy)
 	if err != nil {
@@ -396,8 +398,6 @@ func (dpu *DPUAgent) upsertPolicyRule(rule *switchpolicy.DPUPolicyRule) error {
 		return fmt.Errorf("failed policy rule checksum, corrupted policy")
 	}
 
-	dpu.ruleSetLock.Lock()
-	defer dpu.ruleSetLock.Unlock()
 	if rule, ok := dpu.ruleSet[csum]; ok {
 		rule.Timestamp = time.Now()
 		return fmt.Errorf("policy exists")
@@ -407,6 +407,9 @@ func (dpu *DPUAgent) upsertPolicyRule(rule *switchpolicy.DPUPolicyRule) error {
 }
 
 func (dpu *DPUAgent) deletePolicyRule(rule *switchpolicy.DPUPolicyRule) error {
+	dpu.ruleSetLock.Lock()
+	defer dpu.ruleSetLock.Unlock()
+
 	csum, err := switchpolicy.HashRule(rule.Policy)
 	if err != nil {
 		logger.GetLogger().Error("Failed policy rule checksum, corrupted policy",
@@ -414,8 +417,6 @@ func (dpu *DPUAgent) deletePolicyRule(rule *switchpolicy.DPUPolicyRule) error {
 		return fmt.Errorf("failed policy checksum")
 	}
 
-	dpu.ruleSetLock.Lock()
-	defer dpu.ruleSetLock.Unlock()
 	if _, ok := dpu.ruleSet[csum]; !ok {
 		return fmt.Errorf("policy does not exists")
 	}
@@ -446,7 +447,9 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 				logger.GetLogger().Error("failed to upsert rule", logfields.Error, err)
 				continue
 			}
+			dpu.ruleSetLock.Lock()
 			err = dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, policyList)
+			dpu.ruleSetLock.Unlock()
 			if err != nil {
 				logger.GetLogger().Error("upsert failed", logfields.Error, err)
 				continue
@@ -463,7 +466,9 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 				logger.GetLogger().Error("failed to delete rule", logfields.Error, err)
 				continue
 			}
+			dpu.ruleSetLock.Lock()
 			err = dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, policyList)
+			dpu.ruleSetLock.Unlock()
 			if err != nil {
 				logger.GetLogger().Error("delete failed", logfields.Error, err)
 				continue
@@ -597,18 +602,20 @@ func (dpu *DPUAgent) stalePolicyGC(ctx context.Context, invokeTime time.Time) {
 	delList := []*switchpolicy.DPUPolicyRule{}
 
 	dpu.ruleSetLock.Lock()
-	defer dpu.ruleSetLock.Unlock()
 	for csum, rule := range dpu.ruleSet {
 		if rule.Timestamp.Before(invokeTime) {
 			delete(dpu.ruleSet, csum)
 			delList = append(delList, rule)
 		}
 	}
+	dpu.ruleSetLock.Unlock()
 
 	// We need to keep the lock to avoid racing with someone readding
 	// an identical policy that we would then delete.
 	for i := 0; i < STALE_POLICY_GC_RETRY; i++ {
+		dpu.ruleSetLock.Lock()
 		err := dpu.Dataplane.PushPolicy(ctx, v1alpha.PolicyOperation_POLICY_OPERATION_DELETE, delList)
+		dpu.ruleSetLock.Unlock()
 		if err != nil {
 			logger.GetLogger().Error("Failed to remove stale policy", "attempt", i)
 		} else {
