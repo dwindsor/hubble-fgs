@@ -32,14 +32,15 @@ type Register interface {
 }
 
 // NewNodeRegisterer returns a Register implementation based on the current
-// environment. If running in AWS with K8s control plane enabled, it returns a
-// registerer that uses the provided metadata service to register the node.
-// Otherwise, it returns a no-op registerer.
+// environment. If K8s control plane is enabled and a valid metadata service
+// is provided, it returns a registerer that uses the metadata service to
+// register the node. Otherwise, it returns a no-op registerer.
 func NewNodeRegisterer(metadata local.MetadataService) (Register, error) {
 	if option.K8SControlPlaneEnabled() {
-		if option.Config.Environment == option.EnvironmentAWS ||
-			option.Config.Environment == option.EnvironmentAzure ||
-			option.Config.Environment == option.EnvironmentGCloud {
+		// Only use no-op registerer if metadata service is explicitly a no-op.
+		// This allows registration for all environments (AWS, Azure, GCloud,
+		// vSphere, bare-metal, etc.) as long as metadata can be retrieved.
+		if _, isNoop := metadata.(*local.NoopMetadataService); !isNoop {
 			return &registerer{
 				metadata: metadata,
 				client:   manager.Get().GetControllerManager().Manager.GetClient(),

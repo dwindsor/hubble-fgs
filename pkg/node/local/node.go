@@ -24,6 +24,7 @@ var (
 	_ MetadataService = (*GCloudMetadataService)(nil)
 	_ MetadataService = (*AzureMetadataService)(nil)
 	_ MetadataService = (*KubernetesMetadataService)(nil)
+	_ MetadataService = (*GenericMetadataService)(nil)
 	_ MetadataService = (*NoopMetadataService)(nil)
 )
 
@@ -47,6 +48,8 @@ func GetMetadataService() (MetadataService, error) {
 		return NewAzureMetadataService()
 	case option.Config.Environment == option.EnvironmentKubernetes || ossOption.Config.EnableK8s:
 		return NewKubernetesMetadataService(manager.Get())
+	case option.K8SControlPlaneEnabled():
+		return NewGenericMetadataService()
 	default:
 		return &NoopMetadataService{}, nil
 	}
