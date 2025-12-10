@@ -22,7 +22,6 @@ import (
 
 	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 )
 
@@ -227,7 +226,7 @@ func TestAddSameFilenameRule(t *testing.T) {
 	assert.Len(t, rm.encoders, 1)
 
 	// write one
-	err = encoder1.encode(&tetragon.Alert{Rule: exampleRule})
+	err = encoder1.encode(eventToAlert(nil, exampleRule))
 	assert.NoError(t, err)
 
 	// delete one rule, we are left with one rule and one encoder
@@ -237,7 +236,7 @@ func TestAddSameFilenameRule(t *testing.T) {
 	assert.Equal(t, int32(1), encoder1.refCnt.Load())
 
 	// write two
-	err = encoder1.encode(&tetragon.Alert{Rule: exampleRule})
+	err = encoder1.encode(eventToAlert(nil, exampleRule))
 	assert.NoError(t, err)
 
 	// delete the other rule, no encoders and no rules remain
@@ -247,7 +246,7 @@ func TestAddSameFilenameRule(t *testing.T) {
 	assert.Equal(t, int32(0), encoder1.refCnt.Load())
 
 	// write two, this should not appear because we have closed the file
-	err = encoder1.encode(&tetragon.Alert{Rule: exampleRule})
+	err = encoder1.encode(eventToAlert(nil, exampleRule))
 	assert.NoError(t, err)
 
 	data, err := os.ReadFile(filepath.Join(tmpDir, "pizza"))
@@ -285,7 +284,7 @@ func TestAddAlertRuleSameFilename(t *testing.T) {
 	wg := sync.WaitGroup{}
 	for _, rule := range rules {
 		wg.Go(func() {
-			err := rule.jsonEncoder.encode(exampleAlert)
+			err := rule.jsonEncoder.encode(exampleAlert())
 			assert.NoError(t, err)
 		})
 	}

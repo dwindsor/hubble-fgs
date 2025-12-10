@@ -38,16 +38,15 @@ var exampleEvent = &tetragon.GetEventsResponse{
 	Time: &timestamppb.Timestamp{},
 }
 
-var exampleRule = &tetragon.AlertRuleMeta{
-	Name:     "curl",
-	Message:  "Curl is curling.",
-	Tags:     []string{"network"},
-	Severity: tetragon.AlertRuleMeta_CRITICAL,
+var exampleRule = &rule{
+	name:     "curl",
+	message:  "Curl is curling.",
+	tags:     []string{"network"},
+	severity: "critical",
 }
 
-var exampleAlert = &tetragon.Alert{
-	Event: exampleEvent,
-	Rule:  exampleRule,
+func exampleAlert() *tetragon.Alert {
+	return eventToAlert(exampleEvent, exampleRule)
 }
 
 type nopWriteCloser struct {
@@ -71,7 +70,7 @@ func TestJSONEncode(t *testing.T) {
 
 	// Create encoder, encode, check encoded JSON
 	encoder := newJsonEncoder(wc, "")
-	err := encoder.encode(exampleAlert)
+	err := encoder.encode(exampleAlert())
 	assert.NoError(t, err)
 
 	expected := `{"event":{"process_exec":{"process":{"binary":"/usr/bin/curl","arguments":"ebpf.io"}},"time":"1970-01-01T00:00:00Z"},"rule":{"name":"curl","severity":"CRITICAL","message":"Curl is curling.","tags":["network"]}}`
@@ -83,16 +82,11 @@ func TestJSONEncodeRateLimited(t *testing.T) {
 	var buf bytes.Buffer
 	wc := nopWriteCloser{&buf}
 
-	t.Cleanup(func() {
-		// Reset ratelimitenabled to its default value after the test
-		exampleAlert.Rule.RateLimitEnabled = false
-	})
-
 	// Create encoder, encode, check encoded JSON
 	dur, _ := time.ParseDuration("1ns")
 	rateLimiter := rate.NewLimiter(rate.Every(dur), 0)
 	encoder := newRateLimitedJsonEncoder(wc, "", rateLimiter)
-	err := encoder.encode(exampleAlert)
+	err := encoder.encode(exampleAlert())
 	assert.NoError(t, err)
 
 	expected := `{"event":{"process_exec":{"process":{"binary":"/usr/bin/curl","arguments":"ebpf.io"}},"time":"1970-01-01T00:00:00Z"},"rule":{"name":"curl","severity":"CRITICAL","message":"Curl is curling.","tags":["network"],"rate_limit_triggered":true}}`
@@ -106,7 +100,7 @@ func TestJSONEncodeNoEvent(t *testing.T) {
 
 	// Create encoder, encode, check encoded JSON
 	encoder := newJsonEncoder(wc, "")
-	err := encoder.encode(&tetragon.Alert{Rule: exampleRule})
+	err := encoder.encode(eventToAlert(nil, exampleRule))
 	assert.NoError(t, err)
 	expected := `{"rule":{"name":"curl","severity":"CRITICAL","message":"Curl is curling.","tags":["network"]}}`
 	expected += "\n"
@@ -149,7 +143,7 @@ func TestJSONEncodeWriteError(t *testing.T) {
 	wc := errorWriteCloser{}
 	encoder := newJsonEncoder(wc, "")
 
-	err := encoder.encode(exampleAlert)
+	err := encoder.encode(exampleAlert())
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "can't write")
 }
