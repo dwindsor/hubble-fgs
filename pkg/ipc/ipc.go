@@ -28,11 +28,29 @@ type ReturnCode struct {
 
 func PrintResponse(ret *ReturnCode, raw_json bool) {
 	if raw_json {
-		resp, err := json.Marshal(ret)
-		if err != nil {
-			fmt.Println("Error: Failed to print JSON")
+		// Check if Data is already valid JSON
+		var dataJson json.RawMessage
+		err := json.Unmarshal([]byte(ret.Data), &dataJson)
+		if err == nil {
+			// Data is valid json, construct response with raw json (compact, no indentation)
+			response := map[string]interface{}{
+				"returnCode": ret.ReturnCode,
+				"data":       dataJson,
+			}
+			resp, err := json.Marshal(response)
+			if err != nil {
+				fmt.Println("Error: Failed to print JSON")
+			} else {
+				fmt.Printf("%s\n", resp)
+			}
 		} else {
-			fmt.Printf("%s\n", resp)
+			// Data is not JSON, marshal normally
+			resp, err := json.Marshal(ret)
+			if err != nil {
+				fmt.Println("Error: Failed to print JSON")
+			} else {
+				fmt.Printf("%s\n", resp)
+			}
 		}
 	} else {
 		fmt.Printf("Client got: %s\n", ret.ReturnCode)
