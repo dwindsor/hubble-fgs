@@ -225,7 +225,7 @@ func Add(np *v1alpha1.SmartSwitchNetworkPolicy, policyHandler PolicyHandler) err
 		return fmt.Errorf("failed to load SmartSwitchNetworkPolicy: %w", err)
 	}
 
-	logger.GetLogger().Warn("Added SmartSwitchNetworkPolicy with success", "SmartSwitchNetworkPolicy", np.Name)
+	logger.GetLogger().Info("Added SmartSwitchNetworkPolicy with success", "SmartSwitchNetworkPolicy", np.Name)
 	return nil
 }
 
@@ -237,9 +237,11 @@ func Delete(np *v1alpha1.SmartSwitchNetworkPolicy, policyHandler PolicyHandler) 
 	resourceID := NewResourceID(np.Kind, np.Namespace, np.Name)
 	err := policyHandler.DeletePolicy(resourceID, "")
 	if err != nil {
-		logger.GetLogger().Warn("SmartSwitchNetworkPolicy deletion failed", logfields.Error, err, "title", resourceID)
+		logger.GetLogger().Error("SmartSwitchNetworkPolicy deletion failed", logfields.Error, err, "title", resourceID)
 		return err
 	}
+
+	logger.GetLogger().Info("Deleted SmartSwitchNetworkPolicy with success", "SmartSwitchNetworkPolicy", np.Name)
 	return nil
 }
 

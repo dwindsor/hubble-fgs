@@ -70,8 +70,6 @@ func (n *Nxos) SetHaIp(ip string) {
 	// Setting HaIp locally
 	n.Ha.HaIp = ip
 
-	logger.GetLogger().Info("Set HA IP", "ip", ip)
-
 	// Updating ha ip in the dpu config atomically
 	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
 		var dpuConfig *v1alpha.DpuConfig
