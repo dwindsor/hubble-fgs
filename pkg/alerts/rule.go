@@ -15,12 +15,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/google/cel-go/cel"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation"
-
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/google/cel-go/cel"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 
@@ -148,9 +146,10 @@ func (r *AlertRuleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 		// Handle with **extra** care!
 		fname = ar.Spec.Export.Filename
 	}
-	errs := validation.IsDNS1123Subdomain(fname)
-	if len(errs) > 0 {
-		return fmt.Errorf("AlertRule (%q) export.filename (%q) wrong value: %v", ar.GetName(), ar.Spec.Export.Filename, errs)
+	// OpenInRoot returns an error if any component of the name
+	// references a location outside dir.
+	if !filepath.IsLocal(fname) {
+		return fmt.Errorf("invalid alerts exporting filename (non local): '%s'", fname)
 	}
 	return r.addAlertRuleWithFilename(ar, fname)
 }
