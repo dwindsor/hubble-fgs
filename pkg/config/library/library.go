@@ -16,6 +16,11 @@ import (
 // If a callback function returns an error, the operation will fail.
 type ConfigCallback func(*v1alpha.ConfigObject, *v1alpha.ConfigObject) error
 
+// UpdateConfigFunc is a function that modifies a config object in place.
+// It receives the existing config (or nil if not found) and returns the updated config.
+// If the update function returns an error, the update operation will fail.
+type UpdateConfigFunc func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error)
+
 // ConfigRepository is a repository that stores app configuration as a map of configuration
 // objects by their type, which is defined as a ConfigType string.  The repository also stores
 // a map of callback functions by their type, which are matched against the types of config
@@ -31,6 +36,7 @@ type ConfigRepository interface {
 	GetConfigObjects() map[v1alpha.ConfigType]*v1alpha.ConfigObject
 	GetConfig(v1alpha.ConfigType, interface{}) error
 	GetHash() [sha256.Size]byte
+	UpdateConfig(v1alpha.ConfigType, UpdateConfigFunc) error
 	// TODO: Add support for persisting the configuration to a file
 }
 
@@ -212,4 +218,32 @@ func (cr *configRepositoryImpl) recalculateHash() {
 	jsonBytes, _ := json.Marshal(cr.configs)
 	hash := sha256.Sum256(jsonBytes)
 	cr.hash = hash
+}
+
+// UpdateConfig atomically updates a config by type using the provided updater function.
+// The updater receives the current config (or nil if not found) and must return the new config
+// or an error.  An error will cancel the update operation and the object will remain unchanged.
+// This method holds the lock for the entire read-modify-write cycle, preventing race conditions.
+func (cr *configRepositoryImpl) UpdateConfig(typ v1alpha.ConfigType, updater UpdateConfigFunc) error {
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
+
+	existing, _ := cr.configs[typ]
+
+	newObj, err := updater(existing)
+	if err != nil {
+		return err
+	}
+
+	// Call callback if exists
+	callback, ok := cr.callbacks[typ]
+	if ok {
+		if err := callback(existing, newObj); err != nil {
+			return err
+		}
+	}
+
+	cr.configs[typ] = newObj
+	cr.recalculateHash()
+	return nil
 }

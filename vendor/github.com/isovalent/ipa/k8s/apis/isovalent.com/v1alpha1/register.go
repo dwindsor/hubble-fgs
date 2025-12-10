@@ -4,29 +4,36 @@
 package v1alpha1
 
 import (
-	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
 )
 
 const (
+	// CRDVersion is the version for custom resource definitions in this
+	// package.
 	CRDVersion = "v1alpha1"
 )
 
-// SchemeGroupVersion is group version used to register these objects
+// SchemeGroupVersion is group version used to register these objects.
 var SchemeGroupVersion = schema.GroupVersion{Group: isovalentcom.GroupName, Version: CRDVersion}
 
-// Resource takes an unqualified resource and returns a Group qualified GroupResource
+// Resource takes an unqualified resource and returns a Group qualified
+// GroupResource.
 func Resource(resource string) schema.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
 }
 
 var (
+	// SchemeBuilder is the scheme builder with scheme init functions to
+	// run for this API package.
+	SchemeBuilder runtime.SchemeBuilder
 	// localSchemeBuilder and AddToScheme will stay in k8s.io/kubernetes.
-	SchemeBuilder      runtime.SchemeBuilder
 	localSchemeBuilder = &SchemeBuilder
-	AddToScheme        = localSchemeBuilder.AddToScheme
+	// AddToScheme applies all the stored functions to the scheme.
+	AddToScheme = localSchemeBuilder.AddToScheme
 )
 
 func init() {

@@ -5,8 +5,10 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 	"github.com/openconfig/ygot/ytypes"
 )
 
@@ -208,6 +210,25 @@ func (n *Nxos) getSerialNum(ctx context.Context) error {
 			n.Unlock()
 			logger.GetLogger().Debug("sswitch", "sernum", n.SerNum)
 		}
+	}
+
+	// Updating serial number in the dpu config atomically
+	err = library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
+		var dpuConfig *v1alpha.DpuConfig
+		if existing != nil && existing.GetConfigDpu() != nil {
+			dpuConfig = existing.GetConfigDpu()
+		} else {
+			dpuConfig = &v1alpha.DpuConfig{}
+		}
+		dpuConfig.SerialNumber = n.SerNum
+		return &v1alpha.ConfigObject{
+			Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+			Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuConfig},
+		}, nil
+	})
+	if err != nil {
+		logger.GetLogger().Error("Failed to update dpu config with serial number", "error", err)
 	}
 	return nil
 }

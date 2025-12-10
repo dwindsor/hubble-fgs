@@ -1160,19 +1160,24 @@ func (n *Nxos) SetServiceIp(ip string) {
 	// Setting ServiceIp locally
 	n.serviceIp = ip
 
-	// Updating service ip in the dpu config
-	var dpuConfig v1alpha.DpuConfig
-	err := library.GetRepository().GetConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, &dpuConfig)
-	if err != nil && !library.IsConfigNotFound(err) {
-		logger.GetLogger().Error("Failed to get dpu config", "error", err)
+	// Updating service ip in the dpu config atomically
+	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
+		var dpuConfig *v1alpha.DpuConfig
+		if existing != nil && existing.GetConfigDpu() != nil {
+			dpuConfig = existing.GetConfigDpu()
+		} else {
+			dpuConfig = &v1alpha.DpuConfig{}
+		}
+		dpuConfig.ServiceIp = ip
+		return &v1alpha.ConfigObject{
+			Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+			Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuConfig},
+		}, nil
+	})
+	if err != nil {
+		logger.GetLogger().Error("Failed to update dpu config with service ip", "error", err)
 	}
-	dpuConfig.ServiceIp = ip
-	configObj := &v1alpha.ConfigObject{
-		Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
-		Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
-		Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuConfig},
-	}
-	library.GetRepository().AddConfig(configObj)
 }
 
 // Returns an editable copy of the map of vrf objects

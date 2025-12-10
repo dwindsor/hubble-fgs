@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	v1 "github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1"
 	"github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1"
+	v1 "github.com/isovalent/ipa/k8s/slim/k8s/apis/meta/v1"
 	"github.com/stretchr/testify/require"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"

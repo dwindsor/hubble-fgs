@@ -11,26 +11,25 @@
 package v1alpha1
 
 import (
-	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
 )
 
 const (
-	// SmartSwitch
-
-	// SmartSwitchPluralName is the plural name of SmartSwitch
+	// SmartSwitchPluralName is the plural name of SmartSwitch.
 	SmartSwitchPluralName = "smartswitches"
 
-	// SmartSwitchKindDefinition is the kind name of SmartSwitch
+	// SmartSwitchKindDefinition is the kind name of SmartSwitch.
 	SmartSwitchKindDefinition = "SmartSwitch"
 
-	// SmartSwitchName is the full name of SmartSwitch
+	// SmartSwitchName is the full name of SmartSwitch.
 	SmartSwitchName = SmartSwitchPluralName + "." + isovalentcom.GroupName
 )
 
 // +kubebuilder:object:root=true
 
-// SmartSwitchList contains a list of SmartSwitch
+// SmartSwitchList contains a list of SmartSwitch.
 type SmartSwitchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -56,12 +55,15 @@ type SmartSwitch struct {
 	Status SmartSwitchInventory `json:"status,omitempty,omitzero"`
 }
 
-// Implement crdutils.CRDObject interface, required for working with CRDs
+// GetObjectMetaStruct returns the generic k8s object metadata.
+//
+// Implements crdutils.CRDObject interface, required for working with CRDs
 // outside of Kubernetes context.
 func (s *SmartSwitch) GetObjectMetaStruct() *metav1.ObjectMeta {
 	return &s.ObjectMeta
 }
 
+// DPUInventory is a Data Processing Unit within a SmartSwitchInventory.
 type DPUInventory struct {
 	// ID of the DPU that is unique within the SmartSwitch.
 	ID string `json:"id,omitempty"`

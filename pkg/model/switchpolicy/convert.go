@@ -140,8 +140,11 @@ func reportRequestToDPU(req *v1alpha.ReportStatusRequest) *DPUReportStatus {
 func getPerDpuConfig(fullCfg *v1alpha.DpuConfig, id string, dpuCount uint16) (*v1alpha.DpuConfig, error) {
 	// Divides the port range into equal parts mapped to each DPU by IP
 	dpuCfg := v1alpha.DpuConfig{
-		ServiceMac: fullCfg.ServiceMac,
-		ServiceIp:  fullCfg.ServiceIp,
+		ServiceMac:   fullCfg.ServiceMac,
+		ServiceIp:    fullCfg.ServiceIp,
+		HaIp:         fullCfg.HaIp,
+		SerialNumber: fullCfg.SerialNumber,
+		SwitchName:   fullCfg.SwitchName,
 	}
 	portCount := int(fullCfg.PortHigh-fullCfg.PortLow+1) / int(dpuCount)
 	if portCount < 1 {
@@ -163,5 +166,6 @@ func getPerDpuConfig(fullCfg *v1alpha.DpuConfig, id string, dpuCount uint16) (*v
 	}
 	dpuCfg.PortLow = fullCfg.PortLow + uint32(portCount*index)
 	dpuCfg.PortHigh = fullCfg.PortLow + uint32(portCount*(index+1)) - 1
+	dpuCfg.DpuId = uint32(dpuNum)
 	return &dpuCfg, nil
 }

@@ -192,6 +192,10 @@ message DpuConfig {
   string service_mac = 2;
   uint32 port_low = 3;
   uint32 port_high = 4;
+  uint32 dpu_id = 5;
+  string ha_ip = 6;
+  string serial_number = 7;
+  string switch_name = 8;
 }
 
 // Object to store log export configuration

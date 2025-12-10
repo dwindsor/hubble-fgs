@@ -82,6 +82,10 @@ CONFIG_TYPE_DPU
 | service_mac | [string](#string) |  |  |
 | port_low | [uint32](#uint32) |  |  |
 | port_high | [uint32](#uint32) |  |  |
+| dpu_id | [uint32](#uint32) |  |  |
+| ha_ip | [string](#string) |  |  |
+| serial_number | [string](#string) |  |  |
+| switch_name | [string](#string) |  |  |
 
 
 

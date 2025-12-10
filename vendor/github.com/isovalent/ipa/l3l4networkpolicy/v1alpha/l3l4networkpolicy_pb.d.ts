@@ -421,6 +421,26 @@ export declare type DpuConfig = Message<"l3l4networkpolicy.v1alpha.DpuConfig"> &
    * @generated from field: uint32 port_high = 4;
    */
   portHigh: number;
+
+  /**
+   * @generated from field: uint32 dpu_id = 5;
+   */
+  dpuId: number;
+
+  /**
+   * @generated from field: string ha_ip = 6;
+   */
+  haIp: string;
+
+  /**
+   * @generated from field: string serial_number = 7;
+   */
+  serialNumber: string;
+
+  /**
+   * @generated from field: string switch_name = 8;
+   */
+  switchName: string;
 };
 
 /**

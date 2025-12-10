@@ -42,6 +42,7 @@ const (
 	CMD_POLICIES_INFO
 	CMD_LOGGING
 	CMD_LOAD_DPU_CFG
+	CMD_CONFIG_SHOW
 )
 
 const (
@@ -329,6 +330,11 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		}
 		response.ReturnCode = "ok"
 		response.Data = "Logging updated"
+
+	case CMD_CONFIG_SHOW:
+		cfg := agwAgent.ConfigShow(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = cfg
 
 	default:
 		response.ReturnCode = "fail"

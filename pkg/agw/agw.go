@@ -43,6 +43,11 @@ const (
 
 func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.PolicyHandler) *AgentGateway {
 	mac := os.Getenv("NX_SAS_RMAC")
+	hostname := os.Getenv("CAF_SYSTEM_NAME")
+
+	logger.GetLogger().Info("Agent started", "mac", mac, "hostname", hostname)
+
+	// DPU ports
 	lowStr, ok := os.LookupEnv("NX_DPU_PORT_START")
 	if !ok {
 		lowStr = "28672"
@@ -54,6 +59,7 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 	}
 	dpuHigh, _ := strconv.Atoi(highStr)
 
+	// AGW ports
 	lowStr, ok = os.LookupEnv("NX_HSA_PORT_START")
 	if !ok {
 		lowStr = "28672"
@@ -72,24 +78,29 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, dpuListener.SubscribeConfig)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK, dpuListener.SubscribeConfig)
 
-	// Getting latest dpu config in case it was updated
-	var dpuConfig v1alpha.DpuConfig
-	err := library.GetRepository().GetConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, &dpuConfig)
-	if err != nil && !library.IsConfigNotFound(err) {
-		logger.GetLogger().Error("Failed to get dpu config, requires restart", "error", err)
-	}
-
-	// Setting up dpu config
+	// Setting up dpu config atomically
 	// dpuConfig.ServiceIp is populated by nxos package
-	dpuConfig.ServiceMac = mac
-	dpuConfig.PortLow = uint32(dpuLow)
-	dpuConfig.PortHigh = uint32(dpuHigh)
-	configObj := &v1alpha.ConfigObject{
-		Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
-		Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
-		Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuConfig},
+	// dpuConfig.HaIp is populated by nxos package
+	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
+		var dpuConfig *v1alpha.DpuConfig
+		if existing != nil && existing.GetConfigDpu() != nil {
+			dpuConfig = existing.GetConfigDpu()
+		} else {
+			dpuConfig = &v1alpha.DpuConfig{}
+		}
+		dpuConfig.ServiceMac = mac
+		dpuConfig.SwitchName = hostname
+		dpuConfig.PortLow = uint32(dpuLow)
+		dpuConfig.PortHigh = uint32(dpuHigh)
+		return &v1alpha.ConfigObject{
+			Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+			Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuConfig},
+		}, nil
+	})
+	if err != nil {
+		logger.GetLogger().Error("Failed to update dpu config", "error", err)
 	}
-	library.GetRepository().AddConfig(configObj)
 
 	agw := &AgentGateway{
 		Cfg:           &config.Config{},
@@ -549,6 +560,46 @@ func (agw *AgentGateway) PoliciesShow(_ context.Context, msgData ipc.MessageData
 			continue
 		}
 		result.WriteString(formatSwitchPolicy(resourceId, rulesList))
+	}
+	return result.String()
+}
+
+func (agw *AgentGateway) ConfigShow(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Show config")
+
+	// Get all config objects from the config repository
+	configObjects := library.GetRepository().GetConfigObjects()
+
+	if len(configObjects) == 0 {
+		if msgData.Flags["json"] == "true" {
+			return "{}"
+		}
+		return "No configuration found"
+	}
+
+	// If checking if the json flag was passed, so that config can be formatted correctly
+	if msgData.Flags["json"] == "true" {
+		result, err := json.Marshal(configObjects)
+		if err != nil {
+			return fmt.Sprintf("Error marshalling config: %v", err)
+		}
+		return string(result)
+	}
+
+	// Text output only
+	var result strings.Builder
+	result.WriteString(fmt.Sprintf("Configuration Objects: %d\n", len(configObjects)))
+	result.WriteString(strings.Repeat("-", 40) + "\n")
+
+	for configType, configObj := range configObjects {
+		result.WriteString(fmt.Sprintf("Type: %s\n", configType.String()))
+		configJson, err := json.MarshalIndent(configObj, "  ", "  ")
+		if err != nil {
+			result.WriteString(fmt.Sprintf("  Error: %v\n", err))
+		} else {
+			result.WriteString(fmt.Sprintf("  %s\n", string(configJson)))
+		}
+		result.WriteString("\n")
 	}
 	return result.String()
 }

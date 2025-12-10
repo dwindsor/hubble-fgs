@@ -11,8 +11,8 @@
 package v1alpha1
 
 import (
-	slimv1 "github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1"
 	ciliumio "github.com/isovalent/ipa/k8s/apis/cilium.io"
+	slimv1 "github.com/isovalent/ipa/k8s/slim/k8s/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -36,6 +36,17 @@ const (
 
 	// TPKindDefinition is the kind name of Cilium Tracing Policy
 	TNPNamespacedKindDefinition = "TetragonNetworkPolicyNamespaced"
+)
+
+// Annotations
+const (
+	// AnnotationStaging marks the network policy as a staging policy that is validated, but
+	// not deployed. If the value is non-empty then the changes are validated as a difference
+	// against the named policy with unchanged rules ignored.
+	AnnotationStaging = TNPName + "/" + "staging"
+
+	// AnnotationValidation holds the validation results for a staging policy.
+	AnnotationValidation = TNPName + "/" + "validation"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -77,7 +88,7 @@ type TetragonNetworkPolicyNamespacedList struct {
 type TetragonNetworkPolicyNamespaced struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
-	// Tracing policy specification.
+	// network policy specification
 	Spec NetworkPolicySpec `json:"spec"`
 }
 

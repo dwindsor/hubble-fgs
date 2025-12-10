@@ -599,6 +599,8 @@ func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg 
 		return nil
 	}
 
+	logger.GetLogger().Info("DPU UPDATE", "sernum", fullCfg.SerialNumber)
+
 	// Iterating through all peers, building the config response, and pushing it
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()

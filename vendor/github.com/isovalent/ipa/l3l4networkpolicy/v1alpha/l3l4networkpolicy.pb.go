@@ -1093,6 +1093,10 @@ type DpuConfig struct {
 	ServiceMac    string                 `protobuf:"bytes,2,opt,name=service_mac,json=serviceMac,proto3" json:"service_mac,omitempty"`
 	PortLow       uint32                 `protobuf:"varint,3,opt,name=port_low,json=portLow,proto3" json:"port_low,omitempty"`
 	PortHigh      uint32                 `protobuf:"varint,4,opt,name=port_high,json=portHigh,proto3" json:"port_high,omitempty"`
+	DpuId         uint32                 `protobuf:"varint,5,opt,name=dpu_id,json=dpuId,proto3" json:"dpu_id,omitempty"`
+	HaIp          string                 `protobuf:"bytes,6,opt,name=ha_ip,json=haIp,proto3" json:"ha_ip,omitempty"`
+	SerialNumber  string                 `protobuf:"bytes,7,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
+	SwitchName    string                 `protobuf:"bytes,8,opt,name=switch_name,json=switchName,proto3" json:"switch_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1153,6 +1157,34 @@ func (x *DpuConfig) GetPortHigh() uint32 {
 		return x.PortHigh
 	}
 	return 0
+}
+
+func (x *DpuConfig) GetDpuId() uint32 {
+	if x != nil {
+		return x.DpuId
+	}
+	return 0
+}
+
+func (x *DpuConfig) GetHaIp() string {
+	if x != nil {
+		return x.HaIp
+	}
+	return ""
+}
+
+func (x *DpuConfig) GetSerialNumber() string {
+	if x != nil {
+		return x.SerialNumber
+	}
+	return ""
+}
+
+func (x *DpuConfig) GetSwitchName() string {
+	if x != nil {
+		return x.SwitchName
+	}
+	return ""
 }
 
 // Object to store log export configuration
@@ -1802,14 +1834,19 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x10last_dpu_restart\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\x0elastDpuRestart\x12-\n" +
 	"\x12dataplane_restarts\x18\x10 \x01(\rR\x11dataplaneRestarts\x12P\n" +
 	"\x16last_dataplane_restart\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\x14lastDataplaneRestart\x12I\n" +
-	"\x13last_fwa_crash_time\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\x10lastFwaCrashTime\"\x83\x01\n" +
+	"\x13last_fwa_crash_time\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\x10lastFwaCrashTime\"\xf5\x01\n" +
 	"\tDpuConfig\x12\x1d\n" +
 	"\n" +
 	"service_ip\x18\x01 \x01(\tR\tserviceIp\x12\x1f\n" +
 	"\vservice_mac\x18\x02 \x01(\tR\n" +
 	"serviceMac\x12\x19\n" +
 	"\bport_low\x18\x03 \x01(\rR\aportLow\x12\x1b\n" +
-	"\tport_high\x18\x04 \x01(\rR\bportHigh\"\xc6\x02\n" +
+	"\tport_high\x18\x04 \x01(\rR\bportHigh\x12\x15\n" +
+	"\x06dpu_id\x18\x05 \x01(\rR\x05dpuId\x12\x13\n" +
+	"\x05ha_ip\x18\x06 \x01(\tR\x04haIp\x12#\n" +
+	"\rserial_number\x18\a \x01(\tR\fserialNumber\x12\x1f\n" +
+	"\vswitch_name\x18\b \x01(\tR\n" +
+	"switchName\"\xc6\x02\n" +
 	"\tLogConfig\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
