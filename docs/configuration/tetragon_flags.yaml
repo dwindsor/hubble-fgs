@@ -6,6 +6,9 @@ options:
     - name: alerts-export-dir
       usage: |
         Directory for alert JSON export (filenames will be retrieved from alert rule names). Disabled by default.
+    - name: alerts-export-filename
+      usage: |
+        Specify a global filename (unless overridden with alert specific export.filename), relative to alerts-export-dir, for alert JSON export. Disabled by default.
     - name: application-model-cache-size
       default_value: "65536"
       usage: |
