@@ -191,15 +191,11 @@ func (dp *AcceleratedDataplaneProcess) ClearFirewallPolicies(_ context.Context) 
 }
 
 func (dp *AcceleratedDataplaneProcess) SendDpuConfig(dpuConfig *v1alpha.DpuConfig) error {
-	cfg := DataplaneDpuConfig{
-		NpuIP:  dpuConfig.ServiceIp,
-		NpuMAC: dpuConfig.ServiceMac,
-	}
-	if cfg.NpuIP == "" || cfg.NpuMAC == "" {
-		logger.GetLogger().Error("failed to send dpu config", "npuIp", cfg.NpuIP, "npuMac", cfg.NpuMAC)
+	if dpuConfig.ServiceIp == "" || dpuConfig.ServiceMac == "" {
+		logger.GetLogger().Error("failed to send dpu config", "npuIp", dpuConfig.ServiceIp, "npuMac", dpuConfig.ServiceMac)
 		return fmt.Errorf("failed to send dpu config")
 	}
-	data, err := json.Marshal(cfg)
+	data, err := json.Marshal(dpuConfig)
 	if err != nil {
 		logger.GetLogger().Error("failed to marshal dpu config", logfields.Error, err)
 		return fmt.Errorf("failed to marshal dpu config")

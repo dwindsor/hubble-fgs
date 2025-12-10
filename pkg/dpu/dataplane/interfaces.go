@@ -89,11 +89,6 @@ type LogConfig struct {
 	Collector      []LogCollector `json:"collector"`
 }
 
-type DataplaneDpuConfig struct {
-	NpuIP  string `json:"service_ip"`
-	NpuMAC string `json:"service_mac"`
-}
-
 type LogCollector struct {
 	IP   string `json:"ip"`
 	Port int    `json:"port"`
