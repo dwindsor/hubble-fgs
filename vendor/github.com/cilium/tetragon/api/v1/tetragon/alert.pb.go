@@ -85,14 +85,15 @@ func (AlertRuleMeta_Severity) EnumDescriptor() ([]byte, []int) {
 }
 
 type AlertRuleMeta struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Severity      AlertRuleMeta_Severity `protobuf:"varint,2,opt,name=severity,proto3,enum=tetragon.AlertRuleMeta_Severity" json:"severity,omitempty"`
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	Tags          []string               `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty"`
-	RiskScore     int32                  `protobuf:"varint,5,opt,name=risk_score,json=riskScore,proto3" json:"risk_score,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Name               string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Severity           AlertRuleMeta_Severity `protobuf:"varint,2,opt,name=severity,proto3,enum=tetragon.AlertRuleMeta_Severity" json:"severity,omitempty"`
+	Message            string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	Tags               []string               `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty"`
+	RiskScore          int32                  `protobuf:"varint,5,opt,name=risk_score,json=riskScore,proto3" json:"risk_score,omitempty"`
+	RateLimitTriggered bool                   `protobuf:"varint,6,opt,name=rate_limit_triggered,json=rateLimitTriggered,proto3" json:"rate_limit_triggered,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *AlertRuleMeta) Reset() {
@@ -158,6 +159,13 @@ func (x *AlertRuleMeta) GetRiskScore() int32 {
 		return x.RiskScore
 	}
 	return 0
+}
+
+func (x *AlertRuleMeta) GetRateLimitTriggered() bool {
+	if x != nil {
+		return x.RateLimitTriggered
+	}
+	return false
 }
 
 type AlertRule struct {
@@ -260,14 +268,15 @@ var File_tetragon_alert_proto protoreflect.FileDescriptor
 
 const file_tetragon_alert_proto_rawDesc = "" +
 	"\n" +
-	"\x14tetragon/alert.proto\x12\btetragon\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x12tetragon/dns.proto\x1a\x15tetragon/events.proto\x1a\x12tetragon/fgs.proto\x1a\x16tetragon/sandbox.proto\x1a\x17tetragon/tetragon.proto\"\xf0\x01\n" +
+	"\x14tetragon/alert.proto\x12\btetragon\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x12tetragon/dns.proto\x1a\x15tetragon/events.proto\x1a\x12tetragon/fgs.proto\x1a\x16tetragon/sandbox.proto\x1a\x17tetragon/tetragon.proto\"\xa2\x02\n" +
 	"\rAlertRuleMeta\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12<\n" +
 	"\bseverity\x18\x02 \x01(\x0e2 .tetragon.AlertRuleMeta.SeverityR\bseverity\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12\x12\n" +
 	"\x04tags\x18\x04 \x03(\tR\x04tags\x12\x1d\n" +
 	"\n" +
-	"risk_score\x18\x05 \x01(\x05R\triskScore\"@\n" +
+	"risk_score\x18\x05 \x01(\x05R\triskScore\x120\n" +
+	"\x14rate_limit_triggered\x18\x06 \x01(\bR\x12rateLimitTriggered\"@\n" +
 	"\bSeverity\x12\x0f\n" +
 	"\vUNSPECIFIED\x10\x00\x12\b\n" +
 	"\x04INFO\x10\x01\x12\v\n" +

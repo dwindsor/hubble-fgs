@@ -33,6 +33,7 @@ message AlertRuleMeta {
   string message = 3;
   repeated string tags = 4;
   int32 risk_score = 5;
+  bool rate_limit_triggered = 6;
 }
 
 message AlertRule {

@@ -186,11 +186,12 @@ func eventToAlert(event *tetragon.GetEventsResponse, r *rule) *tetragon.Alert {
 
 func ruleToMeta(r *rule) *tetragon.AlertRuleMeta {
 	return &tetragon.AlertRuleMeta{
-		Name:      r.name,
-		Severity:  tetragon.AlertRuleMeta_Severity(tetragon.AlertRuleMeta_Severity_value[strings.ToUpper(r.severity)]),
-		Message:   r.message,
-		Tags:      r.tags,
-		RiskScore: int32(r.riskScore),
+		Name:               r.name,
+		Severity:           tetragon.AlertRuleMeta_Severity(tetragon.AlertRuleMeta_Severity_value[strings.ToUpper(r.severity)]),
+		Message:            r.message,
+		Tags:               r.tags,
+		RiskScore:          int32(r.riskScore),
+		RateLimitTriggered: false,
 	}
 }
 

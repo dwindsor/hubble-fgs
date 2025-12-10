@@ -3323,6 +3323,7 @@ Determins the behaviour of a field filter
 | message | [string](#string) |  |  |
 | tags | [string](#string) | repeated |  |
 | risk_score | [int32](#int32) |  |  |
+| rate_limit_triggered | [bool](#bool) |  |  |
 
 
 
