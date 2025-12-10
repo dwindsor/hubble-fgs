@@ -1,0 +1,34 @@
+apiVersion: cilium.io/v1alpha1
+kind: TetragonNetworkPolicy
+metadata:
+  name: "namespace-label-selector"
+  annotations:
+    author: "IsovalentQATeam"
+    description: "Example showing namespaceSelector with custom namespace labels"
+spec:
+  # Match pods in namespaces labeled org=alliance
+  # Namespace must have this label: kubectl label namespace <ns> org=alliance
+  namespaceSelector:
+    matchLabels:
+      org: alliance
+  # Match pods with class=xwing label
+  podSelector:
+    matchLabels:
+      class: xwing
+  processSelector:
+    operator: "In"
+    values:
+      - "/usr/bin/curl"
+      - "/usr/sbin/curl"
+  defaultAction: "deny"
+  rules:
+  - description: "Allow connections to empire pods"
+    hook: "connect"
+    action: "allow"
+    destination:
+    - podSelector:
+        matchLabels:
+          org: empire
+      ports:
+        protocol: "TCP"
+        ports: [80, 8080]

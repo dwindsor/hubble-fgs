@@ -76,6 +76,17 @@ func New(ctx context.Context) (KubernetesManager, error) {
 	// informer for CRDs. Adding controllers after starting the manager is ok
 	// according to https://github.com/kubernetes-sigs/controller-runtime/issues/1994.
 	ossManager.Start(ctx)
+
+	// Set the k8s reader for namespace label lookups used by namespaceSelector
+	dns.SetK8sReader(ossManager.Manager.GetCache())
+
+	// Ensure Namespace objects are cached for namespace label lookups
+	// This is needed for namespaceSelector matching in TetragonNetworkPolicy
+	_, err := ossManager.Manager.GetCache().GetInformer(ctx, &corev1.Namespace{})
+	if err != nil {
+		return nil, err
+	}
+
 	if !enterpriseOption.InClusterControlPlaneEnabled() {
 		return &EnterpriseManager{ossManager}, nil
 	}
@@ -87,7 +98,7 @@ func New(ctx context.Context) (KubernetesManager, error) {
 		}
 	}
 	// Set up an index on the Service object for looking up services by their ClusterIP.
-	err := ossManager.Manager.GetFieldIndexer().IndexField(ctx, &corev1.Service{}, serviceClusterIPField, getServiceClusterIPs)
+	err = ossManager.Manager.GetFieldIndexer().IndexField(ctx, &corev1.Service{}, serviceClusterIPField, getServiceClusterIPs)
 	if err != nil {
 		return nil, err
 	}
