@@ -99,8 +99,11 @@ type DPUAgent struct {
 	Dataplane   dataplane.Dataplane
 	LogExporter exporter.Exporter
 
+	EventLogger    *events.EventLogger
+	SyslogHostname string
+	SyslogAppname  string
+
 	Cfg          *config.Config
-	EventLogger  *events.EventLogger
 	Retries      int
 	streamClient *StreamClient
 	// This uses the sha of the PolicyRule as the key. The value though is
@@ -456,7 +459,7 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			}
 
 			// Log event
-			msg := events.NewEventLogMessage(events.MSGCODE_POLICY, dpu.AgentId)
+			msg := events.NewEventLogMessage(events.MSGCODE_POLICY)
 			msg.PolicyOperation = "upsert"
 			msg.PolicyId = rule.Policy.PolicyName
 			dpu.EventLogger.Log(msg)
@@ -475,7 +478,7 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			}
 
 			// Log event
-			msg := events.NewEventLogMessage(events.MSGCODE_POLICY, dpu.AgentId)
+			msg := events.NewEventLogMessage(events.MSGCODE_POLICY)
 			msg.PolicyOperation = "delete"
 			msg.PolicyId = rule.Policy.PolicyName
 			dpu.EventLogger.Log(msg)
@@ -507,7 +510,7 @@ func (dpu *DPUAgent) ConfigEventLoop(_ context.Context) error {
 			logger.GetLogger().Info("upserted config", "config", resp.Config) // FIXME: remove sensitive fields
 
 			// Log event
-			msg := events.NewEventLogMessage(events.MSGCODE_CONFIG, dpu.AgentId)
+			msg := events.NewEventLogMessage(events.MSGCODE_CONFIG)
 			msg.ConfigOperation = "upsert"
 			msg.ConfigType = resp.Config.Type.String()
 			dpu.EventLogger.Log(msg)
@@ -520,7 +523,7 @@ func (dpu *DPUAgent) ConfigEventLoop(_ context.Context) error {
 			logger.GetLogger().Info("deleted config", "config", resp.Config) // FIXME: remove sensitive fields
 
 			// Log event
-			msg := events.NewEventLogMessage(events.MSGCODE_CONFIG, dpu.AgentId)
+			msg := events.NewEventLogMessage(events.MSGCODE_CONFIG)
 			msg.ConfigOperation = "delete"
 			msg.ConfigType = resp.Config.Type.String()
 			dpu.EventLogger.Log(msg)

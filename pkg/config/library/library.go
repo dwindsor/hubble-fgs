@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
@@ -149,10 +151,7 @@ func (cr *configRepositoryImpl) GetConfig(typ v1alpha.ConfigType, target interfa
 		}
 		targetPtr, ok := target.(*v1alpha.DpuConfig)
 		if ok {
-			targetPtr.ServiceIp = dpuConfig.ServiceIp
-			targetPtr.ServiceMac = dpuConfig.ServiceMac
-			targetPtr.PortLow = dpuConfig.PortLow
-			targetPtr.PortHigh = dpuConfig.PortHigh
+			proto.Merge(targetPtr, dpuConfig)
 			return nil
 		}
 		return fmt.Errorf("unable to cast target of type %T to *v1alpha.DpuConfig", target)
@@ -163,7 +162,7 @@ func (cr *configRepositoryImpl) GetConfig(typ v1alpha.ConfigType, target interfa
 		}
 		targetPtr, ok := target.(*v1alpha.LogConfigSyslog)
 		if ok {
-			targetPtr.Configs = logConfig.Configs
+			proto.Merge(targetPtr, logConfig)
 			return nil
 		}
 		return fmt.Errorf("unable to cast target of type %T to *v1alpha.LogConfigSyslog", target)
@@ -174,7 +173,7 @@ func (cr *configRepositoryImpl) GetConfig(typ v1alpha.ConfigType, target interfa
 		}
 		targetPtr, ok := target.(*v1alpha.LogConfigIpfix)
 		if ok {
-			targetPtr.Configs = logConfig.Configs
+			proto.Merge(targetPtr, logConfig)
 			return nil
 		}
 		return fmt.Errorf("unable to cast target of type %T to *v1alpha.LogConfigIpfix", target)
@@ -185,7 +184,7 @@ func (cr *configRepositoryImpl) GetConfig(typ v1alpha.ConfigType, target interfa
 		}
 		targetPtr, ok := target.(*v1alpha.LogConfigTimescape)
 		if ok {
-			targetPtr.Configs = logConfig.Configs
+			proto.Merge(targetPtr, logConfig)
 			return nil
 		}
 		return fmt.Errorf("unable to cast target of type %T to *v1alpha.LogConfigTimescape", target)
@@ -196,7 +195,7 @@ func (cr *configRepositoryImpl) GetConfig(typ v1alpha.ConfigType, target interfa
 		}
 		targetPtr, ok := target.(*v1alpha.LogConfigSplunk)
 		if ok {
-			targetPtr.Configs = logConfig.Configs
+			proto.Merge(targetPtr, logConfig)
 			return nil
 		}
 		return fmt.Errorf("unable to cast target of type %T to *v1alpha.LogConfigSplunk", target)
@@ -228,7 +227,7 @@ func (cr *configRepositoryImpl) UpdateConfig(typ v1alpha.ConfigType, updater Upd
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
 
-	existing, _ := cr.configs[typ]
+	existing := cr.configs[typ]
 
 	newObj, err := updater(existing)
 	if err != nil {

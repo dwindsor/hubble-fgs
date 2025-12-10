@@ -1,10 +1,18 @@
 package events
 
 import (
+	"fmt"
 	"os"
+
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+
+	"github.com/isovalent/hubble-fgs/pkg/config/library"
 )
 
 const (
+	BASE_HOSTNAME = "smartswitch.isovalent.com"
+	BASE_APPNAME  = "hs-fwa-app"
+
 	// Message codes for different message types
 	MSGCODE_POLICY = 1
 	MSGCODE_CONFIG = 2
@@ -36,11 +44,20 @@ type EventLogMessage struct {
 	PolicyValue     string `json:"policy_value"`
 }
 
-func NewEventLogMessage(typ int, id string) EventLogMessage {
+func NewEventLogMessage(typ int) EventLogMessage {
+	appname := BASE_APPNAME
+	hostname := BASE_HOSTNAME
+	var dpuCfg v1alpha.DpuConfig
+	err := library.GetRepository().GetConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, &dpuCfg)
+	if err == nil {
+		appname = fmt.Sprintf("%s.%d", BASE_APPNAME, dpuCfg.DpuId)
+		hostname = fmt.Sprintf("%s.%s", dpuCfg.SerialNumber, BASE_HOSTNAME)
+	}
+
 	return EventLogMessage{
 		MsgCode:      typ,
-		Appname:      "hs-fwa",
-		Hostname:     id,
+		Appname:      appname,
+		Hostname:     hostname,
 		PID:          os.Getpid(),
 		Facility:     1,
 		Priority:     14,

@@ -225,7 +225,6 @@ func (dp *AcceleratedDataplaneProcess) SendDpuConfig(dpuConfig *v1alpha.DpuConfi
 	if rc.ReturnCode < socket.SUCCESS {
 		return errors.New(rc.ReturnCode.String())
 	}
-	logger.GetLogger().Debug("dataplane dpu config updated")
 	return nil
 }
 
@@ -413,7 +412,6 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 		// Setting NPU IP and MAC
 		dp.Accelerated.NpuIp = dpuConfig.ServiceIp
 		dp.Accelerated.NpuMac = dpuConfig.ServiceMac
-		logger.GetLogger().Error("dpu config", "npuIp", dpuConfig.ServiceIp, "npuMac", dpuConfig.ServiceMac)
 		err = dp.Accelerated.SendDpuConfig(dpuConfig)
 		if err != nil {
 			return err
