@@ -64,6 +64,7 @@ const (
 	keyNetworkPolicyDir               = "network-policy-dir"
 	keyEnableAlerts                   = "enable-alerts"
 	keyAlertsExportDir                = "alerts-export-dir"
+	keyAlertsExportFilename           = "alerts-export-filename"
 	keyDebugX                         = "debugx"
 	keyEnableAWSSonar                 = "enable-aws-sonar"
 	keyAWSSonarRegion                 = "aws-sonar-region"
@@ -179,6 +180,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.String(keyNetworkPolicyDir, "", "Directory for network policies to load at startup")
 	flags.Bool(keyEnableAlerts, true, "Enable alerts.")
 	flags.String(keyAlertsExportDir, "", "Directory for alert JSON export (filenames will be retrieved from alert rule names). Disabled by default.")
+	flags.String(keyAlertsExportFilename, "", "Specify a global filename (unless overridden with alert specific export.filename), relative to alerts-export-dir, for alert JSON export. Disabled by default.")
 	flags.StringSlice(keyDebugX, []string{}, "Extended debug to enable (e.g. \"tcp,udp+\"). Choose from: tcp, udp, icmp, rawsock. Tetragon defaults to maintaining metrics for program errors. Specifying the protocol/sub-system here causes events to be dispatched as well; adding a '+' will also get console messages")
 	flags.Bool(KeyEnableDnsDebug, false, "Enable DNS debug messages")
 	flags.Duration(KeyProcessCacheStaleInterval, time.Duration(60*time.Minute), "Interval between stale process cache checks")
@@ -258,6 +260,7 @@ func readAndSetEnterpriseFlags() {
 	Config.PoliciesDir = viper.GetString(KeyPolicyDir)
 	Config.EnableAlerts = viper.GetBool(keyEnableAlerts)
 	Config.AlertsExportDir = viper.GetString(keyAlertsExportDir)
+	Config.AlertsExportFilename = viper.GetString(keyAlertsExportFilename)
 	Config.DebugX = viper.GetStringSlice(keyDebugX)
 	Config.EnableAWSSonar = viper.GetBool(keyEnableAWSSonar)
 	Config.AWSSonarRegion = viper.GetString(keyAWSSonarRegion)

@@ -137,14 +137,20 @@ func (r *AlertRuleManager) AddAlertRule(ar *v1alpha1.AlertRule) error {
 		return nil
 	}
 	fname := ar.GetName() + ".log"
+	if eeOption.Config.AlertsExportFilename != "" {
+		// This input comes directly from the user.
+		// Handle with **extra** care!
+		fname = eeOption.Config.AlertsExportFilename
+	}
+	// Alert export.filename overrides global option
 	if ar.Spec.Export.Filename != "" {
 		// This input comes directly from the user.
 		// Handle with **extra** care!
 		fname = ar.Spec.Export.Filename
-		errs := validation.IsDNS1123Subdomain(fname)
-		if len(errs) > 0 {
-			return fmt.Errorf("AlertRule (%q) export.filename (%q) wrong value: %v", ar.GetName(), ar.Spec.Export.Filename, errs)
-		}
+	}
+	errs := validation.IsDNS1123Subdomain(fname)
+	if len(errs) > 0 {
+		return fmt.Errorf("AlertRule (%q) export.filename (%q) wrong value: %v", ar.GetName(), ar.Spec.Export.Filename, errs)
 	}
 	return r.addAlertRuleWithFilename(ar, fname)
 }

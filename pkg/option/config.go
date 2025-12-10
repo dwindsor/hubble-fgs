@@ -66,8 +66,9 @@ type config struct {
 
 	PoliciesDir string
 
-	EnableAlerts    bool
-	AlertsExportDir string
+	EnableAlerts         bool
+	AlertsExportDir      string
+	AlertsExportFilename string
 
 	DebugX []string
 
