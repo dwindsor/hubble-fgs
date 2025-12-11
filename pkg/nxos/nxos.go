@@ -1232,3 +1232,24 @@ func (n *Nxos) IsInService(_ context.Context) bool {
 
 	return n.InService
 }
+
+func DoHa() bool {
+	var doHa bool
+
+	viper.SetConfigFile("/etc/sas.cfg")
+	viper.SetConfigType("env")
+	err := viper.ReadInConfig()
+	if err != nil {
+		logger.GetLogger().Error("ReadInConfig fails", logfields.Error, err)
+		return doHa
+	}
+
+	sd := viper.GetString("NX_AGENT_HA_MODE")
+	if sd == "1" {
+		doHa = true
+		logger.GetLogger().Debug("HA enabled by platform")
+	} else {
+		logger.GetLogger().Debug("HA disabled by platform")
+	}
+	return doHa
+}

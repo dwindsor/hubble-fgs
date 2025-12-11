@@ -72,6 +72,9 @@ func executeAGW() {
 		return
 	}
 
+	if nxos.DoHa() {
+		Config.Ha = true
+	}
 	if Config.Ha {
 		logger.GetLogger().Info("Starting HA service...")
 		waitGroup.Go(func() error {
