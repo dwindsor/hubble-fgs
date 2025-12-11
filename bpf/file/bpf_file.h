@@ -579,6 +579,8 @@ struct sel_args {
 	__u32 flags;
 	__s32 retval;
 	__u32 secureexec;
+	__u32 uid;
+	__u32 gid;
 };
 
 #define SEL_OPENRAW_SUCCESS 0
@@ -606,8 +608,15 @@ struct {
 } file_uidgid_map SEC(".maps");
 
 struct sel_binprop {
+	__u32 has_secureexec;
 	__u32 secureexec_op;
 	__u32 secureexec_val;
+	__u32 has_setuid;
+	__u32 setuid_op;
+	__u32 setuid_val;
+	__u32 has_setgid;
+	__u32 setgid_op;
+	__u32 setgid_val;
 };
 
 struct {
@@ -1191,7 +1200,7 @@ sel_check_gid:
 }
 
 // returns 1 if it matches, 0 otherwise
-static inline __attribute__((always_inline)) int check_match_binary_properties(__u32 sel_idx, __u32 action, __u32 secureexec)
+static inline __attribute__((always_inline)) int check_match_binary_properties(__u32 sel_idx, __u32 action, __u32 secureexec, __u32 uid, __u32 gid)
 {
 	__u32 sel = sel_idx;
 	struct sel_binprop *val = 0;
@@ -1200,7 +1209,7 @@ static inline __attribute__((always_inline)) int check_match_binary_properties(_
 	if (action != action_exec)
 		return 1;
 
-	// secureexec is not set
+	// exec event but secureexec is not set
 	if (secureexec == INVALID_SECUREEXEC)
 		return 1;
 
@@ -1208,12 +1217,39 @@ static inline __attribute__((always_inline)) int check_match_binary_properties(_
 	if (!val) // no matchBinaryProperties for this selector -- match
 		return 1;
 
-	if (val->secureexec_op == op_filter_in)
-		return (val->secureexec_val & secureexec) != 0;
-	else if (val->secureexec_op == op_filter_notin)
-		return (val->secureexec_val & secureexec) == 0;
+	if (val->has_secureexec) {
+		if (val->secureexec_op == op_filter_in) {
+			if ((val->secureexec_val & secureexec) != 0)
+				return 1;
+		} else if (val->secureexec_op == op_filter_notin) {
+			if ((val->secureexec_val & secureexec) == 0)
+				return 1;
+		}
+	}
 
-	// we should not reach this point (i.e. do not match)
+	// to check that we need to have a setuid and the selector to be defined
+	if (val->has_setuid && ((secureexec & EXEC_SETUID) != 0)) {
+		if (val->setuid_op == op_filter_in) {
+			if (val->setuid_val == uid)
+				return 1;
+		} else if (val->setuid_op == op_filter_notin) {
+			if (val->setuid_val != uid)
+				return 1;
+		}
+	}
+
+	// to check that we need to have a setgid and the selector to be defined
+	if (val->has_setgid && ((secureexec & EXEC_SETGID) != 0)) {
+		if (val->setgid_op == op_filter_in) {
+			if (val->setgid_val == gid)
+				return 1;
+		} else if (val->setgid_op == op_filter_notin) {
+			if (val->setgid_val != gid)
+				return 1;
+		}
+	}
+
+	// nothing matched before so do not match
 	return 0;
 }
 
@@ -1270,7 +1306,7 @@ __eval_selectors(__u32 sel_idx, struct sel_args args, struct digest_key *digest,
 #ifdef __LARGE_BPF_PROG
 	if (HAS_MATCH_BINARY_PROPERTIES) {
 #endif
-		if (!check_match_binary_properties(sel_idx, args.action, args.secureexec))
+		if (!check_match_binary_properties(sel_idx, args.action, args.secureexec, args.uid, args.gid))
 			return 0;
 #ifdef __LARGE_BPF_PROG
 	}
@@ -1376,6 +1412,8 @@ struct selectors_ctx {
 	__u32 num_selectors;
 	__u32 msg_id;
 	__u32 secureexec;
+	__u32 uid;
+	__u32 gid;
 	struct digest_key *digest;
 };
 
@@ -1398,7 +1436,7 @@ static long selectors_cb(u32 index, void *ununsed)
 	if (index >= ctx->num_selectors) // no need to check more selectors
 		return 1;
 
-	ctx->retval = __eval_selectors(index, (struct sel_args){ .action = ctx->action, .flags = ctx->flags, .retval = ctx->ret, .secureexec = ctx->secureexec }, ctx->digest, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
+	ctx->retval = __eval_selectors(index, (struct sel_args){ .action = ctx->action, .flags = ctx->flags, .retval = ctx->ret, .secureexec = ctx->secureexec, .uid = ctx->uid, .gid = ctx->gid }, ctx->digest, (struct sel_path){ ctx->path, ctx->len }, &ctx->msg_id);
 	if (ctx->retval) { // we return the value from the first selector that matches
 		return 1;
 	}
@@ -1448,6 +1486,8 @@ eval_selectors(struct sel_args args, struct digest_key *digest, struct sel_path 
 	ctx->flags = args.flags;
 	ctx->ret = args.retval;
 	ctx->secureexec = args.secureexec;
+	ctx->uid = args.uid;
+	ctx->gid = args.gid;
 	ctx->path = path.path;
 	ctx->len = path.len;
 	ctx->retval = 0;

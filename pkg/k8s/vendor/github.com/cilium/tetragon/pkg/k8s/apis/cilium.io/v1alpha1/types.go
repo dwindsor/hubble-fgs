@@ -279,6 +279,12 @@ type BinaryPropertiesSelector struct {
 	// +kubebuilder:validation:Optional
 	// Matches on privileges_changed value.
 	PrivilegesChanged []PrivilegesChangedSelector `json:"privileges_changed,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Matches on setuid value.
+	SetUid []UidGidValues `json:"setuid,omitempty"`
+	// +kubebuilder:validation:Optional
+	// Matches on setgid value.
+	SetGid []UidGidValues `json:"setgid,omitempty"`
 }
 
 // FileSelector selects file operations.

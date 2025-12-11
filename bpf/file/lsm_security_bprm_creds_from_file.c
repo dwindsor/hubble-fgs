@@ -32,7 +32,7 @@ int BPF_PROG(security_bprm_committing_creds_lsm, struct linux_binprm *bprm, stru
 	if (msg->digest.ok)
 		digest = &msg->digest;
 
-	operation = eval_selectors((struct sel_args){ .action = action_exec, .flags = flags.d32, .retval = 0, .secureexec = msg->secureexec }, digest, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
+	operation = eval_selectors((struct sel_args){ .action = action_exec, .flags = flags.d32, .retval = 0, .secureexec = msg->secureexec, .uid = msg->uid[NEWVAL], .gid = msg->gid[NEWVAL] }, digest, (struct sel_path){ msg->path.str, msg->path.size }, &msg_id);
 	if (!(operation & FILE_OP_POST))
 		goto out;
 

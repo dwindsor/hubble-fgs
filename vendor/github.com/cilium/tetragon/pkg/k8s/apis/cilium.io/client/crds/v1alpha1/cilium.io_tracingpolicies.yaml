@@ -408,6 +408,46 @@ spec:
                                   - operator
                                   type: object
                                 type: array
+                              setgid:
+                                description: Matches on setgid value.
+                                items:
+                                  properties:
+                                    operator:
+                                      description: Filter operation.
+                                      enum:
+                                      - In
+                                      - NotIn
+                                      type: string
+                                    values:
+                                      description: the values of gid/uid to match
+                                      items:
+                                        format: int32
+                                        type: integer
+                                      type: array
+                                  required:
+                                  - operator
+                                  type: object
+                                type: array
+                              setuid:
+                                description: Matches on setuid value.
+                                items:
+                                  properties:
+                                    operator:
+                                      description: Filter operation.
+                                      enum:
+                                      - In
+                                      - NotIn
+                                      type: string
+                                    values:
+                                      description: the values of gid/uid to match
+                                      items:
+                                        format: int32
+                                        type: integer
+                                      type: array
+                                  required:
+                                  - operator
+                                  type: object
+                                type: array
                             type: object
                           type: array
                         matchDigests:

@@ -187,8 +187,15 @@ type UidGidVal struct {
 }
 
 type BinaryPropertiesVal struct {
+	hasSecureexec uint32
 	secureexecOp  uint32
 	secureexecVal uint32
+	hasSetuid     uint32
+	setuidOp      uint32
+	setuidVal     uint32
+	hasSetgid     uint32
+	setgidOp      uint32
+	setgidVal     uint32
 }
 
 type ProcessDurationVal struct {
@@ -1404,6 +1411,30 @@ func GetOpenrawResultMapSize(sel *KernelSelectorState) int {
 	return len(sel.openraw)
 }
 
+func getUidGidVal(v []v1alpha1.UidGidValues) (uint32, uint32, error) {
+	if len(v) == 0 {
+		return 0, 0, nil
+	}
+	if len(v) > 1 {
+		return 0, 0, fmt.Errorf("only support a single entry")
+	}
+
+	vv := v[0]
+	if len(vv.Values) == 0 {
+		return 0, 0, nil
+	}
+	if len(vv.Values) > 1 {
+		return 0, 0, fmt.Errorf("only support a single value")
+	}
+
+	op, err := selectors.SelectorOp(vv.Operator)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return op, vv.Values[0], nil
+}
+
 func ParseMatchUidGid(k *KernelSelectorState, op []v1alpha1.UidGidSelector, selIdx int) error {
 	if len(op) > 1 {
 		return fmt.Errorf("only support a single operation inside a single selector")
@@ -1412,38 +1443,14 @@ func ParseMatchUidGid(k *KernelSelectorState, op []v1alpha1.UidGidSelector, selI
 		return nil
 	}
 
-	getVal := func(v []v1alpha1.UidGidValues) (uint32, uint32, error) {
-		if len(v) == 0 {
-			return 0, 0, nil
-		}
-		if len(v) > 1 {
-			return 0, 0, fmt.Errorf("only support a single entry")
-		}
-
-		vv := v[0]
-		if len(vv.Values) == 0 {
-			return 0, 0, nil
-		}
-		if len(vv.Values) > 1 {
-			return 0, 0, fmt.Errorf("only support a single value")
-		}
-
-		op, err := selectors.SelectorOp(vv.Operator)
-		if err != nil {
-			return 0, 0, err
-		}
-
-		return op, vv.Values[0], nil
-	}
-
 	o := op[0]
 
-	uidOp, uidVal, uidErr := getVal(o.Uid)
+	uidOp, uidVal, uidErr := getUidGidVal(o.Uid)
 	if uidErr != nil {
 		return fmt.Errorf("uid error: %v", uidErr)
 	}
 
-	gidOp, gidVal, gidErr := getVal(o.Gid)
+	gidOp, gidVal, gidErr := getUidGidVal(o.Gid)
 	if gidErr != nil {
 		return fmt.Errorf("gid error: %v", gidErr)
 	}
@@ -1490,32 +1497,61 @@ func ParseMatchBinariesProperties(k *KernelSelectorState, op []v1alpha1.BinaryPr
 	if len(op) == 0 {
 		return nil
 	}
+	o := op[0]
 
-	v := op[0].PrivilegesChanged
+	bp := BinaryPropertiesVal{
+		hasSecureexec: 0,
+		hasSetuid:     0,
+		hasSetgid:     0,
+	}
+
+	v := o.PrivilegesChanged
 	if len(v) > 1 {
 		return fmt.Errorf("privileges_changed error: only support a single entry")
 	}
-	if len(v) == 0 {
-		return nil
-	}
-
-	operator, err := selectors.SelectorOp(v[0].Operator)
-	if err != nil {
-		return fmt.Errorf("privileges_changed error: %v", err)
-	}
-
-	mask := uint32(0)
-	for _, m := range v[0].Values {
-		switch m {
-		case "PRIVILEGES_RAISED_EXEC_FILE_CAP":
-			mask |= uint32(processapi.ExecveFileCaps)
-		case "PRIVILEGES_RAISED_EXEC_FILE_SETUID":
-			mask |= uint32(processapi.ExecveSetuidRoot)
-		case "PRIVILEGES_RAISED_EXEC_FILE_SETGID":
-			mask |= uint32(processapi.ExecveSetgidRoot)
-		default:
-			return fmt.Errorf("privileges_changed error: unknown value %s", m)
+	if len(v) == 1 {
+		op, err := selectors.SelectorOp(v[0].Operator)
+		if err != nil {
+			return fmt.Errorf("privileges_changed error: %v", err)
 		}
+
+		mask := uint32(0)
+		for _, m := range v[0].Values {
+			switch m {
+			case "PRIVILEGES_RAISED_EXEC_FILE_CAP":
+				mask |= uint32(processapi.ExecveFileCaps)
+			case "PRIVILEGES_RAISED_EXEC_FILE_SETUID":
+				mask |= uint32(processapi.ExecveSetuidRoot)
+			case "PRIVILEGES_RAISED_EXEC_FILE_SETGID":
+				mask |= uint32(processapi.ExecveSetgidRoot)
+			default:
+				return fmt.Errorf("privileges_changed error: unknown value %s", m)
+			}
+		}
+
+		bp.hasSecureexec = 1
+		bp.secureexecOp = op
+		bp.secureexecVal = mask
+	}
+
+	uidOp, uidVal, uidErr := getUidGidVal(o.SetUid)
+	if uidErr != nil {
+		return fmt.Errorf("uid error: %v", uidErr)
+	}
+	if uidOp != 0 {
+		bp.hasSetuid = 1
+		bp.setuidOp = uidOp
+		bp.setuidVal = uidVal
+	}
+
+	gidOp, gidVal, gidErr := getUidGidVal(o.SetGid)
+	if gidErr != nil {
+		return fmt.Errorf("gid error: %v", gidErr)
+	}
+	if gidOp != 0 {
+		bp.hasSetgid = 1
+		bp.setgidOp = gidOp
+		bp.setgidVal = gidVal
 	}
 
 	val, ok := k.binaryProperties[uint32(selIdx)]
@@ -1524,8 +1560,15 @@ func ParseMatchBinariesProperties(k *KernelSelectorState, op []v1alpha1.BinaryPr
 		k.binaryProperties[uint32(selIdx)] = val
 	}
 
-	val.secureexecOp = operator
-	val.secureexecVal = mask
+	val.hasSecureexec = bp.hasSecureexec
+	val.secureexecOp = bp.secureexecOp
+	val.secureexecVal = bp.secureexecVal
+	val.hasSetuid = bp.hasSetuid
+	val.setuidOp = bp.setuidOp
+	val.setuidVal = bp.setuidVal
+	val.hasSetgid = bp.hasSetgid
+	val.setgidOp = bp.setgidOp
+	val.setgidVal = bp.setgidVal
 
 	return nil
 }
