@@ -27,6 +27,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/shutdown"
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
 
@@ -214,7 +215,10 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		if len(crds) > 0 {
 			err = kubernetesManager.WaitCRDs(ctx, crds)
 			if err != nil {
-				return err
+				logger.GetLogger().Error("failed to wait smartswitch policy crd", logfields.Error, err)
+				// Trigger agw restart to retry CRD wait
+				shutdown.TriggerShutdown(shutdown.RestartExitCode)
+				return nil
 			}
 		}
 		err = switchpolicy.AddSmartSwitchNetworkPolicyInformer(ctx, kubernetesManager, agwAgent.PolicyHandler)
