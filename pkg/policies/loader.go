@@ -97,7 +97,7 @@ func (p *defaultLoader) OnAlertRule(_ context.Context, fname string, bytes []byt
 		return fmt.Errorf("unexpected object type: %T", obj)
 	}
 	if ar.Spec.Export.Filename == "" {
-		ar.Spec.Export.Filename = fname + ".log"
+		ar.Spec.Export.Filename = filepath.Base(fname) + ".log"
 	}
 	return p.alertsManager.AddAlertRule(ar)
 }
