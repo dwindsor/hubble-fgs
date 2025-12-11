@@ -17,7 +17,7 @@
 // (because Length is a USHORT).  Exactly 64k seems to be a little too high
 // for eBPF, so we subtract a few bytes and the likelihood this actually
 // truncates anything important is pretty low.
-#define COMMAND_SCRATCH_SIZE ((64 * 1024) - 16)
+#define COMMAND_SCRATCH_SIZE ((64 * 1024) - 32)
 
 #define IMAGE_PATH_OFFSET (COMMAND_SCRATCH_SIZE - IMAGE_PATH_SIZE - 4)
 
