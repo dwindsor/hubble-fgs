@@ -121,6 +121,14 @@ spec:
           - "PRIVILEGES_RAISED_EXEC_FILE_SETUID"
           - "PRIVILEGES_RAISED_EXEC_FILE_SETGID"
           - "PRIVILEGES_RAISED_EXEC_FILE_CAP"
+        setuid:
+        - operator: "In"
+          values:
+          - 0
+        setgid:
+        - operator: "In"
+          values:
+          - 0
       matchProcessDuration: # match all processes that run for more than 2 seconds
       - operator: "GT"
         value: 2s
