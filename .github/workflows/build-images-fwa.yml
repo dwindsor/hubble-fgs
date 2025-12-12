@@ -37,14 +37,27 @@ jobs:
         id: get-version
         run: |
           VERSION=$(make version)
+          echo "Version from make: $VERSION"
+          
+          # Check if VERSION is empty or matches a SHA pattern
           if [[ -z "$VERSION" || "$VERSION" =~ ^[a-f0-9]{7,}$ ]]; then
             echo "WARNING: Version appears to be empty or a SHA. Using tag from git describe instead."
-            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            VERSION=$(git describe --tags --abbrev=0 --exclude 'api/*' --exclude '*-codedrop' 2>/dev/null || echo "v0.0.0")
+            echo "Updated version to: $VERSION"
           fi
-
-          # Simplify version to match format like 1.18.0-pre.1-95 or 1.15.4-some-string
-          # Keep semantic version and any first hyphenated suffix, but remove git commit info
-          VERSION=$(echo "$VERSION" | sed -E 's/^(v?[0-9]+\.[0-9]+\.[0-9]+(-[^-]+)?).*/\1/')
+          
+          # Remove api/ prefix if present (fallback safety)
+          if [[ "$VERSION" =~ ^api/(.*)$ ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            echo "Stripped api/ prefix, updated version: $VERSION"
+          fi
+          
+          # Remove the -g<SHA> part if present
+          if [[ "$VERSION" =~ (.*)-g[a-f0-9]+ ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            echo "Trimmed git SHA suffix, updated version: $VERSION"
+          fi
+          
           DATE=$(date -u +"%Y%m%d%H%M")
           SHA=$(git rev-parse --short HEAD)
 
