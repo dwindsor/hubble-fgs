@@ -7,7 +7,11 @@ package token
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -386,4 +390,60 @@ func (a *AgentToken) SetK8sControllerURL(tokenStr string) {
 		return
 	}
 	a.k8sControllerURL = apiServer
+}
+
+// K8sControllerEndpoint parses a controller endpoint URL and extracts the hostname and port.
+// It supports both HTTP and HTTPS URLs with IPv4, IPv6, and DNS hostnames.
+// The controller endpoint URL in the format http(s)://<ipv4/6-or-dns>:<port>
+//
+// Returns:
+//   - string: The extracted hostname/IP address
+//   - uint32: The extracted port number (0 if no port specified)
+//   - error: Any parsing error encountered
+//
+// The function returns empty values with no error if the input URL is empty.
+// If the URL doesn't start with http:// or https://, or if parsing fails,
+// an error is returned.
+func (a *AgentToken) K8sControllerEndpoint() (string, uint32, error) {
+	endpointUrl := a.K8sControllerURL()
+	if endpointUrl == "" {
+		logger.GetLogger().Info("Controller endpoint is empty")
+		return "", 0, fmt.Errorf("controller endpoint URL is empty")
+	}
+
+	controllerEndpoint := ""
+	controllerPort := uint32(0)
+
+	// parse endpointUrl and split into endpoint and port
+	// expected format: http(s)://<ipv4/6-or-dns>:<port>
+	if strings.HasPrefix(endpointUrl, "http://") || strings.HasPrefix(endpointUrl, "https://") {
+		// Use net/url package for proper URL parsing including IPv6 support
+		parsedUrl, err := url.Parse(endpointUrl)
+		if err != nil {
+			logger.GetLogger().Error("failed to parse controller URL", "endpointUrl", endpointUrl, logfields.Error, err)
+			return "", 0, fmt.Errorf("invalid controller URL: %v", err)
+		}
+
+		// Extract hostname and port
+		host, portStr, err := net.SplitHostPort(parsedUrl.Host)
+		if err != nil {
+			// No port specified, use hostname as-is
+			controllerEndpoint = parsedUrl.Host
+			controllerPort = 0 // Default port
+		} else {
+			controllerEndpoint = host
+			port, err := strconv.ParseUint(portStr, 10, 32)
+			if err != nil {
+				logger.GetLogger().Error("failed to parse controller port", "port", portStr, logfields.Error, err)
+				return "", 0, fmt.Errorf("invalid controller port: %v", err)
+			}
+			controllerPort = uint32(port)
+		}
+	}
+	// If still no controllerEndpoint, return error
+	if controllerEndpoint == "" {
+		logger.GetLogger().Error("invalid controller endpoint URL", "endpointUrl", endpointUrl)
+		return "", 0, fmt.Errorf("invalid controller endpoint URL: %s", endpointUrl)
+	}
+	return controllerEndpoint, controllerPort, nil
 }

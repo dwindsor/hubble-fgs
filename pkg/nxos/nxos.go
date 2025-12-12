@@ -672,8 +672,11 @@ func (n *Nxos) SetToken(ctx context.Context, k8sToken string) (bool, error) {
 	n.Ctrlr.Token = k8sToken
 
 	// Update the controller endpoint/port from the new token.
-	if err := n.setControllerEndpoint(ctx, agentToken.K8sControllerURL(), false); err != nil {
-		return restartNeeded, err
+	controllerEndpoint, controllerPort, errToken := agentToken.K8sControllerEndpoint()
+	if errToken == nil {
+		if err := n.setControllerEndpoint(ctx, controllerEndpoint, controllerPort, false); err != nil {
+			return restartNeeded, err
+		}
 	}
 	logger.GetLogger().Debug("K8s auth token is set")
 
