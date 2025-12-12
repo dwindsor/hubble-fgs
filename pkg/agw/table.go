@@ -4,32 +4,45 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"text/tabwriter"
 )
 
-// FormatTable generates a formatted table string from a slice of structs.
-// It uses JSON tags as column headers. Fields without a JSON tag are skipped
-// and will not appear in the table output.
+// FormatTable generates a formatted table string from various data types.
+// It supports:
+//   - Slices of structs: Uses JSON tags as column headers
+//   - Maps: Displays key-value pairs in a two-column table
+//   - Structs: Displays field names and values in a two-column table
 //
 // Parameters:
-//   - items: a slice of structs (e.g., []MyStruct or interface{} containing a slice)
+//   - items: a slice of structs, map, or struct
 //
 // Returns:
 //   - A formatted table string with columns aligned using tabwriter
-//   - An error if the input is not a slice of structs or has no fields with JSON tags
+//   - An error if the input type is not supported
 func FormatTable(items interface{}) (string, error) {
 	v := reflect.ValueOf(items)
 
-	// Handle pointer to slice
+	// Handle pointer
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 
-	if v.Kind() != reflect.Slice {
-		return "", fmt.Errorf("FormatTable requires a slice, got %s", v.Kind())
+	switch v.Kind() {
+	case reflect.Slice:
+		return formatSliceTable(v)
+	case reflect.Map:
+		return formatMapTable(v)
+	case reflect.Struct:
+		return formatStructTable(v)
+	default:
+		return "", fmt.Errorf("FormatTable requires a slice, map, or struct, got %s", v.Kind())
 	}
+}
 
+// formatSliceTable formats a slice of structs as a table
+func formatSliceTable(v reflect.Value) (string, error) {
 	if v.Len() == 0 {
 		return "", nil
 	}
@@ -77,6 +90,126 @@ func FormatTable(items interface{}) (string, error) {
 
 	w.Flush()
 	return buf.String(), nil
+}
+
+// formatMapTable formats a map as a two-column key-value table
+func formatMapTable(v reflect.Value) (string, error) {
+	if v.Len() == 0 {
+		return "", nil
+	}
+
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+
+	// Get and sort keys for consistent output
+	keys := v.MapKeys()
+	sortMapKeys(keys)
+
+	// Write key-value pairs
+	for _, key := range keys {
+		val := v.MapIndex(key)
+		keyStr := formatValue(key)
+		valStr := formatValue(val)
+		fmt.Fprintf(w, "  %s:\t%s\n", keyStr, valStr)
+	}
+
+	w.Flush()
+	return buf.String(), nil
+}
+
+// formatStructTable formats a struct as a two-column field-value table
+func formatStructTable(v reflect.Value) (string, error) {
+	t := v.Type()
+
+	buf := new(bytes.Buffer)
+	w := tabwriter.NewWriter(buf, 0, 0, 3, ' ', 0)
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+
+		// Skip unexported fields
+		if !field.IsExported() {
+			continue
+		}
+
+		// Get display name from JSON tag or field name
+		displayName := field.Name
+		if jsonTag := field.Tag.Get("json"); jsonTag != "" && jsonTag != "-" {
+			parts := strings.Split(jsonTag, ",")
+			if parts[0] != "" {
+				displayName = parts[0]
+			}
+		}
+
+		fieldVal := v.Field(i)
+		valStr := formatValue(fieldVal)
+
+		fmt.Fprintf(w, "  %s:\t%s\n", displayName, valStr)
+	}
+
+	w.Flush()
+	return buf.String(), nil
+}
+
+// FormatKeyValueTable formats a map or struct with a title header
+func FormatKeyValueTable(title string, items interface{}) (string, error) {
+	v := reflect.ValueOf(items)
+
+	// Handle pointer
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	var content string
+	var err error
+
+	switch v.Kind() {
+	case reflect.Map:
+		content, err = formatMapTable(v)
+	case reflect.Struct:
+		content, err = formatStructTable(v)
+	default:
+		return "", fmt.Errorf("FormatKeyValueTable requires a map or struct, got %s", v.Kind())
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	var b strings.Builder
+	if title != "" {
+		b.WriteString(fmt.Sprintf("─── %s ", title))
+		// Pad to make consistent width
+		padding := 65 - len(title) - 5
+		if padding > 0 {
+			b.WriteString(strings.Repeat("─", padding))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString(content)
+	return b.String(), nil
+}
+
+// sortMapKeys sorts map keys for consistent output
+func sortMapKeys(keys []reflect.Value) {
+	if len(keys) == 0 {
+		return
+	}
+
+	switch keys[0].Kind() {
+	case reflect.String:
+		sort.Slice(keys, func(i, j int) bool {
+			return keys[i].String() < keys[j].String()
+		})
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		sort.Slice(keys, func(i, j int) bool {
+			return keys[i].Int() < keys[j].Int()
+		})
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		sort.Slice(keys, func(i, j int) bool {
+			return keys[i].Uint() < keys[j].Uint()
+		})
+	}
 }
 
 // getJSONFieldIndices returns the indices of fields that have JSON tags

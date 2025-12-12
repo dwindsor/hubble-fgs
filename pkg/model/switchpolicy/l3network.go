@@ -45,6 +45,12 @@ func (l3 *L3Networks) Remove(name VrfName) error {
 	return fmt.Errorf("L3 network with name %s does not exist", name)
 }
 
+// HasVRF returns true if the VRF name exists in the L3Networks
+func (l3 *L3Networks) HasVRF(name VrfName) bool {
+	_, ok := l3.byName[name]
+	return ok
+}
+
 // Copy creates a deep copy of the L3Networks
 func (l3 *L3Networks) Copy() *L3Networks {
 	l3Copy := &L3Networks{

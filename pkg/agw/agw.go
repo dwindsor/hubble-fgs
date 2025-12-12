@@ -566,6 +566,134 @@ func (agw *AgentGateway) PoliciesClear(_ context.Context) error {
 	return nil
 }
 
+func (agw *AgentGateway) PoliciesInfo(_ context.Context, msgData ipc.MessageData) string {
+	logger.GetLogger().Debug("Policies info")
+
+	type PolicySummary struct {
+		TotalPolicies     int            `json:"total_policies"`
+		TotalRules        int            `json:"total_rules"`
+		ActiveRules       int            `json:"active_rules"`
+		AllowRules        int            `json:"allow_rules"`
+		DenyRules         int            `json:"deny_rules"`
+		TotalPolicyVRFs   int            `json:"total_policy_vrfs"`
+		ActivePolicyVRFs  int            `json:"active_policy_vrfs"`
+		TotalPolicyVLANs  int            `json:"total_policy_vlans"`
+		PoliciesByNs      map[string]int `json:"policies_by_namespace"`
+		RulesByNamespace  map[string]int `json:"rules_by_namespace"`
+		ProtocolBreakdown map[string]int `json:"protocol_breakdown"`
+	}
+
+	policyMap := agw.PolicyHandler.ListPolicies()
+
+	// Collect summary statistics
+	summary := PolicySummary{
+		RulesByNamespace:  make(map[string]int),
+		PoliciesByNs:      make(map[string]int),
+		ProtocolBreakdown: make(map[string]int),
+	}
+
+	vrfSet := make(map[string]bool)
+	vlanSet := make(map[int32]bool)
+	activeL3Networks := agw.PolicyHandler.GetL3Networks()
+
+	for resourceID, rulesList := range policyMap {
+		summary.TotalPolicies++
+
+		// Parse resource ID (kind/namespace/name)
+		parts := strings.Split(resourceID.String(), "/")
+		if len(parts) >= 3 {
+			namespace := parts[1]
+			summary.PoliciesByNs[namespace]++
+		}
+
+		for _, rule := range rulesList {
+			summary.TotalRules++
+
+			// Count rules by namespace
+			if len(parts) >= 3 {
+				namespace := parts[1]
+				summary.RulesByNamespace[namespace]++
+			}
+
+			if rule.SwitchPolicy == nil {
+				continue
+			}
+
+			// Count allow/deny rules
+			if rule.SwitchPolicy.Action.EnforceAction.Allow {
+				summary.AllowRules++
+			}
+			if rule.SwitchPolicy.Action.EnforceAction.Deny {
+				summary.DenyRules++
+			}
+
+			// Collect VRFs and check if rule is active
+			srcVrf := rule.SwitchPolicy.Source.Endpoint.VRF
+			dstVrf := rule.SwitchPolicy.Destination.Endpoint.VRF
+			if srcVrf != "" {
+				vrfSet[srcVrf] = true
+			}
+			if dstVrf != "" {
+				vrfSet[dstVrf] = true
+			}
+
+			// A rule is active if its VRFs are in the active L3Networks
+			srcActive := srcVrf == "" || activeL3Networks.HasVRF(switchpolicy.VrfName(srcVrf))
+			dstActive := dstVrf == "" || activeL3Networks.HasVRF(switchpolicy.VrfName(dstVrf))
+			if srcActive && dstActive {
+				summary.ActiveRules++
+			}
+
+			// Collect VLANs (only positive values are active)
+			if rule.SwitchPolicy.Source.Endpoint.VLAN > 0 {
+				vlanSet[rule.SwitchPolicy.Source.Endpoint.VLAN] = true
+			}
+			if rule.SwitchPolicy.Destination.Endpoint.VLAN > 0 {
+				vlanSet[rule.SwitchPolicy.Destination.Endpoint.VLAN] = true
+			}
+
+			// Collect protocol breakdown
+			if rule.SwitchPolicy.Destination.ProtoPorts != nil {
+				for _, pp := range *rule.SwitchPolicy.Destination.ProtoPorts {
+					protoName := pp.Protocol.String()
+					if protoName == "" {
+						protoName = "UNSPECIFIED"
+					}
+					summary.ProtocolBreakdown[protoName]++
+				}
+			}
+		}
+	}
+
+	summary.TotalPolicyVRFs = len(vrfSet)
+	summary.TotalPolicyVLANs = len(vlanSet)
+
+	// Count active policy VRFs (VRFs in policies that are also in active L3Networks)
+	activeCount := 0
+	for vrf := range vrfSet {
+		if activeL3Networks.HasVRF(switchpolicy.VrfName(vrf)) {
+			activeCount++
+		}
+	}
+	summary.ActivePolicyVRFs = activeCount
+
+	// If checking if the json flag was passed, format as JSON
+	if msgData.Flags["json"] == "true" {
+		jsonData, err := json.Marshal(summary)
+		if err != nil {
+			return fmt.Sprintf(`{"error": "failed to marshal summary: %v"}`, err)
+		}
+		return string(jsonData)
+	}
+
+	// Format as text using FormatTable
+	result, err := FormatTable(summary)
+	if err != nil {
+		return fmt.Sprintf("Error formatting summary: %v", err)
+	}
+	return result
+}
+
 func (agw *AgentGateway) PoliciesTranslate(_ context.Context, msgData ipc.MessageData) (string, error) {
 	filePath, ok := msgData.Flags["file"]
 	if !ok || filePath == "" {

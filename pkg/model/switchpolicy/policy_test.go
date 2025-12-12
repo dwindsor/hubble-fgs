@@ -122,7 +122,7 @@ spec:
 			// Step 4: Add rules to state and get DPU rules
 			var dpuRules []*DPUPolicyRule
 			for i, internalPolicy := range internalPolicies {
-				ruleID := ruleID(i + 1)
+				ruleID := RuleID(i + 1)
 				switchPolicy := &SwitchPolicy{
 					UID: UniqueID{
 						PolicyName: policy.Name,

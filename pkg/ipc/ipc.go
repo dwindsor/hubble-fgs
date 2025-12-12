@@ -54,7 +54,7 @@ func PrintResponse(ret *ReturnCode, raw_json bool) {
 		}
 	} else {
 		fmt.Printf("Client got: %s\n", ret.ReturnCode)
-		fmt.Printf("Data: %s\n", ret.Data)
+		fmt.Printf("Data: \n%s\n", ret.Data)
 	}
 }
 

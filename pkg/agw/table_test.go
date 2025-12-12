@@ -73,11 +73,18 @@ func TestFormatTable(t *testing.T) {
 			wantErr:     false,
 		},
 		{
-			name:        "not a slice",
-			input:       TestStruct{Name: "Test"},
-			wantHeaders: nil,
-			wantRows:    0,
-			wantErr:     true,
+			name:        "single struct formats as key-value table",
+			input:       TestStruct{Name: "Test", Age: 25, Active: true, Score: 99.5},
+			wantHeaders: []string{"name", "age", "active", "score"},
+			wantRows:    3, // 4 fields, but test subtracts 1 for header (struct format has no header)
+			wantErr:     false,
+		},
+		{
+			name:        "map formats as key-value table",
+			input:       map[string]int{"alpha": 1, "beta": 2},
+			wantHeaders: []string{"alpha", "beta"},
+			wantRows:    1, // 2 entries, but test subtracts 1 for header (map format has no header)
+			wantErr:     false,
 		},
 		{
 			name:        "slice of non-structs",
