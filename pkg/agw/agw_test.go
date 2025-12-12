@@ -3,10 +3,13 @@ package agw
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/isovalent/hubble-fgs/pkg/ipc"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/token"
 )
@@ -573,6 +576,346 @@ func TestPoliciesClear(t *testing.T) {
 				require.Len(t, mockHandler.deletedCalled, initialSize)
 				// Verify policies map is now empty (for success cases)
 				require.Empty(t, mockHandler.policies)
+			}
+		})
+	}
+}
+
+// --- Test for PoliciesAdd ---
+
+func TestPoliciesAdd(t *testing.T) {
+	cases := []struct {
+		name           string
+		msgData        ipc.MessageData
+		setupFile      func(t *testing.T) string
+		expectContains string
+	}{
+		{
+			name: "Missing file flag",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			setupFile:      nil,
+			expectContains: "Failed to add policies from file",
+		},
+		{
+			name: "Non-existent file",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"file": "/nonexistent/path/policy.yaml"},
+			},
+			setupFile:      nil,
+			expectContains: "Failed to add policies from file",
+		},
+		{
+			name: "Empty file path",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"file": ""},
+			},
+			setupFile:      nil,
+			expectContains: "Failed to add policies from file",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHandler := &mockPolicyHandler{
+				policies: make(map[switchpolicy.ResourceID]switchpolicy.K8sRulesList),
+			}
+			agw := &AgentGateway{
+				PolicyHandler: mockHandler,
+			}
+
+			result := agw.PoliciesAdd(context.Background(), tc.msgData)
+			require.Contains(t, result, tc.expectContains)
+		})
+	}
+}
+
+// --- Test for PoliciesRemove ---
+
+func TestPoliciesRemove(t *testing.T) {
+	cases := []struct {
+		name            string
+		msgData         ipc.MessageData
+		initialPolicies map[switchpolicy.ResourceID]switchpolicy.K8sRulesList
+		expectContains  string
+	}{
+		{
+			name: "Remove by valid resourceID",
+			msgData: ipc.MessageData{
+				Args:  []string{"NetworkPolicy/default/test-policy"},
+				Flags: map[string]string{},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("NetworkPolicy", "default", "test-policy"): {},
+			},
+			expectContains: "removed successfully",
+		},
+		{
+			name: "Remove with invalid resourceID format",
+			msgData: ipc.MessageData{
+				Args:  []string{"invalid-format"},
+				Flags: map[string]string{},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{},
+			expectContains:  "invalid resourceID format",
+		},
+		{
+			name: "Remove with two-part resourceID",
+			msgData: ipc.MessageData{
+				Args:  []string{"kind/name"},
+				Flags: map[string]string{},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{},
+			expectContains:  "invalid resourceID format",
+		},
+		{
+			name: "Remove with non-existent file",
+			msgData: ipc.MessageData{
+				Args:  []string{},
+				Flags: map[string]string{"file": "/nonexistent/path.yaml"},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{},
+			expectContains:  "Failed to remove policies from file",
+		},
+		{
+			name: "Remove with empty args and no file",
+			msgData: ipc.MessageData{
+				Args:  []string{},
+				Flags: map[string]string{},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{},
+			expectContains:  "Failed to remove policies from file",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHandler := &mockPolicyHandler{
+				policies: tc.initialPolicies,
+			}
+			agw := &AgentGateway{
+				PolicyHandler: mockHandler,
+			}
+
+			result := agw.PoliciesRemove(context.Background(), tc.msgData)
+			require.Contains(t, result, tc.expectContains)
+		})
+	}
+}
+
+// --- Test for PoliciesShow ---
+
+func TestPoliciesShow(t *testing.T) {
+	cases := []struct {
+		name            string
+		msgData         ipc.MessageData
+		initialPolicies map[switchpolicy.ResourceID]switchpolicy.K8sRulesList
+		expectContains  string
+	}{
+		{
+			name: "Show empty policies - text",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{},
+			expectContains:  "No policies",
+		},
+		{
+			name: "Show empty policies - json",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{},
+			expectContains:  "{}",
+		},
+		{
+			name: "Show policies with filter - no match",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"filter": "nonexistent"},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("NetworkPolicy", "default", "test-policy"): {},
+			},
+			expectContains: "No policies",
+		},
+		{
+			name: "Show policies with matching filter",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"filter": "test.*"},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("NetworkPolicy", "default", "test-policy"): {},
+			},
+			expectContains: "test-policy",
+		},
+		{
+			name: "Show policies - json format",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("NetworkPolicy", "default", "my-policy"): {},
+			},
+			expectContains: "my-policy",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHandler := &mockPolicyHandler{
+				policies: tc.initialPolicies,
+			}
+			agw := &AgentGateway{
+				PolicyHandler: mockHandler,
+			}
+
+			result := agw.PoliciesShow(context.Background(), tc.msgData)
+			require.Contains(t, result, tc.expectContains)
+		})
+	}
+}
+
+// --- Test for PoliciesInfo ---
+
+func TestPoliciesInfo(t *testing.T) {
+	cases := []struct {
+		name            string
+		msgData         ipc.MessageData
+		initialPolicies map[switchpolicy.ResourceID]switchpolicy.K8sRulesList
+		expectContains  string
+	}{
+		{
+			name: "Info with no policies - text",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{},
+			expectContains:  "0",
+		},
+		{
+			name: "Info with no policies - json",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{},
+			expectContains:  `"total_policies":0`,
+		},
+		{
+			name: "Info with policies - json",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("NetworkPolicy", "default", "policy1"): {},
+				switchpolicy.NewResourceID("NetworkPolicy", "default", "policy2"): {},
+			},
+			expectContains: `"total_policies":2`,
+		},
+		{
+			name: "Info with policies in multiple namespaces - json",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"json": "true"},
+			},
+			initialPolicies: map[switchpolicy.ResourceID]switchpolicy.K8sRulesList{
+				switchpolicy.NewResourceID("NetworkPolicy", "default", "policy1"):     {},
+				switchpolicy.NewResourceID("NetworkPolicy", "kube-system", "policy2"): {},
+			},
+			expectContains: `"policies_by_namespace"`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHandler := &mockPolicyHandler{
+				policies: tc.initialPolicies,
+			}
+			agw := &AgentGateway{
+				PolicyHandler: mockHandler,
+			}
+
+			result := agw.PoliciesInfo(context.Background(), tc.msgData)
+			require.Contains(t, result, tc.expectContains)
+		})
+	}
+}
+
+// --- Test for PoliciesTranslate ---
+
+func TestPoliciesTranslate(t *testing.T) {
+	cases := []struct {
+		name        string
+		msgData     ipc.MessageData
+		setupFile   func(t *testing.T) string
+		expectError bool
+		errContains string
+	}{
+		{
+			name: "Non-existent file",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{"file": "/nonexistent/path/policy.yaml"},
+			},
+			setupFile:   nil,
+			expectError: true,
+			errContains: "failed to parse YAML file",
+		},
+		{
+			name: "Empty YAML file",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			setupFile: func(t *testing.T) string {
+				tmpDir := t.TempDir()
+				filePath := filepath.Join(tmpDir, "empty.yaml")
+				err := os.WriteFile(filePath, []byte(""), 0644)
+				require.NoError(t, err)
+				return filePath
+			},
+			expectError: true,
+			errContains: "failed to parse YAML file",
+		},
+		{
+			name: "Invalid YAML file",
+			msgData: ipc.MessageData{
+				Flags: map[string]string{},
+			},
+			setupFile: func(t *testing.T) string {
+				tmpDir := t.TempDir()
+				filePath := filepath.Join(tmpDir, "invalid.yaml")
+				err := os.WriteFile(filePath, []byte("{{invalid yaml"), 0644)
+				require.NoError(t, err)
+				return filePath
+			},
+			expectError: true,
+			errContains: "failed to parse YAML file",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockHandler := &mockPolicyHandler{
+				policies: make(map[switchpolicy.ResourceID]switchpolicy.K8sRulesList),
+			}
+			agw := &AgentGateway{
+				PolicyHandler: mockHandler,
+			}
+
+			msgData := tc.msgData
+			if tc.setupFile != nil {
+				filePath := tc.setupFile(t)
+				msgData.Flags["file"] = filePath
+			}
+
+			result, err := agw.PoliciesTranslate(context.Background(), msgData)
+
+			if tc.expectError {
+				require.Error(t, err)
+				if tc.errContains != "" {
+					require.Contains(t, err.Error(), tc.errContains)
+				}
+			} else {
+				require.NoError(t, err)
+				require.NotEmpty(t, result)
 			}
 		})
 	}
