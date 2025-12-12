@@ -2,21 +2,28 @@ package dataplane
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 
 	"github.com/cilium/tetragon/pkg/logger"
 
+	dpAppPolicy "github.com/isovalent/hubble-fgs/pkg/dpu/policy"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
 func NewMockDataplane() *MockDataplane {
-	return &MockDataplane{}
+
+	// Creating json encoder and decoder for the connection
+	return &MockDataplane{
+		encode: json.NewEncoder(io.Discard),
+	}
 }
 
 type MockDataplane struct {
 	version string
-	Dataplane
+	encode  *json.Encoder
 }
 
 func (m *MockDataplane) Type() DataplaneType {
@@ -35,6 +42,11 @@ func (m *MockDataplane) HardwareModel() string {
 	return "mock"
 }
 
+var (
+	ruleFwaCnt    int
+	rulePolicyCnt int
+)
+
 func (m *MockDataplane) PushPolicy(_ context.Context, op v1alpha.PolicyOperation, rules []*switchpolicy.DPUPolicyRule) error {
 	var logStr string
 	switch op {
@@ -47,6 +59,15 @@ func (m *MockDataplane) PushPolicy(_ context.Context, op v1alpha.PolicyOperation
 	}
 	for _, r := range rules {
 		logger.GetLogger().Debug(logStr, "rule", *r.Policy)
+	}
+
+	fwPolicy := dpAppPolicy.DPURuleToJSON(op, rules)
+
+	ruleFwaCnt += len(fwPolicy)
+	rulePolicyCnt += len(rules)
+
+	if (ruleFwaCnt % 1000) == 0 {
+		logger.GetLogger().Info("Applied rules\n", "PolicyCnt", rulePolicyCnt, "FWAcnt", ruleFwaCnt)
 	}
 	return nil
 }

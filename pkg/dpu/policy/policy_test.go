@@ -1,7 +1,6 @@
 package policy
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,6 +9,12 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 )
+
+type expectedPorts struct {
+	PortLow   uint16
+	PortHigh  uint16
+	Protocols []string
+}
 
 // expectedPolicy defines the expected output for a single FwPolicyV2
 type expectedPolicy struct {
@@ -21,9 +26,7 @@ type expectedPolicy struct {
 	SourceVrf  int
 	DestIp     string
 	DestVlan   int
-	PortLow    uint16
-	PortHigh   uint16
-	Protocols  []string // expected protocols for this port range
+	Ports      []expectedPorts
 }
 
 func TestRuleToJSON(t *testing.T) {
@@ -31,7 +34,7 @@ func TestRuleToJSON(t *testing.T) {
 		name     string
 		op       v1alpha.PolicyOperation
 		rule     *switchpolicy.DPURule
-		expected []expectedPolicy
+		expected expectedPolicy
 	}{
 		{
 			name: "Single TCP port",
@@ -55,19 +58,21 @@ func TestRuleToJSON(t *testing.T) {
 					},
 				},
 			},
-			expected: []expectedPolicy{
-				{
-					Name:       "test-policy/rule-1",
-					Effect:     ALLOW,
-					Operation:  0,
-					SourceIp:   "10.0.0.0/8",
-					SourceVlan: 100,
-					SourceVrf:  1,
-					DestIp:     "192.168.1.0/24",
-					DestVlan:   200,
-					PortLow:    80,
-					PortHigh:   80,
-					Protocols:  []string{"tcp"},
+			expected: expectedPolicy{
+				Name:       "test-policy/rule-1",
+				Effect:     ALLOW,
+				Operation:  0,
+				SourceIp:   "10.0.0.0/8",
+				SourceVlan: 100,
+				SourceVrf:  1,
+				DestIp:     "192.168.1.0/24",
+				DestVlan:   200,
+				Ports: []expectedPorts{
+					{
+						PortLow:   80,
+						PortHigh:  80,
+						Protocols: []string{"tcp"},
+					},
 				},
 			},
 		},
@@ -91,16 +96,18 @@ func TestRuleToJSON(t *testing.T) {
 					},
 				},
 			},
-			expected: []expectedPolicy{
-				{
-					Name:      "multi-proto-policy/rule-1",
-					Effect:    ALLOW,
-					Operation: 0,
-					SourceIp:  "10.0.0.0/8",
-					DestIp:    "192.168.1.0/24",
-					PortLow:   80,
-					PortHigh:  80,
-					Protocols: []string{"tcp", "udp"},
+			expected: expectedPolicy{
+				Name:      "multi-proto-policy/rule-1",
+				Effect:    ALLOW,
+				Operation: 0,
+				SourceIp:  "10.0.0.0/8",
+				DestIp:    "192.168.1.0/24",
+				Ports: []expectedPorts{
+					{
+						PortLow:   80,
+						PortHigh:  80,
+						Protocols: []string{"tcp", "udp"},
+					},
 				},
 			},
 		},
@@ -124,26 +131,24 @@ func TestRuleToJSON(t *testing.T) {
 					},
 				},
 			},
-			expected: []expectedPolicy{
-				{
-					Name:      "multi-port-policy/rule-1",
-					Effect:    DENY,
-					Operation: 0,
-					SourceIp:  "10.0.0.0/8",
-					DestIp:    "192.168.1.0/24",
-					PortLow:   80,
-					PortHigh:  80,
-					Protocols: []string{"tcp"},
-				},
-				{
-					Name:      "multi-port-policy/rule-1",
-					Effect:    DENY,
-					Operation: 0,
-					SourceIp:  "10.0.0.0/8",
-					DestIp:    "192.168.1.0/24",
-					PortLow:   443,
-					PortHigh:  443,
-					Protocols: []string{"tcp"},
+			expected: expectedPolicy{
+				Name:      "multi-port-policy/rule-1",
+				Effect:    DENY,
+				Operation: 0,
+				SourceIp:  "10.0.0.0/8",
+				DestIp:    "192.168.1.0/24",
+				Ports: []expectedPorts{
+					{
+
+						PortLow:   80,
+						PortHigh:  80,
+						Protocols: []string{"tcp"},
+					},
+					{
+						PortLow:   443,
+						PortHigh:  443,
+						Protocols: []string{"tcp"},
+					},
 				},
 			},
 		},
@@ -167,16 +172,18 @@ func TestRuleToJSON(t *testing.T) {
 					},
 				},
 			},
-			expected: []expectedPolicy{
-				{
-					Name:      "port-range-policy/rule-1",
-					Effect:    ALLOW,
-					Operation: 0,
-					SourceIp:  "10.0.0.0/8",
-					DestIp:    "192.168.1.0/24",
-					PortLow:   8000,
-					PortHigh:  8080,
-					Protocols: []string{"tcp", "udp"},
+			expected: expectedPolicy{
+				Name:      "port-range-policy/rule-1",
+				Effect:    ALLOW,
+				Operation: 0,
+				SourceIp:  "10.0.0.0/8",
+				DestIp:    "192.168.1.0/24",
+				Ports: []expectedPorts{
+					{
+						PortLow:   8000,
+						PortHigh:  8080,
+						Protocols: []string{"tcp", "udp"},
+					},
 				},
 			},
 		},
@@ -199,16 +206,18 @@ func TestRuleToJSON(t *testing.T) {
 					},
 				},
 			},
-			expected: []expectedPolicy{
-				{
-					Name:      "delete-policy/rule-1",
-					Effect:    ALLOW,
-					Operation: 1, // DELETE
-					SourceIp:  "10.0.0.0/8",
-					DestIp:    "192.168.1.0/24",
-					PortLow:   80,
-					PortHigh:  80,
-					Protocols: []string{"tcp"},
+			expected: expectedPolicy{
+				Name:      "delete-policy/rule-1",
+				Effect:    ALLOW,
+				Operation: 1, // DELETE
+				SourceIp:  "10.0.0.0/8",
+				DestIp:    "192.168.1.0/24",
+				Ports: []expectedPorts{
+					{
+						PortLow:   80,
+						PortHigh:  80,
+						Protocols: []string{"tcp"},
+					},
 				},
 			},
 		},
@@ -229,15 +238,13 @@ func TestRuleToJSON(t *testing.T) {
 					Ports: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{},
 				},
 			},
-			expected: []expectedPolicy{
-				{
-					Name:      "no-ports-policy/rule-1",
-					Effect:    ALLOW,
-					Operation: 0,
-					SourceIp:  "10.0.0.0/8",
-					DestIp:    "192.168.1.0/24",
-					Protocols: nil, // empty ports
-				},
+			expected: expectedPolicy{
+				Name:      "no-ports-policy/rule-1",
+				Effect:    ALLOW,
+				Operation: 0,
+				SourceIp:  "10.0.0.0/8",
+				DestIp:    "192.168.1.0/24",
+				Ports:     []expectedPorts{},
 			},
 		},
 		{
@@ -259,16 +266,18 @@ func TestRuleToJSON(t *testing.T) {
 					},
 				},
 			},
-			expected: []expectedPolicy{
-				{
-					Name:      "icmp-policy/rule-1",
-					Effect:    ALLOW,
-					Operation: 0,
-					SourceIp:  "10.0.0.0/8",
-					DestIp:    "192.168.1.0/24",
-					PortLow:   0,
-					PortHigh:  0,
-					Protocols: []string{"icmp"},
+			expected: expectedPolicy{
+				Name:      "icmp-policy/rule-1",
+				Effect:    ALLOW,
+				Operation: 0,
+				SourceIp:  "10.0.0.0/8",
+				DestIp:    "192.168.1.0/24",
+				Ports: []expectedPorts{
+					{
+						PortLow:   0,
+						PortHigh:  0,
+						Protocols: []string{"icmp"},
+					},
 				},
 			},
 		},
@@ -291,16 +300,18 @@ func TestRuleToJSON(t *testing.T) {
 					},
 				},
 			},
-			expected: []expectedPolicy{
-				{
-					Name:      "any-proto-policy/rule-1",
-					Effect:    ALLOW,
-					Operation: 0,
-					SourceIp:  "10.0.0.0/8",
-					DestIp:    "192.168.1.0/24",
-					PortLow:   80,
-					PortHigh:  80,
-					Protocols: []string{"any"},
+			expected: expectedPolicy{
+				Name:      "any-proto-policy/rule-1",
+				Effect:    ALLOW,
+				Operation: 0,
+				SourceIp:  "10.0.0.0/8",
+				DestIp:    "192.168.1.0/24",
+				Ports: []expectedPorts{
+					{
+						PortLow:   80,
+						PortHigh:  80,
+						Protocols: []string{"any"},
+					},
 				},
 			},
 		},
@@ -325,16 +336,18 @@ func TestRuleToJSON(t *testing.T) {
 					},
 				},
 			},
-			expected: []expectedPolicy{
-				{
-					Name:      "dup-policy/rule-1",
-					Effect:    ALLOW,
-					Operation: 0,
-					SourceIp:  "10.0.0.0/8",
-					DestIp:    "192.168.1.0/24",
-					PortLow:   80,
-					PortHigh:  80,
-					Protocols: []string{"tcp", "udp"}, // tcp only once
+			expected: expectedPolicy{
+				Name:      "dup-policy/rule-1",
+				Effect:    ALLOW,
+				Operation: 0,
+				SourceIp:  "10.0.0.0/8",
+				DestIp:    "192.168.1.0/24",
+				Ports: []expectedPorts{
+					{
+						PortLow:   80,
+						PortHigh:  80,
+						Protocols: []string{"tcp", "udp", "icmp"},
+					},
 				},
 			},
 		},
@@ -363,45 +376,31 @@ func TestRuleToJSON(t *testing.T) {
 					},
 				},
 			},
-			expected: []expectedPolicy{
-				{
-					Name:       "complex-policy/rule-1",
-					Effect:     ALLOW,
-					Operation:  0,
-					SourceIp:   "10.0.0.0/8",
-					SourceVlan: 100,
-					SourceVrf:  1,
-					DestIp:     "192.168.1.0/24",
-					DestVlan:   200,
-					PortLow:    80,
-					PortHigh:   80,
-					Protocols:  []string{"tcp", "udp"},
-				},
-				{
-					Name:       "complex-policy/rule-1",
-					Effect:     ALLOW,
-					Operation:  0,
-					SourceIp:   "10.0.0.0/8",
-					SourceVlan: 100,
-					SourceVrf:  1,
-					DestIp:     "192.168.1.0/24",
-					DestVlan:   200,
-					PortLow:    443,
-					PortHigh:   443,
-					Protocols:  []string{"tcp"},
-				},
-				{
-					Name:       "complex-policy/rule-1",
-					Effect:     ALLOW,
-					Operation:  0,
-					SourceIp:   "10.0.0.0/8",
-					SourceVlan: 100,
-					SourceVrf:  1,
-					DestIp:     "192.168.1.0/24",
-					DestVlan:   200,
-					PortLow:    8000,
-					PortHigh:   9000,
-					Protocols:  []string{"tcp"},
+			expected: expectedPolicy{
+				Name:       "complex-policy/rule-1",
+				Effect:     ALLOW,
+				Operation:  0,
+				SourceIp:   "10.0.0.0/8",
+				SourceVlan: 100,
+				SourceVrf:  1,
+				DestIp:     "192.168.1.0/24",
+				DestVlan:   200,
+				Ports: []expectedPorts{
+					{
+						PortLow:   80,
+						PortHigh:  80,
+						Protocols: []string{"tcp", "udp"},
+					},
+					{
+						PortLow:   443,
+						PortHigh:  443,
+						Protocols: []string{"tcp"},
+					},
+					{
+						PortLow:   8000,
+						PortHigh:  9000,
+						Protocols: []string{"tcp"},
+					},
 				},
 			},
 		},
@@ -409,64 +408,21 @@ func TestRuleToJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			policies := ruleToJSON(tt.op, tt.rule)
+			policy := ruleToJSON(tt.op, tt.rule)
 
-			require.Len(t, policies, len(tt.expected), "policy count mismatch")
+			// Validate expected policy
+			require.Equal(t, tt.expected.Name, policy.Name, "Name mismatch")
+			require.Equal(t, tt.expected.Effect, policy.Effect, "Effect mismatch")
+			require.Equal(t, tt.expected.Operation, policy.Operation, "Operation mismatch")
+			require.Equal(t, tt.expected.SourceIp, policy.Source.Ip, "Source IP mismatch")
+			require.Equal(t, tt.expected.SourceVlan, policy.Source.Vlan, "Source VLAN mismatch")
+			require.Equal(t, tt.expected.SourceVrf, policy.Source.Vrf, "Source VRF mismatch")
+			require.Equal(t, tt.expected.DestIp, policy.Destination.Ip, "Destination IP mismatch")
+			require.Equal(t, tt.expected.DestVlan, policy.Destination.Vlan, "Destination VLAN mismatch")
+			require.Equal(t, len(tt.expected.Ports), len(policy.Destination.Ports), "Destination Ports mismatch")
 
-			// Build a map of actual policies by port range for easier matching
-			// Keying the port range as low port and high port bits concatenated together
-			actualByPort := make(map[uint32]FwPolicyV2)
-			for _, p := range policies {
-				if len(p.Destination.Ports) > 0 {
-					key := uint32(p.Destination.Ports[0].PortLow)<<16 | uint32(p.Destination.Ports[0].PortHigh)
-					actualByPort[key] = p
-				} else {
-					actualByPort[0] = p // no ports case
-				}
-			}
-
-			// Validate each expected policy
-			for _, exp := range tt.expected {
-				key := uint32(exp.PortLow)<<16 | uint32(exp.PortHigh)
-				actual, found := actualByPort[key]
-				require.True(t, found, "expected policy with port range %d-%d not found", exp.PortLow, exp.PortHigh)
-
-				require.Equal(t, exp.Name, actual.Name, "Name mismatch")
-				require.Equal(t, exp.Effect, actual.Effect, "Effect mismatch")
-				require.Equal(t, exp.Operation, actual.Operation, "Operation mismatch")
-				require.Equal(t, exp.SourceIp, actual.Source.Ip, "Source IP mismatch")
-				require.Equal(t, exp.SourceVlan, actual.Source.Vlan, "Source VLAN mismatch")
-				require.Equal(t, exp.SourceVrf, actual.Source.Vrf, "Source VRF mismatch")
-				require.Equal(t, exp.DestIp, actual.Destination.Ip, "Destination IP mismatch")
-				require.Equal(t, exp.DestVlan, actual.Destination.Vlan, "Destination VLAN mismatch")
-
-				if exp.Protocols == nil {
-					require.Empty(t, actual.Destination.Ports, "expected empty ports")
-				} else {
-					require.Len(t, actual.Destination.Ports, 1, "expected single port entry")
-					require.Equal(t, exp.PortLow, actual.Destination.Ports[0].PortLow, "PortLow mismatch")
-					require.Equal(t, exp.PortHigh, actual.Destination.Ports[0].PortHigh, "PortHigh mismatch")
-
-					// Sort both protocol slices for comparison
-					actualProtos := make([]string, len(actual.Destination.Ports[0].Protocol))
-					copy(actualProtos, actual.Destination.Ports[0].Protocol)
-					sort.Strings(actualProtos)
-					expectedProtos := make([]string, len(exp.Protocols))
-					copy(expectedProtos, exp.Protocols)
-					sort.Strings(expectedProtos)
-					require.Equal(t, expectedProtos, actualProtos, "Protocols mismatch")
-				}
-
-				// Verify ID is not empty and contains port range
-				require.NotEmpty(t, actual.Id, "ID should not be empty")
-			}
-
-			// Verify all IDs are unique
-			ids := make(map[string]bool)
-			for _, p := range policies {
-				require.False(t, ids[p.Id], "Duplicate ID found: %s", p.Id)
-				ids[p.Id] = true
-			}
+			// Verify ID is not empty and contains port range
+			require.NotEmpty(t, policy.Id, "ID should not be empty")
 		})
 	}
 }
@@ -557,22 +513,18 @@ func TestDPURuleToJSON(t *testing.T) {
 					SourceVrf:  1,
 					DestIp:     "192.168.1.0/24",
 					DestVlan:   200,
-					PortLow:    80,
-					PortHigh:   80,
-					Protocols:  []string{"tcp"},
-				},
-				{
-					Name:       "policy-1/rule-1",
-					Effect:     ALLOW,
-					Operation:  0,
-					SourceIp:   "10.0.0.0/8",
-					SourceVlan: 100,
-					SourceVrf:  1,
-					DestIp:     "192.168.1.0/24",
-					DestVlan:   200,
-					PortLow:    443,
-					PortHigh:   443,
-					Protocols:  []string{"tcp"},
+					Ports: []expectedPorts{
+						{
+							PortLow:   80,
+							PortHigh:  80,
+							Protocols: []string{"tcp"},
+						},
+						{
+							PortLow:   443,
+							PortHigh:  443,
+							Protocols: []string{"tcp"},
+						},
+					},
 				},
 				{
 					Name:       "policy-2/rule-1",
@@ -583,9 +535,13 @@ func TestDPURuleToJSON(t *testing.T) {
 					SourceVrf:  2,
 					DestIp:     "192.168.2.0/24",
 					DestVlan:   400,
-					PortLow:    22,
-					PortHigh:   22,
-					Protocols:  []string{"tcp"},
+					Ports: []expectedPorts{
+						{
+							PortLow:   22,
+							PortHigh:  22,
+							Protocols: []string{"tcp"},
+						},
+					},
 				},
 			},
 		},
@@ -635,9 +591,13 @@ func TestDPURuleToJSON(t *testing.T) {
 					Operation: 0,
 					SourceIp:  "10.0.0.0/8",
 					DestIp:    "192.168.1.0/24",
-					PortLow:   80,
-					PortHigh:  80,
-					Protocols: []string{"tcp"},
+					Ports: []expectedPorts{
+						{
+							PortLow:   80,
+							PortHigh:  80,
+							Protocols: []string{"tcp"},
+						},
+					},
 				},
 				{
 					Name:      "deny-policy/rule-1",
@@ -645,9 +605,13 @@ func TestDPURuleToJSON(t *testing.T) {
 					Operation: 0,
 					SourceIp:  "172.16.0.0/12",
 					DestIp:    "192.168.2.0/24",
-					PortLow:   443,
-					PortHigh:  443,
-					Protocols: []string{"tcp"},
+					Ports: []expectedPorts{
+						{
+							PortLow:   443,
+							PortHigh:  443,
+							Protocols: []string{"tcp"},
+						},
+					},
 				},
 			},
 		},
@@ -681,9 +645,13 @@ func TestDPURuleToJSON(t *testing.T) {
 					Operation: 0,
 					SourceIp:  "10.0.0.0/8",
 					DestIp:    "192.168.1.0/24",
-					PortLow:   53,
-					PortHigh:  53,
-					Protocols: []string{"tcp", "udp"},
+					Ports: []expectedPorts{
+						{
+							PortLow:   53,
+							PortHigh:  53,
+							Protocols: []string{"tcp", "udp"},
+						},
+					},
 				},
 			},
 		},
@@ -699,63 +667,39 @@ func TestDPURuleToJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := DPURuleToJSON(tt.op, tt.policySet)
 
-			require.Len(t, result, len(tt.expected), "policy count mismatch")
+			require.Equal(t, len(tt.expected), len(result), "Policy count mismatch")
 
-			// Build a map of actual policies by name+port for matching
-			type policyKey struct {
-				name     string
-				portLow  uint16
-				portHigh uint16
-			}
-			actualByKey := make(map[policyKey]FwPolicyV2)
-			for _, p := range result {
-				var key policyKey
-				key.name = p.Name
-				if len(p.Destination.Ports) > 0 {
-					key.portLow = p.Destination.Ports[0].PortLow
-					key.portHigh = p.Destination.Ports[0].PortHigh
+			for i, r := range result {
+				require.Equal(t, tt.expected[i].Name, r.Name, "Name mismatch")
+				require.Equal(t, tt.expected[i].Effect, r.Effect, "Effect mismatch")
+				require.Equal(t, tt.expected[i].Operation, r.Operation, "Operation mismatch")
+				require.Equal(t, tt.expected[i].SourceIp, r.Source.Ip, "Source IP mismatch")
+				require.Equal(t, tt.expected[i].SourceVlan, r.Source.Vlan, "Source VLAN mismatch")
+				require.Equal(t, tt.expected[i].SourceVrf, r.Source.Vrf, "Source VRF mismatch")
+				require.Equal(t, tt.expected[i].DestIp, r.Destination.Ip, "Destination IP mismatch")
+				require.Equal(t, tt.expected[i].DestVlan, r.Destination.Vlan, "Destination VLAN mismatch")
+				require.Equal(t, len(tt.expected[i].Ports), len(r.Destination.Ports), "Destination Ports mismatch")
+				require.NotEmpty(t, r.Id, "ID should not be empty")
+				for _, p := range r.Destination.Ports {
+					found := false
+					testProtocol := make(map[string]struct{})
+
+					for _, proto := range p.Protocol {
+						testProtocol[proto] = struct{}{}
+					}
+
+					// Port lists and Protocols are not stable so need to do lookup
+					for _, testp := range tt.expected[i].Ports {
+						if (testp.PortHigh == p.PortHigh) && (testp.PortLow == p.PortLow) {
+							for _, proto := range p.Protocol {
+								_, ok := testProtocol[proto]
+								require.Equal(t, ok, true, "Destination Port Protocol mismatch")
+							}
+							found = true
+						}
+					}
+					require.Equal(t, found, true, "Destination Port mismatch")
 				}
-				actualByKey[key] = p
-			}
-
-			// Validate each expected policy
-			for _, exp := range tt.expected {
-				key := policyKey{name: exp.Name, portLow: exp.PortLow, portHigh: exp.PortHigh}
-				actual, found := actualByKey[key]
-				require.True(t, found, "expected policy %s with port range %d-%d not found", exp.Name, exp.PortLow, exp.PortHigh)
-
-				require.Equal(t, exp.Name, actual.Name, "Name mismatch")
-				require.Equal(t, exp.Effect, actual.Effect, "Effect mismatch")
-				require.Equal(t, exp.Operation, actual.Operation, "Operation mismatch")
-				require.Equal(t, exp.SourceIp, actual.Source.Ip, "Source IP mismatch")
-				require.Equal(t, exp.SourceVlan, actual.Source.Vlan, "Source VLAN mismatch")
-				require.Equal(t, exp.SourceVrf, actual.Source.Vrf, "Source VRF mismatch")
-				require.Equal(t, exp.DestIp, actual.Destination.Ip, "Destination IP mismatch")
-				require.Equal(t, exp.DestVlan, actual.Destination.Vlan, "Destination VLAN mismatch")
-
-				if exp.Protocols != nil {
-					require.Len(t, actual.Destination.Ports, 1, "expected single port entry")
-					require.Equal(t, exp.PortLow, actual.Destination.Ports[0].PortLow, "PortLow mismatch")
-					require.Equal(t, exp.PortHigh, actual.Destination.Ports[0].PortHigh, "PortHigh mismatch")
-
-					// Sort both protocol slices for comparison
-					actualProtos := make([]string, len(actual.Destination.Ports[0].Protocol))
-					copy(actualProtos, actual.Destination.Ports[0].Protocol)
-					sort.Strings(actualProtos)
-					expectedProtos := make([]string, len(exp.Protocols))
-					copy(expectedProtos, exp.Protocols)
-					sort.Strings(expectedProtos)
-					require.Equal(t, expectedProtos, actualProtos, "Protocols mismatch")
-				}
-
-				require.NotEmpty(t, actual.Id, "ID should not be empty")
-			}
-
-			// Verify all IDs are unique
-			ids := make(map[string]bool)
-			for _, p := range result {
-				require.False(t, ids[p.Id], "Duplicate ID found: %s", p.Id)
-				ids[p.Id] = true
 			}
 		})
 	}
