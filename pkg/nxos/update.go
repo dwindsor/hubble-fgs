@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -1457,6 +1460,75 @@ func (n *Nxos) setGlobalId(ctx context.Context, recon map[string]uint16) error {
 
 	path := "/System/serviceredir-items/inst-items/service-items"
 	err = n.gnmiSet(ctx, path, jstr)
+	if err != nil {
+		logger.GetLogger().Error("", logfields.Error, err)
+		return err
+	}
+	return nil
+}
+
+// setControllerEndpoint sets or removes the controller endpoint configuration
+// The endpointUrl is expected to be in the format: http(s)://<ipv4/6-or-dns>:<port>
+// The endpointUrl can be empty when remove is true, indicating removal of the endpoint configuration
+func (n *Nxos) setControllerEndpoint(ctx context.Context, endpointUrl string, remove bool) error {
+	logger.GetLogger().Debug("setControllerEndpoint", "endpointUrl", endpointUrl)
+	if endpointUrl == "" && !remove {
+		logger.GetLogger().Info("Controller endpoint is empty")
+		return nil
+	}
+
+	controllerEndpoint := ""
+	controllerPort := uint32(0)
+
+	// parse endpointUrl and split into endpoint and port
+	// expected format: http(s)://<ipv4/6-or-dns>:<port>
+	if !remove && (strings.HasPrefix(endpointUrl, "http://") || strings.HasPrefix(endpointUrl, "https://")) {
+		// Use net/url package for proper URL parsing including IPv6 support
+		parsedUrl, err := url.Parse(endpointUrl)
+		if err != nil {
+			logger.GetLogger().Error("failed to parse controller URL", "endpointUrl", endpointUrl, logfields.Error, err)
+			return fmt.Errorf("invalid controller URL: %v", err)
+		}
+
+		// Extract hostname and port
+		host, portStr, err := net.SplitHostPort(parsedUrl.Host)
+		if err != nil {
+			// No port specified, use hostname as-is
+			controllerEndpoint = parsedUrl.Host
+			controllerPort = 0 // Default port
+		} else {
+			controllerEndpoint = host
+			port, err := strconv.ParseUint(portStr, 10, 32)
+			if err != nil {
+				logger.GetLogger().Error("failed to parse controller port", "port", portStr, logfields.Error, err)
+				return fmt.Errorf("invalid controller port: %v", err)
+			}
+			controllerPort = uint32(port)
+		}
+	}
+	// If still no controllerEndpoint, return error
+	if !remove && controllerEndpoint == "" {
+		logger.GetLogger().Error("invalid controller endpoint URL", "endpointUrl", endpointUrl)
+		return errors.New("invalid controller endpoint")
+	}
+
+	// System/sas-items/scontroller-items/ext-items
+	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_ScontrollerItems_ExtItems{
+		ControllerEndpoint: &controllerEndpoint,
+		ControllerPort:     &controllerPort,
+	}
+
+	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
+		Format:        ygot.RFC7951,
+		Indent:        "  ",
+		RFC7951Config: &ygot.RFC7951JSONConfig{},
+	})
+	if err != nil {
+		logger.GetLogger().Error("fail to emit json", logfields.Error, err)
+		return err
+	}
+
+	err = n.gnmiSet(ctx, svcInst+"/scontroller-items/ext-items", jstr)
 	if err != nil {
 		logger.GetLogger().Error("", logfields.Error, err)
 		return err
