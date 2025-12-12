@@ -151,45 +151,6 @@ func formatStructTable(v reflect.Value) (string, error) {
 	return buf.String(), nil
 }
 
-// FormatKeyValueTable formats a map or struct with a title header
-func FormatKeyValueTable(title string, items interface{}) (string, error) {
-	v := reflect.ValueOf(items)
-
-	// Handle pointer
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-
-	var content string
-	var err error
-
-	switch v.Kind() {
-	case reflect.Map:
-		content, err = formatMapTable(v)
-	case reflect.Struct:
-		content, err = formatStructTable(v)
-	default:
-		return "", fmt.Errorf("FormatKeyValueTable requires a map or struct, got %s", v.Kind())
-	}
-
-	if err != nil {
-		return "", err
-	}
-
-	var b strings.Builder
-	if title != "" {
-		b.WriteString(fmt.Sprintf("─── %s ", title))
-		// Pad to make consistent width
-		padding := 65 - len(title) - 5
-		if padding > 0 {
-			b.WriteString(strings.Repeat("─", padding))
-		}
-		b.WriteString("\n")
-	}
-	b.WriteString(content)
-	return b.String(), nil
-}
-
 // sortMapKeys sorts map keys for consistent output
 func sortMapKeys(keys []reflect.Value) {
 	if len(keys) == 0 {

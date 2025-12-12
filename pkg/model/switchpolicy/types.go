@@ -22,6 +22,21 @@ type SmartSwitchNetworkPolicy struct {
 	Default            SmartSwitchNetworkAction
 }
 
+// Copy creates a deep copy of the SmartSwitchNetworkPolicy
+func (s *SmartSwitchNetworkPolicy) Copy() *SmartSwitchNetworkPolicy {
+	if s == nil {
+		return nil
+	}
+	cp := *s
+	// Deep copy the ProtoPorts slice
+	if s.Destination.ProtoPorts != nil {
+		protoPortsCopy := make([]SmartSwitchNetworkProtocolPorts, len(*s.Destination.ProtoPorts))
+		copy(protoPortsCopy, *s.Destination.ProtoPorts)
+		cp.Destination.ProtoPorts = &protoPortsCopy
+	}
+	return &cp
+}
+
 func (s *SmartSwitchNetworkPolicy) Hash() ([sha256.Size]byte, error) {
 	h := sha256.New()
 

@@ -695,48 +695,87 @@ func (agw *AgentGateway) PoliciesInfo(_ context.Context, msgData ipc.MessageData
 }
 
 func (agw *AgentGateway) PoliciesTranslate(_ context.Context, msgData ipc.MessageData) (string, error) {
-	filePath, ok := msgData.Flags["file"]
-	if !ok || filePath == "" {
-		return "", fmt.Errorf("file flag is required")
-	}
-	policies, err := switchpolicy.FromFile(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse YAML file: %w", err)
-	}
-	if len(policies) == 0 {
-		return "", fmt.Errorf("no policies found in file")
+	filePath := msgData.Flags["file"]
+	noVrfs := msgData.Flags["no-vrfs"] == "true"
+
+	// Create a new state for translation
+	// This ensures we don't affect the current state
+	state := switchpolicy.NewState()
+
+	var ruleID switchpolicy.RuleID = 1
+	var switchPolicies []*switchpolicy.SwitchPolicy
+
+	if filePath != "" {
+		// Translate policies from file
+		policies, err := switchpolicy.FromFile(filePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse YAML file: %w", err)
+		}
+		if len(policies) == 0 {
+			return "", fmt.Errorf("no policies found in file")
+		}
+
+		for _, snp := range policies {
+			internalPolicies, err := switchpolicy.ToSmartSwitchNetworkPolicies(snp)
+			if err != nil {
+				return "", fmt.Errorf("failed to convert policy %s: %w", snp.Name, err)
+			}
+
+			for _, internalPolicy := range internalPolicies {
+				switchPolicies = append(switchPolicies, &switchpolicy.SwitchPolicy{
+					UID: switchpolicy.UniqueID{
+						PolicyName: snp.Name,
+						RuleName:   snp.Name,
+					},
+					Policy: internalPolicy,
+				})
+			}
+		}
+	} else {
+		// Translate current policy set from the AGW
+		policyMap := agw.PolicyHandler.ListPolicies()
+		if len(policyMap) == 0 {
+			return "", fmt.Errorf("no policies currently loaded in AGW")
+		}
+
+		for resourceID, rulesList := range policyMap {
+			for _, rule := range rulesList {
+				if rule.SwitchPolicy == nil {
+					continue
+				}
+				// Deep copy the policy to avoid mutating the original when no-vrfs is set
+				switchPolicies = append(switchPolicies, &switchpolicy.SwitchPolicy{
+					UID: switchpolicy.UniqueID{
+						PolicyName: resourceID.String(),
+						RuleName:   rule.RuleName,
+					},
+					Policy: rule.SwitchPolicy.Copy(),
+				})
+			}
+		}
 	}
 
-	// Create a new state with the current VRF mappings
-	// This ensures we use the same VRF->GID mappings as the active policies
-	// while not affecting the current state
-	state := switchpolicy.NewState()
+	// Set L3Networks based on no-vrfs flag
+	if noVrfs {
+		// When no-vrfs is set, clear all VRFs in policies so they map to the empty VRF (GID 0)
+		for _, sp := range switchPolicies {
+			sp.Policy.Source.Endpoint.VRF = ""
+			sp.Policy.Destination.Endpoint.VRF = ""
+		}
+	}
+
+	// Use the current L3Networks from the AGW
 	currentL3Networks := agw.PolicyHandler.GetL3Networks()
 	if err := state.SetL3Networks(currentL3Networks); err != nil {
 		return "", fmt.Errorf("failed to set L3 networks: %w", err)
 	}
 
 	// Add all rules to state
-	var ruleID switchpolicy.RuleID = 1
-	for _, snp := range policies {
-		internalPolicies, err := switchpolicy.ToSmartSwitchNetworkPolicies(snp)
-		if err != nil {
-			return "", fmt.Errorf("failed to convert policy %s: %w", snp.Name, err)
+	for _, sp := range switchPolicies {
+		if err := state.AddRule(ruleID, sp); err != nil {
+			return "", fmt.Errorf("failed to add rule: %w", err)
 		}
-
-		for _, internalPolicy := range internalPolicies {
-			switchPolicy := &switchpolicy.SwitchPolicy{
-				UID: switchpolicy.UniqueID{
-					PolicyName: snp.Name,
-					RuleName:   snp.Name,
-				},
-				Policy: internalPolicy,
-			}
-			if err := state.AddRule(ruleID, switchPolicy); err != nil {
-				return "", fmt.Errorf("failed to add rule: %w", err)
-			}
-			ruleID++
-		}
+		ruleID++
 	}
 
 	// Get the delta (DPU rules to apply)

@@ -11,18 +11,19 @@ import (
 )
 
 func init() {
-	translateCmd.Flags().StringP("file", "f", "", "Path to policy YAML file")
-	translateCmd.MarkFlagRequired("file")
+	translateCmd.Flags().StringP("file", "f", "", "Path to policy YAML file (if not provided, translates current AGW policy set)")
+	translateCmd.Flags().Bool("no-vrfs", false, "Translate all policies ignoring actively configured VRFs")
 	PoliciesCmd.AddCommand(translateCmd)
 }
 
 var translateCmd = &cobra.Command{
 	Use:          "translate",
 	SilenceUsage: true,
-	Short:        "Translate policies in a YAML file to DPU json format",
-	Long: `Reads all policies defined in a YAML file and translates it into the json rule format
-that is used by the dataplane on the DPU.  This prints rules based on the active
-vrfs defined in the AGW.`,
+	Short:        "Translate policies to DPU json format",
+	Long: `Translates policies into the json rule format used by the dataplane on the DPU.
+If a file is provided, reads policies from the YAML file. Otherwise, translates the
+current policy set in the AGW. By default, prints rules based on the active VRFs
+defined in the AGW. Use --no-vrfs to translate all policies ignoring active VRFs.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -32,10 +33,16 @@ vrfs defined in the AGW.`,
 			return err
 		}
 
+		noVrfs, err := cmd.Flags().GetBool("no-vrfs")
+		if err != nil {
+			return err
+		}
+
 		data := ipc.MessageData{
 			Flags: map[string]string{
-				"file": filePath,
-				"json": fmt.Sprintf("%t", agwctl.JSON),
+				"file":    filePath,
+				"json":    fmt.Sprintf("%t", agwctl.JSON),
+				"no-vrfs": fmt.Sprintf("%t", noVrfs),
 			},
 		}
 
