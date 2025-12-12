@@ -23,7 +23,7 @@ func NewResourceID(kind, namespace, name string) ResourceID {
 }
 
 // ID for internal tracking of rules
-type ruleID uint32
+type RuleID uint32
 
 // Human readable unique identifier
 type UniqueID struct {
@@ -36,7 +36,7 @@ type PolicyRule struct {
 	SwitchPolicy *SmartSwitchNetworkPolicy
 
 	// Internal fields for repository to track rules
-	ruleId ruleID
+	ruleId RuleID
 	uid    UniqueID
 }
 
@@ -58,7 +58,7 @@ type Repository interface {
 type repository struct {
 	policyByResourceID map[ResourceID]K8sRulesList
 
-	nextRuleId ruleID
+	nextRuleId RuleID
 }
 
 func NewRepository() Repository {

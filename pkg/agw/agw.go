@@ -24,6 +24,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
+	"github.com/isovalent/hubble-fgs/pkg/dpu/policy"
 	"github.com/isovalent/hubble-fgs/pkg/ipc"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchstatus"
@@ -563,6 +564,63 @@ func (agw *AgentGateway) PoliciesClear(_ context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (agw *AgentGateway) PoliciesTranslate(_ context.Context, msgData ipc.MessageData) (string, error) {
+	filePath, ok := msgData.Flags["file"]
+	if !ok || filePath == "" {
+		return "", fmt.Errorf("file flag is required")
+	}
+	policies, err := switchpolicy.FromFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse YAML file: %w", err)
+	}
+	if len(policies) == 0 {
+		return "", fmt.Errorf("no policies found in file")
+	}
+
+	// Create a new state with the current VRF mappings
+	// This ensures we use the same VRF->GID mappings as the active policies
+	// while not affecting the current state
+	state := switchpolicy.NewState()
+	currentL3Networks := agw.PolicyHandler.GetL3Networks()
+	if err := state.SetL3Networks(currentL3Networks); err != nil {
+		return "", fmt.Errorf("failed to set L3 networks: %w", err)
+	}
+
+	// Add all rules to state
+	var ruleID switchpolicy.RuleID = 1
+	for _, snp := range policies {
+		internalPolicies, err := switchpolicy.ToSmartSwitchNetworkPolicies(snp)
+		if err != nil {
+			return "", fmt.Errorf("failed to convert policy %s: %w", snp.Name, err)
+		}
+
+		for _, internalPolicy := range internalPolicies {
+			switchPolicy := &switchpolicy.SwitchPolicy{
+				UID: switchpolicy.UniqueID{
+					PolicyName: snp.Name,
+					RuleName:   snp.Name,
+				},
+				Policy: internalPolicy,
+			}
+			if err := state.AddRule(ruleID, switchPolicy); err != nil {
+				return "", fmt.Errorf("failed to add rule: %w", err)
+			}
+			ruleID++
+		}
+	}
+
+	// Get the delta (DPU rules to apply)
+	dpuRules := state.GetDeltaToApply()
+
+	// Convert DPU rules to FwPolicyV2
+	fwPolicies := policy.DPURuleToJSON(v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, dpuRules)
+	jsonBytes, err := json.Marshal(fwPolicies)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal policies to JSON: %w", err)
+	}
+	return string(jsonBytes), nil
 }
 
 func (agw *AgentGateway) Logging(_ context.Context, msgData ipc.MessageData) error {

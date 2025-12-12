@@ -496,6 +496,10 @@ func (m *mockPolicyHandler) SetL3Networks(_ *switchpolicy.L3Networks) error {
 	return nil
 }
 
+func (m *mockPolicyHandler) GetL3Networks() *switchpolicy.L3Networks {
+	return switchpolicy.NewL3Networks()
+}
+
 func (m *mockPolicyHandler) ResourceVersion() (string, error) {
 	return "", nil
 }

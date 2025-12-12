@@ -12,6 +12,7 @@ import (
 
 type PolicyHandler interface {
 	SetL3Networks(networks *L3Networks) error
+	GetL3Networks() *L3Networks
 	ListPolicies() map[ResourceID]K8sRulesList
 	UpsertPolicy(resourceId ResourceID, rules K8sRulesList, resourceVersion string) error
 	DeletePolicy(resourceId ResourceID, resourceVersion string) error
@@ -153,6 +154,12 @@ func (h *policyHandler) SetL3Networks(networks *L3Networks) error {
 	}
 	h.applyDelta()
 	return nil
+}
+
+func (h *policyHandler) GetL3Networks() *L3Networks {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.state.GetL3Networks()
 }
 
 func (h *policyHandler) applyDelta() {

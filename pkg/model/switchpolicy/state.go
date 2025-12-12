@@ -12,14 +12,14 @@ type SwitchPolicy struct {
 }
 
 type diffToApply struct {
-	toAdd map[ruleID]*DPUPolicyRule
-	toDel map[ruleID]*DPUPolicyRule
+	toAdd map[RuleID]*DPUPolicyRule
+	toDel map[RuleID]*DPUPolicyRule
 }
 
 func newDiffToApply() diffToApply {
 	return diffToApply{
-		toAdd: make(map[ruleID]*DPUPolicyRule),
-		toDel: make(map[ruleID]*DPUPolicyRule),
+		toAdd: make(map[RuleID]*DPUPolicyRule),
+		toDel: make(map[RuleID]*DPUPolicyRule),
 	}
 }
 
@@ -34,20 +34,20 @@ func (d *diffToApply) getDiff() []*DPUPolicyRule {
 	return diff
 }
 
-func (d *diffToApply) Add(id ruleID, rule *DPUPolicyRule) {
+func (d *diffToApply) Add(id RuleID, rule *DPUPolicyRule) {
 	d.toAdd[id] = rule
 	delete(d.toDel, id)
 }
 
-func (d *diffToApply) Del(id ruleID, rule *DPUPolicyRule) {
+func (d *diffToApply) Del(id RuleID, rule *DPUPolicyRule) {
 	d.toDel[id] = rule
 	delete(d.toAdd, id)
 }
 
 type State struct {
 	// Current state
-	policyByRuleId  map[ruleID]*SwitchPolicy
-	policyByVRFName map[VrfName]map[ruleID]*SwitchPolicy
+	policyByRuleId  map[RuleID]*SwitchPolicy
+	policyByVRFName map[VrfName]map[RuleID]*SwitchPolicy
 
 	networkL3Objects *L3Networks
 
@@ -57,14 +57,14 @@ type State struct {
 
 func NewState() *State {
 	return &State{
-		policyByRuleId:   make(map[ruleID]*SwitchPolicy),
-		policyByVRFName:  make(map[VrfName]map[ruleID]*SwitchPolicy),
+		policyByRuleId:   make(map[RuleID]*SwitchPolicy),
+		policyByVRFName:  make(map[VrfName]map[RuleID]*SwitchPolicy),
 		diff:             newDiffToApply(),
 		networkL3Objects: NewL3Networks(),
 	}
 }
 
-func (s *State) RemoveRuleByID(id ruleID) error {
+func (s *State) RemoveRuleByID(id RuleID) error {
 	existingPolicy, ok := s.policyByRuleId[id]
 	if !ok {
 		return fmt.Errorf("rule with id %d does not exist", id)
@@ -92,7 +92,7 @@ func (s *State) RemoveRuleByID(id ruleID) error {
 	return nil
 }
 
-func (s *State) AddRule(id ruleID, policy *SwitchPolicy) error {
+func (s *State) AddRule(id RuleID, policy *SwitchPolicy) error {
 	if _, ok := s.policyByRuleId[id]; ok {
 		return fmt.Errorf("rule with id %d already exists", id)
 	}
@@ -103,7 +103,7 @@ func (s *State) AddRule(id ruleID, policy *SwitchPolicy) error {
 
 	vrfName := VrfName(policy.Policy.Source.Endpoint.VRF)
 	if _, ok := s.policyByVRFName[vrfName]; !ok {
-		s.policyByVRFName[vrfName] = make(map[ruleID]*SwitchPolicy)
+		s.policyByVRFName[vrfName] = make(map[RuleID]*SwitchPolicy)
 	}
 	s.policyByVRFName[vrfName][id] = policy
 	converted := s.convertRuleToDPUPolicyRule(policy, true)
@@ -191,6 +191,11 @@ func (s *State) GetDeltaToApply() []*DPUPolicyRule {
 
 	s.diff = newDiffToApply()
 	return delta
+}
+
+// GetL3Networks returns a copy of the current L3 networks (safe to modify)
+func (s *State) GetL3Networks() *L3Networks {
+	return s.networkL3Objects.Copy()
 }
 
 func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *DPUPolicyRule {

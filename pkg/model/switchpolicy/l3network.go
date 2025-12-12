@@ -44,3 +44,18 @@ func (l3 *L3Networks) Remove(name VrfName) error {
 	}
 	return fmt.Errorf("L3 network with name %s does not exist", name)
 }
+
+// Copy creates a deep copy of the L3Networks
+func (l3 *L3Networks) Copy() *L3Networks {
+	l3Copy := &L3Networks{
+		byName: make(map[VrfName]VrfGID, len(l3.byName)),
+		byGID:  make(map[VrfGID]VrfName, len(l3.byGID)),
+	}
+	for name, gid := range l3.byName {
+		l3Copy.byName[name] = gid
+	}
+	for gid, name := range l3.byGID {
+		l3Copy.byGID[gid] = name
+	}
+	return l3Copy
+}

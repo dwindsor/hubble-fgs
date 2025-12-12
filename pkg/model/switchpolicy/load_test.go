@@ -33,6 +33,10 @@ func (m *mockPolicyHandler) SetL3Networks(_ *L3Networks) error {
 	return nil
 }
 
+func (m *mockPolicyHandler) GetL3Networks() *L3Networks {
+	return NewL3Networks()
+}
+
 func (m *mockPolicyHandler) ListPolicies() map[ResourceID]K8sRulesList {
 	return m.policies
 }

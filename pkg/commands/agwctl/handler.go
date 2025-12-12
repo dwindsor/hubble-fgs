@@ -38,6 +38,7 @@ const (
 	CMD_POLICIES_ADD
 	CMD_POLICIES_DEL
 	CMD_POLICIES_CLEAR
+	CMD_POLICIES_TRANSLATE
 	CMD_LOGGING
 	CMD_LOAD_DPU_CFG
 )
@@ -302,6 +303,16 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		}
 		response.ReturnCode = "ok"
 		response.Data = "Policies cleared"
+
+	case CMD_POLICIES_TRANSLATE:
+		str, err := agwAgent.PoliciesTranslate(ctx, data)
+		if err != nil {
+			response.ReturnCode = "fail"
+			response.Data = err.Error()
+			return response, nil
+		}
+		response.ReturnCode = "ok"
+		response.Data = str
 
 	case CMD_LOGGING:
 		err := agwAgent.Logging(ctx, data)
