@@ -3,7 +3,6 @@ package tetragon
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
 	pprofhttp "net/http/pprof"
@@ -346,38 +345,12 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		obs.PrintStats()
 	}()
 
-	defaultLevel := logger.GetLogLevel(logger.GetLogger())
 	go func() {
-		for {
-			s := <-sigs
-			switch s {
-			case syscall.SIGINT, syscall.SIGTERM:
-				// if we receive a signal, call cancel so that contexts are finalized, which will
-				// leads to normally return from tetragonExecute().
-				log.Info(fmt.Sprintf("Received signal %s, shutting down...", s))
-				cancel()
-				return
-			case tgsyscall.SIGRTMIN_20: // SIGRTMIN+20
-				currentLevel := logger.GetLogLevel(logger.GetLogger())
-				if currentLevel == slog.LevelDebug {
-					log.Info(fmt.Sprintf("Received signal SIGRTMIN+20: LogLevel is already '%s'", currentLevel))
-				} else {
-					logger.SetLogLevel(slog.LevelDebug)
-					log.Info(fmt.Sprintf("Received signal SIGRTMIN+20: switching from LogLevel '%s' to '%s'", currentLevel, logger.GetLogLevel(logger.GetLogger())))
-				}
-			case tgsyscall.SIGRTMIN_21: // SIGRTMIN+21
-				currentLevel := logger.GetLogLevel(logger.GetLogger())
-				if currentLevel == slog.LevelDebug {
-					log.Info(fmt.Sprintf("Received signal SIGRTMIN+21: LogLevel is already '%s'", currentLevel))
-				} else {
-					logger.SetLogLevel(slog.LevelDebug)
-					log.Info(fmt.Sprintf("Received signal SIGRTMIN+21: switching from LogLevel '%s' to '%s'", currentLevel, logger.GetLogLevel(logger.GetLogger())))
-				}
-			case tgsyscall.SIGRTMIN_22: // SIGRTMIN+22
-				logger.SetLogLevel(defaultLevel)
-				log.Info(fmt.Sprintf("Received signal SIGRTMIN+22: resetting original LogLevel '%s'", logger.GetLogLevel(logger.GetLogger())))
-			}
-		}
+		s := <-sigs
+		// if we receive a signal, call cancel so that contexts are finalized, which will
+		// leads to normally return from tetragonExecute().
+		log.Info(fmt.Sprintf("Received signal %s, shutting down...", s))
+		cancel()
 	}()
 
 	if err := obs.InitSensorManager(); err != nil {
