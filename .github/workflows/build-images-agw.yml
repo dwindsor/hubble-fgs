@@ -453,6 +453,81 @@ jobs:
           path: ./release-artifacts
           retention-days: 1
 
+  upload-to-artifactory:
+    needs: [ init, combine-artifacts ]
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
+    runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
+    timeout-minutes: 5
+    env:
+      VERSION: ${{ needs.init.outputs.version }}
+      DATE: ${{ needs.init.outputs.date }}
+      SHA: ${{ needs.init.outputs.sha }}
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
+          path: "./release-artifacts"
+      - name: Import Secrets
+        uses: hashicorp/vault-action@f428ffb6df56bc88fb9cb6d6a9baeb9c6eed01d5 # v3.4.0
+        with:
+          url: ${{ vars.VAULT_URL }}
+          namespace: ${{ vars.VAULT_HYPERSHIELD_NAMESPACE }}
+          method: approle
+          roleId: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}
+          secretId: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}
+          secrets: |
+            secret/data/devops/${{ github.repository }} artifactory_user | JF_USER;
+            secret/data/devops/${{ github.repository }} artifactory_password | JF_PASSWORD;
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@ff5cb544114ffc152db9cea1cd3d5978d5074946 # v4.5.11
+        env:
+          JF_URL: ${{ vars.ARTIFACTORY_URL }}
+        with:
+          disable-auto-build-publish: true
+          disable-job-summary: true
+      - name: Configure JFrog CLI
+        run: |
+          jf config add artifactory \
+            --url="${{ vars.ARTIFACTORY_URL }}" \
+            --user="${JF_USER}" \
+            --password="${JF_PASSWORD}" \
+            --interactive=false
+          jf config use artifactory
+      - name: Upload AGW artifacts to Artifactory
+        run: |
+          TAG="${VERSION}-${DATE}-${SHA}"
+          ARTIFACTORY_PATH="${{ vars.ARTIFACTORY_REPO_PATH }}/smartswitch/agw/${TAG}"
+          
+          echo "Uploading AGW artifacts to: ${ARTIFACTORY_PATH}"
+          
+          # Upload Docker image with versioned filename
+          if [ -f "./release-artifacts/agw.tar.gz" ]; then
+            jf rt u "./release-artifacts/agw.tar.gz" "${ARTIFACTORY_PATH}/agw-${VERSION}.tar.gz"
+            echo "✓ Uploaded agw-${VERSION}.tar.gz"
+          fi
+          
+          # Upload binaries
+          if [ -f "./release-artifacts/agw-binaries-${VERSION}.tar.gz" ]; then
+            jf rt u "./release-artifacts/agw-binaries-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/"
+            echo "✓ Uploaded agw-binaries-${VERSION}.tar.gz"
+          fi
+          
+          # Upload checksums and metadata
+          jf rt u "./release-artifacts/SHA256SUMS.txt" "${ARTIFACTORY_PATH}/"
+          jf rt u "./release-artifacts/metadata.json" "${ARTIFACTORY_PATH}/"
+          
+          echo "✓ All AGW artifacts uploaded successfully"
+      - name: Artifactory Upload Summary
+        run: |
+          TAG="${VERSION}-${DATE}-${SHA}"
+          echo "### Artifactory Upload Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifactory Path | smartswitch/agw/${TAG}/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Image | agw-${VERSION}.tar.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| Binaries | agw-binaries-${VERSION}.tar.gz |" >> $GITHUB_STEP_SUMMARY
+
   create-agw-releases-repo-release:
     needs: [ init, combine-artifacts ]
     if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
