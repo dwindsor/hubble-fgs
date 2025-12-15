@@ -470,7 +470,7 @@ jobs:
           name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./release-artifacts"
       - name: Import Secrets
-        uses: hashicorp/vault-action@f428ffb6df56bc88fb9cb6d6a9baeb9c6eed01d5 # v3.4.0
+        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b # v3.4.0
         with:
           url: ${{ vars.VAULT_URL }}
           namespace: ${{ vars.VAULT_HYPERSHIELD_NAMESPACE }}
