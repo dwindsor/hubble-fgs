@@ -7,10 +7,14 @@ on:
     paths:
       - pkg/k8s/**
       - .github/workflows/lint-k8s.yaml
+      - go.mod
+      - pkg/k8s/go.mod
   pull_request:
     paths:
       - pkg/k8s/**
       - .github/workflows/lint-k8s.yaml
+      - go.mod
+      - pkg/k8s/go.mod
 
 env:
   GOPRIVATE: github.com/isovalent

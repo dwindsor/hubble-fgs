@@ -8,11 +8,15 @@ on:
     - 'install/kubernetes/**'
     - 'pkg/k8s/apis/cilium.io/client/crds/v1alpha1/*.yaml'
     - '.github/workflows/lint-helm.yaml'
+    - 'go.mod'
+    - 'pkg/k8s/go.mod'
   pull_request:
     paths:
     - 'install/kubernetes/**'
     - 'pkg/k8s/apis/cilium.io/client/crds/v1alpha1/*.yaml'
     - '.github/workflows/lint-helm.yaml'
+    - 'go.mod'
+    - 'pkg/k8s/go.mod'
 
 permissions:
   contents: read
