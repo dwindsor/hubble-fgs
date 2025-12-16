@@ -24,6 +24,9 @@
     <Property Id="ARPPRODUCTICON" Value="icon.TetragonShield" />
     <Property Id="ARPHELPLINK" Value="https://isovalent.com" />
 
+    <!-- Disable superfluous 'files in use' message, we stop our services -->
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
+
     <!--<Property Id="REINSTALLMODE" Value="omus" />-->
 
     <!--<ui:WixUI Id="WixUI_InstallDir" />-->
@@ -38,8 +41,9 @@
 
     <Feature Id="TetragonOnWindows">
       <ComponentGroupRef Id="cgrp.eBPFWindows" />
-      <ComponentGroupRef Id="comp.TetragonBpfDrivers" />
       <ComponentGroupRef Id="comp.TetragonBinaries" />
+      <ComponentGroupRef Id="comp.TetragonBpfDrivers" />
+      <ComponentRef Id="comp.TetragonWindowsService" />
       <ComponentRef Id="comp.TracingPolicyDir" />
       <ComponentRef Id="comp.OtherPolicyDir" />
     </Feature>
@@ -59,78 +63,73 @@
     </StandardDirectory>
 
     <InstallExecuteSequence>
+      <!--
+        eBPF for Windows
+      -->
+
       <!-- eBPFCore -->
-      <Custom Action="eBPFCore_Driver_install" After="InstallFiles" Condition="NOT Installed" />
-      <Custom Action="eBPFCore_Driver_install_rollback" Before="eBPFCore_Driver_install" Condition="NOT Installed" />
-      <Custom Action="eBPFCore_Driver_start" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="eBPFCore_Driver_start_rollback" Before="eBPFCore_Driver_start" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="eBPFCore_Driver_stop" After="InstallInitialize" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="eBPFCore_Driver_stop_rollback" Before="eBPFCore_Driver_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="eBPFCore_Driver_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="eBPFCore_Driver_uninstall_rollback" Before="eBPFCore_Driver_uninstall" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="eBPFCore_Driver_uninstall_flush" Before="InstallFinalize" />
+      <Custom Action="Install_eBPFCore" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="InstallRollback_eBPFCore" Before="Install_eBPFCore" Condition="NOT Installed" />
+      <Custom Action="Start_eBPFCore" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="StartRollback_eBPFCore" Before="Start_eBPFCore" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Stop_eBPFCore" After="StopServices" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="StopRollback_eBPFCore" Before="Stop_eBPFCore" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="Uninstall_eBPFCore" After="DeleteServices" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="UninstallRollback_eBPFCore" Before="Uninstall_eBPFCore" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Flush_eBPFCore" Before="InstallFinalize" />
 
       <!-- NetEbpfExt -->
-      <Custom Action="NetEbpfExt_Driver_install" After="InstallFiles" Condition="NOT Installed" />
-      <Custom Action="NetEbpfExt_Driver_install_rollback" Before="NetEbpfExt_Driver_install" Condition="NOT Installed" />
-      <Custom Action="NetEbpfExt_Driver_start" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="NetEbpfExt_Driver_start_rollback" Before="NetEbpfExt_Driver_start" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="NetEbpfExt_Driver_stop" After="InstallInitialize" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="NetEbpfExt_Driver_stop_rollback" Before="NetEbpfExt_Driver_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="NetEbpfExt_Driver_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="NetEbpfExt_Driver_uninstall_rollback" Before="NetEbpfExt_Driver_uninstall" Condition='Installed AND (REMOVE="ALL")' />
-
-      <!-- NtosEbpfExt -->
-      <Custom Action="NtosEbpfExt_Driver_install" After="InstallFiles" Condition="NOT Installed" />
-      <Custom Action="NtosEbpfExt_Driver_install_rollback" Before="NtosEbpfExt_Driver_install" Condition="NOT Installed" />
-      <Custom Action="NtosEbpfExt_Driver_start" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="NtosEbpfExt_Driver_start_rollback" Before="NtosEbpfExt_Driver_start" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="NtosEbpfExt_Driver_stop" After="InstallInitialize" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="NtosEbpfExt_Driver_stop_rollback" Before="NtosEbpfExt_Driver_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="NtosEbpfExt_Driver_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="NtosEbpfExt_Driver_uninstall_rollback" Before="NtosEbpfExt_Driver_uninstall" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Install_NetEbpfExt" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="InstallRollback_NetEbpfExt" Before="Install_NetEbpfExt" Condition="NOT Installed" />
+      <Custom Action="Start_NetEbpfExt" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="StartRollback_NetEbpfExt" Before="Start_NetEbpfExt" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Stop_NetEbpfExt" After="StopServices" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="StopRollback_NetEbpfExt" Before="Stop_NetEbpfExt" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="Uninstall_NetEbpfExt" After="DeleteServices" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="UninstallRollback_NetEbpfExt" Before="Uninstall_NetEbpfExt" Condition='Installed AND (REMOVE="ALL")' />
 
       <!-- ebpfnetsh.dll -->
-      <Custom Action="ebpfnetsh_helper_install" After="InstallFiles" Condition="NOT Installed" />
-      <Custom Action="ebpfnetsh_helper_install_rollback" Before="ebpfnetsh_helper_install" Condition="NOT Installed" />
-      <Custom Action="ebpfnetsh_helper_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="ebpfnetsh_helper_uninstall_rollback" Before="ebpfnetsh_helper_uninstall" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Install_ebpfnetsh_helper" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="InstallRollback_ebpfnetsh_helper" Before="Install_ebpfnetsh_helper" Condition="NOT Installed" />
+      <Custom Action="Uninstall_ebpfnetsh_helper" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="UninstallRollback_ebpfnetsh_helper" Before="Uninstall_ebpfnetsh_helper" Condition='Installed AND (REMOVE="ALL")' />
 
       <!-- export_program_info -->
-      <Custom Action="eBPF_store_clear_HKLM_install" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="eBPF_store_clear_HKLM_install_rollback" Before="eBPF_store_clear_HKLM_install" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="eBPF_store_setup_HKLM_install" After="eBPF_store_clear_HKLM_install" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="eBPF_store_clear_HKLM_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Install_eBPF_store_clear_HKLM" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="InstallRollback_eBPF_store_clear_HKLM" Before="Install_eBPF_store_clear_HKLM" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Install_eBPF_store_setup_HKLM" After="Install_eBPF_store_clear_HKLM" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Uninstall_eBPF_store_clear_HKLM" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
 
-      <Custom Action="eBPF_store_clear_HKCU_install" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="eBPF_store_clear_HKCU_install_rollback" Before="eBPF_store_clear_HKCU_install" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="eBPF_store_setup_HKCU_install" After="eBPF_store_clear_HKCU_install" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="eBPF_store_clear_HKCU_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Install_eBPF_store_clear_HKCU" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="InstallRollback_eBPF_store_clear_HKCU" Before="Install_eBPF_store_clear_HKCU" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Install_eBPF_store_setup_HKCU" After="Install_eBPF_store_clear_HKCU" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Uninstall_eBPF_store_clear_HKCU" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+
+
+      <!--
+        Tetragon Enterprise
+      -->
+
+      <!-- NtosEbpfExt -->
+      <Custom Action="Install_NtosEbpfExt" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="InstallRollback_NtosEbpfExt" Before="Install_NtosEbpfExt" Condition="NOT Installed" />
+      <Custom Action="Start_NtosEbpfExt" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="StartRollback_NtosEbpfExt" Before="Start_NtosEbpfExt" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Stop_NtosEbpfExt" After="StopServices" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="StopRollback_NtosEbpfExt" Before="Stop_NtosEbpfExt" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
+      <Custom Action="Uninstall_NtosEbpfExt" After="DeleteServices" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="UninstallRollback_NtosEbpfExt" Before="Uninstall_NtosEbpfExt" Condition='Installed AND (REMOVE="ALL")' />
 
       <!-- ntos_ebpf_ext_export_program_info -->
-      <Custom Action="Tetra_eBPF_store_clear_HKLM_install" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Tetra_eBPF_store_clear_HKLM_install_rollback" Before="Tetra_eBPF_store_clear_HKLM_install" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Tetra_eBPF_store_setup_HKLM_install" After="Tetra_eBPF_store_clear_HKLM_install" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Tetra_eBPF_store_clear_HKLM_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Install_TetraeBPF_store_clear_HKLM" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="InstallRollback_TetraeBPF_store_clear_HKLM" Before="Install_TetraeBPF_store_clear_HKLM" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Install_TetraeBPF_store_setup_HKLM" After="Install_TetraeBPF_store_clear_HKLM" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Uninstall_TetraeBPF_store_clear_HKLM" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
 
-      <Custom Action="Tetra_eBPF_store_clear_HKCU_install" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Tetra_eBPF_store_clear_HKCU_install_rollback" Before="Tetra_eBPF_store_clear_HKCU_install" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Tetra_eBPF_store_setup_HKCU_install" After="Tetra_eBPF_store_clear_HKCU_install" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Tetra_eBPF_store_clear_HKCU_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
-
-      <!-- Tetragon Service -->
-      <Custom Action="Tetragon_Service_install" After="InstallFiles" Condition="NOT Installed" />
-      <Custom Action="Tetragon_Service_install_rollback" Before="Tetragon_Service_install" Condition="NOT Installed" />
-      <Custom Action="Tetragon_Service_start" Before="InstallFinalize" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Tetragon_Service_start_rollback" Before="Tetragon_Service_start" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Tetragon_Service_stop" After="InstallInitialize" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="Tetragon_Service_stop_rollback" Before="Tetragon_Service_stop" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="Tetragon_Service_uninstall" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="Tetragon_Service_uninstall_rollback" Before="Tetragon_Service_uninstall" Condition='Installed AND (REMOVE="ALL")' />
-
-      <!-- eBPFSvc -->
-      <Custom Action="eBPFSvc_start" Before="Tetragon_Service_start" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="eBPFSvc_start_rollback" Before="Tetragon_Service_start_rollback" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Install_TetraeBPF_store_clear_HKCU" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="InstallRollback_TetraeBPF_store_clear_HKCU" Before="Install_TetraeBPF_store_clear_HKCU" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Install_TetraeBPF_store_setup_HKCU" After="Install_TetraeBPF_store_clear_HKCU" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="Uninstall_TetraeBPF_store_clear_HKCU" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
 
     </InstallExecuteSequence>
 

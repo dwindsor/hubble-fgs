@@ -24,8 +24,8 @@
     <ComponentGroup Id="cgrp.eBPFWindows.Jit" Directory="dir.eBPFWindows.Jit">
       <Files Include="!(bindpath.staging)\ebpf-for-windows\JIT\*.pdb" />
 
-      <!--Install/Uninstall the eBPF Service -->
-      <Component Id="comp.eBPFWindows.eBPFService" Guid="2de7c165-C5C0-5ee1-9df0-372069019d03">
+      <!-- eBPF Service -->
+      <Component Id="comp.eBPFWindows.eBPFService" Guid="FB31284D-7E96-4DAF-96A9-477031C90927">
         <File Source="!(bindpath.staging)\ebpf-for-windows\JIT\ebpfsvc.exe" KeyPath="yes" />
 
         <ServiceInstall Id="svci.eBPFWindows.eBPFService"
@@ -42,19 +42,25 @@
                          OnInstall="yes"
                          OnReinstall="yes" />
 
+          <ServiceDependency Id="eBPFCore"/>
+
           <util:ServiceConfig FirstFailureActionType="restart"
                               SecondFailureActionType="restart"
                               ThirdFailureActionType="restart" />
         </ServiceInstall>
 
-        <ServiceControl Id="svcc.eBPFWindows.eBPFService.install"
+        <ServiceControl Id="svcc.eBPFWindows.eBPFService.start"
                         Name="eBPFSvc"
                         Start="install"
-                        Wait="no" />
+                        Wait="yes" />
+
+        <ServiceControl Id="svcc.eBPFWindows.eBPFService.stop"
+                        Name="eBPFSvc"
+                        Stop="both"
+                        Wait="yes" />
 
         <ServiceControl Id="svcc.eBPFWindows.eBPFService.uninstall"
                         Name="eBPFSvc"
-                        Stop="both"
                         Remove="uninstall"
                         Wait="yes" />
       </Component>
@@ -68,133 +74,123 @@
       <Files Include="!(bindpath.staging)\ebpf-for-windows\*" />
     </ComponentGroup>
 
-    
-    <!-- eBPFSvc -->
-    <CustomAction Id="eBPFSvc_start" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFSvc_start" Before="eBPFSvc_start" Sequence="execute"
-                 Value='"[%ComSpec]" /c net.exe start eBPFSvc'/>
-
-    <CustomAction Id="eBPFSvc_start_rollback" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFSvc_start_rollback" Before="eBPFSvc_start_rollback" Sequence="execute"
-                 Value='"[%ComSpec]" /c net.exe start eBPFSvc'/>
-
 
     <!-- eBPFCore -->
-    <CustomAction Id="eBPFCore_Driver_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFCore_Driver_install" Before="eBPFCore_Driver_install" Sequence="execute"
-                 Value='"[%ComSpec]" /c sc.exe create eBPFCore type=kernel start=auto binpath="[dir.eBPFWindows.Drivers]eBPFCore.sys"'/>
+    <CustomAction Id="Install_eBPFCore" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Install_eBPFCore" Before="Install_eBPFCore" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe create eBPFCore type= kernel start= auto binpath= "[dir.eBPFWindows.Drivers]eBPFCore.sys"'/>
 
-    <CustomAction Id="eBPFCore_Driver_install_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFCore_Driver_install_rollback" Before="eBPFCore_Driver_install_rollback" Sequence="execute"
+    <CustomAction Id="InstallRollback_eBPFCore" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="InstallRollback_eBPFCore" Before="InstallRollback_eBPFCore" Sequence="execute"
                  Value='"[%ComSpec]" /c sc.exe delete eBPFCore'/>
 
-    <CustomAction Id="eBPFCore_Driver_start" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFCore_Driver_start" Before="eBPFCore_Driver_start" Sequence="execute"
+    <CustomAction Id="Start_eBPFCore" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Start_eBPFCore" Before="Start_eBPFCore" Sequence="execute"
                  Value='"[%ComSpec]" /c net.exe start eBPFCore'/>
 
-    <CustomAction Id="eBPFCore_Driver_start_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFCore_Driver_start_rollback" Before="eBPFCore_Driver_start_rollback" Sequence="execute"
+    <CustomAction Id="StartRollback_eBPFCore" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="StartRollback_eBPFCore" Before="StartRollback_eBPFCore" Sequence="execute"
                  Value='"[%ComSpec]" /c net.exe stop eBPFCore'/>
 
-    <CustomAction Id="eBPFCore_Driver_stop" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFCore_Driver_stop" Before="eBPFCore_Driver_stop" Sequence="execute"
+    <CustomAction Id="Stop_eBPFCore" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Stop_eBPFCore" Before="Stop_eBPFCore" Sequence="execute"
                  Value='"[%ComSpec]" /c net.exe stop eBPFCore'/>
 
-    <CustomAction Id="eBPFCore_Driver_stop_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFCore_Driver_stop_rollback" Before="eBPFCore_Driver_stop_rollback" Sequence="execute"
+    <CustomAction Id="StopRollback_eBPFCore" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="StopRollback_eBPFCore" Before="StopRollback_eBPFCore" Sequence="execute"
                  Value='"[%ComSpec]" /c net.exe start eBPFCore'/>
 
-    <CustomAction Id="eBPFCore_Driver_uninstall" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFCore_Driver_uninstall" Before="eBPFCore_Driver_uninstall" Sequence="execute"
+    <CustomAction Id="Uninstall_eBPFCore" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Uninstall_eBPFCore" Before="Uninstall_eBPFCore" Sequence="execute"
                  Value='"[%ComSpec]" /c sc.exe delete eBPFCore'/>
 
-    <CustomAction Id="eBPFCore_Driver_uninstall_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFCore_Driver_uninstall_rollback" Before="eBPFCore_Driver_uninstall_rollback" Sequence="execute"
-                 Value='"[%ComSpec]" /c sc.exe create eBPFCore type=kernel start=auto binpath="[dir.eBPFWindows.Drivers]eBPFCore.sys"'/>
+    <CustomAction Id="UninstallRollback_eBPFCore" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="UninstallRollback_eBPFCore" Before="UninstallRollback_eBPFCore" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe create eBPFCore type= kernel start= auto binpath= "[dir.eBPFWindows.Drivers]eBPFCore.sys"'/>
 
-    <CustomAction Id="eBPFCore_Driver_uninstall_flush" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPFCore_Driver_uninstall_flush" Before="eBPFCore_Driver_uninstall_flush" Sequence="execute"
+    <CustomAction Id="Flush_eBPFCore" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Flush_eBPFCore" Before="Flush_eBPFCore" Sequence="execute"
                  Value='"[%ComSpec]" /c sc.exe query eBPFCore'/>
 
 
     <!-- NetEbpfExt -->
-    <CustomAction Id="NetEbpfExt_Driver_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="NetEbpfExt_Driver_install" Before="NetEbpfExt_Driver_install" Sequence="execute"
-                 Value='"[%ComSpec]" /c sc.exe create NetEbpfExt type=kernel start=auto binpath="[dir.eBPFWindows.Drivers]NetEbpfExt.sys"'/>
+    <CustomAction Id="Install_NetEbpfExt" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Install_NetEbpfExt" Before="Install_NetEbpfExt" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe create NetEbpfExt type= kernel start= auto binpath= "[dir.eBPFWindows.Drivers]NetEbpfExt.sys"'/>
 
-    <CustomAction Id="NetEbpfExt_Driver_install_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="NetEbpfExt_Driver_install_rollback" Before="NetEbpfExt_Driver_install_rollback" Sequence="execute"
+    <CustomAction Id="InstallRollback_NetEbpfExt" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="InstallRollback_NetEbpfExt" Before="InstallRollback_NetEbpfExt" Sequence="execute"
                  Value='"[%ComSpec]" /c sc.exe delete NetEbpfExt'/>
 
-    <CustomAction Id="NetEbpfExt_Driver_start" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="NetEbpfExt_Driver_start" Before="NetEbpfExt_Driver_start" Sequence="execute"
+    <CustomAction Id="Start_NetEbpfExt" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Start_NetEbpfExt" Before="Start_NetEbpfExt" Sequence="execute"
                  Value='"[%ComSpec]" /c net.exe start NetEbpfExt'/>
 
-    <CustomAction Id="NetEbpfExt_Driver_start_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="NetEbpfExt_Driver_start_rollback" Before="NetEbpfExt_Driver_start_rollback" Sequence="execute"
+    <CustomAction Id="StartRollback_NetEbpfExt" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="StartRollback_NetEbpfExt" Before="StartRollback_NetEbpfExt" Sequence="execute"
                  Value='"[%ComSpec]" /c net.exe stop NetEbpfExt'/>
 
-    <CustomAction Id="NetEbpfExt_Driver_stop" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="NetEbpfExt_Driver_stop" Before="NetEbpfExt_Driver_stop" Sequence="execute"
+    <CustomAction Id="Stop_NetEbpfExt" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Stop_NetEbpfExt" Before="Stop_NetEbpfExt" Sequence="execute"
                  Value='"[%ComSpec]" /c net.exe stop NetEbpfExt'/>
 
-    <CustomAction Id="NetEbpfExt_Driver_stop_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="NetEbpfExt_Driver_stop_rollback" Before="NetEbpfExt_Driver_stop_rollback" Sequence="execute"
+    <CustomAction Id="StopRollback_NetEbpfExt" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="StopRollback_NetEbpfExt" Before="StopRollback_NetEbpfExt" Sequence="execute"
                  Value='"[%ComSpec]" /c net.exe start NetEbpfExt'/>
 
-    <CustomAction Id="NetEbpfExt_Driver_uninstall" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="NetEbpfExt_Driver_uninstall" Before="NetEbpfExt_Driver_uninstall" Sequence="execute"
+    <CustomAction Id="Uninstall_NetEbpfExt" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Uninstall_NetEbpfExt" Before="Uninstall_NetEbpfExt" Sequence="execute"
                  Value='"[%ComSpec]" /c sc.exe delete NetEbpfExt'/>
 
-    <CustomAction Id="NetEbpfExt_Driver_uninstall_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="NetEbpfExt_Driver_uninstall_rollback" Before="NetEbpfExt_Driver_uninstall_rollback" Sequence="execute"
-                 Value='"[%ComSpec]" /c sc.exe create NetEbpfExt type=kernel start=auto binpath="[dir.eBPFWindows.Drivers]NetEbpfExt.sys"'/>
+    <CustomAction Id="UninstallRollback_NetEbpfExt" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="UninstallRollback_NetEbpfExt" Before="UninstallRollback_NetEbpfExt" Sequence="execute"
+                 Value='"[%ComSpec]" /c sc.exe create NetEbpfExt type= kernel start= auto binpath= "[dir.eBPFWindows.Drivers]NetEbpfExt.sys"'/>
 
 
     <!-- ebpfnetsh.dll -->
-    <CustomAction Id="ebpfnetsh_helper_install" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="ebpfnetsh_helper_install" Before="ebpfnetsh_helper_install" Sequence="execute"
+    <CustomAction Id="Install_ebpfnetsh_helper" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Install_ebpfnetsh_helper" Before="Install_ebpfnetsh_helper" Sequence="execute"
                  Value='"[%ComSpec]" /c netsh add helper ebpfnetsh.dll' />
 
-    <CustomAction Id="ebpfnetsh_helper_install_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="ebpfnetsh_helper_install_rollback" Before="ebpfnetsh_helper_install_rollback" Sequence="execute"
+    <CustomAction Id="InstallRollback_ebpfnetsh_helper" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="InstallRollback_ebpfnetsh_helper" Before="InstallRollback_ebpfnetsh_helper" Sequence="execute"
                  Value='"[%ComSpec]" /c netsh delete helper ebpfnetsh.dll' />
 
-    <CustomAction Id="ebpfnetsh_helper_uninstall" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="ebpfnetsh_helper_uninstall" Before="ebpfnetsh_helper_uninstall" Sequence="execute"
+    <CustomAction Id="Uninstall_ebpfnetsh_helper" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Uninstall_ebpfnetsh_helper" Before="Uninstall_ebpfnetsh_helper" Sequence="execute"
                  Value='"[%ComSpec]" /c netsh delete helper ebpfnetsh.dll' />
 
-    <CustomAction Id="ebpfnetsh_helper_uninstall_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="ebpfnetsh_helper_uninstall_rollback" Before="ebpfnetsh_helper_uninstall_rollback" Sequence="execute"
+    <CustomAction Id="UninstallRollback_ebpfnetsh_helper" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="UninstallRollback_ebpfnetsh_helper" Before="UninstallRollback_ebpfnetsh_helper" Sequence="execute"
                  Value='"[%ComSpec]" /c netsh add helper ebpfnetsh.dll' />
 
 
     <!-- export_program_info -->
     <?define ExportCmd = '"[%ComSpec]" /c "[dir.eBPFWindows]export_program_info.exe"' ?>
-    <CustomAction Id="eBPF_store_clear_HKLM_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPF_store_clear_HKLM_install" Before="eBPF_store_clear_HKLM_install" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
+    <CustomAction Id="Install_eBPF_store_clear_HKLM" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Install_eBPF_store_clear_HKLM" Before="Install_eBPF_store_clear_HKLM" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
 
-    <CustomAction Id="eBPF_store_clear_HKLM_install_rollback" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPF_store_clear_HKLM_install_rollback" Before="eBPF_store_clear_HKLM_install_rollback" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
+    <CustomAction Id="InstallRollback_eBPF_store_clear_HKLM" Execute="rollback" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="InstallRollback_eBPF_store_clear_HKLM" Before="InstallRollback_eBPF_store_clear_HKLM" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
 
-    <CustomAction Id="eBPF_store_setup_HKLM_install" Execute="deferred" Return="check" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPF_store_setup_HKLM_install" Before="eBPF_store_setup_HKLM_install" Sequence="execute" Value='$(var.ExportCmd)'/>
+    <CustomAction Id="Install_eBPF_store_setup_HKLM" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Install_eBPF_store_setup_HKLM" Before="Install_eBPF_store_setup_HKLM" Sequence="execute" Value='$(var.ExportCmd)'/>
 
-    <CustomAction Id="eBPF_store_clear_HKLM_uninstall" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPF_store_clear_HKLM_uninstall" Before="eBPF_store_clear_HKLM_uninstall" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
+    <CustomAction Id="Uninstall_eBPF_store_clear_HKLM" Execute="deferred" Return="ignore" Impersonate="no" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Uninstall_eBPF_store_clear_HKLM" Before="Uninstall_eBPF_store_clear_HKLM" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
 
 
-    <CustomAction Id="eBPF_store_clear_HKCU_install" Execute="deferred" Return="check" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPF_store_clear_HKCU_install" Before="eBPF_store_clear_HKCU_install" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
+    <CustomAction Id="Install_eBPF_store_clear_HKCU" Execute="deferred" Return="ignore" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Install_eBPF_store_clear_HKCU" Before="Install_eBPF_store_clear_HKCU" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
 
-    <CustomAction Id="eBPF_store_clear_HKCU_install_rollback" Execute="rollback" Return="ignore" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPF_store_clear_HKCU_install_rollback" Before="eBPF_store_clear_HKCU_install_rollback" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
+    <CustomAction Id="InstallRollback_eBPF_store_clear_HKCU" Execute="rollback" Return="ignore" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="InstallRollback_eBPF_store_clear_HKCU" Before="InstallRollback_eBPF_store_clear_HKCU" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
 
-    <CustomAction Id="eBPF_store_setup_HKCU_install" Execute="deferred" Return="check" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPF_store_setup_HKCU_install" Before="eBPF_store_setup_HKCU_install" Sequence="execute" Value='$(var.ExportCmd)'/>
+    <CustomAction Id="Install_eBPF_store_setup_HKCU" Execute="deferred" Return="ignore" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Install_eBPF_store_setup_HKCU" Before="Install_eBPF_store_setup_HKCU" Sequence="execute" Value='$(var.ExportCmd)'/>
 
-    <CustomAction Id="eBPF_store_clear_HKCU_uninstall" Execute="deferred" Return="ignore" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
-    <SetProperty Id="eBPF_store_clear_HKCU_uninstall" Before="eBPF_store_clear_HKCU_uninstall" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
+    <CustomAction Id="Uninstall_eBPF_store_clear_HKCU" Execute="deferred" Return="ignore" Impersonate="yes" DllEntry="WixQuietExec64" BinaryRef="Wix4UtilCA_X64" />
+    <SetProperty Id="Uninstall_eBPF_store_clear_HKCU" Before="Uninstall_eBPF_store_clear_HKCU" Sequence="execute" Value='$(var.ExportCmd) --clear'/>
 
   </Fragment>
 
