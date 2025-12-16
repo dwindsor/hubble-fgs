@@ -488,7 +488,7 @@ jobs:
       - name: Upload AGW artifacts to Artifactory
         run: |
           TAG="${VERSION}-${DATE}-${SHA}"
-          ARTIFACTORY_PATH="${{ vars.ARTIFACTORY_REPO_PATH }}/smartswitch/agw/${TAG}"
+          ARTIFACTORY_PATH="isovalent-images-generic/smartswitch/agw/${TAG}"
           
           echo "Uploading AGW artifacts to: ${ARTIFACTORY_PATH}"
           

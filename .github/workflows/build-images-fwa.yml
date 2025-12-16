@@ -264,7 +264,7 @@ jobs:
       - name: Upload FWA artifacts to Artifactory
         run: |
           TAG="${VERSION}-${DATE}-${SHA}"
-          ARTIFACTORY_PATH="${{ vars.ARTIFACTORY_REPO_PATH }}/smartswitch/fwa/${TAG}"
+          ARTIFACTORY_PATH="isovalent-images-generic/smartswitch/fwa/${TAG}"
           
           echo "Uploading FWA artifacts to: ${ARTIFACTORY_PATH}"
           
