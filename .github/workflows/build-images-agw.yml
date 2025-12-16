@@ -500,13 +500,13 @@ jobs:
           
           # Upload binaries
           if [ -f "./release-artifacts/agw-binaries-${VERSION}.tar.gz" ]; then
-            jf rt u "./release-artifacts/agw-binaries-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/"
+            jf rt u --flat "./release-artifacts/agw-binaries-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/"
             echo "✓ Uploaded agw-binaries-${VERSION}.tar.gz"
           fi
           
           # Upload checksums and metadata
-          jf rt u "./release-artifacts/SHA256SUMS.txt" "${ARTIFACTORY_PATH}/"
-          jf rt u "./release-artifacts/metadata.json" "${ARTIFACTORY_PATH}/"
+          jf rt u --flat "./release-artifacts/SHA256SUMS.txt" "${ARTIFACTORY_PATH}/"
+          jf rt u --flat "./release-artifacts/metadata.json" "${ARTIFACTORY_PATH}/"
           
           echo "✓ All AGW artifacts uploaded successfully"
       - name: Artifactory Upload Summary
