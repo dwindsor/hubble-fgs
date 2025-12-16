@@ -168,71 +168,11 @@ func matchPolicyPattern(name, pattern string) bool {
 		return true
 	}
 
-	if isRegexPattern(pattern) {
-		return matchRegex(name, pattern)
-	}
-
-	nameLower := strings.ToLower(name)
-	patternLower := strings.ToLower(pattern)
-
-	if !strings.Contains(patternLower, "*") {
-		return nameLower == patternLower
-	}
-
-	return matchWildcardPattern(nameLower, patternLower)
-}
-
-func isRegexPattern(pattern string) bool {
-	regexSpecialChars := []rune{'.', '^', '$', '[', ']', '(', ')', '+', '?', '{', '}', '|', '\\'}
-	for _, ch := range pattern {
-		for _, special := range regexSpecialChars {
-			if ch == special {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func matchRegex(name, pattern string) bool {
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		return false
 	}
 	return re.MatchString(name)
-}
-
-func matchWildcardPattern(nameLower, patternLower string) bool {
-	parts := strings.Split(patternLower, "*")
-
-	switch {
-	case strings.HasPrefix(patternLower, "*") && strings.HasSuffix(patternLower, "*") && len(parts) > 2:
-		substr := strings.Join(parts[1:len(parts)-1], "*")
-		return strings.Contains(nameLower, substr)
-	case strings.HasPrefix(patternLower, "*") && len(parts) == 2:
-		suffix := parts[1]
-		return strings.HasSuffix(nameLower, suffix)
-	case strings.HasSuffix(patternLower, "*") && len(parts) == 2:
-		prefix := parts[0]
-		return strings.HasPrefix(nameLower, prefix)
-	case len(parts) == 2:
-		prefix := parts[0]
-		suffix := parts[1]
-		return strings.HasPrefix(nameLower, prefix) && strings.HasSuffix(nameLower, suffix)
-	default:
-		idx := 0
-		for _, part := range parts {
-			if part == "" {
-				continue
-			}
-			pos := strings.Index(nameLower[idx:], part)
-			if pos == -1 {
-				return false
-			}
-			idx += pos + len(part)
-		}
-		return true
-	}
 }
 
 // formatSwitchPoliciesJsonStringByName formats filtered policies as a JSON map string

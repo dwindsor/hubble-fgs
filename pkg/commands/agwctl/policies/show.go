@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	showCmd.Flags().StringP("filter", "", "", "ResourceID filter for listing policies")
+	showCmd.Flags().StringP("filter", "", "", "ResourceID filter for listing policies, uses regex")
 	PoliciesCmd.AddCommand(showCmd)
 }
 
@@ -19,7 +19,8 @@ var showCmd = &cobra.Command{
 	Use:          "show",
 	SilenceUsage: true,
 	Short:        "Show policies by ResourceID, which is kubernetes 'kind/namespace/name'",
-	Long:         `Show one or all policies, which is kubernetes 'kind/namespace/name'.`,
+	Long: `Show one or all policies, which is kubernetes 'kind/namespace/name'.  The --filter flag uses
+regex strings to filter policy ResourceIDs.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
