@@ -99,6 +99,9 @@ Date:   Tue Apr 20 16:48:18 2021 -0700
 
 Eventually, we will use the scripts used by Cilium to do this, but we are not there yet.
 
+There is a simple script you can use for chery picking commits and adding the commit:
+https://github.com/isovalent/tetragon-github-tools/blob/main/backport/cherry-pick
+
 ## CRD changes
 
 In rare situations, we might want to backport CRD changes, which means changing the CRD schema
