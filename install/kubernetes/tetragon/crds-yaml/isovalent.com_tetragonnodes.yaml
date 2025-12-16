@@ -17,7 +17,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TetragonNode is the Schema for the TetragonNodes API
+        description: TetragonNode is the Schema for the TetragonNodes API.
         properties:
           apiVersion:
             description: |-

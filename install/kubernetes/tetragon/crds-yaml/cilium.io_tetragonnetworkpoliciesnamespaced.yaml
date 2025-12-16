@@ -40,7 +40,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: Tracing policy specification.
+            description: network policy specification
             properties:
               defaultAction:
                 enum:
