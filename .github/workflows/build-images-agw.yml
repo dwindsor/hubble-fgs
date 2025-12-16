@@ -469,17 +469,15 @@ jobs:
         with:
           name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./release-artifacts"
-      - name: Import Secrets
-        uses: hashicorp/vault-action@4c06c5ccf5c0761b6029f56cfb1dcf5565918a3b # v3.4.0
+      - name: Get Artifactory Credentials from Vault
+        uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
         with:
           url: ${{ vars.VAULT_URL }}
-          namespace: ${{ vars.VAULT_HYPERSHIELD_NAMESPACE }}
-          method: approle
-          roleId: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_ROLE_ID }}
-          secretId: ${{ secrets.VAULT_HYPERSHIELD_APPROLE_SECRET_ID }}
+          method: ${{ vars.VAULT_METHOD }}
+          namespace: ${{ vars.VAULT_NAMESPACE }}
           secrets: |
-            secret/data/devops/${{ github.repository }} artifactory_user | JF_USER;
-            secret/data/devops/${{ github.repository }} artifactory_password | JF_PASSWORD;
+            secret/data/devops/isovalent/isovalent-operator artifactory_user | JF_USER;
+            secret/data/devops/isovalent/isovalent-operator artifactory_password | JF_PASSWORD;
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@ff5cb544114ffc152db9cea1cd3d5978d5074946 # v4.5.11
         env:
