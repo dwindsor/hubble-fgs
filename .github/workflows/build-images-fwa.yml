@@ -231,8 +231,7 @@ jobs:
 
   upload-to-artifactory:
     needs: [ init, combine-artifacts ]
-    # TODO: Remove 'pull_request' condition after testing - restore to master-only
-    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') }}
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
     env:
