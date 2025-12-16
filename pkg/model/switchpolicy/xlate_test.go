@@ -898,6 +898,58 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Mixed IPv4/IPv6 CIDRs only map same-family",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow mixed v4/v6",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{CIDR: "10.0.0.0/8"},
+									{CIDR: "2001:db8::/32"},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{CIDR: "192.168.1.0/24"},
+									{CIDR: "2001:db8:1::/48"},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{Protocol: "TCP"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []*SmartSwitchNetworkPolicy{
+				{
+					Source: SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8"}},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.1.0/24"},
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP},
+						},
+					},
+					Action:  SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+					Default: SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
+				},
+				{
+					Source: SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "2001:db8::/32"}},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{CIDR: "2001:db8:1::/48"},
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP},
+						},
+					},
+					Action:  SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+					Default: SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

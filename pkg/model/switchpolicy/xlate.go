@@ -1,11 +1,30 @@
 package switchpolicy
 
 import (
+	"fmt"
+	"net/netip"
 	"strings"
 
 	isovalentv1 "github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
+
+func cidrIPFamily(cidr string) (int, error) {
+	prefix, err := netip.ParsePrefix(cidr)
+	if err != nil {
+		return 0, err
+	}
+
+	addr := prefix.Addr()
+	if addr.Is4() {
+		return 4, nil
+	}
+	if addr.Is6() {
+		return 6, nil
+	}
+
+	return 0, fmt.Errorf("unsupported CIDR address family: %s", cidr)
+}
 
 func toSmartSwitchDefaultAction(_ *isovalentv1.SmartSwitchNetworkPolicy) SmartSwitchNetworkAction {
 	// SmartSwitch is default deny for all policies at this point
@@ -62,6 +81,11 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 	}
 
 	for _, s := range r.Source.IPBlock {
+		sFamily, err := cidrIPFamily(s.CIDR)
+		if err != nil {
+			return nil, fmt.Errorf("invalid source CIDR %q: %w", s.CIDR, err)
+		}
+
 		source := SmartSwitchNetworkSource{
 			Endpoint: SmartSwitchNetworkEndpoint{
 				CIDR: s.CIDR,
@@ -71,6 +95,14 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 		}
 
 		for _, d := range r.Destination.IPBlock {
+			dFamily, err := cidrIPFamily(d.CIDR)
+			if err != nil {
+				return nil, fmt.Errorf("invalid destination CIDR %q: %w", d.CIDR, err)
+			}
+			if sFamily != dFamily {
+				continue
+			}
+
 			dest := SmartSwitchNetworkDestination{
 				Endpoint: SmartSwitchNetworkEndpoint{
 					CIDR: d.CIDR,
