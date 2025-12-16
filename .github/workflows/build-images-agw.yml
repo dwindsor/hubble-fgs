@@ -485,38 +485,38 @@ jobs:
           disable-auto-build-publish: true
           disable-job-summary: true
       - name: Upload AGW artifacts to Artifactory
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
-          TAG="${VERSION}-${DATE}-${SHA}"
-          ARTIFACTORY_PATH="isovalent-images-generic/smartswitch/agw/${TAG}"
+          BUILD_TAG="${RUN_NUMBER}-${DATE}-${SHA}"
+          ARTIFACTORY_PATH="isovalent-images-generic/smartswitch/agw/${VERSION}/${BUILD_TAG}"
           
           echo "Uploading AGW artifacts to: ${ARTIFACTORY_PATH}"
           
-          # Upload Docker image with versioned filename
+          # Upload Docker image
           if [ -f "./release-artifacts/agw.tar.gz" ]; then
-            jf rt u "./release-artifacts/agw.tar.gz" "${ARTIFACTORY_PATH}/agw-${VERSION}.tar.gz"
-            echo "✓ Uploaded agw-${VERSION}.tar.gz"
+            jf rt u --flat "./release-artifacts/agw.tar.gz" "${ARTIFACTORY_PATH}/agw.tar.gz"
+            echo "✓ Uploaded agw.tar.gz"
           fi
           
           # Upload binaries
           if [ -f "./release-artifacts/agw-binaries-${VERSION}.tar.gz" ]; then
-            jf rt u --flat "./release-artifacts/agw-binaries-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/"
-            echo "✓ Uploaded agw-binaries-${VERSION}.tar.gz"
+            jf rt u --flat "./release-artifacts/agw-binaries-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/agw-binaries.tar.gz"
+            echo "✓ Uploaded agw-binaries.tar.gz"
           fi
-          
-          # Upload checksums and metadata
-          jf rt u --flat "./release-artifacts/SHA256SUMS.txt" "${ARTIFACTORY_PATH}/"
-          jf rt u --flat "./release-artifacts/metadata.json" "${ARTIFACTORY_PATH}/"
           
           echo "✓ All AGW artifacts uploaded successfully"
       - name: Artifactory Upload Summary
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
-          TAG="${VERSION}-${DATE}-${SHA}"
+          BUILD_TAG="${RUN_NUMBER}-${DATE}-${SHA}"
           echo "### Artifactory Upload Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| Artifactory Path | smartswitch/agw/${TAG}/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Docker Image | agw-${VERSION}.tar.gz |" >> $GITHUB_STEP_SUMMARY
-          echo "| Binaries | agw-binaries-${VERSION}.tar.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifactory Path | smartswitch/agw/${VERSION}/${BUILD_TAG}/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Image | agw.tar.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| Binaries | agw-binaries.tar.gz |" >> $GITHUB_STEP_SUMMARY
 
   create-agw-releases-repo-release:
     needs: [ init, combine-artifacts ]

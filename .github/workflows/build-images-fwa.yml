@@ -261,38 +261,38 @@ jobs:
           disable-auto-build-publish: true
           disable-job-summary: true
       - name: Upload FWA artifacts to Artifactory
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
-          TAG="${VERSION}-${DATE}-${SHA}"
-          ARTIFACTORY_PATH="isovalent-images-generic/smartswitch/fwa/${TAG}"
+          BUILD_TAG="${RUN_NUMBER}-${DATE}-${SHA}"
+          ARTIFACTORY_PATH="isovalent-images-generic/smartswitch/fwa/${VERSION}/${BUILD_TAG}"
           
           echo "Uploading FWA artifacts to: ${ARTIFACTORY_PATH}"
           
           # Upload AMD64 FWA image
           if [ -f "./release-artifacts/fwa-elba-amd64-${VERSION}.tar.gz" ]; then
-            jf rt u --flat "./release-artifacts/fwa-elba-amd64-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/"
-            echo "✓ Uploaded fwa-elba-amd64-${VERSION}.tar.gz"
+            jf rt u --flat "./release-artifacts/fwa-elba-amd64-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/fwa-elba-amd64.tar.gz"
+            echo "✓ Uploaded fwa-elba-amd64.tar.gz"
           fi
           
           # Upload ARM64 FWA image
           if [ -f "./release-artifacts/fwa-elba-arm64-${VERSION}.tar.gz" ]; then
-            jf rt u --flat "./release-artifacts/fwa-elba-arm64-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/"
-            echo "✓ Uploaded fwa-elba-arm64-${VERSION}.tar.gz"
+            jf rt u --flat "./release-artifacts/fwa-elba-arm64-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/fwa-elba-arm64.tar.gz"
+            echo "✓ Uploaded fwa-elba-arm64.tar.gz"
           fi
-          
-          # Upload checksums and metadata
-          jf rt u --flat "./release-artifacts/SHA256SUMS.txt" "${ARTIFACTORY_PATH}/"
-          jf rt u --flat "./release-artifacts/metadata.json" "${ARTIFACTORY_PATH}/"
           
           echo "✓ All FWA artifacts uploaded successfully"
       - name: Artifactory Upload Summary
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
-          TAG="${VERSION}-${DATE}-${SHA}"
+          BUILD_TAG="${RUN_NUMBER}-${DATE}-${SHA}"
           echo "### Artifactory Upload Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| Artifactory Path | smartswitch/fwa/${TAG}/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| AMD64 Image | fwa-elba-amd64-${VERSION}.tar.gz |" >> $GITHUB_STEP_SUMMARY
-          echo "| ARM64 Image | fwa-elba-arm64-${VERSION}.tar.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifactory Path | smartswitch/fwa/${VERSION}/${BUILD_TAG}/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| AMD64 Image | fwa-elba-amd64.tar.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| ARM64 Image | fwa-elba-arm64.tar.gz |" >> $GITHUB_STEP_SUMMARY
 
   create-fwa-releases-repo-release:
     needs: [init, combine-artifacts]
