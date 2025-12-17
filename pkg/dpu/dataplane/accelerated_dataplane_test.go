@@ -105,9 +105,13 @@ func TestPushPolicy(t *testing.T) {
 	defer os.RemoveAll(dpTestPath)
 	createTestSocket(dpTestPath)
 	dp := NewAcceleratedDataplane("dp-app", dpTestPath)
+	err := dp.Accelerated.Start(ctx)
+	require.NoError(t, err)
+	defer dp.Accelerated.Socket.Close()
+
 	// Force the socket down and push policy to test retry
 	dp.Accelerated.Socket.Close()
-	err := dp.PushPolicy(ctx, fwop, policies)
+	err = dp.PushPolicy(ctx, fwop, policies)
 	require.NoError(t, err)
 	dp.Accelerated.Socket.Close()
 	err = dp.PushPolicy(ctx, fwop, policies)
@@ -156,7 +160,12 @@ func TestUpdateFirewall(t *testing.T) {
 	defer os.RemoveAll(dpTestPath)
 	createTestSocket(dpTestPath)
 	db := NewAcceleratedDataplane("dp-app", dpTestPath)
-	err := db.Accelerated.UpdateFirewallPolicies(ctx, msg)
+	// Connect the socket before use
+	err := db.Accelerated.Start(ctx)
+	require.NoError(t, err)
+	defer db.Accelerated.Socket.Close()
+
+	err = db.Accelerated.UpdateFirewallPolicies(ctx, msg)
 	require.NoError(t, err)
 	err = db.Accelerated.UpdateFirewallPolicies(ctx, msg)
 	require.NoError(t, err)
@@ -201,8 +210,14 @@ func BenchmarkUpdate(b *testing.B) {
 	}
 
 	dpTestPath := "/tmp/test.sock"
+	defer os.RemoveAll(dpTestPath)
 	createTestSocket(dpTestPath)
 	db := NewAcceleratedDataplane("dp-app", dpTestPath)
+	err := db.Accelerated.Start(ctx)
+	if err != nil {
+		b.Fatalf("Failed to start: %v", err)
+	}
+	defer db.Accelerated.Socket.Close()
 
 	for i := 0; i < b.N; i++ {
 		db.Accelerated.UpdateFirewallPolicies(ctx, msg)

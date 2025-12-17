@@ -42,17 +42,22 @@ func (s *DataplaneSocket) Dial(ctx context.Context) error {
 	backoff := 1 * time.Second
 
 	// Resolving the socket address
-	addr, _ := net.ResolveUnixAddr("unix", s.sockFile)
-	dialer := net.Dialer{}
+	addr, err := net.ResolveUnixAddr("unix", s.sockFile)
+	if err != nil {
+		return fmt.Errorf("failed to resolve socket: %w", err)
+	}
+	dialer := net.Dialer{
+		Timeout: s.timeout,
+	}
 
 	for {
-		s.conn, err = dialer.Dial("unix", addr.String())
+		s.conn, err = dialer.DialContext(ctx, "unix", addr.String())
 		if err == nil {
 			return nil
 		}
 		retries++
 		if retries > MaxConnectRetry {
-			return fmt.Errorf("datpaplane connect failed")
+			return fmt.Errorf("dataplane connect failed after %d retries: %w", MaxConnectRetry, err)
 		}
 
 		select {
@@ -82,23 +87,38 @@ func (s *DataplaneSocket) Close() error {
 	if s.conn == nil {
 		return nil
 	}
-	s.cancel()
-	return s.conn.Close()
+	if s.cancel != nil {
+		s.cancel()
+		s.cancel = nil
+	}
+	err := s.conn.Close()
+	s.conn = nil
+	s.encode = nil
+	s.decode = nil
+	return err
 }
 
 func (s *DataplaneSocket) Send(msg *ControlMessage) error {
-	err := s.encode.Encode(msg)
-	if err != nil {
-		return err
+	if s.encode == nil || s.conn == nil {
+		return fmt.Errorf("socket not connected")
 	}
-	return nil
+	if err := s.conn.SetWriteDeadline(time.Now().Add(s.timeout)); err != nil {
+		return fmt.Errorf("failed to set write deadline: %w", err)
+	}
+	return s.encode.Encode(msg)
 }
 
 func (s *DataplaneSocket) Receive() (*ControlResponse, error) {
+	if s.decode == nil || s.conn == nil {
+		return nil, fmt.Errorf("socket not connected")
+	}
+	if err := s.conn.SetReadDeadline(time.Now().Add(s.timeout)); err != nil {
+		return nil, fmt.Errorf("failed to set read deadline: %w", err)
+	}
 	var msg ControlResponse
 	err := s.decode.Decode(&msg)
 	if err != nil {
-		return &ControlResponse{}, err
+		return nil, err
 	}
 	return &msg, nil
 }

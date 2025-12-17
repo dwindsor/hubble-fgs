@@ -97,13 +97,48 @@ func TestDataplaneSocket_SendReceive(t *testing.T) {
 	}
 }
 
-func TestDataplaneSocket_Timeout(t *testing.T) {
-	sockFile := "/tmp/test_receive_timeout.sock"
-	timeout := 500 * time.Millisecond
+func TestDataplaneSocket_SendNotConnected(t *testing.T) {
+	dpSocket := NewDataplaneSocket("/tmp/nonexistent.sock", 2*time.Second)
 
-	done := make(chan bool, 1)
+	// Test sending without connecting first
+	msg := &ControlMessage{Command: 0, Type: 0, Data: json.RawMessage(`{}`)}
+	err := dpSocket.Send(msg)
+	if err == nil {
+		t.Fatal("Expected error when sending on unconnected socket")
+	}
+	if err.Error() != "socket not connected" {
+		t.Fatalf("Expected 'socket not connected' error, got: %v", err)
+	}
+}
 
-	// Create a Unix socket listener for testing
+func TestDataplaneSocket_ReceiveNotConnected(t *testing.T) {
+	dpSocket := NewDataplaneSocket("/tmp/nonexistent.sock", 2*time.Second)
+
+	// Test receiving without connecting first
+	_, err := dpSocket.Receive()
+	if err == nil {
+		t.Fatal("Expected error when receiving on unconnected socket")
+	}
+	if err.Error() != "socket not connected" {
+		t.Fatalf("Expected 'socket not connected' error, got: %v", err)
+	}
+}
+
+func TestDataplaneSocket_CloseNotConnected(t *testing.T) {
+	dpSocket := NewDataplaneSocket("/tmp/nonexistent.sock", 2*time.Second)
+
+	// Test closing without connecting first - should not panic
+	err := dpSocket.Close()
+	if err != nil {
+		t.Fatalf("Expected no error when closing unconnected socket, got: %v", err)
+	}
+}
+
+func TestDataplaneSocket_CloseMultipleTimes(t *testing.T) {
+	sockFile := "/tmp/test_close_multiple.sock"
+	timeout := 2 * time.Second
+
+	os.Remove(sockFile)
 	listener, err := net.Listen("unix", sockFile)
 	if err != nil {
 		t.Fatalf("Failed to create Unix socket listener: %v", err)
@@ -113,38 +148,57 @@ func TestDataplaneSocket_Timeout(t *testing.T) {
 
 	dpSocket := NewDataplaneSocket(sockFile, timeout)
 
-	// Test successful connection
 	err = dpSocket.Connect()
 	if err != nil {
 		t.Fatalf("Expected successful connection, got error: %v", err)
 	}
-	defer dpSocket.Close()
 
-	// Start a goroutine to handle incoming connections
-	go func() {
-		// Accept connection on the server side
-		serverConn, err := listener.Accept()
-		if err != nil {
-			t.Errorf("Failed to accept connection: %v", err)
-			return
-		}
-		defer serverConn.Close()
+	// Close multiple times - should not panic
+	err = dpSocket.Close()
+	if err != nil {
+		t.Fatalf("First close failed: %v", err)
+	}
 
-		encoder := json.NewEncoder(serverConn)
+	err = dpSocket.Close()
+	if err != nil {
+		t.Fatalf("Second close should succeed (no-op), got: %v", err)
+	}
+}
 
-		// Create a mock response
-		response := ControlResponse{ReturnCode: SUCCESS, Data: json.RawMessage(`{"key":"value","num":42}`)}
+func TestDataplaneSocket_SendReceiveAfterClose(t *testing.T) {
+	sockFile := "/tmp/test_after_close.sock"
+	timeout := 2 * time.Second
 
-		// Simulate delay
-		time.Sleep(1 * time.Second)
+	os.Remove(sockFile)
+	listener, err := net.Listen("unix", sockFile)
+	if err != nil {
+		t.Fatalf("Failed to create Unix socket listener: %v", err)
+	}
+	defer listener.Close()
+	defer os.Remove(sockFile)
 
-		// Send the mock response back to the client
-		err = encoder.Encode(response)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		done <- true
-	}()
-	<-done
+	dpSocket := NewDataplaneSocket(sockFile, timeout)
+
+	err = dpSocket.Connect()
+	if err != nil {
+		t.Fatalf("Expected successful connection, got error: %v", err)
+	}
+
+	err = dpSocket.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	// Send after close should return error
+	msg := &ControlMessage{Command: 0, Type: 0, Data: json.RawMessage(`{}`)}
+	err = dpSocket.Send(msg)
+	if err == nil {
+		t.Fatal("Expected error when sending after close")
+	}
+
+	// Receive after close should return error
+	_, err = dpSocket.Receive()
+	if err == nil {
+		t.Fatal("Expected error when receiving after close")
+	}
 }

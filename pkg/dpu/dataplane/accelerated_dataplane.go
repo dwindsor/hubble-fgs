@@ -32,25 +32,13 @@ import (
 //   - apiPath: string
 //   - persistPath: string
 func NewAcceleratedDataplane(id, apiPath string) *AcceleratedDataplane {
-	dpSocket := socket.NewDataplaneSocket(apiPath, UDS_TIMEOUT*time.Second)
-	err := dpSocket.Connect()
-	if err != nil {
-		logger.GetLogger().Error("failed to connect to dataplane", logfields.Error, err)
-		return nil
-	}
-
 	return &AcceleratedDataplane{
 		Accelerated: &AcceleratedDataplaneProcess{
 			Id:      id,
 			ApiPath: apiPath,
-			Socket:  dpSocket,
+			Socket:  &socket.DataplaneSocket{},
 		},
 	}
-}
-
-func (dp *AcceleratedDataplaneProcess) Reconnect() error {
-	dp.Socket.Close()
-	return dp.Socket.Connect()
 }
 
 // -----------------------------------------------------------------------------
@@ -132,6 +120,13 @@ func (dp *AcceleratedDataplaneProcess) Start(ctx context.Context) error {
 			backoff = maxBackoff
 		}
 	}
+
+	dp.Socket = socket.NewDataplaneSocket(dp.ApiPath, UDS_TIMEOUT*time.Second)
+	err := dp.Socket.Connect()
+	if err != nil {
+		logger.GetLogger().Error("failed to connect to dataplane", logfields.Error, err)
+		return nil
+	}
 	return nil
 }
 
@@ -139,6 +134,11 @@ func (dp *AcceleratedDataplaneProcess) Stop(_ context.Context) error {
 	// Setting status to false
 	dp.Status.Store(false)
 	return nil
+}
+
+func (dp *AcceleratedDataplaneProcess) Reconnect() error {
+	dp.Socket.Close()
+	return dp.Socket.Connect()
 }
 
 func (dp *AcceleratedDataplaneProcess) UpdateFirewallPolicies(_ context.Context, policyMsg *dpAppPolicy.FwPolicyMsgV2) error {
@@ -313,17 +313,16 @@ func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, fwop v1alpha.Pol
 	var err = fmt.Errorf("policy not pushed")
 	retry := 0
 
+	// Creating policy message
+	fwPolicy := dpAppPolicy.DPURuleToJSON(fwop, policies)
+	policyMsg := &dpAppPolicy.FwPolicyMsgV2{
+		Hash:         "deprecated",
+		Verification: false,
+		Policies:     fwPolicy,
+	}
+
 	// Applying policy to the accelerated dataplane
 	for ; retry < RetryPushPolicy && err != nil; retry++ {
-		fwPolicy := dpAppPolicy.DPURuleToJSON(fwop, policies)
-
-		// Creating policy message
-		policyMsg := &dpAppPolicy.FwPolicyMsgV2{
-			Hash:         "deprecated",
-			Verification: false,
-			Policies:     fwPolicy,
-		}
-
 		err = dp.Accelerated.UpdateFirewallPolicies(ctx, policyMsg)
 		if err != nil {
 			dp.Accelerated.Reconnect()
@@ -331,10 +330,9 @@ func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, fwop v1alpha.Pol
 	}
 
 	if err != nil {
-		logger.GetLogger().Error("Failed to push policy to accelerated dataplane", logfields.Error, err, "policy", policies)
+		logger.GetLogger().Error("Failed to push policy to accelerated dataplane", logfields.Error, err, "policy", fwPolicy)
 		return err
 	}
-
 	return nil
 }
 

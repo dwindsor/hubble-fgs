@@ -91,7 +91,7 @@ func GetInterfaces() ([]Interface, error) {
 
 // GetDpuIP retrieves the IP addr from the specified interface with retry.
 // It will retry with exponential backoff until the IP is found, the context is
-// cancelled, or timeout (2 minutes) is exceeded. W/O a valid IP, the DPU cannot
+// cancelled, or timeout (30 seconds) is exceeded. W/O a valid IP, the DPU cannot
 // register with AGW.
 // maxBackoff = 5 sec = maximum wait time between retry attempts
 // maxWaitTime = 30 sec = maximum total wait time

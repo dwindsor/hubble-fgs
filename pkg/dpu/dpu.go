@@ -325,10 +325,12 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	logConfigCallback := func(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
 		err := dpu.LogExporter.RefreshConfig(oldCfg, newCfg)
 		if err != nil {
+			logger.GetLogger().Error("log config failed", "callback", "log-exporter", logfields.Error, err)
 			return err
 		}
 		err = dpu.Dataplane.RefreshConfig(oldCfg, newCfg)
 		if err != nil {
+			logger.GetLogger().Error("log config failed", "callback", "dataplane", logfields.Error, err)
 			return err
 		}
 		return nil
@@ -336,10 +338,12 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 	dpuConfigCallback := func(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
 		err := dpu.Dataplane.RefreshConfig(oldCfg, newCfg)
 		if err != nil {
+			logger.GetLogger().Error("dpu config failed", "callback", "dataplane", logfields.Error, err)
 			return err
 		}
 		err = dpu.LogExporter.RefreshConfig(oldCfg, newCfg)
 		if err != nil {
+			logger.GetLogger().Error("dpu config failed", "callback", "log-exporter", logfields.Error, err)
 			return err
 		}
 		return nil
