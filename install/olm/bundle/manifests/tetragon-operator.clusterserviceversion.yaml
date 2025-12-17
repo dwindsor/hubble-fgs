@@ -185,6 +185,7 @@ spec:
                 - alertrules.cilium.io
                 - tetragonnetworkpolicies.cilium.io
                 - tetragonnetworkpoliciesnamespaced.cilium.io
+                - tetragonnodes.isovalent.com
               verbs:
                 - update
                 - get
@@ -218,6 +219,14 @@ spec:
                 - get
                 - list
                 - watch
+            - apiGroups:
+              - isovalent.com
+              resources:
+              - tetragonnodes
+              verbs:
+              - get
+              - list
+              - watch
             - apiGroups:
                 - apiextensions.k8s.io
               resources:
