@@ -212,6 +212,12 @@ func (n *Nxos) procDelete(ctx context.Context, del *gnmi.Path) error {
 
 func (n *Nxos) gnmiSet(ctx context.Context, path string, jstr string) error {
 	logger.GetLogger().Debug("gnmiSet path %s, jstr %s", path, jstr)
+	if n.Target == nil {
+		// Target can be nil when EnableNXOS flag is set to false.
+		// It is no-op in that case.
+		logger.GetLogger().Info("gnmiSet called but Target is nil")
+		return nil
+	}
 
 	req, err := api.NewSetRequest(
 		api.Update(
