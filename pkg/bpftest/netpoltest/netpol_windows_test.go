@@ -21,8 +21,8 @@ func TestNetworkPolicyHostSupport(t *testing.T) {
 	testutils.StartSimpleHTTPServer(t, ":8080")
 	testutils.StartSimpleHTTPServer(t, ":8081")
 
-	pShellArgDenied := []string{"Invoke-WebRequest", "127.0.0.1:8080"}
-	pShellArgAllowed := []string{"Invoke-WebRequest", "127.0.0.1:8081"}
+	pShellArgDenied := []string{"Invoke-WebRequest", "-UseBasicParsing", "127.0.0.1:8080"}
+	pShellArgAllowed := []string{"Invoke-WebRequest", "-UseBasicParsing", "127.0.0.1:8081"}
 
 	pShellCmd := exec.Command("powershell.exe", pShellArgDenied...)
 	err := pShellCmd.Run()
