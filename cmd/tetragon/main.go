@@ -276,6 +276,8 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		logger.Fatal(log, "Failed to initialize host namespaces", "procfs", option.Config.ProcFS, logfields.Error, err)
 	}
 
+	checkProcFS()
+
 	// Setup file system mounts
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountTraceFS()

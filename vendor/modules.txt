@@ -353,6 +353,7 @@ github.com/cilium/tetragon/pkg/cgrouprate
 github.com/cilium/tetragon/pkg/cgroups
 github.com/cilium/tetragon/pkg/cgroups/fsscan
 github.com/cilium/tetragon/pkg/cgtracker
+github.com/cilium/tetragon/pkg/checkprocfs
 github.com/cilium/tetragon/pkg/cmdref
 github.com/cilium/tetragon/pkg/config
 github.com/cilium/tetragon/pkg/constants

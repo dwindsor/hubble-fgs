@@ -15,6 +15,7 @@ import (
 
 	ossAlignchecker "github.com/cilium/tetragon/pkg/alignchecker"
 	"github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/checkprocfs"
 	ossconfig "github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
@@ -103,4 +104,8 @@ func hubbleFGSExecute() error {
 }
 
 func updateServiceStarting() {
+}
+
+func checkProcFS() {
+	checkprocfs.Check()
 }
