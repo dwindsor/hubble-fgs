@@ -6,6 +6,21 @@
 
   <Fragment>
 
+    <Property Id="EBPF4WIN_INSTALLED" Secure="yes">
+      <RegistrySearch Id="regsearch.EbpfServiceType"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Services\eBPFCore"
+                      Name="ImagePath"
+                      Type="raw" />
+    </Property>
+
+    <ComponentGroup Id="cgrp.eBPFWindows" Directory="dir.eBPFWindows">
+      <ComponentRef Id="comp.eBPFPATH" />
+      <ComponentGroupRef Id="cgrp.eBPFWindows.Drivers" />
+      <ComponentGroupRef Id="cgrp.eBPFWindows.Jit" />
+      <Files Include="!(bindpath.staging)\ebpf-for-windows\*" />
+    </ComponentGroup>
+
     <Component Id="comp.eBPFPATH" Guid="{C062B980-C5C0-4FC7-A4F9-A751C2B419FE}">
       <Environment Id="env.eBPFPATH"
                    Name="PATH"
@@ -64,14 +79,6 @@
                         Remove="uninstall"
                         Wait="yes" />
       </Component>
-    </ComponentGroup>
-
-
-    <ComponentGroup Id="cgrp.eBPFWindows" Directory="dir.eBPFWindows">
-      <ComponentRef Id="comp.eBPFPATH" />
-      <ComponentGroupRef Id="cgrp.eBPFWindows.Drivers" />
-      <ComponentGroupRef Id="cgrp.eBPFWindows.Jit" />
-      <Files Include="!(bindpath.staging)\ebpf-for-windows\*" />
     </ComponentGroup>
 
 

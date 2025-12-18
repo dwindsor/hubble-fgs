@@ -24,7 +24,7 @@
     <Property Id="ARPPRODUCTICON" Value="icon.TetragonShield" />
     <Property Id="ARPHELPLINK" Value="https://isovalent.com" />
 
-    <!-- Disable superfluous 'files in use' message, we stop our services -->
+    <!-- Disable superfluous 'files in use' message as we know when to stop our services -->
     <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
 
     <!--<Property Id="REINSTALLMODE" Value="omus" />-->
@@ -39,14 +39,31 @@
     <WixVariable Id="WixUIBannerBmp" Value="assets\banner-top.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="assets\banner-dialog-background-enterprise.bmp" />
 
-    <Feature Id="TetragonOnWindows">
-      <ComponentGroupRef Id="cgrp.eBPFWindows" />
+    <Feature Level="1" Id="feat.TetragonEnterprise" Title="$(ProductName) for Windows" AllowAdvertise ="no">
+      <Feature Level="2" Id="feat.eBPF4Win" Title="eBPF for Windows Runtime" AllowAdvertise="no" >
+        <ComponentGroupRef Id="cgrp.eBPFWindows" />
+      </Feature>
+
       <ComponentGroupRef Id="comp.TetragonBinaries" />
       <ComponentGroupRef Id="comp.TetragonBpfDrivers" />
       <ComponentRef Id="comp.TetragonWindowsService" />
       <ComponentRef Id="comp.TracingPolicyDir" />
       <ComponentRef Id="comp.OtherPolicyDir" />
     </Feature>
+
+    <SetProperty Id="INSTALLLEVEL"
+                 Action="Set_INSTALLLEVEL_1"
+                 Value="1"
+                 Before="CostFinalize"
+                 Sequence="both"
+                 Condition="EBPF4WIN_INSTALLED AND NOT Installed" />
+
+    <SetProperty Id="INSTALLLEVEL"
+                 Action="Set_INSTALLLEVEL_2"
+                 Value="2"
+                 Before="CostFinalize"
+                 Sequence="both"
+                 Condition="NOT EBPF4WIN_INSTALLED AND NOT Installed" />
 
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="dir.eBPFWindows" Name="ebpf-for-windows">
@@ -68,42 +85,42 @@
       -->
 
       <!-- eBPFCore -->
-      <Custom Action="Install_eBPFCore" After="InstallFiles" Condition="NOT Installed" />
-      <Custom Action="InstallRollback_eBPFCore" Before="Install_eBPFCore" Condition="NOT Installed" />
-      <Custom Action="Start_eBPFCore" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="StartRollback_eBPFCore" Before="Start_eBPFCore" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Stop_eBPFCore" After="StopServices" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="StopRollback_eBPFCore" Before="Stop_eBPFCore" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="Uninstall_eBPFCore" After="DeleteServices" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="UninstallRollback_eBPFCore" Before="Uninstall_eBPFCore" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="Flush_eBPFCore" Before="InstallFinalize" />
+      <Custom Action="Install_eBPFCore" After="InstallFiles" Condition="(NOT Installed) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="InstallRollback_eBPFCore" Before="Install_eBPFCore" Condition="(NOT Installed) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="Start_eBPFCore" Before="StartServices" Condition="(NOT Installed OR REINSTALL) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="StartRollback_eBPFCore" Before="Start_eBPFCore" Condition="(NOT Installed OR REINSTALL) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="Stop_eBPFCore" After="StopServices" Condition='(REINSTALL OR (Installed AND (REMOVE="ALL"))) AND (INSTALLLEVEL >= 2)' />
+      <Custom Action="StopRollback_eBPFCore" Before="Stop_eBPFCore" Condition='(REINSTALL OR (Installed AND (REMOVE="ALL"))) AND (INSTALLLEVEL >= 2)' />
+      <Custom Action="Uninstall_eBPFCore" After="DeleteServices" Condition='(Installed AND (REMOVE="ALL")) AND (INSTALLLEVEL >= 2)' />
+      <Custom Action="UninstallRollback_eBPFCore" Before="Uninstall_eBPFCore" Condition='(Installed AND (REMOVE="ALL")) AND (INSTALLLEVEL >= 2)' />
+      <Custom Action="Flush_eBPFCore" Before="InstallFinalize" Condition="INSTALLLEVEL >= 2" />
 
       <!-- NetEbpfExt -->
-      <Custom Action="Install_NetEbpfExt" After="InstallFiles" Condition="NOT Installed" />
-      <Custom Action="InstallRollback_NetEbpfExt" Before="Install_NetEbpfExt" Condition="NOT Installed" />
-      <Custom Action="Start_NetEbpfExt" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="StartRollback_NetEbpfExt" Before="Start_NetEbpfExt" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Stop_NetEbpfExt" After="StopServices" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="StopRollback_NetEbpfExt" Before="Stop_NetEbpfExt" Condition='REINSTALL OR (Installed AND (REMOVE="ALL"))' />
-      <Custom Action="Uninstall_NetEbpfExt" After="DeleteServices" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="UninstallRollback_NetEbpfExt" Before="Uninstall_NetEbpfExt" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Install_NetEbpfExt" After="InstallFiles" Condition="(NOT Installed) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="InstallRollback_NetEbpfExt" Before="Install_NetEbpfExt" Condition="(NOT Installed) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="Start_NetEbpfExt" Before="StartServices" Condition="(NOT Installed OR REINSTALL) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="StartRollback_NetEbpfExt" Before="Start_NetEbpfExt" Condition="(NOT Installed OR REINSTALL) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="Stop_NetEbpfExt" After="StopServices" Condition='(REINSTALL OR (Installed AND (REMOVE="ALL"))) AND (INSTALLLEVEL >= 2)' />
+      <Custom Action="StopRollback_NetEbpfExt" Before="Stop_NetEbpfExt" Condition='(REINSTALL OR (Installed AND (REMOVE="ALL"))) AND (INSTALLLEVEL >= 2)' />
+      <Custom Action="Uninstall_NetEbpfExt" After="DeleteServices" Condition='(Installed AND (REMOVE="ALL")) AND (INSTALLLEVEL >= 2)' />
+      <Custom Action="UninstallRollback_NetEbpfExt" Before="Uninstall_NetEbpfExt" Condition='(Installed AND (REMOVE="ALL")) AND (INSTALLLEVEL >= 2)' />
 
       <!-- ebpfnetsh.dll -->
-      <Custom Action="Install_ebpfnetsh_helper" After="InstallFiles" Condition="NOT Installed" />
-      <Custom Action="InstallRollback_ebpfnetsh_helper" Before="Install_ebpfnetsh_helper" Condition="NOT Installed" />
-      <Custom Action="Uninstall_ebpfnetsh_helper" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
-      <Custom Action="UninstallRollback_ebpfnetsh_helper" Before="Uninstall_ebpfnetsh_helper" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Install_ebpfnetsh_helper" After="InstallFiles" Condition="(NOT Installed) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="InstallRollback_ebpfnetsh_helper" Before="Install_ebpfnetsh_helper" Condition="(NOT Installed) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="Uninstall_ebpfnetsh_helper" Before="RemoveFiles" Condition='(Installed AND (REMOVE="ALL")) AND (INSTALLLEVEL >= 2)' />
+      <Custom Action="UninstallRollback_ebpfnetsh_helper" Before="Uninstall_ebpfnetsh_helper" Condition='(Installed AND (REMOVE="ALL")) AND (INSTALLLEVEL >= 2)' />
 
       <!-- export_program_info -->
-      <Custom Action="Install_eBPF_store_clear_HKLM" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="InstallRollback_eBPF_store_clear_HKLM" Before="Install_eBPF_store_clear_HKLM" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Install_eBPF_store_setup_HKLM" After="Install_eBPF_store_clear_HKLM" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Uninstall_eBPF_store_clear_HKLM" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Install_eBPF_store_clear_HKLM" Before="StartServices" Condition="(NOT Installed OR REINSTALL) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="InstallRollback_eBPF_store_clear_HKLM" Before="Install_eBPF_store_clear_HKLM" Condition="(NOT Installed OR REINSTALL) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="Install_eBPF_store_setup_HKLM" After="Install_eBPF_store_clear_HKLM" Condition="(NOT Installed OR REINSTALL) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="Uninstall_eBPF_store_clear_HKLM" Before="RemoveFiles" Condition='(Installed AND (REMOVE="ALL")) AND (INSTALLLEVEL >= 2)' />
 
-      <Custom Action="Install_eBPF_store_clear_HKCU" Before="StartServices" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="InstallRollback_eBPF_store_clear_HKCU" Before="Install_eBPF_store_clear_HKCU" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Install_eBPF_store_setup_HKCU" After="Install_eBPF_store_clear_HKCU" Condition="NOT Installed OR REINSTALL" />
-      <Custom Action="Uninstall_eBPF_store_clear_HKCU" Before="RemoveFiles" Condition='Installed AND (REMOVE="ALL")' />
+      <Custom Action="Install_eBPF_store_clear_HKCU" Before="StartServices" Condition="(NOT Installed OR REINSTALL) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="InstallRollback_eBPF_store_clear_HKCU" Before="Install_eBPF_store_clear_HKCU" Condition="(NOT Installed OR REINSTALL) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="Install_eBPF_store_setup_HKCU" After="Install_eBPF_store_clear_HKCU" Condition="(NOT Installed OR REINSTALL) AND (INSTALLLEVEL >= 2)" />
+      <Custom Action="Uninstall_eBPF_store_clear_HKCU" Before="RemoveFiles" Condition='(Installed AND (REMOVE="ALL")) AND (INSTALLLEVEL >= 2)' />
 
 
       <!--
