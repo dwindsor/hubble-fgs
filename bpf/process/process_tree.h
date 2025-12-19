@@ -350,6 +350,9 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 	if (unlikely(!tuple))
 		return 0;
 
+	/* Initial check for exact match. If the entry doesn't exist, we fall back
+	 * to increasingly relaxed match conditions.
+	 */
 	destvalue = map_lookup_elem(&destination_endpoint_map, key);
 	if (destvalue && destvalue->deny && (destvalue->deny & TNP_POLICY_REFRESH) == 0)
 		return destvalue->deny;
@@ -377,6 +380,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->port = tuple->dport;
 	}
 
+	/* Try another lookup, this time with a wildcard port. */
 	key->port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	/* These do not check TNP_POLICY_REFRESH because we only cache keys for
@@ -392,10 +396,23 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		return dest->deny;
 	}
 
+	/* Restore port and try with a wildcard local_id. */
 	self = key->local_id;
 	key->local_id.uid = 0;
 	key->local_id.cpu = 0;
-	/* wildcard local_id ignore_args cleared */
+	key->port = tuple->dport;
+	dest = map_lookup_elem(&destination_endpoint_map, key);
+	if (dest && dest->deny) {
+		destvalue->policy = dest->policy;
+		destvalue->rule = dest->rule;
+		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
+		key->local_id = self; // restore local_id for caller
+		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
+		DEBUG("%s: found policy local_id=0 port=%d deny=0x%llx", __func__, key->port, dest->deny);
+		return dest->deny;
+	}
+	/* wildcard local_id with wildcard port */
+	key->port = 0;
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	key->local_id = self; // restore local_id for caller
 	key->port = tuple->dport; // restore port for caller
@@ -404,7 +421,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->rule = dest->rule;
 		destvalue->deny |= (dest->deny | TNP_POLICY_CACHED);
 		map_update_elem(&destination_endpoint_map, key, destvalue, 0);
-		DEBUG("%s: found policy local_id=0 deny=0x%llx", __func__, dest->deny);
+		DEBUG("%s: found policy local_id=0 port=0 deny=0x%llx", __func__, dest->deny);
 		return dest->deny;
 	}
 	if (!exists)
