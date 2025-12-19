@@ -176,8 +176,10 @@ type DPUListener struct {
 	peerGroupSize uint16
 	peerGroup     map[string]*peer
 
-	ruleSet map[[sha256.Size]byte]*DPURule
-	mtx     sync.RWMutex
+	ruleSet        map[[sha256.Size]byte]*DPURule
+	cachedChecksum [sha256.Size]byte
+	checksumValid  bool
+	mtx            sync.RWMutex
 }
 
 func NewDPUListener(ctx context.Context, address string) *DPUListener {
@@ -228,11 +230,19 @@ func (dpu *DPUListener) SetPeerGroupSize(size uint16) {
 }
 
 func (dpu *DPUListener) Checksum() [sha256.Size]byte {
+	// Checking the cached checksum first using only a read lock
 	dpu.mtx.RLock()
-	defer dpu.mtx.RUnlock()
+	if dpu.checksumValid {
+		defer dpu.mtx.RUnlock()
+		return dpu.cachedChecksum
+	}
+	dpu.mtx.RUnlock()
+
+	// Acquiring a write lock to update the checksum
+	dpu.mtx.Lock()
+	defer dpu.mtx.Unlock()
 
 	keys := make([][]byte, 0, len(dpu.ruleSet))
-
 	for csum := range dpu.ruleSet {
 		keys = append(keys, csum[:])
 	}
@@ -241,7 +251,9 @@ func (dpu *DPUListener) Checksum() [sha256.Size]byte {
 	})
 	sep := []byte(":")
 	joinedRules := bytes.Join(keys, sep)
-	return sha256.Sum256([]byte(joinedRules))
+	dpu.cachedChecksum = sha256.Sum256([]byte(joinedRules))
+	dpu.checksumValid = true
+	return dpu.cachedChecksum
 }
 
 func (dpu *DPUListener) GetDPUStatus() ([]DPUReportStatus, error) {
@@ -505,6 +517,7 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 	default:
 		return fmt.Errorf("unknown operation type %d", rule.Oper)
 	}
+	dpu.checksumValid = false
 
 	for _, dpu := range dpu.peerGroup {
 		err := dpu.SendPolicy(rule)
