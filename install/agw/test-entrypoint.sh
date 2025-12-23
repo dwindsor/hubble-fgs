@@ -41,5 +41,14 @@ fi
 if [ -n "$AGW_K8S_SERVICE_ACCOUNT_AUTH" ]; then
     ARGS="$ARGS --k8s-service-account-auth=$AGW_K8S_SERVICE_ACCOUNT_AUTH"
 fi
+if [ "$AGW_TIMESCAPE_CLIENT_ENABLE" = "true" ]; then
+    ARGS="$ARGS --timescape-client-enable=true"
+fi
+if [ -n "$AGW_TIMESCAPE_PASSWORD" ]; then
+    ARGS="$ARGS --timescape-password=$AGW_TIMESCAPE_PASSWORD"
+fi
+if [ -n "$AGW_TIMESCAPE_ENDPOINT" ]; then
+    ARGS="$ARGS --timescape-endpoint=$AGW_TIMESCAPE_ENDPOINT"
+fi
 echo "Starting AGW with arguments:$ARGS"
 exec /usr/src/app/agw $ARGS

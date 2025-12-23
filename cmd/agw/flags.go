@@ -25,6 +25,9 @@ type cliConfig struct {
 	Debug                 bool
 	K8sServiceAccountAuth string
 	Ha                    bool
+	TimescapeClientEnable bool
+	TimescapePassword     string
+	TimescapeEndpoint     string
 }
 
 var (
@@ -41,6 +44,9 @@ var (
 		Debug:                 false,
 		K8sServiceAccountAuth: viper.GetString(keyK8sServiceAccountAuth),
 		Ha:                    false,
+		TimescapeClientEnable: viper.GetBool(keyTimescapeClientEnable),
+		TimescapePassword:     viper.GetString(keyTimescapePassword),
+		TimescapeEndpoint:     viper.GetString(keyTimescapeEndpoint),
 	}
 )
 
@@ -57,6 +63,9 @@ const (
 	keyDebug                 = "debug"
 	keyHa                    = "ha"
 	keyK8sServiceAccountAuth = "k8s-service-account-auth"
+	keyTimescapeClientEnable = "timescape-client-enable"
+	keyTimescapePassword     = "timescape-password"
+	keyTimescapeEndpoint     = "timescape-endpoint"
 )
 
 // redactedConfig returns a copy of the Config with sensitive fields redacted.
@@ -64,6 +73,12 @@ func redactedConfig() cliConfig {
 	redacted := Config
 	if Config.K8sServiceAccountAuth != "" {
 		redacted.K8sServiceAccountAuth = "[redacted]"
+	}
+	if Config.TimescapePassword != "" {
+		redacted.TimescapePassword = "[redacted]"
+	}
+	if Config.TimescapeEndpoint != "" {
+		redacted.TimescapeEndpoint = "[redacted]"
 	}
 	return redacted
 }

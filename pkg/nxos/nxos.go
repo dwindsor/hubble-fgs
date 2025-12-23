@@ -1277,3 +1277,10 @@ func DoHa() bool {
 	}
 	return doHa
 }
+
+func (n *Nxos) GetControllerConnectionStatus() model.E_Cisco_NX_OSDevice_Sas_CommonStateE {
+	n.RLock()
+	defer n.RUnlock()
+
+	return n.Ctrlr.ConnectionStatus
+}

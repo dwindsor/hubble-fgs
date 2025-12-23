@@ -35,6 +35,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 	"github.com/isovalent/hubble-fgs/pkg/config"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchevents"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
@@ -205,6 +206,11 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 			})
 		}
 
+		// Start Timescape client in waitGroup
+		if err := setupTimescapeClient(ctx, waitGroup, agwAgent); err != nil {
+			return err
+		}
+
 		// Create connection monitor for health checking
 		connMonitor := agw.NewConnectionMonitor(agwAgent, Config.EnableNXOS, kubernetesManager)
 		// TODO: Wait for configmap to be ready
@@ -325,6 +331,40 @@ func cliServer(ctx context.Context, agwAgent *agw.AgentGateway) error {
 		}
 		conn.Close()
 	}
+
+	return nil
+}
+
+// setupTimescapeClient validates timescape configuration and starts the timescape client
+func setupTimescapeClient(ctx context.Context, waitGroup *errgroup.Group, agwAgent *agw.AgentGateway) error {
+	if !Config.TimescapeClientEnable {
+		logger.GetLogger().Info("timescape client not enabled, skipping setup")
+		return nil
+	}
+
+	// Validate required timescape configuration
+	trimmedPassword := strings.TrimSpace(Config.TimescapePassword)
+	trimmedEndpoint := strings.TrimSpace(Config.TimescapeEndpoint)
+
+	if trimmedPassword == "" {
+		logger.GetLogger().Error("timescape client enabled but password not configured", "flag", "--timescape-password")
+		return nil
+	}
+
+	if trimmedEndpoint == "" {
+		logger.GetLogger().Error("timescape client enabled but endpoint not configured", "flag", "--timescape-endpoint")
+		return nil
+	}
+
+	logger.GetLogger().Info("starting timescape client", "endpoint", trimmedEndpoint)
+	waitGroup.Go(func() error {
+		err := switchevents.Setup(ctx, agwAgent, Config.EnableNXOS, trimmedPassword, trimmedEndpoint)
+		if err != nil {
+			logger.GetLogger().Error("timescape client setup failed", logfields.Error, err)
+			return err
+		}
+		return nil
+	})
 
 	return nil
 }

@@ -75,7 +75,10 @@ ENV AGW_CONFIG="" \
     AGW_DPU_SERVER_ADDRESS="0.0.0.0:8880" \
     AGW_VRF_MAP="" \
     AGW_DEBUG="false" \
-    AGW_K8S_SERVICE_ACCOUNT_AUTH=""
+    AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
+    AGW_TIMESCAPE_CLIENT_ENABLE="false" \
+    AGW_TIMESCAPE_PASSWORD="" \
+    AGW_TIMESCAPE_ENDPOINT=""
 RUN apk update && apk upgrade --no-cache
 EXPOSE 8880
 WORKDIR /usr/src/app

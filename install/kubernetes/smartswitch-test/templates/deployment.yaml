@@ -65,6 +65,12 @@ spec:
               value: {{ .Values.agw.debug | quote }}
             - name: AGW_K8S_SERVICE_ACCOUNT_AUTH
               value: {{ .Values.agw.k8sServiceAccountAuth | quote }}
+            - name: AGW_TIMESCAPE_CLIENT_ENABLE
+              value: {{ .Values.agw.timescapeClientEnable | quote }}
+            - name: AGW_TIMESCAPE_PASSWORD
+              value: {{ .Values.agw.timescapePassword | quote }}
+            - name: AGW_TIMESCAPE_ENDPOINT
+              value: {{ .Values.agw.timescapeEndpoint | quote }}
           {{- with .Values.agw.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

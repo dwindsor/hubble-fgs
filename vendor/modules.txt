@@ -971,6 +971,7 @@ github.com/isovalent/ipa/common/v1alpha
 github.com/isovalent/ipa/graph/v1alpha
 github.com/isovalent/ipa/l3l4networkpolicy/v1alpha
 github.com/isovalent/ipa/ocsf/v1alpha
+github.com/isovalent/ipa/system_status/v1alpha
 # github.com/isovalent/ipa/k8s v1.19.0-pre.1.0.20260108141301-9a7617c9647b
 ## explicit; go 1.25.0
 github.com/isovalent/ipa/k8s

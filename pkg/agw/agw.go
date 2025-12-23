@@ -54,8 +54,9 @@ const (
 func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.PolicyHandler) *AgentGateway {
 	mac := os.Getenv("NX_SAS_RMAC")
 	hostname := os.Getenv("CAF_SYSTEM_NAME")
+	startupTime := time.Now()
 
-	logger.GetLogger().Info("Agent started", "mac", mac, "hostname", hostname)
+	logger.GetLogger().Info("Agent started", "mac", mac, "hostname", hostname, "startup_time", startupTime.Format(time.RFC3339))
 
 	// DPU ports
 	lowStr, ok := os.LookupEnv("NX_DPU_PORT_START")
@@ -115,6 +116,7 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 	agw := &AgentGateway{
 		Cfg:           &config.Config{},
 		Token:         token.GetAgentToken(),
+		StartupTime:   startupTime,
 		serviceMac:    mac,
 		dpuPortLow:    uint16(dpuLow),
 		dpuPortHigh:   uint16(dpuHigh),
@@ -153,6 +155,7 @@ type AgentGateway struct {
 	Architecture string
 	Os           string
 	SerialNumber string
+	StartupTime  time.Time // Timestamp when AGW was started
 
 	Cfg   *config.Config
 	Token *token.AgentToken
@@ -243,6 +246,17 @@ func (agw *AgentGateway) GetNxHeadlessMode() bool {
 // GetNxProxyConfig retrieves the proxy configuration from the Nexus system.
 func (agw *AgentGateway) GetNxProxyConfig(ctx context.Context) error {
 	return nxos.Nexus.GetProxyConfig(ctx)
+}
+
+func (agw *AgentGateway) GetControllerConnectionStatus() int64 {
+	return int64(nxos.Nexus.GetControllerConnectionStatus())
+}
+
+func (agw *AgentGateway) GetSerialNumber(ctx context.Context) string {
+	if agw.SerialNumber == "" {
+		return nxos.Nexus.GetSerialNum(ctx)
+	}
+	return agw.SerialNumber
 }
 
 func (agw *AgentGateway) Setup(ctx context.Context) error {
@@ -452,6 +466,10 @@ func (agw *AgentGateway) WaitForInService(ctx context.Context) {
 		case <-time.After(CHECK_INTERVAL * time.Second):
 		}
 	}
+}
+
+func (agw *AgentGateway) GetStartupTime() time.Time {
+	return agw.StartupTime
 }
 
 // --------------------- DPU related
