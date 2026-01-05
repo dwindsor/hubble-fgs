@@ -110,7 +110,7 @@ jobs:
             then
               DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libc6-dev-i386 gcc-multilib
             else
-              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf build-essential
+              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf libc6-dev-armhf-cross build-essential
             fi
 
             # restart ssh server
