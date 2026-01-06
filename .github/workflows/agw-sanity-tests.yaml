@@ -21,7 +21,7 @@ on:
 
 jobs:
   agw-sanity-tests:
-    runs-on: ubuntu-2404-8cores-32gb
+    runs-on: ${{ vars.UBUNTU_2404_4CPU_32GB_MEMORY_OPTIMIZED }}
     permissions:
       contents: write
       actions: read
