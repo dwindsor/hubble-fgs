@@ -284,6 +284,19 @@ __u64 tg_sockops_get_current_cgroup_id(void)
 	return get_cgroup_id(cgrp);
 }
 
+static inline __attribute__((always_inline)) __u64 tg_get_socket_cgroup_id(struct bpf_sock *sk)
+{
+	__u64 cgid;
+
+	if (sk) {
+		cgid = sk_cgroup_id(sk);
+		if (cgid)
+			return cgid;
+	}
+
+	return tg_sockops_get_current_cgroup_id();
+}
+
 int __process_listen_add(struct tcpsocketmap_value *v, struct msg_ip_tuple *tuple, __u64 cgid)
 {
 	struct process_tree_config *cfg;
@@ -705,14 +718,14 @@ int check_process_socketmap_add(struct tcpsocketmap_value *v, struct msg_ip_tupl
 	return 0;
 }
 
-static int repair_socket_nsid(struct destination_endpoint_key *key)
+static int repair_socket_nsid(struct destination_endpoint_key *key, struct bpf_sock *sk)
 {
 	__u64 cgid, *nsid;
 
 	if (likely(key->local_nsid != 0))
 		return 0;
 
-	cgid = tg_sockops_get_current_cgroup_id();
+	cgid = tg_get_socket_cgroup_id(sk);
 	if (likely(cgid == 0))
 		return 0;
 
@@ -922,7 +935,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 	if (!v->dst_key.source)
 		return SK_PASS;
 
-	rewrite = repair_socket_nsid(&v->dst_key);
+	rewrite = repair_socket_nsid(&v->dst_key, skb->sk);
 	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
 	if (!rewrite) {
 		verdict = send(v->deny, &v->dst_key, len);
@@ -931,7 +944,7 @@ static inline __attribute__((always_inline)) int process_socketmap_send(struct t
 		return verdict;
 	}
 err_out:
-	cgid = tg_sockops_get_current_cgroup_id();
+	cgid = tg_get_socket_cgroup_id(skb->sk);
 	v->deny = __process_socketmap_add(v, &v->tuple, cgid);
 	verdict = send(v->deny, &v->dst_key, len);
 	if (verdict < 0)
@@ -959,7 +972,7 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 	if (!v->dst_key.source)
 		return SK_PASS;
 
-	rewrite = repair_socket_nsid(&v->dst_key);
+	rewrite = repair_socket_nsid(&v->dst_key, skb->sk);
 	rewrite |= process_socketmap_rekey(&v->dst_key, skb);
 	if (!rewrite) {
 		verdict = recv(v->deny, &v->dst_key, len);
@@ -968,7 +981,7 @@ static inline __attribute__((always_inline)) int process_socketmap_recv(struct t
 		return verdict;
 	}
 err_out:
-	cgid = tg_sockops_get_current_cgroup_id();
+	cgid = tg_get_socket_cgroup_id(skb->sk);
 	v->deny = __process_socketmap_add(v, &v->tuple, cgid);
 	verdict = recv(v->deny, &v->dst_key, len);
 	if (verdict < 0)
