@@ -13,6 +13,7 @@ package switchpolicy
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"google.golang.org/grpc"
 
@@ -210,6 +211,64 @@ func (s *AGWServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 				return nil
 			}
 			logger.GetLogger().Debug("Pushed config to client", "clientID", initializedPeer.uid, "config", resp)
+		}
+	}
+}
+
+func (s *AGWServer) StreamEvents(stream grpc.ClientStreamingServer[v1alpha.StreamEventsRequest, v1alpha.StreamEventsResponse]) error {
+	var initializedPeer *peer
+
+	for {
+		req, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				if initializedPeer != nil {
+					logger.GetLogger().Info("Event stream closed", "clientID", initializedPeer.uid)
+				}
+				return stream.SendAndClose(&v1alpha.StreamEventsResponse{})
+			}
+			logger.GetLogger().Error("Failed to receive event stream", logfields.Error, err)
+			return err
+		}
+
+		// Initialize peer on first message
+		if initializedPeer == nil && len(req.Events) > 0 {
+			agentUid := req.Events[0].AgentUid
+			if agentUid == "" {
+				logger.GetLogger().Error("Rejecting event stream with empty AgentUid")
+				return fmt.Errorf("AgentUid cannot be empty")
+			}
+
+			initializedPeer = func() *peer {
+				s.dpuListener.mtx.Lock()
+				defer s.dpuListener.mtx.Unlock()
+				peer := s.dpuListener.addPeerLocked(agentUid)
+
+				// TODO: Add any first-connect initialization logic here
+				// For example, sending acknowledgment of pending events or
+				// synchronizing state with the peer
+
+				logger.GetLogger().Info("Event stream peer connected", "clientID", peer.uid)
+				return peer
+			}()
+
+			if initializedPeer == nil {
+				return nil
+			}
+		}
+
+		for _, event := range req.Events {
+			switch e := event.GetEvent().(type) {
+			case *v1alpha.StreamEvent_Rule:
+				// TODO: Call policy rule event handler
+				logger.GetLogger().Debug("Received policy rule event",
+					"agentUid", event.AgentUid,
+					"ruleName", e.Rule.RuleName,
+					"policyName", e.Rule.PolicyName,
+					"isSuccess", e.Rule.IsSuccess)
+			default:
+				logger.GetLogger().Warn("Received unknown event type", "agentUid", event.AgentUid)
+			}
 		}
 	}
 }

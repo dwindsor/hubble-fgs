@@ -46,6 +46,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dpu/exporter"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/utils"
+	"github.com/isovalent/hubble-fgs/pkg/utils/smartqueue"
 )
 
 const (
@@ -116,6 +117,7 @@ type DPUAgent struct {
 	Cfg          *config.Config
 	Retries      int
 	streamClient *StreamClient
+	eventQueue   *smartqueue.SmartQueue[*v1alpha.StreamEvent]
 	// This uses the sha of the PolicyRule as the key. The value though is
 	// the message. We SHA256 the rule so that the operation matches for
 	// both UPSERT and DELETE. To get a Set sha256 we can take the sha256
@@ -478,8 +480,12 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			dpu.ruleSetLock.Unlock()
 			if err != nil {
 				logger.GetLogger().Error("upsert failed", logfields.Error, err)
+				dpu.queuePolicyRuleEvent(ctx, rule, false, v1alpha.PolicyRuleError_POLICY_RULE_ERROR_UNSPECIFIED, err.Error())
 				continue
 			}
+
+			// Queue success event to stream
+			dpu.queuePolicyRuleEvent(ctx, rule, true, v1alpha.PolicyRuleError_POLICY_RULE_ERROR_UNSPECIFIED, "")
 
 			// Log event
 			msg := events.NewEventLogMessage(events.MSGCODE_POLICY)
@@ -497,8 +503,12 @@ func (dpu *DPUAgent) PolicyEventLoop(ctx context.Context) error {
 			dpu.ruleSetLock.Unlock()
 			if err != nil {
 				logger.GetLogger().Error("delete failed", logfields.Error, err)
+				dpu.queuePolicyRuleEvent(ctx, rule, false, v1alpha.PolicyRuleError_POLICY_RULE_ERROR_UNSPECIFIED, err.Error())
 				continue
 			}
+
+			// Queue success event to stream
+			dpu.queuePolicyRuleEvent(ctx, rule, true, v1alpha.PolicyRuleError_POLICY_RULE_ERROR_UNSPECIFIED, "")
 
 			// Log event
 			msg := events.NewEventLogMessage(events.MSGCODE_POLICY)
@@ -732,6 +742,98 @@ func (dpu *DPUAgent) ConfigConnect(ctx context.Context) error {
 	}
 }
 
+func (dpu *DPUAgent) queuePolicyRuleEvent(ctx context.Context, rule *switchpolicy.DPUPolicyRule, isSuccess bool, errorType v1alpha.PolicyRuleError, errorMsg string) {
+	if dpu.eventQueue == nil {
+		return
+	}
+
+	event := &v1alpha.StreamEvent{
+		AgentUid:  dpu.AgentId,
+		Timestamp: timestamppb.Now(),
+		Event: &v1alpha.StreamEvent_Rule{
+			Rule: &v1alpha.PolicyRuleEvent{
+				RuleName:           rule.Policy.RuleName,
+				PolicyName:         rule.Policy.PolicyName,
+				K8SUid:             rule.Policy.K8SUid,
+				K8SResourceVersion: rule.Policy.K8SResourceVersion,
+				IsSuccess:          isSuccess,
+				Error:              errorType,
+				ErrorMessage:       errorMsg,
+			},
+		},
+	}
+
+	if !dpu.eventQueue.Enqueue(ctx, event) {
+		logger.GetLogger().Warn("Failed to enqueue policy rule event, queue full or stopped",
+			"policyName", rule.Policy.PolicyName,
+			"ruleName", rule.Policy.RuleName)
+	}
+}
+
+func (dpu *DPUAgent) EventConnect(ctx context.Context) error {
+	var stream grpc.ClientStreamingClient[v1alpha.StreamEventsRequest, v1alpha.StreamEventsResponse]
+	var streamMu sync.Mutex
+
+	openStream := func() error {
+		if dpu.streamClient == nil || dpu.streamClient.client == nil {
+			return fmt.Errorf("gRPC client not connected")
+		}
+		var err error
+		stream, err = dpu.streamClient.client.StreamEvents(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to open event stream: %w", err)
+		}
+		logger.GetLogger().Info("Event stream connected")
+		return nil
+	}
+
+	callback := func(events []*v1alpha.StreamEvent) {
+		streamMu.Lock()
+		defer streamMu.Unlock()
+
+		if stream == nil {
+			if err := openStream(); err != nil {
+				logger.GetLogger().Error("Cannot send events", logfields.Error, err)
+				return
+			}
+		}
+
+		req := &v1alpha.StreamEventsRequest{
+			Events: events,
+		}
+
+		err := stream.Send(req)
+		if err != nil {
+			logger.GetLogger().Error("Failed to send events batch, will reconnect", logfields.Error, err, "count", len(events))
+			stream = nil
+			return
+		}
+
+		logger.GetLogger().Debug("Successfully sent events batch", "count", len(events))
+	}
+
+	dpu.eventQueue = smartqueue.New(smartqueue.Config[*v1alpha.StreamEvent]{
+		MaxSize:       256,
+		BatchSize:     64,
+		FlushInterval: 5 * time.Second,
+		WorkerCount:   1,
+		Callback:      callback,
+	})
+
+	dpu.eventQueue.Start()
+
+	<-ctx.Done()
+	dpu.eventQueue.Stop()
+
+	streamMu.Lock()
+	if stream != nil {
+		stream.CloseAndRecv()
+	}
+	streamMu.Unlock()
+
+	return nil
+}
+
 func (dpu *DPUAgent) Connect(ctx context.Context) error {
 	var err error
 
@@ -765,6 +867,10 @@ func (dpu *DPUAgent) Connect(ctx context.Context) error {
 
 	go func() {
 		dpu.ConfigConnect(ctx)
+	}()
+
+	go func() {
+		dpu.EventConnect(ctx)
 	}()
 
 	<-ctx.Done()
