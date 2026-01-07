@@ -162,12 +162,35 @@ func ParseOptions(config *networkapi.UdpConfigValue) {
 	if option.Config.DNSStatsPerSocket {
 		config.DnsStatsPerSocket = 1
 	}
+
+	parseDNSPortsOption(config)
 }
 
-// InitDNS sets the default DNS port so that enabling DNS works out of the box.
+func parseDNSPortsOption(config *networkapi.UdpConfigValue) {
+	if len(option.Config.DNSPorts) > 0 {
+		// Values should be validated in validateConfig to fit within
+		// uint16 and to not exceed the max number of ports. We can't
+		// copy directly because of the type cast.
+		for i := range config.DnsPorts {
+			if len(option.Config.DNSPorts) <= i {
+				break
+			}
+			config.DnsPorts[i] = uint16(option.Config.DNSPorts[i])
+		}
+	} else {
+		config.DnsPorts[0] = defaultDnsPort
+	}
+}
+
 func InitDNS() {
-	Config.DnsPorts[0] = defaultDnsPort
 	ParseOptions(&Config)
+}
+
+// InitKernelDNS is separated from InitDNS because it can be called
+// independently when initializing the BPF DNS parser options bundled in the UDP
+// options without the rest of the userspace DNS options.
+func InitKernelDNS() {
+	parseDNSPortsOption(&Config)
 }
 
 // ParseDNSSepec parses the input yaml/crd and outputs the kernel selectors
