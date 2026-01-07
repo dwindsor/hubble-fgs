@@ -12,6 +12,7 @@ package option
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	eedefaults "github.com/isovalent/hubble-fgs/pkg/defaults"
 
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
@@ -76,6 +78,7 @@ const (
 	KeyEnableBPFDNSPerPod             = "enable-bpf-dns-parser-per-pod"
 	KeyBPFDNSPerPodPrealloc           = "bpf-dns-parser-per-pod-prealloc"
 	KeyBPFDNSPerPodThreshold          = "bpf-dns-parser-per-pod-threshold"
+	KeyDNSPorts                       = "dns-ports"
 	keyDNSStatsPerSocket              = "dns-stats-per-socket"
 	KeyEnableFimDispatcher            = "fim-enable-dispatcher"
 	KeyMandateURL                     = "mandate-url"
@@ -190,6 +193,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(KeyEnableBPFDNSPerPod, false, "Enable in-kernel BPF DNS parser maps per Pod partitioning.")
 	flags.Uint32(KeyBPFDNSPerPodPrealloc, 15, "Number of maps to preallocate at startup for BPF DNS parser maps per Pod partitioning.")
 	flags.Uint32(KeyBPFDNSPerPodThreshold, 5, "Threshold of free maps to keep at runtime for the BPF DNS parser maps per Pod partitioning.")
+	flags.IntSlice(KeyDNSPorts, []int{53}, "Ports on which to parse DNS packets.")
 	flags.Bool(keyDNSStatsPerSocket, false, "If UDP statistics are enabled, record DNS server statistics for each connection. Default is to group DNS server statistics per DNS server reducing the memory and CPU used and the stats reported")
 	flags.Bool(KeyEnableFimDispatcher, false, "Enable FIM dispatcher when supported")
 	flags.String(KeyMandateURL, "", "Set a URL for a Tetragon Mandate file")
@@ -272,6 +276,7 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableBPFDNSPerPod = viper.GetBool(KeyEnableBPFDNSPerPod)
 	Config.BPFDNSPerPodPrealloc = viper.GetUint32(KeyBPFDNSPerPodPrealloc)
 	Config.BPFDNSPerPodThresold = viper.GetUint32(KeyBPFDNSPerPodThreshold)
+	Config.DNSPorts = viper.GetIntSlice(KeyDNSPorts)
 	Config.DNSStatsPerSocket = viper.GetBool(keyDNSStatsPerSocket)
 
 	Config.EnableFimDispatcher = viper.GetBool(KeyEnableFimDispatcher)
@@ -321,6 +326,15 @@ func validateConfig(config config) error {
 		if utils.SupportProcessTree() && !utils.SockopsSupportsCgroupAncestorHelper() {
 			return fmt.Errorf("the BPF DNS parser per Pod map feature requires sockops to support bpf_get_current_ancestor_cgroup_id (from v6.4)")
 
+		}
+	}
+
+	if len(config.DNSPorts) > networkapi.UdpMaxDnsPorts {
+		return fmt.Errorf("invalid number of DNS ports len(%v)=%d, the maximum number of port is %d", config.DNSPorts, len(config.DNSPorts), networkapi.UdpMaxDnsPorts)
+	}
+	for _, port := range config.DNSPorts {
+		if port < 0 || port > math.MaxUint16 {
+			return fmt.Errorf("invalid DNS port %d, must be included between 0 and 65535", port)
 		}
 	}
 

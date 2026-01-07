@@ -91,6 +91,9 @@ type config struct {
 	EnableBPFDNSPerPod             bool
 	BPFDNSPerPodPrealloc           uint32
 	BPFDNSPerPodThresold           uint32
+	// DNSPorts has to be []int because viper doesn't support []uint16 but
+	// we proceed to validate that the ranges are correct.
+	DNSPorts []int
 
 	DNSStatsPerSocket bool
 

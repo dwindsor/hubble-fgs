@@ -77,6 +77,9 @@ options:
       default_value: "1024"
       usage: |
         Set the size of the internal DNS cache. Higher values enable Tetragon to keep track of more destination names before evicting old ones
+    - name: dns-ports
+      default_value: '[53]'
+      usage: Ports on which to parse DNS packets.
     - name: dns-stats-per-socket
       default_value: "false"
       usage: |
