@@ -8,4 +8,8 @@
 #  or reproduction of this material is strictly forbidden unless prior written
 #  permission is obtained from Isovalent Inc.
 
-# Helper package
+from pathlib import Path
+
+SMARTSWITCH_DIR = Path(__file__).parent.parent
+TESTDATA_DIR = SMARTSWITCH_DIR / "testdata" / "policies"
+AGW_POLICIES_DIR = TESTDATA_DIR / "agw"

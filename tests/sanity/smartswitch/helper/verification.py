@@ -1,3 +1,13 @@
+#  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+#
+#  NOTICE: All information contained herein is, and remains the property of
+#  Isovalent Inc and its suppliers, if any. The intellectual and technical
+#  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+#  and may be covered by U.S. and Foreign Patents, patents in process, and are
+#  protected by trade secret or copyright law.  Dissemination of this information
+#  or reproduction of this material is strictly forbidden unless prior written
+#  permission is obtained from Isovalent Inc.
+
 import json
 import logging
 from typing import Optional
@@ -131,7 +141,7 @@ def verify_policies_match_agw_and_dpu(
     
     # Compare rules
     comparison = compare_policy_rules(
-        agw_rules, dpu_rules, policy_name, strict_protocol_check
+        agw_rules, dpu_rules, policy_name
     )
     
     # Get summary message

@@ -1,159 +1,154 @@
+#  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+#
+#  NOTICE: All information contained herein is, and remains the property of
+#  Isovalent Inc and its suppliers, if any. The intellectual and technical
+#  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+#  and may be covered by U.S. and Foreign Patents, patents in process, and are
+#  protected by trade secret or copyright law.  Dissemination of this information
+#  or reproduction of this material is strictly forbidden unless prior written
+#  permission is obtained from Isovalent Inc.
+
+import logging
+import os
 import tempfile
 from pathlib import Path
-from typing import List, Dict, Literal
+from typing import List, Optional, Tuple
 import yaml
 
-from .policy_models import PolicyRule
+from .policy_models import (
+    Policy, PolicyRule, IpBlock, ProtoPort, NetworkEndpoint
+)
+
+logger = logging.getLogger(__name__)
 
 
-class PolicyGenerator:
-    @staticmethod
-    def generate_l3_vrf_rules(
-        vrf: str,
-        ip_version: Literal["ipv4", "ipv6"] = "ipv4"
-    ) -> PolicyRule:
-        if ip_version == "ipv4":
-            cidr = "0.0.0.0/0"
-            desc = "Allow L3 traffic for all IPV4 flows"
-        else:
-            cidr = "::/0"
-            desc = "Allow L3 traffic for all IPV6 flows"
-        
-        return PolicyRule(
-            description=desc,
-            source_cidr=cidr,
-            dest_cidr=cidr,
-            vrf_name=vrf
-        )
+def _write_policy_to_file(policy: Policy, output_path: Path) -> None:
+    def represent_none(dumper, _):
+        return dumper.represent_scalar('tag:yaml.org,2002:null', '')
     
-    @staticmethod
-    def generate_l2_vlan_rules_with_ip(
-        vlan: int,
-        ip_version: Literal["ipv4", "ipv6"] = "ipv4"
-    ) -> PolicyRule:
-        if ip_version == "ipv4":
-            subnet_id = vlan - 800
-            cidr = f"191.168.{subnet_id}.0/24"
-            desc = "Allow L2 traffic for all IPV4 flows"
-        else:
-            subnet_id_hex = hex(vlan - 800)[2:]
-            cidr = f"1910:168:1:{subnet_id_hex}::/64"
-            desc = "Allow L2 traffic for all IPV6 flows"
-        
-        return PolicyRule(
-            description=desc,
-            source_cidr=cidr,
-            dest_cidr=cidr,
-            vlan=vlan
-        )
+    yaml.add_representer(type(None), represent_none)
     
-    @staticmethod
-    def generate_l2_vlan_rules_any_ip(
-        vlan: int,
-        ip_version: Literal["ipv4", "ipv6"] = "ipv4"
-    ) -> PolicyRule:
-        if ip_version == "ipv4":
-            cidr = "0.0.0.0/0"
-            desc = "Allow L2 traffic for all IPV4 flows"
-        else:
-            cidr = "::/0"
-            desc = "Allow L2 traffic for all IPV6 flows"
-        
-        return PolicyRule(
-            description=desc,
-            source_cidr=cidr,
-            dest_cidr=cidr,
-            vlan=vlan
-        )
+    with open(output_path, 'w') as f:
+        yaml.dump(policy.to_dict(), f, default_flow_style=False, sort_keys=False, indent=2)
     
-    @staticmethod
-    def create_policy(
-        name: str,
-        namespace: str,
-        rules: List[PolicyRule]
-    ) -> Dict:
-        return {
-            "apiVersion": "isovalent.com/v1alpha1",
-            "kind": "SmartSwitchNetworkPolicy",
-            "metadata": {
-                "name": name,
-                "namespace": namespace
-            },
-            "spec": {
-                "rules": [rule.to_dict() for rule in rules]
-            }
-        }
-    
-    @staticmethod
-    def write_policy(policy: Dict, output_path: Path) -> None:
-        def represent_none(self, _):
-            return self.represent_scalar('tag:yaml.org,2002:null', '')
-        
-        yaml.add_representer(type(None), represent_none)
-        
-        with open(output_path, 'w') as f:
-            yaml.dump(policy, f, default_flow_style=False, sort_keys=False, indent=2)
-        
-        print(f"✅ Generated: {output_path.name}")
+    logger.info(f"✅ Generated: {output_path.name}")
+    logger.info(f"Policy YAML ({output_path.name}):\n{policy.to_yaml()}")
 
 
-def generate_epbr_vrf_policy_for_test(
+def generate_policy_for_test(
+    name: str,
+    rules: List[PolicyRule],
+    namespace: str = "hypershield"
+) -> Tuple[Policy, Path]:
+    policy = Policy(name=name, namespace=namespace, rules=rules)
+    fd, temp_path = tempfile.mkstemp(suffix=".yaml", prefix=f"{name}_")
+    os.close(fd)
+    output_path = Path(temp_path)
+    _write_policy_to_file(policy, output_path)
+    return policy, output_path
+
+
+def _parse_proto_port(item) -> ProtoPort:
+    if len(item) == 2:
+        return ProtoPort(protocol=item[0], port=item[1])
+    elif len(item) == 3:
+        return ProtoPort(protocol=item[0], port=item[1], end_port=item[2])
+    else:
+        raise ValueError(f"Invalid proto_port tuple: {item}")
+
+
+def create_rule(
+    source_cidr: str = "0.0.0.0/0",
+    dest_cidr: str = "0.0.0.0/0",
+    source_vrf: Optional[str] = None,
+    dest_vrf: Optional[str] = None,
+    source_vlan: Optional[int] = None,
+    dest_vlan: Optional[int] = None,
+    source_proto_ports: Optional[List] = None,
+    dest_proto_ports: Optional[List] = None,
+    description: str = ""
+) -> PolicyRule:
+    if dest_proto_ports is None:
+        dest_proto_ports = [("TCP", None), ("UDP", None), ("ICMP", None)]
+    
+    source_pp_list = [_parse_proto_port(p) for p in source_proto_ports] if source_proto_ports else None
+    dest_pp_list = [_parse_proto_port(p) for p in dest_proto_ports]
+    
+    source = NetworkEndpoint(
+        ip_blocks=[IpBlock(cidr=source_cidr, vrf=source_vrf, vlan=source_vlan)],
+        proto_ports=source_pp_list
+    )
+    destination = NetworkEndpoint(
+        ip_blocks=[IpBlock(cidr=dest_cidr, vrf=dest_vrf, vlan=dest_vlan)],
+        proto_ports=dest_pp_list
+    )
+    
+    return PolicyRule(
+        action="allow",
+        source=source,
+        destination=destination,
+        description=description
+    )
+
+
+def generate_vrf_policy_for_test(
     name: str, 
-    vrfs: List[str] = None, 
-    epbr_range: tuple = None,
-    trmvrf_range: tuple = None
-) -> Path:
+    vrfs: Optional[List[str]] = None, 
+    epbr_range: Optional[Tuple[int, int]] = None,
+    trmvrf_range: Optional[Tuple[int, int]] = None,
+    namespace: str = "hypershield"
+) -> Tuple[Policy, Path]:
     rules = []
+    
+    def add_vrf_rules(vrf_name: str):
+        rules.append(create_rule("0.0.0.0/0", "0.0.0.0/0", source_vrf=vrf_name,
+                                 description="Allow L3 traffic for all IPV4 flows"))
+        rules.append(create_rule("::/0", "::/0", source_vrf=vrf_name,
+                                 description="Allow L3 traffic for all IPV6 flows"))
     
     if vrfs:
         for vrf in vrfs:
-            rules.append(PolicyGenerator.generate_l3_vrf_rules(vrf, "ipv4"))
-            rules.append(PolicyGenerator.generate_l3_vrf_rules(vrf, "ipv6"))
+            add_vrf_rules(vrf)
     
     if epbr_range:
-        start, end = epbr_range
-        for vrf_id in range(start, end + 1):
-            vrf_name = f"epbr-{vrf_id}"
-            rules.append(PolicyGenerator.generate_l3_vrf_rules(vrf_name, "ipv4"))
-            rules.append(PolicyGenerator.generate_l3_vrf_rules(vrf_name, "ipv6"))
+        for vrf_id in range(epbr_range[0], epbr_range[1] + 1):
+            add_vrf_rules(f"epbr-{vrf_id}")
     
     if trmvrf_range:
-        start, end = trmvrf_range
-        for vrf_id in range(start, end + 1):
-            vrf_name = f"trmvrf-{vrf_id}"
-            rules.append(PolicyGenerator.generate_l3_vrf_rules(vrf_name, "ipv4"))
-            rules.append(PolicyGenerator.generate_l3_vrf_rules(vrf_name, "ipv6"))
+        for vrf_id in range(trmvrf_range[0], trmvrf_range[1] + 1):
+            add_vrf_rules(f"trmvrf-{vrf_id}")
     
-    policy = PolicyGenerator.create_policy(name, "default", rules)
-    fd, temp_path = tempfile.mkstemp(suffix=".yaml", prefix=f"{name}_")
-    output_path = Path(temp_path)
-    PolicyGenerator.write_policy(policy, output_path)
-    
-    return output_path
+    return generate_policy_for_test(name, rules, namespace)
 
 
 def generate_vlan_policy_for_test(
     name: str,
-    vlan_with_ip_range: tuple = None,
-    vlan_any_ip_range: tuple = None
-) -> Path:
+    vlan_with_ip_range: Optional[Tuple[int, int]] = None,
+    vlan_any_ip_range: Optional[Tuple[int, int]] = None,
+    namespace: str = "hypershield"
+) -> Tuple[Policy, Path]:
     rules = []
     
+    def add_vlan_rules(vlan: int, specific_ip: bool):
+        if specific_ip:
+            subnet_id = vlan - 800
+            ipv4_cidr = f"191.168.{subnet_id}.0/24"
+            ipv6_cidr = f"1910:168:1:{hex(subnet_id)[2:]}::/64"
+        else:
+            ipv4_cidr = "0.0.0.0/0"
+            ipv6_cidr = "::/0"
+        
+        rules.append(create_rule(ipv4_cidr, ipv4_cidr, source_vlan=vlan,
+                                 description="Allow L2 traffic for all IPV4 flows"))
+        rules.append(create_rule(ipv6_cidr, ipv6_cidr, source_vlan=vlan,
+                                 description="Allow L2 traffic for all IPV6 flows"))
+    
     if vlan_with_ip_range:
-        start, end = vlan_with_ip_range
-        for vlan_id in range(start, end + 1):
-            rules.append(PolicyGenerator.generate_l2_vlan_rules_with_ip(vlan_id, "ipv4"))
-            rules.append(PolicyGenerator.generate_l2_vlan_rules_with_ip(vlan_id, "ipv6"))
+        for vlan_id in range(vlan_with_ip_range[0], vlan_with_ip_range[1] + 1):
+            add_vlan_rules(vlan_id, specific_ip=True)
     
     if vlan_any_ip_range:
-        start, end = vlan_any_ip_range
-        for vlan_id in range(start, end + 1):
-            rules.append(PolicyGenerator.generate_l2_vlan_rules_any_ip(vlan_id, "ipv4"))
-            rules.append(PolicyGenerator.generate_l2_vlan_rules_any_ip(vlan_id, "ipv6"))
+        for vlan_id in range(vlan_any_ip_range[0], vlan_any_ip_range[1] + 1):
+            add_vlan_rules(vlan_id, specific_ip=False)
     
-    policy = PolicyGenerator.create_policy(name, "default", rules)
-    fd, temp_path = tempfile.mkstemp(suffix=".yaml", prefix=f"{name}_")
-    output_path = Path(temp_path)
-    PolicyGenerator.write_policy(policy, output_path)
-    
-    return output_path
+    return generate_policy_for_test(name, rules, namespace)

@@ -1,18 +1,27 @@
+#  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+#
+#  NOTICE: All information contained herein is, and remains the property of
+#  Isovalent Inc and its suppliers, if any. The intellectual and technical
+#  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+#  and may be covered by U.S. and Foreign Patents, patents in process, and are
+#  protected by trade secret or copyright law.  Dissemination of this information
+#  or reproduction of this material is strictly forbidden unless prior written
+#  permission is obtained from Isovalent Inc.
+
 import allure
 import pytest
-from pathlib import Path
-
 from helper.verification import (
     verify_policy_added_to_agw,
     verify_policy_removed_from_agw,
     verify_policy_removed_from_sim,
     verify_policies_match_agw_and_dpu
 )
-from helper.policy_generator import generate_epbr_vrf_policy_for_test, generate_vlan_policy_for_test
+from helper.policy_generator import (
+    generate_vrf_policy_for_test,
+    generate_vlan_policy_for_test
+)
 from helper.utils import wait_for_timeout
-
-TESTDATA_DIR = Path(__file__).parent / "testdata" / "policies"
-AGW_POLICIES_DIR = TESTDATA_DIR / "agw"
+from helper.constants import AGW_POLICIES_DIR
 
 
 @pytest.mark.agw
@@ -62,7 +71,7 @@ def test_l3_default_vrf(cmd):
     expected_rules = 2  # IPv4 + IPv6
     
     with allure.step("Generate policy YAML with default VRF"):
-        policy_file = generate_epbr_vrf_policy_for_test(name=policy_name, vrfs=["default"])
+        policy, policy_file = generate_vrf_policy_for_test(name=policy_name, vrfs=["default"])
     
     with allure.step(f"Add policy '{policy_name}' via agwctl"):
         result = cmd.agw_add_policy(str(policy_file))
@@ -102,7 +111,7 @@ def test_l3_epbr_vrf(cmd):
     expected_rules = 50  # 25 VRFs × 2 IP versions
     
     with allure.step("Generate policy YAML with EPBR range (1001-1025)"):
-        policy_file = generate_epbr_vrf_policy_for_test(name=policy_name, epbr_range=(1001, 1025))
+        policy, policy_file = generate_vrf_policy_for_test(name=policy_name, epbr_range=(1001, 1025))
     
     with allure.step(f"Add policy '{policy_name}' via agwctl"):
         result = cmd.agw_add_policy(str(policy_file))
@@ -142,7 +151,7 @@ def test_l3_trmvrf(cmd):
     expected_rules = 150  # 75 VRFs × 2 IP versions
     
     with allure.step("Generate policy YAML with TRM VRF range (3001-3075)"):
-        policy_file = generate_epbr_vrf_policy_for_test(name=policy_name, trmvrf_range=(3001, 3075))
+        policy, policy_file = generate_vrf_policy_for_test(name=policy_name, trmvrf_range=(3001, 3075))
     
     with allure.step(f"Add policy '{policy_name}' via agwctl"):
         result = cmd.agw_add_policy(str(policy_file))
@@ -187,7 +196,7 @@ def test_l2_vlan_with_ip(cmd):
     expected_rules = 200  # 100 VLANs × 2 IP versions
     
     with allure.step("Generate policy YAML with VLAN range (801-900) with specific IPs"):
-        policy_file = generate_vlan_policy_for_test(name=policy_name, vlan_with_ip_range=(801, 900))
+        policy, policy_file = generate_vlan_policy_for_test(name=policy_name, vlan_with_ip_range=(801, 900))
     
     with allure.step(f"Add policy '{policy_name}' via agwctl"):
         result = cmd.agw_add_policy(str(policy_file))
@@ -242,7 +251,7 @@ def test_l2_vlan_any_ip(cmd, vlan_start, vlan_end):
     expected_rules = 200  # 100 VLANs × 2 IP versions
     
     with allure.step(f"Generate policy YAML with VLAN range ({vlan_start}-{vlan_end}) without specific IPs"):
-        policy_file = generate_vlan_policy_for_test(name=policy_name, vlan_any_ip_range=(vlan_start, vlan_end))
+        policy, policy_file = generate_vlan_policy_for_test(name=policy_name, vlan_any_ip_range=(vlan_start, vlan_end))
     
     with allure.step(f"Add policy '{policy_name}' via agwctl"):
         result = cmd.agw_add_policy(str(policy_file))

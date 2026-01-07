@@ -79,9 +79,11 @@ jobs:
 
       - name: Launch DPU Simulator container
         run: |
+          free -h
+          docker system prune -f
           cd tests/sanity/smartswitch
           make launch-sim
-          
+
       - name: Verify DPU container is running
         run: |
           echo "Waiting for DPU container to stabilize..."
@@ -181,7 +183,7 @@ jobs:
       - name: Run sanity tests
         run: |
           cd tests/sanity/smartswitch
-          make run-tests-with-allure
+          sudo make run-tests-with-allure
       
       - name: Debug DPU container on failure
         if: failure()
