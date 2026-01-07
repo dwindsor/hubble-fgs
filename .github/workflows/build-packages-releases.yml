@@ -20,40 +20,30 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+  build-tarballs:
+    uses: ./.github/workflows/build-tarballs.yml
+    with:
+      ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
+
+  upload-s3:
+    needs: build-tarballs
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
-            arch: amd64
-          - os: ubuntu-22.04-arm64
-            arch: arm64
-
+          - arch: amd64
+          - arch: arm64
     steps:
-      # https://github.com/docker/setup-buildx-action
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
-
-      - name: Checkout Source Code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+      - name: Download Tetragon Tarball artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
-          persist-credentials: false
-          fetch-depth: 0
-          submodules: true
+          name: tetragon-tarball-${{ matrix.arch }}
 
-      - name: Generate Tetragon EE Tarball Release
-        id: tetragon-tarball-release
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-          make tarball-release
-
-      - name: Checksum Tetragon EE Tarball
-        run: sha256sum -c tetragon-*-${{ matrix.arch }}.tar.gz.sha256sum
-        working-directory: ./release
+      - name: Download Tetragon Slim Tarball artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: tetragon-slim-tarball-${{ matrix.arch }}
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
@@ -64,6 +54,12 @@ jobs:
 
       - name: Upload Tetragon EE Tarball to AWS s3
         run: |
-          aws s3 cp tetragon-*-${{ matrix.arch }}.tar.gz s3://${{ env.BUCKET_NAME }}/tetragon-enterprise-standalone-tarball/
-          aws s3 cp tetragon-*-${{ matrix.arch }}.tar.gz.sha256sum s3://${{ env.BUCKET_NAME }}/tetragon-enterprise-standalone-tarball/
+          aws s3 cp tetragon-ee-*-${{ matrix.arch }}.tar.gz s3://${{ env.BUCKET_NAME }}/tetragon-enterprise-standalone-tarball/
+          aws s3 cp tetragon-ee-*-${{ matrix.arch }}.tar.gz.sha256sum s3://${{ env.BUCKET_NAME }}/tetragon-enterprise-standalone-tarball/
+        working-directory: ./release
+
+      - name: Upload Tetragon Slim Tarball to AWS s3
+        run: |
+          aws s3 cp tetragon-slim-*-${{ matrix.arch }}.tar.gz s3://${{ env.BUCKET_NAME }}/tetragon-enterprise-standalone-tarball/
+          aws s3 cp tetragon-slim-*-${{ matrix.arch }}.tar.gz.sha256sum s3://${{ env.BUCKET_NAME }}/tetragon-enterprise-standalone-tarball/
         working-directory: ./release

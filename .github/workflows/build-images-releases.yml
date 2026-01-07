@@ -31,6 +31,9 @@ jobs:
       QUAY_CHARTS_USERNAME: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_USERNAME }}
       QUAY_CHARTS_PASSWORD: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_PASSWORD }}
 
+  build-tarballs:
+    uses: ./.github/workflows/build-tarballs.yml
+
   # The ClusterServiceVersion part of the bundle is dependent on the previous builds as it needs to be updated with the image digests
   # produced during these builds.
   # The bundle is just a bunch of manifests, no binary, there is no need for a multi-arch build. It is already platform independent.
@@ -177,6 +180,7 @@ jobs:
 
   draft-github-release:
     name: Create Release
+    needs: build-tarballs
     if: github.repository == 'isovalent/hubble-fgs' && !contains(github.ref_name, '-')
     environment: release
     runs-on: ubuntu-24.04
@@ -194,6 +198,26 @@ jobs:
 
       - name: Generate tetra CLI artifacts
         run: make cli-release
+
+      - name: Download Tetragon Slim Tarball (amd64)
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: tetragon-slim-tarball-amd64
+
+      - name: Download Tetragon Slim Tarball (arm64)
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: tetragon-slim-tarball-arm64
+
+      - name: Download Tetragon Tarball (amd64)
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: tetragon-tarball-amd64
+
+      - name: Download Tetragon Tarball (arm64)
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: tetragon-tarball-arm64
 
       - name: Create Release
         id: create_release
