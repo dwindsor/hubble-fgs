@@ -4955,6 +4955,7 @@ type ProcessFileChecker struct {
 	Ancestors     *ProcessListMatcher                `json:"ancestors,omitempty"`
 	Message       *stringmatcher.StringMatcher       `json:"message,omitempty"`
 	Tags          *StringListMatcher                 `json:"tags,omitempty"`
+	PolicyName    *stringmatcher.StringMatcher       `json:"policyName,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -5071,6 +5072,11 @@ func (checker *ProcessFileChecker) Check(event *tetragon.ProcessFile) error {
 				return fmt.Errorf("Tags check failed: %w", err)
 			}
 		}
+		if checker.PolicyName != nil {
+			if err := checker.PolicyName.Match(event.PolicyName); err != nil {
+				return fmt.Errorf("PolicyName check failed: %w", err)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -5170,6 +5176,12 @@ func (checker *ProcessFileChecker) WithTags(check *StringListMatcher) *ProcessFi
 	return checker
 }
 
+// WithPolicyName adds a PolicyName check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithPolicyName(check *stringmatcher.StringMatcher) *ProcessFileChecker {
+	checker.PolicyName = check
+	return checker
+}
+
 //FromProcessFile populates the ProcessFileChecker using data from a ProcessFile event
 func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) *ProcessFileChecker {
 	if event == nil {
@@ -5229,6 +5241,7 @@ func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) 
 			WithValues(checks...)
 		checker.Tags = lm
 	}
+	checker.PolicyName = stringmatcher.Full(event.PolicyName)
 	return checker
 }
 

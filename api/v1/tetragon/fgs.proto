@@ -460,12 +460,14 @@ message ProcessFile {
   google.protobuf.Timestamp time = 8;
   string hook = 9;
   repeated FileOperation operation = 10;
-  string tracing_policy = 11;
+  string tracing_policy = 11 [deprecated = true];
   string rule_matched = 12;
   repeated Process ancestors = 13; // Not in use for now. Please rely on ancestors in ProcessExec.
   string message = 14;
   // Tags of the FIM policy to categorize the event.
   repeated string tags = 15;
+  // Name of the Tracing Policy that created that event.
+  string policy_name = 16;
 }
 
 // ProcessFileExec events provide (additional to ProcessExec) information about files being executed.

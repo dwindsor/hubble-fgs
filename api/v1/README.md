@@ -2115,11 +2115,12 @@ HTTP PARSER
 | time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
 | hook | [string](#string) |  |  |
 | operation | [FileOperation](#tetragon-FileOperation) | repeated |  |
-| tracing_policy | [string](#string) |  |  |
+| tracing_policy | [string](#string) |  | **Deprecated.**  |
 | rule_matched | [string](#string) |  |  |
 | ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 | message | [string](#string) |  |  |
 | tags | [string](#string) | repeated | Tags of the FIM policy to categorize the event. |
+| policy_name | [string](#string) |  | Name of the Tracing Policy that created that event. |
 
 
 

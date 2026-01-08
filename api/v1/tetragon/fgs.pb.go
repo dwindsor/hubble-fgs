@@ -3529,23 +3529,26 @@ func (*FileArgument_SymlinkArg) isFileArgument_Arg() {}
 func (*FileArgument_OpenrawArg) isFileArgument_Arg() {}
 
 type ProcessFile struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Process       *Process               `protobuf:"bytes,1,opt,name=process,proto3" json:"process,omitempty"`
-	Parent        *Process               `protobuf:"bytes,2,opt,name=parent,proto3" json:"parent,omitempty"`
-	Action        FileAction             `protobuf:"varint,3,opt,name=action,proto3,enum=tetragon.FileAction" json:"action,omitempty"`
-	Args          *FileArgument          `protobuf:"bytes,4,opt,name=args,proto3" json:"args,omitempty"`
-	Permissions   string                 `protobuf:"bytes,5,opt,name=permissions,proto3" json:"permissions,omitempty"`
-	Uid           string                 `protobuf:"bytes,6,opt,name=uid,proto3" json:"uid,omitempty"`
-	Gid           string                 `protobuf:"bytes,7,opt,name=gid,proto3" json:"gid,omitempty"`
-	Time          *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=time,proto3" json:"time,omitempty"`
-	Hook          string                 `protobuf:"bytes,9,opt,name=hook,proto3" json:"hook,omitempty"`
-	Operation     []FileOperation        `protobuf:"varint,10,rep,packed,name=operation,proto3,enum=tetragon.FileOperation" json:"operation,omitempty"`
-	TracingPolicy string                 `protobuf:"bytes,11,opt,name=tracing_policy,json=tracingPolicy,proto3" json:"tracing_policy,omitempty"`
-	RuleMatched   string                 `protobuf:"bytes,12,opt,name=rule_matched,json=ruleMatched,proto3" json:"rule_matched,omitempty"`
-	Ancestors     []*Process             `protobuf:"bytes,13,rep,name=ancestors,proto3" json:"ancestors,omitempty"` // Not in use for now. Please rely on ancestors in ProcessExec.
-	Message       string                 `protobuf:"bytes,14,opt,name=message,proto3" json:"message,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Process     *Process               `protobuf:"bytes,1,opt,name=process,proto3" json:"process,omitempty"`
+	Parent      *Process               `protobuf:"bytes,2,opt,name=parent,proto3" json:"parent,omitempty"`
+	Action      FileAction             `protobuf:"varint,3,opt,name=action,proto3,enum=tetragon.FileAction" json:"action,omitempty"`
+	Args        *FileArgument          `protobuf:"bytes,4,opt,name=args,proto3" json:"args,omitempty"`
+	Permissions string                 `protobuf:"bytes,5,opt,name=permissions,proto3" json:"permissions,omitempty"`
+	Uid         string                 `protobuf:"bytes,6,opt,name=uid,proto3" json:"uid,omitempty"`
+	Gid         string                 `protobuf:"bytes,7,opt,name=gid,proto3" json:"gid,omitempty"`
+	Time        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=time,proto3" json:"time,omitempty"`
+	Hook        string                 `protobuf:"bytes,9,opt,name=hook,proto3" json:"hook,omitempty"`
+	Operation   []FileOperation        `protobuf:"varint,10,rep,packed,name=operation,proto3,enum=tetragon.FileOperation" json:"operation,omitempty"`
+	// Deprecated: Marked as deprecated in tetragon/fgs.proto.
+	TracingPolicy string     `protobuf:"bytes,11,opt,name=tracing_policy,json=tracingPolicy,proto3" json:"tracing_policy,omitempty"`
+	RuleMatched   string     `protobuf:"bytes,12,opt,name=rule_matched,json=ruleMatched,proto3" json:"rule_matched,omitempty"`
+	Ancestors     []*Process `protobuf:"bytes,13,rep,name=ancestors,proto3" json:"ancestors,omitempty"` // Not in use for now. Please rely on ancestors in ProcessExec.
+	Message       string     `protobuf:"bytes,14,opt,name=message,proto3" json:"message,omitempty"`
 	// Tags of the FIM policy to categorize the event.
-	Tags          []string `protobuf:"bytes,15,rep,name=tags,proto3" json:"tags,omitempty"`
+	Tags []string `protobuf:"bytes,15,rep,name=tags,proto3" json:"tags,omitempty"`
+	// Name of the Tracing Policy that created that event.
+	PolicyName    string `protobuf:"bytes,16,opt,name=policy_name,json=policyName,proto3" json:"policy_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3650,6 +3653,7 @@ func (x *ProcessFile) GetOperation() []FileOperation {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in tetragon/fgs.proto.
 func (x *ProcessFile) GetTracingPolicy() string {
 	if x != nil {
 		return x.TracingPolicy
@@ -3683,6 +3687,13 @@ func (x *ProcessFile) GetTags() []string {
 		return x.Tags
 	}
 	return nil
+}
+
+func (x *ProcessFile) GetPolicyName() string {
+	if x != nil {
+		return x.PolicyName
+	}
+	return ""
 }
 
 // ProcessFileExec events provide (additional to ProcessExec) information about files being executed.
@@ -5257,7 +5268,7 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"symlinkArg\x127\n" +
 	"\vopenraw_arg\x18\a \x01(\v2\x14.tetragon.OpenRawArgH\x00R\n" +
 	"openrawArgB\x05\n" +
-	"\x03arg\"\xa9\x04\n" +
+	"\x03arg\"\xce\x04\n" +
 	"\vProcessFile\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12,\n" +
@@ -5269,12 +5280,14 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\x04time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12\x12\n" +
 	"\x04hook\x18\t \x01(\tR\x04hook\x125\n" +
 	"\toperation\x18\n" +
-	" \x03(\x0e2\x17.tetragon.FileOperationR\toperation\x12%\n" +
-	"\x0etracing_policy\x18\v \x01(\tR\rtracingPolicy\x12!\n" +
+	" \x03(\x0e2\x17.tetragon.FileOperationR\toperation\x12)\n" +
+	"\x0etracing_policy\x18\v \x01(\tB\x02\x18\x01R\rtracingPolicy\x12!\n" +
 	"\frule_matched\x18\f \x01(\tR\vruleMatched\x12/\n" +
 	"\tancestors\x18\r \x03(\v2\x11.tetragon.ProcessR\tancestors\x12\x18\n" +
 	"\amessage\x18\x0e \x01(\tR\amessage\x12\x12\n" +
-	"\x04tags\x18\x0f \x03(\tR\x04tags\"\xb0\x02\n" +
+	"\x04tags\x18\x0f \x03(\tR\x04tags\x12\x1f\n" +
+	"\vpolicy_name\x18\x10 \x01(\tR\n" +
+	"policyName\"\xb0\x02\n" +
 	"\x0fProcessFileExec\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12)\n" +
