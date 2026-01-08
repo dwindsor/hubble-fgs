@@ -401,6 +401,9 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 	u8 udp_off;
 	int err;
 	uint32_t zero = 0;
+#ifdef IN_KERNEL_DNS
+	struct cfg_value *l3cfg;
+#endif
 
 	if (!skb)
 		return SK_PASS;
@@ -455,7 +458,8 @@ int udp_handler_ip4(struct __sk_buff *skb, int send)
 	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
 #ifdef IN_KERNEL_DNS
-	if (DNS_PARSER_ENABLED && (udp->source == bpf_htons(DNS_PORT) || udp->dest == bpf_htons(DNS_PORT)))
+	l3cfg = getl3cfg();
+	if (DNS_PARSER_ENABLED && l3cfg && dns_port_match(l3cfg->udp.dns_ports, bpf_htons(udp->source), bpf_htons(udp->dest)))
 		dns_send_userspace = !!parse_dns(skb, payload_off, send);
 #endif
 	udp_send(skb, 0, ip, false, ts_opt, udp, &vars->cookie,
@@ -475,6 +479,9 @@ int udp_handler_ip6(struct __sk_buff *skb, u16 udp_off, int send)
 	struct udphdr *udp, cpy;
 	struct ipv6hdr *ip6;
 	uint32_t zero = 0;
+#ifdef IN_KERNEL_DNS
+	struct cfg_value *l3cfg;
+#endif
 
 	if (!skb)
 		return SK_PASS;
@@ -504,7 +511,8 @@ int udp_handler_ip6(struct __sk_buff *skb, u16 udp_off, int send)
 	payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	payload_off = udp_off + sizeof(struct udphdr);
 #ifdef IN_KERNEL_DNS
-	if (DNS_PARSER_ENABLED && (udp->source == bpf_htons(DNS_PORT) || udp->dest == bpf_htons(DNS_PORT)))
+	l3cfg = getl3cfg();
+	if (DNS_PARSER_ENABLED && l3cfg && dns_port_match(l3cfg->udp.dns_ports, bpf_htons(udp->source), bpf_htons(udp->dest)))
 		dns_send_userspace = !!parse_dns(skb, payload_off, send);
 #endif
 	udp_send(skb, 0, (struct iphdr *)ip6, true, 0, udp, &vars->cookie,
