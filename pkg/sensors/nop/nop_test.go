@@ -19,6 +19,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
@@ -74,6 +75,8 @@ func TestNopSensorSmoke(t *testing.T) {
 
 func TestLoadNopSensor(t *testing.T) {
 	base := base.GetInitialSensorTest(t)
+	option.Config.KeepCollection = true
+	defer func() { option.Config.KeepCollection = false }()
 	tus.LoadSensor(t, base)
 	yaml := nopConfig(1337)
 	policy, err := tracingpolicy.FromYAML(yaml)

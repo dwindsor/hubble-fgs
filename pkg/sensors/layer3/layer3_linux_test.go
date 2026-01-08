@@ -293,7 +293,7 @@ func TestLoadLayer3Sensor(t *testing.T) {
 	}
 
 	b := base.GetInitialSensorTest(t)
-	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
+	sens, err := observertesthelper.GetDefaultSensorsWithBase(t, b, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid(), observertesthelper.WithKeepCollection())
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithBase error: %s", err)
 	}
