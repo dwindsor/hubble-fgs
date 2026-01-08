@@ -291,8 +291,64 @@ message StreamDatapathConfigResponse {
   ConfigObject config = 2;
 }
 
+// PolicyRuleError enumerates error types that can occur during policy rule processing.
+enum PolicyRuleError {
+  // No specific error, general catch all error
+  POLICY_RULE_ERROR_UNSPECIFIED = 0;
+  // Policy operation timed out when sending to dataplane
+  POLICY_RULE_ERROR_TIMEOUT = 1;
+  // Policy operation failed due to out-of-memory
+  POLICY_RULE_ERROR_OOM = 2;
+  // Policy operation failed due to unsupported value, like an unsupported protocol in the rule
+  POLICY_RULE_ERROR_UNSUPPORTED = 3;
+  // Policy operation failed due to invalid policy rule format
+  POLICY_RULE_ERROR_FORMAT = 4;
+}
+
+// PolicyRuleEvent represents an event related to a specific policy rule.
+message PolicyRuleEvent {
+  // Name of the specific rule
+  string rule_name = 1;
+  // Name of the parent policy containing this rule
+  string policy_name = 2;
+  // Kubernetes unique identifier (UID) of the policy
+  string k8s_uid = 3;
+  // Kubernetes resource version of the policy
+  string k8s_resource_version = 4;
+  // True when policy is applied in dataplane successfully, false otherwise
+  bool is_success = 5;
+  // Error type that occurred during policy rule processing
+  // Only relevant when is_success is false
+  PolicyRuleError error = 6;
+  // Optional string description of the error
+  string error_message = 7;
+}
+
+// StreamEvent wraps different event types that can be streamed from the datapath.
+message StreamEvent {
+  // Agent UID
+  string agent_uid = 1;
+  // The time when the event occurred
+  google.protobuf.Timestamp timestamp = 2;
+
+  // Generic event object
+  oneof event {
+    // Policy rule event
+    PolicyRuleEvent rule = 3;
+  }
+}
+
+// StreamEventsRequest is a client-to-server streaming message containing events to report.
+message StreamEventsRequest {
+  // events is the list of stream events to report in this request.
+  repeated StreamEvent events = 1;
+}
+
+message StreamEventsResponse {}
+
 service L3L4NetworkPolicyService {
   rpc Streaml3l4NetworkPolicy(Streaml3l4NetworkPolicyRequest) returns (stream Streaml3l4NetworkPolicyResponse) {}
   rpc ReportStatus(ReportStatusRequest) returns (ReportStatusResponse) {}
   rpc StreamDatapathConfig(StreamDatapathConfigRequest) returns (stream StreamDatapathConfigResponse) {}
+  rpc StreamEvents(stream StreamEventsRequest) returns (StreamEventsResponse) {}
 }

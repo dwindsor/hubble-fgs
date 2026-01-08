@@ -140,6 +140,16 @@ type NetworkSource struct {
 	Ports NetworkDestinationPorts `json:"ports"`
 }
 
+type ServiceSelector struct {
+	// +kubebuilder:validation:Required
+	// Name is the name of the Kubernetes Service
+	Name string `json:"name"`
+	// +kubebuilder:validation:Optional
+	// Namespace is the namespace of the Service. If empty, defaults to "default"
+	// for cluster-scoped policies or the policy's namespace for namespaced policies.
+	Namespace string `json:"namespace,omitempty"`
+}
+
 type NetworkDestination struct {
 	// +kubebuilder:validation:Optional
 	FQDN []string `json:"FQDN,omitempty"`
@@ -148,6 +158,9 @@ type NetworkDestination struct {
 	// +kubebuilder:validation:Optional
 	// PodSelector selects pods that this policy applies to
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
+	// +kubebuilder:validation:Optional
+	// ServiceSelector selects services that this policy applies to
+	ServiceSelector *ServiceSelector `json:"serviceSelector,omitempty"`
 	// +kubebuilder:validation:Optional
 	Workload NetworkDestinationWorkload `json:"workload,omitempty"`
 	// +kubebuilder:validation:Required

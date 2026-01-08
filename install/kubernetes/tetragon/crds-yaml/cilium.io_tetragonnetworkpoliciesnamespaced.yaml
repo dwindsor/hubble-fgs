@@ -292,6 +292,21 @@ spec:
                                 - UDP
                                 type: string
                             type: object
+                          serviceSelector:
+                            description: ServiceSelector selects services that this
+                              policy applies to
+                            properties:
+                              name:
+                                description: Name is the name of the Kubernetes Service
+                                type: string
+                              namespace:
+                                description: |-
+                                  Namespace is the namespace of the Service. If empty, defaults to "default"
+                                  for cluster-scoped policies or the policy's namespace for namespaced policies.
+                                type: string
+                            required:
+                            - name
+                            type: object
                           workload:
                             properties:
                               namespace:

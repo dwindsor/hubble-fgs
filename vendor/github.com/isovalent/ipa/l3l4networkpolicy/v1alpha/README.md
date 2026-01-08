@@ -18,12 +18,16 @@
     - [LogConfigTimescape.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigTimescape-ConfigsEntry)
     - [PolicyPorts](#l3l4networkpolicy-v1alpha-PolicyPorts)
     - [PolicyRule](#l3l4networkpolicy-v1alpha-PolicyRule)
+    - [PolicyRuleEvent](#l3l4networkpolicy-v1alpha-PolicyRuleEvent)
     - [PolicySubject](#l3l4networkpolicy-v1alpha-PolicySubject)
     - [ReportStatus](#l3l4networkpolicy-v1alpha-ReportStatus)
     - [ReportStatusRequest](#l3l4networkpolicy-v1alpha-ReportStatusRequest)
     - [ReportStatusResponse](#l3l4networkpolicy-v1alpha-ReportStatusResponse)
     - [StreamDatapathConfigRequest](#l3l4networkpolicy-v1alpha-StreamDatapathConfigRequest)
     - [StreamDatapathConfigResponse](#l3l4networkpolicy-v1alpha-StreamDatapathConfigResponse)
+    - [StreamEvent](#l3l4networkpolicy-v1alpha-StreamEvent)
+    - [StreamEventsRequest](#l3l4networkpolicy-v1alpha-StreamEventsRequest)
+    - [StreamEventsResponse](#l3l4networkpolicy-v1alpha-StreamEventsResponse)
     - [Streaml3l4NetworkPolicyRequest](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyRequest)
     - [Streaml3l4NetworkPolicyResponse](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyResponse)
   
@@ -34,6 +38,7 @@
     - [PolicyAction](#l3l4networkpolicy-v1alpha-PolicyAction)
     - [PolicyOperation](#l3l4networkpolicy-v1alpha-PolicyOperation)
     - [PolicyProtocol](#l3l4networkpolicy-v1alpha-PolicyProtocol)
+    - [PolicyRuleError](#l3l4networkpolicy-v1alpha-PolicyRuleError)
   
     - [L3L4NetworkPolicyService](#l3l4networkpolicy-v1alpha-L3L4NetworkPolicyService)
   
@@ -309,6 +314,27 @@ an LPM.
 
 
 
+<a name="l3l4networkpolicy-v1alpha-PolicyRuleEvent"></a>
+
+### PolicyRuleEvent
+PolicyRuleEvent represents an event related to a specific policy rule.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rule_name | [string](#string) |  | Name of the specific rule |
+| policy_name | [string](#string) |  | Name of the parent policy containing this rule |
+| k8s_uid | [string](#string) |  | Kubernetes unique identifier (UID) of the policy |
+| k8s_resource_version | [string](#string) |  | Kubernetes resource version of the policy |
+| is_success | [bool](#bool) |  | True when policy is applied in dataplane successfully, false otherwise |
+| error | [PolicyRuleError](#l3l4networkpolicy-v1alpha-PolicyRuleError) |  | Error type that occurred during policy rule processing Only relevant when is_success is false |
+| error_message | [string](#string) |  | Optional string description of the error |
+
+
+
+
+
+
 <a name="l3l4networkpolicy-v1alpha-PolicySubject"></a>
 
 ### PolicySubject
@@ -407,6 +433,48 @@ Report status response.
 | ----- | ---- | ----- | ----------- |
 | oper | [ConfigOperation](#l3l4networkpolicy-v1alpha-ConfigOperation) |  |  |
 | config | [ConfigObject](#l3l4networkpolicy-v1alpha-ConfigObject) |  |  |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-StreamEvent"></a>
+
+### StreamEvent
+StreamEvent wraps different event types that can be streamed from the datapath.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| agent_uid | [string](#string) |  | Agent UID |
+| timestamp | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The time when the event occurred |
+| rule | [PolicyRuleEvent](#l3l4networkpolicy-v1alpha-PolicyRuleEvent) |  | Policy rule event |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-StreamEventsRequest"></a>
+
+### StreamEventsRequest
+StreamEventsRequest is a client-to-server streaming message containing events to report.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| events | [StreamEvent](#l3l4networkpolicy-v1alpha-StreamEvent) | repeated | events is the list of stream events to report in this request. |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-StreamEventsResponse"></a>
+
+### StreamEventsResponse
+
 
 
 
@@ -542,6 +610,21 @@ PolicyRule.
 | POLICY_PROTOCOL_ICMP | 3 |  |
 
 
+
+<a name="l3l4networkpolicy-v1alpha-PolicyRuleError"></a>
+
+### PolicyRuleError
+PolicyRuleError enumerates error types that can occur during policy rule processing.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| POLICY_RULE_ERROR_UNSPECIFIED | 0 | No specific error, general catch all error |
+| POLICY_RULE_ERROR_TIMEOUT | 1 | Policy operation timed out when sending to dataplane |
+| POLICY_RULE_ERROR_OOM | 2 | Policy operation failed due to out-of-memory |
+| POLICY_RULE_ERROR_UNSUPPORTED | 3 | Policy operation failed due to unsupported value, like an unsupported protocol in the rule |
+| POLICY_RULE_ERROR_FORMAT | 4 | Policy operation failed due to invalid policy rule format |
+
+
  
 
  
@@ -557,6 +640,7 @@ PolicyRule.
 | Streaml3l4NetworkPolicy | [Streaml3l4NetworkPolicyRequest](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyRequest) | [Streaml3l4NetworkPolicyResponse](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyResponse) stream |  |
 | ReportStatus | [ReportStatusRequest](#l3l4networkpolicy-v1alpha-ReportStatusRequest) | [ReportStatusResponse](#l3l4networkpolicy-v1alpha-ReportStatusResponse) |  |
 | StreamDatapathConfig | [StreamDatapathConfigRequest](#l3l4networkpolicy-v1alpha-StreamDatapathConfigRequest) | [StreamDatapathConfigResponse](#l3l4networkpolicy-v1alpha-StreamDatapathConfigResponse) stream |  |
+| StreamEvents | [StreamEventsRequest](#l3l4networkpolicy-v1alpha-StreamEventsRequest) stream | [StreamEventsResponse](#l3l4networkpolicy-v1alpha-StreamEventsResponse) |  |
 
  
 
