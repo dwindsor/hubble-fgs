@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -25,6 +26,8 @@ import (
 	"github.com/cilium/tetragon/pkg/crdutils"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/manager"
+
+	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 
 	"github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1"
 )
@@ -132,9 +135,15 @@ func GetSmartSwitchInventory(name, namespace string, status *SmartSwitchInventor
 	// Convert status.DPUInventories ([]DPUInventory) to []v1alpha1.DPUInventory
 	var dpuInventories []v1alpha1.DPUInventory
 	for _, d := range status.DPUInventories {
+		// Convert IP address to DPU ID using DPUMap
+		dpuID := d.ID
+		if dpuNum, exists := switchpolicy.DPUMap[d.ID]; exists {
+			dpuID = strconv.Itoa(dpuNum)
+		}
+
 		dpuInventories = append(dpuInventories, v1alpha1.DPUInventory{
 			HardwareModel:   d.HardwareModel,
-			ID:              d.ID,
+			ID:              dpuID,
 			ManagementIP:    d.ManagementIP,
 			PortHigh:        uint16(d.PortHigh),
 			PortLow:         uint16(d.PortLow),
