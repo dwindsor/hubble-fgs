@@ -16,12 +16,12 @@ Supported versions:
 | 1.18   | 1.6  |
 | 1.17   | 1.5  |
 | 1.16   | 1.4  |
-| 1.15   | 1.3  |
 
 Unsupported versions:
 
 | EE     | OSS  |
 | -----  | ---- |
+| 1.15   | 1.3  |
 | 1.14   | 1.2  |
 | 1.13   | 1.1  |
 | 1.12   | 1.0  |
@@ -30,7 +30,7 @@ Unsupported versions:
 | 1.9    | 0.8  |
 
 Hence, backporting PRs that are in OSS or have dependencies in PRs that _are_ in OSS needs to go via
-the correspodning OSS version first (0.8 for 1.9). Once everything is backported in OSS, the EE
+the corresponding OSS version first (0.8 for 1.9). Once everything is backported in OSS, the EE
 version should be synced accordingly and any EE-specific PRs can now be backported as well.
 
 For 1.9, for example:
@@ -61,15 +61,15 @@ Should I backport a PR?
  - Does it fix an issue with a non-negligible chance that will hit customers? YES
  - Does it fix an issue (e.g., CI fix) that will affect our CI for stable versions? YES
  - Does it improve our QoL (e.g., release automation) -> case-by-case (see below)
- - Does it make it asier to backport any of the above -> case-by-case (see below)
+ - Does it make it easier to backport any of the above -> case-by-case (see below)
 
 Case-by-case: Evaluate case-by-case based on the following factors:
  - Is there a chance to break things that work (especially in customer setups)?
- - Is the utiliity offered by the backport worth the effort?
+ - Is the utility offered by the backport worth the effort?
 
 ## What PRs should be backported?
 
-Similary, to Cilium we use the the `needs-backport/X.Y` label to mark PRs that need to be
+Similarly, to Cilium we use the `needs-backport/X.Y` label to mark PRs that need to be
 backported. Similarly, we use `backport-pending/X.Y` and `backport-done/X.Y` to mark that a PR
 backport is pending and finished, respectively. 
 
@@ -77,7 +77,7 @@ backport is pending and finished, respectively.
 
 For now this is done manually.  That is, for every commit cherry-pick the commit. As done in Cilium,
 The upstream commit should be referenced in the commit message as well as any notes that related to
-the backport (e.g., about conficts).
+the backport (e.g., about conflicts).
 
 For example:
 ```
@@ -99,7 +99,7 @@ Date:   Tue Apr 20 16:48:18 2021 -0700
 
 Eventually, we will use the scripts used by Cilium to do this, but we are not there yet.
 
-There is a simple script you can use for chery picking commits and adding the commit:
+There is a simple script you can use for cherry picking commits and adding the commit:
 https://github.com/isovalent/tetragon-github-tools/blob/main/backport/cherry-pick
 
 ## CRD changes
