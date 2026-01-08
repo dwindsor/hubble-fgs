@@ -10,12 +10,16 @@ linters:
   default: none
   enable:
     - err113
+    - goheader
     - govet
     - ineffassign
     - misspell
     - revive
     - staticcheck
     - unused
+  settings:
+    goheader:
+      template-path: ./COPYRIGHT
   exclusions:
     rules:
       - linters:
