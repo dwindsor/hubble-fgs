@@ -1,0 +1,21 @@
+apiVersion: cilium.io/v1alpha1
+kind: TetragonNetworkPolicy
+metadata:
+  name: block-rsync-to-apache
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: rsync-server
+  defaultAction: allow
+  rules:
+  - description: "Block rsync-server from accessing apache-ssl service"
+    hook: connect
+    action: deny
+    destination:
+    - serviceSelector:
+        name: apache-ssl
+        namespace: default
+      ports:
+        protocol: TCP
+        ports:
+        - 80
