@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint/controllers"
 	"github.com/isovalent/hubble-fgs/pkg/model/dns"
+	"github.com/isovalent/hubble-fgs/pkg/netpol/servicemap"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	enterpriseConf "github.com/isovalent/hubble-fgs/pkg/watcher/conf"
 )
@@ -114,6 +115,10 @@ func New(ctx context.Context) (KubernetesManager, error) {
 			return nil, err
 		}
 		if err := addPodInfoInformer(ctx, ossManager); err != nil {
+			return nil, err
+		}
+		sm := servicemap.NewServiceMap()
+		if err := servicemap.AddServiceInformer(ctx, ossManager, sm); err != nil {
 			return nil, err
 		}
 	}
