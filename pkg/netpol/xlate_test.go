@@ -47,6 +47,19 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 			},
 		},
 	}
+	serviceRule := v1alpha1.NetworkPolicyRule{
+		Hook:        "connect",
+		Description: "Block connection to server service",
+		Destination: []v1alpha1.NetworkDestination{
+			{
+				ServiceSelector: &v1alpha1.ServiceSelector{
+					Name:      "server-svc",
+					Namespace: "default",
+				},
+				Ports: v1alpha1.NetworkDestinationPorts{Protocol: "TCP", Ports: []uint32{80}},
+			},
+		},
+	}
 
 	tests := []struct {
 		name    string
@@ -185,6 +198,33 @@ func TestToTetragonNetworkPolicies(t *testing.T) {
 						Ports: []uint32{rule2.Destination[0].Ports.Ports[0]},
 					},
 					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Deny: true}},
+					Action:  types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{}},
+				},
+			},
+		},
+		{
+			name: "ServiceSelector rule",
+			policy: v1alpha1.TetragonNetworkPolicy{
+				Spec: v1alpha1.NetworkPolicySpec{
+					PodSelector:   &v1.LabelSelector{MatchLabels: map[string]v1.MatchLabelsValue{"app": "client"}},
+					DefaultAction: "allow",
+					Rules:         []v1alpha1.NetworkPolicyRule{serviceRule},
+				},
+			},
+			want: []*types.TetragonNetworkPolicy{
+				{
+					RuleDescription: serviceRule.Description,
+					Subject: types.TetragonNetworkSubject{
+						Labels: types.TetragonNetworkLabels{Equal: map[string]string{"app": "client"}},
+					},
+					Destination: types.TetragonNetworkDestination{
+						ServiceRef: &types.TetragonServiceRef{
+							Name:      "server-svc",
+							Namespace: "default",
+						},
+						Ports: []uint32{80},
+					},
+					Default: types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{Allow: true}},
 					Action:  types.TetragonNetworkAction{EnforceAction: &types.TetragonEnforceAction{}},
 				},
 			},

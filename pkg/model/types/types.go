@@ -164,11 +164,18 @@ type TetragonNetworkSource struct {
 	Ports []uint32
 }
 
+// TetragonServiceRef references a Kubernetes Service for policy matching
+type TetragonServiceRef struct {
+	Name      string
+	Namespace string
+}
+
 type TetragonNetworkDestination struct {
-	FQDN   *TetragonNetworkFQDN
-	Labels TetragonNetworkLabels
-	CIDR   netip.Prefix
-	Ports  []uint32
+	FQDN       *TetragonNetworkFQDN
+	Labels     TetragonNetworkLabels
+	CIDR       netip.Prefix
+	ServiceRef *TetragonServiceRef
+	Ports      []uint32
 }
 
 type TetragonQuotaAction struct {

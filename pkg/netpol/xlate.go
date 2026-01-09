@@ -142,6 +142,7 @@ func ensureCIDR(ipBlock string) string {
 func toDestination(d *v1alpha1.NetworkDestination) (types.TetragonNetworkDestination, error) {
 	var f *types.TetragonNetworkFQDN
 	var cidr netip.Prefix
+	var svcRef *types.TetragonServiceRef
 
 	if len(d.FQDN) > 0 {
 		f = &types.TetragonNetworkFQDN{
@@ -159,6 +160,17 @@ func toDestination(d *v1alpha1.NetworkDestination) (types.TetragonNetworkDestina
 		}
 	}
 
+	if d.ServiceSelector != nil {
+		namespace := d.ServiceSelector.Namespace
+		if namespace == "" {
+			namespace = "default"
+		}
+		svcRef = &types.TetragonServiceRef{
+			Name:      d.ServiceSelector.Name,
+			Namespace: namespace,
+		}
+	}
+
 	labels := types.TetragonNetworkLabels{}
 	if d.PodSelector != nil {
 		labels.Equal = d.PodSelector.MatchLabels
@@ -168,10 +180,11 @@ func toDestination(d *v1alpha1.NetworkDestination) (types.TetragonNetworkDestina
 	ports = append(ports, d.Ports.Ports...)
 
 	return types.TetragonNetworkDestination{
-		FQDN:   f,
-		Labels: labels,
-		CIDR:   cidr,
-		Ports:  ports,
+		FQDN:       f,
+		Labels:     labels,
+		CIDR:       cidr,
+		ServiceRef: svcRef,
+		Ports:      ports,
 	}, nil
 }
 
@@ -184,6 +197,9 @@ func toFirewallDestination(d *v1alpha1.NetworkDestination) (*types.TetragonNetwo
 	}
 	if d.PodSelector != nil {
 		return nil, fmt.Errorf("firewall does not have pod label support")
+	}
+	if d.ServiceSelector != nil {
+		return nil, fmt.Errorf("firewall does not have service selector support")
 	}
 	if d.IPBlock == nil {
 		return nil, fmt.Errorf("firewall wildcard destination rules not supported")
