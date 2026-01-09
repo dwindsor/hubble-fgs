@@ -15,12 +15,18 @@ package dnsparsertest
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/netip"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/miekg/dns"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -63,4 +69,122 @@ func TestDNSParserPerPodFeature(t *testing.T) {
 	assert.Contains(t, outputString, fmt.Sprintf("\"%s\":1", dnsparser.ParserEnabledName))
 	assert.Contains(t, outputString, fmt.Sprintf("\"%s\":1", dnsparser.PerPodFeatureName))
 	assert.Contains(t, outputString, fmt.Sprintf("\"%s\":%d", dnsparser.KubepodsCgidConstName, arbitraryCgroupID))
+}
+
+func startMockDNSServer(t *testing.T, listenPort uint16, mockDomain string, mockIP string) func() {
+	t.Helper()
+
+	handler := func(w dns.ResponseWriter, r *dns.Msg) {
+		m := new(dns.Msg)
+		m.SetReply(r)
+		m.Authoritative = true
+
+		if len(r.Question) > 0 {
+			q := r.Question[0]
+			if q.Qtype == dns.TypeA && strings.EqualFold(q.Name, mockDomain+".") {
+				rr, err := dns.NewRR(mockDomain + ". 60 IN A " + mockIP)
+				if err == nil {
+					m.Answer = []dns.RR{rr}
+				}
+			} else {
+				m.Rcode = dns.RcodeNameError // NXDOMAIN
+			}
+		}
+
+		_ = w.WriteMsg(m)
+	}
+
+	dns.HandleFunc(".", handler)
+
+	srv := &dns.Server{
+		Addr: fmt.Sprintf(":%d", listenPort),
+		Net:  "udp",
+	}
+
+	ready := make(chan any)
+	go func() {
+		close(ready)
+		// If the query is made between we close ready and we actually
+		// bind, a race is possible, this should be reasonable enough
+		if err := srv.ListenAndServe(); err != nil {
+			t.Logf("DNS server stopped: %v", err)
+		}
+	}()
+	<-ready
+
+	return func() {
+		_ = srv.Shutdown()
+		dns.HandleRemove(".")
+	}
+}
+
+func TestDNSParserPortsOptions(t *testing.T) {
+	if !utils.SupportDNSParser() {
+		t.Skip()
+	}
+	// Technically, the process tree reqs don't limit the DNS parser, but as
+	// of now, on kernels that don't support it, we load the dispatcherProgs
+	// versions (vs dispatcherProcessTree* versions) that don't include the
+	// parser (because IN_KERNEL_DNS is not defined). This is typically the
+	// version loaded on rhel8 or upstream until 5.15 (surprisingly, rhel8
+	// will pass SupportDNSParser while 5.10 will not).
+	if !utils.SupportProcessTree() {
+		t.Skip()
+	}
+
+	const firstPort, secondPort = 8080, 9090
+	const firstIP, secondIP = "1.2.3.4", "5.6.7.8"
+	const firstDomain, secondDomain = "example1.com", "example2.com"
+
+	option.Config.DNSPorts = []int{firstPort, secondPort}
+	bpftest.StartMinimalTetragonModel(context.Background(), t)
+
+	shutdown1 := startMockDNSServer(t, firstPort, firstDomain, firstIP)
+	r1 := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Second,
+			}
+			return d.DialContext(ctx, network, fmt.Sprintf(":%d", firstPort))
+		},
+	}
+	ips, err := r1.LookupIP(context.Background(), "ip4", firstDomain)
+	require.Len(t, ips, 1)
+	assert.Equal(t, firstIP, ips[0].String())
+	require.NoError(t, err)
+	shutdown1()
+
+	shutdown2 := startMockDNSServer(t, secondPort, secondDomain, secondIP)
+	r2 := &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			d := net.Dialer{
+				Timeout: time.Second,
+			}
+			return d.DialContext(ctx, network, fmt.Sprintf(":%d", secondPort))
+		},
+	}
+	ips, err = r2.LookupIP(context.Background(), "ip4", secondDomain)
+	require.Len(t, ips, 1)
+	assert.Equal(t, secondIP, ips[0].String())
+	require.NoError(t, err)
+	shutdown2()
+
+	ipToIDMapsPath := bpf.MapPath(dnsparser.IPToIDMapsName)
+	rawIPToIDMaps, err := ebpf.LoadPinnedMap(ipToIDMapsPath, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		rawIPToIDMaps.Close()
+	})
+	ipToIDMaps := dnsparser.NewIPToIDMaps(rawIPToIDMaps)
+
+	t.Log(ipToIDMaps.Values(dnsparser.DefaultInnerMapID))
+
+	_, err = ipToIDMaps.Lookup(dnsparser.DefaultInnerMapID, netip.MustParseAddr("9.9.9.9"))
+	require.ErrorIs(t, err, ebpf.ErrKeyNotExist)
+	_, err = ipToIDMaps.Lookup(dnsparser.DefaultInnerMapID, netip.MustParseAddr(firstIP))
+	require.NoError(t, err)
+	_, err = ipToIDMaps.Lookup(dnsparser.DefaultInnerMapID, netip.MustParseAddr(secondIP))
+	require.NoError(t, err)
 }
