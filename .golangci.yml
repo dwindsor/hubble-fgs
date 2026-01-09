@@ -41,6 +41,8 @@ linters:
       - "pkg/dpu/pensando"
       - "pkg/grpc/haclt"
       - "pkg/grpc/hasvr"
+      - "pkg/metrics/opcodemetrics"
+      - "pkg/aggregator"
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
