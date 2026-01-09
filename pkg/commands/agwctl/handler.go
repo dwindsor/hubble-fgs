@@ -55,6 +55,8 @@ const (
 	CMD_CONFIG_SHOW
 	CMD_CONFIG_ADD_HA
 	CMD_CONFIG_REMOVE_HA
+	CMD_CONFIG_ADD_DPU
+	CMD_CONFIG_REMOVE_DPU
 )
 
 const (
@@ -355,6 +357,16 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 
 	case CMD_CONFIG_REMOVE_HA:
 		res := agwAgent.ConfigRemoveHa(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_CONFIG_ADD_DPU:
+		res := agwAgent.ConfigAddDpu(ctx, data)
+		response.ReturnCode = "ok"
+		response.Data = res
+
+	case CMD_CONFIG_REMOVE_DPU:
+		res := agwAgent.ConfigRemoveDpu(ctx)
 		response.ReturnCode = "ok"
 		response.Data = res
 

@@ -626,21 +626,30 @@ func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg 
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	for _, peer := range dpu.peerGroup {
-		dpuCfg, err := getPerDpuConfig(fullCfg, peer.uid, dpu.peerGroupSize)
-		if err != nil {
-			logger.GetLogger().Error("dpu config callback function failed", logfields.Error, err)
-			continue
-		}
+		// For delete operations, send empty config to FWA
+		if resp.Oper == v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE {
+			resp.Config = &v1alpha.ConfigObject{
+				Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+				Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+				Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &v1alpha.DpuConfig{}},
+			}
+		} else {
+			dpuCfg, err := getPerDpuConfig(fullCfg, peer.uid, dpu.peerGroupSize)
+			if err != nil {
+				logger.GetLogger().Error("dpu config callback function failed", logfields.Error, err)
+				continue
+			}
 
-		// Push the response to the peer
-		resp.Config = &v1alpha.ConfigObject{
-			Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
-			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
-			Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuCfg},
+			// Push the response to the peer
+			resp.Config = &v1alpha.ConfigObject{
+				Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+				Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+				Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuCfg},
+			}
 		}
-		err = peer.SendConfig(&resp)
+		err := peer.SendConfig(&resp)
 		if err != nil {
-			logger.GetLogger().Error("failed to send config object to peer", logfields.Error, err, "peer", peer.uid, "config", resp.Config.Config)
+			logger.GetLogger().Error("failed to send config object to peer", logfields.Error, err, "peer", peer.uid, "config", resp.Config)
 		}
 	}
 
@@ -668,21 +677,30 @@ func (dpu *DPUListener) SubscribeHaConfig(oldCfg *v1alpha.ConfigObject, newCfg *
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	for _, peer := range dpu.peerGroup {
-		haCfg, err := getPerDpuHaConfig(fullCfg, peer.uid, dpu.peerGroupSize)
-		if err != nil {
-			logger.GetLogger().Error("ha config callback function failed", logfields.Error, err)
-			continue
-		}
+		// For delete operations, send empty config to FWA
+		if resp.Oper == v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE {
+			resp.Config = &v1alpha.ConfigObject{
+				Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
+				Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+				Config: &v1alpha.ConfigObject_ConfigHa{ConfigHa: &v1alpha.HaConfig{}},
+			}
+		} else {
+			haCfg, err := getPerDpuHaConfig(fullCfg, peer.uid, dpu.peerGroupSize)
+			if err != nil {
+				logger.GetLogger().Error("ha config callback function failed", logfields.Error, err)
+				continue
+			}
 
-		// Push the response to the peer
-		resp.Config = &v1alpha.ConfigObject{
-			Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
-			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
-			Config: &v1alpha.ConfigObject_ConfigHa{ConfigHa: haCfg},
+			// Push the response to the peer
+			resp.Config = &v1alpha.ConfigObject{
+				Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
+				Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+				Config: &v1alpha.ConfigObject_ConfigHa{ConfigHa: haCfg},
+			}
 		}
-		err = peer.SendConfig(&resp)
+		err := peer.SendConfig(&resp)
 		if err != nil {
-			logger.GetLogger().Error("failed to send config object to peer", logfields.Error, err, "peer", peer.uid, "config", resp.Config.Config)
+			logger.GetLogger().Error("failed to send config object to peer", logfields.Error, err, "peer", peer.uid, "config", resp.Config)
 		}
 	}
 

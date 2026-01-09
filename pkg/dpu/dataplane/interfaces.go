@@ -34,6 +34,15 @@ const (
 	MOCK_DP        DataplaneType = "mock"
 )
 
+// Config operation types
+type ConfigOperation string
+
+const (
+	ConfigOperationAdd    ConfigOperation = "ADD"
+	ConfigOperationUpdate ConfigOperation = "UPDATE"
+	ConfigOperationDelete ConfigOperation = "DELETE"
+)
+
 // Dataplane command values
 const (
 	Dataplane_Role int = iota

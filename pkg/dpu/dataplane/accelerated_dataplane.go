@@ -402,6 +402,17 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 		return errors.New("nil config object in dataplane config callback")
 	}
 
+	// Determine the operation type
+	var operation ConfigOperation
+	switch {
+	case oldCfg == nil && newCfg != nil:
+		operation = ConfigOperationAdd
+	case oldCfg != nil && newCfg == nil:
+		operation = ConfigOperationDelete
+	default:
+		operation = ConfigOperationUpdate
+	}
+
 	switch cfg.Type {
 	case v1alpha.ConfigType_CONFIG_TYPE_DPU:
 		// Parsing out the dpu configuration
@@ -474,7 +485,7 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 		}
 
 		// Checking for deletion
-		if newCfg == nil {
+		if operation == ConfigOperationDelete {
 			logConfigs = make(map[string]*v1alpha.LogConfig)
 		}
 
@@ -486,6 +497,11 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 	case v1alpha.ConfigType_CONFIG_TYPE_HA:
 		// Parsing out the ha configuration
 		haConfig := cfg.GetConfigHa()
+
+		// Send empty HA config if it was deleted
+		if operation == ConfigOperationDelete {
+			haConfig = &v1alpha.HaConfig{}
+		}
 
 		// Sending ha config update message to dataplane
 		err := dp.Accelerated.SendHaConfig(haConfig)

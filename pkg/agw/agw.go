@@ -1022,39 +1022,14 @@ func (agw *AgentGateway) ShowSyslog(_ context.Context) (string, error) {
 	return string(jsonData), nil
 }
 
-func validateDpuConfig(dpuConfig *DpuConfigData) error {
-	if dpuConfig == nil {
-		return errors.New("dpu config is nil")
-	}
-
-	ip := net.ParseIP(dpuConfig.ServiceIP)
-	if ip == nil || ip.To4() == nil {
-		logger.GetLogger().Debug("Invalid ipv4 format service_ip", "ip", dpuConfig.ServiceIP)
-		return errors.New("invalid ipv4 format for service_ip")
-	}
-	if dpuConfig.ServiceMAC == "" {
-		logger.GetLogger().Debug("Invalid mac address format service_mac", "mac", dpuConfig.ServiceMAC)
-		return errors.New("invalid mac address format for service_mac")
-	}
-
-	return nil
-}
-
 func (agw *AgentGateway) LoadConfigDpu(_ context.Context, dpu string) error {
 	logger.GetLogger().Debug("Load dpu", "dpu", dpu)
 
 	// Unmarshal the JSON string into DpuConfig
-	var dpuConfig DpuConfigData
+	var dpuConfig v1alpha.DpuConfig
 	err := json.Unmarshal([]byte(dpu), &dpuConfig)
 	if err != nil {
 		logger.GetLogger().Error("Failed to unmarshal dpu JSON", "error", err)
-		return err
-	}
-
-	// Validate dpu config
-	err = validateDpuConfig(&dpuConfig)
-	if err != nil {
-		logger.GetLogger().Error("Failed to validate dpu config", "error", err)
 		return err
 	}
 
@@ -1063,12 +1038,7 @@ func (agw *AgentGateway) LoadConfigDpu(_ context.Context, dpu string) error {
 		Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
 		Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
 		Config: &v1alpha.ConfigObject_ConfigDpu{
-			ConfigDpu: &v1alpha.DpuConfig{
-				ServiceIp:  dpuConfig.ServiceIP,
-				ServiceMac: dpuConfig.ServiceMAC,
-				PortLow:    dpuConfig.PortLow,
-				PortHigh:   dpuConfig.PortHigh,
-			},
+			ConfigDpu: &dpuConfig,
 		},
 	}
 
@@ -1188,6 +1158,46 @@ func (agw *AgentGateway) ConfigRemoveHa(_ context.Context, _ ipc.MessageData) st
 	}
 
 	return "HA config removed successfully"
+}
+
+func (agw *AgentGateway) ConfigAddDpu(_ context.Context, msgData ipc.MessageData) string {
+	filePath := msgData.Flags["file"]
+	logger.GetLogger().Debug("Add DPU config", "file", filePath)
+
+	cfg, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Sprintf("Failed to read DPU config file: %v", err)
+	}
+
+	var dpuConfig v1alpha.DpuConfig
+	err = json.Unmarshal(cfg, &dpuConfig)
+	if err != nil {
+		return fmt.Sprintf("Failed to unmarshal DPU config: %v", err)
+	}
+
+	configObj := &v1alpha.ConfigObject{
+		Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+		Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+		Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: &dpuConfig},
+	}
+
+	err = library.GetRepository().AddConfig(configObj)
+	if err != nil {
+		return fmt.Sprintf("Failed to add DPU config: %v", err)
+	}
+
+	return "DPU config added successfully"
+}
+
+func (agw *AgentGateway) ConfigRemoveDpu(_ context.Context) string {
+	logger.GetLogger().Debug("Remove DPU config")
+
+	err := library.GetRepository().DeleteConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU)
+	if err != nil {
+		return fmt.Sprintf("Failed to remove DPU config: %v", err)
+	}
+
+	return "DPU config removed successfully"
 }
 
 // validateLogConfig validates and applies default values to a LogConfigData

@@ -46,10 +46,3 @@ type LogConfigDataSecrets struct {
 	Key         string `json:"key"`
 	KeyPassword string `json:"keyPassword"` // Not necessary??
 }
-
-type DpuConfigData struct {
-	ServiceIP  string `json:"service_ip"`
-	ServiceMAC string `json:"service_mac"`
-	PortLow    uint32 `json:"port_low"`
-	PortHigh   uint32 `json:"port_high"`
-}
