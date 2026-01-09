@@ -120,7 +120,7 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 		return nil
 	}
 
-	logger.GetLogger().Info("HTTP transport preparing to send batch",
+	logger.GetLogger().Debug("HTTP transport preparing to send batch",
 		"count", len(msgs),
 		"endpoint", h.config.EndpointURL,
 	)
@@ -168,7 +168,7 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 	}
 
 	// Log the full payload for debugging
-	logger.GetLogger().Info("HTTP transport payload",
+	logger.GetLogger().Debug("HTTP transport payload",
 		"count", len(msgs),
 		"endpoint", h.config.EndpointURL,
 		"payload", string(reqBody),
@@ -219,7 +219,7 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 	}
 
 	// Log successful HTTP response
-	logger.GetLogger().Info("HTTP transport push successful",
+	logger.GetLogger().Debug("HTTP transport push successful",
 		"status_code", resp.StatusCode,
 		"status", resp.Status,
 		"count", len(msgs),

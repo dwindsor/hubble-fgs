@@ -90,7 +90,7 @@ func (h *systemConnectionHandler) Start(ctx context.Context) error {
 
 	h.running = true
 	go h.monitoringLoop(ctx)
-	logger.GetLogger().Info("timescape: system connection status handler started")
+	logger.GetLogger().Debug("timescape: system connection status handler started")
 	return nil
 }
 
@@ -105,7 +105,7 @@ func (h *systemConnectionHandler) Stop(_ context.Context) {
 
 	h.running = false
 	close(h.stopCh)
-	logger.GetLogger().Info("timescape: system connection status handler stopped")
+	logger.GetLogger().Debug("timescape: system connection status handler stopped")
 }
 
 // monitoringLoop runs the periodic system connection status check and update
@@ -132,7 +132,7 @@ func (h *systemConnectionHandler) monitoringLoop(ctx context.Context) {
 
 // checkAndSendSystemConnectionStatus checks the NXOS system connection status and sends to timescape if appropriate
 func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context.Context) {
-	logger.GetLogger().Info("timescape: sending system connection status update to timescape")
+	logger.GetLogger().Debug("timescape: sending system connection status update to timescape")
 
 	if h.client == nil {
 		logger.GetLogger().Debug("timescape: client not initialized, skipping status update")
@@ -179,7 +179,7 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 		return
 	}
 
-	logger.GetLogger().Info("timescape: successfully sent system connection status to timescape",
+	logger.GetLogger().Debug("timescape: successfully sent system connection status to timescape",
 		"status", currentStatus.String())
 }
 

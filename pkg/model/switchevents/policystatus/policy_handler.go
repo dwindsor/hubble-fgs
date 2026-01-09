@@ -77,7 +77,7 @@ func (h *policyStatusHandler) Start(ctx context.Context) error {
 
 	h.running = true
 	// TODO: Implement policy status monitoring
-	logger.GetLogger().Info("timescape: policy status handler started")
+	logger.GetLogger().Debug("timescape: policy status handler started")
 	h.ReportPolicyStatus(ctx)
 	return nil
 }
@@ -93,7 +93,7 @@ func (h *policyStatusHandler) Stop(_ context.Context) {
 
 	h.running = false
 	close(h.stopCh)
-	logger.GetLogger().Info("timescape: policy status handler stopped")
+	logger.GetLogger().Debug("timescape: policy status handler stopped")
 }
 
 // ReportPolicyStatus manually triggers a policy status report
@@ -126,13 +126,13 @@ func (h *policyStatusHandler) writePolicyStatusUpdate(ctx context.Context, event
 		return fmt.Errorf("failed to send policy status update")
 	}
 
-	logger.GetLogger().Info("timescape: policy status update sent to timescape")
+	logger.GetLogger().Debug("timescape: policy status update sent to timescape")
 	return nil
 }
 
 // testPolicyStatusUpdate validates the timescape endpoint with policy status events
 func (h *policyStatusHandler) testPolicyStatusUpdate(ctx context.Context) error {
-	logger.GetLogger().Info("timescape: sending policy status update to timescape")
+	logger.GetLogger().Debug("timescape: sending policy status update to timescape")
 
 	// Create a test policy status event
 	now := time.Now()

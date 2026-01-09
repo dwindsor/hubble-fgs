@@ -77,8 +77,5 @@ func redactedConfig() cliConfig {
 	if Config.TimescapePassword != "" {
 		redacted.TimescapePassword = "[redacted]"
 	}
-	if Config.TimescapeEndpoint != "" {
-		redacted.TimescapeEndpoint = "[redacted]"
-	}
 	return redacted
 }
