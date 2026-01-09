@@ -80,11 +80,10 @@ func unloadLayer3Sensor() error {
 	config := networkapi.Layer3ConfigValue{}
 	layer3cfg.SetConfig(&config, false, false, false)
 
-	if !enterpriseOption.Config.Layer3CLIEnable {
-		cgrp_ingress_configured = false
-		cgrp_egress_configured = false
-		configured = false
-	}
+	cgrp_ingress_configured = false
+	cgrp_egress_configured = false
+	configured = false
+
 	if tcpEnabled {
 		err := tcp.UnloadSensor(&config)
 		if err != nil {
@@ -789,6 +788,9 @@ func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 		Name:  api.BaseLayer3Policy,
 		Progs: progs,
 		Maps:  maps,
+	}
+	initialLayer3Sensor.PreUnloadHook = func() error {
+		return unloadLayer3Sensor()
 	}
 	if err := mgr.AddSensor(ctx, initialLayer3Sensor.Name, initialLayer3Sensor); err != nil {
 		return err
