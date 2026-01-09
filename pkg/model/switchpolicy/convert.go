@@ -145,6 +145,32 @@ func reportRequestToDPU(req *v1alpha.ReportStatusRequest) *DPUReportStatus {
 	}
 }
 
+// calculateDpuPortRange calculates the port range for a specific DPU based on the full port range
+// and the DPU's position in the cluster. Returns portLow, portHigh, dpuNum, and any error.
+func calculateDpuPortRange(portLow, portHigh uint32, id string, dpuCount uint16) (uint32, uint32, int, error) {
+	portCount := int(portHigh-portLow+1) / int(dpuCount)
+	if portCount < 1 {
+		return 0, 0, 0, fmt.Errorf("dpu config creation failed, unable to assign each dpu a port")
+	}
+	dpuNum, ok := DPUMap[id]
+	if !ok {
+		if dpuCount == 1 {
+			// Dev DSC testbed case
+			dpuNum = 1
+		} else {
+			return 0, 0, 0, fmt.Errorf("dpu config creation failed, unable to map id to dpu")
+		}
+	}
+
+	index := dpuNum - 1
+	if index >= int(dpuCount) {
+		return 0, 0, 0, fmt.Errorf("incompatible port range for dpu %s with a total dpu count of %d", id, dpuCount)
+	}
+	dpuPortLow := portLow + uint32(portCount*index)
+	dpuPortHigh := portLow + uint32(portCount*(index+1)) - 1
+	return dpuPortLow, dpuPortHigh, dpuNum, nil
+}
+
 // Passes the full DpuConfig from the agw and returns the port mapped DPU specific
 // DpuConfig object.
 func getPerDpuConfig(fullCfg *v1alpha.DpuConfig, id string, dpuCount uint16) (*v1alpha.DpuConfig, error) {
@@ -156,26 +182,35 @@ func getPerDpuConfig(fullCfg *v1alpha.DpuConfig, id string, dpuCount uint16) (*v
 		SerialNumber: fullCfg.SerialNumber,
 		SwitchName:   fullCfg.SwitchName,
 	}
-	portCount := int(fullCfg.PortHigh-fullCfg.PortLow+1) / int(dpuCount)
-	if portCount < 1 {
-		return nil, fmt.Errorf("dpu config creation failed, unable to assign each dpu a port")
+	portLow, portHigh, dpuNum, err := calculateDpuPortRange(fullCfg.PortLow, fullCfg.PortHigh, id, dpuCount)
+	if err != nil {
+		return nil, err
 	}
-	dpuNum, ok := DPUMap[id]
-	if !ok {
-		if dpuCount == 1 {
-			// Dev DSC testbed case
-			dpuNum = 1
-		} else {
-			return nil, fmt.Errorf("dpu config creation failed, unable to map id to dpu")
-		}
-	}
-
-	index := dpuNum - 1
-	if index >= int(dpuCount) {
-		return nil, fmt.Errorf("incompatible port range for dpu %s with a total dpu count of %d", id, dpuCount)
-	}
-	dpuCfg.PortLow = fullCfg.PortLow + uint32(portCount*index)
-	dpuCfg.PortHigh = fullCfg.PortLow + uint32(portCount*(index+1)) - 1
+	dpuCfg.PortLow = portLow
+	dpuCfg.PortHigh = portHigh
 	dpuCfg.DpuId = uint32(dpuNum)
 	return &dpuCfg, nil
+}
+
+// Passes the full HaConfig from the agw and returns the port mapped DPU specific
+// HaConfig object with peer port ranges calculated for this DPU.
+func getPerDpuHaConfig(fullCfg *v1alpha.HaConfig, id string, dpuCount uint16) (*v1alpha.HaConfig, error) {
+	haCfg := v1alpha.HaConfig{
+		Enabled:  fullCfg.Enabled,
+		FlowSync: fullCfg.FlowSync,
+	}
+
+	for _, peer := range fullCfg.Peers {
+		portLow, portHigh, _, err := calculateDpuPortRange(peer.MinPort, peer.MaxPort, id, dpuCount)
+		if err != nil {
+			return nil, err
+		}
+		haCfg.Peers = append(haCfg.Peers, &v1alpha.HaPeer{
+			Ip:      peer.Ip,
+			MinPort: portLow,
+			MaxPort: portHigh,
+		})
+	}
+
+	return &haCfg, nil
 }

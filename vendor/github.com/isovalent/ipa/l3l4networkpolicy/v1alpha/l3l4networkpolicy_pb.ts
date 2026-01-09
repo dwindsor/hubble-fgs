@@ -20,7 +20,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto.
  */
 export const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy: GenFile = /*@__PURE__*/
-  fileDesc("CjFsM2w0bmV0d29ya3BvbGljeS92MWFscGhhL2wzbDRuZXR3b3JrcG9saWN5LnByb3RvEhlsM2w0bmV0d29ya3BvbGljeS52MWFscGhhIm4KC1BvbGljeVBvcnRzEjsKCHByb3RvY29sGAEgASgOMikubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lQcm90b2NvbBIQCghtaW5fcG9ydBgCIAEoDRIQCghtYXhfcG9ydBgDIAEoDSKEAQoSTDNMNE5ldHdvcmtTdWJqZWN0EgwKBGNpZHIYASABKAkSNQoFcG9ydHMYAiADKAsyJi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlBvbGljeVBvcnRzEgwKBHZsYW4YAyABKA0SCwoDdnJmGAQgASgJEg4KBnZyZl9pZBgFIAEoDSJPCg1Qb2xpY3lTdWJqZWN0Ej4KB25ldHdvcmsYASABKAsyLS5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkwzTDROZXR3b3JrU3ViamVjdCKVAgoKUG9saWN5UnVsZRIcChRrOHNfcmVzb3VyY2VfdmVyc2lvbhgBIAEoCRIPCgdrOHNfdWlkGAIgASgJEhMKC3BvbGljeV9uYW1lGAMgASgJEhEKCXJ1bGVfbmFtZRgEIAEoCRI3CgZhY3Rpb24YBSABKA4yJy5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlBvbGljeUFjdGlvbhI4CgZzb3VyY2UYBiABKAsyKC5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlBvbGljeVN1YmplY3QSPQoLZGVzdGluYXRpb24YByABKAsyKC5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlBvbGljeVN1YmplY3QiMwoeU3RyZWFtbDNsNE5ldHdvcmtQb2xpY3lSZXF1ZXN0EhEKCWFnZW50X3VpZBgBIAEoCSKSAQofU3RyZWFtbDNsNE5ldHdvcmtQb2xpY3lSZXNwb25zZRI4CgRvcGVyGAEgASgOMioubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lPcGVyYXRpb24SNQoGcG9saWN5GAIgASgLMiUubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lSdWxlIk4KE1JlcG9ydFN0YXR1c1JlcXVlc3QSNwoGc3RhdHVzGAEgASgLMicubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5SZXBvcnRTdGF0dXMiFgoUUmVwb3J0U3RhdHVzUmVzcG9uc2UijwQKDFJlcG9ydFN0YXR1cxIRCglhZ2VudF91aWQYASABKAkSEgoKZHBfdmVyc2lvbhgCIAEoCRIVCg1hZ2VudF92ZXJzaW9uGAMgASgJEhcKD3BvbGljeV9jaGVja3N1bRgEIAEoCRIQCghob3N0bmFtZRgFIAEoCRIUCgxhcmNoaXRlY3R1cmUYBiABKAkSCgoCb3MYByABKAkSMgoEdHlwZRgIIAEoDjIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuQWdlbnRUeXBlEhUKDXNlcmlhbF9udW1iZXIYCSABKAkSDwoHbWdtdF9pcBgKIAEoCRIQCghwb3J0X2xvdxgLIAEoDRIRCglwb3J0X2hpZ2gYDCABKA0SFgoOaGFyZHdhcmVfbW9kZWwYDSABKAkSFAoMZHB1X3Jlc3RhcnRzGA4gASgNEjQKEGxhc3RfZHB1X3Jlc3RhcnQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmRhdGFwbGFuZV9yZXN0YXJ0cxgQIAEoDRI6ChZsYXN0X2RhdGFwbGFuZV9yZXN0YXJ0GBEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI3ChNsYXN0X2Z3YV9jcmFzaF90aW1lGBMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKkAQoJRHB1Q29uZmlnEhIKCnNlcnZpY2VfaXAYASABKAkSEwoLc2VydmljZV9tYWMYAiABKAkSEAoIcG9ydF9sb3cYAyABKA0SEQoJcG9ydF9oaWdoGAQgASgNEg4KBmRwdV9pZBgFIAEoDRINCgVoYV9pcBgGIAEoCRIVCg1zZXJpYWxfbnVtYmVyGAcgASgJEhMKC3N3aXRjaF9uYW1lGAggASgJIuEBCglMb2dDb25maWcSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIMCgRob3N0GAQgASgJEgwKBHBvcnQYBSABKAkSDAoEbW9kZRgGIAEoCRILCgN0bHMYByABKAgSDQoFdG9rZW4YCCABKAkSEAoIdXNlcm5hbWUYCSABKAkSEAoIcGFzc3dvcmQYCiABKAkSCgoCY2EYCyABKAkSDAoEY2VydBgMIAEoCRILCgNrZXkYDSABKAkSFAoMa2V5X3Bhc3N3b3JkGA4gASgJIrEBCg9Mb2dDb25maWdTeXNsb2cSSAoHY29uZmlncxgBIAMoCzI3LmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnU3lzbG9nLkNvbmZpZ3NFbnRyeRpUCgxDb25maWdzRW50cnkSCwoDa2V5GAEgASgJEjMKBXZhbHVlGAIgASgLMiQubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWc6AjgBIq8BCg5Mb2dDb25maWdJcGZpeBJHCgdjb25maWdzGAEgAygLMjYubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWdJcGZpeC5Db25maWdzRW50cnkaVAoMQ29uZmlnc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnOgI4ASK3AQoSTG9nQ29uZmlnVGltZXNjYXBlEksKB2NvbmZpZ3MYASADKAsyOi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ1RpbWVzY2FwZS5Db25maWdzRW50cnkaVAoMQ29uZmlnc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnOgI4ASKxAQoPTG9nQ29uZmlnU3BsdW5rEkgKB2NvbmZpZ3MYASADKAsyNy5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ1NwbHVuay5Db25maWdzRW50cnkaVAoMQ29uZmlnc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnOgI4ASLqAwoMQ29uZmlnT2JqZWN0EjMKBHR5cGUYASABKA4yJS5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkNvbmZpZ1R5cGUSNwoGc291cmNlGAIgASgOMicubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Db25maWdTb3VyY2USOgoKY29uZmlnX2RwdRgUIAEoCzIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuRHB1Q29uZmlnSAASRwoRY29uZmlnX2xvZ19zeXNsb2cYFSABKAsyKi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ1N5c2xvZ0gAEkUKEGNvbmZpZ19sb2dfaXBmaXgYFiABKAsyKS5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ0lwZml4SAASTQoUY29uZmlnX2xvZ190aW1lc2NhcGUYFyABKAsyLS5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ1RpbWVzY2FwZUgAEkcKEWNvbmZpZ19sb2dfc3BsdW5rGBggASgLMioubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWdTcGx1bmtIAEIICgZjb25maWciMAobU3RyZWFtRGF0YXBhdGhDb25maWdSZXF1ZXN0EhEKCWFnZW50X3VpZBgBIAEoCSKRAQocU3RyZWFtRGF0YXBhdGhDb25maWdSZXNwb25zZRI4CgRvcGVyGAEgASgOMioubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Db25maWdPcGVyYXRpb24SNwoGY29uZmlnGAIgASgLMicubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Db25maWdPYmplY3QizgEKD1BvbGljeVJ1bGVFdmVudBIRCglydWxlX25hbWUYASABKAkSEwoLcG9saWN5X25hbWUYAiABKAkSDwoHazhzX3VpZBgDIAEoCRIcChRrOHNfcmVzb3VyY2VfdmVyc2lvbhgEIAEoCRISCgppc19zdWNjZXNzGAUgASgIEjkKBWVycm9yGAYgASgOMioubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lSdWxlRXJyb3ISFQoNZXJyb3JfbWVzc2FnZRgHIAEoCSKUAQoLU3RyZWFtRXZlbnQSEQoJYWdlbnRfdWlkGAEgASgJEi0KCXRpbWVzdGFtcBgCIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASOgoEcnVsZRgDIAEoCzIqLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUG9saWN5UnVsZUV2ZW50SABCBwoFZXZlbnQiTQoTU3RyZWFtRXZlbnRzUmVxdWVzdBI2CgZldmVudHMYASADKAsyJi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlN0cmVhbUV2ZW50IhYKFFN0cmVhbUV2ZW50c1Jlc3BvbnNlKn0KDlBvbGljeVByb3RvY29sEh8KG1BPTElDWV9QUk9UT0NPTF9VTlNQRUNJRklFRBAAEhcKE1BPTElDWV9QUk9UT0NPTF9UQ1AQARIXChNQT0xJQ1lfUFJPVE9DT0xfVURQEAISGAoUUE9MSUNZX1BST1RPQ09MX0lDTVAQAypeCgxQb2xpY3lBY3Rpb24SHQoZUE9MSUNZX0FDVElPTl9VTlNQRUNJRklFRBAAEhcKE1BPTElDWV9BQ1RJT05fQUxMT1cQARIWChJQT0xJQ1lfQUNUSU9OX0RFTlkQAiptCg9Qb2xpY3lPcGVyYXRpb24SIAocUE9MSUNZX09QRVJBVElPTl9VTlNQRUNJRklFRBAAEhsKF1BPTElDWV9PUEVSQVRJT05fVVBTRVJUEAESGwoXUE9MSUNZX09QRVJBVElPTl9ERUxFVEUQAipYCglBZ2VudFR5cGUSGgoWQUdFTlRfVFlQRV9VTlNQRUNJRklFRBAAEhYKEkFHRU5UX1RZUEVfRFBVX0FHVxABEhcKE0FHRU5UX1RZUEVfVEVUUkFHT04QAiqwAQoKQ29uZmlnVHlwZRIbChdDT05GSUdfVFlQRV9VTlNQRUNJRklFRBAAEhMKD0NPTkZJR19UWVBFX0RQVRABEhoKFkNPTkZJR19UWVBFX0xPR19TWVNMT0cQAhIZChVDT05GSUdfVFlQRV9MT0dfSVBGSVgQAxIdChlDT05GSUdfVFlQRV9MT0dfVElNRVNDQVBFEAQSGgoWQ09ORklHX1RZUEVfTE9HX1NQTFVOSxAFKmMKDENvbmZpZ1NvdXJjZRIdChlDT05GSUdfU09VUkNFX1VOU1BFQ0lGSUVEEAASFwoTQ09ORklHX1NPVVJDRV9MT0NBTBABEhsKF0NPTkZJR19TT1VSQ0VfQ09ORklHTUFQEAIqbQoPQ29uZmlnT3BlcmF0aW9uEiAKHENPTkZJR19PUEVSQVRJT05fVU5TUEVDSUZJRUQQABIbChdDT05GSUdfT1BFUkFUSU9OX1VQU0VSVBABEhsKF0NPTkZJR19PUEVSQVRJT05fREVMRVRFEAIqrwEKD1BvbGljeVJ1bGVFcnJvchIhCh1QT0xJQ1lfUlVMRV9FUlJPUl9VTlNQRUNJRklFRBAAEh0KGVBPTElDWV9SVUxFX0VSUk9SX1RJTUVPVVQQARIZChVQT0xJQ1lfUlVMRV9FUlJPUl9PT00QAhIhCh1QT0xJQ1lfUlVMRV9FUlJPUl9VTlNVUFBPUlRFRBADEhwKGFBPTElDWV9SVUxFX0VSUk9SX0ZPUk1BVBAEMqcEChhMM0w0TmV0d29ya1BvbGljeVNlcnZpY2USlAEKF1N0cmVhbWwzbDROZXR3b3JrUG9saWN5EjkubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5TdHJlYW1sM2w0TmV0d29ya1BvbGljeVJlcXVlc3QaOi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlN0cmVhbWwzbDROZXR3b3JrUG9saWN5UmVzcG9uc2UiADABEnEKDFJlcG9ydFN0YXR1cxIuLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUmVwb3J0U3RhdHVzUmVxdWVzdBovLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUmVwb3J0U3RhdHVzUmVzcG9uc2UiABKLAQoUU3RyZWFtRGF0YXBhdGhDb25maWcSNi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlN0cmVhbURhdGFwYXRoQ29uZmlnUmVxdWVzdBo3LmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuU3RyZWFtRGF0YXBhdGhDb25maWdSZXNwb25zZSIAMAEScwoMU3RyZWFtRXZlbnRzEi4ubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5TdHJlYW1FdmVudHNSZXF1ZXN0Gi8ubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5TdHJlYW1FdmVudHNSZXNwb25zZSIAKAFCNFoyZ2l0aHViLmNvbS9pc292YWxlbnQvaXBhL2wzbDRuZXR3b3JrcG9saWN5L3YxYWxwaGFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("CjFsM2w0bmV0d29ya3BvbGljeS92MWFscGhhL2wzbDRuZXR3b3JrcG9saWN5LnByb3RvEhlsM2w0bmV0d29ya3BvbGljeS52MWFscGhhIm4KC1BvbGljeVBvcnRzEjsKCHByb3RvY29sGAEgASgOMikubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lQcm90b2NvbBIQCghtaW5fcG9ydBgCIAEoDRIQCghtYXhfcG9ydBgDIAEoDSKEAQoSTDNMNE5ldHdvcmtTdWJqZWN0EgwKBGNpZHIYASABKAkSNQoFcG9ydHMYAiADKAsyJi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlBvbGljeVBvcnRzEgwKBHZsYW4YAyABKA0SCwoDdnJmGAQgASgJEg4KBnZyZl9pZBgFIAEoDSJPCg1Qb2xpY3lTdWJqZWN0Ej4KB25ldHdvcmsYASABKAsyLS5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkwzTDROZXR3b3JrU3ViamVjdCKVAgoKUG9saWN5UnVsZRIcChRrOHNfcmVzb3VyY2VfdmVyc2lvbhgBIAEoCRIPCgdrOHNfdWlkGAIgASgJEhMKC3BvbGljeV9uYW1lGAMgASgJEhEKCXJ1bGVfbmFtZRgEIAEoCRI3CgZhY3Rpb24YBSABKA4yJy5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlBvbGljeUFjdGlvbhI4CgZzb3VyY2UYBiABKAsyKC5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlBvbGljeVN1YmplY3QSPQoLZGVzdGluYXRpb24YByABKAsyKC5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlBvbGljeVN1YmplY3QiMwoeU3RyZWFtbDNsNE5ldHdvcmtQb2xpY3lSZXF1ZXN0EhEKCWFnZW50X3VpZBgBIAEoCSKSAQofU3RyZWFtbDNsNE5ldHdvcmtQb2xpY3lSZXNwb25zZRI4CgRvcGVyGAEgASgOMioubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lPcGVyYXRpb24SNQoGcG9saWN5GAIgASgLMiUubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Qb2xpY3lSdWxlIk4KE1JlcG9ydFN0YXR1c1JlcXVlc3QSNwoGc3RhdHVzGAEgASgLMicubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5SZXBvcnRTdGF0dXMiFgoUUmVwb3J0U3RhdHVzUmVzcG9uc2UiqwUKDFJlcG9ydFN0YXR1cxIRCglhZ2VudF91aWQYASABKAkSEgoKZHBfdmVyc2lvbhgCIAEoCRIVCg1hZ2VudF92ZXJzaW9uGAMgASgJEhcKD3BvbGljeV9jaGVja3N1bRgEIAEoCRIQCghob3N0bmFtZRgFIAEoCRIUCgxhcmNoaXRlY3R1cmUYBiABKAkSCgoCb3MYByABKAkSMgoEdHlwZRgIIAEoDjIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuQWdlbnRUeXBlEhUKDXNlcmlhbF9udW1iZXIYCSABKAkSDwoHbWdtdF9pcBgKIAEoCRIQCghwb3J0X2xvdxgLIAEoDRIRCglwb3J0X2hpZ2gYDCABKA0SFgoOaGFyZHdhcmVfbW9kZWwYDSABKAkSFAoMZHB1X3Jlc3RhcnRzGA4gASgNEjQKEGxhc3RfZHB1X3Jlc3RhcnQYDyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKEmRhdGFwbGFuZV9yZXN0YXJ0cxgQIAEoDRI6ChZsYXN0X2RhdGFwbGFuZV9yZXN0YXJ0GBEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI3ChNsYXN0X2Z3YV9jcmFzaF90aW1lGBMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBJGCghoYV9lcnJvchgUIAMoCzI0LmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUmVwb3J0U3RhdHVzLkhhRXJyb3JFbnRyeRpSCgxIYUVycm9yRW50cnkSCwoDa2V5GAEgASgJEjEKBXZhbHVlGAIgASgOMiIubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5IQUVycm9yOgI4ASKkAQoJRHB1Q29uZmlnEhIKCnNlcnZpY2VfaXAYASABKAkSEwoLc2VydmljZV9tYWMYAiABKAkSEAoIcG9ydF9sb3cYAyABKA0SEQoJcG9ydF9oaWdoGAQgASgNEg4KBmRwdV9pZBgFIAEoDRINCgVoYV9pcBgGIAEoCRIVCg1zZXJpYWxfbnVtYmVyGAcgASgJEhMKC3N3aXRjaF9uYW1lGAggASgJIuEBCglMb2dDb25maWcSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIMCgRob3N0GAQgASgJEgwKBHBvcnQYBSABKAkSDAoEbW9kZRgGIAEoCRILCgN0bHMYByABKAgSDQoFdG9rZW4YCCABKAkSEAoIdXNlcm5hbWUYCSABKAkSEAoIcGFzc3dvcmQYCiABKAkSCgoCY2EYCyABKAkSDAoEY2VydBgMIAEoCRILCgNrZXkYDSABKAkSFAoMa2V5X3Bhc3N3b3JkGA4gASgJIrEBCg9Mb2dDb25maWdTeXNsb2cSSAoHY29uZmlncxgBIAMoCzI3LmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnU3lzbG9nLkNvbmZpZ3NFbnRyeRpUCgxDb25maWdzRW50cnkSCwoDa2V5GAEgASgJEjMKBXZhbHVlGAIgASgLMiQubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWc6AjgBIq8BCg5Mb2dDb25maWdJcGZpeBJHCgdjb25maWdzGAEgAygLMjYubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWdJcGZpeC5Db25maWdzRW50cnkaVAoMQ29uZmlnc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnOgI4ASK3AQoSTG9nQ29uZmlnVGltZXNjYXBlEksKB2NvbmZpZ3MYASADKAsyOi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ1RpbWVzY2FwZS5Db25maWdzRW50cnkaVAoMQ29uZmlnc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnOgI4ASKxAQoPTG9nQ29uZmlnU3BsdW5rEkgKB2NvbmZpZ3MYASADKAsyNy5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ1NwbHVuay5Db25maWdzRW50cnkaVAoMQ29uZmlnc0VudHJ5EgsKA2tleRgBIAEoCRIzCgV2YWx1ZRgCIAEoCzIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuTG9nQ29uZmlnOgI4ASI4CgZIYVBlZXISCgoCaXAYASABKAkSEAoIbWluX3BvcnQYAiABKA0SEAoIbWF4X3BvcnQYAyABKA0iYAoISGFDb25maWcSMAoFcGVlcnMYASADKAsyIS5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkhhUGVlchIPCgdlbmFibGVkGAIgASgIEhEKCWZsb3dfc3luYxgDIAEoCCKkBAoMQ29uZmlnT2JqZWN0EjMKBHR5cGUYASABKA4yJS5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkNvbmZpZ1R5cGUSNwoGc291cmNlGAIgASgOMicubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Db25maWdTb3VyY2USOgoKY29uZmlnX2RwdRgUIAEoCzIkLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuRHB1Q29uZmlnSAASRwoRY29uZmlnX2xvZ19zeXNsb2cYFSABKAsyKi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ1N5c2xvZ0gAEkUKEGNvbmZpZ19sb2dfaXBmaXgYFiABKAsyKS5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ0lwZml4SAASTQoUY29uZmlnX2xvZ190aW1lc2NhcGUYFyABKAsyLS5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkxvZ0NvbmZpZ1RpbWVzY2FwZUgAEkcKEWNvbmZpZ19sb2dfc3BsdW5rGBggASgLMioubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5Mb2dDb25maWdTcGx1bmtIABI4Cgljb25maWdfaGEYGSABKAsyIy5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLkhhQ29uZmlnSABCCAoGY29uZmlnIjAKG1N0cmVhbURhdGFwYXRoQ29uZmlnUmVxdWVzdBIRCglhZ2VudF91aWQYASABKAkikQEKHFN0cmVhbURhdGFwYXRoQ29uZmlnUmVzcG9uc2USOAoEb3BlchgBIAEoDjIqLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuQ29uZmlnT3BlcmF0aW9uEjcKBmNvbmZpZxgCIAEoCzInLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuQ29uZmlnT2JqZWN0Is4BCg9Qb2xpY3lSdWxlRXZlbnQSEQoJcnVsZV9uYW1lGAEgASgJEhMKC3BvbGljeV9uYW1lGAIgASgJEg8KB2s4c191aWQYAyABKAkSHAoUazhzX3Jlc291cmNlX3ZlcnNpb24YBCABKAkSEgoKaXNfc3VjY2VzcxgFIAEoCBI5CgVlcnJvchgGIAEoDjIqLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuUG9saWN5UnVsZUVycm9yEhUKDWVycm9yX21lc3NhZ2UYByABKAkilAEKC1N0cmVhbUV2ZW50EhEKCWFnZW50X3VpZBgBIAEoCRItCgl0aW1lc3RhbXAYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjoKBHJ1bGUYAyABKAsyKi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlBvbGljeVJ1bGVFdmVudEgAQgcKBWV2ZW50Ik0KE1N0cmVhbUV2ZW50c1JlcXVlc3QSNgoGZXZlbnRzGAEgAygLMiYubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5TdHJlYW1FdmVudCIWChRTdHJlYW1FdmVudHNSZXNwb25zZSp9Cg5Qb2xpY3lQcm90b2NvbBIfChtQT0xJQ1lfUFJPVE9DT0xfVU5TUEVDSUZJRUQQABIYChRQT0xJQ1lfUFJPVE9DT0xfSUNNUBABEhcKE1BPTElDWV9QUk9UT0NPTF9UQ1AQBhIXChNQT0xJQ1lfUFJPVE9DT0xfVURQEBEqXgoMUG9saWN5QWN0aW9uEh0KGVBPTElDWV9BQ1RJT05fVU5TUEVDSUZJRUQQABIXChNQT0xJQ1lfQUNUSU9OX0FMTE9XEAESFgoSUE9MSUNZX0FDVElPTl9ERU5ZEAIqbQoPUG9saWN5T3BlcmF0aW9uEiAKHFBPTElDWV9PUEVSQVRJT05fVU5TUEVDSUZJRUQQABIbChdQT0xJQ1lfT1BFUkFUSU9OX1VQU0VSVBABEhsKF1BPTElDWV9PUEVSQVRJT05fREVMRVRFEAIqWAoJQWdlbnRUeXBlEhoKFkFHRU5UX1RZUEVfVU5TUEVDSUZJRUQQABIWChJBR0VOVF9UWVBFX0RQVV9BR1cQARIXChNBR0VOVF9UWVBFX1RFVFJBR09OEAIqVgoHSEFFcnJvchIYChRIQV9FUlJPUl9VTlNQRUNJRklFRBAAEhkKFUhBX0VSUk9SX1BFRVJfVElNRU9VVBABEhYKEkhBX0VSUk9SX0ZMT1dfU1lOQxACKsQBCgpDb25maWdUeXBlEhsKF0NPTkZJR19UWVBFX1VOU1BFQ0lGSUVEEAASEwoPQ09ORklHX1RZUEVfRFBVEAESGgoWQ09ORklHX1RZUEVfTE9HX1NZU0xPRxACEhkKFUNPTkZJR19UWVBFX0xPR19JUEZJWBADEh0KGUNPTkZJR19UWVBFX0xPR19USU1FU0NBUEUQBBIaChZDT05GSUdfVFlQRV9MT0dfU1BMVU5LEAUSEgoOQ09ORklHX1RZUEVfSEEQBipjCgxDb25maWdTb3VyY2USHQoZQ09ORklHX1NPVVJDRV9VTlNQRUNJRklFRBAAEhcKE0NPTkZJR19TT1VSQ0VfTE9DQUwQARIbChdDT05GSUdfU09VUkNFX0NPTkZJR01BUBACKm0KD0NvbmZpZ09wZXJhdGlvbhIgChxDT05GSUdfT1BFUkFUSU9OX1VOU1BFQ0lGSUVEEAASGwoXQ09ORklHX09QRVJBVElPTl9VUFNFUlQQARIbChdDT05GSUdfT1BFUkFUSU9OX0RFTEVURRACKq8BCg9Qb2xpY3lSdWxlRXJyb3ISIQodUE9MSUNZX1JVTEVfRVJST1JfVU5TUEVDSUZJRUQQABIdChlQT0xJQ1lfUlVMRV9FUlJPUl9USU1FT1VUEAESGQoVUE9MSUNZX1JVTEVfRVJST1JfT09NEAISIQodUE9MSUNZX1JVTEVfRVJST1JfVU5TVVBQT1JURUQQAxIcChhQT0xJQ1lfUlVMRV9FUlJPUl9GT1JNQVQQBDKnBAoYTDNMNE5ldHdvcmtQb2xpY3lTZXJ2aWNlEpQBChdTdHJlYW1sM2w0TmV0d29ya1BvbGljeRI5LmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuU3RyZWFtbDNsNE5ldHdvcmtQb2xpY3lSZXF1ZXN0GjoubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5TdHJlYW1sM2w0TmV0d29ya1BvbGljeVJlc3BvbnNlIgAwARJxCgxSZXBvcnRTdGF0dXMSLi5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlJlcG9ydFN0YXR1c1JlcXVlc3QaLy5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlJlcG9ydFN0YXR1c1Jlc3BvbnNlIgASiwEKFFN0cmVhbURhdGFwYXRoQ29uZmlnEjYubDNsNG5ldHdvcmtwb2xpY3kudjFhbHBoYS5TdHJlYW1EYXRhcGF0aENvbmZpZ1JlcXVlc3QaNy5sM2w0bmV0d29ya3BvbGljeS52MWFscGhhLlN0cmVhbURhdGFwYXRoQ29uZmlnUmVzcG9uc2UiADABEnMKDFN0cmVhbUV2ZW50cxIuLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuU3RyZWFtRXZlbnRzUmVxdWVzdBovLmwzbDRuZXR3b3JrcG9saWN5LnYxYWxwaGEuU3RyZWFtRXZlbnRzUmVzcG9uc2UiACgBQjRaMmdpdGh1Yi5jb20vaXNvdmFsZW50L2lwYS9sM2w0bmV0d29ya3BvbGljeS92MWFscGhhYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message l3l4networkpolicy.v1alpha.PolicyPorts
@@ -398,6 +398,14 @@ export type ReportStatus = Message<"l3l4networkpolicy.v1alpha.ReportStatus"> & {
    * @generated from field: google.protobuf.Timestamp last_fwa_crash_time = 19;
    */
   lastFwaCrashTime?: Timestamp;
+
+  /**
+   * HA error map, where the string key is the peer IP address
+   * If the map is empty, then the peers are healthy
+   *
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.HAError> ha_error = 20;
+   */
+  haError: { [key: string]: HAError };
 };
 
 /**
@@ -415,41 +423,57 @@ export const ReportStatusSchema: GenMessage<ReportStatus> = /*@__PURE__*/
  */
 export type DpuConfig = Message<"l3l4networkpolicy.v1alpha.DpuConfig"> & {
   /**
+   * Service IP address of the switch
+   *
    * @generated from field: string service_ip = 1;
    */
   serviceIp: string;
 
   /**
+   * Service MAC address of the switch
+   *
    * @generated from field: string service_mac = 2;
    */
   serviceMac: string;
 
   /**
+   * Low end of the port range assigned to this DPU
+   *
    * @generated from field: uint32 port_low = 3;
    */
   portLow: number;
 
   /**
+   * High end of the port range assigned to this DPU
+   *
    * @generated from field: uint32 port_high = 4;
    */
   portHigh: number;
 
   /**
+   * Unique identifier for the DPU, the same as the DPU number (DPU1, etc.)
+   *
    * @generated from field: uint32 dpu_id = 5;
    */
   dpuId: number;
 
   /**
+   * Local HA IP address of the switch
+   *
    * @generated from field: string ha_ip = 6;
    */
   haIp: string;
 
   /**
+   * Serial number of the switch
+   *
    * @generated from field: string serial_number = 7;
    */
   serialNumber: string;
 
   /**
+   * Name of the switch
+   *
    * @generated from field: string switch_name = 8;
    */
   switchName: string;
@@ -650,6 +674,75 @@ export const LogConfigSplunkSchema: GenMessage<LogConfigSplunk> = /*@__PURE__*/
   messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 14);
 
 /**
+ * @generated from message l3l4networkpolicy.v1alpha.HaPeer
+ */
+export type HaPeer = Message<"l3l4networkpolicy.v1alpha.HaPeer"> & {
+  /**
+   * IP address for the peer
+   *
+   * @generated from field: string ip = 1;
+   */
+  ip: string;
+
+  /**
+   * Minimum destination port of the peer
+   *
+   * @generated from field: uint32 min_port = 2;
+   */
+  minPort: number;
+
+  /**
+   * Maximum destination port of the peer
+   *
+   * @generated from field: uint32 max_port = 3;
+   */
+  maxPort: number;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.HaPeer.
+ * Use `create(HaPeerSchema)` to create a new message.
+ */
+export const HaPeerSchema: GenMessage<HaPeer> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 15);
+
+/**
+ * Object to store HA configuration
+ * CONFIG_TYPE_HA
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.HaConfig
+ */
+export type HaConfig = Message<"l3l4networkpolicy.v1alpha.HaConfig"> & {
+  /**
+   * List of HA peers
+   *
+   * @generated from field: repeated l3l4networkpolicy.v1alpha.HaPeer peers = 1;
+   */
+  peers: HaPeer[];
+
+  /**
+   * Enables HA, starts health checks with peers
+   *
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * Starts synchronization of flows between peers
+   *
+   * @generated from field: bool flow_sync = 3;
+   */
+  flowSync: boolean;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.HaConfig.
+ * Use `create(HaConfigSchema)` to create a new message.
+ */
+export const HaConfigSchema: GenMessage<HaConfig> = /*@__PURE__*/
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 16);
+
+/**
  * ConfigObject is a generic config object, which can be extended by adding additional configuration types
  *
  * @generated from message l3l4networkpolicy.v1alpha.ConfigObject
@@ -704,6 +797,12 @@ export type ConfigObject = Message<"l3l4networkpolicy.v1alpha.ConfigObject"> & {
      */
     value: LogConfigSplunk;
     case: "configLogSplunk";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.HaConfig config_ha = 25;
+     */
+    value: HaConfig;
+    case: "configHa";
   } | { case: undefined; value?: undefined };
 };
 
@@ -712,7 +811,7 @@ export type ConfigObject = Message<"l3l4networkpolicy.v1alpha.ConfigObject"> & {
  * Use `create(ConfigObjectSchema)` to create a new message.
  */
 export const ConfigObjectSchema: GenMessage<ConfigObject> = /*@__PURE__*/
-  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 15);
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 17);
 
 /**
  * @generated from message l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
@@ -729,7 +828,7 @@ export type StreamDatapathConfigRequest = Message<"l3l4networkpolicy.v1alpha.Str
  * Use `create(StreamDatapathConfigRequestSchema)` to create a new message.
  */
 export const StreamDatapathConfigRequestSchema: GenMessage<StreamDatapathConfigRequest> = /*@__PURE__*/
-  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 16);
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 18);
 
 /**
  * @generated from message l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
@@ -751,7 +850,7 @@ export type StreamDatapathConfigResponse = Message<"l3l4networkpolicy.v1alpha.St
  * Use `create(StreamDatapathConfigResponseSchema)` to create a new message.
  */
 export const StreamDatapathConfigResponseSchema: GenMessage<StreamDatapathConfigResponse> = /*@__PURE__*/
-  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 17);
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 19);
 
 /**
  * PolicyRuleEvent represents an event related to a specific policy rule.
@@ -815,7 +914,7 @@ export type PolicyRuleEvent = Message<"l3l4networkpolicy.v1alpha.PolicyRuleEvent
  * Use `create(PolicyRuleEventSchema)` to create a new message.
  */
 export const PolicyRuleEventSchema: GenMessage<PolicyRuleEvent> = /*@__PURE__*/
-  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 18);
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 20);
 
 /**
  * StreamEvent wraps different event types that can be streamed from the datapath.
@@ -858,7 +957,7 @@ export type StreamEvent = Message<"l3l4networkpolicy.v1alpha.StreamEvent"> & {
  * Use `create(StreamEventSchema)` to create a new message.
  */
 export const StreamEventSchema: GenMessage<StreamEvent> = /*@__PURE__*/
-  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 19);
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 21);
 
 /**
  * StreamEventsRequest is a client-to-server streaming message containing events to report.
@@ -879,7 +978,7 @@ export type StreamEventsRequest = Message<"l3l4networkpolicy.v1alpha.StreamEvent
  * Use `create(StreamEventsRequestSchema)` to create a new message.
  */
 export const StreamEventsRequestSchema: GenMessage<StreamEventsRequest> = /*@__PURE__*/
-  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 20);
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 22);
 
 /**
  * @generated from message l3l4networkpolicy.v1alpha.StreamEventsResponse
@@ -892,31 +991,41 @@ export type StreamEventsResponse = Message<"l3l4networkpolicy.v1alpha.StreamEven
  * Use `create(StreamEventsResponseSchema)` to create a new message.
  */
 export const StreamEventsResponseSchema: GenMessage<StreamEventsResponse> = /*@__PURE__*/
-  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 21);
+  messageDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 23);
 
 /**
+ * Protocol number constants
+ *
  * @generated from enum l3l4networkpolicy.v1alpha.PolicyProtocol
  */
 export enum PolicyProtocol {
   /**
+   * Unspecified or any protocol
+   *
    * @generated from enum value: POLICY_PROTOCOL_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: POLICY_PROTOCOL_TCP = 1;
+   * ICMP protocol number
+   *
+   * @generated from enum value: POLICY_PROTOCOL_ICMP = 1;
    */
-  TCP = 1,
+  ICMP = 1,
 
   /**
-   * @generated from enum value: POLICY_PROTOCOL_UDP = 2;
+   * TCP protocol number
+   *
+   * @generated from enum value: POLICY_PROTOCOL_TCP = 6;
    */
-  UDP = 2,
+  TCP = 6,
 
   /**
-   * @generated from enum value: POLICY_PROTOCOL_ICMP = 3;
+   * UDP protocol number
+   *
+   * @generated from enum value: POLICY_PROTOCOL_UDP = 17;
    */
-  ICMP = 3,
+  UDP = 17,
 }
 
 /**
@@ -1027,6 +1136,38 @@ export const AgentTypeSchema: GenEnum<AgentType> = /*@__PURE__*/
   enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 3);
 
 /**
+ * @generated from enum l3l4networkpolicy.v1alpha.HAError
+ */
+export enum HAError {
+  /**
+   * Generic catch all HA error
+   *
+   * @generated from enum value: HA_ERROR_UNSPECIFIED = 0;
+   */
+  HA_ERROR_UNSPECIFIED = 0,
+
+  /**
+   * HA peer connectivity error, used when peer keepalive fails
+   *
+   * @generated from enum value: HA_ERROR_PEER_TIMEOUT = 1;
+   */
+  HA_ERROR_PEER_TIMEOUT = 1,
+
+  /**
+   * HA flow sync error, used when flow synchronization fails
+   *
+   * @generated from enum value: HA_ERROR_FLOW_SYNC = 2;
+   */
+  HA_ERROR_FLOW_SYNC = 2,
+}
+
+/**
+ * Describes the enum l3l4networkpolicy.v1alpha.HAError.
+ */
+export const HAErrorSchema: GenEnum<HAError> = /*@__PURE__*/
+  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 4);
+
+/**
  * @generated from enum l3l4networkpolicy.v1alpha.ConfigType
  */
 export enum ConfigType {
@@ -1071,13 +1212,20 @@ export enum ConfigType {
    * @generated from enum value: CONFIG_TYPE_LOG_SPLUNK = 5;
    */
   LOG_SPLUNK = 5,
+
+  /**
+   * HA configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_HA = 6;
+   */
+  HA = 6,
 }
 
 /**
  * Describes the enum l3l4networkpolicy.v1alpha.ConfigType.
  */
 export const ConfigTypeSchema: GenEnum<ConfigType> = /*@__PURE__*/
-  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 4);
+  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 5);
 
 /**
  * @generated from enum l3l4networkpolicy.v1alpha.ConfigSource
@@ -1109,7 +1257,7 @@ export enum ConfigSource {
  * Describes the enum l3l4networkpolicy.v1alpha.ConfigSource.
  */
 export const ConfigSourceSchema: GenEnum<ConfigSource> = /*@__PURE__*/
-  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 5);
+  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 6);
 
 /**
  * Config operation is the instruction telling the backend what to do with a
@@ -1144,7 +1292,7 @@ export enum ConfigOperation {
  * Describes the enum l3l4networkpolicy.v1alpha.ConfigOperation.
  */
 export const ConfigOperationSchema: GenEnum<ConfigOperation> = /*@__PURE__*/
-  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 6);
+  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 7);
 
 /**
  * PolicyRuleError enumerates error types that can occur during policy rule processing.
@@ -1192,7 +1340,7 @@ export enum PolicyRuleError {
  * Describes the enum l3l4networkpolicy.v1alpha.PolicyRuleError.
  */
 export const PolicyRuleErrorSchema: GenEnum<PolicyRuleError> = /*@__PURE__*/
-  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 7);
+  enumDesc(file_l3l4networkpolicy_v1alpha_l3l4networkpolicy, 8);
 
 /**
  * @generated from service l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService

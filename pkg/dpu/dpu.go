@@ -358,12 +358,21 @@ func (dpu *DPUAgent) Setup(ctx context.Context) error {
 		}
 		return nil
 	}
+	haConfigCallback := func(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
+		err := dpu.Dataplane.RefreshConfig(oldCfg, newCfg)
+		if err != nil {
+			logger.GetLogger().Error("ha config failed", "callback", "dataplane", logfields.Error, err)
+			return err
+		}
+		return nil
+	}
 
 	// Adding config callbacks
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_DPU, dpuConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, logConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, logConfigCallback)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, logConfigCallback)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_HA, haConfigCallback)
 
 	return nil
 }

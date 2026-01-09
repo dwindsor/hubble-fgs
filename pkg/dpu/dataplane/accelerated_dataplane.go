@@ -292,6 +292,41 @@ func (dp *AcceleratedDataplaneProcess) SendLogConfig(logConfigs map[string]*v1al
 	return nil
 }
 
+func (dp *AcceleratedDataplaneProcess) SendHaConfig(haConfig *v1alpha.HaConfig) error {
+	// Building config
+	data, err := json.Marshal(haConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal ha config: %w", err)
+	}
+
+	logger.GetLogger().Info("sending ha config to dp-app", "config", string(data))
+
+	// Sending log configuration to the accelerated dataplane
+	msg := &socket.ControlMessage{
+		Command: Dataplane_HaConfig,
+		Type:    socket.DATAPLANE,
+		Data:    data,
+	}
+	dpsocket := socket.NewDataplaneSocket(dp.ApiPath, UDS_TIMEOUT*time.Second)
+	err = dpsocket.Connect()
+	if err != nil {
+		return err
+	}
+	defer dpsocket.Close()
+	err = dpsocket.Send(msg)
+	if err != nil {
+		return err
+	}
+	rc, err := dpsocket.Receive()
+	if err != nil {
+		return err
+	}
+	if rc.ReturnCode < socket.SUCCESS {
+		return errors.New(rc.ReturnCode.String())
+	}
+	return nil
+}
+
 // -----------------------------------------------------------------------------
 // Accelerated Dataplane Implementation
 // -----------------------------------------------------------------------------
@@ -424,7 +459,6 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 		if err != nil {
 			return err
 		}
-		return nil
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG, v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
 		// Switching on config type
 		var logConfigs map[string]*v1alpha.LogConfig
@@ -449,10 +483,20 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 		if err != nil {
 			return err
 		}
-		return nil
+	case v1alpha.ConfigType_CONFIG_TYPE_HA:
+		// Parsing out the ha configuration
+		haConfig := cfg.GetConfigHa()
+
+		// Sending ha config update message to dataplane
+		err := dp.Accelerated.SendHaConfig(haConfig)
+		if err != nil {
+			return err
+		}
 	default:
 		return errors.New("invalid config type")
 	}
+
+	return nil
 }
 
 func (dp *AcceleratedDataplane) Init(ctx context.Context) error {

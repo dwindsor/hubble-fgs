@@ -6,6 +6,8 @@
 - [l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto](#l3l4networkpolicy_v1alpha_l3l4networkpolicy-proto)
     - [ConfigObject](#l3l4networkpolicy-v1alpha-ConfigObject)
     - [DpuConfig](#l3l4networkpolicy-v1alpha-DpuConfig)
+    - [HaConfig](#l3l4networkpolicy-v1alpha-HaConfig)
+    - [HaPeer](#l3l4networkpolicy-v1alpha-HaPeer)
     - [L3L4NetworkSubject](#l3l4networkpolicy-v1alpha-L3L4NetworkSubject)
     - [LogConfig](#l3l4networkpolicy-v1alpha-LogConfig)
     - [LogConfigIpfix](#l3l4networkpolicy-v1alpha-LogConfigIpfix)
@@ -21,6 +23,7 @@
     - [PolicyRuleEvent](#l3l4networkpolicy-v1alpha-PolicyRuleEvent)
     - [PolicySubject](#l3l4networkpolicy-v1alpha-PolicySubject)
     - [ReportStatus](#l3l4networkpolicy-v1alpha-ReportStatus)
+    - [ReportStatus.HaErrorEntry](#l3l4networkpolicy-v1alpha-ReportStatus-HaErrorEntry)
     - [ReportStatusRequest](#l3l4networkpolicy-v1alpha-ReportStatusRequest)
     - [ReportStatusResponse](#l3l4networkpolicy-v1alpha-ReportStatusResponse)
     - [StreamDatapathConfigRequest](#l3l4networkpolicy-v1alpha-StreamDatapathConfigRequest)
@@ -35,6 +38,7 @@
     - [ConfigOperation](#l3l4networkpolicy-v1alpha-ConfigOperation)
     - [ConfigSource](#l3l4networkpolicy-v1alpha-ConfigSource)
     - [ConfigType](#l3l4networkpolicy-v1alpha-ConfigType)
+    - [HAError](#l3l4networkpolicy-v1alpha-HAError)
     - [PolicyAction](#l3l4networkpolicy-v1alpha-PolicyAction)
     - [PolicyOperation](#l3l4networkpolicy-v1alpha-PolicyOperation)
     - [PolicyProtocol](#l3l4networkpolicy-v1alpha-PolicyProtocol)
@@ -68,6 +72,7 @@ ConfigObject is a generic config object, which can be extended by adding additio
 | config_log_ipfix | [LogConfigIpfix](#l3l4networkpolicy-v1alpha-LogConfigIpfix) |  |  |
 | config_log_timescape | [LogConfigTimescape](#l3l4networkpolicy-v1alpha-LogConfigTimescape) |  |  |
 | config_log_splunk | [LogConfigSplunk](#l3l4networkpolicy-v1alpha-LogConfigSplunk) |  |  |
+| config_ha | [HaConfig](#l3l4networkpolicy-v1alpha-HaConfig) |  |  |
 
 
 
@@ -83,14 +88,49 @@ CONFIG_TYPE_DPU
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| service_ip | [string](#string) |  |  |
-| service_mac | [string](#string) |  |  |
-| port_low | [uint32](#uint32) |  |  |
-| port_high | [uint32](#uint32) |  |  |
-| dpu_id | [uint32](#uint32) |  |  |
-| ha_ip | [string](#string) |  |  |
-| serial_number | [string](#string) |  |  |
-| switch_name | [string](#string) |  |  |
+| service_ip | [string](#string) |  | Service IP address of the switch |
+| service_mac | [string](#string) |  | Service MAC address of the switch |
+| port_low | [uint32](#uint32) |  | Low end of the port range assigned to this DPU |
+| port_high | [uint32](#uint32) |  | High end of the port range assigned to this DPU |
+| dpu_id | [uint32](#uint32) |  | Unique identifier for the DPU, the same as the DPU number (DPU1, etc.) |
+| ha_ip | [string](#string) |  | Local HA IP address of the switch |
+| serial_number | [string](#string) |  | Serial number of the switch |
+| switch_name | [string](#string) |  | Name of the switch |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-HaConfig"></a>
+
+### HaConfig
+Object to store HA configuration
+CONFIG_TYPE_HA
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peers | [HaPeer](#l3l4networkpolicy-v1alpha-HaPeer) | repeated | List of HA peers |
+| enabled | [bool](#bool) |  | Enables HA, starts health checks with peers |
+| flow_sync | [bool](#bool) |  | Starts synchronization of flows between peers |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-HaPeer"></a>
+
+### HaPeer
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ip | [string](#string) |  | IP address for the peer |
+| min_port | [uint32](#uint32) |  | Minimum destination port of the peer |
+| max_port | [uint32](#uint32) |  | Maximum destination port of the peer |
 
 
 
@@ -377,6 +417,23 @@ checksum.
 | dataplane_restarts | [uint32](#uint32) |  | DataplaneRestarts is the number of times the Dataplane process has been restarted |
 | last_dataplane_restart | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | LastDataplaneRestart is the timestamp of the last time the Dataplane process has been restarted |
 | last_fwa_crash_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | LastFwaCrashTime is the timestamp of the last time the FWA has crashed |
+| ha_error | [ReportStatus.HaErrorEntry](#l3l4networkpolicy-v1alpha-ReportStatus-HaErrorEntry) | repeated | HA error map, where the string key is the peer IP address If the map is empty, then the peers are healthy |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-ReportStatus-HaErrorEntry"></a>
+
+### ReportStatus.HaErrorEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [HAError](#l3l4networkpolicy-v1alpha-HAError) |  |  |
 
 
 
@@ -567,6 +624,20 @@ ConfigObject.
 | CONFIG_TYPE_LOG_IPFIX | 3 | Log export IPFIX configuration |
 | CONFIG_TYPE_LOG_TIMESCAPE | 4 | Log export timescape configuration |
 | CONFIG_TYPE_LOG_SPLUNK | 5 | Log export splunk configuration |
+| CONFIG_TYPE_HA | 6 | HA configuration |
+
+
+
+<a name="l3l4networkpolicy-v1alpha-HAError"></a>
+
+### HAError
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| HA_ERROR_UNSPECIFIED | 0 | Generic catch all HA error |
+| HA_ERROR_PEER_TIMEOUT | 1 | HA peer connectivity error, used when peer keepalive fails |
+| HA_ERROR_FLOW_SYNC | 2 | HA flow sync error, used when flow synchronization fails |
 
 
 
@@ -600,14 +671,14 @@ PolicyRule.
 <a name="l3l4networkpolicy-v1alpha-PolicyProtocol"></a>
 
 ### PolicyProtocol
-
+Protocol number constants
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| POLICY_PROTOCOL_UNSPECIFIED | 0 |  |
-| POLICY_PROTOCOL_TCP | 1 |  |
-| POLICY_PROTOCOL_UDP | 2 |  |
-| POLICY_PROTOCOL_ICMP | 3 |  |
+| POLICY_PROTOCOL_UNSPECIFIED | 0 | Unspecified or any protocol |
+| POLICY_PROTOCOL_ICMP | 1 | ICMP protocol number |
+| POLICY_PROTOCOL_TCP | 6 | TCP protocol number |
+| POLICY_PROTOCOL_UDP | 17 | UDP protocol number |
 
 
 

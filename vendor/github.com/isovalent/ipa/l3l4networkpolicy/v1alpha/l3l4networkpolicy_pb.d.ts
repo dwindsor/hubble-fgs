@@ -387,6 +387,14 @@ export declare type ReportStatus = Message<"l3l4networkpolicy.v1alpha.ReportStat
    * @generated from field: google.protobuf.Timestamp last_fwa_crash_time = 19;
    */
   lastFwaCrashTime?: Timestamp;
+
+  /**
+   * HA error map, where the string key is the peer IP address
+   * If the map is empty, then the peers are healthy
+   *
+   * @generated from field: map<string, l3l4networkpolicy.v1alpha.HAError> ha_error = 20;
+   */
+  haError: { [key: string]: HAError };
 };
 
 /**
@@ -403,41 +411,57 @@ export declare const ReportStatusSchema: GenMessage<ReportStatus>;
  */
 export declare type DpuConfig = Message<"l3l4networkpolicy.v1alpha.DpuConfig"> & {
   /**
+   * Service IP address of the switch
+   *
    * @generated from field: string service_ip = 1;
    */
   serviceIp: string;
 
   /**
+   * Service MAC address of the switch
+   *
    * @generated from field: string service_mac = 2;
    */
   serviceMac: string;
 
   /**
+   * Low end of the port range assigned to this DPU
+   *
    * @generated from field: uint32 port_low = 3;
    */
   portLow: number;
 
   /**
+   * High end of the port range assigned to this DPU
+   *
    * @generated from field: uint32 port_high = 4;
    */
   portHigh: number;
 
   /**
+   * Unique identifier for the DPU, the same as the DPU number (DPU1, etc.)
+   *
    * @generated from field: uint32 dpu_id = 5;
    */
   dpuId: number;
 
   /**
+   * Local HA IP address of the switch
+   *
    * @generated from field: string ha_ip = 6;
    */
   haIp: string;
 
   /**
+   * Serial number of the switch
+   *
    * @generated from field: string serial_number = 7;
    */
   serialNumber: string;
 
   /**
+   * Name of the switch
+   *
    * @generated from field: string switch_name = 8;
    */
   switchName: string;
@@ -632,6 +656,73 @@ export declare type LogConfigSplunk = Message<"l3l4networkpolicy.v1alpha.LogConf
 export declare const LogConfigSplunkSchema: GenMessage<LogConfigSplunk>;
 
 /**
+ * @generated from message l3l4networkpolicy.v1alpha.HaPeer
+ */
+export declare type HaPeer = Message<"l3l4networkpolicy.v1alpha.HaPeer"> & {
+  /**
+   * IP address for the peer
+   *
+   * @generated from field: string ip = 1;
+   */
+  ip: string;
+
+  /**
+   * Minimum destination port of the peer
+   *
+   * @generated from field: uint32 min_port = 2;
+   */
+  minPort: number;
+
+  /**
+   * Maximum destination port of the peer
+   *
+   * @generated from field: uint32 max_port = 3;
+   */
+  maxPort: number;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.HaPeer.
+ * Use `create(HaPeerSchema)` to create a new message.
+ */
+export declare const HaPeerSchema: GenMessage<HaPeer>;
+
+/**
+ * Object to store HA configuration
+ * CONFIG_TYPE_HA
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.HaConfig
+ */
+export declare type HaConfig = Message<"l3l4networkpolicy.v1alpha.HaConfig"> & {
+  /**
+   * List of HA peers
+   *
+   * @generated from field: repeated l3l4networkpolicy.v1alpha.HaPeer peers = 1;
+   */
+  peers: HaPeer[];
+
+  /**
+   * Enables HA, starts health checks with peers
+   *
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * Starts synchronization of flows between peers
+   *
+   * @generated from field: bool flow_sync = 3;
+   */
+  flowSync: boolean;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.HaConfig.
+ * Use `create(HaConfigSchema)` to create a new message.
+ */
+export declare const HaConfigSchema: GenMessage<HaConfig>;
+
+/**
  * ConfigObject is a generic config object, which can be extended by adding additional configuration types
  *
  * @generated from message l3l4networkpolicy.v1alpha.ConfigObject
@@ -686,6 +777,12 @@ export declare type ConfigObject = Message<"l3l4networkpolicy.v1alpha.ConfigObje
      */
     value: LogConfigSplunk;
     case: "configLogSplunk";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.HaConfig config_ha = 25;
+     */
+    value: HaConfig;
+    case: "configHa";
   } | { case: undefined; value?: undefined };
 };
 
@@ -870,28 +967,38 @@ export declare type StreamEventsResponse = Message<"l3l4networkpolicy.v1alpha.St
 export declare const StreamEventsResponseSchema: GenMessage<StreamEventsResponse>;
 
 /**
+ * Protocol number constants
+ *
  * @generated from enum l3l4networkpolicy.v1alpha.PolicyProtocol
  */
 export enum PolicyProtocol {
   /**
+   * Unspecified or any protocol
+   *
    * @generated from enum value: POLICY_PROTOCOL_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: POLICY_PROTOCOL_TCP = 1;
+   * ICMP protocol number
+   *
+   * @generated from enum value: POLICY_PROTOCOL_ICMP = 1;
    */
-  TCP = 1,
+  ICMP = 1,
 
   /**
-   * @generated from enum value: POLICY_PROTOCOL_UDP = 2;
+   * TCP protocol number
+   *
+   * @generated from enum value: POLICY_PROTOCOL_TCP = 6;
    */
-  UDP = 2,
+  TCP = 6,
 
   /**
-   * @generated from enum value: POLICY_PROTOCOL_ICMP = 3;
+   * UDP protocol number
+   *
+   * @generated from enum value: POLICY_PROTOCOL_UDP = 17;
    */
-  ICMP = 3,
+  UDP = 17,
 }
 
 /**
@@ -998,6 +1105,37 @@ export enum AgentType {
 export declare const AgentTypeSchema: GenEnum<AgentType>;
 
 /**
+ * @generated from enum l3l4networkpolicy.v1alpha.HAError
+ */
+export enum HAError {
+  /**
+   * Generic catch all HA error
+   *
+   * @generated from enum value: HA_ERROR_UNSPECIFIED = 0;
+   */
+  HA_ERROR_UNSPECIFIED = 0,
+
+  /**
+   * HA peer connectivity error, used when peer keepalive fails
+   *
+   * @generated from enum value: HA_ERROR_PEER_TIMEOUT = 1;
+   */
+  HA_ERROR_PEER_TIMEOUT = 1,
+
+  /**
+   * HA flow sync error, used when flow synchronization fails
+   *
+   * @generated from enum value: HA_ERROR_FLOW_SYNC = 2;
+   */
+  HA_ERROR_FLOW_SYNC = 2,
+}
+
+/**
+ * Describes the enum l3l4networkpolicy.v1alpha.HAError.
+ */
+export declare const HAErrorSchema: GenEnum<HAError>;
+
+/**
  * @generated from enum l3l4networkpolicy.v1alpha.ConfigType
  */
 export enum ConfigType {
@@ -1042,6 +1180,13 @@ export enum ConfigType {
    * @generated from enum value: CONFIG_TYPE_LOG_SPLUNK = 5;
    */
   LOG_SPLUNK = 5,
+
+  /**
+   * HA configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_HA = 6;
+   */
+  HA = 6,
 }
 
 /**

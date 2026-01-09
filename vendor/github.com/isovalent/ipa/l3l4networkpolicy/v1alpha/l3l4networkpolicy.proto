@@ -14,11 +14,16 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/isovalent/ipa/l3l4networkpolicy/v1alpha";
 
+// Protocol number constants
 enum PolicyProtocol {
+  // Unspecified or any protocol
   POLICY_PROTOCOL_UNSPECIFIED = 0;
-  POLICY_PROTOCOL_TCP = 1;
-  POLICY_PROTOCOL_UDP = 2;
-  POLICY_PROTOCOL_ICMP = 3;
+  // ICMP protocol number
+  POLICY_PROTOCOL_ICMP = 1;
+  // TCP protocol number
+  POLICY_PROTOCOL_TCP = 6;
+  // UDP protocol number
+  POLICY_PROTOCOL_UDP = 17;
 }
 
 // Policy action to apply when the rule is matched.
@@ -103,6 +108,15 @@ enum AgentType {
   AGENT_TYPE_TETRAGON = 2;
 }
 
+enum HAError {
+  // Generic catch all HA error
+  HA_ERROR_UNSPECIFIED = 0;
+  // HA peer connectivity error, used when peer keepalive fails
+  HA_ERROR_PEER_TIMEOUT = 1;
+  // HA flow sync error, used when flow synchronization fails
+  HA_ERROR_FLOW_SYNC = 2;
+}
+
 message Streaml3l4NetworkPolicyRequest {
   string agent_uid = 1;
 }
@@ -159,6 +173,9 @@ message ReportStatus {
   google.protobuf.Timestamp last_dataplane_restart = 17;
   // LastFwaCrashTime is the timestamp of the last time the FWA has crashed
   google.protobuf.Timestamp last_fwa_crash_time = 19;
+  // HA error map, where the string key is the peer IP address
+  // If the map is empty, then the peers are healthy
+  map<string, HAError> ha_error = 20;
 }
 
 enum ConfigType {
@@ -174,6 +191,8 @@ enum ConfigType {
   CONFIG_TYPE_LOG_TIMESCAPE = 4;
   // Log export splunk configuration
   CONFIG_TYPE_LOG_SPLUNK = 5;
+  // HA configuration
+  CONFIG_TYPE_HA = 6;
 }
 
 enum ConfigSource {
@@ -188,13 +207,21 @@ enum ConfigSource {
 // Object to store NX configuration
 // CONFIG_TYPE_DPU
 message DpuConfig {
+  // Service IP address of the switch
   string service_ip = 1;
+  // Service MAC address of the switch
   string service_mac = 2;
+  // Low end of the port range assigned to this DPU
   uint32 port_low = 3;
+  // High end of the port range assigned to this DPU
   uint32 port_high = 4;
+  // Unique identifier for the DPU, the same as the DPU number (DPU1, etc.)
   uint32 dpu_id = 5;
+  // Local HA IP address of the switch
   string ha_ip = 6;
+  // Serial number of the switch
   string serial_number = 7;
+  // Name of the switch
   string switch_name = 8;
 }
 
@@ -254,6 +281,26 @@ message LogConfigSplunk {
   map<string, LogConfig> configs = 1;
 }
 
+message HaPeer {
+  // IP address for the peer
+  string ip = 1;
+  // Minimum destination port of the peer
+  uint32 min_port = 2;
+  // Maximum destination port of the peer
+  uint32 max_port = 3;
+}
+
+// Object to store HA configuration
+// CONFIG_TYPE_HA
+message HaConfig {
+  // List of HA peers
+  repeated HaPeer peers = 1;
+  // Enables HA, starts health checks with peers
+  bool enabled = 2;
+  // Starts synchronization of flows between peers
+  bool flow_sync = 3;
+}
+
 // ConfigObject is a generic config object, which can be extended by adding additional configuration types
 message ConfigObject {
   // Type of the json encoded config, used to unmarshal the json object.
@@ -268,6 +315,7 @@ message ConfigObject {
     LogConfigIpfix config_log_ipfix = 22;
     LogConfigTimescape config_log_timescape = 23;
     LogConfigSplunk config_log_splunk = 24;
+    HaConfig config_ha = 25;
   }
 }
 

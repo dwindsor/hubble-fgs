@@ -646,3 +646,45 @@ func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg 
 
 	return nil
 }
+
+// HA Config is unique per DPU peer, so it needs extra logic to handle. This is a custom callback function
+// that handles only library.ConfigTypeHa type of config objects.
+func (dpu *DPUListener) SubscribeHaConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
+	// Building the response operation based on the old and new config objects and extracting the ha object
+	resp := v1alpha.StreamDatapathConfigResponse{}
+	var fullCfg *v1alpha.HaConfig
+	if newCfg == nil && oldCfg != nil {
+		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE
+		fullCfg = oldCfg.GetConfigHa()
+	} else if newCfg != nil {
+		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT
+		fullCfg = newCfg.GetConfigHa()
+	} else {
+		logger.GetLogger().Error("ha config callback function failed", logfields.Error, "both config objects are nil")
+		return nil
+	}
+
+	// Iterating through all peers, building the config response, and pushing it
+	dpu.mtx.RLock()
+	defer dpu.mtx.RUnlock()
+	for _, peer := range dpu.peerGroup {
+		haCfg, err := getPerDpuHaConfig(fullCfg, peer.uid, dpu.peerGroupSize)
+		if err != nil {
+			logger.GetLogger().Error("ha config callback function failed", logfields.Error, err)
+			continue
+		}
+
+		// Push the response to the peer
+		resp.Config = &v1alpha.ConfigObject{
+			Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
+			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+			Config: &v1alpha.ConfigObject_ConfigHa{ConfigHa: haCfg},
+		}
+		err = peer.SendConfig(&resp)
+		if err != nil {
+			logger.GetLogger().Error("failed to send config object to peer", logfields.Error, err, "peer", peer.uid, "config", resp.Config.Config)
+		}
+	}
+
+	return nil
+}
