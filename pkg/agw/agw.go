@@ -88,6 +88,7 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX, dpuListener.SubscribeConfig)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, dpuListener.SubscribeConfig)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK, dpuListener.SubscribeConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_HA, dpuListener.SubscribeHaConfig)
 
 	// Setting up dpu config atomically
 	// dpuConfig.ServiceIp is populated by nxos package
@@ -1147,6 +1148,46 @@ func (agw *AgentGateway) LoadSyslog(_ context.Context, syslog string) error {
 
 	logger.GetLogger().Info("Successfully loaded and validated syslog configuration", "count", len(logList))
 	return nil
+}
+
+func (agw *AgentGateway) ConfigAddHa(_ context.Context, msgData ipc.MessageData) string {
+	filePath := msgData.Flags["file"]
+	logger.GetLogger().Debug("Add HA config", "file", filePath)
+
+	cfg, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Sprintf("Failed to read HA config file: %v", err)
+	}
+
+	var haConfig v1alpha.HaConfig
+	err = json.Unmarshal(cfg, &haConfig)
+	if err != nil {
+		return fmt.Sprintf("Failed to unmarshal HA config: %v", err)
+	}
+
+	configObj := &v1alpha.ConfigObject{
+		Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
+		Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+		Config: &v1alpha.ConfigObject_ConfigHa{ConfigHa: &haConfig},
+	}
+
+	err = library.GetRepository().AddConfig(configObj)
+	if err != nil {
+		return fmt.Sprintf("Failed to add HA config: %v", err)
+	}
+
+	return "HA config added successfully"
+}
+
+func (agw *AgentGateway) ConfigRemoveHa(_ context.Context, _ ipc.MessageData) string {
+	logger.GetLogger().Debug("Remove HA config")
+
+	err := library.GetRepository().DeleteConfig(v1alpha.ConfigType_CONFIG_TYPE_HA)
+	if err != nil {
+		return fmt.Sprintf("Failed to remove HA config: %v", err)
+	}
+
+	return "HA config removed successfully"
 }
 
 // validateLogConfig validates and applies default values to a LogConfigData

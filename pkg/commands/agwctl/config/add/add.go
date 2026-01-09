@@ -8,17 +8,21 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package main
+package add
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config/add"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config/remove"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/logging"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/policies"
+	"github.com/spf13/cobra"
+
+	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config"
 )
 
-func main() {
-	agwctl.Execute()
+func init() {
+	config.ConfigCmd.AddCommand(AddCmd)
+}
+
+var AddCmd = &cobra.Command{
+	Use:          "add",
+	SilenceUsage: true,
+	Short:        "Add configuration",
+	Long:         `Add different types of configuration.`,
 }

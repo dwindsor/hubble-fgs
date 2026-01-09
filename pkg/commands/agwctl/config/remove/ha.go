@@ -8,17 +8,37 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package main
+package remove
 
 import (
+	"context"
+
+	"github.com/spf13/cobra"
+
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config/add"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config/remove"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/logging"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/policies"
+	"github.com/isovalent/hubble-fgs/pkg/ipc"
 )
 
-func main() {
-	agwctl.Execute()
+func init() {
+	RemoveCmd.AddCommand(haCmd)
+}
+
+var haCmd = &cobra.Command{
+	Use:          "ha",
+	SilenceUsage: true,
+	Short:        "Remove HA configuration",
+	Long:         `Remove HA configuration.`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		data := ipc.MessageData{}
+
+		ret, err := ipc.SendCmd(ctx, agwctl.CLI_SOCK, agwctl.CMD_CONFIG_REMOVE_HA, data)
+		if err != nil {
+			return err
+		}
+		ipc.PrintResponse(ret, false)
+		return nil
+	},
 }
