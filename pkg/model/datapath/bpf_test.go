@@ -151,6 +151,7 @@ func TestAddSingleRecordWithoutEndpoint(t *testing.T) {
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyDeny,
 				Port:     80,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 		{
@@ -164,6 +165,7 @@ func TestAddSingleRecordWithoutEndpoint(t *testing.T) {
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyDeny,
 				Port:     80,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 		{
@@ -177,6 +179,7 @@ func TestAddSingleRecordWithoutEndpoint(t *testing.T) {
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyDeny,
 				Port:     80,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 	}
@@ -219,6 +222,7 @@ func TestAddSingleRecordWithEndpoint(t *testing.T) {
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyDeny,
 				Port:     80,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 		// Wildcard entries below should have PolicyNone action
@@ -233,6 +237,7 @@ func TestAddSingleRecordWithEndpoint(t *testing.T) {
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyNone,
 				Port:     0,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 		{
@@ -246,6 +251,7 @@ func TestAddSingleRecordWithEndpoint(t *testing.T) {
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyNone,
 				Port:     0,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 		{
@@ -259,6 +265,7 @@ func TestAddSingleRecordWithEndpoint(t *testing.T) {
 			value: types.DestinationEndpointValue{
 				TxAction: record.PolicyNone,
 				Port:     0,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 	}
@@ -317,6 +324,7 @@ func TestAddSingleRecordWithEndpointAndPolicy(t *testing.T) {
 				Port:     80,
 				Policy:   32,
 				RuleID:   72,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 		// Wildcard entries below should have PolicyNone action and no PolicyID/RuleID
@@ -333,6 +341,7 @@ func TestAddSingleRecordWithEndpointAndPolicy(t *testing.T) {
 				Port:     0,
 				Policy:   0,
 				RuleID:   0,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 		{
@@ -348,6 +357,7 @@ func TestAddSingleRecordWithEndpointAndPolicy(t *testing.T) {
 				Port:     0,
 				Policy:   0,
 				RuleID:   0,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 		{
@@ -363,6 +373,7 @@ func TestAddSingleRecordWithEndpointAndPolicy(t *testing.T) {
 				Port:     0,
 				Policy:   0,
 				RuleID:   0,
+				Flags:    types.DestFlagPolicyTemplateOnly,
 			},
 		},
 	}

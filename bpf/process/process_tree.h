@@ -888,6 +888,17 @@ static __attribute__((noinline)) int qos_from_key(struct destination_endpoint_ke
 	return verdict;
 }
 
+/* Clear the policy template flag when we have real traffic.
+ * Policy entries are created with this flag set to indicate they are
+ * templates. When actual traffic flows through, we clear the flag so
+ * the entry appears in telemetry.
+ */
+static inline __attribute__((always_inline)) void clear_policy_template_flag(struct destination_endpoint_value *dest)
+{
+	if (dest->flags & DEST_FLAG_POLICY_TEMPLATE_ONLY)
+		__sync_fetch_and_and(&dest->flags, ~DEST_FLAG_POLICY_TEMPLATE_ONLY);
+}
+
 static int send(int deny, struct destination_endpoint_key *key, __u64 len)
 {
 	struct destination_endpoint_value *dest;
@@ -895,6 +906,8 @@ static int send(int deny, struct destination_endpoint_key *key, __u64 len)
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (!dest)
 		return -1;
+
+	clear_policy_template_flag(dest);
 
 	__sync_fetch_and_add(&dest->tx_bytes, len);
 	if (is_policy_drop(deny)) {
@@ -916,6 +929,8 @@ static int recv(int deny, struct destination_endpoint_key *key, __u64 len)
 	dest = map_lookup_elem(&destination_endpoint_map, key);
 	if (!dest)
 		return -1;
+
+	clear_policy_template_flag(dest);
 
 	__sync_fetch_and_add(&dest->rx_bytes, len);
 	if (is_policy_drop(deny)) {

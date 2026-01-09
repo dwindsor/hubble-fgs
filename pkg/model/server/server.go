@@ -372,6 +372,13 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		var d *types.Destination
 		var ep endpoint.Endpoint
 
+		// Skip policy template entries that have not observed real traffic yet.
+		// These are created when policies are programmed but the connection
+		// hasn't actually been used. BPF clears this flag on first traffic.
+		if dstVal.Flags&types.DestFlagPolicyTemplateOnly != 0 {
+			continue
+		}
+
 		// The zero destination rule is a default_action policy rule
 		// skip posting to the user as drops have been pushed down
 		// to more specific rules and showing 0.0.0.0 -> 0.0.0.0 drops

@@ -59,6 +59,10 @@ func (v DestinationEndpointKey) String() string {
 	return fmt.Sprintf("DestinationEndpointKey: %d-%d-%d-%d-%d", v.LocalId, v.LocalNSId, v.DestinationId, v.DestinationSource, v.DestinationPort)
 }
 
+// DestFlagPolicyTemplateOnly indicates an entry created by policy programming
+// that has not yet observed any actual network traffic.
+const DestFlagPolicyTemplateOnly uint64 = 0x1
+
 type DestinationEndpointValue struct {
 	TxQuota           uint64
 	TxLimit           uint64
@@ -76,6 +80,7 @@ type DestinationEndpointValue struct {
 	KtimeCreate       uint64
 	AddrCreate        [2]uint64
 	Port              uint64
+	Flags             uint64
 }
 
 type TreeId struct {

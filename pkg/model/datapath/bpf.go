@@ -193,6 +193,8 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 		KtimeCreate:    0,
 		AddrCreate:     addr,
 		Port:           uint64(r.Endpoint.Port),
+		// Mark as policy template - BPF will clear this flag when real traffic flows
+		Flags: types.DestFlagPolicyTemplateOnly,
 	}
 
 	lookupValue := &types.DestinationEndpointValue{}

@@ -74,6 +74,9 @@ struct destination_endpoint_key {
 	uint64_t port;
 };
 
+// Flags for destination_endpoint_value
+#define DEST_FLAG_POLICY_TEMPLATE_ONLY 0x1 // Entry created by policy, no traffic observed yet
+
 struct destination_endpoint_value {
 	__u64 tx_quota;
 	__u64 tx_limit;
@@ -91,6 +94,7 @@ struct destination_endpoint_value {
 	__u64 ktime_create;
 	__u64 addr_create[2];
 	__u64 port;
+	__u64 flags;
 };
 
 /* The destination_endpoint_maps an {src, dstID} pair to its
