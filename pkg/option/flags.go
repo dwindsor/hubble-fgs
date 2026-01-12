@@ -83,6 +83,7 @@ const (
 	keyAWSSonarRegion                    = "aws-sonar-region"
 	KeyEnableCiliumAPI                   = "enable-cilium-api"
 	KeyEnableDnsDebug                    = "enable-dns-debug"
+	keyEnableUserDNSDebug                = "enable-user-dns-debug"
 	KeyProcessCacheStaleInterval         = "process-cache-stale-interval"
 	keyEnableBPFDNSParser                = "enable-bpf-dns-parser"
 	keyBPFDNSParserMaxPendingRequests    = "bpf-dns-parser-max-pending-requests"
@@ -109,6 +110,7 @@ const (
 	keyEnableUDP                         = "enable-udp"
 	KeyEnableUDPCgroup                   = "enable-udp-cgroup"
 	keyUDPStatsInterval                  = "udp-stats-interval"
+	keyEnableUserDNS                     = "enable-user-dns"
 	keyUDPIdleSocketTimeout              = "udp-idle-socket-timeout"
 	keyUDPInKernelManaged                = "udp-in-kernel-managed"
 	keyEnableUDPWatermarks               = "enable-udp-watermarks"
@@ -295,7 +297,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.String(keyAlertsExportDir, "", "Directory for alert JSON export (filenames will be retrieved from alert rule names). Disabled by default.")
 	flags.String(keyAlertsExportFilename, "", "Specify a global filename (unless overridden with alert specific export.filename), relative to alerts-export-dir, for alert JSON export. Disabled by default.")
 	flags.StringSlice(keyDebugX, []string{}, "Extended debug to enable (e.g. \"tcp,udp+\"). Choose from: tcp, udp, icmp, rawsock. Tetragon defaults to maintaining metrics for program errors. Specifying the protocol/sub-system here causes events to be dispatched as well; adding a '+' will also get console messages")
-	flags.Bool(KeyEnableDnsDebug, false, "Enable DNS debug messages")
+	flags.Bool(KeyEnableDnsDebug, false, fmt.Sprintf("Enable DNS debug messages (deprecated flag, use --%s instead)", keyEnableUserDNSDebug))
+	flags.Bool(keyEnableUserDNSDebug, false, "Enable userspace parser DNS debug messages.")
 	flags.Duration(KeyProcessCacheStaleInterval, time.Duration(60*time.Minute), "Interval between stale process cache checks")
 	flags.Bool(KeyEnableCiliumAPI, false, "Associate IP addresses in Tetragon's networking events with Kubernetes pods using Cilium's IP cache")
 	flags.Bool(keyEnableBPFDNSParser, false, "Enable in-kernel BPF DNS parser. A 5.15.0+ kernel is required.")
@@ -339,7 +342,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyRawsockReportClose, false, fmt.Sprintf("Report raw sockets closing (requires --%s)", keyEnableRawsock))
 	flags.Bool(keyEnableRawsockMetrics, true, fmt.Sprintf("Enable raw socket metrics (requires --%s)", keyEnableRawsock))
 	flags.StringSlice(keyRawsockMetricsLabelFilter, []string{}, fmt.Sprintf("Raw socket metrics label filter (requires --%s and --%s)", keyEnableRawsock, keyEnableRawsockMetrics))
-	flags.Bool(keyEnableDNS, false, fmt.Sprintf("Enable DNS observability (requires --%s)", keyEnableUDP))
+	flags.Bool(keyEnableDNS, false, fmt.Sprintf("Enable DNS observability (deprecated flag, use --%s instead)", keyEnableUserDNS))
+	flags.Bool(keyEnableUserDNS, false, "Enable DNS observability via the userspace DNS parser.")
 	flags.Bool(keyDNSReportQuestions, false, fmt.Sprintf("Report DNS questions as well as answers (requires --%s)", keyEnableDNS))
 	flags.Bool(keyEnableDNSMetrics, true, fmt.Sprintf("Enable DNS metrics (requires --%s)", keyEnableDNS))
 	flags.StringSlice(keyDNSMetricsLabelFilter, []string{}, fmt.Sprintf("DNS metrics label filter (requires --%s and --%s)", keyEnableDNS, keyEnableDNSMetrics))
@@ -374,6 +378,8 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	// Mark other policiesDir options as deprecated
 	_ = flags.MarkDeprecated(option.KeyTracingPolicyDir, "Deprecated in v1.18.0, to be removed in v1.20.0. Use "+KeyPolicyDir+"instead.")
 	_ = flags.MarkDeprecated(keyNetworkPolicyDir, "Deprecated in v1.18.0, to be removed in v1.20.0. Use "+KeyPolicyDir+"instead.")
+	_ = flags.MarkDeprecated(keyEnableDNS, "use --"+keyEnableUserDNS+" instead. Deprecated in v1.19.0, to be removed in v1.21.0.")
+	_ = flags.MarkDeprecated(KeyEnableDnsDebug, "use --"+keyEnableUserDNSDebug+" instead. Deprecated in v1.19.0, to be removed in v1.21.0.")
 }
 
 func ReadAndValidateEnterpriseFlags() error {
@@ -443,7 +449,11 @@ func readAndSetEnterpriseFlags() error {
 	Config.DebugX = viper.GetStringSlice(keyDebugX)
 	Config.EnableAWSSonar = viper.GetBool(keyEnableAWSSonar)
 	Config.AWSSonarRegion = viper.GetString(keyAWSSonarRegion)
-	Config.EnableDnsDebug = viper.GetBool(KeyEnableDnsDebug)
+	if viper.IsSet(keyEnableUserDNSDebug) {
+		Config.EnableUserDNSDebug = viper.GetBool(keyEnableUserDNSDebug)
+	} else {
+		Config.EnableUserDNSDebug = viper.GetBool(KeyEnableDnsDebug)
+	}
 	Config.EnableCilium = viper.GetBool(KeyEnableCiliumAPI)
 	Config.ProcessCacheStaleInterval = viper.GetDuration(KeyProcessCacheStaleInterval)
 	Config.EnableBPFDNSParser = viper.GetBool(keyEnableBPFDNSParser)
@@ -512,7 +522,11 @@ func readAndSetEnterpriseFlags() error {
 	Config.RawsockReportClose = viper.GetBool(keyRawsockReportClose)
 	Config.EnableRawsockMetrics = viper.GetBool(keyEnableRawsockMetrics)
 	Config.RawsockMetricsLabelFilter = viper.GetStringSlice(keyRawsockMetricsLabelFilter)
-	Config.EnableDNS = viper.GetBool(keyEnableDNS)
+	if viper.IsSet(keyEnableUserDNS) {
+		Config.EnableUserDNS = viper.GetBool(keyEnableUserDNS)
+	} else {
+		Config.EnableUserDNS = viper.GetBool(keyEnableDNS)
+	}
 	Config.DNSReportQuestions = viper.GetBool(keyDNSReportQuestions)
 	Config.EnableDNSMetrics = viper.GetBool(keyEnableDNSMetrics)
 	Config.DNSMetricsLabelFilter = viper.GetStringSlice(keyDNSMetricsLabelFilter)
@@ -542,7 +556,7 @@ func readAndSetEnterpriseFlags() error {
 	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
 	// then we ignore enable/disable in policies.
-	if Config.EnableTCP || Config.EnableUDP || Config.EnableICMP || Config.EnableIGMP || Config.EnableRawsock || Config.EnableDNS {
+	if Config.EnableTCP || Config.EnableUDP || Config.EnableICMP || Config.EnableIGMP || Config.EnableRawsock || Config.EnableUserDNS {
 		Config.Layer3CLIEnable = true
 	}
 
@@ -620,7 +634,7 @@ func validateConfig(config config) error {
 		}
 	}
 
-	if config.EnableDNS {
+	if config.EnableUserDNS {
 		// The DNS parser is loaded alongside the UDP sensor
 		if !config.EnableUDP {
 			return fmt.Errorf("the DNS parser requires --%s", keyEnableUDP)

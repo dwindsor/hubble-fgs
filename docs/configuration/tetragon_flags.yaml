@@ -207,10 +207,12 @@ options:
       usage: Enable deprecated gRPC TracingPolicy APIs
     - name: enable-dns
       default_value: "false"
-      usage: Enable DNS observability (requires --enable-udp)
+      usage: |
+        Enable DNS observability (deprecated flag, use --enable-user-dns instead)
     - name: enable-dns-debug
       default_value: "false"
-      usage: Enable DNS debug messages
+      usage: |
+        Enable DNS debug messages (deprecated flag, use --enable-user-dns-debug instead)
     - name: enable-dns-metrics
       default_value: "true"
       usage: Enable DNS metrics (requires --enable-dns)
@@ -344,6 +346,12 @@ options:
     - name: enable-udp-watermarks
       default_value: "false"
       usage: Enable UDP watermarks detection (requires --enable-udp)
+    - name: enable-user-dns
+      default_value: "false"
+      usage: Enable DNS observability via the userspace DNS parser.
+    - name: enable-user-dns-debug
+      default_value: "false"
+      usage: Enable userspace parser DNS debug messages.
     - name: endpoint-cache-size
       default_value: "65536"
       usage: |

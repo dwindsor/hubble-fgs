@@ -56,13 +56,13 @@ func DnsCacheEvictions() prometheus.Counter {
 }
 
 func AddDnsQType(ns, workload, pod, binary, names string, qtype dnsmessage.Type) {
-	if option.Config.EnableDnsDebug {
+	if option.Config.EnableUserDNSDebug {
 		dnsQtypes.WithLabelValues(ns, workload, pod, binary, names, qtype.String()).Inc()
 	}
 }
 
 func AddDnsRType(ns, workload, pod, binary, names string, rtype dnsmessage.Type) {
-	if option.Config.EnableDnsDebug {
+	if option.Config.EnableUserDNSDebug {
 		dnsRtypes.WithLabelValues(ns, workload, pod, binary, names, rtype.String()).Inc()
 	}
 }

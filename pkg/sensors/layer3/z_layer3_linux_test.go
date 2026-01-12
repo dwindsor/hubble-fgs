@@ -268,7 +268,7 @@ func layer3Config(t *testing.T, CLISwitches, withRTT, withICMP, withRaw bool) st
 		{KeyPtr: &enterpriseOption.Config.UDPWatermarksDipTriggerPercent, Value: uint32(10)},
 		{KeyPtr: &enterpriseOption.Config.EnableNetworkWatermarksExitGen, Value: true},
 		{KeyPtr: &enterpriseOption.Config.NetworkWatermarksExitGenInterval, Value: 1000 * time.Millisecond},
-		{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: utils.CGroupSKBAvailable()},
+		{KeyPtr: &enterpriseOption.Config.EnableUserDNS, Value: utils.CGroupSKBAvailable()},
 		{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
 	}
 

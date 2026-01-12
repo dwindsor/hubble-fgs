@@ -79,6 +79,10 @@ Depending on your setup, changes listed here might require a manual intervention
   switches were added to configure the network interface sensor. These are now the
   recommended way to configure this sensor. Support for network interface tracing
   policies will be removed in the next release.
+* `--enable-dns` and `--enable-dns-debug` got deprecated in favor of
+  respectively `--enable-user-dns` and `--enable-user-dns-debug`. This is to
+  clarify that these options flags concern the user space DNS parser, in
+  opposition to the in-kernel BPF DNS parser.
 
 ### Helm Values
 

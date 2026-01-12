@@ -252,7 +252,7 @@ func testTNP(t *testing.T, CLISwitches bool) {
 			{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
 			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
 			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
-			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUserDNS, Value: true},
 			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
 		}))
 	}

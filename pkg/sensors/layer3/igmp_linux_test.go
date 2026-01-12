@@ -91,7 +91,7 @@ func (suite *IGMPV2) SetupSuite() {
 		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
 		{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
 		{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
-		{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableUserDNS, Value: true},
 		{KeyPtr: &enterpriseOption.Config.EnableIGMP, Value: true},
 	})
 	suite.Require().NoError(err)
@@ -128,7 +128,7 @@ func (suite *IGMPV3) SetupSuite() {
 		{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
 		{KeyPtr: &enterpriseOption.Config.EnableTCP, Value: true},
 		{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
-		{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+		{KeyPtr: &enterpriseOption.Config.EnableUserDNS, Value: true},
 		{KeyPtr: &enterpriseOption.Config.EnableIGMP, Value: true},
 	})
 	suite.Require().NoError(err)

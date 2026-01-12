@@ -1488,7 +1488,7 @@ func testDnsEvents(t *testing.T, CLISwitches, withQuestions bool) {
 			{KeyPtr: &enterpriseOption.Config.EnableNetworkEvents, Value: true},
 			{KeyPtr: &enterpriseOption.Config.EnableUDP, Value: true},
 			{KeyPtr: &enterpriseOption.Config.EnableUDPCGroup, Value: true},
-			{KeyPtr: &enterpriseOption.Config.EnableDNS, Value: true},
+			{KeyPtr: &enterpriseOption.Config.EnableUserDNS, Value: true},
 			{KeyPtr: &enterpriseOption.Config.DNSPorts, Value: []int{53}},
 		}
 		if withQuestions {

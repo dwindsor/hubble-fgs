@@ -799,7 +799,7 @@ func EnableLayer3Progs() error {
 		rawsockconfig.MetricsEnabled = enterpriseOption.Config.EnableRawsockMetrics
 		rawsockconfig.CurrentLabels = rawsockconfig.DefaultLabelFilter().WithEnabledLabels(enterpriseOption.Config.RawsockMetricsLabelFilter)
 	}
-	if enterpriseOption.Config.EnableDNS {
+	if enterpriseOption.Config.EnableUserDNS {
 		dnsEnabled = true
 		udp.InitDNS()
 	}

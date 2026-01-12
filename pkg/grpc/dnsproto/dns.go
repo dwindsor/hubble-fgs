@@ -57,7 +57,7 @@ func isValidDnsType(t uint32) bool {
 
 func addDnsType(t uint32, types []tetragon.DnsType, msg *MsgDnsUnix, answer bool) []tetragon.DnsType {
 	if !isValidDnsType(t) {
-		if option.Config.EnableDnsDebug {
+		if option.Config.EnableUserDNSDebug {
 			logger.GetLogger().Warn("Invalid DNS type",
 				"type", t,
 				"pid", msg.Msg.ProcessKey.Pid,

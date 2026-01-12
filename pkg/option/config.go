@@ -101,7 +101,7 @@ type config struct {
 	TLSContextMapSize              int
 	DisableLayer3                  bool
 	EnableIcmpTracking             bool
-	EnableDnsDebug                 bool
+	EnableUserDNSDebug             bool
 	EnableBPFDNSParser             bool
 	BPFDNSParserMaxPendingRequests uint32
 	EnableBPFDNSPerPod             bool
@@ -127,7 +127,7 @@ type config struct {
 	ICMPV6Info      bool
 	EnableIGMP      bool
 	EnableRawsock   bool
-	EnableDNS       bool
+	EnableUserDNS   bool
 	Layer3CLIEnable bool
 
 	RawsockReportClose        bool
@@ -243,7 +243,7 @@ var (
 		FimRuntimeEndpoint:                "",
 		FimMaxFileSizeDigest:              1 * 1024 * 1024 * 1024, // 1GB
 		FimMaxTimeoutDigestSec:            30,
-		EnableDnsDebug:                    false,
+		EnableUserDNSDebug:                false,
 		Layer3SocketMapSize:               32768,
 		TCPSocketMapSize:                  32768,
 		UDPSocketMapSize:                  32768,
