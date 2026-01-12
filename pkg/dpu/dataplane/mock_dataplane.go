@@ -24,7 +24,7 @@ import (
 )
 
 func NewMockDataplane() *MockDataplane {
-
+	logger.GetLogger().Info("[MockDataplane] Creating new mock dataplane instance")
 	// Creating json encoder and decoder for the connection
 	return &MockDataplane{
 		encode: json.NewEncoder(io.Discard),
@@ -67,11 +67,23 @@ func (m *MockDataplane) PushPolicy(_ context.Context, op v1alpha.PolicyOperation
 	default:
 		logStr = "unknown policy"
 	}
-	for _, r := range rules {
-		logger.GetLogger().Debug(logStr, "rule", *r.Policy)
-	}
-
 	fwPolicy := dpAppPolicy.DPURuleToJSON(op, rules)
+
+	if len(rules) != len(fwPolicy) {
+		logger.GetLogger().Warn(logStr, "ruleCount", len(rules), "fwRuleCount", len(fwPolicy), "error", "rule count mismatch")
+	}
+	for i, r := range rules {
+		var fwRuleJSON []byte
+		if i < len(fwPolicy) {
+			fwRuleJSON, _ = json.Marshal(fwPolicy[i])
+		}
+		ruleJSON, err := json.Marshal(r.Policy)
+		if err == nil {
+			logger.GetLogger().Debug(logStr, "rule", ruleJSON, "fwRule", fwRuleJSON)
+			continue
+		}
+		logger.GetLogger().Debug(logStr, "rule", r.Policy, "fwRule", fwRuleJSON)
+	}
 
 	ruleFwaCnt += len(fwPolicy)
 	rulePolicyCnt += len(rules)
@@ -83,36 +95,48 @@ func (m *MockDataplane) PushPolicy(_ context.Context, op v1alpha.PolicyOperation
 }
 
 func (m *MockDataplane) ClearPolicy(_ context.Context) error {
+	logger.GetLogger().Info("[MockDataplane] ClearPolicy called", "previousPolicyCnt", rulePolicyCnt, "previousFWACnt", ruleFwaCnt)
+	ruleFwaCnt = 0
+	rulePolicyCnt = 0
 	return nil
 }
 
-func (m *MockDataplane) RefreshConfig(_ *v1alpha.ConfigObject, _ *v1alpha.ConfigObject) error {
+func (m *MockDataplane) RefreshConfig(oldConfig *v1alpha.ConfigObject, newConfig *v1alpha.ConfigObject) error {
+	logger.GetLogger().Info("[MockDataplane] RefreshConfig called", "oldConfig", oldConfig, "newConfig", newConfig)
 	return nil
 }
 
 func (m *MockDataplane) Init(_ context.Context) error {
 	m.version = "mock"
+	logger.GetLogger().Info("[MockDataplane] Init completed", "version", m.version)
 	return nil
 }
 
 func (m *MockDataplane) Connect(_ context.Context) error {
+	logger.GetLogger().Info("[MockDataplane] Connect called")
 	return nil
 }
 
-func (m *MockDataplane) Close(_ context.Context) {}
+func (m *MockDataplane) Close(_ context.Context) {
+	logger.GetLogger().Info("[MockDataplane] Close called", "totalPolicyCnt", rulePolicyCnt, "totalFWACnt", ruleFwaCnt)
+}
 
 func (m *MockDataplane) Start(_ context.Context) error {
+	logger.GetLogger().Info("[MockDataplane] Start called")
 	return nil
 }
 
 func (m *MockDataplane) Stop(_ context.Context) error {
+	logger.GetLogger().Info("[MockDataplane] Stop called", "totalPolicyCnt", rulePolicyCnt, "totalFWACnt", ruleFwaCnt)
 	return nil
 }
 
 func (m *MockDataplane) Restart(_ context.Context) error {
+	logger.GetLogger().Info("[MockDataplane] Restart called")
 	return nil
 }
 
 func (m *MockDataplane) Status() bool {
+	logger.GetLogger().Debug("[MockDataplane] Status called", "status", true, "policyCnt", rulePolicyCnt, "fwaCnt", ruleFwaCnt)
 	return true
 }
