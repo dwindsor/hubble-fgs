@@ -121,10 +121,10 @@ type Ha struct {
 	ClientKey  string
 
 	// config from nxos
-	Configured bool
-	Enabled    bool
-	OperUp     bool
-	Peers      map[string]HaPeer
+	configured bool
+	enabled    bool
+	operUp     bool
+	peers      map[string]HaPeer
 
 	// peer info: key peer ha ip
 	Adjacencies map[string]HaAdj

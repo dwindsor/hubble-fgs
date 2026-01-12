@@ -979,25 +979,25 @@ func (n *Nxos) updtSasDpuInstInstExt(_ context.Context, items *model.Cisco_NX_OS
 func (n *Nxos) updtSasSvcSvcinstSvcInstanceHa(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems) error {
 	logger.GetLogger().Debug("updtSasSvcSvcinstSvcInstanceHa", "item", *items)
 
-	n.Ha.Configured = true
+	n.SetHaConfigured(true)
 	// hard coded enabled. ignore mo for now
 	if items.AdminState == model.Cisco_NX_OSDevice_Sas_SvcHaAdminStateE_enabled {
-		n.Ha.Enabled = true
+		n.SetHaEnabled(true)
 	} else if items.AdminState == model.Cisco_NX_OSDevice_Sas_SvcHaAdminStateE_disabled {
-		n.Ha.Enabled = false
+		n.SetHaEnabled(false)
 	}
-	logger.GetLogger().Debug("Ha Enabled updated", "enabled", n.Ha.Enabled)
+	logger.GetLogger().Debug("Ha Enabled updated", "enabled", n.GetHaEnabled())
 	n.WaitHa.In() <- WakeHa
 
 	if items.NxHaOperState == model.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_ready {
-		n.Ha.OperUp = true
+		n.SetHaOperUp(true)
 	} else if items.NxHaOperState == model.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_not_initialized ||
 		items.NxHaOperState == model.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_disabled ||
 		items.NxHaOperState == model.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_ports_not_ready ||
 		items.NxHaOperState == model.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_ip_unavailable {
-		n.Ha.OperUp = false
+		n.SetHaOperUp(false)
 	}
-	logger.GetLogger().Debug("Ha OperUp updated", "oper", n.Ha.OperUp)
+	logger.GetLogger().Debug("Ha OperUp updated", "oper", n.GetHaOperUp())
 	n.WaitHa.In() <- WakeHa
 
 	if items.PeerItems != nil {
@@ -1016,10 +1016,10 @@ func (n *Nxos) delHa(ctx context.Context) {
 	logger.GetLogger().Debug("delete high availability")
 
 	n.Ha.HaIp = ""
-	n.Ha.Configured = false
-	n.Ha.Enabled = false
-	n.Ha.OperUp = false
-	n.Ha.Peers = make(map[string]HaPeer)
+	n.SetHaConfigured(false)
+	n.SetHaEnabled(false)
+	n.SetHaOperUp(false)
+	n.SetHaPeers(make(map[string]HaPeer))
 	n.Ha.Adjacencies = make(map[string]HaAdj)
 	n.Ha.Members = make(map[string]HaMbr)
 	n.Ha.Alloc = make(map[string]HaAlloc)
@@ -1035,7 +1035,7 @@ func (n *Nxos) delPeer(ctx context.Context, peer string) {
 
 	n.Ha.Adjacencies = make(map[string]HaAdj)
 	n.Ha.Members = make(map[string]HaMbr)
-	n.Ha.Peers = make(map[string]HaPeer)
+	n.SetHaPeers(make(map[string]HaPeer))
 	n.Ha.Alloc = make(map[string]HaAlloc)
 	n.Ha.FlowSync = make(map[string]bool)
 	n.Ha.Partners = make(map[string]struct{})
@@ -1049,7 +1049,7 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(_ context.Context, items *mode
 		logger.GetLogger().Debug("delete peer, adj and mbr")
 		n.Ha.Adjacencies = make(map[string]HaAdj)
 		n.Ha.Members = make(map[string]HaMbr)
-		n.Ha.Peers = make(map[string]HaPeer)
+		n.SetHaPeers(make(map[string]HaPeer))
 		n.WaitHa.In() <- WakeHa
 		return nil
 	}
@@ -1076,15 +1076,15 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(_ context.Context, items *mode
 	}
 
 	logger.GetLogger().Debug("Add peer", "ip", pip)
-	p, ok := n.Ha.Peers[pip]
+	p, ok := n.GetHaPeer(pip)
 	if ok {
 		p.IpConfigOk = isOk
-		n.Ha.Peers[pip] = p
+		n.SetHaPeer(pip, p)
 	} else {
-		n.Ha.Peers = make(map[string]HaPeer)
-		n.Ha.Peers[pip] = HaPeer{
+		n.SetHaPeers(make(map[string]HaPeer))
+		n.SetHaPeer(pip, HaPeer{
 			IpConfigOk: isOk,
-		}
+		})
 	}
 
 	n.WaitHa.In() <- WakeHa

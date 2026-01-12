@@ -41,7 +41,7 @@ func (n *Nxos) haIsEnabled(_ context.Context, isLock bool) bool {
 	}
 
 	enabled := false
-	if n.Ha.Enabled && n.Ha.OperUp {
+	if n.GetHaEnabled() && n.GetHaOperUp() {
 		enabled = true
 	}
 	logger.GetLogger().Debug("HaEnabled: ", "", enabled)
@@ -54,8 +54,8 @@ func (n *Nxos) haIsConfigured(_ context.Context, isLock bool) bool {
 		defer n.RUnlock()
 	}
 
-	logger.GetLogger().Debug("HaConfigured: ", "", n.Ha.Configured)
-	return n.Ha.Configured
+	logger.GetLogger().Debug("HaConfigured: ", "", n.GetHaConfigured())
+	return n.GetHaConfigured()
 }
 
 func (n *Nxos) haIsConnected(_ context.Context, peer string) bool {
@@ -97,6 +97,89 @@ func (n *Nxos) SetHaIp(ip string) {
 	})
 	if err != nil {
 		logger.GetLogger().Error("Failed to update dpu config with ha ip", "error", err)
+	}
+}
+
+func (n *Nxos) GetHaConfigured() bool {
+	return n.Ha.configured
+}
+
+func (n *Nxos) SetHaConfigured(configured bool) {
+	n.Ha.configured = configured
+	n.updateHaConfig()
+}
+
+func (n *Nxos) GetHaEnabled() bool {
+	return n.Ha.enabled
+}
+
+func (n *Nxos) SetHaEnabled(enabled bool) {
+	n.Ha.enabled = enabled
+	n.updateHaConfig()
+}
+
+func (n *Nxos) GetHaOperUp() bool {
+	return n.Ha.operUp
+}
+
+func (n *Nxos) SetHaOperUp(operUp bool) {
+	n.Ha.operUp = operUp
+	n.updateHaConfig()
+}
+
+func (n *Nxos) GetHaPeers() map[string]HaPeer {
+	return n.Ha.peers
+}
+
+func (n *Nxos) SetHaPeers(peers map[string]HaPeer) {
+	n.Ha.peers = peers
+	n.updateHaConfig()
+}
+
+func (n *Nxos) GetHaPeer(ip string) (HaPeer, bool) {
+	peer, ok := n.Ha.peers[ip]
+	return peer, ok
+}
+
+func (n *Nxos) SetHaPeer(ip string, peer HaPeer) {
+	if n.Ha.peers == nil {
+		n.Ha.peers = make(map[string]HaPeer)
+	}
+	n.Ha.peers[ip] = peer
+	n.updateHaConfig()
+}
+
+func (n *Nxos) updateHaConfig() {
+	var peers []*v1alpha.HaPeer
+	for ip := range n.Ha.peers {
+		peers = append(peers, &v1alpha.HaPeer{
+			Ip:      ip,
+			MinPort: uint32(n.DpuPortLow),
+			MaxPort: uint32(n.DpuPortHigh),
+		})
+	}
+
+	var enabled bool
+	if len(peers) > 0 {
+		enabled = n.GetHaConfigured() && n.GetHaOperUp()
+	}
+	var flow_sync bool
+	flow_sync = enabled && n.GetHaEnabled()
+
+	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_HA, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
+		haConfig := &v1alpha.HaConfig{
+			Peers:    peers,
+			Enabled:  enabled,
+			FlowSync: flow_sync,
+		}
+		return &v1alpha.ConfigObject{
+			Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
+			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+			Config: &v1alpha.ConfigObject_ConfigHa{ConfigHa: haConfig},
+		}, nil
+	})
+	if err != nil {
+		logger.GetLogger().Error("Failed to update HA config", "error", err)
 	}
 }
 
@@ -324,7 +407,7 @@ func (n *Nxos) haConnect(_ context.Context, peer string) {
 		return
 	}
 
-	p, ok := n.Ha.Peers[peer]
+	p, ok := n.GetHaPeer(peer)
 	if !ok {
 		logger.GetLogger().Error("Fail to connect: Peer not found")
 		return
@@ -427,7 +510,7 @@ func (n *Nxos) haGetPeers(_ context.Context) []string {
 	n.RLock()
 	defer n.RUnlock()
 	var peers []string
-	for peer := range n.Ha.Peers {
+	for peer := range n.GetHaPeers() {
 		peers = append(peers, peer)
 	}
 	logger.GetLogger().Debug("Peers found:", "peers", peers)
@@ -483,10 +566,10 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 		if now-adj.Epoch > adjTimeout {
 			logger.GetLogger().Debug("Adjacency timed out", "ip", ip)
 			delete(n.Ha.Adjacencies, ip)
-			peer, ok := n.Ha.Peers[ip]
+			peer, ok := n.GetHaPeer(ip)
 			if ok {
 				peer.State = hav1.MBR_STATE_HA_NA
-				n.Ha.Peers[ip] = peer
+				n.SetHaPeer(ip, peer)
 			}
 			n.setRemoteStatesAdjDown(ctx, ip)
 		}
@@ -574,7 +657,7 @@ func (n *Nxos) haUpdateCrit(ctx context.Context, crit HaCrit, val bool) {
 func (n *Nxos) HaUpdatePtnr(ctx context.Context, ptnr string, isDel bool) {
 	logger.GetLogger().Debug("HaUpdatePtnr", "ptnr", ptnr, "isDel", isDel)
 
-	peer, ok := n.Ha.Peers[ptnr]
+	peer, ok := n.GetHaPeer(ptnr)
 	if ok {
 		prev := peer.State
 		if isDel {
@@ -583,7 +666,7 @@ func (n *Nxos) HaUpdatePtnr(ctx context.Context, ptnr string, isDel bool) {
 			peer.State = hav1.MBR_STATE_HA_OK
 		}
 		if peer.State != prev {
-			n.Ha.Peers[ptnr] = peer
+			n.SetHaPeer(ptnr, peer)
 			n.setRemoteMbrState(ctx, ptnr)
 		}
 	} else {
@@ -632,7 +715,7 @@ func (n *Nxos) haInit(ctx context.Context) {
 			return
 		}
 
-		for peer := range n.Ha.Peers {
+		for peer := range n.GetHaPeers() {
 			logger.GetLogger().Debug("haInit: initial adj")
 			n.haConnect(ctx, peer)
 			if n.haIsConnected(ctx, peer) {
@@ -702,7 +785,7 @@ func (n *Nxos) haSetLeader(ctx context.Context) {
 	defer n.RUnlock()
 
 	isLeader := true
-	for peer := range n.Ha.Peers {
+	for peer := range n.GetHaPeers() {
 		if n.Ha.HaIp < peer {
 			isLeader = false
 			break
@@ -762,7 +845,7 @@ func (n *Nxos) IsPeerOk(ctx context.Context, peer string) bool {
 	n.RLock()
 	defer n.RUnlock()
 
-	for p := range n.Ha.Peers {
+	for p := range n.GetHaPeers() {
 		if p == peer {
 			return true
 		}

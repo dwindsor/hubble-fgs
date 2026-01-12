@@ -81,11 +81,11 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 
 	status := fmt.Sprintf("\n HA local IP: %v", n.Ha.HaIp)
 	status += "\n HA Peers: "
-	for ip, peer := range n.Ha.Peers {
+	for ip, peer := range n.GetHaPeers() {
 		status += fmt.Sprintf("ip: %v ok: %v,", ip, peer.IpConfigOk)
 	}
-	status += fmt.Sprintf("\n HA enabled: %v", n.Ha.Enabled)
-	status += fmt.Sprintf("\n HA operational: %v", n.Ha.OperUp)
+	status += fmt.Sprintf("\n HA enabled: %v", n.GetHaEnabled())
+	status += fmt.Sprintf("\n HA operational: %v", n.GetHaOperUp())
 	status += fmt.Sprintf("\n HA leader: %v", n.Ha.IsLeader)
 	status += fmt.Sprintf("\n Policy watching: %v, hash: %v, revision: %v",
 		n.Ha.Watching, n.Ha.PolHash, n.Ha.PolRev)

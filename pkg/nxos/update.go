@@ -1105,7 +1105,7 @@ func (n *Nxos) setLocalSvcStateToFailure(ctx context.Context) error {
 }
 
 func (n *Nxos) setRemoteMbrState(ctx context.Context, ip string) error {
-	peer, ok := n.Ha.Peers[ip]
+	peer, ok := n.GetHaPeer(ip)
 	if !ok {
 		logger.GetLogger().Error("Member missing")
 		return nil
