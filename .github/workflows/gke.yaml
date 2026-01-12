@@ -86,11 +86,28 @@ jobs:
         run: |
           gcloud info
 
+      - name: Get runner ip for GKE cluster's network
+        id: runner-ip
+        run: |
+          RUNNER_IP=$(echo $(curl -sf https://checkip.amazonaws.com/)| tr -d '[:space:]' )
+          if [[ -z "${RUNNER_IP}" ]]; then
+            echo "::error::Failed to fetch runner's public IP address"
+            exit 1
+          fi
+          if ! [[ "${RUNNER_IP}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid IP address format: ${RUNNER_IP}"
+            exit 1
+          fi
+          echo "runner_ip=${RUNNER_IP}" >> $GITHUB_OUTPUT
+
       - name: Create GKE cluster
         id: cluster
         run: |
+          RUNNER_IP=$(curl -s api.ipify.org)
+
           gcloud container clusters create ${{ steps.vars.outputs.clusterName }} \
             --preemptible \
+            --create-subnetwork="range=/26" \
             --labels "usage=pr,owner=${{ github.event.pull_request.number }},creation=$(date +'%Y-%m-%d'),expiry=$(date -d tomorrow +"%Y-%m-%d"),svic_falco_supported=no,svic_osquery_supported=no" \
             --enable-ip-alias \
             --cluster-ipv4-cidr="/21" \
@@ -99,7 +116,9 @@ jobs:
             --num-nodes 2 \
             --machine-type n1-standard-4 \
             --release-channel ${{ matrix.release-channel }} \
-            --zone ${{ env.zone }}
+            --zone ${{ env.zone }} \
+            --enable-master-authorized-networks \
+            --master-authorized-networks "${{ steps.runner-ip.outputs.runner_ip }}/32" \
 
       - name: Get Credentials
         run: |
