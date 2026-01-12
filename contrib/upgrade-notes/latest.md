@@ -136,6 +136,8 @@ Depending on your setup, changes listed here might require a manual intervention
 * New values to manage application model exports options: `tetragon.applicationModelExportFileMaxSizeMB`, `tetragon.applicationModelExportFileMaxBackups`, `tetragon.applicationModelExportFileCompress`.
 * `exportDirectory` and `alerts.exportDirectory` have been updated to `/var/log/tetragon` from
   `/var/run/cilium/tetragon/` to avoid writing to tmpfs.
+* Regarding related change in agent option, `tetragon.dns.enabled` got
+  deprecated in favor of `.tetragon.userDNS.enabled`.
 
 ### OLM manifests
 

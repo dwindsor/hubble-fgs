@@ -428,8 +428,8 @@ tetragon:
     watermarksExitGen:
       enabled: true
       interval: 1s
-  # DNS
-  dns:
+  # userspace DNS
+  userDNS:
     enabled: false
     ports: ""
     reportQuestions: false

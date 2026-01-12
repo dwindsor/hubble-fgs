@@ -133,11 +133,6 @@ Helm chart for Tetragon Enterprise
 | tetragon.cri.socketHostPath | string | `""` | path of the CRI socket on the host. This will typically be "/run/containerd/containerd.sock" for containerd or "/var/run/crio/crio.sock"  for crio. |
 | tetragon.debug | bool | `false` | If you want to run Tetragon in debug mode change this value to true |
 | tetragon.deletedPodCacheSize | int | `1024` | Tetragon keeps recently deleted pod/container mappings in an LRU cache to resolve pod metadata for late-arriving events. |
-| tetragon.dns.enabled | bool | `false` |  |
-| tetragon.dns.metrics.enabled | bool | `true` |  |
-| tetragon.dns.metrics.labelFilter | string | `""` |  |
-| tetragon.dns.ports | string | `""` |  |
-| tetragon.dns.reportQuestions | bool | `false` |  |
 | tetragon.dnsStatsPerSocket | bool | `false` |  |
 | tetragon.enableApplicationModel | bool | `false` | Enable application model. |
 | tetragon.enableCiliumAPI | bool | `false` | Access Cilium API to associate Tetragon events with Cilium DNS cache. |
@@ -291,6 +286,11 @@ Helm chart for Tetragon Enterprise
 | tetragon.tls.mode | string | `"cgroup"` |  |
 | tetragon.tls.ports | string | `""` |  |
 | tetragon.usePerfRingBuffer | bool | `false` |  |
+| tetragon.userDNS.enabled | bool | `false` |  |
+| tetragon.userDNS.metrics.enabled | bool | `true` |  |
+| tetragon.userDNS.metrics.labelFilter | string | `""` |  |
+| tetragon.userDNS.ports | string | `""` |  |
+| tetragon.userDNS.reportQuestions | bool | `false` |  |
 | tetragonAggregator.affinity | object | `{}` |  |
 | tetragonAggregator.annotations | object | `{}` | Annotations for the Tetragon Aggregator Deployment. |
 | tetragonAggregator.enabled | bool | `false` | Enables the Tetragon Aggregator. |
