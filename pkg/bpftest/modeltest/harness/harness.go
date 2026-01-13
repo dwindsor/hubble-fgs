@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/podhelpers"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/google/uuid"
@@ -131,14 +132,22 @@ func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string, 
 		if err != nil {
 			tb.Fatalf("failed to acquire image %q: %v", tag, err)
 		}
-		err = harness.cluster.LoadImage(ctx, tag)
-		if err != nil {
-			tb.Fatalf("failed to load image %q: %v", tag, err)
+		imagePullPolicy := corev1.PullNever
+		// For kernel versions >= 6.12, let kind handle the image pulling due to the below issue
+		// https://github.com/kubernetes-sigs/kind/issues/3795
+		if kernels.MinKernelVersion("6.12") {
+			imagePullPolicy = corev1.PullIfNotPresent
+		} else {
+			err = harness.cluster.LoadImage(ctx, tag)
+			if err != nil {
+				tb.Fatalf("failed to load image %q: %v", tag, err)
+			}
 		}
+
 		k8sContainers = append(k8sContainers, corev1.Container{
 			Name:            name,
 			Image:           tag,
-			ImagePullPolicy: corev1.PullNever,
+			ImagePullPolicy: imagePullPolicy,
 			Command:         append([]string{spec.Cmd.Cmd}, spec.Cmd.Args...),
 		})
 	}

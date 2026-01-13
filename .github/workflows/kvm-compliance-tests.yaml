@@ -43,6 +43,10 @@ jobs:
         kernel:
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - 'bpf-next-20251110.091626'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '6.18-20260109.091250'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '6.12-20251113.115124'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - '6.6-20251110.091626'
           # FIXME: following kernels temporarily disabled pending bugfixes

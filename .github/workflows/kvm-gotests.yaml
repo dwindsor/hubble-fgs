@@ -32,6 +32,10 @@ jobs:
           - "rhel8.9-20251031.120020"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "bpf-next-20251110.091626"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '6.18-20260109.091250'
+          # renovate: datasource=docker depName=quay.io/lvh-images/kernel-images
+          - '6.12-20251113.115124'
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
           - "6.6-20251110.091626"
           # renovate: datasource=docker depName=quay.io/lvh-images/kind
@@ -135,6 +139,14 @@ jobs:
             export SUDO=
             # FIXME: TestCGTLS13 test fails bpf-next kernels
             if [[ "${{ matrix.kernel }}" == bpf-next-* ]]; then
+              export FLAKY_HTTP=1
+            fi
+            # FIXME: TestTLS13 test fails 6.12 kernels
+            if [[ "${{ matrix.kernel }}" == 6.12-* ]]; then
+              export FLAKY_HTTP=1
+            fi
+            # FIXME: TestTLS13 test fails 6.18 kernels
+            if [[ "${{ matrix.kernel }}" == 6.18-* ]]; then
               export FLAKY_HTTP=1
             fi
             # FIXME: TestTLS13 test fails 6.6 kernels
