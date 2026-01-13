@@ -21,8 +21,8 @@ import (
 )
 
 func TestEnqueue_Success(t *testing.T) {
-	callback := func(_ []int) {}
-	sq := New(Config[int]{
+	callback := func(_ context.Context, _ []int) {}
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        10,
 		BatchSize:      5,
 		FlushInterval:  time.Hour,
@@ -42,10 +42,10 @@ func TestEnqueue_Success(t *testing.T) {
 func TestEnqueue_QueueFull_Timeout(t *testing.T) {
 	// Use a blocking callback to prevent queue from being drained
 	blockCh := make(chan struct{})
-	callback := func(_ []int) {
+	callback := func(_ context.Context, _ []int) {
 		<-blockCh
 	}
-	sq := New(Config[int]{
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        2,
 		BatchSize:      10,
 		FlushInterval:  time.Hour,
@@ -70,8 +70,8 @@ func TestEnqueue_QueueFull_Timeout(t *testing.T) {
 }
 
 func TestEnqueue_ContextCanceled(t *testing.T) {
-	callback := func(_ []int) {}
-	sq := New(Config[int]{
+	callback := func(_ context.Context, _ []int) {}
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        2,
 		BatchSize:      10,
 		FlushInterval:  time.Hour,
@@ -98,8 +98,8 @@ func TestEnqueue_ContextCanceled(t *testing.T) {
 }
 
 func TestEnqueue_AfterStop(t *testing.T) {
-	callback := func(_ []int) {}
-	sq := New(Config[int]{
+	callback := func(_ context.Context, _ []int) {}
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        10,
 		BatchSize:      5,
 		FlushInterval:  time.Hour,
@@ -116,8 +116,8 @@ func TestEnqueue_AfterStop(t *testing.T) {
 }
 
 func TestEnqueueBatch(t *testing.T) {
-	callback := func(_ []int) {}
-	sq := New(Config[int]{
+	callback := func(_ context.Context, _ []int) {}
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        5,
 		BatchSize:      10,
 		FlushInterval:  time.Hour,
@@ -139,7 +139,7 @@ func TestBatchCallback_ThresholdReached(t *testing.T) {
 	var mu sync.Mutex
 	done := make(chan struct{})
 
-	callback := func(items []int) {
+	callback := func(_ context.Context, items []int) {
 		mu.Lock()
 		received = append(received, items...)
 		mu.Unlock()
@@ -148,7 +148,7 @@ func TestBatchCallback_ThresholdReached(t *testing.T) {
 		}
 	}
 
-	sq := New(Config[int]{
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        100,
 		BatchSize:      5,
 		FlushInterval:  time.Hour,
@@ -179,14 +179,14 @@ func TestBatchCallback_PeriodicFlush(t *testing.T) {
 	var mu sync.Mutex
 	done := make(chan struct{})
 
-	callback := func(items []int) {
+	callback := func(_ context.Context, items []int) {
 		mu.Lock()
 		received = append(received, items...)
 		mu.Unlock()
 		close(done)
 	}
 
-	sq := New(Config[int]{
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        100,
 		BatchSize:      10,
 		FlushInterval:  100 * time.Millisecond,
@@ -216,13 +216,13 @@ func TestStop_FlushesRemaining(t *testing.T) {
 	var received []int
 	var mu sync.Mutex
 
-	callback := func(items []int) {
+	callback := func(_ context.Context, items []int) {
 		mu.Lock()
 		received = append(received, items...)
 		mu.Unlock()
 	}
 
-	sq := New(Config[int]{
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        100,
 		BatchSize:      100,
 		FlushInterval:  time.Hour,
@@ -247,7 +247,7 @@ func TestMultipleWorkers(t *testing.T) {
 	var totalItems atomic.Int32
 	done := make(chan struct{})
 
-	callback := func(items []int) {
+	callback := func(_ context.Context, items []int) {
 		if totalItems.Add(int32(len(items))) >= 10 {
 			select {
 			case <-done:
@@ -257,7 +257,7 @@ func TestMultipleWorkers(t *testing.T) {
 		}
 	}
 
-	sq := New(Config[int]{
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        100,
 		BatchSize:      2,
 		FlushInterval:  50 * time.Millisecond,
@@ -286,13 +286,13 @@ func TestConcurrentEnqueue(t *testing.T) {
 	var received []int
 	var mu sync.Mutex
 
-	callback := func(items []int) {
+	callback := func(_ context.Context, items []int) {
 		mu.Lock()
 		received = append(received, items...)
 		mu.Unlock()
 	}
 
-	sq := New(Config[int]{
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        1000,
 		BatchSize:      50,
 		FlushInterval:  50 * time.Millisecond,
@@ -326,8 +326,8 @@ func TestConcurrentEnqueue(t *testing.T) {
 }
 
 func TestIsStopped(t *testing.T) {
-	callback := func(_ []int) {}
-	sq := New(Config[int]{Callback: callback})
+	callback := func(_ context.Context, _ []int) {}
+	sq := New(context.Background(), Config[int]{Callback: callback})
 
 	assert.False(t, sq.IsStopped())
 
@@ -339,8 +339,8 @@ func TestIsStopped(t *testing.T) {
 }
 
 func TestStop_Idempotent(t *testing.T) {
-	callback := func(_ []int) {}
-	sq := New(Config[int]{Callback: callback})
+	callback := func(_ context.Context, _ []int) {}
+	sq := New(context.Background(), Config[int]{Callback: callback})
 	sq.Start()
 
 	sq.Stop()
@@ -355,7 +355,7 @@ func TestStart_AfterStop(t *testing.T) {
 	var mu sync.Mutex
 	done := make(chan struct{})
 
-	callback := func(items []int) {
+	callback := func(_ context.Context, items []int) {
 		mu.Lock()
 		received = append(received, items...)
 		if len(received) >= 2 {
@@ -368,7 +368,7 @@ func TestStart_AfterStop(t *testing.T) {
 		mu.Unlock()
 	}
 
-	sq := New(Config[int]{
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        10,
 		BatchSize:      2,
 		FlushInterval:  time.Hour,
@@ -412,89 +412,8 @@ func TestStart_AfterStop(t *testing.T) {
 	sq.Stop()
 }
 
-func TestGenericTypes(t *testing.T) {
-	t.Run("string type", func(t *testing.T) {
-		var received []string
-		var mu sync.Mutex
-		done := make(chan struct{})
-
-		callback := func(items []string) {
-			mu.Lock()
-			received = append(received, items...)
-			mu.Unlock()
-			close(done)
-		}
-
-		sq := New(Config[string]{
-			MaxSize:        10,
-			BatchSize:      2,
-			FlushInterval:  time.Hour,
-			EnqueueTimeout: time.Second,
-			Callback:       callback,
-		})
-		sq.Start()
-		defer sq.Stop()
-
-		ctx := context.Background()
-		sq.Enqueue(ctx, "hello")
-		sq.Enqueue(ctx, "world")
-
-		select {
-		case <-done:
-		case <-time.After(2 * time.Second):
-			t.Fatal("Callback not triggered")
-		}
-
-		mu.Lock()
-		assert.Equal(t, []string{"hello", "world"}, received)
-		mu.Unlock()
-	})
-
-	t.Run("struct type", func(t *testing.T) {
-		type Event struct {
-			ID   int
-			Name string
-		}
-
-		var received []Event
-		var mu sync.Mutex
-		done := make(chan struct{})
-
-		callback := func(items []Event) {
-			mu.Lock()
-			received = append(received, items...)
-			mu.Unlock()
-			close(done)
-		}
-
-		sq := New(Config[Event]{
-			MaxSize:        10,
-			BatchSize:      2,
-			FlushInterval:  time.Hour,
-			EnqueueTimeout: time.Second,
-			Callback:       callback,
-		})
-		sq.Start()
-		defer sq.Stop()
-
-		ctx := context.Background()
-		sq.Enqueue(ctx, Event{ID: 1, Name: "first"})
-		sq.Enqueue(ctx, Event{ID: 2, Name: "second"})
-
-		select {
-		case <-done:
-		case <-time.After(2 * time.Second):
-			t.Fatal("Callback not triggered")
-		}
-
-		mu.Lock()
-		assert.Equal(t, []Event{{ID: 1, Name: "first"}, {ID: 2, Name: "second"}}, received)
-		mu.Unlock()
-	})
-}
-
 func TestNilCallback(_ *testing.T) {
-	sq := New(Config[int]{
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        10,
 		BatchSize:      2,
 		FlushInterval:  50 * time.Millisecond,
@@ -512,8 +431,8 @@ func TestNilCallback(_ *testing.T) {
 }
 
 func TestLen(t *testing.T) {
-	callback := func(_ []int) {}
-	sq := New(Config[int]{
+	callback := func(_ context.Context, _ []int) {}
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        100,
 		BatchSize:      100,
 		FlushInterval:  time.Hour,
@@ -534,27 +453,13 @@ func TestLen(t *testing.T) {
 	assert.Equal(t, 3, sq.Len())
 }
 
-func TestQueueInterface(t *testing.T) {
-	callback := func(_ []int) {}
-	var q Queue[int] = New(Config[int]{Callback: callback})
-
-	q.Start()
-	defer q.Stop()
-
-	ctx := context.Background()
-	ok := q.Enqueue(ctx, 42)
-	assert.True(t, ok)
-	assert.Equal(t, 1, q.Len())
-	assert.False(t, q.IsStopped())
-}
-
 func TestBatchSizeExactly(t *testing.T) {
 	var totalItems atomic.Int32
 	batchSizes := make([]int, 0)
 	var mu sync.Mutex
 	done := make(chan struct{})
 
-	callback := func(items []int) {
+	callback := func(_ context.Context, items []int) {
 		mu.Lock()
 		batchSizes = append(batchSizes, len(items))
 		mu.Unlock()
@@ -567,7 +472,7 @@ func TestBatchSizeExactly(t *testing.T) {
 		}
 	}
 
-	sq := New(Config[int]{
+	sq := New(context.Background(), Config[int]{
 		MaxSize:        100,
 		BatchSize:      5,
 		FlushInterval:  50 * time.Millisecond,

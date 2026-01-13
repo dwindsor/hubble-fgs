@@ -17,10 +17,11 @@ import (
 )
 
 // New creates a new SmartQueue with the given configuration
-func New[T any](config Config[T]) *SmartQueue[T] {
+func New[T any](ctx context.Context, config Config[T]) *SmartQueue[T] {
 	config = config.validate()
 
 	return &SmartQueue[T]{
+		ctx:     ctx,
 		config:  config,
 		queue:   make(chan T, config.MaxSize),
 		batchCh: make(chan []T, config.WorkerCount*2),
@@ -31,14 +32,17 @@ func New[T any](config Config[T]) *SmartQueue[T] {
 
 // SmartQueue is a thread-safe queue with batching and periodic flush capabilities
 type SmartQueue[T any] struct {
+	ctx    context.Context
 	config Config[T]
 
 	queue   chan T
 	batchCh chan []T
 
-	mu      sync.RWMutex
-	running bool
-	stopped bool
+	mu        sync.RWMutex
+	running   bool
+	stopped   bool
+	runCtx    context.Context
+	runCancel context.CancelFunc
 
 	wg      sync.WaitGroup
 	stopCh  chan struct{}
@@ -59,6 +63,8 @@ func (sq *SmartQueue[T]) Start() {
 		sq.stopCh = make(chan struct{})
 		sq.batchCh = make(chan []T, sq.config.WorkerCount*2)
 	}
+	// Create a child context for this run cycle that will be cancelled on Stop()
+	sq.runCtx, sq.runCancel = context.WithCancel(sq.ctx)
 	sq.running = true
 	sq.mu.Unlock()
 
@@ -75,18 +81,43 @@ func (sq *SmartQueue[T]) Start() {
 
 // Stop gracefully stops the queue and flushes remaining items.
 // After Stop() returns, Start() can be called to restart the queue.
+//
+// The lock is held during the entire stop operation (including waiting for
+// goroutines).  A timeout prevents indefinite blocking if goroutines fail to exit.
 func (sq *SmartQueue[T]) Stop() {
 	sq.mu.Lock()
+	defer sq.mu.Unlock()
+
 	if sq.stopped || !sq.running {
-		sq.mu.Unlock()
 		return
 	}
 	sq.stopped = true
 	sq.running = false
-	sq.mu.Unlock()
 
 	close(sq.stopCh)
-	sq.wg.Wait()
+
+	// Wait for goroutines with timeout to avoid holding lock forever
+	done := make(chan struct{})
+	go func() {
+		sq.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Goroutines exited cleanly
+	case <-time.After(30 * time.Second):
+		// Timeout - goroutines may still be running. Reset the WaitGroup so
+		// Start() can safely be called. Orphaned goroutines will eventually
+		// call Done() on the old WaitGroup (captured by the goroutine above),
+		// which is harmless since we no longer reference it.
+		sq.wg = sync.WaitGroup{}
+	}
+
+	// Cancel the run context to signal callbacks and workers to stop
+	if sq.runCancel != nil {
+		sq.runCancel()
+	}
 }
 
 // IsStopped returns true if the queue has been stopped
@@ -245,7 +276,7 @@ func (sq *SmartQueue[T]) worker() {
 
 	for batch := range sq.batchCh {
 		if sq.config.Callback != nil && len(batch) > 0 {
-			sq.config.Callback(batch)
+			sq.config.Callback(sq.runCtx, batch)
 		}
 	}
 }

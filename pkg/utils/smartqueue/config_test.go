@@ -11,6 +11,7 @@
 package smartqueue
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -18,8 +19,8 @@ import (
 )
 
 func TestNew_DefaultValues(t *testing.T) {
-	callback := func(_ []int) {}
-	sq := New(Config[int]{Callback: callback})
+	callback := func(_ context.Context, _ []int) {}
+	sq := New(context.Background(), Config[int]{Callback: callback})
 
 	assert.Equal(t, DefaultMaxSize, sq.config.MaxSize)
 	assert.Equal(t, DefaultBatchSize, sq.config.BatchSize)
@@ -29,7 +30,7 @@ func TestNew_DefaultValues(t *testing.T) {
 }
 
 func TestNew_CustomValues(t *testing.T) {
-	callback := func(_ []int) {}
+	callback := func(_ context.Context, _ []int) {}
 	config := Config[int]{
 		MaxSize:        500,
 		BatchSize:      50,
@@ -38,7 +39,7 @@ func TestNew_CustomValues(t *testing.T) {
 		WorkerCount:    4,
 		Callback:       callback,
 	}
-	sq := New(config)
+	sq := New(context.Background(), config)
 
 	assert.Equal(t, 500, sq.config.MaxSize)
 	assert.Equal(t, 50, sq.config.BatchSize)
@@ -48,19 +49,19 @@ func TestNew_CustomValues(t *testing.T) {
 }
 
 func TestNew_BatchSizeExceedsMaxSize(t *testing.T) {
-	callback := func(_ []int) {}
+	callback := func(_ context.Context, _ []int) {}
 	config := Config[int]{
 		MaxSize:   100,
 		BatchSize: 200,
 		Callback:  callback,
 	}
-	sq := New(config)
+	sq := New(context.Background(), config)
 
 	assert.Equal(t, 100, sq.config.BatchSize, "BatchSize should be capped at MaxSize")
 }
 
 func TestDefaultConfig(t *testing.T) {
-	callback := func(_ []string) {}
+	callback := func(_ context.Context, _ []string) {}
 	config := DefaultConfig(callback)
 
 	assert.Equal(t, DefaultMaxSize, config.MaxSize)

@@ -787,32 +787,54 @@ func (dpu *DPUAgent) EventConnect(ctx context.Context) error {
 		return nil
 	}
 
-	callback := func(events []*v1alpha.StreamEvent) {
-		streamMu.Lock()
-		defer streamMu.Unlock()
+	// callback retries forever with exponential backoff to guarantee all queued
+	// events are eventually sent. We never drop events - if the connection fails,
+	// we keep reconnecting until the send succeeds or the context is cancelled.
+	callback := func(ctx context.Context, events []*v1alpha.StreamEvent) {
+		const maxBackoff = 15 * time.Second
+		backoff := 100 * time.Millisecond
 
-		if stream == nil {
-			if err := openStream(); err != nil {
-				logger.GetLogger().Error("Cannot send events", logfields.Error, err)
+		for attempt := 1; ; attempt++ {
+			var sendErr error
+
+			// Try to send - lock only for the duration of stream access
+			// Using function wrapper so we can use defer statement to guarantee unlock
+			func() {
+				streamMu.Lock()
+				defer streamMu.Unlock()
+
+				if stream == nil {
+					if err := openStream(); err != nil {
+						sendErr = fmt.Errorf("open stream: %w", err)
+						return
+					}
+				}
+
+				if err := stream.Send(&v1alpha.StreamEventsRequest{Events: events}); err != nil {
+					stream = nil
+					sendErr = fmt.Errorf("send: %w", err)
+					return
+				}
+			}()
+
+			if sendErr == nil {
+				logger.GetLogger().Debug("Successfully sent events batch", "count", len(events))
 				return
 			}
-		}
 
-		req := &v1alpha.StreamEventsRequest{
-			Events: events,
+			// Waiting with backoff or exit on context cancellation
+			logger.GetLogger().Error("Failed to send events batch, retrying...", logfields.Error, sendErr, "count", len(events), "attempt", attempt, "backoff", backoff)
+			select {
+			case <-ctx.Done():
+				logger.GetLogger().Info("Context cancelled, dropping events batch", "count", len(events))
+				return
+			case <-time.After(backoff):
+			}
+			backoff = min(backoff*2, maxBackoff)
 		}
-
-		err := stream.Send(req)
-		if err != nil {
-			logger.GetLogger().Error("Failed to send events batch, will reconnect", logfields.Error, err, "count", len(events))
-			stream = nil
-			return
-		}
-
-		logger.GetLogger().Debug("Successfully sent events batch", "count", len(events))
 	}
 
-	dpu.eventQueue = smartqueue.New(smartqueue.Config[*v1alpha.StreamEvent]{
+	dpu.eventQueue = smartqueue.New(ctx, smartqueue.Config[*v1alpha.StreamEvent]{
 		MaxSize:       256,
 		BatchSize:     64,
 		FlushInterval: 5 * time.Second,

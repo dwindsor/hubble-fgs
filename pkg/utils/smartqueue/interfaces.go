@@ -25,7 +25,7 @@ const (
 )
 
 // CallbackFunc is the function type called when batch is ready
-type CallbackFunc[T any] func([]T)
+type CallbackFunc[T any] func(context.Context, []T)
 
 // Queue defines the interface for a smart queue
 type Queue[T any] interface {
