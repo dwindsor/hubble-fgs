@@ -90,7 +90,7 @@ def verify_policy_removed_from_agw(result: str, agw_output: str) -> None:
 
 
 def verify_policy_removed_from_sim(sim_output: str) -> None:
-    wait_for_timeout(1)
+    wait_for_timeout(2)
     assert verify_no_policies_in_sim(sim_output), \
         f"Expected no policies in SIM but found some"
     logger.info(f"✅ Policy successfully removed from SIM")
