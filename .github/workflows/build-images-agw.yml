@@ -518,14 +518,14 @@ jobs:
           echo "| Docker Image | agw.tar.gz |" >> $GITHUB_STEP_SUMMARY
           echo "| Binaries | agw-binaries.tar.gz |" >> $GITHUB_STEP_SUMMARY
 
-  create-agw-releases-repo-release:
+  create-hubble-agw-releases-repo-release:
     needs: [ init, combine-artifacts ]
     if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
     env:
       TARGET_ORG: isovalent
-      TARGET_REPO: agw-releases
+      TARGET_REPO: hubble-agw-releases
     steps:
       - name: Generate GitHub App Token
         id: app-token
@@ -535,12 +535,12 @@ jobs:
           private-key: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
           owner: ${{ env.TARGET_ORG }}
           repositories: ${{ env.TARGET_REPO }}
-      - name: Checkout agw-releases repo
+      - name: Checkout hubble-agw-releases repo
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           repository: ${{ env.TARGET_ORG }}/${{ env.TARGET_REPO }}
           token: ${{ steps.app-token.outputs.token }}
-          path: ./agw-releases-repo
+          path: ./hubble-agw-releases-repo
       - name: Download release artifacts
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
@@ -586,7 +586,7 @@ jobs:
           echo "✓ All artifact checksums verified"
       - name: Create release notes
         run: |
-          cd ./agw-releases-repo
+          cd ./hubble-agw-releases-repo
           mkdir -p docs/release-notes
           
           VERSION="${{ needs.init.outputs.version }}"
@@ -634,7 +634,7 @@ jobs:
           
           ## Installation
           
-          1. Download the appropriate artifacts from the [Releases](https://github.com/isovalent/agw-releases/releases) page
+          1. Download the appropriate artifacts from the [Releases](https://github.com/isovalent/hubble-agw-releases/releases) page
           2. Verify checksum: \`sha256sum -c SHA256SUMS.txt\`
           3. Extract Docker image: \`tar -xzf agw.tar.gz && docker load -i agw.tar\`
           4. Extract binaries: \`tar -xzf agw-binaries-${VERSION}.tar.gz\`
@@ -654,13 +654,13 @@ jobs:
           cat "$RELEASE_NOTES_FILE"
       - name: Commit release notes
         run: |
-          cd ./agw-releases-repo
+          cd ./hubble-agw-releases-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/release-notes/
           git commit -m "docs: Add release notes for ${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}" || echo "No changes to commit"
           git push origin main
-      - name: Create GitHub Release in agw-releases
+      - name: Create GitHub Release in hubble-agw-releases
         uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2
         with:
           token: ${{ steps.app-token.outputs.token }}
@@ -694,7 +694,7 @@ jobs:
             5. Deploy according to NXOS integration documentation
             
             ### Release Notes
-            Full release notes: [docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md](https://github.com/isovalent/agw-releases/blob/main/docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md)
+            Full release notes: [docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md](https://github.com/isovalent/hubble-agw-releases/blob/main/docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md)
             
             ---
             
@@ -720,8 +720,8 @@ jobs:
           echo "==================================="
 
   update-agw-version-dpu-pensando:
-    needs: [ init, create-agw-releases-repo-release ]
-    if: ${{ needs.init.result == 'success' && needs.create-agw-releases-repo-release.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master')) }}
+    needs: [ init, create-hubble-agw-releases-repo-release ]
+    if: ${{ needs.init.result == 'success' && needs.create-hubble-agw-releases-repo-release.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master')) }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
     env:
