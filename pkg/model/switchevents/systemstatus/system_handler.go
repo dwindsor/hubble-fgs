@@ -28,7 +28,21 @@ const (
 	STATUS_UPDATE_INTERVAL = 30 * time.Second
 	// System name for Nexus 9000 series
 	SystemStatusName = "Nexus9K"
-	ClusterName      = "smartswitch"
+	// ClusterName is the cluster name used in system status events
+	ClusterName = "smartswitch"
+	// For ExtraData "connection_status"
+	CONNECTED = "CONNECTED"
+)
+
+// For ConditionId
+const (
+	DISCONNECTED       = "DISCONNECTED"
+	PENDING_CONNECTION = "PENDING_CONNECTION"
+)
+
+// For Subsystem
+const (
+	SUBSYSTEM_CONTROLLER_CONNECTION = "controller-connection"
 )
 
 // SystemStatusDataProvider provides data needed by the system status handler
@@ -37,7 +51,7 @@ type SystemStatusDataProvider struct {
 	GetStartupTime func() time.Time
 	// GetVersion returns the system version
 	GetVersion func() string
-	// Get SerialNumber returns the system serial number
+	// GetSerialNumber returns the system serial number
 	GetSerialNumber func() string
 	// GetControllerConnectionStatus returns the controller connection status as nxosmodel.E_Cisco_NX_OSDevice_Sas_CommonStateE
 	GetControllerConnectionStatus func() model.E_Cisco_NX_OSDevice_Sas_CommonStateE
@@ -60,6 +74,7 @@ type systemConnectionHandler struct {
 	stopCh       chan struct{}
 	client       types.Client
 	dataProvider SystemStatusDataProvider
+	metadataSent bool // tracks if metadata has been successfully sent
 }
 
 // NewSystemConnectionHandler creates a new system connection handler
@@ -89,6 +104,10 @@ func (h *systemConnectionHandler) Start(ctx context.Context) error {
 	}
 
 	h.running = true
+	h.metadataSent = false
+	// Send metadata update once at start
+	h.sendSystemMetadataUpdate(ctx)
+	// Start sending periodic status updates
 	go h.monitoringLoop(ctx)
 	logger.GetLogger().Debug("timescape: system connection status handler started")
 	return nil
@@ -139,6 +158,15 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 		return
 	}
 
+	// Ensure metadata was sent before sending status updates
+	h.mu.RLock()
+	if !h.metadataSent {
+		logger.GetLogger().Info("timescape: system metadata not sent yet, skipping system status update")
+		h.mu.RUnlock()
+		return
+	}
+	h.mu.RUnlock()
+
 	// Get current system connection status from NXOS controller
 	currentStatus := h.dataProvider.GetControllerConnectionStatus()
 
@@ -170,16 +198,16 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 			// Retry after waiting
 			err_code = h.client.Send(ctx, event, types.PriorityHigh)
 			if err_code == types.ErrCodeFailure {
-				logger.GetLogger().Error("timescape: failed to send system connection status to timescape after retry", "error", err_code)
+				logger.GetLogger().Error("timescape: failed to send system connection status after retry", "error", err_code)
 				return
 			}
 		}
 	} else if err_code != types.ErrCodeSuccess {
-		logger.GetLogger().Error("timescape: failed to send system connection status to timescape", "error", err_code)
+		logger.GetLogger().Error("timescape: failed to send system connection status", "error", err_code)
 		return
 	}
 
-	logger.GetLogger().Debug("timescape: successfully sent system connection status to timescape",
+	logger.GetLogger().Debug("timescape: successfully sent system connection status",
 		"status", currentStatus.String())
 }
 
@@ -235,8 +263,7 @@ func (h *systemConnectionHandler) writeSystemStatusUpdate(status model.E_Cisco_N
 		statusUpdate.TotalConditions = 0
 		statusUpdate.FailingConditions = []*v1alpha.FailingCondition{}
 		statusUpdate.ExtraData = map[string]string{
-			"connection_status": status.String(),
-			"component":         "agw",
+			"connection_status": CONNECTED,
 		}
 	case model.Cisco_NX_OSDevice_Sas_CommonStateE_failure:
 		// Failure: skip sending. Interface is down.
@@ -248,18 +275,109 @@ func (h *systemConnectionHandler) writeSystemStatusUpdate(status model.E_Cisco_N
 		statusUpdate.TotalConditions = 1
 		statusUpdate.FailingConditions = []*v1alpha.FailingCondition{
 			{
-				ConditionId: status.String(),
-				Severity:    2, // Error
-				Message:     "api-server connection is unknown",
+				ConditionId: PENDING_CONNECTION,
+				Severity:    v1alpha.Severity_SEVERITY_MAJOR, // Error
+				Message:     "On-prem controller connection is pending",
 			},
-		}
-		statusUpdate.ExtraData = map[string]string{
-			"connection_status": status.String(),
-			"component":         "agw",
 		}
 	}
 
 	return event
+}
+
+// writeSystemMetadataUpdate creates a SystemStatusEvent with SystemMetadataUpdate
+// that contains metadata for the system's known conditions. This provides detailed
+// descriptions and resolution information for conditions that may be reported
+// in SystemStatusUpdate events.
+//
+// Returns:
+//   - *v1alpha.SystemStatusEvent: The created system metadata event
+func (h *systemConnectionHandler) writeSystemMetadataUpdate() *v1alpha.SystemStatusEvent {
+	now := time.Now()
+
+	// agw software version
+	version := "unknown"
+	if h.dataProvider.GetVersion != nil {
+		version = h.dataProvider.GetVersion()
+	}
+
+	// Create event structure
+	event := &v1alpha.SystemStatusEvent{
+		Time: timestamppb.New(now),
+	}
+
+	// Create metadata update
+	metadataUpdate := &v1alpha.SystemMetadataUpdate{
+		System: &v1alpha.SystemID{
+			Name:    SystemStatusName,
+			Version: version,
+		},
+		Conditions: []*v1alpha.ConditionMetadata{
+			{
+				ConditionId: DISCONNECTED,
+				Subsystem:   SUBSYSTEM_CONTROLLER_CONNECTION,
+				Description: "SmartSwitch failed to connect to the Kubernetes API server or lost connection with the controller",
+				Resolution:  "Check switch network connectivity, verify K8s API server is running, and ensure authentication credentials are valid",
+			},
+			{
+				// Pending connection: nxosmodel.E_Cisco_NX_OSDevice_Sas_CommonStateE_unknown
+				ConditionId: PENDING_CONNECTION,
+				Subsystem:   SUBSYSTEM_CONTROLLER_CONNECTION,
+				Description: "SmartSwitch controller connection status is pending",
+				Resolution:  "Check SmartSwitch configuration for NX-OS controller connectivity settings",
+			},
+		},
+	}
+
+	// Set the event with metadata wrapper
+	event.Event = &v1alpha.SystemStatusEvent_Metadata{Metadata: metadataUpdate}
+
+	return event
+}
+
+// sendSystemMetadataUpdate creates and sends system metadata update to timescape with retry logic.
+// This one-time status event is mandatory for Timescape to understand all condition metadata
+func (h *systemConnectionHandler) sendSystemMetadataUpdate(ctx context.Context) {
+	logger.GetLogger().Debug("timescape: sending system metadata update")
+
+	if h.client == nil {
+		logger.GetLogger().Warn("timescape: client not initialized, skipping metadata update")
+		return
+	}
+
+	// Create system metadata update event
+	event := h.writeSystemMetadataUpdate()
+
+	// Keep retrying until successful send or context cancelled
+	for {
+		errCode := h.client.Send(ctx, event, types.PriorityHigh)
+
+		switch errCode {
+		case types.ErrCodeSuccess:
+			logger.GetLogger().Debug("timescape: successfully sent system metadata update")
+			h.metadataSent = true
+			return
+
+		case types.ErrCodeQueueBusy:
+			logger.GetLogger().Debug("timescape: queue full, waiting before retry for metadata update")
+			fallthrough
+
+		default: // ErrCodeFailure or other errors
+			if errCode != types.ErrCodeQueueBusy {
+				logger.GetLogger().Debug("timescape: failed to send system metadata update, retrying", "error", errCode)
+			}
+
+			// Wait before retrying
+			select {
+			case <-ctx.Done():
+				logger.GetLogger().Debug("timescape: context cancelled while retrying metadata update")
+				return
+			case <-time.After(2 * time.Second):
+				// Continue the retry loop
+				continue
+			}
+		}
+	}
 }
 
 // ReportSystemStatus manually triggers a system status report

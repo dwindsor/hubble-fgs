@@ -217,11 +217,11 @@ func (q *Queue) flushBatch(ctx context.Context, p types.Priority, batch []types.
 			return
 		}
 
-		retries++
-		if retries > q.cfg.MaxRetries {
+		if retries+1 > q.cfg.MaxRetries {
 			logger.GetLogger().Error("timescape: failed to send batch after max retries. Drop", "error", err, "priority", p, "retries", retries)
 			return
 		}
+		retries++
 
 		// Exponential backoff: 2^retries * baseDelay (100ms, 200ms, 400ms, 800ms...)
 		backoff := time.Duration(1<<(retries-1)) * q.cfg.BaseBackoff
