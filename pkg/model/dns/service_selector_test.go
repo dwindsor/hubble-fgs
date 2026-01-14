@@ -76,11 +76,7 @@ func splitLabels(labels string) []string {
 	if labels == "" {
 		return nil
 	}
-	var result []string
-	for _, l := range split(labels, ",") {
-		result = append(result, l)
-	}
-	return result
+	return split(labels, ",")
 }
 
 func splitLabel(label string) []string {
