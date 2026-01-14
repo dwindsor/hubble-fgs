@@ -76,7 +76,14 @@ func (e *jsonEncoder) encode(alert *tetragon.Alert) error {
 	// * OTHER ratelimited events -> set the AlertRuleRateLimitDropsTotal and skip the write.
 	if e.rateLimiter.Allow() {
 		if alert != nil && alert.Rule != nil {
-			alertmetrics.AlertRuleRateLimitWindowUsage.WithLabelValues(alert.Rule.Name).Set(e.rateLimiter.Tokens())
+			tokens := e.rateLimiter.Tokens()
+			burst := e.rateLimiter.Burst()
+			windowUsage := 0.0
+			if burst != 0 {
+				windowUsage = 1 - tokens/float64(burst)
+			}
+
+			alertmetrics.AlertRuleRateLimitWindowUsage.WithLabelValues(alert.Rule.Name).Set(windowUsage)
 			alertmetrics.AlertsExportedTotal.WithLabelValues(alert.Rule.Name).Inc()
 		}
 		if e.rateLimited {

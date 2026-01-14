@@ -133,7 +133,7 @@ var (
 		prometheus.GaugeOpts{
 			Namespace:   consts.MetricsNamespace,
 			Name:        "alert_rules_rate_limit_window_usage",
-			Help:        "Remaining events for active window for rate limited alerts. Reset on Tetragon restart.",
+			Help:        "Window usage for rate limited alerts (ratio between 0 and 1). Reset on Tetragon restart.",
 			ConstLabels: nil,
 		},
 		[]string{"rule"},

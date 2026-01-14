@@ -1963,7 +1963,7 @@ Number of alerts dropped events because of rate limiting. Reset on Tetragon rest
 
 ### `tetragon_alert_rules_rate_limit_window_usage`
 
-Remaining events for active window for rate limited alerts. Reset on Tetragon restart.
+Window usage for rate limited alerts (ratio between 0 and 1). Reset on Tetragon restart.
 
 | label | values |
 | ----- | ------ |
