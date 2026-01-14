@@ -27,6 +27,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/matchLabels"
 	"github.com/isovalent/hubble-fgs/pkg/model/record"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	"github.com/isovalent/hubble-fgs/pkg/netpol/servicemap"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,10 +53,14 @@ func SetK8sReader(reader client.Reader) {
 	k8sReader = reader
 }
 
-// At init we build an empty realized state
+// At init we build an empty realized state and register endpoint change handler
 func init() {
 	s := NewPolicyState()
 	SetRealizedState(s)
+
+	// Register handlers for service/endpoint changes
+	servicemap.OnEndpointChange = HandleEndpointChange
+	servicemap.OnServiceDelete = HandleServiceDelete
 }
 
 func SetDatapath(dp datapath.Interface) {
@@ -119,6 +124,11 @@ type PolicyState struct {
 	localObjects  map[k8stypes.UID]metav1.Object
 	remoteObjects map[k8stypes.UID]metav1.Object
 
+	serviceSelPolicies map[types.TetragonPolicyUniqueID]*types.TetragonNetworkPolicy
+	serviceSelLock     sync.Mutex
+
+	serviceMap *servicemap.ServiceMap
+
 	DstLock sync.Mutex
 	SrcLock sync.Mutex
 
@@ -144,9 +154,11 @@ func NewPolicyState() *PolicyState {
 	}
 
 	s.remoteObjects = make(map[k8stypes.UID]metav1.Object)
+	s.serviceSelPolicies = make(map[types.TetragonPolicyUniqueID]*types.TetragonNetworkPolicy)
 
 	s.DstLock = sync.Mutex{}
 	s.SrcLock = sync.Mutex{}
+	s.serviceSelLock = sync.Mutex{}
 
 	s.Reader = sync.RWMutex{}
 	return s
@@ -154,6 +166,18 @@ func NewPolicyState() *PolicyState {
 
 func SetRealizedState(s *PolicyState) {
 	RealizedState = s
+}
+
+// SetServiceMap sets the ServiceMap used for serviceSelector policy lookups.
+// This should be called after the ServiceMap is initialized in the manager.
+func (state *PolicyState) SetServiceMap(sm *servicemap.ServiceMap) {
+	state.serviceMap = sm
+}
+
+// GetServiceMap returns the ServiceMap for this PolicyState.
+// Returns nil if not set - callers should handle this case.
+func (state *PolicyState) GetServiceMap() *servicemap.ServiceMap {
+	return state.serviceMap
 }
 
 // Top level handler to remove pod: performance bouns, this op requires 2 matchLabel
@@ -263,6 +287,15 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 			continue
 		}
 		d := state.Dst[s.Policy.PolicyUID]
+
+		// serviceSelector policies populate state.Src (for subject matching) but
+		// not state.Dst (since they use CIDR records from ServiceMap instead of
+		// destination pod labels). Add nil check to prevent panic when removing
+		// pods that match serviceSelector policy subjects.
+		if d == nil {
+			continue
+		}
+
 		for _, ep := range d.Endpoints {
 			dpEndpoint := record.DatapathEndpoint{
 				EP: ep,
@@ -581,6 +614,13 @@ func PodAdd(epPod *v1alpha1.PodInfo) error {
 	if err != nil {
 		return err
 	}
+
+	// Create serviceSelector records for this pod.
+	svcSelRecords, err := state.CreateServiceSelectorRecords(epPod)
+	if err != nil {
+		logger.GetLogger().Warn("Failed to create serviceSelector records", logfields.Error, err)
+	}
+	records = append(records, svcSelRecords...)
 
 	return prog.AddRecords(records, false)
 }

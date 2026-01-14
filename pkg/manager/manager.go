@@ -121,6 +121,8 @@ func New(ctx context.Context) (KubernetesManager, error) {
 		if err := servicemap.AddServiceInformer(ctx, ossManager, sm); err != nil {
 			return nil, err
 		}
+		// Set the ServiceMap on the realized state for policy lookups
+		dns.GetRealizedState().SetServiceMap(sm)
 	}
 	return &EnterpriseManager{ossManager}, nil
 }
