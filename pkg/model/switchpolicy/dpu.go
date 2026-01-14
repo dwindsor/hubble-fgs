@@ -72,6 +72,7 @@ type DPUSubject struct {
 type DPURule struct {
 	K8SResourceVersion string
 	K8SUid             string
+	K8SIndex           uint32
 	PolicyName         string
 	RuleName           string
 	Action             v1alpha.PolicyAction

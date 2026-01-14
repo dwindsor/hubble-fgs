@@ -52,6 +52,7 @@ func TestRuleToJSON(t *testing.T) {
 			rule: &switchpolicy.DPURule{
 				K8SResourceVersion: "v1",
 				K8SUid:             "uid-123",
+				K8SIndex:           2,
 				PolicyName:         "test-policy",
 				RuleName:           "rule-1",
 				Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -69,7 +70,7 @@ func TestRuleToJSON(t *testing.T) {
 				},
 			},
 			expected: expectedPolicy{
-				Name:       "test-policy/rule-1",
+				Name:       "test-policy/2",
 				Effect:     ALLOW,
 				Operation:  0,
 				SourceIp:   "10.0.0.0/8",
@@ -92,6 +93,7 @@ func TestRuleToJSON(t *testing.T) {
 			rule: &switchpolicy.DPURule{
 				K8SResourceVersion: "v1",
 				K8SUid:             "uid-456",
+				K8SIndex:           3,
 				PolicyName:         "multi-proto-policy",
 				RuleName:           "rule-1",
 				Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -107,7 +109,7 @@ func TestRuleToJSON(t *testing.T) {
 				},
 			},
 			expected: expectedPolicy{
-				Name:      "multi-proto-policy/rule-1",
+				Name:      "multi-proto-policy/3",
 				Effect:    ALLOW,
 				Operation: 0,
 				SourceIp:  "10.0.0.0/8",
@@ -127,6 +129,7 @@ func TestRuleToJSON(t *testing.T) {
 			rule: &switchpolicy.DPURule{
 				K8SResourceVersion: "v1",
 				K8SUid:             "uid-789",
+				K8SIndex:           4,
 				PolicyName:         "multi-port-policy",
 				RuleName:           "rule-1",
 				Action:             v1alpha.PolicyAction_POLICY_ACTION_DENY,
@@ -142,7 +145,7 @@ func TestRuleToJSON(t *testing.T) {
 				},
 			},
 			expected: expectedPolicy{
-				Name:      "multi-port-policy/rule-1",
+				Name:      "multi-port-policy/4",
 				Effect:    DENY,
 				Operation: 0,
 				SourceIp:  "10.0.0.0/8",
@@ -168,6 +171,7 @@ func TestRuleToJSON(t *testing.T) {
 			rule: &switchpolicy.DPURule{
 				K8SResourceVersion: "v1",
 				K8SUid:             "uid-range",
+				K8SIndex:           4,
 				PolicyName:         "port-range-policy",
 				RuleName:           "rule-1",
 				Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -183,7 +187,7 @@ func TestRuleToJSON(t *testing.T) {
 				},
 			},
 			expected: expectedPolicy{
-				Name:      "port-range-policy/rule-1",
+				Name:      "port-range-policy/4",
 				Effect:    ALLOW,
 				Operation: 0,
 				SourceIp:  "10.0.0.0/8",
@@ -203,6 +207,7 @@ func TestRuleToJSON(t *testing.T) {
 			rule: &switchpolicy.DPURule{
 				K8SResourceVersion: "v1",
 				K8SUid:             "uid-del",
+				K8SIndex:           4,
 				PolicyName:         "delete-policy",
 				RuleName:           "rule-1",
 				Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -217,7 +222,7 @@ func TestRuleToJSON(t *testing.T) {
 				},
 			},
 			expected: expectedPolicy{
-				Name:      "delete-policy/rule-1",
+				Name:      "delete-policy/4",
 				Effect:    ALLOW,
 				Operation: 1, // DELETE
 				SourceIp:  "10.0.0.0/8",
@@ -237,6 +242,7 @@ func TestRuleToJSON(t *testing.T) {
 			rule: &switchpolicy.DPURule{
 				K8SResourceVersion: "v1",
 				K8SUid:             "uid-noports",
+				K8SIndex:           4,
 				PolicyName:         "no-ports-policy",
 				RuleName:           "rule-1",
 				Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -249,7 +255,7 @@ func TestRuleToJSON(t *testing.T) {
 				},
 			},
 			expected: expectedPolicy{
-				Name:      "no-ports-policy/rule-1",
+				Name:      "no-ports-policy/4",
 				Effect:    ALLOW,
 				Operation: 0,
 				SourceIp:  "10.0.0.0/8",
@@ -263,6 +269,7 @@ func TestRuleToJSON(t *testing.T) {
 			rule: &switchpolicy.DPURule{
 				K8SResourceVersion: "v1",
 				K8SUid:             "uid-icmp",
+				K8SIndex:           4,
 				PolicyName:         "icmp-policy",
 				RuleName:           "rule-1",
 				Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -277,7 +284,7 @@ func TestRuleToJSON(t *testing.T) {
 				},
 			},
 			expected: expectedPolicy{
-				Name:      "icmp-policy/rule-1",
+				Name:      "icmp-policy/4",
 				Effect:    ALLOW,
 				Operation: 0,
 				SourceIp:  "10.0.0.0/8",
@@ -297,6 +304,7 @@ func TestRuleToJSON(t *testing.T) {
 			rule: &switchpolicy.DPURule{
 				K8SResourceVersion: "v1",
 				K8SUid:             "uid-any",
+				K8SIndex:           4,
 				PolicyName:         "any-proto-policy",
 				RuleName:           "rule-1",
 				Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -311,7 +319,7 @@ func TestRuleToJSON(t *testing.T) {
 				},
 			},
 			expected: expectedPolicy{
-				Name:      "any-proto-policy/rule-1",
+				Name:      "any-proto-policy/4",
 				Effect:    ALLOW,
 				Operation: 0,
 				SourceIp:  "10.0.0.0/8",
@@ -331,6 +339,7 @@ func TestRuleToJSON(t *testing.T) {
 			rule: &switchpolicy.DPURule{
 				K8SResourceVersion: "v1",
 				K8SUid:             "uid-dup",
+				K8SIndex:           4,
 				PolicyName:         "dup-policy",
 				RuleName:           "rule-1",
 				Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -347,7 +356,7 @@ func TestRuleToJSON(t *testing.T) {
 				},
 			},
 			expected: expectedPolicy{
-				Name:      "dup-policy/rule-1",
+				Name:      "dup-policy/4",
 				Effect:    ALLOW,
 				Operation: 0,
 				SourceIp:  "10.0.0.0/8",
@@ -367,6 +376,7 @@ func TestRuleToJSON(t *testing.T) {
 			rule: &switchpolicy.DPURule{
 				K8SResourceVersion: "v1",
 				K8SUid:             "uid-complex",
+				K8SIndex:           4,
 				PolicyName:         "complex-policy",
 				RuleName:           "rule-1",
 				Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -387,7 +397,7 @@ func TestRuleToJSON(t *testing.T) {
 				},
 			},
 			expected: expectedPolicy{
-				Name:       "complex-policy/rule-1",
+				Name:       "complex-policy/4",
 				Effect:     ALLOW,
 				Operation:  0,
 				SourceIp:   "10.0.0.0/8",
@@ -472,6 +482,7 @@ func TestDPURuleToJSON(t *testing.T) {
 					Policy: &switchpolicy.DPURule{
 						K8SResourceVersion: "v1",
 						K8SUid:             "uid-1",
+						K8SIndex:           1,
 						PolicyName:         "policy-1",
 						RuleName:           "rule-1",
 						Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -495,6 +506,7 @@ func TestDPURuleToJSON(t *testing.T) {
 					Policy: &switchpolicy.DPURule{
 						K8SResourceVersion: "v2",
 						K8SUid:             "uid-2",
+						K8SIndex:           2,
 						PolicyName:         "policy-2",
 						RuleName:           "rule-1",
 						Action:             v1alpha.PolicyAction_POLICY_ACTION_DENY,
@@ -515,7 +527,7 @@ func TestDPURuleToJSON(t *testing.T) {
 			},
 			expected: []expectedPolicy{
 				{
-					Name:       "policy-1/rule-1",
+					Name:       "policy-1/1",
 					Effect:     ALLOW,
 					Operation:  0,
 					SourceIp:   "10.0.0.0/8",
@@ -537,7 +549,7 @@ func TestDPURuleToJSON(t *testing.T) {
 					},
 				},
 				{
-					Name:       "policy-2/rule-1",
+					Name:       "policy-2/2",
 					Effect:     DENY,
 					Operation:  0,
 					SourceIp:   "172.16.0.0/12",
@@ -564,6 +576,7 @@ func TestDPURuleToJSON(t *testing.T) {
 					Policy: &switchpolicy.DPURule{
 						K8SResourceVersion: "v1",
 						K8SUid:             "uid-allow",
+						K8SIndex:           3,
 						PolicyName:         "allow-policy",
 						RuleName:           "rule-1",
 						Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -581,6 +594,7 @@ func TestDPURuleToJSON(t *testing.T) {
 					Policy: &switchpolicy.DPURule{
 						K8SResourceVersion: "v1",
 						K8SUid:             "uid-deny",
+						K8SIndex:           4,
 						PolicyName:         "deny-policy",
 						RuleName:           "rule-1",
 						Action:             v1alpha.PolicyAction_POLICY_ACTION_DENY,
@@ -596,7 +610,7 @@ func TestDPURuleToJSON(t *testing.T) {
 			},
 			expected: []expectedPolicy{
 				{
-					Name:      "allow-policy/rule-1",
+					Name:      "allow-policy/3",
 					Effect:    ALLOW,
 					Operation: 0,
 					SourceIp:  "10.0.0.0/8",
@@ -610,7 +624,7 @@ func TestDPURuleToJSON(t *testing.T) {
 					},
 				},
 				{
-					Name:      "deny-policy/rule-1",
+					Name:      "deny-policy/4",
 					Effect:    DENY,
 					Operation: 0,
 					SourceIp:  "172.16.0.0/12",
@@ -634,6 +648,7 @@ func TestDPURuleToJSON(t *testing.T) {
 					Policy: &switchpolicy.DPURule{
 						K8SResourceVersion: "v1",
 						K8SUid:             "uid-multi",
+						K8SIndex:           1,
 						PolicyName:         "multi-proto",
 						RuleName:           "rule-1",
 						Action:             v1alpha.PolicyAction_POLICY_ACTION_ALLOW,
@@ -650,7 +665,7 @@ func TestDPURuleToJSON(t *testing.T) {
 			},
 			expected: []expectedPolicy{
 				{
-					Name:      "multi-proto/rule-1",
+					Name:      "multi-proto/1",
 					Effect:    ALLOW,
 					Operation: 0,
 					SourceIp:  "10.0.0.0/8",

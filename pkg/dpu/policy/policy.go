@@ -11,6 +11,8 @@
 package policy
 
 import (
+	"strconv"
+
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
@@ -70,7 +72,8 @@ func RuleToID(rule *switchpolicy.DPURule) string {
 func ruleToJSON(op v1alpha.PolicyOperation, rule *switchpolicy.DPURule) *FwPolicyV2 {
 	var fwop uint16
 
-	name := rule.PolicyName + "/" + rule.RuleName
+	idx := strconv.FormatUint(uint64(rule.K8SIndex), 10)
+	name := rule.PolicyName + "/" + idx
 	ruleUID := RuleToID(rule)
 
 	effect := ALLOW

@@ -26,6 +26,7 @@ type PolicyUniqueID struct {
 type SmartSwitchNetworkPolicy struct {
 	K8SResourceVersion string
 	K8SUid             string
+	K8SIndex           uint32
 	Source             SmartSwitchNetworkSource
 	Destination        SmartSwitchNetworkDestination
 	Action             SmartSwitchNetworkAction

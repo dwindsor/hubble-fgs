@@ -18,6 +18,7 @@
     - [LogConfigSyslog.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigSyslog-ConfigsEntry)
     - [LogConfigTimescape](#l3l4networkpolicy-v1alpha-LogConfigTimescape)
     - [LogConfigTimescape.ConfigsEntry](#l3l4networkpolicy-v1alpha-LogConfigTimescape-ConfigsEntry)
+    - [NetworkConfig](#l3l4networkpolicy-v1alpha-NetworkConfig)
     - [PolicyPorts](#l3l4networkpolicy-v1alpha-PolicyPorts)
     - [PolicyRule](#l3l4networkpolicy-v1alpha-PolicyRule)
     - [PolicyRuleEvent](#l3l4networkpolicy-v1alpha-PolicyRuleEvent)
@@ -33,6 +34,8 @@
     - [StreamEventsResponse](#l3l4networkpolicy-v1alpha-StreamEventsResponse)
     - [Streaml3l4NetworkPolicyRequest](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyRequest)
     - [Streaml3l4NetworkPolicyResponse](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyResponse)
+    - [Vlan](#l3l4networkpolicy-v1alpha-Vlan)
+    - [Vrf](#l3l4networkpolicy-v1alpha-Vrf)
   
     - [AgentType](#l3l4networkpolicy-v1alpha-AgentType)
     - [ConfigOperation](#l3l4networkpolicy-v1alpha-ConfigOperation)
@@ -73,6 +76,7 @@ ConfigObject is a generic config object, which can be extended by adding additio
 | config_log_timescape | [LogConfigTimescape](#l3l4networkpolicy-v1alpha-LogConfigTimescape) |  |  |
 | config_log_splunk | [LogConfigSplunk](#l3l4networkpolicy-v1alpha-LogConfigSplunk) |  |  |
 | config_ha | [HaConfig](#l3l4networkpolicy-v1alpha-HaConfig) |  |  |
+| network_config | [NetworkConfig](#l3l4networkpolicy-v1alpha-NetworkConfig) |  |  |
 
 
 
@@ -312,6 +316,23 @@ CONFIG_TYPE_LOG_TIMESCAPE
 
 
 
+<a name="l3l4networkpolicy-v1alpha-NetworkConfig"></a>
+
+### NetworkConfig
+Object to store network configuration
+CONFIG_TYPE_NETWORK
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| vlans | [Vlan](#l3l4networkpolicy-v1alpha-Vlan) | repeated | List of VLANs |
+| vrfs | [Vrf](#l3l4networkpolicy-v1alpha-Vrf) | repeated | List of VRFs |
+
+
+
+
+
+
 <a name="l3l4networkpolicy-v1alpha-PolicyPorts"></a>
 
 ### PolicyPorts
@@ -348,6 +369,7 @@ an LPM.
 | action | [PolicyAction](#l3l4networkpolicy-v1alpha-PolicyAction) |  | The verdict (action) to apply to any match |
 | source | [PolicySubject](#l3l4networkpolicy-v1alpha-PolicySubject) |  | The source to apply the rule against. |
 | destination | [PolicySubject](#l3l4networkpolicy-v1alpha-PolicySubject) |  | The destination to apply the rule against. |
+| rule_index | [uint32](#uint32) |  | The specific rule index that created the rule |
 
 
 
@@ -568,6 +590,38 @@ StreamEventsRequest is a client-to-server streaming message containing events to
 
 
 
+
+<a name="l3l4networkpolicy-v1alpha-Vlan"></a>
+
+### Vlan
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [uint32](#uint32) |  | VLAN id |
+| name | [string](#string) |  | Optional VLAN name |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-Vrf"></a>
+
+### Vrf
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [uint32](#uint32) |  | VRF id, unique per switch |
+| name | [string](#string) |  | VRF name |
+
+
+
+
+
  
 
 
@@ -625,6 +679,7 @@ ConfigObject.
 | CONFIG_TYPE_LOG_TIMESCAPE | 4 | Log export timescape configuration |
 | CONFIG_TYPE_LOG_SPLUNK | 5 | Log export splunk configuration |
 | CONFIG_TYPE_HA | 6 | HA configuration |
+| CONFIG_TYPE_NETWORK | 7 | Network configuration |
 
 
 

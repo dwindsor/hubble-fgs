@@ -64,6 +64,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.0.0/8",
@@ -128,6 +129,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "192.168.1.0/24",
@@ -205,6 +207,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			want: []*SmartSwitchNetworkPolicy{
 				// Source 1, Dest 1, Port 80
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.1.0/24",
@@ -238,6 +241,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 				},
 				// Source 1, Dest 2, Port 80
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.1.0/24",
@@ -271,6 +275,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 				},
 				// Source 2, Dest 1, Port 80
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.2.0/24",
@@ -304,6 +309,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 				},
 				// Source 2, Dest 2, Port 80
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.2.0/24",
@@ -375,6 +381,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.0.0/8",
@@ -443,6 +450,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.0.0/8",
@@ -513,6 +521,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.0.0/8",
@@ -575,6 +584,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.0.0/8",
@@ -637,6 +647,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.0.0/8",
@@ -759,6 +770,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.0.0/8",
@@ -822,6 +834,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.0.0/8",
@@ -882,6 +895,7 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
+					K8SIndex: 1,
 					Source: SmartSwitchNetworkSource{
 						Endpoint: SmartSwitchNetworkEndpoint{
 							CIDR: "10.0.0.0/8",
@@ -937,7 +951,8 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 			},
 			want: []*SmartSwitchNetworkPolicy{
 				{
-					Source: SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8"}},
+					K8SIndex: 1,
+					Source:   SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8"}},
 					Destination: SmartSwitchNetworkDestination{
 						Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.1.0/24"},
 						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
@@ -948,9 +963,107 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 					Default: SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
 				},
 				{
-					Source: SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "2001:db8::/32"}},
+					K8SIndex: 1,
+					Source:   SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "2001:db8::/32"}},
 					Destination: SmartSwitchNetworkDestination{
 						Endpoint: SmartSwitchNetworkEndpoint{CIDR: "2001:db8:1::/48"},
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP},
+						},
+					},
+					Action:  SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+					Default: SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
+				},
+			},
+		},
+		{
+			name: "Multiple Mixed IPv4/IPv6 CIDRs only map same-family",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Allow mixed v4/v6",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{CIDR: "10.0.0.0/8"},
+									{CIDR: "2001:db8::/32"},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{CIDR: "192.168.1.0/24"},
+									{CIDR: "2001:db8:1::/48"},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{Protocol: "TCP"},
+								},
+							},
+						},
+						{
+							Description: "Allow mixed v4/v6",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{CIDR: "10.2.0.0/8"},
+									{CIDR: "2002:db8::/32"},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{CIDR: "193.168.1.0/24"},
+									{CIDR: "2002:db8:1::/48"},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{Protocol: "TCP"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []*SmartSwitchNetworkPolicy{
+				{
+					K8SIndex: 1,
+					Source:   SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8"}},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.1.0/24"},
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP},
+						},
+					},
+					Action:  SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+					Default: SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
+				},
+				{
+					K8SIndex: 1,
+					Source:   SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "2001:db8::/32"}},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{CIDR: "2001:db8:1::/48"},
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP},
+						},
+					},
+					Action:  SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+					Default: SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
+				},
+				{
+					K8SIndex: 2,
+					Source:   SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.2.0.0/8"}},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{CIDR: "193.168.1.0/24"},
+						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
+							SmartSwitchNetworkProtocolPorts{Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP},
+						},
+					},
+					Action:  SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+					Default: SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
+				},
+				{
+					K8SIndex: 2,
+					Source:   SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "2002:db8::/32"}},
+					Destination: SmartSwitchNetworkDestination{
+						Endpoint: SmartSwitchNetworkEndpoint{CIDR: "2002:db8:1::/48"},
 						ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{
 							SmartSwitchNetworkProtocolPorts{Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP},
 						},

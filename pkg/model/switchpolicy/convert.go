@@ -40,6 +40,7 @@ func ResponseToDPURule(resp *v1alpha.Streaml3L4NetworkPolicyResponse) *DPUPolicy
 	rule := &DPURule{
 		K8SResourceVersion: p.K8SResourceVersion,
 		K8SUid:             p.K8SUid,
+		K8SIndex:           p.RuleIndex,
 		PolicyName:         p.PolicyName,
 		RuleName:           p.RuleName,
 		Action:             p.Action,
@@ -113,6 +114,7 @@ func dpuRuleToResponse(rule *DPUPolicyRule) *v1alpha.Streaml3L4NetworkPolicyResp
 		K8SUid:             r.K8SUid,
 		PolicyName:         r.PolicyName,
 		RuleName:           r.RuleName,
+		RuleIndex:          r.K8SIndex,
 		Action:             r.Action,
 		Source:             source,
 		Destination:        dest,

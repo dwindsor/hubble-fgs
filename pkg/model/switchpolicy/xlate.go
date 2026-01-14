@@ -58,7 +58,10 @@ func toSmartSwitchAction(r *isovalentv1.SmartSwitchNetworkPolicyRule) SmartSwitc
 	}
 }
 
-func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovalentv1.SmartSwitchNetworkPolicyRule) ([]*SmartSwitchNetworkPolicy, error) {
+// What we need is ID per -rule currently the id is a hash of the SmartswitchNetworkPolicy which
+// is already the cross product so every src x dst has a unique id and the ports never get
+// collapsed.
+func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, ruleIndex uint32, r *isovalentv1.SmartSwitchNetworkPolicyRule) ([]*SmartSwitchNetworkPolicy, error) {
 	policy := []*SmartSwitchNetworkPolicy{}
 
 	dfltAction := toSmartSwitchDefaultAction(np)
@@ -125,6 +128,7 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 			policy = append(policy, &SmartSwitchNetworkPolicy{
 				K8SResourceVersion: np.ResourceVersion,
 				K8SUid:             string(np.UID),
+				K8SIndex:           ruleIndex,
 				Source:             source,
 				Destination:        dest,
 				Action:             act,
@@ -138,8 +142,8 @@ func parseSmartSwitchPolicy(np *isovalentv1.SmartSwitchNetworkPolicy, r *isovale
 
 func ToSmartSwitchNetworkPolicies(np *isovalentv1.SmartSwitchNetworkPolicy) ([]*SmartSwitchNetworkPolicy, error) {
 	result := []*SmartSwitchNetworkPolicy{}
-	for _, r := range np.Spec.Rules {
-		rulePolicy, err := parseSmartSwitchPolicy(np, &r)
+	for i, r := range np.Spec.Rules {
+		rulePolicy, err := parseSmartSwitchPolicy(np, uint32(i)+1, &r)
 		if err != nil {
 			return nil, err
 		}

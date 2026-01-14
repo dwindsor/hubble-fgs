@@ -238,6 +238,7 @@ func (s *State) convertRuleToDPUPolicyRule(rule *SwitchPolicy, upsert bool) *DPU
 		Policy: &DPURule{
 			K8SResourceVersion: rule.Policy.K8SResourceVersion,
 			K8SUid:             rule.Policy.K8SUid,
+			K8SIndex:           rule.Policy.K8SIndex,
 			PolicyName:         rule.UID.PolicyName,
 			RuleName:           rule.UID.RuleName,
 			Action:             action,

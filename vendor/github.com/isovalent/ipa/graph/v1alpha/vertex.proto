@@ -71,6 +71,11 @@ message VertexFamilyKubernetes {
   // application_model_uuid is a unique identifier that identifies the
   // application model associated with the Kubernetes resource.
   string application_model_uuid = 14;
+  // interface_name is the name of the network interface associated with the
+  // connection.
+  string interface_name = 16;
+  // multicast contains multicast specific information.
+  VertexPropertyMulticast multicast = 17;
 }
 
 // VertexFamilyNetworkDevice represents vertex properties that are related to a
@@ -97,6 +102,11 @@ message VertexFamilyNetworkDevice {
   // vrf_name is the name of a virtual routing and forwarding segement that is
   // the equivalent of a VLAN but at the network layer.
   string vrf_name = 9;
+  // interface_name is the name of the network interface associated with the
+  // connection.
+  string interface_name = 10;
+  // multicast contains multicast specific information.
+  VertexPropertyMulticast multicast = 11;
 }
 
 // VertexFamilyWorldEntity represents a broad set of network elements outside
@@ -109,4 +119,18 @@ message VertexFamilyWorldEntity {
   string ip = 2;
   // port is the network port associated with the ip address.
   uint32 port = 3;
+  // protocol is the protocol that is used for the connection at the L3/L4
+  // layer.
+  common.net.v1alpha.IPProtocol ip_protocol = 4;
+  // multicast contains multicast specific information.
+  VertexPropertyMulticast multicast = 5;
+}
+
+// VertexPropertyMulticast contains multicast specific information for a vertex.
+message VertexPropertyMulticast {
+  // source_id is an optional identifier that represents the source of the
+  // multicast traffic.
+  string source_id = 1;
+  // group_ip is the multicast group address associated with the connection.
+  string group_ip = 2;
 }

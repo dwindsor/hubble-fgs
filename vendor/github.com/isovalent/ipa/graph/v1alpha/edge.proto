@@ -27,6 +27,7 @@ message Edge {
     EdgeTypeNetworkTelemetry network_telemetry = 2;
     EdgeTypeRoutingTelemetry routing_telemetry = 3;
     EdgeTypeL7Telemetry l7_telemetry = 4;
+    EdgeTypeMulticastTelemetry multicast_telemetry = 5;
   }
 }
 
@@ -43,6 +44,10 @@ message EdgeTypeNetworkTelemetry {
   // network_transmit_drop_total is the number of packets dropped during
   // transmission.
   uint64 network_transmit_drop_total = 3;
+  // network_transmit_drop_policy_total is the number of packets dropped due to
+  // a network policy during transmission. It is always a subset of
+  // network_transmit_drop_total.
+  uint64 network_transmit_drop_policy_total = 7;
   // network_receive_packets_total is the number of packets received.
   uint64 network_receive_packets_total = 4;
   // network_receive_bytes_total is the number of bytes received.
@@ -50,6 +55,10 @@ message EdgeTypeNetworkTelemetry {
   // network_receive_drop_total is the number of packets that are received but
   // discarded.
   uint64 network_receive_drop_total = 6;
+  // network_receive_drop_policy_total is the number of packets dropped due to
+  // a network policy during reception. It is always a subset of
+  // network_receive_drop_total.
+  uint64 network_receive_drop_policy_total = 8;
 }
 
 // EdgeTypeRoutingTelemetry provides telemetry information regarding routing
@@ -62,6 +71,10 @@ message EdgeTypeRoutingTelemetry {
   // dropped. Reasons for dropping data may be due to a malformed packet,
   // rejection by a network policy, etc.
   uint64 routing_dropped_total = 2;
+  // routing_dropped_policy_total is the number of network flows that have been
+  // dropped because of a network policy. It is always a subset of
+  // routing_dropped_total.
+  uint64 routing_dropped_policy_total = 8;
   // routing_error_total is the number of flows where an error occurred during
   // processing.
   uint64 routing_error_total = 3;
@@ -94,4 +107,31 @@ message EdgeTypeL7Telemetry {
   // http_client_errors_total is the number of HTTP client errors (4xx) that
   // occurred during the selected time window.
   uint64 http_client_errors_total = 3;
+}
+
+// EdgeTypeMulticastTelemetry provides telemetry information regarding a
+// multicast connection.
+message EdgeTypeMulticastTelemetry {
+  // sequence_number_gap_count_total is the number of sequence number gaps
+  // detected.
+  uint64 sequence_number_gap_count_total = 1;
+
+  // FeederReceiverDelayHistogram represents a non-cumulative histogram with
+  // hardcoded buckets for delays experienced by multicast receivers from
+  // feeders.
+  //
+  // TODO: should we use cumulative buckets (prometheus-style) to facilitate
+  // computations of quantiles?
+  message FeederReceiverDelayHistogram {
+    uint64 count_total = 1;
+    uint64 sum_total = 2;
+    uint64 bucket_lt_1ms_total = 3;
+    uint64 bucket_1ms_to_10ms_total = 4;
+    uint64 bucket_10ms_to_100ms_total = 5;
+    uint64 bucket_100ms_to_1s_total = 6;
+    uint64 bucket_ge_1s_total = 7;
+  }
+  // feeder_receiver_delay_histogram captures a histogram of delays
+  // experienced by multicast receivers from feeders.
+  FeederReceiverDelayHistogram feeder_receiver_delay_histogram = 2;
 }

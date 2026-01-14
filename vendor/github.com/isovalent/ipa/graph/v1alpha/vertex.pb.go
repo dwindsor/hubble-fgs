@@ -177,8 +177,13 @@ type VertexFamilyKubernetes struct {
 	// application_model_uuid is a unique identifier that identifies the
 	// application model associated with the Kubernetes resource.
 	ApplicationModelUuid string `protobuf:"bytes,14,opt,name=application_model_uuid,json=applicationModelUuid,proto3" json:"application_model_uuid,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// interface_name is the name of the network interface associated with the
+	// connection.
+	InterfaceName string `protobuf:"bytes,16,opt,name=interface_name,json=interfaceName,proto3" json:"interface_name,omitempty"`
+	// multicast contains multicast specific information.
+	Multicast     *VertexPropertyMulticast `protobuf:"bytes,17,opt,name=multicast,proto3" json:"multicast,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *VertexFamilyKubernetes) Reset() {
@@ -316,6 +321,20 @@ func (x *VertexFamilyKubernetes) GetApplicationModelUuid() string {
 	return ""
 }
 
+func (x *VertexFamilyKubernetes) GetInterfaceName() string {
+	if x != nil {
+		return x.InterfaceName
+	}
+	return ""
+}
+
+func (x *VertexFamilyKubernetes) GetMulticast() *VertexPropertyMulticast {
+	if x != nil {
+		return x.Multicast
+	}
+	return nil
+}
+
 // VertexFamilyNetworkDevice represents vertex properties that are related to a
 // network device.
 type VertexFamilyNetworkDevice struct {
@@ -339,7 +358,12 @@ type VertexFamilyNetworkDevice struct {
 	VlanId uint32 `protobuf:"varint,8,opt,name=vlan_id,json=vlanId,proto3" json:"vlan_id,omitempty"`
 	// vrf_name is the name of a virtual routing and forwarding segement that is
 	// the equivalent of a VLAN but at the network layer.
-	VrfName       string `protobuf:"bytes,9,opt,name=vrf_name,json=vrfName,proto3" json:"vrf_name,omitempty"`
+	VrfName string `protobuf:"bytes,9,opt,name=vrf_name,json=vrfName,proto3" json:"vrf_name,omitempty"`
+	// interface_name is the name of the network interface associated with the
+	// connection.
+	InterfaceName string `protobuf:"bytes,10,opt,name=interface_name,json=interfaceName,proto3" json:"interface_name,omitempty"`
+	// multicast contains multicast specific information.
+	Multicast     *VertexPropertyMulticast `protobuf:"bytes,11,opt,name=multicast,proto3" json:"multicast,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -430,6 +454,20 @@ func (x *VertexFamilyNetworkDevice) GetVrfName() string {
 	return ""
 }
 
+func (x *VertexFamilyNetworkDevice) GetInterfaceName() string {
+	if x != nil {
+		return x.InterfaceName
+	}
+	return ""
+}
+
+func (x *VertexFamilyNetworkDevice) GetMulticast() *VertexPropertyMulticast {
+	if x != nil {
+		return x.Multicast
+	}
+	return nil
+}
+
 // VertexFamilyWorldEntity represents a broad set of network elements outside
 // of a specific network boundary.
 type VertexFamilyWorldEntity struct {
@@ -440,7 +478,12 @@ type VertexFamilyWorldEntity struct {
 	// the connection.
 	Ip string `protobuf:"bytes,2,opt,name=ip,proto3" json:"ip,omitempty"`
 	// port is the network port associated with the ip address.
-	Port          uint32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	Port uint32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	// protocol is the protocol that is used for the connection at the L3/L4
+	// layer.
+	IpProtocol v1alpha1.IPProtocol `protobuf:"varint,4,opt,name=ip_protocol,json=ipProtocol,proto3,enum=common.net.v1alpha.IPProtocol" json:"ip_protocol,omitempty"`
+	// multicast contains multicast specific information.
+	Multicast     *VertexPropertyMulticast `protobuf:"bytes,5,opt,name=multicast,proto3" json:"multicast,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -496,6 +539,76 @@ func (x *VertexFamilyWorldEntity) GetPort() uint32 {
 	return 0
 }
 
+func (x *VertexFamilyWorldEntity) GetIpProtocol() v1alpha1.IPProtocol {
+	if x != nil {
+		return x.IpProtocol
+	}
+	return v1alpha1.IPProtocol(0)
+}
+
+func (x *VertexFamilyWorldEntity) GetMulticast() *VertexPropertyMulticast {
+	if x != nil {
+		return x.Multicast
+	}
+	return nil
+}
+
+// VertexPropertyMulticast contains multicast specific information for a vertex.
+type VertexPropertyMulticast struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// source_id is an optional identifier that represents the source of the
+	// multicast traffic.
+	SourceId string `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	// group_ip is the multicast group address associated with the connection.
+	GroupIp       string `protobuf:"bytes,2,opt,name=group_ip,json=groupIp,proto3" json:"group_ip,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VertexPropertyMulticast) Reset() {
+	*x = VertexPropertyMulticast{}
+	mi := &file_graph_v1alpha_vertex_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VertexPropertyMulticast) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VertexPropertyMulticast) ProtoMessage() {}
+
+func (x *VertexPropertyMulticast) ProtoReflect() protoreflect.Message {
+	mi := &file_graph_v1alpha_vertex_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VertexPropertyMulticast.ProtoReflect.Descriptor instead.
+func (*VertexPropertyMulticast) Descriptor() ([]byte, []int) {
+	return file_graph_v1alpha_vertex_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *VertexPropertyMulticast) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+func (x *VertexPropertyMulticast) GetGroupIp() string {
+	if x != nil {
+		return x.GroupIp
+	}
+	return ""
+}
+
 var File_graph_v1alpha_vertex_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_vertex_proto_rawDesc = "" +
@@ -507,7 +620,7 @@ const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	"kubernetes\x12Q\n" +
 	"\x0enetwork_device\x18\x02 \x01(\v2(.graph.v1alpha.VertexFamilyNetworkDeviceH\x00R\rnetworkDevice\x12K\n" +
 	"\fworld_entity\x18\x03 \x01(\v2&.graph.v1alpha.VertexFamilyWorldEntityH\x00R\vworldEntityB\b\n" +
-	"\x06family\"\x96\x05\n" +
+	"\x06family\"\x83\x06\n" +
 	"\x16VertexFamilyKubernetes\x12\x10\n" +
 	"\x03uid\x18\x01 \x01(\tR\x03uid\x12J\n" +
 	"\rresource_kind\x18\x02 \x01(\x0e2%.common.k8s.type.v1alpha.ResourceKindR\fresourceKind\x12)\n" +
@@ -525,7 +638,9 @@ const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	"\x04port\x18\r \x01(\rR\x04port\x12?\n" +
 	"\vip_protocol\x18\x0f \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\n" +
 	"ipProtocol\x124\n" +
-	"\x16application_model_uuid\x18\x0e \x01(\tR\x14applicationModelUuid\"\x9e\x02\n" +
+	"\x16application_model_uuid\x18\x0e \x01(\tR\x14applicationModelUuid\x12%\n" +
+	"\x0einterface_name\x18\x10 \x01(\tR\rinterfaceName\x12D\n" +
+	"\tmulticast\x18\x11 \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticast\"\x8b\x03\n" +
 	"\x19VertexFamilyNetworkDevice\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x0e\n" +
 	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x12\n" +
@@ -535,11 +650,20 @@ const file_graph_v1alpha_vertex_proto_rawDesc = "" +
 	"\x14application_protocol\x18\x05 \x01(\tR\x13applicationProtocol\x12\x1b\n" +
 	"\tvlan_name\x18\a \x01(\tR\bvlanName\x12\x17\n" +
 	"\avlan_id\x18\b \x01(\rR\x06vlanId\x12\x19\n" +
-	"\bvrf_name\x18\t \x01(\tR\avrfNameJ\x04\b\x06\x10\a\"X\n" +
+	"\bvrf_name\x18\t \x01(\tR\avrfName\x12%\n" +
+	"\x0einterface_name\x18\n" +
+	" \x01(\tR\rinterfaceName\x12D\n" +
+	"\tmulticast\x18\v \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticastJ\x04\b\x06\x10\a\"\xdf\x01\n" +
 	"\x17VertexFamilyWorldEntity\x12\x19\n" +
 	"\bdns_name\x18\x01 \x01(\tR\adnsName\x12\x0e\n" +
 	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x12\n" +
-	"\x04port\x18\x03 \x01(\rR\x04portB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
+	"\x04port\x18\x03 \x01(\rR\x04port\x12?\n" +
+	"\vip_protocol\x18\x04 \x01(\x0e2\x1e.common.net.v1alpha.IPProtocolR\n" +
+	"ipProtocol\x12D\n" +
+	"\tmulticast\x18\x05 \x01(\v2&.graph.v1alpha.VertexPropertyMulticastR\tmulticast\"Q\n" +
+	"\x17VertexPropertyMulticast\x12\x1b\n" +
+	"\tsource_id\x18\x01 \x01(\tR\bsourceId\x12\x19\n" +
+	"\bgroup_ip\x18\x02 \x01(\tR\agroupIpB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
 
 var (
 	file_graph_v1alpha_vertex_proto_rawDescOnce sync.Once
@@ -553,31 +677,36 @@ func file_graph_v1alpha_vertex_proto_rawDescGZIP() []byte {
 	return file_graph_v1alpha_vertex_proto_rawDescData
 }
 
-var file_graph_v1alpha_vertex_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_graph_v1alpha_vertex_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_graph_v1alpha_vertex_proto_goTypes = []any{
 	(*Vertex)(nil),                    // 0: graph.v1alpha.Vertex
 	(*VertexFamilyKubernetes)(nil),    // 1: graph.v1alpha.VertexFamilyKubernetes
 	(*VertexFamilyNetworkDevice)(nil), // 2: graph.v1alpha.VertexFamilyNetworkDevice
 	(*VertexFamilyWorldEntity)(nil),   // 3: graph.v1alpha.VertexFamilyWorldEntity
-	(v1alpha.ResourceKind)(0),         // 4: common.k8s.type.v1alpha.ResourceKind
-	(v1alpha.ServiceKind)(0),          // 5: common.k8s.type.v1alpha.ServiceKind
-	(v1alpha.WorkloadKind)(0),         // 6: common.k8s.type.v1alpha.WorkloadKind
-	(v1alpha1.IPProtocol)(0),          // 7: common.net.v1alpha.IPProtocol
+	(*VertexPropertyMulticast)(nil),   // 4: graph.v1alpha.VertexPropertyMulticast
+	(v1alpha.ResourceKind)(0),         // 5: common.k8s.type.v1alpha.ResourceKind
+	(v1alpha.ServiceKind)(0),          // 6: common.k8s.type.v1alpha.ServiceKind
+	(v1alpha.WorkloadKind)(0),         // 7: common.k8s.type.v1alpha.WorkloadKind
+	(v1alpha1.IPProtocol)(0),          // 8: common.net.v1alpha.IPProtocol
 }
 var file_graph_v1alpha_vertex_proto_depIdxs = []int32{
-	1, // 0: graph.v1alpha.Vertex.kubernetes:type_name -> graph.v1alpha.VertexFamilyKubernetes
-	2, // 1: graph.v1alpha.Vertex.network_device:type_name -> graph.v1alpha.VertexFamilyNetworkDevice
-	3, // 2: graph.v1alpha.Vertex.world_entity:type_name -> graph.v1alpha.VertexFamilyWorldEntity
-	4, // 3: graph.v1alpha.VertexFamilyKubernetes.resource_kind:type_name -> common.k8s.type.v1alpha.ResourceKind
-	5, // 4: graph.v1alpha.VertexFamilyKubernetes.service_kind:type_name -> common.k8s.type.v1alpha.ServiceKind
-	6, // 5: graph.v1alpha.VertexFamilyKubernetes.workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
-	7, // 6: graph.v1alpha.VertexFamilyKubernetes.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
-	7, // 7: graph.v1alpha.VertexFamilyNetworkDevice.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	1,  // 0: graph.v1alpha.Vertex.kubernetes:type_name -> graph.v1alpha.VertexFamilyKubernetes
+	2,  // 1: graph.v1alpha.Vertex.network_device:type_name -> graph.v1alpha.VertexFamilyNetworkDevice
+	3,  // 2: graph.v1alpha.Vertex.world_entity:type_name -> graph.v1alpha.VertexFamilyWorldEntity
+	5,  // 3: graph.v1alpha.VertexFamilyKubernetes.resource_kind:type_name -> common.k8s.type.v1alpha.ResourceKind
+	6,  // 4: graph.v1alpha.VertexFamilyKubernetes.service_kind:type_name -> common.k8s.type.v1alpha.ServiceKind
+	7,  // 5: graph.v1alpha.VertexFamilyKubernetes.workload_kind:type_name -> common.k8s.type.v1alpha.WorkloadKind
+	8,  // 6: graph.v1alpha.VertexFamilyKubernetes.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
+	4,  // 7: graph.v1alpha.VertexFamilyKubernetes.multicast:type_name -> graph.v1alpha.VertexPropertyMulticast
+	8,  // 8: graph.v1alpha.VertexFamilyNetworkDevice.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
+	4,  // 9: graph.v1alpha.VertexFamilyNetworkDevice.multicast:type_name -> graph.v1alpha.VertexPropertyMulticast
+	8,  // 10: graph.v1alpha.VertexFamilyWorldEntity.ip_protocol:type_name -> common.net.v1alpha.IPProtocol
+	4,  // 11: graph.v1alpha.VertexFamilyWorldEntity.multicast:type_name -> graph.v1alpha.VertexPropertyMulticast
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_graph_v1alpha_vertex_proto_init() }
@@ -596,7 +725,7 @@ func file_graph_v1alpha_vertex_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_graph_v1alpha_vertex_proto_rawDesc), len(file_graph_v1alpha_vertex_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

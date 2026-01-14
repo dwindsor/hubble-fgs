@@ -47,6 +47,7 @@ type Edge struct {
 	//	*Edge_NetworkTelemetry
 	//	*Edge_RoutingTelemetry
 	//	*Edge_L7Telemetry
+	//	*Edge_MulticastTelemetry
 	Type          isEdge_Type `protobuf_oneof:"type"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -125,6 +126,15 @@ func (x *Edge) GetL7Telemetry() *EdgeTypeL7Telemetry {
 	return nil
 }
 
+func (x *Edge) GetMulticastTelemetry() *EdgeTypeMulticastTelemetry {
+	if x != nil {
+		if x, ok := x.Type.(*Edge_MulticastTelemetry); ok {
+			return x.MulticastTelemetry
+		}
+	}
+	return nil
+}
+
 type isEdge_Type interface {
 	isEdge_Type()
 }
@@ -145,6 +155,10 @@ type Edge_L7Telemetry struct {
 	L7Telemetry *EdgeTypeL7Telemetry `protobuf:"bytes,4,opt,name=l7_telemetry,json=l7Telemetry,proto3,oneof"`
 }
 
+type Edge_MulticastTelemetry struct {
+	MulticastTelemetry *EdgeTypeMulticastTelemetry `protobuf:"bytes,5,opt,name=multicast_telemetry,json=multicastTelemetry,proto3,oneof"`
+}
+
 func (*Edge_Basic) isEdge_Type() {}
 
 func (*Edge_NetworkTelemetry) isEdge_Type() {}
@@ -152,6 +166,8 @@ func (*Edge_NetworkTelemetry) isEdge_Type() {}
 func (*Edge_RoutingTelemetry) isEdge_Type() {}
 
 func (*Edge_L7Telemetry) isEdge_Type() {}
+
+func (*Edge_MulticastTelemetry) isEdge_Type() {}
 
 // EdgeTypeBasic is a base edge that does not carry any information.
 type EdgeTypeBasic struct {
@@ -201,6 +217,10 @@ type EdgeTypeNetworkTelemetry struct {
 	// network_transmit_drop_total is the number of packets dropped during
 	// transmission.
 	NetworkTransmitDropTotal uint64 `protobuf:"varint,3,opt,name=network_transmit_drop_total,json=networkTransmitDropTotal,proto3" json:"network_transmit_drop_total,omitempty"`
+	// network_transmit_drop_policy_total is the number of packets dropped due to
+	// a network policy during transmission. It is always a subset of
+	// network_transmit_drop_total.
+	NetworkTransmitDropPolicyTotal uint64 `protobuf:"varint,7,opt,name=network_transmit_drop_policy_total,json=networkTransmitDropPolicyTotal,proto3" json:"network_transmit_drop_policy_total,omitempty"`
 	// network_receive_packets_total is the number of packets received.
 	NetworkReceivePacketsTotal uint64 `protobuf:"varint,4,opt,name=network_receive_packets_total,json=networkReceivePacketsTotal,proto3" json:"network_receive_packets_total,omitempty"`
 	// network_receive_bytes_total is the number of bytes received.
@@ -208,8 +228,12 @@ type EdgeTypeNetworkTelemetry struct {
 	// network_receive_drop_total is the number of packets that are received but
 	// discarded.
 	NetworkReceiveDropTotal uint64 `protobuf:"varint,6,opt,name=network_receive_drop_total,json=networkReceiveDropTotal,proto3" json:"network_receive_drop_total,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// network_receive_drop_policy_total is the number of packets dropped due to
+	// a network policy during reception. It is always a subset of
+	// network_receive_drop_total.
+	NetworkReceiveDropPolicyTotal uint64 `protobuf:"varint,8,opt,name=network_receive_drop_policy_total,json=networkReceiveDropPolicyTotal,proto3" json:"network_receive_drop_policy_total,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *EdgeTypeNetworkTelemetry) Reset() {
@@ -263,6 +287,13 @@ func (x *EdgeTypeNetworkTelemetry) GetNetworkTransmitDropTotal() uint64 {
 	return 0
 }
 
+func (x *EdgeTypeNetworkTelemetry) GetNetworkTransmitDropPolicyTotal() uint64 {
+	if x != nil {
+		return x.NetworkTransmitDropPolicyTotal
+	}
+	return 0
+}
+
 func (x *EdgeTypeNetworkTelemetry) GetNetworkReceivePacketsTotal() uint64 {
 	if x != nil {
 		return x.NetworkReceivePacketsTotal
@@ -284,6 +315,13 @@ func (x *EdgeTypeNetworkTelemetry) GetNetworkReceiveDropTotal() uint64 {
 	return 0
 }
 
+func (x *EdgeTypeNetworkTelemetry) GetNetworkReceiveDropPolicyTotal() uint64 {
+	if x != nil {
+		return x.NetworkReceiveDropPolicyTotal
+	}
+	return 0
+}
+
 // EdgeTypeRoutingTelemetry provides telemetry information regarding routing
 // decisions.
 type EdgeTypeRoutingTelemetry struct {
@@ -295,6 +333,10 @@ type EdgeTypeRoutingTelemetry struct {
 	// dropped. Reasons for dropping data may be due to a malformed packet,
 	// rejection by a network policy, etc.
 	RoutingDroppedTotal uint64 `protobuf:"varint,2,opt,name=routing_dropped_total,json=routingDroppedTotal,proto3" json:"routing_dropped_total,omitempty"`
+	// routing_dropped_policy_total is the number of network flows that have been
+	// dropped because of a network policy. It is always a subset of
+	// routing_dropped_total.
+	RoutingDroppedPolicyTotal uint64 `protobuf:"varint,8,opt,name=routing_dropped_policy_total,json=routingDroppedPolicyTotal,proto3" json:"routing_dropped_policy_total,omitempty"`
 	// routing_error_total is the number of flows where an error occurred during
 	// processing.
 	RoutingErrorTotal uint64 `protobuf:"varint,3,opt,name=routing_error_total,json=routingErrorTotal,proto3" json:"routing_error_total,omitempty"`
@@ -354,6 +396,13 @@ func (x *EdgeTypeRoutingTelemetry) GetRoutingForwardedTotal() uint64 {
 func (x *EdgeTypeRoutingTelemetry) GetRoutingDroppedTotal() uint64 {
 	if x != nil {
 		return x.RoutingDroppedTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeRoutingTelemetry) GetRoutingDroppedPolicyTotal() uint64 {
+	if x != nil {
+		return x.RoutingDroppedPolicyTotal
 	}
 	return 0
 }
@@ -464,28 +513,188 @@ func (x *EdgeTypeL7Telemetry) GetHttpClientErrorsTotal() uint64 {
 	return 0
 }
 
+// EdgeTypeMulticastTelemetry provides telemetry information regarding a
+// multicast connection.
+type EdgeTypeMulticastTelemetry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// sequence_number_gap_count_total is the number of sequence number gaps
+	// detected.
+	SequenceNumberGapCountTotal uint64 `protobuf:"varint,1,opt,name=sequence_number_gap_count_total,json=sequenceNumberGapCountTotal,proto3" json:"sequence_number_gap_count_total,omitempty"`
+	// feeder_receiver_delay_histogram captures a histogram of delays
+	// experienced by multicast receivers from feeders.
+	FeederReceiverDelayHistogram *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram `protobuf:"bytes,2,opt,name=feeder_receiver_delay_histogram,json=feederReceiverDelayHistogram,proto3" json:"feeder_receiver_delay_histogram,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
+}
+
+func (x *EdgeTypeMulticastTelemetry) Reset() {
+	*x = EdgeTypeMulticastTelemetry{}
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EdgeTypeMulticastTelemetry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EdgeTypeMulticastTelemetry) ProtoMessage() {}
+
+func (x *EdgeTypeMulticastTelemetry) ProtoReflect() protoreflect.Message {
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EdgeTypeMulticastTelemetry.ProtoReflect.Descriptor instead.
+func (*EdgeTypeMulticastTelemetry) Descriptor() ([]byte, []int) {
+	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *EdgeTypeMulticastTelemetry) GetSequenceNumberGapCountTotal() uint64 {
+	if x != nil {
+		return x.SequenceNumberGapCountTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeMulticastTelemetry) GetFeederReceiverDelayHistogram() *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram {
+	if x != nil {
+		return x.FeederReceiverDelayHistogram
+	}
+	return nil
+}
+
+// FeederReceiverDelayHistogram represents a non-cumulative histogram with
+// hardcoded buckets for delays experienced by multicast receivers from
+// feeders.
+//
+// TODO: should we use cumulative buckets (prometheus-style) to facilitate
+// computations of quantiles?
+type EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram struct {
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	CountTotal               uint64                 `protobuf:"varint,1,opt,name=count_total,json=countTotal,proto3" json:"count_total,omitempty"`
+	SumTotal                 uint64                 `protobuf:"varint,2,opt,name=sum_total,json=sumTotal,proto3" json:"sum_total,omitempty"`
+	BucketLt_1MsTotal        uint64                 `protobuf:"varint,3,opt,name=bucket_lt_1ms_total,json=bucketLt1msTotal,proto3" json:"bucket_lt_1ms_total,omitempty"`
+	Bucket_1MsTo_10MsTotal   uint64                 `protobuf:"varint,4,opt,name=bucket_1ms_to_10ms_total,json=bucket1msTo10msTotal,proto3" json:"bucket_1ms_to_10ms_total,omitempty"`
+	Bucket_10MsTo_100MsTotal uint64                 `protobuf:"varint,5,opt,name=bucket_10ms_to_100ms_total,json=bucket10msTo100msTotal,proto3" json:"bucket_10ms_to_100ms_total,omitempty"`
+	Bucket_100MsTo_1STotal   uint64                 `protobuf:"varint,6,opt,name=bucket_100ms_to_1s_total,json=bucket100msTo1sTotal,proto3" json:"bucket_100ms_to_1s_total,omitempty"`
+	BucketGe_1STotal         uint64                 `protobuf:"varint,7,opt,name=bucket_ge_1s_total,json=bucketGe1sTotal,proto3" json:"bucket_ge_1s_total,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) Reset() {
+	*x = EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram{}
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) ProtoMessage() {}
+
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) ProtoReflect() protoreflect.Message {
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram.ProtoReflect.Descriptor instead.
+func (*EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) Descriptor() ([]byte, []int) {
+	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{5, 0}
+}
+
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetCountTotal() uint64 {
+	if x != nil {
+		return x.CountTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetSumTotal() uint64 {
+	if x != nil {
+		return x.SumTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucketLt_1MsTotal() uint64 {
+	if x != nil {
+		return x.BucketLt_1MsTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucket_1MsTo_10MsTotal() uint64 {
+	if x != nil {
+		return x.Bucket_1MsTo_10MsTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucket_10MsTo_100MsTotal() uint64 {
+	if x != nil {
+		return x.Bucket_10MsTo_100MsTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucket_100MsTo_1STotal() uint64 {
+	if x != nil {
+		return x.Bucket_100MsTo_1STotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucketGe_1STotal() uint64 {
+	if x != nil {
+		return x.BucketGe_1STotal
+	}
+	return 0
+}
+
 var File_graph_v1alpha_edge_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	"\n" +
-	"\x18graph/v1alpha/edge.proto\x12\rgraph.v1alpha\"\xbd\x02\n" +
+	"\x18graph/v1alpha/edge.proto\x12\rgraph.v1alpha\"\x9b\x03\n" +
 	"\x04Edge\x124\n" +
 	"\x05basic\x18\x01 \x01(\v2\x1c.graph.v1alpha.EdgeTypeBasicH\x00R\x05basic\x12V\n" +
 	"\x11network_telemetry\x18\x02 \x01(\v2'.graph.v1alpha.EdgeTypeNetworkTelemetryH\x00R\x10networkTelemetry\x12V\n" +
 	"\x11routing_telemetry\x18\x03 \x01(\v2'.graph.v1alpha.EdgeTypeRoutingTelemetryH\x00R\x10routingTelemetry\x12G\n" +
-	"\fl7_telemetry\x18\x04 \x01(\v2\".graph.v1alpha.EdgeTypeL7TelemetryH\x00R\vl7TelemetryB\x06\n" +
+	"\fl7_telemetry\x18\x04 \x01(\v2\".graph.v1alpha.EdgeTypeL7TelemetryH\x00R\vl7Telemetry\x12\\\n" +
+	"\x13multicast_telemetry\x18\x05 \x01(\v2).graph.v1alpha.EdgeTypeMulticastTelemetryH\x00R\x12multicastTelemetryB\x06\n" +
 	"\x04type\"\x0f\n" +
-	"\rEdgeTypeBasic\"\x9e\x03\n" +
+	"\rEdgeTypeBasic\"\xb4\x04\n" +
 	"\x18EdgeTypeNetworkTelemetry\x12C\n" +
 	"\x1enetwork_transmit_packets_total\x18\x01 \x01(\x04R\x1bnetworkTransmitPacketsTotal\x12?\n" +
 	"\x1cnetwork_transmit_bytes_total\x18\x02 \x01(\x04R\x19networkTransmitBytesTotal\x12=\n" +
-	"\x1bnetwork_transmit_drop_total\x18\x03 \x01(\x04R\x18networkTransmitDropTotal\x12A\n" +
+	"\x1bnetwork_transmit_drop_total\x18\x03 \x01(\x04R\x18networkTransmitDropTotal\x12J\n" +
+	"\"network_transmit_drop_policy_total\x18\a \x01(\x04R\x1enetworkTransmitDropPolicyTotal\x12A\n" +
 	"\x1dnetwork_receive_packets_total\x18\x04 \x01(\x04R\x1anetworkReceivePacketsTotal\x12=\n" +
 	"\x1bnetwork_receive_bytes_total\x18\x05 \x01(\x04R\x18networkReceiveBytesTotal\x12;\n" +
-	"\x1anetwork_receive_drop_total\x18\x06 \x01(\x04R\x17networkReceiveDropTotal\"\x8c\x03\n" +
+	"\x1anetwork_receive_drop_total\x18\x06 \x01(\x04R\x17networkReceiveDropTotal\x12H\n" +
+	"!network_receive_drop_policy_total\x18\b \x01(\x04R\x1dnetworkReceiveDropPolicyTotal\"\xcd\x03\n" +
 	"\x18EdgeTypeRoutingTelemetry\x126\n" +
 	"\x17routing_forwarded_total\x18\x01 \x01(\x04R\x15routingForwardedTotal\x122\n" +
-	"\x15routing_dropped_total\x18\x02 \x01(\x04R\x13routingDroppedTotal\x12.\n" +
+	"\x15routing_dropped_total\x18\x02 \x01(\x04R\x13routingDroppedTotal\x12?\n" +
+	"\x1crouting_dropped_policy_total\x18\b \x01(\x04R\x19routingDroppedPolicyTotal\x12.\n" +
 	"\x13routing_error_total\x18\x03 \x01(\x04R\x11routingErrorTotal\x12.\n" +
 	"\x13routing_audit_total\x18\x04 \x01(\x04R\x11routingAuditTotal\x128\n" +
 	"\x18routing_redirected_total\x18\x05 \x01(\x04R\x16routingRedirectedTotal\x120\n" +
@@ -494,7 +703,19 @@ const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	"\x13EdgeTypeL7Telemetry\x12.\n" +
 	"\x13http_requests_total\x18\x01 \x01(\x04R\x11httpRequestsTotal\x127\n" +
 	"\x18http_server_errors_total\x18\x02 \x01(\x04R\x15httpServerErrorsTotal\x127\n" +
-	"\x18http_client_errors_total\x18\x03 \x01(\x04R\x15httpClientErrorsTotalB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
+	"\x18http_client_errors_total\x18\x03 \x01(\x04R\x15httpClientErrorsTotal\"\xd9\x04\n" +
+	"\x1aEdgeTypeMulticastTelemetry\x12D\n" +
+	"\x1fsequence_number_gap_count_total\x18\x01 \x01(\x04R\x1bsequenceNumberGapCountTotal\x12\x8d\x01\n" +
+	"\x1ffeeder_receiver_delay_histogram\x18\x02 \x01(\v2F.graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogramR\x1cfeederReceiverDelayHistogram\x1a\xe4\x02\n" +
+	"\x1cFeederReceiverDelayHistogram\x12\x1f\n" +
+	"\vcount_total\x18\x01 \x01(\x04R\n" +
+	"countTotal\x12\x1b\n" +
+	"\tsum_total\x18\x02 \x01(\x04R\bsumTotal\x12-\n" +
+	"\x13bucket_lt_1ms_total\x18\x03 \x01(\x04R\x10bucketLt1msTotal\x126\n" +
+	"\x18bucket_1ms_to_10ms_total\x18\x04 \x01(\x04R\x14bucket1msTo10msTotal\x12:\n" +
+	"\x1abucket_10ms_to_100ms_total\x18\x05 \x01(\x04R\x16bucket10msTo100msTotal\x126\n" +
+	"\x18bucket_100ms_to_1s_total\x18\x06 \x01(\x04R\x14bucket100msTo1sTotal\x12+\n" +
+	"\x12bucket_ge_1s_total\x18\a \x01(\x04R\x0fbucketGe1sTotalB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
 
 var (
 	file_graph_v1alpha_edge_proto_rawDescOnce sync.Once
@@ -508,24 +729,28 @@ func file_graph_v1alpha_edge_proto_rawDescGZIP() []byte {
 	return file_graph_v1alpha_edge_proto_rawDescData
 }
 
-var file_graph_v1alpha_edge_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_graph_v1alpha_edge_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_graph_v1alpha_edge_proto_goTypes = []any{
-	(*Edge)(nil),                     // 0: graph.v1alpha.Edge
-	(*EdgeTypeBasic)(nil),            // 1: graph.v1alpha.EdgeTypeBasic
-	(*EdgeTypeNetworkTelemetry)(nil), // 2: graph.v1alpha.EdgeTypeNetworkTelemetry
-	(*EdgeTypeRoutingTelemetry)(nil), // 3: graph.v1alpha.EdgeTypeRoutingTelemetry
-	(*EdgeTypeL7Telemetry)(nil),      // 4: graph.v1alpha.EdgeTypeL7Telemetry
+	(*Edge)(nil),                       // 0: graph.v1alpha.Edge
+	(*EdgeTypeBasic)(nil),              // 1: graph.v1alpha.EdgeTypeBasic
+	(*EdgeTypeNetworkTelemetry)(nil),   // 2: graph.v1alpha.EdgeTypeNetworkTelemetry
+	(*EdgeTypeRoutingTelemetry)(nil),   // 3: graph.v1alpha.EdgeTypeRoutingTelemetry
+	(*EdgeTypeL7Telemetry)(nil),        // 4: graph.v1alpha.EdgeTypeL7Telemetry
+	(*EdgeTypeMulticastTelemetry)(nil), // 5: graph.v1alpha.EdgeTypeMulticastTelemetry
+	(*EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram)(nil), // 6: graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram
 }
 var file_graph_v1alpha_edge_proto_depIdxs = []int32{
 	1, // 0: graph.v1alpha.Edge.basic:type_name -> graph.v1alpha.EdgeTypeBasic
 	2, // 1: graph.v1alpha.Edge.network_telemetry:type_name -> graph.v1alpha.EdgeTypeNetworkTelemetry
 	3, // 2: graph.v1alpha.Edge.routing_telemetry:type_name -> graph.v1alpha.EdgeTypeRoutingTelemetry
 	4, // 3: graph.v1alpha.Edge.l7_telemetry:type_name -> graph.v1alpha.EdgeTypeL7Telemetry
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 4: graph.v1alpha.Edge.multicast_telemetry:type_name -> graph.v1alpha.EdgeTypeMulticastTelemetry
+	6, // 5: graph.v1alpha.EdgeTypeMulticastTelemetry.feeder_receiver_delay_histogram:type_name -> graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_graph_v1alpha_edge_proto_init() }
@@ -538,6 +763,7 @@ func file_graph_v1alpha_edge_proto_init() {
 		(*Edge_NetworkTelemetry)(nil),
 		(*Edge_RoutingTelemetry)(nil),
 		(*Edge_L7Telemetry)(nil),
+		(*Edge_MulticastTelemetry)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -545,7 +771,7 @@ func file_graph_v1alpha_edge_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_graph_v1alpha_edge_proto_rawDesc), len(file_graph_v1alpha_edge_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

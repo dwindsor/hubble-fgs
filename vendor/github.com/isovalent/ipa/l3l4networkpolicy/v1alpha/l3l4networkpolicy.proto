@@ -86,6 +86,8 @@ message PolicyRule {
   PolicySubject source = 6;
   // The destination to apply the rule against.
   PolicySubject destination = 7;
+  // The specific rule index that created the rule
+  uint32 rule_index = 8;
 }
 
 // Policy operation is the instruction telling the backeend what to do with a
@@ -193,6 +195,8 @@ enum ConfigType {
   CONFIG_TYPE_LOG_SPLUNK = 5;
   // HA configuration
   CONFIG_TYPE_HA = 6;
+  // Network configuration
+  CONFIG_TYPE_NETWORK = 7;
 }
 
 enum ConfigSource {
@@ -301,6 +305,29 @@ message HaConfig {
   bool flow_sync = 3;
 }
 
+message Vlan {
+  // VLAN id
+  uint32 id = 1;
+  // Optional VLAN name
+  string name = 2;
+}
+
+message Vrf {
+  // VRF id, unique per switch
+  uint32 id = 1;
+  // VRF name
+  string name = 2;
+}
+
+// Object to store network configuration
+// CONFIG_TYPE_NETWORK
+message NetworkConfig {
+  // List of VLANs
+  repeated Vlan vlans = 1;
+  // List of VRFs
+  repeated Vrf vrfs = 2;
+}
+
 // ConfigObject is a generic config object, which can be extended by adding additional configuration types
 message ConfigObject {
   // Type of the json encoded config, used to unmarshal the json object.
@@ -316,6 +343,7 @@ message ConfigObject {
     LogConfigTimescape config_log_timescape = 23;
     LogConfigSplunk config_log_splunk = 24;
     HaConfig config_ha = 25;
+    NetworkConfig network_config = 26;
   }
 }
 
