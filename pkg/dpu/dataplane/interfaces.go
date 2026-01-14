@@ -13,6 +13,7 @@ package dataplane
 import (
 	"context"
 
+	"github.com/isovalent/hubble-fgs/pkg/dpu/policy"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
@@ -86,6 +87,7 @@ type Dataplane interface {
 
 	// Commands
 	PushPolicy(context.Context, v1alpha.PolicyOperation, []*switchpolicy.DPUPolicyRule) error
+	PushFwPolicy(context.Context, []policy.FwPolicyV2) error
 	ClearPolicy(context.Context) error
 
 	// Configuration

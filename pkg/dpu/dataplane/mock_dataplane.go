@@ -57,6 +57,20 @@ var (
 	rulePolicyCnt int
 )
 
+func (m *MockDataplane) PushFwPolicy(_ context.Context, rules []dpAppPolicy.FwPolicyV2) error {
+	for _, r := range rules {
+		logger.GetLogger().Debug("PushFwPolicy", "rule", r)
+	}
+
+	ruleFwaCnt += len(rules)
+
+	if (ruleFwaCnt % 1000) == 0 {
+		logger.GetLogger().Info("Applied FWPolicy rules\n", "PolicyCnt", rulePolicyCnt, "FWAcnt", ruleFwaCnt)
+	}
+	return nil
+
+}
+
 func (m *MockDataplane) PushPolicy(_ context.Context, op v1alpha.PolicyOperation, rules []*switchpolicy.DPUPolicyRule) error {
 	var logStr string
 	switch op {

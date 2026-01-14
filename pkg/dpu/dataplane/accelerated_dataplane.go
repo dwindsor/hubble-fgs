@@ -356,6 +356,31 @@ func (dp *AcceleratedDataplane) HardwareModel() string {
 	return dp.Accelerated.Asic
 }
 
+func (dp *AcceleratedDataplane) PushFwPolicy(ctx context.Context, fwPolicies []dpAppPolicy.FwPolicyV2) error {
+	var err = fmt.Errorf("policy not pushed")
+	retry := 0
+
+	policyMsg := &dpAppPolicy.FwPolicyMsgV2{
+		Hash:         "deprecated",
+		Verification: false,
+		Policies:     fwPolicies,
+	}
+
+	// Applying policy to the accelerated dataplane
+	for ; retry < RetryPushPolicy && err != nil; retry++ {
+		err = dp.Accelerated.UpdateFirewallPolicies(ctx, policyMsg)
+		if err != nil {
+			dp.Accelerated.Reconnect()
+		}
+	}
+
+	if err != nil {
+		logger.GetLogger().Error("Failed to push FWPolicy to accelerated dataplane", logfields.Error, err, "fwPolicy", fwPolicies)
+		return err
+	}
+	return nil
+}
+
 func (dp *AcceleratedDataplane) PushPolicy(ctx context.Context, fwop v1alpha.PolicyOperation, policies []*switchpolicy.DPUPolicyRule) error {
 	var err = fmt.Errorf("policy not pushed")
 	retry := 0
