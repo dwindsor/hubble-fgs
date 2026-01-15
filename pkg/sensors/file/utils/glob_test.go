@@ -8,6 +8,8 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
+// go test ./pkg/sensors/file/utils -test.run TestGlob
+
 package file
 
 import (
@@ -22,6 +24,23 @@ func TestGlobFSM(t *testing.T) {
 		assert.Equal(t, err, nil, "%w", err)
 		if err == nil {
 			assert.Equal(t, c.Match, fsm.Match(c.Path), "pattern: %s path: %s", c.Pattern, c.Path)
+		}
+	}
+}
+
+func TestGlobFSMMulti(t *testing.T) {
+	for _, c := range GlobTestCases {
+		allPatterns := map[string][]int32{
+			c.Pattern: {1},
+		}
+		literals, knownMap := GetLiterals(allPatterns)
+		nfa := BuildMultiNFA(allPatterns)
+		dfa := ToDFA(nfa, literals)
+		res := MatchString(dfa, c.Path, knownMap)
+		if c.Match {
+			assert.ElementsMatch(t, []int32{1}, res, "pattern: %s input: %s", c.Pattern, c.Path)
+		} else {
+			assert.Len(t, res, 0, "pattern: %s input: %s", c.Pattern, c.Path)
 		}
 	}
 }
