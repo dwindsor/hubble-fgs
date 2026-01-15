@@ -41,9 +41,38 @@ func New() *cobra.Command {
 		printFilenameDigestMapCmd(),
 		supportEnforcementCmd(),
 		supportDigestsCmd(),
+		printGlobFSMCmd(),
 	)
 
 	return ret
+}
+
+func printGlobFSMCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "dump-glob-fsm [pattern]",
+		Short: "dump Glob FSM",
+		Long: `Print the FSM of a set of Glob patterns for debugging purposes. You can copy
+the output into a Graphviz Viewer (i.e. https://graphvizonline.net/) to do
+the visualization.
+
+Examples:
+  # Print an FSM for a single pattern
+  tetra file-debug dump-glob-fsm "aaa*"
+
+  # Print an FSM for multiple pattern (more than 2 is also supported)
+  tetra file-debug dump-glob-fsm "aaa?" "aab?"`,
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			allPatterns := map[string][]int32{}
+			for i, s := range args {
+				allPatterns[s] = []int32{int32(i)}
+			}
+			literals, _ := fm.GetLiterals(allPatterns)
+			nfa := fm.BuildMultiNFA(allPatterns)
+			dfa := fm.ToDFA(nfa, literals)
+			return fm.ExportToDOT(cmd.OutOrStdout(), dfa)
+		},
+	}
 }
 
 func printFilenameDigestMapCmd() *cobra.Command {
