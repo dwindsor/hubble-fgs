@@ -166,7 +166,7 @@ func (a *alerter) evaluateRules(ctx context.Context, event *tetragon.GetEventsRe
 			// Handle alert output
 			if r.jsonEncoder != nil {
 				alert := eventToAlert(event, r)
-				err = r.jsonEncoder.encode(alert)
+				err = r.jsonEncoder.encode(alert, r.rateLimiter)
 				if err != nil {
 					errs = errors.Join(errs, fmt.Errorf("failed to export alert to JSON log file: %w", err))
 					continue

@@ -44,6 +44,7 @@ type rule struct {
 	riskScore   int32
 	jsonEncoder *jsonEncoder
 	labels      map[string]string
+	rateLimiter *encoderRateLimiter
 }
 
 type RuleManager interface {
@@ -98,14 +99,20 @@ func (r *AlertRuleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fnam
 		if err != nil {
 			return err
 		}
-		var rateLimiter *rate.Limiter
+		encoder = newJsonEncoder(lw, fname)
+		newEncoder = true
+	}
+
+	var rateLimiter *encoderRateLimiter
+	if encoder != nil {
 		if ar.Spec.Export.RateLimit.MaxEvents != 0 && ar.Spec.Export.RateLimit.Window != "" {
 			// No need to check for error here since the string is pre-validated, see crd declaration.
 			dur, _ := time.ParseDuration(ar.Spec.Export.RateLimit.Window)
-			rateLimiter = rate.NewLimiter(rate.Every(dur), int(ar.Spec.Export.RateLimit.MaxEvents))
+			rateLimiter = &encoderRateLimiter{
+				Limiter:     rate.NewLimiter(rate.Every(dur), int(ar.Spec.Export.RateLimit.MaxEvents)),
+				rateLimited: false,
+			}
 		}
-		encoder = newRateLimitedJsonEncoder(lw, fname, rateLimiter)
-		newEncoder = true
 	}
 
 	severity := ar.Spec.Severity
@@ -118,6 +125,7 @@ func (r *AlertRuleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fnam
 			r.updateRuleMetrics()
 		}
 	}
+
 	r.rules[name] = &rule{
 		cel:         celProgram,
 		eventNames:  eventNames,
@@ -128,7 +136,9 @@ func (r *AlertRuleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fnam
 		riskScore:   int32(ar.Spec.RiskScore),
 		jsonEncoder: encoder,
 		labels:      ar.Labels,
+		rateLimiter: rateLimiter,
 	}
+
 	if newEncoder {
 		r.encoders[fname] = encoder
 	}

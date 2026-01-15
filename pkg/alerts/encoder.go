@@ -22,33 +22,29 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
 )
 
-type jsonEncoder struct {
-	writer      io.WriteCloser
-	fname       string
-	refCnt      atomic.Int32
-	rateLimiter *rate.Limiter
+type encoderRateLimiter struct {
+	*rate.Limiter
 	rateLimited bool
 }
 
-func newRateLimitedJsonEncoder(w io.WriteCloser, fname string, rateLimit *rate.Limiter) *jsonEncoder {
-	// If passed rateLimit is nil, default at no limit
-	// but, to avoid checking for nil, just limit to inf.
-	if rateLimit == nil {
-		rateLimit = rate.NewLimiter(rate.Inf, 0)
-	}
+var noLimitRateLimiter = &encoderRateLimiter{
+	Limiter: rate.NewLimiter(rate.Inf, 0),
+}
 
-	// Wrap the WriteCloser with our byte counter to track exported bytes
-	ret := &jsonEncoder{
-		writer:      alertmetrics.NewAlertExportedBytesCounterWriter(w),
-		fname:       fname,
-		rateLimiter: rateLimit,
-	}
-	ret.refCnt.Store(1)
-	return ret
+type jsonEncoder struct {
+	writer io.WriteCloser
+	fname  string
+	refCnt atomic.Int32
 }
 
 func newJsonEncoder(w io.WriteCloser, fname string) *jsonEncoder {
-	return newRateLimitedJsonEncoder(w, fname, nil)
+	// Wrap the WriteCloser with our byte counter to track exported bytes
+	ret := &jsonEncoder{
+		writer: alertmetrics.NewAlertExportedBytesCounterWriter(w),
+		fname:  fname,
+	}
+	ret.refCnt.Store(1)
+	return ret
 }
 
 func (e *jsonEncoder) IncRef() {
@@ -63,7 +59,7 @@ func (e *jsonEncoder) DecRef() int32 {
 	return refCnt
 }
 
-func (e *jsonEncoder) encode(alert *tetragon.Alert) error {
+func (e *jsonEncoder) encode(alert *tetragon.Alert, encRateLimiter *encoderRateLimiter) error {
 	// encoder is closed, nothing to do
 	if e.refCnt.Load() == 0 {
 		return nil
@@ -74,28 +70,33 @@ func (e *jsonEncoder) encode(alert *tetragon.Alert) error {
 	// * FIRST ratelimited event -> set the AlertRuleRateLimitActive metric,
 	//   log a message and send an event that wraps an alert with additional `rateLimitEnabled: true`.
 	// * OTHER ratelimited events -> set the AlertRuleRateLimitDropsTotal and skip the write.
-	if e.rateLimiter.Allow() {
+
+	// nil is passed by tests or when no rate limiter is set
+	if encRateLimiter == nil {
+		encRateLimiter = noLimitRateLimiter
+	}
+
+	if encRateLimiter.Allow() {
 		if alert != nil && alert.Rule != nil {
-			tokens := e.rateLimiter.Tokens()
-			burst := e.rateLimiter.Burst()
+			tokens := encRateLimiter.Tokens()
+			burst := encRateLimiter.Burst()
 			windowUsage := 0.0
 			if burst != 0 {
 				windowUsage = 1 - tokens/float64(burst)
 			}
-
 			alertmetrics.AlertRuleRateLimitWindowUsage.WithLabelValues(alert.Rule.Name).Set(windowUsage)
 			alertmetrics.AlertsExportedTotal.WithLabelValues(alert.Rule.Name).Inc()
 		}
-		if e.rateLimited {
-			e.rateLimited = false
+		if encRateLimiter.rateLimited {
+			encRateLimiter.rateLimited = false
 			if alert != nil && alert.Rule != nil {
 				alertmetrics.AlertRuleRateLimitActive.WithLabelValues(alert.Rule.Name).Set(float64(0))
 			}
 		}
 	} else {
-		if !e.rateLimited {
+		if !encRateLimiter.rateLimited {
 			// First message rateLimited; send it anyway but wrap it to add the `rateLimitEnabled: true`
-			e.rateLimited = true
+			encRateLimiter.rateLimited = true
 			if alert != nil && alert.Rule != nil {
 				alertmetrics.AlertRuleRateLimitActive.WithLabelValues(alert.Rule.Name).Set(float64(1))
 				alert.Rule.RateLimitTriggered = true
