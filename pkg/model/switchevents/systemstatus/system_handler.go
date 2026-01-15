@@ -170,13 +170,6 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 	// Get current system connection status from NXOS controller
 	currentStatus := h.dataProvider.GetControllerConnectionStatus()
 
-	// Check if controller connection status is failure - if so, skip sending
-	// interface is down.
-	if currentStatus == model.Cisco_NX_OSDevice_Sas_CommonStateE_failure {
-		logger.GetLogger().Debug("timescape: skipping timescape update due to NXOS system connection failure status")
-		return
-	}
-
 	// Convert system connection status to system status event
 	event := h.writeSystemStatusUpdate(currentStatus)
 	if event == nil {
@@ -266,8 +259,16 @@ func (h *systemConnectionHandler) writeSystemStatusUpdate(status model.E_Cisco_N
 			"connection_status": CONNECTED,
 		}
 	case model.Cisco_NX_OSDevice_Sas_CommonStateE_failure:
-		// Failure: skip sending. Interface is down.
-		return nil
+		// Failure: add error condition
+		statusUpdate.TotalConditions = 1
+		statusUpdate.FailingConditions = []*v1alpha.FailingCondition{
+			{
+				ConditionId: DISCONNECTED,
+				Severity:    v1alpha.Severity_SEVERITY_MAJOR, // Error
+				Message:     "On-prem controller connection is disconnected",
+			},
+		}
+		logger.GetLogger().Info("timescape:  sending DISCONNECTED status update")
 	case model.Cisco_NX_OSDevice_Sas_CommonStateE_unknown:
 		fallthrough
 	default:
