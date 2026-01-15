@@ -5,17 +5,19 @@
 #include "bpf_event.h"
 #include "bpf_task.h"
 
+#define MAX_GLOB_INPUT_SIZE 1024
+#include "bpf_glob_multi.h"
+
 #include "file.h"
-#include "bpf_glob.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-#define MAX_PATH_SZIE 256
+#define MAX_PATH_SIZE 1024
 
 struct str {
-	char path[MAX_PATH_SZIE];
+	char path[MAX_PATH_SIZE];
 	__u32 len;
-	__u32 pad;
+	__s32 val;
 	__u64 res;
 	__u64 dur;
 };
@@ -27,12 +29,16 @@ struct {
 	__uint(max_entries, 1);
 } tg_string_map SEC(".maps");
 
-struct {
-	__uint(type, BPF_MAP_TYPE_ARRAY);
-	__type(key, __u32);
-	__type(value, struct glob_state);
-	__uint(max_entries, 256); // should be enough for all tests
-} tg_pattern_map SEC(".maps");
+static u8 __check_pattern(void *dfa, void *final, void *literals, char *path, __u32 len, __s32 val)
+{
+	__s32 state_id = check_pattern(dfa, literals, path, len);
+
+	if (val == -1)
+		return !match_any(final, state_id);
+	else if (val == -2)
+		return match_any(final, state_id);
+	return match_value(&tg_glob_final, state_id, val);
+}
 
 SEC("lsm/file_fcntl")
 int BPF_PROG(security_file_fcntl, struct file *file, unsigned int cmd, unsigned long arg)
@@ -46,7 +52,7 @@ int BPF_PROG(security_file_fcntl, struct file *file, unsigned int cmd, unsigned 
 		return 0;
 
 	beg = ktime_get_boot_ns();
-	s->res = check_pattern(&tg_pattern_map, s->path, s->len);
+	s->res = __check_pattern(&tg_glob_dfa, &tg_glob_final, &tg_glob_literal, s->path, s->len, s->val);
 	s->dur = (ktime_get_boot_ns() - beg);
 
 	return 0;

@@ -25,7 +25,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
@@ -39,14 +38,14 @@ import (
 )
 
 type StrVal struct {
-	Path [256]byte
+	Path [1024]byte
 	Len  uint32
-	Pad  uint32
+	Val  int32
 	Res  uint64
 	Dur  uint64
 }
 
-func initGlob(objFile string, pattern string) (*ebpf.Collection, error) {
+func initGlob(objFile string, patterns map[string][]int32) (*ebpf.Collection, error) {
 	if err := rlimit.RemoveMemlock(); err != nil {
 		return nil, fmt.Errorf("runEbpfGlob: rlimit.RemoveMemlock: %s", err)
 	}
@@ -62,46 +61,54 @@ func initGlob(objFile string, pattern string) (*ebpf.Collection, error) {
 		return nil, fmt.Errorf("runEbpfGlob: ebpf.LoadCollectionSpec: %s", err)
 	}
 
-	tmpMap, ok := spec.Maps["glob_temp_maps"]
+	gd := fm.GenerateAndPopulateData(patterns)
+
+	knownLiteralsMap, ok := spec.Maps["tg_glob_literal"]
 	if !ok {
-		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'glob_temp_maps' in spec")
+		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_literal' in spec")
 	}
 
-	// resize "glob_temp_maps"
-	tmpMap.MaxEntries = 2 * uint32(bpf.GetNumPossibleCPUs())
+	knownLiteralsMap.MaxEntries = uint32(gd.GetKnownLiteralsMapSize())
+
+	isFinalsMap, ok := spec.Maps["tg_glob_final"]
+	if !ok {
+		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_final' in spec")
+	}
+
+	isFinalsMap.MaxEntries = uint32(gd.GetFinalStatesMapSize())
+
+	globDfaMap, ok := spec.Maps["tg_glob_dfa"]
+	if !ok {
+		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_dfa' in spec")
+	}
+
+	globDfaMap.MaxEntries = uint32(gd.GetStateTransitionsMapSize())
 
 	col, err := ebpf.NewCollectionWithOptions(spec, ebpf.CollectionOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("runEbpfGlob: ebpf.NewCollectionWithOptions: %s", err)
 	}
 
-	patternMap, ok := col.Maps["tg_pattern_map"]
+	knownLiteralsDataMap, ok := col.Maps["tg_glob_literal"]
 	if !ok {
-		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_pattern_map' in collection")
+		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_literal' in collection")
 	}
 
-	tmpBufferMap, ok := col.Maps["glob_temp_maps"]
+	gd.GenerateKnownLiteralsMap(knownLiteralsDataMap)
+
+	isFinalsDataMap, ok := col.Maps["tg_glob_final"]
 	if !ok {
-		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'glob_temp_maps' in collection")
+		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_final' in collection")
 	}
 
-	for i := range 2 * bpf.GetNumPossibleCPUs() {
-		if err := tmpBufferMap.Update(uint32(i), fm.GlobTempVal{}, 0); err != nil {
-			return nil, fmt.Errorf("runEbpfGlob: tmpBufferMap.Update: err: %w", err)
-		}
+	gd.GenerateFinalStatesMap(isFinalsDataMap)
+
+	globDfaDataMap, ok := col.Maps["tg_glob_dfa"]
+	if !ok {
+		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_glob_dfa' in collection")
 	}
 
-	f, err := fm.CompileGlob(pattern)
-	if err != nil {
-		return nil, fmt.Errorf("runEbpfGlob: CompileGlob: %w", err)
-	}
-
-	for i, s := range f.GetStates() {
-		idx := uint32(i)
-		if err := patternMap.Put(idx, s); err != nil {
-			return nil, fmt.Errorf("runEbpfGlob: patternMap.Put: %w", err)
-		}
-	}
+	gd.GenerateStateTransitionsMap(globDfaDataMap, "")
 
 	return col, nil
 }
@@ -120,6 +127,7 @@ func runCase(col *ebpf.Collection, file *os.File, path string, val int32) (*StrV
 	var zero uint32
 	s := StrVal{
 		Res: 100,
+		Val: val,
 	}
 
 	copy(s.Path[:], path)
@@ -149,7 +157,10 @@ func runCase(col *ebpf.Collection, file *os.File, path string, val int32) (*StrV
 }
 
 func runEbpfGlob(t *testing.T, pattern, str string) (bool, uint64, error) {
-	col, err := initGlob("lsm_test_glob.o", pattern)
+	allPatterns := map[string][]int32{
+		pattern: {1},
+	}
+	col, err := initGlob("lsm_test_glob.o", allPatterns)
 	if err != nil {
 		t.Errorf("initGlob: %s", err)
 	}
@@ -170,7 +181,7 @@ func runEbpfGlob(t *testing.T, pattern, str string) (bool, uint64, error) {
 }
 
 func TestGlobFSMeBPF(t *testing.T) {
-	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
+	if !utils.SupportFmodRet() || !utils.SupportLSM() {
 		t.Skip("File monitoring patterns with FileSystemType type requires fmod_ret and lsm programs")
 	}
 
@@ -193,5 +204,5 @@ func TestGlobFSMeBPF(t *testing.T) {
 		maxDur = max(maxDur, dur)
 	}
 
-	fmt.Println("min", time.Duration(minDur)*time.Nanosecond, "max", time.Duration(maxDur)*time.Nanosecond, "avg", time.Duration(totalDur/numTests)*time.Nanosecond)
+	fmt.Println(t.Name(), "min", time.Duration(minDur)*time.Nanosecond, "max", time.Duration(maxDur)*time.Nanosecond, "avg", time.Duration(totalDur/numTests)*time.Nanosecond)
 }
