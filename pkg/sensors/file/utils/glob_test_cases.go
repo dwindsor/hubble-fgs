@@ -60,3 +60,88 @@ var GlobTestCases = []GlobTestCase{
 	{Pattern: "*a", Path: "a", Match: true},
 	{Pattern: "a*?boo", Path: "axboo", Match: true},
 }
+
+type GlobTestCaseMulti struct {
+	Patterns map[string][]int32
+	Tests    []struct {
+		Path   string
+		Values []int32
+	}
+}
+
+var GlobTestCasesMulti = []GlobTestCaseMulti{
+	{
+		Patterns: map[string][]int32{
+			"abc*":    {1, 3},
+			"a?c":     {2},
+			"a[cd]b":  {6},
+			"a[!cd]c": {8},
+		},
+		Tests: []struct {
+			Path   string
+			Values []int32
+		}{
+			{Path: "abc", Values: []int32{1, 2, 3, 8}},
+			{Path: "acb", Values: []int32{6}},
+			{Path: "azc", Values: []int32{2, 8}},
+			{Path: "pizza", Values: []int32{}},
+		},
+	},
+	{
+		Patterns: map[string][]int32{
+			"foo*":   {1},
+			"*bar":   {2},
+			"foobar": {3},
+			"f*r":    {4},
+		},
+		Tests: []struct {
+			Path   string
+			Values []int32
+		}{
+			{Path: "foobar", Values: []int32{1, 2, 3, 4}},
+			{Path: "foor", Values: []int32{1, 4}},
+			{Path: "fbar", Values: []int32{2, 4}},
+		},
+	},
+	{
+		Patterns: map[string][]int32{
+			"*":  {100}, // Match everything
+			"":   {200}, // Match only empty string
+			"a*": {300},
+			"*z": {400},
+		},
+		Tests: []struct {
+			Path   string
+			Values []int32
+		}{
+			{Path: "", Values: []int32{100, 200}},
+			{Path: "az", Values: []int32{100, 300, 400}},
+			{Path: "supercalifragilistic", Values: []int32{100}},
+		},
+	},
+	{
+		Patterns: map[string][]int32{
+			"id-[a-f]":   {1}, // Matches id-a, id-b, ... id-f
+			"val-[2-9]":  {2}, // Matches val-0 to val-9
+			"val-[!0-5]": {3},
+			"val-[01]":   {4},
+		},
+		Tests: []struct {
+			Path   string
+			Values []int32
+		}{
+			{Path: "id-c", Values: []int32{1}},
+			{Path: "id-g", Values: []int32{}},
+			{Path: "val-0", Values: []int32{4}},
+			{Path: "val-1", Values: []int32{4}},
+			{Path: "val-2", Values: []int32{2}},
+			{Path: "val-3", Values: []int32{2}},
+			{Path: "val-4", Values: []int32{2}},
+			{Path: "val-5", Values: []int32{2}},
+			{Path: "val-6", Values: []int32{2, 3}},
+			{Path: "val-7", Values: []int32{2, 3}},
+			{Path: "val-8", Values: []int32{2, 3}},
+			{Path: "val-9", Values: []int32{2, 3}},
+		},
+	},
+}

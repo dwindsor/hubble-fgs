@@ -44,3 +44,14 @@ func TestGlobFSMMulti(t *testing.T) {
 		}
 	}
 }
+
+func TestGlobFSMMultiAll(t *testing.T) {
+	for _, c := range GlobTestCasesMulti {
+		literals, knownMap := GetLiterals(c.Patterns)
+		nfa := BuildMultiNFA(c.Patterns)
+		dfa := ToDFA(nfa, literals)
+		for _, ts := range c.Tests {
+			assert.ElementsMatch(t, ts.Values, MatchString(dfa, ts.Path, knownMap))
+		}
+	}
+}

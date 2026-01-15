@@ -204,5 +204,57 @@ func TestGlobFSMeBPF(t *testing.T) {
 		maxDur = max(maxDur, dur)
 	}
 
-	fmt.Println(t.Name(), "min", time.Duration(minDur)*time.Nanosecond, "max", time.Duration(maxDur)*time.Nanosecond, "avg", time.Duration(totalDur/numTests)*time.Nanosecond)
+	t.Log(t.Name(), "min", time.Duration(minDur)*time.Nanosecond, "max", time.Duration(maxDur)*time.Nanosecond, "avg", time.Duration(totalDur/numTests)*time.Nanosecond)
+}
+
+func TestGlobFSMeBPFMulti(t *testing.T) {
+	if !utils.SupportFmodRet() || !utils.SupportLSM() {
+		t.Skip("File monitoring patterns with FileSystemType type requires fmod_ret and lsm programs")
+	}
+
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
+
+	var totalDur, numTests uint64
+	minDur := uint64(math.MaxUint64)
+	maxDur := uint64(0)
+
+	file, err := os.CreateTemp("", "tetragon-lsm-check-*")
+	if err != nil {
+		t.Errorf("runEbpfGlob: os.CreateTemp: %s", err)
+	}
+	defer os.Remove(file.Name())
+
+	for _, c := range fm.GlobTestCasesMulti {
+		for _, ts := range c.Tests {
+			vals := []int32{}
+			if len(ts.Values) == 0 {
+				vals = append(vals, -1)
+			} else {
+				vals = append(vals, ts.Values...)
+			}
+
+			for _, vl := range vals {
+				col, err := initGlob("lsm_test_glob.o", c.Patterns)
+				if err != nil {
+					t.Errorf("initGlob: %s", err)
+				}
+
+				strOut, err := runCase(col, file, ts.Path, vl)
+				if err != nil {
+					t.Errorf("runCase: %s", err)
+				}
+
+				col.Close()
+
+				assert.Equal(t, strOut.Res, uint64(1), "path: %s res: %d, val: %d", ts.Path, strOut.Res, vl)
+
+				totalDur += strOut.Dur
+				numTests++
+				minDur = min(minDur, strOut.Dur)
+				maxDur = max(maxDur, strOut.Dur)
+			}
+		}
+	}
+
+	t.Log(t.Name(), "min", time.Duration(minDur)*time.Nanosecond, "max", time.Duration(maxDur)*time.Nanosecond, "avg", time.Duration(totalDur/numTests)*time.Nanosecond)
 }
