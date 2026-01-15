@@ -129,7 +129,7 @@ PROCESS += bpf_generic_lsm_core_v61.o bpf_generic_lsm_output_v61.o \
 
 # execve_map update
 PROCESS += bpf_execve_map_update.o bpf_execve_map_update_v53.o bpf_execve_map_update_v511.o \
-	   bpf_execve_map_update_v612.o
+	   bpf_execve_map_update_v61.o bpf_execve_map_update_v612.o
 
 
 FILE = bpf_filemap_fault.o bpf_filemap_fault_v419.o bpf_filemap_map_pages.o bpf_filemap_map_pages_v419.o bpf_filemap_page_mkwrite.o bpf_filemap_page_mkwrite_v419.o bpf_finish_open.o bpf_finish_open_v419.o \
@@ -525,6 +525,7 @@ deps/bpf_multi_kprobe_v511.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_multi_retkprobe_v511.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_uprobe_v511.d: $(PROCESSDIR)/bpf_generic_uprobe.c
 deps/bpf_generic_usdt_v511.d: $(PROCESSDIR)/bpf_generic_usdt.c
+deps/bpf_generic_usdt_v53.d: $(PROCESSDIR)/bpf_generic_usdt.c
 deps/bpf_multi_uprobe_v511.d: $(PROCESSDIR)/bpf_generic_uprobe.c
 deps/bpf_generic_retuprobe_v511.d: $(PROCESSDIR)/bpf_generic_retuprobe.c
 deps/bpf_multi_retuprobe_v511.d: $(PROCESSDIR)/bpf_generic_retuprobe.c
@@ -710,7 +711,10 @@ deps/bpf_generic_retuprobe_v612.d: $(PROCESSDIR)/bpf_generic_retuprobe.c
 deps/bpf_multi_retuprobe_v612.d: $(PROCESSDIR)/bpf_generic_retuprobe.c
 deps/bpf_generic_usdt_v612.d: $(PROCESSDIR)/bpf_generic_usdt.c
 deps/bpf_multi_usdt_v612.d: $(PROCESSDIR)/bpf_generic_usdt.c
-objs/bpf_execve_map_update_v612.d: $(PROCESSDIR)/bpf_execve_map_update.c
+deps/bpf_execve_map_update_v53.d: $(PROCESSDIR)/bpf_execve_map_update.c
+deps/bpf_execve_map_update_v511.d: $(PROCESSDIR)/bpf_execve_map_update.c
+deps/bpf_execve_map_update_v61.d: $(PROCESSDIR)/bpf_execve_map_update.c
+deps/bpf_execve_map_update_v612.d: $(PROCESSDIR)/bpf_execve_map_update.c
 
 $(DEPSDIR)%_v612.d:
 	$(call rule_d,-D__LARGE_BPF_PROG -D__V511_BPF_PROG -D__V61_BPF_PROG -D__V612_BPF_PROG)
