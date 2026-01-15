@@ -171,14 +171,8 @@ func TestGlobFSMeBPF(t *testing.T) {
 
 		totalDur += dur
 		numTests++
-
-		if dur < minDur {
-			minDur = dur
-		}
-
-		if dur > maxDur {
-			maxDur = dur
-		}
+		minDur = min(minDur, dur)
+		maxDur = max(maxDur, dur)
 	}
 
 	fmt.Println("min", time.Duration(minDur)*time.Nanosecond, "max", time.Duration(maxDur)*time.Nanosecond, "avg", time.Duration(totalDur/numTests)*time.Nanosecond)
