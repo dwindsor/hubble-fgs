@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-// go test -gcflags="" -c ./pkg/sensors/file -o go-tests/file.test
+// go test -tags sudo_tests -gcflags="" -c ./pkg/sensors/file -o go-tests/file.test
 // sudo ./go-tests/file.test --bpf-lib ./bpf/objs/ -test.run TestGlobFSMeBPF
 
 //go:build sudo_tests
@@ -46,27 +46,25 @@ type StrVal struct {
 	Dur  uint64
 }
 
-func runEbpfGlob(t *testing.T, pattern, str string) (bool, uint64, error) {
+func initGlob(objFile string, pattern string) (*ebpf.Collection, error) {
 	if err := rlimit.RemoveMemlock(); err != nil {
-		return false, 0, fmt.Errorf("runEbpfGlob: rlimit.RemoveMemlock: %w", err)
+		return nil, fmt.Errorf("runEbpfGlob: rlimit.RemoveMemlock: %s", err)
 	}
 
-	ossTestUtils.CaptureLog(t, logger.GetLogger())
 	option.Config.HubbleLib = tus.Conf().TetragonLib
 
-	objFile := "lsm_test_glob.o"
 	objPath, err := config.FindProgramFile(objFile)
 	if err != nil {
-		return false, 0, fmt.Errorf("runEbpfGlob: FindProgramFile: %w", err)
+		return nil, fmt.Errorf("runEbpfGlob: FindProgramFile: %s", err)
 	}
 	spec, err := ebpf.LoadCollectionSpec(objPath)
 	if err != nil {
-		return false, 0, fmt.Errorf("runEbpfGlob: ebpf.LoadCollectionSpec: %w", err)
+		return nil, fmt.Errorf("runEbpfGlob: ebpf.LoadCollectionSpec: %s", err)
 	}
 
 	tmpMap, ok := spec.Maps["glob_temp_maps"]
 	if !ok {
-		return false, 0, fmt.Errorf("runEbpfGlob: failed to find map 'glob_temp_maps' in spec")
+		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'glob_temp_maps' in spec")
 	}
 
 	// resize "glob_temp_maps"
@@ -74,68 +72,65 @@ func runEbpfGlob(t *testing.T, pattern, str string) (bool, uint64, error) {
 
 	col, err := ebpf.NewCollectionWithOptions(spec, ebpf.CollectionOptions{})
 	if err != nil {
-		return false, 0, fmt.Errorf("runEbpfGlob: ebpf.NewCollectionWithOptions: %w", err)
-	}
-	defer col.Close()
-
-	strMap, ok := col.Maps["tg_string_map"]
-	if !ok {
-		return false, 0, fmt.Errorf("runEbpfGlob: failed to find map 'tg_string_map' in collection")
+		return nil, fmt.Errorf("runEbpfGlob: ebpf.NewCollectionWithOptions: %s", err)
 	}
 
 	patternMap, ok := col.Maps["tg_pattern_map"]
 	if !ok {
-		return false, 0, fmt.Errorf("runEbpfGlob: failed to find map 'tg_pattern_map' in collection")
+		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_pattern_map' in collection")
 	}
 
 	tmpBufferMap, ok := col.Maps["glob_temp_maps"]
 	if !ok {
-		return false, 0, fmt.Errorf("runEbpfGlob: failed to find map 'glob_temp_maps' in collection")
+		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'glob_temp_maps' in collection")
 	}
 
+	for i := range 2 * bpf.GetNumPossibleCPUs() {
+		if err := tmpBufferMap.Update(uint32(i), fm.GlobTempVal{}, 0); err != nil {
+			return nil, fmt.Errorf("runEbpfGlob: tmpBufferMap.Update: err: %w", err)
+		}
+	}
+
+	f, err := fm.CompileGlob(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("runEbpfGlob: CompileGlob: %w", err)
+	}
+
+	for i, s := range f.GetStates() {
+		idx := uint32(i)
+		if err := patternMap.Put(idx, s); err != nil {
+			return nil, fmt.Errorf("runEbpfGlob: patternMap.Put: %w", err)
+		}
+	}
+
+	return col, nil
+}
+
+func runCase(col *ebpf.Collection, file *os.File, path string, val int32) (*StrVal, error) {
 	prog, ok := col.Programs["security_file_fcntl"]
 	if !ok {
-		return false, 0, fmt.Errorf("runEbpfGlob: failed to find program 'security_file_fcntl' in collection")
+		return nil, fmt.Errorf("runEbpfGlob: failed to find program 'security_file_fcntl' in collection")
 	}
 
-	file, err := os.CreateTemp("", "tetragon-lsm-check-*")
-	if err != nil {
-		return false, 0, fmt.Errorf("runEbpfGlob: os.CreateTemp: %w", err)
+	strMap, ok := col.Maps["tg_string_map"]
+	if !ok {
+		return nil, fmt.Errorf("runEbpfGlob: failed to find map 'tg_string_map' in collection")
 	}
-	defer os.Remove(file.Name())
 
 	var zero uint32
 	s := StrVal{
 		Res: 100,
 	}
 
-	copy(s.Path[:], str)
-	s.Len = uint32(len(str))
+	copy(s.Path[:], path)
+	s.Len = uint32(len(path))
 	if err := strMap.Put(zero, s); err != nil {
-		return false, 0, fmt.Errorf("runEbpfGlob: strMap.Put: %w", err)
-	}
-
-	for i := range 2 * bpf.GetNumPossibleCPUs() {
-		if err := tmpBufferMap.Update(uint32(i), fm.GlobTempVal{}, 0); err != nil {
-			return false, 0, fmt.Errorf("runEbpfGlob: tmpBufferMap.Update: err: %w", err)
-		}
-	}
-
-	f, err := fm.CompileGlob(pattern)
-	if err != nil {
-		return false, 0, fmt.Errorf("runEbpfGlob: CompileGlob: %w", err)
-	}
-
-	for i, s := range f.GetStates() {
-		idx := uint32(i)
-		if err := patternMap.Put(idx, s); err != nil {
-			return false, 0, fmt.Errorf("runEbpfGlob: patternMap.Put: %w", err)
-		}
+		return nil, fmt.Errorf("runEbpfGlob: strMap.Put: %s", err)
 	}
 
 	link, err := link.AttachLSM(link.LSMOptions{Program: prog})
 	if err != nil {
-		return false, 0, fmt.Errorf("runEbpfGlob: %w", err)
+		return nil, fmt.Errorf("runEbpfGlob: %s", err)
 	}
 	defer link.Close()
 
@@ -143,11 +138,32 @@ func runEbpfGlob(t *testing.T, pattern, str string) (bool, uint64, error) {
 
 	var strOut StrVal
 	if err := strMap.Lookup(zero, &strOut); err != nil {
-		return false, 0, fmt.Errorf("runEbpfGlob: strMap.Lookup: %w", err)
+		return nil, fmt.Errorf("runEbpfGlob: strMap.Lookup: %s", err)
 	}
 
 	if strOut.Res != 1 && strOut.Res != 0 {
-		return false, 0, fmt.Errorf("runEbpfGlob: Error in eBPF: %d", strOut.Res)
+		return nil, fmt.Errorf("runEbpfGlob: Error in eBPF: %d", strOut.Res)
+	}
+
+	return &strOut, nil
+}
+
+func runEbpfGlob(t *testing.T, pattern, str string) (bool, uint64, error) {
+	col, err := initGlob("lsm_test_glob.o", pattern)
+	if err != nil {
+		t.Errorf("initGlob: %s", err)
+	}
+	defer col.Close()
+
+	file, err := os.CreateTemp("", "tetragon-lsm-check-*")
+	if err != nil {
+		return false, 0, fmt.Errorf("runEbpfGlob: os.CreateTemp: %w", err)
+	}
+	defer os.Remove(file.Name())
+
+	strOut, err := runCase(col, file, str, -2)
+	if err != nil {
+		t.Errorf("runCase: %s", err)
 	}
 
 	return strOut.Res == 1, strOut.Dur, nil
@@ -157,6 +173,8 @@ func TestGlobFSMeBPF(t *testing.T) {
 	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
 		t.Skip("File monitoring patterns with FileSystemType type requires fmod_ret and lsm programs")
 	}
+
+	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
 	var totalDur, numTests uint64
 	minDur := uint64(math.MaxUint64)
