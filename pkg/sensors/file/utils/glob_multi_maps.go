@@ -24,6 +24,7 @@ const (
 
 	BitmapShift = 6
 	BitmapMask  = 63
+	BitsPerByte = 8
 )
 
 type Bitmap struct {

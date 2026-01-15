@@ -20,16 +20,6 @@ import (
 
 func TestGlobFSM(t *testing.T) {
 	for _, c := range GlobTestCases {
-		fsm, err := CompileGlob(c.Pattern)
-		assert.Equal(t, err, nil, "%w", err)
-		if err == nil {
-			assert.Equal(t, c.Match, fsm.Match(c.Path), "pattern: %s path: %s", c.Pattern, c.Path)
-		}
-	}
-}
-
-func TestGlobFSMMulti(t *testing.T) {
-	for _, c := range GlobTestCases {
 		allPatterns := map[string][]int32{
 			c.Pattern: {1},
 		}
@@ -45,7 +35,7 @@ func TestGlobFSMMulti(t *testing.T) {
 	}
 }
 
-func TestGlobFSMMultiAll(t *testing.T) {
+func TestGlobFSMMulti(t *testing.T) {
 	for _, c := range GlobTestCasesMulti {
 		literals, knownMap := GetLiterals(c.Patterns)
 		nfa := BuildMultiNFA(c.Patterns)
