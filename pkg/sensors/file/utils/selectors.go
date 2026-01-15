@@ -14,6 +14,7 @@ package file
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -154,7 +155,7 @@ type OpenFlagsOps struct {
 
 type MatchFilenameOps struct {
 	op    uint32
-	fsm   []*GlobFSM        // when op == MatchFilenameInPattern
+	expr  map[string]int32  // when op == MatchFilenameInPattern
 	paths map[string]uint32 // when op == MatchFilenameInFileWithDigest
 }
 
@@ -248,6 +249,9 @@ type KernelSelectorState struct {
 
 	// number of selectors
 	num uint32
+
+	// local metadata for Glob -- populated at the end of selector parsing
+	gd GlobData
 }
 
 func NewKernelSelectorState() *KernelSelectorState {
@@ -335,6 +339,7 @@ func (k *KernelSelectorState) InitOrGetPatterns(selIdx uint32) *MatchFilenameOps
 	}
 	inner := &MatchFilenameOps{
 		paths: make(map[string]uint32),
+		expr:  make(map[string]int32),
 	}
 	k.patterns[selIdx] = inner
 	return inner
@@ -701,11 +706,6 @@ func GenerateFileOpenFlagsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinP
 	return nil
 }
 
-type patternKey struct {
-	selIdx     uint32
-	patternIdx uint32
-}
-
 func GenerateFilenameOpsMap(m *ebpf.Map, sel *KernelSelectorState) error {
 	for idx, entry := range sel.patterns {
 		if err := m.Update(idx, entry.op, ebpf.UpdateAny); err != nil {
@@ -863,69 +863,28 @@ func (k *KernelSelectorState) GetPathMetadata() map[string][]DigestPathMetadata 
 
 }
 
-func GeneratePatternsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
-	for selID, entries := range sel.patterns {
-		for patternID, fsm := range entries.fsm {
-			innerName := fmt.Sprintf("glob_patterns_map_%d", selID)
-			innerSpec := &ebpf.MapSpec{
-				Name:    innerName,
-				Type:    ebpf.Array,
-				KeySize: uint32(unsafe.Sizeof(uint32(0))),
-				Key: &btf.Int{
-					Name:     "unsigned int",
-					Size:     uint32(unsafe.Sizeof(uint32(0))),
-					Encoding: btf.Unsigned,
-				},
-				ValueSize: uint32(unsafe.Sizeof(GlobState{})),
-				Value: &btf.Struct{
-					Name: "glob_state",
-					Size: uint32(unsafe.Sizeof(GlobState{})),
-				},
-				MaxEntries: uint32(GetMaxInnerEntriesPatternsMap(sel)),
-			}
-			innerMap, err := ebpf.NewMapWithOptions(innerSpec, ebpf.MapOptions{
-				PinPath: sensors.PathJoin(pinPathPrefix, innerName),
-			})
-			if err != nil {
-				return fmt.Errorf("creating innerMap %s failed: %w", innerName, err)
-			}
-			defer innerMap.Close()
-
-			innerMap.Pin(sensors.PathJoin(pinPathPrefix, innerName))
-
-			for i, s := range fsm.stateArr {
-				idx := uint32(i)
-				if err := innerMap.Put(idx, s); err != nil {
-					return fmt.Errorf("put failed: %w", err)
-				}
-			}
-
-			if err := outerMap.Update(patternKey{
-				selIdx:     selID,
-				patternIdx: uint32(patternID),
-			}, uint32(innerMap.FD()), 0); err != nil {
-				return fmt.Errorf("failed to insert %s: %w", innerName, err)
-			}
-		}
-	}
-
-	return nil
+func GenerateKnownLiteralsMap(m *ebpf.Map, sel *KernelSelectorState, _ string) error {
+	return sel.gd.GenerateKnownLiteralsMap(m)
 }
 
-func GetMaxInnerEntriesPatternsMap(sel *KernelSelectorState) int {
-	maxEntries := 0
-	for _, entry := range sel.patterns {
-		for _, p := range entry.fsm {
-			num := len(p.stateArr)
-			if num > maxEntries {
-				maxEntries = num
-			}
-		}
-	}
-	if maxEntries == 0 {
-		maxEntries = 1
-	}
-	return maxEntries
+func GetKnownLiteralsMapSize(sel *KernelSelectorState) int {
+	return sel.gd.GetKnownLiteralsMapSize()
+}
+
+func GenerateFinalStatesMap(m *ebpf.Map, sel *KernelSelectorState, _ string) error {
+	return sel.gd.GenerateFinalStatesMap(m)
+}
+
+func GetFinalStatesMapSize(sel *KernelSelectorState) int {
+	return sel.gd.GetFinalStatesMapSize()
+}
+
+func GenerateStateTransitionsMap(outerMap *ebpf.Map, sel *KernelSelectorState, pinPathPrefix string) error {
+	return sel.gd.GenerateStateTransitionsMap(outerMap, pinPathPrefix)
+}
+
+func GetStateTransitionsMapSize(sel *KernelSelectorState) int {
+	return sel.gd.GetStateTransitionsMapSize()
 }
 
 func GenerateFileActionsMap(m *ebpf.Map, sel *KernelSelectorState) error {
@@ -1323,14 +1282,7 @@ func ParseMatchFilename(k *KernelSelectorState, op []v1alpha1.FilePathGlobSelect
 			val.op = MatchFilenameInPattern
 
 			for _, p := range o.Values {
-				fsm, err := CompileGlob(p)
-				if err != nil {
-					return fmt.Errorf("failed to compile glob, pattern: %s error: %w", p, err)
-				}
-				if len(fsm.GetStates()) >= GlobPossibleMaxStates {
-					return fmt.Errorf("each glob pattern should be translated at maximum to %d states ('%s' has %d states)", GlobPossibleMaxStates, p, len(fsm.GetStates()))
-				}
-				val.fsm = append(val.fsm, fsm)
+				val.expr[p] = int32(1)
 			}
 		}
 	}
@@ -1694,6 +1646,33 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 		}
 	}
 	kernelSelectors.num = uint32(len(fileSel))
+
+	{
+		// glob preprocessing
+		allPatterns := map[string][]int32{}
+		for sid, p := range kernelSelectors.patterns {
+			if p.op == MatchFilenameInPattern {
+				for pp := range p.expr {
+					v, ok := allPatterns[pp]
+					if !ok {
+						allPatterns[pp] = []int32{int32(sid)}
+					} else {
+						allPatterns[pp] = append(v, int32(sid))
+					}
+				}
+			}
+		}
+
+		// sort + deduplicate values
+		for k, v := range allPatterns {
+			slices.Sort(v)
+			allPatterns[k] = slices.Compact(v)
+		}
+
+		// populate FSM
+		kernelSelectors.gd = GenerateAndPopulateData(allPatterns)
+	}
+
 	return kernelSelectors, nil
 }
 

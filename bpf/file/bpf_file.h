@@ -18,7 +18,8 @@
 #include "bpf_ktime.h"
 
 #ifdef __ENABLE_GLOB_SUPPORT
-#include "bpf_glob.h"
+#define MAX_GLOB_INPUT_SIZE 255
+#include "bpf_glob_multi.h"
 #endif
 
 #include "policy_conf.h"
@@ -380,23 +381,12 @@ struct {
 		});
 } file_digests_maps SEC(".maps");
 
-struct pattern_key {
-	__u32 sel_idx;
-	__u32 pattern_idx;
-};
-
 struct {
-	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
-	__uint(max_entries, MAX_FIM_SELECTORS); // max number of selectors -- to be set from the user-space
-	__type(key, struct pattern_key); /* selector id */
-	__array(
-		values, struct {
-			__uint(type, BPF_MAP_TYPE_ARRAY);
-			__type(key, __u32);
-			__type(value, struct glob_state);
-			__uint(max_entries, 1);
-		});
-} glob_patterns_map SEC(".maps");
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, __s32);
+	__uint(max_entries, 1);
+} state_id_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -1004,51 +994,42 @@ static inline __attribute__((always_inline)) int check_match_open_flags(__u32 se
 }
 
 #ifdef __ENABLE_GLOB_SUPPORT
-struct pattern_loop_ctx {
-	__u32 sel_idx;
-	char *path;
-	__u32 len;
-	int ret;
-};
 
-static long pattern_loop_cb(u32 index, void *_ctx)
+static inline __attribute__((always_inline)) void init_state_id(void *state_map)
 {
-	struct pattern_loop_ctx *ctx = (struct pattern_loop_ctx *)_ctx;
-	struct pattern_key key;
-	void *inner_pattern_map;
+	__s32 state_id = -2;
+	int zero = 0;
 
-	key.sel_idx = ctx->sel_idx;
-	key.pattern_idx = index;
+	map_update_elem(state_map, &zero, &state_id, 0);
+}
 
-	inner_pattern_map = map_lookup_elem(&glob_patterns_map, &key);
-	if (!inner_pattern_map) { // no matchFilename for this selector (i == 0) *or* none of the previous patterns match (i != 0)
-		ctx->ret = index == 0;
-		return 1; // we match
+static inline __attribute__((always_inline)) __s32 get_or_init_state_id(void *state_map, char *path, __u32 len)
+{
+	__s32 state_id = 0, *state_id_ptr = 0;
+	int zero = 0;
+
+	// Get the state-id from a previous run of the fsm.
+	state_id_ptr = map_lookup_elem(state_map, &zero);
+	if (!state_id_ptr)
+		return 0;
+
+	state_id = *state_id_ptr;
+
+	// If state-id is -2, this means that we haven't run the
+	// fsm yet. So run this now and update the state-id value.
+	if (state_id == -2) {
+		state_id = check_pattern(&tg_glob_dfa, &tg_glob_literal, path, len);
+		map_update_elem(state_map, &zero, &state_id, 0);
 	}
 
-	ctx->ret = check_pattern(inner_pattern_map, ctx->path, ctx->len);
-	if (ctx->ret == 1)
-		return 1; // we match and stop
-
-	if (ctx->ret != 0) {
-		// TODO: report errors better
-		ctx->ret = 0; // do not match on errors
-		return 0; // error -- continue on the next pattern
-	}
-
-	return 0; // no match -- continue on the next pattern
+	return state_id;
 }
 
 // returns 1 if it matches, 0 otherwise
 static inline __attribute__((always_inline)) int check_match_filename(__u32 sel_idx, char *path, __u32 len, struct digest_key *digest)
 {
-	struct pattern_loop_ctx ctx = {
-		.sel_idx = sel_idx,
-		.path = path,
-		.len = len,
-		.ret = 0,
-	};
 	__u32 sel = sel_idx, *op = 0;
+	int zero = 0;
 
 	if (!path) // no path in eval_selectors call, inode-based hooks do not support that
 		return 1;
@@ -1058,13 +1039,15 @@ static inline __attribute__((always_inline)) int check_match_filename(__u32 sel_
 		return 1;
 
 	if (*op == match_filename_in_pattern) {
-		loop(256, &pattern_loop_cb, &ctx, 0); // maximum 256 patterns per selector
-		return ctx.ret;
+		__s32 state_id;
+
+		state_id = get_or_init_state_id(&state_id_map, path, len);
+
+		return match_value(&tg_glob_final, state_id, sel);
 	} else if (*op == match_filename_in_file_with_digest) {
 		void *path_map, *digest_map, *tmp_digest;
 		struct full_path *tmp_path;
 		__u32 *path_idx, *digest_idx;
-		int zero = 0;
 
 		tmp_path = map_lookup_elem(&filename_heap_map, &zero);
 		if (!tmp_path)
@@ -1476,6 +1459,10 @@ eval_selectors(struct sel_args args, struct digest_key *digest, struct sel_path 
 	// no selectors, post all events
 	if (conf->num_selectors == 0)
 		return FILE_OP_POST;
+
+#ifdef __ENABLE_GLOB_SUPPORT
+	init_state_id(&state_id_map);
+#endif
 
 #ifdef __V61_BPF_PROG
 	ctx = map_lookup_elem(&selectors_ctx_heap, &zero);

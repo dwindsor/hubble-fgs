@@ -169,6 +169,7 @@ var mapTypes = map[string]MapType{
 	"file_openraw_heap_map":    PinnedMap,
 	"kpath_heap":               PinnedMap,
 	"digest_key_heap":          PinnedMap,
+	"state_id_map":             PinnedMap,
 
 	// we need to load data to the following maps
 	// depending on the configuration and the selectors
@@ -188,8 +189,9 @@ var mapTypes = map[string]MapType{
 	"filename_ops_map":           PinnedMap, // for matchFilename operator
 	"filename_path_map":          PinnedMap, // for matchFilename InFileWithDigest operator
 	"fsnotify_created_files_map": PinnedMap,
-	"glob_patterns_map":          PinnedMap, // for matchFilename InPattern operator
-	"glob_temp_maps":             PinnedMap, // for matchFilename InPattern operator
+	"tg_glob_literal":            PinnedMap, // for matchFilename InPattern operator
+	"tg_glob_final":              PinnedMap, // for matchFilename InPattern operator
+	"tg_glob_dfa":                PinnedMap, // for matchFilename InPattern operator
 	"hash_map_inode_alloc":       PinnedMap, // for all inodes
 	"hash_map_inode_alloc_stats": PinnedMap,
 	"io_uring_map":               PinnedMap, // for io_uring process information
@@ -1875,23 +1877,28 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 					}
 					return nil
 				}
-			case "glob_patterns_map":
-				m.SetInnerMaxEntries(fm.GetMaxInnerEntriesPatternsMap(sel))
+			case "tg_glob_literal":
+				m.SetMaxEntries(fm.GetKnownLiteralsMapSize(sel))
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
-					if err := fm.GeneratePatternsMap(m, sel, e.PinPathPrefix); err != nil {
-						return fmt.Errorf("glob_patterns_map: %w", err)
+					if err := fm.GenerateKnownLiteralsMap(m, sel, e.PinPathPrefix); err != nil {
+						return fmt.Errorf("tg_glob_literal: %w", err)
 					}
 					return nil
 				}
-			case "glob_temp_maps":
-				m.SetMaxEntries(2 * bpf.GetNumPossibleCPUs())
+			case "tg_glob_final":
+				m.SetMaxEntries(fm.GetFinalStatesMapSize(sel))
 				loadMapFunc = func(m *ebpf.Map, _ string) error {
-					for i := range 2 * bpf.GetNumPossibleCPUs() {
-						if err := m.Update(uint32(i), fm.GlobTempVal{}, 0); err != nil {
-							return fmt.Errorf("failed to insert: %w", err)
-						}
+					if err := fm.GenerateFinalStatesMap(m, sel, e.PinPathPrefix); err != nil {
+						return fmt.Errorf("tg_glob_final: %w", err)
 					}
-
+					return nil
+				}
+			case "tg_glob_dfa":
+				m.SetMaxEntries(fm.GetStateTransitionsMapSize(sel))
+				loadMapFunc = func(m *ebpf.Map, _ string) error {
+					if err := fm.GenerateStateTransitionsMap(m, sel, e.PinPathPrefix); err != nil {
+						return fmt.Errorf("tg_glob_dfa: %w", err)
+					}
 					return nil
 				}
 			case "filename_ops_map":

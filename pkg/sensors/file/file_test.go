@@ -158,7 +158,6 @@ func TestStructAlignments(t *testing.T) {
 		"file_errors":                {fileapi.FileErrors{}},
 		"pattern_val":                {fileapi.PatternValue{}},
 		"full_path":                  {fileapi.FullPath{}},
-		"glob_state":                 {fm.GlobState{}},
 		"msg_file_path_simple":       {fileapi.MsgFilePathSimple{}},
 		"msg_file_symlink_ops":       {fileapi.MsgFileSymlinkEvent{}},
 		"msg_file_openraw_ops":       {fileapi.MsgFileOpenRawEvent{}},
