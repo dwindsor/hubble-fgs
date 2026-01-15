@@ -309,7 +309,7 @@ github.com/cilium/hive/script/internal/diff
 # github.com/cilium/lumberjack/v2 v2.4.1
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
-# github.com/cilium/tetragon v1.7.0-pre.0.0.20260108135047-727071aeb822 => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.7.0-pre.0.0.20260115173740-57c6bf8e2915 => ./modules/tetragon-oss
 ## explicit; go 1.25.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -809,7 +809,7 @@ github.com/go-openapi/swag
 # github.com/go-openapi/validate v0.24.0
 ## explicit; go 1.20
 github.com/go-openapi/validate
-# github.com/go-viper/mapstructure/v2 v2.4.0
+# github.com/go-viper/mapstructure/v2 v2.5.0
 ## explicit; go 1.18
 github.com/go-viper/mapstructure/v2
 github.com/go-viper/mapstructure/v2/internal/errors
@@ -887,8 +887,8 @@ github.com/google/go-cmp/cmp/internal/value
 github.com/google/gopacket
 github.com/google/gopacket/layers
 github.com/google/gopacket/pcapgo
-# github.com/google/gops v0.3.28
-## explicit; go 1.17
+# github.com/google/gops v0.3.29
+## explicit; go 1.18
 github.com/google/gops/agent
 github.com/google/gops/internal
 github.com/google/gops/signal
@@ -1449,7 +1449,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.39.0
+# golang.org/x/sys v0.40.0
 ## explicit; go 1.24.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
@@ -1457,7 +1457,7 @@ golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
 golang.org/x/sys/windows/svc
-# golang.org/x/term v0.38.0
+# golang.org/x/term v0.39.0
 ## explicit; go 1.24.0
 golang.org/x/term
 # golang.org/x/text v0.32.0
