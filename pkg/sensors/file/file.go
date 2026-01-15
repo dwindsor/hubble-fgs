@@ -1599,6 +1599,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 	}
 
 	config.NumSelectors = sel.GetNumSelectors() // pass the total number of selectors
+	initializedMaps := make(map[string]struct{})
 	for _, h := range fimProgs {
 		load := program.Builder(
 			h.progName,
@@ -1722,6 +1723,11 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 
 			// shared maps here
 			m := program.MapBuilderPolicy(mapName, load)
+
+			_, mapInitialized := initializedMaps[m.Name]
+			if !mapInitialized {
+				initializedMaps[m.Name] = struct{}{}
+			}
 
 			// custom max entries setup
 			var loadMapFunc func(_ *ebpf.Map, _ string) error
@@ -2048,7 +2054,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 			}
 
 			// use a load func if needed
-			if loadMapFunc != nil {
+			if loadMapFunc != nil && !mapInitialized {
 				load.MapLoad = append(load.MapLoad, &program.MapLoad{
 					Name: m.Name,
 					Load: loadMapFunc,
