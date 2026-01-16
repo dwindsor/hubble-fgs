@@ -358,6 +358,15 @@ func (n *Nxos) waitForEnable(ctx context.Context) error {
 	}
 }
 
+// GetNumDpu returns the number of DPUs (Data Processing Units) configured on the NXOS device.
+func (n *Nxos) GetNumDpu() uint16 {
+	n.RLock()
+	defer n.RUnlock()
+
+	return n.NumDpu
+}
+
+// check if all DPUs are counted
 func (n *Nxos) isAllDpuCounted(_ context.Context) (uint16, bool) {
 
 	n.RLock()

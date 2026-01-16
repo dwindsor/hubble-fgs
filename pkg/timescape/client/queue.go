@@ -177,6 +177,7 @@ func (q *Queue) lowPriorityWorker() {
 				if len(batch) > 0 {
 					priority = batch[0].Priority
 				}
+				logger.GetLogger().Debug("timescape: low priority batch timeout reached, flushing batch", "batchSize", len(batch))
 				q.flushBatch(q.ctx, priority, batch)
 				batch = batch[:0]
 			}

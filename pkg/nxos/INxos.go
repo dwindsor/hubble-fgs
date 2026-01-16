@@ -287,4 +287,5 @@ type INxos interface {
 	DelTokens(context.Context) string
 	CheckUpdate(context.Context) string
 	StartUpdate(context.Context, string, string, string, string) error
+	GetNumDpu() uint16
 }

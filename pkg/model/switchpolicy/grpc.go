@@ -286,12 +286,23 @@ func (s *AGWServer) StreamEvents(stream grpc.ClientStreamingServer[v1alpha.Strea
 		for _, event := range req.Events {
 			switch e := event.GetEvent().(type) {
 			case *v1alpha.StreamEvent_Rule:
-				// TODO: Call policy rule event handler
-				logger.GetLogger().Debug("Received policy rule event",
+				// Log the policy rule event
+				logger.GetLogger().Debug("agw server: Received policy rule event",
 					"agentUid", event.AgentUid,
 					"ruleName", e.Rule.RuleName,
 					"policyName", e.Rule.PolicyName,
-					"isSuccess", e.Rule.IsSuccess)
+					"isSuccess", e.Rule.IsSuccess,
+					"message", e.Rule.ErrorMessage,
+					"errorCode", e.Rule.Error,
+				)
+				// Process policy rule event through the DPU listener's handler
+				if handler := s.dpuListener.GetPolicyStatusHandler(); handler != nil {
+					if err := handler.ProcessPolicyRuleEvent(context.Background(), event.AgentUid, e.Rule); err != nil {
+						logger.GetLogger().Error("Failed to process policy rule event", "error", err)
+					}
+				} else {
+					logger.GetLogger().Warn("Policy status handler not configured, skipping policy rule event processing")
+				}
 			default:
 				logger.GetLogger().Warn("Received unknown event type", "agentUid", event.AgentUid)
 			}

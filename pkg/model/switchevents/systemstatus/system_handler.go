@@ -190,12 +190,10 @@ func (h *systemConnectionHandler) checkAndSendSystemConnectionStatus(ctx context
 		case <-time.After(5 * time.Second):
 			// Retry after waiting
 			err_code = h.client.Send(ctx, event, types.PriorityHigh)
-			if err_code == types.ErrCodeFailure {
-				logger.GetLogger().Error("timescape: failed to send system connection status after retry", "error", err_code)
-				return
-			}
 		}
-	} else if err_code != types.ErrCodeSuccess {
+	}
+
+	if err_code != types.ErrCodeSuccess {
 		logger.GetLogger().Error("timescape: failed to send system connection status", "error", err_code)
 		return
 	}

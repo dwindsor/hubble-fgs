@@ -120,11 +120,6 @@ func (h *HTTPTransport) PushBatch(ctx context.Context, msgs []types.Msg) error {
 		return nil
 	}
 
-	logger.GetLogger().Debug("HTTP transport preparing to send batch",
-		"count", len(msgs),
-		"endpoint", h.config.EndpointURL,
-	)
-
 	// Create payload with system_status top-level key
 	var reqBody []byte
 	var err error

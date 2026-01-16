@@ -40,7 +40,7 @@ type Client interface {
 
 // Config holds configuration for the timescape client
 type Config struct {
-	MaxBatchSize int           // e.g., 100
+	MaxBatchSize int           // e.g., 10
 	BatchTimeout time.Duration // e.g., 200ms (for low priority queue only)
 	SendTimeout  time.Duration // Timeout for individual send operations
 	MaxRetries   int           // Maximum retry attempts with exponential backoff
@@ -75,8 +75,8 @@ type HTTPTransportConfig struct {
 // DefaultConfig returns a sensible default configuration
 func DefaultConfig() Config {
 	return Config{
-		MaxBatchSize: 100,
-		BatchTimeout: 200 * time.Millisecond,
+		MaxBatchSize: 10,
+		BatchTimeout: 1 * time.Second,
 		SendTimeout:  30 * time.Second,
 		MaxRetries:   3,
 		BaseBackoff:  100 * time.Millisecond,

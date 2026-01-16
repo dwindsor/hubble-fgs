@@ -27,6 +27,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/timescape/types"
 )
 
+// Package-level variable to store the handler instance
+var (
+	globalTimescapeHandler ITimescape
+	handlerMu              sync.RWMutex
+)
+
 // TimescapeHandler implements ITimescape by combining system and policy handlers
 type TimescapeHandler struct {
 	mu                  sync.RWMutex
@@ -89,6 +95,36 @@ func (h *TimescapeHandler) Stop(ctx context.Context) {
 	h.policyStatusHandler.Stop(ctx)
 
 	logger.GetLogger().Info("Timescape handler stopped")
+}
+
+// GetPolicyStatusHandler returns the policy status handler from the timescape handler
+func (h *TimescapeHandler) GetPolicyStatusHandler() policystatus.PolicyStatusHandler {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.policyStatusHandler
+}
+
+// GetGlobalTimescapeHandler returns the global timescape handler instance
+func GetGlobalTimescapeHandler() ITimescape {
+	handlerMu.RLock()
+	defer handlerMu.RUnlock()
+	return globalTimescapeHandler
+}
+
+// GetGlobalPolicyStatusHandler returns the policy status handler from the global timescape handler
+func GetGlobalPolicyStatusHandler() policystatus.PolicyStatusHandler {
+	handlerMu.RLock()
+	defer handlerMu.RUnlock()
+
+	if globalTimescapeHandler == nil {
+		return nil
+	}
+
+	if th, ok := globalTimescapeHandler.(*TimescapeHandler); ok {
+		return th.GetPolicyStatusHandler()
+	}
+
+	return nil
 }
 
 // ReportSystemStatus triggers a system status report
@@ -176,14 +212,49 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, timescap
 					}
 					return "unknown"
 				},
+				// Add GetNumDpu function
+				GetNumDpu: func() int {
+					if enableNxos && agw != nil {
+						return agw.GetNumDpu()
+					}
+					return 0 // Default fallback
+				},
 			},
 		},
 	)
+
+	// Store the handler globally BEFORE starting it
+	handlerMu.Lock()
+	globalTimescapeHandler = handler
+	handlerMu.Unlock()
+
 	err = handler.Start(ctx)
 	if err != nil {
 		logger.GetLogger().Error("failed to start timescape client handler", logfields.Error, err)
+		// Clear the global handler on error
+		handlerMu.Lock()
+		globalTimescapeHandler = nil
+		handlerMu.Unlock()
 		return err
 	}
+
+	// Set the policy status handler from the timescape setup on the DPU listener
+	go func() {
+		logger.GetLogger().Debug("Setting up policy status handler on DPU listener")
+		policyHandler := GetGlobalPolicyStatusHandler()
+		if policyHandler != nil {
+			// Access the DPU listener through the AgentGateway and set the handler
+			dpuListener := agw.GetDPUListener()
+			if dpuListener != nil {
+				dpuListener.SetPolicyStatusHandler(policyHandler)
+				logger.GetLogger().Debug("Policy status handler set on DPU listener")
+			} else {
+				logger.GetLogger().Warn("DPU listener not available to set policy status handler")
+			}
+		} else {
+			logger.GetLogger().Warn("Policy status handler not available from timescape setup")
+		}
+	}()
 
 	// Keep client running until context is cancelled
 	<-ctx.Done()

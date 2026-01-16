@@ -240,6 +240,12 @@ func (agw *AgentGateway) Config(_ context.Context, path string) error {
 	return nil
 }
 
+// GetDPUListener returns the DPU (Data Processing Unit) listener associated with
+// the AgentGateway.
+func (agw *AgentGateway) GetDPUListener() *switchpolicy.DPUListener {
+	return agw.dpuListener
+}
+
 func (agw *AgentGateway) GetNxHeadlessMode() bool {
 	return nxos.Nexus.GetHeadlessMode()
 }
@@ -471,6 +477,11 @@ func (agw *AgentGateway) WaitForInService(ctx context.Context) {
 
 func (agw *AgentGateway) GetStartupTime() time.Time {
 	return agw.StartupTime
+}
+
+// GetNumDpu returns the number of DPUs from NXOS
+func (agw *AgentGateway) GetNumDpu() int {
+	return int(nxos.Nexus.GetNumDpu())
 }
 
 // --------------------- DPU related

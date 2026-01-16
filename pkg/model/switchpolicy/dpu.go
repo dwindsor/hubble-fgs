@@ -31,6 +31,8 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
+	"github.com/isovalent/hubble-fgs/pkg/model/switchevents/policystatus"
+
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 )
 
@@ -147,6 +149,7 @@ func (p *peer) String() string {
 }
 
 func (p *peer) SendPolicy(rule *DPUPolicyRule) error {
+	logger.GetLogger().Info("Agw server: Sending policy rule to peer", "peerID", p.uid, "policyName", rule.Policy.PolicyName, "ruleName", rule.Policy.RuleName)
 	select {
 	case p.polCh <- rule:
 	// FIXME: this needs to be shorter than 1 second, as 1000 rules CANNOT take 1000 seconds to apply across DPUs
@@ -180,6 +183,9 @@ type DPUListener struct {
 	cachedChecksum [sha256.Size]byte
 	checksumValid  bool
 	mtx            sync.RWMutex
+
+	// Add PolicyStatusHandler
+	policyStatusHandler policystatus.PolicyStatusHandler
 }
 
 func NewDPUListener(ctx context.Context, address string) *DPUListener {
@@ -713,4 +719,23 @@ func (dpu *DPUListener) SubscribeHaConfig(oldCfg *v1alpha.ConfigObject, newCfg *
 	}
 
 	return nil
+}
+
+// SetPolicyStatusHandler sets the policy status handler for the DPU listener.
+// This method is thread-safe and will acquire a lock before updating the handler.
+// The handler parameter should implement the PolicyStatusHandler interface and will
+// be used to handle policy status updates for this DPU listener instance.
+func (dpu *DPUListener) SetPolicyStatusHandler(handler policystatus.PolicyStatusHandler) {
+	dpu.mtx.Lock()
+	defer dpu.mtx.Unlock()
+	dpu.policyStatusHandler = handler
+}
+
+// GetPolicyStatusHandler retrieves the current policy status handler for the DPU listener.
+// This method is thread-safe and will acquire a read lock before accessing the handler.
+// It returns the PolicyStatusHandler interface that is currently set for this DPU listener instance.
+func (dpu *DPUListener) GetPolicyStatusHandler() policystatus.PolicyStatusHandler {
+	dpu.mtx.RLock()
+	defer dpu.mtx.RUnlock()
+	return dpu.policyStatusHandler
 }
