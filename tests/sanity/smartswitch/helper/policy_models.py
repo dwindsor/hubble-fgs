@@ -439,7 +439,8 @@ def parse_dpu_policies(dpu_output: str) -> List[PolicyRule]:
     
     try:
         data = json.loads(dpu_output)
-        policies = data.get("p_policy", {}).get("policies", [])
+        # Support both old format (p_policy.policies) and new format (data)
+        policies = data.get("data", []) or data.get("p_policy", {}).get("policies", [])
         
         rules_by_hash: Dict[str, Dict] = {}
         
@@ -453,7 +454,12 @@ def parse_dpu_policies(dpu_output: str) -> List[PolicyRule]:
             rule_hash = hash_match.group(1)
             source = policy.get("source", {})
             dest = policy.get("destination", {})
-            action = policy.get("effect", "permit")
+            # Effect can be string ("permit"/"deny") or integer (0=allow, 1=deny)
+            effect = policy.get("effect", "permit")
+            if isinstance(effect, str):
+                action = "allow" if effect == "permit" else "deny"
+            else:
+                action = "allow" if effect == 0 else "deny"
             
             source_vlan = source.get("vlan")
             if source_vlan == 0:
