@@ -96,25 +96,29 @@ func startMockDNSServer(t *testing.T, listenPort uint16, mockDomain string, mock
 
 	dns.HandleFunc(".", handler)
 
-	srv := &dns.Server{
-		Addr: fmt.Sprintf(":%d", listenPort),
-		Net:  "udp",
+	addr := fmt.Sprintf(":%d", listenPort)
+	pc, err := net.ListenPacket("udp", addr)
+	if err != nil {
+		t.Fatalf("failed to bind UDP %s: %v", addr, err)
 	}
 
-	ready := make(chan any)
+	srv := &dns.Server{
+		PacketConn: pc,
+		Net:        "udp",
+	}
+
+	done := make(chan struct{})
 	go func() {
-		close(ready)
-		// If the query is made between we close ready and we actually
-		// bind, a race is possible, this should be reasonable enough
-		if err := srv.ListenAndServe(); err != nil {
+		if err := srv.ActivateAndServe(); err != nil {
 			t.Logf("DNS server stopped: %v", err)
 		}
+		close(done)
 	}()
-	<-ready
 
 	return func() {
 		_ = srv.Shutdown()
 		dns.HandleRemove(".")
+		<-done
 	}
 }
 
