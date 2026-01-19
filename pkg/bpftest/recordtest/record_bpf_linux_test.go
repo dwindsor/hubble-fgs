@@ -14,18 +14,22 @@ package recordbpftest
 
 import (
 	"context"
-	"fmt"
 	"net/netip"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/cilium/ebpf"
+	"github.com/stretchr/testify/require"
+
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
-	"github.com/stretchr/testify/require"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -45,14 +49,15 @@ var (
 )
 
 type recordCheck struct {
-	check string
+	check      string
+	expectDeny bool // If true, this specific check should fail (be denied)
 }
 
 type recordTest struct {
 	name    string
 	records []*record.DatapathRecord
 	checks  []recordCheck
-	deny    bool
+	deny    bool // Default deny expectation for checks without explicit expectDeny
 }
 
 // Policy record building blocks
@@ -283,6 +288,60 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
+	// Port-specific policies for testing wildcard local_id + specific port lookup
+	// These policies use wildcard src (local_id=0) but specific ports
+	ipLoPort8080DenyPolicy = &record.DatapathRecord{
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicyPort8080",
+			RuleName:   "testRulePort8080",
+		},
+		Src: wildcardSrc,
+		Endpoint: record.DatapathEndpoint{
+			EP: &endpoint.Endpoint{
+				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
+				CIDR: netip.MustParsePrefix("127.0.0.1/32"),
+			},
+			Port: 8080,
+		},
+		Action: &record.DatapathAction{
+			Action: record.PolicyDeny,
+		},
+	}
+	ipLoPort8081AllowPolicy = &record.DatapathRecord{
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicyPort8081",
+			RuleName:   "testRulePort8081",
+		},
+		Src: wildcardSrc,
+		Endpoint: record.DatapathEndpoint{
+			EP: &endpoint.Endpoint{
+				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
+				CIDR: netip.MustParsePrefix("127.0.0.1/32"),
+			},
+			Port: 8081,
+		},
+		Action: &record.DatapathAction{
+			Action: record.PolicyAllow,
+		},
+	}
+	// Wildcard port policy that should only match if specific port policies don't match
+	ipLoWildcardPortAllowPolicy = &record.DatapathRecord{
+		PolicyUID: types.TetragonPolicyUniqueID{
+			PolicyName: "testPolicyWildcardPort",
+			RuleName:   "testRuleWildcardPort",
+		},
+		Src: wildcardSrc,
+		Endpoint: record.DatapathEndpoint{
+			EP: &endpoint.Endpoint{
+				Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
+				CIDR: netip.MustParsePrefix("127.0.0.1/32"),
+			},
+			Port: 0, // Wildcard port
+		},
+		Action: &record.DatapathAction{
+			Action: record.PolicyAllow,
+		},
+	}
 )
 
 // checks
@@ -490,6 +549,34 @@ var tests = []recordTest{
 		checks:  curl,
 		deny:    true,
 	},
+	// Port-specific policy tests (verifies wildcard local_id + specific port lookup)
+	{ // Test port-specific deny on 8080, allow on 8081
+		name:    "testPortSpecificDeny8080Allow8081",
+		records: []*record.DatapathRecord{ipLoPort8080DenyPolicy, ipLoPort8081AllowPolicy},
+		checks: []recordCheck{
+			{check: "curl", expectDeny: true},      // 8080 should be denied
+			{check: "curl8081", expectDeny: false}, // 8081 should be allowed
+		},
+		deny: false,
+	},
+	{ // Test port-specific deny takes precedence over wildcard allow
+		name:    "testPortSpecificDenyOverridesWildcardAllow",
+		records: []*record.DatapathRecord{ipLoPort8080DenyPolicy, ipLoWildcardPortAllowPolicy},
+		checks: []recordCheck{
+			{check: "curl", expectDeny: true},      // 8080 should be denied (specific port match)
+			{check: "curl8081", expectDeny: false}, // 8081 should be allowed (falls through to wildcard)
+		},
+		deny: false,
+	},
+	{ // Test wildcard port policy is used when no port-specific match
+		name:    "testWildcardPortFallback",
+		records: []*record.DatapathRecord{ipLoWildcardPortAllowPolicy},
+		checks: []recordCheck{
+			{check: "curl", expectDeny: false},     // 8080 should match wildcard allow
+			{check: "curl8081", expectDeny: false}, // 8081 should match wildcard allow
+		},
+		deny: false,
+	},
 }
 
 func loadRecords(r *recordTest, t *testing.T) {
@@ -527,13 +614,29 @@ func unloadRecords(r *recordTest, t *testing.T) {
 
 func runCmds(r *recordTest, t *testing.T) {
 	for _, cmd := range r.checks {
+		// Use per-check expectDeny if set, otherwise use test-level deny
+		expectDeny := cmd.expectDeny
+		if !expectDeny {
+			expectDeny = r.deny
+		}
+
 		switch cmd.check {
 		case "curl":
 			curlArg := []string{"--max-time", "0.1", "--ipv4", "127.0.0.1:8080"}
 			curlCmd := exec.Command("curl", curlArg...)
 			err := curlCmd.Run()
-			fmt.Printf("curl... %s\n", err)
-			if r.deny {
+			t.Log("curl 8080...")
+			if expectDeny {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		case "curl8081":
+			curlArg := []string{"--max-time", "0.1", "--ipv4", "127.0.0.1:8081"}
+			curlCmd := exec.Command("curl", curlArg...)
+			err := curlCmd.Run()
+			t.Log("curl 8081...")
+			if expectDeny {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
@@ -541,7 +644,7 @@ func runCmds(r *recordTest, t *testing.T) {
 		case "dig":
 			digCmd := exec.Command("dig", "localhost")
 			err := digCmd.Run()
-			fmt.Printf("dig...\n")
+			t.Log("dig...")
 			require.NoError(t, err)
 		}
 	}
@@ -583,4 +686,61 @@ func TestRecords(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+
+	// Special test: verify policy template flag behavior
+	// This test verifies that policy entries have DEST_FLAG_POLICY_TEMPLATE_ONLY set,
+	// and that cached entries created by real traffic do NOT have the flag set.
+	// Uses 127.0.0.2 to avoid conflicts with leftover entries from port-specific tests.
+	t.Run("testPolicyTemplateFlagClearing", func(t *testing.T) {
+		testRecord := &recordTest{
+			name:    "templateFlagTest",
+			records: []*record.DatapathRecord{ipLo2AllowPolicy},
+			checks:  nil,
+			deny:    false,
+		}
+
+		loadRecords(testRecord, t)
+		defer unloadRecords(testRecord, t)
+
+		time.Sleep(100 * time.Millisecond)
+
+		// Open the destination_endpoint_map to check flags
+		destMap := filepath.Join(bpf.MapPrefixPath(), "destination_endpoint_map")
+		m, err := ebpf.LoadPinnedMap(destMap, nil)
+		require.NoError(t, err, "Failed to open destination_endpoint_map")
+		defer m.Close()
+
+		// Find entries with the policy template flag set (before traffic)
+		var foundPolicyEntry bool
+		var k types.DestinationEndpointKey
+		var v types.DestinationEndpointValue
+		iter := m.Iterate()
+		for iter.Next(&k, &v) {
+			if v.Flags&types.DestFlagPolicyTemplateOnly != 0 {
+				foundPolicyEntry = true
+				t.Logf("Found policy entry with template flag: key=%+v flags=0x%x", k, v.Flags)
+			}
+		}
+		require.True(t, foundPolicyEntry, "Expected policy entry with DEST_FLAG_POLICY_TEMPLATE_ONLY set")
+
+		// Generate traffic to trigger cached entry creation (use 127.0.0.2 to avoid conflicts)
+		curlCmd := exec.Command("curl", "--max-time", "0.1", "--ipv4", "127.0.0.2:8080")
+		err = curlCmd.Run()
+		require.NoError(t, err, "curl should succeed with allow policy")
+
+		time.Sleep(100 * time.Millisecond)
+
+		// Look for a cached entry WITHOUT the template flag
+		var foundCachedEntry bool
+		iter = m.Iterate()
+		for iter.Next(&k, &v) {
+			// Cached entries have non-zero LocalId (policy templates use LocalId=0)
+			if v.Flags&types.DestFlagPolicyTemplateOnly == 0 && k.LocalId > 0 {
+				foundCachedEntry = true
+				t.Logf("Found cached entry: key=%+v flags=0x%x tx=%d rx=%d", k, v.Flags, v.TxBytes, v.RxBytes)
+			}
+		}
+		require.True(t, foundCachedEntry, "Expected cached entry without template flag after traffic")
+		t.Log("Verified: Policy template flag cleared for cached entries")
+	})
 }

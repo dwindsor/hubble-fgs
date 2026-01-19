@@ -24,7 +24,7 @@ var (
 
 // StartSimpleHTTPServer starts an HTTP server in a separate goroutine that
 // replies to request with 128 null bytes. This registers a callback on cleanup
-// to close the server.
+// to close the server. It waits for the server to be ready before returning.
 func StartSimpleHTTPServer(t *testing.T, address string) {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
@@ -40,4 +40,6 @@ func StartSimpleHTTPServer(t *testing.T, address string) {
 	t.Cleanup(func() {
 		server.Close()
 	})
+
+	WaitForTCPServer(t, address)
 }
