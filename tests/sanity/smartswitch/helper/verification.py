@@ -67,15 +67,15 @@ def verify_no_policies_in_agw(agw_output: str) -> bool:
     return True
 
 
-def verify_policy_added_to_agw(result: str, policy_name: str, agw_output: str) -> None:
+def verify_policy_added_to_agw(result: str, policy_name: str, agw_output: str, expected_policy_count: int = 1) -> None:
     assert verify_command_success(result, "AGW add policy"), \
         f"AGW add policy command failed"
     assert "Policies added successfully" in result, \
         f"Expected success message but got: {result}"
     assert verify_policy_in_agw(policy_name, agw_output), \
         f"Policy '{policy_name}' not found in AGW policies output"
-    assert "Total Policies: 1" in agw_output, \
-        f"Expected 1 policy but got different count"
+    assert f"Total Policies: {expected_policy_count}" in agw_output, \
+        f"Expected {expected_policy_count} policy(ies) but got different count"
     logger.info(f"✅ Policy '{policy_name}' successfully added to AGW")
 
 
@@ -124,9 +124,9 @@ def verify_policies_match_agw_and_dpu(
     """
     logger.info(f"Verifying policy '{policy_name}' between AGW and DPU...")
     
-    # Parse both outputs
-    agw_rules = parse_agw_policies(agw_output)
-    dpu_rules = parse_dpu_policies(dpu_output)
+    # Parse both outputs, filtered by policy name
+    agw_rules = parse_agw_policies(agw_output, policy_name=policy_name)
+    dpu_rules = parse_dpu_policies(dpu_output, policy_name=policy_name)
     
     # Verify expected rule count if provided
     if expected_rule_count is not None:
@@ -156,3 +156,12 @@ def verify_policies_match_agw_and_dpu(
     
     logger.info(message)
     return True
+
+
+def verify_policy_not_in_agw(policy_name: str, agw_output: str) -> bool:
+    if policy_name in agw_output:
+        raise AssertionError(f"Policy '{policy_name}' should be removed but still found in AGW output")
+    logger.info(f"✅ Policy '{policy_name}' confirmed removed from AGW")
+    return True
+
+

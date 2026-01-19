@@ -173,3 +173,207 @@ def get_cidr_combined_packet_test_params():
     ]
     
     return [(f"{src_cidr['cidr']}+{dest_cidr['cidr']}", rules, packets)]
+
+
+def get_initial_incremental_policy():
+    """Return initial incremental policy: 2 rules (TCP 80, TCP 443)."""
+    return [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Rule1: Allow TCP port 80"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 443)], description="Rule2: Allow TCP port 443"),
+    ]
+
+
+def get_incremental_policy_3rules():
+    """Return incremental policy with 3 rules (adds TCP 8080)."""
+    return get_initial_incremental_policy() + [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 8080)], description="Rule3: Allow TCP port 8080"),
+    ]
+
+
+def get_incremental_policy_5rules():
+    """Return incremental policy with 5 rules (adds UDP 53, TCP 22)."""
+    return get_incremental_policy_3rules() + [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 53)], description="Rule4: Allow UDP port 53 (DNS)"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 22)], description="Rule5: Allow TCP port 22 (SSH)"),
+    ]
+
+
+def get_two_policies_single_rule():
+    """Return two different policies with 1 rule each.
+    
+    Returns:
+        tuple: (policy1_name, policy1_rules, policy2_name, policy2_rules)
+    """
+    policy1_rules = [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Policy1: Allow TCP port 80"),
+    ]
+    policy2_rules = [
+        create_rule("172.16.0.0/16", "172.17.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 53)], description="Policy2: Allow UDP port 53"),
+    ]
+    return ("policy1-single-rule", policy1_rules, "policy2-single-rule", policy2_rules)
+
+
+def get_policy_5rules_initial():
+    """Return initial policy with 5 rules for update testing."""
+    return [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Rule1: Allow TCP port 80"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 443)], description="Rule2: Allow TCP port 443"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 8080)], description="Rule3: Allow TCP port 8080"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 53)], description="Rule4: Allow UDP port 53"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 22)], description="Rule5: Allow TCP port 22"),
+    ]
+
+
+def get_policy_5rules_updated_rule2():
+    """Return policy with 5 rules where rule2 is updated (port 443 -> 8443)."""
+    return [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Rule1: Allow TCP port 80"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 8443)], description="Rule2: Allow TCP port 8443 (updated)"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 8080)], description="Rule3: Allow TCP port 8080"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 53)], description="Rule4: Allow UDP port 53"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 22)], description="Rule5: Allow TCP port 22"),
+    ]
+
+
+def get_policy_5rules_updated_rule4_rule5():
+    """Return policy with 5 rules where rule4 and rule5 are updated."""
+    return [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Rule1: Allow TCP port 80"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 8443)], description="Rule2: Allow TCP port 8443 (updated)"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 8080)], description="Rule3: Allow TCP port 8080"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 5353)], description="Rule4: Allow UDP port 5353 (updated)"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 2222)], description="Rule5: Allow TCP port 2222 (updated)"),
+    ]
+
+
+def get_two_policies_for_update():
+    """Return two policies for update testing.
+    
+    Returns:
+        tuple: (policy1_name, policy1_rules_initial, policy1_rules_updated,
+                policy2_name, policy2_rules_initial, policy2_rules_updated)
+    """
+    policy1_initial = [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Policy1: Allow TCP port 80"),
+    ]
+    policy1_updated = [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 8080)], description="Policy1: Allow TCP port 8080 (updated)"),
+    ]
+    policy2_initial = [
+        create_rule("172.16.0.0/16", "172.17.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 53)], description="Policy2: Allow UDP port 53"),
+    ]
+    policy2_updated = [
+        create_rule("172.16.0.0/16", "172.17.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 5353)], description="Policy2: Allow UDP port 5353 (updated)"),
+    ]
+    return (
+        "policy1-update-test", policy1_initial, policy1_updated,
+        "policy2-update-test", policy2_initial, policy2_updated
+    )
+
+
+def get_policy_5rules_for_removal():
+    """Return initial policy with 5 rules for removal testing."""
+    return [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Rule1: Allow TCP port 80"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 443)], description="Rule2: Allow TCP port 443"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 8080)], description="Rule3: Allow TCP port 8080"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 53)], description="Rule4: Allow UDP port 53"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 22)], description="Rule5: Allow TCP port 22"),
+    ]
+
+
+def get_policy_5rules_without_rule3():
+    """Return policy with 4 rules (rule3 removed)."""
+    return [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Rule1: Allow TCP port 80"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 443)], description="Rule2: Allow TCP port 443"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 53)], description="Rule4: Allow UDP port 53"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 22)], description="Rule5: Allow TCP port 22"),
+    ]
+
+
+def get_policy_5rules_without_rule2_3_4():
+    """Return policy with 2 rules (rule2, rule3, rule4 removed)."""
+    return [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Rule1: Allow TCP port 80"),
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 22)], description="Rule5: Allow TCP port 22"),
+    ]
+
+
+def get_two_policies_for_removal():
+    """Return two policies for removal testing.
+    
+    Returns:
+        tuple: (policy1_name, policy1_rules, policy2_name, policy2_rules)
+    """
+    policy1_rules = [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Policy1: Allow TCP port 80"),
+    ]
+    policy2_rules = [
+        create_rule("172.16.0.0/16", "172.17.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 53)], description="Policy2: Allow UDP port 53"),
+    ]
+    return ("policy1-removal-test", policy1_rules, "policy2-removal-test", policy2_rules)
+
+
+def get_three_policies_for_clear():
+    """Return three policies for clear testing.
+    
+    Returns:
+        tuple: (policy1_name, policy1_rules, policy2_name, policy2_rules, policy3_name, policy3_rules)
+    """
+    policy1_rules = [
+        create_rule("10.1.0.0/16", "10.2.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("TCP", 80)], description="Policy1: Allow TCP port 80"),
+    ]
+    policy2_rules = [
+        create_rule("172.16.0.0/16", "172.17.0.0/16", source_vrf="default",
+                   dest_proto_ports=[("UDP", 53)], description="Policy2: Allow UDP port 53"),
+    ]
+    policy3_rules = [
+        create_rule("192.168.0.0/16", "192.168.1.0/24", source_vrf="default",
+                   dest_proto_ports=[("TCP", 22)], description="Policy3: Allow TCP port 22"),
+    ]
+    return (
+        "policy1-clear-test", policy1_rules,
+        "policy2-clear-test", policy2_rules,
+        "policy3-clear-test", policy3_rules
+    )

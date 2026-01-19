@@ -340,8 +340,29 @@ class PolicyComparison:
         )
 
 
-def parse_agw_policies(agw_output: str) -> List[PolicyRule]:
+def parse_agw_policies(agw_output: str, policy_name: Optional[str] = None) -> List[PolicyRule]:
     rules = []
+    
+    # If policy_name is specified, extract only that policy's section
+    if policy_name:
+        # Match any namespace: SmartSwitchNetworkPolicy/<namespace>/<policy_name>
+        policy_header_pattern = re.compile(
+            r"Policy:\s+SmartSwitchNetworkPolicy/(?P<namespace>[^/]+)/(?P<name>[^\s]+)",
+            re.MULTILINE
+        )
+        target_section = None
+        matches = list(policy_header_pattern.finditer(agw_output))
+        for i, match in enumerate(matches):
+            if match.group("name") == policy_name:
+                start = match.end()
+                end = matches[i + 1].start() if i + 1 < len(matches) else len(agw_output)
+                target_section = agw_output[start:end]
+                break
+        if target_section is None:
+            logger.warning(f"Policy '{policy_name}' not found in AGW output")
+            return []
+        agw_output = target_section
+    
     rule_blocks = re.split(r'┌─ Rule \d+', agw_output)
     
     for block in rule_blocks[1:]:
@@ -434,13 +455,18 @@ def parse_agw_policies(agw_output: str) -> List[PolicyRule]:
     return rules
 
 
-def parse_dpu_policies(dpu_output: str) -> List[PolicyRule]:
+def parse_dpu_policies(dpu_output: str, policy_name: Optional[str] = None) -> List[PolicyRule]:
     rules = []
     
     try:
         data = json.loads(dpu_output)
         # Support both old format (p_policy.policies) and new format (data)
         policies = data.get("data", []) or data.get("p_policy", {}).get("policies", [])
+        
+        # Filter by policy name if specified
+        # DPU name format: SmartSwitchNetworkPolicy/<namespace>/<policy_name>/<hash>/<id>
+        if policy_name:
+            policies = [p for p in policies if p.get("name", "").split("/")[2] == policy_name]
         
         rules_by_hash: Dict[str, Dict] = {}
         

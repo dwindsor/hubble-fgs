@@ -180,7 +180,7 @@ def test_l3_trmvrf(cmd):
 
 @pytest.mark.agw
 @pytest.mark.policy
-@pytest.mark.skip(reason="Potential bug in IPv6 parsing")
+@pytest.mark.skip(reason="Pending IPv6 parsing fix")
 @allure.feature("Policy Management")
 @allure.story("NXOS Policies")
 @allure.title("Test L2 VLAN policies with specific IPs (VLAN 801-900)")
