@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/vishvananda/netlink"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -205,7 +206,8 @@ func (dp *AcceleratedDataplaneProcess) SendDpuConfig(dpuConfig *v1alpha.DpuConfi
 		logger.GetLogger().Error("failed to send dpu config", "npuIp", dpuConfig.ServiceIp, "npuMac", dpuConfig.ServiceMac)
 		return fmt.Errorf("failed to send dpu config")
 	}
-	data, err := json.Marshal(dpuConfig)
+	// Marshal with all fields (no omitempty)
+	data, err := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(dpuConfig)
 	if err != nil {
 		logger.GetLogger().Error("failed to marshal dpu config", logfields.Error, err)
 		return fmt.Errorf("failed to marshal dpu config")
@@ -293,8 +295,8 @@ func (dp *AcceleratedDataplaneProcess) SendLogConfig(logConfigs map[string]*v1al
 }
 
 func (dp *AcceleratedDataplaneProcess) SendHaConfig(haConfig *v1alpha.HaConfig) error {
-	// Building config
-	data, err := json.Marshal(haConfig)
+	// Building config with all fields (no omitempty)
+	data, err := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(haConfig)
 	if err != nil {
 		return fmt.Errorf("failed to marshal ha config: %w", err)
 	}

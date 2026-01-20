@@ -149,6 +149,32 @@ func (s *AGWServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 			delete(adds, v1alpha.ConfigType_CONFIG_TYPE_DPU)
 		}
 
+		// Handle HA config separately (similar to DPU config) since it requires per-DPU transformation
+		haConfigObj, ok := adds[v1alpha.ConfigType_CONFIG_TYPE_HA]
+		if ok {
+			haCfg, err := getPerDpuHaConfig(haConfigObj.GetConfigHa(), peer.uid, s.dpuListener.peerGroupSize)
+			if err != nil {
+				logger.GetLogger().Error("failed to pass down ha config to dpu", logfields.Error, err)
+			} else {
+				obj := &v1alpha.ConfigObject{
+					Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
+					Source: haConfigObj.Source,
+					Config: &v1alpha.ConfigObject_ConfigHa{ConfigHa: haCfg},
+				}
+				peer.cfgSet[v1alpha.ConfigType_CONFIG_TYPE_HA] = obj
+				resp := v1alpha.StreamDatapathConfigResponse{
+					Oper:   v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT,
+					Config: obj,
+				}
+				err := stream.Send(&resp)
+				if err != nil {
+					logger.GetLogger().Warn("Client send failed", "clientID", peer.uid, logfields.Error, err)
+					return nil
+				}
+			}
+			delete(adds, v1alpha.ConfigType_CONFIG_TYPE_HA)
+		}
+
 		// Iterating through all the adds and deletes and passing the messages to the DPU peer.
 		for typ, obj := range adds {
 			peer.cfgSet[typ] = obj

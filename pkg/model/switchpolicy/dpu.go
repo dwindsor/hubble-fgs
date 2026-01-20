@@ -609,13 +609,13 @@ func (dpu *DPUListener) SubscribeConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1
 // that is handles only library.ConfigTypeDpu type of config objects.
 func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
 	// Building the response operation based on the old and new config objects and extracting the dpu object
-	resp := v1alpha.StreamDatapathConfigResponse{}
+	var oper v1alpha.ConfigOperation
 	var fullCfg *v1alpha.DpuConfig
 	if newCfg == nil && oldCfg != nil {
-		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE
+		oper = v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE
 		fullCfg = oldCfg.GetConfigDpu()
 	} else if newCfg != nil {
-		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT
+		oper = v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT
 		fullCfg = newCfg.GetConfigDpu()
 	} else {
 		logger.GetLogger().Error("dpu config callback function failed", logfields.Error, "both config objects are nil")
@@ -626,8 +626,12 @@ func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg 
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	for _, peer := range dpu.peerGroup {
+		// Create a new response for each peer to avoid race conditions
+		resp := v1alpha.StreamDatapathConfigResponse{
+			Oper: oper,
+		}
 		// For delete operations, send empty config to FWA
-		if resp.Oper == v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE {
+		if oper == v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE {
 			resp.Config = &v1alpha.ConfigObject{
 				Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
 				Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
@@ -660,13 +664,13 @@ func (dpu *DPUListener) SubscribeDpuConfig(oldCfg *v1alpha.ConfigObject, newCfg 
 // that handles only library.ConfigTypeHa type of config objects.
 func (dpu *DPUListener) SubscribeHaConfig(oldCfg *v1alpha.ConfigObject, newCfg *v1alpha.ConfigObject) error {
 	// Building the response operation based on the old and new config objects and extracting the ha object
-	resp := v1alpha.StreamDatapathConfigResponse{}
+	var oper v1alpha.ConfigOperation
 	var fullCfg *v1alpha.HaConfig
 	if newCfg == nil && oldCfg != nil {
-		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE
+		oper = v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE
 		fullCfg = oldCfg.GetConfigHa()
 	} else if newCfg != nil {
-		resp.Oper = v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT
+		oper = v1alpha.ConfigOperation_CONFIG_OPERATION_UPSERT
 		fullCfg = newCfg.GetConfigHa()
 	} else {
 		logger.GetLogger().Error("ha config callback function failed", logfields.Error, "both config objects are nil")
@@ -677,8 +681,12 @@ func (dpu *DPUListener) SubscribeHaConfig(oldCfg *v1alpha.ConfigObject, newCfg *
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	for _, peer := range dpu.peerGroup {
+		// Create a new response for each peer to avoid race conditions
+		resp := v1alpha.StreamDatapathConfigResponse{
+			Oper: oper,
+		}
 		// For delete operations, send empty config to FWA
-		if resp.Oper == v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE {
+		if oper == v1alpha.ConfigOperation_CONFIG_OPERATION_DELETE {
 			resp.Config = &v1alpha.ConfigObject{
 				Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
 				Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,

@@ -74,12 +74,16 @@ func GetRepository() ConfigRepository {
 }
 
 // AddConfig adds or replaces a config object, calls its callback function if it exists, and recalculates the hash.
+// If the config object is unchanged, the callback is not called and the hash is not recalculated.
 func (cr *configRepositoryImpl) AddConfig(obj *v1alpha.ConfigObject) error {
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
 	oldObj, ok := cr.configs[obj.Type]
 	if !ok {
 		oldObj = nil
+	}
+	if proto.Equal(oldObj, obj) {
+		return nil
 	}
 	callback, ok := cr.callbacks[obj.Type]
 	if ok {
@@ -232,16 +236,24 @@ func (cr *configRepositoryImpl) recalculateHash() {
 // UpdateConfig atomically updates a config by type using the provided updater function.
 // The updater receives the current config (or nil if not found) and must return the new config
 // or an error.  An error will cancel the update operation and the object will remain unchanged.
+// If the config object is unchanged, the callback is not called and the hash is not recalculated.
 // This method holds the lock for the entire read-modify-write cycle, preventing race conditions.
 func (cr *configRepositoryImpl) UpdateConfig(typ v1alpha.ConfigType, updater UpdateConfigFunc) error {
 	cr.mu.Lock()
 	defer cr.mu.Unlock()
 
-	existing := cr.configs[typ]
+	existing, ok := cr.configs[typ]
+	if !ok {
+		existing = nil
+	}
 
 	newObj, err := updater(existing)
 	if err != nil {
 		return err
+	}
+
+	if proto.Equal(existing, newObj) {
+		return nil
 	}
 
 	// Call callback if exists
