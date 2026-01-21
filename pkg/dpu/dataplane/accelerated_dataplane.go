@@ -207,7 +207,7 @@ func (dp *AcceleratedDataplaneProcess) SendDpuConfig(dpuConfig *v1alpha.DpuConfi
 		return fmt.Errorf("failed to send dpu config")
 	}
 	// Marshal with all fields (no omitempty)
-	data, err := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(dpuConfig)
+	data, err := protojson.MarshalOptions{EmitUnpopulated: true, UseProtoNames: true}.Marshal(dpuConfig)
 	if err != nil {
 		logger.GetLogger().Error("failed to marshal dpu config", logfields.Error, err)
 		return fmt.Errorf("failed to marshal dpu config")
@@ -296,7 +296,7 @@ func (dp *AcceleratedDataplaneProcess) SendLogConfig(logConfigs map[string]*v1al
 
 func (dp *AcceleratedDataplaneProcess) SendHaConfig(haConfig *v1alpha.HaConfig) error {
 	// Building config with all fields (no omitempty)
-	data, err := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(haConfig)
+	data, err := protojson.MarshalOptions{EmitUnpopulated: true, UseProtoNames: true}.Marshal(haConfig)
 	if err != nil {
 		return fmt.Errorf("failed to marshal ha config: %w", err)
 	}
