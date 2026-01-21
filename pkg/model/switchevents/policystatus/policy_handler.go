@@ -100,7 +100,7 @@ func (h *policyStatusHandler) setExpectedAgentCount(count int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.policyAggregator.expectedAgentCount = count
-	logger.GetLogger().Info("updated expected agent count", "count", count)
+	logger.GetLogger().Debug("updated expected agent count", "count", count)
 }
 
 // UpdateExpectedAgentCountFromProvider updates count from the data provider
@@ -113,13 +113,13 @@ func (h *policyStatusHandler) UpdateExpectedAgentCountFromProvider() {
 		currentCount := h.policyAggregator.expectedAgentCount
 		h.mu.RUnlock()
 
-		logger.GetLogger().Info("checking DPU count update",
+		logger.GetLogger().Debug("checking DPU count update",
 			"newCount", numDpu,
 			"currentCount", currentCount)
 
 		if numDpu == currentCount {
 			// No change
-			logger.GetLogger().Info("DPU count unchanged, no update needed")
+			logger.GetLogger().Debug("DPU count unchanged, no update needed")
 			return
 		}
 		if numDpu > 0 {
@@ -196,8 +196,8 @@ func (h *policyStatusHandler) Stop(_ context.Context) {
 	}
 
 	h.running = false
-	// close(h.stopCh) // Signal goroutines to stop
 	h.policyAggregator.Stop()
+	close(h.stopCh) // Signal goroutines to stop
 	logger.GetLogger().Info("timescape: policy status handler stopped")
 }
 
@@ -358,102 +358,6 @@ func (h *policyStatusHandler) convertPolicyBatchToPolicyStatus(policies []*Polic
 		Statuses:    statuses, // Up to 3 policy statuses
 	}
 }
-
-/*
-// handleAggregatedRule handles the completion of rule aggregation
-func (h *policyStatusHandler) handleAggregatedRule(result *RuleAggregationResult) {
-	logger.GetLogger().Info("handling aggregated rule result",
-		"ruleName", result.RuleName,
-		"policyName", result.PolicyName,
-		"agentCount", len(result.AgentResults))
-
-	// Convert PolicyRuleEvent to PolicyStatusUpdate
-	policyStatusUpdate := h.convertRuleEventToPolicyStatus(result)
-
-	// Create SystemStatusEvent with policy update
-	now := time.Now()
-	event := &v1alpha.SystemStatusEvent{
-		Time: timestamppb.New(now),
-		Event: &v1alpha.SystemStatusEvent_Policy{
-			Policy: policyStatusUpdate,
-		},
-	}
-
-	// Send to timescape
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := h.writePolicyStatusUpdate(ctx, event); err != nil {
-		logger.GetLogger().Error("failed to send aggregated policy status update",
-			"ruleName", result.RuleName,
-			"error", err)
-	}
-}
-
-// convertRuleEventToPolicyStatus converts a PolicyRuleEvent to PolicyStatusUpdate
-func (h *policyStatusHandler) convertRuleEventToPolicyStatus(result *RuleAggregationResult) *v1alpha.PolicyStatusUpdate {
-	serialNumber := "unknown"
-	if h.dataProvider.GetSerialNumber != nil {
-		serialNumber = h.dataProvider.GetSerialNumber()
-	}
-
-	// Determine overall success and collect failures
-	var failingConditions []*v1alpha.FailingCondition
-	overallSuccess := true
-
-	// For example, there are 4 agents expected.
-	// If any agent reports failure for a rule, overallSuccess is false.
-	// Let's say, there are 4 agents.
-	// 2 agents report success, 1 reports failure, and 1 times out with no response.
-	// The failingConditions will have the 2 failingConditions:
-	//   -  failure from 1 agent,
-	//   -  and a timeout condition.
-	for agentUID, agentResult := range result.AgentResults {
-		if !agentResult.IsSuccess {
-			overallSuccess = false
-
-			failingConditions = append(failingConditions, &v1alpha.FailingCondition{
-				ConditionId: agentResult.Error.String(),
-				Severity:    h.convertErrorToSeverity(agentResult.Error),
-				Message:     fmt.Sprintf("Agent %s: %s", agentUID, h.getErrorMessage(agentResult)),
-			})
-		}
-	}
-
-	// If some agents didn't respond, add a condition for that
-	if len(result.AgentResults) < result.ExpectedCount {
-		overallSuccess = false
-		failingConditions = append(failingConditions, &v1alpha.FailingCondition{
-			ConditionId: "TIMEOUT_AGENT_RESPONSES",
-			Severity:    v1alpha.Severity_SEVERITY_MAJOR,
-			Message: fmt.Sprintf("Expected %d agents, received %d responses",
-				result.ExpectedCount, len(result.AgentResults)),
-		})
-	}
-
-	// Create policy status based on rule event
-	policyStatus := &v1alpha.PolicyStatus{
-		Type:              v1alpha.PolicyType_POLICY_TYPE_SMARTSWITCH_NETWORK_POLICY,
-		Id:                result.RuleName,
-		Name:              result.PolicyName,
-		Namespace:         h.extractNamespaceFromPolicyName(result.PolicyName),
-		Version:           result.Version,
-		FailingConditions: failingConditions,
-	}
-
-	logger.GetLogger().Info("converted aggregated result to policy status",
-		"ruleName", result.RuleName,
-		"overallSuccess", overallSuccess,
-		"failingConditionsCount", len(failingConditions),
-		"agentResponseCount", len(result.AgentResults))
-
-	return &v1alpha.PolicyStatusUpdate{
-		ClusterName: systemstatus.ClusterName,
-		NodeName:    serialNumber,
-		Statuses:    []*v1alpha.PolicyStatus{policyStatus},
-	}
-}
-*/
 
 // convertErrorToSeverity maps PolicyRuleError to Severity
 func (h *policyStatusHandler) convertErrorToSeverity(err l3l4networkpolicyv1alpha.PolicyRuleError) v1alpha.Severity {

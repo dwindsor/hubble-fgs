@@ -54,6 +54,8 @@ const (
 	DefaultBatchTimeout = 30 * time.Second // Force send batch after timeout
 )
 
+var ruleNameSuffixRegex = regexp.MustCompile(`/\d+$`)
+
 // PolicyAggregationResult represents the aggregated result for an entire policy
 type PolicyAggregationResult struct {
 	PolicyName string // PolicyName is already in format "kind/namespace/name"
@@ -163,8 +165,7 @@ func (pa *PolicyAggregator) SetBatchCallback(callback func([]*PolicyAggregationR
 func (pa *PolicyAggregator) normalizeRuleName(ruleName string) string {
 	// Remove /integer pattern from the end of rule name
 	// Example: "rule-name/123" -> "rule-name"
-	re := regexp.MustCompile(`/\d+$`)
-	normalized := re.ReplaceAllString(ruleName, "")
+	normalized := ruleNameSuffixRegex.ReplaceAllString(ruleName, "")
 
 	logger.GetLogger().Debug("normalized rule name",
 		"original", ruleName,
