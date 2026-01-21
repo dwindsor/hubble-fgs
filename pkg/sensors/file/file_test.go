@@ -992,45 +992,15 @@ func TestLoadFileSensor(t *testing.T) {
 		// shared maps
 		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{6, 8, 13, 14, 18, 19, 20}},
 		tus.SensorMap{Name: "hash_map_inode_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}},
-
 		tus.SensorMap{Name: "mk_retprobe_map", Progs: []uint{8, 9, 20, 21}},
 		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
 		tus.SensorMap{Name: "file_ops_maps", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 14, 15, 16, 17, 18, 19, 20}},
-
-		// separate maps
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{8}},
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{13}},
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{14}},
-
-		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{6}},
-		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{8}},
-		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{14}},
-
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{0}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{1}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{2}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{3}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{4}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{5}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{6}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{7}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{9}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{14}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{15}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{16}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{17}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{18}},
-		tus.SensorMap{Name: "file_heap_map", Progs: []uint{19}},
-
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6, 8, 13, 14, 18, 19, 20}},
+		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{6, 8, 12, 14, 18, 19, 20}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 14, 15, 16, 17, 18, 19, 20, 21}},
 		tus.SensorMap{Name: "vfs_rename_info_heap", Progs: []uint{10, 12}},
-
 		tus.SensorMap{Name: "file_rename_heap_map", Progs: []uint{13}},
-
-		tus.SensorMap{Name: "file_val_map", Progs: []uint{6}},
-		tus.SensorMap{Name: "file_val_map", Progs: []uint{9}},
-		tus.SensorMap{Name: "file_val_map", Progs: []uint{13}},
-		tus.SensorMap{Name: "file_val_map", Progs: []uint{14}},
+		tus.SensorMap{Name: "file_val_map", Progs: []uint{6, 9, 13, 14, 18, 21}},
 	}
 
 	if utils.SupportProcessTree() {

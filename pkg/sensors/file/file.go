@@ -119,8 +119,7 @@ type MapType uint32
 const (
 	UnknownMap MapType = iota
 	SkipMap
-	PrivateMap
-	SharedMap
+	PinnedMap
 	BaseMap
 )
 
@@ -150,71 +149,74 @@ var mapTypes = map[string]MapType{
 	"tg_conf_map":        BaseMap,
 	"tg_stats_map":       BaseMap,
 
-	"buffer_heap_map":          PrivateMap, // for d_path_local
-	"digest_heap_map":          PrivateMap, // for matchFilename InFileWithDigest operator
-	"file_heap_map":            PrivateMap,
-	"file_msg_caps_heap":       PrivateMap, // for matchLinuxCapabilities
-	"file_msg_ns_heap":         PrivateMap, // for matchLinuxNamespaces
-	"file_prefix_lpm_heap":     PrivateMap, // for matchBinaries
-	"file_rename_heap_map":     PrivateMap,
-	"file_val_map":             PrivateMap,
-	"filename_heap_map":        PrivateMap, // for matchFilename InFileWithDigest operator
-	"lpm_trie_heap_key":        PrivateMap,
-	"rename_path_heap":         PrivateMap,
-	"selectors_ctx_heap":       PrivateMap, // for selectors with __V61_BPF_PROG
-	"vfs_mk_info_heap":         PrivateMap,
-	"string_postfix_maps_heap": PrivateMap, // for matchBinaries Postfix/NoPostfix operator
-	"file_link_heap_map":       PrivateMap, // for struct msg_file_link_ops
-	"file_symlink_heap_map":    PrivateMap, // for struct msg_file_link_ops
-	"file_openraw_heap_map":    PrivateMap,
-	"kpath_heap":               PrivateMap,
-	"digest_key_heap":          PrivateMap,
+	// the following maps are use as heap
+	"buffer_heap_map":          PinnedMap, // for d_path_local
+	"digest_heap_map":          PinnedMap, // for matchFilename InFileWithDigest operator
+	"file_heap_map":            PinnedMap,
+	"file_msg_caps_heap":       PinnedMap, // for matchLinuxCapabilities
+	"file_msg_ns_heap":         PinnedMap, // for matchLinuxNamespaces
+	"file_prefix_lpm_heap":     PinnedMap, // for matchBinaries
+	"file_rename_heap_map":     PinnedMap,
+	"file_val_map":             PinnedMap,
+	"filename_heap_map":        PinnedMap, // for matchFilename InFileWithDigest operator
+	"lpm_trie_heap_key":        PinnedMap,
+	"rename_path_heap":         PinnedMap,
+	"selectors_ctx_heap":       PinnedMap, // for selectors with __V61_BPF_PROG
+	"vfs_mk_info_heap":         PinnedMap,
+	"string_postfix_maps_heap": PinnedMap, // for matchBinaries Postfix/NoPostfix operator
+	"file_link_heap_map":       PinnedMap, // for struct msg_file_link_ops
+	"file_symlink_heap_map":    PinnedMap, // for struct msg_file_link_ops
+	"file_openraw_heap_map":    PinnedMap,
+	"kpath_heap":               PinnedMap,
+	"digest_key_heap":          PinnedMap,
 
-	"exact_match_map_alloc":      SharedMap,
-	"exec_retprobe_map":          SharedMap,
-	"file_actions_map":           SharedMap, // for matchActions
-	"file_capabilities_map":      SharedMap, // for matchLinuxCapabilities
-	"file_config_map":            SharedMap, // for configuration options
-	"file_digests_maps":          SharedMap, // for matchDigests
-	"file_errors_map":            SharedMap, // for eBPF errors
-	"file_namespaces_map":        SharedMap, // for matchLinuxNamespaces
-	"file_open_flags_map":        SharedMap, // for matchOpenFlags
-	"file_ops_maps":              SharedMap, // for matchOperations
-	"file_rename_map":            SharedMap, // for matchRenameSrcType
-	"file_system_type_map":       SharedMap, // for FileSystemType type in file_paths_patterns
-	"filename_digest_map":        SharedMap, // for matchFilename InFileWithDigest operator
-	"filename_ops_map":           SharedMap, // for matchFilename operator
-	"filename_path_map":          SharedMap, // for matchFilename InFileWithDigest operator
-	"fsnotify_created_files_map": SharedMap,
-	"glob_patterns_map":          SharedMap, // for matchFilename InPattern operator
-	"glob_temp_maps":             SharedMap, // for matchFilename InPattern operator
-	"hash_map_inode_alloc":       SharedMap, // for all inodes
-	"hash_map_inode_alloc_stats": SharedMap,
-	"io_uring_map":               SharedMap, // for io_uring process information
-	"io_uring_retprobe_map":      SharedMap,
-	"lpm_trie_map_alloc":         SharedMap,
-	"mk_retprobe_map":            SharedMap,
-	"patterns_map_alloc":         SharedMap,
-	"rename_retprobe_map":        SharedMap,
-	"spr_retprobe_map":           SharedMap,
-	"string_prefix_maps":         SharedMap, // for matchBinaries Prefix/NoPrefix operator
-	"tg_mb_paths":                SharedMap, // for matchBinaries In/NotIn operator
-	"tg_mb_sel_opts":             SharedMap, // for matchBinaries operator
-	"vfs_rename_info_heap":       SharedMap,
-	"vr_retprobe_map":            SharedMap,
-	"file_uidgid_map":            SharedMap, // for matchUidGid
-	"file_proc_dur_map":          SharedMap,
-	"string_postfix_maps":        SharedMap, // for matchBinaries Postfix/NoPostfix operator
-	"exec_attributes_map":        SharedMap,
-	"inode_type_map":             SharedMap, // for InodeType type in file_paths_patterns
-	"fim_tail_calls":             SharedMap,
-	"dis_ctx_heap":               SharedMap,
-	"policy_id_to_tail_index":    SharedMap,
-	"file_openraw_result_map":    SharedMap,
-	"open_user_to_kernel_path":   SharedMap,
-	"file_openraw_enforce_map":   SharedMap,
-	"policy_conf":                SharedMap,
-	"policy_stats":               SharedMap,
+	// we need to load data to the following maps
+	// depending on the configuration and the selectors
+	"exact_match_map_alloc":      PinnedMap,
+	"exec_retprobe_map":          PinnedMap,
+	"file_actions_map":           PinnedMap, // for matchActions
+	"file_capabilities_map":      PinnedMap, // for matchLinuxCapabilities
+	"file_config_map":            PinnedMap, // for configuration options
+	"file_digests_maps":          PinnedMap, // for matchDigests
+	"file_errors_map":            PinnedMap, // for eBPF errors
+	"file_namespaces_map":        PinnedMap, // for matchLinuxNamespaces
+	"file_open_flags_map":        PinnedMap, // for matchOpenFlags
+	"file_ops_maps":              PinnedMap, // for matchOperations
+	"file_rename_map":            PinnedMap, // for matchRenameSrcType
+	"file_system_type_map":       PinnedMap, // for FileSystemType type in file_paths_patterns
+	"filename_digest_map":        PinnedMap, // for matchFilename InFileWithDigest operator
+	"filename_ops_map":           PinnedMap, // for matchFilename operator
+	"filename_path_map":          PinnedMap, // for matchFilename InFileWithDigest operator
+	"fsnotify_created_files_map": PinnedMap,
+	"glob_patterns_map":          PinnedMap, // for matchFilename InPattern operator
+	"glob_temp_maps":             PinnedMap, // for matchFilename InPattern operator
+	"hash_map_inode_alloc":       PinnedMap, // for all inodes
+	"hash_map_inode_alloc_stats": PinnedMap,
+	"io_uring_map":               PinnedMap, // for io_uring process information
+	"io_uring_retprobe_map":      PinnedMap,
+	"lpm_trie_map_alloc":         PinnedMap,
+	"mk_retprobe_map":            PinnedMap,
+	"patterns_map_alloc":         PinnedMap,
+	"rename_retprobe_map":        PinnedMap,
+	"spr_retprobe_map":           PinnedMap,
+	"string_prefix_maps":         PinnedMap, // for matchBinaries Prefix/NoPrefix operator
+	"tg_mb_paths":                PinnedMap, // for matchBinaries In/NotIn operator
+	"tg_mb_sel_opts":             PinnedMap, // for matchBinaries operator
+	"vfs_rename_info_heap":       PinnedMap,
+	"vr_retprobe_map":            PinnedMap,
+	"file_uidgid_map":            PinnedMap, // for matchUidGid
+	"file_proc_dur_map":          PinnedMap,
+	"string_postfix_maps":        PinnedMap, // for matchBinaries Postfix/NoPostfix operator
+	"exec_attributes_map":        PinnedMap,
+	"inode_type_map":             PinnedMap, // for InodeType type in file_paths_patterns
+	"fim_tail_calls":             PinnedMap,
+	"dis_ctx_heap":               PinnedMap,
+	"policy_id_to_tail_index":    PinnedMap,
+	"file_openraw_result_map":    PinnedMap,
+	"open_user_to_kernel_path":   PinnedMap,
+	"file_openraw_enforce_map":   PinnedMap,
+	"policy_conf":                PinnedMap,
+	"policy_stats":               PinnedMap,
 }
 
 // this is used for inode-based programs that modify the inode map and thus do not using them will result in corrupted inode map contents
@@ -1677,7 +1679,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 				return nil, fmt.Errorf("cannot find type for map %s", mapName)
 			}
 
-			if mapType == SkipMap || mapType == PrivateMap || mapType == BaseMap {
+			if mapType == SkipMap || mapType == BaseMap {
 				// nothing to do on those type of maps
 				continue
 			}
