@@ -12,7 +12,7 @@
 // The package exclusively handles policy-level aggregation where:
 // - Each policy can have multiple rules
 // - All rules within a policy must complete before the policy is considered complete
-// - Up to 3 completed policies are batched per PolicyStatusUpdate
+// - Up to `DefaultMaxBatchSize` completed policies are batched per PolicyStatusUpdate
 // - The Name field contains comma-separated rule names
 // - The Id field contains the full policy name (kind/namespace/name)
 
@@ -246,7 +246,7 @@ func (h *policyStatusHandler) ProcessPolicyRuleEvent(_ context.Context, agentUID
 		return fmt.Errorf("policy status handler not running")
 	}
 
-	logger.GetLogger().Info("timescape: processing policy rule event",
+	logger.GetLogger().Debug("timescape: processing policy rule event",
 		"agentUID", agentUID,
 		"policyName", ruleEvent.PolicyName,
 		"ruleName", ruleEvent.RuleName,

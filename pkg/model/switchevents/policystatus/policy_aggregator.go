@@ -39,7 +39,7 @@ import (
 const (
 	// DefaultAggregationTimeout is the default timeout for policy aggregation.
 	// Controls how long to wait for all FWA agents to report before completing aggregation.
-	DefaultAggregationTimeout = 60 * time.Second
+	DefaultAggregationTimeout = 15 * time.Second
 
 	// CleanupInterval is the interval to check for cleaning up old entries
 	CleanupInterval = 2 * time.Minute
@@ -50,8 +50,8 @@ const (
 	DefaultExpectedAgentCount = 0
 
 	// Policy-level aggregation constants
-	DefaultMaxBatchSize = 2               // Maximum policies per batch
-	DefaultBatchTimeout = 2 * time.Minute // Force send batch after timeout
+	DefaultMaxBatchSize = 2                // Maximum policies per batch
+	DefaultBatchTimeout = 30 * time.Second // Force send batch after timeout
 )
 
 // PolicyAggregationResult represents the aggregated result for an entire policy
@@ -222,23 +222,22 @@ func (pa *PolicyAggregator) ProcessRuleEvent(agentUID string, ruleEvent *l3l4net
 	// Update policy last updated time
 	policyResult.LastUpdated = now
 
-	logger.GetLogger().Info("processed rule event for policy",
+	logger.GetLogger().Debug("processed rule event for policy",
 		"policyName", policyName,
 		"ruleName", normalizedRuleName,
 		"agentUID", agentUID,
 		"isSuccess", ruleEvent.IsSuccess,
 		"ruleAgentCount", len(ruleResult.AgentResults),
 		"policyRuleCount", len(policyResult.RuleResults))
-
-	// Check policy completion
-	if pa.isPolicyComplete(policyResult) {
-		pa.completePolicyAggregation(policyName, policyResult)
-	}
 }
 
 // isPolicyComplete checks if all rules in a policy have results from all expected agents
 func (pa *PolicyAggregator) isPolicyComplete(policy *PolicyAggregationResult) bool {
 	// Policy is complete when ALL rules have results from ALL expected agents
+	if len(policy.RuleResults) == 0 {
+		return false
+	}
+
 	for _, ruleResult := range policy.RuleResults {
 		if len(ruleResult.AgentResults) < pa.expectedAgentCount {
 			return false
@@ -325,14 +324,27 @@ func (pa *PolicyAggregator) handlePolicyTimeout(policyName string, startTime tim
 			timeTaken := time.Since(startTime)
 			incompleteRules := pa.countIncompleteRules(policy)
 
-			logger.GetLogger().Warn("policy aggregation timeout - sending partial results",
-				"policyName", policyName,
-				"timeout", timeout,
-				"timeTaken", timeTaken,
-				"totalRules", len(policy.RuleResults),
-				"incompleteRules", incompleteRules,
-				"partialSendCount", pa.partialPolicySendCount,
-				"reason", "timeout_reached")
+			// Determine if policy is actually complete or partial
+			if incompleteRules == 0 {
+				// Policy is complete but timed out (timeout-only completion design)
+				logger.GetLogger().Debug("policy aggregation - sending complete results",
+					"policyName", policyName,
+					"timeout", timeout,
+					"timeTaken", timeTaken,
+					"totalRules", len(policy.RuleResults),
+					"completionSendCount", pa.partialPolicySendCount,
+					"reason", "timeout_reached_complete")
+			} else {
+				// Policy is actually incomplete due to missing agent responses
+				logger.GetLogger().Warn("policy aggregation - sending partial results",
+					"policyName", policyName,
+					"timeout", timeout,
+					"timeTaken", timeTaken,
+					"totalRules", len(policy.RuleResults),
+					"incompleteRules", incompleteRules,
+					"partialSendCount", pa.partialPolicySendCount,
+					"reason", "timeout_reached_incomplete")
+			}
 
 			// Complete aggregation with whatever is available
 			pa.completePolicyAggregation(policyName, policy)
