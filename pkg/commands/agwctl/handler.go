@@ -20,6 +20,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/ipc"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchevents"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
 
@@ -57,6 +58,7 @@ const (
 	CMD_CONFIG_REMOVE_HA
 	CMD_CONFIG_ADD_DPU
 	CMD_CONFIG_REMOVE_DPU
+	CMD_SHOW_TIMESCAPE_CONFIG
 )
 
 const (
@@ -369,6 +371,19 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		res := agwAgent.ConfigRemoveDpu(ctx)
 		response.ReturnCode = "ok"
 		response.Data = res
+
+	case CMD_SHOW_TIMESCAPE_CONFIG:
+		displayConfig := switchevents.GetConfigForDisplay()
+
+		// Marshal the displayConfig to JSON
+		jsonData, err := json.Marshal(displayConfig)
+		if err != nil {
+			response.ReturnCode = "fail"
+			response.Data = err.Error()
+		} else {
+			response.ReturnCode = "ok"
+			response.Data = string(jsonData)
+		}
 
 	default:
 		response.ReturnCode = "fail"

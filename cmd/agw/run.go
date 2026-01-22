@@ -133,6 +133,9 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		}
 	}
 
+	// Initialize timescape configuration
+	setTimescapeConfig()
+
 	if Config.EnableKubernetes {
 		// Wait for agent token to be ready before proceeding
 		var token string
@@ -367,4 +370,12 @@ func setupTimescapeClient(ctx context.Context, waitGroup *errgroup.Group, agwAge
 	})
 
 	return nil
+}
+
+func setTimescapeConfig() {
+	switchevents.InitializeTimescapeConfig(
+		Config.TimescapeClientEnable,
+		Config.TimescapeEndpoint,
+		Config.TimescapePassword,
+	)
 }

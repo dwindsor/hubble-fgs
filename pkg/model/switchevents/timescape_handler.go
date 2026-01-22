@@ -165,7 +165,7 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, timescap
 
 	timescapeConfig := types.HTTPTransportConfig{
 		// Add configuration fields as needed
-		Username:    "timescape_push_api",
+		Username:    TIMESCAPE_USERNAME,
 		Password:    timescapePassword,
 		EndpointURL: timescapeEndpoint,
 

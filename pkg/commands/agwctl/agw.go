@@ -12,8 +12,10 @@ package agwctl
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -410,6 +412,78 @@ var showGidCmd = &cobra.Command{
 	},
 }
 
+func printTimescapeConfigTable(response string) {
+	var config map[string]interface{}
+	if err := json.Unmarshal([]byte(response), &config); err != nil {
+		fmt.Print(response)
+		return
+	}
+
+	var result strings.Builder
+	result.WriteString("Timescape Configuration:\n")
+	result.WriteString("========================\n")
+
+	if clientStatus, ok := config["client_status"].(string); ok {
+		result.WriteString("Client Status:    ")
+		result.WriteString(clientStatus)
+		result.WriteString("\n")
+	}
+
+	result.WriteString("\n")
+	result.WriteString("Server Information:\n")
+
+	if serverInfo, ok := config["server_info"].(map[string]interface{}); ok {
+		if endpoint, ok := serverInfo["endpoint_url"].(string); ok {
+			result.WriteString("  Endpoint URL:   ")
+			result.WriteString(endpoint)
+			result.WriteString("\n")
+		}
+		if username, ok := serverInfo["username"].(string); ok {
+			result.WriteString("  Username:       ")
+			result.WriteString(username)
+			result.WriteString("\n")
+		}
+		if password, ok := serverInfo["password"].(string); ok {
+			result.WriteString("  Password:      ")
+			result.WriteString(password)
+			result.WriteString("\n")
+		}
+	}
+
+	fmt.Print(result.String())
+}
+
+var showTimescapeConfigCmd = &cobra.Command{
+	Use:   "show_timescape_config",
+	Short: "Display Timescape server configuration details",
+	Long: `Display Timescape server configuration details including:
+• Timescape client status: Enabled or Disabled
+• Timescape Server information: Endpoint URL, and Username (password is not displayed)`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ret, err := ipc.SendCmd(ctx, CLI_SOCK, CMD_SHOW_TIMESCAPE_CONFIG, ipc.MessageData{})
+		if err != nil {
+			return err
+		}
+		if JSON {
+			// Parse and pretty print JSON
+			var config map[string]interface{}
+			if err := json.Unmarshal([]byte(ret.Data), &config); err != nil {
+				fmt.Println(ret.Data)
+			} else {
+				prettyJSON, _ := json.MarshalIndent(config, "", "  ")
+				fmt.Println(string(prettyJSON))
+			}
+		} else {
+			// Format as table
+			printTimescapeConfigTable(ret.Data)
+		}
+		return nil
+	},
+}
+
 func init() {
 	RootCmd.AddCommand(loadPolicyCmd)
 	RootCmd.AddCommand(showPolicyCmd)
@@ -431,4 +505,5 @@ func init() {
 	RootCmd.AddCommand(showAdjCmd)
 	RootCmd.AddCommand(showMbrCmd)
 	RootCmd.AddCommand(showGidCmd)
+	RootCmd.AddCommand(showTimescapeConfigCmd)
 }
