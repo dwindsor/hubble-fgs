@@ -213,6 +213,17 @@ func (cr *configRepositoryImpl) GetConfig(typ v1alpha.ConfigType, target interfa
 			return nil
 		}
 		return fmt.Errorf("unable to cast target of type %T to *v1alpha.LogConfigSplunk", target)
+	case v1alpha.ConfigType_CONFIG_TYPE_NETWORK:
+		networkConfig := obj.GetNetworkConfig()
+		if networkConfig == nil {
+			return fmt.Errorf("config is nil")
+		}
+		targetPtr, ok := target.(*v1alpha.NetworkConfig)
+		if ok {
+			proto.Merge(targetPtr, networkConfig)
+			return nil
+		}
+		return fmt.Errorf("unable to cast target of type %T to *v1alpha.NetworkConfig", target)
 	default:
 		return fmt.Errorf("unknown config type: %v", obj.GetType())
 	}

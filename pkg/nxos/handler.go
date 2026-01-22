@@ -21,9 +21,11 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
 
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 	"github.com/openconfig/gnmi/proto/gnmi"
 )
 
@@ -111,9 +113,16 @@ func (n *Nxos) delVbGlobal(ctx context.Context, isBd bool, name string) error {
 		}
 	}
 
-	err := n.doVRFPolicyMapUpdate()
-	if err != nil {
-		logger.GetLogger().Error("failed to remove service vrf", logfields.Error, err, "vrf-name", vb.Name)
+	if isBd {
+		err := n.doVlanPolicyMapUpdate()
+		if err != nil {
+			logger.GetLogger().Error("failed to remove service bd", logfields.Error, err, "bd-name", vb.Name)
+		}
+	} else {
+		err := n.doVRFPolicyMapUpdate()
+		if err != nil {
+			logger.GetLogger().Error("failed to remove service vrf", logfields.Error, err, "vrf-name", vb.Name)
+		}
 	}
 	return nil
 }
@@ -174,9 +183,16 @@ func (n *Nxos) delVbService(ctx context.Context, isBd bool, name string) error {
 		}
 	}
 
-	err := n.doVRFPolicyMapUpdate()
-	if err != nil {
-		logger.GetLogger().Error("failed to remove service vrf", logfields.Error, err, "vrf-name", vb.Name)
+	if isBd {
+		err := n.doVlanPolicyMapUpdate()
+		if err != nil {
+			logger.GetLogger().Error("failed to remove service bd", logfields.Error, err, "bd-name", vb.Name)
+		}
+	} else {
+		err := n.doVRFPolicyMapUpdate()
+		if err != nil {
+			logger.GetLogger().Error("failed to remove service vrf", logfields.Error, err, "vrf-name", vb.Name)
+		}
 	}
 	return nil
 }
@@ -370,6 +386,7 @@ func (n *Nxos) updtBdBd(ctx context.Context, items *model.Cisco_NX_OSDevice_Syst
 
 func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDevice_System_BdItems_BdItems_BDList) error {
 	logger.GetLogger().Debug("updtBdBdBDList", "bd", bdList)
+	policyMapUpdate := false
 
 	bds := []VrfBd{}
 	for _, bd := range bdList {
@@ -391,6 +408,7 @@ func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDe
 			b.IsGlobal = true
 			if b.IsService {
 				n.doPinning(ctx, true, &b)
+				policyMapUpdate = true
 			}
 			n.Bds[name] = b
 
@@ -404,6 +422,13 @@ func (n *Nxos) updtBdBdBDList(ctx context.Context, bdList []*model.Cisco_NX_OSDe
 			if n.Stage == StageNormal {
 				bds = append(bds, b)
 			}
+		}
+	}
+	if policyMapUpdate {
+		err := n.doVlanPolicyMapUpdate()
+		if err != nil {
+			logger.GetLogger().Error("Fail to update VLAN policy map", logfields.Error, err)
+			return err
 		}
 	}
 	if len(bds) > 0 {
@@ -626,9 +651,10 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceFwpolicyIpvrfDom(ctx context.Context,
 }
 
 func (n *Nxos) doVRFPolicyMapUpdate() error {
-	logger.GetLogger().Debug("doVRFPolicyMapUpdate")
+	var networkConfig *v1alpha.NetworkConfig
 
 	vrfMap := switchpolicy.NewL3Networks()
+	vrfs := make([]*v1alpha.Vrf, 0)
 	for _, vrf := range n.Vrfs {
 		// VRFs are only active / ready for traffic if they are both global and service
 		if !vrf.IsGlobal || !vrf.IsService {
@@ -641,15 +667,53 @@ func (n *Nxos) doVRFPolicyMapUpdate() error {
 		}
 		vrfId := switchpolicy.VrfGID(vid)
 		err := vrfMap.Add(vrfName, vrfId)
-		logger.GetLogger().Debug("vrfMap add", "vrf", vrf.Name, "gid", vid)
 		if err != nil {
+			logger.GetLogger().Error("vrfMap add failed", "vrf", vrf.Name, "gid", vid, logfields.Error, err)
 			return err
 		}
+		// Also build the VRF slice for the config
+		vrfs = append(vrfs, &v1alpha.Vrf{
+			Name: vrf.Name,
+			Id:   uint32(vid),
+		})
+
 	}
 	err := n.policyHandler.SetL3Networks(vrfMap)
 	if err != nil {
 		return err
 	}
+
+	// Update the configuration in the repository
+	err = library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_NETWORK, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
+		networkConfig = &v1alpha.NetworkConfig{}
+		networkConfig.Vrfs = vrfs
+
+		return &v1alpha.ConfigObject{
+			Type:   v1alpha.ConfigType_CONFIG_TYPE_NETWORK,
+			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
+			Config: &v1alpha.ConfigObject_NetworkConfig{NetworkConfig: networkConfig},
+		}, nil
+	})
+
+	if err != nil {
+		logger.GetLogger().Error("Failed to update network config", logfields.Error, err)
+		return err
+	}
+	return nil
+}
+
+func (n *Nxos) doVlanPolicyMapUpdate() error {
+	logger.GetLogger().Debug("doVlanPolicyMapUpdate")
+
+	for _, vlan := range n.Bds {
+		// VLANs are only active / ready for traffic if they are both global and service
+		if !vlan.IsGlobal || !vlan.IsService {
+			continue
+		}
+
+		// TODO: Updating NetworkConfig
+	}
+
 	return nil
 }
 
@@ -732,10 +796,18 @@ func (n *Nxos) addVbService(ctx context.Context, isBd bool, names []*string, aff
 	}
 
 	if policyMapUpdate {
-		err := n.doVRFPolicyMapUpdate()
-		if err != nil {
-			logger.GetLogger().Error("Fail to update VRF policy map", logfields.Error, err)
-			return err
+		if isBd {
+			err := n.doVlanPolicyMapUpdate()
+			if err != nil {
+				logger.GetLogger().Error("Fail to update VLAN policy map", logfields.Error, err)
+				return err
+			}
+		} else {
+			err := n.doVRFPolicyMapUpdate()
+			if err != nil {
+				logger.GetLogger().Error("Fail to update VRF policy map", logfields.Error, err)
+				return err
+			}
 		}
 	}
 

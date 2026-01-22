@@ -56,8 +56,9 @@ const (
 	Dataplane_RemovePolicies
 	Dataplane_ListPolicies
 	Dataplane_LogConfig
-	Dataplane_DpuConfig = 20
-	Dataplane_HaConfig  = 30
+	Dataplane_DpuConfig     = 20
+	Dataplane_HaConfig      = 30
+	Dataplane_NetworkConfig = 40
 )
 
 // Policy command values

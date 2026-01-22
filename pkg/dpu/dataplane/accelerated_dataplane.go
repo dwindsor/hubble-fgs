@@ -329,6 +329,41 @@ func (dp *AcceleratedDataplaneProcess) SendHaConfig(haConfig *v1alpha.HaConfig) 
 	return nil
 }
 
+func (dp *AcceleratedDataplaneProcess) SendNetworkConfig(networkConfig *v1alpha.NetworkConfig) error {
+	// Building config
+	data, err := json.Marshal(networkConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal network config: %w", err)
+	}
+
+	logger.GetLogger().Info("sending network config to dp-app", "config", string(data))
+
+	// Sending log configuration to the accelerated dataplane
+	msg := &socket.ControlMessage{
+		Command: Dataplane_NetworkConfig,
+		Type:    socket.DATAPLANE,
+		Data:    data,
+	}
+	dpsocket := socket.NewDataplaneSocket(dp.ApiPath, UDS_TIMEOUT*time.Second)
+	err = dpsocket.Connect()
+	if err != nil {
+		return err
+	}
+	defer dpsocket.Close()
+	err = dpsocket.Send(msg)
+	if err != nil {
+		return err
+	}
+	rc, err := dpsocket.Receive()
+	if err != nil {
+		return err
+	}
+	if rc.ReturnCode < socket.SUCCESS {
+		return errors.New(rc.ReturnCode.String())
+	}
+	return nil
+}
+
 // -----------------------------------------------------------------------------
 // Accelerated Dataplane Implementation
 // -----------------------------------------------------------------------------
@@ -532,6 +567,15 @@ func (dp *AcceleratedDataplane) RefreshConfig(oldCfg *v1alpha.ConfigObject, newC
 
 		// Sending ha config update message to dataplane
 		err := dp.Accelerated.SendHaConfig(haConfig)
+		if err != nil {
+			return err
+		}
+	case v1alpha.ConfigType_CONFIG_TYPE_NETWORK:
+		// Parsing out the network configuration
+		networkConfig := cfg.GetNetworkConfig()
+
+		// Sending network config update message to dataplane
+		err := dp.Accelerated.SendNetworkConfig(networkConfig)
 		if err != nil {
 			return err
 		}

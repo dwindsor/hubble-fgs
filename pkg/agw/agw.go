@@ -89,6 +89,7 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE, dpuListener.SubscribeConfig)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK, dpuListener.SubscribeConfig)
 	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_HA, dpuListener.SubscribeHaConfig)
+	library.GetRepository().AddConfigCallback(v1alpha.ConfigType_CONFIG_TYPE_NETWORK, dpuListener.SubscribeConfig)
 
 	// Setting up dpu config atomically
 	// dpuConfig.ServiceIp is populated by nxos package
