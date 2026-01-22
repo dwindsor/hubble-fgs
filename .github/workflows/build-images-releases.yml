@@ -203,21 +203,25 @@ jobs:
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: tetragon-slim-tarball-amd64
+          path: release
 
       - name: Download Tetragon Slim Tarball (arm64)
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: tetragon-slim-tarball-arm64
+          path: release
 
       - name: Download Tetragon Tarball (amd64)
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: tetragon-tarball-amd64
+          path: release
 
       - name: Download Tetragon Tarball (arm64)
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: tetragon-tarball-arm64
+          path: release
 
       - name: Create Release
         id: create_release
