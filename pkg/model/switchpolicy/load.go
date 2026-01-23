@@ -12,6 +12,7 @@ package switchpolicy
 
 import (
 	"bufio"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -68,6 +69,12 @@ func FromYAML(data string) ([]*v1alpha1.SmartSwitchNetworkPolicy, error) {
 			snp, err := crdCtx.FromYAML(string(unstrBytes))
 			if err != nil {
 				return nil, err
+			}
+
+			// Validate CEL rules (x-kubernetes-validations) which are not validated by crdutils
+			err = ValidateCEL(context.Background(), &unstr)
+			if err != nil {
+				return nil, fmt.Errorf("CEL validation failed: %w", err)
 			}
 
 			// Remove internal Kubernetes fields that should only be set by controller applied policy

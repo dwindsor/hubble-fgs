@@ -58,7 +58,7 @@ def get_port_range_packet_test_params():
     rules = [create_rule(
         source_cidr="0.0.0.0/0",
         dest_cidr="0.0.0.0/0",
-        dest_proto_ports=[("TCP", port_min, port_max), ("UDP", port_min, port_max), ("ICMP", port_min, port_max)]
+        dest_proto_ports=[("TCP", port_min, port_max), ("UDP", port_min, port_max), ("ICMP", None)]
     )]
     return [
         (5005, True, rules, build_packet().tcp(dport=5005)),

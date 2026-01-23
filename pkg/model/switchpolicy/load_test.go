@@ -222,7 +222,7 @@ spec:
         ipBlock:
           - cidr: 0.0.0.0/0
             vrf: default
-			vlan: 101
+            vlan: 101
       destination:
         ipBlock:
           - cidr: 0.0.0.0/0
