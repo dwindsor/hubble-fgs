@@ -62,6 +62,7 @@ func Execute() error {
 	flags.BoolVar(&Config.EnableDataplane, keyEnableDataplane, Config.EnableDataplane, "Enable dataplane")
 	flags.BoolVar(&Config.EnableAgw, keyEnableAgw, Config.EnableAgw, "Enable AGW connection")
 	flags.BoolVar(&Config.EnableLogger, keyEnableLogger, Config.EnableLogger, "Enable fluentbit logger export")
+	flags.BoolVar(&Config.EnableEventStream, keyEnableEventStream, Config.EnableEventStream, "Enable policy status event stream")
 	flags.BoolVar(&Config.Debug, keyDebug, Config.Debug, "debug level")
 	return rootCmd.Execute()
 }

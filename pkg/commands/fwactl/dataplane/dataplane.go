@@ -55,7 +55,7 @@ var DataplaneCmd = &cobra.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		DpuAgent = dpu.NewDPUAgent("")
-		err := DpuAgent.Config(ctx, fwactl.CONFIG, fwactl.DP_SOCKET_PATH, true, true)
+		err := DpuAgent.Config(ctx, fwactl.CONFIG, fwactl.DP_SOCKET_PATH, true, true, false)
 		if err != nil {
 			return err
 		}

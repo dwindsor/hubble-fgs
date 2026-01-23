@@ -113,8 +113,9 @@ type DPUAgent struct {
 	ReadyStatus      atomic.Bool
 	ConnectionStatus atomic.Bool
 
-	Dataplane   dataplane.Dataplane
-	LogExporter exporter.Exporter
+	Dataplane         dataplane.Dataplane
+	LogExporter       exporter.Exporter
+	EnableEventStream bool
 
 	EventLogger    *events.EventLogger
 	SyslogHostname string
@@ -257,7 +258,7 @@ func (dpu *DPUAgent) updateDpuRebootCrashInfo() {
 	dpu.checkForFwaCrash()
 }
 
-func (dpu *DPUAgent) Config(ctx context.Context, configPath string, dpSocketPath string, enableDataplane bool, enableLogger bool) error {
+func (dpu *DPUAgent) Config(ctx context.Context, configPath string, dpSocketPath string, enableDataplane bool, enableLogger bool, enableEventStream bool) error {
 	// Extracting logger and agent from context
 	// Collecting agent metadata
 	var err error
@@ -309,6 +310,9 @@ func (dpu *DPUAgent) Config(ctx context.Context, configPath string, dpSocketPath
 
 	// update dpu reboot and crash info
 	dpu.updateDpuRebootCrashInfo()
+
+	// Store event stream setting
+	dpu.EnableEventStream = enableEventStream
 
 	return nil
 }
@@ -922,9 +926,11 @@ func (dpu *DPUAgent) Connect(ctx context.Context) error {
 		dpu.ConfigConnect(ctx)
 	}()
 
-	go func() {
-		dpu.EventConnect(ctx)
-	}()
+	if dpu.EnableEventStream {
+		go func() {
+			dpu.EventConnect(ctx)
+		}()
+	}
 
 	<-ctx.Done()
 	logger.GetLogger().Info("Streaming client connection closed")

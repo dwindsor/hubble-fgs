@@ -67,7 +67,7 @@ func executeFWA() error {
 	agent := dpu.NewDPUAgent(Config.ServerAddress)
 
 	logger.GetLogger().Info("Configuring agent")
-	if err := agent.Config(ctx, Config.DafConfig, Config.DpSocketPath, Config.EnableDataplane, Config.EnableLogger); err != nil {
+	if err := agent.Config(ctx, Config.DafConfig, Config.DpSocketPath, Config.EnableDataplane, Config.EnableLogger, Config.EnableEventStream); err != nil {
 		logger.GetLogger().Error("Failed to configure agent", logfields.Error, err)
 		return err
 	}
