@@ -40,15 +40,17 @@ func (n *Nxos) ShowStatus(_ context.Context) string {
 
 		// Calculating number of DPUs in sync for policy
 		inSync := 0
-		csum := n.dpuListener.Checksum()
-		hexChecksum := hex.EncodeToString(csum[:])
-		statuses, err := n.dpuListener.GetDPUStatus()
-		if err != nil {
-			logger.GetLogger().Error("failed to get dpu status", logfields.Error, err)
-		} else {
-			for _, s := range statuses {
-				if s.PolicyChecksum == hexChecksum {
-					inSync += 1
+		if n.dpuListener != nil {
+			csum := n.dpuListener.Checksum()
+			hexChecksum := hex.EncodeToString(csum[:])
+			statuses, err := n.dpuListener.GetDPUStatus()
+			if err != nil {
+				logger.GetLogger().Error("failed to get dpu status", logfields.Error, err)
+			} else {
+				for _, s := range statuses {
+					if s.PolicyChecksum == hexChecksum {
+						inSync += 1
+					}
 				}
 			}
 		}
