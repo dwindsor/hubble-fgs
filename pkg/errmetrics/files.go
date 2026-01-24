@@ -19,6 +19,7 @@ import (
 // Keep in sync with bpf/errmetrics/fileids.h.
 var Files = map[uint8]string{
 	128: "dns_pstree.h",
+	129: "dns_parser.h",
 }
 
 func init() {
