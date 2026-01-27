@@ -87,11 +87,18 @@ int getname_from_filename(struct msg_file_openraw_ops *msg, const char *filename
 
 static inline __attribute__((always_inline)) int handle_open_raw(void *ctx, int (*get_path)(struct msg_file_openraw_ops *, const char *), const char *filename, __u32 flags, __u32 hook, int dfd, int ret)
 {
+	struct task_struct *current = (struct task_struct *)get_current_task_btf();
+	struct file **fd = BPF_CORE_READ(current, files, fdt, fd);
 	struct msg_file_openraw_ops *msg;
+	struct file *file = 0;
 	__u32 operation = 0;
 	__u32 msg_id = 0;
 	__u32 rule_id = 0;
 	int err;
+
+	probe_read(&file, sizeof(struct file *), fd + ret);
+	if (skip_access(BPF_CORE_READ(file, f_inode)))
+		return 0;
 
 	if (!policy_filter_match())
 		return 0;

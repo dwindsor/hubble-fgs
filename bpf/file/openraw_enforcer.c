@@ -26,6 +26,9 @@ int BPF_PROG(do_open, struct nameidata *nd, struct file *file, const struct open
 	__u32 operation = 0;
 	int zero = 0;
 
+	if (skip_access(BPF_CORE_READ(nd, inode)))
+		return 0;
+
 	if (!policy_filter_match())
 		return 0;
 

@@ -12,10 +12,10 @@ static inline __attribute__((always_inline)) __u32 path_file_open(void *ctx, str
 	struct dentry *dentry;
 	int err;
 
-	if (!policy_filter_match())
+	if (skip_access(BPF_CORE_READ(file, f_inode)))
 		return 0;
 
-	if (skip_access(BPF_CORE_READ(file, f_inode)))
+	if (!policy_filter_match())
 		return 0;
 
 	msg = get_msg_init();
