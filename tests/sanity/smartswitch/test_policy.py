@@ -14,11 +14,14 @@ from helper.verification import (
     verify_policy_added_to_agw,
     verify_policy_removed_from_agw,
     verify_policy_removed_from_sim,
-    verify_policies_match_agw_and_dpu
+    verify_policies_match_agw_and_dpu,
+    verify_policy_add_error,
+    verify_no_policies_in_agw,
 )
 from helper.policy_generator import (
     generate_vrf_policy_for_test,
-    generate_vlan_policy_for_test
+    generate_vlan_policy_for_test,
+    generate_vrf_and_vlan_policy_for_test,
 )
 from helper.utils import wait_for_timeout
 from helper.constants import AGW_POLICIES_DIR
@@ -277,3 +280,31 @@ def test_l2_vlan_any_ip(cmd, vlan_start, vlan_end):
         
         sim_policies = cmd.sim_show_policies()
         verify_policy_removed_from_sim(sim_policies)
+
+
+@pytest.mark.agw
+@pytest.mark.policy
+@allure.feature("Policy Management")
+@allure.story("Policy Validation")
+@allure.title("Reject policy with both VRF and VLAN set on same ipBlock")
+def test_reject_policy_with_vrf_and_vlan(cmd):
+    """Test that AGW rejects a policy with both VRF and VLAN set on the same ipBlock."""
+    
+    policy_name = "invalid-vrf-vlan"
+    
+    with allure.step("Generate policy YAML with both VRF and VLAN set"):
+        _, policy_file = generate_vrf_and_vlan_policy_for_test(
+            name=policy_name,
+            vrf="epbr-1001",
+            vlan=100
+        )
+    
+    with allure.step(f"Attempt to add invalid policy '{policy_name}' via agwctl"):
+        result = cmd.agw_add_policy(str(policy_file))
+    
+    with allure.step("Verify AGW rejected the policy with appropriate error"):
+        verify_policy_add_error(result, "at most one of the fields in [vrf vlan] may be set")
+    
+    with allure.step("Verify no policies were added to AGW"):
+        agw_policies = cmd.agw_show_policies()
+        verify_no_policies_in_agw(agw_policies)

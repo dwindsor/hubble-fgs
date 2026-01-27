@@ -165,3 +165,18 @@ def verify_policy_not_in_agw(policy_name: str, agw_output: str) -> bool:
     return True
 
 
+def verify_policy_add_error(result: str, expected_error_substring: str) -> bool:
+    if "Policies added successfully" in result:
+        raise AssertionError(
+            f"Expected policy add to fail but it succeeded. Output: {result}"
+        )
+    
+    if expected_error_substring not in result:
+        raise AssertionError(
+            f"Expected error containing '{expected_error_substring}' but got: {result}"
+        )
+    
+    logger.info(f"✅ Policy add correctly failed with expected error: {expected_error_substring}")
+    return True
+
+

@@ -152,3 +152,21 @@ def generate_vlan_policy_for_test(
             add_vlan_rules(vlan_id, specific_ip=False)
     
     return generate_policy_for_test(name, rules, namespace)
+
+
+def generate_vrf_and_vlan_policy_for_test(
+    name: str,
+    vrf: str = "default",
+    vlan: int = 100,
+    namespace: str = "hypershield"
+) -> Tuple[Policy, Path]:
+    rules = [
+        create_rule(
+            source_cidr="10.0.0.0/8",
+            dest_cidr="192.168.1.0/24",
+            source_vrf=vrf,
+            source_vlan=vlan,
+            description="Invalid rule: both VRF and VLAN set on source"
+        )
+    ]
+    return generate_policy_for_test(name, rules, namespace)
