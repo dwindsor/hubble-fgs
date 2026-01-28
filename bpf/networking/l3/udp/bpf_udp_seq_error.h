@@ -184,6 +184,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 	e->tuple.daddr[1] = k->daddr[1];
 	e->tuple.dport = k->dport;
 	e->tuple.proto = IPPROTO_UDP;
+	e->tuple.conn_id = 0;
 	e->socket_cookie = *cookie;
 	e->application_id = UDPSEQERR_APP_MTP;
 	e->app_specific_id = line_id;

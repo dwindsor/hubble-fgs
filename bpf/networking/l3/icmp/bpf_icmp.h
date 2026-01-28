@@ -207,6 +207,7 @@ int icmp_handler_ip4(struct __sk_buff *skb, int send)
 	val->tuple.daddr[1] = 0;
 	val->tuple.ipv6 = 0;
 	val->tuple.proto = IPPROTO_ICMP;
+	val->tuple.conn_id = 0;
 
 	rep_ptr = (u8 *)data + (ip->ihl * sizeof(u32)) + ICMP_HDR_LEN + sizeof(u32);
 	rep_ip4 = (struct iphdr *)rep_ptr;
@@ -351,6 +352,7 @@ int icmp_handler_ip6(struct __sk_buff *skb, u16 off, int send)
 	}
 	val->tuple.ipv6 = 1;
 	val->tuple.proto = IPPROTO_ICMP6;
+	val->tuple.conn_id = 0;
 
 	rep_ptr = data + off + ICMP_HDR_LEN + sizeof(u32);
 	rep_ip6 = (struct ipv6hdr *)rep_ptr;

@@ -111,6 +111,7 @@ __event_sys_listen(void *ctx, struct sock *skp)
 		probe_read_kernel(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
 				  _(&(skp->__sk_common.skc_v6_rcv_saddr)));
 	}
+	val->tuple.conn_id = 0;
 	l3cfg = getl3cfg();
 	if (!l3cfg)
 		return 0;

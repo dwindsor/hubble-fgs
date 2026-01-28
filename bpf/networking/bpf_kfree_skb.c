@@ -66,6 +66,7 @@ set_tuple_from_skb(struct msg_ip_tuple *tuple, struct sk_buff *skb)
 		}
 		tuple->sport = bpf_ntohs(tuple->sport);
 		tuple->dport = bpf_ntohs(tuple->dport);
+		tuple->conn_id = 0;
 		return true;
 	} else if (ip_ver == 6) {
 		// NB: we need to add IPv6 parsing here, but until we do we just

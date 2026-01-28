@@ -497,6 +497,7 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	}
 	val->tuple.send = send;
 	val->tuple.version_byte = packetver;
+	val->tuple.conn_id = 0;
 	val->ret = err;
 	val->version = 0;
 	val->create_time = data;

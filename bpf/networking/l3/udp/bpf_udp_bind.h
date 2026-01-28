@@ -82,6 +82,7 @@ __udp_bind_sock(void *ctx, __u64 cookie, bool ipv6)
 	probe_read_kernel(&event->tuple.sport, sizeof(event->tuple.sport),
 			  _(&(sk->__sk_common.skc_num)));
 	event->tuple.proto = IPPROTO_UDP;
+	event->tuple.conn_id = 0;
 
 	event->version = process->version;
 

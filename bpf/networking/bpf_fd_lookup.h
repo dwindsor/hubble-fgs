@@ -213,6 +213,7 @@ __proc_task_name(void *ctx, struct task_struct *p)
 		protocol >>= 8;
 	}
 	config->tuple.proto = protocol;
+	config->tuple.conn_id = 0;
 
 	/* Store the socket if we do not already have a reference for it, even
 	 * if family or protocol couldn't be read.

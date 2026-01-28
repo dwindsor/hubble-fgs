@@ -84,6 +84,7 @@ icmp_rcv(void *ctx, struct sk_buff *skb)
 		val->tuple.daddr[1] = 0;
 		val->tuple.ipv6 = 0;
 		val->tuple.proto = IPPROTO_ICMP;
+		val->tuple.conn_id = 0;
 		val->icmp_ip_port = 0;
 		val->icmp_ip_ttl = 0;
 		val->icmp_ip_pointer = 0;
@@ -168,6 +169,7 @@ icmp_rcv(void *ctx, struct sk_buff *skb)
 		copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6.saddr);
 		val->tuple.ipv6 = 1;
 		val->tuple.proto = IPPROTO_ICMP6;
+		val->tuple.conn_id = 0;
 		val->icmp_ip_port = 0;
 		val->icmp_ip_ttl = 0;
 		val->icmp_ip_pointer = 0;

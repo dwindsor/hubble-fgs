@@ -143,6 +143,7 @@ __event_tcp_connect(void *ctx, struct sock *skp)
 		probe_read_kernel(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
 				  _(&(skp->__sk_common.skc_v6_daddr)));
 	}
+	val->tuple.conn_id = 0;
 
 	if (key && socket)
 		v = init_tcpsocketmap_value(key, family, SOCKFLAGS_TYPE_CONNECT, socket->create_time, socket->version, &val->tuple);

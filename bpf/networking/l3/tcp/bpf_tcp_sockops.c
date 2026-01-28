@@ -76,6 +76,7 @@ int skops_tuple(u64 cookie, struct msg_ip_event *val, struct bpf_sock_ops *skops
 		probe_read_kernel(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
 				  _(&(((struct sock *)cookie)->__sk_common.skc_v6_daddr)));
 	}
+	val->tuple.conn_id = 0;
 
 	return 0;
 }

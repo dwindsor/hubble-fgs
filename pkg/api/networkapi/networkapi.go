@@ -59,6 +59,7 @@ type MsgIPTuple struct {
 	Send        uint8     `align:"send"`
 	VersionByte uint8     `align:"version_byte"`
 	IPv6        uint8     `align:"ipv6"`
+	ConnId      uint64    `align:"conn_id"`
 }
 
 type MsgSocketId struct {

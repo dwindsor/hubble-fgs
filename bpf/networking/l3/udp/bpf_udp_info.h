@@ -217,6 +217,7 @@ udp_key(struct udp_info_key *key, bool *dns_combined, u64 *cookie, u64 version, 
 	key->tuple.proto = IPPROTO_UDP;
 	key->tuple.send = 0;
 	key->tuple.version_byte = 0;
+	key->tuple.conn_id = 0;
 }
 
 static inline __attribute__((always_inline)) void

@@ -136,6 +136,7 @@ __security_sock_graft(void *ctx, struct sock *sk, struct socket *parent)
 	probe_read_kernel(&accept_socket->tuple.sport, sizeof(accept_socket->tuple.sport), _(&(sk->__sk_common.skc_num)));
 	probe_read_kernel(&accept_socket->tuple.dport, sizeof(accept_socket->tuple.dport), _(&(sk->__sk_common.skc_dport)));
 	accept_socket->tuple.dport = bpf_ntohs(accept_socket->tuple.dport);
+	accept_socket->tuple.conn_id = 0;
 
 	// This if (1) block is here to help compiler with stack allocation
 	// this is enough to keep stack limit below 512.

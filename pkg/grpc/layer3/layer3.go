@@ -125,6 +125,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		DestinationPort: destinationPort,
 		SockCookie:      event.Msg.SockCookie,
 		Protocol:        opToProtocol(event.Msg.Common.Op),
+		ConnectionId:    event.Msg.Tuple.ConnId,
 	}
 
 	// Fill out network policy information.
@@ -264,6 +265,7 @@ func GetProcessClose(event *MsgIPWithStatsEventUnix) *tetragon.ProcessClose {
 		Protocol:        opToProtocol(event.Msg.Common.Op),
 		SocketType:      SocketFlagsToType(event.Msg.SocketFlags),
 		Duration:        durationpb.New(event.Duration),
+		ConnectionId:    event.Msg.Tuple.ConnId,
 	}
 
 	if event.Msg.SockCookie != 0 {
@@ -547,10 +549,11 @@ func CreateProcessSockStats(event *MsgIPWithStatsEventUnix, cache bool) *tetrago
 	fgsSocketStats := reader.GetSocketStats(&event.Msg.SocketStats)
 
 	fgsEvent := &tetragon.ProcessSockStats{
-		Process: fgsProcess,
-		Parent:  fgsParent,
-		Socket:  fgsTuple,
-		Stats:   fgsSocketStats,
+		Process:      fgsProcess,
+		Parent:       fgsParent,
+		Socket:       fgsTuple,
+		Stats:        fgsSocketStats,
+		ConnectionId: event.Msg.Tuple.ConnId,
 	}
 
 	// Stats are pushed on the timer e.g. every 60 seconds by default and at
