@@ -472,9 +472,14 @@ def parse_dpu_policies(dpu_output: str, policy_name: Optional[str] = None) -> Li
         
         for policy in policies:
             name = policy.get("name", "")
+            policy_id = policy.get("id", "")
+            # Try to find hash in name first, then in id field
             hash_match = re.search(r'/([a-f0-9]{64})/', name)
             if not hash_match:
-                logger.warning(f"No hash found in DPU policy name: {name}")
+                # Hash might be in the id field: "::...:<hash>/<number>"
+                hash_match = re.search(r':([a-f0-9]{64})/', policy_id)
+            if not hash_match:
+                logger.warning(f"No hash found in DPU policy name: {name}, id: {policy_id}")
                 continue
             
             rule_hash = hash_match.group(1)
