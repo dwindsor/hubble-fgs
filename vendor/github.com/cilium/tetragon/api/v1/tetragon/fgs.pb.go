@@ -1267,6 +1267,7 @@ type ProcessConnect struct {
 	DestinationService *Service                `protobuf:"bytes,11,opt,name=destination_service,json=destinationService,proto3" json:"destination_service,omitempty"`
 	Ancestors          []*Process              `protobuf:"bytes,12,rep,name=ancestors,proto3" json:"ancestors,omitempty"` // Not in use for now. Please rely on ancestors in ProcessExec.
 	PolicyInfo         *TNPInfo                `protobuf:"bytes,13,opt,name=policy_info,json=policyInfo,proto3" json:"policy_info,omitempty"`
+	ConnectionId       uint64                  `protobuf:"varint,14,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"` // For special use cases, such as multicast stream IDs (like RTP SSRC)
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1392,6 +1393,13 @@ func (x *ProcessConnect) GetPolicyInfo() *TNPInfo {
 	return nil
 }
 
+func (x *ProcessConnect) GetConnectionId() uint64 {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return 0
+}
+
 type TNPInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PolicyName    string                 `protobuf:"bytes,1,opt,name=policy_name,json=policyName,proto3" json:"policy_name,omitempty"`
@@ -1468,7 +1476,8 @@ type ProcessClose struct {
 	SocketType         string                  `protobuf:"bytes,12,opt,name=socket_type,json=socketType,proto3" json:"socket_type,omitempty"`
 	Duration           *durationpb.Duration    `protobuf:"bytes,13,opt,name=duration,proto3" json:"duration,omitempty"`
 	DestinationService *Service                `protobuf:"bytes,14,opt,name=destination_service,json=destinationService,proto3" json:"destination_service,omitempty"`
-	Ancestors          []*Process              `protobuf:"bytes,15,rep,name=ancestors,proto3" json:"ancestors,omitempty"` // Not in use for now. Please rely on ancestors in ProcessExec.
+	Ancestors          []*Process              `protobuf:"bytes,15,rep,name=ancestors,proto3" json:"ancestors,omitempty"`                            // Not in use for now. Please rely on ancestors in ProcessExec.
+	ConnectionId       uint64                  `protobuf:"varint,16,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"` // For special use cases, such as multicast stream IDs (like RTP SSRC)
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1606,6 +1615,13 @@ func (x *ProcessClose) GetAncestors() []*Process {
 		return x.Ancestors
 	}
 	return nil
+}
+
+func (x *ProcessClose) GetConnectionId() uint64 {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return 0
 }
 
 type ProcessListen struct {
@@ -3898,7 +3914,8 @@ type ProcessSockStats struct {
 	Parent        *Process               `protobuf:"bytes,2,opt,name=parent,proto3" json:"parent,omitempty"`
 	Socket        *SockInfo              `protobuf:"bytes,3,opt,name=socket,proto3" json:"socket,omitempty"`
 	Stats         *SocketStats           `protobuf:"bytes,4,opt,name=stats,proto3" json:"stats,omitempty"`
-	Ancestors     []*Process             `protobuf:"bytes,5,rep,name=ancestors,proto3" json:"ancestors,omitempty"` // Not in use for now. Please rely on ancestors in ProcessExec.
+	Ancestors     []*Process             `protobuf:"bytes,5,rep,name=ancestors,proto3" json:"ancestors,omitempty"`                            // Not in use for now. Please rely on ancestors in ProcessExec.
+	ConnectionId  uint64                 `protobuf:"varint,6,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"` // For special use cases, such as multicast stream IDs (like RTP SSRC)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3966,6 +3983,13 @@ func (x *ProcessSockStats) GetAncestors() []*Process {
 		return x.Ancestors
 	}
 	return nil
+}
+
+func (x *ProcessSockStats) GetConnectionId() uint64 {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return 0
 }
 
 type Tls struct {
@@ -5174,7 +5198,7 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\x04Type\x18\x04 \x01(\x0e2\x15.tetragon.ServiceKindR\x04Type\x1aA\n" +
 	"\x13SelectorLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x99\x05\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xbe\x05\n" +
 	"\x0eProcessConnect\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12\x1b\n" +
@@ -5192,12 +5216,13 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"\x13destination_service\x18\v \x01(\v2\x11.tetragon.ServiceR\x12destinationService\x12/\n" +
 	"\tancestors\x18\f \x03(\v2\x11.tetragon.ProcessR\tancestors\x122\n" +
 	"\vpolicy_info\x18\r \x01(\v2\x11.tetragon.TNPInfoR\n" +
-	"policyInfo\"t\n" +
+	"policyInfo\x12#\n" +
+	"\rconnection_id\x18\x0e \x01(\x04R\fconnectionId\"t\n" +
 	"\aTNPInfo\x12\x1f\n" +
 	"\vpolicy_name\x18\x01 \x01(\tR\n" +
 	"policyName\x12\x1b\n" +
 	"\trule_name\x18\x02 \x01(\tR\bruleName\x12+\n" +
-	"\x06action\x18\x03 \x01(\x0e2\x13.tetragon.TNPActionR\x06action\"\xe8\x05\n" +
+	"\x06action\x18\x03 \x01(\x0e2\x13.tetragon.TNPActionR\x06action\"\x8d\x06\n" +
 	"\fProcessClose\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12\x1b\n" +
@@ -5217,7 +5242,8 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"socketType\x125\n" +
 	"\bduration\x18\r \x01(\v2\x19.google.protobuf.DurationR\bduration\x12B\n" +
 	"\x13destination_service\x18\x0e \x01(\v2\x11.tetragon.ServiceR\x12destinationService\x12/\n" +
-	"\tancestors\x18\x0f \x03(\v2\x11.tetragon.ProcessR\tancestors\"\xb1\x02\n" +
+	"\tancestors\x18\x0f \x03(\v2\x11.tetragon.ProcessR\tancestors\x12#\n" +
+	"\rconnection_id\x18\x10 \x01(\x04R\fconnectionId\"\xb1\x02\n" +
 	"\rProcessListen\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12\x0e\n" +
@@ -5432,13 +5458,14 @@ const file_tetragon_fgs_proto_rawDesc = "" +
 	"sockCookie\x124\n" +
 	"\bprotocol\x18\x06 \x01(\x0e2\x18.tetragon.SocketProtocolR\bprotocol\x12+\n" +
 	"\x11destination_names\x18\a \x03(\tR\x10destinationNames\x126\n" +
-	"\x0fdestination_pod\x18\b \x01(\v2\r.tetragon.PodR\x0edestinationPod\"\xf4\x01\n" +
+	"\x0fdestination_pod\x18\b \x01(\v2\r.tetragon.PodR\x0edestinationPod\"\x99\x02\n" +
 	"\x10ProcessSockStats\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12)\n" +
 	"\x06parent\x18\x02 \x01(\v2\x11.tetragon.ProcessR\x06parent\x12*\n" +
 	"\x06socket\x18\x03 \x01(\v2\x12.tetragon.SockInfoR\x06socket\x12+\n" +
 	"\x05stats\x18\x04 \x01(\v2\x15.tetragon.SocketStatsR\x05stats\x12/\n" +
-	"\tancestors\x18\x05 \x03(\v2\x11.tetragon.ProcessR\tancestors\"\x9c\t\n" +
+	"\tancestors\x18\x05 \x03(\v2\x11.tetragon.ProcessR\tancestors\x12#\n" +
+	"\rconnection_id\x18\x06 \x01(\x04R\fconnectionId\"\x9c\t\n" +
 	"\x03Tls\x12+\n" +
 	"\aprocess\x18\x01 \x01(\v2\x11.tetragon.ProcessR\aprocess\x12\x1b\n" +
 	"\tsource_ip\x18\x02 \x01(\tR\bsourceIp\x12=\n" +

@@ -2985,6 +2985,7 @@ type ProcessConnectChecker struct {
 	DestinationService *ServiceChecker              `json:"destinationService,omitempty"`
 	Ancestors          *ProcessListMatcher          `json:"ancestors,omitempty"`
 	PolicyInfo         *TNPInfoChecker              `json:"policyInfo,omitempty"`
+	ConnectionId       *uint64                      `json:"connectionId,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -3097,6 +3098,11 @@ func (checker *ProcessConnectChecker) Check(event *tetragon.ProcessConnect) erro
 				return fmt.Errorf("PolicyInfo check failed: %w", err)
 			}
 		}
+		if checker.ConnectionId != nil {
+			if *checker.ConnectionId != event.ConnectionId {
+				return fmt.Errorf("ConnectionId has value %d which does not match expected value %d", event.ConnectionId, *checker.ConnectionId)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -3184,6 +3190,12 @@ func (checker *ProcessConnectChecker) WithPolicyInfo(check *TNPInfoChecker) *Pro
 	return checker
 }
 
+// WithConnectionId adds a ConnectionId check to the ProcessConnectChecker
+func (checker *ProcessConnectChecker) WithConnectionId(check uint64) *ProcessConnectChecker {
+	checker.ConnectionId = &check
+	return checker
+}
+
 //FromProcessConnect populates the ProcessConnectChecker using data from a ProcessConnect event
 func (checker *ProcessConnectChecker) FromProcessConnect(event *tetragon.ProcessConnect) *ProcessConnectChecker {
 	if event == nil {
@@ -3243,6 +3255,10 @@ func (checker *ProcessConnectChecker) FromProcessConnect(event *tetragon.Process
 	if event.PolicyInfo != nil {
 		checker.PolicyInfo = NewTNPInfoChecker().FromTNPInfo(event.PolicyInfo)
 	}
+	{
+		val := event.ConnectionId
+		checker.ConnectionId = &val
+	}
 	return checker
 }
 
@@ -3264,6 +3280,7 @@ type ProcessCloseChecker struct {
 	Duration           *durationmatcher.DurationMatcher `json:"duration,omitempty"`
 	DestinationService *ServiceChecker                  `json:"destinationService,omitempty"`
 	Ancestors          *ProcessListMatcher              `json:"ancestors,omitempty"`
+	ConnectionId       *uint64                          `json:"connectionId,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -3386,6 +3403,11 @@ func (checker *ProcessCloseChecker) Check(event *tetragon.ProcessClose) error {
 				return fmt.Errorf("Ancestors check failed: %w", err)
 			}
 		}
+		if checker.ConnectionId != nil {
+			if *checker.ConnectionId != event.ConnectionId {
+				return fmt.Errorf("ConnectionId has value %d which does not match expected value %d", event.ConnectionId, *checker.ConnectionId)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -3485,6 +3507,12 @@ func (checker *ProcessCloseChecker) WithAncestors(check *ProcessListMatcher) *Pr
 	return checker
 }
 
+// WithConnectionId adds a ConnectionId check to the ProcessCloseChecker
+func (checker *ProcessCloseChecker) WithConnectionId(check uint64) *ProcessCloseChecker {
+	checker.ConnectionId = &check
+	return checker
+}
+
 //FromProcessClose populates the ProcessCloseChecker using data from a ProcessClose event
 func (checker *ProcessCloseChecker) FromProcessClose(event *tetragon.ProcessClose) *ProcessCloseChecker {
 	if event == nil {
@@ -3546,6 +3574,10 @@ func (checker *ProcessCloseChecker) FromProcessClose(event *tetragon.ProcessClos
 		lm := NewProcessListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Ancestors = lm
+	}
+	{
+		val := event.ConnectionId
+		checker.ConnectionId = &val
 	}
 	return checker
 }
@@ -5519,12 +5551,13 @@ func (checker *ProcessFileExecChecker) FromProcessFileExec(event *tetragon.Proce
 
 // ProcessSockStatsChecker implements a checker struct to check a ProcessSockStats event
 type ProcessSockStatsChecker struct {
-	CheckerName string              `json:"checkerName"`
-	Process     *ProcessChecker     `json:"process,omitempty"`
-	Parent      *ProcessChecker     `json:"parent,omitempty"`
-	Socket      *SockInfoChecker    `json:"socket,omitempty"`
-	Stats       *SocketStatsChecker `json:"stats,omitempty"`
-	Ancestors   *ProcessListMatcher `json:"ancestors,omitempty"`
+	CheckerName  string              `json:"checkerName"`
+	Process      *ProcessChecker     `json:"process,omitempty"`
+	Parent       *ProcessChecker     `json:"parent,omitempty"`
+	Socket       *SockInfoChecker    `json:"socket,omitempty"`
+	Stats        *SocketStatsChecker `json:"stats,omitempty"`
+	Ancestors    *ProcessListMatcher `json:"ancestors,omitempty"`
+	ConnectionId *uint64             `json:"connectionId,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -5591,6 +5624,11 @@ func (checker *ProcessSockStatsChecker) Check(event *tetragon.ProcessSockStats) 
 				return fmt.Errorf("Ancestors check failed: %w", err)
 			}
 		}
+		if checker.ConnectionId != nil {
+			if *checker.ConnectionId != event.ConnectionId {
+				return fmt.Errorf("ConnectionId has value %d which does not match expected value %d", event.ConnectionId, *checker.ConnectionId)
+			}
+		}
 		return nil
 	}
 	if err := fieldChecks(); err != nil {
@@ -5629,6 +5667,12 @@ func (checker *ProcessSockStatsChecker) WithAncestors(check *ProcessListMatcher)
 	return checker
 }
 
+// WithConnectionId adds a ConnectionId check to the ProcessSockStatsChecker
+func (checker *ProcessSockStatsChecker) WithConnectionId(check uint64) *ProcessSockStatsChecker {
+	checker.ConnectionId = &check
+	return checker
+}
+
 //FromProcessSockStats populates the ProcessSockStatsChecker using data from a ProcessSockStats event
 func (checker *ProcessSockStatsChecker) FromProcessSockStats(event *tetragon.ProcessSockStats) *ProcessSockStatsChecker {
 	if event == nil {
@@ -5658,6 +5702,10 @@ func (checker *ProcessSockStatsChecker) FromProcessSockStats(event *tetragon.Pro
 		lm := NewProcessListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Ancestors = lm
+	}
+	{
+		val := event.ConnectionId
+		checker.ConnectionId = &val
 	}
 	return checker
 }

@@ -2112,6 +2112,7 @@ HTTP PARSER
 | duration | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
 | destination_service | [Service](#tetragon-Service) |  |  |
 | ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
+| connection_id | [uint64](#uint64) |  | For special use cases, such as multicast stream IDs (like RTP SSRC) |
 
 
 
@@ -2139,6 +2140,7 @@ HTTP PARSER
 | destination_service | [Service](#tetragon-Service) |  |  |
 | ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 | policy_info | [TNPInfo](#tetragon-TNPInfo) |  |  |
+| connection_id | [uint64](#uint64) |  | For special use cases, such as multicast stream IDs (like RTP SSRC) |
 
 
 
@@ -2402,6 +2404,7 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | socket | [SockInfo](#tetragon-SockInfo) |  |  |
 | stats | [SocketStats](#tetragon-SocketStats) |  |  |
 | ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
+| connection_id | [uint64](#uint64) |  | For special use cases, such as multicast stream IDs (like RTP SSRC) |
 
 
 

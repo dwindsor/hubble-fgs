@@ -119,6 +119,7 @@ message ProcessConnect {
   Service destination_service = 11;
   repeated Process ancestors = 12; // Not in use for now. Please rely on ancestors in ProcessExec.
   TNPInfo policy_info = 13;
+  uint64 connection_id = 14; // For special use cases, such as multicast stream IDs (like RTP SSRC)
 }
 
 message TNPInfo {
@@ -151,6 +152,7 @@ message ProcessClose {
   google.protobuf.Duration duration = 13;
   Service destination_service = 14;
   repeated Process ancestors = 15; // Not in use for now. Please rely on ancestors in ProcessExec.
+  uint64 connection_id = 16; // For special use cases, such as multicast stream IDs (like RTP SSRC)
 }
 
 message ProcessListen {
@@ -500,6 +502,7 @@ message ProcessSockStats {
   SockInfo socket = 3;
   SocketStats stats = 4;
   repeated Process ancestors = 5; // Not in use for now. Please rely on ancestors in ProcessExec.
+  uint64 connection_id = 6; // For special use cases, such as multicast stream IDs (like RTP SSRC)
 }
 
 enum TlsCertificateError {
