@@ -389,6 +389,14 @@ options:
       usage: Filename for OCSF JSON export. Disabled by default
     - name: ocsf-export-server
       usage: Server for OCSF JSON export. Disabled by default
+    - name: parents-map-enabled
+      default_value: "false"
+      usage: Enable parents_map for matchParentBinaries selector
+    - name: parents-map-entries
+      default_value: "0"
+      usage: Set entries for parents_map table (default 32768)
+    - name: parents-map-size
+      usage: Set size for parents_map table (allows K/M/G suffix)
     - name: policy-dir
       default_value: /etc/tetragon/tetragon.policies.d
       usage: |

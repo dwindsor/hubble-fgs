@@ -21,7 +21,7 @@ Number of Tetragon perf events that are failed to be sent from the kernel.
 | label | values |
 | ----- | ------ |
 | `error` | `E2BIG, EAGAIN, EBUSY, EINVAL, ENOENT, ENOSPC, unknown` |
-| `msg_op` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 5, 7` |
+| `msg_op` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
 
 ### `tetragon_build_info`
 
@@ -30,7 +30,7 @@ Build information about tetragon
 | label | values |
 | ----- | ------ |
 | `commit` | `931b70f2c9878ba985ba6b589827bea17da6ec33` |
-| `go_version` | `go1.25.5` |
+| `go_version` | `go1.25.6` |
 | `modified` | `false` |
 | `time ` | `2022-05-13T15:54:45Z` |
 | `version` | `v1.2.0` |
@@ -87,6 +87,14 @@ The number of data events by type. For internal use only.
 | ----- | ------ |
 | `event` | `Added, Appended, Bad, Matched, NotMatched, Received` |
 
+### `tetragon_debug_events_total`
+
+The total number of Tetragon debug events. For internal use only.
+
+| label | values |
+| ----- | ------ |
+| `type ` | `process_metadata_username_ignored_not_in_host_namespaces` |
+
 ### `tetragon_enforcer_missed_notifications_total`
 
 The number of missed notifications by the enforcer.
@@ -103,7 +111,7 @@ The total number of Tetragon errors. For internal use only.
 
 | label | values |
 | ----- | ------ |
-| `type ` | `event_finalize_process_info_failed, process_metadata_username_failed, process_metadata_username_ignored_not_in_host_namespaces, process_pid_tid_mismatch` |
+| `type ` | `event_finalize_process_info_failed, process_metadata_username_failed, process_pid_tid_mismatch_clone, process_pid_tid_mismatch_exec, process_pid_tid_mismatch_exit` |
 
 ### `tetragon_event_cache_entries`
 
@@ -193,7 +201,7 @@ The total number of event handler errors. For internal use only.
 | label | values |
 | ----- | ------ |
 | `error_type` | `event_handler_failed, unknown_opcode` |
-| `opcode` | `0, 13, 14, 15, 16, 23, 24, 25, 26, 27, 5, 7` |
+| `opcode` | `0, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
 
 ### `tetragon_handling_latency`
 
@@ -201,7 +209,7 @@ The latency of handling messages in us.
 
 | label | values |
 | ----- | ------ |
-| `op   ` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 5, 7` |
+| `op   ` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
 
 ### `tetragon_map_capacity`
 
@@ -259,7 +267,7 @@ The total number of times we encounter a given message opcode. For internal use 
 
 | label | values |
 | ----- | ------ |
-| `msg_op` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 5, 7` |
+| `msg_op` | `13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 5, 7` |
 
 ### `tetragon_notify_overflowed_events_total`
 
@@ -333,7 +341,7 @@ The capacity of the process cache. Expected to be constant.
 
 ### `tetragon_process_cache_evictions_total`
 
-Number of process cache LRU evictions.
+Number of process cache LRU evictions. This includes all evictions: both explicit and capacity (implicit).
 
 ### `tetragon_process_cache_misses_total`
 
@@ -417,7 +425,7 @@ Information about the Go environment.
 
 | label | values |
 | ----- | ------ |
-| `version` | `go1.25.5` |
+| `version` | `go1.25.6` |
 
 ### `go_memstats_alloc_bytes`
 

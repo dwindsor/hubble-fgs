@@ -1568,6 +1568,35 @@ spec:
                               - values
                               type: object
                             type: array
+                          matchParentBinaries:
+                            description: A list of process parent exec name filters.
+                            items:
+                              properties:
+                                followChildren:
+                                  default: false
+                                  description: In addition to binaries, match children
+                                    processes of specified binaries.
+                                  type: boolean
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - In
+                                  - NotIn
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
                           matchReturnActions:
                             description: A list of actions to execute when MatchReturnArgs
                               selector matches
@@ -2321,6 +2350,35 @@ spec:
                                   items:
                                     format: int32
                                     type: integer
+                                  type: array
+                              required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
+                          matchParentBinaries:
+                            description: A list of process parent exec name filters.
+                            items:
+                              properties:
+                                followChildren:
+                                  default: false
+                                  description: In addition to binaries, match children
+                                    processes of specified binaries.
+                                  type: boolean
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - In
+                                  - NotIn
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
                                   type: array
                               required:
                               - operator
@@ -3794,6 +3852,35 @@ spec:
                               - values
                               type: object
                             type: array
+                          matchParentBinaries:
+                            description: A list of process parent exec name filters.
+                            items:
+                              properties:
+                                followChildren:
+                                  default: false
+                                  description: In addition to binaries, match children
+                                    processes of specified binaries.
+                                  type: boolean
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - In
+                                  - NotIn
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
                           matchReturnActions:
                             description: A list of actions to execute when MatchReturnArgs
                               selector matches
@@ -4767,6 +4854,35 @@ spec:
                               - values
                               type: object
                             type: array
+                          matchParentBinaries:
+                            description: A list of process parent exec name filters.
+                            items:
+                              properties:
+                                followChildren:
+                                  default: false
+                                  description: In addition to binaries, match children
+                                    processes of specified binaries.
+                                  type: boolean
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - In
+                                  - NotIn
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
                           matchReturnActions:
                             description: A list of actions to execute when MatchReturnArgs
                               selector matches
@@ -5498,6 +5614,35 @@ spec:
                                   items:
                                     format: int32
                                     type: integer
+                                  type: array
+                              required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
+                          matchParentBinaries:
+                            description: A list of process parent exec name filters.
+                            items:
+                              properties:
+                                followChildren:
+                                  default: false
+                                  description: In addition to binaries, match children
+                                    processes of specified binaries.
+                                  type: boolean
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - In
+                                  - NotIn
+                                  - Prefix
+                                  - NotPrefix
+                                  - Postfix
+                                  - NotPostfix
+                                  type: string
+                                values:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
                                   type: array
                               required:
                               - operator

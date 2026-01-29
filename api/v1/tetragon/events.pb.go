@@ -322,6 +322,9 @@ type Filter struct {
 	// Filter by the container name in the process.pod.container field using RE2 regular expression syntax:
 	// https://github.com/google/re2/wiki/Syntax
 	ContainerNameRegex []string `protobuf:"bytes,18,rep,name=container_name_regex,json=containerNameRegex,proto3" json:"container_name_regex,omitempty"`
+	// Filter by the namespace in the process.pod.namespace field using RE2 regular expression syntax:
+	// https://github.com/google/re2/wiki/Syntax
+	NamespaceRegex []string `protobuf:"bytes,19,rep,name=namespace_regex,json=namespaceRegex,proto3" json:"namespace_regex,omitempty"`
 	// Filter by source_ip field using an address range specified using CIDR notation.
 	//
 	// Example: {"event_set": ["PROCESS_ACCEPT"], "source_ip_cidr": ["127.0.0.0/16"]}
@@ -517,6 +520,13 @@ func (x *Filter) GetAncestorBinaryRegex() []string {
 func (x *Filter) GetContainerNameRegex() []string {
 	if x != nil {
 		return x.ContainerNameRegex
+	}
+	return nil
+}
+
+func (x *Filter) GetNamespaceRegex() []string {
+	if x != nil {
+		return x.NamespaceRegex
 	}
 	return nil
 }
@@ -1751,7 +1761,7 @@ var File_tetragon_events_proto protoreflect.FileDescriptor
 
 const file_tetragon_events_proto_rawDesc = "" +
 	"\n" +
-	"\x15tetragon/events.proto\x12\btetragon\x1a\x1egoogle/protobuf/duration.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a\x1btetragon/capabilities.proto\x1a\x12tetragon/dns.proto\x1a\x12tetragon/fgs.proto\x1a\x16tetragon/sandbox.proto\x1a\x17tetragon/tetragon.proto\"\xd0\t\n" +
+	"\x15tetragon/events.proto\x12\btetragon\x1a\x1egoogle/protobuf/duration.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\x1a\x1btetragon/capabilities.proto\x1a\x12tetragon/dns.proto\x1a\x12tetragon/fgs.proto\x1a\x16tetragon/sandbox.proto\x1a\x17tetragon/tetragon.proto\"\xf9\t\n" +
 	"\x06Filter\x12!\n" +
 	"\fbinary_regex\x18\x01 \x03(\tR\vbinaryRegex\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x03(\tR\tnamespace\x12=\n" +
@@ -1772,7 +1782,8 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\fin_init_tree\x18\x10 \x01(\v2\x1a.google.protobuf.BoolValueR\n" +
 	"inInitTree\x122\n" +
 	"\x15ancestor_binary_regex\x18\x11 \x03(\tR\x13ancestorBinaryRegex\x120\n" +
-	"\x14container_name_regex\x18\x12 \x03(\tR\x12containerNameRegex\x12%\n" +
+	"\x14container_name_regex\x18\x12 \x03(\tR\x12containerNameRegex\x12'\n" +
+	"\x0fnamespace_regex\x18\x13 \x03(\tR\x0enamespaceRegex\x12%\n" +
 	"\x0esource_ip_cidr\x18\xe8\a \x03(\tR\fsourceIpCidr\x12/\n" +
 	"\x13destination_ip_cidr\x18\xe9\a \x03(\tR\x11destinationIpCidr\x12\x18\n" +
 	"\aip_cidr\x18\xea\a \x03(\tR\x06ipCidr\x12\x1c\n" +

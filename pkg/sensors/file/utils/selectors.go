@@ -1648,7 +1648,9 @@ func InitKernelSelectorState(fileSel []v1alpha1.FileSelector, maxFimSelectors in
 	}
 	kernelSelectors := NewKernelSelectorState()
 	for i, s := range fileSel {
-		if err := selectors.ParseMatchBinaries(&kernelSelectors.KernelSelectorState, s.MatchBinaries, i); err != nil {
+		// NB: we pass 0 to the last argument, because we don't have access to the internal
+		// OSS types. See pkg/selectors/kernel.org.
+		if err := selectors.ParseMatchBinaries(&kernelSelectors.KernelSelectorState, s.MatchBinaries, i, 0); err != nil {
 			return nil, fmt.Errorf("parseMatchBinaries error: %w", err)
 		}
 		if err := ParseMatchOperations(kernelSelectors, s.MatchOperations, i); err != nil {

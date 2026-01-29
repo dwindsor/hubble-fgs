@@ -12,7 +12,7 @@ require (
 	github.com/cilium/cilium v1.18.4
 	github.com/cilium/ebpf v0.20.1-0.20251201143148-3d4ca808756e
 	github.com/cilium/lumberjack/v2 v2.4.1
-	github.com/cilium/tetragon v1.7.0-pre.0.0.20260115173740-57c6bf8e2915
+	github.com/cilium/tetragon v1.7.0-pre.0.0.20260129121831-eb584c98e168
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
@@ -35,7 +35,7 @@ require (
 	github.com/isovalent/ipa v1.19.0-pre.2.0.20260127003118-e9cc97cfc15c
 	github.com/isovalent/ipa/k8s v1.19.0-pre.2.0.20260126200713-f18cf10b2c83
 	github.com/joho/godotenv v1.5.1
-	github.com/mennanov/fieldmask-utils v1.1.3
+	github.com/mennanov/fieldmask-utils v1.1.4
 	github.com/miekg/dns v1.1.68
 	github.com/moby/go-archive v0.1.0
 	github.com/openconfig/gnmi v0.14.1
@@ -76,7 +76,7 @@ require (
 	k8s.io/code-generator v0.35.0
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
-	sigs.k8s.io/controller-runtime v0.22.4
+	sigs.k8s.io/controller-runtime v0.23.1
 	sigs.k8s.io/controller-tools v0.20.0
 	sigs.k8s.io/e2e-framework v0.6.0
 	sigs.k8s.io/yaml v1.6.0
@@ -190,7 +190,7 @@ require (
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v6 v6.3.0 // indirect
+	sigs.k8s.io/structured-merge-diff/v6 v6.3.2-0.20260122202528-d9cc6641c482 // indirect
 )
 
 require (
@@ -253,7 +253,7 @@ require (
 	go.mongodb.org/mongo-driver v1.17.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
-	golang.org/x/mod v0.31.0 // indirect
+	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sync v0.19.0
 	golang.org/x/term v0.39.0
