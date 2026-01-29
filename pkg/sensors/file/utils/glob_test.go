@@ -9,6 +9,7 @@
 // permission is obtained from Isovalent Inc.
 
 // go test ./pkg/sensors/file/utils -test.run TestGlob
+// go test ./pkg/sensors/file/utils -fuzz=FuzzGlobGetLiterals -v -test.v -test.fuzztime 300s
 
 package file
 
@@ -44,4 +45,28 @@ func TestGlobFSMMulti(t *testing.T) {
 			assert.ElementsMatch(t, ts.Values, MatchString(dfa, ts.Path, knownMap))
 		}
 	}
+}
+
+func FuzzGlobGetLiterals(f *testing.F) {
+	for _, c := range GlobTestCases {
+		f.Add(c.Pattern)
+	}
+	f.Fuzz(func(_ *testing.T, pattern string) {
+		allPatterns := map[string][]int32{
+			pattern: {1},
+		}
+		GetLiterals(allPatterns)
+	})
+}
+
+func FuzzGlobBuildMultiNFA(f *testing.F) {
+	for _, c := range GlobTestCases {
+		f.Add(c.Pattern)
+	}
+	f.Fuzz(func(_ *testing.T, pattern string) {
+		allPatterns := map[string][]int32{
+			pattern: {1},
+		}
+		BuildMultiNFA(allPatterns)
+	})
 }
