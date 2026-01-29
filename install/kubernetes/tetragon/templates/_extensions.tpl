@@ -236,6 +236,14 @@ app.kubernetes.io/component: aggregator
   verbs:
   - update
   - patch
+- apiGroups:
+    - "discovery.k8s.io"
+  resources:
+    - "endpointslices"
+  verbs:
+    - "get"
+    - "list"
+    - "watch"
 {{- end }}
 
 {{- define "role.extra" -}}
