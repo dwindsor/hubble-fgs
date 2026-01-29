@@ -18,12 +18,10 @@ package file
 import (
 	"fmt"
 	"math"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -31,7 +29,6 @@ import (
 	ossTestUtils "github.com/cilium/tetragon/pkg/testutils"
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/sys/unix"
 
 	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -113,10 +110,10 @@ func initGlob(objFile string, patterns map[string][]int32) (*ebpf.Collection, er
 	return col, nil
 }
 
-func runCase(col *ebpf.Collection, file *os.File, path string, val int32) (*StrVal, error) {
-	prog, ok := col.Programs["security_file_fcntl"]
+func runCase(col *ebpf.Collection, path string, val int32) (*StrVal, error) {
+	prog, ok := col.Programs["test_glob"]
 	if !ok {
-		return nil, fmt.Errorf("runEbpfGlob: failed to find program 'security_file_fcntl' in collection")
+		return nil, fmt.Errorf("runEbpfGlob: failed to find program 'test_glob' in collection")
 	}
 
 	strMap, ok := col.Maps["tg_string_map"]
@@ -136,13 +133,14 @@ func runCase(col *ebpf.Collection, file *os.File, path string, val int32) (*StrV
 		return nil, fmt.Errorf("runEbpfGlob: strMap.Put: %s", err)
 	}
 
-	link, err := link.AttachLSM(link.LSMOptions{Program: prog})
+	retVal, err := prog.Run(&ebpf.RunOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("runEbpfGlob: %s", err)
+		return nil, fmt.Errorf("runEbpfGlob: prog.Run: %s", err)
 	}
-	defer link.Close()
 
-	unix.FcntlInt(file.Fd(), 9999, 8888)
+	if retVal != 0 {
+		return nil, fmt.Errorf("runEbpfGlob: prog.Run return value is not 0 [value: %d]", retVal)
+	}
 
 	var strOut StrVal
 	if err := strMap.Lookup(zero, &strOut); err != nil {
@@ -166,13 +164,7 @@ func runEbpfGlob(t *testing.T, pattern, str string) (bool, uint64, error) {
 	}
 	defer col.Close()
 
-	file, err := os.CreateTemp("", "tetragon-lsm-check-*")
-	if err != nil {
-		return false, 0, fmt.Errorf("runEbpfGlob: os.CreateTemp: %w", err)
-	}
-	defer os.Remove(file.Name())
-
-	strOut, err := runCase(col, file, str, -2)
+	strOut, err := runCase(col, str, -2)
 	if err != nil {
 		t.Errorf("runCase: %s", err)
 	}
@@ -218,12 +210,6 @@ func TestGlobFSMeBPFMulti(t *testing.T) {
 	minDur := uint64(math.MaxUint64)
 	maxDur := uint64(0)
 
-	file, err := os.CreateTemp("", "tetragon-lsm-check-*")
-	if err != nil {
-		t.Errorf("runEbpfGlob: os.CreateTemp: %s", err)
-	}
-	defer os.Remove(file.Name())
-
 	for _, c := range fm.GlobTestCasesMulti {
 		for _, ts := range c.Tests {
 			vals := []int32{}
@@ -239,7 +225,7 @@ func TestGlobFSMeBPFMulti(t *testing.T) {
 					t.Errorf("initGlob: %s", err)
 				}
 
-				strOut, err := runCase(col, file, ts.Path, vl)
+				strOut, err := runCase(col, ts.Path, vl)
 				if err != nil {
 					t.Errorf("runCase: %s", err)
 				}

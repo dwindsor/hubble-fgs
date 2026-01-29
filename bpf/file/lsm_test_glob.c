@@ -40,8 +40,7 @@ static u8 __check_pattern(void *dfa, void *final, void *literals, char *path, __
 	return match_value(&tg_glob_final, state_id, val);
 }
 
-SEC("lsm/file_fcntl")
-int BPF_PROG(security_file_fcntl, struct file *file, unsigned int cmd, unsigned long arg)
+__attribute__((section("raw_tracepoint/test"), used)) int test_glob(unsigned long long *ctx)
 {
 	struct str *s;
 	u32 zero = 0;
