@@ -29,4 +29,11 @@ func init() {
 		&ProtocolFilter{},
 		&DestinationNamespaceRegexFilter{},
 	}...)
+
+	// Searches for oss PolicyNamesFilter and replaces it by extended enterprise PolicyNamesFilter
+	for i, f := range oss.Filters {
+		if _, ok := f.(*oss.PolicyNamesFilter); ok {
+			oss.Filters[i] = &PolicyNamesFilter{}
+		}
+	}
 }

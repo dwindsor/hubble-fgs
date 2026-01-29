@@ -196,3 +196,29 @@ func Test_GetEvents_FilterFields(t *testing.T) {
 		}
 	})
 }
+
+func Test_GetEvents_PolicyNames(t *testing.T) {
+	t.Run("FilterNothing", func(t *testing.T) {
+		ossTestutils.MockPipedFile(t, testutils.RepoRootPath("testdata/recorder/events.json"))
+		cmd := New()
+		cmd.SetArgs([]string{"--policy-names", "doesnotexist"})
+		output := ossTestutils.RedirectStdoutExecuteCmd(t, cmd)
+		assert.Equal(t, 0, bytes.Count(output, []byte("\n")))
+	})
+
+	t.Run("FilterPolicyNamesKprobe", func(t *testing.T) {
+		ossTestutils.MockPipedFile(t, testutils.RepoRootPath("testdata/recorder/events.json"))
+		cmd := New()
+		cmd.SetArgs([]string{"--policy-names", "fd-install"})
+		output := ossTestutils.RedirectStdoutExecuteCmd(t, cmd)
+		assert.Equal(t, 1, bytes.Count(output, []byte("\n")))
+	})
+
+	t.Run("FilterPolicyNamesFile", func(t *testing.T) {
+		ossTestutils.MockPipedFile(t, testutils.RepoRootPath("testdata/recorder/events.json"))
+		cmd := New()
+		cmd.SetArgs([]string{"--policy-names", "file-exec"})
+		output := ossTestutils.RedirectStdoutExecuteCmd(t, cmd)
+		assert.Equal(t, 1, bytes.Count(output, []byte("\n")))
+	})
+}
