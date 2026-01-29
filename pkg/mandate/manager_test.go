@@ -23,6 +23,8 @@ import (
 	"github.com/cilium/tetragon/pkg/testutils"
 	"github.com/stretchr/testify/require"
 
+	testutils2 "github.com/isovalent/hubble-fgs/pkg/testutils"
+
 	mandateconf "github.com/isovalent/hubble-fgs/pkg/mandate/conf"
 )
 
@@ -39,6 +41,9 @@ func TestManager(t *testing.T) {
 		RefreshPeriod: 1 * time.Second,
 	}
 
+	handler, cleanup := testutils2.SetupLogCheckerHandler()
+	t.Cleanup(cleanup)
+
 	synctest.Run(func() {
 		mgr, err := NewManager(cnf, tsm, nil)
 		require.NoError(t, err)
@@ -50,6 +55,7 @@ func TestManager(t *testing.T) {
 		// the first refresh will fail (no mandate file)
 		require.Equal(t, 1, status.Log.Total)
 		require.Equal(t, 1, status.Log.Failures)
+		require.Empty(t, mgr.loadedPolicies)
 
 		synctest.Wait()
 		mgr.Refresh()
@@ -58,12 +64,14 @@ func TestManager(t *testing.T) {
 		// the second refresh will fail as well (same reason)
 		require.Equal(t, 2, status.Log.Total)
 		require.Equal(t, 2, status.Log.Failures)
+		require.Empty(t, mgr.loadedPolicies)
 
 		// NB: let time pass so that the refresh timeout is triggered
 		time.Sleep(time.Second * 2)
 		status = mgr.Status()
 		require.Greater(t, status.Log.Total, 2)
 		require.Greater(t, status.Log.Failures, 2)
+		require.Empty(t, mgr.loadedPolicies)
 
 		// copy the test data (including the mandate file)
 		// and check that now everything succeeds
@@ -73,6 +81,7 @@ func TestManager(t *testing.T) {
 		synctest.Wait()
 		status = mgr.Status()
 		require.Equal(t, 1, status.Log.Total-status.Log.Failures)
+		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, 2.yaml
 
 		// change the mandate file to a new file without conf
 		oldFailures := status.Log.Failures
@@ -89,6 +98,8 @@ func TestManager(t *testing.T) {
 		require.Equal(t, "", status.Mandate.Version)
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures)
+		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, monitor.yaml
+		require.NoError(t, handler.MatchLine("skipping already loaded policy"))
 
 		// change the mandate file to a new file with mode config
 		oldFailures = status.Log.Failures
@@ -105,6 +116,12 @@ func TestManager(t *testing.T) {
 		require.Equal(t, "", status.Mandate.Version)
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures)
+		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, monitor.yaml
+		require.NoError(t, handler.MatchLines([]string{
+			"skipping already loaded policy",
+			"skipping already loaded policy",
+			"enforcing new mode for loaded policy",
+		}))
 
 		// change the mandate file to be a version that includes a broken policy
 		oldFailures = status.Log.Failures
@@ -121,6 +138,8 @@ func TestManager(t *testing.T) {
 		require.Equal(t, "", status.Mandate.Version)
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures+1)
+		require.Len(t, mgr.loadedPolicies, 2) // 1.yaml, monitor.yaml (everything has been rolled back to working version)
+		require.NoError(t, handler.MatchLine("skipping already loaded policy"))
 
 		// change the mandate file to a new file that works
 		oldFailures = status.Log.Failures
@@ -137,6 +156,8 @@ func TestManager(t *testing.T) {
 		require.Equal(t, "2.0.0", status.Mandate.Version)
 		require.Equal(t, status.Log.Total, oldTotal+1)
 		require.Equal(t, status.Log.Failures, oldFailures)
+		require.Len(t, mgr.loadedPolicies, 3) // 1.yaml, 2.yaml, 3.yaml
+		require.NoError(t, handler.MatchLine("skipping already loaded policy"))
 	})
 }
 
