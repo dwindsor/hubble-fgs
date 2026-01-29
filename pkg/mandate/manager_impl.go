@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/tracingpolicy"
@@ -91,6 +92,17 @@ type policy struct {
 	mode      string
 }
 
+// Returns policy mode as set by the tracing policy spec, if any.
+func getModeFromTracingPolicy(tp tracingpolicy.TracingPolicy) string {
+	for _, opt := range tp.TpSpec().Options {
+		// should be the same as keyPolicyMode in OSS pkg/sensors/tracing/options.go
+		if opt.Name == "policy-mode" {
+			return opt.Value
+		}
+	}
+	return ""
+}
+
 func invalidPolicy() policy {
 	return policy{ty: invalidPolTy}
 }
@@ -103,7 +115,10 @@ func newTracingPolicy(url string, tp tracingpolicy.TracingPolicy, mode string) p
 		ty:        tracingPolTy,
 		mode:      mode,
 	}
-
+	// If mode is empty, store the actual mode set by the tracing policy spec, if any.
+	if ret.mode == "" {
+		ret.mode = getModeFromTracingPolicy(tp)
+	}
 	ret.origName = ret.name
 	if oname, ok := OrigPolName(ret.name); ok {
 		ret.origName = oname
@@ -223,6 +238,15 @@ func (m *manager) refresh(ctx context.Context) {
 		unloadMandateID = obj.id()
 	}
 
+	// This will only be non-nil in case of mode updates errors!
+	for _, revertModeUpdate := range res.modeUpdates {
+		attempt.RunAttempt(
+			refrAtt.NewAttempt("revert policy mode").WithInfo("policy", revertModeUpdate.loadedPol.origName).WithInfo("mandate", unloadMandateID),
+			func() error {
+				return revertModeUpdate.revert(ctx)
+			})
+	}
+
 	for _, pol := range res.unloadPolicies {
 		attempt.RunAttempt(
 			refrAtt.NewAttempt("unload policy").WithInfo("policy", pol.origName).WithInfo("mandate", unloadMandateID),
@@ -236,14 +260,86 @@ func (m *manager) refresh(ctx context.Context) {
 	}
 }
 
+func nameFromMode(mode tetragon.TracingPolicyMode) string {
+	switch mode {
+	case tetragon.TracingPolicyMode_TP_MODE_ENFORCE:
+		return "enforce"
+	case tetragon.TracingPolicyMode_TP_MODE_MONITOR:
+		return "monitor"
+	default:
+		return ""
+	}
+}
+
+type updateMode struct {
+	oldMode, newMode tetragon.TracingPolicyMode
+	loadedPol        *policy
+	sensorMgr        SensorManager
+}
+
+func (u *updateMode) update(ctx context.Context, mode tetragon.TracingPolicyMode) error {
+	logger.GetLogger().Info("mandate: enforcing new mode for loaded policy", "url", u.loadedPol.url, "mode", mode)
+	err := u.sensorMgr.ConfigureTracingPolicy(ctx, &tetragon.ConfigureTracingPolicyRequest{
+		Name:      u.loadedPol.name,
+		Namespace: u.loadedPol.namespace,
+		Mode:      &mode,
+	})
+	if err == nil {
+		u.loadedPol.mode = nameFromMode(mode)
+	}
+	return err
+}
+
+func (u *updateMode) apply(ctx context.Context) error {
+	return u.update(ctx, u.newMode)
+}
+
+func (u *updateMode) revert(ctx context.Context) error {
+	return u.update(ctx, u.oldMode)
+}
+
+func modeUpdateNeeded(newPolMode, loadedPolMode string, data []byte) (bool, tetragon.TracingPolicyMode, tetragon.TracingPolicyMode) {
+	// If mode is empty, store the actual mode set by the tracing policy spec, if any.
+	if newPolMode == "" {
+		// Since we already validated the checksum of policydata
+		// (that is already loaded) this cannot fail.
+		tp, _ := tracingpolicy.TPContext.FromYAML(string(data))
+		newPolMode = getModeFromTracingPolicy(tp)
+		if newPolMode == "" {
+			// empty defaults to enforce
+			newPolMode = "enforce"
+		}
+	}
+	if loadedPolMode == "" {
+		// empty defaults to enforce
+		loadedPolMode = "enforce"
+	}
+
+	var newMode, oldMode tetragon.TracingPolicyMode
+	if newPolMode == "enforce" {
+		newMode = tetragon.TracingPolicyMode_TP_MODE_ENFORCE
+	} else {
+		newMode = tetragon.TracingPolicyMode_TP_MODE_MONITOR
+	}
+
+	if loadedPolMode == "enforce" {
+		oldMode = tetragon.TracingPolicyMode_TP_MODE_ENFORCE
+	} else {
+		oldMode = tetragon.TracingPolicyMode_TP_MODE_MONITOR
+	}
+
+	return newPolMode != loadedPolMode, newMode, oldMode
+}
+
 type fetchLoadPoliciesResult struct {
 	loadedPolicies []policy
 	unloadPolicies []policy
+	modeUpdates    []updateMode
 }
 
 // fetchAndLoadPolicies fetches and loads the policies in obj
 // It returns an error if something went wrong, plus a structure that holds
-// the list of policies to be unloaded.
+// the list of policies to be unloaded and eventually, the list of policy mode changes to be reverted.
 // If everything goes well, it returns list of loaded policies, and the list of policies to be unloaded.
 func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.InprAttempt, obj *Obj) (*fetchLoadPoliciesResult, error) {
 	res := &fetchLoadPoliciesResult{}
@@ -273,6 +369,8 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 	// because in case of error, we shall not change m.loadedPolicies.
 	unloadedPolicies := make([]policy, len(m.loadedPolicies))
 	copy(unloadedPolicies, m.loadedPolicies)
+	// We will update all modes **after** all policies have been correctly loaded
+	toBeUpdatedModes := make([]updateMode, 0)
 
 	h := sha256.New()
 
@@ -286,7 +384,7 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 		h.Write(data)
 		checksum := h.Sum(nil)
 		idx := slices.IndexFunc(unloadedPolicies, func(p policy) bool {
-			return bytes.Equal(p.checksum, checksum) && p.mode == pol.mode_
+			return bytes.Equal(p.checksum, checksum)
 		})
 
 		skipLoad := idx != -1
@@ -298,6 +396,22 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 			// Remove this policy from the to-be-unloaded set and add it to the skipped set
 			unloadedPolicies = append(unloadedPolicies[:idx], unloadedPolicies[idx+1:]...)
 			skippedPolicies = append(skippedPolicies, loadedPol)
+
+			// Tracing policy only: check if we need mode updates for this skipped policy.
+			// In that case, store a callback to update the policy mode and skip the load of the policy.
+			// Mode updates are applied once all new policies have been loaded.
+			if loadedPol.ty == tracingPolTy {
+				if needsUpdate, newMode, oldMode := modeUpdateNeeded(pol.mode_, loadedPol.mode, data); needsUpdate {
+					toBeUpdatedModes = append(toBeUpdatedModes, updateMode{
+						newMode: newMode,
+						oldMode: oldMode,
+						// We use a pointer to the skippedPolicies elem here because
+						// on succcess update() method will update the policy mode
+						loadedPol: &skippedPolicies[len(skippedPolicies)-1],
+						sensorMgr: m.sensorMgr,
+					})
+				}
+			}
 		} else {
 			loadAtt := refrAtt.NewAttempt("load policy").WithInfo("url", pol.url_.String())
 			loadedPol, err := m.attemptLoadPolicy(ctx, loadAtt, pol, data)
@@ -309,6 +423,16 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 			// set the policy checksum and add it to the loaded set
 			loadedPol.checksum = checksum
 			loadedPolicies = append(loadedPolicies, loadedPol)
+		}
+	}
+
+	// Finally, update policies modes as requested
+	for idx, update := range toBeUpdatedModes {
+		if err := update.apply(ctx); err != nil {
+			// In case of error, revert the whole change set (but only modes until the failing one!)
+			res.unloadPolicies = loadedPolicies
+			res.modeUpdates = toBeUpdatedModes[:idx]
+			return res, fmt.Errorf("failed to update policy mode %q: %w", update.loadedPol.url, err)
 		}
 	}
 
