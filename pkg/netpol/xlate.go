@@ -21,36 +21,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
-func toFirewallSubject(np *v1alpha1.TetragonNetworkPolicy) (types.TetragonNetworkSubject, error) {
-	subj := types.TetragonNetworkSubject{
-		Workload: types.TetragonWorkloadNetworkSubject{},
-	}
-
-	if np.Spec.LogicalNetworkSelector == nil {
-		return subj, fmt.Errorf("firewall policy requires logical network specifier")
-	}
-
-	if np.Spec.LogicalNetworkSelector.VRF != "" && np.Spec.LogicalNetworkSelector.VLAN != 0 {
-		return subj, fmt.Errorf("firewall policy can not support both VRF and VLAN set, %v", np.Spec.LogicalNetworkSelector.VRF)
-	}
-
-	if np.Spec.LogicalNetworkSelector.VRF != "" {
-		ln := types.TetragonLogicalNetworkSubject{
-			VRF: np.Spec.LogicalNetworkSelector.VRF,
-		}
-		return types.TetragonNetworkSubject{
-			LogicalNetwork: ln,
-		}, nil
-	}
-
-	ln := types.TetragonLogicalNetworkSubject{
-		VLAN: np.Spec.LogicalNetworkSelector.VLAN,
-	}
-	return types.TetragonNetworkSubject{
-		LogicalNetwork: ln,
-	}, nil
-}
-
 func toSubject(np *v1alpha1.TetragonNetworkPolicy) (types.TetragonNetworkSubject, error) {
 	subj := types.TetragonNetworkSubject{
 		Workload: types.TetragonWorkloadNetworkSubject{},
@@ -188,58 +158,6 @@ func toDestination(d *v1alpha1.NetworkDestination) (types.TetragonNetworkDestina
 	}, nil
 }
 
-func toFirewallDestination(d *v1alpha1.NetworkDestination) (*types.TetragonNetworkDestination, error) {
-	var f *types.TetragonNetworkFQDN
-	labels := types.TetragonNetworkLabels{}
-
-	if len(d.FQDN) > 0 {
-		return nil, fmt.Errorf("firewall does not have FQDN support")
-	}
-	if d.PodSelector != nil {
-		return nil, fmt.Errorf("firewall does not have pod label support")
-	}
-	if d.ServiceSelector != nil {
-		return nil, fmt.Errorf("firewall does not have service selector support")
-	}
-	if d.IPBlock == nil {
-		return nil, fmt.Errorf("firewall wildcard destination rules not supported")
-	}
-
-	cidr, err := netip.ParsePrefix(d.IPBlock.CIDR)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse CIDR %s: %w", d.IPBlock.CIDR, err)
-	}
-
-	ports := make([]uint32, 0, len(d.Ports.Ports))
-	ports = append(ports, d.Ports.Ports...)
-
-	return &types.TetragonNetworkDestination{
-		FQDN:   f,
-		Labels: labels,
-		CIDR:   cidr,
-		Ports:  ports,
-	}, nil
-}
-
-func toFirewallSource(d *v1alpha1.NetworkSource) (*types.TetragonNetworkSource, error) {
-
-	if d.IPBlock == nil {
-		return nil, fmt.Errorf("firewall wildcard source rulees not supported")
-	}
-
-	ip := &types.TetragonNetworkCIDR{
-		CIDR: d.IPBlock.CIDR,
-	}
-
-	ports := make([]uint32, 0, len(d.Ports.Ports))
-	ports = append(ports, d.Ports.Ports...)
-
-	return &types.TetragonNetworkSource{
-		CIDR:  ip,
-		Ports: ports,
-	}, nil
-}
-
 func parseConnectPolicy(np *v1alpha1.TetragonNetworkPolicy, r *v1alpha1.NetworkPolicyRule) ([]*types.TetragonNetworkPolicy, error) {
 	policy := []*types.TetragonNetworkPolicy{}
 
@@ -267,40 +185,6 @@ func parseConnectPolicy(np *v1alpha1.TetragonNetworkPolicy, r *v1alpha1.NetworkP
 	return policy, nil
 }
 
-func parseFirewallPolicy(np *v1alpha1.TetragonNetworkPolicy, r *v1alpha1.NetworkPolicyRule) ([]*types.TetragonNetworkPolicy, error) {
-	policy := []*types.TetragonNetworkPolicy{}
-
-	subj, err := toFirewallSubject(np)
-	if err != nil {
-		return nil, err
-	}
-	dfltAction := toDefaultAction(np)
-	act := toAction(r)
-	for _, s := range r.Source {
-		source, err := toFirewallSource(&s)
-		if err != nil {
-			return nil, err
-		}
-		for _, d := range r.Destination {
-			dest, err := toFirewallDestination(&d)
-			if err != nil {
-				return nil, err
-			}
-
-			policy = append(policy, &types.TetragonNetworkPolicy{
-				RuleDescription: r.Description,
-				Subject:         subj,
-				Source:          source,
-				Destination:     *dest,
-				Action:          act,
-				Default:         dfltAction,
-			})
-		}
-	}
-
-	return policy, nil
-}
-
 // Normalize K8s Tetragon Network Policy into internal representation
 func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.TetragonNetworkPolicy, error) {
 	result := []*types.TetragonNetworkPolicy{}
@@ -308,12 +192,6 @@ func ToTetragonNetworkPolicies(np *v1alpha1.TetragonNetworkPolicy) ([]*types.Tet
 		switch r.Hook {
 		case "connect":
 			rulePolicy, err := parseConnectPolicy(np, &r)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, rulePolicy...)
-		case "firewall":
-			rulePolicy, err := parseFirewallPolicy(np, &r)
 			if err != nil {
 				return nil, err
 			}
