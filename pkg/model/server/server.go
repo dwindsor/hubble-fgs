@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
+	ossoption "github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/process"
 
@@ -57,6 +58,7 @@ const (
 	endpointIdMap          = "tg_endpoint_id_map"
 	syscallMap             = "tg_syscall_map"
 	nsIDMapName            = "tg_cgroup_namespace_map"
+	cgTrackerIdMapName     = "tg_cgtracker_map"
 )
 
 // ktimeToTime converts a ktime value to *time.Time, returning nil for zero values
@@ -334,6 +336,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	syscallMap := filepath.Join(bpf.MapPrefixPath(), syscallMap)
 	nsIDMapPath := filepath.Join(bpf.MapPrefixPath(), nsIDMapName)
+	cgTrackerIdMapPath := filepath.Join(bpf.MapPrefixPath(), cgTrackerIdMapName)
 
 	endpt, err := ebpf.LoadPinnedMap(endptMap, nil)
 	if err != nil {
@@ -348,6 +351,16 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		return nil, err
 	}
 	defer nsIDMap.Close()
+
+	var cgTrackerMap *ebpf.Map
+	if ossoption.Config.EnableCgTrackerID {
+		cgTrackerMap, err = ebpf.LoadPinnedMap(cgTrackerIdMapPath, nil)
+		if err != nil {
+			logger.GetLogger().Warn("Could not open cgroup tracker ID map", logfields.Error, err, "file", cgTrackerIdMapPath)
+			return nil, err
+		}
+		defer cgTrackerMap.Close()
+	}
 
 	var dnsDomainMap dnsparser.DomainMap
 	defer dnsDomainMap.CloseMaps()
@@ -623,6 +636,12 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		return nil, err
 	}
 
+	err = initContainerIDMap()
+	if err != nil {
+		logger.GetLogger().Error("Could not open cgroupID to containerID map", logfields.Error, err)
+		return nil, err
+	}
+
 	/* Build out Branches for workloads */
 	for ns, d := range nsList {
 		var nsPath, wlPath, kind string
@@ -680,6 +699,19 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	for iter.Next(&key, &val) {
 		var ns, wl, kind string
 		syscalls := set.NewSet[uint32]()
+
+		// If EnableCgTrackerID is enabled, we need to find the cgroup tracker id for this cgroup id
+		var cgroupid uint64
+
+		if ossoption.Config.EnableCgTrackerID {
+			err = cgTrackerMap.Lookup(&val.CgroupID, &cgroupid)
+			if err != nil {
+				// This can happen for host processes that are not in any cgroup
+				logger.GetLogger().Debug("Failed to look up cgroup tracker id for process", logfields.Error, err, "cgroupid", val.CgroupID)
+			}
+		} else {
+			cgroupid = val.CgroupID
+		}
 
 		if val.MaybeMissingNSID {
 			var updatedNSID uint64
@@ -773,6 +805,20 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			}
 		}
 
+		// Look up container information from cgroup id
+		var containerId string
+
+		if cgroupid != 0 {
+			logger.GetLogger().Debug("Looking up container info", "binary", selfStr, "args", selfArgs, "cgroupid", cgroupid)
+			cid, found := getContainerID(cgroupid)
+			if found && cid != "" {
+				logger.GetLogger().Debug("Found container info", "cgroupid", cgroupid, "containerID", cid)
+				containerId = cid
+			} else {
+				// If the cgroup id is 0, it means the process is not in a container.
+				logger.GetLogger().Debug("No container info found for process", "cgroupid", cgroupid)
+			}
+		}
 		// Initialize parents slice with immediate parent if it exists
 		var parents []string
 		if parentPath != "" {
@@ -792,6 +838,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				Name: wl,
 				Kind: kind,
 			},
+			ContainerId:     containerId,
 			Dest:            dest,
 			InInitTree:      inInitTree,
 			FirstStartTime:  ktimeToTime(val.KtimeFirstExec),
@@ -799,6 +846,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			LatestExitTime:  ktimeToTime(val.KtimeLatestExit),
 			ExecCount:       val.ExecCount,
 		})
+
+		logger.GetLogger().Debug("Added process model", "process", *processModel[len(processModel)-1])
 	}
 
 	// Do queued NSID updates
