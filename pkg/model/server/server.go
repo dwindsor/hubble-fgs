@@ -715,8 +715,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 		if val.MaybeMissingNSID {
 			var updatedNSID uint64
-			if err := nsIDMap.Lookup(&val.CgroupID, &updatedNSID); err != nil {
-				logger.GetLogger().Debug("failed to look up nsid", logfields.Error, err, "cgid", val.CgroupID)
+			if err := nsIDMap.Lookup(cgroupid, &updatedNSID); err != nil {
+				logger.GetLogger().Debug("failed to look up nsid", logfields.Error, err, "cgid", cgroupid)
 			} else {
 				// Queue up a map update and fixup NSID value
 				pendingNSIDUpdates[key] = NSIDUpdate{
