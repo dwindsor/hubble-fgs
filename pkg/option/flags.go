@@ -350,6 +350,10 @@ func validateConfig(config config) error {
 		return fmt.Errorf("system call tracking requires --%s", KeyEnableApplicationModel)
 	}
 
+	if config.EnableApplicationModel && !option.Config.EnableCgIDmap {
+		return fmt.Errorf("application model requires --%s", option.KeyEnableCgIDmap)
+	}
+
 	if config.Environment != "" {
 		if !slices.Contains(environments, config.Environment) {
 			return fmt.Errorf("invalid environment '%s', valid values are %s", config.Environment, environments)

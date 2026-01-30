@@ -15,7 +15,15 @@ enable-cilium-api: "true"
 {{- end }}
 enable-policy-k8swatcher: {{ .Values.tetragon.k8sWatcher.policy.enabled | quote }}
 enable-sandboxpolicies: {{ .Values.tetragon.enableSandboxpolicies | quote }}
-enable-application-model: {{ .Values.tetragon.enableApplicationModel | quote }}
+{{- if .Values.tetragon.enableApplicationModel }}
+{{- if .Values.tetragon.cgidmap.enabled }}
+enable-application-model: "true"
+{{- else }}
+{{- fail "cgidmap must be enabled to enable application model. Use tetragon.cgidmap.enabled=true" }}
+{{- end }}
+{{- else }}
+enable-application-model: "false"
+{{- end }}
 application-model-cache-size: {{ .Values.tetragon.applicationModelCacheSize | quote }}
 application-model-export-interval: {{ .Values.tetragon.applicationModelExportInterval | quote }}
 {{- if .Values.tetragon.applicationModelExportFilename }}
