@@ -160,3 +160,17 @@ jobs:
         run: |
           GOOS=windows GOARCH=amd64 go build ./cmd/bin/tetragon/
           GOOS=windows GOARCH=arm64 go build ./cmd/bin/tetragon/
+
+  errmetrics-fileids-check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      with:
+        submodules: true
+
+    - name: Check errmetrics file IDs are in sync
+      run: ./modules/tetragon-oss/contrib/fileids-check.sh
+      env:
+        FILEIDS_H: bpf/errmetrics/fileids.h
+        FILES_GO: pkg/errmetrics/files.go
