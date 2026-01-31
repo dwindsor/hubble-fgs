@@ -47,16 +47,6 @@ spec:
                 - allow
                 - deny
                 type: string
-              logicalNetworkSelector:
-                description: LogicalNetworkSelector selects logical network that this
-                  policy applies to
-                properties:
-                  vlan:
-                    format: int32
-                    type: integer
-                  vrf:
-                    type: string
-                type: object
               namespaceSelector:
                 description: NamespaceSelector selects namespace that this policy
                   applies to
@@ -181,11 +171,6 @@ spec:
                     description: Filter operation.
                     enum:
                     - In
-                    - NotIn
-                    - Prefix
-                    - NotPrefix
-                    - Postfix
-                    - NotPostfix
                     type: string
                   values:
                     description: Value to compare the argument against.
@@ -289,7 +274,6 @@ spec:
                                 default: TCP
                                 enum:
                                 - TCP
-                                - UDP
                                 type: string
                             type: object
                           serviceSelector:
@@ -321,39 +305,10 @@ spec:
                         type: object
                       type: array
                     hook:
+                      default: connect
                       enum:
                       - connect
-                      - listen
-                      - firewall
                       type: string
-                    source:
-                      items:
-                        properties:
-                          ipBlock:
-                            properties:
-                              cidr:
-                                type: string
-                            required:
-                            - cidr
-                            type: object
-                          ports:
-                            properties:
-                              ports:
-                                items:
-                                  format: int32
-                                  type: integer
-                                type: array
-                              protocol:
-                                default: TCP
-                                enum:
-                                - TCP
-                                - UDP
-                                type: string
-                            type: object
-                        required:
-                        - ports
-                        type: object
-                      type: array
                   required:
                   - action
                   - description

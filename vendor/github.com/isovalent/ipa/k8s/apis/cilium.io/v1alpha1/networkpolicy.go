@@ -98,13 +98,6 @@ func (tgnpn *TetragonNetworkPolicyNamespaced) GetObjectMetaStruct() *metav1.Obje
 	return &tgnpn.ObjectMeta
 }
 
-type LogicalNetworkSelector struct {
-	// +kubebuilder:validation:Optional
-	VRF string `json:"vrf"`
-	// +kubebuilder:validation:Optional
-	VLAN uint32 `json:"vlan"`
-}
-
 type NetworkDestinationCIDR struct {
 	// +kubebuilder:validation:Required
 	CIDR string `json:"cidr"`
@@ -126,18 +119,11 @@ type NetworkDestinationWorkload struct {
 
 type NetworkDestinationPorts struct {
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=TCP;UDP
+	// +kubebuilder:validation:Enum=TCP
 	// +kubebuilder:default=TCP
 	Protocol string `json:"protocol"`
 	// +kubebuilder:validation:Optional
 	Ports []uint32 `json:"ports,omitempty"`
-}
-
-type NetworkSource struct {
-	// +kubebuilder:validation:Optional
-	IPBlock *NetworkDestinationCIDR `json:"ipBlock,omitempty"`
-	// +kubebuilder:validation:Required
-	Ports NetworkDestinationPorts `json:"ports"`
 }
 
 type ServiceSelector struct {
@@ -170,20 +156,16 @@ type NetworkDestination struct {
 type NetworkPolicyRule struct {
 	// +kubebuilder:validation:Required
 	Description string `json:"description"`
-	// +kubebuilder:validation:Enum=connect;listen;firewall
+	// +kubebuilder:validation:Enum=connect
+	// +kubebuilder:default=connect
 	Hook string `json:"hook"`
 	// +kubebuilder:validation:Enum=allow;deny
 	Action string `json:"action"`
-	// +kubebuilder:validation:Optional
-	Source []NetworkSource `json:"source,omitempty"`
 	// +kubebuilder:validation:Optional
 	Destination []NetworkDestination `json:"destination,omitempty"`
 }
 
 type NetworkPolicySpec struct {
-	// +kubebuilder:validation:Optional
-	// LogicalNetworkSelector selects logical network that this policy applies to
-	LogicalNetworkSelector *LogicalNetworkSelector `json:"logicalNetworkSelector,omitempty"`
 	// +kubebuilder:validation:Optional
 	// NamespaceSelector selects namespace that this policy applies to
 	NamespaceSelector *slimv1.LabelSelector `json:"namespaceSelector,omitempty"`
@@ -200,7 +182,7 @@ type NetworkPolicySpec struct {
 }
 
 type BinarySelector struct {
-	// +kubebuilder:validation:Enum=In;NotIn;Prefix;NotPrefix;Postfix;NotPostfix
+	// +kubebuilder:validation:Enum=In
 	// Filter operation.
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
