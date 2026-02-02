@@ -556,7 +556,7 @@ func TerminateFsScanner() error {
 
 func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pin string, addToMaps bool) (map[fileapi.InodeKey]fileapi.InodeVal, error) {
 	// no need to send a message to fs-scanner for path-based policies
-	if m, _, err := GetTpMode(&s); err == nil && m != InodeBasedTpMode {
+	if m, _, err := GetTpMode(s); err == nil && m != InodeBasedTpMode {
 		return make(map[fileapi.InodeKey]fileapi.InodeVal), nil
 	}
 
@@ -584,7 +584,7 @@ func TracingPolicyInitFsScanner(tpName string, s v1alpha1.FileSpec, m string, pi
 
 func TracingPolicyPathDigestsFsScanner(s v1alpha1.FileSpec, sel *fm.KernelSelectorState) (map[string]string, error) {
 	// no need to send a message to fs-scanner for inode-based policies
-	if m, _, err := GetTpMode(&s); err == nil && m != PathBasedTpMode {
+	if m, _, err := GetTpMode(s); err == nil && m != PathBasedTpMode {
 		return make(map[string]string), nil
 	}
 
@@ -627,12 +627,12 @@ func TracingPolicyPathDigestsContainerFsScanner(specPath []fm.SpecPinPath, conta
 	if len(specPath) == 1 {
 		spec := specPath[0].Spec
 		// no need to send a message to fs-scanner for inode-based policies
-		if m, _, err := GetTpMode(&spec); err == nil && m != PathBasedTpMode {
+		if m, _, err := GetTpMode(spec); err == nil && m != PathBasedTpMode {
 			return make(map[string]string), nil
 		}
 	} else if len(specPath) == 0 {
 		for _, s := range pol.FileMonitoringTable.GetValuesFIM() {
-			if m, _, err := GetTpMode(&s.Spec); err == nil && m != PathBasedTpMode {
+			if m, _, err := GetTpMode(s.Spec); err == nil && m != PathBasedTpMode {
 				continue
 			}
 			// no need to send a message to fs-scanner if there are no file that we need digests
@@ -699,7 +699,7 @@ func TracingPolicyPathDigestsContainerFsScanner(specPath []fm.SpecPinPath, conta
 
 func RenameFsScanner(path, mapDir, pinPath, cId, polName string, spec v1alpha1.FileSpec, flags uint32) (int64, error) {
 	// no need to send a message to fs-scanner for path-based policies
-	if m, _, err := GetTpMode(&spec); err == nil && m != InodeBasedTpMode {
+	if m, _, err := GetTpMode(spec); err == nil && m != InodeBasedTpMode {
 		return 0, nil
 	}
 
@@ -729,12 +729,12 @@ func TracingPolicyInitContainerFsScanner(specPath []fm.SpecPinPath, containerID,
 	if len(specPath) == 1 {
 		spec := specPath[0].Spec
 		// no need to send a message to fs-scanner for path-based policies
-		if m, _, err := GetTpMode(&spec); err == nil && m != InodeBasedTpMode {
+		if m, _, err := GetTpMode(spec); err == nil && m != InodeBasedTpMode {
 			return make(map[fileapi.InodeKey]fileapi.InodeVal), nil
 		}
 	} else if len(specPath) == 0 {
 		for _, s := range pol.FileMonitoringTable.GetValuesFIM() {
-			if m, _, err := GetTpMode(&s.Spec); err == nil && m == InodeBasedTpMode {
+			if m, _, err := GetTpMode(s.Spec); err == nil && m == InodeBasedTpMode {
 				specPath = append(specPath, s)
 			}
 		}
@@ -1379,7 +1379,7 @@ func addFileMonitoringSensor(policy tracingpolicy.TracingPolicy, meta *fm.Select
 	}
 	e.Tags = tagsField
 
-	// Add rules from file_paths with a unique number assosciated to each of them.
+	// Add rules from file_paths_patterns with a unique number assosciated to each of them.
 	// No need to add file_paths_exclude as we will never get an event from these.
 	for i, p := range kprobes.PathsPatterns {
 		e.TpRules[i] = fm.PathPatternToString(p)
@@ -2489,7 +2489,7 @@ func configFileSensorOptionsInit(opts map[string]string) (*configFileSensorOptio
 	return &conf, nil
 }
 
-func GetTpMode(s *v1alpha1.FileSpec) (TpMode, PathBasedMatcher, error) {
+func GetTpMode(s v1alpha1.FileSpec) (TpMode, PathBasedMatcher, error) {
 	modeNum := TpMode(0)
 	pathMatcher := InvalidMatcher
 	for _, p := range s.PathsPatterns {
@@ -2714,26 +2714,11 @@ func (k *observerFileSensor) PolicyHandler(
 ) (sensors.SensorIface, error) {
 	spec := policy.TpSpec()
 
-	newFileSpec := spec.FileMonitoring.DeepCopy()
-	for _, p := range spec.FileMonitoring.Paths {
-		newFileSpec.PathsPatterns = append(newFileSpec.PathsPatterns, v1alpha1.FilePathPattern{
-			Type: "PathPrefix",
-			PathPrefix: &v1alpha1.PathPrefixPattern{
-				Prefix: p,
-			},
-		})
-	}
-	newFileSpec.Paths = nil
-
-	if len(spec.FileMonitoring.Paths) == 0 && len(spec.FileMonitoring.PathsPatterns) == 0 {
+	if len(spec.FileMonitoring.PathsPatterns) == 0 {
 		return nil, nil
 	}
 
-	if len(spec.FileMonitoring.Paths) > 0 && len(spec.FileMonitoring.PathsPatterns) > 0 {
-		return nil, fmt.Errorf("FileMonitoring requires only one of file_paths or file_paths_patterns to be defined")
-	}
-
-	if err := validatePathPatternsArguments(newFileSpec.PathsPatterns); err != nil {
+	if err := validatePathPatternsArguments(spec.FileMonitoring.PathsPatterns); err != nil {
 		return nil, err
 	}
 
@@ -2745,13 +2730,13 @@ func (k *observerFileSensor) PolicyHandler(
 	if !tpConf.forceLoad && !kernels.MinKernelVersion("4.18.0") {
 		return nil, fmt.Errorf("FileMonitoring requires at least 4.18.0 version")
 	}
-	logger.GetLogger().Info(fmt.Sprintf("FileMonitoring is enabled with %d prefixes and %d patterns to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsPatterns), len(spec.FileMonitoring.PathsExclude)))
+	logger.GetLogger().Info(fmt.Sprintf("FileMonitoring is enabled with %d patterns to watch and %d exclude paths!", len(spec.FileMonitoring.PathsPatterns), len(spec.FileMonitoring.PathsExclude)))
 
 	if !spec.FileMonitoring.MonitorHostFiles && spec.FileMonitoring.PodSelector == nil {
 		logger.GetLogger().Warn("FileMonitoring policy with false monitorHostFile and nil PodSelector will not match anything")
 	}
 
-	mode, pathMatcher, err := GetTpMode(newFileSpec)
+	mode, pathMatcher, err := GetTpMode(spec.FileMonitoring)
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring failed to get mode type: %w", err)
 	}
@@ -2799,7 +2784,7 @@ func (k *observerFileSensor) PolicyHandler(
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring fails to find the appropriate hooks: %w", err)
 	}
-	return addFileMonitoringSensor(policy, meta, *newFileSpec, progs, config, selState, tpConf, pathMatcher, mode)
+	return addFileMonitoringSensor(policy, meta, spec.FileMonitoring, progs, config, selState, tpConf, pathMatcher, mode)
 }
 
 func setTailCallIfNeeded(args sensors.LoadProbeArgs, v FimLoaderData) error {

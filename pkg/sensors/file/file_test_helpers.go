@@ -223,18 +223,6 @@ func generateFIMMaps(tc *pol.FileMonitoring, spec *v1alpha1.FileSpec) error {
 // cleanup and re-generate the contents of FIM maps
 // the maps (and programs) are loaded during the whole time of this procedure
 func reGenerateFimMaps(spec *v1alpha1.FileSpec) error {
-	// .Paths are deprecated. We translate everything to .PathsPatterns
-	// for the tests.
-	for _, p := range spec.Paths {
-		spec.PathsPatterns = append(spec.PathsPatterns, v1alpha1.FilePathPattern{
-			Type: "PathPrefix",
-			PathPrefix: &v1alpha1.PathPrefixPattern{
-				Prefix: p,
-			},
-		})
-	}
-	spec.Paths = nil
-
 	tc, put, err := pol.FileMonitoringTable.GetOneLockedOrFail()
 	if err != nil {
 		return err

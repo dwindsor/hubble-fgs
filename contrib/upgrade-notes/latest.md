@@ -19,7 +19,8 @@ Depending on your setup, changes listed here might require a manual intervention
 
 ### Kubernetes CRDs
 
-* TBD
+* `spec.file.file_paths` is removed in favor of `spec.file.file_paths_patterns`.
+  `spec.file.file_paths` has been deprecated since v1.13.
 
 ### Events (protobuf API)
 

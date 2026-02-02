@@ -122,15 +122,8 @@ spec:
                       type: string
                     description: Config flags to enable/disable specific functionality
                     type: object
-                  file_paths:
-                    description: What paths to monitor. Only prefixes. Deprecated,
-                      please use file_paths_patterns instead.
-                    items:
-                      type: string
-                    type: array
                   file_paths_exclude:
-                    description: What paths to exclude from monitored paths. Applies
-                      both to file_paths and file_paths_patterns.
+                    description: What paths to exclude from monitored paths.
                     items:
                       type: string
                     type: array
@@ -221,8 +214,7 @@ spec:
                           description: Should be defined in the case of type=PathPrefix.
                           properties:
                             prefix:
-                              description: The prefix of the path to match. Similar
-                                to file_paths.
+                              description: The prefix of the path to match.
                               maxLength: 128
                               minLength: 1
                               pattern: \/.*
@@ -233,7 +225,7 @@ spec:
                         type:
                           description: |-
                             FilePrefixSuffix can be used to match only files that have a specific prefix and optionally a suffix.
-                            PathPrefix has the same semantics as file_paths. This can be used for all files and directories that match a specific prefix.
+                            PathPrefix can be used for all files and directories that match a specific prefix.
                             FileExactMatch can be used to match only files that have a specific name.
                             FileSystemType can be used to specify operation only on a specific type.
                             InodeType can be used to specify if we match on regular files, directories, links, block devices, or character devices.
@@ -781,12 +773,6 @@ spec:
                     under file_paths_patterns.
                   rule: (has(self.file_paths_patterns) && (size(self.file_paths_patterns.filter(c,
                     c.type == 'FilePrefixSuffix')) <= 32)) || (!has(self.file_paths_patterns))
-                - message: You should define exactly one of file_paths or file_paths_patterns.
-                  rule: ((has(self.file_paths) && (size(self.file_paths) > 0)) ||
-                    (has(self.file_paths_patterns) && (size(self.file_paths_patterns)
-                    > 0))) && (!((has(self.file_paths) && (size(self.file_paths) >
-                    0)) && (has(self.file_paths_patterns) && (size(self.file_paths_patterns)
-                    > 0))))
               kprobes:
                 description: A list of kprobe specs.
                 items:

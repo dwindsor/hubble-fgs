@@ -4,10 +4,16 @@ metadata:
   name: "file-monitoring"
 spec:
   file:
-    file_paths:
-    - "/etc/"
-    - "/var/testfile"
-    - "/tmp/"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/etc/"
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/var/testfile"
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/tmp/"
     file_paths_exclude:
     - "/etc/demo1"
     - "/etc/demo2"

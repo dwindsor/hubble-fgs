@@ -5,8 +5,10 @@ metadata:
   name: "file-monitoring-enforcement"
 spec:
   file:
-    file_paths:
-    - "/etc/"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/etc/"
     file_paths_exclude:
     - "/etc/test_dir/"
     monitorHostFiles: false

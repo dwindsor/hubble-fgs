@@ -15,22 +15,26 @@ metadata:
   name: "host-file-monitoring"
 spec:
   file:
-    file_paths:
-    - "/etc/"
-    - "/var/testfile"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/etc/"
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/var/testfile"
     file_paths_exclude:
     - "/etc/demo1"
     - "/etc/locale.alias"
     monitorHostFiles: true
 ```
 
-To enable FIM, the user should provide at least one path under `spec.file.file_paths`. This field defined prefixes to be monitored, while `spec.file.file_paths_exclude` excludes prefixes (e.g., to reduce the amount of events). If `spec.file.monitorHostFiles` is `true` we monitor host files. This can affect monitoring of pod files as described [here](#monitoring-pod-files).
+To enable FIM, the user should provide at least one path under `spec.file.file_paths_patterns`. This field defined prefixes to be monitored, while `spec.file.file_paths_exclude` excludes prefixes (e.g., to reduce the amount of events). If `spec.file.monitorHostFiles` is `true` we monitor host files. This can affect monitoring of pod files as described [here](#monitoring-pod-files).
 
 Path filtering is prefix based. This means that the previous TracingPolicy will generate events for all file paths that start with `/etc/` excluding the prefix `/etc/demo1`. This will also exclude `/etc/demo10` which has the same exclude prefix. Deleting a file and creating that again will not affect the filtering on that.
 
 ### Limitations
 
-The user can specify prefixes up to `256` characters. This is not a limitation for file/directory paths that we monitor. Furthermore, the sum of `spec.file.file_paths` and `spec.file.file_paths_exclude` entries should not exceed `4096`. Finally, the total number of all files that we monitor should not exceed `128K` and the total number of all directories that we monitor should not exceed `128K`. Except from the length of the prefixes, the rest can be easily increased depending on the user case.
+The user can specify prefixes up to `256` characters. This is not a limitation for file/directory paths that we monitor. Furthermore, the sum of `spec.file.file_paths_patterns` and `spec.file.file_paths_exclude` entries should not exceed `4096`. Finally, the total number of all files that we monitor should not exceed `128K` and the total number of all directories that we monitor should not exceed `128K`. Except from the length of the prefixes, the rest can be easily increased depending on the user case.
 
 ## Event format
 
@@ -262,9 +266,13 @@ metadata:
   name: "host-pod-file-monitoring"
 spec:
   file:
-    file_paths:
-    - "/etc/"
-    - "/var/testfile"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/etc/"
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/var/testfile"
     file_paths_exclude:
     - "/etc/demo1"
     - "/etc/locale.alias"
@@ -280,7 +288,7 @@ spec:
 
 Users can use `monitorHostFiles` to define if this tracing policy should also include host files. The default value of `monitorHostFiles` in K8s is `true`. When loading the policy with a switch or via gRPC, the default value of `monitorHostFiles` is `false`. Thus, the user should specify `monitorHostFiles: true` in order to monitor host files.
 
-Using the previous example we will monitor host and pod files that have `[pod_namespace == "default" OR pod_namespace == "ubuntu"]`. The exact files that we care about, are defined using `file_paths` and `file_paths_exclude`, similar to what we described in the previous sections.
+Using the previous example we will monitor host and pod files that have `[pod_namespace == "default" OR pod_namespace == "ubuntu"]`. The exact files that we care about, are defined using `file_paths_patterns` and `file_paths_exclude`, similar to what we described in the previous sections.
 
 For now, valid keys are `"k8s:io.kubernetes.pod.namespace"`, `"io.kubernetes.pod.namespace"`, `"k8s:io.kubernetes.pod.app"`, and `"io.kubernetes.pod.app"`. Valid operators are `"In"` and `"NotIn"`. In the case of `"k8s:io.kubernetes.pod.namespace"` and `"io.kubernetes.pod.namespace"` we do a full match check. In the case of `"k8s:io.kubernetes.pod.app"`, and `"io.kubernetes.pod.app"` we do a prefix check, which also matches in the case of full match.
 
@@ -360,9 +368,13 @@ metadata:
   name: "file-monitoring-selectors"
 spec:
   file:
-    file_paths:
-    - "/etc/"
-    - "/var/testfile"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/etc/"
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/var/testfile"
     file_paths_exclude:
     - "/etc/demo1"
     - "/etc/demo2"
@@ -420,8 +432,10 @@ metadata:
   name: "file-monitoring-enforcement"
 spec:
   file:
-    file_paths:
-    - "/etc/"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/etc/"
     monitorHostFiles: true
     podSelector:
       matchExpressions:
@@ -507,8 +521,10 @@ spec:
   file:
     file_config:
       forceLoad: "true"
-    file_paths:
-    - "/etc/"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/etc/"
     file_paths_exclude:
     - "/etc/locale.alias"
     monitorHostFiles: true
@@ -527,8 +543,10 @@ spec:
   file:
     file_config:
       enableExecDigests: "true"
-    file_paths:
-    - "/usr/bin/"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/usr/bin/"
     monitorHostFiles: true
 ```
 

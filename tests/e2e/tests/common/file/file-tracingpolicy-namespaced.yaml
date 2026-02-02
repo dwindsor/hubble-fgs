@@ -4,8 +4,10 @@ metadata:
   name: "file-monitoring-namespaced"
 spec:
   file:
-    file_paths:
-    - "/etc/"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/etc/"
     monitorHostFiles: false
     podSelector:
       matchExpressions:

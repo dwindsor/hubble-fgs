@@ -40,9 +40,13 @@ spec:
       # that holds the watched inodes. The default value (i.e. if
       # the user does not specify that option) is 262144.
       watchedInodeMapSizeConstant: "262144"
-    file_paths:
-    - "/etc/"
-    - "/var/testfile"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/etc/"
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/var/testfile"
     file_paths_exclude:
     - "/etc/demo1"
     - "/etc/demo2"

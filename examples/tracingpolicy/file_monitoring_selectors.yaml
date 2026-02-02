@@ -44,9 +44,13 @@ spec:
       # that happen from memory-mapped-files (i.e. mmap). This is off
       # by default as enabling that may increase cpu overheads.
       enableMmapFileAccesses: "false"
-    file_paths:
-    - "/etc/"
-    - "/var/testfile"
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/etc/"
+    - type: PathPrefix
+      path_prefix:
+        prefix: "/var/testfile"
     file_paths_exclude:
     - "/etc/demo1"
     - "/etc/demo2"

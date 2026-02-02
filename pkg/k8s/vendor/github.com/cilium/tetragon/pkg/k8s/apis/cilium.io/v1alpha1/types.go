@@ -357,7 +357,7 @@ type FilePrefixSuffixPattern struct {
 
 type PathPrefixPattern struct {
 	// +kubebuilder:validation:Required
-	// The prefix of the path to match. Similar to file_paths.
+	// The prefix of the path to match.
 	Prefix PathPrefix `json:"prefix,omitempty"`
 }
 
@@ -388,7 +388,7 @@ type FilePathPattern struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Enum=FilePrefixSuffix;PathPrefix;FileExactMatch;FileSystemType;AllFileOps;InodeType
 	// FilePrefixSuffix can be used to match only files that have a specific prefix and optionally a suffix.
-	// PathPrefix has the same semantics as file_paths. This can be used for all files and directories that match a specific prefix.
+	// PathPrefix can be used for all files and directories that match a specific prefix.
 	// FileExactMatch can be used to match only files that have a specific name.
 	// FileSystemType can be used to specify operation only on a specific type.
 	// InodeType can be used to specify if we match on regular files, directories, links, block devices, or character devices.
@@ -411,14 +411,9 @@ type FilePathPattern struct {
 }
 
 // +kubebuilder:validation:XValidation:rule="(has(self.file_paths_patterns) && (size(self.file_paths_patterns.filter(c, c.type == 'FilePrefixSuffix')) <= 32)) || (!has(self.file_paths_patterns))",message="We support up to 32 entries with type FilePrefixSuffix under file_paths_patterns."
-// +kubebuilder:validation:XValidation:rule="((has(self.file_paths) && (size(self.file_paths) > 0)) || (has(self.file_paths_patterns) && (size(self.file_paths_patterns) > 0))) && (!((has(self.file_paths) && (size(self.file_paths) > 0)) && (has(self.file_paths_patterns) && (size(self.file_paths_patterns) > 0))))",message="You should define exactly one of file_paths or file_paths_patterns."
 type FileSpec struct {
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:deprecatedversion:warning="file_paths is deprecated. Use file_paths_patterns instead"
-	// What paths to monitor. Only prefixes. Deprecated, please use file_paths_patterns instead.
-	Paths []string `json:"file_paths,omitempty"`
-	// +kubebuilder:validation:Optional
-	// What paths to exclude from monitored paths. Applies both to file_paths and file_paths_patterns.
+	// What paths to exclude from monitored paths.
 	PathsExclude []string `json:"file_paths_exclude,omitempty"`
 	// +kubebuilder:validation:Optional
 	// What paths to monitor using patterns.

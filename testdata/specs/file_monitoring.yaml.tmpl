@@ -6,8 +6,10 @@ spec:
   file:
     file_config:
       enableMmapFileAccesses: "true"
-    file_paths:
-    - {{.MatchedPath}}
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: {{.MatchedPath}}
     monitorHostFiles: true
     selectors: # this will be overriden during the tests, we have to use the maximum number of selectors here
     - matchBinaries:

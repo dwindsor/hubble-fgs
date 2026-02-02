@@ -6,6 +6,8 @@ spec:
   file:
     file_config:
       watchedInodeMapMaxiumSize: "4096"
-    file_paths:
-    - {{.MatchedPath}}
+    file_paths_patterns:
+    - type: PathPrefix
+      path_prefix:
+        prefix: {{.MatchedPath}}
     monitorHostFiles: true

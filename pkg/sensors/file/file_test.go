@@ -283,7 +283,14 @@ func runReadWriteTest(gt *testing.T, t *testing.T, exec_path string, create_file
 	defer testPipes.Close()
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{test_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: test_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -340,7 +347,14 @@ func testDlopenRead(gt *testing.T, t *testing.T) {
 	defer testPipes.Close()
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{libFile},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: libFile,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -393,7 +407,14 @@ func runCopyTest(gt *testing.T, t *testing.T, exec_path string) {
 	defer testPipes.Close()
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{test_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: test_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -462,7 +483,14 @@ func runMmapTest(gt *testing.T, t *testing.T, exec_path string, act tetragon.Fil
 	defer testPipes.Close()
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{test_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: test_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -654,7 +682,14 @@ func testFilePollingIouring(gt *testing.T, t *testing.T) {
 	defer testPipes.Close()
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{test_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: test_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -731,7 +766,14 @@ func testFileDelete(gt *testing.T, t *testing.T) {
 	createFileInDir(t, in_file)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{test_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: test_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -837,7 +879,14 @@ func testFileCreate(gt *testing.T, t *testing.T) {
 	createTestDir(t, test_path)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{test_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: test_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1380,7 +1429,14 @@ func testFileRename1(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTE
 	out_file := filepath.Join(test_path, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{test_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: test_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1418,7 +1474,14 @@ func testFileRename2(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INTE
 	createFileInDir(t, out_file)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{test_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: test_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1458,7 +1521,14 @@ func testFileRename3(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSI
 	createFileInDir(t, out_file)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{inside_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: inside_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1499,7 +1569,14 @@ func testFileRename4(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INSI
 	createFileInDir(t, out_file)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{inside_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: inside_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1539,7 +1616,14 @@ func testFileRename5(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_OUTS
 	out_file := filepath.Join(outside_path, "test1")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{inside_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: inside_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1580,7 +1664,14 @@ func testFileRename6(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_OUTS
 	createFileInDir(t, out_file)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{inside_path},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: inside_path,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1630,7 +1721,14 @@ func testFileRename7(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INS
 	iFile2 := filepath.Join(in_a, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{in1},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: in1,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1687,7 +1785,14 @@ func testFileRename8(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_INS
 	iFile2 := filepath.Join(in_a, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{in1},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: in1,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1743,7 +1848,14 @@ func testFileRename9(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OUT
 	iFile2 := filepath.Join(in_a, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out1},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out1,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1803,7 +1915,14 @@ func testFileRename10(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_OU
 	iFile2 := filepath.Join(in_a, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out1},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out1,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1859,7 +1978,14 @@ func testFileRename11(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 	iFile2 := filepath.Join(in_b, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out1},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out1,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1913,7 +2039,14 @@ func testFileRename12(gt *testing.T, t *testing.T) { // [SRC_DIRECTORY - MOVE_IN
 	iFile2 := filepath.Join(in_b, "test2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out1},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out1,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -1966,7 +2099,14 @@ func testFileRename13(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INT
 	outFile2 := filepath.Join(testPath, "out2")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{inFile1},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: inFile1,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2025,7 +2165,14 @@ func testFileRename14(gt *testing.T, t *testing.T) { // [SRC_REG_FILE - MOVE_INT
 	createFileInDir(t, inFile2)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{inFile1},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: inFile1,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2060,7 +2207,14 @@ func testFileRmdir(gt *testing.T, t *testing.T) {
 	}
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2096,7 +2250,14 @@ func testFileMkdir(gt *testing.T, t *testing.T) {
 	a := filepath.Join(out, "a")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2160,7 +2321,14 @@ func testFileReadDir(gt *testing.T, t *testing.T) {
 	createTestDir(t, in3)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2208,7 +2376,14 @@ func testFileTruncate(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2252,7 +2427,14 @@ func testFileReadMatchBinary(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2302,7 +2484,14 @@ func testFileReadMatchOperation(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2356,7 +2545,14 @@ func testExactFileDelete(gt *testing.T, t *testing.T) {
 	createFileInDir(t, a) // create the file before starting FIM
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{a}, // monitor only a specific file
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: a,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2392,7 +2588,14 @@ func testFileChmod(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2448,7 +2651,14 @@ func testFileChown(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2505,7 +2715,14 @@ func testFileReadWriteMultipleSelectors(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2603,7 +2820,14 @@ func testFileExec(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{"/usr/bin/cat"},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: "/usr/bin/cat",
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2625,7 +2849,20 @@ func testFileExecInterpreter(gt *testing.T, t *testing.T) {
 	testBin := testutils.RepoRootPath("contrib/tester-progs/test.sh")
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{"/usr/bin/bash", testBin},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: "/usr/bin/bash",
+				},
+			},
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: testBin,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
@@ -2658,7 +2895,14 @@ func testFileReadSelectorCapNs(gt *testing.T, t *testing.T) {
 	createFileInDir(t, oFile)
 
 	if err := reGenerateFimMaps(&v1alpha1.FileSpec{
-		Paths:            []string{out},
+		PathsPatterns: []v1alpha1.FilePathPattern{
+			{
+				Type: "PathPrefix",
+				PathPrefix: &v1alpha1.PathPrefixPattern{
+					Prefix: out,
+				},
+			},
+		},
 		PathsExclude:     []string{},
 		Config:           make(map[string]string),
 		MonitorHostFiles: true,
