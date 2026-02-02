@@ -150,6 +150,8 @@ func NewPolicyState() *PolicyState {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   InternalHostName,
 			Labels: map[string]string{InternalLabelKey: InternalHostName},
+			// UID is used as the key for localObjects.
+			UID: InternalHostName,
 		},
 	}
 
