@@ -134,16 +134,10 @@ type TetragonWorkloadNetworkSubject struct {
 
 const TetragonBinaryPathMaxLen = 256
 
-type TetragonLogicalNetworkSubject struct {
-	VRF  string
-	VLAN uint32
-}
-
 type TetragonNetworkSubject struct {
-	Labels         TetragonNetworkLabels
-	Workload       TetragonWorkloadNetworkSubject
-	InProcessName  []string
-	LogicalNetwork TetragonLogicalNetworkSubject
+	Labels        TetragonNetworkLabels
+	Workload      TetragonWorkloadNetworkSubject
+	InProcessName []string
 }
 
 type TetragonNetworkFQDN struct {

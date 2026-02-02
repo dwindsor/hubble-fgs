@@ -40,10 +40,6 @@ type recordKey struct {
 	Self     uint64
 	Port     uint32
 	EP       endpoint.Endpoint
-	SrcVrf   string
-	SrcVlan  uint32
-	SrcIp    string
-	SrcPort  uint32
 }
 
 type DatapathAction struct {
@@ -68,36 +64,9 @@ func (a *DatapathAction) String() string {
 	return fmt.Sprintf("Quota %d Reset %d Policy %s", a.QuotaLimit, a.ResetTime, policy)
 }
 
-// For now only expose IP:Port because we only have a middlebox user at the
-// moment. VM and K8s use cases are specified using the Src key. The purist
-// would tell us (and they would be correct) to extend Src key directly, but
-// hacking a new field type keeps separate things separate for the time being.
-type DatapathSource struct {
-	Vrf   string
-	VrfId uint32
-	Vlan  uint32
-	Ip    string
-	Port  uint32
-}
-
 type DatapathEndpoint struct {
 	EP   *endpoint.Endpoint
 	Port uint32
-}
-
-func (r DatapathSource) String() string {
-	s := ""
-
-	if r.Vrf != "" {
-		s = fmt.Sprintf("%s [%d] ", r.Vrf, r.VrfId)
-	} else if r.Vlan != 0 {
-		s = fmt.Sprintf("%d ", r.Vlan)
-	}
-
-	if r.Port != 0 {
-		return fmt.Sprintf("%s%s:%d", s, r.Ip, r.Port)
-	}
-	return fmt.Sprintf("%s%s", s, r.Ip)
 }
 
 func (r DatapathEndpoint) String() string {
@@ -114,7 +83,6 @@ func (r DatapathEndpoint) String() string {
 type DatapathRecord struct {
 	PolicyUID types.TetragonPolicyUniqueID
 	Src       *types.ProcessTreeKey
-	L3Src     DatapathSource
 	Endpoint  DatapathEndpoint
 	Action    *DatapathAction
 	Init      bool // temporary field until we fix order-of-ops on DNS, UDP, TCP sensors
@@ -128,13 +96,12 @@ func (r *DatapathRecord) String() string {
 		src = fmt.Sprintf("%d:%d", r.Src.NSID, r.Src.Self)
 	}
 
-	l3src := r.L3Src.String()
 	ep := fmt.Sprint(r.Endpoint.String())
 
 	if r.Action != nil {
 		action = r.Action.String()
 	}
-	return fmt.Sprintf("Policy %s:%s Src %s L3 %s -> %s Action %s", r.PolicyUID.PolicyName, r.PolicyUID.RuleName, src, l3src, ep, action)
+	return fmt.Sprintf("Policy %s:%s Src %s endpoint %s Action %s", r.PolicyUID.PolicyName, r.PolicyUID.RuleName, src, ep, action)
 }
 
 // Set difference operator, A - B. We burn some memory and have to
@@ -166,11 +133,6 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 			key.Port = r.Endpoint.Port
 		}
 
-		key.SrcIp = r.L3Src.Ip
-		key.SrcPort = r.L3Src.Port
-		key.SrcVrf = r.L3Src.Vrf
-		key.SrcVlan = r.L3Src.Vlan
-
 		bMap[key] = r
 	}
 
@@ -185,11 +147,6 @@ func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 			key.EP = *r.Endpoint.EP
 			key.Port = r.Endpoint.Port
 		}
-
-		key.SrcIp = r.L3Src.Ip
-		key.SrcPort = r.L3Src.Port
-		key.SrcVrf = r.L3Src.Vrf
-		key.SrcVlan = r.L3Src.Vlan
 
 		_, ok := bMap[key]
 		if !ok {
