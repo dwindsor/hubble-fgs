@@ -170,3 +170,49 @@ def generate_vrf_and_vlan_policy_for_test(
         )
     ]
     return generate_policy_for_test(name, rules, namespace)
+
+
+def create_multi_cidr_rule(
+    source_ip_blocks: List[dict],
+    dest_ip_blocks: List[dict],
+    dest_proto_ports: List[Tuple],
+    description: str = ""
+) -> PolicyRule:
+    source_blocks = [
+        IpBlock(cidr=b["cidr"], vrf=b.get("vrf"), vlan=b.get("vlan"))
+        for b in source_ip_blocks
+    ]
+    dest_blocks = [
+        IpBlock(cidr=b["cidr"], vrf=b.get("vrf"), vlan=b.get("vlan"))
+        for b in dest_ip_blocks
+    ]
+    dest_pp_list = [_parse_proto_port(p) for p in dest_proto_ports]
+    
+    source = NetworkEndpoint(ip_blocks=source_blocks, proto_ports=None)
+    destination = NetworkEndpoint(ip_blocks=dest_blocks, proto_ports=dest_pp_list)
+    
+    return PolicyRule(
+        action="allow",
+        source=source,
+        destination=destination,
+        description=description
+    )
+
+
+def generate_multi_cidr_policy_for_test(
+    name: str,
+    source_ip_blocks: List[dict],
+    dest_ip_blocks: List[dict],
+    dest_proto_ports: List[Tuple],
+    description: str = "",
+    namespace: str = "hypershield"
+) -> Tuple[Policy, Path]:
+    rules = [
+        create_multi_cidr_rule(
+            source_ip_blocks=source_ip_blocks,
+            dest_ip_blocks=dest_ip_blocks,
+            dest_proto_ports=dest_proto_ports,
+            description=description
+        )
+    ]
+    return generate_policy_for_test(name, rules, namespace)

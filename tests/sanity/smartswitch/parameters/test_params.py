@@ -8,7 +8,7 @@
 #  or reproduction of this material is strictly forbidden unless prior written
 #  permission is obtained from Isovalent Inc.
 
-from helper.policy_generator import create_rule
+from helper.policy_generator import create_rule, create_multi_cidr_rule
 from helper.packet_builder import build_packet
 
 
@@ -376,4 +376,141 @@ def get_three_policies_for_clear():
         "policy1-clear-test", policy1_rules,
         "policy2-clear-test", policy2_rules,
         "policy3-clear-test", policy3_rules
+    )
+
+
+def get_multi_cidr_policy_params():
+    """Return parameters for multi-CIDR policy with port ranges.
+    
+    This policy contains:
+    - 3 source CIDRs (some with VRF)
+    - 3 destination CIDRs
+    - 11 protoPorts (TCP and UDP with port ranges)
+    
+    Returns:
+        tuple: (policy_name, rules, expected_rule_count)
+    """
+    source_ip_blocks = [
+        {"cidr": "10.23.48.24/29"},
+        {"cidr": "10.23.48.32/27"},
+        {"cidr": "10.23.48.64/26", "vrf": "tims"},
+    ]
+    dest_ip_blocks = [
+        {"cidr": "139.71.242.21/32"},
+        {"cidr": "139.71.248.83/32"},
+        {"cidr": "141.251.9.128/25"},
+    ]
+    dest_proto_ports = [
+        ("TCP", 1344),
+        ("TCP", 16016),
+        ("TCP", 24345, 24347),
+        ("TCP", 4445),
+        ("TCP", 446),
+        ("TCP", 9090, 9091),
+        ("TCP", 9500),
+        ("UDP", 123),
+        ("UDP", 24345, 24347),
+        ("UDP", 3269),
+        ("UDP", 53),
+    ]
+    
+    rules = [
+        create_multi_cidr_rule(
+            source_ip_blocks=source_ip_blocks,
+            dest_ip_blocks=dest_ip_blocks,
+            dest_proto_ports=dest_proto_ports,
+            description="Converted from Aruba rule: AXP-SVCS-EX-OUT"
+        )
+    ]
+    
+    expected_rules = 9  # 3 source CIDRs × 3 dest CIDRs
+    
+    return ("multi-cidr-policy", rules, expected_rules)
+
+
+def get_dual_policy_multi_cidr_params():
+    """Return parameters for dual policies with multi-CIDR rules.
+    
+    Each policy contains:
+    - 2 source CIDRs (one with VRF)
+    - 2 destination CIDRs
+    - 2 rules with different proto-ports (TCP single port, TCP port range, UDP single port, UDP port range)
+    
+    Returns:
+        tuple: (policy1_name, policy1_rules, policy1_expected_count,
+                policy2_name, policy2_rules, policy2_expected_count)
+    """
+    policy1_source_ip_blocks = [
+        {"cidr": "10.1.0.0/24"},
+        {"cidr": "10.2.0.0/24", "vrf": "tims"},
+    ]
+    policy1_dest_ip_blocks = [
+        {"cidr": "192.168.1.0/24"},
+        {"cidr": "192.168.2.0/24"},
+    ]
+    
+    policy1_rules = [
+        create_multi_cidr_rule(
+            source_ip_blocks=policy1_source_ip_blocks,
+            dest_ip_blocks=policy1_dest_ip_blocks,
+            dest_proto_ports=[
+                ("TCP", 443),
+                ("TCP", 8000, 8080),
+                ("UDP", 53),
+                ("UDP", 10000, 10010),
+            ],
+            description="Rule 1"
+        ),
+        create_multi_cidr_rule(
+            source_ip_blocks=policy1_source_ip_blocks,
+            dest_ip_blocks=policy1_dest_ip_blocks,
+            dest_proto_ports=[
+                ("TCP", 80),
+                ("TCP", 9000, 9080),
+                ("UDP", 123),
+                ("UDP", 20000, 20010),
+            ],
+            description="Rule 2"
+        )
+    ]
+    policy1_expected_rules = 8
+    
+    policy2_source_ip_blocks = [
+        {"cidr": "10.3.0.0/24"},
+        {"cidr": "10.4.0.0/24", "vrf": "tims"},
+    ]
+    policy2_dest_ip_blocks = [
+        {"cidr": "172.16.1.0/24"},
+        {"cidr": "172.16.2.0/24"},
+    ]
+    
+    policy2_rules = [
+        create_multi_cidr_rule(
+            source_ip_blocks=policy2_source_ip_blocks,
+            dest_ip_blocks=policy2_dest_ip_blocks,
+            dest_proto_ports=[
+                ("TCP", 443),
+                ("TCP", 8000, 8080),
+                ("UDP", 53),
+                ("UDP", 10000, 10010),
+            ],
+            description="Rule 1"
+        ),
+        create_multi_cidr_rule(
+            source_ip_blocks=policy2_source_ip_blocks,
+            dest_ip_blocks=policy2_dest_ip_blocks,
+            dest_proto_ports=[
+                ("TCP", 80),
+                ("TCP", 9000, 9080),
+                ("UDP", 123),
+                ("UDP", 20000, 20010),
+            ],
+            description="Rule 2"
+        )
+    ]
+    policy2_expected_rules = 8
+    
+    return (
+        "multi-cidr-policy-1", policy1_rules, policy1_expected_rules,
+        "multi-cidr-policy-2", policy2_rules, policy2_expected_rules
     )

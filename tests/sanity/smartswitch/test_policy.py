@@ -17,12 +17,15 @@ from helper.verification import (
     verify_policies_match_agw_and_dpu,
     verify_policy_add_error,
     verify_no_policies_in_agw,
+    verify_command_success,
 )
 from helper.policy_generator import (
     generate_vrf_policy_for_test,
     generate_vlan_policy_for_test,
     generate_vrf_and_vlan_policy_for_test,
+    generate_policy_for_test,
 )
+from parameters.test_params import get_multi_cidr_policy_params, get_dual_policy_multi_cidr_params
 from helper.utils import wait_for_timeout
 from helper.constants import AGW_POLICIES_DIR
 
@@ -183,7 +186,7 @@ def test_l3_trmvrf(cmd):
 
 @pytest.mark.agw
 @pytest.mark.policy
-@pytest.mark.skip(reason="Pending IPv6 parsing fix")
+#@pytest.mark.skip(reason="Pending IPv6 parsing fix")
 @allure.feature("Policy Management")
 @allure.story("NXOS Policies")
 @allure.title("Test L2 VLAN policies with specific IPs (VLAN 801-900)")
@@ -285,6 +288,51 @@ def test_l2_vlan_any_ip(cmd, vlan_start, vlan_end):
 @pytest.mark.agw
 @pytest.mark.policy
 @allure.feature("Policy Management")
+@allure.story("Complex Policies")
+@allure.title("Test policy with multiple CIDRs and port ranges")
+def test_several_cidr_policy(cmd):
+    """Test policy with multiple source/destination CIDRs and port ranges.
+    
+    This policy contains:
+    - 3 source CIDRs (some with VRF)
+    - 3 destination CIDRs
+    - 11 protoPorts (TCP and UDP with port ranges)
+    
+    Expected rule expansion: 3 × 3 = 9 rules (CIDRs expanded, protoPorts per rule)
+    """
+    policy_name, rules, expected_rules = get_multi_cidr_policy_params()
+    
+    with allure.step("Generate policy YAML with multiple CIDRs and port ranges"):
+        policy, policy_file = generate_policy_for_test(name=policy_name, rules=rules)
+    
+    with allure.step(f"Add policy '{policy_name}' via agwctl"):
+        result = cmd.agw_add_policy(str(policy_file))
+        agw_policies = cmd.agw_show_policies()
+        verify_policy_added_to_agw(result, policy_name, agw_policies)
+        wait_for_timeout(2)
+    
+    with allure.step(f"Verify {expected_rules} rules match between AGW and DPU"):
+        sim_policies = cmd.sim_show_policies()
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim_policies,
+            policy_name=policy_name,
+            expected_rule_count=expected_rules,
+            strict_protocol_check=True
+        )
+    
+    with allure.step("Remove policy and verify cleanup"):
+        result = cmd.agw_remove_policy(str(policy_file))
+        agw_policies = cmd.agw_show_policies()
+        verify_policy_removed_from_agw(result, agw_policies)
+        
+        sim_policies = cmd.sim_show_policies()
+        verify_policy_removed_from_sim(sim_policies)
+
+
+@pytest.mark.agw
+@pytest.mark.policy
+@allure.feature("Policy Management")
 @allure.story("Policy Validation")
 @allure.title("Reject policy with both VRF and VLAN set on same ipBlock")
 def test_reject_policy_with_vrf_and_vlan(cmd):
@@ -308,3 +356,63 @@ def test_reject_policy_with_vrf_and_vlan(cmd):
     with allure.step("Verify no policies were added to AGW"):
         agw_policies = cmd.agw_show_policies()
         verify_no_policies_in_agw(agw_policies)
+
+
+@pytest.mark.agw
+@pytest.mark.policy
+@allure.feature("Policy Management")
+@allure.story("Complex Policies")
+@allure.title("Test dual policies with multi-CIDR rules and mixed port configurations")
+def test_dual_policy_multi_cidr(cmd):
+    """Test dual policies with multi-CIDR rules and mixed port configurations."""
+    (policy1_name, policy1_rules, policy1_expected_rules,
+     policy2_name, policy2_rules, policy2_expected_rules) = get_dual_policy_multi_cidr_params()
+    
+    total_expected_rules = policy1_expected_rules + policy2_expected_rules
+    
+    with allure.step(f"Add TCP policy '{policy1_name}' via agwctl"):
+        policy1, policy1_file = generate_policy_for_test(name=policy1_name, rules=policy1_rules)
+        result = cmd.agw_add_policy(str(policy1_file))
+        agw_policies = cmd.agw_show_policies()
+        verify_policy_added_to_agw(result, policy1_name, agw_policies)
+        wait_for_timeout(2)
+    
+    with allure.step(f"Add UDP policy '{policy2_name}' via agwctl"):
+        policy2, policy2_file = generate_policy_for_test(name=policy2_name, rules=policy2_rules)
+        result = cmd.agw_add_policy(str(policy2_file))
+        agw_policies = cmd.agw_show_policies()
+        verify_policy_added_to_agw(result, policy2_name, agw_policies, expected_policy_count=2)
+        wait_for_timeout(2)
+    
+    with allure.step(f"Verify {total_expected_rules} total rules match between AGW and DPU"):
+        sim_policies = cmd.sim_show_policies()
+        
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim_policies,
+            policy_name=policy1_name,
+            expected_rule_count=policy1_expected_rules,
+            strict_protocol_check=True
+        )
+        
+        verify_policies_match_agw_and_dpu(
+            agw_output=agw_policies,
+            dpu_output=sim_policies,
+            policy_name=policy2_name,
+            expected_rule_count=policy2_expected_rules,
+            strict_protocol_check=True
+        )
+    
+    with allure.step(f"Remove TCP policy '{policy1_name}'"):
+        result = cmd.agw_remove_policy(str(policy1_file))
+        assert verify_command_success(result, "AGW remove policy"), \
+            f"AGW remove policy command failed for {policy1_name}"
+        wait_for_timeout(2)
+    
+    with allure.step(f"Remove UDP policy '{policy2_name}' and verify cleanup"):
+        result = cmd.agw_remove_policy(str(policy2_file))
+        agw_policies = cmd.agw_show_policies()
+        verify_policy_removed_from_agw(result, agw_policies)
+        
+        sim_policies = cmd.sim_show_policies()
+        verify_policy_removed_from_sim(sim_policies)

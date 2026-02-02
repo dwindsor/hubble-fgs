@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 VRF_NAME_TO_ID = {
     "default": 1,
+    "tims": 2,
 }
 
 def vrf_name_to_id(vrf_name: Optional[str]) -> Optional[int]:
@@ -31,17 +32,23 @@ def vrf_name_to_id(vrf_name: Optional[str]) -> Optional[int]:
         return int(vrf_name.split("-")[1])
     if vrf_name.startswith("trmvrf-"):
         return int(vrf_name.split("-")[1])
+    logger.warning(f"Unknown VRF name '{vrf_name}' - not in VRF_NAME_TO_ID and doesn't match epbr-/trmvrf- pattern")
     return 0
+
+
+VRF_ID_TO_NAME = {v: k for k, v in VRF_NAME_TO_ID.items()}
 
 
 def vrf_id_to_name(vrf_id: Optional[int]) -> Optional[str]:
     if vrf_id is None or vrf_id == 0:
         return None
-    if vrf_id == 1:
-        return "default"
-    if vrf_id >= 1001:
+    if vrf_id in VRF_ID_TO_NAME:
+        return VRF_ID_TO_NAME[vrf_id]
+    if 1001 <= vrf_id <= 1025:
         return f"epbr-{vrf_id}"
-    return f"trmvrf-{vrf_id}"
+    if 3001 <= vrf_id <= 3075:
+        return f"trmvrf-{vrf_id}"
+    return f"unknown-vrf-{vrf_id}"
 
 
 @dataclass
@@ -67,13 +74,13 @@ class IpBlock:
         other_cidr = self._normalize_cidr(other.cidr)
         
         if self_cidr != other_cidr:
-            return False, f"CIDR mismatch: {self.cidr} vs {other.cidr}"
+            return False, f"CIDR mismatch: expected '{self.cidr}', got '{other.cidr}'"
         self_vrf_id = self.vrf_id
         other_vrf_id = other.vrf_id
         if self_vrf_id != other_vrf_id:
-            return False, f"VRF mismatch: {self.vrf}(id={self_vrf_id}) vs {other.vrf}(id={other_vrf_id})"
+            return False, f"VRF mismatch: expected '{self.vrf}'(id={self_vrf_id}), got '{other.vrf}'(id={other_vrf_id})"
         if self.vlan != other.vlan:
-            return False, f"VLAN mismatch: {self.vlan} vs {other.vlan}"
+            return False, f"VLAN mismatch: expected {self.vlan}, got {other.vlan}"
         
         return True, None
     
