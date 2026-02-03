@@ -378,8 +378,8 @@ metadata:
   namespace: production
 spec:
   rules:
-    - action: deny
-      description: Block access to internal admin network
+    - description: Block access to internal admin network
+      action: deny
       source:
         ipBlock:
           - cidr: 10.0.0.0/16

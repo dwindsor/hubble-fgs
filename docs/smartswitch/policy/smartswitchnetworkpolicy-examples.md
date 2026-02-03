@@ -44,7 +44,6 @@ metadata:
   name: allow-web-traffic
   namespace: default
 spec:
-  description: "Allow HTTP and HTTPS traffic from internal network to web server"
   rules:
     - description: "Allow HTTP and HTTPS to web server"
       action: allow
@@ -76,7 +75,6 @@ metadata:
   name: deny-ssh-from-untrusted
   namespace: security
 spec:
-  description: "Block SSH access from untrusted guest network to sensitive servers"
   rules:
     - description: "Block SSH from guest network"
       action: deny
@@ -106,7 +104,6 @@ metadata:
   name: allow-dns-production
   namespace: network
 spec:
-  description: "Allow DNS queries within the production VRF"
   rules:
     - description: "Allow DNS queries to internal DNS servers"
       action: allow
@@ -142,7 +139,6 @@ metadata:
   name: allow-database-access
   namespace: backend
 spec:
-  description: "Allow application servers to access database servers within the backend VRF"
   rules:
     - description: "Allow PostgreSQL access from app tier"
       action: allow
@@ -198,7 +194,6 @@ metadata:
   name: allow-vlan100-web
   namespace: network
 spec:
-  description: "Allow web traffic within VLAN 100"
   rules:
     - description: "Allow HTTP within VLAN 100"
       action: allow
@@ -232,7 +227,6 @@ metadata:
   name: allow-ephemeral-ports
   namespace: default
 spec:
-  description: "Allow responses on ephemeral port ranges"
   rules:
     - description: "Allow ephemeral port responses"
       action: allow
@@ -264,7 +258,6 @@ metadata:
   name: allow-rtp-media
   namespace: voip
 spec:
-  description: "Allow RTP media traffic for VoIP applications"
   rules:
     - description: "Allow RTP media streams"
       action: allow
@@ -297,7 +290,6 @@ metadata:
   name: allow-dns-both-protocols
   namespace: default
 spec:
-  description: "Allow DNS queries over both UDP and TCP protocols"
   rules:
     - description: "Allow DNS over UDP and TCP"
       action: allow
@@ -332,7 +324,6 @@ metadata:
   name: allow-multi-service
   namespace: default
 spec:
-  description: "Allow access to multiple services on a server"
   rules:
     - description: "Allow HTTP, HTTPS, and SSH"
       action: allow
@@ -366,7 +357,6 @@ metadata:
   name: multi-subnet-access
   namespace: production
 spec:
-  description: "Allow API access from multiple subnets to API servers"
   rules:
     - description: "Allow API access from multiple subnets to API servers"
       action: allow
@@ -410,7 +400,6 @@ metadata:
   name: allow-ipv6-web
   namespace: default
 spec:
-  description: "Allow IPv6 HTTP and HTTPS traffic"
   rules:
     - description: "Allow IPv6 HTTP and HTTPS"
       action: allow
@@ -444,7 +433,6 @@ metadata:
   name: deny-cross-zone-traffic
   namespace: security
 spec:
-  description: "Enforce network segmentation between security zones"
   rules:
     - description: "Block DMZ from accessing internal network"
       action: deny
@@ -514,7 +502,6 @@ metadata:
   name: allow-k8s-services
   namespace: kubernetes
 spec:
-  description: "Allow traffic to Kubernetes cluster services"
   rules:
     - description: "Allow access to Kubernetes API server"
       action: allow
@@ -601,7 +588,6 @@ metadata:
   name: allow-web-tier
   namespace: production
 spec:
-  description: "Allow inbound web traffic to the web tier"
   rules:
     - description: "Allow inbound web traffic"
       action: allow
@@ -623,7 +609,6 @@ metadata:
   name: allow-app-to-db
   namespace: production
 spec:
-  description: "Allow application tier to access database tier"
   rules:
     - description: "Allow app tier to database tier"
       action: allow
@@ -645,7 +630,6 @@ metadata:
   name: deny-db-egress
   namespace: production
 spec:
-  description: "Block database tier from initiating external connections"
   rules:
     - description: "Block database tier from initiating external connections"
       action: deny
@@ -673,7 +657,6 @@ metadata:
   name: frontend-ingress
   namespace: myapp
 spec:
-  description: "Allow HTTPS traffic from the internet to frontend tier"
   rules:
     - description: "Allow HTTPS from internet"
       action: allow
@@ -695,7 +678,6 @@ metadata:
   name: frontend-to-api
   namespace: myapp
 spec:
-  description: "Allow frontend tier to communicate with API tier"
   rules:
     - description: "Allow frontend to call API"
       action: allow
@@ -718,7 +700,6 @@ metadata:
   name: api-to-database
   namespace: myapp
 spec:
-  description: "Allow API tier to access database and cache services"
   rules:
     - description: "Allow API to query PostgreSQL"
       action: allow
@@ -754,7 +735,6 @@ metadata:
   name: deny-frontend-to-db
   namespace: myapp
 spec:
-  description: "Block frontend tier from directly accessing database tier"
   rules:
     - description: "Block frontend from directly accessing database"
       action: deny
