@@ -229,13 +229,13 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 		return;
 	config = &l3cfg->udp;
 
-	if (!config->seq_check_app_id)
+	if (!config->enable_multicast_seq_check || !config->multicast_app_id)
 		return;
 
-	if (!match_seq_check_ports(config->seq_check_ports, k->tuple.sport, k->tuple.dport))
+	if (!match_seq_check_ports(config->multicast_ports, k->tuple.sport, k->tuple.dport))
 		return;
 
-	switch (config->seq_check_app_id) {
+	switch (config->multicast_app_id) {
 #ifdef SEQ_CHECK_ENABLED
 #error "DO NOT COMPILE IF THIS IS ENABLED"
 	case UDPSEQERR_APP_MTP:

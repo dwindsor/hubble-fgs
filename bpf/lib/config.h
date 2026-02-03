@@ -56,13 +56,14 @@ struct udp_sensor_config {
 	u8 disable_listen_events;
 	u8 disable_connect_events;
 	u8 disable_close_events;
-	u8 pad[2];
+	u8 enable_multicast_seq_check;
+	u8 pad;
 	u64 watermarks_avg_window_size_ms;
 	u64 watermarks_window_size;
 	u64 watermarks_burst_trigger_percent;
 	u64 watermarks_dip_trigger_percent;
-	u64 seq_check_app_id;
-	u16 seq_check_ports[8];
+	u64 multicast_app_id;
+	u16 multicast_ports[8];
 	u64 idle_timeout; // idle socket expiry duration in ns
 };
 

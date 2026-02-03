@@ -283,14 +283,15 @@ func ParseSeqCheckSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tracing
 	if spec.Parser.Udp != nil && spec.Parser.Udp.SeqCheck.Enable && spec.Parser.Udp.SeqCheck.AppId > 0 && len(spec.Parser.Udp.SeqCheck.Ports) > 0 {
 		// Only consider the first maxSeqCheckPorts ports that are specified
 		if len(spec.Parser.Udp.SeqCheck.Ports) <= networkapi.UdpMaxMulticastPorts {
-			copy(config.SeqCheckPorts[:], spec.Parser.Udp.SeqCheck.Ports)
+			copy(config.MulticastPorts[:], spec.Parser.Udp.SeqCheck.Ports)
 		} else {
-			copy(config.SeqCheckPorts[:], spec.Parser.Udp.SeqCheck.Ports[0:networkapi.UdpMaxMulticastPorts])
+			copy(config.MulticastPorts[:], spec.Parser.Udp.SeqCheck.Ports[0:networkapi.UdpMaxMulticastPorts])
 		}
-		config.SeqCheckAppId = spec.Parser.Udp.SeqCheck.AppId
+		config.MulticastAppId = spec.Parser.Udp.SeqCheck.AppId
+		config.EnableMulticastSeqCheck = 1
 		logger.GetLogger().Info("Enable UDP sequence checking", "Application ID", spec.Parser.Udp.SeqCheck.AppId)
 	} else {
-		config.SeqCheckAppId = 0
+		config.MulticastAppId = 0
 	}
 }
 

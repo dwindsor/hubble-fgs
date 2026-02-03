@@ -401,13 +401,14 @@ type UdpConfigValue struct {
 	DisableListenEvents           uint8                        `align:"disable_listen_events"`
 	DisableConnectEvents          uint8                        `align:"disable_connect_events"`
 	DisableCloseEvents            uint8                        `align:"disable_close_events"`
-	Pad                           [2]uint8                     `align:"pad"`
+	EnableMulticastSeqCheck       uint8                        `align:"enable_multicast_seq_check"`
+	Pad                           uint8                        `align:"pad"`
 	WatermarksAvgWindowSizeMs     uint64                       `align:"watermarks_avg_window_size_ms"`
 	WatermarksWindowSize          uint64                       `align:"watermarks_window_size"`
 	WatermarksBurstTriggerPercent uint64                       `align:"watermarks_burst_trigger_percent"`
 	WatermarksDipTriggerPercent   uint64                       `align:"watermarks_dip_trigger_percent"`
-	SeqCheckAppId                 uint64                       `align:"seq_check_app_id"`
-	SeqCheckPorts                 [UdpMaxMulticastPorts]uint16 `align:"seq_check_ports"`
+	MulticastAppId                uint64                       `align:"multicast_app_id"`
+	MulticastPorts                [UdpMaxMulticastPorts]uint16 `align:"multicast_ports"`
 	IdleTimeout                   uint64                       `align:"idle_timeout"`
 }
 
@@ -415,16 +416,23 @@ func (v *UdpConfigValue) String() string {
 	return fmt.Sprintf("dnsPorts: %d, "+
 		"dnsStatsPerSocket: %d, "+
 		"dnsReportQuestions: %d, "+
-		"watermarkEnable: %d, "+
 		"disableListenEvents: %d, "+
 		"disableConnectEvents: %d, "+
 		"disableCloseEvents: %d, "+
+		"watermarkEnable: %d, "+
 		"watermarkAvgWindowSizeMs: %d, "+
 		"watermarkWindowSize: %d, "+
 		"watermarkBurstTriggerPercent: %d, "+
-		"watermarkDipTriggerPercent: %d",
-		v.DnsPorts, v.DnsStatsPerSocket, v.DnsReportQuestions, v.WatermarksEnable, v.DisableListenEvents, v.DisableConnectEvents, v.DisableCloseEvents, v.WatermarksAvgWindowSizeMs, v.WatermarksWindowSize, v.WatermarksBurstTriggerPercent,
-		v.WatermarksDipTriggerPercent)
+		"watermarkDipTriggerPercent: %d, "+
+		"multicastAppId: %d, "+
+		"multicastPorts: %d, "+
+		"enableMulticastSeqCheck: %d, "+
+		"idleTimeout: %d",
+		v.DnsPorts, v.DnsStatsPerSocket, v.DnsReportQuestions,
+		v.DisableListenEvents, v.DisableConnectEvents, v.DisableCloseEvents,
+		v.WatermarksEnable, v.WatermarksAvgWindowSizeMs, v.WatermarksWindowSize, v.WatermarksBurstTriggerPercent, v.WatermarksDipTriggerPercent,
+		v.MulticastAppId, v.MulticastPorts, v.EnableMulticastSeqCheck,
+		v.IdleTimeout)
 }
 
 type UdpInfoKey struct {
