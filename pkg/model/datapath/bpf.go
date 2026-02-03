@@ -54,14 +54,25 @@ func (p *BpfProgrammer) initMaybe() {
 		p.initMap()
 		p.endpointAdder = endpoint.MustGet()
 		p.policyRepositoryIDReader = library.GetRepository()
+		p.records = map[record.RecordKey]record.DatapathRecord{}
 	})
 }
 
 func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool) error {
 	p.initMaybe()
 
+	p.recordsMu.Lock()
+	defer p.recordsMu.Unlock()
+
 	for _, r := range records {
+		key := r.ToKey()
+		if _, found := p.records[key]; found {
+			// This record is already programmed
+			continue
+		}
+
 		p.addRecord(r, force)
+		p.records[key] = *r
 	}
 	return nil
 }
@@ -334,8 +345,22 @@ func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 func (p *BpfProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
 	p.initMaybe()
 
+	p.recordsMu.Lock()
+	defer p.recordsMu.Unlock()
+
 	for _, r := range records {
-		p.removeRecord(r)
+		key := r.ToKey()
+		if _, found := p.records[key]; !found {
+			// This record is not programmed
+			continue
+		}
+
+		err := p.removeRecord(r)
+		if err != nil {
+			return err
+		}
+
+		delete(p.records, key)
 	}
 	return nil
 }

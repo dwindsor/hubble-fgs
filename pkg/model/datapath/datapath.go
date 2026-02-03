@@ -46,4 +46,7 @@ type BpfProgrammer struct {
 
 	endpointAdder            endpoint.EndpointAdder
 	policyRepositoryIDReader library.PolicyRepositoryIDReader
+
+	recordsMu sync.Mutex
+	records   map[record.RecordKey]record.DatapathRecord
 }
