@@ -13,6 +13,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/netip"
 	"path/filepath"
@@ -868,9 +869,11 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	return processModel, nil
 }
 
+var ErrApplicationModelNotEnabled = errors.New("application model must be enabled with the --enable-application-model flag or the tetragon.enableApplicationModel Helm value")
+
 func (s *Server) GetProcessModel(_ context.Context, ns []string, debug bool) ([]*types.ProcessModel, error) {
 	if !option.Config.EnableApplicationModel {
-		return nil, fmt.Errorf("application model must be enabled with the --enable-application-model flag or the tetragon.enableApplicationModel Helm value")
+		return nil, ErrApplicationModelNotEnabled
 	}
 	return GetProcessModel(ns, debug)
 }

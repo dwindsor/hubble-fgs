@@ -13,6 +13,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 	"time"
@@ -111,7 +112,11 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 
 	res, err := server.GetProcessModel(ctx, []string{}, false)
 	if err != nil {
-		logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
+		if errors.Is(err, ErrApplicationModelNotEnabled) {
+			logger.GetLogger().Info("Application Model not enabled", logfields.Error, err)
+		} else {
+			logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
+		}
 		return
 	}
 	emptyFilter := make(map[string]bool)
