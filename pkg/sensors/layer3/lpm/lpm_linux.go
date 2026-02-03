@@ -33,9 +33,10 @@ func NewLPM() (LPMMap, error) {
 	}
 
 	return &lpmMapImpl{
-		addr6: addr6lpm,
-		addr4: addr4lpm,
-
+		lpmBackend: &ebpfBackend{
+			addr6: addr6lpm,
+			addr4: addr4lpm,
+		},
 		refCount: map[netip.Prefix]int{},
 	}, nil
 }

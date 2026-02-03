@@ -38,48 +38,59 @@ type LPMMap interface {
 	Delete(cidr netip.Prefix) error
 }
 
+type lpmBackend interface {
+	writeIP4(cidr netip.Prefix, id uint64) error
+	writeIP6(cidr netip.Prefix, id uint64) error
+	deleteIP4(cidr netip.Prefix) error
+	deleteIP6(cidr netip.Prefix) error
+}
+
 type lpmMapImpl struct {
-	addr6 *ebpf.Map
-	addr4 *ebpf.Map
+	lpmBackend
 
 	// refCount keeps track how many records are needing a specific CIDR
 	// because the TRIE maps can't account for this.
 	refCount map[netip.Prefix]int
 }
 
-func (lpm *lpmMapImpl) writeIP4(cidr netip.Prefix, id uint64) error {
+type ebpfBackend struct {
+	addr6 *ebpf.Map
+	addr4 *ebpf.Map
+}
+
+func (b *ebpfBackend) writeIP4(cidr netip.Prefix, id uint64) error {
 	val := KernelLPMTrie4{
 		prefix: uint32(cidr.Bits()),
 		addr:   binary.LittleEndian.Uint32(cidr.Addr().AsSlice()),
 	}
-	if err := lpm.addr4.Update(val, id, ebpf.UpdateNoExist); err != nil {
+	if err := b.addr4.Update(val, id, ebpf.UpdateNoExist); err != nil {
 		return fmt.Errorf("failed to update the addr4 LPM with %s->%d: %w", cidr, id, err)
 	}
 	return nil
 }
 
-func (lpm *lpmMapImpl) writeIP6(cidr netip.Prefix, id uint64) error {
+func (b *ebpfBackend) writeIP6(cidr netip.Prefix, id uint64) error {
 	val := KernelLPMTrie6{prefix: uint32(cidr.Bits()), addr: cidr.Addr().As16()}
-	if err := lpm.addr6.Update(val, id, ebpf.UpdateNoExist); err != nil {
+	if err := b.addr6.Update(val, id, ebpf.UpdateNoExist); err != nil {
 		return fmt.Errorf("failed to update the addr6 LPM with %s->%d: %w", cidr, id, err)
 	}
 	return nil
 }
 
-func (lpm *lpmMapImpl) deleteIP4(cidr netip.Prefix) error {
+func (b *ebpfBackend) deleteIP4(cidr netip.Prefix) error {
 	val := KernelLPMTrie4{
 		prefix: uint32(cidr.Bits()),
 		addr:   binary.LittleEndian.Uint32(cidr.Addr().AsSlice()),
 	}
-	if err := lpm.addr4.Delete(val); err != nil {
+	if err := b.addr4.Delete(val); err != nil {
 		return fmt.Errorf("failed to delete entry %s in LPM4: %w", cidr, err)
 	}
 	return nil
 }
 
-func (lpm *lpmMapImpl) deleteIP6(cidr netip.Prefix) error {
+func (b *ebpfBackend) deleteIP6(cidr netip.Prefix) error {
 	val := KernelLPMTrie6{prefix: uint32(cidr.Bits()), addr: cidr.Addr().As16()}
-	if err := lpm.addr6.Delete(val); err != nil {
+	if err := b.addr6.Delete(val); err != nil {
 		return fmt.Errorf("failed to delete entry %s in LPM6: %w", cidr, err)
 	}
 	return nil
