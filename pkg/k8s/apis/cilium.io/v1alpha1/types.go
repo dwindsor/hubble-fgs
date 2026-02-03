@@ -748,9 +748,6 @@ type UdpPolicySpec struct {
 	// UDP latency observability policy specification
 	Latency LatencyPolicySpec `json:"latency"`
 	// +kubebuilder:validation:Optional
-	// UDP sequence check observability policy specification
-	SeqCheck UdpSeqCheckPolicySpec `json:"seqCheck"`
-	// +kubebuilder:validation:Optional
 	// Metrics Configuration.
 	// Labels enabled by default: namespace, workload, binary, dstnamespace, dstworkload, dstdns, srcmcast, dstmcast
 	// Configurable labels: namespace, workload, pod, binary, dstnamespace, dstworkload, dstpod, dstdns, dstip, srcmcast, dstmcast
@@ -823,19 +820,6 @@ type LatencyPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the interfaces check interval in seconds
 	InterfacesCheckInterval uint32 `json:"interfacesCheckInterval"`
-}
-
-type UdpSeqCheckPolicySpec struct {
-	// Enable UDP sequence check observability
-	// +kubebuilder:default=false
-	// +kubebuilder:validation:Optional
-	Enable bool `json:"enable"`
-	// +kubebuilder:validation:Optional
-	// Configures the UDP sequence checker application
-	AppId uint64 `json:"appId"`
-	// +kubebuilder:validation:Optional
-	// Configures the ports to enable on
-	Ports []uint16 `json:"ports,omitempty"`
 }
 
 type NetworkWatermarksExitGenPolicySpec struct {

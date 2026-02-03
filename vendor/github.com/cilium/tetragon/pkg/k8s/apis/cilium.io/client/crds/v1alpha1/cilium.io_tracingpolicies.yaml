@@ -3224,23 +3224,6 @@ spec:
                               type: string
                             type: array
                         type: object
-                      seqCheck:
-                        description: UDP sequence check observability policy specification
-                        properties:
-                          appId:
-                            description: Configures the UDP sequence checker application
-                            format: int64
-                            type: integer
-                          enable:
-                            default: false
-                            description: Enable UDP sequence check observability
-                            type: boolean
-                          ports:
-                            description: Configures the ports to enable on
-                            items:
-                              type: integer
-                            type: array
-                        type: object
                       statsInterval:
                         description: Configures the Stat collection interval in seconds
                         format: int32
