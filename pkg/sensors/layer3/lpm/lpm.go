@@ -52,7 +52,7 @@ func (lpm *lpmMapImpl) writeIP4(cidr netip.Prefix, id uint64) error {
 		prefix: uint32(cidr.Bits()),
 		addr:   binary.LittleEndian.Uint32(cidr.Addr().AsSlice()),
 	}
-	if err := lpm.addr4.Update(val, id, 0); err != nil {
+	if err := lpm.addr4.Update(val, id, ebpf.UpdateNoExist); err != nil {
 		return fmt.Errorf("failed to update the addr4 LPM with %s->%d: %w", cidr, id, err)
 	}
 	return nil
@@ -60,7 +60,7 @@ func (lpm *lpmMapImpl) writeIP4(cidr netip.Prefix, id uint64) error {
 
 func (lpm *lpmMapImpl) writeIP6(cidr netip.Prefix, id uint64) error {
 	val := KernelLPMTrie6{prefix: uint32(cidr.Bits()), addr: cidr.Addr().As16()}
-	if err := lpm.addr6.Update(val, id, 0); err != nil {
+	if err := lpm.addr6.Update(val, id, ebpf.UpdateNoExist); err != nil {
 		return fmt.Errorf("failed to update the addr6 LPM with %s->%d: %w", cidr, id, err)
 	}
 	return nil
@@ -90,6 +90,13 @@ func (lpm *lpmMapImpl) Write(cidr netip.Prefix, id uint64) error {
 	if found {
 		lpm.refCount[cidr]++
 		return nil
+	}
+
+	// This might be slow when having a lot of CIDR ranges
+	for writtenCIDR := range lpm.refCount {
+		if writtenCIDR.Overlaps(cidr) {
+			return fmt.Errorf("failed to write entry with key %s, it would overlap existing key %s", cidr, writtenCIDR)
+		}
 	}
 
 	var err error
