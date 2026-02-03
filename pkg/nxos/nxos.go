@@ -691,11 +691,8 @@ func (n *Nxos) SetToken(ctx context.Context, k8sToken string) (bool, error) {
 	n.Ctrlr.Token = k8sToken
 
 	// Update the controller endpoint/port from the new token.
-	controllerEndpoint, controllerPort, errToken := agentToken.K8sControllerEndpoint()
-	if errToken == nil {
-		if err := n.setControllerEndpoint(ctx, controllerEndpoint, controllerPort, false); err != nil {
-			return restartNeeded, err
-		}
+	if err := n.UpdateControllerEndpointFromToken(ctx); err != nil {
+		return restartNeeded, err
 	}
 	logger.GetLogger().Debug("K8s auth token is set")
 
@@ -709,6 +706,28 @@ func (n *Nxos) SetToken(ctx context.Context, k8sToken string) (bool, error) {
 		restartNeeded = true
 	}
 	return restartNeeded, nil
+}
+
+// updateControllerEndpointFromToken updates the controller endpoint and port from the current token
+func (n *Nxos) UpdateControllerEndpointFromToken(ctx context.Context) error {
+	logger.GetLogger().Debug("updating controller endpoint from token")
+	agentToken := token.GetAgentToken()
+	if agentToken == nil {
+		return fmt.Errorf("AgentToken instance is nil")
+	}
+
+	controllerEndpoint, controllerPort, err := agentToken.K8sControllerEndpoint()
+	if err != nil {
+		logger.GetLogger().Error("Failed to get controller endpoint from token", "error", err)
+		return err
+	}
+
+	if err := n.setControllerEndpoint(ctx, controllerEndpoint, controllerPort, false); err != nil {
+		logger.GetLogger().Error("Failed to set controller endpoint", "endpoint", controllerEndpoint, "port", controllerPort, "error", err)
+		return err
+	}
+
+	return nil
 }
 
 // GracefulRestartAgent performs a graceful restart of the AGW (Application Gateway) agent.

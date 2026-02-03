@@ -361,6 +361,11 @@ func (agw *AgentGateway) LoadK8sAuth(ctx context.Context) (string, error) {
 		if token == "" {
 			return "", fmt.Errorf("token is still empty after waiting")
 		}
+
+		// Update controller endpoint in NXOS Managed Object
+		if err := nxos.Nexus.UpdateControllerEndpointFromToken(ctx); err != nil {
+			logger.GetLogger().Warn("Failed to update controller endpoint at startup", "error", err)
+		}
 		return token, nil
 	}
 
