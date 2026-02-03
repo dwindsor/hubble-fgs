@@ -14,6 +14,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net/netip"
+	"sync"
 
 	"github.com/cilium/ebpf"
 )
@@ -47,6 +48,10 @@ type lpmBackend interface {
 
 type lpmMapImpl struct {
 	lpmBackend
+
+	// mu is a mutex to protect concurrent access to the refCount and refIDs
+	// maps, both Write and Delete are read-write paths.
+	mu sync.Mutex
 
 	// refCount keeps track how many records are needing a specific CIDR
 	// because the TRIE maps can't account for this.
@@ -101,6 +106,9 @@ func (b *ebpfBackend) deleteIP6(cidr netip.Prefix) error {
 }
 
 func (lpm *lpmMapImpl) Write(cidr netip.Prefix, id uint64) error {
+	lpm.mu.Lock()
+	defer lpm.mu.Unlock()
+
 	if count, found := lpm.refCount[cidr]; found {
 		if lpm.refIDs[cidr] != id {
 			return fmt.Errorf("failed to write same CIDR %s with another ID %d, already existing with ID %d", cidr, id, lpm.refIDs[cidr])
@@ -131,6 +139,9 @@ func (lpm *lpmMapImpl) Write(cidr netip.Prefix, id uint64) error {
 }
 
 func (lpm *lpmMapImpl) Delete(cidr netip.Prefix) error {
+	lpm.mu.Lock()
+	defer lpm.mu.Unlock()
+
 	count, found := lpm.refCount[cidr]
 	if !found {
 		return nil
