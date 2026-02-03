@@ -115,6 +115,12 @@ type config struct {
 	UDPIdleSocketTimeout time.Duration
 	UDPInKernelManaged   bool
 
+	// MulticastAppID is derived from the MulticastApp string.
+	MulticastApp      string
+	MulticastAppID    MulticastAppID
+	MulticastPorts    []int // see comment above for DNSPorts
+	MulticastSeqCheck bool
+
 	EnableNetworkEvents bool
 
 	EnableAlertProfiling bool

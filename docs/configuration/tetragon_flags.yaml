@@ -155,6 +155,10 @@ options:
     - name: enable-msg-handling-latency
       default_value: "false"
       usage: Enable metrics for message handling latency
+    - name: enable-multicast-seq-check
+      default_value: "false"
+      usage: |
+        Enable sequence checking for the multicast app specified with --multicast-app and --multicast-ports.
     - name: enable-network-events
       default_value: "true"
       usage: Enable Network Events from BPF to userspace
@@ -369,6 +373,13 @@ options:
         Comma-separated list of enabled metrics labels. Unknown labels will be ignored.
     - name: metrics-server
       usage: Metrics server address (e.g. ':2112'). Disabled by default
+    - name: multicast-app
+      usage: |
+        Specify the multicast app to observe on the ports specified with --multicast-ports.
+    - name: multicast-ports
+      default_value: '[]'
+      usage: |
+        UDP ports on which to observe the multicast app specified with --multicast-app.
     - name: net-ns-cache-size
       default_value: "256"
       usage: |

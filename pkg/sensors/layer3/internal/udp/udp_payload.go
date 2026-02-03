@@ -282,10 +282,10 @@ func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tr
 func ParseSeqCheckSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.Udp != nil && spec.Parser.Udp.SeqCheck.Enable && spec.Parser.Udp.SeqCheck.AppId > 0 && len(spec.Parser.Udp.SeqCheck.Ports) > 0 {
 		// Only consider the first maxSeqCheckPorts ports that are specified
-		if len(spec.Parser.Udp.SeqCheck.Ports) <= networkapi.UdpMaxSeqCheckPorts {
+		if len(spec.Parser.Udp.SeqCheck.Ports) <= networkapi.UdpMaxMulticastPorts {
 			copy(config.SeqCheckPorts[:], spec.Parser.Udp.SeqCheck.Ports)
 		} else {
-			copy(config.SeqCheckPorts[:], spec.Parser.Udp.SeqCheck.Ports[0:networkapi.UdpMaxSeqCheckPorts])
+			copy(config.SeqCheckPorts[:], spec.Parser.Udp.SeqCheck.Ports[0:networkapi.UdpMaxMulticastPorts])
 		}
 		config.SeqCheckAppId = spec.Parser.Udp.SeqCheck.AppId
 		logger.GetLogger().Info("Enable UDP sequence checking", "Application ID", spec.Parser.Udp.SeqCheck.AppId)

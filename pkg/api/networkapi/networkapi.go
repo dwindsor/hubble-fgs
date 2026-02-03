@@ -389,26 +389,26 @@ type Layer3ConfigValue struct {
 }
 
 const (
-	UdpMaxDnsPorts      = 4
-	UdpMaxSeqCheckPorts = 8
+	UdpMaxDnsPorts       = 4
+	UdpMaxMulticastPorts = 8
 )
 
 type UdpConfigValue struct {
-	DnsPorts                      [UdpMaxDnsPorts]uint16      `align:"dns_ports"`
-	DnsStatsPerSocket             uint8                       `align:"dns_stats_per_socket"`
-	DnsReportQuestions            uint8                       `align:"dns_report_questions"`
-	WatermarksEnable              uint8                       `align:"watermarks_enable"`
-	DisableListenEvents           uint8                       `align:"disable_listen_events"`
-	DisableConnectEvents          uint8                       `align:"disable_connect_events"`
-	DisableCloseEvents            uint8                       `align:"disable_close_events"`
-	Pad                           [2]uint8                    `align:"pad"`
-	WatermarksAvgWindowSizeMs     uint64                      `align:"watermarks_avg_window_size_ms"`
-	WatermarksWindowSize          uint64                      `align:"watermarks_window_size"`
-	WatermarksBurstTriggerPercent uint64                      `align:"watermarks_burst_trigger_percent"`
-	WatermarksDipTriggerPercent   uint64                      `align:"watermarks_dip_trigger_percent"`
-	SeqCheckAppId                 uint64                      `align:"seq_check_app_id"`
-	SeqCheckPorts                 [UdpMaxSeqCheckPorts]uint16 `align:"seq_check_ports"`
-	IdleTimeout                   uint64                      `align:"idle_timeout"`
+	DnsPorts                      [UdpMaxDnsPorts]uint16       `align:"dns_ports"`
+	DnsStatsPerSocket             uint8                        `align:"dns_stats_per_socket"`
+	DnsReportQuestions            uint8                        `align:"dns_report_questions"`
+	WatermarksEnable              uint8                        `align:"watermarks_enable"`
+	DisableListenEvents           uint8                        `align:"disable_listen_events"`
+	DisableConnectEvents          uint8                        `align:"disable_connect_events"`
+	DisableCloseEvents            uint8                        `align:"disable_close_events"`
+	Pad                           [2]uint8                     `align:"pad"`
+	WatermarksAvgWindowSizeMs     uint64                       `align:"watermarks_avg_window_size_ms"`
+	WatermarksWindowSize          uint64                       `align:"watermarks_window_size"`
+	WatermarksBurstTriggerPercent uint64                       `align:"watermarks_burst_trigger_percent"`
+	WatermarksDipTriggerPercent   uint64                       `align:"watermarks_dip_trigger_percent"`
+	SeqCheckAppId                 uint64                       `align:"seq_check_app_id"`
+	SeqCheckPorts                 [UdpMaxMulticastPorts]uint16 `align:"seq_check_ports"`
+	IdleTimeout                   uint64                       `align:"idle_timeout"`
 }
 
 func (v *UdpConfigValue) String() string {

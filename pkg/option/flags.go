@@ -92,6 +92,9 @@ const (
 	keyEnableDNS                         = "enable-dns"
 	keyUDPIdleSocketTimeout              = "udp-idle-socket-timeout"
 	keyUDPInKernelManaged                = "udp-in-kernel-managed"
+	keyMulticastApp                      = "multicast-app"
+	keyMulticastPorts                    = "multicast-ports"
+	keyEnableMulticastSeqCheck           = "enable-multicast-seq-check"
 	keyEnableNetworkEvents               = "enable-network-events"
 	keyEnableAlertsProfiling             = "enable-alerts-profiling"
 	keyK8sServiceAccountAuth             = "k8s-service-account-auth"
@@ -111,6 +114,19 @@ var (
 
 	redactedKeys = []string{
 		keyK8sServiceAccountAuth,
+	}
+)
+
+type MulticastAppID int
+
+// Explicitly state the app IDs. These must match the same in the BPF code.
+const (
+	MulticastNoApp MulticastAppID = 0
+)
+
+var (
+	multicastAppID = map[string]MulticastAppID{
+		"": MulticastNoApp,
 	}
 )
 
@@ -209,6 +225,9 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.Bool(keyEnableDNS, false, "Enable DNS observability")
 	flags.Duration(keyUDPIdleSocketTimeout, 2*time.Minute, "How long a UDP socket should be idle to be considered closed")
 	flags.Bool(keyUDPInKernelManaged, false, "Enable in-kernel management for UDP maps. A 5.8.0+ kernel is required.")
+	flags.String(keyMulticastApp, "", fmt.Sprintf("Specify the multicast app to observe on the ports specified with --%s.", keyMulticastPorts))
+	flags.IntSlice(keyMulticastPorts, []int{}, fmt.Sprintf("UDP ports on which to observe the multicast app specified with --%s.", keyMulticastApp))
+	flags.Bool(keyEnableMulticastSeqCheck, false, fmt.Sprintf("Enable sequence checking for the multicast app specified with --%s and --%s.", keyMulticastApp, keyMulticastPorts))
 	flags.Bool(keyEnableNetworkEvents, true, "Enable Network Events from BPF to userspace")
 	flags.Bool(keyEnableAlertsProfiling, false, "Enable profiling for alerts")
 	flags.String(keyK8sServiceAccountAuth, "", "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
@@ -296,6 +315,11 @@ func readAndSetEnterpriseFlags() {
 	Config.EnableDNS = viper.GetBool(keyEnableDNS)
 	Config.UDPIdleSocketTimeout = viper.GetDuration(keyUDPIdleSocketTimeout)
 	Config.UDPInKernelManaged = viper.GetBool(keyUDPInKernelManaged)
+	Config.MulticastApp = viper.GetString(keyMulticastApp)
+	// Set the AppID from the app string. If not found, this will default to 0 (MulticastNoApp)
+	Config.MulticastAppID = multicastAppID[Config.MulticastApp]
+	Config.MulticastPorts = viper.GetIntSlice(keyMulticastPorts)
+	Config.MulticastSeqCheck = viper.GetBool(keyEnableMulticastSeqCheck)
 	Config.EnableNetworkEvents = viper.GetBool(keyEnableNetworkEvents)
 	Config.EnableAlertProfiling = viper.GetBool(keyEnableAlertsProfiling)
 	// Layer 3 protocols can be enabled on the CLI or in policies. If any were enabled on the CLI
@@ -347,6 +371,28 @@ func validateConfig(config config) error {
 		if port < 0 || port > math.MaxUint16 {
 			return fmt.Errorf("invalid DNS port %d, must be included between 0 and 65535", port)
 		}
+	}
+
+	if len(config.MulticastPorts) > networkapi.UdpMaxMulticastPorts {
+		return fmt.Errorf("invalid number of multicast ports len(%v)=%d, the maximum number of port is %d", config.MulticastPorts, len(config.MulticastPorts), networkapi.UdpMaxMulticastPorts)
+	}
+	for _, port := range config.MulticastPorts {
+		if port < 0 || port > math.MaxUint16 {
+			return fmt.Errorf("invalid multicast port %d, must be included between 0 and 65535", port)
+		}
+	}
+	if config.MulticastApp != "" && config.MulticastAppID == MulticastNoApp {
+		return fmt.Errorf("invalid multicast app: %s", config.MulticastApp)
+	}
+	// if an app was specified, but no ports, OR
+	// if an app wasn't specified, but ports were
+	// (using != as XOR)
+	if (config.MulticastAppID != MulticastNoApp) != (len(config.MulticastPorts) > 0) {
+		return fmt.Errorf("multicast observability requires the app to be specified with --%s and the ports to be specified with --%s", keyMulticastApp, keyMulticastPorts)
+	}
+	// if multicast sequence checking is enabled, but the app or ports weren't specified
+	if config.MulticastSeqCheck && (config.MulticastAppID == MulticastNoApp || len(config.MulticastPorts) == 0) {
+		return fmt.Errorf("multicast observability requires the app to be specified with --%s and the ports to be specified with --%s", keyMulticastApp, keyMulticastPorts)
 	}
 
 	// Network policies can be loaded via the k8s resource watcher as well
