@@ -35,11 +35,24 @@ const (
 // For initial landing lets ignore process hierarchy in this unrolled
 // key. In general its possible that you could build policy by Path and
 // args, but mark that TBD.
-type recordKey struct {
+type RecordKey struct {
 	CgroupId uint64
 	Self     uint64
 	Port     uint32
 	EP       endpoint.Endpoint
+}
+
+func (r DatapathRecord) ToKey() RecordKey {
+	key := RecordKey{}
+	if r.Src != nil {
+		key.CgroupId = r.Src.NSID
+		key.Self = r.Src.Self
+	}
+	if r.Endpoint.EP != nil {
+		key.EP = *r.Endpoint.EP
+		key.Port = r.Endpoint.Port
+	}
+	return key
 }
 
 type DatapathAction struct {
@@ -118,38 +131,14 @@ func (r *DatapathRecord) String() string {
 // such rule.
 func Diff(A, B []*DatapathRecord) []*DatapathRecord {
 	var C []*DatapathRecord
-	bMap := make(map[recordKey]*DatapathRecord)
+	bMap := make(map[RecordKey]*DatapathRecord)
 
 	for _, r := range B {
-		key := recordKey{}
-
-		if r.Src != nil {
-			key.CgroupId = r.Src.NSID
-			key.Self = r.Src.Self
-		}
-
-		if r.Endpoint.EP != nil {
-			key.EP = *r.Endpoint.EP
-			key.Port = r.Endpoint.Port
-		}
-
-		bMap[key] = r
+		bMap[r.ToKey()] = r
 	}
 
 	for _, r := range A {
-		key := recordKey{}
-
-		if r.Src != nil {
-			key.CgroupId = r.Src.NSID
-			key.Self = r.Src.Self
-		}
-		if r.Endpoint.EP != nil {
-			key.EP = *r.Endpoint.EP
-			key.Port = r.Endpoint.Port
-		}
-
-		_, ok := bMap[key]
-		if !ok {
+		if _, ok := bMap[r.ToKey()]; !ok {
 			C = append(C, r)
 		}
 	}
