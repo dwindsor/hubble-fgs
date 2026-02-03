@@ -140,7 +140,7 @@ func (h *inventoryHandler) updateInventory(ctx context.Context, kubernetesManage
 	// Create SmartSwitchInventory fields
 	newInventory := &SmartSwitchInventoryFields{
 		BiosVersion:     "",
-		ServiceIP:       "", // Service IP is not currently implemented
+		ServiceIP:       nxos.Nexus.GetServiceIp(),
 		ServiceMAC:      h.dataProvider.GetServiceMAC(),
 		SerialNumber:    serial,
 		SoftwareVersion: h.getSoftwareVersion(),
@@ -163,6 +163,7 @@ func (h *inventoryHandler) updateInventory(ctx context.Context, kubernetesManage
 	logger.GetLogger().Debug("inventory changes detected, proceeding with update",
 		"serialNumber", serial,
 		"dpuCount", len(dpuInventories),
+		"serviceIP", newInventory.ServiceIP,
 		"serviceMAC", newInventory.ServiceMAC,
 		"softwareVersion", newInventory.SoftwareVersion)
 

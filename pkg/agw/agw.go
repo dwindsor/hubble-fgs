@@ -162,7 +162,6 @@ type AgentGateway struct {
 	Cfg   *config.Config
 	Token *token.AgentToken
 
-	//serviceIp   string // looks necessary but not used yet
 	serviceMac  string
 	dpuPortLow  uint16
 	dpuPortHigh uint16
