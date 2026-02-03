@@ -51,6 +51,10 @@ type lpmMapImpl struct {
 	// refCount keeps track how many records are needing a specific CIDR
 	// because the TRIE maps can't account for this.
 	refCount map[netip.Prefix]int
+
+	// refIDs keeps track of the mapping between the CIDRs and the ID to
+	// avoid cases where you add two times the same CIDR with different IDs
+	refIDs map[netip.Prefix]uint64
 }
 
 type ebpfBackend struct {
@@ -97,9 +101,11 @@ func (b *ebpfBackend) deleteIP6(cidr netip.Prefix) error {
 }
 
 func (lpm *lpmMapImpl) Write(cidr netip.Prefix, id uint64) error {
-	_, found := lpm.refCount[cidr]
-	if found {
-		lpm.refCount[cidr]++
+	if count, found := lpm.refCount[cidr]; found {
+		if lpm.refIDs[cidr] != id {
+			return fmt.Errorf("failed to write same CIDR %s with another ID %d, already existing with ID %d", cidr, id, lpm.refIDs[cidr])
+		}
+		lpm.refCount[cidr] = count + 1
 		return nil
 	}
 
@@ -120,6 +126,7 @@ func (lpm *lpmMapImpl) Write(cidr netip.Prefix, id uint64) error {
 		return err
 	}
 	lpm.refCount[cidr]++
+	lpm.refIDs[cidr] = id
 	return nil
 }
 
@@ -151,5 +158,6 @@ func (lpm *lpmMapImpl) Delete(cidr netip.Prefix) error {
 		return err
 	}
 	delete(lpm.refCount, cidr)
+	delete(lpm.refIDs, cidr)
 	return nil
 }

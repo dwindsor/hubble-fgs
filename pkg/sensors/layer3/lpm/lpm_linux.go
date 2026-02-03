@@ -38,5 +38,6 @@ func NewLPM() (LPMMap, error) {
 			addr4: addr4lpm,
 		},
 		refCount: map[netip.Prefix]int{},
+		refIDs:   map[netip.Prefix]uint64{},
 	}, nil
 }

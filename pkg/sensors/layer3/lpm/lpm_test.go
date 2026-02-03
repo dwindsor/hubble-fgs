@@ -91,6 +91,7 @@ func newTestLPMMap() *testLPMMap {
 		lpmMapImpl: &lpmMapImpl{
 			lpmBackend: mock,
 			refCount:   make(map[netip.Prefix]int),
+			refIDs:     make(map[netip.Prefix]uint64),
 		},
 		mock: mock,
 	}
@@ -516,10 +517,35 @@ func TestWrite_SameCIDR_DifferentID(t *testing.T) {
 		t.Fatalf("first write failed: %v", err)
 	}
 
-	// Second write with id=2 (same CIDR, different ID)
-	// Should just increment refcount, not update the BPF entry
-	if err := m.Write(cidr, 2); err != nil {
-		t.Fatalf("second write failed: %v", err)
+	// Second write with id=2 (same CIDR, different ID) should fail
+	err := m.Write(cidr, 2)
+	if err == nil {
+		t.Error("expected error when writing same CIDR with different ID, got nil")
+	}
+
+	// Verify refcount remains 1 (second write was rejected)
+	if m.getRefCount(cidr) != 1 {
+		t.Errorf("expected refcount=1, got %d", m.getRefCount(cidr))
+	}
+
+	// Verify BPF entry still has original ID
+	if m.mock.ip4Entries[cidr] != 1 {
+		t.Errorf("expected BPF entry id=1, got %d", m.mock.ip4Entries[cidr])
+	}
+}
+
+func TestWrite_SameCIDR_SameID(t *testing.T) {
+	m := newTestLPMMap()
+	cidr := netip.MustParsePrefix("10.0.0.0/24")
+
+	// First write with id=1
+	if err := m.Write(cidr, 1); err != nil {
+		t.Fatalf("first write failed: %v", err)
+	}
+
+	// Second write with same id=1 should succeed and increment refcount
+	if err := m.Write(cidr, 1); err != nil {
+		t.Fatalf("second write with same ID failed: %v", err)
 	}
 
 	// Verify refcount is 2
