@@ -41,6 +41,10 @@ type LPMMap interface {
 type lpmMapImpl struct {
 	addr6 *ebpf.Map
 	addr4 *ebpf.Map
+
+	// refCount keeps track how many records are needing a specific CIDR
+	// because the TRIE maps can't account for this.
+	refCount map[netip.Prefix]int
 }
 
 func (lpm *lpmMapImpl) writeIP4(cidr netip.Prefix, id uint64) error {
@@ -82,23 +86,52 @@ func (lpm *lpmMapImpl) deleteIP6(cidr netip.Prefix) error {
 }
 
 func (lpm *lpmMapImpl) Write(cidr netip.Prefix, id uint64) error {
-	var err error
+	_, found := lpm.refCount[cidr]
+	if found {
+		lpm.refCount[cidr]++
+		return nil
+	}
 
+	var err error
 	if cidr.Addr().Is6() {
 		err = lpm.writeIP6(cidr, id)
 	} else {
 		err = lpm.writeIP4(cidr, id)
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	lpm.refCount[cidr]++
+	return nil
 }
 
 func (lpm *lpmMapImpl) Delete(cidr netip.Prefix) error {
-	var err error
+	count, found := lpm.refCount[cidr]
+	if !found {
+		return nil
+	}
 
+	// Sanity check: this should never happen since we only increment from 1
+	// and decrement down to 1 before deletion. If triggered, it indicates a bug.
+	if count < 1 {
+		return fmt.Errorf("ref count for %s %d is too low, this is a bug, please report", cidr, count)
+	}
+
+	// There are still records referencing this, do not remove yet
+	if count > 1 {
+		lpm.refCount[cidr]--
+		return nil
+	}
+
+	var err error
 	if cidr.Addr().Is6() {
 		err = lpm.deleteIP6(cidr)
 	} else {
 		err = lpm.deleteIP4(cidr)
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	delete(lpm.refCount, cidr)
+	return nil
 }

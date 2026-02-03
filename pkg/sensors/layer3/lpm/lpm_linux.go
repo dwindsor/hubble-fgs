@@ -12,6 +12,7 @@ package lpm
 
 import (
 	"fmt"
+	"net/netip"
 	"path/filepath"
 
 	"github.com/cilium/ebpf"
@@ -34,5 +35,7 @@ func NewLPM() (LPMMap, error) {
 	return &lpmMapImpl{
 		addr6: addr6lpm,
 		addr4: addr4lpm,
+
+		refCount: map[netip.Prefix]int{},
 	}, nil
 }
