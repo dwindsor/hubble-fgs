@@ -11,6 +11,7 @@
 package dns
 
 import (
+	"fmt"
 	"maps"
 	"net/netip"
 
@@ -101,8 +102,14 @@ func (state *PolicyState) RemoveMatchLabelNetworkPolicy(policy *types.TetragonNe
 	}
 	// Necessary order to ensure any updates to records are in place before we
 	// remove stale records.
-	prog.AddRecords(updateSet, true)
-	prog.RemoveRecords(zombieSet)
+	err = prog.AddRecords(updateSet, true)
+	if err != nil {
+		return fmt.Errorf("failed to add records: %w", err)
+	}
+	err = prog.RemoveRecords(zombieSet)
+	if err != nil {
+		return fmt.Errorf("failed to remove records: %w", err)
+	}
 	return nil
 }
 
@@ -529,8 +536,14 @@ func CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) error {
 	// might duplicate existing records its fine we just update
 	// them regardless. Then second remove any old records that
 	// are no longer valid.
-	prog.AddRecords(addSet, false)
-	prog.RemoveRecords(removeSet)
+	err = prog.AddRecords(addSet, false)
+	if err != nil {
+		return fmt.Errorf("failed to add records: %w", err)
+	}
+	err = prog.RemoveRecords(removeSet)
+	if err != nil {
+		return fmt.Errorf("failed to remove records: %w", err)
+	}
 
 	// Setnew state
 	SetRealizedState(newState)

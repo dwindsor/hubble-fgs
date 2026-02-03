@@ -17,7 +17,6 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/logger/logfields"
 
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
@@ -71,7 +70,11 @@ func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool)
 			continue
 		}
 
-		p.addRecord(r, force)
+		err := p.addRecord(r, force)
+		if err != nil {
+			return err
+		}
+
 		p.records[key] = *r
 	}
 	return nil
@@ -136,8 +139,7 @@ func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
 		dst, err = p.endpointAdder.AddEndpoint(*r.Endpoint.EP)
 		if err != nil {
 			p.AddError++
-			logger.GetLogger().Warn("Failed to add endpoint for quota", logfields.Error, err)
-			return err
+			return fmt.Errorf("failed to add endpoint for record %s: %w", r, err)
 		}
 	} else {
 		dst = 0
@@ -166,8 +168,7 @@ func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
 
 	if r.Endpoint.EP != nil && r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
 		if err := p.lpmMap.Write(r.Endpoint.EP.CIDR, dst); err != nil {
-			logger.GetLogger().Warn("Failed to create LPM id", logfields.Error, err)
-			return err
+			return fmt.Errorf("failed to write LPM for record %s: %w", r, err)
 		}
 	}
 
@@ -230,7 +231,7 @@ func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
 
 	if err := p.dstMap.Update(key, value, 0); err != nil {
 		p.AddError++
-		return err
+		return fmt.Errorf("failed to update the destination map for record %s: %w", r, err)
 	}
 
 	// This is the default rules ID.
@@ -243,18 +244,18 @@ func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
 		key.DestinationSource = types.DestinationSourceBPF
 		if err := p.conflictUpdateMap(key, value); err != nil {
 			p.AddError++
-			return err
+			return fmt.Errorf("failed to update destination map for source BPF for record %s: %w", r, err)
 		}
 
 		key.DestinationSource = types.DestinationSourceDNS
 		if err := p.conflictUpdateMap(key, value); err != nil {
 			p.AddError++
-			return err
+			return fmt.Errorf("failed to update destination map for source DNS for record %s: %w", r, err)
 		}
 	} else if !force {
 		if err := p.populateStatEntry(key, value); err != nil {
 			p.AddError++
-			return err
+			return fmt.Errorf("failed to populate stat entry for record %s: %w", r, err)
 		}
 	}
 
@@ -274,15 +275,13 @@ func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 		dst, err = p.endpointAdder.AddEndpoint(*ep)
 		if err != nil {
 			p.DelError++
-			logger.GetLogger().Warn("Failed to add endpoint for quota", logfields.Error, err)
-			return err
+			return fmt.Errorf("failed to add endpoint for record %s: %w", r, err)
 		}
 	}
 
 	if r.Endpoint.EP != nil && r.Endpoint.EP.Type == tetragon.EndpointType_ENDPOINT_TYPE_CIDR {
 		if err := p.lpmMap.Delete(r.Endpoint.EP.CIDR); err != nil {
-			logger.GetLogger().Warn("Failed to delete LPM entry", logfields.Error, err)
-			return err
+			return fmt.Errorf("failed to delete entry LPM for record %s: %w", r, err)
 		}
 	}
 
@@ -320,7 +319,7 @@ func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 	// We can't delete this just because the policy is lost we still want to kep stats.
 	if err := p.dstMap.Update(key, value, 0); err != nil {
 		p.DelError++
-		return err
+		return fmt.Errorf("failed to update the destination map for record %s: %w", r, err)
 	}
 
 	// If the EP is wildcarded we need to remove all destinations from
@@ -329,13 +328,13 @@ func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 		key.DestinationSource = types.DestinationSourceBPF
 		if err := p.dstMap.Update(key, value, 0); err != nil {
 			p.DelError++
-			return err
+			return fmt.Errorf("failed to update destination map for source BPF for record %s: %w", r, err)
 		}
 
 		key.DestinationSource = types.DestinationSourceDNS
 		if err := p.dstMap.Update(key, value, 0); err != nil {
 			p.DelError++
-			return err
+			return fmt.Errorf("failed to update destination map for source DNS for record %s: %w", r, err)
 		}
 	}
 	p.Del++
