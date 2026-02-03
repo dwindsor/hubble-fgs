@@ -50,6 +50,7 @@ func StartMinimalTetragonModel(ctx context.Context, t *testing.T) *model.Server 
 	enterpriseOption.Config.EnableUDP = true
 	enterpriseOption.Config.EnableBPFDNSParser = true
 	enterpriseOption.Config.EnableApplicationModel = true
+	option.Config.EnableCgIDmap = true
 	option.Config.EnablePolicyFilter = true
 
 	obs := observer.NewObserver()

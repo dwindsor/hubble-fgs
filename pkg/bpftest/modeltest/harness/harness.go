@@ -14,19 +14,28 @@ package harness
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 	"unicode"
 
+	"github.com/cilium/tetragon/pkg/cgidmap"
+	"github.com/cilium/tetragon/pkg/cgroups"
+	"github.com/cilium/tetragon/pkg/cgroups/fsscan"
+	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/podhelpers"
 	"github.com/cilium/tetragon/pkg/policyfilter"
+	"github.com/cilium/tetragon/pkg/process"
+	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/e2e-framework/klient"
 	"sigs.k8s.io/e2e-framework/klient/wait"
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
@@ -43,10 +52,13 @@ const clientCreateTimeout = 1 * time.Minute
 const cleanupTimeout = 30 * time.Second
 
 type Harness struct {
-	cluster     *kind.Cluster
-	client      klient.Client
-	clusterName string
-	kubeconfig  string
+	cluster        *kind.Cluster
+	client         klient.Client
+	clusterName    string
+	kubeconfig     string
+	fsscanner      fsscan.FsScanner
+	cgmap          cgidmap.Map
+	fakeK8sWatcher *watcher.FakeK8sWatcher
 }
 
 func New(tb testing.TB) Harness {
@@ -84,11 +96,27 @@ func New(tb testing.TB) Harness {
 		tb.Fatalf("failed to wait for control plane")
 	}
 
+	option.Config.EnableCgIDmap = true
+
+	cgmap, err := cgidmap.GlobalMap()
+	if err != nil {
+		tb.Fatalf("failed to get global cgroup id map: %v", err)
+	}
+
+	watcher := watcher.NewFakeK8sWatcher(nil)
+
+	if err := process.InitCache(watcher, 65536, defaults.DefaultProcessCacheGCInterval); err != nil {
+		tb.Fatalf("failed to call process.InitCache %s", err)
+	}
+
 	return Harness{
-		cluster:     cluster,
-		kubeconfig:  kubeconfig,
-		client:      client,
-		clusterName: clusterName,
+		cluster:        cluster,
+		kubeconfig:     kubeconfig,
+		client:         client,
+		clusterName:    clusterName,
+		fsscanner:      fsscan.New(),
+		cgmap:          cgmap,
+		fakeK8sWatcher: watcher,
 	}
 }
 
@@ -104,7 +132,7 @@ func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string, 
 	err := harness.client.Resources().Get(ctx, namespace, "", ns)
 	if err != nil {
 		// If namespace doesn't exist, create it
-		if errors.IsNotFound(err) {
+		if k8sErrors.IsNotFound(err) {
 			err = harness.client.Resources().Create(ctx, ns)
 			if err != nil {
 				tb.Fatalf("failed to create namespace %q", namespace)
@@ -191,9 +219,9 @@ func (harness *Harness) AddPod(tb testing.TB, podName string, namespace string, 
 	if err != nil {
 		tb.Fatalf("failed to get pod info: %v", err)
 	}
-	addPodState(tb, podInfo)
+	harness.addPodState(tb, podInfo)
 	tb.Cleanup(func() {
-		clearPodState(tb, podInfo)
+		harness.clearPodState(tb, podInfo)
 	})
 }
 
@@ -219,7 +247,7 @@ func fixupClusterName(name string) string {
 	return "tetragon-" + res.String()
 }
 
-func addPodState(tb testing.TB, podInfo *corev1.Pod) {
+func (harness *Harness) addPodState(tb testing.TB, podInfo *corev1.Pod) {
 	var podIPs []v1alpha1.PodIP
 	for _, ip := range podInfo.Status.PodIPs {
 		podIPs = append(podIPs, v1alpha1.PodIP(ip))
@@ -254,9 +282,33 @@ func addPodState(tb testing.TB, podInfo *corev1.Pod) {
 
 	err = state.UpdatePod(policyfilter.PodID(podID), podInfo.Namespace, workload, kind, podInfo.Labels, containerIDs, containerInfo)
 	require.NoError(tb, err)
+
+	for _, containerID := range containerIDs {
+		harness.addCgroupIDForPodAndContainer(tb, podID, containerID)
+	}
+
+	harness.fakeK8sWatcher.AddPod(podInfo)
 }
 
-func clearPodState(tb testing.TB, podInfo *corev1.Pod) {
+// Unfortunately, this duplicates a lot of code in policyfilter/state.go, but
+// none of the methods used in policyfilter expose a way to look up a cgroup id
+// from a container id (and other than this test, they probably shouldn't).
+func (harness *Harness) addCgroupIDForPodAndContainer(tb testing.TB, podID uuid.UUID, containerID string) {
+
+	path, err := harness.fsscanner.FindContainerPath(types.UID(podID.String()), containerID)
+	if errors.Is(err, fsscan.ErrContainerPathWithoutMatchingPodID) {
+		tb.Logf("warning: FindCgroupID: found path without matching pod id, continuing. pod-id=%s container-id=%s", podID, containerID)
+	} else if err != nil {
+		tb.Fatalf("FindContainerPath failed: pod-id=%s container-id=%s: %v", podID, containerID, err)
+	}
+
+	cgid, err := cgroups.GetCgroupIDFromSubCgroup(path)
+	require.NoError(tb, err)
+
+	harness.cgmap.Add(podID, containerID, cgid)
+}
+
+func (harness *Harness) clearPodState(tb testing.TB, podInfo *corev1.Pod) {
 	state, err := policyfilter.GetState()
 	require.NoError(tb, err)
 
@@ -265,4 +317,8 @@ func clearPodState(tb testing.TB, podInfo *corev1.Pod) {
 
 	err = state.DelPod(policyfilter.PodID(podID))
 	require.NoError(tb, err)
+
+	harness.cgmap.Update(podID, []string{})
+
+	harness.fakeK8sWatcher.ClearAllPods()
 }
