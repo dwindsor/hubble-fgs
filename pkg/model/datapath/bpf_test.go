@@ -121,7 +121,7 @@ func verifyDstMap(t *testing.T, bpfProgrammer *BpfProgrammer, expectedEntries []
 	require.Equal(t, len(expectedEntries), length)
 }
 
-func TestAddSingleRecordWithoutEndpoint(t *testing.T) {
+func TestAddRecordWithoutEndpoint(t *testing.T) {
 	bpfProgrammer := getNewFakeBPFProgrammer(nil)
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
@@ -184,12 +184,12 @@ func TestAddSingleRecordWithoutEndpoint(t *testing.T) {
 		},
 	}
 
-	err := bpfProgrammer.AddSingleRecord(inputRecord, false)
+	err := bpfProgrammer.addRecord(inputRecord, false)
 	require.NoError(t, err)
 	verifyDstMap(t, bpfProgrammer, expectedEntries)
 }
 
-func TestAddSingleRecordWithEndpoint(t *testing.T) {
+func TestAddRecordWithEndpoint(t *testing.T) {
 	bpfProgrammer := getNewFakeBPFProgrammer(nil)
 	inputRecord := &record.DatapathRecord{
 		Src: &types.ProcessTreeKey{
@@ -270,12 +270,12 @@ func TestAddSingleRecordWithEndpoint(t *testing.T) {
 		},
 	}
 
-	err := bpfProgrammer.AddSingleRecord(inputRecord, false)
+	err := bpfProgrammer.addRecord(inputRecord, false)
 	require.NoError(t, err)
 	verifyDstMap(t, bpfProgrammer, expectedEntries)
 }
 
-func TestAddSingleRecordWithEndpointAndPolicy(t *testing.T) {
+func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 	fakePolicyRepo := &FakePolicyRepositoryIDReader{
 		policyMap: map[string]uint64{
 			"test-policy": 32,
@@ -378,7 +378,7 @@ func TestAddSingleRecordWithEndpointAndPolicy(t *testing.T) {
 		},
 	}
 
-	err := bpfProgrammer.AddSingleRecord(inputRecord, false)
+	err := bpfProgrammer.addRecord(inputRecord, false)
 	require.NoError(t, err)
 	verifyDstMap(t, bpfProgrammer, expectedEntries)
 }

@@ -21,16 +21,9 @@ import (
 )
 
 type Interface interface {
-	// Add a specific record to the datapath. 'force' decides if we need
-	// push update even if a higher precedent one exists.
-	AddSingleRecord(record *record.DatapathRecord, force bool) error
-
 	// Add a set of records to the datapath. 'force' decides if we need
 	// push update even if a higher precedent one exists.
 	AddRecords(records []*record.DatapathRecord, force bool) error
-
-	// Remove a specific record to the datapath.
-	RemoveSingleRecord(record *record.DatapathRecord) error
 
 	// Remove a set of records to the datapath.
 	RemoveRecords(record []*record.DatapathRecord) error

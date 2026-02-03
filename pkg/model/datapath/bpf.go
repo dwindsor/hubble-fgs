@@ -59,7 +59,7 @@ func (p *BpfProgrammer) initMaybe() {
 
 func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool) error {
 	for _, r := range records {
-		p.AddSingleRecord(r, force)
+		p.addRecord(r, force)
 	}
 	return nil
 }
@@ -82,7 +82,7 @@ func (p *BpfProgrammer) conflictUpdateMap(key types.DestinationEndpointKey, valu
 func (p *BpfProgrammer) populateStatEntry(key types.DestinationEndpointKey, value types.DestinationEndpointValue) error {
 	value.TxAction = record.PolicyNone // we want rules for stats, not to impact verdict
 	value.Policy = 0
-	// RuleId is already 0 from AddSingleRecord
+	// RuleId is already 0 from addRecord
 
 	// 2  (src,  *  , local_id, destination, local_nsid).TX += skb->len
 	if key.DestinationPort != 0 {
@@ -114,7 +114,7 @@ func (p *BpfProgrammer) populateStatEntry(key types.DestinationEndpointKey, valu
 
 // src *types.ProcessTreeKey, ep *endpoint.Endpoint, quota, reset, deny uint64, init bool) error {
 // what was init for again?
-func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) error {
+func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
 	var addr [2]uint64
 	var dst uint64
 	var err error
@@ -251,7 +251,7 @@ func (p *BpfProgrammer) AddSingleRecord(r *record.DatapathRecord, force bool) er
 	return nil
 }
 
-func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
+func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 	var addr [2]uint64
 	src := r.Src
 	ep := r.Endpoint.EP
@@ -335,7 +335,7 @@ func (p *BpfProgrammer) RemoveSingleRecord(r *record.DatapathRecord) error {
 
 func (p *BpfProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
 	for _, r := range records {
-		p.RemoveSingleRecord(r)
+		p.removeRecord(r)
 	}
 	return nil
 }
