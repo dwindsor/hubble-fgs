@@ -117,6 +117,7 @@ func NewApplicationModelChecker() (*ApplicationModelChecker, error) {
 			&appModelV1.ApplicationHost{},
 			&appModelV1.ApplicationNamespace{},
 			&appModelV1.ApplicationWorkload{},
+			&appModelV1.ApplicationContainer{},
 		),
 		celk8s.IP(),
 		celk8s.CIDR(),

@@ -410,6 +410,7 @@ type ProcessModel struct {
 	InInitTree    *wrapperspb.BoolValue `protobuf:"bytes,8,opt,name=in_init_tree,json=inInitTree,proto3" json:"in_init_tree,omitempty"`
 	Syscalls      []uint32              `protobuf:"varint,9,rep,packed,name=syscalls,proto3" json:"syscalls,omitempty"`
 	Abi           string                `protobuf:"bytes,10,opt,name=abi,proto3" json:"abi,omitempty"`
+	ContainerId   string                `protobuf:"bytes,11,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -510,6 +511,13 @@ func (x *ProcessModel) GetSyscalls() []uint32 {
 func (x *ProcessModel) GetAbi() string {
 	if x != nil {
 		return x.Abi
+	}
+	return ""
+}
+
+func (x *ProcessModel) GetContainerId() string {
+	if x != nil {
+		return x.ContainerId
 	}
 	return ""
 }
@@ -1178,7 +1186,7 @@ const file_tetragon_processmodel_proto_rawDesc = "" +
 	"\x0fdestination_pod\x18\x02 \x01(\v2\r.tetragon.PodR\x0edestinationPod\x12\x12\n" +
 	"\x04Port\x18\x03 \x01(\x04R\x04Port\x120\n" +
 	"\x05stats\x18\x04 \x01(\v2\x1a.tetragon.DestinationStatsR\x05stats\x12B\n" +
-	"\x13destination_service\x18\x05 \x01(\v2\x11.tetragon.ServiceR\x12destinationService\"\xe5\x02\n" +
+	"\x13destination_service\x18\x05 \x01(\v2\x11.tetragon.ServiceR\x12destinationService\"\x88\x03\n" +
 	"\fProcessModel\x12\x16\n" +
 	"\x06binary\x18\x01 \x01(\tR\x06binary\x12\x1f\n" +
 	"\vbinary_args\x18\x02 \x01(\tR\n" +
@@ -1193,7 +1201,8 @@ const file_tetragon_processmodel_proto_rawDesc = "" +
 	"inInitTree\x12\x1a\n" +
 	"\bsyscalls\x18\t \x03(\rR\bsyscalls\x12\x10\n" +
 	"\x03abi\x18\n" +
-	" \x01(\tR\x03abi\"\xda\x01\n" +
+	" \x01(\tR\x03abi\x12!\n" +
+	"\fcontainer_id\x18\v \x01(\tR\vcontainerId\"\xda\x01\n" +
 	"\bEndpoint\x12\x14\n" +
 	"\x05srcIP\x18\x01 \x01(\tR\x05srcIP\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\x04R\x03key\x12*\n" +

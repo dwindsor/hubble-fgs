@@ -6,6 +6,7 @@
 - [l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto](#l3l4networkpolicy_v1alpha_l3l4networkpolicy-proto)
     - [ConfigObject](#l3l4networkpolicy-v1alpha-ConfigObject)
     - [DpuConfig](#l3l4networkpolicy-v1alpha-DpuConfig)
+    - [HAStatusEvent](#l3l4networkpolicy-v1alpha-HAStatusEvent)
     - [HaConfig](#l3l4networkpolicy-v1alpha-HaConfig)
     - [HaPeer](#l3l4networkpolicy-v1alpha-HaPeer)
     - [L3L4NetworkSubject](#l3l4networkpolicy-v1alpha-L3L4NetworkSubject)
@@ -24,7 +25,6 @@
     - [PolicyRuleEvent](#l3l4networkpolicy-v1alpha-PolicyRuleEvent)
     - [PolicySubject](#l3l4networkpolicy-v1alpha-PolicySubject)
     - [ReportStatus](#l3l4networkpolicy-v1alpha-ReportStatus)
-    - [ReportStatus.HaErrorEntry](#l3l4networkpolicy-v1alpha-ReportStatus-HaErrorEntry)
     - [ReportStatusRequest](#l3l4networkpolicy-v1alpha-ReportStatusRequest)
     - [ReportStatusResponse](#l3l4networkpolicy-v1alpha-ReportStatusResponse)
     - [StreamDatapathConfigRequest](#l3l4networkpolicy-v1alpha-StreamDatapathConfigRequest)
@@ -41,7 +41,7 @@
     - [ConfigOperation](#l3l4networkpolicy-v1alpha-ConfigOperation)
     - [ConfigSource](#l3l4networkpolicy-v1alpha-ConfigSource)
     - [ConfigType](#l3l4networkpolicy-v1alpha-ConfigType)
-    - [HAError](#l3l4networkpolicy-v1alpha-HAError)
+    - [HAStatus](#l3l4networkpolicy-v1alpha-HAStatus)
     - [PolicyAction](#l3l4networkpolicy-v1alpha-PolicyAction)
     - [PolicyOperation](#l3l4networkpolicy-v1alpha-PolicyOperation)
     - [PolicyProtocol](#l3l4networkpolicy-v1alpha-PolicyProtocol)
@@ -100,6 +100,23 @@ CONFIG_TYPE_DPU
 | ha_ip | [string](#string) |  | Local HA IP address of the switch |
 | serial_number | [string](#string) |  | Serial number of the switch |
 | switch_name | [string](#string) |  | Name of the switch |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-HAStatusEvent"></a>
+
+### HAStatusEvent
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peer | [string](#string) |  | IP address for the peer |
+| status | [HAStatus](#l3l4networkpolicy-v1alpha-HAStatus) |  | HA event status |
+| status_message | [string](#string) |  | Optional string description of status |
 
 
 
@@ -439,23 +456,6 @@ checksum.
 | dataplane_restarts | [uint32](#uint32) |  | DataplaneRestarts is the number of times the Dataplane process has been restarted |
 | last_dataplane_restart | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | LastDataplaneRestart is the timestamp of the last time the Dataplane process has been restarted |
 | last_fwa_crash_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | LastFwaCrashTime is the timestamp of the last time the FWA has crashed |
-| ha_error | [ReportStatus.HaErrorEntry](#l3l4networkpolicy-v1alpha-ReportStatus-HaErrorEntry) | repeated | HA error map, where the string key is the peer IP address If the map is empty, then the peers are healthy |
-
-
-
-
-
-
-<a name="l3l4networkpolicy-v1alpha-ReportStatus-HaErrorEntry"></a>
-
-### ReportStatus.HaErrorEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [HAError](#l3l4networkpolicy-v1alpha-HAError) |  |  |
 
 
 
@@ -529,6 +529,7 @@ StreamEvent wraps different event types that can be streamed from the datapath.
 | agent_uid | [string](#string) |  | Agent UID |
 | timestamp | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The time when the event occurred |
 | rule | [PolicyRuleEvent](#l3l4networkpolicy-v1alpha-PolicyRuleEvent) |  | Policy rule event |
+| ha_status | [HAStatusEvent](#l3l4networkpolicy-v1alpha-HAStatusEvent) |  | HA status event |
 
 
 
@@ -683,16 +684,20 @@ ConfigObject.
 
 
 
-<a name="l3l4networkpolicy-v1alpha-HAError"></a>
+<a name="l3l4networkpolicy-v1alpha-HAStatus"></a>
 
-### HAError
+### HAStatus
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| HA_ERROR_UNSPECIFIED | 0 | Generic catch all HA error |
-| HA_ERROR_PEER_TIMEOUT | 1 | HA peer connectivity error, used when peer keepalive fails |
-| HA_ERROR_FLOW_SYNC | 2 | HA flow sync error, used when flow synchronization fails |
+| HA_STATUS_UNSPECIFIED | 0 | Unspecified or unknown HA status |
+| HA_STATUS_KEEPALIVE_UP | 1 | HA peer connectivity up, keepalives working |
+| HA_STATUS_KEEPALIVE_DOWN | 2 | HA peer connectivity down, keepalives failing |
+| HA_STATUS_FLOW_SYNC_UP | 3 | HA flow sync up, flow sync between peers is working |
+| HA_STATUS_FLOW_SYNC_DOWN | 4 | HA flow sync down, flow sync between peers is failing |
+| HA_STATUS_BULK_SYNC_DONE | 5 | HA bulk sync is finished sending to peer |
+| HA_STATUS_BULK_SYNC_PEER_DONE | 6 | HA bulk sync is finished receiving from peer |
 
 
 

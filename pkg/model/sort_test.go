@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/isovalent/ipa/application_model/v1alpha"
+	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -22,7 +23,92 @@ import (
 
 func TestEnsureSorted(t *testing.T) {
 	model := &v1alpha.ApplicationModel{
-		Namespaces: []*v1alpha.ApplicationNamespace{{Name: "b"}, {Name: "a"}, {Name: "c"}},
+		Namespaces: []*v1alpha.ApplicationNamespace{
+			{
+				Name: "b",
+				Workloads: []*v1alpha.ApplicationWorkload{
+					{
+						Name: "bworkload",
+						Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+						Containers: []*v1alpha.ApplicationContainer{
+							{
+								Id:    "b25790f3086f4",
+								Name:  "my-other-middle-container",
+								Image: "zzzdocker.io/library/someapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
+									{
+										Name: "/bin/fish",
+									},
+									{
+										Name: "/bin/bash",
+									},
+								},
+							},
+							{
+								Id:    "b25790f3086f4",
+								Name:  "my-other-middle-container",
+								Image: "docker.io/library/someapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
+									{
+										Name: "/bin/fish",
+									},
+									{
+										Name: "/bin/bash",
+									},
+								},
+							},
+							{
+								Id:    "b25790f3086f4",
+								Name:  "my-middle-container",
+								Image: "docker.io/library/someapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
+									{
+										Name: "/bin/fish",
+									},
+									{
+										Name: "/bin/bash",
+									},
+								},
+							},
+							{
+								Id:    "a25790f3086f4",
+								Name:  "my-first-container",
+								Image: "docker.io/library/someapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
+									{
+										Name: "/bin/fish",
+									},
+									{
+										Name: "/bin/bash",
+									},
+								},
+							},
+						},
+					},
+					{
+						Name: "aworkload",
+						Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+						Containers: []*v1alpha.ApplicationContainer{
+							{
+								Id:    "e673699fa9961",
+								Name:  "my-third-container",
+								Image: "docker.io/library/otherapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
+									{
+										Name: "/bin/foo",
+									},
+									{
+										Name: "/bin/bar",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{Name: "a"},
+			{Name: "c"},
+		},
 		Host: &v1alpha.ApplicationHost{
 			Processes: []*v1alpha.ApplicationProcessGroup{
 				{
@@ -58,7 +144,92 @@ func TestEnsureSorted(t *testing.T) {
 		},
 	}
 	sortedModel := &v1alpha.ApplicationModel{
-		Namespaces: []*v1alpha.ApplicationNamespace{{Name: "a"}, {Name: "b"}, {Name: "c"}},
+		Namespaces: []*v1alpha.ApplicationNamespace{
+			{Name: "a"},
+			{
+				Name: "b",
+				Workloads: []*v1alpha.ApplicationWorkload{
+					{
+						Name: "aworkload",
+						Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+						Containers: []*v1alpha.ApplicationContainer{
+							{
+								Id:    "e673699fa9961",
+								Name:  "my-third-container",
+								Image: "docker.io/library/otherapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
+									{
+										Name: "/bin/bar",
+									},
+									{
+										Name: "/bin/foo",
+									},
+								},
+							},
+						},
+					},
+					{
+						Name: "bworkload",
+						Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+						Containers: []*v1alpha.ApplicationContainer{
+							{
+								Id:    "a25790f3086f4",
+								Name:  "my-first-container",
+								Image: "docker.io/library/someapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
+									{
+										Name: "/bin/bash",
+									},
+									{
+										Name: "/bin/fish",
+									},
+								},
+							},
+							{
+								Id:    "b25790f3086f4",
+								Name:  "my-middle-container",
+								Image: "docker.io/library/someapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
+									{
+										Name: "/bin/bash",
+									},
+									{
+										Name: "/bin/fish",
+									},
+								},
+							},
+							{
+								Id:    "b25790f3086f4",
+								Name:  "my-other-middle-container",
+								Image: "docker.io/library/someapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
+									{
+										Name: "/bin/bash",
+									},
+									{
+										Name: "/bin/fish",
+									},
+								},
+							},
+							{
+								Id:    "b25790f3086f4",
+								Name:  "my-other-middle-container",
+								Image: "zzzdocker.io/library/someapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
+									{
+										Name: "/bin/bash",
+									},
+									{
+										Name: "/bin/fish",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{Name: "c"},
+		},
 		Host: &v1alpha.ApplicationHost{
 			Processes: []*v1alpha.ApplicationProcessGroup{
 				{

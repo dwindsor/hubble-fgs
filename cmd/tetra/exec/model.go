@@ -68,23 +68,34 @@ var (
 
 var tree = treeprint.New()
 
+func containerStringer(cont *appModelV1.ApplicationContainer) string {
+	truncated := cont.Id
+	if len(truncated) > 12 {
+		truncated = truncated[:12]
+	}
+
+	return fmt.Sprintf("%s %s(%s)", cont.Image, cont.Name, truncated)
+}
+
 func printTree(appModel *appModelV1.ApplicationModelEvent, host bool) error {
 	// For each namespace collection find workload collections
 	for _, ns := range appModel.ApplicationModel.Namespaces {
 		nsTree := tree.AddBranch(ns.Name)
 		for _, wl := range ns.Workloads {
 			wlTree := nsTree.AddBranch(wl.Name)
+			for _, cont := range wl.Containers {
+				contTree := wlTree.AddBranch(containerStringer(cont))
+				for _, p := range cont.Processes {
+					bin := p.Name + " " + p.Arguments
+					binaryBranch := contTree.AddBranch(bin)
 
-			for _, p := range wl.Processes {
-				bin := p.Name + " " + p.Arguments
-				binaryBranch := wlTree.AddBranch(bin)
-
-				for _, conn := range p.Connections {
-					childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d defaultDrop: %d defaultAllow: %d)",
-						model.DestinationNameAppModel(conn.Destination),
-						conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops,
-						conn.Stats.DefaultDropBytes, conn.Stats.DefaultAllowBytes)
-					binaryBranch.AddBranch(childName)
+					for _, conn := range p.Connections {
+						childName := fmt.Sprintf("%s (tx: %d rx: %d drops: %d defaultDrop: %d defaultAllow: %d)",
+							model.DestinationNameAppModel(conn.Destination),
+							conn.Stats.TxBytes, conn.Stats.RxBytes, conn.Stats.TxDrops,
+							conn.Stats.DefaultDropBytes, conn.Stats.DefaultAllowBytes)
+						binaryBranch.AddBranch(childName)
+					}
 				}
 			}
 		}
@@ -138,6 +149,22 @@ func addProcessNodes(node *tview.TreeNode, processes []*appModelV1.ApplicationPr
 	}
 }
 
+func addContainerNodes(node *tview.TreeNode, containers []*appModelV1.ApplicationContainer) {
+	for _, cont := range containers {
+		nodeName := containerStringer(cont)
+		if len(cont.GetProcesses()) == 1 {
+			nodeName += " (1 process)"
+		} else if len(cont.GetProcesses()) > 0 {
+			nodeName += fmt.Sprintf(" (%d processes)", len(cont.GetProcesses()))
+		}
+		child := tview.NewTreeNode(nodeName).
+			SetReference(cont).
+			SetSelectable(true).
+			SetColor(tcell.ColorPurple)
+		node.AddChild(child)
+	}
+}
+
 func selected(node *tview.TreeNode) {
 	if len(node.GetChildren()) > 0 {
 		// Toggle expand / collapse
@@ -177,10 +204,10 @@ func selected(node *tview.TreeNode) {
 	case *appModelV1.ApplicationNamespace:
 		for _, wl := range val.GetWorkloads() {
 			nodeName := fmt.Sprintf("%s/%s", wl.GetKind(), wl.GetName())
-			if len(wl.GetProcesses()) == 1 {
-				nodeName += " (1 process)"
-			} else if len(wl.GetProcesses()) > 0 {
-				nodeName += fmt.Sprintf(" (%d processes)", len(wl.GetProcesses()))
+			if len(wl.GetContainers()) == 1 {
+				nodeName += " (1 container)"
+			} else if len(wl.GetContainers()) > 0 {
+				nodeName += fmt.Sprintf(" (%d containers)", len(wl.GetContainers()))
 			}
 			wlNode := tview.NewTreeNode(nodeName).
 				SetReference(wl).
@@ -191,6 +218,8 @@ func selected(node *tview.TreeNode) {
 	case *appModelV1.ApplicationHost:
 		addProcessNodes(node, val.GetProcesses())
 	case *appModelV1.ApplicationWorkload:
+		addContainerNodes(node, val.GetContainers())
+	case *appModelV1.ApplicationContainer:
 		addProcessNodes(node, val.GetProcesses())
 	case *appModelV1.ApplicationProcessGroup:
 		for _, conn := range val.GetConnections() {

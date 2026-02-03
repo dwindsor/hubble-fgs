@@ -133,6 +133,13 @@ export declare type ProcessTelemetry = Message<"application_model.v1alpha.Proces
    * @generated from field: repeated string parent_names = 18;
    */
   parentNames: string[];
+
+  /**
+   * The container in which this process is running
+   *
+   * @generated from field: application_model.v1alpha.ApplicationContainer container = 19;
+   */
+  container?: ApplicationContainer;
 };
 
 /**
@@ -381,6 +388,13 @@ export declare type NetworkConnectTelemetry = Message<"application_model.v1alpha
    * @generated from field: uint64 tx_drops = 29;
    */
   txDrops: bigint;
+
+  /**
+   * The container in which this connection has an endpoint
+   *
+   * @generated from field: application_model.v1alpha.ApplicationContainer container = 30;
+   */
+  container?: ApplicationContainer;
 };
 
 /**
@@ -503,12 +517,11 @@ export declare type ApplicationWorkload = Message<"application_model.v1alpha.App
   kind: WorkloadKind;
 
   /**
-   * A list of process groups in the workload. See ApplicationProcessGroup for
-   * the definition of a process group.
+   * A list of containers below the workload. See ApplicationContainer.
    *
-   * @generated from field: repeated application_model.v1alpha.ApplicationProcessGroup processes = 3;
+   * @generated from field: repeated application_model.v1alpha.ApplicationContainer containers = 3;
    */
-  processes: ApplicationProcessGroup[];
+  containers: ApplicationContainer[];
 };
 
 /**
@@ -516,6 +529,46 @@ export declare type ApplicationWorkload = Message<"application_model.v1alpha.App
  * Use `create(ApplicationWorkloadSchema)` to create a new message.
  */
 export declare const ApplicationWorkloadSchema: GenMessage<ApplicationWorkload>;
+
+/**
+ * @generated from message application_model.v1alpha.ApplicationContainer
+ */
+export declare type ApplicationContainer = Message<"application_model.v1alpha.ApplicationContainer"> & {
+  /**
+   * Identifier of the container.
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * Name of the container.
+   *
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * Image of the container.
+   *
+   * @generated from field: string image = 3;
+   */
+  image: string;
+
+  /**
+   * A list of process groups in this container. See ApplicationProcessGroup for
+   * the definition of a process group.
+   *
+   * @generated from field: repeated application_model.v1alpha.ApplicationProcessGroup processes = 4;
+   */
+  processes: ApplicationProcessGroup[];
+};
+
+/**
+ * Describes the message application_model.v1alpha.ApplicationContainer.
+ * Use `create(ApplicationContainerSchema)` to create a new message.
+ */
+export declare const ApplicationContainerSchema: GenMessage<ApplicationContainer>;
 
 /**
  * ApplicationProcessGroup represents a set of processes that are grouped by

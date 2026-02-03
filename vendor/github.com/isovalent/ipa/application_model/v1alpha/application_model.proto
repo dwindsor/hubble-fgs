@@ -49,6 +49,8 @@ message ProcessTelemetry {
   google.protobuf.Timestamp latest_start_time = 17;
   // Names of all processes that have been parents of this name/argument tuple.
   repeated string parent_names = 18;
+  // The container in which this process is running
+  ApplicationContainer container = 19;
 }
 
 message NetworkConnectTelemetry {
@@ -144,6 +146,8 @@ message NetworkConnectTelemetry {
   string application_model_id = 28;
   // The number of dropped packets
   uint64 tx_drops = 29;
+  // The container in which this connection has an endpoint
+  ApplicationContainer container = 30;
 }
 
 enum PolicyVerdict {
@@ -193,9 +197,20 @@ message ApplicationNamespace {
 message ApplicationWorkload {
   string name = 1;
   common.k8s.type.v1alpha.WorkloadKind kind = 2;
-  // A list of process groups in the workload. See ApplicationProcessGroup for
+  // A list of containers below the workload. See ApplicationContainer.
+  repeated ApplicationContainer containers = 3;
+}
+
+message ApplicationContainer {
+  // Identifier of the container.
+  string id = 1;
+  // Name of the container.
+  string name = 2;
+  // Image of the container.
+  string image = 3;
+  // A list of process groups in this container. See ApplicationProcessGroup for
   // the definition of a process group.
-  repeated ApplicationProcessGroup processes = 3;
+  repeated ApplicationProcessGroup processes = 4;
 }
 
 // ApplicationProcessGroup represents a set of processes that are grouped by

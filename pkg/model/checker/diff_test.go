@@ -70,24 +70,38 @@ func TestDiffComplex(t *testing.T) {
 				{
 					Name: "workload1",
 					Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
-					Processes: []*v1alpha.ApplicationProcessGroup{
+					Containers: []*v1alpha.ApplicationContainer{
 						{
-							Name: "/bin/bash",
-						},
-						{
-							Name: "/bin/fish",
+							Id:    "325790f3086f4",
+							Name:  "my-app-container",
+							Image: "docker.io/library/someapp:latest",
+							Processes: []*v1alpha.ApplicationProcessGroup{
+								{
+									Name: "/bin/bash",
+								},
+								{
+									Name: "/bin/fish",
+								},
+							},
 						},
 					},
 				},
 				{
 					Name: "workload2",
 					Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
-					Processes: []*v1alpha.ApplicationProcessGroup{
+					Containers: []*v1alpha.ApplicationContainer{
 						{
-							Name: "/bin/foo",
-						},
-						{
-							Name: "/bin/bar",
+							Id:    "e673699fa9961",
+							Name:  "my-second-container",
+							Image: "docker.io/library/otherapp:latest",
+							Processes: []*v1alpha.ApplicationProcessGroup{
+								{
+									Name: "/bin/foo",
+								},
+								{
+									Name: "/bin/bar",
+								},
+							},
 						},
 					},
 				},
@@ -100,24 +114,38 @@ func TestDiffComplex(t *testing.T) {
 				{
 					Name: "workload2",
 					Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
-					Processes: []*v1alpha.ApplicationProcessGroup{
+					Containers: []*v1alpha.ApplicationContainer{
 						{
-							Name: "/bin/foo",
-						},
-						{
-							Name: "/bin/bar",
+							Id:    "e673699fa9961",
+							Name:  "my-second-container",
+							Image: "docker.io/library/otherapp:latest",
+							Processes: []*v1alpha.ApplicationProcessGroup{
+								{
+									Name: "/bin/foo",
+								},
+								{
+									Name: "/bin/bar",
+								},
+							},
 						},
 					},
 				},
 				{
 					Name: "workload1",
 					Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
-					Processes: []*v1alpha.ApplicationProcessGroup{
+					Containers: []*v1alpha.ApplicationContainer{
 						{
-							Name: "/bin/fish",
-						},
-						{
-							Name: "/bin/bash",
+							Id:    "325790f3086f4",
+							Name:  "my-app-container",
+							Image: "docker.io/library/someapp:latest",
+							Processes: []*v1alpha.ApplicationProcessGroup{
+								{
+									Name: "/bin/fish",
+								},
+								{
+									Name: "/bin/bash",
+								},
+							},
 						},
 					},
 				},
@@ -145,7 +173,7 @@ func TestDiffLarge(t *testing.T) {
 	assert.Empty(t, diff)
 
 	b.ApplicationModel.Namespaces[1].Name = "Whoopsie Doopsie"
-	b.ApplicationModel.Namespaces[2].Workloads[0].Processes[0].Name = "Foo"
+	b.ApplicationModel.Namespaces[2].Workloads[0].Containers[0].Processes[0].Name = "Foo"
 
 	diff, err = PrettyJsonDiff(a.ApplicationModel, b.ApplicationModel)
 	require.NoError(t, err)
@@ -163,20 +191,27 @@ func TestDiffIgnoreBytesSent(t *testing.T) {
 			{
 				Workloads: []*v1alpha.ApplicationWorkload{
 					{
-						Processes: []*v1alpha.ApplicationProcessGroup{
+						Containers: []*v1alpha.ApplicationContainer{
 							{
-								Connections: []*v1alpha.ApplicationConnection{
+								Id:    "b1a8c6f707935",
+								Name:  "my-third-container",
+								Image: "docker.io/library/thirdapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
 									{
-										Destination: &v1alpha.Destination{
-											Type: &v1alpha.Destination_Dns{
-												Dns: &v1alpha.DestinationDns{
-													DestinationNames: []string{"google.ca"},
+										Connections: []*v1alpha.ApplicationConnection{
+											{
+												Destination: &v1alpha.Destination{
+													Type: &v1alpha.Destination_Dns{
+														Dns: &v1alpha.DestinationDns{
+															DestinationNames: []string{"google.ca"},
+														},
+													},
+													Port: 80,
+												},
+												Stats: &v1alpha.ConnectionStats{
+													TxBytes: 1337,
 												},
 											},
-											Port: 80,
-										},
-										Stats: &v1alpha.ConnectionStats{
-											TxBytes: 1337,
 										},
 									},
 								},
@@ -190,20 +225,27 @@ func TestDiffIgnoreBytesSent(t *testing.T) {
 			{
 				Workloads: []*v1alpha.ApplicationWorkload{
 					{
-						Processes: []*v1alpha.ApplicationProcessGroup{
+						Containers: []*v1alpha.ApplicationContainer{
 							{
-								Connections: []*v1alpha.ApplicationConnection{
+								Id:    "b1a8c6f707935",
+								Name:  "my-third-container",
+								Image: "docker.io/library/thirdapp:latest",
+								Processes: []*v1alpha.ApplicationProcessGroup{
 									{
-										Destination: &v1alpha.Destination{
-											Type: &v1alpha.Destination_Dns{
-												Dns: &v1alpha.DestinationDns{
-													DestinationNames: []string{"google.ca"},
+										Connections: []*v1alpha.ApplicationConnection{
+											{
+												Destination: &v1alpha.Destination{
+													Type: &v1alpha.Destination_Dns{
+														Dns: &v1alpha.DestinationDns{
+															DestinationNames: []string{"google.ca"},
+														},
+													},
+													Port: 80,
+												},
+												Stats: &v1alpha.ConnectionStats{
+													TxBytes: 1338,
 												},
 											},
-											Port: 80,
-										},
-										Stats: &v1alpha.ConnectionStats{
-											TxBytes: 1338,
 										},
 									},
 								},
@@ -214,8 +256,8 @@ func TestDiffIgnoreBytesSent(t *testing.T) {
 			},
 		}},
 		IgnoreFields(
-			"namespaces.workloads.processes.connections.stats",
-			"namespaces.workloads.processes.children.connections.stats",
+			"namespaces.workloads.containers.processes.connections.stats",
+			"namespaces.workloads.containers.processes.children.connections.stats",
 			"host.processes.connections.stats",
 			"host.processes.children.connections.stats",
 		),

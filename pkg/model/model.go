@@ -25,7 +25,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -45,6 +47,10 @@ type namespaceKey struct {
 type workloadKey struct {
 	name string
 	kind v1alpha.WorkloadKind
+}
+
+type containerKey struct {
+	id string
 }
 
 type processKey struct {
@@ -69,7 +75,8 @@ type processValue struct {
 
 type connectionMap map[connectionKey]*appModelV1.ApplicationConnection
 type processMap map[processKey]processValue
-type workloadMap map[workloadKey]processMap
+type containerMap map[containerKey]processMap
+type workloadMap map[workloadKey]containerMap
 type namespaceMap map[namespaceKey]workloadMap
 
 func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
@@ -80,20 +87,24 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 	}
 	nsKey := namespaceKey{name: nk.SourceNamespace}
 	wlkey := workloadKey{name: nk.SourceWorkloadName, kind: nk.SourceWorkloadKind}
+	contKey := containerKey{id: nk.SourceContainerId}
 	pskey := processKey{name: nk.SourceProcessName, arguments: nk.SourceProcessArgs}
 	connKey := connectionKey{destination: nwKeyToDestination(&nk)}
 	if _, ok := nsMap[nsKey]; !ok {
 		nsMap[nsKey] = make(workloadMap)
 	}
 	if _, ok := nsMap[nsKey][wlkey]; !ok {
-		nsMap[nsKey][wlkey] = make(processMap)
+		nsMap[nsKey][wlkey] = make(containerMap)
 	}
-	if _, ok := nsMap[nsKey][wlkey][pskey]; !ok {
-		nsMap[nsKey][wlkey][pskey] = processValue{
+	if _, ok := nsMap[nsKey][wlkey][contKey]; !ok {
+		nsMap[nsKey][wlkey][contKey] = make(processMap)
+	}
+	if _, ok := nsMap[nsKey][wlkey][contKey][pskey]; !ok {
+		nsMap[nsKey][wlkey][contKey][pskey] = processValue{
 			connections: make(connectionMap),
 		}
 	}
-	nsMap[nsKey][wlkey][pskey].connections[connKey] = &appModelV1.ApplicationConnection{
+	nsMap[nsKey][wlkey][contKey][pskey].connections[connKey] = &appModelV1.ApplicationConnection{
 		Destination: nwKeyToDestination(&nk),
 		Stats: &appModelV1.ConnectionStats{
 			TxBytes:           bc.GetTxBytes(),
@@ -134,19 +145,22 @@ func processGroupHash(name, arguments string) string {
 func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 	nsKey := namespaceKey{name: pk.Namespace}
 	wlkey := workloadKey{name: pk.WorkloadName, kind: pk.WorkloadKind}
+	contKey := containerKey{id: pk.ContainerId}
 	pskey := processKey{name: pk.Name, arguments: pk.Args}
 	if _, ok := nsMap[nsKey]; !ok {
 		nsMap[nsKey] = make(workloadMap)
 	}
 	if _, ok := nsMap[nsKey][wlkey]; !ok {
-		nsMap[nsKey][wlkey] = make(processMap)
+		nsMap[nsKey][wlkey] = make(containerMap)
 	}
-
+	if _, ok := nsMap[nsKey][wlkey][contKey]; !ok {
+		nsMap[nsKey][wlkey][contKey] = make(processMap)
+	}
 	// Get existing entry or create new one
-	existing, exists := nsMap[nsKey][wlkey][pskey]
+	existing, exists := nsMap[nsKey][wlkey][contKey][pskey]
 	if !exists {
 		// Create new entry with process data
-		nsMap[nsKey][wlkey][pskey] = processValue{
+		nsMap[nsKey][wlkey][contKey][pskey] = processValue{
 			connections:     make(connectionMap),
 			inInitTree:      psval.InInitTree,
 			syscalls:        psval.Syscalls,
@@ -165,7 +179,7 @@ func handleProcessEvent(nsMap namespaceMap, pk ProcessKey, psval ProcessValue) {
 		existing.latestStartTime = psval.LatestStartTime
 		existing.latestExitTime = psval.LatestExitTime
 		existing.execCount = psval.ExecCount
-		nsMap[nsKey][wlkey][pskey] = existing
+		nsMap[nsKey][wlkey][contKey][pskey] = existing
 	}
 }
 
@@ -199,20 +213,22 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 		if key.name == HostNamespace {
 			// There is no workload info for host processes.
 			for _, wlval := range val {
-				for pskey, psval := range wlval {
-					ps := &appModelV1.ApplicationProcessGroup{
-						Hash:            processGroupHash(pskey.name, pskey.arguments),
-						Name:            pskey.name,
-						Arguments:       pskey.arguments,
-						Connections:     slices.Collect(maps.Values(psval.connections)),
-						InInitTree:      wrapperspb.Bool(psval.inInitTree),
-						SyscallInfo:     psval.syscalls,
-						ExecutionCount:  psval.execCount,
-						FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
-						LatestStartTime: MaybeTimeToTimestamp(psval.latestStartTime),
-						LatestExitTime:  MaybeTimeToTimestamp(psval.latestExitTime),
+				for _, contval := range wlval {
+					for pskey, psval := range contval {
+						ps := &appModelV1.ApplicationProcessGroup{
+							Hash:            processGroupHash(pskey.name, pskey.arguments),
+							Name:            pskey.name,
+							Arguments:       pskey.arguments,
+							Connections:     slices.Collect(maps.Values(psval.connections)),
+							InInitTree:      wrapperspb.Bool(psval.inInitTree),
+							SyscallInfo:     psval.syscalls,
+							ExecutionCount:  psval.execCount,
+							FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
+							LatestStartTime: MaybeTimeToTimestamp(psval.latestStartTime),
+							LatestExitTime:  MaybeTimeToTimestamp(psval.latestExitTime),
+						}
+						result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, ps)
 					}
-					result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, ps)
 				}
 			}
 		} else {
@@ -224,20 +240,33 @@ func namespaceMapToApplicationModel(nsMap namespaceMap, nsFilter map[string]bool
 					Name: wlkey.name,
 					Kind: wlkey.kind,
 				}
-				for pskey, psval := range wlval {
-					ps := &appModelV1.ApplicationProcessGroup{
-						Hash:            processGroupHash(pskey.name, pskey.arguments),
-						Name:            pskey.name,
-						Arguments:       pskey.arguments,
-						Connections:     slices.Collect(maps.Values(psval.connections)),
-						InInitTree:      wrapperspb.Bool(psval.inInitTree),
-						SyscallInfo:     psval.syscalls,
-						ExecutionCount:  psval.execCount,
-						FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
-						LatestStartTime: MaybeTimeToTimestamp(psval.latestStartTime),
-						LatestExitTime:  MaybeTimeToTimestamp(psval.latestExitTime),
+				for contkey, contval := range wlval {
+					cont := &appModelV1.ApplicationContainer{
+						Id: contkey.id,
 					}
-					wl.Processes = append(wl.Processes, ps)
+					podInfo := process.GetPodInfo(contkey.id, "", "", 0)
+					if podInfo == nil {
+						logger.GetLogger().Error("No pod info found", "containerID", contkey.id)
+					} else {
+						cont.Name = podInfo.Container.Name
+						cont.Image = podInfo.Container.Image.Name
+					}
+					for pskey, psval := range contval {
+						ps := &appModelV1.ApplicationProcessGroup{
+							Hash:            processGroupHash(pskey.name, pskey.arguments),
+							Name:            pskey.name,
+							Arguments:       pskey.arguments,
+							Connections:     slices.Collect(maps.Values(psval.connections)),
+							InInitTree:      wrapperspb.Bool(psval.inInitTree),
+							SyscallInfo:     psval.syscalls,
+							ExecutionCount:  psval.execCount,
+							FirstStartTime:  MaybeTimeToTimestamp(psval.firstStartTime),
+							LatestStartTime: MaybeTimeToTimestamp(psval.latestStartTime),
+							LatestExitTime:  MaybeTimeToTimestamp(psval.latestExitTime),
+						}
+						cont.Processes = append(cont.Processes, ps)
+					}
+					wl.Containers = append(wl.Containers, cont)
 				}
 				ns.Workloads = append(ns.Workloads, wl)
 			}
@@ -312,32 +341,36 @@ func DestinationNameAppModel(dst *appModelV1.Destination) string {
 func ToMonitorData(nmd NetworkMonitorData, pmd ProcessMonitorData, app *appModelV1.ApplicationModel) {
 	for _, ns := range app.GetNamespaces() {
 		for _, wl := range ns.GetWorkloads() {
-			for _, ps := range wl.GetProcesses() {
-				pmk := ProcessKey{
-					Namespace:    ns.GetName(),
-					WorkloadKind: wl.GetKind(),
-					WorkloadName: wl.GetName(),
-					Name:         ps.GetName(),
-					Args:         ps.GetArguments(),
-				}
-				pmd[pmk] = ProcessValue{}
-				for _, conn := range ps.GetConnections() {
-					resourceType := v1alpha.ResourceKind_RESOURCE_KIND_UNSPECIFIED
-					if wl.GetKind() != v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED {
-						resourceType = v1alpha.ResourceKind_RESOURCE_KIND_WORKLOAD
+			for _, cont := range wl.GetContainers() {
+				for _, ps := range cont.GetProcesses() {
+					pmk := ProcessKey{
+						Namespace:    ns.GetName(),
+						WorkloadKind: wl.GetKind(),
+						WorkloadName: wl.GetName(),
+						ContainerId:  cont.GetId(),
+						Name:         ps.GetName(),
+						Args:         ps.GetArguments(),
 					}
-					nmk := NetworkKey{
-						SourceNamespace:            ns.GetName(),
-						SourceWorkloadKind:         wl.GetKind(),
-						SourceWorkloadResourceKind: resourceType,
-						SourceWorkloadName:         wl.GetName(),
-						SourceProcessName:          ps.GetName(),
-						SourceProcessArgs:          ps.GetArguments(),
-					}
-					addDestinationInfoAppModel(conn.Destination, &nmk)
-					nmd[nmk] = NetworkMonitorValue{
-						TXBytes: conn.Stats.TxBytes,
-						RXBytes: conn.Stats.RxBytes,
+					pmd[pmk] = ProcessValue{}
+					for _, conn := range ps.GetConnections() {
+						resourceType := v1alpha.ResourceKind_RESOURCE_KIND_UNSPECIFIED
+						if wl.GetKind() != v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED {
+							resourceType = v1alpha.ResourceKind_RESOURCE_KIND_WORKLOAD
+						}
+						nmk := NetworkKey{
+							SourceNamespace:            ns.GetName(),
+							SourceWorkloadKind:         wl.GetKind(),
+							SourceWorkloadResourceKind: resourceType,
+							SourceWorkloadName:         wl.GetName(),
+							SourceContainerId:          cont.GetId(),
+							SourceProcessName:          ps.GetName(),
+							SourceProcessArgs:          ps.GetArguments(),
+						}
+						addDestinationInfoAppModel(conn.Destination, &nmk)
+						nmd[nmk] = NetworkMonitorValue{
+							TXBytes: conn.Stats.TxBytes,
+							RXBytes: conn.Stats.RxBytes,
+						}
 					}
 				}
 			}

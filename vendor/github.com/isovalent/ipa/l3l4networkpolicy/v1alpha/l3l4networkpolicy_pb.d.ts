@@ -394,14 +394,6 @@ export declare type ReportStatus = Message<"l3l4networkpolicy.v1alpha.ReportStat
    * @generated from field: google.protobuf.Timestamp last_fwa_crash_time = 19;
    */
   lastFwaCrashTime?: Timestamp;
-
-  /**
-   * HA error map, where the string key is the peer IP address
-   * If the map is empty, then the peers are healthy
-   *
-   * @generated from field: map<string, l3l4networkpolicy.v1alpha.HAError> ha_error = 20;
-   */
-  haError: { [key: string]: HAError };
 };
 
 /**
@@ -984,6 +976,38 @@ export declare type PolicyRuleEvent = Message<"l3l4networkpolicy.v1alpha.PolicyR
 export declare const PolicyRuleEventSchema: GenMessage<PolicyRuleEvent>;
 
 /**
+ * @generated from message l3l4networkpolicy.v1alpha.HAStatusEvent
+ */
+export declare type HAStatusEvent = Message<"l3l4networkpolicy.v1alpha.HAStatusEvent"> & {
+  /**
+   * IP address for the peer
+   *
+   * @generated from field: string peer = 1;
+   */
+  peer: string;
+
+  /**
+   * HA event status
+   *
+   * @generated from field: l3l4networkpolicy.v1alpha.HAStatus status = 2;
+   */
+  status: HAStatus;
+
+  /**
+   * Optional string description of status
+   *
+   * @generated from field: string status_message = 3;
+   */
+  statusMessage: string;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.HAStatusEvent.
+ * Use `create(HAStatusEventSchema)` to create a new message.
+ */
+export declare const HAStatusEventSchema: GenMessage<HAStatusEvent>;
+
+/**
  * StreamEvent wraps different event types that can be streamed from the datapath.
  *
  * @generated from message l3l4networkpolicy.v1alpha.StreamEvent
@@ -1016,6 +1040,14 @@ export declare type StreamEvent = Message<"l3l4networkpolicy.v1alpha.StreamEvent
      */
     value: PolicyRuleEvent;
     case: "rule";
+  } | {
+    /**
+     * HA status event
+     *
+     * @generated from field: l3l4networkpolicy.v1alpha.HAStatusEvent ha_status = 4;
+     */
+    value: HAStatusEvent;
+    case: "haStatus";
   } | { case: undefined; value?: undefined };
 };
 
@@ -1196,37 +1228,6 @@ export enum AgentType {
 export declare const AgentTypeSchema: GenEnum<AgentType>;
 
 /**
- * @generated from enum l3l4networkpolicy.v1alpha.HAError
- */
-export enum HAError {
-  /**
-   * Generic catch all HA error
-   *
-   * @generated from enum value: HA_ERROR_UNSPECIFIED = 0;
-   */
-  HA_ERROR_UNSPECIFIED = 0,
-
-  /**
-   * HA peer connectivity error, used when peer keepalive fails
-   *
-   * @generated from enum value: HA_ERROR_PEER_TIMEOUT = 1;
-   */
-  HA_ERROR_PEER_TIMEOUT = 1,
-
-  /**
-   * HA flow sync error, used when flow synchronization fails
-   *
-   * @generated from enum value: HA_ERROR_FLOW_SYNC = 2;
-   */
-  HA_ERROR_FLOW_SYNC = 2,
-}
-
-/**
- * Describes the enum l3l4networkpolicy.v1alpha.HAError.
- */
-export declare const HAErrorSchema: GenEnum<HAError>;
-
-/**
  * @generated from enum l3l4networkpolicy.v1alpha.ConfigType
  */
 export enum ConfigType {
@@ -1403,6 +1404,65 @@ export enum PolicyRuleError {
  * Describes the enum l3l4networkpolicy.v1alpha.PolicyRuleError.
  */
 export declare const PolicyRuleErrorSchema: GenEnum<PolicyRuleError>;
+
+/**
+ * @generated from enum l3l4networkpolicy.v1alpha.HAStatus
+ */
+export enum HAStatus {
+  /**
+   * Unspecified or unknown HA status
+   *
+   * @generated from enum value: HA_STATUS_UNSPECIFIED = 0;
+   */
+  HA_STATUS_UNSPECIFIED = 0,
+
+  /**
+   * HA peer connectivity up, keepalives working
+   *
+   * @generated from enum value: HA_STATUS_KEEPALIVE_UP = 1;
+   */
+  HA_STATUS_KEEPALIVE_UP = 1,
+
+  /**
+   * HA peer connectivity down, keepalives failing
+   *
+   * @generated from enum value: HA_STATUS_KEEPALIVE_DOWN = 2;
+   */
+  HA_STATUS_KEEPALIVE_DOWN = 2,
+
+  /**
+   * HA flow sync up, flow sync between peers is working
+   *
+   * @generated from enum value: HA_STATUS_FLOW_SYNC_UP = 3;
+   */
+  HA_STATUS_FLOW_SYNC_UP = 3,
+
+  /**
+   * HA flow sync down, flow sync between peers is failing
+   *
+   * @generated from enum value: HA_STATUS_FLOW_SYNC_DOWN = 4;
+   */
+  HA_STATUS_FLOW_SYNC_DOWN = 4,
+
+  /**
+   * HA bulk sync is finished sending to peer
+   *
+   * @generated from enum value: HA_STATUS_BULK_SYNC_DONE = 5;
+   */
+  HA_STATUS_BULK_SYNC_DONE = 5,
+
+  /**
+   * HA bulk sync is finished receiving from peer
+   *
+   * @generated from enum value: HA_STATUS_BULK_SYNC_PEER_DONE = 6;
+   */
+  HA_STATUS_BULK_SYNC_PEER_DONE = 6,
+}
+
+/**
+ * Describes the enum l3l4networkpolicy.v1alpha.HAStatus.
+ */
+export declare const HAStatusSchema: GenEnum<HAStatus>;
 
 /**
  * @generated from service l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService

@@ -110,15 +110,6 @@ enum AgentType {
   AGENT_TYPE_TETRAGON = 2;
 }
 
-enum HAError {
-  // Generic catch all HA error
-  HA_ERROR_UNSPECIFIED = 0;
-  // HA peer connectivity error, used when peer keepalive fails
-  HA_ERROR_PEER_TIMEOUT = 1;
-  // HA flow sync error, used when flow synchronization fails
-  HA_ERROR_FLOW_SYNC = 2;
-}
-
 message Streaml3l4NetworkPolicyRequest {
   string agent_uid = 1;
 }
@@ -175,9 +166,10 @@ message ReportStatus {
   google.protobuf.Timestamp last_dataplane_restart = 17;
   // LastFwaCrashTime is the timestamp of the last time the FWA has crashed
   google.protobuf.Timestamp last_fwa_crash_time = 19;
-  // HA error map, where the string key is the peer IP address
-  // If the map is empty, then the peers are healthy
-  map<string, HAError> ha_error = 20;
+
+  // Deprecated fields and tags
+  reserved 20;
+  reserved "ha_error";
 }
 
 enum ConfigType {
@@ -400,6 +392,32 @@ message PolicyRuleEvent {
   string error_message = 7;
 }
 
+enum HAStatus {
+  // Unspecified or unknown HA status
+  HA_STATUS_UNSPECIFIED = 0;
+  // HA peer connectivity up, keepalives working
+  HA_STATUS_KEEPALIVE_UP = 1;
+  // HA peer connectivity down, keepalives failing
+  HA_STATUS_KEEPALIVE_DOWN = 2;
+  // HA flow sync up, flow sync between peers is working
+  HA_STATUS_FLOW_SYNC_UP = 3;
+  // HA flow sync down, flow sync between peers is failing
+  HA_STATUS_FLOW_SYNC_DOWN = 4;
+  // HA bulk sync is finished sending to peer
+  HA_STATUS_BULK_SYNC_DONE = 5;
+  // HA bulk sync is finished receiving from peer
+  HA_STATUS_BULK_SYNC_PEER_DONE = 6;
+}
+
+message HAStatusEvent {
+  // IP address for the peer
+  string peer = 1;
+  // HA event status
+  HAStatus status = 2;
+  // Optional string description of status
+  string status_message = 3;
+}
+
 // StreamEvent wraps different event types that can be streamed from the datapath.
 message StreamEvent {
   // Agent UID
@@ -411,6 +429,8 @@ message StreamEvent {
   oneof event {
     // Policy rule event
     PolicyRuleEvent rule = 3;
+    // HA status event
+    HAStatusEvent ha_status = 4;
   }
 }
 

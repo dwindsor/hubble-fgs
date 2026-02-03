@@ -246,58 +246,6 @@ func (AgentType) EnumDescriptor() ([]byte, []int) {
 	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{3}
 }
 
-type HAError int32
-
-const (
-	// Generic catch all HA error
-	HAError_HA_ERROR_UNSPECIFIED HAError = 0
-	// HA peer connectivity error, used when peer keepalive fails
-	HAError_HA_ERROR_PEER_TIMEOUT HAError = 1
-	// HA flow sync error, used when flow synchronization fails
-	HAError_HA_ERROR_FLOW_SYNC HAError = 2
-)
-
-// Enum value maps for HAError.
-var (
-	HAError_name = map[int32]string{
-		0: "HA_ERROR_UNSPECIFIED",
-		1: "HA_ERROR_PEER_TIMEOUT",
-		2: "HA_ERROR_FLOW_SYNC",
-	}
-	HAError_value = map[string]int32{
-		"HA_ERROR_UNSPECIFIED":  0,
-		"HA_ERROR_PEER_TIMEOUT": 1,
-		"HA_ERROR_FLOW_SYNC":    2,
-	}
-)
-
-func (x HAError) Enum() *HAError {
-	p := new(HAError)
-	*p = x
-	return p
-}
-
-func (x HAError) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (HAError) Descriptor() protoreflect.EnumDescriptor {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[4].Descriptor()
-}
-
-func (HAError) Type() protoreflect.EnumType {
-	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[4]
-}
-
-func (x HAError) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use HAError.Descriptor instead.
-func (HAError) EnumDescriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{4}
-}
-
 type ConfigType int32
 
 const (
@@ -354,11 +302,11 @@ func (x ConfigType) String() string {
 }
 
 func (ConfigType) Descriptor() protoreflect.EnumDescriptor {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[5].Descriptor()
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[4].Descriptor()
 }
 
 func (ConfigType) Type() protoreflect.EnumType {
-	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[5]
+	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[4]
 }
 
 func (x ConfigType) Number() protoreflect.EnumNumber {
@@ -367,7 +315,7 @@ func (x ConfigType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ConfigType.Descriptor instead.
 func (ConfigType) EnumDescriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{5}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{4}
 }
 
 type ConfigSource int32
@@ -406,11 +354,11 @@ func (x ConfigSource) String() string {
 }
 
 func (ConfigSource) Descriptor() protoreflect.EnumDescriptor {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[6].Descriptor()
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[5].Descriptor()
 }
 
 func (ConfigSource) Type() protoreflect.EnumType {
-	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[6]
+	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[5]
 }
 
 func (x ConfigSource) Number() protoreflect.EnumNumber {
@@ -419,7 +367,7 @@ func (x ConfigSource) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ConfigSource.Descriptor instead.
 func (ConfigSource) EnumDescriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{6}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{5}
 }
 
 // Config operation is the instruction telling the backend what to do with a
@@ -460,11 +408,11 @@ func (x ConfigOperation) String() string {
 }
 
 func (ConfigOperation) Descriptor() protoreflect.EnumDescriptor {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[7].Descriptor()
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[6].Descriptor()
 }
 
 func (ConfigOperation) Type() protoreflect.EnumType {
-	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[7]
+	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[6]
 }
 
 func (x ConfigOperation) Number() protoreflect.EnumNumber {
@@ -473,7 +421,7 @@ func (x ConfigOperation) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ConfigOperation.Descriptor instead.
 func (ConfigOperation) EnumDescriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{7}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{6}
 }
 
 // PolicyRuleError enumerates error types that can occur during policy rule processing.
@@ -521,11 +469,11 @@ func (x PolicyRuleError) String() string {
 }
 
 func (PolicyRuleError) Descriptor() protoreflect.EnumDescriptor {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[8].Descriptor()
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[7].Descriptor()
 }
 
 func (PolicyRuleError) Type() protoreflect.EnumType {
-	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[8]
+	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[7]
 }
 
 func (x PolicyRuleError) Number() protoreflect.EnumNumber {
@@ -534,6 +482,74 @@ func (x PolicyRuleError) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PolicyRuleError.Descriptor instead.
 func (PolicyRuleError) EnumDescriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{7}
+}
+
+type HAStatus int32
+
+const (
+	// Unspecified or unknown HA status
+	HAStatus_HA_STATUS_UNSPECIFIED HAStatus = 0
+	// HA peer connectivity up, keepalives working
+	HAStatus_HA_STATUS_KEEPALIVE_UP HAStatus = 1
+	// HA peer connectivity down, keepalives failing
+	HAStatus_HA_STATUS_KEEPALIVE_DOWN HAStatus = 2
+	// HA flow sync up, flow sync between peers is working
+	HAStatus_HA_STATUS_FLOW_SYNC_UP HAStatus = 3
+	// HA flow sync down, flow sync between peers is failing
+	HAStatus_HA_STATUS_FLOW_SYNC_DOWN HAStatus = 4
+	// HA bulk sync is finished sending to peer
+	HAStatus_HA_STATUS_BULK_SYNC_DONE HAStatus = 5
+	// HA bulk sync is finished receiving from peer
+	HAStatus_HA_STATUS_BULK_SYNC_PEER_DONE HAStatus = 6
+)
+
+// Enum value maps for HAStatus.
+var (
+	HAStatus_name = map[int32]string{
+		0: "HA_STATUS_UNSPECIFIED",
+		1: "HA_STATUS_KEEPALIVE_UP",
+		2: "HA_STATUS_KEEPALIVE_DOWN",
+		3: "HA_STATUS_FLOW_SYNC_UP",
+		4: "HA_STATUS_FLOW_SYNC_DOWN",
+		5: "HA_STATUS_BULK_SYNC_DONE",
+		6: "HA_STATUS_BULK_SYNC_PEER_DONE",
+	}
+	HAStatus_value = map[string]int32{
+		"HA_STATUS_UNSPECIFIED":         0,
+		"HA_STATUS_KEEPALIVE_UP":        1,
+		"HA_STATUS_KEEPALIVE_DOWN":      2,
+		"HA_STATUS_FLOW_SYNC_UP":        3,
+		"HA_STATUS_FLOW_SYNC_DOWN":      4,
+		"HA_STATUS_BULK_SYNC_DONE":      5,
+		"HA_STATUS_BULK_SYNC_PEER_DONE": 6,
+	}
+)
+
+func (x HAStatus) Enum() *HAStatus {
+	p := new(HAStatus)
+	*p = x
+	return p
+}
+
+func (x HAStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (HAStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[8].Descriptor()
+}
+
+func (HAStatus) Type() protoreflect.EnumType {
+	return &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_enumTypes[8]
+}
+
+func (x HAStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use HAStatus.Descriptor instead.
+func (HAStatus) EnumDescriptor() ([]byte, []int) {
 	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{8}
 }
 
@@ -1060,11 +1076,8 @@ type ReportStatus struct {
 	LastDataplaneRestart *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=last_dataplane_restart,json=lastDataplaneRestart,proto3" json:"last_dataplane_restart,omitempty"`
 	// LastFwaCrashTime is the timestamp of the last time the FWA has crashed
 	LastFwaCrashTime *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=last_fwa_crash_time,json=lastFwaCrashTime,proto3" json:"last_fwa_crash_time,omitempty"`
-	// HA error map, where the string key is the peer IP address
-	// If the map is empty, then the peers are healthy
-	HaError       map[string]HAError `protobuf:"bytes,20,rep,name=ha_error,json=haError,proto3" json:"ha_error,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value,enum=l3l4networkpolicy.v1alpha.HAError"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ReportStatus) Reset() {
@@ -1219,13 +1232,6 @@ func (x *ReportStatus) GetLastDataplaneRestart() *timestamppb.Timestamp {
 func (x *ReportStatus) GetLastFwaCrashTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.LastFwaCrashTime
-	}
-	return nil
-}
-
-func (x *ReportStatus) GetHaError() map[string]HAError {
-	if x != nil {
-		return x.HaError
 	}
 	return nil
 }
@@ -2357,6 +2363,69 @@ func (x *PolicyRuleEvent) GetErrorMessage() string {
 	return ""
 }
 
+type HAStatusEvent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// IP address for the peer
+	Peer string `protobuf:"bytes,1,opt,name=peer,proto3" json:"peer,omitempty"`
+	// HA event status
+	Status HAStatus `protobuf:"varint,2,opt,name=status,proto3,enum=l3l4networkpolicy.v1alpha.HAStatus" json:"status,omitempty"`
+	// Optional string description of status
+	StatusMessage string `protobuf:"bytes,3,opt,name=status_message,json=statusMessage,proto3" json:"status_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HAStatusEvent) Reset() {
+	*x = HAStatusEvent{}
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HAStatusEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HAStatusEvent) ProtoMessage() {}
+
+func (x *HAStatusEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HAStatusEvent.ProtoReflect.Descriptor instead.
+func (*HAStatusEvent) Descriptor() ([]byte, []int) {
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *HAStatusEvent) GetPeer() string {
+	if x != nil {
+		return x.Peer
+	}
+	return ""
+}
+
+func (x *HAStatusEvent) GetStatus() HAStatus {
+	if x != nil {
+		return x.Status
+	}
+	return HAStatus_HA_STATUS_UNSPECIFIED
+}
+
+func (x *HAStatusEvent) GetStatusMessage() string {
+	if x != nil {
+		return x.StatusMessage
+	}
+	return ""
+}
+
 // StreamEvent wraps different event types that can be streamed from the datapath.
 type StreamEvent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -2369,6 +2438,7 @@ type StreamEvent struct {
 	// Types that are valid to be assigned to Event:
 	//
 	//	*StreamEvent_Rule
+	//	*StreamEvent_HaStatus
 	Event         isStreamEvent_Event `protobuf_oneof:"event"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2376,7 +2446,7 @@ type StreamEvent struct {
 
 func (x *StreamEvent) Reset() {
 	*x = StreamEvent{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[24]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2388,7 +2458,7 @@ func (x *StreamEvent) String() string {
 func (*StreamEvent) ProtoMessage() {}
 
 func (x *StreamEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[24]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2401,7 +2471,7 @@ func (x *StreamEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamEvent.ProtoReflect.Descriptor instead.
 func (*StreamEvent) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{24}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *StreamEvent) GetAgentUid() string {
@@ -2434,6 +2504,15 @@ func (x *StreamEvent) GetRule() *PolicyRuleEvent {
 	return nil
 }
 
+func (x *StreamEvent) GetHaStatus() *HAStatusEvent {
+	if x != nil {
+		if x, ok := x.Event.(*StreamEvent_HaStatus); ok {
+			return x.HaStatus
+		}
+	}
+	return nil
+}
+
 type isStreamEvent_Event interface {
 	isStreamEvent_Event()
 }
@@ -2443,7 +2522,14 @@ type StreamEvent_Rule struct {
 	Rule *PolicyRuleEvent `protobuf:"bytes,3,opt,name=rule,proto3,oneof"`
 }
 
+type StreamEvent_HaStatus struct {
+	// HA status event
+	HaStatus *HAStatusEvent `protobuf:"bytes,4,opt,name=ha_status,json=haStatus,proto3,oneof"`
+}
+
 func (*StreamEvent_Rule) isStreamEvent_Event() {}
+
+func (*StreamEvent_HaStatus) isStreamEvent_Event() {}
 
 // StreamEventsRequest is a client-to-server streaming message containing events to report.
 type StreamEventsRequest struct {
@@ -2456,7 +2542,7 @@ type StreamEventsRequest struct {
 
 func (x *StreamEventsRequest) Reset() {
 	*x = StreamEventsRequest{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[25]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2468,7 +2554,7 @@ func (x *StreamEventsRequest) String() string {
 func (*StreamEventsRequest) ProtoMessage() {}
 
 func (x *StreamEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[25]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2481,7 +2567,7 @@ func (x *StreamEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamEventsRequest.ProtoReflect.Descriptor instead.
 func (*StreamEventsRequest) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{25}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *StreamEventsRequest) GetEvents() []*StreamEvent {
@@ -2499,7 +2585,7 @@ type StreamEventsResponse struct {
 
 func (x *StreamEventsResponse) Reset() {
 	*x = StreamEventsResponse{}
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[26]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2511,7 +2597,7 @@ func (x *StreamEventsResponse) String() string {
 func (*StreamEventsResponse) ProtoMessage() {}
 
 func (x *StreamEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[26]
+	mi := &file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2524,7 +2610,7 @@ func (x *StreamEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamEventsResponse.ProtoReflect.Descriptor instead.
 func (*StreamEventsResponse) Descriptor() ([]byte, []int) {
-	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{26}
+	return file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDescGZIP(), []int{27}
 }
 
 var File_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto protoreflect.FileDescriptor
@@ -2563,7 +2649,7 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x06policy\x18\x02 \x01(\v2%.l3l4networkpolicy.v1alpha.PolicyRuleR\x06policy\"V\n" +
 	"\x13ReportStatusRequest\x12?\n" +
 	"\x06status\x18\x01 \x01(\v2'.l3l4networkpolicy.v1alpha.ReportStatusR\x06status\"\x16\n" +
-	"\x14ReportStatusResponse\"\xa5\a\n" +
+	"\x14ReportStatusResponse\"\x84\x06\n" +
 	"\fReportStatus\x12\x1b\n" +
 	"\tagent_uid\x18\x01 \x01(\tR\bagentUid\x12\x1d\n" +
 	"\n" +
@@ -2584,11 +2670,7 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x10last_dpu_restart\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\x0elastDpuRestart\x12-\n" +
 	"\x12dataplane_restarts\x18\x10 \x01(\rR\x11dataplaneRestarts\x12P\n" +
 	"\x16last_dataplane_restart\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\x14lastDataplaneRestart\x12I\n" +
-	"\x13last_fwa_crash_time\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\x10lastFwaCrashTime\x12O\n" +
-	"\bha_error\x18\x14 \x03(\v24.l3l4networkpolicy.v1alpha.ReportStatus.HaErrorEntryR\ahaError\x1a^\n" +
-	"\fHaErrorEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x128\n" +
-	"\x05value\x18\x02 \x01(\x0e2\".l3l4networkpolicy.v1alpha.HAErrorR\x05value:\x028\x01\"\xf5\x01\n" +
+	"\x13last_fwa_crash_time\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\x10lastFwaCrashTimeJ\x04\b\x14\x10\x15R\bha_error\"\xf5\x01\n" +
 	"\tDpuConfig\x12\x1d\n" +
 	"\n" +
 	"service_ip\x18\x01 \x01(\tR\tserviceIp\x12\x1f\n" +
@@ -2680,11 +2762,16 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\n" +
 	"is_success\x18\x05 \x01(\bR\tisSuccess\x12@\n" +
 	"\x05error\x18\x06 \x01(\x0e2*.l3l4networkpolicy.v1alpha.PolicyRuleErrorR\x05error\x12#\n" +
-	"\rerror_message\x18\a \x01(\tR\ferrorMessage\"\xaf\x01\n" +
+	"\rerror_message\x18\a \x01(\tR\ferrorMessage\"\x87\x01\n" +
+	"\rHAStatusEvent\x12\x12\n" +
+	"\x04peer\x18\x01 \x01(\tR\x04peer\x12;\n" +
+	"\x06status\x18\x02 \x01(\x0e2#.l3l4networkpolicy.v1alpha.HAStatusR\x06status\x12%\n" +
+	"\x0estatus_message\x18\x03 \x01(\tR\rstatusMessage\"\xf8\x01\n" +
 	"\vStreamEvent\x12\x1b\n" +
 	"\tagent_uid\x18\x01 \x01(\tR\bagentUid\x128\n" +
 	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12@\n" +
-	"\x04rule\x18\x03 \x01(\v2*.l3l4networkpolicy.v1alpha.PolicyRuleEventH\x00R\x04ruleB\a\n" +
+	"\x04rule\x18\x03 \x01(\v2*.l3l4networkpolicy.v1alpha.PolicyRuleEventH\x00R\x04rule\x12G\n" +
+	"\tha_status\x18\x04 \x01(\v2(.l3l4networkpolicy.v1alpha.HAStatusEventH\x00R\bhaStatusB\a\n" +
 	"\x05event\"U\n" +
 	"\x13StreamEventsRequest\x12>\n" +
 	"\x06events\x18\x01 \x03(\v2&.l3l4networkpolicy.v1alpha.StreamEventR\x06events\"\x16\n" +
@@ -2705,11 +2792,7 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\tAgentType\x12\x1a\n" +
 	"\x16AGENT_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12AGENT_TYPE_DPU_AGW\x10\x01\x12\x17\n" +
-	"\x13AGENT_TYPE_TETRAGON\x10\x02*V\n" +
-	"\aHAError\x12\x18\n" +
-	"\x14HA_ERROR_UNSPECIFIED\x10\x00\x12\x19\n" +
-	"\x15HA_ERROR_PEER_TIMEOUT\x10\x01\x12\x16\n" +
-	"\x12HA_ERROR_FLOW_SYNC\x10\x02*\xdd\x01\n" +
+	"\x13AGENT_TYPE_TETRAGON\x10\x02*\xdd\x01\n" +
 	"\n" +
 	"ConfigType\x12\x1b\n" +
 	"\x17CONFIG_TYPE_UNSPECIFIED\x10\x00\x12\x13\n" +
@@ -2733,7 +2816,15 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x19POLICY_RULE_ERROR_TIMEOUT\x10\x01\x12\x19\n" +
 	"\x15POLICY_RULE_ERROR_OOM\x10\x02\x12!\n" +
 	"\x1dPOLICY_RULE_ERROR_UNSUPPORTED\x10\x03\x12\x1c\n" +
-	"\x18POLICY_RULE_ERROR_FORMAT\x10\x042\xa7\x04\n" +
+	"\x18POLICY_RULE_ERROR_FORMAT\x10\x04*\xda\x01\n" +
+	"\bHAStatus\x12\x19\n" +
+	"\x15HA_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16HA_STATUS_KEEPALIVE_UP\x10\x01\x12\x1c\n" +
+	"\x18HA_STATUS_KEEPALIVE_DOWN\x10\x02\x12\x1a\n" +
+	"\x16HA_STATUS_FLOW_SYNC_UP\x10\x03\x12\x1c\n" +
+	"\x18HA_STATUS_FLOW_SYNC_DOWN\x10\x04\x12\x1c\n" +
+	"\x18HA_STATUS_BULK_SYNC_DONE\x10\x05\x12!\n" +
+	"\x1dHA_STATUS_BULK_SYNC_PEER_DONE\x10\x062\xa7\x04\n" +
 	"\x18L3L4NetworkPolicyService\x12\x94\x01\n" +
 	"\x17Streaml3l4NetworkPolicy\x129.l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest\x1a:.l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse\"\x000\x01\x12q\n" +
 	"\fReportStatus\x12..l3l4networkpolicy.v1alpha.ReportStatusRequest\x1a/.l3l4networkpolicy.v1alpha.ReportStatusResponse\"\x00\x12\x8b\x01\n" +
@@ -2759,11 +2850,11 @@ var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_goTypes = []any{
 	(PolicyAction)(0),                       // 1: l3l4networkpolicy.v1alpha.PolicyAction
 	(PolicyOperation)(0),                    // 2: l3l4networkpolicy.v1alpha.PolicyOperation
 	(AgentType)(0),                          // 3: l3l4networkpolicy.v1alpha.AgentType
-	(HAError)(0),                            // 4: l3l4networkpolicy.v1alpha.HAError
-	(ConfigType)(0),                         // 5: l3l4networkpolicy.v1alpha.ConfigType
-	(ConfigSource)(0),                       // 6: l3l4networkpolicy.v1alpha.ConfigSource
-	(ConfigOperation)(0),                    // 7: l3l4networkpolicy.v1alpha.ConfigOperation
-	(PolicyRuleError)(0),                    // 8: l3l4networkpolicy.v1alpha.PolicyRuleError
+	(ConfigType)(0),                         // 4: l3l4networkpolicy.v1alpha.ConfigType
+	(ConfigSource)(0),                       // 5: l3l4networkpolicy.v1alpha.ConfigSource
+	(ConfigOperation)(0),                    // 6: l3l4networkpolicy.v1alpha.ConfigOperation
+	(PolicyRuleError)(0),                    // 7: l3l4networkpolicy.v1alpha.PolicyRuleError
+	(HAStatus)(0),                           // 8: l3l4networkpolicy.v1alpha.HAStatus
 	(*PolicyPorts)(nil),                     // 9: l3l4networkpolicy.v1alpha.PolicyPorts
 	(*L3L4NetworkSubject)(nil),              // 10: l3l4networkpolicy.v1alpha.L3L4NetworkSubject
 	(*PolicySubject)(nil),                   // 11: l3l4networkpolicy.v1alpha.PolicySubject
@@ -2788,10 +2879,10 @@ var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_goTypes = []any{
 	(*StreamDatapathConfigRequest)(nil),     // 30: l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
 	(*StreamDatapathConfigResponse)(nil),    // 31: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
 	(*PolicyRuleEvent)(nil),                 // 32: l3l4networkpolicy.v1alpha.PolicyRuleEvent
-	(*StreamEvent)(nil),                     // 33: l3l4networkpolicy.v1alpha.StreamEvent
-	(*StreamEventsRequest)(nil),             // 34: l3l4networkpolicy.v1alpha.StreamEventsRequest
-	(*StreamEventsResponse)(nil),            // 35: l3l4networkpolicy.v1alpha.StreamEventsResponse
-	nil,                                     // 36: l3l4networkpolicy.v1alpha.ReportStatus.HaErrorEntry
+	(*HAStatusEvent)(nil),                   // 33: l3l4networkpolicy.v1alpha.HAStatusEvent
+	(*StreamEvent)(nil),                     // 34: l3l4networkpolicy.v1alpha.StreamEvent
+	(*StreamEventsRequest)(nil),             // 35: l3l4networkpolicy.v1alpha.StreamEventsRequest
+	(*StreamEventsResponse)(nil),            // 36: l3l4networkpolicy.v1alpha.StreamEventsResponse
 	nil,                                     // 37: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
 	nil,                                     // 38: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
 	nil,                                     // 39: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
@@ -2812,30 +2903,30 @@ var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_depIdxs = []int32{
 	41, // 10: l3l4networkpolicy.v1alpha.ReportStatus.last_dpu_restart:type_name -> google.protobuf.Timestamp
 	41, // 11: l3l4networkpolicy.v1alpha.ReportStatus.last_dataplane_restart:type_name -> google.protobuf.Timestamp
 	41, // 12: l3l4networkpolicy.v1alpha.ReportStatus.last_fwa_crash_time:type_name -> google.protobuf.Timestamp
-	36, // 13: l3l4networkpolicy.v1alpha.ReportStatus.ha_error:type_name -> l3l4networkpolicy.v1alpha.ReportStatus.HaErrorEntry
-	37, // 14: l3l4networkpolicy.v1alpha.LogConfigSyslog.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
-	38, // 15: l3l4networkpolicy.v1alpha.LogConfigIpfix.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
-	39, // 16: l3l4networkpolicy.v1alpha.LogConfigTimescape.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
-	40, // 17: l3l4networkpolicy.v1alpha.LogConfigSplunk.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
-	24, // 18: l3l4networkpolicy.v1alpha.HaConfig.peers:type_name -> l3l4networkpolicy.v1alpha.HaPeer
-	26, // 19: l3l4networkpolicy.v1alpha.NetworkConfig.vlans:type_name -> l3l4networkpolicy.v1alpha.Vlan
-	27, // 20: l3l4networkpolicy.v1alpha.NetworkConfig.vrfs:type_name -> l3l4networkpolicy.v1alpha.Vrf
-	5,  // 21: l3l4networkpolicy.v1alpha.ConfigObject.type:type_name -> l3l4networkpolicy.v1alpha.ConfigType
-	6,  // 22: l3l4networkpolicy.v1alpha.ConfigObject.source:type_name -> l3l4networkpolicy.v1alpha.ConfigSource
-	18, // 23: l3l4networkpolicy.v1alpha.ConfigObject.config_dpu:type_name -> l3l4networkpolicy.v1alpha.DpuConfig
-	20, // 24: l3l4networkpolicy.v1alpha.ConfigObject.config_log_syslog:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog
-	21, // 25: l3l4networkpolicy.v1alpha.ConfigObject.config_log_ipfix:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix
-	22, // 26: l3l4networkpolicy.v1alpha.ConfigObject.config_log_timescape:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape
-	23, // 27: l3l4networkpolicy.v1alpha.ConfigObject.config_log_splunk:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk
-	25, // 28: l3l4networkpolicy.v1alpha.ConfigObject.config_ha:type_name -> l3l4networkpolicy.v1alpha.HaConfig
-	28, // 29: l3l4networkpolicy.v1alpha.ConfigObject.network_config:type_name -> l3l4networkpolicy.v1alpha.NetworkConfig
-	7,  // 30: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.oper:type_name -> l3l4networkpolicy.v1alpha.ConfigOperation
-	29, // 31: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.config:type_name -> l3l4networkpolicy.v1alpha.ConfigObject
-	8,  // 32: l3l4networkpolicy.v1alpha.PolicyRuleEvent.error:type_name -> l3l4networkpolicy.v1alpha.PolicyRuleError
+	37, // 13: l3l4networkpolicy.v1alpha.LogConfigSyslog.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry
+	38, // 14: l3l4networkpolicy.v1alpha.LogConfigIpfix.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry
+	39, // 15: l3l4networkpolicy.v1alpha.LogConfigTimescape.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry
+	40, // 16: l3l4networkpolicy.v1alpha.LogConfigSplunk.configs:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk.ConfigsEntry
+	24, // 17: l3l4networkpolicy.v1alpha.HaConfig.peers:type_name -> l3l4networkpolicy.v1alpha.HaPeer
+	26, // 18: l3l4networkpolicy.v1alpha.NetworkConfig.vlans:type_name -> l3l4networkpolicy.v1alpha.Vlan
+	27, // 19: l3l4networkpolicy.v1alpha.NetworkConfig.vrfs:type_name -> l3l4networkpolicy.v1alpha.Vrf
+	4,  // 20: l3l4networkpolicy.v1alpha.ConfigObject.type:type_name -> l3l4networkpolicy.v1alpha.ConfigType
+	5,  // 21: l3l4networkpolicy.v1alpha.ConfigObject.source:type_name -> l3l4networkpolicy.v1alpha.ConfigSource
+	18, // 22: l3l4networkpolicy.v1alpha.ConfigObject.config_dpu:type_name -> l3l4networkpolicy.v1alpha.DpuConfig
+	20, // 23: l3l4networkpolicy.v1alpha.ConfigObject.config_log_syslog:type_name -> l3l4networkpolicy.v1alpha.LogConfigSyslog
+	21, // 24: l3l4networkpolicy.v1alpha.ConfigObject.config_log_ipfix:type_name -> l3l4networkpolicy.v1alpha.LogConfigIpfix
+	22, // 25: l3l4networkpolicy.v1alpha.ConfigObject.config_log_timescape:type_name -> l3l4networkpolicy.v1alpha.LogConfigTimescape
+	23, // 26: l3l4networkpolicy.v1alpha.ConfigObject.config_log_splunk:type_name -> l3l4networkpolicy.v1alpha.LogConfigSplunk
+	25, // 27: l3l4networkpolicy.v1alpha.ConfigObject.config_ha:type_name -> l3l4networkpolicy.v1alpha.HaConfig
+	28, // 28: l3l4networkpolicy.v1alpha.ConfigObject.network_config:type_name -> l3l4networkpolicy.v1alpha.NetworkConfig
+	6,  // 29: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.oper:type_name -> l3l4networkpolicy.v1alpha.ConfigOperation
+	29, // 30: l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse.config:type_name -> l3l4networkpolicy.v1alpha.ConfigObject
+	7,  // 31: l3l4networkpolicy.v1alpha.PolicyRuleEvent.error:type_name -> l3l4networkpolicy.v1alpha.PolicyRuleError
+	8,  // 32: l3l4networkpolicy.v1alpha.HAStatusEvent.status:type_name -> l3l4networkpolicy.v1alpha.HAStatus
 	41, // 33: l3l4networkpolicy.v1alpha.StreamEvent.timestamp:type_name -> google.protobuf.Timestamp
 	32, // 34: l3l4networkpolicy.v1alpha.StreamEvent.rule:type_name -> l3l4networkpolicy.v1alpha.PolicyRuleEvent
-	33, // 35: l3l4networkpolicy.v1alpha.StreamEventsRequest.events:type_name -> l3l4networkpolicy.v1alpha.StreamEvent
-	4,  // 36: l3l4networkpolicy.v1alpha.ReportStatus.HaErrorEntry.value:type_name -> l3l4networkpolicy.v1alpha.HAError
+	33, // 35: l3l4networkpolicy.v1alpha.StreamEvent.ha_status:type_name -> l3l4networkpolicy.v1alpha.HAStatusEvent
+	34, // 36: l3l4networkpolicy.v1alpha.StreamEventsRequest.events:type_name -> l3l4networkpolicy.v1alpha.StreamEvent
 	19, // 37: l3l4networkpolicy.v1alpha.LogConfigSyslog.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
 	19, // 38: l3l4networkpolicy.v1alpha.LogConfigIpfix.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
 	19, // 39: l3l4networkpolicy.v1alpha.LogConfigTimescape.ConfigsEntry.value:type_name -> l3l4networkpolicy.v1alpha.LogConfig
@@ -2843,11 +2934,11 @@ var file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_depIdxs = []int32{
 	13, // 41: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:input_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest
 	15, // 42: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:input_type -> l3l4networkpolicy.v1alpha.ReportStatusRequest
 	30, // 43: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:input_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigRequest
-	34, // 44: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamEvents:input_type -> l3l4networkpolicy.v1alpha.StreamEventsRequest
+	35, // 44: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamEvents:input_type -> l3l4networkpolicy.v1alpha.StreamEventsRequest
 	14, // 45: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.Streaml3l4NetworkPolicy:output_type -> l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse
 	16, // 46: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.ReportStatus:output_type -> l3l4networkpolicy.v1alpha.ReportStatusResponse
 	31, // 47: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamDatapathConfig:output_type -> l3l4networkpolicy.v1alpha.StreamDatapathConfigResponse
-	35, // 48: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamEvents:output_type -> l3l4networkpolicy.v1alpha.StreamEventsResponse
+	36, // 48: l3l4networkpolicy.v1alpha.L3L4NetworkPolicyService.StreamEvents:output_type -> l3l4networkpolicy.v1alpha.StreamEventsResponse
 	45, // [45:49] is the sub-list for method output_type
 	41, // [41:45] is the sub-list for method input_type
 	41, // [41:41] is the sub-list for extension type_name
@@ -2869,8 +2960,9 @@ func file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_init() {
 		(*ConfigObject_ConfigHa)(nil),
 		(*ConfigObject_NetworkConfig)(nil),
 	}
-	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[24].OneofWrappers = []any{
+	file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_msgTypes[25].OneofWrappers = []any{
 		(*StreamEvent_Rule)(nil),
+		(*StreamEvent_HaStatus)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

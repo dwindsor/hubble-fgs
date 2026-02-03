@@ -70,6 +70,7 @@ message ProcessModel {
   google.protobuf.BoolValue in_init_tree = 8;
   repeated uint32 syscalls = 9;
   string abi = 10;
+  string container_id = 11;
 }
 
 service ProcessModelService {

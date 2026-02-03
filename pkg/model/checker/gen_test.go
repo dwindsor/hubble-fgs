@@ -74,22 +74,29 @@ func TestGenerate(t *testing.T) {
 						{
 							Name: "quxbaz",
 							Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
-							Processes: []*appModelV1.ApplicationProcessGroup{
+							Containers: []*appModelV1.ApplicationContainer{
 								{
-									Name: "/bin/bash",
-									Connections: []*appModelV1.ApplicationConnection{
+									Id:    "b1a8c6f707935",
+									Name:  "my-third-container",
+									Image: "docker.io/library/thirdapp:latest",
+									Processes: []*appModelV1.ApplicationProcessGroup{
 										{
-											Destination: &appModelV1.Destination{
-												Type: &appModelV1.Destination_Dns{
-													Dns: &appModelV1.DestinationDns{
-														DestinationNames: []string{"isovalent.com"},
+											Name: "/bin/bash",
+											Connections: []*appModelV1.ApplicationConnection{
+												{
+													Destination: &appModelV1.Destination{
+														Type: &appModelV1.Destination_Dns{
+															Dns: &appModelV1.DestinationDns{
+																DestinationNames: []string{"isovalent.com"},
+															},
+														},
+														Port: 443,
+													},
+													Stats: &appModelV1.ConnectionStats{
+														TxBytes: 1337,
+														RxBytes: 1337,
 													},
 												},
-												Port: 443,
-											},
-											Stats: &appModelV1.ConnectionStats{
-												TxBytes: 1337,
-												RxBytes: 1337,
 											},
 										},
 									},

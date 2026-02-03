@@ -13,10 +13,17 @@ package model
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	common "github.com/isovalent/ipa/common/k8s/type/v1alpha"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cilium/tetragon/pkg/defaults"
+	"github.com/cilium/tetragon/pkg/process"
+	"github.com/cilium/tetragon/pkg/watcher"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
@@ -79,30 +86,37 @@ func TestModelToMonitorData(t *testing.T) {
 					{
 						Name: "workload1",
 						Kind: common.WorkloadKind_WORKLOAD_KIND_POD,
-						Processes: []*appModelV1.ApplicationProcessGroup{
+						Containers: []*appModelV1.ApplicationContainer{
 							{
-								Name:      "process1",
-								Arguments: "arg1",
-								Connections: []*appModelV1.ApplicationConnection{
+								Id:    "04c7f6fce6aa",
+								Name:  "busybox-1",
+								Image: "docker.io/library/busybox:latest",
+								Processes: []*appModelV1.ApplicationProcessGroup{
 									{
-										Destination: &appModelV1.Destination{
-											Type: &appModelV1.Destination_Dns{
-												Dns: &appModelV1.DestinationDns{
-													DestinationNames: []string{"dest1"},
+										Name:      "process1",
+										Arguments: "arg1",
+										Connections: []*appModelV1.ApplicationConnection{
+											{
+												Destination: &appModelV1.Destination{
+													Type: &appModelV1.Destination_Dns{
+														Dns: &appModelV1.DestinationDns{
+															DestinationNames: []string{"dest1"},
+														},
+													},
+													Port: 80,
+												},
+												Stats: &appModelV1.ConnectionStats{
+													TxBytes: 100,
+													RxBytes: 200,
 												},
 											},
-											Port: 80,
-										},
-										Stats: &appModelV1.ConnectionStats{
-											TxBytes: 100,
-											RxBytes: 200,
 										},
 									},
+									{
+										Name:      "process2",
+										Arguments: "arg2",
+									},
 								},
-							},
-							{
-								Name:      "process2",
-								Arguments: "arg2",
 							},
 						},
 					},
@@ -149,6 +163,7 @@ func TestModelToMonitorData(t *testing.T) {
 			SourceWorkloadKind:         common.WorkloadKind_WORKLOAD_KIND_POD,
 			SourceWorkloadResourceKind: common.ResourceKind_RESOURCE_KIND_WORKLOAD,
 			SourceWorkloadName:         "workload1",
+			SourceContainerId:          "04c7f6fce6aa",
 			SourceProcessName:          "process1",
 			SourceProcessArgs:          "arg1",
 			DestinationNames:           "dest1",
@@ -176,6 +191,7 @@ func TestModelToMonitorData(t *testing.T) {
 			Namespace:    "default",
 			WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_POD,
 			WorkloadName: "workload1",
+			ContainerId:  "04c7f6fce6aa",
 			Name:         "process1",
 			Args:         "arg1",
 		}: ProcessValue{},
@@ -183,6 +199,7 @@ func TestModelToMonitorData(t *testing.T) {
 			Namespace:    "default",
 			WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_POD,
 			WorkloadName: "workload1",
+			ContainerId:  "04c7f6fce6aa",
 			Name:         "process2",
 			Args:         "arg2",
 		}: ProcessValue{},
@@ -281,24 +298,53 @@ func TestProcessModelToApplicationModel_ParentTracking(t *testing.T) {
 	assert.Equal(t, []string{"bash"}, grepValue.Parents, "grep should have bash as parent")
 }
 
+func initEnv(t *testing.T) {
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod",
+			Namespace: "test-namespace",
+		},
+		Status: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:        "test-container",
+					Image:       "docker.io/library/testapp:latest",
+					ContainerID: "containerd://354f9d014f814ffe0e62cbc36517f1f6cda8cb35627be0fceac6e8927e3651241",
+				},
+			},
+		},
+	}
+
+	pods := []any{&pod}
+
+	watcher := watcher.NewFakeK8sWatcher(pods)
+
+	if err := process.InitCache(watcher, 65536, defaults.DefaultProcessCacheGCInterval); err != nil {
+		t.Fatalf("failed to call process.InitCache %s", err)
+	}
+}
+
 func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T) {
+	initEnv(t)
 	// Test parent tracking with workload processes
 	models := []*types.ProcessModel{
 		{
-			Binary:     "app",
-			BinaryArgs: "--config=/etc/app.conf",
-			Parent:     "systemd",
-			Parents:    []string{"systemd"},
-			Namespace:  "default",
-			Workload:   &types.Workload{Kind: "Deployment", Name: "my-app"},
+			Binary:      "app",
+			BinaryArgs:  "--config=/etc/app.conf",
+			Parent:      "systemd",
+			Parents:     []string{"systemd"},
+			Namespace:   "default",
+			Workload:    &types.Workload{Kind: "Deployment", Name: "my-app"},
+			ContainerId: "354f9d014f814",
 		},
 		{
-			Binary:     "app",
-			BinaryArgs: "--config=/etc/app.conf",
-			Parent:     "init",
-			Parents:    []string{"init"},
-			Namespace:  "default",
-			Workload:   &types.Workload{Kind: "Deployment", Name: "my-app"},
+			Binary:      "app",
+			BinaryArgs:  "--config=/etc/app.conf",
+			Parent:      "init",
+			Parents:     []string{"init"},
+			Namespace:   "default",
+			Workload:    &types.Workload{Kind: "Deployment", Name: "my-app"},
+			ContainerId: "354f9d014f814",
 		},
 	}
 
@@ -314,9 +360,15 @@ func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T
 	workload := result.ApplicationModel.Namespaces[0].Workloads[0]
 	require.Equal(t, "my-app", workload.Name)
 	require.Equal(t, common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT, workload.Kind)
-	require.Len(t, workload.Processes, 1)
+	require.Len(t, workload.Containers, 1)
 
-	process := workload.Processes[0]
+	container := result.ApplicationModel.Namespaces[0].Workloads[0].Containers[0]
+	require.Equal(t, "354f9d014f814", container.Id)
+	require.Equal(t, "test-container", container.Name)
+	require.Equal(t, "docker.io/library/testapp:latest", container.Image)
+	require.Len(t, container.Processes, 1)
+
+	process := container.Processes[0]
 	require.Equal(t, "app", process.Name)
 	require.Equal(t, "--config=/etc/app.conf", process.Arguments)
 
@@ -327,6 +379,7 @@ func TestProcessModelToApplicationModel_ParentTrackingWithWorkloads(t *testing.T
 		Namespace:    "default",
 		WorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
 		WorkloadName: "my-app",
+		ContainerId:  "354f9d014f814",
 		Name:         "app",
 		Args:         "--config=/etc/app.conf",
 	}

@@ -145,13 +145,14 @@ func ProcessDiff(a []*appModelV1.ApplicationProcessGroup, b []*appModelV1.Applic
 	return connDiff, psDiff, nil
 }
 
-func wlFilterConns(wl *appModelV1.ApplicationWorkload) *appModelV1.ApplicationWorkload {
-	diff := &appModelV1.ApplicationWorkload{
-		Name: wl.Name,
-		Kind: wl.Kind,
+func contFilterConns(cont *appModelV1.ApplicationContainer) *appModelV1.ApplicationContainer {
+	diff := &appModelV1.ApplicationContainer{
+		Id:    cont.Id,
+		Name:  cont.Name,
+		Image: cont.Image,
 	}
 
-	for _, p := range wl.Processes {
+	for _, p := range cont.Processes {
 		if len(p.Connections) > 0 {
 			diff.Processes = append(diff.Processes, p)
 		}
@@ -162,45 +163,66 @@ func wlFilterConns(wl *appModelV1.ApplicationWorkload) *appModelV1.ApplicationWo
 	return nil
 }
 
-func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.ApplicationWorkload) ([]*appModelV1.ApplicationWorkload, []*appModelV1.ApplicationWorkload, error) {
-	wlDiff := make([]*appModelV1.ApplicationWorkload, 0)
-	connDiff := make([]*appModelV1.ApplicationWorkload, 0)
-	wlB := make(map[string]*appModelV1.ApplicationWorkload, len(b))
-	for _, wl := range b {
-		wlB[wl.Name] = wl
+func ContainerDiff(a []*appModelV1.ApplicationContainer, b []*appModelV1.ApplicationContainer) ([]*appModelV1.ApplicationContainer, []*appModelV1.ApplicationContainer, error) {
+	contDiff := make([]*appModelV1.ApplicationContainer, 0)
+	connDiff := make([]*appModelV1.ApplicationContainer, 0)
+	contB := make(map[string]*appModelV1.ApplicationContainer, len(b))
+	for _, cont := range b {
+		contB[cont.Id] = cont
 	}
 
-	for _, wl := range a {
-		w, ok := wlB[wl.Name]
+	for _, cont := range a {
+		c, ok := contB[cont.Id]
 		if !ok {
-			wlDiff = append(wlDiff, wl)
+			contDiff = append(contDiff, cont)
 
-			wlf := wlFilterConns(wl)
-			if wlf != nil {
-				connDiff = append(connDiff, wlf)
+			cf := contFilterConns(cont)
+			if cf != nil {
+				connDiff = append(connDiff, cf)
 			}
 			continue
 		}
 
-		d := &appModelV1.ApplicationWorkload{
-			Name: wl.Name,
-			Kind: wl.Kind,
+		d := &appModelV1.ApplicationContainer{
+			Id:    cont.Id,
+			Name:  cont.Name,
+			Image: cont.Image,
 		}
 
-		connwlDiff, psDiff, err := ProcessDiff(wl.Processes, w.Processes)
+		connContDiff, psDiff, err := ProcessDiff(cont.Processes, c.Processes)
 		if err != nil {
 			return nil, nil, err
 		}
 		if len(psDiff) > 0 {
 			d.Processes = psDiff
-			wlDiff = append(wlDiff, d)
+			contDiff = append(contDiff, d)
 		}
-		if len(connwlDiff) > 0 {
-			d.Processes = connwlDiff
+		if len(connContDiff) > 0 {
+			d.Processes = connContDiff
 			connDiff = append(connDiff, d)
 		}
 	}
-	return connDiff, wlDiff, nil
+	return connDiff, contDiff, nil
+}
+
+func wlFilterConns(wl *appModelV1.ApplicationWorkload) *appModelV1.ApplicationWorkload {
+	diff := &appModelV1.ApplicationWorkload{
+		Name: wl.Name,
+		Kind: wl.Kind,
+	}
+
+	for _, cont := range wl.Containers {
+		contDiff := contFilterConns(cont)
+		if contDiff != nil {
+			diff.Containers = append(diff.Containers, contDiff)
+		}
+	}
+
+	if len(diff.Containers) > 0 {
+		return diff
+	}
+
+	return nil
 }
 
 func nsFilterConns(ns *appModelV1.ApplicationNamespace) *appModelV1.ApplicationNamespace {
@@ -219,6 +241,45 @@ func nsFilterConns(ns *appModelV1.ApplicationNamespace) *appModelV1.ApplicationN
 		return diff
 	}
 	return nil
+}
+
+func WorkloadDiff(a []*appModelV1.ApplicationWorkload, b []*appModelV1.ApplicationWorkload) ([]*appModelV1.ApplicationWorkload, []*appModelV1.ApplicationWorkload, error) {
+	wlDiff := make([]*appModelV1.ApplicationWorkload, 0)
+	connDiff := make([]*appModelV1.ApplicationWorkload, 0)
+	wlB := make(map[string]*appModelV1.ApplicationWorkload, len(b))
+	for _, wl := range b {
+		wlB[wl.Name] = wl
+	}
+
+	for _, wl := range a {
+		b, ok := wlB[wl.Name]
+		if !ok {
+			wlDiff = append(wlDiff, wl)
+
+			wlf := wlFilterConns(wl)
+			if wlf != nil {
+				connDiff = append(connDiff, wlf)
+			}
+			continue
+		}
+		d := &appModelV1.ApplicationWorkload{
+			Name: wl.Name,
+			Kind: wl.Kind,
+		}
+		connWlDiff, contDiff, err := ContainerDiff(wl.Containers, b.Containers)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(contDiff) > 0 {
+			d.Containers = contDiff
+			wlDiff = append(wlDiff, d)
+		}
+		if len(connWlDiff) > 0 {
+			d.Containers = connWlDiff
+			connDiff = append(connDiff, d)
+		}
+	}
+	return connDiff, wlDiff, nil
 }
 
 func ApplicationModelDiff(a *appModelV1.ApplicationModel, b *appModelV1.ApplicationModel) (*appModelV1.ApplicationModel, *appModelV1.ApplicationModel, error) {
@@ -376,40 +437,47 @@ func ApplicationModelToProcessFlat(ctx context.Context, a *appModelV1.Applicatio
 
 	for _, ns := range a.Namespaces {
 		for _, wl := range ns.Workloads {
-			for _, p := range wl.Processes {
-				processKey := p.Name + p.Arguments
-				info := telemetryMap[processKey]
+			for _, cont := range wl.Containers {
+				for _, p := range cont.Processes {
+					processKey := p.Name + p.Arguments
+					info := telemetryMap[processKey]
 
-				var parents []string
-				var execCount uint64
-				var firstStartTime, latestStartTime *timestamppb.Timestamp
-				if info != nil {
-					parents = info.Parents
-					execCount = info.ExecCount
-					firstStartTime = model.MaybeTimeToTimestamp(info.FirstStartTime)
-					latestStartTime = model.MaybeTimeToTimestamp(info.LatestStartTime)
-				}
+					var parents []string
+					var execCount uint64
+					var firstStartTime, latestStartTime *timestamppb.Timestamp
+					if info != nil {
+						parents = info.Parents
+						execCount = info.ExecCount
+						firstStartTime = model.MaybeTimeToTimestamp(info.FirstStartTime)
+						latestStartTime = model.MaybeTimeToTimestamp(info.LatestStartTime)
+					}
 
-				entry := &appModelV1.ProcessTelemetry{
-					Id:                     uuid.NewString(),
-					ClusterName:            cluster,
-					NodeName:               node,
-					NodeLabels:             labels,
-					EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_PROCESS,
-					Time:                   currentTime,
-					KubernetesNamespace:    ns.Name,
-					KubernetesWorkloadName: wl.Name,
-					KubernetesWorkloadKind: wl.Kind,
-					ProcessName:            p.Name,
-					ProcessArguments:       p.Arguments,
-					ProcessHash:            p.Hash,
-					ApplicationModelId:     a.Id,
-					FirstStartTime:         firstStartTime,
-					LatestStartTime:        latestStartTime,
-					ParentNames:            parents,
-					ExecutionCount:         execCount,
+					entry := &appModelV1.ProcessTelemetry{
+						Id:          uuid.NewString(),
+						ClusterName: cluster,
+						Container: &appModelV1.ApplicationContainer{
+							Id:    cont.Id,
+							Name:  cont.Name,
+							Image: cont.Image,
+						},
+						NodeName:               node,
+						NodeLabels:             labels,
+						EventType:              appModelV1.TelemetryType_TELEMETRY_TYPE_PROCESS,
+						Time:                   currentTime,
+						KubernetesNamespace:    ns.Name,
+						KubernetesWorkloadName: wl.Name,
+						KubernetesWorkloadKind: wl.Kind,
+						ProcessName:            p.Name,
+						ProcessArguments:       p.Arguments,
+						ProcessHash:            p.Hash,
+						ApplicationModelId:     a.Id,
+						FirstStartTime:         firstStartTime,
+						LatestStartTime:        latestStartTime,
+						ParentNames:            parents,
+						ExecutionCount:         execCount,
+					}
+					t = append(t, entry)
 				}
-				t = append(t, entry)
 			}
 		}
 	}
@@ -491,42 +559,49 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 
 	for _, ns := range a.Namespaces {
 		for _, wl := range ns.Workloads {
-			for _, p := range wl.Processes {
-				for _, c := range p.Connections {
-					verdict := appModelV1.PolicyVerdict_POLICY_VERDICT_UNSPECIFIED
-					destName, dns, dname, dkind, dres := getDestination(c.Destination)
-					dType := getType(c.Destination)
+			for _, cont := range wl.Containers {
+				for _, p := range cont.Processes {
+					for _, c := range p.Connections {
+						verdict := appModelV1.PolicyVerdict_POLICY_VERDICT_UNSPECIFIED
+						destName, dns, dname, dkind, dres := getDestination(c.Destination)
+						dType := getType(c.Destination)
 
-					if c.Policy.PolicyName != "" {
-						verdict = policyVerdict(c.Stats)
+						if c.Policy.PolicyName != "" {
+							verdict = policyVerdict(c.Stats)
+						}
+						entry := &appModelV1.NetworkConnectTelemetry{
+							ClusterName: cluster,
+							Container: &appModelV1.ApplicationContainer{
+								Id:    cont.Id,
+								Name:  cont.Name,
+								Image: cont.Image,
+							},
+							NodeName:                          node,
+							EventType:                         appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
+							Time:                              time,
+							KubernetesNamespace:               ns.Name,
+							KubernetesWorkloadName:            wl.Name,
+							KubernetesWorkloadKind:            wl.Kind,
+							ProcessName:                       p.Name,
+							ProcessArguments:                  p.Arguments,
+							DestinationName:                   destName,
+							DestinationType:                   dType,
+							DestinationPort:                   uint32(c.Destination.Port),
+							DestinationKubernetesNamespace:    dns,
+							DestinationKubernetesWorkloadKind: dkind,
+							DestinationKubernetesResourceName: dname,
+							DestinationKubernetesResourceKind: dres,
+							TxBytes:                           c.Stats.TxBytes,
+							RxBytes:                           c.Stats.RxBytes,
+							TxDrops:                           c.Stats.TxDrops,
+							NodeLabels:                        labels,
+							PolicyName:                        c.Policy.PolicyName,
+							RuleName:                          c.Policy.RuleName,
+							Verdict:                           verdict,
+							ApplicationModelId:                a.Id,
+						}
+						n = append(n, entry)
 					}
-					entry := &appModelV1.NetworkConnectTelemetry{
-						ClusterName:                       cluster,
-						NodeName:                          node,
-						EventType:                         appModelV1.TelemetryType_TELEMETRY_TYPE_NETWORK_CONNECT,
-						Time:                              time,
-						KubernetesNamespace:               ns.Name,
-						KubernetesWorkloadName:            wl.Name,
-						KubernetesWorkloadKind:            wl.Kind,
-						ProcessName:                       p.Name,
-						ProcessArguments:                  p.Arguments,
-						DestinationName:                   destName,
-						DestinationType:                   dType,
-						DestinationPort:                   uint32(c.Destination.Port),
-						DestinationKubernetesNamespace:    dns,
-						DestinationKubernetesWorkloadKind: dkind,
-						DestinationKubernetesResourceName: dname,
-						DestinationKubernetesResourceKind: dres,
-						TxBytes:                           c.Stats.TxBytes,
-						RxBytes:                           c.Stats.RxBytes,
-						TxDrops:                           c.Stats.TxDrops,
-						NodeLabels:                        labels,
-						PolicyName:                        c.Policy.PolicyName,
-						RuleName:                          c.Policy.RuleName,
-						Verdict:                           verdict,
-						ApplicationModelId:                a.Id,
-					}
-					n = append(n, entry)
 				}
 			}
 		}

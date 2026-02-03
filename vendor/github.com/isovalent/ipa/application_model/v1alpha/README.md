@@ -9,6 +9,7 @@
   
 - [application_model/v1alpha/application_model.proto](#application_model_v1alpha_application_model-proto)
     - [ApplicationConnection](#application_model-v1alpha-ApplicationConnection)
+    - [ApplicationContainer](#application_model-v1alpha-ApplicationContainer)
     - [ApplicationHost](#application_model-v1alpha-ApplicationHost)
     - [ApplicationModel](#application_model-v1alpha-ApplicationModel)
     - [ApplicationModelEvent](#application_model-v1alpha-ApplicationModelEvent)
@@ -579,6 +580,24 @@ WARNING for consumers: numbers are arbitrary.
 
 
 
+<a name="application_model-v1alpha-ApplicationContainer"></a>
+
+### ApplicationContainer
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Identifier of the container. |
+| name | [string](#string) |  | Name of the container. |
+| image | [string](#string) |  | Image of the container. |
+| processes | [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup) | repeated | A list of process groups in this container. See ApplicationProcessGroup for the definition of a process group. |
+
+
+
+
+
+
 <a name="application_model-v1alpha-ApplicationHost"></a>
 
 ### ApplicationHost
@@ -704,7 +723,7 @@ the following criteria:
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
 | kind | [common.k8s.type.v1alpha.WorkloadKind](#common-k8s-type-v1alpha-WorkloadKind) |  |  |
-| processes | [ApplicationProcessGroup](#application_model-v1alpha-ApplicationProcessGroup) | repeated | A list of process groups in the workload. See ApplicationProcessGroup for the definition of a process group. |
+| containers | [ApplicationContainer](#application_model-v1alpha-ApplicationContainer) | repeated | A list of containers below the workload. See ApplicationContainer. |
 
 
 
@@ -868,6 +887,7 @@ the following criteria:
 | sessions | [uint64](#uint64) |  | The number of TCP connections / UDP sessions. For `POLICY_VERDICT_UNSPECIFIED` verdict events, this field specifies the number of TCP connections / UDP sessions created. For `POLICY_VERDICT_ALLOW` verdict events, this field specifies the number of TCP connections / UDP sessions allowed by this policy rule. For `POLICY_VERDICT_DROP` verdict events, this field specifies the number of dropped TCP connections / UDP sessions dropped by this policy rule. |
 | application_model_id | [string](#string) |  | The ID of the application model from which this telemetry data got derived. |
 | tx_drops | [uint64](#uint64) |  | The number of dropped packets |
+| container | [ApplicationContainer](#application_model-v1alpha-ApplicationContainer) |  | The container in which this connection has an endpoint |
 
 
 
@@ -933,6 +953,7 @@ the following criteria:
 | first_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The first time the process has been observed to run. |
 | latest_start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | The most recent time the process has been observed to run. |
 | parent_names | [string](#string) | repeated | Names of all processes that have been parents of this name/argument tuple. |
+| container | [ApplicationContainer](#application_model-v1alpha-ApplicationContainer) |  | The container in which this process is running |
 
 
 

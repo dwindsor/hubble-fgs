@@ -93,7 +93,7 @@ func checkWorkloads(tb testing.TB, checks model.Pods, workloads []*v1alpha.Appli
 		if !ok {
 			continue
 		}
-		if !assert.True(tb, checkContainers(tb, check.Containers, workload.Processes), "pod checks failed in workload %q", workload.Name) {
+		if !assert.True(tb, checkContainers(tb, check.Containers, workload.Containers), "pod checks failed in workload %q", workload.Name) {
 			continue
 		}
 		cl.Check(workload.Name)
@@ -102,13 +102,17 @@ func checkWorkloads(tb testing.TB, checks model.Pods, workloads []*v1alpha.Appli
 	return true
 }
 
-func checkContainers(tb testing.TB, checks model.Containers, processes []*v1alpha.ApplicationProcessGroup) bool {
+func checkContainers(tb testing.TB, checks model.Containers, containers []*v1alpha.ApplicationContainer) bool {
 	cl := checklist.New("container", checks)
-	for containerName, check := range checks {
-		if !assert.True(tb, checkProcesses(tb, []model.Binary{check.Cmd}, processes, true), "cmd check failed in container %q", containerName) {
+	for _, container := range containers {
+		check, ok := checks[container.Name]
+		if !ok {
 			continue
 		}
-		cl.Check(containerName)
+		if !assert.True(tb, checkProcesses(tb, []model.Binary{check.Cmd}, container.Processes, true), "cmd check failed in container %q", container.Name) {
+			continue
+		}
+		cl.Check(container.Name)
 	}
 	return cl.AssertComplete(tb)
 }

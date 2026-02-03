@@ -104,6 +104,20 @@ func EnsureSorted(model *appModelV1.ApplicationModel) {
 							if res != 0 {
 								return res
 							}
+						case *appModelV1.ApplicationContainer:
+							b := b.(*appModelV1.ApplicationContainer)
+							res = cmp.Compare(a.Id, b.Id)
+							if res != 0 {
+								return res
+							}
+							res = cmp.Compare(a.Name, b.Name)
+							if res != 0 {
+								return res
+							}
+							res = cmp.Compare(a.Image, b.Image)
+							if res != 0 {
+								return res
+							}
 						case *appModelV1.ApplicationWorkload:
 							b := b.(*appModelV1.ApplicationWorkload)
 							res = cmp.Compare(a.Name, b.Name)
@@ -223,6 +237,9 @@ func CompareNetworkKeys(a, b NetworkKey) int {
 	if result := strings.Compare(a.SourceWorkloadName, b.SourceWorkloadName); result != 0 {
 		return result
 	}
+	if result := strings.Compare(a.SourceContainerId, b.SourceContainerId); result != 0 {
+		return result
+	}
 	if result := strings.Compare(a.SourceProcessName, b.SourceProcessName); result != 0 {
 		return result
 	}
@@ -273,6 +290,9 @@ func CompareProcessKeys(a, b ProcessKey) int {
 		return result
 	}
 	if result := strings.Compare(a.WorkloadName, b.WorkloadName); result != 0 {
+		return result
+	}
+	if result := strings.Compare(a.ContainerId, b.ContainerId); result != 0 {
 		return result
 	}
 	if result := strings.Compare(a.Name, b.Name); result != 0 {

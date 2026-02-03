@@ -54,6 +54,7 @@ type NetworkKey struct {
 	SourceWorkloadKind         v1alpha.WorkloadKind
 	SourceWorkloadResourceKind v1alpha.ResourceKind
 	SourceWorkloadName         string
+	SourceContainerId          string
 	SourceProcessName          string
 	SourceProcessArgs          string
 	DestinationPort            uint64
@@ -96,7 +97,7 @@ func (nk NetworkKey) String() string {
 	if nk.SourceNamespace == HostNamespace {
 		source = "host"
 	} else {
-		source = fmt.Sprintf("%s/%s:%s", nk.SourceNamespace, prettyWorkloadKind(nk.SourceWorkloadKind), nk.SourceWorkloadName)
+		source = fmt.Sprintf("%s/%s:%s %s", nk.SourceNamespace, prettyWorkloadKind(nk.SourceWorkloadKind), nk.SourceWorkloadName, nk.SourceContainerId)
 	}
 	destination = DestinationName(&nk)
 	return fmt.Sprintf("%s > %s", source, destination)
@@ -253,6 +254,7 @@ type ProcessKey struct {
 	Namespace    string
 	WorkloadKind v1alpha.WorkloadKind
 	WorkloadName string
+	ContainerId  string
 	Name         string
 	Args         string
 }
@@ -271,7 +273,7 @@ func (pk ProcessKey) String() string {
 	if pk.Namespace == HostNamespace {
 		return fmt.Sprintf("host %s %s", pk.Name, pk.Args)
 	}
-	return fmt.Sprintf("%s/%s:%s %s %s", pk.Namespace, prettyWorkloadKind(pk.WorkloadKind), pk.WorkloadName, pk.Name, pk.Args)
+	return fmt.Sprintf("%s/%s:%s %s %s %s", pk.Namespace, prettyWorkloadKind(pk.WorkloadKind), pk.WorkloadName, pk.ContainerId, pk.Name, pk.Args)
 }
 
 func (nmd NetworkMonitorData) Print() {
@@ -298,6 +300,7 @@ func getNetworkMonitorKey(process *types.ProcessModel, dst *types.Destination, i
 		if nwKey.SourceWorkloadKind != v1alpha.WorkloadKind_WORKLOAD_KIND_UNSPECIFIED {
 			nwKey.SourceWorkloadResourceKind = v1alpha.ResourceKind_RESOURCE_KIND_WORKLOAD
 		}
+		nwKey.SourceContainerId = process.ContainerId
 	}
 	if includeProcess {
 		nwKey.SourceProcessName = process.Binary
@@ -396,6 +399,7 @@ func getProcessMonitorKey(process *types.ProcessModel) ProcessKey {
 		Namespace:    process.Namespace,
 		WorkloadName: workloadName,
 		WorkloadKind: workloadKind,
+		ContainerId:  process.ContainerId,
 		Name:         process.Binary,
 		Args:         process.BinaryArgs,
 	}

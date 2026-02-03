@@ -258,8 +258,8 @@ func TestProcessNetworkConnectDiff(t *testing.T) {
 	assert.Equal(t, "NewCIIsBest", process[0].Arguments)
 }
 
-func workloads() []*appModelV1.ApplicationWorkload {
-	a := make([]*appModelV1.ApplicationWorkload, 2)
+func containers() []*appModelV1.ApplicationContainer {
+	a := make([]*appModelV1.ApplicationContainer, 2)
 
 	ps0 := psGroup()
 	ps1 := psGroup()
@@ -269,36 +269,60 @@ func workloads() []*appModelV1.ApplicationWorkload {
 	ps0[1].Connections = psConns0
 	ps1[1].Connections = psConns1
 
-	a[0] = &appModelV1.ApplicationWorkload{
-		Name:      "workload2",
-		Kind:      common.WorkloadKind_WORKLOAD_KIND_POD,
+	a[0] = &appModelV1.ApplicationContainer{
+		Id:        "325790f3086f4",
+		Name:      "busybox1",
+		Image:     "docker.io/library/busybox:latest",
 		Processes: ps0,
 	}
 
-	a[1] = &appModelV1.ApplicationWorkload{
-		Name:      "workload1",
-		Kind:      common.WorkloadKind_WORKLOAD_KIND_POD,
+	a[1] = &appModelV1.ApplicationContainer{
+		Id:        "bd019528d37c2",
+		Name:      "busybox2",
+		Image:     "docker.io/library/busybox:1.0",
 		Processes: ps1,
 	}
+
 	return a
 }
 
-func TestWorkloadEqual(t *testing.T) {
-	aSet := workloads()
-	bSet := workloads()
-	netSet, procSet, err := WorkloadDiff(aSet, bSet)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(procSet))
-	assert.Equal(t, 0, len(netSet))
+func workloads() []*appModelV1.ApplicationWorkload {
+	a := make([]*appModelV1.ApplicationWorkload, 2)
+
+	cont0 := containers()
+	cont1 := containers()
+
+	a[0] = &appModelV1.ApplicationWorkload{
+		Name:       "workload2",
+		Kind:       common.WorkloadKind_WORKLOAD_KIND_POD,
+		Containers: cont0,
+	}
+
+	a[1] = &appModelV1.ApplicationWorkload{
+		Name:       "workload1",
+		Kind:       common.WorkloadKind_WORKLOAD_KIND_POD,
+		Containers: cont1,
+	}
+
+	return a
 }
 
-func TestWorkloadDiff(t *testing.T) {
-	aSet := workloads()
-	bSet := workloads()
+func TestContainersEqual(t *testing.T) {
+	aSet := containers()
+	bSet := containers()
+	network, process, err := ContainerDiff(aSet, bSet)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(process))
+	assert.Equal(t, 0, len(network))
+}
+
+func TestContainerDiff(t *testing.T) {
+	aSet := containers()
+	bSet := containers()
 
 	bSet[0].Processes[1].Connections[0].Stats.TxBytes = 1
 
-	network, process, err := WorkloadDiff(aSet, bSet)
+	network, process, err := ContainerDiff(aSet, bSet)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(process))
 	assert.Equal(t, 1, len(network))
@@ -307,14 +331,14 @@ func TestWorkloadDiff(t *testing.T) {
 	assert.Equal(t, uint64(9), network[0].Processes[0].Connections[0].Stats.TxBytes)
 }
 
-func TestWorkloadNetProcDiff(t *testing.T) {
-	aSet := workloads()
-	bSet := workloads()
+func TestContainerNetProcDiff(t *testing.T) {
+	aSet := containers()
+	bSet := containers()
 
 	bSet[1].Processes[1].Connections[0].Stats.TxBytes = 1
 	aSet[0].Processes[1].Arguments = "changes"
 
-	network, process, err := WorkloadDiff(aSet, bSet)
+	network, process, err := ContainerDiff(aSet, bSet)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(process))
 	assert.Equal(t, 1, len(process[0].Processes))
@@ -334,13 +358,13 @@ func TestWorkloadNetProcDiff(t *testing.T) {
 	assert.Equal(t, uint64(9), network[1].Processes[0].Connections[0].Stats.TxBytes)
 }
 
-func TestWorkloadNameDiff(t *testing.T) {
-	aSet := workloads()
-	bSet := workloads()
+func TestContainerIdDiff(t *testing.T) {
+	aSet := containers()
+	bSet := containers()
 
-	aSet[0].Name = "wl-changes"
+	aSet[0].Id = "325790f3086f4-changed"
 
-	network, process, err := WorkloadDiff(aSet, bSet)
+	network, process, err := ContainerDiff(aSet, bSet)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(process))
 	assert.Equal(t, 1, len(network))
@@ -349,16 +373,97 @@ func TestWorkloadNameDiff(t *testing.T) {
 	assert.Equal(t, 2, len(process[0].Processes))
 	assert.Equal(t, 1, len(network[0].Processes))
 	// Assert Process is copied through correctly.
+	assert.Equal(t, "325790f3086f4-changed", process[0].Id)
+	assert.Equal(t, "busybox1", process[0].Name)
+	assert.Equal(t, "docker.io/library/busybox:latest", process[0].Image)
 	assert.Equal(t, "foolishFish", process[0].Processes[0].Name)
 	assert.Equal(t, "havingFun", process[0].Processes[0].Arguments)
 	assert.Equal(t, "ci", process[0].Processes[1].Name)
 	assert.Equal(t, "makesThingsWork", process[0].Processes[1].Arguments)
 	// Assert Network is copied through correctly
+	assert.Equal(t, "325790f3086f4-changed", network[0].Id)
+	assert.Equal(t, "busybox1", network[0].Name)
+	assert.Equal(t, "docker.io/library/busybox:latest", network[0].Image)
 	assert.Equal(t, "ci", network[0].Processes[0].Name)
 	assert.Equal(t, "makesThingsWork", network[0].Processes[0].Arguments)
 	assert.Equal(t, 2, len(network[0].Processes[0].Connections))
 	assert.Equal(t, uint64(10), network[0].Processes[0].Connections[0].Stats.TxBytes)
 	assert.Equal(t, uint64(1), network[0].Processes[0].Connections[1].Stats.TxBytes)
+}
+
+func TestWorkloadEqual(t *testing.T) {
+	aSet := workloads()
+	bSet := workloads()
+	network, process, err := WorkloadDiff(aSet, bSet)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(process))
+	assert.Equal(t, 0, len(network))
+}
+
+func TestWorkloadDiff(t *testing.T) {
+	aSet := workloads()
+	bSet := workloads()
+
+	bSet[0].Name = "workload2-changed"
+
+	network, process, err := WorkloadDiff(aSet, bSet)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(network))
+	assert.Equal(t, 1, len(process))
+	assert.Equal(t, "workload2", process[0].Name)
+	// Assert Process is copied through correctly
+	assert.Equal(t, 2, len(process[0].Containers))
+	assert.Equal(t, "325790f3086f4", process[0].Containers[0].Id)
+	assert.Equal(t, "busybox1", process[0].Containers[0].Name)
+	assert.Equal(t, "docker.io/library/busybox:latest", process[0].Containers[0].Image)
+	assert.Equal(t, 2, len(process[0].Containers[0].Processes))
+	assert.Equal(t, "bd019528d37c2", process[0].Containers[1].Id)
+	assert.Equal(t, "busybox2", process[0].Containers[1].Name)
+	assert.Equal(t, "docker.io/library/busybox:1.0", process[0].Containers[1].Image)
+	assert.Equal(t, 2, len(process[0].Containers[1].Processes))
+
+	// Assert Network is copied through correctly
+	assert.Equal(t, 2, len(network[0].Containers))
+	assert.Equal(t, "325790f3086f4", network[0].Containers[0].Id)
+	assert.Equal(t, "busybox1", network[0].Containers[0].Name)
+	assert.Equal(t, "docker.io/library/busybox:latest", network[0].Containers[0].Image)
+	assert.Equal(t, 1, len(network[0].Containers[0].Processes))
+	assert.Equal(t, uint64(10), network[0].Containers[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network[0].Containers[0].Processes[0].Connections[1].Stats.TxBytes)
+	assert.Equal(t, "bd019528d37c2", network[0].Containers[1].Id)
+	assert.Equal(t, "busybox2", network[0].Containers[1].Name)
+	assert.Equal(t, "docker.io/library/busybox:1.0", network[0].Containers[1].Image)
+	assert.Equal(t, 1, len(network[0].Containers[1].Processes))
+	assert.Equal(t, uint64(10), network[0].Containers[1].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network[0].Containers[1].Processes[0].Connections[1].Stats.TxBytes)
+}
+
+func TestWorkloadNetProcDiff(t *testing.T) {
+	aSet := workloads()
+	bSet := workloads()
+
+	bSet[1].Containers[0].Processes[1].Connections[0].Stats.TxBytes = 1
+	aSet[0].Containers[1].Processes[0].Arguments = "changes"
+
+	network, process, err := WorkloadDiff(aSet, bSet)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(process))
+	assert.Equal(t, "workload2", process[0].Name)
+	assert.Equal(t, 1, len(process[0].Containers))
+	assert.Equal(t, "bd019528d37c2", process[0].Containers[0].Id)
+	assert.Equal(t, 1, len(process[0].Containers[0].Processes))
+	assert.Equal(t, 0, len(process[0].Containers[0].Processes[0].Connections))
+	assert.Equal(t, "foolishFish", process[0].Containers[0].Processes[0].Name)
+	assert.Equal(t, "changes", process[0].Containers[0].Processes[0].Arguments)
+
+	assert.Equal(t, 1, len(network))
+	assert.Equal(t, "workload1", network[0].Name)
+	assert.Equal(t, 1, len(network[0].Containers))
+	assert.Equal(t, "325790f3086f4", network[0].Containers[0].Id)
+	assert.Equal(t, 1, len(network[0].Containers[0].Processes))
+	assert.Equal(t, 1, len(network[0].Containers[0].Processes[0].Connections))
+	assert.Equal(t, "ci", network[0].Containers[0].Processes[0].Name)
+	assert.Equal(t, uint64(9), network[0].Containers[0].Processes[0].Connections[0].Stats.TxBytes)
 }
 
 func hostModel() *appModelV1.ApplicationHost {
@@ -405,23 +510,23 @@ func TestApplicationModelEqual(t *testing.T) {
 func TestApplicationModelDiff(t *testing.T) {
 	aModel := appModel()
 	bModel := appModel()
-	bModel.Namespaces[0].Workloads[0].Processes[1].Connections[0].Stats.TxBytes = 1
+	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.TxBytes = 1
 
 	network, process, err := ApplicationModelDiff(aModel, bModel)
 	assert.NoError(t, err)
 	assert.Nil(t, process)
 	assert.Equal(t, 1, len(network.Namespaces))
 	assert.Equal(t, 1, len(network.Namespaces[0].Workloads))
-	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes))
-	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes[0].Connections))
-	assert.Equal(t, uint64(9), network.Namespaces[0].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Containers[0].Processes))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Containers[0].Processes[0].Connections))
+	assert.Equal(t, uint64(9), network.Namespaces[0].Workloads[0].Containers[0].Processes[0].Connections[0].Stats.TxBytes)
 }
 
 func TestApplicationModelProcNetDiff(t *testing.T) {
 	aModel := appModel()
 	bModel := appModel()
-	bModel.Namespaces[0].Workloads[0].Processes[1].Connections[0].Stats.TxBytes = 1
-	aModel.Namespaces[1].Workloads[1].Processes[1].Arguments = "changes"
+	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.TxBytes = 1
+	aModel.Namespaces[1].Workloads[1].Containers[0].Processes[1].Arguments = "changes"
 
 	network, process, err := ApplicationModelDiff(aModel, bModel)
 	assert.NoError(t, err)
@@ -433,20 +538,23 @@ func TestApplicationModelProcNetDiff(t *testing.T) {
 
 	// TxBytes inc adds a single process Connection to network
 	assert.Equal(t, 1, len(network.Namespaces[0].Workloads))
-	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes))
-	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes[0].Connections))
-	assert.Equal(t, uint64(9), network.Namespaces[0].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Containers))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Containers[0].Processes))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Containers[0].Processes[0].Connections))
+	assert.Equal(t, uint64(9), network.Namespaces[0].Workloads[0].Containers[0].Processes[0].Connections[0].Stats.TxBytes)
 	// Args change adds two new process Connections to network
 	assert.Equal(t, 1, len(network.Namespaces[1].Workloads))
-	assert.Equal(t, 1, len(network.Namespaces[1].Workloads[0].Processes))
-	assert.Equal(t, 2, len(network.Namespaces[1].Workloads[0].Processes[0].Connections))
-	assert.Equal(t, uint64(10), network.Namespaces[1].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
-	assert.Equal(t, uint64(1), network.Namespaces[1].Workloads[0].Processes[0].Connections[1].Stats.TxBytes)
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Containers))
+	assert.Equal(t, 1, len(network.Namespaces[1].Workloads[0].Containers[0].Processes))
+	assert.Equal(t, 2, len(network.Namespaces[1].Workloads[0].Containers[0].Processes[0].Connections))
+	assert.Equal(t, uint64(10), network.Namespaces[1].Workloads[0].Containers[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network.Namespaces[1].Workloads[0].Containers[0].Processes[0].Connections[1].Stats.TxBytes)
 	// Arguments impact to process
 	assert.Equal(t, 1, len(process.Namespaces[0].Workloads))
-	assert.Equal(t, 1, len(process.Namespaces[0].Workloads[0].Processes))
-	assert.Equal(t, "ci", process.Namespaces[0].Workloads[0].Processes[0].Name)
-	assert.Equal(t, "changes", process.Namespaces[0].Workloads[0].Processes[0].Arguments)
+	assert.Equal(t, 1, len(process.Namespaces[0].Workloads[0].Containers))
+	assert.Equal(t, 1, len(process.Namespaces[0].Workloads[0].Containers[0].Processes))
+	assert.Equal(t, "ci", process.Namespaces[0].Workloads[0].Containers[0].Processes[0].Name)
+	assert.Equal(t, "changes", process.Namespaces[0].Workloads[0].Containers[0].Processes[0].Arguments)
 }
 
 func TestApplicationModelNSDiff(t *testing.T) {
@@ -464,19 +572,49 @@ func TestApplicationModelNSDiff(t *testing.T) {
 	assert.Equal(t, 1, len(network.Namespaces))
 
 	assert.Equal(t, 2, len(network.Namespaces[0].Workloads))
-	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Processes))
-	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[1].Processes))
-	assert.Equal(t, 2, len(network.Namespaces[0].Workloads[0].Processes[0].Connections))
-	assert.Equal(t, 2, len(network.Namespaces[0].Workloads[1].Processes[0].Connections))
-	assert.Equal(t, uint64(10), network.Namespaces[0].Workloads[0].Processes[0].Connections[0].Stats.TxBytes)
-	assert.Equal(t, uint64(1), network.Namespaces[0].Workloads[0].Processes[0].Connections[1].Stats.TxBytes)
+	assert.Equal(t, 2, len(network.Namespaces[0].Workloads[0].Containers))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Containers[0].Processes))
+	assert.Equal(t, 2, len(network.Namespaces[0].Workloads[0].Containers[0].Processes[0].Connections))
+	assert.Equal(t, uint64(10), network.Namespaces[0].Workloads[0].Containers[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network.Namespaces[0].Workloads[0].Containers[0].Processes[0].Connections[1].Stats.TxBytes)
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[0].Containers[1].Processes))
+	assert.Equal(t, 2, len(network.Namespaces[0].Workloads[0].Containers[1].Processes[0].Connections))
+	assert.Equal(t, uint64(10), network.Namespaces[0].Workloads[0].Containers[1].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network.Namespaces[0].Workloads[0].Containers[1].Processes[0].Connections[1].Stats.TxBytes)
+	assert.Equal(t, 2, len(network.Namespaces[0].Workloads[1].Containers))
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[1].Containers[0].Processes))
+	assert.Equal(t, 2, len(network.Namespaces[0].Workloads[1].Containers[0].Processes[0].Connections))
+	assert.Equal(t, uint64(10), network.Namespaces[0].Workloads[1].Containers[0].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network.Namespaces[0].Workloads[1].Containers[0].Processes[0].Connections[1].Stats.TxBytes)
+	assert.Equal(t, 1, len(network.Namespaces[0].Workloads[1].Containers[1].Processes))
+	assert.Equal(t, 2, len(network.Namespaces[0].Workloads[1].Containers[1].Processes[0].Connections))
+	assert.Equal(t, uint64(10), network.Namespaces[0].Workloads[1].Containers[1].Processes[0].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), network.Namespaces[0].Workloads[1].Containers[1].Processes[0].Connections[1].Stats.TxBytes)
 
 	assert.Equal(t, 2, len(process.Namespaces[0].Workloads))
-	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[0].Processes))
-	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[1].Processes))
-	assert.Equal(t, 0, len(process.Namespaces[0].Workloads[0].Processes[0].Connections))
-	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[0].Processes[1].Connections))
-	assert.Equal(t, "new-ns", network.Namespaces[0].Name)
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[0].Containers))
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[0].Containers[0].Processes))
+	assert.Equal(t, 0, len(process.Namespaces[0].Workloads[0].Containers[0].Processes[0].Connections))
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections))
+	assert.Equal(t, uint64(10), process.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), process.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[1].Stats.TxBytes)
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[0].Containers[1].Processes))
+	assert.Equal(t, 0, len(process.Namespaces[0].Workloads[0].Containers[1].Processes[0].Connections))
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[0].Containers[1].Processes[1].Connections))
+	assert.Equal(t, uint64(10), process.Namespaces[0].Workloads[0].Containers[1].Processes[1].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), process.Namespaces[0].Workloads[0].Containers[1].Processes[1].Connections[1].Stats.TxBytes)
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[1].Containers))
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[1].Containers[0].Processes))
+	assert.Equal(t, 0, len(process.Namespaces[0].Workloads[1].Containers[0].Processes[0].Connections))
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[1].Containers[0].Processes[1].Connections))
+	assert.Equal(t, uint64(10), process.Namespaces[0].Workloads[1].Containers[0].Processes[1].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), process.Namespaces[0].Workloads[1].Containers[0].Processes[1].Connections[1].Stats.TxBytes)
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[1].Containers[1].Processes))
+	assert.Equal(t, 0, len(process.Namespaces[0].Workloads[1].Containers[1].Processes[0].Connections))
+	assert.Equal(t, 2, len(process.Namespaces[0].Workloads[1].Containers[1].Processes[1].Connections))
+	assert.Equal(t, uint64(10), process.Namespaces[0].Workloads[1].Containers[1].Processes[1].Connections[0].Stats.TxBytes)
+	assert.Equal(t, uint64(1), process.Namespaces[0].Workloads[1].Containers[1].Processes[1].Connections[1].Stats.TxBytes)
+	assert.Equal(t, "new-ns", process.Namespaces[0].Name)
 }
 
 func TestToNetworkFlat(t *testing.T) {
@@ -485,8 +623,8 @@ func TestToNetworkFlat(t *testing.T) {
 	aModel := appModel()
 	aModel.Id = "u-u-i-d"
 	bModel := appModel()
-	bModel.Namespaces[0].Workloads[0].Processes[1].Connections[0].Stats.TxBytes = 1
-	bModel.Namespaces[1].Workloads[1].Processes[1].Connections[1].Stats.RxBytes = 1
+	bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0].Stats.TxBytes = 1
+	bModel.Namespaces[1].Workloads[1].Containers[1].Processes[1].Connections[1].Stats.RxBytes = 1
 
 	network, process, err := ApplicationModelDiff(aModel, bModel)
 	assert.NoError(t, err)
@@ -500,6 +638,8 @@ func TestToNetworkFlat(t *testing.T) {
 	assert.Equal(t, "ns2", f[1].KubernetesNamespace)
 	assert.Equal(t, "workload2", f[0].KubernetesWorkloadName)
 	assert.Equal(t, "workload1", f[1].KubernetesWorkloadName)
+	assert.Equal(t, "325790f3086f4", f[0].Container.Id)
+	assert.Equal(t, "bd019528d37c2", f[1].Container.Id)
 	assert.Equal(t, "ci", f[0].ProcessName)
 	assert.Equal(t, "ci", f[1].ProcessName)
 	assert.Equal(t, "makesThingsWork", f[0].ProcessArguments)
@@ -803,11 +943,18 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 							{
 								Name: "my-app",
 								Kind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
-								Processes: []*appModelV1.ApplicationProcessGroup{
+								Containers: []*appModelV1.ApplicationContainer{
 									{
-										Hash:      "hash-app-config",
-										Name:      "app",
-										Arguments: "--config=/etc/app.conf",
+										Id:    "14a2e26a8763a",
+										Name:  "my-hash-app",
+										Image: "docker.io/library/hasher:latest",
+										Processes: []*appModelV1.ApplicationProcessGroup{
+											{
+												Hash:      "hash-app-config",
+												Name:      "app",
+												Arguments: "--config=/etc/app.conf",
+											},
+										},
 									},
 								},
 							},
@@ -823,11 +970,16 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 					KubernetesNamespace:    "default",
 					KubernetesWorkloadName: "my-app",
 					KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
-					ProcessName:            "app",
-					ProcessArguments:       "--config=/etc/app.conf",
-					ProcessHash:            "hash-app-config",
-					ParentNames:            []string{"systemd"},
-					ApplicationModelId:     "test-model-456",
+					Container: &appModelV1.ApplicationContainer{
+						Id:    "14a2e26a8763a",
+						Name:  "my-hash-app",
+						Image: "docker.io/library/hasher:latest",
+					},
+					ProcessName:        "app",
+					ProcessArguments:   "--config=/etc/app.conf",
+					ProcessHash:        "hash-app-config",
+					ParentNames:        []string{"systemd"},
+					ApplicationModelId: "test-model-456",
 				},
 			},
 		},
@@ -929,10 +1081,17 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 							{
 								Name: "kube-proxy",
 								Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
-								Processes: []*appModelV1.ApplicationProcessGroup{
+								Containers: []*appModelV1.ApplicationContainer{
 									{
-										Name:      "kube-proxy",
-										Arguments: "--config=/var/lib/kube-proxy/config.conf",
+										Id:    "ffe0e62cbc365",
+										Name:  "kube-proxy-container",
+										Image: "k8s.gcr.io/kube-proxy:v1.20.0",
+										Processes: []*appModelV1.ApplicationProcessGroup{
+											{
+												Name:      "kube-proxy",
+												Arguments: "--config=/var/lib/kube-proxy/config.conf",
+											},
+										},
 									},
 								},
 							},
@@ -955,10 +1114,15 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 					KubernetesNamespace:    "kube-system",
 					KubernetesWorkloadName: "kube-proxy",
 					KubernetesWorkloadKind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
-					ProcessName:            "kube-proxy",
-					ProcessArguments:       "--config=/var/lib/kube-proxy/config.conf",
-					ParentNames:            []string{"systemd"},
-					ApplicationModelId:     "mixed-model",
+					Container: &appModelV1.ApplicationContainer{
+						Id:    "ffe0e62cbc365",
+						Name:  "kube-proxy-container",
+						Image: "k8s.gcr.io/kube-proxy:v1.20.0",
+					},
+					ProcessName:        "kube-proxy",
+					ProcessArguments:   "--config=/var/lib/kube-proxy/config.conf",
+					ParentNames:        []string{"systemd"},
+					ApplicationModelId: "mixed-model",
 				},
 			},
 		},
@@ -994,6 +1158,18 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 						}
 						return 1
 					}
+					if a.Container == nil && b.Container != nil {
+						return -1
+					} else if a.Container != nil && b.Container == nil {
+						return 1
+					} else if a.Container != nil && b.Container != nil {
+						if a.Container.Id != b.Container.Id {
+							if a.Container.Id < b.Container.Id {
+								return -1
+							}
+							return 1
+						}
+					}
 					if a.ProcessName != b.ProcessName {
 						if a.ProcessName < b.ProcessName {
 							return -1
@@ -1020,6 +1196,7 @@ func TestApplicationModelToProcessFlat(t *testing.T) {
 				assert.Equal(t, expected.ProcessName, actual.ProcessName, "process name mismatch at index %d", i)
 				assert.Equal(t, expected.ProcessArguments, actual.ProcessArguments, "process arguments mismatch at index %d", i)
 				assert.Equal(t, expected.ProcessHash, actual.ProcessHash, "process hash mismatch at index %d", i)
+				assert.Equal(t, expected.Container, actual.Container, "container mismatch at index %d", i)
 				assert.Equal(t, expected.KubernetesNamespace, actual.KubernetesNamespace, "kubernetes namespace mismatch at index %d", i)
 				assert.Equal(t, expected.KubernetesWorkloadName, actual.KubernetesWorkloadName, "kubernetes workload name mismatch at index %d", i)
 				assert.Equal(t, expected.KubernetesWorkloadKind, actual.KubernetesWorkloadKind, "kubernetes workload kind mismatch at index %d", i)
@@ -1094,9 +1271,16 @@ func TestApplicationModelToProcessFlat_UniqueIds(t *testing.T) {
 					{
 						Name: "workload1",
 						Kind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
-						Processes: []*appModelV1.ApplicationProcessGroup{
-							{Name: "app1", Arguments: ""},
-							{Name: "app2", Arguments: ""},
+						Containers: []*appModelV1.ApplicationContainer{
+							{
+								Id:    "325790f3086f4",
+								Name:  "my-app-container",
+								Image: "docker.io/library/someapp:latest",
+								Processes: []*appModelV1.ApplicationProcessGroup{
+									{Name: "app1", Arguments: ""},
+									{Name: "app2", Arguments: ""},
+								},
+							},
 						},
 					},
 				},
@@ -1135,8 +1319,15 @@ func TestApplicationModelToProcessFlat_ExecutionCount(t *testing.T) {
 					{
 						Name: "workload1",
 						Kind: common.WorkloadKind_WORKLOAD_KIND_DEPLOYMENT,
-						Processes: []*appModelV1.ApplicationProcessGroup{
-							{Name: "app1", Arguments: "--config=/etc/app.conf"},
+						Containers: []*appModelV1.ApplicationContainer{
+							{
+								Id:    "325790f3086f4",
+								Name:  "my-app-container",
+								Image: "docker.io/library/someapp:latest",
+								Processes: []*appModelV1.ApplicationProcessGroup{
+									{Name: "app1", Arguments: "--config=/etc/app.conf"},
+								},
+							},
 						},
 					},
 				},

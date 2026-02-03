@@ -10,62 +10,69 @@
                     {
                         "name": "wl1",
                         "kind": "WORKLOAD_KIND_DEPLOYMENT",
-                        "processes": [
+                        "containers": [
                             {
-                                "name": "process1",
-                                "hash": "a43bf8",
-                                "arguments": "foo bar qux",
-                                "process_count": 1,
-                                "connections": [
+                                "id":    "325790f3086f4",
+                                "name":  "my-app-container",
+                                "image": "docker.io/library/someapp:latest",
+                                "processes": [
                                     {
-                                        "destination": {
-                                            "dns": {
-                                                "destination_names": [
-                                                    "cisco.com"
-                                                ]
-                                            },
-                                            "port": 443
-                                        },
-                                        "stats": {
-                                            "tx_bytes": 1337,
-                                            "rx_bytes": 4321
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                "name": "process2",
-                                "hash": "b76ac7",
-                                "arguments": "bar qux baz",
-                                "process_count": 2,
-                                "connections": [
-                                    {
-                                        "destination": {
-                                            "dns": {
-                                                "destination_names": [
-                                                    "cisco.com"
-                                                ]
-                                            },
-                                            "port": 443
-                                        },
-                                        "stats": {
-                                            "tx_bytes": 1337,
-                                            "rx_bytes": 4321
-                                        }
+                                        "name": "process1",
+                                        "hash": "a43bf8",
+                                        "arguments": "foo bar qux",
+                                        "process_count": 1,
+                                        "connections": [
+                                            {
+                                                "destination": {
+                                                    "dns": {
+                                                        "destination_names": [
+                                                            "cisco.com"
+                                                        ]
+                                                    },
+                                                    "port": 443
+                                                },
+                                                "stats": {
+                                                    "tx_bytes": 1337,
+                                                    "rx_bytes": 4321
+                                                }
+                                            }
+                                        ]
                                     },
                                     {
-                                        "destination": {
-                                            "dns": {
-                                                "destination_names": [
-                                                    "isovalent.com"
-                                                ]
+                                        "name": "process2",
+                                        "hash": "b76ac7",
+                                        "arguments": "bar qux baz",
+                                        "process_count": 2,
+                                        "connections": [
+                                            {
+                                                "destination": {
+                                                    "dns": {
+                                                        "destination_names": [
+                                                            "cisco.com"
+                                                        ]
+                                                    },
+                                                    "port": 443
+                                                },
+                                                "stats": {
+                                                    "tx_bytes": 1337,
+                                                    "rx_bytes": 4321
+                                                }
                                             },
-                                            "port": 8080
-                                        },
-                                        "stats": {
-                                            "tx_bytes": 1337,
-                                            "rx_bytes": 4321
-                                        }
+                                            {
+                                                "destination": {
+                                                    "dns": {
+                                                        "destination_names": [
+                                                            "isovalent.com"
+                                                        ]
+                                                    },
+                                                    "port": 8080
+                                                },
+                                                "stats": {
+                                                    "tx_bytes": 1337,
+                                                    "rx_bytes": 4321
+                                                }
+                                            }
+                                        ]
                                     }
                                 ]
                             }
@@ -79,62 +86,69 @@
                     {
                         "name": "wl1",
                         "kind": "WORKLOAD_KIND_DEPLOYMENT",
-                        "processes": [
+                        "containers": [
                             {
-                                "name": "process1",
-                                "hash": "a43bf8",
-                                "arguments": "foo bar qux",
-                                "process_count": 1,
-                                "connections": [
+                                "id":    "e673699fa9961",
+                                "name":  "my-second-container",
+                                "image": "docker.io/library/otherapp:latest",
+                                "processes": [
                                     {
-                                        "destination": {
-                                            "dns": {
-                                                "destination_names": [
-                                                    "cisco.com"
-                                                ]
-                                            },
-                                            "port": 443
-                                        },
-                                        "stats": {
-                                            "tx_bytes": 1337,
-                                            "rx_bytes": 4321
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                "name": "process2",
-                                "hash": "b76ac7",
-                                "arguments": "bar qux baz",
-                                "process_count": 2,
-                                "connections": [
-                                    {
-                                        "destination": {
-                                            "dns": {
-                                                "destination_names": [
-                                                    "cisco.com"
-                                                ]
-                                            },
-                                            "port": 443
-                                        },
-                                        "stats": {
-                                            "tx_bytes": 1337,
-                                            "rx_bytes": 4321
-                                        }
+                                        "name": "process1",
+                                        "hash": "a43bf8",
+                                        "arguments": "foo bar qux",
+                                        "process_count": 1,
+                                        "connections": [
+                                            {
+                                                "destination": {
+                                                    "dns": {
+                                                        "destination_names": [
+                                                            "cisco.com"
+                                                        ]
+                                                    },
+                                                    "port": 443
+                                                },
+                                                "stats": {
+                                                    "tx_bytes": 1337,
+                                                    "rx_bytes": 4321
+                                                }
+                                            }
+                                        ]
                                     },
                                     {
-                                        "destination": {
-                                            "dns": {
-                                                "destination_names": [
-                                                    "isovalent.com"
-                                                ]
+                                        "name": "process2",
+                                        "hash": "b76ac7",
+                                        "arguments": "bar qux baz",
+                                        "process_count": 2,
+                                        "connections": [
+                                            {
+                                                "destination": {
+                                                    "dns": {
+                                                        "destination_names": [
+                                                            "cisco.com"
+                                                        ]
+                                                    },
+                                                    "port": 443
+                                                },
+                                                "stats": {
+                                                    "tx_bytes": 1337,
+                                                    "rx_bytes": 4321
+                                                }
                                             },
-                                            "port": 8080
-                                        },
-                                        "stats": {
-                                            "tx_bytes": 1337,
-                                            "rx_bytes": 4321
-                                        }
+                                            {
+                                                "destination": {
+                                                    "dns": {
+                                                        "destination_names": [
+                                                            "isovalent.com"
+                                                        ]
+                                                    },
+                                                    "port": 8080
+                                                },
+                                                "stats": {
+                                                    "tx_bytes": 1337,
+                                                    "rx_bytes": 4321
+                                                }
+                                            }
+                                        ]
                                     }
                                 ]
                             }
@@ -148,62 +162,69 @@
                     {
                         "name": "wl1",
                         "kind": "WORKLOAD_KIND_DEPLOYMENT",
-                        "processes": [
+                        "containers": [
                             {
-                                "name": "process1",
-                                "hash": "a43bf8",
-                                "arguments": "foo bar qux",
-                                "process_count": 1,
-                                "connections": [
+                                "id":    "d291939e99406",
+                                "name":  "my-third-container",
+                                "image": "docker.io/library/thirdapp:latest",
+                                "processes": [
                                     {
-                                        "destination": {
-                                            "dns": {
-                                                "destination_names": [
-                                                    "cisco.com"
-                                                ]
-                                            },
-                                            "port": 443
-                                        },
-                                        "stats": {
-                                            "tx_bytes": 1337,
-                                            "rx_bytes": 4321
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                "name": "process2",
-                                "hash": "b76ac7",
-                                "arguments": "bar qux baz",
-                                "process_count": 2,
-                                "connections": [
-                                    {
-                                        "destination": {
-                                            "dns": {
-                                                "destination_names": [
-                                                    "cisco.com"
-                                                ]
-                                            },
-                                            "port": 443
-                                        },
-                                        "stats": {
-                                            "tx_bytes": 1337,
-                                            "rx_bytes": 4321
-                                        }
+                                        "name": "process1",
+                                        "hash": "a43bf8",
+                                        "arguments": "foo bar qux",
+                                        "process_count": 1,
+                                        "connections": [
+                                            {
+                                                "destination": {
+                                                    "dns": {
+                                                        "destination_names": [
+                                                            "cisco.com"
+                                                        ]
+                                                    },
+                                                    "port": 443
+                                                },
+                                                "stats": {
+                                                    "tx_bytes": 1337,
+                                                    "rx_bytes": 4321
+                                                }
+                                            }
+                                        ]
                                     },
                                     {
-                                        "destination": {
-                                            "dns": {
-                                                "destination_names": [
-                                                    "isovalent.com"
-                                                ]
+                                        "name": "process2",
+                                        "hash": "b76ac7",
+                                        "arguments": "bar qux baz",
+                                        "process_count": 2,
+                                        "connections": [
+                                            {
+                                                "destination": {
+                                                    "dns": {
+                                                        "destination_names": [
+                                                            "cisco.com"
+                                                        ]
+                                                    },
+                                                    "port": 443
+                                                },
+                                                "stats": {
+                                                    "tx_bytes": 1337,
+                                                    "rx_bytes": 4321
+                                                }
                                             },
-                                            "port": 8080
-                                        },
-                                        "stats": {
-                                            "tx_bytes": 1337,
-                                            "rx_bytes": 4321
-                                        }
+                                            {
+                                                "destination": {
+                                                    "dns": {
+                                                        "destination_names": [
+                                                            "isovalent.com"
+                                                        ]
+                                                    },
+                                                    "port": 8080
+                                                },
+                                                "stats": {
+                                                    "tx_bytes": 1337,
+                                                    "rx_bytes": 4321
+                                                }
+                                            }
+                                        ]
                                     }
                                 ]
                             }
