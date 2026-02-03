@@ -150,7 +150,6 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (networkapi.UdpConfigValue, 
 	if spec.Parser.Udp != nil {
 		latencyConfig, _ = networklatency.ParseLatencySpec(spec.Parser.Udp.Latency, syscall.IPPROTO_UDP)
 	}
-	ParseSeqCheckSpec(&config, spec)
 	ParseDisableSpec(&config, spec)
 
 	return config, latencyConfig
@@ -164,6 +163,8 @@ func ParseOptions(config *networkapi.UdpConfigValue) {
 	}
 
 	parseDNSPortsOption(config)
+
+	ParseMulticastOptions(config)
 }
 
 func parseDNSPortsOption(config *networkapi.UdpConfigValue) {
@@ -273,25 +274,29 @@ func ParseUdpWatermarksSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.Tr
 	}
 }
 
-// ParseSeqCheckSpec parses the input yaml/crd and outputs the kernel selectors
-// needed for BPF to identify applications with sequence numbers and the ports
-// associated with it.
+// ParseMulticastSpec parses the Tetragon config and outputs the kernel selectors
+// needed for BPF to identify multicast applications by their ports, and whether to
+// detect sequence gaps.
 //
-// The maximum number of ports is fixed to maxSeqCheckPorts. Changing this requires changing
+// The maximum number of ports is fixed to maxMulticastPorts. Changing this requires changing
 // the map in bpf_inet.h.
-func ParseSeqCheckSpec(config *networkapi.UdpConfigValue, spec *v1alpha1.TracingPolicySpec) {
-	if spec.Parser.Udp != nil && spec.Parser.Udp.SeqCheck.Enable && spec.Parser.Udp.SeqCheck.AppId > 0 && len(spec.Parser.Udp.SeqCheck.Ports) > 0 {
-		// Only consider the first maxSeqCheckPorts ports that are specified
-		if len(spec.Parser.Udp.SeqCheck.Ports) <= networkapi.UdpMaxMulticastPorts {
-			copy(config.MulticastPorts[:], spec.Parser.Udp.SeqCheck.Ports)
-		} else {
-			copy(config.MulticastPorts[:], spec.Parser.Udp.SeqCheck.Ports[0:networkapi.UdpMaxMulticastPorts])
+func ParseMulticastOptions(config *networkapi.UdpConfigValue) {
+	if option.Config.MulticastAppID > 0 && len(option.Config.MulticastPorts) > 0 {
+		// Only consider the first maxMulticastPorts ports that are specified
+		for portIdx, inPort := range option.Config.MulticastPorts {
+			if portIdx >= networkapi.UdpMaxMulticastPorts {
+				break
+			}
+			config.MulticastPorts[portIdx] = uint16(inPort)
 		}
-		config.MulticastAppId = spec.Parser.Udp.SeqCheck.AppId
-		config.EnableMulticastSeqCheck = 1
-		logger.GetLogger().Info("Enable UDP sequence checking", "Application ID", spec.Parser.Udp.SeqCheck.AppId)
+		config.MulticastAppId = uint64(option.Config.MulticastAppID)
+		if option.Config.MulticastSeqCheck {
+			config.EnableMulticastSeqCheck = 1
+		}
+		logger.GetLogger().Info("Enable UDP multicast observability", "Application", option.Config.MulticastApp, "Ports", option.Config.MulticastPorts, "Sequence Checking", option.Config.MulticastSeqCheck)
 	} else {
 		config.MulticastAppId = 0
+		config.EnableMulticastSeqCheck = 0
 	}
 }
 

@@ -193,6 +193,7 @@ func fdCallback(socket *networkapi.FdLookupValue, pid uint32) {
 }
 
 func SetConfig(cfg *networkapi.Layer3ConfigValue) error {
+	ParseOptions(&Config)
 	cfg.UDP = Config
 	// If this is a CLI configuration lets inherit the network events
 	// configuration as well.
