@@ -28,10 +28,6 @@ type KernelLPMTrie6 struct {
 	addr   [16]byte
 }
 
-type ValueMap struct {
-	Data map[[8]byte]struct{}
-}
-
 const (
 	Addr4lpmMapName = "addr4lpm_map"
 	Addr6lpmMapName = "addr6lpm_map"
