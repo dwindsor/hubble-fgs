@@ -14,13 +14,19 @@ package layer3_test
 
 import (
 	"context"
+	"os"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/matchers/stringmatcher"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper"
+	"github.com/cilium/tetragon/pkg/option"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -145,6 +151,9 @@ var tnpTests = []tnpTest{
 	{"TNPDeny", curlTNPDeny, testTNPDeny},
 	{"TNPDefaultAllow", curlTNPDefaultAllow, testTNPDefaultAllow},
 	{"TNPDefaultDeny", curlTNPDefaultDeny, testTNPDefaultDeny},
+	// Keep it as last since it removes all sensors
+	// and cleans up bpf.MapPrefixPath() folder
+	{"TNPPersistence", curlTNPDeny, testTNPPersistence},
 }
 
 func testTNPAllow(t *testing.T, readyWG *sync.WaitGroup) {
@@ -192,6 +201,31 @@ func testTNPDefaultDeny(t *testing.T, readyWG *sync.WaitGroup) {
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
+}
+
+func testTNPPersistence(t *testing.T, readyWG *sync.WaitGroup) {
+	if !bpf.HasLinkPin() {
+		t.Skip("skipping persistent test, link pin is not available")
+	}
+
+	option.Config.KeepSensorsOnExit = true
+	t.Cleanup(func() { option.Config.KeepSensorsOnExit = false })
+
+	// first run - sensors are loaded, we should get connection denial
+	assert.Error(t, observertesthelper.ExecWGCurl(readyWG, 0, "127.0.0.1:2112/metrics", "--connect-timeout", "1"))
+
+	// second run - sensors are unloaded, but pins stay, we should get connection denial
+	sm := observer.GetSensorManager()
+	require.NotNil(t, sm)
+	require.NoError(t, sm.RemoveAllSensors(t.Context()))
+	assert.Error(t, observertesthelper.ExecWGCurl(readyWG, 0, "127.0.0.1:2112/metrics", "--connect-timeout", "1"))
+
+	// ... and finally get rid of pinned progs/maps/links
+	require.NoError(t, os.RemoveAll(bpf.MapPrefixPath()))
+	// bpf pinned links removal is asynchronous, we need to wait to be sure it's gone
+	time.Sleep(2 * time.Second)
+	// third run - sensors are unloaded, map dir is removed, we should get no denial
+	assert.NoError(t, observertesthelper.ExecWGCurl(readyWG, 0, "127.0.0.1:2112/metrics"))
 }
 
 func TestTNP(t *testing.T) {
