@@ -1073,6 +1073,41 @@ func TestToSmartSwitchNetworkPolicies(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Invalid CIDR with leading zero in octet",
+			policy: isovalentv1.SmartSwitchNetworkPolicy{
+				Spec: isovalentv1.SmartSwitchNetworkPolicySpec{
+					Rules: []isovalentv1.SmartSwitchNetworkPolicyRule{
+						{
+							Description: "Rule with invalid CIDR containing leading zero",
+							Action:      "allow",
+							Source: isovalentv1.SmartSwitchNetworkSource{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "10.1.01.1/24",
+									},
+								},
+							},
+							Destination: isovalentv1.SmartSwitchNetworkDestination{
+								IPBlock: []isovalentv1.SmartSwitchNetwork{
+									{
+										CIDR: "192.168.1.0/24",
+									},
+								},
+								ProtoPorts: []isovalentv1.SmartSwitchProtocolPort{
+									{
+										Port:     443,
+										Protocol: "TCP",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

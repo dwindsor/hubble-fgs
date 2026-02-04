@@ -50,7 +50,7 @@ func (w *smartSwitchNetworkPolicyWatcher) addSmartSwitchNetworkPolicy(ctx contex
 				"network-policy-namespace", np.Namespace)
 
 			// Report conversion failure to timescape
-			w.reportPolicyValidationStatus(ctx, "add-conversion", np, err)
+			w.reportPolicyValidationStatus(ctx, "add-conversion", np, resourceID.String(), err)
 			return
 		}
 		var k8sRulesList K8sRulesList
@@ -60,7 +60,7 @@ func (w *smartSwitchNetworkPolicyWatcher) addSmartSwitchNetworkPolicy(ctx contex
 				logger.GetLogger().Error("failed to calculate policy checksum, corrupted policy rule", logfields.Error, err, "title", resourceID, "policy rule", *pol)
 
 				// Report hash calculation failure to timescape
-				w.reportPolicyValidationStatus(ctx, "add-hash", np, err)
+				w.reportPolicyValidationStatus(ctx, "add-hash", np, resourceID.String(), err)
 				continue
 			}
 			k8sRulesList = append(k8sRulesList, NewPolicyRule(hex.EncodeToString(hash[:]), pol))
@@ -70,7 +70,7 @@ func (w *smartSwitchNetworkPolicyWatcher) addSmartSwitchNetworkPolicy(ctx contex
 			logger.GetLogger().Warn("addNetworkPolicy: aborted", logfields.Error, err, "title", resourceID, "network rules", len(policies), "resource version", np.ResourceVersion)
 
 			// Report upsert failure to timescape
-			w.reportPolicyValidationStatus(ctx, "add-upsert", np, err)
+			w.reportPolicyValidationStatus(ctx, "add-upsert", np, resourceID.String(), err)
 			return
 		}
 		logger.GetLogger().Info("addNetworkPolicy: completed successfully", "title", resourceID, "network rules", len(policies), "resource version", np.ResourceVersion)
@@ -94,7 +94,7 @@ func (w *smartSwitchNetworkPolicyWatcher) updateSmartSwitchNetworkPolicy(ctx con
 				"network-policy-namespace", np.Namespace)
 
 			// Report conversion failure to timescape
-			w.reportPolicyValidationStatus(ctx, "update-conversion", np, err)
+			w.reportPolicyValidationStatus(ctx, "update-conversion", np, resourceID.String(), err)
 			return
 		}
 		var k8sRulesList K8sRulesList
@@ -104,7 +104,7 @@ func (w *smartSwitchNetworkPolicyWatcher) updateSmartSwitchNetworkPolicy(ctx con
 				logger.GetLogger().Error("failed to calculate policy checksum, corrupted policy rule", logfields.Error, err, "title", resourceID, "policy rule", *pol)
 
 				// Report hash calculation failure to timescape
-				w.reportPolicyValidationStatus(ctx, "update-hash", np, err)
+				w.reportPolicyValidationStatus(ctx, "update-hash", np, resourceID.String(), err)
 				continue
 			}
 			k8sRulesList = append(k8sRulesList, NewPolicyRule(hex.EncodeToString(hash[:]), pol))
@@ -114,7 +114,7 @@ func (w *smartSwitchNetworkPolicyWatcher) updateSmartSwitchNetworkPolicy(ctx con
 			logger.GetLogger().Warn("updateNetworkPolicy: aborted", logfields.Error, err, "title", resourceID, "network rules", len(policies), "resource version", np.ResourceVersion)
 
 			// Report upsert failure to timescape
-			w.reportPolicyValidationStatus(ctx, "update-upsert", np, err)
+			w.reportPolicyValidationStatus(ctx, "update-upsert", np, resourceID.String(), err)
 			return
 		}
 		logger.GetLogger().Info("updateNetworkPolicy: completed successfully", "title", resourceID, "network rules", len(policies), "resource version", np.ResourceVersion)
@@ -140,7 +140,7 @@ func (w *smartSwitchNetworkPolicyWatcher) deleteSmartSwitchNetworkPolicy(ctx con
 			logger.GetLogger().Warn("SmartSwitchNetworkPolicy deletion failed", logfields.Error, err, "title", resourceID, "resource version", np.ResourceVersion)
 
 			// Report deletion failure to timescape
-			w.reportPolicyValidationStatus(ctx, "delete", np, err)
+			w.reportPolicyValidationStatus(ctx, "delete", np, resourceID.String(), err)
 			return
 		}
 		logger.GetLogger().Info("SmartSwitchNetworkPolicy successfully deleted", "title", resourceID, "resource version", np.ResourceVersion)
@@ -184,19 +184,13 @@ func isStagingPolicy(np *isovalentv1.SmartSwitchNetworkPolicy) bool {
 }
 
 // reportPolicyFailure reports policy operation failure to timescape
-func (w *smartSwitchNetworkPolicyWatcher) reportPolicyValidationStatus(ctx context.Context, operation string, np *isovalentv1.SmartSwitchNetworkPolicy, err error) {
+func (w *smartSwitchNetworkPolicyWatcher) reportPolicyValidationStatus(ctx context.Context, operation string, np *isovalentv1.SmartSwitchNetworkPolicy, policyName string, err error) {
 	if w.policyStatusHandler == nil {
 		if err != nil {
 			logger.GetLogger().Warn("Policy status handler not set, cannot report policy status to timescape", "operation", operation, "policyName", np.Name, "namespace", np.Namespace, "resourceVersion", np.ResourceVersion, "error", err)
 		}
 		return
 	}
-
-	// Extract policy information for reporting
-	policyName := fmt.Sprintf("%s/%s/%s",
-		isovalentv1.SNPKindDefinition,
-		np.Namespace,
-		np.Name)
 
 	namespace := np.Namespace
 	resourceVersion := np.ResourceVersion
