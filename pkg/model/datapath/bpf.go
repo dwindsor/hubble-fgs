@@ -58,6 +58,8 @@ func (p *BpfProgrammer) initMaybe() {
 }
 
 func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool) error {
+	p.initMaybe()
+
 	for _, r := range records {
 		p.addRecord(r, force)
 	}
@@ -118,8 +120,6 @@ func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
 	var addr [2]uint64
 	var dst uint64
 	var err error
-
-	p.initMaybe()
 
 	if r.Endpoint.EP != nil {
 		dst, err = p.endpointAdder.AddEndpoint(*r.Endpoint.EP)
@@ -256,8 +256,6 @@ func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 	src := r.Src
 	ep := r.Endpoint.EP
 
-	p.initMaybe()
-
 	dst := uint64(0)
 	if ep != nil {
 		var err error
@@ -334,6 +332,8 @@ func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 }
 
 func (p *BpfProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
+	p.initMaybe()
+
 	for _, r := range records {
 		p.removeRecord(r)
 	}
