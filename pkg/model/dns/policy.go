@@ -95,11 +95,30 @@ func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetwork
 	return zombieSet, afterSubjs, nil
 }
 
+func diffExistingRecords(set []*record.DatapathRecord) ([]*record.DatapathRecord, error) {
+	state := GetRealizedState()
+	state.Reader.Lock()
+	_, existingRecords, err := state.GetRecords(state.getAllExistingPolicy())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get existing records: %w", err)
+	}
+	state.Reader.Unlock()
+
+	return record.Diff(set, existingRecords), nil
+}
+
 func (state *PolicyState) RemovePolicy(policy *types.TetragonNetworkPolicy) error {
 	zombieSet, updateSet, err := state.recordsFromPolicyRemoval(policy)
 	if err != nil {
 		return err
 	}
+
+	// We should avoid trying to add records that are already programmed
+	updateSet, err = diffExistingRecords(updateSet)
+	if err != nil {
+		return fmt.Errorf("failed to diff existing records: %w", err)
+	}
+
 	// Necessary order to ensure any updates to records are in place before we
 	// remove stale records.
 	err = prog.AddRecords(updateSet, true)
@@ -523,19 +542,19 @@ func recordsFromPoliciesAddition(policies []*types.TetragonNetworkPolicy) (*Poli
 }
 
 func AddPolicies(policies []*types.TetragonNetworkPolicy) error {
-	state := GetRealizedState()
-	state.Reader.Lock()
-	defer state.Reader.Unlock()
-
 	newState, addSet, removeSet, err := recordsFromPoliciesAddition(policies)
 	if err != nil {
 		return err
 	}
 
-	// Order matters lets add the new set of recrods, notice this
-	// might duplicate existing records its fine we just update
-	// them regardless. Then second remove any old records that
-	// are no longer valid.
+	// We should avoid trying to add records that are already programmed
+	addSet, err = diffExistingRecords(addSet)
+	if err != nil {
+		return fmt.Errorf("failed to diff existing records: %w", err)
+	}
+
+	// Order matters lets add the new set of records. Then second remove any
+	// old records that are no longer valid.
 	err = prog.AddRecords(addSet, false)
 	if err != nil {
 		return fmt.Errorf("failed to add records: %w", err)
