@@ -240,7 +240,9 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 				return nil
 			}
 		}
-		err = switchpolicy.AddSmartSwitchNetworkPolicyInformer(ctx, kubernetesManager, agwAgent.PolicyHandler)
+
+		policyStatusHandler := switchevents.GetGlobalPolicyStatusHandler()
+		err = switchpolicy.AddSmartSwitchNetworkPolicyInformer(ctx, kubernetesManager, agwAgent.PolicyHandler, policyStatusHandler)
 		if err != nil {
 			logger.GetLogger().Error("failed to watch smartswitch policy crd", logfields.Error, err)
 			return err

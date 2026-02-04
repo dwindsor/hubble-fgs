@@ -241,12 +241,12 @@ func Setup(ctx context.Context, agw *agw.AgentGateway, enableNxos bool, timescap
 	// Set the policy status handler from the timescape setup on the DPU listener
 	go func() {
 		logger.GetLogger().Debug("Setting up policy status handler on DPU listener")
-		policyHandler := GetGlobalPolicyStatusHandler()
-		if policyHandler != nil {
+		policyStatusHandler := GetGlobalPolicyStatusHandler()
+		if policyStatusHandler != nil {
 			// Access the DPU listener through the AgentGateway and set the handler
 			dpuListener := agw.GetDPUListener()
 			if dpuListener != nil {
-				dpuListener.SetPolicyStatusHandler(policyHandler)
+				dpuListener.SetPolicyStatusHandler(policyStatusHandler)
 				logger.GetLogger().Debug("Policy status handler set on DPU listener")
 			} else {
 				logger.GetLogger().Warn("DPU listener not available to set policy status handler")

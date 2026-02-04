@@ -35,11 +35,17 @@ import (
 	"github.com/isovalent/ipa/system_status/v1alpha"
 )
 
+const (
+	POLICY_VALIDATION_ERROR = "POLICY_VALIDATION_ERROR"
+)
+
 type PolicyStatusHandler interface {
 	Start(ctx context.Context) error
 	Stop(ctx context.Context)
 	// ReportPolicyStatus manually triggers a policy status report
 	ReportPolicyStatus(ctx context.Context) error
+	// ReportPolicyValidationStatus reports a policy validation failure or success
+	ReportPolicyValidationStatus(ctx context.Context, policyName string, namespace string, ruleName string, resourceVersion string, validationError error) error
 	// SetClient sets the timescape client for this handler
 	SetClient(client types.Client)
 	// ProcessPolicyRuleEvent processes a policy rule event from StreamEvents
@@ -410,4 +416,82 @@ func (h *policyStatusHandler) extractNamespaceFromPolicyName(policyName string) 
 		"namespace", namespace)
 
 	return namespace
+}
+
+// ReportPolicyValidationStatus reports a policy validation failure or success to timescape
+// This function is invoked to report AGW policy validation failure, when the policy is not sent to DPUs
+func (h *policyStatusHandler) ReportPolicyValidationStatus(ctx context.Context, policyName string, namespace string, ruleName string, resourceVersion string, validationError error) error {
+	isSuccess := validationError == nil
+	logger.GetLogger().Info("reporting policy validation to timescape",
+		"policyName", policyName,
+		"namespace", namespace,
+		"ruleName", ruleName,
+		"resourceVersion", resourceVersion,
+		"isSuccess", isSuccess,
+		"error", validationError)
+
+	// Create policy status with validation failure
+	policyStatus := h.createPolicyValidationStatus(policyName, namespace, ruleName, resourceVersion, validationError)
+
+	// Create PolicyStatusUpdate
+	serialNumber := "unknown"
+	if h.dataProvider.GetSerialNumber != nil {
+		serialNumber = h.dataProvider.GetSerialNumber()
+	}
+
+	policyStatusUpdate := &v1alpha.PolicyStatusUpdate{
+		ClusterName: systemstatus.ClusterName,
+		NodeName:    serialNumber,
+		Statuses:    []*v1alpha.PolicyStatus{policyStatus},
+	}
+
+	// Create SystemStatusEvent
+	now := time.Now()
+	event := &v1alpha.SystemStatusEvent{
+		Time: timestamppb.New(now),
+		Event: &v1alpha.SystemStatusEvent_Policy{
+			Policy: policyStatusUpdate,
+		},
+	}
+
+	// Send to timescape
+	if err := h.writePolicyStatusUpdate(ctx, event); err != nil {
+		logger.GetLogger().Error("failed to send policy validation result to timescape",
+			"policyName", policyName,
+			"isSuccess", isSuccess,
+			"error", err)
+		return err
+	}
+
+	logger.GetLogger().Debug("successfully reported policy validation result to timescape",
+		"policyName", policyName,
+		"resourceVersion", resourceVersion,
+		"isSuccess", isSuccess)
+
+	return nil
+}
+
+// createPolicyValidationStatus creates a PolicyStatus for a validation failure or success
+func (h *policyStatusHandler) createPolicyValidationStatus(policyName string, namespace string, ruleName string, resourceVersion string, validationError error) *v1alpha.PolicyStatus {
+	policyStatus := &v1alpha.PolicyStatus{
+		Type:      v1alpha.PolicyType_POLICY_TYPE_SMARTSWITCH_NETWORK_POLICY,
+		Id:        policyName, // Full policy name (kind/namespace/name)
+		Name:      ruleName,
+		Namespace: namespace,
+		Version:   resourceVersion,
+	}
+
+	// Only populate FailingConditions if there's an error (failure case)
+	if validationError != nil {
+		// Set error severity, condition ID and error message
+		errorMsg := validationError.Error()
+		failingCondition := &v1alpha.FailingCondition{
+			ConditionId: POLICY_VALIDATION_ERROR,
+			Severity:    v1alpha.Severity_SEVERITY_MAJOR,
+			Message:     fmt.Sprintf("Policy validation failed: %s", errorMsg),
+		}
+
+		policyStatus.FailingConditions = []*v1alpha.FailingCondition{failingCondition}
+	}
+	return policyStatus
 }
