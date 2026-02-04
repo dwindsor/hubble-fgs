@@ -18,7 +18,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file graph/v1alpha/edge.proto.
  */
 export const file_graph_v1alpha_edge: GenFile = /*@__PURE__*/
-  fileDesc("ChhncmFwaC92MWFscGhhL2VkZ2UucHJvdG8SDWdyYXBoLnYxYWxwaGEizwIKBEVkZ2USLQoFYmFzaWMYASABKAsyHC5ncmFwaC52MWFscGhhLkVkZ2VUeXBlQmFzaWNIABJEChFuZXR3b3JrX3RlbGVtZXRyeRgCIAEoCzInLmdyYXBoLnYxYWxwaGEuRWRnZVR5cGVOZXR3b3JrVGVsZW1ldHJ5SAASRAoRcm91dGluZ190ZWxlbWV0cnkYAyABKAsyJy5ncmFwaC52MWFscGhhLkVkZ2VUeXBlUm91dGluZ1RlbGVtZXRyeUgAEjoKDGw3X3RlbGVtZXRyeRgEIAEoCzIiLmdyYXBoLnYxYWxwaGEuRWRnZVR5cGVMN1RlbGVtZXRyeUgAEkgKE211bHRpY2FzdF90ZWxlbWV0cnkYBSABKAsyKS5ncmFwaC52MWFscGhhLkVkZ2VUeXBlTXVsdGljYXN0VGVsZW1ldHJ5SABCBgoEdHlwZSIPCg1FZGdlVHlwZUJhc2ljItQCChhFZGdlVHlwZU5ldHdvcmtUZWxlbWV0cnkSJgoebmV0d29ya190cmFuc21pdF9wYWNrZXRzX3RvdGFsGAEgASgEEiQKHG5ldHdvcmtfdHJhbnNtaXRfYnl0ZXNfdG90YWwYAiABKAQSIwobbmV0d29ya190cmFuc21pdF9kcm9wX3RvdGFsGAMgASgEEioKIm5ldHdvcmtfdHJhbnNtaXRfZHJvcF9wb2xpY3lfdG90YWwYByABKAQSJQodbmV0d29ya19yZWNlaXZlX3BhY2tldHNfdG90YWwYBCABKAQSIwobbmV0d29ya19yZWNlaXZlX2J5dGVzX3RvdGFsGAUgASgEEiIKGm5ldHdvcmtfcmVjZWl2ZV9kcm9wX3RvdGFsGAYgASgEEikKIW5ldHdvcmtfcmVjZWl2ZV9kcm9wX3BvbGljeV90b3RhbBgIIAEoBCKcAgoYRWRnZVR5cGVSb3V0aW5nVGVsZW1ldHJ5Eh8KF3JvdXRpbmdfZm9yd2FyZGVkX3RvdGFsGAEgASgEEh0KFXJvdXRpbmdfZHJvcHBlZF90b3RhbBgCIAEoBBIkChxyb3V0aW5nX2Ryb3BwZWRfcG9saWN5X3RvdGFsGAggASgEEhsKE3JvdXRpbmdfZXJyb3JfdG90YWwYAyABKAQSGwoTcm91dGluZ19hdWRpdF90b3RhbBgEIAEoBBIgChhyb3V0aW5nX3JlZGlyZWN0ZWRfdG90YWwYBSABKAQSHAoUcm91dGluZ190cmFjZWRfdG90YWwYBiABKAQSIAoYcm91dGluZ190cmFuc2xhdGVkX3RvdGFsGAcgASgEInYKE0VkZ2VUeXBlTDdUZWxlbWV0cnkSGwoTaHR0cF9yZXF1ZXN0c190b3RhbBgBIAEoBBIgChhodHRwX3NlcnZlcl9lcnJvcnNfdG90YWwYAiABKAQSIAoYaHR0cF9jbGllbnRfZXJyb3JzX3RvdGFsGAMgASgEIqADChpFZGdlVHlwZU11bHRpY2FzdFRlbGVtZXRyeRInCh9zZXF1ZW5jZV9udW1iZXJfZ2FwX2NvdW50X3RvdGFsGAEgASgEEm8KH2ZlZWRlcl9yZWNlaXZlcl9kZWxheV9oaXN0b2dyYW0YAiABKAsyRi5ncmFwaC52MWFscGhhLkVkZ2VUeXBlTXVsdGljYXN0VGVsZW1ldHJ5LkZlZWRlclJlY2VpdmVyRGVsYXlIaXN0b2dyYW0a5wEKHEZlZWRlclJlY2VpdmVyRGVsYXlIaXN0b2dyYW0SEwoLY291bnRfdG90YWwYASABKAQSEQoJc3VtX3RvdGFsGAIgASgEEhsKE2J1Y2tldF9sdF8xbXNfdG90YWwYAyABKAQSIAoYYnVja2V0XzFtc190b18xMG1zX3RvdGFsGAQgASgEEiIKGmJ1Y2tldF8xMG1zX3RvXzEwMG1zX3RvdGFsGAUgASgEEiAKGGJ1Y2tldF8xMDBtc190b18xc190b3RhbBgGIAEoBBIaChJidWNrZXRfZ2VfMXNfdG90YWwYByABKARCKFomZ2l0aHViLmNvbS9pc292YWxlbnQvaXBhL2dyYXBoL3YxYWxwaGFiBnByb3RvMw");
+  fileDesc("ChhncmFwaC92MWFscGhhL2VkZ2UucHJvdG8SDWdyYXBoLnYxYWxwaGEiiwMKBEVkZ2USLQoFYmFzaWMYASABKAsyHC5ncmFwaC52MWFscGhhLkVkZ2VUeXBlQmFzaWNIABJEChFuZXR3b3JrX3RlbGVtZXRyeRgCIAEoCzInLmdyYXBoLnYxYWxwaGEuRWRnZVR5cGVOZXR3b3JrVGVsZW1ldHJ5SAASRAoRcm91dGluZ190ZWxlbWV0cnkYAyABKAsyJy5ncmFwaC52MWFscGhhLkVkZ2VUeXBlUm91dGluZ1RlbGVtZXRyeUgAEjoKDGw0X3RlbGVtZXRyeRgGIAEoCzIiLmdyYXBoLnYxYWxwaGEuRWRnZVR5cGVMNFRlbGVtZXRyeUgAEjoKDGw3X3RlbGVtZXRyeRgEIAEoCzIiLmdyYXBoLnYxYWxwaGEuRWRnZVR5cGVMN1RlbGVtZXRyeUgAEkgKE211bHRpY2FzdF90ZWxlbWV0cnkYBSABKAsyKS5ncmFwaC52MWFscGhhLkVkZ2VUeXBlTXVsdGljYXN0VGVsZW1ldHJ5SABCBgoEdHlwZSIPCg1FZGdlVHlwZUJhc2ljItQCChhFZGdlVHlwZU5ldHdvcmtUZWxlbWV0cnkSJgoebmV0d29ya190cmFuc21pdF9wYWNrZXRzX3RvdGFsGAEgASgEEiQKHG5ldHdvcmtfdHJhbnNtaXRfYnl0ZXNfdG90YWwYAiABKAQSIwobbmV0d29ya190cmFuc21pdF9kcm9wX3RvdGFsGAMgASgEEioKIm5ldHdvcmtfdHJhbnNtaXRfZHJvcF9wb2xpY3lfdG90YWwYByABKAQSJQodbmV0d29ya19yZWNlaXZlX3BhY2tldHNfdG90YWwYBCABKAQSIwobbmV0d29ya19yZWNlaXZlX2J5dGVzX3RvdGFsGAUgASgEEiIKGm5ldHdvcmtfcmVjZWl2ZV9kcm9wX3RvdGFsGAYgASgEEikKIW5ldHdvcmtfcmVjZWl2ZV9kcm9wX3BvbGljeV90b3RhbBgIIAEoBCKcAgoYRWRnZVR5cGVSb3V0aW5nVGVsZW1ldHJ5Eh8KF3JvdXRpbmdfZm9yd2FyZGVkX3RvdGFsGAEgASgEEh0KFXJvdXRpbmdfZHJvcHBlZF90b3RhbBgCIAEoBBIkChxyb3V0aW5nX2Ryb3BwZWRfcG9saWN5X3RvdGFsGAggASgEEhsKE3JvdXRpbmdfZXJyb3JfdG90YWwYAyABKAQSGwoTcm91dGluZ19hdWRpdF90b3RhbBgEIAEoBBIgChhyb3V0aW5nX3JlZGlyZWN0ZWRfdG90YWwYBSABKAQSHAoUcm91dGluZ190cmFjZWRfdG90YWwYBiABKAQSIAoYcm91dGluZ190cmFuc2xhdGVkX3RvdGFsGAcgASgEIm0KE0VkZ2VUeXBlTDRUZWxlbWV0cnkSHQoVdGNwX3JldHJhbnNtaXRzX3RvdGFsGAEgASgEEh0KFXRjcF96ZXJvX3dpbmRvd190b3RhbBgCIAEoBBIYChB0Y3BfcmVzZXRzX3RvdGFsGAMgASgEInYKE0VkZ2VUeXBlTDdUZWxlbWV0cnkSGwoTaHR0cF9yZXF1ZXN0c190b3RhbBgBIAEoBBIgChhodHRwX3NlcnZlcl9lcnJvcnNfdG90YWwYAiABKAQSIAoYaHR0cF9jbGllbnRfZXJyb3JzX3RvdGFsGAMgASgEIvUCChpFZGdlVHlwZU11bHRpY2FzdFRlbGVtZXRyeRInCh9zZXF1ZW5jZV9udW1iZXJfZ2FwX2NvdW50X3RvdGFsGAEgASgEEm8KH2ZlZWRlcl9yZWNlaXZlcl9kZWxheV9oaXN0b2dyYW0YAiABKAsyRi5ncmFwaC52MWFscGhhLkVkZ2VUeXBlTXVsdGljYXN0VGVsZW1ldHJ5LkZlZWRlclJlY2VpdmVyRGVsYXlIaXN0b2dyYW0avAEKHEZlZWRlclJlY2VpdmVyRGVsYXlIaXN0b2dyYW0SEwoLY291bnRfdG90YWwYASABKAQSEQoJc3VtX3RvdGFsGAIgASgEEhsKE2J1Y2tldF9sZV8xbXNfdG90YWwYCiABKAQSHAoUYnVja2V0X2xlXzEwbXNfdG90YWwYFCABKAQSHQoVYnVja2V0X2xlXzEwMG1zX3RvdGFsGB4gASgEEhoKEmJ1Y2tldF9sZV8xc190b3RhbBgoIAEoBEIoWiZnaXRodWIuY29tL2lzb3ZhbGVudC9pcGEvZ3JhcGgvdjFhbHBoYWIGcHJvdG8z");
 
 /**
  * An edge represents aggregatable properties of a given connection.
@@ -56,6 +56,12 @@ export type Edge = Message<"graph.v1alpha.Edge"> & {
      */
     value: EdgeTypeRoutingTelemetry;
     case: "routingTelemetry";
+  } | {
+    /**
+     * @generated from field: graph.v1alpha.EdgeTypeL4Telemetry l4_telemetry = 6;
+     */
+    value: EdgeTypeL4Telemetry;
+    case: "l4Telemetry";
   } | {
     /**
      * @generated from field: graph.v1alpha.EdgeTypeL7Telemetry l7_telemetry = 4;
@@ -252,6 +258,45 @@ export const EdgeTypeRoutingTelemetrySchema: GenMessage<EdgeTypeRoutingTelemetry
   messageDesc(file_graph_v1alpha_edge, 3);
 
 /**
+ * EdgeTypeL4Telemetry provides telemetry information regarding a network
+ * connection at the transport layer.
+ *
+ * @generated from message graph.v1alpha.EdgeTypeL4Telemetry
+ */
+export type EdgeTypeL4Telemetry = Message<"graph.v1alpha.EdgeTypeL4Telemetry"> & {
+  /**
+   * tcp_retransmits_total is the number of TCP segments that have been
+   * retransmitted during the selected time window.
+   *
+   * @generated from field: uint64 tcp_retransmits_total = 1;
+   */
+  tcpRetransmitsTotal: bigint;
+
+  /**
+   * tcp_zero_window_total is the number of times a zero TCP window has been
+   * observed during the selected time window.
+   *
+   * @generated from field: uint64 tcp_zero_window_total = 2;
+   */
+  tcpZeroWindowTotal: bigint;
+
+  /**
+   * tcp_resets_total is the number of TCP resets that have been observed
+   * during the selected time window.
+   *
+   * @generated from field: uint64 tcp_resets_total = 3;
+   */
+  tcpResetsTotal: bigint;
+};
+
+/**
+ * Describes the message graph.v1alpha.EdgeTypeL4Telemetry.
+ * Use `create(EdgeTypeL4TelemetrySchema)` to create a new message.
+ */
+export const EdgeTypeL4TelemetrySchema: GenMessage<EdgeTypeL4Telemetry> = /*@__PURE__*/
+  messageDesc(file_graph_v1alpha_edge, 4);
+
+/**
  * EdgeTypeL7Telemetry provides telemetry information regarding a network
  * connection at the application layer.
  *
@@ -291,7 +336,7 @@ export type EdgeTypeL7Telemetry = Message<"graph.v1alpha.EdgeTypeL7Telemetry"> &
  * Use `create(EdgeTypeL7TelemetrySchema)` to create a new message.
  */
 export const EdgeTypeL7TelemetrySchema: GenMessage<EdgeTypeL7Telemetry> = /*@__PURE__*/
-  messageDesc(file_graph_v1alpha_edge, 4);
+  messageDesc(file_graph_v1alpha_edge, 5);
 
 /**
  * EdgeTypeMulticastTelemetry provides telemetry information regarding a
@@ -322,53 +367,64 @@ export type EdgeTypeMulticastTelemetry = Message<"graph.v1alpha.EdgeTypeMulticas
  * Use `create(EdgeTypeMulticastTelemetrySchema)` to create a new message.
  */
 export const EdgeTypeMulticastTelemetrySchema: GenMessage<EdgeTypeMulticastTelemetry> = /*@__PURE__*/
-  messageDesc(file_graph_v1alpha_edge, 5);
+  messageDesc(file_graph_v1alpha_edge, 6);
 
 /**
- * FeederReceiverDelayHistogram represents a non-cumulative histogram with
+ * FeederReceiverDelayHistogram represents a cumulative histogram with
  * hardcoded buckets for delays experienced by multicast receivers from
  * feeders.
  *
- * TODO: should we use cumulative buckets (prometheus-style) to facilitate
- * computations of quantiles?
+ * The histogram model is based on Prometheus classic histograms, with the
+ * difference that it does not include the upper bound bucket (le="+Inf") for
+ * space efficiency. When computing rates, averages or quantiles, the
+ * count_total field can be used instead.
+ * Prometheus docs: https://prometheus.io/docs/concepts/metric_types/#histogram.
  *
  * @generated from message graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram
  */
 export type EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram = Message<"graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram"> & {
   /**
+   * count_total is the total number of observations. Use this to interpret
+   * the upper bound bucket (le="+Inf") in higher level calculations.
+   *
    * @generated from field: uint64 count_total = 1;
    */
   countTotal: bigint;
 
   /**
+   * sum_total is the sum of all observed values, in milliseconds.
+   *
    * @generated from field: uint64 sum_total = 2;
    */
   sumTotal: bigint;
 
   /**
-   * @generated from field: uint64 bucket_lt_1ms_total = 3;
+   * bucket_le_1ms_total is the number of observations less than or equal to 1ms.
+   *
+   * @generated from field: uint64 bucket_le_1ms_total = 10;
    */
-  bucketLt1msTotal: bigint;
+  bucketLe1msTotal: bigint;
 
   /**
-   * @generated from field: uint64 bucket_1ms_to_10ms_total = 4;
+   * bucket_le_10ms_total is the number of observations less than or equal to 10ms.
+   *
+   * @generated from field: uint64 bucket_le_10ms_total = 20;
    */
-  bucket1msTo10msTotal: bigint;
+  bucketLe10msTotal: bigint;
 
   /**
-   * @generated from field: uint64 bucket_10ms_to_100ms_total = 5;
+   * bucket_le_100ms_total is the number of observations less than or equal to 100ms.
+   *
+   * @generated from field: uint64 bucket_le_100ms_total = 30;
    */
-  bucket10msTo100msTotal: bigint;
+  bucketLe100msTotal: bigint;
 
   /**
-   * @generated from field: uint64 bucket_100ms_to_1s_total = 6;
+   * bucket_le_1s_total is the number of observations less than or equal to 1s.
+   *
+   * @generated from field: uint64 bucket_le_1s_total = 40;
    */
-  bucket100msTo1sTotal: bigint;
-
-  /**
-   * @generated from field: uint64 bucket_ge_1s_total = 7;
-   */
-  bucketGe1sTotal: bigint;
+  bucketLe1sTotal: bigint;
 };
 
 /**
@@ -376,5 +432,5 @@ export type EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram = Message<"g
  * Use `create(EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogramSchema)` to create a new message.
  */
 export const EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogramSchema: GenMessage<EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram> = /*@__PURE__*/
-  messageDesc(file_graph_v1alpha_edge, 5, 0);
+  messageDesc(file_graph_v1alpha_edge, 6, 0);
 

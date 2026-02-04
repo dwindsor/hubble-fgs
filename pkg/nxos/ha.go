@@ -81,22 +81,22 @@ func (n *Nxos) SetHaIp(ip string) {
 	n.Ha.HaIp = ip
 
 	// Updating ha ip in the dpu config atomically
-	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
-		var dpuConfig *v1alpha.DpuConfig
-		if existing != nil && existing.GetConfigDpu() != nil {
-			dpuConfig = existing.GetConfigDpu()
+	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_HA, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
+		var haConfig *v1alpha.HaConfig
+		if existing != nil && existing.GetConfigHa() != nil {
+			haConfig = existing.GetConfigHa()
 		} else {
-			dpuConfig = &v1alpha.DpuConfig{}
+			haConfig = &v1alpha.HaConfig{}
 		}
-		dpuConfig.HaIp = ip
+		haConfig.HaIp = ip
 		return &v1alpha.ConfigObject{
-			Type:   v1alpha.ConfigType_CONFIG_TYPE_DPU,
+			Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
 			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,
-			Config: &v1alpha.ConfigObject_ConfigDpu{ConfigDpu: dpuConfig},
+			Config: &v1alpha.ConfigObject_ConfigHa{ConfigHa: haConfig},
 		}, nil
 	})
 	if err != nil {
-		logger.GetLogger().Error("Failed to update dpu config with ha ip", "error", err)
+		logger.GetLogger().Error("Failed to update ha config with ha ip", "error", err)
 	}
 }
 
@@ -167,11 +167,15 @@ func (n *Nxos) updateHaConfig() {
 	flow_sync = enabled && n.GetHaEnabled()
 
 	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_HA, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
-		haConfig := &v1alpha.HaConfig{
-			Peers:    peers,
-			Enabled:  enabled,
-			FlowSync: flow_sync,
+		var haConfig *v1alpha.HaConfig
+		if existing != nil && existing.GetConfigHa() != nil {
+			haConfig = existing.GetConfigHa()
+		} else {
+			haConfig = &v1alpha.HaConfig{}
 		}
+		haConfig.Peers = peers
+		haConfig.Enabled = enabled
+		haConfig.FlowSync = flow_sync
 		return &v1alpha.ConfigObject{
 			Type:   v1alpha.ConfigType_CONFIG_TYPE_HA,
 			Source: v1alpha.ConfigSource_CONFIG_SOURCE_LOCAL,

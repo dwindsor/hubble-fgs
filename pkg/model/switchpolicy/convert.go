@@ -180,7 +180,6 @@ func getPerDpuConfig(fullCfg *v1alpha.DpuConfig, id string, dpuCount uint16) (*v
 	dpuCfg := v1alpha.DpuConfig{
 		ServiceMac:   fullCfg.ServiceMac,
 		ServiceIp:    fullCfg.ServiceIp,
-		HaIp:         fullCfg.HaIp,
 		SerialNumber: fullCfg.SerialNumber,
 		SwitchName:   fullCfg.SwitchName,
 	}
@@ -200,6 +199,7 @@ func getPerDpuHaConfig(fullCfg *v1alpha.HaConfig, id string, dpuCount uint16) (*
 	haCfg := v1alpha.HaConfig{
 		Enabled:  fullCfg.Enabled,
 		FlowSync: fullCfg.FlowSync,
+		HaIp:     fullCfg.HaIp,
 	}
 
 	for _, peer := range fullCfg.Peers {

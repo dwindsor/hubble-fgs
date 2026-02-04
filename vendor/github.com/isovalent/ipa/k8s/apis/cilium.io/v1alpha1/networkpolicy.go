@@ -103,11 +103,6 @@ type NetworkDestinationCIDR struct {
 	CIDR string `json:"cidr"`
 }
 
-type NetworkDestinationLabels struct {
-	// +kubebuilder:validation:Optional
-	MatchLabels map[string]string `json:"matchLabels,omitempty" protobuf:"bytes,1,rep,name=matchLabels"`
-}
-
 type NetworkDestinationWorkload struct {
 	// +kubebuilder:validation:Optional
 	Namespace string `json:"namespace,omitempty"`
@@ -121,14 +116,19 @@ type NetworkDestinationPorts struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=TCP
 	// +kubebuilder:default=TCP
+	// Protocol is the OSI L4 transport protocol.
 	Protocol string `json:"protocol"`
 	// +kubebuilder:validation:Optional
+	// +listType=set
+	// +kubebuilder:validation:items:Minimum=1
+	// +kubebuilder:validation:items:Maximum=65535
+	// Ports is a list of port numbers (1-65535)
 	Ports []uint32 `json:"ports,omitempty"`
 }
 
 type ServiceSelector struct {
 	// +kubebuilder:validation:Required
-	// Name is the name of the Kubernetes Service
+	// Name is the name of the Kubernetes Service.
 	Name string `json:"name"`
 	// +kubebuilder:validation:Optional
 	// Namespace is the namespace of the Service. If empty, defaults to "default"
@@ -138,46 +138,61 @@ type ServiceSelector struct {
 
 type NetworkDestination struct {
 	// +kubebuilder:validation:Optional
+	// FQDN (Fully Qualified Domain Name) is a list of domain names to
+	// describe a destination.
 	FQDN []string `json:"FQDN,omitempty"`
 	// +kubebuilder:validation:Optional
+	// IPBlock contains a CIDR describing a range of IPv4/IPv6 addresses.
 	IPBlock *NetworkDestinationCIDR `json:"ipBlock,omitempty"`
 	// +kubebuilder:validation:Optional
-	// PodSelector selects pods that this policy applies to
+	// PodSelector selects pods that this policy applies to.
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
 	// +kubebuilder:validation:Optional
-	// ServiceSelector selects services that this policy applies to
+	// ServiceSelector selects Kubernetes Services to which this policy applies to.
 	ServiceSelector *ServiceSelector `json:"serviceSelector,omitempty"`
 	// +kubebuilder:validation:Optional
+	// Workload is a Kubernetes application defined in the application model format.
 	Workload NetworkDestinationWorkload `json:"workload,omitempty"`
 	// +kubebuilder:validation:Required
+	// Ports contains ports numbers and protocols.
 	Ports NetworkDestinationPorts `json:"ports"`
 }
 
 type NetworkPolicyRule struct {
 	// +kubebuilder:validation:Required
+	// Description to explain the rule's purpose.
 	Description string `json:"description"`
 	// +kubebuilder:validation:Enum=connect
 	// +kubebuilder:default=connect
+	// Hook configures how the policy is applied in the datapath.
 	Hook string `json:"hook"`
 	// +kubebuilder:validation:Enum=allow;deny
+	// Action is the action to enforce on the network traffic that matches
+	// the destinations list.
 	Action string `json:"action"`
 	// +kubebuilder:validation:Optional
+	// Destination is a list of destinations on which to apply the rule
+	// action. The action is applied to each entry in the list.
 	Destination []NetworkDestination `json:"destination,omitempty"`
 }
 
 type NetworkPolicySpec struct {
 	// +kubebuilder:validation:Optional
-	// NamespaceSelector selects namespace that this policy applies to
+	// NamespaceSelector applies the policy to a Kubernetes namespace
 	NamespaceSelector *slimv1.LabelSelector `json:"namespaceSelector,omitempty"`
 	// +kubebuilder:validation:Optional
-	// PodSelector selects pods that this policy applies to
+	// PodSelector selects pods that this policy applies to.
 	PodSelector *slimv1.LabelSelector `json:"podSelector,omitempty"`
 	// +kubebuilder:validation:Optional
-	// ProcessSelector selects process that this policy applies to
+	// ProcessSelector selects processes that this policy applies to.
 	ProcessSelector *BinarySelector `json:"processSelector,omitempty"`
 	// +kubebuilder:validation:Enum=allow;deny
+	// DefaultAction is the action to enforce on all network traffic that
+	// doesn't match the selectors and the rules.
 	DefaultAction string `json:"defaultAction"`
 	// Network Policy Spec defines a set of actions for network operations
+	// Rules is a list of network policy rules to apply to the traffic that
+	// matches the source selectors.
 	Rules []NetworkPolicyRule `json:"rules,omitempty"`
 }
 

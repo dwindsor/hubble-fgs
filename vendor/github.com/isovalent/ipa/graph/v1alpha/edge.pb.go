@@ -46,6 +46,7 @@ type Edge struct {
 	//	*Edge_Basic
 	//	*Edge_NetworkTelemetry
 	//	*Edge_RoutingTelemetry
+	//	*Edge_L4Telemetry
 	//	*Edge_L7Telemetry
 	//	*Edge_MulticastTelemetry
 	Type          isEdge_Type `protobuf_oneof:"type"`
@@ -117,6 +118,15 @@ func (x *Edge) GetRoutingTelemetry() *EdgeTypeRoutingTelemetry {
 	return nil
 }
 
+func (x *Edge) GetL4Telemetry() *EdgeTypeL4Telemetry {
+	if x != nil {
+		if x, ok := x.Type.(*Edge_L4Telemetry); ok {
+			return x.L4Telemetry
+		}
+	}
+	return nil
+}
+
 func (x *Edge) GetL7Telemetry() *EdgeTypeL7Telemetry {
 	if x != nil {
 		if x, ok := x.Type.(*Edge_L7Telemetry); ok {
@@ -151,6 +161,10 @@ type Edge_RoutingTelemetry struct {
 	RoutingTelemetry *EdgeTypeRoutingTelemetry `protobuf:"bytes,3,opt,name=routing_telemetry,json=routingTelemetry,proto3,oneof"`
 }
 
+type Edge_L4Telemetry struct {
+	L4Telemetry *EdgeTypeL4Telemetry `protobuf:"bytes,6,opt,name=l4_telemetry,json=l4Telemetry,proto3,oneof"`
+}
+
 type Edge_L7Telemetry struct {
 	L7Telemetry *EdgeTypeL7Telemetry `protobuf:"bytes,4,opt,name=l7_telemetry,json=l7Telemetry,proto3,oneof"`
 }
@@ -164,6 +178,8 @@ func (*Edge_Basic) isEdge_Type() {}
 func (*Edge_NetworkTelemetry) isEdge_Type() {}
 
 func (*Edge_RoutingTelemetry) isEdge_Type() {}
+
+func (*Edge_L4Telemetry) isEdge_Type() {}
 
 func (*Edge_L7Telemetry) isEdge_Type() {}
 
@@ -442,6 +458,74 @@ func (x *EdgeTypeRoutingTelemetry) GetRoutingTranslatedTotal() uint64 {
 	return 0
 }
 
+// EdgeTypeL4Telemetry provides telemetry information regarding a network
+// connection at the transport layer.
+type EdgeTypeL4Telemetry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// tcp_retransmits_total is the number of TCP segments that have been
+	// retransmitted during the selected time window.
+	TcpRetransmitsTotal uint64 `protobuf:"varint,1,opt,name=tcp_retransmits_total,json=tcpRetransmitsTotal,proto3" json:"tcp_retransmits_total,omitempty"`
+	// tcp_zero_window_total is the number of times a zero TCP window has been
+	// observed during the selected time window.
+	TcpZeroWindowTotal uint64 `protobuf:"varint,2,opt,name=tcp_zero_window_total,json=tcpZeroWindowTotal,proto3" json:"tcp_zero_window_total,omitempty"`
+	// tcp_resets_total is the number of TCP resets that have been observed
+	// during the selected time window.
+	TcpResetsTotal uint64 `protobuf:"varint,3,opt,name=tcp_resets_total,json=tcpResetsTotal,proto3" json:"tcp_resets_total,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *EdgeTypeL4Telemetry) Reset() {
+	*x = EdgeTypeL4Telemetry{}
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EdgeTypeL4Telemetry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EdgeTypeL4Telemetry) ProtoMessage() {}
+
+func (x *EdgeTypeL4Telemetry) ProtoReflect() protoreflect.Message {
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EdgeTypeL4Telemetry.ProtoReflect.Descriptor instead.
+func (*EdgeTypeL4Telemetry) Descriptor() ([]byte, []int) {
+	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *EdgeTypeL4Telemetry) GetTcpRetransmitsTotal() uint64 {
+	if x != nil {
+		return x.TcpRetransmitsTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeL4Telemetry) GetTcpZeroWindowTotal() uint64 {
+	if x != nil {
+		return x.TcpZeroWindowTotal
+	}
+	return 0
+}
+
+func (x *EdgeTypeL4Telemetry) GetTcpResetsTotal() uint64 {
+	if x != nil {
+		return x.TcpResetsTotal
+	}
+	return 0
+}
+
 // EdgeTypeL7Telemetry provides telemetry information regarding a network
 // connection at the application layer.
 type EdgeTypeL7Telemetry struct {
@@ -464,7 +548,7 @@ type EdgeTypeL7Telemetry struct {
 
 func (x *EdgeTypeL7Telemetry) Reset() {
 	*x = EdgeTypeL7Telemetry{}
-	mi := &file_graph_v1alpha_edge_proto_msgTypes[4]
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -476,7 +560,7 @@ func (x *EdgeTypeL7Telemetry) String() string {
 func (*EdgeTypeL7Telemetry) ProtoMessage() {}
 
 func (x *EdgeTypeL7Telemetry) ProtoReflect() protoreflect.Message {
-	mi := &file_graph_v1alpha_edge_proto_msgTypes[4]
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -489,7 +573,7 @@ func (x *EdgeTypeL7Telemetry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EdgeTypeL7Telemetry.ProtoReflect.Descriptor instead.
 func (*EdgeTypeL7Telemetry) Descriptor() ([]byte, []int) {
-	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{4}
+	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *EdgeTypeL7Telemetry) GetHttpRequestsTotal() uint64 {
@@ -529,7 +613,7 @@ type EdgeTypeMulticastTelemetry struct {
 
 func (x *EdgeTypeMulticastTelemetry) Reset() {
 	*x = EdgeTypeMulticastTelemetry{}
-	mi := &file_graph_v1alpha_edge_proto_msgTypes[5]
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -541,7 +625,7 @@ func (x *EdgeTypeMulticastTelemetry) String() string {
 func (*EdgeTypeMulticastTelemetry) ProtoMessage() {}
 
 func (x *EdgeTypeMulticastTelemetry) ProtoReflect() protoreflect.Message {
-	mi := &file_graph_v1alpha_edge_proto_msgTypes[5]
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -554,7 +638,7 @@ func (x *EdgeTypeMulticastTelemetry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EdgeTypeMulticastTelemetry.ProtoReflect.Descriptor instead.
 func (*EdgeTypeMulticastTelemetry) Descriptor() ([]byte, []int) {
-	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{5}
+	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *EdgeTypeMulticastTelemetry) GetSequenceNumberGapCountTotal() uint64 {
@@ -571,28 +655,37 @@ func (x *EdgeTypeMulticastTelemetry) GetFeederReceiverDelayHistogram() *EdgeType
 	return nil
 }
 
-// FeederReceiverDelayHistogram represents a non-cumulative histogram with
+// FeederReceiverDelayHistogram represents a cumulative histogram with
 // hardcoded buckets for delays experienced by multicast receivers from
 // feeders.
 //
-// TODO: should we use cumulative buckets (prometheus-style) to facilitate
-// computations of quantiles?
+// The histogram model is based on Prometheus classic histograms, with the
+// difference that it does not include the upper bound bucket (le="+Inf") for
+// space efficiency. When computing rates, averages or quantiles, the
+// count_total field can be used instead.
+// Prometheus docs: https://prometheus.io/docs/concepts/metric_types/#histogram.
 type EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram struct {
-	state                    protoimpl.MessageState `protogen:"open.v1"`
-	CountTotal               uint64                 `protobuf:"varint,1,opt,name=count_total,json=countTotal,proto3" json:"count_total,omitempty"`
-	SumTotal                 uint64                 `protobuf:"varint,2,opt,name=sum_total,json=sumTotal,proto3" json:"sum_total,omitempty"`
-	BucketLt_1MsTotal        uint64                 `protobuf:"varint,3,opt,name=bucket_lt_1ms_total,json=bucketLt1msTotal,proto3" json:"bucket_lt_1ms_total,omitempty"`
-	Bucket_1MsTo_10MsTotal   uint64                 `protobuf:"varint,4,opt,name=bucket_1ms_to_10ms_total,json=bucket1msTo10msTotal,proto3" json:"bucket_1ms_to_10ms_total,omitempty"`
-	Bucket_10MsTo_100MsTotal uint64                 `protobuf:"varint,5,opt,name=bucket_10ms_to_100ms_total,json=bucket10msTo100msTotal,proto3" json:"bucket_10ms_to_100ms_total,omitempty"`
-	Bucket_100MsTo_1STotal   uint64                 `protobuf:"varint,6,opt,name=bucket_100ms_to_1s_total,json=bucket100msTo1sTotal,proto3" json:"bucket_100ms_to_1s_total,omitempty"`
-	BucketGe_1STotal         uint64                 `protobuf:"varint,7,opt,name=bucket_ge_1s_total,json=bucketGe1sTotal,proto3" json:"bucket_ge_1s_total,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// count_total is the total number of observations. Use this to interpret
+	// the upper bound bucket (le="+Inf") in higher level calculations.
+	CountTotal uint64 `protobuf:"varint,1,opt,name=count_total,json=countTotal,proto3" json:"count_total,omitempty"`
+	// sum_total is the sum of all observed values, in milliseconds.
+	SumTotal uint64 `protobuf:"varint,2,opt,name=sum_total,json=sumTotal,proto3" json:"sum_total,omitempty"`
+	// bucket_le_1ms_total is the number of observations less than or equal to 1ms.
+	BucketLe_1MsTotal uint64 `protobuf:"varint,10,opt,name=bucket_le_1ms_total,json=bucketLe1msTotal,proto3" json:"bucket_le_1ms_total,omitempty"`
+	// bucket_le_10ms_total is the number of observations less than or equal to 10ms.
+	BucketLe_10MsTotal uint64 `protobuf:"varint,20,opt,name=bucket_le_10ms_total,json=bucketLe10msTotal,proto3" json:"bucket_le_10ms_total,omitempty"`
+	// bucket_le_100ms_total is the number of observations less than or equal to 100ms.
+	BucketLe_100MsTotal uint64 `protobuf:"varint,30,opt,name=bucket_le_100ms_total,json=bucketLe100msTotal,proto3" json:"bucket_le_100ms_total,omitempty"`
+	// bucket_le_1s_total is the number of observations less than or equal to 1s.
+	BucketLe_1STotal uint64 `protobuf:"varint,40,opt,name=bucket_le_1s_total,json=bucketLe1sTotal,proto3" json:"bucket_le_1s_total,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) Reset() {
 	*x = EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram{}
-	mi := &file_graph_v1alpha_edge_proto_msgTypes[6]
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -604,7 +697,7 @@ func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) String() strin
 func (*EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) ProtoMessage() {}
 
 func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) ProtoReflect() protoreflect.Message {
-	mi := &file_graph_v1alpha_edge_proto_msgTypes[6]
+	mi := &file_graph_v1alpha_edge_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -617,7 +710,7 @@ func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) ProtoReflect()
 
 // Deprecated: Use EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram.ProtoReflect.Descriptor instead.
 func (*EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) Descriptor() ([]byte, []int) {
-	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{5, 0}
+	return file_graph_v1alpha_edge_proto_rawDescGZIP(), []int{6, 0}
 }
 
 func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetCountTotal() uint64 {
@@ -634,37 +727,30 @@ func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetSumTotal() 
 	return 0
 }
 
-func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucketLt_1MsTotal() uint64 {
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucketLe_1MsTotal() uint64 {
 	if x != nil {
-		return x.BucketLt_1MsTotal
+		return x.BucketLe_1MsTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucket_1MsTo_10MsTotal() uint64 {
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucketLe_10MsTotal() uint64 {
 	if x != nil {
-		return x.Bucket_1MsTo_10MsTotal
+		return x.BucketLe_10MsTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucket_10MsTo_100MsTotal() uint64 {
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucketLe_100MsTotal() uint64 {
 	if x != nil {
-		return x.Bucket_10MsTo_100MsTotal
+		return x.BucketLe_100MsTotal
 	}
 	return 0
 }
 
-func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucket_100MsTo_1STotal() uint64 {
+func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucketLe_1STotal() uint64 {
 	if x != nil {
-		return x.Bucket_100MsTo_1STotal
-	}
-	return 0
-}
-
-func (x *EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram) GetBucketGe_1STotal() uint64 {
-	if x != nil {
-		return x.BucketGe_1STotal
+		return x.BucketLe_1STotal
 	}
 	return 0
 }
@@ -673,11 +759,12 @@ var File_graph_v1alpha_edge_proto protoreflect.FileDescriptor
 
 const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	"\n" +
-	"\x18graph/v1alpha/edge.proto\x12\rgraph.v1alpha\"\x9b\x03\n" +
+	"\x18graph/v1alpha/edge.proto\x12\rgraph.v1alpha\"\xe4\x03\n" +
 	"\x04Edge\x124\n" +
 	"\x05basic\x18\x01 \x01(\v2\x1c.graph.v1alpha.EdgeTypeBasicH\x00R\x05basic\x12V\n" +
 	"\x11network_telemetry\x18\x02 \x01(\v2'.graph.v1alpha.EdgeTypeNetworkTelemetryH\x00R\x10networkTelemetry\x12V\n" +
 	"\x11routing_telemetry\x18\x03 \x01(\v2'.graph.v1alpha.EdgeTypeRoutingTelemetryH\x00R\x10routingTelemetry\x12G\n" +
+	"\fl4_telemetry\x18\x06 \x01(\v2\".graph.v1alpha.EdgeTypeL4TelemetryH\x00R\vl4Telemetry\x12G\n" +
 	"\fl7_telemetry\x18\x04 \x01(\v2\".graph.v1alpha.EdgeTypeL7TelemetryH\x00R\vl7Telemetry\x12\\\n" +
 	"\x13multicast_telemetry\x18\x05 \x01(\v2).graph.v1alpha.EdgeTypeMulticastTelemetryH\x00R\x12multicastTelemetryB\x06\n" +
 	"\x04type\"\x0f\n" +
@@ -699,23 +786,27 @@ const file_graph_v1alpha_edge_proto_rawDesc = "" +
 	"\x13routing_audit_total\x18\x04 \x01(\x04R\x11routingAuditTotal\x128\n" +
 	"\x18routing_redirected_total\x18\x05 \x01(\x04R\x16routingRedirectedTotal\x120\n" +
 	"\x14routing_traced_total\x18\x06 \x01(\x04R\x12routingTracedTotal\x128\n" +
-	"\x18routing_translated_total\x18\a \x01(\x04R\x16routingTranslatedTotal\"\xb7\x01\n" +
+	"\x18routing_translated_total\x18\a \x01(\x04R\x16routingTranslatedTotal\"\xa6\x01\n" +
+	"\x13EdgeTypeL4Telemetry\x122\n" +
+	"\x15tcp_retransmits_total\x18\x01 \x01(\x04R\x13tcpRetransmitsTotal\x121\n" +
+	"\x15tcp_zero_window_total\x18\x02 \x01(\x04R\x12tcpZeroWindowTotal\x12(\n" +
+	"\x10tcp_resets_total\x18\x03 \x01(\x04R\x0etcpResetsTotal\"\xb7\x01\n" +
 	"\x13EdgeTypeL7Telemetry\x12.\n" +
 	"\x13http_requests_total\x18\x01 \x01(\x04R\x11httpRequestsTotal\x127\n" +
 	"\x18http_server_errors_total\x18\x02 \x01(\x04R\x15httpServerErrorsTotal\x127\n" +
-	"\x18http_client_errors_total\x18\x03 \x01(\x04R\x15httpClientErrorsTotal\"\xd9\x04\n" +
+	"\x18http_client_errors_total\x18\x03 \x01(\x04R\x15httpClientErrorsTotal\"\x91\x04\n" +
 	"\x1aEdgeTypeMulticastTelemetry\x12D\n" +
 	"\x1fsequence_number_gap_count_total\x18\x01 \x01(\x04R\x1bsequenceNumberGapCountTotal\x12\x8d\x01\n" +
-	"\x1ffeeder_receiver_delay_histogram\x18\x02 \x01(\v2F.graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogramR\x1cfeederReceiverDelayHistogram\x1a\xe4\x02\n" +
+	"\x1ffeeder_receiver_delay_histogram\x18\x02 \x01(\v2F.graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogramR\x1cfeederReceiverDelayHistogram\x1a\x9c\x02\n" +
 	"\x1cFeederReceiverDelayHistogram\x12\x1f\n" +
 	"\vcount_total\x18\x01 \x01(\x04R\n" +
 	"countTotal\x12\x1b\n" +
 	"\tsum_total\x18\x02 \x01(\x04R\bsumTotal\x12-\n" +
-	"\x13bucket_lt_1ms_total\x18\x03 \x01(\x04R\x10bucketLt1msTotal\x126\n" +
-	"\x18bucket_1ms_to_10ms_total\x18\x04 \x01(\x04R\x14bucket1msTo10msTotal\x12:\n" +
-	"\x1abucket_10ms_to_100ms_total\x18\x05 \x01(\x04R\x16bucket10msTo100msTotal\x126\n" +
-	"\x18bucket_100ms_to_1s_total\x18\x06 \x01(\x04R\x14bucket100msTo1sTotal\x12+\n" +
-	"\x12bucket_ge_1s_total\x18\a \x01(\x04R\x0fbucketGe1sTotalB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
+	"\x13bucket_le_1ms_total\x18\n" +
+	" \x01(\x04R\x10bucketLe1msTotal\x12/\n" +
+	"\x14bucket_le_10ms_total\x18\x14 \x01(\x04R\x11bucketLe10msTotal\x121\n" +
+	"\x15bucket_le_100ms_total\x18\x1e \x01(\x04R\x12bucketLe100msTotal\x12+\n" +
+	"\x12bucket_le_1s_total\x18( \x01(\x04R\x0fbucketLe1sTotalB(Z&github.com/isovalent/ipa/graph/v1alphab\x06proto3"
 
 var (
 	file_graph_v1alpha_edge_proto_rawDescOnce sync.Once
@@ -729,28 +820,30 @@ func file_graph_v1alpha_edge_proto_rawDescGZIP() []byte {
 	return file_graph_v1alpha_edge_proto_rawDescData
 }
 
-var file_graph_v1alpha_edge_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_graph_v1alpha_edge_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_graph_v1alpha_edge_proto_goTypes = []any{
 	(*Edge)(nil),                       // 0: graph.v1alpha.Edge
 	(*EdgeTypeBasic)(nil),              // 1: graph.v1alpha.EdgeTypeBasic
 	(*EdgeTypeNetworkTelemetry)(nil),   // 2: graph.v1alpha.EdgeTypeNetworkTelemetry
 	(*EdgeTypeRoutingTelemetry)(nil),   // 3: graph.v1alpha.EdgeTypeRoutingTelemetry
-	(*EdgeTypeL7Telemetry)(nil),        // 4: graph.v1alpha.EdgeTypeL7Telemetry
-	(*EdgeTypeMulticastTelemetry)(nil), // 5: graph.v1alpha.EdgeTypeMulticastTelemetry
-	(*EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram)(nil), // 6: graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram
+	(*EdgeTypeL4Telemetry)(nil),        // 4: graph.v1alpha.EdgeTypeL4Telemetry
+	(*EdgeTypeL7Telemetry)(nil),        // 5: graph.v1alpha.EdgeTypeL7Telemetry
+	(*EdgeTypeMulticastTelemetry)(nil), // 6: graph.v1alpha.EdgeTypeMulticastTelemetry
+	(*EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram)(nil), // 7: graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram
 }
 var file_graph_v1alpha_edge_proto_depIdxs = []int32{
 	1, // 0: graph.v1alpha.Edge.basic:type_name -> graph.v1alpha.EdgeTypeBasic
 	2, // 1: graph.v1alpha.Edge.network_telemetry:type_name -> graph.v1alpha.EdgeTypeNetworkTelemetry
 	3, // 2: graph.v1alpha.Edge.routing_telemetry:type_name -> graph.v1alpha.EdgeTypeRoutingTelemetry
-	4, // 3: graph.v1alpha.Edge.l7_telemetry:type_name -> graph.v1alpha.EdgeTypeL7Telemetry
-	5, // 4: graph.v1alpha.Edge.multicast_telemetry:type_name -> graph.v1alpha.EdgeTypeMulticastTelemetry
-	6, // 5: graph.v1alpha.EdgeTypeMulticastTelemetry.feeder_receiver_delay_histogram:type_name -> graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	4, // 3: graph.v1alpha.Edge.l4_telemetry:type_name -> graph.v1alpha.EdgeTypeL4Telemetry
+	5, // 4: graph.v1alpha.Edge.l7_telemetry:type_name -> graph.v1alpha.EdgeTypeL7Telemetry
+	6, // 5: graph.v1alpha.Edge.multicast_telemetry:type_name -> graph.v1alpha.EdgeTypeMulticastTelemetry
+	7, // 6: graph.v1alpha.EdgeTypeMulticastTelemetry.feeder_receiver_delay_histogram:type_name -> graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_graph_v1alpha_edge_proto_init() }
@@ -762,6 +855,7 @@ func file_graph_v1alpha_edge_proto_init() {
 		(*Edge_Basic)(nil),
 		(*Edge_NetworkTelemetry)(nil),
 		(*Edge_RoutingTelemetry)(nil),
+		(*Edge_L4Telemetry)(nil),
 		(*Edge_L7Telemetry)(nil),
 		(*Edge_MulticastTelemetry)(nil),
 	}
@@ -771,7 +865,7 @@ func file_graph_v1alpha_edge_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_graph_v1alpha_edge_proto_rawDesc), len(file_graph_v1alpha_edge_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

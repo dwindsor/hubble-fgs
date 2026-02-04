@@ -97,7 +97,7 @@ CONFIG_TYPE_DPU
 | port_low | [uint32](#uint32) |  | Low end of the port range assigned to this DPU |
 | port_high | [uint32](#uint32) |  | High end of the port range assigned to this DPU |
 | dpu_id | [uint32](#uint32) |  | Unique identifier for the DPU, the same as the DPU number (DPU1, etc.) |
-| ha_ip | [string](#string) |  | Local HA IP address of the switch |
+| ha_ip | [string](#string) |  | **Deprecated.** DEPRECATED |
 | serial_number | [string](#string) |  | Serial number of the switch |
 | switch_name | [string](#string) |  | Name of the switch |
 
@@ -135,6 +135,7 @@ CONFIG_TYPE_HA
 | peers | [HaPeer](#l3l4networkpolicy-v1alpha-HaPeer) | repeated | List of HA peers |
 | enabled | [bool](#bool) |  | Enables HA, starts health checks with peers |
 | flow_sync | [bool](#bool) |  | Starts synchronization of flows between peers |
+| ha_ip | [string](#string) |  | Local HA IP address of the switch |
 
 
 

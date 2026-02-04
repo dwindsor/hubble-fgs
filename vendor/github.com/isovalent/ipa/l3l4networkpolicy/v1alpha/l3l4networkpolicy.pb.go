@@ -1250,7 +1250,9 @@ type DpuConfig struct {
 	PortHigh uint32 `protobuf:"varint,4,opt,name=port_high,json=portHigh,proto3" json:"port_high,omitempty"`
 	// Unique identifier for the DPU, the same as the DPU number (DPU1, etc.)
 	DpuId uint32 `protobuf:"varint,5,opt,name=dpu_id,json=dpuId,proto3" json:"dpu_id,omitempty"`
-	// Local HA IP address of the switch
+	// DEPRECATED
+	//
+	// Deprecated: Marked as deprecated in l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto.
 	HaIp string `protobuf:"bytes,6,opt,name=ha_ip,json=haIp,proto3" json:"ha_ip,omitempty"`
 	// Serial number of the switch
 	SerialNumber string `protobuf:"bytes,7,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
@@ -1325,6 +1327,7 @@ func (x *DpuConfig) GetDpuId() uint32 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in l3l4networkpolicy/v1alpha/l3l4networkpolicy.proto.
 func (x *DpuConfig) GetHaIp() string {
 	if x != nil {
 		return x.HaIp
@@ -1763,7 +1766,9 @@ type HaConfig struct {
 	// Enables HA, starts health checks with peers
 	Enabled bool `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	// Starts synchronization of flows between peers
-	FlowSync      bool `protobuf:"varint,3,opt,name=flow_sync,json=flowSync,proto3" json:"flow_sync,omitempty"`
+	FlowSync bool `protobuf:"varint,3,opt,name=flow_sync,json=flowSync,proto3" json:"flow_sync,omitempty"`
+	// Local HA IP address of the switch
+	HaIp          string `protobuf:"bytes,4,opt,name=ha_ip,json=haIp,proto3" json:"ha_ip,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1817,6 +1822,13 @@ func (x *HaConfig) GetFlowSync() bool {
 		return x.FlowSync
 	}
 	return false
+}
+
+func (x *HaConfig) GetHaIp() string {
+	if x != nil {
+		return x.HaIp
+	}
+	return ""
 }
 
 type Vlan struct {
@@ -2670,7 +2682,7 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x10last_dpu_restart\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\x0elastDpuRestart\x12-\n" +
 	"\x12dataplane_restarts\x18\x10 \x01(\rR\x11dataplaneRestarts\x12P\n" +
 	"\x16last_dataplane_restart\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\x14lastDataplaneRestart\x12I\n" +
-	"\x13last_fwa_crash_time\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\x10lastFwaCrashTimeJ\x04\b\x14\x10\x15R\bha_error\"\xf5\x01\n" +
+	"\x13last_fwa_crash_time\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\x10lastFwaCrashTimeJ\x04\b\x14\x10\x15R\bha_error\"\xf9\x01\n" +
 	"\tDpuConfig\x12\x1d\n" +
 	"\n" +
 	"service_ip\x18\x01 \x01(\tR\tserviceIp\x12\x1f\n" +
@@ -2678,8 +2690,8 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"serviceMac\x12\x19\n" +
 	"\bport_low\x18\x03 \x01(\rR\aportLow\x12\x1b\n" +
 	"\tport_high\x18\x04 \x01(\rR\bportHigh\x12\x15\n" +
-	"\x06dpu_id\x18\x05 \x01(\rR\x05dpuId\x12\x13\n" +
-	"\x05ha_ip\x18\x06 \x01(\tR\x04haIp\x12#\n" +
+	"\x06dpu_id\x18\x05 \x01(\rR\x05dpuId\x12\x17\n" +
+	"\x05ha_ip\x18\x06 \x01(\tB\x02\x18\x01R\x04haIp\x12#\n" +
 	"\rserial_number\x18\a \x01(\tR\fserialNumber\x12\x1f\n" +
 	"\vswitch_name\x18\b \x01(\tR\n" +
 	"switchName\"\xc6\x02\n" +
@@ -2722,11 +2734,12 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x06HaPeer\x12\x0e\n" +
 	"\x02ip\x18\x01 \x01(\tR\x02ip\x12\x19\n" +
 	"\bmin_port\x18\x02 \x01(\rR\aminPort\x12\x19\n" +
-	"\bmax_port\x18\x03 \x01(\rR\amaxPort\"z\n" +
+	"\bmax_port\x18\x03 \x01(\rR\amaxPort\"\x8f\x01\n" +
 	"\bHaConfig\x127\n" +
 	"\x05peers\x18\x01 \x03(\v2!.l3l4networkpolicy.v1alpha.HaPeerR\x05peers\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x12\x1b\n" +
-	"\tflow_sync\x18\x03 \x01(\bR\bflowSync\"*\n" +
+	"\tflow_sync\x18\x03 \x01(\bR\bflowSync\x12\x13\n" +
+	"\x05ha_ip\x18\x04 \x01(\tR\x04haIp\"*\n" +
 	"\x04Vlan\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\")\n" +

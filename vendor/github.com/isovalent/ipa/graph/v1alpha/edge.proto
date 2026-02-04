@@ -26,6 +26,7 @@ message Edge {
     EdgeTypeBasic basic = 1;
     EdgeTypeNetworkTelemetry network_telemetry = 2;
     EdgeTypeRoutingTelemetry routing_telemetry = 3;
+    EdgeTypeL4Telemetry l4_telemetry = 6;
     EdgeTypeL7Telemetry l7_telemetry = 4;
     EdgeTypeMulticastTelemetry multicast_telemetry = 5;
   }
@@ -92,6 +93,20 @@ message EdgeTypeRoutingTelemetry {
   uint64 routing_translated_total = 7;
 }
 
+// EdgeTypeL4Telemetry provides telemetry information regarding a network
+// connection at the transport layer.
+message EdgeTypeL4Telemetry {
+  // tcp_retransmits_total is the number of TCP segments that have been
+  // retransmitted during the selected time window.
+  uint64 tcp_retransmits_total = 1;
+  // tcp_zero_window_total is the number of times a zero TCP window has been
+  // observed during the selected time window.
+  uint64 tcp_zero_window_total = 2;
+  // tcp_resets_total is the number of TCP resets that have been observed
+  // during the selected time window.
+  uint64 tcp_resets_total = 3;
+}
+
 // EdgeTypeL7Telemetry provides telemetry information regarding a network
 // connection at the application layer.
 message EdgeTypeL7Telemetry {
@@ -116,20 +131,29 @@ message EdgeTypeMulticastTelemetry {
   // detected.
   uint64 sequence_number_gap_count_total = 1;
 
-  // FeederReceiverDelayHistogram represents a non-cumulative histogram with
+  // FeederReceiverDelayHistogram represents a cumulative histogram with
   // hardcoded buckets for delays experienced by multicast receivers from
   // feeders.
   //
-  // TODO: should we use cumulative buckets (prometheus-style) to facilitate
-  // computations of quantiles?
+  // The histogram model is based on Prometheus classic histograms, with the
+  // difference that it does not include the upper bound bucket (le="+Inf") for
+  // space efficiency. When computing rates, averages or quantiles, the
+  // count_total field can be used instead.
+  // Prometheus docs: https://prometheus.io/docs/concepts/metric_types/#histogram.
   message FeederReceiverDelayHistogram {
+    // count_total is the total number of observations. Use this to interpret
+    // the upper bound bucket (le="+Inf") in higher level calculations.
     uint64 count_total = 1;
+    // sum_total is the sum of all observed values, in milliseconds.
     uint64 sum_total = 2;
-    uint64 bucket_lt_1ms_total = 3;
-    uint64 bucket_1ms_to_10ms_total = 4;
-    uint64 bucket_10ms_to_100ms_total = 5;
-    uint64 bucket_100ms_to_1s_total = 6;
-    uint64 bucket_ge_1s_total = 7;
+    // bucket_le_1ms_total is the number of observations less than or equal to 1ms.
+    uint64 bucket_le_1ms_total = 10;
+    // bucket_le_10ms_total is the number of observations less than or equal to 10ms.
+    uint64 bucket_le_10ms_total = 20;
+    // bucket_le_100ms_total is the number of observations less than or equal to 100ms.
+    uint64 bucket_le_100ms_total = 30;
+    // bucket_le_1s_total is the number of observations less than or equal to 1s.
+    uint64 bucket_le_1s_total = 40;
   }
   // feeder_receiver_delay_histogram captures a histogram of delays
   // experienced by multicast receivers from feeders.

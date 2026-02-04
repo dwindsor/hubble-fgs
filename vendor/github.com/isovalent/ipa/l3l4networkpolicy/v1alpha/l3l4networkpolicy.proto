@@ -213,8 +213,8 @@ message DpuConfig {
   uint32 port_high = 4;
   // Unique identifier for the DPU, the same as the DPU number (DPU1, etc.)
   uint32 dpu_id = 5;
-  // Local HA IP address of the switch
-  string ha_ip = 6;
+  // DEPRECATED
+  string ha_ip = 6 [deprecated = true];
   // Serial number of the switch
   string serial_number = 7;
   // Name of the switch
@@ -295,6 +295,8 @@ message HaConfig {
   bool enabled = 2;
   // Starts synchronization of flows between peers
   bool flow_sync = 3;
+  // Local HA IP address of the switch
+  string ha_ip = 4;
 }
 
 message Vlan {

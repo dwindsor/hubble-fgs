@@ -445,9 +445,10 @@ export declare type DpuConfig = Message<"l3l4networkpolicy.v1alpha.DpuConfig"> &
   dpuId: number;
 
   /**
-   * Local HA IP address of the switch
+   * DEPRECATED
    *
-   * @generated from field: string ha_ip = 6;
+   * @generated from field: string ha_ip = 6 [deprecated = true];
+   * @deprecated
    */
   haIp: string;
 
@@ -713,6 +714,13 @@ export declare type HaConfig = Message<"l3l4networkpolicy.v1alpha.HaConfig"> & {
    * @generated from field: bool flow_sync = 3;
    */
   flowSync: boolean;
+
+  /**
+   * Local HA IP address of the switch
+   *
+   * @generated from field: string ha_ip = 4;
+   */
+  haIp: string;
 };
 
 /**

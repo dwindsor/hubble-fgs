@@ -308,10 +308,10 @@ github.com/iceber/iouring-go v0.0.0-20230403020409-002cfd2e2a90 h1:xrtfZokN++5ke
 github.com/iceber/iouring-go v0.0.0-20230403020409-002cfd2e2a90/go.mod h1:LEzdaZarZ5aqROlLIwJ4P7h3+4o71008fSy6wpaEB+s=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/isovalent/ipa v1.19.0-pre.2.0.20260130205559-ce6c7a10e070 h1:uRED3B2fLE+fTr76n/F4Iol7ZgQCX0c+S4aii5b3IyU=
-github.com/isovalent/ipa v1.19.0-pre.2.0.20260130205559-ce6c7a10e070/go.mod h1:btFT6/09uJCzWz2Nnbx+ICIBbX+fYo0igRV4SirSr1s=
-github.com/isovalent/ipa/k8s v1.19.0-pre.2.0.20260129171119-16b3deb8b73d h1:FiBo12JQu0zPEanVTJhf0p+z0klmzmv4p04F/7OlWOI=
-github.com/isovalent/ipa/k8s v1.19.0-pre.2.0.20260129171119-16b3deb8b73d/go.mod h1:v3r4IP74Ag5oHTJf1zQ4A7j1FCBOsKl/s26ibbQKn60=
+github.com/isovalent/ipa v1.19.0-pre.3.0.20260206161544-1d6436ef646d h1:ksH7Ec83/8WKIcT4c3xvuwFXo7FR+wAwdh1tEPd+wps=
+github.com/isovalent/ipa v1.19.0-pre.3.0.20260206161544-1d6436ef646d/go.mod h1:btFT6/09uJCzWz2Nnbx+ICIBbX+fYo0igRV4SirSr1s=
+github.com/isovalent/ipa/k8s v1.19.0-pre.3.0.20260206161544-1d6436ef646d h1:Ixai9K8PwJmw5SnjdWweAAkrx7ynDDMK6yro+9/KIAk=
+github.com/isovalent/ipa/k8s v1.19.0-pre.3.0.20260206161544-1d6436ef646d/go.mod h1:PaKol/8imyl4uI+8JvLep5Nh+qtnkcGMcMmJ7aRv/U0=
 github.com/isovalent/metricstool v0.1.4 h1:+73vMhYhB8uDWLV/nuvV81XA5smLvGefKRJ2KIDbXP0=
 github.com/isovalent/metricstool v0.1.4/go.mod h1:U29qioTLC+X+fOmlhIUecWs/dJkh3APyhwZuUDFXVc4=
 github.com/jhump/protoreflect v1.16.0 h1:54fZg+49widqXYQ0b+usAFHbMkBGR4PpXrsHc8+TBDg=

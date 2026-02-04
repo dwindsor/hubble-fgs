@@ -962,7 +962,7 @@ github.com/inconshreveable/mousetrap
 # github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 => ./pkg/k8s-enterprise
 ## explicit; go 1.25.0
 github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/client
-# github.com/isovalent/ipa v1.19.0-pre.2.0.20260130205559-ce6c7a10e070
+# github.com/isovalent/ipa v1.19.0-pre.3.0.20260206161544-1d6436ef646d
 ## explicit; go 1.24.0
 github.com/isovalent/ipa/application_model/v1alpha
 github.com/isovalent/ipa/common/k8s/type/v1alpha
@@ -972,7 +972,7 @@ github.com/isovalent/ipa/graph/v1alpha
 github.com/isovalent/ipa/l3l4networkpolicy/v1alpha
 github.com/isovalent/ipa/ocsf/v1alpha
 github.com/isovalent/ipa/system_status/v1alpha
-# github.com/isovalent/ipa/k8s v1.19.0-pre.2.0.20260129171119-16b3deb8b73d
+# github.com/isovalent/ipa/k8s v1.19.0-pre.3.0.20260206161544-1d6436ef646d
 ## explicit; go 1.25.0
 github.com/isovalent/ipa/k8s
 github.com/isovalent/ipa/k8s/apis/cilium.io

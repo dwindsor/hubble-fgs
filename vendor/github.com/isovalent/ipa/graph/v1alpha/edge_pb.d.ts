@@ -56,6 +56,12 @@ export declare type Edge = Message<"graph.v1alpha.Edge"> & {
     case: "routingTelemetry";
   } | {
     /**
+     * @generated from field: graph.v1alpha.EdgeTypeL4Telemetry l4_telemetry = 6;
+     */
+    value: EdgeTypeL4Telemetry;
+    case: "l4Telemetry";
+  } | {
+    /**
      * @generated from field: graph.v1alpha.EdgeTypeL7Telemetry l7_telemetry = 4;
      */
     value: EdgeTypeL7Telemetry;
@@ -246,6 +252,44 @@ export declare type EdgeTypeRoutingTelemetry = Message<"graph.v1alpha.EdgeTypeRo
 export declare const EdgeTypeRoutingTelemetrySchema: GenMessage<EdgeTypeRoutingTelemetry>;
 
 /**
+ * EdgeTypeL4Telemetry provides telemetry information regarding a network
+ * connection at the transport layer.
+ *
+ * @generated from message graph.v1alpha.EdgeTypeL4Telemetry
+ */
+export declare type EdgeTypeL4Telemetry = Message<"graph.v1alpha.EdgeTypeL4Telemetry"> & {
+  /**
+   * tcp_retransmits_total is the number of TCP segments that have been
+   * retransmitted during the selected time window.
+   *
+   * @generated from field: uint64 tcp_retransmits_total = 1;
+   */
+  tcpRetransmitsTotal: bigint;
+
+  /**
+   * tcp_zero_window_total is the number of times a zero TCP window has been
+   * observed during the selected time window.
+   *
+   * @generated from field: uint64 tcp_zero_window_total = 2;
+   */
+  tcpZeroWindowTotal: bigint;
+
+  /**
+   * tcp_resets_total is the number of TCP resets that have been observed
+   * during the selected time window.
+   *
+   * @generated from field: uint64 tcp_resets_total = 3;
+   */
+  tcpResetsTotal: bigint;
+};
+
+/**
+ * Describes the message graph.v1alpha.EdgeTypeL4Telemetry.
+ * Use `create(EdgeTypeL4TelemetrySchema)` to create a new message.
+ */
+export declare const EdgeTypeL4TelemetrySchema: GenMessage<EdgeTypeL4Telemetry>;
+
+/**
  * EdgeTypeL7Telemetry provides telemetry information regarding a network
  * connection at the application layer.
  *
@@ -317,50 +361,61 @@ export declare type EdgeTypeMulticastTelemetry = Message<"graph.v1alpha.EdgeType
 export declare const EdgeTypeMulticastTelemetrySchema: GenMessage<EdgeTypeMulticastTelemetry>;
 
 /**
- * FeederReceiverDelayHistogram represents a non-cumulative histogram with
+ * FeederReceiverDelayHistogram represents a cumulative histogram with
  * hardcoded buckets for delays experienced by multicast receivers from
  * feeders.
  *
- * TODO: should we use cumulative buckets (prometheus-style) to facilitate
- * computations of quantiles?
+ * The histogram model is based on Prometheus classic histograms, with the
+ * difference that it does not include the upper bound bucket (le="+Inf") for
+ * space efficiency. When computing rates, averages or quantiles, the
+ * count_total field can be used instead.
+ * Prometheus docs: https://prometheus.io/docs/concepts/metric_types/#histogram.
  *
  * @generated from message graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram
  */
 export declare type EdgeTypeMulticastTelemetry_FeederReceiverDelayHistogram = Message<"graph.v1alpha.EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram"> & {
   /**
+   * count_total is the total number of observations. Use this to interpret
+   * the upper bound bucket (le="+Inf") in higher level calculations.
+   *
    * @generated from field: uint64 count_total = 1;
    */
   countTotal: bigint;
 
   /**
+   * sum_total is the sum of all observed values, in milliseconds.
+   *
    * @generated from field: uint64 sum_total = 2;
    */
   sumTotal: bigint;
 
   /**
-   * @generated from field: uint64 bucket_lt_1ms_total = 3;
+   * bucket_le_1ms_total is the number of observations less than or equal to 1ms.
+   *
+   * @generated from field: uint64 bucket_le_1ms_total = 10;
    */
-  bucketLt1msTotal: bigint;
+  bucketLe1msTotal: bigint;
 
   /**
-   * @generated from field: uint64 bucket_1ms_to_10ms_total = 4;
+   * bucket_le_10ms_total is the number of observations less than or equal to 10ms.
+   *
+   * @generated from field: uint64 bucket_le_10ms_total = 20;
    */
-  bucket1msTo10msTotal: bigint;
+  bucketLe10msTotal: bigint;
 
   /**
-   * @generated from field: uint64 bucket_10ms_to_100ms_total = 5;
+   * bucket_le_100ms_total is the number of observations less than or equal to 100ms.
+   *
+   * @generated from field: uint64 bucket_le_100ms_total = 30;
    */
-  bucket10msTo100msTotal: bigint;
+  bucketLe100msTotal: bigint;
 
   /**
-   * @generated from field: uint64 bucket_100ms_to_1s_total = 6;
+   * bucket_le_1s_total is the number of observations less than or equal to 1s.
+   *
+   * @generated from field: uint64 bucket_le_1s_total = 40;
    */
-  bucket100msTo1sTotal: bigint;
-
-  /**
-   * @generated from field: uint64 bucket_ge_1s_total = 7;
-   */
-  bucketGe1sTotal: bigint;
+  bucketLe1sTotal: bigint;
 };
 
 /**

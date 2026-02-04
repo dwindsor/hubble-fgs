@@ -6,6 +6,7 @@
 - [graph/v1alpha/edge.proto](#graph_v1alpha_edge-proto)
     - [Edge](#graph-v1alpha-Edge)
     - [EdgeTypeBasic](#graph-v1alpha-EdgeTypeBasic)
+    - [EdgeTypeL4Telemetry](#graph-v1alpha-EdgeTypeL4Telemetry)
     - [EdgeTypeL7Telemetry](#graph-v1alpha-EdgeTypeL7Telemetry)
     - [EdgeTypeMulticastTelemetry](#graph-v1alpha-EdgeTypeMulticastTelemetry)
     - [EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram](#graph-v1alpha-EdgeTypeMulticastTelemetry-FeederReceiverDelayHistogram)
@@ -45,6 +46,7 @@ An edge represents aggregatable properties of a given connection.
 | basic | [EdgeTypeBasic](#graph-v1alpha-EdgeTypeBasic) |  |  |
 | network_telemetry | [EdgeTypeNetworkTelemetry](#graph-v1alpha-EdgeTypeNetworkTelemetry) |  |  |
 | routing_telemetry | [EdgeTypeRoutingTelemetry](#graph-v1alpha-EdgeTypeRoutingTelemetry) |  |  |
+| l4_telemetry | [EdgeTypeL4Telemetry](#graph-v1alpha-EdgeTypeL4Telemetry) |  |  |
 | l7_telemetry | [EdgeTypeL7Telemetry](#graph-v1alpha-EdgeTypeL7Telemetry) |  |  |
 | multicast_telemetry | [EdgeTypeMulticastTelemetry](#graph-v1alpha-EdgeTypeMulticastTelemetry) |  |  |
 
@@ -57,6 +59,24 @@ An edge represents aggregatable properties of a given connection.
 
 ### EdgeTypeBasic
 EdgeTypeBasic is a base edge that does not carry any information.
+
+
+
+
+
+
+<a name="graph-v1alpha-EdgeTypeL4Telemetry"></a>
+
+### EdgeTypeL4Telemetry
+EdgeTypeL4Telemetry provides telemetry information regarding a network
+connection at the transport layer.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| tcp_retransmits_total | [uint64](#uint64) |  | tcp_retransmits_total is the number of TCP segments that have been retransmitted during the selected time window. |
+| tcp_zero_window_total | [uint64](#uint64) |  | tcp_zero_window_total is the number of times a zero TCP window has been observed during the selected time window. |
+| tcp_resets_total | [uint64](#uint64) |  | tcp_resets_total is the number of TCP resets that have been observed during the selected time window. |
 
 
 
@@ -101,23 +121,25 @@ multicast connection.
 <a name="graph-v1alpha-EdgeTypeMulticastTelemetry-FeederReceiverDelayHistogram"></a>
 
 ### EdgeTypeMulticastTelemetry.FeederReceiverDelayHistogram
-FeederReceiverDelayHistogram represents a non-cumulative histogram with
+FeederReceiverDelayHistogram represents a cumulative histogram with
 hardcoded buckets for delays experienced by multicast receivers from
 feeders.
 
-TODO: should we use cumulative buckets (prometheus-style) to facilitate
-computations of quantiles?
+The histogram model is based on Prometheus classic histograms, with the
+difference that it does not include the upper bound bucket (le=&#34;&#43;Inf&#34;) for
+space efficiency. When computing rates, averages or quantiles, the
+count_total field can be used instead.
+Prometheus docs: https://prometheus.io/docs/concepts/metric_types/#histogram.
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| count_total | [uint64](#uint64) |  |  |
-| sum_total | [uint64](#uint64) |  |  |
-| bucket_lt_1ms_total | [uint64](#uint64) |  |  |
-| bucket_1ms_to_10ms_total | [uint64](#uint64) |  |  |
-| bucket_10ms_to_100ms_total | [uint64](#uint64) |  |  |
-| bucket_100ms_to_1s_total | [uint64](#uint64) |  |  |
-| bucket_ge_1s_total | [uint64](#uint64) |  |  |
+| count_total | [uint64](#uint64) |  | count_total is the total number of observations. Use this to interpret the upper bound bucket (le=&#34;&#43;Inf&#34;) in higher level calculations. |
+| sum_total | [uint64](#uint64) |  | sum_total is the sum of all observed values, in milliseconds. |
+| bucket_le_1ms_total | [uint64](#uint64) |  | bucket_le_1ms_total is the number of observations less than or equal to 1ms. |
+| bucket_le_10ms_total | [uint64](#uint64) |  | bucket_le_10ms_total is the number of observations less than or equal to 10ms. |
+| bucket_le_100ms_total | [uint64](#uint64) |  | bucket_le_100ms_total is the number of observations less than or equal to 100ms. |
+| bucket_le_1s_total | [uint64](#uint64) |  | bucket_le_1s_total is the number of observations less than or equal to 1s. |
 
 
 
