@@ -101,7 +101,7 @@ func testPolicyCalculator(t *testing.T, podML, policy, check []string) {
 	}
 
 	for _, p := range policyMap {
-		err := s.RemoveMatchLabelNetworkPolicy(p)
+		err := s.RemovePolicy(p)
 		assert.NoError(t, err)
 	}
 

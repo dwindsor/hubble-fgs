@@ -126,7 +126,7 @@ func TestCreateSrcMatchLabelsPolicy(t *testing.T) {
 
 	assert.Equal(t, 1, len(s.Src))
 
-	err := s.RemoveMatchLabelNetworkPolicy(policy)
+	err := s.RemovePolicy(policy)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(s.Src))
@@ -143,7 +143,7 @@ func TestCreateDstMatchLabelsPolicy(t *testing.T) {
 
 	assert.Equal(t, 1, len(s.Dst))
 
-	err := s.RemoveMatchLabelNetworkPolicy(policy)
+	err := s.RemovePolicy(policy)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 0, len(s.Dst))

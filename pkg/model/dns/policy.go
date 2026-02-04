@@ -30,7 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (state *PolicyState) removeMatchLabelNetworkPolicy(policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, []*record.DatapathRecord, error) {
+func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, []*record.DatapathRecord, error) {
 	state.SrcLock.Lock()
 	defer state.SrcLock.Unlock()
 
@@ -95,8 +95,8 @@ func (state *PolicyState) removeMatchLabelNetworkPolicy(policy *types.TetragonNe
 	return zombieSet, afterSubjs, nil
 }
 
-func (state *PolicyState) RemoveMatchLabelNetworkPolicy(policy *types.TetragonNetworkPolicy) error {
-	zombieSet, updateSet, err := state.removeMatchLabelNetworkPolicy(policy)
+func (state *PolicyState) RemovePolicy(policy *types.TetragonNetworkPolicy) error {
+	zombieSet, updateSet, err := state.recordsFromPolicyRemoval(policy)
 	if err != nil {
 		return err
 	}
@@ -486,14 +486,14 @@ func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolic
 	return calculatorState, calculatorRecords, nil
 }
 
-// createMatchLabelsPolicySet computes the records generated from the current
+// recordsFromPoliciesAddition computes the records generated from the current
 // state and policies, then computes the records generated from a fresh state
 // contaning the current and new policies. It then returns the new state, the
 // records to add and the records to remove (which are the diff between the
 // current computed records and the new ones).
 //
 // Todo, this has lots of low hanging fruit for optimizing duplicate calculations.
-func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
+func recordsFromPoliciesAddition(policies []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
 	// Entry point to Policy state create collect records for current
 	// policy state.
 	preState := GetRealizedState()
@@ -504,7 +504,7 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 	}
 
 	// Building new policy set with additional policy
-	newPolicy := append(currentPolicy, policy...)
+	newPolicy := append(currentPolicy, policies...)
 
 	// Recalculate records using new state with new policy.
 	postState := NewPolicyState()
@@ -522,12 +522,12 @@ func createMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) (*PolicyS
 	return postState, postRecords, removeRecordsSet, nil
 }
 
-func CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) error {
+func AddPolicies(policies []*types.TetragonNetworkPolicy) error {
 	state := GetRealizedState()
 	state.Reader.Lock()
 	defer state.Reader.Unlock()
 
-	newState, addSet, removeSet, err := createMatchLabelsPolicySet(policy)
+	newState, addSet, removeSet, err := recordsFromPoliciesAddition(policies)
 	if err != nil {
 		return err
 	}
@@ -551,11 +551,11 @@ func CreateMatchLabelsPolicySet(policy []*types.TetragonNetworkPolicy) error {
 }
 
 // Entry point to Policy state remove
-func RemoveNetworkPolicySet(policy []*types.TetragonNetworkPolicy) error {
+func RemovePolicies(policies []*types.TetragonNetworkPolicy) error {
 	s := GetRealizedState()
 
-	for _, p := range policy {
-		err := s.RemoveMatchLabelNetworkPolicy(p)
+	for _, policy := range policies {
+		err := s.RemovePolicy(policy)
 		if err != nil {
 			return err
 		}

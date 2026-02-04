@@ -251,7 +251,7 @@ func TestCheckMatchLabelsPolicy(t *testing.T) {
 	assert.Equal(t, 0, len(src.Subjects))
 	assert.Equal(t, 2, len(deleted))
 
-	zombieSet, updateSet, err := s.removeMatchLabelNetworkPolicy(netpol)
+	zombieSet, updateSet, err := s.recordsFromPolicyRemoval(netpol)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 	assert.Equal(t, 0, len(updateSet))
@@ -299,7 +299,7 @@ func TestSrcPolicyAddsDefaultAction(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
-	zombieSet, updateSet, err := s.removeMatchLabelNetworkPolicy(netpol)
+	zombieSet, updateSet, err := s.recordsFromPolicyRemoval(netpol)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 	assert.Equal(t, 0, len(updateSet))
@@ -368,7 +368,7 @@ func TestSrcPolicyAddsDefaultActionDstFirst(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
-	zombieSet, updateSet, err := s.removeMatchLabelNetworkPolicy(netpol)
+	zombieSet, updateSet, err := s.recordsFromPolicyRemoval(netpol)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(zombieSet))
 	assert.Equal(t, 0, len(updateSet))
@@ -389,7 +389,7 @@ func TestPolicySet(t *testing.T) {
 
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
 	netpolSet := []*types.TetragonNetworkPolicy{netpol}
-	CreateMatchLabelsPolicySet(netpolSet)
+	AddPolicies(netpolSet)
 	// add dst pod first which does not match a subject for any policy8
 	addPod(t, dstId, dstPodName, dstPodLabels)
 	dstPod := testPod(t, "3", "testNamespace", dstPodName, "testPod", dstPodLabels)
@@ -416,7 +416,7 @@ func TestPolicySet(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
-	err = RemoveNetworkPolicySet(netpolSet)
+	err = RemovePolicies(netpolSet)
 	assert.NoError(t, err)
 }
 
@@ -478,7 +478,7 @@ func TestPolicySetWithPods(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpol := testMatchDstLabelsDenyPolicy(name, srcPodLabels, dstPodLabels, "allow")
 	netpolSet := []*types.TetragonNetworkPolicy{netpol}
-	newState, addSet, removeSet, errSet := createMatchLabelsPolicySet(netpolSet)
+	newState, addSet, removeSet, errSet := recordsFromPoliciesAddition(netpolSet)
 	assert.NoError(t, errSet)
 	assert.Equal(t, 4, len(addSet))
 	assert.Zero(t, len(removeSet))
@@ -499,7 +499,7 @@ func TestPolicySetWithPods(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(deleted))
 
-	err = RemoveNetworkPolicySet(netpolSet)
+	err = RemovePolicies(netpolSet)
 	assert.NoError(t, err)
 }
 
@@ -543,7 +543,7 @@ func TestPolicyOverlapping(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, err := createMatchLabelsPolicySet(netpolASet)
+	aState, addASet, removeASet, err := recordsFromPoliciesAddition(netpolASet)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(addASet))
 	assert.Zero(t, len(removeASet))
@@ -557,7 +557,7 @@ func TestPolicyOverlapping(t *testing.T) {
 	// netpol B overlaps with netpol A except actoins are reversed.
 	netpolB := testMatchDstLabelsDenyPolicy("netpolB", "B=b", dstPodLabels, "deny")
 	netpolBSet := []*types.TetragonNetworkPolicy{netpolB}
-	bState, addBSet, removeBSet, err := createMatchLabelsPolicySet(netpolBSet)
+	bState, addBSet, removeBSet, err := recordsFromPoliciesAddition(netpolBSet)
 	assert.NoError(t, err)
 	assert.Zero(t, len(removeBSet))
 	assert.Equal(t, 8, len(addBSet))
@@ -587,9 +587,9 @@ func TestPolicyOverlapping(t *testing.T) {
 	assert.Equal(t, 6, len(deleted)) // delete entries from both policy sources
 
 	netpolSet := []*types.TetragonNetworkPolicy{netpolB, netpolA}
-	err = RemoveNetworkPolicySet(netpolSet)
+	err = RemovePolicies(netpolSet)
 	assert.NoError(t, err)
-	err = RemoveNetworkPolicySet(netpolSet)
+	err = RemovePolicies(netpolSet)
 	assert.NoError(t, err)
 }
 
@@ -633,7 +633,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := createMatchLabelsPolicySet(netpolASet)
+	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Equal(t, 4, len(addASet))
@@ -648,7 +648,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	// netpol B overlaps with netpol A except actions are reversed.
 	netpolB := testMatchDstLabelsDenyPolicy("netpolB", "B=b", dstPodLabels, "deny")
 	netpolBSet := []*types.TetragonNetworkPolicy{netpolB}
-	bState, addBSet, removeBSet, errSet := createMatchLabelsPolicySet(netpolBSet)
+	bState, addBSet, removeBSet, errSet := recordsFromPoliciesAddition(netpolBSet)
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(removeBSet))
 	assert.Equal(t, 8, len(addBSet))
@@ -662,7 +662,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	// netpol C does not overlap with A or B subjects.
 	netpolC := testMatchDstLabelsDenyPolicy("netpolC", "C=c", dstPodLabels, "deny")
 	netpolCSet := []*types.TetragonNetworkPolicy{netpolC}
-	cState, addCSet, removeCSet, err := createMatchLabelsPolicySet(netpolCSet)
+	cState, addCSet, removeCSet, err := recordsFromPoliciesAddition(netpolCSet)
 	assert.NoError(t, err)
 	assert.Zero(t, len(removeCSet))
 	assert.Equal(t, 12, len(addCSet))
@@ -674,7 +674,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	SetRealizedState(cState)
 
 	// netpol C does not overlap with netpol A remove it.
-	cRemove, cUpdate, err := cState.removeMatchLabelNetworkPolicy(netpolC)
+	cRemove, cUpdate, err := cState.recordsFromPolicyRemoval(netpolC)
 	assert.NoError(t, err)
 	// because these are entirely masked by policy A we do not remove anything
 	assert.Equal(t, 4, len(cRemove))
@@ -682,7 +682,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Equal(t, 8, len(cUpdate))
 
 	// netpol B overlaps with netpol A remove it.
-	bRemove, bUpdate, err := cState.removeMatchLabelNetworkPolicy(netpolB)
+	bRemove, bUpdate, err := cState.recordsFromPolicyRemoval(netpolB)
 	assert.NoError(t, err)
 	// because these are entirely masked by policy A we do not remove anything
 	assert.Equal(t, 0, len(bRemove))
@@ -690,7 +690,7 @@ func TestPolicyOverlappingPolicyDelete(t *testing.T) {
 	assert.Equal(t, 4, len(bUpdate))
 
 	// netpol A remains, remove it.
-	aRemove, aUpdate, err := cState.removeMatchLabelNetworkPolicy(netpolA)
+	aRemove, aUpdate, err := cState.recordsFromPolicyRemoval(netpolA)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(aRemove))
 	assert.Equal(t, 0, len(aUpdate))
@@ -745,7 +745,7 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstProcessLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := createMatchLabelsPolicySet(netpolASet)
+	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	// 3 records for /usr/bin/curl
@@ -765,7 +765,7 @@ func TestDestSrcProcessPolicy(t *testing.T) {
 	SetRealizedState(aState)
 
 	// netpol A remains, remove it.
-	aRemove, aUpdate, err := aState.removeMatchLabelNetworkPolicy(netpolA)
+	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(aRemove))
 	assert.Zero(t, len(aUpdate))
@@ -814,7 +814,7 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstProcessLabelsDenyPolicy("netpolA", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := createMatchLabelsPolicySet(netpolASet)
+	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	// 3 records for /usr/bin/curl
@@ -834,7 +834,7 @@ func TestSrcDestProcessPolicy(t *testing.T) {
 	SetRealizedState(aState)
 
 	// netpol A remains, remove it.
-	aRemove, aUpdate, err := aState.removeMatchLabelNetworkPolicy(netpolA)
+	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(aRemove))
 	assert.Zero(t, len(aUpdate))
@@ -868,7 +868,7 @@ func TestProcessPolicySrcDest(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := createMatchLabelsPolicySet(netpolASet)
+	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
@@ -896,7 +896,7 @@ func TestProcessPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 1, n)
 
 	// netpol A remains, remove it.
-	aRemove, aUpdate, err := aState.removeMatchLabelNetworkPolicy(netpolA)
+	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(aRemove))
 	assert.Zero(t, len(aUpdate))
@@ -930,7 +930,7 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := createMatchLabelsPolicySet(netpolASet)
+	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
@@ -958,7 +958,7 @@ func TestProcessPolicyDestSrc(t *testing.T) {
 	assert.Equal(t, 1, n)
 
 	// netpol A remains, remove it.
-	aRemove, aUpdate, err := aState.removeMatchLabelNetworkPolicy(netpolA)
+	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(aRemove))
 	assert.Zero(t, len(aUpdate))
@@ -992,7 +992,7 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchPortDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := createMatchLabelsPolicySet(netpolASet)
+	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
@@ -1048,7 +1048,7 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 	assert.Equal(t, 1, n)
 
 	// netpol A remains, remove it.
-	aRemove, aUpdate, err := aState.removeMatchLabelNetworkPolicy(netpolA)
+	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
 	assert.NoError(t, err)
 	assert.Equal(t, 13, len(aRemove))
 	assert.Zero(t, len(aUpdate))
@@ -1105,7 +1105,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchPortDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := createMatchLabelsPolicySet(netpolASet)
+	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
@@ -1149,7 +1149,7 @@ func TestProcessPortPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 0, n)
 
 	// netpol A remains, remove it.
-	aRemove, aUpdate, err := aState.removeMatchLabelNetworkPolicy(netpolA)
+	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
 	assert.NoError(t, err)
 	assert.Equal(t, 13, len(aRemove))
 	assert.Zero(t, len(aUpdate))
@@ -1193,7 +1193,7 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	// Add policy and ensure we generate rules
 	netpolA := testMatchPortCIDRDstProcessLabelsDenyPolicy("netpolZ", "A=a", dstPodLabels, "allow", "10.0.0.1/16")
 	netpolASet := []*types.TetragonNetworkPolicy{netpolA}
-	aState, addASet, removeASet, errSet := createMatchLabelsPolicySet(netpolASet)
+	aState, addASet, removeASet, errSet := recordsFromPoliciesAddition(netpolASet)
 
 	assert.NoError(t, errSet)
 	assert.Zero(t, len(addASet))
@@ -1239,7 +1239,7 @@ func TestProcessCIDRPolicySrcDest(t *testing.T) {
 	assert.Equal(t, 0, n)
 
 	// netpol A remains, remove it.
-	aRemove, aUpdate, err := aState.removeMatchLabelNetworkPolicy(netpolA)
+	aRemove, aUpdate, err := aState.recordsFromPolicyRemoval(netpolA)
 	assert.NoError(t, err)
 	assert.Equal(t, 17, len(aRemove))
 	assert.Zero(t, len(aUpdate))

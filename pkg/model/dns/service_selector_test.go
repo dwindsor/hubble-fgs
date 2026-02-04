@@ -530,7 +530,7 @@ func TestServiceSelectorPolicyRemoval(t *testing.T) {
 	assert.Greater(t, len(records), 0)
 
 	// Remove policy
-	err = s.RemoveMatchLabelNetworkPolicy(policy)
+	err = s.RemovePolicy(policy)
 	require.NoError(t, err)
 
 	// Verify policy removed from serviceSelector list
