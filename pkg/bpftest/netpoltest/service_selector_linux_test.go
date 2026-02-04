@@ -54,8 +54,8 @@ var wildcardSrc = &types.ProcessTreeKey{
 }
 
 // Test helper to create a CIDR deny record (simulates ClusterIP/endpoint blocking)
-func makeCIDRDenyRecord(policyName, cidr string) *record.DatapathRecord {
-	return &record.DatapathRecord{
+func makeCIDRDenyRecord(policyName, cidr string) record.DatapathRecord {
+	return record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: policyName,
 			RuleName:   "serviceSelector-cidr",
@@ -75,8 +75,8 @@ func makeCIDRDenyRecord(policyName, cidr string) *record.DatapathRecord {
 }
 
 // Test helper to create a CIDR allow record
-func makeCIDRAllowRecord(policyName, cidr string) *record.DatapathRecord {
-	return &record.DatapathRecord{
+func makeCIDRAllowRecord(policyName, cidr string) record.DatapathRecord {
+	return record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: policyName,
 			RuleName:   "serviceSelector-cidr",
@@ -96,12 +96,12 @@ func makeCIDRAllowRecord(policyName, cidr string) *record.DatapathRecord {
 }
 
 // Test helper to create a default action record
-func makeDefaultRecord(policyName string, allow bool) *record.DatapathRecord {
+func makeDefaultRecord(policyName string, allow bool) record.DatapathRecord {
 	action := record.PolicyDeny
 	if allow {
 		action = record.PolicyAllow
 	}
-	return &record.DatapathRecord{
+	return record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: policyName,
 			RuleName:   "default",
@@ -145,7 +145,7 @@ func TestServiceSelectorBlocking(t *testing.T) {
 
 	// Subtest: Basic CIDR deny (simulates blocking ClusterIP)
 	t.Run("DenyClusterIP", func(t *testing.T) {
-		records := []*record.DatapathRecord{
+		records := []record.DatapathRecord{
 			makeCIDRDenyRecord("deny-clusterip", "127.0.0.1/32"),
 		}
 		err := prog.AddRecords(records, true)
@@ -166,7 +166,7 @@ func TestServiceSelectorBlocking(t *testing.T) {
 
 	// Subtest: CIDR deny for subnet (simulates blocking multiple endpoints)
 	t.Run("DenySubnet", func(t *testing.T) {
-		records := []*record.DatapathRecord{
+		records := []record.DatapathRecord{
 			makeCIDRDenyRecord("deny-subnet", "127.0.0.0/24"),
 		}
 		err := prog.AddRecords(records, true)
@@ -187,7 +187,7 @@ func TestServiceSelectorBlocking(t *testing.T) {
 
 	// Subtest: CIDR allow (verify allow doesn't block)
 	t.Run("AllowClusterIP", func(t *testing.T) {
-		records := []*record.DatapathRecord{
+		records := []record.DatapathRecord{
 			makeCIDRAllowRecord("allow-clusterip", "127.0.0.1/32"),
 		}
 		err := prog.AddRecords(records, true)
@@ -204,7 +204,7 @@ func TestServiceSelectorBlocking(t *testing.T) {
 
 	// Subtest: Default deny blocks traffic
 	t.Run("DefaultDeny", func(t *testing.T) {
-		records := []*record.DatapathRecord{
+		records := []record.DatapathRecord{
 			makeDefaultRecord("default-deny-policy", false),
 		}
 		err := prog.AddRecords(records, true)
@@ -226,7 +226,7 @@ func TestServiceSelectorBlocking(t *testing.T) {
 	// Subtest: Allow rule with default deny
 	// This simulates: "allow access to this service, deny everything else"
 	t.Run("AllowWithDefaultDeny", func(t *testing.T) {
-		records := []*record.DatapathRecord{
+		records := []record.DatapathRecord{
 			makeCIDRAllowRecord("allow-default-deny-policy", "127.0.0.1/32"),
 			makeDefaultRecord("allow-default-deny-policy", false),
 		}
@@ -245,7 +245,7 @@ func TestServiceSelectorBlocking(t *testing.T) {
 	// Subtest: Multiple CIDR records (simulates ClusterIP + endpoint blocking)
 	t.Run("MultipleCIDRDeny", func(t *testing.T) {
 		// Block 127.0.0.1 (simulates ClusterIP) and 127.0.0.2 (simulates endpoint)
-		records := []*record.DatapathRecord{
+		records := []record.DatapathRecord{
 			makeCIDRDenyRecord("deny-multi-1", "127.0.0.1/32"),
 			makeCIDRDenyRecord("deny-multi-2", "127.0.0.2/32"),
 		}
@@ -269,7 +269,7 @@ func TestServiceSelectorBlocking(t *testing.T) {
 	// This simulates: "deny service A, allow service B"
 	t.Run("DenyOneAllowAnother", func(t *testing.T) {
 		// Deny 127.0.0.2 but allow 127.0.0.1
-		records := []*record.DatapathRecord{
+		records := []record.DatapathRecord{
 			makeCIDRDenyRecord("deny-other", "127.0.0.2/32"),
 			makeCIDRAllowRecord("allow-this", "127.0.0.1/32"),
 		}
@@ -307,7 +307,7 @@ func TestServiceSelectorBlocking(t *testing.T) {
 		require.Equal(t, "test-svc", svc.Name)
 
 		// Block the service ClusterIP
-		records := []*record.DatapathRecord{
+		records := []record.DatapathRecord{
 			makeCIDRDenyRecord("block-test-svc", "127.0.0.1/32"),
 		}
 		err := prog.AddRecords(records, true)

@@ -197,7 +197,7 @@ func TestAddRecordWithoutEndpoint(t *testing.T) {
 		},
 	}
 
-	err := bpfProgrammer.addRecord(inputRecord, false)
+	err := bpfProgrammer.addRecord(*inputRecord, false)
 	require.NoError(t, err)
 	verifyDstMap(t, bpfProgrammer, expectedEntries)
 }
@@ -283,7 +283,7 @@ func TestAddRecordWithEndpoint(t *testing.T) {
 		},
 	}
 
-	err := bpfProgrammer.addRecord(inputRecord, false)
+	err := bpfProgrammer.addRecord(*inputRecord, false)
 	require.NoError(t, err)
 	verifyDstMap(t, bpfProgrammer, expectedEntries)
 }
@@ -391,25 +391,25 @@ func TestAddRecordWithEndpointAndPolicy(t *testing.T) {
 		},
 	}
 
-	err := bpfProgrammer.addRecord(inputRecord, false)
+	err := bpfProgrammer.addRecord(*inputRecord, false)
 	require.NoError(t, err)
 	verifyDstMap(t, bpfProgrammer, expectedEntries)
 }
 
 // mockRecordBackend tracks calls to addRecord and removeRecord for testing cache behavior
 type mockRecordBackend struct {
-	addRecordCalls    []*record.DatapathRecord
-	removeRecordCalls []*record.DatapathRecord
+	addRecordCalls    []record.DatapathRecord
+	removeRecordCalls []record.DatapathRecord
 	addRecordErr      error
 	removeRecordErr   error
 }
 
-func (m *mockRecordBackend) addRecord(r *record.DatapathRecord, _ bool) error {
+func (m *mockRecordBackend) addRecord(r record.DatapathRecord, _ bool) error {
 	m.addRecordCalls = append(m.addRecordCalls, r)
 	return m.addRecordErr
 }
 
-func (m *mockRecordBackend) removeRecord(r *record.DatapathRecord) error {
+func (m *mockRecordBackend) removeRecord(r record.DatapathRecord) error {
 	m.removeRecordCalls = append(m.removeRecordCalls, r)
 	return m.removeRecordErr
 }
@@ -453,12 +453,12 @@ func TestAddRecords_SkipsCachedRecords(t *testing.T) {
 	r1 := makeTestRecord(1, 100, 80, "ep1")
 
 	// First AddRecords should call addRecord
-	err := p.AddRecords([]*record.DatapathRecord{r1}, false)
+	err := p.AddRecords([]record.DatapathRecord{*r1}, false)
 	require.NoError(t, err)
 	require.Len(t, mock.addRecordCalls, 1)
 
 	// Second AddRecords with same record should NOT call addRecord (cached)
-	err = p.AddRecords([]*record.DatapathRecord{r1}, false)
+	err = p.AddRecords([]record.DatapathRecord{*r1}, false)
 	require.NoError(t, err)
 	require.Len(t, mock.addRecordCalls, 1, "addRecord should not be called for cached record")
 }
@@ -470,12 +470,12 @@ func TestAddRecords_AddsToCache(t *testing.T) {
 	r2 := makeTestRecord(1, 100, 443, "ep2")
 
 	// Add first record
-	err := p.AddRecords([]*record.DatapathRecord{r1}, false)
+	err := p.AddRecords([]record.DatapathRecord{*r1}, false)
 	require.NoError(t, err)
 	require.Len(t, p.records, 1)
 
 	// Add second record
-	err = p.AddRecords([]*record.DatapathRecord{r2}, false)
+	err = p.AddRecords([]record.DatapathRecord{*r2}, false)
 	require.NoError(t, err)
 	require.Len(t, p.records, 2)
 	require.Len(t, mock.addRecordCalls, 2)
@@ -488,7 +488,7 @@ func TestAddRecords_MultipleRecordsInSingleCall(t *testing.T) {
 	r2 := makeTestRecord(1, 100, 443, "ep2")
 	r3 := makeTestRecord(2, 200, 8080, "ep3")
 
-	err := p.AddRecords([]*record.DatapathRecord{r1, r2, r3}, false)
+	err := p.AddRecords([]record.DatapathRecord{*r1, *r2, *r3}, false)
 	require.NoError(t, err)
 	require.Len(t, mock.addRecordCalls, 3)
 	require.Len(t, p.records, 3)
@@ -500,7 +500,7 @@ func TestAddRecords_DuplicatesInSingleCall(t *testing.T) {
 	r1 := makeTestRecord(1, 100, 80, "ep1")
 
 	// Same record twice in one call - second should be skipped after first is cached
-	err := p.AddRecords([]*record.DatapathRecord{r1, r1}, false)
+	err := p.AddRecords([]record.DatapathRecord{*r1, *r1}, false)
 	require.NoError(t, err)
 	require.Len(t, mock.addRecordCalls, 1, "duplicate in same call should be skipped")
 	require.Len(t, p.records, 1)
@@ -512,7 +512,7 @@ func TestAddRecords_DoesNotCacheOnError(t *testing.T) {
 
 	r1 := makeTestRecord(1, 100, 80, "ep1")
 
-	err := p.AddRecords([]*record.DatapathRecord{r1}, false)
+	err := p.AddRecords([]record.DatapathRecord{*r1}, false)
 	require.Error(t, err)
 	require.Len(t, p.records, 0, "failed record should not be cached")
 }
@@ -523,7 +523,7 @@ func TestRemoveRecords_SkipsNonCachedRecords(t *testing.T) {
 	r1 := makeTestRecord(1, 100, 80, "ep1")
 
 	// Try to remove a record that was never added
-	err := p.RemoveRecords([]*record.DatapathRecord{r1})
+	err := p.RemoveRecords([]record.DatapathRecord{*r1})
 	require.NoError(t, err)
 	require.Len(t, mock.removeRecordCalls, 0, "removeRecord should not be called for non-cached record")
 }
@@ -534,12 +534,12 @@ func TestRemoveRecords_RemovesFromCache(t *testing.T) {
 	r1 := makeTestRecord(1, 100, 80, "ep1")
 
 	// Add record first
-	err := p.AddRecords([]*record.DatapathRecord{r1}, false)
+	err := p.AddRecords([]record.DatapathRecord{*r1}, false)
 	require.NoError(t, err)
 	require.Len(t, p.records, 1)
 
 	// Remove record
-	err = p.RemoveRecords([]*record.DatapathRecord{r1})
+	err = p.RemoveRecords([]record.DatapathRecord{*r1})
 	require.NoError(t, err)
 	require.Len(t, mock.removeRecordCalls, 1)
 	require.Len(t, p.records, 0, "record should be removed from cache")
@@ -551,7 +551,7 @@ func TestRemoveRecords_DoesNotRemoveFromCacheOnError(t *testing.T) {
 	r1 := makeTestRecord(1, 100, 80, "ep1")
 
 	// Add record first
-	err := p.AddRecords([]*record.DatapathRecord{r1}, false)
+	err := p.AddRecords([]record.DatapathRecord{*r1}, false)
 	require.NoError(t, err)
 	require.Len(t, p.records, 1)
 
@@ -559,7 +559,7 @@ func TestRemoveRecords_DoesNotRemoveFromCacheOnError(t *testing.T) {
 	mock.removeRecordErr = fmt.Errorf("BPF error")
 
 	// Try to remove - should fail and keep cache intact
-	err = p.RemoveRecords([]*record.DatapathRecord{r1})
+	err = p.RemoveRecords([]record.DatapathRecord{*r1})
 	require.Error(t, err)
 	require.Len(t, p.records, 1, "failed removal should not affect cache")
 }
@@ -571,23 +571,23 @@ func TestAddRemoveRecords_RoundTrip(t *testing.T) {
 	r2 := makeTestRecord(1, 100, 443, "ep2")
 
 	// Add both records
-	err := p.AddRecords([]*record.DatapathRecord{r1, r2}, false)
+	err := p.AddRecords([]record.DatapathRecord{*r1, *r2}, false)
 	require.NoError(t, err)
 	require.Len(t, p.records, 2)
 
 	// Remove first record
-	err = p.RemoveRecords([]*record.DatapathRecord{r1})
+	err = p.RemoveRecords([]record.DatapathRecord{*r1})
 	require.NoError(t, err)
 	require.Len(t, p.records, 1)
 
 	// Try to add first record again - should work since it was removed
-	err = p.AddRecords([]*record.DatapathRecord{r1}, false)
+	err = p.AddRecords([]record.DatapathRecord{*r1}, false)
 	require.NoError(t, err)
 	require.Len(t, mock.addRecordCalls, 3, "re-adding removed record should call addRecord")
 	require.Len(t, p.records, 2)
 
 	// Remove both records
-	err = p.RemoveRecords([]*record.DatapathRecord{r1, r2})
+	err = p.RemoveRecords([]record.DatapathRecord{*r1, *r2})
 	require.NoError(t, err)
 	require.Len(t, p.records, 0)
 }
@@ -600,11 +600,11 @@ func TestRemoveRecords_PartialRemoval(t *testing.T) {
 	r3 := makeTestRecord(2, 200, 8080, "ep3")
 
 	// Add only r1 and r2
-	err := p.AddRecords([]*record.DatapathRecord{r1, r2}, false)
+	err := p.AddRecords([]record.DatapathRecord{*r1, *r2}, false)
 	require.NoError(t, err)
 
 	// Try to remove r1, r2, and r3 (r3 was never added)
-	err = p.RemoveRecords([]*record.DatapathRecord{r1, r2, r3})
+	err = p.RemoveRecords([]record.DatapathRecord{*r1, *r2, *r3})
 	require.NoError(t, err)
 	require.Len(t, mock.removeRecordCalls, 2, "only cached records should trigger removeRecord")
 	require.Len(t, p.records, 0)

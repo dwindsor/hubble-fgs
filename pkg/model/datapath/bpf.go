@@ -64,7 +64,7 @@ func (p *BPFProgrammer) initMaybe() {
 	})
 }
 
-func (p *BPFProgrammer) AddRecords(records []*record.DatapathRecord, force bool) error {
+func (p *BPFProgrammer) AddRecords(records []record.DatapathRecord, force bool) error {
 	p.initMaybe()
 
 	p.recordsMu.Lock()
@@ -82,7 +82,7 @@ func (p *BPFProgrammer) AddRecords(records []*record.DatapathRecord, force bool)
 			return err
 		}
 
-		p.records[key] = *r
+		p.records[key] = r
 	}
 	return nil
 }
@@ -137,7 +137,7 @@ func (p *bpfRecordBackend) populateStatEntry(key types.DestinationEndpointKey, v
 
 // src *types.ProcessTreeKey, ep *endpoint.Endpoint, quota, reset, deny uint64, init bool) error {
 // what was init for again?
-func (p *bpfRecordBackend) addRecord(r *record.DatapathRecord, force bool) error {
+func (p *bpfRecordBackend) addRecord(r record.DatapathRecord, force bool) error {
 	var addr [2]uint64
 	var dst uint64
 	var err error
@@ -268,7 +268,7 @@ func (p *bpfRecordBackend) addRecord(r *record.DatapathRecord, force bool) error
 	return nil
 }
 
-func (p *bpfRecordBackend) removeRecord(r *record.DatapathRecord) error {
+func (p *bpfRecordBackend) removeRecord(r record.DatapathRecord) error {
 	var addr [2]uint64
 	src := r.Src
 	ep := r.Endpoint.EP
@@ -348,7 +348,7 @@ func (p *bpfRecordBackend) removeRecord(r *record.DatapathRecord) error {
 	return nil
 }
 
-func (p *BPFProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
+func (p *BPFProgrammer) RemoveRecords(records []record.DatapathRecord) error {
 	p.initMaybe()
 
 	p.recordsMu.Lock()

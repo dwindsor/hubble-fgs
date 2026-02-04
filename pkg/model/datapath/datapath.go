@@ -23,10 +23,10 @@ import (
 type Interface interface {
 	// Add a set of records to the datapath. 'force' decides if we need
 	// push update even if a higher precedent one exists.
-	AddRecords(records []*record.DatapathRecord, force bool) error
+	AddRecords(records []record.DatapathRecord, force bool) error
 
 	// Remove a set of records to the datapath.
-	RemoveRecords(record []*record.DatapathRecord) error
+	RemoveRecords(record []record.DatapathRecord) error
 
 	// FlushCachedEntries removes all BPF-created cached entries from the destination map.
 	// Useful in tests to clear stale state between subtests.
@@ -37,8 +37,8 @@ type Interface interface {
 }
 
 type recordBackend interface {
-	addRecord(r *record.DatapathRecord, force bool) error
-	removeRecord(r *record.DatapathRecord) error
+	addRecord(r record.DatapathRecord, force bool) error
+	removeRecord(r record.DatapathRecord) error
 }
 
 type BPFProgrammer struct {

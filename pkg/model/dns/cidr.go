@@ -27,7 +27,7 @@ func addDestSrcCIDRRecords(
 	src *types.ProcessTreeKey,
 	action *record.DatapathAction,
 	init bool,
-) ([]*record.DatapathRecord, error) {
+) ([]record.DatapathRecord, error) {
 	ep := &endpoint.Endpoint{
 		Type: tetragon.EndpointType_ENDPOINT_TYPE_CIDR,
 		CIDR: dest.CIDR,
@@ -38,7 +38,7 @@ func addDestSrcCIDRRecords(
 			EP:   ep,
 			Port: 0,
 		}
-		return []*record.DatapathRecord{
+		return []record.DatapathRecord{
 			{
 				PolicyUID: policy,
 				Src:       src,
@@ -49,13 +49,13 @@ func addDestSrcCIDRRecords(
 		}, nil
 	}
 
-	records := []*record.DatapathRecord{}
+	records := []record.DatapathRecord{}
 	for _, port := range dest.Ports {
 		endpoint := record.DatapathEndpoint{
 			EP:   ep,
 			Port: port,
 		}
-		records = append(records, &record.DatapathRecord{
+		records = append(records, record.DatapathRecord{
 			PolicyUID: policy,
 			Src:       src,
 			Endpoint:  endpoint,
@@ -72,8 +72,8 @@ func addDestCIDRRecords(
 	subject *types.TetragonNetworkSubject,
 	podSubject *types.ProcessTreeKey,
 	action *record.DatapathAction,
-) ([]*record.DatapathRecord, error) {
-	records := []*record.DatapathRecord{}
+) ([]record.DatapathRecord, error) {
+	records := []record.DatapathRecord{}
 
 	for _, process := range subject.InProcessName {
 		self, err := prog.GetBinaryId(process, true) // CIDR policies do not include args for now

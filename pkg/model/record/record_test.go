@@ -23,14 +23,14 @@ import (
 )
 
 func TestDiffEmptySets(t *testing.T) {
-	emptyA := []*DatapathRecord{}
-	emptyB := []*DatapathRecord{}
+	emptyA := []DatapathRecord{}
+	emptyB := []DatapathRecord{}
 
 	C := Diff(emptyA, emptyB)
 	assert.Equal(t, 0, len(C))
 }
 
-func getRecordSlice() []*DatapathRecord {
+func getRecordSlice() []DatapathRecord {
 	src := &types.ProcessTreeKey{
 		NSID:  uint64(1),
 		Depth: 0,
@@ -71,7 +71,7 @@ func getRecordSlice() []*DatapathRecord {
 		EP:   epName1,
 		Port: 0,
 	}
-	r1 := &DatapathRecord{
+	r1 := DatapathRecord{
 		Src:      src,
 		Endpoint: e1,
 		Action:   action,
@@ -81,7 +81,7 @@ func getRecordSlice() []*DatapathRecord {
 		EP:   epName2,
 		Port: 0,
 	}
-	r2 := &DatapathRecord{
+	r2 := DatapathRecord{
 		Src:      src,
 		Endpoint: e2,
 		Action:   action,
@@ -91,19 +91,19 @@ func getRecordSlice() []*DatapathRecord {
 		EP:   epName3,
 		Port: 0,
 	}
-	r3 := &DatapathRecord{
+	r3 := DatapathRecord{
 		Src:      src,
 		Endpoint: e3,
 		Action:   action,
 		Init:     false,
 	}
 
-	return []*DatapathRecord{r1, r2, r3}
+	return []DatapathRecord{r1, r2, r3}
 }
 
 func TestDiffEmptyA(t *testing.T) {
 
-	A := []*DatapathRecord{}
+	A := []DatapathRecord{}
 	B := getRecordSlice()
 	C := Diff(A, B)
 	assert.Equal(t, 0, len(C))
@@ -111,36 +111,36 @@ func TestDiffEmptyA(t *testing.T) {
 
 func TestDiffEmptyB(t *testing.T) {
 	A := getRecordSlice()
-	B := []*DatapathRecord{}
+	B := []DatapathRecord{}
 	C := Diff(A, B)
 	assert.Equal(t, 3, len(C))
 }
 
 func TestRecordProperSubsets(t *testing.T) {
 	A := getRecordSlice()
-	B := []*DatapathRecord{A[0], A[1]}
+	B := []DatapathRecord{A[0], A[1]}
 	C := Diff(A, B)
 	assert.Equal(t, 1, len(C))
 	assert.Equal(t, C[0], A[2])
 
-	B = []*DatapathRecord{A[0]}
+	B = []DatapathRecord{A[0]}
 	C = Diff(A, B)
 	assert.Equal(t, 2, len(C))
 	assert.Equal(t, C[0], A[1])
 	assert.Equal(t, C[1], A[2])
 
-	B = []*DatapathRecord{A[0], A[2]}
+	B = []DatapathRecord{A[0], A[2]}
 	C = Diff(A, B)
 	assert.Equal(t, 1, len(C))
 	assert.Equal(t, C[0], A[1])
 
-	B = []*DatapathRecord{A[2]}
+	B = []DatapathRecord{A[2]}
 	C = Diff(A, B)
 	assert.Equal(t, 2, len(C))
 	assert.Equal(t, C[0], A[0])
 	assert.Equal(t, C[1], A[1])
 
-	B = []*DatapathRecord{}
+	B = []DatapathRecord{}
 	C = Diff(A, B)
 	assert.Equal(t, 3, len(C))
 	assert.Equal(t, C[0], A[0])
@@ -151,14 +151,14 @@ func TestRecordProperSubsets(t *testing.T) {
 func TestRecordDisjoint(t *testing.T) {
 	X := getRecordSlice()
 
-	A := []*DatapathRecord{X[0], X[1]}
-	B := []*DatapathRecord{X[0], X[2]}
+	A := []DatapathRecord{X[0], X[1]}
+	B := []DatapathRecord{X[0], X[2]}
 	C := Diff(A, B)
 	assert.Equal(t, 1, len(C))
 	assert.Equal(t, C[0], X[1])
 
-	A = []*DatapathRecord{X[1]}
-	B = []*DatapathRecord{X[0], X[2]}
+	A = []DatapathRecord{X[1]}
+	B = []DatapathRecord{X[0], X[2]}
 	C = Diff(A, B)
 	assert.Equal(t, 1, len(C))
 	assert.Equal(t, C[0], X[1])
@@ -187,7 +187,7 @@ func BenchmarkDiffRecord(b *testing.B) {
 		Action:     uint64(1),
 	}
 
-	record := []*DatapathRecord{}
+	record := []DatapathRecord{}
 
 	for id := 0; id < 20000; id++ {
 		s := *src
@@ -207,7 +207,7 @@ func BenchmarkDiffRecord(b *testing.B) {
 			Port: 0,
 		}
 
-		r := &DatapathRecord{
+		r := DatapathRecord{
 			Src:      &s,
 			Endpoint: endpoint,
 			Action:   &a,
@@ -244,7 +244,7 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 		Action:     uint64(1),
 	}
 
-	record := []*DatapathRecord{}
+	record := []DatapathRecord{}
 
 	for id := 0; id < 20000; id++ {
 		s := *src
@@ -263,7 +263,7 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 			EP:   &ep,
 			Port: 0,
 		}
-		r := &DatapathRecord{
+		r := DatapathRecord{
 			Src:      &s,
 			Endpoint: endpoint,
 			Action:   &a,
@@ -271,8 +271,8 @@ func BenchmarkOffByAFewDiffRecord(b *testing.B) {
 		}
 		record = append(record, r)
 	}
-	r1 := make([]*DatapathRecord, len(record))
-	r2 := make([]*DatapathRecord, len(record)-1000)
+	r1 := make([]DatapathRecord, len(record))
+	r2 := make([]DatapathRecord, len(record)-1000)
 	copy(r1, record)
 	copy(r2, record)
 	b.ResetTimer()

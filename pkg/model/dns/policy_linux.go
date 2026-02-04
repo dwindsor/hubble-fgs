@@ -18,8 +18,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
 
-func (state *PolicyState) AddSrcPolicy(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]*record.DatapathRecord, error) {
-	records := []*record.DatapathRecord{}
+func (state *PolicyState) AddSrcPolicy(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy, init bool) ([]record.DatapathRecord, error) {
+	records := []record.DatapathRecord{}
 
 	dfltAction, err := calculateAction(&policy.Default)
 	if err != nil {
@@ -66,7 +66,7 @@ func (state *PolicyState) AddSrcPolicy(src *types.ProcessTreeKey, policy *types.
 		EP:   nil,
 		Port: 0,
 	}
-	dfltRecord := &record.DatapathRecord{
+	dfltRecord := record.DatapathRecord{
 		PolicyUID: policy.PolicyUID,
 		Src:       src,
 		Endpoint:  endpoint,

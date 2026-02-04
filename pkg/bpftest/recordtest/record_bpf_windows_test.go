@@ -46,7 +46,7 @@ type recordCheck struct {
 
 type recordTest struct {
 	name    string
-	records []*record.DatapathRecord
+	records []record.DatapathRecord
 	checks  []recordCheck
 	deny    bool
 }
@@ -60,7 +60,7 @@ var (
 		Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 	}
 
-	ipLo1Policy = &record.DatapathRecord{
+	ipLo1Policy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicy1",
 			RuleName:   "testRule1",
@@ -77,7 +77,7 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	ipLo1AllowPolicy = &record.DatapathRecord{
+	ipLo1AllowPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyAllow1",
 			RuleName:   "testRuleAllow1",
@@ -94,7 +94,7 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
-	ipLo2Policy = &record.DatapathRecord{
+	ipLo2Policy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicy2",
 			RuleName:   "testRule2",
@@ -111,7 +111,7 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	ipLo2AllowPolicy = &record.DatapathRecord{
+	ipLo2AllowPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyAllow2",
 			RuleName:   "testRuleAllow2",
@@ -128,7 +128,7 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
-	ipLo3Policy = &record.DatapathRecord{
+	ipLo3Policy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicy3",
 			RuleName:   "testRule3",
@@ -145,7 +145,7 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	ipLo3AllowPolicy = &record.DatapathRecord{
+	ipLo3AllowPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyAllow3",
 			RuleName:   "testRuleAllow3",
@@ -172,37 +172,37 @@ var (
 var tests = []recordTest{
 	{ // Basic /32 hit and deny
 		name:    "testDenyLo",
-		records: []*record.DatapathRecord{ipLo1Policy},
+		records: []record.DatapathRecord{ipLo1Policy},
 		checks:  curl,
 		deny:    true,
 	},
 	{ // Test basic /32 deny record when a unspec entry exists in the dest map for a tuple
 		name:    "testDenyLoDup",
-		records: []*record.DatapathRecord{ipLo1Policy},
+		records: []record.DatapathRecord{ipLo1Policy},
 		checks:  curl,
 		deny:    true,
 	},
 	{ // policy deny miss for a different IP
 		name:    "testMissDenyLo",
-		records: []*record.DatapathRecord{ipLo2Policy},
+		records: []record.DatapathRecord{ipLo2Policy},
 		checks:  curl,
 		deny:    false,
 	},
 	{ // policy allow miss for a different IP
 		name:    "testMissAllowLo",
-		records: []*record.DatapathRecord{ipLo2AllowPolicy},
+		records: []record.DatapathRecord{ipLo2AllowPolicy},
 		checks:  curl,
 		deny:    false,
 	},
 	{ // policy deny for /24
 		name:    "testDenyLo/24",
-		records: []*record.DatapathRecord{ipLo3Policy},
+		records: []record.DatapathRecord{ipLo3Policy},
 		checks:  curl,
 		deny:    true,
 	},
 	{ // policy allow for /24
 		name:    "testAllowLo/24",
-		records: []*record.DatapathRecord{ipLo3AllowPolicy},
+		records: []record.DatapathRecord{ipLo3AllowPolicy},
 		checks:  curl,
 		deny:    false,
 	},

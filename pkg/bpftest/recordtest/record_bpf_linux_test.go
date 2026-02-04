@@ -57,7 +57,7 @@ type recordCheck struct {
 
 type recordTest struct {
 	name    string
-	records []*record.DatapathRecord
+	records []record.DatapathRecord
 	checks  []recordCheck
 	deny    bool // Default deny expectation for checks without explicit expectDeny
 }
@@ -71,7 +71,7 @@ var (
 		Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 	}
 
-	ipLo1Policy = &record.DatapathRecord{
+	ipLo1Policy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicy1",
 			RuleName:   "testRule1",
@@ -88,7 +88,7 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	ipLo1AllowPolicy = &record.DatapathRecord{
+	ipLo1AllowPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyAllow1",
 			RuleName:   "testRuleAllow1",
@@ -105,7 +105,7 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
-	ipLo2Policy = &record.DatapathRecord{
+	ipLo2Policy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicy2",
 			RuleName:   "testRule2",
@@ -122,7 +122,7 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	ipLo2AllowPolicy = &record.DatapathRecord{
+	ipLo2AllowPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyAllow2",
 			RuleName:   "testRuleAllow2",
@@ -139,7 +139,7 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
-	ipLo3Policy = &record.DatapathRecord{
+	ipLo3Policy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicy3",
 			RuleName:   "testRule3",
@@ -156,7 +156,7 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	ipLo3AllowPolicy = &record.DatapathRecord{
+	ipLo3AllowPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyAllow3",
 			RuleName:   "testRuleAllow3",
@@ -173,7 +173,7 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
-	dnsLoDenyPolicy = &record.DatapathRecord{
+	dnsLoDenyPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyDNSDeny",
 			RuleName:   "testRuleDNSDeny",
@@ -190,7 +190,7 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	dnsLoDenyFooPolicy = &record.DatapathRecord{
+	dnsLoDenyFooPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyDNSDeny",
 			RuleName:   "testRuleDNSDeny",
@@ -207,7 +207,7 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	dnsLoAllowPolicy = &record.DatapathRecord{
+	dnsLoAllowPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyDNSAllow",
 			RuleName:   "testRuleDNSAllow",
@@ -224,7 +224,7 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
-	podDenyPolicy = &record.DatapathRecord{
+	podDenyPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyPod",
 			RuleName:   "testRulePod",
@@ -243,7 +243,7 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	podAllowPolicy = &record.DatapathRecord{
+	podAllowPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyPod",
 			RuleName:   "testRulePod",
@@ -262,7 +262,7 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
-	defaultAllow = &record.DatapathRecord{
+	defaultAllow = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyPod",
 			RuleName:   "testRulePod",
@@ -276,7 +276,7 @@ var (
 			Action: record.PolicyAllow,
 		},
 	}
-	defaultDeny = &record.DatapathRecord{
+	defaultDeny = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyPod",
 			RuleName:   "testRulePod",
@@ -292,7 +292,7 @@ var (
 	}
 	// Port-specific policies for testing wildcard local_id + specific port lookup
 	// These policies use wildcard src (local_id=0) but specific ports
-	ipLoPort8080DenyPolicy = &record.DatapathRecord{
+	ipLoPort8080DenyPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyPort8080",
 			RuleName:   "testRulePort8080",
@@ -309,7 +309,7 @@ var (
 			Action: record.PolicyDeny,
 		},
 	}
-	ipLoPort8081AllowPolicy = &record.DatapathRecord{
+	ipLoPort8081AllowPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyPort8081",
 			RuleName:   "testRulePort8081",
@@ -327,7 +327,7 @@ var (
 		},
 	}
 	// Wildcard port policy that should only match if specific port policies don't match
-	ipLoWildcardPortAllowPolicy = &record.DatapathRecord{
+	ipLoWildcardPortAllowPolicy = record.DatapathRecord{
 		PolicyUID: types.TetragonPolicyUniqueID{
 			PolicyName: "testPolicyWildcardPort",
 			RuleName:   "testRuleWildcardPort",
@@ -355,206 +355,206 @@ var (
 var tests = []recordTest{
 	{ // Basic /32 hit and deny
 		name:    "testDenyLo",
-		records: []*record.DatapathRecord{ipLo1Policy},
+		records: []record.DatapathRecord{ipLo1Policy},
 		checks:  curl,
 		deny:    true,
 	},
 	{ // Test basic /32 deny record when a unspec entry exists in the dest map for a tuple
 		name:    "testDenyLoDup",
-		records: []*record.DatapathRecord{ipLo1Policy},
+		records: []record.DatapathRecord{ipLo1Policy},
 		checks:  curl,
 		deny:    true,
 	},
 	{ // policy deny miss for a different IP
 		name:    "testMissDenyLo",
-		records: []*record.DatapathRecord{ipLo2Policy},
+		records: []record.DatapathRecord{ipLo2Policy},
 		checks:  curl,
 		deny:    false,
 	},
 	{ // policy allow miss for a different IP
 		name:    "testMissAllowLo",
-		records: []*record.DatapathRecord{ipLo2AllowPolicy},
+		records: []record.DatapathRecord{ipLo2AllowPolicy},
 		checks:  curl,
 		deny:    false,
 	},
 	{ // policy deny for /24
 		name:    "testDenyLo/24",
-		records: []*record.DatapathRecord{ipLo3Policy},
+		records: []record.DatapathRecord{ipLo3Policy},
 		checks:  curl,
 		deny:    true,
 	},
 	{ // policy allow for /24
 		name:    "testAllowLo/24",
-		records: []*record.DatapathRecord{ipLo3AllowPolicy},
+		records: []record.DatapathRecord{ipLo3AllowPolicy},
 		checks:  curl,
 		deny:    false,
 	},
 	{ // policy deny ignores dns and drops connect
 		name:    "testIgnoreDigWithCIDRLo",
-		records: []*record.DatapathRecord{ipLo1Policy},
+		records: []record.DatapathRecord{ipLo1Policy},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // policy allow ignores dns and allows connect
 		name:    "testIgnoreDigWithCIDRLo",
-		records: []*record.DatapathRecord{ipLo1AllowPolicy},
+		records: []record.DatapathRecord{ipLo1AllowPolicy},
 		checks:  digAndCurl,
 		deny:    false,
 	},
 	{ // basic localhost dns deny connect
 		name:    "testDigDenyLo",
-		records: []*record.DatapathRecord{dnsLoDenyPolicy},
+		records: []record.DatapathRecord{dnsLoDenyPolicy},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // basic miss foo dns allow connect
 		name:    "testDigDenyFooLo",
-		records: []*record.DatapathRecord{dnsLoDenyFooPolicy},
+		records: []record.DatapathRecord{dnsLoDenyFooPolicy},
 		checks:  digAndCurl,
 		deny:    false,
 	},
 	{ // basic localhost dns allow connect
 		name:    "testDigAllowLo",
-		records: []*record.DatapathRecord{dnsLoAllowPolicy},
+		records: []record.DatapathRecord{dnsLoAllowPolicy},
 		checks:  digAndCurl,
 		deny:    false,
 	},
 	{ // test conflicting policy and dns deny wins
 		name:    "testCIDRandDNSDeny",
-		records: []*record.DatapathRecord{dnsLoDenyPolicy, ipLo1AllowPolicy},
+		records: []record.DatapathRecord{dnsLoDenyPolicy, ipLo1AllowPolicy},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test conflicting policy and cidr deny wins
 		name:    "testDNSandCIDRDeny",
-		records: []*record.DatapathRecord{dnsLoAllowPolicy, ipLo1Policy},
+		records: []record.DatapathRecord{dnsLoAllowPolicy, ipLo1Policy},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test two allow policy and cidr and dns so allow wins
 		name:    "testDNSwithCIDRAllow",
-		records: []*record.DatapathRecord{dnsLoAllowPolicy, ipLo1AllowPolicy},
+		records: []record.DatapathRecord{dnsLoAllowPolicy, ipLo1AllowPolicy},
 		checks:  digAndCurl,
 		deny:    false,
 	},
 	{ // test two deny policy and cidr and dns so deny wins
 		name:    "testDNSwithCIDRDeny",
-		records: []*record.DatapathRecord{dnsLoDenyPolicy, ipLo1Policy},
+		records: []record.DatapathRecord{dnsLoDenyPolicy, ipLo1Policy},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test basic Pod deny policy
 		name:    "testPodDeny",
-		records: []*record.DatapathRecord{podDenyPolicy},
+		records: []record.DatapathRecord{podDenyPolicy},
 		checks:  curl,
 		deny:    true,
 	},
 	{ // test basic Pod allow policy
 		name:    "testPodAllow",
-		records: []*record.DatapathRecord{podAllowPolicy},
+		records: []record.DatapathRecord{podAllowPolicy},
 		checks:  curl,
 		deny:    false,
 	},
 	{ // test conflicting Pod allow policy with DNS deny
 		name:    "testPodAllowDNSDeny",
-		records: []*record.DatapathRecord{podAllowPolicy, dnsLoDenyPolicy},
+		records: []record.DatapathRecord{podAllowPolicy, dnsLoDenyPolicy},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test conflicting Pod allow policy with DNS deny, reverse order
 		name:    "testPodAllowDNSDeny",
-		records: []*record.DatapathRecord{dnsLoDenyPolicy, podAllowPolicy},
+		records: []record.DatapathRecord{dnsLoDenyPolicy, podAllowPolicy},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test conflicting Pod deny policy with DNS allow
 		name:    "testDNSAllowPodDeny",
-		records: []*record.DatapathRecord{podDenyPolicy, dnsLoAllowPolicy},
+		records: []record.DatapathRecord{podDenyPolicy, dnsLoAllowPolicy},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test conflicting Pod deny policy with DNS allow, reverse order
 		name:    "testDNSAllowPoDDeny",
-		records: []*record.DatapathRecord{dnsLoDenyPolicy, podAllowPolicy},
+		records: []record.DatapathRecord{dnsLoDenyPolicy, podAllowPolicy},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test default deny with IP curl
 		name:    "testDefaultDenyIP",
-		records: []*record.DatapathRecord{defaultDeny},
+		records: []record.DatapathRecord{defaultDeny},
 		checks:  curl,
 		deny:    true,
 	},
 	{ // test default deny with dns curl
 		name:    "testDefaultDenyDNS",
-		records: []*record.DatapathRecord{defaultDeny},
+		records: []record.DatapathRecord{defaultDeny},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test default allow with IP curl
 		name:    "testDefaultAllowIP",
-		records: []*record.DatapathRecord{defaultAllow},
+		records: []record.DatapathRecord{defaultAllow},
 		checks:  curl,
 		deny:    false,
 	},
 	{ // test default allow with dns curl
 		name:    "testDefaultAllowDNS",
-		records: []*record.DatapathRecord{defaultAllow},
+		records: []record.DatapathRecord{defaultAllow},
 		checks:  digAndCurl,
 		deny:    false,
 	},
 	{ // test default deny with DNS deny with dig
 		name:    "testDefaultDenyWithDNSDenyDig",
-		records: []*record.DatapathRecord{dnsLoDenyPolicy, defaultDeny},
+		records: []record.DatapathRecord{dnsLoDenyPolicy, defaultDeny},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test default deny with DNS allow with dig
 		name:    "testDefaultDenyWithDNSAllowDig",
-		records: []*record.DatapathRecord{dnsLoAllowPolicy, defaultDeny},
+		records: []record.DatapathRecord{dnsLoAllowPolicy, defaultDeny},
 		checks:  digAndCurl,
 		deny:    false,
 	},
 	{ // test default allow with DNS deny with curl
 		name:    "testDefaultDenyWithDNSAllowDig",
-		records: []*record.DatapathRecord{dnsLoDenyPolicy, defaultAllow},
+		records: []record.DatapathRecord{dnsLoDenyPolicy, defaultAllow},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test default allow with DNS Deny with curl
 		name:    "testDefaultDenyWithDNSAllowDig",
-		records: []*record.DatapathRecord{dnsLoDenyPolicy, defaultAllow},
+		records: []record.DatapathRecord{dnsLoDenyPolicy, defaultAllow},
 		checks:  digAndCurl,
 		deny:    true,
 	},
 	{ // test default deny with IP deny with dig
 		name:    "testDefaultDenyWithDNSDenyDig",
-		records: []*record.DatapathRecord{ipLo1Policy, defaultDeny},
+		records: []record.DatapathRecord{ipLo1Policy, defaultDeny},
 		checks:  curl,
 		deny:    true,
 	},
 	{ // test default deny with IP allow with dig
 		name:    "testDefaultDenyWithDNSAllowDig",
-		records: []*record.DatapathRecord{ipLo1AllowPolicy, defaultDeny},
+		records: []record.DatapathRecord{ipLo1AllowPolicy, defaultDeny},
 		checks:  curl,
 		deny:    false,
 	},
 	{ // test default allow with IP deny with curl
 		name:    "testDefaultDenyWithDNSAllowDig",
-		records: []*record.DatapathRecord{ipLo1Policy, defaultAllow},
+		records: []record.DatapathRecord{ipLo1Policy, defaultAllow},
 		checks:  curl,
 		deny:    true,
 	},
 	{ // test default allow with IP Deny with curl
 		name:    "testDefaultDenyWithDNSAllowDig",
-		records: []*record.DatapathRecord{ipLo1Policy, defaultAllow},
+		records: []record.DatapathRecord{ipLo1Policy, defaultAllow},
 		checks:  curl,
 		deny:    true,
 	},
 	// Port-specific policy tests (verifies wildcard local_id + specific port lookup)
 	{ // Test port-specific deny on 8080, allow on 8081
 		name:    "testPortSpecificDeny8080Allow8081",
-		records: []*record.DatapathRecord{ipLoPort8080DenyPolicy, ipLoPort8081AllowPolicy},
+		records: []record.DatapathRecord{ipLoPort8080DenyPolicy, ipLoPort8081AllowPolicy},
 		checks: []recordCheck{
 			{check: "curl", expectDeny: true},      // 8080 should be denied
 			{check: "curl8081", expectDeny: false}, // 8081 should be allowed
@@ -563,7 +563,7 @@ var tests = []recordTest{
 	},
 	{ // Test port-specific deny takes precedence over wildcard allow
 		name:    "testPortSpecificDenyOverridesWildcardAllow",
-		records: []*record.DatapathRecord{ipLoPort8080DenyPolicy, ipLoWildcardPortAllowPolicy},
+		records: []record.DatapathRecord{ipLoPort8080DenyPolicy, ipLoWildcardPortAllowPolicy},
 		checks: []recordCheck{
 			{check: "curl", expectDeny: true},      // 8080 should be denied (specific port match)
 			{check: "curl8081", expectDeny: false}, // 8081 should be allowed (falls through to wildcard)
@@ -572,7 +572,7 @@ var tests = []recordTest{
 	},
 	{ // Test wildcard port policy is used when no port-specific match
 		name:    "testWildcardPortFallback",
-		records: []*record.DatapathRecord{ipLoWildcardPortAllowPolicy},
+		records: []record.DatapathRecord{ipLoWildcardPortAllowPolicy},
 		checks: []recordCheck{
 			{check: "curl", expectDeny: false},     // 8080 should match wildcard allow
 			{check: "curl8081", expectDeny: false}, // 8081 should match wildcard allow
@@ -585,14 +585,14 @@ var tests = []recordTest{
 // so that the BPF programmer can map policy names and rules to IDs. Without this,
 // every record programming call logs warnings about failing to resolve policy IDs,
 // flooding test output and masking real failures.
-func registerTestPolicies(records []*record.DatapathRecord) {
+func registerTestPolicies(records []record.DatapathRecord) {
 	// Group records by policy name to build complete PolicyStory entries
-	policiesMap := make(map[string]map[types.TetragonPolicyUniqueID]*record.DatapathRecord)
+	policiesMap := make(map[string]map[types.TetragonPolicyUniqueID]record.DatapathRecord)
 
 	for _, rec := range records {
 		policyName := rec.PolicyUID.PolicyName
 		if policiesMap[policyName] == nil {
-			policiesMap[policyName] = make(map[types.TetragonPolicyUniqueID]*record.DatapathRecord)
+			policiesMap[policyName] = make(map[types.TetragonPolicyUniqueID]record.DatapathRecord)
 		}
 		// Store unique policy UID (policy name + rule name)
 		policiesMap[policyName][rec.PolicyUID] = rec
@@ -754,7 +754,7 @@ func TestRecords(t *testing.T) {
 	t.Run("testPolicyTemplateFlagClearing", func(t *testing.T) {
 		testRecord := &recordTest{
 			name:    "templateFlagTest",
-			records: []*record.DatapathRecord{ipLo2AllowPolicy},
+			records: []record.DatapathRecord{ipLo2AllowPolicy},
 			checks:  nil,
 			deny:    false,
 		}

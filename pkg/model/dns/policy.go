@@ -30,14 +30,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, []*record.DatapathRecord, error) {
+func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetworkPolicy) ([]record.DatapathRecord, []record.DatapathRecord, error) {
 	state.SrcLock.Lock()
 	defer state.SrcLock.Unlock()
 
 	subject := state.Src[policy.PolicyUID]
 
-	var beforeSubjs []*record.DatapathRecord
-	var afterSubjs []*record.DatapathRecord
+	var beforeSubjs []record.DatapathRecord
+	var afterSubjs []record.DatapathRecord
 
 	subjectLabels := &matchLabels.LabelSet{
 		Labels: policy.Subject.Labels.Equal,
@@ -95,7 +95,7 @@ func (state *PolicyState) recordsFromPolicyRemoval(policy *types.TetragonNetwork
 	return zombieSet, afterSubjs, nil
 }
 
-func diffExistingRecords(set []*record.DatapathRecord) ([]*record.DatapathRecord, error) {
+func diffExistingRecords(set []record.DatapathRecord) ([]record.DatapathRecord, error) {
 	state := GetRealizedState()
 	state.Reader.Lock()
 	_, existingRecords, err := state.GetRecords(state.getAllExistingPolicy())
@@ -169,8 +169,8 @@ func createSrcKey(namespace, wl, kind string) (*types.ProcessTreeKey, error) {
 	}, nil
 }
 
-func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *record.DatapathAction, policy *types.TetragonNetworkPolicy, init bool) []*record.DatapathRecord {
-	records := []*record.DatapathRecord{}
+func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *record.DatapathAction, policy *types.TetragonNetworkPolicy, init bool) []record.DatapathRecord {
+	records := []record.DatapathRecord{}
 
 	if policy.Destination.CIDR.IsValid() {
 		r, err := addDestSrcCIDRRecords(policy.PolicyUID, &policy.Destination, src, action, init)
@@ -191,7 +191,7 @@ func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *r
 					EP:   ep,
 					Port: 0,
 				}
-				records = append(records, &record.DatapathRecord{
+				records = append(records, record.DatapathRecord{
 					PolicyUID: policy.PolicyUID,
 					Src:       src,
 					Endpoint:  endpoint,
@@ -209,7 +209,7 @@ func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *r
 					EP:   ep,
 					Port: port,
 				}
-				records = append(records, &record.DatapathRecord{
+				records = append(records, record.DatapathRecord{
 					PolicyUID: policy.PolicyUID,
 					Src:       src,
 					Endpoint:  endpoint,
@@ -229,7 +229,7 @@ func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *r
 					Port: 0,
 				}
 
-				records = append(records, &record.DatapathRecord{
+				records = append(records, record.DatapathRecord{
 					PolicyUID: policy.PolicyUID,
 					Src:       src,
 					Endpoint:  endpoint,
@@ -243,7 +243,7 @@ func (state *PolicyState) policyDestRecords(src *types.ProcessTreeKey, action *r
 					Port: port,
 				}
 
-				records = append(records, &record.DatapathRecord{
+				records = append(records, record.DatapathRecord{
 					PolicyUID: policy.PolicyUID,
 					Src:       src,
 					Endpoint:  endpoint,
@@ -351,8 +351,8 @@ func (state *PolicyState) removeServiceSelectorPolicy(policyUID types.TetragonPo
 
 // createServiceSelectorRecordsForPolicy generates records for a specific serviceSelector policy
 // and pod. This is the core helper used by both CreateServiceSelectorRecords and policy removal.
-func (state *PolicyState) createServiceSelectorRecordsForPolicy(podInfo *v1alpha1.PodInfo, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, error) {
-	var records []*record.DatapathRecord
+func (state *PolicyState) createServiceSelectorRecordsForPolicy(podInfo *v1alpha1.PodInfo, policy *types.TetragonNetworkPolicy) ([]record.DatapathRecord, error) {
+	var records []record.DatapathRecord
 
 	// Check if pod matches policy subject labels
 	if !matchLabelsSubset(policy.Subject.Labels.Equal, podInfo.Labels) {
@@ -370,8 +370,8 @@ func (state *PolicyState) createServiceSelectorRecordsForPolicy(podInfo *v1alpha
 // generateServiceSelectorRecords generates CIDR records for a serviceSelector policy.
 // CIDR records are created for the Service ClusterIP and all endpoint IPs to block
 // both direct ClusterIP access and direct pod IP access (bypass prevention).
-func (state *PolicyState) generateServiceSelectorRecords(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy) ([]*record.DatapathRecord, error) {
-	var records []*record.DatapathRecord
+func (state *PolicyState) generateServiceSelectorRecords(src *types.ProcessTreeKey, policy *types.TetragonNetworkPolicy) ([]record.DatapathRecord, error) {
+	var records []record.DatapathRecord
 
 	action, err := calculateAction(&policy.Action)
 	if err != nil {
@@ -460,8 +460,8 @@ func (state *PolicyState) getAllExistingPolicy() []*types.TetragonNetworkPolicy 
 	return allPolicy
 }
 
-func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, error) {
-	calculatorRecords := []*record.DatapathRecord{}
+func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolicy) (*PolicyState, []record.DatapathRecord, error) {
+	calculatorRecords := []record.DatapathRecord{}
 	calculatorState := NewPolicyState()
 	calculatorState.serviceMap = state.serviceMap
 
@@ -512,7 +512,7 @@ func (state *PolicyState) GetRecords(currentPolicy []*types.TetragonNetworkPolic
 // current computed records and the new ones).
 //
 // Todo, this has lots of low hanging fruit for optimizing duplicate calculations.
-func recordsFromPoliciesAddition(policies []*types.TetragonNetworkPolicy) (*PolicyState, []*record.DatapathRecord, []*record.DatapathRecord, error) {
+func recordsFromPoliciesAddition(policies []*types.TetragonNetworkPolicy) (*PolicyState, []record.DatapathRecord, []record.DatapathRecord, error) {
 	// Entry point to Policy state create collect records for current
 	// policy state.
 	preState := GetRealizedState()
@@ -610,8 +610,8 @@ func applyServiceSelectorEndpointCIDRDelta(namespace, name string, ipsToAdd, ips
 		return
 	}
 
-	var removeRecords []*record.DatapathRecord
-	var addRecords []*record.DatapathRecord
+	var removeRecords []record.DatapathRecord
+	var addRecords []record.DatapathRecord
 
 	for _, policy := range affectedPolicies {
 		action, err := calculateAction(&policy.Action)
@@ -705,8 +705,8 @@ func HandleServiceDelete(namespace, name string, endpoints []servicemap.Endpoint
 }
 
 // generateEndpointCIDRRecords creates CIDR records for a single endpoint IP
-func generateEndpointCIDRRecords(policyUID types.TetragonPolicyUniqueID, src *types.ProcessTreeKey, ip netip.Addr, ports []uint32, action *record.DatapathAction) []*record.DatapathRecord {
-	var records []*record.DatapathRecord
+func generateEndpointCIDRRecords(policyUID types.TetragonPolicyUniqueID, src *types.ProcessTreeKey, ip netip.Addr, ports []uint32, action *record.DatapathAction) []record.DatapathRecord {
+	var records []record.DatapathRecord
 
 	prefixBits := 32
 	if ip.Is6() {
@@ -743,8 +743,8 @@ func generateEndpointCIDRRecords(policyUID types.TetragonPolicyUniqueID, src *ty
 
 // CreateServiceSelectorRecords creates datapath records for serviceSelector
 // policies that match the given pod. Called from PodAdd and GetRecords.
-func (state *PolicyState) CreateServiceSelectorRecords(pod metav1.Object) ([]*record.DatapathRecord, error) {
-	var records []*record.DatapathRecord
+func (state *PolicyState) CreateServiceSelectorRecords(pod metav1.Object) ([]record.DatapathRecord, error) {
+	var records []record.DatapathRecord
 
 	podLabels := pod.GetLabels()
 	if podLabels == nil {

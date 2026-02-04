@@ -101,7 +101,7 @@ type DatapathRecord struct {
 	Init      bool // temporary field until we fix order-of-ops on DNS, UDP, TCP sensors
 }
 
-func (r *DatapathRecord) String() string {
+func (r DatapathRecord) String() string {
 	src := ""
 	action := ""
 
@@ -129,9 +129,9 @@ func (r *DatapathRecord) String() string {
 // just simple process this needs to be improved to include Path in
 // the key. Imagine apache can only launch from systemd or some
 // such rule.
-func Diff(A, B []*DatapathRecord) []*DatapathRecord {
-	var C []*DatapathRecord
-	bMap := make(map[RecordKey]*DatapathRecord)
+func Diff(A, B []DatapathRecord) []DatapathRecord {
+	var C []DatapathRecord
+	bMap := make(map[RecordKey]DatapathRecord)
 
 	for _, r := range B {
 		bMap[r.ToKey()] = r

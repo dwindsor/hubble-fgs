@@ -190,8 +190,8 @@ func (state *PolicyState) GetServiceMap() *servicemap.ServiceMap {
 //
 // So we are scaling with the hash operation and (2 * # policy * avg(label length)
 // roughly. Run ./go test --test.bench -test.run BenchPodRemove to get a real idea.
-func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRecord, error) {
-	var records []*record.DatapathRecord
+func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]record.DatapathRecord, error) {
+	var records []record.DatapathRecord
 
 	policy := types.TetragonPolicyUniqueID{} // empty policyUID on Remove is OK.
 
@@ -234,7 +234,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 						Self:  self,
 						Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 					}
-					records = append(records, &record.DatapathRecord{
+					records = append(records, record.DatapathRecord{
 						PolicyUID: policy,
 						Src:       processSrc,
 						Endpoint:  ep,
@@ -242,7 +242,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 					})
 				}
 				if len(s.Policy.Subject.InProcessName) == 0 {
-					records = append(records, &record.DatapathRecord{
+					records = append(records, record.DatapathRecord{
 						PolicyUID: policy,
 						Src:       subject,
 						Endpoint:  ep,
@@ -304,7 +304,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 			}
 
 			if len(s.Policy.Subject.InProcessName) == 0 {
-				records = append(records, &record.DatapathRecord{
+				records = append(records, record.DatapathRecord{
 					PolicyUID: policy,
 					Src:       subject,
 					Endpoint:  dpEndpoint,
@@ -323,7 +323,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 					Self:  self,
 					Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 				}
-				records = append(records, &record.DatapathRecord{
+				records = append(records, record.DatapathRecord{
 					PolicyUID: policy,
 					Src:       processSrc,
 					Endpoint:  dpEndpoint,
@@ -340,7 +340,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 
 		if s.Policy.Default.EnforceAction != nil {
 			// Action is not part of the default action key so we just need Src field
-			records = append(records, &record.DatapathRecord{
+			records = append(records, record.DatapathRecord{
 				PolicyUID: policy,
 				Src:       subject,
 				Endpoint: record.DatapathEndpoint{
@@ -395,7 +395,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 					Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 				}
 
-				records = append(records, &record.DatapathRecord{
+				records = append(records, record.DatapathRecord{
 					PolicyUID: policy,
 					Src:       processSrc,
 					Endpoint:  endpoint,
@@ -403,7 +403,7 @@ func (state *PolicyState) podRemove(pod *v1alpha1.PodInfo) ([]*record.DatapathRe
 				})
 			}
 			if len(s.Policy.Subject.InProcessName) == 0 {
-				records = append(records, &record.DatapathRecord{
+				records = append(records, record.DatapathRecord{
 					PolicyUID: policy,
 					Src:       subject,
 					Endpoint:  endpoint,
@@ -429,8 +429,8 @@ func PodRemove(pod *v1alpha1.PodInfo) error {
 	return prog.RemoveRecords(records)
 }
 
-func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet, newEP bool) []*record.DatapathRecord {
-	records := []*record.DatapathRecord{}
+func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.LabelSet, newEP bool) []record.DatapathRecord {
+	records := []record.DatapathRecord{}
 	dests := state.Dst.Collection(ml)
 
 	for _, d := range dests {
@@ -470,7 +470,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 							Self:  self,
 							Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 						}
-						records = append(records, &record.DatapathRecord{
+						records = append(records, record.DatapathRecord{
 							PolicyUID: policy,
 							Src:       processSrc,
 							Endpoint:  endpoint,
@@ -488,7 +488,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 							Self:  self,
 							Path:  [8]uint64{0, 0, 0, 0, 0, 0, 0, 0},
 						}
-						records = append(records, &record.DatapathRecord{
+						records = append(records, record.DatapathRecord{
 							PolicyUID: policy,
 							Src:       processSrc,
 							Endpoint:  endpoint,
@@ -502,7 +502,7 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 					Port: 0,
 				}
 
-				records = append(records, &record.DatapathRecord{
+				records = append(records, record.DatapathRecord{
 					PolicyUID: policy,
 					Src:       subject,
 					Endpoint:  endpoint,
@@ -514,8 +514,8 @@ func (state *PolicyState) EndpointAdd(ep *endpoint.Endpoint, ml *matchLabels.Lab
 	return records
 }
 
-func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet, newSrc bool) []*record.DatapathRecord {
-	records := []*record.DatapathRecord{}
+func (state *PolicyState) SrcAdd(src *types.ProcessTreeKey, ml *matchLabels.LabelSet, newSrc bool) []record.DatapathRecord {
+	records := []record.DatapathRecord{}
 	subjects := state.Src.Collection(ml)
 
 	for _, s := range subjects {
@@ -575,7 +575,7 @@ func addNamespaceLabels(endpointObject metav1.Object, ml *matchLabels.LabelSet) 
 	return nil
 }
 
-func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]*record.DatapathRecord, error) {
+func (state *PolicyState) objectAdd(endpointObject metav1.Object) ([]record.DatapathRecord, error) {
 	ml := &matchLabels.LabelSet{}
 	if endpointObject.GetLabels() == nil {
 		ml.Labels = make(map[string]string, 1)

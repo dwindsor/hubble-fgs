@@ -420,7 +420,7 @@ func TestPolicySet(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func cntRecordsEPTypes(records []*record.DatapathRecord) (int, int, int, int) {
+func cntRecordsEPTypes(records []record.DatapathRecord) (int, int, int, int) {
 	cntDnsType := 0
 	cntPodType := 0
 	cntCIDRType := 0
@@ -1066,7 +1066,7 @@ func TestProcessPortPolicyDestSrc(t *testing.T) {
 	assert.Zero(t, len(deleted))
 }
 
-func countPorts(records []*record.DatapathRecord, port uint32) int {
+func countPorts(records []record.DatapathRecord, port uint32) int {
 	cnt := 0
 
 	for _, r := range records {
