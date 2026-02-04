@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/policyfilter"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -75,7 +76,7 @@ var (
 	firstStatsProg *program.Program
 )
 
-func unloadLayer3Sensor() error {
+func unloadLayer3Sensor(pin bool) error {
 	// We want to make sure we stand configuration up when loading/unloading the programs.
 	config := networkapi.Layer3ConfigValue{}
 	layer3cfg.SetConfig(&config, false, false, false)
@@ -113,9 +114,12 @@ func unloadLayer3Sensor() error {
 		rawEnabled = false
 	}
 
-	err := layer3cfg.UpdateMap(config)
-	if err != nil {
-		return fmt.Errorf("failed to write layer3 config to map: %w", err)
+	if !pin {
+		// If we are keeping progs and maps on exit, do not overwrite the bpf map with the disabled config
+		err := layer3cfg.UpdateMap(config)
+		if err != nil {
+			return fmt.Errorf("failed to write layer3 config to map: %w", err)
+		}
 	}
 	return nil
 }
@@ -370,7 +374,7 @@ func (l3 *l3Sensor) enableLayer3(policy tracingpolicy.TracingPolicy, tcpTimestam
 
 	l3Sensor := sensors.SensorBuilder(policy, api.Layer3SensorName, progs, maps)
 	l3Sensor.PreUnloadHook = func() error {
-		unloadLayer3Sensor()
+		unloadLayer3Sensor(option.Config.KeepSensorsOnExit)
 		return nil
 	}
 	return l3Sensor
@@ -790,7 +794,7 @@ func RunLayer3Progs(ctx context.Context, sm *sensors.Manager) error {
 		Maps:  maps,
 	}
 	initialLayer3Sensor.PreUnloadHook = func() error {
-		return unloadLayer3Sensor()
+		return unloadLayer3Sensor(option.Config.KeepSensorsOnExit)
 	}
 	if err := mgr.AddSensor(ctx, initialLayer3Sensor.Name, initialLayer3Sensor); err != nil {
 		return err
