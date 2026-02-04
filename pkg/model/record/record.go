@@ -131,14 +131,14 @@ func (r DatapathRecord) String() string {
 // such rule.
 func Diff(A, B []DatapathRecord) []DatapathRecord {
 	var C []DatapathRecord
-	bMap := make(map[RecordKey]DatapathRecord)
+	bSet := make(map[RecordKey]struct{})
 
 	for _, r := range B {
-		bMap[r.ToKey()] = r
+		bSet[r.ToKey()] = struct{}{}
 	}
 
 	for _, r := range A {
-		if _, ok := bMap[r.ToKey()]; !ok {
+		if _, ok := bSet[r.ToKey()]; !ok {
 			C = append(C, r)
 		}
 	}
