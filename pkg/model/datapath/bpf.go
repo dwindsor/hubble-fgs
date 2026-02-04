@@ -138,7 +138,6 @@ func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
 	if r.Endpoint.EP != nil {
 		dst, err = p.endpointAdder.AddEndpoint(*r.Endpoint.EP)
 		if err != nil {
-			p.AddError++
 			return fmt.Errorf("failed to add endpoint for record %s: %w", r, err)
 		}
 	} else {
@@ -230,7 +229,6 @@ func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
 	}
 
 	if err := p.dstMap.Update(key, value, 0); err != nil {
-		p.AddError++
 		return fmt.Errorf("failed to update the destination map for record %s: %w", r, err)
 	}
 
@@ -243,23 +241,19 @@ func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
 	if dst == uint64(0) {
 		key.DestinationSource = types.DestinationSourceBPF
 		if err := p.conflictUpdateMap(key, value); err != nil {
-			p.AddError++
 			return fmt.Errorf("failed to update destination map for source BPF for record %s: %w", r, err)
 		}
 
 		key.DestinationSource = types.DestinationSourceDNS
 		if err := p.conflictUpdateMap(key, value); err != nil {
-			p.AddError++
 			return fmt.Errorf("failed to update destination map for source DNS for record %s: %w", r, err)
 		}
 	} else if !force {
 		if err := p.populateStatEntry(key, value); err != nil {
-			p.AddError++
 			return fmt.Errorf("failed to populate stat entry for record %s: %w", r, err)
 		}
 	}
 
-	p.Add++
 	return nil
 }
 
@@ -274,7 +268,6 @@ func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 
 		dst, err = p.endpointAdder.AddEndpoint(*ep)
 		if err != nil {
-			p.DelError++
 			return fmt.Errorf("failed to add endpoint for record %s: %w", r, err)
 		}
 	}
@@ -318,7 +311,6 @@ func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 
 	// We can't delete this just because the policy is lost we still want to kep stats.
 	if err := p.dstMap.Update(key, value, 0); err != nil {
-		p.DelError++
 		return fmt.Errorf("failed to update the destination map for record %s: %w", r, err)
 	}
 
@@ -327,17 +319,14 @@ func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 	if dst == uint64(0) {
 		key.DestinationSource = types.DestinationSourceBPF
 		if err := p.dstMap.Update(key, value, 0); err != nil {
-			p.DelError++
 			return fmt.Errorf("failed to update destination map for source BPF for record %s: %w", r, err)
 		}
 
 		key.DestinationSource = types.DestinationSourceDNS
 		if err := p.dstMap.Update(key, value, 0); err != nil {
-			p.DelError++
 			return fmt.Errorf("failed to update destination map for source DNS for record %s: %w", r, err)
 		}
 	}
-	p.Del++
 	return nil
 }
 

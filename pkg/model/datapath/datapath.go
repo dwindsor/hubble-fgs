@@ -33,11 +33,6 @@ type Interface interface {
 }
 
 type BpfProgrammer struct {
-	Add      uint64
-	AddError uint64
-	Del      uint64
-	DelError uint64
-
 	initProgrammerOnce sync.Once
 	dstMap             mapInterfaceTyped[types.DestinationEndpointKey, types.DestinationEndpointValue]
 	binaryMap          mapInterfaceTyped[processTreeBinaryUIDKey, processTreeID]
