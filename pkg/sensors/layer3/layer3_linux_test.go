@@ -55,7 +55,7 @@ var (
 	tcpClient           = false
 	tcpServer           = false
 	udpWatermarksClient = false
-	udpLayer7Client     = false
+	udpMulticastClient  string
 	udpServer           = false
 )
 
@@ -69,7 +69,7 @@ func init() {
 	flag.BoolVar(&tcpServer, "tcpServer", false, "internal")
 
 	flag.BoolVar(&udpWatermarksClient, "udpWatermarksClient", false, "internal")
-	flag.BoolVar(&udpLayer7Client, "udpLayer7Client", false, "internal")
+	flag.StringVar(&udpMulticastClient, "udpMulticastClient", "", "internal")
 	flag.BoolVar(&udpServer, "udpServer", false, "internal")
 }
 
@@ -93,8 +93,13 @@ func TestMain(m *testing.M) {
 		runUdpWatermarksClient()
 		os.Exit(0)
 	}
-	if udpLayer7Client {
-		runUdpLayer7Client()
+	if udpMulticastClient != "" {
+		switch udpMulticastClient {
+		case "conn":
+			runUdpMulticastClient(multicastTestLSEGConnID)
+		case "seq":
+			runUdpMulticastClient(multicastTestLSEGSeq)
+		}
 		os.Exit(0)
 	}
 

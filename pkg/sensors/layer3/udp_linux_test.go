@@ -149,26 +149,6 @@ spec:
       reportQuestions: true
 `
 
-const udpL7Config = `
-apiversion: cilium.io/v1alpha1
-kind: TracingPolicy
-metadata:
-  name: "udp"
-spec:
-  parser:
-    udp:
-      enable: true
-      cgroup: true
-      statsInterval: 20
-      deleteIdleSocketInterval: 60
-      seqCheck:
-        enable: true
-        appId: 1
-        ports: [31337]
-    dns:
-      enable: true
-      ports: [53]
-`
 const udpConfigDisableClose = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
@@ -282,6 +262,13 @@ const UDPBUFSIZE, UDPBUFVAR = 1024, 256
 const udpHostname = "127.0.0.1"
 const udpPortno = 31337
 const udpProtocol = "udp4"
+
+type multicastTest int
+
+const (
+	multicastTestLSEGConnID = iota
+	multicastTestLSEGSeq
+)
 
 func runUdpServer() {
 	sigs := make(chan os.Signal, 1)
@@ -582,222 +569,6 @@ func TestUdpBurst(t *testing.T) {
 
 func TestUdpWatermarks(t *testing.T) {
 	testUdpWatermarks(t, false)
-}
-
-func storeMSB(buf []byte, index uint, size uint, value uint) {
-	if size == 0 {
-		return
-	}
-	for i := uint(0); i < size; i++ {
-		buf[index+i] = byte((value >> ((size - i - 1) * 8)) & 0xff)
-	}
-}
-
-func sendSeqData(socket net.Conn, buf []byte, lineIdSize uint, lineId uint, seqNumSize uint, seqNum uint) {
-	if lineIdSize > 2 || seqNumSize < 2 || seqNumSize > 3 {
-		return
-	}
-
-	flags := byte(0) | (byte(lineIdSize&0x3) << 2) | (byte(seqNumSize-2) << 1)
-	buf[0] = flags
-	storeMSB(buf, 1, lineIdSize, lineId)
-	storeMSB(buf, 1+lineIdSize, seqNumSize, seqNum)
-	udpSendData(socket, buf)
-	time.Sleep(10 * time.Millisecond)
-}
-
-func runUdpLayer7Client() {
-	randFile, err := os.Open("/dev/urandom")
-	if err != nil {
-		fmt.Printf("ERROR opening urandom\n")
-		panic(err)
-	}
-
-	buf := make([]byte, UDPBUFSIZE+UDPBUFVAR)
-	randReader := bufio.NewReader(randFile)
-	_, err = randReader.Read(buf)
-	if err != nil {
-		fmt.Printf("ERROR reading urandom\n")
-		panic(err)
-	}
-	randFile.Close()
-
-	socket, err := net.Dial(udpProtocol, net.JoinHostPort(udpHostname, fmt.Sprintf("%d", udpPortno)))
-	if err != nil {
-		fmt.Printf("ERROR dialing socket\n")
-		panic(err)
-	}
-
-	sendSeqData(socket, buf, 1, 5, 2, 0)
-	sendSeqData(socket, buf, 1, 6, 2, 0)
-	sendSeqData(socket, buf, 1, 6, 2, 1)
-	sendSeqData(socket, buf, 1, 6, 2, 2)
-	sendSeqData(socket, buf, 1, 5, 2, 1)
-	sendSeqData(socket, buf, 1, 5, 2, 2)
-	sendSeqData(socket, buf, 1, 5, 2, 4)
-	sendSeqData(socket, buf, 1, 5, 2, 3)
-	sendSeqData(socket, buf, 1, 5, 2, 5)
-	sendSeqData(socket, buf, 1, 6, 2, 3)
-	sendSeqData(socket, buf, 1, 6, 2, 5)
-	sendSeqData(socket, buf, 1, 6, 2, 6)
-	sendSeqData(socket, buf, 2, 7, 2, 0)
-	sendSeqData(socket, buf, 2, 8, 3, 0)
-	sendSeqData(socket, buf, 2, 7, 2, 1)
-	sendSeqData(socket, buf, 2, 8, 3, 1)
-	sendSeqData(socket, buf, 2, 7, 2, 2)
-	sendSeqData(socket, buf, 2, 8, 3, 2)
-	sendSeqData(socket, buf, 2, 7, 2, 3)
-	sendSeqData(socket, buf, 2, 8, 3, 4)
-	sendSeqData(socket, buf, 2, 7, 2, 4)
-	sendSeqData(socket, buf, 2, 8, 3, 3)
-	sendSeqData(socket, buf, 2, 7, 2, 5)
-	sendSeqData(socket, buf, 2, 8, 3, 5)
-	sendSeqData(socket, buf, 2, 7, 2, 6)
-	sendSeqData(socket, buf, 2, 8, 3, 6)
-	sendSeqData(socket, buf, 0, 0, 3, 5)
-	sendSeqData(socket, buf, 0, 0, 3, 6)
-	sendSeqData(socket, buf, 0, 0, 3, 7)
-	sendSeqData(socket, buf, 0, 0, 3, 9)
-	sendSeqData(socket, buf, 0, 0, 3, 10)
-	sendSeqData(socket, buf, 0, 0, 3, 11)
-	sendSeqData(socket, buf, 0, 0, 3, 12)
-}
-
-func TestUdpSeqCheck(t *testing.T) {
-	if !utils.CGroupSKBAvailable() {
-		t.Skipf("This test requires CGroup/SKB, skipping")
-	}
-
-	if runtime.GOARCH != "amd64" && !kernels.MinKernelVersion("5.8.0") {
-		t.Skip("Test requires amd64 or kernel >=5.8")
-	}
-
-	t.Skip("UDP Seq Checking disabled.")
-
-	clientProcess := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpLayer7Client"))
-
-	serverProcess := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpServer"))
-
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("clientExec").
-			WithProcess(clientProcess),
-		ec.NewProcessExecChecker("serverExec").
-			WithProcess(serverProcess),
-		ec.NewProcessUdpSeqCheckErrorChecker("lineId5Seq3Got4").
-			WithProcess(serverProcess).
-			WithApplicationId(1).
-			WithAppSpecificId(5).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpPortno)).
-			WithSeqNumExpected(3).
-			WithSeqNumReceived(4),
-		ec.NewProcessUdpSeqCheckErrorChecker("lineId6Seq4Got5").
-			WithProcess(serverProcess).
-			WithApplicationId(1).
-			WithAppSpecificId(6).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpPortno)).
-			WithSeqNumExpected(4).
-			WithSeqNumReceived(5),
-		ec.NewProcessUdpSeqCheckErrorChecker("lineId8Seq3Got4").
-			WithProcess(serverProcess).
-			WithApplicationId(1).
-			WithAppSpecificId(8).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpPortno)).
-			WithSeqNumExpected(3).
-			WithSeqNumReceived(4),
-		ec.NewProcessUdpSeqCheckErrorChecker("lineId65536Seq0Got5").
-			WithProcess(serverProcess).
-			WithApplicationId(1).
-			WithAppSpecificId(65536).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpPortno)).
-			WithSeqNumExpected(0).
-			WithSeqNumReceived(5),
-		ec.NewProcessUdpSeqCheckErrorChecker("lineId65536Seq8Got9").
-			WithProcess(serverProcess).
-			WithApplicationId(1).
-			WithAppSpecificId(65536).
-			WithSocket(ec.NewSockInfoChecker().WithSourcePort(udpPortno)).
-			WithSeqNumExpected(8).
-			WithSeqNumReceived(9),
-		ec.NewProcessCloseChecker("serverClose").
-			WithProcess(serverProcess).
-			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(0 * time.Second)},
-				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
-		ec.NewProcessExitChecker("serverExit").
-			WithProcess(serverProcess),
-	)
-
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
-	defer cancel()
-
-	if err := observertesthelper.WriteConfigFile(testConfigFile, udpL7Config); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
-	}
-
-	base := base.GetInitialSensorTest(t)
-	obs, err := enterpriseoth.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib, observertesthelper.WithMyPid())
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-	option.Config.UsePerfRingBuffer = true
-	confmap.UpdateTgRuntimeConf(bpf.MapPrefixPath(), os.Getpid())
-	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
-	readyWG.Wait()
-
-	serverCmd := exec.Command(os.Args[0], "-udpServer")
-	serverOutput, err := serverCmd.StdoutPipe()
-	require.NoError(t, err, "could not connect to server output pipe")
-	serverCmd.Stderr = os.Stderr
-
-	err = serverCmd.Start()
-	require.NoError(t, err, "cannot start server")
-
-	serverBuf := bufio.NewReader(serverOutput)
-	var line []byte
-	for string(line) != "Ready" {
-		line, _, err = serverBuf.ReadLine()
-		if err != nil {
-			killAndWaitCommand(t, serverCmd)
-			t.Fatal(err)
-		}
-		if len(line) == 0 {
-			killAndWaitCommand(t, serverCmd)
-			t.Fatal("received empty line from UDP server")
-		}
-		if strings.HasPrefix(string(line), "NotReady") {
-			t.Fatalf("UDP server failed to start: '%s'", string(line))
-		}
-	}
-
-	serverPid := uint32(serverCmd.Process.Pid)
-
-	clientCmd := exec.Command(os.Args[0], "-udpLayer7Client")
-	clientCmd.Stdout = os.Stderr
-	clientCmd.Stderr = os.Stderr
-	err = clientCmd.Run()
-	assert.NoError(t, err, "cannot start client")
-
-	killAndWaitCommand(t, serverCmd)
-
-	quit := false
-	for !quit {
-		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
-		if err != nil {
-			quit = true
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	err = jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
-
-	killAndWaitCommand(t, clientCmd)
 }
 
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
@@ -1974,9 +1745,12 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 
 	bpf.CheckOrMountCgroup2()
 
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
 	serverProcess := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpServer"))
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-unvlp 8081 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessCloseChecker("serverClose").
@@ -2003,53 +1777,26 @@ func testDisableCloseConfig(t *testing.T, disableClose bool) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
-	serverCmd := exec.Command(os.Args[0], "-udpServer")
-	serverOutput, err := serverCmd.StdoutPipe()
-	require.NoError(t, err, "could not connect to server output pipe")
-	serverCmd.Stderr = os.Stderr
+	cmdServer := exec.Command(server, "-unvlp", "8081", "-s", "0.0.0.0")
+	stdout, err := cmdServer.StdoutPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdServer.Start())
+	err = waitForSocketToListen(t, net.IPv4(0, 0, 0, 0), 8081, syscall.IPPROTO_UDP, syscall.AF_INET)
+	assert.NoError(t, err)
 
-	err = serverCmd.Start()
-	require.NoError(t, err, "cannot start server")
+	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	sendData(t, stdin, "hello")
+	waitForData(t, stdout, "hello")
 
-	serverBuf := bufio.NewReader(serverOutput)
-	var line []byte
-	for string(line) != "Ready" {
-		line, _, err = serverBuf.ReadLine()
-		if err != nil {
-			killAndWaitCommand(t, serverCmd)
-			t.Fatal(err)
-		}
-		if len(line) == 0 {
-			killAndWaitCommand(t, serverCmd)
-			t.Fatal("received empty line from UDP server")
-		}
-		if strings.HasPrefix(string(line), "NotReady") {
-			t.Fatalf("UDP server failed to start: '%s'", string(line))
-		}
-	}
-
-	serverPid := uint32(serverCmd.Process.Pid)
-
-	clientCmd := exec.Command(os.Args[0], "-udpLayer7Client")
-	clientCmd.Stdout = os.Stderr
-	clientCmd.Stderr = os.Stderr
-	err = clientCmd.Run()
-	assert.NoError(t, err, "cannot start client")
-
-	killAndWaitCommand(t, serverCmd)
-
-	quit := false
-	for !quit {
-		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
-		if err != nil {
-			quit = true
-		}
-	}
+	killAndWaitCommand(t, cmdServer)
 
 	err = jsonchecker.JsonTestCheckExpect(t, checker, disableClose)
 	assert.NoError(t, err)
 
-	killAndWaitCommand(t, clientCmd)
+	killAndWaitCommand(t, cmdClient)
 }
 
 func TestDisableClose(t *testing.T) {
@@ -2067,9 +1814,11 @@ func testDisableListenConfig(t *testing.T, disableListen bool) {
 
 	bpf.CheckOrMountCgroup2()
 
+	server := getNCCommand(t, "nc.openbsd")
+
 	serverProcess := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
-		WithArguments(sm.Full("-udpServer"))
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-unvlp 8081 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessListenChecker("serverListen").
@@ -2096,20 +1845,14 @@ func testDisableListenConfig(t *testing.T, disableListen bool) {
 	observertesthelper.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
-	serverCmd := exec.Command(os.Args[0], "-udpServer")
-	serverOutput, err := serverCmd.StdoutPipe()
-	require.NoError(t, err, "could not connect to server output pipe")
-	serverCmd.Stderr = os.Stderr
-
-	err = serverCmd.Start()
-	require.NoError(t, err, "cannot start server")
-
-	serverBuf := bufio.NewReader(serverOutput)
-	serverBuf.ReadLine()
+	cmdServer := exec.Command(server, "-unvlp", "8081", "-s", "0.0.0.0")
+	assert.NoError(t, cmdServer.Start())
+	err = waitForSocketToListen(t, net.IPv4(0, 0, 0, 0), 8081, syscall.IPPROTO_UDP, syscall.AF_INET)
+	assert.NoError(t, err)
 
 	err = jsonchecker.JsonTestCheckExpect(t, checker, disableListen)
 
-	killAndWaitCommand(t, serverCmd)
+	killAndWaitCommand(t, cmdServer)
 
 	assert.NoError(t, err)
 }
