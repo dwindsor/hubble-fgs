@@ -81,17 +81,20 @@ func (f *FakePolicyRepositoryIDReader) GetRuleId(ruleId types.TetragonPolicyUniq
 	return id, ok
 }
 
-func getNewFakeBPFProgrammer(fakePolicyRepo *FakePolicyRepositoryIDReader) *BpfProgrammer {
+func getNewFakeBPFProgrammer(fakePolicyRepo *FakePolicyRepositoryIDReader) *BPFProgrammer {
 	var repo library.PolicyRepositoryIDReader
 	if fakePolicyRepo == nil {
 		repo = library.GetRepository()
 	} else {
 		repo = fakePolicyRepo
 	}
-	ret := &BpfProgrammer{
+	ret := &BPFProgrammer{
+		binaryMap: &fakeBPFMap[processTreeBinaryUIDKey, processTreeID]{},
+		uidBpfMap: &fakeBPFMap[processTreeID, processTreeBinaryUIDKey]{},
+		records:   map[record.RecordKey]record.DatapathRecord{},
+	}
+	ret.recordBackend = &bpfRecordBackend{
 		dstMap:                   &fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue]{},
-		binaryMap:                &fakeBPFMap[processTreeBinaryUIDKey, processTreeID]{},
-		uidBpfMap:                &fakeBPFMap[processTreeID, processTreeBinaryUIDKey]{},
 		lpmMap:                   &fakeLPMMap{},
 		endpointAdder:            &FakeEndpointAdder{},
 		policyRepositoryIDReader: repo,
@@ -105,9 +108,10 @@ type expectedEntry struct {
 	value types.DestinationEndpointValue
 }
 
-func verifyDstMap(t *testing.T, bpfProgrammer *BpfProgrammer, expectedEntries []expectedEntry) {
+func verifyDstMap(t *testing.T, bpfProgrammer *BPFProgrammer, expectedEntries []expectedEntry) {
 	length := 0
-	fakeDstMap := bpfProgrammer.dstMap.(*fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue])
+	backend := bpfProgrammer.recordBackend.(*bpfRecordBackend)
+	fakeDstMap := backend.dstMap.(*fakeBPFMap[types.DestinationEndpointKey, types.DestinationEndpointValue])
 	for i, expected := range expectedEntries {
 		var actualValue types.DestinationEndpointValue
 		err := fakeDstMap.Lookup(expected.key, &actualValue)

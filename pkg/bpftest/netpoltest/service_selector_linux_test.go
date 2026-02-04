@@ -42,7 +42,7 @@ import (
 )
 
 var (
-	prog datapath.Interface = &datapath.BpfProgrammer{}
+	prog datapath.Interface = &datapath.BPFProgrammer{}
 )
 
 // wildcardSrc matches all source processes/pods (NSID=0 means host)

@@ -45,7 +45,7 @@ import (
 )
 
 var (
-	prog datapath.Interface = &datapath.BpfProgrammer{}
+	prog datapath.Interface = &datapath.BPFProgrammer{}
 )
 
 type recordCheck struct {

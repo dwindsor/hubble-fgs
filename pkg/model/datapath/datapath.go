@@ -32,16 +32,26 @@ type Interface interface {
 	GetBinaryId(binary string, ignoreArgs bool) (uint64, error)
 }
 
-type BpfProgrammer struct {
+type recordBackend interface {
+	addRecord(r *record.DatapathRecord, force bool) error
+	removeRecord(r *record.DatapathRecord) error
+}
+
+type BPFProgrammer struct {
+	recordBackend
+
 	initProgrammerOnce sync.Once
-	dstMap             mapInterfaceTyped[types.DestinationEndpointKey, types.DestinationEndpointValue]
 	binaryMap          mapInterfaceTyped[processTreeBinaryUIDKey, processTreeID]
 	uidBpfMap          mapInterfaceTyped[processTreeID, processTreeBinaryUIDKey]
-	lpmMap             lpm.LPMMap
-
-	endpointAdder            endpoint.EndpointAdder
-	policyRepositoryIDReader library.PolicyRepositoryIDReader
 
 	recordsMu sync.Mutex
 	records   map[record.RecordKey]record.DatapathRecord
+}
+
+type bpfRecordBackend struct {
+	dstMap mapInterfaceTyped[types.DestinationEndpointKey, types.DestinationEndpointValue]
+	lpmMap lpm.LPMMap
+
+	endpointAdder            endpoint.EndpointAdder
+	policyRepositoryIDReader library.PolicyRepositoryIDReader
 }

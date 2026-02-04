@@ -43,7 +43,7 @@ const (
 var (
 	RealizedState *PolicyState
 	// Programmer for dataplane default to BPF
-	prog datapath.Interface = &datapath.BpfProgrammer{}
+	prog datapath.Interface = &datapath.BPFProgrammer{}
 	// k8sReader is used to read namespace labels from Kubernetes
 	k8sReader client.Reader
 )

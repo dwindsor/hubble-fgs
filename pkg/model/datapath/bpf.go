@@ -48,16 +48,18 @@ var (
 	dnsDomainMap = dnsparser.DomainMap{}
 )
 
-func (p *BpfProgrammer) initMaybe() {
+func (p *BPFProgrammer) initMaybe() {
 	p.initProgrammerOnce.Do(func() {
 		p.initMap()
-		p.endpointAdder = endpoint.MustGet()
-		p.policyRepositoryIDReader = library.GetRepository()
+		if backend, ok := p.recordBackend.(*bpfRecordBackend); ok {
+			backend.endpointAdder = endpoint.MustGet()
+			backend.policyRepositoryIDReader = library.GetRepository()
+		}
 		p.records = map[record.RecordKey]record.DatapathRecord{}
 	})
 }
 
-func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool) error {
+func (p *BPFProgrammer) AddRecords(records []*record.DatapathRecord, force bool) error {
 	p.initMaybe()
 
 	p.recordsMu.Lock()
@@ -80,7 +82,7 @@ func (p *BpfProgrammer) AddRecords(records []*record.DatapathRecord, force bool)
 	return nil
 }
 
-func (p *BpfProgrammer) conflictUpdateMap(key types.DestinationEndpointKey, value types.DestinationEndpointValue) error {
+func (p *bpfRecordBackend) conflictUpdateMap(key types.DestinationEndpointKey, value types.DestinationEndpointValue) error {
 
 	lookupValue := &types.DestinationEndpointValue{}
 	if err := p.dstMap.Lookup(key, lookupValue); err == nil {
@@ -95,7 +97,7 @@ func (p *BpfProgrammer) conflictUpdateMap(key types.DestinationEndpointKey, valu
 }
 
 // This call will destroy key and value they can not be used after this.
-func (p *BpfProgrammer) populateStatEntry(key types.DestinationEndpointKey, value types.DestinationEndpointValue) error {
+func (p *bpfRecordBackend) populateStatEntry(key types.DestinationEndpointKey, value types.DestinationEndpointValue) error {
 	value.TxAction = record.PolicyNone // we want rules for stats, not to impact verdict
 	value.Policy = 0
 	// RuleId is already 0 from addRecord
@@ -130,7 +132,7 @@ func (p *BpfProgrammer) populateStatEntry(key types.DestinationEndpointKey, valu
 
 // src *types.ProcessTreeKey, ep *endpoint.Endpoint, quota, reset, deny uint64, init bool) error {
 // what was init for again?
-func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
+func (p *bpfRecordBackend) addRecord(r *record.DatapathRecord, force bool) error {
 	var addr [2]uint64
 	var dst uint64
 	var err error
@@ -257,7 +259,7 @@ func (p *BpfProgrammer) addRecord(r *record.DatapathRecord, force bool) error {
 	return nil
 }
 
-func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
+func (p *bpfRecordBackend) removeRecord(r *record.DatapathRecord) error {
 	var addr [2]uint64
 	src := r.Src
 	ep := r.Endpoint.EP
@@ -330,7 +332,7 @@ func (p *BpfProgrammer) removeRecord(r *record.DatapathRecord) error {
 	return nil
 }
 
-func (p *BpfProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
+func (p *BPFProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
 	p.initMaybe()
 
 	p.recordsMu.Lock()
@@ -395,7 +397,7 @@ func (id processTreeID) String() string {
 	return fmt.Sprintf("processTreeID: %d-%d (ignore_args: %v)", id.uid, id.GetCPU(), id.GetIgnoreArgs())
 }
 
-func (p *BpfProgrammer) GetBinaryId(binaryName string, ignoreArgs bool) (uint64, error) {
+func (p *BPFProgrammer) GetBinaryId(binaryName string, ignoreArgs bool) (uint64, error) {
 	var process = [PATH_SIZE]byte{0}
 	var zero = [PATH_SIZE]byte{0}
 

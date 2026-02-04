@@ -26,7 +26,7 @@ import (
 
 const PATH_SIZE = 256
 
-func (p *BpfProgrammer) initMap() {
+func (p *BPFProgrammer) initMap() {
 	var err error
 
 	file := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
@@ -34,7 +34,6 @@ func (p *BpfProgrammer) initMap() {
 	if err != nil {
 		logger.GetLogger().Error(fmt.Sprintf("failed to pin DestinationMap (%s): %v", file, err))
 	}
-	p.dstMap = NewTypedMap[types.DestinationEndpointKey, types.DestinationEndpointValue](dstMap)
 
 	file = filepath.Join(bpf.MapPrefixPath(), processTreeBinaryUUIDMap)
 	binaryMap, err := ebpf.LoadPinnedMap(file, nil)
@@ -50,9 +49,14 @@ func (p *BpfProgrammer) initMap() {
 	}
 	p.uidBpfMap = NewTypedMap[processTreeID, processTreeBinaryUIDKey](uidBpfMap)
 
-	p.lpmMap, err = lpm.NewLPM()
+	lpmMap, err := lpm.NewLPM()
 	if err != nil {
 		logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)
+	}
+
+	p.recordBackend = &bpfRecordBackend{
+		dstMap: NewTypedMap[types.DestinationEndpointKey, types.DestinationEndpointValue](dstMap),
+		lpmMap: lpmMap,
 	}
 }
 
