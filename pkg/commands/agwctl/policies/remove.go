@@ -28,7 +28,13 @@ var removeCmd = &cobra.Command{
 	Use:          "remove [resourceId]",
 	SilenceUsage: true,
 	Short:        "Remove a policy by resourceId or from a YAML file",
-	Long:         `Remove a policy by providing its resourceId as an argument, or from a YAML file using the --file flag.`,
+	Long: `Remove a policy by providing its resourceId as an argument, or from a YAML file using the --file flag.
+
+WARNING: Removing policies locally may permanently remove policies and cause OUT OF SYNC
+with on-prem controller.
+
+Workaround: To re-sync with controller after removal, restart HypershieldAgent via NXOS CLI
+            ('no in-service; in-service')`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

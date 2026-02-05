@@ -454,7 +454,7 @@ func printTimescapeConfigTable(response string) {
 }
 
 var showTimescapeConfigCmd = &cobra.Command{
-	Use:   "show_timescape_config",
+	Use:   "show_timescape_cfg",
 	Short: "Display Timescape server configuration details",
 	Long: `Display Timescape server configuration details including:
 • Timescape client status: Enabled or Disabled

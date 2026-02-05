@@ -29,7 +29,9 @@ var addCmd = &cobra.Command{
 	Use:          "add",
 	SilenceUsage: true,
 	Short:        "Add a policy from a YAML file",
-	Long:         `Add a new policy from a YAML file.`,
+	Long: `Add a new policy from a YAML file.
+
+WARNING: Adding policies locally may permanently add policies and cause OUT OF SYNC with on-prem controller.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

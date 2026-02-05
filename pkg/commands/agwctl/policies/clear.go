@@ -27,7 +27,13 @@ var clearCmd = &cobra.Command{
 	Use:          "clear",
 	SilenceUsage: true,
 	Short:        "Clear all policies",
-	Long:         `Clear all policies.`,
+	Long: `Clear all policies.
+
+WARNING: Clearing policies locally may permanently remove all policies and cause OUT OF SYNC
+with on-prem controller.
+
+Workaround: To re-sync with controller after clear, restart HypershieldAgent via NXOS CLI
+            ('no in-service; in-service')`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
