@@ -97,6 +97,7 @@ struct destination_endpoint_value {
 	__u32 port;
 	__u32 protocol;
 	__u64 flags;
+	__u64 sessions;
 };
 
 /* The destination_endpoint_maps an {src, dstID} pair to its

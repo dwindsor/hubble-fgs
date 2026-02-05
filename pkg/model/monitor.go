@@ -113,6 +113,7 @@ type NetworkMonitorValue struct {
 	AllowDefaultBytes uint64
 	DenyDefaultBytes  uint64
 	TXDrops           uint64
+	Sessions          uint64
 }
 
 func getByteSize(b uint64) string {
@@ -157,6 +158,7 @@ type byteCounter interface {
 	GetTxUsage() uint64
 	GetLastReset() *time.Time
 	GetNextReset() *time.Time
+	GetSessions() uint64
 }
 
 func (nmv NetworkMonitorValue) GetPolicy() string {
@@ -203,6 +205,10 @@ func (NetworkMonitorValue) GetNextReset() *time.Time {
 	return nil
 }
 
+func (nmv NetworkMonitorValue) GetSessions() uint64 {
+	return nmv.Sessions
+}
+
 func (nqv NetworkQuotaValue) GetTxBytes() uint64 {
 	return nqv.TXBytes
 }
@@ -229,6 +235,10 @@ func (nqv NetworkQuotaValue) GetLastReset() *time.Time {
 
 func (nqv NetworkQuotaValue) GetNextReset() *time.Time {
 	return new(nqv.NextReset)
+}
+
+func (NetworkQuotaValue) GetSessions() uint64 {
+	return 0
 }
 
 func (nqv NetworkQuotaValue) String() string {
@@ -532,6 +542,7 @@ func ConvertToMonitorData(processModel []*types.ProcessModel, includeProcess boo
 					currentValue.AllowDefaultBytes += dst.Stats.DefaultAllowBytes
 					currentValue.DenyDefaultBytes += dst.Stats.DefaultDenyBytes
 					currentValue.TXDrops += dst.Stats.TxDrops
+					currentValue.Sessions += dst.Stats.Sessions
 				}
 				result[key] = currentValue
 			} else if process.Binary == "" && dst.Stats != nil && dst.Stats.TxLimit > 0 {
@@ -582,6 +593,7 @@ func Diff(current, newer NetworkMonitorData) NetworkMonitorData {
 					TXBytes:    newValue.TXBytes - currentValue.TXBytes,
 					RXBytes:    newValue.RXBytes - currentValue.RXBytes,
 					TXDrops:    newValue.TXDrops - currentValue.TXDrops,
+					Sessions:   newValue.Sessions - currentValue.Sessions,
 				}
 			}
 		} else {
@@ -591,6 +603,7 @@ func Diff(current, newer NetworkMonitorData) NetworkMonitorData {
 				TXBytes:    newValue.TXBytes,
 				RXBytes:    newValue.RXBytes,
 				TXDrops:    newValue.TXDrops,
+				Sessions:   newValue.Sessions,
 			}
 		}
 	}

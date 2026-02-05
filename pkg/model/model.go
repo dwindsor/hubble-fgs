@@ -117,6 +117,7 @@ func handleNetworkEvent(nsMap namespaceMap, nk NetworkKey, bc byteCounter) {
 			TxQuotaUsage:      bc.GetTxUsage(),
 			LastQuotaReset:    MaybeTimeToTimestamp(bc.GetLastReset()),
 			NextQuotaReset:    MaybeTimeToTimestamp(bc.GetNextReset()),
+			Sessions:          bc.GetSessions(),
 		},
 		Policy: &appModelV1.NetworkPolicy{
 			PolicyName: bc.GetPolicy(),

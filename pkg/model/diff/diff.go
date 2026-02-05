@@ -31,7 +31,8 @@ import (
 
 func StatsZero(a *appModelV1.ConnectionStats) bool {
 	if a.TxBytes == 0 && a.RxBytes == 0 && a.TxDrops == 0 &&
-		a.DefaultDropBytes == 0 && a.DefaultAllowBytes == 0 {
+		a.DefaultDropBytes == 0 && a.DefaultAllowBytes == 0 &&
+		a.Sessions == 0 {
 		return true
 	}
 	return false
@@ -53,6 +54,9 @@ func StatsDiff(a, b *appModelV1.ConnectionStats) (*appModelV1.ConnectionStats, e
 	if b.DefaultAllowBytes > a.DefaultAllowBytes {
 		return nil, fmt.Errorf("stats diff underflow on DefaultAllowBytes: %d - %d", a.DefaultAllowBytes, b.DefaultAllowBytes)
 	}
+	if b.Sessions > a.Sessions {
+		return nil, fmt.Errorf("stats diff underflow on Sessions: %d - %d", a.Sessions, b.Sessions)
+	}
 
 	return &appModelV1.ConnectionStats{
 		TxBytes:           a.TxBytes - b.TxBytes,
@@ -64,6 +68,7 @@ func StatsDiff(a, b *appModelV1.ConnectionStats) (*appModelV1.ConnectionStats, e
 		NextQuotaReset:    a.NextQuotaReset,
 		DefaultDropBytes:  a.DefaultDropBytes - b.DefaultDropBytes,
 		DefaultAllowBytes: a.DefaultAllowBytes - b.DefaultAllowBytes,
+		Sessions:          a.Sessions - b.Sessions,
 	}, nil
 }
 
@@ -615,6 +620,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 							TxBytes:                           c.Stats.TxBytes,
 							RxBytes:                           c.Stats.RxBytes,
 							TxDrops:                           c.Stats.TxDrops,
+							Sessions:                          c.Stats.Sessions,
 							NodeLabels:                        labels,
 							PolicyName:                        c.Policy.PolicyName,
 							RuleName:                          c.Policy.RuleName,
@@ -658,6 +664,7 @@ func ApplicationModelToNetworkFlat(ctx context.Context, a *appModelV1.Applicatio
 					TxBytes:                           c.Stats.TxBytes,
 					RxBytes:                           c.Stats.RxBytes,
 					TxDrops:                           c.Stats.TxDrops,
+					Sessions:                          c.Stats.Sessions,
 					NodeLabels:                        labels,
 					PolicyName:                        c.Policy.PolicyName,
 					RuleName:                          c.Policy.RuleName,

@@ -86,6 +86,7 @@ type DestinationEndpointValue struct {
 	Port              uint32
 	Protocol          uint32
 	Flags             uint64
+	Sessions          uint64
 }
 
 type TreeId struct {

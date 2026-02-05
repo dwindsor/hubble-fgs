@@ -625,6 +625,7 @@ func getProcessModel(namespaces []string,
 			TxDrops:           dstVal.TxDrops,
 			DefaultAllowBytes: dstVal.AllowDefaultBytes,
 			DefaultDenyBytes:  dstVal.DenyDefaultBytes,
+			Sessions:          dstVal.Sessions,
 		}
 		// Report quota-related stats if TxLimit is set.
 		if dstVal.TxLimit != 0 {

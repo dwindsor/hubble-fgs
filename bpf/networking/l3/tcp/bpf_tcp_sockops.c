@@ -206,6 +206,7 @@ int event_tcp_sockops_connect(struct bpf_sock_ops *skops)
 			DEBUG("RULE:      %d", dest->rule);
 			val->policy_id = dest->policy;
 			val->rule_id = dest->rule;
+			__sync_fetch_and_add(&dest->sessions, 1);
 		}
 		add_tcpsocketmap(&cookie, v, true);
 	}

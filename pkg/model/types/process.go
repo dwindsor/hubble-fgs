@@ -28,6 +28,7 @@ type DestinationStats struct {
 	KtimeTxReset      *timestamppb.Timestamp
 	DefaultAllowBytes uint64
 	DefaultDenyBytes  uint64
+	Sessions          uint64
 }
 
 type Service struct {

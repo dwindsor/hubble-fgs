@@ -36,6 +36,7 @@ func connStatsA() *appModelV1.ConnectionStats {
 		TxQuotaUsage:      1,
 		DefaultDropBytes:  15,
 		DefaultAllowBytes: 25,
+		Sessions:          7,
 	}
 }
 
@@ -48,6 +49,7 @@ func connStatsB() *appModelV1.ConnectionStats {
 		TxQuotaUsage:      1,
 		DefaultDropBytes:  1,
 		DefaultAllowBytes: 2,
+		Sessions:          2,
 	}
 }
 
@@ -60,6 +62,7 @@ func connStatsDiff() *appModelV1.ConnectionStats {
 		TxQuotaUsage:      1,
 		DefaultDropBytes:  14,
 		DefaultAllowBytes: 23,
+		Sessions:          5,
 	}
 }
 
@@ -71,6 +74,7 @@ func connStatsEqual(t *testing.T, a, b *appModelV1.ConnectionStats) {
 	assert.Equal(t, a.TxQuotaUsage, b.TxQuotaUsage)
 	assert.Equal(t, a.DefaultDropBytes, b.DefaultDropBytes)
 	assert.Equal(t, a.DefaultAllowBytes, b.DefaultAllowBytes)
+	assert.Equal(t, a.Sessions, b.Sessions)
 }
 
 func TestStatsDiff(t *testing.T) {
@@ -695,6 +699,31 @@ func TestToNetworkFlat(t *testing.T) {
 	assert.NotEmpty(t, f[0].Id, "network telemetry Id should not be empty")
 	assert.NotEmpty(t, f[1].Id, "network telemetry Id should not be empty")
 	assert.NotEqual(t, f[0].Id, f[1].Id, "network telemetry Ids should be unique")
+}
+
+// TestToNetworkFlatSessions checks that a session count increment is the only
+// change needed to produce a telemetry entry, and that the exported value is the
+// delta rather than the cumulative count held in the model.
+func TestToNetworkFlatSessions(t *testing.T) {
+	ctx := context.Background()
+
+	aModel := appModel()
+	aModel.Id = "u-u-i-d"
+	bModel := appModel()
+
+	conn := aModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0]
+	old := bModel.Namespaces[0].Workloads[0].Containers[0].Processes[1].Connections[0]
+	conn.Stats.Sessions = old.Stats.Sessions + 3
+
+	network, process, err := ApplicationModelDiff(aModel, bModel)
+	require.NoError(t, err)
+	assert.Nil(t, process)
+	require.NotNil(t, network)
+
+	f, err := ApplicationModelToNetworkFlat(ctx, network)
+	require.NoError(t, err)
+	require.Len(t, f, 1)
+	assert.Equal(t, uint64(3), f[0].Sessions)
 }
 
 func TestToNetworkFlatHost(t *testing.T) {

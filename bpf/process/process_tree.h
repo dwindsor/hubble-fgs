@@ -391,6 +391,7 @@ static __u64 find_key(struct destination_endpoint_key *key, struct msg_ip_tuple 
 		destvalue->rx_bytes = 0;
 		destvalue->policy = 0;
 		destvalue->rule = 0;
+		destvalue->sessions = 0;
 		destvalue->ipv6 = tuple->ipv6;
 		destvalue->ktime_create = tg_get_ktime();
 		destvalue->addr_create[0] = tuple->daddr[0];
@@ -615,6 +616,7 @@ static inline __attribute__((always_inline)) int resolve_key(struct destination_
 			destvalue->deny = dst_value->deny | TNP_POLICY_FALLTHRU | TNP_POLICY_CACHED;
 			destvalue->tx_quota = destvalue->tx_limit = 0;
 			destvalue->tx_bytes = destvalue->rx_bytes = 0;
+			destvalue->sessions = 0;
 			destvalue->policy = dst_value->policy;
 			destvalue->rule = dst_value->rule;
 

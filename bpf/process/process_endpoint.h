@@ -184,6 +184,7 @@ struct destination_endpoint_value {
 	__u32 port;
 	__u32 protocol;
 	__u64 flags;
+	__u64 sessions;
 };
 
 /* The destination_endpoint_maps an {src, dstID} pair to its
@@ -199,6 +200,21 @@ struct {
 	__type(key, struct destination_endpoint_key);
 	__type(value, struct destination_endpoint_value);
 } destination_endpoint_map SEC(".maps");
+
+/* Count one new TCP connection or UDP session against the destination the
+ * socket resolved to. Called once per session, at the point the session is
+ * established, so the counter is cumulative for the lifetime of the entry.
+ * Userspace turns it into a per-interval delta.
+ */
+static inline __attribute__((always_inline)) void
+count_session(struct destination_endpoint_key *dst_key)
+{
+	struct destination_endpoint_value *dest;
+
+	dest = map_lookup_elem(&destination_endpoint_map, dst_key);
+	if (dest)
+		__sync_fetch_and_add(&dest->sessions, 1);
+}
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
