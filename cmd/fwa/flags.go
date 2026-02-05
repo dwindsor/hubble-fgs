@@ -33,7 +33,7 @@ var (
 		EnableDataplane:   true,
 		EnableAgw:         true,
 		EnableLogger:      true,
-		EnableEventStream: false,
+		EnableEventStream: true,
 		GopsAddr:          "localhost:8118",
 	}
 )
