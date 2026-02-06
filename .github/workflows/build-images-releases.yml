@@ -31,6 +31,22 @@ jobs:
       QUAY_CHARTS_USERNAME: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_USERNAME }}
       QUAY_CHARTS_PASSWORD: ${{ secrets.QUAY_ISOVALENT_CHARTS_DEV_PASSWORD }}
 
+  build-and-push-ubi:
+    uses: ./.github/workflows/build-images-ubi-base.yml
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    with:
+      sha: "${{ github.sha }}"
+      tag: "${{ github.ref_name }}"
+      is_release: true
+    secrets:
+      QUAY_USERNAME: ${{ secrets.QUAY_USER }}
+      QUAY_PASSWORD: ${{ secrets.QUAY_TOKEN }}
+      REDHAT_USERNAME_CI: ${{ secrets.REDHAT_USERNAME_CI }}
+      REDHAT_PASSWORD_CI: ${{ secrets.REDHAT_PASSWORD_CI }}
+
   build-tarballs:
     uses: ./.github/workflows/build-tarballs.yml
 
