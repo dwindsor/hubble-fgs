@@ -11,23 +11,38 @@
 package v1alpha1
 
 import (
-	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
 )
 
 const (
-	// SmartSwitch Network Policy (SNP)
+	// SmartSwitch Network Policy (SNP).
 
-	// SNPPluralName is the plural name of SmartSwitch Network Policy
+	// SNPPluralName is the plural name of SmartSwitch Network Policy.
 	SNPPluralName = "smartswitchnetworkpolicies"
 
-	// SNPKindDefinition is the kind name of SmartSwitch Network Policy
+	// SNPKindDefinition is the kind name of SmartSwitch Network Policy.
 	SNPKindDefinition = "SmartSwitchNetworkPolicy"
 
-	// SNPName is the full name of SmartSwitch Network Policy
+	// SNPName is the full name of SmartSwitch Network Policy.
 	SNPName = SNPPluralName + "." + isovalentcom.GroupName
 )
 
+// Annotations
+const (
+	// AnnotationStaging marks the network policy as a staging policy that
+	// is validated, but not deployed. If the value is non-empty then the
+	// changes are validated as a difference against the named policy with
+	// unchanged rules ignored.
+	AnnotationStaging = SNPPluralName + "/" + "staging"
+
+	// AnnotationValidation holds the validation results for a staging policy.
+	AnnotationValidation = SNPPluralName + "/" + "validation"
+)
+
+// SmartSwitchNetworkPolicyList is a list of SmartSwitchNetworkPolicy resources.
+//
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type SmartSwitchNetworkPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -40,7 +55,7 @@ type SmartSwitchNetworkPolicyList struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:singular="smartswitchnetworkpolicy",path="smartswitchnetworkpolicies",scope="Namespaced"
 
-// SmartSwitchNetworkPolicy is the Schema for the smartswitches netops API
+// SmartSwitchNetworkPolicy is the Schema for the smartswitches netops API.
 type SmartSwitchNetworkPolicy struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -61,7 +76,9 @@ type SmartSwitchNetworkPolicySpec struct {
 	Rules []SmartSwitchNetworkPolicyRule `json:"rules"`
 }
 
-// Implement crdutils.CRDObject interface, required for working with CRDs
+// GetObjectMetaStruct returns the generic k8s object metadata.
+//
+// Implements crdutils.CRDObject interface, required for working with CRDs
 // outside of Kubernetes context.
 func (snp *SmartSwitchNetworkPolicy) GetObjectMetaStruct() *metav1.ObjectMeta {
 	return &snp.ObjectMeta
@@ -72,7 +89,10 @@ func (snp *SmartSwitchNetworkPolicy) GetObjectMetaStruct() *metav1.ObjectMeta {
 // (no VRF or VLAN) then the policy applied against traffic that
 // does not belong to any logical network which may or may not
 // match any actual traffic depending on the switch configuration.
+//
 // +kubebuilder:validation:XValidation:rule="!(has(self.vrf) && has(self.vlan))",message="at most one of the fields in [vrf vlan] may be set"
+//
+//nolint:godoclint
 type SmartSwitchNetwork struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Format=cidr
@@ -88,9 +108,12 @@ type SmartSwitchNetwork struct {
 // SmartSwitchProtocolPort provides the protocol to apply the policy
 // against with an optional port or a port range. When no ports are specified
 // the port is a wildcard and policy applies against any port.
+//
 // +kubebuilder:validation:XValidation:rule="!has(self.endPort) || has(self.port)",message="endPort requires port to be set also"
 // +kubebuilder:validation:XValidation:rule="!has(self.endPort) || self.endPort > self.port",message="endPort must be greater than port"
 // +kubebuilder:validation:XValidation:rule="self.protocol != 'ICMP' || !has(self.port)",message="ICMP protocol does not support port numbers; port field must be omitted"
+//
+//nolint:godoclint
 type SmartSwitchProtocolPort struct {
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
@@ -109,9 +132,9 @@ type SmartSwitchProtocolPort struct {
 	Protocol string `json:"protocol"`
 }
 
-// SmartSwitchNetworkSource only supports IPBlocks at the moment there
-// is currently no support to match source port so the policy applies
-// against all source ports.
+// SmartSwitchNetworkSource only supports IPBlocks. At the moment there
+// is no support to match source port so the policy applies against
+// all source ports.
 type SmartSwitchNetworkSource struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1

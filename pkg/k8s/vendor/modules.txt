@@ -55,13 +55,16 @@ github.com/google/uuid
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/isovalent/ipa/k8s v1.18.2
-## explicit; go 1.24.0
+# github.com/isovalent/ipa/k8s v1.19.0-pre.3.0.20260206161544-1d6436ef646d
+## explicit; go 1.25.0
 github.com/isovalent/ipa/k8s
 github.com/isovalent/ipa/k8s/apis/cilium.io
 github.com/isovalent/ipa/k8s/apis/cilium.io/v1alpha1
 github.com/isovalent/ipa/k8s/apis/isovalent.com
 github.com/isovalent/ipa/k8s/apis/isovalent.com/v1alpha1
+github.com/isovalent/ipa/k8s/slim/k8s/apis/labels
+github.com/isovalent/ipa/k8s/slim/k8s/apis/meta/v1
+github.com/isovalent/ipa/k8s/slim/k8s/apis/selection
 # github.com/josharian/intern v1.0.0
 ## explicit; go 1.5
 github.com/josharian/intern
@@ -105,7 +108,7 @@ github.com/stretchr/testify/require
 # github.com/x448/float16 v0.8.4
 ## explicit; go 1.11
 github.com/x448/float16
-# go.opentelemetry.io/otel v1.37.0
+# go.opentelemetry.io/otel v1.38.0
 ## explicit; go 1.23.0
 # go.yaml.in/yaml/v2 v2.4.3
 ## explicit; go 1.15
@@ -125,8 +128,8 @@ golang.org/x/net/http2
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/httpcommon
-# golang.org/x/oauth2 v0.30.0
-## explicit; go 1.23.0
+# golang.org/x/oauth2 v0.32.0
+## explicit; go 1.24.0
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
 # golang.org/x/sync v0.19.0
@@ -181,7 +184,7 @@ golang.org/x/tools/internal/stdlib
 golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
 golang.org/x/tools/internal/versions
-# google.golang.org/protobuf v1.36.10
+# google.golang.org/protobuf v1.36.11
 ## explicit; go 1.23
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire

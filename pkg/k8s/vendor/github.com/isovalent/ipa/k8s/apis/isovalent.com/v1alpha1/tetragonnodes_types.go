@@ -14,18 +14,30 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// AddressType is a type of address associated with a TetragonNodeStatus object.
 type AddressType string
 
 const (
-	NodeHostName    AddressType = "Hostname"
-	NodeExternalIP  AddressType = "ExternalIP"
-	NodeInternalIP  AddressType = "InternalIP"
+	// NodeHostName is an AddressType using an RFC1123 name not exceeding
+	// 63 ASCII characters in length.
+	NodeHostName AddressType = "Hostname"
+	// NodeExternalIP is an IPv4 or IPv6 address with expected reachability
+	// beyond a cluster boundary (for instance, beyond the Kubernetes
+	// environment where the TetragonNode exists).
+	NodeExternalIP AddressType = "ExternalIP"
+	// NodeInternalIP is an IPv4 or IPv6 address with expected reachability
+	// only within the cluster (such as within the Kubernetes environment
+	// where the TetragonNode exists).
+	NodeInternalIP AddressType = "InternalIP"
+	// NodeExternalDNS is an RFC1035 Domain Name with expected reachability
+	// beyond a cluster boundary (for instance, beyond the Kubernetes
+	// environment where the TetragonNode exists).
 	NodeExternalDNS AddressType = "ExternalDNS"
+	// NodeInternalDNS is an IPv4 or IPv6 address with expected reachability
+	// only within the cluster (such as within the Kubernetes environment
+	// where the TetragonNode exists).
 	NodeInternalDNS AddressType = "InternalDNS"
 )
-
-type TetragonEnforcementPointSpec struct {
-}
 
 // NodeAddress is a node address.
 type NodeAddress struct {
@@ -64,7 +76,7 @@ type TetragonNodeStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// TetragonNode is the Schema for the TetragonNodes API
+// TetragonNode is the Schema for the TetragonNodes API.
 type TetragonNode struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -77,7 +89,9 @@ type TetragonNode struct {
 	Status TetragonNodeStatus `json:"status,omitempty,omitzero"`
 }
 
-// Implement crdutils.CRDObject interface, required for working with CRDs
+// GetObjectMetaStruct returns the generic k8s object metadata.
+//
+// Implements crdutils.CRDObject interface, required for working with CRDs
 // outside of Kubernetes context.
 func (tn *TetragonNode) GetObjectMetaStruct() *metav1.ObjectMeta {
 	return &tn.ObjectMeta
@@ -85,7 +99,7 @@ func (tn *TetragonNode) GetObjectMetaStruct() *metav1.ObjectMeta {
 
 // +kubebuilder:object:root=true
 
-// TetragonNodeList contains a list of TetragonNode
+// TetragonNodeList contains a list of TetragonNode.
 type TetragonNodeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

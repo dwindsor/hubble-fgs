@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.18.0
+    controller-gen.kubebuilder.io/version: v0.19.0
   name: tetragonnetworkpolicies.cilium.io
 spec:
   group: cilium.io
@@ -43,23 +43,16 @@ spec:
             description: network policy specification
             properties:
               defaultAction:
+                description: |-
+                  DefaultAction is the action to enforce on all network traffic that
+                  doesn't match the selectors and the rules.
                 enum:
                 - allow
                 - deny
                 type: string
-              logicalNetworkSelector:
-                description: LogicalNetworkSelector selects logical network that this
-                  policy applies to
-                properties:
-                  vlan:
-                    format: int32
-                    type: integer
-                  vrf:
-                    type: string
-                type: object
               namespaceSelector:
-                description: NamespaceSelector selects namespace that this policy
-                  applies to
+                description: NamespaceSelector applies the policy to a Kubernetes
+                  namespace
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -114,7 +107,7 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               podSelector:
-                description: PodSelector selects pods that this policy applies to
+                description: PodSelector selects pods that this policy applies to.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -169,8 +162,8 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               processSelector:
-                description: ProcessSelector selects process that this policy applies
-                  to
+                description: ProcessSelector selects processes that this policy applies
+                  to.
                 properties:
                   followChildren:
                     default: false
@@ -181,11 +174,6 @@ spec:
                     description: Filter operation.
                     enum:
                     - In
-                    - NotIn
-                    - Prefix
-                    - NotPrefix
-                    - Postfix
-                    - NotPostfix
                     type: string
                   values:
                     description: Value to compare the argument against.
@@ -197,25 +185,39 @@ spec:
                 - values
                 type: object
               rules:
-                description: Network Policy Spec defines a set of actions for network
-                  operations
+                description: |-
+                  Network Policy Spec defines a set of actions for network operations
+                  Rules is a list of network policy rules to apply to the traffic that
+                  matches the source selectors.
                 items:
                   properties:
                     action:
+                      description: |-
+                        Action is the action to enforce on the network traffic that matches
+                        the destinations list.
                       enum:
                       - allow
                       - deny
                       type: string
                     description:
+                      description: Description to explain the rule's purpose.
                       type: string
                     destination:
+                      description: |-
+                        Destination is a list of destinations on which to apply the rule
+                        action. The action is applied to each entry in the list.
                       items:
                         properties:
                           FQDN:
+                            description: |-
+                              FQDN (Fully Qualified Domain Name) is a list of domain names to
+                              describe a destination.
                             items:
                               type: string
                             type: array
                           ipBlock:
+                            description: IPBlock contains a CIDR, describing a range
+                              of IPv4/IPv6 addresses.
                             properties:
                               cidr:
                                 type: string
@@ -224,7 +226,7 @@ spec:
                             type: object
                           podSelector:
                             description: PodSelector selects pods that this policy
-                              applies to
+                              applies to.
                             properties:
                               matchExpressions:
                                 description: matchExpressions is a list of label selector
@@ -279,20 +281,42 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           ports:
+                            description: Ports contains ports numbers and protocols.
                             properties:
                               ports:
+                                description: Ports is a list of port numbers (1-65535)
                                 items:
                                   format: int32
+                                  maximum: 65535
+                                  minimum: 1
                                   type: integer
                                 type: array
+                                x-kubernetes-list-type: set
                               protocol:
                                 default: TCP
+                                description: Protocol is the OSI L4 transport protocol.
                                 enum:
                                 - TCP
-                                - UDP
                                 type: string
                             type: object
+                          serviceSelector:
+                            description: ServiceSelector selects Kubernetes Services
+                              to which this policy applies to.
+                            properties:
+                              name:
+                                description: Name is the name of the Kubernetes Service.
+                                type: string
+                              namespace:
+                                description: |-
+                                  Namespace is the namespace of the Service. If empty, defaults to "default"
+                                  for cluster-scoped policies or the policy's namespace for namespaced policies.
+                                type: string
+                            required:
+                            - name
+                            type: object
                           workload:
+                            description: Workload is a Kubernetes application defined
+                              in the application model format.
                             properties:
                               namespace:
                                 type: string
@@ -306,39 +330,12 @@ spec:
                         type: object
                       type: array
                     hook:
+                      default: connect
+                      description: Hook configures how the policy is applied in the
+                        datapath.
                       enum:
                       - connect
-                      - listen
-                      - firewall
                       type: string
-                    source:
-                      items:
-                        properties:
-                          ipBlock:
-                            properties:
-                              cidr:
-                                type: string
-                            required:
-                            - cidr
-                            type: object
-                          ports:
-                            properties:
-                              ports:
-                                items:
-                                  format: int32
-                                  type: integer
-                                type: array
-                              protocol:
-                                default: TCP
-                                enum:
-                                - TCP
-                                - UDP
-                                type: string
-                            type: object
-                        required:
-                        - ports
-                        type: object
-                      type: array
                   required:
                   - action
                   - description

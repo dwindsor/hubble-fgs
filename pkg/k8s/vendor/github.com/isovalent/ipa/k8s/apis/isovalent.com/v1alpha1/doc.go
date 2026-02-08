@@ -9,6 +9,8 @@
 //  permission is obtained from Isovalent Inc.
 //
 
+// Package v1alpha1 defines the Isovalent Platform APIs.
+//
 // +k8s:deepcopy-gen=package,register
 // +groupName=isovalent.com
 package v1alpha1
