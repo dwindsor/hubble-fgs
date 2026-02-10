@@ -82,15 +82,23 @@ func (s *State) RemoveRuleByID(id RuleID) error {
 
 	delete(s.policyByRuleId, id)
 	if existingPolicy.Policy != nil {
-		vrfName := VrfName(existingPolicy.Policy.Source.Endpoint.VRF)
-
-		if vrfRules, ok := s.policyByVRFName[vrfName]; ok {
-			delete(vrfRules, id)
-			if len(vrfRules) == 0 {
-				delete(s.policyByVRFName, vrfName)
+		vrfNames := []VrfName{
+			VrfName(existingPolicy.Policy.Source.Endpoint.VRF),
+			VrfName(existingPolicy.Policy.Destination.Endpoint.VRF),
+		}
+		seen := make(map[VrfName]struct{}, len(vrfNames))
+		for _, vrfName := range vrfNames {
+			if _, ok := seen[vrfName]; ok {
+				continue
 			}
-		} else {
-			return fmt.Errorf("inconsistent state: rule with id %d exists but VRF mapping not found", id)
+			seen[vrfName] = struct{}{}
+
+			if vrfRules, ok := s.policyByVRFName[vrfName]; ok {
+				delete(vrfRules, id)
+				if len(vrfRules) == 0 {
+					delete(s.policyByVRFName, vrfName)
+				}
+			}
 		}
 	} else {
 		return fmt.Errorf("cannot remove rule with id %d: policy is nil", id)
@@ -111,11 +119,22 @@ func (s *State) AddRule(id RuleID, policy *SwitchPolicy) error {
 	}
 	s.policyByRuleId[id] = policy
 
-	vrfName := VrfName(policy.Policy.Source.Endpoint.VRF)
-	if _, ok := s.policyByVRFName[vrfName]; !ok {
-		s.policyByVRFName[vrfName] = make(map[RuleID]*SwitchPolicy)
+	vrfNames := []VrfName{
+		VrfName(policy.Policy.Source.Endpoint.VRF),
+		VrfName(policy.Policy.Destination.Endpoint.VRF),
 	}
-	s.policyByVRFName[vrfName][id] = policy
+	seen := make(map[VrfName]struct{}, len(vrfNames))
+	for _, vrfName := range vrfNames {
+		if _, ok := seen[vrfName]; ok {
+			continue
+		}
+		seen[vrfName] = struct{}{}
+
+		if _, ok := s.policyByVRFName[vrfName]; !ok {
+			s.policyByVRFName[vrfName] = make(map[RuleID]*SwitchPolicy)
+		}
+		s.policyByVRFName[vrfName][id] = policy
+	}
 	converted := s.convertRuleToDPUPolicyRule(policy, true)
 	if converted != nil {
 		s.diff.Add(id, converted)

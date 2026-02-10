@@ -36,6 +36,7 @@ type expectedPolicy struct {
 	SourceVrf  int
 	DestIp     string
 	DestVlan   int
+	DestVrf    int
 	Ports      []expectedPorts
 }
 
@@ -62,8 +63,9 @@ func TestRuleToJSON(t *testing.T) {
 					VrfId: 1,
 				},
 				Destination: switchpolicy.DPUSubject{
-					Cidr: "192.168.1.0/24",
-					Vlan: 200,
+					Cidr:  "192.168.1.0/24",
+					Vlan:  200,
+					VrfId: 2,
 					Ports: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
 						{Port: 80, EndPort: 80, Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP},
 					},
@@ -78,6 +80,7 @@ func TestRuleToJSON(t *testing.T) {
 				SourceVrf:  1,
 				DestIp:     "192.168.1.0/24",
 				DestVlan:   200,
+				DestVrf:    2,
 				Ports: []expectedPorts{
 					{
 						PortLow:   80,
@@ -386,8 +389,9 @@ func TestRuleToJSON(t *testing.T) {
 					VrfId: 1,
 				},
 				Destination: switchpolicy.DPUSubject{
-					Cidr: "192.168.1.0/24",
-					Vlan: 200,
+					Cidr:  "192.168.1.0/24",
+					Vlan:  200,
+					VrfId: 2,
 					Ports: &[]switchpolicy.SmartSwitchNetworkProtocolPorts{
 						{Port: 80, EndPort: 80, Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_TCP},
 						{Port: 80, EndPort: 80, Protocol: v1alpha.PolicyProtocol_POLICY_PROTOCOL_UDP},
@@ -405,6 +409,7 @@ func TestRuleToJSON(t *testing.T) {
 				SourceVrf:  1,
 				DestIp:     "192.168.1.0/24",
 				DestVlan:   200,
+				DestVrf:    2,
 				Ports: []expectedPorts{
 					{
 						PortLow:   80,
@@ -439,6 +444,7 @@ func TestRuleToJSON(t *testing.T) {
 			require.Equal(t, tt.expected.SourceVrf, policy.Source.Vrf, "Source VRF mismatch")
 			require.Equal(t, tt.expected.DestIp, policy.Destination.Ip, "Destination IP mismatch")
 			require.Equal(t, tt.expected.DestVlan, policy.Destination.Vlan, "Destination VLAN mismatch")
+			require.Equal(t, tt.expected.DestVrf, policy.Destination.Vrf, "Destination VRF mismatch")
 			require.Equal(t, len(tt.expected.Ports), len(policy.Destination.Ports), "Destination Ports mismatch")
 
 			// Verify ID is not empty and contains port range

@@ -140,7 +140,7 @@ func ruleToJSON(op v1alpha.PolicyOperation, rule *switchpolicy.DPURule) *FwPolic
 			Ip:    rule.Destination.Cidr,
 			Ports: dstPorts,
 			Vlan:  int(rule.Destination.Vlan),
-			Vrf:   0, // Currently destination VRFs are wildcards
+			Vrf:   int(rule.Destination.VrfId),
 		},
 	}
 }

@@ -660,3 +660,36 @@ func TestConvertRuleToDPUPolicyRule(t *testing.T) {
 		})
 	}
 }
+
+func TestInterVRFPolicyAppliedWhenDestinationVRFAddedLater(t *testing.T) {
+	s := NewState()
+
+	// Only source VRF exists at first
+	require.NoError(t, s.SetL3Networks(&L3Networks{byName: map[VrfName]VrfGID{"": 0, "internal": 100}, byGID: map[VrfGID]VrfName{0: "", 100: "internal"}}))
+
+	rule := &SwitchPolicy{
+		UID: UniqueID{PolicyName: "test-policy", RuleName: "rule-1"},
+		Policy: &SmartSwitchNetworkPolicy{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid",
+			K8SIndex:           1,
+			Source:             SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8", VRF: "internal", VLAN: 100}},
+			Destination:        SmartSwitchNetworkDestination{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.0.0/16", VRF: "external", VLAN: 200}, ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{}},
+			Action:             SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+			Default:            SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
+		},
+	}
+
+	// Add policy before destination VRF exists: should not emit any delta
+	require.NoError(t, s.AddRule(1, rule))
+	delta := s.GetDeltaToApply()
+	require.Len(t, delta, 0)
+
+	// Add destination VRF: policy should now be emitted
+	require.NoError(t, s.SetL3Networks(&L3Networks{byName: map[VrfName]VrfGID{"": 0, "internal": 100, "external": 200}, byGID: map[VrfGID]VrfName{0: "", 100: "internal", 200: "external"}}))
+	delta = s.GetDeltaToApply()
+	require.Len(t, delta, 1)
+	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, delta[0].Oper)
+	require.Equal(t, uint32(100), delta[0].Policy.Source.VrfId)
+	require.Equal(t, uint32(200), delta[0].Policy.Destination.VrfId)
+}
