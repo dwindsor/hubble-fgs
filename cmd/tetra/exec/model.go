@@ -356,12 +356,31 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 		}
 		defer c.Close()
 
-		req := &appModelV1.GetModelRequest{}
-		resp, err := c.Client.GetModel(c.Ctx, req)
+		req := &appModelV1.StreamModelRequest{}
+
+		stream, err := c.Client.StreamModel(c.Ctx, req)
 		if err != nil {
 			return nil, err
 		}
-		appModel = resp.Model
+
+		subModels := make([]*appModelV1.ApplicationModelEvent, 0)
+
+		for {
+			resp, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
+			logger.GetLogger().Debug("Received application model event", "event_number", len(subModels)+1, "resp", resp)
+			subModels = append(subModels, resp.Model)
+		}
+
+		appModel, err = model.MergeApplicationModelEvents(subModels)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return appModel, nil
