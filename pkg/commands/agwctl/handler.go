@@ -189,9 +189,26 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 		status := nxos.Nexus.ShowStatus(ctx)
 		dpu := agwAgent.ShowDpu(ctx, ipc.MessageData{})
 		vrf := agwAgent.ShowVrf(ctx)
+		gid := nxos.Nexus.ShowGid(ctx)
+		ha := nxos.Nexus.ShowHa(ctx)
+		mbr := nxos.Nexus.ShowMbr(ctx)
+		adj := nxos.Nexus.ShowAdj(ctx)
+		syslog, err := agwAgent.ShowSyslog(ctx)
+		if err != nil {
+			syslog = "Syslog: " + err.Error()
+		}
+		cfg := agwAgent.ConfigShow(ctx, data)
 		response.ReturnCode = "ok"
-		response.Data = status + "\n" + pol + "\n" +
-			dpu + "\n" + vrf
+		response.Data = "`agwctl show_status`\n" + status + "\n" +
+			"`agwctl policies show`\n" + pol + "\n" +
+			"`agwctl show_dpu`\n" + dpu + "\n" +
+			"`agwctl show_vrf`\n" + vrf + "\n" +
+			"`agwctl show_gid`\n" + gid + "\n" +
+			"`agwctl show_ha`\n" + ha + "\n" +
+			"`agwctl show_mbr`\n" + mbr + "\n" +
+			"`agwctl show_adj`\n" + adj + "\n" +
+			"`agwctl show_syslog`\n" + syslog + "\n" +
+			"`agwctl config show`\n" + cfg + "\n"
 
 	case CMD_TAC_PAC:
 		out, err := exec.Command("tar", "cfz", "/iox_data/logs.tgz", "-C", "/data/volatile", "logs").Output()
