@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/node"
 
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
+	eeOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 const (
@@ -296,6 +298,152 @@ func ProcessModelToApplicationModelWithProcessData(processModel []*types.Process
 		handleProcessEvent(nsMap, key, val)
 	}
 	return namespaceMapToApplicationModel(nsMap, nsFilter), processes
+}
+
+// Given an ApplicationModelEvent, split it into multiple smaller
+// ApplicationModelEvents. The split could eventually be dynamic, but for now:
+// 1. Host processes are split into their own event(s) in chunks of 100
+//    (configurable) process groups.
+// 2. Each workload is split into its own event.
+
+func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*appModelV1.ApplicationModelEvent {
+	hostProcessesPerEvent := eeOption.Config.ApplicationModelSplitMaxHostProcs
+	var result []*appModelV1.ApplicationModelEvent
+
+	// Split host processes into chunks of hostProcessesPerEvent
+	if appModel.ApplicationModel.GetHost() != nil {
+		hostProcesses := appModel.ApplicationModel.Host.GetProcesses()
+		for i := 0; i < len(hostProcesses); i += hostProcessesPerEvent {
+			end := i + hostProcessesPerEvent
+			if end > len(hostProcesses) {
+				end = len(hostProcesses)
+			}
+			hostModel := &appModelV1.ApplicationModelEvent{
+				ApplicationModel: &appModelV1.ApplicationModel{
+					Id: appModel.ApplicationModel.Id,
+					Host: &appModelV1.ApplicationHost{
+						Processes: hostProcesses[i:end],
+					},
+				},
+				NodeName:    appModel.NodeName,
+				ClusterName: appModel.ClusterName,
+				Time:        appModel.Time,
+			}
+			result = append(result, hostModel)
+		}
+	}
+
+	for _, ns := range appModel.ApplicationModel.GetNamespaces() {
+		for _, wl := range ns.GetWorkloads() {
+			wlModel := &appModelV1.ApplicationModelEvent{
+				ApplicationModel: &appModelV1.ApplicationModel{
+					Id: appModel.ApplicationModel.Id,
+					Namespaces: []*appModelV1.ApplicationNamespace{
+						{
+							Name: ns.GetName(),
+							Workloads: []*appModelV1.ApplicationWorkload{
+								{
+									Name:       wl.GetName(),
+									Kind:       wl.GetKind(),
+									Containers: wl.GetContainers(),
+								},
+							},
+						},
+					},
+				},
+				NodeName:    appModel.NodeName,
+				ClusterName: appModel.ClusterName,
+				Time:        appModel.Time,
+			}
+			result = append(result, wlModel)
+		}
+	}
+
+	// It could be possible, although unlikely, that the original ApplicationModelEvent
+	// had no host processes and no workloads, resulting in an empty result.
+	// In that case, return a copy of the original event.
+	if len(result) == 0 {
+		return []*appModelV1.ApplicationModelEvent{
+			&appModelV1.ApplicationModelEvent{
+				ClusterName: appModel.ClusterName,
+				NodeName:    appModel.NodeName,
+				Time:        appModel.Time,
+				ApplicationModel: &appModelV1.ApplicationModel{
+					Id:         appModel.ApplicationModel.Id,
+					Namespaces: []*appModelV1.ApplicationNamespace{},
+					Host:       &appModelV1.ApplicationHost{Processes: []*appModelV1.ApplicationProcessGroup{}},
+				},
+			},
+		}
+	}
+	return result
+}
+
+// Given a list of ApplicationModelEvents that represent the same application
+// model, merge them into a single ApplicationModelEvent. This is essentially
+// the inverse of SplitApplicationModelEvent.
+func MergeApplicationModelEvents(models []*appModelV1.ApplicationModelEvent) (*appModelV1.ApplicationModelEvent, error) {
+	var appModelId string
+
+	if len(models) == 0 {
+		return nil, fmt.Errorf("models must be non-empty")
+	}
+
+	// Set appModelId to the first id. All the remaining ids must be non-empty and the same.
+	for _, m := range models {
+		if m.ApplicationModel == nil {
+			return nil, fmt.Errorf("nil ApplicationModel")
+		} else if m.ApplicationModel.Id == "" {
+			return nil, fmt.Errorf("empty ApplicationModel.Id")
+		} else if appModelId == "" {
+			appModelId = m.ApplicationModel.Id
+		} else if m.ApplicationModel.Id != appModelId {
+			return nil, fmt.Errorf("mismatched ApplicationModel ids")
+		}
+	}
+
+	result := &appModelV1.ApplicationModelEvent{
+		ApplicationModel: &appModelV1.ApplicationModel{
+			Id: appModelId,
+		},
+		NodeName:    models[0].NodeName,
+		ClusterName: models[0].ClusterName,
+		Time:        models[0].Time,
+	}
+	nsMap := make(map[string]*appModelV1.ApplicationNamespace)
+	for _, m := range models {
+		for _, ns := range m.ApplicationModel.GetNamespaces() {
+			if existing, ok := nsMap[ns.GetName()]; ok {
+				existing.Workloads = append(existing.Workloads, ns.GetWorkloads()...)
+			} else {
+				nsMap[ns.GetName()] = &appModelV1.ApplicationNamespace{
+					Name:      ns.GetName(),
+					Workloads: ns.GetWorkloads(),
+				}
+			}
+		}
+		if m.ApplicationModel.Host != nil {
+			if result.ApplicationModel.Host == nil {
+				result.ApplicationModel.Host = &appModelV1.ApplicationHost{
+					Processes: m.ApplicationModel.Host.Processes,
+				}
+			} else {
+				result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, m.ApplicationModel.Host.Processes...)
+			}
+		}
+	}
+
+	// For consistency, sort namespaces in result
+	nsNames := make([]string, 0, len(nsMap))
+	for name := range nsMap {
+		nsNames = append(nsNames, name)
+	}
+	sort.Strings(nsNames)
+
+	for _, nsName := range nsNames {
+		result.ApplicationModel.Namespaces = append(result.ApplicationModel.Namespaces, nsMap[nsName])
+	}
+	return result, nil
 }
 
 // TelemetryMap maps process keys (name + args) to their aggregated telemetry info.
