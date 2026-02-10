@@ -673,8 +673,8 @@ func TestInterVRFPolicyAppliedWhenDestinationVRFAddedLater(t *testing.T) {
 			K8SResourceVersion: "1",
 			K8SUid:             "uid",
 			K8SIndex:           1,
-			Source:             SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8", VRF: "internal", VLAN: 100}},
-			Destination:        SmartSwitchNetworkDestination{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.0.0/16", VRF: "external", VLAN: 200}, ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{}},
+			Source:             SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8", VRF: "internal", VLAN: 0}},
+			Destination:        SmartSwitchNetworkDestination{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.0.0/16", VRF: "external", VLAN: 0}, ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{}},
 			Action:             SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
 			Default:            SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
 		},
@@ -692,4 +692,77 @@ func TestInterVRFPolicyAppliedWhenDestinationVRFAddedLater(t *testing.T) {
 	require.Equal(t, v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT, delta[0].Oper)
 	require.Equal(t, uint32(100), delta[0].Policy.Source.VrfId)
 	require.Equal(t, uint32(200), delta[0].Policy.Destination.VrfId)
+}
+
+func TestAddRule_DuplicateVRFDoesNotRecreatePolicyByVRFNameEntry(t *testing.T) {
+	s := NewState()
+
+	vrfName := VrfName("internal")
+	existing := make(map[RuleID]*SwitchPolicy)
+	existing[RuleID(99)] = nil
+	s.policyByVRFName[vrfName] = existing
+
+	rule := &SwitchPolicy{
+		UID: UniqueID{PolicyName: "test-policy", RuleName: "rule-1"},
+		Policy: &SmartSwitchNetworkPolicy{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid",
+			K8SIndex:           1,
+			Source:             SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8", VRF: string(vrfName), VLAN: 100}},
+			Destination:        SmartSwitchNetworkDestination{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.0.0/16", VRF: string(vrfName), VLAN: 200}, ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{}},
+			Action:             SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+			Default:            SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
+		},
+	}
+
+	require.NoError(t, s.AddRule(1, rule))
+	require.Len(t, s.policyByVRFName, 1)
+	require.Contains(t, s.policyByVRFName[vrfName], RuleID(99))
+	require.Contains(t, s.policyByVRFName[vrfName], RuleID(1))
+}
+
+func TestRemoveRuleByID_RemovingFromSourceDoesNotBreakDestinationCleanup(t *testing.T) {
+	s := NewState()
+
+	rule1 := &SwitchPolicy{
+		UID: UniqueID{PolicyName: "test-policy", RuleName: "rule-1"},
+		Policy: &SmartSwitchNetworkPolicy{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-1",
+			K8SIndex:           1,
+			Source:             SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8", VRF: "src", VLAN: 100}},
+			Destination:        SmartSwitchNetworkDestination{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "192.168.0.0/16", VRF: "dst", VLAN: 200}, ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{}},
+			Action:             SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+			Default:            SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
+		},
+	}
+
+	rule2 := &SwitchPolicy{
+		UID: UniqueID{PolicyName: "test-policy", RuleName: "rule-2"},
+		Policy: &SmartSwitchNetworkPolicy{
+			K8SResourceVersion: "1",
+			K8SUid:             "uid-2",
+			K8SIndex:           2,
+			Source:             SmartSwitchNetworkSource{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "10.0.0.0/8", VRF: "src", VLAN: 100}},
+			Destination:        SmartSwitchNetworkDestination{Endpoint: SmartSwitchNetworkEndpoint{CIDR: "172.16.0.0/12", VRF: "other", VLAN: 300}, ProtoPorts: &[]SmartSwitchNetworkProtocolPorts{}},
+			Action:             SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Allow: true}},
+			Default:            SmartSwitchNetworkAction{EnforceAction: SmartSwitchEnforceAction{Deny: true}},
+		},
+	}
+
+	require.NoError(t, s.AddRule(1, rule1))
+	require.NoError(t, s.AddRule(2, rule2))
+
+	require.Contains(t, s.policyByVRFName, VrfName("src"))
+	require.Contains(t, s.policyByVRFName, VrfName("dst"))
+	require.Contains(t, s.policyByVRFName, VrfName("other"))
+
+	require.NoError(t, s.RemoveRuleByID(1))
+
+	require.Contains(t, s.policyByVRFName, VrfName("src"))
+	require.Contains(t, s.policyByVRFName, VrfName("other"))
+	require.NotContains(t, s.policyByVRFName, VrfName("dst"))
+
+	require.NotContains(t, s.policyByVRFName[VrfName("src")], RuleID(1))
+	require.Contains(t, s.policyByVRFName[VrfName("src")], RuleID(2))
 }
