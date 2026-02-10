@@ -878,20 +878,62 @@ func (s *Server) GetProcessModel(_ context.Context, ns []string, debug bool) ([]
 	return GetProcessModel(ns, debug)
 }
 
-func (s *Server) GetModel(ctx context.Context, req *appModelV1.GetModelRequest) (*appModelV1.GetModelResponse, error) {
+func (s *Server) GetApplicationModel(ctx context.Context, nsFilter map[string]bool) (*appModelV1.ApplicationModelEvent, error) {
 	res, err := s.GetProcessModel(ctx, []string{}, false)
 	if err != nil {
 		logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
 		return nil, err
 	}
+
+	model := model.ProcessModelToApplicationModel(res, nsFilter)
+
+	return model, nil
+}
+
+func (s *Server) GetModel(ctx context.Context, req *appModelV1.GetModelRequest) (*appModelV1.GetModelResponse, error) {
 	nsFilter := make(map[string]bool, 0)
 	for _, f := range req.Namespaces {
 		nsFilter[f] = true
 	}
-	model := model.ProcessModelToApplicationModel(res, nsFilter)
+
+	model, err := s.GetApplicationModel(ctx, nsFilter)
+	if err != nil {
+		return nil, err
+	}
+
 	return &appModelV1.GetModelResponse{
 		Model: model,
 	}, nil
+}
+
+func (s *Server) StreamModel(req *appModelV1.StreamModelRequest, stream appModelV1.ApplicationModelService_StreamModelServer) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	nsFilter := make(map[string]bool, 0)
+	for _, f := range req.Namespaces {
+		nsFilter[f] = true
+	}
+
+	appModel, err := s.GetApplicationModel(ctx, nsFilter)
+	if err != nil {
+		return err
+	}
+
+	models := model.SplitApplicationModelEvent(appModel)
+
+	for _, m := range models {
+		resp := &appModelV1.StreamModelResponse{
+			Model: m,
+		}
+
+		if err := stream.Send(resp); err != nil {
+			logger.GetLogger().Error("Failed to send application model event", logfields.Error, err)
+			return err
+		}
+	}
+	return nil
+
 }
 
 func (s *Server) StreamTelemetry(req *appModelV1.StreamTelemetryRequest, stream appModelV1.ApplicationModelService_StreamTelemetryServer) error {
