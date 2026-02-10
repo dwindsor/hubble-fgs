@@ -19,6 +19,10 @@ options:
     - name: application-model-export-interval
       default_value: 0s
       usage: Interval at which to export application model as JSON.
+    - name: application-model-split-max-host-processes
+      default_value: "100"
+      usage: |
+        Maximum number of host processes per application model telemetry event
     - name: bpf-dir
       default_value: tetragon
       usage: Set tetragon bpf directory (default 'tetragon')

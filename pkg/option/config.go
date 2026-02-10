@@ -26,11 +26,12 @@ type config struct {
 	// server.
 	// - "": Unspecified. Tetragon will not attempt to retrieve any environment
 	//   specific information.
-	Environment                    string
-	EnableApplicationModel         bool
-	EnableSyscallTracking          bool
-	ApplicationModelExportInterval time.Duration
-	ApplicationModelExportFilename string
+	Environment                       string
+	EnableApplicationModel            bool
+	EnableSyscallTracking             bool
+	ApplicationModelExportInterval    time.Duration
+	ApplicationModelExportFilename    string
+	ApplicationModelSplitMaxHostProcs int
 
 	TelemetryExportFilename string
 	ConnectionLogFileName   string
@@ -130,29 +131,30 @@ type config struct {
 var (
 	// Config contains all the configuration used by Tetragon.
 	Config = config{
-		EnableApplicationModel:         false,
-		EnableSyscallTracking:          false,
-		ApplicationModelExportInterval: 0,
-		DnsCacheSize:                   1024,
-		ProcessTreeCacheSize:           65000,
-		BpfEndpointCacheSize:           65000,
-		EndpointCacheSize:              65000,
-		TlsCacheSize:                   1024,
-		TcpCacheSize:                   32768,
-		NetNsCacheSize:                 256,
-		FimFifoPath:                    "/var/run/cilium/hubble",
-		FimRuntimeEndpoint:             "",
-		FimMaxFileSizeDigest:           1 * 1024 * 1024 * 1024, // 1GB
-		FimMaxTimeoutDigestSec:         30,
-		EnableDnsDebug:                 false,
-		EnableIcmpTracking:             false,
-		EnableCilium:                   false,
-		ProcessCacheStaleInterval:      time.Duration(60 * time.Minute),
-		EnableFimDispatcher:            false,
-		BPFDNSParserMaxPendingRequests: 1024,
-		EnableAlertProfiling:           false,
-		EnableNetworkEvents:            true,
-		UDPInKernelManaged:             false,
+		EnableApplicationModel:            false,
+		EnableSyscallTracking:             false,
+		ApplicationModelExportInterval:    0,
+		DnsCacheSize:                      1024,
+		ProcessTreeCacheSize:              65000,
+		BpfEndpointCacheSize:              65000,
+		EndpointCacheSize:                 65000,
+		TlsCacheSize:                      1024,
+		TcpCacheSize:                      32768,
+		NetNsCacheSize:                    256,
+		FimFifoPath:                       "/var/run/cilium/hubble",
+		FimRuntimeEndpoint:                "",
+		FimMaxFileSizeDigest:              1 * 1024 * 1024 * 1024, // 1GB
+		FimMaxTimeoutDigestSec:            30,
+		EnableDnsDebug:                    false,
+		EnableIcmpTracking:                false,
+		EnableCilium:                      false,
+		ProcessCacheStaleInterval:         time.Duration(60 * time.Minute),
+		EnableFimDispatcher:               false,
+		BPFDNSParserMaxPendingRequests:    1024,
+		EnableAlertProfiling:              false,
+		EnableNetworkEvents:               true,
+		UDPInKernelManaged:                false,
+		ApplicationModelSplitMaxHostProcs: 100,
 	}
 )
 
