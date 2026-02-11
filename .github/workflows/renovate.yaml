@@ -17,7 +17,7 @@ on:
 
 jobs:
   renovate:
-    runs-on: ubuntu-latest-4-core
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
