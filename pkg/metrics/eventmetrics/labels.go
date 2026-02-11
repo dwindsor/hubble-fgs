@@ -11,6 +11,7 @@
 package eventmetrics
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -102,13 +103,21 @@ func createSocketLabels(labelFilter metrics.LabelFilter, res *tetragon.ProcessSo
 func createMulticastSocketLabels(res *tetragon.ProcessSockStats) *socketmetrics.MulticastSocketLabels {
 	processLabels := createProcessLabels(udpconfig.CurrentLabels, res.Process)
 	socketLabels := getSocketInfo(processLabels, res.Socket)
-	var ip string
+	var srcMcast string
 	if res.Socket != nil {
-		ip = res.Socket.SourceIp
+		srcMcast = res.Socket.SourceIp
+	}
+	// If we have a connection ID, add it to the source IP address.
+	// Note, if the socket is nil, the string will simply be "#<conn_id>",
+	// with the "#" indicating that there is a missing IP address. We use
+	// "#" as ":" could be mistaken for a port separator and "/" a netmask
+	// separator.
+	if res.ConnectionId != 0 {
+		srcMcast += fmt.Sprintf("#%d", res.ConnectionId)
 	}
 	mcastLabels := socketmetrics.NewMulticastSocketLabels(
 		socketLabels.Namespace, socketLabels.Workload, socketLabels.Pod, socketLabels.Binary,
-		ip,
+		srcMcast,
 		socketLabels.DstNs, socketLabels.DstWorkload, socketLabels.DstPod,
 		socketLabels.DstIp,
 	)
