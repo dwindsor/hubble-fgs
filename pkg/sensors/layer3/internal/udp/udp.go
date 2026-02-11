@@ -391,11 +391,12 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 			pseudoSockets[pseudoKey] = make(map[udpPseudoSocket]bool)
 		}
 		pseudoSockets[pseudoKey][udpPseudoSocket{SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr,
-			DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6, PsVersion: m.PsVersion}] = true
+			DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6, PsVersion: m.PsVersion, ConnID: m.Tuple.ConnId}] = true
 		pseudoSocketsUpdate.Unlock()
 		// If there is an existing cache entry for this pseudo-socket then it must be stale, so remove it.
 		udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: networkapi.MsgIPTuple{
-			SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6, Proto: syscall.IPPROTO_UDP},
+			SAddr: m.Tuple.SAddr, SPort: m.Tuple.SPort, DAddr: m.Tuple.DAddr, DPort: m.Tuple.DPort, IPv6: m.Tuple.IPv6, Proto: syscall.IPPROTO_UDP,
+			ConnId: m.Tuple.ConnId},
 			PsVersion: m.PsVersion,
 		}
 		stats.Remove(udpStatsKey)
@@ -440,10 +441,10 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 		for psock := range pseudoSocketList {
 			// Send stats event
 			udpKey := networkapi.UdpInfoKey{Cookie: m.SockCookie, Version: m.Version, Tuple: networkapi.MsgIPTuple{
-				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: syscall.IPPROTO_UDP,
+				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: syscall.IPPROTO_UDP, ConnId: psock.ConnID,
 			}}
 			udpStatsKey := udpStatsKey{Cookie: m.SockCookie, Version: m.Version, Tuple: networkapi.MsgIPTuple{
-				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: syscall.IPPROTO_UDP},
+				SAddr: psock.SAddr, SPort: psock.SPort, DAddr: psock.DAddr, DPort: psock.DPort, IPv6: psock.IPv6, Proto: syscall.IPPROTO_UDP, ConnId: psock.ConnID},
 				PsVersion: psock.PsVersion}
 			var udpValue networkapi.UdpInfoValue
 			err := udpMap.Lookup(udpKey, &udpValue)

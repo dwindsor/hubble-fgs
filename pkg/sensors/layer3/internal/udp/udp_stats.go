@@ -49,6 +49,7 @@ type udpPseudoSocket struct {
 	DPort     uint16
 	IPv6      uint8
 	PsVersion uint64
+	ConnID    uint64
 }
 
 type cookieVer struct {
@@ -89,12 +90,13 @@ func createUdpStatsEvent(k *api.UdpInfoKey, v *api.UdpInfoValue, duration time.D
 		Ktime: v.Ktime,
 	}
 	unix.Msg.Tuple = api.MsgIPTuple{
-		IPv6:  k.Tuple.IPv6,
-		SAddr: k.Tuple.SAddr,
-		DAddr: k.Tuple.DAddr,
-		SPort: k.Tuple.SPort,
-		DPort: k.Tuple.DPort,
-		Proto: 0,
+		IPv6:   k.Tuple.IPv6,
+		SAddr:  k.Tuple.SAddr,
+		DAddr:  k.Tuple.DAddr,
+		SPort:  k.Tuple.SPort,
+		DPort:  k.Tuple.DPort,
+		Proto:  0,
+		ConnId: k.Tuple.ConnId,
 	}
 	unix.Msg.SockCookie = k.Cookie
 	unix.Msg.Return = 0
@@ -358,7 +360,7 @@ func udpGcCb(m *ebpf.Map, udpKey *api.UdpInfoKey, udpValue *api.UdpInfoValue) {
 			pseudoKey := cookieVer{Cookie: udpKey.Cookie, Version: udpKey.Version}
 			if pseudoSockets[pseudoKey] != nil {
 				delete(pseudoSockets[pseudoKey], udpPseudoSocket{SAddr: udpKey.Tuple.SAddr, SPort: udpKey.Tuple.SPort,
-					DAddr: udpKey.Tuple.DAddr, DPort: udpKey.Tuple.DPort, IPv6: udpKey.Tuple.IPv6, PsVersion: udpValue.PsVersion})
+					DAddr: udpKey.Tuple.DAddr, DPort: udpKey.Tuple.DPort, IPv6: udpKey.Tuple.IPv6, PsVersion: udpValue.PsVersion, ConnID: udpKey.Tuple.ConnId})
 				if len(pseudoSockets[pseudoKey]) == 0 {
 					delete(pseudoSockets, pseudoKey)
 				}
@@ -416,7 +418,7 @@ func removeStaleEntries(m *ebpf.Map) {
 	for k, tuplemap := range pseudoSockets {
 		for v := range tuplemap {
 			bpfKey := api.UdpInfoKey{Cookie: k.Cookie, Version: k.Version, Tuple: api.MsgIPTuple{
-				SAddr: v.SAddr, SPort: v.SPort, DAddr: v.DAddr, DPort: v.DPort, IPv6: v.IPv6, Proto: syscall.IPPROTO_UDP,
+				SAddr: v.SAddr, SPort: v.SPort, DAddr: v.DAddr, DPort: v.DPort, IPv6: v.IPv6, Proto: syscall.IPPROTO_UDP, ConnId: v.ConnID,
 			}}
 			var bpfValue api.UdpInfoValue
 			err := m.Lookup(bpfKey, &bpfValue)
