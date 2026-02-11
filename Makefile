@@ -740,5 +740,110 @@ help:  ## Display this help, based on https://www.thapaliya.com/en/writings/well
 version: ## Print Tetragon version.
 	@echo $(VERSION)
 
+.PHONY: hs-version
+hs-version: ## Compute version/date/sha for build-images workflows; writes to $GITHUB_OUTPUT when set.
+	@bash -euo pipefail -c ' \
+		VERSION=$$($(MAKE) -s --no-print-directory version); \
+		echo "Version from make: $$VERSION"; \
+		if [[ -z "$$VERSION" || "$$VERSION" =~ ^[a-f0-9]{7,}$$ ]]; then \
+			echo "WARNING: Version appears to be empty or a SHA. Using tag from git describe instead."; \
+			VERSION=$$(git describe --tags --abbrev=0 --exclude "api/*" --exclude "*-codedrop" 2>/dev/null || echo "v0.0.0"); \
+			echo "Updated version to: $$VERSION"; \
+		fi; \
+		if [[ "$$VERSION" == api/* ]]; then \
+			VERSION="$${VERSION#api/}"; \
+			echo "Stripped api/ prefix, updated version: $$VERSION"; \
+		fi; \
+		VERSION=$$(echo "$$VERSION" | sed -E "s/-g[0-9a-f]+$$//"); \
+		DATE=$$(date -u +"%Y%m%d%H%M"); \
+		SHA=$$(git rev-parse --short HEAD); \
+		GITHUB_OUTPUT_FILE="$${GITHUB_OUTPUT:-}"; \
+		if [[ -n "$$GITHUB_OUTPUT_FILE" ]]; then \
+			echo "version=$$VERSION" >> "$$GITHUB_OUTPUT_FILE"; \
+			echo "date=$$DATE" >> "$$GITHUB_OUTPUT_FILE"; \
+			echo "sha=$$SHA" >> "$$GITHUB_OUTPUT_FILE"; \
+		else \
+			echo "version=$$VERSION"; \
+			echo "date=$$DATE"; \
+			echo "sha=$$SHA"; \
+		fi'
+
+.PHONY: agw-version
+agw-version: hs-version ## Alias of hs-version for AGW build-images workflow.
+
+.PHONY: fwa-version
+fwa-version: hs-version ## Alias of hs-version for FWA build-images workflow.
+
+.PHONY: validate-release-metadata
+validate-release-metadata: ## Validate REL_VERSION, REL_DATE, REL_SHA inputs used by build-images workflows.
+	@bash -euo pipefail -c ' \
+		VERSION="$${REL_VERSION:-}"; \
+		DATE="$${REL_DATE:-}"; \
+		SHA="$${REL_SHA:-}"; \
+		echo "=== Release Metadata Validation ==="; \
+		echo "Version: $$VERSION"; \
+		echo "Date: $$DATE"; \
+		echo "SHA: $$SHA"; \
+		echo "==================================="; \
+		ERRORS=0; \
+		if [[ -z "$$VERSION" ]]; then \
+			echo "::error::VERSION is empty - release metadata validation failed"; \
+			ERRORS=$$((ERRORS + 1)); \
+		fi; \
+		if [[ -z "$$DATE" ]]; then \
+			echo "::error::DATE is empty - release metadata validation failed"; \
+			ERRORS=$$((ERRORS + 1)); \
+		fi; \
+		if [[ -z "$$SHA" ]]; then \
+			echo "::error::SHA is empty - release metadata validation failed"; \
+			ERRORS=$$((ERRORS + 1)); \
+		fi; \
+		if [[ -n "$$SHA" && ! "$$SHA" =~ ^[a-f0-9]{7,}$$ ]]; then \
+			echo "::error::SHA format invalid (expected 7+ hex chars): $$SHA"; \
+			ERRORS=$$((ERRORS + 1)); \
+		fi; \
+		if [[ -n "$$DATE" && ! "$$DATE" =~ ^[0-9]{12}$$ ]]; then \
+			echo "::error::DATE format invalid (expected YYYYMMDDHHMM): $$DATE"; \
+			ERRORS=$$((ERRORS + 1)); \
+		fi; \
+		if [[ $$ERRORS -gt 0 ]]; then \
+			echo "::error::Release metadata validation failed with $$ERRORS error(s)"; \
+			exit 1; \
+		fi; \
+		echo "✓ All release metadata validated successfully"'
+
+.PHONY: release-artifacts-verify-checksums
+release-artifacts-verify-checksums: ## Verify checksums in REL_DIR using REL_SUMS_FILE (default: SHA256SUMS.txt).
+	@bash -euo pipefail -c ' \
+		REL_DIR="$${REL_DIR:-./release-artifacts}"; \
+		REL_SUMS_FILE="$${REL_SUMS_FILE:-SHA256SUMS.txt}"; \
+		cd "$$REL_DIR"; \
+		echo "=== Verifying SHA256 checksums ==="; \
+		if ! sha256sum -c "$$REL_SUMS_FILE"; then \
+			echo "::error::Checksum verification failed"; \
+			exit 1; \
+		fi; \
+		echo "✓ All checksums verified successfully"'
+
+.PHONY: release-artifacts-validate-files
+release-artifacts-validate-files: ## Ensure required files exist in REL_DIR (REL_REQUIRED_FILES is newline-separated).
+	@bash -euo pipefail -c ' \
+		REL_DIR="$${REL_DIR:-./release-artifacts}"; \
+		REL_REQUIRED_FILES="$${REL_REQUIRED_FILES:-}"; \
+		ERRORS=0; \
+		while IFS= read -r file; do \
+			if [[ -z "$$file" ]]; then \
+				continue; \
+			fi; \
+			if [[ ! -f "$$REL_DIR/$$file" ]]; then \
+				echo "::error::Required artifact missing: $$file"; \
+				ERRORS=$$((ERRORS + 1)); \
+			fi; \
+		done <<< "$$REL_REQUIRED_FILES"; \
+		if [[ $$ERRORS -gt 0 ]]; then \
+			exit 1; \
+		fi; \
+		echo "✓ All required artifacts present"'
+
 chart-version: ## Print Tetragon OCI Helm chart version.
 	@echo $(VERSION) | sed 's/^v\(.*\)/\1/'

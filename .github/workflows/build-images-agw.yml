@@ -35,78 +35,21 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
-          submodules: true
+          sparse-checkout: |
+            Makefile
+            Makefile.defs
+          sparse-checkout-cone-mode: false
           fetch-tags: true
           fetch-depth: 0
       - name: Get version and set outputs
         id: get-version
-        run: |
-          VERSION=$(make version)
-          echo "Version from make: $VERSION"
-          
-          # Check if VERSION is empty or matches a SHA pattern
-          if [[ -z "$VERSION" || "$VERSION" =~ ^[a-f0-9]{7,}$ ]]; then
-            echo "WARNING: Version appears to be empty or a SHA. Using tag from git describe instead."
-            VERSION=$(git describe --tags --abbrev=0 --exclude 'api/*' --exclude '*-codedrop' 2>/dev/null || echo "v0.0.0")
-            echo "Updated version to: $VERSION"
-          fi
-          
-          # Remove api/ prefix if present (fallback safety)
-          if [[ "$VERSION" =~ ^api/(.*)$ ]]; then
-            VERSION="${BASH_REMATCH[1]}"
-            echo "Stripped api/ prefix, updated version: $VERSION"
-          fi
-          
-          # Remove the -g<SHA> part if present
-          if [[ "$VERSION" =~ (.*)-g[a-f0-9]+ ]]; then
-            VERSION="${BASH_REMATCH[1]}"
-            echo "Trimmed git SHA suffix, updated version: $VERSION"
-          fi
-          
-          DATE=$(date -u +"%Y%m%d%H%M")
-          SHA=$(git rev-parse --short HEAD)
-          
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "date=$DATE" >> $GITHUB_OUTPUT
-          echo "sha=$SHA" >> $GITHUB_OUTPUT
+        run: make agw-version
       - name: Validate release metadata
-        run: |
-          VERSION="${{ steps.get-version.outputs.version }}"
-          DATE="${{ steps.get-version.outputs.date }}"
-          SHA="${{ steps.get-version.outputs.sha }}"
-          
-          echo "=== Release Metadata Validation ==="
-          echo "Version: $VERSION"
-          echo "Date: $DATE"
-          echo "SHA: $SHA"
-          echo "==================================="
-          
-          ERRORS=0
-          if [[ -z "$VERSION" ]]; then
-            echo "::error::VERSION is empty - release metadata validation failed"
-            ERRORS=$((ERRORS + 1))
-          fi
-          if [[ -z "$DATE" ]]; then
-            echo "::error::DATE is empty - release metadata validation failed"
-            ERRORS=$((ERRORS + 1))
-          fi
-          if [[ -z "$SHA" ]]; then
-            echo "::error::SHA is empty - release metadata validation failed"
-            ERRORS=$((ERRORS + 1))
-          fi
-          if [[ ! "$SHA" =~ ^[a-f0-9]{7,}$ ]]; then
-            echo "::error::SHA format invalid (expected 7+ hex chars): $SHA"
-            ERRORS=$((ERRORS + 1))
-          fi
-          if [[ ! "$DATE" =~ ^[0-9]{12}$ ]]; then
-            echo "::error::DATE format invalid (expected YYYYMMDDHHMM): $DATE"
-            ERRORS=$((ERRORS + 1))
-          fi
-          if [[ $ERRORS -gt 0 ]]; then
-            echo "::error::Release metadata validation failed with $ERRORS error(s)"
-            exit 1
-          fi
-          echo "✓ All release metadata validated successfully"
+        run: make validate-release-metadata
+        env:
+          REL_VERSION: ${{ steps.get-version.outputs.version }}
+          REL_DATE: ${{ steps.get-version.outputs.date }}
+          REL_SHA: ${{ steps.get-version.outputs.sha }}
     outputs:
       version: ${{ steps.get-version.outputs.version }}
       date: ${{ steps.get-version.outputs.date }}
@@ -367,6 +310,13 @@ jobs:
     outputs:
       artifact_dir: ${{ steps.prepare-artifacts.outputs.artifact_dir }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          sparse-checkout: |
+            Makefile
+            Makefile.defs
+          sparse-checkout-cone-mode: false
       - name: Download AGW Docker image artifact
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
@@ -438,14 +388,9 @@ jobs:
           echo "Created metadata.json:"
           cat ./release-artifacts/metadata.json
       - name: Verify artifact checksums
-        run: |
-          cd ./release-artifacts
-          echo "=== Verifying SHA256 checksums ==="
-          if ! sha256sum -c SHA256SUMS.txt; then
-            echo "::error::Checksum verification failed"
-            exit 1
-          fi
-          echo "✓ All checksums verified successfully"
+        run: make release-artifacts-verify-checksums
+        env:
+          REL_DIR: ./release-artifacts
       - name: Upload prepared artifacts for release job
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
@@ -527,6 +472,13 @@ jobs:
       TARGET_ORG: isovalent
       TARGET_REPO: hubble-agw-releases
     steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          sparse-checkout: |
+            Makefile
+            Makefile.defs
+          sparse-checkout-cone-mode: false
       - name: Generate GitHub App Token
         id: app-token
         uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
@@ -562,28 +514,20 @@ jobs:
             echo "::warning::metadata.json not found in release artifacts"
           fi
           echo ""
-          # Validate required files exist
-          REQUIRED_FILES=(
-            "SHA256SUMS.txt"
-            "metadata.json"
-          )
-          for file in "${REQUIRED_FILES[@]}"; do
-            if [[ ! -f "./release-artifacts/$file" ]]; then
-              echo "::error::Required artifact missing: $file"
-              exit 1
-            fi
-          done
-          echo "✓ All required artifacts present"
+          make release-artifacts-validate-files
           echo "==================================="
+        env:
+          REL_DIR: ./release-artifacts
+          REL_REQUIRED_FILES: |
+            agw.tar.gz
+            agw-binaries-${{ needs.init.outputs.version }}.tar.gz
+            SHA256SUMS.txt
+            metadata.json
       - name: Verify artifact integrity
-        run: |
-          cd ./release-artifacts
-          echo "Verifying SHA256 checksums..."
-          if ! sha256sum -c SHA256SUMS.txt; then
-            echo "::error::Checksum verification failed - artifacts may be corrupted"
-            exit 1
-          fi
-          echo "✓ All artifact checksums verified"
+        run: make release-artifacts-verify-checksums
+        env:
+          REL_DIR: ./release-artifacts
+          REL_SUMS_FILE: SHA256SUMS.txt
       - name: Create release notes
         run: |
           cd ./hubble-agw-releases-repo
