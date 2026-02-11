@@ -71,7 +71,7 @@ static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
  */
 static inline __attribute__((always_inline)) struct udp_info_value *
 __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
-	   s64 latency, struct udphdr *udp, int payload_sz,
+	   s64 latency, struct udphdr *udp, int payload_off, int payload_sz,
 	   struct latency_protocol_config *latency_config, u64 send,
 	   struct socketmap_value *process)
 {
@@ -87,6 +87,13 @@ __udp_send(struct __sk_buff *skb, u64 *cookie, struct iphdr *ip, bool ipv6,
 	if (!key)
 		return 0;
 	udp_key(key, &dns_combined, cookie, cookie_ver, ip, ipv6, udp, send);
+#ifndef IS_KPROBE
+	// If this is a multicast packet, and we're observing multicast, and it
+	// matches the ports we're observing, then extract the connection ID and
+	// add it to the key to make the key unique between multiplexed multicast
+	// traffic.
+	key->tuple.conn_id = udp_mcast_get_conn_id(skb, ip, ipv6, cookie, payload_off, payload_sz, process, key);
+#endif
 
 	value = (struct udp_info_value *)map_lookup_elem(&tg_l3_udpsk, key);
 
@@ -191,7 +198,7 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		return 1;
 	}
 
-	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_sz, udp_latency, send, process);
+	value = __udp_send(skb, cookie, ip, ipv6, latency, udp, payload_off, payload_sz, udp_latency, send, process);
 	if (!value)
 		return 1;
 

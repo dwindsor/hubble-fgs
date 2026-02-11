@@ -85,7 +85,7 @@ build_udp_payload_event(struct udp_info_key *k, struct udp_info_value *v, u64 co
 	val->event.tuple.daddr[0] = k->tuple.daddr[0];
 	val->event.tuple.daddr[1] = k->tuple.daddr[1];
 	val->event.tuple.dport = k->tuple.dport;
-	val->event.tuple.conn_id = 0;
+	val->event.tuple.conn_id = k->tuple.conn_id;
 	val->event.create_time = v->create_time;
 	val->event.close_time = 0;
 	// WRITE_ONCE to tell compiler to use single store instead
