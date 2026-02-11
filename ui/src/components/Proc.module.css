@@ -33,7 +33,9 @@
 
 .proc:hover,
 .proc:global(.ipt-highlighted) {
-  text-shadow: -0.25px 0px 0 currentColor, 0.25px 0px 0 currentColor;
+  text-shadow:
+    -0.25px 0px 0 currentColor,
+    0.25px 0px 0 currentColor;
   transition: text-shadow ease-in 1s;
 }
 

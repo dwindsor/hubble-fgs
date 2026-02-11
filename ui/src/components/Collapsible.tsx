@@ -5,10 +5,7 @@ import { type TreePath, calcTreePathHash } from "~/utils/tree";
 export interface Props {
   path: TreePath;
   initialOpen?: boolean;
-  summary: (arg: {
-    opened: boolean;
-    onClick: (event: React.MouseEvent) => void;
-  }) => ReactNode;
+  summary: (arg: { opened: boolean; onClick: (event: React.MouseEvent) => void }) => ReactNode;
   children: ReactNode | ReactNode[];
 }
 

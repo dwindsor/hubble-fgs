@@ -25,30 +25,66 @@ export const DestinationFilterKind = Enum({
 export type DestinationFilterKind = EnumType<typeof DestinationFilterKind>;
 
 export function inferEndpointDestinationKind(destination: Destination): DestinationKind {
-  if ("ip" in destination) {
-    if (destination.ip?.ip === "169.254.169.254:80") {
-      return DestinationKind.HostMetadataService;
-    }
-    const ranges = {
-      inner: specialIps,
-    };
-    const type = ipaddr.subnetMatch(ipaddr.parse(destination.ip?.ip ?? ""), ranges, "outer");
-    return type === "inner" ? DestinationKind.InnerIp : DestinationKind.OuterIp;
-  }
+  if ("type" in destination) {
+    switch (destination.type.case) {
+      case "ip": {
+        if (destination.type.value.ip === "169.254.169.254:80") {
+          return DestinationKind.HostMetadataService;
+        }
+        const ranges = {
+          inner: specialIps,
+        };
+        const type = ipaddr.subnetMatch(
+          ipaddr.parse(destination.type.value.ip ?? ""),
+          ranges,
+          "outer",
+        );
+        return type === "inner" ? DestinationKind.InnerIp : DestinationKind.OuterIp;
+      }
 
-  if ("workload" in destination) {
-    return DestinationKind.Kubernetes;
-  }
+      case "workload": {
+        return DestinationKind.Kubernetes;
+      }
 
-  if ("dns" in destination) {
-    const dns = destination.dns?.destination_names[0] ?? "";
-    if (
-      (dns.startsWith("ip-") && dns.endsWith(".internal")) ||
-      dns.endsWith(".svc.cluster.local")
-    ) {
-      return DestinationKind.InnerDns;
+      case "dns": {
+        const dns = destination.type.value.destination_names[0] ?? "";
+        if (
+          (dns.startsWith("ip-") && dns.endsWith(".internal")) ||
+          dns.endsWith(".svc.cluster.local")
+        ) {
+          return DestinationKind.InnerDns;
+        }
+        return DestinationKind.OuterDns;
+      }
+      default:
+        break;
     }
-    return DestinationKind.OuterDns;
+  } else {
+    if ("ip" in destination) {
+      if (destination.ip?.ip === "169.254.169.254:80") {
+        return DestinationKind.HostMetadataService;
+      }
+      const ranges = {
+        inner: specialIps,
+      };
+      const type = ipaddr.subnetMatch(ipaddr.parse(destination.ip?.ip ?? ""), ranges, "outer");
+      return type === "inner" ? DestinationKind.InnerIp : DestinationKind.OuterIp;
+    }
+
+    if ("workload" in destination) {
+      return DestinationKind.Kubernetes;
+    }
+
+    if ("dns" in destination) {
+      const dns = destination.dns?.destination_names[0] ?? "";
+      if (
+        (dns.startsWith("ip-") && dns.endsWith(".internal")) ||
+        dns.endsWith(".svc.cluster.local")
+      ) {
+        return DestinationKind.InnerDns;
+      }
+      return DestinationKind.OuterDns;
+    }
   }
 
   return DestinationKind.Other;
@@ -56,32 +92,66 @@ export function inferEndpointDestinationKind(destination: Destination): Destinat
 
 export function inferEndpointDestinationHash(destination: Destination): string {
   const { port } = destination;
-  if ("ip" in destination) {
-    return `destination/${destination.ip?.ip}:${port}`;
-  }
-  if ("workload" in destination) {
-    return `destination/${destination.workload?.namespace}/${destination.workload?.kind}/${destination.workload?.name}:${port}`;
-  }
-  if ("dns" in destination) {
-    return `destination/{${[...(destination.dns?.destination_names ?? [])].sort().join(",")}}:${port}`;
+
+  if ("type" in destination) {
+    switch (destination.type.case) {
+      case "ip":
+        return `destination/${destination.type.value.ip}:${port}`;
+      case "workload":
+        return `destination/${destination.type.value.namespace}/${destination.type.value.kind}/${destination.type.value.name}:${port}`;
+      case "dns":
+        return `destination/{${[...(destination.type.value.destination_names ?? [])].sort().join(",")}}:${port}`;
+      default:
+        break;
+    }
+  } else {
+    if ("ip" in destination) {
+      return `destination/${destination.ip?.ip}:${port}`;
+    }
+    if ("workload" in destination) {
+      return `destination/${destination.workload?.namespace}/${destination.workload?.kind}/${destination.workload?.name}:${port}`;
+    }
+    if ("dns" in destination) {
+      return `destination/{${[...(destination.dns?.destination_names ?? [])].sort().join(",")}}:${port}`;
+    }
   }
   return "destination/<undefined>";
 }
 
 export function inferEndpointDestinationTitle(destination: Destination): string {
-  if ("ip" in destination) {
-    return destination.ip?.ip ?? "<undefined>";
-  }
-  if ("workload" in destination) {
-    const {
-      namespace = "<undefined>",
-      kind = WorkloadKind.Unspecified,
-      name = "<undefined>",
-    } = destination.workload ?? {};
-    return `${namespace}/${capitalizeFirstLetter(workloadKindAsHumanString(kind))}:${name}`;
-  }
-  if ("dns" in destination) {
-    return `${[...(destination.dns?.destination_names ?? [])].sort().join(",")}`;
+  if ("type" in destination) {
+    switch (destination.type.case) {
+      case "ip":
+        return destination.type.value.ip ?? "<undefined>";
+      case "workload": {
+        const {
+          namespace = "<undefined>",
+          kind,
+          name = "<undefined>",
+        } = destination.type.value ?? {};
+        return `${namespace}/${kind}:${name}`;
+      }
+      case "dns": {
+        return `${[...(destination.type.value.destination_names ?? [])].sort().join(",")}`;
+      }
+      default:
+        break;
+    }
+  } else {
+    if ("ip" in destination) {
+      return destination.ip?.ip ?? "<undefined>";
+    }
+    if ("workload" in destination) {
+      const {
+        namespace = "<undefined>",
+        kind = WorkloadKind.Unspecified,
+        name = "<undefined>",
+      } = destination.workload ?? {};
+      return `${namespace}/${capitalizeFirstLetter(workloadKindAsHumanString(kind))}:${name}`;
+    }
+    if ("dns" in destination) {
+      return `${[...(destination.dns?.destination_names ?? [])].sort().join(",")}`;
+    }
   }
   return "<undefined>";
 }

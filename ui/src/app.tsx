@@ -13,8 +13,8 @@ declare global {
 
 const promise = new Promise<ApplicationModelEvent>((resolve, reject) => {
   if (process.env.NODE_ENV === "development") {
-    import("./dev-model")
-      .then((m) => resolve(m.model as unknown as ApplicationModelEvent))
+    import("./devmodel.json")
+      .then((m) => resolve(m as unknown as ApplicationModelEvent))
       .catch(reject);
     return;
   }

@@ -1,10 +1,21 @@
 {
-  "private": true,
-  "name": "@isovalent/process-ancestry",
-  "version": "0.1.0",
-  "description": "Isovalent Process Ancestry",
+  "name": "@isovalent-eng-npm/process-tree-app-model",
+  "version": "0.1.3",
+  "description": "Isovalent Process Tree App Model",
+  "publishConfig": {
+    "registry": "https://artifactory.devhub-cloud.cisco.com/artifactory/api/npm/isovalent-eng-npm/"
+  },
   "type": "module",
   "main": "./lib/process-ancestry.umd.cjs",
+  "module": "./lib/process-ancestry.js",
+  "types": "./lib/process-ancestry.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/process-ancestry.d.ts",
+      "import": "./lib/process-ancestry.js",
+      "require": "./lib/process-ancestry.umd.cjs"
+    }
+  },
   "directories": {
     "lib": "lib"
   },
@@ -12,8 +23,8 @@
     "lib"
   ],
   "engines": {
-    "node": ">=22",
-    "npm": ">=10"
+    "node": ">=24",
+    "npm": ">=11"
   },
   "scripts": {
     "start": "npm run dev",
@@ -28,38 +39,39 @@
     "upgrade-deps": "ncu --interactive --format group"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "2.5.2",
-    "@floating-ui/react": "0.27.12",
+    "@bufbuild/protobuf": "2.11.0",
+    "@floating-ui/react": "0.27.17",
     "clsx": "2.1.1",
     "events": "3.3.0",
     "hash-sum": "2.0.0",
-    "ipaddr.js": "2.2.0",
-    "lodash": "4.17.21",
+    "ipaddr.js": "2.3.0",
+    "lodash": "4.17.23",
     "ts-case-convert": "2.1.0",
     "typed-emitter": "2.1.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
+    "@biomejs/biome": "2.3.14",
     "@types/events": "3.0.3",
     "@types/hash-sum": "1.0.2",
-    "@types/lodash": "4.17.17",
-    "@types/node": "24.0.0",
-    "@types/react": "19.1.7",
-    "@types/react-dom": "19.1.6",
-    "@vitejs/plugin-react": "4.5.2",
-    "npm-check-updates": "18.0.1",
+    "@types/lodash": "4.17.23",
+    "@types/node": "25.2.2",
+    "@types/react": "18.3.27",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "5.1.4",
+    "npm-check-updates": "19.3.2",
     "npm-run-all": "4.1.5",
-    "postcss-nesting": "13.0.2",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "typescript": "5.8.3",
-    "vite": "6.3.5",
-    "vite-plugin-checker": "0.9.3",
+    "postcss-nesting": "14.0.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.9.3",
+    "vite": "7.3.1",
+    "vite-plugin-checker": "0.12.0",
+    "vite-plugin-dts": "4.5.4",
     "vite-plugin-lib-inject-css": "2.2.2",
-    "vite-plugin-singlefile": "2.2.0"
+    "vite-plugin-singlefile": "2.3.0"
   },
   "peerDependencies": {
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
   }
 }

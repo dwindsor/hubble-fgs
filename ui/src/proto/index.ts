@@ -1,4 +1,8 @@
 import * as ProtoAppModel from "@ipa/application_model/v1alpha/application_model_pb";
+import {
+  WorkloadKindSchema,
+  WorkloadKind as ProtoWorkloadKind,
+} from "@ipa/common/k8s/type/v1alpha/workload_pb";
 import type { ObjectToSnake } from "ts-case-convert";
 import { type EnumType, createEnumFromProto } from "~/utils/enum";
 import type { DeepPartial } from "~/utils/types";
@@ -29,6 +33,7 @@ export type ApplicationFileEvent = ObjectToSnake<
 >;
 
 export type Destination =
+  | ObjectToSnake<ProtoAppModel.Destination>
   | ObjectToSnake<
       DeepPartial<{
         dns: Pick<ProtoAppModel.DestinationDns, "destinationNames">;
@@ -53,8 +58,8 @@ export type Destination =
 
 export const WORKLOAD_KIND_KEY_PREFIX = "WORKLOAD_KIND_";
 export const WorkloadKind = createEnumFromProto(
-  ProtoAppModel.WorkloadKindSchema,
-  ProtoAppModel.WorkloadKind,
+  WorkloadKindSchema,
+  ProtoWorkloadKind,
   WORKLOAD_KIND_KEY_PREFIX,
 );
 export type WorkloadKind = EnumType<typeof WorkloadKind>;

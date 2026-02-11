@@ -15,19 +15,15 @@ export function createEnumFromProto<
   Enum extends Record<string, string | number>,
   Prefix extends string,
   Result extends {
-    [K in Extract<keyof Enum, string> as Capitalize<
-      ToCamel<Lowercase<K>>
-    >]: `${Prefix}${K}`;
-  }
+    [K in Extract<keyof Enum, string> as Capitalize<ToCamel<Lowercase<K>>>]: `${Prefix}${K}`;
+  },
 >(schema: GenEnum<number>, _enum: Enum, keyPrefix: Prefix): Result {
   const prefixLen = keyPrefix.length;
   return Enum(
     schema.values.reduce((acc, val) => {
-      const key = capitalizeFirstLetter(
-        camelCase(val.name.slice(prefixLen).toLocaleLowerCase())
-      );
+      const key = capitalizeFirstLetter(camelCase(val.name.slice(prefixLen).toLocaleLowerCase()));
       Object.assign(acc, { [key]: val.name });
       return acc;
-    }, {} as Result)
+    }, {} as Result),
   );
 }

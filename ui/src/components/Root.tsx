@@ -3,6 +3,7 @@ import type { ApplicationModelEvent } from "~/proto";
 import { AppContext, createAppContext } from "~/state/AppContext";
 import { injectCSSVars } from "~/theme";
 import { App } from "./App";
+import { objectToSnake } from "ts-case-convert";
 
 export interface Props {
   model: ApplicationModelEvent;
@@ -14,8 +15,12 @@ injectCSSVars();
 
 export const Root = memo(function Root(props: Props) {
   const appContext = useMemo(() => {
+    let model = props.model;
+    if ("applicationModel" in props.model) {
+      model = objectToSnake(props.model) as ApplicationModelEvent;
+    }
     return createAppContext({
-      model: props.model,
+      model,
       getTreeOffset: props.getTreeOffset,
       persistInUrl: props.persistStateInUrl,
     });

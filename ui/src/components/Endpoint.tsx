@@ -262,11 +262,7 @@ function classNameFromEndpointInfo(endpointInfo: EndpointInfo): string | null {
   }
 }
 
-function IpEndpoint(props: {
-  ip: string;
-  port: string | null;
-  isPinned: boolean;
-}) {
+function IpEndpoint(props: { ip: string; port: string | null; isPinned: boolean }) {
   const { parts, separator } = useMemo(() => {
     const separator = props.ip.includes(".") ? "." : ":";
     return {
