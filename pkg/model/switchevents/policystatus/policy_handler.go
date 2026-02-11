@@ -154,7 +154,7 @@ func (h *policyStatusHandler) periodicDpuCountUpdate(ctx context.Context) {
 			}
 
 			// Update expected agent count from data provider
-			logger.GetLogger().Info("periodic DPU count update check", "currentCount", currentCount)
+			logger.GetLogger().Debug("periodic DPU count update check", "currentCount", currentCount)
 			h.UpdateExpectedAgentCountFromProvider()
 		case <-ctx.Done():
 			logger.GetLogger().Info("stopping periodic DPU count updates, context cancelled")

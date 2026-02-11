@@ -71,6 +71,14 @@ spec:
               value: {{ .Values.agw.timescapePassword | quote }}
             - name: AGW_TIMESCAPE_ENDPOINT
               value: {{ .Values.agw.timescapeEndpoint | quote }}
+            - name: AGW_PROMETHEUS_CLIENT_ENABLE
+              value: {{ .Values.agw.prometheusClientEnable | quote }}
+            - name: AGW_PROMETHEUS_USERNAME
+              value: {{ .Values.agw.prometheusUsername | quote }}
+            - name: AGW_PROMETHEUS_PASSWORD
+              value: {{ .Values.agw.prometheusPassword | quote }}
+            - name: AGW_PROMETHEUS_ENDPOINT
+              value: {{ .Values.agw.prometheusEndpoint | quote }}
           {{- with .Values.agw.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

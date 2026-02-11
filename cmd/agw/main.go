@@ -75,6 +75,10 @@ func Execute() error {
 	flags.BoolVar(&Config.TimescapeClientEnable, keyTimescapeClientEnable, Config.TimescapeClientEnable, "Enable Timescape client")
 	flags.StringVar(&Config.TimescapePassword, keyTimescapePassword, Config.TimescapePassword, "Timescape server authentication password")
 	flags.StringVar(&Config.TimescapeEndpoint, keyTimescapeEndpoint, Config.TimescapeEndpoint, "Timescape server endpoint URL")
+	flags.BoolVar(&Config.PrometheusClientEnable, keyPrometheusClientEnable, Config.PrometheusClientEnable, "Enable Prometheus client")
+	flags.StringVar(&Config.PrometheusPassword, keyPrometheusPassword, Config.PrometheusPassword, "Prometheus server authentication password")
+	flags.StringVar(&Config.PrometheusUsername, keyPrometheusUsername, Config.PrometheusUsername, "Prometheus server authentication username")
+	flags.StringVar(&Config.PrometheusEndpoint, keyPrometheusEndpoint, Config.PrometheusEndpoint, "Prometheus server endpoint URL")
 	return rootCmd.Execute()
 }
 

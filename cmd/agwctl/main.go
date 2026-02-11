@@ -16,6 +16,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config/add"
 	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config/remove"
 	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/logging"
+	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/metrics"
 	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/policies"
 )
 

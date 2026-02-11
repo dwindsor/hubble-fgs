@@ -50,5 +50,17 @@ fi
 if [ -n "$AGW_TIMESCAPE_ENDPOINT" ]; then
     ARGS="$ARGS --timescape-endpoint=$AGW_TIMESCAPE_ENDPOINT"
 fi
+if [ "$AGW_PROMETHEUS_CLIENT_ENABLE" = "true" ]; then
+    ARGS="$ARGS --prometheus-client-enable=true"
+fi
+if [ -n "$AGW_PROMETHEUS_PASSWORD" ]; then
+    ARGS="$ARGS --prometheus-password=$AGW_PROMETHEUS_PASSWORD"
+fi
+if [ -n "$AGW_PROMETHEUS_USERNAME" ]; then
+    ARGS="$ARGS --prometheus-username=$AGW_PROMETHEUS_USERNAME"
+fi
+if [ -n "$AGW_PROMETHEUS_ENDPOINT" ]; then
+    ARGS="$ARGS --prometheus-endpoint=$AGW_PROMETHEUS_ENDPOINT"
+fi
 echo "Starting AGW with arguments:$ARGS"
 exec /usr/src/app/agw $ARGS

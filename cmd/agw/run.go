@@ -36,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/shutdown"
@@ -136,6 +137,9 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 	// Initialize timescape configuration
 	setTimescapeConfig()
 
+	// Setup metrics collector
+	metricsCollector := setupMetricsCollector(ctx)
+
 	if Config.EnableKubernetes {
 		// Wait for agent token to be ready before proceeding
 		var token string
@@ -214,6 +218,9 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 			return err
 		}
 
+		// Start Prometheus pusher in waitGroup
+		setupPrometheusPusher(ctx, waitGroup, agwAgent, metricsCollector)
+
 		// Create connection monitor for health checking
 		connMonitor := agw.NewConnectionMonitor(agwAgent, Config.EnableNXOS, kubernetesManager)
 		// TODO: Wait for configmap to be ready
@@ -242,7 +249,7 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		}
 
 		policyStatusHandler := switchevents.GetGlobalPolicyStatusHandler()
-		err = switchpolicy.AddSmartSwitchNetworkPolicyInformer(ctx, kubernetesManager, agwAgent.PolicyHandler, policyStatusHandler)
+		err = switchpolicy.AddSmartSwitchNetworkPolicyInformer(ctx, kubernetesManager, agwAgent.PolicyHandler, policyStatusHandler, metricsCollector)
 		if err != nil {
 			logger.GetLogger().Error("failed to watch smartswitch policy crd", logfields.Error, err)
 			return err
@@ -380,4 +387,72 @@ func setTimescapeConfig() {
 		Config.TimescapeEndpoint,
 		Config.TimescapePassword,
 	)
+}
+
+// setupMetricsCollector initializes the metrics collector and starts any enabled metrics integrations
+func setupMetricsCollector(ctx context.Context) *switchmetrics.MetricsCollector {
+	// Initialize metrics collector singleton
+	// The metrics collector is still needed for agwctl show, as it provides
+	// process-level metrics and policy/rule counts.
+	metricsCollector := switchmetrics.GetInstance(ctx)
+	if metricsCollector == nil {
+		logger.GetLogger().Error("failed to set up metrics collector")
+		return nil
+	}
+
+	return metricsCollector
+}
+
+// setupPrometheusPusher validates Prometheus configuration and starts the Prometheus pusher
+func setupPrometheusPusher(ctx context.Context, waitGroup *errgroup.Group, agwAgent *agw.AgentGateway, metricsCollector *switchmetrics.MetricsCollector) error {
+	if metricsCollector == nil {
+		logger.GetLogger().Error("metrics collector is nil, cannot start Prometheus pusher")
+		return nil
+	}
+
+	// Setup Prometheus pusher if enabled
+	if !Config.PrometheusClientEnable {
+		logger.GetLogger().Info("prometheus client not enabled, skipping setup")
+		return nil
+	}
+	// Validate required prometheus configuration
+	trimmedUsername := strings.TrimSpace(Config.PrometheusUsername)
+	if trimmedUsername == "" {
+		logger.GetLogger().Error("prometheus client enabled but username not configured", "flag", "--prometheus-username")
+		return nil
+	}
+
+	trimmedPassword := strings.TrimSpace(Config.PrometheusPassword)
+	if trimmedPassword == "" {
+		logger.GetLogger().Error("prometheus client enabled but password not configured", "flag", "--prometheus-password")
+		return nil
+	}
+
+	trimmedEndpoint := strings.TrimSpace(Config.PrometheusEndpoint)
+	if trimmedEndpoint == "" {
+		logger.GetLogger().Error("prometheus client enabled but endpoint not configured", "flag", "--prometheus-endpoint")
+		return nil
+	}
+
+	serialNumber := "smartswitch-unknown"
+	if agwAgent != nil && Config.EnableNXOS {
+		// Set the switch serial number label for metrics if NXOS is enabled
+		serialNumber = agwAgent.GetSerialNumber(ctx)
+	}
+
+	waitGroup.Go(func() error {
+		metricsConfig := switchmetrics.DefaultPrometheusPushConfig()
+		metricsConfig.SetControllerURL(trimmedEndpoint)
+		metricsConfig.SetUsername(trimmedUsername)
+		metricsConfig.SetPassword(trimmedPassword)
+		metricsConfig.SetSwitchSerialNumber(serialNumber)
+
+		if err := metricsCollector.StartPrometheusPusher(ctx, metricsConfig); err != nil {
+			logger.GetLogger().Error("metrics pusher exited with error; continuing without metrics", "error", err)
+		}
+
+		return nil
+	})
+
+	return nil
 }

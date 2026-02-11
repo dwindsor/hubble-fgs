@@ -20,7 +20,9 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/agw"
 	"github.com/isovalent/hubble-fgs/pkg/ipc"
+
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
 
@@ -59,6 +61,7 @@ const (
 	CMD_CONFIG_ADD_DPU
 	CMD_CONFIG_REMOVE_DPU
 	CMD_SHOW_TIMESCAPE_CONFIG
+	CMD_SHOW_METRICS
 )
 
 const (
@@ -394,6 +397,24 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 
 		// Marshal the displayConfig to JSON
 		jsonData, err := json.Marshal(displayConfig)
+		if err != nil {
+			response.ReturnCode = "fail"
+			response.Data = err.Error()
+		} else {
+			response.ReturnCode = "ok"
+			response.Data = string(jsonData)
+		}
+
+	case CMD_SHOW_METRICS:
+		mc := switchmetrics.GetInstance(ctx)
+		if mc == nil {
+			response.ReturnCode = "fail"
+			response.Data = "Metrics collector not running"
+			return response, nil
+		}
+		metrics := mc.GetCurrentMetrics()
+		// Marshal the metrics to JSON
+		jsonData, err := json.Marshal(metrics)
 		if err != nil {
 			response.ReturnCode = "fail"
 			response.Data = err.Error()
