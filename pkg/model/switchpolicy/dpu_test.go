@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -222,6 +223,10 @@ func TestBasicWorkflow(t *testing.T) {
 	assert.NotNil(t, p2.polCh)
 	assert.NotNil(t, p3.polCh)
 	assert.NotNil(t, p4.polCh)
+	assert.Equal(t, 1, cap(p1.polReconnectCh))
+	assert.Equal(t, 1, cap(p2.polReconnectCh))
+	assert.Equal(t, 1, cap(p3.polReconnectCh))
+	assert.Equal(t, 1, cap(p4.polReconnectCh))
 
 	// Report some status with no Policy
 
@@ -355,4 +360,54 @@ func TestOOOPolicy(t *testing.T) {
 	dpu1.SubmitDPURuleToDPU(record1Delete)
 	dpu1.SubmitDPURuleToDPU(record1Delete)
 	assert.Equal(t, len(dpu2.ruleSet), 0)
+}
+
+func TestSendConfigTimeoutForcesReconnect(t *testing.T) {
+	p := &peer{
+		uid:            "test-peer",
+		cfgCh:          make(chan *v1alpha.StreamDatapathConfigResponse),
+		cfgReconnectCh: make(chan struct{}, 1),
+	}
+
+	start := time.Now()
+	err := p.SendConfig(&v1alpha.StreamDatapathConfigResponse{})
+	elapsed := time.Since(start)
+
+	assert.Error(t, err)
+	assert.GreaterOrEqual(t, elapsed, 2*time.Second)
+	assert.Less(t, elapsed, 4*time.Second)
+
+	select {
+	case <-p.cfgReconnectCh:
+	default:
+		t.Fatal("expected reconnect signal after config send timeout")
+	}
+}
+
+func TestSendConfigTimeoutReconnectSignalNonBlocking(t *testing.T) {
+	p := &peer{
+		uid:            "test-peer",
+		cfgCh:          make(chan *v1alpha.StreamDatapathConfigResponse),
+		cfgReconnectCh: make(chan struct{}, 1),
+	}
+	p.cfgReconnectCh <- struct{}{}
+
+	start := time.Now()
+	err := p.SendConfig(&v1alpha.StreamDatapathConfigResponse{})
+	elapsed := time.Since(start)
+
+	assert.Error(t, err)
+	assert.GreaterOrEqual(t, elapsed, 2*time.Second)
+	assert.Less(t, elapsed, 4*time.Second)
+
+	select {
+	case <-p.cfgReconnectCh:
+	default:
+		t.Fatal("expected reconnect signal channel to remain readable")
+	}
+	select {
+	case <-p.cfgReconnectCh:
+		t.Fatal("expected only one reconnect signal in buffered channel")
+	default:
+	}
 }

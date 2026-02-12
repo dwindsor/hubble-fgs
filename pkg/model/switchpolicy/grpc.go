@@ -118,6 +118,9 @@ func (s *AGWServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 		peer := s.dpuListener.addPeerLocked(req.AgentUid)
 		peer.cfgReconnectCount.Add(1) // Increment config reconnect counter
 
+		// Config sync start
+		logger.GetLogger().Info("sync peer config start", "peer", peer.uid)
+
 		// Diffing the peer's config set with the current latest config set to be able
 		// to pass down changes to the peer that just connected.
 		configList := library.GetRepository().GetConfigObjects()
@@ -200,6 +203,9 @@ func (s *AGWServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 				return nil
 			}
 		}
+
+		// Config sync complete
+		logger.GetLogger().Info("sync peer config complete", "peer", peer.uid)
 
 		return peer
 	}()

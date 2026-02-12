@@ -167,6 +167,11 @@ func (p *peer) SendConfig(cfg *v1alpha.StreamDatapathConfigResponse) error {
 	select {
 	case p.cfgCh <- cfg:
 	case <-time.After(2 * time.Second):
+		// Force stream reconnect so AGW can replay config from cfgSet on reconnect.
+		select {
+		case p.cfgReconnectCh <- struct{}{}:
+		default:
+		}
 		return fmt.Errorf("peer timed out, cannot submit config object")
 	}
 	return nil
@@ -558,7 +563,7 @@ func (dpu *DPUListener) addPeerLocked(uid string) *peer {
 	}
 
 	if p.polReconnectCh == nil {
-		p.polReconnectCh = make(chan struct{})
+		p.polReconnectCh = make(chan struct{}, 1)
 	}
 
 	if p.cfgCh == nil {
@@ -567,7 +572,7 @@ func (dpu *DPUListener) addPeerLocked(uid string) *peer {
 	}
 
 	if p.cfgReconnectCh == nil {
-		p.cfgReconnectCh = make(chan struct{})
+		p.cfgReconnectCh = make(chan struct{}, 1)
 	}
 
 	if p.cfgSet == nil {
