@@ -309,3 +309,10 @@ class CommandExecutor:
             DPCTL.CLEAR_FLOWS.value,
             timeout=longer_timeout
         )
+
+    def sim_add_vrf(self, vrf_id: int): 
+        container = self._get_sim_container()
+        return self._exec_in_container(
+            container,
+            DPCTL.VRF_ADD.value.format(vrf_id)
+        )

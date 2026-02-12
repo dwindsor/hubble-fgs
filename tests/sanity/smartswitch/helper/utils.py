@@ -11,14 +11,16 @@
 import logging
 import time
 import json
-from typing import Callable
+from typing import Callable, List
+
+from scapy.sendrecv import AsyncSniffer
 
 logger = logging.getLogger(__name__)
 
 
 def retry_on_failure(func: Callable, max_retries: int = 3, delay: float = 1.0):
     """Retry a function on failure with exponential backoff
-    
+
     Args:
         func: Function to retry
         max_retries: Maximum number of retry attempts
@@ -30,8 +32,10 @@ def retry_on_failure(func: Callable, max_retries: int = 3, delay: float = 1.0):
         except Exception as e:
             if attempt < max_retries - 1:
                 # Exponential backoff: delay * (2 ** attempt)
-                backoff_delay = delay * (2 ** attempt)
-                logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {backoff_delay}s...")
+                backoff_delay = delay * (2**attempt)
+                logger.warning(
+                    f"Attempt {attempt + 1} failed: {e}. Retrying in {backoff_delay}s..."
+                )
                 time.sleep(backoff_delay)
             else:
                 logger.error(f"All {max_retries} attempts failed")
@@ -47,5 +51,17 @@ def parse_json_output(output: str) -> dict:
         logger.error(f"Output was: {output}")
         raise
 
+
 def wait_for_timeout(timeout: int):
     time.sleep(timeout)
+
+
+def get_last_packet_from_sniffer(sniffers: List[AsyncSniffer], expected: bool = True):
+    if not sniffers[-1].results or len(sniffers[-1].results) == 0:
+        if not expected:
+            logger.info("No packets were sniffed as expected (packet was dropped)")
+            return None
+        logger.error("No packets were sniffed from sniffer")
+        assert False, "Failed: No packets were sniffed from sniffer"
+
+    return sniffers[-1].results[-1]

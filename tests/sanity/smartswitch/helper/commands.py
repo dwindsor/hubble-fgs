@@ -64,3 +64,6 @@ class DPCTL(Enum):
     DROP_STATISTICS = "dpctl show pipeline statistics drop"
     DROP_STATISTICS_CLEAR = "dpctl clear pipeline statistics drop"
     APPLY_SYSLOG = "dpctl hs fwa_message -f {}"
+    VRF_MAP_SHOW = "dpctl hs vrf show-map"
+    VRF_ADD = "dpctl hs vrf add {}"
+    VRF_DEL = "dpctl hs vrf del {}"
