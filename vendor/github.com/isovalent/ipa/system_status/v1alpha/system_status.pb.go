@@ -631,8 +631,12 @@ type PolicyStatus struct {
 	// Conditions that are currently preventing the policy to be enforced.
 	// If empty, the policy is being enforced.
 	FailingConditions []*FailingCondition `protobuf:"bytes,6,rep,name=failing_conditions,json=failingConditions,proto3" json:"failing_conditions,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Extra data that allows the SmartSwitch client to include additional
+	// information or data that needs to be presented to the end-user or
+	// consumer of this data.
+	ExtraData     map[string]string `protobuf:"bytes,7,rep,name=extra_data,json=extraData,proto3" json:"extra_data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PolicyStatus) Reset() {
@@ -703,6 +707,13 @@ func (x *PolicyStatus) GetVersion() string {
 func (x *PolicyStatus) GetFailingConditions() []*FailingCondition {
 	if x != nil {
 		return x.FailingConditions
+	}
+	return nil
+}
+
+func (x *PolicyStatus) GetExtraData() map[string]string {
+	if x != nil {
+		return x.ExtraData
 	}
 	return nil
 }
@@ -814,14 +825,19 @@ const file_system_status_v1alpha_system_status_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x1e\n" +
 	"\n" +
 	"resolution\x18\x05 \x01(\tR\n" +
-	"resolution\"\xf9\x01\n" +
+	"resolution\"\x8a\x03\n" +
 	"\fPolicyStatus\x125\n" +
 	"\x04type\x18\x01 \x01(\x0e2!.system_status.v1alpha.PolicyTypeR\x04type\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1c\n" +
 	"\tnamespace\x18\x04 \x01(\tR\tnamespace\x12\x18\n" +
 	"\aversion\x18\x05 \x01(\tR\aversion\x12V\n" +
-	"\x12failing_conditions\x18\x06 \x03(\v2'.system_status.v1alpha.FailingConditionR\x11failingConditions\"\x95\x01\n" +
+	"\x12failing_conditions\x18\x06 \x03(\v2'.system_status.v1alpha.FailingConditionR\x11failingConditions\x12Q\n" +
+	"\n" +
+	"extra_data\x18\a \x03(\v22.system_status.v1alpha.PolicyStatus.ExtraDataEntryR\textraData\x1a<\n" +
+	"\x0eExtraDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x95\x01\n" +
 	"\x12PolicyStatusUpdate\x12!\n" +
 	"\fcluster_name\x18\x01 \x01(\tR\vclusterName\x12\x1b\n" +
 	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x12?\n" +
@@ -851,7 +867,7 @@ func file_system_status_v1alpha_system_status_proto_rawDescGZIP() []byte {
 }
 
 var file_system_status_v1alpha_system_status_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_system_status_v1alpha_system_status_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_system_status_v1alpha_system_status_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_system_status_v1alpha_system_status_proto_goTypes = []any{
 	(Severity)(0),                 // 0: system_status.v1alpha.Severity
 	(PolicyType)(0),               // 1: system_status.v1alpha.PolicyType
@@ -864,15 +880,16 @@ var file_system_status_v1alpha_system_status_proto_goTypes = []any{
 	(*PolicyStatus)(nil),          // 8: system_status.v1alpha.PolicyStatus
 	(*PolicyStatusUpdate)(nil),    // 9: system_status.v1alpha.PolicyStatusUpdate
 	nil,                           // 10: system_status.v1alpha.SystemStatusUpdate.ExtraDataEntry
-	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	nil,                           // 11: system_status.v1alpha.PolicyStatus.ExtraDataEntry
+	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
 }
 var file_system_status_v1alpha_system_status_proto_depIdxs = []int32{
-	11, // 0: system_status.v1alpha.SystemStatusEvent.time:type_name -> google.protobuf.Timestamp
+	12, // 0: system_status.v1alpha.SystemStatusEvent.time:type_name -> google.protobuf.Timestamp
 	3,  // 1: system_status.v1alpha.SystemStatusEvent.status:type_name -> system_status.v1alpha.SystemStatusUpdate
 	6,  // 2: system_status.v1alpha.SystemStatusEvent.metadata:type_name -> system_status.v1alpha.SystemMetadataUpdate
 	9,  // 3: system_status.v1alpha.SystemStatusEvent.policy:type_name -> system_status.v1alpha.PolicyStatusUpdate
 	4,  // 4: system_status.v1alpha.SystemStatusUpdate.system:type_name -> system_status.v1alpha.SystemID
-	11, // 5: system_status.v1alpha.SystemStatusUpdate.started_at:type_name -> google.protobuf.Timestamp
+	12, // 5: system_status.v1alpha.SystemStatusUpdate.started_at:type_name -> google.protobuf.Timestamp
 	5,  // 6: system_status.v1alpha.SystemStatusUpdate.failing_conditions:type_name -> system_status.v1alpha.FailingCondition
 	10, // 7: system_status.v1alpha.SystemStatusUpdate.extra_data:type_name -> system_status.v1alpha.SystemStatusUpdate.ExtraDataEntry
 	0,  // 8: system_status.v1alpha.FailingCondition.severity:type_name -> system_status.v1alpha.Severity
@@ -880,12 +897,13 @@ var file_system_status_v1alpha_system_status_proto_depIdxs = []int32{
 	7,  // 10: system_status.v1alpha.SystemMetadataUpdate.conditions:type_name -> system_status.v1alpha.ConditionMetadata
 	1,  // 11: system_status.v1alpha.PolicyStatus.type:type_name -> system_status.v1alpha.PolicyType
 	5,  // 12: system_status.v1alpha.PolicyStatus.failing_conditions:type_name -> system_status.v1alpha.FailingCondition
-	8,  // 13: system_status.v1alpha.PolicyStatusUpdate.statuses:type_name -> system_status.v1alpha.PolicyStatus
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	11, // 13: system_status.v1alpha.PolicyStatus.extra_data:type_name -> system_status.v1alpha.PolicyStatus.ExtraDataEntry
+	8,  // 14: system_status.v1alpha.PolicyStatusUpdate.statuses:type_name -> system_status.v1alpha.PolicyStatus
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_system_status_v1alpha_system_status_proto_init() }
@@ -904,7 +922,7 @@ func file_system_status_v1alpha_system_status_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_system_status_v1alpha_system_status_proto_rawDesc), len(file_system_status_v1alpha_system_status_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1439,32 +1439,18 @@ export enum HAStatus {
   HA_STATUS_KEEPALIVE_DOWN = 2,
 
   /**
-   * HA flow sync up, flow sync between peers is working
-   *
-   * @generated from enum value: HA_STATUS_FLOW_SYNC_UP = 3;
-   */
-  HA_STATUS_FLOW_SYNC_UP = 3,
-
-  /**
-   * HA flow sync down, flow sync between peers is failing
-   *
-   * @generated from enum value: HA_STATUS_FLOW_SYNC_DOWN = 4;
-   */
-  HA_STATUS_FLOW_SYNC_DOWN = 4,
-
-  /**
    * HA bulk sync is finished sending to peer
    *
-   * @generated from enum value: HA_STATUS_BULK_SYNC_DONE = 5;
+   * @generated from enum value: HA_STATUS_BULK_SYNC_DONE = 3;
    */
-  HA_STATUS_BULK_SYNC_DONE = 5,
+  HA_STATUS_BULK_SYNC_DONE = 3,
 
   /**
    * HA bulk sync is finished receiving from peer
    *
-   * @generated from enum value: HA_STATUS_BULK_SYNC_PEER_DONE = 6;
+   * @generated from enum value: HA_STATUS_BULK_SYNC_PEER_DONE = 4;
    */
-  HA_STATUS_BULK_SYNC_PEER_DONE = 6,
+  HA_STATUS_BULK_SYNC_PEER_DONE = 4,
 }
 
 /**

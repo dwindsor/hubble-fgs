@@ -315,6 +315,15 @@ export declare type PolicyStatus = Message<"system_status.v1alpha.PolicyStatus">
    * @generated from field: repeated system_status.v1alpha.FailingCondition failing_conditions = 6;
    */
   failingConditions: FailingCondition[];
+
+  /**
+   * Extra data that allows the SmartSwitch client to include additional
+   * information or data that needs to be presented to the end-user or
+   * consumer of this data.
+   *
+   * @generated from field: map<string, string> extra_data = 7;
+   */
+  extraData: { [key: string]: string };
 };
 
 /**

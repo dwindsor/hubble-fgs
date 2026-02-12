@@ -494,14 +494,10 @@ const (
 	HAStatus_HA_STATUS_KEEPALIVE_UP HAStatus = 1
 	// HA peer connectivity down, keepalives failing
 	HAStatus_HA_STATUS_KEEPALIVE_DOWN HAStatus = 2
-	// HA flow sync up, flow sync between peers is working
-	HAStatus_HA_STATUS_FLOW_SYNC_UP HAStatus = 3
-	// HA flow sync down, flow sync between peers is failing
-	HAStatus_HA_STATUS_FLOW_SYNC_DOWN HAStatus = 4
 	// HA bulk sync is finished sending to peer
-	HAStatus_HA_STATUS_BULK_SYNC_DONE HAStatus = 5
+	HAStatus_HA_STATUS_BULK_SYNC_DONE HAStatus = 3
 	// HA bulk sync is finished receiving from peer
-	HAStatus_HA_STATUS_BULK_SYNC_PEER_DONE HAStatus = 6
+	HAStatus_HA_STATUS_BULK_SYNC_PEER_DONE HAStatus = 4
 )
 
 // Enum value maps for HAStatus.
@@ -510,19 +506,15 @@ var (
 		0: "HA_STATUS_UNSPECIFIED",
 		1: "HA_STATUS_KEEPALIVE_UP",
 		2: "HA_STATUS_KEEPALIVE_DOWN",
-		3: "HA_STATUS_FLOW_SYNC_UP",
-		4: "HA_STATUS_FLOW_SYNC_DOWN",
-		5: "HA_STATUS_BULK_SYNC_DONE",
-		6: "HA_STATUS_BULK_SYNC_PEER_DONE",
+		3: "HA_STATUS_BULK_SYNC_DONE",
+		4: "HA_STATUS_BULK_SYNC_PEER_DONE",
 	}
 	HAStatus_value = map[string]int32{
 		"HA_STATUS_UNSPECIFIED":         0,
 		"HA_STATUS_KEEPALIVE_UP":        1,
 		"HA_STATUS_KEEPALIVE_DOWN":      2,
-		"HA_STATUS_FLOW_SYNC_UP":        3,
-		"HA_STATUS_FLOW_SYNC_DOWN":      4,
-		"HA_STATUS_BULK_SYNC_DONE":      5,
-		"HA_STATUS_BULK_SYNC_PEER_DONE": 6,
+		"HA_STATUS_BULK_SYNC_DONE":      3,
+		"HA_STATUS_BULK_SYNC_PEER_DONE": 4,
 	}
 )
 
@@ -2829,15 +2821,13 @@ const file_l3l4networkpolicy_v1alpha_l3l4networkpolicy_proto_rawDesc = "" +
 	"\x19POLICY_RULE_ERROR_TIMEOUT\x10\x01\x12\x19\n" +
 	"\x15POLICY_RULE_ERROR_OOM\x10\x02\x12!\n" +
 	"\x1dPOLICY_RULE_ERROR_UNSUPPORTED\x10\x03\x12\x1c\n" +
-	"\x18POLICY_RULE_ERROR_FORMAT\x10\x04*\xda\x01\n" +
+	"\x18POLICY_RULE_ERROR_FORMAT\x10\x04*\xa0\x01\n" +
 	"\bHAStatus\x12\x19\n" +
 	"\x15HA_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16HA_STATUS_KEEPALIVE_UP\x10\x01\x12\x1c\n" +
-	"\x18HA_STATUS_KEEPALIVE_DOWN\x10\x02\x12\x1a\n" +
-	"\x16HA_STATUS_FLOW_SYNC_UP\x10\x03\x12\x1c\n" +
-	"\x18HA_STATUS_FLOW_SYNC_DOWN\x10\x04\x12\x1c\n" +
-	"\x18HA_STATUS_BULK_SYNC_DONE\x10\x05\x12!\n" +
-	"\x1dHA_STATUS_BULK_SYNC_PEER_DONE\x10\x062\xa7\x04\n" +
+	"\x18HA_STATUS_KEEPALIVE_DOWN\x10\x02\x12\x1c\n" +
+	"\x18HA_STATUS_BULK_SYNC_DONE\x10\x03\x12!\n" +
+	"\x1dHA_STATUS_BULK_SYNC_PEER_DONE\x10\x042\xa7\x04\n" +
 	"\x18L3L4NetworkPolicyService\x12\x94\x01\n" +
 	"\x17Streaml3l4NetworkPolicy\x129.l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyRequest\x1a:.l3l4networkpolicy.v1alpha.Streaml3l4NetworkPolicyResponse\"\x000\x01\x12q\n" +
 	"\fReportStatus\x12..l3l4networkpolicy.v1alpha.ReportStatusRequest\x1a/.l3l4networkpolicy.v1alpha.ReportStatusResponse\"\x00\x12\x8b\x01\n" +

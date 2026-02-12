@@ -11,12 +11,14 @@
 package dpu
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"regexp"
@@ -31,6 +33,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -68,6 +71,8 @@ const (
 
 	STALE_POLICY_GC       = 120
 	STALE_POLICY_GC_RETRY = 3
+
+	IPC_EVENT_SOCKET_PATH = "/tmp/fwa_ha_events.sock"
 )
 
 type StreamClient struct {
@@ -815,6 +820,90 @@ func (dpu *DPUAgent) queuePolicyRuleEvent(ctx context.Context, rule *switchpolic
 	}
 }
 
+func (dpu *DPUAgent) IPCEventListener(ctx context.Context) error {
+	socketPath := IPC_EVENT_SOCKET_PATH
+
+	if err := os.RemoveAll(socketPath); err != nil {
+		logger.GetLogger().Error("Failed to remove existing IPC socket", logfields.Error, err)
+		return err
+	}
+
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		logger.GetLogger().Error("Failed to create IPC unix socket listener", logfields.Error, err)
+		return err
+	}
+	defer listener.Close()
+	defer os.RemoveAll(socketPath)
+
+	logger.GetLogger().Info("IPC event listener started", "socket", socketPath)
+
+	go func() {
+		<-ctx.Done()
+		listener.Close()
+	}()
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			select {
+			case <-ctx.Done():
+				logger.GetLogger().Info("IPC event listener shutting down")
+				return nil
+			default:
+				logger.GetLogger().Error("Failed to accept IPC connection", logfields.Error, err)
+				continue
+			}
+		}
+
+		go dpu.handleIPCConnection(ctx, conn)
+	}
+}
+
+func (dpu *DPUAgent) handleIPCConnection(ctx context.Context, conn net.Conn) {
+	defer conn.Close()
+
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		msg := scanner.Bytes()
+		if len(msg) == 0 {
+			continue
+		}
+
+		event := &v1alpha.StreamEvent{}
+		if err := protojson.Unmarshal(msg, event); err != nil {
+			logger.GetLogger().Error("Failed to unmarshal IPC event JSON", logfields.Error, err, "message", string(msg))
+			continue
+		}
+
+		// FIXME: Remove log
+		logger.GetLogger().Info("received event message", "event", event)
+
+		if dpu.eventQueue == nil {
+			logger.GetLogger().Warn("Event queue not initialized, dropping IPC event", "event", event)
+			continue
+		}
+
+		if !dpu.eventQueue.Enqueue(ctx, event) {
+			logger.GetLogger().Error("Failed to enqueue IPC event, queue full or stopped", "event", event)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		select {
+		case <-ctx.Done():
+		default:
+			logger.GetLogger().Error("Error reading from IPC connection", logfields.Error, err)
+		}
+	}
+}
+
 func (dpu *DPUAgent) EventConnect(ctx context.Context) error {
 	var stream grpc.ClientStreamingClient[v1alpha.StreamEventsRequest, v1alpha.StreamEventsResponse]
 	var streamMu sync.Mutex
@@ -939,6 +1028,12 @@ func (dpu *DPUAgent) Connect(ctx context.Context) error {
 	if dpu.EnableEventStream {
 		go func() {
 			dpu.EventConnect(ctx)
+		}()
+	}
+
+	if dpu.EnableEventStream {
+		go func() {
+			dpu.IPCEventListener(ctx)
 		}()
 	}
 

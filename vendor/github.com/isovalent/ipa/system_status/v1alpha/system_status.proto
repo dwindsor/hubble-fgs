@@ -153,6 +153,10 @@ message PolicyStatus {
   // Conditions that are currently preventing the policy to be enforced.
   // If empty, the policy is being enforced.
   repeated FailingCondition failing_conditions = 6;
+  // Extra data that allows the SmartSwitch client to include additional
+  // information or data that needs to be presented to the end-user or
+  // consumer of this data.
+  map<string, string> extra_data = 7;
 }
 
 // PolicyStatusUpdate contains the current statuses of all the policies on a

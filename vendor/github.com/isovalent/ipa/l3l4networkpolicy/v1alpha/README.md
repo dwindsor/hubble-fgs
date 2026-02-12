@@ -695,10 +695,8 @@ ConfigObject.
 | HA_STATUS_UNSPECIFIED | 0 | Unspecified or unknown HA status |
 | HA_STATUS_KEEPALIVE_UP | 1 | HA peer connectivity up, keepalives working |
 | HA_STATUS_KEEPALIVE_DOWN | 2 | HA peer connectivity down, keepalives failing |
-| HA_STATUS_FLOW_SYNC_UP | 3 | HA flow sync up, flow sync between peers is working |
-| HA_STATUS_FLOW_SYNC_DOWN | 4 | HA flow sync down, flow sync between peers is failing |
-| HA_STATUS_BULK_SYNC_DONE | 5 | HA bulk sync is finished sending to peer |
-| HA_STATUS_BULK_SYNC_PEER_DONE | 6 | HA bulk sync is finished receiving from peer |
+| HA_STATUS_BULK_SYNC_DONE | 3 | HA bulk sync is finished sending to peer |
+| HA_STATUS_BULK_SYNC_PEER_DONE | 4 | HA bulk sync is finished receiving from peer |
 
 
 

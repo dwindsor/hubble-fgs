@@ -7,6 +7,7 @@
     - [ConditionMetadata](#system_status-v1alpha-ConditionMetadata)
     - [FailingCondition](#system_status-v1alpha-FailingCondition)
     - [PolicyStatus](#system_status-v1alpha-PolicyStatus)
+    - [PolicyStatus.ExtraDataEntry](#system_status-v1alpha-PolicyStatus-ExtraDataEntry)
     - [PolicyStatusUpdate](#system_status-v1alpha-PolicyStatusUpdate)
     - [SystemID](#system_status-v1alpha-SystemID)
     - [SystemMetadataUpdate](#system_status-v1alpha-SystemMetadataUpdate)
@@ -77,6 +78,23 @@ PolicyStatus represents the status of a single policy on a node.
 | namespace | [string](#string) |  | Namespace of the policy. |
 | version | [string](#string) |  | Version of the policy. |
 | failing_conditions | [FailingCondition](#system_status-v1alpha-FailingCondition) | repeated | Conditions that are currently preventing the policy to be enforced. If empty, the policy is being enforced. |
+| extra_data | [PolicyStatus.ExtraDataEntry](#system_status-v1alpha-PolicyStatus-ExtraDataEntry) | repeated | Extra data that allows the SmartSwitch client to include additional information or data that needs to be presented to the end-user or consumer of this data. |
+
+
+
+
+
+
+<a name="system_status-v1alpha-PolicyStatus-ExtraDataEntry"></a>
+
+### PolicyStatus.ExtraDataEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
 
 
 
