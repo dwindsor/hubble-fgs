@@ -2733,6 +2733,10 @@ func (k *observerFileSensor) PolicyHandler(
 		return nil, fmt.Errorf("FileMonitoring requires only one of file_paths or file_paths_patterns to be defined")
 	}
 
+	if err := validatePathPatternsArguments(newFileSpec.PathsPatterns); err != nil {
+		return nil, err
+	}
+
 	tpConf, err := configFileSensorOptionsInit(spec.FileMonitoring.Config)
 	if err != nil {
 		return nil, fmt.Errorf("FileMonitoring failed to parse config: %w", err)
@@ -2873,4 +2877,27 @@ func loadProbe(args sensors.LoadProbeArgs) error {
 // LoadProbe() (called when the eBPF programs are actually loaded)
 func (k observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return loadProbe(args)
+}
+
+func validatePathPatternsArguments(paths []v1alpha1.FilePathPattern) error {
+	var filePrefixSuffixCount int
+	for _, p := range paths {
+		// Validates the type matches the argument type
+		if (p.Type == "FilePrefixSuffix" && p.FilePrefixSuffix == nil) ||
+			(p.Type == "PathPrefix" && p.PathPrefix == nil) ||
+			(p.Type == "FileExactMatch" && p.FileExactMatch == nil) ||
+			(p.Type == "FileSystemType" && p.FileSystemType == nil) ||
+			(p.Type == "InodeType" && p.InodeType == nil) {
+			return fmt.Errorf("type should match the argument type")
+		}
+
+		// Validate FilePrefixSuffix count is less than 32
+		if p.Type == "FilePrefixSuffix" {
+			filePrefixSuffixCount++
+		}
+		if filePrefixSuffixCount > 32 {
+			return fmt.Errorf("fileMonitoring supports up to 32 FilePrefixSuffix entries")
+		}
+	}
+	return nil
 }
