@@ -117,8 +117,10 @@ jobs:
               DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf libc6-dev-armhf-cross build-essential
             fi
 
-            # restart ssh server
-            service ssh restart
+            # restart ssh server only on RHEL
+            if [[ "${{ matrix.kernel }}" == rhel* ]]; then
+              service ssh restart
+            fi
 
       - name: Run Tests
         uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
