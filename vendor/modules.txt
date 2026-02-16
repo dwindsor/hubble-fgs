@@ -316,6 +316,7 @@ github.com/cilium/tetragon/cmd/tetra/cgtracker
 github.com/cilium/tetragon/cmd/tetra/common
 github.com/cilium/tetragon/cmd/tetra/debug
 github.com/cilium/tetragon/cmd/tetra/getevents
+github.com/cilium/tetragon/cmd/tetra/info
 github.com/cilium/tetragon/cmd/tetra/loglevel
 github.com/cilium/tetragon/cmd/tetra/policyfilter
 github.com/cilium/tetragon/cmd/tetra/probe
