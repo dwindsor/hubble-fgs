@@ -309,7 +309,7 @@ github.com/cilium/hive/script/internal/diff
 # github.com/cilium/lumberjack/v2 v2.4.1
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
-# github.com/cilium/tetragon v1.7.0-pre.0.0.20260202091824-645d787c9c5a => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.7.0-pre.0.0.20260216110115-3ee33ed73024 => ./modules/tetragon-oss
 ## explicit; go 1.25.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -347,6 +347,7 @@ github.com/cilium/tetragon/pkg/asm
 github.com/cilium/tetragon/pkg/bpf
 github.com/cilium/tetragon/pkg/btf
 github.com/cilium/tetragon/pkg/bugtool
+github.com/cilium/tetragon/pkg/celbpf
 github.com/cilium/tetragon/pkg/cgidarg
 github.com/cilium/tetragon/pkg/cgidmap
 github.com/cilium/tetragon/pkg/cgrouprate
@@ -462,6 +463,7 @@ github.com/cilium/tetragon/pkg/testutils/observer
 github.com/cilium/tetragon/pkg/testutils/perfring
 github.com/cilium/tetragon/pkg/testutils/policyfilter
 github.com/cilium/tetragon/pkg/testutils/sensors
+github.com/cilium/tetragon/pkg/tetragoninfo
 github.com/cilium/tetragon/pkg/tgsyscall
 github.com/cilium/tetragon/pkg/timer
 github.com/cilium/tetragon/pkg/tracepoint

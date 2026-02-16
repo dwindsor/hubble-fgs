@@ -15,9 +15,6 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 #define EAGAIN 11 /* Try again */
 
-static long BPF_FUNC(copy_from_user, void *dst, __u32 size, const void *user_ptr);
-static long BPF_FUNC(probe_read_user_str, void *dst, u32 size, const void *unsafe_ptr);
-
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__type(key, int);

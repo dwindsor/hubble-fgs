@@ -58,6 +58,8 @@ const (
 	stringMapSize10 = 4096 + 2
 
 	StringMapSize7a = 512
+
+	SubstringMapEntries = 100
 )
 
 var (
@@ -132,6 +134,10 @@ type KernelSelectorState struct {
 	isUprobe bool
 
 	regs []processapi.RegAssignment
+
+	subStrs []string
+
+	celExprFunctions CelExprFunctions
 }
 
 func NewKernelSelectorState(listReader ValueReader, maps *KernelSelectorMaps, isUprobe bool) *KernelSelectorState {
@@ -206,6 +212,10 @@ func (k *KernelSelectorState) StringPostfixMaps() []map[KernelLPMTrieStringPostf
 
 func (k *KernelSelectorState) Regs() []processapi.RegAssignment {
 	return k.regs
+}
+
+func (k *KernelSelectorState) SubStrings() []string {
+	return k.subStrs
 }
 
 // ValueMapsMaxEntries returns the maximum entries over all maps
@@ -504,4 +514,8 @@ func (k *KernelSelectorState) newStringPostfixMap() (uint32, map[KernelLPMTrieSt
 	mapid := len(k.maps.stringPostfixMaps)
 	k.maps.stringPostfixMaps = append(k.maps.stringPostfixMaps, map[KernelLPMTrieStringPostfix]struct{}{})
 	return uint32(mapid), k.maps.stringPostfixMaps[mapid]
+}
+
+func (k *KernelSelectorState) CelExprFunctions() CelExprFunctions {
+	return k.celExprFunctions
 }

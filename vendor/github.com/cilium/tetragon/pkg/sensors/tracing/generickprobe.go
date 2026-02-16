@@ -29,13 +29,13 @@ import (
 	"github.com/cilium/tetragon/pkg/asm"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/celbpf"
 	"github.com/cilium/tetragon/pkg/cgtracker"
 	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/eventhandler"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/idtable"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
@@ -177,81 +177,6 @@ func getProgramSelector(load *program.Program, kprobeEntry *genericKprobe) *sele
 	return nil
 }
 
-func filterMaps(load *program.Program, kprobeEntry *genericKprobe) []*program.Map {
-	var maps []*program.Map
-
-	/*
-	 * If we got passed genericKprobe != nil we can make selector map fixes
-	 * related to the kernel version. We pass nil for multi kprobes but as
-	 * they are added in later kernels than 5.9, there's no fixing needed.
-	 */
-	state := getProgramSelector(load, kprobeEntry)
-
-	argFilterMaps := program.MapBuilderProgram("argfilter_maps", load)
-	if state != nil && !kernels.MinKernelVersion("5.9") {
-		// Versions before 5.9 do not allow inner maps to have different sizes.
-		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		maxEntries := state.ValueMapsMaxEntries()
-		argFilterMaps.SetInnerMaxEntries(maxEntries)
-	}
-	maps = append(maps, argFilterMaps)
-
-	addr4FilterMaps := program.MapBuilderProgram("addr4lpm_maps", load)
-	if state != nil && !kernels.MinKernelVersion("5.9") {
-		// Versions before 5.9 do not allow inner maps to have different sizes.
-		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		maxEntries := state.Addr4MapsMaxEntries()
-		addr4FilterMaps.SetInnerMaxEntries(maxEntries)
-	}
-	maps = append(maps, addr4FilterMaps)
-
-	addr6FilterMaps := program.MapBuilderProgram("addr6lpm_maps", load)
-	if state != nil && !kernels.MinKernelVersion("5.9") {
-		// Versions before 5.9 do not allow inner maps to have different sizes.
-		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		maxEntries := state.Addr6MapsMaxEntries()
-		addr6FilterMaps.SetInnerMaxEntries(maxEntries)
-	}
-	maps = append(maps, addr6FilterMaps)
-
-	var stringFilterMap [selectors.StringMapsNumSubMaps]*program.Map
-	numSubMaps := selectors.StringMapsNumSubMaps
-	if !kernels.MinKernelVersion("5.11") {
-		numSubMaps = selectors.StringMapsNumSubMapsSmall
-	}
-
-	for stringMapIndex := range numSubMaps {
-		stringFilterMap[stringMapIndex] = program.MapBuilderProgram(fmt.Sprintf("string_maps_%d", stringMapIndex), load)
-		if state != nil && !kernels.MinKernelVersion("5.9") {
-			// Versions before 5.9 do not allow inner maps to have different sizes.
-			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-			maxEntries := state.StringMapsMaxEntries(stringMapIndex)
-			stringFilterMap[stringMapIndex].SetInnerMaxEntries(maxEntries)
-		}
-		maps = append(maps, stringFilterMap[stringMapIndex])
-	}
-
-	stringPrefixFilterMaps := program.MapBuilderProgram("string_prefix_maps", load)
-	if state != nil && !kernels.MinKernelVersion("5.9") {
-		// Versions before 5.9 do not allow inner maps to have different sizes.
-		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		maxEntries := state.StringPrefixMapsMaxEntries()
-		stringPrefixFilterMaps.SetInnerMaxEntries(maxEntries)
-	}
-	maps = append(maps, stringPrefixFilterMaps)
-
-	stringPostfixFilterMaps := program.MapBuilderProgram("string_postfix_maps", load)
-	if state != nil && !kernels.MinKernelVersion("5.9") {
-		// Versions before 5.9 do not allow inner maps to have different sizes.
-		// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-		maxEntries := state.StringPostfixMapsMaxEntries()
-		stringPostfixFilterMaps.SetInnerMaxEntries(maxEntries)
-	}
-	maps = append(maps, stringPostfixFilterMaps)
-
-	return maps
-}
-
 func createMultiKprobeSensor(polInfo *policyInfo, multiIDs []idtable.EntryID, has hasMaps) ([]*program.Program, []*program.Map, error) {
 	var multiRetIDs []idtable.EntryID
 	var progs []*program.Program
@@ -300,13 +225,10 @@ func createMultiKprobeSensor(polInfo *policyInfo, multiIDs []idtable.EntryID, ha
 	maps = append(maps, filterMap)
 
 	if has.selector {
-		maps = append(maps, filterMaps(load, nil)...)
+		maps = append(maps, createSelectorMaps(load, nil)...)
 
 		selMatchBinariesMap := program.MapBuilderProgram("tg_mb_sel_opts", load)
 		maps = append(maps, selMatchBinariesMap)
-
-		matchBinariesPaths := program.MapBuilderProgram("tg_mb_paths", load)
-		maps = append(maps, matchBinariesPaths)
 	}
 
 	if len(multiRetIDs) != 0 {
@@ -381,7 +303,7 @@ func createMultiKprobeSensor(polInfo *policyInfo, multiIDs []idtable.EntryID, ha
 		maps = append(maps, retFilterMap)
 
 		if has.selector {
-			maps = append(maps, filterMaps(loadret, nil)...)
+			maps = append(maps, createSelectorMaps(loadret, nil)...)
 		}
 
 		callHeap := program.MapBuilderSensor("process_call_heap", loadret)
@@ -758,7 +680,8 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 	var argSigPrinters []argPrinter
 	var argReturnPrinters []argPrinter
 	var setRetprobe bool
-	var argRetprobe *v1alpha1.KProbeArg
+	var argRetprobe *v1alpha1.KProbeArg // holds pointer to arg for return handler
+	var argRetprobeIdx int
 	var allBTFArgs [api.EventConfigMaxArgs][api.MaxBTFArgDepth]api.ConfigBTFArg
 
 	errFn := func(err error) (idtable.EntryID, error) {
@@ -803,8 +726,6 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 	if err != nil {
 		return errFn(fmt.Errorf("error: '%w'", err))
 	}
-
-	argRetprobe = nil // holds pointer to arg for return handler
 
 	addArg := func(j int, a *v1alpha1.KProbeArg, data bool) error {
 		// First try userspace types
@@ -858,6 +779,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		}
 		if argReturnCopy(argMValue) {
 			argRetprobe = &f.Args[j]
+			argRetprobeIdx = j
 		}
 		if a.Index > 4 {
 			return fmt.Errorf("error add arg: ArgType %s Index %d out of bounds",
@@ -869,7 +791,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		eventConfig.RegArg[j] = regArg
 
 		argP := argPrinter{
-			index:    int(a.Index),
+			index:    j,
 			ty:       argType,
 			userType: userArgType,
 			maxData:  a.MaxData,
@@ -948,7 +870,7 @@ func addKprobe(funcName string, instance int, f *v1alpha1.KProbeSpec, in *addKpr
 		argType := gt.GenericTypeFromString(argRetprobe.Type)
 		eventConfig.ArgReturnCopy = int32(argType)
 
-		argP := argPrinter{index: int(argRetprobe.Index), ty: argType, label: argRetprobe.Label}
+		argP := argPrinter{index: argRetprobeIdx, ty: argType, label: argRetprobe.Label}
 		argReturnPrinters = append(argReturnPrinters, argP)
 	} else {
 		eventConfig.ArgReturnCopy = int32(gt.GenericUnsetType)
@@ -1063,18 +985,10 @@ func createKprobeSensorFromEntry(polInfo *policyInfo, kprobeEntry *genericKprobe
 	maps = append(maps, filterMap)
 
 	if has.selector {
-		maps = append(maps, filterMaps(load, kprobeEntry)...)
+		maps = append(maps, createSelectorMaps(load, getProgramSelector(load, kprobeEntry))...)
 
 		selMatchBinariesMap := program.MapBuilderProgram("tg_mb_sel_opts", load)
 		maps = append(maps, selMatchBinariesMap)
-
-		if !kernels.MinKernelVersion("5.9") {
-			matchBinariesPaths := program.MapBuilderProgram("tg_mb_paths", load)
-			// Versions before 5.9 do not allow inner maps to have different sizes.
-			// See: https://lore.kernel.org/bpf/20200828011800.1970018-1-kafai@fb.com/
-			matchBinariesPaths.SetInnerMaxEntries(kprobeEntry.loadArgs.selectors.entry.MatchBinariesPathsMaxEntries())
-			maps = append(maps, matchBinariesPaths)
-		}
 	}
 
 	if kprobeEntry.loadArgs.retprobe {
@@ -1160,7 +1074,7 @@ func createKprobeSensorFromEntry(polInfo *policyInfo, kprobeEntry *genericKprobe
 		maps = append(maps, filterMap)
 
 		if has.selector {
-			maps = append(maps, filterMaps(loadret, kprobeEntry)...)
+			maps = append(maps, createSelectorMaps(loadret, getProgramSelector(loadret, kprobeEntry))...)
 		}
 
 		// add maps with non-default paths (pins) to the retprobe
@@ -1223,6 +1137,14 @@ func loadSingleKprobeSensor(id idtable.EntryID, bpfDir string, load *program.Pro
 		return err
 	}
 
+	rewriteProg := make(map[string]func(prog *ebpf.ProgramSpec) error)
+	if entry := gk.loadArgs.selectors.entry; entry != nil {
+		if celbpf.EnabledInBPF() {
+			rewriteProg["generic_kprobe_filter_arg"] = entry.CelExprFunctions().RewriteProg
+		}
+	}
+	load.RewriteProg = rewriteProg
+
 	load.MapLoad = append(load.MapLoad, getMapLoad(load, gk, 0)...)
 
 	var configData bytes.Buffer
@@ -1253,6 +1175,12 @@ func loadMultiKprobeSensor(ids []idtable.EntryID, bpfDir string, load *program.P
 		gk, err := genericKprobeTableGet(id)
 		if err != nil {
 			return err
+		}
+
+		if entry := gk.loadArgs.selectors.entry; entry != nil {
+			if len(entry.CelExprFunctions()) > 0 {
+				return errors.New("celExpr not supported in multi-kprobes")
+			}
 		}
 
 		load.MapLoad = append(load.MapLoad, getMapLoad(load, gk, uint32(index))...)

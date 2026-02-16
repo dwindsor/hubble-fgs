@@ -23,7 +23,7 @@ import (
 
 type uprobeAttachFunc func(*Program, *ebpf.Program, *ebpf.ProgramSpec, string, ...string) (unloader.Unloader, error)
 
-func linkPin(lnk link.Link, bpfDir string, load *Program, extra ...string) error {
+func LinkPin(lnk link.Link, bpfDir string, load *Program, extra ...string) error {
 	// pinned link is not supported
 	if !bpf.HasLinkPin() {
 		return nil
@@ -78,7 +78,7 @@ func TracepointAttach(load *Program, bpfDir string) AttachFunc {
 		if err != nil {
 			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 		}
-		err = linkPin(tpLink, bpfDir, load)
+		err = LinkPin(tpLink, bpfDir, load)
 		if err != nil {
 			tpLink.Close()
 			return nil, err
@@ -167,7 +167,7 @@ func kprobeAttach(load *Program, prog *ebpf.Program, spec *ebpf.ProgramSpec,
 	if err != nil {
 		return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 	}
-	err = linkPin(lnk, bpfDir, load, extra...)
+	err = LinkPin(lnk, bpfDir, load, extra...)
 	if err != nil {
 		lnk.Close()
 		return nil, err
@@ -248,7 +248,7 @@ func fmodretAttachOverride(load *Program, bpfDir string,
 		return fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 	}
 
-	err = linkPin(lnk, bpfDir, load, "override")
+	err = LinkPin(lnk, bpfDir, load, "override")
 	if err != nil {
 		lnk.Close()
 		return err
@@ -334,7 +334,7 @@ func uprobeAttachSingle(load *Program, prog *ebpf.Program, spec *ebpf.ProgramSpe
 		return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 	}
 
-	err = linkPin(lnk, bpfDir, load, extra...)
+	err = LinkPin(lnk, bpfDir, load, extra...)
 	if err != nil {
 		lnk.Close()
 		return nil, err
@@ -387,7 +387,7 @@ func uprobeAttachMulti(load *Program, prog *ebpf.Program, spec *ebpf.ProgramSpec
 			if err != nil {
 				return nil, err
 			}
-			err = linkPin(lnk, bpfDir, load, extra...)
+			err = LinkPin(lnk, bpfDir, load, extra...)
 			if err != nil {
 				lnk.Close()
 				return nil, err
@@ -439,7 +439,11 @@ func uprobeAttachExtra(load *Program, bpfDir string,
 		return nil, fmt.Errorf("pinning '%s' to '%s' failed: %w", load.Label, pinPath, err)
 	}
 
-	return attach(load, prog, spec, bpfDir, pin)
+	un, err := attach(load, prog, spec, bpfDir, pin)
+	if err != nil {
+		prog.Unpin()
+	}
+	return un, err
 }
 
 func uprobeAttach(load *Program, bpfDir string,
@@ -506,7 +510,7 @@ func TracingAttach(load *Program, bpfDir string) AttachFunc {
 		if err != nil {
 			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 		}
-		err = linkPin(lnk, bpfDir, load)
+		err = LinkPin(lnk, bpfDir, load)
 		if err != nil {
 			lnk.Close()
 			return nil, err
@@ -570,7 +574,7 @@ func multiKprobeAttach(load *Program, prog *ebpf.Program,
 	if err != nil {
 		return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 	}
-	err = linkPin(lnk, bpfDir, load, extra...)
+	err = LinkPin(lnk, bpfDir, load, extra...)
 	if err != nil {
 		lnk.Close()
 		return nil, err
@@ -935,6 +939,17 @@ func doLoadProgram(
 	spec, err := ebpf.LoadCollectionSpec(load.Name)
 	if err != nil {
 		return nil, fmt.Errorf("loading collection spec failed: %w", err)
+	}
+
+	// add functions
+	for name, prog := range spec.Programs {
+		rewriteFn := load.RewriteProg[name]
+		if rewriteFn != nil {
+			err := rewriteFn(prog)
+			if err != nil {
+				return nil, fmt.Errorf("failed to rewrite program %s: %w", prog.Name, err)
+			}
+		}
 	}
 
 	if load.RewriteConstants != nil {

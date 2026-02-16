@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -247,6 +246,16 @@ func loadSingleUprobeSensor(uprobeEntry *genericUprobe, args sensors.LoadProbeAr
 	return nil
 }
 
+func getUprobeProgramSelector(load *program.Program, uprobeEntry *genericUprobe) *selectors.KernelSelectorState {
+	if uprobeEntry != nil {
+		if load.RetProbe {
+			return uprobeEntry.loadArgs.selectors.retrn
+		}
+		return uprobeEntry.loadArgs.selectors.entry
+	}
+	return nil
+}
+
 func checkSymbol(sym string) error {
 	_, _, err := parseSymbol(sym)
 	return err
@@ -372,19 +381,6 @@ func (k *observerUprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		load.LoaderData, load.LoaderData)
 }
 
-func isValidUprobeSelectors(selectors []v1alpha1.KProbeSelector) error {
-	for _, s := range selectors {
-		if len(s.MatchReturnArgs) > 0 ||
-			len(s.MatchNamespaces) > 0 ||
-			len(s.MatchNamespaceChanges) > 0 ||
-			len(s.MatchCapabilities) > 0 ||
-			len(s.MatchCapabilityChanges) > 0 {
-			return errors.New("only matchPIDs selector is supported")
-		}
-	}
-	return nil
-}
-
 type addUprobeIn struct {
 	sensorPath string
 	policyName string
@@ -394,6 +390,7 @@ type addUprobeIn struct {
 type uprobeHas struct {
 	sleepableOffload bool
 	sleepablePreload bool
+	substring        bool
 }
 
 func createGenericUprobeSensor(
@@ -475,6 +472,7 @@ func createGenericUprobeSensor(
 
 func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn, has *uprobeHas) ([]idtable.EntryID, error) {
 	var argRetprobe *v1alpha1.KProbeArg
+	var argRetprobeIdx int
 	var setRetprobe bool
 
 	symbols := len(spec.Symbols)
@@ -500,15 +498,25 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		}
 	}
 
-	if err := isValidUprobeSelectors(spec.Selectors); err != nil {
-		return nil, err
-	}
-
 	if selectors.HasOverride(spec.Selectors) {
 		if !bpf.HasUprobeRegsChange() {
 			return nil, errors.New("can't use override regs action, no kernel support")
 		}
 		has.sleepableOffload = true
+	}
+
+	if selectors.HasOperator(spec.Selectors, selectors.SelectorOpSubString) {
+		if !bpf.HasKfunc("bpf_strnstr") {
+			return nil, errors.New("can't use SubString operator, no kernel support")
+		}
+		has.substring = true
+	}
+
+	if selectors.HasOperator(spec.Selectors, selectors.SelectorOpSubStringIgnCase) {
+		if !bpf.HasKfunc("bpf_strncasestr") {
+			return nil, errors.New("can't use SubStringIgnCase operator, no kernel support")
+		}
+		has.substring = true
 	}
 
 	// Parse Filters into kernel filter logic
@@ -575,11 +583,10 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 				// If we are getting string type from pt_regs register we can safely assume
 				// it's from user address, so we need to read it through preload.
 				if argType == gt.GenericStringType {
-					if bpf.HasKfunc("bpf_copy_from_user_str") && runtime.GOARCH == "amd64" {
-						preload = true
-					} else {
-						logger.GetLogger().Warn("can't preload string argument, might be wrong")
+					if !bpf.HasKfunc("bpf_copy_from_user_str") {
+						return fmt.Errorf("can't preload string for argument %d", i)
 					}
+					preload = true
 				}
 			} else if hasCurrentTaskSource(a) {
 				if !bpf.HasProgramLargeSize() {
@@ -603,6 +610,13 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 				allBTFArgs[i] = btfArg
 				argType = findTypeFromBTFType(a, lastBTFType)
 			}
+
+			if argType == gt.GenericStringType {
+				if !bpf.HasKfunc("bpf_copy_from_user_str") {
+					return fmt.Errorf("can't preload string for argument %d", i)
+				}
+				preload = true
+			}
 		}
 
 		has.sleepablePreload = has.sleepablePreload || preload
@@ -616,6 +630,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		}
 		if argReturnCopy(argMValue) {
 			argRetprobe = &spec.Args[i]
+			argRetprobeIdx = i
 		}
 		if a.Index > 4 {
 			return fmt.Errorf("error add arg: ArgType %s Index %d out of bounds",
@@ -693,7 +708,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		argType := gt.GenericTypeFromString(argRetprobe.Type)
 		eventConfig.ArgReturnCopy = int32(argType)
 
-		argP := argPrinter{index: int(argRetprobe.Index), ty: argType, label: argRetprobe.Label}
+		argP := argPrinter{index: argRetprobeIdx, ty: argType, label: argRetprobe.Label}
 		argReturnPrinters = append(argReturnPrinters, argP)
 	} else {
 		eventConfig.ArgReturnCopy = int32(gt.GenericUnsetType)
@@ -795,6 +810,7 @@ func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, poli
 	var multiRetIDs []idtable.EntryID
 	var progs []*program.Program
 	var maps []*program.Map
+	var substringMapEntries int
 
 	for _, id := range multiIDs {
 		gu, err := genericUprobeTableGet(id)
@@ -803,6 +819,10 @@ func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, poli
 		}
 		if gu.loadArgs.retprobe {
 			multiRetIDs = append(multiRetIDs, id)
+		}
+
+		if has.substring && substringMapEntries == 0 {
+			substringMapEntries = len(gu.loadArgs.selectors.entry.SubStrings())
 		}
 	}
 
@@ -830,6 +850,13 @@ func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, poli
 	retProbe := program.MapBuilderSensor("retprobe_map", load)
 
 	maps = append(maps, configMap, tailCalls, filterMap, retProbe)
+	maps = append(maps, createSelectorMaps(load, getUprobeProgramSelector(load, nil))...)
+
+	if has.substring {
+		substringMap := program.MapBuilderSensor("substring_map", load)
+		substringMap.SetMaxEntries(substringMapEntries)
+		maps = append(maps, substringMap)
+	}
 
 	if has.sleepableOffload {
 		regsMap := program.MapBuilderProgram("regs_map", load)
@@ -872,6 +899,7 @@ func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, poli
 
 		retFilterMap := program.MapBuilderProgram("filter_map", loadret)
 		maps = append(maps, retFilterMap)
+		maps = append(maps, createSelectorMaps(loadret, getUprobeProgramSelector(loadret, nil))...)
 
 		retTailCalls := program.MapBuilderProgram("retuprobe_calls", loadret)
 		maps = append(maps, retTailCalls)
@@ -900,6 +928,12 @@ func createSingleUprobeSensor(ids []idtable.EntryID, has uprobeHas) ([]*program.
 func createUprobeSensorFromEntry(uprobeEntry *genericUprobe,
 	progs []*program.Program, maps []*program.Map, has uprobeHas) ([]*program.Program, []*program.Map) {
 
+	var substringMapEntries int
+
+	if has.substring {
+		substringMapEntries = len(uprobeEntry.loadArgs.selectors.entry.SubStrings())
+	}
+
 	loadProgName, loadProgRetName := config.GenericUprobeObjs(false)
 
 	load := program.Builder(
@@ -921,7 +955,15 @@ func createUprobeSensorFromEntry(uprobeEntry *genericUprobe,
 	filterMap := program.MapBuilderProgram("filter_map", load)
 	retProbe := program.MapBuilderSensor("retprobe_map", load)
 	selMatchBinariesMap := program.MapBuilderProgram("tg_mb_sel_opts", load)
+
 	maps = append(maps, configMap, tailCalls, filterMap, selMatchBinariesMap, retProbe)
+	maps = append(maps, createSelectorMaps(load, getUprobeProgramSelector(load, uprobeEntry))...)
+
+	if has.substring {
+		substringMap := program.MapBuilderSensor("substring_map", load)
+		substringMap.SetMaxEntries(substringMapEntries)
+		maps = append(maps, substringMap)
+	}
 
 	if has.sleepableOffload {
 		regsMap := program.MapBuilderProgram("regs_map", load)
