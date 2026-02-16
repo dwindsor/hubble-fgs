@@ -1,6 +1,7 @@
 import hashsum from "hash-sum";
 import type { Namespace } from "./namespaces";
 import type { Workload } from "./workloads";
+import { Container } from "./containers";
 
 export type TreePathHash = string;
 export type TreeClusterPath = { cluster: true };
@@ -10,7 +11,10 @@ export type TreeHostProcPath = { path: TreePathHash[] };
 export type TreeNamespacesPath = { namespaces: true };
 export type TreeNamespacePath = { namespace: Namespace };
 export type TreeWorkloadPath = TreeNamespacePath & { workload: Workload };
-export type TreeWorkloadProcPath = TreeWorkloadPath & { path: TreePathHash[] };
+export type TreeContainerPath = TreeWorkloadPath & { container: Container };
+export type TreeContainerProcPath = TreeContainerPath & {
+  path: TreePathHash[];
+};
 export type TreePath =
   | TreeClusterPath
   | TreeNodePath
@@ -19,7 +23,8 @@ export type TreePath =
   | TreeNamespacesPath
   | TreeNamespacePath
   | TreeWorkloadPath
-  | TreeWorkloadProcPath;
+  | TreeContainerPath
+  | TreeContainerProcPath;
 
 export type TreePathStatus = {
   expanded?: boolean;

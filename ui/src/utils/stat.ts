@@ -2,6 +2,7 @@ import type { ApplicationProcessGroup } from "~/proto";
 import type { Endpoint } from "./endpoints";
 import type { Namespace } from "./namespaces";
 import type { Workload } from "./workloads";
+import { Container } from "./containers";
 
 export type Stat = {
   txBytes: number;
@@ -72,6 +73,7 @@ export function createStatState() {
     namespaces: createTreeEntryStat(),
     namespacesMap: new Map<Namespace, TreeEntryStat>(),
     workloadsMap: new Map<Workload, TreeEntryStat>(),
+    containersMap: new Map<Container, TreeEntryStat>(),
     processesMap: new WeakMap<ApplicationProcessGroup, TreeEntryStat>(),
     endpointsMap: new Map<Endpoint, Stat>(),
   };

@@ -1,5 +1,6 @@
 import type { ApplicationModelEvent, ApplicationProcessGroup, Destination } from "~/proto";
 import type { ConnectionsMap } from "~/utils/connections";
+import { getContainerHash } from "~/utils/containers";
 import {
   EndpointKind,
   type EndpointsHashMap,
@@ -19,7 +20,7 @@ import {
   createTreeEntryStat,
 } from "~/utils/stat";
 import { ThrowableMap } from "~/utils/throwable-map";
-import type { TreeHostProcPath, TreeWorkloadProcPath } from "~/utils/tree";
+import type { TreeContainerProcPath, TreeHostProcPath } from "~/utils/tree";
 import { getWorkloadHash } from "~/utils/workloads";
 
 export function createAppState(model?: ApplicationModelEvent): {
@@ -46,14 +47,14 @@ export function createAppState(model?: ApplicationModelEvent): {
   }
 
   const rec = (
-    recProcPath: TreeHostProcPath | TreeWorkloadProcPath,
+    recProcPath: TreeHostProcPath | TreeContainerProcPath,
     recProcs?: ApplicationProcessGroup[],
   ): TreeEntryStat => {
     const recStat = createTreeEntryStat();
 
     recProcs?.forEach((proc) => {
       const procHash = getProcHash(proc);
-      const procPath: TreeHostProcPath | TreeWorkloadProcPath = {
+      const procPath: TreeHostProcPath | TreeContainerProcPath = {
         ...recProcPath,
         path: [...recProcPath.path, procHash],
       };
@@ -152,11 +153,30 @@ export function createAppState(model?: ApplicationModelEvent): {
     namespace.workloads?.forEach((workload) => {
       if (!workload.name) return;
 
-      const workloadStat = rec(
-        { namespace: namespace.name, workload: workload.name, path: [] },
-        workload.processes,
-      );
+      const workloadStat = createTreeEntryStat();
       stat.workloadsMap.set(getWorkloadHash(namespace.name, workload.name), workloadStat);
+
+      workload.containers?.forEach((container) => {
+        if (!container.name) return;
+
+        const containerStat = rec(
+          {
+            namespace: namespace.name,
+            workload: workload.name,
+            container: container.name,
+            path: [],
+          },
+          container.processes,
+        );
+
+        stat.containersMap.set(
+          getContainerHash(namespace.name, workload.name, container.name),
+          containerStat,
+        );
+
+        advanceStat(workloadStat, containerStat);
+        advanceEndpointStatMap(workloadStat.endpointsMap, containerStat.endpointsMap);
+      });
 
       advanceStat(namespaceStat, workloadStat);
       advanceEndpointStatMap(namespaceStat.endpointsMap, workloadStat.endpointsMap);

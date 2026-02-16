@@ -21,6 +21,8 @@ export type ApplicationConnection = ObjectToSnake<DeepPartial<ProtoAppModel.Appl
 
 export type ApplicationWorkload = ObjectToSnake<DeepPartial<ProtoAppModel.ApplicationWorkload>>;
 
+export type ApplicationContainer = ObjectToSnake<DeepPartial<ProtoAppModel.ApplicationContainer>>;
+
 export type ApplicationHost = ObjectToSnake<DeepPartial<ProtoAppModel.ApplicationHost>>;
 
 export type ApplicationNamespace = ObjectToSnake<DeepPartial<ProtoAppModel.ApplicationNamespace>>;

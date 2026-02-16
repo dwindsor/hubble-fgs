@@ -1,0 +1,3353 @@
+{
+  "cluster_name": "kind",
+  "node_name": "kind/kind-control-plane",
+  "time": "2026-02-13T17:00:36.479177309Z",
+  "application_model": {
+    "namespaces": [
+      {
+        "name": "apache-vuln",
+        "workloads": [
+          {
+            "name": "httpd-deployment-devops",
+            "kind": "WORKLOAD_KIND_DEPLOYMENT",
+            "containers": [
+              {
+                "name": "init-executor-2",
+                "processes": [
+                  {
+                    "name": "/usr/local/apache2/bin/httpd",
+                    "in_init_tree": true
+                  }
+                ]
+              },
+              {
+                "name": "gateway-engine-2",
+                "processes": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "default",
+        "workloads": [
+          {
+            "name": "attacker-pod",
+            "kind": "WORKLOAD_KIND_JOB",
+            "containers": [
+              {
+                "name": "init-client-2",
+                "processes": [
+                  {
+                    "name": "/usr/bin/bash",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/lib/jvm/java-1.8.0-amazon-corretto/bin/java",
+                    "in_init_tree": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "hacker-container",
+            "kind": "WORKLOAD_KIND_POD",
+            "containers": [
+              {
+                "name": "auth-server-2",
+                "processes": [
+                  {
+                    "name": "/bin/bash",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/bin/bash",
+                    "arguments": "setup.py",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/bin/busybox",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/bin/busybox",
+                    "arguments": "Chart.yaml",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/coreutils",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/curl",
+                    "in_init_tree": false
+                  }
+                ]
+              },
+              {
+                "name": "service-engine-2",
+                "processes": [
+                  {
+                    "name": "/usr/bin/curl",
+                    "arguments": "cisco.com",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["cisco.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "341",
+                          "rx_bytes": "287"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/curl",
+                    "arguments": "google.com",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["google.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "788",
+                          "rx_bytes": "2254"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/curl",
+                    "arguments": "yahoo.com",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["yahoo.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "393",
+                          "rx_bytes": "492"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/wget",
+                    "arguments": "cisco.com",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["cisco.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "392",
+                          "rx_bytes": "287"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["cisco.com."]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "1312",
+                          "rx_bytes": "6359"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["www.cisco.com."]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "2361",
+                          "rx_bytes": "179735"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/wget",
+                    "arguments": "ebay.com",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["ebay.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "443",
+                          "rx_bytes": "499"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["ebay.com."]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "1319",
+                          "rx_bytes": "9050"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["www.ebay.com."]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "5047",
+                          "rx_bytes": "822577"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  }
+                ]
+              },
+              {
+                "name": "adapter-client-1",
+                "processes": [
+                  {
+                    "name": "/usr/bin/wget",
+                    "arguments": "google.com",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["google.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "445",
+                          "rx_bytes": "1127"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["www.google.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "657",
+                          "rx_bytes": "19542"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/wget",
+                    "arguments": "isovalent.com",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["isovalent.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "448",
+                          "rx_bytes": "481"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["isovalent.com."]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "4709",
+                          "rx_bytes": "255665"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/wget",
+                    "arguments": "yahoo.coim",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/wget",
+                    "arguments": "yahoo.com",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["www.yahoo.com."]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "60"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["yahoo.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "444",
+                          "rx_bytes": "492"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["yahoo.com."]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "1217",
+                          "rx_bytes": "4859"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/local/bin/kube-bench",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.101.93"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "2195",
+                          "rx_bytes": "2661"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "tomcat",
+            "kind": "WORKLOAD_KIND_JOB",
+            "containers": [
+              {
+                "name": "service-processor-3",
+                "processes": [
+                  {
+                    "name": "/usr/lib/jvm/java-1.8.0-amazon-corretto/bin/java",
+                    "in_init_tree": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "goldpinger1",
+        "workloads": [
+          {
+            "name": "goldpinger1",
+            "kind": "WORKLOAD_KIND_DAEMONSET",
+            "containers": [
+              {
+                "name": "cache-handler-1",
+                "processes": [
+                  {
+                    "name": "/goldpinger",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["13.107.6.156"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "27294",
+                          "rx_bytes": "358994"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.101.93"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "8547234",
+                          "rx_bytes": "249250262"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.121.194"]
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "117486"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.121.201"]
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "117120"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.69.88"]
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "115840"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["20.190.151.68"]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "228040",
+                          "rx_bytes": "376162"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["20.190.151.70"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "570896",
+                          "rx_bytes": "2538152"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["20.190.190.129"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "79912",
+                          "rx_bytes": "629816"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["20.190.190.196"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "400",
+                          "rx_bytes": "67272"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": [
+                              "login.microsoft.com.",
+                              "login.microsoftonline.com."
+                            ]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "923822",
+                          "rx_bytes": "7266170"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["www.google.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "271328",
+                          "rx_bytes": "5068580"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["www.office.com."]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "120"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "workload": {
+                            "name": "goldpinger1",
+                            "namespace": "goldpinger1",
+                            "kind": "WORKLOAD_KIND_DAEMONSET"
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "254874",
+                          "rx_bytes": "267714"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "workload": {
+                            "name": "goldpinger2",
+                            "namespace": "goldpinger2",
+                            "kind": "WORKLOAD_KIND_DAEMONSET"
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "133480",
+                          "rx_bytes": "73472"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  }
+                ]
+              },
+              {
+                "name": "db-controller-1",
+                "processes": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "goldpinger2",
+        "workloads": [
+          {
+            "name": "goldpinger2",
+            "kind": "WORKLOAD_KIND_DAEMONSET",
+            "containers": [
+              {
+                "name": "service-server-2",
+                "processes": [
+                  {
+                    "name": "/goldpinger",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["13.107.6.156"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "77342",
+                          "rx_bytes": "974642"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.121.194"]
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "117120"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.121.201"]
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "117328",
+                          "rx_bytes": "1000"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.65.59"]
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "115840"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.67.20"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "8325262",
+                          "rx_bytes": "248876162"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["20.190.151.133"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "88580",
+                          "rx_bytes": "693264"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["20.190.151.70"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "720",
+                          "rx_bytes": "184912"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["20.190.190.132"]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "45920"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["20.190.190.196"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "604500",
+                          "rx_bytes": "6671926"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": [
+                              "login.microsoft.com.",
+                              "login.microsoftonline.com."
+                            ]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "223434",
+                          "rx_bytes": "1738170"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["www.google.com."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "274632",
+                          "rx_bytes": "5216356"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "workload": {
+                            "name": "goldpinger1",
+                            "namespace": "goldpinger1",
+                            "kind": "WORKLOAD_KIND_DAEMONSET"
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "134312",
+                          "rx_bytes": "73472"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "workload": {
+                            "name": "goldpinger2",
+                            "namespace": "goldpinger2",
+                            "kind": "WORKLOAD_KIND_DAEMONSET"
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "254080",
+                          "rx_bytes": "266880"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  }
+                ]
+              },
+              {
+                "name": "init-handler-3",
+                "processes": []
+              },
+              {
+                "name": "backend-runtime-2",
+                "processes": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "kube-system",
+        "workloads": [
+          {
+            "name": "cilium",
+            "kind": "WORKLOAD_KIND_DAEMONSET",
+            "containers": [
+              {
+                "name": "init-controller-3",
+                "processes": [
+                  {
+                    "name": "/usr/bin/cilium-agent",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["13.57.77.249"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "3457924",
+                          "rx_bytes": "1834496"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.116.212"]
+                          },
+                          "port": "4240"
+                        },
+                        "stats": {
+                          "tx_bytes": "208"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.116.212"]
+                          },
+                          "port": "34910"
+                        },
+                        "stats": {
+                          "tx_bytes": "462"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.121.197"]
+                          },
+                          "port": "4240"
+                        },
+                        "stats": {
+                          "tx_bytes": "2324756",
+                          "rx_bytes": "1919822"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.64.75"]
+                          },
+                          "port": "4240"
+                        },
+                        "stats": {
+                          "tx_bytes": "208",
+                          "rx_bytes": "104"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.64.75"]
+                          },
+                          "port": "46948"
+                        },
+                        "stats": {
+                          "tx_bytes": "104",
+                          "rx_bytes": "208"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.69.84"]
+                          },
+                          "port": "4261"
+                        },
+                        "stats": {
+                          "tx_bytes": "3152221644",
+                          "rx_bytes": "27430838"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.69.90"]
+                          },
+                          "port": "34210"
+                        },
+                        "stats": {
+                          "tx_bytes": "34450",
+                          "rx_bytes": "4160"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.69.92"]
+                          },
+                          "port": "4240"
+                        },
+                        "stats": {
+                          "tx_bytes": "2992496",
+                          "rx_bytes": "2267060"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": [
+                              "9CF7D7EDCB6E6F6F3509088A1745D329.gr7.us-west-1.eks.amazonaws.com."
+                            ]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "3224366",
+                          "rx_bytes": "10351874"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": [
+                              "",
+                              "ip-192-168-64-75.us-west-1.compute.internal."
+                            ]
+                          },
+                          "port": "4240"
+                        },
+                        "stats": {
+                          "tx_bytes": "4634328",
+                          "rx_bytes": "3833736"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/cilium-health-responder",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.116.212"]
+                          },
+                          "port": "33108"
+                        },
+                        "stats": {
+                          "tx_bytes": "104"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.64.75"]
+                          },
+                          "port": "48160"
+                        },
+                        "stats": {
+                          "tx_bytes": "1154572",
+                          "rx_bytes": "1865968"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t filter -S",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t filter -S CILIUM_FORWARD",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t filter -S CILIUM_INPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t filter -S CILIUM_OUTPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t filter -S OLD_CILIUM_FORWARD",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t filter -S OLD_CILIUM_INPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t filter -S OLD_CILIUM_OUTPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t mangle -S",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t mangle -S CILIUM_PRE_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t mangle -S OLD_CILIUM_PRE_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t nat -S",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t nat -S CILIUM_POST_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t nat -S OLD_CILIUM_POST_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t raw -S",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t raw -S CILIUM_OUTPUT_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t raw -S CILIUM_PRE_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t raw -S OLD_CILIUM_OUTPUT_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-t raw -S OLD_CILIUM_PRE_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -A CILIUM_FORWARD -i cilium_host -m comment --comment \"cilium: cluster->any on cilium_host forward accept (nodeport)\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -A CILIUM_FORWARD -i cilium_net -m comment --comment \"cilium: cluster->any on cilium_net forward accept (nodeport)\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -A CILIUM_FORWARD -i lxc+ -m comment --comment \"cilium: cluster->any on lxc+ forward accept (nodeport)\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -A CILIUM_FORWARD -i lxc+ -m comment --comment \"cilium: cluster->any on lxc+ forward accept\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -A CILIUM_FORWARD -o cilium_host -m comment --comment \"cilium: any->cluster on cilium_host forward accept\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -A CILIUM_FORWARD -o lxc+ -m comment --comment \"cilium: any->cluster on lxc+ forward accept\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -A CILIUM_INPUT -m mark --mark 0x00000200/0x00000f00 -m comment --comment \"cilium: ACCEPT for proxy traffic\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -A CILIUM_OUTPUT -m mark ! --mark 0x00000e00/0x00000f00 -m mark ! --mark 0x00000d00/0x00000f00 -m mark ! --mark 0x00000400/0x00000f00 -m mark ! --mark 0x00000a00/0x00000e00 -m mark ! --mark 0x00000800/0x00000e00 -m mark ! --mark 0x00000f00",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -A CILIUM_OUTPUT -m mark --mark 0x00000800/0x00000e00 -m comment --comment \"cilium: ACCEPT for l7 proxy upstream traffic\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -A CILIUM_OUTPUT -m mark --mark 0x00000a00/0x00000e00 -m comment --comment \"cilium: ACCEPT for proxy traffic\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D FORWARD -m comment --comment \"cilium-feeder: CILIUM_FORWARD\" -j OLD_CILIUM_FORWARD",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D INPUT -m comment --comment \"cilium-feeder: CILIUM_INPUT\" -j OLD_CILIUM_INPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OLD_CILIUM_FORWARD -i cilium_host -m comment --comment \"cilium: cluster->any on cilium_host forward accept (nodeport)\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OLD_CILIUM_FORWARD -i cilium_net -m comment --comment \"cilium: cluster->any on cilium_net forward accept (nodeport)\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OLD_CILIUM_FORWARD -i lxc+ -m comment --comment \"cilium: cluster->any on lxc+ forward accept (nodeport)\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OLD_CILIUM_FORWARD -i lxc+ -m comment --comment \"cilium: cluster->any on lxc+ forward accept\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OLD_CILIUM_FORWARD -o cilium_host -m comment --comment \"cilium: any->cluster on cilium_host forward accept\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OLD_CILIUM_FORWARD -o lxc+ -m comment --comment \"cilium: any->cluster on lxc+ forward accept\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OLD_CILIUM_INPUT -m mark --mark 0x200/0xf00 -m comment --comment \"cilium: ACCEPT for proxy traffic\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OLD_CILIUM_OUTPUT -m mark ! --mark 0xe00/0xf00 -m mark ! --mark 0xd00/0xf00 -m mark ! --mark 0x400/0xf00 -m mark ! --mark 0xa00/0xe00 -m mark ! --mark 0x800/0xe00 -m mark ! --mark 0xf00/0xf00 -m comment --comment \"cilium: host->any mark \"",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OLD_CILIUM_OUTPUT -m mark --mark 0x800/0xe00 -m comment --comment \"cilium: ACCEPT for l7 proxy upstream traffic\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OLD_CILIUM_OUTPUT -m mark --mark 0xa00/0xe00 -m comment --comment \"cilium: ACCEPT for proxy traffic\" -j ACCEPT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -D OUTPUT -m comment --comment \"cilium-feeder: CILIUM_OUTPUT\" -j OLD_CILIUM_OUTPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -E CILIUM_FORWARD OLD_CILIUM_FORWARD",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -E CILIUM_INPUT OLD_CILIUM_INPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -E CILIUM_OUTPUT OLD_CILIUM_OUTPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -F OLD_CILIUM_FORWARD",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -F OLD_CILIUM_INPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -F OLD_CILIUM_OUTPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -I FORWARD -m comment --comment \"cilium-feeder: CILIUM_FORWARD\" -j CILIUM_FORWARD",
+                    "in_init_tree": true
+                  }
+                ]
+              },
+              {
+                "name": "middleware-handler-2",
+                "processes": [
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -I INPUT -m comment --comment \"cilium-feeder: CILIUM_INPUT\" -j CILIUM_INPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -I OUTPUT -m comment --comment \"cilium-feeder: CILIUM_OUTPUT\" -j CILIUM_OUTPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -N CILIUM_FORWARD",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -N CILIUM_INPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -N CILIUM_OUTPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -S",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -S CILIUM_FORWARD",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -S CILIUM_INPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -S CILIUM_OUTPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -S OLD_CILIUM_FORWARD",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -S OLD_CILIUM_INPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -S OLD_CILIUM_OUTPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -X OLD_CILIUM_FORWARD",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -X OLD_CILIUM_INPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t filter -X OLD_CILIUM_OUTPUT",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -A CILIUM_PRE_mangle -i ens5 -m comment --comment \"cilium: primary ENI\" -m addrtype --dst-type LOCAL --limit-iface-in -j CONNMARK --set-xmark 0x00000080/0x00000080",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -A CILIUM_PRE_mangle -i lxc+ -m comment --comment \"cilium: primary ENI\" -j CONNMARK --restore-mark --nfmask 0x00000080 --ctmask 0x00000080",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -A CILIUM_PRE_mangle -m socket --transparent ! -o lo -m mark ! --mark 0x00000e00/0x00000f00 -m mark ! --mark 0x00000800/0x00000f00 -m comment --comment \"cilium: any->pod redirect proxied traffic to host proxy\" -j MARK --set-mark 0x00000200",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -A CILIUM_PRE_mangle -p tcp -m mark --mark 0x11270200 -m comment --comment \"cilium: TPROXY to host cilium-dns-egress proxy\" -j TPROXY --tproxy-mark 0x200 --on-ip 127.0.0.1 --on-port 10001",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -A CILIUM_PRE_mangle -p tcp -m mark --mark 0xa1350200 -m comment --comment \"cilium: TPROXY to host cilium-http-ingress proxy\" -j TPROXY --tproxy-mark 0x200 --on-ip 127.0.0.1 --on-port 13729",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -A CILIUM_PRE_mangle -p udp -m mark --mark 0x11270200 -m comment --comment \"cilium: TPROXY to host cilium-dns-egress proxy\" -j TPROXY --tproxy-mark 0x200 --on-ip 127.0.0.1 --on-port 10001",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -A CILIUM_PRE_mangle -p udp -m mark --mark 0xa1350200 -m comment --comment \"cilium: TPROXY to host cilium-http-ingress proxy\" -j TPROXY --tproxy-mark 0x200 --on-ip 127.0.0.1 --on-port 13729",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -D OLD_CILIUM_PRE_mangle ! -o lo -m socket --transparent -m mark ! --mark 0xe00/0xf00 -m mark ! --mark 0x800/0xf00 -m comment --comment \"cilium: any->pod redirect proxied traffic to host proxy\" -j MARK --set-xmark 0x200/0xffffffff",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -D OLD_CILIUM_PRE_mangle -i ens5 -m comment --comment \"cilium: primary ENI\" -m addrtype --dst-type LOCAL --limit-iface-in -j CONNMARK --set-xmark 0x80/0x80",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -D OLD_CILIUM_PRE_mangle -i lxc+ -m comment --comment \"cilium: primary ENI\" -j CONNMARK --restore-mark --nfmask 0x80 --ctmask 0x80",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -D OLD_CILIUM_PRE_mangle -p tcp -m mark --mark 0x11270200 -m comment --comment \"cilium: TPROXY to host cilium-dns-egress proxy\" -j TPROXY --on-port 10001 --on-ip 127.0.0.1 --tproxy-mark 0x200/0xffffffff",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -D OLD_CILIUM_PRE_mangle -p tcp -m mark --mark 0xa1350200 -m comment --comment \"cilium: TPROXY to host cilium-http-ingress proxy\" -j TPROXY --on-port 13729 --on-ip 127.0.0.1 --tproxy-mark 0x200/0xffffffff",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -D OLD_CILIUM_PRE_mangle -p udp -m mark --mark 0x11270200 -m comment --comment \"cilium: TPROXY to host cilium-dns-egress proxy\" -j TPROXY --on-port 10001 --on-ip 127.0.0.1 --tproxy-mark 0x200/0xffffffff",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -D OLD_CILIUM_PRE_mangle -p udp -m mark --mark 0xa1350200 -m comment --comment \"cilium: TPROXY to host cilium-http-ingress proxy\" -j TPROXY --on-port 13729 --on-ip 127.0.0.1 --tproxy-mark 0x200/0xffffffff",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -D POSTROUTING -m comment --comment \"cilium-feeder: CILIUM_POST_mangle\" -j OLD_CILIUM_POST_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -D PREROUTING -m comment --comment \"cilium-feeder: CILIUM_PRE_mangle\" -j OLD_CILIUM_PRE_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -E CILIUM_POST_mangle OLD_CILIUM_POST_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -E CILIUM_PRE_mangle OLD_CILIUM_PRE_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -F OLD_CILIUM_POST_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -F OLD_CILIUM_PRE_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -I POSTROUTING -m comment --comment \"cilium-feeder: CILIUM_POST_mangle\" -j CILIUM_POST_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -I PREROUTING -m comment --comment \"cilium-feeder: CILIUM_PRE_mangle\" -j CILIUM_PRE_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -N CILIUM_POST_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -N CILIUM_PRE_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -S",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -S CILIUM_POST_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -S CILIUM_PRE_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -S OLD_CILIUM_POST_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -S OLD_CILIUM_PRE_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -X OLD_CILIUM_POST_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t mangle -X OLD_CILIUM_PRE_mangle",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -D OUTPUT -m comment --comment \"cilium-feeder: CILIUM_OUTPUT_nat\" -j OLD_CILIUM_OUTPUT_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -D POSTROUTING -m comment --comment \"cilium-feeder: CILIUM_POST_nat\" -j OLD_CILIUM_POST_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -D PREROUTING -m comment --comment \"cilium-feeder: CILIUM_PRE_nat\" -j OLD_CILIUM_PRE_nat",
+                    "in_init_tree": true
+                  }
+                ]
+              },
+              {
+                "name": "logger-server-1",
+                "processes": [
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -E CILIUM_OUTPUT_nat OLD_CILIUM_OUTPUT_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -E CILIUM_POST_nat OLD_CILIUM_POST_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -E CILIUM_PRE_nat OLD_CILIUM_PRE_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -F OLD_CILIUM_OUTPUT_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -F OLD_CILIUM_POST_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -F OLD_CILIUM_PRE_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -I OUTPUT -m comment --comment \"cilium-feeder: CILIUM_OUTPUT_nat\" -j CILIUM_OUTPUT_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -I POSTROUTING -m comment --comment \"cilium-feeder: CILIUM_POST_nat\" -j CILIUM_POST_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -I PREROUTING -m comment --comment \"cilium-feeder: CILIUM_PRE_nat\" -j CILIUM_PRE_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -N CILIUM_OUTPUT_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -N CILIUM_POST_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -N CILIUM_PRE_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -S",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -S CILIUM_OUTPUT_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -S CILIUM_POST_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -S CILIUM_PRE_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -S OLD_CILIUM_OUTPUT_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -S OLD_CILIUM_POST_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -S OLD_CILIUM_PRE_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -X OLD_CILIUM_OUTPUT_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -X OLD_CILIUM_POST_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t nat -X OLD_CILIUM_PRE_nat",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -A CILIUM_OUTPUT_raw -o cilium_host -m mark --mark 0x00000800/0x00000e00 -m comment --comment \"cilium: NOTRACK for L7 proxy upstream traffic\" -j CT --notrack",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -A CILIUM_OUTPUT_raw -o cilium_host -m mark --mark 0x00000a00/0xfffffeff -m comment --comment \"cilium: NOTRACK for proxy return traffic\" -j CT --notrack",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -A CILIUM_OUTPUT_raw -o lxc+ -m mark --mark 0x00000800/0x00000e00 -m comment --comment \"cilium: NOTRACK for L7 proxy upstream traffic\" -j CT --notrack",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -A CILIUM_OUTPUT_raw -o lxc+ -m mark --mark 0x00000a00/0xfffffeff -m comment --comment \"cilium: NOTRACK for proxy return traffic\" -j CT --notrack",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -A CILIUM_PRE_raw -m mark --mark 0x00000200/0x00000f00 -m comment --comment \"cilium: NOTRACK for proxy traffic\" -j CT --notrack",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -D OLD_CILIUM_OUTPUT_raw -o cilium_host -m mark --mark 0x800/0xe00 -m comment --comment \"cilium: NOTRACK for L7 proxy upstream traffic\" -j CT --notrack",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -D OLD_CILIUM_OUTPUT_raw -o cilium_host -m mark --mark 0xa00/0xfffffeff -m comment --comment \"cilium: NOTRACK for proxy return traffic\" -j CT --notrack",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -D OLD_CILIUM_OUTPUT_raw -o lxc+ -m mark --mark 0x800/0xe00 -m comment --comment \"cilium: NOTRACK for L7 proxy upstream traffic\" -j CT --notrack",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -D OLD_CILIUM_OUTPUT_raw -o lxc+ -m mark --mark 0xa00/0xfffffeff -m comment --comment \"cilium: NOTRACK for proxy return traffic\" -j CT --notrack",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -D OLD_CILIUM_PRE_raw -m mark --mark 0x200/0xf00 -m comment --comment \"cilium: NOTRACK for proxy traffic\" -j CT --notrack",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -D OUTPUT -m comment --comment \"cilium-feeder: CILIUM_OUTPUT_raw\" -j OLD_CILIUM_OUTPUT_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -D PREROUTING -m comment --comment \"cilium-feeder: CILIUM_PRE_raw\" -j OLD_CILIUM_PRE_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -E CILIUM_OUTPUT_raw OLD_CILIUM_OUTPUT_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -E CILIUM_PRE_raw OLD_CILIUM_PRE_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -F OLD_CILIUM_OUTPUT_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -F OLD_CILIUM_PRE_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -I OUTPUT -m comment --comment \"cilium-feeder: CILIUM_OUTPUT_raw\" -j CILIUM_OUTPUT_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -I PREROUTING -m comment --comment \"cilium-feeder: CILIUM_PRE_raw\" -j CILIUM_PRE_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -N CILIUM_OUTPUT_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -N CILIUM_PRE_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -S",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -S CILIUM_OUTPUT_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -S CILIUM_PRE_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -S OLD_CILIUM_OUTPUT_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -S OLD_CILIUM_PRE_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -X OLD_CILIUM_OUTPUT_raw",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/xtables-nft-multi",
+                    "arguments": "-w 5 -t raw -X OLD_CILIUM_PRE_raw",
+                    "in_init_tree": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "cilium-dnsproxy",
+            "kind": "WORKLOAD_KIND_DAEMONSET",
+            "containers": [
+              {
+                "name": "api-runtime-1",
+                "processes": [
+                  {
+                    "name": "/usr/bin/dnsproxy",
+                    "in_init_tree": true
+                  }
+                ]
+              },
+              {
+                "name": "sidecar-client-2",
+                "processes": []
+              }
+            ]
+          },
+          {
+            "name": "cilium-envoy",
+            "kind": "WORKLOAD_KIND_DAEMONSET",
+            "containers": [
+              {
+                "name": "web-controller-2",
+                "processes": [
+                  {
+                    "name": "/usr/bin/cilium-envoy",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.121.194"]
+                          },
+                          "port": "35138"
+                        },
+                        "stats": {
+                          "tx_bytes": "2694832",
+                          "rx_bytes": "3004"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.121.194"]
+                          },
+                          "port": "40044"
+                        },
+                        "stats": {
+                          "tx_bytes": "2694632",
+                          "rx_bytes": "3108"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.121.201"]
+                          },
+                          "port": "35286"
+                        },
+                        "stats": {
+                          "tx_bytes": "2695632",
+                          "rx_bytes": "3782"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.121.201"]
+                          },
+                          "port": "41130"
+                        },
+                        "stats": {
+                          "tx_bytes": "2695230",
+                          "rx_bytes": "2538"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.65.59"]
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "3768",
+                          "rx_bytes": "392"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.65.59"]
+                          },
+                          "port": "38098"
+                        },
+                        "stats": {
+                          "tx_bytes": "2695022",
+                          "rx_bytes": "560560"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.69.88"]
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "1672",
+                          "rx_bytes": "520"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.69.88"]
+                          },
+                          "port": "54756"
+                        },
+                        "stats": {
+                          "tx_bytes": "2695228",
+                          "rx_bytes": "560664"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "workload": {
+                            "name": "httpd-deployment-devops",
+                            "namespace": "apache-vuln",
+                            "kind": "WORKLOAD_KIND_DEPLOYMENT"
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "3215930",
+                          "rx_bytes": "2599218"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "workload": {
+                            "name": "goldpinger1",
+                            "namespace": "goldpinger1",
+                            "kind": "WORKLOAD_KIND_DAEMONSET"
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "66485702",
+                          "rx_bytes": "48888312"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "workload": {
+                            "name": "goldpinger2",
+                            "namespace": "goldpinger2",
+                            "kind": "WORKLOAD_KIND_DAEMONSET"
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "67643828",
+                          "rx_bytes": "50370012"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/cilium-envoy-starter",
+                    "in_init_tree": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "cilium-operator",
+            "kind": "WORKLOAD_KIND_DEPLOYMENT",
+            "containers": [
+              {
+                "name": "app-handler-1",
+                "processes": [
+                  {
+                    "name": "/usr/bin/cilium-operator-aws",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["13.57.77.249"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "4110062",
+                          "rx_bytes": "5333264"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["52.9.240.119"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "2274130",
+                          "rx_bytes": "6698704"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": [
+                              "9CF7D7EDCB6E6F6F3509088A1745D329.gr7.us-west-1.eks.amazonaws.com."
+                            ]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "29915146",
+                          "rx_bytes": "109884214"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  }
+                ]
+              },
+              {
+                "name": "service-runtime-2",
+                "processes": []
+              },
+              {
+                "name": "adapter-controller-1",
+                "processes": []
+              }
+            ]
+          },
+          {
+            "name": "coredns",
+            "kind": "WORKLOAD_KIND_DEPLOYMENT",
+            "containers": [
+              {
+                "name": "web-server-3",
+                "processes": [
+                  {
+                    "name": "/coredns",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["127.0.0.1"]
+                          },
+                          "port": "8080"
+                        },
+                        "stats": {
+                          "tx_bytes": "273133528",
+                          "rx_bytes": "221423964"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.67.20"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "2387520",
+                          "rx_bytes": "4037716"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "workload": {
+                            "name": "hubble-timescape-lite",
+                            "namespace": "hubble-timescape",
+                            "kind": "WORKLOAD_KIND_STATEFULSET"
+                          },
+                          "port": "4260"
+                        },
+                        "stats": {
+                          "tx_bytes": "824",
+                          "rx_bytes": "668"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  }
+                ]
+              },
+              {
+                "name": "worker-executor-2",
+                "processes": []
+              }
+            ]
+          },
+          {
+            "name": "hubble-enterprise",
+            "kind": "WORKLOAD_KIND_DAEMONSET",
+            "containers": [
+              {
+                "name": "adapter-client-1",
+                "processes": [
+                  {
+                    "name": "/usr/bin/tini",
+                    "in_init_tree": true
+                  }
+                ]
+              },
+              {
+                "name": "worker-router-3",
+                "processes": [
+                  {
+                    "name": "/usr/local/bin/ruby",
+                    "connections": [
+                      {
+                        "destination": {
+                          "workload": {
+                            "name": "hubble-timescape-lite",
+                            "namespace": "hubble-timescape",
+                            "kind": "WORKLOAD_KIND_STATEFULSET"
+                          },
+                          "port": "4260"
+                        },
+                        "stats": {
+                          "tx_bytes": "81073125748",
+                          "rx_bytes": "268412152"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "hubble-relay",
+            "kind": "WORKLOAD_KIND_DEPLOYMENT",
+            "containers": [
+              {
+                "name": "gateway-processor-2",
+                "processes": [
+                  {
+                    "name": "/usr/bin/hubble-relay",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.64.75"]
+                          },
+                          "port": "4244"
+                        },
+                        "stats": {
+                          "tx_bytes": "4186",
+                          "rx_bytes": "2392"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  }
+                ]
+              },
+              {
+                "name": "db-handler-1",
+                "processes": []
+              },
+              {
+                "name": "monitor-processor-2",
+                "processes": []
+              }
+            ]
+          },
+          {
+            "name": "hubble-timescape",
+            "kind": "WORKLOAD_KIND_STATEFULSET",
+            "containers": [
+              {
+                "name": "backend-manager-1",
+                "processes": [
+                  {
+                    "name": "/usr/bin/clickhouse",
+                    "in_init_tree": true
+                  }
+                ]
+              },
+              {
+                "name": "db-handler-3",
+                "processes": [
+                  {
+                    "name": "/usr/bin/hubble-timescape",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.116.212"]
+                          },
+                          "port": "56544"
+                        },
+                        "stats": {
+                          "tx_bytes": "76773646",
+                          "rx_bytes": "109452426"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.64.75"]
+                          },
+                          "port": "48516"
+                        },
+                        "stats": {
+                          "tx_bytes": "76995328",
+                          "rx_bytes": "1212192"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["::1"]
+                          },
+                          "port": "9000"
+                        },
+                        "stats": {
+                          "tx_bytes": "4958180590"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "tetragon",
+        "workloads": [
+          {
+            "name": "tetragon",
+            "kind": "WORKLOAD_KIND_DAEMONSET",
+            "containers": [
+              {
+                "name": "cache-runtime-2",
+                "processes": [
+                  {
+                    "name": "/bin/busybox",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/tetra",
+                    "arguments": "model show",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["127.0.0.1"]
+                          },
+                          "port": "54321"
+                        },
+                        "stats": {
+                          "tx_bytes": "861",
+                          "rx_bytes": "32224"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/tetra",
+                    "arguments": "model show --help",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/tetra",
+                    "arguments": "model show -o json",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["127.0.0.1"]
+                          },
+                          "port": "54321"
+                        },
+                        "stats": {
+                          "tx_bytes": "4944",
+                          "rx_bytes": "140468"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  }
+                ]
+              },
+              {
+                "name": "worker-handler-3",
+                "processes": [
+                  {
+                    "name": "/usr/bin/tetra",
+                    "arguments": "model show -o web",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["127.0.0.1"]
+                          },
+                          "port": "54321"
+                        },
+                        "stats": {
+                          "tx_bytes": "13695",
+                          "rx_bytes": "490098"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/tetragon",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["192.168.67.20"]
+                          },
+                          "port": "443"
+                        },
+                        "stats": {
+                          "tx_bytes": "2513108",
+                          "rx_bytes": "11152776"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/var/lib/tetragon/tetragon-fs-scanner",
+                    "arguments": "-hostMntNs 4026531841 -scannerFifoPath /var/run/cilium/tetragon/fs_scanner.sock -maxSizeFileDigest 1073741824 -maxTimeoutFileDigest 30 -logLevel info -logFormat text",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/var/lib/tetragon/tetragon-runner",
+                    "arguments": "/procRoot/1/ns/mnt /var/lib/tetragon/tetragon-fs-scanner -hostMntNs 4026531841 -scannerFifoPath /var/run/cilium/tetragon/fs_scanner.sock -maxSizeFileDigest 1073741824 -maxTimeoutFileDigest 30 -logLevel info -logFormat text",
+                    "in_init_tree": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "yelb",
+        "workloads": [
+          {
+            "name": "mongo",
+            "kind": "WORKLOAD_KIND_DEPLOYMENT",
+            "containers": [
+              {
+                "name": "init-controller-1",
+                "processes": [
+                  {
+                    "name": "/usr/bin/apt-config",
+                    "arguments": "shell ARCHIVE_KEYRING APT::Key::ArchiveKeyring",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/apt-config",
+                    "arguments": "shell ARCHIVE_KEYRING_URI APT::Key::ArchiveKeyringURI",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/apt-config",
+                    "arguments": "shell GPGV Apt::Key::gpgvcommand ASSERT_PUBKEY_ALGO Apt::Key::assert-pubkey-algo",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/apt-config",
+                    "arguments": "shell MASTER_KEYRING APT::Key::MasterKeyring",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/apt-config",
+                    "arguments": "shell REMOVED_KEYS APT::Key::RemovedKeys",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/apt-get",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/apt-get",
+                    "arguments": "update",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/base64",
+                    "arguments": "-d",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/bash",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/cat",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/cat",
+                    "arguments": "test.yaml",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/chmod",
+                    "arguments": "700 /tmp/apt-key-gpghome.OzT9EL0k6g",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/chmod",
+                    "arguments": "700 /tmp/apt-key-gpghome.RaVu1bYsC6",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/chmod",
+                    "arguments": "700 /tmp/apt-key-gpghome.WPlMMWLYGP",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/chmod",
+                    "arguments": "700 /tmp/apt-key-gpghome.WnvH4GGuHw",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/chmod",
+                    "arguments": "700 /tmp/apt-key-gpghome.jmSn0yQgKh",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/dash",
+                    "arguments": "-c -- \"rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true\"",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/dash",
+                    "arguments": "/usr/bin/apt-key --quiet --readonly --keyring /etc/apt/keyrings/mongodb.asc verify --status-fd 3 /tmp/apt.sig.nTSBAX /tmp/apt.data.usWSuG",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/dash",
+                    "arguments": "/usr/bin/apt-key --quiet --readonly --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg verify --status-fd 3 /tmp/apt.sig.AzLIMo /tmp/apt.data.cFX7ID",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/dash",
+                    "arguments": "/usr/bin/apt-key --quiet --readonly --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg verify --status-fd 3 /tmp/apt.sig.E2Vqrm /tmp/apt.data.cqOx5H",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/dash",
+                    "arguments": "/usr/bin/apt-key --quiet --readonly --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg verify --status-fd 3 /tmp/apt.sig.dmPx97 /tmp/apt.data.Jq165H",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/dash",
+                    "arguments": "/usr/bin/apt-key --quiet --readonly --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg verify --status-fd 3 /tmp/apt.sig.fyJcRm /tmp/apt.data.Kz4Hjr",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/dash",
+                    "arguments": "google.com",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/dpkg",
+                    "arguments": "--print-foreign-architectures",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/gpgv",
+                    "arguments": "--assert-pubkey-algo",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/gpgv",
+                    "arguments": "--assert-pubkey-algo=>=rsa1024,ed25519,ed448,nistp256,nistp384,nistp512,brainpoolP256r1,brainpoolP320r1,brainpoolP384r1,brainpoolP512r1,secp256k1 --homedir /tmp/apt-key-gpghome.OzT9EL0k6g --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg --ignore-",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/gpgv",
+                    "arguments": "--assert-pubkey-algo=>=rsa1024,ed25519,ed448,nistp256,nistp384,nistp512,brainpoolP256r1,brainpoolP320r1,brainpoolP384r1,brainpoolP512r1,secp256k1 --homedir /tmp/apt-key-gpghome.RaVu1bYsC6 --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg --ignore-",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/gpgv",
+                    "arguments": "--assert-pubkey-algo=>=rsa1024,ed25519,ed448,nistp256,nistp384,nistp512,brainpoolP256r1,brainpoolP320r1,brainpoolP384r1,brainpoolP512r1,secp256k1 --homedir /tmp/apt-key-gpghome.WPlMMWLYGP --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg --ignore-",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/gpgv",
+                    "arguments": "--assert-pubkey-algo=>=rsa1024,ed25519,ed448,nistp256,nistp384,nistp512,brainpoolP256r1,brainpoolP320r1,brainpoolP384r1,brainpoolP512r1,secp256k1 --homedir /tmp/apt-key-gpghome.WnvH4GGuHw --keyring /tmp/apt-key-gpghome.WnvH4GGuHw/mongodb.asc.gpg --ignore",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/gpgv",
+                    "arguments": "--assert-pubkey-algo=>=rsa1024,ed25519,ed448,nistp256,nistp384,nistp512,brainpoolP256r1,brainpoolP320r1,brainpoolP384r1,brainpoolP512r1,secp256k1 --homedir /tmp/apt-key-gpghome.jmSn0yQgKh --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg --ignore-",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/groups",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/gzip",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/ls",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/mawk",
+                    "arguments": " \"{ gsub(/\\r/,\"\") }\n/^-----BEGIN/{ x = 1; }\n/^$/{ if (x == 1) { x = 2; }; }\n/^[^=-]/{ if (x == 2) { print $0; }; }\n/^-----END/{ x = 0; }\"",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/mkdir",
+                    "arguments": "test",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/mktemp",
+                    "arguments": "--directory --tmpdir apt-key-gpghome.XXXXXXXXXX",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/mongod",
+                    "in_init_tree": true
+                  },
+                  {
+                    "name": "/usr/bin/rm",
+                    "arguments": "-f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/rm",
+                    "arguments": "-rf /tmp/apt-key-gpghome.OzT9EL0k6g",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/rm",
+                    "arguments": "-rf /tmp/apt-key-gpghome.RaVu1bYsC6",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/rm",
+                    "arguments": "-rf /tmp/apt-key-gpghome.WPlMMWLYGP",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/rm",
+                    "arguments": "-rf /tmp/apt-key-gpghome.WnvH4GGuHw",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/rm",
+                    "arguments": "-rf /tmp/apt-key-gpghome.jmSn0yQgKh",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/sed",
+                    "arguments": "-e s#'#'\"'\"'#g",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/bin/whoami",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/lib/apt/methods/gpgv",
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/lib/apt/methods/http",
+                    "connections": [
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": [
+                              "archive.ubuntu.com.",
+                              "security.ubuntu.com."
+                            ]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "283450",
+                          "rx_bytes": "36311343"
+                        },
+                        "policy": {}
+                      },
+                      {
+                        "destination": {
+                          "dns": {
+                            "destination_names": ["repo.mongodb.org."]
+                          },
+                          "port": "80"
+                        },
+                        "stats": {
+                          "tx_bytes": "884",
+                          "rx_bytes": "22391"
+                        },
+                        "policy": {}
+                      }
+                    ],
+                    "in_init_tree": false
+                  },
+                  {
+                    "name": "/usr/lib/apt/methods/store",
+                    "in_init_tree": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "host": {
+      "processes": [
+        {
+          "name": "/opt/cni/bin/cilium-cni",
+          "in_init_tree": false
+        },
+        {
+          "name": "/opt/cni/bin/loopback",
+          "in_init_tree": false
+        },
+        {
+          "name": "/pause",
+          "in_init_tree": true
+        },
+        {
+          "name": "/runc",
+          "arguments": "init",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/amazon-ssm-agent",
+          "connections": [
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["169.254.169.254"]
+                },
+                "port": "80"
+              },
+              "stats": {
+                "tx_bytes": "16768",
+                "rx_bytes": "1928"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["ssm.us-west-1.amazonaws.com."]
+                },
+                "port": "443"
+              },
+              "stats": {
+                "tx_bytes": "134217",
+                "rx_bytes": "125450"
+              },
+              "policy": {}
+            }
+          ],
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/bash",
+          "arguments": "-c \"\n        /usr/bin/chronyc cyclelogs > /dev/null 2>&1 || true\n\" logrotate_script \"/var/log/chrony/*.log \"",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/bash",
+          "arguments": "/etc/update-motd.d/10-nvidia-eula",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/bash",
+          "arguments": "/etc/update-motd.d/70-available-updates",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/bash",
+          "arguments": "/usr/sbin/update-motd",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/cat",
+          "arguments": "/tmp/motd.partAqInw",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/cat",
+          "arguments": "/tmp/motd.partHMfqu",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/cat",
+          "arguments": "/tmp/motd.partvUmBc",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/chmod",
+          "arguments": "go+r /var/lib/update-motd/tmp.LLl9iErGRE",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/chmod",
+          "arguments": "go+r /var/lib/update-motd/tmp.WxVRlcc1Sy",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/chmod",
+          "arguments": "go+r /var/lib/update-motd/tmp.ogfP4JuQLi",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/chronyc",
+          "arguments": "cyclelogs",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/containerd",
+          "connections": [
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["127.0.0.1"]
+                },
+                "port": "3333"
+              },
+              "stats": {
+                "tx_bytes": "23630",
+                "rx_bytes": "2176"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["auth.docker.io."]
+                },
+                "port": "443"
+              },
+              "stats": {
+                "tx_bytes": "856084",
+                "rx_bytes": "6568166"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": [
+                    "auth.docker.io.",
+                    "registry-1.docker.io."
+                  ]
+                },
+                "port": "443"
+              },
+              "stats": {
+                "tx_bytes": "8984254",
+                "rx_bytes": "24992670"
+              },
+              "policy": {}
+            }
+          ],
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/containerd-shim-runc-v2",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/dbus-broker",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/dbus-broker-launch",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/grep",
+          "arguments": "-Pzo .*Updates(.*\\n)*",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/grep",
+          "arguments": "-q kmod-nvidia",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/gzip",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/hostname",
+          "arguments": "--fqdn",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/id",
+          "arguments": "-u",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/kubelet",
+          "connections": [
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["127.0.0.1"]
+                },
+                "port": "9234"
+              },
+              "stats": {
+                "tx_bytes": "6818448",
+                "rx_bytes": "2769752"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["127.0.0.1"]
+                },
+                "port": "9878"
+              },
+              "stats": {
+                "tx_bytes": "1514604",
+                "rx_bytes": "621272"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["127.0.0.1"]
+                },
+                "port": "9879"
+              },
+              "stats": {
+                "tx_bytes": "1678270",
+                "rx_bytes": "621272"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["127.0.0.1"]
+                },
+                "port": "43913"
+              },
+              "stats": {
+                "tx_bytes": "1693868",
+                "rx_bytes": "74336670"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["52.9.240.119"]
+                },
+                "port": "443"
+              },
+              "stats": {
+                "tx_bytes": "8366176",
+                "rx_bytes": "14549264"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": [
+                    "9CF7D7EDCB6E6F6F3509088A1745D329.gr7.us-west-1.eks.amazonaws.com."
+                  ]
+                },
+                "port": "443"
+              },
+              "stats": {},
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": [
+                    "",
+                    "ip-192-168-64-75.us-west-1.compute.internal."
+                  ]
+                },
+                "port": "6789"
+              },
+              "stats": {
+                "tx_bytes": "2035378",
+                "rx_bytes": "1275624"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "workload": {
+                  "name": "goldpinger1",
+                  "namespace": "goldpinger1",
+                  "kind": "WORKLOAD_KIND_DAEMONSET"
+                },
+                "port": "8080"
+              },
+              "stats": {
+                "tx_bytes": "9225508",
+                "rx_bytes": "3730512"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "workload": {
+                  "name": "goldpinger2",
+                  "namespace": "goldpinger2",
+                  "kind": "WORKLOAD_KIND_DAEMONSET"
+                },
+                "port": "8080"
+              },
+              "stats": {
+                "tx_bytes": "9225780",
+                "rx_bytes": "3729808"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "workload": {
+                  "name": "coredns",
+                  "namespace": "kube-system",
+                  "kind": "WORKLOAD_KIND_DEPLOYMENT"
+                },
+                "port": "8080"
+              },
+              "stats": {
+                "tx_bytes": "4596160",
+                "rx_bytes": "1865090"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "workload": {
+                  "name": "coredns",
+                  "namespace": "kube-system",
+                  "kind": "WORKLOAD_KIND_DEPLOYMENT"
+                },
+                "port": "8181"
+              },
+              "stats": {
+                "tx_bytes": "4579300",
+                "rx_bytes": "1864296"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "workload": {
+                  "name": "hubble-relay",
+                  "namespace": "kube-system",
+                  "kind": "WORKLOAD_KIND_DEPLOYMENT"
+                },
+                "port": "4222"
+              },
+              "stats": {
+                "tx_bytes": "4012250",
+                "rx_bytes": "2601090"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "workload": {
+                  "name": "hubble-timescape",
+                  "namespace": "kube-system",
+                  "kind": "WORKLOAD_KIND_STATEFULSET"
+                },
+                "port": "8083"
+              },
+              "stats": {
+                "tx_bytes": "4125924",
+                "rx_bytes": "2708822"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "workload": {
+                  "name": "hubble-timescape",
+                  "namespace": "kube-system",
+                  "kind": "WORKLOAD_KIND_STATEFULSET"
+                },
+                "port": "8123"
+              },
+              "stats": {
+                "tx_bytes": "9885212",
+                "rx_bytes": "3983014"
+              },
+              "policy": {}
+            }
+          ],
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/mktemp",
+          "arguments": "--tmpdir motd.partXXXXX",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/mktemp",
+          "arguments": "--tmpdir=/var/lib/update-motd/",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/mv",
+          "arguments": "/var/lib/update-motd/tmp.LLl9iErGRE /var/lib/update-motd/motd",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/mv",
+          "arguments": "/var/lib/update-motd/tmp.WxVRlcc1Sy /var/lib/update-motd/motd",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/mv",
+          "arguments": "/var/lib/update-motd/tmp.ogfP4JuQLi /var/lib/update-motd/motd",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/ps",
+          "arguments": "-e -o pid,ppid,state,command",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/python3.9",
+          "arguments": "/usr/bin/dnf --debuglevel 2 updateinfo",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/rm",
+          "arguments": "-f /tmp/motd.part7JtJq",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/rm",
+          "arguments": "-f /tmp/motd.partAqInw",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/rm",
+          "arguments": "-f /tmp/motd.partFInGc",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/rm",
+          "arguments": "-f /tmp/motd.partHMfqu",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/rm",
+          "arguments": "-f /tmp/motd.partHf1uY",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/rm",
+          "arguments": "-f /tmp/motd.partvUmBc",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/rpm",
+          "arguments": "-qa",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/ssm-agent-worker",
+          "connections": [
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["169.254.169.254"]
+                },
+                "port": "80"
+              },
+              "stats": {
+                "tx_bytes": "844654",
+                "rx_bytes": "122766"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["3.101.233.204"]
+                },
+                "port": "443"
+              },
+              "stats": {
+                "tx_bytes": "256",
+                "rx_bytes": "256"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["3.101.233.23"]
+                },
+                "port": "443"
+              },
+              "stats": {
+                "tx_bytes": "360"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["ssm.us-west-1.amazonaws.com."]
+                },
+                "port": "443"
+              },
+              "stats": {
+                "tx_bytes": "3318544",
+                "rx_bytes": "2995044"
+              },
+              "policy": {}
+            },
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["ssmmessages.us-west-1.amazonaws.com."]
+                },
+                "port": "443"
+              },
+              "stats": {
+                "tx_bytes": "54404",
+                "rx_bytes": "37434"
+              },
+              "policy": {}
+            }
+          ],
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/systemd-tmpfiles",
+          "arguments": "--clean",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/timeout",
+          "arguments": "30s /etc/update-motd.d/10-nvidia-eula",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/timeout",
+          "arguments": "30s /etc/update-motd.d/70-available-updates",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/timeout",
+          "arguments": "30s /usr/bin/dnf --debuglevel 2 updateinfo",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/udevadm",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/bin/uname",
+          "arguments": "-rs",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/lib/systemd/systemd",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/lib/systemd/systemd-homed",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/lib/systemd/systemd-journald",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/lib/systemd/systemd-logind",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/lib/systemd/systemd-networkd",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/lib/systemd/systemd-resolved",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/local/aws-cli/v2/2.33.9/dist/aws",
+          "arguments": "eks get-token --cluster-name hf-feb6 --region us-west-1",
+          "connections": [
+            {
+              "destination": {
+                "dns": {
+                  "destination_names": ["169.254.169.254"]
+                },
+                "port": "80"
+              },
+              "stats": {
+                "tx_bytes": "46627",
+                "rx_bytes": "3683"
+              },
+              "policy": {}
+            }
+          ],
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/agetty",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/auditd",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/chronyd",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/gssproxy",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/irqbalance",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/logrotate",
+          "arguments": "/etc/logrotate.conf",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/08ef24302a60f18fecc60194e5433a22797a05bb0ab71acdc1e66a86836c72a4/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process3207574780 --consol",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/08ef24302a60f18fecc60194e5433a22797a05bb0ab71acdc1e66a86836c72a4/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process3904167267 --consol",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/0ccd32700932f3cae3b52a355b3a5daebfc1d46b1cfa42ff50a6fb9a48d9bb61/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process675684836 --console",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/cc867fcca4a9866b690f425ac61d4b13d31c6784742dbb0e274ddba7e3dcdc02/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process1038253282 --detach",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/cc867fcca4a9866b690f425ac61d4b13d31c6784742dbb0e274ddba7e3dcdc02/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process1273117451 --detach",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/cc867fcca4a9866b690f425ac61d4b13d31c6784742dbb0e274ddba7e3dcdc02/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process1414275553 --detach",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/cc867fcca4a9866b690f425ac61d4b13d31c6784742dbb0e274ddba7e3dcdc02/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process150566233 --detach",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/cc867fcca4a9866b690f425ac61d4b13d31c6784742dbb0e274ddba7e3dcdc02/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process152284335 --detach",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/cc867fcca4a9866b690f425ac61d4b13d31c6784742dbb0e274ddba7e3dcdc02/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process180762756 --detach",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/cc867fcca4a9866b690f425ac61d4b13d31c6784742dbb0e274ddba7e3dcdc02/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process3368875026 --detach",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/cc867fcca4a9866b690f425ac61d4b13d31c6784742dbb0e274ddba7e3dcdc02/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process3855843561 --detach",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/cc867fcca4a9866b690f425ac61d4b13d31c6784742dbb0e274ddba7e3dcdc02/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process3890523711 --detach",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/cc867fcca4a9866b690f425ac61d4b13d31c6784742dbb0e274ddba7e3dcdc02/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process743381221 --detach",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/eeed5b6524b21da6aa337e237a71734776fa0ea476c8507b17b12edf4a1a9113/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process1137702810 --consol",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/eeed5b6524b21da6aa337e237a71734776fa0ea476c8507b17b12edf4a1a9113/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process2026982512 --consol",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/eeed5b6524b21da6aa337e237a71734776fa0ea476c8507b17b12edf4a1a9113/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process2469507228 --consol",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/eeed5b6524b21da6aa337e237a71734776fa0ea476c8507b17b12edf4a1a9113/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process2693350471 --consol",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/eeed5b6524b21da6aa337e237a71734776fa0ea476c8507b17b12edf4a1a9113/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process304519257 --console",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/runc",
+          "arguments": "--root /run/containerd/runc/k8s.io --log /run/containerd/io.containerd.runtime.v2.task/k8s.io/eeed5b6524b21da6aa337e237a71734776fa0ea476c8507b17b12edf4a1a9113/log.json --log-format json --systemd-cgroup exec --process /tmp/runc-process3214910428 --consol",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/sshd",
+          "in_init_tree": false
+        },
+        {
+          "name": "/usr/sbin/xtables-nft-multi",
+          "arguments": "-w 5 -W 100000 -S KUBE-KUBELET-CANARY -t mangle",
+          "in_init_tree": false
+        }
+      ]
+    },
+    "id": "019c57bb-927f-72b0-ac6d-e4e66d1624b5"
+  }
+}

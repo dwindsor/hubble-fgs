@@ -8,10 +8,10 @@ import { getWorkloadHash } from "~/utils/workloads";
 import { Collapsible } from "./Collapsible";
 import { Connector } from "./Connector";
 import { WorkloadIcon } from "./Icons/WorkloadIcon";
-import { ProcsList } from "./Proc";
 import { Statistic } from "./Statistic";
 import { TextOverflow } from "./TextOverflow";
 import css from "./Workload.module.css";
+import { ContainersList } from "./Container";
 
 export interface WorkloadProps {
   namespace: ApplicationNamespace;
@@ -21,9 +21,9 @@ export interface WorkloadProps {
 export const WorkloadItem = memo(function Workload(props: WorkloadProps) {
   const state = useAppState();
 
-  const procs = useMemo(() => {
-    return props.workload.processes ?? [];
-  }, [props.workload.processes]);
+  const containers = useMemo(() => {
+    return props.workload.containers ?? [];
+  }, [props.workload.containers]);
 
   const entry = useTreeEntry({
     statInfo:
@@ -62,7 +62,11 @@ export const WorkloadItem = memo(function Workload(props: WorkloadProps) {
           </summary>
         )}
       >
-        <ProcsList procs={procs} procItemClassName={css.workloadProcessItem} />
+        <ContainersList
+          namespace={props.namespace}
+          workload={props.workload}
+          containers={containers}
+        />
       </Collapsible>
     </li>
   );
