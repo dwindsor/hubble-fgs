@@ -1,0 +1,53 @@
+name: Disk cleanup
+description: "Cleanup disk space"
+runs:
+  using: composite
+  steps:
+    - name: Assess disk usage before cleanup
+      shell: bash
+      run: |
+        echo "::group::Disk Usage Before Cleanup"
+        df -h
+        echo "::endgroup::"
+
+    - name: Free up disk space
+      shell: bash
+      run: |
+        echo "Removing unnecessary files to free up disk space..."
+        
+        # Function to efficiently delete a directory
+        # Uses 'nice' and 'ionice' to prioritize deletion without lagging the system
+        fast_delete() {
+          local dir="$1"
+          if [ -d "$dir" ]; then
+            echo "Deleting $dir..."
+            # Try efficient delete first, fall back to rm -rf if needed
+            sudo nice -n -20 ionice -c 1 -n 0 find "$dir" -delete &>/dev/null || sudo nice -n -20 ionice -c 1 -n 0 rm -rf "$dir" &>/dev/null
+          fi
+        }
+
+        # Run ALL deletions in parallel
+        fast_delete "/usr/local/lib/android" &
+        fast_delete "/usr/share/dotnet" &
+        fast_delete "/opt/ghc" &
+        fast_delete "/usr/local/share/powershell" &
+        fast_delete "/usr/share/swift" &
+        fast_delete "/usr/local/.ghcup" &
+        fast_delete "/usr/lib/jvm" &
+        
+        # Extra heavy items (Browsers & Tools)
+        fast_delete "/opt/google/chrome" &
+        fast_delete "/opt/microsoft/msedge" &
+        fast_delete "/usr/local/lib/node_modules" &
+        fast_delete "/usr/local/share/chromium" &
+
+        # Wait for all deletions to complete
+        wait
+        echo "Disk cleanup completed."
+
+    - name: Assess disk usage after cleanup
+      shell: bash
+      run: |
+        echo "::group::Disk Usage After Cleanup"
+        df -h
+        echo "::endgroup::"
