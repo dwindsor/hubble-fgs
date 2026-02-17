@@ -8,7 +8,7 @@ include $(OSS_DIR)/Makefile.defs
 # -- Images
 #
 # renovate: datasource=docker
-HELM_IMAGE = docker.io/alpine/helm:3.19.5@sha256:b1a7293aa1f89f1c234d223b9cfc441abe4af4b4534ae6ba11a4824f647771be
+HELM_IMAGE = docker.io/alpine/helm:4.1.1@sha256:b5c85b997d83e89d9e8ff9215a14b03864274143981af45eb3fe729cdf782c73
 # renovate: datasource=docker
 KUBECONFORM_IMAGE = ghcr.io/yannh/kubeconform:v0.7.0-alpine@sha256:8f0eeaaa96ba27ba1500b0e4b1c215acc358d159c62a7ecae58d7a03403287b0
 # renovate: datasource=docker
