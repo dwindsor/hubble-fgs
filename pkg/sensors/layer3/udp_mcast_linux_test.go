@@ -102,14 +102,17 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 		WithSocket(ec.NewSockInfoChecker().
 			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithDestinationIp(sm.Full(udpMulticastIP4)).
-			WithDestinationPort(udpMulticastPort))
+			WithDestinationPort(udpMulticastPort)).
+		WithConnectionId(7)
 
 	serverStatsChecker := ec.NewProcessSockStatsChecker("serverStats").
 		WithProcess(socatSrvChecker).
 		WithParent(selfChecker).
 		WithSocket(ec.NewSockInfoChecker().
 			WithProtocol(tetragon.SocketProtocol_UDP).
-			WithSourcePort(udpMulticastPort))
+			WithSourceIp(sm.Full(udpMulticastIP4)).
+			WithSourcePort(udpMulticastPort)).
+		WithConnectionId(7)
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker("selfExec").
@@ -126,15 +129,31 @@ func TestUdpMulticastLSEGConnID(t *testing.T) {
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full(udpMulticastIP4)).
 			WithSourcePort(udpMulticastPort).
-			WithProtocol(tetragon.SocketProtocol_UDP),
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithConnectionId(7),
 		ec.NewProcessConnectChecker("clientConnect").
 			WithProcess(clientProcess).
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full(udpMulticastIP4)).
 			WithDestinationPort(udpMulticastPort).
-			WithProtocol(tetragon.SocketProtocol_UDP),
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithConnectionId(7),
 		clientStatsChecker,
 		serverStatsChecker,
+		ec.NewProcessCloseChecker("serverClose").
+			WithProcess(socatSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full(udpMulticastIP4)).
+			WithSourcePort(udpMulticastPort).
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithConnectionId(7),
+		ec.NewProcessCloseChecker("clientClose").
+			WithProcess(clientProcess).
+			WithParent(selfChecker).
+			WithDestinationIp(sm.Full(udpMulticastIP4)).
+			WithDestinationPort(udpMulticastPort).
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithConnectionId(7),
 	)
 
 	var doneWG, readyWG sync.WaitGroup
