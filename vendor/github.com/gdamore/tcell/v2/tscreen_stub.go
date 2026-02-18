@@ -1,4 +1,7 @@
-// Copyright 2025 The TCell Authors
+//go:build plan9 || windows
+// +build plan9 windows
+
+// Copyright 2022 The TCell Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use file except in compliance with the License.
@@ -14,17 +17,16 @@
 
 package tcell
 
-import (
-	"os"
-	"strings"
+// NB: We might someday wish to move Windows to this model.   However,
+// that would probably mean sacrificing some of the richer key reporting
+// that we can obtain with the console API present on Windows.
 
-	"github.com/rivo/uniseg"
-)
-
-func init() {
-	if rw := strings.ToLower(os.Getenv("RUNEWIDTH_EASTASIAN")); rw == "1" || rw == "true" || rw == "yes" {
-		uniseg.EastAsianAmbiguousWidth = 2
-	} else {
-		uniseg.EastAsianAmbiguousWidth = 1
+func (t *tScreen) initialize() error {
+	if t.tty == nil {
+		return ErrNoScreen
 	}
+	// If a tty was supplied (custom), it should work.
+	// Custom screen implementations will need to provide a TTY
+	// implementation that we can use.
+	return nil
 }

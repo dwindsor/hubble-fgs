@@ -107,39 +107,28 @@ s.SetStyle(defStyle)
 s.Clear()
 ```
 
-Text may be drawn on the screen using `Put`, `PutStr`, or `PutStrStyled`.
+Text may be drawn on the screen using `SetContent`.
 
 ```go
-s.Put(0, 0, 'H', defStyle)
-s.Put(1, 0, 'i', defStyle)
-s.Put(2, 0, '!', defStyle)
+s.SetContent(0, 0, 'H', nil, defStyle)
+s.SetContent(1, 0, 'i', nil, defStyle)
+s.SetContent(2, 0, '!', nil, defStyle)
 ```
 
-which is equivalent to
-
-```go
-s.PutStrStyled(0, 0, "Hi!", defStyle)
-````
-
-To draw text more easily with wrapping, define a render function.
+To draw text more easily, define a render function.
 
 ```go
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
 	row := y1
 	col := x1
-	var width int
-	for text != "" {
-		text, width = s.Put(col, row, text, style)
-		col += width
+	for _, r := range []rune(text) {
+		s.SetContent(col, row, r, nil, style)
+		col++
 		if col >= x2 {
 			row++
 			col = x1
 		}
 		if row > y2 {
-			break
-		}
-		if width == 0 {
-			// incomplete grapheme at end of string
 			break
 		}
 	}
@@ -189,19 +178,14 @@ import (
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
 	row := y1
 	col := x1
-	var width int
-	for text != "" {
-		text, width = s.Put(col, row, text, style)
-		col += width
+	for _, r := range []rune(text) {
+		s.SetContent(col, row, r, nil, style)
+		col++
 		if col >= x2 {
 			row++
 			col = x1
 		}
 		if row > y2 {
-			break
-		}
-		if width == 0 {
-			// incomplete grapheme at end of string
 			break
 		}
 	}
@@ -218,26 +202,26 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string)
 	// Fill background
 	for row := y1; row <= y2; row++ {
 		for col := x1; col <= x2; col++ {
-			s.Put(col, row, " ", style)
+			s.SetContent(col, row, ' ', nil, style)
 		}
 	}
 
 	// Draw borders
 	for col := x1; col <= x2; col++ {
-		s.Put(col, y1, string(tcell.RuneHLine), style)
-		s.Put(col, y2, string(tcell.RuneHLine), style)
+		s.SetContent(col, y1, tcell.RuneHLine, nil, style)
+		s.SetContent(col, y2, tcell.RuneHLine, nil, style)
 	}
 	for row := y1 + 1; row < y2; row++ {
-		s.Put(x1, row, string(tcell.RuneVLine), style)
-		s.Put(x2, row, string(tcell.RuneVLine), style)
+		s.SetContent(x1, row, tcell.RuneVLine, nil, style)
+		s.SetContent(x2, row, tcell.RuneVLine, nil, style)
 	}
 
 	// Only draw corners if necessary
 	if y1 != y2 && x1 != x2 {
-		s.Put(x1, y1, string(tcell.RuneULCorner), style)
-		s.Put(x2, y1, string(tcell.RuneURCorner), style)
-		s.Put(x1, y2, string(tcell.RuneLLCorner), style)
-		s.Put(x2, y2, string(tcell.RuneLRCorner), style)
+		s.SetContent(x1, y1, tcell.RuneULCorner, nil, style)
+		s.SetContent(x2, y1, tcell.RuneURCorner, nil, style)
+		s.SetContent(x1, y2, tcell.RuneLLCorner, nil, style)
+		s.SetContent(x2, y2, tcell.RuneLRCorner, nil, style)
 	}
 
 	drawText(s, x1+1, y1+1, x2-1, y2-1, style, text)
@@ -326,3 +310,4 @@ func main() {
 	}
 }
 ```
+
