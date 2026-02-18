@@ -82,19 +82,15 @@ func executeAGW() {
 		return
 	}
 
-	if nxos.DoHa() {
-		Config.Ha = true
-	}
-	if Config.Ha {
-		logger.GetLogger().Info("Starting HA service...")
-		waitGroup.Go(func() error {
-			err := hasvr.RunServer(ctx, haServerPort)
-			if err != nil {
-				return fmt.Errorf("starting HA server failed: %w", err)
-			}
-			return nil
-		})
-	}
+	// HA is always enabled - it will only connect to peers when configured
+	logger.GetLogger().Info("Starting HA service...")
+	waitGroup.Go(func() error {
+		err := hasvr.RunServer(ctx, haServerPort)
+		if err != nil {
+			return fmt.Errorf("starting HA server failed: %w", err)
+		}
+		return nil
+	})
 
 	waitGroup.Go(func() error {
 		err := cliServer(ctx, agwAgent)

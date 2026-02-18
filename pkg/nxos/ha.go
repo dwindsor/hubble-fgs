@@ -12,6 +12,7 @@ package nxos
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -560,19 +561,10 @@ func (n *Nxos) haCheckAdjMbr(ctx context.Context) {
 func (n *Nxos) haUpdateNx(ctx context.Context) {
 	n.Lock()
 	defer n.Unlock()
-
 	now := time.Now().Unix()
-	if n.haIsConfigured(ctx, false) {
-		if n.Ha.NxStates.HaStateEpoch != 0 &&
-			now-n.Ha.NxStates.HaStateEpoch > nxUpdateTimeout {
-			logger.GetLogger().Debug("haUpdateNx:", "haState",
-				n.Ha.NxStates.HaState, "epoch",
-				n.Ha.NxStates.HaStateEpoch)
-			n.Ha.NxStates.HaStateEpoch = 0
-			// update nx
-			n.setLocalHaState(ctx)
-		}
-	}
+
+	// ALWAYS process service state BEFORE HA state
+	// Service state must be updated first to ensure proper state ordering
 	if n.isConfigured(ctx, false) {
 		if n.Ha.NxStates.SvcStateEpoch != 0 &&
 			now-n.Ha.NxStates.SvcStateEpoch > nxUpdateTimeout {
@@ -584,11 +576,28 @@ func (n *Nxos) haUpdateNx(ctx context.Context) {
 				n.setFwPolicyStateAll(ctx, false)
 				n.setServiceRedirAll(ctx, false)
 				n.setLocalSvcState(ctx)
+				// Notify peers of service state
+				for peer := range n.Ha.Members {
+					n.setRemoteSvcState(ctx, peer)
+				}
 
 			case hav1.SERVICE_STATE_SVC_FAILURE:
 				logger.GetLogger().Debug("Cleanup service redir")
 				n.cleanup(ctx)
 			}
+		}
+	}
+
+	// THEN process HA state
+	if n.haIsConfigured(ctx, false) {
+		if n.Ha.NxStates.HaStateEpoch != 0 &&
+			now-n.Ha.NxStates.HaStateEpoch > nxUpdateTimeout {
+			logger.GetLogger().Debug("haUpdateNx:", "haState",
+				n.Ha.NxStates.HaState, "epoch",
+				n.Ha.NxStates.HaStateEpoch)
+			n.Ha.NxStates.HaStateEpoch = 0
+			// update nx
+			n.setLocalHaState(ctx)
 		}
 	}
 }
@@ -688,6 +697,10 @@ func (n *Nxos) haInit(ctx context.Context) {
 		items := &model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems{}
 		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
 		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
+		if err != nil {
+			logger.GetLogger().Error("Failed to unmarshal ha-items", logfields.Error, err)
+			return
+		}
 		n.updtSasSvcSvcinstSvcInstanceHa(ctx, items)
 
 		enabled := n.haIsEnabled(ctx, false)
@@ -782,31 +795,49 @@ func (n *Nxos) HaReconcile(ctx context.Context, peer string, info hav1.MbrInfo) 
 	n.Lock()
 	defer n.Unlock()
 
-	// construct ha alloc
+	// construct ha alloc from peer's VRF info
 	alloc := map[string]uint16{}
 	recon := map[string]uint16{}
 	for _, vrf := range info.VrfInfo {
 		alloc[vrf.Name] = uint16(vrf.Id)
 	}
+
+	// Check for GID conflicts and resolve based on leader status
 	for vrf, gid := range n.Alloc.Gids {
-		haGid, ok := alloc[vrf]
-		if ok && gid != haGid {
-			n.Alloc.Gids[vrf] = haGid
-			n.GidsInUse[haGid] = vrf
-			n.GidsInUse[gid] = ""
-			recon[vrf] = haGid
+		peerGid, hasPeerGid := alloc[vrf]
+		if hasPeerGid && gid != peerGid {
+			logger.GetLogger().Warn("GID conflict detected",
+				"vrf", vrf,
+				"localGid", gid,
+				"peerGid", peerGid,
+				"isLeader", n.Ha.IsLeader)
+
+			if !n.Ha.IsLeader {
+				// Non-leader adopts peer's GID (leader wins)
+				n.Alloc.Gids[vrf] = peerGid
+				n.GidsInUse[peerGid] = vrf
+				delete(n.GidsInUse, gid)
+				recon[vrf] = peerGid
+				logger.GetLogger().Info("Non-leader adopted peer's GID",
+					"vrf", vrf, "newGid", peerGid)
+			}
+			// Leader keeps its own GID - no action needed
 		}
 	}
-	for vrf, gid := range n.Alloc.Gids {
-		_, ok := alloc[vrf]
-		if !ok {
-			vrf2, ok := n.GidsInUse[gid]
-			if ok && vrf != vrf2 {
-				gid2 := n.getGid(ctx, vrf)
-				n.Alloc.Gids[vrf] = gid2
-				recon[vrf] = gid2
-			}
 
+	// Handle VRFs that peer has but we don't have in our alloc
+	for vrf, gid := range n.Alloc.Gids {
+		_, hasPeerGid := alloc[vrf]
+		if !hasPeerGid {
+			vrf2, inUse := n.GidsInUse[gid]
+			if inUse && vrf != vrf2 {
+				// GID collision with different VRF, reallocate
+				gid2 := n.getGid(ctx, vrf)
+				if gid2 != 0 {
+					n.Alloc.Gids[vrf] = gid2
+					recon[vrf] = gid2
+				}
+			}
 		}
 	}
 
@@ -815,10 +846,38 @@ func (n *Nxos) HaReconcile(ctx context.Context, peer string, info hav1.MbrInfo) 
 	}
 	logger.GetLogger().Debug("HA alloc:", "alloc", alloc)
 
-	// reconcil
+	// Apply VRF reconciliation if needed
 	if len(recon) > 0 {
-		logger.GetLogger().Debug("HA reconcile:", "recon", recon)
+		logger.GetLogger().Debug("HA reconcile VRFs:", "recon", recon)
 		n.setGlobalId(ctx, recon)
+	}
+
+	// VLAN reconciliation - handle DPU pinning conflicts
+	vlanRecon := map[string]uint16{}
+	for _, vlanInfo := range info.VlanInfo {
+		vlanName := fmt.Sprintf("vlan-%d", vlanInfo.Id)
+		localVlan, ok := n.Bds[vlanName]
+		if ok && localVlan.DpuPinned != uint16(vlanInfo.Dpu) {
+			logger.GetLogger().Warn("VLAN DPU pinning conflict detected",
+				"vlan", vlanName,
+				"localDpu", localVlan.DpuPinned,
+				"peerDpu", vlanInfo.Dpu,
+				"isLeader", n.Ha.IsLeader)
+
+			if !n.Ha.IsLeader {
+				// Non-leader adopts peer's DPU pinning (leader wins)
+				localVlan.DpuPinned = uint16(vlanInfo.Dpu)
+				n.Bds[vlanName] = localVlan
+				vlanRecon[vlanName] = uint16(vlanInfo.Dpu)
+				logger.GetLogger().Info("Non-leader adopted peer's VLAN DPU pinning",
+					"vlan", vlanName, "newDpu", vlanInfo.Dpu)
+			}
+		}
+	}
+	if len(vlanRecon) > 0 {
+		logger.GetLogger().Debug("HA reconcile VLANs:", "vlanRecon", vlanRecon)
+		// Note: VLAN reconciliation may require additional steps to apply changes
+		// to the underlying NXOS configuration if needed
 	}
 }
 
@@ -832,6 +891,33 @@ func (n *Nxos) IsPeerOk(ctx context.Context, peer string) bool {
 		}
 	}
 	return false
+}
+
+// TriggerHAReconciliation triggers HA reconciliation with all connected peers.
+// This should be called when transitioning from out-of-service to in-service
+// to ensure GID and VLAN allocations are consistent across the HA pair.
+func (n *Nxos) TriggerHAReconciliation(ctx context.Context) {
+	logger.GetLogger().Info("Triggering HA reconciliation for all peers")
+
+	n.RLock()
+	enabled := n.haIsEnabled(ctx, false)
+	peers := make([]string, 0)
+	for peer := range n.Ha.Members {
+		peers = append(peers, peer)
+	}
+	n.RUnlock()
+
+	if !enabled {
+		logger.GetLogger().Debug("HA not enabled, skipping reconciliation")
+		return
+	}
+
+	for _, peer := range peers {
+		logger.GetLogger().Debug("Triggering adjacency with peer for reconciliation", "peer", peer)
+		if n.haIsConnected(ctx, peer) {
+			n.haAdjacency(ctx, peer)
+		}
+	}
 }
 
 func (n *Nxos) NotifyWatching(ctx context.Context, watching bool) {

@@ -309,6 +309,37 @@ func (s *AGWServer) StreamEvents(stream grpc.ClientStreamingServer[v1alpha.Strea
 				} else {
 					logger.GetLogger().Warn("Policy status handler not configured, skipping policy rule event processing")
 				}
+			case *v1alpha.StreamEvent_HaStatus:
+				// Log the HA status event
+				logger.GetLogger().Debug("agw server: Received HA status event",
+					"agentUid", event.AgentUid,
+					"peer", e.HaStatus.Peer,
+					"status", e.HaStatus.Status,
+					"message", e.HaStatus.StatusMessage,
+				)
+				// Update peer HA status directly
+				if initializedPeer != nil && e.HaStatus.Peer != "" {
+					switch e.HaStatus.Status {
+					case v1alpha.HAStatus_HA_STATUS_KEEPALIVE_UP:
+						initializedPeer.haKeepaliveUp.Store(true)
+						logger.GetLogger().Info("HA keepalive up from DPU",
+							"agentUid", event.AgentUid,
+							"peer", e.HaStatus.Peer)
+					case v1alpha.HAStatus_HA_STATUS_KEEPALIVE_DOWN:
+						initializedPeer.haKeepaliveUp.Store(false)
+						logger.GetLogger().Warn("HA keepalive down from DPU",
+							"agentUid", event.AgentUid,
+							"peer", e.HaStatus.Peer)
+					case v1alpha.HAStatus_HA_STATUS_BULK_SYNC_DONE,
+						v1alpha.HAStatus_HA_STATUS_BULK_SYNC_PEER_DONE:
+						initializedPeer.haBulkSyncDone.Store(true)
+						logger.GetLogger().Info("HA bulk sync done from DPU",
+							"agentUid", event.AgentUid,
+							"peer", e.HaStatus.Peer)
+					}
+					// Update nxos FlowSync based on combined status
+					initializedPeer.updateFlowSyncStatus()
+				}
 			default:
 				logger.GetLogger().Warn("Received unknown event type", "agentUid", event.AgentUid)
 			}

@@ -275,6 +275,10 @@ func (agw *AgentGateway) Setup(ctx context.Context) error {
 		return err
 	}
 
+	// Wire up the nxos singleton for flow sync status updates
+	switchpolicy.SetFlowSyncUpdater(nxos.SetFlowSyncStatus)
+	logger.GetLogger().Debug("Flow sync updater configured for nxos")
+
 	return nil
 }
 

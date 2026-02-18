@@ -591,6 +591,9 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceFwpolicy(ctx context.Context, items *
 			if n.Stage == StageEnable {
 				n.Wait.In() <- WakeEnable
 			}
+			// Trigger HA reconciliation when transitioning to in-service
+			// to ensure GID and VLAN allocations are consistent with peer
+			go n.TriggerHAReconciliation(ctx)
 		}
 	} else if items.OperState == model.Cisco_NX_OSDevice_Sas_SasInstState_out_of_service {
 		modified := n.setInService(ctx, false)
@@ -1372,6 +1375,21 @@ func (n *Nxos) progRepinning(ctx context.Context, isBd bool, vbs []VrfBd) error 
 }
 
 func (n *Nxos) getGid(ctx context.Context, vrf string) uint16 {
+	// Non-leader in HA mode should use peer's GID to avoid collisions
+	if n.haIsEnabled(ctx, false) && !n.Ha.IsLeader {
+		for _, alloc := range n.Ha.Alloc {
+			if gid, ok := alloc.Gids[vrf]; ok {
+				logger.GetLogger().Debug("Non-leader using peer's GID", "vrf", vrf, "gid", gid)
+				n.GidsInUse[gid] = vrf
+				return gid
+			}
+		}
+		// No peer GID found, will be reconciled later
+		logger.GetLogger().Debug("Non-leader has no peer GID for VRF, will be reconciled", "vrf", vrf)
+		return 0
+	}
+
+	// Original allocation logic for leader/non-HA
 	begin := n.Alloc.Next
 	gid := n.Alloc.Next
 	for {

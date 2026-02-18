@@ -24,7 +24,6 @@ type cliConfig struct {
 	VrfMap                 []string
 	Debug                  bool
 	K8sServiceAccountAuth  string
-	Ha                     bool
 	TimescapeClientEnable  bool
 	TimescapePassword      string
 	TimescapeEndpoint      string
@@ -47,7 +46,6 @@ var (
 		VrfMap:                 []string{},
 		Debug:                  false,
 		K8sServiceAccountAuth:  viper.GetString(keyK8sServiceAccountAuth),
-		Ha:                     false,
 		TimescapeClientEnable:  viper.GetBool(keyTimescapeClientEnable),
 		TimescapePassword:      viper.GetString(keyTimescapePassword),
 		TimescapeEndpoint:      viper.GetString(keyTimescapeEndpoint),
@@ -69,7 +67,6 @@ const (
 	keyConfigMap              = "configmap"
 	keyVrfMap                 = "vrf-map"
 	keyDebug                  = "debug"
-	keyHa                     = "ha"
 	keyK8sServiceAccountAuth  = "k8s-service-account-auth"
 	keyTimescapeClientEnable  = "timescape-client-enable"
 	keyTimescapePassword      = "timescape-password"

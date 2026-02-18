@@ -141,6 +141,8 @@ type peer struct {
 	lastStatus        DPUReportStatus
 	lastEpoch         int64
 	mtx               sync.RWMutex
+	haKeepaliveUp     atomic.Bool // DPU keepalive status
+	haBulkSyncDone    atomic.Bool // DPU bulk sync status
 }
 
 func (p *peer) String() string {
@@ -175,6 +177,27 @@ func (p *peer) SendConfig(cfg *v1alpha.StreamDatapathConfigResponse) error {
 		return fmt.Errorf("peer timed out, cannot submit config object")
 	}
 	return nil
+}
+
+// flowSyncUpdater is called to update the flow sync status for a peer.
+// Set via SetFlowSyncUpdater to wire up the nxos singleton.
+var flowSyncUpdater func(peer string, status bool)
+
+// SetFlowSyncUpdater sets the function used to update flow sync status.
+// This should be called at startup to wire up nxos.SetFlowSyncStatus.
+func SetFlowSyncUpdater(fn func(peer string, status bool)) {
+	flowSyncUpdater = fn
+}
+
+// updateFlowSyncStatus updates the nxos FlowSync status for this peer.
+// FlowSync is only set to true when BOTH keepalive AND bulk sync are true.
+func (p *peer) updateFlowSyncStatus() {
+	if flowSyncUpdater == nil {
+		return
+	}
+	keepalive := p.haKeepaliveUp.Load()
+	bulkSync := p.haBulkSyncDone.Load()
+	flowSyncUpdater(p.uid, keepalive && bulkSync)
 }
 
 type DPUListener struct {
@@ -745,3 +768,4 @@ func (dpu *DPUListener) GetPolicyStatusHandler() policystatus.PolicyStatusHandle
 	defer dpu.mtx.RUnlock()
 	return dpu.policyStatusHandler
 }
+

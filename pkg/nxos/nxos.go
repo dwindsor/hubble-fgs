@@ -189,8 +189,7 @@ func (n *Nxos) initiate(ctx context.Context) error {
 		n.Ha.Local.Criteria[HaCritDpuInSync] = false
 	}
 	n.Ha.Local.Criteria[HaCritSvcRedir] = false
-	// HACK: set to true until integration with new policy
-	n.Ha.Local.Criteria[HaCritPolicy] = true
+	n.Ha.Local.Criteria[HaCritPolicy] = false // Will be set true when policy syncs
 	n.Ha.Partners = make(map[string]struct{})
 	n.Ha.IsLeader = true
 
@@ -1120,6 +1119,17 @@ func SetInSyncCount(ctx context.Context, insync, oosync []string) {
 	Nexus.InSync = insync
 	Nexus.OutOfSync = oosync
 	Nexus.Unlock()
+}
+
+// SetFlowSyncStatus sets the flow sync status for a peer.
+// FlowSync should only be true when both keepalive AND bulk sync are true for that peer.
+func SetFlowSyncStatus(peer string, status bool) {
+	Nexus.Lock()
+	defer Nexus.Unlock()
+	if Nexus.Ha.FlowSync != nil {
+		Nexus.Ha.FlowSync[peer] = status
+		logger.GetLogger().Debug("SetFlowSyncStatus", "peer", peer, "status", status)
+	}
 }
 
 func (n *Nxos) CheckUpdateStatus(_ context.Context) string {

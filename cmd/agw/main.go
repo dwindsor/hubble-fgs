@@ -71,7 +71,6 @@ func Execute() error {
 	flags.StringVar(&Config.GopsAddr, keyGopsAddress, Config.GopsAddr, "Gops Address")
 	flags.BoolVar(&Config.Debug, keyDebug, Config.Debug, "Enable debug")
 	flags.StringVar(&Config.K8sServiceAccountAuth, keyK8sServiceAccountAuth, Config.K8sServiceAccountAuth, "Base64 encoded of <API_SERVER>|<TOKEN>|<CA_CERT> to access the k8s API server")
-	flags.BoolVar(&Config.Ha, keyHa, Config.Ha, "Enable HA service")
 	flags.BoolVar(&Config.TimescapeClientEnable, keyTimescapeClientEnable, Config.TimescapeClientEnable, "Enable Timescape client")
 	flags.StringVar(&Config.TimescapePassword, keyTimescapePassword, Config.TimescapePassword, "Timescape server authentication password")
 	flags.StringVar(&Config.TimescapeEndpoint, keyTimescapeEndpoint, Config.TimescapeEndpoint, "Timescape server endpoint URL")
