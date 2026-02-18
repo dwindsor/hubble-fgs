@@ -131,6 +131,7 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		if headless {
 			logger.GetLogger().Info("NXOS is in headless mode, disabling Kubernetes control plane")
 			Config.EnableKubernetes = false
+			agwAgent.DisableHaWatching(ctx)
 		}
 	}
 

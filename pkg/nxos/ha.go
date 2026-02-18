@@ -208,51 +208,78 @@ func (n *Nxos) haSetMbrInfo(ctx context.Context, peer string, info hav1.MbrInfo)
 
 	// skip vlan/vrf checking for now
 	var isDel bool
+	var haStateReason string
 	if info.SysInfo == nil || info.HaInfo == nil ||
 		info.PolInfo == nil {
 		logger.GetLogger().Debug("Empty info")
 		isDel = true
+		haStateReason = "missing system/ha/policy info"
 	} else if info.SysInfo.Model != n.Model {
 		logger.GetLogger().Debug("Model mismatch:", "info", info.SysInfo.Model, "n", n.Model)
 		isDel = true
+		haStateReason = fmt.Sprintf("model mismatch: peer=%s local=%s", info.SysInfo.Model, n.Model)
 	} else if info.SysInfo.SwVer != n.SwVer {
 		logger.GetLogger().Debug("NxOS version mismatch:", "version", info.SysInfo.SwVer, "n", n.SwVer)
 		isDel = true
+		haStateReason = fmt.Sprintf("NxOS version mismatch: peer=%s local=%s", info.SysInfo.SwVer, n.SwVer)
 	} else if info.SysInfo.Cpa != n.CpaVer {
 		logger.GetLogger().Debug("CPA version mismatch:", "cpa", info.SysInfo.Cpa, "n", n.CpaVer)
 		isDel = true
+		haStateReason = fmt.Sprintf("CPA version mismatch: peer=%s local=%s", info.SysInfo.Cpa, n.CpaVer)
 	} else if info.HaInfo.FlowSync == hav1.FLOW_SYNC_STATE_SYNC_FAILURE {
 		logger.GetLogger().Debug("Peer cannot get flow sync")
 		isDel = true
+		haStateReason = "peer flow sync failure"
 	} else if info.HaInfo.Service == hav1.SERVICE_STATE_SVC_FAILURE {
 		logger.GetLogger().Debug("Peer cannot provide service")
 		isDel = true
-	} else if n.Ha.Watching && !info.PolInfo.Watching &&
-		n.Ha.PolRev != info.PolInfo.Revision {
-		logger.GetLogger().Debug("Peer not watching and has diff policy revision")
+		haStateReason = "peer service failure"
+	} else if n.Ha.Watching && n.Ha.PolRev != info.PolInfo.Revision {
+		logger.GetLogger().Debug("Policy revision mismatch while watching")
 		isDel = true
+		haStateReason = fmt.Sprintf("policy revision mismatch while watching: peer=%s local=%s", info.PolInfo.Revision, n.Ha.PolRev)
 	} else if len(info.SysInfo.Dpus) != len(n.Dpus) {
 		logger.GetLogger().Debug("DPU number mismatch:", "DPUs", len(info.SysInfo.Dpus), "n", len(n.Dpus))
 		isDel = true
+		haStateReason = fmt.Sprintf("DPU count mismatch: peer=%d local=%d", len(info.SysInfo.Dpus), len(n.Dpus))
 	} else {
 		for _, dpu := range info.SysInfo.Dpus {
 			d, ok := n.Dpus[dpu.Name]
 			if !ok {
 				logger.GetLogger().Debug("DPU not found", "name", dpu.Name)
 				isDel = true
+				haStateReason = fmt.Sprintf("DPU not found: %s", dpu.Name)
 				break
 			}
 			if d.Version != dpu.Version {
 				logger.GetLogger().Debug("DPU version mismatch", dpu.Version, d.Version)
 				isDel = true
+				haStateReason = fmt.Sprintf("DPU version mismatch: peer=%s local=%s for %s", dpu.Version, d.Version, dpu.Name)
 				break
 			}
 		}
 	}
+
+	// Store reason on HaPeer before updating partner state
+	if haPeer, ok := n.GetHaPeer(peer); ok {
+		if isDel {
+			haPeer.StateReason = haStateReason
+		} else {
+			haPeer.StateReason = ""
+		}
+		n.SetHaPeer(peer, haPeer)
+	}
 	n.HaUpdatePtnr(ctx, peer, isDel)
 
 	var polOk bool
-	if !n.Ha.Watching {
+	if n.Ha.Watching {
+		if info.PolInfo != nil && n.Ha.PolRev == info.PolInfo.Revision {
+			logger.GetLogger().Debug("Watching and revision matches")
+			polOk = true
+		} else {
+			logger.GetLogger().Debug("Watching and revision mismatch or missing")
+		}
+	} else {
 		logger.GetLogger().Debug("Not Watching")
 		if info.PolInfo != nil {
 			if info.PolInfo.Watching &&
@@ -311,7 +338,7 @@ func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string, isLock bool) hav1.
 	}
 
 	var fs hav1.FLOW_SYNC_STATE
-	s, ok := n.Ha.FlowSync[peer]
+	s, ok := n.Ha.HaPeerSync[peer]
 	if ok && s {
 		fs = hav1.FLOW_SYNC_STATE_SYNC_SUCCESS
 	} else {
@@ -474,6 +501,13 @@ func (n *Nxos) haAdjacency(ctx context.Context, peer string) {
 	} else {
 		logger.GetLogger().Debug("Adjacency response:", "rsp", rsp)
 		n.haSetMbrInfo(ctx, peer, *rsp.MbrInfo)
+
+		if n.Ha.Watching && rsp.MbrInfo.PolInfo != nil &&
+			n.Ha.PolRev != rsp.MbrInfo.PolInfo.Revision {
+			logger.GetLogger().Error("Adjacency policy revision mismatch while watching",
+				"localRev", n.Ha.PolRev, "peerRev", rsp.MbrInfo.PolInfo.Revision)
+			return
+		}
 
 		// construct ha alloc
 		alloc := map[string]uint16{}
@@ -881,6 +915,25 @@ func (n *Nxos) HaReconcile(ctx context.Context, peer string, info hav1.MbrInfo) 
 	}
 }
 
+func (n *Nxos) IsPolRevMatch(peer string, peerPolInfo *hav1.PolInfo) (bool, string) {
+	n.RLock()
+	defer n.RUnlock()
+
+	if !n.Ha.Watching {
+		return true, ""
+	}
+	if peerPolInfo == nil {
+		return false, "peer has no policy info while local is watching"
+	}
+	if n.Ha.PolRev != peerPolInfo.Revision {
+		reason := fmt.Sprintf("policy revision mismatch while watching: peer=%s local=%s", peerPolInfo.Revision, n.Ha.PolRev)
+		logger.GetLogger().Error("Policy revision mismatch on adjacency",
+			"peer", peer, "localRev", n.Ha.PolRev, "peerRev", peerPolInfo.Revision)
+		return false, reason
+	}
+	return true, ""
+}
+
 func (n *Nxos) IsPeerOk(ctx context.Context, peer string) bool {
 	n.RLock()
 	defer n.RUnlock()
@@ -932,7 +985,16 @@ func (n *Nxos) NotifyWatching(ctx context.Context, watching bool) {
 		n.Ha.Watching = watching
 
 		polOk := true
-		if !watching {
+		if watching {
+			for _, mbr := range n.Ha.Members {
+				if mbr.Info.PolInfo != nil &&
+					n.Ha.PolRev != mbr.Info.PolInfo.Revision {
+					logger.GetLogger().Debug("Peer has diff revision while watching")
+					polOk = false
+					break
+				}
+			}
+		} else {
 			for _, mbr := range n.Ha.Members {
 				if mbr.Info.PolInfo.Watching {
 					if n.Ha.PolRev != mbr.Info.PolInfo.Revision {
@@ -964,6 +1026,17 @@ func (n *Nxos) NotifyPolRev(ctx context.Context, rev string) {
 		n.Ha.PolRev = rev
 
 		// revision change can happen only if watching
-		n.haUpdateCrit(ctx, HaCritPolicy, true)
+		polOk := true
+		if n.Ha.Watching {
+			for _, mbr := range n.Ha.Members {
+				if mbr.Info.PolInfo != nil &&
+					rev != mbr.Info.PolInfo.Revision {
+					logger.GetLogger().Debug("Peer has diff revision after local revision change")
+					polOk = false
+					break
+				}
+			}
+		}
+		n.haUpdateCrit(ctx, HaCritPolicy, polOk)
 	}
 }

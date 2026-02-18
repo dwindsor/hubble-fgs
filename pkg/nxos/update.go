@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -1051,6 +1052,21 @@ func (n *Nxos) setPkgAction(ctx context.Context, isFile bool, fpath string) erro
 	return nil
 }
 
+// buildLocalSvcStateReason returns a comma-separated list of unmet HA criteria names.
+func (n *Nxos) buildLocalSvcStateReason() string {
+	var unmet []string
+	for crit, ok := range n.Ha.Local.Criteria {
+		if !ok {
+			unmet = append(unmet, string(crit))
+		}
+	}
+	if len(unmet) == 0 {
+		return ""
+	}
+	sort.Strings(unmet)
+	return strings.Join(unmet, ", ")
+}
+
 func (n *Nxos) setLocalSvcState(ctx context.Context) error {
 	logger.GetLogger().Debug("setLocalSvcState", "state", n.Ha.NxStates.SvcState)
 
@@ -1058,9 +1074,13 @@ func (n *Nxos) setLocalSvcState(ctx context.Context) error {
 	switch n.Ha.NxStates.SvcState {
 	case hav1.SERVICE_STATE_SVC_SUCCESS:
 		items.LocalSvcState = model.Cisco_NX_OSDevice_SasSvcStateE_ready
+		reason := ""
+		items.LocalSvcStateReason = &reason
 
 	case hav1.SERVICE_STATE_SVC_FAILURE:
 		items.LocalSvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
+		reason := n.buildLocalSvcStateReason()
+		items.LocalSvcStateReason = &reason
 	}
 	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
 		Format:        ygot.RFC7951,
@@ -1083,8 +1103,10 @@ func (n *Nxos) setLocalSvcState(ctx context.Context) error {
 func (n *Nxos) setLocalSvcStateToFailure(ctx context.Context) error {
 	logger.GetLogger().Debug("setLocalSvcStateToFailure")
 
+	reason := n.buildLocalSvcStateReason()
 	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_ExtItems{
-		LocalSvcState: model.Cisco_NX_OSDevice_SasSvcStateE_not_ready,
+		LocalSvcState:       model.Cisco_NX_OSDevice_SasSvcStateE_not_ready,
+		LocalSvcStateReason: &reason,
 	}
 	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
 		Format:        ygot.RFC7951,
@@ -1132,6 +1154,9 @@ func (n *Nxos) setRemoteMbrState(ctx context.Context, ip string) error {
 		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_fail
 	}
 
+	reason := peer.StateReason
+	list.SvcHaStateReason = &reason
+
 	items.HaPeerExtList[ip] = &list
 	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
 		Format:        ygot.RFC7951,
@@ -1172,9 +1197,11 @@ func (n *Nxos) setRemoteSvcState(ctx context.Context, ip string) error {
 	switch mbr.Info.HaInfo.Service {
 	case hav1.SERVICE_STATE_SVC_SUCCESS:
 		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_ready
+		list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_fw_config
 
 	case hav1.SERVICE_STATE_SVC_FAILURE:
 		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
+		list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_init
 	}
 
 	items.HaPeerExtList[ip] = &list

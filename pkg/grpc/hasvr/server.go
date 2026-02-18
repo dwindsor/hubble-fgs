@@ -69,6 +69,14 @@ func (s *haServer) Adjacency(_ context.Context, req *hav1.AdjRequest) (*hav1.Adj
 		}, nil
 	}
 
+	if ok, reason := nxos.Nexus.IsPolRevMatch(req.HaIp, req.MbrInfo.PolInfo); !ok {
+		logger.GetLogger().Error("Policy revision mismatch on adjacency", "peer", req.HaIp, "reason", reason)
+		return &hav1.AdjResponse{
+			Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE,
+			Details: reason,
+		}, nil
+	}
+
 	nxos.Nexus.HaSetMbrInfo(s.Ctx, req.HaIp, *req.MbrInfo)
 	nxos.Nexus.HaReconcile(s.Ctx, req.HaIp, *req.MbrInfo)
 	info := nxos.Nexus.HaGetMbrInfo(s.Ctx, req.HaIp, true)

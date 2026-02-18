@@ -1098,7 +1098,7 @@ func (n *Nxos) delHa(ctx context.Context) {
 	n.Ha.Adjacencies = make(map[string]HaAdj)
 	n.Ha.Members = make(map[string]HaMbr)
 	n.Ha.Alloc = make(map[string]HaAlloc)
-	n.Ha.FlowSync = make(map[string]bool)
+	n.Ha.HaPeerSync = make(map[string]bool)
 	n.Ha.Partners = make(map[string]struct{})
 	n.Ha.NxStates.HaStateEpoch = 0
 	n.Ha.NxStates.SvcStateEpoch = 0
@@ -1112,7 +1112,7 @@ func (n *Nxos) delPeer(ctx context.Context, peer string) {
 	n.Ha.Members = make(map[string]HaMbr)
 	n.SetHaPeers(make(map[string]HaPeer))
 	n.Ha.Alloc = make(map[string]HaAlloc)
-	n.Ha.FlowSync = make(map[string]bool)
+	n.Ha.HaPeerSync = make(map[string]bool)
 	n.Ha.Partners = make(map[string]struct{})
 	n.WaitHa.In() <- WakeHa
 }
@@ -1160,6 +1160,8 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(_ context.Context, items *mode
 		n.SetHaPeer(pip, HaPeer{
 			IpConfigOk: isOk,
 		})
+		n.Ha.HaPeerSync[pip] = false
+		n.updateHaPeerSync()
 	}
 
 	n.WaitHa.In() <- WakeHa

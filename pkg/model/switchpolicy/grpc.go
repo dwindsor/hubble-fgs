@@ -276,9 +276,9 @@ func (s *AGWServer) StreamEvents(stream grpc.ClientStreamingServer[v1alpha.Strea
 				defer s.dpuListener.mtx.Unlock()
 				peer := s.dpuListener.addPeerLocked(agentUid)
 
-				// TODO: Add any first-connect initialization logic here
-				// For example, sending acknowledgment of pending events or
-				// synchronizing state with the peer
+				if haEventHandler != nil {
+					haEventHandler.RegisterDpu(stream.Context(), agentUid)
+				}
 
 				logger.GetLogger().Info("Event stream peer connected", "clientID", peer.uid)
 				return peer
@@ -317,28 +317,26 @@ func (s *AGWServer) StreamEvents(stream grpc.ClientStreamingServer[v1alpha.Strea
 					"status", e.HaStatus.Status,
 					"message", e.HaStatus.StatusMessage,
 				)
-				// Update peer HA status directly
-				if initializedPeer != nil && e.HaStatus.Peer != "" {
+				// Update HA criteria via handler
+				if initializedPeer != nil && e.HaStatus.Peer != "" && haEventHandler != nil {
 					switch e.HaStatus.Status {
 					case v1alpha.HAStatus_HA_STATUS_KEEPALIVE_UP:
-						initializedPeer.haKeepaliveUp.Store(true)
+						haEventHandler.UpdateKeepalive(s.dpuListener.ctx, initializedPeer.uid, true)
 						logger.GetLogger().Info("HA keepalive up from DPU",
 							"agentUid", event.AgentUid,
 							"peer", e.HaStatus.Peer)
 					case v1alpha.HAStatus_HA_STATUS_KEEPALIVE_DOWN:
-						initializedPeer.haKeepaliveUp.Store(false)
+						haEventHandler.UpdateKeepalive(s.dpuListener.ctx, initializedPeer.uid, false)
 						logger.GetLogger().Warn("HA keepalive down from DPU",
 							"agentUid", event.AgentUid,
 							"peer", e.HaStatus.Peer)
 					case v1alpha.HAStatus_HA_STATUS_BULK_SYNC_DONE,
 						v1alpha.HAStatus_HA_STATUS_BULK_SYNC_PEER_DONE:
-						initializedPeer.haBulkSyncDone.Store(true)
+						haEventHandler.UpdateBulkSync(s.dpuListener.ctx, initializedPeer.uid, true)
 						logger.GetLogger().Info("HA bulk sync done from DPU",
 							"agentUid", event.AgentUid,
 							"peer", e.HaStatus.Peer)
 					}
-					// Update nxos FlowSync based on combined status
-					initializedPeer.updateFlowSyncStatus()
 				}
 			default:
 				logger.GetLogger().Warn("Received unknown event type", "agentUid", event.AgentUid)

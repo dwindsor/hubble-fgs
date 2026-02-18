@@ -82,15 +82,19 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 	defer n.RUnlock()
 
 	status := fmt.Sprintf("\n HA local IP: %v", n.Ha.HaIp)
-	status += "\n HA Peers: "
-	for ip, peer := range n.GetHaPeers() {
-		status += fmt.Sprintf("ip: %v ok: %v,", ip, peer.IpConfigOk)
+	status += "\n HA Peers:"
+	for ip := range n.GetHaPeers() {
+		status += " " + ip
 	}
 	status += fmt.Sprintf("\n HA enabled: %v", n.GetHaEnabled())
-	status += fmt.Sprintf("\n HA operational: %v", n.GetHaOperUp())
+	status += fmt.Sprintf("\n NX HA oper ready: %v", n.GetHaOperUp())
 	status += fmt.Sprintf("\n HA leader: %v", n.Ha.IsLeader)
-	status += fmt.Sprintf("\n Policy watching: %v, hash: %v, revision: %v",
-		n.Ha.Watching, n.Ha.PolHash, n.Ha.PolRev)
+	if n.Ha.Watching {
+		status += fmt.Sprintf("\n Policy watching: %v, revision: %v",
+			n.Ha.Watching, n.Ha.PolRev)
+	} else {
+		status += fmt.Sprintf("\n Policy watching: %v", n.Ha.Watching)
+	}
 	status += fmt.Sprintf("\n Local service functional: %v, updated at: %v",
 		n.Ha.Local.IsFunc, n.Ha.Local.Epoch)
 	status += "\n  Criteria: "
@@ -101,9 +105,10 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 		n.Ha.NxStates.HaState, n.Ha.NxStates.HaStateEpoch)
 	status += fmt.Sprintf("\n NX service state: %v, updated at: %v",
 		n.Ha.NxStates.SvcState, n.Ha.NxStates.SvcStateEpoch)
-	status += "\n Flow sync from "
-	for ip, val := range n.Ha.FlowSync {
-		status += fmt.Sprintf("ip: %v ok: %v,", ip, val)
+	status += "\n HA peer sync:"
+	for ip, peer := range n.GetHaPeers() {
+		syncOk := n.Ha.HaPeerSync[ip]
+		status += fmt.Sprintf("\n  ip: %v ip_cfg: %v, state: %v, reason: %v, ok: %v", ip, peer.IpConfigOk, peer.State, peer.StateReason, syncOk)
 	}
 	status += "\n"
 

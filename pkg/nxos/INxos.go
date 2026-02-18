@@ -70,10 +70,10 @@ type Alloc struct {
 }
 
 type HaPeer struct {
-	SkipAuth   bool
-	IpConfigOk bool
-	// revisit for N switch group proto
-	State hav1.MBR_STATE
+	SkipAuth    bool
+	IpConfigOk  bool
+	State       hav1.MBR_STATE
+	StateReason string // reason for HA_FAIL state
 }
 
 type HaAdj struct {
@@ -96,8 +96,10 @@ type HaCrit string
 const (
 	HaCritDpuHealth HaCrit = "dpu healthy"
 	HaCritDpuInSync HaCrit = "dpu insync"
-	HaCritSvcRedir  HaCrit = "service redir ok"
-	HaCritPolicy    HaCrit = "policy ok"
+	HaCritSvcRedir   HaCrit = "service redir ok"
+	HaCritPolicy     HaCrit = "policy ok"
+	HaCritKeepalive  HaCrit = "ha keepalive"
+	HaCritBulkSync   HaCrit = "ha bulk sync"
 )
 
 type HaLocal struct {
@@ -130,7 +132,9 @@ type Ha struct {
 	Adjacencies map[string]HaAdj
 	Members     map[string]HaMbr
 	Alloc       map[string]HaAlloc
-	FlowSync    map[string]bool // sync FROM peer ok
+	HaPeerSync   map[string]bool // per-HA-peer sync state (key: peer HA IP)
+	DpuKeepalive map[string]bool // per-DPU keepalive status
+	DpuBulkSync  map[string]bool // per-DPU bulk sync status
 
 	// local policy state
 	Watching bool

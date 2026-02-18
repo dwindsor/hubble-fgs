@@ -141,8 +141,6 @@ type peer struct {
 	lastStatus        DPUReportStatus
 	lastEpoch         int64
 	mtx               sync.RWMutex
-	haKeepaliveUp     atomic.Bool // DPU keepalive status
-	haBulkSyncDone    atomic.Bool // DPU bulk sync status
 }
 
 func (p *peer) String() string {
@@ -179,25 +177,19 @@ func (p *peer) SendConfig(cfg *v1alpha.StreamDatapathConfigResponse) error {
 	return nil
 }
 
-// flowSyncUpdater is called to update the flow sync status for a peer.
-// Set via SetFlowSyncUpdater to wire up the nxos singleton.
-var flowSyncUpdater func(peer string, status bool)
-
-// SetFlowSyncUpdater sets the function used to update flow sync status.
-// This should be called at startup to wire up nxos.SetFlowSyncStatus.
-func SetFlowSyncUpdater(fn func(peer string, status bool)) {
-	flowSyncUpdater = fn
+// HaEventHandler receives HA events from DPUs and updates local HA criteria.
+type HaEventHandler interface {
+	RegisterDpu(ctx context.Context, dpuUid string)
+	UpdateKeepalive(ctx context.Context, dpuUid string, up bool)
+	UpdateBulkSync(ctx context.Context, dpuUid string, done bool)
+	UpdatePolicyRevision(ctx context.Context, revision string)
 }
 
-// updateFlowSyncStatus updates the nxos FlowSync status for this peer.
-// FlowSync is only set to true when BOTH keepalive AND bulk sync are true.
-func (p *peer) updateFlowSyncStatus() {
-	if flowSyncUpdater == nil {
-		return
-	}
-	keepalive := p.haKeepaliveUp.Load()
-	bulkSync := p.haBulkSyncDone.Load()
-	flowSyncUpdater(p.uid, keepalive && bulkSync)
+var haEventHandler HaEventHandler
+
+// SetHaEventHandler sets the handler used for HA events from DPUs.
+func SetHaEventHandler(h HaEventHandler) {
+	haEventHandler = h
 }
 
 type DPUListener struct {

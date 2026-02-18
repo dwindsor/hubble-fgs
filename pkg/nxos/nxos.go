@@ -179,17 +179,24 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	n.Ha.Adjacencies = make(map[string]HaAdj)
 	n.Ha.Members = make(map[string]HaMbr)
 	n.Ha.Alloc = make(map[string]HaAlloc)
-	n.Ha.FlowSync = make(map[string]bool)
+	n.Ha.HaPeerSync = make(map[string]bool)
+	n.Ha.DpuKeepalive = make(map[string]bool)
+	n.Ha.DpuBulkSync = make(map[string]bool)
 	n.Ha.Local.Criteria = make(map[HaCrit]bool)
 	if n.SkipDpu {
 		n.Ha.Local.Criteria[HaCritDpuHealth] = true
 		n.Ha.Local.Criteria[HaCritDpuInSync] = true
+		n.Ha.Local.Criteria[HaCritKeepalive] = true
+		n.Ha.Local.Criteria[HaCritBulkSync] = true
 	} else {
 		n.Ha.Local.Criteria[HaCritDpuHealth] = false
 		n.Ha.Local.Criteria[HaCritDpuInSync] = false
+		n.Ha.Local.Criteria[HaCritKeepalive] = true
+		n.Ha.Local.Criteria[HaCritBulkSync] = true
 	}
 	n.Ha.Local.Criteria[HaCritSvcRedir] = false
-	n.Ha.Local.Criteria[HaCritPolicy] = false // Will be set true when policy syncs
+	n.Ha.Local.Criteria[HaCritPolicy] = true
+	n.Ha.Watching = true
 	n.Ha.Partners = make(map[string]struct{})
 	n.Ha.IsLeader = true
 
@@ -1121,15 +1128,88 @@ func SetInSyncCount(ctx context.Context, insync, oosync []string) {
 	Nexus.Unlock()
 }
 
-// SetFlowSyncStatus sets the flow sync status for a peer.
-// FlowSync should only be true when both keepalive AND bulk sync are true for that peer.
-func SetFlowSyncStatus(peer string, status bool) {
+// updateHaPeerSync sets HaPeerSync for all known HA peers based on
+// the aggregate DPU keepalive and bulk sync criteria.
+// Caller must hold the Nexus lock.
+func (n *Nxos) updateHaPeerSync() {
+	if n.Ha.HaPeerSync == nil || n.Ha.Local.Criteria == nil {
+		return
+	}
+	synced := n.Ha.Local.Criteria[HaCritKeepalive] && n.Ha.Local.Criteria[HaCritBulkSync]
+	for peer := range n.Ha.HaPeerSync {
+		n.Ha.HaPeerSync[peer] = synced
+	}
+}
+
+// RegisterDpuHa pre-populates the DpuKeepalive and DpuBulkSync maps for a
+// DPU so that show_ha displays all known DPUs even before they report HA
+// status events.
+func RegisterDpuHa(dpuUid string) {
 	Nexus.Lock()
 	defer Nexus.Unlock()
-	if Nexus.Ha.FlowSync != nil {
-		Nexus.Ha.FlowSync[peer] = status
-		logger.GetLogger().Debug("SetFlowSyncStatus", "peer", peer, "status", status)
+
+	if Nexus.Ha.DpuKeepalive != nil {
+		if _, ok := Nexus.Ha.DpuKeepalive[dpuUid]; !ok {
+			Nexus.Ha.DpuKeepalive[dpuUid] = true
+		}
 	}
+	if Nexus.Ha.DpuBulkSync != nil {
+		if _, ok := Nexus.Ha.DpuBulkSync[dpuUid]; !ok {
+			Nexus.Ha.DpuBulkSync[dpuUid] = true
+		}
+	}
+}
+
+// UpdateDpuHaKeepalive updates the keepalive status for a specific DPU,
+// aggregates all DPUs to determine HaCritKeepalive, and updates HA peer sync.
+func UpdateDpuHaKeepalive(ctx context.Context, dpuUid string, up bool) {
+	Nexus.Lock()
+	defer Nexus.Unlock()
+
+	if Nexus.Ha.DpuKeepalive == nil {
+		return
+	}
+	Nexus.Ha.DpuKeepalive[dpuUid] = up
+	logger.GetLogger().Debug("UpdateDpuHaKeepalive", "dpuUid", dpuUid, "up", up)
+
+	// Aggregate: all DPUs must have keepalive up
+	allUp := true
+	for _, v := range Nexus.Ha.DpuKeepalive {
+		if !v {
+			allUp = false
+			break
+		}
+	}
+	Nexus.haUpdateCrit(ctx, HaCritKeepalive, allUp)
+
+	// Update HA peer sync: all peers depend on aggregate DPU state
+	Nexus.updateHaPeerSync()
+}
+
+// UpdateDpuHaBulkSync updates the bulk sync status for a specific DPU,
+// aggregates all DPUs to determine HaCritBulkSync, and updates HA peer sync.
+func UpdateDpuHaBulkSync(ctx context.Context, dpuUid string, done bool) {
+	Nexus.Lock()
+	defer Nexus.Unlock()
+
+	if Nexus.Ha.DpuBulkSync == nil {
+		return
+	}
+	Nexus.Ha.DpuBulkSync[dpuUid] = done
+	logger.GetLogger().Debug("UpdateDpuHaBulkSync", "dpuUid", dpuUid, "done", done)
+
+	// Aggregate: all DPUs must have bulk sync done
+	allDone := true
+	for _, v := range Nexus.Ha.DpuBulkSync {
+		if !v {
+			allDone = false
+			break
+		}
+	}
+	Nexus.haUpdateCrit(ctx, HaCritBulkSync, allDone)
+
+	// Update HA peer sync: all peers depend on aggregate DPU state
+	Nexus.updateHaPeerSync()
 }
 
 func (n *Nxos) CheckUpdateStatus(_ context.Context) string {
@@ -1282,9 +1362,9 @@ func DpuHealth(ctx context.Context, healthy bool, count int) {
 	defer Nexus.Unlock()
 
 	if healthy && count == int(Nexus.NumDpu) && Nexus.Ha.Local.Criteria != nil {
-		Nexus.haUpdateCrit(ctx, HaCritDpuInSync, true)
+		Nexus.haUpdateCrit(ctx, HaCritDpuHealth, true)
 	} else if Nexus.Ha.Local.Criteria != nil {
-		Nexus.haUpdateCrit(ctx, HaCritDpuInSync, false)
+		Nexus.haUpdateCrit(ctx, HaCritDpuHealth, false)
 	}
 }
 

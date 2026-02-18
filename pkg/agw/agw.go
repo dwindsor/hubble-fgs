@@ -51,6 +51,25 @@ const (
 	// dpuTimeout = 300 // in second
 )
 
+// nxosHaEventAdapter adapts HA events from DPUs to the nxos singleton.
+type nxosHaEventAdapter struct{}
+
+func (a *nxosHaEventAdapter) UpdateKeepalive(ctx context.Context, dpuUid string, up bool) {
+	nxos.UpdateDpuHaKeepalive(ctx, dpuUid, up)
+}
+
+func (a *nxosHaEventAdapter) UpdateBulkSync(ctx context.Context, dpuUid string, done bool) {
+	nxos.UpdateDpuHaBulkSync(ctx, dpuUid, done)
+}
+
+func (a *nxosHaEventAdapter) RegisterDpu(_ context.Context, dpuUid string) {
+	nxos.RegisterDpuHa(dpuUid)
+}
+
+func (a *nxosHaEventAdapter) UpdatePolicyRevision(ctx context.Context, revision string) {
+	nxos.Nexus.NotifyPolRev(ctx, revision)
+}
+
 func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.PolicyHandler) *AgentGateway {
 	mac := os.Getenv("NX_SAS_RMAC")
 	hostname := os.Getenv("CAF_SYSTEM_NAME")
@@ -250,6 +269,11 @@ func (agw *AgentGateway) GetNxHeadlessMode() bool {
 	return nxos.Nexus.GetHeadlessMode()
 }
 
+// DisableHaWatching disables HA policy watching (used in headless mode).
+func (agw *AgentGateway) DisableHaWatching(ctx context.Context) {
+	nxos.Nexus.NotifyWatching(ctx, false)
+}
+
 // GetNxProxyConfig retrieves the proxy configuration from the Nexus system.
 func (agw *AgentGateway) GetNxProxyConfig(ctx context.Context) error {
 	return nxos.Nexus.GetProxyConfig(ctx)
@@ -267,6 +291,11 @@ func (agw *AgentGateway) GetSerialNumber(ctx context.Context) string {
 }
 
 func (agw *AgentGateway) Setup(ctx context.Context) error {
+	// Wire up the nxos singleton for HA event handling BEFORE Setup
+	// so that policy revision updates are propagated to HA during initialization
+	switchpolicy.SetHaEventHandler(&nxosHaEventAdapter{})
+	logger.GetLogger().Debug("HA event handler configured for nxos")
+
 	err := nxos.Nexus.Setup(ctx, agw.dpuPortLow, agw.dpuPortHigh, agw.dpuListener, agw.PolicyHandler)
 	if err != nil {
 		// Removed GetLogger().Fatal to avoid immediate termination, use shutdown manager.
@@ -274,10 +303,6 @@ func (agw *AgentGateway) Setup(ctx context.Context) error {
 		shutdown.TriggerShutdown(shutdown.ErrorExitCode)
 		return err
 	}
-
-	// Wire up the nxos singleton for flow sync status updates
-	switchpolicy.SetFlowSyncUpdater(nxos.SetFlowSyncStatus)
-	logger.GetLogger().Debug("Flow sync updater configured for nxos")
 
 	return nil
 }
@@ -310,14 +335,6 @@ func (agw *AgentGateway) SetConnectionStatus(ctx context.Context, status bool, n
 	} else {
 		nxos.Nexus.SetConnFail(ctx, nxos.ConnFailed)
 	}
-
-	notifyHA(ctx, status)
-}
-
-// notifyHA notifies the high availability system about
-// the controller connection current status.
-func notifyHA(ctx context.Context, status bool) {
-	nxos.Nexus.NotifyWatching(ctx, status)
 }
 
 // SetK8sCtlrAuthToken sets the Kubernetes controller authentication token in both the AgentToken and Nxos structs,
@@ -670,6 +687,7 @@ func (agw *AgentGateway) PoliciesInfo(_ context.Context, msgData ipc.MessageData
 	logger.GetLogger().Debug("Policies info")
 
 	type PolicySummary struct {
+		ResourceVersion   string         `json:"resource_version"`
 		TotalPolicies     int            `json:"total_policies"`
 		TotalRules        int            `json:"total_rules"`
 		ActiveRules       int            `json:"active_rules"`
@@ -690,6 +708,13 @@ func (agw *AgentGateway) PoliciesInfo(_ context.Context, msgData ipc.MessageData
 		RulesByNamespace:  make(map[string]int),
 		PoliciesByNs:      make(map[string]int),
 		ProtocolBreakdown: make(map[string]int),
+	}
+
+	// Adding resource version
+	var err error
+	summary.ResourceVersion, err = agw.PolicyHandler.ResourceVersion()
+	if err != nil {
+		summary.ResourceVersion = "failed"
 	}
 
 	vrfSet := make(map[string]bool)

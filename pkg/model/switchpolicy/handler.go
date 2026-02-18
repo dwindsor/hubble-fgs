@@ -62,6 +62,13 @@ func (h *policyHandler) ListPolicies() map[ResourceID]K8sRulesList {
 	return h.repository.ListPolicies()
 }
 
+func (h *policyHandler) setResourceVersion(version string) {
+	h.resourceVersion = version
+	if haEventHandler != nil {
+		haEventHandler.UpdatePolicyRevision(h.ctx, h.resourceVersion)
+	}
+}
+
 func (h *policyHandler) UpsertPolicy(resourceId ResourceID, rules K8sRulesList, resourceVersion string) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
@@ -70,18 +77,18 @@ func (h *policyHandler) UpsertPolicy(resourceId ResourceID, rules K8sRulesList, 
 		newVersion, err := strconv.Atoi(resourceVersion)
 		if err != nil {
 			logger.GetLogger().Warn("Failed to parse resource version", "resourceVersion", resourceVersion, "err", err)
-			h.resourceVersion = resourceVersion
+			h.setResourceVersion(resourceVersion)
 		} else if h.resourceVersion == "" {
 			// No existing version, use the new one
-			h.resourceVersion = resourceVersion
+			h.setResourceVersion(resourceVersion)
 		} else {
 			// Compare with existing version and keep the maximum
 			currentVersion, err := strconv.Atoi(h.resourceVersion)
 			if err != nil {
 				logger.GetLogger().Warn("Failed to parse current resource version", "resourceVersion", h.resourceVersion, "err", err)
-				h.resourceVersion = resourceVersion
+				h.setResourceVersion(resourceVersion)
 			} else if newVersion > currentVersion {
-				h.resourceVersion = resourceVersion
+				h.setResourceVersion(resourceVersion)
 			}
 		}
 	}
@@ -120,7 +127,7 @@ func (h *policyHandler) DeletePolicy(resourceId ResourceID, resourceVersion stri
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 	if resourceVersion != "" {
-		h.resourceVersion = resourceVersion
+		h.setResourceVersion(resourceVersion)
 	}
 
 	deletedRules, err := h.repository.DeletePolicy(resourceId)
