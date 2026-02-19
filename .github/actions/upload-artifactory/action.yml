@@ -59,6 +59,10 @@ inputs:
     description: Filename to use in Artifactory for the generated tar.gz
     required: false
     default: ""
+  write_step_summary:
+    description: Whether to append an upload summary to $GITHUB_STEP_SUMMARY
+    required: false
+    default: "false"
 outputs:
   build_tag:
     value: ${{ steps.compute-path.outputs.build_tag }}
@@ -152,12 +156,16 @@ runs:
       shell: bash
       run: |
         ARTIFACTORY_PATH="${{ steps.compute-path.outputs.artifactory_path }}"
+        BUILD_TAG="${{ steps.compute-path.outputs.build_tag }}"
+        WRITE_STEP_SUMMARY="${{ inputs.write_step_summary }}"
         echo "Uploading artifacts to: ${ARTIFACTORY_PATH}"
 
         UPLOADS_INPUT="${{ inputs.uploads }}"
         if [ "${{ inputs.create_docker_tar }}" = "true" ]; then
           UPLOADS_INPUT="${UPLOADS_INPUT}"$'\n'"${{ steps.docker-tar.outputs.tar_gz_path }}|${{ steps.docker-tar.outputs.artifactory_name }}"
         fi
+
+        UPLOADED_ROWS=""
 
         while IFS= read -r line || [ -n "$line" ]; do
           if [ -z "$line" ]; then
@@ -178,4 +186,22 @@ runs:
 
           jf rt u --flat "$SRC" "${ARTIFACTORY_PATH}/${DST}"
           echo "✓ Uploaded ${SRC} -> ${ARTIFACTORY_PATH}/${DST}"
+          UPLOADED_ROWS+="| ${DST} | ${ARTIFACTORY_PATH}/${DST} |"$'\n'
         done <<< "$UPLOADS_INPUT"
+
+        if [ "$WRITE_STEP_SUMMARY" = "true" ]; then
+          {
+            echo "### Artifactory Upload Summary"
+            echo "| Property | Value |"
+            echo "| --- | --- |"
+            echo "| Artifactory Path | ${ARTIFACTORY_PATH}/ |"
+            echo "| Build Tag | ${BUILD_TAG} |"
+
+            if [ -n "$UPLOADED_ROWS" ]; then
+              echo ""
+              echo "| Artifact | Target |"
+              echo "| --- | --- |"
+              printf "%b" "$UPLOADED_ROWS"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi

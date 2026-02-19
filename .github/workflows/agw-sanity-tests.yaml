@@ -90,15 +90,7 @@ jobs:
           docker_image_repo: isovalent/agw-test
           docker_tar_basename: agw-test
           docker_tar_artifactory_name: agw-test.tar.gz
-
-      - name: Artifactory Upload Summary (AGW test image)
-        if: ${{ inputs.upload_to_artifactory }}
-        run: |
-          echo "### Artifactory Upload Summary (AGW test image)" >> $GITHUB_STEP_SUMMARY
-          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| Artifactory Path | ${{ steps.upload-agw-test.outputs.artifactory_path }}/ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Docker Image | agw-test.tar.gz |" >> $GITHUB_STEP_SUMMARY
+          write_step_summary: "true"
 
       - name: Pull DPU Simulator image
         id: pull-sim
