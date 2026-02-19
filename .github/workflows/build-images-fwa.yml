@@ -189,6 +189,21 @@ jobs:
         with:
           name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./release-artifacts"
+      - name: Generate fwa.yaml manifest
+        run: |
+          cat > ./fwa.yaml << EOF
+          vendor_name: hypershield
+          pkg_entity: fwa
+          #sw contents - list of files in the fwa package
+          pkg_files:
+          - pkg_file_entity: fwa
+            pkg_file: fwa.tar
+            pkg_file_version: ${VERSION}
+            pkg_git_label: ${DATE}-${SHA}
+          EOF
+          sed -i 's/^          //' ./fwa.yaml
+          echo "Generated fwa.yaml:"
+          cat ./fwa.yaml
       - name: Get Artifactory Credentials from Vault
         uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
         with:
@@ -226,6 +241,12 @@ jobs:
             echo "✓ Uploaded fwa-elba-arm64.tar.gz"
           fi
           
+          # Upload fwa.yaml manifest
+          if [ -f "./fwa.yaml" ]; then
+            jf rt u --flat "./fwa.yaml" "${ARTIFACTORY_PATH}/fwa.yaml"
+            echo "✓ Uploaded fwa.yaml"
+          fi
+          
           echo "✓ All FWA artifacts uploaded successfully"
       - name: Artifactory Upload Summary
         env:
@@ -238,6 +259,7 @@ jobs:
           echo "| Artifactory Path | smartswitch/fwa/${VERSION}/${BUILD_TAG}/ |" >> $GITHUB_STEP_SUMMARY
           echo "| AMD64 Image | fwa-elba-amd64.tar.gz |" >> $GITHUB_STEP_SUMMARY
           echo "| ARM64 Image | fwa-elba-arm64.tar.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| Manifest | fwa.yaml |" >> $GITHUB_STEP_SUMMARY
 
   create-fwa-releases-repo-release:
     needs: [init, combine-artifacts]
