@@ -408,11 +408,73 @@ jobs:
       DATE: ${{ needs.init.outputs.date }}
       SHA: ${{ needs.init.outputs.sha }}
     steps:
+      - name: Checkout nxos-ref-package.yaml
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          sparse-checkout: |
+            nxos-ref-package.yaml
+          sparse-checkout-cone-mode: false
       - name: Download release artifacts
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./release-artifacts"
+      - name: Download AGW binaries artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: "hubble-fgs-agw-binaries-${{ needs.init.outputs.version }}"
+          path: "./agw-binaries"
+      - name: Assemble codedrop structure
+        run: |
+          # Generate agent.yaml manifest
+          cat > ./agent.yaml << EOF
+          vendor_name: hypershield
+          pkg_entity: agent
+          #sw contents - list of files in the agent.rpm
+          pkg_files:
+          - pkg_file_entity: agent
+            pkg_file: agent.tar
+            pkg_file_version: ${VERSION}
+            pkg_git_label: ${DATE}-${SHA}
+          EOF
+          sed -i 's/^          //' ./agent.yaml
+          echo "Generated agent.yaml:"
+          cat ./agent.yaml
+
+          # Assemble ioxsrc/ directory
+          mkdir -p ./ioxsrc/bin/hubble/binaries
+
+          # Copy Docker image tar as ioxsrc/agw.tar.gz
+          if [ -f "./release-artifacts/agw.tar.gz" ]; then
+            cp ./release-artifacts/agw.tar.gz ./ioxsrc/agw.tar.gz
+            echo "Copied agw.tar.gz to ioxsrc/"
+          fi
+
+          # Copy binaries to ioxsrc/bin/hubble/binaries/
+          for dir in agw agwctl; do
+            if [ -d "./agw-binaries/${dir}" ]; then
+              cp -r ./agw-binaries/${dir} \
+                ./ioxsrc/bin/hubble/binaries/${dir}
+              echo "Copied ${dir}/ to ioxsrc/bin/hubble/binaries/"
+            fi
+          done
+          if [ -d "./agw-binaries/install" ]; then
+            cp -r ./agw-binaries/install \
+              ./ioxsrc/bin/hubble/binaries/install
+            echo "Copied install/ to ioxsrc/bin/hubble/binaries/"
+          fi
+
+          # Generate package.yaml from nxos-ref-package.yaml
+          IOX_VERSION=$(echo "${VERSION}" | sed 's/-/./g' | sed 's/^v//')
+          cp ./nxos-ref-package.yaml ./ioxsrc/package.yaml
+          sed -i "s/^  version: .*/  version: ${IOX_VERSION}/" \
+            ./ioxsrc/package.yaml
+          echo "Generated package.yaml:"
+          cat ./ioxsrc/package.yaml
+
+          echo "\n=== Codedrop structure ==="
+          find ./ioxsrc -type f | sort
+          echo "========================="
       - name: Get Artifactory Credentials from Vault
         uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
         with:
@@ -440,14 +502,31 @@ jobs:
           
           # Upload Docker image
           if [ -f "./release-artifacts/agw.tar.gz" ]; then
-            jf rt u --flat "./release-artifacts/agw.tar.gz" "${ARTIFACTORY_PATH}/agw.tar.gz"
+            jf rt u --flat "./release-artifacts/agw.tar.gz" \
+              "${ARTIFACTORY_PATH}/agw.tar.gz"
             echo "✓ Uploaded agw.tar.gz"
           fi
           
           # Upload binaries
           if [ -f "./release-artifacts/agw-binaries-${VERSION}.tar.gz" ]; then
-            jf rt u --flat "./release-artifacts/agw-binaries-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/agw-binaries.tar.gz"
+            jf rt u --flat \
+              "./release-artifacts/agw-binaries-${VERSION}.tar.gz" \
+              "${ARTIFACTORY_PATH}/agw-binaries.tar.gz"
             echo "✓ Uploaded agw-binaries.tar.gz"
+          fi
+          
+          # Upload agent.yaml manifest
+          if [ -f "./agent.yaml" ]; then
+            jf rt u --flat "./agent.yaml" \
+              "${ARTIFACTORY_PATH}/agent.yaml"
+            echo "✓ Uploaded agent.yaml"
+          fi
+          
+          # Upload ioxsrc/ codedrop structure
+          if [ -d "./ioxsrc" ]; then
+            jf rt u "./ioxsrc/" \
+              "${ARTIFACTORY_PATH}/ioxsrc/"
+            echo "✓ Uploaded ioxsrc/ directory"
           fi
           
           echo "✓ All AGW artifacts uploaded successfully"
@@ -456,12 +535,20 @@ jobs:
           RUN_NUMBER: ${{ github.run_number }}
         run: |
           BUILD_TAG="${RUN_NUMBER}-${DATE}-${SHA}"
+          ARTIFACTORY_PATH="smartswitch/agw/${VERSION}/${BUILD_TAG}"
           echo "### Artifactory Upload Summary" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| Artifactory Path | smartswitch/agw/${VERSION}/${BUILD_TAG}/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifactory Path | ${ARTIFACTORY_PATH}/ |" >> $GITHUB_STEP_SUMMARY
           echo "| Docker Image | agw.tar.gz |" >> $GITHUB_STEP_SUMMARY
           echo "| Binaries | agw-binaries.tar.gz |" >> $GITHUB_STEP_SUMMARY
+          echo "| Manifest | agent.yaml |" >> $GITHUB_STEP_SUMMARY
+          echo "| Codedrop | ioxsrc/ |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Codedrop Structure" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          find ./ioxsrc -type f | sort >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   create-hubble-agw-releases-repo-release:
     needs: [ init, combine-artifacts ]
