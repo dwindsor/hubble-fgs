@@ -299,6 +299,8 @@ jobs:
       version: ${{ needs.init.outputs.version }}
       date: ${{ needs.init.outputs.date }}
       sha: ${{ needs.init.outputs.sha }}
+      upload_to_artifactory: true
+      # ${{ github.ref == 'refs/heads/master' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') }}
     secrets:
       HYPERSHIELD_GH_APP_PEM: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
 
@@ -478,10 +480,10 @@ jobs:
       - name: Get Artifactory Credentials from Vault
         uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
         with:
-          url: ${{ vars.VAULT_URL }}
-          method: ${{ vars.VAULT_METHOD }}
-          namespace: ${{ vars.VAULT_NAMESPACE }}
-          secrets: |
+          vault_url: ${{ vars.VAULT_URL }}
+          vault_method: ${{ vars.VAULT_METHOD }}
+          vault_namespace: ${{ vars.VAULT_NAMESPACE }}
+          vault_secrets: |
             secret/data/devops/${{ github.repository_owner }} artifactory_username | JF_USER;
             secret/data/devops/${{ github.repository_owner }} artifactory_password | JF_PASSWORD;
       - name: Setup access to Artifactory
@@ -531,8 +533,6 @@ jobs:
           
           echo "✓ All AGW artifacts uploaded successfully"
       - name: Artifactory Upload Summary
-        env:
-          RUN_NUMBER: ${{ github.run_number }}
         run: |
           BUILD_TAG="${RUN_NUMBER}-${DATE}-${SHA}"
           ARTIFACTORY_PATH="smartswitch/agw/${VERSION}/${BUILD_TAG}"

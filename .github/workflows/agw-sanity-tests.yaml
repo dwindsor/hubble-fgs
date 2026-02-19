@@ -15,6 +15,11 @@ on:
         description: 'Git SHA from caller workflow'
         required: false
         type: string
+      upload_to_artifactory:
+        description: 'Whether to upload the agw-test image to Artifactory'
+        required: false
+        type: boolean
+        default: false
     secrets:
       HYPERSHIELD_GH_APP_PEM:
         required: true
@@ -26,6 +31,7 @@ jobs:
       contents: write
       actions: read
       pages: write
+      id-token: write
     timeout-minutes: 15 
     
     steps:
@@ -61,6 +67,38 @@ jobs:
         run: |
           cd tests/sanity/smartswitch
           make build-agw-image
+
+      - name: Upload AGW test image to Artifactory
+        if: ${{ inputs.upload_to_artifactory }}
+        id: upload-agw-test
+        uses: ./.github/actions/upload-artifactory
+        with:
+          vault_url: ${{ vars.VAULT_URL }}
+          vault_method: ${{ vars.VAULT_METHOD }}
+          vault_namespace: ${{ vars.VAULT_NAMESPACE }}
+          vault_secrets: |
+            secret/data/devops/${{ github.repository_owner }} artifactory_username | JF_USER;
+            secret/data/devops/${{ github.repository_owner }} artifactory_password | JF_PASSWORD;
+          artifactory_url: ${{ vars.ARTIFACTORY_URL }}
+          repo_path_prefix: isovalent-images-generic/smartswitch/agw-test
+          version: ${{ inputs.version }}
+          date: ${{ inputs.date }}
+          sha: ${{ inputs.sha }}
+          run_number: ${{ github.run_number }}
+          create_docker_tar: "true"
+          docker_image_source: isovalent/agw-test:latest
+          docker_image_repo: isovalent/agw-test
+          docker_tar_basename: agw-test
+          docker_tar_artifactory_name: agw-test.tar.gz
+
+      - name: Artifactory Upload Summary (AGW test image)
+        if: ${{ inputs.upload_to_artifactory }}
+        run: |
+          echo "### Artifactory Upload Summary (AGW test image)" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifactory Path | ${{ steps.upload-agw-test.outputs.artifactory_path }}/ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Image | agw-test.tar.gz |" >> $GITHUB_STEP_SUMMARY
 
       - name: Pull DPU Simulator image
         id: pull-sim

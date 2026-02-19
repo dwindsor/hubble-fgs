@@ -1,0 +1,181 @@
+name: Upload to Artifactory
+description: Retrieve Artifactory credentials from Vault, configure JFrog CLI, and upload artifacts.
+inputs:
+  vault_url:
+    description: Vault URL
+    required: true
+  vault_method:
+    description: Vault auth method
+    required: true
+  vault_namespace:
+    description: Vault namespace
+    required: true
+  vault_secrets:
+    description: Vault secrets spec for hashicorp/vault-action
+    required: true
+  artifactory_url:
+    description: Artifactory base URL
+    required: true
+  repo_path_prefix:
+    description: Artifactory repository path prefix (e.g. isovalent-images-generic/smartswitch/agw)
+    required: true
+  version:
+    description: Version string used in the upload path
+    required: false
+    default: ""
+  date:
+    description: Build date string used in the build tag
+    required: false
+    default: ""
+  sha:
+    description: Git SHA string used in the build tag
+    required: false
+    default: ""
+  run_number:
+    description: GitHub run number used in the build tag
+    required: false
+    default: ""
+  uploads:
+    description: Newline-separated list of uploads in the form 'source|target_filename'
+    required: false
+    default: ""
+  create_docker_tar:
+    description: Whether to docker save an image to a tar.gz and upload it
+    required: false
+    default: "false"
+  docker_image_source:
+    description: Source docker image reference to save (e.g. isovalent/agw-test:latest)
+    required: false
+    default: ""
+  docker_image_repo:
+    description: If set, the image will be retagged to <repo>:<version>-<build_tag> before saving
+    required: false
+    default: ""
+  docker_tar_basename:
+    description: Base name (without extension) for the generated tar.gz
+    required: false
+    default: "docker-image"
+  docker_tar_artifactory_name:
+    description: Filename to use in Artifactory for the generated tar.gz
+    required: false
+    default: ""
+outputs:
+  build_tag:
+    value: ${{ steps.compute-path.outputs.build_tag }}
+  artifactory_path:
+    value: ${{ steps.compute-path.outputs.artifactory_path }}
+runs:
+  using: composite
+  steps:
+    - name: Get Artifactory Credentials from Vault
+      uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
+      with:
+        url: ${{ inputs.vault_url }}
+        method: ${{ inputs.vault_method }}
+        namespace: ${{ inputs.vault_namespace }}
+        secrets: ${{ inputs.vault_secrets }}
+
+    - name: Setup access to Artifactory
+      uses: jfrog/setup-jfrog-cli@ff5cb544114ffc152db9cea1cd3d5978d5074946 # v4.5.11
+      env:
+        JF_URL: ${{ inputs.artifactory_url }}
+      with:
+        disable-auto-build-publish: true
+        disable-job-summary: true
+
+    - name: Compute Artifactory path
+      id: compute-path
+      shell: bash
+      run: |
+        VERSION="${{ inputs.version }}"
+        DATE="${{ inputs.date }}"
+        SHA="${{ inputs.sha }}"
+        RUN_NUMBER="${{ inputs.run_number }}"
+        REPO_PATH_PREFIX="${{ inputs.repo_path_prefix }}"
+
+        if [ -z "$VERSION" ]; then
+          VERSION="unknown"
+        fi
+        if [ -z "$DATE" ]; then
+          DATE="$(date -u +"%Y%m%d")"
+        fi
+        if [ -z "$SHA" ]; then
+          SHA="${GITHUB_SHA::7}"
+        fi
+        if [ -z "$RUN_NUMBER" ]; then
+          RUN_NUMBER="${GITHUB_RUN_NUMBER}"
+        fi
+
+        BUILD_TAG="${RUN_NUMBER}-${DATE}-${SHA}"
+        ARTIFACTORY_PATH="${REPO_PATH_PREFIX}/${VERSION}/${BUILD_TAG}"
+
+        echo "build_tag=${BUILD_TAG}" >> "$GITHUB_OUTPUT"
+        echo "artifactory_path=${ARTIFACTORY_PATH}" >> "$GITHUB_OUTPUT"
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+    - name: Create Docker image tarball
+      id: docker-tar
+      if: ${{ inputs.create_docker_tar == 'true' }}
+      shell: bash
+      run: |
+        IMAGE_SOURCE="${{ inputs.docker_image_source }}"
+        IMAGE_REPO="${{ inputs.docker_image_repo }}"
+        VERSION="${{ steps.compute-path.outputs.version }}"
+        BUILD_TAG="${{ steps.compute-path.outputs.build_tag }}"
+        BASENAME="${{ inputs.docker_tar_basename }}"
+
+        if [ -z "$IMAGE_SOURCE" ]; then
+          echo "docker_image_source is required when create_docker_tar=true"
+          exit 1
+        fi
+
+        IMAGE_URI="$IMAGE_SOURCE"
+        if [ -n "$IMAGE_REPO" ]; then
+          IMAGE_URI="${IMAGE_REPO}:${VERSION}-${BUILD_TAG}"
+          docker tag "$IMAGE_SOURCE" "$IMAGE_URI"
+        fi
+
+        TAR_PATH="${BASENAME}.tar"
+        docker save "$IMAGE_URI" -o "$TAR_PATH"
+        gzip -f "$TAR_PATH"
+        TAR_GZ_PATH="${TAR_PATH}.gz"
+
+        ARTIFACTORY_NAME="${{ inputs.docker_tar_artifactory_name }}"
+        if [ -z "$ARTIFACTORY_NAME" ]; then
+          ARTIFACTORY_NAME="${BASENAME}.tar.gz"
+        fi
+
+        echo "tar_gz_path=${TAR_GZ_PATH}" >> "$GITHUB_OUTPUT"
+        echo "artifactory_name=${ARTIFACTORY_NAME}" >> "$GITHUB_OUTPUT"
+
+    - name: Upload artifacts to Artifactory
+      shell: bash
+      run: |
+        ARTIFACTORY_PATH="${{ steps.compute-path.outputs.artifactory_path }}"
+        echo "Uploading artifacts to: ${ARTIFACTORY_PATH}"
+
+        UPLOADS_INPUT="${{ inputs.uploads }}"
+        if [ "${{ inputs.create_docker_tar }}" = "true" ]; then
+          UPLOADS_INPUT="${UPLOADS_INPUT}"$'\n'"${{ steps.docker-tar.outputs.tar_gz_path }}|${{ steps.docker-tar.outputs.artifactory_name }}"
+        fi
+
+        while IFS= read -r line || [ -n "$line" ]; do
+          if [ -z "$line" ]; then
+            continue
+          fi
+
+          SRC="${line%%|*}"
+          DST="${line#*|}"
+
+          if [ "$SRC" = "$DST" ]; then
+            DST="$(basename "$SRC")"
+          fi
+
+          if [ ! -f "$SRC" ]; then
+            echo "Skipping missing file: $SRC"
+            continue
+          fi
+
+          jf rt u --flat "$SRC" "${ARTIFACTORY_PATH}/${DST}"
+          echo "✓ Uploaded ${SRC} -> ${ARTIFACTORY_PATH}/${DST}"
+        done <<< "$UPLOADS_INPUT"
