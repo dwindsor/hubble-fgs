@@ -739,7 +739,7 @@ splunk_hec:
   image:
     override: ~
     repository: quay.io/isovalent/opentelemetry-collector-contrib
-    tag: 0.133.0
+    tag: 0.145.0
     pullPolicy: IfNotPresent
   resources:
     requests:
