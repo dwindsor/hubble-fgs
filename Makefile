@@ -22,8 +22,6 @@ GO_TEST_TIMEOUT ?= 20m
 GO_TEST_PACKAGES ?= ./pkg/... ./cmd/... ./operator/...
 CONTAINER_ENGINE_ARGS ?=
 
-export GOEXPERIMENT=synctest
-
 # Architecture, use TARGET_ARCH=amd64 or TARGET_ARCH=arm64
 # or let uname detect the appropriate arch for native build
 UNAME_M := $(shell uname -m)
@@ -360,7 +358,7 @@ package-fgs-bench: tetragon-bpf-local fgs-bench
 ##@ Test
 
 # renovate: datasource=docker
-GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v2.8.0@sha256:bebcfa63db7df53e417845ed61e4540519cf74fcba22793cdd174b3415a9e4e2
+GOLANGCILINT_IMAGE=docker.io/golangci/golangci-lint:v2.10.1@sha256:ea84d14c2fef724411be7dc45e09e6ef721d748315252b02df19a7e3113ee763
 GOLANGCILINT_WANT_VERSION := $(subst @sha256,,$(patsubst v%,%,$(word 2,$(subst :, ,$(lastword $(subst /, ,$(GOLANGCILINT_IMAGE)))))))
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
@@ -368,7 +366,7 @@ check: ## Run Go linters.
 	golangci-lint run
 else
 check:
-	docker run --rm -v `pwd`:/app -w /app --env GOTOOLCHAIN=auto --env GOEXPERIMENT=synctest $(GOLANGCILINT_IMAGE) golangci-lint run
+	docker run --rm -v `pwd`:/app -w /app --env GOTOOLCHAIN=auto $(GOLANGCILINT_IMAGE) golangci-lint run
 endif
 
 .PHONY: copy-golangci-lint

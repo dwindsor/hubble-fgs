@@ -1,6 +1,6 @@
 module github.com/isovalent/hubble-fgs/cmd/netpol
 
-go 1.25.4
+go 1.26.0
 
 require (
 	github.com/cilium/hive v0.0.0-20251021073839-03494cb6c4de

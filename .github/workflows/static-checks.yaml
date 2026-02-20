@@ -31,7 +31,7 @@ jobs:
       uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
       with:
         # renovate: datasource=golang-version depName=go
-        go-version: '1.25.5'
+        go-version: '1.26.0'
 
     - name: Check if build works for every commit
       run: |
@@ -74,18 +74,16 @@ jobs:
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           # renovate: datasource=golang-version depName=go
-          go-version: '1.25.5'
+          go-version: '1.26.0'
           # using golangci-lint cache instead
           cache: false
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47 # v9.0.0
-        env:
-          GOEXPERIMENT: synctest
 
         with:
           # renovate: datasource=docker depName=docker.io/golangci/golangci-lint
-          version: v2.8.0
+          version: v2.10.1
           args: --config=.golangci.yml --verbose
 
   format:
@@ -98,7 +96,7 @@ jobs:
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           # renovate: datasource=golang-version depName=go
-          go-version: '1.25.5'
+          go-version: '1.26.0'
 
       - name: Check gofmt formatting
         run: |
@@ -130,7 +128,7 @@ jobs:
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           # renovate: datasource=golang-version depName=go
-          go-version: '1.25.5'
+          go-version: '1.26.0'
 
       - name: Check module vendoring
         run: |

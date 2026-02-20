@@ -44,7 +44,7 @@ func TestManager(t *testing.T) {
 	handler, cleanup := testutils2.SetupLogCheckerHandler()
 	t.Cleanup(cleanup)
 
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		mgr, err := NewManager(cnf, tsm, nil)
 		require.NoError(t, err)
 		mgr.Start()
@@ -182,7 +182,7 @@ func TestManagerConf(t *testing.T) {
 		RefreshPeriod: 1 * time.Second,
 	}
 
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		mgr, err := NewManager(cnf, tsm, nil)
 		require.NoError(t, err)
 		mgr.Start()
@@ -229,7 +229,7 @@ func TestManagerConfigure(t *testing.T) {
 		RefreshPeriod: t1,
 	}
 
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		mgr, err := NewManager(cnf, tsm, nil)
 		require.NoError(t, err)
 		mgr.Start()
@@ -296,7 +296,7 @@ func TestManagerNoAlerts(t *testing.T) {
 	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
 	require.NoError(t, err)
 
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		mgr, err := NewManager(cnf, tsm, nil)
 		require.NoError(t, err)
 		mgr.Start()
@@ -324,7 +324,7 @@ func TestManagerAlerts(t *testing.T) {
 	err = os.CopyFS(tmpDir, os.DirFS("testdata"))
 	require.NoError(t, err)
 
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		mgr, err := NewManager(cnf, tsm, tam)
 		require.NoError(t, err)
 		mgr.Start()
