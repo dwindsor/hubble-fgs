@@ -416,6 +416,7 @@ jobs:
         with:
           sparse-checkout: |
             nxos-ref-package.yaml
+            .github/actions/upload-artifactory
           sparse-checkout-cone-mode: false
       - name: Download release artifacts
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
@@ -478,8 +479,9 @@ jobs:
           echo "\n=== Codedrop structure ==="
           find ./ioxsrc -type f | sort
           echo "========================="
-      - name: Get Artifactory Credentials from Vault
-        uses: hashicorp/vault-action@7709c609789c5e27b757a85817483caadbb5939a # v3.3.0
+      - name: Upload AGW artifacts to Artifactory
+        id: upload-agw-artifacts
+        uses: ./.github/actions/upload-artifactory
         with:
           vault_url: ${{ vars.VAULT_URL }}
           vault_method: ${{ vars.VAULT_METHOD }}
@@ -487,53 +489,22 @@ jobs:
           vault_secrets: |
             secret/data/devops/${{ github.repository_owner }} artifactory_username | JF_USER;
             secret/data/devops/${{ github.repository_owner }} artifactory_password | JF_PASSWORD;
-      - name: Setup access to Artifactory
-        uses: jfrog/setup-jfrog-cli@ff5cb544114ffc152db9cea1cd3d5978d5074946 # v4.5.11
-        env:
-          JF_URL: ${{ vars.ARTIFACTORY_URL }}
-        with:
-          disable-auto-build-publish: true
-          disable-job-summary: true
-      - name: Upload AGW artifacts to Artifactory
+          artifactory_url: ${{ vars.ARTIFACTORY_URL }}
+          repo_path_prefix: isovalent-images-generic/smartswitch/agw
+          version: ${{ needs.init.outputs.version }}
+          date: ${{ needs.init.outputs.date }}
+          sha: ${{ needs.init.outputs.sha }}
+          run_number: ${{ github.run_number }}
+          uploads: |
+            ./release-artifacts/agw.tar.gz|agw.tar.gz
+            ./release-artifacts/agw-binaries-${{ needs.init.outputs.version }}.tar.gz|agw-binaries.tar.gz
+            ./agent.yaml|agent.yaml
+            ./ioxsrc/|ioxsrc/
+          write_step_summary: "false"
+
+      - name: Artifactory Upload Summary
         env:
           RUN_NUMBER: ${{ github.run_number }}
-        run: |
-          BUILD_TAG="${RUN_NUMBER}-${DATE}-${SHA}"
-          ARTIFACTORY_PATH="isovalent-images-generic/smartswitch/agw/${VERSION}/${BUILD_TAG}"
-          
-          echo "Uploading AGW artifacts to: ${ARTIFACTORY_PATH}"
-          
-          # Upload Docker image
-          if [ -f "./release-artifacts/agw.tar.gz" ]; then
-            jf rt u --flat "./release-artifacts/agw.tar.gz" \
-              "${ARTIFACTORY_PATH}/agw.tar.gz"
-            echo "✓ Uploaded agw.tar.gz"
-          fi
-          
-          # Upload binaries
-          if [ -f "./release-artifacts/agw-binaries-${VERSION}.tar.gz" ]; then
-            jf rt u --flat \
-              "./release-artifacts/agw-binaries-${VERSION}.tar.gz" \
-              "${ARTIFACTORY_PATH}/agw-binaries.tar.gz"
-            echo "✓ Uploaded agw-binaries.tar.gz"
-          fi
-          
-          # Upload agent.yaml manifest
-          if [ -f "./agent.yaml" ]; then
-            jf rt u --flat "./agent.yaml" \
-              "${ARTIFACTORY_PATH}/agent.yaml"
-            echo "✓ Uploaded agent.yaml"
-          fi
-          
-          # Upload ioxsrc/ codedrop structure
-          if [ -d "./ioxsrc" ]; then
-            jf rt u "./ioxsrc/" \
-              "${ARTIFACTORY_PATH}/ioxsrc/"
-            echo "✓ Uploaded ioxsrc/ directory"
-          fi
-          
-          echo "✓ All AGW artifacts uploaded successfully"
-      - name: Artifactory Upload Summary
         run: |
           BUILD_TAG="${RUN_NUMBER}-${DATE}-${SHA}"
           ARTIFACTORY_PATH="smartswitch/agw/${VERSION}/${BUILD_TAG}"

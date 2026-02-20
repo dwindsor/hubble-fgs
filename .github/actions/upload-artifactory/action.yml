@@ -179,14 +179,24 @@ runs:
             DST="$(basename "$SRC")"
           fi
 
-          if [ ! -f "$SRC" ]; then
-            echo "Skipping missing file: $SRC"
+          if [ -f "$SRC" ]; then
+            jf rt u --flat "$SRC" "${ARTIFACTORY_PATH}/${DST}"
+            echo "✓ Uploaded ${SRC} -> ${ARTIFACTORY_PATH}/${DST}"
+            UPLOADED_ROWS+="| ${DST} | ${ARTIFACTORY_PATH}/${DST} |"$'\n'
             continue
           fi
 
-          jf rt u --flat "$SRC" "${ARTIFACTORY_PATH}/${DST}"
-          echo "✓ Uploaded ${SRC} -> ${ARTIFACTORY_PATH}/${DST}"
-          UPLOADED_ROWS+="| ${DST} | ${ARTIFACTORY_PATH}/${DST} |"$'\n'
+          if [ -d "$SRC" ]; then
+            SRC_DIR="${SRC%/}/"
+            DST_DIR="${DST%/}/"
+            jf rt u "$SRC_DIR" "${ARTIFACTORY_PATH}/${DST_DIR}"
+            echo "✓ Uploaded ${SRC_DIR} -> ${ARTIFACTORY_PATH}/${DST_DIR}"
+            UPLOADED_ROWS+="| ${DST_DIR} | ${ARTIFACTORY_PATH}/${DST_DIR} |"$'\n'
+            continue
+          fi
+
+          echo "Skipping missing path: $SRC"
+          continue
         done <<< "$UPLOADS_INPUT"
 
         if [ "$WRITE_STEP_SUMMARY" = "true" ]; then
