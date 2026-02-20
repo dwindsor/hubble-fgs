@@ -299,7 +299,8 @@ jobs:
       version: ${{ needs.init.outputs.version }}
       date: ${{ needs.init.outputs.date }}
       sha: ${{ needs.init.outputs.sha }}
-      upload_to_artifactory: ${{ github.ref == 'refs/heads/master' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') }}
+      upload_to_artifactory: true
+      #  ${{ github.ref == 'refs/heads/master' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') }}
     secrets:
       HYPERSHIELD_GH_APP_PEM: ${{ secrets.HYPERSHIELD_GH_APP_PEM }}
 
@@ -401,7 +402,8 @@ jobs:
 
   upload-to-artifactory:
     needs: [ init, combine-artifacts ]
-    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
+    if: true
+    # ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
     env:
