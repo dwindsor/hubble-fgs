@@ -34,6 +34,26 @@ linters:
       - linters:
           - revive
         text: "var-naming:"
+      - path: "pkg/model/checker/gen.go"
+        linters:
+          - staticcheck
+        text: "QF1012"
+      - path: "pkg/agw/format.go"
+        linters:
+          - staticcheck
+        text: "QF1012"
+      - path: "pkg/commands/agwctl/metrics/show.go"
+        linters:
+          - staticcheck
+        text: "QF1012"
+      - path: "pkg/agw/agw.go"
+        linters:
+          - staticcheck
+        text: "QF1012"
+      - path: "tests/compliance/testparser/testparser.go"
+        linters:
+          - staticcheck
+        text: "QF1012"
     # for now excempt for follow up patches when I have some extra energy
     paths:
       - "pkg/nxos"

@@ -1261,7 +1261,7 @@ func ProcessWithCWD(sm StringMatcher) ProcessChecker {
 		}
 		cwd := p.Cwd
 		if strings.Contains(p.Flags, "nocwd") {
-			log.Logf("cwd check: nocwd flag set, test considered successful", cwd)
+			log.Logf("cwd check: %s nocwd flag set, test considered successful", cwd)
 			return nil
 		}
 		if len(cwd) > 1 && strings.HasSuffix(cwd, "/") {
@@ -1648,7 +1648,7 @@ func PodWithLabels(labels ...LabelMatch) PodChecker {
 
 	return PodCheckerFn(func(p *tetragon.Pod, l Logger) error {
 		if warn != "" {
-			l.Logf(warn)
+			l.Log(warn)
 		}
 		matchedLabels := map[string]struct{}{}
 		for key, val := range p.PodLabels {
@@ -2421,7 +2421,7 @@ func DNSHasRcode(rcode int32) DNSChecker {
 		if t.Dns.ReturnCode.Value != rcode {
 			return fmt.Errorf("expecting Dns Rcode to be %d but got %d", rcode, t.Dns.ReturnCode.Value)
 		}
-		log.Logf("**** MATCH DNS on Rcode: %t", t.Dns.ReturnCode.Value)
+		log.Logf("**** MATCH DNS on Rcode: %d", t.Dns.ReturnCode.Value)
 		return nil
 	})
 }
