@@ -434,6 +434,124 @@ func TestDiffConfigSets(t *testing.T) {
 			expectedAdds:    map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
 			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
 		},
+		{
+			name:   "add new HA config",
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			newSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_HA: {
+					Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+					Config: &v1alpha.ConfigObject_ConfigHa{
+						ConfigHa: &v1alpha.HaConfig{
+							Enabled: true,
+							HaIp:    "10.0.0.1",
+						},
+					},
+				},
+			},
+			expectedAdds: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_HA: {
+					Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+					Config: &v1alpha.ConfigObject_ConfigHa{
+						ConfigHa: &v1alpha.HaConfig{
+							Enabled: true,
+							HaIp:    "10.0.0.1",
+						},
+					},
+				},
+			},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+		},
+		{
+			name: "modify existing HA config",
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_HA: {
+					Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+					Config: &v1alpha.ConfigObject_ConfigHa{
+						ConfigHa: &v1alpha.HaConfig{
+							Enabled: true,
+							HaIp:    "10.0.0.1",
+						},
+					},
+				},
+			},
+			newSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_HA: {
+					Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+					Config: &v1alpha.ConfigObject_ConfigHa{
+						ConfigHa: &v1alpha.HaConfig{
+							Enabled: false,
+							HaIp:    "10.0.0.2",
+						},
+					},
+				},
+			},
+			expectedAdds: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_HA: {
+					Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+					Config: &v1alpha.ConfigObject_ConfigHa{
+						ConfigHa: &v1alpha.HaConfig{
+							Enabled: false,
+							HaIp:    "10.0.0.2",
+						},
+					},
+				},
+			},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+		},
+		{
+			name: "no changes - identical HA config",
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_HA: {
+					Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+					Config: &v1alpha.ConfigObject_ConfigHa{
+						ConfigHa: &v1alpha.HaConfig{
+							Enabled: true,
+							HaIp:    "10.0.0.1",
+						},
+					},
+				},
+			},
+			newSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_HA: {
+					Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+					Config: &v1alpha.ConfigObject_ConfigHa{
+						ConfigHa: &v1alpha.HaConfig{
+							Enabled: true,
+							HaIp:    "10.0.0.1",
+						},
+					},
+				},
+			},
+			expectedAdds:    map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+		},
+		{
+			name: "remove HA config",
+			oldSet: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_HA: {
+					Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+					Config: &v1alpha.ConfigObject_ConfigHa{
+						ConfigHa: &v1alpha.HaConfig{
+							Enabled: true,
+							HaIp:    "10.0.0.1",
+						},
+					},
+				},
+			},
+			newSet:       map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedAdds: map[v1alpha.ConfigType]*v1alpha.ConfigObject{},
+			expectedRemoves: map[v1alpha.ConfigType]*v1alpha.ConfigObject{
+				v1alpha.ConfigType_CONFIG_TYPE_HA: {
+					Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+					Config: &v1alpha.ConfigObject_ConfigHa{
+						ConfigHa: &v1alpha.HaConfig{
+							Enabled: true,
+							HaIp:    "10.0.0.1",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -555,6 +673,50 @@ func TestCompareConfigObjects(t *testing.T) {
 				},
 			},
 			expected: true,
+		},
+		{
+			name: "identical HA configs",
+			a: &v1alpha.ConfigObject{
+				Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+				Config: &v1alpha.ConfigObject_ConfigHa{
+					ConfigHa: &v1alpha.HaConfig{
+						Enabled: true,
+						HaIp:    "10.0.0.1",
+					},
+				},
+			},
+			b: &v1alpha.ConfigObject{
+				Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+				Config: &v1alpha.ConfigObject_ConfigHa{
+					ConfigHa: &v1alpha.HaConfig{
+						Enabled: true,
+						HaIp:    "10.0.0.1",
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "different HA configs",
+			a: &v1alpha.ConfigObject{
+				Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+				Config: &v1alpha.ConfigObject_ConfigHa{
+					ConfigHa: &v1alpha.HaConfig{
+						Enabled: true,
+						HaIp:    "10.0.0.1",
+					},
+				},
+			},
+			b: &v1alpha.ConfigObject{
+				Type: v1alpha.ConfigType_CONFIG_TYPE_HA,
+				Config: &v1alpha.ConfigObject_ConfigHa{
+					ConfigHa: &v1alpha.HaConfig{
+						Enabled: false,
+						HaIp:    "10.0.0.2",
+					},
+				},
+			},
+			expected: false,
 		},
 		{
 			name: "unknown config type",

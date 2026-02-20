@@ -81,6 +81,8 @@ func compareConfigObjects(a, b *v1alpha.ConfigObject) bool {
 		return cmp.Equal(a.GetConfigLogTimescape(), b.GetConfigLogTimescape(), protocmp.Transform())
 	case v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK:
 		return cmp.Equal(a.GetConfigLogSplunk(), b.GetConfigLogSplunk(), protocmp.Transform())
+	case v1alpha.ConfigType_CONFIG_TYPE_HA:
+		return cmp.Equal(a.GetConfigHa(), b.GetConfigHa(), protocmp.Transform())
 	case v1alpha.ConfigType_CONFIG_TYPE_NETWORK:
 		return cmp.Equal(a.GetNetworkConfig(), b.GetNetworkConfig(), protocmp.Transform())
 	default:
