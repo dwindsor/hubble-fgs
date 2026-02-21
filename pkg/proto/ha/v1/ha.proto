@@ -14,12 +14,6 @@ enum ADJ_RESPONSE_STATUS {
     // add more errors here 
 }
 
-enum  FLOW_SYNC_STATE {
-    SYNC_UNKNOWN = 0;
-    SYNC_SUCCESS = 1;
-    SYNC_FAILURE = 2;
-}
-
 enum SERVICE_STATE {
     SVC_SUCCESS = 0;
     SVC_FAILURE = 1;
@@ -50,9 +44,8 @@ message VlanInfo {
 }
 
 message HaInfo {
-    FLOW_SYNC_STATE flow_sync = 1;
-    SERVICE_STATE service = 2;
-    HA_STATE ha = 3;
+    SERVICE_STATE service = 1;
+    HA_STATE ha = 2;
 }
 
 message DpuVer {
