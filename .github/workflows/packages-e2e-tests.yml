@@ -116,7 +116,7 @@ jobs:
 
       - name: Install Tetragon EE Tarball
         run: |
-          gzip -dc tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz | tar -zxvf -
+          tar zxvf tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}.tar.gz
           sudo ./tetragon-ee-${{ steps.tag.outputs.tag }}-${{ matrix.arch }}/install.sh
         working-directory: ./build/${{ matrix.arch }}/linux-tarball/
 
