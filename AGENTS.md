@@ -145,6 +145,42 @@ chore(sync): update OSS submodule to v1.3.0
 
 **Important:** DCO (Developer Certificate of Origin) is REQUIRED in this repository. All commits must be signed-off using the `-s` flag.
 
+## Issue and PR Labels
+
+Applying the correct labels is **mandatory** when creating issues or PRs via `gh`. Use `gh issue create --label` / `gh pr create --label` or `gh pr edit --add-label` to apply them. Do not invent labels: only use labels listed below or verify a label exists with `gh label list --search <name>`. If no existing label fits, ask the user whether to create one.
+
+**Minimum required labels:**
+- Issues: one `kind/*` + one `area/*`
+- PRs: one `kind/*` + one `area/*` + one `release-note/*`
+
+### Label Families
+
+| Family | Pattern | Purpose |
+|--------|---------|---------|
+| Kind | `kind/*` | Classify the type: bug, cleanup, docs, security, oss-sync, ci-flake, kernel, backports, logs |
+| Area | `area/*` | Identify the subsystem: http, dns, tls, networking, model, ci, e2e, helm, smartswitch, etc. |
+| Release note | `release-note/*` | Control changelog entries: major, minor, bug, misc, ci, dependency, backport |
+| Backport | `needs-backport/X.Y`, `backport-pending/X.Y`, `backport-done/X.Y` | Track backport lifecycle per release branch |
+| Release blocker | `release-blocker/X.Y`, `release-blocker` | Flag issues blocking a specific release |
+| Don't merge | `dont-merge/*` | Prevent merging: wip, waiting-on-oss, waiting-for-review, blocked |
+| Roadmap | `roadmap/*` | Link to roadmap items |
+| Severity | `severity/*` | Security issue severity: low, medium |
+| Feature | `feature/*` | Feature-scoped tracking (e.g., `feature/fim`) |
+
+Standalone labels: `needs-rebase` is applied when a PR has merge conflicts. `dependabot-fail` marks dependabot upgrades needing manual intervention.
+
+### Release Notes in PR Descriptions
+
+PR bodies must contain a `release-note` block describing user-facing changes. Each entry is a single line of plaintext (no line breaks, no markdown formatting):
+
+````
+```release-note
+one-line plaintext description of user-facing changes
+```
+````
+
+If the PR is not user-facing (e.g., docs, internal refactors), use `release-note/misc`. For CI-only changes, use `release-note/ci`. In both cases, omit the `release-note` block entirely.
+
 ## Application Model Architecture
 
 The Application Model is an **enterprise-only feature** that differs fundamentally from Tetragon's typical event-based architecture:
