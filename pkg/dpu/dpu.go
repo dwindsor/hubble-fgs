@@ -882,7 +882,7 @@ func (dpu *DPUAgent) handleIPCConnection(ctx context.Context, conn net.Conn) {
 			continue
 		}
 
-		// FIXME: Remove log
+		// TODO: Remove log for performance
 		logger.GetLogger().Info("received event message", "event", event)
 
 		if dpu.eventQueue == nil {
@@ -904,7 +904,7 @@ func (dpu *DPUAgent) handleIPCConnection(ctx context.Context, conn net.Conn) {
 	}
 }
 
-func (dpu *DPUAgent) EventConnect(ctx context.Context) error {
+func (dpu *DPUAgent) EventConnect(ctx context.Context, ready chan struct{}) error {
 	var stream grpc.ClientStreamingClient[v1alpha.StreamEventsRequest, v1alpha.StreamEventsResponse]
 	var streamMu sync.Mutex
 
@@ -977,6 +977,8 @@ func (dpu *DPUAgent) EventConnect(ctx context.Context) error {
 	})
 
 	dpu.eventQueue.Start()
+	close(ready)
+	logger.GetLogger().Info("Event queue started and ready")
 
 	<-ctx.Done()
 	dpu.eventQueue.Stop()
@@ -1017,25 +1019,28 @@ func (dpu *DPUAgent) Connect(ctx context.Context) error {
 		dpu.KeepAlive(ctx)
 	}()
 
-	go func() {
-		dpu.PolicyConnect(ctx)
-	}()
-
-	go func() {
-		dpu.ConfigConnect(ctx)
-	}()
-
+	eventQueueReady := make(chan struct{})
 	if dpu.EnableEventStream {
 		go func() {
-			dpu.EventConnect(ctx)
+			dpu.EventConnect(ctx, eventQueueReady)
 		}()
 	}
+
+	<-eventQueueReady
 
 	if dpu.EnableEventStream {
 		go func() {
 			dpu.IPCEventListener(ctx)
 		}()
 	}
+
+	go func() {
+		dpu.ConfigConnect(ctx)
+	}()
+
+	go func() {
+		dpu.PolicyConnect(ctx)
+	}()
 
 	<-ctx.Done()
 	logger.GetLogger().Info("Streaming client connection closed")

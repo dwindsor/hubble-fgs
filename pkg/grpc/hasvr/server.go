@@ -63,9 +63,17 @@ func (s *haServer) Adjacency(_ context.Context, req *hav1.AdjRequest) (*hav1.Adj
 
 	if !nxos.Nexus.IsPeerOk(s.Ctx, req.HaIp) {
 		logger.GetLogger().Debug("Unexpected peer", "peer", req.HaIp)
+		// Return NO_HA member info so the leader knows this is an
+		// intentional config removal rather than a transient failure.
+		noHaInfo := hav1.MbrInfo{
+			HaInfo: &hav1.HaInfo{
+				Ha: hav1.HA_STATE_NO_HA,
+			},
+		}
 		return &hav1.AdjResponse{
 			Status:  hav1.ADJ_RESPONSE_STATUS_ADJ_FAILURE,
 			Details: "Unexpected peer",
+			MbrInfo: &noHaInfo,
 		}, nil
 	}
 

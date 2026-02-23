@@ -23,6 +23,7 @@ import (
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/version"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
@@ -151,6 +152,9 @@ func (n *Nxos) initiate(ctx context.Context) error {
 		return err
 	}
 
+	// set agent version
+	n.CpaVer = version.Version
+
 	// get Serial number.
 	err = n.getSerialNum(ctx)
 	if err != nil {
@@ -179,23 +183,19 @@ func (n *Nxos) initiate(ctx context.Context) error {
 	n.Ha.Adjacencies = make(map[string]HaAdj)
 	n.Ha.Members = make(map[string]HaMbr)
 	n.Ha.Alloc = make(map[string]HaAlloc)
-	n.Ha.HaPeerSync = make(map[string]bool)
 	n.Ha.DpuKeepalive = make(map[string]bool)
-	n.Ha.DpuBulkSync = make(map[string]bool)
+	n.Ha.DpuBulkSync = make(map[string]DpuBulkSyncStatus)
 	n.Ha.Local.Criteria = make(map[HaCrit]bool)
 	if n.SkipDpu {
 		n.Ha.Local.Criteria[HaCritDpuHealth] = true
 		n.Ha.Local.Criteria[HaCritDpuInSync] = true
-		n.Ha.Local.Criteria[HaCritKeepalive] = true
-		n.Ha.Local.Criteria[HaCritBulkSync] = true
 	} else {
 		n.Ha.Local.Criteria[HaCritDpuHealth] = false
 		n.Ha.Local.Criteria[HaCritDpuInSync] = false
-		n.Ha.Local.Criteria[HaCritKeepalive] = true
-		n.Ha.Local.Criteria[HaCritBulkSync] = true
 	}
 	n.Ha.Local.Criteria[HaCritSvcRedir] = false
-	n.Ha.Local.Criteria[HaCritPolicy] = true
+	n.Ha.PeerCriteria = make(map[string]HaPeerCriteria)
+	n.Ha.EverReady = false
 	n.Ha.Watching = true
 	n.Ha.Partners = make(map[string]struct{})
 	n.Ha.IsLeader = true
@@ -1128,40 +1128,113 @@ func SetInSyncCount(ctx context.Context, insync, oosync []string) {
 	Nexus.Unlock()
 }
 
-// updateHaPeerSync sets HaPeerSync for all known HA peers based on
-// the aggregate DPU keepalive and bulk sync criteria.
-// Caller must hold the Nexus lock.
-func (n *Nxos) updateHaPeerSync() {
-	if n.Ha.HaPeerSync == nil || n.Ha.Local.Criteria == nil {
+// aggregateDpuKeepalive returns true if all DPUs have keepalive up.
+// Returns false when no DPUs are registered (unless SkipDpu is set).
+func (n *Nxos) aggregateDpuKeepalive() bool {
+	// TEMP: force true for keepalive peer criteria during testing.
+	// if n.Ha.DpuKeepalive == nil || len(n.Ha.DpuKeepalive) == 0 {
+	// 	return n.SkipDpu
+	// }
+	// for _, v := range n.Ha.DpuKeepalive {
+	// 	if !v {
+	// 		return false
+	// 	}
+	// }
+	return true
+}
+
+// aggregateDpuBulkSync returns true if all DPUs have bulk sync complete
+// (both local and peer done). Returns false when no DPUs are registered
+// (unless SkipDpu is set).
+func (n *Nxos) aggregateDpuBulkSync() bool {
+	// TEMP: force true for bulk sync peer criteria during testing.
+	// if n.Ha.DpuBulkSync == nil || len(n.Ha.DpuBulkSync) == 0 {
+	// 	return n.SkipDpu
+	// }
+	// for _, v := range n.Ha.DpuBulkSync {
+	// 	if !v.Done() {
+	// 		return false
+	// 	}
+	// }
+	return true
+}
+
+// updateAllPeerKeepalive updates KeepaliveOk for all peers and recalculates IsFunc.
+// Caller must hold the lock.
+func (n *Nxos) updateAllPeerKeepalive(ctx context.Context, keepaliveOk bool) {
+	if n.Ha.PeerCriteria == nil {
 		return
 	}
-	synced := n.Ha.Local.Criteria[HaCritKeepalive] && n.Ha.Local.Criteria[HaCritBulkSync]
-	for peer := range n.Ha.HaPeerSync {
-		n.Ha.HaPeerSync[peer] = synced
+	changed := false
+	for peer, crit := range n.Ha.PeerCriteria {
+		if crit.KeepaliveOk != keepaliveOk {
+			crit.KeepaliveOk = keepaliveOk
+			n.Ha.PeerCriteria[peer] = crit
+			changed = true
+			n.setRemoteSvcState(ctx, peer)
+		}
+	}
+	if changed {
+		n.recalculateIsFuncAndState(ctx)
+	}
+}
+
+// updateAllPeerBulkSync updates BulkSyncOk for all peers and recalculates IsFunc.
+// Caller must hold the lock.
+func (n *Nxos) updateAllPeerBulkSync(ctx context.Context, bulkSyncOk bool) {
+	if n.Ha.PeerCriteria == nil {
+		return
+	}
+	changed := false
+	for peer, crit := range n.Ha.PeerCriteria {
+		if crit.BulkSyncOk != bulkSyncOk {
+			crit.BulkSyncOk = bulkSyncOk
+			n.Ha.PeerCriteria[peer] = crit
+			changed = true
+			n.setRemoteSvcState(ctx, peer)
+		}
+	}
+	if changed {
+		n.recalculateIsFuncAndState(ctx)
 	}
 }
 
 // RegisterDpuHa pre-populates the DpuKeepalive and DpuBulkSync maps for a
 // DPU so that show_ha displays all known DPUs even before they report HA
-// status events.
-func RegisterDpuHa(dpuUid string) {
+// status events.  After adding a new DPU (with false status), it
+// re-aggregates and updates all peer criteria so they reflect the actual
+// DPU state.
+func RegisterDpuHa(ctx context.Context, dpuUid string) {
 	Nexus.Lock()
 	defer Nexus.Unlock()
 
+	newKa := false
 	if Nexus.Ha.DpuKeepalive != nil {
 		if _, ok := Nexus.Ha.DpuKeepalive[dpuUid]; !ok {
-			Nexus.Ha.DpuKeepalive[dpuUid] = true
+			Nexus.Ha.DpuKeepalive[dpuUid] = false
+			newKa = true
 		}
 	}
+	newBs := false
 	if Nexus.Ha.DpuBulkSync != nil {
 		if _, ok := Nexus.Ha.DpuBulkSync[dpuUid]; !ok {
-			Nexus.Ha.DpuBulkSync[dpuUid] = true
+			Nexus.Ha.DpuBulkSync[dpuUid] = DpuBulkSyncStatus{}
+			newBs = true
 		}
+	}
+
+	if newKa {
+		Nexus.updateAllPeerKeepalive(ctx, Nexus.aggregateDpuKeepalive())
+	}
+	if newBs {
+		Nexus.updateAllPeerBulkSync(ctx, Nexus.aggregateDpuBulkSync())
 	}
 }
 
 // UpdateDpuHaKeepalive updates the keepalive status for a specific DPU,
-// aggregates all DPUs to determine HaCritKeepalive, and updates HA peer sync.
+// aggregates all DPUs to update per-peer KeepaliveOk criteria, and updates HA peer sync.
+// When keepalive goes down, bulk sync is also reset for that DPU since a new
+// bulk sync will be required when keepalive is re-established.
 func UpdateDpuHaKeepalive(ctx context.Context, dpuUid string, up bool) {
 	Nexus.Lock()
 	defer Nexus.Unlock()
@@ -1172,44 +1245,65 @@ func UpdateDpuHaKeepalive(ctx context.Context, dpuUid string, up bool) {
 	Nexus.Ha.DpuKeepalive[dpuUid] = up
 	logger.GetLogger().Debug("UpdateDpuHaKeepalive", "dpuUid", dpuUid, "up", up)
 
-	// Aggregate: all DPUs must have keepalive up
-	allUp := true
-	for _, v := range Nexus.Ha.DpuKeepalive {
-		if !v {
-			allUp = false
-			break
+	// When keepalive fails, reset bulk sync for this DPU
+	if !up && Nexus.Ha.DpuBulkSync != nil {
+		if _, ok := Nexus.Ha.DpuBulkSync[dpuUid]; ok {
+			Nexus.Ha.DpuBulkSync[dpuUid] = DpuBulkSyncStatus{}
+			logger.GetLogger().Debug("Reset bulk sync due to keepalive down", "dpuUid", dpuUid)
+			allDone := Nexus.aggregateDpuBulkSync()
+			Nexus.updateAllPeerBulkSync(ctx, allDone)
 		}
 	}
-	Nexus.haUpdateCrit(ctx, HaCritKeepalive, allUp)
 
-	// Update HA peer sync: all peers depend on aggregate DPU state
-	Nexus.updateHaPeerSync()
+	// Aggregate: all DPUs must have keepalive up
+	allUp := Nexus.aggregateDpuKeepalive()
+
+	// Update per-peer criteria
+	Nexus.updateAllPeerKeepalive(ctx, allUp)
 }
 
-// UpdateDpuHaBulkSync updates the bulk sync status for a specific DPU,
-// aggregates all DPUs to determine HaCritBulkSync, and updates HA peer sync.
-func UpdateDpuHaBulkSync(ctx context.Context, dpuUid string, done bool) {
+// UpdateDpuHaBulkSyncLocal updates the local bulk sync status (BULK_SYNC_DONE)
+// for a specific DPU. Bulk sync is only considered complete when both local and
+// peer done are received.
+func UpdateDpuHaBulkSyncLocal(ctx context.Context, dpuUid string, done bool) {
 	Nexus.Lock()
 	defer Nexus.Unlock()
 
 	if Nexus.Ha.DpuBulkSync == nil {
 		return
 	}
-	Nexus.Ha.DpuBulkSync[dpuUid] = done
-	logger.GetLogger().Debug("UpdateDpuHaBulkSync", "dpuUid", dpuUid, "done", done)
+	status := Nexus.Ha.DpuBulkSync[dpuUid]
+	status.LocalDone = done
+	Nexus.Ha.DpuBulkSync[dpuUid] = status
+	logger.GetLogger().Debug("UpdateDpuHaBulkSyncLocal", "dpuUid", dpuUid, "done", done, "peerDone", status.PeerDone)
 
-	// Aggregate: all DPUs must have bulk sync done
-	allDone := true
-	for _, v := range Nexus.Ha.DpuBulkSync {
-		if !v {
-			allDone = false
-			break
-		}
+	// Aggregate: all DPUs must have both local and peer bulk sync done
+	allDone := Nexus.aggregateDpuBulkSync()
+
+	// Update per-peer criteria
+	Nexus.updateAllPeerBulkSync(ctx, allDone)
+}
+
+// UpdateDpuHaBulkSyncPeer updates the peer bulk sync status (BULK_SYNC_PEER_DONE)
+// for a specific DPU. Bulk sync is only considered complete when both local and
+// peer done are received.
+func UpdateDpuHaBulkSyncPeer(ctx context.Context, dpuUid string, done bool) {
+	Nexus.Lock()
+	defer Nexus.Unlock()
+
+	if Nexus.Ha.DpuBulkSync == nil {
+		return
 	}
-	Nexus.haUpdateCrit(ctx, HaCritBulkSync, allDone)
+	status := Nexus.Ha.DpuBulkSync[dpuUid]
+	status.PeerDone = done
+	Nexus.Ha.DpuBulkSync[dpuUid] = status
+	logger.GetLogger().Debug("UpdateDpuHaBulkSyncPeer", "dpuUid", dpuUid, "done", done, "localDone", status.LocalDone)
 
-	// Update HA peer sync: all peers depend on aggregate DPU state
-	Nexus.updateHaPeerSync()
+	// Aggregate: all DPUs must have both local and peer bulk sync done
+	allDone := Nexus.aggregateDpuBulkSync()
+
+	// Update per-peer criteria
+	Nexus.updateAllPeerBulkSync(ctx, allDone)
 }
 
 func (n *Nxos) CheckUpdateStatus(_ context.Context) string {

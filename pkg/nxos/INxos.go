@@ -91,15 +91,38 @@ type HaAlloc struct {
 	Gids map[string]uint16
 }
 
+// DpuBulkSyncStatus tracks both local and peer bulk sync completion per DPU.
+// Both LocalDone and PeerDone must be true for the DPU's bulk sync to be considered complete.
+type DpuBulkSyncStatus struct {
+	LocalDone bool // BULK_SYNC_DONE received
+	PeerDone  bool // BULK_SYNC_PEER_DONE received
+}
+
+// Done returns true when both local and peer bulk sync are complete.
+func (s DpuBulkSyncStatus) Done() bool {
+	return s.LocalDone && s.PeerDone
+}
+
+// HaPeerCriteria tracks the per-peer HA criteria
+type HaPeerCriteria struct {
+	ServiceOk   bool // Peer reports SVC_SUCCESS
+	PolicyOk    bool // Policy revision matches with this peer
+	KeepaliveOk bool // All DPUs have keepalive up
+	BulkSyncOk  bool // All DPUs have bulk sync complete
+}
+
+// IsOk returns true if all per-peer criteria pass
+func (c HaPeerCriteria) IsOk() bool {
+	return c.ServiceOk && c.PolicyOk && c.KeepaliveOk && c.BulkSyncOk
+}
+
 type HaCrit string
 
 const (
 	HaCritDpuHealth HaCrit = "dpu healthy"
 	HaCritDpuInSync HaCrit = "dpu insync"
-	HaCritSvcRedir   HaCrit = "service redir ok"
-	HaCritPolicy     HaCrit = "policy ok"
-	HaCritKeepalive  HaCrit = "ha keepalive"
-	HaCritBulkSync   HaCrit = "ha bulk sync"
+	HaCritSvcRedir  HaCrit = "service redir ok"
+	HaCritDebugFail HaCrit = "debug override"
 )
 
 type HaLocal struct {
@@ -129,12 +152,11 @@ type Ha struct {
 	peers      map[string]HaPeer
 
 	// peer info: key peer ha ip
-	Adjacencies map[string]HaAdj
-	Members     map[string]HaMbr
-	Alloc       map[string]HaAlloc
-	HaPeerSync   map[string]bool // per-HA-peer sync state (key: peer HA IP)
-	DpuKeepalive map[string]bool // per-DPU keepalive status
-	DpuBulkSync  map[string]bool // per-DPU bulk sync status
+	Adjacencies  map[string]HaAdj
+	Members      map[string]HaMbr
+	Alloc        map[string]HaAlloc
+	DpuKeepalive map[string]bool              // per-DPU keepalive status
+	DpuBulkSync  map[string]DpuBulkSyncStatus // per-DPU bulk sync status
 
 	// local policy state
 	Watching bool
@@ -142,8 +164,10 @@ type Ha struct {
 	PolRev   string
 
 	// derived local and remote
-	Local    HaLocal
-	Partners map[string]struct{}
+	Local        HaLocal
+	Partners     map[string]struct{}
+	PeerCriteria map[string]HaPeerCriteria // per-peer criteria (key: peer HA IP)
+	EverReady    bool                      // true after HA_READY reached once
 
 	// states to nx
 	NxStates HaNxStates

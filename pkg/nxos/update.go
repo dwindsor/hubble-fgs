@@ -1179,13 +1179,13 @@ func (n *Nxos) setRemoteMbrState(ctx context.Context, ip string) error {
 func (n *Nxos) setRemoteSvcState(ctx context.Context, ip string) error {
 	logger.GetLogger().Debug("setRemoteSvcState", "ip", ip)
 
-	mbr, ok := n.Ha.Members[ip]
-	if !ok {
-		logger.GetLogger().Error("Member missing")
-		return nil
+	// Peer SVC state on the local switch is SUCCESS only when all
+	// per-peer criteria pass (ServiceOk, PolicyOk, KeepaliveOk, BulkSyncOk).
+	peerSvcOk := false
+	if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok {
+		peerSvcOk = peerCrit.IsOk()
 	}
-
-	logger.GetLogger().Debug("setRemoteSvcState", "svc", mbr.Info.HaInfo.Service)
+	logger.GetLogger().Debug("setRemoteSvcState", "peerCritOk", peerSvcOk)
 
 	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems{
 		HaPeerExtList: map[string]*model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{},
@@ -1194,12 +1194,10 @@ func (n *Nxos) setRemoteSvcState(ctx context.Context, ip string) error {
 	list := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_ExtItems_PeerItems_HaPeerExtList{
 		IpAddr: &ip,
 	}
-	switch mbr.Info.HaInfo.Service {
-	case hav1.SERVICE_STATE_SVC_SUCCESS:
+	if peerSvcOk {
 		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_ready
 		list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_fw_config
-
-	case hav1.SERVICE_STATE_SVC_FAILURE:
+	} else {
 		list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
 		list.SvcInfo = model.Cisco_NX_OSDevice_Sas_SvcInfoType_init
 	}
@@ -1234,7 +1232,7 @@ func (n *Nxos) setRemoteStatesAdjDown(ctx context.Context, ip string) error {
 		IpAddr: &ip,
 	}
 	list.SvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
-	list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_no_ha
+	list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_fail
 
 	items.HaPeerExtList[ip] = &list
 	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{

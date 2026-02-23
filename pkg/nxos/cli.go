@@ -81,37 +81,83 @@ func (n *Nxos) ShowHa(_ context.Context) string {
 	n.RLock()
 	defer n.RUnlock()
 
-	status := fmt.Sprintf("\n HA local IP: %v", n.Ha.HaIp)
-	status += "\n HA Peers:"
-	for ip := range n.GetHaPeers() {
-		status += " " + ip
+	okOrFail := func(v bool) string {
+		if v {
+			return "OK"
+		}
+		return "FAIL"
 	}
-	status += fmt.Sprintf("\n HA enabled: %v", n.GetHaEnabled())
-	status += fmt.Sprintf("\n NX HA oper ready: %v", n.GetHaOperUp())
-	status += fmt.Sprintf("\n HA leader: %v", n.Ha.IsLeader)
-	if n.Ha.Watching {
-		status += fmt.Sprintf("\n Policy watching: %v, revision: %v",
-			n.Ha.Watching, n.Ha.PolRev)
-	} else {
-		status += fmt.Sprintf("\n Policy watching: %v", n.Ha.Watching)
-	}
-	status += fmt.Sprintf("\n Local service functional: %v, updated at: %v",
-		n.Ha.Local.IsFunc, n.Ha.Local.Epoch)
-	status += "\n  Criteria: "
-	for crit, val := range n.Ha.Local.Criteria {
-		status += fmt.Sprintf("%v: %v, ", crit, val)
-	}
-	status += fmt.Sprintf("\n NX HA state: %v, updated at: %v",
-		n.Ha.NxStates.HaState, n.Ha.NxStates.HaStateEpoch)
-	status += fmt.Sprintf("\n NX service state: %v, updated at: %v",
-		n.Ha.NxStates.SvcState, n.Ha.NxStates.SvcStateEpoch)
-	status += "\n HA peer sync:"
-	for ip, peer := range n.GetHaPeers() {
-		syncOk := n.Ha.HaPeerSync[ip]
-		status += fmt.Sprintf("\n  ip: %v ip_cfg: %v, state: %v, reason: %v, ok: %v", ip, peer.IpConfigOk, peer.State, peer.StateReason, syncOk)
-	}
-	status += "\n"
 
+	// NX states (local + peer)
+	status := "\n=== NX States ==="
+	status += fmt.Sprintf("\n  Local HA: %v  Svc: %v",
+		n.Ha.NxStates.HaState, n.Ha.NxStates.SvcState)
+	for ip := range n.GetHaPeers() {
+		peerHa := "UNKNOWN"
+		if mbr, ok := n.Ha.Members[ip]; ok && mbr.Info.HaInfo != nil {
+			peerHa = fmt.Sprintf("%v", mbr.Info.HaInfo.Ha)
+		}
+		peerSvc := "SVC_FAILURE"
+		if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok && peerCrit.IsOk() {
+			peerSvc = "SVC_SUCCESS"
+		}
+		status += fmt.Sprintf("\n  Peer %v HA: %v  Svc: %v",
+			ip, peerHa, peerSvc)
+	}
+
+	// Local state
+	status += "\n\n=== Local State ==="
+	status += fmt.Sprintf("\n  IP: %v  Leader: %v  Enabled: %v  Oper Ready: %v",
+		n.Ha.HaIp, n.Ha.IsLeader, n.GetHaEnabled(), n.GetHaOperUp())
+	status += fmt.Sprintf("\n  Model: %v  SerNum: %v  SwVer: %v  CpaVer: %v  DPUs: %v",
+		n.Model, n.SerNum, n.SwVer, n.CpaVer, len(n.Dpus))
+	if n.Ha.Watching {
+		status += fmt.Sprintf("\n  Policy Revision: %v", n.Ha.PolRev)
+	} else {
+		status += "\n  Policy Revision: not checking"
+	}
+	status += "\n  Criteria:"
+	for crit, val := range n.Ha.Local.Criteria {
+		status += fmt.Sprintf("\n    [%s] %v", okOrFail(val), crit)
+	}
+
+	if len(n.Ha.DpuKeepalive) > 0 || len(n.Ha.DpuBulkSync) > 0 {
+		status += "\n  DPUs:"
+		dpuUIDs := make(map[string]struct{})
+		for uid := range n.Ha.DpuKeepalive {
+			dpuUIDs[uid] = struct{}{}
+		}
+		for uid := range n.Ha.DpuBulkSync {
+			dpuUIDs[uid] = struct{}{}
+		}
+		for uid := range dpuUIDs {
+			bs := n.Ha.DpuBulkSync[uid]
+			status += fmt.Sprintf("\n    %v: [%s] Keepalive  [%s] Bulk Sync (local=%s peer=%s)",
+				uid, okOrFail(n.Ha.DpuKeepalive[uid]), okOrFail(bs.Done()),
+				okOrFail(bs.LocalDone), okOrFail(bs.PeerDone))
+		}
+	}
+
+	// Peer state
+	status += "\n\n=== Peers ==="
+	peers := n.GetHaPeers()
+	if len(peers) == 0 {
+		status += "\n  (no peers configured)"
+	}
+	for ip, peer := range peers {
+		reason := ""
+		if peer.StateReason != "" {
+			reason = fmt.Sprintf("  Reason: %v", peer.StateReason)
+		}
+		status += fmt.Sprintf("\n  %v HA State: %v  IP Config OK: %v%s", ip, peer.State, peer.IpConfigOk, reason)
+		if peerCrit, ok := n.Ha.PeerCriteria[ip]; ok {
+			status += fmt.Sprintf("\n    [%s] Service  [%s] Policy  [%s] Keepalive  [%s] Bulk Sync",
+				okOrFail(peerCrit.ServiceOk), okOrFail(peerCrit.PolicyOk),
+				okOrFail(peerCrit.KeepaliveOk), okOrFail(peerCrit.BulkSyncOk))
+		}
+	}
+
+	status += "\n"
 	return status
 }
 

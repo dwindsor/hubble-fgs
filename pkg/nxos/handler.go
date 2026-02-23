@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	model "github.com/isovalent/hubble-fgs/pkg/nxosmodel"
+	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 	"github.com/openconfig/gnmi/proto/gnmi"
@@ -1062,7 +1063,10 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHa(ctx context.Context, items *model.
 		n.SetHaEnabled(false)
 	}
 	logger.GetLogger().Debug("Ha Enabled updated", "enabled", n.GetHaEnabled())
-	n.WaitHa.In() <- WakeHa
+	select {
+	case n.WaitHa.In() <- WakeHa:
+	default:
+	}
 
 	if items.NxHaOperState == model.Cisco_NX_OSDevice_SasNxHaOperStateE_ha_ready {
 		n.SetHaOperUp(true)
@@ -1073,7 +1077,10 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHa(ctx context.Context, items *model.
 		n.SetHaOperUp(false)
 	}
 	logger.GetLogger().Debug("Ha OperUp updated", "oper", n.GetHaOperUp())
-	n.WaitHa.In() <- WakeHa
+	select {
+	case n.WaitHa.In() <- WakeHa:
+	default:
+	}
 
 	if items.PeerItems != nil {
 		err := n.updtSasSvcSvcinstSvcInstanceHaPeer(ctx, items.PeerItems)
@@ -1087,45 +1094,92 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHa(ctx context.Context, items *model.
 	return nil
 }
 
+// delHa is called from procDelete which already holds n.Lock().
+// It uses lock-free variants to avoid re-entrant lock deadlock.
 func (n *Nxos) delHa(ctx context.Context) {
 	logger.GetLogger().Debug("delete high availability")
 
+	// Notify all peers of intentional removal before clearing state.
+	// This allows peers to go to HA_NOTREADY instead of waiting for
+	// adjacency timeout and incorrectly going to HA_SWITCHOVER.
+	// Use locked variant since caller (gnmiSubscribe) already holds n.Lock().
+	for peer := range n.GetHaPeers() {
+		n.haNotifyRemovalLocked(ctx, peer)
+	}
+
+	// Disconnect all peers
+	for peer := range n.GetHaPeers() {
+		n.haDisconnectLocked(peer)
+	}
+
+	// Clear local state (caller already holds lock)
 	n.Ha.HaIp = ""
-	n.SetHaConfigured(false)
-	n.SetHaEnabled(false)
-	n.SetHaOperUp(false)
-	n.SetHaPeers(make(map[string]HaPeer))
+	n.Ha.configured = false
+	n.Ha.enabled = false
+	n.Ha.operUp = false
+	n.Ha.peers = make(map[string]HaPeer)
 	n.Ha.Adjacencies = make(map[string]HaAdj)
 	n.Ha.Members = make(map[string]HaMbr)
 	n.Ha.Alloc = make(map[string]HaAlloc)
-	n.Ha.HaPeerSync = make(map[string]bool)
+	n.Ha.PeerCriteria = make(map[string]HaPeerCriteria)
 	n.Ha.Partners = make(map[string]struct{})
+	n.Ha.NxStates.HaState = hav1.HA_STATE_HA_NOTREADY
 	n.Ha.NxStates.HaStateEpoch = 0
 	n.Ha.NxStates.SvcStateEpoch = 0
 	n.Ha.IsLeader = false
+	n.Ha.EverReady = false
+	if err := n.setLocalHaStateToNotReady(ctx); err != nil {
+		logger.GetLogger().Error("failed to set local HA state to not ready", logfields.Error, err)
+	}
+
+	// Notify config change
+	n.updateHaConfig()
 }
 
+// delPeer is called from procDelete which already holds n.Lock().
+// It uses lock-free variants to avoid re-entrant lock deadlock.
 func (n *Nxos) delPeer(ctx context.Context, peer string) {
 	logger.GetLogger().Debug("delete peer:", "peer", peer)
 
+	// Notify peer of intentional removal before disconnecting.
+	// This allows the peer to go to HA_NOTREADY instead of waiting for
+	// adjacency timeout and incorrectly going to HA_SWITCHOVER.
+	// Use locked variants since caller (gnmiSubscribe) already holds n.Lock().
+	n.haNotifyRemovalLocked(ctx, peer)
+	n.haDisconnectLocked(peer)
+
+	// Clear local state
 	n.Ha.Adjacencies = make(map[string]HaAdj)
 	n.Ha.Members = make(map[string]HaMbr)
 	n.SetHaPeers(make(map[string]HaPeer))
 	n.Ha.Alloc = make(map[string]HaAlloc)
-	n.Ha.HaPeerSync = make(map[string]bool)
+	n.Ha.PeerCriteria = make(map[string]HaPeerCriteria)
 	n.Ha.Partners = make(map[string]struct{})
-	n.WaitHa.In() <- WakeHa
+	select {
+	case n.WaitHa.In() <- WakeHa:
+	default:
+	}
 }
 
-func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(_ context.Context, items *model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_PeerItems) error {
+func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(ctx context.Context, items *model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_HaItems_PeerItems) error {
 	logger.GetLogger().Debug("updtSasSvcSvcinstSvcInstanceHaPeer", "item", *items)
 
 	if len(items.HaPeerList) == 0 {
 		logger.GetLogger().Debug("delete peer, adj and mbr")
+		// Notify and disconnect all old peers before clearing state.
+		// Use locked variants since caller (gnmiSubscribe) already holds n.Lock().
+		for peer := range n.GetHaPeers() {
+			n.haNotifyRemovalLocked(ctx, peer)
+			n.haDisconnectLocked(peer)
+		}
 		n.Ha.Adjacencies = make(map[string]HaAdj)
 		n.Ha.Members = make(map[string]HaMbr)
 		n.SetHaPeers(make(map[string]HaPeer))
-		n.WaitHa.In() <- WakeHa
+		n.Ha.PeerCriteria = make(map[string]HaPeerCriteria)
+		select {
+		case n.WaitHa.In() <- WakeHa:
+		default:
+		}
 		return nil
 	}
 
@@ -1156,15 +1210,34 @@ func (n *Nxos) updtSasSvcSvcinstSvcInstanceHaPeer(_ context.Context, items *mode
 		p.IpConfigOk = isOk
 		n.SetHaPeer(pip, p)
 	} else {
+		// Notify and disconnect old peers before replacing with new peer.
+		// Use locked variants since caller (gnmiSubscribe) already holds n.Lock().
+		for oldPeer := range n.GetHaPeers() {
+			n.haNotifyRemovalLocked(ctx, oldPeer)
+			n.haDisconnectLocked(oldPeer)
+		}
+		n.Ha.Adjacencies = make(map[string]HaAdj)
+		n.Ha.Members = make(map[string]HaMbr)
 		n.SetHaPeers(make(map[string]HaPeer))
 		n.SetHaPeer(pip, HaPeer{
 			IpConfigOk: isOk,
 		})
-		n.Ha.HaPeerSync[pip] = false
-		n.updateHaPeerSync()
+		// Initialize per-peer criteria with current aggregate DPU state
+		// PolicyOk starts as true until adjacency validates
+		if n.Ha.PeerCriteria != nil {
+			n.Ha.PeerCriteria[pip] = HaPeerCriteria{
+				ServiceOk:   false,
+				PolicyOk:    true,
+				KeepaliveOk: n.aggregateDpuKeepalive(),
+				BulkSyncOk:  n.aggregateDpuBulkSync(),
+			}
+		}
 	}
 
-	n.WaitHa.In() <- WakeHa
+	select {
+	case n.WaitHa.In() <- WakeHa:
+	default:
+	}
 
 	return nil
 }
@@ -1279,12 +1352,12 @@ func (n *Nxos) doPinning(ctx context.Context, isBd bool, vb *VrfBd) {
 		logger.GetLogger().Debug("VRF/BD pinned to dynamically", "name", vb.Name, "affinity", vb.DpuPinned)
 	}
 
-	// TBD: when HA is introduced, get from ctrlr
 	if !isBd {
 		var gid uint16
 		_, ok := n.Alloc.Gids[vb.Name]
 		if !ok {
-			if n.Ha.IsLeader {
+			// When HA is disabled or we are the leader, use local allocation
+			if !n.haIsEnabled(ctx, false) || n.Ha.IsLeader {
 				gid, ok = n.AllocPrev.Gids[vb.Name]
 				if ok {
 					n.Alloc.Gids[vb.Name] = gid
@@ -1308,6 +1381,7 @@ func (n *Nxos) doPinning(ctx context.Context, isBd bool, vb *VrfBd) {
 					}
 				}
 			} else {
+				// HA enabled and non-leader: prefer peer's GID
 				var ok bool
 				var gid uint16
 				for peer, alloc := range n.Ha.Alloc {
@@ -1324,6 +1398,7 @@ func (n *Nxos) doPinning(ctx context.Context, isBd bool, vb *VrfBd) {
 					n.Alloc.Gids[vb.Name] = gid
 					n.GidsInUse[gid] = vb.Name
 				} else {
+					// Fall back to local allocation; reconciliation will correct later
 					n.Alloc.Gids[vb.Name] = n.getGid(ctx, vb.Name)
 				}
 			}
@@ -1386,12 +1461,12 @@ func (n *Nxos) getGid(ctx context.Context, vrf string) uint16 {
 				return gid
 			}
 		}
-		// No peer GID found, will be reconciled later
-		logger.GetLogger().Debug("Non-leader has no peer GID for VRF, will be reconciled", "vrf", vrf)
-		return 0
+		// No peer GID found yet — fall back to local allocation.
+		// Reconciliation will correct this when adjacency establishes.
+		logger.GetLogger().Debug("Non-leader has no peer GID for VRF, allocating locally", "vrf", vrf)
 	}
 
-	// Original allocation logic for leader/non-HA
+	// Local allocation logic for leader, non-HA, or non-leader fallback
 	begin := n.Alloc.Next
 	gid := n.Alloc.Next
 	for {

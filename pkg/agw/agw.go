@@ -58,12 +58,16 @@ func (a *nxosHaEventAdapter) UpdateKeepalive(ctx context.Context, dpuUid string,
 	nxos.UpdateDpuHaKeepalive(ctx, dpuUid, up)
 }
 
-func (a *nxosHaEventAdapter) UpdateBulkSync(ctx context.Context, dpuUid string, done bool) {
-	nxos.UpdateDpuHaBulkSync(ctx, dpuUid, done)
+func (a *nxosHaEventAdapter) UpdateBulkSyncLocal(ctx context.Context, dpuUid string, done bool) {
+	nxos.UpdateDpuHaBulkSyncLocal(ctx, dpuUid, done)
 }
 
-func (a *nxosHaEventAdapter) RegisterDpu(_ context.Context, dpuUid string) {
-	nxos.RegisterDpuHa(dpuUid)
+func (a *nxosHaEventAdapter) UpdateBulkSyncPeer(ctx context.Context, dpuUid string, done bool) {
+	nxos.UpdateDpuHaBulkSyncPeer(ctx, dpuUid, done)
+}
+
+func (a *nxosHaEventAdapter) RegisterDpu(ctx context.Context, dpuUid string) {
+	nxos.RegisterDpuHa(ctx, dpuUid)
 }
 
 func (a *nxosHaEventAdapter) UpdatePolicyRevision(ctx context.Context, revision string) {

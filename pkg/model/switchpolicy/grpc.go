@@ -118,6 +118,11 @@ func (s *AGWServer) StreamDatapathConfig(req *v1alpha.StreamDatapathConfigReques
 		peer := s.dpuListener.addPeerLocked(req.AgentUid)
 		peer.cfgReconnectCount.Add(1) // Increment config reconnect counter
 
+		// Clear cfgSet on reconnect so the DPU gets a full config resync.
+		// The DPU may have restarted and lost all state, so we cannot
+		// assume it still has the configs from the previous connection.
+		peer.cfgSet = make(map[v1alpha.ConfigType]*v1alpha.ConfigObject)
+
 		// Config sync start
 		logger.GetLogger().Info("sync peer config start", "peer", peer.uid)
 
@@ -330,10 +335,14 @@ func (s *AGWServer) StreamEvents(stream grpc.ClientStreamingServer[v1alpha.Strea
 						logger.GetLogger().Warn("HA keepalive down from DPU",
 							"agentUid", event.AgentUid,
 							"peer", e.HaStatus.Peer)
-					case v1alpha.HAStatus_HA_STATUS_BULK_SYNC_DONE,
-						v1alpha.HAStatus_HA_STATUS_BULK_SYNC_PEER_DONE:
-						haEventHandler.UpdateBulkSync(s.dpuListener.ctx, initializedPeer.uid, true)
-						logger.GetLogger().Info("HA bulk sync done from DPU",
+					case v1alpha.HAStatus_HA_STATUS_BULK_SYNC_DONE:
+						haEventHandler.UpdateBulkSyncLocal(s.dpuListener.ctx, initializedPeer.uid, true)
+						logger.GetLogger().Info("HA bulk sync local done from DPU",
+							"agentUid", event.AgentUid,
+							"peer", e.HaStatus.Peer)
+					case v1alpha.HAStatus_HA_STATUS_BULK_SYNC_PEER_DONE:
+						haEventHandler.UpdateBulkSyncPeer(s.dpuListener.ctx, initializedPeer.uid, true)
+						logger.GetLogger().Info("HA bulk sync peer done from DPU",
 							"agentUid", event.AgentUid,
 							"peer", e.HaStatus.Peer)
 					}

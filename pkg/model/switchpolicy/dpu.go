@@ -181,7 +181,8 @@ func (p *peer) SendConfig(cfg *v1alpha.StreamDatapathConfigResponse) error {
 type HaEventHandler interface {
 	RegisterDpu(ctx context.Context, dpuUid string)
 	UpdateKeepalive(ctx context.Context, dpuUid string, up bool)
-	UpdateBulkSync(ctx context.Context, dpuUid string, done bool)
+	UpdateBulkSyncLocal(ctx context.Context, dpuUid string, done bool)
+	UpdateBulkSyncPeer(ctx context.Context, dpuUid string, done bool)
 	UpdatePolicyRevision(ctx context.Context, revision string)
 }
 
@@ -760,4 +761,3 @@ func (dpu *DPUListener) GetPolicyStatusHandler() policystatus.PolicyStatusHandle
 	defer dpu.mtx.RUnlock()
 	return dpu.policyStatusHandler
 }
-
