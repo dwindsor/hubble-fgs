@@ -42,6 +42,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+
+	"github.com/isovalent/hubble-fgs/pkg/netpol/library"
 )
 
 var (
@@ -579,7 +581,53 @@ var tests = []recordTest{
 	},
 }
 
+// registerTestPolicies registers test policies with the global policy repository
+// so that the BPF programmer can map policy names and rules to IDs. Without this,
+// every record programming call logs warnings about failing to resolve policy IDs,
+// flooding test output and masking real failures.
+func registerTestPolicies(records []*record.DatapathRecord) {
+	// Group records by policy name to build complete PolicyStory entries
+	policiesMap := make(map[string]map[types.TetragonPolicyUniqueID]*record.DatapathRecord)
+
+	for _, rec := range records {
+		policyName := rec.PolicyUID.PolicyName
+		if policiesMap[policyName] == nil {
+			policiesMap[policyName] = make(map[types.TetragonPolicyUniqueID]*record.DatapathRecord)
+		}
+		// Store unique policy UID (policy name + rule name)
+		policiesMap[policyName][rec.PolicyUID] = rec
+	}
+
+	repo := library.GetRepository()
+
+	// Register each policy with all its rules
+	for policyName, rules := range policiesMap {
+		// Skip if already registered
+		if repo.Get(policyName) != nil {
+			continue
+		}
+
+		// Build IrPolicy entries for this policy
+		irPolicies := make([]*types.TetragonNetworkPolicy, 0, len(rules))
+		for uid := range rules {
+			irPolicies = append(irPolicies, &types.TetragonNetworkPolicy{
+				PolicyUID:       uid,
+				RuleDescription: uid.RuleName, // Critical: RuleDescription must match RuleName
+			})
+		}
+
+		// Register the policy story
+		repo.Add(&library.PolicyStory{
+			Title:    policyName,
+			IrPolicy: irPolicies,
+		})
+	}
+}
+
 func loadRecords(r *recordTest, t *testing.T) {
+	// Register policies with the repository before programming records
+	registerTestPolicies(r.records)
+
 	for _, rec := range r.records {
 		if rec.Endpoint.EP == nil {
 			continue
