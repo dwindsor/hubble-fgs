@@ -65,11 +65,15 @@ func scheduleDomainMapFlush() {
 	retries := 10
 
 	for i := 0; i < retries; i++ {
+		quotasDNSMappingsMu.Lock()
 		for endpoint, id := range QuotasInitDNSDomainMappings {
 			if err = dnsDomainMap.Update(endpoint.Dns, id); err != nil {
 				break
 			}
+			// Successfully updated, remove from pending queue
+			delete(QuotasInitDNSDomainMappings, endpoint)
 		}
+		quotasDNSMappingsMu.Unlock()
 		if err == nil {
 			return
 		}

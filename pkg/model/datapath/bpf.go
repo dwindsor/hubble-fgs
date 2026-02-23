@@ -15,6 +15,7 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 
@@ -46,6 +47,9 @@ var (
 
 	// dnsDomainMap is used to bring DNS/ID mappings up to date at runtime.
 	dnsDomainMap = dnsparser.DomainMap{}
+
+	// quotasDNSMappingsMu protects concurrent access to QuotasInitDNSDomainMappings
+	quotasDNSMappingsMu sync.Mutex
 )
 
 func (p *BPFProgrammer) initMaybe() {
@@ -155,14 +159,18 @@ func (p *bpfRecordBackend) addRecord(r *record.DatapathRecord, force bool) error
 	// x2 each iteration.
 	if r.Init {
 		if r.Endpoint.EP != nil && r.Endpoint.EP.Dns != "" {
+			quotasDNSMappingsMu.Lock()
 			if err := dnsDomainMap.Update(r.Endpoint.EP.Dns, dst); err != nil {
 				QuotasInitDNSDomainMappings[*r.Endpoint.EP] = dst
 				go scheduleDomainMapFlush()
 			}
+			quotasDNSMappingsMu.Unlock()
 		}
 	} else {
 		if r.Endpoint.EP != nil && r.Endpoint.EP.Dns != "" {
+			quotasDNSMappingsMu.Lock()
 			QuotasInitDNSDomainMappings[*r.Endpoint.EP] = dst
+			quotasDNSMappingsMu.Unlock()
 			go scheduleDomainMapFlush()
 		}
 	}
@@ -278,6 +286,13 @@ func (p *bpfRecordBackend) removeRecord(r *record.DatapathRecord) error {
 		if err := p.lpmMap.Delete(r.Endpoint.EP.CIDR); err != nil {
 			return fmt.Errorf("failed to delete entry LPM for record %s: %w", r, err)
 		}
+	}
+
+	// Clean up any pending DNS domain mappings for this endpoint
+	if r.Endpoint.EP != nil && r.Endpoint.EP.Dns != "" {
+		quotasDNSMappingsMu.Lock()
+		delete(QuotasInitDNSDomainMappings, *r.Endpoint.EP)
+		quotasDNSMappingsMu.Unlock()
 	}
 
 	// On delete leave dnsDomainMap, it should be managed as its own object!
