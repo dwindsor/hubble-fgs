@@ -1367,8 +1367,11 @@ func (n *Nxos) doPinning(ctx context.Context, isBd bool, vb *VrfBd) {
 					for _, alloc := range n.Ha.Alloc {
 						gid, ok = alloc.Gids[vb.Name]
 						if ok {
-							_, ok = n.GidsInUse[gid]
-							if !ok {
+							existing, inUse := n.GidsInUse[gid]
+							// Reuse peer's GID if it's free, or if the
+							// GidsInUse entry is a peer reservation for
+							// the same VRF (not a different local VRF).
+							if !inUse || existing == vb.Name {
 								n.Alloc.Gids[vb.Name] = gid
 								n.GidsInUse[gid] = vb.Name
 								found = true

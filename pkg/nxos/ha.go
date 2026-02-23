@@ -1222,17 +1222,53 @@ func (n *Nxos) HaReconcile(ctx context.Context, peer string, info hav1.MbrInfo) 
 		}
 	}
 
-	// Handle VRFs that peer has but we don't have in our alloc
+	// Build reverse map of peer's GIDs (gid -> vrf name) to detect
+	// cross-peer overlaps: local VRFs whose GID is used by a different
+	// VRF on the peer.
+	peerGidToVrf := map[uint16]string{}
+	for vrfName, gid := range alloc {
+		peerGidToVrf[gid] = vrfName
+	}
+
+	// Reserve peer's GIDs in GidsInUse so that future getGid() calls on
+	// either side won't allocate a GID the peer already owns. This prevents
+	// new overlaps that would cause reconciliation loops. Only add peer GIDs
+	// not already tracked locally to avoid overwriting local VRF entries.
+	for vrfName, gid := range alloc {
+		if _, exists := n.GidsInUse[gid]; !exists {
+			n.GidsInUse[gid] = vrfName
+		}
+	}
+
+	// Check local-only VRFs for GID overlap with peer's different VRFs.
+	// For example: local has brown:11, peer has vrf-ixia1:11 — same GID,
+	// different VRF names. The non-leader must reallocate to avoid the
+	// overlap since the peer (leader) owns that GID.
 	for vrf, gid := range n.Alloc.Gids {
-		_, hasPeerGid := alloc[vrf]
-		if !hasPeerGid {
-			vrf2, inUse := n.GidsInUse[gid]
-			if inUse && vrf != vrf2 {
-				// GID collision with different VRF, reallocate
+		_, hasPeerVrf := alloc[vrf]
+		if hasPeerVrf {
+			// Same VRF name on both peers — already handled in Phase 1
+			continue
+		}
+		peerVrf, peerUsesGid := peerGidToVrf[gid]
+		if peerUsesGid && peerVrf != vrf {
+			logger.GetLogger().Warn("Cross-peer GID overlap detected",
+				"localVrf", vrf,
+				"peerVrf", peerVrf,
+				"gid", gid,
+				"isLeader", n.Ha.IsLeader)
+
+			if !n.Ha.IsLeader {
+				// Non-leader must reallocate since peer owns this GID.
+				// Reserve the GID for the peer's VRF so getGid() won't
+				// pick it during reallocation.
+				n.GidsInUse[gid] = peerVrf
 				gid2 := n.getGid(ctx, vrf)
 				if gid2 != 0 {
 					n.Alloc.Gids[vrf] = gid2
 					recon[vrf] = gid2
+					logger.GetLogger().Info("Non-leader reallocated GID for cross-peer overlap",
+						"vrf", vrf, "oldGid", gid, "newGid", gid2)
 				}
 			}
 		}
