@@ -17,6 +17,8 @@ import (
 type mapInterfaceTyped[K any, V any] interface {
 	Lookup(key K, result *V) error
 	Update(key K, value V, flags ebpf.MapUpdateFlags) error
+	Iterate() *ebpf.MapIterator
+	Delete(key K) error
 }
 
 // Function that take two types and wraps *Map to a typed interface
@@ -34,4 +36,12 @@ func (em *ebpfMapTyped[K, V]) Lookup(key K, result *V) error {
 
 func (em *ebpfMapTyped[K, V]) Update(key K, value V, flags ebpf.MapUpdateFlags) error {
 	return em.m.Update(key, value, flags)
+}
+
+func (em *ebpfMapTyped[K, V]) Iterate() *ebpf.MapIterator {
+	return em.m.Iterate()
+}
+
+func (em *ebpfMapTyped[K, V]) Delete(key K) error {
+	return em.m.Delete(key)
 }

@@ -42,6 +42,10 @@ func (p *DummyBpfProgrammer) RemoveRecords(_ []*record.DatapathRecord) error {
 	return nil
 }
 
+func (p *DummyBpfProgrammer) FlushCachedEntries() error {
+	return nil
+}
+
 func (p *DummyBpfProgrammer) GetBinaryId(binaryName string, ignoreArgs bool) (uint64, error) {
 	dummyUserCPU := uint32(0xffffffff)
 

@@ -48,6 +48,15 @@ func (fm *fakeBPFMap[K, V]) Update(key K, value V, _ ebpf.MapUpdateFlags) error 
 	return nil
 }
 
+func (fm *fakeBPFMap[K, V]) Delete(key K) error {
+	fm.Map.Delete(key.String())
+	return nil
+}
+
+func (fm *fakeBPFMap[K, V]) Iterate() *ebpf.MapIterator {
+	return nil
+}
+
 type fakeLPMMap struct {
 }
 

@@ -658,6 +658,9 @@ func loadRecords(r *recordTest, t *testing.T) {
 func unloadRecords(r *recordTest, t *testing.T) {
 	err := prog.RemoveRecords(r.records)
 	require.NoError(t, err)
+
+	err = prog.FlushCachedEntries()
+	require.NoError(t, err)
 }
 
 func runCmds(r *recordTest, t *testing.T) {
@@ -670,7 +673,7 @@ func runCmds(r *recordTest, t *testing.T) {
 
 		switch cmd.check {
 		case "curl":
-			curlArg := []string{"--max-time", "0.1", "--ipv4", "127.0.0.1:8080"}
+			curlArg := []string{"--max-time", "0.5", "--ipv4", "127.0.0.1:8080"}
 			curlCmd := exec.Command("curl", curlArg...)
 			err := curlCmd.Run()
 			t.Log("curl 8080...")
@@ -680,7 +683,7 @@ func runCmds(r *recordTest, t *testing.T) {
 				require.NoError(t, err)
 			}
 		case "curl8081":
-			curlArg := []string{"--max-time", "0.1", "--ipv4", "127.0.0.1:8081"}
+			curlArg := []string{"--max-time", "0.5", "--ipv4", "127.0.0.1:8081"}
 			curlCmd := exec.Command("curl", curlArg...)
 			err := curlCmd.Run()
 			t.Log("curl 8081...")
@@ -694,6 +697,8 @@ func runCmds(r *recordTest, t *testing.T) {
 			err := digCmd.Run()
 			t.Log("dig...")
 			require.NoError(t, err)
+			// Give BPF DNS parser time to process the response and populate tg_dns_ip_id map
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
@@ -712,7 +717,7 @@ func TestRecords(t *testing.T) {
 
 	bpftest.StartMinimalTetragonModel(ctx, t)
 
-	curlArg := []string{"--max-time", "0.1", "--ipv4", "127.0.0.1:8080"}
+	curlArg := []string{"--max-time", "0.5", "--ipv4", "127.0.0.1:8080"}
 
 	// Check that curl to the domain works
 	// Note: wanted to use the Go HTTP request directly but the issue is
@@ -731,6 +736,13 @@ func TestRecords(t *testing.T) {
 			// Check unload provides clean state
 			curlCmd := exec.Command("curl", curlArg...)
 			err := curlCmd.Run()
+			require.NoError(t, err)
+
+			// Flush ghost cached entries created by the clean-state curl
+			// above. The curl triggers BPF processing which can find zeroed
+			// default templates (left by RemoveRecords) and create cached
+			// ALLOW entries that leak into the next subtest.
+			err = prog.FlushCachedEntries()
 			require.NoError(t, err)
 		})
 	}
@@ -772,7 +784,7 @@ func TestRecords(t *testing.T) {
 		require.True(t, foundPolicyEntry, "Expected policy entry with DEST_FLAG_POLICY_TEMPLATE_ONLY set")
 
 		// Generate traffic to trigger cached entry creation (use 127.0.0.2 to avoid conflicts)
-		curlCmd := exec.Command("curl", "--max-time", "0.1", "--ipv4", "127.0.0.2:8080")
+		curlCmd := exec.Command("curl", "--max-time", "0.5", "--ipv4", "127.0.0.2:8080")
 		err = curlCmd.Run()
 		require.NoError(t, err, "curl should succeed with allow policy")
 

@@ -13,6 +13,7 @@ package datapath
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/cilium/ebpf"
 
@@ -368,6 +369,81 @@ func (p *BPFProgrammer) RemoveRecords(records []*record.DatapathRecord) error {
 		delete(p.records, key)
 	}
 	return nil
+}
+
+// FlushCachedEntries removes BPF-created cached entries and zeroed-out template
+// entries from the destination_endpoint_map. Zeroed entries are left behind by
+// RemoveRecords (which zeroes values instead of deleting keys to preserve stats)
+// and can cause the BPF to create ghost cached ALLOW entries via the default
+// policy fallthrough path.
+//
+// Because destination_endpoint_map is an LRU hash, BPF_MAP_GET_NEXT_KEY iteration
+// can miss entries that are concurrently written. To handle this, the flush runs
+// in a retry loop: once the zeroed templates are deleted, BPF stops creating new
+// cached entries (map_lookup_elem returns NULL for deleted keys), so subsequent
+// passes converge quickly.
+func (p *BPFProgrammer) FlushCachedEntries() error {
+	p.initMaybe()
+
+	p.recordsMu.Lock()
+	defer p.recordsMu.Unlock()
+
+	backend, ok := p.recordBackend.(*bpfRecordBackend)
+	if !ok {
+		return fmt.Errorf("record backend is not BPF backend")
+	}
+
+	const maxPasses = 4
+	total := 0
+	for pass := range maxPasses {
+		if pass > 0 {
+			time.Sleep(time.Millisecond)
+		}
+		n, err := flushOnce(backend)
+		if err != nil {
+			return err
+		}
+		total += n
+		if n == 0 {
+			break
+		}
+	}
+
+	logger.GetLogger().Debug("flushed cached BPF entries", "count", total)
+	return nil
+}
+
+// flushOnce performs a single iterate-and-delete pass over destination_endpoint_map.
+// It deletes entries that are either BPF-created cached entries (TNP_POLICY_CACHED
+// bit set) or zeroed-out template entries left by RemoveRecords (all value fields
+// zero). Returns the number of entries deleted.
+func flushOnce(backend *bpfRecordBackend) (int, error) {
+	const TNP_POLICY_CACHED = uint64(0x08)
+	var zeroValue types.DestinationEndpointValue
+
+	var key types.DestinationEndpointKey
+	var value types.DestinationEndpointValue
+	iter := backend.dstMap.Iterate()
+
+	var keysToDelete []types.DestinationEndpointKey
+	for iter.Next(&key, &value) {
+		if value.TxAction&TNP_POLICY_CACHED != 0 || value == zeroValue {
+			keysToDelete = append(keysToDelete, key)
+		}
+	}
+
+	if err := iter.Err(); err != nil {
+		return 0, fmt.Errorf("failed to iterate destination_endpoint_map: %w", err)
+	}
+
+	for _, k := range keysToDelete {
+		if err := backend.dstMap.Delete(k); err != nil {
+			// Entry may have been evicted by LRU between iteration and deletion.
+			logger.GetLogger().Debug("failed to delete cached entry", "key", k, "error", err)
+		}
+	}
+
+	return len(keysToDelete), nil
 }
 
 type processTreeBinaryUIDKey struct {

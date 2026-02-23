@@ -28,6 +28,10 @@ type Interface interface {
 	// Remove a set of records to the datapath.
 	RemoveRecords(record []*record.DatapathRecord) error
 
+	// FlushCachedEntries removes all BPF-created cached entries from the destination map.
+	// Useful in tests to clear stale state between subtests.
+	FlushCachedEntries() error
+
 	// Binray UID are sync'd with the datapath.
 	GetBinaryId(binary string, ignoreArgs bool) (uint64, error)
 }
