@@ -422,9 +422,9 @@ func createGenericUprobeSensor(
 	}
 
 	if in.useMulti {
-		progs, maps, err = createMultiUprobeSensor(name, ids, polInfo.name, has)
+		progs, maps, err = createMultiUprobeSensor(polInfo, name, ids, has)
 	} else {
-		progs, maps, err = createSingleUprobeSensor(ids, has)
+		progs, maps, err = createSingleUprobeSensor(polInfo, ids, has)
 	}
 
 	if err != nil {
@@ -564,11 +564,10 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 	}
 
 	var allBTFArgs [api.EventConfigMaxArgs][api.MaxBTFArgDepth]api.ConfigBTFArg
+	var preload bool
 
 	addArg := func(i int, a *v1alpha1.KProbeArg, data bool) error {
 		argType := gt.GenericTypeFromString(a.Type)
-
-		var preload bool
 
 		if data {
 			// Data specific config
@@ -585,6 +584,9 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 				if argType == gt.GenericStringType {
 					if !bpf.HasKfunc("bpf_copy_from_user_str") {
 						return fmt.Errorf("can't preload string for argument %d", i)
+					}
+					if preload {
+						return errors.New("error: can't preload more than one argument")
 					}
 					preload = true
 				}
@@ -615,6 +617,9 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 				if !bpf.HasKfunc("bpf_copy_from_user_str") {
 					return fmt.Errorf("can't preload string for argument %d", i)
 				}
+				if preload {
+					return errors.New("error: can't preload more than one argument")
+				}
 				preload = true
 			}
 		}
@@ -624,7 +629,7 @@ func addUprobe(spec *v1alpha1.UProbeSpec, ids []idtable.EntryID, in *addUprobeIn
 		if argType == gt.GenericInvalidType {
 			return fmt.Errorf("Arg(%d) type '%s' unsupported", i, a.Type)
 		}
-		argMValue, err := getUprobeMetaValue(a, preload)
+		argMValue, err := getUserMetaValue(a, preload)
 		if err != nil {
 			return err
 		}
@@ -806,7 +811,7 @@ func multiUprobePinPath(sensorPath string) string {
 	return sensors.PathJoin(sensorPath, "multi_uprobe")
 }
 
-func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, policyName string, has uprobeHas) ([]*program.Program, []*program.Map, error) {
+func createMultiUprobeSensor(polInfo *policyInfo, sensorPath string, multiIDs []idtable.EntryID, has uprobeHas) ([]*program.Program, []*program.Map, error) {
 	var multiRetIDs []idtable.EntryID
 	var progs []*program.Program
 	var maps []*program.Map
@@ -837,7 +842,7 @@ func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, poli
 		pinPath,
 		"generic_uprobe").
 		SetLoaderData(multiIDs).
-		SetPolicy(policyName)
+		SetPolicy(polInfo.name)
 
 	load.SleepableOffload = has.sleepableOffload
 	load.SleepablePreload = has.sleepablePreload
@@ -875,6 +880,8 @@ func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, poli
 		maps = append(maps, program.MapUser(cgtracker.MapName, load))
 	}
 
+	maps = append(maps, polInfo.policyConfMap(load), polInfo.policyStatsMap(load))
+
 	filterMap.SetMaxEntries(len(multiIDs))
 	configMap.SetMaxEntries(len(multiIDs))
 
@@ -887,7 +894,7 @@ func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, poli
 			"generic_uprobe").
 			SetRetProbe(true).
 			SetLoaderData(multiRetIDs).
-			SetPolicy(policyName)
+			SetPolicy(polInfo.name)
 
 		progs = append(progs, loadret)
 
@@ -910,7 +917,7 @@ func createMultiUprobeSensor(sensorPath string, multiIDs []idtable.EntryID, poli
 	return progs, maps, nil
 }
 
-func createSingleUprobeSensor(ids []idtable.EntryID, has uprobeHas) ([]*program.Program, []*program.Map, error) {
+func createSingleUprobeSensor(polInfo *policyInfo, ids []idtable.EntryID, has uprobeHas) ([]*program.Program, []*program.Map, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -919,13 +926,13 @@ func createSingleUprobeSensor(ids []idtable.EntryID, has uprobeHas) ([]*program.
 		if err != nil {
 			return nil, nil, err
 		}
-		progs, maps = createUprobeSensorFromEntry(uprobeEntry, progs, maps, has)
+		progs, maps = createUprobeSensorFromEntry(polInfo, uprobeEntry, progs, maps, has)
 	}
 
 	return progs, maps, nil
 }
 
-func createUprobeSensorFromEntry(uprobeEntry *genericUprobe,
+func createUprobeSensorFromEntry(polInfo *policyInfo, uprobeEntry *genericUprobe,
 	progs []*program.Program, maps []*program.Map, has uprobeHas) ([]*program.Program, []*program.Map) {
 
 	var substringMapEntries int
@@ -1007,6 +1014,8 @@ func createUprobeSensorFromEntry(uprobeEntry *genericUprobe,
 		retFilterMap := program.MapBuilderProgram("filter_map", loadret)
 		maps = append(maps, retFilterMap)
 	}
+
+	maps = append(maps, polInfo.policyConfMap(load), polInfo.policyStatsMap(load))
 
 	return progs, maps
 }

@@ -1,5 +1,5 @@
-# cel.dev/expr v0.24.0
-## explicit; go 1.22.0
+# cel.dev/expr v0.25.1
+## explicit; go 1.23.0
 cel.dev/expr
 # cloud.google.com/go/auth v0.17.0
 ## explicit; go 1.24.0
@@ -303,11 +303,11 @@ github.com/cilium/hive/cell
 github.com/cilium/hive/internal
 github.com/cilium/hive/script
 github.com/cilium/hive/script/internal/diff
-# github.com/cilium/lumberjack/v2 v2.4.1
+# github.com/cilium/lumberjack/v2 v2.4.2
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
-# github.com/cilium/tetragon v1.7.0-pre.0.0.20260216110115-3ee33ed73024 => ./modules/tetragon-oss
-## explicit; go 1.25.0
+# github.com/cilium/tetragon v1.7.0-pre.0.0.20260223081528-a260769ef206 => ./modules/tetragon-oss
+## explicit; go 1.26.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
 github.com/cilium/tetragon/cmd/tetra/common
@@ -358,6 +358,7 @@ github.com/cilium/tetragon/pkg/constants
 github.com/cilium/tetragon/pkg/crdutils
 github.com/cilium/tetragon/pkg/cri
 github.com/cilium/tetragon/pkg/defaults
+github.com/cilium/tetragon/pkg/dump
 github.com/cilium/tetragon/pkg/elf
 github.com/cilium/tetragon/pkg/encoder
 github.com/cilium/tetragon/pkg/errmetrics
@@ -487,7 +488,7 @@ github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/helpers
 github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/imports
 github.com/cilium/tetragon/tools/protoc-gen-go-tetragon/types
 # github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss/pkg/k8s
-## explicit; go 1.25.0
+## explicit; go 1.26.0
 github.com/cilium/tetragon-oss/pkg/k8s/crdutils
 # github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000 => ./api
 ## explicit; go 1.26.0
@@ -506,7 +507,7 @@ github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/meta/v1
 github.com/cilium/tetragon/pkg/k8s/slim/k8s/apis/selection
 github.com/cilium/tetragon/pkg/k8s/version
 github.com/cilium/tetragon/pkg/k8s/versioncheck
-# github.com/containerd/cgroups/v3 v3.1.2
+# github.com/containerd/cgroups/v3 v3.1.3
 ## explicit; go 1.22.0
 github.com/containerd/cgroups/v3/cgroup1/stats
 # github.com/containerd/containerd/api v1.10.0
@@ -1592,7 +1593,7 @@ google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.78.0
+# google.golang.org/grpc v1.79.1
 ## explicit; go 1.24.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -1623,6 +1624,7 @@ google.golang.org/grpc/health/grpc_health_v1
 google.golang.org/grpc/internal
 google.golang.org/grpc/internal/backoff
 google.golang.org/grpc/internal/balancer/gracefulswitch
+google.golang.org/grpc/internal/balancer/weight
 google.golang.org/grpc/internal/balancerload
 google.golang.org/grpc/internal/binarylog
 google.golang.org/grpc/internal/buffer
@@ -1725,7 +1727,7 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# k8s.io/api v0.35.0
+# k8s.io/api v0.35.1
 ## explicit; go 1.25.0
 k8s.io/api/admission/v1
 k8s.io/api/admission/v1beta1
@@ -1787,7 +1789,7 @@ k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
 k8s.io/api/storagemigration/v1beta1
-# k8s.io/apiextensions-apiserver v0.35.0
+# k8s.io/apiextensions-apiserver v0.35.1
 ## explicit; go 1.25.0
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
@@ -1807,7 +1809,7 @@ k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1
 k8s.io/apiextensions-apiserver/pkg/features
-# k8s.io/apimachinery v0.35.0
+# k8s.io/apimachinery v0.35.1
 ## explicit; go 1.25.0
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
@@ -1878,7 +1880,7 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.35.0
+# k8s.io/apiserver v0.35.1
 ## explicit; go 1.25.0
 k8s.io/apiserver/pkg/apis/cel
 k8s.io/apiserver/pkg/authentication/serviceaccount
@@ -1894,7 +1896,7 @@ k8s.io/apiserver/pkg/features
 k8s.io/apiserver/pkg/util/compatibility
 k8s.io/apiserver/pkg/util/feature
 k8s.io/apiserver/pkg/warning
-# k8s.io/client-go v0.35.0
+# k8s.io/client-go v0.35.1
 ## explicit; go 1.25.0
 k8s.io/client-go/applyconfigurations
 k8s.io/client-go/applyconfigurations/admissionregistration/v1
@@ -2184,7 +2186,7 @@ k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/watchlist
 k8s.io/client-go/util/workqueue
-# k8s.io/code-generator v0.35.0
+# k8s.io/code-generator v0.35.1
 ## explicit; go 1.25.0
 k8s.io/code-generator
 k8s.io/code-generator/cmd/applyconfiguration-gen
@@ -2220,7 +2222,7 @@ k8s.io/code-generator/cmd/register-gen/generators
 k8s.io/code-generator/pkg/namer
 k8s.io/code-generator/pkg/util
 k8s.io/code-generator/third_party/forked/golang/reflect
-# k8s.io/component-base v0.35.0
+# k8s.io/component-base v0.35.1
 ## explicit; go 1.25.0
 k8s.io/component-base/cli/flag
 k8s.io/component-base/compatibility
@@ -2232,7 +2234,7 @@ k8s.io/component-base/metrics/prometheus/feature
 k8s.io/component-base/metrics/prometheusextension
 k8s.io/component-base/version
 k8s.io/component-base/zpages/features
-# k8s.io/cri-api v0.35.0
+# k8s.io/cri-api v0.35.1
 ## explicit; go 1.25.0
 k8s.io/cri-api/pkg/apis/runtime/v1
 # k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b
@@ -2341,7 +2343,7 @@ sigs.k8s.io/controller-runtime/pkg/webhook/admission/metrics
 sigs.k8s.io/controller-runtime/pkg/webhook/conversion
 sigs.k8s.io/controller-runtime/pkg/webhook/conversion/metrics
 sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics
-# sigs.k8s.io/controller-tools v0.20.0
+# sigs.k8s.io/controller-tools v0.20.1
 ## explicit; go 1.25.0
 sigs.k8s.io/controller-tools/cmd/controller-gen
 sigs.k8s.io/controller-tools/pkg/applyconfiguration
