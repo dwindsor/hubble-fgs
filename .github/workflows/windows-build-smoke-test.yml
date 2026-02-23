@@ -540,6 +540,7 @@ jobs:
           $TetragonArgs = @(
             '--enable-tcp', 
             '--enable-application-model',
+            '--enable-cgidmap',
             '--network-policy ${{ github.workspace }}\examples\tetragonnetworkpolicy\example.yaml',
             '--export-filename "C:\Program Files\Tetragon\events.json"'
           )

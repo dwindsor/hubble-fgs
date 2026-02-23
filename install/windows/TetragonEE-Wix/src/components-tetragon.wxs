@@ -41,7 +41,7 @@
                       Type="ownProcess"
                       Account="[WIX_ACCOUNT_LOCALSYSTEM]"
                       Interactive="no"
-                      Arguments='--enable-tcp --enable-udp --enable-application-model --export-filename "[INSTALLFOLDER]tetragon-events.json"'>
+                      Arguments='--enable-tcp --enable-udp --enable-application-model --enable-cgidmap --export-filename "[INSTALLFOLDER]tetragon-events.json"'>
 
         <ServiceConfig ServiceSid="unrestricted"
                        OnInstall="yes"
@@ -137,3 +137,4 @@
   </Fragment>
 
 </Wix>
+
