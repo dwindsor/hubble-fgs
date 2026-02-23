@@ -8,19 +8,21 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package main
+package ha
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config/add"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config/remove"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/ha"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/logging"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/metrics"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/policies"
 )
 
-func main() {
-	agwctl.Execute()
+func init() {
+	agwctl.RootCmd.AddCommand(HaCmd)
+}
+
+var HaCmd = &cobra.Command{
+	Use:          "ha",
+	SilenceUsage: true,
+	Short:        "Manage high availability",
+	Long:         `Manage high availability - show status, inject failures for testing.`,
 }

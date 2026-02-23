@@ -61,6 +61,9 @@ const (
 	CMD_CONFIG_ADD_DPU
 	CMD_CONFIG_REMOVE_DPU
 	CMD_SHOW_TIMESCAPE_CONFIG
+	CMD_HA_SHOW
+	CMD_HA_FAIL
+	CMD_HA_OK
 	CMD_SHOW_METRICS
 )
 
@@ -422,6 +425,21 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 			response.ReturnCode = "ok"
 			response.Data = string(jsonData)
 		}
+
+	case CMD_HA_SHOW:
+		ha := nxos.Nexus.ShowHa(ctx)
+		response.ReturnCode = "ok"
+		response.Data = ha
+
+	case CMD_HA_FAIL:
+		nxos.Nexus.HaSetDebugFail(ctx, true)
+		response.ReturnCode = "ok"
+		response.Data = "Debug failure injected - HA state will fail"
+
+	case CMD_HA_OK:
+		nxos.Nexus.HaSetDebugFail(ctx, false)
+		response.ReturnCode = "ok"
+		response.Data = "Debug failure cleared - normal operation restored"
 
 	default:
 		response.ReturnCode = "fail"
