@@ -7,8 +7,9 @@ This document is a quick operational reference for common Cisco NX-OS tasks used
 - [NX-OS Service Bring-up (Hypershield)](#nx-os-service-bring-up-hypershield)
 - [Artifacts (Artifactory)](#artifacts-artifactory)
   - [Artifact Locations](#artifact-locations)
-  - [Create an Artifactory Token](#create-an-artifactory-token)
-  - [Download Artifacts on the Switch (curl)](#download-artifacts-on-the-switch-curl)
+  - [Artifactory Token](#artifactory-token)
+  - [Download Artifacts to a Switch](#download-artifacts-to-a-switch)
+  - [Upload Artifacts to Artifactory](#upload-artifacts-to-artifactory)
 - [Install / Upgrade](#install--upgrade)
   - [Install Latest NX-OS Image](#install-latest-nx-os-image)
   - [Install Hypershield Agent RPM](#install-hypershield-agent-rpm)
@@ -79,6 +80,26 @@ export ARTIFACTORY_TOKEN="<your-identity-token>"
 
 curl -fL -x http://proxy.esl.cisco.com:80 -u "${CEC_USER}:${ARTIFACTORY_TOKEN}" -O "https://artifactory.devhub-cloud.cisco.com/artifactory/isovalent-hs-nxos-codedrop-generic/agent/<version>/<build>/agent-<version>-<nxos>.x86_64.rpm"
 curl -fL -x http://proxy.esl.cisco.com:80 -u "${CEC_USER}:${ARTIFACTORY_TOKEN}" -O "https://artifactory.devhub-cloud.cisco.com/artifactory/isovalent-hs-nxos-codedrop-generic/dpu/<version>/<build>/dpu_fw-<version>-<nxos>.x86_64.rpm"
+```
+
+### Upload Artifacts to Artifactory
+
+To upload an artifact to Artifactory (like an NX version), ADS has the JFrog CLI already available in `/auto/hypershield/tools/bin`.  Use the below CLI and your access token generated above:
+
+```bash
+brilong@sjc-ads-6172 [~]$ jf rt u --flat=true --server-id=devhub /auto/ins-bld-tools/branches/nx_main/nexus/COV_10_6_2_IMG9_0_172/nx/standalone/build/images/final/nxos64-s1-dpu.10.6.2.IMG9.0.172.F.bin isovalent-images-generic/hypershield/nxos/10.6.2/nxos64-s1-dpu.10.6.2.IMG9.0.172.F.bin
+
+jf config show
+Server ID:			devhub
+JFrog Platform URL:		https://artifactory.devhub-cloud.cisco.com/
+Artifactory URL:		https://artifactory.devhub-cloud.cisco.com/artifactory/
+Distribution URL:		https://artifactory.devhub-cloud.cisco.com/distribution/
+Xray URL:			https://artifactory.devhub-cloud.cisco.com/xray/
+Mission Control URL:		https://artifactory.devhub-cloud.cisco.com/mc/
+Pipelines URL:			https://artifactory.devhub-cloud.cisco.com/pipelines/
+User:				brilong
+Access token:			***
+Default:			true
 ```
 
 ## Install / Upgrade
