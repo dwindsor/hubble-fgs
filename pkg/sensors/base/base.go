@@ -42,15 +42,13 @@ const (
 )
 
 var (
-	basePolicy = "__base__"
-
 	Execve = program.Builder(
 		"bpf_execve_event.o",
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
 		"event_execve",
 		"execve",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	ExecveV53 = program.Builder(
 		"bpf_execve_event_v53.o",
@@ -58,7 +56,7 @@ var (
 		"tracepoint/sys_execve",
 		"event_execve",
 		"execve",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	ExecveV511 = program.Builder(
 		"bpf_execve_event_v511.o",
@@ -66,7 +64,7 @@ var (
 		"tracepoint/sys_execve",
 		"event_execve",
 		"execve",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	ExecveV61 = program.Builder(
 		"bpf_execve_event_v61.o",
@@ -74,7 +72,7 @@ var (
 		"tracepoint/sys_execve",
 		"event_execve",
 		"execve",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	ExecveV612 = program.Builder(
 		"bpf_execve_event_v612.o",
@@ -82,7 +80,7 @@ var (
 		"tracepoint/sys_execve",
 		"event_execve",
 		"execve",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	ExecveMapUpdate = program.Builder(
 		config.ExecUpdateObj(),
@@ -90,7 +88,7 @@ var (
 		"seccomp",
 		"execve_map_update",
 		"seccomp",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	ExecveBprmCommit = program.Builder(
 		"bpf_execve_bprm_commit_creds.o",
@@ -98,7 +96,7 @@ var (
 		"kprobe/security_bprm_committing_creds",
 		"tg_kp_bprm_committing_creds",
 		"kprobe",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	Exit = program.Builder(
 		"bpf_exit.o",
@@ -106,7 +104,7 @@ var (
 		"kprobe/acct_process",
 		"event_exit",
 		"kprobe",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	ExitV511 = program.Builder(
 		"bpf_exit_v511.o",
@@ -114,7 +112,7 @@ var (
 		"kprobe/acct_process",
 		"event_exit",
 		"kprobe",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	Fork = program.Builder(
 		"bpf_fork.o",
@@ -122,7 +120,7 @@ var (
 		"kprobe/wake_up_new_task",
 		"kprobe_pid_clear",
 		"kprobe",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	ForkV511 = program.Builder(
 		"bpf_fork_v511.o",
@@ -130,7 +128,7 @@ var (
 		"kprobe/wake_up_new_task",
 		"kprobe_pid_clear",
 		"kprobe",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	SysEnterProg = program.Builder(
 		"bpf_syscall.o",
@@ -138,7 +136,7 @@ var (
 		"tracepoint/sys_enter",
 		"sys_enter",
 		"tracepoint",
-	).SetPolicy(basePolicy)
+	).SetPolicy(sensors.BaseSensorName)
 
 	/* Event Ring map */
 	TCPMonMap     = program.MapBuilder("tcpmon_map", Execve, ExecveV53, ExecveV511, ExecveV61, ExecveV612)
@@ -249,7 +247,7 @@ func GetTetragonConfMap() *program.Map {
 
 func initBaseSensor() *sensors.Sensor {
 	sensor := sensors.Sensor{
-		Name: basePolicy,
+		Name: sensors.BaseSensorName,
 	}
 	setupSensor()
 	if config.EnableLargeProgs() {
