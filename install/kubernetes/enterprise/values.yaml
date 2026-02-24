@@ -15,7 +15,7 @@ hostNetwork: true
 tetragon:
   image:
     repository: quay.io/isovalent/tetragon
-    tag: v1.19.0-pre.3
+    tag: v1.19.0-pre.4
   metadata:
     enabled: false
     image:
@@ -161,7 +161,7 @@ tetragonAggregator:
   image:
     override: ~
     repository: quay.io/isovalent/tetragon-aggregator
-    tag: v1.19.0-pre.3
+    tag: v1.19.0-pre.4
     pullPolicy: IfNotPresent
   # -- Extra volumes for the Tetragon Aggregator Deployment.
   extraVolumes: []
@@ -169,7 +169,7 @@ tetragonAggregator:
 tetragonOperator:
   image:
     repository: quay.io/isovalent/tetragon-operator
-    tag: v1.19.0-pre.3
+    tag: v1.19.0-pre.4
   podInfo:
     # -- Enables the PodInfo CRD and the controller that reconciles PodInfo
     # custom resources.
@@ -354,8 +354,8 @@ splunk_hec:
     tag: 0.145.0
     pullPolicy: IfNotPresent
   resources:
-    requests: { cpu: "200m", memory: "256Mi" }
-    limits:   { cpu: "500m", memory: "512Mi" }
+    requests: {cpu: "200m", memory: "256Mi"}
+    limits: {cpu: "500m", memory: "512Mi"}
   # URL to a Splunk instance to send data to.
   endpoint:
     secretName: "splunk-hec"
