@@ -129,6 +129,16 @@ type HaLocal struct {
 	IsFunc   bool
 	Epoch    int64
 	Criteria map[HaCrit]bool
+
+	// Anti-flapping hold-down state.
+	// When IsFunc is false and criteria become all-true, we start a
+	// hold-down period rather than immediately transitioning to true.
+	// PendingIsFunc indicates a recovery is pending hold-down expiry.
+	// PendingEpoch is the unix timestamp when the hold-down started.
+	// FlapCount tracks consecutive flaps for observability.
+	PendingIsFunc bool
+	PendingEpoch  int64
+	FlapCount     int
 }
 
 type HaNxStates struct {

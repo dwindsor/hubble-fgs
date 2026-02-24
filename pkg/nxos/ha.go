@@ -33,6 +33,7 @@ const (
 	nxUpdateTimeout = 30 // in sec
 	adjTimeout      = 30 // in sec
 	mbrTimeout      = 30 // in sec
+	isFuncHoldDown  = 30 // in sec, anti-flapping hold-down for IsFunc recovery
 )
 
 func (n *Nxos) haIsEnabled(_ context.Context, isLock bool) bool {
@@ -143,7 +144,7 @@ func (n *Nxos) updateHaConfig() {
 
 	var enabled bool
 	if len(peers) > 0 {
-		enabled = n.GetHaConfigured() && n.GetHaOperUp() && n.Ha.Local.IsFunc
+		enabled = n.GetHaConfigured() && n.GetHaOperUp() && n.stableIsFunc()
 	}
 	var flow_sync bool
 	flow_sync = enabled && n.GetHaEnabled()
@@ -348,7 +349,7 @@ func (n *Nxos) HaGetMbrInfo(ctx context.Context, peer string, isLock bool) hav1.
 	}
 
 	var ss hav1.SERVICE_STATE
-	if n.Ha.Local.IsFunc {
+	if n.stableIsFunc() {
 		ss = hav1.SERVICE_STATE_SVC_SUCCESS
 	} else {
 		ss = hav1.SERVICE_STATE_SVC_FAILURE
@@ -481,7 +482,7 @@ func (n *Nxos) haBuildRemovalMbrInfo(ctx context.Context, peer string) hav1.MbrI
 	info := n.HaGetMbrInfo(ctx, peer, false)
 	if info.HaInfo == nil {
 		svcState := hav1.SERVICE_STATE_SVC_FAILURE
-		if n.Ha.Local.IsFunc {
+		if n.stableIsFunc() {
 			svcState = hav1.SERVICE_STATE_SVC_SUCCESS
 		}
 		info.HaInfo = &hav1.HaInfo{Service: svcState}
@@ -687,7 +688,7 @@ func (n *Nxos) haUpdateNxState(_ context.Context) {
 
 	var svcState hav1.SERVICE_STATE
 	var haState hav1.HA_STATE
-	if n.Ha.Local.IsFunc {
+	if n.stableIsFunc() {
 		svcState = hav1.SERVICE_STATE_SVC_SUCCESS
 		if len(n.Ha.Partners) > 0 && n.anyPeerCriteriaOk() {
 			haState = hav1.HA_STATE_HA_READY
@@ -747,7 +748,7 @@ func (n *Nxos) haUpdateNxStateForRemoval(_ context.Context) {
 	var svcState hav1.SERVICE_STATE
 	var haState hav1.HA_STATE
 
-	if n.Ha.Local.IsFunc {
+	if n.stableIsFunc() {
 		svcState = hav1.SERVICE_STATE_SVC_SUCCESS
 		if len(n.Ha.Partners) > 0 && n.anyPeerCriteriaOk() {
 			haState = hav1.HA_STATE_HA_READY
@@ -887,19 +888,102 @@ func (n *Nxos) computeIsFunc() bool {
 	return true
 }
 
+// stableIsFunc returns the effective IsFunc value that respects the
+// anti-flapping hold-down.  During a pending recovery (PendingIsFunc
+// is true but hold-down has not yet expired), this returns false even
+// though the raw criteria may all be passing.  All consumers that
+// derive state from IsFunc (HA config, NX state, member info) must
+// use this method instead of reading n.Ha.Local.IsFunc directly.
+func (n *Nxos) stableIsFunc() bool {
+	if n.Ha.Local.PendingIsFunc {
+		return false
+	}
+	return n.Ha.Local.IsFunc
+}
+
 // recalculateIsFuncAndState recalculates IsFunc based on local criteria,
 // then updates NX state.  HA state depends on both local criteria (IsFunc)
 // and peer criteria, so we always re-evaluate NX state.
+//
+// Anti-flapping: degradation (true->false) is applied immediately so the
+// system fails fast.  Recovery (false->true) is held down for
+// isFuncHoldDown seconds — criteria must remain all-true for the entire
+// period before IsFunc actually transitions.  If any criterion flips back
+// to false during the hold-down, the pending recovery is cancelled and
+// the flap counter is incremented.
 // Caller must hold the lock.
 func (n *Nxos) recalculateIsFuncAndState(ctx context.Context) {
 	now := time.Now().Unix()
 	isFunc := n.computeIsFunc()
-	if isFunc != n.Ha.Local.IsFunc {
-		logger.GetLogger().Debug("IsFunc changed", "prev", n.Ha.Local.IsFunc, "new", isFunc)
-		n.Ha.Local.IsFunc = isFunc
+
+	if n.Ha.Local.IsFunc && !isFunc {
+		// Degradation: apply immediately (fail-fast).
+		logger.GetLogger().Debug("Local HA State degraded", "prev", true, "new", false)
+		n.Ha.Local.IsFunc = false
 		n.Ha.Local.Epoch = now
+		// Cancel any stale pending recovery.
+		n.Ha.Local.PendingIsFunc = false
+		n.Ha.Local.PendingEpoch = 0
 		n.updateHaConfig()
+	} else if !n.Ha.Local.IsFunc && isFunc {
+		// Recovery: start or maintain hold-down.
+		if !n.Ha.Local.PendingIsFunc {
+			logger.GetLogger().Info("Local HA State recovery pending, starting hold-down",
+				"holdDown", isFuncHoldDown)
+			n.Ha.Local.PendingIsFunc = true
+			n.Ha.Local.PendingEpoch = now
+		}
+		// Promotion is handled by haCheckIsFuncHoldDown in the periodic loop.
+	} else if !n.Ha.Local.IsFunc && !isFunc {
+		// Still degraded — cancel any pending recovery if criteria flapped
+		// back to false during the hold-down window.
+		if n.Ha.Local.PendingIsFunc {
+			logger.GetLogger().Info("Local HA State hold-down cancelled, criteria failed again",
+				"flapCount", n.Ha.Local.FlapCount+1)
+			n.Ha.Local.PendingIsFunc = false
+			n.Ha.Local.PendingEpoch = 0
+			n.Ha.Local.FlapCount++
+		}
 	}
+
+	n.haUpdateNxState(ctx)
+}
+
+// haCheckIsFuncHoldDown checks whether a pending IsFunc recovery has
+// satisfied the hold-down period and, if so, promotes IsFunc to true.
+// Called from the periodic haSetup loop.
+// Caller must hold the lock.
+func (n *Nxos) haCheckIsFuncHoldDown(ctx context.Context) {
+	if !n.Ha.Local.PendingIsFunc {
+		return
+	}
+
+	now := time.Now().Unix()
+	elapsed := now - n.Ha.Local.PendingEpoch
+	if elapsed < isFuncHoldDown {
+		logger.GetLogger().Debug("Local HA State hold-down in progress",
+			"elapsed", elapsed, "remaining", isFuncHoldDown-elapsed)
+		return
+	}
+
+	// Verify criteria still pass before promoting.
+	if !n.computeIsFunc() {
+		logger.GetLogger().Info("Local HA State hold-down expired but criteria no longer pass, cancelling")
+		n.Ha.Local.PendingIsFunc = false
+		n.Ha.Local.PendingEpoch = 0
+		n.Ha.Local.FlapCount++
+		return
+	}
+
+	// Promote: hold-down satisfied and criteria still all-true.
+	logger.GetLogger().Info("Local HA State hold-down satisfied, promoting to true",
+		"holdDown", isFuncHoldDown, "flapCount", n.Ha.Local.FlapCount)
+	n.Ha.Local.IsFunc = true
+	n.Ha.Local.Epoch = now
+	n.Ha.Local.PendingIsFunc = false
+	n.Ha.Local.PendingEpoch = 0
+	n.Ha.Local.FlapCount = 0
+	n.updateHaConfig()
 	n.haUpdateNxState(ctx)
 }
 
@@ -1156,6 +1240,9 @@ func (n *Nxos) haSetup(ctx context.Context) {
 		case <-time.After(haTimeout * time.Second):
 			// logger.GetLogger().Debug("haTimeout at", "epoch", time.Now().Unix())
 			n.haUpdateNx(ctx)
+			n.Lock()
+			n.haCheckIsFuncHoldDown(ctx)
+			n.Unlock()
 			if enabled {
 				peers := n.haGetPeers(ctx)
 				for _, peer := range peers {
