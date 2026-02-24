@@ -11,7 +11,12 @@
 package server
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
 	"testing"
+	"time"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
@@ -338,4 +343,80 @@ func TestExportParentMapEdgeCases(t *testing.T) {
 			}
 		})
 	}
+}
+
+// errWriter is an io.Writer that always returns the configured error.
+// It simulates lumberjack rejecting an oversized write.
+type errWriter struct {
+	err error
+}
+
+func (w *errWriter) Write(_ []byte) (int, error) {
+	return 0, w.err
+}
+
+// TestAppModelEncodeFailureDoesNotBlockTelemetry verifies that a failing app
+// model encoder does not prevent telemetry and connection exports from
+// proceeding. This reproduces a production issue where a single oversized app
+// model JSON blob (exceeding lumberjack's MaxSize) killed the entire export
+// goroutine, stopping all three export pipelines permanently.
+//
+// The test calls exportTick directly (the per-tick body extracted from
+// ExportApplicationModel) so that both the app-model encode and the
+// telemetry/connection export run through the same code path as production.
+func TestAppModelEncodeFailureDoesNotBlockTelemetry(t *testing.T) {
+	// Build a "last" model with a process but no destinations.
+	lastProcessModels := []*types.ProcessModel{
+		{
+			Binary:     "curl",
+			BinaryArgs: "https://example.com",
+			Parent:     "bash",
+			Parents:    []string{"bash"},
+			Namespace:  model.HostNamespace,
+			Abi:        "x64",
+			Syscalls:   []uint32{1},
+		},
+	}
+
+	// Build a "new" model with the same process plus a new destination.
+	// The diff between last and new will produce network telemetry entries.
+	newProcessModels := []*types.ProcessModel{
+		{
+			Binary:     "curl",
+			BinaryArgs: "https://example.com",
+			Parent:     "bash",
+			Parents:    []string{"bash"},
+			Namespace:  model.HostNamespace,
+			Abi:        "x64",
+			Syscalls:   []uint32{1},
+			Dest: []*types.Destination{
+				{
+					DestinationNames: []string{"example.com"},
+					Port:             443,
+					Stats:            &types.DestinationStats{TxBytes: 1024},
+				},
+			},
+		},
+	}
+
+	emptyFilter := make(map[string]bool)
+	lastAppModel, _ := model.ProcessModelToApplicationModelWithProcessData(lastProcessModels, emptyFilter)
+
+	// Set up a failing app model encoder and working telemetry/connection encoders.
+	failingAppModelEncoder := json.NewEncoder(&errWriter{err: errors.New("write length exceeds maximum file size")})
+	var telemetryBuf bytes.Buffer
+	var connectionBuf bytes.Buffer
+	telemetryEncoder := json.NewEncoder(&telemetryBuf)
+	connectionEncoder := json.NewEncoder(&connectionBuf)
+
+	ctx := context.Background()
+	lastTime := time.Now().Add(-10 * time.Second)
+
+	// Call exportTick with the failing app model encoder. The function should
+	// log the encode error but still proceed to export telemetry and connections.
+	_, _ = exportTick(ctx, newProcessModels, failingAppModelEncoder, telemetryEncoder, connectionEncoder,
+		lastAppModel, lastTime, emptyFilter)
+
+	assert.NotEmpty(t, telemetryBuf.Bytes(), "telemetry encoder should have received data")
+	assert.NotEmpty(t, connectionBuf.Bytes(), "connection encoder should have received data")
 }

@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/networkmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
+	"github.com/isovalent/hubble-fgs/pkg/model/types"
 	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
@@ -103,6 +104,36 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 	return now, nil
 }
 
+// exportTick processes a single export cycle: converts process models to an
+// application model, encodes it (non-fatal on failure), and exports telemetry
+// and connection diffs. Extracted from ExportApplicationModel so the
+// error-handling behavior is testable independently of the server loop.
+func exportTick(
+	ctx context.Context,
+	processModels []*types.ProcessModel,
+	appModelEncoder, telemetryEncoder, connectionEncoder *json.Encoder,
+	lastModel *appModelV1.ApplicationModelEvent,
+	lastTime time.Time,
+	emptyFilter map[string]bool,
+) (*appModelV1.ApplicationModelEvent, time.Time) {
+	newModel, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter)
+	telemetryMap := model.BuildTelemetryMap(processData)
+
+	if appModelEncoder != nil {
+		if err := appModelEncoder.Encode(newModel); err != nil {
+			logger.GetLogger().Error("Failed to encode application model as JSON", logfields.Error, err)
+		}
+	}
+
+	if telemetryEncoder != nil || connectionEncoder != nil {
+		lastTime, _ = exportTelemetry(ctx, lastTime, telemetryEncoder, connectionEncoder,
+			newModel.ApplicationModel, lastModel.ApplicationModel, telemetryMap)
+		lastModel = newModel
+	}
+
+	return lastModel, lastTime
+}
+
 func ExportApplicationModel(ctx context.Context, server *Server, writer io.Writer, flatWriter io.Writer, connectionWriter io.Writer, interval time.Duration) {
 	var encoder *json.Encoder
 	var telemetry *json.Encoder
@@ -145,24 +176,15 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			res, err := server.GetProcessModel(ctx, []string{}, false)
 			if err != nil {
 				logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
-				return
+				continue
 			}
 
-			// Convert to ApplicationModel and build telemetry maps in a single pass
-			newModel, processData := model.ProcessModelToApplicationModelWithProcessData(res, emptyFilter)
-			telemetryMap := model.BuildTelemetryMap(processData)
-
+			var appModelEncoder *json.Encoder
 			if enterpriseOption.Config.ApplicationModelExportFilename != "" {
-				if err := encoder.Encode(newModel); err != nil {
-					logger.GetLogger().Error("Failed to encode application model as JSON", logfields.Error, err)
-					return
-				}
+				appModelEncoder = encoder
 			}
 
-			if telemetry != nil || connection != nil {
-				lastTime, _ = exportTelemetry(ctx, lastTime, telemetry, connection, newModel.ApplicationModel, lastModel.ApplicationModel, telemetryMap)
-				lastModel = newModel
-			}
+			lastModel, lastTime = exportTick(ctx, res, appModelEncoder, telemetry, connection, lastModel, lastTime, emptyFilter)
 		case <-ctx.Done():
 			return
 		}
