@@ -53,6 +53,15 @@ func StartMinimalTetragonModel(ctx context.Context, t *testing.T) *model.Server 
 	option.Config.EnableCgIDmap = true
 	option.Config.EnablePolicyFilter = true
 
+	// GetInitialSensorTest registers a cleanup for unloading the base
+	// sensor because it is special and won't be removed by below
+	// observer.RemoveSensors(ctx).
+	// This way, the `t.Cleanup()` function that unloads the base sensor,
+	// is correctly invoked **after** registered sensors are unloaded (by observer.RemoveSensors()).
+	// This strictly mimics what we do in `TestLoadLayer3Sensor`
+	// and all `observertesthelper.GetDefaultSensorsWithBase` usages.
+	baseSensor := base.GetInitialSensorTest(t)
+
 	obs := observer.NewObserver()
 	err := obs.InitSensorManager()
 	require.NoError(t, err)
@@ -64,10 +73,6 @@ func StartMinimalTetragonModel(ctx context.Context, t *testing.T) *model.Server 
 
 	err = btf.InitCachedBTF(option.Config.HubbleLib, "")
 	require.NoError(t, err)
-	// GetInitialSensorTest registers a cleanup for unloading the base
-	// sensor because it is special and won't be removed by above
-	// observer.RemoveSensors(ctx)
-	baseSensor := base.GetInitialSensorTest(t)
 	err = baseSensor.Load(option.Config.BpfDir)
 	require.NoError(t, err)
 	err = procevents.GetRunningProcs()

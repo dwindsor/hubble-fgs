@@ -48,6 +48,11 @@ func StartMinimalTetragonModel(ctx context.Context, t *testing.T) {
 	enterpriseOption.Config.EnableApplicationModel = true
 	option.Config.EnablePolicyFilter = false
 
+	// GetInitialSensorTest registers a cleanup for unloading the base
+	// sensor because it is special and won't be removed by below
+	// observer.RemoveSensors(ctx)
+	baseSensor := base.GetInitialSensorTest(t)
+
 	obs := observer.NewObserver()
 	err := obs.InitSensorManager()
 	require.NoError(t, err)
@@ -56,7 +61,6 @@ func StartMinimalTetragonModel(ctx context.Context, t *testing.T) {
 		observer.RemoveSensors(ctx)
 		observer.ResetSensorManager()
 	})
-	baseSensor := base.GetInitialSensorTest(t)
 	err = baseSensor.Load(option.Config.BpfDir)
 	require.NoError(t, err)
 	err = procevents.GetRunningProcs()
