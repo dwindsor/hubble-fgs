@@ -143,7 +143,7 @@ func (n *Nxos) updateHaConfig() {
 
 	var enabled bool
 	if len(peers) > 0 {
-		enabled = n.GetHaConfigured() && n.GetHaOperUp()
+		enabled = n.GetHaConfigured() && n.GetHaOperUp() && n.Ha.Local.IsFunc
 	}
 	var flow_sync bool
 	flow_sync = enabled && n.GetHaEnabled()
@@ -898,6 +898,7 @@ func (n *Nxos) recalculateIsFuncAndState(ctx context.Context) {
 		logger.GetLogger().Debug("IsFunc changed", "prev", n.Ha.Local.IsFunc, "new", isFunc)
 		n.Ha.Local.IsFunc = isFunc
 		n.Ha.Local.Epoch = now
+		n.updateHaConfig()
 	}
 	n.haUpdateNxState(ctx)
 }
