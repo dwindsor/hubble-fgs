@@ -454,11 +454,53 @@ func (dpu *DPUAgent) upsertPolicyRule(rule *switchpolicy.DPUPolicyRule) error {
 		return fmt.Errorf("failed policy rule checksum, corrupted policy")
 	}
 
-	if rule, ok := dpu.ruleSet[uid]; ok {
-		rule.timestamp = time.Now()
-		rule.shaMap[csum] = struct{}{}
+	csumHex := hex.EncodeToString(csum[:])
+	if existingRule, ok := dpu.ruleSet[uid]; ok {
+		// Rule already exists. Check if the checksum is different
+
+		// Get existing checksums for logging
+		existingChecksums := make([]string, 0, len(existingRule.shaMap))
+		for existingCsum := range existingRule.shaMap {
+			existingChecksums = append(existingChecksums, hex.EncodeToString(existingCsum[:])[:16])
+		}
+
+		// Check if this exact checksum already exists
+		if _, checksumExists := existingRule.shaMap[csum]; checksumExists {
+			logger.GetLogger().Debug("Policy rule already exists with same checksum, updating timestamp only",
+				"uid", uid,
+				"policyName", rule.Policy.PolicyName,
+				"ruleName", rule.Policy.RuleName,
+				"checksum", csumHex[:16],
+				"existingChecksums", existingChecksums)
+
+			existingRule.timestamp = time.Now()
+			return nil
+		}
+
+		// Different checksum for same UID - this is a policy update
+		logger.GetLogger().Debug("Policy rule exists with different checksum, replacing with new version",
+			"uid", uid,
+			"policyName", rule.Policy.PolicyName,
+			"ruleName", rule.Policy.RuleName,
+			"oldChecksums", existingChecksums,
+			"newChecksum", csumHex[:16],
+			"operation", "CHECKSUM_REPLACEMENT")
+
+		// Replace the shaMap entirely with new checksum instead of adding to it
+		existingRule.shaMap = make(map[[sha256.Size]byte]struct{})
+		existingRule.shaMap[csum] = struct{}{}
+		existingRule.timestamp = time.Now()
+
 		return nil
 	}
+
+	// New rule - create new entry
+	logger.GetLogger().Debug("Creating new policy rule entry",
+		"uid", uid,
+		"policyName", rule.Policy.PolicyName,
+		"ruleName", rule.Policy.RuleName,
+		"checksum", csumHex[:16],
+		"operation", "NEW_RULE_CREATE")
 
 	ruleTracker := &ruleTracker{
 		timestamp: time.Now(),
@@ -466,6 +508,7 @@ func (dpu *DPUAgent) upsertPolicyRule(rule *switchpolicy.DPUPolicyRule) error {
 	}
 	ruleTracker.shaMap[csum] = struct{}{}
 	dpu.ruleSet[uid] = ruleTracker
+
 	return nil
 }
 

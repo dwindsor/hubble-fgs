@@ -532,7 +532,7 @@ func (agw *AgentGateway) DpuHealthCheck(ctx context.Context) {
 				retries++
 				if retries > maxRetries {
 					nxos.DpuInSync(ctx, false)
-					logger.GetLogger().Error("DPU out of sync!")
+					logger.GetLogger().Error("DPU out of sync!", "retries", retries)
 				}
 			} else {
 				nxos.DpuInSync(ctx, true)

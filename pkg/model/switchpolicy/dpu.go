@@ -151,12 +151,21 @@ func (p *peer) String() string {
 
 func (p *peer) SendPolicy(rule *DPUPolicyRule) error {
 	logger.GetLogger().Info("Agw server: Sending policy rule to peer", "peerID", p.uid, "policyName", rule.Policy.PolicyName, "ruleName", rule.Policy.RuleName)
+
+	// Check channel availability before sending
+	if p.polCh == nil {
+		logger.GetLogger().Error("Policy channel is nil, cannot send rule",
+			"peerID", p.uid,
+			"policyName", rule.Policy.PolicyName,
+			"ruleName", rule.Policy.RuleName)
+		return fmt.Errorf("policy channel is nil for peer %s", p.uid)
+	}
 	select {
 	case p.polCh <- rule:
-	// FIXME: this needs to be shorter than 1 second, as 1000 rules CANNOT take 1000 seconds to apply across DPUs
-	// but making it shorter runs the risk of skipping a rule because the channel is busy and right now we do not
-	// reconcile rules between FWA and AGW outside of the initial grpc connection, so if we skip a rule it is
-	// lost until the next reconnect
+		// FIXME: this needs to be shorter than 1 second, as 1000 rules CANNOT take 1000 seconds to apply across DPUs
+		// but making it shorter runs the risk of skipping a rule because the channel is busy and right now we do not
+		// reconcile rules between FWA and AGW outside of the initial grpc connection, so if we skip a rule it is""i"
+		// lost until the next reconnect
 	case <-time.After(2 * time.Second):
 		return fmt.Errorf("peer timed out, cannot submit policy rule")
 	}
@@ -303,8 +312,21 @@ func (dpu *DPUListener) StateCheck() bool {
 	dpu.mtx.RLock()
 	defer dpu.mtx.RUnlock()
 	stateCheck := true
+
 	for _, s := range dpu.peerGroup {
-		if s.syncFailCount.Load() > dpuSyncErrorCount {
+		currentFailCount := s.syncFailCount.Load()
+		timeSinceLastUpdate := time.Now().Unix() - s.lastEpoch
+
+		if currentFailCount >= dpuSyncErrorCount {
+			logger.GetLogger().Error("DPU sync error threshold exceeded, forcing policy reconnect",
+				"uid", s.uid,
+				"failCount", currentFailCount,
+				"threshold", dpuSyncErrorCount,
+				"peerChecksum", s.lastStatus.PolicyChecksum,
+				"expectedChecksum", hexChecksum,
+				"timeSinceLastUpdate", timeSinceLastUpdate,
+				"polReconnectCount", s.polReconnectCount.Load())
+
 			// Force policy reconnect by closing the channel
 			if s.polReconnectCh != nil {
 				close(s.polReconnectCh)
@@ -318,13 +340,31 @@ func (dpu *DPUListener) StateCheck() bool {
 			// interval.
 			s.syncFailCount.Store(0)
 		}
+
 		if s.lastStatus.PolicyChecksum != hexChecksum {
 			stateCheck = false
 			s.syncFailCount.Add(1)
-			logger.GetLogger().Error("failed state check", "dpu", s.uid, "failCount", s.syncFailCount.Load(), "expectedChecksum", hexChecksum, "actualChecksum", s.lastStatus.PolicyChecksum)
+
+			logger.GetLogger().Error("Policy sync failure detected",
+				"dpu", s.uid,
+				"failCount", s.syncFailCount.Load(),
+				"expectedChecksum", hexChecksum,
+				"actualChecksum", s.lastStatus.PolicyChecksum,
+				"checksumMismatch", true,
+				"timeSinceLastUpdate", timeSinceLastUpdate,
+				"peerVersion", s.lastStatus.AgentVersion,
+				"peerDatapath", s.lastStatus.DpVersion,
+				"polReconnectCount", s.polReconnectCount.Load())
 			continue
 		}
 	}
+
+	// Log overall state check result
+	logger.GetLogger().Debug("Policy state check completed",
+		"overallSyncStatus", stateCheck,
+		"totalPeers", len(dpu.peerGroup),
+		"expectedChecksum", hexChecksum)
+
 	return stateCheck
 }
 
@@ -535,24 +575,66 @@ func (dpu *DPUListener) SubmitDPURuleToDPU(rule *DPUPolicyRule) error {
 
 	csum, err := HashRule(rule.Policy)
 	if err != nil {
+		logger.GetLogger().Error("Failed to hash policy rule",
+			"policyName", rule.Policy.PolicyName,
+			"ruleName", rule.Policy.RuleName,
+			"error", err)
 		return err
 	}
+
+	hexCsum := hex.EncodeToString(csum[:])
+	logger.GetLogger().Debug("Processing policy rule submission",
+		"operation", rule.Oper.String(),
+		"policyName", rule.Policy.PolicyName,
+		"ruleName", rule.Policy.RuleName,
+		"ruleChecksum", hexCsum[:16], // First 16 chars
+		"currentRuleSetSize", len(dpu.ruleSet),
+		"targetPeers", len(dpu.peerGroup))
+
 	switch rule.Oper {
 	case v1alpha.PolicyOperation_POLICY_OPERATION_UPSERT:
 		dpu.ruleSet[csum] = rule.Policy
 	case v1alpha.PolicyOperation_POLICY_OPERATION_DELETE:
-		delete(dpu.ruleSet, csum)
+		if _, exists := dpu.ruleSet[csum]; exists {
+			delete(dpu.ruleSet, csum)
+		} else {
+			logger.GetLogger().Warn("Attempted to delete non-existent rule",
+				"ruleChecksum", hexCsum[:16],
+				"policyName", rule.Policy.PolicyName,
+				"ruleName", rule.Policy.RuleName)
+		}
 	default:
 		return fmt.Errorf("unknown operation type %d", rule.Oper)
 	}
 	dpu.checksumValid = false
 
-	for _, dpu := range dpu.peerGroup {
+	// Send to all peers
+	successCount := 0
+	failureCount := 0
+	for peerUID, dpu := range dpu.peerGroup {
 		err := dpu.SendPolicy(rule)
 		if err != nil {
-			logger.GetLogger().Error("failed to send policy rule to peer", logfields.Error, err, "peer", dpu.uid, "rule", *rule)
+			failureCount++
+			logger.GetLogger().Error("Failed to send policy rule to peer",
+				"error", err,
+				"peer", peerUID,
+				"policyName", rule.Policy.PolicyName,
+				"ruleName", rule.Policy.RuleName,
+				"operation", rule.Oper.String(),
+				"peerLastEpoch", dpu.lastEpoch,
+				"peerFailCount", dpu.syncFailCount.Load())
+		} else {
+			successCount++
 		}
 	}
+
+	logger.GetLogger().Debug("Policy rule distribution completed",
+		"policyName", rule.Policy.PolicyName,
+		"ruleName", rule.Policy.RuleName,
+		"operation", rule.Oper.String(),
+		"successCount", successCount,
+		"failureCount", failureCount,
+		"totalPeers", len(dpu.peerGroup))
 
 	return nil
 }
