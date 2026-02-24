@@ -197,7 +197,7 @@ jobs:
   draft-github-release:
     name: Create Release
     needs: build-tarballs
-    if: github.repository == 'isovalent/hubble-fgs' && !contains(github.ref_name, '-')
+    if: github.repository == 'isovalent/hubble-fgs' && (!contains(github.ref_name, '-') || contains(github.ref_name, 'pre'))
     environment: release
     runs-on: ubuntu-24.04
     steps:
