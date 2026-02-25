@@ -31,6 +31,8 @@ type cliConfig struct {
 	PrometheusUsername     string
 	PrometheusPassword     string
 	PrometheusEndpoint     string
+	FlbSocketPath          string
+	FlbConfigPath          string
 }
 
 var (
@@ -53,6 +55,8 @@ var (
 		PrometheusUsername:     viper.GetString(keyPrometheusUsername),
 		PrometheusPassword:     viper.GetString(keyPrometheusPassword),
 		PrometheusEndpoint:     viper.GetString(keyPrometheusEndpoint),
+		FlbSocketPath:          "",
+		FlbConfigPath:          "",
 	}
 )
 
@@ -75,6 +79,8 @@ const (
 	keyPrometheusUsername     = "prometheus-username"
 	keyPrometheusPassword     = "prometheus-password"
 	keyPrometheusEndpoint     = "prometheus-endpoint"
+	keyFlbSocketPath          = "flb-socket-path"
+	keyFlbConfigPath          = "flb-config-path"
 )
 
 // redactedConfig returns a copy of the Config with sensitive fields redacted.

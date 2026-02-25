@@ -22,7 +22,11 @@ import (
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+
 	"github.com/isovalent/hubble-fgs/pkg/agw"
+	agwflb "github.com/isovalent/hubble-fgs/pkg/agw/fluentbit"
+	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	hasvr "github.com/isovalent/hubble-fgs/pkg/grpc/hasvr"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
@@ -91,6 +95,39 @@ func executeAGW() {
 		}
 		return nil
 	})
+
+	// Setup AGW-local FluentBit config manager. When enabled, AGW writes
+	// a FluentBit YAML config for its managed FluentBit instance, in addition
+	// to streaming config to FWA for DPU FluentBit instances.
+	if Config.FlbConfigPath != "" {
+		flbMgr := agwflb.NewManager(Config.FlbConfigPath, Config.FlbSocketPath)
+		if err := flbMgr.Init(); err != nil {
+			logger.GetLogger().Error("Failed to initialize AGW FluentBit config manager",
+				logfields.Error, err)
+		} else {
+			// Wrap log config callbacks to fan out to both the DPU listener
+			// (gRPC to FWA) and the AGW-local FluentBit manager.
+			for _, ct := range []v1alpha.ConfigType{
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_SYSLOG,
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_IPFIX,
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_TIMESCAPE,
+				v1alpha.ConfigType_CONFIG_TYPE_LOG_SPLUNK,
+			} {
+				ct := ct // capture for closure
+				library.GetRepository().AddConfigCallback(ct,
+					func(oldCfg, newCfg *v1alpha.ConfigObject) error {
+						dpuErr := dpuListener.SubscribeConfig(oldCfg, newCfg)
+						flbErr := flbMgr.RefreshConfig(oldCfg, newCfg)
+						if dpuErr != nil {
+							return dpuErr
+						}
+						return flbErr
+					})
+			}
+			logger.GetLogger().Info("AGW FluentBit config manager initialized",
+				"config-path", Config.FlbConfigPath)
+		}
+	}
 
 	waitGroup.Go(func() error {
 		err := cliServer(ctx, agwAgent)

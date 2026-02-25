@@ -78,6 +78,8 @@ func Execute() error {
 	flags.StringVar(&Config.PrometheusPassword, keyPrometheusPassword, Config.PrometheusPassword, "Prometheus server authentication password")
 	flags.StringVar(&Config.PrometheusUsername, keyPrometheusUsername, Config.PrometheusUsername, "Prometheus server authentication username")
 	flags.StringVar(&Config.PrometheusEndpoint, keyPrometheusEndpoint, Config.PrometheusEndpoint, "Prometheus server endpoint URL")
+	flags.StringVar(&Config.FlbSocketPath, keyFlbSocketPath, Config.FlbSocketPath, "FluentBit unix socket path for AGW log mirroring")
+	flags.StringVar(&Config.FlbConfigPath, keyFlbConfigPath, Config.FlbConfigPath, "FluentBit YAML config path for AGW-managed FluentBit instance")
 	return rootCmd.Execute()
 }
 
