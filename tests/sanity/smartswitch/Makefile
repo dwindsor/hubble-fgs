@@ -125,8 +125,8 @@ pull-sim-image:
 	@echo "Downloading DPU Sim tarball from GitHub releases: $(GITHUB_REPO)"
 	@if command -v gh >/dev/null 2>&1; then \
 		if [ "$(SIM_VERSION)" = "latest" ]; then \
-			ACTUAL_VERSION=$$(gh release list --repo $(GITHUB_REPO) --limit 100 | grep -v "Draft" | awk '{print $$1}' | grep -v '^dpu/' | head -1); \
-			if [ -z "$$ACTUAL_VERSION" ]; then \
+			ACTUAL_VERSION=$$(gh release list --repo $(GITHUB_REPO) --limit 100 --exclude-drafts --json tagName --jq 'map(select(.tagName | startswith("dpu/") | not)) | .[0].tagName'); \
+			if [ -z "$$ACTUAL_VERSION" ] || [ "$$ACTUAL_VERSION" = "null" ]; then \
 				echo "❌ Could not determine latest published non-dpu release version"; \
 				exit 1; \
 			fi; \
