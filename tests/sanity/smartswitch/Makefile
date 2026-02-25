@@ -125,12 +125,16 @@ pull-sim-image:
 	@echo "Downloading DPU Sim tarball from GitHub releases: $(GITHUB_REPO)"
 	@if command -v gh >/dev/null 2>&1; then \
 		if [ "$(SIM_VERSION)" = "latest" ]; then \
-			ACTUAL_VERSION=$$(gh release list --repo $(GITHUB_REPO) --limit 10 | grep -v "Draft" | head -1 | awk '{print $$1}'); \
+			ACTUAL_VERSION=$$(gh release list --repo $(GITHUB_REPO) --limit 100 | grep -v "Draft" | awk '{print $$1}' | grep -v '^dpu/' | head -1); \
+			if [ -z "$$ACTUAL_VERSION" ]; then \
+				echo "❌ Could not determine latest published non-dpu release version"; \
+				exit 1; \
+			fi; \
 			echo "🔍 Latest published release version: $$ACTUAL_VERSION"; \
 		else \
 			ACTUAL_VERSION=$(SIM_VERSION); \
 		fi; \
-		CLEAN_VERSION=$$(echo "$$ACTUAL_VERSION" | sed 's/^v//'); \
+		CLEAN_VERSION=$$(echo "$$ACTUAL_VERSION" | sed 's|^dpu/||' | sed 's/^v//'); \
 		TARBALL_NAME="naples-docker-$$CLEAN_VERSION.tgz"; \
 		TARBALL_PATH="/tmp/$$TARBALL_NAME"; \
 		if [ -f "$$TARBALL_PATH" ]; then \
