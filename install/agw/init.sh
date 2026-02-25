@@ -29,6 +29,39 @@ echo "Starting HypershieldAgent init script"
 # Start background services: chronyd and crond.
 mkdir -p /data/volatile/logs
 mkdir -p /var/NTP
+
+# Start Fluent Bit logger.
+# The static YAML config is installed at the same path AGW writes dynamically.
+# AGW overwrites it on Init() and triggers hot_reload on config changes.
+FLB_CONFIG=/data/hypershield/daflogger.yaml
+FLB_LOG=/data/volatile/logs/fluent-bit.log
+FLB_METRICS_URL=${FLB_METRICS_URL:-http://localhost:2020/api/v1/metrics}
+FLB_READY_ATTEMPTS=${FLB_READY_ATTEMPTS:-60}
+FLB_READY_SLEEP_SECONDS=${FLB_READY_SLEEP_SECONDS:-1}
+/usr/bin/fluent-bit -Y -c "$FLB_CONFIG" >> "$FLB_LOG" 2>&1 &
+FLB_PID=$!
+
+wait_for_fluent_bit_ready() {
+   local i
+   for i in $(seq 1 "$FLB_READY_ATTEMPTS"); do
+      if curl -fsS "$FLB_METRICS_URL" >/dev/null 2>&1; then
+         echo "Fluent Bit is ready at $FLB_METRICS_URL"
+         return 0
+      fi
+      if ! kill -0 "$FLB_PID" 2>/dev/null; then
+         echo "Fluent Bit exited before becoming ready"
+         return 1
+      fi
+      sleep "$FLB_READY_SLEEP_SECONDS"
+   done
+   echo "Timed out waiting for Fluent Bit readiness at $FLB_METRICS_URL"
+   return 1
+}
+
+if ! wait_for_fluent_bit_ready; then
+   exit 1
+fi
+
 ntpd -c /etc/ntpsec -l /data/volatile/logs/ntp.log
 crond
 # Load crontab file.
@@ -83,7 +116,10 @@ do
 
    export GOTRACEBACK=crash
    # Start agw and redirect output to log file.
-   /usr/src/app/agw >> /data/volatile/logs/agw.log 2>&1 &
+   /usr/src/app/agw \
+     --flb-socket-path=/tmp/fluentbit_agw.sock \
+     --flb-config-path=/data/hypershield/daflogger.yaml \
+     >> /data/volatile/logs/agw.log 2>&1 &
    pid=$!
    wait $pid
    retVal=$?
@@ -143,4 +179,3 @@ do
      exit 0
    fi
 done
-

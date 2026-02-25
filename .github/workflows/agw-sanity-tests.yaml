@@ -23,6 +23,8 @@ on:
     secrets:
       HYPERSHIELD_GH_APP_PEM:
         required: true
+      ARTIFACTORY_PASSWORD:
+        required: true
 
 jobs:
   agw-sanity-tests:
@@ -62,6 +64,13 @@ jobs:
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
           sudo apt update
           sudo apt install gh -y
+
+      - name: Docker login to devhub-cloud
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: artifactory.devhub-cloud.cisco.com
+          username: ${{ vars.ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
       - name: Build AGW Docker image
         run: |

@@ -3,8 +3,8 @@ FROM --platform=$BUILDPLATFORM ghcr.io/openconfig/gnmic:0.42.1@sha256:3e135878f5
 ARG TARGETARCH
 
 # Second builder (cross-)compile:
-# - agw 
-# - agwctl 
+# - agw
+# - agwctl
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.0@sha256:c83e68f3ebb6943a2904fa66348867d108119890a2c6a2e6f07b38d0eb6c25c5 AS agw-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 ARG TARGETARCH BUILDARCH
@@ -17,7 +17,12 @@ COPY . ./
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
     then make agw agwctl TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
     else make agw agwctl TARGET_ARCH=$TARGETARCH; fi
-RUN apt-get autoremove -y && apt-get clean
+RUN apt-get install -y --no-install-recommends ntpsec \
+    && mkdir -p /ntpsec-dist/lib \
+    && cp /usr/sbin/ntpd /ntpsec-dist/ \
+    && ldd /usr/sbin/ntpd | awk '/=>/{print $3}' \
+       | xargs -I{} cp -L {} /ntpsec-dist/lib/ \
+    && apt-get autoremove -y && apt-get clean
 
 # Third builder (cross-)compile a stripped gops
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.0-alpine@sha256:d4c4845f5d60c6a974c6000ce58ae079328d03ab7f721a0734277e69905473e5 AS gops
@@ -29,15 +34,19 @@ RUN apk update && apk upgrade && apk add --no-cache binutils git \
  && GOARCH=$TARGETARCH go build -ldflags="-s -w" .
 RUN apk cache clean
 
-# Final step run on target platform
-FROM docker.io/library/alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412 AS base-build
+# Final step run on target platform — Chainguard glibc-openssl (glibc-native, apk + shell)
+FROM artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v15.2-dev AS base-build
+USER root
 RUN apk update && apk upgrade --no-cache
-# John cut these: iptables tcpdump vim-tiny and replaced ntp->chrony cron->cronie
-RUN apk del openntpd
-RUN apk add --no-cache net-tools iproute2 netcat-openbsd curl openssh-client bind-tools iputils-ping logrotate cronie sshpass bash ntpsec ca-certificates openssl
-# Update CA certs
-RUN update-ca-certificates
-RUN apk cache clean
+RUN apk add --no-cache net-tools iproute2 netcat-openbsd curl openssh-client bind-tools iputils logrotate cronie sshpass bash ca-certificates openssl fluent-bit-4.0
+COPY --from=agw-builder /ntpsec-dist/ntpd /usr/sbin/ntpd
+COPY --from=agw-builder /ntpsec-dist/lib/ /tmp/ntpsec-lib/
+RUN for f in /tmp/ntpsec-lib/*; do \
+      name=$(basename "$f"); \
+      found=false; \
+      for d in /lib /usr/lib; do [ -e "$d/$name" ] && found=true && break; done; \
+      $found || cp "$f" /usr/lib/; \
+    done && rm -rf /tmp/ntpsec-lib && ldconfig
 RUN mkdir -p /usr/src/app
 RUN mkdir -p /opt/cisco/daf/etc
 RUN mkdir -p /opt/cisco/daf/log
@@ -62,12 +71,16 @@ COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/cron
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/logrotate.hs /etc/logrotate.d/hs
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/restart-fwa.sh ./
 RUN chmod 600 /etc/logrotate.d/hs
+# Install Fluent Bit configuration (YAML, same path AGW writes dynamically)
+COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/fluent-bit.yaml /data/hypershield/daflogger.yaml
+RUN mkdir -p /var/log/fluent-bit /data/hypershield
 EXPOSE 8880 8881 8882
 ENTRYPOINT ["./init.sh"]
 
 # Test container for headless testing (no NXOS dependencies)
 # It container env vars for all AGW configuration flags, which can be overwritten at runtime
-FROM docker.io/library/alpine:3.22.2@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412 AS agw-test
+FROM artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v15.2-dev AS agw-test
+USER root
 ENV AGW_CONFIG="" \
     AGW_NETWORK_POLICY="" \
     AGW_ENABLE_K8S="false" \
@@ -78,14 +91,20 @@ ENV AGW_CONFIG="" \
     AGW_K8S_SERVICE_ACCOUNT_AUTH="" \
     AGW_TIMESCAPE_CLIENT_ENABLE="false" \
     AGW_TIMESCAPE_PASSWORD="" \
-    AGW_TIMESCAPE_ENDPOINT=""
-RUN apk update && apk upgrade --no-cache
+    AGW_TIMESCAPE_ENDPOINT="" \
+    AGW_FLB_SOCKET_PATH="/tmp/fluentbit_agw.sock" \
+    AGW_FLB_CONFIG_PATH="/data/hypershield/daflogger.yaml" \
+    FLUENT_BIT_CONFIG="/data/hypershield/daflogger.yaml" \
+    FLUENT_BIT_METRICS_URL="http://localhost:2020/api/v1/metrics"
 EXPOSE 8880
 WORKDIR /usr/src/app
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agw ./
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agwctl ./
+RUN apk add --no-cache fluent-bit-4.0
 RUN mkdir -p /opt/cisco/daf/etc
 RUN mkdir -p /iox_data
+RUN mkdir -p /data/hypershield
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/dafconfig /opt/cisco/daf/etc
+COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/fluent-bit.yaml /data/hypershield/daflogger.yaml
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/install/agw/test-entrypoint.sh /usr/src/app/entrypoint.sh
 ENTRYPOINT ["/usr/src/app/entrypoint.sh"]

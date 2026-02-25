@@ -1,0 +1,26 @@
+service:
+    flush: ${flush_interval}
+    hot_reload: "on"
+    log_level: ${log_level}
+    http_server: "on"
+    http_listen: 0.0.0.0
+    http_port: "2020"
+pipeline:
+    inputs:
+        - name: syslog
+          tag: agw-input
+          mode: unix_udp
+          unix_perm: "0644"
+          path: /tmp/fluentbit_agw.sock
+          parser: json
+          threaded: "true"
+    outputs:
+        - name: stdout
+          match: '*'
+          format: json
+parsers:
+    - name: json
+      format: json
+env:
+    flush_interval: "1"
+    log_level: debug

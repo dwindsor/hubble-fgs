@@ -11,6 +11,12 @@
 
 set -e
 ARGS=""
+AGW_FLB_SOCKET_PATH="${AGW_FLB_SOCKET_PATH:-/tmp/fluentbit_agw.sock}"
+AGW_FLB_CONFIG_PATH="${AGW_FLB_CONFIG_PATH:-/data/hypershield/daflogger.yaml}"
+FLUENT_BIT_CONFIG="${FLUENT_BIT_CONFIG:-$AGW_FLB_CONFIG_PATH}"
+FLUENT_BIT_METRICS_URL="${FLUENT_BIT_METRICS_URL:-http://localhost:2020/api/v1/metrics}"
+FLUENT_BIT_READY_ATTEMPTS="${FLUENT_BIT_READY_ATTEMPTS:-60}"
+FLUENT_BIT_READY_SLEEP_SECONDS="${FLUENT_BIT_READY_SLEEP_SECONDS:-1}"
 if [ -n "$AGW_CONFIG" ]; then
     ARGS="$ARGS --config=$AGW_CONFIG"
 fi
@@ -62,5 +68,85 @@ fi
 if [ -n "$AGW_PROMETHEUS_ENDPOINT" ]; then
     ARGS="$ARGS --prometheus-endpoint=$AGW_PROMETHEUS_ENDPOINT"
 fi
+if [ -n "$AGW_FLB_SOCKET_PATH" ]; then
+    ARGS="$ARGS --flb-socket-path=$AGW_FLB_SOCKET_PATH"
+fi
+if [ -n "$AGW_FLB_CONFIG_PATH" ]; then
+    ARGS="$ARGS --flb-config-path=$AGW_FLB_CONFIG_PATH"
+fi
+
+start_fluent_bit() {
+    echo "Starting Fluent Bit with config: $FLUENT_BIT_CONFIG"
+    /usr/bin/fluent-bit -Y -c "$FLUENT_BIT_CONFIG" &
+    FLUENT_BIT_PID=$!
+}
+
+http_get() {
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsS "$1" >/dev/null 2>&1
+        return $?
+    fi
+    if command -v wget >/dev/null 2>&1; then
+        wget -q -O /dev/null "$1" 2>/dev/null
+        return $?
+    fi
+    return 127
+}
+
+wait_for_fluent_bit_ready() {
+    i=0
+    while [ "$i" -lt "$FLUENT_BIT_READY_ATTEMPTS" ]; do
+        if http_get "$FLUENT_BIT_METRICS_URL"; then
+            echo "Fluent Bit is ready at $FLUENT_BIT_METRICS_URL"
+            return 0
+        fi
+        if ! kill -0 "$FLUENT_BIT_PID" 2>/dev/null; then
+            echo "Fluent Bit exited before becoming ready"
+            return 1
+        fi
+        i=$((i + 1))
+        sleep "$FLUENT_BIT_READY_SLEEP_SECONDS"
+    done
+    echo "Timed out waiting for Fluent Bit readiness at $FLUENT_BIT_METRICS_URL"
+    return 1
+}
+
+shutdown() {
+    if [ -n "${AGW_PID:-}" ]; then
+        kill "$AGW_PID" 2>/dev/null || true
+    fi
+    if [ -n "${FLUENT_BIT_PID:-}" ]; then
+        kill "$FLUENT_BIT_PID" 2>/dev/null || true
+    fi
+    wait "${AGW_PID:-}" 2>/dev/null || true
+    wait "${FLUENT_BIT_PID:-}" 2>/dev/null || true
+}
+
+trap 'shutdown; exit 143' INT TERM
+
+start_fluent_bit
+
 echo "Starting AGW with arguments:$ARGS"
-exec /usr/src/app/agw $ARGS
+/usr/src/app/agw $ARGS &
+AGW_PID=$!
+
+if ! wait_for_fluent_bit_ready; then
+    shutdown
+    exit 1
+fi
+
+EXIT_CODE=0
+while :; do
+    if ! kill -0 "$AGW_PID" 2>/dev/null; then
+        wait "$AGW_PID" || EXIT_CODE=$?
+        break
+    fi
+    if ! kill -0 "$FLUENT_BIT_PID" 2>/dev/null; then
+        wait "$FLUENT_BIT_PID" || EXIT_CODE=$?
+        break
+    fi
+    sleep 1
+done
+
+shutdown
+exit "$EXIT_CODE"
