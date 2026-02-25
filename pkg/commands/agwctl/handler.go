@@ -14,6 +14,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -217,13 +218,42 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 			"`agwctl config show`\n" + cfg + "\n"
 
 	case CMD_TAC_PAC:
-		out, err := exec.Command("tar", "cfz", "/iox_data/logs.tgz", "-C", "/data/volatile", "logs").Output()
+		logsDir := "/data/volatile/logs"
+		tarFile := "/iox_data/logs.tgz"
+
+		// Check if logs directory exists
+		if _, err := os.Stat(logsDir); os.IsNotExist(err) {
+			response.ReturnCode = "fail"
+			response.Data = fmt.Sprintf("Logs directory does not exist: %s", logsDir)
+			break
+		}
+
+		// Get list of log files before archiving for informational purposes
+		var logFiles []string
+		if files, err := os.ReadDir(logsDir); err == nil {
+			for _, file := range files {
+				logFiles = append(logFiles, file.Name())
+			}
+		}
+
+		out, err := exec.Command("tar", "cfz", tarFile, "-C", "/data/volatile", "logs").Output()
 		if err != nil {
 			response.ReturnCode = "fail"
-			response.Data = err.Error()
+			response.Data = fmt.Sprintf("Failed to create TAC package: %v\nOutput: %s", err, string(out))
 		} else {
-			response.ReturnCode = "ok"
-			response.Data = string(out)
+			// Get file info to provide meaningful feedback
+			if stat, err := os.Stat(tarFile); err == nil {
+				var fileList string
+				if len(logFiles) > 0 {
+					fileList = fmt.Sprintf("\n Files archived: %v", logFiles)
+				}
+				response.ReturnCode = "ok"
+				response.Data = fmt.Sprintf("TAC package created successfully:\n File: %s\n Size: %d bytes\n Created: %v%s",
+					tarFile, stat.Size(), stat.ModTime().Format("2006-01-02 15:04:05"), fileList)
+			} else {
+				response.ReturnCode = "ok"
+				response.Data = fmt.Sprintf("TAC package created at: %s\nWarning: Could not stat file: %v", tarFile, err)
+			}
 		}
 
 	case CMD_PING_FWA:
