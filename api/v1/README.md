@@ -32,6 +32,7 @@
     - [KprobeBpfProg](#tetragon-KprobeBpfProg)
     - [KprobeCapability](#tetragon-KprobeCapability)
     - [KprobeCred](#tetragon-KprobeCred)
+    - [KprobeError](#tetragon-KprobeError)
     - [KprobeFile](#tetragon-KprobeFile)
     - [KprobeLinuxBinprm](#tetragon-KprobeLinuxBinprm)
     - [KprobeNetDev](#tetragon-KprobeNetDev)
@@ -784,6 +785,7 @@ Environment variable
 | syscall_id | [SyscallId](#tetragon-SyscallId) |  |  |
 | sockaddr_arg | [KprobeSockaddr](#tetragon-KprobeSockaddr) |  |  |
 | bpf_prog_arg | [KprobeBpfProg](#tetragon-KprobeBpfProg) |  |  |
+| error_arg | [KprobeError](#tetragon-KprobeError) |  |  |
 | label | [string](#string) |  |  |
 
 
@@ -871,6 +873,21 @@ Environment variable
 | permitted | [CapabilitiesType](#tetragon-CapabilitiesType) | repeated |  |
 | effective | [CapabilitiesType](#tetragon-CapabilitiesType) | repeated |  |
 | inheritable | [CapabilitiesType](#tetragon-CapabilitiesType) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-KprobeError"></a>
+
+### KprobeError
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| Message | [string](#string) |  |  |
 
 
 
