@@ -969,6 +969,47 @@ export declare type GetModelResponse = Message<"application_model.v1alpha.GetMod
 export declare const GetModelResponseSchema: GenMessage<GetModelResponse>;
 
 /**
+ * @generated from message application_model.v1alpha.StreamModelRequest
+ */
+export declare type StreamModelRequest = Message<"application_model.v1alpha.StreamModelRequest"> & {
+  /**
+   * Namespaces to collect model for.
+   *
+   * @generated from field: repeated string namespaces = 1;
+   */
+  namespaces: string[];
+
+  /**
+   * Include model request information for the host
+   *
+   * @generated from field: bool host = 2;
+   */
+  host: boolean;
+};
+
+/**
+ * Describes the message application_model.v1alpha.StreamModelRequest.
+ * Use `create(StreamModelRequestSchema)` to create a new message.
+ */
+export declare const StreamModelRequestSchema: GenMessage<StreamModelRequest>;
+
+/**
+ * @generated from message application_model.v1alpha.StreamModelResponse
+ */
+export declare type StreamModelResponse = Message<"application_model.v1alpha.StreamModelResponse"> & {
+  /**
+   * @generated from field: application_model.v1alpha.ApplicationModelEvent model = 1;
+   */
+  model?: ApplicationModelEvent;
+};
+
+/**
+ * Describes the message application_model.v1alpha.StreamModelResponse.
+ * Use `create(StreamModelResponseSchema)` to create a new message.
+ */
+export declare const StreamModelResponseSchema: GenMessage<StreamModelResponse>;
+
+/**
  * @generated from message application_model.v1alpha.StreamTelemetryRequest
  */
 export declare type StreamTelemetryRequest = Message<"application_model.v1alpha.StreamTelemetryRequest"> & {
@@ -1114,6 +1155,21 @@ export declare const ApplicationModelService: GenService<{
     methodKind: "unary";
     input: typeof GetModelRequestSchema;
     output: typeof GetModelResponseSchema;
+  },
+  /**
+   * This returns the same information as GetModel, but split into
+   * smaller partial messages. Each partial message will contain a
+   * sub-tree from the root, but only for a selected application
+   * host, namespace, and/or workload. The client should combine
+   * the partial messages, merging as needed, to obtain the entire
+   * Application Model.
+   *
+   * @generated from rpc application_model.v1alpha.ApplicationModelService.StreamModel
+   */
+  streamModel: {
+    methodKind: "server_streaming";
+    input: typeof StreamModelRequestSchema;
+    output: typeof StreamModelResponseSchema;
   },
   /**
    * @generated from rpc application_model.v1alpha.ApplicationModelService.StreamTelemetry

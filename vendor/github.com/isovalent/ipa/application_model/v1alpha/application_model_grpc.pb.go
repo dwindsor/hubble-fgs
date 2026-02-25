@@ -28,6 +28,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	ApplicationModelService_GetModel_FullMethodName        = "/application_model.v1alpha.ApplicationModelService/GetModel"
+	ApplicationModelService_StreamModel_FullMethodName     = "/application_model.v1alpha.ApplicationModelService/StreamModel"
 	ApplicationModelService_StreamTelemetry_FullMethodName = "/application_model.v1alpha.ApplicationModelService/StreamTelemetry"
 )
 
@@ -36,6 +37,13 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ApplicationModelServiceClient interface {
 	GetModel(ctx context.Context, in *GetModelRequest, opts ...grpc.CallOption) (*GetModelResponse, error)
+	// This returns the same information as GetModel, but split into
+	// smaller partial messages. Each partial message will contain a
+	// sub-tree from the root, but only for a selected application
+	// host, namespace, and/or workload. The client should combine
+	// the partial messages, merging as needed, to obtain the entire
+	// Application Model.
+	StreamModel(ctx context.Context, in *StreamModelRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamModelResponse], error)
 	StreamTelemetry(ctx context.Context, in *StreamTelemetryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamTelemetryResponse], error)
 }
 
@@ -57,9 +65,28 @@ func (c *applicationModelServiceClient) GetModel(ctx context.Context, in *GetMod
 	return out, nil
 }
 
+func (c *applicationModelServiceClient) StreamModel(ctx context.Context, in *StreamModelRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamModelResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ApplicationModelService_ServiceDesc.Streams[0], ApplicationModelService_StreamModel_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamModelRequest, StreamModelResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ApplicationModelService_StreamModelClient = grpc.ServerStreamingClient[StreamModelResponse]
+
 func (c *applicationModelServiceClient) StreamTelemetry(ctx context.Context, in *StreamTelemetryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamTelemetryResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ApplicationModelService_ServiceDesc.Streams[0], ApplicationModelService_StreamTelemetry_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ApplicationModelService_ServiceDesc.Streams[1], ApplicationModelService_StreamTelemetry_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -81,6 +108,13 @@ type ApplicationModelService_StreamTelemetryClient = grpc.ServerStreamingClient[
 // for forward compatibility.
 type ApplicationModelServiceServer interface {
 	GetModel(context.Context, *GetModelRequest) (*GetModelResponse, error)
+	// This returns the same information as GetModel, but split into
+	// smaller partial messages. Each partial message will contain a
+	// sub-tree from the root, but only for a selected application
+	// host, namespace, and/or workload. The client should combine
+	// the partial messages, merging as needed, to obtain the entire
+	// Application Model.
+	StreamModel(*StreamModelRequest, grpc.ServerStreamingServer[StreamModelResponse]) error
 	StreamTelemetry(*StreamTelemetryRequest, grpc.ServerStreamingServer[StreamTelemetryResponse]) error
 }
 
@@ -93,6 +127,9 @@ type UnimplementedApplicationModelServiceServer struct{}
 
 func (UnimplementedApplicationModelServiceServer) GetModel(context.Context, *GetModelRequest) (*GetModelResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetModel not implemented")
+}
+func (UnimplementedApplicationModelServiceServer) StreamModel(*StreamModelRequest, grpc.ServerStreamingServer[StreamModelResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamModel not implemented")
 }
 func (UnimplementedApplicationModelServiceServer) StreamTelemetry(*StreamTelemetryRequest, grpc.ServerStreamingServer[StreamTelemetryResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method StreamTelemetry not implemented")
@@ -135,6 +172,17 @@ func _ApplicationModelService_GetModel_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ApplicationModelService_StreamModel_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamModelRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ApplicationModelServiceServer).StreamModel(m, &grpc.GenericServerStream[StreamModelRequest, StreamModelResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ApplicationModelService_StreamModelServer = grpc.ServerStreamingServer[StreamModelResponse]
+
 func _ApplicationModelService_StreamTelemetry_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(StreamTelemetryRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -159,6 +207,11 @@ var ApplicationModelService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamModel",
+			Handler:       _ApplicationModelService_StreamModel_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "StreamTelemetry",
 			Handler:       _ApplicationModelService_StreamTelemetry_Handler,

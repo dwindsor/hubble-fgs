@@ -330,6 +330,17 @@ message GetModelResponse {
   ApplicationModelEvent model = 1;
 }
 
+message StreamModelRequest {
+  // Namespaces to collect model for.
+  repeated string namespaces = 1;
+  // Include model request information for the host
+  bool host = 2;
+}
+
+message StreamModelResponse {
+  ApplicationModelEvent model = 1;
+}
+
 message StreamTelemetryRequest {
   // Namespaces to collect model for.
   repeated string namespaces = 1;
@@ -347,5 +358,13 @@ message StreamTelemetryResponse {
 
 service ApplicationModelService {
   rpc GetModel(GetModelRequest) returns (GetModelResponse) {}
+
+  // This returns the same information as GetModel, but split into
+  // smaller partial messages. Each partial message will contain a
+  // sub-tree from the root, but only for a selected application
+  // host, namespace, and/or workload. The client should combine
+  // the partial messages, merging as needed, to obtain the entire
+  // Application Model.
+  rpc StreamModel(StreamModelRequest) returns (stream StreamModelResponse) {}
   rpc StreamTelemetry(StreamTelemetryRequest) returns (stream StreamTelemetryResponse) {}
 }

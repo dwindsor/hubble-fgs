@@ -29,6 +29,8 @@
     - [NetworkPolicy](#application_model-v1alpha-NetworkPolicy)
     - [ProcessTelemetry](#application_model-v1alpha-ProcessTelemetry)
     - [ProcessTelemetry.NodeLabelsEntry](#application_model-v1alpha-ProcessTelemetry-NodeLabelsEntry)
+    - [StreamModelRequest](#application_model-v1alpha-StreamModelRequest)
+    - [StreamModelResponse](#application_model-v1alpha-StreamModelResponse)
     - [StreamTelemetryRequest](#application_model-v1alpha-StreamTelemetryRequest)
     - [StreamTelemetryResponse](#application_model-v1alpha-StreamTelemetryResponse)
   
@@ -976,6 +978,37 @@ the following criteria:
 
 
 
+<a name="application_model-v1alpha-StreamModelRequest"></a>
+
+### StreamModelRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| namespaces | [string](#string) | repeated | Namespaces to collect model for. |
+| host | [bool](#bool) |  | Include model request information for the host |
+
+
+
+
+
+
+<a name="application_model-v1alpha-StreamModelResponse"></a>
+
+### StreamModelResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| model | [ApplicationModelEvent](#application_model-v1alpha-ApplicationModelEvent) |  |  |
+
+
+
+
+
+
 <a name="application_model-v1alpha-StreamTelemetryRequest"></a>
 
 ### StreamTelemetryRequest
@@ -1062,6 +1095,7 @@ the following criteria:
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
 | GetModel | [GetModelRequest](#application_model-v1alpha-GetModelRequest) | [GetModelResponse](#application_model-v1alpha-GetModelResponse) |  |
+| StreamModel | [StreamModelRequest](#application_model-v1alpha-StreamModelRequest) | [StreamModelResponse](#application_model-v1alpha-StreamModelResponse) stream | This returns the same information as GetModel, but split into smaller partial messages. Each partial message will contain a sub-tree from the root, but only for a selected application host, namespace, and/or workload. The client should combine the partial messages, merging as needed, to obtain the entire Application Model. |
 | StreamTelemetry | [StreamTelemetryRequest](#application_model-v1alpha-StreamTelemetryRequest) | [StreamTelemetryResponse](#application_model-v1alpha-StreamTelemetryResponse) stream |  |
 
  
