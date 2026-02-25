@@ -12,6 +12,7 @@ package nxos
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -270,6 +271,10 @@ func (n *Nxos) gnmiDel(ctx context.Context, path string) error {
 }
 
 func (n *Nxos) gnmiGet(ctx context.Context, path string) ([]string, error) {
+	if n.Target == nil {
+		return nil, fmt.Errorf("gnmiGet called but Target is nil")
+	}
+
 	var jstrs []string
 
 	req, err := api.NewGetRequest(
