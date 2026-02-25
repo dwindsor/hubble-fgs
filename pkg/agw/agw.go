@@ -36,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
 	"github.com/isovalent/hubble-fgs/pkg/dpu/policy"
 	"github.com/isovalent/hubble-fgs/pkg/ipc"
+	"github.com/isovalent/hubble-fgs/pkg/logexport"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchpolicy"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchstatus"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
@@ -526,7 +527,7 @@ func (agw *AgentGateway) DpuHealthCheck(ctx context.Context) {
 			logger.GetLogger().Info("Stop DPU health checker")
 			return
 		case <-time.After(healthCheckTimer):
-			logger.GetLogger().Debug("DPU health check - starting")
+			logger.GetLogger().Debug("DPU health check - starting", logexport.Export)
 			ok := agw.dpuListener.StateCheck()
 			if !ok {
 				retries++

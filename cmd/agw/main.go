@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/version"
 
 	_ "github.com/isovalent/hubble-fgs/operator/agent" // needed to init network policy schema
+	agwlog "github.com/isovalent/hubble-fgs/pkg/agw/logexport"
 )
 
 const (
@@ -49,6 +50,17 @@ func Execute() error {
 		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			if Config.Debug {
 				logger.SetLogLevel(slog.LevelDebug)
+			}
+
+			// Export tagged AGW logs to FluentBit over unixgram as structured JSON.
+			// Only records carrying logexport.Export are forwarded.
+			if Config.FlbSocketPath != "" {
+				originalHandler := logger.DefaultSlogLogger.Handler()
+				logExportH := agwlog.NewHandler(Config.FlbSocketPath)
+				logger.DefaultSlogLogger = slog.New(agwlog.MultiHandler{
+					Primary: originalHandler,
+					Mirrors: []slog.Handler{logExportH},
+				})
 			}
 		},
 		RunE: func(_ *cobra.Command, _ []string) error {
