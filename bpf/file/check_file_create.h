@@ -57,8 +57,8 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	action = eval_patterns(msg->path.str, msg->path.size, &rule_id, conf);
 	if (action < 0) // error
 		return action;
-	if (!action) // we didn't match
-		return 0;
+	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE)
+		return 0; // nothing to do
 
 	// and insert that inode to the hash_map_inode_alloc
 	file_key.ino = msg->ino;
@@ -86,6 +86,9 @@ static inline __attribute__((always_inline)) __u32 check_file_create(void *ctx, 
 	if (map_update_elem(&hash_map_inode_alloc, &file_key, file_val, 0) < 0)
 		return -FILE_ERR_UPDATE_INODE_MAP;
 	mod_inode_map_stats(1);
+
+	if (action == FILTER_MONITOR)
+		return 0;
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

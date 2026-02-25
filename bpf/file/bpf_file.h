@@ -1714,7 +1714,7 @@ static inline __attribute__((always_inline)) int handle_enforcement(int err)
 static inline __attribute__((always_inline)) int path_prefix_matcher(char *path, __u32 size, __u32 *rule_id, struct file_config_map_value *conf)
 {
 	struct bpf_lpm_trie_key *key = 0;
-	int zero = 0, action = 0;
+	int zero = 0;
 
 	// although we care about files inside this directory
 	// we may have this specific file path in the exclude
@@ -1726,10 +1726,7 @@ static inline __attribute__((always_inline)) int path_prefix_matcher(char *path,
 	key->prefixlen = size * 8;
 	memcpy(key->data, path, 256);
 
-	action = filter_match(key, rule_id);
-	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE || action == FILTER_MONITOR)
-		return FILTER_IGNORE;
-	return FILTER_MATCH;
+	return filter_match(key, rule_id);
 }
 
 // <  0 for error
@@ -1794,7 +1791,7 @@ static inline __attribute__((always_inline)) int path_pattern_matcher(char *path
 		;
 	}
 
-	return FILTER_IGNORE;
+	return FILTER_NOTFOUND;
 }
 
 // <  0 for error
@@ -1806,7 +1803,7 @@ static inline __attribute__((always_inline)) int file_exact_matcher(char *path, 
 
 	ret = map_lookup_elem(&exact_match_map_alloc, path);
 	if (!ret)
-		return FILTER_IGNORE;
+		return FILTER_NOTFOUND;
 
 	if (rule_id)
 		*rule_id = *ret;
@@ -1828,15 +1825,19 @@ typedef int (*matcher_type)(char *, __u32, __u32 *, struct file_config_map_value
 static inline __attribute__((always_inline)) int eval_patterns(char *path, __u32 size, __u32 *rule_id, struct file_config_map_value *conf)
 {
 	matcher_type matchers[3] = { path_prefix_matcher, path_pattern_matcher, file_exact_matcher };
-	int ret, i;
+	int ret, i, has_monitor = 0;
 
 	for (i = 0; i < MATCHERS_LEN; ++i) {
 		ret = (matchers[i])(path, size, rule_id, conf);
-		if (ret) // if there was a match or an error, return
+		if (ret == FILTER_IGNORE) // ignore that file -- stop
 			return ret;
+		if (ret == FILTER_MATCH) // match that file -- stop
+			return ret;
+		if (ret == FILTER_MONITOR) // let's continue to try to have a FILTER_MATCH otherwise we will return FILTER_MONITOR
+			has_monitor = 1;
 	}
 
-	return FILTER_IGNORE;
+	return (has_monitor) ? (FILTER_MONITOR) : (FILTER_NOTFOUND);
 }
 
 static inline __attribute__((always_inline)) int generate_new_file_path(struct dentry *dentry, struct msg_file_ops *msg, struct inode_val *file_val)

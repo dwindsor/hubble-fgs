@@ -114,8 +114,8 @@ check_dir:
 	action = eval_patterns(msg->path.str, msg->path.size, &rule_id, conf);
 	if (action < 0) // error
 		return action;
-	if (!action) // we didn't match
-		return 0;
+	if (action != FILTER_MATCH)
+		return 0; // nothing to do
 
 generate_message:
 	msg->action = action_open;

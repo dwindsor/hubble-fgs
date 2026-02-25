@@ -54,8 +54,8 @@ block_file_create(void *ctx, struct inode *dir, struct dentry *dentry)
 	action = eval_patterns(msg->path.str, msg->path.size, &rule_id, conf);
 	if (action < 0) // error
 		return action;
-	if (!action) // we didn't match
-		return 0;
+	if (action != FILTER_MATCH)
+		return 0; // nothing to do
 
 	// At this point we know that we care about this access.
 	// Now we can check for the selectors, if they do not match

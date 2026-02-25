@@ -514,9 +514,7 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 			action = eval_patterns(file_val->path, file_val->size, &rule_id, conf);
 			if (action < 0) // error
 				return action;
-
-			// we care only for FILTER_MATCH actions here
-			if (action != FILTER_MATCH) {
+			if (action == FILTER_NOTFOUND || action == FILTER_IGNORE) { // we do not care for that -- skip the inode map update
 				val->operation = 0; // do not send an event to the user
 				goto vfs_rename_exit_out;
 			}
@@ -553,6 +551,10 @@ int BPF_KRETPROBE(vfs_rename_exit, long ret)
 				action = eval_patterns(file_val->path, file_val->size, &rule_id, conf);
 				if (action < 0) // error
 					return action;
+				if (action == FILTER_NOTFOUND || action == FILTER_IGNORE) { // we do not care for that -- skip the inode map update
+					val->operation = 0; // do not send an event to the user
+					goto vfs_rename_exit_out;
+				}
 
 				file_val->action = action;
 
