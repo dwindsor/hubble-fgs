@@ -12,6 +12,7 @@ package nxos
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -160,33 +161,32 @@ func (n *Nxos) getProxyConfig(ctx context.Context) error {
 func (n *Nxos) getModelAndVersion(ctx context.Context) error {
 	logger.GetLogger().Debug("Retrieving model and version")
 
-	jstrs, err := n.gnmiGet(ctx, "/System/ch-items/supslot-items")
+	mstrs, err := n.gnmiGet(ctx, "/System/ch-items/spbp-items/spcmn-items/pdNum")
 	if err != nil {
-		logger.GetLogger().Error("Fail to get supslot-items", logfields.Error, err)
+		logger.GetLogger().Error("Fail to get model", logfields.Error, err)
 		return err
 	}
-	// logger.GetLogger().Debug("jstrs: %v", jstrs)
-	if len(jstrs) > 0 && len(jstrs[0]) > 0 {
-		items := &model.Cisco_NX_OSDevice_System_ChItems_SupslotItems{}
-		opts := []ytypes.UnmarshalOpt{&ytypes.IgnoreExtraFields{}}
-		err = model.Unmarshal([]byte(jstrs[0]), items, opts...)
-		if err != nil {
-			logger.GetLogger().Error("Fail to unmarshal supslot-items", logfields.Error, err)
+	if len(mstrs) > 0 {
+		if model, err := strconv.Unquote(mstrs[0]); err == nil {
+			n.Model = model
 		} else {
-			for _, list := range items.SupCSlotList {
-				if list.SupItems == nil {
-					continue
-				}
-				// logger.GetLogger().Debug("SupItems: %+v", list.SupItems)
-				if list.SupItems.Model != nil && list.SupItems.SwVer != nil {
-					n.Model = *list.SupItems.Model
-					n.SwVer = *list.SupItems.SwVer
-					logger.GetLogger().Debug("sswitch", "model", n.Model, "SwVer", n.SwVer)
-					break
-				}
-			}
+			n.Model = mstrs[0]
 		}
 	}
+	vstrs, err := n.gnmiGet(ctx, "/System/ch-items/supslot-items/SupCSlot-list/sup-items/swVer")
+	if err != nil {
+		logger.GetLogger().Error("Fail to get model", logfields.Error, err)
+		return err
+	}
+	logger.GetLogger().Info("jstrs version", "version", vstrs)
+	if len(vstrs) > 0 {
+		if model, err := strconv.Unquote(vstrs[0]); err == nil {
+			n.SwVer = model
+		} else {
+			n.SwVer = vstrs[0]
+		}
+	}
+	logger.GetLogger().Debug("sswitch", "model", n.Model, "SwVer", n.SwVer)
 	return nil
 }
 
