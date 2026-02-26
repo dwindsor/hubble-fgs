@@ -209,6 +209,11 @@ func (n *Nxos) delSvcInstance(ctx context.Context, elem *gnmi.PathElem) {
 		return
 	}
 
+	n.delHa(ctx)
+	// Delete HA config from repository to notify DPUs before restart
+	if err := library.GetRepository().DeleteConfig(v1alpha.ConfigType_CONFIG_TYPE_HA); err != nil {
+		logger.GetLogger().Error("Failed to delete HA config from repository", logfields.Error, err)
+	}
 	n.delDpuPortRange(ctx)
 	n.remove(ctx, allocFname)
 	// Do a graceful restart of the agent, without service redirect cleanp.
@@ -1128,6 +1133,10 @@ func (n *Nxos) delHa(ctx context.Context) {
 	n.Ha.NxStates.SvcStateEpoch = 0
 	n.Ha.IsLeader = false
 	n.Ha.EverReady = false
+	n.Ha.Local.IsFunc = false
+	n.Ha.Local.PendingIsFunc = false
+	n.Ha.Local.PendingEpoch = 0
+	n.Ha.Local.FlapCount = 0
 	if err := n.setLocalHaStateToNotReady(ctx); err != nil {
 		logger.GetLogger().Error("failed to set local HA state to not ready", logfields.Error, err)
 	}

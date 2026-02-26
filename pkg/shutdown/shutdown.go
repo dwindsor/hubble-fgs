@@ -30,23 +30,50 @@ const (
 
 // ShutdownManager handles centralized process shutdown with proper cleanup
 type ShutdownManager struct {
-	shutdown     chan int
-	errGroup     *errgroup.Group
-	ctx          context.Context
-	cancelFunc   context.CancelFunc
-	cleanupFuncs []func(context.Context) error
-	mu           sync.Mutex
-	once         sync.Once
+	shutdown         chan int
+	errGroup         *errgroup.Group
+	ctx              context.Context
+	cancelFunc       context.CancelFunc
+	preShutdownFuncs []func(context.Context) error
+	cleanupFuncs     []func(context.Context) error
+	mu               sync.Mutex
+	once             sync.Once
 }
 
 // NewShutdownManager creates a new shutdown manager
 func NewShutdownManager(ctx context.Context, cancel context.CancelFunc, errGroup *errgroup.Group) *ShutdownManager {
 	return &ShutdownManager{
-		shutdown:     make(chan int, 1),
-		errGroup:     errGroup,
-		ctx:          ctx,
-		cancelFunc:   cancel,
-		cleanupFuncs: make([]func(context.Context) error, 0),
+		shutdown:         make(chan int, 1),
+		errGroup:         errGroup,
+		ctx:              ctx,
+		cancelFunc:       cancel,
+		preShutdownFuncs: make([]func(context.Context) error, 0),
+		cleanupFuncs:     make([]func(context.Context) error, 0),
+	}
+}
+
+// RegisterPreShutdown adds a function that runs before context cancellation
+// during shutdown. Use this for work that requires active goroutines and
+// gRPC streams (e.g., pushing config updates to connected peers).
+func (sm *ShutdownManager) RegisterPreShutdown(f func(context.Context) error) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.preShutdownFuncs = append(sm.preShutdownFuncs, f)
+	logger.GetLogger().Debug("Registered pre-shutdown function", "total", len(sm.preShutdownFuncs))
+}
+
+// runPreShutdown executes all registered pre-shutdown functions
+func (sm *ShutdownManager) runPreShutdown() {
+	sm.mu.Lock()
+	preShutdownFuncs := make([]func(context.Context) error, len(sm.preShutdownFuncs))
+	copy(preShutdownFuncs, sm.preShutdownFuncs)
+	sm.mu.Unlock()
+
+	logger.GetLogger().Debug("Running pre-shutdown functions", "count", len(preShutdownFuncs))
+	for i, f := range preShutdownFuncs {
+		if err := f(sm.ctx); err != nil {
+			logger.GetLogger().Error("Pre-shutdown function failed", "index", i, "error", err)
+		}
 	}
 }
 
@@ -93,13 +120,18 @@ func (sm *ShutdownManager) Wait() {
 func (sm *ShutdownManager) Shutdown(exitCode int) {
 	logger.GetLogger().Info("Initiating graceful shutdown", "exitCode", exitCode)
 
-	// Step 1: Cancel context to signal all goroutines to stop
+	// Step 1: Run pre-shutdown functions while context is still active.
+	// This allows functions that depend on live goroutines and gRPC
+	// streams (e.g., pushing config updates to DPUs) to complete.
+	sm.runPreShutdown()
+
+	// Step 2: Cancel context to signal all goroutines to stop
 	if sm.cancelFunc != nil {
 		sm.cancelFunc()
 		logger.GetLogger().Debug("Context canceled, proceeding to wait for goroutines")
 	}
 
-	// Step 2: Wait for all goroutines to complete (if not already done)
+	// Step 3: Wait for all goroutines to complete (if not already done)
 	if sm.errGroup != nil {
 		logger.GetLogger().Debug("Waiting for all goroutines to complete")
 
@@ -122,11 +154,11 @@ func (sm *ShutdownManager) Shutdown(exitCode int) {
 		logger.GetLogger().Debug("ErrGroup wait completed")
 	}
 
-	// Step 3: Run cleanup functions
+	// Step 4: Run cleanup functions
 	sm.runCleanup()
 	logger.GetLogger().Debug("Cleanup functions completed")
 
-	// Step 4: Exit with specified code
+	// Step 5: Exit with specified code
 	logger.GetLogger().Debug("About to exit process", "exitCode", exitCode)
 	sm.Exit(exitCode)
 }
@@ -186,6 +218,15 @@ func RegisterCleanup(cleanupFunc func(context.Context) error) {
 		return
 	}
 	globalShutdownManager.Register(cleanupFunc)
+}
+
+// RegisterPreShutdown adds a pre-shutdown function to the global shutdown manager
+func RegisterPreShutdown(f func(context.Context) error) {
+	if globalShutdownManager == nil {
+		logger.GetLogger().Error("Global shutdown manager not setup - call SetupShutdownManager first")
+		return
+	}
+	globalShutdownManager.RegisterPreShutdown(f)
 }
 
 // Wait waits for shutdown using the global shutdown manager

@@ -600,6 +600,13 @@ func (n *Nxos) Setup(ctx context.Context, low, high uint16, dpuListener *switchp
 	n.dpuListener = dpuListener
 	n.policyHandler = policyHandler
 
+	// Register pre-shutdown function to delete HA config from DPUs
+	// while gRPC streams are still active (before context cancellation).
+	// This ensures DPUs stop HA messaging before AGW shuts down.
+	shutdown.RegisterPreShutdown(func(ctx context.Context) error {
+		return library.GetRepository().DeleteConfig(v1alpha.ConfigType_CONFIG_TYPE_HA)
+	})
+
 	// Register NXOS cleanup functions with the shutdown manager
 	// This ensures proper cleanup order and encapsulation
 	shutdown.RegisterCleanup(func(ctx context.Context) error {
@@ -1131,15 +1138,14 @@ func SetInSyncCount(ctx context.Context, insync, oosync []string) {
 // aggregateDpuKeepalive returns true if all DPUs have keepalive up.
 // Returns false when no DPUs are registered (unless SkipDpu is set).
 func (n *Nxos) aggregateDpuKeepalive() bool {
-	// TEMP: force true for keepalive peer criteria during testing.
-	// if n.Ha.DpuKeepalive == nil || len(n.Ha.DpuKeepalive) == 0 {
-	// 	return n.SkipDpu
-	// }
-	// for _, v := range n.Ha.DpuKeepalive {
-	// 	if !v {
-	// 		return false
-	// 	}
-	// }
+	if n.Ha.DpuKeepalive == nil || len(n.Ha.DpuKeepalive) == 0 {
+		return n.SkipDpu
+	}
+	for _, v := range n.Ha.DpuKeepalive {
+		if !v {
+			return false
+		}
+	}
 	return true
 }
 
@@ -1147,15 +1153,14 @@ func (n *Nxos) aggregateDpuKeepalive() bool {
 // (both local and peer done). Returns false when no DPUs are registered
 // (unless SkipDpu is set).
 func (n *Nxos) aggregateDpuBulkSync() bool {
-	// TEMP: force true for bulk sync peer criteria during testing.
-	// if n.Ha.DpuBulkSync == nil || len(n.Ha.DpuBulkSync) == 0 {
-	// 	return n.SkipDpu
-	// }
-	// for _, v := range n.Ha.DpuBulkSync {
-	// 	if !v.Done() {
-	// 		return false
-	// 	}
-	// }
+	if n.Ha.DpuBulkSync == nil || len(n.Ha.DpuBulkSync) == 0 {
+		return n.SkipDpu
+	}
+	for _, v := range n.Ha.DpuBulkSync {
+		if !v.Done() {
+			return false
+		}
+	}
 	return true
 }
 

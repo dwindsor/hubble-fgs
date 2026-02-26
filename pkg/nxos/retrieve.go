@@ -178,7 +178,6 @@ func (n *Nxos) getModelAndVersion(ctx context.Context) error {
 		logger.GetLogger().Error("Fail to get model", logfields.Error, err)
 		return err
 	}
-	logger.GetLogger().Info("jstrs version", "version", vstrs)
 	if len(vstrs) > 0 {
 		if model, err := strconv.Unquote(vstrs[0]); err == nil {
 			n.SwVer = model

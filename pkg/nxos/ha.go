@@ -142,8 +142,10 @@ func (n *Nxos) updateHaConfig() {
 		})
 	}
 
+	haIp := n.GetHaIp()
+
 	var enabled bool
-	if len(peers) > 0 {
+	if len(peers) > 0 && haIp != "" && haIp != "0.0.0.0" {
 		enabled = n.GetHaConfigured() && n.GetHaOperUp() && n.stableIsFunc()
 	}
 	var flow_sync bool
@@ -151,7 +153,7 @@ func (n *Nxos) updateHaConfig() {
 
 	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_HA, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
 		haConfig := &v1alpha.HaConfig{}
-		haConfig.HaIp = n.GetHaIp()
+		haConfig.HaIp = haIp
 		haConfig.Peers = peers
 		haConfig.Enabled = enabled
 		haConfig.FlowSync = flow_sync
@@ -976,7 +978,7 @@ func (n *Nxos) haCheckIsFuncHoldDown(ctx context.Context) {
 	}
 
 	// Promote: hold-down satisfied and criteria still all-true.
-	logger.GetLogger().Info("Local HA State hold-down satisfied, promoting to true",
+	logger.GetLogger().Info("Local HA State hold-down complete, HA state set to true",
 		"holdDown", isFuncHoldDown, "flapCount", n.Ha.Local.FlapCount)
 	n.Ha.Local.IsFunc = true
 	n.Ha.Local.Epoch = now
