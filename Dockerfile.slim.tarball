@@ -24,10 +24,12 @@ COPY --from=tetragon-slim-release /var/lib/tetragon /usr/local/lib/tetragon/bpf
 # make symbolic links
 RUN --mount=type=bind,from=alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659,source=/bin,target=/bin \
     --mount=type=bind,from=alpine,source=/lib,target=/lib \
-	ln -s /usr/local/bin/tetrabox /usr/local/bin/tetragon && \
-	ln -s /usr/local/bin/tetrabox /usr/local/bin/tetra    && \
+	cd /usr/local/bin && \
+	ln -s tetrabox tetragon && \
+	ln -s tetrabox tetra    && \
 	rm /usr/local/lib/tetragon/bpf/tetragon-fs-scanner    && \
-	ln -s /usr/local/bin/tetrabox /usr/local/lib/tetragon/bpf/tetragon-fs-scanner
+	cd /usr/local/lib/tetragon/bpf && \
+	ln -s ../../../bin/tetrabox tetragon-fs-scanner
 
 # We need one layer
 FROM scratch AS linux-tarball-2
