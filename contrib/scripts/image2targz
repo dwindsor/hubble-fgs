@@ -1,0 +1,16 @@
+#!/usr/bin/bash
+
+set -euo pipefail
+
+if [ -z "$1" ] || [ -z "$2" ]; then
+  echo "Usage: $0 <image> <tgzfile>"
+  exit 1
+fi
+
+image=$1
+tgzfile=$2
+CONTAINER_ENGINE=${CONTAINER_ENGINE:-docker}
+
+id=$("$CONTAINER_ENGINE" create "$image" cmddoesnotmatter)
+trap "$CONTAINER_ENGINE rm $id" EXIT
+"$CONTAINER_ENGINE" export "$id" | gzip -6 > $tgzfile
