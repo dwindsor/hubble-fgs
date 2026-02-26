@@ -7,14 +7,9 @@ if [ "$(id -u)" -ne 0 ]; then
         exit 1
 fi
 
-# Cleanup old name
-systemctl stop hubble-fgs
-systemctl disable hubble-fgs
-
 systemctl stop tetragon-enterprise
 systemctl disable tetragon-enterprise
 
-rm -fr /usr/lib/systemd/system/hubble-fgs.service
 rm -fr /usr/lib/systemd/system/tetragon-enterprise.service
 
 # Cleanup old systemd service
@@ -29,10 +24,3 @@ rm -f /usr/local/bin/tetra
 
 # remove resources
 rm -fr /usr/local/lib/tetragon/
-
-# remove legacy symbolic links
-rm -f /usr/local/bin/hubble-fgs
-rm -f /usr/local/bin/hubble-enterprise
-rm -f /usr/local/bin/hubble-fgs-printer
-
-rm -fr /usr/local/lib/hubble-fgs/
