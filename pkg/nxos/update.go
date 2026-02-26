@@ -1052,6 +1052,16 @@ func (n *Nxos) setPkgAction(ctx context.Context, isFile bool, fpath string) erro
 	return nil
 }
 
+const maxReasonLen = 80
+
+// truncateReason ensures a reason string fits within maxReasonLen characters.
+func truncateReason(s string) string {
+	if len(s) <= maxReasonLen {
+		return s
+	}
+	return s[:maxReasonLen-3] + "..."
+}
+
 // buildLocalSvcStateReason returns a comma-separated list of unmet HA criteria names.
 func (n *Nxos) buildLocalSvcStateReason() string {
 	var unmet []string
@@ -1079,7 +1089,7 @@ func (n *Nxos) setLocalSvcState(ctx context.Context) error {
 
 	case hav1.SERVICE_STATE_SVC_FAILURE:
 		items.LocalSvcState = model.Cisco_NX_OSDevice_SasSvcStateE_not_ready
-		reason := n.buildLocalSvcStateReason()
+		reason := truncateReason(n.buildLocalSvcStateReason())
 		items.LocalSvcStateReason = &reason
 	}
 	jstr, err := ygot.EmitJSON(&items, &ygot.EmitJSONConfig{
@@ -1103,7 +1113,7 @@ func (n *Nxos) setLocalSvcState(ctx context.Context) error {
 func (n *Nxos) setLocalSvcStateToFailure(ctx context.Context) error {
 	logger.GetLogger().Debug("setLocalSvcStateToFailure")
 
-	reason := n.buildLocalSvcStateReason()
+	reason := truncateReason(n.buildLocalSvcStateReason())
 	items := model.Cisco_NX_OSDevice_System_SasItems_SvcItems_SvcinstItems_SvcInstanceList_FwpolicystateItems_ExtItems{
 		LocalSvcState:       model.Cisco_NX_OSDevice_SasSvcStateE_not_ready,
 		LocalSvcStateReason: &reason,
@@ -1154,7 +1164,7 @@ func (n *Nxos) setRemoteMbrState(ctx context.Context, ip string) error {
 		list.SvcHaState = model.Cisco_NX_OSDevice_SasSvcHaStateE_ha_fail
 	}
 
-	reason := peer.StateReason
+	reason := truncateReason(peer.StateReason)
 	list.SvcHaStateReason = &reason
 
 	items.HaPeerExtList[ip] = &list

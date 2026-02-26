@@ -1134,7 +1134,7 @@ func (n *Nxos) delHa(ctx context.Context) {
 	n.Ha.IsLeader = false
 	n.Ha.EverReady = false
 	n.Ha.Local.IsFunc = false
-	n.Ha.Local.PendingIsFunc = false
+	n.Ha.Local.IsFuncRecoveryPending = false
 	n.Ha.Local.PendingEpoch = 0
 	n.Ha.Local.FlapCount = 0
 	if err := n.setLocalHaStateToNotReady(ctx); err != nil {

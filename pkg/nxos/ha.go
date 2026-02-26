@@ -891,13 +891,14 @@ func (n *Nxos) computeIsFunc() bool {
 }
 
 // stableIsFunc returns the effective IsFunc value that respects the
-// anti-flapping hold-down.  During a pending recovery (PendingIsFunc
+// anti-flapping hold-down.  During a pending recovery (IsFuncRecoveryPending
 // is true but hold-down has not yet expired), this returns false even
 // though the raw criteria may all be passing.  All consumers that
 // derive state from IsFunc (HA config, NX state, member info) must
 // use this method instead of reading n.Ha.Local.IsFunc directly.
+// The function caller must hold a lock.
 func (n *Nxos) stableIsFunc() bool {
-	if n.Ha.Local.PendingIsFunc {
+	if n.Ha.Local.IsFuncRecoveryPending {
 		return false
 	}
 	return n.Ha.Local.IsFunc
@@ -924,25 +925,25 @@ func (n *Nxos) recalculateIsFuncAndState(ctx context.Context) {
 		n.Ha.Local.IsFunc = false
 		n.Ha.Local.Epoch = now
 		// Cancel any stale pending recovery.
-		n.Ha.Local.PendingIsFunc = false
+		n.Ha.Local.IsFuncRecoveryPending = false
 		n.Ha.Local.PendingEpoch = 0
 		n.updateHaConfig()
 	} else if !n.Ha.Local.IsFunc && isFunc {
 		// Recovery: start or maintain hold-down.
-		if !n.Ha.Local.PendingIsFunc {
+		if !n.Ha.Local.IsFuncRecoveryPending {
 			logger.GetLogger().Info("Local HA State recovery pending, starting hold-down",
 				"holdDown", isFuncHoldDown)
-			n.Ha.Local.PendingIsFunc = true
+			n.Ha.Local.IsFuncRecoveryPending = true
 			n.Ha.Local.PendingEpoch = now
 		}
 		// Promotion is handled by haCheckIsFuncHoldDown in the periodic loop.
 	} else if !n.Ha.Local.IsFunc && !isFunc {
 		// Still degraded — cancel any pending recovery if criteria flapped
 		// back to false during the hold-down window.
-		if n.Ha.Local.PendingIsFunc {
+		if n.Ha.Local.IsFuncRecoveryPending {
 			logger.GetLogger().Info("Local HA State hold-down cancelled, criteria failed again",
 				"flapCount", n.Ha.Local.FlapCount+1)
-			n.Ha.Local.PendingIsFunc = false
+			n.Ha.Local.IsFuncRecoveryPending = false
 			n.Ha.Local.PendingEpoch = 0
 			n.Ha.Local.FlapCount++
 		}
@@ -956,7 +957,7 @@ func (n *Nxos) recalculateIsFuncAndState(ctx context.Context) {
 // Called from the periodic haSetup loop.
 // Caller must hold the lock.
 func (n *Nxos) haCheckIsFuncHoldDown(ctx context.Context) {
-	if !n.Ha.Local.PendingIsFunc {
+	if !n.Ha.Local.IsFuncRecoveryPending {
 		return
 	}
 
@@ -971,7 +972,7 @@ func (n *Nxos) haCheckIsFuncHoldDown(ctx context.Context) {
 	// Verify criteria still pass before promoting.
 	if !n.computeIsFunc() {
 		logger.GetLogger().Info("Local HA State hold-down expired but criteria no longer pass, cancelling")
-		n.Ha.Local.PendingIsFunc = false
+		n.Ha.Local.IsFuncRecoveryPending = false
 		n.Ha.Local.PendingEpoch = 0
 		n.Ha.Local.FlapCount++
 		return
@@ -982,7 +983,7 @@ func (n *Nxos) haCheckIsFuncHoldDown(ctx context.Context) {
 		"holdDown", isFuncHoldDown, "flapCount", n.Ha.Local.FlapCount)
 	n.Ha.Local.IsFunc = true
 	n.Ha.Local.Epoch = now
-	n.Ha.Local.PendingIsFunc = false
+	n.Ha.Local.IsFuncRecoveryPending = false
 	n.Ha.Local.PendingEpoch = 0
 	n.Ha.Local.FlapCount = 0
 	n.updateHaConfig()
