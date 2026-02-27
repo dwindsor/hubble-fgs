@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.19
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.93.2
 	github.com/breml/jsondiffprinter v0.0.12
-	github.com/cilium/cilium v1.18.4
+	github.com/cilium/cilium v1.18.6
 	github.com/cilium/ebpf v0.20.1-0.20251201143148-3d4ca808756e
 	github.com/cilium/lumberjack/v2 v2.4.2
 	github.com/cilium/tetragon v1.7.0-pre.0.0.20260320141758-2c0ac9142d48
