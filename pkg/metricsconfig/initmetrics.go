@@ -18,6 +18,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/errmetrics"
 
 	"github.com/isovalent/hubble-fgs/pkg/metrics/alertmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/appmodelmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/dnsparsermetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
@@ -175,6 +176,14 @@ func InitAlertMetricsForDocs(registry *prometheus.Registry) {
 	alertmetrics.InitMetricsForDocs(registry)
 }
 
+func initAllAppModelMetrics(registry *prometheus.Registry) {
+	appmodelmetrics.InitMetrics(registry)
+}
+
+func InitAppModelMetricsForDocs(registry *prometheus.Registry) {
+	appmodelmetrics.InitMetricsForDocs(registry)
+}
+
 func InitNetworkMetricsForDocs(registry *prometheus.Registry) {
 	networkmetrics.InitMetricsForDocs(registry)
 }
@@ -209,6 +218,7 @@ func InitAllEEMetrics(registry *prometheus.Registry) {
 	initAllAlertMetrics(registry)
 	initAllDebugDNSParserMetrics(registry)
 	initAllNetworkMetrics(registry)
+	initAllAppModelMetrics(registry)
 }
 
 func InitAllMetrics(registry *prometheus.Registry) {

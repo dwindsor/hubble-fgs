@@ -48,6 +48,7 @@ func main() {
 		"process-cache-clean": "Tetragon Process Cache Clean metrics",
 		"debug-dns-parser":    "Tetragon Debug DNS Parser",
 		"alerts":              "Tetragon Alerts",
+		"appmodel":            "Tetragon Application Model",
 	}
 
 	if err := metricsmd.New(targets, initMetrics).Execute(); err != nil {
@@ -101,6 +102,8 @@ func initMetrics(target string, reg *prometheus.Registry, _ *slog.Logger) error 
 		enterpriseMetricsConfig.InitNetworkMetricsForDocs(reg)
 	case "alerts":
 		enterpriseMetricsConfig.InitAlertMetricsForDocs(reg)
+	case "appmodel":
+		enterpriseMetricsConfig.InitAppModelMetricsForDocs(reg)
 	}
 	return nil
 }
