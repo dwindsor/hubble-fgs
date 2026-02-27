@@ -89,7 +89,7 @@ jobs:
           password: ${{ secrets.QUAY_TOKEN }}
 
       - name: Download digests of all images built
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: digests/
           pattern: image-digest-*
@@ -216,25 +216,25 @@ jobs:
         run: make cli-release
 
       - name: Download Tetragon Slim Tarball (amd64)
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: tetragon-slim-tarball-amd64
           path: release
 
       - name: Download Tetragon Slim Tarball (arm64)
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: tetragon-slim-tarball-arm64
           path: release
 
       - name: Download Tetragon Tarball (amd64)
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: tetragon-tarball-amd64
           path: release
 
       - name: Download Tetragon Tarball (arm64)
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: tetragon-tarball-arm64
           path: release

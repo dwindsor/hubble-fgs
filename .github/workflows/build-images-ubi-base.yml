@@ -210,7 +210,7 @@ jobs:
           echo "" >> image-digest/$job_name.txt
 
       - name: Upload artifact digests
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: image-digest-${{ inputs.is_release && matrix.image_repo || format('{0}-ci', matrix.image_repo) }}
           path: image-digest
@@ -231,7 +231,7 @@ jobs:
           mkdir -p image-digest/
 
       - name: Download digests of all UBI images built
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: image-digest/
           pattern: image-digest-*-ubi*
@@ -255,14 +255,14 @@ jobs:
           find -type f  -name "makefile-digest.txt" | sort | xargs -d '\n' awk '{print "export " $0}' >> ../Makefile.digests.ubi
 
       - name: Upload artifact digests
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: image-digest-output-ubi.txt-${{ steps.tag.outputs.tag }}
           path: image-digest-output-ubi.txt
           retention-days: ${{ inputs.is_release && 90 || 7 }}
 
       - name: Upload artifact digests
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: Makefile.digests.ubi-${{ steps.tag.outputs.tag }}
           path: Makefile.digests.ubi

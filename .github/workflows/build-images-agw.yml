@@ -108,7 +108,7 @@ jobs:
           echo "Install files copied:"
           ls -la binaries/install/agw/
       - name: Upload AGW binaries artifact
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: hubble-fgs-agw-binaries-${{ needs.init.outputs.version }}
           path: binaries/
@@ -148,7 +148,7 @@ jobs:
           echo "artifact=$ARTIFACT" >> $GITHUB_OUTPUT
           echo "artifact_path=$(pwd)/${ARTIFACT}" >> $GITHUB_OUTPUT
       - name: Upload Docker image tar artifact
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}
           path: ${{ steps.create-tar.outputs.artifact_path }}
@@ -326,17 +326,17 @@ jobs:
             Makefile.defs
           sparse-checkout-cone-mode: false
       - name: Download AGW Docker image artifact
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: "hubble-fgs-agw-docker-image-${{ needs.init.outputs.version }}"
           path: "./combined-artifacts/docker"
       - name: Download AGW binaries artifact
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: "hubble-fgs-agw-binaries-${{ needs.init.outputs.version }}"
           path: "./combined-artifacts/binaries"
       - name: Download test results artifact
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         continue-on-error: true
         with:
           name: "agw-sanity-test-results"
@@ -400,7 +400,7 @@ jobs:
         env:
           REL_DIR: ./release-artifacts
       - name: Upload prepared artifacts for release job
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
           path: ./release-artifacts
@@ -424,12 +424,12 @@ jobs:
             .github/actions/upload-artifactory
           sparse-checkout-cone-mode: false
       - name: Download release artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./release-artifacts"
       - name: Download AGW binaries artifact
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: "hubble-fgs-agw-binaries-${{ needs.init.outputs.version }}"
           path: "./agw-binaries"
@@ -558,7 +558,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: ./hubble-agw-releases-repo
       - name: Download release artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./release-artifacts"

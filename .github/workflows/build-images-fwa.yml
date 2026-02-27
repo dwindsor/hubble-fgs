@@ -89,7 +89,7 @@ jobs:
           cp -r $(pwd)/install/fwa/dist/* $(pwd)/build/${{ matrix.arch }}/fwa/ || echo "Warning: No artifacts found in install/fwa/dist"
           echo "artifact_path=$(pwd)/build/${{ matrix.arch }}/fwa" >> $GITHUB_OUTPUT
       - name: Upload fwa image
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: fwa-image-${{ matrix.arch }}-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
           path: ${{ steps.prepare-artifact.outputs.artifact_path }}
@@ -111,12 +111,12 @@ jobs:
             Makefile.defs
           sparse-checkout-cone-mode: false
       - name: Download AMD fwa artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: "fwa-image-amd64-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./combined-artifacts/amd64"
       - name: Download ARM fwa artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: "fwa-image-arm64-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./combined-artifacts/arm64"
@@ -168,7 +168,7 @@ jobs:
         env:
           REL_DIR: ./release-artifacts
       - name: Upload prepared artifacts for release job
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
           path: ./release-artifacts
@@ -185,7 +185,7 @@ jobs:
       SHA: ${{ needs.init.outputs.sha }}
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./release-artifacts"
@@ -292,7 +292,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: ./fwa-releases-repo
       - name: Download release artifacts
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: "release-artifacts-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}"
           path: "./release-artifacts"

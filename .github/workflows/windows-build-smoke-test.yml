@@ -194,7 +194,7 @@ jobs:
             -DestinationPath .\build-${{env.BUILD_PLATFORM}}.${{env.BUILD_CONFIGURATION}}.zip
 
       - name: Upload Build Output
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ntosebpfext-build-output
           path: ${{ env.TEMP }}\ntosebpfext\build-${{env.BUILD_PLATFORM}}.${{env.BUILD_CONFIGURATION}}.zip
@@ -347,7 +347,7 @@ jobs:
           Get-ChildItem -Recurse ${{ env.TEMP }}
 
       - name: Upload Tetragon Windows binaries
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: tetragon-windows-build-output
           path: ${{ env.TEMP }}\Tetragon-Windows.zip
@@ -474,14 +474,14 @@ jobs:
           Write-Output "✓ MSI built successfully"
 
       - name: Upload MSI
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: msi-package
           path: ${{ github.workspace }}\install\windows\TetragonEE-Wix\build\bin\x64\Release\en-US\*.msi
           retention-days: 5
 
       - name: Upload MSI build log
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         if: always()
         with:
           name: msi-binlog
