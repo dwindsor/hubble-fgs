@@ -1,5 +1,5 @@
 # First collect gmni used for testing
-FROM --platform=$BUILDPLATFORM ghcr.io/openconfig/gnmic:0.42.1@sha256:3e135878f555772653a278742d2c7460b47c20e2907e07f611ecf4cc5a2261cf AS gnmic
+FROM --platform=$BUILDPLATFORM ghcr.io/openconfig/gnmic:0.44.1@sha256:ae1ceec17f1678610afb77c172151a525a1828c360eb1cf7deca5ac090f87bff AS gnmic
 ARG TARGETARCH
 
 # Second builder (cross-)compile:
