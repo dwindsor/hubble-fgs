@@ -235,6 +235,92 @@ make image-fwa        # Build FWA container image
 make image-fwa-test   # Build FWA container test image
 ```
 
+## Kind Cluster Testing
+
+Use kind clusters to test enterprise features end-to-end locally.
+
+### Setup
+
+```bash
+make kind                          # Create kind cluster (named "tetragon-dev")
+make kind-down                     # Delete the cluster
+```
+
+### Deploying with CI Images
+
+PR CI builds push images tagged with the full commit SHA to the dev registry. To deploy from a PR branch without building locally:
+
+```bash
+# Get the full SHA of the commit whose CI images you want
+SHA=$(git rev-parse HEAD)
+
+# Create a values override file
+cat > /tmp/test-values.yaml <<EOF
+tetragon:
+  image:
+    override: "quay.io/isovalent-dev/tetragon-ci:${SHA}"
+tetragonOperator:
+  image:
+    override: "quay.io/isovalent-dev/tetragon-operator-ci:${SHA}"
+EOF
+
+# Deploy (KIND_BUILD_IMAGES=0 skips local image builds)
+make kind-install-tetragon KIND_BUILD_IMAGES=0 VALUES=/tmp/test-values.yaml
+```
+
+Wait for CI's "Image CI Build" workflow to complete before deploying. Check with:
+```bash
+gh run list --branch <branch> --json name,status,conclusion \
+  | jq '.[] | select(.name == "Image CI Build")'
+```
+
+### Deploying with Locally Built Images
+
+```bash
+# Build images and deploy in one step
+make kind-setup
+
+# Or deploy to an existing cluster (builds images first by default)
+make kind-install-tetragon
+```
+
+### Custom Helm Values
+
+Pass additional helm values to enable enterprise features. Common options:
+
+```yaml
+# Enable application model
+tetragon:
+  enableApplicationModel: true
+  cgidmap:
+    enabled: true                         # Required for app model
+  applicationModelExportFilename: "application-model.log"
+  applicationModelExportInterval: 10s
+  telemetryExportFilename: "telemetry.log"
+  layer3:
+    tcp:
+      enabled: true
+    udp:
+      enabled: true
+```
+
+### Verification
+
+```bash
+# Check pods are running
+kubectl -n tetragon get pods
+
+# Inspect config
+kubectl -n tetragon get cm tetragon-config -o yaml
+
+# List files in the tetragon data directory
+kubectl -n tetragon exec <pod> -c tetragon -- ls -la /var/run/cilium/tetragon/
+
+# Run bugtool and inspect the sysdump
+kubectl -n tetragon exec <pod> -c tetragon -- tetra bugtool
+kubectl -n tetragon exec <pod> -c tetragon -- tar tzf /tetragon-bugtool.tar.gz
+```
+
 ## Debugging
 
 ```bash
