@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 
+	"github.com/isovalent/hubble-fgs/pkg/metrics/appmodelmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/networkmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
@@ -38,14 +39,18 @@ import (
 func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection *json.Encoder, newModel, lastModel *appModelV1.ApplicationModel, telemetryMap model.TelemetryMap) (time.Time, error) {
 	now := time.Now()
 
+	diffStart := time.Now()
 	networkDiffModel, processDiffModel, err := diff.ApplicationModelDiff(newModel, lastModel)
+	appmodelmetrics.RecordDuration(appmodelmetrics.PhaseDiff, float64(time.Since(diffStart).Microseconds()))
 	if err != nil {
 		logger.GetLogger().Error("Failed to produce application model difference as JSON", logfields.Error, err)
+		appmodelmetrics.RecordError(appmodelmetrics.PhaseDiff)
 		return last, err
 	}
 
 	// If nothing has changed do not update last model and skip writing empty record
 	if networkDiffModel == nil && processDiffModel == nil {
+		appmodelmetrics.RecordNoChanges()
 		return last, nil
 	}
 
@@ -53,12 +58,15 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 		procFlatPack, err := diff.ApplicationModelToProcessFlat(ctx, processDiffModel, telemetryMap)
 		if err != nil {
 			logger.GetLogger().Error("Failed to decode application model to process telemetry", logfields.Error, err)
+			appmodelmetrics.RecordError(appmodelmetrics.PhaseExportProcess)
 			return last, err
 		}
+		appmodelmetrics.RecordTelemetryEntries(appmodelmetrics.TelemetryProcess, len(procFlatPack))
 
 		for _, entry := range procFlatPack {
 			if err := telemetry.Encode(entry); err != nil {
 				logger.GetLogger().Error("Failed to encode process telemetry as JSON", logfields.Error, err)
+				appmodelmetrics.RecordError(appmodelmetrics.PhaseExportProcess)
 				return last, err
 			}
 		}
@@ -67,8 +75,10 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 	netFlatPack, err := diff.ApplicationModelToNetworkFlat(ctx, networkDiffModel)
 	if err != nil {
 		logger.GetLogger().Error("Failed to decode application model to network telemetry", logfields.Error, err)
+		appmodelmetrics.RecordError(appmodelmetrics.PhaseExportNetwork)
 		return last, err
 	}
+	appmodelmetrics.RecordTelemetryEntries(appmodelmetrics.TelemetryNetwork, len(netFlatPack))
 
 	var conns []*graphV1.Connection
 	for _, entry := range netFlatPack {
@@ -76,6 +86,7 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 		if telemetry != nil {
 			if err := telemetry.Encode(entry); err != nil {
 				logger.GetLogger().Error("Failed to encode network telemetry as JSON", logfields.Error, err)
+				appmodelmetrics.RecordError(appmodelmetrics.PhaseExportNetwork)
 				return last, err
 			}
 		}
@@ -99,9 +110,36 @@ func exportTelemetry(ctx context.Context, last time.Time, telemetry, connection 
 		}
 		if err := connection.Encode(&log); err != nil {
 			logger.GetLogger().Warn("Failed to encode connection log as JSON", logfields.Error, err)
+			appmodelmetrics.RecordError(appmodelmetrics.PhaseExportNetwork)
 		}
 	}
 	return now, nil
+}
+
+// countEntities tallies all entity kinds in an application model. It is a pure
+// function: no metrics side effects, which makes it independently unit-testable.
+func countEntities(am *appModelV1.ApplicationModel) map[appmodelmetrics.EntityKind]int {
+	counts := map[appmodelmetrics.EntityKind]int{
+		appmodelmetrics.EntityNamespace: len(am.GetNamespaces()),
+	}
+	for _, ns := range am.GetNamespaces() {
+		counts[appmodelmetrics.EntityWorkload] += len(ns.GetWorkloads())
+		for _, wl := range ns.GetWorkloads() {
+			counts[appmodelmetrics.EntityContainer] += len(wl.GetContainers())
+			for _, c := range wl.GetContainers() {
+				for _, pg := range c.GetProcesses() {
+					counts[appmodelmetrics.EntityProcess]++
+					counts[appmodelmetrics.EntityConnection] += len(pg.GetConnections())
+				}
+			}
+		}
+	}
+	// Count host-namespace processes (not part of any namespace/workload)
+	for _, pg := range am.GetHost().GetProcesses() {
+		counts[appmodelmetrics.EntityProcess]++
+		counts[appmodelmetrics.EntityConnection] += len(pg.GetConnections())
+	}
+	return counts
 }
 
 // exportTick processes a single export cycle: converts process models to an
@@ -116,8 +154,18 @@ func exportTick(
 	lastTime time.Time,
 	emptyFilter map[string]bool,
 ) (*appModelV1.ApplicationModelEvent, time.Time) {
+	convStart := time.Now()
 	newModel, processData := model.ProcessModelToApplicationModelWithProcessData(processModels, emptyFilter)
+	appmodelmetrics.RecordDuration(appmodelmetrics.PhaseConversion, float64(time.Since(convStart).Microseconds()))
+
 	telemetryMap := model.BuildTelemetryMap(processData)
+
+	// Count entities from the converted model
+	if am := newModel.GetApplicationModel(); am != nil {
+		for kind, count := range countEntities(am) {
+			appmodelmetrics.SetEntities(kind, count)
+		}
+	}
 
 	if appModelEncoder != nil {
 		if enterpriseOption.Config.ApplicationModelExportFragments {
@@ -125,18 +173,22 @@ func exportTick(
 			for _, fragment := range fragments {
 				if err := appModelEncoder.Encode(fragment); err != nil {
 					logger.GetLogger().Error("Failed to encode application model fragment as JSON", logfields.Error, err)
+					appmodelmetrics.RecordError(appmodelmetrics.PhaseExportAppModel)
 				}
 			}
 		} else {
 			if err := appModelEncoder.Encode(newModel); err != nil {
 				logger.GetLogger().Error("Failed to encode application model as JSON", logfields.Error, err)
+				appmodelmetrics.RecordError(appmodelmetrics.PhaseExportAppModel)
 			}
 		}
 	}
 
 	if telemetryEncoder != nil || connectionEncoder != nil {
+		exportStart := time.Now()
 		lastTime, _ = exportTelemetry(ctx, lastTime, telemetryEncoder, connectionEncoder,
 			newModel.ApplicationModel, lastModel.ApplicationModel, telemetryMap)
+		appmodelmetrics.RecordDuration(appmodelmetrics.PhaseExport, float64(time.Since(exportStart).Microseconds()))
 		lastModel = newModel
 	}
 
@@ -170,7 +222,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 	// the enterprise option the source of truth. Although its annoying for
 	// CI.
 	if enterpriseOption.Config.TelemetryExportFilename != "" {
-		telemetry = json.NewEncoder(flatWriter)
+		telemetry = json.NewEncoder(appmodelmetrics.NewExportedBytesCounterWriter(flatWriter))
 	}
 
 	if enterpriseOption.Config.ConnectionLogFileName != "" {
@@ -182,11 +234,16 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 	for {
 		select {
 		case <-ticker.C:
+			tickStart := time.Now()
+
 			res, err := server.GetProcessModel(ctx, []string{}, false)
 			if err != nil {
 				logger.GetLogger().Error("Failed to get process model from Tetragon", logfields.Error, err)
+				appmodelmetrics.RecordError(appmodelmetrics.PhaseGetProcessModel)
 				continue
 			}
+
+			appmodelmetrics.RecordExport()
 
 			var appModelEncoder *json.Encoder
 			if enterpriseOption.Config.ApplicationModelExportFilename != "" {
@@ -194,6 +251,7 @@ func ExportApplicationModel(ctx context.Context, server *Server, writer io.Write
 			}
 
 			lastModel, lastTime = exportTick(ctx, res, appModelEncoder, telemetry, connection, lastModel, lastTime, emptyFilter)
+			appmodelmetrics.RecordDuration(appmodelmetrics.PhaseExportTick, float64(time.Since(tickStart).Microseconds()))
 		case <-ctx.Done():
 			return
 		}

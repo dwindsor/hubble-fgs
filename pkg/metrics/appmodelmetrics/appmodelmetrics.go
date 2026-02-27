@@ -27,6 +27,8 @@ const (
 	PhaseExportTick      Phase = "export_tick"
 	PhaseExport          Phase = "export"
 	PhaseExportAppModel  Phase = "export_app_model"
+	PhaseExportProcess   Phase = "export_process"
+	PhaseExportNetwork   Phase = "export_network"
 )
 
 var phases = []Phase{
@@ -36,6 +38,8 @@ var phases = []Phase{
 	PhaseExportTick,
 	PhaseExport,
 	PhaseExportAppModel,
+	PhaseExportProcess,
+	PhaseExportNetwork,
 }
 
 // LookupErrorType identifies a silent lookup failure in GetProcessModel.
@@ -218,22 +222,22 @@ func SetEntities(kind EntityKind, count int) {
 	Entities.WithLabelValues(string(kind)).Set(float64(count))
 }
 
-// byteCounterWriter wraps an io.WriteCloser and tracks the number of bytes written.
+// byteCounterWriter wraps an io.Writer and tracks the number of bytes written.
 type byteCounterWriter struct {
-	io.WriteCloser
+	io.Writer
 	bytesWritten prometheus.Counter
 }
 
 func (w *byteCounterWriter) Write(p []byte) (int, error) {
-	n, err := w.WriteCloser.Write(p)
+	n, err := w.Writer.Write(p)
 	w.bytesWritten.Add(float64(n))
 	return n, err
 }
 
 // NewExportedBytesCounterWriter wraps a writer to increment ExportedBytesTotal on writes.
-func NewExportedBytesCounterWriter(w io.WriteCloser) io.WriteCloser {
+func NewExportedBytesCounterWriter(w io.Writer) io.Writer {
 	return &byteCounterWriter{
-		WriteCloser:  w,
+		Writer:       w,
 		bytesWritten: ExportedBytesTotal,
 	}
 }
