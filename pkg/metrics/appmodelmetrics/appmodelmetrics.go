@@ -45,7 +45,6 @@ const (
 	LookupDNS       LookupErrorType = "dns"
 	LookupCgroup    LookupErrorType = "cgroup"
 	LookupNSID      LookupErrorType = "nsid"
-	LookupUUID      LookupErrorType = "uuid"
 	LookupSyscall   LookupErrorType = "syscall"
 	LookupContainer LookupErrorType = "container"
 )
@@ -54,7 +53,6 @@ var lookupErrorTypes = []LookupErrorType{
 	LookupDNS,
 	LookupCgroup,
 	LookupNSID,
-	LookupUUID,
 	LookupSyscall,
 	LookupContainer,
 }

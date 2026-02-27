@@ -42,6 +42,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/common"
 	"github.com/isovalent/hubble-fgs/pkg/dnsparser"
 	"github.com/isovalent/hubble-fgs/pkg/endpoint"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/appmodelmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/diff"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
@@ -339,6 +340,11 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 }
 
 func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, error) {
+	start := time.Now()
+	defer func() {
+		appmodelmetrics.RecordDuration(appmodelmetrics.PhaseGetProcessModel, float64(time.Since(start).Microseconds()))
+	}()
+
 	processModel := make([]*types.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMapName)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMapName)
@@ -388,6 +394,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 
 	c := endpoint.MustGet()
 
+	var destinationCount int
 	iter := endpt.Iterate()
 	for iter.Next(&dstKey, &dstVal) {
 		var d *types.Destination
@@ -454,6 +461,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			domain, err := dnsDomainMap.Domain(dstKey.DestinationId)
 			if err != nil {
 				logger.GetLogger().Warn("Could not retrieve BPF DNS parser domain info for Source User", logfields.Error, err, "id", dstKey.DestinationId)
+				appmodelmetrics.RecordLookupError(appmodelmetrics.LookupDNS)
 				continue
 			}
 			ep = endpoint.Endpoint{
@@ -464,6 +472,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			domain, err := dnsDomainMap.Domain(dstKey.DestinationId)
 			if err != nil {
 				logger.GetLogger().Warn("Could not retrieve BPF DNS parser domain info", logfields.Error, err)
+				appmodelmetrics.RecordLookupError(appmodelmetrics.LookupDNS)
 				continue
 			}
 			ep = endpoint.Endpoint{
@@ -572,6 +581,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				Stats:            stats,
 			}
 		}
+
+		destinationCount++
 
 		// If this is the Zero ProcessID and it has a NSId then its an
 		// aggregated CgroupId destination.
@@ -730,6 +741,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			if err != nil {
 				// This can happen for host processes that are not in any cgroup
 				logger.GetLogger().Debug("Failed to look up cgroup tracker id for process", logfields.Error, err, "cgroupid", val.CgroupID)
+				appmodelmetrics.RecordLookupError(appmodelmetrics.LookupCgroup)
 			}
 		} else {
 			cgroupid = val.CgroupID
@@ -739,6 +751,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			var updatedNSID uint64
 			if err := nsIDMap.Lookup(cgroupid, &updatedNSID); err != nil {
 				logger.GetLogger().Debug("failed to look up nsid", logfields.Error, err, "cgid", cgroupid)
+				appmodelmetrics.RecordLookupError(appmodelmetrics.LookupNSID)
 			} else {
 				// Queue up a map update and fixup NSID value
 				pendingNSIDUpdates[key] = NSIDUpdate{
@@ -795,6 +808,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				}
 			} else {
 				logger.GetLogger().Debug("Failed to look up system calls for process", logfields.Error, err, "key", key.Self)
+				appmodelmetrics.RecordLookupError(appmodelmetrics.LookupSyscall)
 			}
 		}
 
@@ -810,6 +824,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			} else {
 				// If the cgroup id is 0, it means the process is not in a container.
 				logger.GetLogger().Debug("No container info found for process", "cgroupid", cgroupid)
+				appmodelmetrics.RecordLookupError(appmodelmetrics.LookupContainer)
 			}
 		}
 
@@ -890,6 +905,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		}
 	}
 	clear(pendingNSIDUpdates)
+
+	appmodelmetrics.SetEntities(appmodelmetrics.EntityDestination, destinationCount)
 
 	return processModel, nil
 }
