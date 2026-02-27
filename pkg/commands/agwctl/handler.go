@@ -24,6 +24,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/model/switchevents"
 	"github.com/isovalent/hubble-fgs/pkg/model/switchmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/model/switchtechsupport"
 	"github.com/isovalent/hubble-fgs/pkg/nxos"
 )
 
@@ -40,6 +41,7 @@ const (
 	CMD_SHOW_TOKENS
 	CMD_SHOW_TECH
 	CMD_TAC_PAC
+	CMD_TECH_SUPPORT_DPU
 	CMD_PING_FWA
 	CMD_RESTART_FWA
 	CMD_LOAD_SYSLOG_CFG
@@ -216,6 +218,18 @@ func Handler(ctx context.Context, agwAgent *agw.AgentGateway, command map[string
 			"`agwctl show_adj`\n" + adj + "\n" +
 			"`agwctl show_syslog`\n" + syslog + "\n" +
 			"`agwctl config show`\n" + cfg + "\n"
+
+	case CMD_TECH_SUPPORT_DPU:
+		// Parse includeCores flag from request data
+		includeCores := false
+		if len(data.Args) > 0 && data.Args[0] == "--with-cores" {
+			includeCores = true
+		}
+
+		// Use tech support service directly
+		service := switchtechsupport.NewService(agwAgent)
+		result := service.CollectDpuTechSupport(ctx, includeCores)
+		response = result
 
 	case CMD_TAC_PAC:
 		logsDir := "/data/volatile/logs"

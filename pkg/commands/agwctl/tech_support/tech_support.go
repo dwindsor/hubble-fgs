@@ -8,20 +8,22 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package main
+package techsupport
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/isovalent/hubble-fgs/pkg/commands/agwctl"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config/add"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/config/remove"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/ha"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/logging"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/metrics"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/policies"
-	_ "github.com/isovalent/hubble-fgs/pkg/commands/agwctl/tech_support"
 )
 
-func main() {
-	agwctl.Execute()
+func init() {
+	agwctl.RootCmd.AddCommand(TechSupportCmd)
+}
+
+// TechSupportCmd represents the tech support command
+var TechSupportCmd = &cobra.Command{
+	Use:          "tech-support",
+	SilenceUsage: true,
+	Short:        "Manage tech support",
+	Long:         `Manage tech support - collect tech support information from dpu components.`,
 }
