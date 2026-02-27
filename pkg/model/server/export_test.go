@@ -19,12 +19,65 @@ import (
 	"time"
 
 	appModelV1 "github.com/isovalent/ipa/application_model/v1alpha"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/isovalent/hubble-fgs/pkg/metrics/appmodelmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/model"
 	"github.com/isovalent/hubble-fgs/pkg/model/types"
 )
+
+func TestCountEntities(t *testing.T) {
+	am := &appModelV1.ApplicationModel{
+		Namespaces: []*appModelV1.ApplicationNamespace{
+			{
+				Workloads: []*appModelV1.ApplicationWorkload{
+					{
+						Containers: []*appModelV1.ApplicationContainer{
+							{
+								Processes: []*appModelV1.ApplicationProcessGroup{
+									{Connections: []*appModelV1.ApplicationConnection{{}, {}}},
+									{},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				Workloads: []*appModelV1.ApplicationWorkload{
+					{
+						Containers: []*appModelV1.ApplicationContainer{
+							{Processes: []*appModelV1.ApplicationProcessGroup{{}}},
+							{Processes: []*appModelV1.ApplicationProcessGroup{{Connections: []*appModelV1.ApplicationConnection{{}}}}},
+						},
+					},
+					{
+						Containers: []*appModelV1.ApplicationContainer{
+							{},
+						},
+					},
+				},
+			},
+		},
+		Host: &appModelV1.ApplicationHost{
+			Processes: []*appModelV1.ApplicationProcessGroup{
+				{Connections: []*appModelV1.ApplicationConnection{{}}},
+			},
+		},
+	}
+
+	counts := countEntities(am)
+
+	assert.Equal(t, 2, counts[appmodelmetrics.EntityNamespace])
+	assert.Equal(t, 3, counts[appmodelmetrics.EntityWorkload])
+	assert.Equal(t, 4, counts[appmodelmetrics.EntityContainer])
+	// 2 namespaced processes + 1 host process = 5; note 1 container is empty (no processes)
+	assert.Equal(t, 5, counts[appmodelmetrics.EntityProcess])
+	// 2 (first pg) + 1 (fourth pg) + 1 (host pg) = 4
+	assert.Equal(t, 4, counts[appmodelmetrics.EntityConnection])
+}
 
 // buildParentMapFromProcessModels is a helper function for tests that builds the parent map
 // using the same logic as the model package.
@@ -419,4 +472,90 @@ func TestAppModelEncodeFailureDoesNotBlockTelemetry(t *testing.T) {
 
 	assert.NotEmpty(t, telemetryBuf.Bytes(), "telemetry encoder should have received data")
 	assert.NotEmpty(t, connectionBuf.Bytes(), "connection encoder should have received data")
+}
+
+func TestExportTickSetsEntityGauges(t *testing.T) {
+	// Two namespaces, two workloads, three namespaced processes (3 connections),
+	// plus one host process (1 connection) = 4 processes, 4 connections total.
+	// ContainerId is left empty to avoid requiring process cache initialization
+	// (GetPodInfo returns nil early for empty container IDs).
+	processModels := []*types.ProcessModel{
+		{
+			Binary:     "app-a",
+			BinaryArgs: "--serve",
+			Parent:     "systemd",
+			Parents:    []string{"systemd"},
+			Namespace:  "ns-a",
+			Workload:   &types.Workload{Kind: "Deployment", Name: "deploy-a"},
+			Abi:        "x64",
+			Syscalls:   []uint32{1},
+			Dest: []*types.Destination{
+				{
+					DestinationNames: []string{"api.example.com"},
+					Port:             443,
+					Stats:            &types.DestinationStats{TxBytes: 512},
+				},
+			},
+		},
+		{
+			Binary:     "app-b1",
+			BinaryArgs: "--port=8080",
+			Parent:     "systemd",
+			Parents:    []string{"systemd"},
+			Namespace:  "ns-b",
+			Workload:   &types.Workload{Kind: "Deployment", Name: "deploy-b"},
+			Abi:        "x64",
+			Syscalls:   []uint32{1},
+			Dest: []*types.Destination{
+				{
+					DestinationNames: []string{"db.internal"},
+					Port:             5432,
+					Stats:            &types.DestinationStats{TxBytes: 1024},
+				},
+				{
+					DestinationNames: []string{"cache.internal"},
+					Port:             6379,
+					Stats:            &types.DestinationStats{TxBytes: 256},
+				},
+			},
+		},
+		{
+			Binary:     "app-b2",
+			BinaryArgs: "",
+			Parent:     "systemd",
+			Parents:    []string{"systemd"},
+			Namespace:  "ns-b",
+			Workload:   &types.Workload{Kind: "Deployment", Name: "deploy-b"},
+			Abi:        "x64",
+			Syscalls:   []uint32{1},
+		},
+		// Host-namespace process (no workload, uses model.HostNamespace)
+		{
+			Binary:     "sshd",
+			BinaryArgs: "-D",
+			Parent:     "systemd",
+			Parents:    []string{"systemd"},
+			Namespace:  model.HostNamespace,
+			Abi:        "x64",
+			Syscalls:   []uint32{1},
+			Dest: []*types.Destination{
+				{
+					DestinationNames: []string{"client.example.com"},
+					Port:             22,
+					Stats:            &types.DestinationStats{TxBytes: 128},
+				},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	emptyFilter := make(map[string]bool)
+
+	exportTick(ctx, processModels, nil, nil, nil, nil, time.Now(), emptyFilter)
+
+	assert.Equal(t, float64(2), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("namespace")))
+	assert.Equal(t, float64(2), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("workload")))
+	assert.Equal(t, float64(2), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("container")))
+	assert.Equal(t, float64(4), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("process")))
+	assert.Equal(t, float64(4), testutil.ToFloat64(appmodelmetrics.Entities.WithLabelValues("connection")))
 }
