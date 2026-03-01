@@ -135,6 +135,12 @@ type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A list of overloaded options
 	Options []OptionSpec `json:"options,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Optional
+	// SelectorsMacros is used to define selectors macros, which can be used
+	// in probes/hooks selectors by their names.
+	SelectorsMacros map[string]KProbeSelector `json:"selectorsMacros,omitempty"`
 }
 
 func (tp *TracingPolicy) TpSpec() *TracingPolicySpec {

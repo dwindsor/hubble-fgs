@@ -165,6 +165,10 @@ type KProbeSelector struct {
 	// +kubebuilder:validation:Optional
 	// IDs for capabilities changes
 	MatchCapabilityChanges []CapabilitiesSelector `json:"matchCapabilityChanges,omitempty"`
+	// +kubebuilder:validation:Optional
+	// A list of macros names, defined in spec.selectorsMacros.
+	// Filters specified in macros will be appended to corresponding filters of the selector.
+	Macros []string `json:"macros,omitempty"`
 }
 
 type NamespaceChangesSelector struct {
@@ -228,7 +232,7 @@ type ArgSelector struct {
 	// +kubebuilder:validation:items:Minimum=0
 	// Position of the operator arguments (in spec file) to apply fhe filter to.
 	Args []uint32 `json:"args,omitempty"`
-	// +kubebuilder:validation:Enum=Equal;NotEqual;Prefix;NotPrefix;Postfix;NotPostfix;GreaterThan;LessThan;GT;LT;Mask;SPort;NotSPort;SPortPriv;NotSportPriv;DPort;NotDPort;DPortPriv;NotDPortPriv;SAddr;NotSAddr;DAddr;NotDAddr;Protocol;Family;State;InMap;NotInMap;CapabilitiesGained;InRange;NotInRange;SubString;SubStringIgnCase;CelExpr
+	// +kubebuilder:validation:Enum=Equal;NotEqual;Prefix;NotPrefix;Postfix;NotPostfix;GreaterThan;LessThan;GT;LT;Mask;SPort;NotSPort;SPortPriv;NotSportPriv;DPort;NotDPort;DPortPriv;NotDPortPriv;SAddr;NotSAddr;DAddr;NotDAddr;Protocol;Family;State;InMap;NotInMap;CapabilitiesGained;InRange;NotInRange;SubString;SubStringIgnCase;CelExpr;FileType;NotFileType
 	// Filter operation.
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
