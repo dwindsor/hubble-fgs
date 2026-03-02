@@ -68,7 +68,7 @@ jobs:
         uses: ./.github/actions/disk-cleanup
 
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@c91a61c730fa166439cd3e2c300c041590002b1d # v44.0.3
+        uses: renovatebot/github-action@7b4b65bf31e07d4e3e51708d07700fb41bc03166 # v46.1.3
         env:
           LOG_LEVEL: ${{ github.event.inputs.renovate_log_level_debug == 'false' && 'INFO' || 'DEBUG' }}
           RENOVATE_SECRETS: "{APP_TOKEN: \"${{ steps.get_token.outputs.app_token }}\"}"
