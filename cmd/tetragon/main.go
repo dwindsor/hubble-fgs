@@ -142,7 +142,42 @@ func saveInitInfo() error {
 		MapDir:      bpf.MapPrefixPath(),
 		PID:         os.Getpid(),
 	}
-	return bugtool.SaveInitInfo(&info)
+
+	if err := bugtool.SaveInitInfo(&info); err != nil {
+		return err
+	}
+
+	if !enterpriseOption.Config.EnableApplicationModel {
+		return nil
+	}
+
+	extraFiles := make(map[string]string)
+	if enterpriseOption.Config.ApplicationModelExportFilename != "" {
+		if p, err := filepath.Abs(enterpriseOption.Config.ApplicationModelExportFilename); err == nil {
+			extraFiles["app_model_export.json"] = p
+		} else {
+			log.Warn("Failed to resolve export file path for bugtool", logfields.Error, err, "filename", enterpriseOption.Config.ApplicationModelExportFilename)
+		}
+	}
+	if enterpriseOption.Config.TelemetryExportFilename != "" {
+		if p, err := filepath.Abs(enterpriseOption.Config.TelemetryExportFilename); err == nil {
+			extraFiles["telemetry_export.json"] = p
+		} else {
+			log.Warn("Failed to resolve export file path for bugtool", logfields.Error, err, "filename", enterpriseOption.Config.TelemetryExportFilename)
+		}
+	}
+	if enterpriseOption.Config.ConnectionLogFileName != "" {
+		if p, err := filepath.Abs(enterpriseOption.Config.ConnectionLogFileName); err == nil {
+			extraFiles["connection_log.json"] = p
+		} else {
+			log.Warn("Failed to resolve export file path for bugtool", logfields.Error, err, "filename", enterpriseOption.Config.ConnectionLogFileName)
+		}
+	}
+	if len(extraFiles) > 0 {
+		return bugtool.SaveExtraFiles(extraFiles)
+	}
+
+	return nil
 }
 
 func stopProfile() {
