@@ -306,7 +306,7 @@ github.com/cilium/hive/script/internal/diff
 # github.com/cilium/lumberjack/v2 v2.4.2
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
-# github.com/cilium/tetragon v1.7.0-pre.0.0.20260227161004-4bfb3c061073 => ./modules/tetragon-oss
+# github.com/cilium/tetragon v1.7.0-pre.0.0.20260302144343-85bcf8a28dbd => ./modules/tetragon-oss
 ## explicit; go 1.26.0
 github.com/cilium/tetragon/cmd/tetra/bugtool
 github.com/cilium/tetragon/cmd/tetra/cgtracker
@@ -2234,7 +2234,7 @@ k8s.io/component-base/metrics/prometheus/feature
 k8s.io/component-base/metrics/prometheusextension
 k8s.io/component-base/version
 k8s.io/component-base/zpages/features
-# k8s.io/cri-api v0.35.1
+# k8s.io/cri-api v0.35.2
 ## explicit; go 1.25.0
 k8s.io/cri-api/pkg/apis/runtime/v1
 # k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b

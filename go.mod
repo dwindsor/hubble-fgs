@@ -12,7 +12,7 @@ require (
 	github.com/cilium/cilium v1.18.4
 	github.com/cilium/ebpf v0.20.1-0.20251201143148-3d4ca808756e
 	github.com/cilium/lumberjack/v2 v2.4.2
-	github.com/cilium/tetragon v1.7.0-pre.0.0.20260227161004-4bfb3c061073
+	github.com/cilium/tetragon v1.7.0-pre.0.0.20260302144343-85bcf8a28dbd
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
@@ -201,7 +201,7 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/component-base v0.35.2 // indirect
-	k8s.io/cri-api v0.35.1 // indirect
+	k8s.io/cri-api v0.35.2 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
