@@ -137,6 +137,8 @@ const (
 
 	// MSG_OP_EXIT event indicates a network namespace is being destroyed.
 	MSG_OP_NETNS_EXIT = 144
+
+	MSG_OP_POWERSHELL = 145
 )
 
 var OpCodeStrings = map[OpCode]string{

@@ -51,6 +51,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/policies"
 	processcacheclean "github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/rule"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/powershell"
 	enterpriseWatcher "github.com/isovalent/hubble-fgs/pkg/watcher"
 
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -642,6 +643,8 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 		go logStatus(ctx, obs)
 	}
 	updateServiceStarting()
+
+	powershell.StartPowershellEvtSubscriber()
 
 	return obs.StartReady(ctx, ready)
 }
