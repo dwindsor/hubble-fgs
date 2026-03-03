@@ -13,6 +13,7 @@ package encoder
 import (
 	"bytes"
 	"io"
+	"os"
 	"testing"
 
 	"github.com/cilium/cilium/api/v1/flow"
@@ -486,6 +487,9 @@ func TestJSONEncoder_processConnectToFlow(t *testing.T) {
 }
 
 func TestGetNodeIPs(t *testing.T) {
+	if _, err := os.Stat("/etc/DNS_IS_BROKEN"); err == nil {
+		t.Skip("DNS is broken")
+	}
 	nodeIPs := GetNodeIPs()
 	assert.Contains(t, nodeIPs, "127.0.0.1")
 	assert.Contains(t, nodeIPs, "::1")

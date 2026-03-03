@@ -94,6 +94,12 @@ jobs:
             systemd-detect-virt
             systemd-detect-virt | grep -Eiq 'kvm|qemu' || { echo 'No KVM or QEMU support detected! Bailing out...'; exit 1; }
 
+            # latest systemd-resolved is broken (at least on some kernels). Save the DNS server in a
+            # static resolv.conf (see also below)
+            resolvectl dns
+            srv=\$(resolvectl dns | sed -ne 's/^[^:]\+: //p' | head -1)
+            echo "nameserver \$srv" | tee > /etc/resolv.conf.static
+
             # copy btf file
             mkdir -p bpf/objs
             ln -vsnf /boot/btf-\$(uname -r) bpf/objs/btf
@@ -120,6 +126,11 @@ jobs:
             if [[ "${{ matrix.kernel }}" == rhel* ]]; then
               service ssh restart
             fi
+
+            # latest systemd-resolved is broken (at least on some kernels).
+            # use the static resolve.conf if we cannot resolve and also create a file so that we can
+            # skip tests that depend on DNS.
+            host cilium.io > /dev/null || cp /etc/resolv.conf.static /etc/resolv.conf && touch /etc/DNS_IS_BROKEN
 
       - name: Run Tests
         uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
@@ -167,6 +178,7 @@ jobs:
               export FLAKY_HTTP=1
             fi
             export CGO_ENABLED=0
+            cat /etc/resolv.conf
             CC='clang -fuse-ld=lld' make tetragon-fs-scanner
             GCC='clang -fuse-ld=lld' make test
 
