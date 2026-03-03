@@ -79,6 +79,7 @@ const (
 	EventType_PROCESS_THROTTLE            EventType = 27
 	EventType_PROCESS_LSM                 EventType = 28
 	EventType_PROCESS_USDT                EventType = 29
+	EventType_POWERSHELL_SCRIPT_BLOCK     EventType = 30
 	EventType_TEST                        EventType = 40000
 	EventType_RATE_LIMIT_INFO             EventType = 40001
 )
@@ -117,6 +118,7 @@ var (
 		27:    "PROCESS_THROTTLE",
 		28:    "PROCESS_LSM",
 		29:    "PROCESS_USDT",
+		30:    "POWERSHELL_SCRIPT_BLOCK",
 		40000: "TEST",
 		40001: "RATE_LIMIT_INFO",
 	}
@@ -152,6 +154,7 @@ var (
 		"PROCESS_THROTTLE":            27,
 		"PROCESS_LSM":                 28,
 		"PROCESS_USDT":                29,
+		"POWERSHELL_SCRIPT_BLOCK":     30,
 		"TEST":                        40000,
 		"RATE_LIMIT_INFO":             40001,
 	}
@@ -1208,6 +1211,7 @@ type GetEventsResponse struct {
 	//	*GetEventsResponse_ProcessThrottle
 	//	*GetEventsResponse_ProcessLsm
 	//	*GetEventsResponse_ProcessUsdt
+	//	*GetEventsResponse_PowershellScriptBlock
 	//	*GetEventsResponse_Test
 	//	*GetEventsResponse_RateLimitInfo
 	Event isGetEventsResponse_Event `protobuf_oneof:"event"`
@@ -1519,6 +1523,15 @@ func (x *GetEventsResponse) GetProcessUsdt() *ProcessUsdt {
 	return nil
 }
 
+func (x *GetEventsResponse) GetPowershellScriptBlock() *PowershellScriptBlock {
+	if x != nil {
+		if x, ok := x.Event.(*GetEventsResponse_PowershellScriptBlock); ok {
+			return x.PowershellScriptBlock
+		}
+	}
+	return nil
+}
+
 func (x *GetEventsResponse) GetTest() *Test {
 	if x != nil {
 		if x, ok := x.Event.(*GetEventsResponse_Test); ok {
@@ -1689,6 +1702,10 @@ type GetEventsResponse_ProcessUsdt struct {
 	ProcessUsdt *ProcessUsdt `protobuf:"bytes,29,opt,name=process_usdt,json=processUsdt,proto3,oneof"`
 }
 
+type GetEventsResponse_PowershellScriptBlock struct {
+	PowershellScriptBlock *PowershellScriptBlock `protobuf:"bytes,30,opt,name=powershell_script_block,json=powershellScriptBlock,proto3,oneof"`
+}
+
 type GetEventsResponse_Test struct {
 	Test *Test `protobuf:"bytes,40000,opt,name=test,proto3,oneof"`
 }
@@ -1752,6 +1769,8 @@ func (*GetEventsResponse_ProcessThrottle) isGetEventsResponse_Event() {}
 func (*GetEventsResponse_ProcessLsm) isGetEventsResponse_Event() {}
 
 func (*GetEventsResponse_ProcessUsdt) isGetEventsResponse_Event() {}
+
+func (*GetEventsResponse_PowershellScriptBlock) isGetEventsResponse_Event() {}
 
 func (*GetEventsResponse_Test) isGetEventsResponse_Event() {}
 
@@ -1830,7 +1849,7 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x13aggregation_options\x18\x03 \x01(\v2\x1c.tetragon.AggregationOptionsR\x12aggregationOptions\x12:\n" +
 	"\rfield_filters\x18\x04 \x03(\v2\x15.tetragon.FieldFilterR\ffieldFilters\"'\n" +
 	"\x0fAggregationInfo\x12\x14\n" +
-	"\x05count\x18\x01 \x01(\x04R\x05count\"\xf7\x12\n" +
+	"\x05count\x18\x01 \x01(\x04R\x05count\"\xd2\x13\n" +
 	"\x11GetEventsResponse\x12:\n" +
 	"\fprocess_exec\x18\x01 \x01(\v2\x15.tetragon.ProcessExecH\x00R\vprocessExec\x12C\n" +
 	"\x0fprocess_connect\x18\x02 \x01(\v2\x18.tetragon.ProcessConnectH\x00R\x0eprocessConnect\x12@\n" +
@@ -1862,7 +1881,8 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x10process_throttle\x18\x1b \x01(\v2\x19.tetragon.ProcessThrottleH\x00R\x0fprocessThrottle\x127\n" +
 	"\vprocess_lsm\x18\x1c \x01(\v2\x14.tetragon.ProcessLsmH\x00R\n" +
 	"processLsm\x12:\n" +
-	"\fprocess_usdt\x18\x1d \x01(\v2\x15.tetragon.ProcessUsdtH\x00R\vprocessUsdt\x12&\n" +
+	"\fprocess_usdt\x18\x1d \x01(\v2\x15.tetragon.ProcessUsdtH\x00R\vprocessUsdt\x12Y\n" +
+	"\x17powershell_script_block\x18\x1e \x01(\v2\x1f.tetragon.PowershellScriptBlockH\x00R\x15powershellScriptBlock\x12&\n" +
 	"\x04test\x18\xc0\xb8\x02 \x01(\v2\x0e.tetragon.TestH\x00R\x04test\x12C\n" +
 	"\x0frate_limit_info\x18\xc1\xb8\x02 \x01(\v2\x17.tetragon.RateLimitInfoH\x00R\rrateLimitInfo\x12\x1c\n" +
 	"\tnode_name\x18\xe8\a \x01(\tR\bnodeName\x12/\n" +
@@ -1874,7 +1894,7 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x0fNodeLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\a\n" +
-	"\x05event*\xbf\x05\n" +
+	"\x05event*\xdc\x05\n" +
 	"\tEventType\x12\t\n" +
 	"\x05UNDEF\x10\x00\x12\x10\n" +
 	"\fPROCESS_EXEC\x10\x01\x12\x13\n" +
@@ -1907,7 +1927,8 @@ const file_tetragon_events_proto_rawDesc = "" +
 	"\x17PROCESS_SANDBOX_SYSCALL\x10\x1a\x12\x14\n" +
 	"\x10PROCESS_THROTTLE\x10\x1b\x12\x0f\n" +
 	"\vPROCESS_LSM\x10\x1c\x12\x10\n" +
-	"\fPROCESS_USDT\x10\x1d\x12\n" +
+	"\fPROCESS_USDT\x10\x1d\x12\x1b\n" +
+	"\x17POWERSHELL_SCRIPT_BLOCK\x10\x1e\x12\n" +
 	"\n" +
 	"\x04TEST\x10\xc0\xb8\x02\x12\x15\n" +
 	"\x0fRATE_LIMIT_INFO\x10\xc1\xb8\x02\x1a\x02\x10\x01*K\n" +
@@ -1981,8 +2002,9 @@ var file_tetragon_events_proto_goTypes = []any{
 	(*ProcessSandboxSyscall)(nil),   // 44: tetragon.ProcessSandboxSyscall
 	(*ProcessLsm)(nil),              // 45: tetragon.ProcessLsm
 	(*ProcessUsdt)(nil),             // 46: tetragon.ProcessUsdt
-	(*Test)(nil),                    // 47: tetragon.Test
-	(*timestamppb.Timestamp)(nil),   // 48: google.protobuf.Timestamp
+	(*PowershellScriptBlock)(nil),   // 47: tetragon.PowershellScriptBlock
+	(*Test)(nil),                    // 48: tetragon.Test
+	(*timestamppb.Timestamp)(nil),   // 49: google.protobuf.Timestamp
 }
 var file_tetragon_events_proto_depIdxs = []int32{
 	15, // 0: tetragon.Filter.health_check:type_name -> google.protobuf.BoolValue
@@ -2036,16 +2058,17 @@ var file_tetragon_events_proto_depIdxs = []int32{
 	8,  // 48: tetragon.GetEventsResponse.process_throttle:type_name -> tetragon.ProcessThrottle
 	45, // 49: tetragon.GetEventsResponse.process_lsm:type_name -> tetragon.ProcessLsm
 	46, // 50: tetragon.GetEventsResponse.process_usdt:type_name -> tetragon.ProcessUsdt
-	47, // 51: tetragon.GetEventsResponse.test:type_name -> tetragon.Test
-	7,  // 52: tetragon.GetEventsResponse.rate_limit_info:type_name -> tetragon.RateLimitInfo
-	48, // 53: tetragon.GetEventsResponse.time:type_name -> google.protobuf.Timestamp
-	12, // 54: tetragon.GetEventsResponse.aggregation_info:type_name -> tetragon.AggregationInfo
-	14, // 55: tetragon.GetEventsResponse.node_labels:type_name -> tetragon.GetEventsResponse.NodeLabelsEntry
-	56, // [56:56] is the sub-list for method output_type
-	56, // [56:56] is the sub-list for method input_type
-	56, // [56:56] is the sub-list for extension type_name
-	56, // [56:56] is the sub-list for extension extendee
-	0,  // [0:56] is the sub-list for field type_name
+	47, // 51: tetragon.GetEventsResponse.powershell_script_block:type_name -> tetragon.PowershellScriptBlock
+	48, // 52: tetragon.GetEventsResponse.test:type_name -> tetragon.Test
+	7,  // 53: tetragon.GetEventsResponse.rate_limit_info:type_name -> tetragon.RateLimitInfo
+	49, // 54: tetragon.GetEventsResponse.time:type_name -> google.protobuf.Timestamp
+	12, // 55: tetragon.GetEventsResponse.aggregation_info:type_name -> tetragon.AggregationInfo
+	14, // 56: tetragon.GetEventsResponse.node_labels:type_name -> tetragon.GetEventsResponse.NodeLabelsEntry
+	57, // [57:57] is the sub-list for method output_type
+	57, // [57:57] is the sub-list for method input_type
+	57, // [57:57] is the sub-list for extension type_name
+	57, // [57:57] is the sub-list for extension extendee
+	0,  // [0:57] is the sub-list for field type_name
 }
 
 func init() { file_tetragon_events_proto_init() }
@@ -2087,6 +2110,7 @@ func file_tetragon_events_proto_init() {
 		(*GetEventsResponse_ProcessThrottle)(nil),
 		(*GetEventsResponse_ProcessLsm)(nil),
 		(*GetEventsResponse_ProcessUsdt)(nil),
+		(*GetEventsResponse_PowershellScriptBlock)(nil),
 		(*GetEventsResponse_Test)(nil),
 		(*GetEventsResponse_RateLimitInfo)(nil),
 	}

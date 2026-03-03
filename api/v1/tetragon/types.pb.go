@@ -677,6 +677,26 @@ func (event *ProcessUdpSeqCheckError) SetAncestors(ps []*Process) {
 
 // Encapsulate implements the Event interface.
 // Returns the event wrapped by its GetEventsResponse_* type.
+func (event *PowershellScriptBlock) Encapsulate() IsGetEventsResponse_Event {
+	return &GetEventsResponse_PowershellScriptBlock{
+		PowershellScriptBlock: event,
+	}
+}
+
+// SetProcess implements the ProcessEvent interface.
+// Sets the Process field of an event.
+func (event *PowershellScriptBlock) SetProcess(p *Process) {
+	event.Process = p
+}
+
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *PowershellScriptBlock) SetParent(p *Process) {
+	event.Parent = p
+}
+
+// Encapsulate implements the Event interface.
+// Returns the event wrapped by its GetEventsResponse_* type.
 func (event *ProcessDns) Encapsulate() IsGetEventsResponse_Event {
 	return &GetEventsResponse_ProcessDns{
 		ProcessDns: event,
@@ -802,6 +822,8 @@ func UnwrapGetEventsResponse(response *GetEventsResponse) interface{} {
 		return ev.ProcessNetworkWatermark
 	case *GetEventsResponse_ProcessUdpSeqCheckError:
 		return ev.ProcessUdpSeqCheckError
+	case *GetEventsResponse_PowershellScriptBlock:
+		return ev.PowershellScriptBlock
 	case *GetEventsResponse_ProcessDns:
 		return ev.ProcessDns
 	case *GetEventsResponse_ProcessSandboxSyscall:

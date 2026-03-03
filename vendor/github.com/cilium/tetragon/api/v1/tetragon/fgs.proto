@@ -639,3 +639,16 @@ message ProcessUdpSeqCheckError {
   uint64 seq_num_received = 7;
   repeated Process ancestors = 8; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
+
+message PowershellScriptBlock {
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string script_path = 3;
+  string engine_version = 4;
+  string engine_path = 5;
+  uint32 tid = 6;
+  uint32 uid = 7;
+  string command_name = 8;
+  string command_line = 9;
+  string payload = 10;
+}

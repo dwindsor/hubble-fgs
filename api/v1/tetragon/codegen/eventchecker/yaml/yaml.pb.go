@@ -166,6 +166,7 @@ type eventCheckerHelper struct {
 	ProcessNetworkBurst     *eventchecker.ProcessNetworkBurstChecker     `json:"networkBurst,omitempty"`
 	ProcessNetworkWatermark *eventchecker.ProcessNetworkWatermarkChecker `json:"networkWatermark,omitempty"`
 	ProcessUdpSeqCheckError *eventchecker.ProcessUdpSeqCheckErrorChecker `json:"udpSeqCheckError,omitempty"`
+	PowershellScriptBlock   *eventchecker.PowershellScriptBlockChecker   `json:"powershellScriptBlock,omitempty"`
 	ProcessDns              *eventchecker.ProcessDnsChecker              `json:"dns,omitempty"`
 	ProcessSandboxSyscall   *eventchecker.ProcessSandboxSyscallChecker   `json:"sandboxSyscall,omitempty"`
 	RateLimitInfo           *eventchecker.RateLimitInfoChecker           `json:"rateLimitInfo,omitempty"`
@@ -340,6 +341,12 @@ func (checker *EventChecker) UnmarshalJSON(b []byte) error {
 		}
 		eventChecker = helper.ProcessUdpSeqCheckError
 	}
+	if helper.PowershellScriptBlock != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.PowershellScriptBlock, eventChecker)
+		}
+		eventChecker = helper.PowershellScriptBlock
+	}
 	if helper.ProcessDns != nil {
 		if eventChecker != nil {
 			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessDns, eventChecker)
@@ -424,6 +431,8 @@ func (checker EventChecker) MarshalJSON() ([]byte, error) {
 		helper.ProcessNetworkWatermark = c
 	case *eventchecker.ProcessUdpSeqCheckErrorChecker:
 		helper.ProcessUdpSeqCheckError = c
+	case *eventchecker.PowershellScriptBlockChecker:
+		helper.PowershellScriptBlock = c
 	case *eventchecker.ProcessDnsChecker:
 		helper.ProcessDns = c
 	case *eventchecker.ProcessSandboxSyscallChecker:

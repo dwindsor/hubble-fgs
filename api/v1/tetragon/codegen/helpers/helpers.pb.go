@@ -79,6 +79,8 @@ func ResponseTypeString(response *tetragon.GetEventsResponse) (string, error) {
 		return tetragon.EventType_PROCESS_LSM.String(), nil
 	case *tetragon.GetEventsResponse_ProcessUsdt:
 		return tetragon.EventType_PROCESS_USDT.String(), nil
+	case *tetragon.GetEventsResponse_PowershellScriptBlock:
+		return tetragon.EventType_POWERSHELL_SCRIPT_BLOCK.String(), nil
 	case *tetragon.GetEventsResponse_Test:
 		return tetragon.EventType_TEST.String(), nil
 	case *tetragon.GetEventsResponse_RateLimitInfo:
@@ -153,6 +155,8 @@ func ResponseInnerGetProcess(event tetragon.IsGetEventsResponse_Event) *tetragon
 		return ev.ProcessNetworkWatermark.Process
 	case *tetragon.GetEventsResponse_ProcessUdpSeqCheckError:
 		return ev.ProcessUdpSeqCheckError.Process
+	case *tetragon.GetEventsResponse_PowershellScriptBlock:
+		return ev.PowershellScriptBlock.Process
 	case *tetragon.GetEventsResponse_ProcessDns:
 		return ev.ProcessDns.Process
 	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
@@ -236,6 +240,8 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessNetworkWatermark.Parent
 	case *tetragon.GetEventsResponse_ProcessUdpSeqCheckError:
 		return ev.ProcessUdpSeqCheckError.Parent
+	case *tetragon.GetEventsResponse_PowershellScriptBlock:
+		return ev.PowershellScriptBlock.Parent
 	case *tetragon.GetEventsResponse_ProcessDns:
 		return ev.ProcessDns.Parent
 	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
@@ -351,6 +357,7 @@ func ResponseTypeMap() map[string]proto.Message {
 		"process_throttle":            &tetragon.ProcessThrottle{},
 		"process_lsm":                 &tetragon.ProcessLsm{},
 		"process_usdt":                &tetragon.ProcessUsdt{},
+		"powershell_script_block":     &tetragon.PowershellScriptBlock{},
 		"test":                        &tetragon.Test{},
 		"rate_limit_info":             &tetragon.RateLimitInfo{},
 	}
@@ -416,6 +423,8 @@ func ProcessEventMapTuple(response *tetragon.GetEventsResponse) (string, any, an
 		return "process_lsm", response.GetProcessLsm(), (*tetragon.ProcessLsm)(nil)
 	case *tetragon.GetEventsResponse_ProcessUsdt:
 		return "process_usdt", response.GetProcessUsdt(), (*tetragon.ProcessUsdt)(nil)
+	case *tetragon.GetEventsResponse_PowershellScriptBlock:
+		return "powershell_script_block", response.GetPowershellScriptBlock(), (*tetragon.PowershellScriptBlock)(nil)
 	case *tetragon.GetEventsResponse_Test:
 		return "test", response.GetTest(), (*tetragon.Test)(nil)
 	case *tetragon.GetEventsResponse_RateLimitInfo:
@@ -456,6 +465,7 @@ func ProcessEventMapEmpty() map[string]any {
 		"process_throttle":            (*tetragon.ProcessThrottle)(nil),
 		"process_lsm":                 (*tetragon.ProcessLsm)(nil),
 		"process_usdt":                (*tetragon.ProcessUsdt)(nil),
+		"powershell_script_block":     (*tetragon.PowershellScriptBlock)(nil),
 		"test":                        (*tetragon.Test)(nil),
 		"rate_limit_info":             (*tetragon.RateLimitInfo)(nil),
 	}

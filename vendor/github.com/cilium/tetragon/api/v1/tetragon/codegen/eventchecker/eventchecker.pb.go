@@ -317,6 +317,8 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessNetworkWatermarkChecker("").FromProcessNetworkWatermark(ev), nil
 	case *tetragon.ProcessUdpSeqCheckError:
 		return NewProcessUdpSeqCheckErrorChecker("").FromProcessUdpSeqCheckError(ev), nil
+	case *tetragon.PowershellScriptBlock:
+		return NewPowershellScriptBlockChecker("").FromPowershellScriptBlock(ev), nil
 	case *tetragon.ProcessDns:
 		return NewProcessDnsChecker("").FromProcessDns(ev), nil
 	case *tetragon.ProcessSandboxSyscall:
@@ -421,6 +423,8 @@ func EventFromResponse(response *tetragon.GetEventsResponse) (Event, error) {
 		return ev.ProcessNetworkWatermark, nil
 	case *tetragon.GetEventsResponse_ProcessUdpSeqCheckError:
 		return ev.ProcessUdpSeqCheckError, nil
+	case *tetragon.GetEventsResponse_PowershellScriptBlock:
+		return ev.PowershellScriptBlock, nil
 	case *tetragon.GetEventsResponse_ProcessDns:
 		return ev.ProcessDns, nil
 	case *tetragon.GetEventsResponse_ProcessSandboxSyscall:
@@ -6959,6 +6963,206 @@ func (checker *ProcessUdpSeqCheckErrorChecker) FromProcessUdpSeqCheckError(event
 			WithValues(checks...)
 		checker.Ancestors = lm
 	}
+	return checker
+}
+
+// PowershellScriptBlockChecker implements a checker struct to check a PowershellScriptBlock event
+type PowershellScriptBlockChecker struct {
+	CheckerName   string                       `json:"checkerName"`
+	Process       *ProcessChecker              `json:"process,omitempty"`
+	Parent        *ProcessChecker              `json:"parent,omitempty"`
+	ScriptPath    *stringmatcher.StringMatcher `json:"scriptPath,omitempty"`
+	EngineVersion *stringmatcher.StringMatcher `json:"engineVersion,omitempty"`
+	EnginePath    *stringmatcher.StringMatcher `json:"enginePath,omitempty"`
+	Tid           *uint32                      `json:"tid,omitempty"`
+	Uid           *uint32                      `json:"uid,omitempty"`
+	CommandName   *stringmatcher.StringMatcher `json:"commandName,omitempty"`
+	CommandLine   *stringmatcher.StringMatcher `json:"commandLine,omitempty"`
+	Payload       *stringmatcher.StringMatcher `json:"payload,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *PowershellScriptBlockChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.PowershellScriptBlock); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a PowershellScriptBlock event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *PowershellScriptBlockChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewPowershellScriptBlockChecker creates a new PowershellScriptBlockChecker
+func NewPowershellScriptBlockChecker(name string) *PowershellScriptBlockChecker {
+	return &PowershellScriptBlockChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *PowershellScriptBlockChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *PowershellScriptBlockChecker) GetCheckerType() string {
+	return "PowershellScriptBlockChecker"
+}
+
+// Check checks a PowershellScriptBlock event
+func (checker *PowershellScriptBlockChecker) Check(event *tetragon.PowershellScriptBlock) error {
+	if event == nil {
+		return fmt.Errorf("%s: PowershellScriptBlock event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.ScriptPath != nil {
+			if err := checker.ScriptPath.Match(event.ScriptPath); err != nil {
+				return fmt.Errorf("ScriptPath check failed: %w", err)
+			}
+		}
+		if checker.EngineVersion != nil {
+			if err := checker.EngineVersion.Match(event.EngineVersion); err != nil {
+				return fmt.Errorf("EngineVersion check failed: %w", err)
+			}
+		}
+		if checker.EnginePath != nil {
+			if err := checker.EnginePath.Match(event.EnginePath); err != nil {
+				return fmt.Errorf("EnginePath check failed: %w", err)
+			}
+		}
+		if checker.Tid != nil {
+			if *checker.Tid != event.Tid {
+				return fmt.Errorf("Tid has value %d which does not match expected value %d", event.Tid, *checker.Tid)
+			}
+		}
+		if checker.Uid != nil {
+			if *checker.Uid != event.Uid {
+				return fmt.Errorf("Uid has value %d which does not match expected value %d", event.Uid, *checker.Uid)
+			}
+		}
+		if checker.CommandName != nil {
+			if err := checker.CommandName.Match(event.CommandName); err != nil {
+				return fmt.Errorf("CommandName check failed: %w", err)
+			}
+		}
+		if checker.CommandLine != nil {
+			if err := checker.CommandLine.Match(event.CommandLine); err != nil {
+				return fmt.Errorf("CommandLine check failed: %w", err)
+			}
+		}
+		if checker.Payload != nil {
+			if err := checker.Payload.Match(event.Payload); err != nil {
+				return fmt.Errorf("Payload check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) WithProcess(check *ProcessChecker) *PowershellScriptBlockChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) WithParent(check *ProcessChecker) *PowershellScriptBlockChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithScriptPath adds a ScriptPath check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) WithScriptPath(check *stringmatcher.StringMatcher) *PowershellScriptBlockChecker {
+	checker.ScriptPath = check
+	return checker
+}
+
+// WithEngineVersion adds a EngineVersion check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) WithEngineVersion(check *stringmatcher.StringMatcher) *PowershellScriptBlockChecker {
+	checker.EngineVersion = check
+	return checker
+}
+
+// WithEnginePath adds a EnginePath check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) WithEnginePath(check *stringmatcher.StringMatcher) *PowershellScriptBlockChecker {
+	checker.EnginePath = check
+	return checker
+}
+
+// WithTid adds a Tid check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) WithTid(check uint32) *PowershellScriptBlockChecker {
+	checker.Tid = &check
+	return checker
+}
+
+// WithUid adds a Uid check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) WithUid(check uint32) *PowershellScriptBlockChecker {
+	checker.Uid = &check
+	return checker
+}
+
+// WithCommandName adds a CommandName check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) WithCommandName(check *stringmatcher.StringMatcher) *PowershellScriptBlockChecker {
+	checker.CommandName = check
+	return checker
+}
+
+// WithCommandLine adds a CommandLine check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) WithCommandLine(check *stringmatcher.StringMatcher) *PowershellScriptBlockChecker {
+	checker.CommandLine = check
+	return checker
+}
+
+// WithPayload adds a Payload check to the PowershellScriptBlockChecker
+func (checker *PowershellScriptBlockChecker) WithPayload(check *stringmatcher.StringMatcher) *PowershellScriptBlockChecker {
+	checker.Payload = check
+	return checker
+}
+
+//FromPowershellScriptBlock populates the PowershellScriptBlockChecker using data from a PowershellScriptBlock event
+func (checker *PowershellScriptBlockChecker) FromPowershellScriptBlock(event *tetragon.PowershellScriptBlock) *PowershellScriptBlockChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	checker.ScriptPath = stringmatcher.Full(event.ScriptPath)
+	checker.EngineVersion = stringmatcher.Full(event.EngineVersion)
+	checker.EnginePath = stringmatcher.Full(event.EnginePath)
+	{
+		val := event.Tid
+		checker.Tid = &val
+	}
+	{
+		val := event.Uid
+		checker.Uid = &val
+	}
+	checker.CommandName = stringmatcher.Full(event.CommandName)
+	checker.CommandLine = stringmatcher.Full(event.CommandLine)
+	checker.Payload = stringmatcher.Full(event.Payload)
 	return checker
 }
 

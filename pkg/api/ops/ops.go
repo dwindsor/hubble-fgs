@@ -138,7 +138,7 @@ const (
 	// MSG_OP_EXIT event indicates a network namespace is being destroyed.
 	MSG_OP_NETNS_EXIT = 144
 
-	MSG_OP_POWERSHELL = 145
+	MSG_OP_POWERSHELL_BLOCK = 145
 )
 
 var OpCodeStrings = map[OpCode]string{
@@ -183,6 +183,7 @@ var OpCodeStrings = map[OpCode]string{
 	MSG_OP_FILE_LINK:                 "FileLink",
 	MSG_OP_FILE_SYMLINK:              "FileSymlink",
 	MSG_OP_FILE_OPENRAW:              "FileOpenraw",
+	MSG_OP_POWERSHELL_BLOCK:          "PowershellScriptBlock",
 }
 
 func (op OpCode) String() string {

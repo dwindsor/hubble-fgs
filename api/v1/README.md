@@ -95,6 +95,7 @@
     - [LinkArg](#tetragon-LinkArg)
     - [OpenRawArg](#tetragon-OpenRawArg)
     - [PathDetails](#tetragon-PathDetails)
+    - [PowershellScriptBlock](#tetragon-PowershellScriptBlock)
     - [ProcessAccept](#tetragon-ProcessAccept)
     - [ProcessClose](#tetragon-ProcessClose)
     - [ProcessConnect](#tetragon-ProcessConnect)
@@ -2038,6 +2039,30 @@ HTTP PARSER
 
 
 
+<a name="tetragon-PowershellScriptBlock"></a>
+
+### PowershellScriptBlock
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| script_path | [string](#string) |  |  |
+| engine_version | [string](#string) |  |  |
+| engine_path | [string](#string) |  |  |
+| tid | [uint32](#uint32) |  |  |
+| uid | [uint32](#uint32) |  |  |
+| command_name | [string](#string) |  |  |
+| command_line | [string](#string) |  |  |
+| payload | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="tetragon-ProcessAccept"></a>
 
 ### ProcessAccept
@@ -3138,6 +3163,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_throttle | [ProcessThrottle](#tetragon-ProcessThrottle) |  |  |
 | process_lsm | [ProcessLsm](#tetragon-ProcessLsm) |  |  |
 | process_usdt | [ProcessUsdt](#tetragon-ProcessUsdt) |  |  |
+| powershell_script_block | [PowershellScriptBlock](#tetragon-PowershellScriptBlock) |  |  |
 | test | [Test](#tetragon-Test) |  |  |
 | rate_limit_info | [RateLimitInfo](#tetragon-RateLimitInfo) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
@@ -3260,6 +3286,7 @@ GetEventsResponse event oneof.
 | PROCESS_THROTTLE | 27 |  |
 | PROCESS_LSM | 28 |  |
 | PROCESS_USDT | 29 |  |
+| POWERSHELL_SCRIPT_BLOCK | 30 |  |
 | TEST | 40000 |  |
 | RATE_LIMIT_INFO | 40001 |  |
 
