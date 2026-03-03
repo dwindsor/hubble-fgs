@@ -293,7 +293,7 @@ func (h *policyStatusHandler) handleAggregatedPolicyBatch(policies []*PolicyAggr
 func (h *policyStatusHandler) convertPolicyBatchToPolicyStatus(policies []*PolicyAggregationResult) *v1alpha.PolicyStatusUpdate {
 	serialNumber := "unknown"
 	if h.dataProvider.GetSerialNumber != nil {
-		serialNumber = h.dataProvider.GetSerialNumber()
+		serialNumber = strings.ToLower(h.dataProvider.GetSerialNumber())
 	}
 
 	var statuses []*v1alpha.PolicyStatus
@@ -436,7 +436,7 @@ func (h *policyStatusHandler) ReportPolicyValidationStatus(ctx context.Context, 
 	// Create PolicyStatusUpdate
 	serialNumber := "unknown"
 	if h.dataProvider.GetSerialNumber != nil {
-		serialNumber = h.dataProvider.GetSerialNumber()
+		serialNumber = strings.ToLower(h.dataProvider.GetSerialNumber())
 	}
 
 	policyStatusUpdate := &v1alpha.PolicyStatusUpdate{

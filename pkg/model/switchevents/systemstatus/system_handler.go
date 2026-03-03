@@ -12,6 +12,7 @@ package systemstatus
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -227,7 +228,7 @@ func (h *systemConnectionHandler) writeSystemStatusUpdate(status model.E_Cisco_N
 	}
 	serialNumber := "unknown"
 	if h.dataProvider.GetSerialNumber != nil {
-		serialNumber = h.dataProvider.GetSerialNumber()
+		serialNumber = strings.ToLower(h.dataProvider.GetSerialNumber())
 	}
 	version := "unknown"
 	if h.dataProvider.GetVersion != nil {
