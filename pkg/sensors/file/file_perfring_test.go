@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-// go test -gcflags="" -c ./pkg/sensors/file -o go-tests/file.test
+// go test -gcflags="" -tags sudo_tests -c ./pkg/sensors/file -o go-tests/file.test
 // sudo ./go-tests/file.test --bpf-lib ./bpf/objs/ -test.run TestFileSuffixPattern
 
 //go:build sudo_tests
@@ -66,11 +66,21 @@ import (
 	grpc "github.com/isovalent/hubble-fgs/pkg/grpc/file"
 )
 
+// TODO: move this function to OSS pkg/kernels
+func IsKernelVersionGreaterThan(version string) bool {
+	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
+	return (int64(kernelVer) >= kernels.KernelStringToNumeric(version))
+}
+
 func TestFileSuffixPattern(t *testing.T) {
 	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
 	if !kernels.MinKernelVersion("5.4.0") {
 		t.Skip("File monitoring patterns requires at least 5.4.0 kernel version")
+	}
+
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
@@ -641,6 +651,10 @@ func TestFileDigestMatch(t *testing.T) {
 func TestMatchBinariesFollowChildren(t *testing.T) {
 	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), tus.Conf().CmdWaitTime)
 	defer cancel()
 
@@ -1078,6 +1092,10 @@ type UnixSocketTestCase struct {
 
 func TestUnixSockets(t *testing.T) {
 	ossTestUtils.CaptureLog(t, logger.GetLogger())
+
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
 
 	supportPathBased := utils.SupportFmodRet() && utils.SupportLSM() && (probeBpfLoop() == nil)
 

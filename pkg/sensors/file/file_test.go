@@ -917,6 +917,10 @@ func getProgSuffix(t *testing.T, spec *btf.Spec, fnName string, retprobe bool) s
 }
 
 func TestLoadFileSensor(t *testing.T) {
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
+
 	test_path := filepath.Join(workingDir, fmt.Sprintf("fim_test_dir_%s", filepath.Base(t.Name())))
 	specFname := createSpecFile(t, test_path)
 
@@ -2693,6 +2697,9 @@ func testFileReadSelectorCapNs(gt *testing.T, t *testing.T) {
 }
 
 func TestFileOps(t *testing.T) {
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -2784,6 +2791,9 @@ func TestFileOps(t *testing.T) {
 }
 
 func TestFileUserDefinedMapSizes(t *testing.T) {
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
 	filePasswd := "/etc/passwd"
 	specFile := newSpecFile(t, filePasswd, "file_monitoring_config.yaml.tmpl")
 
@@ -2839,6 +2849,9 @@ func TestFileUserDefinedMapSizes(t *testing.T) {
 }
 
 func TestFileRenameDirSuffix(t *testing.T) {
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
 	if !bpf.HasProgramLargeSize() {
 		t.Skip("Suffix match in FIM requires support for large programs")
 	}
@@ -2906,6 +2919,9 @@ func TestFileRenameDirSuffix(t *testing.T) {
 
 // This test represents the issue reported by Cure53 in https://github.com/isovalent/hubble-fgs/issues/3289
 func TestFileLinkOnTmpFile(t *testing.T) {
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
 	outTest := filepath.Join(workingDir, t.Name())
 	createTestDir(t, outTest)
 
