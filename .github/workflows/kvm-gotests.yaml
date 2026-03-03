@@ -107,14 +107,13 @@ jobs:
 
             # install test deps
             apt-get update -y
-            # TODO remove bind9-dnsutils package once image version is >= 20250214.144547
-            DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd socat iproute2 net-tools bind9-dnsutils pahole clang lld llvm
+            DEFPACKAGES="bind9-dnsutils libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd socat iproute2 net-tools pahole clang lld llvm"
 
             if [[ "${{ matrix.arch }}" == "amd64" ]]
             then
-              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y libc6-dev-i386 gcc-multilib
+              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confnew" -y \$DEFPACKAGES libc6-dev-i386 gcc-multilib
             else
-              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confdef" -o "Dpkg::Options::=--force-confold" -y gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf libc6-dev-armhf-cross build-essential
+              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confnew" -y \$DEFPACKAGES gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf libc6-dev-armhf-cross build-essential
             fi
 
             # restart ssh server only on RHEL
