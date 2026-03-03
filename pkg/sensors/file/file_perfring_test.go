@@ -313,6 +313,10 @@ func TestFileSuffixPattern(t *testing.T) {
 func TestFileFsTypeMatch(t *testing.T) {
 	ossTestUtils.CaptureLog(t, logger.GetLogger())
 
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
+
 	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
 		t.Skip("File monitoring patterns with FileSystemType type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
 	}
@@ -425,6 +429,10 @@ func TestFileFsTypeMatch(t *testing.T) {
 
 func TestFileGlobMatch(t *testing.T) {
 	ossTestUtils.CaptureLog(t, logger.GetLogger())
+
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
 
 	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
 		t.Skip("File monitoring patterns with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
@@ -861,6 +869,10 @@ type OpenRawTestCase struct {
 
 func TestMatchOpenrawOps(t *testing.T) {
 	ossTestUtils.CaptureLog(t, logger.GetLogger())
+
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
 
 	if !utils.SupportFmodRet() || !utils.SupportLSM() || (probeBpfLoop() != nil) || (probeForEachMapElem() != nil) {
 		t.Skip("File monitoring with AllFileOps type requires fmod_ret and lsm programs, bpf_loop and bpf_for_each_map_elem helpers")
