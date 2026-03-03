@@ -15,7 +15,7 @@ hostNetwork: true
 tetragon:
   image:
     repository: quay.io/isovalent/tetragon
-    tag: v1.19.0-pre.4
+    tag: v1.19.0-pre.5
   metadata:
     enabled: false
     image:
@@ -161,7 +161,7 @@ tetragonAggregator:
   image:
     override: ~
     repository: quay.io/isovalent/tetragon-aggregator
-    tag: v1.19.0-pre.4
+    tag: v1.19.0-pre.5
     pullPolicy: IfNotPresent
   # -- Extra volumes for the Tetragon Aggregator Deployment.
   extraVolumes: []
@@ -169,7 +169,7 @@ tetragonAggregator:
 tetragonOperator:
   image:
     repository: quay.io/isovalent/tetragon-operator
-    tag: v1.19.0-pre.4
+    tag: v1.19.0-pre.5
   podInfo:
     # -- Enables the PodInfo CRD and the controller that reconciles PodInfo
     # custom resources.
