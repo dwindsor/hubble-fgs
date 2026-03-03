@@ -12,7 +12,46 @@ package switchpolicy
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
+
+func TestUpdateGIDs(t *testing.T) {
+	t.Run("single GID change", func(t *testing.T) {
+		l3 := NewL3Networks()
+		require.NoError(t, l3.Add("red", 100))
+
+		l3.UpdateGIDs(map[VrfName]VrfGID{"red": 200})
+
+		require.Equal(t, VrfGID(200), l3.byName["red"])
+		require.Equal(t, VrfName("red"), l3.byGID[200])
+		_, oldExists := l3.byGID[100]
+		require.False(t, oldExists, "old GID should be removed from byGID")
+	})
+
+	t.Run("GID swap", func(t *testing.T) {
+		l3 := NewL3Networks()
+		require.NoError(t, l3.Add("red", 100))
+		require.NoError(t, l3.Add("blue", 200))
+
+		l3.UpdateGIDs(map[VrfName]VrfGID{"red": 200, "blue": 100})
+
+		require.Equal(t, VrfGID(200), l3.byName["red"])
+		require.Equal(t, VrfGID(100), l3.byName["blue"])
+		require.Equal(t, VrfName("red"), l3.byGID[200])
+		require.Equal(t, VrfName("blue"), l3.byGID[100])
+	})
+
+	t.Run("no-op when GID unchanged", func(t *testing.T) {
+		l3 := NewL3Networks()
+		require.NoError(t, l3.Add("red", 100))
+
+		l3.UpdateGIDs(map[VrfName]VrfGID{"red": 100})
+
+		require.Equal(t, VrfGID(100), l3.byName["red"])
+		require.Equal(t, VrfName("red"), l3.byGID[100])
+	})
+}
 
 // TestL3Networks_AddVrfWithGID0 verifies that VRFs with global ID 0 are handled correctly.
 // Since NewL3Networks initializes with empty string ("") mapped to GID 0, attempting to add

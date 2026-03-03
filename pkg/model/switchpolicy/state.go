@@ -144,26 +144,17 @@ func (s *State) AddRule(id RuleID, policy *SwitchPolicy) error {
 }
 
 func (s *State) SetL3Networks(l3 *L3Networks) error {
+	// Phase 1: Update GIDs that have changed in-place and generate
+	// UPSERT diffs for affected policies.
+	gidUpdates := make(map[VrfName]VrfGID)
 	for vrfName, gid := range l3.byName {
-		if existingGid, ok := s.networkL3Objects.byName[vrfName]; ok {
-			if existingGid != gid {
-				return fmt.Errorf("L3 network with name %s already exists with different GID %d (new GID %d)", vrfName, existingGid, gid)
-			}
-		}
-		if existingName, ok := s.networkL3Objects.byGID[gid]; ok {
-			if existingName != vrfName {
-				return fmt.Errorf("L3 network with GID %d already exists with different name %s (new name %s)", gid, existingName, vrfName)
-			}
+		if existingGid, ok := s.networkL3Objects.byName[vrfName]; ok && existingGid != gid {
+			gidUpdates[vrfName] = gid
 		}
 	}
-
-	for vrfName, gid := range l3.byName {
-		if _, ok := s.networkL3Objects.byName[vrfName]; !ok {
-			// New L3 network, add it
-			if err := s.networkL3Objects.Add(vrfName, gid); err != nil {
-				return fmt.Errorf("failed to add L3 network %s: %w", vrfName, err)
-			}
-			// Mark all rules for this VRF to be added
+	if len(gidUpdates) > 0 {
+		s.networkL3Objects.UpdateGIDs(gidUpdates)
+		for vrfName := range gidUpdates {
 			for ruleId, rule := range s.policyByVRFName[vrfName] {
 				converted := s.convertRuleToDPUPolicyRule(rule, true)
 				if converted != nil {
@@ -173,10 +164,24 @@ func (s *State) SetL3Networks(l3 *L3Networks) error {
 		}
 	}
 
+	// Phase 2: Add VRFs that are new (not in current state).
+	for vrfName, gid := range l3.byName {
+		if _, ok := s.networkL3Objects.byName[vrfName]; !ok {
+			if err := s.networkL3Objects.Add(vrfName, gid); err != nil {
+				return fmt.Errorf("failed to add L3 network %s: %w", vrfName, err)
+			}
+			for ruleId, rule := range s.policyByVRFName[vrfName] {
+				converted := s.convertRuleToDPUPolicyRule(rule, true)
+				if converted != nil {
+					s.diff.Add(ruleId, converted)
+				}
+			}
+		}
+	}
+
+	// Phase 3: Remove VRFs no longer in the incoming set.
 	for vrfName := range s.networkL3Objects.byName {
 		if _, ok := l3.byName[vrfName]; !ok {
-			// L3 network was removed, delete it
-			// First we need to prepare DPU rules
 			for ruleId, rule := range s.policyByVRFName[vrfName] {
 				converted := s.convertRuleToDPUPolicyRule(rule, false)
 				if converted != nil {

@@ -61,6 +61,22 @@ func (l3 *L3Networks) HasVRF(name VrfName) bool {
 	return ok
 }
 
+// UpdateGIDs atomically updates GID mappings for VRFs that already exist.
+// Uses two passes to handle GID swaps correctly (e.g., red:100↔blue:200).
+func (l3 *L3Networks) UpdateGIDs(updates map[VrfName]VrfGID) {
+	// Pass 1: Remove old GID reverse-mappings for all changing VRFs.
+	for name, newGID := range updates {
+		if oldGID, ok := l3.byName[name]; ok && oldGID != newGID {
+			delete(l3.byGID, oldGID)
+		}
+	}
+	// Pass 2: Set new GID mappings.
+	for name, newGID := range updates {
+		l3.byName[name] = newGID
+		l3.byGID[newGID] = name
+	}
+}
+
 // Copy creates a deep copy of the L3Networks
 func (l3 *L3Networks) Copy() *L3Networks {
 	l3Copy := &L3Networks{
