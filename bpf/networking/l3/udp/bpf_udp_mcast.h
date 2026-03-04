@@ -8,8 +8,8 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-#ifndef __BPF_UDP_SEQ_ERROR_H__
-#define __BPF_UDP_SEQ_ERROR_H__
+#ifndef __BPF_UDP_MCAST_H__
+#define __BPF_UDP_MCAST_H__
 
 #include "vmlinux.h"
 #include "lib/bpf_helpers.h"
@@ -73,4 +73,4 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 #endif
 }
 
-#endif // __BPF_UDP_SEQ_ERROR_H__
+#endif // __BPF_UDP_MCAST_H__

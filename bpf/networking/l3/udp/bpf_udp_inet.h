@@ -27,7 +27,7 @@
 #include "bpf_udp_info.h"
 #include "parsers/dns/dns_parser.h"
 #ifndef IS_KPROBE
-#include "bpf_udp_seq_error.h"
+#include "bpf_udp_mcast.h"
 #endif
 
 extern volatile __CONST bool CGROUP_PROBE_READ;
