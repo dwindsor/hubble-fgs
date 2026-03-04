@@ -32,6 +32,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger/logfields"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/rthooks"
+	"github.com/cilium/tetragon/pkg/server/eventlog"
 
 	"github.com/isovalent/hubble-fgs/pkg/alerts"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
@@ -531,17 +532,27 @@ func tetragonExecuteCtx(ctx context.Context, cancel context.CancelFunc, ready fu
 	alerter := alerts.NewAlerter(ctx, alertsManager)
 	netpolManager := netpol.New(ctx)
 
+	// Fetch the exporter if needed
+	var exporter *exporter.Exporter
+	if option.Config.ExportFilename != "" {
+		exporter, err = getExporter(ctx, pm.Server)
+		if err != nil {
+			return fmt.Errorf("failed to create a new exporter: %w", err)
+		}
+	}
+
 	// Start gRPC server
-	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer, mandatesrv.New(mandateMgr), alerter, netpolManager, rule.New(alertsManager, observer.GetSensorManager())); err != nil {
+	if err = Serve(ctx, option.Config.ServerAddress, pm.Server, modelServer, mandatesrv.New(mandateMgr), alerter, netpolManager, rule.New(alertsManager, observer.GetSensorManager()), eventlog.New(exporter, alertsManager)); err != nil {
 		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 
-	// Start data exporters
-	if option.Config.ExportFilename != "" {
-		if err = startExporter(ctx, pm.Server); err != nil {
+	// Finally start exporter if needed
+	if exporter != nil {
+		if err = exporter.Start(); err != nil {
 			return fmt.Errorf("failed to start json exporter: %w", err)
 		}
 	}
+
 	if enterpriseOption.Config.ApplicationModelExportInterval != 0 {
 		if err = startApplicationModelExporter(ctx, modelServer); err != nil {
 			return fmt.Errorf("failed to start json application model exporter: %w", err)
@@ -718,25 +729,25 @@ func getWriter(filename string, maxSizeMB int, maxBackups int, compress bool) (*
 	return writer, nil
 }
 
-func startExporter(ctx context.Context, server *server.Server) error {
+func getExporter(ctx context.Context, server *server.Server) (*exporter.Exporter, error) {
 	allowList, denyList, err := getExportFilters()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	fieldFilters, err := getFieldFilters()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	writer, err := getWriter(option.Config.ExportFilename, option.Config.ExportFileMaxSizeMB, option.Config.ExportFileMaxBackups, option.Config.ExportFileCompress)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var flowWriter *lumberjack.Logger
 	enableFlowExport := enterpriseOption.Config.FlowExportFilename != ""
 	if enableFlowExport {
 		flowWriter, err = getWriter(enterpriseOption.Config.FlowExportFilename, enterpriseOption.Config.FlowExportFileMaxSizeMB, enterpriseOption.Config.FlowExportFileMaxBackups, enterpriseOption.Config.FlowExportFileCompress)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -746,13 +757,13 @@ func startExporter(ctx context.Context, server *server.Server) error {
 	if enableOCSFExport {
 		ocsfWriter, err = getWriter(enterpriseOption.Config.OCSFExportFilename, enterpriseOption.Config.OCSFExportFileMaxSizeMB, enterpriseOption.Config.OCSFExportFileMaxBackups, enterpriseOption.Config.OCSFExportFileCompress)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if option.Config.ExportFileRotationInterval < 0 {
 		// Passed an invalid interval let's error out
-		return fmt.Errorf("frequency '%s' at which to rotate JSON export files is negative", option.Config.ExportFileRotationInterval.String())
+		return nil, fmt.Errorf("frequency '%s' at which to rotate JSON export files is negative", option.Config.ExportFileRotationInterval.String())
 	} else if option.Config.ExportFileRotationInterval > 0 {
 		log.Info("Periodically rotating JSON export files", "frequency", option.Config.ExportFileRotationInterval.String())
 		go func() {
@@ -794,13 +805,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 	req := tetragon.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions, FieldFilters: fieldFilters}
 	log.Info("Configured field filters", "fieldFilters", fieldFilters)
 	log.Info("Starting JSON exporter", "logger", writer)
-	exporter, err := exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
-	if err != nil {
-		return fmt.Errorf("failed to create a new exporter: %w", err)
-	}
-	exporter.Start()
-
-	return nil
+	return exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
 }
 
 func startApplicationModelExporter(ctx context.Context, modelServer *model.Server) error {
@@ -873,7 +878,7 @@ func startApplicationModelExporter(ctx context.Context, modelServer *model.Serve
 
 func Serve(
 	ctx context.Context, listenAddr string,
-	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager, rule *rule.Server) error {
+	srv *server.Server, model *model.Server, mandate *mandatesrv.Server, alerter tetragon.AlertServiceServer, netpol *netpol.NetworkPolicyManager, rule *rule.Server, eventlogSrv *eventlog.Server) error {
 	grpcServer := grpc.NewServer()
 	tetragon.RegisterFineGuidanceSensorsServer(grpcServer, srv)
 	registerProcessModelServiceServer(grpcServer, model)
@@ -881,6 +886,7 @@ func Serve(
 	tetragon.RegisterAlertServiceServer(grpcServer, alerter)
 	tetragon.RegisterRuleServiceServer(grpcServer, rule)
 	tetragon.RegisterNetworkPolicyServiceServer(grpcServer, netpol)
+	tetragon.RegisterEventLogServiceServer(grpcServer, eventlogSrv)
 	registerApplicationModelServiceServer(grpcServer, model)
 
 	proto, addr, err := server.SplitListenAddr(listenAddr)
