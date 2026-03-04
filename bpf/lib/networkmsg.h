@@ -147,8 +147,8 @@ struct msg_process_network_watermarks_event {
 
 // application_id specifies the specific application or protocol that this
 // event refers to.
-#define UDPSEQERR_APP_UNKNOWN 0
-#define UDPSEQERR_APP_MTP     1
+#define MULTICAST_APP_NOAPP   0
+#define MULTICAST_APP_LSEGMTP 1
 
 // app_specific_id can be used by any specified app in any way it chooses.
 struct msg_udp_seq_error_event {

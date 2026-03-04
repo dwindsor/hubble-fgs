@@ -186,7 +186,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 	e->tuple.proto = IPPROTO_UDP;
 	e->tuple.conn_id = 0;
 	e->socket_cookie = *cookie;
-	e->application_id = UDPSEQERR_APP_MTP;
+	e->application_id = MULTICAST_APP_LSEGMTP;
 	e->app_specific_id = line_id;
 	e->seq_num_expected = expected_seq_num;
 	e->seq_num_received = seq_num;
@@ -238,7 +238,7 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 	switch (config->multicast_app_id) {
 #ifdef SEQ_CHECK_ENABLED
 #error "DO NOT COMPILE IF THIS IS ENABLED"
-	case UDPSEQERR_APP_MTP:
+	case MULTICAST_APP_LSEGMTP:
 		udp_seq_err_check_mtp(skb, skb_head, ip, ipv6, cookie,
 				      payload_off, payload_sz, process, v, config);
 		return;
