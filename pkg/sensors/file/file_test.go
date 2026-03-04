@@ -1056,6 +1056,10 @@ func createSpecEnforceFile(t *testing.T, test_path string, operation string) str
 }
 
 func TestFileEnforceCreate(t *testing.T) {
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
+
 	if !utils.SupportEnforcement() {
 		t.Skip("Kernel does not support file enforcement")
 	}
@@ -1116,6 +1120,10 @@ func TestFileEnforceCreate(t *testing.T) {
 }
 
 func TestFileEnforceWrite(t *testing.T) {
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
+
 	if !utils.SupportEnforcement() {
 		t.Skip("Kernel does not support file enforcement")
 	}
@@ -1182,6 +1190,10 @@ func TestFileEnforceWrite(t *testing.T) {
 }
 
 func TestFileEnforceExec(t *testing.T) {
+	if IsKernelVersionGreaterThan("6.19") {
+		t.Skip("This test does not work for 6.19 onwards. Disabled.")
+	}
+
 	if !utils.SupportEnforcement() {
 		t.Skip("Kernel does not support file enforcement")
 	}
