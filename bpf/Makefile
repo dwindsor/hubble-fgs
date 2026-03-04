@@ -309,6 +309,9 @@ $(DEPSDIR)%.d: $(L2DIR)%.c
 # L3DIR
 objs/%.o: $(L3DIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+	@echo "Checking for the (expected) 'canary:base_build' string in BPF object: $@"
+	@if ! grep canary:base_build '$@'; then echo "Failed to find the string 'canary:base_build' in object: $@. We use this as a canary to ensure our grep works."; rm '$@'; exit 1; fi
+	@if [[ "$(LSEG)" -ne 1 ]]; then echo "Checking for the (unexpected) 'canary:lseg_build' string in BPF object: $@"; if grep canary:lseg_build '$@'; then echo "Found the string 'canary:lseg_build' in object: $@. This means LSEG code is present in a non-LSEG build."; rm '$@'; exit 1; fi; fi
 
 $(DEPSDIR)%.d: $(L3DIR)%.c
 	$(rule_d)

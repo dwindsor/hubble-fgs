@@ -30,6 +30,10 @@ struct {
 	__uint(max_entries, 1);
 } tg_l3_udp_lsegm SEC(".maps");
 
+// We include a string here that we don't expect to be found elsewhere in the code base,
+// so that we can grep for it and check if this code is included in the objects.
+static char lseg_build_canary[] __attribute__((used)) = "canary:lseg_build";
+
 static inline __attribute__((always_inline)) bool
 old_seq_num(uint32_t datagram_sn, uint32_t expected_sn, uint32_t max_sn)
 {
@@ -49,7 +53,6 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 		      u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
 		      struct udp_info_key *k, struct udp_info_value *v, struct udp_sensor_config *config)
 {
-#error "DO NOT COMPILE IF THIS IS ENABLED"
 	struct msg_udp_seq_error_event *e;
 	u32 max_seq_num = (1 << 16) - 1;
 	u32 expected_seq_num = 0;

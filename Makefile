@@ -21,6 +21,15 @@ SUDO ?= sudo
 GO_TEST_TIMEOUT ?= 20m
 GO_TEST_PACKAGES ?= ./pkg/... ./cmd/... ./operator/...
 CONTAINER_ENGINE_ARGS ?=
+LSEG ?= 0
+
+TEST_TAGS = sudo_tests
+EXTRA_TAGS =
+ifeq ($(LSEG),1)
+	TEST_TAGS = sudo_tests,lseg
+	EXTRA_TAGS = -tags lseg
+endif
+
 
 # Architecture, use TARGET_ARCH=amd64 or TARGET_ARCH=arm64
 # or let uname detect the appropriate arch for native build
@@ -142,7 +151,7 @@ package-fwa: ## Build FWA agent docker image for elba
 
 .PHONY: tetragon
 tetragon: tetragon-fs-scanner ## Compile the Tetragon agent.
-	$(GO_BUILD) ./cmd/bin/tetragon
+	$(GO_BUILD) $(EXTRA_TAGS) ./cmd/bin/tetragon
 
 .PHONY: tetragon-aggregator
 tetragon-aggregator: ## Compile the Tetragon aggregator
@@ -174,12 +183,12 @@ endif
 
 .PHONY: tetragon-bpf-local
 tetragon-bpf-local:
-	$(MAKE) -C ./bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
+	$(MAKE) -C ./bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS) LSEG=$(LSEG)
 
 .PHONY: tetragon-bpf-container
 tetragon-bpf-container:
 	$(CONTAINER_ENGINE) rm tetragon-clang || true
-	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name tetragon-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS)
+	$(CONTAINER_ENGINE) run --rm -v $(CURDIR):/tetragon -u $$(id -u) --name tetragon-clang $(CLANG_IMAGE) $(MAKE) -C /tetragon/bpf BPF_TARGET_ARCH=$(BPF_TARGET_ARCH) -j$(JOBS) $(__BPF_DEBUG_FLAGS) LSEG=$(LSEG)
 
 .PHONY: fgs-bench
 fgs-bench: ## Compile fgs-bench tool.
@@ -375,7 +384,7 @@ unit-test:
 test: tester-progs tetragon-bpf tetragon-bpf-test ## Run Go tests.
 	# A workaround for https://github.com/golang/go/issues/75031
 	$(GO) env -w GOTOOLCHAIN=go1.25.0+auto
-	$(GO) test -exec "$(SUDO)" -tags sudo_tests -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover $(GO_TEST_PACKAGES) ${EXTRA_TESTFLAGS}
+	$(GO) test -exec "$(SUDO)" -tags $(TEST_TAGS) -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover $(GO_TEST_PACKAGES) ${EXTRA_TESTFLAGS}
 
 .PHONY: test-nodeps
 test-nodeps: ## Run Go tests.

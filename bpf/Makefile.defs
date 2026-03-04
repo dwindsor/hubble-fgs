@@ -43,5 +43,10 @@ ifeq ($(DEBUG),1)
 	__DEBUG_FLAGS = -DTETRAGON_BPF_DEBUG
 endif
 
+undefine BPF_L3_MACROS
+ifeq ($(LSEG),1)
+	BPF_L3_MACROS = -DLSEG
+endif
+
 NETINC += -I $(NETWORKINGDIR) -I $(TCPDIR) -I $(UDPDIR)
-CLANG_FLAGS += $(FLAGS) -I $(ERRMETRICS_DIR) -I $(OSSBPFDIR) -I $(OSSIDIR) -I $(LDIR) -I $(OSSLDIR) -I $(OSSPDIR) -I $(OSSLIBBPFDIR) $(NETINC) -target bpf -mcpu=v2 -g -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -fdebug-default-version=4 $(__DEBUG_FLAGS)
+CLANG_FLAGS += $(FLAGS) -I $(ERRMETRICS_DIR) -I $(OSSBPFDIR) -I $(OSSIDIR) -I $(LDIR) -I $(OSSLDIR) -I $(OSSPDIR) -I $(OSSLIBBPFDIR) $(NETINC) -target bpf -mcpu=v2 -g -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -fdebug-default-version=4 $(__DEBUG_FLAGS) $(BPF_L3_MACROS)

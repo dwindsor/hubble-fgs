@@ -20,6 +20,14 @@
 #include "config.h"
 #include "bpf_udp_lseg_mtp.h"
 
+// We include a string here that we don't expect to be found elsewhere in the code base,
+// so that we can grep for it and convince ourselves (in CI) that the string here was
+// included in the code.
+// We then include a second string ("canary:lseg_build") inside the LSEG-specific code
+// block, which we can also grep for in CI, to convince ourselves that the LSEG-specific
+// code has not been included in a non-LSEG build.
+static char base_build_canary[] __attribute__((used)) = "canary:base_build";
+
 static inline __attribute__((always_inline)) bool
 match_seq_check_ports(u16 *ports, uint16_t port1, uint16_t port2)
 {
