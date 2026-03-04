@@ -48,37 +48,38 @@ old_seq_num(uint32_t datagram_sn, uint32_t expected_sn, uint32_t max_sn)
 	return dsn < esn;
 }
 
-static inline __attribute__((always_inline)) void
-udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
-		      u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
-		      struct udp_info_key *k, struct udp_info_value *v, struct udp_sensor_config *config)
+static inline __attribute__((always_inline)) int
+get_lseg_mtp_format(u8 *line_id_sz, u8 *seq_num_sz,
+		    struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
+		    u64 *cookie, int payload_off, int payload_sz)
 {
-	struct msg_udp_seq_error_event *e;
-	u32 max_seq_num = (1 << 16) - 1;
-	u32 expected_seq_num = 0;
-	u16 temp_line_id = 0;
-	u32 temp_seq_num = 0;
-	u32 next_seq_num = 0;
-	u32 line_id = 0;
-	u32 seq_num = 0;
-	u8 line_id_sz;
-	u8 seq_num_sz;
-	u32 *seq_nums;
-	int zero = 0;
 	u8 flags;
 
-	if (payload_sz < 6)
-		return;
+	if (payload_sz < 1)
+		return -1;
 
 	/* Read the flags. */
 	if (skb_load_bytes(skb, payload_off, &flags, 1) < 0) {
 		emit_ip_error_event(skb, ip, cookie, ipv6,
 				    ip->version, 1, 0, IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
-		return;
+		return -2;
 	}
 
-	line_id_sz = (flags >> 2) & 0x3;
-	seq_num_sz = ((flags >> 1) & 0x1) + 2;
+	*line_id_sz = (flags >> 2) & 0x3;
+	*seq_num_sz = ((flags >> 1) & 0x1) + 2;
+	return 0;
+}
+
+// We return 0 in the case of errors. We might improve this in time.
+static inline __attribute__((always_inline)) u64
+get_lseg_mtp_line_id(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
+		     u64 *cookie, int payload_off, int payload_sz, u8 line_id_sz)
+{
+	u16 temp_line_id = 0;
+	u32 line_id = 0;
+
+	if (payload_sz < 1 + line_id_sz)
+		return 0;
 
 	/* Read the line_id. Do this explicitly to avoid verifier errors. */
 	switch (line_id_sz) {
@@ -89,17 +90,45 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 		if (skb_load_bytes(skb, payload_off + 1, &line_id, 1) < 0) {
 			emit_ip_error_event(skb, ip, cookie, ipv6,
 					    ip->version, 1, 0, IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
-			return;
+			return 0;
 		}
 		break;
 	case 2:
 		if (skb_load_bytes(skb, payload_off + 1, &temp_line_id, 2) < 0) {
 			emit_ip_error_event(skb, ip, cookie, ipv6,
 					    ip->version, 1, 0, IP_ERROR_UDP_SEQ_READ_PAYLOAD_FLAGS);
-			return;
+			return 0;
 		}
 		line_id = bpf_ntohs(temp_line_id);
 	}
+
+	return line_id;
+}
+
+static inline __attribute__((always_inline)) void
+udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
+		      u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
+		      struct udp_info_key *k, struct udp_info_value *v, struct udp_sensor_config *config)
+{
+	struct msg_udp_seq_error_event *e;
+	u32 max_seq_num = (1 << 16) - 1;
+	u32 expected_seq_num = 0;
+	u32 temp_seq_num = 0;
+	u32 next_seq_num = 0;
+	u32 line_id = 0;
+	u32 seq_num = 0;
+	u8 line_id_sz;
+	u8 seq_num_sz;
+	u32 *seq_nums;
+	int zero = 0;
+
+	if (payload_sz < 6)
+		return;
+
+	if (get_lseg_mtp_format(&line_id_sz, &seq_num_sz, skb, ip, ipv6, cookie, payload_off, payload_sz) < 0)
+		return;
+
+	line_id = get_lseg_mtp_line_id(skb, ip, ipv6, cookie, payload_off, payload_sz, line_id_sz);
 
 	/* Read the seq_num. Again, do this explicitly to avoid verifier errors. */
 	switch (seq_num_sz) {
