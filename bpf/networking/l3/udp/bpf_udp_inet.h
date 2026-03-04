@@ -21,12 +21,14 @@
 #include "bpf_process_network_watermarks.h"
 #include "bpf_cookie.h"
 #include "bpf_network_helpers.h"
-#include "bpf_udp_seq_error.h"
 #include "lib/address_family.h"
 #include "bpf_tracing.h"
 #include "dns/bpf_dns.h"
 #include "bpf_udp_info.h"
 #include "parsers/dns/dns_parser.h"
+#ifndef IS_KPROBE
+#include "bpf_udp_seq_error.h"
+#endif
 
 extern volatile __CONST bool CGROUP_PROBE_READ;
 
@@ -197,10 +199,12 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 	if (!key)
 		return 1;
 
+#ifndef IS_KPROBE
 	/* Only check sequence numbers on received packets. */
 	if (!send)
 		udp_seq_err_check(skb, skb_head, ip, ipv6, cookie, payload_off,
 				  payload_sz, process, key, value);
+#endif
 
 	cookie_ver = process->version;
 
