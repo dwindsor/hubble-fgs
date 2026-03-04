@@ -21,6 +21,7 @@ import (
 	hav1 "github.com/isovalent/hubble-fgs/pkg/proto/ha/v1"
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
 	"github.com/openconfig/ygot/ytypes"
+	"google.golang.org/protobuf/proto"
 )
 
 func (n *Nxos) getHaIp(ctx context.Context) error {
@@ -225,7 +226,7 @@ func (n *Nxos) getSerialNum(ctx context.Context) error {
 	err = library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
 		var dpuConfig *v1alpha.DpuConfig
 		if existing != nil && existing.GetConfigDpu() != nil {
-			dpuConfig = existing.GetConfigDpu()
+			dpuConfig = proto.Clone(existing.GetConfigDpu()).(*v1alpha.DpuConfig)
 		} else {
 			dpuConfig = &v1alpha.DpuConfig{}
 		}

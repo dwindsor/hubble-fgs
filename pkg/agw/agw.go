@@ -31,6 +31,7 @@ import (
 	"github.com/cilium/tetragon/pkg/version"
 
 	"github.com/isovalent/ipa/l3l4networkpolicy/v1alpha"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/config/library"
@@ -121,7 +122,7 @@ func NewAgent(dpuListener *switchpolicy.DPUListener, policyHandler switchpolicy.
 	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
 		var dpuConfig *v1alpha.DpuConfig
 		if existing != nil && existing.GetConfigDpu() != nil {
-			dpuConfig = existing.GetConfigDpu()
+			dpuConfig = proto.Clone(existing.GetConfigDpu()).(*v1alpha.DpuConfig)
 		} else {
 			dpuConfig = &v1alpha.DpuConfig{}
 		}

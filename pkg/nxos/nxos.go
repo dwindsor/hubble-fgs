@@ -36,6 +36,7 @@ import (
 	"github.com/openconfig/ygot/ytypes"
 	"github.com/spf13/viper"
 	"golang.design/x/chann"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -1391,7 +1392,7 @@ func (n *Nxos) SetServiceIp(ip string) {
 	err := library.GetRepository().UpdateConfig(v1alpha.ConfigType_CONFIG_TYPE_DPU, func(existing *v1alpha.ConfigObject) (*v1alpha.ConfigObject, error) {
 		var dpuConfig *v1alpha.DpuConfig
 		if existing != nil && existing.GetConfigDpu() != nil {
-			dpuConfig = existing.GetConfigDpu()
+			dpuConfig = proto.Clone(existing.GetConfigDpu()).(*v1alpha.DpuConfig)
 		} else {
 			dpuConfig = &v1alpha.DpuConfig{}
 		}
