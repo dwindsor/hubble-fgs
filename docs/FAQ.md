@@ -1,5 +1,31 @@
 # Tetragon FAQ
 
+## Development
+
+### When does the OSS tetragon code get synced to EE (isovalent/hubble-fgs)? Is it periodic or is it the responsibility of the developer?
+
+It's the responsibility of the developer. We call this process an "OSS sync".
+
+To do an OSS sync:
+1. Check if someone has announced that they are doing an OSS sync in #vertical-tetragon
+1. rebase your EE branch against latest master to pick any other OSS syncs someone else might have
+   started
+1. run `make oss-sync` and commit the changes in a separate commit (chore: oss-sync)
+1. if anything from OSS has broken the build, you will need to fix it or track down the original author of the corresponding change and ask them to port the changes
+1. Push a PR and mention it in #vertical-tetragon so that folk are aware than an OSS sync is in
+   progress
+
+For OSS PRs that might cause EE breakage, it's a good practice to mark your OSS PRs as draft and do
+a test OSS sync PR (there is a script for that: `contrib/oss-chores/oss-pr-sync.sh`), where any
+issues are resolved before the OSS PR is merged. This processes adds friction but it saves a
+significant amount of long term pain from merging something in OSS that breaks EE and only finding
+out later. Reverting OSS changes because they break EE is very awkward and we should avoid it.
+
+Reviewers of OSS PRs that suspect that the OSS PR will cause issues in EE should ask isovalent
+developers to do a test OSS sync PR (#vertical-tetragon is a good place for these discussions) as
+described above. For PRs submitted by non-isovalent developers, reviewers are encouraged to notify
+owners of the code that may be affected.
+
 ## Alerts
 
 ### Can I use CEL to filter all events based on process information?
