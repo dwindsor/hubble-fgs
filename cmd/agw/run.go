@@ -21,6 +21,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cilium/tetragon/pkg/watcher/conf"
 	isovalentcom "github.com/isovalent/ipa/k8s/apis/isovalent.com"
@@ -240,7 +241,7 @@ func RunOnPrem(ctx context.Context, agwAgent *agw.AgentGateway, dpuListener *swi
 		crds := make(map[string]struct{})
 		crds["smartswitchnetworkpolicies"+"."+isovalentcom.GroupName] = struct{}{} // HACK: CRD name should be used from IPA repo
 		if len(crds) > 0 {
-			err = kubernetesManager.WaitCRDs(ctx, crds)
+			err = kubernetesManager.WaitCRDsWithResync(ctx, crds, 120*time.Second)
 			if err != nil {
 				logger.GetLogger().Error("failed to wait smartswitch policy crd", logfields.Error, err)
 				// Trigger agw restart to retry CRD wait

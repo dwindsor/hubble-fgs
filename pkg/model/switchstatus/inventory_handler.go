@@ -269,7 +269,7 @@ func (h *inventoryHandler) createInitialSmartSwitchCR(ctx context.Context, kuber
 	ssCrd := make(map[string]struct{})
 	ssCrd["smartswitches"+"."+isovalentcom.GroupName] = struct{}{}
 	if len(ssCrd) > 0 {
-		err := kubernetesManager.WaitCRDs(ctx, ssCrd)
+		err := kubernetesManager.WaitCRDsWithResync(ctx, ssCrd, 120*time.Second)
 		if err != nil {
 			logger.GetLogger().Error("failed to wait for SmartSwitch CRD", logfields.Error, err)
 			return err
