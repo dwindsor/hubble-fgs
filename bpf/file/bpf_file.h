@@ -25,10 +25,10 @@
 #include "policy_conf.h"
 #include "policy_stats.h"
 
-#define FILTER_NOTFOUND -1
-#define FILTER_IGNORE	0
-#define FILTER_MATCH	1
-#define FILTER_MONITOR	2
+#define FILTER_NOTFOUND 0
+#define FILTER_IGNORE	1
+#define FILTER_MATCH	2
+#define FILTER_MONITOR	3
 
 /* generic data direction definitions */
 #define READ  0
