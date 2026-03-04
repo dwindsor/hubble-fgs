@@ -108,9 +108,9 @@ udp_mcast_get_conn_id(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 }
 
 static inline __attribute__((always_inline)) void
-udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
+udp_seq_err_check(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		  u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
-		  struct udp_info_key *k, struct udp_info_value *v)
+		  struct udp_info_key *k)
 {
 	struct cfg_value *l3cfg = getl3cfg();
 	struct udp_sensor_config *config;
@@ -128,8 +128,8 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 	switch (config->multicast_app_id) {
 #ifdef LSEG
 	case MULTICAST_APP_LSEGMTP:
-		udp_seq_err_check_mtp(skb, skb_head, ip, ipv6, cookie,
-				      payload_off, payload_sz, process, k, v, config);
+		udp_seq_err_check_mtp(skb, ip, ipv6, cookie,
+				      payload_off, payload_sz, process, k);
 		return;
 #endif
 	}

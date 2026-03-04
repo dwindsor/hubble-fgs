@@ -106,9 +106,9 @@ get_lseg_mtp_line_id(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 }
 
 static inline __attribute__((always_inline)) void
-udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
+udp_seq_err_check_mtp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		      u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
-		      struct udp_info_key *k, struct udp_info_value *v, struct udp_sensor_config *config)
+		      struct udp_info_key *k)
 {
 	struct msg_udp_seq_error_event *e;
 	u32 max_seq_num = (1 << 16) - 1;

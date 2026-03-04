@@ -202,8 +202,8 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 #ifndef IS_KPROBE
 	/* Only check sequence numbers on received packets. */
 	if (!send)
-		udp_seq_err_check(skb, skb_head, ip, ipv6, cookie, payload_off,
-				  payload_sz, process, key, value);
+		udp_seq_err_check(skb, ip, ipv6, cookie, payload_off,
+				  payload_sz, process, key);
 #endif
 
 	cookie_ver = process->version;
