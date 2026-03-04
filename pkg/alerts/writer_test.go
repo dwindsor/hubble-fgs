@@ -97,7 +97,7 @@ func TestWriter(t *testing.T) {
 		}
 	}
 
-	wc, err := newLogWriter(fname)
+	wc, err := newLogWriter(fname, option.Config.ExportFileMaxSizeMB, option.Config.ExportFileMaxBackups, option.Config.ExportFileCompress, option.Config.ExportFileRotationInterval)
 	lw := wc.(*logWriter)
 	t.Cleanup(func() {
 		lw.Close()

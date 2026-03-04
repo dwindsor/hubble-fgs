@@ -35,9 +35,10 @@ var getPerms = sync.OnceValue(func() os.FileMode {
 })
 
 type logWriter struct {
-	l           *lumberjack.Logger
-	rotateTimer *time.Timer
-	closed      bool
+	l                *lumberjack.Logger
+	rotateTimer      *time.Timer
+	rotationInterval time.Duration
+	closed           bool
 	// NB: the lock is used to protect from a race if Close() and rotate() execute concurrently.
 	mu sync.Mutex
 }
@@ -64,30 +65,31 @@ func (lw *logWriter) rotate() {
 	if !lw.closed {
 		lw.l.Rotate()
 		lw.rotateTimer = time.AfterFunc(
-			option.Config.ExportFileRotationInterval,
+			lw.rotationInterval,
 			lw.rotate,
 		)
 	}
 }
 
-func newLogWriter(filename string) (io.WriteCloser, error) {
+func newLogWriter(filename string, maxSize int, maxBackups int, compress bool, rotationInterval time.Duration) (io.WriteCloser, error) {
 	// use the same configuration options as the export file
 	lw := &logWriter{
 		// NB: lumberjack locks before every Write, which is something our code depends on
 		// to not get mangled entries for the cases where multiple writers exist.
 		l: &lumberjack.Logger{
 			Filename:   filename,
-			MaxSize:    option.Config.ExportFileMaxSizeMB,
-			MaxBackups: option.Config.ExportFileMaxBackups,
-			Compress:   option.Config.ExportFileCompress,
+			MaxSize:    maxSize,
+			MaxBackups: maxBackups,
+			Compress:   compress,
 			FileMode:   getPerms(),
 		},
 	}
 
 	// configure periodic rotation
-	if option.Config.ExportFileRotationInterval > 0 {
+	if rotationInterval > 0 {
+		lw.rotationInterval = rotationInterval
 		lw.rotateTimer = time.AfterFunc(
-			option.Config.ExportFileRotationInterval,
+			rotationInterval,
 			lw.rotate,
 		)
 	}

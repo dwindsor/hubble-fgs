@@ -18,6 +18,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/server/eventlog"
 	"github.com/google/cel-go/cel"
 	"golang.org/x/time/rate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,6 +61,12 @@ type AlertRuleManager struct {
 	encoders map[string]*jsonEncoder
 	eventMap map[string]any
 	mutex    sync.RWMutex
+
+	// encoders params
+	maxSize          int
+	rotationInterval time.Duration
+	compress         bool
+	maxBackups       int
 }
 
 func NewRuleManager() *AlertRuleManager {
@@ -67,8 +75,54 @@ func NewRuleManager() *AlertRuleManager {
 		encoders: make(map[string]*jsonEncoder),
 		// Create a single empty (all values are nil) process event map
 		// this removes the need to do map allocations for every incoming event.
-		eventMap: helpers.ProcessEventMapEmpty(),
+		eventMap:         helpers.ProcessEventMapEmpty(),
+		maxSize:          option.Config.ExportFileMaxSizeMB,
+		maxBackups:       option.Config.ExportFileMaxBackups,
+		compress:         option.Config.ExportFileCompress,
+		rotationInterval: option.Config.ExportFileRotationInterval,
 	}
+}
+
+func (r *AlertRuleManager) SetLogParams(params eventlog.Params) error {
+	logger.GetLogger().Info("Updating alert manager params", "params", params)
+
+	// Use the lock since we are going to update encoder params
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if params.MaxSize != nil {
+		r.maxSize = int(*params.MaxSize)
+	}
+
+	if params.MaxBackups != nil {
+		r.maxBackups = int(*params.MaxBackups)
+	}
+
+	if params.RotationInterval != nil {
+		r.rotationInterval = *params.RotationInterval
+	}
+
+	// Update existing encoders params
+	for _, enc := range r.encoders {
+		if lw, ok := enc.writer.(*logWriter); ok {
+			lw.mu.Lock()
+			if !lw.closed {
+				lw.l.MaxBackups = r.maxBackups
+				lw.l.MaxSize = r.maxSize
+				if lw.rotateTimer != nil {
+					lw.rotateTimer.Stop()
+				}
+				lw.rotateTimer = time.AfterFunc(
+					r.rotationInterval,
+					lw.rotate,
+				)
+			}
+			lw.mu.Unlock()
+		}
+	}
+
+	return nil
+
 }
 
 // Add an alert rule that writes on a specific filename.
@@ -95,7 +149,7 @@ func (r *AlertRuleManager) addAlertRuleWithFilename(ar *v1alpha1.AlertRule, fnam
 	// if no existing encoder exists, let's create a new one by openning a new file
 	if eeOption.Config.AlertsExportDir != "" && encoder == nil {
 		filename := filepath.Join(eeOption.Config.AlertsExportDir, fname)
-		lw, err := newLogWriter(filename)
+		lw, err := newLogWriter(filename, r.maxSize, r.maxBackups, r.compress, r.rotationInterval)
 		if err != nil {
 			return err
 		}
