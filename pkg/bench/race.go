@@ -178,7 +178,9 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 		log.Fatalf("Load Defaults failed: %v", err)
 	}
 
-	exporter.Start()
+	if err = exporter.Start(); err != nil {
+		return err
+	}
 	obs.AddListener(processManager)
 	return nil
 }

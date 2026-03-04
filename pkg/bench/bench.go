@@ -283,7 +283,9 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	if err != nil {
 		return fmt.Errorf("failed to create a new exporter: %w", err)
 	}
-	exporter.Start()
+	if err = exporter.Start(); err != nil {
+		return err
+	}
 	obs.AddListener(processManager)
 	return nil
 }
