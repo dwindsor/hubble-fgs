@@ -1285,7 +1285,7 @@ func (n *Nxos) HaReconcile(ctx context.Context, peer string, info hav1.MbrInfo) 
 
 	// construct ha alloc from peer's VRF info
 	alloc := map[string]uint16{}
-	recon := map[string]uint16{}
+	recon := map[string]ReconGid{}
 	for _, vrf := range info.VrfInfo {
 		alloc[vrf.Name] = uint16(vrf.Id)
 	}
@@ -1304,8 +1304,10 @@ func (n *Nxos) HaReconcile(ctx context.Context, peer string, info hav1.MbrInfo) 
 				// Non-leader adopts peer's GID (leader wins)
 				n.Alloc.Gids[vrf] = peerGid
 				n.GidsInUse[peerGid] = vrf
-				delete(n.GidsInUse, gid)
-				recon[vrf] = peerGid
+				if existing, ok := n.GidsInUse[gid]; ok && existing == vrf {
+					delete(n.GidsInUse, gid)
+				}
+				recon[vrf] = ReconGid{OldGid: gid, NewGid: peerGid}
 				logger.GetLogger().Info("Non-leader adopted peer's GID",
 					"vrf", vrf, "newGid", peerGid)
 			}
@@ -1357,7 +1359,7 @@ func (n *Nxos) HaReconcile(ctx context.Context, peer string, info hav1.MbrInfo) 
 				gid2 := n.getGid(ctx, vrf)
 				if gid2 != 0 {
 					n.Alloc.Gids[vrf] = gid2
-					recon[vrf] = gid2
+					recon[vrf] = ReconGid{OldGid: gid, NewGid: gid2}
 					logger.GetLogger().Info("Non-leader reallocated GID for cross-peer overlap",
 						"vrf", vrf, "oldGid", gid, "newGid", gid2)
 				}

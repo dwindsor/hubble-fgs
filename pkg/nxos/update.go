@@ -1445,17 +1445,55 @@ func (n *Nxos) ActivateInactive(ctx context.Context, uid, utype, uver string) (b
 	return true, err
 }
 
-func (n *Nxos) setGlobalId(ctx context.Context, recon map[string]uint16) error {
+func (n *Nxos) setGlobalId(ctx context.Context, recon map[string]ReconGid) error {
 	logger.GetLogger().Debug("setGlobalId: ", "recon", recon)
 
+	batch1, batch2 := reconBatches(recon)
+
+	for _, batch := range []map[string]uint16{batch1, batch2} {
+		if len(batch) == 0 {
+			continue
+		}
+		if err := n.sendGlobalIdBatch(ctx, batch); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// reconBatches partitions a recon map into two ordered batches to avoid
+// transient duplicate-VLAN conflicts when gNMI MERGE is applied sequentially:
+//
+//	Batch 1 – VRFs whose old GID is claimed by another VRF (free it first)
+//	Batch 2 – remaining VRFs (adopt their new GID)
+func reconBatches(recon map[string]ReconGid) (batch1, batch2 map[string]uint16) {
+	newGids := make(map[uint16]struct{}, len(recon))
+	for _, rg := range recon {
+		newGids[rg.NewGid] = struct{}{}
+	}
+
+	batch1 = make(map[string]uint16)
+	batch2 = make(map[string]uint16)
+	for nm, rg := range recon {
+		if _, contested := newGids[rg.OldGid]; contested {
+			batch1[nm] = rg.NewGid
+		} else {
+			batch2[nm] = rg.NewGid
+		}
+	}
+	return batch1, batch2
+}
+
+// sendGlobalIdBatch emits a single gNMI MERGE for the given vrf→newGid map.
+func (n *Nxos) sendGlobalIdBatch(ctx context.Context, batch map[string]uint16) error {
 	serviceItems := model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems{
 		ServiceList: map[string]*model.Cisco_NX_OSDevice_System_ServiceredirItems_InstItems_ServiceItems_ServiceList{},
 	}
 
-	for nm, gid := range recon {
+	for nm, gid := range batch {
 		vrf, ok := n.Vrfs[nm]
 		if !ok {
-			err := errors.New("Not found: VRF " + vrf.Name)
+			err := errors.New("Not found: VRF " + nm)
 			logger.GetLogger().Error("", logfields.Error, err)
 			return err
 		}

@@ -91,6 +91,13 @@ type HaAlloc struct {
 	Gids map[string]uint16
 }
 
+// ReconGid holds both the old and new GID for a VRF during HA reconciliation,
+// allowing setGlobalId to order gNMI updates correctly.
+type ReconGid struct {
+	OldGid uint16
+	NewGid uint16
+}
+
 // DpuBulkSyncStatus tracks both local and peer bulk sync completion per DPU.
 // Both LocalDone and PeerDone must be true for the DPU's bulk sync to be considered complete.
 type DpuBulkSyncStatus struct {
