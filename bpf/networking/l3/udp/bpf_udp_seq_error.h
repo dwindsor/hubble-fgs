@@ -55,11 +55,10 @@ udp_seq_err_check(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool 
 		return;
 
 	switch (config->multicast_app_id) {
-#ifdef SEQ_CHECK_ENABLED
-#error "DO NOT COMPILE IF THIS IS ENABLED"
+#ifdef LSEG
 	case MULTICAST_APP_LSEGMTP:
 		udp_seq_err_check_mtp(skb, skb_head, ip, ipv6, cookie,
-				      payload_off, payload_sz, process, v, config);
+				      payload_off, payload_sz, process, k, v, config);
 		return;
 #endif
 	}

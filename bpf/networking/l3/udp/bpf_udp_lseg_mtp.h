@@ -11,10 +11,13 @@
 #ifndef __BPF_UDP_LSEG_MTP_H__
 #define __BPF_UDP_LSEG_MTP_H__
 
+#ifdef LSEG
+
 #include "vmlinux.h"
 #include "lib/bpf_helpers.h"
 #include "lib/networkmsg.h"
 #include "lib/iso_msg_types.h"
+#include "bpf_network_helpers.h"
 #include "bpf_cookie.h"
 #include "bpf_tracing.h"
 #include "config.h"
@@ -27,7 +30,6 @@ struct {
 	__uint(max_entries, 1);
 } tg_l3_udp_lsegm SEC(".maps");
 
-#ifdef SEQ_CHECK_ENABLED
 static inline __attribute__((always_inline)) bool
 old_seq_num(uint32_t datagram_sn, uint32_t expected_sn, uint32_t max_sn)
 {
@@ -45,7 +47,7 @@ old_seq_num(uint32_t datagram_sn, uint32_t expected_sn, uint32_t max_sn)
 static inline __attribute__((always_inline)) void
 udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 		      u64 *cookie, int payload_off, int payload_sz, struct socketmap_value *process,
-		      struct udp_info_value *v, struct udp_sensor_config *config)
+		      struct udp_info_key *k, struct udp_info_value *v, struct udp_sensor_config *config)
 {
 #error "DO NOT COMPILE IF THIS IS ENABLED"
 	struct msg_udp_seq_error_event *e;
@@ -164,13 +166,13 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 		e->key.ktime = 0;
 	}
 	e->tuple.ipv6 = ipv6;
-	e->tuple.saddr[0] = k->saddr[0];
-	e->tuple.saddr[1] = k->saddr[1];
+	e->tuple.saddr[0] = k->tuple.saddr[0];
+	e->tuple.saddr[1] = k->tuple.saddr[1];
 	/* FGS expects host byte-order */
-	e->tuple.sport = k->sport;
-	e->tuple.daddr[0] = k->daddr[0];
-	e->tuple.daddr[1] = k->daddr[1];
-	e->tuple.dport = k->dport;
+	e->tuple.sport = k->tuple.sport;
+	e->tuple.daddr[0] = k->tuple.daddr[0];
+	e->tuple.daddr[1] = k->tuple.daddr[1];
+	e->tuple.dport = k->tuple.dport;
 	e->tuple.proto = IPPROTO_UDP;
 	e->tuple.conn_id = 0;
 	e->socket_cookie = *cookie;
