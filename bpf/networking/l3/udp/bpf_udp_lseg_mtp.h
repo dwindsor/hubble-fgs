@@ -25,7 +25,7 @@ struct {
 	__type(key, int);
 	__type(value, __u32[65537]);
 	__uint(max_entries, 1);
-} tg_l3_udp_seq_e SEC(".maps");
+} tg_l3_udp_lsegm SEC(".maps");
 
 #ifdef SEQ_CHECK_ENABLED
 static inline __attribute__((always_inline)) bool
@@ -117,7 +117,7 @@ udp_seq_err_check_mtp(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, b
 		max_seq_num = (1 << 24) - 1;
 	}
 
-	seq_nums = (u32 *)map_lookup_elem(&tg_l3_udp_seq_e, &zero);
+	seq_nums = (u32 *)map_lookup_elem(&tg_l3_udp_lsegm, &zero);
 	if (!seq_nums)
 		return;
 
