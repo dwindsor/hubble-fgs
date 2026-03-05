@@ -81,6 +81,12 @@ func ResponseTypeString(response *tetragon.GetEventsResponse) (string, error) {
 		return tetragon.EventType_PROCESS_USDT.String(), nil
 	case *tetragon.GetEventsResponse_PowershellScriptBlock:
 		return tetragon.EventType_POWERSHELL_SCRIPT_BLOCK.String(), nil
+	case *tetragon.GetEventsResponse_ProcessIgmpJoin:
+		return tetragon.EventType_PROCESS_IGMP_JOIN.String(), nil
+	case *tetragon.GetEventsResponse_ProcessIgmpLeave:
+		return tetragon.EventType_PROCESS_IGMP_LEAVE.String(), nil
+	case *tetragon.GetEventsResponse_IgmpMembershipReport:
+		return tetragon.EventType_IGMP_MEMBERSHIP_REPORT.String(), nil
 	case *tetragon.GetEventsResponse_Test:
 		return tetragon.EventType_TEST.String(), nil
 	case *tetragon.GetEventsResponse_RateLimitInfo:
@@ -137,6 +143,10 @@ func ResponseInnerGetProcess(event tetragon.IsGetEventsResponse_Event) *tetragon
 		return ev.ProcessRawsockClose.Process
 	case *tetragon.GetEventsResponse_ProcessIcmp:
 		return ev.ProcessIcmp.Process
+	case *tetragon.GetEventsResponse_ProcessIgmpJoin:
+		return ev.ProcessIgmpJoin.Process
+	case *tetragon.GetEventsResponse_ProcessIgmpLeave:
+		return ev.ProcessIgmpLeave.Process
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError.Process
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -222,6 +232,10 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessRawsockClose.Parent
 	case *tetragon.GetEventsResponse_ProcessIcmp:
 		return ev.ProcessIcmp.Parent
+	case *tetragon.GetEventsResponse_ProcessIgmpJoin:
+		return ev.ProcessIgmpJoin.Parent
+	case *tetragon.GetEventsResponse_ProcessIgmpLeave:
+		return ev.ProcessIgmpLeave.Parent
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError.Parent
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -298,6 +312,10 @@ func ResponseInnerGetAncestors(event tetragon.IsGetEventsResponse_Event) []*tetr
 		return ev.ProcessRawsockClose.Ancestors
 	case *tetragon.GetEventsResponse_ProcessIcmp:
 		return ev.ProcessIcmp.Ancestors
+	case *tetragon.GetEventsResponse_ProcessIgmpJoin:
+		return ev.ProcessIgmpJoin.Ancestors
+	case *tetragon.GetEventsResponse_ProcessIgmpLeave:
+		return ev.ProcessIgmpLeave.Ancestors
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError.Ancestors
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -358,6 +376,9 @@ func ResponseTypeMap() map[string]proto.Message {
 		"process_lsm":                 &tetragon.ProcessLsm{},
 		"process_usdt":                &tetragon.ProcessUsdt{},
 		"powershell_script_block":     &tetragon.PowershellScriptBlock{},
+		"process_igmp_join":           &tetragon.ProcessIgmpJoin{},
+		"process_igmp_leave":          &tetragon.ProcessIgmpLeave{},
+		"igmp_membership_report":      &tetragon.IgmpMembershipReport{},
 		"test":                        &tetragon.Test{},
 		"rate_limit_info":             &tetragon.RateLimitInfo{},
 	}
@@ -425,6 +446,12 @@ func ProcessEventMapTuple(response *tetragon.GetEventsResponse) (string, any, an
 		return "process_usdt", response.GetProcessUsdt(), (*tetragon.ProcessUsdt)(nil)
 	case *tetragon.GetEventsResponse_PowershellScriptBlock:
 		return "powershell_script_block", response.GetPowershellScriptBlock(), (*tetragon.PowershellScriptBlock)(nil)
+	case *tetragon.GetEventsResponse_ProcessIgmpJoin:
+		return "process_igmp_join", response.GetProcessIgmpJoin(), (*tetragon.ProcessIgmpJoin)(nil)
+	case *tetragon.GetEventsResponse_ProcessIgmpLeave:
+		return "process_igmp_leave", response.GetProcessIgmpLeave(), (*tetragon.ProcessIgmpLeave)(nil)
+	case *tetragon.GetEventsResponse_IgmpMembershipReport:
+		return "igmp_membership_report", response.GetIgmpMembershipReport(), (*tetragon.IgmpMembershipReport)(nil)
 	case *tetragon.GetEventsResponse_Test:
 		return "test", response.GetTest(), (*tetragon.Test)(nil)
 	case *tetragon.GetEventsResponse_RateLimitInfo:
@@ -466,6 +493,9 @@ func ProcessEventMapEmpty() map[string]any {
 		"process_lsm":                 (*tetragon.ProcessLsm)(nil),
 		"process_usdt":                (*tetragon.ProcessUsdt)(nil),
 		"powershell_script_block":     (*tetragon.PowershellScriptBlock)(nil),
+		"process_igmp_join":           (*tetragon.ProcessIgmpJoin)(nil),
+		"process_igmp_leave":          (*tetragon.ProcessIgmpLeave)(nil),
+		"igmp_membership_report":      (*tetragon.IgmpMembershipReport)(nil),
 		"test":                        (*tetragon.Test)(nil),
 		"rate_limit_info":             (*tetragon.RateLimitInfo)(nil),
 	}

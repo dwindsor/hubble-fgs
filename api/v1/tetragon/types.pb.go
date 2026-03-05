@@ -443,6 +443,66 @@ func (event *ProcessIcmp) SetAncestors(ps []*Process) {
 
 // Encapsulate implements the Event interface.
 // Returns the event wrapped by its GetEventsResponse_* type.
+func (event *ProcessIgmpJoin) Encapsulate() IsGetEventsResponse_Event {
+	return &GetEventsResponse_ProcessIgmpJoin{
+		ProcessIgmpJoin: event,
+	}
+}
+
+// SetProcess implements the ProcessEvent interface.
+// Sets the Process field of an event.
+func (event *ProcessIgmpJoin) SetProcess(p *Process) {
+	event.Process = p
+}
+
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *ProcessIgmpJoin) SetParent(p *Process) {
+	event.Parent = p
+}
+
+// SetAncestors implements the AncestorEvent interface.
+// Sets the Ancestor field of an event.
+func (event *ProcessIgmpJoin) SetAncestors(ps []*Process) {
+	event.Ancestors = ps
+}
+
+// Encapsulate implements the Event interface.
+// Returns the event wrapped by its GetEventsResponse_* type.
+func (event *ProcessIgmpLeave) Encapsulate() IsGetEventsResponse_Event {
+	return &GetEventsResponse_ProcessIgmpLeave{
+		ProcessIgmpLeave: event,
+	}
+}
+
+// SetProcess implements the ProcessEvent interface.
+// Sets the Process field of an event.
+func (event *ProcessIgmpLeave) SetProcess(p *Process) {
+	event.Process = p
+}
+
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *ProcessIgmpLeave) SetParent(p *Process) {
+	event.Parent = p
+}
+
+// SetAncestors implements the AncestorEvent interface.
+// Sets the Ancestor field of an event.
+func (event *ProcessIgmpLeave) SetAncestors(ps []*Process) {
+	event.Ancestors = ps
+}
+
+// Encapsulate implements the Event interface.
+// Returns the event wrapped by its GetEventsResponse_* type.
+func (event *IgmpMembershipReport) Encapsulate() IsGetEventsResponse_Event {
+	return &GetEventsResponse_IgmpMembershipReport{
+		IgmpMembershipReport: event,
+	}
+}
+
+// Encapsulate implements the Event interface.
+// Returns the event wrapped by its GetEventsResponse_* type.
 func (event *ProcessIpError) Encapsulate() IsGetEventsResponse_Event {
 	return &GetEventsResponse_ProcessIpError{
 		ProcessIpError: event,
@@ -804,6 +864,12 @@ func UnwrapGetEventsResponse(response *GetEventsResponse) interface{} {
 		return ev.ProcessRawsockClose
 	case *GetEventsResponse_ProcessIcmp:
 		return ev.ProcessIcmp
+	case *GetEventsResponse_ProcessIgmpJoin:
+		return ev.ProcessIgmpJoin
+	case *GetEventsResponse_ProcessIgmpLeave:
+		return ev.ProcessIgmpLeave
+	case *GetEventsResponse_IgmpMembershipReport:
+		return ev.IgmpMembershipReport
 	case *GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError
 	case *GetEventsResponse_ProcessFile:

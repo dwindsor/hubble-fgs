@@ -90,6 +90,8 @@
     - [HttpInfo](#tetragon-HttpInfo)
     - [HttpRequest](#tetragon-HttpRequest)
     - [HttpResponse](#tetragon-HttpResponse)
+    - [IgmpGroupRecord](#tetragon-IgmpGroupRecord)
+    - [IgmpMembershipReport](#tetragon-IgmpMembershipReport)
     - [Inode](#tetragon-Inode)
     - [InterfaceStats](#tetragon-InterfaceStats)
     - [LinkArg](#tetragon-LinkArg)
@@ -103,6 +105,8 @@
     - [ProcessFileExec](#tetragon-ProcessFileExec)
     - [ProcessHttp](#tetragon-ProcessHttp)
     - [ProcessIcmp](#tetragon-ProcessIcmp)
+    - [ProcessIgmpJoin](#tetragon-ProcessIgmpJoin)
+    - [ProcessIgmpLeave](#tetragon-ProcessIgmpLeave)
     - [ProcessIpError](#tetragon-ProcessIpError)
     - [ProcessListen](#tetragon-ProcessListen)
     - [ProcessNetworkBurst](#tetragon-ProcessNetworkBurst)
@@ -125,6 +129,8 @@
     - [FileAction](#tetragon-FileAction)
     - [FileOperation](#tetragon-FileOperation)
     - [FileScope](#tetragon-FileScope)
+    - [IgmpGroupRecordType](#tetragon-IgmpGroupRecordType)
+    - [IgmpMembershipReportType](#tetragon-IgmpMembershipReportType)
     - [ServiceKind](#tetragon-ServiceKind)
     - [SocketProtocol](#tetragon-SocketProtocol)
     - [SysRetval](#tetragon-SysRetval)
@@ -1944,6 +1950,43 @@ HTTP PARSER
 
 
 
+<a name="tetragon-IgmpGroupRecord"></a>
+
+### IgmpGroupRecord
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [IgmpGroupRecordType](#tetragon-IgmpGroupRecordType) |  |  |
+| group_ip | [string](#string) |  |  |
+| source_ips | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-IgmpMembershipReport"></a>
+
+### IgmpMembershipReport
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [IgmpMembershipReportType](#tetragon-IgmpMembershipReportType) |  |  |
+| source_ip | [string](#string) |  |  |
+| group_ip | [string](#string) |  |  |
+| interface_name | [string](#string) |  |  |
+| interface_ifindex | [uint32](#uint32) |  |  |
+| groups | [IgmpGroupRecord](#tetragon-IgmpGroupRecord) | repeated |  |
+
+
+
+
+
+
 <a name="tetragon-Inode"></a>
 
 ### Inode
@@ -2249,6 +2292,50 @@ They are configured in the &#34;exec:&#34; section of the TracingPolicy.
 | icmp_ip_pointer | [uint32](#uint32) |  |  |
 | icmp_ip_gateway | [string](#string) |  |  |
 | destination_service | [Service](#tetragon-Service) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
+
+
+
+
+
+
+<a name="tetragon-ProcessIgmpJoin"></a>
+
+### ProcessIgmpJoin
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| source_ip | [string](#string) |  |  |
+| group_ip | [string](#string) |  |  |
+| interface_name | [string](#string) |  |  |
+| interface_ifindex | [uint32](#uint32) |  |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
+
+
+
+
+
+
+<a name="tetragon-ProcessIgmpLeave"></a>
+
+### ProcessIgmpLeave
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| source_ip | [string](#string) |  |  |
+| group_ip | [string](#string) |  |  |
+| interface_name | [string](#string) |  |  |
+| interface_ifindex | [uint32](#uint32) |  |  |
+| sock_cookie | [uint64](#uint64) |  |  |
 | ancestors | [Process](#tetragon-Process) | repeated | Not in use for now. Please rely on ancestors in ProcessExec. |
 
 
@@ -2717,6 +2804,38 @@ from https://elixir.bootlin.com/linux/v6.2.16/source/include/uapi/linux/hash_inf
 
 
 
+<a name="tetragon-IgmpGroupRecordType"></a>
+
+### IgmpGroupRecordType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| IGMPV3_MODE_IS_INVALID | 0 |  |
+| IGMPV3_MODE_IS_INCLUDE | 1 |  |
+| IGMPV3_MODE_IS_EXCLUDE | 2 |  |
+| IGMPV3_CHANGE_TO_INCLUDE | 3 |  |
+| IGMPV3_CHANGE_TO_EXCLUDE | 4 |  |
+| IGMPV3_ALLOW_NEW_SOURCES | 5 |  |
+| IGMPV3_BLOCK_OLD_SOURCES | 6 |  |
+
+
+
+<a name="tetragon-IgmpMembershipReportType"></a>
+
+### IgmpMembershipReportType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| INVALID | 0 |  |
+| IGMP_HOST_MEMBERSHIP_REPORT | 18 |  |
+| IGMPV2_HOST_MEMBERSHIP_REPORT | 22 |  |
+| IGMP_HOST_LEAVE_MESSAGE | 23 |  |
+| IGMPV3_HOST_MEMBERSHIP_REPORT | 34 |  |
+
+
+
 <a name="tetragon-ServiceKind"></a>
 
 ### ServiceKind
@@ -3167,6 +3286,9 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_lsm | [ProcessLsm](#tetragon-ProcessLsm) |  |  |
 | process_usdt | [ProcessUsdt](#tetragon-ProcessUsdt) |  |  |
 | powershell_script_block | [PowershellScriptBlock](#tetragon-PowershellScriptBlock) |  |  |
+| process_igmp_join | [ProcessIgmpJoin](#tetragon-ProcessIgmpJoin) |  |  |
+| process_igmp_leave | [ProcessIgmpLeave](#tetragon-ProcessIgmpLeave) |  |  |
+| igmp_membership_report | [IgmpMembershipReport](#tetragon-IgmpMembershipReport) |  |  |
 | test | [Test](#tetragon-Test) |  |  |
 | rate_limit_info | [RateLimitInfo](#tetragon-RateLimitInfo) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
@@ -3290,6 +3412,9 @@ GetEventsResponse event oneof.
 | PROCESS_LSM | 28 |  |
 | PROCESS_USDT | 29 |  |
 | POWERSHELL_SCRIPT_BLOCK | 30 |  |
+| PROCESS_IGMP_JOIN | 2001 |  |
+| PROCESS_IGMP_LEAVE | 2002 |  |
+| IGMP_MEMBERSHIP_REPORT | 2003 |  |
 | TEST | 40000 |  |
 | RATE_LIMIT_INFO | 40001 |  |
 

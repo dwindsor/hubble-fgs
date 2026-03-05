@@ -221,6 +221,61 @@ message ProcessIcmp {
   repeated Process ancestors = 23; // Not in use for now. Please rely on ancestors in ProcessExec.
 }
 
+message ProcessIgmpJoin {
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string source_ip = 3;
+  string group_ip = 4;
+  string interface_name = 5;
+  uint32 interface_ifindex = 6;
+  uint64 sock_cookie = 7;
+  repeated Process ancestors = 8; // Not in use for now. Please rely on ancestors in ProcessExec.
+}
+
+message ProcessIgmpLeave {
+  tetragon.Process process = 1;
+  tetragon.Process parent = 2;
+  string source_ip = 3;
+  string group_ip = 4;
+  string interface_name = 5;
+  uint32 interface_ifindex = 6;
+  uint64 sock_cookie = 7;
+  repeated Process ancestors = 8; // Not in use for now. Please rely on ancestors in ProcessExec.
+}
+
+enum IgmpGroupRecordType {
+  IGMPV3_MODE_IS_INVALID = 0;
+  IGMPV3_MODE_IS_INCLUDE = 1;
+  IGMPV3_MODE_IS_EXCLUDE = 2;
+  IGMPV3_CHANGE_TO_INCLUDE = 3;
+  IGMPV3_CHANGE_TO_EXCLUDE = 4;
+  IGMPV3_ALLOW_NEW_SOURCES = 5;
+  IGMPV3_BLOCK_OLD_SOURCES = 6;
+}
+
+message IgmpGroupRecord {
+  IgmpGroupRecordType type = 1;
+  string group_ip = 2;
+  repeated string source_ips = 3;
+}
+
+enum IgmpMembershipReportType {
+  INVALID = 0;
+  IGMP_HOST_MEMBERSHIP_REPORT = 0x12;
+  IGMPV2_HOST_MEMBERSHIP_REPORT = 0x16;
+  IGMP_HOST_LEAVE_MESSAGE = 0x17;
+  IGMPV3_HOST_MEMBERSHIP_REPORT = 0x22;
+}
+
+message IgmpMembershipReport {
+  IgmpMembershipReportType type = 1;
+  string source_ip = 2;
+  string group_ip = 3;
+  string interface_name = 4;
+  uint32 interface_ifindex = 5;
+  repeated IgmpGroupRecord groups = 6;
+}
+
 message ProcessIpError {
   tetragon.Process process = 1;
   tetragon.Process parent = 2;

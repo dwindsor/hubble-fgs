@@ -157,6 +157,9 @@ type eventCheckerHelper struct {
 	ProcessRawsockCreate    *eventchecker.ProcessRawsockCreateChecker    `json:"rawsockCreate,omitempty"`
 	ProcessRawsockClose     *eventchecker.ProcessRawsockCloseChecker     `json:"rawsockClose,omitempty"`
 	ProcessIcmp             *eventchecker.ProcessIcmpChecker             `json:"icmp,omitempty"`
+	ProcessIgmpJoin         *eventchecker.ProcessIgmpJoinChecker         `json:"igmpJoin,omitempty"`
+	ProcessIgmpLeave        *eventchecker.ProcessIgmpLeaveChecker        `json:"igmpLeave,omitempty"`
+	IgmpMembershipReport    *eventchecker.IgmpMembershipReportChecker    `json:"igmpMembershipReport,omitempty"`
 	ProcessIpError          *eventchecker.ProcessIpErrorChecker          `json:"ipError,omitempty"`
 	ProcessFile             *eventchecker.ProcessFileChecker             `json:"file,omitempty"`
 	ProcessFileExec         *eventchecker.ProcessFileExecChecker         `json:"fileExec,omitempty"`
@@ -287,6 +290,24 @@ func (checker *EventChecker) UnmarshalJSON(b []byte) error {
 		}
 		eventChecker = helper.ProcessIcmp
 	}
+	if helper.ProcessIgmpJoin != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessIgmpJoin, eventChecker)
+		}
+		eventChecker = helper.ProcessIgmpJoin
+	}
+	if helper.ProcessIgmpLeave != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessIgmpLeave, eventChecker)
+		}
+		eventChecker = helper.ProcessIgmpLeave
+	}
+	if helper.IgmpMembershipReport != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.IgmpMembershipReport, eventChecker)
+		}
+		eventChecker = helper.IgmpMembershipReport
+	}
 	if helper.ProcessIpError != nil {
 		if eventChecker != nil {
 			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessIpError, eventChecker)
@@ -413,6 +434,12 @@ func (checker EventChecker) MarshalJSON() ([]byte, error) {
 		helper.ProcessRawsockClose = c
 	case *eventchecker.ProcessIcmpChecker:
 		helper.ProcessIcmp = c
+	case *eventchecker.ProcessIgmpJoinChecker:
+		helper.ProcessIgmpJoin = c
+	case *eventchecker.ProcessIgmpLeaveChecker:
+		helper.ProcessIgmpLeave = c
+	case *eventchecker.IgmpMembershipReportChecker:
+		helper.IgmpMembershipReport = c
 	case *eventchecker.ProcessIpErrorChecker:
 		helper.ProcessIpError = c
 	case *eventchecker.ProcessFileChecker:

@@ -299,6 +299,12 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessRawsockCloseChecker("").FromProcessRawsockClose(ev), nil
 	case *tetragon.ProcessIcmp:
 		return NewProcessIcmpChecker("").FromProcessIcmp(ev), nil
+	case *tetragon.ProcessIgmpJoin:
+		return NewProcessIgmpJoinChecker("").FromProcessIgmpJoin(ev), nil
+	case *tetragon.ProcessIgmpLeave:
+		return NewProcessIgmpLeaveChecker("").FromProcessIgmpLeave(ev), nil
+	case *tetragon.IgmpMembershipReport:
+		return NewIgmpMembershipReportChecker("").FromIgmpMembershipReport(ev), nil
 	case *tetragon.ProcessIpError:
 		return NewProcessIpErrorChecker("").FromProcessIpError(ev), nil
 	case *tetragon.ProcessFile:
@@ -405,6 +411,12 @@ func EventFromResponse(response *tetragon.GetEventsResponse) (Event, error) {
 		return ev.ProcessRawsockClose, nil
 	case *tetragon.GetEventsResponse_ProcessIcmp:
 		return ev.ProcessIcmp, nil
+	case *tetragon.GetEventsResponse_ProcessIgmpJoin:
+		return ev.ProcessIgmpJoin, nil
+	case *tetragon.GetEventsResponse_ProcessIgmpLeave:
+		return ev.ProcessIgmpLeave, nil
+	case *tetragon.GetEventsResponse_IgmpMembershipReport:
+		return ev.IgmpMembershipReport, nil
 	case *tetragon.GetEventsResponse_ProcessIpError:
 		return ev.ProcessIpError, nil
 	case *tetragon.GetEventsResponse_ProcessFile:
@@ -4713,6 +4725,632 @@ func (checker *ProcessIcmpChecker) FromProcessIcmp(event *tetragon.ProcessIcmp) 
 		checker.Ancestors = lm
 	}
 	return checker
+}
+
+// ProcessIgmpJoinChecker implements a checker struct to check a ProcessIgmpJoin event
+type ProcessIgmpJoinChecker struct {
+	CheckerName      string                       `json:"checkerName"`
+	Process          *ProcessChecker              `json:"process,omitempty"`
+	Parent           *ProcessChecker              `json:"parent,omitempty"`
+	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
+	GroupIp          *stringmatcher.StringMatcher `json:"groupIp,omitempty"`
+	InterfaceName    *stringmatcher.StringMatcher `json:"interfaceName,omitempty"`
+	InterfaceIfindex *uint32                      `json:"interfaceIfindex,omitempty"`
+	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
+	Ancestors        *ProcessListMatcher          `json:"ancestors,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessIgmpJoinChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.ProcessIgmpJoin); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a ProcessIgmpJoin event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessIgmpJoinChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessIgmpJoinChecker creates a new ProcessIgmpJoinChecker
+func NewProcessIgmpJoinChecker(name string) *ProcessIgmpJoinChecker {
+	return &ProcessIgmpJoinChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessIgmpJoinChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessIgmpJoinChecker) GetCheckerType() string {
+	return "ProcessIgmpJoinChecker"
+}
+
+// Check checks a ProcessIgmpJoin event
+func (checker *ProcessIgmpJoinChecker) Check(event *tetragon.ProcessIgmpJoin) error {
+	if event == nil {
+		return fmt.Errorf("%s: ProcessIgmpJoin event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
+		}
+		if checker.GroupIp != nil {
+			if err := checker.GroupIp.Match(event.GroupIp); err != nil {
+				return fmt.Errorf("GroupIp check failed: %w", err)
+			}
+		}
+		if checker.InterfaceName != nil {
+			if err := checker.InterfaceName.Match(event.InterfaceName); err != nil {
+				return fmt.Errorf("InterfaceName check failed: %w", err)
+			}
+		}
+		if checker.InterfaceIfindex != nil {
+			if *checker.InterfaceIfindex != event.InterfaceIfindex {
+				return fmt.Errorf("InterfaceIfindex has value %d which does not match expected value %d", event.InterfaceIfindex, *checker.InterfaceIfindex)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.Ancestors != nil {
+			if err := checker.Ancestors.Check(event.Ancestors); err != nil {
+				return fmt.Errorf("Ancestors check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessIgmpJoinChecker
+func (checker *ProcessIgmpJoinChecker) WithProcess(check *ProcessChecker) *ProcessIgmpJoinChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessIgmpJoinChecker
+func (checker *ProcessIgmpJoinChecker) WithParent(check *ProcessChecker) *ProcessIgmpJoinChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithSourceIp adds a SourceIp check to the ProcessIgmpJoinChecker
+func (checker *ProcessIgmpJoinChecker) WithSourceIp(check *stringmatcher.StringMatcher) *ProcessIgmpJoinChecker {
+	checker.SourceIp = check
+	return checker
+}
+
+// WithGroupIp adds a GroupIp check to the ProcessIgmpJoinChecker
+func (checker *ProcessIgmpJoinChecker) WithGroupIp(check *stringmatcher.StringMatcher) *ProcessIgmpJoinChecker {
+	checker.GroupIp = check
+	return checker
+}
+
+// WithInterfaceName adds a InterfaceName check to the ProcessIgmpJoinChecker
+func (checker *ProcessIgmpJoinChecker) WithInterfaceName(check *stringmatcher.StringMatcher) *ProcessIgmpJoinChecker {
+	checker.InterfaceName = check
+	return checker
+}
+
+// WithInterfaceIfindex adds a InterfaceIfindex check to the ProcessIgmpJoinChecker
+func (checker *ProcessIgmpJoinChecker) WithInterfaceIfindex(check uint32) *ProcessIgmpJoinChecker {
+	checker.InterfaceIfindex = &check
+	return checker
+}
+
+// WithSockCookie adds a SockCookie check to the ProcessIgmpJoinChecker
+func (checker *ProcessIgmpJoinChecker) WithSockCookie(check uint64) *ProcessIgmpJoinChecker {
+	checker.SockCookie = &check
+	return checker
+}
+
+// WithAncestors adds a Ancestors check to the ProcessIgmpJoinChecker
+func (checker *ProcessIgmpJoinChecker) WithAncestors(check *ProcessListMatcher) *ProcessIgmpJoinChecker {
+	checker.Ancestors = check
+	return checker
+}
+
+//FromProcessIgmpJoin populates the ProcessIgmpJoinChecker using data from a ProcessIgmpJoin event
+func (checker *ProcessIgmpJoinChecker) FromProcessIgmpJoin(event *tetragon.ProcessIgmpJoin) *ProcessIgmpJoinChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	checker.SourceIp = stringmatcher.Full(event.SourceIp)
+	checker.GroupIp = stringmatcher.Full(event.GroupIp)
+	checker.InterfaceName = stringmatcher.Full(event.InterfaceName)
+	{
+		val := event.InterfaceIfindex
+		checker.InterfaceIfindex = &val
+	}
+	{
+		val := event.SockCookie
+		checker.SockCookie = &val
+	}
+	{
+		var checks []*ProcessChecker
+		for _, check := range event.Ancestors {
+			var convertedCheck *ProcessChecker
+			if check != nil {
+				convertedCheck = NewProcessChecker().FromProcess(check)
+			}
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewProcessListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Ancestors = lm
+	}
+	return checker
+}
+
+// ProcessIgmpLeaveChecker implements a checker struct to check a ProcessIgmpLeave event
+type ProcessIgmpLeaveChecker struct {
+	CheckerName      string                       `json:"checkerName"`
+	Process          *ProcessChecker              `json:"process,omitempty"`
+	Parent           *ProcessChecker              `json:"parent,omitempty"`
+	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
+	GroupIp          *stringmatcher.StringMatcher `json:"groupIp,omitempty"`
+	InterfaceName    *stringmatcher.StringMatcher `json:"interfaceName,omitempty"`
+	InterfaceIfindex *uint32                      `json:"interfaceIfindex,omitempty"`
+	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
+	Ancestors        *ProcessListMatcher          `json:"ancestors,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessIgmpLeaveChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.ProcessIgmpLeave); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a ProcessIgmpLeave event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessIgmpLeaveChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessIgmpLeaveChecker creates a new ProcessIgmpLeaveChecker
+func NewProcessIgmpLeaveChecker(name string) *ProcessIgmpLeaveChecker {
+	return &ProcessIgmpLeaveChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessIgmpLeaveChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessIgmpLeaveChecker) GetCheckerType() string {
+	return "ProcessIgmpLeaveChecker"
+}
+
+// Check checks a ProcessIgmpLeave event
+func (checker *ProcessIgmpLeaveChecker) Check(event *tetragon.ProcessIgmpLeave) error {
+	if event == nil {
+		return fmt.Errorf("%s: ProcessIgmpLeave event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
+		}
+		if checker.GroupIp != nil {
+			if err := checker.GroupIp.Match(event.GroupIp); err != nil {
+				return fmt.Errorf("GroupIp check failed: %w", err)
+			}
+		}
+		if checker.InterfaceName != nil {
+			if err := checker.InterfaceName.Match(event.InterfaceName); err != nil {
+				return fmt.Errorf("InterfaceName check failed: %w", err)
+			}
+		}
+		if checker.InterfaceIfindex != nil {
+			if *checker.InterfaceIfindex != event.InterfaceIfindex {
+				return fmt.Errorf("InterfaceIfindex has value %d which does not match expected value %d", event.InterfaceIfindex, *checker.InterfaceIfindex)
+			}
+		}
+		if checker.SockCookie != nil {
+			if *checker.SockCookie != event.SockCookie {
+				return fmt.Errorf("SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+			}
+		}
+		if checker.Ancestors != nil {
+			if err := checker.Ancestors.Check(event.Ancestors); err != nil {
+				return fmt.Errorf("Ancestors check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessIgmpLeaveChecker
+func (checker *ProcessIgmpLeaveChecker) WithProcess(check *ProcessChecker) *ProcessIgmpLeaveChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessIgmpLeaveChecker
+func (checker *ProcessIgmpLeaveChecker) WithParent(check *ProcessChecker) *ProcessIgmpLeaveChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithSourceIp adds a SourceIp check to the ProcessIgmpLeaveChecker
+func (checker *ProcessIgmpLeaveChecker) WithSourceIp(check *stringmatcher.StringMatcher) *ProcessIgmpLeaveChecker {
+	checker.SourceIp = check
+	return checker
+}
+
+// WithGroupIp adds a GroupIp check to the ProcessIgmpLeaveChecker
+func (checker *ProcessIgmpLeaveChecker) WithGroupIp(check *stringmatcher.StringMatcher) *ProcessIgmpLeaveChecker {
+	checker.GroupIp = check
+	return checker
+}
+
+// WithInterfaceName adds a InterfaceName check to the ProcessIgmpLeaveChecker
+func (checker *ProcessIgmpLeaveChecker) WithInterfaceName(check *stringmatcher.StringMatcher) *ProcessIgmpLeaveChecker {
+	checker.InterfaceName = check
+	return checker
+}
+
+// WithInterfaceIfindex adds a InterfaceIfindex check to the ProcessIgmpLeaveChecker
+func (checker *ProcessIgmpLeaveChecker) WithInterfaceIfindex(check uint32) *ProcessIgmpLeaveChecker {
+	checker.InterfaceIfindex = &check
+	return checker
+}
+
+// WithSockCookie adds a SockCookie check to the ProcessIgmpLeaveChecker
+func (checker *ProcessIgmpLeaveChecker) WithSockCookie(check uint64) *ProcessIgmpLeaveChecker {
+	checker.SockCookie = &check
+	return checker
+}
+
+// WithAncestors adds a Ancestors check to the ProcessIgmpLeaveChecker
+func (checker *ProcessIgmpLeaveChecker) WithAncestors(check *ProcessListMatcher) *ProcessIgmpLeaveChecker {
+	checker.Ancestors = check
+	return checker
+}
+
+//FromProcessIgmpLeave populates the ProcessIgmpLeaveChecker using data from a ProcessIgmpLeave event
+func (checker *ProcessIgmpLeaveChecker) FromProcessIgmpLeave(event *tetragon.ProcessIgmpLeave) *ProcessIgmpLeaveChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	checker.SourceIp = stringmatcher.Full(event.SourceIp)
+	checker.GroupIp = stringmatcher.Full(event.GroupIp)
+	checker.InterfaceName = stringmatcher.Full(event.InterfaceName)
+	{
+		val := event.InterfaceIfindex
+		checker.InterfaceIfindex = &val
+	}
+	{
+		val := event.SockCookie
+		checker.SockCookie = &val
+	}
+	{
+		var checks []*ProcessChecker
+		for _, check := range event.Ancestors {
+			var convertedCheck *ProcessChecker
+			if check != nil {
+				convertedCheck = NewProcessChecker().FromProcess(check)
+			}
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewProcessListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Ancestors = lm
+	}
+	return checker
+}
+
+// IgmpMembershipReportChecker implements a checker struct to check a IgmpMembershipReport event
+type IgmpMembershipReportChecker struct {
+	CheckerName      string                           `json:"checkerName"`
+	Type             *IgmpMembershipReportTypeChecker `json:"type,omitempty"`
+	SourceIp         *stringmatcher.StringMatcher     `json:"sourceIp,omitempty"`
+	GroupIp          *stringmatcher.StringMatcher     `json:"groupIp,omitempty"`
+	InterfaceName    *stringmatcher.StringMatcher     `json:"interfaceName,omitempty"`
+	InterfaceIfindex *uint32                          `json:"interfaceIfindex,omitempty"`
+	Groups           *IgmpGroupRecordListMatcher      `json:"groups,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *IgmpMembershipReportChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.IgmpMembershipReport); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%s: %T is not a IgmpMembershipReport event", CheckerLogPrefix(checker), event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *IgmpMembershipReportChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewIgmpMembershipReportChecker creates a new IgmpMembershipReportChecker
+func NewIgmpMembershipReportChecker(name string) *IgmpMembershipReportChecker {
+	return &IgmpMembershipReportChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *IgmpMembershipReportChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *IgmpMembershipReportChecker) GetCheckerType() string {
+	return "IgmpMembershipReportChecker"
+}
+
+// Check checks a IgmpMembershipReport event
+func (checker *IgmpMembershipReportChecker) Check(event *tetragon.IgmpMembershipReport) error {
+	if event == nil {
+		return fmt.Errorf("%s: IgmpMembershipReport event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Type != nil {
+			if err := checker.Type.Check(&event.Type); err != nil {
+				return fmt.Errorf("Type check failed: %w", err)
+			}
+		}
+		if checker.SourceIp != nil {
+			if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+				return fmt.Errorf("SourceIp check failed: %w", err)
+			}
+		}
+		if checker.GroupIp != nil {
+			if err := checker.GroupIp.Match(event.GroupIp); err != nil {
+				return fmt.Errorf("GroupIp check failed: %w", err)
+			}
+		}
+		if checker.InterfaceName != nil {
+			if err := checker.InterfaceName.Match(event.InterfaceName); err != nil {
+				return fmt.Errorf("InterfaceName check failed: %w", err)
+			}
+		}
+		if checker.InterfaceIfindex != nil {
+			if *checker.InterfaceIfindex != event.InterfaceIfindex {
+				return fmt.Errorf("InterfaceIfindex has value %d which does not match expected value %d", event.InterfaceIfindex, *checker.InterfaceIfindex)
+			}
+		}
+		if checker.Groups != nil {
+			if err := checker.Groups.Check(event.Groups); err != nil {
+				return fmt.Errorf("Groups check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithType adds a Type check to the IgmpMembershipReportChecker
+func (checker *IgmpMembershipReportChecker) WithType(check tetragon.IgmpMembershipReportType) *IgmpMembershipReportChecker {
+	wrappedCheck := IgmpMembershipReportTypeChecker(check)
+	checker.Type = &wrappedCheck
+	return checker
+}
+
+// WithSourceIp adds a SourceIp check to the IgmpMembershipReportChecker
+func (checker *IgmpMembershipReportChecker) WithSourceIp(check *stringmatcher.StringMatcher) *IgmpMembershipReportChecker {
+	checker.SourceIp = check
+	return checker
+}
+
+// WithGroupIp adds a GroupIp check to the IgmpMembershipReportChecker
+func (checker *IgmpMembershipReportChecker) WithGroupIp(check *stringmatcher.StringMatcher) *IgmpMembershipReportChecker {
+	checker.GroupIp = check
+	return checker
+}
+
+// WithInterfaceName adds a InterfaceName check to the IgmpMembershipReportChecker
+func (checker *IgmpMembershipReportChecker) WithInterfaceName(check *stringmatcher.StringMatcher) *IgmpMembershipReportChecker {
+	checker.InterfaceName = check
+	return checker
+}
+
+// WithInterfaceIfindex adds a InterfaceIfindex check to the IgmpMembershipReportChecker
+func (checker *IgmpMembershipReportChecker) WithInterfaceIfindex(check uint32) *IgmpMembershipReportChecker {
+	checker.InterfaceIfindex = &check
+	return checker
+}
+
+// WithGroups adds a Groups check to the IgmpMembershipReportChecker
+func (checker *IgmpMembershipReportChecker) WithGroups(check *IgmpGroupRecordListMatcher) *IgmpMembershipReportChecker {
+	checker.Groups = check
+	return checker
+}
+
+//FromIgmpMembershipReport populates the IgmpMembershipReportChecker using data from a IgmpMembershipReport event
+func (checker *IgmpMembershipReportChecker) FromIgmpMembershipReport(event *tetragon.IgmpMembershipReport) *IgmpMembershipReportChecker {
+	if event == nil {
+		return checker
+	}
+	checker.Type = NewIgmpMembershipReportTypeChecker(event.Type)
+	checker.SourceIp = stringmatcher.Full(event.SourceIp)
+	checker.GroupIp = stringmatcher.Full(event.GroupIp)
+	checker.InterfaceName = stringmatcher.Full(event.InterfaceName)
+	{
+		val := event.InterfaceIfindex
+		checker.InterfaceIfindex = &val
+	}
+	{
+		var checks []*IgmpGroupRecordChecker
+		for _, check := range event.Groups {
+			var convertedCheck *IgmpGroupRecordChecker
+			if check != nil {
+				convertedCheck = NewIgmpGroupRecordChecker().FromIgmpGroupRecord(check)
+			}
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewIgmpGroupRecordListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Groups = lm
+	}
+	return checker
+}
+
+// IgmpGroupRecordListMatcher checks a list of *tetragon.IgmpGroupRecord fields
+type IgmpGroupRecordListMatcher struct {
+	Operator listmatcher.Operator      `json:"operator"`
+	Values   []*IgmpGroupRecordChecker `json:"values"`
+}
+
+// NewIgmpGroupRecordListMatcher creates a new IgmpGroupRecordListMatcher. The checker defaults to a subset checker unless otherwise specified using WithOperator()
+func NewIgmpGroupRecordListMatcher() *IgmpGroupRecordListMatcher {
+	return &IgmpGroupRecordListMatcher{
+		Operator: listmatcher.Subset,
+	}
+}
+
+// WithOperator sets the match kind for the IgmpGroupRecordListMatcher
+func (checker *IgmpGroupRecordListMatcher) WithOperator(operator listmatcher.Operator) *IgmpGroupRecordListMatcher {
+	checker.Operator = operator
+	return checker
+}
+
+// WithValues sets the checkers that the IgmpGroupRecordListMatcher should use
+func (checker *IgmpGroupRecordListMatcher) WithValues(values ...*IgmpGroupRecordChecker) *IgmpGroupRecordListMatcher {
+	checker.Values = values
+	return checker
+}
+
+// Check checks a list of *tetragon.IgmpGroupRecord fields
+func (checker *IgmpGroupRecordListMatcher) Check(values []*tetragon.IgmpGroupRecord) error {
+	switch checker.Operator {
+	case listmatcher.Ordered:
+		return checker.orderedCheck(values)
+	case listmatcher.Unordered:
+		return checker.unorderedCheck(values)
+	case listmatcher.Subset:
+		return checker.subsetCheck(values)
+	default:
+		return fmt.Errorf("Unhandled ListMatcher operator %s", checker.Operator)
+	}
+}
+
+// orderedCheck checks a list of ordered *tetragon.IgmpGroupRecord fields
+func (checker *IgmpGroupRecordListMatcher) orderedCheck(values []*tetragon.IgmpGroupRecord) error {
+	innerCheck := func(check *IgmpGroupRecordChecker, value *tetragon.IgmpGroupRecord) error {
+		if err := check.Check(value); err != nil {
+			return fmt.Errorf("Groups check failed: %w", err)
+		}
+		return nil
+	}
+
+	if len(checker.Values) != len(values) {
+		return fmt.Errorf("IgmpGroupRecordListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
+	}
+
+	for i, check := range checker.Values {
+		value := values[i]
+		if err := innerCheck(check, value); err != nil {
+			return fmt.Errorf("IgmpGroupRecordListMatcher: Check failed on element %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+// unorderedCheck checks a list of unordered *tetragon.IgmpGroupRecord fields
+func (checker *IgmpGroupRecordListMatcher) unorderedCheck(values []*tetragon.IgmpGroupRecord) error {
+	if len(checker.Values) != len(values) {
+		return fmt.Errorf("IgmpGroupRecordListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
+	}
+
+	return checker.subsetCheck(values)
+}
+
+// subsetCheck checks a subset of *tetragon.IgmpGroupRecord fields
+func (checker *IgmpGroupRecordListMatcher) subsetCheck(values []*tetragon.IgmpGroupRecord) error {
+	innerCheck := func(check *IgmpGroupRecordChecker, value *tetragon.IgmpGroupRecord) error {
+		if err := check.Check(value); err != nil {
+			return fmt.Errorf("Groups check failed: %w", err)
+		}
+		return nil
+	}
+
+	numDesired := len(checker.Values)
+	numMatched := 0
+
+nextCheck:
+	for _, check := range checker.Values {
+		for _, value := range values {
+			if err := innerCheck(check, value); err == nil {
+				numMatched += 1
+				continue nextCheck
+			}
+		}
+	}
+
+	if numMatched < numDesired {
+		return fmt.Errorf("IgmpGroupRecordListMatcher: Check failed, only matched %d elements but wanted %d", numMatched, numDesired)
+	}
+
+	return nil
 }
 
 // ProcessIpErrorChecker implements a checker struct to check a ProcessIpError event
@@ -13409,6 +14047,93 @@ func (checker *TNPInfoChecker) FromTNPInfo(event *tetragon.TNPInfo) *TNPInfoChec
 	return checker
 }
 
+// IgmpGroupRecordChecker implements a checker struct to check a IgmpGroupRecord field
+type IgmpGroupRecordChecker struct {
+	Type      *IgmpGroupRecordTypeChecker  `json:"type,omitempty"`
+	GroupIp   *stringmatcher.StringMatcher `json:"groupIp,omitempty"`
+	SourceIps *StringListMatcher           `json:"sourceIps,omitempty"`
+}
+
+// NewIgmpGroupRecordChecker creates a new IgmpGroupRecordChecker
+func NewIgmpGroupRecordChecker() *IgmpGroupRecordChecker {
+	return &IgmpGroupRecordChecker{}
+}
+
+// Get the type of the checker as a string
+func (checker *IgmpGroupRecordChecker) GetCheckerType() string {
+	return "IgmpGroupRecordChecker"
+}
+
+// Check checks a IgmpGroupRecord field
+func (checker *IgmpGroupRecordChecker) Check(event *tetragon.IgmpGroupRecord) error {
+	if event == nil {
+		return fmt.Errorf("%s: IgmpGroupRecord field is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Type != nil {
+			if err := checker.Type.Check(&event.Type); err != nil {
+				return fmt.Errorf("Type check failed: %w", err)
+			}
+		}
+		if checker.GroupIp != nil {
+			if err := checker.GroupIp.Match(event.GroupIp); err != nil {
+				return fmt.Errorf("GroupIp check failed: %w", err)
+			}
+		}
+		if checker.SourceIps != nil {
+			if err := checker.SourceIps.Check(event.SourceIps); err != nil {
+				return fmt.Errorf("SourceIps check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithType adds a Type check to the IgmpGroupRecordChecker
+func (checker *IgmpGroupRecordChecker) WithType(check tetragon.IgmpGroupRecordType) *IgmpGroupRecordChecker {
+	wrappedCheck := IgmpGroupRecordTypeChecker(check)
+	checker.Type = &wrappedCheck
+	return checker
+}
+
+// WithGroupIp adds a GroupIp check to the IgmpGroupRecordChecker
+func (checker *IgmpGroupRecordChecker) WithGroupIp(check *stringmatcher.StringMatcher) *IgmpGroupRecordChecker {
+	checker.GroupIp = check
+	return checker
+}
+
+// WithSourceIps adds a SourceIps check to the IgmpGroupRecordChecker
+func (checker *IgmpGroupRecordChecker) WithSourceIps(check *StringListMatcher) *IgmpGroupRecordChecker {
+	checker.SourceIps = check
+	return checker
+}
+
+//FromIgmpGroupRecord populates the IgmpGroupRecordChecker using data from a IgmpGroupRecord field
+func (checker *IgmpGroupRecordChecker) FromIgmpGroupRecord(event *tetragon.IgmpGroupRecord) *IgmpGroupRecordChecker {
+	if event == nil {
+		return checker
+	}
+	checker.Type = NewIgmpGroupRecordTypeChecker(event.Type)
+	checker.GroupIp = stringmatcher.Full(event.GroupIp)
+	{
+		var checks []*stringmatcher.StringMatcher
+		for _, check := range event.SourceIps {
+			var convertedCheck *stringmatcher.StringMatcher
+			convertedCheck = stringmatcher.Full(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewStringListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.SourceIps = lm
+	}
+	return checker
+}
+
 // FileSystemChecker implements a checker struct to check a FileSystem field
 type FileSystemChecker struct {
 	Name *stringmatcher.StringMatcher `json:"name,omitempty"`
@@ -16663,6 +17388,110 @@ func (enum *TNPActionChecker) Check(val *tetragon.TNPAction) error {
 	}
 	if *enum != TNPActionChecker(*val) {
 		return fmt.Errorf("TNPActionChecker: TNPAction has value %s which does not match expected value %s", (*val), tetragon.TNPAction(*enum))
+	}
+	return nil
+}
+
+// IgmpGroupRecordTypeChecker checks a tetragon.IgmpGroupRecordType
+type IgmpGroupRecordTypeChecker tetragon.IgmpGroupRecordType
+
+// MarshalJSON implements json.Marshaler interface
+func (enum IgmpGroupRecordTypeChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.IgmpGroupRecordType_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "IGMPV3_")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown IgmpGroupRecordType %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *IgmpGroupRecordTypeChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.IgmpGroupRecordType_value[str]; ok {
+		*enum = IgmpGroupRecordTypeChecker(n)
+	} else if n, ok := tetragon.IgmpGroupRecordType_value["IGMPV3_"+str]; ok {
+		*enum = IgmpGroupRecordTypeChecker(n)
+	} else {
+		return fmt.Errorf("Unknown IgmpGroupRecordType %s", str)
+	}
+
+	return nil
+}
+
+// NewIgmpGroupRecordTypeChecker creates a new IgmpGroupRecordTypeChecker
+func NewIgmpGroupRecordTypeChecker(val tetragon.IgmpGroupRecordType) *IgmpGroupRecordTypeChecker {
+	enum := IgmpGroupRecordTypeChecker(val)
+	return &enum
+}
+
+// Check checks a IgmpGroupRecordType against the checker
+func (enum *IgmpGroupRecordTypeChecker) Check(val *tetragon.IgmpGroupRecordType) error {
+	if val == nil {
+		return fmt.Errorf("IgmpGroupRecordTypeChecker: IgmpGroupRecordType is nil and does not match expected value %s", tetragon.IgmpGroupRecordType(*enum))
+	}
+	if *enum != IgmpGroupRecordTypeChecker(*val) {
+		return fmt.Errorf("IgmpGroupRecordTypeChecker: IgmpGroupRecordType has value %s which does not match expected value %s", (*val), tetragon.IgmpGroupRecordType(*enum))
+	}
+	return nil
+}
+
+// IgmpMembershipReportTypeChecker checks a tetragon.IgmpMembershipReportType
+type IgmpMembershipReportTypeChecker tetragon.IgmpMembershipReportType
+
+// MarshalJSON implements json.Marshaler interface
+func (enum IgmpMembershipReportTypeChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := tetragon.IgmpMembershipReportType_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "I")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown IgmpMembershipReportType %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *IgmpMembershipReportTypeChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := tetragon.IgmpMembershipReportType_value[str]; ok {
+		*enum = IgmpMembershipReportTypeChecker(n)
+	} else if n, ok := tetragon.IgmpMembershipReportType_value["I"+str]; ok {
+		*enum = IgmpMembershipReportTypeChecker(n)
+	} else {
+		return fmt.Errorf("Unknown IgmpMembershipReportType %s", str)
+	}
+
+	return nil
+}
+
+// NewIgmpMembershipReportTypeChecker creates a new IgmpMembershipReportTypeChecker
+func NewIgmpMembershipReportTypeChecker(val tetragon.IgmpMembershipReportType) *IgmpMembershipReportTypeChecker {
+	enum := IgmpMembershipReportTypeChecker(val)
+	return &enum
+}
+
+// Check checks a IgmpMembershipReportType against the checker
+func (enum *IgmpMembershipReportTypeChecker) Check(val *tetragon.IgmpMembershipReportType) error {
+	if val == nil {
+		return fmt.Errorf("IgmpMembershipReportTypeChecker: IgmpMembershipReportType is nil and does not match expected value %s", tetragon.IgmpMembershipReportType(*enum))
+	}
+	if *enum != IgmpMembershipReportTypeChecker(*val) {
+		return fmt.Errorf("IgmpMembershipReportTypeChecker: IgmpMembershipReportType has value %s which does not match expected value %s", (*val), tetragon.IgmpMembershipReportType(*enum))
 	}
 	return nil
 }
