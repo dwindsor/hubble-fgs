@@ -30,7 +30,6 @@ import (
 var (
 	processLock              = sync.Mutex{}
 	processTreeBinaryUUIDMap = "process_tree_binary_uid_map"
-	processTreeUUIDBinaryMap = "process_tree_uid_binary_map"
 	userUID                  = uint32(0)
 	userCPU                  = uint32(0xffffffff)
 	uidMap                   = make(map[string]uint64)
@@ -517,10 +516,6 @@ func (p *BPFProgrammer) GetBinaryId(binaryName string, ignoreArgs bool) (uint64,
 
 	if err := p.binaryMap.Update(uidKey, processID, ebpf.UpdateAny); err != nil {
 		return uint64(0), fmt.Errorf("failed to update the bpf binary map: %w", err)
-	}
-
-	if err := p.uidBpfMap.Update(processID, uidKey, ebpf.UpdateAny); err != nil {
-		return uint64(0), fmt.Errorf("failed to update the bpf uid map: %w", err)
 	}
 
 	id = uint64(uint64(userUID) | (uint64(processID.cpu) << 32))

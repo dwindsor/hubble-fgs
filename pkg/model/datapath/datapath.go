@@ -46,7 +46,6 @@ type BPFProgrammer struct {
 
 	initProgrammerOnce sync.Once
 	binaryMap          mapInterfaceTyped[processTreeBinaryUIDKey, processTreeID]
-	uidBpfMap          mapInterfaceTyped[processTreeID, processTreeBinaryUIDKey]
 
 	recordsMu sync.Mutex
 	records   map[record.RecordKey]record.DatapathRecord

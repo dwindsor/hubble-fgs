@@ -58,14 +58,6 @@ struct {
 } process_tree_binary_uid_map SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__uint(max_entries, 1024);
-	__uint(key_size, sizeof(struct tree_id));
-	__uint(value_size, sizeof(struct process_tree_binary_uid_key));
-	__uint(pinning, LIBBPF_PIN_BY_NAME);
-} process_tree_uid_binary_map SEC(".maps");
-
-struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__uint(max_entries, 1);
 	__uint(key_size, sizeof(uint32_t));
@@ -118,7 +110,6 @@ inline __attribute__((always_inline)) void update_binary_uid_map(uint32_t pid, c
 			if (!self_uid->uid)
 				return;
 			bpf_map_update_elem(&process_tree_binary_uid_map, tree_key, self_uid, 0);
-			bpf_map_update_elem(&process_tree_uid_binary_map, self_uid, tree_key, 0);
 		}
 	}
 }
@@ -151,7 +142,6 @@ inline __attribute__((always_inline)) uint64_t find_myself_by_path(uint32_t pid,
 			if (!self_uid->uid)
 				return 0;
 			bpf_map_update_elem(&process_tree_binary_uid_map, tree_key, self_uid, 0);
-			bpf_map_update_elem(&process_tree_uid_binary_map, self_uid, tree_key, 0);
 		}
 	}
 	return ((uint64_t)self_uid->cpu << 32) | (uint64_t)self_uid->uid;

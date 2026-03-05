@@ -93,19 +93,6 @@ struct {
 	__type(value, struct tree_id);
 } process_tree_binary_uid_map SEC(".maps");
 
-/* This map is redundant and will be removed. Its used for shorthand
- * user space lookups from key to binary info. But its racy because
- * we can't guarentee the above map and this map are updated together.
- * The fix is simply to embed the necessary information into the process
- * tree value.
- */
-struct {
-	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__uint(max_entries, 1); // will be resized by user space
-	__uint(key_size, sizeof(struct tree_id));
-	__uint(value_size, sizeof(struct process_tree_binary_uid_key));
-} process_tree_uid_binary_map SEC(".maps");
-
 struct process_tree_key {
 	__u64 nsid;
 	__u64 depth;

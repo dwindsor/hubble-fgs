@@ -99,7 +99,6 @@ func getNewFakeBPFProgrammer(fakePolicyRepo *FakePolicyRepositoryIDReader) *BPFP
 	}
 	ret := &BPFProgrammer{
 		binaryMap: &fakeBPFMap[processTreeBinaryUIDKey, processTreeID]{},
-		uidBpfMap: &fakeBPFMap[processTreeID, processTreeBinaryUIDKey]{},
 		records:   map[record.RecordKey]record.DatapathRecord{},
 	}
 	ret.recordBackend = &bpfRecordBackend{

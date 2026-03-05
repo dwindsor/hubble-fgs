@@ -75,7 +75,6 @@ func GetDefaultMaps() []*program.Map {
 		ProcessTreeId,
 		ProcessTreeMap,
 		ProcessTreeBinaryUUIDMap,
-		ProcessTreeUUIDBinaryMap,
 		EndpointIdMap,
 		Addr6LpmMap,
 		Addr4LpmMap,

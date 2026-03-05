@@ -243,7 +243,6 @@ func getFdLookupMaps() []*program.Map {
 			program.MapUserFrom(base.BpfEndpointIdMap),
 			program.MapUserFrom(base.ProcessTreeMap),
 			program.MapUserFrom(base.ProcessTreeBinaryUUIDMap),
-			program.MapUserFrom(base.ProcessTreeUUIDBinaryMap),
 			program.MapUserFrom(base.DestinationEndpointMap),
 			program.MapUserFrom(base.ListenEndpointMap),
 			program.MapUserFrom(base.PidDataMap),

@@ -40,12 +40,6 @@ func (p *BPFProgrammer) initMap() {
 	}
 	p.binaryMap = NewTypedMap[processTreeBinaryUIDKey, processTreeID](binaryMap)
 
-	uidBpfMap := coll.Maps[processTreeUUIDBinaryMap]
-	if uidBpfMap == nil {
-		logger.GetLogger().Error(fmt.Sprintf("failed to load process tree UUID binary map from collection"))
-	}
-	p.uidBpfMap = NewTypedMap[processTreeID, processTreeBinaryUIDKey](uidBpfMap)
-
 	lpmMap, err := lpm.NewLPM()
 	if err != nil {
 		logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)

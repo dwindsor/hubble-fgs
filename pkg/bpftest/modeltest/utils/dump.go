@@ -46,7 +46,6 @@ var relevantBPFMaps = []string{
 	"tg_process_tree_config_map",
 	"tg_tree_id",
 	"process_tree_binary_uid_map",
-	"process_tree_uid_binary_map",
 	"tg_cgroup_namespace_map",
 	"tg_ee_pid_data",
 	"process_tree_map",

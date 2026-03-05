@@ -116,7 +116,6 @@ static inline __attribute__((always_inline)) uint64_t __find_my_self(struct exec
 	}
 
 	if (self_uid) {
-		map_lookup_elem(&process_tree_uid_binary_map, self_uid);
 		uint64_t result = ((uint64_t)self_uid->cpu << 32) | (uint64_t)self_uid->uid;
 		return result;
 	}
@@ -124,7 +123,6 @@ static inline __attribute__((always_inline)) uint64_t __find_my_self(struct exec
 	get_tree_id(&new_uid);
 	if (!new_uid.uid)
 		return 0;
-	map_update_elem(&process_tree_uid_binary_map, &new_uid, tree_key, 0);
 	map_update_elem(&process_tree_binary_uid_map, tree_key, &new_uid, 0);
 	uint64_t result = ((uint64_t)new_uid.cpu << 32) | (uint64_t)new_uid.uid;
 

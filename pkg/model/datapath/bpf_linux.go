@@ -42,13 +42,6 @@ func (p *BPFProgrammer) initMap() {
 	}
 	p.binaryMap = NewTypedMap[processTreeBinaryUIDKey, processTreeID](binaryMap)
 
-	file = filepath.Join(bpf.MapPrefixPath(), processTreeUUIDBinaryMap)
-	uidBpfMap, err := ebpf.LoadPinnedMap(file, nil)
-	if err != nil {
-		logger.GetLogger().Warn("failed to open file", "file", file, logfields.Error, err)
-	}
-	p.uidBpfMap = NewTypedMap[processTreeID, processTreeBinaryUIDKey](uidBpfMap)
-
 	lpmMap, err := lpm.NewLPM()
 	if err != nil {
 		logger.GetLogger().Warn("failed to create LPM programmer", logfields.Error, err)

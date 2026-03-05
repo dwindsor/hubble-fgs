@@ -112,10 +112,6 @@ type EndpointIdValue struct {
 	Id uint64
 }
 
-type ProcessTreeBinaryUUIDKey struct {
-	Id uint64
-}
-
 type ProcessTreeBinaryUUIDValue struct {
 	Binary [256]byte
 	Args   [256]byte
