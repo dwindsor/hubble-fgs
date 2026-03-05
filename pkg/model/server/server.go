@@ -53,7 +53,6 @@ import (
 
 const (
 	processTreeMap         = "process_tree_map"
-	processTreeUUIDMap     = "process_tree_uid_binary_map"
 	destinationEndpointMap = "destination_endpoint_map"
 	listenEndpointMap      = "listen_endpoint_map"
 	endpointIdMap          = "tg_endpoint_id_map"
@@ -61,6 +60,24 @@ const (
 	nsIDMapName            = "tg_cgroup_namespace_map"
 	cgTrackerIdMapName     = "tg_cgtracker_map"
 )
+
+// decodeBinaryArgs extracts the null-terminated binary path and
+// double-null-terminated args string from a ProcessTreeValue.
+func decodeBinaryArgs(val *types.ProcessTreeValue) (bin, args string) {
+	n := bytes.IndexByte(val.Binary[:], 0)
+	if n < 0 {
+		n = len(val.Binary)
+	}
+	bin = protoutils.SanitizeString(string(val.Binary[:n]))
+	ma := bytes.Index(val.Args[:], []byte{0x00, 0x00})
+	if ma < 0 {
+		ma = len(val.Args)
+	}
+	args = string(val.Args[:ma])
+	args, _ = process.ArgsDecoder(args, api.EventNoCWDSupport)
+	args = protoutils.SanitizeString(args)
+	return bin, args
+}
 
 // ktimeToTime converts a ktime value to *time.Time, returning nil for zero values
 func ktimeToTime(kt uint64) *time.Time {
@@ -133,37 +150,6 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 	tetragonUUID := make([]*tetragon.ProcessUUID, 0)
 	indexedUUID := make(map[uint64]*tetragon.ProcessUUID)
 
-	uuidMap := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
-	uuid, err := ebpf.LoadPinnedMap(uuidMap, nil)
-	if err != nil {
-		logger.GetLogger().Warn("Could not open processTreeUUID map for GetProcessMapRequest", logfields.Error, err, "file", uuid)
-		return nil, err
-	}
-	defer uuid.Close()
-
-	var (
-		key   types.ProcessTreeBinaryUUIDKey
-		value types.ProcessTreeBinaryUUIDValue
-	)
-
-	iter := uuid.Iterate()
-	for iter.Next(&key, &value) {
-		n := bytes.IndexByte(value.Binary[:], 0)
-		selfStr := protoutils.SanitizeString(string(value.Binary[:n]))
-		m := bytes.Index(value.Args[:], []byte{0x00, 0x00})
-		selfArgs := protoutils.SanitizeString(string(value.Args[:m]))
-		// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
-		// since args in process tree binary map does not contain CWD.
-		selfArgs, _ = process.ArgsDecoder(selfArgs, api.EventNoCWDSupport)
-
-		t := tetragon.ProcessUUID{
-			Binary: selfStr,
-			Args:   selfArgs,
-			Id:     key.Id,
-		}
-		indexedUUID[uint64(key.Id)] = &t
-	}
-
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
 
 	m, err := ebpf.LoadPinnedMap(treeMap, nil)
@@ -171,7 +157,6 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 		logger.GetLogger().Warn("Could not open process tree map", logfields.Error, err, "file", treeMap)
 		return nil, err
 	}
-
 	defer m.Close()
 
 	var (
@@ -179,27 +164,51 @@ func (s *Server) GetProcessMap(_ context.Context, _ *tetragon.GetProcessMapReque
 		valTk types.ProcessTreeValue
 	)
 
-	iter = m.Iterate()
-	for iter.Next(&keyTk, &valTk) {
-		v := indexedUUID[keyTk.Self]
-		value := tetragon.ProcessUUID{
-			Binary:   v.Binary,
-			Args:     v.Args,
-			Id:       v.Id,
-			Depth:    v.Depth,
-			Children: v.Children,
-		}
-		children := make([]*tetragon.ProcessUUID, 0)
+	type treeEntry struct {
+		key    types.ProcessTreeKey
+		binary string
+		args   string
+	}
 
-		for i := 0; i < 8; i++ {
-			if keyTk.Path[i] == 0 {
-				break
-			}
-			child := indexedUUID[keyTk.Path[i]]
-			children = append(children, child)
+	// Pass 1: iterate the BPF map, decode binary/args, and populate the
+	// UUID index so that every entry is available for child resolution.
+	var entries []treeEntry
+	iter := m.Iterate()
+	for iter.Next(&keyTk, &valTk) {
+		selfBin, selfArgs := decodeBinaryArgs(&valTk)
+		indexedUUID[keyTk.Self] = &tetragon.ProcessUUID{
+			Binary: selfBin,
+			Args:   selfArgs,
+			Id:     keyTk.Self,
 		}
-		value.Depth = uint32(keyTk.Depth)
-		value.Children = children
+		entries = append(entries, treeEntry{key: keyTk, binary: selfBin, args: selfArgs})
+	}
+
+	// Build a parent-to-children map. Path[0..Depth-1] is the ancestry
+	// chain (root to immediate parent), so Path[Depth-1] is the parent UID.
+	childrenOf := make(map[uint64][]uint64)
+	for _, e := range entries {
+		if e.key.Depth > 0 && e.key.Depth <= uint64(len(e.key.Path)) {
+			parentUID := e.key.Path[e.key.Depth-1]
+			childrenOf[parentUID] = append(childrenOf[parentUID], e.key.Self)
+		}
+	}
+
+	// Pass 2: build Children from the parent-to-children map.
+	for _, e := range entries {
+		children := make([]*tetragon.ProcessUUID, 0)
+		for _, childUID := range childrenOf[e.key.Self] {
+			if child := indexedUUID[childUID]; child != nil {
+				children = append(children, child)
+			}
+		}
+		value := tetragon.ProcessUUID{
+			Binary:   e.binary,
+			Args:     e.args,
+			Id:       e.key.Self,
+			Depth:    uint32(e.key.Depth),
+			Children: children,
+		}
 		tetragonUUID = append(tetragonUUID, &value)
 	}
 
@@ -333,7 +342,6 @@ func (s *Server) GetEndpointMap(_ context.Context, _ *tetragon.GetEndpointMapReq
 func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, error) {
 	processModel := make([]*types.ProcessModel, 0)
 	treeMap := filepath.Join(bpf.MapPrefixPath(), processTreeMap)
-	binaryFile := filepath.Join(bpf.MapPrefixPath(), processTreeUUIDMap)
 	endptMap := filepath.Join(bpf.MapPrefixPath(), destinationEndpointMap)
 	syscallMap := filepath.Join(bpf.MapPrefixPath(), syscallMap)
 	nsIDMapPath := filepath.Join(bpf.MapPrefixPath(), nsIDMapName)
@@ -624,13 +632,6 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		syscallVal types.ProcessSyscallValue
 	)
 
-	uidMap, err := ebpf.LoadPinnedMap(binaryFile, nil)
-	if err != nil {
-		logger.GetLogger().Warn("Could not open UUID to Binary tree map", logfields.Error, err, "file", binaryFile)
-		return nil, err
-	}
-	defer uidMap.Close()
-
 	state, err := policyfilter.GetState()
 	if err != nil {
 		logger.GetLogger().Warn("Could not get policyfilter state", logfields.Error, err)
@@ -697,6 +698,32 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 	}
 	pendingNSIDUpdates := make(map[types.ProcessTreeKey]NSIDUpdate)
 	var skippedEntries int
+	type binaryInfo struct {
+		binary string
+		args   string
+	}
+	binaryByUID := make(map[uint64]binaryInfo)
+
+	type processEntry struct {
+		key             types.ProcessTreeKey
+		ns, wl          string
+		kind            string
+		selfBin         string
+		selfArgs        string
+		dest            []*types.Destination
+		inInitTree      bool
+		syscalls        set.Set[uint32]
+		containerId     string
+		cgroupid        uint64
+		ktimeFirstExec  uint64
+		ktimeLastExec   uint64
+		ktimeLatestExit uint64
+		execCount       uint64
+	}
+
+	// Pass 1: iterate the BPF map, collect per-entry state, and populate
+	// binaryByUID so that parent resolution in pass 2 never misses.
+	var procEntries []processEntry
 	iter = m.Iterate()
 	for iter.Next(&key, &val) {
 		var ns, wl, kind string
@@ -743,47 +770,17 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 			continue
 		}
 
-		var (
-			processKey types.ProcessTreeBinaryUUIDKey
-			uidValue   types.ProcessTreeBinaryUUIDValue
-		)
-
-		processKey.Id = key.Self
-		err := uidMap.Lookup(&processKey, &uidValue)
-		if err != nil {
-			logger.GetLogger().Debug("Could not map self UUID to Path", logfields.Error, err, "uuid", processKey)
+		// Read binary path and args directly from the embedded fields in process_tree_value.
+		selfBin, selfArgs := decodeBinaryArgs(&val)
+		// Binary is embedded at insertion time, so this is not expected
+		// to be empty in practice. Guard defensively just in case.
+		if selfBin == "" {
+			logger.GetLogger().Debug("Empty binary in process tree entry", "uuid", key.Self)
 			skippedEntries++
 			continue
 		}
-		// uidValue.Binary is a fixed size byte array. Trim trailing null bytes.
-		n := bytes.IndexByte(uidValue.Binary[:], 0)
-		selfStr := protoutils.SanitizeString(string(uidValue.Binary[:n]))
-		m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
-		selfArgs := string(uidValue.Args[:m])
-		// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
-		// since args in process tree binary map does not contain CWD.
-		selfArgs, _ = process.ArgsDecoder(selfArgs, api.EventNoCWDSupport)
-		selfArgs = protoutils.SanitizeString(selfArgs)
 
-		parentPath := ""
-		parentArgs := ""
-		if key.Depth > 0 {
-			parentUID := key.Path[key.Depth-1]
-
-			var parentKey types.ProcessTreeBinaryUUIDKey
-			parentKey.Id = parentUID
-			err = uidMap.Lookup(&parentKey, &uidValue)
-			if err == nil {
-				n = bytes.IndexByte(uidValue.Binary[:], 0)
-				parentPath = protoutils.SanitizeString(string(uidValue.Binary[:n]))
-				m := bytes.Index(uidValue.Args[:], []byte{0x00, 0x00})
-				parentArgs = string(uidValue.Args[:m])
-				// Call ArgsDecoder to replace nulls with spaces. Specify api.EventNoCWDSupport
-				// since args in process tree binary map does not contain CWD.
-				parentArgs, _ = process.ArgsDecoder(parentArgs, api.EventNoCWDSupport)
-				parentArgs = protoutils.SanitizeString(parentArgs)
-			}
-		}
+		binaryByUID[key.Self] = binaryInfo{binary: selfBin, args: selfArgs}
 
 		idKey := dstListKey{
 			localID: key.Self,
@@ -812,7 +809,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		var containerId string
 
 		if cgroupid != 0 {
-			logger.GetLogger().Debug("Looking up container info", "binary", selfStr, "args", selfArgs, "cgroupid", cgroupid)
+			logger.GetLogger().Debug("Looking up container info", "binary", selfBin, "args", selfArgs, "cgroupid", cgroupid)
 			cid, found := getContainerID(cgroupid)
 			if found && cid != "" {
 				logger.GetLogger().Debug("Found container info", "cgroupid", cgroupid, "containerID", cid)
@@ -822,6 +819,34 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 				logger.GetLogger().Debug("No container info found for process", "cgroupid", cgroupid)
 			}
 		}
+
+		procEntries = append(procEntries, processEntry{
+			key: key,
+			ns:  ns, wl: wl, kind: kind,
+			selfBin: selfBin, selfArgs: selfArgs,
+			dest: dest, inInitTree: inInitTree,
+			syscalls: syscalls, containerId: containerId,
+			cgroupid:        cgroupid,
+			ktimeFirstExec:  val.KtimeFirstExec,
+			ktimeLastExec:   val.KtimeLastExec,
+			ktimeLatestExit: val.KtimeLatestExit,
+			execCount:       val.ExecCount,
+		})
+	}
+
+	// Pass 2: resolve parent binary/args from the now-complete binaryByUID
+	// index and build the final process model entries.
+	for _, e := range procEntries {
+		parentPath := ""
+		parentArgs := ""
+		if e.key.Depth > 0 && e.key.Depth <= uint64(len(e.key.Path)) {
+			parentUID := e.key.Path[e.key.Depth-1]
+			if info, ok := binaryByUID[parentUID]; ok {
+				parentPath = info.binary
+				parentArgs = info.args
+			}
+		}
+
 		// Initialize parents slice with immediate parent if it exists
 		var parents []string
 		if parentPath != "" {
@@ -829,25 +854,25 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		}
 
 		processModel = append(processModel, &types.ProcessModel{
-			Binary:     selfStr,
-			BinaryArgs: selfArgs,
+			Binary:     e.selfBin,
+			BinaryArgs: e.selfArgs,
 			Parent:     parentPath,
 			ParentArgs: parentArgs,
 			Parents:    parents,
-			Namespace:  ns,
-			Syscalls:   syscalls.AsSlice(),
+			Namespace:  e.ns,
+			Syscalls:   e.syscalls.AsSlice(),
 			Abi:        abi,
 			Workload: &types.Workload{
-				Name: wl,
-				Kind: kind,
+				Name: e.wl,
+				Kind: e.kind,
 			},
-			ContainerId:     containerId,
-			Dest:            dest,
-			InInitTree:      inInitTree,
-			FirstStartTime:  ktimeToTime(val.KtimeFirstExec),
-			LatestStartTime: ktimeToTime(val.KtimeLastExec),
-			LatestExitTime:  ktimeToTime(val.KtimeLatestExit),
-			ExecCount:       val.ExecCount,
+			ContainerId:     e.containerId,
+			Dest:            e.dest,
+			InInitTree:      e.inInitTree,
+			FirstStartTime:  ktimeToTime(e.ktimeFirstExec),
+			LatestStartTime: ktimeToTime(e.ktimeLastExec),
+			LatestExitTime:  ktimeToTime(e.ktimeLatestExit),
+			ExecCount:       e.execCount,
 		})
 
 		logger.GetLogger().Debug("Added process model", "process", *processModel[len(processModel)-1])
