@@ -696,6 +696,7 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		newNSID  uint64
 	}
 	pendingNSIDUpdates := make(map[types.ProcessTreeKey]NSIDUpdate)
+	var skippedEntries int
 	iter = m.Iterate()
 	for iter.Next(&key, &val) {
 		var ns, wl, kind string
@@ -750,7 +751,8 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		processKey.Id = key.Self
 		err := uidMap.Lookup(&processKey, &uidValue)
 		if err != nil {
-			logger.GetLogger().Warn("Could not map self UUID to Path", logfields.Error, err, "uuid", processKey)
+			logger.GetLogger().Debug("Could not map self UUID to Path", logfields.Error, err, "uuid", processKey)
+			skippedEntries++
 			continue
 		}
 		// uidValue.Binary is a fixed size byte array. Trim trailing null bytes.
@@ -849,6 +851,11 @@ func GetProcessModel(namespaces []string, debug bool) ([]*types.ProcessModel, er
 		})
 
 		logger.GetLogger().Debug("Added process model", "process", *processModel[len(processModel)-1])
+	}
+
+	if skippedEntries > 0 {
+		logger.GetLogger().Warn("Skipped process tree entries with missing binary info (LRU eviction)",
+			"count", skippedEntries)
 	}
 
 	// Do queued NSID updates
