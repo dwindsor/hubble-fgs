@@ -123,6 +123,8 @@ struct process_tree_value {
 	bool maybe_missing_nsid;
 	bool in_container;
 	bool in_init_tree;
+	char binary[BINARY_PATH_MAX_LEN];
+	char args[MAXARGLENGTH];
 };
 
 /* The process tree map creates a map from unique executables

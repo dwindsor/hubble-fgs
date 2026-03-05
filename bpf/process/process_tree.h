@@ -162,6 +162,7 @@ int find_my_nsid(__u64 cgid)
 int __insert_process_tree(__u32 pid, __u64 cgid)
 {
 	struct process_tree_key *k, local = { 0 }, *parent;
+	struct process_tree_binary_uid_key *buid_scratch;
 	struct process_tree_config *cfg;
 	struct process_tree_value *old;
 	struct execve_map_value *curr;
@@ -204,6 +205,11 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 	k->self.cpu = uid >> 32; /* retains ignore_args bit in high bit */
 	k->nsid = find_my_nsid(cgid);
 
+	/* Retrieve the per-CPU scratch populated by find_my_self with
+	 * binary path and args for this process.
+	 */
+	buid_scratch = map_lookup_elem(&tg_h_ps_buidkey, &zero);
+
 	map_update_elem(&tg_ee_pid_data, &pid, &local, 0);
 	DEBUG("curr->nspid=%d curr->key.pid=%d", curr->nspid, curr->key.pid);
 
@@ -224,6 +230,10 @@ int __insert_process_tree(__u32 pid, __u64 cgid)
 			// inform userspace that we might need to update the nsid mapping for this process when it becomes available
 			DEBUG("missing nsid pid=%d cgid=%d", pid, cgid);
 			old->maybe_missing_nsid = 1;
+		}
+		if (buid_scratch) {
+			memcpy(old->binary, buid_scratch->binary, BINARY_PATH_MAX_LEN);
+			memcpy(old->args, buid_scratch->args, MAXARGLENGTH);
 		}
 		map_update_elem(&process_tree_map, k, old, 0);
 	} else {

@@ -38,6 +38,8 @@ type ProcessTreeValue struct {
 	MaybeMissingNSID bool
 	InContainer      bool
 	InInitTree       bool
+	Binary           [256]byte
+	Args             [256]byte
 }
 
 const (
