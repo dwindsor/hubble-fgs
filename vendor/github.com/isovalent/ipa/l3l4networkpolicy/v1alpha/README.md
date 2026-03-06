@@ -34,6 +34,9 @@
     - [StreamEventsResponse](#l3l4networkpolicy-v1alpha-StreamEventsResponse)
     - [Streaml3l4NetworkPolicyRequest](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyRequest)
     - [Streaml3l4NetworkPolicyResponse](#l3l4networkpolicy-v1alpha-Streaml3l4NetworkPolicyResponse)
+    - [TimescapeBasicAuth](#l3l4networkpolicy-v1alpha-TimescapeBasicAuth)
+    - [TimescapeConfig](#l3l4networkpolicy-v1alpha-TimescapeConfig)
+    - [TimescapeMTLS](#l3l4networkpolicy-v1alpha-TimescapeMTLS)
     - [Vlan](#l3l4networkpolicy-v1alpha-Vlan)
     - [Vrf](#l3l4networkpolicy-v1alpha-Vrf)
   
@@ -77,6 +80,7 @@ ConfigObject is a generic config object, which can be extended by adding additio
 | config_log_splunk | [LogConfigSplunk](#l3l4networkpolicy-v1alpha-LogConfigSplunk) |  |  |
 | config_ha | [HaConfig](#l3l4networkpolicy-v1alpha-HaConfig) |  |  |
 | network_config | [NetworkConfig](#l3l4networkpolicy-v1alpha-NetworkConfig) |  |  |
+| config_timescape | [TimescapeConfig](#l3l4networkpolicy-v1alpha-TimescapeConfig) |  |  |
 
 
 
@@ -593,6 +597,67 @@ StreamEventsRequest is a client-to-server streaming message containing events to
 
 
 
+<a name="l3l4networkpolicy-v1alpha-TimescapeBasicAuth"></a>
+
+### TimescapeBasicAuth
+BasicAuth configuration for Timescape
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| username | [string](#string) |  | Username for BasicAuth |
+| password | [string](#string) |  | Password for BasicAuth |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-TimescapeConfig"></a>
+
+### TimescapeConfig
+Object to store Timescape client configuration
+CONFIG_TYPE_TIMESCAPE
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Configuration ID |
+| name | [string](#string) |  | Configuration name |
+| description | [string](#string) |  | Configuration description |
+| host | [string](#string) |  | Timescape server host |
+| port | [string](#string) |  | Timescape server port |
+| protocol | [string](#string) |  | Protocol (TCP/UDP) |
+| tls_enabled | [bool](#bool) |  | Enable TLS/HTTPS |
+| endpoint_api | [string](#string) |  | Push API endpoint |
+| max_retries | [uint32](#uint32) |  | Transport configuration for production deployments Maximum number of retry attempts for failed requests |
+| connection_timeout_sec | [uint32](#uint32) |  | Connection establishment timeout in seconds |
+| request_timeout_sec | [uint32](#uint32) |  | Request timeout in seconds |
+| max_batch_size | [uint32](#uint32) |  | Batching configuration for message processing Maximum number of messages to batch together (default: 1, max: 3, recommended: 2) |
+| batch_timeout_ms | [uint32](#uint32) |  | Batch timeout in milliseconds (force send batch after timeout, default: 30000ms) |
+| basic_auth | [TimescapeBasicAuth](#l3l4networkpolicy-v1alpha-TimescapeBasicAuth) |  | BasicAuth configuration |
+| mtls | [TimescapeMTLS](#l3l4networkpolicy-v1alpha-TimescapeMTLS) |  | mTLS configuration |
+
+
+
+
+
+
+<a name="l3l4networkpolicy-v1alpha-TimescapeMTLS"></a>
+
+### TimescapeMTLS
+mTLS configuration for Timescape
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| enabled | [bool](#bool) |  | Enable mTLS |
+
+
+
+
+
+
 <a name="l3l4networkpolicy-v1alpha-Vlan"></a>
 
 ### Vlan
@@ -682,6 +747,7 @@ ConfigObject.
 | CONFIG_TYPE_LOG_SPLUNK | 5 | Log export splunk configuration |
 | CONFIG_TYPE_HA | 6 | HA configuration |
 | CONFIG_TYPE_NETWORK | 7 | Network configuration |
+| CONFIG_TYPE_TIMESCAPE | 8 | Timescape ingestor configuration |
 
 
 

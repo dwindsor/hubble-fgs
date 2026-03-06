@@ -808,6 +808,184 @@ export declare type NetworkConfig = Message<"l3l4networkpolicy.v1alpha.NetworkCo
 export declare const NetworkConfigSchema: GenMessage<NetworkConfig>;
 
 /**
+ * BasicAuth configuration for Timescape
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.TimescapeBasicAuth
+ */
+export declare type TimescapeBasicAuth = Message<"l3l4networkpolicy.v1alpha.TimescapeBasicAuth"> & {
+  /**
+   * Username for BasicAuth
+   *
+   * @generated from field: string username = 1;
+   */
+  username: string;
+
+  /**
+   * Password for BasicAuth
+   *
+   * @generated from field: string password = 2;
+   */
+  password: string;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.TimescapeBasicAuth.
+ * Use `create(TimescapeBasicAuthSchema)` to create a new message.
+ */
+export declare const TimescapeBasicAuthSchema: GenMessage<TimescapeBasicAuth>;
+
+/**
+ * mTLS configuration for Timescape
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.TimescapeMTLS
+ */
+export declare type TimescapeMTLS = Message<"l3l4networkpolicy.v1alpha.TimescapeMTLS"> & {
+  /**
+   * Enable mTLS
+   *
+   * @generated from field: bool enabled = 1;
+   */
+  enabled: boolean;
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.TimescapeMTLS.
+ * Use `create(TimescapeMTLSSchema)` to create a new message.
+ */
+export declare const TimescapeMTLSSchema: GenMessage<TimescapeMTLS>;
+
+/**
+ * Object to store Timescape client configuration
+ * CONFIG_TYPE_TIMESCAPE
+ *
+ * @generated from message l3l4networkpolicy.v1alpha.TimescapeConfig
+ */
+export declare type TimescapeConfig = Message<"l3l4networkpolicy.v1alpha.TimescapeConfig"> & {
+  /**
+   * Configuration ID
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * Configuration name
+   *
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * Configuration description
+   *
+   * @generated from field: string description = 3;
+   */
+  description: string;
+
+  /**
+   * Timescape server host
+   *
+   * @generated from field: string host = 4;
+   */
+  host: string;
+
+  /**
+   * Timescape server port
+   *
+   * @generated from field: string port = 5;
+   */
+  port: string;
+
+  /**
+   * Protocol (TCP/UDP)
+   *
+   * @generated from field: string protocol = 6;
+   */
+  protocol: string;
+
+  /**
+   * Enable TLS/HTTPS
+   *
+   * @generated from field: bool tls_enabled = 7;
+   */
+  tlsEnabled: boolean;
+
+  /**
+   * Push API endpoint
+   *
+   * @generated from field: string endpoint_api = 8;
+   */
+  endpointApi: string;
+
+  /**
+   * Transport configuration for production deployments
+   * Maximum number of retry attempts for failed requests
+   *
+   * @generated from field: uint32 max_retries = 9;
+   */
+  maxRetries: number;
+
+  /**
+   * Connection establishment timeout in seconds
+   *
+   * @generated from field: uint32 connection_timeout_sec = 10;
+   */
+  connectionTimeoutSec: number;
+
+  /**
+   * Request timeout in seconds
+   *
+   * @generated from field: uint32 request_timeout_sec = 11;
+   */
+  requestTimeoutSec: number;
+
+  /**
+   * Batching configuration for message processing
+   * Maximum number of messages to batch together (default: 1, max: 3, recommended: 2)
+   *
+   * @generated from field: uint32 max_batch_size = 12;
+   */
+  maxBatchSize: number;
+
+  /**
+   * Batch timeout in milliseconds (force send batch after timeout, default: 30000ms)
+   *
+   * @generated from field: uint32 batch_timeout_ms = 13;
+   */
+  batchTimeoutMs: number;
+
+  /**
+   * Services: PolicyStatusUpdate and SystemStatusUpdate are enabled by default
+   * Authentication configuration (exactly one should be configured)
+   *
+   * @generated from oneof l3l4networkpolicy.v1alpha.TimescapeConfig.auth
+   */
+  auth: {
+    /**
+     * BasicAuth configuration
+     *
+     * @generated from field: l3l4networkpolicy.v1alpha.TimescapeBasicAuth basic_auth = 14;
+     */
+    value: TimescapeBasicAuth;
+    case: "basicAuth";
+  } | {
+    /**
+     * mTLS configuration
+     *
+     * @generated from field: l3l4networkpolicy.v1alpha.TimescapeMTLS mtls = 15;
+     */
+    value: TimescapeMTLS;
+    case: "mtls";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message l3l4networkpolicy.v1alpha.TimescapeConfig.
+ * Use `create(TimescapeConfigSchema)` to create a new message.
+ */
+export declare const TimescapeConfigSchema: GenMessage<TimescapeConfig>;
+
+/**
  * ConfigObject is a generic config object, which can be extended by adding additional configuration types
  *
  * @generated from message l3l4networkpolicy.v1alpha.ConfigObject
@@ -874,6 +1052,12 @@ export declare type ConfigObject = Message<"l3l4networkpolicy.v1alpha.ConfigObje
      */
     value: NetworkConfig;
     case: "networkConfig";
+  } | {
+    /**
+     * @generated from field: l3l4networkpolicy.v1alpha.TimescapeConfig config_timescape = 27;
+     */
+    value: TimescapeConfig;
+    case: "configTimescape";
   } | { case: undefined; value?: undefined };
 };
 
@@ -1294,6 +1478,13 @@ export enum ConfigType {
    * @generated from enum value: CONFIG_TYPE_NETWORK = 7;
    */
   NETWORK = 7,
+
+  /**
+   * Timescape ingestor configuration
+   *
+   * @generated from enum value: CONFIG_TYPE_TIMESCAPE = 8;
+   */
+  TIMESCAPE = 8,
 }
 
 /**

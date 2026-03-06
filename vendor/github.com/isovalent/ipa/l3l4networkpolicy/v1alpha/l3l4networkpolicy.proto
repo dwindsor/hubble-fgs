@@ -189,6 +189,8 @@ enum ConfigType {
   CONFIG_TYPE_HA = 6;
   // Network configuration
   CONFIG_TYPE_NETWORK = 7;
+  // Timescape ingestor configuration
+  CONFIG_TYPE_TIMESCAPE = 8;
 }
 
 enum ConfigSource {
@@ -322,6 +324,64 @@ message NetworkConfig {
   repeated Vrf vrfs = 2;
 }
 
+// BasicAuth configuration for Timescape
+message TimescapeBasicAuth {
+  // Username for BasicAuth
+  string username = 1;
+  // Password for BasicAuth
+  string password = 2;
+}
+
+// mTLS configuration for Timescape
+message TimescapeMTLS {
+  // Enable mTLS
+  bool enabled = 1;
+}
+
+// Object to store Timescape client configuration
+// CONFIG_TYPE_TIMESCAPE
+message TimescapeConfig {
+  // Configuration ID
+  string id = 1;
+  // Configuration name
+  string name = 2;
+  // Configuration description
+  string description = 3;
+  // Timescape server host
+  string host = 4;
+  // Timescape server port
+  string port = 5;
+  // Protocol (TCP/UDP)
+  string protocol = 6;
+  // Enable TLS/HTTPS
+  bool tls_enabled = 7;
+  // Push API endpoint
+  string endpoint_api = 8;
+
+  // Transport configuration for production deployments
+  // Maximum number of retry attempts for failed requests
+  uint32 max_retries = 9;
+  // Connection establishment timeout in seconds
+  uint32 connection_timeout_sec = 10;
+  // Request timeout in seconds
+  uint32 request_timeout_sec = 11;
+
+  // Batching configuration for message processing
+  // Maximum number of messages to batch together (default: 1, max: 3, recommended: 2)
+  uint32 max_batch_size = 12;
+  // Batch timeout in milliseconds (force send batch after timeout, default: 30000ms)
+  uint32 batch_timeout_ms = 13;
+
+  // Services: PolicyStatusUpdate and SystemStatusUpdate are enabled by default
+  // Authentication configuration (exactly one should be configured)
+  oneof auth {
+    // BasicAuth configuration
+    TimescapeBasicAuth basic_auth = 14;
+    // mTLS configuration
+    TimescapeMTLS mtls = 15;
+  }
+}
+
 // ConfigObject is a generic config object, which can be extended by adding additional configuration types
 message ConfigObject {
   // Type of the json encoded config, used to unmarshal the json object.
@@ -338,6 +398,7 @@ message ConfigObject {
     LogConfigSplunk config_log_splunk = 24;
     HaConfig config_ha = 25;
     NetworkConfig network_config = 26;
+    TimescapeConfig config_timescape = 27;
   }
 }
 
