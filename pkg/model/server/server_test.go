@@ -25,10 +25,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/observer/observertesthelper/docker"
 	"github.com/cilium/tetragon/pkg/testutils/sensors"
 	"github.com/isovalent/ipa/application_model/v1alpha"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpftest"
 	"github.com/isovalent/hubble-fgs/pkg/model"
@@ -293,5 +295,83 @@ func TestProcessTree(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestGetProcessMap(t *testing.T) {
+	if !utils.SupportProcessTree() {
+		t.Skip()
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), sensors.ConfigDefaults.CmdWaitTime)
+	defer cancel()
+
+	option.Config.EnableSyscallTracking = true
+	srv := bpftest.StartMinimalTetragonModel(ctx, t)
+
+	// Run a command that spawns multiple children so we can verify
+	// the two-pass parent-to-children resolution in GetProcessMap.
+	// The trailing ":" (no-op builtin) prevents bash from exec-optimizing
+	// the last external command, which would replace bash instead of forking.
+	step := newCmdStep("bash", "-c", "uname -r; ls /; cat /dev/null; :")
+	step.Step(t)
+
+	// Wait for BPF map propagation.
+	time.Sleep(1 * time.Second)
+
+	resp, err := srv.GetProcessMap(ctx, &tetragon.GetProcessMapRequest{})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Map)
+	require.NotEmpty(t, resp.Map.Process)
+
+	// Build a UID lookup for cross-referencing Children.
+	byID := make(map[uint64]*tetragon.ProcessUUID, len(resp.Map.Process))
+	for _, p := range resp.Map.Process {
+		byID[p.Id] = p
+	}
+
+	for _, p := range resp.Map.Process {
+		// Every entry should have a non-empty Binary.
+		assert.NotEmpty(t, p.Binary, "entry id=%d has empty Binary", p.Id)
+
+		// All Children references should point to entries in the map.
+		for _, child := range p.Children {
+			assert.Contains(t, byID, child.Id,
+				"entry id=%d lists child id=%d which is not in the map", p.Id, child.Id)
+		}
+	}
+
+	// Find our bash parent and verify it has the expected children.
+	var bashEntry *tetragon.ProcessUUID
+	for _, p := range resp.Map.Process {
+		if strings.HasSuffix(p.Binary, "/bash") && strings.Contains(p.Args, "uname -r; ls /; cat /dev/null") {
+			bashEntry = p
+			break
+		}
+	}
+	require.NotNil(t, bashEntry, "expected to find bash with args containing 'uname -r; ls /; cat /dev/null'")
+
+	// Bash should have spawned uname, ls, and cat as children.
+	expectedChildren := map[string]bool{
+		"/uname": false,
+		"/ls":    false,
+		"/cat":   false,
+	}
+	for _, child := range bashEntry.Children {
+		for suffix := range expectedChildren {
+			if strings.HasSuffix(child.Binary, suffix) {
+				expectedChildren[suffix] = true
+				// Children references come from Pass 1 which doesn't set Depth,
+				// so look up the top-level entry by ID for the Depth check.
+				if topLevel, ok := byID[child.Id]; ok {
+					assert.Greater(t, topLevel.Depth, uint32(0),
+						"child %s should have Depth > 0", child.Binary)
+				}
+			}
+		}
+	}
+	for suffix, found := range expectedChildren {
+		assert.True(t, found, "expected bash to have a child with binary ending in %q", suffix)
 	}
 }
