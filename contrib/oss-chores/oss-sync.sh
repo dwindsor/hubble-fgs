@@ -55,6 +55,13 @@ echo "" >> $outf
 git -C modules/tetragon-oss log --pretty=' * cilium/tetragon@%h (%s)'  $old_sha..$new_sha >> $outf
 
 cp modules/tetragon-oss/pkg/k8s/apis/cilium.io/v1alpha1/types.go pkg/k8s/apis/cilium.io/v1alpha1/oss-types.go
+
+# Refresh copies of OSS k8s packages that were previously symlinked.
+# These must be real files (not symlinks) so the module can be fetched
+# via the Go module proxy (symlinks are not preserved in module zips).
+rm -rf pkg/k8s/slim pkg/k8s/versioncheck
+cp -R modules/tetragon-oss/pkg/k8s/slim pkg/k8s/slim
+cp -R modules/tetragon-oss/pkg/k8s/versioncheck pkg/k8s/versioncheck
 make generate && make codegen && make vendor
 git add go.mod go.sum vendor pkg/k8s modules/tetragon-oss api
 
