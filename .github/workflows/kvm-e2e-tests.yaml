@@ -13,9 +13,6 @@ concurrency:
   group: ${{ github.ref }}-kvm-e2e
   cancel-in-progress: true
 
-env:
-  ciliumCliVersion: v0.12.11
-
 jobs:
   ensure-image-available:
     runs-on: ubuntu-24.04
@@ -130,15 +127,6 @@ jobs:
           # Point to the newly built CI catalog index tests/e2e/olm/catalogsource.yaml
           docker run -i --rm -v "${PWD}"/hubble-fgs:/workdir -u "$(id -u)" mikefarah/yq:${yq_version} e -i ".spec.image = \"${{ steps.vars.outputs.olmIndexImage }}\"" /workdir/tests/e2e/olm/catalogsource.yaml
 
-      - name: Install Cilium CLI
-        run: |
-          GOOS=$(go env GOOS)
-          GOARCH=$(go env GOARCH)
-          curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${{ env.ciliumCliVersion }}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
-          sha256sum --check cilium-${GOOS}-${GOARCH}.tar.gz.sha256sum
-          sudo tar -xzvf cilium-${GOOS}-${GOARCH}.tar.gz
-          rm cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
-
       - name: Provision LVH VM
         uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
         with:
@@ -169,7 +157,6 @@ jobs:
               sleep 10
             done
 
-            mv /host/cilium /bin/cilium
             for i in {1..5}; do
               curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash && break || sleep 60
               if [ \$i -eq 5 ]; then
