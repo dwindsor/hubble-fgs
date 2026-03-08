@@ -12,7 +12,7 @@ require (
 	github.com/cilium/cilium v1.18.4
 	github.com/cilium/ebpf v0.20.1-0.20251201143148-3d4ca808756e
 	github.com/cilium/lumberjack/v2 v2.4.2
-	github.com/cilium/tetragon v1.7.0-pre.0.0.20260303175229-8e056321553c
+	github.com/cilium/tetragon v1.7.0-pre.0.0.20260307124406-ad420b139311
 	github.com/cilium/tetragon-oss/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20251114170458-0134cdc1e3df
@@ -76,7 +76,7 @@ require (
 	k8s.io/apiserver v0.35.2
 	k8s.io/client-go v0.35.2
 	k8s.io/code-generator v0.35.2
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
 	sigs.k8s.io/controller-runtime v0.23.1
 	sigs.k8s.io/controller-tools v0.20.1
