@@ -9,200 +9,26 @@ on:
     branches:
       - master
 
-concurrency:
-  group: ${{ github.ref }}-${{ github.workflow_ref }}
-  cancel-in-progress: true
-
 jobs:
-  run-tests:
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        arch:
-          - amd64
-          - arm64
-        include:
-          - arch: amd64
-            runner_labels: ${{ vars.KVM_GH_RUNNER_AMD64 }}
-          - arch: arm64
-            runner_labels: ${{ vars.KVM_GH_RUNNER_ARM64 }}
-        kernel:
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "rhel8.10-20260310.110651"
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "bpf-next-20260310.110651"
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.18-20260310.110651"
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.12-20260310.110651"
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.6-20260310.110651"
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "6.1-20260310.110651"
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.15-20260310.110651"
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.10-20260310.110651"
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "5.4-20260310.110651"
-          # renovate: datasource=docker depName=quay.io/lvh-images/kind
-          - "4.19-20260310.110651"
-        # TODO: temporarily disable testing for 4.19 and 5.4 kernels
-        # The excluded kernels require more test failure investigation
-        exclude:
-          - arch: arm64
-            # renovate: datasource=docker depName=quay.io/lvh-images/kind
-            kernel: "rhel8.10-20260310.110651" # currently not supported on ARM64
-    runs-on: ${{ matrix.runner_labels }}
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - name: Checkout Git Repo
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          path: hubble-fgs
-          submodules: true
+  amd64:
+    uses: ./.github/workflows/kvm-gotests-arch.yaml
+    with:
+      arch: amd64
+      runner_label: ${{ vars.KVM_GH_RUNNER_AMD64 }}
+      apt_packages: >-
+        bind9-dnsutils libcap-dev libaio-dev liburing-dev libelf-dev
+        iptables software-properties-common netcat-openbsd socat
+        iproute2 net-tools pahole clang lld llvm libc6-dev-i386
+        gcc-multilib
 
-      - name: Get CPU and Memory
-        id: get-cpu-mem
-        run: |
-          echo "cpu=$(( $(nproc) / 2 ))" >> $GITHUB_OUTPUT
-          echo "mem=$(cat /proc/meminfo | awk '/^MemTotal:/{print int($2/1024/1024/2)}')G" >> $GITHUB_OUTPUT
-
-      - name: Provision LVH VM
-        id: provision-lvh-vm
-        uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
-        with:
-          install-dependencies: true
-          test-name: tetragon-unit-tests
-          image: kind
-          image-version: '${{ matrix.kernel }}'
-          images-folder-parent:  ${{ github.workspace }}/.github/lvh-action-cache
-          kernel-version: ${{ matrix.arch == 'arm64' && matrix.kernel || '' }}
-          host-mount: ./
-          mem: ${{ steps.get-cpu-mem.outputs.mem }}
-          cpu: ${{ steps.get-cpu-mem.outputs.cpu }}
-          cpu-kind: host
-          arch: ${{ matrix.arch }}
-          cmd: |
-            set -eux
-            cd /host/hubble-fgs
-            git config --global --add safe.directory /host/hubble-fgs
-
-            systemd-detect-virt
-            systemd-detect-virt | grep -Eiq 'kvm|qemu' || { echo 'No KVM or QEMU support detected! Bailing out...'; exit 1; }
-
-            # copy btf file
-            mkdir -p bpf/objs
-            ln -vsnf /boot/btf-\$(uname -r) bpf/objs/btf
-
-            # wait for network to be available
-            while true;
-            do
-              wget --spider -q -T 10 http://google.com && break
-              sleep 10
-            done
-
-            # install test deps
-            apt-get update -y
-            DEFPACKAGES="bind9-dnsutils libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd socat iproute2 net-tools pahole clang lld llvm"
-
-            if [[ "${{ matrix.arch }}" == "amd64" ]]
-            then
-              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confnew" -y \$DEFPACKAGES libc6-dev-i386 gcc-multilib
-            else
-              DEBIAN_FRONTEND=noninteractive apt install -o "Dpkg::Options::=--force-confnew" -y \$DEFPACKAGES gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf libc6-dev-armhf-cross build-essential
-            fi
-
-            # restart ssh server only on RHEL
-            if [[ "${{ matrix.kernel }}" == rhel* ]]; then
-              service ssh restart
-            fi
-
-      - name: Run Tests
-        uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
-        with:
-          test-name: tetragon-unit-tests
-          host-mount: ./
-          provision: 'false'
-          arch: ${{ matrix.arch }}
-          kernel-version: ${{ matrix.arch == 'arm64' && matrix.kernel || '' }}
-          cmd: |
-            set -eux
-            cd /host/hubble-fgs
-
-            mkdir /build
-            export GOTMPDIR=/build
-
-            export KVM_CI=true
-            export SUDO=
-            # FIXME: TestCGTLS13 test fails bpf-next kernels
-            if [[ "${{ matrix.kernel }}" == bpf-next-* ]]; then
-              export FLAKY_HTTP=1
-            fi
-            # FIXME: TestTLS13 test fails 6.12 kernels
-            if [[ "${{ matrix.kernel }}" == 6.12-* ]]; then
-              export FLAKY_HTTP=1
-            fi
-            # FIXME: TestTLS13 test fails 6.18 kernels
-            if [[ "${{ matrix.kernel }}" == 6.18-* ]]; then
-              export FLAKY_HTTP=1
-            fi
-            # FIXME: TestTLS13 test fails 6.6 kernels
-            if [[ "${{ matrix.kernel }}" == 6.6-* ]]; then
-              export FLAKY_HTTP=1
-            fi
-            # FIXME: TestTLS13 test fails 6.1 kernels
-            if [[ "${{ matrix.kernel }}" == 6.1-* ]]; then
-              export FLAKY_HTTP=1
-            fi
-            # FIXME: TestTLS13 test fails 5.15 kernels
-            if [[ "${{ matrix.kernel }}" == 5.15-* ]]; then
-              export FLAKY_HTTP=1
-            fi
-            # FIXME: TestTLS13 test fails 5.10 kernels
-            if [[ "${{ matrix.kernel }}" == 5.10-* ]]; then
-              export FLAKY_HTTP=1
-            fi
-            export CGO_ENABLED=0
-            cat /etc/resolv.conf
-            CC='clang -fuse-ld=lld' make tetragon-fs-scanner
-            GCC='clang -fuse-ld=lld' make test
-
-      - name: Copy out FGS logs
-        if: ${{ failure() || cancelled() }}
-        timeout-minutes: 15
-        run: |
-          # Make output dirs for logs
-          mkdir -p logs/unit-tests
-          mkdir -p logs/model-test-dumps
-
-          # Copy logs over
-          scp -P 2222 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
-          scp -P 2222 'root@localhost:/tmp/*.json' logs/unit-tests || true
-          scp -P 2222 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
-          scp -P 2222 'root@localhost:/tmp/TestModel*' logs/model-test-dumps || true
-
-      # AWS Baremetal Instances do not honor shutdown signals when QEMU VMs are running
-      # Cleanup by force killing QEMU processes
-      - name: Delete LVH VM
-        if: ${{ always() && steps.provision-lvh-vm.outcome == 'success' }}
-        run: sudo pkill -9 qemu-system
-
-      - name: Upload unit test logs
-        if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: tetragon-unit-tests-${{ matrix.kernel }}-${{ matrix.arch }}
-          path: logs/unit-tests
-          retention-days: 5
-
-      - name: Upload modeltest dumps
-        if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: modeltest-json-${{ matrix.kernel }}-${{ matrix.arch }}
-          path: logs/model-test-dumps
-          retention-days: 5
+  arm64:
+    uses: ./.github/workflows/kvm-gotests-arch.yaml
+    with:
+      arch: arm64
+      runner_label: ${{ vars.KVM_GH_RUNNER_ARM64 }}
+      apt_packages: >-
+        bind9-dnsutils libcap-dev libaio-dev liburing-dev libelf-dev
+        iptables software-properties-common netcat-openbsd socat
+        iproute2 net-tools pahole clang lld llvm
+        gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf
+        libc6-dev-armhf-cross build-essential

@@ -1,0 +1,206 @@
+name: KVM Go Tests Arch
+
+on:
+  workflow_call:
+    inputs:
+      arch:
+        required: true
+        type: string
+      runner_label:
+        required: true
+        type: string
+      apt_packages:
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build Tetragon
+    runs-on: ${{ inputs.runner_label }}
+    timeout-minutes: 30
+    concurrency:
+      group: ${{ github.ref }}-${{ github.workflow_ref }}-${{ inputs.arch }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: go/src/github.com/isovalent/tetragon/
+          submodules: true
+      - name: Install Go
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          # renovate: datasource=golang-version depName=go
+          go-version: '1.26.0'
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ${{ inputs.apt_packages }}
+      - name: Build
+        env:
+          GOPATH: /home/runner/work/tetragon/tetragon/go
+        run: |
+          cd go/src/github.com/isovalent/tetragon/
+          EXTRA_BUILD_FLAGS='-static' make tester-progs tetragon-bpf tetragon-bpf-test tetragon-fs-scanner
+      - name: Tar build
+        run: |
+          cd go/src/github.com/isovalent/
+          tar cz --exclude='tetragon/.git' -f /tmp/tetragon-${{ inputs.arch }}.tar ./tetragon
+      - name: Upload build
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: tetragon-build-${{ inputs.arch }}
+          path: /tmp/tetragon-${{ inputs.arch }}.tar
+          retention-days: 5
+
+  run-tests:
+    name: Run tests (${{ matrix.kernel }})
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - ${{ inputs.arch }}
+        kernel:
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "bpf-next-20260310.122539"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "rhel8.10-20260310.122539"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "6.18-20260310.122539"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "6.12-20260310.122539"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "6.6-20260310.122539"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "6.1-20260310.122539"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "5.15-20260310.122539"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "5.10-20260310.122539"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "5.4-20260310.122539"
+          # renovate: datasource=docker depName=quay.io/lvh-images/kind
+          - "4.19-20260310.122539"
+        exclude:
+          - arch: arm64
+            # renovate: datasource=docker depName=quay.io/lvh-images/kind
+            kernel: "rhel8.10-20260310.122539"
+    runs-on: ${{ inputs.runner_label }}
+    needs: [build]
+    timeout-minutes: 60
+    concurrency:
+      group: ${{ github.ref }}-${{ github.workflow_ref }}-${{ inputs.arch }}-${{ matrix.kernel }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Get CPU and Memory
+        id: get-cpu-mem
+        run: |
+          echo "cpu=$(( $(nproc) / 2 ))" >> $GITHUB_OUTPUT
+          echo "mem=$(cat /proc/meminfo | awk '/^MemTotal:/{print int($2/1024/1024/2)}')G" >> $GITHUB_OUTPUT
+    
+      - name: download build data
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: tetragon-build-${{ inputs.arch }}
+
+      - name: extract build data
+        run: |
+          mkdir -p go/src/github.com/isovalent/
+          tar xf tetragon-${{ inputs.arch }}.tar -C go/src/github.com/isovalent
+
+      - name: Provision LVH VM and run tests
+        id: provision-lvh-vm
+        uses: cilium/little-vm-helper@ad43ff511dd5365a0011ae9f864ec959c36daebf # v0.0.28
+        with:
+          install-dependencies: true
+          test-name: tetragon-unit-tests
+          image: kind
+          image-version: '${{ matrix.kernel }}'
+          images-folder-parent:  ${{ github.workspace }}/.github/lvh-action-cache
+          kernel-version: ${{ inputs.arch == 'arm64' && matrix.kernel || '' }}
+          host-mount: ./
+          mem: ${{ steps.get-cpu-mem.outputs.mem }}
+          cpu: ${{ steps.get-cpu-mem.outputs.cpu }}
+          cpu-kind: host
+          arch: ${{ inputs.arch }}
+          cmd: |
+            set -eux
+
+            systemd-detect-virt
+            systemd-detect-virt | grep -Eiq 'kvm|qemu' || { echo 'No KVM or QEMU support detected! Bailing out...'; exit 1; }
+
+            cd /host/go/src/github.com/isovalent/tetragon/
+            ln -s -f /host/go/src/github.com/isovalent/tetragon/modules/tetragon-oss/contrib vendor/github.com/cilium/tetragon/
+
+            mkdir /build
+            export GOTMPDIR=/build
+
+            # copy btf file
+            mkdir -p bpf/objs
+            ln -vsnf /boot/btf-\$(uname -r) bpf/objs/btf
+
+            export KVM_CI=true
+            export SUDO=
+            case "${{ matrix.kernel }}" in
+              bpf-next-*)
+                # FIXME: TestCGTLS13 fails on bpf-next kernels.
+                export FLAKY_HTTP=1
+                ;;
+              6.12-*|6.18-*|6.6-*|6.1-*|5.15-*|5.10-*)
+                # FIXME: TestTLS13 fails on these kernels.
+                export FLAKY_HTTP=1
+                ;;
+            esac
+
+            export CGO_ENABLED=0
+            make test-nodeps
+
+      - name: Copy out Tetragon logs
+        if: ${{ failure() || cancelled() }}
+        timeout-minutes: 15
+        run: |
+          # Make output dirs for logs
+          mkdir -p logs/unit-tests
+          mkdir -p logs/model-test-dumps
+
+          # Copy logs over
+          scp -P 2222 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
+          scp -P 2222 'root@localhost:/tmp/*.json' logs/unit-tests || true
+          scp -P 2222 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
+          scp -P 2222 'root@localhost:/tmp/TestModel*' logs/model-test-dumps || true
+
+      # AWS Baremetal Instances do not honor shutdown signals when QEMU VMs are running
+      # Cleanup by force killing QEMU processes
+      - name: Delete LVH VM
+        if: ${{ always() && steps.provision-lvh-vm.outcome == 'success' }}
+        run: sudo pkill -9 qemu-system
+
+      - name: Upload unit test logs
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: tetragon-unit-tests-${{ matrix.kernel }}-${{ inputs.arch }}
+          path: logs/unit-tests
+          retention-days: 5
+
+      - name: Upload modeltest dumps
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: modeltest-json-${{ matrix.kernel }}-${{ inputs.arch }}
+          path: logs/model-test-dumps
+          retention-days: 5
+
+  post-test:
+    name: Cleanup
+    runs-on: ${{ inputs.runner_label }}
+    needs: [run-tests]
+    if: always()
+    steps:
+      # Delete built binaries from artifacts in case of success.
+      - uses: geekyeggo/delete-artifact@f275313e70c08f6120db482d7a6b98377786765b # v5.1.0
+        with:
+          name: tetragon-build-${{ inputs.arch }}

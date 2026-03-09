@@ -377,6 +377,12 @@ test: tester-progs tetragon-bpf tetragon-bpf-test ## Run Go tests.
 	$(GO) env -w GOTOOLCHAIN=go1.25.0+auto
 	$(GO) test -exec "$(SUDO)" -tags sudo_tests -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover $(GO_TEST_PACKAGES) ${EXTRA_TESTFLAGS}
 
+.PHONY: test-nodeps
+test-nodeps: ## Run Go tests.
+	# A workaround for https://github.com/golang/go/issues/75031
+	$(GO) env -w GOTOOLCHAIN=go1.25.0+auto
+	$(GO) test -exec "$(SUDO)" -tags sudo_tests -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_BUILD_GCFLAGS) -timeout $(GO_TEST_TIMEOUT) -failfast -cover $(GO_TEST_PACKAGES) ${EXTRA_TESTFLAGS}
+
 .PHONY: tester-progs
 tester-progs:
 	$(MAKE) -C $(TESTER_PROGS_DIR)
