@@ -17,12 +17,14 @@ COPY . ./
 RUN if [ $BUILDARCH != $TARGETARCH ]; \
     then make agw agwctl TARGET_ARCH=$TARGETARCH CC=aarch64-linux-gnu-gcc; \
     else make agw agwctl TARGET_ARCH=$TARGETARCH; fi
-RUN apt-get install -y --no-install-recommends ntpsec \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ntpsec \
     && mkdir -p /ntpsec-dist/lib \
     && cp /usr/sbin/ntpd /ntpsec-dist/ \
     && ldd /usr/sbin/ntpd | awk '/=>/{print $3}' \
        | xargs -I{} cp -L {} /ntpsec-dist/lib/ \
-    && apt-get autoremove -y && apt-get clean
+    && apt-get autoremove -y && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Third builder (cross-)compile a stripped gops
 FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.0-alpine@sha256:d4c4845f5d60c6a974c6000ce58ae079328d03ab7f721a0734277e69905473e5 AS gops
