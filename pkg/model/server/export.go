@@ -120,8 +120,17 @@ func exportTick(
 	telemetryMap := model.BuildTelemetryMap(processData)
 
 	if appModelEncoder != nil {
-		if err := appModelEncoder.Encode(newModel); err != nil {
-			logger.GetLogger().Error("Failed to encode application model as JSON", logfields.Error, err)
+		if enterpriseOption.Config.ApplicationModelExportFragments {
+			fragments := model.SplitApplicationModelEvent(newModel)
+			for _, fragment := range fragments {
+				if err := appModelEncoder.Encode(fragment); err != nil {
+					logger.GetLogger().Error("Failed to encode application model fragment as JSON", logfields.Error, err)
+				}
+			}
+		} else {
+			if err := appModelEncoder.Encode(newModel); err != nil {
+				logger.GetLogger().Error("Failed to encode application model as JSON", logfields.Error, err)
+			}
 		}
 	}
 
