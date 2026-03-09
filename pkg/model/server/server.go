@@ -938,7 +938,7 @@ func (s *Server) GetModel(ctx context.Context, req *appModelV1.GetModelRequest) 
 	}, nil
 }
 
-func (s *Server) StreamModel(req *appModelV1.StreamModelRequest, stream appModelV1.ApplicationModelService_StreamModelServer) error {
+func (s *Server) StreamModelFragments(req *appModelV1.StreamModelFragmentsRequest, stream appModelV1.ApplicationModelService_StreamModelFragmentsServer) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -952,11 +952,11 @@ func (s *Server) StreamModel(req *appModelV1.StreamModelRequest, stream appModel
 		return err
 	}
 
-	models := model.SplitApplicationModelEvent(appModel)
+	fragments := model.SplitApplicationModelEvent(appModel)
 
-	for _, m := range models {
-		resp := &appModelV1.StreamModelResponse{
-			Model: m,
+	for _, m := range fragments {
+		resp := &appModelV1.StreamModelFragmentsResponse{
+			ModelFragment: m,
 		}
 
 		if err := stream.Send(resp); err != nil {

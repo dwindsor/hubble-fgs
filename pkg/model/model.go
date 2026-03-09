@@ -301,14 +301,14 @@ func ProcessModelToApplicationModelWithProcessData(processModel []*types.Process
 }
 
 // Given an ApplicationModelEvent, split it into multiple smaller
-// ApplicationModelEvents. The split could eventually be dynamic, but for now:
+// ApplicationModelFragments. The split could eventually be dynamic, but for now:
 // 1. Host processes are split into their own event(s) in chunks of 100
 //    (configurable) process groups.
 // 2. Each workload is split into its own event.
 
-func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*appModelV1.ApplicationModelEvent {
+func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*appModelV1.ApplicationModelFragment {
 	hostProcessesPerEvent := eeOption.Config.ApplicationModelSplitMaxHostProcs
-	var result []*appModelV1.ApplicationModelEvent
+	var result []*appModelV1.ApplicationModelFragment
 
 	// Split host processes into chunks of hostProcessesPerEvent
 	if appModel.ApplicationModel.GetHost() != nil {
@@ -318,8 +318,8 @@ func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*a
 			if end > len(hostProcesses) {
 				end = len(hostProcesses)
 			}
-			hostModel := &appModelV1.ApplicationModelEvent{
-				ApplicationModel: &appModelV1.ApplicationModel{
+			hostFragment := &appModelV1.ApplicationModelFragment{
+				ApplicationModelFragment: &appModelV1.ApplicationModel{
 					Id: appModel.ApplicationModel.Id,
 					Host: &appModelV1.ApplicationHost{
 						Processes: hostProcesses[i:end],
@@ -329,14 +329,14 @@ func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*a
 				ClusterName: appModel.ClusterName,
 				Time:        appModel.Time,
 			}
-			result = append(result, hostModel)
+			result = append(result, hostFragment)
 		}
 	}
 
 	for _, ns := range appModel.ApplicationModel.GetNamespaces() {
 		for _, wl := range ns.GetWorkloads() {
-			wlModel := &appModelV1.ApplicationModelEvent{
-				ApplicationModel: &appModelV1.ApplicationModel{
+			wlFragment := &appModelV1.ApplicationModelFragment{
+				ApplicationModelFragment: &appModelV1.ApplicationModel{
 					Id: appModel.ApplicationModel.Id,
 					Namespaces: []*appModelV1.ApplicationNamespace{
 						{
@@ -355,7 +355,7 @@ func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*a
 				ClusterName: appModel.ClusterName,
 				Time:        appModel.Time,
 			}
-			result = append(result, wlModel)
+			result = append(result, wlFragment)
 		}
 	}
 
@@ -363,56 +363,70 @@ func SplitApplicationModelEvent(appModel *appModelV1.ApplicationModelEvent) []*a
 	// had no host processes and no workloads, resulting in an empty result.
 	// In that case, return a copy of the original event.
 	if len(result) == 0 {
-		return []*appModelV1.ApplicationModelEvent{
-			&appModelV1.ApplicationModelEvent{
+		return []*appModelV1.ApplicationModelFragment{
+			&appModelV1.ApplicationModelFragment{
 				ClusterName: appModel.ClusterName,
 				NodeName:    appModel.NodeName,
 				Time:        appModel.Time,
-				ApplicationModel: &appModelV1.ApplicationModel{
+				ApplicationModelFragment: &appModelV1.ApplicationModel{
 					Id:         appModel.ApplicationModel.Id,
 					Namespaces: []*appModelV1.ApplicationNamespace{},
 					Host:       &appModelV1.ApplicationHost{Processes: []*appModelV1.ApplicationProcessGroup{}},
 				},
+				FragmentTotal: 1,
+				FragmentIndex: 1,
 			},
 		}
 	}
+
+	// Now that we have the result length, set fragment_total/fragment_index.
+	for i := range result {
+		result[i].FragmentTotal = uint64(len(result))
+		result[i].FragmentIndex = uint64(i) + 1 // 1-indexed
+	}
+
 	return result
 }
 
-// Given a list of ApplicationModelEvents that represent the same application
+// Given a list of ApplicationModelFragments that represent the same application
 // model, merge them into a single ApplicationModelEvent. This is essentially
 // the inverse of SplitApplicationModelEvent.
-func MergeApplicationModelEvents(models []*appModelV1.ApplicationModelEvent) (*appModelV1.ApplicationModelEvent, error) {
+func MergeApplicationModelFragments(fragments []*appModelV1.ApplicationModelFragment) (*appModelV1.ApplicationModelEvent, error) {
 	var appModelId string
 
-	if len(models) == 0 {
-		return nil, fmt.Errorf("models must be non-empty")
+	if len(fragments) == 0 {
+		return nil, fmt.Errorf("fragments must be non-empty")
 	}
 
 	// Set appModelId to the first id. All the remaining ids must be non-empty and the same.
-	for _, m := range models {
-		if m.ApplicationModel == nil {
-			return nil, fmt.Errorf("nil ApplicationModel")
-		} else if m.ApplicationModel.Id == "" {
-			return nil, fmt.Errorf("empty ApplicationModel.Id")
+	for _, m := range fragments {
+		if m.ApplicationModelFragment == nil {
+			return nil, fmt.Errorf("nil ApplicationModelFragment")
+		} else if m.ApplicationModelFragment.Id == "" {
+			return nil, fmt.Errorf("empty ApplicationModelFragment.Id")
 		} else if appModelId == "" {
-			appModelId = m.ApplicationModel.Id
-		} else if m.ApplicationModel.Id != appModelId {
-			return nil, fmt.Errorf("mismatched ApplicationModel ids")
+			appModelId = m.ApplicationModelFragment.Id
+		} else if m.ApplicationModelFragment.Id != appModelId {
+			return nil, fmt.Errorf("mismatched ApplicationModelFragment ids")
 		}
+	}
+
+	// There should be exactly fragment_total fragments.
+	if len(fragments) != int(fragments[0].FragmentTotal) {
+		return nil, fmt.Errorf("number of fragments does not match FragmentTotal")
 	}
 
 	result := &appModelV1.ApplicationModelEvent{
 		ApplicationModel: &appModelV1.ApplicationModel{
 			Id: appModelId,
 		},
-		NodeName:    models[0].NodeName,
-		ClusterName: models[0].ClusterName,
-		Time:        models[0].Time,
+		NodeName:    fragments[0].NodeName,
+		ClusterName: fragments[0].ClusterName,
+		Time:        fragments[0].Time,
 	}
 	nsMap := make(map[string]*appModelV1.ApplicationNamespace)
-	for _, m := range models {
-		for _, ns := range m.ApplicationModel.GetNamespaces() {
+	for _, m := range fragments {
+		for _, ns := range m.ApplicationModelFragment.GetNamespaces() {
 			if existing, ok := nsMap[ns.GetName()]; ok {
 				existing.Workloads = append(existing.Workloads, ns.GetWorkloads()...)
 			} else {
@@ -422,13 +436,13 @@ func MergeApplicationModelEvents(models []*appModelV1.ApplicationModelEvent) (*a
 				}
 			}
 		}
-		if m.ApplicationModel.Host != nil {
+		if m.ApplicationModelFragment.Host != nil {
 			if result.ApplicationModel.Host == nil {
 				result.ApplicationModel.Host = &appModelV1.ApplicationHost{
-					Processes: m.ApplicationModel.Host.Processes,
+					Processes: m.ApplicationModelFragment.Host.Processes,
 				}
 			} else {
-				result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, m.ApplicationModel.Host.Processes...)
+				result.ApplicationModel.Host.Processes = append(result.ApplicationModel.Host.Processes, m.ApplicationModelFragment.Host.Processes...)
 			}
 		}
 	}

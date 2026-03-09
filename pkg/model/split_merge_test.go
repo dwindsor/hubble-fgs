@@ -24,6 +24,14 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
+var emptyUnifiedModel *appModelV1.ApplicationModel = &appModelV1.ApplicationModel{
+	Id:         "019c49c4-8b93-7828-9b0b-e2796c732aae",
+	Namespaces: []*appModelV1.ApplicationNamespace{},
+	Host: &appModelV1.ApplicationHost{
+		Processes: []*appModelV1.ApplicationProcessGroup{},
+	},
+}
+
 var emptyUnifiedModelEvent *appModelV1.ApplicationModelEvent = &appModelV1.ApplicationModelEvent{
 	ClusterName: "test-cluster",
 	NodeName:    "test-node",
@@ -31,11 +39,139 @@ var emptyUnifiedModelEvent *appModelV1.ApplicationModelEvent = &appModelV1.Appli
 		Seconds: 11323237,
 		Nanos:   2315,
 	},
-	ApplicationModel: &appModelV1.ApplicationModel{
-		Id:         "019c49c4-8b93-7828-9b0b-e2796c732aae",
-		Namespaces: []*appModelV1.ApplicationNamespace{},
-		Host: &appModelV1.ApplicationHost{
-			Processes: []*appModelV1.ApplicationProcessGroup{},
+	ApplicationModel: emptyUnifiedModel,
+}
+
+var emptyUnifiedModelFragment *appModelV1.ApplicationModelFragment = &appModelV1.ApplicationModelFragment{
+	ClusterName: "test-cluster",
+	NodeName:    "test-node",
+	Time: &timestamppb.Timestamp{
+		Seconds: 11323237,
+		Nanos:   2315,
+	},
+	ApplicationModelFragment: emptyUnifiedModel,
+	FragmentTotal:            1,
+	FragmentIndex:            1,
+}
+
+var expectedUnifiedApplicationModel *appModelV1.ApplicationModel = &appModelV1.ApplicationModel{
+	Id: "019c49c4-8b93-7828-9b0b-e2796c732aae",
+	Namespaces: []*appModelV1.ApplicationNamespace{
+		{
+			Name: "namespace1",
+			Workloads: []*appModelV1.ApplicationWorkload{
+				{
+					Name: "workload1",
+					Kind: common.WorkloadKind_WORKLOAD_KIND_POD,
+					Containers: []*appModelV1.ApplicationContainer{
+						{
+							Id:    "04c7f6fce6aa",
+							Name:  "busybox-1",
+							Image: "docker.io/library/busybox:latest",
+							Processes: []*appModelV1.ApplicationProcessGroup{
+								{
+									Name:      "process1",
+									Arguments: "arg1",
+									Connections: []*appModelV1.ApplicationConnection{
+										{
+											Destination: &appModelV1.Destination{
+												Type: &appModelV1.Destination_Dns{
+													Dns: &appModelV1.DestinationDns{
+														DestinationNames: []string{"dest1"},
+													},
+												},
+												Port: 80,
+											},
+											Stats: &appModelV1.ConnectionStats{
+												TxBytes: 100,
+												RxBytes: 200,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Name: "workload2",
+					Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
+					Containers: []*appModelV1.ApplicationContainer{
+						{
+							Id:    "c1dbc2d6bf3a",
+							Name:  "busybox-2",
+							Image: "docker.io/library/busybox:dev",
+							Processes: []*appModelV1.ApplicationProcessGroup{
+								{
+									Name:      "process2",
+									Arguments: "arg2",
+								},
+							},
+						},
+						{
+							Id:    "7171c97a5162",
+							Name:  "busybox-3",
+							Image: "docker.io/library/busybox:test",
+							Processes: []*appModelV1.ApplicationProcessGroup{
+								{
+									Name:      "process3",
+									Arguments: "arg3",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "namespace2",
+			Workloads: []*appModelV1.ApplicationWorkload{
+				{
+					Name: "workload3",
+					Kind: common.WorkloadKind_WORKLOAD_KIND_JOB,
+					Containers: []*appModelV1.ApplicationContainer{
+						{
+							Id:    "18b0fda1fa3d",
+							Name:  "busybox-4",
+							Image: "docker.io/library/busybox:experimental",
+							Processes: []*appModelV1.ApplicationProcessGroup{
+								{
+									Name:      "process4",
+									Arguments: "arg4",
+								},
+								{
+									Name:      "process5",
+									Arguments: "arg5",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+	Host: &appModelV1.ApplicationHost{
+		Processes: []*appModelV1.ApplicationProcessGroup{
+			{
+				Name:      "hostprocess1",
+				Arguments: "arg1",
+			},
+			{
+				Name:      "hostprocess2",
+				Arguments: "arg2",
+			},
+			{
+				Name:      "hostprocess3",
+				Arguments: "arg3",
+			},
+			{
+				Name:      "hostprocess4",
+				Arguments: "arg4",
+			},
+			{
+				Name:      "hostprocess5",
+				Arguments: "arg5",
+			},
 		},
 	},
 }
@@ -47,138 +183,30 @@ var expectedUnifiedModelEvent *appModelV1.ApplicationModelEvent = &appModelV1.Ap
 		Seconds: 11323237,
 		Nanos:   2315,
 	},
-	ApplicationModel: &appModelV1.ApplicationModel{
-		Id: "019c49c4-8b93-7828-9b0b-e2796c732aae",
-		Namespaces: []*appModelV1.ApplicationNamespace{
-			{
-				Name: "namespace1",
-				Workloads: []*appModelV1.ApplicationWorkload{
-					{
-						Name: "workload1",
-						Kind: common.WorkloadKind_WORKLOAD_KIND_POD,
-						Containers: []*appModelV1.ApplicationContainer{
-							{
-								Id:    "04c7f6fce6aa",
-								Name:  "busybox-1",
-								Image: "docker.io/library/busybox:latest",
-								Processes: []*appModelV1.ApplicationProcessGroup{
-									{
-										Name:      "process1",
-										Arguments: "arg1",
-										Connections: []*appModelV1.ApplicationConnection{
-											{
-												Destination: &appModelV1.Destination{
-													Type: &appModelV1.Destination_Dns{
-														Dns: &appModelV1.DestinationDns{
-															DestinationNames: []string{"dest1"},
-														},
-													},
-													Port: 80,
-												},
-												Stats: &appModelV1.ConnectionStats{
-													TxBytes: 100,
-													RxBytes: 200,
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					{
-						Name: "workload2",
-						Kind: common.WorkloadKind_WORKLOAD_KIND_DAEMONSET,
-						Containers: []*appModelV1.ApplicationContainer{
-							{
-								Id:    "c1dbc2d6bf3a",
-								Name:  "busybox-2",
-								Image: "docker.io/library/busybox:dev",
-								Processes: []*appModelV1.ApplicationProcessGroup{
-									{
-										Name:      "process2",
-										Arguments: "arg2",
-									},
-								},
-							},
-							{
-								Id:    "7171c97a5162",
-								Name:  "busybox-3",
-								Image: "docker.io/library/busybox:test",
-								Processes: []*appModelV1.ApplicationProcessGroup{
-									{
-										Name:      "process3",
-										Arguments: "arg3",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			{
-				Name: "namespace2",
-				Workloads: []*appModelV1.ApplicationWorkload{
-					{
-						Name: "workload3",
-						Kind: common.WorkloadKind_WORKLOAD_KIND_JOB,
-						Containers: []*appModelV1.ApplicationContainer{
-							{
-								Id:    "18b0fda1fa3d",
-								Name:  "busybox-4",
-								Image: "docker.io/library/busybox:experimental",
-								Processes: []*appModelV1.ApplicationProcessGroup{
-									{
-										Name:      "process4",
-										Arguments: "arg4",
-									},
-									{
-										Name:      "process5",
-										Arguments: "arg5",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Host: &appModelV1.ApplicationHost{
-			Processes: []*appModelV1.ApplicationProcessGroup{
-				{
-					Name:      "hostprocess1",
-					Arguments: "arg1",
-				},
-				{
-					Name:      "hostprocess2",
-					Arguments: "arg2",
-				},
-				{
-					Name:      "hostprocess3",
-					Arguments: "arg3",
-				},
-				{
-					Name:      "hostprocess4",
-					Arguments: "arg4",
-				},
-				{
-					Name:      "hostprocess5",
-					Arguments: "arg5",
-				},
-			},
-		},
-	},
+	ApplicationModel: expectedUnifiedApplicationModel,
 }
 
-var expectedSplitModelEvents = []*appModelV1.ApplicationModelEvent{
-	&appModelV1.ApplicationModelEvent{
+var expectedUnifiedModelFragment *appModelV1.ApplicationModelFragment = &appModelV1.ApplicationModelFragment{
+	ClusterName: "test-cluster",
+	NodeName:    "test-node",
+	Time: &timestamppb.Timestamp{
+		Seconds: 11323237,
+		Nanos:   2315,
+	},
+	ApplicationModelFragment: expectedUnifiedApplicationModel,
+	FragmentTotal:            1,
+	FragmentIndex:            1,
+}
+
+var expectedSplitModelFragments = []*appModelV1.ApplicationModelFragment{
+	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
 		NodeName:    "test-node",
 		Time: &timestamppb.Timestamp{
 			Seconds: 11323237,
 			Nanos:   2315,
 		},
-		ApplicationModel: &appModelV1.ApplicationModel{
+		ApplicationModelFragment: &appModelV1.ApplicationModel{
 			Id: "019c49c4-8b93-7828-9b0b-e2796c732aae",
 			Host: &appModelV1.ApplicationHost{
 				Processes: []*appModelV1.ApplicationProcessGroup{
@@ -193,15 +221,17 @@ var expectedSplitModelEvents = []*appModelV1.ApplicationModelEvent{
 				},
 			},
 		},
+		FragmentTotal: 6,
+		FragmentIndex: 1,
 	},
-	&appModelV1.ApplicationModelEvent{
+	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
 		NodeName:    "test-node",
 		Time: &timestamppb.Timestamp{
 			Seconds: 11323237,
 			Nanos:   2315,
 		},
-		ApplicationModel: &appModelV1.ApplicationModel{
+		ApplicationModelFragment: &appModelV1.ApplicationModel{
 			Id: "019c49c4-8b93-7828-9b0b-e2796c732aae",
 			Host: &appModelV1.ApplicationHost{
 				Processes: []*appModelV1.ApplicationProcessGroup{
@@ -216,15 +246,17 @@ var expectedSplitModelEvents = []*appModelV1.ApplicationModelEvent{
 				},
 			},
 		},
+		FragmentTotal: 6,
+		FragmentIndex: 2,
 	},
-	&appModelV1.ApplicationModelEvent{
+	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
 		NodeName:    "test-node",
 		Time: &timestamppb.Timestamp{
 			Seconds: 11323237,
 			Nanos:   2315,
 		},
-		ApplicationModel: &appModelV1.ApplicationModel{
+		ApplicationModelFragment: &appModelV1.ApplicationModel{
 			Id: "019c49c4-8b93-7828-9b0b-e2796c732aae",
 			Host: &appModelV1.ApplicationHost{
 				Processes: []*appModelV1.ApplicationProcessGroup{
@@ -235,15 +267,17 @@ var expectedSplitModelEvents = []*appModelV1.ApplicationModelEvent{
 				},
 			},
 		},
+		FragmentTotal: 6,
+		FragmentIndex: 3,
 	},
-	&appModelV1.ApplicationModelEvent{
+	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
 		NodeName:    "test-node",
 		Time: &timestamppb.Timestamp{
 			Seconds: 11323237,
 			Nanos:   2315,
 		},
-		ApplicationModel: &appModelV1.ApplicationModel{
+		ApplicationModelFragment: &appModelV1.ApplicationModel{
 			Id: "019c49c4-8b93-7828-9b0b-e2796c732aae",
 			Namespaces: []*appModelV1.ApplicationNamespace{
 				{
@@ -286,15 +320,17 @@ var expectedSplitModelEvents = []*appModelV1.ApplicationModelEvent{
 				},
 			},
 		},
+		FragmentTotal: 6,
+		FragmentIndex: 4,
 	},
-	&appModelV1.ApplicationModelEvent{
+	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
 		NodeName:    "test-node",
 		Time: &timestamppb.Timestamp{
 			Seconds: 11323237,
 			Nanos:   2315,
 		},
-		ApplicationModel: &appModelV1.ApplicationModel{
+		ApplicationModelFragment: &appModelV1.ApplicationModel{
 			Id: "019c49c4-8b93-7828-9b0b-e2796c732aae",
 			Namespaces: []*appModelV1.ApplicationNamespace{
 				{
@@ -332,15 +368,17 @@ var expectedSplitModelEvents = []*appModelV1.ApplicationModelEvent{
 				},
 			},
 		},
+		FragmentTotal: 6,
+		FragmentIndex: 5,
 	},
-	&appModelV1.ApplicationModelEvent{
+	&appModelV1.ApplicationModelFragment{
 		ClusterName: "test-cluster",
 		NodeName:    "test-node",
 		Time: &timestamppb.Timestamp{
 			Seconds: 11323237,
 			Nanos:   2315,
 		},
-		ApplicationModel: &appModelV1.ApplicationModel{
+		ApplicationModelFragment: &appModelV1.ApplicationModel{
 			Id: "019c49c4-8b93-7828-9b0b-e2796c732aae",
 			Namespaces: []*appModelV1.ApplicationNamespace{
 				{
@@ -371,108 +409,126 @@ var expectedSplitModelEvents = []*appModelV1.ApplicationModelEvent{
 				},
 			},
 		},
+		FragmentTotal: 6,
+		FragmentIndex: 6,
 	},
 }
 
 func TestSplitApplicationModelEvent(t *testing.T) {
 
 	option.Config.ApplicationModelSplitMaxHostProcs = 2
-	split := SplitApplicationModelEvent(expectedUnifiedModelEvent)
+	fragments := SplitApplicationModelEvent(expectedUnifiedModelEvent)
 
-	if diff := cmp.Diff(expectedSplitModelEvents, split, protocmp.Transform()); diff != "" {
+	if diff := cmp.Diff(expectedSplitModelFragments, fragments, protocmp.Transform()); diff != "" {
 		t.Errorf("SplitApplicationModelEvent() mismatch (-want +got):\n%s", diff)
 	}
 }
 
-func TestMergeApplicationModelEvents(t *testing.T) {
+func TestMergeApplicationModelFragments(t *testing.T) {
 
-	merged, err := MergeApplicationModelEvents(expectedSplitModelEvents)
+	merged, err := MergeApplicationModelFragments(expectedSplitModelFragments)
 	assert.Nil(t, err)
 
 	if diff := cmp.Diff(expectedUnifiedModelEvent, merged, protocmp.Transform()); diff != "" {
-		t.Errorf("MergeApplicationModelEvent() mismatch (-want +got):\n%s", diff)
+		t.Errorf("MergeApplicationModelFragments() mismatch (-want +got):\n%s", diff)
 	}
 }
 
-func TestMergeApplicationModelEventsSingle(t *testing.T) {
+func TestMergeApplicationModelFragmentsSingle(t *testing.T) {
 
-	merged, err := MergeApplicationModelEvents([]*appModelV1.ApplicationModelEvent{expectedUnifiedModelEvent})
+	merged, err := MergeApplicationModelFragments([]*appModelV1.ApplicationModelFragment{expectedUnifiedModelFragment})
 	assert.Nil(t, err)
 
 	if diff := cmp.Diff(expectedUnifiedModelEvent, merged, protocmp.Transform()); diff != "" {
-		t.Errorf("MergeApplicationModelEvent() mismatch (-want +got):\n%s", diff)
+		t.Errorf("MergeApplicationModelFragments() mismatch (-want +got):\n%s", diff)
 	}
 }
 
 func TestSplitEmptyApplicationModelEvent(t *testing.T) {
 
-	split := SplitApplicationModelEvent(emptyUnifiedModelEvent)
+	fragments := SplitApplicationModelEvent(emptyUnifiedModelEvent)
 
-	assert.NotNil(t, split)
-	assert.Len(t, split, 1)
+	assert.NotNil(t, fragments)
+	assert.Len(t, fragments, 1)
 
-	if diff := cmp.Diff(emptyUnifiedModelEvent, split[0], protocmp.Transform()); diff != "" {
+	if diff := cmp.Diff(emptyUnifiedModelFragment, fragments[0], protocmp.Transform()); diff != "" {
 		t.Errorf("SplitEmptyApplicationModelEvent() mismatch (-want +got):\n%s", diff)
 	}
 }
 
-func TestMergeEmptyApplicationModelEvent(t *testing.T) {
+func TestMergeEmptyApplicationModelFragments(t *testing.T) {
 
-	merged, err := MergeApplicationModelEvents([]*appModelV1.ApplicationModelEvent{emptyUnifiedModelEvent})
+	merged, err := MergeApplicationModelFragments([]*appModelV1.ApplicationModelFragment{emptyUnifiedModelFragment})
 	assert.Nil(t, err)
 
 	if diff := cmp.Diff(emptyUnifiedModelEvent, merged, protocmp.Transform()); diff != "" {
-		t.Errorf("MergeApplicationModelEvent() mismatch (-want +got):\n%s", diff)
+		t.Errorf("MergeApplicationModelFragments() mismatch (-want +got):\n%s", diff)
 	}
 }
 
-func TestMergeApplicationModelEventsEmptyArray(t *testing.T) {
+func TestMergeApplicationModelFragmentsEmptyArray(t *testing.T) {
 
-	_, err := MergeApplicationModelEvents([]*appModelV1.ApplicationModelEvent{})
-	assert.EqualError(t, err, "models must be non-empty")
+	_, err := MergeApplicationModelFragments([]*appModelV1.ApplicationModelFragment{})
+	assert.EqualError(t, err, "fragments must be non-empty")
 }
 
-func TestMergeApplicationModelEventsNoAppModel(t *testing.T) {
+func TestMergeApplicationModelFragmentsNoAppModel(t *testing.T) {
 
-	split := []*appModelV1.ApplicationModelEvent{
+	fragments := []*appModelV1.ApplicationModelFragment{
 		{
 			ClusterName: "test-cluster",
 		},
 	}
-	_, err := MergeApplicationModelEvents(split)
-	assert.EqualError(t, err, "nil ApplicationModel")
+	_, err := MergeApplicationModelFragments(fragments)
+	assert.EqualError(t, err, "nil ApplicationModelFragment")
 }
 
-func TestMergeApplicationModelEventsEmptyAppModelId(t *testing.T) {
+func TestMergeApplicationModelFragmentsEmptyAppModelId(t *testing.T) {
 
-	split := []*appModelV1.ApplicationModelEvent{
+	fragments := []*appModelV1.ApplicationModelFragment{
 		{
 			ClusterName: "test-cluster",
-			ApplicationModel: &appModelV1.ApplicationModel{
+			ApplicationModelFragment: &appModelV1.ApplicationModel{
 				Id: "",
 			},
 		},
 	}
-	_, err := MergeApplicationModelEvents(split)
-	assert.EqualError(t, err, "empty ApplicationModel.Id")
+	_, err := MergeApplicationModelFragments(fragments)
+	assert.EqualError(t, err, "empty ApplicationModelFragment.Id")
 }
 
-func TestMergeApplicationModelEventsMismatchAppModelIds(t *testing.T) {
+func TestMergeApplicationModelFragmentsMismatchAppModelIds(t *testing.T) {
 
-	split := []*appModelV1.ApplicationModelEvent{
+	fragments := []*appModelV1.ApplicationModelFragment{
 		{
 			ClusterName: "test-cluster",
-			ApplicationModel: &appModelV1.ApplicationModel{
+			ApplicationModelFragment: &appModelV1.ApplicationModel{
 				Id: "Id1",
 			},
 		},
 		{
 			ClusterName: "test-cluster",
-			ApplicationModel: &appModelV1.ApplicationModel{
+			ApplicationModelFragment: &appModelV1.ApplicationModel{
 				Id: "Id2",
 			},
 		},
 	}
-	_, err := MergeApplicationModelEvents(split)
-	assert.EqualError(t, err, "mismatched ApplicationModel ids")
+	_, err := MergeApplicationModelFragments(fragments)
+	assert.EqualError(t, err, "mismatched ApplicationModelFragment ids")
+}
+
+func TestMergeApplicationModelFragmentsMismatchFragmentTotal(t *testing.T) {
+
+	fragments := []*appModelV1.ApplicationModelFragment{
+		{
+			ClusterName: "test-cluster",
+			ApplicationModelFragment: &appModelV1.ApplicationModel{
+				Id: "Id1",
+			},
+			FragmentTotal: 2,
+			FragmentIndex: 1,
+		},
+	}
+	_, err := MergeApplicationModelFragments(fragments)
+	assert.EqualError(t, err, "number of fragments does not match FragmentTotal")
 }

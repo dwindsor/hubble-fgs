@@ -356,14 +356,14 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 		}
 		defer c.Close()
 
-		req := &appModelV1.StreamModelRequest{}
+		req := &appModelV1.StreamModelFragmentsRequest{}
 
-		stream, err := c.Client.StreamModel(c.Ctx, req)
+		stream, err := c.Client.StreamModelFragments(c.Ctx, req)
 		if err != nil {
 			return nil, err
 		}
 
-		subModels := make([]*appModelV1.ApplicationModelEvent, 0)
+		fragments := make([]*appModelV1.ApplicationModelFragment, 0)
 
 		for {
 			resp, err := stream.Recv()
@@ -373,11 +373,11 @@ func getAppModel(enableS3 bool, bucket string) (*appModelV1.ApplicationModelEven
 			if err != nil {
 				return nil, err
 			}
-			logger.GetLogger().Debug("Received application model event", "event_number", len(subModels)+1, "resp", resp)
-			subModels = append(subModels, resp.Model)
+			logger.GetLogger().Debug("Received application model fragment", "fragment_index", resp.ModelFragment.FragmentIndex, "fragment_total", resp.ModelFragment.FragmentTotal, "resp", resp)
+			fragments = append(fragments, resp.ModelFragment)
 		}
 
-		appModel, err = model.MergeApplicationModelEvents(subModels)
+		appModel, err = model.MergeApplicationModelFragments(fragments)
 		if err != nil {
 			return nil, err
 		}
