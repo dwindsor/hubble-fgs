@@ -98,6 +98,7 @@ const (
 	keyTetragonNodeNamespace             = "node-namespace"
 	KeyPolicyDir                         = "policy-dir"
 	KeyApplicationModelSplitMaxHostProcs = "application-model-split-max-host-processes"
+	KeyApplicationModelExportFragments   = "application-model-export-fragments"
 
 	EnvironmentAWS        = "aws"
 	EnvironmentAzure      = "azure"
@@ -152,6 +153,7 @@ func AddEnterpriseFlags(flags *pflag.FlagSet) {
 	flags.MarkHidden(KeyApplicationModelExportInterval)
 	flags.String(KeyApplicationModelExportFilename, "", "Filename for application model JSON export. Set to \"\" to disable.")
 	flags.MarkHidden(KeyApplicationModelExportFilename)
+	flags.Bool(KeyApplicationModelExportFragments, false, "When exporting application model to JSON, export as fragments. This circumvents message ingest size limits when the application model is large.")
 	flags.String(KeyTelemetryExportFilename, "", "Filename for telemetry JSON export. Set to \"\" to disable. To enable telemetry export, --"+KeyEnableApplicationModel+" flag must be set to true. Telemetry export uses the export interval specified by --"+KeyApplicationModelExportInterval+" flag.")
 	flags.String(KeyConnectionLogFilename, "", "Filename for connection log. Set to \"\" to disable.")
 	flags.MarkHidden(KeyConnectionLogFilename)
@@ -241,6 +243,7 @@ func readAndSetEnterpriseFlags() {
 	Config.ApplicationModelExportInterval = viper.GetDuration(KeyApplicationModelExportInterval)
 	Config.ApplicationModelExportFilename = viper.GetString(KeyApplicationModelExportFilename)
 	Config.ApplicationModelSplitMaxHostProcs = viper.GetInt(KeyApplicationModelSplitMaxHostProcs)
+	Config.ApplicationModelExportFragments = viper.GetBool(KeyApplicationModelExportFragments)
 	Config.TelemetryExportFilename = viper.GetString(KeyTelemetryExportFilename)
 	Config.ConnectionLogFileName = viper.GetString(KeyConnectionLogFilename)
 	Config.DetachOldBpf = viper.GetBool(KeyDetatchOldBPF)

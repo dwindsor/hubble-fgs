@@ -16,6 +16,10 @@ options:
     - name: application-model-export-filename
       usage: |
         Filename for application model JSON export. Set to "" to disable.
+    - name: application-model-export-fragments
+      default_value: "false"
+      usage: |
+        When exporting application model to JSON, export as fragments. This circumvents message ingest size limits when the application model is large.
     - name: application-model-export-interval
       default_value: 0s
       usage: Interval at which to export application model as JSON.

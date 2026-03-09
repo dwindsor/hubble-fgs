@@ -32,6 +32,7 @@ type config struct {
 	ApplicationModelExportInterval    time.Duration
 	ApplicationModelExportFilename    string
 	ApplicationModelSplitMaxHostProcs int
+	ApplicationModelExportFragments   bool
 
 	TelemetryExportFilename string
 	ConnectionLogFileName   string
@@ -134,6 +135,7 @@ var (
 		EnableApplicationModel:            false,
 		EnableSyscallTracking:             false,
 		ApplicationModelExportInterval:    0,
+		ApplicationModelExportFragments:   false,
 		DnsCacheSize:                      1024,
 		ProcessTreeCacheSize:              65000,
 		BpfEndpointCacheSize:              65000,
