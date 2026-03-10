@@ -16,3 +16,7 @@ import (
 
 func AddOSSpecificFlags(_ *pflag.FlagSet) {
 }
+
+func platformValidateConfig(config config) error {
+	return nil
+}

@@ -309,6 +309,11 @@ func readAndSetEnterpriseFlags() {
 }
 
 func validateConfig(config config) error {
+
+	if err := platformValidateConfig(config); err != nil {
+		return err
+	}
+
 	if config.EnableBPFDNSParser {
 		// The BPF DNS parser is loaded alongside the UDP sensor
 		if !config.EnableUDP {
@@ -351,10 +356,6 @@ func validateConfig(config config) error {
 
 	if config.EnableSyscallTracking && !config.EnableApplicationModel {
 		return fmt.Errorf("system call tracking requires --%s", KeyEnableApplicationModel)
-	}
-
-	if config.EnableApplicationModel && !option.Config.EnableCgIDmap {
-		return fmt.Errorf("application model requires --%s", option.KeyEnableCgIDmap)
 	}
 
 	if config.Environment != "" {

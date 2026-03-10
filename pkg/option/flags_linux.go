@@ -11,8 +11,19 @@
 package option
 
 import (
+	"fmt"
+
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/spf13/pflag"
 )
 
 func AddOSSpecificFlags(_ *pflag.FlagSet) {
+}
+
+func platformValidateConfig(config config) error {
+	if config.EnableApplicationModel && !option.Config.EnableCgIDmap {
+		return fmt.Errorf("application model requires --%s", option.KeyEnableCgIDmap)
+	}
+
+	return nil
 }
