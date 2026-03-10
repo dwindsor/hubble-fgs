@@ -41,6 +41,7 @@ FROM artifactory.devhub-cloud.cisco.com/sto-cg-docker/glibc-openssl:v15.2-dev AS
 USER root
 RUN apk update && apk upgrade --no-cache
 RUN apk add --no-cache net-tools iproute2 netcat-openbsd curl openssh-client bind-tools iputils logrotate cronie sshpass bash ca-certificates openssl fluent-bit-4.0
+RUN echo 'PS1="\h:\w# "' >> /etc/bash.bashrc
 COPY --from=agw-builder /ntpsec-dist/ntpd /usr/sbin/ntpd
 COPY --from=agw-builder /ntpsec-dist/lib/ /tmp/ntpsec-lib/
 RUN for f in /tmp/ntpsec-lib/*; do \
@@ -103,6 +104,7 @@ WORKDIR /usr/src/app
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agw ./
 COPY --from=agw-builder /go/src/github.com/isovalent/hubble-fgs/agwctl ./
 RUN apk add --no-cache fluent-bit-4.0
+RUN echo 'PS1="\h:\w# "' >> /etc/bash.bashrc
 RUN mkdir -p /opt/cisco/daf/etc
 RUN mkdir -p /iox_data
 RUN mkdir -p /data/hypershield
