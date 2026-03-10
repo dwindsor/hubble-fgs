@@ -352,7 +352,7 @@ func (m *manager) fetchAndLoadPolicies(ctx context.Context, refrAtt *attempt.Inp
 		pol := &obj.Mandate.Policies[i]
 		data, err := attemptFetchURL(refrAtt.NewAttempt("fetch policy"), pol.url_)
 		if err != nil {
-			return nil, err
+			return res, err
 		}
 		policyData[i] = data
 	}
