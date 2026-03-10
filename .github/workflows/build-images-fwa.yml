@@ -4,7 +4,7 @@ on:
   pull_request:
     paths-ignore:
       - "**.md"
-    branches: [ master ]
+    branches: [master]
     types:
       - opened
       - synchronize
@@ -12,7 +12,7 @@ on:
       - labeled
   workflow_dispatch: {}
   schedule:
-    - cron: '0 5 * * *'  # 9 PM PST (5 AM UTC)
+    - cron: "0 5 * * *" # 9 PM PST (5 AM UTC)
 
 permissions:
   contents: write
@@ -60,7 +60,7 @@ jobs:
             runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_ARM64 }}
       fail-fast: false
     runs-on: ${{ matrix.runs-on }}
-    needs: [ init ]
+    needs: [init]
     if: ${{ needs.init.result == 'success' }}
     timeout-minutes: 45
     steps:
@@ -94,9 +94,9 @@ jobs:
           name: fwa-image-${{ matrix.arch }}-${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }}
           path: ${{ steps.prepare-artifact.outputs.artifact_path }}
           retention-days: 1
-  
+
   combine-artifacts:
-    needs: [ init, build-fwa-image ]
+    needs: [init, build-fwa-image]
     if: ${{ always() && !cancelled() && needs.build-fwa-image.result == 'success' }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 1
@@ -175,7 +175,7 @@ jobs:
           retention-days: 1
 
   upload-to-artifactory:
-    needs: [ init, combine-artifacts ]
+    needs: [init, combine-artifacts]
     if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
@@ -226,27 +226,27 @@ jobs:
         run: |
           BUILD_TAG="${RUN_NUMBER}-${DATE}-${SHA}"
           ARTIFACTORY_PATH="isovalent-images-generic/smartswitch/fwa/${VERSION}/${BUILD_TAG}"
-          
+
           echo "Uploading FWA artifacts to: ${ARTIFACTORY_PATH}"
-          
+
           # Upload AMD64 FWA image
           if [ -f "./release-artifacts/fwa-elba-amd64-${VERSION}.tar.gz" ]; then
             jf rt u --flat "./release-artifacts/fwa-elba-amd64-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/fwa-elba-amd64.tar.gz"
             echo "✓ Uploaded fwa-elba-amd64.tar.gz"
           fi
-          
+
           # Upload ARM64 FWA image
           if [ -f "./release-artifacts/fwa-elba-arm64-${VERSION}.tar.gz" ]; then
             jf rt u --flat "./release-artifacts/fwa-elba-arm64-${VERSION}.tar.gz" "${ARTIFACTORY_PATH}/fwa-elba-arm64.tar.gz"
             echo "✓ Uploaded fwa-elba-arm64.tar.gz"
           fi
-          
+
           # Upload fwa.yaml manifest
           if [ -f "./fwa.yaml" ]; then
             jf rt u --flat "./fwa.yaml" "${ARTIFACTORY_PATH}/fwa.yaml"
             echo "✓ Uploaded fwa.yaml"
           fi
-          
+
           echo "✓ All FWA artifacts uploaded successfully"
       - name: Artifactory Upload Summary
         env:
@@ -330,21 +330,21 @@ jobs:
         run: |
           cd ./fwa-releases-repo
           mkdir -p docs/release-notes
-          
+
           VERSION="${{ needs.init.outputs.version }}"
           DATE="${{ needs.init.outputs.date }}"
           SHA="${{ needs.init.outputs.sha }}"
           FULL_SHA="${{ github.sha }}"
           RELEASE_DATE=$(date -u +"%Y-%m-%d")
           CHECKSUMS=$(cat ../release-artifacts/SHA256SUMS.txt)
-          
+
           RELEASE_NOTES_FILE="docs/release-notes/${VERSION}+${SHA}.md"
-          
+
           cat > "$RELEASE_NOTES_FILE" << EOF
           # Release Notes: ${VERSION}+${SHA}
-          
+
           **Release Date:** ${RELEASE_DATE}
-          
+
           ## Build Information
           - **Version:** ${VERSION}
           - **Build Date:** ${DATE}
@@ -352,42 +352,42 @@ jobs:
           - **Full Commit SHA:** ${FULL_SHA}
           - **Source Repository:** [hubble-fgs](https://github.com/isovalent/hubble-fgs)
           - **Source Commit:** https://github.com/isovalent/hubble-fgs/commit/${FULL_SHA}
-          
+
           ## Artifacts
-          
+
           ### AMD64
           - \`fwa-elba-amd64-${VERSION}.tar.gz\`
-          
+
           ### ARM64
           - \`fwa-elba-arm64-${VERSION}.tar.gz\`
-          
+
           ### Checksums
           \`\`\`
           ${CHECKSUMS}
           \`\`\`
-          
+
           ## Metadata
-          
+
           A \`metadata.json\` file is included with each release containing machine-readable
           build information for automated downstream processing.
-          
+
           ## Installation
-          
+
           1. Download the appropriate architecture archive from the [Releases](https://github.com/isovalent/hubble-fwa-releases/releases) page
           2. Verify checksum: \`sha256sum -c SHA256SUMS.txt\`
           3. Extract: \`tar -xzf fwa-elba-{arch}-${VERSION}.tar.gz\`
           4. Load images: \`docker load -i <image-file>.tar\`
           5. Deploy according to NXOS integration guide
-          
+
           ## Compatibility
           - **NXOS Version:** Compatible with latest NXOS releases
           - **DPU Platform:** Elba (AMD64 and ARM64)
-          
+
           ---
-          
+
           For questions or issues, contact @cisco-hypershield/nxos
           EOF
-          
+
           echo "Created release notes at: $RELEASE_NOTES_FILE"
           echo "Content:"
           cat "$RELEASE_NOTES_FILE"
@@ -410,31 +410,31 @@ jobs:
           prerelease: false
           body: |
             ## Hubble FGS FWA Release ${{ needs.init.outputs.version }}
-            
+
             This release contains Hubble FGS FWA (Firewall Accelerator) images built for Elba DPU platform.
-            
+
             ### Build Information
             - **Version:** ${{ needs.init.outputs.version }}
             - **Build Date:** ${{ needs.init.outputs.date }}
             - **Commit SHA:** ${{ needs.init.outputs.sha }}
             - **Source:** [hubble-fgs@${{ github.sha }}](https://github.com/isovalent/hubble-fgs/commit/${{ github.sha }})
-            
+
             ### Artifacts
             - `fwa-elba-amd64-${{ needs.init.outputs.version }}.tar.gz` - AMD64 architecture
             - `fwa-elba-arm64-${{ needs.init.outputs.version }}.tar.gz` - ARM64 architecture
             - `SHA256SUMS.txt` - Checksums for verification
-            
+
             ### Installation
             1. Download the appropriate architecture archive
             2. Extract: `tar -xzf fwa-elba-{arch}-${{ needs.init.outputs.version }}.tar.gz`
             3. Load images: `docker load -i <image-file>.tar`
             4. Deploy according to NXOS integration documentation
-            
+
             ### Release Notes
             Full release notes: [docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md](https://github.com/isovalent/hubble-fwa-releases/blob/main/docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md)
-            
+
             ---
-            
+
             For questions or issues, contact @cisco-hypershield/nxos
           files: |
             ./release-artifacts/*
@@ -458,7 +458,13 @@ jobs:
 
   update-fwa-version-dpu-pensando:
     needs: [init, create-fwa-releases-repo-release]
-    if: ${{ needs.init.result == 'success' && needs.create-fwa-releases-repo-release.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master')) }}
+    if: ${{ false
+      && needs.init.result == 'success'
+      && needs.create-fwa-releases-repo-release.result == 'success'
+      && ((github.event_name == 'workflow_dispatch'
+      && github.ref == 'refs/heads/master')
+      || (github.event_name == 'schedule'
+      && github.ref == 'refs/heads/master')) }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
     env:
@@ -477,8 +483,8 @@ jobs:
       - name: Update FWA version in hs-dpu-pensando
         uses: cisco-hypershield/hs-actions/.github/actions/create-pull-request@main # legit:ignore
         with:
-          repository: 'cisco-hypershield/hs-dpu-pensando'
-          target-branch: 'main'
+          repository: "cisco-hypershield/hs-dpu-pensando"
+          target-branch: "main"
           cross-repo-github-token: ${{ steps.workflow-token.outputs.token }}
           auto-merge: true
           auto-approve: true
@@ -488,7 +494,7 @@ jobs:
           makefile-update-data: |
             [
               {
-                "path": "Makefile",
+                "path": "build/version_pins.mk",
                 "key": "FWA_LATEST",
                 "value": "${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}"
               }

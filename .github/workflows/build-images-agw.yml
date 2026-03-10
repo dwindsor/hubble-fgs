@@ -2,12 +2,12 @@ name: Build Hubble FGS AGW Docker Images, Binaries and Test Images
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
     paths-ignore:
       - "**.md"
       - "contrib/grafana/**"
-    branches: [ master ]
+    branches: [master]
     types:
       - opened
       - synchronize
@@ -56,7 +56,7 @@ jobs:
       sha: ${{ steps.get-version.outputs.sha }}
 
   build-agw-binaries:
-    needs: [ init ]
+    needs: [init]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 3
     steps:
@@ -69,7 +69,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - name: Build AGW binary
         run: |
           echo "Building AGW binary..."
@@ -115,7 +115,7 @@ jobs:
           retention-days: 1
 
   build-agw-image:
-    needs: [ init ]
+    needs: [init]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 10
     env:
@@ -162,7 +162,7 @@ jobs:
           echo "| Tag | ${{ needs.init.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
 
   trigger-code-drop:
-    needs: [ init, build-agw-image, build-agw-binaries ]
+    needs: [init, build-agw-image, build-agw-binaries]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 1
     if: ${{ needs.build-agw-image.result == 'success' && needs.build-agw-binaries.result == 'success' && github.ref == 'refs/heads/master' }}
@@ -227,9 +227,9 @@ jobs:
           echo "| Target Workflow | code-drop-isovalent.yaml |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Name | ${{ github.event.repository.name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Image Tag | ${{ needs.init.outputs.version }}-${{ needs.init.outputs.date }}-${{ needs.init.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
-  
+
   trigger-corona-scan:
-    needs: [ init, build-agw-image ]
+    needs: [init, build-agw-image]
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 1
     if: ${{ needs.build-agw-image.result == 'success' && github.ref == 'refs/heads/master' }}
@@ -298,7 +298,7 @@ jobs:
           echo "| Image Tag | ${{ needs.init.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
 
   call-sanity-tests:
-    needs: [ init, build-agw-image ]
+    needs: [init, build-agw-image]
     if: ${{ needs.build-agw-image.result == 'success' }}
     uses: ./.github/workflows/agw-sanity-tests.yaml
     with:
@@ -311,7 +311,7 @@ jobs:
       ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
 
   combine-artifacts:
-    needs: [ init, build-agw-image, build-agw-binaries, call-sanity-tests ]
+    needs: [init, build-agw-image, build-agw-binaries, call-sanity-tests]
     if: ${{ always() && !cancelled() && needs.build-agw-image.result == 'success' && needs.build-agw-binaries.result == 'success' && needs.call-sanity-tests.result == 'success' }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
@@ -353,19 +353,19 @@ jobs:
         id: prepare-artifacts
         run: |
           mkdir -p ./release-artifacts
-          
+
           # Package Docker image
           cp ./combined-artifacts/docker/*.tar.gz ./release-artifacts/ 2>/dev/null || \
             tar -czf ./release-artifacts/agw-docker-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/docker .
-          
+
           # Package binaries
           tar -czf ./release-artifacts/agw-binaries-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/binaries .
-          
+
           # Package test results if available
           if [ -d "./combined-artifacts/test-results" ] && [ "$(ls -A ./combined-artifacts/test-results 2>/dev/null)" ]; then
             tar -czf ./release-artifacts/agw-test-results-${{ needs.init.outputs.version }}.tar.gz -C ./combined-artifacts/test-results .
           fi
-          
+
           cd ./release-artifacts
           sha256sum *.tar.gz > SHA256SUMS.txt
           echo "artifact_dir=$(pwd)" >> $GITHUB_OUTPUT
@@ -407,7 +407,7 @@ jobs:
           retention-days: 1
 
   upload-to-artifactory:
-    needs: [ init, combine-artifacts ]
+    needs: [init, combine-artifacts]
     if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
@@ -528,7 +528,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   create-hubble-agw-releases-repo-release:
-    needs: [ init, combine-artifacts ]
+    needs: [init, combine-artifacts]
     if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
@@ -596,21 +596,21 @@ jobs:
         run: |
           cd ./hubble-agw-releases-repo
           mkdir -p docs/release-notes
-          
+
           VERSION="${{ needs.init.outputs.version }}"
           DATE="${{ needs.init.outputs.date }}"
           SHA="${{ needs.init.outputs.sha }}"
           FULL_SHA="${{ github.sha }}"
           RELEASE_DATE=$(date -u +"%Y-%m-%d")
           CHECKSUMS=$(cat ../release-artifacts/SHA256SUMS.txt)
-          
+
           RELEASE_NOTES_FILE="docs/release-notes/${VERSION}+${SHA}.md"
-          
+
           cat > "$RELEASE_NOTES_FILE" << EOF
           # Release Notes: ${VERSION}+${SHA}
-          
+
           **Release Date:** ${RELEASE_DATE}
-          
+
           ## Build Information
           - **Version:** ${VERSION}
           - **Build Date:** ${DATE}
@@ -618,45 +618,45 @@ jobs:
           - **Full Commit SHA:** ${FULL_SHA}
           - **Source Repository:** [hubble-fgs](https://github.com/isovalent/hubble-fgs)
           - **Source Commit:** https://github.com/isovalent/hubble-fgs/commit/${FULL_SHA}
-          
+
           ## Artifacts
-          
+
           ### Docker Image
           - \`agw.tar.gz\` - AGW Docker image
-          
+
           ### Binaries
           - \`agw-binaries-${VERSION}.tar.gz\` - AGW and AGWctl binaries
-          
+
           ### Test Results
           - \`agw-test-results-${VERSION}.tar.gz\` - Sanity test results (if available)
-          
+
           ### Checksums
           \`\`\`
           ${CHECKSUMS}
           \`\`\`
-          
+
           ## Metadata
-          
+
           A \`metadata.json\` file is included with each release containing machine-readable
           build information for automated downstream processing.
-          
+
           ## Installation
-          
+
           1. Download the appropriate artifacts from the [Releases](https://github.com/isovalent/hubble-agw-releases/releases) page
           2. Verify checksum: \`sha256sum -c SHA256SUMS.txt\`
           3. Extract Docker image: \`tar -xzf agw.tar.gz && docker load -i agw.tar\`
           4. Extract binaries: \`tar -xzf agw-binaries-${VERSION}.tar.gz\`
           5. Deploy according to NXOS integration guide
-          
+
           ## Compatibility
           - **NXOS Version:** Compatible with latest NXOS releases
           - **DPU Platform:** SmartSwitch
-          
+
           ---
-          
+
           For questions or issues, contact @cisco-hypershield/nxos
           EOF
-          
+
           echo "Created release notes at: $RELEASE_NOTES_FILE"
           echo "Content:"
           cat "$RELEASE_NOTES_FILE"
@@ -679,33 +679,33 @@ jobs:
           prerelease: false
           body: |
             ## Hubble FGS AGW Release ${{ needs.init.outputs.version }}
-            
+
             This release contains Hubble FGS AGW (Application Gateway) Docker image and binaries.
-            
+
             ### Build Information
             - **Version:** ${{ needs.init.outputs.version }}
             - **Build Date:** ${{ needs.init.outputs.date }}
             - **Commit SHA:** ${{ needs.init.outputs.sha }}
             - **Source:** [hubble-fgs@${{ github.sha }}](https://github.com/isovalent/hubble-fgs/commit/${{ github.sha }})
-            
+
             ### Artifacts
             - `agw.tar.gz` - AGW Docker image
             - `agw-binaries-${{ needs.init.outputs.version }}.tar.gz` - AGW and AGWctl binaries
             - `agw-test-results-${{ needs.init.outputs.version }}.tar.gz` - Sanity test results (if available)
             - `SHA256SUMS.txt` - Checksums for verification
-            
+
             ### Installation
             1. Download the appropriate artifacts
             2. Verify checksum: `sha256sum -c SHA256SUMS.txt`
             3. Extract Docker image: `tar -xzf agw.tar.gz && docker load -i agw.tar`
             4. Extract binaries: `tar -xzf agw-binaries-${{ needs.init.outputs.version }}.tar.gz`
             5. Deploy according to NXOS integration documentation
-            
+
             ### Release Notes
             Full release notes: [docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md](https://github.com/isovalent/hubble-agw-releases/blob/main/docs/release-notes/${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}.md)
-            
+
             ---
-            
+
             For questions or issues, contact @cisco-hypershield/nxos
           files: |
             ./release-artifacts/*
@@ -728,8 +728,17 @@ jobs:
           echo "==================================="
 
   update-agw-version-dpu-pensando:
-    needs: [ init, create-hubble-agw-releases-repo-release ]
-    if: ${{ needs.init.result == 'success' && needs.create-hubble-agw-releases-repo-release.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || (github.event_name == 'schedule' && github.ref == 'refs/heads/master') || (github.event_name == 'push' && github.ref == 'refs/heads/master')) }}
+    needs: [init, create-hubble-agw-releases-repo-release]
+    # Currently disabled due to hs-dpu-pensando pulling the latest version automatically
+    if: ${{ false
+      && needs.init.result == 'success'
+      && needs.create-hubble-agw-releases-repo-release.result == 'success'
+      && ((github.event_name == 'workflow_dispatch'
+      && github.ref == 'refs/heads/master')
+      || (github.event_name == 'schedule'
+      && github.ref == 'refs/heads/master')
+      || (github.event_name == 'push'
+      && github.ref == 'refs/heads/master')) }}
     runs-on: ${{ vars.GH_RUNNER_EXTRA_POWER_UBUNTU_LATEST }}
     timeout-minutes: 5
     env:
@@ -748,8 +757,8 @@ jobs:
       - name: Update AGW version in hs-dpu-pensando
         uses: cisco-hypershield/hs-actions/.github/actions/create-pull-request@main # legit:ignore
         with:
-          repository: 'cisco-hypershield/hs-dpu-pensando'
-          target-branch: 'main'
+          repository: "cisco-hypershield/hs-dpu-pensando"
+          target-branch: "main"
           cross-repo-github-token: ${{ steps.workflow-token.outputs.token }}
           auto-merge: true
           auto-approve: true
@@ -759,7 +768,7 @@ jobs:
           makefile-update-data: |
             [
               {
-                "path": "Makefile",
+                "path": "build/version_pins.mk",
                 "key": "AGW_LATEST",
                 "value": "${{ needs.init.outputs.version }}+${{ needs.init.outputs.sha }}"
               }
