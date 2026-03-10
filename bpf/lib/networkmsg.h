@@ -123,6 +123,46 @@ struct msg_icmp_event {
 	__u64 icmp_gateway[2];
 }; // All fields aligned so no 'packed' attribute.
 
+struct msg_process_igmp_join_event {
+	struct msg_common common;
+	struct msg_execve_key key;
+	__u32 saddr;
+	__u32 gaddr;
+	__u32 ifindex;
+	__u32 pad;
+	__u64 socket_cookie;
+}; // All fields aligned so no 'packed' attribute.
+
+struct msg_process_igmp_leave_event {
+	struct msg_common common;
+	struct msg_execve_key key;
+	__u32 saddr;
+	__u32 gaddr;
+	__u32 ifindex;
+	__u32 pad;
+	__u64 socket_cookie;
+}; // All fields aligned so no 'packed' attribute.
+
+struct msg_igmp_group_record {
+	__u8 type;
+	__u8 pad;
+	__u16 num_sources;
+	__u32 gaddr;
+	// __u32 saddr[0]; // array of source addresses not included as it messes up the alignment checker
+}; // All fields aligned so no 'packed' attribute.
+
+struct msg_igmp_membership_report {
+	struct msg_common common;
+	__u8 type;
+	__u8 pad;
+	__u16 num_group_records;
+	__u32 saddr;
+	__u32 gaddr;
+	__u32 ifindex;
+	char ifname[16];
+	// struct msg_igmp_group_record group[0]; // array of group records not included as it messes up the alignment checker
+}; // All fields aligned so no 'packed' attribute.
+
 struct msg_ipv4_key {
 	__u32 pid;
 	__u32 saddr;

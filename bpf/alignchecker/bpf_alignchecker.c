@@ -21,6 +21,10 @@ struct tcpsocketmap_value _tcpsocketmap_value;
 struct udp_info_key _udp_info_key;
 struct udp_info_value _udp_info_value;
 struct msg_socket_stats _msg_socket_stats;
+struct msg_process_igmp_join_event _msg_process_igmp_join_event;
+struct msg_process_igmp_leave_event _msg_process_igmp_leave_event;
+struct msg_igmp_group_record _msg_igmp_group_record;
+struct msg_igmp_membership_report _msg_igmp_membership_report;
 
 // Layer 7
 struct __msg_http_event _msg_http_event;

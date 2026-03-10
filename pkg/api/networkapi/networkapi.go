@@ -181,6 +181,46 @@ type MsgICMPEvent struct {
 	IcmpData   MsgICMPData
 }
 
+type MsgIGMPJoinEvent struct {
+	Common     processapi.MsgCommon    `align:"common"`
+	ProcessKey processapi.MsgExecveKey `align:"key"`
+	SAddr      uint32                  `align:"saddr"`
+	GAddr      uint32                  `align:"gaddr"`
+	IFIndex    uint32                  `align:"ifindex"`
+	Pad        uint32                  `align:"pad"`
+	SockCookie uint64                  `align:"socket_cookie"`
+}
+
+type MsgIGMPLeaveEvent struct {
+	Common     processapi.MsgCommon    `align:"common"`
+	ProcessKey processapi.MsgExecveKey `align:"key"`
+	SAddr      uint32                  `align:"saddr"`
+	GAddr      uint32                  `align:"gaddr"`
+	IFIndex    uint32                  `align:"ifindex"`
+	Pad        uint32                  `align:"pad"`
+	SockCookie uint64                  `align:"socket_cookie"`
+}
+
+type MsgIGMPGroupRecord struct {
+	Type       uint8  `align:"type"`
+	Pad        uint8  `align:"pad"`
+	NumSources uint16 `align:"num_sources"`
+	GAddr      uint32 `align:"gaddr"`
+	// SAddr      [0]uint32 `align:"saddr"` // array of source addresses not included as it messes up the alignment checker
+}
+
+type MsgIGMPMembershipReport struct {
+	Common          processapi.MsgCommon `align:"common"`
+	Type            uint8                `align:"type"`
+	Pad             uint8                `align:"pad"`
+	NumGroupRecords uint16               `align:"num_group_records"`
+	SAddr           uint32               `align:"saddr"`
+	GAddr           uint32               `align:"gaddr"`
+	IFIndex         uint32               `align:"ifindex"`
+	IFName          [16]byte             `align:"ifname"`
+	// Group           [0]MsgIGMPGroupRecord `align:"group"` // array of group records not included as it messes up the alignment checker
+}
+
 func (m *MsgSocketStats) String() string {
 	type _MsgSocketStats MsgSocketStats
 
