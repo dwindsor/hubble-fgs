@@ -2,40 +2,37 @@ FROM isovalent/tetragon-slim:latest AS tetragon-slim-release
 
 FROM scratch AS linux-tarball-1
 
+ARG TETRAGON_VERSION
+ARG TARGET_ARCH
+
+WORKDIR /tetragon-slim-${TETRAGON_VERSION}-${TARGET_ARCH}/
+
 # Copy install script
-COPY install/linux-tarball/install.sh /
-COPY install/linux-tarball/uninstall.sh /
+COPY install/linux-tarball/install.sh .
+COPY install/linux-tarball/uninstall.sh .
+COPY install/linux-tarball/start.sh .
 
 # COPY configurations
-COPY install/linux-tarball/usr /usr
+COPY install/linux-tarball/usr ./usr
 
 # Copy the systemd service file
-COPY install/linux-tarball/systemd/tetragon-enterprise.service /usr/lib/systemd/system/
+COPY install/linux-tarball/systemd/tetragon-enterprise.service ./usr/lib/systemd/system/
 
 # Make a copy of the systemd resources into our location
-COPY install/linux-tarball/systemd /usr/local/lib/tetragon/systemd
+COPY install/linux-tarball/systemd ./usr/local/lib/tetragon/systemd
 
 # Our binaries
-COPY --from=tetragon-slim-release /usr/bin/tetrabox /usr/local/bin/
+COPY --from=tetragon-slim-release /usr/bin/tetrabox ./usr/local/bin/
 
 # BPF files and tetragon-fs-scanner
-COPY --from=tetragon-slim-release /var/lib/tetragon /usr/local/lib/tetragon/bpf
+COPY --from=tetragon-slim-release /var/lib/tetragon ./usr/local/lib/tetragon/bpf
 
 # make symbolic links
 RUN --mount=type=bind,from=alpine@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659,source=/bin,target=/bin \
     --mount=type=bind,from=alpine,source=/lib,target=/lib \
-	cd /usr/local/bin && \
+	cd /tetragon-slim-${TETRAGON_VERSION}-${TARGET_ARCH}/usr/local/bin && \
 	ln -s tetrabox tetragon && \
 	ln -s tetrabox tetra    && \
-	rm /usr/local/lib/tetragon/bpf/tetragon-fs-scanner    && \
-	cd /usr/local/lib/tetragon/bpf && \
+	rm /tetragon-slim-${TETRAGON_VERSION}-${TARGET_ARCH}/usr/local/lib/tetragon/bpf/tetragon-fs-scanner && \
+	cd /tetragon-slim-${TETRAGON_VERSION}-${TARGET_ARCH}/usr/local/lib/tetragon/bpf && \
 	ln -s ../../../bin/tetrabox tetragon-fs-scanner
-
-# We need one layer
-FROM scratch AS linux-tarball-2
-
-ARG TETRAGON_VERSION
-ARG TARGET_ARCH
-
-# We explicitly prefix the filesystem with tetragon-slim-${TETRAGON_VERSION}-${TARGET_ARCH}
-COPY --from=linux-tarball-1 / /tetragon-slim-${TETRAGON_VERSION}-${TARGET_ARCH}/

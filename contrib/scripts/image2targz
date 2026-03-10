@@ -1,16 +1,26 @@
 #!/usr/bin/bash
+# save a docker image into a compressed tarball (.tgz)
 
 set -euo pipefail
 
 if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: $0 <image> <tgzfile>"
+  echo "Usage: $0 <image> <tgzfile> [<dir>]"
   exit 1
 fi
 
+# image to extract
 image=$1
+# tgz file to save
 tgzfile=$2
+# image directory to extract
+idir=${3:-/}
 CONTAINER_ENGINE=${CONTAINER_ENGINE:-docker}
 
 id=$("$CONTAINER_ENGINE" create "$image" cmddoesnotmatter)
 trap "$CONTAINER_ENGINE rm $id" EXIT
-"$CONTAINER_ENGINE" export "$id" | gzip -6 > $tgzfile
+
+odir=$(mktemp --tmpdir -d image2targz.XXXXXXX)
+trap "rm -rf $odir" EXIT
+
+"$CONTAINER_ENGINE" cp "$id":$idir $odir
+tar -C $odir -czf $tgzfile .

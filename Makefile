@@ -288,17 +288,20 @@ image-fwa-test:
 
 ##@ Packages
 
-.PHONY: tarball
-# Share same build environment as docker image
-# Then it uses docker save to dump the layer and use it to
-# contruct the tarball.
-# Requires 'jq' to be installed
-tarball: tarball-clean image ## Build Tetragon Enterprise compressed tarball.
-	$(CONTAINER_ENGINE) build --build-arg TETRAGON_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.tarball -t "isovalent/tetragon-tarball:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
-	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/linux-tarball
-	$(QUIET)./contrib/scripts/image2targz isovalent/tetragon-tarball:$(DOCKER_IMAGE_TAG) $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz
-	@echo "tetragon tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz"
+TBALL_DOCKER_BUILD_ARGS=--build-arg TETRAGON_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) --platform=linux/${TARGET_ARCH}
 
+## normal tarball
+TBALL_IMAGE=isovalent/tetragon-tarball:$(DOCKER_IMAGE_TAG)
+TBALL_NAME=tetragon-ee-$(VERSION)-$(TARGET_ARCH)
+TBALL_TGZ=$(BUILD_PKG_DIR)/linux-tarball/$(TBALL_NAME).tar.gz
+
+.PHONY: tarball
+
+tarball: tarball-clean image ## Build Tetragon Enterprise compressed tarball.
+	$(CONTAINER_ENGINE) build $(TBALL_DOCKER_BUILD_ARGS) -f Dockerfile.tarball -t $(TBALL_IMAGE) .
+	$(QUIET)mkdir -p $$(dirname $(TBALL_TGZ))
+	$(QUIET)./contrib/scripts/image2targz $(TBALL_IMAGE) $(TBALL_TGZ) $(TBALL_NAME)
+	@/bin/echo "tetragon tgz ready: $(TBALL_TGZ)"
 
 .PHONY: tarball-release
 tarball-release: tarball ## Build Tetragon Enterprise release tarball.
@@ -306,18 +309,31 @@ tarball-release: tarball ## Build Tetragon Enterprise release tarball.
 	mv $(BUILD_PKG_DIR)/linux-tarball/tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz release/
 	(cd release && sha256sum tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz > tetragon-ee-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
 
+
+## slim tarball
+TBALL_SLIM_IMAGE=isovalent/tetragon-slim-tarball:$(DOCKER_IMAGE_TAG)
+TBALL_SLIM_NAME=tetragon-slim-$(VERSION)-$(TARGET_ARCH)
+TBALL_SLIM_TGZ=$(BUILD_PKG_DIR)/linux-tarball/$(TBALL_SLIM_NAME).tar.gz
+
+.PHONY: tarball-slim-extract
+tarball-slim-extract: tarball-clean image-slim ## Extract Tetragon slim in a directory under /tmp
+	$(CONTAINER_ENGINE) build $(TBALL_DOCKER_BUILD_ARGS) -f Dockerfile.slim.tarball -t $(TBALL_SLIM_IMAGE) .
+	@xdir=$$(mktemp --tmpdir -d "tetragon-slim.XXXXXXXX") && \
+		./contrib/scripts/image2dir $(TBALL_SLIM_IMAGE) $$xdir $(TBALL_SLIM_NAME) && \
+		/bin/echo "tetragon slim is extracted in: $$xdir. Start with $$xdir/$(TBALL_SLIM_NAME)/start.sh."
+
 .PHONY: tarball-slim
-tarball-slim: tarball-clean image-slim ## Build Tetragon Slim compressed tarball.
-	$(CONTAINER_ENGINE) build --build-arg TETRAGON_VERSION=$(VERSION) --build-arg TARGET_ARCH=$(TARGET_ARCH) -f Dockerfile.slim.tarball -t "isovalent/tetragon-slim-tarball:${DOCKER_IMAGE_TAG}" --platform=linux/${TARGET_ARCH} .
-	$(QUIET)mkdir -p $(BUILD_PKG_DIR)/linux-tarball
-	$(QUIET)./contrib/scripts/image2targz isovalent/tetragon-slim-tarball:$(DOCKER_IMAGE_TAG) $(BUILD_PKG_DIR)/linux-tarball/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar.gz
-	@echo "tetragon slim tarball is ready: $(BUILD_PKG_DIR)/linux-tarball/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar.gz"
+tarball-slim: tarball-clean image-slim ## Build Tetragon slim compressed tarball.
+	$(CONTAINER_ENGINE) build $(TBALL_DOCKER_BUILD_ARGS) -f Dockerfile.slim.tarball -t $(TBALL_SLIM_IMAGE) .
+	$(QUIET)mkdir -p $$(dirname $(TBALL_SLIM_TGZ))
+	./contrib/scripts/image2targz $(TBALL_SLIM_IMAGE) $(TBALL_SLIM_TGZ) $(TBALL_SLIM_NAME)
+	@/bin/echo "tetragon slim tgz ready: $(TBALL_SLIM_TGZ)"
 
 .PHONY: tarball-slim-release
-tarball-slim-release: tarball-slim ## Build Tetragon Slim release tarball.
+tarball-slim-release: tarball-slim ## Build Tetragon slim release tarball.
 	mkdir -p release/
-	mv $(BUILD_PKG_DIR)/linux-tarball/tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar.gz release/
-	(cd release && sha256sum tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar.gz > tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
+	mv $(TBALL_SLIM_TGZ) release/
+	(cd release && sha256sum $$(basename $(TBALL_SLIM_TGZ)) > tetragon-slim-$(VERSION)-$(TARGET_ARCH).tar.gz.sha256sum)
 
 .PHONY: tarball-clean
 tarball-clean:
