@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/cmd/tetra/debug"
 	"github.com/cilium/tetragon/cmd/tetra/loglevel"
 	"github.com/cilium/tetragon/cmd/tetra/policyfilter"
+	"github.com/cilium/tetragon/cmd/tetra/policytest"
 	"github.com/cilium/tetragon/cmd/tetra/rthooks"
 	"github.com/cilium/tetragon/cmd/tetra/tracingpolicy"
 	bugtoolpkg "github.com/cilium/tetragon/pkg/bugtool"
@@ -67,6 +68,7 @@ func addCommands(rootCmd *cobra.Command) {
 	rootCmd.AddCommand(debugCmd)
 	rootCmd.AddCommand(mandate.New())
 	rootCmd.AddCommand(policies.New())
+	rootCmd.AddCommand(policytest.New())
 }
 
 func ifConfig(commander bugtoolpkg.Commander) error {
